@@ -2,7 +2,7 @@
  * W5 — Wow → Story seed. The onboarding comic must become a durable artifact
  * through the EXISTING savedComics shelf path (Masterplan Wave 5), never a new
  * collection or write pipeline. Source-based guards (vitest in node, no jsdom)
- * + a hard pin on the CHILD_SUBCOLLECTIONS GDPR registry staying unchanged.
+ * + a reviewed pin on the CHILD_SUBCOLLECTIONS GDPR inventory.
  */
 import { describe, expect, it } from "vitest";
 import * as fs from "node:fs";
@@ -95,6 +95,7 @@ describe("CHILD_SUBCOLLECTIONS registry pin — the seed invented NO new sink", 
       "heroRenders", // B-KID-127: the kept personalised story text
       "kidSouvenirs", // B-KID-96: the souvenir ledger (registered, not invented by the seed)
       "studioQuestProgress", // fixed finite quest choices, child export and erase
+      "studioCreations", // B-BOOK-20: registered child-owned saved Studio designs
       "bookBookmarks", // edition-bound private reading position
       "journeyObjectives",
       "adventureResults",
