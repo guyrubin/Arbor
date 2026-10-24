@@ -86,8 +86,12 @@ describe('bounded private export capture contract, no browser or sockets', () =>
     expect(privateExportApiDisposition('POST', '/api/todays-focus', id)).toBe('read');
   });
   it.each(['en', 'he'])('validates exact partial bytes, identity, filename, registered collections and absence of sibling data (%s)', lang => {
-    expect(collectionNames).toHaveLength(45);
+    expect(collectionNames).toHaveLength(46);
+    expect(collectionNames).toContain('studioCreations');
     const fixture = privateExportFixture(seed, lang); const data = dataFor(fixture);
+    expect(fixture.collections.studioCreations).toEqual([{ id: 'corner', ownerId: 'local-sandbox', childId: fixture.child.id,
+      creation: { kind: 'corner', layout: ['plant', null, 'books', null, null, null], light: 'night', scene: 'garden' } }]);
+    expect(fixture.parsed.siblings[0].collections.studioCreations[0].childId).toBe(fixture.sibling.id);
     expect(validatePartialExport(JSON.stringify(data), fixture.filename, fixture)).toBe(true);
     const mutate = (change: (data: any) => void) => { const copy = structuredClone(data); change(copy); expect(validatePartialExport(JSON.stringify(copy), fixture.filename, fixture)).toBe(false); };
     mutate(d => { d.profile.id = fixture.sibling.id; });
@@ -98,6 +102,8 @@ describe('bounded private export capture contract, no browser or sockets', () =>
     mutate(d => { d.exportReceipt.collections.bookAssets = 'unavailable'; });
     mutate(d => { delete d.collections.heroSheet; });
     mutate(d => { delete d.collections.studioQuestProgress; });
+    mutate(d => { delete d.collections.studioCreations; });
+    mutate(d => { d.collections.studioCreations[0].childId = fixture.sibling.id; });
     mutate(d => { delete d.collections.bookBookmarks; });
     mutate(d => { d.collections.studioQuestProgress[0].choice = 'left'; });
     mutate(d => { d.collections.bookBookmarks[0].edition = 'wrong-edition'; });
