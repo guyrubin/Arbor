@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import * as ts from "typescript";
 import { CHILD_SUBCOLLECTIONS, exportChildData, eraseEverything } from "./childData";
 import type { ChildProfile } from "../types";
 
@@ -22,26 +23,70 @@ vi.mock("./api", () => ({
 // never again be written to a sink that deletion/export can't reach.
 const SRC_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-function collectChildCollectionSinks(dir: string, acc: Set<string>): void {
+// Parse the actual TypeScript call expression rather than matching source text:
+// string literals, comments and single-quoted sinks must all be handled safely.
+function findChildCollectionSinks(filename: string, code: string): { names: string[]; dynamic: string[] } {
+  const source = ts.createSourceFile(filename, code, ts.ScriptTarget.Latest, true,
+    filename.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  const names: string[] = [];
+  const dynamic: string[] = [];
+  function visit(node: ts.Node): void {
+    if (ts.isCallExpression(node) && (
+      (ts.isIdentifier(node.expression) && node.expression.text === "useChildCollection") ||
+      (ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "useChildCollection")
+    )) {
+      const arg = node.arguments[1];
+      if (arg && (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg))) {
+        names.push(arg.text);
+      } else {
+        const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
+        dynamic.push(`${filename}:${line}: ${arg?.getText(source) ?? "<missing collection name>"}`);
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  return { names, dynamic };
+}
+
+function collectChildCollectionSinks(dir: string, acc: Set<string>, dynamic: string[]): void {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, entry.name);
     if (entry.isDirectory()) {
-      collectChildCollectionSinks(p, acc);
-    } else if (/\.(ts|tsx)$/.test(entry.name) && !/\.test\.(ts|tsx)$/.test(entry.name)) {
-      const text = readFileSync(p, "utf8");
-      const re = /useChildCollection\s*(?:<[\s\S]*?>)?\s*\(\s*[\s\S]*?,\s*"([^"]+)"/g;
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(text)) !== null) acc.add(m[1]);
+      collectChildCollectionSinks(p, acc, dynamic);
+    } else if (/\\.(ts|tsx)$/.test(entry.name) && !/\\.test\\.(ts|tsx)$/.test(entry.name)) {
+      const code = readFileSync(p, "utf8");
+      if (!code.includes("useChildCollection")) continue;
+      const found = findChildCollectionSinks(p, code);
+      found.names.forEach((name) => acc.add(name));
+      dynamic.push(...found.dynamic);
     }
   }
 }
 
 describe("child-data GDPR allow-list completeness", () => {
+  it("detects quoted and template-literal sinks without matching comments or plain text", () => {
+    const fixtureCode = [
+      '// useChildCollection(childId, "commented")',
+      'const example = "useChildCollection(childId, unrelated)";',
+      "useChildCollection<T>(childId, 'studioCreations');",
+      'otherFunction(childId, "unrelated");',
+      'useChildCollection(childId, `studioQuestProgress`);',
+      'useChildCollection(childId, collectionName);',
+    ].join("\\n");
+    const found = findChildCollectionSinks("fixture.ts", fixtureCode);
+    expect(found.names).toEqual(["studioCreations", "studioQuestProgress"]);
+    expect(found.dynamic).toEqual(["fixture.ts:6: collectionName"]);
+  });
+
   it(
     "registers every useChildCollection sink in CHILD_SUBCOLLECTIONS (export + erasure)",
     () => {
       const sinks = new Set<string>();
-      collectChildCollectionSinks(SRC_ROOT, sinks);
+      const dynamic: string[] = [];
+      collectChildCollectionSinks(SRC_ROOT, sinks, dynamic);
+      expect(dynamic, "All child collection sinks require literal, audited names").toEqual([]);
+      expect(sinks.has("studioCreations"), "The single-quoted Studio creation sink must be found").toBe(true);
 
     // Sanity: the scan actually found sinks (guards against a broken regex
     // silently making this test pass).
