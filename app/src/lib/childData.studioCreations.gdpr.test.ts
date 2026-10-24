@@ -33,7 +33,7 @@ describe("saved Studio creations child-data lifecycle", () => {
     vi.stubGlobal("sessionStorage", session as unknown as Storage);
 
     const first = { id: "corner", ownerId: "local", childId: "synthetic-a",
-      creation: { kind: "corner", layout: ["plant", null, "books"], light: "night" } };
+      creation: { kind: "corner", layout: ["plant", null, "books", null, null, null], light: "night", scene: "garden" } };
     const second = { ...first, childId: "synthetic-b" };
     local.setItem("arbor.studioCreations.synthetic-a", JSON.stringify([first]));
     local.setItem("arbor.studioCreations.synthetic-b", JSON.stringify([second]));
