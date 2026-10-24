@@ -20,6 +20,7 @@ import { browserBuilderDeps, markHeroPoseOk, redrawHeroPose, resumeHeroSheet } f
 import { heroSheetStoreFor } from "../../lib/heroSheetStore";
 import { useHeroSheetDocs } from "../kidmode/hero/useHeroSheet";
 import BookSheetStrip from "./BookSheetStrip";
+import BookEditionStatus from "./BookEditionStatus";
 import type { ChildProfile } from "../../types";
 import { resolveHeroUrl } from "../../lib/heroIdentity";
 
@@ -46,17 +47,21 @@ export default function HeroSheetPanel({ child }: { child: Pick<ChildProfile, "i
 
   const hash = heroUrl ? heroAvatarHash(heroUrl) : null;
   const meta = docs?.meta && hash && docs.meta.avatarHash === hash ? docs.meta : null;
-  if (!meta || !docs || !hash) return null;
+  const editionStatus = hash ? <BookEditionStatus childId={child.id} avatarHash={hash} /> : null;
+  if (!meta || !docs || !hash) return editionStatus;
   const name = { name: child.name };
   if (meta.status === "building") {
     return (
-      <p data-hero-sheet="building" role="status" className="text-xs" style={muted}>
-        {t(formKeyFor("elev.hero.sheet.building", child.gender), name)}
-      </p>
+      <>
+        <p data-hero-sheet="building" role="status" className="text-xs" style={muted}>
+          {t(formKeyFor("elev.hero.sheet.building", child.gender), name)}
+        </p>
+        {editionStatus}
+      </>
     );
   }
   const shown = HERO_SHEET_POSE_IDS.filter((p) => docs.poses[p]?.avatarHash === hash || busy[p] || failed[p]);
-  if (!shown.length) return null;
+  if (!shown.length) return editionStatus;
 
   const ok = async (pose: HeroSheetPoseId) => { await markHeroPoseOk(heroSheetStoreFor(child.id), pose).catch(() => false); };
   const redraw = async (pose: HeroSheetPoseId) => {
@@ -114,6 +119,7 @@ export default function HeroSheetPanel({ child }: { child: Pick<ChildProfile, "i
           );
         })}
       </ul>
+      {editionStatus}
       <BookSheetStrip child={child} avatarHash={hash} />
     </section>
   );
