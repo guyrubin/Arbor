@@ -8,6 +8,7 @@ vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ t: (key:
 vi.mock("../kidmode/hero/useHeroSheet", () => ({ useHeroSheetDocs: () => h.docs }));
 vi.mock("../kidmode/hero/buildHeroSheet", () => ({ browserBuilderDeps: vi.fn(), markHeroPoseOk: vi.fn(), redrawHeroPose: vi.fn(), resumeHeroSheet: vi.fn() }));
 vi.mock("./BookSheetStrip", () => ({ default: () => null }));
+vi.mock("./BookEditionStatus", () => ({ default: () => null }));
 import HeroSheetPanel from "./HeroSheetPanel";
 import { heroAvatarHash } from "../../lib/heroSheetContract";
 
