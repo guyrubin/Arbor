@@ -212,7 +212,10 @@ describe("final browser boundary and fresh parent action", () => {
     expect(data.profile.name).toBe(name); expect(h.child.name).toBe(name);
     expect(data.exportReceipt.status).toBe(partial ? "incomplete" : "complete");
     expect(data.exportNote).toBe(translate(lang, "sec.sharing.data.exportNote"));
-    expect(Object.keys(data.collections)).toHaveLength(45);
+    expect(Object.keys(data.collections)).toHaveLength(46);
+    expect(data.collections.studioCreations).toEqual([]);
+    expect(data.exportReceipt.collections.studioCreations).toBe("included");
+    expect(h.paths).toContain("users/owner/children/child-a/studioCreations");
     expect(data.collections.studioQuestProgress).toEqual([{ id: "calm-corner-v1:spot", questId: "calm-corner-v1", step: "spot", choice: "right" }]);
     expect(data.collections.bookBookmarks).toEqual([{ id: "book", v: 1, edition: "v1-synthetic", pageId: "page-1", branchId: null }]);
     expect(h.paths.filter(path => /studioQuestProgress|bookBookmarks/.test(path))).toEqual(["users/owner/children/child-a/studioQuestProgress", "users/owner/children/child-a/bookBookmarks"]);

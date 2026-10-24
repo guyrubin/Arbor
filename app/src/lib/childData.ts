@@ -63,6 +63,9 @@ export const CHILD_SUBCOLLECTIONS = [
   // once, lifetime) — per-child data → export + erase sweep.
   "kidSouvenirs",
   "studioQuestProgress",
+  // B-BOOK-20 / B-KID-165: saved child-owned studio creations, including
+  // previous records, must be included in export and erased on child deletion.
+  "studioCreations",
   "bookBookmarks",
   "journeyObjectives",
   "adventureResults",
