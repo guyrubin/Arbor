@@ -54,7 +54,7 @@ function collectChildCollectionSinks(dir: string, acc: Set<string>, dynamic: str
     const p = join(dir, entry.name);
     if (entry.isDirectory()) {
       collectChildCollectionSinks(p, acc, dynamic);
-    } else if (/\\.(ts|tsx)$/.test(entry.name) && !/\\.test\\.(ts|tsx)$/.test(entry.name)) {
+    } else if (/\.(ts|tsx)$/.test(entry.name) && !/\.test\.(ts|tsx)$/.test(entry.name)) {
       const code = readFileSync(p, "utf8");
       if (!code.includes("useChildCollection")) continue;
       const found = findChildCollectionSinks(p, code);
@@ -73,7 +73,7 @@ describe("child-data GDPR allow-list completeness", () => {
       'otherFunction(childId, "unrelated");',
       'useChildCollection(childId, `studioQuestProgress`);',
       'useChildCollection(childId, collectionName);',
-    ].join("\\n");
+    ].join("\n");
     const found = findChildCollectionSinks("fixture.ts", fixtureCode);
     expect(found.names).toEqual(["studioCreations", "studioQuestProgress"]);
     expect(found.dynamic).toEqual(["fixture.ts:6: collectionName"]);
