@@ -27,11 +27,15 @@ export function privateExportFixture(bundle, lang) {
   const collections = Object.fromEntries(Object.keys(body.collections).map(key => [key, []]));
   collections.bookAssets = [{ id: 'capture-export-book', bookId: 'capture-export-book', files: ['manifest.json'], fixture: 'invented-private-export-metadata-only' }];
   collections.studioQuestProgress = [{ id: 'calm-corner-v1:spot', questId: 'calm-corner-v1', step: 'spot', choice: 'right' }];
+  // Synthetic, bounded child-owned Studio creation: registered for Art. 15/20
+  // export and Art. 17 erase. Never populate a real family or likeness here.
+  collections.studioCreations = [{ id: 'corner', ownerId: 'local-sandbox', childId: child.id,
+    creation: { kind: 'corner', layout: ['plant', null, 'books', null, null, null], light: 'night', scene: 'garden' } }];
   collections.bookBookmarks = [{ id: 'capture-export-book', v: 1, edition: 'v1-synthetic', pageId: 'page-1', branchId: null }];
   collections.heroSheet = [{ id: 'capture-export-hero', fixture: 'invented-export-marker' }];
   const siblingMarker = 'capture-sibling-must-never-export';
   body.child = child; body.collections = collections;
-  body.siblings = [{ child: sibling, collections: { ...structuredClone(collections), heroSheet: [{ id: siblingMarker }] } }];
+  body.siblings = [{ child: sibling, collections: { ...structuredClone(collections), heroSheet: [{ id: siblingMarker }], studioCreations: collections.studioCreations.map(row => ({ ...row, childId: sibling.id })) } }];
   return { parsed, child, sibling, childId: child.id, collections, siblingMarker, filename: PRIVATE_EXPORT_FILENAMES[lang] };
 }
 
@@ -58,10 +62,10 @@ export function validatePartialExport(text, filename, fixture) {
   return Boolean(filename === fixture.filename && data?.profile?.id === fixture.child.id && data.profile.name === fixture.child.name && data.profile.demo === true
     && !text.includes(fixture.sibling.id) && !text.includes(fixture.siblingMarker)
     && typeof data.exportedAt === 'string' && Number.isFinite(Date.parse(data.exportedAt)) && typeof data.exportNote === 'string' && data.exportNote.length > 0
-    && collections && Object.keys(collections).length === 45 && Object.values(collections).every(Array.isArray)
+    && collections && Object.keys(collections).length === 46 && Object.values(collections).every(Array.isArray)
     && Object.entries(fixture.collections).every(([name, value]) => JSON.stringify(collections[name]) === JSON.stringify(value))
     && receipt?.status === 'incomplete' && receipt.serverData === 'included'
-    && Object.keys(receipt.collections ?? {}).length === 45 && Object.keys(collections).every(name => receipt.collections[name] === 'included')
+    && Object.keys(receipt.collections ?? {}).length === 46 && Object.keys(collections).every(name => receipt.collections[name] === 'included')
     && Array.isArray(data.serverData?.memoryEvents) && data.serverData.memoryEvents.length === 0 && Array.isArray(data.serverData?.shares) && data.serverData.shares.length === 0
     && assets?.format === 'arbor-private-book-assets-v1' && assets.status === 'incomplete' && assets.inventory === 'unavailable'
     && JSON.stringify(assets.issues) === '["unauthorized"]' && assets.includedFiles === 0 && assets.includedBytes === 0 && Array.isArray(assets.files) && assets.files.length === 0);
