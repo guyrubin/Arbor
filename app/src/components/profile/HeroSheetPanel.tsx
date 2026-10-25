@@ -49,10 +49,14 @@ export default function HeroSheetPanel({ child }: { child: Pick<ChildProfile, "i
   if (!meta || !docs || !hash) return null;
   const name = { name: child.name };
   if (meta.status === "building") {
+    // B-BOOK-69: while the new hero learns to move, the book's line says it keeps the previous hero.
     return (
-      <p data-hero-sheet="building" role="status" className="text-xs" style={muted}>
-        {t(formKeyFor("elev.hero.sheet.building", child.gender), name)}
-      </p>
+      <div className="space-y-1">
+        <p data-hero-sheet="building" role="status" className="text-xs" style={muted}>
+          {t(formKeyFor("elev.hero.sheet.building", child.gender), name)}
+        </p>
+        <BookSheetStrip child={child} avatarHash={hash} />
+      </div>
     );
   }
   const shown = HERO_SHEET_POSE_IDS.filter((p) => docs.poses[p]?.avatarHash === hash || busy[p] || failed[p]);

@@ -20,6 +20,8 @@ import {
   resetNaturalVoiceForTest,
 } from "./naturalVoice";
 import { setNaturalSynth, setVoiceEngine, voiceState } from "./voice";
+import { setKidModeActive } from "./kidModeGate";
+import { resetKidVoiceForTest } from "./kidVoicePlayer";
 
 class FakeAudio {
   static instances: FakeAudio[] = [];
@@ -41,6 +43,7 @@ class FakeAudio {
     return Promise.resolve();
   }
   pause() {}
+  setAttribute() {}
 }
 
 let fetchMock: ReturnType<typeof vi.fn>;
@@ -217,5 +220,29 @@ describe("gesture-bound playback — F-03", () => {
     } finally {
       warn.mockRestore();
     }
+  });
+});
+
+describe("Kid Mode read-aloud — one reused channel, each line fetched once per signed-in scope", () => {
+  const kidOpen = () => setKidModeActive(true);
+  afterEach(() => { setKidModeActive(false); resetKidVoiceForTest(); });
+  it("a replayed line in Kid Mode makes no second /api/tts call and plays on the same element", async () => {
+    kidOpen();
+    const first = naturalSynth("Find the matching pairs.", {}, "en"); await flush();
+    const element = FakeAudio.instances.at(-1);
+    first.stop();
+    naturalSynth("Find the matching pairs.", {}, "en"); await flush();
+    expect(fetchMock.mock.calls.filter(([url]) => url === "/api/tts")).toHaveLength(1);
+    expect(FakeAudio.instances.at(-1)).toBe(element);
+  });
+  it("the parent register never keeps a line, and sign-out forgets the kid lines", async () => {
+    naturalSynth("A parent reply.", {}, "en"); await flush();
+    naturalSynth("A parent reply.", {}, "en"); await flush();
+    expect(fetchMock.mock.calls.filter(([url]) => url === "/api/tts")).toHaveLength(2);
+    kidOpen();
+    naturalSynth("Tap the next water square.", {}, "en"); await flush();
+    resetNaturalVoiceForTest();
+    naturalSynth("Tap the next water square.", {}, "en"); await flush();
+    expect(fetchMock.mock.calls.filter(([url]) => url === "/api/tts")).toHaveLength(4);
   });
 });

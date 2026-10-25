@@ -209,9 +209,11 @@ describe("wiring", () => {
     expect(shell).toContain("autoReadPage(childId, instruction, lang)");
     const reader = read("..", "..", "tabs", "HeroJourneyTab.tsx");
     expect(reader.match(/kidSfx\("pageTurn"\)/g)?.length).toBe(2);
-    // B-BOOK-28: the legacy book keeps local page-turn effects, without live narration.
+    // B-BOOK-28 + Guy, 10 Oct 2026: no runtime voice in a legacy kid book;
+    // its narration comes as files in the chosen narrator's voice (B-BOOK-73).
     expect(reader).not.toContain("autoReadPage");
     expect(reader).not.toContain("kidSay");
+    expect(reader).toContain("legacyVoice.play(legacyPageUnits(");
     const kit = read("..", "..", "ui", "playkit.tsx");
     expect(kit).toContain('if (state === "correct") kidSfx("correct");');
     expect(kit).toContain('else if (state === "wrong") kidSfx("tryAgain");');

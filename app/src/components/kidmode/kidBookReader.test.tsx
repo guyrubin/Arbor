@@ -114,9 +114,10 @@ describe("the Kid Mode reader (HeroJourneyTab)", () => {
     expect(kidReader).toMatch(/inlineSize: 48, minBlockSize: 48/);
     expect((kidReader.match(/<button\b/g) ?? []).length).toBe(4); // back, next, read again, my books
   });
-  it("B-BOOK-28: legacy pages never synthesize narration; the Decision question and choices stay readable", () => {
+  it("B-BOOK-28: legacy pages never synthesize narration (only the chosen narrator's files, B-BOOK-73); the Decision question and choices stay readable", () => {
     expect(tab).not.toContain("autoReadPage");
     expect(tab).not.toContain("kidSay");
+    expect(tab).toContain('legacyVoice.status === "recorded"');
     expect(tab).toContain("stopVoice();");
     expect(kidReader).toContain("renderChoices()");
     expect(tab).toContain("<DecisionChoices choices={choices}");

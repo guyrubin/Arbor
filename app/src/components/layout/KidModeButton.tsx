@@ -6,7 +6,6 @@ import { readParentPin } from "../kidmode/parentGate";
 import { useArborOptional } from "../../context/ArborContext";
 import { kidModeOpenFor } from "../../lib/age/playGate";
 import { ensureHeroSheet } from "../kidmode/hero/buildHeroSheet";
-import { PROOF_HERO_CHILD_IDS } from "../kidmode/hero/useHeroSheet";
 
 /**
  * The single affordance to hand the device to the child (enter Kid Mode).
@@ -41,9 +40,9 @@ export default function KidModeButton({ compact = false, onBeforeOpen }: { compa
   // K1: the parent shell starts the pose sheet of a hero made before sheets
   // existed (B-GAME-13), so the child plays as their own hero. Deduped per
   // child and hero inside ensureHeroSheet; quota-checked by the server.
-  // The proof child keeps the proof sheet Guy approved: no auto-drawn sheet
-  // may outrank it in the chain (useHeroSheet: own sheet first).
-  useEffect(() => { if (child && !PROOF_HERO_CHILD_IDS.includes(child.id)) void ensureHeroSheet(child); }, [child?.id, child?.photoUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A complete sheet of the current hero is never redrawn, and an
+  // admin-uploaded book sheet is never replaced (B-BOOK-71: no child id here).
+  useEffect(() => { if (child) void ensureHeroSheet(child); }, [child?.id, child?.photoUrl]); // eslint-disable-line react-hooks/exhaustive-deps
   // Named narration is prepared by the shared parent-entry seam, not by
   // mounting this control (desktop and mobile copies can coexist).
   if (child && !kidModeOpenFor(child)) return <>{step}</>;
