@@ -86,6 +86,10 @@
 .rhythm-pattern { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--studio-space-1); margin: 22px auto 0; min-block-size: 44px; }
 .rhythm-pattern > span { display: grid; place-items: center; inline-size: 44px; block-size: 44px; border: 1px dashed var(--studio-edge); border-radius: 12px; background: var(--studio-glass); color: var(--studio-text-soft); }
 .rhythm-pattern > span[data-filled=true] { border-style: solid; border-color: var(--studio-action-gold); color: #8a5a00; }
+/* 25 Oct input: in the child's turn the next empty slot glows, so the slots read as "fill these". */
+.rhythm-pattern > span[data-next=true] { border: 2px solid var(--studio-action-gold); box-shadow: 0 0 0 4px #ffd96a55; animation: rhythm-next 1.2s ease-in-out infinite; }
+@keyframes rhythm-next { 50% { box-shadow: 0 0 0 8px #ffd96a22; transform: scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { .rhythm-pattern > span[data-next=true] { animation: none; } }
 .rhythm-pattern p { font-size: 16px; text-align: center; max-inline-size: 470px; margin: 0; }
 .rhythm-workshop-actions { margin-block: 0 var(--studio-space-3); }
 .rhythm-tempo { margin: 0 auto var(--studio-space-3); inline-size: fit-content; }
@@ -443,23 +447,29 @@
 }
 
 .adventure-sprite--canal[data-piece=water] { mask-image:radial-gradient(ellipse 48% 35% at 53% 53%,#000 72%,transparent 100%); }
-/* On a phone the playable stage precedes workshop settings. The first tune
-   and its main action stay together; optional editing follows below. */
+/* On a phone the playable stage precedes workshop settings. 25 Oct input
+   (iPhone, "we didn't understand what to do"): the instruction, the pods, the
+   tune slots and the main action share one screen, so the instruction never
+   scrolls away while the child plays; the level picker and the workshop
+   follow below. */
 @media(max-width:799px) {
- .adventure--rhythm { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; }
- .adventure--rhythm .adventure-toolbar { grid-row:1; margin:0; }
- .adventure--rhythm .adventure-prompt { grid-row:2; margin:0; }
- .adventure--rhythm .rhythm-stage { grid-row:3; min-height:350px; padding:12px 6px 18px; }
- .adventure--rhythm .rhythm-pattern { grid-row:4; margin:0; }
- .adventure--rhythm > .adventure-actions:not(.rhythm-workshop-actions) { grid-row:5; margin:0; }
- .adventure--rhythm .rhythm-workshop-actions { grid-row:6; margin:0; }
+ .adventure--rhythm { display:grid; grid-template-columns:minmax(0,1fr); gap:10px; }
+ .adventure--rhythm .adventure-prompt { grid-row:1; margin:0; }
+ .adventure--rhythm .rhythm-stage { grid-row:2; min-height:330px; padding:10px 6px 16px; }
+ .adventure--rhythm .rhythm-pattern { grid-row:3; margin:0; }
+ .adventure--rhythm .adventure-status { grid-row:4; margin:0; }
+ .adventure--rhythm > .adventure-actions:not(.rhythm-workshop-actions) { grid-row:5; margin:0; gap:8px; }
+ .adventure--rhythm > .adventure-actions:not(.rhythm-workshop-actions) button { flex:1 1 140px; min-width:0; padding-inline:10px; font-size:15px; }
+ .adventure--rhythm .adventure-toolbar { grid-row:6; margin:0; }
+ .adventure--rhythm .rhythm-workshop-actions { grid-row:7; margin:0; }
  .adventure--rhythm .rhythm-workshop-actions button { flex:1 1 40%; font-size:13px; padding:8px; }
- .adventure--rhythm .rhythm-tempo { grid-row:7; margin:0 auto; }
- .adventure--rhythm .adventure-status { grid-row:8; margin:0; }
+ .adventure--rhythm .rhythm-tempo { grid-row:8; margin:0 auto; }
  .adventure--rhythm .adventure-quiet { grid-row:9; margin:0; }
  .adventure--rhythm .adventure-transfer { grid-row:10; margin:0; }
- .adventure--rhythm .rhythm-conductor { min-height:190px; }
- .adventure--rhythm .rhythm-conductor > .studio-play-hero { zoom:.7; }
+ .adventure--rhythm .rhythm-conductor { min-height:160px; }
+ .adventure--rhythm .rhythm-pods { zoom:.88; }
+ .arbor-play .adventure--rhythm .adventure-heading { padding-block:10px; }
+ .adventure--rhythm .rhythm-conductor > .studio-play-hero { zoom:.6; }
  .adventure--rhythm .rhythm-pod { min-height:130px; }
 }
 
