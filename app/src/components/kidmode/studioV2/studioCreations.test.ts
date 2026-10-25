@@ -20,7 +20,7 @@ describe('bounded private creations', () => {
   });
   it('saves only the creation contract under the active owner and strips unrelated fields', async () => {
     await useStudioCreations('child-a').save({ ...melody, privatePhoto: 'must-not-persist' } as StudioCreation);
-    expect(h.upsert).toHaveBeenCalledWith({ id: 'melody', ownerId: 'owner-a', childId: 'child-a', creation: melody });
+    expect(h.upsert).toHaveBeenCalledWith({ id: 'melody', ownerId: 'owner-a', childId: 'child-a', creation: melody }, { requireAcknowledgement: true });
   });
   it('refuses a write before hydration, after scope retirement, or on a fallback error', async () => {
     h.loaded = false; await expect(useStudioCreations('child-a').save(melody)).rejects.toThrow();
@@ -30,5 +30,16 @@ describe('bounded private creations', () => {
   });
   it('does not acknowledge a rejected storage write', async () => {
     h.upsert.mockRejectedValue(new Error('quota')); await expect(useStudioCreations('child-a').save(corner)).rejects.toThrow('quota');
+  });
+  it('keeps a queued or unconfirmed remote save retryable, with the same bounded document identity', async () => {
+    h.upsert.mockRejectedValueOnce(new Error('The write was not confirmed; please retry'));
+    await expect(useStudioCreations('child-a').save(corner)).rejects.toThrow('not confirmed');
+    h.upsert.mockResolvedValueOnce(undefined);
+    await expect(useStudioCreations('child-a').save(corner)).resolves.toBeUndefined();
+    expect(h.upsert).toHaveBeenCalledTimes(2);
+    const [first, second] = h.upsert.mock.calls;
+    expect(first[0]).toEqual(second[0]);
+    expect(first[1]).toEqual({ requireAcknowledgement: true });
+    expect(second[1]).toEqual({ requireAcknowledgement: true });
   });
 });
