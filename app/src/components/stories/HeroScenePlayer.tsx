@@ -287,7 +287,7 @@ export function HeroScenePlayer({
           lang={bookLang}
           dir={langDir(bookLang)}
           data-kid-book-text=""
-          className="min-h-[calc(3*1.5em_+_16px)] max-h-[calc(3*1.5em_+_16px)] sm:max-h-[50vh] sm:max-w-[32ch]"
+          className="min-h-[calc(3*1.5em_+_16px)] max-h-[calc(5*var(--kid-book-lh,1.5)*1em_+_16px)] sm:max-h-[50vh] sm:max-w-[32ch]"
           // B-KID-133 (D-03): the book voice — Fraunces / Frank Ruhl 600 at
           // --kid-t-book (20 px at a phone, 26 px wide), line height 1.5 (HE 1.6).
           style={{ margin: 0, paddingInline: 20, paddingBlockStart: 16, fontSize: `max(${KID_BOOK_TEXT_PX}px, var(--kid-t-book))`, fontWeight: 600, lineHeight: "var(--kid-book-lh)", overflowY: "auto", color: "var(--arbor-ink)", fontFamily: "var(--font-display), Georgia, serif" }}

@@ -1358,9 +1358,11 @@ html[lang="he"] .arbor-play,
 /* The band keeps the hero's face (the covers carry it in their upper third). */
 .arbor-play [data-kid-decision] [data-kid-book-art] img { object-position: 50% 22% !important; transform: none !important; }
 /* Every other page at a phone: the picture never pushes Back / Next under the
-   screen's edge (the top bar, three lines of words and the nav row stay). */
+   screen's edge. 25 Oct (test input on an iPhone: "the text is cut, make the picture a
+   little smaller"): a page's words run to four lines, so the picture leaves
+   room for five (the top bar, the words and the nav row stay on screen). */
 @media (max-width: 639px) {
-  .arbor-play [data-kid-book-art] { max-block-size: max(180px, calc(100dvh - 310px)); }
+  .arbor-play [data-kid-book-art] { max-block-size: max(160px, calc(100dvh - 370px)); }
 }
 @media (max-height: 520px) {
   .arbor-play [data-kid-decision] { grid-template-columns: minmax(0, 1fr) !important; max-inline-size: 760px; margin-inline: auto; }
