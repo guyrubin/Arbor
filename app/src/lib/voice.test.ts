@@ -120,6 +120,51 @@ describe("voice controller — natural engine + browser-floor fallback", () => {
     expect(spoken).toHaveLength(1);
   });
 
+  it("25 Oct input: a neural-only (Kid Mode) utterance never falls back to the floor voice", () => {
+    vi.useFakeTimers();
+    const { synth, calls } = makeNatural();
+    setNaturalSynth(synth);
+    setVoiceEngine("natural");
+    const onError = vi.fn();
+    speakText("slow kid line", { onError }, "en", { neuralOnly: true });
+    vi.advanceTimersByTime(1600);
+    expect(spoken).toHaveLength(0); // the parent budget passed; a kid line keeps waiting
+    calls[0].handlers.onStart?.();
+    expect(voiceState().speaking).toBe(true);
+    calls[0].handlers.onEnd?.();
+    speakText("refused kid line", { onError }, "en", { neuralOnly: true });
+    calls[1].handlers.onError?.(); // never started → silent, no robot voice
+    expect(spoken).toHaveLength(0);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(voiceState().speaking).toBe(false);
+    speakText("very slow kid line", { onError }, "en", { neuralOnly: true });
+    vi.advanceTimersByTime(8100);
+    expect(calls[2].stop).toHaveBeenCalled();
+    expect(spoken).toHaveLength(0);
+    expect(onError).toHaveBeenCalledTimes(2);
+  });
+
+  it("25 Oct input: a degraded session still speaks Kid Mode lines neurally, and misses never degrade it", () => {
+    const { synth, calls } = makeNatural();
+    setNaturalSynth(synth);
+    setVoiceEngine("basic");
+    speakText("kid line", {}, "en", { neuralOnly: true });
+    expect(calls).toHaveLength(1);
+    expect(spoken).toHaveLength(0);
+    setVoiceEngine("natural");
+    for (let i = 0; i < 4; i++) {
+      speakText(`miss ${i}`, {}, "en", { neuralOnly: true });
+      calls[calls.length - 1].handlers.onError?.();
+    }
+    expect(voiceState().engine).toBe("natural");
+    expect(spoken).toHaveLength(0);
+  });
+
+  it("with no neural adapter registered, a Kid Mode line still uses the floor", () => {
+    speakText("no adapter", {}, "en", { neuralOnly: true });
+    expect(spoken).toHaveLength(1);
+  });
+
   it("stopVoice stops active natural playback", () => {
     const { synth, calls } = makeNatural();
     setNaturalSynth(synth);

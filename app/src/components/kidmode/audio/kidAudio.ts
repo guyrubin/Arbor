@@ -77,6 +77,7 @@ export function setKidAudioChild(childId: string | null): void {
 /* ── voice ─────────────────────────────────────────────────────────────────── */
 
 let queueToken = 0;
+const KID_VOICE = { neuralOnly: true } as const;
 
 /** Speak `text` (or a queue of lines) for this child when the mute is off,
  *  the device can speak, a gesture has happened and the tab is visible.
@@ -88,10 +89,12 @@ export function kidSay(childId: string, text: string | readonly string[], lang: 
   const canSpeak = voiceSupported() || voiceState().engine === "natural";
   if (lines.length === 0 || isKidReadAloudMuted(childId) || !canSpeak || !pageHasUserGesture() || pageHidden()) return 0;
   const token = ++queueToken;
-  if (lines.length === 1) return speakText(lines[0], {}, lang);
+  // 25 Oct input: Kid Mode speaks with the narrator voice or not at all — a
+  // slow or refused neural start never falls back to the device robot voice.
+  if (lines.length === 1) return speakText(lines[0], {}, lang, KID_VOICE);
   const next = (i: number): number => {
     if (token !== queueToken || i >= lines.length) return 0;
-    return speakText(lines[i], { onEnd: () => { next(i + 1); } }, lang);
+    return speakText(lines[i], { onEnd: () => { next(i + 1); } }, lang, KID_VOICE);
   };
   return next(0);
 }
