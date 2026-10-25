@@ -6,6 +6,7 @@ import { useArborOptional } from "../../../../context/ArborContext";
 import { useKidTheme } from "../../../../hooks/useKidTheme";
 import { kidArt, type KidArt } from "../../../../lib/kidThemeManifest";
 import { GameFinish, GameShell } from "../../game/GameShell";
+import { kidSfx } from "../../audio/kidAudio";
 import { placePuzzlePiece, shuffledPieces } from "./gameRules";
 import { GAME_COPY } from "./gameCopy";
 import "./studioGames.css";
@@ -40,13 +41,14 @@ function PuzzlePlay() {
   const [selected, setSelected] = useState<number | null>(null);
   const [preview, setPreview] = useState(false);
   const [status, setStatus] = useState("");
-  const reset = (next: 2 | 3 = size) => { setSize(next); setPieces(shuffledPieces(next)); setPlaced([]); setSelected(null); setStatus(""); setPreview(false); setFinished(false); setHint(null); };
+  const [miss, setMiss] = useState<number | null>(null);
+  const reset = (next: 2 | 3 = size) => { setSize(next); setPieces(shuffledPieces(next)); setPlaced([]); setSelected(null); setStatus(""); setPreview(false); setFinished(false); setHint(null); setMiss(null); };
   const position = (piece: number) => copy.position[size === 3 ? piece : [0, 2, 6, 8][piece]];
   const place = (target: number, piece = selected) => {
     if (piece === null) { setStatus(copy.puzzleChoose); return; }
     const next = placePuzzlePiece(placed, piece, target, size);
-    if (next === placed) { setStatus(copy.puzzleRetry); return; }
-    setPlaced(next); setSelected(null); setHint(null); setStatus(copy.puzzlePlaced);
+    if (next === placed) { setStatus(copy.puzzleRetry); setMiss(target); kidSfx("tryAgain"); return; }
+    setPlaced(next); setSelected(null); setHint(null); setMiss(null); setStatus(copy.puzzlePlaced); kidSfx("correct");
   };
   const complete = placed.length === size * size;
   if (!art) return <GameShell worldId="puzzle" title={copy.puzzle}><p className="studio-game-panel" role="status">{copy.pictureUnavailable}</p></GameShell>;
@@ -57,19 +59,15 @@ function PuzzlePlay() {
         <h2>{copy.puzzleFinish}</h2><p>{nextWords.pictureDiscover}</p>
         <button type="button" className="studio-game-button studio-game-button--go" data-puzzle-finish="" onClick={() => setFinished(true)}><Check size={20} aria-hidden="true" />{nextWords.pictureReady}</button>
       </div> : <>
-        <p className="studio-game-help">{copy.puzzleHelp}</p>
-        <div className="studio-game-actions" role="group" aria-label={nextWords.choosePicture}>
-          {(['garden','treehouse','music'] as const).map((value, index) => <button type="button" className="studio-game-button" aria-pressed={scene === value} key={value} onClick={() => { setScene(value); reset(); }}>{[nextWords.pictureGarden, nextWords.pictureTreehouse, nextWords.pictureMusic][index]}</button>)}
-        </div>
-        <div className="studio-game-actions" role="group" aria-label={copy.puzzleSize}>
-          <button type="button" className="studio-game-button" aria-pressed={size === 2} onClick={() => reset(2)}>{copy.small}</button>
-          <button type="button" className="studio-game-button" aria-pressed={size === 3} onClick={() => reset(3)}>{copy.big}</button>
-          <button type="button" className="studio-game-button" aria-expanded={preview} onClick={() => setPreview(value => !value)}><Eye aria-hidden="true" size={20} />{preview ? copy.hidePicture : copy.picture}</button>
-        </div>
-        {preview && <div className="studio-puzzle-preview" style={{ aspectRatio: pictureRatio }} aria-label={copy.picture} role="img"><PlanetPicture art={art} /></div>}
+        {/* 25 Oct input ("we didn't understand Puzzle Planet"): the board and
+            the pieces come first, so a phone shows both on one screen. The
+            whole picture shows faintly under the empty spaces, a chosen piece
+            lifts and the empty spaces glow, and a wrong space shakes. Picture
+            and size choices follow the play. */}
         <div className="studio-puzzle-layout">
-          <div className="studio-puzzle-board" role="group" aria-label={copy.puzzleBoard} style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))` }}>
-            {Array.from({ length: size * size }, (_, target) => <button type="button" className="studio-puzzle-cell" style={{ aspectRatio: pictureRatio }} key={target} data-filled={placed.includes(target)} data-hint={hint === target} disabled={placed.includes(target)}
+          <div className="studio-puzzle-board" role="group" aria-label={copy.puzzleBoard} data-armed={selected !== null} data-preview={preview} style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))` }}>
+            {preview && <span className="studio-puzzle-ghost" role="img" aria-label={copy.picture}><PlanetPicture art={art} /></span>}
+            {Array.from({ length: size * size }, (_, target) => <button type="button" className="studio-puzzle-cell" style={{ aspectRatio: pictureRatio }} key={target} data-filled={placed.includes(target)} data-hint={hint === target} data-miss={miss === target} disabled={placed.includes(target)}
               aria-label={`${copy.space}: ${position(target)}`} onClick={() => place(target)} onDragOver={event => event.preventDefault()}
               onDrop={event => { event.preventDefault(); const value = event.dataTransfer.getData("text/plain"); if (/^\d$/.test(value)) place(target, Number(value)); }}>
               {placed.includes(target) ? <PlanetPicture art={art} piece={target} size={size} /> : <Puzzle aria-hidden="true" size={26} />}
@@ -77,11 +75,24 @@ function PuzzlePlay() {
           </div>
           <div className="studio-puzzle-tray" role="group" aria-label={copy.pieces} style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))` }}>
             {pieces.map(piece => <button type="button" className="studio-puzzle-piece" style={{ aspectRatio: pictureRatio }} key={piece} aria-label={`${copy.piece}: ${position(piece)}`} aria-pressed={selected === piece} data-placed={placed.includes(piece)} disabled={placed.includes(piece)} draggable={!placed.includes(piece)}
-              onClick={() => { setSelected(piece); setStatus(""); }} onDragStart={event => { event.dataTransfer.setData("text/plain", String(piece)); setSelected(piece); setStatus(""); }}><PlanetPicture art={art} piece={piece} size={size} /></button>)}
+              onClick={() => { setSelected(piece); setMiss(null); setStatus(""); }} onDragStart={event => { event.dataTransfer.setData("text/plain", String(piece)); setSelected(piece); setMiss(null); setStatus(""); }}><PlanetPicture art={art} piece={piece} size={size} /></button>)}
           </div>
         </div>
-        <div className="studio-game-actions"><button type="button" className="studio-game-button" disabled={selected === null} onClick={() => setHint(selected)}><Lightbulb size={20} aria-hidden="true" />{nextWords.pieceHint}</button></div>
         <p className="studio-game-status" role="status" aria-live="polite">{status || (selected === null ? "\u00a0" : `${copy.piece}: ${position(selected)}`)}</p>
+        <div className="studio-game-actions">
+          <button type="button" className="studio-game-button" disabled={selected === null} onClick={() => setHint(selected)}><Lightbulb size={20} aria-hidden="true" />{nextWords.pieceHint}</button>
+          <button type="button" className="studio-game-button" aria-expanded={preview} onClick={() => setPreview(value => !value)}><Eye aria-hidden="true" size={20} />{preview ? copy.hidePicture : copy.picture}</button>
+        </div>
+        <div className="studio-puzzle-settings">
+          <p className="studio-game-help">{copy.puzzleHelp}</p>
+          <div className="studio-game-actions" role="group" aria-label={nextWords.choosePicture}>
+            {(['garden','treehouse','music'] as const).map((value, index) => <button type="button" className="studio-game-button" aria-pressed={scene === value} key={value} onClick={() => { setScene(value); reset(); }}>{[nextWords.pictureGarden, nextWords.pictureTreehouse, nextWords.pictureMusic][index]}</button>)}
+          </div>
+          <div className="studio-game-actions" role="group" aria-label={copy.puzzleSize}>
+            <button type="button" className="studio-game-button" aria-pressed={size === 2} onClick={() => reset(2)}>{copy.small}</button>
+            <button type="button" className="studio-game-button" aria-pressed={size === 3} onClick={() => reset(3)}>{copy.big}</button>
+          </div>
+        </div>
       </>}
     </div>
   </GameShell>;

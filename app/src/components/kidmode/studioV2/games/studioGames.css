@@ -64,3 +64,27 @@
 .studio-puzzle-cell[data-hint=true] { outline: 4px solid var(--arbor-green-ink); outline-offset: -4px; background: var(--arbor-green-soft); }
 .studio-puzzle-reveal { text-align: center; padding-block: 16px; }
 .studio-puzzle-reveal .studio-puzzle-preview { inline-size: min(100%, 520px); }
+/* 25 Oct input (Puzzle Planet): a placed piece leaves the tray (the generic
+   disabled .55 kept it looking playable), a chosen piece lifts, the empty
+   spaces glow once a piece is chosen, a wrong space shakes, and "Whole
+   picture" shows the picture faintly under the empty spaces. */
+.studio-puzzle-board { position: relative; }
+.studio-puzzle-cell { position: relative; }
+.studio-puzzle-ghost { position: absolute; inset: 4px; opacity: .45; pointer-events: none; }
+.studio-puzzle-board[data-preview="true"] .studio-puzzle-cell:not([data-filled="true"]) { background: transparent; }
+.studio-puzzle-board[data-armed="true"] .studio-puzzle-cell:not([data-filled="true"]) { background: color-mix(in srgb, var(--arbor-green-soft) 70%, transparent); border: 2px dashed var(--arbor-green-ink); color: var(--arbor-green-ink); animation: studio-puzzle-invite 1.3s ease-in-out infinite; }
+.studio-puzzle-board .studio-puzzle-cell[data-miss="true"]:not([data-filled="true"]) { animation: studio-puzzle-miss .45s ease-in-out; }
+.studio-game .studio-puzzle-piece[data-placed="true"] { visibility: hidden; }
+.studio-puzzle-piece { transition: transform .15s ease-out; }
+.studio-puzzle-piece[aria-pressed="true"] { transform: translateY(-4px) scale(1.04); box-shadow: 0 0 0 3px var(--arbor-paper-elevated), 0 0 0 6px var(--arbor-green-ink), 0 10px 18px color-mix(in srgb, var(--arbor-ink) 25%, transparent); }
+.studio-puzzle-settings { margin-block-start: 8px; padding-block-start: 12px; border-block-start: 1px solid var(--arbor-rule); }
+.studio-puzzle-settings .studio-game-actions { margin-block: 10px; }
+@keyframes studio-puzzle-invite { 50% { background: var(--arbor-green-soft); } }
+@keyframes studio-puzzle-miss { 25% { transform: translateX(-6px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
+@media (prefers-reduced-motion: reduce) {
+  .studio-puzzle-board .studio-puzzle-cell, .studio-puzzle-piece { animation: none !important; transition: none; }
+  .studio-puzzle-piece[aria-pressed="true"] { transform: none; }
+}
+@media (max-width: 560px) {
+  .studio-puzzle-settings .studio-game-button { min-block-size: 44px; padding: 8px 12px; font-size: 15px; }
+}
