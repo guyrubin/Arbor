@@ -42,12 +42,12 @@ describe("the book page (HeroScenePlayer layout=book)", () => {
     // B-KID-128 re-pin: full-bleed at 4:5 on a phone, 3:4 spread from 640 px (kidBookLayout.test).
     expect(html).toContain("aspect-[4/5]");
   });
-  it("the words sit below at the kid scale (>= 18 px), three lines then scroll", () => {
+  it("the words sit below at the kid scale (>= 18 px), up to five lines then scroll", () => {
     expect(KID_BOOK_TEXT_PX).toBeGreaterThanOrEqual(18);
     // B-KID-133 (D-03) re-pin: the book voice token, floored at KID_BOOK_TEXT_PX (20 px).
     expect(html).toMatch(/data-kid-book-text=""[^>]*font-size:max\(20px, var\(--kid-t-book\)\)/);
     expect(html).toContain("overflow-y:auto");
-    expect(html).toContain("max-h-[calc(3*1.5em_+_16px)]"); // B-KID-128 re-pin: the 3-line cap is a phone-only class (B-KID-133 D-03: book line height 1.5)
+    expect(html).toContain("max-h-[calc(5*var(--kid-book-lh,1.5)*1em_+_16px)]"); // 25 Oct re-pin: a page runs to four lines, so the phone-only cap is five at the book line height (B-KID-133 D-03: 1.5, HE 1.6)
     expect(html).toContain(scene.narration);
   });
   it("no meta row in front of the child: no Read aloud button, no Save, no smudged/Redraw page", () => {
@@ -68,7 +68,8 @@ describe("read-to-me (kidReadAloud)", () => {
     vi.stubGlobal("navigator", { userActivation: { hasBeenActive: true } });
     setKidReadAloudMuted("child-a", false);
     expect(autoReadPage("child-a", "שלום", "he")).toBe(7);
-    expect(voice.speakText).toHaveBeenCalledWith("שלום", {}, "he");
+    // 25 Oct input: Kid Mode speaks only in the neural voice, never the robot floor.
+    expect(voice.speakText).toHaveBeenCalledWith("שלום", {}, "he", { neuralOnly: true });
   });
   it("never before a user gesture (autoplay rule)", () => {
     vi.stubGlobal("navigator", { userActivation: { hasBeenActive: false } });
@@ -114,9 +115,10 @@ describe("the Kid Mode reader (HeroJourneyTab)", () => {
     expect(kidReader).toMatch(/inlineSize: 48, minBlockSize: 48/);
     expect((kidReader.match(/<button\b/g) ?? []).length).toBe(4); // back, next, read again, my books
   });
-  it("B-BOOK-28: legacy pages never synthesize narration; the Decision question and choices stay readable", () => {
+  it("B-BOOK-28: legacy pages never synthesize narration (only the chosen narrator's files, B-BOOK-73); the Decision question and choices stay readable", () => {
     expect(tab).not.toContain("autoReadPage");
     expect(tab).not.toContain("kidSay");
+    expect(tab).toContain('legacyVoice.status === "recorded"');
     expect(tab).toContain("stopVoice();");
     expect(kidReader).toContain("renderChoices()");
     expect(tab).toContain("<DecisionChoices choices={choices}");

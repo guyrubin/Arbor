@@ -25,6 +25,7 @@
  */
 import { useSyncExternalStore } from "react";
 import { speakText, stopVoice, voiceState, voiceSupported } from "../../../lib/voice";
+import { stopKidVoice } from "../../../lib/kidVoicePlayer";
 
 /* ── the per-child mute (persisted, device-local UI state) ─────────────────── */
 
@@ -76,6 +77,7 @@ export function setKidAudioChild(childId: string | null): void {
 /* ── voice ─────────────────────────────────────────────────────────────────── */
 
 let queueToken = 0;
+const KID_VOICE = { neuralOnly: true } as const;
 
 /** Speak `text` (or a queue of lines) for this child when the mute is off,
  *  the device can speak, a gesture has happened and the tab is visible.
@@ -87,10 +89,12 @@ export function kidSay(childId: string, text: string | readonly string[], lang: 
   const canSpeak = voiceSupported() || voiceState().engine === "natural";
   if (lines.length === 0 || isKidReadAloudMuted(childId) || !canSpeak || !pageHasUserGesture() || pageHidden()) return 0;
   const token = ++queueToken;
-  if (lines.length === 1) return speakText(lines[0], {}, lang);
+  // 25 Oct input: Kid Mode speaks with the narrator voice or not at all — a
+  // slow or refused neural start never falls back to the device robot voice.
+  if (lines.length === 1) return speakText(lines[0], {}, lang, KID_VOICE);
   const next = (i: number): number => {
     if (token !== queueToken || i >= lines.length) return 0;
-    return speakText(lines[i], { onEnd: () => { next(i + 1); } }, lang);
+    return speakText(lines[i], { onEnd: () => { next(i + 1); } }, lang, KID_VOICE);
   };
   return next(0);
 }
@@ -225,6 +229,7 @@ export function kidSfx(name: KidSfx): void {
 export function kidAudioVisibility(hidden: boolean): void {
   if (hidden) {
     kidHush();
+    stopKidVoice();
     try { void ctx?.suspend?.(); } catch { /* ignore */ }
   } else {
     try { void ctx?.resume?.(); } catch { /* ignore */ }
@@ -234,6 +239,7 @@ export function kidAudioVisibility(hidden: boolean): void {
 /** Kid Mode closed: release the shared context, stop the voice, forget the child. */
 export function closeKidAudio(): void {
   kidHush();
+  stopKidVoice();
   activeChild = null;
   const live = ctx;
   ctx = null;

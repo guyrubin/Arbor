@@ -1,5 +1,4 @@
 import { STUDIO_ACTIVITY_LOADERS, preloadStudioActivity } from '../kidPrefetch';
-import { NEXT_GAME_COPY } from "../../../lib/i18nGameNext";
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, RotateCcw, Waves } from "lucide-react";
 import { useArbor } from "../../../context/ArborContext";
@@ -58,7 +57,6 @@ export function StudioGame({ activityId, onBack }: { activityId: StudioActivityI
 export function StudioGameSession({ activityId, onBack }: { activityId: StudioActivityId; onBack: () => void }) {
   const { childProfile } = useArbor();
   const { uiLang } = useLanguage();
-  const nextWords = NEXT_GAME_COPY[uiLang === "he" ? "he" : "en"];
   const lang = uiLang === "he" ? "he" : "en";
   const labels = studioCopy(lang);
   const copy = labels.activities[activityId];
@@ -105,7 +103,6 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
   if (phase === "play") return <div className={`studio-game-view studio-game-view--play${activityId === "sneak" ? " studio-game-view--full" : ""}`} data-studio-game={activityId} data-studio-phase="play" aria-label={copy.title} dir={lang === "he" ? "rtl" : "ltr"} style={activityId === "sneak" ? { height: "100%", minHeight: 0 } : undefined}>
     {environment}
     <div className="studio-game-view__mechanic">
-      {['memory', 'pattern', 'puzzle'].includes(activityId) && <div className="studio-player-banner"><StudioPlayHero size={72} /><span>{nextWords.player}</span></div>}
       <GameCompletionProvider onComplete={onComplete}>
         <Suspense fallback={<KidStageFallback worldId={activityId} />}>
           <Component key={round} {...(activityId === "mimic" ? { onBack } : {})} />

@@ -21,12 +21,15 @@ import { loadProofHeroSheet, parseHeroSheet, readStoredHeroSheet, type HeroSheet
 import { heroSheetOwnerKey, sheetFromDocs, subscribeHeroSheetDocs, subscribeHeroSheetOwner, type HeroSheetDocs } from "../../../lib/heroSheetStore";
 
 /**
- * The children who may play as the proof hero (the owner's son). Child ids,
- * not names. K1 (9 Oct): his production child id — the one child folder with
- * book assets in the child-assets bucket — so the release keeps his proof
- * hero; the list can go once his sheet lives in his own heroSheet docs.
+ * B-BOOK-71 / B-GAME-35 (20 Oct): no production child id lives in this public
+ * source. The proof sheet (the public proof folder) plays only in the sandbox
+ * (no Firebase). The reference family's approved identity is protected by its
+ * own private data instead: his game poses are his own heroSheet docs for his
+ * current avatar (the chain reads them first; ensureHeroSheet never redraws a
+ * complete sheet of the current hero), and his book carries an admin-uploaded
+ * sheet, which the server never replaces (book sheet commit) and never narrates
+ * over (book narration): both answer 409 book_sheet_admin.
  */
-export const PROOF_HERO_CHILD_IDS: readonly string[] = ["child-1780330920145"];
 
 export type HeroSheetFrom = "child" | "proof" | "device" | "stock" | "avatar" | "placeholder";
 
@@ -72,11 +75,9 @@ function sameDrawing(a: HeroSheet, b: HeroSheet): boolean {
   });
 }
 
-/** May this child play as the proof hero? */
-export function proofAllowedFor(childId: string, opts: { firebase?: boolean; allowList?: readonly string[] } = {}): boolean {
-  if (!childId) return false;
-  const list = opts.allowList ?? PROOF_HERO_CHILD_IDS;
-  return list.includes(childId) || (opts.firebase ?? firebaseEnabled) === false;
+/** May this child play as the proof hero? Sandbox only (no Firebase). */
+export function proofAllowedFor(childId: string, opts: { firebase?: boolean } = {}): boolean {
+  return !!childId && (opts.firebase ?? firebaseEnabled) === false;
 }
 
 export interface ChainSources {

@@ -23,6 +23,10 @@ import { getAiLanguage } from "./api";
 export type VoiceEngine = "basic" | "natural";
 export type VoiceState = { speaking: boolean; engine: VoiceEngine };
 export type SpeakHandlers = { onStart?: () => void; onEnd?: () => void; onError?: () => void };
+/** `neuralOnly` (Kid Mode): speak with the neural voice or stay silent. A slow
+ *  or refused neural start never re-dispatches to the device floor voice and
+ *  never degrades the session, and a degraded session still tries neural. */
+export type SpeakOptions = { neuralOnly?: boolean };
 
 /** Handle returned by a neural synth. `prefetched` = the audio was already
  *  fetched before this utterance started (AI-V5 sentence prefetch), so the
@@ -49,6 +53,8 @@ let activeNaturalStop: (() => void) | null = null;
 let ttfbTimer: ReturnType<typeof setTimeout> | null = null;
 // If the neural engine hasn't produced audio within this window, fall back to floor.
 const NATURAL_TTFB_MS = 1500;
+// A neural-only utterance waits this long for audio before giving up silently.
+const NEURAL_ONLY_TTFB_MS = 8000;
 // B-BOOK-61: one slow or failed utterance falls back ALONE; the session
 // degrades to the floor only after this many consecutive fallbacks with no
 // neural start in between (a slow book page must not robot-voice the rest).
@@ -252,7 +258,7 @@ function startBrowser(id: number, text: string, handlers: SpeakHandlers, lang: "
 }
 
 /** Neural engine with a TTFB watchdog. Returns true if it took ownership of `id`. */
-function startNatural(id: number, text: string, handlers: SpeakHandlers, lang: "en" | "he"): boolean {
+function startNatural(id: number, text: string, handlers: SpeakHandlers, lang: "en" | "he", neuralOnly = false): boolean {
   let started = false;
   let fellBack = false;
   const fallback = () => {
@@ -266,6 +272,13 @@ function startNatural(id: number, text: string, handlers: SpeakHandlers, lang: "
         /* ignore */
       }
       activeNaturalStop = null;
+    }
+    if (neuralOnly) {
+      activeId = 0;
+      speaking = false;
+      emit();
+      handlers.onError?.();
+      return;
     }
     naturalMisses++;
     // A natural-only webview has no floor to degrade to. Keep its retry control
@@ -324,7 +337,7 @@ function startNatural(id: number, text: string, handlers: SpeakHandlers, lang: "
   if (!handle.prefetched) {
     ttfbTimer = setTimeout(() => {
       if (!started) fallback();
-    }, NATURAL_TTFB_MS);
+    }, neuralOnly ? NEURAL_ONLY_TTFB_MS : NATURAL_TTFB_MS);
   }
   return true;
 }
@@ -338,13 +351,18 @@ function startNatural(id: number, text: string, handlers: SpeakHandlers, lang: "
  * AI-V4: `lang` defaults to the session AI language (getAiLanguage), and is
  * threaded to the browser floor so utterance.lang + the voice pick always
  * match the text — a Hebrew reply is never rendered by an English voice.
+ *
+ * `opts.neuralOnly` (Kid Mode) uses the registered neural voice even when the
+ * session degraded, and ends silently instead of falling back to the floor.
+ * With no neural adapter registered at all, the floor still speaks.
  */
-export function speakText(text: string, handlers: SpeakHandlers = {}, lang: "en" | "he" = getAiLanguage()): number {
+export function speakText(text: string, handlers: SpeakHandlers = {}, lang: "en" | "he" = getAiLanguage(), opts: SpeakOptions = {}): number {
   const trimmed = text.trim();
   if (trimmed && naturalSynth && naturalRetryAt !== null && Date.now() >= naturalRetryAt) {
     setVoiceEngine("natural");
   }
-  const canNatural = engine === "natural" && !!naturalSynth;
+  const neuralOnly = opts.neuralOnly === true && !!naturalSynth;
+  const canNatural = !!naturalSynth && (engine === "natural" || neuralOnly);
   if (!trimmed || (!canNatural && !voiceSupported())) {
     handlers.onError?.();
     return 0;
@@ -353,7 +371,12 @@ export function speakText(text: string, handlers: SpeakHandlers = {}, lang: "en"
   activeId = id; // own BEFORE interrupting, so a prior callback can't claim completion
   stopActivePlayback();
 
-  if (canNatural && startNatural(id, trimmed, handlers, lang)) return id;
+  if (canNatural && startNatural(id, trimmed, handlers, lang, neuralOnly)) return id;
+  if (neuralOnly) {
+    activeId = 0;
+    handlers.onError?.();
+    return 0;
+  }
   return startBrowser(id, trimmed, handlers, lang);
 }
 

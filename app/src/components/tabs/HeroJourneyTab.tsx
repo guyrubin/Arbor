@@ -65,6 +65,8 @@ import { kidBookOpenable, kidBooks, kidShelfFor } from "../kidmode/kidBooks";
 import { useChildLibraryBooks } from "../kidmode/useChildLibraryBooks";
 import { adoptSavedRender, hydrateHeroRenders, resolvePersonalisedRender, type SavedHeroRender } from "../../lib/heroRenderStore";
 import { KidBookTitleCard } from "../kidmode/KidBookCover";
+import { useLegacyNarration } from "../kidmode/useLegacyNarration";
+import { legacyPageUnits } from "../../lib/library/legacyNarration";
 import { kidSfx } from "../kidmode/audio/kidAudio";
 import { KidFinishMoment } from "../kidmode/rewards/KidSouvenir";
 import { stopVoice } from "../../lib/voice";
@@ -367,13 +369,24 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       : scenes[sceneIndex]
     : undefined;
 
-  // B-BOOK-28: these legacy books have no prerecorded page narration.
-  // Keep local page-turn effects, but never synthesize their words at runtime.
-  // Also stop any parent narration when the gate or page changes.
+  // B-BOOK-73 (Guy, 10 Oct 2026 evening: "This is not the voice ... the
+  // rhythm"): a legacy book reads aloud only from the child's own files in the
+  // narrator he chose (Sulafat, the books standard section 6, the performed
+  // render): each page, then on the Decision page the question and each answer.
+  // No files = silence; never the runtime voice (Chirp3 Sulafat is the same
+  // timbre, not the performed reading). B-BOOK-28 stands: nothing is generated
+  // or synthesized while a child reads. Files play on the blessed page channel
+  // an iPhone allows outside the tap (lib/kidVoicePlayer). Turning the page,
+  // closing the book or leaving Kid Mode stops it (and any parent narration).
+  const legacyVoice = useLegacyNarration(kidMode ? childProfile.id : null, kidMode ? activeStory?.id ?? null : null, renderLang, childProfile.gender);
   useEffect(() => {
     stopVoice();
-    return () => stopVoice();
-  }, [kidMode, activeStory?.id, sceneIndex, onCover, atEnd]);
+    const stop = kidMode && activeStory && legacyVoice.status === "recorded"
+      ? legacyVoice.play(legacyPageUnits({ onCover, atEnd, beatId: beat?.id, choiceId, choiceIds: choices.map((c) => c.id) }))
+      : () => {};
+    return () => { stop(); stopVoice(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kidMode, activeStory?.id, sceneIndex, onCover, atEnd, choiceId, legacyVoice.status, legacyVoice.play]);
   useEffect(() => { setAtEnd(false); }, [activeStory?.id]);
 
   const visibleStories = storiesForLanguage(
@@ -722,11 +735,13 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const renderChoices = () =>
     isDecision &&
     !choiceId && (
-      <div className="space-y-2 w-full max-w-xl mx-auto">
+      <div className="space-y-2 w-full max-w-xl mx-auto" data-kid-question={kidMode ? "" : undefined}>
         <p lang={renderLang} dir={langDir(renderLang)} className="text-[11px] uppercase tracking-widest font-bold text-center" style={{ color: "var(--arbor-green-ink)" }}>
           {kidsStoriesText("journey.decision", renderLang, { name: isolate(childProfile.name ?? "", renderLang) })}
         </p>
-        <DecisionChoices choices={choices} lang={renderLang} heroName={childProfile.name?.split(" ")[0]} onChoose={chooseOption} />
+        {kidMode
+          ? <div data-kid-choices="" className="space-y-2"><DecisionChoices choices={choices} lang={renderLang} heroName={childProfile.name?.split(" ")[0]} onChoose={chooseOption} /></div>
+          : <DecisionChoices choices={choices} lang={renderLang} heroName={childProfile.name?.split(" ")[0]} onChoose={chooseOption} />}
       </div>
     );
 
@@ -1526,7 +1541,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             >
               <Icon name="chevron_left" size={24} style={uiLang === "he" ? { transform: "scaleX(-1)" } : undefined} />
             </button>
-            <button
+            {/* The Decision page moves on by its answers (a tap turns the
+                page); a Next that cannot work until then is not shown. */}
+            {(onCover || canAdvance) && <button
               type="button"
               onClick={isLastBeat ? toEnding : goNext}
               disabled={!onCover && !canAdvance}
@@ -1535,7 +1552,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               style={{ ...bigButton, flex: 1, background: "var(--arbor-green-cta-start)", color: "var(--arbor-on-accent)" }}
             >
               {isLastBeat ? kidsStoriesText("journey.end", uiLang === "he" ? "he" : "en") : kidsStoriesText("journey.next", uiLang === "he" ? "he" : "en")}
-            </button>
+            </button>}
           </div>
     );
     const bookSide = (
@@ -1587,6 +1604,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                 fallbackArtHasHero={storyCover(activeStory.id)?.hasHero ?? false}
                 textLang={renderLang}
                 aside={bookSide}
+                decision={isDecision && !choiceId}
               />
             </motion.div>
           ) : null}

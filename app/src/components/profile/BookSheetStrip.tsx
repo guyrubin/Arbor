@@ -4,7 +4,9 @@
  * per drawn book pose, each with Redraw (once per pose: the pose is drawn again
  * for the same hero, uploaded over the old one and the sheet recommitted — the
  * child's device fetches the new picture). While the book sheet is being drawn
- * on this device: one calm line. Nothing when the book does not show this hero.
+ * on this device: one calm line. While the book still holds an earlier hero
+ * (B-BOOK-69): one line saying it keeps that hero until the new sheet commits.
+ * Nothing when the book has never shown a hero of this child.
  * The pictures come through the owner-checked proxy (lib/bookAssetStore).
  */
 import React, { useEffect, useMemo, useState } from "react";
@@ -57,9 +59,12 @@ export default function BookSheetStrip({ child, avatarHash }: { child: Pick<Chil
 
   const name = { name: child.name };
   if (!doc) {
-    return bookSheetRunning(child.id) ? (
-      <p data-book-sheet="building" role="status" className="text-xs" style={muted}>
-        {t(formKey("elev.hero.sheet.book.building", child.gender), name)}
+    // B-BOOK-69: the book of an earlier hero stays readable until this hero's sheet commits; say so.
+    const previous = col.items.some((d) => d?.bookId === DEFAULT_SHEET_BOOK && !!d.sheetId && d.sheetId !== sheetId);
+    const state = bookSheetRunning(child.id) ? (previous ? "replacing" : "building") : previous ? "previous" : null;
+    return state ? (
+      <p data-book-sheet={state} role="status" className="text-xs" style={muted}>
+        {t(formKey(`elev.hero.sheet.book.${state}`, child.gender), name)}
       </p>
     ) : null;
   }

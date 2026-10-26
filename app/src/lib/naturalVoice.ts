@@ -1,5 +1,7 @@
 import { authHeaders, getAiLanguage } from "./api";
 import { setNaturalSynth, setVoiceEngine, stopVoice, type NaturalSynth, type NaturalSynthHandle, type SpeakHandlers } from "./voice";
+import { isKidModeActive } from "./kidModeGate";
+import { kidVoiceElement } from "./kidVoicePlayer";
 
 /**
  * Client neural-voice adapter (Epic A) — bridges the voice controller to the server
@@ -117,6 +119,22 @@ function requestTtsAudio(text: string, lang: "en" | "he"): AudioRequest {
   return request;
 }
 
+/** Kid Mode read-aloud (10 Oct 2026): a game's or guide's authored lines are
+ *  the same on every visit, so each line's audio is fetched once per signed-in
+ *  scope and replayed from memory (a replay makes no /api/tts call). Bounded
+ *  FIFO; the parent register's dynamic replies are never kept here, and
+ *  resetNaturalVoice (sign-out, owner change) forgets every line. */
+const KID_LINE_MAX = 120;
+const kidLineCache = new Map<string, FetchedAudio>();
+function keepKidLine(key: string, audio: FetchedAudio): void {
+  if (kidLineCache.size >= KID_LINE_MAX) {
+    const oldest = kidLineCache.keys().next().value;
+    if (oldest !== undefined) kidLineCache.delete(oldest);
+  }
+  kidLineCache.set(key, audio);
+}
+const keptRequest = (audio: FetchedAudio): AudioRequest => ({ ready: true, promise: Promise.resolve(audio), cancel: () => {} });
+
 /** Clear speculative audio, never persist it or reuse it across sign-ins. */
 export function clearNaturalAudioPrefetch(): void {
   for (const request of prefetchCache.values()) request.cancel();
@@ -128,7 +146,7 @@ export function clearNaturalAudioPrefetch(): void {
 export function prefetchNaturalAudio(text: string, lang: "en" | "he" = getAiLanguage()): void {
   const trimmed = text.trim();
   const key = cacheKey(trimmed, lang);
-  if (!trimmed || prefetchCache.has(key)) return;
+  if (!trimmed || prefetchCache.has(key) || (isKidModeActive() && kidLineCache.has(key))) return;
   if (prefetchCache.size >= PREFETCH_MAX) {
     const oldest = prefetchCache.keys().next().value;
     if (oldest !== undefined) {
@@ -153,13 +171,20 @@ export const naturalSynth: NaturalSynth = (text, handlers: SpeakHandlers, lang: 
   // this element while the gesture is still live; its rejection (no source yet)
   // is expected and swallowed. onplay is attached only AFTER src is set, so the
   // bless-play can never fire onStart.
-  const audio = new Audio();
-  try {
-    audio.play().catch(() => {
-      /* expected: no src yet — the bless is best-effort */
-    });
-  } catch {
-    /* some engines throw synchronously on a src-less play() */
+  // Kid Mode: the ONE page voice channel, already blessed by the child's first
+  // tap (lib/kidVoicePlayer) — a game's arrival line and Sprout's lines start
+  // outside any gesture, which iOS refuses for a fresh element.
+  const kid = isKidModeActive();
+  const shared = kid ? kidVoiceElement("page") : null;
+  const audio = shared ?? new Audio();
+  if (!shared) {
+    try {
+      audio.play().catch(() => {
+        /* expected: no src yet — the bless is best-effort */
+      });
+    } catch {
+      /* some engines throw synchronously on a src-less play() */
+    }
   }
 
   let url: string | null = null;
@@ -174,9 +199,12 @@ export const naturalSynth: NaturalSynth = (text, handlers: SpeakHandlers, lang: 
 
   // Consume a prefetched fetch when one exists (single-owner: the entry is
   // removed so an interrupted utterance can never replay a stale buffer).
-  const prefetched = prefetchCache.get(cacheKey(text, lang));
-  if (prefetched) prefetchCache.delete(cacheKey(text, lang));
-  const request = prefetched ?? requestTtsAudio(text, lang);
+  const key = cacheKey(text, lang);
+  const prefetched = prefetchCache.get(key);
+  if (prefetched) prefetchCache.delete(key);
+  const kept = kid ? kidLineCache.get(key) : undefined;
+  if (kept) prefetched?.cancel();
+  const request = kept ? keptRequest(kept) : prefetched ?? requestTtsAudio(text, lang);
 
   void (async () => {
     try {
@@ -186,6 +214,7 @@ export const naturalSynth: NaturalSynth = (text, handlers: SpeakHandlers, lang: 
         handlers.onError?.();
         return;
       }
+      if (kid && !kept) keepKidLine(key, fetched);
       url = URL.createObjectURL(base64ToBlob(fetched.b64, fetched.mime));
       audio.src = url;
       audio.onplay = () => handlers.onStart?.();
@@ -212,7 +241,7 @@ export const naturalSynth: NaturalSynth = (text, handlers: SpeakHandlers, lang: 
 
   return {
     // An in-flight prefetch must NOT disable the controller's 1.5s watchdog.
-    prefetched: !!prefetched?.ready,
+    prefetched: !!kept || !!prefetched?.ready,
     stop: () => {
       cancelled = true;
       request.cancel();
@@ -312,6 +341,7 @@ export function resetNaturalVoice(): void {
   clearNaturalAudioPrefetch();
   for (const request of pendingRequests) request.cancel();
   tokenRegistry.clear();
+  kidLineCache.clear();
   setNaturalSynth(null);
   setVoiceEngine("basic");
 }

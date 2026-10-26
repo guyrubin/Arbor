@@ -12,12 +12,12 @@ import { fileURLToPath } from "node:url";
 const voice = vi.hoisted(() => ({
   supported: true,
   engine: "basic" as "basic" | "natural",
-  spoken: [] as { text: string; lang: string; onEnd?: () => void }[],
+  spoken: [] as { text: string; lang: string; onEnd?: () => void; neuralOnly?: boolean }[],
   stops: 0,
 }));
 vi.mock("../../../lib/voice", () => ({
   voiceSupported: () => voice.supported,
-  speakText: (text: string, handlers: { onEnd?: () => void }, lang: string) => { voice.spoken.push({ text, lang, onEnd: handlers.onEnd }); return voice.spoken.length; },
+  speakText: (text: string, handlers: { onEnd?: () => void }, lang: string, opts?: { neuralOnly?: boolean }) => { voice.spoken.push({ text, lang, onEnd: handlers.onEnd, neuralOnly: opts?.neuralOnly }); return voice.spoken.length; },
   stopVoice: () => { voice.stops++; },
   voiceState: () => ({ speaking: false, engine: voice.engine }),
 }));
@@ -72,6 +72,8 @@ describe("voice: one path, a queue, cancel", () => {
     voice.spoken[0].onEnd!();
     voice.spoken[1].onEnd!();
     expect(voice.spoken.map((s) => s.text)).toEqual(["Which way?", "The bridge", "The boat"]);
+    // 25 Oct input: every kid line asks for the narrator voice only — never the robot floor.
+    expect(voice.spoken.every((s) => s.neuralOnly === true)).toBe(true);
   });
   it("navigation (kidHush) cancels the rest of the queue and stops the voice", () => {
     kidSay("c1", ["one", "two"], "en");
@@ -209,14 +211,18 @@ describe("wiring", () => {
     expect(shell).toContain("autoReadPage(childId, instruction, lang)");
     const reader = read("..", "..", "tabs", "HeroJourneyTab.tsx");
     expect(reader.match(/kidSfx\("pageTurn"\)/g)?.length).toBe(2);
-    // B-BOOK-28: the legacy book keeps local page-turn effects, without live narration.
+    // B-BOOK-28 + Guy, 10 Oct 2026: no runtime voice in a legacy kid book;
+    // its narration comes as files in the chosen narrator's voice (B-BOOK-73).
     expect(reader).not.toContain("autoReadPage");
     expect(reader).not.toContain("kidSay");
+    expect(reader).toContain("legacyVoice.play(legacyPageUnits(");
     const kit = read("..", "..", "ui", "playkit.tsx");
     expect(kit).toContain('if (state === "correct") kidSfx("correct");');
     expect(kit).toContain('else if (state === "wrong") kidSfx("tryAgain");');
     const ra = read("..", "kidReadAloud.tsx");
     expect(ra).toContain("return kidSay(childId, text, lang);");
+    // 25 Oct input: the hear-it replay is a kid line too — narrator voice or silence.
+    expect(ra).toContain("speakText(hearIt.text, {}, hearIt.lang, { neuralOnly: true })");
     // no audio files: the module synthesises everything
     expect(read("kidAudio.ts")).not.toMatch(/\.(mp3|wav|ogg|m4a)\b|new Audio\(/);
   });

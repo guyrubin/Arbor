@@ -16,6 +16,7 @@ import { QUEST_STEPS, studioQuestText, useStudioQuestProgress } from "./studioPr
 import "./studioV2.css";
 import "./studioSky.css";
 import { StudioPortrait } from "./StudioPortrait";
+import { StudioSprout } from "./StudioSprout";
 export { StudioPortrait } from "./StudioPortrait";
 
 /** The profile alone supplies the child; portal artwork never redraws them. */
@@ -53,7 +54,7 @@ export default function StudioHome({ onWorld, onCollection, onQuest, onExit }: S
     <div className="studio-v2__hero" data-avatar-source={hasPose ? "current-character" : hero.url ? "current-portrait" : "mascot"}>
       {hasPose ? <div className="studio-v2__figure"><HeroFigure sheet={hero.sheet!} pose="idle" height={430} x={210} y={450} /></div> : hero.url ? <StudioPortrait className="studio-v2__hero-portrait" /> : <div className="studio-v2__hero-empty"><ArborMascot size={200} mood="wave" animate={false} /><p>{copy.noHero}</p></div>}
     </div>
-    <div className="studio-v2__guide"><div className="studio-v2__bubble"><span aria-live="polite">{copy.worlds[hintWorld].hint}</span><button type="button" onClick={() => onWorld(hintWorld)}>{copy.takeMe}<ArrowRight size={15} aria-hidden="true" /></button></div><button type="button" className="studio-v2__sprout" aria-label={copy.guide} onClick={() => setHint(n => n + 1)}><ArborMascot size={92} mood={hint % 2 ? "think" : "wave"} animate={false} /></button></div>
+    <div className="studio-v2__guide"><div className="studio-v2__bubble"><span aria-live="polite">{copy.worlds[hintWorld].hint}</span><button type="button" onClick={() => onWorld(hintWorld)}>{copy.takeMe}<ArrowRight size={15} aria-hidden="true" /></button></div><StudioSprout size={92} label={copy.guide} onTap={() => { const next = hint + 1; setHint(next); return copy.worlds[STUDIO_V2_WORLDS[next % STUDIO_V2_WORLDS.length]].hint; }} /></div>
     <section className="studio-v2__quest" aria-label={questCopy.title}>
       <div className="studio-v2__quest-title"><small>{copy.quest}</small><h2>{quest.completed ? questCopy.done : questCopy.title}</h2><p>{quest.loaded ? quest.completed ? questCopy.ending : copy.progress(quest.steps.length) : copy.questLoading}</p></div>
       <ol className="studio-v2__quest-steps">{QUEST_STEPS.map((step, index) => <li key={step} data-done={quest.steps.includes(step)} data-connected={quest.loaded && index < quest.steps.length - 1} aria-current={quest.loaded && !quest.completed && index === quest.steps.length ? "step" : undefined}><span>{quest.steps.includes(step) ? <Check size={22} aria-hidden="true" /> : index + 1}</span><small>{questCopy.steps[index]}</small></li>)}</ol>

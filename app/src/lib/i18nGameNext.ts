@@ -1,7 +1,6 @@
 /** Shared bilingual UI copy; registered in the main i18n parity surface. */
 export const NEXT_GAME_COPY = {
   en: {
-  "player": "Play it your way",
   "featured": "Adventures to try",
   "cornerPlace": "A place for your corner",
   "openCorner": "Open my corner",
@@ -31,7 +30,6 @@ export const NEXT_GAME_COPY = {
   "bouncy": "Bouncy"
 },
   he: {
-  "player": "משחקים בדרך שלך",
   "featured": "הרפתקאות לנסות",
   "cornerPlace": "מקום לפינה שלך",
   "openCorner": "לפתוח את הפינה שלי",
