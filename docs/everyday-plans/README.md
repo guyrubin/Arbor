@@ -26,3 +26,5 @@ Rules that hold everywhere here:
 | Pattern | Definition | Manuscript | Reviewer EN | Reviewer HE |
 |---|---|---|---|---|
 | `plan-poo-sit` | [definition-plan-poo-sit.md](definition-plan-poo-sit.md) | `app/src/lib/library/plans/patterns/planPooSit.ts` | owed | owed |
+| `plan-sleep-alone` | [definition-plan-sleep-alone.md](definition-plan-sleep-alone.md) | `app/src/lib/library/plans/patterns/planSleepAlone.ts` | owed | owed |
+| `plan-dropoff` | [definition-plan-dropoff.md](definition-plan-dropoff.md) | `app/src/lib/library/plans/patterns/planDropoff.ts` | owed | owed |

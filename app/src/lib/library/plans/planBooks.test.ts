@@ -31,8 +31,14 @@ import { isPlanBook, type PlanBook } from "../types";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(here, "..", "__fixtures__");
 
-/** B-KID-39: public figures product copy has drawn on (EN + HE spellings). */
-const PUBLIC_FIGURES = /\b(Peterson|Jordan|Jung|Campbell|Freud|Piaget|Montessori|Nietzsche|Solzhenitsyn|Gray|Satter|Ferber|Sears|Rapee)\b|פיטרסון|יונג|קמפבל|פרויד|פיאז'ה|מונטסורי|ניטשה|גריי|סאטר|פרבר/;
+/** B-KID-39: public figures product copy has drawn on (EN + HE spellings),
+ *  plus the named sleep methods a plan never carries. The CHILD's text names
+ *  nobody at all (the stricter list adds the authors of the public methods
+ *  the standard §3 cites, which a parent source note may cite as a source). */
+const PUBLIC_FIGURES = /\b(Peterson|Jordan|Jung|Campbell|Freud|Piaget|Montessori|Nietzsche|Solzhenitsyn|Ferber|Sears)\b|פיטרסון|יונג|קמפבל|פרויד|פיאז'ה|מונטסורי|ניטשה|פרבר/;
+const CHILD_TEXT_NAMES = /\b(Gray|Satter|Rapee|Mindell|Meltzer|Tabbers)\b|גריי|סאטר/;
+/** A parent string may cite an author only as a source, never as "an idea from". */
+const ATTRIBUTION = /\b(?:idea|insight|concept|thought) (?:from|of|by) [A-Z][a-z]+/;
 /** The firewall: nothing a child reads counts, streaks or grades. */
 const COUNT_WORDS = /\b(\d+\s*(?:of|out of|\/)\s*\d+|streak|days? in a row|score|points?|stars?|level|percent|%|done!|completed|you did it|well done)\b|מתוך|רצף|ניקוד|נקודות|כוכב|אחוז|כל הכבוד/i;
 
@@ -94,8 +100,42 @@ describe("the pattern registry", () => {
   });
 });
 
+/** What each authored pattern's default composition must say (the manuscript
+ *  specifics the standard asks for: the step ids, the two refrains that return
+ *  on the win page, the hooks, the chosen box, the duration, the sources). */
+const EXPECT: Record<string, { steps: string[]; refrainEn: RegExp[]; refrainHe: string[]; hardEnds: RegExp; box: string[]; durationDays: number; sourceIds: string[] }> = {
+  "plan-poo-sit": {
+    steps: ["s1-sit-after-meal-5m", "s2-the-box", "s3-just-try"],
+    refrainEn: [/my tummy gets a chance/i, /we just try/i],
+    refrainHe: ["הבטן שלי מקבלת הזדמנות", "אנחנו רק מנסים"],
+    hardEnds: /holds on\.$/,
+    box: ["book", "soap-bubbles", "story"],
+    durationDays: 21,
+    sourceIds: ["aap-constipation", "naspghan-espghan-2014", "nhs-constipation-children"],
+  },
+  "plan-sleep-alone": {
+    steps: ["s1-four-steps", "s2-sit-further", "s3-morning-check-in"],
+    refrainEn: [/my body knows how to sleep/i, /we do the same four steps/i],
+    refrainHe: ["הגוף שלי יודע לישון", "אנחנו עושים את אותם ארבעה שלבים"],
+    hardEnds: /I call again\.$/,
+    box: ["cuddly", "night-light", "one-story"],
+    durationDays: 21,
+    sourceIds: ["aap-bedtime-routine", "meltzer-mindell-2014", "mindell-williamson-2018", "nhs-sleep-young-children"],
+  },
+  "plan-dropoff": {
+    steps: ["s1-goodbye-ritual", "s2-thing-from-home", "s3-door-opens-again"],
+    refrainEn: [/the door opens again/i, /our goodbye is short and the same/i],
+    refrainHe: ["הדלת נפתחת שוב", "הפרידה שלנו קצרה ואותו דבר"],
+    hardEnds: /I hold on\.$/,
+    box: ["little-stone", "photo-card", "ribbon"],
+    durationDays: 14,
+    sourceIds: ["aap-separation", "rapee-helping-anxious-child"],
+  },
+};
+
 describe.each(Object.values(PLAN_FIXTURE_BOOKS))("plan book $id", (book) => {
   const def = authoredPatterns().find((d) => d.id === book.pattern)!;
+  const want = EXPECT[book.pattern];
 
   it("is a PLAN book: kind, no decision / repair / choice, three steps, the pattern's plates and ≤ 6 shared poses", () => {
     expect(isPlanBook(book)).toBe(true);
@@ -123,7 +163,8 @@ describe.each(Object.values(PLAN_FIXTURE_BOOKS))("plan book $id", (book) => {
 
   it("reads as the ten-screen skeleton: cover · body good · how it works · hard · plan · three steps · the win · END (no choice ever)", () => {
     expect(book.pages.map((p) => p.id)).toEqual(["p1", "p2", "p3", "p4", ...book.steps.map((s) => s.id), "p8"]);
-    expect(book.steps.map((s) => s.id)).toEqual(["s1-sit-after-meal-5m", "s2-the-box", "s3-just-try"]);
+    expect(want, `${book.pattern} has an expectations row`).toBeDefined();
+    expect(book.steps.map((s) => s.id)).toEqual(want.steps);
     expect(readPath(book, null).map((p) => p.id)).toEqual(book.pages.map((p) => p.id));
     expect(readPath(book, "a")).toEqual(readPath(book, null));
     let s = initialBookFlow();
@@ -133,7 +174,7 @@ describe.each(Object.values(PLAN_FIXTURE_BOOKS))("plan book $id", (book) => {
       s = bookFlowReducer(book, s, { type: "next" });
       screens.push(s.at);
     }
-    expect(screens).toEqual(["cover", "p1", "p2", "p3", "p4", "s1-sit-after-meal-5m", "s2-the-box", "s3-just-try", "p8", END]);
+    expect(screens).toEqual(["cover", "p1", "p2", "p3", "p4", ...want.steps, "p8", END]);
     expect(screens).toHaveLength(10);
     expect(isEnding(book, { ...initialBookFlow(), at: "p8" })).toBe(true);
     // a choice or a go changes nothing
@@ -154,14 +195,12 @@ describe.each(Object.values(PLAN_FIXTURE_BOOKS))("plan book $id", (book) => {
     expect(descriptive / directive).toBeGreaterThanOrEqual(2);
   });
 
-  it("the refrains return on the win page (body: 'my tummy gets a chance'; plan: 'we just try')", () => {
+  it("the two refrains (body, plan) return on the win page; screens 3 and 4 end unresolved", () => {
     const win = book.pages[book.pages.length - 1].text;
-    expect(win.en).toMatch(/my tummy gets a chance/i);
-    expect(win.en).toMatch(/we just try/i);
-    expect(win.he.m).toContain("הבטן שלי מקבלת הזדמנות");
-    expect(win.he.m).toContain("אנחנו רק מנסים");
-    // screens 3 and 4 end unresolved (the hard part held; the plan announced), the steps rest
-    expect(book.pages[2].text.en).toMatch(/holds on\.$/);
+    for (const r of want.refrainEn) expect(win.en).toMatch(r);
+    for (const r of want.refrainHe) expect(win.he.m).toContain(r);
+    // screen 3 ends on the held hard part; screen 4 announces the plan and stops
+    expect(book.pages[2].text.en).toMatch(want.hardEnds);
     expect(book.pages[3].text.en).toMatch(/plan\.|together\.$/);
   });
 
@@ -169,8 +208,12 @@ describe.each(Object.values(PLAN_FIXTURE_BOOKS))("plan book $id", (book) => {
     for (const s of childStrings(book)) {
       expect(s, s).not.toMatch(COUNT_WORDS);
       expect(s, s).not.toMatch(PUBLIC_FIGURES);
+      expect(s, s).not.toMatch(CHILD_TEXT_NAMES);
     }
-    for (const s of parentStrings(book)) expect(s, s).not.toMatch(PUBLIC_FIGURES);
+    for (const s of parentStrings(book)) {
+      expect(s, s).not.toMatch(PUBLIC_FIGURES);
+      expect(s, s).not.toMatch(ATTRIBUTION);
+    }
     // a step's minutes are the ONLY number a child reads
     for (const s of childStrings(book)) for (const m of s.matchAll(/\d+/g)) expect(s.slice(m.index!, m.index! + 12), s).toMatch(/^\d+ (minutes|דקות)/);
   });
@@ -189,8 +232,8 @@ describe.each(Object.values(PLAN_FIXTURE_BOOKS))("plan book $id", (book) => {
     expect(all).toMatch(/מבוסס התפתחות/);
     expect(all).not.toMatch(/\b(treats?|treatment|cure|therapy|diagnos\w*)\b(?! claim)/i);
     expect(all).not.toMatch(/מרפא|טיפול רפואי|אבחון/);
-    // the parent steps carry the minutes the parent set
-    expect(pp.planSteps[0].en).toContain("5 minutes");
+    // a step that takes minutes carries the minutes the parent set, in the panel too
+    if (book.steps[0].minutes) expect(pp.planSteps[0].en).toContain(`${book.steps[0].minutes} minutes`);
     // the red lines are the parent's door to care, not a checklist with a score
     for (const w of pp.watchFor) expect(w.en).not.toMatch(/\d|score|sign of|symptom/i);
     // no `{name}` on a child page but the cover and the frame line (the lint), and none in the panel
@@ -206,22 +249,24 @@ describe.each(Object.values(PLAN_FIXTURE_BOOKS))("plan book $id", (book) => {
       expect(s.y - s.scale).toBeGreaterThan(0);
       expect(s.pose).toMatch(/^[a-z0-9-]+$/);
     }
-    expect(book.box?.map((b) => b.id)).toEqual(["book", "soap-bubbles", "story"]);
-    expect(book.boxPageId).toBe("s2-the-box");
-    expect(book.durationDays).toBe(21);
-    expect(book.sourceIds.sort()).toEqual(["aap-constipation", "naspghan-espghan-2014", "nhs-constipation-children"]);
+    expect(book.box?.map((b) => b.id)).toEqual(want.box);
+    expect(book.boxPageId).toBe(want.steps[1]);
+    expect(book.durationDays).toBe(want.durationDays);
+    expect(book.sourceIds.sort()).toEqual(want.sourceIds);
   });
 
   it("has canonical age bands only, and its narration list is linear (no choice clips, no path variants)", () => {
     const ids = new Set(CANONICAL_BANDS.map((b) => b.id));
     for (const b of book.ageBands) expect(ids.has(b), b).toBe(true);
     const files = bookNarrationFiles(book, "en");
-    expect(files.map((f) => f.file)).toEqual(["cover.mp3", "p1.mp3", "p2.mp3", "p3.mp3", "p4.mp3", "s1-sit-after-meal-5m.mp3", "s2-the-box.mp3", "s3-just-try.mp3", "p8.mp3"]);
+    expect(files.map((f) => f.file)).toEqual(["cover.mp3", "p1.mp3", "p2.mp3", "p3.mp3", "p4.mp3", ...want.steps.map((id) => `${id}.mp3`), "p8.mp3"]);
     expect(files.some((f) => /-choice\.|-after\.mp3$|-prompt\./.test(f.file))).toBe(false);
-    // a different minutes value is a different (shared) file; the frame pages are the same
+    // a different minutes value is a different (shared) file only where minutes are spoken; the frame pages are the same
     const other = composePlanBook(def, { ...defaultPlanComposition(def, { bookId: "y", approvedAt: "t", approvedBy: "p" }), minutes: 3 });
-    expect(other.steps[0].id).toBe("s1-sit-after-meal-3m");
-    expect(other.steps[0].text.en).toContain("3 minutes");
+    if (book.steps[0].minutes) {
+      expect(other.steps[0].id).toBe(want.steps[0].replace(/-\d+m$/, "-3m"));
+      expect(other.steps[0].text.en).toContain("3 minutes");
+    } else expect(other.steps[0].id).toBe(want.steps[0]);
     expect(other.pages[0]).toEqual(book.pages[0]);
   });
 });

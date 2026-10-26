@@ -68,6 +68,26 @@ PLATES = {
         "PP7": ("dusk", "Bathroom at dusk, very still"),
         "PP8": ("morning", "Sunny garden, a kite"),
     },
+    "plan-sleep-alone": {
+        "PS1": ("night", "Bedroom at night, the bed"),
+        "PS2": ("day", "Playground in daylight"),
+        "PS3": ("night", "Bedroom, the door a little open"),
+        "PS4": ("golden", "Kitchen table, the idea bulb"),
+        "PS5": ("dusk", "Bath, pyjamas, one book"),
+        "PS6": ("night", "Bedroom, the chair by the bed"),
+        "PS7": ("morning", "Kitchen table in the morning"),
+        "PS8": ("morning", "Bedroom window at sunrise"),
+    },
+    "plan-dropoff": {
+        "PD1": ("morning", "The kindergarten gate"),
+        "PD2": ("morning", "Hallway at home, shoes by the door"),
+        "PD3": ("morning", "The kindergarten door, half open"),
+        "PD4": ("golden", "Kitchen table, the idea bulb"),
+        "PD5": ("morning", "The gate, the high five and the kiss"),
+        "PD6": ("day", "The pocket on the shelf"),
+        "PD7": ("day", "The room inside, the clock"),
+        "PD8": ("golden", "The gate in the afternoon, the door wide open"),
+    },
 }
 
 def make_overlay(path: Path, kind: str):

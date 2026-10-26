@@ -8,12 +8,16 @@
  */
 import { composePlanBook, defaultPlanComposition } from "./composePlanBook";
 import type { PatternDef } from "./patterns";
+import { PLAN_DROPOFF } from "./patterns/planDropoff";
 import { PLAN_POO_SIT } from "./patterns/planPooSit";
+import { PLAN_SLEEP_ALONE } from "./patterns/planSleepAlone";
 import type { PatternId, PlanBook } from "../types";
 
 /** The patterns authored so far (B-BOOK-76 fills the eight in order). */
 export const PATTERNS: Partial<Record<PatternId, PatternDef>> = {
   [PLAN_POO_SIT.id]: PLAN_POO_SIT,
+  [PLAN_SLEEP_ALONE.id]: PLAN_SLEEP_ALONE,
+  [PLAN_DROPOFF.id]: PLAN_DROPOFF,
 };
 
 const own = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
