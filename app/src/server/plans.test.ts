@@ -26,7 +26,7 @@ function serve(cfg: Cfg, user: { uid: string; email?: string } | null, store = n
   });
 }
 
-const good = { pattern: "plan-poo-sit", lang: "en", stepMenuIds: ["sit-after-meal", "the-box", "just-try"], minutes: 5, time: "evening", boxItemIds: ["book", "bubbles"], durationDays: 21 };
+const good = { pattern: "plan-poo-sit", lang: "en", stepMenuIds: ["sit-after-meal", "the-box", "just-try"], minutes: 5, time: "evening", boxItemIds: ["book", "soap-bubbles"], durationDays: 21 };
 const post = (url: string, body: unknown) => fetch(`${url}/children/kid-1/plan-books`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
 describe("B-KID-167: GET /plans/visibility", () => {
@@ -102,7 +102,7 @@ describe("B-KID-167: POST /children/:childId/plan-books", () => {
       stepMenuIds: ["sit-after-meal", "the-box", "just-try"],
       minutes: 5,
       time: "evening",
-      boxItemIds: ["book", "bubbles"],
+      boxItemIds: ["book", "soap-bubbles"],
       durationDays: 21,
       approvedAt: "2026-10-26T20:00:00.000Z",
       approvedBy: "owner-uid",

@@ -81,6 +81,6 @@ describe("plan lint", () => {
     // U+FB2B (shin with sin dot, a presentation form) is a composition exclusion: NFC decomposes it
     const notNfc = "הבטן \uFB2Bלי מחכה.";
     expect(notNfc).not.toBe(notNfc.normalize("NFC"));
-    expect(rules(lintPlanBook(withText("p1", base.pages[0].text.en, notNfc)))).toContain("nfc");
+    expect(rules(lintPlanBook(withText("p1", base.pages[0].text.en, notNfc)))).toContain("not-nfc");
   });
 });

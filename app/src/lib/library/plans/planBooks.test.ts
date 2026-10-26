@@ -206,7 +206,7 @@ describe.each(Object.values(PLAN_FIXTURE_BOOKS))("plan book $id", (book) => {
       expect(s.y - s.scale).toBeGreaterThan(0);
       expect(s.pose).toMatch(/^[a-z0-9-]+$/);
     }
-    expect(book.box?.map((b) => b.id)).toEqual(["book", "bubbles", "story"]);
+    expect(book.box?.map((b) => b.id)).toEqual(["book", "soap-bubbles", "story"]);
     expect(book.boxPageId).toBe("s2-the-box");
     expect(book.durationDays).toBe(21);
     expect(book.sourceIds.sort()).toEqual(["aap-constipation", "naspghan-espghan-2014", "nhs-constipation-children"]);

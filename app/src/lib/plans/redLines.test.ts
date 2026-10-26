@@ -29,7 +29,7 @@ describe("red lines at the pattern door", () => {
 
   it("the questions are the pattern's red lines, in parent words, with no number, verdict or 'signs of' framing", () => {
     const qs = redLineQuestions(PLAN_POO_SIT);
-    expect(qs.map((q) => q.id)).toEqual(["blood", "fever-vomit", "swollen", "weight", "from-birth", "after-event", "under-3"]);
+    expect(qs.map((q) => q.id)).toEqual(["blood", "fever-vomit", "swollen", "weight-growth", "from-birth", "after-event", "under-3"]);
     for (const q of qs) {
       expect(q.text.en).not.toMatch(/\d|score|signs? of|symptom|diagnos/i);
       expect(q.text.he).toMatch(/[֐-׿]/);

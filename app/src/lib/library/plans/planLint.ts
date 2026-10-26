@@ -18,6 +18,11 @@
  * The directive detector is a word list, not a parser: a sentence counts as
  * directive when it is a first-person plan act ("we sit", "I set my timer",
  * "we just try"). Tests plant violations and prove each rule bites.
+
+ *
+ * The word lists are pipe-joined strings split at runtime, so no single
+ * word literal here reads as a Material Symbols glyph name to the icon-font
+ * subset scanner (scripts/build-icon-font).
  */
 import { allBookPages } from "../bookShape";
 import type { BookLine, PlanBook } from "../types";
@@ -28,13 +33,13 @@ export const EN_WORD_CAP: Record<PlanBand, number> = { "3-4": 25, "5-7": 40, "8-
 export const HE_WORD_CAP: Record<PlanBand, number> = { "3-4": 22, "5-7": 34, "8-10": 46 };
 
 /** Diagnosis nouns a plan never says to a child (standard §5). */
-export const DIAGNOSIS_NOUNS_EN = ["constipation", "encopresis", "anxiety", "disorder", "delay", "phobia", "tantrum", "problem", "diagnosis", "symptom", "condition"];
-export const DIAGNOSIS_NOUNS_HE = ["עצירות", "חרדה", "הפרעה", "איחור", "בעיה", "התקף", "אבחנה", "תסמין"];
+export const DIAGNOSIS_NOUNS_EN = "constipation|encopresis|anxiety|disorder|delay|phobia|tantrum|problem|diagnosis|symptom|condition".split("|");
+export const DIAGNOSIS_NOUNS_HE = "עצירות|חרדה|הפרעה|איחור|בעיה|התקף|אבחנה|תסמין".split("|");
 
 /** Virtue nouns (kid-books-standard §3; the lint bans them as conclusions
  *  about the child). */
-export const VIRTUE_NOUNS_EN = ["brave", "bravery", "courage", "courageous", "good boy", "good girl", "big boy", "big girl", "clever", "smart", "kind", "kindness", "patient", "patience", "strong", "responsible", "mature", "proud of you", "well done", "good job"];
-export const VIRTUE_NOUNS_HE = ["אמיץ", "אמיצה", "אומץ", "ילד טוב", "ילדה טובה", "ילד גדול", "ילדה גדולה", "גיבור", "גיבורה", "חכם", "חכמה", "כל הכבוד", "מנומס", "מנומסת", "אחראי", "אחראית"];
+export const VIRTUE_NOUNS_EN = "brave|bravery|courage|courageous|good boy|good girl|big boy|big girl|clever|smart|kind|kindness|patient|patience|strong|responsible|mature|proud of you|well done|good job".split("|");
+export const VIRTUE_NOUNS_HE = "אמיץ|אמיצה|אומץ|ילד טוב|ילדה טובה|ילד גדול|ילדה גדולה|גיבור|גיבורה|חכם|חכמה|כל הכבוד|מנומס|מנומסת|אחראי|אחראית".split("|");
 
 /** Second person and pressure modals (negated "do not have to" passes). */
 const YOU_EN = /\b(you|your|yours|yourself)\b/i;
@@ -108,7 +113,7 @@ export function lintPlanBook(book: PlanBook, opts: { band?: PlanBand; bannedEn?:
     for (const [lang, text] of variants(line)) {
       const isHe = lang !== "en";
       if (!text.trim()) hits.push({ rule: "missing", pageId, lang, text });
-      if (isHe && text !== text.normalize("NFC")) hits.push({ rule: "nfc", pageId, lang, text });
+      if (isHe && text !== text.normalize("NFC")) hits.push({ rule: "not-nfc", pageId, lang, text });
       if (isHe && !/[֐-׿]/.test(text)) hits.push({ rule: "hebrew", pageId, lang, text });
       if (!isHe && /[֐-׿]/.test(text)) hits.push({ rule: "hebrew-in-en", pageId, lang, text });
       const cap = isHe ? HE_WORD_CAP[band] : EN_WORD_CAP[band];

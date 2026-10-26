@@ -96,6 +96,7 @@ describe("CHILD_SUBCOLLECTIONS registry pin — the seed invented NO new sink", 
       "kidSouvenirs", // B-KID-96: the souvenir ledger (registered, not invented by the seed)
       "studioQuestProgress", // fixed finite quest choices, child export and erase
       "bookBookmarks", // edition-bound private reading position
+      "books", // B-BOOK-75: composed Everyday Plan books (the parent's choices)
       "journeyObjectives",
       "adventureResults",
       "bandSnapshots",

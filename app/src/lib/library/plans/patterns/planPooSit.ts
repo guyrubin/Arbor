@@ -176,7 +176,7 @@ export const PLAN_POO_SIT: PatternDef = {
   defaultSteps: ["sit-after-meal", "the-box", "just-try"],
   boxItems: [
     { id: "book", label: L("A book I love", "ספר אהוב"), glyph: "auto_stories" },
-    { id: "bubbles", label: L("Bubbles", "בועות סבון"), glyph: "bubble_chart" },
+    { id: "soap-bubbles", label: L("Bubbles", "בועות סבון"), glyph: "bubble" },
     { id: "story", label: L("A story from my grown-up", "סיפור מהמבוגר שלי"), glyph: "record_voice_over" },
     { id: "calm-game", label: L("A calm little game", "משחק קטן ורגוע"), glyph: "extension" },
     { id: "song", label: L("A song we sing", "שיר שאנחנו שרים"), glyph: "music_note" },
@@ -207,7 +207,7 @@ export const PLAN_POO_SIT: PatternDef = {
     { id: "blood", text: L("There is blood in the poo.", "יש דם בקקי.") },
     { id: "fever-vomit", text: L("There is fever or vomiting with it.", "יש חום או הקאות יחד עם זה.") },
     { id: "swollen", text: L("The tummy is very swollen or very painful.", "הבטן נפוחה מאוד או כואבת מאוד.") },
-    { id: "weight", text: L("Your child is losing weight or not growing as before.", "הילד או הילדה מאבדים משקל או לא גדלים כמו קודם.") },
+    { id: "weight-growth", text: L("Your child is losing weight or not growing as before.", "הילד או הילדה מאבדים משקל או לא גדלים כמו קודם.") },
     { id: "from-birth", text: L("The poo problems have been there since birth.", "הקושי עם הקקי קיים מהלידה.") },
     { id: "after-event", text: L("It started after a fall or an illness.", "זה התחיל אחרי נפילה או מחלה.") },
     { id: "under-3", text: L("Your child is under three and has not started toilet learning yet.", "הילד או הילדה מתחת לגיל שלוש ועוד לא התחילו ללמוד שירותים.") },
