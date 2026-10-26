@@ -14,6 +14,7 @@ import { useAuth } from "../../context/AuthContext";
 import { storyLanguage } from "../../lib/heroJourneys";
 import { resolveBookAssets, type LibraryBookEntry, type ResolvedBookAssets } from "../../lib/bookAssets";
 import { heGender } from "../../lib/library/bookText";
+import { storyName } from "../../lib/storyName";
 import { KidStageFallback } from "./KidStageFallback";
 import { useChildLibraryBooks } from "./useChildLibraryBooks";
 import { bookEdition } from "../../lib/library/bookBookmarks";
@@ -68,8 +69,9 @@ function OwnedBookReader({ entry, edition, owner, lang, onClose }: { entry: Libr
     if (unavailable) onClose();
   }, [unavailable, onClose]);
   const child = useMemo(
-    () => ({ id: childProfile.id, name: childProfile.name, gender: childProfile.gender, heroSheetId: doc?.sheetId ?? null }),
-    [childProfile.id, childProfile.name, childProfile.gender, doc?.sheetId],
+    // B-KID-168: an English book names the child in English letters when the parent saved them.
+    () => ({ id: childProfile.id, name: storyName(childProfile, lang), gender: childProfile.gender, heroSheetId: doc?.sheetId ?? null }),
+    [childProfile.id, childProfile.name, childProfile.nameLatin, lang, childProfile.gender, doc?.sheetId],
   );
   return (
     <div className="arbor-play" data-kid-library-book={entry.book.id} style={{ position: "fixed", inset: 0, zIndex: 80 }}>

@@ -22,6 +22,7 @@ import HeroSheetPanel from "./HeroSheetPanel";
 import RewardsCard from "./RewardsCard";
 import { stampChangedFacts } from "../../lib/factsAsOf";
 import { childPicture } from "../../lib/childPicture";
+import { cleanNameLatin, NAME_LATIN_MAX, offersNameLatin } from "../../lib/storyName";
 // B-CAREPRO-35: the drawer no longer exports or deletes (GP-18's typed-name
 // delete moved, with its receipt, to Settings › Your data — YourDataSheet).
 
@@ -48,6 +49,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const [name, setName] = useState(activeChild.name);
+  const [nameLatin, setNameLatin] = useState(activeChild.nameLatin ?? "");
   // The edited age lives as TOTAL MONTHS (years + months inputs below); the
   // legacy whole-years field is derived at save time, never edited directly.
   const [ageMonths, setAgeMonths] = useState<number>(() => ageMonthsFromProfile(activeChild) ?? 0);
@@ -110,6 +112,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
   useEffect(() => {
     if (!open) return;
     setName(activeChild.name);
+    setNameLatin(activeChild.nameLatin ?? "");
     setAgeMonths(ageMonthsFromProfile(activeChild) ?? 0);
     setSchoolContext(activeChild.schoolContext);
     setLanguages(activeChild.languages.join(", "));
@@ -173,6 +176,8 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
       };
       const persisted = await updateChild(activeChild.id, {
         name: name.trim() || activeChild.name,
+        // B-KID-168: parent-typed only; "" clears it (a clearable field).
+        nameLatin: cleanNameLatin(nameLatin) || undefined,
         ...agePatch,
         ...facts,
         factsAsOf: stampChangedFacts(activeChild, facts, new Date().toISOString()),
@@ -260,6 +265,29 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                 <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Name</label>
                 <input ref={nameInputRef} value={name} onChange={(e) => setName(e.target.value)} className="w-full min-h-11 rounded-xl px-4 py-2.5 focus:outline-none" style={inputStyle} />
               </div>
+
+              {/* B-KID-168: the name in English letters, for English stories only.
+                  Offered when the name is in another script; never filled in for the parent. */}
+              {offersNameLatin(name, activeChild.nameLatin) && (
+                <div className="space-y-1.5">
+                  <label htmlFor="profile-name-latin" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("profile.nameLatin.label")}</label>
+                  <input
+                    id="profile-name-latin"
+                    data-testid="profile-name-latin"
+                    dir="ltr"
+                    lang="en"
+                    autoComplete="off"
+                    spellCheck={false}
+                    maxLength={NAME_LATIN_MAX}
+                    value={nameLatin}
+                    onChange={(e) => setNameLatin(e.target.value)}
+                    aria-describedby="profile-name-latin-hint"
+                    className="w-full min-h-11 rounded-xl px-4 py-2.5 focus:outline-none"
+                    style={inputStyle}
+                  />
+                  <p id="profile-name-latin-hint" className="text-[11px]" style={{ color: "var(--arbor-faint)" }}>{t("profile.nameLatin.helper")}</p>
+                </div>
+              )}
 
               {/* GP-03 / MOB-04 — months-precise age editor (years + months). The
                   live label is the same ageLabel path every surface renders. */}
