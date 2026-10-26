@@ -56,6 +56,18 @@ PLATES = {
         "PL6": ("morning", "The brook"),
         "PL7": ("day", "The duel"),
     },
+    # B-BOOK-75 Everyday Plans: the pattern's SHARED plates (hero slot empty);
+    # briefs in src/lib/library/plans/planPlates.ts. Placeholders only.
+    "plan-poo-sit": {
+        "PP1": ("morning", "Living room, toys mid-play"),
+        "PP2": ("day", "How a body works, drawn like a game map"),
+        "PP3": ("day", "Hallway, the bathroom door half open"),
+        "PP4": ("golden", "Kitchen table after dinner, the idea bulb"),
+        "PP5": ("golden", "Calm bathroom, the toilet and the little step"),
+        "PP6": ("golden", "Bathroom floor, the wonder box open"),
+        "PP7": ("dusk", "Bathroom at dusk, very still"),
+        "PP8": ("morning", "Sunny garden, a kite"),
+    },
 }
 
 def make_overlay(path: Path, kind: str):
@@ -150,7 +162,9 @@ SHAPES = {
 def shape_of(pose: str) -> str:
     p = pose.lower()
     for key, base in (("arms-wide", "arms-wide"), ("stretch", "arms-wide"), ("armour", "arms-wide"), ("sling", "wave"), ("wave", "wave"),
-                      ("run", "run"), ("walk", "walk"), ("squat", "squat"), ("kneel", "squat"), ("crouch", "squat"), ("hunched", "sit"), ("sit", "sit")):
+                      ("run", "run"), ("walk", "walk"), ("squat", "squat"), ("kneel", "squat"), ("crouch", "squat"), ("hunched", "sit"), ("sit", "sit"),
+                      # B-BOOK-75 plan poses: the nearest mannequin shape
+                      ("hug-knees", "sit"), ("lie-down", "sit"), ("hands-up", "arms-wide")):
         if key in p:
             return base
     return "stand"
@@ -222,6 +236,11 @@ def pose_ids() -> list:
     found = set()
     for f in SRC_DIR.glob("books/*.geometry.json"):
         found |= set(re.findall(r'"pose":\s*"([A-Za-z0-9_-]+)"', f.read_text(encoding="utf-8")))
+    # B-BOOK-75: the twelve shared plan poses (lib/library/plans/planPoses.ts)
+    # and every pose a pattern names.
+    for f in [SRC_DIR / "plans" / "planPoses.ts", *SRC_DIR.glob("plans/patterns/*.ts")]:
+        found |= set(re.findall(r'^\s*"([a-z][a-z0-9-]+)",\s*$', f.read_text(encoding="utf-8"), re.M))
+        found |= set(re.findall(r'pose:\s*"([A-Za-z0-9_-]+)"', f.read_text(encoding="utf-8")))
     for f in SRC_DIR.glob("books/*.ts"):
         found |= set(re.findall(r'pose:\s*"([A-Za-z0-9_-]+)"', f.read_text(encoding="utf-8")))
         found |= set(re.findall(r'heroOf\("[^"]+",\s*"([A-Za-z0-9_-]+)"\)', f.read_text(encoding="utf-8")))
