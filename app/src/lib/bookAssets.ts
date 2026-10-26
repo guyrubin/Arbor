@@ -23,8 +23,10 @@ import { getLibraryBook } from "./library/books";
 import { missingBookPoses } from "./library/bookPoses";
 import type { HeroSheet } from "./library/heroSheet";
 import { cueFileOf, sharedNarrationUrls } from "./library/narrationFiles";
+import { PLAN_SHEET_BOOK_ID } from "./library/plans/planPoses";
+import { planBookFromDoc, readPlanBookDoc } from "./library/plans/planBookDoc";
 import { loadStaticJson } from "./library/staticJson";
-import type { Book } from "./library/types";
+import type { AnyBook } from "./library/types";
 import { firebaseEnabled } from "./firebase";
 
 /** K2 sandbox: a build WITHOUT Firebase (the local sandbox) keeps the book
@@ -33,18 +35,39 @@ import { firebaseEnabled } from "./firebase";
 export const bookDocsOnDevice = (): boolean => !firebaseEnabled;
 
 export interface LibraryBookEntry {
-  book: Book;
+  /** A canonical library book, or a composed PLAN book (B-BOOK-75). */
+  book: AnyBook;
+  /** The private files the reader uses: the book's own sheet, or (plan) the
+   *  child's ONE shared plan sheet (`bookAssets/plan-poses`). */
   doc: BookAssetsDoc;
 }
 
-/** The books a child can open: a known library book whose sheet is complete. */
-export function libraryBookEntries(docs: readonly BookAssetsDoc[]): LibraryBookEntry[] {
+/** The poses a bookAssets doc really has files for. */
+function sheetPoses(doc: BookAssetsDoc): string[] | null {
+  if (!doc?.sheetManifest?.poses || !Array.isArray(doc.files)) return null;
+  return Object.keys(doc.sheetManifest.poses).filter((p) => doc.files.includes(`hero-sheets/${doc.sheetId}/${doc.sheetManifest.poses[p].file}`));
+}
+
+/** The books a child can open: a known library book whose sheet is complete,
+ *  then (B-BOOK-75) each of the child's composed plan books whose poses the
+ *  child's shared plan sheet covers. A plan book without a complete plan sheet
+ *  is not offered (no silhouette, ever); the composer (B-BOOK-77) draws it. */
+export function libraryBookEntries(docs: readonly BookAssetsDoc[], planDocs: readonly unknown[] = []): LibraryBookEntry[] {
   const out: LibraryBookEntry[] = [];
   for (const doc of docs) {
-    const book = doc?.bookId ? getLibraryBook(doc.bookId) : undefined;
-    if (!book || !doc.sheetManifest?.poses || !Array.isArray(doc.files)) continue;
-    const poses = Object.keys(doc.sheetManifest.poses).filter((p) => doc.files.includes(`hero-sheets/${doc.sheetId}/${doc.sheetManifest.poses[p].file}`));
-    if (missingBookPoses(book, poses).length === 0) out.push({ book, doc });
+    const book = doc?.bookId && doc.bookId !== PLAN_SHEET_BOOK_ID ? getLibraryBook(doc.bookId) : undefined;
+    const poses = book ? sheetPoses(doc) : null;
+    if (book && poses && missingBookPoses(book, poses).length === 0) out.push({ book, doc });
+  }
+  const planSheet = docs.find((d) => d?.bookId === PLAN_SHEET_BOOK_ID);
+  const planPoses = planSheet ? sheetPoses(planSheet) : null;
+  if (planSheet && planPoses) {
+    for (const raw of planDocs) {
+      const doc = readPlanBookDoc(raw);
+      if (!doc || doc.status !== "active") continue;
+      const book = planBookFromDoc(doc);
+      if (book && missingBookPoses(book, planPoses).length === 0) out.push({ book, doc: planSheet });
+    }
   }
   return out;
 }

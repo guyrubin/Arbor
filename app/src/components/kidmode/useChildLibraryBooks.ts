@@ -11,8 +11,15 @@ import { useMemo } from "react";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { bookDocsOnDevice, libraryBookEntries, type LibraryBookEntry } from "../../lib/bookAssets";
 import type { BookAssetsDoc } from "../../lib/library/bookAssetPaths";
+import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 
 export function useChildLibraryBooks(childId: string): LibraryBookEntry[] {
   const col = useChildCollection<BookAssetsDoc>(childId, "bookAssets");
-  return useMemo(() => (col.loaded && (col.remote || bookDocsOnDevice()) ? libraryBookEntries(col.items) : []), [col.items, col.remote, col.loaded]);
+  // B-BOOK-75: the child's composed Everyday Plan books (the parent's choices;
+  // the words are recomposed on read). Shown only with a complete plan sheet.
+  const plans = useChildCollection<PlanBookDoc>(childId, "books");
+  return useMemo(
+    () => (col.loaded && (col.remote || bookDocsOnDevice()) ? libraryBookEntries(col.items, plans.loaded ? plans.items : []) : []),
+    [col.items, col.remote, col.loaded, plans.items, plans.loaded],
+  );
 }

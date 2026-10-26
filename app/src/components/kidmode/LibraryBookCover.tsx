@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import { libraryBookCoverUrl, type LibraryBookEntry } from "../../lib/bookAssets";
 import { plateSources } from "../../lib/library/bookPlates";
-import { BOOK_PLATES } from "../../lib/library/books";
+import { bookPlatesFor } from "../../lib/library/books";
 
 export function LibraryBookCover({ childId, entry }: { childId: string; entry: LibraryBookEntry }) {
   const [print, setPrint] = useState<string | null>(null);
@@ -26,7 +26,7 @@ export function LibraryBookCover({ childId, entry }: { childId: string; entry: L
       if (url) URL.revokeObjectURL(url);
     };
   }, [childId, entry.doc]);
-  const plate = BOOK_PLATES[entry.book.id]?.[entry.book.cover.plateId];
+  const plate = bookPlatesFor(entry.book)[entry.book.cover.plateId];
   const src = print ?? (plate ? plateSources(plate, { dev: false })[0] : null);
   if (!src) return null;
   return <img src={src} alt="" aria-hidden="true" draggable={false} decoding="async" data-library-book-cover={entry.book.id} style={{ position: "absolute", inset: 0, inlineSize: "100%", blockSize: "100%", objectFit: "cover" }} />;

@@ -219,3 +219,44 @@ describe("B-PROG-10 — coach sessions export and erase with the child", () => {
     expect(map.has("arbor.coachSessions.c2")).toBe(true);
   });
 });
+
+/* B-BOOK-75 (Everyday Plans) — a child's composed PLAN books (`books`: the
+   parent's choices, never the text) are per-child data: export + erase. */
+describe("B-BOOK-75 — plan books export and erase with the child", () => {
+  const installStorage = () => {
+    const map = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      get length() { return map.size; },
+      clear: () => map.clear(),
+      key: (i: number) => [...map.keys()][i] ?? null,
+      getItem: (k: string) => map.get(k) ?? null,
+      setItem: (k: string, v: string) => { map.set(k, String(v)); },
+      removeItem: (k: string) => { map.delete(k); },
+    } as Storage);
+    vi.stubGlobal("sessionStorage", { get length() { return 0; }, key: () => null, getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {} } as Storage);
+    return map;
+  };
+  const doc = { id: "plan-poo-sit.c1", bookId: "plan-poo-sit.c1", kind: "plan", pattern: "plan-poo-sit", lang: "en", stepMenuIds: ["sit-after-meal", "the-box", "just-try"], minutes: 5, time: "evening", boxItemIds: ["book"], durationDays: 21, approvedAt: "t", approvedBy: "p", createdAt: "t", updatedAt: "t", status: "active" };
+
+  it("is registered", () => {
+    expect(CHILD_SUBCOLLECTIONS).toContain("books");
+  });
+
+  it("the export JSON carries collections.books", async () => {
+    const map = installStorage();
+    map.set("arbor.books.c1", JSON.stringify([doc]));
+    const out = await exportChildData(undefined, { id: "c1", name: "Noa" } as ChildProfile);
+    expect(out.collections.books).toEqual([doc]);
+    expect(out.exportReceipt.collections.books).toBe("included");
+  });
+
+  it("child erase removes it; a sibling's plan stays", async () => {
+    const map = installStorage();
+    map.set("arbor.books.c1", JSON.stringify([doc]));
+    map.set("arbor.books.c2", JSON.stringify([doc]));
+    const receipt = await eraseEverything(undefined, "c1");
+    expect(map.has("arbor.books.c1")).toBe(false);
+    expect(map.has("arbor.books.c2")).toBe(true);
+    expect(receipt.childId).toBe("c1");
+  });
+});

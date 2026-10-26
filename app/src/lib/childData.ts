@@ -64,6 +64,10 @@ export const CHILD_SUBCOLLECTIONS = [
   "kidSouvenirs",
   "studioQuestProgress",
   "bookBookmarks",
+  // B-BOOK-75 (Everyday Plans): the child's composed PLAN books — the parent's
+  // choices (pattern, menu steps, minutes, time, box items, duration, the
+  // approval), never the text. Per-child data → export + erase sweep.
+  "books",
   "journeyObjectives",
   "adventureResults",
   "bandSnapshots",
