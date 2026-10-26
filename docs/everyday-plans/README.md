@@ -28,3 +28,8 @@ Rules that hold everywhere here:
 | `plan-poo-sit` | [definition-plan-poo-sit.md](definition-plan-poo-sit.md) | `app/src/lib/library/plans/patterns/planPooSit.ts` | owed | owed |
 | `plan-sleep-alone` | [definition-plan-sleep-alone.md](definition-plan-sleep-alone.md) | `app/src/lib/library/plans/patterns/planSleepAlone.ts` | owed | owed |
 | `plan-dropoff` | [definition-plan-dropoff.md](definition-plan-dropoff.md) | `app/src/lib/library/plans/patterns/planDropoff.ts` | owed | owed |
+| `plan-big-feelings` | [definition-plan-big-feelings.md](definition-plan-big-feelings.md) | `app/src/lib/library/plans/patterns/planBigFeelings.ts` | owed | owed |
+| `plan-screen-end` | [definition-plan-screen-end.md](definition-plan-screen-end.md) | `app/src/lib/library/plans/patterns/planScreenEnd.ts` | owed | owed |
+| `plan-new-food` | [definition-plan-new-food.md](definition-plan-new-food.md) | `app/src/lib/library/plans/patterns/planNewFood.ts` | owed | owed |
+| `plan-toilet-start` | [definition-plan-toilet-start.md](definition-plan-toilet-start.md) | `app/src/lib/library/plans/patterns/planToiletStart.ts` | owed | owed |
+| `plan-stay-in-bed` | [definition-plan-stay-in-bed.md](definition-plan-stay-in-bed.md) | `app/src/lib/library/plans/patterns/planStayInBed.ts` | owed | owed |

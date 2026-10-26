@@ -8,8 +8,13 @@
  */
 import { composePlanBook, defaultPlanComposition } from "./composePlanBook";
 import type { PatternDef } from "./patterns";
+import { PLAN_BIG_FEELINGS } from "./patterns/planBigFeelings";
 import { PLAN_DROPOFF } from "./patterns/planDropoff";
+import { PLAN_NEW_FOOD } from "./patterns/planNewFood";
 import { PLAN_POO_SIT } from "./patterns/planPooSit";
+import { PLAN_SCREEN_END } from "./patterns/planScreenEnd";
+import { PLAN_STAY_IN_BED } from "./patterns/planStayInBed";
+import { PLAN_TOILET_START } from "./patterns/planToiletStart";
 import { PLAN_SLEEP_ALONE } from "./patterns/planSleepAlone";
 import type { PatternId, PlanBook } from "../types";
 
@@ -18,6 +23,11 @@ export const PATTERNS: Partial<Record<PatternId, PatternDef>> = {
   [PLAN_POO_SIT.id]: PLAN_POO_SIT,
   [PLAN_SLEEP_ALONE.id]: PLAN_SLEEP_ALONE,
   [PLAN_DROPOFF.id]: PLAN_DROPOFF,
+  [PLAN_BIG_FEELINGS.id]: PLAN_BIG_FEELINGS,
+  [PLAN_SCREEN_END.id]: PLAN_SCREEN_END,
+  [PLAN_NEW_FOOD.id]: PLAN_NEW_FOOD,
+  [PLAN_TOILET_START.id]: PLAN_TOILET_START,
+  [PLAN_STAY_IN_BED.id]: PLAN_STAY_IN_BED,
 };
 
 const own = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
