@@ -50,4 +50,26 @@ describe("saved Studio creations child-data lifecycle", () => {
     expect(local.has("arbor.studioCreations.synthetic-a")).toBe(false);
     expect(JSON.parse(local.getItem("arbor.studioCreations.synthetic-b") ?? "null")).toEqual([second]);
   });
+
+  it("reports malformed offline creation data as unavailable and erases only the selected child", async () => {
+    const local = new MemoryStorage();
+    const session = new MemoryStorage();
+    vi.stubGlobal("localStorage", local as unknown as Storage);
+    vi.stubGlobal("sessionStorage", session as unknown as Storage);
+    const sibling = [{ id: "melody", ownerId: "local", childId: "synthetic-b",
+      creation: { kind: "melody", notes: [0, 2, 1], tempo: 760 } }];
+    local.setItem("arbor.studioCreations.synthetic-a", JSON.stringify({ unexpected: "not a list" }));
+    local.setItem("arbor.studioCreations.synthetic-b", JSON.stringify(sibling));
+
+    const exported = await exportChildData(undefined,
+      { id: "synthetic-a", name: "Synthetic A" } as ChildProfile);
+    expect(exported.collections.studioCreations).toEqual([]);
+    expect(exported.exportReceipt.collections.studioCreations).toBe("unavailable");
+    expect(exported.exportReceipt.status).toBe("incomplete");
+
+    await eraseEverything(undefined, "synthetic-a");
+    expect(local.getItem("arbor.studioCreations.synthetic-a")).toBeNull();
+    expect(JSON.parse(local.getItem("arbor.studioCreations.synthetic-b") ?? "null")).toEqual(sibling);
+  });
+
 });
