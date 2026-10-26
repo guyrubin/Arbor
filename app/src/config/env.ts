@@ -61,6 +61,15 @@ export type ArborConfig = {
   firebaseProjectId?: string;
   firestoreDatabaseId: string;
   knowledgePath?: string;
+  /** B-KID-167 (GA DoD 3): the licensed reviewer's signature per Everyday
+   *  Plans pattern and language — PLANS_REVIEWED, a JSON object such as
+   *  {"plan-poo-sit":{"en":true,"he":false}}. Default: nothing signed. Only
+   *  a literal true counts (lib/library/plans/planVisibility.readReviewFlags). */
+  plansReviewed: Record<string, Record<string, boolean>>;
+  /** B-KID-167: the owner allow-list that may compose an UNSIGNED pattern
+   *  (Guy's own family account) — ARBOR_PLANS_OWNER_UIDS / _EMAILS, comma lists. */
+  plansOwnerUids: string[];
+  plansOwnerEmails: string[];
   memoryAdapter: MemoryAdapterKind;
   enableLocalMemoryAdapter: boolean;
   enableHighRiskReviewQueue: boolean;
@@ -146,6 +155,21 @@ const parseModelProvider = (value: string | undefined, arborEnv: ArborEnvironmen
   throw new Error(`Invalid MODEL_PROVIDER "${value}". Use gemini_dev, vertex or mock.`);
 };
 
+/** A comma list env var → trimmed, non-empty entries. */
+const listFromEnv = (value: string | undefined): string[] => (value || "").split(",").map((v) => v.trim()).filter(Boolean);
+
+/** A JSON-object env var → the object, or {} when unset or malformed (a bad
+ *  flag record must never read as "signed"). */
+const jsonObjectFromEnv = (value: string | undefined): Record<string, Record<string, boolean>> => {
+  if (!value?.trim()) return {};
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, Record<string, boolean>>) : {};
+  } catch {
+    return {};
+  }
+};
+
 const parseMemoryAdapter = (value: string | undefined, arborEnv: ArborEnvironment): MemoryAdapterKind => {
   const normalized = (value || (arborEnv === "prod" ? "firestore" : "local")).toLowerCase();
   if (normalized === "local" || normalized === "firestore") return normalized;
@@ -216,6 +240,9 @@ export const loadConfig = (): ArborConfig => {
     firebaseProjectId: process.env.FIREBASE_PROJECT_ID || process.env.GCP_PROJECT_ID,
     firestoreDatabaseId: process.env.FIRESTORE_DATABASE_ID || "(default)",
     knowledgePath: process.env.ARBOR_KNOWLEDGE_PATH || process.env.KNOWLEDGE_PATH,
+    plansReviewed: jsonObjectFromEnv(process.env.PLANS_REVIEWED),
+    plansOwnerUids: listFromEnv(process.env.ARBOR_PLANS_OWNER_UIDS),
+    plansOwnerEmails: listFromEnv(process.env.ARBOR_PLANS_OWNER_EMAILS).map((e) => e.toLowerCase()),
     memoryAdapter,
     enableLocalMemoryAdapter,
     enableHighRiskReviewQueue: boolFromEnv(process.env.ENABLE_HIGH_RISK_REVIEW_QUEUE, true),
