@@ -48,7 +48,6 @@ vi.mock("./HeroFirstStep", () => ({ default: () => null }));
 vi.mock("./parentGate", () => ({ readParentPin: () => "" }));
 vi.mock("./hero/buildHeroSheet", () => ({ ensureHeroSheet: h.sheet }));
 vi.mock("./hero/buildBookNarration", () => ({ ensureBookNarration: h.narration, narrationFolder: () => "en" }));
-vi.mock("./hero/useHeroSheet", () => ({ PROOF_HERO_CHILD_IDS: ["protected-proof"] }));
 vi.mock("../../lib/heroJourneys", () => ({ storyLanguage: () => h.language }));
 vi.mock("../ui/Icon", () => ({ Icon: () => null }));
 vi.mock("../profile/AvatarCreator", () => ({ default: () => null }));
@@ -223,7 +222,7 @@ describe("B-BOOK-74: deliberate parent narration preparation", () => {
     const step = begin(); h.child = { ...h.child!, photoUrl: "new-approved-hero" }; render(); step.onEnterKidMode();
     await settle(); expect(h.narration.mock.calls[0][0].photoUrl).toBe("new-approved-hero");
   });
-  it.each(["protected-proof", "no-profile"])("does not generate for %s", async id => {
+  it.each(["no-profile"])("does not generate for %s", async id => {
     h.child = child(id, 5, "synthetic-hero"); if (id === "no-profile") h.profile = false;
     const entry = render(); commit(); entry.request(); await settle();
     expect(h.open).toHaveBeenCalledOnce(); expect(h.narration).not.toHaveBeenCalled();

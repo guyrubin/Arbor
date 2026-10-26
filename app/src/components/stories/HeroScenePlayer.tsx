@@ -85,6 +85,7 @@ export function HeroScenePlayer({
   layout = "card",
   textLang,
   aside,
+  decision = false,
 }: {
   scene: HeroSceneRender;
   seed: string;
@@ -133,6 +134,9 @@ export function HeroScenePlayer({
   /** B-KID-128: the book page's controls (Decision choices, Back/Next) - drawn
    *  under the words, i.e. in the text column of the wide spread. */
   aside?: React.ReactNode;
+  /** The kid book's Decision page before an answer: a short picture band so
+   *  the question and its answers fit the screen (index.css data-kid-decision). */
+  decision?: boolean;
 }) {
   const [resolvedArt, setResolvedArt] = useState<{ key: string; url: string } | undefined>();
   const [artLoading, setArtLoading] = useState(false);
@@ -260,7 +264,7 @@ export function HeroScenePlayer({
     // B-BOOK-28: the story's static cover, cropped per beat, or its seeded
     // illustration. Neither page turns nor retries enter the image pipeline.
     return (
-      <div className={KID_BOOK_SPREAD_CLASS} data-kid-book-page="">
+      <div className={KID_BOOK_SPREAD_CLASS} data-kid-book-page="" data-kid-decision={decision ? "" : undefined}>
         <span className="sr-only">{kidsStoriesText("journey.beat", aiLang, { current: beatNumber, total: beatTotal })}</span>
         <div className={KID_BOOK_ART_CLASS} data-kid-book-art="" style={{ background: "var(--arbor-paper-deep)" }}>
           {sceneArt ? (
@@ -283,7 +287,7 @@ export function HeroScenePlayer({
           lang={bookLang}
           dir={langDir(bookLang)}
           data-kid-book-text=""
-          className="min-h-[calc(3*1.5em_+_16px)] max-h-[calc(3*1.5em_+_16px)] sm:max-h-[50vh] sm:max-w-[32ch]"
+          className="min-h-[calc(3*1.5em_+_16px)] max-h-[calc(5*var(--kid-book-lh,1.5)*1em_+_16px)] sm:max-h-[50vh] sm:max-w-[32ch]"
           // B-KID-133 (D-03): the book voice — Fraunces / Frank Ruhl 600 at
           // --kid-t-book (20 px at a phone, 26 px wide), line height 1.5 (HE 1.6).
           style={{ margin: 0, paddingInline: 20, paddingBlockStart: 16, fontSize: `max(${KID_BOOK_TEXT_PX}px, var(--kid-t-book))`, fontWeight: 600, lineHeight: "var(--kid-book-lh)", overflowY: "auto", color: "var(--arbor-ink)", fontFamily: "var(--font-display), Georgia, serif" }}

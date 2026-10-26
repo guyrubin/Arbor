@@ -24,7 +24,7 @@ vi.mock("react", async original => {
 vi.mock("../../../../context/LanguageContext", () => ({ useLanguage: () => ({ uiLang: h.lang }) }));
 vi.mock("../../../../context/ArborContext", () => ({ useArborOptional: () => ({ childProfile: { id: h.childId } }) }));
 vi.mock("../../game/GameShell", () => ({ GameShell: () => null, GameFinish: () => null }));
-vi.mock("../../audio/kidAudio", () => ({ useKidReadAloudMuted: () => h.muted }));
+vi.mock("../../audio/kidAudio", () => ({ useKidReadAloudMuted: () => h.muted, kidSfx: vi.fn() }));
 vi.mock("../studioCreations", () => ({ useStudioCreations: () => ({ items: [], loaded: true, isCurrent: () => true }) }));
 vi.mock("./explorerAudio", () => ({ createExplorerAudio: () => h.audio }));
 

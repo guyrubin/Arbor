@@ -112,6 +112,13 @@ export const en: Record<string, string> = {
   "elev.hero.sheet.book.building.girl": "{name}'s hero is stepping into the book — ready in a few minutes",
   "elev.hero.sheet.book.alt": "{name} in the book",
   "elev.hero.sheet.book.failed": "This picture rests for today; the book keeps the one it has.",
+  // B-BOOK-69: a new hero is approved; the book keeps the previous one until the new sheet commits.
+  "elev.hero.sheet.book.replacing": "{name}'s new hero is stepping into the book. Until it is ready, the book keeps the previous one.",
+  "elev.hero.sheet.book.replacing.boy": "{name}'s new hero is stepping into the book. Until it is ready, the book keeps the previous one.",
+  "elev.hero.sheet.book.replacing.girl": "{name}'s new hero is stepping into the book. Until it is ready, the book keeps the previous one.",
+  "elev.hero.sheet.book.previous": "The book still shows {name}'s previous hero until the new one is drawn.",
+  "elev.hero.sheet.book.previous.boy": "The book still shows {name}'s previous hero until the new one is drawn.",
+  "elev.hero.sheet.book.previous.girl": "The book still shows {name}'s previous hero until the new one is drawn.",
 };
 
 export const he: Record<string, string> = {
@@ -199,4 +206,10 @@ export const he: Record<string, string> = {
   "elev.hero.sheet.book.building.girl": "הגיבורה של {name} נכנסת לספר — מוכנה בעוד כמה דקות",
   "elev.hero.sheet.book.alt": "{name} בספר",
   "elev.hero.sheet.book.failed": "התמונה הזו נחה היום — הספר שומר את זו שיש לו.",
+  "elev.hero.sheet.book.replacing": "הדמות החדשה של {name} נכנסת לספר. עד שתהיה מוכנה, הספר שומר את הדמות הקודמת.",
+  "elev.hero.sheet.book.replacing.boy": "הגיבור החדש של {name} נכנס לספר. עד שיהיה מוכן, הספר שומר את הגיבור הקודם.",
+  "elev.hero.sheet.book.replacing.girl": "הגיבורה החדשה של {name} נכנסת לספר. עד שתהיה מוכנה, הספר שומר את הגיבורה הקודמת.",
+  "elev.hero.sheet.book.previous": "הספר עדיין מציג את הדמות הקודמת של {name} עד שהחדשה תצויר.",
+  "elev.hero.sheet.book.previous.boy": "הספר עדיין מציג את הגיבור הקודם של {name} עד שהחדש יצויר.",
+  "elev.hero.sheet.book.previous.girl": "הספר עדיין מציג את הגיבורה הקודמת של {name} עד שהחדשה תצויר.",
 };

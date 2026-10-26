@@ -72,7 +72,7 @@ export function KidHearItButton() {
   return (
     <button
       type="button"
-      onClick={() => { speakText(hearIt.text, {}, hearIt.lang); }}
+      onClick={() => { speakText(hearIt.text, {}, hearIt.lang, { neuralOnly: true }); }}
       aria-label={kidsStoriesText("kidGame.hearIt", hearIt.lang)}
       data-kid-hear-it=""
       style={{ appearance: "none", display: "inline-grid", placeItems: "center", inlineSize: 44, blockSize: 44, borderRadius: 999, cursor: "pointer", background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)", border: "2px solid var(--comic-ink)", flexShrink: 0 }}

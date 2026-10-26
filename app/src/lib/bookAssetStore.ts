@@ -119,6 +119,15 @@ export function openBookAssetReadScope(childId: string, isCurrent: () => boolean
 
 /** A file's fate: its bytes, absent for good, or a passing failure (retry later). */
 export type BookAssetFetch = { blob: Blob } | { missing: true } | { transient: true; retryAfterMs?: number };
+/** What the store reads of a book's metadata: its id, its version stamp (the
+ *  device copy's key) and the files it may serve. A library book passes its
+ *  BookAssetsDoc; a legacy book's narration passes its manifest (lib/library/
+ *  legacyNarration). */
+export interface BookAssetSource {
+  bookId: BookAssetsDoc["bookId"];
+  createdAt: BookAssetsDoc["createdAt"];
+  files: readonly string[];
+}
 
 let sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 /** Test seam: the backoff's clock. */
@@ -127,7 +136,7 @@ export function setBookAssetSleep(next: ((ms: number) => Promise<void>) | null):
 }
 
 /** One attempt: the device copy, else the owner-checked proxy. */
-async function fetchOnce(childId: string, doc: BookAssetsDoc, rel: string, scope: BookAssetReadScope): Promise<BookAssetFetch> {
+async function fetchOnce(childId: string, doc: BookAssetSource, rel: string, scope: BookAssetReadScope): Promise<BookAssetFetch> {
   scope.assert();
   const id = JSON.stringify([scope.owner, childId, doc.bookId, doc.createdAt, rel]);
   const c = cache();
@@ -173,7 +182,7 @@ async function fetchOnce(childId: string, doc: BookAssetsDoc, rel: string, scope
 }
 
 /** One file, retried on a passing failure (backoff 0.5 s, 1 s, 2 s...). */
-export async function fetchBookAssetResult(childId: string, doc: BookAssetsDoc, rel: string, tries = 4, readScope?: BookAssetReadScope): Promise<BookAssetFetch> {
+export async function fetchBookAssetResult(childId: string, doc: BookAssetSource, rel: string, tries = 4, readScope?: BookAssetReadScope): Promise<BookAssetFetch> {
   if (!isBookAssetRel(rel) || !doc.files.includes(rel)) return { missing: true };
   const scope = readScope ?? openBookAssetReadScope(childId);
   if (scope.childId !== childId) throw new Error("Book asset child changed");
@@ -190,7 +199,7 @@ export async function fetchBookAssetResult(childId: string, doc: BookAssetsDoc, 
 }
 
 /** One file as a Blob (retried on a passing failure), else null. */
-export async function fetchBookAsset(childId: string, doc: BookAssetsDoc, rel: string): Promise<Blob | null> {
+export async function fetchBookAsset(childId: string, doc: BookAssetSource, rel: string): Promise<Blob | null> {
   const r = await fetchBookAssetResult(childId, doc, rel);
   return "blob" in r ? r.blob : null;
 }

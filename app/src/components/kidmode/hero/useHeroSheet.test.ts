@@ -73,9 +73,8 @@ describe("B-GAME-13c resolution chain", () => {
   });
 
   it("the proof allow-list: listed children, or a build without Firebase (the sandbox); never another family", () => {
-    expect(proofAllowedFor("son", { firebase: true, allowList: ["son"] })).toBe(true);
-    expect(proofAllowedFor("other", { firebase: true, allowList: ["son"] })).toBe(false);
-    expect(proofAllowedFor("other", { firebase: false, allowList: [] })).toBe(true);
+    expect(proofAllowedFor("son", { firebase: true })).toBe(false);
+    expect(proofAllowedFor("other", { firebase: false })).toBe(true);
     expect(proofAllowedFor("", { firebase: false })).toBe(false);
   });
 });
@@ -95,7 +94,7 @@ describe("approved profile avatar is the identity authority", () => {
   });
   it("removing the approved avatar cannot resurrect historical proof/device likeness in production", async () => {
     const old = sheet("proof", HASH);
-    const result = await resolveHeroSheetChain({ id: "child-1780330920145" }, sources({
+    const result = await resolveHeroSheetChain({ id: "proof-child" }, sources({
       proofAllowed: true, loadProof: async () => old, readDevice: () => old,
     }));
     expect(result.from).toBe("placeholder"); expect(result.sheet.heroId).not.toBe(HASH);
@@ -147,22 +146,33 @@ describe("B-GAME-13c stored docs", () => {
   });
 });
 
-describe("K1: the proof hero stays with the proof child only", () => {
-  it("the owner's son (his production child id) keeps the proof sheet on a Firebase build; any other child does not", async () => {
-    const { proofAllowedFor, PROOF_HERO_CHILD_IDS } = await import("./useHeroSheet");
-    expect(PROOF_HERO_CHILD_IDS).toEqual(["child-1780330920145"]);
-    expect(proofAllowedFor("child-1780330920145", { firebase: true })).toBe(true);
-    expect(proofAllowedFor("child-1780330920146", { firebase: true })).toBe(false);
-    expect(proofAllowedFor("", { firebase: true })).toBe(false);
+describe("B-BOOK-71 / B-GAME-35: no production child id in the public source", () => {
+  it("the proof sheet is sandbox-only: no child plays it on a Firebase build", async () => {
+    const { proofAllowedFor } = await import("./useHeroSheet");
+    for (const id of ["proof-child", "c1"]) expect(proofAllowedFor(id, { firebase: true })).toBe(false);
+    expect(proofAllowedFor("", { firebase: false })).toBe(false);
   });
-});
-
-describe("K1: no auto-drawn sheet outranks the proof sheet", () => {
-  it("the parent door starts ensureHeroSheet for every child except the proof children", async () => {
+  it("no source file under app/src names a production child id (child-<13 digits>)", async () => {
+    const { readFileSync, readdirSync, statSync } = await import("node:fs");
+    const path = await import("node:path");
+    const root = path.resolve(__dirname, "../../..");
+    const hits: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const full = path.join(dir, name);
+        if (statSync(full).isDirectory()) { walk(full); continue; }
+        if (!/\.(ts|tsx|json)$/.test(name)) continue;
+        if (new RegExp("child-1[0-9]{12}").test(readFileSync(full, "utf8"))) hits.push(path.relative(root, full));
+      }
+    };
+    walk(root);
+    expect(hits).toEqual([]);
+  });
+  it("the parent door starts ensureHeroSheet for every child (a complete sheet of the current hero is never redrawn)", async () => {
     const { readFileSync } = await import("node:fs");
     const path = await import("node:path");
     const src = readFileSync(path.resolve(__dirname, "../../layout/KidModeButton.tsx"), "utf8");
-    expect(src).toMatch(/if \(child && !PROOF_HERO_CHILD_IDS\.includes\(child\.id\)\) void ensureHeroSheet\(child\);/);
+    expect(src).toMatch(/if \(child\) void ensureHeroSheet\(child\);/);
     expect((src.match(/ensureHeroSheet\(/g) ?? []).length).toBe(1);
   });
 });

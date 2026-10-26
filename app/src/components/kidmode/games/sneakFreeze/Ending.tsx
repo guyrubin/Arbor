@@ -71,6 +71,11 @@ const UPRIGHT = PICTURE_SIZE.portrait;
  *  (8px kept for the tilt's corners). */
 const UPRIGHT_INLINE = `min(calc(100cqw - 8px), calc((100cqh - 2 * ${LIP}) * ${UPRIGHT.w / UPRIGHT.h} + 2 * ${LIP}))`;
 
+/** Sideways: the picture's width is bound by the height left after the top
+ *  controls and the caption; the shelf and the toys sit beside it. */
+const SIDEWAYS_MAX_H = 520;
+const SIDEWAYS_INLINE = `min(52vw, calc((100dvh - 170px) * ${PICTURE.w / PICTURE.h}))`;
+
 /** A phone held upright: tall and narrow (a tablet upright keeps the 4:3 layout). */
 export function isUprightPhone(w: number, h: number): boolean {
   return w < 600 && h >= w * 1.4;
@@ -85,6 +90,10 @@ export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, p
   // A phone keeps both toys on one row (the picture keeps the height).
   const [narrow] = useState(() => typeof window !== "undefined" && window.innerWidth < 480);
   const [upright] = useState(() => typeof window !== "undefined" && isUprightPhone(window.innerWidth, window.innerHeight));
+  // 10 Oct 2026: a phone held sideways (390 px tall) stacked the picture over
+  // the toys and put Play again / Home under the screen's edge. There the
+  // picture and the caption sit beside the shelf and the toys.
+  const [sideways] = useState(() => typeof window !== "undefined" && !isUprightPhone(window.innerWidth, window.innerHeight) && window.innerHeight < SIDEWAYS_MAX_H && window.innerWidth > window.innerHeight);
   const toyPad = narrow ? { paddingInline: 20 } : undefined;
   const photoRef = useRef<HTMLDivElement | null>(null);
   const tilt = rtl ? TILT : -TILT;
@@ -150,15 +159,17 @@ export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, p
       />
       <div
         data-sneak-ending-stack=""
-        data-sneak-ending-shape={upright ? "upright" : "wide"}
-        style={{ position: "relative", blockSize: "100%", overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: upright ? "flex-start" : "center", gap: "clamp(8px, 1.6dvh, 18px)", paddingInline: 16, paddingBlockEnd: upright ? "max(clamp(10px, 2dvh, 20px), env(safe-area-inset-bottom))" : "clamp(10px, 2dvh, 20px)", paddingBlockStart: "calc(max(10px, env(safe-area-inset-top)) + 80px)" }}
+        data-sneak-ending-shape={upright ? "upright" : sideways ? "sideways" : "wide"}
+        style={{ position: "relative", blockSize: "100%", overflowY: "auto", display: "flex", flexDirection: sideways ? "row" : "column", alignItems: "center", justifyContent: upright ? "flex-start" : "center", gap: sideways ? 24 : "clamp(8px, 1.6dvh, 18px)", paddingInline: 16, paddingBlockEnd: upright ? "max(clamp(10px, 2dvh, 20px), env(safe-area-inset-bottom))" : "clamp(10px, 2dvh, 20px)", paddingBlockStart: sideways ? "calc(max(10px, env(safe-area-inset-top)) + 70px)" : "calc(max(10px, env(safe-area-inset-top)) + 80px)" }}
       >
         <figure
           data-sneak-picture-frame=""
           style={upright
             // Upright: the figure takes every pixel the caption, shelf and toys leave.
             ? { margin: 0, inlineSize: "100%", flex: "1 1 0", minBlockSize: 0, display: "flex", flexDirection: "column" }
-            : { margin: 0, inlineSize: PICTURE_INLINE, minInlineSize: "min(calc(100vw - 32px), 280px)", flexShrink: 0 }}
+            : sideways
+              ? { margin: 0, inlineSize: SIDEWAYS_INLINE, flexShrink: 0 }
+              : { margin: 0, inlineSize: PICTURE_INLINE, minInlineSize: "min(calc(100vw - 32px), 280px)", flexShrink: 0 }}
         >
           <PhotoBox upright={upright}>
           <div
@@ -184,6 +195,7 @@ export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, p
             {kidIsolate(caption)}
           </figcaption>
         </figure>
+        <div data-sneak-ending-side="" style={sideways ? { display: "flex", flexDirection: "column", alignItems: "center", gap: 18, flexShrink: 0 } : { display: "contents" }}>
         {prizes.length > 0 && (
           // The prizes are objects on a shelf, not buttons (aria-hidden, no tap).
           <div aria-hidden="true" data-sneak-prizes="" style={{ position: "relative", isolation: "isolate", display: "flex", alignItems: "flex-end", justifyContent: "center", gap: "clamp(14px, 3vmin, 30px)", paddingInline: "clamp(18px, 3vmin, 30px)", paddingBlockEnd: 9, flexShrink: 0 }}>
@@ -214,6 +226,7 @@ export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, p
         >
           <KidToy tone="go" size={narrow ? "m" : "l"} glyph="replay" onClick={onPlayAgain} style={toyPad} data-kid-finish-again="">{kidIsolate(playAgainLabel)}</KidToy>
           {onHome && <KidToy tone="paper" glyph="home" onClick={onHome} style={toyPad} data-kid-finish-home="">{kidIsolate(homeLabel)}</KidToy>}
+        </div>
         </div>
       </div>
     </div>

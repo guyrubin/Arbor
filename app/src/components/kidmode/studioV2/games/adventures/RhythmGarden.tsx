@@ -108,7 +108,7 @@ export default function RhythmGarden() {
         <div className="rhythm-pattern" role="group" aria-label={w.tune}>
           {(phase === 'compose' ? composition : target).map((note, i) => {
             const Glyph = NOTE_GLYPHS[note]; const visible = phase === 'compose' || showPattern || i < played.length || phase === 'matched';
-            return <span key={i} data-filled={phase === 'compose' || i < played.length} aria-label={`${w.note} ${i + 1}: ${visible ? w.notes[note] : w.emptyNote}`}>{visible ? <Glyph size={23} aria-hidden="true" /> : <span aria-hidden="true">·</span>}</span>;
+            return <span key={i} data-filled={phase === 'compose' || i < played.length} data-next={phase === 'copy' && !playing && i === played.length} aria-label={`${w.note} ${i + 1}: ${visible ? w.notes[note] : w.emptyNote}`}>{visible ? <Glyph size={23} aria-hidden="true" /> : <span aria-hidden="true">·</span>}</span>;
           })}
           {phase === 'compose' && composition.length === 0 && <p>{w.rhythmComposeHelp}</p>}
         </div>

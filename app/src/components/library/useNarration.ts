@@ -4,7 +4,11 @@
  * reading never calls a voice service). No file, a missing file, Sound off, no
  * user gesture yet, or a hidden tab = silence, never an error.
  *
- * - One HTMLAudioElement per page show; the previous one is paused on change.
+ * - ONE reused HTMLAudioElement per channel (kidVoicePlayer: "page" for the
+ *   narration, "clip" for a tap's one-off), blessed by the child's first tap
+ *   so an iPhone plays every later page without a gesture of its own (10 Oct:
+ *   a fresh `new Audio()` per page was refused on iOS Safari and the book was
+ *   silent there). A page change pauses the channel and detaches its handlers.
  * - A file is tried as `.mp3`, then as `.wav` (a performed reading set may be
  *   delivered as WAV); a path that failed once is not asked again.
  * - `settled` turns true when the narration ends, fails, or never starts.
@@ -19,6 +23,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { pageHasUserGesture } from "../kidmode/audio/kidAudio";
+import { kidVoiceElement } from "../../lib/kidVoicePlayer";
 import type { NarrationClock } from "../../lib/library/bookArtStates";
 
 const failed = new Set<string>();
@@ -64,7 +69,8 @@ export function useNarration(
     };
     const hidden = typeof document !== "undefined" && document.visibilityState === "hidden";
     const urls = src ? narrationCandidates(src) : [];
-    if (!enabled || !src || muted || !urls.length || !pageHasUserGesture() || hidden || typeof Audio === "undefined") {
+    const channel = kidVoiceElement("page");
+    if (!enabled || !src || muted || !urls.length || !pageHasUserGesture() || hidden || !channel) {
       finish();
       return () => {
         cancelled = true;
@@ -77,10 +83,10 @@ export function useNarration(
     const play = (i: number) => {
       if (cancelled) return;
       if (i >= urls.length) return finish();
-      const a = new Audio(urls[i]);
+      const a = channel;
       audio = a;
       pageAudio.current = a;
-      a.preload = "auto";
+      a.src = urls[i];
       a.onended = () => {
         if (cancelled) return;
         clock(a, true);
@@ -143,10 +149,12 @@ export function useNarration(
       if (!urls.length) return;
       pageAudio.current?.pause();
       clipAudio.current?.pause();
+      const a = kidVoiceElement("clip");
+      if (!a) return;
       const tryAt = (i: number) => {
         if (i >= urls.length) return;
-        const a = new Audio(urls[i]);
         clipAudio.current = a;
+        a.src = urls[i];
         a.onerror = () => {
           failed.add(urls[i]);
           tryAt(i + 1);
