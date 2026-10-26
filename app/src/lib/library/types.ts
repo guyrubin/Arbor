@@ -257,17 +257,26 @@ export interface ParentPanel {
   sourceNote: BookLabel;
 }
 
-export interface Book {
+/** B-BOOK-75: the kinds of book the engine reads. `canonical` (a canonical
+ *  text, CAST or COMPANION — the default when absent), `mirror` (reserved for
+ *  the mirror books of kid-books-standard §0; none exists yet) and `plan` (an
+ *  Everyday Plan: the child's own story for one hard everyday pattern,
+ *  kid-everyday-plans-standard §0/§7 — first person, no choice, no repair). */
+export type BookKind = "canonical" | "mirror" | "plan";
+
+/** What every kind of book shares: identity, cover, pages, age, the parent panel. */
+export interface BookBase {
   id: string;
   title: BookLabel;
   coverLine: BookLabel;
   /** The cover's name line ("{name} as David"), gender-neutral. */
   coverNameLine?: BookLabel;
-  /** e.g. "1 Samuel 17". */
+  /** e.g. "1 Samuel 17" — or, for a plan, the pattern's guideline family. */
   sourceRef: string;
   /** One adult sentence: what the story knows about being a person. */
   knowledge: string;
-  /** BR2 mode (CAST | COMPANION) + the verse that gives the hero room. */
+  /** BR2 mode (CAST | COMPANION) + the verse that gives the hero room; a plan
+   *  book says SELF (the avatar as themself). */
   childRole: string;
   /** What the book adds in the text's silences (shown to the parent). */
   additions: string[];
@@ -279,6 +288,16 @@ export interface Book {
   cover: Page;
   /** The linear pages in reading order (branch pages live in the choices). */
   pages: Page[];
+  parent: ParentPanel;
+  /** A pose the hero sheet does not have yet → the nearest pose it has (the
+   *  art agent's next round adds it). Used only when the sheet's manifest is
+   *  read and lacks the pose. */
+  poseFallbacks?: Record<Pose, Pose>;
+}
+
+export interface Book extends BookBase {
+  /** Absent = canonical. */
+  kind?: Exclude<BookKind, "plan">;
   decision: {
     pageId: string;
     choices: Choice[];
@@ -289,16 +308,86 @@ export interface Book {
   };
   /** The first page every branch returns to. */
   rejoinPageId: string;
-  parent: ParentPanel;
-  /** A pose the hero sheet does not have yet → the nearest pose it has (the
-   *  art agent's next round adds it). Used only when the sheet's manifest is
-   *  read and lacks the pose. */
-  poseFallbacks?: Record<Pose, Pose>;
   /** K2: the legacy hero story this library book supersedes (one David book
    *  per child): a child who HAS this book no longer sees that story on the
    *  kid shelf or as Tonight's story (components/kidmode/kidBooks kidShelfFor). */
   replacesStory?: string;
 }
+
+/* ── Everyday Plans (B-BOOK-75, kid-everyday-plans-standard §7) ─────────── */
+
+/** The Tier-1 pattern catalogue (standard §3). A pattern names a behaviour in
+ *  parent words, never a condition. Tier 2 and the HELD Tier 3 are not here. */
+export type PatternId =
+  | "plan-poo-sit"
+  | "plan-toilet-start"
+  | "plan-sleep-alone"
+  | "plan-stay-in-bed"
+  | "plan-dropoff"
+  | "plan-big-feelings"
+  | "plan-screen-end"
+  | "plan-new-food";
+
+/** One of the plan's three steps, as composed for one child: a sourced menu
+ *  item, its words in the book's register, the parent's time and minutes. */
+export interface PlanStep {
+  id: string;
+  /** The item of the pattern's sourced menu this step comes from. */
+  menuId: string;
+  text: BookLine;
+  /** "evening", "after-dinner", "bedtime" … (the parent's time of day). */
+  time?: string;
+  /** The bounded duration the parent set (3–10). */
+  minutes?: number;
+  plateId: string;
+  pose: Pose;
+}
+
+/** One thing the parent put in the box (the child taps it on the box page). */
+export interface BoxItem {
+  id: string;
+  label: BookLabel;
+  /** A Material Symbols glyph in the shipped subset. */
+  glyph?: string;
+}
+
+/** The plan's parent panel: the shared sections plus the plan's own (§0, §5). */
+export interface PlanParentPanel extends ParentPanel {
+  /** The steps as the parent will do them, adult words. */
+  planSteps: BookLabel[];
+  /** The red lines (§4), parent words: when the plan is not the answer and
+   *  the family's own doctor is. Rendered only as the care card. */
+  watchFor: BookLabel[];
+  /** The guideline or public method each step comes from. */
+  sources: BookLabel[];
+  /** What to expect in the first week (often worse before better). */
+  firstWeek: BookLabel;
+}
+
+/** A PLAN book: 8–10 screens, first person, present and future tense, no
+ *  decision, no repair, no choice. The composed book is a per-child document;
+ *  its plates and poses are shared per pattern across every family. */
+export interface PlanBook extends BookBase {
+  kind: "plan";
+  pattern: PatternId;
+  steps: [PlanStep, PlanStep, PlanStep];
+  /** The authored box items the parent chose; the child's taps stay in memory. */
+  box?: BoxItem[];
+  /** The page that shows the box (the one optional tap page, §0). */
+  boxPageId?: string;
+  /** How long the plan sits first in Tonight (parent-set, 14–28). */
+  durationDays: number;
+  /** ISO time of the parent's explicit "This is {name}'s plan". */
+  approvedAt: string;
+  /** The approving parent's uid. */
+  approvedBy: string;
+  sourceIds: string[];
+  parent: PlanParentPanel;
+}
+
+export type AnyBook = Book | PlanBook;
+
+export const isPlanBook = (book: AnyBook): book is PlanBook => book.kind === "plan";
 
 /** The child the book is read for — display-time data only. */
 export interface BookReaderChild {

@@ -13,21 +13,27 @@
  * retain the committed branch solely to resume this path. It never describes
  * the child; selection and repair taps remain in memory.
  */
-import type { Book, Choice, Page } from "./types";
+import { decisionOf, rejoinPageIdOf } from "./bookShape";
+import type { AnyBook, Choice, Page } from "./types";
 
-/** The pages a child reads on the path of `choiceId` (null = no choice yet). */
-export function readPath(book: Book, choiceId: string | null): Page[] {
-  const at = book.pages.findIndex((p) => p.id === book.decision.pageId);
+/** The pages a child reads on the path of `choiceId` (null = no choice yet).
+ *  B-BOOK-75: a PLAN book has no decision — its path is its linear pages, and
+ *  a choice id is ignored. */
+export function readPath(book: AnyBook, choiceId: string | null): Page[] {
+  const decision = decisionOf(book);
+  if (!decision) return book.pages.slice();
+  const at = book.pages.findIndex((p) => p.id === decision.pageId);
   const before = at >= 0 ? book.pages.slice(0, at + 1) : book.pages.slice();
-  const choice = choiceId ? book.decision.choices.find((c) => c.id === choiceId) : undefined;
+  const choice = choiceId ? decision.choices.find((c) => c.id === choiceId) : undefined;
   if (!choice) return before;
-  const from = book.pages.findIndex((p) => p.id === book.rejoinPageId);
+  const rejoin = rejoinPageIdOf(book);
+  const from = book.pages.findIndex((p) => p.id === rejoin);
   const after = from >= 0 ? book.pages.slice(from) : [];
   return [...before, ...choice.branch, ...after];
 }
 
-export function findChoice(book: Book, choiceId: string | null): Choice | undefined {
-  return choiceId ? book.decision.choices.find((c) => c.id === choiceId) : undefined;
+export function findChoice(book: AnyBook, choiceId: string | null): Choice | undefined {
+  return choiceId ? decisionOf(book)?.choices.find((c) => c.id === choiceId) : undefined;
 }
 
 export interface BookFlowState {
@@ -59,17 +65,19 @@ export function initialBookFlow(): BookFlowState {
   return { at: COVER, choiceId: null, selected: null, repaired: [], dir: 0 };
 }
 
-export function currentPage(book: Book, s: BookFlowState): Page | null {
+export function currentPage(book: AnyBook, s: BookFlowState): Page | null {
   if (s.at === COVER || s.at === END) return null;
   return readPath(book, s.choiceId).find((p) => p.id === s.at) ?? null;
 }
 
-export function isDecision(book: Book, s: BookFlowState): boolean {
-  return s.at === book.decision.pageId;
+export function isDecision(book: AnyBook, s: BookFlowState): boolean {
+  const decision = decisionOf(book);
+  return !!decision && s.at === decision.pageId;
 }
 
-export function isEnding(book: Book, s: BookFlowState): boolean {
-  if (s.choiceId == null) return false;
+/** On the last page of a committed path (a plan book's path is always committed). */
+export function isEnding(book: AnyBook, s: BookFlowState): boolean {
+  if (s.choiceId == null && decisionOf(book)) return false;
   const path = readPath(book, s.choiceId);
   return path.length > 0 && path[path.length - 1].id === s.at;
 }
@@ -97,13 +105,13 @@ export function repairDone(page: Page | null, s: BookFlowState): boolean {
 }
 
 /** True while the page's repair still waits for the child. */
-export function awaitingRepair(book: Book, s: BookFlowState): boolean {
+export function awaitingRepair(book: AnyBook, s: BookFlowState): boolean {
   const page = currentPage(book, s);
   return !!page?.repair && !repairDone(page, s);
 }
 
 /** Can the forward page-turn control move on from here? */
-export function canTurnForward(book: Book, s: BookFlowState): boolean {
+export function canTurnForward(book: AnyBook, s: BookFlowState): boolean {
   if (s.at === COVER) return true;
   if (s.at === END) return false;
   if (isEnding(book, s)) return true;
@@ -113,7 +121,7 @@ export function canTurnForward(book: Book, s: BookFlowState): boolean {
   return i >= 0 && i < path.length - 1;
 }
 
-export function bookFlowReducer(book: Book, s: BookFlowState, a: BookFlowAction): BookFlowState {
+export function bookFlowReducer(book: AnyBook, s: BookFlowState, a: BookFlowAction): BookFlowState {
   const path = readPath(book, s.choiceId);
   const i = path.findIndex((p) => p.id === s.at);
   switch (a.type) {
@@ -129,7 +137,7 @@ export function bookFlowReducer(book: Book, s: BookFlowState, a: BookFlowAction)
       if (i <= 0) return { ...s, at: COVER, dir: -1 };
       // Back onto the decision page keeps the committed choice selected, so a
       // second tap (or Go) re-enters the same branch; another card moves it.
-      return { ...s, at: path[i - 1].id, selected: path[i - 1].id === book.decision.pageId ? s.choiceId : s.selected, dir: -1 };
+      return { ...s, at: path[i - 1].id, selected: path[i - 1].id === decisionOf(book)?.pageId ? s.choiceId : s.selected, dir: -1 };
     case "choose": {
       if (!isDecision(book, s) || !findChoice(book, a.choiceId)) return s;
       // Tapping the selected card again commits it (lane C §4.1).

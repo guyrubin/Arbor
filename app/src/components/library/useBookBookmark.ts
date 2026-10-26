@@ -3,11 +3,11 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { heroSheetOwnerKey, subscribeHeroSheetOwner } from "../../lib/heroSheetStore";
 import { bookmarkFor, resumeBook, type BookBookmark, type BookProgressPosition } from "../../lib/library/bookBookmarks";
 import { initialBookFlow, type BookFlowState } from "../../lib/library/bookFlow";
-import type { Book } from "../../lib/library/types";
+import type { AnyBook } from "../../lib/library/types";
 
 /** One minimal private row per book. Reading survives unavailable bookmark
  * storage; only a safe, owned read may supply the initial position. */
-export function useBookBookmark(childId: string, book: Book, edition: string, owner: string) {
+export function useBookBookmark(childId: string, book: AnyBook, edition: string, owner: string) {
   const bookmarks = useChildCollection<BookBookmark>(childId, "bookBookmarks", { trackConfirmation: true });
   const scope = JSON.stringify([owner, childId, book.id, edition]);
   const lifetime = useRef({ scope, revision: 0 });

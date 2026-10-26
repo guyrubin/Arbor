@@ -14,7 +14,7 @@ import { KidToy } from "../kidmode/KidToy";
 import { setKidReadAloudMuted, useKidReadAloudMuted } from "../kidmode/audio/kidAudio";
 import { bookString, type BookStringKey } from "../../lib/library/bookStrings";
 import { heroParts, labelFor, lineFor } from "../../lib/library/bookText";
-import type { Book, BookLabel, BookLang, HeGender } from "../../lib/library/types";
+import { type AnyBook, type BookLabel, type BookLang, type HeGender, type PlanParentPanel } from "../../lib/library/types";
 
 export function BookSoundToggle({ childId, lang }: { childId: string; lang: BookLang }) {
   const muted = useKidReadAloudMuted(childId);
@@ -63,20 +63,31 @@ function Named({ text, name }: { text: string; name: string }) {
 /** The parent panel's sections in reading order, with their heading keys:
  *  the v2 panel (knows, whyNow, tomorrow, together) and the v1 one (builds,
  *  why) share one list; a book shows the sections it has. */
-export function parentSections(pp: Book["parent"], lang: BookLang, gender: HeGender): [BookStringKey, string][] {
+export function parentSections(pp: AnyBook["parent"], lang: BookLang, gender: HeGender): [BookStringKey, string][] {
   const out: [BookStringKey, string][] = [];
   const label = (key: BookStringKey, l: BookLabel | undefined) => l && out.push([key, labelFor(l, lang)]);
+  // B-BOOK-75: a plan's panel adds the steps as the parent will do them, the
+  // red lines (parent words, the door to care — never a score), the sources
+  // and the first week; each list item is its own line under one heading.
+  const list = (key: BookStringKey, items: BookLabel[] | undefined) => items?.forEach((l) => out.push([key, labelFor(l, lang)]));
+  const plan = isPlan(pp) ? pp : null;
   label("grownUp.knows", pp.knows);
   label("grownUp.builds", pp.builds);
   label("grownUp.whyNow", pp.whyNow);
   label("grownUp.why", pp.why);
+  list("grownUp.planSteps", plan?.planSteps);
+  label("grownUp.firstWeek", plan?.firstWeek);
   label("grownUp.tomorrow", pp.tomorrow);
   out.push(["grownUp.ask", lineFor(pp.askAfter, lang, gender)]);
   if (pp.askAfterOptional) out.push(["grownUp.askMore", lineFor(pp.askAfterOptional, lang, gender)]);
   label("grownUp.together", pp.together);
+  list("grownUp.watchFor", plan?.watchFor);
+  list("grownUp.sources", plan?.sources);
   label("grownUp.source", pp.sourceNote);
   return out;
 }
+
+const isPlan = (pp: AnyBook["parent"]): pp is PlanParentPanel => Array.isArray((pp as PlanParentPanel).planSteps);
 
 export function BookEnd({
   book,
@@ -89,7 +100,7 @@ export function BookEnd({
   onClose,
   initialGrownUp = false,
 }: {
-  book: Book;
+  book: AnyBook;
   lang: BookLang;
   gender: HeGender;
   name: string;
@@ -115,9 +126,9 @@ export function BookEnd({
       <section className="bk-end" data-book-end-screen="" data-grownup="">
         {toggle}
         <dl className="bk-grownup" data-book-grownup-panel="">
-          {parentSections(pp, lang, gender).map(([key, text]) => (
-            <Fragment key={key}>
-              <dt data-grownup-section={key}>{bookString(key, lang)}</dt>
+          {parentSections(pp, lang, gender).map(([key, text], i, all) => (
+            <Fragment key={`${key}:${i}`}>
+              {(i === 0 || all[i - 1][0] !== key) && <dt data-grownup-section={key}>{bookString(key, lang)}</dt>}
               <dd>
                 <Named text={text} name={name} />
               </dd>
