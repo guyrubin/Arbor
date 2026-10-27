@@ -51,6 +51,35 @@ describe("saved Studio creations child-data lifecycle", () => {
     expect(JSON.parse(local.getItem("arbor.studioCreations.synthetic-b") ?? "null")).toEqual([second]);
   });
 
+  it("withholds misfiled sibling/owner rows and marks the Studio export incomplete", async () => {
+    const local = new MemoryStorage();
+    const session = new MemoryStorage();
+    vi.stubGlobal("localStorage", local as unknown as Storage);
+    vi.stubGlobal("sessionStorage", session as unknown as Storage);
+    const own = { id: "corner", ownerId: "local", childId: "synthetic-a",
+      creation: { kind: "corner", layout: ["plant", null, "books", null, null, null], light: "night", scene: "garden" } };
+    const sibling = { id: "melody", ownerId: "local", childId: "synthetic-b",
+      creation: { kind: "melody", notes: [0, 2, 1], tempo: 760 } };
+    const foreignOwner = { ...own, ownerId: "other-owner", id: "foreign-owner-secret" };
+    const malformedOwnRecord = { id: "old-record", ownerId: "local", childId: "synthetic-a",
+      creation: { legacy: "preserve the in-scope record in the privacy export" } };
+    local.setItem("arbor.studioCreations.synthetic-a", JSON.stringify([own, sibling, foreignOwner, malformedOwnRecord]));
+    local.setItem("arbor.studioCreations.synthetic-b", JSON.stringify([sibling]));
+
+    const exported = await exportChildData(undefined,
+      { id: "synthetic-a", name: "Synthetic A" } as ChildProfile);
+    expect(exported.collections.studioCreations).toEqual([own, malformedOwnRecord]);
+    expect(exported.exportReceipt.collections.studioCreations).toBe("unavailable");
+    expect(exported.exportReceipt.status).toBe("incomplete");
+    const bytes = JSON.stringify(exported);
+    expect(bytes).not.toContain("synthetic-b");
+    expect(bytes).not.toContain("other-owner");
+
+    await eraseEverything(undefined, "synthetic-a");
+    expect(local.getItem("arbor.studioCreations.synthetic-a")).toBeNull();
+    expect(JSON.parse(local.getItem("arbor.studioCreations.synthetic-b") ?? "null")).toEqual([sibling]);
+  });
+
   it("reports malformed offline creation data as unavailable and erases only the selected child", async () => {
     const local = new MemoryStorage();
     const session = new MemoryStorage();
