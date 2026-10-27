@@ -132,13 +132,14 @@ describe("B-KID-167: POST /children/:childId/plan-books", () => {
     expect(s.store.docs.size).toBe(0);
   });
 
-  it("another family's child is refused by ownership; an unknown or unauthored pattern is 404", async () => {
+  it("another family's child is refused by ownership; an unknown pattern is 404", async () => {
     const s = await serve(base, { uid: "owner-uid" });
     servers.push(s);
     const other = await fetch(`${s.url}/children/victims-kid/plan-books`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(good) });
     expect(other.status).toBe(403);
     expect((await post(s.url, { ...good, pattern: "plan-anything" })).status).toBe(404);
-    expect((await post(s.url, { ...good, pattern: "plan-new-food" })).status).toBe(404);
+    // every Tier-1 id is authored now (B-BOOK-76), so a known id never reads unauthored
+    expect((await post(s.url, { ...good, pattern: "plan-new-food", stepMenuIds: ["sits-on-my-plate", "tiny-taste", "comes-back-many-times"], boxItemIds: [] })).status).toBe(201);
   });
 
   it("the sandbox gets the doc back to keep on the device (persisted: false)", async () => {
