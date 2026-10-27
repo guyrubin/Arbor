@@ -23,7 +23,7 @@ function environment(initial: "step" | "visit" = "step") {
     retryAction: null as { scope: object } | null, scopeLease: { key: "child:topic-a" }, tonightOpen: false,
     visit: initial === "visit" ? { id: "visit" } : null,
     record: { opener: null as { id: string } | null, receipt: null, saving: false, error: false },
-    loop: { plan: { order: ["practice"] }, pick: {}, setTonightEarly: vi.fn() }, program: null };
+    loop: { plan: { order: ["practice"] }, pick: {}, setTonightEarly: vi.fn() }, program: null, plan: null };
 }
 // Evaluate the real scope guard as well as the lead. A fixture-provided boolean
 // would miss an old failed answer trapping navigation after the choice changes.

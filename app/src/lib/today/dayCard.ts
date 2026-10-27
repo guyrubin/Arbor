@@ -2,7 +2,7 @@
 import { appointmentInWindow, ledgerSilence, type OfferLedger } from "../companionOffer";
 import { appointmentStatus, isPrepareDue, nextPrepareVisit, type Appointment } from "../careTrack";
 
-export type NowFallback = "practice" | "notice" | "program" | "recommendation";
+export type NowFallback = "practice" | "notice" | "program" | "recommendation" | "plan";
 export type NowLead = "urgent" | "step" | "visit" | "tonight" | "record" | NowFallback;
 
 export function selectNowLead(input: {

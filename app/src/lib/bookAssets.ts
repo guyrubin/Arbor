@@ -24,7 +24,8 @@ import { missingBookPoses } from "./library/bookPoses";
 import type { HeroSheet } from "./library/heroSheet";
 import { cueFileOf, sharedNarrationUrls } from "./library/narrationFiles";
 import { PLAN_SHEET_BOOK_ID } from "./library/plans/planPoses";
-import { planBookFromDoc, readPlanBookDoc } from "./library/plans/planBookDoc";
+import { planBookFromDoc } from "./library/plans/planBookDoc";
+import { activePlans } from "./plans/planWeek";
 import { loadStaticJson } from "./library/staticJson";
 import type { AnyBook } from "./library/types";
 import { firebaseEnabled } from "./firebase";
@@ -52,7 +53,7 @@ function sheetPoses(doc: BookAssetsDoc): string[] | null {
  *  then (B-BOOK-75) each of the child's composed plan books whose poses the
  *  child's shared plan sheet covers. A plan book without a complete plan sheet
  *  is not offered (no silhouette, ever); the composer (B-BOOK-77) draws it. */
-export function libraryBookEntries(docs: readonly BookAssetsDoc[], planDocs: readonly unknown[] = []): LibraryBookEntry[] {
+export function libraryBookEntries(docs: readonly BookAssetsDoc[], planDocs: readonly unknown[] = [], now: Date = new Date()): LibraryBookEntry[] {
   const out: LibraryBookEntry[] = [];
   for (const doc of docs) {
     const book = doc?.bookId && doc.bookId !== PLAN_SHEET_BOOK_ID ? getLibraryBook(doc.bookId) : undefined;
@@ -62,12 +63,16 @@ export function libraryBookEntries(docs: readonly BookAssetsDoc[], planDocs: rea
   const planSheet = docs.find((d) => d?.bookId === PLAN_SHEET_BOOK_ID);
   const planPoses = planSheet ? sheetPoses(planSheet) : null;
   if (planSheet && planPoses) {
-    for (const raw of planDocs) {
-      const doc = readPlanBookDoc(raw);
-      if (!doc || doc.status !== "active") continue;
-      const book = planBookFromDoc(doc);
-      if (book && missingBookPoses(book, planPoses).length === 0) out.push({ book, doc: planSheet });
+    // B-BOOK-78 (standard §6 step 5): an active plan inside its duration sits
+    // FIRST in Tonight (the kid home opens the first entry); a plan past its
+    // duration stays on the shelf after the canonical books.
+    const first: LibraryBookEntry[] = [];
+    for (const plan of activePlans(planDocs, now)) {
+      const book = planBookFromDoc(plan.doc);
+      if (!book || missingBookPoses(book, planPoses).length) continue;
+      (plan.daysLeft > 0 ? first : out).push({ book, doc: planSheet });
     }
+    return [...first, ...out];
   }
   return out;
 }

@@ -19,7 +19,7 @@ export function useChildLibraryBooks(childId: string): LibraryBookEntry[] {
   // the words are recomposed on read). Shown only with a complete plan sheet.
   const plans = useChildCollection<PlanBookDoc>(childId, "books");
   return useMemo(
-    () => (col.loaded && (col.remote || bookDocsOnDevice()) ? libraryBookEntries(col.items, plans.loaded ? plans.items : []) : []),
+    () => (col.loaded && (col.remote || bookDocsOnDevice()) ? libraryBookEntries(col.items, plans.loaded ? plans.items : [], new Date()) : []),
     [col.items, col.remote, col.loaded, plans.items, plans.loaded],
   );
 }
