@@ -35,6 +35,7 @@ import { programPageModel } from "../../lib/programPage";
 import type { SleepLogEntry } from "../../types";
 import type { FamilyGoal } from "../../lib/goals";
 import PlansSection from "../plans/PlansSection";
+import { openPrintablePlan } from "../../lib/plans/planPrint";
 import PlanComposer from "../plans/PlanComposer";
 import { getPattern } from "../../lib/library/plans/planBooks";
 import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
@@ -106,6 +107,7 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
       onKeep={keepPlanRow}
       onChange={(p) => openPlanDoor(p.def.id)}
       onClose={closePlanRow}
+      onPrint={(p) => void openPrintablePlan({ doc: p.doc, child: childProfile, lang: locale, now: new Date() })}
     />
   );
 
@@ -292,6 +294,7 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
           initialState={composerFromDoc(planDef, planRows.items.find((r) => r?.id === `${planDef.id}.${childProfile.id}` && r.status === "active"), locale)}
           onSaved={savePlanDoc}
           onClose={() => goToRoute("journal")}
+          onPrint={(doc) => void openPrintablePlan({ doc, child: childProfile, lang: locale, now: new Date() })}
           onSafety={() => goToRoute("safety")}
         />
       ) : pro && intakePacket ? (

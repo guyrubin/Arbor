@@ -49,7 +49,11 @@ export function readOwnStep(raw: unknown): OwnStep | null {
   const r = raw as Record<string, unknown>;
   if (r.slot !== 1 && r.slot !== 2 && r.slot !== 3) return null;
   if (typeof r.sourceText !== "string" || !line(r.text) || r.aiPhrased !== true) return null;
-  return { slot: r.slot, sourceText: r.sourceText.slice(0, 400), text: r.text, aiPhrased: true, ...(typeof r.approvedAt === "string" && r.approvedAt ? { approvedAt: r.approvedAt } : {}) };
+  return {
+    slot: r.slot, sourceText: r.sourceText.slice(0, 400), text: r.text, aiPhrased: true,
+    ...(r.origin === "practitioner" ? { origin: "practitioner" as const } : {}),
+    ...(typeof r.approvedAt === "string" && r.approvedAt ? { approvedAt: r.approvedAt } : {}),
+  };
 }
 
 /** The one book id a child has per pattern. */

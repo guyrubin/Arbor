@@ -24,8 +24,15 @@ import type { PatternDef, PatternFramePage, PlanMenuItem } from "./patterns";
  *  into the book's register (one model call at composition, never at read
  *  time), screened, shown as AI-phrased, and APPROVED by the parent exactly
  *  as the child will hear it. The menu id of that slot is `OWN_STEP`. */
+/** B-BOOK-79 door (a): whose step the parent typed — their own words, or a
+ *  step relayed from the professional who works with the child (labelled as
+ *  such in the composer, the parent panel and the intake packet; the child's
+ *  line is phrased and approved the same way). Absent = "parent". */
+export type OwnStepOrigin = "parent" | "practitioner";
+
 export interface OwnStep {
   slot: 1 | 2 | 3;
+  origin?: OwnStepOrigin;
   /** What the parent typed, verbatim (never read to the child). */
   sourceText: string;
   /** The phrased line, in both languages (the child's text). */
@@ -198,6 +205,10 @@ export function composePlanBook(def: PatternDef, c: PlanComposition): PlanBook {
     if (s.menuId === OWN_STEP) {
       // B-GA-11 disclosure, in the parent's panel: the line is theirs, phrased by Arbor, approved by them
       const own = c.ownStep!;
+      if (own.origin === "practitioner") {
+        // B-BOOK-79 door (a): a step relayed from the professional who works with the child — labelled, never presented as Arbor's
+        return { en: `${own.text.en} (a step from the professional who works with your child, in your words: "${own.sourceText}", phrased by Arbor and approved by you)`, he: `${own.text.he.m} (שלב מאיש או אשת המקצוע שעובדים עם הילד, במילים שלכם: "${own.sourceText}", נוסח על ידי Arbor ואושר על ידיכם)` };
+      }
       return { en: `${own.text.en} (your own step: "${own.sourceText}", phrased by Arbor and approved by you)`, he: `${own.text.he.m} (השלב שלכם: "${own.sourceText}", נוסח על ידי Arbor ואושר על ידיכם)` };
     }
     const item = def.menu.find((m) => m.id === s.menuId)!;

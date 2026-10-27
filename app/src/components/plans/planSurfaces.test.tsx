@@ -33,7 +33,8 @@ import PlanComposer from "./PlanComposer";
 import { getPattern } from "../../lib/library/plans/planBooks";
 import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import { activePlans, recordNight } from "../../lib/plans/planWeek";
-import { composerReducer, initialComposer, type ComposerAction, type ComposerState } from "../../lib/plans/composer";
+import { composerReducer, compositionOf, initialComposer, type ComposerAction, type ComposerState } from "../../lib/plans/composer";
+import { composePlanBook } from "../../lib/library/plans/composePlanBook";
 import type { PlanVisibility } from "../../lib/plans/planApi";
 import type { BookReaderChild } from "../../lib/library/types";
 import { sharedEscalation } from "../../content/hardMomentCards";
@@ -57,7 +58,7 @@ const visible = (h: string) => h.replace(/<[^>]*>/g, " ").replace(/&[a-z#0-9]+;/
 const VERDICT = /\d+\s?%|\bstreak\b|\b(?:low|medium|high) (?:risk|level)\b|\bon track\b|\bbehind\b|\bscore\b/i;
 const noop = () => {};
 const section = (props: Partial<React.ComponentProps<typeof PlansSection>>) =>
-  html(<PlansSection childName="Noa" planRows={[]} visibility={null} now={DAY_7} onOpenDoor={noop} onOpenPlan={noop} onKeep={noop} onChange={noop} onClose={noop} {...props} />);
+  html(<PlansSection childName="Noa" planRows={[]} visibility={null} now={DAY_7} onOpenDoor={noop} onOpenPlan={noop} onKeep={noop} onChange={noop} onClose={noop} onPrint={noop} {...props} />);
 
 describe("the journal's Everyday plans section (B-BOOK-77)", () => {
   it("renders no door while the server's table is unknown or the pattern is dark for this family", () => {
@@ -157,6 +158,21 @@ describe("the composer's stage order (B-BOOK-77)", () => {
     expect(steps).toContain("data-plan-swap");
     expect(steps).toContain("data-plan-minutes");
     expect(steps).toContain("data-plan-time");
+  });
+
+  it("door (a): the own-words entry offers whose step it is, and a step relayed from the child's professional is labelled as such on the step and in the parent panel", () => {
+    const steps = composer(run({ type: "open" }, { type: "redLinesDone" }));
+    expect(steps).toContain('data-plan-own-origin-pick="parent"');
+    expect(steps).toContain('data-plan-own-origin-pick="practitioner"');
+    expect(visible(steps)).toContain("A step from the professional who works with Noa");
+    const own = { slot: 2 as const, origin: "practitioner" as const, sourceText: "bubbles while sitting", aiPhrased: true as const, text: { en: "Step two: while I sit, I blow bubbles, slow and long.", he: { m: "שלב שני: בזמן שאני יושב, אני מנשף בועות, לאט.", f: "שלב שני: בזמן שאני יושבת, אני מנשפת בועות, לאט." } } };
+    const phrased = composer(run({ type: "open" }, { type: "redLinesDone" }, { type: "ownStepPhrased", step: own }));
+    expect(phrased).toContain('data-plan-own-origin="practitioner"');
+    expect(visible(phrased)).toContain("A step from the professional who works with Noa, in your words");
+    expect(phrased).toContain('data-plan-own-approve=""'); // still approved as the exact line, like any own step
+    const book = composePlanBook(def, { ...compositionOf(run({ type: "open" }, { type: "redLinesDone" }, { type: "ownStepPhrased", step: own }, { type: "ownStepApproved", at: "2026-10-26T19:00:00Z" }), "t"), approvedAt: "t", approvedBy: "t" });
+    expect(book.parent.planSteps[1].en).toContain("a step from the professional who works with your child");
+    expect(book.parent.planSteps[1].en).not.toContain("your own step");
   });
 
   it("the preview is the whole book in the reader, inside the parent register (no kid-register wrapper), behind the explicit approval tap", () => {

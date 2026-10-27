@@ -245,8 +245,14 @@ const isNativeRuntime = (): boolean => {
  */
 export async function openPrintableReport(doc: ReportDoc, childName: string, lang: UiLang = "en"): Promise<void> {
   const html = renderPrintableHtml(doc, childName, lang);
-  const filename = `${slugForFile(doc.title)}-${slugForFile(childName)}.html`;
+  await deliverPrintableHtml(html, `${slugForFile(doc.title)}-${slugForFile(childName)}.html`, doc.title);
+}
 
+/** The ONE delivery path for a printable document the device rendered: the
+ *  native share sheet (Capacitor), else a new tab that opens the print dialog,
+ *  else (popup blocked) the file itself. Nothing is uploaded. B-BOOK-79's
+ *  parent-only plan copy (lib/plans/planPrint) rides this same shell. */
+export async function deliverPrintableHtml(html: string, filename: string, title: string): Promise<void> {
   if (isNativeRuntime()) {
     try {
       const [{ Share }, { Filesystem, Directory, Encoding }] = await Promise.all([
@@ -256,7 +262,7 @@ export async function openPrintableReport(doc: ReportDoc, childName: string, lan
       const written = await Filesystem.writeFile({
         path: filename, data: html, directory: Directory.Cache, encoding: Encoding.UTF8,
       });
-      await Share.share({ title: doc.title, files: [written.uri] });
+      await Share.share({ title, files: [written.uri] });
       return;
     } catch {
       /* fall through to the browser path below */
@@ -282,7 +288,7 @@ export async function openPrintableReport(doc: ReportDoc, childName: string, lan
 /** Filesystem-safe slug; keeps the report name recognisable in a share sheet.
  *  Fallback is hyphenated on purpose: a bare lowercase word that happens to be
  *  a Material Symbols ligature trips the icon-subset guard as a phantom icon. */
-const slugForFile = (value: string) =>
+export const slugForFile = (value: string) =>
   (value || "arbor-report").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "arbor-report";
 
 /** LC-13 / item 8: the printable shell carries `lang` and `dir`, so a Hebrew

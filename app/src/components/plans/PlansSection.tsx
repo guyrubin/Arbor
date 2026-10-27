@@ -40,9 +40,11 @@ export interface PlansSectionProps {
   onKeep: (plan: ActivePlan) => void;
   onChange: (plan: ActivePlan) => void;
   onClose: (plan: ActivePlan) => void;
+  /** B-BOOK-79 door (b): the parent-only printed copy. */
+  onPrint: (plan: ActivePlan) => void;
 }
 
-export default function PlansSection({ childName, planRows, visibility, now, shelf, onOpenDoor, onOpenPlan, onKeep, onChange, onClose }: PlansSectionProps) {
+export default function PlansSection({ childName, planRows, visibility, now, shelf, onOpenDoor, onOpenPlan, onKeep, onChange, onClose, onPrint }: PlansSectionProps) {
   const { uiLang } = useLanguage();
   const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
   const s = (key: Parameters<typeof planString>[0], vars?: Record<string, string | number>) => planString(key, lang, vars);
@@ -58,7 +60,7 @@ export default function PlansSection({ childName, planRows, visibility, now, she
       {!shelf && <p className="mt-1 t-base leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{s("section.lede", { name: childName })}</p>}
       {running.length > 0 && (
         <ul className="mt-3 flex flex-col gap-3" style={{ listStyle: "none", margin: 0, padding: 0 }} data-plans-running="">
-          {running.map((p) => <RunningPlan key={p.doc.id} plan={p} lang={lang} onOpen={() => onOpenPlan(p)} onKeep={() => onKeep(p)} onChange={() => onChange(p)} onClose={() => onClose(p)} />)}
+          {running.map((p) => <RunningPlan key={p.doc.id} plan={p} lang={lang} onOpen={() => onOpenPlan(p)} onKeep={() => onKeep(p)} onChange={() => onChange(p)} onClose={() => onClose(p)} onPrint={() => onPrint(p)} />)}
         </ul>
       )}
       {doors.length > 0 && (
@@ -89,7 +91,7 @@ function Door({ def, lang, childName, onOpen }: { def: PatternDef; lang: "en" | 
   );
 }
 
-function RunningPlan({ plan, lang, onOpen, onKeep, onChange, onClose }: { plan: ActivePlan; lang: "en" | "he"; onOpen: () => void; onKeep: () => void; onChange: () => void; onClose: () => void }) {
+function RunningPlan({ plan, lang, onOpen, onKeep, onChange, onClose, onPrint }: { plan: ActivePlan; lang: "en" | "he"; onOpen: () => void; onKeep: () => void; onChange: () => void; onClose: () => void; onPrint: () => void }) {
   const s = (key: Parameters<typeof planString>[0], vars?: Record<string, string | number>) => planString(key, lang, vars);
   const nights = nightsCount(plan.doc);
   return (
@@ -106,10 +108,14 @@ function RunningPlan({ plan, lang, onOpen, onKeep, onChange, onClose }: { plan: 
             <button type="button" className={BTN} style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }} data-plan-keep="" onClick={onKeep}>{s("review.keep")}</button>
             <button type="button" className={BTN} style={QUIET} data-plan-change="" onClick={onChange}>{s("review.change")}</button>
             <button type="button" className={BTN} style={QUIET} data-plan-close="" onClick={onClose}>{s("review.close")}</button>
+            <button type="button" className={BTN} style={QUIET} data-plan-print="" onClick={onPrint}><Icon name="description" size={18} />{s("section.print")}</button>
           </div>
         </div>
       ) : (
-        <div className="mt-3"><button type="button" className={BTN} style={QUIET} data-plan-open="" onClick={onOpen}>{s("today.open")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" /></button></div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button type="button" className={BTN} style={QUIET} data-plan-open="" onClick={onOpen}>{s("today.open")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" /></button>
+          <button type="button" className={BTN} style={QUIET} data-plan-print="" onClick={onPrint}><Icon name="description" size={18} />{s("section.print")}</button>
+        </div>
       )}
     </li>
   );

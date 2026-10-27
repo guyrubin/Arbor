@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
 import { requestOpenSettings } from "../layout/settingsBus";
@@ -108,6 +110,8 @@ export function weekPrimaryAction(email: string): "grant" | "hint" {
 
 export default function TrustedSharing() {
   const { childProfile, openPaywall, setActiveTab, activeTab, behaviorLogs, milestones, actionPlans, approvedMemoryItems } = useArbor();
+  // B-BOOK-79: the Everyday plans (counts) ride the same shared input as the recipient's view.
+  const booksCol = useChildCollection<PlanBookDoc>(childProfile.id, "books");
   const { user } = useAuth();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
@@ -167,7 +171,7 @@ export default function TrustedSharing() {
         draft.scopes,
         draft.role === "professional",
         buildPacketInput(
-          { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems },
+          { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems, books: booksCol.items },
           Date.now()
         )
       );
@@ -175,7 +179,7 @@ export default function TrustedSharing() {
     } catch (err) {
       return { sections: null, blocked: err instanceof ClinicalLanguageError };
     }
-  }, [draft.scopes, draft.role, childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems]);
+  }, [draft.scopes, draft.role, childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, booksCol.items]);
 
   /* B-CAREPRO-26 — "Share {name}'s week" is the FIRST card: email → "See what
      they will see" (tap 1, the recipient's own packet, same builder + same
@@ -203,7 +207,7 @@ export default function TrustedSharing() {
         [...WEEK_SHARE_SCOPES],
         false, // the week card never grants the professional view
         buildPacketInput(
-          { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems },
+          { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems, books: booksCol.items },
           Date.now()
         )
       );
@@ -211,7 +215,7 @@ export default function TrustedSharing() {
     } catch (err) {
       return { sections: null, blocked: err instanceof ClinicalLanguageError };
     }
-  }, [weekPreviewing, childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems]);
+  }, [weekPreviewing, childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, booksCol.items]);
 
   // W2-CAREPRO c2 r1 (B-CAREPRO-NEW-c2-1j): what the co-parent will read this
   // week, AT REST — the newest of the parent's own moment words the week grant
@@ -223,7 +227,7 @@ export default function TrustedSharing() {
         [...WEEK_SHARE_SCOPES],
         false,
         buildPacketInput(
-          { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems },
+          { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems, books: booksCol.items },
           Date.now()
         )
       );
@@ -235,7 +239,7 @@ export default function TrustedSharing() {
     } catch {
       return null;
     }
-  }, [childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems]);
+  }, [childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, booksCol.items]);
   const weekday = (iso: string | null) =>
     iso ? new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-GB", { weekday: "short", timeZone: "UTC" }).format(Date.parse(`${iso}T12:00:00Z`)) : "";
 

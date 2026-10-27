@@ -8,7 +8,7 @@
  */
 import { authHeaders } from "../api";
 import type { ComposeRequest } from "./composer";
-import type { OwnStep } from "../library/plans/composePlanBook";
+import type { OwnStep, OwnStepOrigin } from "../library/plans/composePlanBook";
 import type { PlanBookDoc } from "../library/plans/planBookDoc";
 import type { BookLang, PatternId } from "../library/types";
 
@@ -37,7 +37,7 @@ export const fetchPlanVisibility = (): Promise<PlanVisibility> => call<PlanVisib
 /** B-GA-11: the parent's own words phrased into the book's register (one
  *  server-side model call, screened); NOT approved — the parent approves the
  *  exact line in the composer. */
-export const phraseOwnStep = (input: { pattern: PatternId; slot: 1 | 2 | 3; lang: BookLang; text: string }): Promise<{ step: Omit<OwnStep, "approvedAt"> }> =>
+export const phraseOwnStep = (input: { pattern: PatternId; slot: 1 | 2 | 3; lang: BookLang; text: string; origin?: OwnStepOrigin }): Promise<{ step: Omit<OwnStep, "approvedAt"> }> =>
   call("/api/plans/phrase", { method: "POST", body: JSON.stringify(input) });
 
 /** "This is {name}'s plan": the server validates and stamps the approval; the

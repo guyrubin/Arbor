@@ -36,7 +36,7 @@ import type { ArborConfig } from "../config/env.js";
 import type { GenerateJsonOptions } from "../ai/modelRouter.js";
 import { findClinicalDiagnosisTerm } from "../lib/clinicalScan.js";
 import { screenModelOutputLexical } from "../safety/outputScreenLexical.js";
-import { composePlanBook, OWN_STEP, validatePlanComposition, type OwnStep, type PlanComposition } from "../lib/library/plans/composePlanBook.js";
+import { composePlanBook, OWN_STEP, validatePlanComposition, type OwnStep, type OwnStepOrigin, type PlanComposition } from "../lib/library/plans/composePlanBook.js";
 import { getPattern } from "../lib/library/plans/planBooks.js";
 import { planBookId, readOwnStep, type PlanBookDoc } from "../lib/library/plans/planBookDoc.js";
 import { lintPlanBook } from "../lib/library/plans/planLint.js";
@@ -131,6 +131,8 @@ export function createPlansRouter(deps: PlansRouterDeps): express.Router {
     const text = typeof b.text === "string" ? b.text.trim().slice(0, OWN_WORDS_MAX) : "";
     if (text.length < 3) return refuse(res, 400, "plan_empty_words", "Write the step in a few words");
     const lang: BookLang = b.lang === "he" ? "he" : "en";
+    // B-BOOK-79 door (a): the parent relays a step from the professional who works with the child; the line is phrased and screened the same way, and labelled.
+    const origin: OwnStepOrigin = b.origin === "practitioner" ? "practitioner" : "parent";
     const viewer = viewerOf(req, deps.config);
     const verdict = canComposePlan({ patternId: def.id, lang, flags, viewer, owners });
     if (!verdict.ok) return refuse(res, 403, "plan_unsigned", "This plan has not been reviewed for your language yet", { pattern: def.id, lang });
@@ -146,6 +148,7 @@ export function createPlansRouter(deps: PlansRouterDeps): express.Router {
             "Rules: first person, present or future tense, 'we' carries the plan, never 'you', never should/must/have to, no digits except a time in minutes, no praise of the child, no verdict, no diagnosis noun, no medicine, no brand, at most 30 words.",
             `The book's pattern: ${def.parentWords.en}. The step is step ${slot} of three. Start the English line with "Step ${["one", "two", "three"][slot - 1]}:" and the Hebrew lines with "שלב ${["ראשון", "שני", "שלישי"][slot - 1]}:".`,
             "Return JSON with en (English), he_m (Hebrew, masculine first person) and he_f (Hebrew, feminine first person).",
+            ...(origin === "practitioner" ? ["The parent is relaying a step given by the professional who works with the child: keep its meaning exactly, add nothing."] : []),
             `Parent's words: "${text.replace(/"/g, "'")}"`,
           ].join("\n"),
           schema: { type: "OBJECT", required: ["en", "he_m", "he_f"], properties: { en: { type: "STRING" }, he_m: { type: "STRING" }, he_f: { type: "STRING" } } },
@@ -159,7 +162,7 @@ export function createPlansRouter(deps: PlansRouterDeps): express.Router {
     if (!line) return refuse(res, 422, "plan_phrase_refused", "Arbor could not phrase that line for a child's book", { reason: "empty" });
     const reason = screenPhrasedLine(def, slot, line, text);
     if (reason) return refuse(res, 422, "plan_phrase_refused", "Arbor could not phrase that line for a child's book", { reason });
-    const step: Omit<OwnStep, "approvedAt"> = { slot, sourceText: text, text: line, aiPhrased: true };
+    const step: Omit<OwnStep, "approvedAt"> = { slot, sourceText: text, text: line, aiPhrased: true, ...(origin === "practitioner" ? { origin } : {}) };
     res.json({ step, aiPhrased: true });
   });
 

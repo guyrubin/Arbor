@@ -43,6 +43,24 @@ export type PlanStringKey =
   | "stage.steps.ownApprove"
   | "stage.steps.ownDrop"
   | "stage.steps.ownRefused"
+  | "stage.steps.origin"
+  | "stage.steps.origin.parent"
+  | "stage.steps.origin.practitioner"
+  | "stage.steps.practitionerLabel"
+  | "stage.approved.print"
+  | "section.print"
+  | "print.kicker"
+  | "print.title"
+  | "print.approved"
+  | "print.nights"
+  | "print.steps"
+  | "print.box"
+  | "print.pages"
+  | "print.watchFor"
+  | "print.sources"
+  | "print.consent"
+  | "print.footer"
+  | "print.watermark"
   | "stage.steps.next"
   | "stage.box.title"
   | "stage.box.body"
@@ -118,6 +136,24 @@ const EN: Record<PlanStringKey, string> = {
   "stage.steps.ownApprove": "Approve this exact line",
   "stage.steps.ownDrop": "Drop it",
   "stage.steps.ownRefused": "Arbor could not phrase that line for a child's book. Try plainer words, or choose a step from the menu.",
+  "stage.steps.origin": "Whose step is this?",
+  "stage.steps.origin.parent": "My own words",
+  "stage.steps.origin.practitioner": "A step from the professional who works with {name}",
+  "stage.steps.practitionerLabel": "A step from the professional who works with {name}, in your words — phrased by Arbor's AI. Not in the book until you approve it.",
+  "stage.approved.print": "Print {name}'s plan",
+  "section.print": "Print",
+  "print.kicker": "Parent copy — not for the child's shelf",
+  "print.title": "{name}'s plan",
+  "print.approved": "Approved by a parent on {date}, for {days} days.",
+  "print.nights": "Nights confirmed by a parent so far: {count}",
+  "print.steps": "The steps, as the grown-ups do them",
+  "print.box": "The box",
+  "print.pages": "The book, page by page, as {name} hears it",
+  "print.watchFor": "When to stop the plan and talk to your family's doctor",
+  "print.sources": "Where the steps come from",
+  "print.consent": "Family data: this is {name}'s plan, printed by a parent from Arbor on {date}, with no photo and no grade of {name}. Share it only with people you trust with {name}'s information; they should not keep a copy longer than you want them to.",
+  "print.footer": "Arbor supports developmentally informed parent practice. It gives no medical advice and never grades a child; your family's own doctor comes first.",
+  "print.watermark": "{name}'s plan · parent copy · made with Arbor",
   "stage.steps.next": "Continue",
   "stage.box.title": "The box, and how long",
   "stage.box.body": "What goes in the box your child can choose from, and how many days the plan sits first at bedtime.",
@@ -194,6 +230,24 @@ const HE: Record<PlanStringKey, string> = {
   "stage.steps.ownApprove": "לאשר את השורה המדויקת הזאת",
   "stage.steps.ownDrop": "לוותר עליה",
   "stage.steps.ownRefused": "Arbor לא הצליחה לנסח את השורה הזאת לספר ילדים. נסו מילים פשוטות יותר, או בחרו שלב מהתפריט.",
+  "stage.steps.origin": "של מי השלב הזה?",
+  "stage.steps.origin.parent": "במילים שלי",
+  "stage.steps.origin.practitioner": "שלב מאיש או אשת המקצוע שעובדים עם {name}",
+  "stage.steps.practitionerLabel": "שלב מאיש או אשת המקצוע שעובדים עם {name}, במילים שלכם — נוסח על ידי ה-AI של Arbor. לא בספר עד שתאשרו.",
+  "stage.approved.print": "להדפיס את התוכנית של {name}",
+  "section.print": "להדפיס",
+  "print.kicker": "עותק להורים — לא למדף של הילד",
+  "print.title": "התוכנית של {name}",
+  "print.approved": "אושרה על ידי הורה ב-{date}, ל-{days} ימים.",
+  "print.nights": "לילות שהורה אישר עד עכשיו: {count}",
+  "print.steps": "השלבים, כמו שהמבוגרים עושים אותם",
+  "print.box": "הקופסה",
+  "print.pages": "הספר, עמוד אחרי עמוד, כמו ש{name} שומע/ת אותו",
+  "print.watchFor": "מתי לעצור את התוכנית ולדבר עם רופא/ת המשפחה",
+  "print.sources": "מאיפה השלבים מגיעים",
+  "print.consent": "מידע משפחתי: זאת התוכנית של {name}, שהודפסה על ידי הורה מ-Arbor ב-{date}, בלי תמונה ובלי ציון של {name}. שתפו אותה רק עם אנשים שאתם סומכים עליהם עם המידע של {name}; הם לא אמורים לשמור עותק יותר ממה שתרצו.",
+  "print.footer": "Arbor תומכת בפרקטיקה הורית מבוססת התפתחות. היא לא נותנת ייעוץ רפואי ולא מדרגת ילדים; רופא/ת המשפחה שלכם קודמים.",
+  "print.watermark": "התוכנית של {name} · עותק להורים · נוצר עם Arbor",
   "stage.steps.next": "להמשיך",
   "stage.box.title": "הקופסה, וכמה זמן",
   "stage.box.body": "מה נכנס לקופסה שהילד או הילדה יכולים לבחור ממנה, וכמה ימים התוכנית יושבת ראשונה לפני השינה.",

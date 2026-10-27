@@ -178,6 +178,17 @@ describe("B-GA-11: POST /plans/phrase", () => {
     expect(body.step.text.he.m).toMatch(/^שלב שני:/);
   });
 
+  it("B-BOOK-79 door (a): a step relayed from the professional who works with the child keeps its origin label; anything else is the parent's own", async () => {
+    const s = await serve(base, { uid: "owner-uid" });
+    servers.push(s);
+    const pro = await json(`${s.url}/plans/phrase`, { pattern: "plan-poo-sit", slot: 2, lang: "en", text: "we blow bubbles while sitting", origin: "practitioner" });
+    expect(pro.status).toBe(200);
+    expect((await pro.json()).step).toMatchObject({ slot: 2, origin: "practitioner", aiPhrased: true });
+    const own = await json(`${s.url}/plans/phrase`, { pattern: "plan-poo-sit", slot: 2, lang: "en", text: "we blow bubbles while sitting", origin: "doctor" });
+    expect(own.status).toBe(200);
+    expect((await own.json()).step.origin).toBeUndefined();
+  });
+
   it("the gate holds here too; empty words and a bad slot are refused", async () => {
     const outside = await serve(base, { uid: "family-1" });
     const owner = await serve(base, { uid: "owner-uid" });

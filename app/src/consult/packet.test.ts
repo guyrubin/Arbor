@@ -822,7 +822,7 @@ describe("B-CAREPRO-42 — the split clinician presets and their share scopes", 
     for (const p of SPLIT_CLINICIAN_AUDIENCES) {
       expect(CONSULT_PRESETS[p].audience).toBe(p);
       expect(CONSULT_PRESETS[p].sections).toEqual(SPLIT_CLINICIAN_PRESETS[p].sections);
-      expect(CONSULT_PRESETS[p].sections.slice(0, 10)).toEqual(CONSULT_PRESETS.therapist.sections);
+      expect(CONSULT_PRESETS[p].sections.slice(0, CONSULT_PRESETS.therapist.sections.length)).toEqual(CONSULT_PRESETS.therapist.sections);
       expect(CONSULT_PRESETS[p].dataCeiling).toEqual(CONSULT_PRESETS.therapist.dataCeiling);
       expect(CONSULT_PRESETS[p].clinicalTermScan).toBe(false);
     }

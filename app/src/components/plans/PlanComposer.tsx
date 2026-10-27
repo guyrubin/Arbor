@@ -23,7 +23,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { composeRequestOf, composerProblems, composerReducer, compositionOf, initialComposer, redLinesOf, slotMenu, type ComposerState } from "../../lib/plans/composer";
 import { composePlan, phraseOwnStep, PlanApiError } from "../../lib/plans/planApi";
 import { planString } from "../../lib/plans/planStrings";
-import { composePlanBook, fillStepLine, OWN_STEP, PLAN_TIMES, type PlanTime } from "../../lib/library/plans/composePlanBook";
+import { composePlanBook, fillStepLine, OWN_STEP, PLAN_TIMES, type OwnStepOrigin, type PlanTime } from "../../lib/library/plans/composePlanBook";
 import type { PatternDef } from "../../lib/library/plans/patterns";
 import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import type { BookLang, BookReaderChild } from "../../lib/library/types";
@@ -43,11 +43,13 @@ export interface PlanComposerProps {
   onClose: () => void;
   /** The Safety & escalation door (the care stage's one link). */
   onSafety?: () => void;
+  /** B-BOOK-79 door (b): the parent-only printed copy, offered once the plan is saved. */
+  onPrint?: (doc: PlanBookDoc) => void;
   /** Test seam. */
   initialState?: ComposerState;
 }
 
-export default function PlanComposer({ def, child, onSaved, onClose, onSafety, initialState }: PlanComposerProps) {
+export default function PlanComposer({ def, child, onSaved, onClose, onSafety, onPrint, initialState }: PlanComposerProps) {
   const { uiLang } = useLanguage();
   const lang: BookLang = uiLang === "he" ? "he" : "en";
   const s = (key: Parameters<typeof planString>[0], vars?: Record<string, string | number>) => planString(key, lang, vars);
@@ -56,6 +58,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, i
   const problems = composerProblems(def, state);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [savedDoc, setSavedDoc] = useState<PlanBookDoc | null>(null);
   const title = def.title[lang];
   const dir = lang === "he" ? "rtl" : "ltr";
 
@@ -66,6 +69,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, i
     try {
       const { doc } = await composePlan(child.id, composeRequestOf(state));
       await onSaved(doc);
+      setSavedDoc(doc);
       dispatch({ type: "approved" });
     } catch {
       setSaveError(true);
@@ -132,7 +136,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, i
         );
       })()}
 
-      {state.stage === "steps" && <StepsStage def={def} lang={lang} state={state} dispatch={dispatch} problems={problems.length} />}
+      {state.stage === "steps" && <StepsStage def={def} lang={lang} childName={name} state={state} dispatch={dispatch} problems={problems.length} />}
 
       {state.stage === "the-box" && (
         <section style={CARD} className="p-5" data-plan-stage="the-box">
@@ -180,17 +184,22 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, i
         <section style={CARD} className="p-5" data-plan-stage="approved">
           <h2 className="arbor-type-title" style={{ color: "var(--arbor-ink)" }}>{s("stage.approved.title", { name })}</h2>
           <p className="mt-2 t-base leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{s("stage.approved.body", { name, days: state.durationDays })}</p>
-          <div className="mt-4"><button type="button" className={BTN} style={PRIMARY} data-plan-done="" onClick={onClose}>{s("stage.approved.done")}</button></div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" className={BTN} style={PRIMARY} data-plan-done="" onClick={onClose}>{s("stage.approved.done")}</button>
+            {onPrint && savedDoc && <button type="button" className={BTN} style={QUIET} data-plan-print="" onClick={() => onPrint(savedDoc)}><Icon name="description" size={18} />{s("stage.approved.print", { name })}</button>}
+          </div>
         </section>
       )}
     </div>
   );
 }
 
-function StepsStage({ def, lang, state, dispatch, problems }: { def: PatternDef; lang: BookLang; state: ComposerState; dispatch: React.Dispatch<Parameters<typeof composerReducer>[2]>; problems: number }) {
+function StepsStage({ def, lang, childName, state, dispatch, problems }: { def: PatternDef; lang: BookLang; childName: string; state: ComposerState; dispatch: React.Dispatch<Parameters<typeof composerReducer>[2]>; problems: number }) {
   const s = (key: Parameters<typeof planString>[0], vars?: Record<string, string | number>) => planString(key, lang, vars);
   const [ownSlot, setOwnSlot] = useState<1 | 2 | 3>(2);
   const [ownText, setOwnText] = useState("");
+  // B-BOOK-79 door (a): whose step — the parent's own words, or a step relayed from the professional who works with the child.
+  const [ownOrigin, setOwnOrigin] = useState<OwnStepOrigin>("parent");
   const [phrasing, setPhrasing] = useState(false);
   const [refused, setRefused] = useState(false);
   const phrase = async () => {
@@ -198,7 +207,7 @@ function StepsStage({ def, lang, state, dispatch, problems }: { def: PatternDef;
     setPhrasing(true);
     setRefused(false);
     try {
-      const { step } = await phraseOwnStep({ pattern: def.id, slot: ownSlot, lang, text: ownText.trim() });
+      const { step } = await phraseOwnStep({ pattern: def.id, slot: ownSlot, lang, text: ownText.trim(), origin: ownOrigin });
       dispatch({ type: "ownStepPhrased", step });
     } catch (e) {
       setRefused(!(e instanceof PlanApiError) || e.status !== 401);
@@ -223,7 +232,7 @@ function StepsStage({ def, lang, state, dispatch, problems }: { def: PatternDef;
               {text && <p className="mt-1 t-base leading-relaxed" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }} dir="auto" data-plan-step-text="">{lang === "he" ? text.he[heGender(undefined)] : text.en}</p>}
               {isOwn && state.ownStep && (
                 <div className="mt-2 flex flex-col gap-2" data-plan-own-pending={state.ownStep.approvedAt ? undefined : ""}>
-                  <p className="t-sm" style={{ color: "var(--arbor-muted)" }}><Icon name="auto_awesome" size={16} /> {s("stage.steps.ownLabel")}</p>
+                  <p className="t-sm" style={{ color: "var(--arbor-muted)" }} data-plan-own-origin={state.ownStep.origin ?? "parent"}><Icon name="auto_awesome" size={16} /> {state.ownStep.origin === "practitioner" ? s("stage.steps.practitionerLabel", { name: childName }) : s("stage.steps.ownLabel")}</p>
                   <div className="flex flex-wrap gap-2">
                     {!state.ownStep.approvedAt && <button type="button" className={BTN} style={PRIMARY} data-plan-own-approve="" onClick={() => dispatch({ type: "ownStepApproved", at: new Date().toISOString() })}><Icon name="check" size={18} />{s("stage.steps.ownApprove")}</button>}
                     <button type="button" className={BTN} style={QUIET} data-plan-own-drop="" onClick={() => dispatch({ type: "ownStepDropped" })}>{s("stage.steps.ownDrop")}</button>
@@ -260,6 +269,13 @@ function StepsStage({ def, lang, state, dispatch, problems }: { def: PatternDef;
         <div className="mt-4 rounded-xl p-4" style={{ border: "1px dashed var(--arbor-rule-strong)" }} data-plan-own="">
           <p className="t-base font-semibold" style={{ color: "var(--arbor-ink)" }}>{s("stage.steps.own")}</p>
           <p className="mt-1 t-sm" style={{ color: "var(--arbor-muted)" }}>{s("stage.steps.ownHint")}</p>
+          <div className="mt-3 flex flex-wrap gap-2" role="radiogroup" aria-label={s("stage.steps.origin")} data-plan-own-origin-choice="">
+            {(["parent", "practitioner"] as const).map((o) => (
+              <button key={o} type="button" role="radio" aria-checked={ownOrigin === o} className={`${BTN} px-4`} style={ownOrigin === o ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" } : QUIET} data-plan-own-origin-pick={o} onClick={() => setOwnOrigin(o)}>
+                {o === "practitioner" ? s("stage.steps.origin.practitioner", { name: childName }) : s("stage.steps.origin.parent")}
+              </button>
+            ))}
+          </div>
           <div className="mt-2 flex flex-wrap gap-2">
             <select className="min-h-11 px-3" style={FIELD} value={ownSlot} data-plan-own-slot="" onChange={(e) => setOwnSlot(Number(e.target.value) as 1 | 2 | 3)}>
               {([1, 2, 3] as const).map((n) => <option key={n} value={n}>{s("stage.steps.step", { n })}</option>)}
