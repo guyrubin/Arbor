@@ -185,9 +185,19 @@ describe("B-KID-76 (a): the authored text names the child as the hero", () => {
     // the masculine token is never named for a girl
     expect(nameTheHero("הגיבור קם", "he", maya)).toBe("הגיבור קם");
   });
-  it("the reader passes the child (name + gender) to the authored fallback", () => {
+  it("B-KID-168: an English story names the child in English letters; a Hebrew one keeps the profile name", () => {
+    const noa = { name: "נועה כהן", nameLatin: "Noa Cohen", gender: "girl" as const };
+    expect(nameTheHero("The hero smiles.", "en", noa)).toBe("Noa smiles.");
+    expect(nameTheHero("הגיבורה קמה", "he", noa)).toBe("נועה קמה");
+    // an empty field keeps today's behaviour: the profile name, isolated at display time
+    expect(nameTheHero("The hero smiles.", "en", { ...noa, nameLatin: "  " })).toBe("נועה smiles.");
+    expect(authoredScene({ id: "b1", title: "One", spine: "The hero waves.", spineHe: "הגיבורה מנופפת." } as never, "en", undefined, noa).narration).toBe("Noa waves.");
+  });
+  it("the reader passes the child (name + English letters + gender) to the authored fallback", () => {
     const tab = readFileSync(path.resolve(__dirname, "..", "components", "tabs", "HeroJourneyTab.tsx"), "utf8");
-    expect(tab).toContain("({ name: childProfile.name, gender: childProfile.gender })");
+    expect(tab).toContain("({ name: childProfile.name, nameLatin: childProfile.nameLatin, gender: childProfile.gender })");
+    // B-KID-168: the choice question names the child in the story's language too.
+    expect(tab).toContain('kidsStoriesText("journey.decision", renderLang, { name: isolate(storyName(childProfile, renderLang), renderLang) })');
     expect(tab).toMatch(/authoredJourneyRender\(story, storyLang, [^\n]*, storyHero\)/); // B-KID-121 re-pin
   });
 });

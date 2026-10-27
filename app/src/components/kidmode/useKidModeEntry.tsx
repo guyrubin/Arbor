@@ -96,6 +96,7 @@ export function useKidModeEntry(onBeforeOpen?: () => void): {
     const folder = narrationFolder(language, snapshot.gender);
     const isCurrent = () => selected() && scopeRef.current === scope && heroSheetOwnerKey() === ownerKey
       && childRef.current?.id === snapshot.id && childRef.current?.name === snapshot.name
+      && childRef.current?.nameLatin === snapshot.nameLatin
       && childRef.current?.gender === snapshot.gender && languageRef.current === language
       && kidModeOpenFor(childRef.current);
     return () => {

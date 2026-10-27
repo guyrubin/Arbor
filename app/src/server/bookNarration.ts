@@ -7,7 +7,9 @@
  * Only the files that say the child's name are rendered per child (Five Smooth
  * Stones: cover, p1, p10.a/b/c per voice); every other file is the book's
  * shared set (lib/library/narrationFiles). The NAME is read from the child
- * record, never from the request: the body carries ids only (any other key or
+ * record, never from the request (B-KID-168: the English voice says the name
+ * in English letters when the parent saved them, `nameLatin`; the Hebrew
+ * voices say the profile name): the body carries ids only (any other key or
  * free text is refused). The words are the book's (lib/library/narrationTts:
  * the display text in English, the fully pointed Hebrew), with the style prompt
  * and direction tags; one narrator, Sulafat (books decision G13):
@@ -21,7 +23,7 @@
  * Each take (60 s timeout) is checked by the server's ASR when one is usable
  * (CHILD_ASR_PROVIDER): the child's first name must be heard; at most 3 takes;
  * a failed check stores nothing. A take that passes is stored at
- *   children/{cid}/books/{bookId}/narration/n-<hash of the first name>/<lang>/<file>
+ *   children/{cid}/books/{bookId}/narration/n-<hash of the first name(s)>/<lang>/<file>
  * and once the voice folder has every name file, the bookAssets doc switches
  * to that set (setId) and an older name's set is removed. Quota: per child
  * tts_book_30d (BOOK_TTS_PER_CHILD_30D, default 30 takes) and a global daily
@@ -40,6 +42,7 @@ import { bookNarrationFiles, isNameBearing, nameBearingFiles, VOICE_FOLDERS, typ
 import { bookTtsOf, NARRATION_VOICE, narrationTtsRequest } from "../lib/library/narrationTts.js";
 import { heroAvatarHash } from "../lib/heroSheetContract.js";
 import { heroFirstName } from "../lib/heroJourneyRender.js";
+import { storyName } from "../lib/storyName.js";
 import { providerRegion, routePolicyFor, selectProvider, type ProviderCandidate } from "../ai/capabilities/policy.js";
 import type { BookAssetBucket } from "./bookAssets.js";
 import type { BookAssetsDocStore } from "./bookSheet.js";
@@ -68,13 +71,16 @@ export const bookTtsSettings = () => ({
   endpoint: (process.env.BOOK_TTS_ENDPOINT || "https://texttospeech.googleapis.com").replace(/\/+$/, ""),
 });
 
-/** The narration set of a first name: `n-<hash>` (a new name is a new set). */
-export const narrationSetId = (firstName: string): string => `n-${heroAvatarHash(`book-narration-v1|${firstName.normalize("NFC")}`)}`;
+/** The narration set of a first name: `n-<hash>` (a new name is a new set).
+ *  One set serves every voice folder, so the English-letter first name joins
+ *  the hash when there is one (B-KID-168); without it the set is unchanged. */
+export const narrationSetId = (firstName: string, latinFirst = ""): string =>
+  `n-${heroAvatarHash(`book-narration-v1|${firstName.normalize("NFC")}${latinFirst ? `|en:${latinFirst.normalize("NFC")}` : ""}`)}`;
 
 /* ── The child record (the name and the Hebrew form) ─────────────────────── */
 
 export interface NarrationChildSource {
-  load(uid: string, childId: string): Promise<{ name: string | null; gender: string | null } | null>;
+  load(uid: string, childId: string): Promise<{ name: string | null; nameLatin?: string | null; gender: string | null } | null>;
   /** False in the local sandbox: the record lives in the browser. */
   readonly strict: boolean;
 }
@@ -90,7 +96,11 @@ export class FirestoreNarrationChildSource implements NarrationChildSource {
     const snap = await this.db.doc(`users/${uid}/children/${childId}`).get();
     if (!snap.exists) return null;
     const d = snap.data() ?? {};
-    return { name: typeof d.name === "string" ? d.name : null, gender: typeof d.gender === "string" ? d.gender : null };
+    return {
+      name: typeof d.name === "string" ? d.name : null,
+      nameLatin: typeof d.nameLatin === "string" ? d.nameLatin : null,
+      gender: typeof d.gender === "string" ? d.gender : null,
+    };
   }
 }
 
@@ -243,6 +253,9 @@ export function createBookNarrationRouter(deps: BookNarrationDeps): express.Rout
     const owner = (req as { user?: { uid?: string } }).user?.uid || "local-sandbox";
     const record = await deps.children.load(owner, childId).catch(() => null);
     const firstName = heroFirstName({ name: record?.name ?? "" });
+    // B-KID-168: the name the voice says, in this folder's language.
+    const latinFirst = record?.nameLatin?.trim() ? heroFirstName({ name: record.nameLatin }) : "";
+    const spoken = folder === "en" ? heroFirstName({ name: storyName(record, "en") }) : firstName;
     if (!firstName && !(deps.mock && !deps.children.strict)) return refuse(res, 409, "book_narration_no_name", "The child's name is not saved yet");
     if (folder !== "en" && deps.children.strict) {
       const he = record?.gender === "girl" ? "he-f" : "he-m";
@@ -255,7 +268,7 @@ export function createBookNarrationRouter(deps: BookNarrationDeps): express.Rout
     try {
       const bucket = await deps.getBucket();
       if (!bucket) return refuse(res, 503, "book_storage_unavailable", "Book storage is not available");
-      const setId = narrationSetId(firstName || "sandbox");
+      const setId = narrationSetId(firstName || "sandbox", latinFirst);
       const stem = file.replace(/\.mp3$/, "");
       const relOf = (ext: string) => `narration/${setId}/${folder}/${stem}.${ext}`;
       const exists = async (rel: string) => (await bucket.file(bookAssetObject(childId, bookId, rel)).exists())[0];
@@ -269,7 +282,7 @@ export function createBookNarrationRouter(deps: BookNarrationDeps): express.Rout
         } catch {
           return refuse(res, 503, "book_narration_policy", "The book's voice is not available here");
         }
-        const tts = narrationTtsRequest(book, folder, file, firstName || "sandbox");
+        const tts = narrationTtsRequest(book, folder, file, spoken || "sandbox");
         if (!tts) return refuse(res, 400, "book_narration_bad_request", "No TTS input for this file");
         const s = bookTtsSettings();
         for (let t = 0; t < BOOK_TTS_TAKES && !stored; t++) {
@@ -285,7 +298,7 @@ export function createBookNarrationRouter(deps: BookNarrationDeps): express.Rout
             return refuse(res, 503, "book_narration_busy", "The book's voice is busy. Please try again later.", { retryable: true });
           }
           // the machine ear: the child's first name must be in the take
-          if (deps.check && !deps.mock && !(await deps.check(take.audio, take.ext, firstName, tts.lang).catch(() => false))) continue;
+          if (deps.check && !deps.mock && !(await deps.check(take.audio, take.ext, spoken, tts.lang).catch(() => false))) continue;
           const rel = relOf(take.ext);
           const f = bucket.file(bookAssetObject(childId, bookId, rel));
           if (!f.save) return refuse(res, 503, "book_storage_unavailable", "Book storage is not available");

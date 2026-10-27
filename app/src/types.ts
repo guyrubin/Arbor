@@ -3,6 +3,13 @@ import type { PlayDomain } from "./playbank/content";
 export interface ChildProfile {
   id: string;
   name: string;
+  /**
+   * B-KID-168: the name in English letters, typed by the parent (optional).
+   * English stories, their choices and narration use it (lib/storyName);
+   * everything else keeps `name`. Not a MODEL_PROFILE_FIELDS key: only an
+   * English story request carries it, as the hero's name.
+   */
+  nameLatin?: string;
   age: number;
   languages: string[];
   schoolContext: string;
