@@ -85,6 +85,19 @@ describe("K2 2c: the narration builder", () => {
     expect(ensureBookNarration({ id: "kid2", name: "" }, "en")).toBeNull();
   });
 
+  it("B-KID-168: a new name in English letters runs every folder once (one set serves both names); none keeps the saved marker", async () => {
+    const storage = mem();
+    const child = { id: "kid1", name: "Maya Cohen", gender: "girl" as const };
+    await ensureBookNarration(child, "he-f", fake().deps, storage);
+    resetBookNarrationForTest();
+    expect(ensureBookNarration({ ...child, nameLatin: "  " }, "he-f", fake().deps, storage)).toBeNull(); // blank = today's marker
+    const named = fake();
+    await ensureBookNarration({ ...child, nameLatin: "Maya" }, "he-f", named.deps, storage);
+    expect(named.bodies).toHaveLength(5);
+    resetBookNarrationForTest();
+    expect(ensureBookNarration({ ...child, nameLatin: "Maya" }, "he-f", fake().deps, storage)).toBeNull();
+  });
+
   it("wired: the book sheet hands over after a commit; the parent shell runs it for the folder the child hears", () => {
     const sheet = readFileSync(path.join(here, "buildBookSheet.ts"), "utf8");
     expect(sheet).toContain('if (r.status === "complete" || r.status === "already") void import("./buildBookNarration").then((m) => m.afterBookSheet(childId))');

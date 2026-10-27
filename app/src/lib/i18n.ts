@@ -980,6 +980,9 @@ export const en: Dict = {
   "cp.continuePlan": "Continue the plan",
   "cp.createPlan": "Create a growth plan",
   "cp.f.interests": "What {name} is into",
+  // B-KID-168: the name in English letters — ProfileEditDrawer
+  "profile.nameLatin.label": "Name in English letters (optional)",
+  "profile.nameLatin.helper": "Used only in English stories, their choices and narration.",
   // CI-29: profile.interests — ProfileEditDrawer section
   "profile.interests.label": "What is {name} really into right now?",
   "profile.interests.helper": "Arbor uses this to frame activities in things {name} already loves.",
@@ -3567,6 +3570,9 @@ export const he: Dict = {
   "cp.f.school": "הקשר בית הספר",
   "cp.f.focus": "מיקוד התפתחותי נוכחי",
   "cp.f.interests": "מה {name} אוהב/ת",
+  // B-KID-168: the name in English letters — ProfileEditDrawer (Hebrew)
+  "profile.nameLatin.label": "השם באותיות לועזיות (לא חובה)",
+  "profile.nameLatin.helper": "משמש רק בסיפורים באנגלית, בבחירות שלהם ובהקראה.",
   // CI-29: profile.interests — ProfileEditDrawer section (Hebrew)
   "profile.interests.label": "במה {name} ממש מוקסם/ת כרגע?",
   "profile.interests.helper": "ארבור משתמש בזה כדי לעצב פעילויות סביב מה ש{name} כבר אוהב/ת.",

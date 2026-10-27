@@ -131,7 +131,7 @@ function defaultStorage(): NarrationStorage {
   catch { return null; }
 }
 type NarrationContext = NarrationBuildScope & {
-  name: string; gender?: BookReaderChild["gender"]; folder: VoiceFolder; storage: NarrationStorage;
+  name: string; latin: string; gender?: BookReaderChild["gender"]; folder: VoiceFolder; storage: NarrationStorage;
 };
 const contexts = new Map<string, NarrationContext>();
 const running = new Map<string, { ctx: NarrationContext; job: Promise<NarrationBuildResult> }>();
@@ -140,7 +140,10 @@ const completed = new Set<string>();
 // The v2 marker adds ownership; unowned legacy success markers are not trusted.
 const MARK = (childId: string) => `arbor.bookNarration.${childId}`;
 const contextKey = (owner: string, child: string) => JSON.stringify([owner, child]);
-const keyOf = (c: NarrationContext) => JSON.stringify([c.name, c.gender ?? "", c.folder]);
+// B-KID-168: the server keys the child's set on both names (one set serves
+// every voice), so a new name in English letters re-renders each folder once.
+// Without one, the key and its saved marker are unchanged.
+const keyOf = (c: NarrationContext) => JSON.stringify(c.latin ? [c.name, c.gender ?? "", c.folder, c.latin] : [c.name, c.gender ?? "", c.folder]);
 const jobKey = (child: string, c: NarrationContext) => JSON.stringify([c.ownerKey, child, keyOf(c)]);
 const markerOf = (c: NarrationContext) => JSON.stringify({ v: 2, owner: c.ownerKey, configuration: keyOf(c) });
 const currentContext = (child: string, c: NarrationContext) => c.isCurrent()
@@ -172,7 +175,7 @@ function start(childId: string, ctx: NarrationContext, deps?: NarrationBuilderDe
 /** Explicit parent handover only. Share in-flight work and confirmed success;
  * a refusal, offline attempt or retired scope never poisons a later entry. */
 export function ensureBookNarration(
-  child: { id: string; name?: string | null; gender?: BookReaderChild["gender"] } | null | undefined,
+  child: { id: string; name?: string | null; nameLatin?: string | null; gender?: BookReaderChild["gender"] } | null | undefined,
   folder: VoiceFolder,
   deps?: NarrationBuilderDeps,
   storage: NarrationStorage = defaultStorage(),
@@ -184,7 +187,7 @@ export function ensureBookNarration(
   if (ownerKey === "signed-out" || ownerKey !== heroSheetOwnerKey() || scope?.isCurrent() === false) return null;
   const slot = contextKey(ownerKey, child.id);
   const previous = contexts.get(slot);
-  const next: NarrationContext = { name, gender: child.gender, folder, ownerKey,
+  const next: NarrationContext = { name, latin: (child.nameLatin ?? "").trim(), gender: child.gender, folder, ownerKey,
     isCurrent: scope?.isCurrent ?? (() => heroSheetOwnerKey() === ownerKey), storage };
   const ctx = previous && currentContext(child.id, previous) && keyOf(previous) === keyOf(next) ? previous : next;
   contexts.set(slot, ctx);

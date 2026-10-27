@@ -32,6 +32,7 @@ import { useToast } from "../../context/ToastContext";
 import { api, EscalationRequiredError } from "../../lib/api";
 import { isolate } from "../../lib/i18n";
 import { bedtimePrefillLatest } from "../../lib/bedtimeStories";
+import { storyName } from "../../lib/storyName";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { programStoryTheme } from "../../lib/programPage";
 import type { ProgramEnrolment } from "../../lib/programs/enrolment";
@@ -152,7 +153,8 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
     async () => {
       try {
         return await api.generateBedtimeStory({
-        childName: childProfile.name,
+        // B-KID-168: an English story names the child in English letters when the parent saved them.
+        childName: storyName(childProfile, aiLang),
         age: childProfile.age,
         dayEvents: validEvents.map((e) => ({ description: e.description })),
         avatarDescription: avatarStyle ? `Avatar style: ${avatarStyle}` : undefined,
