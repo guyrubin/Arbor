@@ -54,6 +54,9 @@ export const ACTIVATION_LOOP_EVENTS = [
   "today_action_accepted",
   "today_action_outcome",
   "keep_this",
+  // BD-54: "first useful action = plan" — a parent approving an Everyday plan
+  // (the composer's explicit tap) is a parent doing something with the record.
+  "plan_approved",
 ] as const;
 export type ActivationLoopEvent = (typeof ACTIVATION_LOOP_EVENTS)[number];
 

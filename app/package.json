@@ -6,9 +6,10 @@
   "scripts": {
     "predev": "node scripts/copy-mediapipe-wasm.mjs",
     "dev": "tsx server.ts",
-    "build": "node scripts/copy-mediapipe-wasm.mjs && vite build && tsx scripts/build-public-guides.ts && node scripts/stamp-sw.mjs && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build": "node scripts/copy-mediapipe-wasm.mjs && vite build && tsx scripts/build-public-guides.ts && tsx scripts/build-plan-landing.ts && node scripts/stamp-sw.mjs && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "build:hosting:prod": "node scripts/check-hosting-env.mjs && npm run build",
     "build:icon-font": "node scripts/build-icon-font.mjs",
+    "plans:packet": "tsx scripts/plan-review-packet.ts",
     "start": "node dist/server.cjs",
     "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true}); fs.rmSync('server.js',{force:true});\"",
     "lint": "tsc --noEmit",

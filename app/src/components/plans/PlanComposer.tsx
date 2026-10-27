@@ -23,6 +23,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { composeRequestOf, composerProblems, composerReducer, compositionOf, initialComposer, redLinesOf, slotMenu, type ComposerState } from "../../lib/plans/composer";
 import { composePlan, phraseOwnStep, PlanApiError } from "../../lib/plans/planApi";
 import { planString } from "../../lib/plans/planStrings";
+import { trackPlanApproved } from "../../lib/kpiEvents";
 import { composePlanBook, fillStepLine, OWN_STEP, PLAN_TIMES, type OwnStepOrigin, type PlanTime } from "../../lib/library/plans/composePlanBook";
 import type { PatternDef } from "../../lib/library/plans/patterns";
 import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
@@ -70,6 +71,8 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
       const { doc } = await composePlan(child.id, composeRequestOf(state));
       await onSaved(doc);
       setSavedDoc(doc);
+      // BD-54: the first useful action — ids only (pattern, language, own-step origin).
+      trackPlanApproved({ pattern: def.id, lang, ownStep: state.ownStep ? (state.ownStep.origin ?? "parent") : "none" });
       dispatch({ type: "approved" });
     } catch {
       setSaveError(true);
