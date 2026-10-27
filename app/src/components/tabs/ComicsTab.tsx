@@ -415,7 +415,7 @@ export default function ComicsTab() {
         <StoryTextReader
           key={`${partitionKey}|${openRun.id}`}
           run={openRun}
-          hero={{ name: childProfile.name, gender: childProfile.gender }}
+          hero={{ name: childProfile.name, nameLatin: childProfile.nameLatin, gender: childProfile.gender }}
           onBack={() => setOpenRunId(null)}
         />
       </RegisterShell>

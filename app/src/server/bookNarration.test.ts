@@ -126,6 +126,24 @@ describe("K2 2b: the narration route takes ids only, and only the files that say
     expect((await admin.post({ bookId: BOOK, lang: "en", file: "p1.mp3" })).body.code).toBe("book_sheet_admin");
     await admin.stop();
   });
+
+  it("B-KID-168: the English voice says the name in English letters; Hebrew keeps the profile name; one set keyed on both", async () => {
+    const heard: string[] = [];
+    const children: NarrationChildSource = { strict: true, async load() { return { name: "נועה כהן", nameLatin: "Noa Cohen", gender: "girl" }; } };
+    const s = await serve({ children, check: async (_a, _e, name) => { heard.push(name); return true; } });
+    const set = narrationSetId("נועה", "Noa");
+    const en = await s.post({ bookId: BOOK, lang: "en", file: "p1.mp3" });
+    expect(en.body).toMatchObject({ ok: true, path: `narration/${set}/en/p1.mp3` });
+    expect(s.calls[0].text.startsWith("Today, Noa is David")).toBe(true);
+    const he = await s.post({ bookId: BOOK, lang: "he-f", file: "p1.mp3" });
+    expect(he.body).toMatchObject({ ok: true, path: `narration/${set}/he-f/p1.mp3` });
+    expect(s.calls[1].text).toContain("נועה הִיא דָּוִד");
+    expect(heard).toEqual(["Noa", "נועה"]); // the machine ear listens for the name the voice says
+    await s.stop();
+    // Without the field the set is the one every child already has.
+    expect(narrationSetId("Maya", "")).toBe(narrationSetId("Maya"));
+    expect(set).not.toBe(narrationSetId("נועה"));
+  });
 });
 
 describe("K2 2b: the check, the quota, the policy", () => {

@@ -60,6 +60,7 @@ import { PageHeader, cardCls } from "../ui/kit";
 import { T, METRIC_VARS } from "../../lib/tokens";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { authoredChoice, authoredScene, completeRender, type StoryHero } from "../../lib/heroJourneyRender";
+import { storyName } from "../../lib/storyName";
 import KidLibrary from "../kidmode/KidLibrary";
 import { kidBookOpenable, kidBooks, kidShelfFor } from "../kidmode/kidBooks";
 import { useChildLibraryBooks } from "../kidmode/useChildLibraryBooks";
@@ -120,9 +121,23 @@ export function journeyMemoKey(childId: string, storyId: string, lang: string, d
   return `${childId}|${storyId}|${lang}|${day}`;
 }
 
+/** B-KID-168: the names each child's memoed renders were written with. */
+const journeyMemoNames = new Map<string, string>();
+
 /** Test seam — the map is module state by design. */
 export function clearJourneyMemo(): void {
   journeyMemo.clear();
+  journeyMemoNames.clear();
+}
+
+/** B-KID-168: today's memo holds words written with the child's names of that
+ *  moment. Once the profile name or the name in English letters changes, this
+ *  child's memoed renders go, so the next Play writes the new name. */
+export function forgetRenamedJourneys(childId: string, names: string): void {
+  const before = journeyMemoNames.get(childId);
+  journeyMemoNames.set(childId, names);
+  if (before === undefined || before === names) return;
+  for (const key of [...journeyMemo.keys()]) if (key.startsWith(`${childId}|`)) journeyMemo.delete(key);
 }
 
 /** Remember today's personalised render (key carries the story language). */
@@ -214,9 +229,11 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       childId: childProfile.id,
       story,
       lang,
-      firstName: childProfile.name?.split(" ")[0] ?? "",
+      // B-KID-168: the story's language picks the name (English letters for an
+      // English story when the parent saved them); a new name is a new render.
+      firstName: storyName(childProfile, lang).split(" ")[0] ?? "",
       remote: rendersCol.items,
-      generate: (beforeDispatch) => api.generateHeroJourney({ storyId: story.id, childName: childProfile.name, age: childProfile.age, language: lang }, beforeDispatch),
+      generate: (beforeDispatch) => api.generateHeroJourney({ storyId: story.id, childName: storyName(childProfile, lang), age: childProfile.age, language: lang }, beforeDispatch),
       persistRemote: (doc) => { void rendersCol.upsert(doc).catch(() => { /* the device copy stands */ }); },
       fresh,
       isCurrent: () => !isKidModeActive() && parentRequestEpoch.current === epoch,
@@ -266,7 +283,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     if (!story) kidPinInit.current = null;
     else if (!kidBookOpenable(story, { lang: storyLang, ageMonths: ageMonthsFromProfile(childProfile), showAllAges: loadShowAllAges("hero-journeys") })) kidPinInit.current = { story, refused: true, lang: kidTellLang };
     else {
-      const opening = kidBookOpening(story, childProfile.id, kidTellLang, kidArtTheme(story), { name: childProfile.name, gender: childProfile.gender }, dayKey(new Date()));
+      const opening = kidBookOpening(story, childProfile.id, kidTellLang, kidArtTheme(story), { name: childProfile.name, nameLatin: childProfile.nameLatin, gender: childProfile.gender }, dayKey(new Date()));
       kidPinInit.current = { story, refused: false, render: opening.render, personalised: opening.personalised, lang: kidTellLang };
     }
   }
@@ -309,8 +326,8 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   // Gate switches cannot flash an earlier parent's personalized words while
   // effects settle. The child branch derives its authored render synchronously.
   const render = useMemo(() => kidMode && activeStory
-    ? authoredJourneyRender(activeStory, storyLang, undefined, { name: childProfile.name, gender: childProfile.gender })
-    : storedRender, [kidMode, activeStory, storyLang, childProfile.name, childProfile.gender, storedRender]);
+    ? authoredJourneyRender(activeStory, storyLang, undefined, { name: childProfile.name, nameLatin: childProfile.nameLatin, gender: childProfile.gender })
+    : storedRender, [kidMode, activeStory, storyLang, childProfile.name, childProfile.nameLatin, childProfile.gender, storedRender]);
   // B-KID-124: a pinned book the gate refuses lands on ITS cover with Read,
   // never on a bare grid.
   const [refusedPin, setRefusedPin] = useState<HeroStorySpec | null>(() => (kidPinInit.current?.refused ? kidPinInit.current.story : null));
@@ -350,7 +367,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   // B-KID-23 F-1: a beat or choice the model dropped is filled from the
   // authored story in the render's language (aiLang), never the English spine.
   // B-KID-76 (a): the child the authored text names as its hero.
-  const storyHero = useMemo<StoryHero>(() => ({ name: childProfile.name, gender: childProfile.gender }), [childProfile.name, childProfile.gender]);
+  const storyHero = useMemo<StoryHero>(() => ({ name: childProfile.name, nameLatin: childProfile.nameLatin, gender: childProfile.gender }), [childProfile.name, childProfile.nameLatin, childProfile.gender]);
   const { scenes, choices } = useMemo(
     () => (activeStory && render ? completeRender(activeStory, render, renderLang, storyHero) : { scenes: [] as HeroSceneRender[], choices: [] as HeroChoiceRender[] }),
     [activeStory, render, renderLang, storyHero],
@@ -402,6 +419,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       // KID-25: a second Play of tonight's story makes NO network call.
       // B-KID-121: the memo, the request and the render all carry the story language.
       const memoKey = journeyMemoKey(childProfile.id, story.id, storyLang, dayKey(new Date()));
+      forgetRenamedJourneys(childProfile.id, `${childProfile.name ?? ""}|${childProfile.nameLatin ?? ""}`);
       const memoed = journeyMemo.get(memoKey);
       // B-KID-127: a kept render opens with zero network; only a story never
       // written for this child is generated (and then kept).
@@ -737,7 +755,8 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     !choiceId && (
       <div className="space-y-2 w-full max-w-xl mx-auto" data-kid-question={kidMode ? "" : undefined}>
         <p lang={renderLang} dir={langDir(renderLang)} className="text-[11px] uppercase tracking-widest font-bold text-center" style={{ color: "var(--arbor-green-ink)" }}>
-          {kidsStoriesText("journey.decision", renderLang, { name: isolate(childProfile.name ?? "", renderLang) })}
+          {/* B-KID-168: the question is part of the story — English asks in English letters. */}
+          {kidsStoriesText("journey.decision", renderLang, { name: isolate(storyName(childProfile, renderLang), renderLang) })}
         </p>
         {kidMode
           ? <div data-kid-choices="" className="space-y-2"><DecisionChoices choices={choices} lang={renderLang} heroName={childProfile.name?.split(" ")[0]} onChoose={chooseOption} /></div>

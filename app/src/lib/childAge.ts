@@ -271,7 +271,8 @@ export interface AgePatch {
  * resolveHeroUrl reads the real photo as the hero.
  */
 // B-SHELL-39: Undo of a describe readback restores fields that were absent before it.
-export const CLEARABLE_PROFILE_FIELDS: readonly string[] = ["birthDate", "birthMonth", "onboardingDraft", "avatar", "comicAvatarUrl", "interests", "interestsUpdatedAt", "focusAreas", "parentPreferences", "describedItems"];
+// B-KID-168: `nameLatin` — a parent who empties the English-letter name removes it.
+export const CLEARABLE_PROFILE_FIELDS: readonly string[] = ["birthDate", "birthMonth", "onboardingDraft", "avatar", "comicAvatarUrl", "interests", "interestsUpdatedAt", "focusAreas", "parentPreferences", "describedItems", "nameLatin"];
 
 /**
  * B-CAREPRO-34 — the migration: profile fields that are RETIRED from the child

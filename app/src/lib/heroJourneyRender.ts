@@ -6,11 +6,14 @@
 import type { ChildProfile, HeroBeat, HeroChoice, HeroChoiceRender, HeroJourneyRender, HeroSceneRender, HeroStorySpec } from "../types";
 import { HERO_NAME_FALLBACK } from "./heroNameFallback";
 import { isolate } from "./bidi";
+import { storyName } from "./storyName";
 
 /** B-KID-76 (a): who the authored text names as its hero — the child. */
 export interface StoryHero {
   /** The child's name as stored on the profile (the first word is used). */
   name?: string;
+  /** B-KID-168: the parent's spelling in English letters; English text uses it. */
+  nameLatin?: string;
   gender?: ChildProfile["gender"];
 }
 
@@ -45,7 +48,9 @@ const HE_HERO_F = /(^|[^א-ת])(ו|ש|כש|מ|וכש)?(ה|ל)גיבורה(?![א-
  *  keeps "the hero". Text only: image prompts never pass through here
  *  (B-KID-40). */
 export function nameTheHero(text: string, lang: "en" | "he", hero?: StoryHero): string {
-  const name = heroFirstName(hero);
+  // B-KID-168: an English story names the child in English letters when the
+  // parent saved them (lib/storyName); Hebrew keeps the profile name.
+  const name = heroFirstName(hero && { ...hero, name: storyName(hero, lang) });
   if (!name || !text) return text;
   if (lang === "en") return text.replace(EN_HERO, (_m, poss: string | undefined) => (poss ? `${isolate(name)}'s` : name));
   const hebrewName = /^[א-ת]/.test(name);
