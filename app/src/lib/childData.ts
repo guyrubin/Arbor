@@ -164,6 +164,23 @@ export async function exportChildData(uid: string | undefined, child: ChildProfi
         }
       }
     }
+    // B-BOOK-20: A stale or corrupt device/server snapshot can contain a row
+    // from another owner/child under this child's Studio collection key.
+    // Never place those rows in an export for the selected child. The partial
+    // receipt stays honest so an incomplete dataset is not reported as complete.
+    // Preserve all in-scope records verbatim (even malformed creations): this
+    // is a privacy export, not a catalogue validation/repair operation.
+    if (out.exportReceipt.collections.studioCreations === "included") {
+      const rows = out.collections.studioCreations ?? [];
+      const expectedOwner = uid || "local";
+      const scoped = rows.filter((value) => {
+        if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+        const row = value as { ownerId?: unknown; childId?: unknown };
+        return row.ownerId === expectedOwner && row.childId === child.id;
+      });
+      if (scoped.length !== rows.length) out.exportReceipt.collections.studioCreations = "unavailable";
+      out.collections.studioCreations = scoped;
+    }
     session.assertCurrent();
     out.privateBookAssets = await session.read(() => exportPrivateBookAssets(uid, child.id, out.collections.bookAssets, {
       signal: session.signal, metadataComplete: out.exportReceipt.collections.bookAssets === "included",
