@@ -341,6 +341,9 @@ export interface PlanStep {
   minutes?: number;
   plateId: string;
   pose: Pose;
+  /** B-GA-11: the line was phrased by the model from the parent's words and
+   *  approved by the parent (shown as AI-phrased in the composer and the panel). */
+  aiPhrased?: true;
 }
 
 /** One thing the parent put in the box (the child taps it on the box page). */

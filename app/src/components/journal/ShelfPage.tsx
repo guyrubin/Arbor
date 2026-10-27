@@ -70,6 +70,8 @@ export interface ShelfPageProps {
    *  entries as the FIRST ordinary row under their day head — never a lifted
    *  accent. On Words they are the child's kept quote, which is not a signal row. */
   leadWords?: { id: string; text: string; day: string } | null;
+  /** B-BOOK-77: this shelf's Everyday Plans (running + doors), after the entries. */
+  plansSection?: React.ReactNode;
 }
 
 /** P7-DESIGN fix r1 (framer ruling R5): the entries with the shelf's words as
@@ -133,6 +135,7 @@ export default function ShelfPage({
   onBack,
   onAdd,
   primaryMoveProps,
+  plansSection,
 }: ShelfPageProps) {
   const { t, uiLang } = useLanguage();
   const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
@@ -344,6 +347,7 @@ export default function ShelfPage({
           </div>
         ))}
       </section>
+      {plansSection}
     </div>
   );
 }

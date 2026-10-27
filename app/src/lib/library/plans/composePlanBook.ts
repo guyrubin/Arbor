@@ -20,10 +20,29 @@ import type { PatternDef, PatternFramePage, PlanMenuItem } from "./patterns";
 
 /** The parent's choices for one child (also the persisted document's core —
  *  lib/library/plans/planBookDoc). */
+/** B-BOOK-77 / B-GA-11: a step in the parent's OWN words, phrased server-side
+ *  into the book's register (one model call at composition, never at read
+ *  time), screened, shown as AI-phrased, and APPROVED by the parent exactly
+ *  as the child will hear it. The menu id of that slot is `OWN_STEP`. */
+export interface OwnStep {
+  slot: 1 | 2 | 3;
+  /** What the parent typed, verbatim (never read to the child). */
+  sourceText: string;
+  /** The phrased line, in both languages (the child's text). */
+  text: BookLine;
+  aiPhrased: true;
+  /** ISO time of the parent's explicit approval of the exact line; absent = not approved. */
+  approvedAt?: string;
+}
+
+export const OWN_STEP = "own";
+
 export interface PlanComposition {
   /** The composed book's id (one per child and pattern, e.g. `plan-poo-sit.c1`). */
   bookId: string;
+  /** Menu ids per slot; `OWN_STEP` names the parent's own-words step (`ownStep`). */
   stepMenuIds: [string, string, string];
+  ownStep?: OwnStep;
   /** Minutes for the step that takes a duration (the slot-1 item). */
   minutes: number;
   /** The time-of-day key for the slot-1 item. */
@@ -36,6 +55,8 @@ export interface PlanComposition {
 
 export type CompositionProblem =
   | { code: "bad_step"; stepIndex: number; menuId: string }
+  | { code: "own_step_unapproved"; stepIndex: number }
+  | { code: "own_step_empty"; stepIndex: number }
   | { code: "bad_minutes"; minutes: number }
   | { code: "bad_box_item"; itemId: string }
   | { code: "bad_duration"; durationDays: number }
@@ -62,6 +83,14 @@ const isPlanTime = (t: string): t is PlanTime => (PLAN_TIMES as readonly string[
 export function validatePlanComposition(def: PatternDef, c: PlanComposition): CompositionProblem[] {
   const out: CompositionProblem[] = [];
   c.stepMenuIds.forEach((menuId, i) => {
+    if (menuId === OWN_STEP) {
+      const own = c.ownStep;
+      if (!own || own.slot !== i + 1 || own.aiPhrased !== true) return void out.push({ code: "bad_step", stepIndex: i, menuId });
+      if (!own.text?.en?.trim() || !own.text.he?.m?.trim() || !own.text.he?.f?.trim()) out.push({ code: "own_step_empty", stepIndex: i });
+      // B-GA-11: an AI-phrased line reaches the child only once the parent approved the exact line
+      if (!own.approvedAt) out.push({ code: "own_step_unapproved", stepIndex: i });
+      return;
+    }
     const item = def.menu.find((m) => m.id === menuId);
     if (!item || item.slot !== i + 1) out.push({ code: "bad_step", stepIndex: i, menuId });
   });
@@ -119,7 +148,19 @@ export function stepPageId(n: 1 | 2 | 3, item: PlanMenuItem, minutes: number): s
   return `s${n}-${item.id}${spoken ? `-${minutes}m` : ""}`;
 }
 
+/** The own-words step takes the slot's default menu item's plate and pose
+ *  (the words are the parent's; the picture is the pattern's). */
+function ownStepOf(def: PatternDef, c: PlanComposition, n: 1 | 2 | 3): { step: PlanStep; page: Page } {
+  const own = c.ownStep!;
+  const stand = def.menu.find((m) => m.id === def.defaultSteps[n - 1])!;
+  const id = `s${n}-own`;
+  const step: PlanStep = { id, menuId: OWN_STEP, text: own.text, plateId: stand.art.plateId, pose: stand.pose, aiPhrased: true };
+  const page: Page = { id, plateId: stand.art.plateId, ...(stand.art.phoneCrop != null ? { phoneCrop: stand.art.phoneCrop } : {}), hero: slotOf(stand.art, stand.pose), text: own.text };
+  return { step, page };
+}
+
 function stepOf(def: PatternDef, c: PlanComposition, n: 1 | 2 | 3): { step: PlanStep; page: Page } {
+  if (c.stepMenuIds[n - 1] === OWN_STEP) return ownStepOf(def, c, n);
   const item = def.menu.find((m) => m.id === c.stepMenuIds[n - 1])!;
   const text = fillStepLine(item.text, c);
   const id = stepPageId(n, item, c.minutes);
@@ -154,6 +195,11 @@ export function composePlanBook(def: PatternDef, c: PlanComposition): PlanBook {
   const steps = [s1.step, s2.step, s3.step] as [PlanStep, PlanStep, PlanStep];
   const sourceIds = [...new Set(steps.flatMap((s) => def.menu.find((m) => m.id === s.menuId)?.sourceIds ?? []))];
   const planSteps = steps.map((s) => {
+    if (s.menuId === OWN_STEP) {
+      // B-GA-11 disclosure, in the parent's panel: the line is theirs, phrased by Arbor, approved by them
+      const own = c.ownStep!;
+      return { en: `${own.text.en} (your own step: "${own.sourceText}", phrased by Arbor and approved by you)`, he: `${own.text.he.m} (השלב שלכם: "${own.sourceText}", נוסח על ידי Arbor ואושר על ידיכם)` };
+    }
     const item = def.menu.find((m) => m.id === s.menuId)!;
     const t = isPlanTime(c.time) ? TIME_WORDS[c.time] : TIME_WORDS.evening;
     return { en: fill(item.parentLine.en, { minutes: String(c.minutes), time: t.en }), he: fill(item.parentLine.he, { minutes: String(c.minutes), time: t.he.m }) };

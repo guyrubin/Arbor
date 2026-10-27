@@ -325,7 +325,7 @@ export default function JournalTab({ primaryMoveProps }: { primaryMoveProps?: Re
     } catch { /* SSR / tests */ }
   }, [pendingJournalFocusId, pendingJournalFilter]);
   if (view === "all" || pendingJournalFilter || pendingJournalFocusId) return <JournalFeed key={childProfile.id} primaryMoveProps={primaryMoveProps} />;
-  return <JournalShelves shelf={shelf} pro={view === "pro"} intakeFor={query.get("for")} primaryMoveProps={primaryMoveProps} />;
+  return <JournalShelves shelf={shelf} pro={view === "pro"} intakeFor={query.get("for")} plan={query.get("plan")} primaryMoveProps={primaryMoveProps} />;
 }
 
 /** `primaryMoveProps`: TimelineTab's contract stamp, spread on "All shelves"

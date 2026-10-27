@@ -14,7 +14,7 @@
  * Written by the server compose route (server/plans.ts) in a Firebase build;
  * in the local sandbox by the device after the server's visibility answer.
  */
-import { composePlanBook, validatePlanComposition, type PlanComposition } from "./composePlanBook";
+import { composePlanBook, OWN_STEP, validatePlanComposition, type OwnStep, type PlanComposition } from "./composePlanBook";
 import { getPattern } from "./planBooks";
 import { isPatternId } from "./planVisibility";
 import type { BookLang, PatternId, PlanBook } from "../types";
@@ -30,9 +30,27 @@ export interface PlanBookDoc extends PlanComposition {
   updatedAt: string;
   /** "active" while the plan sits first in Tonight; "closed" after the parent closes it (B-BOOK-78). */
   status: "active" | "closed";
+  /** B-BOOK-78: the LOCAL day keys (YYYY-MM-DD) the parent confirmed the plan
+   *  happened (a sit, a night) — a COUNT on the parent's shelf, never a rate,
+   *  a streak or a verdict; nothing the child sees. */
+  nights?: string[];
+  /** ISO time the parent closed the plan (status "closed"). */
+  closedAt?: string;
 }
 
 export const PLAN_BOOKS_COLLECTION = "books";
+
+const line = (v: unknown): v is { en: string; he: { m: string; f: string } } =>
+  !!v && typeof v === "object" && typeof (v as { en?: unknown }).en === "string" && !!(v as { he?: unknown }).he && typeof (v as { he: { m?: unknown } }).he.m === "string" && typeof (v as { he: { f?: unknown } }).he.f === "string";
+
+/** The own-words step of a stored row, or null when malformed. */
+export function readOwnStep(raw: unknown): OwnStep | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (r.slot !== 1 && r.slot !== 2 && r.slot !== 3) return null;
+  if (typeof r.sourceText !== "string" || !line(r.text) || r.aiPhrased !== true) return null;
+  return { slot: r.slot, sourceText: r.sourceText.slice(0, 400), text: r.text, aiPhrased: true, ...(typeof r.approvedAt === "string" && r.approvedAt ? { approvedAt: r.approvedAt } : {}) };
+}
 
 /** The one book id a child has per pattern. */
 export const planBookId = (pattern: PatternId, childId: string) => `${pattern}.${childId}`;
@@ -48,7 +66,13 @@ export function readPlanBookDoc(raw: unknown): PlanBookDoc | null {
   if (typeof r.minutes !== "number" || typeof r.durationDays !== "number" || !str(r.time)) return null;
   if (!Array.isArray(r.boxItemIds) || !r.boxItemIds.every(str)) return null;
   if (!str(r.approvedAt) || !str(r.approvedBy) || (r.lang !== "en" && r.lang !== "he")) return null;
+  const ownStep = readOwnStep(r.ownStep);
+  if (r.stepMenuIds.includes(OWN_STEP) && !ownStep) return null;
+  const nights = Array.isArray(r.nights) ? r.nights.filter((d): d is string => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)) : [];
   return {
+    ...(ownStep ? { ownStep } : {}),
+    ...(nights.length ? { nights: [...new Set(nights)].sort() } : {}),
+    ...(str(r.closedAt) ? { closedAt: r.closedAt } : {}),
     id: r.id,
     kind: "plan",
     pattern: r.pattern,
