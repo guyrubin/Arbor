@@ -208,6 +208,9 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     // (hub growth, depth 1, job "See where you are in {program} and what
     // moved.", primaryMove do-this-week, moduleBudget 3) is the residue hunk
     // in REJECTIONS P6-PRACTICE (7 Oct, session A).
+    // B-ASKJB-36: `?view=kept` (and `#/development/kept`) is the kept reader
+    // (components/kept/KeptThingsPage KeptReaderMode) — a read-and-send mode
+    // of this leaf with no stamp of its own, like language's `?view=said`.
     threadWrite: "milestones",
   },
   {
