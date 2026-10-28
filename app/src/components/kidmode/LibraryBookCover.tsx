@@ -82,7 +82,7 @@ export function LibraryBookCover({ childId, entry }: { childId: string; entry: L
   // B-BOOK-75 plates: a plan plate in shared storage is read through the signed-in route (blob: URL).
   const plateSrcs = usePlanPlateSrcs(plate ? plateSources(plate, { dev: false }) : []);
   const printed = visibleBookCoverPrint(print, scope);
-  if (printed) return <img src={printed} alt="" aria-hidden="true" draggable={false} decoding="async" data-library-book-cover={entry.book.id} data-cover-hero="print" style={{ position: "absolute", inset: 0, inlineSize: "100%", blockSize: "100%", objectFit: "cover" }} />;
+  if (printed) return <img src={printed} alt="" aria-hidden="true" draggable={false} decoding="async" data-library-book-cover={entry.book.id} data-cover-hero="own-print" style={{ position: "absolute", inset: 0, inlineSize: "100%", blockSize: "100%", objectFit: "cover" }} />;
   const plateSrc = plateSrcs[0] ?? null;
   if (!plateSrc) return null;
   return <CoverWindow bookId={entry.book.id} plateSrc={plateSrc} heroSrc={visibleBookCoverPrint(sprite, scope)} win={win} />;

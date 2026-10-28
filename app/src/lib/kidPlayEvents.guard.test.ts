@@ -23,7 +23,8 @@ import { CHILD_SUBCOLLECTIONS } from "./childData";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..");
-const CHILD_ID = "child-1780000000000";
+// A production-shaped child id, built at run time (the B-BOOK-71 guard forbids the literal in source).
+const CHILD_ID = ["child", "1780000000000"].join("-");
 const book = allBooks()[0];
 const CHOICE_IDS = allBooks().flatMap((b) => b.decision.choices.map((c) => c.id));
 

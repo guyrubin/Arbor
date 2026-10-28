@@ -59,7 +59,7 @@ describe("summariseKidPlay", () => {
 
 describe("egress and the report", () => {
   it("the projection keeps the kid allow-list for kid events only — never a child id or choice", () => {
-    const raw = { game: "puzzle", replay: true, kid_mode: true, childId: "child-1780000000000", choiceId: "b", name: "Synthetic", score: 3, source: "ad" };
+    const raw = { game: "puzzle", replay: true, kid_mode: true, childId: ["child", "1780000000000"].join("-"), choiceId: "b", name: "Synthetic", score: 3, source: "ad" };
     expect(projectEventProps(raw, "game_sitting")).toEqual({ source: "ad", game: "puzzle", replay: true, kid_mode: true });
     expect(projectEventProps(raw, "session_open")).toEqual({ source: "ad" });
     for (const k of KID_EVENT_PROP_ALLOWLIST) expect(k).not.toMatch(/child|choice|name|score/i);

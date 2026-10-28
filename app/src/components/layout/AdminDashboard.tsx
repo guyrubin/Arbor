@@ -133,7 +133,7 @@ export function KidPlayPanel({ data }: { data: AdminKidPlay | null | "unavailabl
               ))}
             </tbody>
           </table>
-          <p className="text-[11px] mt-3" style={muted}>Weeks with fewer than {data.minFamilies} families are hidden. Kid Mode sends no push into a game, so a return is unprompted. Play is never read as a sign about a child.</p>
+          <p className="text-xs mt-3" style={muted}>Weeks with fewer than {data.minFamilies} families are hidden. Kid Mode sends no push into a game, so a return is unprompted. Play is never read as a sign about a child.</p>
         </>
       )}
     </div>

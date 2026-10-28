@@ -376,11 +376,22 @@ export interface BookPageImages {
 }
 
 /** The 2D calls the twin makes (a CanvasRenderingContext2D satisfies it). */
-export type BookPageCtx = Pick<CanvasRenderingContext2D, "save" | "restore" | "beginPath" | "rect" | "clip" | "drawImage" | "translate" | "scale" | "rotate" | "ellipse" | "fill"> & {
+export interface BookPageCtx {
+  save(): void;
+  restore(): void;
+  beginPath(): void;
+  rect(x: number, y: number, w: number, h: number): void;
+  clip(): void;
+  drawImage(image: CanvasImageSource, dx: number, dy: number, dw: number, dh: number): void;
+  translate(x: number, y: number): void;
+  scale(x: number, y: number): void;
+  rotate(angle: number): void;
+  ellipse(x: number, y: number, rx: number, ry: number, rotation: number, start: number, end: number): void;
+  fill(): void;
   globalAlpha: number;
   filter: string;
   fillStyle: CanvasRenderingContext2D["fillStyle"];
-};
+}
 
 /** Fit `iw x ih` inside a box: contain + bottom-centre (the sprite and overlays), or cover. */
 function fitIn(iw: number, ih: number, box: Rect, mode: "contain-bottom" | "cover"): Rect {

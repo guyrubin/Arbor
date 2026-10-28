@@ -39,7 +39,7 @@ const revisionOf = (child: { photoUrl?: string; comicAvatarUrl?: string; avatar?
 
 const poseDoc = (pose: HeroSheetPoseId, avatarHash: string): HeroSheetPoseDoc => ({
   id: pose, v: 1, pose, dataUrl: `data:image/webp;base64,${pose}-${avatarHash}`, w: 400, h: 960, foot: { x: 200, y: 940 }, head: { x: 200, y: 200, r: 90 },
-  scale: 1, avatarHash, model: "m", keyColour: "#00B140", createdAt: "2026-10-28",
+  scale: 1, avatarHash, model: "m", keyColour: "green", createdAt: "2026-10-28",
 });
 const docsOf = (avatarHash: string): HeroSheetDocs =>
   parseHeroSheetDocs([{ id: "_meta", v: 1, heroId: avatarHash, source: "generated", avatarHash, poses: ["idle", "cheer"], status: "complete", updatedAt: "x" }, poseDoc("idle", avatarHash), poseDoc("cheer", avatarHash)]);
