@@ -95,3 +95,37 @@ describe("B-PROV-12 — the runtime route's notice, enforced at the mint", () =>
     expect((await mint(euBase, { noticeAck: "google-eu-realtime-v1" })).status).toBe(200);
   });
 });
+
+describe("B-PROV-12 — decline, retry and cancel at the mint", () => {
+  it("decline: requests that never acknowledge never mint and never reserve, however often they come", async () => {
+    for (let i = 0; i < 4; i++) expect((await mint(globalBase, { language: "he" })).status).toBe(428);
+    expect(sdk.create).not.toHaveBeenCalled();
+    expect(budget.days.size).toBe(0);
+  });
+
+  it("retry: after a 428 the acknowledged retry mints exactly once; a later retry with the same acknowledgement needs no new notice", async () => {
+    const refused = await mint(globalBase, {});
+    expect(refused.status).toBe(428);
+    const retried = await mint(globalBase, { noticeAck: refused.body.notice.id });
+    expect(retried.status).toBe(200);
+    expect(sdk.create).toHaveBeenCalledTimes(1);
+    expect((await mint(globalBase, { noticeAck: refused.body.notice.id })).status).toBe(200);
+    expect(sdk.create).toHaveBeenCalledTimes(2);
+  });
+
+  it("cancel: a caller that hangs up after acknowledging, before its token arrives, holds nothing and is charged nothing", async () => {
+    let deliver: (v: { name: string }) => void = () => {};
+    sdk.create.mockImplementationOnce(() => new Promise((resolve) => { deliver = resolve; }));
+    const controller = new AbortController();
+    const pending = fetch(`${globalBase}/api/live/token`, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ noticeAck: "google-global-realtime-v1" }), signal: controller.signal }).catch(() => null);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    controller.abort();
+    await pending;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    deliver({ name: "late-token" });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const reservations = [...budget.days.values()].flatMap((d) => Object.values(d.reservations));
+    expect(reservations).toHaveLength(0);
+  });
+});

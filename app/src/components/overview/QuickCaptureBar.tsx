@@ -99,11 +99,12 @@ export default function QuickCaptureBar({
   const voiceTileRef = useRef<HTMLButtonElement>(null);
   const chooseVoice = (door: "note" | "talk") => {
     setVoiceChoice(false);
-    if (firstUse) {
+    // B-PROV-12: the line counts as seen only if it actually rendered (it
+    // waits for the route's notice id); choosing to talk with it on screen is
+    // its acknowledgement, so Ask's voice button then starts on the first tap.
+    if (firstUse && noticeId) {
       markVoiceDoorNoticeSeen(); setFirstUse(false);
-      // B-PROV-12: choosing to talk with the runtime notice on screen is its
-      // acknowledgement — the Talk button then starts on the first tap.
-      if (door === "talk" && noticeId) acknowledgeVoiceNotice(noticeId);
+      if (door === "talk") acknowledgeVoiceNotice(noticeId);
     }
     if (door === "note") onMode("voice");
     else requestCompanionConversation({ source: "capture-voice", voice: true });

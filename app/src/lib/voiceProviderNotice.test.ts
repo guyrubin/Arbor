@@ -11,7 +11,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { translate } from "./i18n";
 import {
   acknowledgeVoiceNotice, DEVICE_VOICE_NOTICE_ID, liveNoticeIdFrom, runtimeVoiceNoticeId, VOICE_NOTICE_ACK_KEY, VOICE_NOTICE_COPY,
-  voiceNoticeAcknowledged, voiceNoticeLine, voiceNoticeResidencyKey,
+  voiceNoticeAcknowledged, voiceNoticeLine, voiceNoticeResidencyKey, voiceNoticeShortLine, voiceNoticeTap,
 } from "./voiceProviderNotice";
 import { VOICE_NOTICE_INVENTORY, liveVoiceNoticeId, voiceNoticeIdFor } from "../ai/voiceProviderNotice";
 import { LIVE_GLOBAL_PROVIDER, LIVE_VERTEX_EU_PROVIDER, decideLive } from "../ai/liveResidency";
@@ -106,10 +106,15 @@ describe("acknowledgement — one tap, remembered per device and per notice id",
     expect(voiceNoticeAcknowledged(GLOBAL, storage)).toBe(false);
     acknowledgeVoiceNotice(GLOBAL, storage);
     acknowledgeVoiceNotice(GLOBAL, storage);
-    expect(JSON.parse(map.get(VOICE_NOTICE_ACK_KEY)!)).toEqual([GLOBAL]);
+    // A Live notice names the device speech fallback too, so it covers that one.
+    expect(JSON.parse(map.get(VOICE_NOTICE_ACK_KEY)!)).toEqual([GLOBAL, DEVICE_VOICE_NOTICE_ID]);
     expect(voiceNoticeAcknowledged(GLOBAL, storage)).toBe(true);
+    expect(voiceNoticeAcknowledged(DEVICE_VOICE_NOTICE_ID, storage)).toBe(true);
     expect(voiceNoticeAcknowledged(EU, storage)).toBe(false);
-    expect(voiceNoticeAcknowledged(DEVICE_VOICE_NOTICE_ID, storage)).toBe(false);
+    // The device notice alone never covers a Live route.
+    const other = memory();
+    acknowledgeVoiceNotice(DEVICE_VOICE_NOTICE_ID, other.storage);
+    expect(voiceNoticeAcknowledged(GLOBAL, other.storage)).toBe(false);
   });
 
   it("a storage failure or a corrupt record reads as not acknowledged (the notice shows again; never hidden)", () => {
@@ -135,5 +140,62 @@ describe("the mint refusal reaches the caller with the route's notice id", () =>
     expect(err.name).toBe("VoiceNoticeRequiredError");
     expect(err.status).toBe(428);
     expect(err.noticeId).toBe(EU);
+  });
+});
+
+describe("the one-line form under the composer (P2-6: one calm line each)", () => {
+  const short = (lang: "en" | "he", id: string) => voiceNoticeShortLine((k, p) => translate(lang, k, p), id);
+  const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
+
+  it("every approved notice has a short line in EN and HE that names the same route, at most 26 words, plus a 7-word start line", () => {
+    for (const id of Object.keys(VOICE_NOTICE_COPY)) {
+      for (const lang of ["en", "he"] as const) {
+        const text = short(lang, id);
+        expect(text, `${lang} ${id}`).not.toMatch(/^elev\./);
+        expect(words(text), `${lang} ${id}`).toBeLessThanOrEqual(26);
+      }
+      expect(short("he", id)).not.toBe(short("en", id));
+      expect(short("he", id)).not.toMatch(/\bArbor\b/);
+    }
+    expect(short("en", GLOBAL)).toContain("global endpoint (not the EU)");
+    expect(short("en", EU)).toContain("EU region");
+    expect(short("en", EU)).not.toContain("global");
+    // A Live line names its device fallback, so its acknowledgement covers it.
+    expect(short("en", GLOBAL)).toContain("without Live, your device writes your words as text");
+    expect(short("en", DEVICE_VOICE_NOTICE_ID)).not.toContain("Google");
+    const tapAgain = translate("en", "elev.wave2Daily.capture.voice.tapAgain");
+    expect(tapAgain).toBe("Tap the voice button again to start.");
+    expect(translate("he", "elev.wave2Daily.capture.voice.tapAgain")).not.toBe(tapAgain);
+    expect(words(short("en", GLOBAL)) + words(tapAgain)).toBeLessThan(63);
+  });
+});
+
+describe("start, cancel, decline and retry receipts (one tap on the voice button)", () => {
+  it("start: the first tap shows the notice and starts nothing; the next tap while it shows acknowledges and starts", () => {
+    const { storage } = memory();
+    expect(voiceNoticeTap(GLOBAL, null, voiceNoticeAcknowledged(GLOBAL, storage))).toBe("show");
+    expect(voiceNoticeTap(GLOBAL, GLOBAL, voiceNoticeAcknowledged(GLOBAL, storage))).toBe("acknowledge_and_start");
+    acknowledgeVoiceNotice(GLOBAL, storage);
+    expect(voiceNoticeTap(GLOBAL, null, voiceNoticeAcknowledged(GLOBAL, storage))).toBe("start");
+  });
+
+  it("cancel / decline: leaving or typing instead clears the shown notice, so the next tap shows it again and nothing is acknowledged", () => {
+    const { storage } = memory();
+    let pending: string | null = null;
+    const tap = () => voiceNoticeTap(GLOBAL, pending, voiceNoticeAcknowledged(GLOBAL, storage));
+    expect(tap()).toBe("show");
+    pending = GLOBAL;
+    pending = null; // the parent closed the panel / sent a typed message (CoachTab stopVoice / handleChatSend)
+    expect(tap()).toBe("show");
+    expect(voiceNoticeAcknowledged(GLOBAL, storage)).toBe(false);
+  });
+
+  it("retry: after acknowledgement a retry starts at once; a retry on a changed route shows the new notice first", () => {
+    const { storage } = memory();
+    acknowledgeVoiceNotice(GLOBAL, storage);
+    expect(voiceNoticeTap(GLOBAL, null, voiceNoticeAcknowledged(GLOBAL, storage))).toBe("start");
+    expect(voiceNoticeTap(EU, null, voiceNoticeAcknowledged(EU, storage))).toBe("show");
+    // A notice showing for the OLD route is not an acknowledgement of the new one.
+    expect(voiceNoticeTap(EU, GLOBAL, voiceNoticeAcknowledged(EU, storage))).toBe("show");
   });
 });

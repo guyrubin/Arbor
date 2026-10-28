@@ -20,11 +20,14 @@ type Translate = (key: string, params?: Record<string, string | number>) => stri
  *  into text and only the text reaches Arbor, exactly like typing. */
 export const DEVICE_VOICE_NOTICE_ID = "device-speech-v1";
 
-/** notice id → its approved copy (keys in i18nElevation/wave2Daily + coachcontract). */
-export const VOICE_NOTICE_COPY: Readonly<Record<string, { lineKey: string; residencyKey?: string }>> = Object.freeze({
-  "google-global-realtime-v1": { lineKey: "elev.wave2Daily.capture.voice.dataUse", residencyKey: "elev.coachcontract.uses.liveResidencyUndated" },
-  "google-eu-realtime-v1": { lineKey: "elev.wave2Daily.capture.voice.dataUse", residencyKey: "elev.coachcontract.uses.liveResidencyEu" },
-  [DEVICE_VOICE_NOTICE_ID]: { lineKey: "elev.wave2Daily.capture.voice.dataUseDevice" },
+/** notice id → its approved copy (keys in i18nElevation/wave2Daily + coachcontract):
+ *  the full B-VOICE-06 line (capture bar, first use) and the one-line form the
+ *  voice button shows under the composer. Both say the same three things:
+ *  who hears the words, where, and that no recording is kept. */
+export const VOICE_NOTICE_COPY: Readonly<Record<string, { lineKey: string; residencyKey?: string; shortKey: string }>> = Object.freeze({
+  "google-global-realtime-v1": { lineKey: "elev.wave2Daily.capture.voice.dataUse", residencyKey: "elev.coachcontract.uses.liveResidencyUndated", shortKey: "elev.wave2Daily.capture.voice.noticeGoogleGlobal" },
+  "google-eu-realtime-v1": { lineKey: "elev.wave2Daily.capture.voice.dataUse", residencyKey: "elev.coachcontract.uses.liveResidencyEu", shortKey: "elev.wave2Daily.capture.voice.noticeGoogleEu" },
+  [DEVICE_VOICE_NOTICE_ID]: { lineKey: "elev.wave2Daily.capture.voice.dataUseDevice", shortKey: "elev.wave2Daily.capture.voice.noticeDevice" },
 });
 
 /** The notice id from a `/live/availability` answer, only when Live is on and
@@ -42,6 +45,27 @@ export const runtimeVoiceNoticeId = (liveNoticeId: string | null): string => liv
 export function voiceNoticeLine(t: Translate, noticeId: string): string {
   const copy = VOICE_NOTICE_COPY[noticeId] ?? VOICE_NOTICE_COPY[DEVICE_VOICE_NOTICE_ID];
   return t(copy.lineKey, copy.residencyKey ? { residency: t(copy.residencyKey) } : undefined);
+}
+
+/** The one-line form of the same approved notice (the composer's line slot). */
+export function voiceNoticeShortLine(t: Translate, noticeId: string): string {
+  return t((VOICE_NOTICE_COPY[noticeId] ?? VOICE_NOTICE_COPY[DEVICE_VOICE_NOTICE_ID]).shortKey);
+}
+
+/**
+ * One tap on the voice button, decided before any audio is processed:
+ *  - "show": the notice is not acknowledged and not yet on screen → show it;
+ *    nothing starts (a cancel or a decline — leaving, a new thread, typing
+ *    instead — clears what is showing, so the next tap shows it again);
+ *  - "acknowledge_and_start": this same notice is on screen → this tap is the
+ *    acknowledgement (remembered) and voice starts;
+ *  - "start": already acknowledged on this device → a start or a retry goes
+ *    straight on. A different notice id (provider, region or purpose changed)
+ *    is never covered by an earlier acknowledgement.
+ */
+export function voiceNoticeTap(noticeId: string, pendingId: string | null, acknowledged: boolean): "show" | "acknowledge_and_start" | "start" {
+  if (acknowledged) return "start";
+  return pendingId === noticeId ? "acknowledge_and_start" : "show";
 }
 
 /** The residency clause of a Live notice (the data-use panel's spoken line). */
@@ -65,10 +89,14 @@ function readAcks(storage?: StorageLike | null): string[] {
 export const voiceNoticeAcknowledged = (noticeId: string, storage?: StorageLike | null): boolean =>
   readAcks(storage).includes(noticeId);
 
+/** Acknowledge a notice. Every Live notice also names the device speech
+ *  fallback the voice loop takes when Live fails, so it covers that one too. */
 export function acknowledgeVoiceNotice(noticeId: string, storage?: StorageLike | null): void {
   try {
     const acks = readAcks(storage);
-    if (!acks.includes(noticeId)) store(storage)?.setItem(VOICE_NOTICE_ACK_KEY, JSON.stringify([...acks, noticeId].slice(-10)));
+    const covered = noticeId === DEVICE_VOICE_NOTICE_ID ? [noticeId] : [noticeId, DEVICE_VOICE_NOTICE_ID];
+    const next = [...acks, ...covered.filter((id) => !acks.includes(id))];
+    if (next.length !== acks.length) store(storage)?.setItem(VOICE_NOTICE_ACK_KEY, JSON.stringify(next.slice(-10)));
   } catch {
     /* the notice simply shows again next time */
   }

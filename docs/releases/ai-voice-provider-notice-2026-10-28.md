@@ -16,8 +16,8 @@ A Live notice also describes the device speech fallback the client takes when Li
 
 - `GET /api/live/availability` carries `notice: { id }` for the route a tap would take (config only, no SDK call).
 - `POST /api/live/token` requires `noticeAck` equal to that id. Otherwise `428 { code: "voice_notice_required", notice: { id } }`, before any reservation or provider call.
-- The one voice path (Ask's voice button, reached from the composer and from the capture bar's "Talk it through"): when the route's notice is not yet acknowledged on this device, the first tap shows it in the existing B-VOICE-06 line under the composer, followed by the existing "Tap the voice button to talk it through. The microphone opens only when you tap."; the next tap acknowledges and starts. Remembered per device and per notice id. A 428 for a changed route shows the new notice and keeps voice off (no silent fallback).
-- The capture bar's first-use line is the runtime route's notice (it was the fixed global line); choosing "Talk it through" with that line on screen acknowledges it.
+- The one voice path (Ask's voice button, reached from the composer and from the capture bar's "Talk it through"): when the route's notice is not yet acknowledged on this device, the first tap shows it in the existing B-VOICE-06 line under the composer as ONE short line (who hears the words, where, the device fallback, no recording kept; at most 26 words) and one start line ("Tap the voice button again to start."). The next tap acknowledges and starts; nothing (microphone included) is opened before that. Remembered per device and per notice id; a Live notice also covers the device speech fallback it names. Leaving, stopping or a new thread cancels a showing notice and typing instead declines it; either way nothing is acknowledged and the next tap shows it again. A 428 for a changed route shows the new notice and keeps voice off (no silent fallback).
+- The capture bar's first-use line is the runtime route's notice (it was the fixed global line); it counts as seen only once it has rendered, and choosing "Talk it through" with that line on screen acknowledges it.
 - The data-use panel's spoken-Live residency clause follows the route (EU line on the EU route).
 
 ## Entries covered
@@ -26,8 +26,8 @@ Every entry that reaches a selected voice provider goes through Ask's voice butt
 
 ## Receipts
 
-- Inventory/copy and EN/HE guard: `app/src/lib/voiceProviderNotice.test.ts` (every server notice has EN/HE copy and no orphan copy; complete, translated, no Latin brand in HE; global/EU/device lines differ as the route does; acknowledgement per id; storage failure shows again; 428 mapping).
-- Enforcement: `app/src/routes/voiceProviderNoticeRoute.test.ts` (no ack, wrong-route ack, malformed ack → 428 with nothing reserved or minted; matching ack mints).
+- Inventory/copy and EN/HE guard: `app/src/lib/voiceProviderNotice.test.ts` (every server notice has full and short EN/HE copy and no orphan copy; complete, translated, no Latin brand in HE; global/EU/device lines differ as the route does; acknowledgement per id; storage failure shows again; 428 mapping; start, cancel, decline and retry receipts for the one-tap decision).
+- Enforcement: `app/src/routes/voiceProviderNoticeRoute.test.ts` (no ack, wrong-route ack, malformed ack → 428 with nothing reserved or minted; matching ack mints; decline never mints however often; retry after 428 mints once; cancel after acknowledging is charged nothing).
 - Client gate: `app/src/components/tabs/voiceProviderNoticeGate.test.ts`; capture bar: `app/src/components/overview/voiceDoor.test.tsx`.
 - Rendered EN/HE evidence at 390×844 is listed in the wave report.
 
