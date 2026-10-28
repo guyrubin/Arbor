@@ -8,8 +8,9 @@
  *     synchronously: no second voice path, no timer, no await before it.
  *  2. The start refuses while voice is on (a second tap must never stop a
  *     talk), while a review is open, and while a notice handoff waits.
- *  3. The browser loop speaks the card's words before it listens; the words
- *     are never sent to the model and never written into the thread.
+ *  3. A card's words play BEFORE the microphone opens, on Live and on the
+ *     browser loop; the session starts only after them (or a skip), and they
+ *     are never sent to the model nor written into the thread.
  *  4. The voice sheet names itself as AI in EN and HE (a door can open it
  *     before the composer's honesty line was on screen).
  */
@@ -33,18 +34,17 @@ const slice = (from: string, to: string) => {
 };
 
 describe("B-VOICE-08 · the door's start is the conversation's own toggle", () => {
-  const start = slice("const startFromDoor = (opening?: string): boolean => {", "const startFromDoorRef");
+  const start = slice("const startFromDoor = (opening?: string): boolean => {", "if (!startAfterOpening) return;");
 
   it("registers only after the Live probe answered, and always calls the latest start", () => {
     expect(COACH).toMatch(/useEffect\(\(\) => \{\s*if \(!liveProbed\) return;\s*return registerConversationVoiceStarter\(\(opening\) => startFromDoorRef\.current\(opening\)\);\s*\}, \[liveProbed\]\);/);
     expect(COACH).toContain("startFromDoorRef.current = startFromDoor;");
   });
 
-  it("starts through toggleVoice in the same call: no await, no timer, no new voice path", () => {
-    expect(start).toContain("void toggleVoice();");
+  it("without card words it starts through toggleVoice in the same call: no await, no timer, no new voice path", () => {
+    const plain = start.slice(start.indexOf("const before = voiceLifetimeRef.current.current;"));
+    expect(plain).toMatch(/const before = voiceLifetimeRef\.current\.current;\s*void toggleVoice\(\);\s*return voiceLifetimeRef\.current\.current !== null && voiceLifetimeRef\.current\.current !== before;/);
     expect(start).not.toMatch(/\bawait\b|setTimeout|requestAnimationFrame|startDictation|getUserMedia|startGeminiLive|liveToken/);
-    // It answers whether a session began in this call (a notice or review may hold it).
-    expect(start).toContain("const began = voiceLifetimeRef.current.current !== null && voiceLifetimeRef.current.current !== before;");
   });
 
   it("refuses while voice is on, a review is open or a notice handoff waits", () => {
@@ -54,28 +54,48 @@ describe("B-VOICE-08 · the door's start is the conversation's own toggle", () =
   });
 });
 
-describe("B-VOICE-02 · the card's words are spoken first, never sent", () => {
+describe("B-VOICE-02 · the card's words are spoken BEFORE the microphone opens, on every route", () => {
+  const start = slice("const startFromDoor = (opening?: string): boolean => {", "if (!startAfterOpening) return;");
+  const words = start.slice(start.indexOf("if (line && ttsSupported()) {"), start.indexOf("const before = voiceLifetimeRef.current.current;"));
   const browser = slice("const startBrowserVoice = () => {", "const toggleVoice = async");
 
-  it("the browser loop speaks the opening, then listens when the queue drains", () => {
-    expect(browser).toMatch(/const opening = openingLineRef\.current;\s*openingLineRef\.current = null;\s*if \(opening\) \{\s*voiceOnRef\.current = true;\s*streamDoneRef\.current = true;\s*enqueueSpeak\(opening\);\s*return;\s*\}\s*voiceOnRef\.current = true;\s*startListening\(\);/);
-    // pumpTts: a drained queue after streamDone re-listens while hands-free is on.
-    expect(COACH).toMatch(/if \(streamDoneRef\.current\) \{\s*streamDoneRef\.current = false;[\s\S]{0,200}if \(voiceOnRef\.current\) startListening\(\); else setVoicePhase\("off"\);/);
+  it("with words: paint \"speaking\" in the tap and run the opening; no toggle, no microphone, no route choice inside it", () => {
+    expect(words).toContain('setVoicePhase("speaking");');
+    expect(words).toContain("openingRunRef.current = runOpening(line, {");
+    expect(words).not.toMatch(/toggleVoice|startListening|startBrowserVoice|liveAvail|liveToken|getUserMedia/);
   });
 
-  it("a Live session hears the line inside the tap; the browser loop holds it for its own queue", () => {
-    const start = slice("const startFromDoor = (opening?: string): boolean => {", "const startFromDoorRef");
-    expect(start).toContain("openingLineRef.current = line && !liveAvail ? line : null;");
-    expect(start).toContain("if (line && liveAvail && ttsSupported()) speak(line);");
-    expect(start).toContain("if (!began) { openingLineRef.current = null; return false; }");
+  it("the session starts only from the opening's end (or skip): the next render calls the ONE toggle", () => {
+    expect(words).toMatch(/onDone: \(\) => \{\s*if \(openingTokenRef\.current !== token\) return;[\s\S]*setVoicePhase\("off"\);\s*setStartAfterOpening\(\(n\) => n \+ 1\);/);
+    expect(COACH).toMatch(/useEffect\(\(\) => \{\s*if \(!startAfterOpening\) return;\s*void toggleVoice\(\);/);
+  });
+
+  it("the browser loop no longer speaks anything before it listens (the Live-refused fallback cannot hear the card)", () => {
+    expect(browser).toMatch(/voiceLifetimeRef\.current\.begin\(\);\s*clearLiveRefs\(\);\s*voiceOnRef\.current = true;\s*startListening\(\);/);
+    expect(COACH).not.toContain("openingLineRef");
+  });
+
+  it("a stop while the words play cancels them, and nothing starts after", () => {
+    expect(COACH).toMatch(/if \(voicePhase !== "off" \|\| !openingRunRef\.current\) return;\s*openingRunRef\.current\.cancel\(\);/);
+    expect(COACH).toContain("useEffect(() => () => { openingTokenRef.current = null; openingRunRef.current?.cancel(); }, []);");
+  });
+
+  it("the words show as the caption while they play, and a tap on the orb skips them", () => {
+    expect(COACH).toContain("answerText={liveVoiceText || openingCaption}");
+    expect(COACH).toContain("onOrbTap={() => { if (openingRunRef.current?.skip()) return;");
   });
 
   it("the opening never reaches the model or the thread", () => {
-    for (const writer of ["appendVoiceUserTurn(opening", "appendVoiceAiDelta(opening", "appendVoiceAiDelta(line", "streamVoiceTurn(opening", "streamVoiceTurn(line", "setChatInput(opening", "setChatInput(line"]) {
+    for (const writer of ["appendVoiceUserTurn(line", "appendVoiceAiDelta(line", "streamVoiceTurn(line", "setChatInput(line", "enqueueSpeak(line"]) {
       expect(COACH, writer).not.toContain(writer);
     }
-    // The voice sheet's caption stays the parent's words and the screened answer (AI-V7).
-    expect(COACH).toContain("answerText={liveVoiceText}");
+  });
+
+  it("B-PROV-12 merge note: the words play whether or not the toggle then starts (a notice or a review may hold it), and nothing retries", () => {
+    // The opening owns its own lifetime (no voiceLifetime attempt), so a held toggle can't drop the words and X never opens a review for them.
+    expect(words).not.toContain("voiceLifetimeRef");
+    const effect = COACH.slice(COACH.indexOf("if (!startAfterOpening) return;"), COACH.indexOf("}, [startAfterOpening]);"));
+    expect(effect).not.toMatch(/setStartAfterOpening|setTimeout|while|for \(/);
   });
 });
 
