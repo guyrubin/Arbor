@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import ts from "typescript";
 import { completeObservation, isObservationAction, type ActionLoopEntry } from "../../actionLoop/model";
-import { nextChosenAction } from "./companionChoices";
+import { nextChosenAction, requestedObservation } from "./companionChoices";
 import { selectNowLead } from "../../lib/today/dayCard";
 import { NOW_COPY } from "./nowViewCopy";
 import { translate } from "../../lib/i18n";
@@ -34,7 +34,7 @@ function setup(lang: "en" | "he" = "en") {
   const state = { childProfile: { id: "a", name: "Noa", age: 4 } as { id: string; name: string; age: number; onboardingUrgentNoticeAt?: string }, actionLoop: [{ ...original }], seedCoach: vi.fn(), requestJournalFocus: vi.fn(), setActiveTab: vi.fn(), openCaptureSheet: vi.fn(), openHardMomentNow: vi.fn(), saveTodayOutcome: vi.fn(), pendingCaptureMode: null, consumeCaptureRequest: vi.fn(),
     saveTodayObservation: vi.fn(async (_id: string, words: string) => completeObservation(original, words)) };
   const route = vi.fn();
-  const env = { goToRoute: route, React, isObservationAction, nextChosenAction, selectNowLead, NOW_COPY, screenForImmediateEscalation, urgentSetupToday,
+  const env = { goToRoute: route, useHashQuery: () => new URLSearchParams(), requestedObservation, scrollQuestionIntoMain: () => null, React, isObservationAction, nextChosenAction, selectNowLead, NOW_COPY, screenForImmediateEscalation, urgentSetupToday,
     useState: (initial: any) => { const index = at++; if (!(index in slots)) slots[index] = { value: typeof initial === "function" ? initial() : initial }; return [slots[index].value, (value: any) => { slots[index].value = typeof value === "function" ? value(slots[index].value) : value; }]; },
     useRef: (value: any) => slots[at++] ??= { current: value }, useMemo: (run: () => unknown) => run(), useId: () => "now-test",
     useEffect: (run: () => any, deps: unknown[]) => { const index = at++, old = slots[index]; if (old && deps.every((value, n) => Object.is(value, old.deps[n]))) return; const slot = { deps, cleanup: undefined as any }; slots[index] = slot; effects.push(() => { old?.cleanup?.(); slot.cleanup = run(); }); },

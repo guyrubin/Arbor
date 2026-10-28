@@ -4,6 +4,8 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { isObservationAction, todayActionId, type ActionOutcome } from "../../actionLoop/model";
 import HeldPlanAsk from "./HeldPlanAsk";
+import { useHashQuery } from "../../hooks/useHashQuery";
+import { routeHash } from "../../lib/routes";
 import {
   readSkippedCarryOvers,
   rememberSkippedCarryOver,
@@ -35,6 +37,7 @@ export default function CarryOverActionAsk({ onSkip }: { onSkip?: () => void } =
   const { actionLoop, recordTodayOutcome, childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
   const [skipped, setSkipped] = useState<string[]>(() => readSkippedCarryOvers());
+  const observing = useHashQuery().get("observe");
 
   const todayId = todayActionId(childProfile.id);
   const entry = useMemo(
@@ -81,7 +84,20 @@ export default function CarryOverActionAsk({ onSkip }: { onSkip?: () => void } =
           </p>
         </div>
       </div>
-      {isObservationAction(entry) ? <a href="#/overview" className="inline-flex min-h-11 items-center">{t("ob.first.observation.resume")}</a> : entry.source === "hard-moment" ? (
+      {/* B-TODAY-37: this strip renders ON Now, so a bare #/overview link did
+          nothing. It names the question: Now's plan card opens that
+          question's own form and focuses it (NowView, requestedObservation);
+          from Ask it lands there too, and Back returns. Once the form is
+          the lead for this question, the strip stops offering the door. */}
+      {isObservationAction(entry) ? (observing === entry.id ? null : <a
+        href={`#${routeHash("overview", { observe: entry.id })}`}
+        data-testid="carry-over-record"
+        className="mt-2 inline-flex min-h-11 items-center gap-1 px-1 text-[12.5px] font-bold"
+        style={{ color: "var(--arbor-green-ink)" }}
+      >
+        {t("ob.first.observation.resume")}
+        <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
+      </a>) : entry.source === "hard-moment" ? (
         /* B-ASKJB-33: a hard-moment step asks "Did you manage to hold the plan calmly?" */
         <div className="mt-3"><HeldPlanAsk row={entry} via="carry" /></div>
       ) : (

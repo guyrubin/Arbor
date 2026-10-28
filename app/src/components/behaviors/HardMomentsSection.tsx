@@ -8,6 +8,7 @@ import { renderSayThis, type HardMomentCard, type HardMomentCategory } from "../
 import { HARD_MOMENT_CATEGORIES, escalationText, locText, recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { availableHardMomentCards, matchToRecentBehaviors } from "../../content/selectCards";
 import { hardMomentPublication, type HardMomentContext } from "../../content/pilotRelease";
+import { PilotNote } from "../ui/PilotNote";
 import { hardMomentAgeFit, explainsEmptyHardMoments } from "../../content/hardMomentAgeFit";
 import HardMomentAgeNotice from "./HardMomentAgeNotice";
 import { hardMomentPilotText } from "../../content/hardMomentPilotText";
@@ -35,12 +36,7 @@ export function HardMomentGuideContent({ card, context, childName, t }: {
   ];
   return (
     <div lang={locale} dir={locale === "he" ? "rtl" : "ltr"} className="min-w-0 space-y-3 text-start">
-      {publication === "editorial-pilot" && (
-        <div className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }} role="note">
-          <p className="font-bold">{copy.status}</p>
-          <p>{copy.explanation}</p>
-        </div>
-      )}
+      {publication === "editorial-pilot" && <PilotNote status={copy.status} explanation={copy.explanation} />}
       {/* AI-17: the per-axis section is the shared AiBlock guide tone. This
           file used to hand-roll a third copy of the coach answer's frame. */}
       {/* B-ASKJB-24: the say-this axis renders through the shared SayThis

@@ -663,6 +663,46 @@ describe("B-ASKJB-36 optional kept capture — production handlers", () => {
   });
 });
 
+/* B-SHELL-43 (critic r1) — the keep-as hint on words that arrive in the box
+   (Ask's composer Keep: CoachTab onKeep → openCaptureSheet initialText). The
+   old line told parents to "clear this text" on their own words; its first
+   rewrite ("type it in this box") asked for something that leaves the chips
+   disabled. The hint now says what happens to the words and the one condition
+   that opens the choices — and following it literally opens them. */
+describe("B-SHELL-43 keep-as hint on words that arrive in the box", () => {
+  const COMPOSER_WORDS = "Noa said “I did it myself” and put her shoes on";
+  // Found by its key (the harness's t resolves the real dictionary line).
+  let hintLang: "en" | "he" = "en";
+  const hint = (tree: View) => nodes(tree).find(n => n.type === "p" && text(n) === translate(hintLang, "kept.capture.ownNote"));
+
+  it.each(["en", "he"] as const)("%s: shows on composer words, asks for nothing that keeps the chips shut, and following it opens them", lang => {
+    hintLang = lang;
+    const h = captureHarness({ text: "", initialText: COMPOSER_WORDS, lang });
+    const first = h.render();
+    expect(h.state.newLogTrigger).toBe(COMPOSER_WORDS);
+    expect(keepChip(first, "said").props.disabled).toBe(true);
+    const line = text(hint(first)!);
+    expect(line).toBe(translate(lang, "kept.capture.ownNote"));
+    // Kind: never "clear/delete your text", never "your own words".
+    expect(line).not.toMatch(/clear|delete|your own|למחוק|במילים שלכם/i);
+    // Accurate: it names the one condition that opens the choices.
+    expect(line).toMatch(lang === "en" ? /into an empty box/ : /בתיבה ריקה/);
+    // Typing more into the prefilled box is NOT that condition: chips stay shut, the hint stays.
+    typeMoment(h, `${COMPOSER_WORDS} at the door`);
+    expect(keepChip(h.render(), "said").props.disabled).toBe(true);
+    expect(hint(h.render())).toBeDefined();
+    // Following the hint: the note typed here from an empty box opens every choice and the hint goes.
+    typeMoment(h, ""); typeMoment(h, "Noa put her shoes on by herself");
+    for (const kind of ["said", "by_herself", "first"]) expect(keepChip(h.render(), kind).props.disabled).toBe(false);
+    expect(hint(h.render())).toBeUndefined();
+  });
+
+  it("NEGATIVE CONTROL — both earlier lines fail the rule", () => {
+    expect("To mark a kept thing, clear this text and write your own note.").toMatch(/clear|your own/i);
+    expect("To keep this moment as one of these, type it in this box.").not.toMatch(/into an empty box/);
+  });
+});
+
 // Independent adversarial additions. The above harness reads actual production
 // sources and controls I/O, but does not simulate React scheduling or a browser.
 describe("independent kept capture adversarial boundaries", () => {

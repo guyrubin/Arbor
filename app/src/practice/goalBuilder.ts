@@ -17,6 +17,8 @@
 
 import type { PlayDomain } from "../playbank/content";
 import { BRAND_HEX } from "../lib/tokens";
+import type { ActionPlan } from "../types";
+import { planProgress } from "../lib/plans";
 
 /**
  * Domain color map — single source of truth for the domain colour dot rendered
@@ -232,3 +234,33 @@ export function selectFocusGoal(activeGoals: readonly ActiveGoal[], goal: Omit<A
 
 /** One NEW choice at a time. This is never a limit on stored history. */
 export const MAX_ACTIVE_GOALS = 1;
+
+/* B-GROWTH-40 — the plan that works on the goal. The goal and the plan sat on
+   separate screens and the focus line never said what to do next. A plan
+   started while a goal is current records that goal's id; My child's focus
+   line then shows the next unfinished step of the newest such plan as
+   "Next: {step}". The plan is a way to work on the focus, not a second focus.
+   Goals are read through the one accessor (focusGoal over activeGoals), so
+   the server-side goal merge (B-DATA-13) changes nothing here. */
+
+/** Stamp a plan being STARTED with the current goal. No goal → unchanged; an
+ *  existing link is never rewritten; nothing is backfilled. */
+export function withFocusGoal<T extends { focusGoalId?: string }>(plan: T, activeGoals: readonly ActiveGoal[] = []): T {
+  if (plan.focusGoalId) return plan;
+  const goal = focusGoal(activeGoals);
+  return goal ? { ...plan, focusGoalId: goal.goalId } : plan;
+}
+
+/** The next unfinished step of the newest unfinished plan linked to `goal`, or
+ *  null (no goal, no linked plan, every linked plan finished). `plans` newest
+ *  first, as ArborContext.actionPlans is sorted. */
+export function focusNextStep(goal: Pick<ActiveGoal, "goalId"> | null, plans: readonly ActionPlan[] = []): string | null {
+  if (!goal) return null;
+  for (const plan of plans) {
+    if (plan.focusGoalId !== goal.goalId) continue;
+    const progress = planProgress(plan, 1);
+    const next = progress.planComplete ? "" : progress.nextSteps[0]?.trim() ?? "";
+    if (next) return next;
+  }
+  return null;
+}

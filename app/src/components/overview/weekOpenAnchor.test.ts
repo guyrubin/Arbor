@@ -401,7 +401,9 @@ describe("ENG-24 — Today mounts the honest anchor, and only the honest one", (
   it("an accepted step from Ask leads Now; the chain order stays pinned for its importers", () => {
     // Parity 9 Oct: the step line left with the Today door. The newest accepted
     // step is Now's lead and its outcome writes through saveTodayOutcome.
-    expect(OVERVIEW).toContain("const action = useMemo(() => nextChosenAction(actionLoop, topic?.id), [actionLoop, topic?.id]);");
+    // B-TODAY-37: an explicit "Record a moment" request for an older open
+    // question (#/overview?observe=<id>) is the one thing ahead of it.
+    expect(OVERVIEW).toContain("const action = useMemo(() => requestedObservation(actionLoop, observeId) ?? nextChosenAction(actionLoop, topic?.id), [actionLoop, observeId, topic?.id]);");
     expect(OVERVIEW).toContain("const target = retryAction?.scope === scopeLease ? retryAction.action : action;");
     const save = "(await saveTodayOutcome(target.id, outcome, \"card\", undefined, { awaitServer: true }), target)";
     expect(OVERVIEW).toContain("const saved = typeof outcome === \"object\"");

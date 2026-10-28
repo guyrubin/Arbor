@@ -99,7 +99,6 @@ describe("LC-09 · the reports deep link is not a general door (shrink-only)", (
   const ALLOWED: Record<string, number> = {
     "components/sections/Reports.tsx": Number.POSITIVE_INFINITY,
     "components/sections/AskSpecialist.tsx": Number.POSITIVE_INFINITY,
-    "components/practice/DevelopmentCopilot.tsx": 2,
   };
 
   it("Appointments no longer holds one", () => {
@@ -107,10 +106,10 @@ describe("LC-09 · the reports deep link is not a general door (shrink-only)", (
   });
 
   it("the known remaining doors have not multiplied", () => {
-    const copilot = read("components/practice/DevelopmentCopilot.tsx");
-    expect(copilot.length).toBeGreaterThan(500);
-    const count = (copilot.match(/setActiveTab\("reports"\)/g) ?? []).length;
-    expect(count).toBeLessThanOrEqual(ALLOWED["components/practice/DevelopmentCopilot.tsx"]);
+    // B-GROWTH-22: the Full Picture's two Reports doors left with the deleted
+    // leaf (DevelopmentCopilot.tsx); the allow-list shrank by that file.
+    expect(() => read("components/practice/DevelopmentCopilot.tsx")).toThrow();
+    expect(Object.keys(ALLOWED)).toEqual(["components/sections/Reports.tsx", "components/sections/AskSpecialist.tsx"]);
   });
 });
 

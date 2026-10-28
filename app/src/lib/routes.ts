@@ -164,6 +164,12 @@ export const RETIRED_ROUTES: Readonly<Record<string, ActiveTab>> = {
   // id keeps its ROUTE_IDS seat and RoutinesTab stays registered (journey
   // pattern); the device-local board ticks are not migrated (no ledger).
   routines: "plans",
+  // B-GROWTH-22 (G-13, GROWTH G6): the Full Picture retired into My child.
+  // Its only door left with v3 F-CHILD-1; the leaf still answered a typed or
+  // stored #/copilot with an English directive ("Increase … this week") on a
+  // Hebrew page. The id keeps its ROUTE_IDS seat (Shell renders the My child
+  // leaf for it); the hash lands on #/development.
+  copilot: "development",
 };
 
 /**

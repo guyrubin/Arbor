@@ -33,10 +33,6 @@ export const en: Record<string, string> = {
     "Built from the milestones you have not marked yet in this age band — a count of open items, nothing more.",
   "elev.waveR.why.memory":
     "Every line here was proposed from something you wrote, and waits for your approval before Arbor uses it.",
-  "elev.waveR.why.copilotFocus":
-    "Composed from the areas you have logged in, and the milestones written for this age band.",
-  "elev.waveR.why.copilotWatch":
-    "Each row counts the observations you logged that mention this area. Counts only.",
   "elev.waveR.why.words":
     "Every line is a phrase you wrote down yourself, kept with the day you first wrote it.",
 
@@ -205,10 +201,6 @@ export const he: Record<string, string> = {
     "מבוסס על אבני הדרך שעדיין לא סימנתם בטווח הגילים הזה — ספירה של פריטים פתוחים, ותו לא.",
   "elev.waveR.why.memory":
     "כל שורה כאן הוצעה מתוך משהו שאתם כתבתם, ומחכה לאישור שלכם לפני שארבור משתמשת בה.",
-  "elev.waveR.why.copilotFocus":
-    "מורכב מהתחומים שתיעדתם בהם, ומאבני הדרך שנכתבו לטווח הגילים הזה.",
-  "elev.waveR.why.copilotWatch":
-    "כל שורה סופרת את התיעודים שכתבתם ומזכירים את התחום הזה. ספירה בלבד.",
   "elev.waveR.why.words":
     "כל שורה היא ביטוי שאתם כתבתם, נשמר עם היום שבו נכתב לראשונה.",
 

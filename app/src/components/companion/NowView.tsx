@@ -13,7 +13,8 @@ import { openPrintablePlan } from "../../lib/plans/planPrint";
 import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import { dayKey } from "../../practice/signals";
 import { isObservationAction, type ActionLoopEntry } from "../../actionLoop/model";
-import { nextChosenAction } from "./companionChoices";
+import { nextChosenAction, requestedObservation } from "./companionChoices";
+import { scrollQuestionIntoMain } from "./nowDeepLinkScroll";
 import { NOW_COPY } from "./nowViewCopy";
 import NowRecommendation from "./NowRecommendation";
 import { NowAgendaExtras, NowNoticeExtras, NowWhatChangedLines } from "./NowTodayLines";
@@ -26,7 +27,7 @@ import { selectNowLead } from "../../lib/today/dayCard";
 import { markPracticeShown } from "../../lib/practice/todayPin";
 import { appointmentRoleLabel } from "../../lib/appointmentLabel";
 import { isKidModeActive } from "../../lib/kidModeGate";
-import { goToRoute } from "../../hooks/useHashQuery";
+import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
 import FromRecordCard, { FromRecordReceipt } from "../overview/FromRecordCard";
 import { useNowLoop } from "./useNowLoop";
 import { useLifecycleMoment } from "../overview/useLifecycleMoment";
@@ -125,7 +126,9 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const openPlan = () => openPattern(plan?.def.id ?? "");
   // v4: the agenda row says where the family is in it ("Week 2 of 4"), counts only.
   const programWeeks = Array.isArray(program?.program.weeks) ? program.program.weeks.length : 0;
-  const action = useMemo(() => nextChosenAction(actionLoop, topic?.id), [actionLoop, topic?.id]);
+  // B-TODAY-37: "Record a moment" on an older question asks Now for THAT question's form.
+  const observeId = useHashQuery().get("observe");
+  const action = useMemo(() => requestedObservation(actionLoop, observeId) ?? nextChosenAction(actionLoop, topic?.id), [actionLoop, observeId, topic?.id]);
   const [receiptAction, setReceiptAction] = useState<{ scope: object; action: ActionLoopEntry } | null>(null);
   const [, refreshSaving] = useState(0);
   const [saveError, setSaveError] = useState(false);
@@ -161,6 +164,20 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const observation = !!chosen && isObservationAction(chosen);
   const saving = !!chosen && savingAction.current.has(chosen.id);
   const observationNeedsWords = !observationWords.trim();
+  const observationInput = useRef<HTMLTextAreaElement>(null);
+  const stepTitle = useRef<HTMLHeadingElement>(null);
+  // B-TODAY-37: the requested question's form takes focus once it is the lead,
+  // and <main> alone scrolls the QUESTION (its title) to just under the sticky
+  // place pills, so the parent reads what they are answering. Never
+  // scrollIntoView: it also scrolled the shell wrapper and the art panel.
+  const requestedOpen = !!observeId && chosen?.id === observeId && observation && !receipt;
+  useEffect(() => {
+    if (!requestedOpen) return;
+    const input = observationInput.current;
+    if (!input) return;
+    input.focus({ preventScroll: true });
+    scrollQuestionIntoMain(stepTitle.current);
+  }, [requestedOpen, observeId]);
   const talk = (prompt?: string) => onTalkOpen ? onTalkOpen(prompt) : seedCoach({ prompt: prompt ?? "", source: "companion-now" });
   const saveOutcome = async (outcome: "helped" | "not_today" | { whatHappened: string }) => {
     const target = retryAction?.scope === scopeLease ? retryAction.action : action;
@@ -254,7 +271,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // v3 F-NOW-1 r2: the guide's title on the face is the lead's own h2, moved up
   // from its section (which keeps it as its label). The loop leads' cards carry
   // their own heading, so their face has the say line and meta only.
-  const planTitle = shownLead === "step" && chosen ? <h2 id={`${id}-step`} className="now-plan-title" dir="auto" style={observation ? { whiteSpace: "pre-wrap" } : undefined}>{receipt && !observation ? copy.finishedTitle : chosen.recommendation}</h2>
+  const planTitle = shownLead === "step" && chosen ? <h2 ref={stepTitle} id={`${id}-step`} className="now-plan-title" dir="auto" style={observation ? { whiteSpace: "pre-wrap", scrollMarginBlockStart: "calc(var(--sticky-offset) + 12px)" } : undefined}>{receipt && !observation ? copy.finishedTitle : chosen.recommendation}</h2>
     : shownLead === "visit" && visit ? <h2 id={`${id}-visit`} className="now-plan-title" dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</h2>
       : shownLead === "program" && program ? <h2 id={`${id}-program`} className="now-plan-title" dir="auto">{program.content.skill[lang]}</h2> : planWeekTitle;
   // The one plan body under every lead: why it was picked, always visible. The
@@ -309,7 +326,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
           </> : <form onSubmit={event => { event.preventDefault(); void saveOutcome({ whatHappened: observationWords }); }}>
             <p id={`${id}-observation-purpose`} className="now-lead-body">{t("ob.first.observation.purpose")}</p>
             <label className="now-observation-field" htmlFor={`${id}-observation`}>{t("ob.first.observation.answer")}</label>
-            <textarea id={`${id}-observation`} data-testid="now-observation-answer" className="now-observation-input" dir="auto" rows={3} maxLength={240} required
+            <textarea ref={observationInput} id={`${id}-observation`} data-testid="now-observation-answer" className="now-observation-input" dir="auto" rows={3} maxLength={240} required
               aria-describedby={`${id}-observation-purpose${!saving && observationNeedsWords ? ` ${id}-observation-required` : ""}`} disabled={saving} value={observationWords}
               onChange={event => setObservationDraft({ scope: scopeLease, id: chosen.id, words: event.target.value })} />
             {screenForImmediateEscalation({ message: observationWords }) && <UrgentSupport testId="now-observation-urgent-support" className="now-lead-body" />}

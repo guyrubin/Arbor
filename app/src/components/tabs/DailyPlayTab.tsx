@@ -192,9 +192,11 @@ export default function DailyPlayTab() {
         childName: firstName,
         loggedDayCount,
         nowMs: Date.now(),
+        // B-PLAY-25: the why-line is written in the page's language.
+        lang: uiLang === "he" ? "he" : "en",
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [picks, displayGoals, firstName, loggedDayCount]
+    [picks, displayGoals, firstName, loggedDayCount, uiLang]
   );
 
   // Whether the plan card has been marked done today (per-child localStorage).

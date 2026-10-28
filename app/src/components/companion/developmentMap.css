@@ -16,6 +16,8 @@
 .portrait-card-words { display: block; margin: 0; font-family: var(--font-editorial); font-size: var(--t-say); line-height: 1.4; overflow-wrap: anywhere; }
 .portrait-card-src { display: block; margin: 0; margin-block-start: auto; color: var(--arbor-muted); font-size: 12px; line-height: 1.5; }
 .portrait-card-change { color: var(--arbor-clay); font-weight: 600; }
+/* B-GROWTH-40: the goal's next plan step, up to two lines (a real step reads whole; tapping opens the goal picker, not the plan). */
+.portrait-card-next { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; margin: 0; overflow: hidden; overflow-wrap: anywhere; color: var(--arbor-ink-soft); font-size: 13px; line-height: 1.45; }
 .portrait-card-empty { margin: 0; color: var(--arbor-muted); font-size: 14px; line-height: 1.5; }
 .portrait-card-tell { display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; min-block-size: var(--touch-min); padding-inline: 12px 14px; border: 1px solid var(--arbor-rule-strong); border-radius: 100px; background: transparent; color: var(--arbor-ink); font-size: 13px; font-weight: 600; cursor: pointer; }
 .portrait-card-goal { min-block-size: var(--touch-min); font: inherit; cursor: pointer; transition: background .2s ease; }
