@@ -174,6 +174,57 @@ describe("B-ASKJB-48 — context-only extraction labels stay neutral", () => {
     expect(normalizeExtractedLog({ behaviorType: "Family dinner" }, "", { incidentDeclared: true })).toMatchObject({ behaviorType: "Food Refusal", typeMatched: true });
   });
 
+  // Critic round 1 (P1): a real concern must never read as neutral. These
+  // labels opened the incident review before the cue gate and must still.
+  const AGGRESSION_PROBES = [
+    ["Hit his brother", "Sibling Conflict"], ["Pushed sister off the couch", "Sibling Conflict"],
+    ["Kicking during bedtime", "Sleep Meltdown"], ["Screen time ended in tears", "Screentime Dispute"],
+    ["Threw toys at dinner", "Food Refusal"], ["Bit his sister at bath time", "Sibling Conflict"],
+    ["Shoved brother off the slide", "Sibling Conflict"], ["Sibling jealousy", "Sibling Conflict"],
+    ["Hitting at drop-off", "Transition Refusal"],
+    ["הרביץ לאח שלו", "Sibling Conflict"], ["דחף את אחותו מהספה", "Sibling Conflict"],
+    ["בעט בזמן השינה", "Sleep Meltdown"], ["המסך נגמר בדמעות", "Screentime Dispute"],
+    ["זרק צעצועים בארוחת הערב", "Food Refusal"], ["נשך את אחותו באמבטיה", "Sibling Conflict"],
+    ["קנאה בין אחים", "Sibling Conflict"],
+  ] as const;
+  it.each(AGGRESSION_PROBES)("aggression is a concern: %s still opens the %s review", (label, type) => {
+    expect(hasIncidentCue(label), label).toBe(true);
+    const draft = normalizeExtractedLog({ behaviorType: label, intensity: 4 });
+    expect(draft).toMatchObject({ behaviorType: type, typeMatched: true, intensity: 4 });
+    expect(extractionOpensIncidentReview(draft)).toBe(true);
+  });
+
+  it("'a bit' is not biting, and the context-only list stays neutral beside the aggression words", () => {
+    expect(hasIncidentCue("A bit tired at bedtime")).toBe(false);
+    expect(hasIncidentCue("A little bit of quiet time with sister")).toBe(false);
+    expect(hasIncidentCue("Bit his sister")).toBe(true);
+  });
+
+  it("NEGATIVE CONTROL: every incident fixture label that opened the review before the cue gate still opens it, with the same type", () => {
+    // The repo's incident fixtures: the capture-extract-v1 stubbed labels, the
+    // AI-CAP-8 alias labels, this row's concern lists and the critic's probes.
+    const evalSuite = fs.readFileSync(path.resolve(__dirname, "..", "..", "..", "evals", "capture-extract-v1.eval.json"), "utf8");
+    const evalLabels = [...evalSuite.matchAll(/"behaviorType":\s*"([^"]+)"/g)].map((m) => m[1]);
+    expect(evalLabels.length).toBeGreaterThanOrEqual(4);
+    const fixtures = [
+      ...evalLabels,
+      "Morning refusal", "Screen shutoff meltdown", "Sibling conflict", "Bedtime resistance", "Dinner table standoff",
+      "Loud party overwhelm", "ריב בין אחים", "סירוב בבוקר",
+      ...CONCERN.en.map(([label]) => label), ...CONCERN.he.map(([label]) => label),
+      ...AGGRESSION_PROBES.map(([label]) => label),
+    ];
+    let compared = 0;
+    for (const label of fixtures) {
+      const legacy = mapLabelToType(label);
+      if (!legacy.matched || legacy.type === MOMENT_BEHAVIOR_TYPE) continue; // never opened the review
+      compared++;
+      const draft = normalizeExtractedLog({ behaviorType: label });
+      expect(extractionOpensIncidentReview(draft), label).toBe(true);
+      expect(draft.behaviorType, label).toBe(legacy.type);
+    }
+    expect(compared).toBeGreaterThanOrEqual(30);
+  });
+
   it("saved records are not re-read: legacy stored free labels keep their localized label", () => {
     const t = (key: string) => en[key] ?? key;
     expect(behaviorTypeLabel("Sensory Meltdown", t)).toBe(en["ql.type.sensory"]);

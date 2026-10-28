@@ -163,8 +163,10 @@ export const EXTRACT_CONTEXTS = ["Home", "School", "Transit", "Public"] as const
  *  lands on Screentime Dispute, not Sleep/Sensory. */
 const TYPE_KEYWORDS: [CanonicalBehaviorType, RegExp][] = [
   ["Screentime Dispute", /screen|tablet|ipad|tv\b|phone|device|video|מסך|טאבלט|טלפון/i],
-  ["Sibling Conflict", /sibling|brother|sister|אחים|אחות|בין אחים/i],
-  ["Food Refusal", /food|eat|meal|dinner|lunch|breakfast|picky|snack|אוכל|אכיל|ארוחה/i],
+  // B-ASKJB-48: + the Hebrew "brother" as a whole word (אח, לאח, אחיו) and the
+  // meal stem ארוח (ארוחת ערב / בארוחת) — the Hebrew forms the cue list now reaches.
+  ["Sibling Conflict", /sibling|brother|sister|אחים|אחות|בין אחים|(?<![֐-׿])(?:ה|ל|ו|ב|ש|מה|לה)?אח(?:יו|יה|י)?(?![֐-׿])/i],
+  ["Food Refusal", /food|eat|meal|dinner|lunch|breakfast|picky|snack|אוכל|אכיל|ארוח/i],
   ["Sleep Meltdown", /sleep|bed|night|nap|wake|שינה|שנת|מיטה|לילה/i],
   ["Sensory Overload", /sensor|noise|loud|crowd|overload|overstim|חוש|רעש|עומס/i],
   ["Transition Refusal", /transition|refus|leav|morning|dress|depart|goodbye|drop-?off|cling|מעבר|סירוב|בוקר|יציאה/i],
@@ -191,7 +193,10 @@ const INCIDENT_CUE_EN = new RegExp(
     String.raw`\bmeltdown\w*|\bmelt(?:s|ed|ing)?\s+down\b`,
     String.raw`\b(?<!(?:pillow|play|tickle|water|snowball|nerf|pretend)\s)(?:fight\w*|fought|battle\w*)`,
     String.raw`\bproblem(?!-?\s?solv)\w*`,
-    String.raw`\b(?:cr(?:y|ies|ied|ying)|angry|anger|rage|raging|panic\w*|hitting|hits|biting|bites|grabb\w*|picky)\b`,
+    String.raw`\b(?:cr(?:y|ies|ied|ying)|tears|tearful|teary|angry|anger|rage|raging|panic\w*|grabb\w*|picky|jealous\w*)\b`,
+    // Critic round 1: hurting someone is always a concern, never a context.
+    String.raw`\b(?:hit|hits|hitting|push|pushes|pushed|pushing|shov\w*|kick|kicks|kicked|kicking|throw|throws|threw|thrown|throwing|bite|bites|biting|bitten|scratch(?:es|ed|ing)?|slap\w*|punch\w*|pinch\w*|spit|spits|spat|spitting|hurt|hurts|hurting)\b`,
+    String.raw`(?<!\b(?:a|little)\s)\bbit\b`,
     String.raw`\b(?:won|wouldn|didn|doesn|don)['’]?t\s+(?:want|let|stop|eat|sleep|go|leave)\b|\b(?:won|wouldn)['’]?t\b`,
   ].join("|"),
   "i",
@@ -210,6 +215,11 @@ const INCIDENT_CUE_HE = new RegExp(
       "זעם", String.raw`כעס\p{L}*`, String.raw`כועס\p{L}*`, "תסכול", String.raw`מתוסכל\p{L}*`,
       String.raw`התנגד\p{L}*`, String.raw`מתנגד\p{L}*`, "הימנעות", String.raw`נמנע\p{L}*`,
       String.raw`הרביצ\p{L}*`, "הרביץ", String.raw`מרביצ\p{L}*`, "מכות", String.raw`נשיכ\p{L}*`, "נשך", "נשכה",
+      // Critic round 1: hitting, pushing, kicking, throwing, biting, scratching, tears, jealousy.
+      "היכה", "הכה", "הכתה", "מכה", "דחף", "דחפה", "דחפו", "דוחף", "דוחפת", "דחיפה", "דחיפות",
+      "בעט", "בעטה", "בעטו", "בועט", "בועטת", "בעיטה", "בעיטות", "זרק", "זרקה", "זרקו", "זורק", "זורקת", "זריקה", "זריקת",
+      "נושך", "נושכת", "שרט", "שרטה", "שריטה", "צבט", "צבטה", "צביטה", "סטר", "סטירה", "ירק", "ירקה", "יריקה",
+      "דמעות", "בדמעות", "קנאה", String.raw`מקנא\p{L}*`, "פגע", "פגעה", "פוגע", "פוגעת",
     ].join("|") +
     String.raw`)(?!\p{L})|(?<!\p{L})ו?לא\s+(?:רוצה|רצה|רצתה|רצו|מוכן|מוכנה|הסכים|הסכימה|מסכים|מסכימה)(?!\p{L})`,
   "u",

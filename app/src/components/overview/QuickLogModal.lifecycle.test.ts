@@ -956,3 +956,23 @@ describe("B-ASKJB-43 — words kept from Ask (actual handlers)", () => {
     expect(h.state.addMoment.mock.calls[0][1]).toMatchObject({ contentSource: "unverified" });
   });
 });
+
+/** Critic round 1 (B-ASKJB-48 P1): a dictated moment whose label names
+ *  hurting someone opens the incident review through the actual handlers. */
+describe("B-ASKJB-48 — aggression labels still open the incident review (actual handlers)", () => {
+  it.each([
+    ["en", "He hit his brother with a toy car when it was time to stop", "Hit his brother", "Sibling Conflict"],
+    ["he", "הוא הרביץ לאח שלו עם מכונית צעצוע כשהיה צריך להפסיק", "הרביץ לאח שלו", "Sibling Conflict"],
+    ["en", "The screen went off and the evening ended in tears again", "Screen time ended in tears", "Screentime Dispute"],
+  ] as const)("%s: %s", async (lang, said, label, type) => {
+    const h = captureHarness({ text: "", lang });
+    one(h.render(), n => n.type === "button" && n.props.onClick?.name === "startVoice").props.onClick();
+    h.speech[0].callbacks.onResult(said);
+    h.extracts[0].resolve({ behaviorType: label, trigger: "Stop time", response: "", intensity: 4, durationMinutes: 5 });
+    await tick();
+    const review = one(h.render(), n => typeof n.props.onConfirm === "function");
+    expect(review.props.source).toBe("ai-draft");
+    expect(h.state.newLogType).toBe(type);
+    expect(review.props.intensity).toBe(4);
+  });
+});
