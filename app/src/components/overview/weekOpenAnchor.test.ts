@@ -27,8 +27,7 @@ import {
 import { chooseTodayAction } from "./chooseTodayAction";
 import { recapWeekId } from "../../hooks/useWeeklyRecap";
 import { isChildScopedKey } from "../../lib/childLocalState";
-import { elevationEn, elevationHe } from "../../lib/i18nElevation/index";
-
+import { elevationEn, elevationHe } from "../../lib/i18nElevation/index";
 import { todayLiveSource } from "../../testTodaySource";
 import { NOW_COPY } from "../companion/nowViewCopy";
 
