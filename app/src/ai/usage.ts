@@ -15,6 +15,7 @@
 import { logger } from "../server/logger.js";
 import { currentRequestContext } from "../server/requestContext.js";
 import { recordUsageRollup } from "../server/usageRollup.js";
+import { currentStudioScope, recordStudioUsage, studioAssetKey } from "../server/studioCostLedger.js";
 import type { ModelRoute, ProviderId } from "./modelRouter.js";
 import { estimateCostUsd, type PricedTokenUsage } from "./priceTable.js";
 
@@ -146,11 +147,20 @@ export const recordUsage = (
     const event = buildUsageEvent(meta, usage, timing);
     if (!event) return;
     const ctx = currentRequestContext();
+    // B-KID-150: a call that produces a shared studio asset is stamped with it.
+    const studio = currentStudioScope();
     logger.info("ai.usage", {
       requestId: ctx?.requestId ?? null,
       userUid: ctx?.uid ?? null,
+      ...(studio ? { studioAsset: studioAssetKey(studio.asset) } : {}),
       ...event,
     });
+    // B-KID-150: studio production lands in its asset's ledger row and NEVER
+    // in the daily family rollup (the only source of the B-GA-26 family meter).
+    if (studio) {
+      recordStudioUsage(studio.asset, { modality: studio.modality, ...(typeof event.estimatedCostUsd === "number" ? { estimatedCostUsd: event.estimatedCostUsd } : {}) });
+      return;
+    }
     // COST-3: aggregate into today's Firestore rollup for the founder dashboard.
     // EVAL-7: the same write now carries per-route latency for the p50/p95 buckets.
     recordUsageRollup(
