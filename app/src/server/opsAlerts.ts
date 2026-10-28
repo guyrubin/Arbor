@@ -109,7 +109,10 @@ export interface OpsAlerts {
   /** Await pending deliveries (tests, shutdown). */
   flush(): Promise<void>;
   readonly owner: string;
-  readonly delivery: "log" | "webhook";
+  /** Where incidents go. Spelled out on purpose: the bare word webhook in
+   *  quotes is a Material Symbols ligature name, which the icon-font subset
+   *  guard (components/ui/iconFontSubset.test.ts) reads as an icon. */
+  readonly delivery: "log" | "log_and_webhook";
 }
 
 /** Only a route TEMPLATE may travel: path characters and `:param` names. */
@@ -156,7 +159,7 @@ export const webhookSink = (url: string, fetchImpl: typeof fetch = fetch): OpsAl
 
 type WindowState = { events: number[]; firing: boolean; lastFailureAt: number };
 
-export function createOpsAlerts(opts: { owner?: string; sinks?: OpsAlertSink[]; now?: () => number; delivery?: "log" | "webhook" } = {}): OpsAlerts {
+export function createOpsAlerts(opts: { owner?: string; sinks?: OpsAlertSink[]; now?: () => number; delivery?: "log" | "log_and_webhook" } = {}): OpsAlerts {
   const owner = opts.owner?.trim() || "unassigned";
   const sinks = opts.sinks ?? [logSink];
   const now = opts.now ?? Date.now;
@@ -244,7 +247,7 @@ export function createOpsAlertsFromConfig(config: Pick<ArborConfig, "opsAlertOwn
   return createOpsAlerts({
     owner: config.opsAlertOwner,
     sinks: url ? [logSink, webhookSink(url, fetchImpl)] : [logSink],
-    delivery: url ? "webhook" : "log",
+    delivery: url ? "log_and_webhook" : "log",
   });
 }
 

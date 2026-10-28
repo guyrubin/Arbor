@@ -22,7 +22,7 @@ Each Cloud Run instance keeps its own windows, so a multi-instance burst can pag
 | `OPS_ALERT_WEBHOOK_URL` | `off` | Secret. The channel incidents are posted to; anything but an https URL is off (log only). |
 | `AI_PREPAY_LEDGER` | `off` | JSON `{"credit":100,"currency":"EUR","since":"YYYY-MM-DD","perLiveMinute":0.05}`: the last top-up, its day and Guy's per-minute rate. Enables the readable balance and the 20 % alarm. |
 
-At boot the server logs `Ops alert delivery: log|webhook; owner named|unassigned`.
+At boot the server logs `Ops alert delivery: log|log_and_webhook; owner named|unassigned`.
 
 ## api-5xx-burst
 
@@ -49,4 +49,4 @@ At boot the server logs `Ops alert delivery: log|webhook; owner named|unassigned
 
 Dated delivery and recovery tests with a fake sink per signal: `app/src/server/opsAlerts.test.ts` (sink thresholds and recovery, 5xx through Express, all four billing reasons through the real webhook router, webhook payload and config defaults), `app/src/routes/opsAlertsRoute.test.ts` (mint, connect, residency and store failures through the real token and usage routes; the prepay alarm and the founder-only balance) and `app/src/server/prepayBalance.test.ts` (parsing, balance arithmetic, once-per-crossing, recovery after a top-up, no reload). Every incident in those tests is checked for the child's name, ids, uid, email and secrets.
 
-Not proved here: delivery to Guy's real channel, the Cloud Logging alert policy and the real AI Studio balance. Those are Guy's half: set the three variables on the Cloud Run service and confirm the boot line reads `Ops alert delivery: webhook; owner named`.
+Not proved here: delivery to Guy's real channel, the Cloud Logging alert policy and the real AI Studio balance. Those are Guy's half: set the three variables on the Cloud Run service and confirm the boot line reads `Ops alert delivery: log_and_webhook; owner named`.

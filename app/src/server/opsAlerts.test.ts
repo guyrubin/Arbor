@@ -218,7 +218,7 @@ describe("delivery — the structured log always, the webhook only when configur
       process.env.OPS_ALERT_WEBHOOK_URL = "https://hooks.example.com/T0/SECRET";
       const on = loadConfig();
       expect(on.opsAlertOwner).toBe("Guy");
-      expect(createOpsAlertsFromConfig(on).delivery).toBe("webhook");
+      expect(createOpsAlertsFromConfig(on).delivery).toBe("log_and_webhook");
       expect(opsWebhookUrl("http://hooks.example.com/x")).toBeUndefined();
       expect(opsWebhookUrl("not a url")).toBeUndefined();
     } finally {
