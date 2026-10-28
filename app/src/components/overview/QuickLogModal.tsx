@@ -330,7 +330,7 @@ export default function QuickLogModal({
   const scriptLang = uiLang === "he" ? "he" : "en";
   const usedScriptTitle = usedScript ? locText(usedScript.title, scriptLang) : "";
   const usedScriptWords = usedScript ? locText(renderSayThis(usedScript, (childProfile.name || "").split(" ")[0]), scriptLang) : "";
-  const usedScriptQuote = usedScriptWords ? (scriptLang === "he" ? `„${usedScriptWords}”` : `“${usedScriptWords}”`) : "";
+  const usedScriptQuote = usedScriptWords ? t("elev.loop.ms.quoted", { text: usedScriptWords }) : "";
   const usedScriptFrom = usedScriptTitle ? t("elev.closeloop.hm.usedFrom", { guide: usedScriptTitle }) : "";
   const hardGuide = (() => {
     if (!open || !hardMomentNow) return null;

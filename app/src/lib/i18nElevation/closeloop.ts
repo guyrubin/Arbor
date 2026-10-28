@@ -183,7 +183,7 @@ export const he: Record<string, string> = {
   // ── B-DATA-16
   "elev.closeloop.hm.usedKeep": "השתמשתי במילים האלה",
   "elev.closeloop.hm.usedLabel": "המילים שהשתמשתם בהן",
-  "elev.closeloop.hm.usedFrom": "מתוך המדריך „{guide}”",
+  "elev.closeloop.hm.usedFrom": "מתוך המדריך ״{guide}״",
   "elev.closeloop.hm.usedRemove": "להסיר",
   "elev.closeloop.hm.usedLead": "בפעם הקודמת השתמשתם במילים האלה עם {name}:",
 
