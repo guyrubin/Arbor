@@ -129,6 +129,7 @@ export class ClaudeVertexProvider {
     const reader = (response.body as ReadableStream<Uint8Array>).getReader();
     const decoder = new TextDecoder();
     let buffered = "";
+    let completed = false;
     try {
       for (;;) {
         const { done, value } = await reader.read();
@@ -156,8 +157,11 @@ export class ClaudeVertexProvider {
           }
         }
       }
+      completed = true;
     } finally {
       try { reader.releaseLock(); } catch { /* stream already closed */ }
+      // B-AIOPS-01: an early stop keeps its receipt (input tokens arrive first).
+      if (!completed) recordUsage({ route: options.route, provider: "vertex_claude", model, resolvedModel: model, promptVersion: options.promptVersion, endedEarly: true }, Object.keys(usage).length ? usage : undefined, timer.finish());
     }
     // EVAL-8: `model` here is already the RESOLVED Anthropic-on-Vertex id
     // (toAnthropicVertexModelId) — record it explicitly as resolvedModel.
