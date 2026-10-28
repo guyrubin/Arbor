@@ -103,7 +103,7 @@ export interface DescribeChildProps {
 }
 
 export default function DescribeChild({ name, lang, value, onChange, disabled, autoFocus, onVoiceText, aspect = null, onAspect, opening, voice = false }: DescribeChildProps) {
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const fieldId = useId();
   const hintsId = useId();
   const askId = useId();
@@ -135,8 +135,9 @@ export default function DescribeChild({ name, lang, value, onChange, disabled, a
         onChange={(event) => onChange(event.target.value)} />
     </label>
     {!micFirst && mic}
-    {/* B-GA-11: the Art. 50 line where the conversation starts, as Talk's composer foot. */}
-    <AiDisclosureLine language={lang} />
+    {/* B-GA-11: the Art. 50 line where the conversation starts, as Talk's
+        composer foot, in the screen's language (the AI language may differ). */}
+    <AiDisclosureLine language={uiLang === "he" ? "he" : "en"} />
     {onAspect && <div className="describe-fills" role="group" aria-label={t("elev.describe.quickFills")}>
       <p className="describe-hints-label">{t("elev.describe.quickFills")}</p>
       <div>{ASPECT_IDS.map((id) => <button type="button" key={id} className="describe-chip" disabled={disabled} onClick={() => onAspect?.(id)} data-fill={id}

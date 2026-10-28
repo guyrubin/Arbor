@@ -24,7 +24,7 @@ function AnswerBox({ turn, lang, busy, onSend, onSkip, onDone, onListen }: {
   turn: ThreadTurn; lang: "en" | "he"; busy: boolean;
   onSend: (text: string, viaMic: boolean) => void; onSkip: () => void; onDone: () => void; onListen: () => void;
 }) {
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const fieldId = useId();
   const [answer, setAnswer] = useState(turn.answer ?? "");
   const [viaMic, setViaMic] = useState(false);
@@ -46,7 +46,7 @@ function AnswerBox({ turn, lang, busy, onSend, onSkip, onDone, onListen }: {
       </div>
     </div>
     {/* B-GA-11: the conversation goes on here, so the Art. 50 line stays at its foot. */}
-    <AiDisclosureLine language={lang} />
+    <AiDisclosureLine language={uiLang === "he" ? "he" : "en"} />
   </div>;
 }
 
