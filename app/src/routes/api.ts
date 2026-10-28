@@ -5,7 +5,7 @@ import { parseCompanionAttachments, type ComposerAttachment } from "../lib/compa
 import express from "express";
 import { PROGRAM_IMPORT_PROMPT } from "../ai/programImportPrompt.js";
 import { parseProgramDocument, parseRecommendationDraft, PROGRAM_IMPORT_VERSION } from "../lib/programImport.js";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { ArborConfig } from "../config/env.js";
 import { normalizeAvatarStyle } from "../lib/avatarStyle.js";
 import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider } from "../ai/modelRouter.js";
@@ -803,6 +803,26 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     } catch (error: any) {
       logger.error("Arbor Onboarding Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to create Arbor family/child documents", details: error.message });
+    }
+  });
+
+  // B-DATA-15: a new child's id is issued here, never chosen by the client —
+  // random, created already parented to the caller's (uid-derived) family, so
+  // no other account can collide with it or claim it. Single-tenant (local)
+  // stores have no shared namespace; they get a random id with no doc.
+  router.post("/onboarding/child-id", async (req, res) => {
+    try {
+      const { uid } = actorOf(req);
+      if (!memoryStore.issueChildId || !memoryStore.ensureFamilyForUser) {
+        res.json({ childId: `child-${randomUUID()}`, adapter: "local" });
+        return;
+      }
+      const { familyId } = await memoryStore.ensureFamilyForUser(uid);
+      const childId = await memoryStore.issueChildId({ familyId, userId: uid });
+      res.json({ childId, adapter: "firestore" });
+    } catch (error: any) {
+      logger.error("Arbor Child Id Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to issue a child id" });
     }
   });
 

@@ -19,7 +19,7 @@ type HookSlot = { value?: any; deps?: unknown[]; cleanup?: () => void };
 /** Runs the actual provider, retaining hook state and cleaning up effects on
  * owner changes. Every SDK, storage, token and fetch boundary is synthetic. */
 function harness({ owner = "A", rows = [child("A-child")], local = [child("local-private")] } = {}) {
-  let uid = owner, cursor = 0, dirty = true, value: Provider;
+  let uid = owner, cursor = 0, dirty = true, value: Provider, issuedIds = 0;
   let actualUser: { uid: string } | null = { uid: owner };
   const authListeners = new Set<(user: typeof actualUser) => void>();
   const auth = { get currentUser() { return actualUser; } };
@@ -82,7 +82,8 @@ function harness({ owner = "A", rows = [child("A-child")], local = [child("local
   new Function("require", "module", "exports", "localStorage", "sessionStorage", "fetch", code)(
     (name: string) => { if (!(name in imports)) throw Error("Unmocked boundary: " + name); return imports[name]; }, module, module.exports,
     { ...storage(localStore), getItem: (key: string) => { calls.localReads.push(key); return localStore.get(key) ?? null; } }, storage(sessionStore),
-    async (url: string, opts: RequestInit) => { calls.fetch.push({ url, opts }); return { ok: true }; },
+    // B-DATA-15: the server issues new child ids (synthetic, sequential here).
+    async (url: string, opts: RequestInit) => { calls.fetch.push({ url, opts }); return { ok: true, json: async () => (url === "/api/onboarding/child-id" ? { childId: `child-issued-${++issuedIds}` } : {}) }; },
   );
   const render = () => { cursor = 0; dirty = false; value = module.exports.ProfileProvider({ children: null }); return value; };
   const effects = () => { while (queue.length) queue.shift()!(); };
@@ -107,14 +108,17 @@ function mountController(h: ReturnType<typeof harness>, accept = async () => {})
   return { controller, complete, close: () => { mounted = false; } };
 }
 function fillAbout(c: FirstRunController) { c.edit({ name: "Noa", birthMonth: "2022-04", languages: ["English"], consent: true }); }
-const provisionedIds = (h: ReturnType<typeof harness>) => h.calls.fetch.map(call => JSON.parse(String(call.opts.body)).childId);
+const provisionedIds = (h: ReturnType<typeof harness>) => h.calls.fetch.filter(call => call.url === "/api/onboarding/family-child").map(call => JSON.parse(String(call.opts.body)).childId);
+/** B-DATA-15: the first create first asks the server for the child's id, so its
+ *  document write is issued a few microtasks after the tap, not inside it. */
+const issued = async () => { for (let n = 0; n < 20; n++) await Promise.resolve(); };
 
 describe("independent exact-source first-run lifetime proof", () => {
   it("closing first-run before its first create acknowledges retires unissued provisioning and local append", async () => {
     const h = harness({ rows: [] }); h.effects(); await h.flush();
     const pending = deferred(); h.transport.set = () => pending.promise;
     const first = mountController(h); fillAbout(first.controller);
-    const creating = first.controller.next(); expect(h.calls.sets).toHaveLength(1);
+    const creating = first.controller.next(); await issued(); expect(h.calls.sets).toHaveLength(1);
     first.close(); pending.resolve(); await creating; await h.flush();
     // The issued setDoc may finish. The later ownership POST and append are new work.
     expect({ provisioned: provisionedIds(h), localProfiles: h.value.profiles.map(p => p.id) })
@@ -126,10 +130,10 @@ describe("independent exact-source first-run lifetime proof", () => {
     h.transport.set = () => ++writes === 1 ? firstAck.promise : secondAck.promise;
     const clock = vi.spyOn(Date, "now").mockReturnValue(1791547200000);
     try {
-      const first = mountController(h); fillAbout(first.controller); const a = first.controller.next();
+      const first = mountController(h); fillAbout(first.controller); const a = first.controller.next(); await issued();
       first.close(); expect(h.value.profiles).toEqual([]);
       clock.mockReturnValue(1791547200001);
-      const second = mountController(h); fillAbout(second.controller); const b = second.controller.next();
+      const second = mountController(h); fillAbout(second.controller); const b = second.controller.next(); await issued();
       const newlyIssuedPaths = [...h.calls.sets];
       firstAck.resolve(); secondAck.resolve(); await Promise.all([a, b]); await h.flush();
       expect(newlyIssuedPaths).toHaveLength(1);
@@ -201,7 +205,7 @@ describe("independent exact-source first-run lifetime proof", () => {
   it("a new A session adopts the retained create without reviving the old A caller", async () => {
     const h = harness({ rows: [] }); h.effects(); await h.flush();
     const pending = deferred(); h.transport.set = () => pending.promise;
-    const first = mountController(h); fillAbout(first.controller); const a = first.controller.next(); first.close();
+    const first = mountController(h); fillAbout(first.controller); const a = first.controller.next(); await issued(); first.close();
     h.setOwner("B"); await h.flush(); h.setOwner("A"); await h.flush();
     const second = mountController(h); fillAbout(second.controller); const b = second.controller.next();
     pending.resolve(); await Promise.all([a, b]); await h.flush();
@@ -212,17 +216,19 @@ describe("independent exact-source first-run lifetime proof", () => {
   it("a reopened form corrects the reserved document instead of creating a second child", async () => {
     const h = harness({ rows: [] }); h.effects(); await h.flush();
     const pending = deferred(); let calls = 0; h.transport.set = () => ++calls === 1 ? pending.promise : Promise.resolve();
-    const first = mountController(h); fillAbout(first.controller); const a = first.controller.next(); first.close();
-    const second = mountController(h); fillAbout(second.controller); second.controller.edit({ name: "Noam" }); const b = second.controller.next();
+    const first = mountController(h); fillAbout(first.controller); const a = first.controller.next(); await issued(); first.close();
+    const second = mountController(h); fillAbout(second.controller); second.controller.edit({ name: "Noam" }); const b = second.controller.next(); await issued();
     expect(h.calls.sets).toHaveLength(1); pending.resolve(); await Promise.all([a, b]); await h.flush();
     expect(new Set(h.calls.sets).size).toBe(1); expect(h.value.profiles).toHaveLength(1); expect(h.value.profiles[0].name).toBe("Noam");
   });
 
   it("already-admitted provider ownership can settle after close without stranding the installed child", async () => {
     const h = harness({ rows: [] }); h.effects(); await h.flush();
-    const token = deferred<{ Authorization: string }>(); h.transport.headers = () => token.promise;
+    // B-DATA-15: the first token issues the child id; the provisioning token is held.
+    const token = deferred<{ Authorization: string }>(); let tokens = 0;
+    h.transport.headers = () => ++tokens === 1 ? Promise.resolve({ Authorization: "synthetic-A" }) : token.promise;
     const first = mountController(h); fillAbout(first.controller); await first.controller.next(); await h.flush();
-    expect(h.value.profiles).toHaveLength(1); expect(h.calls.headers).toHaveLength(1); first.close();
+    expect(h.value.profiles).toHaveLength(1); expect(h.calls.headers).toHaveLength(2); first.close();
     const second = mountController(h); expect(second.controller.snapshot().childId).toBe(h.value.profiles[0].id);
     token.resolve({ Authorization: "synthetic-A" }); await h.flush();
     expect(provisionedIds(h)).toEqual([h.value.profiles[0].id]); expect(h.calls.sets).toHaveLength(1);

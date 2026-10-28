@@ -12,7 +12,7 @@ type HookSlot = { value?: any; deps?: unknown[]; cleanup?: () => void };
 /** Runs the actual provider, retaining hook state and cleaning up effects on
  * owner changes. Every SDK, storage, token and fetch boundary is synthetic. */
 export function harness({ owner = "A", rows = [child("A-child")], local = [child("local-private")], server = new Map<string, Record<string, unknown>>() } = {}) {
-  let uid = owner, cursor = 0, dirty = true, value: Provider;
+  let uid = owner, cursor = 0, dirty = true, value: Provider, issuedIds = 0;
   let actualUser: { uid: string } | null = { uid: owner };
   const authListeners = new Set<(user: typeof actualUser) => void>();
   const auth = { get currentUser() { return actualUser; } };
@@ -100,7 +100,8 @@ export function harness({ owner = "A", rows = [child("A-child")], local = [child
   new Function("require", "module", "exports", "localStorage", "sessionStorage", "fetch", code)(
     (name: string) => { if (!(name in imports)) throw Error("Unmocked boundary: " + name); return imports[name]; }, module, module.exports,
     { ...storage(localStore), getItem: (key: string) => { calls.localReads.push(key); return localStore.get(key) ?? null; } }, storage(sessionStore),
-    async (url: string, opts: RequestInit) => { calls.fetch.push({ url, opts }); return { ok: true }; },
+    // B-DATA-15: the server issues new child ids (synthetic, sequential here).
+    async (url: string, opts: RequestInit) => { calls.fetch.push({ url, opts }); return { ok: true, json: async () => (url === "/api/onboarding/child-id" ? { childId: `child-issued-${++issuedIds}` } : {}) }; },
   );
   const render = () => { cursor = 0; dirty = false; value = module.exports.ProfileProvider({ children: null }); return value; };
   const effects = () => { while (queue.length) queue.shift()!(); };

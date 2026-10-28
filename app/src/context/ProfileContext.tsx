@@ -113,6 +113,22 @@ async function provisionOwnership(childId: string, childProfile: Partial<ChildPr
   }
 }
 
+/**
+ * B-DATA-15: a new child's id is ISSUED by the server — random, and created
+ * already parented to this account's family — never chosen on the device in a
+ * shared `child-<timestamp>` namespace another account could collide with or
+ * claim. A failure (offline, server down) rejects: the caller keeps its form.
+ */
+async function issueChildId(current: () => boolean): Promise<string> {
+  const headers = await authHeaders();
+  if (!current()) throw new Error("The profile session changed");
+  const res = await fetch("/api/onboarding/child-id", { method: "POST", headers });
+  const body = res.ok ? (await res.json()) as { childId?: unknown } : null;
+  if (!current()) throw new Error("The profile session changed");
+  if (!body || typeof body.childId !== "string" || !body.childId) throw new Error("A child id was not issued");
+  return body.childId;
+}
+
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const { user, firebaseEnabled: authEnabled } = useAuth();
   const useFirestore = firebaseEnabled && authEnabled && !!user && user.uid !== "local-sandbox";
@@ -285,8 +301,15 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       if (onboarding) {
         reservation = firstCreates.current.get(writeScopeKey);
         if (!reservation) {
-          reservation = { child: { ...input, id: `child-${Date.now()}` }, write: Promise.resolve(), status: "rejected", installed: false, adopter };
-          firstCreates.current.set(writeScopeKey, reservation);
+          // B-DATA-15: the reserved identity is server-issued (sandbox: local).
+          const id = useFirestore && db ? await issueChildId(callerCurrent) : `child-${Date.now()}`;
+          if (!callerCurrent()) throw new Error("The profile session changed");
+          // A concurrent first create may have reserved while this id was issued.
+          reservation = firstCreates.current.get(writeScopeKey);
+          if (!reservation) {
+            reservation = { child: { ...input, id }, write: Promise.resolve(), status: "rejected", installed: false, adopter };
+            firstCreates.current.set(writeScopeKey, reservation);
+          }
         }
         reservation.adopter = adopter;
         const reserved = reservation;
@@ -308,7 +331,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         }
         if (reserved.installed) return newChild;
       } else {
-        newChild = { ...input, id: `child-${Date.now()}` };
+        // B-DATA-15: server-issued id; offline this rejects and the form stays.
+        newChild = { ...input, id: useFirestore && db ? await issueChildId(callerCurrent) : `child-${Date.now()}` };
+        if (!current()) throw new Error("The profile session changed");
         if (useFirestore && db) {
           try { await setDoc(doc(db, profilesPath, newChild.id), newChild); }
           catch { /* existing add-child paths retain their local fallback */ }

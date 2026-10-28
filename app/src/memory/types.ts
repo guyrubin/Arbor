@@ -55,6 +55,9 @@ export type MemoryStore = {
     userId: string;
     childProfile?: Record<string, unknown>;
   }): Promise<void>;
+  /** B-DATA-15: issue a NEW child id server-side, already parented to the
+   *  caller's family. Optional — single-tenant (local) stores omit it. */
+  issueChildId?(input: { familyId: string; userId: string }): Promise<string>;
   /** GDPR erasure: permanently delete every memory event (and the child doc) for a child. Returns the number of events removed. */
   eraseChild(childId: string): Promise<number>;
   /** Authorization: does `uid` belong to the family that owns `childId`? Optional —
