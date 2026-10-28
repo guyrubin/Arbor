@@ -39,8 +39,9 @@ describe("B-SHELL-43 · copy residues", () => {
     const heLine = t("he", "kept.capture.ownNote");
     expect(enLine).not.toMatch(/clear|your own/i);
     expect(heLine).not.toMatch(/למחוק|במילים שלכם/);
-    expect(enLine).toMatch(/type it in this box/);
-    expect(heLine).toMatch(/להקליד/);
+    // Critic r1: accurate as well as kind: the one condition that opens the chips.
+    expect(enLine).toMatch(/into an empty box/);
+    expect(heLine).toMatch(/בתיבה ריקה/);
   });
 });
 
