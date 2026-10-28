@@ -1,4 +1,5 @@
 import React from "react";
+import { savedOnPhoneKey } from "../../lib/firestoreWrite";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { FreeText } from "../ui/FreeText";
@@ -154,7 +155,7 @@ export function FromRecordReceipt({ quote, queued = false }: { quote?: string | 
     >
       <Icon name="check" size={16} />
       {/* B-DATA-14: an answer kept on this phone says so until it is sent. */}
-      {t(queued ? "elev.sync.savedOnPhone" : "today.record.receipt")}
+      {t(queued ? savedOnPhoneKey() : "today.record.receipt")}
     </motion.p>
   );
 }

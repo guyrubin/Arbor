@@ -1,4 +1,5 @@
 import React from "react";
+import { savedOnPhoneKey } from "../../lib/firestoreWrite";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -109,7 +110,7 @@ export default function TodaySayBackLine({ keepsakeDocs, now }: { keepsakeDocs: 
       <div data-testid="today-door-saidback" data-answered={line.answer} className="flex min-h-11 flex-wrap items-center gap-2 rounded-xl px-3 py-1.5">
         <Icon name="record_voice_over" size={18} style={{ color: "var(--arbor-muted)" }} />
         <span role="status" data-testid="today-door-saidback-receipt" style={{ color: "var(--arbor-muted)", fontSize: "var(--t-sm)" }}>
-          {t(write?.status === "queued" ? "elev.sync.savedOnPhone" : "today.record.receipt")}
+          {t(write?.status === "queued" ? savedOnPhoneKey() : "today.record.receipt")}
         </span>
       </div>
     );

@@ -18,6 +18,7 @@ export const en: Record<string, string> = {
   // ── B-DATA-14: a save kept on this phone (sent on reconnect), and a goal
   //    choice that needs the connection (it merges onto the stored list).
   "elev.sync.savedOnPhone": "Saved on this phone. Sending when you're back online.",
+  "elev.sync.savedOnPhoneSending": "Saved on this phone. Still sending…",
   "elev.sync.goalOffline": "You're offline, so this goal isn't saved yet. Try again when you're back online.",
 
   // ── B-DATA-15: adding a child needs the server (it issues the child's id).
@@ -35,6 +36,7 @@ export const he: Record<string, string> = {
   "elev.sync.dismiss": "להסתיר את ההודעה",
 
   "elev.sync.savedOnPhone": "נשמר בטלפון. יישלח כשהחיבור יחזור.",
+  "elev.sync.savedOnPhoneSending": "נשמר בטלפון. עדיין נשלח…",
   "elev.sync.goalOffline": "אין חיבור, ולכן המטרה עוד לא נשמרה. נסו שוב כשהחיבור יחזור.",
   "elev.sync.addChildFailed": "לא הצלחנו להוסיף את הפרופיל. בדקו את החיבור ונסו שוב.",
 

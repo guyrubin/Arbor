@@ -210,15 +210,17 @@ describe("B-DATA-14 — offline the say-back line never waits on the network", (
       expect(renderToStaticMarkup(<TodaySayBackLine keepsakeDocs={[quoteDoc()]} now={NOW} />)).toContain('data-testid="today-door-saidback-pending"');
     } finally { vi.unstubAllGlobals(); h.confirmed = true; }
   });
-  it("an answer kept on this phone reads 'Saved on this phone…' in EN and HE", () => {
-    for (const lang of ["en", "he"] as const) {
+  it("an answer kept on this phone reads 'Saved on this phone…' in EN and HE, by connection", () => {
+    for (const [lang, online, key] of [["en", false, "elev.sync.savedOnPhone"], ["he", false, "elev.sync.savedOnPhone"], ["en", true, "elev.sync.savedOnPhoneSending"], ["he", true, "elev.sync.savedOnPhoneSending"]] as const) {
+      vi.stubGlobal("navigator", { onLine: online });
       h.lang = lang;
       const opener = { kind: "said", key: "said:quote-2026-10-05-aa" };
       h.writes[fromRecordRowId("c1", NOW)] = { opener, status: "queued", entry: { sayBack: "yes" } };
       const keys = Object.keys(h.writes);
       const html = renderToStaticMarkup(<TodaySayBackLine keepsakeDocs={[quoteDoc()]} now={NOW} />);
       for (const k of keys) delete h.writes[k];
-      expect(html).toContain(translate(lang, "elev.sync.savedOnPhone").replace(/'/g, "&#x27;"));
+      vi.unstubAllGlobals();
+      expect(html).toContain(translate(lang, key).replace(/'/g, "&#x27;"));
     }
   });
 });
