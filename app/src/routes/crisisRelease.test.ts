@@ -22,7 +22,7 @@
  * case here fails. Synthetic data only; no network. */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 import type { Server } from "node:http";
@@ -160,21 +160,38 @@ const NOT_A_CHANNEL: Record<string, string> = {
 
 /* ── the release proof ────────────────────────────────────────────────────── */
 
-/** Every `router.<method>("/path", …)` in routes/api.ts that calls screenForImmediateEscalation. */
-function screenedRoutes(): string[] {
-  const file = ts.createSourceFile("api.ts", readFileSync(path.join(ROOT, "app", "src", "routes", "api.ts"), "utf8"), ts.ScriptTarget.Latest, true);
+/** Every `router.<method>("/path", …)` in routes/api.ts that calls
+ *  screenForImmediateEscalation, plus every call site that has NO enclosing
+ *  route (a helper const or function): those cannot be attributed to a
+ *  channel, so the author must inline the screen in the route or register it. */
+function screenedRoutes(source = readFileSync(path.join(ROOT, "app", "src", "routes", "api.ts"), "utf8")): { routes: string[]; unattributed: number[] } {
+  const file = ts.createSourceFile("api.ts", source, ts.ScriptTarget.Latest, true);
   const out = new Set<string>();
+  const unattributed: number[] = [];
   const visit = (node: ts.Node) => {
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "screenForImmediateEscalation") {
-      for (let p: ts.Node | undefined = node.parent; p; p = p.parent) {
+      let route: string | null = null;
+      for (let p: ts.Node | undefined = node.parent; p && !route; p = p.parent) {
         if (ts.isCallExpression(p) && ts.isPropertyAccessExpression(p.expression) && p.expression.expression.getText(file) === "router"
-          && p.arguments[0] && ts.isStringLiteral(p.arguments[0])) { out.add(p.arguments[0].text); break; }
+          && p.arguments[0] && ts.isStringLiteral(p.arguments[0])) route = p.arguments[0].text;
       }
+      if (route) out.add(route);
+      else unattributed.push(file.getLineAndCharacterOfPosition(node.getStart()).line + 1);
     }
     ts.forEachChild(node, visit);
   };
   visit(file);
-  return [...out].sort();
+  return { routes: [...out].sort(), unattributed };
+}
+
+/** Server files other than routes/api.ts that screen for crisis (a router mounted from server/ would be a channel this matrix cannot see). */
+function otherServerScreens(): string[] {
+  const dirs = ["server", "routes", "services"].map((d) => path.join(ROOT, "app", "src", d));
+  const files: string[] = [];
+  const walk = (dir: string) => { for (const e of readdirSync(dir, { withFileTypes: true })) { const p = path.join(dir, e.name); if (e.isDirectory()) walk(p); else if (/\.ts$/.test(e.name) && !/\.test\.ts$/.test(e.name)) files.push(p); } };
+  dirs.forEach(walk);
+  return files.filter((f) => !f.endsWith(path.join("routes", "api.ts")) && /screenForImmediateEscalation\(/.test(readFileSync(f, "utf8")))
+    .map((f) => path.relative(path.join(ROOT, "app", "src"), f));
 }
 
 /** The category's own resources are there; the other category's are not. */
@@ -231,10 +248,20 @@ describe("B-GA-05 — every enabled crisis channel directs to help before anythi
   }
 
   it("the matrix covers every route that calls screenForImmediateEscalation (derived from the source)", () => {
-    const screened = screenedRoutes();
-    expect(screened.length).toBeGreaterThanOrEqual(18);
-    expect(screened).toContain("/live/turn");
-    expect([...Object.keys(CHANNELS), ...Object.keys(NOT_A_CHANNEL)].sort()).toEqual(screened);
+    const { routes, unattributed } = screenedRoutes();
+    expect(unattributed, `screenForImmediateEscalation( at routes/api.ts line(s) ${unattributed.join(", ")} has no enclosing router route: inline it in the route or register the channel here`).toEqual([]);
+    expect(otherServerScreens(), "a server file outside routes/api.ts screens for crisis: add its channel to this matrix").toEqual([]);
+    expect(routes.length).toBeGreaterThanOrEqual(18);
+    expect(routes).toContain("/live/turn");
+    expect([...Object.keys(CHANNELS), ...Object.keys(NOT_A_CHANNEL)].sort()).toEqual(routes);
+  });
+
+  it("negative control: a screen reached through a helper const is flagged, not silently missed", () => {
+    const api = readFileSync(path.join(ROOT, "app", "src", "routes", "api.ts"), "utf8");
+    const helper = `${api}\nconst screenHelper = (text: string) => screenForImmediateEscalation({ message: text });\nconst late = (router: any) => router.post("/synthetic-helper-route", (req: any, res: any) => res.json(screenHelper(req.body.text)));\n`;
+    const { routes, unattributed } = screenedRoutes(helper);
+    expect(routes).not.toContain("/synthetic-helper-route");
+    expect(unattributed).toHaveLength(1);
   });
 });
 
