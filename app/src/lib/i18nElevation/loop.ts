@@ -123,7 +123,7 @@ export const en: Record<string, string> = {
   "elev.loop.tonight.done": "That's tonight. Sleep well.",
   "elev.loop.tonight.story": "Read tonight's story",
   // ── B-PROG-03 · Tonight's parent proxy on a program day ─────────────────
-  "elev.loop.tonight.proxy.turns.q": "How many times did you wait and {name} took a turn?",
+  "elev.loop.tonight.proxy.turns.q": "How many times did you wait for {name} to take a turn?",
   "elev.loop.tonight.proxy.turns.max": "{n}+",
   "elev.loop.tonight.proxy.turns.helper": "This counts your waiting, not your child.",
   "elev.loop.tonight.proxy.routine.q": "How did tonight's bedtime routine go?",

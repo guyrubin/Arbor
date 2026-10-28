@@ -287,8 +287,11 @@ function TonightFlowBody(props: TonightFlowProps) {
                 ? SELF_COUNT_CHOICES.map((n) => ({ value: n, label: n === SELF_COUNT_MAX ? t("elev.loop.tonight.proxy.turns.max", { n }) : String(n) }))
                 : (["done_in_order", "not_tonight"] as const).map((a) => ({ value: a, label: t(`elev.loop.tonight.proxy.routine.${a}`) }));
               return (
-                <div data-testid="tonight-proxy" data-proxy={proxy.kind} className="space-y-2">
-                  <p id="tonight-proxy-q" className="t-base font-semibold" style={{ color: "var(--arbor-ink)" }}>
+                // r2: the second answer row is QUIETER than the outcome chips
+                // above (t-sm, no fill, hairline), so "It helped" stays the
+                // obvious first tap; 44 px targets kept.
+                <div data-testid="tonight-proxy" data-proxy={proxy.kind} className="space-y-2 pt-1">
+                  <p id="tonight-proxy-q" className="t-sm font-semibold" style={{ color: "var(--arbor-ink-soft)" }}>
                     {g(t(`elev.loop.tonight.proxy.${proxy.kind}.q`, { name }))}
                   </p>
                   <div role="group" aria-labelledby="tonight-proxy-q" data-testid="tonight-proxy-answers" className="flex flex-wrap gap-2">
@@ -307,11 +310,11 @@ function TonightFlowBody(props: TonightFlowProps) {
                             if (proxy.kind === "turns") proxy.onCount(c.value as number);
                             else proxy.onRoutine(c.value as RoutineAnswer);
                           }}
-                          className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-full px-3 t-base font-semibold${proxy.kind === "turns" ? " arbor-num" : ""}`}
+                          className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-full px-3 t-sm font-semibold${proxy.kind === "turns" ? " arbor-num" : ""}`}
                           style={{
-                            color: on ? "var(--arbor-clay-deep)" : "var(--arbor-ink)",
-                            background: on ? "var(--arbor-clay-dim)" : "var(--arbor-paper)",
-                            border: `1px solid ${on ? "var(--arbor-clay-deep)" : "var(--arbor-rule-strong)"}`,
+                            color: on ? "var(--arbor-ink)" : "var(--arbor-ink-soft)",
+                            background: on ? "var(--arbor-paper-deep)" : "transparent",
+                            border: `1px solid ${on ? "var(--arbor-ink-soft)" : "var(--arbor-rule)"}`,
                           }}
                         >
                           {on && <Icon name="check" size={16} />}

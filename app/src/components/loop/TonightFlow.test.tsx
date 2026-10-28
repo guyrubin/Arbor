@@ -276,7 +276,7 @@ describe("B-PROG-03 — Tonight asks the program's parent proxy after Did it", (
       expect(taps.map((b) => b.match(/data-value="([^"]+)"/)![1])).toEqual(["0", "1", "2", "3", "4", "5"]);
       const tx = text(html);
       expect(tx).toContain("5+");
-      expect(tx).toContain(lang === "en" ? "How many times did you wait and Noa took a turn?" : "כמה פעמים חיכיתם וNoa לקחה תור?");
+      expect(tx).toContain(lang === "en" ? "How many times did you wait for Noa to take a turn?" : "כמה פעמים חיכיתם וNoa לקחה תור?");
       expect(tx).toContain(lang === "en" ? "This counts your waiting, not your child." : "זו ספירה של ההמתנה שלכם, לא של הילדה.");
       expect(loopFirewallHits(tx)).toEqual([]);
       // the group sits inside the how-form, after the outcome answers and before the line
@@ -298,6 +298,18 @@ describe("B-PROG-03 — Tonight asks the program's parent proxy after Did it", (
     expect(render(1, "en", { parentProxy: turns })).not.toContain('data-testid="tonight-proxy"');
     expect(render(1, "en", { doseAnswer: "not_today", parentProxy: turns })).not.toContain('data-testid="tonight-proxy"');
     expect(render(1, "en", { doseAnswer: "did" })).not.toContain('data-testid="tonight-proxy"');
+  });
+  it("r2: the count row is quieter than the outcome row, so 'It helped' stays the obvious first tap", () => {
+    const html = render(1, "en", { doseAnswer: "did", parentProxy: turns });
+    const outcome = html.match(/<button[^>]*data-testid="tonight-outcome"[^>]*>/)![0];
+    const choice = html.match(/<button[^>]*data-testid="tonight-proxy-choice"[^>]*>/)![0];
+    expect(outcome).toMatch(/font-bold/);
+    expect(outcome).toContain("var(--arbor-clay-dim)");
+    expect(choice).not.toMatch(/font-bold|clay/);
+    expect(choice).toMatch(/t-sm/);
+    expect(choice).toContain("background:transparent");
+    // the outcome answers come first in reading order
+    expect(html.indexOf('data-testid="tonight-outcome"')).toBeLessThan(html.indexOf('data-testid="tonight-proxy-choice"'));
   });
   it("a saved count shows as chosen", () => {
     const html = render(1, "en", { doseAnswer: "did", parentProxy: { ...turns, value: 3 } });
