@@ -112,7 +112,13 @@ describe("B-SHELL-15 · the front door promises the companion first", () => {
       expect(at, id).toBeGreaterThan(-1);
       const tag = login.slice(login.lastIndexOf("<button", at), login.indexOf(">", login.indexOf("className", at)));
       expect(tag, id).toContain("min-h-11");
+      // On the type scale, never an arbitrary pixel size.
+      expect(tag, id).not.toMatch(/text-\[\d+(\.\d+)?px\]/);
+      expect(tag, id).toMatch(/\bt-(sm|base)\b/);
     }
+    // Creating an account is the new family's way in: body size, not a footnote.
+    const sw = login.indexOf('data-testid="login-mode-switch"');
+    expect(login.slice(sw, login.indexOf(">", login.indexOf("className", sw)))).toContain("t-base font-bold");
   });
 
   it("LegalLinks is mounted under the card", () => {

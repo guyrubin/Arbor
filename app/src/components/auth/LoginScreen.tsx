@@ -183,7 +183,7 @@ export default function LoginScreen() {
                 style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
               />
             </div>
-            {mode === "signup" && <p id="login-password-hint" className="px-1 text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.auth.signup.passwordHint")}</p>}
+            {mode === "signup" && <p id="login-password-hint" className="px-1 t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.auth.signup.passwordHint")}</p>}
             <button
               type="submit"
               data-testid="login-email-submit"
@@ -195,14 +195,14 @@ export default function LoginScreen() {
               {mode === "signup" ? t("elev.auth.signup.cta") : t("auth.signIn")}
             </button>
             <div className="flex flex-wrap items-center justify-between gap-x-3">
-              {mode === "signin" && <button type="button" data-testid="login-forgot" onClick={handleReset} className="inline-flex items-center min-h-11 text-[11px] transition" style={{ color: "var(--arbor-muted)" }}>
+              {mode === "signin" && <button type="button" data-testid="login-forgot" onClick={handleReset} className="inline-flex items-center min-h-11 t-sm transition" style={{ color: "var(--arbor-muted)" }}>
                 {t("auth.forgot")}
               </button>}
               <button type="button" data-testid="login-mode-switch" onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setResetMsg(""); }}
-                className="inline-flex items-center min-h-11 text-[11px] font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
+                className="inline-flex items-center min-h-11 min-w-11 t-base font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
                 {mode === "signin" ? t("elev.auth.signup.toSignup") : t("elev.auth.signup.toSignin")}
               </button>
-              {resetMsg && <span role="status" className="text-[10px]" style={{ color: "var(--arbor-green-ink)" }}>{resetMsg}</span>}
+              {resetMsg && <span role="status" className="t-sm" style={{ color: "var(--arbor-green-ink)" }}>{resetMsg}</span>}
             </div>
           </form>
         )}
