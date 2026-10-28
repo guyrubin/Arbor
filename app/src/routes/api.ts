@@ -11,8 +11,9 @@ import { normalizeAvatarStyle } from "../lib/avatarStyle.js";
 import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider } from "../ai/modelRouter.js";
 import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
-import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, toFileTurnContract, renderFileDeclinedResponse, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence, type CoachResponse } from "../contracts/coach.js";
-import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildDescribeChildPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE, renderCouncilContinuity } from "../ai/prompts.js";
+import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, toFileTurnContract, renderFileDeclinedResponse, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence, type CoachResponse, scrubHandoffNotes } from "../contracts/coach.js";
+import { scrubHandoffBriefFindings } from "../lib/clinicalScan.js";
+import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildDescribeChildPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE, renderCouncilContinuity, HANDOFF_BRIEF_RULE } from "../ai/prompts.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
 // the byte-identical legacy prompt on any malformed/absent input.
@@ -1117,6 +1118,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // reaches the parent, and the rendered labels follow the session language.
       const renderLanguage = language === "he" ? "he" : "en";
       scrubHypothesisConfidence(structured, renderLanguage);
+      // B-ASKJB-44: no invented finding reaches a teacher or professional note.
+      scrubHandoffNotes(structured);
 
       // B-AI-14: renderCoachResponse renders `governedEscalation` in the
       // escalation section, so the output screen below covers it. Live fix
@@ -1465,6 +1468,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // B-AI-01 eval fix: same verdict scrub + session-language labels as /chat.
       const renderLanguage = language === "he" ? "he" : "en";
       scrubHypothesisConfidence(structured, renderLanguage);
+      // B-ASKJB-44: no invented finding reaches a teacher or professional note.
+      scrubHandoffNotes(structured);
       const renderedText = renderCoachResponse(structured, renderLanguage);
       const outputVerdict = await screenModelOutput(modelProvider, renderedText);
       if (outputVerdict.flagged) {
@@ -3806,6 +3811,7 @@ Key Logged Behaviors: ${JSON.stringify(logs)}
 Milestone Context: ${JSON.stringify(milestones)}
 ${ROUTINE_ESCALATION_GUIDANCE}
 When no crisis has been reported, crisisEscalationTrigger should contain only a relevant routine threshold for professional advice; do not invent a crisis scenario.
+${HANDOFF_BRIEF_RULE}
 Return JSON with title, date, overview, keyStrengths, classroomChallenges, languageSupportPlan, suggestedTeacherStrategies, crisisEscalationTrigger.${handoffLanguageDirective}
 `;
       const privacy = createRedaction(childProfile?.name);
@@ -3833,6 +3839,9 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       // to a teacher or clinician. Every other generative route in this file
       // screens before it reaches a person; so does this one now.
       const brf = (brief ?? {}) as Record<string, unknown>;
+      // B-ASKJB-44: the invented-finding floor ("no evidence of…", "was
+      // observed", EN + HE) drops those sentences before the screen and the reply.
+      if (brief && typeof brief === "object") scrubHandoffBriefFindings(brf);
       const briefText = [
         brf.title, brf.overview, brf.crisisEscalationTrigger,
         ...([brf.keyStrengths, brf.classroomChallenges, brf.languageSupportPlan, brf.suggestedTeacherStrategies]

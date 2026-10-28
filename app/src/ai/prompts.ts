@@ -288,7 +288,16 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // profile carries them. Without wishes the bytes equal 1.8.0 (sha 670672691c…,
   // parity pinned in prompts.test.ts). Re-pin: coach-core-v1 (+2 wishes
   // scenarios: "don't push reading", "never tell me to see a doctor").
-  coach_chat: { version: "1.9.0", sha256: "13aea4f4a0107b772f41f3ae61b842f18c8ad65bc2bd3697b4b6c40c08a3bc1a" },
+  // 1.10.0 (B-ASKJB-44, 2026-10-28): HANDOFF_NOTES_RULE closes the field
+  // rules — handoffNotes restate only what the parent reported; never an
+  // absence of difficulties, a screening result, an unattributed "was
+  // observed" or an outcome that has not happened (live companion-topics-v1
+  // topic-enjoy-he red 2 of 3 on 1.9.0). Deterministic floor: contracts/coach
+  // scrubHandoffNotes. Field rules render on every /chat turn, so every byte
+  // pin moves (prompts.test.ts). Re-pin owed (live, NOT RE-RUN by the builder:
+  // no Vertex credentials in the build container): companion-topics-v1
+  // (topic-enjoy-he 5 of 5), coach-core-v1, coach-hardmoment-seed-v1.
+  coach_chat: { version: "1.10.0", sha256: "343654726f4fbb9ef2ae4ee8315f611a29c52348e2b63521e5fc8604251940d6" },
   council_synthesis: { version: "1.4.0", sha256: "db095a77e6305b1d788394ea55c068680447b1c4f63413abaf86db37e28746c8" },
   // voice_reply 1.7.0 / live_session 1.5.0 (B-PROG-01, 2026-10-06): the
   // spoken context (ai/spokenContext.ts) renders the OPTIONAL "Active
@@ -456,11 +465,26 @@ export const ROUTINE_ESCALATION_GUIDANCE = "Escalation guidance must be proporti
  * (4) hypothesis confidence came back as low/medium/high — a graded label.
  * Council and voice keep ROUTINE_ESCALATION_GUIDANCE alone (their pins hold).
  */
+/**
+ * coach_chat 1.10.0 (B-ASKJB-44, 2026-10-28) — handoffNotes restate only what
+ * the parent reported. Live companion-topics-v1 on 1.9.0 (topic-enjoy-he, red
+ * 2 of 3 on a byte-identical prompt): the professional note said "no evidence
+ * of attention or regulation difficulties" and, on a re-run, that a positive
+ * interaction "was observed", for an activity that had not happened. The
+ * deterministic floor under this rule is contracts/coach scrubHandoffNotes
+ * (lib/clinicalScan withoutHandoffFindings).
+ */
+export const HANDOFF_NOTES_RULE = `handoffNotes (teacher, professional): restate only what the parent reported, in plain words, as the parent's report. Never write that something is absent, normal or ruled out (no "no evidence of", "no signs of", "shows no", "no difficulties", "within normal limits"), never a screening result, never that something "was observed" or "noted" unless the parent said they saw it, and never the outcome of something that has not happened yet. When the parent reported nothing a teacher or professional needs, return an empty string.`;
+
+/** B-ASKJB-44 — the same rule for the School Brief / handoff route (/api/generate-handoff, school-handoff-v1). */
+export const HANDOFF_BRIEF_RULE = `Every field restates only what the logs and milestones above show, as the family's report. Never write that something is absent, normal or ruled out (no "no evidence of", "no signs of", "shows no", "no difficulties", "within normal limits"), never a screening result, never that something "was observed" by anyone other than the family, and never an outcome that has not happened.`;
+
 export const COACH_CHAT_FIELD_RULES = `Field rules:
 - When a fact under ARBOR APPROVED CHILD MEMORY bears on the question, build the answer on it first and name it (what already works for this child) in "text" and todayPlan, before adding anything new.
 - If the parent asks whether the child has a condition or a label, never write that condition's name or any label back, not even to decline. Say plainly in "text" that Arbor cannot answer that question and only a qualified professional can assess it. Do not describe behaviours the parent did not report: ask what they have noticed, and make todayPlan about noticing and writing down concrete moments to bring to that conversation.
 - escalateIf: 1-3 thresholds built only from what the parent reported (how often, how long, how intense, in how many settings, skills lost, daily life disrupted) and whom to talk to. Thresholds are about the behaviour the parent described and never introduce a danger the parent did not raise. In a routine answer no field names self-harm, suicide, abuse, violence or injury.
-- nonDiagnosticHypotheses[].confidence: an uncertainty phrase such as "one possibility", never low, medium, high, a score or a percentage.`;
+- nonDiagnosticHypotheses[].confidence: an uncertainty phrase such as "one possibility", never low, medium, high, a score or a percentage.
+- ${HANDOFF_NOTES_RULE}`;
 
 /**
  * coach_chat 1.5.0 (B-AI-14 live fix, 2026-10-06) — the governed-escalation

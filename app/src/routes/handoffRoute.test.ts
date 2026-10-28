@@ -206,3 +206,39 @@ describe("allowListHandoffInput — the pure allow-list", () => {
     expect(`Key Logged Behaviors: ${JSON.stringify(allowListHandoffInput(raw, [], NOW).logs)}`).not.toContain("secret");
   });
 });
+
+/* B-ASKJB-44 — the School Brief restates only what the family logged: the
+   prompt carries the rule, and a drafted absence-of-finding or unattributed
+   observation is dropped before the output screen and the reply. */
+describe("B-ASKJB-44 · /api/generate-handoff invented-finding floor", () => {
+  it("drops 'no evidence of' / 'was observed' sentences (EN + HE) and keeps the rest of the brief", async () => {
+    draft = {
+      ...CLEAN_DRAFT,
+      overview: "Mia does best with a warning before a change. There is no evidence of attention difficulties.",
+      keyStrengths: ["Curious", "אין סימנים לקושי חברתי."],
+      suggestedTeacherStrategies: ["Give a two-minute warning", "A calm response was observed at pickup."],
+    };
+    prompts = [];
+    const res = await fetch(`${baseUrl}/api/generate-handoff`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ childProfile: { name: "Mia", age: 4 }, logs: [], milestones: [] }),
+    });
+    const json = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(json.overview).toBe("Mia does best with a warning before a change.");
+    expect(json.keyStrengths).toEqual(["Curious"]);
+    expect(json.suggestedTeacherStrategies).toEqual(["Give a two-minute warning"]);
+    expect(prompts[0]).toContain("Every field restates only what the logs and milestones above show");
+    draft = CLEAN_DRAFT;
+  });
+  it("a clean draft is returned unchanged", async () => {
+    draft = CLEAN_DRAFT;
+    const res = await fetch(`${baseUrl}/api/generate-handoff`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ childProfile: { name: "Mia", age: 4 }, logs: [], milestones: [] }),
+    });
+    expect(await res.json()).toEqual(CLEAN_DRAFT);
+  });
+});

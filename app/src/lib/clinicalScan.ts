@@ -155,3 +155,94 @@ export function findClinicalDiagnosisTerm(text: string): string | null {
   }
   return null;
 }
+
+/* ── B-ASKJB-44 · handoff notes restate only what the parent reported ──────
+ *
+ * The coach wrote, into `handoffNotes.professional`, a finding nobody made:
+ * "…ללא עדות לקשיי קשב או ויסות משמעותיים בהקשר זה" ("no evidence of
+ * attention or regulation difficulties"), for an activity that had not even
+ * happened (companion-topics-v1 topic-enjoy-he, 10 Oct), and on a re-run
+ * "נצפתה אינטראקציה חיובית…" (an interaction "was observed"). A note written
+ * for a teacher or clinician is the one place an invented negative finding
+ * reads as a result, so this floor runs on the model's output before any note
+ * is shown or handed on. Two classes:
+ *   1. an ABSENCE-of-finding outcome — "no evidence of", "shows no signs of",
+ *      "no … difficulties", "ruled out", "within normal limits", a screening
+ *      result, "developing normally";
+ *   2. an UNATTRIBUTED observation — "was observed / noted", "נצפתה": Arbor
+ *      observed nothing, and the parent's own report says "the parent saw".
+ * English on word boundaries (case-insensitive); Hebrew as substrings or with
+ * letter look-arounds (`\b` cannot bound a Hebrew word, and particles glue).
+ * A matching SENTENCE is dropped and the rest of the note is kept verbatim;
+ * over-matching is the safe direction (a sentence a professional never reads). */
+const NOUN_EN = String.raw`(?:signs?|evidence|indications?|indicators?|symptoms?|red\s+flags?|difficult(?:y|ies)|delays?|deficits?|impairments?|concerns?|problems?|issues?)`;
+export const HANDOFF_FINDING_PATTERNS_EN: readonly RegExp[] = [
+  new RegExp(String.raw`\bno\s+(?:clear\s+|obvious\s+|apparent\s+|real\s+|significant\s+|further\s+|current\s+)?(?:evidence|signs?|indications?|indicators?|symptoms?|red\s+flags?|traces?)\s+(?:of|that|for)\b`, "i"),
+  new RegExp(String.raw`\b(?:show|shows|showed|showing|display|displays|displayed|exhibit|exhibits|exhibited|present|presents|presented|demonstrate|demonstrates|demonstrated)\s+no\s+(?:\w+\s+){0,3}?${NOUN_EN}\b`, "i"),
+  new RegExp(String.raw`\b(?:does|did|do|is|was|are|were)\s*(?:not|n['’]t)\s+(?:show|showing|display|exhibit|present\s+with|demonstrate|have|appear\s+to\s+have)\s+(?:any\s+)?(?:\w+\s+){0,3}?${NOUN_EN}\b`, "i"),
+  new RegExp(String.raw`\bno\s+(?:\w+[\s,]+){0,4}?(?:difficult(?:y|ies)|delays?|deficits?|impairments?|red\s+flags?)\b`, "i"),
+  new RegExp(String.raw`\bno\s+(?:\w+\s+){0,3}?concerns?\s+(?:were\s+|was\s+|have\s+been\s+|has\s+been\s+)?(?:noted|observed|found|identified|detected|raised|present|seen)\b`, "i"),
+  new RegExp(String.raw`\b(?:without|free\s+(?:of|from))\s+(?:any\s+)?(?:signs?|evidence|indications?|symptoms?|difficult(?:y|ies)|delays?)\b`, "i"),
+  new RegExp(String.raw`\brul(?:e|es|ed|ing)\s+out\b`, "i"),
+  new RegExp(String.raw`\bwithin\s+(?:the\s+)?normal\s+(?:limits|range)\b`, "i"),
+  new RegExp(String.raw`\bnothing\s+(?:to\s+suggest|suggests|that\s+suggests|indicates|that\s+indicates|concerning|of\s+concern)\b`, "i"),
+  new RegExp(String.raw`\b(?:screen(?:ed|ing)?\s+(?:negative|clear|normal)|pass(?:ed|es)?\s+(?:the\s+|a\s+)?(?:screening|screen))\b`, "i"),
+  new RegExp(String.raw`\b(?:typical|normal)\s+development\b|\bdevelop(?:s|ing)\s+(?:normally|typically|on\s+track)\b|\bdevelopmentally\s+(?:normal|typical|on\s+track)\b`, "i"),
+  new RegExp(String.raw`\b(?:was|were|has\s+been|have\s+been|had\s+been)\s+(?:observed|noted|seen|identified|detected)\b`, "i"),
+];
+
+/** Hebrew absence-of-finding phrases, matched as substrings. */
+export const HANDOFF_FINDING_TERMS_HE = [
+  // "no evidence of"
+  "אין עדות", "ללא עדות", "אין הוכחה", "ללא הוכחה",
+  // "no signs of"
+  "אין סימנים", "אין סימן", "ללא סימנים", "ללא סימן", "לא נראים סימנים", "לא נראה סימן", "לא נראו סימנים",
+  "לא נצפו סימנים", "לא נצפה סימן", "לא מראה סימנים", "לא מראה סימן", "אינו מראה סימנים", "אינה מראה סימנים",
+  "לא הראה סימנים", "לא הראתה סימנים", "אין אינדיקציה", "ללא אינדיקציה",
+  // "no concern / difficulty / delay"
+  "אין חשש", "ללא חשש", "אין קשיים", "ללא קשיים", "אין קושי", "ללא קושי", "לא נמצאו קשיים", "לא נצפו קשיים",
+  "לא נמצא קושי", "אין עיכוב", "ללא עיכוב",
+  // "ruled out" / "within normal limits" / "developing normally"
+  "לשלול", "נשלל", "נשללה", "נשללו", "שולל", "שוללת",
+  "בטווח התקין", "בטווח הנורמה", "בגבולות הנורמה", "בגבולות התקין", "התפתחות תקינה",
+  "מתפתח כרגיל", "מתפתחת כרגיל", "מתפתח באופן תקין", "מתפתחת באופן תקין",
+] as const;
+/** Hebrew unattributed observation ("was observed / identified"), as whole words. */
+const UNATTRIBUTED_FINDING_HE = /(?<!\p{L})ו?(?:נצפה|נצפתה|נצפו|זוהה|זוהתה|זוהו)(?!\p{L})/u;
+
+/** The first invented-finding phrase in the text, or null. Language-agnostic at the call site. */
+export function findHandoffFinding(text: string): string | null {
+  for (const re of HANDOFF_FINDING_PATTERNS_EN) {
+    const m = re.exec(text);
+    if (m) return m[0];
+  }
+  for (const term of HANDOFF_FINDING_TERMS_HE) {
+    if (text.includes(term)) return term;
+  }
+  return UNATTRIBUTED_FINDING_HE.exec(text)?.[0] ?? null;
+}
+
+/** Drop every sentence that states an invented finding; an untouched note is returned byte-identical. */
+export function withoutHandoffFindings(text: string): string {
+  if (!findHandoffFinding(text)) return text;
+  const sentences = text.match(/[^.!?。\n]+[.!?。]*\s*/g) ?? [text];
+  return sentences.filter((sentence) => !findHandoffFinding(sentence)).join("").trim();
+}
+
+/** The same floor over a structured School Brief / handoff draft: every string
+ *  field and every list item. Returns how many fields changed. Mutates in place. */
+export function scrubHandoffBriefFindings(brief: Record<string, unknown>): number {
+  let changed = 0;
+  for (const [key, value] of Object.entries(brief)) {
+    if (typeof value === "string") {
+      const next = withoutHandoffFindings(value);
+      if (next !== value) { brief[key] = next; changed++; }
+    } else if (Array.isArray(value)) {
+      const next = value
+        .map((item) => (typeof item === "string" ? withoutHandoffFindings(item) : item))
+        .filter((item) => typeof item !== "string" || item.trim() !== "");
+      if (next.length !== value.length || next.some((item, i) => item !== value[i])) { brief[key] = next; changed++; }
+    }
+  }
+  return changed;
+}
