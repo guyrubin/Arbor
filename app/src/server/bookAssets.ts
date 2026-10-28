@@ -1,4 +1,6 @@
 import express, { type RequestHandler } from "express";
+import { createHash } from "node:crypto";
+import { BOOK_EXPORT_DIGEST_HEADER, BOOK_EXPORT_LIMITS } from "../lib/library/bookAssetExportContract.js";
 import { BOOK_ASSET_ID, bookAssetContentType, bookAssetObject, childBookAssetPrefix, isBookAssetRel } from "../lib/library/bookAssetPaths.js";
 import { logger, requestIdOf } from "./logger.js";
 import { bookAssetLimiter } from "./apiRateLimits.js";
@@ -45,7 +47,7 @@ export interface BookAssetFile {
 
 export interface BookAssetBucket {
   file(name: string): BookAssetFile;
-  getFiles(opts: { prefix: string; autoPaginate?: boolean; maxResults?: number }): Promise<[BookAssetFile[], unknown?]>;
+  getFiles(opts: { prefix: string; autoPaginate?: boolean; maxResults?: number; pageToken?: string }): Promise<[BookAssetFile[], unknown?]>;
 }
 
 /** The configured bucket, or null when none is configured. */
@@ -70,10 +72,14 @@ export async function eraseChildBookAssets(bucket: BookAssetBucket | null, child
   }
 }
 
-export function createBookAssetsRouter(deps: { getBucket: () => Promise<BookAssetBucket | null>; requireOwnership: RequestHandler; allowLocal?: boolean; readsPerMin?: number }): express.Router {
+export function createBookAssetsRouter(deps: { getBucket: () => Promise<BookAssetBucket | null>; requireOwnership: RequestHandler; allowLocal?: boolean; readsPerMin?: number; exportReadsPerMin?: number }): express.Router {
   const router = express.Router();
   // K2: off the per-IP /api limit; its own per-account limit (a first open reads every file)
   const limit = bookAssetLimiter("read", deps.readsPerMin);
+  // B-CAREPRO-50: one export reads every listed file once; its own per-account
+  // budget fits the contract's whole inventory, so a ten-book library is not
+  // cut short by the reader's limit (and cannot spend the reader's budget).
+  const exportLimit = bookAssetLimiter("read", deps.exportReadsPerMin ?? BOOK_EXPORT_LIMITS.files * 2);
   const verified: RequestHandler = (req, res, next) => {
     const uid = (req as { user?: { uid?: string } }).user?.uid;
     if (deps.allowLocal && (!uid || uid === "local-sandbox")) return next();
@@ -100,7 +106,8 @@ export function createBookAssetsRouter(deps: { getBucket: () => Promise<BookAsse
     }
   });
   const verifiedRead: RequestHandler = (req, res, next) => req.query.export === "1" ? exportVerified(req, res, next) : verified(req, res, next);
-  router.get("/children/:childId/book-assets/:bookId/file", verifiedRead, limit, deps.requireOwnership, async (req, res) => {
+  const readLimit: RequestHandler = (req, res, next) => (req.query.export === "1" ? exportLimit : limit)(req, res, next);
+  router.get("/children/:childId/book-assets/:bookId/file", verifiedRead, readLimit, deps.requireOwnership, async (req, res) => {
     const { childId, bookId } = req.params;
     const rel = typeof req.query.path === "string" ? req.query.path : "";
     if (!BOOK_ASSET_ID.test(childId) || !BOOK_ASSET_ID.test(bookId) || !isBookAssetRel(rel)) {
@@ -117,6 +124,39 @@ export function createBookAssetsRouter(deps: { getBucket: () => Promise<BookAsse
       const [exists] = await file.exists();
       if (!exists) {
         res.status(404).json({ error: "Not found" });
+        return;
+      }
+      if (req.query.export === "1") {
+        // B-CAREPRO-50: an export read is the exact bytes plus the server's
+        // SHA-256 of them (the client keeps the file only on a match), with a
+        // length; bounded by the contract's per-file cap. A storage error, or
+        // a client gone mid-read, ends the response without a clean 200.
+        const stream = file.createReadStream();
+        res.on("close", () => { if ("destroy" in stream) (stream as import("node:stream").Readable).destroy(); });
+        const chunks: Buffer[] = [];
+        let size = 0;
+        try {
+          for await (const chunk of stream as AsyncIterable<Buffer | string>) {
+            const buf = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+            size += buf.byteLength;
+            if (size > BOOK_EXPORT_LIMITS.fileBytes) {
+              if ("destroy" in stream) (stream as import("node:stream").Readable).destroy();
+              res.status(413).json({ error: "Book file too large to export" });
+              return;
+            }
+            chunks.push(buf);
+          }
+        } catch {
+          res.destroy();
+          return;
+        }
+        const body = Buffer.concat(chunks, size);
+        res.setHeader("Content-Type", bookAssetContentType(rel));
+        res.setHeader("Cache-Control", "private, no-store");
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        res.setHeader("Content-Length", String(size));
+        res.setHeader(BOOK_EXPORT_DIGEST_HEADER, createHash("sha256").update(body).digest("hex"));
+        res.end(body);
         return;
       }
       res.setHeader("Content-Type", bookAssetContentType(rel));

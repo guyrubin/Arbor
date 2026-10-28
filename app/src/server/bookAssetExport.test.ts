@@ -7,7 +7,8 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { inventoryChildBookAssets } from "./bookAssetExport";
 import { createBookAssetsRouter, eraseChildBookAssets, type BookAssetBucket, type BookAssetFile } from "./bookAssets";
 import { LocalFsBookAssetBucket } from "./localBookAssetBucket";
-import { BOOK_EXPORT_LIMITS } from "../lib/library/bookAssetExportContract";
+import { BOOK_EXPORT_DIGEST_HEADER, BOOK_EXPORT_LIMITS } from "../lib/library/bookAssetExportContract";
+import { createHash } from "node:crypto";
 import { bookAssetUrl } from "../lib/library/bookAssetPaths";
 
 vi.mock("./logger.js", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() }, requestIdOf: () => "synthetic" }));
@@ -40,11 +41,14 @@ function fakeBucket(objects: Record<string, Buffer>, opts: { unknownSize?: boole
   });
   const bucket: BookAssetBucket = {
     file: fileOf,
+    // GCS-shaped paging: a page of `maxResults`, then a next query carrying a pageToken.
     getFiles: async (options) => {
       lists.push(options);
       const files = Object.keys(objects).filter((k) => k.startsWith(options.prefix)).map(fileOf);
+      const from = Number(options.pageToken ?? 0);
       const limit = options.autoPaginate === false ? options.maxResults ?? files.length : files.length;
-      return files.length > limit ? [files.slice(0, limit), { nextPageToken: "synthetic-page" }] : [files];
+      const page = files.slice(from, from + limit);
+      return from + limit < files.length ? [page, { ...options, pageToken: String(from + limit) }] : [page];
     },
   };
   return { bucket, reads, lists, deleted };
@@ -66,7 +70,7 @@ describe("B-BOOK-20 server inventory is bounded and scoped", () => {
       { bookId: "synthetic-book", path: "hero-sheets/synthetic/stand.png", bytes: 3 },
     ]);
     expect(f.reads).toEqual([]);
-    expect(f.lists).toEqual([{ prefix, autoPaginate: false, maxResults: BOOK_EXPORT_LIMITS.files }]);
+    expect(f.lists).toEqual([{ prefix, autoPaginate: false, maxResults: BOOK_EXPORT_LIMITS.inventoryPage }]);
     expect(JSON.stringify(inventory)).not.toMatch(/private.txt|SIBLING|synthetic-child2/);
   });
 
@@ -93,6 +97,19 @@ describe("B-BOOK-20 server inventory is bounded and scoped", () => {
     expect(unknown.status).toBe("incomplete");
     expect(unknown.files[0].bytes).toBeNull();
     expect(unknown.issues).toContain("unknown_size");
+  });
+
+  it("B-CAREPRO-50: pages the whole prefix, so a ten-book library is listed in full (no inventory_limit)", async () => {
+    const objects = Object.fromEntries(Array.from({ length: 1500 }, (_, i) => [prefix + `b${i % 10}/hero-sheets/s/p${i}.png`, Buffer.from("D")]));
+    const f = fakeBucket(objects);
+    const out = await inventoryChildBookAssets(f.bucket, "synthetic-child");
+    expect(out.status).toBe("complete");
+    expect(out.issues).toEqual([]);
+    expect(out.files).toHaveLength(1500);
+    expect(f.lists).toHaveLength(2);
+    // a continuation that names no page token cannot be followed: fail closed
+    const stuck = { getFiles: async () => [[{ name: prefix + asset, metadata: { size: 1 } }], { nextPageToken: "x" }] } as unknown as BookAssetBucket;
+    expect((await inventoryChildBookAssets(stuck, "synthetic-child")).issues).toContain("inventory_limit");
   });
 
   it("keeps local fixture listing bounded without narrowing the exact existing erase sweep", async () => {
@@ -166,7 +183,19 @@ describe("authenticated export proxy (in-memory synthetic fixture)", () => {
     expect((await inventory.json()).files[0].bytes).toBe(4);
     const bytes = await get(url, "owner");
     expect(bytes.headers.get("cache-control")).toBe("private, no-store");
+    // B-CAREPRO-50: the export read carries the server's digest, type and length.
+    expect(bytes.headers.get(BOOK_EXPORT_DIGEST_HEADER)).toBe(createHash("sha256").update("DATA").digest("hex"));
+    expect(bytes.headers.get("content-type")).toBe("image/png");
+    expect(bytes.headers.get("content-length")).toBe("4");
     expect(await bytes.text()).toBe("DATA");
+  });
+
+  it("B-CAREPRO-50: an export read over the per-file cap is refused (413), never streamed", async () => {
+    const f = fakeBucket({ [prefix + asset]: Buffer.alloc(BOOK_EXPORT_LIMITS.fileBytes + 1) });
+    bucket = f.bucket;
+    const res = await get(url, "owner");
+    expect(res.status).toBe(413);
+    expect(res.headers.get(BOOK_EXPORT_DIGEST_HEADER)).toBeNull();
   });
 
   it("rejects traversal/unknown shapes and reports missing known-shape files without disclosure", async () => {
