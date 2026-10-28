@@ -110,6 +110,8 @@ export default function TodaySayBackLine({ keepsakeDocs, now }: { keepsakeDocs: 
       <div data-testid="today-door-saidback" data-answered={line.answer} className="flex min-h-11 flex-wrap items-center gap-2 rounded-xl px-3 py-1.5">
         <Icon name="record_voice_over" size={18} style={{ color: "var(--arbor-muted)" }} />
         <span role="status" data-testid="today-door-saidback-receipt" style={{ color: "var(--arbor-muted)", fontSize: "var(--t-sm)" }}>
+          {/* B-DATA-14: read at render; NowView (its host) subscribes to the
+              connection (useOnline), so the line switches when the phone reconnects. */}
           {t(write?.status === "queued" ? savedOnPhoneKey() : "today.record.receipt")}
         </span>
       </div>

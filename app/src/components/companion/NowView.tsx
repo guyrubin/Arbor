@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { savedOnPhoneKey } from "../../lib/firestoreWrite";
+import { useOnline } from "../../hooks/useSyncStatus";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -144,6 +145,8 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const currentSaveError = saveError && retryAction?.scope === scopeLease;
   const receipt = receiptAction?.scope === scopeLease ? receiptAction.action : null;
   const receiptQueued = !!receipt && !!receiptAction?.queued;
+  // B-DATA-14: the kept-on-this-phone line follows the connection live.
+  const online = useOnline();
   const pendingAction = [...savingAction.current.values()].find(write => write.scope === scopeLease)?.action;
   const chosen = receipt ?? pendingAction ?? (retryAction?.scope === scopeLease ? retryAction.action : null) ?? action;
   // v3: "Haven't tried yet" writes nothing; the step simply stays. This only acknowledges it.
@@ -258,7 +261,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // no plan meta, no "picked because" — nothing is invented beside the help lines.
   const planTag = shownLead === "urgent" ? t("elev.safety.header.title") : copy.planTag[shownLead];
   const planSay = shownLead === "urgent" ? null : practiceSay ? t("elev.loop.ms.quoted", { text: practiceSay }) : copy.planSay[shownLead];
-  const planMeta = shownLead === "urgent" ? null : shownLead === "step" ? (receipt ? (receiptQueued ? t(savedOnPhoneKey()) : copy.saved) : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
+  const planMeta = shownLead === "urgent" ? null : shownLead === "step" ? (receipt ? (receiptQueued ? t(savedOnPhoneKey(online)) : copy.saved) : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
   const planWeekTitle = shownLead === "plan" && plan ? <h2 id={`${id}-plan`} className="now-plan-title" dir="auto">{plan.def.title[lang]}</h2> : undefined;
   // v3 F-NOW-1 r2: the guide's title on the face is the lead's own h2, moved up
   // from its section (which keeps it as its label). The loop leads' cards carry
@@ -313,7 +316,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
               how={stepLines(chosen.recommendation)} onAdapt={() => talk(copy.adaptPrompt(chosen.recommendation))} />
           </>}
           {observation && (receipt ? <>
-            <Receipt testId="now-observation-receipt">{t(receiptQueued ? savedOnPhoneKey() : "ob.first.observation.saved")}</Receipt>
+            <Receipt testId="now-observation-receipt">{t(receiptQueued ? savedOnPhoneKey(online) : "ob.first.observation.saved")}</Receipt>
             <PrimaryMove type="button" className="companion-text-button" onClick={() => { requestJournalFocus(`action-${chosen.id}`); goToRoute("journal", { view: "all" }); }}>{t("ob.first.observation.open")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" /></PrimaryMove>
           </> : <form onSubmit={event => { event.preventDefault(); void saveOutcome({ whatHappened: observationWords }); }}>
             <p id={`${id}-observation-purpose`} className="now-lead-body">{t("ob.first.observation.purpose")}</p>

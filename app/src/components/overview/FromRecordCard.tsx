@@ -1,5 +1,6 @@
 import React from "react";
 import { savedOnPhoneKey } from "../../lib/firestoreWrite";
+import { useOnline } from "../../hooks/useSyncStatus";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { FreeText } from "../ui/FreeText";
@@ -121,6 +122,7 @@ export default function FromRecordCard({
  *  celebration, never a count. With no quote it stays "Noted · today". */
 export function FromRecordReceipt({ quote, queued = false }: { quote?: string | null; queued?: boolean } = {}) {
   const { t } = useLanguage();
+  const online = useOnline();
   const words = (quote ?? "").trim();
   if (words) {
     return (
@@ -155,7 +157,7 @@ export function FromRecordReceipt({ quote, queued = false }: { quote?: string | 
     >
       <Icon name="check" size={16} />
       {/* B-DATA-14: an answer kept on this phone says so until it is sent. */}
-      {t(queued ? savedOnPhoneKey() : "today.record.receipt")}
+      {t(queued ? savedOnPhoneKey(online) : "today.record.receipt")}
     </motion.p>
   );
 }
