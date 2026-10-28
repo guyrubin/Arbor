@@ -472,11 +472,15 @@ export type LiveUnavailableReason = (typeof LIVE_UNAVAILABLE_REASONS)[number];
  * Maps a failed Live start to its reason, or null when the failure is not an
  * availability signal (a mic denial, a paywall, a quota/consent refusal and a
  * mid-start timeout are told to the parent elsewhere and are not counted).
- * `stage` is where the attempt was: minting the token, or opening the socket.
+ * `stage` is where the attempt was: opening the microphone (B-AIOPS-02: it
+ * opens BEFORE any token is minted), minting the token, or opening the socket.
+ * Nothing that fails at the microphone stage is an availability signal — a
+ * refused, missing or stuck microphone says nothing about Live.
  * "live-closed-before-open" is the depleted-prepay signature (the provider
  * accepts the socket handshake and closes it before setup).
  */
-export function liveUnavailableReason(err: unknown, stage: "mint" | "socket"): LiveUnavailableReason | null {
+export function liveUnavailableReason(err: unknown, stage: "mic" | "mint" | "socket"): LiveUnavailableReason | null {
+  if (stage === "mic") return null;
   const message = err instanceof Error ? err.message : "";
   if (message === "live-closed-before-open") return "closed_before_open";
   if (message === "live-closed-during-start") return "closed_during_start";

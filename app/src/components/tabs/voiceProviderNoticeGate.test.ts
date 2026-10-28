@@ -67,7 +67,8 @@ describe("B-AIOPS-02 · the family's voice time at the one voice path", () => {
     expect(mic).toBeGreaterThan(0);
     expect(mic).toBeLessThan(toggle.indexOf("await mintLive()"));
     expect(toggle).toMatch(/\["NotAllowedError", "SecurityError", "NotFoundError", "NotReadableError"\]\.includes\(err\.name\)/);
-    expect(toggle).toContain('const unavailable = liveStage === "mic" ? null : liveUnavailableReason(err, liveStage);');
+    // The microphone stage is excluded inside liveUnavailableReason itself (lib/kpiEvents).
+    expect(toggle).toMatch(/const unavailable = liveUnavailableReason\(err, liveStage\);\s*if \(unavailable\) trackLiveUnavailable\(unavailable\);/);
     // The opened microphone never leaks: released in the catch and on lost attempts, owned by the session after handoff.
     expect(toggle).toMatch(/\} catch \(err\) \{\s*releaseMic\(\);/);
     expect(toggle).toContain("if (!attempt.isCurrent()) { releaseMic(); return; }");

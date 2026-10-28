@@ -1058,7 +1058,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
         console.warn("Live voice start failed — falling back to browser voice", err);
         // B-PROV-06: the balance alarm — a depleted prepay shows up as
         // "closed before open"; count it (closed enum, no text) before falling back.
-        const unavailable = liveStage === "mic" ? null : liveUnavailableReason(err, liveStage);
+        const unavailable = liveUnavailableReason(err, liveStage);
         if (unavailable) trackLiveUnavailable(unavailable);
         if (liveUsageId && (unavailable === "closed_before_open" || unavailable === "closed_during_start")) {
           void api.liveUsage(liveUsageId, "failed").catch(() => {});
