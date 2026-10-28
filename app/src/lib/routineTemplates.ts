@@ -51,6 +51,23 @@ export function routineToPlan(routine: Routine, lang: UiLang, firstName: string,
   };
 }
 
+/** B-ASKJB-26 — the nine problem templates on Plans fold into the authored
+ *  routine boards (the Gate: folding avoids new copy). A template chip starts
+ *  its board as a plan through `routineToPlan` — the board's own EN + HE
+ *  phase and steps — with ZERO generate-plan calls. Keys are the
+ *  `plan.template.<key>` dictionary keys; values are ROUTINES ids. */
+export const PLAN_TEMPLATE_ROUTINE: Readonly<Record<string, string>> = Object.freeze({
+  morningDeparture: "morning",
+  screenShutdown: "screens",
+  siblingConflict: "calm",
+  bedtimeResistance: "bedtime",
+  foodRefusal: "meal",
+  separationAnxiety: "goodbye",
+  responsibilityLadder: "tidy",
+  schoolAdaptation: "reconnect",
+  behaviorReset: "calm",
+});
+
 /** The templates offered for a child of this age (months; null = every one). */
 export function routineTemplatesForAge(months: number | null | undefined): Routine[] {
   return routinesForAge(months);
