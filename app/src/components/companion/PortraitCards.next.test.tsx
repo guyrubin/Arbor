@@ -23,6 +23,8 @@ vi.mock("../../context/LanguageContext", async () => {
 vi.mock("../describe/TellArborMore", () => ({ default: () => null }));
 
 import PortraitCards from "./PortraitCards";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 const GOAL = { goalId: "taking-turns", label: "Taking turns", domainId: "social", addedAt: "2026-10-05T00:00:00Z" };
 const plan = (id: string, focusGoalId: string | undefined, steps: { text: string; completed: boolean }[]): ActionPlan => ({
@@ -62,5 +64,17 @@ describe("B-GROWTH-40 · My child's focus line says what to do next", () => {
     state.goals = [];
     state.plans = [plan("plan-2", "taking-turns", [{ text: "x", completed: false }])];
     expect(render()).not.toContain("portrait-goal-next");
+  });
+});
+
+describe("B-GROWTH-40 · the Next line reads whole (critic r1)", () => {
+  it("clamps at two lines, never a one-line mid-word ellipsis", () => {
+    const css = readFileSync(path.resolve(__dirname, "developmentMap.css"), "utf8");
+    const rule = css.match(/\.portrait-card-next \{([^}]*)\}/)?.[1] ?? "";
+    expect(rule).toMatch(/-webkit-line-clamp: 2/);
+    expect(rule).toMatch(/-webkit-box-orient: vertical/);
+    expect(rule).not.toMatch(/white-space: nowrap/);
+    // NEGATIVE CONTROL: the r1 rule is what this rejects.
+    expect("overflow: hidden; text-overflow: ellipsis; white-space: nowrap;").toMatch(/white-space: nowrap/);
   });
 });
