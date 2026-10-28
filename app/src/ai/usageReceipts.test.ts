@@ -186,4 +186,28 @@ describe("B-AIOPS-01 — a stream that stops early still leaves one receipt", ()
     expect(cancelled).toHaveBeenCalledTimes(1);
     expect(offset).toBeLessThan(bytes.length);
   });
+
+  it("Claude: the receipt is written before the cancel, so a cancel that never settles cannot lose it", async () => {
+    const spy = vi.spyOn(logger, "info").mockImplementation(() => {});
+    const events = [
+      { type: "message_start", message: { usage: { input_tokens: 77 } } },
+      { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Hello " } },
+      { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "there." } },
+    ];
+    const bytes = new TextEncoder().encode(events.map((e) => `event: ${e.type}\ndata: ${JSON.stringify(e)}\n`).join("\n") + "\n");
+    let sent = false;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) { if (!sent) { sent = true; controller.enqueue(bytes); } },
+      cancel: () => new Promise<void>(() => { /* never settles */ }),
+    });
+    globalThis.fetch = (async () => ({ ok: true, body })) as unknown as typeof fetch;
+    const provider = new ClaudeVertexProvider(createTestConfig());
+    const iterator = provider.generateJsonStream({ route: "coach_high_stakes", prompt: "synthetic" })[Symbol.asyncIterator]();
+    await iterator.next();
+    void iterator.return?.(undefined); // the consumer stops; the cancel hangs
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const lines = usageLines(spy);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({ endedEarly: true, promptTokens: 77 });
+  });
 });
