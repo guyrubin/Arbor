@@ -266,69 +266,82 @@ describe("B-PROG-05 — the container and the door", () => {
   });
 });
 
-import { PROGRAM_PILOT_FLAG_KEY, programPilotLine } from "../../lib/programPage";
+import { PROGRAM_PILOT_FLAG_KEY, PROGRAM_PILOT_LINE_EXPOSED, programPilotCount, programPilotLine } from "../../lib/programPage";
 import { programById } from "../../content/programs";
 import { programPilotText, hardMomentPilotText } from "../../content/hardMomentPilotText";
 import { PilotNote } from "../ui/PilotNote";
 
 /* B-PROG-15 — a draft program says it is a pilot, in the hard-moment guide's
    own PilotNote, while its reviewStatus is "draft"; signed, the line goes.
-   Built dark: PROGRAM_PILOT_LINE_EXPOSED is false until Guy's word, and the
-   house device flag shows it for review. */
+   Shown by default (Guy's decided default, 11 Oct); the house device flag is
+   a per-device review switch ("0" off, "1" on). The chooser above two draft
+   programs speaks in the plural. */
 describe("B-PROG-15 — the pilot line on a draft program", () => {
   const flagged = (value: string | null) => ({ getItem: (key: string) => (key === PROGRAM_PILOT_FLAG_KEY ? value : null) });
 
-  it("draft + exposed shows; dark by default; the device flag shows it for review; a broken store fails closed", () => {
+  it("shown by default on every draft; the device switch turns it off or on; a broken store falls back to the default", () => {
+    expect(PROGRAM_PILOT_LINE_EXPOSED).toBe(true);
     for (const id of ["talk-together", "steady-nights"]) {
       expect(programById(id)?.reviewStatus).toBe("draft");
-      expect(programPilotLine(id, { exposed: true, storage: null })).toBe(true);
-      expect(programPilotLine(id, { storage: null })).toBe(false);
-      expect(programPilotLine(id, { storage: flagged("1") })).toBe(true);
+      expect(programPilotLine(id, { storage: null })).toBe(true);
+      expect(programPilotLine(id, { storage: flagged(null) })).toBe(true);
       expect(programPilotLine(id, { storage: flagged("0") })).toBe(false);
-      expect(programPilotLine(id, { storage: { getItem: () => { throw new Error("blocked"); } } })).toBe(false);
+      expect(programPilotLine(id, { storage: flagged("1"), exposed: false })).toBe(true);
+      expect(programPilotLine(id, { storage: null, exposed: false })).toBe(false);
+      expect(programPilotLine(id, { storage: { getItem: () => { throw new Error("blocked"); } } })).toBe(true);
     }
-    expect(programPilotLine("not-a-program", { exposed: true })).toBe(false);
+    expect(programPilotLine("not-a-program")).toBe(false);
   });
 
-  it("signed (approved) or retired: the line disappears even when exposed", () => {
+  it("signed (approved) or retired: the line disappears whatever the switch says", () => {
     const program = programById("talk-together")!;
     const was = program.reviewStatus;
     try {
       for (const status of ["approved", "retired"] as const) {
         (program as { reviewStatus: string }).reviewStatus = status;
-        expect(programPilotLine("talk-together", { exposed: true })).toBe(false);
+        expect(programPilotLine("talk-together", { storage: null })).toBe(false);
+        expect(programPilotLine("talk-together", { storage: flagged("1") })).toBe(false);
       }
+      // One signed, one draft: the chooser speaks of ONE pilot program.
+      (program as { reviewStatus: string }).reviewStatus = "approved";
+      expect(programPilotCount(["talk-together", "steady-nights"], { storage: null })).toBe("one");
     } finally {
       (program as { reviewStatus: string }).reviewStatus = was;
     }
+    expect(programPilotCount(["talk-together", "steady-nights"], { storage: null })).toBe("many");
+    expect(programPilotCount(["talk-together"], { storage: null })).toBe("one");
+    expect(programPilotCount(["talk-together", "steady-nights"], { storage: flagged("0") })).toBeNull();
   });
 
-  it.each(["en", "he"] as const)("the page renders it in the header module, enrolled and quiet, with the device flag (%s)", (lang) => {
+  it.each(["en", "he"] as const)("by default the page shows it in the header module: singular on the program, plural on the chooser (%s)", (lang) => {
     state.lang = lang;
-    vi.stubGlobal("localStorage", flagged("1"));
+    vi.stubGlobal("localStorage", flagged(null));
     try {
-      const copy = programPilotText(lang);
+      const one = programPilotText(lang, "one");
+      const many = programPilotText(lang, "many");
       state.rows = { programs: [ENROLMENT] };
       const enrolled = renderToStaticMarkup(<ProgramPage />);
       expect(enrolled).toContain('data-testid="program-pilot"');
-      expect(text(enrolled)).toContain(copy.status);
-      expect(text(enrolled)).toContain(copy.explanation);
+      expect(text(enrolled)).toContain(one.status);
+      expect(text(enrolled)).toContain(one.explanation);
       // Inside the existing header module: no new module, the budget is unchanged.
       const header = enrolled.slice(enrolled.indexOf('data-module="program-week"'), enrolled.indexOf('data-testid="program-week-band"'));
       expect(header).toContain('data-testid="program-pilot"');
       state.rows = {};
       const quiet = renderToStaticMarkup(<ProgramPage />);
       expect(quiet.match(/data-testid="program-pilot"/g)).toHaveLength(1);
-      expect(text(quiet)).toContain(copy.explanation);
+      expect(text(quiet)).toContain(many.status);
+      expect(text(quiet)).toContain(many.explanation);
+      expect(text(quiet)).not.toContain(one.explanation);
     } finally {
       vi.unstubAllGlobals();
       state.rows = {};
     }
   });
 
-  it("dark by default: no flag, no line", () => {
+  it("the device review switch hides it on that device", () => {
     state.lang = "en";
-    vi.stubGlobal("localStorage", flagged(null));
+    vi.stubGlobal("localStorage", flagged("0"));
     try {
       state.rows = { programs: [ENROLMENT] };
       expect(renderToStaticMarkup(<ProgramPage />)).not.toContain('data-testid="program-pilot"');
@@ -338,14 +351,15 @@ describe("B-PROG-15 — the pilot line on a draft program", () => {
     }
   });
 
-  it("the same component and tone as the hard-moment guide's pilot label; EN says 'not yet had clinical review', HE the same in Hebrew", () => {
+  it("the same component and tone as the hard-moment guide's pilot label; EN says 'not yet had clinical review', HE the same in Hebrew, singular and plural", () => {
     const guide = renderToStaticMarkup(<PilotNote {...hardMomentPilotText("en")} />);
-    const program = renderToStaticMarkup(<PilotNote {...programPilotText("en")} />);
     const shape = (html: string) => html.replace(/>[^<]*</g, "><");
-    expect(shape(program)).toBe(shape(guide));
+    for (const count of ["one", "many"] as const) expect(shape(renderToStaticMarkup(<PilotNote {...programPilotText("en", count)} />))).toBe(shape(guide));
     expect(guide).toContain('role="note"');
-    expect(programPilotText("en").explanation).toMatch(/not yet had clinical review/);
-    expect(programPilotText("he").explanation).toMatch(/עדיין לא עברה בדיקה קלינית/);
-    expect(programPilotText("he").status).toMatch(/פיילוט/);
+    expect(programPilotText("en").explanation).toMatch(/This pilot program has not yet had clinical review/);
+    expect(programPilotText("en", "many").explanation).toMatch(/These pilot programs have not yet had clinical review/);
+    expect(programPilotText("he").explanation).toMatch(/תוכנית הפיילוט הזאת עדיין לא עברה בדיקה קלינית/);
+    expect(programPilotText("he", "many").explanation).toMatch(/תוכניות הפיילוט האלה עדיין לא עברו בדיקה קלינית/);
+    expect(programPilotText("he", "many").status).toBe("תוכניות בפיילוט");
   });
 });

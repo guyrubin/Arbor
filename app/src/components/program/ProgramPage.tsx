@@ -33,7 +33,7 @@ import { programPilotText } from "../../content/hardMomentPilotText";
 import {
   programPacketLine,
   programPageModel,
-  programPilotLine,
+  programPilotCount,
   startablePrograms,
   type ProgramCount,
   type ProgramPageModel,
@@ -76,8 +76,9 @@ export interface ProgramPageViewProps {
    *  Kid Mode cannot open it; never shown on a paused week). */
   kidDoor?: React.ReactNode;
   /** B-PROG-15: the pilot line, in the header module (lib/programPage
-   *  programPilotLine: the program is still a draft and the line is exposed). */
-  pilot?: boolean;
+   *  programPilotCount: how many of the programs on this page are still a
+   *  draft — "one" on a program's page, "many" on the chooser above two). */
+  pilot?: "one" | "many" | null;
 }
 
 function CountRow({ c, week }: { c: ProgramCount; week: number }) {
@@ -140,10 +141,10 @@ export function ProgramPageView({
   goals,
   coach,
   kidDoor,
-  pilot = false,
+  pilot = null,
 }: ProgramPageViewProps) {
   const { t, uiLang } = useLanguage();
-  const pilotCopy = programPilotText(uiLang === "he" ? "he" : "en");
+  const pilotCopy = programPilotText(uiLang === "he" ? "he" : "en", pilot ?? "one");
   const pilotNote = pilot ? <div className="mt-3"><PilotNote status={pilotCopy.status} explanation={pilotCopy.explanation} testId="program-pilot" /></div> : null;
   const compact = useCompactSurface();
   const [confirm, setConfirm] = useState<"toPause" | "toFinish" | null>(null);
@@ -384,7 +385,7 @@ export default function ProgramPage() {
   const startable = useMemo(() => startablePrograms(Number.isFinite(months) ? months : null, lang), [months, lang]);
   const packetLine = model ? programPacketLine(model, t) : "";
   // B-PROG-15: the enrolled program, or (on the quiet page) any program offered, still a draft.
-  const pilot = model ? programPilotLine(model.programId) : startable.some((p) => programPilotLine(p.id));
+  const pilot = programPilotCount(model ? [model.programId] : startable.map((p) => p.id));
 
   // The family's own first-week child count, captured once when week 1 has closed.
   useEffect(() => {
