@@ -114,7 +114,7 @@ export interface ShippedBook {
 }
 
 /**
- * The shipped-file half: `files` are paths relative to public/visuals
+ * The shipped-file half: the file list holds paths relative to public/visuals
  * (`books/<bookId>/<plateId>.webp`, `books/<bookId>/overlays/<id>.webp`,
  * `plans/<patternId>/<plateId>.webp`). `books` = the library books that may
  * ship plates, by id; `planTables` = each pattern's shared plate table. A file
