@@ -631,6 +631,19 @@ describe("B-AI-14 (route) — an applicable approved fact always reaches the ans
   });
 });
 
+/* Critic round 5's esc5 lines (B-ASKJB-44 round 6 hotfix): every one was kept on 5fb5666f. */
+const ESCALATION_LINES_R6 = [
+  "If, after 20 minutes, he shows no signs of calming, call the family.",
+  "If he hurts himself or others, or shows no signs of calming after 20 minutes, call the parent and the school nurse right away.",
+  "If he bites, hits or kicks, or there are no signs of calming after 20 minutes, call the family.",
+  "If refusals grow, sleep worsens, or there are no signs of improvement in a month, talk with your pediatrician.",
+  "אם, אחרי 20 דקות, אין סימנים של רגיעה, יש להתקשר להורים.",
+  "אם הוא פוגע בעצמו או באחרים, או שאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.",
+  "If there are no signs of calming after 20 minutes — or he hurts himself — call the family.",
+  "Call the family if there are no signs of calming after 20 minutes.",
+  "Please contact the family if, after two weeks, there are no signs of improvement.",
+];
+
 /* B-ASKJB-44 — the /chat route runs the handoff-note floor before the
    contract leaves the server (the exact professional note that shipped on
    companion-topics-v1 topic-enjoy-he is the stubbed model output). */
@@ -691,6 +704,17 @@ describe("B-ASKJB-44 · /api/chat handoff notes carry no invented finding", () =
       contractOverrides = { handoffNotes: { teacher, professional: "" } };
       const { events } = await postChatStreamed({ message: "What can we do at drop-off?", childProfile: { id: "c1", name: "Mia" }, language });
       expect(coachResponseZodSchema.parse(doneOf(events)?.contract).handoffNotes.teacher).toBe(teacher);
+    }
+  });
+  it("round 6 hotfix: every esc5 escalation line stays in the teacher note (or the turn routes to crisis help), EN and HE", async () => {
+    for (const teacher of ESCALATION_LINES_R6) {
+      const language = /[\u05D0-\u05EA]/.test(teacher) ? "he" : "en";
+      contractOverrides = { handoffNotes: { teacher, professional: "" } };
+      const { events } = await postChatStreamed({ message: "What can we do at drop-off?", childProfile: { id: "c1", name: "Mia" }, language });
+      const done = doneOf(events);
+      // Never silently deleted: kept verbatim, or the whole turn becomes the crisis card.
+      if (done?.outputBlocked) expect(done?.blockedCategory, teacher).toBeTruthy();
+      else expect(coachResponseZodSchema.parse(done?.contract).handoffNotes.teacher, teacher).toBe(teacher);
     }
   });
   it("a clean handoff note passes the floor byte-identical", async () => {

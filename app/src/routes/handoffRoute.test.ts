@@ -207,6 +207,19 @@ describe("allowListHandoffInput — the pure allow-list", () => {
   });
 });
 
+/* Critic round 5's esc5 lines (B-ASKJB-44 round 6 hotfix): every one was kept on 5fb5666f. */
+const ESCALATION_LINES_R6 = [
+  "If, after 20 minutes, he shows no signs of calming, call the family.",
+  "If he hurts himself or others, or shows no signs of calming after 20 minutes, call the parent and the school nurse right away.",
+  "If he bites, hits or kicks, or there are no signs of calming after 20 minutes, call the family.",
+  "If refusals grow, sleep worsens, or there are no signs of improvement in a month, talk with your pediatrician.",
+  "אם, אחרי 20 דקות, אין סימנים של רגיעה, יש להתקשר להורים.",
+  "אם הוא פוגע בעצמו או באחרים, או שאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.",
+  "If there are no signs of calming after 20 minutes — or he hurts himself — call the family.",
+  "Call the family if there are no signs of calming after 20 minutes.",
+  "Please contact the family if, after two weeks, there are no signs of improvement.",
+];
+
 /* B-ASKJB-44 — the School Brief floor: a drafted absence-of-finding or
    unattributed observation is dropped before the output screen and the reply
    (the prompt rule is parked on claude/askjb44-prompt-bump-2026-10-28). */
@@ -302,6 +315,25 @@ describe("B-ASKJB-44 · /api/generate-handoff invented-finding floor", () => {
       const json = (await res.json()) as Record<string, unknown>;
       expect(res.status, line).toBe(200);
       expect(json.suggestedTeacherStrategies, line).toEqual(["Give a two-minute warning", line]);
+    }
+    draft = CLEAN_DRAFT;
+  });
+  it("round 6 hotfix: a condition with its own commas never hides the referral — every esc5 line stays in the teacher's strategies, EN and HE", async () => {
+    const day = new Date().toISOString().slice(0, 10);
+    const logsEn = [{ behaviorType: "Hard moment", trigger: "He bit a friend at preschool when they fought over a toy; Dr. Levi saw him last week", response: "We separated them and he calmed after a hug", day }];
+    const logsHe = [{ behaviorType: "Hard moment", trigger: "הוא נשך חבר בגן כשרבו על צעצוע; ד\"ר לוי ראה אותו בשבוע שעבר", response: "הפרדנו ביניהם והוא נרגע אחרי חיבוק", day }];
+    for (const line of ESCALATION_LINES_R6) {
+      const he = /[\u05D0-\u05EA]/.test(line);
+      draft = { ...CLEAN_DRAFT, suggestedTeacherStrategies: ["Give a two-minute warning", line] };
+      const res = await fetch(`${baseUrl}/api/generate-handoff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ childProfile: { name: "Noa", age: 4 }, language: he ? "he" : "en", logs: he ? logsHe : logsEn, milestones: [] }),
+      });
+      const json = (await res.json()) as Record<string, unknown>;
+      // A self-harm line may route to the 409 escalation card; it is never silently deleted.
+      if (res.status === 409) expect(json.escalationCategory, line).toBeTruthy();
+      else expect(json.suggestedTeacherStrategies, line).toEqual(["Give a two-minute warning", line]);
     }
     draft = CLEAN_DRAFT;
   });

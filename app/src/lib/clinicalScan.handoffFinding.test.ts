@@ -5,7 +5,7 @@
  * evals/companion-topics-v1.results.jsonl.
  */
 import { describe, expect, it } from "vitest";
-import { HANDOFF_FLOOR_MAX_CHECKS, HANDOFF_PARENT_WORDS_MAX, findHandoffFinding, scrubHandoffBriefFindings, statesUnreportedFinding, withoutHandoffFindings } from "./clinicalScan";
+import { HANDOFF_FLOOR_MAX_CHECKS, HANDOFF_PARENT_WORDS_MAX, findHandoffFinding, isEscalationLine, scrubHandoffBriefFindings, statesUnreportedFinding, withoutHandoffFindings } from "./clinicalScan";
 
 const SHIPPED_PROFESSIONAL_HE = "הילד מגיב היטב לזמני חיבור קצרים המבוססים על ויסות משותף ומשחק חופשי, ללא עדות לקשיי קשב או ויסות משמעותיים בהקשר זה.";
 const SHIPPED_PROFESSIONAL_HE_2 = "נצפתה אינטראקציה חיובית סביב ציור משותף חופשי; מומלץ להמשיך לעודד פעילויות מבוססות קשר וויסות הדדי.";
@@ -496,5 +496,49 @@ describe("B-ASKJB-44 · round 5 — bounded work (P2-2)", () => {
     };
     scrubHandoffBriefFindings(brief, { parentText: "He cries at drop-off." });
     expect(brief.suggestedTeacherStrategies).toEqual([escalation]);
+  });
+});
+
+/* Critic round 5 P1 (hotfix, round 6): an escalation line is found by its main
+   clause. A condition with its own commas ("If he hurts himself or others, or
+   shows no signs of calming…, call…", "אם, אחרי 20 דקות, …") no longer hides
+   the referral. These are the critic's esc5 lines, every one of which
+   5fb5666f kept; 6d14a399 dropped seven of them. */
+const ESCALATION_LINES_R6 = [
+  "If, after 20 minutes, he shows no signs of calming, call the family.",
+  "If he hurts himself or others, or shows no signs of calming after 20 minutes, call the parent and the school nurse right away.",
+  "If he bites, hits or kicks, or there are no signs of calming after 20 minutes, call the family.",
+  "If refusals grow, sleep worsens, or there are no signs of improvement in a month, talk with your pediatrician.",
+  "אם, אחרי 20 דקות, אין סימנים של רגיעה, יש להתקשר להורים.",
+  "אם הוא פוגע בעצמו או באחרים, או שאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.",
+  "If there are no signs of calming after 20 minutes — or he hurts himself — call the family.",
+  "Call the family if there are no signs of calming after 20 minutes.",
+  "Please contact the family if, after two weeks, there are no signs of improvement.",
+] as const;
+describe("B-ASKJB-44 · round 6 hotfix — an imperative referral as the main clause keeps the line (EN + HE)", () => {
+  const PARENT_EN = "He bit a friend at preschool when they fought over a toy; Dr. Levi saw him last week\nWe separated them and he calmed after a hug";
+  it.each([
+    ...ESCALATION_LINES_R6,
+    "If, after two weeks, there are no signs of improvement, the teacher should contact the family.",
+    "Should he show no signs of calming, call the family.",
+    "התקשרו להורים אם אין סימנים של רגיעה אחרי 20 דקות.",
+    "במידה ואין סימנים לשיפור, אחרי שבועיים, כדאי להתייעץ עם פסיכולוג גן.",
+  ])("kept verbatim, with and without the parent's words: %s", (line) => {
+    expect(isEscalationLine(line)).toBe(true);
+    expect(withoutHandoffFindings(line)).toBe(line);
+    expect(withoutHandoffFindings(line, { parentText: PARENT_EN })).toBe(line);
+  });
+
+  it.each([
+    // a colon ends a framing, not a condition
+    "If useful for context: there are no signs of a speech delay, call the family.",
+    "אם זה עוזר: אין סימנים לעיכוב שפתי, יש להתקשר להורים.",
+    // no condition governs the referral, or the referral opens no main clause
+    "There are no signs of delay, call the family with questions.",
+    "Should the teacher ask, there is no evidence of ADHD, and she can call the family.",
+    "If there are no signs of anxiety at drop-off, she can join circle time.",
+  ])("not an escalation line, the finding drops: %s", (line) => {
+    expect(isEscalationLine(line)).toBe(false);
+    expect(withoutHandoffFindings(line, { parentText: PARENT_EN })).toBe("");
   });
 });

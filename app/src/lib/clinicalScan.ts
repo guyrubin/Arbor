@@ -291,6 +291,40 @@ const PROFESSIONAL_EN = String.raw`(?:pediatrician|paediatrician|doctor|dr|GP|pr
 const REFERRAL_EN = new RegExp(String.raw`\b(?:call|calls|calling|contact|phone|notify|inform|alert|seek\s+(?:help|care|advice|support)|emergency|ambulance|112|911|101|988)\b|\blet\s+(?:\S+\s+){1,6}?know\b|\b(?:talk|speak|discuss|consult|tell|refer|see|check\s+(?:in\s+)?with|reach\s+out\s+to)\b(?:\s+\S+){0,4}?\s+${PROFESSIONAL_EN}s?\b`, "i");
 const REFERRAL_HE = /(?<!\p{L})(?:ל|ו)?(?:התקשר\p{L}*|להתקשר|פנו|לפנות|פנה|פני|חירום|112|101|לעדכן|עדכנו|עדכני|להודיע|הודיעו|הודיעי|ליידע|יידעו)(?!\p{L})|(?<!\p{L})(?:לדבר|לשוחח|להתייעץ|להיוועץ|דברו|שוחחו|התייעצו|להפנות)(?:\s+\S+){0,3}?\s+(?:עם\s+|אל\s+|את\s+)?(?:ה)?(?:רופא\p{L}*|ד["״]ר|איש\s+מקצוע|אשת\s+מקצוע|אנשי\s+מקצוע|מטפל\p{L}*|פסיכולוג\p{L}*|מומח\p{L}*|יועצ\p{L}*|הורים|משפחה)/u;
 
+/* Round 6 (critic round 5 P1): an escalation line is found by its MAIN
+ * clause, never by where its condition's first comma falls. A sentence whose
+ * main clause opens with an imperative referral ("call the family", "talk
+ * with your pediatrician", "you should contact the family", "יש להתקשר
+ * להורים", "כדאי להתייעץ עם…", "דברו עם ד"ר לוי") is the safety message and
+ * is never dropped, whatever its condition contains: either a leading
+ * condition runs up to the comma or dash just before that imperative ("If he
+ * hurts himself or others, or shows no signs of calming…, call…", "אם, אחרי
+ * 20 דקות, אין סימנים…, יש להתקשר…"), or the imperative leads and a
+ * condition follows ("Call the family if …", "Please contact the family if,
+ * after two weeks, …"). "She told us to call", "so contact…", "ואפשר לפנות"
+ * open no main clause; a condition cut by a colon ("If useful for context:
+ * …") is a framing, not a condition. */
+const REFERRAL_VERB_EN = String.raw`(?:call|phone|contact|notify|inform|alert|let\s+(?:\S+\s+){1,6}?know|check\s+(?:in\s+)?with|reach\s+out\s+to|talk\s+(?:with|to)|speak\s+(?:with|to)|consult|seek\s+(?:help|care|advice|support)|get\s+(?:help|medical\s+help|emergency\s+help)|(?:see|tell|discuss\s+(?:it\s+|this\s+|that\s+)?with|refer\s+(?:him\s+|her\s+|them\s+)?to)\s+(?:\S+\s+){0,3}?${PROFESSIONAL_EN}s?)\b`;
+const IMPERATIVE_EN = new RegExp(String.raw`^\s*(?:(?:then|please|immediately|right\s+away|always)\s+)*(?:(?:you|staff|we|teachers?|the\s+(?:teacher|teachers|staff|school|nurse|caregiver))\s+(?:should|must|need\s+to|needs\s+to|have\s+to|has\s+to)\s+(?:(?:immediately|always|please|also)\s+)?)?${REFERRAL_VERB_EN}`, "i");
+const REFERRAL_INFINITIVE_HE = String.raw`(?:להתקשר|לפנות|לעדכן|להודיע|ליידע|לדבר|לשוחח|להתייעץ|להיוועץ|להפנות)`;
+const IMPERATIVE_HE = new RegExp(String.raw`^\s*(?:(?:אז|מיד|נא)\s+)?(?:(?:יש|כדאי|מומלץ|צריך|חשוב)\s+(?:\S+\s+)?${REFERRAL_INFINITIVE_HE}|התקשרו|התקשרי|פנו|פני|דברו|דברי|עדכנו|עדכני|הודיעו|הודיעי|יידעו|התייעצו|התייעצי|שוחחו|שוחחי)(?!\p{L})`, "u");
+const LEADING_CONDITION = /^\s*(?:if|when|whenever|once|unless|in\s+case|as\s+soon\s+as|should)\b|^\s*ו?(?:אם|כאשר|במידה|במקרה|ברגע)(?!\p{L})|^\s*ו?כש(?=\p{L})/iu;
+const opensWithReferral = (text: string) => IMPERATIVE_EN.test(text) || IMPERATIVE_HE.test(text);
+/** True when the clause is an escalation line: its main clause is an imperative referral and a condition governs it. */
+export function isEscalationLine(clause: string): boolean {
+  if (opensWithReferral(clause)) {
+    CONDITION_START.lastIndex = 0;
+    return CONDITION_START.test(clause.replace(/^\s*\S+/, ""));
+  }
+  if (!LEADING_CONDITION.test(clause)) return false;
+  for (const m of clause.matchAll(/[,–—]/g)) {
+    const at = m.index ?? 0;
+    if (clause.slice(0, at).includes(":")) return false;
+    if (opensWithReferral(clause.slice(at + 1))) return true;
+  }
+  return false;
+}
+
 /* ── Words: "does the parent's text carry this clause?" ────────────────────
  * Tokens are lower-cased words (a hyphen splits: "drop-off" = "drop off";
  * ד"ר = ד״ר). English words compare on a light stem (shows/showed,
@@ -509,6 +543,7 @@ type FloorBudget = { checks: number };
 
 /** True when this clause states a finding the parent's words do not carry (and is not an escalation line). */
 export function statesUnreportedFinding(clause: string, opts: HandoffFloorOptions = {}, budget?: FloorBudget): boolean {
+  if (isEscalationLine(clause)) return false;
   const referral = REFERRAL_EN.test(clause) || REFERRAL_HE.test(clause);
   const findings = findingsIn(clause).filter((finding) => !(referral && insideCondition(clause, finding.index)));
   if (findings.length === 0) return false;
