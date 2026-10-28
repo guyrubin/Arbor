@@ -120,22 +120,33 @@ describe("B-ASKJB-44 · escalation lines survive the floor verbatim (EN + HE)", 
 describe("B-ASKJB-44 · what the parent reported is kept (the critic's probes)", () => {
   it.each([
     "She was seen by a speech therapist last spring.",
-    "He has been seen by the pediatrician, who ruled out an ear infection.",
     "She fell asleep without any difficulty on Tuesday.",
-    "Mom reports no sleep difficulties since the new routine.",
-    "Her teacher said she was observed hitting a classmate twice this week.",
     "I observed that she lines up her cars before bed.",
     "Her mother noted that mornings go better with a picture chart.",
     "Shows no hesitation joining group games.",
     "היא מטפסת על המגלשה הגבוהה ללא חשש.",
     "הוא אוהב לקפוץ לשלוליות אחרי הגשם.",
-    "הגננת סיפרה שהוא נצפה מרביץ לילד אחר פעמיים השבוע.",
     "הוא נרדם ללא קושי ביום שלישי.",
     "אני ראיתי שהיא מסדרת את המכוניות לפני השינה.",
     "ההורה זיהה שהבקרים קלים יותר עם לוח תמונות.",
-  ])("kept verbatim: %s", (sentence) => {
+  ])("not a finding, kept verbatim: %s", (sentence) => {
     expect(statesUnreportedFinding(sentence)).toBe(false);
     expect(withoutHandoffFindings(sentence)).toBe(sentence);
+  });
+
+  // Round 4 (critic round 3 P1): a reporter in the note is not the parent's
+  // words. These four stated a finding and were kept on attribution alone;
+  // they are kept now only when the parent's text carries the finding.
+  it.each([
+    ["He has been seen by the pediatrician, who ruled out an ear infection.", "The pediatrician ruled out an ear infection last month."],
+    ["Mom reports no sleep difficulties since the new routine.", "Honestly no sleep difficulties since the new routine, just mornings."],
+    ["Her teacher said she was observed hitting a classmate twice this week.", "Her teacher said she was observed hitting a classmate twice this week. What do I tell her?"],
+    ["הגננת סיפרה שהוא נצפה מרביץ לילד אחר פעמיים השבוע.", "הגננת סיפרה לי שהוא נצפה מרביץ לילד אחר פעמיים השבוע. מה עושים?"],
+  ])("a reported finding is kept only with the parent's words: %s", (sentence, parentText) => {
+    expect(statesUnreportedFinding(sentence)).toBe(true);
+    expect(withoutHandoffFindings(sentence)).toBe("");
+    expect(statesUnreportedFinding(sentence, { parentText })).toBe(false);
+    expect(withoutHandoffFindings(sentence, { parentText })).toBe(sentence);
   });
 
   it("the floor's own positives still drop: the notes that shipped and an unreported 'no evidence of'", () => {
@@ -186,9 +197,13 @@ describe("B-ASKJB-44 · round 2 — invented findings behind a lead-in are dropp
       .toBe("Teachers can check in briefly;");
   });
 
-  it("kept: a trailing attribution to a named reporter (P2d)", () => {
-    for (const s of ["No signs of anxiety at drop-off, according to her teacher.", "אין סימנים לחרדה בפרידה, לדברי הגננת."]) {
-      expect(withoutHandoffFindings(s)).toBe(s);
+  it("a trailing attribution to a named reporter (P2d) is kept only when the parent wrote the finding and named the reporter (round 4)", () => {
+    for (const [s, parentText] of [
+      ["No signs of anxiety at drop-off, according to her teacher.", "Her teacher told me there are no signs of anxiety at drop-off."],
+      ["אין סימנים לחרדה בפרידה, לדברי הגננת.", "הגננת אמרה לי שאין סימנים לחרדה בפרידה."],
+    ]) {
+      expect(withoutHandoffFindings(s)).toBe("");
+      expect(withoutHandoffFindings(s, { parentText })).toBe(s);
     }
   });
 
@@ -205,5 +220,131 @@ describe("B-ASKJB-44 · round 2 — invented findings behind a lead-in are dropp
     // A referral with no condition keeps only its own clause; the finding clause still drops.
     expect(withoutHandoffFindings("There are no signs of distress; call the family immediately.")).toBe("call the family immediately.");
     expect(statesUnreportedFinding("If there are no signs of calming after 20 minutes, call the family.")).toBe(false);
+  });
+});
+
+/* Critic round 3 (P1), fixed in round 4: the attribution and trailing-clause
+   exemptions never checked the parent's words, and containment matched only
+   the finding's opening phrase. Now a finding passes only when ONE sentence
+   of the parent's text holds the finding phrase AND its object (in order,
+   close together), every source the note credits is one the parent named,
+   and the parent's sentence is a statement (not a question or an "if").
+   Every class below has cases that fail on 5fb5666f (40 expectations); the
+   kept-verbatim cases that already held there stay as pins. */
+describe("B-ASKJB-44 · round 4 — the parent's own words decide, never attribution (EN + HE)", () => {
+  const UNRELATED_EN = "We have a few minutes together after dinner. What can we do? He loves drawing.";
+  const UNRELATED_HE = "יש לנו כמה דקות יחד אחרי ארוחת הערב. מה אפשר לעשות?";
+
+  it.each([
+    ["Parent reports no evidence of attention or regulation difficulties.", UNRELATED_EN],
+    ["The parents say that he shows no signs of sensory overload.", UNRELATED_EN],
+    ["Her teacher says there is no evidence of attention difficulties.", UNRELATED_EN],
+    ["The pediatrician, who ruled out a hearing problem, was pleased.", UNRELATED_EN],
+    ["ההורים מספרים שאין סימנים לקשיי קשב או ויסות.", UNRELATED_HE],
+    ["הגננת סיפרה שאין סימנים לחרדה בפרידה.", "הגננת סיפרה שהוא בוכה בפרידה."],
+    ["הגננת סיפרה שהוא נצפה משחק לבד.", UNRELATED_HE],
+  ])("an attributed finding the parent never wrote is dropped: %s", (sentence, parentText) => {
+    expect(statesUnreportedFinding(sentence, { parentText })).toBe(true);
+    expect(withoutHandoffFindings(sentence, { parentText })).toBe("");
+  });
+
+  it.each([
+    ["There is no evidence of attention difficulties, according to the family.", UNRELATED_EN],
+    ["No signs of anxiety at drop-off, according to her teacher.", "Her teacher says he settles fast. No idea about drop-off yet."],
+    ["No signs of sensory overload at parties, her teacher says.", UNRELATED_EN],
+    ["אין עדות לקשיי קשב, לדברי ההורים.", UNRELATED_HE],
+    ["אין סימנים לחרדה בפרידה, לדברי הגננת.", "הגננת אמרה שהוא נרגע מהר."],
+  ])("a trailing-clause finding the parent never wrote is dropped: %s", (sentence, parentText) => {
+    expect(statesUnreportedFinding(sentence, { parentText })).toBe(true);
+    expect(withoutHandoffFindings(sentence, { parentText })).toBe("");
+  });
+
+  it.each([
+    ["There is no evidence of attention or regulation difficulties.", "The doctor found no evidence of an ear infection last week. He still cries at drop-off."],
+    ["There are no signs of difficulty with transitions at school.", "There are no signs of difficulty with transitions at home."],
+    ["No evidence of attention or regulation difficulties.", "No evidence of attention difficulties, the teacher said."],
+    ["No signs of crying at home.", "No signs of anxiety at school, but lots of crying at home."],
+    ["אין סימנים לקשיי קשב או ויסות.", "הרופאה אמרה שאין סימנים לדלקת אוזניים. הוא עדיין בוכה בבוקר."],
+    ["אין סימנים לחרדה בגן.", "אין סימנים לחרדה בבית."],
+    ["אין עדות לקשיי קשב או ויסות.", "אין עדות לקשיי קשב, אמרה הגננת."],
+  ])("only the opening phrase in the parent's text is not enough; the object must be there too: %s", (sentence, parentText) => {
+    expect(statesUnreportedFinding(sentence, { parentText })).toBe(true);
+    expect(withoutHandoffFindings(sentence, { parentText })).toBe("");
+  });
+
+  it.each([
+    ["No signs of anxiety at drop-off, according to the pediatrician.", "No signs of anxiety at drop-off, his teacher said."],
+    ["According to Dr. Cohen, there are no signs of anxiety at drop-off.", "There are no signs of anxiety at drop-off."],
+    ["Dana says there are no signs of anxiety at drop-off.", "There are no signs of anxiety at drop-off."],
+    ["אין סימנים לחרדה, לדברי המורה.", "ההורה אמר שאין סימנים לחרדה."],
+    ["לדברי דנה, אין סימנים לחרדה בפרידה.", "אין סימנים לחרדה בפרידה."],
+  ])("a source the parent never named is not credited, even when the parent wrote the finding: %s", (sentence, parentText) => {
+    expect(withoutHandoffFindings(sentence, { parentText })).toBe("");
+  });
+
+  it.each([
+    ["There is no evidence of ADHD.", "Could it be that there is no evidence of ADHD?"],
+    ["There are no signs of anxiety at drop-off.", "If there are no signs of anxiety at drop-off by Friday we will stop the chart."],
+    ["אין סימנים לחרדה בפרידה.", "האם זה נורמלי שאין סימנים לחרדה בפרידה?"],
+    ["אין סימנים לחרדה בפרידה.", "אם אין סימנים לחרדה בפרידה עד יום שישי נפסיק."],
+  ])("a parent's question or 'if' is not a report: %s", (sentence, parentText) => {
+    expect(withoutHandoffFindings(sentence, { parentText })).toBe("");
+  });
+
+  it.each([
+    // tense and number change; the finding and its object are the parent's
+    ["He shows no signs of anxiety at bedtime.", "He showed no signs of anxiety at bedtime yesterday."],
+    ["There are no signs of distress at drop-off.", "No signs of anxiety, distress or crying at drop-off this week."],
+    ["No signs of anxiety at drop-off, according to her teacher.", "The teacher called today. She said there are no signs of anxiety at drop off."],
+    ["According to Dr. Cohen, there are no signs of anxiety at drop-off.", "Dr. Cohen said there are no signs of anxiety at drop-off."],
+    ["Sensory issues have been ruled out.", "The OT said sensory issues have been ruled out."],
+    // Hebrew: glued particles and endings on the parent's side or the note's
+    ["אין סימנים לחרדה בפרידה.", "הגננת אמרה: אין סימן לחרדה בפרידה."],
+    ["אין סימנים לחרדה בפרידה, לדברי הגננת.", "הגננת אמרה לי שאין סימנים של חרדה בפרידה בבוקר."],
+    ["אין סימנים לקשיים בשינה.", "בבית אין סימנים של קשיים בשינה מאז השגרה החדשה."],
+    ["אין סימנים לחרדה בפרידה, אמרה הגננת.", "הגננת אמרה שאין סימנים לחרדה בפרידה."],
+  ])("a finding the parent fully stated is kept verbatim: %s", (sentence, parentText) => {
+    expect(statesUnreportedFinding(sentence, { parentText })).toBe(false);
+    expect(withoutHandoffFindings(sentence, { parentText })).toBe(sentence);
+  });
+
+  it("Hebrew words compare across particles and endings, never across two different words", () => {
+    // "מורה" (teacher) and "הורה" (parent) differ only in a particle-like first letter: never the same source.
+    expect(withoutHandoffFindings("אין סימנים לחרדה, לדברי המורים.", { parentText: "ההורים אמרו שאין סימנים לחרדה." })).toBe("");
+    expect(withoutHandoffFindings("אין סימנים לחרדה, לדברי המורים.", { parentText: "המורים אמרו שאין סימנים לחרדה." })).toBe("אין סימנים לחרדה, לדברי המורים.");
+  });
+
+  it.each([
+    "If there are no signs of improvement after two weeks, talk with Dr. Levi.",
+    "If there are no signs of improvement after two weeks, talk with Dr Levi.",
+    "אם אין סימנים של רגיעה אחרי 20 דקות, דברו עם ד\"ר לוי.",
+    "אם אין סימנים של רגיעה אחרי 20 דקות, דברו עם ד״ר לוי.",
+  ])("an escalation line that names the doctor by title is kept verbatim, with or without the parent's words: %s", (line) => {
+    expect(withoutHandoffFindings(line)).toBe(line);
+    expect(withoutHandoffFindings(line, { parentText: UNRELATED_EN })).toBe(line);
+    expect(withoutHandoffFindings(line, { parentText: UNRELATED_HE })).toBe(line);
+  });
+
+  it("every round-1 escalation line and the School Brief escalation field survive with the parent's text given (EN + HE)", () => {
+    for (const line of [
+      "If he shows no signs of calming after 20 minutes, or hurts himself or others, call the parent and the school nurse right away.",
+      "If there is no improvement in the sleep difficulties after four weeks, talk with your pediatrician.",
+      "אם אין סימנים של רגיעה אחרי 20 דקות, או שהוא פוגע בעצמו, יש להתקשר מיד להורים.",
+      "אם אין שיפור בקשיי השינה אחרי ארבעה שבועות, כדאי לדבר עם רופאת הילדים.",
+    ]) {
+      expect(withoutHandoffFindings(line, { parentText: UNRELATED_EN })).toBe(line);
+    }
+    const brief: Record<string, unknown> = {
+      overview: "Noa is settling in. No signs of anxiety at drop-off, according to her teacher. She likes a warning before cleanup.",
+      keyStrengths: ["Curious", "No sleep difficulties since the new routine."],
+      crisisEscalationTrigger: "No signs of distress so far; contact the family the same day if that changes.",
+    };
+    const parentText = "No sleep difficulties since the new routine\nshe cries at drop-off";
+    expect(scrubHandoffBriefFindings(brief, { parentText })).toBe(1);
+    expect(brief).toEqual({
+      overview: "Noa is settling in. She likes a warning before cleanup.",
+      keyStrengths: ["Curious", "No sleep difficulties since the new routine."],
+      crisisEscalationTrigger: "No signs of distress so far; contact the family the same day if that changes.",
+    });
   });
 });

@@ -3919,8 +3919,10 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       // B-ASKJB-44: the invented-finding floor ("no evidence of…", "was
       // observed", EN + HE; never the escalation line) runs AFTER the output
       // screen saw the model's own words, then the brief is sent.
-      // The parent's own logged words (trigger, response) may carry a finding they reported.
-      const parentText = logs.map((log) => [log.trigger, log.response].filter((v) => typeof v === "string").join(" ")).join("\n");
+      // The parent's own logged words may carry a finding they reported; each
+      // trigger and response is its own sentence, so a finding and its object
+      // must sit in one field.
+      const parentText = logs.flatMap((log) => [log.trigger, log.response]).filter((v) => typeof v === "string" && v).join("\n");
       if (brief && typeof brief === "object") scrubHandoffBriefFindings(brf, { parentText });
       res.json(brief);
     } catch (error: any) {

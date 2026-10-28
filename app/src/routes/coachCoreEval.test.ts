@@ -663,6 +663,26 @@ describe("B-ASKJB-44 · /api/chat handoff notes carry no invented finding", () =
     const invented = await postChatStreamed({ message: "What can we do at bedtime?", childProfile: { id: "c1", name: "Mia" } });
     expect(coachResponseZodSchema.parse(doneOf(invented.events)?.contract).handoffNotes.professional).toBe("");
   });
+  it("round 4: a reporter in the note is not the parent's words; the finding and its object must be in what the parent wrote (EN + HE)", async () => {
+    // Attributed to a teacher the parent never quoted: dropped (kept on attribution alone before).
+    contractOverrides = { handoffNotes: { teacher: "Her teacher says there is no evidence of attention difficulties.", professional: "" } };
+    const attributed = await postChatStreamed({ message: "What can we do at bedtime?", childProfile: { id: "c1", name: "Mia" } });
+    expect(coachResponseZodSchema.parse(doneOf(attributed.events)?.contract).handoffNotes.teacher).toBe("");
+    // Only the opening phrase is the parent's ("no evidence of" an ear infection): dropped.
+    contractOverrides = { handoffNotes: { teacher: "", professional: "There is no evidence of attention or regulation difficulties." } };
+    const opening = await postChatStreamed({ message: "The doctor found no evidence of an ear infection last week. He still cries at drop-off.", childProfile: { id: "c1", name: "Mia" } });
+    expect(coachResponseZodSchema.parse(doneOf(opening.events)?.contract).handoffNotes.professional).toBe("");
+    // The parent wrote the finding and named the teacher, in Hebrew, in an earlier turn: kept verbatim.
+    const he = "אין סימנים לחרדה בפרידה, לדברי הגננת.";
+    contractOverrides = { handoffNotes: { teacher: he, professional: "" } };
+    const own = await postChatStreamed({
+      message: "מה אפשר לעשות בבוקר?",
+      childProfile: { id: "c1", name: "נועה" },
+      language: "he",
+      recentTurns: [{ role: "parent", text: "הגננת אמרה לי שאין סימנים של חרדה בפרידה בבוקר." }],
+    });
+    expect(coachResponseZodSchema.parse(doneOf(own.events)?.contract).handoffNotes.teacher).toBe(he);
+  });
   it("a clean handoff note passes the floor byte-identical", async () => {
     contractOverrides = { handoffNotes: { teacher: "The parent says a two-minute warning helps.", professional: "" } };
     const { events } = await postChatStreamed({ message: "What can we do in five minutes?", childProfile: { id: "c1", name: "Mia" } });

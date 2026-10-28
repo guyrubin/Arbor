@@ -249,6 +249,33 @@ describe("B-ASKJB-44 · /api/generate-handoff invented-finding floor", () => {
     }
     draft = CLEAN_DRAFT;
   });
+  it("round 4: the parent's logged words decide — a finding they logged is kept, the same phrase with an object they never logged is dropped", async () => {
+    const day = new Date().toISOString().slice(0, 10);
+    draft = {
+      ...CLEAN_DRAFT,
+      overview: "Mia does best with a warning before a change. No signs of anxiety at drop-off since the picture chart.",
+      keyStrengths: ["Curious", "No signs of anxiety at lunch, according to her teacher."],
+      classroomChallenges: ["אין סימנים לקושי חברתי בגן."],
+    };
+    const res = await fetch(`${baseUrl}/api/generate-handoff`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        childProfile: { name: "Mia", age: 4 },
+        logs: [
+          { behaviorType: "Transition", trigger: "drop-off", response: "No signs of anxiety at drop-off since the picture chart", day },
+          { behaviorType: "Transition", trigger: "אין סימנים לקושי חברתי בבית", response: "חיבוק", day },
+        ],
+        milestones: [],
+      }),
+    });
+    const json = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(json.overview).toBe("Mia does best with a warning before a change. No signs of anxiety at drop-off since the picture chart.");
+    expect(json.keyStrengths).toEqual(["Curious"]);
+    expect(json.classroomChallenges).toEqual([]);
+    draft = CLEAN_DRAFT;
+  });
   it("the output screen sees the draft BEFORE the floor: a crisis clause the floor would drop still answers 409", async () => {
     draft = { ...CLEAN_DRAFT, overview: "Mia does best with a warning. There are no signs of self-harm or suicidal thoughts." };
     const res = await fetch(`${baseUrl}/api/generate-handoff`, {

@@ -171,35 +171,44 @@ export function findClinicalDiagnosisTerm(text: string): string | null {
  *      result, "developing normally";
  *   2. an UNATTRIBUTED observation — "was observed / noted / seen" with no
  *      agent, "נצפתה": Arbor observed nothing.
- * A clause that matches is dropped and the rest of the note kept verbatim,
- * EXCEPT (critic round 1):
- *   - a REPORTED finding — a named reporter or the first person comes before
- *     it ("Mom reports no sleep difficulties", "the pediatrician, who ruled
- *     out…", "הגננת סיפרה שהוא נצפה…"), or an agent follows ("was seen by a
- *     speech therapist");
- *   - an ESCALATION line — a condition ("If…", "אם…") or a referral action
- *     ("call…", "talk with your pediatrician", "להתקשר מיד") is the safety
- *     message itself and is never removed;
- *   - the School Brief's `crisisEscalationTrigger` field is never scrubbed.
+ * A clause that states one is dropped and the rest of the note kept verbatim,
+ * UNLESS (critic round 3: the parent's words decide, never grammar):
+ *   - the PARENT'S OWN WORDS carry it — the finding phrase and its object
+ *     (what follows it; for a passive or predicate finding, what precedes it
+ *     too) in one statement the parent wrote (not a question, not an "if"),
+ *     in order and close together, and every source the note credits (a
+ *     reporter: "according to her teacher", "the pediatrician, who ruled
+ *     out…", "לדברי הגננת"; or a name: "Dana says", "according to Dr. Cohen")
+ *     named somewhere in that text. A teacher's or doctor's words the parent
+ *     typed in are the parent's text. Attribution alone keeps nothing;
+ *   - it is an ESCALATION line — a condition ("If…", "אם…") together with a
+ *     referral action ("call…", "talk with your pediatrician", "להתקשר מיד")
+ *     is the safety message itself and is never removed;
+ *   - it sits in the School Brief's `crisisEscalationTrigger`, never scrubbed.
  * English on word boundaries (case-insensitive); Hebrew as whole words with
  * a glued particle (`\b` cannot bound a Hebrew word: "לשלול" is not inside
  * "לשלוליות"). Event descriptions such as "fell asleep without any
  * difficulty" / "מטפסת ללא חשש" are not findings and are not listed. */
 const NOUN_EN = String.raw`(?:signs?|evidence|indications?|indicators?|symptoms?|red\s+flags?|difficult(?:y|ies)|delays?|deficits?|impairments?|concerns?|problems?|issues?)`;
-export const HANDOFF_FINDING_PATTERNS_EN: readonly RegExp[] = [
-  new RegExp(String.raw`\bno\s+(?:clear\s+|obvious\s+|apparent\s+|real\s+|significant\s+|further\s+|current\s+)?(?:evidence|signs?|indications?|indicators?|symptoms?|red\s+flags?|traces?)\s+(?:of|that|for)\b`, "gi"),
-  new RegExp(String.raw`\b(?:show|shows|showed|showing|display|displays|displayed|exhibit|exhibits|exhibited|present|presents|presented|demonstrate|demonstrates|demonstrated)\s+no\s+(?:\w+\s+){0,3}?${NOUN_EN}\b`, "gi"),
-  new RegExp(String.raw`\b(?:does|did|do|is|was|are|were)\s*(?:not|n['’]t)\s+(?:show|showing|display|exhibit|present\s+with|demonstrate|have|appear\s+to\s+have)\s+(?:any\s+)?(?:\w+\s+){0,3}?${NOUN_EN}\b`, "gi"),
-  new RegExp(String.raw`\bno\s+(?:\w+[\s,]+){0,4}?(?:difficult(?:y|ies)|delays?|deficits?|impairments?|red\s+flags?)\b`, "gi"),
-  new RegExp(String.raw`\bno\s+(?:\w+\s+){0,3}?concerns?\s+(?:were\s+|was\s+|have\s+been\s+|has\s+been\s+)?(?:noted|observed|found|identified|detected|raised|present|seen)\b`, "gi"),
-  new RegExp(String.raw`\b(?:without|free\s+(?:of|from))\s+(?:any\s+)?(?:signs?|evidence|indications?|symptoms?)\s+of\b`, "gi"),
-  new RegExp(String.raw`\brul(?:e|es|ed|ing)\s+out\b`, "gi"),
-  new RegExp(String.raw`\bwithin\s+(?:the\s+)?normal\s+(?:limits|range)\b`, "gi"),
-  new RegExp(String.raw`\bnothing\s+(?:to\s+suggest|suggests|that\s+suggests|indicates|that\s+indicates|concerning|of\s+concern)\b`, "gi"),
-  new RegExp(String.raw`\b(?:screen(?:ed|ing)?\s+(?:negative|clear|normal)|pass(?:ed|es)?\s+(?:the\s+|a\s+)?(?:screening|screen))\b`, "gi"),
-  new RegExp(String.raw`\b(?:typical|normal)\s+development\b|\bdevelop(?:s|ing)\s+(?:normally|typically|on\s+track)\b|\bdevelopmentally\s+(?:normal|typical|on\s+track)\b`, "gi"),
-  new RegExp(String.raw`\b(?:was|were|has\s+been|have\s+been|had\s+been)\s+(?:observed|noted|seen|identified|detected)\b(?!\s+by\b)`, "gi"),
+/** "forward": the finding's object follows it ("no evidence OF …"). "both":
+ *  a passive or predicate finding whose object can stand before it too
+ *  ("Sensory issues have been ruled out", "His language is within normal limits"). */
+type FindingKind = "forward" | "both";
+const HANDOFF_FINDINGS_EN: readonly { re: RegExp; kind: FindingKind }[] = [
+  { kind: "forward", re: new RegExp(String.raw`\bno\s+(?:clear\s+|obvious\s+|apparent\s+|real\s+|significant\s+|further\s+|current\s+)?(?:evidence|signs?|indications?|indicators?|symptoms?|red\s+flags?|traces?)\s+(?:of|that|for)\b`, "gi") },
+  { kind: "forward", re: new RegExp(String.raw`\b(?:show|shows|showed|showing|display|displays|displayed|exhibit|exhibits|exhibited|present|presents|presented|demonstrate|demonstrates|demonstrated)\s+no\s+(?:\w+\s+){0,3}?${NOUN_EN}\b`, "gi") },
+  { kind: "forward", re: new RegExp(String.raw`\b(?:does|did|do|is|was|are|were)\s*(?:not|n['’]t)\s+(?:show|showing|display|exhibit|present\s+with|demonstrate|have|appear\s+to\s+have)\s+(?:any\s+)?(?:\w+\s+){0,3}?${NOUN_EN}\b`, "gi") },
+  { kind: "forward", re: new RegExp(String.raw`\bno\s+(?:\w+[\s,]+){0,4}?(?:difficult(?:y|ies)|delays?|deficits?|impairments?|red\s+flags?)\b`, "gi") },
+  { kind: "forward", re: new RegExp(String.raw`\bno\s+(?:\w+\s+){0,3}?concerns?\s+(?:were\s+|was\s+|have\s+been\s+|has\s+been\s+)?(?:noted|observed|found|identified|detected|raised|present|seen)\b`, "gi") },
+  { kind: "forward", re: new RegExp(String.raw`\b(?:without|free\s+(?:of|from))\s+(?:any\s+)?(?:signs?|evidence|indications?|symptoms?)\s+of\b`, "gi") },
+  { kind: "both", re: new RegExp(String.raw`\brul(?:e|es|ed|ing)\s+out\b`, "gi") },
+  { kind: "both", re: new RegExp(String.raw`\bwithin\s+(?:the\s+)?normal\s+(?:limits|range)\b`, "gi") },
+  { kind: "forward", re: new RegExp(String.raw`\bnothing\s+(?:to\s+suggest|suggests|that\s+suggests|indicates|that\s+indicates|concerning|of\s+concern)\b`, "gi") },
+  { kind: "both", re: new RegExp(String.raw`\b(?:screen(?:ed|ing)?\s+(?:negative|clear|normal)|pass(?:ed|es)?\s+(?:the\s+|a\s+)?(?:screening|screen))\b`, "gi") },
+  { kind: "both", re: new RegExp(String.raw`\b(?:typical|normal)\s+development\b|\bdevelop(?:s|ing)\s+(?:normally|typically|on\s+track)\b|\bdevelopmentally\s+(?:normal|typical|on\s+track)\b`, "gi") },
+  { kind: "both", re: new RegExp(String.raw`\b(?:was|were|has\s+been|have\s+been|had\s+been)\s+(?:observed|noted|seen|identified|detected)\b(?!\s+by\b)`, "gi") },
 ];
+export const HANDOFF_FINDING_PATTERNS_EN: readonly RegExp[] = HANDOFF_FINDINGS_EN.map((finding) => finding.re);
 
 /** Hebrew absence-of-finding phrases, matched as whole words (a glued ו/ש/כש allowed). */
 export const HANDOFF_FINDING_TERMS_HE = [
@@ -216,80 +225,275 @@ export const HANDOFF_FINDING_TERMS_HE = [
   "בטווח התקין", "בטווח הנורמה", "בגבולות הנורמה", "בגבולות התקין", "התפתחות תקינה",
   "מתפתח כרגיל", "מתפתחת כרגיל", "מתפתח באופן תקין", "מתפתחת באופן תקין",
 ] as const;
+/** The Hebrew terms whose object can stand on either side (passive verb or predicate). */
+const HANDOFF_FINDING_TERMS_HE_BOTH: ReadonlySet<string> = new Set([
+  "נשלל", "נשללה", "נשללו",
+  "בטווח התקין", "בטווח הנורמה", "בגבולות הנורמה", "בגבולות התקין", "התפתחות תקינה",
+  "מתפתח כרגיל", "מתפתחת כרגיל", "מתפתח באופן תקין", "מתפתחת באופן תקין",
+]);
 const heWhole = (phrase: string) => String.raw`(?<!\p{L})(?:ו|ש|כש)?${phrase.trim().split(/\s+/).join(String.raw`\s+`)}(?!\p{L})`;
 const HANDOFF_FINDING_HE = new RegExp(HANDOFF_FINDING_TERMS_HE.map(heWhole).join("|"), "gu");
 /** Hebrew unattributed observation ("was observed / identified"), as whole words. */
 const UNATTRIBUTED_FINDING_HE = /(?<!\p{L})(?:ו|ש|כש)?(?:נצפה|נצפתה|נצפו|זוהה|זוהתה|זוהו)(?!\p{L})/gu;
 
-/* Critic round 2: attribution and escalation are decided by STRUCTURE, never
- * by a reporter-like or urgent word anywhere earlier in the clause. */
-/** A third-person reporter a parent can quote (the first person is the model
- *  writing in the parent's voice and never counts on grammar alone). */
-const REPORTER_EN = String.raw`(?:(?:the|her|his|their|our|my|a|an)\s+)?(?:\w+\s+)?(?:mom|mum|mommy|mother|dad|daddy|father|parents?|grand(?:ma|pa|mother|father|parents?)|family|teachers?|nanny|caregiver|babysitter|doctor|pediatrician|paediatrician|therapist|nurse|psychologist|clinician|specialist|audiologist)`;
-const REPORTING_VERB_EN = String.raw`(?:reports?|reported|says?|said|notes?|noted|tells?|told|mentions?|mentioned|shares?|shared|observes?|observed|notices?|noticed|describes?|described|writes?|wrote|explains?|explained|confirms?|confirmed|finds?|found|sees|saw)`;
-const NOT_CONJUNCTION_EN = String.raw`(?!(?:and|but|or|with|while|so|then|yet|although|though|because)\b)`;
-/** "Mom reports …", "Her teacher said she was observed …": the reporter and a
- *  reporting verb directly govern the finding — at most three plain words
- *  between them, no comma, colon or conjunction. */
-const GOVERNED_EN = new RegExp(String.raw`\b${REPORTER_EN}\s+(?:\w+\s+)?${REPORTING_VERB_EN}(?:\s+that)?(?:\s+${NOT_CONJUNCTION_EN}\w+){0,3}\s*$`, "i");
-/** "… the pediatrician, who ruled out …": the reporter is the subject of the finding. */
-const RELATIVE_EN = new RegExp(String.raw`\b${REPORTER_EN},?\s+(?:who|that)\s+(?:has\s+|had\s+|also\s+)?$`, "i");
-/** "No signs of anxiety at drop-off, according to her teacher." */
-const TRAILING_EN = new RegExp(String.raw`,?\s*(?:according\s+to|as\s+reported\s+by|as\s+noted\s+by|per)\s+${REPORTER_EN}\b[\s.!?]*$`, "i");
-const REPORTER_HE = String.raw`(?:ה|ו)?(?:אמא|אבא|הורה|הורים|גננת|גנן|מורה|מורים|מטפלת|מטפל|רופא|רופאה|רופאת|סבתא|סבא|משפחה)(?:\s+\p{L}+)?`;
-const REPORTING_VERB_HE = String.raw`(?:סיפר|סיפרה|סיפרו|מספר|מספרת|מספרים|מספרות|אמר|אמרה|אמרו|ציין|ציינה|ציינו|מציין|מציינת|דיווח|דיווחה|דיווחו|מדווח|מדווחת|מדווחים|ראה|ראתה|ראו|הבחין|הבחינה|הבחינו|כתב|כתבה|כתבו|קבע|קבעה)`;
-const GOVERNED_HE = new RegExp(String.raw`(?<!\p{L})${REPORTER_HE}\s+${REPORTING_VERB_HE}(?:\s+(?!ו)\p{L}+){0,3}?(?:\s+(?:ש|כי)?)?\s*$|(?<!\p{L})${REPORTER_HE}\s+${REPORTING_VERB_HE}\s+(?:ש|כי\s+)?(?!ו)\p{L}*\s*$`, "u");
-const TRAILING_HE = new RegExp(String.raw`,?\s*(?:לדבר(?:י|יה|יו)|לפי|כפי\s+ש(?:סיפר|סיפרה|אמר|אמרה|ציין|ציינה))(?:\s+${REPORTER_HE})?[\s.!?]*$`, "u");
-/** A condition AND a referral action together: the line is a safety message. */
+/** A condition AND a referral action together: the line is a safety message (a doctor named by title counts: "talk with Dr. Levi", "דברו עם ד"ר לוי"). */
 const CONDITION_EN = /\b(?:if|unless|in\s+case)\b/i;
-const REFERRAL_EN = /\b(?:call|calls|calling|contact|phone|seek\s+(?:help|care|advice|support)|emergency|ambulance|112|911|101|988)\b|\b(?:talk|speak|discuss|consult|tell|refer)\b(?:\s+\w+){0,4}?\s+(?:pediatrician|paediatrician|doctor|GP|professional|clinician|nurse|therapist|specialist|parents?|family)s?\b/i;
+const REFERRAL_EN = /\b(?:call|calls|calling|contact|phone|seek\s+(?:help|care|advice|support)|emergency|ambulance|112|911|101|988)\b|\b(?:talk|speak|discuss|consult|tell|refer)\b(?:\s+\w+){0,4}?\s+(?:pediatrician|paediatrician|doctor|dr|GP|professional|clinician|nurse|therapist|specialist|parents?|family)s?\b/i;
 const CONDITION_HE = /(?<!\p{L})(?:ו)?(?:אם|במידה|במקרה)(?!\p{L})/u;
-const REFERRAL_HE = /(?<!\p{L})(?:ל|ו)?(?:התקשר\p{L}*|להתקשר|פנו|לפנות|פנה|פני|חירום|112|101)(?!\p{L})|(?<!\p{L})(?:לדבר|לשוחח|להתייעץ|להיוועץ|דברו|שוחחו|התייעצו|ליידע|יידעו)(?:\s+\S+){0,3}?\s+(?:עם\s+|את\s+)?(?:ה)?(?:רופא\p{L}*|איש\s+מקצוע|אשת\s+מקצוע|אנשי\s+מקצוע|מטפל\p{L}*|הורים|משפחה)/u;
+const REFERRAL_HE = /(?<!\p{L})(?:ל|ו)?(?:התקשר\p{L}*|להתקשר|פנו|לפנות|פנה|פני|חירום|112|101)(?!\p{L})|(?<!\p{L})(?:לדבר|לשוחח|להתייעץ|להיוועץ|דברו|שוחחו|התייעצו|ליידע|יידעו)(?:\s+\S+){0,3}?\s+(?:עם\s+|את\s+)?(?:ה)?(?:רופא\p{L}*|ד["״]ר|איש\s+מקצוע|אשת\s+מקצוע|אנשי\s+מקצוע|מטפל\p{L}*|הורים|משפחה)/u;
 
-type FindingMatch = { phrase: string; index: number };
+type FindingMatch = { phrase: string; index: number; kind: FindingKind };
+/** The finding's own words without a glued Hebrew particle. */
+const findingCore = (phrase: string) => phrase.trim().replace(/^(?:ו|ש|כש)(?=[֐-׿])/, "");
 const findingsIn = (text: string): FindingMatch[] => {
   const out: FindingMatch[] = [];
-  for (const re of [...HANDOFF_FINDING_PATTERNS_EN, HANDOFF_FINDING_HE, UNATTRIBUTED_FINDING_HE]) {
+  const scan = (re: RegExp, kindOf: (phrase: string) => FindingKind) => {
     re.lastIndex = 0;
-    for (const m of text.matchAll(re)) out.push({ phrase: m[0], index: m.index ?? 0 });
-  }
+    for (const m of text.matchAll(re)) out.push({ phrase: m[0], index: m.index ?? 0, kind: kindOf(m[0]) });
+  };
+  for (const { re, kind } of HANDOFF_FINDINGS_EN) scan(re, () => kind);
+  scan(HANDOFF_FINDING_HE, (phrase) => (HANDOFF_FINDING_TERMS_HE_BOTH.has(findingCore(phrase).replace(/\s+/g, " ")) ? "both" : "forward"));
+  scan(UNATTRIBUTED_FINDING_HE, () => "both");
   return out.sort((a, b) => a.index - b.index);
 };
 
-/** The first invented-finding phrase in the text, or null (attribution is not considered here). */
+/** The first invented-finding phrase in the text, or null (the parent's words are not considered here). */
 export function findHandoffFinding(text: string): string | null {
   return findingsIn(text)[0]?.phrase.trim() ?? null;
 }
 
-/** Whitespace- and case-normalized, for "the parent's own input contains it". */
-const normalize = (text: string) => text.toLocaleLowerCase().replace(/\s+/g, " ").trim();
-/** The finding's own words without a glued Hebrew particle. */
-const findingCore = (phrase: string) => phrase.trim().replace(/^(?:ו|ש|כש)(?=[֐-׿])/, "");
+/* ── Words: "does the parent's text carry this finding?" ──────────────────
+ * Tokens are lower-cased words (a hyphen splits: "drop-off" = "drop off").
+ * English words compare on a light stem (shows/showed, difficulty/difficulties).
+ * Hebrew words compare with their glued particles and endings handled, the
+ * pattern of practice/dailyPlan.ts's Hebrew edge helpers: one side may carry
+ * up to three particles (ו ה ש ל ב כ מ) the other lacks ("לחרדה" ~ "חרדה",
+ * "שאין" ~ "אין"), and an ending may differ (ה ת י ו יי ים ות ית יות יים,
+ * final letters folded: "סימנים" ~ "סימן") as long as at least three letters
+ * of the word itself are shared. Never both sides stripped at once: that is
+ * how "מורים" (teachers) would meet "הורים" (parents). */
+const HE_LETTER = /[א-ת]/;
+const isHebrewWord = (word: string) => HE_LETTER.test(word);
+const HE_FINAL: Record<string, string> = { "ך": "כ", "ם": "מ", "ן": "נ", "ף": "פ", "ץ": "צ" };
+const foldHe = (word: string) => word.replace(/[ךםןףץ]/g, (c) => HE_FINAL[c] ?? c);
+const tokenize = (text: string): string[] =>
+  (text.normalize("NFC").replace(/\p{M}/gu, "").toLocaleLowerCase().replace(/[’`]/g, "'").match(/[\p{L}\p{N}]+(?:['״׳][\p{L}\p{N}]+)*/gu) ?? [])
+    .map((word) => (isHebrewWord(word) ? foldHe(word) : word));
+const heWords = (words: readonly string[]): ReadonlySet<string> => new Set(words.map(foldHe));
+
+/** Hebrew function words a restatement may add or drop. Negations (לא, אין, ללא, בלי) are never here. */
+const HE_STOP = heWords([
+  "של", "את", "עם", "על", "אל", "גם", "רק", "כי", "או", "וגם", "אבל", "אך", "כך", "כן", "מן", "עוד", "כבר", "מאוד", "כל", "יש",
+  "הוא", "היא", "הם", "הן", "זה", "זו", "זאת", "אלה", "אני", "אנחנו", "אתה", "אתם", "אתן",
+  "לו", "לה", "להם", "להן", "לי", "לנו", "לך", "שלו", "שלה", "שלהם", "שלי", "שלנו", "שלך", "אותו", "אותה", "אותם",
+  "היה", "הייתה", "היו", "יהיה", "כאשר", "בזמן", "אחרי", "לפני", "מאז", "בתוך",
+  // the child, named by the role rather than the name the note uses
+  "ילד", "ילדה", "ילדים", "בן", "בת", "תינוק", "תינוקת",
+]);
+/** English function words a restatement may add or drop. Negations (no, not, never) are never here. */
+const EN_STOP: ReadonlySet<string> = new Set([
+  "a", "an", "the", "of", "for", "to", "in", "on", "at", "by", "with", "from", "about", "into", "onto", "as", "and", "or", "nor", "so",
+  "than", "then", "that", "this", "these", "those", "there", "here", "it", "its", "he", "she", "they", "him", "her", "his", "hers",
+  "them", "their", "theirs", "i", "me", "my", "mine", "we", "us", "our", "ours", "you", "your", "is", "are", "was", "were", "be",
+  "been", "being", "am", "has", "have", "had", "having", "do", "does", "did", "any", "some", "very", "really", "just", "also",
+  "still", "even", "now", "all", "much", "quite", "who", "which", "whom", "whose", "what", "when", "where", "since", "during",
+  "after", "before", "over", "under",
+  // the child, named by the role rather than the name the note uses
+  "child", "children", "kid", "kids", "son", "daughter", "boy", "girl", "baby", "toddler",
+]);
+/** A third-party reporter a note can credit: the parent must have named them. */
+const REPORTER_THIRD_EN = ["teacher", "nanny", "caregiver", "babysitter", "doctor", "pediatrician", "paediatrician", "therapist", "nurse",
+  "psychologist", "clinician", "specialist", "audiologist", "counselor", "counsellor", "educator", "aide", "principal",
+  "grandma", "grandpa", "granny", "grandmother", "grandfather", "grandparent", "gp"];
+const REPORTER_THIRD_HE = [...heWords(["גננת", "גנן", "גננות", "מורה", "מורים", "מורות", "מטפלת", "מטפל", "מטפלים", "רופא", "רופאה", "רופאת",
+  "רופאים", "סבתא", "סבא", "אחות", "פסיכולוג", "פסיכולוגית", "קלינאית", "קלינאי", "יועצת", "יועץ", "סייעת", "מדריכה", "מדריך"])];
+/** The parent, in the third person ("Mom reports…"): it is their own text, nothing to name. */
+const REPORTER_PARENT = ["mom", "mum", "mommy", "mummy", "mother", "dad", "daddy", "father", "parent", "family",
+  ...heWords(["אמא", "אבא", "הורה", "הורים", "משפחה"])];
+/** Words that only credit a source ("according to", "reports", "לדברי"). */
+const ATTRIBUTION_WORDS = ["according", "per", "reports", "reported", "says", "said", "notes", "noted", "tells", "told", "mentions",
+  "mentioned", "shares", "shared", "observes", "observed", "notices", "noticed", "describes", "described", "writes", "wrote",
+  "explains", "explained", "confirms", "confirmed", "finds", "found", "sees", "saw",
+  ...heWords(["לדברי", "לדבריה", "לדבריו", "לדבריהם", "לפי", "כפי", "סיפר", "סיפרה", "סיפרו", "מספר", "מספרת", "מספרים", "מספרות",
+    "אמר", "אמרה", "אמרו", "ציין", "ציינה", "ציינו", "מציין", "מציינת", "דיווח", "דיווחה", "דיווחו", "מדווח", "מדווחת", "מדווחים",
+    "ראה", "ראתה", "ראו", "הבחין", "הבחינה", "הבחינו", "כתב", "כתבה", "כתבו", "קבע", "קבעה", "אומר", "אומרת", "אומרים", "אומרות"])];
+/** A credit that names its source after it ("according to Dr. Cohen", "לדברי הגננת"); a Hebrew reporting verb may too ("אמרה הגננת"). */
+const CREDIT_BEFORE_SOURCE = ["according", "per", ...heWords(["לדברי", "לדבריה", "לדבריו", "לדבריהם", "לפי", "כפי"])];
+/** A parent's sentence that is a condition is not a report: "if there are no signs of …". */
+const CONDITION_WORDS = ["if", "unless", "whether", ...heWords(["אם", "במידה"])];
+/** Where a passive finding's subject starts: a relative, a contrast, a condition. */
+const CLAUSE_START_WORDS = ["who", "which", "that", "whom", "but", "while", "although", "though", "whereas", "because", "yet", "if", "when",
+  ...heWords(["כי", "אבל", "אך", "אולם", "כאשר", "בזמן", "למרות", "אם", "בעוד"])];
+/** Where a finding's object ends: a contrast starts something the finding does not say. */
+const OBJECT_END_WORDS = ["but", "while", "although", "though", "whereas", "however", "yet", ...heWords(["אבל", "אך", "אולם", "בעוד", "למרות"])];
+
+const HE_PARTICLES = /^[והשלבכמ]{1,3}/;
+const HE_ENDINGS = ["יות", "יימ", "ימ", "ות", "ית", "יי", "ה", "ת", "י", "ו"];
+const heEndingForms = (word: string): Set<string> => {
+  const out = new Set([word]);
+  for (const end of HE_ENDINGS) if (word.length - end.length >= 2 && word.endsWith(end)) out.add(word.slice(0, -end.length));
+  return out;
+};
+/** The word, and the word without 1–3 glued particles (each remainder ≥ 2 letters). */
+const heBare = (word: string, keepStops = false): string[] => {
+  const out = [word];
+  const run = HE_PARTICLES.exec(word)?.[0].length ?? 0;
+  for (let i = 1; i <= run; i++) {
+    const rest = word.slice(i);
+    if (rest.length >= 2 && (keepStops || !HE_STOP.has(rest))) out.push(rest);
+  }
+  return out;
+};
+const heSame = (a: string, b: string): boolean => {
+  if (a === b) return true;
+  const oneSided = (x: string, y: string) => {
+    const yForms = heEndingForms(y);
+    return heBare(x).some((rest) => rest === y || [...heEndingForms(rest)].some((form) => form.length >= 3 && yForms.has(form)));
+  };
+  return oneSided(a, b) || oneSided(b, a);
+};
+const enStem = (word: string): string => {
+  let s = word.replace(/'s$/, "");
+  if (s.length > 4 && s.endsWith("ies")) return `${s.slice(0, -3)}y`;
+  if (s.length > 4 && /(?:s|x|z|ch|sh)es$/.test(s)) return s.slice(0, -2);
+  if (s.length > 3 && s.endsWith("s") && !s.endsWith("ss")) s = s.slice(0, -1);
+  if (s.length >= 6 && s.endsWith("ing")) return s.slice(0, -3);
+  if (s.length >= 6 && s.endsWith("ed")) return s.slice(0, -2);
+  return s;
+};
+const sameWordMemo = new Map<string, boolean>();
+const sameWord = (a: string, b: string): boolean => {
+  const he = isHebrewWord(a);
+  if (he !== isHebrewWord(b)) return false;
+  if (!he) return enStem(a) === enStem(b);
+  const key = `${a}\u0000${b}`;
+  let same = sameWordMemo.get(key);
+  if (same === undefined) {
+    if (sameWordMemo.size > 20_000) sameWordMemo.clear();
+    same = heSame(a, b);
+    sameWordMemo.set(key, same);
+  }
+  return same;
+};
+const isOneOf = (word: string, list: readonly string[]) => list.some((member) => sameWord(word, member));
+const isStopWord = (word: string) => (isHebrewWord(word) ? heBare(word, true).some((rest) => HE_STOP.has(rest)) : EN_STOP.has(word));
+/** A word the finding's object must carry: not a function word, not a source credit. */
+const isObjectWord = (word: string) =>
+  !isStopWord(word) && !isOneOf(word, ATTRIBUTION_WORDS) && !isOneOf(word, REPORTER_PARENT) && !isOneOf(word, REPORTER_THIRD_EN) && !isOneOf(word, REPORTER_THIRD_HE);
+
+/** How many of the parent's words may stand between two words of the object. */
+const OBJECT_GAP = 3;
+/** Each word of `wanted`, in order, within OBJECT_GAP words of the previous match, walking `words` from `start` in `step`. */
+const inOrderNear = (wanted: readonly string[], words: readonly string[], start: number, step: 1 | -1): boolean => {
+  let at = start;
+  for (const word of step === 1 ? wanted : [...wanted].reverse()) {
+    let found = -1;
+    for (let k = 0; k <= OBJECT_GAP; k++) {
+      const i = at + step * k;
+      if (i < 0 || i >= words.length) break;
+      if (sameWord(word, words[i])) { found = i; break; }
+    }
+    if (found < 0) return false;
+    at = found + step;
+  }
+  return true;
+};
+
+/** Clauses: split on . ! ? ; and line breaks, never after a title ("Dr. Cohen"). */
+const CLAUSES = /(?:\b(?:dr|mr|mrs|ms|prof)\.(?=\s)|[^.!?;。\n])+[.!?;。]*\s*/gi;
+type ParentWords = { sentences: string[][]; all: string[] };
+let parentMemo: { text: string; words: ParentWords } | null = null;
+/** The parent's text as sentences of words. A question is not a report, so a sentence ending "?" never carries a finding. */
+const parentWordsOf = (text: string): ParentWords => {
+  if (parentMemo?.text === text) return parentMemo.words;
+  const all = (text.match(CLAUSES) ?? []).map((sentence) => ({ sentence, words: tokenize(sentence) })).filter(({ words }) => words.length > 0);
+  const sentences = all.filter(({ sentence }) => !sentence.trim().endsWith("?")).map(({ words }) => words);
+  const words = { sentences, all: all.flatMap(({ words: w }) => w) };
+  parentMemo = { text, words };
+  return words;
+};
+
+/** The object after a finding: up to a contrast, without function words or source credits. */
+const objectAfter = (text: string): string[] => {
+  const words = tokenize(text);
+  const end = words.findIndex((word) => isOneOf(word, OBJECT_END_WORDS));
+  return (end < 0 ? words : words.slice(0, end)).filter(isObjectWord);
+};
+/** The subject before a passive or predicate finding: back to a comma, a relative, a contrast or a reporting verb. */
+const objectBefore = (text: string, phrase: string): string[] => {
+  if (/^(?:ו|ש|כש)(?=[֐-׿])/.test(phrase.trim())) return []; // a glued "and"/"that" starts a new clause
+  const words = tokenize(text.split(/[,;:–—()"“”«»]/).pop() ?? "");
+  let from = 0;
+  words.forEach((word, i) => { if (isOneOf(word, CLAUSE_START_WORDS) || isOneOf(word, ATTRIBUTION_WORDS)) from = i + 1; });
+  return words.slice(from).filter(isObjectWord);
+};
+/** True when one sentence of the parent's text holds the finding phrase with its object around it. */
+const parentStates = (clause: string, finding: FindingMatch, parent: ParentWords): boolean => {
+  const phrase = tokenize(findingCore(finding.phrase));
+  if (phrase.length === 0) return false;
+  const after = objectAfter(clause.slice(finding.index + finding.phrase.length));
+  const before = finding.kind === "both" ? objectBefore(clause.slice(0, finding.index), finding.phrase) : [];
+  return parent.sentences.some((words) => {
+    for (let j = 0; j + phrase.length <= words.length; j++) {
+      if (!phrase.every((word, i) => sameWord(word, words[j + i]))) continue;
+      if (words.slice(0, j).some((word) => isOneOf(word, CONDITION_WORDS))) continue; // "if there are no signs of …" is not a report
+      if (inOrderNear(after, words, j + phrase.length, 1) && inOrderNear(before, words, j - 1, -1)) return true;
+    }
+    return false;
+  });
+};
+
+/** Who a clause credits: every third-party reporter it names, the word a
+ *  reporting verb follows ("Dana says", "Dr. Cohen said"), and the words an
+ *  "according to" / "לדברי" or a Hebrew reporting verb names next ("according
+ *  to Dr. Cohen", "אמרה הגננת"). The parent in the third person ("Mom
+ *  reports", "according to Noa's mom") is the parent's own text and credits nobody. */
+const creditedSources = (clause: string): string[] => {
+  const words = tokenize(clause);
+  const out: string[] = [];
+  const isReporter = (word: string) => isOneOf(word, REPORTER_THIRD_EN) || isOneOf(word, REPORTER_THIRD_HE);
+  const isSourceWord = (word: string) => !isStopWord(word) && !isOneOf(word, ATTRIBUTION_WORDS) && !/'s$/.test(word);
+  words.forEach((word, i) => {
+    if (isReporter(word)) out.push(word);
+    if (!isOneOf(word, ATTRIBUTION_WORDS)) return;
+    const before = words.slice(Math.max(0, i - 2), i).reverse().find(isSourceWord);
+    if (before && !isOneOf(before, REPORTER_PARENT)) out.push(before);
+    if (!isHebrewWord(word) && !isOneOf(word, CREDIT_BEFORE_SOURCE)) return;
+    for (const next of words.slice(i + 1, i + 4).filter(isSourceWord)) {
+      if (isOneOf(next, REPORTER_PARENT)) break;
+      out.push(next);
+      if (isReporter(next)) break;
+    }
+  });
+  return out;
+};
 
 export type HandoffFloorOptions = {
   /** The parent's own words this answer or brief was made from (the chat
    *  message, the parent's earlier turns, the logged triggers and responses).
-   *  A finding the parent wrote is theirs to pass on. */
+   *  A finding the parent wrote, with its object, is theirs to pass on —
+   *  including a teacher's or doctor's words the parent typed in. */
   parentText?: string;
 };
 
-/** True when this clause states a finding nobody reported (and is not a safety message). */
+/** True when this clause states a finding the parent's words do not carry (and is not a safety message). */
 export function statesUnreportedFinding(clause: string, opts: HandoffFloorOptions = {}): boolean {
   if ((CONDITION_EN.test(clause) && REFERRAL_EN.test(clause)) || (CONDITION_HE.test(clause) && REFERRAL_HE.test(clause))) return false;
-  if (TRAILING_EN.test(clause) || TRAILING_HE.test(clause)) return false;
-  const parent = opts.parentText ? normalize(opts.parentText) : "";
-  return findingsIn(clause).some(({ phrase, index }) => {
-    if (parent && parent.includes(normalize(findingCore(phrase)))) return false;
-    const before = clause.slice(0, index);
-    return !GOVERNED_EN.test(before) && !RELATIVE_EN.test(before) && !GOVERNED_HE.test(before);
-  });
+  const findings = findingsIn(clause);
+  if (findings.length === 0) return false;
+  if (!opts.parentText) return true;
+  const parent = parentWordsOf(opts.parentText);
+  // Every source the note credits must be one the parent named.
+  if (creditedSources(clause).some((source) => !parent.all.some((word) => sameWord(source, word)))) return true;
+  return findings.some((finding) => !parentStates(clause, finding, parent));
 }
 
 /** Drop every clause that states an unreported finding; an untouched note is returned byte-identical. */
 export function withoutHandoffFindings(text: string, opts: HandoffFloorOptions = {}): string {
-  const clauses = text.match(/[^.!?;。\n]+[.!?;。]*\s*/g) ?? [text];
-  if (!clauses.some((clause) => statesUnreportedFinding(clause, opts))) return text;
-  return clauses.filter((clause) => !statesUnreportedFinding(clause, opts)).join("").trim();
+  const clauses = text.match(CLAUSES) ?? [text];
+  const dropped = clauses.map((clause) => statesUnreportedFinding(clause, opts));
+  if (!dropped.includes(true)) return text;
+  return clauses.filter((_, i) => !dropped[i]).join("").trim();
 }
 
 /** Fields of a School Brief draft the floor never touches: the escalation line is the safety message. */
