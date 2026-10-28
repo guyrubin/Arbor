@@ -48,6 +48,20 @@ describe("B-GROWTH-15 · the words line on Now agrees with the record", () => {
     expect(strip(whatChangedLineText(line, tr("he"), "he", "Noa").title)).toBe("2 מילים חדשות בעברית");
   });
 
+  it("r2 (critic P1): back after 3 days with two helped steps and one approved fact, Now's three lines still carry the words, and the rest is a counted door", () => {
+    const prev = "2026-10-25T08:00:00.000Z";
+    const step = (id: string, day: string) => ({ id, recommendation: `Step ${id}`, status: "completed" as const, acceptedAt: `${day}T08:00:00.000Z`, outcome: "helped" as const, outcomeAt: `${day}T20:00:00.000Z` });
+    const now3 = composeWhatChanged({ ...base, previousVisitAt: prev, maxLines: 3, approvedFactsSince: 1,
+      actionLoop: [step("s1", "2026-10-26"), step("s2", "2026-10-27")], langObs: WORDS });
+    expect(now3.lines.map((l) => l.kind)).toEqual(["words", "step", "step"]);
+    expect(now3.hiddenCount).toBe(1); // the approved fact, behind "+1 more"
+    // the Now wiring: three lines and the composer's own hidden count (never 0 by hand)
+    const src = readFileSync(path.join(here, "..", "companion", "NowTodayLines.tsx"), "utf8");
+    expect(src).toContain("maxLines: 3,");
+    expect(src).toContain("hiddenCount={changed.hiddenCount}");
+    expect(src).not.toContain("hiddenCount={0}");
+  });
+
   it("the line never carries the words themselves", () => {
     const json = JSON.stringify(changed);
     for (const w of WORDS) expect(json).not.toContain(w.phrase);

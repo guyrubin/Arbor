@@ -67,6 +67,8 @@ export function NowWhatChangedLines({ previousVisitAt, isReturning, rhythmDaysNe
     // the watch signal is Notice today's own row (never twice)
     includeNoticed: false,
     langObs: langObs.items,
+    // B-GROWTH-15 r2: three lines here; the rest is counted into the "+N more" door.
+    maxLines: 3,
   }), [isReturning, dayZero, previousVisitAt, behaviorLogs, playLogs, milestones, actionLoop, approvedFactsSince, firstsState, checkedMilestones, langObs.items]);
   const weeklyRecap = useWeeklyRecap();
   // The door's own gate, unchanged: a returning parent, past day zero, with something new.
@@ -77,7 +79,7 @@ export function NowWhatChangedLines({ previousVisitAt, isReturning, rhythmDaysNe
     requestJournalFocus(line.focusId);
     setActiveTab("journal");
   };
-  return <WhatChanged variant="lines" lines={changed.lines.slice(0, 3)} hiddenCount={0} recap={weeklyRecap} rhythmDaysNeeded={rhythmDaysNeeded} onLineTap={onLineTap} onMore={() => setActiveTab("journal")} />;
+  return <WhatChanged variant="lines" lines={changed.lines.slice(0, 3)} hiddenCount={changed.hiddenCount} recap={weeklyRecap} rhythmDaysNeeded={rhythmDaysNeeded} onLineTap={onLineTap} onMore={() => setActiveTab("journal")} />;
 }
 
 /** The say-back question and the watch signal: Notice today's last rows. */

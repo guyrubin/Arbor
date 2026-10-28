@@ -143,6 +143,30 @@ export function composeWhatChanged(input: {
     events += 1;
   });
 
+  // 2b. B-GROWTH-15 — words written down since the last visit, one line per
+  //     language (newest first): the SAME day fold the Journal's words rows use
+  //     (lib/record/counts wordDays), so "2 new words in Hebrew" here is the
+  //     record's own count. Counts only; never the words, never a comparison.
+  //     r2 (critic P1): ranked right after the milestones, AHEAD of step
+  //     outcomes and facts — Now shows three lines, and a parent back after a
+  //     few days with two helped steps and a kept fact never saw the words.
+  const wordRows = wordDays((input.langObs ?? []).filter((o) => parseMs(o.timestamp) > sinceMs));
+  const byLanguage = new Map<string, { language: string; count: number; latest: string; focusId: string }>();
+  for (const row of wordRows) {
+    const key = row.language.toLowerCase();
+    const prev = byLanguage.get(key);
+    const focusId = `words-${encodeURIComponent(key)}-${row.day}`;
+    if (!prev) byLanguage.set(key, { language: row.language, count: row.phrases.length, latest: row.latest, focusId });
+    else {
+      prev.count += row.phrases.length;
+      if (row.latest > prev.latest) { prev.latest = row.latest; prev.focusId = focusId; }
+    }
+  }
+  for (const w of [...byLanguage.values()].sort((a, b) => (a.latest < b.latest ? 1 : -1))) {
+    lines.push({ kind: "words", count: w.count, language: w.language, focusId: w.focusId });
+    events += w.count;
+  }
+
   // 3. a step outcome — the parent's own report that a step helped (never
   //    an unrated step: that one lives in the continuation slot above the
   //    step; and a "not today" never reaches the card — TJB-05's firewall:
@@ -167,27 +191,6 @@ export function composeWhatChanged(input: {
   if (ideas > 0) {
     lines.push({ kind: "ideas", count: ideas });
     events += ideas;
-  }
-
-  // 4c. B-GROWTH-15 — words written down since the last visit, one line per
-  //     language (newest first): the SAME day fold the Journal's words rows use
-  //     (lib/record/counts wordDays), so "2 new words in Hebrew" here is the
-  //     record's own count. Counts only; never the words, never a comparison.
-  const wordRows = wordDays((input.langObs ?? []).filter((o) => parseMs(o.timestamp) > sinceMs));
-  const byLanguage = new Map<string, { language: string; count: number; latest: string; focusId: string }>();
-  for (const row of wordRows) {
-    const key = row.language.toLowerCase();
-    const prev = byLanguage.get(key);
-    const focusId = `words-${encodeURIComponent(key)}-${row.day}`;
-    if (!prev) byLanguage.set(key, { language: row.language, count: row.phrases.length, latest: row.latest, focusId });
-    else {
-      prev.count += row.phrases.length;
-      if (row.latest > prev.latest) { prev.latest = row.latest; prev.focusId = focusId; }
-    }
-  }
-  for (const w of [...byLanguage.values()].sort((a, b) => (a.latest < b.latest ? 1 : -1))) {
-    lines.push({ kind: "words", count: w.count, language: w.language, focusId: w.focusId });
-    events += w.count;
   }
 
   // 5. moments kept (behaviour logs + plays), the latest one quoted.
