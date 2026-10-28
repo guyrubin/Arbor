@@ -37,6 +37,8 @@ interface ContentRule {
 const ROS_TREE_PATH = /(?<![A-Za-z0-9_.-])(?:ROS|PAI|CoS|EA|KK|HV|00_System)\//;
 /** A Windows user profile, the WSL mount of one, or a ROS checkout under /home. */
 const WORKSTATION_PATH = /[A-Za-z]:[\\/]{1,2}Users[\\/]{1,2}|\/mnt\/c\/Users\/|\/home\/[^/\s]+\/ROS\b/;
+/** BD-45: the BD workspace folder and its two tell-tale data files, as a path or a link. */
+const PRIVATE_BD_PATH = /(?:^|[\s/(`"'\[])business-development\/|outreach-drafts[\w-]*\.md|gtm-data-v\d/;
 
 export const CONTENT_RULES: ContentRule[] = [
   {
@@ -49,7 +51,15 @@ export const CONTENT_RULES: ContentRule[] = [
     re: WORKSTATION_PATH,
     why: "an absolute path on a maintainer's machine; use a repo-relative path",
   },
+  {
+    id: "private-bd",
+    re: PRIVATE_BD_PATH,
+    why: "private business-development material (strategy, partners, pipeline, unsent outreach) stays out of the public repo",
+  },
 ];
+
+/** BD-45: a tracked file whose own path is private BD material. */
+export const isPrivateBdPath = (rel: string): boolean => PRIVATE_BD_PATH.test(rel);
 
 const BINARY_EXT = new Set([
   ".png", ".jpg", ".jpeg", ".webp", ".gif", ".ico", ".icns", ".mp3", ".m4a", ".wav", ".ogg", ".mp4", ".webm",
@@ -101,6 +111,9 @@ describe("B-INF-15 — no tracked file points into the private ROS tree", () => 
       "cd C:\\Users\\someone\\ROS\\.workspace\\app",
       "/mnt/c/Users/someone/ROS",
       "/home/someone/ROS/PAI",
+      "- `docs/business-development/README.md` - strategic GTM and partnerships v2",
+      "[Outreach drafts](outreach-drafts-en-he.md)",
+      "[Portable workbook model](gtm-data-v2.json)",
     ];
     for (const line of residue) {
       expect(scanText("fixture.md", line), line).not.toEqual([]);
@@ -115,10 +128,18 @@ describe("B-INF-15 — no tracked file points into the private ROS tree", () => 
       "the ROS decision of 11 October (private record)",
       "/home/runner/work/arbor/arbor/app",
       "KKEA/ and xHV/ are not domain roots",
+      "business development is Guy's half; see docs/marketing-domain-israel.md",
     ];
     for (const line of clean) {
       expect(scanText("fixture.md", line), line).toEqual([]);
     }
+  });
+
+  it("BD-45: no tracked file sits at a private business-development path", () => {
+    expect(isPrivateBdPath("docs/business-development/strategy-he.md")).toBe(true);
+    expect(isPrivateBdPath("docs/marketing-domain-israel.md")).toBe(false);
+    const offenders = trackedFiles().filter(isPrivateBdPath);
+    expect(offenders, `private BD material tracked in the public repo:\n${offenders.join("\n")}`).toEqual([]);
   });
 
   it("every tracked text file cites only in-repo paths", () => {
