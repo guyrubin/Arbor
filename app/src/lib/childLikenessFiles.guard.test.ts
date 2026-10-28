@@ -148,6 +148,40 @@ describe("T16 static clause — no sprite, print or audio of a real child in git
     expect(NAMED.get("app/public/_proof/hero/sheet.json")).toMatch(/B-GAME-35/);
   });
 
+  it("the registry is a guard, not a consumer: imported only by tests, and it exports only paths and hashes (the kids audit exempts it on this)", async () => {
+    const importers: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const full = path.join(dir, name);
+        if (statSync(full).isDirectory()) { if (name !== "node_modules") walk(full); continue; }
+        if (!/\.(ts|tsx|js|mjs|cjs|jsx)$/.test(name)) continue;
+        if (/childLikenessFiles\.named(\.ts)?["']/.test(readFileSync(full, "utf8"))) importers.push(path.relative(APP, full).split(path.sep).join("/"));
+      }
+    };
+    for (const dir of ["src", "scripts", "server.ts"]) {
+      const full = path.join(APP, dir);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (/childLikenessFiles\.named(\.ts)?["']/.test(readFileSync(full, "utf8"))) importers.push(dir);
+    }
+    expect(importers.length).toBeGreaterThan(0);
+    expect(importers.filter((f) => !/\.test\.(ts|tsx)$/.test(f)), "only test files may import the likeness registry").toEqual([]);
+    // the module itself: no imports at all (no React, no URL or asset helper), one data export
+    const source = readFileSync(path.join(APP, "src", "lib", "childLikenessFiles.named.ts"), "utf8");
+    expect(source).not.toMatch(/^\s*import\s/m);
+    expect(source).not.toMatch(/\brequire\(|\bimport\(/);
+    const mod = await import("./childLikenessFiles.named");
+    expect(Object.keys(mod)).toEqual(["NAMED_LIKENESS_FILES"]);
+    for (const group of mod.NAMED_LIKENESS_FILES) {
+      expect(Object.keys(group).sort()).toEqual(["files", "owner", "why"]);
+      expect(typeof group.owner).toBe("string");
+      expect(typeof group.why).toBe("string");
+      for (const [file, hash] of Object.entries(group.files)) {
+        expect(file).toMatch(/^app\/public\/[^\s]+$/);
+        expect(hash).toMatch(/^[0-9a-f]{64}$/);
+      }
+    }
+  });
+
   it("each named file still holds the reviewed picture: its bytes match the pinned sha256", () => {
     const changed = [...PINS].filter(([f, pin]) => likenessDigest(readFileSync(path.join(REPO, f)), f) !== pin).map(([f]) => f);
     expect(changed, "a named file was redrawn: review the new picture, then re-pin it with its owner row").toEqual([]);
