@@ -40,6 +40,8 @@ import { screenForImmediateEscalation } from "../../safety/escalation";
 import type { ComposerAttachment } from "../../lib/companionAttachments";
 import { requestCompanionConsentReview } from "../../lib/companionConsent";
 import { COMPANION_CONVERSATION_EVENT, consumeConversationPanelRequest, consumeConversationVoiceRequest, conversationVoiceRequestPending, type CompanionConversationRequest } from "../../lib/companionConversation";
+// B-VOICE-08: a door outside this panel starts Talk inside its own tap.
+import { registerConversationVoiceStarter } from "../../lib/companionConversation";
 import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError } from "../../lib/api";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { recurringScenario } from "../../lib/patternEcho";
@@ -766,9 +768,24 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     if (voiceOnRef.current) startListening();
   };
 
+  // B-VOICE-02: a card's own words, spoken first when its "Talk it through"
+  // started this session. Text-to-speech only: never sent to the model and
+  // never written into the thread (the spoken context carries no trace).
+  const openingLineRef = useRef<string | null>(null);
+
   const startBrowserVoice = () => {
     voiceLifetimeRef.current.begin();
     clearLiveRefs();
+    // B-VOICE-02: the card's words first; the drained queue then listens
+    // through pumpTts's guarded re-listen (streamDone, hands-free on).
+    const opening = openingLineRef.current;
+    openingLineRef.current = null;
+    if (opening) {
+      voiceOnRef.current = true;
+      streamDoneRef.current = true;
+      enqueueSpeak(opening);
+      return;
+    }
     voiceOnRef.current = true;
     startListening();
   };
@@ -1027,6 +1044,31 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, liveProbed, voiceAsk]);
+
+  // B-VOICE-08 / B-VOICE-02: a door outside this panel (Now's Talk, a card's
+  // "Talk it through") starts Talk inside the parent's own tap, through the
+  // ONE toggle (its notice, review and stop rules unchanged). Registered only
+  // once the Live probe has answered, so the tap takes the right route; until
+  // then a door falls back to the B-VOICE-06 ready-to-talk request above.
+  const startFromDoor = (opening?: string): boolean => {
+    if (voicePhase !== "off" || voiceReviewOpen || readNoticeTalk()) return false;
+    const line = opening?.replace(/\s+/g, " ").trim() || null;
+    const before = voiceLifetimeRef.current.current;
+    // The browser loop speaks the line before it listens; a Live session
+    // cannot hold its microphone, so the line plays now, inside the tap.
+    openingLineRef.current = line && !liveAvail ? line : null;
+    void toggleVoice();
+    const began = voiceLifetimeRef.current.current !== null && voiceLifetimeRef.current.current !== before;
+    if (!began) { openingLineRef.current = null; return false; }
+    if (line && liveAvail && ttsSupported()) speak(line);
+    return true;
+  };
+  const startFromDoorRef = useRef(startFromDoor);
+  startFromDoorRef.current = startFromDoor;
+  useEffect(() => {
+    if (!liveProbed) return;
+    return registerConversationVoiceStarter((opening) => startFromDoorRef.current(opening));
+  }, [liveProbed]);
 
   const voiceLabel = voicePhase === "connecting" ? t("coach.voice.connecting") : voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
   // COACH-2: live caption text on the voicePhase chip while the answer streams

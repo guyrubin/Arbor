@@ -53,3 +53,39 @@ export function consumeConversationPanelRequest(now: number = Date.now()): Compa
   panelRequest = null;
   return request && now - request.at >= 0 && now - request.at <= CONVERSATION_VOICE_REQUEST_TTL_MS ? request.panel : null;
 }
+
+/** B-VOICE-08 / B-VOICE-02 — a voice door outside the conversation (Now's
+ *  Talk button, a card's "Talk it through") starts the ONE Talk path inside
+ *  its own tap. The mounted conversation registers its start here once it
+ *  knows which route a tap would take (the Live probe answered). `opening` is
+ *  the card's own words: spoken first by text-to-speech, never sent to the
+ *  model and never written into the thread. The start answers true only when
+ *  a voice session began inside the call. */
+export type ConversationVoiceStart = (opening?: string) => boolean;
+let voiceStarter: ConversationVoiceStart | null = null;
+
+export function registerConversationVoiceStarter(start: ConversationVoiceStart): () => void {
+  voiceStarter = start;
+  return () => { if (voiceStarter === start) voiceStarter = null; };
+}
+
+/** True while a mounted conversation can start talking inside a tap. */
+export function conversationVoiceReady(): boolean {
+  return voiceStarter !== null;
+}
+
+/** One tap → a spoken conversation. Call it INSIDE the parent's tap: the
+ *  panel opens and Talk starts in the same call stack (the iOS microphone
+ *  rule), through the conversation's own toggle (its notice, review and stop
+ *  rules unchanged). Before the conversation has mounted, the tap falls back
+ *  to the B-VOICE-06 request (the panel opens ready to talk, Talk focused).
+ *  Returns true when the voice session began inside this tap. */
+export function startConversationVoice(detail: { source: string; opening?: string }): boolean {
+  const start = voiceStarter;
+  if (!start) {
+    requestCompanionConversation({ source: detail.source, voice: true });
+    return false;
+  }
+  requestCompanionConversation({ source: detail.source });
+  return start(detail.opening);
+}

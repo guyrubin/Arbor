@@ -553,6 +553,8 @@ export const companionEn = {
   // Words only: never a count, dot or badge.
   "companion.input.foot": "Arbor is an AI companion, not a doctor. Files are analysed only when sent.",
   "companion.launcher.label": "Ask Arbor — text, photo or voice",
+  // B-VOICE-08: Now's one-tap voice door (its visible words are companion.input.talk).
+  "companion.launcher.voice-aria": "Talk it through by voice",
   "companion.panel.history": "History",
   "companion.panel.new.sub": "Keeps the question; starts a fresh thread",
   "companion.panel.history.sub": "Earlier conversations",
@@ -1120,6 +1122,7 @@ export const companionHe = {
   // F-TALK-1: Talk is a panel over the place (see the English block).
   "companion.input.foot": "ארבור הוא מלווה בינה מלאכותית, לא רופא. קבצים מנותחים רק בשליחה.",
   "companion.launcher.label": "שואלים את ארבור — טקסט, תמונה או קול",
+  "companion.launcher.voice-aria": "לדבר על זה בקול",
   "companion.panel.history": "היסטוריה",
   "companion.panel.new.sub": "השאלה נשארת; שיחה חדשה מתחילה",
   "companion.panel.history.sub": "שיחות קודמות",
