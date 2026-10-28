@@ -10,6 +10,7 @@ import { plateSources } from "../../lib/library/bookPlates";
 import { bookPlatesFor } from "../../lib/library/books";
 import { heroSheetOwnerKey, subscribeHeroSheetOwner } from "../../lib/heroSheetStore";
 import { bookCoverScopeKey, visibleBookCoverPrint, type ScopedBookCoverPrint } from "./bookCoverScope";
+import { usePlanPlateSrcs } from "../../lib/plans/planPlateSource";
 
 export function LibraryBookCover({ childId, entry }: { childId: string; entry: LibraryBookEntry }) {
   // This component can survive a child or auth switch. Checking only in the
@@ -38,7 +39,9 @@ export function LibraryBookCover({ childId, entry }: { childId: string; entry: L
     };
   }, [owner, childId, entry.doc, scope]);
   const plate = bookPlatesFor(entry.book)[entry.book.cover.plateId];
-  const src = visibleBookCoverPrint(print, scope) ?? (plate ? plateSources(plate, { dev: false })[0] : null);
+  // B-BOOK-75 plates: a plan plate in shared storage is read through the signed-in route (blob: URL).
+  const plateSrcs = usePlanPlateSrcs(plate ? plateSources(plate, { dev: false }) : []);
+  const src = visibleBookCoverPrint(print, scope) ?? (plateSrcs[0] ?? null);
   if (!src) return null;
   return <img src={src} alt="" aria-hidden="true" draggable={false} decoding="async" data-library-book-cover={entry.book.id} style={{ position: "absolute", inset: 0, inlineSize: "100%", blockSize: "100%", objectFit: "cover" }} />;
 }

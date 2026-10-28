@@ -34,6 +34,33 @@ Rules that hold everywhere here:
 | `plan-toilet-start` | [definition-plan-toilet-start.md](definition-plan-toilet-start.md) | `app/src/lib/library/plans/patterns/planToiletStart.ts` | owed | owed |
 | `plan-stay-in-bed` | [definition-plan-stay-in-bed.md](definition-plan-stay-in-bed.md) | `app/src/lib/library/plans/patterns/planStayInBed.ts` | owed | owed |
 
+## The pattern plates (B-BOOK-75, painted in-product)
+
+A pattern's eight plates are child-free, text-free backgrounds shared by every
+family who composes it (`app/src/lib/library/plans/planPlates.ts` holds the
+briefs). They are painted once, in-product, not committed:
+
+- `POST /api/admin/plan-plates` `{ pattern?, plate?, repaint? }` — only a
+  verified account whose email is on `ARBOR_ADMIN_EMAILS` or
+  `ARBOR_FAMILY_EMAILS`; the same image provider, model and region pins as
+  `/generate-scene`; each brief plus the standard rules (no child-like figure,
+  no text, one key light upper-left, the hero floor slot empty, no religious
+  symbol, no weapon). Painted plates are skipped unless `repaint`; a run is
+  refused past 80 images or an estimated USD 10; every call goes through the
+  image routes' global breaker and a per-painter ledger. The masters live in
+  the child-assets bucket under the non-child prefix `shared/plans/<pattern>/
+  <plate>.webp|png` with a provenance JSON beside each (model, location,
+  prompt sha256, painter, time, cost; `childFree`/`textFree` stay false and
+  `qc: "unverified"` until a person has viewed the plate full size).
+- `GET /api/plans/plates/:pattern/:plate` — any signed-in user, long cache
+  headers, 404 until painted (the reader advances on an image error).
+- A plate committed under `app/public/visuals/plans/<pattern>/<plate>.webp`
+  wins: `npm run build` regenerates `planPlateManifest.ts` from that folder
+  and the plate resolves to the static path instead of the route.
+- The owner-only "Paint plates" control sits under the parent's Everyday plans
+  section; it renders only when `/api/plans/visibility` answers `admin: true`.
+  A full paint of all eight patterns is 64 images, about USD 2.50.
+
 ## The review packets (B-GA-37)
 
 [review/README.md](review/README.md) indexes one packet per pattern and

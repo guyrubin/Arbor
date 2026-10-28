@@ -92,6 +92,26 @@ describe("the journal's Everyday plans section (B-BOOK-77)", () => {
     expect(visible(h)).not.toMatch(VERDICT);
   });
 
+  it("B-BOOK-75 plates: the painter control renders ONLY when the server's table says admin; a family's table never shows it", () => {
+    for (const vis of [null, OPEN, { ...OPEN, admin: false }, { ...OPEN, admin: "yes" as unknown as boolean }]) {
+      const h = section({ visibility: vis });
+      expect(h).not.toContain("data-plan-plates");
+      expect(visible(h)).not.toMatch(/Paint plates|Pattern plates/);
+    }
+    const h = section({ visibility: { ...OPEN, admin: true } });
+    expect(h).toContain('data-plan-plates=""');
+    expect(h).toContain('data-plan-plates-paint="plan-poo-sit"');
+    expect(h).toContain('data-plan-plate="plan-poo-sit/PP1"');
+    expect(visible(h)).toContain("Paint plates");
+    // a shelf-scoped section never carries the control, and the admin flag opens no door
+    expect(section({ visibility: { ...OPEN, admin: true }, shelf: "sleep" })).not.toContain("data-plan-plates");
+    expect(section({ visibility: { composable: {}, admin: true } as unknown as PlanVisibility })).not.toContain("data-plan-door");
+    expect(visible(h)).not.toMatch(VERDICT);
+    state.lang = "he";
+    expect(visible(section({ visibility: { ...OPEN, admin: true } }))).toContain("לצייר לוחות");
+    state.lang = "en";
+  });
+
   it("Hebrew: the section is RTL and the door speaks the pattern's Hebrew parent words", () => {
     state.lang = "he";
     try {

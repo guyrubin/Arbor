@@ -19,6 +19,7 @@ import type { PatternDef } from "../../lib/library/plans/patterns";
 import { activePlans, nightsCount, patternsOnShelf, planShelf, type ActivePlan } from "../../lib/plans/planWeek";
 import { planString } from "../../lib/plans/planStrings";
 import type { PlanVisibility } from "../../lib/plans/planApi";
+import PlanPlatePainter from "./PlanPlatePainter";
 import type { PatternId } from "../../lib/library/types";
 import type { ShelfId } from "../../lib/shelves/registry";
 
@@ -72,6 +73,8 @@ export default function PlansSection({ childName, planRows, visibility, now, she
         </>
       )}
       {!running.length && !doors.length && <p className="mt-3 t-base" style={{ color: "var(--arbor-muted)" }}>{s("section.empty")}</p>}
+      {/* B-BOOK-75 plates: the owner-only painter. The server's flag decides; a family's table never carries it. */}
+      {!shelf && visibility?.admin === true && <PlanPlatePainter lang={lang} patterns={all} />}
     </section>
   );
 }
