@@ -147,6 +147,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // was called here and had no call site anywhere, so on a shared tab the
     // next account's onboarding could take the previous child's comic.
     clearPrewarmedComic();
+    // B-GA-09 round 6: arbor.pendingErase is deliberately NOT purged here. Its
+    // entries are per uid and nameless (lib/pendingErase), so the next account
+    // never sees them, and the same account must find its Finish offer again
+    // after signing back in: the server still holds what the erase missed.
     if (!firebaseEnabled || !auth) return;
     await firebaseSignOut(auth);
   };

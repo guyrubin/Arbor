@@ -182,6 +182,7 @@ export const OTHER_FIRESTORE_COLLECTIONS: Readonly<Record<string, OtherChildSink
   pushTokenIndex: "account: push token index",
   retentionRollups: "account: per-family counts for the cohort report",
   digestOptIn: "account: weekly digest mailing consent",
+  erasedChildren: "account: the family's erase record, keyed by the erased child's id (ids and dates only, no child data) so a retried erase and account deletion can finish it; removed by account deletion and a 30-day TTL (firestore.indexes.json)",
   usageRollup: "aggregate: daily token spend, no uid or child",
   opsLedger: "aggregate: AI Studio prepay reserved milliseconds since a top-up date (server/prepayBalance.ts), no uid or child",
 };
@@ -198,8 +199,8 @@ export const STORAGE_PREFIXES: Readonly<Record<"storage:photos" | "storage:books
 export const STORAGE_MODULES: Readonly<Record<string, readonly ("storage:photos" | "storage:books" | "account" | "init" | "shared")[]>> = {
   "lib/firebase.ts": ["init"],
   "lib/storage.ts": ["storage:photos"],
-  "routes/api.ts": ["storage:photos", "storage:books"],
-  "server/accountDeletion.ts": ["account", "storage:books"],
+  "server/accountDeletion.ts": ["account"],
+  "server/childErase.ts": ["storage:photos", "storage:books"],
   "server/bookAssets.ts": ["storage:books"],
   "server/bookAssetExport.ts": ["storage:books"],
   "server/bookSheet.ts": ["storage:books"],
@@ -225,11 +226,16 @@ export const CACHE_STORAGE_CACHES: Readonly<Record<string, string>> = {
 };
 
 /**
- * Device keys (localStorage / sessionStorage) that do NOT carry a child id,
- * with why none of them holds data about one child. Account deletion removes
- * every `arbor*` key. A key that is about one child must carry the child id as
- * a dot segment instead (lib/childLocalState.childScopedKey), so the child's
- * erase sweeps it; that rule is guarded by childLocalStateSweep.guard.test.ts.
+ * Device keys (localStorage / sessionStorage) that do NOT carry a child id as
+ * a dot segment, with what each holds. Account deletion removes every `arbor*`
+ * key. A key that holds data about one child must carry the child id as a dot
+ * segment instead (lib/childLocalState.childScopedKey), so the child's erase
+ * sweeps it; that rule is guarded by childLocalStateSweep.guard.test.ts.
+ * The one key that names a child is `arbor.pendingErase`, and only a child
+ * whose erase has already run: the id the retry must erase again and the
+ * receipt so far, never the child's name or content. It cannot be
+ * child-scoped (the erase it finishes would sweep it), so it is scoped to the
+ * account instead: only that uid reads it back, across its own sign-outs.
  */
 export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.": "the namespace root the sweep matches on",
@@ -272,6 +278,7 @@ export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.nudge.shown.": "prefix: a nudge shown on a day",
   "arbor.ownershipProvisioned.": "prefix: session marker per account",
   "arbor.parentPin": "the parent gate PIN",
+  "arbor.pendingErase": "an erase still to finish (lib/pendingErase.ts), per account: the uid that started it, the erased child's id and the receipt so far (counts and per-place ledger); read back only by that uid, kept across its sign-out, cleared when a retry completes",
   "arbor.plan.previewDismissed": "UI marker",
   "arbor.purchaseIntent.v1": "the plan a parent chose before checkout",
   "arbor.recap.emailOptIn": "mailing preference",
