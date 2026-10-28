@@ -68,9 +68,10 @@ describe("GP-15 — the hero CTA is the contract's primary move", () => {
     expect(src).not.toContain('"elev.profile.remember.keep"');
     expect(src).not.toContain('"elev.profile.remember.notQuite"');
     expect(src).not.toMatch(/pendingQueue\.(slice|map)\(/);
-    expect(src).toContain("<AboutMemoryCard areas={aspects} />");
+    // B-CAREPRO-38: the card's door opens the ledger IN PLACE (#/memory retired into About).
+    expect(src).toContain("<AboutMemoryCard areas={aspects} ledgerOpen={ledgerOpen} onLedger={() => setLedgerOpen((o) => !o)} />");
     expect(memoryCard).toContain('data-testid="profile-remember-check"');
-    expect(memoryCard).toContain('setActiveTab("memory")');
+    expect(memoryCard).toContain('onClick={() => (onLedger ? onLedger() : setActiveTab("memory"))}');
   });
 
   it("NEGATIVE CONTROL: the pre-fix 'Add a family member' CTA is gone from the hero", () => {

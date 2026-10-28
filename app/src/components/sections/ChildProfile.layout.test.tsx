@@ -135,8 +135,10 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
   inner.find(el=>el.props["data-testid"]==="about-memory-remember")!.props.onClick();
   inner.find(el=>el.props["data-testid"]==="about-memory-not")!.props.onClick();
   expect(harness.decide.mock.calls).toEqual([["p2","approved"],["p2","rejected"]]);
+  // B-CAREPRO-38: the door opens the ledger in place on this page (never a second page).
   inner.find(el=>el.props["data-testid"]==="profile-remember-check")!.props.onClick();
-  expect(harness.setActiveTab).toHaveBeenCalledWith("memory");
+  expect(harness.setActiveTab).not.toHaveBeenCalledWith("memory");
+  expect(harness.setState).toHaveBeenCalled();
  });
  it("eight area cards in the brief's order, a 4/2/1 grid, and the memory door",()=>{
   const html=renderToStaticMarkup(<ChildProfile/>);
@@ -204,14 +206,20 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
   expect(stamped()).toHaveLength(1);
   expect(elements(ChildProfile()).filter(el=>el.props["data-primary-move"]==="approve-memory")).toHaveLength(0);
  });
- it("Tell more opens the conversation on that area; the memory door goes to #/memory",()=>{
+ it("Tell more opens the conversation on that area; the memory door opens the ledger in place (B-CAREPRO-38)",()=>{
   harness.callback=true;
   card("sleep").props.onTell("sleep");
   expect(harness.setState).toHaveBeenLastCalledWith({from:null,open:{aspect:"sleep",mode:"write"}});
   // v4 re-pin: the door is the What Arbor remembers card's own (AboutMemoryCard).
   const mounted=elements(ChildProfile()).find(el=>el.type===AboutMemoryCard)!;
-  elements(AboutMemoryCard(mounted.props as React.ComponentProps<typeof AboutMemoryCard>)).find(el=>el.props["data-testid"]==="profile-remember-check")!.props.onClick();
-  expect(harness.setActiveTab).toHaveBeenCalledWith("memory");
+  const door=elements(AboutMemoryCard(mounted.props as React.ComponentProps<typeof AboutMemoryCard>)).find(el=>el.props["data-testid"]==="profile-remember-check")!;
+  expect(door.props["aria-controls"]).toBe("about-memory-ledger");
+  expect(door.props["aria-expanded"]).toBe(false);
+  door.props.onClick();
+  expect(harness.setActiveTab).not.toHaveBeenCalled();
+  // the toggle is the ledger's own state: closed → open
+  const toggle=harness.setState.mock.calls.at(-1)![0] as (o:boolean)=>boolean;
+  expect(toggle(false)).toBe(true);
  });
  it("?aspect=<id> opens the conversation with that area chosen; an unknown id opens nothing",()=>{
   harness.callback=true;

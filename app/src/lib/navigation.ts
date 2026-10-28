@@ -288,18 +288,17 @@ export const SECTIONS: NavSection[] = [
     msIcon: "person",
     items: [
       { tab: "profile", label: "Development Profile", msIcon: "person" },
-      { tab: "memory", label: "Child Memory", msIcon: "neurology" },
     ],
-    // Hub only; Child Memory is the hub's contextual tool. B-CAREPRO-24: The
+    // Hub only. B-CAREPRO-38: Child Memory retired into About (RETIRED_ROUTES;
+    // the ledger opens in place there), so it is no longer a tool here and
+    // resolves to Profile via TAB_SECTION_FALLBACK. B-CAREPRO-24: The
     // Science left the pill row — it still resolves to Profile via
     // TAB_SECTION_FALLBACK (highlight) and keeps its TrustLink, EvidenceChip
     // and Settings doors. Heartwood D3: the Weekly Report re-homed to Today.
     primaryTabs: [
       { tab: "profile", label: "Development Profile", msIcon: "person" },
     ],
-    tools: [
-      { tab: "memory", label: "Child Memory", msIcon: "neurology" },
-    ],
+    tools: [],
   },
 ];
 
@@ -319,6 +318,8 @@ export const TAB_SECTION_FALLBACK: Partial<Record<ActiveTab, HubId>> = {
   // B-GROWTH-25: #/routines retired to Plans (RETIRED_ROUTES) — it resolves
   // to the hub that owns plans.
   routines: "behaviors",
+  // B-CAREPRO-38: #/memory retired to About (RETIRED_ROUTES) — Profile highlights.
+  memory: "profile",
 
   // Practice (Heartwood D3) — the standalone drill routes are the Practice
   // hub's tools; they stay valid deep links resolving here for highlighting,

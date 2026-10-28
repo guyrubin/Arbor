@@ -35,11 +35,25 @@ import { appointmentRoleLabel } from "../../lib/appointmentLabel";
  * nothing turns them into Arbor's sentence.
  */
 const SHOWN_PENDING = 3;
+/** B-CAREPRO-38 — the pending facts About itself asks about (in an area, or on
+ *  this card): the embedded ledger leaves them out, so each is asked once. */
+export function aboutAskedPendingIds(pending: readonly MemoryReviewItem[], areas: readonly AspectState[]): Set<string> {
+  const scrubbed = scrubMemoryProposals([...pending]);
+  const inAreas = new Set(areas.map((a) => a.pending?.memoryId).filter(Boolean) as string[]);
+  const onCard = scrubbed.filter((m) => !inAreas.has(m.memoryId)).slice(0, SHOWN_PENDING).map((m) => m.memoryId);
+  return new Set([...inAreas, ...onCard]);
+}
 const SHOWN_APPROVED = 3;
 /** The sources a fact came from in the parent's own conversation (ChildMemory's set). */
 const CONVERSATION_SOURCES: ReadonlySet<string> = new Set(["chat", "coach", "conversation", "journal"]);
 
-export default function AboutMemoryCard({ areas }: { areas: readonly AspectState[] }) {
+export default function AboutMemoryCard({ areas, ledgerOpen, onLedger }: {
+  areas: readonly AspectState[];
+  /** B-CAREPRO-38: the page's "Everything Arbor remembers" ledger is open below. */
+  ledgerOpen?: boolean;
+  /** B-CAREPRO-38: the door opens the ledger in place (#/memory retired into About). */
+  onLedger?: () => void;
+}) {
   const { approvedMemoryItems, pendingMemoryItems, handleMemoryDecision, isMemoryUpdating, memoryReviewError, setActiveTab, childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
   const [failed, setFailed] = useState<string | null>(null);
@@ -141,8 +155,15 @@ export default function AboutMemoryCard({ areas }: { areas: readonly AspectState
       )}
       <div className="about-memory-foot">
         <p className="about-memory-note">{t("companion.about.memory.note")}</p>
-        <button type="button" className="about-memory-open min-h-11" data-testid="profile-remember-check" onClick={() => setActiveTab("memory")}>
-          {t("companion.about.memory.open")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
+        {/* B-CAREPRO-38: the ledger opens IN PLACE on this page (one home for
+            approve, correct and forget); without a host it still names #/memory,
+            which lands here. */}
+        <button type="button" className="about-memory-open min-h-11" data-testid="profile-remember-check"
+          aria-expanded={onLedger ? !!ledgerOpen : undefined}
+          aria-controls={onLedger ? "about-memory-ledger" : undefined}
+          onClick={() => (onLedger ? onLedger() : setActiveTab("memory"))}
+        >
+          {t("companion.about.memory.open")}<Icon name={onLedger ? (ledgerOpen ? "expand_less" : "expand_more") : "arrow_forward"} size={18} className={onLedger ? undefined : "rtl:-scale-x-100"} />
         </button>
       </div>
     </section>

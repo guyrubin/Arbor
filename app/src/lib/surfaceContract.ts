@@ -499,10 +499,12 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   },
   {
     route: "memory", hub: "profile", depth: 1,
-    job: "Approve, edit, or forget what Arbor remembers about her.",
-    primaryMove: "approve-memory-fact", moduleBudget: 3, demotionTarget: "profile",
-    // ChildMemory approve/forget over MemoryReviewItem; only approved facts
-    // enter the stream (memory source filters status === "approved").
+    // B-CAREPRO-38: retired to About; the seat renders it (ledger open in place).
+    job: "Who she is — and what Arbor remembers.",
+    primaryMove: "capture-moment", moduleBudget: 3, demotionTarget: "disclosure",
+    // Job, move and budget are the About leaf's own (copilot / strengths
+    // pattern). Approving still writes the memory ledger; only approved facts
+    // enter the stream.
     threadWrite: "memory",
   },
   {

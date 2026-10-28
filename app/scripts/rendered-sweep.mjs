@@ -1356,15 +1356,22 @@ const STATES = {
       },
     },
   ],
+  // B-CAREPRO-38: #/memory is retired into My child › About, which opens the
+  // ledger in place (one home for approve, correct and forget).
   memory: [
+    {
+      name: "ledger",
+      run: async (h) => {
+        await h.top(await h.need("[data-testid=about-memory-ledger]", "the ledger, open in place on About (#/memory retired)"));
+      },
+    },
     {
       name: "pending-group",
       run: async (h) => {
-        const approve = await h.first("[data-primary-move=approve-memory-fact]", 5_000);
-        if (!approve) skip("no pending fact on the server memory ledger");
-        const group = approve.locator("xpath=ancestor::*[.//h2][1]");
-        const heading = group.locator("h2").first();
-        await h.top((await heading.count()) ? heading : approve);
+        await h.need("[data-testid=about-memory-ledger]", "the ledger, open in place on About (#/memory retired)");
+        const groups = await h.first("[data-testid=about-memory-ledger] [data-testid=memory-groups]", 5_000);
+        if (!groups) skip("no pending fact beyond the ones About already asks about (its areas and the card)");
+        await h.top(groups);
       },
     },
     {

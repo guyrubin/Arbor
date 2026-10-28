@@ -45,8 +45,21 @@ const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : tx
 
 /** Child Intelligence › Child Memory — parent-approved facts, wired to the real
  *  append-only memory service (/api/memory). A core moat: source-linked,
- *  time-stamped, editable via approve/forget, time-boxed when sensitive. */
-export default function ChildMemory() {
+ *  time-stamped, editable via approve/forget, time-boxed when sensitive.
+ *
+ *  B-CAREPRO-38 — ONE home: #/memory and #/child-memory retired into My child ›
+ *  About (#/profile), which mounts this ledger `embedded` under its "What Arbor
+ *  remembers" card ("Everything Arbor remembers"). Embedded, the ledger has no
+ *  page header and no move of its own (About's one move stays), every module it
+ *  stamps is demoted (About's budget counts its own three), and a pending fact
+ *  the page already asks about (in its area, or on the card) is not asked twice
+ *  (`hidePendingIds`). Approve, correct (Edit), forget, retention, the coach's
+ *  view, the parent's own description and the learning trail all stay here. */
+export default function ChildMemory({ embedded = false, hidePendingIds }: {
+  embedded?: boolean;
+  /** Pending facts the host page already asks about — never asked twice on one page. */
+  hidePendingIds?: ReadonlySet<string>;
+} = {}) {
   // B-LOOP-10 — "Things {name} said": the quote keepsakes from Tonight.
   const quoteChild = useArbor().childProfile;
   const quoteDocs = useChildCollection<KeepsakeDoc>(quoteChild.id, "keepsakes");
@@ -61,8 +74,10 @@ export default function ChildMemory() {
   // MemoryRow displays the scrubbed wording.
   const pendingQueue = useMemo(() => {
     const kept = new Set(scrubMemoryProposals(pendingMemoryItems).map((p) => p.memoryId));
-    return pendingMemoryItems.filter((m) => kept.has(m.memoryId));
-  }, [pendingMemoryItems]);
+    return pendingMemoryItems.filter((m) => kept.has(m.memoryId) && !hidePendingIds?.has(m.memoryId));
+  }, [pendingMemoryItems, hidePendingIds]);
+  // B-CAREPRO-38: embedded, every stamp is demoted (the host page owns its budget).
+  const demoted = embedded ? { "data-module-demoted": "" } : {};
   const pendingGroups = useMemo(() => groupPendingMemory(pendingQueue), [pendingQueue]);
   const soleOther = pendingGroups.length === 1 && pendingGroups[0].topic === "other";
   // Saved Learn Library reads, newest first; stale bookmarks (removed cards) are dropped.
@@ -74,7 +89,7 @@ export default function ChildMemory() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-col gap-6 max-w-[920px]">
-      <PageHeader flush title={t("sec.mem.title")} subtitle={t("sec.mem.sub", { name: first })} />
+      {!embedded && <PageHeader flush title={t("sec.mem.title")} subtitle={t("sec.mem.sub", { name: first })} />}
 
       {/* AI-11: this is the surface where a parent APPROVES or FORGETS what
           Arbor may remember about their child. Its titles, its empty state and
@@ -87,7 +102,7 @@ export default function ChildMemory() {
       {/* W2-CAREPRO r2 (P0): the approval promise is said ONCE — the subtitle
           (sec.mem.sub carries "only what you approve; nothing shared without
           you"). What stays here is the inline door to how Arbor decides. */}
-      <ContentWhyLine why="" trustLink surface="child-memory" className="-mt-3" />
+      {!embedded && <ContentWhyLine why="" trustLink surface="child-memory" className="-mt-3" />}
 
       {/* OWN-1: a failed ledger read renders an honest error + retry card (the
           TrustedSharing twin) INSTEAD of the pending/approved lists — an
@@ -123,7 +138,7 @@ export default function ChildMemory() {
         </p>
       )}
       {!memoryReviewError && pendingQueue.length > 0 && (
-        <div data-module="memory-pending" style={{ display: "contents" }}>
+        <div data-module="memory-pending" {...demoted} style={{ display: "contents" }}>
         {/* B-CAREPRO-25: one group per topic (newest fact shown, "See all N",
             "Dismiss all N"); the heading counts groups; neutral lav tone. */}
         <SectionCard
@@ -139,7 +154,7 @@ export default function ChildMemory() {
               <PendingGroupCard
                 key={g.topic}
                 group={g}
-                lead={gi === 0}
+                lead={!embedded && gi === 0}
                 hideLabel={soleOther}
                 isMemoryUpdating={isMemoryUpdating}
                 onDecide={(id, status) =>
@@ -155,7 +170,7 @@ export default function ChildMemory() {
         </div>
       )}
 
-      <div data-module="memory-approved" style={{ display: "contents" }}>
+      <div data-module="memory-approved" {...demoted} style={{ display: "contents" }}>
       {!memoryReviewError && (
       <>
       <SectionCard title={t("elev.childmem.approved.title")} icon={<Icon name="bookmark" size={20} />} tone="lav">
@@ -202,7 +217,7 @@ export default function ChildMemory() {
           child's longitudinal picture. Renders only when something is saved;
           the Library's own Saved tab teaches the empty state. */}
       {savedLearnCards.length > 0 && (
-        <div data-module="memory-learning-trail" className={`${cardCls} p-5`}>
+        <div data-module="memory-learning-trail" {...demoted} className={`${cardCls} p-5`}>
           <div className="flex items-center gap-3">
             <span
               className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
@@ -285,11 +300,12 @@ export default function ChildMemory() {
         <div data-module="memory-quotes" data-module-demoted className="pt-1">
           <ThingsSaid quotes={keptQuotes} childName={(quoteChild.name || "").split(" ")[0]} gender={quoteChild.gender} />
         </div>
-        {/* demotionTarget: "profile" — the hub the contract sends these to. */}
-        <button onClick={() => setActiveTab("profile")} className="inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
+        {/* demotionTarget: "profile" — the hub the contract sends these to
+            (embedded, the ledger is already there). */}
+        {!embedded && <button onClick={() => setActiveTab("profile")} className="inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
           <span>{t("elev.childmem.more.door")}</span>
           <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
-        </button>
+        </button>}
       {/* ENG-13 · the week-1 "first", at a threshold of ONE. Renders at most
           once ever per kind and returns null the rest of the time. */}
       <div data-module="memory-firsts" data-module-demoted style={{ display: "contents" }}><FirstsMoment /></div>
