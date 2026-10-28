@@ -8,6 +8,7 @@ import { exportPrivateBookAssets } from "./bookAssetExport";
 import { withChildExportSession } from "./childExportSession";
 import type { PortableBookAssets } from "./library/bookAssetExportContract";
 import { clearChildLocalState } from "./childLocalState";
+import { familyWayExport } from "./familyWay";
 import { childSinkIds, subcollectionSinkId, type SinkErasure } from "./childDataSinks";
 import { ChildProfile, DeletionReceipt } from "../types";
 
@@ -130,6 +131,8 @@ export async function exportChildData(uid: string | undefined, child: ChildProfi
       collections: Record<string, unknown[]>;
       serverData?: { memoryEvents: unknown[]; shares: unknown[]; consents?: unknown[]; consultRequests?: unknown[] };
       privateBookAssets?: PortableBookAssets;
+      /** B-PLAY-21: the family-level charter and tone (lib/familyWay.ts), never per child. */
+      familyWay?: { charter: string[] | null; lens: string | null };
       exportReceipt: { status: "complete" | "incomplete"; scope: string; serverData: "included" | "unavailable"; collections: Record<string, "included" | "unavailable"> };
     } = {
       exportedAt: new Date().toISOString(),
@@ -176,6 +179,7 @@ export async function exportChildData(uid: string | undefined, child: ChildProfi
       }
     }
     session.assertCurrent();
+    out.familyWay = familyWayExport();
     out.privateBookAssets = await session.read(() => exportPrivateBookAssets(uid, child.id, out.collections.bookAssets, {
       signal: session.signal, metadataComplete: out.exportReceipt.collections.bookAssets === "included",
     }));
