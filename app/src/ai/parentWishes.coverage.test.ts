@@ -46,11 +46,14 @@ const PARENT_WISHES_COVERAGE: Readonly<Record<string, Coverage>> = {
 
 const strip = (code: string) => code.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " ")).replace(/(^|[^:"'`\\])\/\/.*$/gm, (m, p1) => p1 + " ".repeat(m.length - p1.length));
 
+type Source = { rel: string; code: string };
+const realSources = (): Source[] => FILES.map((rel) => ({ rel, code: readFileSync(path.join(SRC, rel), "utf8") }));
+
 /** file:owner for every `promptProfile(` call (the definition excluded). */
-function sites(): Map<string, string[]> {
+function sites(sources: Source[] = realSources()): Map<string, string[]> {
   const out = new Map<string, string[]>();
-  for (const rel of FILES) {
-    const lines = strip(readFileSync(path.join(SRC, rel), "utf8")).split("\n");
+  for (const { rel, code } of sources) {
+    const lines = strip(code).split("\n");
     let owner = "";
     lines.forEach((line, i) => {
       const builder = /^export const (build[A-Za-z]+) = /.exec(line);
@@ -67,6 +70,19 @@ function sites(): Map<string, string[]> {
   return out;
 }
 
+const unclassifiedOf = (found: Map<string, string[]>) => [...found.keys()].filter((k) => !(k in PARENT_WISHES_COVERAGE));
+const staleOf = (found: Map<string, string[]>) => Object.keys(PARENT_WISHES_COVERAGE).filter((k) => !found.has(k));
+
+/** A builder opts in when it asks promptProfile for the wishes AND renders the rule. */
+function optsIn(promptsSource: string, name: string): boolean {
+  const prompts = strip(promptsSource);
+  const start = prompts.indexOf(`export const ${name} = `);
+  if (start < 0) return false;
+  const next = prompts.indexOf("\nexport ", start + 10);
+  const fn = prompts.slice(start, next < 0 ? undefined : next);
+  return /promptProfile\([^)]*\{ parentWishes: true \}\)/.test(fn) && /renderParentWishesRule\(/.test(fn);
+}
+
 describe("B-ASKJB-45 · every prompt that meets a child profile is classified for the parent's wishes", () => {
   const found = sites();
 
@@ -76,20 +92,18 @@ describe("B-ASKJB-45 · every prompt that meets a child profile is classified fo
   });
 
   it("no unclassified call site, and no stale classification", () => {
-    const unclassified = [...found.keys()].filter((k) => !(k in PARENT_WISHES_COVERAGE));
+    const unclassified = unclassifiedOf(found);
     expect(unclassified, `classify in PARENT_WISHES_COVERAGE: ${unclassified.map((k) => found.get(k)!.join(" | ")).join("; ")}`).toEqual([]);
-    expect(Object.keys(PARENT_WISHES_COVERAGE).filter((k) => !found.has(k))).toEqual([]);
+    expect(staleOf(found)).toEqual([]);
   });
 
   it("a builder classified \"wishes\" opts in and renders PARENT_WISHES_RULE; a \"pending\" one does not yet", () => {
-    const prompts = strip(readFileSync(path.join(SRC, "ai/prompts.ts"), "utf8"));
-    const body = (name: string) => prompts.slice(prompts.indexOf(`export const ${name} = `), prompts.indexOf("\nexport ", prompts.indexOf(`export const ${name} = `) + 10));
+    const prompts = readFileSync(path.join(SRC, "ai/prompts.ts"), "utf8");
     for (const [key, c] of Object.entries(PARENT_WISHES_COVERAGE)) {
       if (!key.startsWith("ai/prompts.ts:")) continue;
-      const fn = body(key.slice("ai/prompts.ts:".length));
-      const optsIn = /promptProfile\([^)]*\{ parentWishes: true \}\)/.test(fn) && /renderParentWishesRule\(/.test(fn);
-      if (c.kind === "wishes") expect(optsIn, key).toBe(true);
-      if (c.kind === "pending") expect(optsIn, `${key} opts in: move it to "wishes" (the pending list only shrinks)`).toBe(false);
+      const opted = optsIn(prompts, key.slice("ai/prompts.ts:".length));
+      if (c.kind === "wishes") expect(opted, key).toBe(true);
+      if (c.kind === "pending") expect(opted, `${key} opts in: move it to "wishes" (the pending list only shrinks)`).toBe(false);
     }
   });
 
@@ -114,9 +128,25 @@ describe("B-ASKJB-45 · every prompt that meets a child profile is classified fo
     expect(PARENT_WISHES_RULE).toMatch(/never override the non-diagnostic rules, the escalation guidance or urgent-help guidance/);
   });
 
-  it("negative control: an unclassified site is found", () => {
-    const fake = "export const buildNewThingPrompt = ({ childProfile }) => `${JSON.stringify(promptProfile(childProfile))}`;";
-    expect(/\bpromptProfile\(/.test(fake) && !/export const promptProfile/.test(fake)).toBe(true);
-    expect("ai/prompts.ts:buildNewThingPrompt" in PARENT_WISHES_COVERAGE).toBe(false);
+  it("negative control: the same scan fails on a new builder, a new route, a removed site and a builder that does not opt in", () => {
+    const real = realSources();
+    const withExtra = (rel: string, extra: string) => real.map((src) => (src.rel === rel ? { rel, code: `${src.code}\n${extra}\n` } : src));
+    // A new builder in prompts.ts that meets the profile without a decision.
+    const builder = "export const buildNewThingPrompt = ({ childProfile }: any) => `${JSON.stringify(promptProfile(childProfile))}`;";
+    expect(unclassifiedOf(sites(withExtra("ai/prompts.ts", builder)))).toEqual(["ai/prompts.ts:buildNewThingPrompt"]);
+    // A new route in api.ts that does the same.
+    const route = 'router.post("/new-thing", async (req: any, res: any) => { res.json(promptProfile(req.body.childProfile)); });';
+    expect(unclassifiedOf(sites(withExtra("routes/api.ts", route)))).toEqual(["routes/api.ts:/new-thing"]);
+    // A classified site that disappears is stale.
+    expect(staleOf(sites(real.filter((src) => src.rel !== "server/companionContext.ts")))).toEqual(["server/companionContext.ts:assembleCompanionContext"]);
+    // "wishes" needs both the opt-in and the rule.
+    const prompts = real.find((src) => src.rel === "ai/prompts.ts")!.code;
+    expect(optsIn(`${prompts}\n${builder}\n`, "buildNewThingPrompt")).toBe(false);
+    const half = "export const buildHalfPrompt = ({ childProfile }: any) => `${JSON.stringify(promptProfile(childProfile, { parentWishes: true }))}`;";
+    expect(optsIn(`${prompts}\n${half}\n`, "buildHalfPrompt")).toBe(false);
+    const whole = "export const buildWholePrompt = ({ childProfile }: any) => `${JSON.stringify(promptProfile(childProfile, { parentWishes: true }))}${renderParentWishesRule(childProfile)}`;";
+    expect(optsIn(`${prompts}\n${whole}\n`, "buildWholePrompt")).toBe(true);
+    expect(optsIn(prompts, "buildChatPrompt")).toBe(true);
+    expect(optsIn(prompts, "buildVoiceReplyPrompt")).toBe(false);
   });
 });
