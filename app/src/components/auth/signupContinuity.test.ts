@@ -35,11 +35,18 @@ describe("B-RESID-05 · the front door is open: no invite-only wording, no acces
       expect(translate("en", k), k).not.toMatch(INVITE_EN);
       expect(translate("he", k), k).not.toMatch(INVITE_HE);
     }
-    // negative control: the dropped lines fail the rule
-    expect(translate("en", "auth.inviteOnly")).toMatch(INVITE_EN);
+    // negative control: the dropped lines (B-RESID-05 deleted their keys) fail the rule
+    expect("Invite-only for now.").toMatch(INVITE_EN);
     expect("No Arbor account found for this email. Request access if you haven't been invited yet.").toMatch(INVITE_EN);
-    expect(translate("he", "auth.inviteOnly")).toMatch(INVITE_HE);
+    expect("בהזמנה בלבד בשלב זה.").toMatch(INVITE_HE);
     expect("נסו שוב או בקשו גישה.").toMatch(INVITE_HE);
+  });
+
+  it("the access-request strings are gone from the dictionary in both languages, so nothing can render them", () => {
+    for (const k of ["auth.inviteOnly", "auth.requestAccess", "auth.requestingAccess", "auth.accessNeedEmail", "auth.accessInvalidEmail", "auth.accessPrivacy", "auth.accessReceived", "auth.accessFail"]) {
+      expect(translate("en", k), k).toBe(k);
+      expect(translate("he", k), k).toBe(k);
+    }
   });
 });
 
