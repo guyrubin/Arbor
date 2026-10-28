@@ -1,5 +1,5 @@
 /** B-BOOK-20: one bounded, portable, private-file export contract. No URLs or tokens.
- *  B-CAREPRO-50: `files` holds a ten-book library (~100 files a book: sheet,
+ *  B-CAREPRO-50: the file cap holds a ten-book library (~100 files a book: sheet,
  *  choices, prints, three narration voices); the server pages its inventory
  *  (`inventoryPage` objects a request) so every file is NAMED — included, or
  *  with the exact reason it is not. `manifestBytes` bounds that inventory. */
