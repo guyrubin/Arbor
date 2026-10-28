@@ -96,9 +96,12 @@ export const en: Record<string, string> = {
   "elev.learnCare.receipt.placesAll": "{n} places · all erased",
   "elev.learnCare.receipt.placesSome": "{n} places · {m} not reached",
   "elev.learnCare.receipt.placesOne": "{n} places · 1 not reached",
-  // B-GA-09 round 4: an unfinished erase stays in Your data until it finishes.
-  "elev.learnCare.receipt.finish": "Finish deleting {name}",
-  "elev.learnCare.receipt.finishNote": "Some of {name}'s data couldn't be erased yet.",
+  // B-GA-09: an unfinished erase stays in Your data until it finishes. Round 5:
+  // the device keeps no name, so the offer and the receipt it reopens say "a child".
+  "elev.learnCare.receipt.finish": "Finish deleting a child's data",
+  "elev.learnCare.receipt.bodyNoName": "The child's data was permanently erased on {date}. Keep this receipt as your record.",
+  "elev.learnCare.receipt.unfinishedBodyNoName": "We couldn't reach every place this child's data is kept, so this deletion isn't finished. Everything counted below is already erased. Try again to finish it.",
+  "elev.learnCare.receipt.close": "Close",
   "elev.learnCare.saved.browse": "Browse picks for {name}",
   // R12: the shelf pages at 30 reads. This is a LENGTH control, not an age
   // one — "Show all ages" next to it is the age control, and the two must
@@ -378,8 +381,10 @@ export const he: Record<string, string> = {
   "elev.learnCare.receipt.placesAll": "{n} מקומות · הכול נמחק",
   "elev.learnCare.receipt.placesSome": "{n} מקומות · {m} לא הושלמו",
   "elev.learnCare.receipt.placesOne": "{n} מקומות · אחד לא הושלם",
-  "elev.learnCare.receipt.finish": "לסיים את המחיקה של {name}",
-  "elev.learnCare.receipt.finishNote": "חלק מהנתונים של {name} עוד לא נמחקו.",
+  "elev.learnCare.receipt.finish": "לסיים את מחיקת הנתונים של ילד/ה",
+  "elev.learnCare.receipt.bodyNoName": "נתוני הילד/ה נמחקו לצמיתות בתאריך {date}. שמרו קבלה זו כתיעוד שלכם.",
+  "elev.learnCare.receipt.unfinishedBodyNoName": "לא הצלחנו להגיע לכל המקומות שבהם שמורים נתוני הילד/ה, ולכן המחיקה עוד לא הסתיימה. כל מה שנספר כאן כבר נמחק. נסו שוב כדי לסיים.",
+  "elev.learnCare.receipt.close": "סגירה",
   "elev.learnCare.saved.browse": "לעיין בהמלצות עבור {name}",
   "elev.learnCare.shelf.more": "להציג עוד קריאות ({n})",
   "elev.learnCare.shelf.fewer": "להציג פחות קריאות",

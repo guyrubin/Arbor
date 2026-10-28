@@ -55,9 +55,14 @@ export type MemoryStore = {
     userId: string;
     childProfile?: Record<string, unknown>;
   }): Promise<void>;
-  /** GDPR erasure: permanently delete every memory event (and the child doc) for a child. Returns the number of events removed. */
-  eraseChild(childId: string): Promise<number>;
+  /** GDPR erasure: permanently delete every memory event (and the child doc) for a child. Returns the number of events removed.
+   *  `tombstone` (the per-child /privacy/erase): first record that the family erased this child, so a retry still passes
+   *  mayEraseChild once the child doc (the ownership anchor, deleted LAST) is gone. */
+  eraseChild(childId: string, opts?: { tombstone?: boolean }): Promise<number>;
   /** Authorization: does `uid` belong to the family that owns `childId`? Optional —
    *  single-tenant (local) stores omit it, and the ownership middleware then no-ops. */
   ownsChild?(uid: string, childId: string): Promise<boolean>;
+  /** B-GA-09: may `uid` (re)run the erase of `childId`? The owner; or, once the child doc is gone, a member of the
+   *  family named in the child's erase tombstone (30 days). Optional, like ownsChild. */
+  mayEraseChild?(uid: string, childId: string): Promise<boolean>;
 };

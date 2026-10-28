@@ -3,6 +3,19 @@ import { randomUUID } from "crypto";
 /** Pre-OWN-1 memory appends stamped this shared literal; such a child has no real owner yet. */
 const LEGACY_FAMILY_ID = "default-family";
 
+/** B-GA-09 round 5: `erasedChildren/{childId}` = { childId, familyId, erasedAt, expireAt }, written by
+ *  the per-child erase before it deletes anything (FirestoreMemoryStore.eraseChild). Ids only, no child
+ *  data; Firestore's TTL policy on `expireAt` removes it (docs/compliance/child-data-register.md). */
+export const ERASED_CHILDREN_COLLECTION = "erasedChildren";
+export const ERASE_TOMBSTONE_DAYS = 30;
+
+/** A Firestore Timestamp, Date or ISO string → epoch ms (NaN when absent). */
+const toMillis = (v: unknown): number =>
+  v instanceof Date ? v.getTime()
+  : typeof v === "string" ? Date.parse(v)
+  : v && typeof (v as { toMillis?: unknown }).toMillis === "function" ? (v as { toMillis: () => number }).toMillis()
+  : NaN;
+
 export class FamilyService {
   constructor(private readonly db: FirebaseFirestore.Firestore) {}
 
@@ -40,6 +53,22 @@ export class FamilyService {
     const childSnap = await this.db.collection("children").doc(childId).get();
     const familyId = childSnap.exists ? (childSnap.data()?.familyId as string | undefined) : undefined;
     if (!familyId) return false;
+    const memberSnap = await this.db.collection("families").doc(familyId).collection("members").doc(uid).get();
+    return memberSnap.exists;
+  }
+
+  /** B-GA-09 round 5: may `uid` (re)run the erase of `childId`? While the child doc
+   *  exists, only its owner (ownsChild). Once it is gone (an earlier erase reached
+   *  its last step), a member of the family named in the child's unexpired erase
+   *  tombstone, so a retry after a lost response still reaches every sink. Fails
+   *  closed: no doc and no tombstone, an expired one, or a non-member → false. */
+  async mayEraseChild(uid: string, childId: string): Promise<boolean> {
+    if (!uid || !childId) return false;
+    const childSnap = await this.db.collection("children").doc(childId).get();
+    if (childSnap.exists) return this.ownsChild(uid, childId);
+    const tomb = (await this.db.collection(ERASED_CHILDREN_COLLECTION).doc(childId).get()).data();
+    const familyId = typeof tomb?.familyId === "string" ? tomb.familyId : "";
+    if (!familyId || !(toMillis(tomb?.expireAt) > Date.now())) return false;
     const memberSnap = await this.db.collection("families").doc(familyId).collection("members").doc(uid).get();
     return memberSnap.exists;
   }

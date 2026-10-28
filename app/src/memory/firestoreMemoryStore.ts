@@ -1,7 +1,7 @@
 import { getApps, initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import type { ArborConfig } from "../config/env.js";
-import { FamilyService } from "../families/familyService.js";
+import { ERASED_CHILDREN_COLLECTION, ERASE_TOMBSTONE_DAYS, FamilyService } from "../families/familyService.js";
 import type { MemoryLedgerEvent, MemoryStore } from "./types.js";
 
 export class FirestoreMemoryStore implements MemoryStore {
@@ -59,12 +59,28 @@ export class FirestoreMemoryStore implements MemoryStore {
     return this.families.ownsChild(uid, childId);
   }
 
-  /** GDPR erasure: hard-delete the child's memory event subcollection and child doc. */
-  async eraseChild(childId: string) {
+  /** B-GA-09: the owner, or a member of the family that erased this child (FamilyService.mayEraseChild). */
+  mayEraseChild(uid: string, childId: string): Promise<boolean> {
+    return this.families.mayEraseChild(uid, childId);
+  }
+
+  /** GDPR erasure: hard-delete the child's memory event subcollection and child doc.
+   *  B-GA-09 round 5: the child doc is the ownership anchor (FamilyService.ownsChild
+   *  reads its familyId), so it goes LAST: a step that fails before it leaves the
+   *  owner able to retry. With `tombstone`, `erasedChildren/{childId}` (the child and
+   *  family ids, expiring in 30 days) is written FIRST, so a retry after the anchor
+   *  went (a lost response) still passes mayEraseChild. */
+  async eraseChild(childId: string, opts: { tombstone?: boolean } = {}) {
     const childRef = this.db.collection("children").doc(childId);
-    // B-GA-09: the family's pointer to this child (ids only) goes with it.
-    const familyId = (await childRef.get()).data()?.familyId;
+    const tombRef = this.db.collection(ERASED_CHILDREN_COLLECTION).doc(childId);
+    const childFamily = (await childRef.get()).data()?.familyId;
+    const familyId = typeof childFamily === "string" && childFamily ? childFamily : (await tombRef.get()).data()?.familyId;
     if (typeof familyId === "string" && familyId) {
+      if (opts.tombstone) {
+        const now = Date.now();
+        await tombRef.set({ childId, familyId, erasedAt: new Date(now).toISOString(), expireAt: new Date(now + ERASE_TOMBSTONE_DAYS * 86_400_000) });
+      }
+      // B-GA-09: the family's pointer to this child (ids only) goes with it.
       await this.db.collection("families").doc(familyId).collection("childRefs").doc(childId).delete();
     }
     const events = await childRef.collection("memoryEvents").get();
@@ -79,7 +95,7 @@ export class FirestoreMemoryStore implements MemoryStore {
       }
       await batch.commit();
     }
-    await childRef.delete();
+    await childRef.delete(); // the ownership anchor, last
     return removed;
   }
 }

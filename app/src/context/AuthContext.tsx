@@ -20,6 +20,7 @@ import { purgeAllComicPages } from "../lib/comicPageStore";
 import { purgeAllHeroRenders } from "../lib/heroRenderStore";
 import { purgeBookAssets } from "../lib/bookAssetStore";
 import { clearPrewarmedComic } from "../lib/comicPrewarm";
+import { forgetPendingErases } from "../lib/pendingErase";
 import { clearMathExit } from "../components/kidmode/parentGate";
 
 export type AuthUser = {
@@ -147,6 +148,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // was called here and had no call site anywhere, so on a shared tab the
     // next account's onboarding could take the previous child's comic.
     clearPrewarmedComic();
+    // B-GA-09 round 5: an unfinished child erase (its id and receipt) never
+    // carries over to the next account on a shared device.
+    forgetPendingErases();
     if (!firebaseEnabled || !auth) return;
     await firebaseSignOut(auth);
   };

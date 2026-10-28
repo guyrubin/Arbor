@@ -12,7 +12,7 @@ import { childExportFilename } from "../../lib/childExportFilename";
 import { withChildExportSession } from "../../lib/childExportSession";
 import { fmtDay } from "../../lib/formatDate";
 import { mergeErasureReceipts, RECEIPT_ROWS, receiptTitleKey, receiptView, type ReceiptRowId } from "../../lib/childDataSinks";
-import { clearPendingErase, readPendingErases, rememberPendingErase, type PendingErase } from "../../lib/pendingErase";
+import { readPendingErases, settlePendingErase, type PendingErase } from "../../lib/pendingErase";
 import type { DeletionReceipt } from "../../types";
 
 /**
@@ -46,6 +46,7 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const first = (childProfile.name || "").split(" ")[0];
+  const uid = user?.uid ?? "";
 
   // ── Export ────────────────────────────────────────────────────────────────
   const [exporting, setExporting] = useState(false);
@@ -116,24 +117,20 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
   const [deletedName, setDeletedName] = useState("");
   const nameMatches = confirmName.trim().toLowerCase() === first.trim().toLowerCase() && first.trim() !== "";
 
-  // B-GA-09 round 4: an erase that did not finish stays offered here until a
-  // retry completes it (the child has already left the switcher).
-  const [pendingErases, setPendingErases] = useState<PendingErase[]>(() => readPendingErases());
+  // B-GA-09: an erase that did not finish stays offered here, to the account
+  // that started it, until a retry completes it (the child has already left
+  // the switcher). Round 5: per account, no name (lib/pendingErase).
+  const [pendingErases, setPendingErases] = useState<PendingErase[]>(() => readPendingErases(uid));
 
   // A fresh opening starts on the menu, never on a stale confirmation.
   useEffect(() => {
-    if (open) { setDeleting(false); setConfirmName(""); setDeleteFailed(false); setPendingErases(readPendingErases()); }
-  }, [open]);
+    if (open) { setDeleting(false); setConfirmName(""); setDeleteFailed(false); setPendingErases(readPendingErases(uid)); }
+  }, [open, uid]);
 
   /** Keep an unfinished receipt (or forget a finished one) across closes. */
-  const settlePending = (r: DeletionReceipt, name: string) => {
-    const done = receiptView(r.sinks, {
-      memoryEvents: r.counts.memoryEvents, shares: r.counts.shares, consents: r.counts.consents ?? 0,
-      consultRequests: r.counts.consultRequests ?? 0, storageFiles: r.counts.storageFiles ?? 0, clientDocs: r.counts.clientDocs ?? 0,
-    }).finished;
-    if (done) clearPendingErase(r.childId);
-    else rememberPendingErase({ childId: r.childId, name, receipt: r });
-    setPendingErases(readPendingErases());
+  const settlePending = (r: DeletionReceipt) => {
+    settlePendingErase(uid, r);
+    setPendingErases(readPendingErases(uid));
   };
 
   const closeAll = () => {
@@ -155,7 +152,7 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
   // place is NOT "complete". Retry erases the same child again (by id; the
   // child has already left the switcher) and folds the result into the one
   // receipt the parent keeps.
-  const retryErase = async (base: DeletionReceipt, name: string) => {
+  const retryErase = async (base: DeletionReceipt) => {
     if (erasing) return;
     setErasing(true);
     try {
@@ -163,7 +160,7 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
       if (r) {
         const merged = mergeErasureReceipts(base, r);
         setReceipt(merged);
-        settlePending(merged, name);
+        settlePending(merged);
       }
     } catch {
       /* the receipt still says not finished; the parent can try again */
@@ -171,12 +168,13 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
       setErasing(false);
     }
   };
-  const retryDelete = () => (receipt ? retryErase(receipt, deletedName) : Promise.resolve());
-  /** "Finish deleting {name}" from the menu: the kept receipt, retried. */
+  const retryDelete = () => (receipt ? retryErase(receipt) : Promise.resolve());
+  /** "Finish deleting a child's data" from the menu: the kept receipt, retried.
+   *  The name is not kept, so the receipt it opens says "the child". */
   const finishPending = (p: PendingErase) => {
-    setDeletedName(p.name);
+    setDeletedName("");
     setReceipt(p.receipt);
-    return retryErase(p.receipt, p.name);
+    return retryErase(p.receipt);
   };
   const saveReceipt = () => {
     if (receipt) downloadDeletionReceipt(receipt);
@@ -194,7 +192,7 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
       const erasedAt = new Date().toISOString();
       setReceipt(r ?? { childId, erasedAt, counts: { memoryEvents: 0, shares: 0 } });
       // No receipt proves nothing: kept as unfinished, offered until it finishes.
-      settlePending(r ?? { childId, erasedAt, counts: { memoryEvents: 0, shares: 0 } }, name);
+      settlePending(r ?? { childId, erasedAt, counts: { memoryEvents: 0, shares: 0 } });
     } catch {
       setDeleteFailed(true);
     } finally {
@@ -222,8 +220,10 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
         <div className="space-y-4" data-testid="delete-receipt" data-receipt-state={view.finished ? "complete" : "unfinished"} aria-live="polite">
           <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
             {view.finished
-              ? t("sec.sharing.receipt.body", { name: deletedName, date: fmtDay(receipt.erasedAt, uiLang) })
-              : t("elev.learnCare.receipt.unfinishedBody", { name: deletedName })}
+              ? (deletedName
+                ? t("sec.sharing.receipt.body", { name: deletedName, date: fmtDay(receipt.erasedAt, uiLang) })
+                : t("elev.learnCare.receipt.bodyNoName", { date: fmtDay(receipt.erasedAt, uiLang) }))
+              : t(deletedName ? "elev.learnCare.receipt.unfinishedBody" : "elev.learnCare.receipt.unfinishedBodyNoName", { name: deletedName })}
           </p>
           <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
             {/* B-BOOK-20: the child's saved records and Storage files are part of the
@@ -251,8 +251,9 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
             <button type="button" data-testid="delete-receipt-save" onClick={saveReceipt} className="w-full sm:w-auto rounded-xl px-4 min-h-11 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
               {t("elev.learnCare.receipt.save")}
             </button>
-            <button onClick={closeAll} disabled={erasing} className="w-full sm:w-auto rounded-xl px-4 min-h-11 text-sm font-bold" style={view.finished ? { background: "var(--arbor-green-ink)", color: "var(--arbor-paper-elevated)" } : { border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
-              {t("sec.sharing.receipt.done")}
+            <button onClick={closeAll} disabled={erasing} data-testid="delete-receipt-close" className="w-full sm:w-auto rounded-xl px-4 min-h-11 text-sm font-bold" style={view.finished ? { background: "var(--arbor-green-ink)", color: "var(--arbor-paper-elevated)" } : { border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
+              {/* Unfinished: "Close", never "Done" beside "Try again to finish it". */}
+              {t(view.finished ? "sec.sharing.receipt.done" : "elev.learnCare.receipt.close")}
             </button>
           </div>
         </div>
@@ -296,6 +297,23 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
         </div>
       ) : (
         <div className="space-y-3" data-testid="your-data-sheet">
+          {/* B-GA-09 round 5: an erase that did not finish comes FIRST, as the
+              sheet's one primary action, with its own icon and one line. One
+              at a time: the next shows once this one finishes. */}
+          {pendingErases.slice(0, 1).map((p) => (
+            <button
+              key={p.childId}
+              type="button"
+              onClick={() => void finishPending(p)}
+              disabled={erasing || exporting}
+              data-testid="finish-erase-btn"
+              data-pending-erase=""
+              className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 min-h-11 disabled:opacity-60"
+              style={{ background: "var(--arbor-green-ink)", color: "var(--arbor-paper-elevated)" }}
+            >
+              <Icon name="pending" size={18} /> {t("elev.learnCare.receipt.finish")}
+            </button>
+          ))}
           <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.yourData.sub", { name: first })}</p>
           <button
             ref={exportButtonRef}
@@ -311,22 +329,6 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
           {exportResult && <p role="status" data-testid="your-data-export-receipt" className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
             {t(exportResult === "complete" ? "elev.yourData.exportComplete" : "elev.yourData.exportPartial")}
           </p>}
-          {/* B-GA-09 round 4: an erase that did not finish, kept until it does. */}
-          {pendingErases.map((p) => (
-            <div key={p.childId} className="space-y-1.5" data-testid={`pending-erase-${p.childId}`}>
-              <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.receipt.finishNote", { name: p.name })}</p>
-              <button
-                type="button"
-                onClick={() => void finishPending(p)}
-                disabled={erasing || exporting}
-                data-testid="finish-erase-btn"
-                className="w-full inline-flex items-center gap-2 text-sm font-bold rounded-xl px-4 min-h-11 disabled:opacity-60"
-                style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}
-              >
-                <Icon name="delete" size={18} /> {t("elev.learnCare.receipt.finish", { name: p.name })}
-              </button>
-            </div>
-          ))}
           <button
             onClick={() => setDeleting(true)}
             disabled={exporting}

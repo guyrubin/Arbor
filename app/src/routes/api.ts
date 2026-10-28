@@ -429,6 +429,10 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   const fileTurnCoachResponseSchema = createFileTurnCoachResponseGeminiSchema(framework);
   // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
   const requireOwnership = requireChildOwnership(memoryStore);
+  // B-GA-09 round 5: a retried erase must still pass after an earlier attempt removed the child doc (the anchor).
+  const requireEraseOwnership = memoryStore.mayEraseChild
+    ? requireChildOwnership({ ownsChild: (uid: string, childId: string) => memoryStore.mayEraseChild!(uid, childId) })
+    : requireOwnership;
   router.use(createCoParentRouter({ config, shareStore, requireOwnership }));
   // B-BOOK release: a child's private book files (hero sheet, prints, narration)
   // — read only through this owner-checked proxy (server/bookAssets.ts).
@@ -4289,7 +4293,7 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
   // CMP-2 (GDPR Art. 17): REAL server-side erasure — replaces the former
   // "processed server-side" placeholder. Hard-deletes the child's memory-event
   // ledger + child doc and every share grant the caller created for the child.
-  router.post("/privacy/erase", requireOwnership, async (req, res) => {
+  router.post("/privacy/erase", requireEraseOwnership, async (req, res) => {
     const { uid } = actorOf(req);
     const { childId } = req.body;
     if (!childId || typeof childId !== "string") {
@@ -4297,7 +4301,10 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       return;
     }
     try {
-      const memoryEvents = await memoryStore.eraseChild(childId);
+      // B-GA-09 round 5: the memory ledger and the child doc go LAST. The child
+      // doc anchors the owner check, so a share, consent, consult or Storage
+      // step that fails leaves the parent able to retry; if the response is
+      // lost after the anchor went, the erase tombstone lets the same family in.
       const shares = await shareStore.eraseByChild(uid, childId);
       const consents = await consentStore.eraseByChild(childId);
       // B-GA-09: the consult requests about this child go with it, including a
@@ -4338,6 +4345,7 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
           storage = { photos: 0, books: 0 }; // checked: the bucket holds nothing
         }
       }
+      const memoryEvents = await memoryStore.eraseChild(childId, { tombstone: true });
       logger.info("GDPR erasure executed", { requestId: requestIdOf(req), childId, memoryEvents, shares, consents, consultRequests, storageFiles });
       res.json({ erased: { memoryEvents, shares, consents, consultRequests, storageFiles }, storage, storageNote, childId, erasedAt: new Date().toISOString() });
     } catch (error: any) {

@@ -20,6 +20,7 @@ const h = vi.hoisted(() => ({
   cursor: 0, slots: [] as { value?: any; deps?: unknown[]; cleanup?: () => void }[], effects: [] as (() => void)[],
   deleteChild: (async () => null) as (id: string) => Promise<unknown>,
   downloads: [] as [string, unknown][],
+  uid: "owner",
 }));
 vi.mock("react", async (original) => ({
   ...await original<typeof import("react")>(),
@@ -37,7 +38,7 @@ vi.mock("react", async (original) => ({
 }));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ childProfile: h.child, setActiveTab: vi.fn() }) }));
 vi.mock("../../context/ProfileContext", () => ({ useProfile: () => ({ deleteChild: (id: string) => h.deleteChild(id) }) }));
-vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: { uid: "owner" } }) }));
+vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: { uid: h.uid } }) }));
 vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ t: (key: string, vars?: Record<string, string | number>) => translate(h.lang, key, vars), uiLang: h.lang }) }));
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock("../ui/Icon", () => ({ default: () => null }));
@@ -105,7 +106,7 @@ class MemStore {
 }
 let device: MemStore;
 beforeEach(() => { device = new MemStore(); vi.stubGlobal("localStorage", device as unknown as Storage); });
-afterEach(() => { h.lang = "en"; vi.unstubAllGlobals(); });
+afterEach(() => { h.lang = "en"; h.uid = "owner"; vi.unstubAllGlobals(); });
 
 describe.each(["en", "he"] as const)("delete receipt (%s)", (lang) => {
   const t = (k: string, v?: Record<string, string | number>) => translate(lang, k, v);
@@ -191,28 +192,45 @@ describe("the sheet speaks in places, never in internal ids (critic r2)", () => 
 
 /* Round 4 (critic r3 P1): Done or × on an unfinished receipt used to throw it
    away, and the child had already left the switcher, so nothing could finish
-   the server erase. The unfinished receipt is kept under one account-level
-   key and Your data offers "Finish deleting {name}" until a retry completes. */
+   the server erase. The unfinished receipt is kept on the device and Your data
+   offers to finish it until a retry completes.
+   Round 5 (critic r4): kept per account and without the child's name; the
+   offer is the sheet's FIRST item, one line, its own icon and the primary
+   style (not the pink trash of "Delete child data"); an unfinished receipt
+   closes with "Close", never "Done". */
 describe.each(["en", "he"] as const)("an unfinished erase survives close and reopen (%s)", (lang) => {
   const t = (k: string, v?: Record<string, string | number>) => translate(lang, k, v);
   const unfinished = () => receipt(ledger({ "server:memoryEvents": "not-reached", "server:familyChildRef": "not-reached" }), { memoryEvents: 0 });
+  const buttonWith = (tree: any, label: string) => elements(byTestId(tree, "delete-receipt")).find((e) => e.type === "button" && text(e.props.children).includes(label));
+  const menuItems = (tree: any) => elements(byTestId(tree, "your-data-sheet").props.children).filter((e) => e.type === "button" || e.type === "p");
 
-  it("close → reopen shows Finish deleting {name}; the retry completes and the offer is gone", async () => {
+  it("close → reopen: the offer comes first, one nameless line, its own icon; the retry completes and the offer is gone", async () => {
     h.lang = lang;
     let tree = await eraseWith(unfinished());
     expect(byTestId(tree, "delete-receipt").props["data-receipt-state"]).toBe("unfinished");
-    expect(JSON.parse(device.getItem("arbor.pendingErase")!)).toMatchObject([{ childId: "child-a", name: "Synthetic" }]);
+    const kept = JSON.parse(device.getItem("arbor.pendingErase")!);
+    expect(kept).toMatchObject([{ uid: "owner", childId: "child-a" }]);
+    expect(JSON.stringify(kept)).not.toContain("Synthetic"); // no name on the device
 
-    // Done closes the sheet; the receipt leaves the screen, not the device.
-    const done = elements(byTestId(tree, "delete-receipt")).find((e) => e.type === "button" && text(e.props.children).includes(t("sec.sharing.receipt.done")));
-    done.props.onClick();
+    // An unfinished receipt closes with "Close" (HE סגירה), never "Done" next to "Try again".
+    expect(buttonWith(tree, t("sec.sharing.receipt.done"))).toBeUndefined();
+    const close = byTestId(tree, "delete-receipt-close");
+    expect(text(close.props.children)).toBe(t("elev.learnCare.receipt.close"));
+    if (lang === "he") expect(t("elev.learnCare.receipt.close")).toBe("סגירה");
+    close.props.onClick();
     render(false);
     tree = render(true);
     expect(byTestId(tree, "delete-receipt")).toBeUndefined();
-    const offer = byTestId(tree, "pending-erase-child-a");
-    expect(text(offer)).toContain(t("elev.learnCare.receipt.finishNote", { name: "Synthetic" }));
+
     const finish = byTestId(tree, "finish-erase-btn");
-    expect(text(finish)).toContain(t("elev.learnCare.receipt.finish", { name: "Synthetic" }));
+    expect(menuItems(tree)[0]).toBe(finish); // first, above the sheet's own line and Export
+    expect(text(finish.props.children).trim()).toBe(t("elev.learnCare.receipt.finish")); // one line, nothing else
+    expect(text(finish.props.children)).not.toContain("Synthetic");
+    const icon = (e: any) => elements(e.props.children).find((c) => "name" in (c.props ?? {}))?.props.name;
+    expect(icon(finish)).toBe("pending");
+    expect(icon(byTestId(tree, "delete-child-btn"))).toBe("delete");
+    expect(finish.props.style.background).toBe("var(--arbor-green-ink)");
+    expect(byTestId(tree, "delete-child-btn").props.style.background).toBe("var(--arbor-pink-soft)");
 
     // The retry runs through the real handler with the kept receipt.
     h.deleteChild = vi.fn(async () => receipt(ledger({ "firestore:behaviorLogs": 0, "firestore:milestones": 0, profile: 0 }), { shares: 0, consents: 0, consultRequests: 0, storageFiles: 0, clientDocs: 0 }));
@@ -221,14 +239,16 @@ describe.each(["en", "he"] as const)("an unfinished erase survives close and reo
     tree = render();
     expect(h.deleteChild).toHaveBeenCalledWith("child-a");
     expect(titleOf(tree)).toBe(t("sec.sharing.receipt.title"));
+    expect(rowValues(tree)).toContain(t("elev.learnCare.receipt.bodyNoName", { date: "" }).split("{")[0].slice(0, 12));
+    expect(rowValues(tree)).not.toContain("Synthetic");
     expect(device.getItem("arbor.pendingErase")).toBeNull();
 
-    elements(byTestId(tree, "delete-receipt")).find((e) => e.type === "button" && text(e.props.children).includes(t("sec.sharing.receipt.done"))).props.onClick();
+    buttonWith(tree, t("sec.sharing.receipt.done")).props.onClick();
     render(false);
-    expect(byTestId(render(true), "pending-erase-child-a")).toBeUndefined();
+    expect(byTestId(render(true), "finish-erase-btn")).toBeUndefined();
   });
 
-  it("a fresh session (the app reloaded) still offers to finish, and a retry that fails again keeps the offer", async () => {
+  it("a fresh session (the app reloaded) still offers to finish, and a retry that fails again keeps the offer, nameless", async () => {
     h.lang = lang;
     await eraseWith(unfinished());
     h.slots = []; h.effects = [];           // a new mount reads the device
@@ -239,6 +259,16 @@ describe.each(["en", "he"] as const)("an unfinished erase survives close and reo
     await tick();
     tree = render();
     expect(titleOf(tree)).toBe(t("elev.learnCare.receipt.unfinishedTitle"));
+    expect(rowValues(tree)).toContain(t("elev.learnCare.receipt.unfinishedBodyNoName"));
+    expect(text(byTestId(tree, "delete-receipt-close").props.children)).toBe(t("elev.learnCare.receipt.close"));
     expect(JSON.parse(device.getItem("arbor.pendingErase")!)).toHaveLength(1);
+  });
+
+  it("another account on the same device is never offered it", async () => {
+    h.lang = lang;
+    await eraseWith(unfinished());
+    h.uid = "synthetic-next-account";
+    h.slots = []; h.effects = [];
+    expect(byTestId(render(true), "finish-erase-btn")).toBeUndefined();
   });
 });
