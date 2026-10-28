@@ -13,6 +13,13 @@
  * record (stripe/app_store/play_store) is never overwritten; a second comp month
  * extends `currentPeriodEnd` rather than stacking records.
  *
+ * B-GROWTH-43: a family redeems ONE offer, ever. Before any grant the store
+ * claims `offerRedemptions/{uid}` (create-if-absent), so a second code from
+ * another referrer, a retry, or a second device racing the first is refused
+ * with `already_activated` and grants nothing. The code (link or typed) is
+ * normalised and resolved to its offer in lib/offers.ts, which also holds the
+ * grant length; an unknown or self code never consumes the claim.
+ *
  * Privacy: codes carry no child data; the share link references the parent
  * account only. Pure helpers (`codeForUid`, alphabet) are unit-tested.
  */
@@ -26,12 +33,23 @@ import {
   type EntitlementStore,
 } from "./entitlements.js";
 import { logger } from "./logger.js";
+import { normalizeOfferCode, offerForCode, type OfferId, type RedemptionVia } from "../lib/offers.js";
 
 /** Non-ambiguous alphabet — no 0/O/1/I so codes survive being read aloud. */
 const ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 const CODE_LEN = 8;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const GRANT_DAYS = 30;
+
+/** B-GROWTH-43: the one redemption a family holds, at `offerRedemptions/{uid}`.
+ *  Account-level: the offer, its version, how the code was entered and when.
+ *  No referrer, no child, no code. */
+export type OfferRedemption = {
+  offerId: OfferId;
+  offerVersion: number;
+  via: RedemptionVia;
+  at: string;
+};
+export const OFFER_REDEMPTIONS_COLLECTION = "offerRedemptions";
 
 /** Deterministic per-user code: HMAC(uid, secret) → 8 non-ambiguous chars. */
 export const codeForUid = (uid: string, secret: string): string => {
@@ -62,7 +80,7 @@ export interface ReferralStore {
   /** Months this referrer has already earned (for the "you've earned N" copy). */
   earnedMonths(uid: string): Promise<number>;
   /** Run the full activation: validate, grant both sides, dedupe. */
-  activateReferral(input: { code: string; redeemerUid: string }): Promise<ActivationResult>;
+  activateReferral(input: { code: string; redeemerUid: string; via?: RedemptionVia }): Promise<ActivationResult>;
 }
 
 /** Shared activation core used by both stores; keeps guard logic in one place. */
@@ -79,22 +97,39 @@ abstract class BaseReferralStore implements ReferralStore {
   /** True the first time `redeemerUid` is recorded against `referrerUid`; the
    *  store increments the referrer ledger and persists the dedupe key atomically. */
   protected abstract recordActivation(referrerUid: string, redeemerUid: string): Promise<boolean>;
+  /** B-GROWTH-43: true only for the family's FIRST redemption of any offer;
+   *  atomic per uid (create-if-absent), so concurrent devices cannot both win. */
+  protected abstract claimFamilyRedemption(redeemerUid: string, claim: OfferRedemption): Promise<boolean>;
+  /** The family's redemption, or null when it has none. */
+  abstract familyRedemption(uid: string): Promise<OfferRedemption | null>;
 
-  async activateReferral({ code, redeemerUid }: { code: string; redeemerUid: string }): Promise<ActivationResult> {
-    const normalized = code.trim().toUpperCase();
+  async activateReferral({ code, redeemerUid, via = "link" }: { code: string; redeemerUid: string; via?: RedemptionVia }): Promise<ActivationResult> {
+    const normalized = normalizeOfferCode(code);
+    const offer = offerForCode(normalized);
+    if (!offer || offer.grantDays === null) return { ok: false, status: "unknown_code" };
     const referrerUid = await this.uidForCode(normalized);
     if (!referrerUid) return { ok: false, status: "unknown_code" };
     if (referrerUid === redeemerUid) return { ok: false, status: "self_referral" };
+
+    // One redemption per family, claimed before anything is granted. A failed
+    // grant after the claim leaves the family claimed (never granted twice).
+    const claimed = await this.claimFamilyRedemption(redeemerUid, {
+      offerId: offer.id,
+      offerVersion: offer.version,
+      via,
+      at: new Date().toISOString(),
+    });
+    if (!claimed) return { ok: true, status: "already_activated" };
 
     const firstTime = await this.recordActivation(referrerUid, redeemerUid);
     if (!firstTime) return { ok: true, status: "already_activated" };
 
     // The redeemed parent always gets their month. The referrer gets one too,
     // up to the cap; beyond the cap the invite still "works" (200, no grant).
-    const periodEnd = await this.extendGrant(redeemerUid);
+    const periodEnd = await this.extendGrant(redeemerUid, offer.grantDays);
     const referrerEarned = await this.earnedMonths(referrerUid);
-    if (referrerEarned <= this.maxGrants) {
-      await this.extendGrant(referrerUid);
+    if (offer.grantsReferrer && referrerEarned <= this.maxGrants) {
+      await this.extendGrant(referrerUid, offer.grantDays);
       logger.info("Referral activated", { referrerUid, redeemerUid, referrerEarned });
       return { ok: true, status: "granted", earnedMonths: referrerEarned, periodEnd };
     }
@@ -107,10 +142,10 @@ abstract class BaseReferralStore implements ReferralStore {
    * referral month already exists, push its period end out by 30d (extend, not
    * stack). Returns the resulting `currentPeriodEnd`.
    */
-  protected async extendGrant(uid: string): Promise<string> {
+  protected async extendGrant(uid: string, days: number): Promise<string> {
     const current = this.entitlements.getRecord ? await this.entitlements.getRecord(uid) : null;
     const base = this.grantBase(current);
-    const periodEnd = new Date(base + GRANT_DAYS * DAY_MS).toISOString();
+    const periodEnd = new Date(base + days * DAY_MS).toISOString();
     const record = buildReferralGrant(periodEnd);
     if (this.entitlements.setEntitlement) await this.entitlements.setEntitlement(uid, record);
     return periodEnd;
@@ -121,7 +156,7 @@ abstract class BaseReferralStore implements ReferralStore {
   private grantBase(current: EntitlementRecord | null): number {
     if (
       current?.provider === "comp" &&
-      current.productId === "referral_month" &&
+      current.productId === "referral_month" && // entitlements.buildReferralGrant's productId
       current.currentPeriodEnd
     ) {
       const end = Date.parse(current.currentPeriodEnd);
@@ -135,6 +170,7 @@ abstract class BaseReferralStore implements ReferralStore {
 export class LocalReferralStore extends BaseReferralStore {
   private codes = new Map<string, string>(); // code → uid
   private ledgers = new Map<string, ReferralGrantLedger>(); // referrerUid → ledger
+  private redemptions = new Map<string, OfferRedemption>(); // redeemerUid → its one redemption
 
   constructor(secret: string, maxGrants: number, entitlements: EntitlementStore) {
     super(secret, maxGrants, entitlements);
@@ -159,15 +195,23 @@ export class LocalReferralStore extends BaseReferralStore {
     this.ledgers.set(referrerUid, ledger);
     return true;
   }
+  protected async claimFamilyRedemption(redeemerUid: string, claim: OfferRedemption): Promise<boolean> {
+    if (this.redemptions.has(redeemerUid)) return false;
+    this.redemptions.set(redeemerUid, claim);
+    return true;
+  }
+  async familyRedemption(uid: string): Promise<OfferRedemption | null> {
+    return this.redemptions.get(uid) ?? null;
+  }
 
   /** Override the comp grant so the conflict guard is honored without a record
    *  store in dev: skip the write when an active PAID record is present. */
-  protected async extendGrant(uid: string): Promise<string> {
+  protected async extendGrant(uid: string, days: number): Promise<string> {
     const current = this.entitlements.getRecord ? await this.entitlements.getRecord(uid) : null;
     if (isActivePaid(current)) {
-      return current?.currentPeriodEnd ?? new Date(Date.now() + GRANT_DAYS * DAY_MS).toISOString();
+      return current?.currentPeriodEnd ?? new Date(Date.now() + days * DAY_MS).toISOString();
     }
-    return super.extendGrant(uid);
+    return super.extendGrant(uid, days);
   }
 }
 
@@ -210,12 +254,27 @@ export class FirestoreReferralStore extends BaseReferralStore {
       return true;
     });
   }
-  protected async extendGrant(uid: string): Promise<string> {
+  protected async claimFamilyRedemption(redeemerUid: string, claim: OfferRedemption): Promise<boolean> {
+    try {
+      // create() fails when the document exists: the per-uid claim is atomic.
+      await this.db.collection(OFFER_REDEMPTIONS_COLLECTION).doc(redeemerUid).create(claim);
+      return true;
+    } catch (error) {
+      const e = error as { code?: unknown; message?: unknown };
+      if (e?.code === 6 || e?.code === "already-exists" || /ALREADY_EXISTS/i.test(String(e?.message ?? ""))) return false;
+      throw error;
+    }
+  }
+  async familyRedemption(uid: string): Promise<OfferRedemption | null> {
+    const data = (await this.db.collection(OFFER_REDEMPTIONS_COLLECTION).doc(uid).get()).data();
+    return data ? (data as OfferRedemption) : null;
+  }
+  protected async extendGrant(uid: string, days: number): Promise<string> {
     const current = this.entitlements.getRecord ? await this.entitlements.getRecord(uid) : null;
     if (isActivePaid(current)) {
-      return current?.currentPeriodEnd ?? new Date(Date.now() + GRANT_DAYS * DAY_MS).toISOString();
+      return current?.currentPeriodEnd ?? new Date(Date.now() + days * DAY_MS).toISOString();
     }
-    return super.extendGrant(uid);
+    return super.extendGrant(uid, days);
   }
 }
 

@@ -48,6 +48,8 @@ import type { ArborConfig } from "../config/env.js";
 import { logger } from "./logger.js";
 import { cohortRetention, dayKeyOf, type RetentionReport, type RetentionRollup } from "../lib/retention.js";
 import { FUNNEL_EVENTS, aggregateFunnel, type FunnelEventDoc } from "../lib/attributionFunnel.js";
+import { OFFER_IDS } from "../lib/offers.js";
+import { recordStillEntitles, type EntitlementRecord } from "./entitlements.js";
 
 /**
  * The collection N1-04's client writer owns. Declared here rather than
@@ -158,6 +160,12 @@ export interface CohortMetricsStore {
   listEvents(sinceIso: string, limit?: number): Promise<CohortEventDoc[]>;
   /** How the events were fetched — for the report's own honesty line. */
   readonly mode: "firestore" | "null";
+  /** B-GROWTH-43: each family's one offer redemption (`offerRedemptions/{uid}`),
+   *  projected to the offer id. Optional: a store without it reads as "not read". */
+  listOfferRedemptions?(limit?: number): Promise<HouseholdOffer[]>;
+  /** B-GROWTH-43: each family's billing state from `entitlements/{uid}`,
+   *  projected to two booleans in the store; no plan, product or date leaves. */
+  listBillingStates?(limit?: number, now?: number): Promise<HouseholdBilling[]>;
 }
 
 /** Local/sandbox: no ADC, no data. Returns empty rather than 500ing, which
@@ -208,6 +216,14 @@ export class FirestoreCohortMetricsStore implements CohortMetricsStore {
       initializeApp({ credential: applicationDefault(), projectId: config.firebaseProjectId });
     }
     this.db = getFirestore(config.firestoreDatabaseId);
+  }
+
+  listOfferRedemptions(limit?: number): Promise<HouseholdOffer[]> {
+    return new FirestoreHouseholdReads(this.db).offers(limit);
+  }
+
+  listBillingStates(limit?: number, now?: number): Promise<HouseholdBilling[]> {
+    return new FirestoreHouseholdReads(this.db).billing(limit, now);
   }
 
   async listRetentionRollups(limit = MAX_ROLLUPS_SCANNED): Promise<StoredRollup[]> {
@@ -273,6 +289,32 @@ export class FirestoreCohortMetricsStore implements CohortMetricsStore {
         logger.error("Cohort event scan failed", fallbackError);
         return [];
       }
+    }
+  }
+}
+
+/** B-GROWTH-43: the Firestore reads of the household line, bounded like the rest. */
+export class FirestoreHouseholdReads {
+  constructor(private readonly db: Firestore) {}
+  async offers(limit = MAX_ROLLUPS_SCANNED): Promise<HouseholdOffer[]> {
+    try {
+      const snap = await this.db.collection(OFFER_REDEMPTIONS_COLLECTION).limit(limit).get();
+      return snap.docs.flatMap((d) => {
+        const offerId = (d.data() as Record<string, unknown>).offerId;
+        return typeof offerId === "string" ? [{ uid: d.id, offerId }] : [];
+      });
+    } catch (error) {
+      logger.error("Cohort offer scan failed", error);
+      return [];
+    }
+  }
+  async billing(limit = MAX_ROLLUPS_SCANNED, now = Date.now()): Promise<HouseholdBilling[]> {
+    try {
+      const snap = await this.db.collection("entitlements").limit(limit).get();
+      return snap.docs.map((d) => ({ uid: d.id, ...billingStateOf(d.data() as EntitlementRecord, now) }));
+    } catch (error) {
+      logger.error("Cohort billing scan failed", error);
+      return [];
     }
   }
 }
@@ -433,6 +475,97 @@ export function summariseActivation(
   return { count: activated.size, denominator: eligible.size };
 }
 
+/* ── B-GROWTH-43: source → offer → activation → paying, per household ────── */
+
+/** Mirrors server/referral.ts OFFER_REDEMPTIONS_COLLECTION (pinned by the test). */
+export const OFFER_REDEMPTIONS_COLLECTION = "offerRedemptions";
+
+export type HouseholdOffer = { uid: string; offerId: string };
+/** `billed`: the record came from a store (App Store, Play, web checkout), not
+ *  a comp. `paying`: billed, a paid plan, past any store trial, still entitling.
+ *  `lapsed`: billed and no longer entitling: expired, refunded, a store trial
+ *  that ended unpaid, or a subscription moved to another account. */
+export type HouseholdBilling = { uid: string; billed: boolean; paying: boolean; lapsed: boolean };
+
+const BILLED_PROVIDERS = new Set(["stripe", "app_store", "play_store"]);
+
+/** The two booleans a billing record is reduced to before it leaves the store. */
+export function billingStateOf(record: EntitlementRecord | null | undefined, now = Date.now()): Omit<HouseholdBilling, "uid"> {
+  const billed = !!record?.provider && BILLED_PROVIDERS.has(record.provider);
+  if (!record || !billed) return { billed: false, paying: false, lapsed: false };
+  const entitles = record.plan !== "free" && recordStillEntitles(record, now);
+  return { billed, paying: entitles && record.status !== "in_trial", lapsed: !entitles };
+}
+
+/** One group of households. Counts of families, never rates. */
+export type HouseholdLine = {
+  key: string;
+  /** Every family that started in the group, activated or not, paying or not. */
+  households: number;
+  /** Families per redeemed offer, in lib/offers.ts order, then `none`. */
+  offers: { offer: string; households: number }[];
+  activated: number;
+  paying: number;
+  lapsed: number;
+};
+export type HouseholdReport = {
+  lines: HouseholdLine[];
+  /** False when the offer or billing records were not read: those columns are then unknown, not zero. */
+  offersRead: boolean;
+  billingRead: boolean;
+};
+
+/**
+ * The household line: one row per group (`source` or `market`, the rollup's
+ * first-touch props), counting FAMILIES (one rollup per uid, so devices and
+ * children collapse into the family that owns them) that STARTED on or after
+ * `startedSince` (YYYY-MM-DD), so the event window holds their whole story.
+ * The denominator is every start, including families that never activated
+ * and never paid. Joined by uid, never by name; a uid never leaves here.
+ */
+export function summariseHouseholds(
+  rollups: readonly StoredRollup[],
+  events: readonly CohortEventDoc[],
+  offers: readonly HouseholdOffer[] | null,
+  billing: readonly HouseholdBilling[] | null,
+  groupBy: "source" | "market",
+  startedSince: string | null = null,
+): HouseholdReport {
+  const activated = new Set(events.filter((e) => e.event === ACTIVATION_EVENT).map((e) => e.uid));
+  const offerOf = new Map((offers ?? []).map((o) => [o.uid, o.offerId]));
+  const billingOf = new Map((billing ?? []).map((b) => [b.uid, b]));
+  const groups = new Map<string, HouseholdLine>();
+  const seen = new Set<string>();
+  for (const r of rollups) {
+    if (!r.uid || seen.has(r.uid)) continue;
+    if (startedSince && r.firstSeen < startedSince) continue;
+    seen.add(r.uid);
+    const key = String(r[groupBy] ?? "unknown");
+    const line = groups.get(key) ?? {
+      key,
+      households: 0,
+      offers: [...OFFER_IDS, "none"].map((offer) => ({ offer, households: 0 })),
+      activated: 0,
+      paying: 0,
+      lapsed: 0,
+    };
+    line.households += 1;
+    const offer = offerOf.get(r.uid);
+    const slot = line.offers.find((o) => o.offer === (offer && (OFFER_IDS as string[]).includes(offer) ? offer : "none"));
+    if (slot) slot.households += 1;
+    if (activated.has(r.uid)) line.activated += 1;
+    const b = billingOf.get(r.uid);
+    if (b?.paying) line.paying += 1;
+    if (b?.lapsed) line.lapsed += 1;
+    groups.set(key, line);
+  }
+  return {
+    lines: [...groups.values()].sort((a, b) => b.households - a.households || a.key.localeCompare(b.key)),
+    offersRead: offers !== null,
+    billingRead: billing !== null,
+  };
+}
+
 /* ── the funnel slice: aggregateFunnel, remapped, never reimplemented ─────── */
 
 export type FunnelStageCount = { stage: string; count: number };
@@ -490,6 +623,8 @@ export type CohortReport = {
   loop?: LoopSummary;
   /** B-GAME-18 / B-BOOK-51: weekly Kid Mode play; small cells hidden. */
   kidPlay: KidPlaySummary;
+  /** B-GROWTH-43: source → offer → activation → paying, per household. */
+  households: HouseholdReport;
   eventCensus: FunnelStageCount[];
   scanned: { rollups: number; events: number; mode: "firestore" | "null" };
   /** B-MEAS-01: internal families (founder, comped, smoke) left out of every
@@ -557,9 +692,11 @@ export async function buildCohortReport(
   const groupBy = opts.groupBy === "market" ? "market" : "source";
   const asOfDay = dayKeyOf(now) ?? new Date(now).toISOString().slice(0, 10);
 
-  const [allRollups, allEvents] = await Promise.all([
+  const [allRollups, allEvents, offerDocs, billingDocs] = await Promise.all([
     store.listRetentionRollups(),
     store.listEvents(opts.since),
+    store.listOfferRedemptions ? store.listOfferRedemptions() : Promise.resolve(null),
+    store.listBillingStates ? store.listBillingStates(undefined, now.getTime()) : Promise.resolve(null),
   ]);
   const includeInternal = opts.includeInternal === true;
   const { rollups, events, excluded, demoExcluded } = excludeInternal(allRollups, allEvents, includeInternal);
@@ -590,6 +727,7 @@ export async function buildCohortReport(
     funnels,
     ...(loop ? { loop } : {}),
     kidPlay: summariseKidPlay(events),
+    households: summariseHouseholds(rollups, events, offerDocs, billingDocs, groupBy, dayKeyOf(new Date(opts.since)) ?? null),
     eventCensus: [...census.entries()]
       .map(([stage, count]) => ({ stage, count }))
       .sort((a, b) => b.count - a.count || a.stage.localeCompare(b.stage)),

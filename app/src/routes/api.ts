@@ -105,6 +105,7 @@ import { createHeroPoseHandler, createHeroPoseSource, type HeroPoseSource } from
 import { decideLive, LIVE_VERTEX_EU_PROVIDER } from "../ai/liveResidency.js";
 import { accessEnded, cohortTagFor, resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
+import { redemptionViaOf } from "../lib/offers.js";
 import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../server/childAsr.js";
 import { dispatchSpeechSynthesis, screenAndSynthesizeSpeech, synthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured, UnsafeTtsOutputError } from "../server/tts.js";
 import { AiProviderError } from "../ai/capabilities/contracts.js";
@@ -4256,7 +4257,8 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
         res.status(400).json({ error: "Missing referral code" });
         return;
       }
-      const result = await referralStore.activateReferral({ code, redeemerUid: actor.uid });
+      // B-GROWTH-43: a typed code (`via: "typed"`) redeems like the link; one per family.
+      const result = await referralStore.activateReferral({ code, redeemerUid: actor.uid, via: redemptionViaOf(req.body?.via) });
       if (!result.ok) {
         // Soft-fail: an unknown/self code is not an error the parent should see.
         res.json(result);

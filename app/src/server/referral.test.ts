@@ -101,15 +101,14 @@ describe("referral activation guards (mk-p0-2)", () => {
     expect(overCap).toMatchObject({ ok: true, status: "maxed", earnedMonths: MAX });
   });
 
-  it("extends (does not stack) an existing comp referral month for the redeemed uid", async () => {
+  it("extends (does not stack) an existing comp referral month for a referrer who earns again", async () => {
     const { store, ent } = ctx;
     const codeA = await store.codeForUid("uid_A");
-    const codeC = await store.codeForUid("uid_C");
     await store.activateReferral({ code: codeA, redeemerUid: "uid_B" });
-    const firstEnd = Date.parse(ent.records.get("uid_B")!.currentPeriodEnd!);
-    // uid_B is later referred by a different parent, uid_C
-    await store.activateReferral({ code: codeC, redeemerUid: "uid_B" });
-    const rec = ent.records.get("uid_B")!;
+    const firstEnd = Date.parse(ent.records.get("uid_A")!.currentPeriodEnd!);
+    // uid_A's code brings a second family, uid_D: uid_A earns a second month
+    await store.activateReferral({ code: codeA, redeemerUid: "uid_D" });
+    const rec = ent.records.get("uid_A")!;
     expect(rec.productId).toBe("referral_month"); // single record, not stacked
     const secondEnd = Date.parse(rec.currentPeriodEnd!);
     const extraDays = (secondEnd - firstEnd) / (24 * 60 * 60 * 1000);
@@ -133,6 +132,59 @@ describe("referral activation guards (mk-p0-2)", () => {
     // uid_B's paid record is untouched; uid_A (free) still gets their comp month.
     expect(ent.records.get("uid_B")).toEqual(paid);
     expect(ent.records.get("uid_A")?.provider).toBe("comp");
+  });
+});
+
+describe("B-GROWTH-43 — one offer redemption per family", () => {
+  let ctx: ReturnType<typeof make>;
+  beforeEach(() => { ctx = make(); });
+
+  it("a family referred by a second parent is refused: no second month, no grant to the second referrer", async () => {
+    const { store, ent } = ctx;
+    const codeA = await store.codeForUid("uid_A");
+    const codeC = await store.codeForUid("uid_C");
+    await store.activateReferral({ code: codeA, redeemerUid: "uid_B" });
+    const firstEnd = ent.records.get("uid_B")!.currentPeriodEnd;
+    const second = await store.activateReferral({ code: codeC, redeemerUid: "uid_B" });
+    expect(second).toEqual({ ok: true, status: "already_activated" });
+    expect(ent.records.get("uid_B")!.currentPeriodEnd).toBe(firstEnd);
+    expect(ent.records.has("uid_C")).toBe(false);
+    expect(await store.earnedMonths("uid_C")).toBe(0);
+  });
+
+  it("two devices racing with two codes grant exactly one month to the family", async () => {
+    const { store, ent } = ctx;
+    const codeA = await store.codeForUid("uid_A");
+    const codeC = await store.codeForUid("uid_C");
+    const results = await Promise.all([
+      store.activateReferral({ code: codeA, redeemerUid: "uid_B" }),
+      store.activateReferral({ code: codeC, redeemerUid: "uid_B" }),
+    ]);
+    expect(results.filter((r) => r.ok && r.status === "granted")).toHaveLength(1);
+    expect(results.filter((r) => r.ok && r.status === "already_activated")).toHaveLength(1);
+    const days = (Date.parse(ent.records.get("uid_B")!.currentPeriodEnd!) - Date.now()) / 86_400_000;
+    expect(days).toBeLessThan(31);
+  });
+
+  it("a typed code in any case or spacing redeems the same offer, and the redemption says how it was entered", async () => {
+    const { store, ent } = ctx;
+    const code = await store.codeForUid("uid_A");
+    const typed = `  ${code.slice("ARBOR-".length, 10).toLowerCase()} ${code.slice(10).toLowerCase()} `;
+    const res = await store.activateReferral({ code: typed, redeemerUid: "uid_B", via: "typed" });
+    expect(res).toMatchObject({ ok: true, status: "granted" });
+    expect(ent.records.get("uid_B")?.productId).toBe("referral_month");
+    expect(await store.familyRedemption("uid_B")).toMatchObject({ offerId: "referral_month", offerVersion: 1, via: "typed" });
+    expect(await store.familyRedemption("uid_A")).toBeNull(); // the referrer redeemed nothing
+  });
+
+  it("an unknown or self code never uses up the family's one redemption", async () => {
+    const { store } = ctx;
+    const own = await store.codeForUid("uid_B");
+    expect(await store.activateReferral({ code: own, redeemerUid: "uid_B" })).toEqual({ ok: false, status: "self_referral" });
+    expect(await store.activateReferral({ code: "ARBOR-22222222", redeemerUid: "uid_B" })).toEqual({ ok: false, status: "unknown_code" });
+    expect(await store.familyRedemption("uid_B")).toBeNull();
+    const codeA = await store.codeForUid("uid_A");
+    expect(await store.activateReferral({ code: codeA, redeemerUid: "uid_B" })).toMatchObject({ status: "granted" });
   });
 });
 

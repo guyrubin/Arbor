@@ -185,6 +185,7 @@ export const OTHER_FIRESTORE_COLLECTIONS: Readonly<Record<string, OtherChildSink
   erasedChildren: "account: the family's erase record, keyed by the erased child's id (ids and dates only, no child data) so a retried erase and account deletion can finish it; removed by account deletion and a 30-day TTL (firestore.indexes.json)",
   usageRollup: "aggregate: daily token spend, no uid or child",
   opsLedger: "aggregate: AI Studio prepay reserved milliseconds since a top-up date (server/prepayBalance.ts), no uid or child",
+  offerRedemptions: "account: the family's one offer redemption per uid (B-GROWTH-43: offer id, version, link or typed, date; no child data); removed by account deletion",
 };
 
 /** The registered Storage prefixes (path templates). */
