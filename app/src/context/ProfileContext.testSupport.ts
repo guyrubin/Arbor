@@ -4,6 +4,7 @@ import ts from "typescript";
 import type { ChildProfile } from "../types";
 import * as goalsModule from "../practice/goalBuilder";
 import { CLEARABLE_PROFILE_FIELDS, RETIRED_PROFILE_FIELDS } from "../lib/childAge";
+import * as syncStoreModule from "../lib/syncStore";
 
 const child = (id: string, name = id): ChildProfile => ({ id, name, age: 4, birthMonth: "2022-04", languages: ["English"], schoolContext: "", strengths: [], challenges: [], onboardingComplete: false });
 type Provider = ReturnType<typeof import("./ProfileContext").useProfile>;
@@ -92,6 +93,8 @@ export function harness({ owner = "A", rows = [child("A-child")], local = [child
     "../lib/onboardingGate": { computeNeedsOnboarding: (remote: boolean, loading: boolean, profiles: ChildProfile[]) => remote && !loading && (!profiles.length || profiles.some(p => p.onboardingComplete === false)) },
     "../lib/childAge": { CLEARABLE_PROFILE_FIELDS, RETIRED_PROFILE_FIELDS },
     "../practice/goalBuilder": goalsModule,
+    // B-DATA-14: the one freshness banner's registry (real module, no I/O).
+    "../lib/syncStore": syncStoreModule,
   };
   const code = ts.transpileModule(readFileSync(new URL("./ProfileContext.tsx", import.meta.url), "utf8"), { compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React, esModuleInterop: true,

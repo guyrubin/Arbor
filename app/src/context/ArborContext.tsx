@@ -510,7 +510,7 @@ function useArborState() {
   // B-TODAY-15: `via` = where the outcome was rated (the step card or the
   // carry-over ask); the event carries via + daysLate (ids/enums/counts only).
   // B-ASKJB-33: a hard-moment row also stores `held` (the two-tap ask).
-  const saveTodayOutcome = async (id: string, outcome: ActionOutcome, via: TodayOutcomeVia = "card", held?: HeldAnswer, options?: { awaitServer?: boolean }) => {
+  const saveTodayOutcome = async (id: string, outcome: ActionOutcome, via: TodayOutcomeVia = "card", held?: HeldAnswer, options?: Pick<ChildWriteOptions, "awaitServer" | "offline">) => {
     const item = actionLoop.find((entry) => entry.id === id);
     if (!item) throw new Error("The selected action is no longer available");
     if (isObservationAction(item)) throw new Error("Observations record a moment, not an efficacy outcome");
@@ -528,7 +528,7 @@ function useArborState() {
    * The caller pins its visible question while an optimistic snapshot changes. */
   const observationAcceptSequence = acceptScope.sequence;
   const observationLifetime = captureOnboardingLifetime?.(childProfile.id);
-  const saveTodayObservation = async (id: string, words: string, options?: { isCurrent?: () => boolean }) => {
+  const saveTodayObservation = async (id: string, words: string, options?: { isCurrent?: () => boolean; offline?: ChildWriteOptions["offline"] }) => {
     const assertCurrent = () => {
       if (acceptScopeRef.current !== acceptScope || acceptScope.sequence !== observationAcceptSequence || observationLifetime?.() === false || options?.isCurrent?.() === false) throw new Error("The observation request is no longer current");
     };
@@ -536,7 +536,8 @@ function useArborState() {
     const item = actionLoop.find(entry => entry.id === id);
     if (!item) throw new Error("The selected observation is no longer available");
     const completed = completeObservation(item, words);
-    await actionLoopCol.upsert(completed, { awaitServer: true });
+    // B-DATA-14: with `offline`, a kept-on-this-phone write answers in bounded time.
+    await actionLoopCol.upsert(completed, { awaitServer: true, ...(options?.offline ? { offline: options.offline } : {}) });
     assertCurrent();
     return completed;
   };
@@ -563,7 +564,9 @@ function useArborState() {
   // B-TODAY-28 — Today's "From your record" answer: ONE row on the same
   // actionLoops ledger (source "from-record", the parent's reflection), never
   // a new collection. ids/enums only in the event.
-  const [recordAnswerWrites, setRecordAnswerWrites] = useState<Record<string, { opener: FromRecordOpener; status: "saving" | "failed" | "saved"; entry?: ActionLoopEntry }>>({});
+  // B-DATA-14: "queued" = kept on this phone (offline / unconfirmed in time),
+  // sending on reconnect; it becomes "saved" when the server acknowledges it.
+  const [recordAnswerWrites, setRecordAnswerWrites] = useState<Record<string, { opener: FromRecordOpener; status: "saving" | "failed" | "saved" | "queued"; entry?: ActionLoopEntry }>>({});
   const recordWritesRef = useRef(new Map<string, Promise<ActionLoopEntry> | null>());
   const recordFromRecordAnswer = (opener: FromRecordOpener, answer: FromRecordAnswer, at = new Date()): Promise<ActionLoopEntry> => {
     if (currentChildRef.current !== childProfile.id) return Promise.reject(new Error("The active child changed"));
@@ -575,10 +578,14 @@ function useArborState() {
     if (saved && !recordWritesRef.current.has(key)) return Promise.resolve(saved);
     const entry = fromRecordEntry(opener, answer, childProfile.id, at);
     setRecordAnswerWrites(rows => ({ ...rows, [key]: { opener, status: "saving" } }));
-    const write = actionLoopCol.upsert(entry, { awaitServer: true })
+    let queued = false;
+    const write = actionLoopCol.upsert(entry, { awaitServer: true, offline: {
+      onQueued: () => { queued = true; },
+      onSynced: () => setRecordAnswerWrites(rows => rows[key]?.status === "queued" ? { ...rows, [key]: { ...rows[key], status: "saved" } } : rows),
+    } })
       .then(() => {
         try { track("today_record_answer", { kind: opener.kind, answer }); } catch { /* noop */ }
-        setRecordAnswerWrites(rows => ({ ...rows, [key]: { opener, status: "saved", entry } }));
+        setRecordAnswerWrites(rows => ({ ...rows, [key]: { opener, status: queued ? "queued" : "saved", entry } }));
         return entry;
       })
       .catch((error: unknown) => {

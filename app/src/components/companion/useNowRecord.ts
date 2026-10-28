@@ -24,10 +24,15 @@ export function useNowRecord(now: Date) {
   const shared = saidOwnsRow ? undefined : dailyWrite;
   const pending = shared?.status === "saving" || shared?.status === "failed";
   const saved = answeredToday(actionLoop, childProfile.id, now);
+  // B-DATA-14: offline the answer ledger cannot be confirmed by the server, so
+  // the record lead steps aside — no question, no cached "Noted" claim, and no
+  // "Checking…" that waits for the network. An answer given in this visit
+  // keeps its own receipt ("Saved on this phone…").
+  const offlineUnconfirmed = recordAnswersConfirmed === false && typeof navigator !== "undefined" && navigator.onLine === false;
   // Say-back owns its existing disclosure, including pending/error states.
-  const selected = !saved && !saidOwnsRow ? selectFromRecord({ now, plans: actionPlans, logs: behaviorLogs, facts: approvedMemoryItems.map(({ memoryId, fact, createdAt, status }) => ({ id: memoryId, fact, createdAt, status })), loop: actionLoop }) : null;
-  const confirming = !saidOwnsRow && !!(selected || saved?.reflection) && recordAnswersConfirmed === false && !shared;
-  const receipt = saidOwnsRow || pending || confirming ? null : ownAttempt ? ownAttempt.receipt : shared?.entry?.reflection ? shared.entry : saved?.reflection ? saved : null;
+  const selected = !saved && !saidOwnsRow && !offlineUnconfirmed ? selectFromRecord({ now, plans: actionPlans, logs: behaviorLogs, facts: approvedMemoryItems.map(({ memoryId, fact, createdAt, status }) => ({ id: memoryId, fact, createdAt, status })), loop: actionLoop }) : null;
+  const confirming = !saidOwnsRow && !offlineUnconfirmed && !!(selected || saved?.reflection) && recordAnswersConfirmed === false && !shared;
+  const receipt = saidOwnsRow || pending || confirming || (offlineUnconfirmed && !ownAttempt && !shared) ? null : ownAttempt ? ownAttempt.receipt : shared?.entry?.reflection ? shared.entry : saved?.reflection ? saved : null;
   const opener = saidOwnsRow ? null : ownAttempt?.opener ?? (pending ? shared.opener : selected);
   const saving = !saidOwnsRow && (confirming || (ownAttempt?.saving ?? false) || shared?.status === "saving");
   const error = !saidOwnsRow && ((ownAttempt?.error ?? false) || shared?.status === "failed");
@@ -48,5 +53,7 @@ export function useNowRecord(now: Date) {
       if (lock.current === lease) lock.current = null;
     }
   };
-  return { opener, receipt, saving, confirming, error, answer };
+  // B-DATA-14: the answer is kept on this phone and sends when back online.
+  const queued = !!receipt && shared?.status === "queued";
+  return { opener, receipt, saving, confirming, error, queued, answer };
 }

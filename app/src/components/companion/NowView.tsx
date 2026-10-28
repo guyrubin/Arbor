@@ -118,7 +118,8 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // v4: the agenda row says where the family is in it ("Week 2 of 4"), counts only.
   const programWeeks = Array.isArray(program?.program.weeks) ? program.program.weeks.length : 0;
   const action = useMemo(() => nextChosenAction(actionLoop, topic?.id), [actionLoop, topic?.id]);
-  const [receiptAction, setReceiptAction] = useState<{ scope: object; action: ActionLoopEntry } | null>(null);
+  // B-DATA-14: `queued` — kept on this phone, sending when back online.
+  const [receiptAction, setReceiptAction] = useState<{ scope: object; action: ActionLoopEntry; queued?: boolean } | null>(null);
   const [, refreshSaving] = useState(0);
   const [saveError, setSaveError] = useState(false);
   const id = useId();
@@ -141,6 +142,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const [retryAction, setRetryAction] = useState<{ scope: object; action: ActionLoopEntry } | null>(null);
   const currentSaveError = saveError && retryAction?.scope === scopeLease;
   const receipt = receiptAction?.scope === scopeLease ? receiptAction.action : null;
+  const receiptQueued = !!receipt && !!receiptAction?.queued;
   const pendingAction = [...savingAction.current.values()].find(write => write.scope === scopeLease)?.action;
   const chosen = receipt ?? pendingAction ?? (retryAction?.scope === scopeLease ? retryAction.action : null) ?? action;
   // v3: "Haven't tried yet" writes nothing; the step simply stays. This only acknowledges it.
@@ -161,12 +163,19 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     if (isObservation !== (typeof outcome === "object") || (typeof outcome === "object" && (!outcome.whatHappened.trim() || outcome.whatHappened.trim().length > 240))) return;
     savingAction.current.set(target.id, { scope: scopeLease, action: target });
     refreshSaving(n => n + 1); setSaveError(false);
+    // B-DATA-14: offline the answer is kept on this phone in bounded time —
+    // never an endless "Saving…"; the receipt says so until the server has it.
+    let queued = false;
+    const offline = {
+      onQueued: () => { queued = true; },
+      onSynced: () => { if (outcomeMounted.current) setReceiptAction(previous => previous?.action.id === target.id && previous.queued ? { ...previous, queued: false } : previous); },
+    };
     try {
       const saved = typeof outcome === "object"
-        ? await saveTodayObservation(target.id, outcome.whatHappened, { isCurrent: () => outcomeMounted.current && currentOutcomeScope.current === scopeLease })
-        : (await saveTodayOutcome(target.id, outcome, "card", undefined, { awaitServer: true }), target);
+        ? await saveTodayObservation(target.id, outcome.whatHappened, { isCurrent: () => outcomeMounted.current && currentOutcomeScope.current === scopeLease, offline })
+        : (await saveTodayOutcome(target.id, outcome, "card", undefined, { awaitServer: true, offline }), target);
       completedAction.current.add(target.id);
-      if (outcomeMounted.current && currentOutcomeScope.current === scopeLease) setReceiptAction({ scope: scopeLease, action: saved });
+      if (outcomeMounted.current && currentOutcomeScope.current === scopeLease) setReceiptAction({ scope: scopeLease, action: saved, ...(queued ? { queued: true } : {}) });
     } catch {
       if (outcomeMounted.current && currentOutcomeScope.current === scopeLease) { setRetryAction({ scope: scopeLease, action: target }); setSaveError(true); }
     } finally {
@@ -241,7 +250,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // no plan meta, no "picked because" — nothing is invented beside the help lines.
   const planTag = shownLead === "urgent" ? t("elev.safety.header.title") : copy.planTag[shownLead];
   const planSay = shownLead === "urgent" ? null : practiceSay ? t("elev.loop.ms.quoted", { text: practiceSay }) : copy.planSay[shownLead];
-  const planMeta = shownLead === "urgent" ? null : shownLead === "step" ? (receipt ? copy.saved : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
+  const planMeta = shownLead === "urgent" ? null : shownLead === "step" ? (receipt ? (receiptQueued ? t("elev.sync.savedOnPhone") : copy.saved) : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
   const planWeekTitle = shownLead === "plan" && plan ? <h2 id={`${id}-plan`} className="now-plan-title" dir="auto">{plan.def.title[lang]}</h2> : undefined;
   // v3 F-NOW-1 r2: the guide's title on the face is the lead's own h2, moved up
   // from its section (which keeps it as its label). The loop leads' cards carry
@@ -274,7 +283,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
         {lead === "urgent" ? <section className="now-loop-lead" data-module="now-urgent" aria-label={t("elev.safety.header.title")}>
           <UrgentSupport testId="now-urgent-setup-support" className="now-urgent-lead" />
         </section> : lead === "record" ? <section className="now-loop-lead" data-module="now-record" aria-label={t("today.record.aria")}>
-          {record.receipt ? <FromRecordReceipt /> : record.opener && <FromRecordCard opener={record.opener} childName={name} stampMove="choose-next-step" disabled={record.saving} onAnswer={answer => void record.answer(answer)} />}
+          {record.receipt ? <FromRecordReceipt queued={record.queued} /> : record.opener && <FromRecordCard opener={record.opener} childName={name} stampMove="choose-next-step" disabled={record.saving} onAnswer={answer => void record.answer(answer)} />}
           {record.saving && <p role="status" className="now-inline-status">{record.confirming ? t("elev.today.record.confirming") : copy.saving}</p>}
           {record.error && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
         </section> : lead === "visit" && visit ? <section className="now-lead arbor-depth-primary" data-module="now-visit" aria-labelledby={`${id}-visit`}>
@@ -296,7 +305,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
               how={stepLines(chosen.recommendation)} onAdapt={() => talk(copy.adaptPrompt(chosen.recommendation))} />
           </>}
           {observation && (receipt ? <>
-            <Receipt testId="now-observation-receipt">{t("ob.first.observation.saved")}</Receipt>
+            <Receipt testId="now-observation-receipt">{t(receiptQueued ? "elev.sync.savedOnPhone" : "ob.first.observation.saved")}</Receipt>
             <PrimaryMove type="button" className="companion-text-button" onClick={() => { requestJournalFocus(`action-${chosen.id}`); goToRoute("journal", { view: "all" }); }}>{t("ob.first.observation.open")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" /></PrimaryMove>
           </> : <form onSubmit={event => { event.preventDefault(); void saveOutcome({ whatHappened: observationWords }); }}>
             <p id={`${id}-observation-purpose`} className="now-lead-body">{t("ob.first.observation.purpose")}</p>

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from 'node:fs';
 import ts from "typescript";
 import { harness } from "../../context/ProfileContext.testSupport";
@@ -106,6 +106,21 @@ describe('B-GROWTH-40 actual picker and profile persistence boundary', () => {
     writes[1].gate.resolve(); await p.flush(); expect(second.closed).toBe(true);
     expect(p.value.activeChild.activeGoals).toEqual(persisted);
     expect(persisted.map(g => g.goalId)).toEqual(['transitions', 'big-feelings', 'taking-turns']);
+  });
+  it('B-DATA-14: offline, the choice fails at once with the offline line (EN key), writes nothing, and Retry saves it online', async () => {
+    const seed = goal('transitions'); const p = harness({ rows: [child([seed])] }); p.effects(); await p.flush();
+    vi.stubGlobal('navigator', { onLine: false });
+    try {
+      const first = picker(p); first.click('goal-choice-big-feelings'); first.click('goal-save'); await p.flush();
+      const alert = first.nodes().find(n => n.props.role === 'alert');
+      expect(alert?.props.children).toContain('elev.sync.goalOffline');
+      expect(p.calls.updates).toEqual([]);
+      expect(first.find('goal-save')?.props.children).toContain('elev.goal.modal.retry');
+      vi.stubGlobal('navigator', { onLine: true });
+      first.click('goal-save'); await p.flush();
+      expect(first.closed).toBe(true);
+      expect(p.value.activeChild.activeGoals?.map(g => g.goalId)).toEqual(['transitions', 'big-feelings']);
+    } finally { vi.unstubAllGlobals(); }
   });
   it('a dismissed write failure remains visibly retryable after reopening the same child', async () => {
     const seed = goal('transitions'); const p = harness({ rows: [child([seed])] }); p.effects(); await p.flush();
