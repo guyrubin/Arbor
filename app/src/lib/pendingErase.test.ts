@@ -63,16 +63,9 @@ describe("B-GA-09 · pending erases are per account and nameless", () => {
     expect(receiptFinished(receipt("kid-a", true))).toBe(true);
   });
 
-  it("sign-out keeps it: AuthContext.signOut never touches the key, and only the same uid reads it back", () => {
+  it("only the same uid reads it back (sign-out keeping it is proven on the real signOut: context/AuthContext.signOut.test.tsx)", () => {
     const s = new MemStore() as unknown as Storage;
     settlePendingErase("synthetic-a", receipt("kid-a", false), s);
-    const auth = readFileSync(new URL("../context/AuthContext.tsx", import.meta.url), "utf8");
-    const signOut = auth.slice(auth.indexOf("const signOut = async"), auth.indexOf("const getIdToken"));
-    expect(signOut).toContain("firebaseSignOut(auth)");
-    // no code touches it (the comment there says why it stays)
-    const code = signOut.replace(/\/\/.*$/gm, "");
-    expect(code).not.toMatch(/PendingErase|PENDING_ERASE_KEY|pendingErase|localStorage\.(clear|removeItem)/);
-    // signed out, then another account on the device, then the same account again
     expect(readPendingErases("synthetic-b", s)).toEqual([]);
     expect(readPendingErases("synthetic-a", s).map((p) => p.childId)).toEqual(["kid-a"]);
   });

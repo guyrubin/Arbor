@@ -127,6 +127,7 @@ function boundaries() {
   const removeItem = vi.fn((key: string) => { order.push("remove:" + key); delete storage[key]; });
   Object.defineProperty(storage, "removeItem", { value: removeItem });
   const leases = createAccountDeletionLeases();
+  const pending: Array<{ uid: string; childId: string }> = [];
   const imports: Record<string, any> = {
     "../ui/Modal": { Modal: "Modal" },
     // MOB-28: SettingsModal picks its surface at render (Sheet below lg, Modal
@@ -141,8 +142,10 @@ function boundaries() {
     "../../lib/comicPageStore": { purgeAllComicPages },
     "../../lib/heroRenderStore": { purgeAllHeroRenders: async () => {} }, // B-KID-127
     "../kidmode/parentGate": { commerceAllowed },
+    // B-GA-09 round 7: this account's unfinished child erases (none unless a test adds them).
+    "../../lib/pendingErase": { readPendingErases: (uid: string) => pending.filter((p) => p.uid === uid) },
   };
-  return { imports, leases, auth, language, api, commerceAllowed, purgeAllComicPages, signOut, toast, storage, removeItem, order };
+  return { imports, leases, auth, language, api, commerceAllowed, purgeAllComicPages, signOut, toast, storage, removeItem, order, pending };
 }
 function deletion(source = deletionSource, b = boundaries()) {
   const onClose = vi.fn(() => { b.order.push("close"); });
@@ -243,6 +246,15 @@ describe("production account-deletion callbacks", () => {
     expect(f.api.accountDelete).not.toHaveBeenCalled();
     f.type(" מחיקה "); button(f.tree, "set.acctDel.confirm").props.onClick(); await f.settle();
     expect(f.api.accountDelete).toHaveBeenCalledOnce();
+  });
+  it("B-GA-09 round 7: this account's unfinished child erases go with the request (ids only); another account's never do", async () => {
+    const f = deletion();
+    f.pending.push({ uid: "parent-a", childId: "kid-pending" }, { uid: "parent-b", childId: "kid-other-account" });
+    f.type("DELETE"); button(f.tree, "set.acctDel.confirm").props.onClick(); await f.settle();
+    expect(f.api.accountDelete).toHaveBeenCalledWith(["kid-pending"]);
+    const g = deletion();
+    g.type("DELETE"); button(g.tree, "set.acctDel.confirm").props.onClick(); await g.settle();
+    expect(g.api.accountDelete).toHaveBeenCalledWith([]);
   });
   it("fresh opening clears confirmation, receipt, retry authorization and error feedback", async () => {
     const f = deletion(); f.type("DELETE");

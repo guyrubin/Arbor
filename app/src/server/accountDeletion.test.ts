@@ -192,9 +192,7 @@ describe("B-DATA-01 · digestOptIn and retentionRollups die with the account", (
     fake.docs.set("digestOptIn/uid-other", { email: "other@example.com" });
     expect(fake.docs.has("digestOptIn/uid-opted")).toBe(true);
     const ops = createFirestoreDeletionOps(config, {
-      memoryEraseChild: async () => 0,
-      consentEraseByChild: async () => 0,
-      shareEraseByChild: async () => 0,
+      eraseChild: async () => 0,
       pushTokensRemove: async () => undefined,
       digestOptInRemove: (u) => digest.remove(u),
     });

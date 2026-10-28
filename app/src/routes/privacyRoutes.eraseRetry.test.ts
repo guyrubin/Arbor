@@ -93,7 +93,7 @@ import { LocalConsentStore, type ConsentGrant } from "../sharing/consent.js";
 import { createCounterStore } from "../server/quotaStore.js";
 import { createEntitlementStore } from "../server/entitlements.js";
 import { createReferralStore } from "../server/referral.js";
-import { LocalConsultStore } from "../server/consultRequests.js";
+import { LocalConsultStore, buildConsultRequest } from "../server/consultRequests.js";
 import { createAdminMetricsStore } from "../server/adminMetrics.js";
 import { createWaitlistStore } from "../server/waitlist.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
@@ -112,6 +112,7 @@ afterAll(async () => {
 
 let shares: Array<{ id: string; ownerUid: string; childId: string }> = [];
 let consentStore = new LocalConsentStore();
+let consultStore = new LocalConsultStore();
 
 beforeEach(async () => {
   docs.clear();
@@ -129,6 +130,7 @@ beforeEach(async () => {
   objects.add(`children/${CHILD}/books/synthetic-book/manifest.json`);
   shares = [{ id: "s1", ownerUid: OWNER, childId: CHILD }];
   consentStore = new LocalConsentStore();
+  consultStore = new LocalConsultStore();
   const grant: ConsentGrant = { id: "c1", childId: CHILD, purpose: "voice_processing", granted: true, policyVersion: "v1", actorUid: OWNER, grantedAt: "2026-10-01T00:00:00.000Z", expiresAt: null, revokedAt: null };
   await consentStore.set(grant);
 });
@@ -156,7 +158,7 @@ async function serve(): Promise<string> {
     entitlementStore,
     referralStore: createReferralStore(createTestConfig({}), entitlementStore),
     counters: createCounterStore(createTestConfig({})),
-    consultStore: new LocalConsultStore(),
+    consultStore,
     adminMetrics: createAdminMetricsStore(createTestConfig({})),
     waitlistStore: createWaitlistStore(createTestConfig({})),
     pushTokenStore: { upsert: async () => undefined, remove: async () => undefined, getToken: async () => null },
@@ -171,8 +173,11 @@ const erase = (base: string, user = OWNER) =>
   fetch(`${base}/api/privacy/erase`, { method: "POST", headers: { "Content-Type": "application/json", "x-test-user": user }, body: JSON.stringify({ childId: CHILD }) });
 /** Server-held docs about the child (the users/ tree is the device half's, erased by wipeClientChildData). */
 const left = () => [...docs.keys()].filter((p) => p.includes(CHILD) && !p.startsWith("erasedChildren/") && !p.startsWith("users/"));
-const deleteAccount = (base: string, user = OWNER) =>
-  fetch(`${base}/api/account/delete`, { method: "POST", headers: { "Content-Type": "application/json", "x-test-user": user }, body: JSON.stringify({ confirm: "DELETE" }) });
+const deleteAccount = (base: string, user = OWNER, extra: Record<string, unknown> = {}) =>
+  fetch(`${base}/api/account/delete`, { method: "POST", headers: { "Content-Type": "application/json", "x-test-user": user }, body: JSON.stringify({ confirm: "DELETE", ...extra }) });
+/** A co-parent's consult request about the child (the route has erased these since round 2). */
+const coParentConsult = (childId = CHILD) =>
+  consultStore.create(buildConsultRequest({ ownerUid: "synthetic-co-parent", ownerEmail: null, childId, professionalId: "p", professionalName: "Synthetic SLP" }));
 /** The consent step fails once (the erase stops there: Storage, the ledger and the anchor are untouched). */
 function failConsentsOnce() {
   const real = consentStore.eraseByChild.bind(consentStore);
@@ -247,6 +252,7 @@ describe("B-GA-09 round 6 · account deletion finishes a child whose erase stopp
     expect(left().length).toBeGreaterThan(0);
     expect(await consentStore.list(CHILD)).toHaveLength(1);
     expect([...objects]).toContain(`children/${CHILD}/books/synthetic-book/manifest.json`);
+    await coParentConsult(); // round 7: account deletion runs the route's per-child erase, consults included
 
     const res = await deleteAccount(base);
     expect(res.status).toBe(200);
@@ -256,6 +262,7 @@ describe("B-GA-09 round 6 · account deletion finishes a child whose erase stopp
     expect(receipt.classes.find((c) => c.class === "childData")?.note).toMatch(/1 left by an unfinished erase/);
     expect([...docs.keys()].filter((p) => p.includes(CHILD))).toEqual([]); // the record, ledger, pointer and erase record
     expect(await consentStore.list(CHILD)).toEqual([]);
+    expect(await consultStore.listByChild("synthetic-co-parent", CHILD)).toEqual([]);
     expect([...objects]).toEqual([]);
     expect(authDeleted).toEqual([OWNER]);
   });
@@ -286,5 +293,112 @@ describe("B-GA-09 round 6 · account deletion finishes a child whose erase stopp
   it("the erase record's 30-day TTL ships with the deploy (firestore.indexes.json), not as a manual step", () => {
     const indexes = JSON.parse(readFileSync(new URL("../../../firestore.indexes.json", import.meta.url), "utf8")) as { fieldOverrides: Array<Record<string, unknown>> };
     expect(indexes.fieldOverrides).toContainEqual({ collectionGroup: "erasedChildren", fieldPath: "expireAt", ttl: true, indexes: [] });
+  });
+});
+
+/* Round 7 (critic r6 P1): account deletion finds children through the
+   account's families; it must never erase a child that now belongs to
+   another family, and never through the shared placeholder family. */
+describe("B-GA-09 round 7 · account deletion never erases another family's child", () => {
+  const otherFamilysChild = () => {
+    docs.set("children/kid-x", { childId: "kid-x", familyId: "fam-2" });
+    docs.set("children/kid-x/memoryEvents/e1", { childId: "kid-x" });
+    docs.set("families/fam-2/members/other-parent", { userId: "other-parent" });
+    docs.set("families/fam-2/childRefs/kid-x", { childId: "kid-x", familyId: "fam-2" });
+    objects.add("children/kid-x/books/synthetic-book/manifest.json");
+  };
+
+  it("a last-member family's stale pointer to a child now owned by another family (legacy re-parenting): the child stays (critic r6 probe)", async () => {
+    docs.delete(`families/${FAMILY}/members/${MEMBER}`); // OWNER is the last member of FAMILY
+    otherFamilysChild();
+    docs.set(`families/${FAMILY}/childRefs/kid-x`, { childId: "kid-x", familyId: FAMILY }); // ensureChild left it behind
+    const base = await serve();
+    const res = await deleteAccount(base);
+    expect(res.status).toBe(200);
+    expect(docs.has("children/kid-x")).toBe(true);
+    expect(docs.has("children/kid-x/memoryEvents/e1")).toBe(true);
+    expect([...objects]).toContain("children/kid-x/books/synthetic-book/manifest.json");
+    expect(docs.has("families/fam-2/childRefs/kid-x")).toBe(true);
+  });
+
+  it("the stale pointer and a stale erase record are removed, content-free, and the receipt counts them", async () => {
+    otherFamilysChild();
+    docs.set(`families/${FAMILY}/childRefs/kid-x`, { childId: "kid-x", familyId: FAMILY });
+    docs.set("erasedChildren/kid-x", { childId: "kid-x", familyId: FAMILY, erasedAt: new Date().toISOString(), expireAt: new Date(Date.now() + 86_400_000) });
+    docs.delete(`families/${FAMILY}/members/${MEMBER}`);
+    const base = await serve();
+    const receipt = await (await deleteAccount(base)).json() as { complete: boolean; classes: Array<{ class: string; note?: string }> };
+    expect(receipt.complete).toBe(true);
+    expect(receipt.classes.find((c) => c.class === "childData")?.note).toMatch(/2 stale reference\(s\) to another family's child removed/);
+    expect(docs.has(`families/${FAMILY}/childRefs/kid-x`)).toBe(false);
+    expect(docs.has("erasedChildren/kid-x")).toBe(false);
+    expect(docs.has("children/kid-x")).toBe(true);
+  });
+
+  it("the shared placeholder family is never swept: its pointers and erase records belong to unrelated accounts", async () => {
+    docs.set(`families/default-family/members/${OWNER}`, { userId: OWNER }); // a legacy shared membership, now alone
+    docs.set("children/kid-legacy", { childId: "kid-legacy", familyId: "default-family" });
+    docs.set("children/kid-legacy/memoryEvents/e1", { childId: "kid-legacy" });
+    docs.set("families/default-family/childRefs/kid-legacy", { childId: "kid-legacy", familyId: "default-family" });
+    docs.set("erasedChildren/kid-legacy-2", { childId: "kid-legacy-2", familyId: "default-family", erasedAt: new Date().toISOString(), expireAt: new Date(Date.now() + 86_400_000) });
+    docs.set("children/kid-legacy-2", { childId: "kid-legacy-2", familyId: "default-family" });
+    const base = await serve();
+    expect((await deleteAccount(base)).status).toBe(200);
+    expect(docs.has("children/kid-legacy")).toBe(true);
+    expect(docs.has("children/kid-legacy/memoryEvents/e1")).toBe(true);
+    expect(docs.has("children/kid-legacy-2")).toBe(true);
+  });
+
+  it("a placeholder-family erase record never lets a stranger re-run the erase route", async () => {
+    docs.set("erasedChildren/kid-gone", { childId: "kid-gone", familyId: "default-family", erasedAt: new Date().toISOString(), expireAt: new Date(Date.now() + 86_400_000) });
+    docs.set(`families/default-family/members/${STRANGER}`, { userId: STRANGER });
+    const base = await serve();
+    const res = await fetch(`${base}/api/privacy/erase`, { method: "POST", headers: { "Content-Type": "application/json", "x-test-user": STRANGER }, body: JSON.stringify({ childId: "kid-gone" }) });
+    expect(res.status).toBe(403);
+  });
+
+  it("a second /account/delete does not 500 (critic r6 probe)", async () => {
+    const base = await serve();
+    const a = await deleteAccount(base);
+    const b = await deleteAccount(base);
+    expect([a.status, b.status]).toEqual([200, 200]);
+  });
+});
+
+/* Round 7 (critic r6 P2 a): with a co-member still in the family it is never
+   "last member", and an erase that never reached the server left no record:
+   the device's pending ids carry it into account deletion. */
+describe("B-GA-09 round 7 · account deletion finishes the erases this device still holds", () => {
+  it("an erase that never reached the server (no record, a co-member left): the pending id sent with /account/delete is erased through the same per-child path", async () => {
+    // the device half ran; the server never saw the erase
+    docs.delete(`users/${OWNER}/children/${CHILD}`);
+    await coParentConsult();
+    const base = await serve();
+    const res = await deleteAccount(base, OWNER, { pendingChildIds: [CHILD] });
+    expect(res.status).toBe(200);
+    expect((await res.json() as { complete: boolean }).complete).toBe(true);
+    expect(left()).toEqual([]);
+    expect(await consentStore.list(CHILD)).toEqual([]);
+    expect(await consultStore.listByChild("synthetic-co-parent", CHILD)).toEqual([]);
+    expect([...objects]).toEqual([]);
+    expect(docs.has(`erasedChildren/${CHILD}`)).toBe(false); // the record the erase wrote first went with it
+  });
+
+  it("without the pending id the same child is left behind (the gap the device ids close)", async () => {
+    docs.delete(`users/${OWNER}/children/${CHILD}`);
+    const base = await serve();
+    expect((await deleteAccount(base)).status).toBe(200);
+    expect(docs.has(`children/${CHILD}`)).toBe(true);
+  });
+
+  it("a pending id this account may not erase (another family's child, junk) is ignored", async () => {
+    docs.set("children/kid-x", { childId: "kid-x", familyId: "fam-2" });
+    docs.set("children/kid-x/memoryEvents/e1", { childId: "kid-x" });
+    docs.set("families/fam-2/members/other-parent", { userId: "other-parent" });
+    const base = await serve();
+    const res = await deleteAccount(base, OWNER, { pendingChildIds: ["kid-x", "../etc", 42, "x".repeat(300)] });
+    expect(res.status).toBe(200);
+    expect(docs.has("children/kid-x")).toBe(true);
+    expect(docs.has("children/kid-x/memoryEvents/e1")).toBe(true);
   });
 });

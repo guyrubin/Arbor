@@ -62,6 +62,8 @@ export type MemoryStore = {
    *  (erasedChildren/{childId}), so a retry still passes mayEraseChild once the child doc is gone, and account
    *  deletion finds a half-erased child. Optional (single-tenant stores omit it). */
   recordErase?(childId: string): Promise<void>;
+  /** B-GA-09 round 7: remove the child's erase record once its erase is finished for good (account deletion). */
+  dropEraseRecord?(childId: string): Promise<void>;
   /** Authorization: does `uid` belong to the family that owns `childId`? Optional —
    *  single-tenant (local) stores omit it, and the ownership middleware then no-ops. */
   ownsChild?(uid: string, childId: string): Promise<boolean>;

@@ -204,14 +204,17 @@ describe("Storage · every module and prefix is registered", () => {
 
   it("the child's erase deletes both prefixes and counts each", () => {
     expect(childBookAssetPrefix("kid-1")).toBe("children/kid-1/books/");
-    const api = readFileSync(path.join(SRC, "routes/api.ts"), "utf8");
-    const start = api.indexOf('router.post("/privacy/erase"');
-    const erase = api.slice(start, api.indexOf("router.post(\"/account/delete\"", start));
+    // Round 7: the one per-child erase (server/childErase), run by /privacy/erase and account deletion.
+    const erase = readFileSync(path.join(SRC, "server/childErase.ts"), "utf8");
     expect(erase).toContain("deleteFiles({ prefix: `users/${uid}/children/${childId}/` })");
     expect(erase).toContain("eraseChildBookAssets(");
     expect(erase).toContain("storage = { photos: photoFiles.length, books: bookFiles };");
     // Round 4: no per-prefix count is claimed when the Storage erase was skipped.
     expect(erase).toMatch(/let storage: \{ photos: number; books: number \} \| undefined;/);
+    const api = readFileSync(path.join(SRC, "routes/api.ts"), "utf8");
+    const route = api.slice(api.indexOf('router.post("/privacy/erase"'), api.indexOf('router.post("/account/delete"'));
+    expect(route).toContain("await eraseChildServerData(childEraseStores, uid, childId);");
+    expect(readFileSync(path.join(SRC, "server/accountDeletion.ts"), "utf8")).toContain("deleted += await stores.eraseChild(uid, childId);");
   });
 });
 

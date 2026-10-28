@@ -1,11 +1,10 @@
 import { getFirestore, FieldPath, FieldValue, type Firestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import { getStorage } from "firebase-admin/storage";
-import { eraseChildBookAssets, type BookAssetBucket } from "./bookAssets.js";
 import { getApps, initializeApp, applicationDefault } from "firebase-admin/app";
 import type { ArborConfig } from "../config/env.js";
 import { logger } from "./logger.js";
-import { ERASED_CHILDREN_COLLECTION } from "../families/familyService.js";
+import { ERASED_CHILDREN_COLLECTION, LEGACY_FAMILY_ID } from "../families/familyService.js";
 
 /**
  * STORE-4 — full account deletion (Apple 5.1.1(v) / Play account-deletion /
@@ -176,9 +175,12 @@ async function deleteByQuery(db: Firestore, query: FirebaseFirestore.Query): Pro
 }
 
 export interface FirestoreDeletionStores {
-  memoryEraseChild: (childId: string) => Promise<number>;
-  consentEraseByChild: (childId: string) => Promise<number>;
-  shareEraseByChild: (ownerUid: string, childId: string) => Promise<number>;
+  /** B-GA-09 round 7: the ONE per-child server erase (server/childErase.eraseChildServerData,
+   *  the same /privacy/erase runs, with its erase record dropped): returns what it removed. */
+  eraseChild: (ownerUid: string, childId: string) => Promise<number>;
+  /** Children this device still has an unfinished erase for, each already checked
+   *  with mayEraseChild by the route (DeleteAccountModal sends them). */
+  pendingChildIds?: readonly string[];
   pushTokensRemove: (uid: string) => Promise<void>;
   /** B-DATA-01: DigestOptInStore.remove — the same delete DELETE /digest/email-optin runs. */
   digestOptInRemove: (uid: string) => Promise<void>;
@@ -270,44 +272,54 @@ export function createFirestoreDeletionOps(
 
     async childData(uid) {
       // Enumerate the user's children, then run the SAME per-child server erase
-      // /privacy/erase uses (memory ledger + child doc + consents). The client
-      // tree under users/{uid} falls to userTree's recursiveDelete afterwards.
+      // /privacy/erase uses (server/childErase). The client tree under
+      // users/{uid} falls to userTree's recursiveDelete afterwards.
       const children = await db.collection(`users/${uid}/children`).get();
       const ids = new Set(children.docs.map((child) => child.id));
+      // B-GA-09 round 7: children this device still has an unfinished erase for
+      // (the route checked each with mayEraseChild).
+      for (const id of stores.pendingChildIds ?? []) ids.add(id);
       // B-GA-09 round 6: a child whose erase stopped half way is no longer under
       // users/{uid}/children (the device half removed its profile), but the
       // server still holds its record, ledger, consents and book files. Find it
-      // through the user's families: every child an erase was started for
+      // through the user's real families: every child an erase was started for
       // (erasedChildren, written first by /privacy/erase), and every child
-      // pointer of a family this account is the last member of (nobody else
-      // owns those children once the family goes). A family that keeps another
-      // member keeps its other children.
-      const records: FirebaseFirestore.DocumentReference[] = [];
+      // pointer of a family this account is the last member of. Round 7: never
+      // through the shared placeholder family (its members are unrelated
+      // accounts), and never a child whose record now names another family (a
+      // re-parented child leaves its old pointer behind): only that stale
+      // pointer or record goes.
+      let stale = 0;
       const memberships = await db.collectionGroup("members").where("userId", "==", uid).get();
       for (const member of memberships.docs) {
         const familyRef = member.ref.parent.parent;
-        if (!familyRef) continue;
+        if (!familyRef || familyRef.id === LEGACY_FAMILY_ID) continue;
+        const found: Array<{ id: string; ref: FirebaseFirestore.DocumentReference }> = [];
         const started = await db.collection(ERASED_CHILDREN_COLLECTION).where("familyId", "==", familyRef.id).get();
-        for (const record of started.docs) { ids.add(record.id); records.push(record.ref); }
+        for (const record of started.docs) found.push({ id: record.id, ref: record.ref });
         const members = await familyRef.collection("members").limit(2).get();
         if (members.docs.every((m) => m.id === uid)) {
-          for (const pointer of (await familyRef.collection("childRefs").get()).docs) ids.add(pointer.id);
+          for (const pointer of (await familyRef.collection("childRefs").get()).docs) found.push({ id: pointer.id, ref: pointer.ref });
+        }
+        for (const { id, ref } of found) {
+          if (ids.has(id)) continue;
+          const owner = (await db.collection("children").doc(id).get()).data()?.familyId;
+          if (typeof owner === "string" && owner && owner !== familyRef.id) {
+            await ref.delete(); // the stale pointer or record only; the child is another family's
+            stale += 1;
+            continue;
+          }
+          ids.add(id);
         }
       }
+      if (stale > 0) logger.info("Account deletion left children of another family untouched", { staleReferences: stale });
       let deleted = 0;
       for (const childId of ids) {
-        deleted += await stores.memoryEraseChild(childId);
-        deleted += await stores.consentEraseByChild(childId);
-        deleted += await stores.shareEraseByChild(uid, childId);
-        deleted += 1; // the child profile doc itself (memoryEraseChild removes children/{id}; the users-tree copy falls to userTree)
-        // B-BOOK release: the child's private book files live outside users/{uid}/
-        // (children/{childId}/books/), so storageFiles' users/ prefix misses them.
-        if (config.storageBucket) deleted += await eraseChildBookAssets(getStorage().bucket(config.storageBucket) as unknown as BookAssetBucket, childId);
+        deleted += await stores.eraseChild(uid, childId);
+        deleted += 1; // the child profile doc itself (eraseChild removes children/{id}; the users-tree copy falls to userTree)
       }
-      // The erase records go last: their erases are finished now.
-      for (const record of records) { await record.delete(); deleted += 1; }
       const left = ids.size - children.size;
-      return { deleted, note: `${children.size} child profile(s) erased${left > 0 ? `; ${left} left by an unfinished erase` : ""}` };
+      return { deleted, note: `${children.size} child profile(s) erased${left > 0 ? `; ${left} left by an unfinished erase` : ""}${stale > 0 ? `; ${stale} stale reference(s) to another family's child removed` : ""}` };
     },
 
     async families(uid) {

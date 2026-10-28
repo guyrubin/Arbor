@@ -1,7 +1,7 @@
 import { getApps, initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import type { ArborConfig } from "../config/env.js";
-import { ERASED_CHILDREN_COLLECTION, ERASE_TOMBSTONE_DAYS, FamilyService } from "../families/familyService.js";
+import { ERASED_CHILDREN_COLLECTION, ERASE_TOMBSTONE_DAYS, FamilyService, LEGACY_FAMILY_ID } from "../families/familyService.js";
 import type { MemoryLedgerEvent, MemoryStore } from "./types.js";
 
 export class FirestoreMemoryStore implements MemoryStore {
@@ -78,11 +78,18 @@ export class FirestoreMemoryStore implements MemoryStore {
    *  account deletion find a child whose erase stopped half way. */
   async recordErase(childId: string): Promise<void> {
     const familyId = await this.erasingFamily(childId);
-    if (!familyId) return;
+    // The shared placeholder family is nobody's: no record that would let its
+    // unrelated members in (round 7). Its child doc still anchors the retry.
+    if (!familyId || familyId === LEGACY_FAMILY_ID) return;
     const now = Date.now();
     await this.db.collection(ERASED_CHILDREN_COLLECTION).doc(childId).set({
       childId, familyId, erasedAt: new Date(now).toISOString(), expireAt: new Date(now + ERASE_TOMBSTONE_DAYS * 86_400_000),
     });
+  }
+
+  /** Round 7: the erase is finished for good (account deletion): the record goes. */
+  async dropEraseRecord(childId: string): Promise<void> {
+    await this.db.collection(ERASED_CHILDREN_COLLECTION).doc(childId).delete();
   }
 
   /** GDPR erasure: hard-delete the child's memory event subcollection and child doc.

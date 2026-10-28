@@ -197,8 +197,8 @@ export const STORAGE_PREFIXES: Readonly<Record<"storage:photos" | "storage:books
 export const STORAGE_MODULES: Readonly<Record<string, readonly ("storage:photos" | "storage:books" | "account" | "init")[]>> = {
   "lib/firebase.ts": ["init"],
   "lib/storage.ts": ["storage:photos"],
-  "routes/api.ts": ["storage:photos", "storage:books"],
-  "server/accountDeletion.ts": ["account", "storage:books"],
+  "server/accountDeletion.ts": ["account"],
+  "server/childErase.ts": ["storage:photos", "storage:books"],
   "server/bookAssets.ts": ["storage:books"],
   "server/bookAssetExport.ts": ["storage:books"],
   "server/bookSheet.ts": ["storage:books"],

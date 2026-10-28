@@ -56,7 +56,8 @@ import { scrubMemoryProposals, toParentWords, PLAIN_PARENT_WORDS_CLAUSE } from "
 import { assembleHeroJourneyScreenable } from "../safety/heroJourneyScreenable.js";
 import { logger, requestIdOf } from "../server/logger.js";
 import { requireChildOwnership } from "../server/requireChildOwnership.js";
-import { createBookAssetsRouter, defaultBookAssetBucket, eraseChildBookAssets, type BookAssetBucket } from "../server/bookAssets.js";
+import { createBookAssetsRouter, defaultBookAssetBucket, type BookAssetBucket } from "../server/bookAssets.js";
+import { childEraseTotal, eraseChildServerData, type ChildEraseStores } from "../server/childErase.js";
 import { createBookAssetsDocStore, createBookSheetRouter } from "../server/bookSheet.js";
 import { createPlansRouter } from "../server/plans.js";
 import { createBookNarrationRouter, FirestoreNarrationChildSource, googleBookTts, localNarrationChildSource, mockBookTts } from "../server/bookNarration.js";
@@ -429,6 +430,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   const fileTurnCoachResponseSchema = createFileTurnCoachResponseGeminiSchema(framework);
   // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
   const requireOwnership = requireChildOwnership(memoryStore);
+  // B-GA-09 round 7: the one per-child server erase, for /privacy/erase and account deletion.
+  const childEraseStores: ChildEraseStores = { memoryStore, shareStore, consentStore, consultStore, storageBucket: config.storageBucket };
   // B-GA-09 round 5: a retried erase must still pass after an earlier attempt removed the child doc (the anchor).
   const requireEraseOwnership = memoryStore.mayEraseChild
     ? requireChildOwnership({ ownsChild: (uid: string, childId: string) => memoryStore.mayEraseChild!(uid, childId) })
@@ -4301,54 +4304,13 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       return;
     }
     try {
-      // B-GA-09 round 5: the memory ledger and the child doc go LAST. The child
-      // doc anchors the owner check, so a share, consent, consult or Storage
-      // step that fails leaves the parent able to retry; if the response is
-      // lost after the anchor went, the erase record lets the same family in.
-      // Round 6: the record is written FIRST, so account deletion also finds a
-      // child whose erase stopped half way.
-      await memoryStore.recordErase?.(childId);
-      const shares = await shareStore.eraseByChild(uid, childId);
-      const consents = await consentStore.eraseByChild(childId);
-      // B-GA-09: the consult requests about this child go with it, including a
-      // co-parent's (the store keys them by child).
-      const consultRequests = await consultStore.eraseByChild(childId);
-      // GDPR Art. 17 parity with /account/delete, which purges Storage. Erasing
-      // ONE child left that child's uploaded photos in the bucket — Firestore
-      // was swept, the images were not. Scoped to this child's own prefix
-      // (lib/storage.ts writes users/{uid}/children/{childId}/photos/...), so a
-      // sibling's data is never touched.
-      let storageFiles = 0;
-      // B-BOOK-20: the receipt names each registered prefix's count. Only set
-      // when the bucket was actually checked: with no bucket configured the
-      // Storage erase is SKIPPED, and the client's receipt must then read
-      // "Not reached", never "erased · 0" (round 4; production always has one).
-      let storage: { photos: number; books: number } | undefined;
-      let storageNote: string | undefined;
-      const bucketName = config.storageBucket;
-      if (!bucketName) {
-        storageNote = "skipped: no storage bucket configured";
-      } else {
-        try {
-          const { getStorage } = await import("firebase-admin/storage");
-          const bucket = getStorage().bucket(bucketName);
-          // The receipt COUNTS the files: the child's photos, then (B-BOOK
-          // release) the child's private book files under children/{childId}/books/.
-          const [photoFiles] = await bucket.getFiles({ prefix: `users/${uid}/children/${childId}/` });
-          await bucket.deleteFiles({ prefix: `users/${uid}/children/${childId}/` });
-          const bookFiles = await eraseChildBookAssets(bucket as unknown as BookAssetBucket, childId);
-          storageFiles = photoFiles.length + bookFiles;
-          storage = { photos: photoFiles.length, books: bookFiles };
-          storageNote = `storage prefixes users/{uid}/children/${childId}/ and children/${childId}/books/ removed`;
-        } catch (err: unknown) {
-          // A bucket that was never provisioned is a clean no-op, not a failure.
-          const message = err instanceof Error ? err.message : String(err);
-          if (!/not exist|notFound|404/i.test(message)) throw err;
-          storageNote = "bucket not provisioned";
-          storage = { photos: 0, books: 0 }; // checked: the bucket holds nothing
-        }
-      }
-      const memoryEvents = await memoryStore.eraseChild(childId);
+      // B-GA-09: the ONE per-child server erase (server/childErase), shared with
+      // account deletion: the erase record first, then shares, consents,
+      // consult requests (a co-parent's too) and both Storage prefixes, each
+      // counted; the ledger and the child doc (the owner check's anchor) last.
+      // With no bucket the Storage step is skipped and claims no count.
+      const { memoryEvents, shares, consents, consultRequests, storageFiles, storage, storageNote } =
+        await eraseChildServerData(childEraseStores, uid, childId);
       logger.info("GDPR erasure executed", { requestId: requestIdOf(req), childId, memoryEvents, shares, consents, consultRequests, storageFiles });
       res.json({ erased: { memoryEvents, shares, consents, consultRequests, storageFiles }, storage, storageNote, childId, erasedAt: new Date().toISOString() });
     } catch (error: any) {
@@ -4376,10 +4338,18 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       return;
     }
     try {
+      // B-GA-09 round 7: the children this device still has an unfinished erase
+      // for (DeleteAccountModal sends them), each only if this account may erase
+      // it (the owner, or its family's unexpired erase record). Ids only.
+      const sent: unknown[] = Array.isArray(req.body?.pendingChildIds) ? req.body.pendingChildIds.slice(0, 50) : [];
+      const pendingChildIds: string[] = [];
+      for (const id of new Set(sent.filter((v): v is string => typeof v === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(v)))) {
+        if (memoryStore.mayEraseChild && await memoryStore.mayEraseChild(uid, id)) pendingChildIds.push(id);
+      }
       const ops = createFirestoreDeletionOps(config, {
-        memoryEraseChild: (childId) => memoryStore.eraseChild(childId),
-        consentEraseByChild: (childId) => consentStore.eraseByChild(childId),
-        shareEraseByChild: (ownerUid, childId) => shareStore.eraseByChild(ownerUid, childId),
+        // The same per-child erase as /privacy/erase (server/childErase); the erase record goes too.
+        eraseChild: async (ownerUid, childId) => childEraseTotal(await eraseChildServerData(childEraseStores, ownerUid, childId, { dropRecord: true })),
+        pendingChildIds,
         pushTokensRemove: (u) => pushTokenStore.remove(u),
         // B-DATA-01: the digest consent row holds the email address.
         digestOptInRemove: (u) => digestOptIns.remove(u),

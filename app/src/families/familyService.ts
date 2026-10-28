@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 
 /** Pre-OWN-1 memory appends stamped this shared literal; such a child has no real owner yet. */
-const LEGACY_FAMILY_ID = "default-family";
+export const LEGACY_FAMILY_ID = "default-family";
 
 /** B-GA-09 round 5: `erasedChildren/{childId}` = { childId, familyId, erasedAt, expireAt }, written by
  *  the per-child erase before it deletes anything (FirestoreMemoryStore.eraseChild). Ids only, no child
@@ -68,7 +68,8 @@ export class FamilyService {
     if (childSnap.exists) return this.ownsChild(uid, childId);
     const tomb = (await this.db.collection(ERASED_CHILDREN_COLLECTION).doc(childId).get()).data();
     const familyId = typeof tomb?.familyId === "string" ? tomb.familyId : "";
-    if (!familyId || !(toMillis(tomb?.expireAt) > Date.now())) return false;
+    // Round 7: the shared placeholder family is nobody's (its members are unrelated accounts).
+    if (!familyId || familyId === LEGACY_FAMILY_ID || !(toMillis(tomb?.expireAt) > Date.now())) return false;
     const memberSnap = await this.db.collection("families").doc(familyId).collection("members").doc(uid).get();
     return memberSnap.exists;
   }

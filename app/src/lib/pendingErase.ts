@@ -20,7 +20,9 @@
  *    say "a child" instead;
  *  - sign-out keeps it: the server still holds what the erase missed, and
  *    the same account must find the offer again after signing back in.
- *    Account deletion removes every `arbor*` key (DeleteAccountModal).
+ *    Account deletion sends this account's pending child ids with the request
+ *    (the server finishes those it may erase), then removes every `arbor*` key
+ *    (DeleteAccountModal).
  *
  * Account-level key on purpose: the child's own erase sweeps every key that
  * carries the child id (clearChildLocalState), and a retry runs that sweep, so
