@@ -18,20 +18,24 @@ import type { BookAssetsDoc } from "../../lib/library/bookAssetPaths";
 import { getLibraryBook } from "../../lib/library/books";
 import { bookSheetDrawPoses, bookSheetId } from "../../lib/library/bookSheet";
 import { bookSheetRunning, browserBookBuilderDeps, DEFAULT_SHEET_BOOK, redrawBookPose } from "../kidmode/hero/buildBookSheet";
+import { PLAN_SHEET_TARGET, type SheetStripTarget } from "./sheetStripTargets";
 import type { ChildProfile } from "../../types";
 
 const muted: React.CSSProperties = { color: "var(--arbor-muted)" };
 const formKey = (base: string, gender?: ChildProfile["gender"]) => (gender === "boy" || gender === "girl" ? `${base}.${gender}` : base);
 
-export default function BookSheetStrip({ child, avatarHash }: { child: Pick<ChildProfile, "id" | "name" | "gender">; avatarHash: string }) {
+const BOOK_TARGET: SheetStripTarget = { bookId: DEFAULT_SHEET_BOOK, poses: bookSheetDrawPoses(getLibraryBook(DEFAULT_SHEET_BOOK)!), keyBase: "elev.hero.sheet.book" };
+export { PLAN_SHEET_TARGET };
+export type { SheetStripTarget };
+
+export default function BookSheetStrip({ child, avatarHash, target = BOOK_TARGET }: { child: Pick<ChildProfile, "id" | "name" | "gender">; avatarHash: string; target?: SheetStripTarget }) {
   const { t } = useLanguage();
   const col = useChildCollection<BookAssetsDoc>(child.id, "bookAssets");
   const [override, setOverride] = useState<BookAssetsDoc | null>(null);
   const sheetId = bookSheetId(avatarHash);
-  const stored = col.items.find((d) => d?.bookId === DEFAULT_SHEET_BOOK && d.sheetId === sheetId) ?? null;
+  const stored = col.items.find((d) => d?.bookId === target.bookId && d.sheetId === sheetId) ?? null;
   const doc = override && override.sheetId === sheetId && (!stored || override.createdAt > stored.createdAt) ? override : stored;
-  const book = getLibraryBook(DEFAULT_SHEET_BOOK);
-  const poses = useMemo(() => (book && doc ? bookSheetDrawPoses(book).filter((p) => doc.sheetManifest.poses[p]) : []), [book, doc]);
+  const poses = useMemo(() => (doc ? target.poses.filter((p) => doc.sheetManifest.poses[p]) : []), [target, doc]);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [failed, setFailed] = useState<Record<string, boolean>>({});
@@ -60,35 +64,35 @@ export default function BookSheetStrip({ child, avatarHash }: { child: Pick<Chil
   const name = { name: child.name };
   if (!doc) {
     // B-BOOK-69: the book of an earlier hero stays readable until this hero's sheet commits; say so.
-    const previous = col.items.some((d) => d?.bookId === DEFAULT_SHEET_BOOK && !!d.sheetId && d.sheetId !== sheetId);
-    const state = bookSheetRunning(child.id) ? (previous ? "replacing" : "building") : previous ? "previous" : null;
+    const previous = col.items.some((d) => d?.bookId === target.bookId && !!d.sheetId && d.sheetId !== sheetId);
+    const state = bookSheetRunning(child.id, target.bookId) ? (previous ? "replacing" : "building") : previous ? "previous" : null;
     return state ? (
-      <p data-book-sheet={state} role="status" className="text-xs" style={muted}>
-        {t(formKey(`elev.hero.sheet.book.${state}`, child.gender), name)}
+      <p data-book-sheet={state} data-sheet={target.bookId} role="status" className="text-xs" style={muted}>
+        {t(formKey(`${target.keyBase}.${state}`, child.gender), name)}
       </p>
     ) : null;
   }
   const redraw = async (pose: string) => {
     setBusy((b) => ({ ...b, [pose]: true }));
-    const r = await redrawBookPose({ childId: child.id, avatarHash, pose }, browserBookBuilderDeps(child.id, () => false)).catch(() => ({ ok: false as const, doc: undefined }));
+    const r = await redrawBookPose({ childId: child.id, avatarHash, pose, bookId: target.bookId, poses: target.poses }, browserBookBuilderDeps(child.id, () => false, target.bookId, target.routePose)).catch(() => ({ ok: false as const, doc: undefined }));
     setBusy((b) => ({ ...b, [pose]: false }));
     if (r.ok && r.doc) setOverride(r.doc);
     else setFailed((f) => ({ ...f, [pose]: true }));
   };
 
   return (
-    <div data-book-sheet="review" className="space-y-2">
-      <p className="text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{t(formKey("elev.hero.sheet.book.title", child.gender), name)}</p>
+    <div data-book-sheet="review" data-sheet={target.bookId} className="space-y-2">
+      <p className="text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{t(formKey(`${target.keyBase}.title`, child.gender), name)}</p>
       <ul className="grid grid-cols-3 sm:grid-cols-6 gap-2">
         {poses.map((pose) => {
           const entry = doc.sheetManifest.poses[pose];
           return (
             <li key={pose} data-book-pose={pose} className="rounded-xl p-2 flex flex-col items-center gap-1.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
               {urls[pose] && !busy[pose] ? (
-                <img src={urls[pose]} alt={t("elev.hero.sheet.book.alt", name)} className="h-20 w-auto object-contain" draggable={false} />
+                <img src={urls[pose]} alt={t(`${target.keyBase}.alt`, name)} className="h-20 w-auto object-contain" draggable={false} />
               ) : (
                 <div className="h-20 flex items-center text-[11px] text-center" style={muted}>
-                  {busy[pose] ? t("elev.hero.sheet.review.redrawing") : failed[pose] ? t("elev.hero.sheet.book.failed") : ""}
+                  {busy[pose] ? t("elev.hero.sheet.review.redrawing") : failed[pose] ? t(`${target.keyBase}.failed`) : ""}
                 </div>
               )}
               {entry.redrawn ? (

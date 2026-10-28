@@ -34,6 +34,33 @@ Rules that hold everywhere here:
 | `plan-toilet-start` | [definition-plan-toilet-start.md](definition-plan-toilet-start.md) | `app/src/lib/library/plans/patterns/planToiletStart.ts` | owed | owed |
 | `plan-stay-in-bed` | [definition-plan-stay-in-bed.md](definition-plan-stay-in-bed.md) | `app/src/lib/library/plans/patterns/planStayInBed.ts` | owed | owed |
 
+## Making the books visible (28 Oct follow-up)
+
+Three gaps kept a composed plan book off a real family's shelf; all three are
+code on PR 2 of the programme:
+
+1. **Owner default.** With no `ARBOR_PLANS_OWNER_*` set, the owner allow-list
+   for unsigned patterns is `ARBOR_FAMILY_EMAILS` (the comped founder family,
+   set in `cloudbuild.prod.yaml`); an explicit `ARBOR_PLANS_OWNER_EMAILS` /
+   `_UIDS` overrides it entirely (`app/src/config/env.ts`).
+2. **The plan sheet.** The child's ONE shared plan sheet
+   (`bookAssets/plan-poses`) is built in-product on the hero pipeline: the
+   route draws the twelve shared plan poses under a `plan-` prefix (the hero
+   as themself, own clothes; its own per-sheet call counter), the sheet stores
+   the bare pose ids the plan books name, the commit is an open set, and the
+   shelf offers each plan book only once its poses are there (fail soft). The
+   parent shell ensures it (`app/src/components/layout/PlanSheetEnsurer.tsx`)
+   from the `books` rows — on approval and on load; the parent reviews the
+   poses in the hero review strip. This spends in production per child
+   (≈ 12 poses at the image model's price), on the product's own meter.
+3. **Plates and narration** are in-product too, on sibling PRs: the shared,
+   child-free plates are painted once through the server's own image provider
+   and served to every signed-in user from the shared prefix of the assets
+   bucket; plan-book narration attaches to `afterPlanSheet(childId)`
+   (`app/src/components/kidmode/hero/buildBookNarration.ts`), the one hook the
+   plan sheet builder calls when the child's plan sheet shows the hero — the
+   same place canonical books start theirs. Nothing is run by hand.
+
 ## The review packets (B-GA-37)
 
 [review/README.md](review/README.md) indexes one packet per pattern and

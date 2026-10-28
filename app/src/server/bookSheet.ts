@@ -40,6 +40,7 @@ import { getLibraryBook } from "../lib/library/books/index.js";
 import { missingBookPoses } from "../lib/library/bookPoses.js";
 import { bookSheetChoiceRel, bookSheetId, bookSheetPoseRel, isAvatarHash, isHeroBookSheetId, readSpriteAnchor, sheetFileIn, sheetImageMaxBytes, type SheetImageExt } from "../lib/library/bookSheet.js";
 import { HERO_BOOK_POSE_SETS, heroAvatarHash } from "../lib/heroSheetContract.js";
+import { PLAN_POSES, PLAN_SHEET_BOOK_ID } from "../lib/library/plans/planPoses.js";
 import type { BookAssetBucket } from "./bookAssets.js";
 import type { HeroPoseSource } from "./heroPoseRoute.js";
 import type { EntitlementStore } from "./entitlements.js";
@@ -152,8 +153,11 @@ export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
   /** The plan, the book, the child's current hero: shared by both routes. */
   const gate = async (req: express.Request, res: Response, askedHash: unknown): Promise<{ owner: string; childId: string; bookId: string; avatarHash: string } | null> => {
     const { childId, bookId } = req.params as { childId: string; bookId: string };
-    const book = BOOK_ASSET_ID.test(childId) && BOOK_ASSET_ID.test(bookId) ? getLibraryBook(bookId) : undefined;
-    if (!book || !Object.prototype.hasOwnProperty.call(HERO_BOOK_POSE_SETS, bookId)) {
+    const ids = BOOK_ASSET_ID.test(childId) && BOOK_ASSET_ID.test(bookId);
+    const book = ids ? getLibraryBook(bookId) : undefined;
+    // B-BOOK-75 follow-up: the child's shared PLAN sheet has no library book; its pose set is the twelve shared plan poses.
+    const planSheet = ids && bookId === PLAN_SHEET_BOOK_ID;
+    if (!planSheet && (!book || !Object.prototype.hasOwnProperty.call(HERO_BOOK_POSE_SETS, bookId))) {
       refuse(res, 400, "book_sheet_bad_request", "Unknown book");
       return null;
     }
@@ -186,6 +190,10 @@ export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
     return { owner, childId, bookId, avatarHash: askedHash };
   };
 
+  /** The poses a sheet may hold: the book's set, or the shared plan poses. */
+  const poseSetOf = (bookId: string): readonly string[] =>
+    bookId === PLAN_SHEET_BOOK_ID ? PLAN_POSES : (HERO_BOOK_POSE_SETS[bookId as keyof typeof HERO_BOOK_POSE_SETS] as readonly string[]);
+
   router.put(
     "/children/:childId/book-assets/:bookId/file",
     verified,
@@ -198,13 +206,13 @@ export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
       if (!m || !isBookAssetRel(rel)) return refuse(res, 400, "book_sheet_bad_path", "Bad book sheet path");
       const g = await gate(req, res, m[1]);
       if (!g) return;
-      const book = getLibraryBook(g.bookId)!;
+      const book = getLibraryBook(g.bookId);
       const sheetId = bookSheetId(g.avatarHash);
       const ext = m[3] as SheetImageExt;
       const isChoice = rel === bookSheetChoiceRel(sheetId, m[2], ext);
       const known = isChoice
-        ? book.decision.choices.some((c) => c.id === m[2])
-        : (HERO_BOOK_POSE_SETS[g.bookId as keyof typeof HERO_BOOK_POSE_SETS] as readonly string[]).includes(m[2]) && rel === bookSheetPoseRel(sheetId, m[2], ext);
+        ? !!book && book.decision.choices.some((c) => c.id === m[2])
+        : poseSetOf(g.bookId).includes(m[2]) && rel === bookSheetPoseRel(sheetId, m[2], ext);
       if (!known) return refuse(res, 400, "book_sheet_bad_path", "Not a pose or choice of this book");
       const type = String(req.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase();
       const body = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
@@ -241,7 +249,7 @@ export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
     const body = (req.body ?? {}) as { avatarHash?: unknown; dryRun?: unknown };
     const g = await gate(req, res, body.avatarHash);
     if (!g) return;
-    const book = getLibraryBook(g.bookId)!;
+    const book = getLibraryBook(g.bookId);
     const sheetId = bookSheetId(g.avatarHash);
     try {
       const bucket = await deps.getBucket();
@@ -250,13 +258,16 @@ export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
       const [listed] = await bucket.getFiles({ prefix });
       const byRel = new Map(listed.map((f) => [f.name.slice(prefix.length), f] as const).filter(([rel]) => isBookAssetRel(rel)));
       const poses: BookAssetsDoc["sheetManifest"]["poses"] = {};
-      for (const pose of HERO_BOOK_POSE_SETS[g.bookId as keyof typeof HERO_BOOK_POSE_SETS]) {
+      for (const pose of poseSetOf(g.bookId)) {
         const rel = sheetFileIn(byRel.keys(), (ext) => bookSheetPoseRel(sheetId, pose, ext));
         const f = rel ? byRel.get(rel) : undefined;
         const a = f ? readSpriteAnchor(f.metadata?.metadata ?? null) : null;
         if (a && rel) poses[pose] = { file: rel.split("/").pop()!, ...a, ...(f?.metadata?.metadata?.redrawn === "1" ? { redrawn: true } : {}) };
       }
-      const missing = missingBookPoses(book, Object.keys(poses));
+      // The plan sheet is an OPEN set: whatever poses it holds commit (the
+      // reader offers only the plan books those poses cover); an empty one
+      // is nothing to show. A library book must be complete.
+      const missing = book ? missingBookPoses(book, Object.keys(poses)) : Object.keys(poses).length ? [] : ["(any plan pose)"];
       const have = [...byRel.keys()].filter((rel) => rel.startsWith(`hero-sheets/${sheetId}/`)).sort();
       // A failed read is not a missing record. Fail closed before replacing
       // an approved sheet, dropping its narration, or deleting an older hero.
@@ -269,7 +280,7 @@ export function createBookSheetRouter(deps: BookSheetDeps): express.Router {
       if (missing.length) return refuse(res, 409, "book_sheet_incomplete", "The sheet is not complete", { missing, have });
       if (admin) return refuse(res, 409, "book_sheet_admin", "This book has an uploaded sheet");
       const choices: Record<string, string> = {};
-      for (const c of book.decision.choices) {
+      for (const c of book?.decision.choices ?? []) {
         const rel = sheetFileIn(byRel.keys(), (ext) => bookSheetChoiceRel(sheetId, c.id, ext));
         if (rel) choices[c.id] = `choices/${rel.split("/").pop()}`;
       }

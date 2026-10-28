@@ -206,6 +206,17 @@ export function afterBookSheet(childId: string, deps?: NarrationBuilderDeps): Pr
   return ctx && currentContext(childId, ctx) ? start(childId, ctx, deps) : null;
 }
 
+/** B-BOOK-75 follow-up — the ONE stable attach point for plan-book narration:
+ * called by the plan sheet builder (buildBookSheet.startBrowserPlanSheet) when
+ * the child's shared plan sheet commits or already shows this hero, exactly
+ * where `afterBookSheet` is called for a canonical book. Today it starts
+ * nothing (the plan-narration step attaches here, same deps, same ledger);
+ * it never renders at read time and never runs for a child without a sheet. */
+export function afterPlanSheet(childId: string, deps?: NarrationBuilderDeps): Promise<NarrationBuildResult> | null {
+  void childId; void deps;
+  return null;
+}
+
 /** Test seam. */
 export function resetBookNarrationForTest(): void {
   contexts.clear();
