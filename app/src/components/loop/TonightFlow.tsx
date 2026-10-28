@@ -8,7 +8,8 @@ import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 import { shelfLabel, type ShelfId } from "../../lib/shelves/registry";
 import type { PracticeAnswer, PracticePick } from "../../lib/practice/choosePractice";
 import type { ObserveStatus, ObservedWhen } from "../../lib/milestones/observe";
-import { TONIGHT_STEPS } from "../../lib/loop/tonight";
+import { SELF_COUNT_CHOICES, SELF_COUNT_MAX, TONIGHT_STEPS } from "../../lib/loop/tonight";
+import type { RoutineAnswer } from "../../lib/sleepDiary";
 import { GOAL_SCALE_VALUES, type FamilyGoal, type GoalScaleKey, type GoalScaleValue } from "../../lib/goals";
 import { ShelfGlyph } from "../ui/ShelfGlyph"; // B-DESIGN-04: the 44 px duotone glyph
 import NoticeCard, { type NoticeCardProps } from "./NoticeCard";
@@ -19,6 +20,11 @@ import { routeHash } from "../../lib/routes";
 import type { NoticeActionProps } from "../../hooks/useNoticeActions";
 
 export type TonightStep = 1 | 2 | 3 | 4 | "done";
+
+/** B-PROG-03: the active program's parent proxy, asked in step 1 after "Did it". */
+export type TonightParentProxy =
+  | { kind: "turns"; value: number | null; onCount: (count: number) => void }
+  | { kind: "routine"; value: RoutineAnswer | null; onRoutine: (answer: RoutineAnswer) => void };
 
 export interface TonightFlowProps {
   childName: string;
@@ -36,6 +42,10 @@ export interface TonightFlowProps {
   onPracticeAnswer: (answer: PracticeAnswer) => void;
   /** Step 1: how it went — the parent's choice, never inferred. */
   onOutcome: (outcome: Exclude<ActionOutcome, "not_today">) => void;
+  /** B-PROG-03: on a program day (the practice came from the active program's
+   *  week) step 1 asks the program's parent proxy after "Did it" — one tap,
+   *  the parent's count of their OWN behaviour, never a score; absent otherwise. */
+  parentProxy?: TonightParentProxy;
   /** Step 1: "What happened?" — one line, saved as a moment on the practice's shelf. */
   onWhatHappened: (text: string) => unknown | Promise<unknown>;
   /** Step 2: the question (key + vars from lib/loop/tonight tonightDayQuestion). */
@@ -96,6 +106,7 @@ function TonightFlowBody(props: TonightFlowProps) {
   const [quote, setQuote] = useState("");
   const [kept, setKept] = useState(false);
   const [goalMarks, setGoalMarks] = useState<Record<string, GoalScaleValue>>({});
+  const [proxyValue, setProxyValue] = useState<number | RoutineAnswer | null>(props.parentProxy?.value ?? null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const writing = useRef(false);
@@ -104,7 +115,7 @@ function TonightFlowBody(props: TonightFlowProps) {
   const hasGoals = !!(props.weeklyGoals?.length && props.onGoalScore);
   const totalSteps = hasGoals ? TONIGHT_STEPS + 1 : TONIGHT_STEPS;
   const name = props.childName || t("today.record.childFallback");
-  const forwardReady = !!outcome || !!line.trim();
+  const forwardReady = !!outcome || !!line.trim() || proxyValue !== null;
   // Law 7: ONE stamp, spread on whichever action group the current step shows.
   const stamp: Record<string, string> = props.stampMove ? { "data-primary-move": props.stampMove } : {};
 
@@ -268,6 +279,51 @@ function TonightFlowBody(props: TonightFlowProps) {
                 </button>
               ))}
             </div>
+            {props.parentProxy && (() => {
+              // B-PROG-03: the program's parent proxy — one tap, written at once
+              // (like the outcome), the parent's own count; never a verdict.
+              const proxy = props.parentProxy;
+              const choices: { value: number | RoutineAnswer; label: string }[] = proxy.kind === "turns"
+                ? SELF_COUNT_CHOICES.map((n) => ({ value: n, label: n === SELF_COUNT_MAX ? t("elev.loop.tonight.proxy.turns.max", { n }) : String(n) }))
+                : (["done_in_order", "not_tonight"] as const).map((a) => ({ value: a, label: t(`elev.loop.tonight.proxy.routine.${a}`) }));
+              return (
+                <div data-testid="tonight-proxy" data-proxy={proxy.kind} className="space-y-2">
+                  <p id="tonight-proxy-q" className="t-base font-semibold" style={{ color: "var(--arbor-ink)" }}>
+                    {g(t(`elev.loop.tonight.proxy.${proxy.kind}.q`, { name }))}
+                  </p>
+                  <div role="group" aria-labelledby="tonight-proxy-q" data-testid="tonight-proxy-answers" className="flex flex-wrap gap-2">
+                    {choices.map((c) => {
+                      const on = proxyValue === c.value;
+                      return (
+                        <button
+                          key={String(c.value)}
+                          type="button"
+                          data-testid="tonight-proxy-choice"
+                          data-value={String(c.value)}
+                          aria-pressed={on}
+                          disabled={saving}
+                          onClick={() => {
+                            setProxyValue(c.value);
+                            if (proxy.kind === "turns") proxy.onCount(c.value as number);
+                            else proxy.onRoutine(c.value as RoutineAnswer);
+                          }}
+                          className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-full px-3 t-base font-semibold${proxy.kind === "turns" ? " arbor-num" : ""}`}
+                          style={{
+                            color: on ? "var(--arbor-clay-deep)" : "var(--arbor-ink)",
+                            background: on ? "var(--arbor-clay-dim)" : "var(--arbor-paper)",
+                            border: `1px solid ${on ? "var(--arbor-clay-deep)" : "var(--arbor-rule-strong)"}`,
+                          }}
+                        >
+                          {on && <Icon name="check" size={16} />}
+                          <bdi>{c.label}</bdi>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {proxy.kind === "turns" && <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{g(t("elev.loop.tonight.proxy.turns.helper"))}</p>}
+                </div>
+              );
+            })()}
             <input
               type="text"
               dir="auto"

@@ -156,7 +156,8 @@ describe("Law 7 — the ONE stamp moves with the step (P5-LOOP critic c2 r1 P1-1
     expect(text(how)).not.toMatch(/\bSave\b(?! &)/);
     const src = readFileSync(path.join(here, "TonightFlow.tsx"), "utf8");
     expect(src).toMatch(/forwardReady\s*\?\s*\{ color: "var\(--arbor-on-accent\)", background: "var\(--gradient-cta\)", boxShadow: "var\(--shadow-sm\)" \}/);
-    expect(src).toContain('const forwardReady = !!outcome || !!line.trim();');
+    // B-PROG-03: a parent-proxy tap is an answer too (it writes at once, like the outcome).
+    expect(src).toContain('const forwardReady = !!outcome || !!line.trim() || proxyValue !== null;');
     state.lang = "en";
     expect(render(1, "en", { doseAnswer: "did" })).toContain('placeholder="What happened? One line."');
     expect(text(render(1, "he", { doseAnswer: "did" }))).toContain("התרגול של הערב");
@@ -258,5 +259,49 @@ describe("Things {name} said (#/memory)", () => {
     const mem = readFileSync(path.join(here, "..", "sections", "ChildMemory.tsx"), "utf8");
     expect(mem).toContain('<div data-module="memory-quotes" data-module-demoted');
     expect(mem).toContain("quotesFromDocs(quoteDocs.items)");
+  });
+});
+
+describe("B-PROG-03 — Tonight asks the program's parent proxy after Did it", () => {
+  const turns = { kind: "turns" as const, value: null, onCount: (n: number) => { calls.push(`count:${n}`); } };
+  const routine = { kind: "routine" as const, value: null, onRoutine: (a: string) => { calls.push(`routine:${a}`); } };
+  it("turns: one group of six 44 px taps, 0–4 and 5+, under the outcome, EN + HE, firewall-clean", () => {
+    for (const lang of ["en", "he"] as const) {
+      const html = render(1, lang, { doseAnswer: "did", parentProxy: turns });
+      expect(html).toContain('data-testid="tonight-proxy"');
+      expect(html).toContain('data-proxy="turns"');
+      const taps = html.match(/<button[^>]*data-testid="tonight-proxy-choice"[^>]*>/g) ?? [];
+      expect(taps).toHaveLength(6);
+      for (const b of taps) expect(b).toMatch(/min-h-\[44px\] min-w-\[44px\]/);
+      expect(taps.map((b) => b.match(/data-value="([^"]+)"/)![1])).toEqual(["0", "1", "2", "3", "4", "5"]);
+      const tx = text(html);
+      expect(tx).toContain("5+");
+      expect(tx).toContain(lang === "en" ? "How many times did you wait and Noa took a turn?" : "כמה פעמים חיכיתם וNoa לקחה תור?");
+      expect(tx).toContain(lang === "en" ? "This counts your waiting, not your child." : "זו ספירה של ההמתנה שלכם, לא של הילדה.");
+      expect(loopFirewallHits(tx)).toEqual([]);
+      // the group sits inside the how-form, after the outcome answers and before the line
+      expect(html.indexOf('data-testid="tonight-how-answers"')).toBeLessThan(html.indexOf('data-testid="tonight-proxy"'));
+      expect(html.indexOf('data-testid="tonight-proxy"')).toBeLessThan(html.indexOf('data-testid="tonight-what"'));
+    }
+  });
+  it("routine (Steady Nights): two taps, Done in order · Not tonight, EN + HE", () => {
+    const en = render(1, "en", { doseAnswer: "did", parentProxy: routine });
+    expect(en).toContain('data-proxy="routine"');
+    expect(text(en)).toContain("How did tonight's bedtime routine go?");
+    expect((en.match(/data-testid="tonight-proxy-choice"/g) ?? []).length).toBe(2);
+    expect(text(en)).toMatch(/Done in order.*Not tonight/);
+    const he = text(render(1, "he", { doseAnswer: "did", parentProxy: routine }));
+    expect(he).toMatch(/נעשה לפי הסדר.*לא הערב/);
+    expect(loopFirewallHits(he)).toEqual([]);
+  });
+  it("is asked only after Did it, and never without a program", () => {
+    expect(render(1, "en", { parentProxy: turns })).not.toContain('data-testid="tonight-proxy"');
+    expect(render(1, "en", { doseAnswer: "not_today", parentProxy: turns })).not.toContain('data-testid="tonight-proxy"');
+    expect(render(1, "en", { doseAnswer: "did" })).not.toContain('data-testid="tonight-proxy"');
+  });
+  it("a saved count shows as chosen", () => {
+    const html = render(1, "en", { doseAnswer: "did", parentProxy: { ...turns, value: 3 } });
+    expect(html).toMatch(/<button[^>]*data-value="3"[^>]*aria-pressed="true"/);
+    expect((html.match(/aria-pressed="true"/g) ?? []).length).toBe(1);
   });
 });

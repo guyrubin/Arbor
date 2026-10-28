@@ -47,6 +47,34 @@ export function tonightLineEntry(dose: ActionLoopEntry, text: string): ActionLoo
   return line ? { ...dose, whatHappened: line } : null;
 }
 
+/**
+ * B-PROG-03 — the program's PARENT PROXY, asked inside Tonight's step 1 on a
+ * program day (after "Did it"), named by the active program's own measure id
+ * (content/programs `measures.parentProxy.id`; lib/programs/measures reads the
+ * same ids). Talk Together "turns-waited" → the one-tap count of turns the
+ * parent waited for (0–5, 5 = "5+") on the day's dose row (`selfCount`);
+ * Steady Nights "routine-in-order" → the bedtime routine tap on the night's
+ * `sleepLogs` row (lib/sleepDiary recordRoutineTap). The parent's count of
+ * their OWN behaviour — never a score of the child; nothing is inferred.
+ */
+export type TonightParentProxyKind = "turns" | "routine";
+
+export function tonightParentProxyKind(parentProxyId: string | null | undefined): TonightParentProxyKind | null {
+  if (parentProxyId === "turns-waited") return "turns";
+  if (parentProxyId === "routine-in-order") return "routine";
+  return null;
+}
+
+/** The turn taps Tonight offers: 0–4 and "5+" (stored as 5, the measure's own cap). */
+export const SELF_COUNT_CHOICES = [0, 1, 2, 3, 4, 5] as const;
+export const SELF_COUNT_MAX = 5;
+
+/** The selfCount write: the day's dose row with the parent's tap (5+ = 5). Null for a value that is not a count. */
+export function tonightSelfCountEntry(dose: ActionLoopEntry, count: number): ActionLoopEntry | null {
+  if (typeof count !== "number" || !Number.isFinite(count) || count < 0) return null;
+  return { ...dose, selfCount: Math.min(SELF_COUNT_MAX, Math.floor(count)) };
+}
+
 /** FNV-1a for a stable quote id. */
 const fnv = (s: string): string => {
   let h = 0x811c9dc5;
