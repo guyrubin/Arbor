@@ -6,6 +6,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import type { MemoryReviewItem } from "../../types";
 import { SectionCard, Chip, cardCls } from "../ui/kit";
 import { ErrorState } from "../ui/ErrorState";
+import { ContentWhyLine } from "../ui/ContentActionBar";
 import { learnCardById } from "../../learn/learnCards";
 import { learnCategoryById, type LearnCard } from "../../learn/learnLibrary";
 import { fmtDay } from "../../lib/formatDate";
@@ -88,7 +89,11 @@ export default function ChildMemory({ hidePendingIds }: {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-col gap-6 max-w-[920px]">
-
+      {/* B-CAREPRO-38 (merged-tree finding): About owns the page header, but the ledger
+          keeps its ONE approval promise and its door to how Arbor decides (GP-22: the
+          memory queue is a trust-chain surface; whyLineTrustChain pins both). */}
+      <p className="t-sm" dir="auto" style={{ color: "var(--arbor-muted)" }}>{t("sec.mem.sub", { name: first })}</p>
+      <ContentWhyLine why="" trustLink surface="child-memory" className="-mt-3" />
 
       {/* AI-11: this is the surface where a parent APPROVES or FORGETS what
           Arbor may remember about their child. Its titles, its empty state and
