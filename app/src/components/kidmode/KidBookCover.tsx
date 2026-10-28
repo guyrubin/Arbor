@@ -13,7 +13,7 @@
  * The title is printed under the cover; it is the button's accessible name.
  * Zero model calls: the art is static and the card is CSS.
  */
-import { useState } from "react";
+import React, { useState } from "react";
 import type { HeroPackId } from "../../types";
 import { kidArtSrcSet, storyCoverArt, type KidThemeId } from "../../lib/kidThemeManifest";
 
@@ -49,6 +49,10 @@ export interface KidBookCoverProps {
   /** B-KID-122: a cover in the first row loads eagerly (no blank card for
    *  seconds on first paint); the rest stay lazy. */
   eager?: boolean;
+  /** B-BOOK-26: the child's OWN approved portrait (the caller's HeroAvatar),
+   *  shown on a title card — a book whose shared cover painted another child
+   *  (B-BOOK-31) still shows this child on it. Absent for a hero-less child. */
+  hero?: React.ReactNode;
 }
 
 export function KidBookTitleCard({ title, pack }: { title: string; pack: HeroPackId }) {
@@ -65,7 +69,7 @@ export function KidBookTitleCard({ title, pack }: { title: string; pack: HeroPac
   );
 }
 
-export function KidBookCover({ storyId, title, pack, theme, read, readLabel, onOpen, layout, eager = false }: KidBookCoverProps) {
+export function KidBookCover({ storyId, title, pack, theme, read, readLabel, onOpen, layout, eager = false, hero }: KidBookCoverProps) {
   const art = storyCoverArt(theme, storyId);
   // B-KID-122: until the picture has loaded the slot shows the book's own
   // title card (pack tint + title, tokens only), and the picture fades in over
@@ -114,7 +118,14 @@ export function KidBookCover({ storyId, title, pack, theme, read, readLabel, onO
           />
           </>
         ) : (
-          <KidBookTitleCard title={title} pack={pack} />
+          <>
+            <KidBookTitleCard title={title} pack={pack} />
+            {hero && (
+              <span aria-hidden="true" data-kid-book-own-hero="" style={{ position: "absolute", insetBlockEnd: 4, insetInlineEnd: 4, inlineSize: layout === "row" ? 34 : 44, blockSize: layout === "row" ? 34 : 44, display: "grid", placeItems: "center", overflow: "hidden", borderRadius: 999, background: "var(--arbor-paper-elevated)", border: "2px solid var(--comic-ink)" }}>
+                {hero}
+              </span>
+            )}
+          </>
         )}
         {read && (
           <span

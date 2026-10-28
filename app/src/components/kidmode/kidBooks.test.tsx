@@ -110,6 +110,21 @@ describe("KidBookCover — the one cover", () => {
     }
   });
 
+  it("B-BOOK-26: a title-card cover carries the child's OWN portrait (the caller's HeroAvatar); a hero-less child keeps the plain complete card", () => {
+    const own = <img data-own="" src="data:image/png;base64,T1dO" alt="" />;
+    const withHero = renderToStaticMarkup(<KidBookCover {...base} storyId="noahs-ark" title="A book" layout="grid" hero={own} />);
+    expect(withHero).toContain("data-kid-book-own-hero");
+    expect(withHero).toContain("data-own");
+    expect(withHero).toContain("data-kid-book-titlecard");
+    const heroless = renderToStaticMarkup(<KidBookCover {...base} storyId="noahs-ark" title="A book" layout="grid" />);
+    expect(heroless).not.toContain("data-kid-book-own-hero");
+    // a hero-free picture cover needs no sticker
+    expect(renderToStaticMarkup(<KidBookCover {...base} theme="storybook" storyId="the-lantern-path" layout="grid" hero={own} />)).not.toContain("data-kid-book-own-hero");
+    const lib = readFileSync(path.join(__dirname, "KidLibrary.tsx"), "utf8");
+    expect(lib).toContain("const ownHero = resolveHeroUrl(childProfile) ? <HeroAvatar");
+    expect(lib).toContain("hero={ownHero}");
+  });
+
   it("B-KID-122: the home row and the library mark their first row eager; Tonight's cover is high priority", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
     const read = (f: string) => readFileSync(path.join(here, f), "utf8");
