@@ -39,6 +39,7 @@ import type { ProgramEnrolment } from "../../lib/programs/enrolment";
 import type { BedtimeStory } from "../../types";
 import { cardCls, PageHeader } from "../ui/kit";
 import { ShareButton } from "../ui/ShareButton";
+import { UrgentSupport } from "../safety/UrgentSupport";
 import { SpeakButton } from "../ui/SpeakButton";
 import type { ShareCardOpts } from "../../lib/shareCard";
 
@@ -70,6 +71,8 @@ export default function BedtimeStoriesTab() {
 
 export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
   const { childProfile, behaviorLogs, addMoment, openPaywall } = useArbor();
+  // B-ASKJB-49: the escalation wall's door to Safety.
+  const { setActiveTab } = useArbor();
   const { aiLang, uiLang, t } = useLanguage();
   const { toast } = useToast();
   // B-PROG-13: the active program frames the request as an optional input
@@ -274,6 +277,10 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
             ? `מה שציינתם היום חורג ממה שסיפור ערב יכול לטפל בו. הסיפור אינו מתאים לעת עתה — אבל אתם לא לבד. פנו לאיש מקצוע שיכול לעזור.`
             : `What you described today goes beyond what a bedtime story can address. The story is paused — but you are not alone. Please reach out to someone who can help.`}
         </p>
+        {/* B-ASKJB-49: the wall carries the shared crisis card: the danger line
+            and the helplines in the story request's language, and the door to Safety. */}
+        <UrgentSupport testId="bedtime-urgent-support" requestLang={aiLang} onSafety={() => setActiveTab("safety")}
+          className="min-w-0 rounded-xl border border-[var(--arbor-rule-strong)] bg-[var(--arbor-paper-deep)] px-3 py-2 text-[14px] leading-relaxed text-[var(--arbor-ink)]" />
         <button
           onClick={reset}
           className="inline-flex items-center gap-2 text-[13px] font-bold rounded-xl px-4 py-2.5 min-h-[44px] transition"

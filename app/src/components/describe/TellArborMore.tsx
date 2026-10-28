@@ -40,7 +40,7 @@ export default function TellArborMore({ onClose, aspect: openOn = null, mode = "
   /** "voice": the mic comes first and takes the focus; dictation starts on the tap. */
   mode?: "write" | "voice";
 }) {
-  const { childProfile, milestones, setMilestoneObservation, restoreMilestone, retryMemoryReview } = useArbor();
+  const { childProfile, milestones, setMilestoneObservation, restoreMilestone, retryMemoryReview, setActiveTab } = useArbor();
   const { updateChild } = useProfile();
   const { t, aiLang, uiLang } = useLanguage();
   const Surface = useCompactSurface() ? Sheet : Modal;
@@ -95,7 +95,8 @@ export default function TellArborMore({ onClose, aspect: openOn = null, mode = "
         <p className="describe-sub">{t("elev.describe.sub")}</p>
         <DescribeChild name={name} lang={lang} value={text} onChange={(next) => { setText(next); setEmpty(false); }} disabled={drafting} autoFocus onVoiceText={() => setViaMic(true)}
           aspect={aspect} onAspect={(id) => setAspect((current) => (current === id ? null : id))} opening={opening} voice={mode === "voice"} />
-        {state.error === "crisis" && <UrgentSupport testId="describe-urgent-support" />}
+        {/* B-ASKJB-49: the client screen or the route's 409: helplines in the request's language. */}
+        {state.error === "crisis" && <UrgentSupport testId="describe-urgent-support" requestLang={lang} onSafety={() => { onClose(); setActiveTab("safety"); }} />}
         {state.error === "model" && <p className="describe-note" role="alert">{t("elev.describe.failed")}</p>}
         {empty && <p className="describe-note" role="status">{t("elev.describe.empty")}</p>}
         <div className="describe-footer">
@@ -105,7 +106,7 @@ export default function TellArborMore({ onClose, aspect: openOn = null, mode = "
           </button>
         </div>
       </>}
-      {conversing && <DescribeThread name={name} lang={lang} session={session} primedVoice={primed} opening={opening} />}
+      {conversing && <DescribeThread name={name} lang={lang} session={session} primedVoice={primed} opening={opening} onSafety={() => { onClose(); setActiveTab("safety"); }} />}
       {showReadback && <DescribeReadback name={name} session={session} profile={childProfile} milestoneTitle={milestoneTitle} />}
       {state.status === "kept" && <div className="describe-footer">
         <button type="button" className="describe-link" onClick={onClose}>{t("elev.describe.close")}</button>

@@ -12,6 +12,7 @@ import { buildPacketInput, milestoneInAgeWindow, teacherBriefDraft, teacherHomeS
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { screenForImmediateEscalation } from "../../safety/escalation";
 import { Modal } from "../ui/Modal";
+import { UrgentSupport } from "../safety/UrgentSupport";
 import {
   initialExportState,
   markRendered,
@@ -357,6 +358,12 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
       <p className="text-[13px] leading-relaxed" dir="auto" style={{ color: INK }}>
         {escalationBlocked ? t("elev.learnCare.brief.escalation.blocked") : escalationNote}
       </p>
+      {/* B-ASKJB-49: a blocked generate (409) carries the shared crisis card's
+          danger line and helplines in the request's language; the section's
+          own button below stays the one door to Safety. */}
+      {escalationBlocked && (
+        <UrgentSupport testId="school-brief-urgent-support" requestLang={uiLang === "he" ? "he" : "en"} className="min-w-0 text-[13px] leading-relaxed text-[var(--arbor-ink)]" />
+      )}
       <p className="text-[11.5px] leading-relaxed" style={{ color: MUTED }}>{t("elev.learnCare.brief.escalation.body")}</p>
       <button
         onClick={() => setActiveTab("safety")}

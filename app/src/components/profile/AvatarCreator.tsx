@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import { useDialog } from "../../hooks/useDialog";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { api, isImageResting, type AvatarStyle, type AvatarDescriptors, type AvatarCharacterIntent } from "../../lib/api";
+import { api, EscalationRequiredError, isImageResting, type AvatarStyle, type AvatarDescriptors, type AvatarCharacterIntent } from "../../lib/api";
 import { fileToThumbnail, shrinkDataUrlToBudget } from "../../lib/image";
 import { useAsyncAction } from "../../hooks/useAsyncAction";
 import { useArborOptional } from "../../context/ArborContext";
@@ -15,6 +15,7 @@ import { ShareButton } from "../ui/ShareButton";
 import { TrustPanel } from "../ui/TrustPanel";
 import { startHeroSheet } from "../kidmode/hero/buildHeroSheet";
 import AiDisclosureLine from "../companion/AiDisclosureLine";
+import { UrgentSupport } from "../safety/UrgentSupport";
 import {
   isAvatarDraftCurrent,
   runAvatarGeneration,
@@ -80,6 +81,8 @@ export default function AvatarCreator({
   const [refPhoto, setRefPhoto] = useState<string | undefined>();
   const [result, setResult] = useState<AvatarDraftResult | undefined>();
   const [photoError, setPhotoError] = useState<string | undefined>();
+  // B-ASKJB-49: the crisis screen answered 409 on the parent's description.
+  const [crisis, setCrisis] = useState(false);
   const draftRequestRef = useRef(0);
   /** Roving-tabindex focus targets for the character radiogroup. */
   const characterRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -97,7 +100,7 @@ export default function AvatarCreator({
   // optional hook returns null there; without a paywall to open, a 402 falls
   // through to useAsyncAction's normal inline-error path instead.
   const arbor = useArborOptional();
-  const { t, uiLang } = useLanguage();
+  const { t, uiLang, aiLang } = useLanguage();
 
   // M4: loading + error + start/success/error analytics for the generation call.
   // A 402 opens the paywall (conversion moment) instead of an inline error.
@@ -105,10 +108,16 @@ export default function AvatarCreator({
   const avatar = useAsyncAction(
     "avatar_create",
     async (input: { style: AvatarStyle; mode: "describe" | "photo"; refPhoto?: string; descriptors: AvatarDescriptors; character?: AvatarCharacterIntent }) => {
-      return runAvatarGeneration(childId, input, {
-        grantConsent: api.grantConsent,
-        generateAvatar: api.generateAvatar,
-      });
+      try {
+        return await runAvatarGeneration(childId, input, {
+          grantConsent: api.grantConsent,
+          generateAvatar: api.generateAvatar,
+        });
+      } catch (err) {
+        // B-ASKJB-49: a 409 is not a failure: the crisis card, not an error line.
+        if (err instanceof EscalationRequiredError) { setCrisis(true); return null; }
+        throw err;
+      }
     },
     {
       fallbackError: t("gen.avatar.fail"),
@@ -130,7 +139,7 @@ export default function AvatarCreator({
   const reset = () => {
     draftRequestRef.current += 1;
     setMode("describe"); setStyle("comichero"); setDescriptors({}); setCharacter(undefined); setConsent(false);
-    setRefPhoto(undefined); setResult(undefined); setPhotoError(undefined); avatar.clearError();
+    setRefPhoto(undefined); setResult(undefined); setPhotoError(undefined); setCrisis(false); avatar.clearError();
   };
   const close = () => { reset(); onClose(); };
   const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open, onClose: close, parentRef: parentDialogRef });
@@ -155,6 +164,7 @@ export default function AvatarCreator({
     const startedSource = mode === "photo" && refPhoto ? "photo" as const : "descriptor" as const;
     setPhotoError(undefined);
     setResult(undefined);
+    setCrisis(false);
     const res = await avatar.run({ style, mode, refPhoto, descriptors, character });
     if (
       res
@@ -394,7 +404,11 @@ export default function AvatarCreator({
               </div>
             )}
 
-            {error && <p className="text-xs mb-3" style={{ color: "var(--arbor-pink-ink)" }}>{error}</p>}
+            {crisis ? (
+              <UrgentSupport testId="avatar-urgent-support" requestLang={aiLang} lead={t("elev.safety.paused")}
+                onSafety={arbor ? () => { close(); arbor.setActiveTab("safety"); } : undefined}
+                className="mb-3 min-w-0 rounded-xl border border-[var(--arbor-rule-strong)] bg-[var(--arbor-paper-deep)] px-3 py-2 t-sm leading-relaxed text-[var(--arbor-ink)]" />
+            ) : error && <p className="text-xs mb-3" style={{ color: "var(--arbor-pink-ink)" }}>{error}</p>}
 
             {/* Actions */}
             <div className="flex gap-2">

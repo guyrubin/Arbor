@@ -94,6 +94,11 @@ export const en: Record<string, string> = {
 
   // FEAT-06: UrgentSupport's door to the Safety & escalation tab.
   "elev.safety.open": "Open Safety & escalation",
+
+  // B-ASKJB-49: the crisis screen answered 409 on a parent surface; the lead
+  // line of the shared crisis card, and the fold over the full guidance.
+  "elev.safety.paused": "We paused here. Some of these words may need a person now, not an app.",
+  "elev.safety.paused.more": "Full guidance and every helpline",
 };
 
 export const he: Record<string, string> = {
@@ -179,6 +184,11 @@ export const he: Record<string, string> = {
 
   // FEAT-06: UrgentSupport's door to the Safety & escalation tab.
   "elev.safety.open": "למעבר לבטיחות והסלמה",
+
+  // B-ASKJB-49: the crisis screen answered 409 on a parent surface; the lead
+  // line of the shared crisis card, and the fold over the full guidance.
+  "elev.safety.paused": "עצרנו כאן. ייתכן שחלק מהמילים האלה צריכות עכשיו אדם, לא אפליקציה.",
+  "elev.safety.paused.more": "ההנחיות המלאות וכל קווי הסיוע (באנגלית)",
 };
 
 // The masterplan names these records safetyEn/safetyHe; the index registry
