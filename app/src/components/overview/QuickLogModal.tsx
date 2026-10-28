@@ -75,10 +75,15 @@ export default function QuickLogModal({
   editLogId,
   shelf: openedShelf,
   initialText,
+  initialTextParentWritten = false,
   initialPhoto,
 }: {
   open: boolean;
   initialText?: string;
+  /** B-ASKJB-43: the opener vouches that `initialText` is the parent's own
+   *  words (Ask's composer: typed or dictated from an empty field). Absent ⇒
+   *  unknown provenance, saved with the negative "unverified" lineage. */
+  initialTextParentWritten?: boolean;
   initialPhoto?: string;
   onClose: () => void;
   mode?: CaptureMode;
@@ -159,7 +164,7 @@ export default function QuickLogModal({
   // F-CHILD-2: Write · Dictate · Photo. Dictate is "on" while listening;
   // Photo shows the picker tile and its note.
   const [captureMode, setCaptureMode] = useState<"text" | "photo">(mode === "photo" ? "photo" : "text");
-  const [keepDraft, setKeepDraft] = useState(() => freshCaptureKeep(initialText ?? newLogTrigger));
+  const [keepDraft, setKeepDraft] = useState(() => initialText !== undefined ? freshCaptureKeep(initialText, initialTextParentWritten) : freshCaptureKeep(newLogTrigger));
   const keepAllowed = !editLogId && !review && source !== "ai-draft" && keepDraft.parentWritten && keepDraft.text === newLogTrigger && !!newLogTrigger.trim();
   const kept = keepAllowed ? selectedCaptureKeep(keepDraft, newLogTrigger, hardMoment) : undefined;
   // Full translation keys keep grammatical variants explicit. These are
@@ -244,7 +249,7 @@ export default function QuickLogModal({
     if (!open) return;
     if (initialText !== undefined) {
       setNewLogTrigger(initialText);
-      setKeepDraft(freshCaptureKeep(initialText));
+      setKeepDraft(freshCaptureKeep(initialText, initialTextParentWritten));
     }
     if (initialPhoto) attachPhoto(initialPhoto);
     else if (editLogId) setPhoto(newLogPhoto);

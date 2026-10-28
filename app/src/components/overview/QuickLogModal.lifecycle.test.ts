@@ -926,3 +926,33 @@ describe("B-ASKJB-48 — context-only labels keep the moment neutral (actual han
     expect(h.state.newLogNotes).toContain("Glitter everywhere incident");
   });
 });
+
+/** B-ASKJB-43 — words kept from Ask: when the opener vouches they are the
+ *  parent's own (Ask's composer chain), the saved moment carries no negative
+ *  lineage and reads as the parent's words; without it, unknown prefills keep
+ *  "unverified" (the existing fail-closed case above). */
+describe("B-ASKJB-43 — words kept from Ask (actual handlers)", () => {
+  function askHarness(parentWritten: boolean) {
+    const h = captureHarness({ text: "", initialText: "Noa said ball and rolled it back" });
+    (h.props as Record<string, unknown>).initialTextParentWritten = parentWritten;
+    return h;
+  }
+  it("the parent's own Ask words save with no content-source lineage and stay theirs after reload", async () => {
+    const h = askHarness(true);
+    h.render();
+    const context = contextHarness();
+    h.state.addMoment = vi.fn(context.addMoment);
+    await one(h.render(), n => n.type === "form").props.onSubmit(formEvent());
+    const written = context.env.logsCol.upsert.mock.calls[0][0];
+    expect(written).toMatchObject({ behaviorType: "Moment", trigger: "Noa said ball and rolled it back" });
+    expect(written).not.toHaveProperty("contentSource");
+    expect(parentWords(written)).toBe("Noa said ball and rolled it back");
+    expect(toObservations({ behaviorLogs: [written] }, { id: "child-a" })[0].source).toBe("parent_typed");
+  });
+  it("NEGATIVE CONTROL: the same words without the vouch keep the unverified lineage", async () => {
+    const h = askHarness(false);
+    h.render();
+    await one(h.render(), n => n.type === "form").props.onSubmit(formEvent());
+    expect(h.state.addMoment.mock.calls[0][1]).toMatchObject({ contentSource: "unverified" });
+  });
+});

@@ -671,6 +671,7 @@ export default function Shell() {
         <QuickLogModal
           key={childProfile.id}
           initialText={captureSheet.initialText}
+          initialTextParentWritten={captureSheet.initialTextParentWritten}
           initialPhoto={captureSheet.initialPhoto}
           open={captureSheet.open}
           mode={captureSheet.mode}
