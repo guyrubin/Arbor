@@ -79,7 +79,8 @@ describe("B-GROWTH-25 — the templates are startable on Plans in one tap", () =
     expect(comp).toContain("await startPlanFromTemplate(routineToPlan(routine, lang, first, Date.now()));");
     expect(comp).not.toMatch(/#[0-9a-fA-F]{3,8}\b/); // tokens only
     const ctx = read("context/ArborContext.tsx");
-    expect(ctx).toContain("const startPlanFromTemplate = (plan: ActionPlan) => plansCol.upsert(plan);");
+    // B-GROWTH-40: a template started while a goal is current records it (withFocusGoal).
+    expect(ctx).toContain("const startPlanFromTemplate = (plan: ActionPlan) => plansCol.upsert(withFocusGoal(plan, childProfile.activeGoals));");
     // EN + HE chrome
     const { translate } = await import("./i18n");
     for (const k of ["elev.plans.routineTemplates.title", "elev.plans.routineTemplates.sub", "elev.plans.routineTemplates.start"]) {

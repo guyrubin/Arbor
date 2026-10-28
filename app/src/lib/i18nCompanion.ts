@@ -409,6 +409,8 @@ export const companionEn = {
   "companion.milestones.notTold": "Not told yet",
   "companion.milestones.tell": "Tell Arbor",
   "companion.milestones.srcGoal": "What you chose to explore",
+  // B-GROWTH-40: the next unfinished step of the plan started for this goal.
+  "companion.milestones.goalNext": "Next: {step}",
   // v3 F-CHILD-3 — My child, the About pill: the describe card, the eight
   // areas and the Details row. A told area is counted in a sentence, never
   // against eight; no share, no fill.
@@ -982,6 +984,7 @@ export const companionHe = {
   "companion.milestones.notTold": "עוד לא סיפרתם",
   "companion.milestones.tell": "לספר לארבור",
   "companion.milestones.srcGoal": "מה שבחרתם לחקור",
+  "companion.milestones.goalNext": "הצעד הבא: {step}",
   // v3 F-CHILD-3 — My child, the About pill (plural address, no slash form;
   // Arbor in the feminine, as the pinned "דברים שארבור זוכרת").
   "companion.about.kicker": "מה ארבור יודעת על {name}",

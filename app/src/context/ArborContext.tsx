@@ -53,6 +53,7 @@ import type { ShelfId } from "../lib/shelves/registry";
 import { hydrateMilestones } from "./milestoneHydration";
 import { completeObservation, isObservationAction, isUrgentOnboardingAction, activeActionFor, sortActionLoop, todayActionId, type ChildResponse, type HeldAnswer, type PlanStepRef } from "../actionLoop/model";
 import { planStepStatusAfter } from "../lib/plans";
+import { withFocusGoal } from "../practice/goalBuilder";
 import { routineIdOfPlan } from "../lib/routineTemplates";
 import { answeredToday, fromRecordRowId, fromRecordEntry, type FromRecordAnswer, type FromRecordOpener } from "../lib/today/fromRecord";
 import { recentTypeCounts } from "../lib/planRecord";
@@ -1684,7 +1685,8 @@ function useArborState() {
         api.generatePlan({ challengeTopic: planChallengeTopic, childProfile, recentTypeCounts: recentTypeCounts(behaviorLogs, Date.now()) }),
       );
       planData.id = `plan-${Date.now()}`;
-      await plansCol.upsert(planData);
+      // B-GROWTH-40: a plan started while a goal is current records it.
+      await plansCol.upsert(withFocusGoal(planData, childProfile.activeGoals));
       // N1-01-R3: step two — the actionPlans row is written, so a coach answer
       // that armed the latch becomes one plan_from_answer. A plan typed from
       // scratch in PlansTab finds no latch and emits nothing.
@@ -1757,10 +1759,10 @@ function useArborState() {
   const deletePlan = (id: string) => void plansCol.remove(id);
   // B-GROWTH-25: a ready-made routine starts as a plan in one tap — no goal,
   // no AI call; the template (lib/routineTemplates.routineToPlan) is the plan.
-  const startPlanFromTemplate = (plan: ActionPlan) => plansCol.upsert(plan);
+  const startPlanFromTemplate = (plan: ActionPlan) => plansCol.upsert(withFocusGoal(plan, childProfile.activeGoals));
   // FEAT-07: the Together sheet starts a routine plan and runs it day by day.
   // Both wait for the server, so a receipt only ever follows a persisted write.
-  const startRoutinePlan = (plan: ActionPlan) => plansCol.upsert(plan, { awaitServer: true });
+  const startRoutinePlan = (plan: ActionPlan) => plansCol.upsert(withFocusGoal(plan, childProfile.activeGoals), { awaitServer: true });
   const setRoutineRun = (plan: ActionPlan) => plansCol.upsert(plan, { awaitServer: true });
   const deleteMilestone = (id: string) => void milestonesCol.remove(id);
 

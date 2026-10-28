@@ -544,6 +544,13 @@ export interface ActionPlan {
    * second device never celebrates the same day twice.
    */
   routineCelebratedOn?: string;
+  /**
+   * B-GROWTH-40: the `goalId` of the family's current goal (focusGoal) when
+   * this plan was started, so My child's focus line can say what to do next.
+   * Written only at start (practice/goalBuilder withFocusGoal); older plans
+   * are never backfilled, and a plan carries no area of its own.
+   */
+  focusGoalId?: string;
 }
 
 /** B-ASKJB-26: one weekly check-in on a plan — the parent's own answer, never a score. */
