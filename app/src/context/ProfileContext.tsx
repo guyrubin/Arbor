@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
-import { collection, deleteField, doc, getDocs, setDoc, updateDoc } from "firebase/firestore";
+import { collection, deleteField, doc, getDocs, runTransaction, setDoc, updateDoc } from "firebase/firestore";
 import { auth, db, firebaseEnabled } from "../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { useAuth } from "./AuthContext";
@@ -428,12 +428,26 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     if (state.attempt?.status === "pending") return "pending";
     // Replacing a changed source always requires a newly rendered question.
     if (JSON.stringify(state.goals) !== basis) return "changed";
-    const merged = selectFocusGoal(state.goals, goal, new Date().toISOString());
     const attempt: GoalAttempt = { status: "pending", goal, basis };
     state.attempt = attempt;
     setGoalVersion(version => version + 1);
     try {
-      if (useFirestore && db) await updateDoc(doc(db, profilesPath, id), { activeGoals: merged });
+      // B-DATA-13: the choice is merged onto the goals AS STORED NOW, inside a
+      // transaction, never a whole array built from this device's last read —
+      // a stale second device can no longer drop a goal another device chose.
+      // Sandbox (no server) merges onto the local list.
+      const firestore = useFirestore ? db : null;
+      const merged = firestore
+        ? await runTransaction(firestore, async (tx) => {
+          const ref = doc(firestore, profilesPath, id);
+          const snap = await tx.get(ref);
+          if (!snap.exists()) throw new Error("The child profile is no longer stored");
+          const stored = (snap.data() as Partial<ChildProfile>).activeGoals;
+          const next = selectFocusGoal(Array.isArray(stored) ? stored : [], goal, new Date().toISOString());
+          tx.update(ref, { activeGoals: next });
+          return next;
+        })
+        : selectFocusGoal(state.goals, goal, new Date().toISOString());
       if (!current()) return "obsolete";
       // Advance the admission basis before React renders the acknowledgement.
       // `observed` still points at the previous rendered array until that render.
