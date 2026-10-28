@@ -181,6 +181,14 @@ describe("signal 4 — the prepay balance: readable by the founder, alarm at 20 
     }
   });
 
+  it("the EU route is not paid from the AI Studio prepay: its slices never count against the balance", async () => {
+    const h = await start({ aiPrepayLedger: ledger, liveVertexEu: true, gcpProjectId: "arbor-test", liveVertexLocation: "europe-west4" });
+    const minted = await h.post("/live/token", { childProfile: { id: "child-7c1" }, language: "en", noticeAck: "google-eu-realtime-v1" }, "eu-parent");
+    expect(minted.status).toBe(200);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(h.counter.totals.size).toBe(0);
+  });
+
   it("with the ledger off, the balance reads as not configured and nothing alarms", async () => {
     const saved = process.env.ARBOR_ADMIN_EMAILS;
     process.env.ARBOR_ADMIN_EMAILS = "founder@example.com";

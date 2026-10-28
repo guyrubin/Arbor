@@ -20,6 +20,21 @@ A Live notice also describes the device speech fallback the client takes when Li
 - The capture bar's first-use line is the runtime route's notice (it was the fixed global line); it counts as seen only once it has rendered, and choosing "Talk it through" with that line on screen acknowledges it.
 - The data-use panel's spoken-Live residency clause follows the route (EU line on the EU route).
 
+## New parent copy for review (B-PROV-12 rounds 1–2)
+
+These strings are new and need the copy/privacy review before activation (keys in `app/src/lib/i18nElevation/wave2Daily.ts` and `coachcontract.ts`):
+
+| Key | EN | HE |
+|---|---|---|
+| `elev.wave2Daily.capture.voice.noticeGoogleGlobal` | Google's model hears your voice directly, on its global endpoint (not the EU); without Live, your device writes your words as text. No recording is kept. | המודל של Google שומע את הקול שלכם ישירות, בנקודת קצה גלובלית (לא באיחוד האירופי); בלי שיחה חיה, המכשיר כותב את מילותיכם כטקסט. שום הקלטה לא נשמרת. |
+| `elev.wave2Daily.capture.voice.noticeGoogleEu` | Google's model hears your voice directly, in its EU region; without Live, your device writes your words as text. No recording is kept. | המודל של Google שומע את הקול שלכם ישירות, באזור האיחוד האירופי; בלי שיחה חיה, המכשיר כותב את מילותיכם כטקסט. שום הקלטה לא נשמרת. |
+| `elev.wave2Daily.capture.voice.noticeDevice` | Your device turns your words into text; only the text is kept. | המכשיר הופך את המילים שלכם לטקסט; רק הטקסט נשמר. |
+| `elev.wave2Daily.capture.voice.tapAgain` | Tap the voice button again to start. | הקישו שוב על כפתור הקול כדי להתחיל. |
+| `elev.wave2Daily.capture.voice.dataUseDevice` | No recording is kept. This device's speech service turns your words into text, and only the text is kept. | שום הקלטה לא נשמרת. שירות הדיבור של המכשיר הופך את המילים שלכם לטקסט, ורק הטקסט נשמר. |
+| `elev.coachcontract.uses.liveResidencyEu` | Live runs in Google's EU region. | שיחת קול חיה פועלת באזור האיחוד האירופי של Google. |
+
+The B-AIOPS-02 resting copy (`elev.aierrors.voiceResting.title` / `.body`: "Voice is resting until tomorrow" / "You can keep typing, and Arbor is still here if something urgent happens.") is new parent copy too.
+
 ## Entries covered
 
 Every entry that reaches a selected voice provider goes through Ask's voice button: the composer's button and the capture bar's "Talk it through" (which only opens Ask ready to talk). Dictation entries (capture sheet "Note something", the composer's dictate, Tell Arbor about your child) use only the device speech service and never reach a selected provider; they keep their existing device line. Tonight, practice/hard-moment and visit voice doors are not built (B-VOICE-01/02/03); they will start through the same button.

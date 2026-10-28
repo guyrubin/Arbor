@@ -36,7 +36,7 @@ describe("B-PROV-12 · CoachTab gates every voice start on the runtime notice", 
 
   it("the mint (first slice and every renewal) carries the acknowledged notice id from ONE call site", () => {
     expect(coach.match(/api\.liveToken\(/g)?.length).toBe(1);
-    expect(toggle).toMatch(/const mintLive = \(\) => api\.liveToken\(\{[^\n]*noticeAck: noticeId \}, \{ signal: attempt\.signal \}\)/);
+    expect(toggle).toMatch(/const mintLive = \(renewOf\?: string\) => api\.liveToken\(\{[^\n]*noticeAck: noticeId, \.\.\.\(renewOf \? \{ renewOf \} : \{\}\) \}, \{ signal: attempt\.signal \}\)/);
   });
 
   it("a changed route is a new notice, never a silent fallback to browser voice", () => {
@@ -78,7 +78,11 @@ describe("B-AIOPS-02 · the family's voice time at the one voice path", () => {
   it("P1-2: the slice's expiry and the family's remaining time reach the session, and renewal goes through the same mint", () => {
     expect(toggle).toContain("expiresAt: fresh.expiresAt,");
     expect(toggle).toContain("remainingMs: fresh.budget?.remainingMs,");
-    expect(toggle).toMatch(/renew: async \(\) => \{[\s\S]*?await mintLive\(\)[\s\S]*?if \(isLiveResting\(renewError\)\) return null;/);
+    expect(toggle).toMatch(/renew: async \(renewOf\) => \{[\s\S]*?await mintLive\(renewOf\)[\s\S]*?if \(isLiveResting\(renewError\)\) return null;/);
+    // Every slice's context is the conversation as it stood when the talk began;
+    // the Live client seeds each new socket with the talk itself.
+    expect(toggle).toContain("const talkContext = buildVoiceContext(voiceMessagesRef.current, childProfile.id);");
+    expect(toggle).toContain("usageId: fresh.usageSessionId,");
   });
 
   it("a budget end is a resting state: onAllowanceEnd shows the resting line and never the connection-ended notice", () => {

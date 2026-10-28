@@ -77,6 +77,8 @@ export function splitLiveUsageDays(end: number, remaining: number): Map<string, 
 export interface LiveUsageStore {
   create(input: Omit<LiveUsageSession, "createdAt" | "observedMs" | "closed" | "incomplete">): Promise<string>;
   report(uid: string, id: string, event: LiveUsageEvent): Promise<LiveUsageReport | null>;
+  /** B-AIOPS-02: the caller's own session (renewals chain onto an opened one). */
+  get(uid: string, id: string): Promise<LiveUsageSession | null>;
 }
 const validId = (id: string) => /^[0-9a-f-]{36}$/.test(id);
 export class MemoryLiveUsageStore implements LiveUsageStore {
@@ -96,6 +98,10 @@ export class MemoryLiveUsageStore implements LiveUsageStore {
     return { observedMs: result.session.observedMs, incomplete: result.session.incomplete, closed: result.session.closed,
       familyId: session.familyId, ...(session.budget ? { budget: session.budget } : {}), opened: result.session.openedAt !== undefined };
   }
+  async get(uid: string, id: string) {
+    const session = this.sessions.get(id);
+    return validId(id) && session && session.uid === uid ? session : null;
+  }
 }
 
 export function createLiveUsageStore(config: ArborConfig): LiveUsageStore {
@@ -105,6 +111,12 @@ export function createLiveUsageStore(config: ArborConfig): LiveUsageStore {
   // Existing aiQuota TTL and account-erasure path apply to these short-lived records.
   const ref = (uid: string, id: string) => db.collection("aiQuota").doc(`live_session_${uid}_${id}`);
   return {
+    async get(uid, id) {
+      if (!validId(id)) return null;
+      const snap = await ref(uid, id).get();
+      const session = snap.exists ? (snap.data() as LiveUsageSession) : null;
+      return session && session.uid === uid ? session : null;
+    },
     async create(input) {
       const id = randomUUID();
       const { budget, ...rest } = input;

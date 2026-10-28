@@ -603,6 +603,8 @@ export const api = {
     topicId?: string;
     /** B-PROV-12: the provider notice id the parent acknowledged. */
     noticeAck?: string;
+    /** B-AIOPS-02: renew this opened slice (its usage-session id) with a long chained one. */
+    renewOf?: string;
   } = {}, opts: { signal?: AbortSignal } = {}) =>
     liveStartupRequest<{ available: boolean; token?: string; model?: string; expiresAt?: string; usageSessionId?: string; reason?: string; systemInstruction?: string; speechConfig?: unknown;
       /** B-AIOPS-02: the server-reserved slice and what the family has left today. */

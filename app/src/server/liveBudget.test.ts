@@ -292,3 +292,70 @@ describe("P1-1 — the default slice is one minute: a failed start never costs t
     expect(results.filter((r) => r.ok)).toHaveLength(20);
   });
 });
+
+describe("round 3 — a long renewal CHAINED onto the slice it renews: two seams, charged = talk time", () => {
+  const renewFrom = async (store: InstanceType<typeof MemoryLiveBudgetStore>, plan: "free" | "plus", uid: string, renewOf: string) =>
+    store.reserve({ familyId: "fam", plan, uid, renewOf });
+
+  it("paid: 1 + 10 + 9 minutes; each renewal starts where the renewed slice ends, so the family is charged exactly the 20 minutes it can talk", async () => {
+    delete process.env.LIVE_RESERVATION_MINUTES;
+    const store = new MemoryLiveBudgetStore();
+    const first = await store.reserve({ familyId: "fam", plan: "plus", uid: "a" });
+    if (!first.ok) throw new Error("expected the first slice");
+    expect(first.reservation.ms).toBe(MIN);
+    vi.setSystemTime(T0 + 20_000); // the first exchange completed
+    const second = await renewFrom(store, "plus", "a", first.reservation.id);
+    if (!second.ok) throw new Error("expected a renewal");
+    expect(second.reservation.ms).toBe(10 * MIN);
+    expect(second.reservation.expiresAt).toBe(first.reservation.expiresAt + 10 * MIN);
+    vi.setSystemTime(second.reservation.expiresAt - 30_000);
+    const third = await renewFrom(store, "plus", "a", second.reservation.id);
+    if (!third.ok) throw new Error("expected the second renewal");
+    expect(third.reservation.ms).toBe(9 * MIN);
+    expect(third.reservation.expiresAt).toBe(T0 + 20 * MIN);
+    expect(third.remainingMs).toBe(0);
+    // Charged: 20 minutes. Talk window: T0 → T0 + 20 min.
+    vi.setSystemTime(T0 + 20 * MIN);
+    expect((await store.peek("fam", "plus")).committedMs).toBe(20 * MIN);
+  });
+
+  it("Free: 60 s, then the remaining 120 s chained — one seam, 180 s charged for 180 s of talk", async () => {
+    delete process.env.LIVE_RESERVATION_MINUTES;
+    const store = new MemoryLiveBudgetStore();
+    const first = await store.reserve({ familyId: "fam", plan: "free", uid: "a" });
+    if (!first.ok) throw new Error("expected the first slice");
+    vi.setSystemTime(T0 + 15_000);
+    const second = await renewFrom(store, "free", "a", first.reservation.id);
+    if (!second.ok) throw new Error("expected a renewal");
+    expect(second.reservation.ms).toBe(2 * MIN);
+    expect(second.reservation.expiresAt).toBe(T0 + 3 * MIN);
+    expect((await renewFrom(store, "free", "a", second.reservation.id)).ok).toBe(false);
+  });
+
+  it("a renewal must chain onto the caller's own live slice, inside its last 90 s, once — anything else is refused and reserves nothing", async () => {
+    delete process.env.LIVE_RESERVATION_MINUTES;
+    const store = new MemoryLiveBudgetStore();
+    const first = await store.reserve({ familyId: "fam", plan: "plus", uid: "a" });
+    if (!first.ok) throw new Error("expected the first slice");
+    const refused = async (r: Promise<Awaited<ReturnType<typeof store.reserve>>>) => {
+      const result = await r;
+      expect(result.ok).toBe(false);
+      expect(result.ok === false && result.code).toBe("renewal_invalid");
+    };
+    await refused(renewFrom(store, "plus", "b", first.reservation.id)); // another parent's slice
+    await refused(renewFrom(store, "plus", "a", "not-a-reservation"));
+    vi.setSystemTime(T0 + 30_000);
+    const ok = await renewFrom(store, "plus", "a", first.reservation.id);
+    expect(ok.ok).toBe(true);
+    await refused(renewFrom(store, "plus", "a", first.reservation.id)); // a slice renews once
+    if (!ok.ok) throw new Error("unreachable");
+    await refused(renewFrom(store, "plus", "a", ok.reservation.id)); // 10 minutes before its end: too early
+    vi.setSystemTime(ok.reservation.expiresAt + 1);
+    await refused(renewFrom(store, "plus", "a", ok.reservation.id)); // expired
+    const turn = await store.reserveTurn({ familyId: "fam", plan: "plus", uid: "a", holdMs: 30_000 });
+    if (!turn.ok) throw new Error("expected a turn");
+    await refused(renewFrom(store, "plus", "a", turn.reservation.id)); // a fallback turn is not a slice
+    const live = Object.values([...store.days.values()][0].reservations).filter((r) => r.kind !== "turn");
+    expect(live).toHaveLength(2);
+  });
+});

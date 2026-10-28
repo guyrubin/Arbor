@@ -4,9 +4,14 @@
  *
  *   - the microphone is opened BEFORE any token is minted (a refusal never
  *     spends voice time) and handed to the session, which owns it from there;
- *   - while the family has time left, the next slice is minted before this one
- *     ends and the socket is swapped at a quiet moment on the same microphone
- *     and playback (no "closed" phase, no connection-ended path);
+ *   - the short first slice is renewed with a LONG slice (chained server-side)
+ *     at the talk's first completed exchange, naming the slice it renews; later
+ *     slices renew 30 s before they end. So a 20-minute talk has two seams;
+ *   - a socket is swapped ONLY at a quiet moment (no model turn open, screened
+ *     or playing, no reply awaited, the parent silent) on the same microphone
+ *     and playback; forced only in the slice's last second;
+ *   - the new socket is seeded with every screened turn of the talk, so no
+ *     exchange is lost across a seam;
  *   - when the family's time is spent, the conversation ends calmly at the
  *     slice end through onAllowanceEnd — never onRemoteClose or onError, also
  *     when the provider closes the final slice itself a moment early;
@@ -37,7 +42,11 @@ class FakeAudioContext {
   destination = {};
   state = "running";
   createBuffer(_ch: number, len: number, rate: number) { return { duration: len / rate, copyToChannel() {} }; }
-  createBufferSource() { return { buffer: null, onended: null, connect() {}, start() {}, stop() {} }; }
+  createBufferSource() {
+    // Released audio "plays" for 2 s of the fake clock, then ends.
+    const src = { buffer: null, onended: null as null | (() => void), connect() {}, start() { setTimeout(() => src.onended?.(), 2_000); }, stop() {} };
+    return src;
+  }
   createMediaStreamSource() { return { connect() {}, disconnect() {} }; }
   createScriptProcessor() { return { connect() {}, disconnect() {}, onaudioprocess: null as unknown }; }
   close() { return Promise.resolve(); }
@@ -48,7 +57,7 @@ vi.stubGlobal("navigator", { mediaDevices: { getUserMedia: getUserMediaMock } })
 afterAll(() => vi.unstubAllGlobals());
 
 type Callbacks = { onopen: () => void; onmessage: (m: unknown) => void; onerror: (e: unknown) => void; onclose: () => void };
-type FakeSession = { close: ReturnType<typeof vi.fn>; sendRealtimeInput: ReturnType<typeof vi.fn>; cb: Callbacks; token: unknown; systemInstruction: unknown };
+type FakeSession = { close: ReturnType<typeof vi.fn>; sendRealtimeInput: ReturnType<typeof vi.fn>; sendClientContent: ReturnType<typeof vi.fn>; cb: Callbacks; token: unknown; systemInstruction: unknown };
 
 const T0 = Date.parse("2026-10-28T10:00:00.000Z");
 const iso = (ms: number) => new Date(ms).toISOString();
@@ -61,7 +70,7 @@ beforeEach(() => {
   vi.setSystemTime(T0);
   sessions = [];
   connectMock.mockReset().mockImplementation(async (args: { callbacks: Callbacks; config: { systemInstruction: unknown } }) => {
-    const session = { close: vi.fn(), sendRealtimeInput: vi.fn(), cb: args.callbacks, token: null, systemInstruction: args.config.systemInstruction };
+    const session = { close: vi.fn(), sendRealtimeInput: vi.fn(), sendClientContent: vi.fn(), cb: args.callbacks, token: null, systemInstruction: args.config.systemInstruction };
     sessions.push(session);
     return session;
   });
@@ -82,8 +91,16 @@ const handlersFor = () => {
 };
 const reporter = (log: string[], name: string) => async (event: string) => { log.push(`${name}:${event}`); };
 const slice = (n: number, endMs: number, remainingMs: number, log: string[]): LiveSlice => ({
-  token: `tok-${n}`, model: "m", systemInstruction: `pinned-${n}`, expiresAt: iso(endMs), remainingMs, reportUsage: reporter(log, `s${n}`),
+  token: `tok-${n}`, model: "m", systemInstruction: `pinned-${n}`, expiresAt: iso(endMs), remainingMs, reportUsage: reporter(log, `s${n}`), usageId: `u${n}`,
 });
+/** One complete, screened exchange on a socket: the parent's words, then the
+ *  model's audio + transcription and turnComplete (the guard releases it). */
+const exchange = async (session: FakeSession, user: string, model: string) => {
+  session.cb.onmessage({ serverContent: { inputTranscription: { text: user } } });
+  session.cb.onmessage({ data: btoa("\x00\x01\x00\x01"), serverContent: { outputTranscription: { text: model } } });
+  session.cb.onmessage({ serverContent: { turnComplete: true } });
+  await vi.advanceTimersByTimeAsync(0);
+};
 
 describe("the microphone opens before the mint and is handed to the session", () => {
   it("a supplied stream is used as is (no second permission request) and released when the session ends", async () => {
@@ -111,49 +128,132 @@ describe("the microphone opens before the mint and is handed to the session", ()
   });
 });
 
-describe("renewal: the next slice is minted before this one ends, invisibly", () => {
-  it("mints 8 s before the end, swaps at a quiet moment on the same microphone, and closes the old socket — no closed phase, no remote close", async () => {
+describe("renewal rule (round 3): one long chained renewal after the first exchange, swapped only at a quiet moment, seeded", () => {
+  it("the short first slice renews at the talk's first completed exchange — not near its end — naming its own usage id", async () => {
     const log: string[] = [];
     const { t, stream } = micStream();
     const { seen, handlers } = handlersFor();
-    const renew = vi.fn(async () => slice(2, T0 + 120_000, 60_000, log));
-    const ctl = await startGeminiLive({ token: "tok-1", model: "m", systemInstruction: "pinned-1", stream,
-      expiresAt: iso(T0 + 60_000), remainingMs: 120_000, renew, reportUsage: reporter(log, "s1") }, handlers);
-    expect(sessions).toHaveLength(1);
-    await vi.advanceTimersByTimeAsync(51_000);
+    const renew = vi.fn(async () => slice(2, T0 + 660_000, 540_000, log));
+    const ctl = await startGeminiLive({ token: "tok-1", model: "m", systemInstruction: "pinned-1", stream, usageId: "u1",
+      expiresAt: iso(T0 + 60_000), remainingMs: 1_140_000, renew, reportUsage: reporter(log, "s1") }, handlers);
+    await vi.advanceTimersByTimeAsync(5_000);
     expect(renew).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(1_500);
-    expect(renew).toHaveBeenCalledTimes(1);
-    await vi.waitFor(() => expect(sessions).toHaveLength(2));
+    await exchange(sessions[0], "He would not put his shoes on", "Try offering two pairs to choose from.");
+    await vi.waitFor(() => expect(renew).toHaveBeenCalledWith("u1"));
+    // Swapped once the reply has played and the parent is quiet, long before the slice ends.
+    await vi.advanceTimersByTimeAsync(4_000);
     await vi.waitFor(() => expect(sessions[0].close).toHaveBeenCalled());
+    expect(Date.now()).toBeLessThan(T0 + 20_000);
+    expect(sessions).toHaveLength(2);
     expect(sessions[1].systemInstruction).toBe("pinned-2");
     expect(getUserMediaMock).not.toHaveBeenCalled();
     expect(t.stopped).toBe(false);
     await vi.waitFor(() => expect(log).toEqual(expect.arrayContaining(["s1:opened", "s1:closed", "s2:opened"])));
-    // The old socket's late close and frames are ignored; the parent saw nothing.
-    sessions[0].cb.onclose();
+    sessions[0].cb.onclose(); // the retired socket's late close is ignored
     expect(seen.phases).not.toContain("closed");
     expect(seen.remoteClose + seen.errors + seen.allowanceEnd).toBe(0);
     ctl.stop();
     expect(t.stopped).toBe(true);
   });
 
-  it("waits for a quiet moment: while the model's turn is open the swap holds, then happens before the slice ends", async () => {
+  it("no exchange is lost: the new socket is seeded with every screened turn of the talk, as history it does not answer", async () => {
+    const log: string[] = [];
+    const { stream } = micStream();
+    const { handlers } = handlersFor();
+    const renew = vi.fn(async () => slice(2, T0 + 660_000, 540_000, log));
+    const ctl = await startGeminiLive({ token: "tok-1", model: "m", systemInstruction: "pinned-1", stream, usageId: "u1",
+      expiresAt: iso(T0 + 60_000), remainingMs: 1_140_000, renew }, handlers);
+    await exchange(sessions[0], "Bedtime was hard again", "That sounds tiring. What helped last time?");
+    await vi.advanceTimersByTimeAsync(4_000);
+    await vi.waitFor(() => expect(sessions[1]?.sendClientContent).toHaveBeenCalled());
+    expect(sessions[1].sendClientContent).toHaveBeenCalledWith({
+      turns: [
+        { role: "user", parts: [{ text: "Bedtime was hard again" }] },
+        { role: "model", parts: [{ text: "That sounds tiring. What helped last time?" }] },
+      ],
+      turnComplete: false,
+    });
+    ctl.stop();
+  });
+
+  it("a later (long) slice renews 30 s before it ends, and the talk carries on with every turn seeded again", async () => {
     const log: string[] = [];
     const { stream } = micStream();
     const { seen, handlers } = handlersFor();
-    const renew = vi.fn(async () => slice(2, T0 + 120_000, 60_000, log));
-    const ctl = await startGeminiLive({ token: "tok-1", model: "m", systemInstruction: "pinned-1", stream,
-      expiresAt: iso(T0 + 60_000), remainingMs: 120_000, renew }, handlers);
-    await vi.advanceTimersByTimeAsync(50_000);
-    // The model starts a turn (transcription arrives, not yet complete).
-    sessions[0].cb.onmessage({ serverContent: { outputTranscription: { text: "One more idea" } } });
-    await vi.advanceTimersByTimeAsync(3_000);
+    const renew = vi.fn()
+      .mockImplementationOnce(async () => slice(2, T0 + 660_000, 540_000, log))
+      .mockImplementationOnce(async () => slice(3, T0 + 1_200_000, 0, log));
+    const ctl = await startGeminiLive({ token: "tok-1", model: "m", systemInstruction: "pinned-1", stream, usageId: "u1",
+      expiresAt: iso(T0 + 60_000), remainingMs: 1_140_000, renew }, handlers);
+    await exchange(sessions[0], "First", "First answer.");
+    await vi.advanceTimersByTimeAsync(4_000);
+    await vi.waitFor(() => expect(sessions).toHaveLength(2));
+    await vi.advanceTimersByTimeAsync(T0 + 629_000 - Date.now());
+    expect(renew).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1_500);
+    expect(renew).toHaveBeenLastCalledWith("u2");
+    await vi.waitFor(() => expect(sessions).toHaveLength(3));
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(sessions[1].close).toHaveBeenCalled();
+    expect(sessions[2].sendClientContent).toHaveBeenCalledWith(expect.objectContaining({ turnComplete: false }));
+    // Two seams in a 20-minute talk; the last slice has no time left, so it ends calmly at 20:00.
+    expect(seen.remoteClose + seen.errors).toBe(0);
+    await vi.advanceTimersByTimeAsync(T0 + 1_200_000 - Date.now());
+    expect(seen.allowanceEnd).toBe(1);
+    expect(renew).toHaveBeenCalledTimes(2);
+    ctl.stop();
+  });
+
+  it("never swaps while the model's turn is open, being screened or playing, or while the parent is speaking", async () => {
+    const log: string[] = [];
+    const { stream } = micStream();
+    const { handlers } = handlersFor();
+    const renew = vi.fn(async () => slice(2, T0 + 660_000, 540_000, log));
+    const ctl = await startGeminiLive({ token: "tok-1", model: "m", systemInstruction: "pinned-1", stream, usageId: "u1",
+      expiresAt: iso(T0 + 60_000), remainingMs: 1_140_000, renew }, handlers);
+    await exchange(sessions[0], "Can I ask more?", "Of course.");
+    // Immediately the model starts a long new turn (the parent asked again): hold.
+    sessions[0].cb.onmessage({ serverContent: { inputTranscription: { text: "And at dinner?" } } });
+    sessions[0].cb.onmessage({ serverContent: { outputTranscription: { text: "At dinner, keep it simple" } } });
+    await vi.advanceTimersByTimeAsync(20_000);
     expect(sessions).toHaveLength(2);
     expect(sessions[0].close).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(6_000); // past end − 1 s: the forced swap
+    // The turn completes and plays out: then, and only then, the swap.
+    sessions[0].cb.onmessage({ data: btoa("\x00\x01\x00\x01"), serverContent: { turnComplete: true } });
+    await vi.advanceTimersByTimeAsync(4_000);
+    expect(sessions[0].close).toHaveBeenCalled();
+    ctl.stop();
+  });
+
+  it("the swap is forced only in the slice's last second, where the provider would end the socket anyway", async () => {
+    const log: string[] = [];
+    const { stream } = micStream();
+    const { seen, handlers } = handlersFor();
+    const renew = vi.fn(async () => slice(2, T0 + 660_000, 540_000, log));
+    const ctl = await startGeminiLive({ token: "tok-1", model: "m", systemInstruction: "pinned-1", stream, usageId: "u1",
+      expiresAt: iso(T0 + 60_000), remainingMs: 1_140_000, renew }, handlers);
+    await exchange(sessions[0], "One", "Two.");
+    // The model never stops talking (a turn stays open to the end of the slice).
+    sessions[0].cb.onmessage({ serverContent: { outputTranscription: { text: "and another thing" } } });
+    await vi.advanceTimersByTimeAsync(T0 + 58_500 - Date.now());
+    expect(sessions[0].close).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1_000);
     expect(sessions[0].close).toHaveBeenCalled();
     expect(seen.remoteClose + seen.errors + seen.allowanceEnd).toBe(0);
+    ctl.stop();
+  });
+
+  it("with no exchange in the first slice, it still renews 30 s before that slice ends", async () => {
+    const log: string[] = [];
+    const { stream } = micStream();
+    const { handlers } = handlersFor();
+    const renew = vi.fn(async () => slice(2, T0 + 660_000, 540_000, log));
+    const ctl = await startGeminiLive({ token: "tok-1", model: "m", systemInstruction: "pinned-1", stream, usageId: "u1",
+      expiresAt: iso(T0 + 60_000), remainingMs: 1_140_000, renew }, handlers);
+    await vi.advanceTimersByTimeAsync(29_000);
+    expect(renew).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1_500);
+    expect(renew).toHaveBeenCalledWith("u1");
     ctl.stop();
   });
 });
@@ -182,10 +282,10 @@ describe("the calm end at the family's allowance", () => {
     const renew = vi.fn(async () => null);
     await startGeminiLive({ token: "tok-1", model: "m", systemInstruction: "pinned", stream,
       expiresAt: iso(T0 + 60_000), remainingMs: 120_000, renew }, handlers);
-    await vi.advanceTimersByTimeAsync(53_000);
+    await vi.advanceTimersByTimeAsync(31_000);
     expect(renew).toHaveBeenCalledTimes(1);
     expect(seen.allowanceEnd).toBe(0);
-    await vi.advanceTimersByTimeAsync(7_000);
+    await vi.advanceTimersByTimeAsync(29_000);
     expect(seen.allowanceEnd).toBe(1);
     expect(seen.remoteClose + seen.errors).toBe(0);
   });

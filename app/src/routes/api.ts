@@ -1950,8 +1950,25 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       ]);
       entitlementPlan = entitlement.plan;
       familyId = resolvedFamilyId;
-      const outcome = await liveBudget.reserve({ familyId, plan: entitlement.plan, uid: actor.uid });
+      // B-AIOPS-02: a renewal names the caller's OWN usage session; only one
+      // whose audio actually opened may chain a long slice onto its
+      // reservation. Anything else is refused before anything is reserved.
+      const renewOf = typeof req.body?.renewOf === "string" ? req.body.renewOf : undefined;
+      let renewReservation: string | undefined;
+      if (renewOf !== undefined) {
+        const previous = await liveUsage.get(actor.uid, renewOf);
+        if (!previous || previous.openedAt === undefined || !previous.budget) {
+          res.status(409).json({ available: false, code: "live_renewal_invalid", reason: "Live voice is not available right now." });
+          return;
+        }
+        renewReservation = previous.budget.reservationId;
+      }
+      const outcome = await liveBudget.reserve({ familyId, plan: entitlement.plan, uid: actor.uid, ...(renewReservation ? { renewOf: renewReservation } : {}) });
       setLiveQuotaHeaders(res, outcome);
+      if (outcome.ok === false && outcome.code === "renewal_invalid") {
+        res.status(409).json({ available: false, code: "live_renewal_invalid", reason: "Live voice is not available right now." });
+        return;
+      }
       if (!outcome.ok) {
         // B-KID-05 posture: exhaustion is not "busy" — no Retry-After. The
         // typed coach and the crisis path stay open; only realtime voice rests.
@@ -2046,7 +2063,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // B-AIOPS-03: a delivered token is the mint path's healthy signal, and
       // its reserved slice is the spend the prepay balance is read from.
       alerts.ok("live_unavailable", ["mint_failed", "eu_mint_failed", "residency_denied", "budget_store_unavailable"]);
-      void prepay.onLiveReserved(reservation.ms);
+      // Only the global AI Studio route is paid from the prepaid balance.
+      if (!euPath) void prepay.onLiveReserved(reservation.ms);
       recordLiveBudgetRollup({ kind: "live", plan: entitlementPlan, reservedMs: reservation.ms });
       res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime, systemInstruction, speechConfig, usageSessionId,
         budget: { reservedMs: reservation.ms, remainingMs: reserved.remainingMs, allowanceMs: reserved.allowanceMs, resetAt: new Date(reserved.resetAt).toISOString() } });

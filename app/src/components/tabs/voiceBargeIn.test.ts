@@ -180,7 +180,7 @@ describe("S5 — every Talk tap paints a visible outcome", () => {
     expect(toggle).toMatch(/await import\("\.\.\/\.\.\/lib\/geminiLiveClient"\);\s*if \(!attempt\.isCurrent\(\)\) return;/);
     expect(toggle).toMatch(/await requestLiveMicrophone\(attempt\.signal\);\s*if \(!attempt\.isCurrent\(\)\) \{ releaseMic\(\); return; \}/);
     expect(toggle).toMatch(/await mintLive\(\);\s*if \(!attempt\.isCurrent\(\)\) \{ releaseMic\(\); return; \}/);
-    expect(toggle).toMatch(/const mintLive = \(\) => api\.liveToken\([\s\S]{0,350}\{ signal: attempt\.signal \}\);/);
+    expect(toggle).toMatch(/const mintLive = \(renewOf\?: string\) => api\.liveToken\([\s\S]{0,400}\{ signal: attempt\.signal \}\);/);
     expect(toggle).toContain("signal: attempt.signal");
     expect(toggle).toMatch(/if \(!attempt\.adopt\(ctl\)\) return;\s*liveCtlRef\.current = ctl;/);
     expect(toggle).toMatch(/if \(liveClosed\) \{ ctl\.stop\(\); attempt\.end\(\); return; \}/);

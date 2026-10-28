@@ -249,3 +249,31 @@ describe("B-AIOPS-02 P1-1 — the default slice is one minute", () => {
     }
   });
 });
+
+describe("round 3 — renewal at the mint route", () => {
+  it("a renewal names the caller's own OPENED usage session; unopened or someone else's is a 409 that reserves and mints nothing", async () => {
+    delete process.env.LIVE_RESERVATION_MINUTES;
+    try {
+      const first = await mint("parent-a");
+      expect(first.status).toBe(200);
+      expect(first.body.budget.reservedMs).toBe(60_000);
+      const created = sdk.create.mock.calls.length;
+      const unopened = await mint("parent-a", { renewOf: first.body.usageSessionId });
+      expect(unopened.status).toBe(409);
+      expect(unopened.body.code).toBe("live_renewal_invalid");
+      expect((await report("parent-a", first.body.usageSessionId, "opened")).status).toBe(200);
+      const foreign = await mint("parent-b", { renewOf: first.body.usageSessionId });
+      expect(foreign.status).toBe(409);
+      expect(sdk.create.mock.calls.length).toBe(created);
+      const renewed = await mint("parent-a", { renewOf: first.body.usageSessionId });
+      expect(renewed.status).toBe(200);
+      // 10 paid minutes in this file: 1 + the remaining 9, chained onto the first slice.
+      expect(renewed.body.budget).toMatchObject({ reservedMs: 9 * 60_000, remainingMs: 0 });
+      expect(Date.parse(renewed.body.expiresAt) - Date.parse(first.body.expiresAt)).toBe(9 * 60_000);
+      const arg = sdk.create.mock.calls.at(-1)![0] as any;
+      expect(arg.config.expireTime).toBe(renewed.body.expiresAt);
+    } finally {
+      process.env.LIVE_RESERVATION_MINUTES = "5";
+    }
+  });
+});

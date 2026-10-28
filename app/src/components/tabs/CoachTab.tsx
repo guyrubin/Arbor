@@ -850,9 +850,11 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     let micStream: MediaStream | null = null;
     const releaseMic = () => { releaseTracks(micStream); micStream = null; };
     // The ONE mint: the first slice and every renewal carry the same pinned
-    // context (built fresh, so a renewal includes the conversation so far)
-    // and the same acknowledged notice.
-    const mintLive = () => api.liveToken({ ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}), language: getAiLanguage(), childId: childProfile.id, childProfile, ...buildVoiceContext(voiceMessagesRef.current, childProfile.id), noticeAck: noticeId }, { signal: attempt.signal });
+    // context — the conversation as it stood when this talk began (the Live
+    // client seeds each new socket with the talk itself) — and the same
+    // acknowledged notice. A renewal names the slice it renews (`renewOf`).
+    const talkContext = buildVoiceContext(voiceMessagesRef.current, childProfile.id);
+    const mintLive = (renewOf?: string) => api.liveToken({ ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}), language: getAiLanguage(), childId: childProfile.id, childProfile, ...talkContext, noticeAck: noticeId, ...(renewOf ? { renewOf } : {}) }, { signal: attempt.signal });
     type MintedLive = Awaited<ReturnType<typeof mintLive>>;
     const usageFor = (minted: MintedLive) => minted.usageSessionId
       ? (event: "opened" | "heartbeat" | "closed" | "failed") => api.liveUsage(minted.usageSessionId!, event)
@@ -878,6 +880,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               signal: attempt.signal,
               token: fresh.token,
               reportUsage: usageFor(fresh),
+              usageId: fresh.usageSessionId,
               model: fresh.model,
               systemInstruction: fresh.systemInstruction || "",
               speechConfig: fresh.speechConfig,
@@ -887,12 +890,12 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               // spent allowance ends the conversation calmly (onAllowanceEnd).
               expiresAt: fresh.expiresAt,
               remainingMs: fresh.budget?.remainingMs,
-              renew: async () => {
+              renew: async (renewOf) => {
                 try {
-                  const next = await mintLive();
+                  const next = await mintLive(renewOf);
                   if (!(next.available && next.token && next.model)) throw new Error("live-renew-unavailable");
                   return { token: next.token, model: next.model, systemInstruction: next.systemInstruction || "", speechConfig: next.speechConfig,
-                    expiresAt: next.expiresAt, remainingMs: next.budget?.remainingMs, reportUsage: usageFor(next) };
+                    expiresAt: next.expiresAt, remainingMs: next.budget?.remainingMs, reportUsage: usageFor(next), usageId: next.usageSessionId };
                 } catch (renewError) {
                   if (isLiveResting(renewError)) return null;
                   throw renewError;
@@ -1892,6 +1895,11 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       {visible && voiceReviewOpen && voicePhase === "off" && <VoiceCloseCard
         sessionId={voiceSessionIdRef.current} proposals={conversationProposals} language={uiLang}
         pending={proposalPending > 0} failed={proposalFailed} busy={!!proposalBusyId} onClose={discardVoiceReview}>
+        {/* B-AIOPS-02: when the family's voice time ended the talk, the review
+            says so first (the same resting words, never an error). */}
+        {voiceResting && <p role="status" data-testid="voice-review-resting" className="text-xs leading-relaxed pb-2" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+          {t("elev.aierrors.voiceResting.title")}. {t("elev.aierrors.voiceResting.body")}
+        </p>}
         <ConversationProposalTray
           inline
           proposals={conversationProposals}

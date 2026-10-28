@@ -56,6 +56,21 @@ export const LIVE_SLICE_MAX_MS = 5 * MINUTE_MS;
 export const LIVE_SLICE_DEFAULT_MINUTES = 1;
 export const liveSliceMs = (): number =>
   Math.min(LIVE_SLICE_MAX_MS, Math.max(MINUTE_MS, envNum("LIVE_RESERVATION_MINUTES", LIVE_SLICE_DEFAULT_MINUTES) * MINUTE_MS));
+/** A RENEWAL of a slice whose audio session actually opened is long: up to
+ *  ten minutes (the provider's own connection lifetime), never more than 15,
+ *  never more than the family has left. It is CHAINED: it starts where the
+ *  slice it renews ends, so the minutes charged are the minutes the family can
+ *  talk (the early overlap on the new token is not charged twice). A 20-minute
+ *  paid talk is 1 + 10 + 9 minutes: two seams, the first before anyone spoke. */
+export const LIVE_RENEWAL_DEFAULT_MINUTES = 10;
+export const LIVE_RENEWAL_MAX_MS = 15 * MINUTE_MS;
+export const liveRenewalSliceMs = (): number =>
+  Math.min(LIVE_RENEWAL_MAX_MS, Math.max(MINUTE_MS, envNum("LIVE_RENEWAL_MINUTES", LIVE_RENEWAL_DEFAULT_MINUTES) * MINUTE_MS));
+/** A renewal is accepted only this close to the end of the slice it renews,
+ *  once per slice: at most two tokens of one family overlap, never longer. */
+export const LIVE_RENEW_WINDOW_MS = 90_000;
+/** The refusal code for a renewal that does not chain onto a live slice. */
+export const LIVE_RENEWAL_INVALID = "renewal_invalid";
 /** A remainder shorter than this cannot carry a conversation: treat as spent. */
 export const LIVE_MIN_SLICE_MS = 30_000;
 /** Expiry reconciliation policy. "none" (default): an expired reservation is
@@ -98,6 +113,8 @@ export type LiveReservation = {
   closed: boolean;
   /** Charged amount once the token has expired; null while live. */
   settledMs: number | null;
+  /** The renewal chained onto this slice (one per slice). */
+  renewedBy?: string;
 };
 export type LiveBudgetDay = {
   familyId: string;
@@ -142,9 +159,9 @@ export const committedMs = (doc: LiveBudgetDay): number =>
 
 export type ReservePlan = { ok: true; ms: number } | { ok: false; remainingMs: number };
 /** Size the next slice from what the family has left today. */
-export function planReservation(doc: LiveBudgetDay, plan: Plan): ReservePlan {
+export function planReservation(doc: LiveBudgetDay, plan: Plan, sliceMs: number = liveSliceMs()): ReservePlan {
   const remainingMs = Math.max(0, liveAllowanceMs(plan) - committedMs(doc));
-  const ms = Math.min(liveSliceMs(), remainingMs);
+  const ms = Math.min(sliceMs, remainingMs);
   if (ms >= LIVE_MIN_SLICE_MS) return { ok: true, ms };
   return { ok: false, remainingMs };
 }
@@ -188,13 +205,15 @@ export function settleTurnCharge(doc: LiveBudgetDay, id: string, chargedMs: numb
   };
 }
 
-export type ReserveInput = { familyId: string; plan: Plan; uid: string };
+/** `renewOf`: the reservation id of a slice whose audio session opened; the
+ *  route resolves it from the caller's own usage session (never trusted raw). */
+export type ReserveInput = { familyId: string; plan: Plan; uid: string; renewOf?: string };
 /** A fallback turn: `holdMs` is how long the server may take before the turn
  *  is treated as crashed and charged its full reserve. */
 export type ReserveTurnInput = ReserveInput & { holdMs: number };
 export type ReserveResult =
   | { ok: true; reservation: { id: string; day: string; ms: number; expiresAt: number }; allowanceMs: number; remainingMs: number; resetAt: number }
-  | { ok: false; code: typeof LIVE_RESTING; allowanceMs: number; remainingMs: number; resetAt: number };
+  | { ok: false; code: typeof LIVE_RESTING | typeof LIVE_RENEWAL_INVALID; allowanceMs: number; remainingMs: number; resetAt: number };
 export type BudgetSnapshot = { allowanceMs: number; committedMs: number; remainingMs: number; resetAt: number };
 
 export interface LiveBudgetStore {
@@ -218,7 +237,15 @@ const reserveWith = (
   const settled = settleExpired(doc, now);
   const allowanceMs = liveAllowanceMs(input.plan);
   const resetAt = liveBudgetDayEnd(settled.day);
-  const planned = planReservation(settled, input.plan);
+  // A renewal chains onto the caller's own live slice, inside the window
+  // before it ends, once; anything else is refused and mints nothing.
+  const prev = input.renewOf !== undefined ? settled.reservations[input.renewOf] : undefined;
+  if (input.renewOf !== undefined && (!prev || prev.uid !== input.uid || prev.kind === "turn" || prev.settledMs !== null
+    || prev.renewedBy || prev.expiresAt <= now || prev.expiresAt - now > LIVE_RENEW_WINDOW_MS)) {
+    const remainingMs = Math.max(0, allowanceMs - committedMs(settled));
+    return { doc: settled, result: { ok: false, code: LIVE_RENEWAL_INVALID, allowanceMs, remainingMs, resetAt } };
+  }
+  const planned = planReservation(settled, input.plan, prev ? liveRenewalSliceMs() : liveSliceMs());
   if (planned.ok === false) {
     const remainingMs = planned.remainingMs;
     return { doc: settled, result: { ok: false, code: LIVE_RESTING, allowanceMs, remainingMs, resetAt } };
@@ -227,12 +254,15 @@ const reserveWith = (
   // A Live token is bounded by its slice; a turn reserves a fixed amount
   // (never more than what remains) and is held for the route's deadline.
   const ms = slice.ms === undefined ? planned.ms : Math.min(slice.ms, planned.ms);
-  const expiresAt = now + (slice.kind === "turn" ? Math.max(1_000, slice.holdMs ?? ms) : ms);
+  // A chained renewal starts where the renewed slice ends.
+  const startsAt = prev ? prev.expiresAt : now;
+  const expiresAt = startsAt + (slice.kind === "turn" ? Math.max(1_000, slice.holdMs ?? ms) : ms);
   const reservation: LiveReservation = {
     id, ...(slice.kind === "turn" ? { kind: "turn" as const } : {}), uid: input.uid, ms, startedAt: now, expiresAt,
     observedMs: 0, incomplete: false, closed: false, settledMs: null,
   };
-  const next = { ...settled, reservations: { ...settled.reservations, [id]: reservation }, updatedAt: now };
+  const reservations = { ...settled.reservations, [id]: reservation, ...(prev && input.renewOf ? { [input.renewOf]: { ...prev, renewedBy: id } } : {}) };
+  const next = { ...settled, reservations, updatedAt: now };
   return {
     doc: next,
     result: { ok: true, reservation: { id, day: next.day, ms, expiresAt: reservation.expiresAt },
