@@ -4309,8 +4309,11 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       // (lib/storage.ts writes users/{uid}/children/{childId}/photos/...), so a
       // sibling's data is never touched.
       let storageFiles = 0;
-      // B-BOOK-20: the receipt names each registered prefix's count.
-      const storage = { photos: 0, books: 0 };
+      // B-BOOK-20: the receipt names each registered prefix's count. Only set
+      // when the bucket was actually checked: with no bucket configured the
+      // Storage erase is SKIPPED, and the client's receipt must then read
+      // "Not reached", never "erased · 0" (round 4; production always has one).
+      let storage: { photos: number; books: number } | undefined;
       let storageNote: string | undefined;
       const bucketName = config.storageBucket;
       if (!bucketName) {
@@ -4325,14 +4328,14 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
           await bucket.deleteFiles({ prefix: `users/${uid}/children/${childId}/` });
           const bookFiles = await eraseChildBookAssets(bucket as unknown as BookAssetBucket, childId);
           storageFiles = photoFiles.length + bookFiles;
-          storage.photos = photoFiles.length;
-          storage.books = bookFiles;
+          storage = { photos: photoFiles.length, books: bookFiles };
           storageNote = `storage prefixes users/{uid}/children/${childId}/ and children/${childId}/books/ removed`;
         } catch (err: unknown) {
           // A bucket that was never provisioned is a clean no-op, not a failure.
           const message = err instanceof Error ? err.message : String(err);
           if (!/not exist|notFound|404/i.test(message)) throw err;
           storageNote = "bucket not provisioned";
+          storage = { photos: 0, books: 0 }; // checked: the bucket holds nothing
         }
       }
       logger.info("GDPR erasure executed", { requestId: requestIdOf(req), childId, memoryEvents, shares, consents, consultRequests, storageFiles });

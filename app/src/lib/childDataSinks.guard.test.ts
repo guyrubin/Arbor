@@ -209,8 +209,9 @@ describe("Storage · every module and prefix is registered", () => {
     const erase = api.slice(start, api.indexOf("router.post(\"/account/delete\"", start));
     expect(erase).toContain("deleteFiles({ prefix: `users/${uid}/children/${childId}/` })");
     expect(erase).toContain("eraseChildBookAssets(");
-    expect(erase).toContain("storage.photos = photoFiles.length;");
-    expect(erase).toContain("storage.books = bookFiles;");
+    expect(erase).toContain("storage = { photos: photoFiles.length, books: bookFiles };");
+    // Round 4: no per-prefix count is claimed when the Storage erase was skipped.
+    expect(erase).toMatch(/let storage: \{ photos: number; books: number \} \| undefined;/);
   });
 });
 

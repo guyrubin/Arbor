@@ -115,10 +115,11 @@ describe("B-GA-09 · server export and erase cover every server-held category ab
     const base = await serve(f);
     const res = await fetch(`${base}/api/privacy/erase`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ childId: CHILD }) });
     expect(res.status).toBe(200);
-    const body = await res.json() as { erased: Record<string, number>; storage: Record<string, number>; storageNote?: string };
+    const body = await res.json() as { erased: Record<string, number>; storage?: Record<string, number>; storageNote?: string };
     expect(body.erased).toEqual({ memoryEvents: 1, shares: 1, consents: 1, consultRequests: 2, storageFiles: 0 });
-    // No bucket in the test config: each registered prefix is still named.
-    expect(body.storage).toEqual({ photos: 0, books: 0 });
+    // No bucket in the test config: the Storage erase was SKIPPED, so no
+    // per-prefix count is claimed (the client receipt reads "Not reached").
+    expect(body.storage).toBeUndefined();
     expect(body.storageNote).toMatch(/no storage bucket/);
     expect(await f.consentStore.list(CHILD)).toEqual([]);
     expect(await f.consultStore.listByChild(OWNER, CHILD)).toEqual([]);
