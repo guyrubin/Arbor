@@ -198,6 +198,8 @@ export interface ShareGrant {
   recipientEmail: string;
   role: ShareRole;
   scopes: string[];
+  /** B-CAREPRO-41: the domain ceiling the server stored (sharing/shares.ts). */
+  domains?: string[];
   createdAt: string;
   expiresAt: string | null;
   revokedAt: string | null;

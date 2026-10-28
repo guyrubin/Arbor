@@ -23,7 +23,8 @@ import type { ArborConfig } from "../config/env.js";
 import type { MemoryStore } from "../memory/types.js";
 import { foldMemoryEvents, isMemoryExpired } from "../memory/memoryService.js";
 import { grantScopes, isShareActive, type ShareRole, type ShareStore } from "../sharing/shares.js";
-import { buildPacketInput, buildSharedScopePacket, type RawChildRecord, type ConsultPacket } from "../consult/packet.js";
+import { buildGrantPacket, type RawChildRecord, type ConsultPacket } from "../consult/packet.js";
+import { grantDomainCeiling } from "../lib/shareDomains.js";
 import { ClinicalLanguageError } from "../lib/clinicalScan.js";
 
 /** The RAW child record the recipient view is built from. LC-17b: it is the
@@ -99,11 +100,20 @@ export async function resolveSharedPacket(opts: {
     return { status: 403, error: "This share does not grant any recognized scopes" };
   }
 
+  // B-CAREPRO-41: a domain ceiling that resolves to no known domain unlocks
+  // nothing (fail closed) — never the whole record.
+  const ceiling = grantDomainCeiling(grant);
+  if (ceiling && ceiling.length === 0) {
+    return { status: 403, error: "This share does not grant any recognized areas" };
+  }
+
   const record = await source.load(grant.ownerUid, grant.childId);
   if (!record) return { status: 404, error: "The shared child record is not available" };
 
   try {
-    const packet = buildSharedScopePacket(scopes, grant.role === "professional", buildPacketInput(record, now));
+    // The SAME builder the parent's preview calls (consult/packet buildGrantPacket):
+    // domain ceiling → shared assembler → scope packet + guards.
+    const packet = buildGrantPacket({ role: grant.role, scopes, domains: grant.domains }, record, now);
     return {
       status: 200,
       view: {

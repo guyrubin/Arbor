@@ -24,7 +24,8 @@ import { coParentCopy } from "../../lib/i18nElevation/coParent";
 import { CoParentRequests } from "../../lib/coParentRequests";
 // LC-17: the review step shows the RECIPIENT'S ACTUAL VIEW, built by the same
 // function the server uses for them — not a list of scope labels.
-import { buildPacketInput, buildSharedScopePacket, itemParts, sectionTitle, sectionNote, type PacketItem } from "../../consult/packet";
+import { buildGrantPacket, buildPacketInput, buildSharedScopePacket, itemParts, sectionTitle, sectionNote, type PacketItem } from "../../consult/packet";
+import { defaultGrantDomains } from "../../lib/shareDomains";
 import type { UiLang } from "../../lib/i18n";
 
 /** W2-CAREPRO c2 r2 — one preview row per thing the recipient reads, every
@@ -171,13 +172,13 @@ export default function TrustedSharing() {
       // came to drop every log `trigger` (so the parent approved a preview with
       // no triggers section while the recipient read their own trigger words)
       // and to derive an age the server did not.
-      const packet = buildSharedScopePacket(
-        draft.scopes,
-        draft.role === "professional",
-        buildPacketInput(
-          { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems, books: booksCol.items },
-          Date.now()
-        )
+      // B-CAREPRO-41: the grant the server will store (a professional report
+      // grant defaults to its profession's domains + family), through the ONE
+      // grant builder the recipient's view runs — so this preview IS that view.
+      const packet = buildGrantPacket(
+        { role: draft.role, scopes: draft.scopes, domains: defaultGrantDomains(draft.role, draft.scopes) },
+        { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems, books: booksCol.items },
+        Date.now()
       );
       return { sections: packet.sections, blocked: false };
     } catch (err) {

@@ -19,7 +19,8 @@ import { MOMENT_BEHAVIOR_TYPE, behaviorTypeLabel, isIncidentType } from "../cont
 import { factMonthLabel } from "../lib/factsAsOf";
 import { languageName } from "../lib/languageName";
 import { milestonesNoticedSince, momentsSince as recordMomentsSince } from "../lib/record/counts";
-import { DOMAINS, type DomainId, type Profession } from "../lib/domains/registry";
+import { DOMAINS, toDomains, type DomainId, type Profession } from "../lib/domains/registry";
+import { grantDomainCeiling } from "../lib/shareDomains";
 import { milestoneShelf, shelfDef, shelfLabel, type ShelfId } from "../lib/shelves/registry";
 import { toObservations, type ObservationChild } from "../lib/observations";
 import { milestoneAgeLine } from "../lib/milestoneAgeLine";
@@ -1353,6 +1354,64 @@ export function buildSharedScopePacket(
     : { audience: "teacher", sections: [...allowed], dataCeiling: CONSULT_PRESETS.teacher.dataCeiling, clinicalTermScan: true };
   assertWithinCeiling(guardPreset, packetToText(capped));
   return capped;
+}
+
+/* ── B-CAREPRO-41 — the grant's DOMAIN ceiling ─────────────────────────────
+ * A domain-scoped grant (lib/shareDomains) reads only the record that belongs
+ * to its domains, BEFORE any section is built, so every count and line the
+ * recipient reads is drawn from those areas alone:
+ *   · a milestone through its catalogue domain (registry `developmental`);
+ *   · a moment through the shelf the parent confirmed (B-LOOP-06), else its
+ *     behaviour type (registry `behavior`; a plain Moment has none);
+ *   · the setting line through the family context;
+ * and everything that names no domain — plans, approved facts, Everyday
+ * plans, strengths, challenges, goals — is left out (fail closed). */
+const SHELF_DOMAIN = (shelf: unknown): DomainId | null => {
+  if (typeof shelf !== "string") return null;
+  try { return shelfDef(shelf as ShelfId).domain; } catch { return null; }
+};
+
+export function scopeRecordToDomains(record: RawChildRecord, domains: readonly DomainId[]): RawChildRecord {
+  const allowed = new Set<DomainId>(domains);
+  const any = (ids: readonly DomainId[]) => ids.some((d) => allowed.has(d));
+  const logDomains = (l: RawPacketLog): DomainId[] => {
+    const shelf = SHELF_DOMAIN((l as unknown as { shelf?: unknown }).shelf);
+    return shelf ? [shelf] : toDomains("behavior", rawStr(l.behaviorType));
+  };
+  const family = allowed.has("family");
+  return {
+    profile: {
+      ...record.profile,
+      schoolContext: family ? record.profile.schoolContext : undefined,
+      factsAsOf: family ? record.profile.factsAsOf : undefined,
+      strengths: [],
+      challenges: [],
+      activeGoals: [],
+    },
+    logs: record.logs.filter((l) => any(logDomains(l))),
+    milestones: record.milestones.filter((m) => any(toDomains("developmental", rawStr(m.domain)))),
+    plans: [],
+    memory: [],
+    books: [],
+  };
+}
+
+/** The ONE recipient view of a grant over a raw record: the domain ceiling
+ *  (fail closed), the shared assembler, the scope packet and its guards. The
+ *  server (server/sharedPacket.ts) and the parent's preview (TrustedSharing)
+ *  both call it, so the preview IS what the recipient reads. A ceiling that
+ *  resolves to no domain builds from an empty record (nothing unlocked); the
+ *  server answers 403 before it gets here. */
+export function buildGrantPacket(
+  grant: { role: string; scopes: readonly string[]; domains?: readonly unknown[] | null },
+  record: RawChildRecord,
+  nowMs: number,
+): ConsultPacket {
+  const ceiling = grantDomainCeiling(grant);
+  const scoped = ceiling ? scopeRecordToDomains(record, ceiling) : record;
+  // An unknown-only ceiling unlocks nothing: no scope, so no section at all.
+  const scopes = ceiling && ceiling.length === 0 ? [] : grant.scopes;
+  return buildSharedScopePacket(scopes, grant.role === "professional", buildPacketInput(scoped, nowMs));
 }
 
 /** Print-shell section shape — matches `ReportDoc.sections` in
