@@ -7,9 +7,6 @@ import { scrubMemoryProposals } from "../../server/parentWordsScrub";
 import type { MemoryReviewItem } from "../../types";
 import { BrandChip } from "../ui/BrandChip";
 import { Icon } from "../ui/Icon";
-import { useChildCollection } from "../../hooks/useChildCollection";
-import { visitRecords, type Appointment, type AppointmentFollowUp } from "../../lib/careTrack";
-import { appointmentRoleLabel } from "../../lib/appointmentLabel";
 
 /**
  * v4 — "What Arbor remembers" on My child › About (the consolidation
@@ -27,12 +24,6 @@ import { appointmentRoleLabel } from "../../lib/appointmentLabel";
  *
  * Counts here are counts of facts in the ledger, never anything about the
  * child. Every text is the scrubbed parent-words version (B-CAREPRO-06).
- *
- * B-CAREPRO-37 — the newest after-visit note is one row here too: what the
- * parent wrote after the visit, dated by the visit and naming its profession
- * (lib/careTrack visitRecords, the same read the Journal's visit rows use),
- * with the door to every visit (#/appointments). The parent's words only;
- * nothing turns them into Arbor's sentence.
  */
 const SHOWN_PENDING = 3;
 /** B-CAREPRO-38 — the pending facts About itself asks about (in an area, or on
@@ -54,7 +45,7 @@ export default function AboutMemoryCard({ areas, ledgerOpen, onLedger }: {
   /** B-CAREPRO-38: the door opens the ledger in place (#/memory retired into About). */
   onLedger?: () => void;
 }) {
-  const { approvedMemoryItems, pendingMemoryItems, handleMemoryDecision, isMemoryUpdating, memoryReviewError, setActiveTab, childProfile } = useArbor();
+  const { approvedMemoryItems, pendingMemoryItems, handleMemoryDecision, isMemoryUpdating, memoryReviewError, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
   const [failed, setFailed] = useState<string | null>(null);
   const pending = useMemo(() => scrubMemoryProposals(pendingMemoryItems), [pendingMemoryItems]);
@@ -69,10 +60,6 @@ export default function AboutMemoryCard({ areas, ledgerOpen, onLedger }: {
   // An approved fact an area already quotes is not printed twice on the page.
   const quoted = useMemo(() => new Set(areas.map((a) => a.known?.memoryId).filter(Boolean) as string[]), [areas]);
   const approvedHere = approved.filter((m) => !quoted.has(m.memoryId));
-  // B-CAREPRO-37: the newest visit note (the bookings and their notes, this child's).
-  const appointments = useChildCollection<Appointment>(childProfile.id, "appointments");
-  const followUps = useChildCollection<AppointmentFollowUp>(childProfile.id, "apptFollowUps");
-  const lastVisit = useMemo(() => visitRecords(appointments.items, followUps.items)[0] ?? null, [appointments.items, followUps.items]);
 
   const source = (m: MemoryReviewItem) => {
     const day = m.createdAt ? fmtDay(m.createdAt, uiLang) : null;
@@ -129,23 +116,7 @@ export default function AboutMemoryCard({ areas, ledgerOpen, onLedger }: {
               <Icon name="check_circle" size={18} className="about-memory-row-ok" fill={1} />
             </li>
           ))}
-          {lastVisit && (
-            <li className="about-memory-row" data-testid="about-visit">
-              <Icon name="event_available" size={18} className="flex-none" style={{ color: "var(--arbor-muted)" }} />
-              <p className="about-memory-fact">
-                <span className="about-memory-src" data-testid="about-visit-meta">
-                  {t("companion.about.visit.title", { profession: appointmentRoleLabel({ role: lastVisit.role, profession: lastVisit.profession }, t), date: fmtDay(lastVisit.at, uiLang) })}
-                </span>
-                <span className="block" dir="auto" data-testid="about-visit-note">{lastVisit.note}</span>
-              </p>
-              <span className="about-memory-actions">
-                <button type="button" className="about-memory-not min-h-11" data-testid="about-visit-open" onClick={() => setActiveTab("appointments")}>
-                  {t("companion.about.visit.open")}
-                </button>
-              </span>
-            </li>
-          )}
-          {pending.length === 0 && approved.length === 0 && !lastVisit && (
+          {pending.length === 0 && approved.length === 0 && (
             <li className="about-memory-empty" data-testid="about-memory-empty">{t("companion.about.memory.empty")}</li>
           )}
         </ul>

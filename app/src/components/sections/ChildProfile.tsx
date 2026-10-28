@@ -20,6 +20,7 @@ import { useHashQuery, useHashRouteKey } from "../../hooks/useHashQuery";
 import { asAspectId, buildAspects, toldSummary, type AspectId } from "../../lib/aboutAspects";
 import AspectCard from "../about/AspectCard";
 import AboutMemoryCard, { aboutAskedPendingIds } from "../about/AboutMemoryCard";
+import AboutLastVisit from "../about/AboutLastVisit";
 import { LEDGER_ID, useLedgerArrival } from "../about/useLedgerArrival";
 import TellArborMore from "../describe/TellArborMore";
 import "../about/about.css";
@@ -157,6 +158,8 @@ export default function ChildProfile() {
           module: the card belongs to what Arbor knows. */}
       <section data-module="about-aspects" aria-labelledby="about-aspects-title" className="flex flex-col gap-3">
         <AboutMemoryCard areas={aspects} ledgerOpen={ledgerOpen} onLedger={toggleLedger} />
+        {/* B-CAREPRO-37: the newest after-visit note, its own line under the card. */}
+        <AboutLastVisit />
         {ledgerOpen && (
           <div id={LEDGER_ID} data-testid="about-memory-ledger" className="about-memory-ledger" style={{ scrollMarginBlockStart: "calc(var(--sticky-offset, 0px) + 12px)" }}>
             <React.Suspense fallback={<p role="status" className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("aria.loading")}</p>}>

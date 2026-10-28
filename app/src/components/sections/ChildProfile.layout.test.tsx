@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ChildProfile from "./ChildProfile";
 import AspectCard from "../about/AspectCard";
 import AboutMemoryCard from "../about/AboutMemoryCard";
+import AboutLastVisit from "../about/AboutLastVisit";
 import { en, he } from "../../lib/i18nElevation/wave2Knowledge";
 import { en as goalsEn, he as goalsHe } from "../../lib/i18nElevation/goals";
 import { en as cpEn, he as cpHe } from "../../lib/i18nElevation/careprofile";
@@ -412,7 +413,7 @@ describe("v4 · About on a phone: no doors; the memory card is the one door to #
  });
 });
 
-describe("B-CAREPRO-37 · My child › About: the newest after-visit note, dated, naming the profession",()=>{
+describe("B-CAREPRO-37 · My child › About: the newest after-visit note, its own line under the memory card",()=>{
  const appts=[
   {id:"a1",who:"",role:"Speech therapist",profession:"slp",when:"",whenIso:"2026-10-12T09:00:00.000Z",mode:"In person",status:"done"},
   {id:"a2",who:"",role:"Pediatrician",profession:"pediatrician",when:"",whenIso:"2026-09-01T09:00:00.000Z",mode:"In person",status:"done"},
@@ -422,26 +423,34 @@ describe("B-CAREPRO-37 · My child › About: the newest after-visit note, dated
   {id:"f2",apptId:"a1",note:"She suggested we wait a beat before naming the toy.",createdAt:"2026-10-12T12:00:00.000Z"},
  ];
  for(const locale of ["en","he"] as const){
-  it(`${locale}: one visit row — the profession and the visit day, the parent's words verbatim, a door to every visit`,()=>{
+  it(`${locale}: one visit line — the profession and the visit day, the parent's words verbatim, a door to every visit`,()=>{
    harness.locale=locale; harness.appts=appts; harness.notes=notes;
-   const html=renderToStaticMarkup(<AboutMemoryCard areas={[]}/>);
+   const html=renderToStaticMarkup(<AboutLastVisit/>);
    expect(html.match(/data-testid="about-visit"/g)).toHaveLength(1);
    const meta=html.match(/data-testid="about-visit-meta">([^<]*)</)![1];
    // this harness resolves the companion dictionary (the profession word is the label helper's own key)
    expect(meta).toMatch(locale==="en"?/^Last visit · .*profession\.slp · .*12/:/^הביקור האחרון · .*profession\.slp · .*12/);
    expect(html).toContain("She suggested we wait a beat before naming the toy.");
    expect(html).not.toContain("Keep reading together");
-   expect(html).not.toContain('data-testid="about-memory-empty"');
    expect(html).toContain(locale==="en"?"All visits":"כל הביקורים");
   });
  }
- it("the door opens #/appointments; without a note there is no row (and the empty line stays)",()=>{
+ it("r2: it is NOT a row of the memory card (no Edit/Forget there); About renders it right under the card",()=>{
+  harness.appts=appts; harness.notes=notes;
+  const card=renderToStaticMarkup(<AboutMemoryCard areas={[]}/>);
+  expect(card).not.toContain('data-testid="about-visit"');
+  expect(card).toContain('data-testid="about-memory-empty"');
+  const about=renderToStaticMarkup(<ChildProfile/>);
+  const cardEnd=about.indexOf('data-testid="profile-remember-check"');
+  const visit=about.indexOf('data-testid="about-visit"');
+  expect(visit).toBeGreaterThan(cardEnd);
+  expect(about.indexOf('data-testid="about-aspects"')).toBeGreaterThan(visit);
+ });
+ it("the door opens #/appointments; without a note there is no line",()=>{
   harness.callback=true; harness.appts=appts; harness.notes=notes;
-  elements(AboutMemoryCard({areas:[]})).find(el=>el.props["data-testid"]==="about-visit-open")!.props.onClick();
+  elements(AboutLastVisit()).find(el=>el.props["data-testid"]==="about-visit-open")!.props.onClick();
   expect(harness.setActiveTab).toHaveBeenCalledWith("appointments");
   harness.callback=false; harness.notes=[];
-  const html=renderToStaticMarkup(<AboutMemoryCard areas={[]}/>);
-  expect(html).not.toContain('data-testid="about-visit"');
-  expect(html).toContain('data-testid="about-memory-empty"');
+  expect(renderToStaticMarkup(<AboutLastVisit/>)).toBe("");
  });
 });
