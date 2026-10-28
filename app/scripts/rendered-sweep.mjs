@@ -734,6 +734,36 @@ async function openSettings(h) {
 }
 
 /**
+ * B-PROG-12 — the program seed states (src/demo/demoPrograms.ts, built by the
+ * engine's own writers): one state merged by id into this throwaway context's
+ * local record, its device flags set, then a reload; `ready` is the program
+ * page of that program. The base demo family carries no enrolment.
+ */
+const PROGRAM_STATE_WRITES = "one program seed state (src/demo/demoPrograms.ts: the enrolment, its practice rows and the state's words, diary nights or booked session) merged by id into the throwaway context's local record before a reload; nothing leaves the context";
+let demoProgramsModule = null;
+async function programState(h, name) {
+  if (!demoProgramsModule) {
+    const { tsImport } = await import("tsx/esm/api");
+    demoProgramsModule = await tsImport(pathToFileURL(path.join(APP_DIR, "src", "demo", "demoPrograms.ts")).href, import.meta.url);
+  }
+  const childId = await h.page.evaluate(() => localStorage.getItem("arbor.activeChildId"));
+  if (!childId) h.skip("no active child in the sandbox record");
+  const st = demoProgramsModule.buildDemoProgramState(name, { now: Date.now(), lang: h.lang, childId });
+  await h.page.evaluate(({ id, state }) => {
+    for (const [col, docs] of Object.entries(state.collections)) {
+      const key = `arbor.${col}.${id}`;
+      let old = [];
+      try { old = JSON.parse(localStorage.getItem(key) || "[]"); } catch { old = []; }
+      const ids = new Set(docs.map((d) => d.id));
+      localStorage.setItem(key, JSON.stringify([...(Array.isArray(old) ? old : []).filter((d) => !ids.has(d?.id)), ...docs]));
+    }
+    for (const [k, v] of Object.entries(state.flags ?? {})) localStorage.setItem(k, v);
+  }, { id: childId, state: st });
+  await h.page.reload({ waitUntil: "domcontentloaded" });
+  return h.need(`[data-testid=program-page][data-program-id=${st.programId}]`, `the ${st.programId} program page (${name})`, 12_000);
+}
+
+/**
  * THE STATES TABLE. route → [{ name, run(h), from?, now?, only?(vp), writes? }].
  *  `from` = the hash the state loads (a route, or a route + query: "journal?view=all");
  *  `now` = the page clock, "HH:MM" local or ISO (B-LOOP-17: `/?now=` → lib/devClock, honoured
@@ -1296,6 +1326,33 @@ const STATES = {
         const door = await h.first("[data-testid=appt-prepare]", 2_000);
         if (!door) skip("no Prepare door: it renders only on an upcoming visit within 14 days");
         await h.top(door);
+      },
+    },
+  ],
+  // B-PROG-12: the program seed states on #/development?view=program (the
+  // program page) — Talk Together week 1 and week 5 (counts beside the
+  // family's own first week), Steady Nights (routine taps + diary), and the
+  // guided tier's booked first session. (`prog-video-consent` waits on the
+  // video self-review build behind Guy's E4 gate: there is no surface yet.)
+  development: [
+    { name: "prog-week1", from: "development?view=program", writes: PROGRAM_STATE_WRITES, run: async (h) => { await programState(h, "prog-week1"); } },
+    {
+      name: "prog-week5",
+      from: "development?view=program",
+      writes: PROGRAM_STATE_WRITES,
+      run: async (h) => {
+        await programState(h, "prog-week5");
+        await h.top(await h.need("[data-module=program-counts]", "the three counts beside the first week"));
+      },
+    },
+    { name: "prog-steady-nights", from: "development?view=program", writes: PROGRAM_STATE_WRITES, run: async (h) => { await programState(h, "prog-steady-nights"); } },
+    {
+      name: "prog-coach",
+      from: "development?view=program",
+      writes: PROGRAM_STATE_WRITES,
+      run: async (h) => {
+        await programState(h, "prog-coach");
+        await h.top(await h.need('[data-testid=coach-slot][data-booked="yes"]', "the booked first session (guided tier)"));
       },
     },
   ],
