@@ -148,10 +148,12 @@ export class FirestoreSharedChildSource implements SharedChildRecordSource {
     if (!childDoc.exists) return null;
     const profile = childDoc.data() as RawChildRecord["profile"];
 
-    const [logsSnap, milestonesSnap, plansSnap, memoryEvents] = await Promise.all([
+    const [logsSnap, milestonesSnap, plansSnap, booksSnap, memoryEvents] = await Promise.all([
       childRef.collection("behaviorLogs").get(),
       childRef.collection("milestones").get(),
       childRef.collection("actionPlans").get(),
+      // B-BOOK-79: the Everyday plans (counts only in the packet).
+      childRef.collection("books").get(),
       this.memoryStore.listEvents(childId),
     ]);
 
@@ -164,6 +166,7 @@ export class FirestoreSharedChildSource implements SharedChildRecordSource {
       logs: logsSnap.docs.map((d) => d.data() as RawChildRecord["logs"][number]),
       milestones: milestonesSnap.docs.map((d) => d.data() as RawChildRecord["milestones"][number]),
       plans: plansSnap.docs.map((d) => ({ ...(d.data() as Omit<RawChildRecord["plans"][number], "id">), id: d.id })),
+      books: booksSnap.docs.map((d) => ({ ...d.data(), id: d.id })),
       // SPC2: retention-expired approved facts never reach a share recipient.
       // Pure filter (no store handle here); the owning read paths tombstone.
       memory: foldMemoryEvents(memoryEvents, childId)

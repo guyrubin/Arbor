@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Everyday Plans — composer (design of record, token-true)</title>
+<style>
+  /* Tokens as app/DESIGN.md names them (values inlined so the mock-up stands alone). Build against the names. */
+  :root {
+    --arbor-paper: #fbfaf7; --arbor-paper-elevated: #fff; --arbor-paper-deep: #eef3fb;
+    --arbor-ink: #14225a; --arbor-ink-soft: #2a3a70; --arbor-muted: #475569;
+    --arbor-rule: #e8eee9; --arbor-rule-strong: #d6dee2;
+    --arbor-clay: #1558c0; --arbor-clay-deep: #124da8; --arbor-on-accent: #fff;
+    --gradient-cta: linear-gradient(180deg, #1a6be8, #1558c0 60%, #124da8);
+    --arbor-sky-soft: #e6f2fb; --arbor-sky-ink: #075985; --arbor-sky-wash: #f3f8fd;
+    --arbor-peach-soft: #fdeee3; --arbor-peach-ink: #92400e;
+    --arbor-shadow-card: 0 0 0 1px rgba(20,34,90,.08), 0 2px 0 rgba(20,34,90,.06);
+    --arbor-shadow-primary: 0 22px 40px -28px rgba(20,34,90,.34), 0 0 0 1px rgba(20,34,90,.08);
+    --r: 14px; --r-lg: 18px; --r-xl: 22px;
+    --t-xs: 12px; --t-sm: 14px; --t-base: 16px; --t-title: 22px; --t-say: 24px; --t-hero: 34px; --t-kicker: 12px;
+    --font-display: "Fraunces", Georgia, serif; --font-sans: "Instrument Sans", system-ui, sans-serif; --font-editorial: "Instrument Serif", Georgia, serif;
+    --touch-min: 44px;
+  }
+  body { margin: 0; background: #d9dde6; font-family: var(--font-sans); color: var(--arbor-ink); }
+  .frames { display: flex; gap: 24px; padding: 24px; overflow-x: auto; align-items: flex-start; }
+  .phone { width: 390px; min-height: 788px; background: var(--arbor-paper); border-radius: 28px; box-shadow: 0 10px 40px rgba(0,0,0,.25); padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; flex: none; }
+  .phone[dir="rtl"] { font-family: "IBM Plex Sans Hebrew", var(--font-sans); }
+  .frame-label { font: 600 var(--t-xs)/1 var(--font-sans); color: var(--arbor-muted); letter-spacing: .06em; text-transform: uppercase; }
+  .card { background: var(--arbor-paper-elevated); border-radius: var(--r-lg); box-shadow: var(--arbor-shadow-card); padding: 20px; }
+  .card.primary { border-radius: var(--r-xl); box-shadow: var(--arbor-shadow-primary); }
+  .kicker { font: 600 var(--t-kicker)/1.2 var(--font-sans); letter-spacing: .08em; text-transform: uppercase; color: var(--arbor-muted); }
+  [dir="rtl"] .kicker { text-transform: none; font-size: 13px; }
+  h1 { font: 500 var(--t-hero)/1.1 var(--font-display); margin: 4px 0 0; }
+  h2 { font: 600 var(--t-title)/1.2 var(--font-display); margin: 0; }
+  p { margin: 8px 0 0; font-size: var(--t-base); line-height: 1.5; color: var(--arbor-ink-soft); }
+  p.muted { color: var(--arbor-muted); font-size: var(--t-sm); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--touch-min); padding: 0 20px; border-radius: 999px; font: 600 var(--t-base) var(--font-sans); border: 0; }
+  .btn.cta { background: var(--gradient-cta); color: var(--arbor-on-accent); }
+  .btn.quiet { background: var(--arbor-paper-deep); color: var(--arbor-ink); }
+  .btn.full { width: 100%; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  .check { display: flex; gap: 12px; align-items: flex-start; min-height: var(--touch-min); padding: 12px; border-radius: var(--r); }
+  .check input { width: 20px; height: 20px; margin-top: 2px; }
+  .step { background: var(--arbor-paper-deep); border-radius: var(--r); padding: 16px; margin-top: 12px; }
+  .step .words { font: 400 var(--t-base)/1.5 var(--font-editorial); color: var(--arbor-ink); margin-top: 4px; }
+  .say { font: 400 var(--t-say)/1.3 var(--font-editorial); color: var(--arbor-ink); border-inline-start: 2px solid var(--arbor-ink); padding-inline-start: 12px; margin: 12px 0 0; }
+  .ai { display: flex; gap: 6px; align-items: center; font-size: var(--t-sm); color: var(--arbor-muted); margin-top: 8px; }
+  .chip { display: inline-flex; align-items: center; min-height: var(--touch-min); padding: 0 16px; border-radius: 999px; font: 600 var(--t-sm) var(--font-sans); background: var(--arbor-paper-deep); color: var(--arbor-ink); }
+  .chip.on { background: var(--arbor-clay); color: var(--arbor-on-accent); }
+  .door { display: flex; gap: 12px; align-items: center; background: var(--arbor-paper-elevated); border-radius: var(--r-lg); box-shadow: var(--arbor-shadow-card); padding: 16px; min-height: var(--touch-min); }
+  .door .glyph { width: 40px; height: 40px; border-radius: 16px; background: var(--arbor-sky-soft); color: var(--arbor-sky-ink); display: grid; place-items: center; flex: none; font-size: 20px; }
+  .door b { display: block; font-size: var(--t-base); } .door small { display: block; color: var(--arbor-muted); font-size: var(--t-sm); }
+  .num { font-variant-numeric: tabular-nums lining-nums; }
+  .reader { background: #2b2d42; border-radius: var(--r-xl); height: 420px; display: grid; grid-template-rows: 1fr auto; overflow: hidden; }
+  .reader .plate { background: linear-gradient(180deg, #f5d9a8, #c9a46a); }
+  .reader .sheet { background: #fffdf7; padding: 16px; font: 400 20px/1.4 "Nunito", var(--font-sans); color: #14225a; }
+  .count { font: 600 var(--t-sm) var(--font-sans); color: var(--arbor-ink-soft); margin-top: 4px; }
+  .note { font-size: var(--t-xs); color: var(--arbor-muted); margin-top: 20px; }
+</style>
+</head>
+<body>
+<div class="frames">
+
+  <!-- 01 · the door (journal grid / shelf page) -->
+  <section class="phone" aria-label="01 door">
+    <div class="frame-label">01 · Everyday plans · the doors (journal grid)</div>
+    <div class="kicker">Everyday plans</div>
+    <p class="muted">Noa's own story for one hard everyday pattern, with the steps you choose. A developmentally informed parent practice, read with zero AI at bedtime.</p>
+    <div class="card" style="margin-top:4px">
+      <div class="kicker">Running now</div>
+      <h2>The toilet champion</h2>
+      <div class="count num">4 nights confirmed · 17 days to go</div>
+      <div class="row"><span class="btn quiet">Open the plan →</span></div>
+    </div>
+    <div class="kicker" style="margin-top:8px">Start a plan</div>
+    <div class="door"><span class="glyph">📖</span><span><b>Falls asleep only with me in the room</b><small>Make Noa's plan</small></span><span>›</span></div>
+    <div class="door"><span class="glyph">📖</span><span><b>Cries at the kindergarten or school door</b><small>Make Noa's plan</small></span><span>›</span></div>
+    <div class="door"><span class="glyph">📖</span><span><b>Ending screens ends in a fight</b><small>Make Noa's plan</small></span><span>›</span></div>
+    <p class="note">A pattern the server has not opened for this family is no door (dark). A running pattern has no door. Counts only, never a rate or a streak.</p>
+  </section>
+
+  <!-- 02 · red lines first -->
+  <section class="phone" aria-label="02 red lines">
+    <div class="frame-label">02 · red lines run first</div>
+    <div class="kicker">Everyday plan</div>
+    <div class="card">
+      <h2>First: is any of these true?</h2>
+      <p class="muted">Tick what you have noticed. If any is true, this plan is not the next step; your doctor is.</p>
+      <label class="check"><input type="checkbox" /><span>There is blood in the poo.</span></label>
+      <label class="check"><input type="checkbox" /><span>There is fever or vomiting with it.</span></label>
+      <label class="check"><input type="checkbox" /><span>The tummy is very swollen or very painful.</span></label>
+      <label class="check"><input type="checkbox" /><span>Your child is losing weight or not growing as before.</span></label>
+      <label class="check"><input type="checkbox" /><span>The poo problems have been there since birth.</span></label>
+      <label class="check"><input type="checkbox" /><span>It started after a fall or an illness.</span></label>
+      <label class="check"><input type="checkbox" /><span>Your child is under three and has not started toilet learning yet.</span></label>
+      <div class="row"><span class="btn cta">None of these →</span></div>
+    </div>
+    <div class="card" style="background:var(--arbor-peach-soft)">
+      <h2>Talk to your doctor first</h2>
+      <p>What you ticked is a question for the family's own doctor before any plan. Arbor offers no plan for it.</p>
+      <p class="say" style="font-size:18px">If this keeps happening, gets harder, or worries you, talk with your pediatrician or another qualified professional.</p>
+      <div class="row"><span class="btn quiet">Help and safety</span><span class="btn quiet">Back</span></div>
+    </div>
+    <p class="note">The care state is the existing hard-moment escalation line, verbatim. No score, no urgency grade, no "signs of".</p>
+  </section>
+
+  <!-- 03 · the three steps -->
+  <section class="phone" aria-label="03 steps">
+    <div class="frame-label">03 · the three steps (swap · minutes · own words)</div>
+    <div class="kicker">Everyday plan</div>
+    <div class="card">
+      <h2>The three steps</h2>
+      <p class="muted">Three small, concrete steps from a sourced menu. The child hears them in the book exactly as written here.</p>
+      <div class="step"><div class="kicker">Step 1</div><div class="words">Step one: every evening, we sit calmly on the toilet for about 5 minutes. My feet rest on a little step. I am comfy, and my tummy gets a chance.</div>
+        <div class="row" style="margin-top:8px"><span class="chip">Swap this step ▾</span><span class="chip">Minutes 5 ▾</span><span class="chip">Every evening ▾</span></div></div>
+      <div class="step"><div class="kicker">Step 2</div><div class="words">Step two: while I sit, I blow bubbles, slow and long. My tummy goes soft when I blow.</div>
+        <div class="ai">✦ Phrased by Arbor's AI from your words. Not in the book until you approve it.</div>
+        <div class="row" style="margin-top:8px"><span class="btn cta">✓ Approve this exact line</span><span class="btn quiet">Drop it</span></div></div>
+      <div class="step"><div class="kicker">Step 3</div><div class="words">Step three is the most important: we just try. I do not have to make poo every time.</div></div>
+      <div class="row"><span class="btn cta" style="opacity:.5">Continue →</span></div>
+    </div>
+    <p class="note">Continue stays disabled while an AI-phrased line waits for approval (B-GA-11). Own words: "the therapist said: bubbles while sitting".</p>
+  </section>
+
+  <!-- 04 · the box and the preview -->
+  <section class="phone" aria-label="04 box and preview">
+    <div class="frame-label">04 · the box · the whole book · the approval</div>
+    <div class="card">
+      <h2>The box, and how long</h2>
+      <div class="row"><span class="chip on">📚 A book I love</span><span class="chip on">Bubbles</span><span class="chip on">A story from my grown-up</span><span class="chip">A calm little game</span><span class="chip">A song we sing</span></div>
+      <div class="row"><span class="chip">Days 21 ▾</span></div>
+    </div>
+    <div class="reader"><div class="plate"></div><div class="sheet">Step one: every evening, we sit calmly on the toilet for about 5 minutes…</div></div>
+    <div class="card"><span class="btn cta full">✓ This is Noa's plan</span></div>
+    <p class="note">The preview is the real reader (zero calls). The approval is the one explicit tap; nothing is written before it.</p>
+  </section>
+
+  <!-- 05 · Today -->
+  <section class="phone" aria-label="05 today">
+    <div class="frame-label">05 · Today · the plan leads the evening</div>
+    <div class="card primary">
+      <div class="kicker">Noa's plan</div>
+      <h2>The toilet champion</h2>
+      <ol style="padding-inline-start:20px;margin:12px 0 0;font-size:var(--t-base);line-height:1.5">
+        <li>Sit calmly on the toilet for about 5 minutes every evening, about twenty minutes after the meal, feet on a step.</li>
+        <li>A box of things only for sitting time: a book, bubbles, a story, a calm game.</li>
+        <li>Just try: no need to produce, no comment on the result. Sitting is the whole task.</li>
+      </ol>
+      <div class="count num">Day 8 of 21 · 4 nights confirmed</div>
+      <p style="margin-top:16px;font-weight:600;color:var(--arbor-ink)">🌙 Did the plan happen tonight?</p>
+      <div class="row"><span class="btn cta">✓ Yes, we did it</span><span class="btn quiet">Not tonight</span></div>
+      <div class="row" style="margin-top:8px"><span class="btn quiet">✎ Keep tonight in the journal</span></div>
+    </div>
+    <p class="note">"Yes" adds one night to the COUNT (no streak, no rate). The journal moment is written only on the explicit second tap.</p>
+  </section>
+
+  <!-- 06 · Hebrew -->
+  <section class="phone" dir="rtl" lang="he" aria-label="06 Hebrew">
+    <div class="frame-label">06 · עברית · השלבים</div>
+    <div class="kicker">תוכנית ליום-יום</div>
+    <div class="card">
+      <h2>שלושת השלבים</h2>
+      <p class="muted">שלושה שלבים קטנים וקונקרטיים מתפריט מבוסס מקורות. הילדה שומעת אותם בספר בדיוק כמו שכתוב כאן.</p>
+      <div class="step"><div class="kicker">שלב 1</div><div class="words">שלב ראשון: כל ערב, אנחנו יושבים בשקט על האסלה בערך 5 דקות. הרגליים שלי נחות על שרפרף קטן. נוח לי, והבטן שלי מקבלת הזדמנות.</div></div>
+      <div class="step"><div class="kicker">שלב 2</div><div class="words">שלב שני: קופסת הקסם! בזמן שאני יושבת, יש לי משהו שאני אוהבת מהקופסה: ספר, בועות סבון, סיפור מהמבוגר שלי, או משחק קטן ורגוע.</div></div>
+      <div class="step"><div class="kicker">שלב 3</div><div class="words">השלב השלישי הוא החשוב מכולם: אנחנו רק מנסים. אני לא חייבת לעשות קקי בכל פעם.</div></div>
+      <div class="row"><span class="btn cta">להמשיך ←</span></div>
+    </div>
+    <p class="note">מרחב לוגי, הכול משתקף; הפנים העבריות של התצוגה; הגרסה הנשית של הילדה.</p>
+  </section>
+
+</div>
+</body>
+</html>

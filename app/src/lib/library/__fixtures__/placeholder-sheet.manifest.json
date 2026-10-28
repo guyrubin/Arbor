@@ -19,11 +19,47 @@
    "footX": 0.5,
    "footW": 0.3238
   },
+  "hands-up": {
+   "file": "hands-up.webp",
+   "aspect": 0.6269,
+   "footX": 0.5,
+   "footW": 0.3238
+  },
+  "hold-box": {
+   "file": "hold-box.webp",
+   "aspect": 0.3343,
+   "footX": 0.5,
+   "footW": 0.4464
+  },
+  "hold-hand": {
+   "file": "hold-hand.webp",
+   "aspect": 0.3343,
+   "footX": 0.5,
+   "footW": 0.4464
+  },
+  "hold-tummy": {
+   "file": "hold-tummy.webp",
+   "aspect": 0.3343,
+   "footX": 0.5,
+   "footW": 0.4464
+  },
+  "hug-knees": {
+   "file": "hug-knees.webp",
+   "aspect": 0.5567,
+   "footX": 0.5,
+   "footW": 0.9778
+  },
   "kneel": {
    "file": "kneel.webp",
    "aspect": 0.4784,
    "footX": 0.5,
    "footW": 0.9741
+  },
+  "lie-down": {
+   "file": "lie-down.webp",
+   "aspect": 0.5567,
+   "footX": 0.5,
+   "footW": 0.9778
   },
   "look-across": {
    "file": "look-across.webp",
@@ -39,6 +75,18 @@
   },
   "look-up-unsure": {
    "file": "look-up-unsure.webp",
+   "aspect": 0.3343,
+   "footX": 0.5,
+   "footW": 0.4464
+  },
+  "open-mouth-wide": {
+   "file": "open-mouth-wide.webp",
+   "aspect": 0.3343,
+   "footX": 0.5,
+   "footW": 0.4464
+  },
+  "point-up": {
+   "file": "point-up.webp",
    "aspect": 0.3343,
    "footX": 0.5,
    "footW": 0.4464
@@ -63,6 +111,18 @@
   },
   "sit": {
    "file": "sit.webp",
+   "aspect": 0.5567,
+   "footX": 0.5,
+   "footW": 0.9778
+  },
+  "sit-at-table": {
+   "file": "sit-at-table.webp",
+   "aspect": 0.5567,
+   "footX": 0.5,
+   "footW": 0.9778
+  },
+  "sit-calm": {
+   "file": "sit-calm.webp",
    "aspect": 0.5567,
    "footX": 0.5,
    "footW": 0.9778

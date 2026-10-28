@@ -5,6 +5,9 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { useTodaysFocus, type Focus } from "../../hooks/useTodaysFocus";
 import { useLastVisit } from "../../hooks/useLastVisit";
 import { activeProgramWeek } from "../../lib/programs/enrolment";
+import NowPlanLead from "../plans/NowPlanLead";
+import { leadPlan, nightMomentText, recordNight, unrecordNight } from "../../lib/plans/planWeek";
+import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import { dayKey } from "../../practice/signals";
 import { isObservationAction, type ActionLoopEntry } from "../../actionLoop/model";
 import { nextChosenAction } from "./companionChoices";
@@ -96,7 +99,7 @@ const LIFECYCLE_NOTE: Partial<Record<string, string>> = {
 
 function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewProps) {
   const { childProfile, actionLoop, seedCoach, setActiveTab, openCaptureSheet,
-    saveTodayOutcome, saveTodayObservation, requestJournalFocus, pendingCaptureMode, consumeCaptureRequest } = useArbor();
+    saveTodayOutcome, saveTodayObservation, requestJournalFocus, pendingCaptureMode, consumeCaptureRequest, addMoment } = useArbor();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
   const lang = he ? "he" : "en";
@@ -106,6 +109,12 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const name = childProfile.name?.split(" ")[0] || t("companion.now-view.your-child");
   const programs = useChildCollection<{ id: string }>(childProfile.id, "programs");
   const program = useMemo(() => activeProgramWeek(programs.items, now), [programs.items, now]);
+  // B-BOOK-78: an active Everyday Plan is the parent's week — its steps lead
+  // Today ahead of the day's practice, its night question is answered here,
+  // and the answer is a COUNT (the `books` row), never a verdict.
+  const planRows = useChildCollection<PlanBookDoc>(childProfile.id, "books");
+  const plan = useMemo(() => leadPlan(planRows.items, now), [planRows.items, now]);
+  const openPlan = () => { setActiveTab("journal"); window.location.hash = `#/journal?plan=${plan?.def.id ?? ""}`; };
   // v4: the agenda row says where the family is in it ("Week 2 of 4"), counts only.
   const programWeeks = Array.isArray(program?.program.weeks) ? program.program.weeks.length : 0;
   const action = useMemo(() => nextChosenAction(actionLoop, topic?.id), [actionLoop, topic?.id]);
@@ -203,7 +212,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     tonight: loop.plan.order[0] === "tonight",
     record: !!record.opener || !!record.receipt || record.saving,
     recordPending: record.saving || record.error,
-    fallback: loop.pick ? "practice" : loop.slotNotice ? "notice" : program ? "program" : "recommendation",
+    fallback: plan ? "plan" : loop.pick ? "practice" : loop.slotNotice ? "notice" : program ? "program" : "recommendation",
   });
   const showNotice = lead !== "notice" && loop.plan.order.includes("notice") && loop.blockNotices.length > 0;
   const showPointer = lead !== "tonight" && loop.tonightHasQuestions && (loop.plan.tonightPointer || (lead === "step" && loop.evening));
@@ -221,7 +230,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // the recommendation (which frames itself, to show its own words) sits in the v3 plan card.
   const shownLead: NowPlanKind = lead === "urgent" ? "urgent" : lead === "record" ? "record" : lead === "visit" && visit ? "visit" : lead === "tonight" ? "tonight"
     : lead === "step" && chosen ? "step" : lead === "practice" && loop.pick ? "practice" : lead === "notice" ? "notice"
-      : lead === "program" && program ? "program" : "recommendation";
+      : lead === "program" && program ? "program" : lead === "plan" && plan ? "plan" : "recommendation";
   const lifecycleKey = lifecycle.moment && todayOffer.offer?.kind === "what-changed" ? LIFECYCLE_NOTE[lifecycle.moment.kind] : undefined;
   const lifecycleNote = lifecycleKey ? t(lifecycleKey, { name }) : null;
   // v3 F-NOW-1: the plan card's face — the lead's own words when it has them
@@ -233,12 +242,13 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const planTag = shownLead === "urgent" ? t("elev.safety.header.title") : copy.planTag[shownLead];
   const planSay = shownLead === "urgent" ? null : practiceSay ? t("elev.loop.ms.quoted", { text: practiceSay }) : copy.planSay[shownLead];
   const planMeta = shownLead === "urgent" ? null : shownLead === "step" ? (receipt ? copy.saved : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
+  const planWeekTitle = shownLead === "plan" && plan ? <h2 id={`${id}-plan`} className="now-plan-title" dir="auto">{plan.def.title[lang]}</h2> : undefined;
   // v3 F-NOW-1 r2: the guide's title on the face is the lead's own h2, moved up
   // from its section (which keeps it as its label). The loop leads' cards carry
   // their own heading, so their face has the say line and meta only.
   const planTitle = shownLead === "step" && chosen ? <h2 id={`${id}-step`} className="now-plan-title" dir="auto" style={observation ? { whiteSpace: "pre-wrap" } : undefined}>{receipt && !observation ? copy.finishedTitle : chosen.recommendation}</h2>
     : shownLead === "visit" && visit ? <h2 id={`${id}-visit`} className="now-plan-title" dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</h2>
-      : shownLead === "program" && program ? <h2 id={`${id}-program`} className="now-plan-title" dir="auto">{program.content.skill[lang]}</h2> : undefined;
+      : shownLead === "program" && program ? <h2 id={`${id}-program`} className="now-plan-title" dir="auto">{program.content.skill[lang]}</h2> : planWeekTitle;
   // The one plan body under every lead: why it was picked, always visible. The
   // practice says its own reason (the AI's sentence beside its own pick); the
   // question is quoted only for a step chosen under it.
@@ -313,7 +323,12 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
             onAdapt={() => talk(copy.adaptPrompt(practiceText(loop.pick!.practice, "do", lang, childProfile.gender)))} />
         </section> : lead === "notice" ? <section className="now-loop-lead" data-module="today-practice" aria-label={t("elev.loop.today.notice.title")}>
           <NowNoticeLead loop={loop} name={name} />
-        </section> : lead === "program" && program ? <section className="now-lead arbor-depth-primary" data-module="now-program" aria-labelledby={`${id}-program`}>
+        </section> : lead === "plan" && plan ? <NowPlanLead plan={plan} lang={lang} childName={name} now={now} evening={loop.evening}
+          onNight={(happened) => { if (happened) void planRows.upsert(recordNight(plan.doc, now)); }}
+          onUndoNight={() => void planRows.upsert(unrecordNight(plan.doc, now))}
+          onJournal={() => void addMoment(nightMomentText(plan.def, lang, name))}
+          onOpen={openPlan} />
+        : lead === "program" && program ? <section className="now-lead arbor-depth-primary" data-module="now-program" aria-labelledby={`${id}-program`}>
           <p className="now-plan-kicker">{copy.programLabel}</p>
           <p className="now-lead-body">{copy.programWhy(program.week)}</p>
           <div className="now-lead-actions"><PrimaryMove type="button" className="companion-primary" onClick={openProgram}>{copy.continueProgram}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></PrimaryMove></div>

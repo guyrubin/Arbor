@@ -4,17 +4,14 @@
  * ONLY to a child whose sheet is complete for it — no silhouette, ever).
  * Pure.
  */
-import type { Book, Page } from "./types";
-
-function pagesOf(book: Book): Page[] {
-  return [book.cover, ...book.pages, ...book.decision.choices.flatMap((c) => c.branch)];
-}
+import { allBookPages } from "./bookShape";
+import type { AnyBook } from "./types";
 
 /** Every pose id the book can show: page slots, repair end slots, costume
  *  slots and art-state poses. */
-export function bookPoseIds(book: Book): string[] {
+export function bookPoseIds(book: AnyBook): string[] {
   const out = new Set<string>();
-  for (const p of pagesOf(book)) {
+  for (const p of allBookPages(book)) {
     if (p.hero) out.add(p.hero.pose);
     if (p.repair?.heroAfter) out.add(p.repair.heroAfter.pose);
     for (const s of Object.values(p.heroAlt ?? {})) out.add(s.pose);
@@ -25,7 +22,7 @@ export function bookPoseIds(book: Book): string[] {
 
 /** The poses the sheet lacks for this book (a pose counts as present when the
  *  sheet has it or the book's stopgap for it). Empty = complete. */
-export function missingBookPoses(book: Book, sheetPoses: Iterable<string>): string[] {
+export function missingBookPoses(book: AnyBook, sheetPoses: Iterable<string>): string[] {
   const have = new Set(sheetPoses);
   return bookPoseIds(book).filter((pose) => !have.has(pose) && !(book.poseFallbacks?.[pose] && have.has(book.poseFallbacks[pose])));
 }

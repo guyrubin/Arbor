@@ -49,7 +49,7 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
     // literal in NowLoopBlocks); an accepted step LEADS Now (no door line).
     expect(overview).toContain('const lead = selectNowLead({');
     expect(overview).toContain('recordPending: record.saving || record.error');
-    expect(overview).toContain('fallback: loop.pick ? "practice" : loop.slotNotice ? "notice" : program ? "program" : "recommendation"');
+    expect(overview).toContain('fallback: plan ? "plan" : loop.pick ? "practice" : loop.slotNotice ? "notice" : program ? "program" : "recommendation"');
     expect(overview).toContain('const stamp = { "data-primary-move": MOVE } as const;');
     expect(count(overview, /<TodayActionLoop/g)).toBe(0);
     expect(count(overview, /<TodayStepLine/g)).toBe(0);

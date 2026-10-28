@@ -22,7 +22,7 @@ export type SplitClinicianAudience = "ot" | "pt" | "psychology";
 export const SPLIT_CLINICIAN_AUDIENCES: readonly SplitClinicianAudience[] = ["ot", "pt", "psychology"];
 
 /** The shared clinician base (mirrors consult/packet.ts PARENT_VOICE_SECTIONS + CLINICIAN_SECTIONS). */
-export const CLINICIAN_BASE_SECTIONS = ["reason", "questions", "about", "patterns", "moments", "development", "tried", "adults", "memory", "since-last-visit"] as const;
+export const CLINICIAN_BASE_SECTIONS = ["reason", "questions", "about", "patterns", "moments", "development", "tried", "everyday-plans", "adults", "memory", "since-last-visit"] as const;
 
 export interface SplitClinicianPreset {
   audience: SplitClinicianAudience;

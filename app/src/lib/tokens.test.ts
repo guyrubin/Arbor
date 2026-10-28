@@ -855,6 +855,7 @@ const LIB_PRACTICE_HEX_ALLOWLIST: Record<string, readonly string[]> = {
   // B-ASKJB-14: the behaviour-log print CSS moved here from BehaviorsTab.
   "lib/behaviorExport.ts": ["#14160f", "#ccc", "#f0ece0"], // print-CSS template string
   "lib/native.ts": ["#eef2ef"],
+  "lib/plans/planPrint.ts": ["#1f8a5a", "#29333f", "#69747f", "#9aa0a8", "#e8edea"], // B-BOOK-79: the parent-only printed plan, same print-CSS palette as reportExport
   "lib/reportExport.ts": ["#1f8a5a", "#29333f", "#2a9c66", "#69747f", "#9aa0a8", "#e4f4ec", "#e8edea", "#fff"], // print-report CSS template
   "lib/shareCard.ts": ["#1f8a5a", "#29333f", "#34b277", "#3a4651", "#5f6b75", "#d6ebde", "#e4f4ec", "#eef6f0", "#fff", "#ffffff"], // share-card canvas art
   "lib/tokens.ts": ["#16352a", "#2a9c66", "#34b277", "#3cc081", "#3f8cc9", "#5fce97", "#69747f", "#7a6bd8", "#c2882a", "#d65f87", "#d9763f", "#eef6f1"], // legacy brand literals (GD-1)

@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
 import { END, isEnding, type BookFlowState } from "../../lib/library/bookFlow";
 import type { BookProgressPosition } from "../../lib/library/bookBookmarks";
-import type { Book } from "../../lib/library/types";
+import type { AnyBook } from "../../lib/library/types";
 
 /** Observe meaningful navigation only. Mounting a saved END is not finishing
  * a book, and selecting cards / tapping repairs never writes progress. */
-export function useBookProgress(book: Book, state: BookFlowState, onProgress?: (position: BookProgressPosition) => void, onComplete?: () => void): void {
+export function useBookProgress(book: AnyBook, state: BookFlowState, onProgress?: (position: BookProgressPosition) => void, onComplete?: () => void): void {
   const previous = useRef({ book, state });
   useEffect(() => {
     const before = previous.current;

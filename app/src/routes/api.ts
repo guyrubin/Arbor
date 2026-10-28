@@ -58,6 +58,7 @@ import { logger, requestIdOf } from "../server/logger.js";
 import { requireChildOwnership } from "../server/requireChildOwnership.js";
 import { createBookAssetsRouter, defaultBookAssetBucket, eraseChildBookAssets, type BookAssetBucket } from "../server/bookAssets.js";
 import { createBookAssetsDocStore, createBookSheetRouter } from "../server/bookSheet.js";
+import { createPlansRouter } from "../server/plans.js";
 import { createBookNarrationRouter, FirestoreNarrationChildSource, googleBookTts, localNarrationChildSource, mockBookTts } from "../server/bookNarration.js";
 import { localBookAssetBucket } from "../server/localBookAssetBucket.js";
 import { requireConsent } from "../server/requireConsent.js";
@@ -443,6 +444,11 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // own hero on every page of a library book (server/bookSheet.ts).
   const bookDocs = createBookAssetsDocStore(config);
   router.use(createBookSheetRouter({ getBucket: getBookBucket, requireOwnership, heroSource, entitlements: entitlementStore, docs: bookDocs, local: localBooks }));
+  // B-BOOK-75 / B-KID-167 (Everyday Plans): the visibility table (the
+  // reviewer's signature per pattern and language, server-held) and the
+  // compose route that refuses an unsigned pattern outside the sandbox and
+  // the owner allow-list (server/plans.ts). No model call.
+  router.use(createPlansRouter({ config, requireOwnership, modelProvider }));
   // K2 2b (B-BOOK-30): the name pages of a library book in the child's name
   // (server/bookNarration.ts): the name from the child record, Gemini-TTS
   // (env models, Sulafat), checked by the server's ASR when one is usable,

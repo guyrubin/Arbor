@@ -46,6 +46,7 @@ import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 // LC-20 + LC-12: the reason for the visit, the questions prepared in
 // Appointments, and the discipline-specific evidence each preset reads.
 import { useChildCollection } from "../../hooks/useChildCollection";
+import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import { quotesFromDocs } from "../../lib/loop/tonight";
 import { programPageModel } from "../../lib/programPage";
 import type { FamilyGoal } from "../../lib/goals";
@@ -307,6 +308,8 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   const questionsCol = useChildCollection<{ id: string; text: string }>(childProfile.id, "apptQuestions");
   const langObsCol = useChildCollection<LangObservation>(childProfile.id, "langObs", { orderByField: "timestamp", orderDir: "desc", max: 200 });
   const growthCol = useChildCollection<GrowthEntry>(childProfile.id, "growthEntries", { orderByField: "date", orderDir: "desc", max: 200 });
+  // B-BOOK-79: the Everyday plans reach the clinician packet as counts.
+  const booksCol = useChildCollection<PlanBookDoc>(childProfile.id, "books");
   // P5-LOOP c2 r2 (G1-3): the child's kept quotes — the intake packet's Moments lead with them (SLP).
   const keepsakesCol = useChildCollection<{ id: string; kind?: string; note?: string; noticedOn?: string }>(childProfile.id, "keepsakes");
   // W2-CAREPRO c2 r1: the visit this summary follows (careTrack's own sinks).
@@ -357,7 +360,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       // LC-17b: the SHARED input assembler (consult/packet.buildPacketInput) —
       // one mapping for this surface and both sides of a share.
       ...buildPacketInput(
-        { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems },
+        { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems, books: booksCol.items },
         Date.now()
       ),
       // LC-20 / LC-12 — the parent's own voice and the evidence each preset reads.

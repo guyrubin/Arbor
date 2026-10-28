@@ -86,7 +86,7 @@ describe('bounded private export capture contract, no browser or sockets', () =>
     expect(privateExportApiDisposition('POST', '/api/todays-focus', id)).toBe('read');
   });
   it.each(['en', 'he'])('validates exact partial bytes, identity, filename, registered collections and absence of sibling data (%s)', lang => {
-    expect(collectionNames).toHaveLength(45);
+    expect(collectionNames).toHaveLength(46); // B-BOOK-75: + books
     const fixture = privateExportFixture(seed, lang); const data = dataFor(fixture);
     expect(validatePartialExport(JSON.stringify(data), fixture.filename, fixture)).toBe(true);
     const mutate = (change: (data: any) => void) => { const copy = structuredClone(data); change(copy); expect(validatePartialExport(JSON.stringify(copy), fixture.filename, fixture)).toBe(false); };

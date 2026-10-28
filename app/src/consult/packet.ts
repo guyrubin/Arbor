@@ -30,6 +30,8 @@ import { SPLIT_CLINICIAN_PRESETS } from "../content/consultPresets";
 import { programPacketLine, type ProgramPageModel } from "../lib/programPage";
 import { activeGoals, goalForPacket, goalParentLine, type FamilyGoal } from "../lib/goals";
 import { activeHomeEnrolmentFor, homeAdherence, homeProgramGoals } from "../content/programs/homeProgram";
+import { planBookFromDoc, readPlanBookDoc } from "../lib/library/plans/planBookDoc";
+import { getPattern } from "../lib/library/plans/planBooks";
 
 export interface PacketInputProfile {
   name: string;
@@ -84,6 +86,21 @@ export interface PacketInputPlan {
   createdAt?: string | number;
 }
 export interface PacketInputMemory { fact: string; status: string }
+
+/** B-BOOK-79: an Everyday plan (a picture-book plan the parent composed from a
+ *  reviewed pattern and approved) as the packet carries it — the pattern's
+ *  parent title, when it started, its bounded length, and the COUNT of nights
+ *  the parent confirmed. Never a rate, a streak or a verdict; never the
+ *  child's lines. */
+export interface PacketInputEverydayPlan {
+  title: string;
+  approvedAt: string;
+  durationDays: number;
+  nights: number;
+  status: "active" | "closed";
+  /** One step was relayed from the professional who works with the child (door a). */
+  practitionerStep: boolean;
+}
 
 /** LC-20 — a phrase the parent logged in Language Lab (the registered `langObs`
  *  sink). Feeds the SLP preset's own section; no other audience receives it. */
@@ -310,6 +327,8 @@ export interface BuildPacketInput {
    *  hard-moment ledger rows (B-ASKJB-33) — the adults' side of a hard
    *  moment, dated. The parent's own read; never a ratio. */
   heldOutcomes?: { at: string; held: "yes" | "no"; child?: "calmer" | "same" | "harder" }[];
+  /** B-BOOK-79: the child's Everyday plans (the `books` rows), as counts. */
+  everydayPlans?: PacketInputEverydayPlan[];
 }
 
 /* ── LC-17b — ONE input assembler for every packet call site ─────────────────
@@ -393,7 +412,27 @@ export interface RawChildRecord {
   milestones: RawPacketMilestone[];
   plans: RawPacketPlan[];
   memory: RawPacketMemory[];
+  /** B-BOOK-79: the child's `books` rows (Everyday plans), raw; re-validated by the plan row reader. */
+  books?: unknown[];
 }
+
+/** B-BOOK-79: Everyday plans → counts. A row that no longer reads (malformed,
+ *  or a pattern withdrawn) is dropped — fail quiet, never guessed. */
+const rawEverydayPlans = (books: unknown[] | undefined): PacketInputEverydayPlan[] =>
+  (books ?? []).flatMap((raw) => {
+    const doc = readPlanBookDoc(raw);
+    const def = doc ? getPattern(doc.pattern) : undefined;
+    // A row that no longer composes (a menu id or pattern withdrawn) is not a plan the parent can run: dropped.
+    if (!doc || !def || !planBookFromDoc(doc)) return [];
+    return [{
+      title: def.title.en,
+      approvedAt: doc.approvedAt,
+      durationDays: doc.durationDays,
+      nights: doc.nights?.length ?? 0,
+      status: doc.status,
+      practitionerStep: doc.ownStep?.origin === "practitioner",
+    }];
+  });
 
 const rawStr = (v: unknown): string => (typeof v === "string" ? v : "");
 /** W2-CAREPRO c2 r1: a plan's phases → its steps as written, in order. */
@@ -506,6 +545,7 @@ export function buildPacketInput(record: RawChildRecord, nowMs: number): BuildPa
       steps: rawPlanSteps(pl.phases),
     })),
     memory: record.memory.map((m) => ({ fact: rawStr(m.fact), status: rawStr(m.status) })),
+    everydayPlans: rawEverydayPlans(record.books),
     nowMs,
   };
 }
@@ -782,6 +822,36 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
       ? { id: `tried-${i}`, text: `${p.title} — for ${p.issue}.`, textKey: "elev.packet.item.triedFor", vars: { title: p.title, issue: p.issue } }
       : { id: `tried-${i}`, text: p.title }));
     sections.push({ id: "tried", title: "What we've already tried", titleKey: "elev.packet.section.tried", items });
+  }
+  // B-BOOK-79: Everyday plans — the picture-book plans the parent composed from
+  // Arbor's reviewed patterns and approved. Counts only: when it started, how
+  // long it runs, how many nights the parent confirmed. Never the child's
+  // lines, never a rate, never a verdict.
+  const everyday = input.everydayPlans ?? [];
+  if (everyday.length) {
+    const items: PacketItem[] = [];
+    everyday.slice(0, 4).forEach((p, i) => {
+      const day = isoDay(p.approvedAt) ?? "";
+      const one = p.nights === 1;
+      const base = `${p.title} — started ${day}, a ${p.durationDays}-day plan, ${p.nights} night${one ? "" : "s"} confirmed by the parent`;
+      items.push({
+        id: `everyday-plan-${i}`,
+        text: p.status === "closed" ? `${base} (closed).` : `${base}.`,
+        textKey: `elev.packet.item.everydayPlan.${p.status}.${one ? "one" : "other"}`,
+        vars: { title: p.title, date: day ? dayVar(day) : "", days: p.durationDays, n: p.nights },
+      });
+      if (p.practitionerStep) {
+        items.push({ id: `everyday-plan-${i}-pro`, text: `${p.title}: one step was relayed from the professional who works with the child, in the parent's words, approved by the parent.`, textKey: "elev.packet.item.everydayPlanPro", vars: { title: p.title } });
+      }
+    });
+    sections.push({
+      id: "everyday-plans",
+      title: "Everyday plans (picture-book plans)",
+      titleKey: "elev.packet.section.everydayPlans",
+      note: "Plans the parent composed from Arbor's reviewed patterns and approved; the nights are the parent's own confirmations — counts, never a rate.",
+      noteKey: "elev.packet.note.everydayPlans",
+      items,
+    });
   }
   // Its own section, directly under "tried": raw log responses are
   // clinician-ceiling data, so the teacher preset (["about", "tried"]) never
@@ -1097,7 +1167,7 @@ const PARENT_VOICE_SECTIONS = ["reason", "questions"] as const;
  *  then adds the ONE evidence section its own discipline actually reads
  *  (LC-20: four "professional" reports used to be byte-identical documents
  *  that differed only in their title). */
-const CLINICIAN_SECTIONS = ["about", "patterns", "moments", "development", "tried", "adults", "memory", "since-last-visit"] as const;
+const CLINICIAN_SECTIONS = ["about", "patterns", "moments", "development", "tried", "everyday-plans", "adults", "memory", "since-last-visit"] as const;
 const CLINICIAN_CEILING = { logDerivedPatterns: true, approvedMemoryFacts: true } as const;
 const clinicianPreset = (audience: ConsultAudience, extraSections: readonly string[] = []): ConsultPreset => ({
   audience,
