@@ -92,6 +92,9 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
   const planVisibility = usePlanVisibility();
   const planDef = plan && isPatternId(plan) ? getPattern(plan) : undefined;
   const openPlanDoor = (pattern: string) => goToRoute("journal", { plan: pattern });
+  // B-BOOK-75 follow-up: saving the row is enough — the parent shell's
+  // PlanSheetEnsurer (components/layout) reads the `books` rows and starts the
+  // child's shared plan sheet for the poses this plan needs (fail soft).
   const savePlanDoc = async (doc: PlanBookDoc) => { await planRows.upsert(doc); };
   const keepPlanRow = (p: ActivePlan) => { void planRows.upsert(keepPlan(p.doc, new Date())); };
   const closePlanRow = (p: ActivePlan) => { void planRows.upsert(closePlan(p.doc, new Date())); };

@@ -17,7 +17,9 @@ vi.mock("firebase-admin/firestore", async (importOriginal) => ({
 import { MemoryCounterStore } from "./quotaStore.js";
 import type { EntitlementStore, Plan } from "./entitlements.js";
 import { createHeroPoseHandler, FirestoreHeroPoseSource, LocalHeroPoseSource, type HeroPoseSource, type StoredHero } from "./heroPoseRoute.js";
-import { HERO_BOOK_POSE_IDS, HERO_BOOK_POSE_SETS, HERO_SHEET_POSE_IDS, HERO_SHEET_PROMPT_VERSION, heroAvatarHash, isHeroPose } from "../lib/heroSheetContract.js";
+import { HERO_BOOK_POSE_IDS, HERO_BOOK_POSE_SETS, HERO_PLAN_POSE_IDS, HERO_POSE_REFUSALS, HERO_SHEET_POSE_IDS, HERO_SHEET_PROMPT_VERSION, heroAvatarHash, isHeroPose, planRoutePose } from "../lib/heroSheetContract.js";
+import { PLAN_POSES } from "../lib/library/plans/planPoses.js";
+import { IMAGE_SHEET_COUNTERS } from "./imageQuota.js";
 import { heroPosePrompt, POSES, STAGE_BOOK } from "./heroPosePrompts.js";
 import { mockHeroPoseImage } from "./heroPoseMock.js";
 import { bookPoseIds } from "../lib/library/bookPoses.js";
@@ -361,5 +363,55 @@ describe("K2 /hero-pose — book poses", () => {
     expect(book.statusCode).toBe(200);
     expect(book.body.dataUrl).toBe(`data:image/png;base64,${mockHeroPoseImage("squat-stones").data}`);
     expect(generate).not.toHaveBeenCalled();
+  });
+});
+
+describe("B-BOOK-75 follow-up /hero-pose — the shared PLAN sheet's poses", () => {
+  const MONTH = 30 * 86400000;
+
+  it("the twelve plan poses are route poses under the plan- prefix, never colliding with a game or book pose; a bare plan id is not a route pose", () => {
+    expect(HERO_PLAN_POSE_IDS).toEqual(PLAN_POSES.map((p) => `plan-${p}`));
+    for (const p of HERO_PLAN_POSE_IDS) {
+      expect(isHeroPose(p), p).toBe(true);
+      expect((HERO_BOOK_POSE_IDS as readonly string[]).includes(p), p).toBe(false);
+      expect((HERO_SHEET_POSE_IDS as readonly string[]).includes(p), p).toBe(false);
+    }
+    expect(isHeroPose("sit-calm")).toBe(false);
+    expect(isHeroPose("hold-box")).toBe(false);
+  });
+
+  it("a plan pose is drawn from the approved idle and the hero, in the hero's OWN clothes — never David's bag or armour, no name, one flat green", async () => {
+    const s = setup();
+    const r = await s.call({ childId: "c1", pose: planRoutePose("stand-tall") });
+    expect(r.statusCode).toBe(200);
+    expect(r.body).toMatchObject({ pose: "plan-stand-tall", keyColour: "#00B140", newSheet: true });
+    expect(s.gen.mock.calls[0][2].images).toEqual([{ mimeType: "image/jpeg", data: "SURMRQ==" }, { mimeType: "image/png", data: "SEVSTw==" }]);
+    const prompt = s.gen.mock.calls[0][2].prompt as string;
+    expect(prompt).toBe(heroPosePrompt("plan-stand-tall"));
+    expect(prompt).toContain(STAGE_BOOK);
+    expect(prompt).toContain("only the hero's own clothes");
+    expect(prompt).not.toMatch(/shepherd|armour|bronze|OVERSIZED/i); // the book's generic tail still names the sling and staff as the ONLY props ever allowed
+    expect(prompt).not.toMatch(/\{name\}/);
+    for (const p of PLAN_POSES) {
+      const text = heroPosePrompt(planRoutePose(p));
+      expect(text, p).toContain("POSE:");
+      expect(text, p).not.toMatch(/shepherd|armour|bronze/i);
+    }
+    // the plan sheet counts on its own per-sheet counter, not the book's
+    const key = `u1:c1:${heroAvatarHash(HERO)}`;
+    expect((await s.counters.peek(IMAGE_SHEET_COUNTERS.planCalls, key, MONTH)).count).toBe(1);
+    expect((await s.counters.peek(IMAGE_SHEET_COUNTERS.bookCalls, key, MONTH)).count).toBe(0);
+  });
+
+  it("Free gets 403 for a plan pose; without the approved idle a plan pose is refused like a book pose", async () => {
+    const free = setup({ plan: "free" });
+    const r = await free.call({ childId: "c1", pose: planRoutePose("sit-calm") });
+    expect(r.statusCode).toBe(403);
+    expect(free.src.loads).toBe(0);
+    const noAnchor = setup({ hero: { photoUrl: HERO, source: "descriptor", anchor: null } });
+    const a = await noAnchor.call({ childId: "c1", pose: planRoutePose("sit-calm") });
+    expect(a.statusCode).toBe(409);
+    expect(a.body.code).toBe(HERO_POSE_REFUSALS.bookAnchor);
+    expect(noAnchor.gen).not.toHaveBeenCalled();
   });
 });

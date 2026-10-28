@@ -27,7 +27,8 @@
  * `local` and the device keeps the doc in its local collection.
  */
 import { authHeaders } from "../../../lib/api";
-import { HERO_POSE_REFUSALS, type HeroPoseId } from "../../../lib/heroSheetContract";
+import { HERO_POSE_REFUSALS, planRoutePose, type HeroPoseId } from "../../../lib/heroSheetContract";
+import { PLAN_SHEET_BOOK_ID, type PlanPose } from "../../../lib/library/plans/planPoses";
 import { bookAssetUrl, type BookAssetsDoc } from "../../../lib/library/bookAssetPaths";
 import { getLibraryBook } from "../../../lib/library/books";
 import { bookSheetChoiceRel, bookSheetDrawPoses, bookSheetId, bookSheetPoseRel, sheetFileIn } from "../../../lib/library/bookSheet";
@@ -70,6 +71,9 @@ export interface BookBuilderDeps {
   sleep(ms: number): Promise<void>;
   /** True once a newer hero's build replaced this one. */
   cancelled?(): boolean;
+  /** B-BOOK-75 follow-up: the route's pose id of a sheet pose (the plan sheet draws
+   *  `plan-<pose>` and stores `<pose>`); absent = the same id. */
+  routePose?(pose: string): HeroPoseId;
 }
 
 export interface BookBuildResult {
@@ -111,7 +115,7 @@ async function callWithRetry<T extends { ok: boolean }>(fn: () => Promise<T>, de
 /** Draw one book pose: route call, key (book mode), QA; one more try on a QA reject. */
 async function drawBookPose(childId: string, pose: string, avatarHash: string, deps: BookBuilderDeps, count: () => void): Promise<Drawn> {
   for (let qaTry = 0; qaTry < 2; qaTry++) {
-    const res = await callWithRetry(() => deps.requestPose({ childId, pose: pose as HeroPoseId, avatarHash }), deps, count);
+    const res = await callWithRetry(() => deps.requestPose({ childId, pose: deps.routePose?.(pose) ?? (pose as HeroPoseId), avatarHash }), deps, count);
     if (!res.ok) {
       const { code } = res as { code: string };
       return TERMINAL.has(code) || code === RATE_LIMITED ? { ok: false, stop: code } : { ok: false, skip: "busy" };
@@ -125,7 +129,7 @@ async function drawBookPose(childId: string, pose: string, avatarHash: string, d
 }
 
 /** Build (or resume) the book sheet of the child's current hero. */
-export async function buildBookSheet(input: { childId: string; avatarHash: string; bookId?: string }, deps: BookBuilderDeps): Promise<BookBuildResult> {
+export async function buildBookSheet(input: { childId: string; avatarHash: string; bookId?: string; poses?: readonly string[] }, deps: BookBuilderDeps): Promise<BookBuildResult> {
   const bookId = input.bookId ?? DEFAULT_SHEET_BOOK;
   const book = getLibraryBook(bookId);
   const { childId, avatarHash } = input;
@@ -133,7 +137,10 @@ export async function buildBookSheet(input: { childId: string; avatarHash: strin
   const count = () => { calls++; };
   const drawn: string[] = [];
   const skipped: string[] = [];
-  if (!book) return { status: "not-started", drawn, skipped, stoppedBy: "no-book", calls };
+  // B-BOOK-75 follow-up: a sheet without a library book (the child's shared plan
+  // sheet) names its poses itself; a library book's sheet draws every pose its pages show.
+  const wanted = input.poses ? [...new Set(input.poses)].sort() : book ? bookSheetDrawPoses(book) : null;
+  if (!wanted) return { status: "not-started", drawn, skipped, stoppedBy: "no-book", calls };
   const sheetId = bookSheetId(avatarHash);
 
   // 1. The resume probe (nothing drawn when the book already shows this hero).
@@ -147,7 +154,7 @@ export async function buildBookSheet(input: { childId: string; avatarHash: strin
 
   // 2. The missing poses, one at a time (the /api rate limit is per IP).
   const sprites = new Map<string, BookSprite>();
-  const queue = bookSheetDrawPoses(book).filter((pose) => !sheetFileIn(p.have, (ext) => bookSheetPoseRel(sheetId, pose, ext)));
+  const queue = wanted.filter((pose) => !sheetFileIn(p.have, (ext) => bookSheetPoseRel(sheetId, pose, ext)));
   for (const pose of queue) {
     if (deps.cancelled?.()) return { status: "stopped", drawn, skipped, stoppedBy: "superseded", calls };
     const d = await drawBookPose(childId, pose, avatarHash, deps, count);
@@ -168,7 +175,7 @@ export async function buildBookSheet(input: { childId: string; avatarHash: strin
   if (deps.cancelled?.()) return { status: "stopped", drawn, skipped, stoppedBy: "superseded", calls };
 
   // 3. The choice cards (4e): crops of the composites, on the device.
-  if (deps.choiceCards) {
+  if (deps.choiceCards && book) {
     const need = book.decision.choices.filter((c) => !sheetFileIn(p.have, (ext) => bookSheetChoiceRel(sheetId, c.id, ext)));
     if (need.length) {
       for (const c of need) {
@@ -202,10 +209,11 @@ export async function buildBookSheet(input: { childId: string; avatarHash: strin
  * (a new createdAt: the child's device fetches the new picture). One per pose:
  * the strip offers it only while the manifest entry is not `redrawn`.
  */
-export async function redrawBookPose(input: { childId: string; avatarHash: string; pose: string; bookId?: string }, deps: BookBuilderDeps): Promise<{ ok: boolean; reason?: string; doc?: BookAssetsDoc }> {
+export async function redrawBookPose(input: { childId: string; avatarHash: string; pose: string; bookId?: string; poses?: readonly string[] }, deps: BookBuilderDeps): Promise<{ ok: boolean; reason?: string; doc?: BookAssetsDoc }> {
   const { childId, avatarHash, pose } = input;
   const book = getLibraryBook(input.bookId ?? DEFAULT_SHEET_BOOK);
-  if (!book || !bookSheetDrawPoses(book).includes(pose)) return { ok: false, reason: "not-in-sheet" };
+  const inSheet = input.poses ? input.poses.includes(pose) : !!book && bookSheetDrawPoses(book).includes(pose);
+  if (!inSheet) return { ok: false, reason: "not-in-sheet" };
   const d = await drawBookPose(childId, pose, avatarHash, deps, () => undefined);
   if (!d.ok) { const miss = d as { stop?: string; skip?: string }; return { ok: false, reason: miss.stop ?? miss.skip ?? "qa" }; }
   const s = (d as { sprite: BookSprite }).sprite;
@@ -306,8 +314,10 @@ const running = new Map<string, { hash: string; cancel: () => void; job: Promise
  * for the same child is cancelled first (it stops between poses; nothing of it
  * is committed) and the new one starts once it has stopped.
  */
-export function startBookSheet(input: { childId: string; avatarHash: string; bookId?: string }, makeDeps: (cancelled: () => boolean) => BookBuilderDeps): Promise<BookBuildResult> {
-  const live = running.get(input.childId);
+export function startBookSheet(input: { childId: string; avatarHash: string; bookId?: string; poses?: readonly string[] }, makeDeps: (cancelled: () => boolean) => BookBuilderDeps): Promise<BookBuildResult> {
+  // One build per child AND sheet: the plan sheet never joins or cancels the book's.
+  const key = `${input.childId}:${input.bookId ?? DEFAULT_SHEET_BOOK}`;
+  const live = running.get(key);
   if (live && live.hash === input.avatarHash) return live.job;
   let stop = false;
   const before = live ? (live.cancel(), live.job.catch(() => undefined)) : Promise.resolve(undefined);
@@ -315,21 +325,24 @@ export function startBookSheet(input: { childId: string; avatarHash: string; boo
     .then(() => buildBookSheet(input, makeDeps(() => stop)))
     .catch((): BookBuildResult => ({ status: "stopped", drawn: [], skipped: [], stoppedBy: "error", calls: 0 }))
     .finally(() => {
-      if (running.get(input.childId)?.job === job) running.delete(input.childId);
+      if (running.get(key)?.job === job) running.delete(key);
     });
-  running.set(input.childId, { hash: input.avatarHash, cancel: () => { stop = true; }, job });
+  running.set(key, { hash: input.avatarHash, cancel: () => { stop = true; }, job });
   return job;
 }
 
-/** True while this device is drawing a book sheet for the child. */
-export function bookSheetRunning(childId: string): boolean {
-  return running.has(childId);
+/** True while this device is drawing a sheet for the child (a book's, or the named one). */
+export function bookSheetRunning(childId: string, bookId?: string): boolean {
+  if (bookId) return running.has(`${childId}:${bookId}`);
+  for (const k of running.keys()) if (k.startsWith(`${childId}:`)) return true;
+  return false;
 }
 
 /** The browser builder of one child's book sheet (parent side). */
-export function browserBookBuilderDeps(childId: string, cancelled: () => boolean, bookId: string = DEFAULT_SHEET_BOOK): BookBuilderDeps {
+export function browserBookBuilderDeps(childId: string, cancelled: () => boolean, bookId: string = DEFAULT_SHEET_BOOK, routePose?: (pose: string) => HeroPoseId): BookBuilderDeps {
   const api = bookSheetApi(childId, bookId);
   return {
+    ...(routePose ? { routePose } : {}),
     requestPose: api.requestPose,
     upload: api.upload,
     probe: api.probe,
@@ -362,4 +375,21 @@ export function startBrowserBookSheet(childId: string, avatarHash: string): Prom
     if (r.status === "complete" || r.status === "already") void import("./buildBookNarration").then((m) => m.afterBookSheet(childId)).catch(() => undefined);
   });
   return job;
+}
+
+/* ── B-BOOK-75 follow-up: the child's shared PLAN sheet ──────────────────────
+ * One sheet for every pattern (bookAssets/plan-poses): the union of the plan
+ * poses the child's approved plans show (≤ 12), drawn from the approved idle
+ * like a book pose but under the route's `plan-` prefix (the hero as themself,
+ * own clothes), stored under the bare pose id the plan books name. Started
+ * when a plan is approved and ensured from the parent shell; a build resumes
+ * from the files already uploaded, and the commit is an open set — the shelf
+ * offers each plan book only once its poses are there (fail soft). */
+export const planSheetRoutePose = (pose: string): HeroPoseId => planRoutePose(pose as PlanPose);
+
+export function startBrowserPlanSheet(childId: string, avatarHash: string, poses: readonly string[]): Promise<BookBuildResult> {
+  return startBookSheet(
+    { childId, avatarHash, bookId: PLAN_SHEET_BOOK_ID, poses },
+    (cancelled) => browserBookBuilderDeps(childId, cancelled, PLAN_SHEET_BOOK_ID, planSheetRoutePose),
+  );
 }

@@ -33,7 +33,7 @@ import type { ArborConfig } from "../config/env.js";
 import type { GeneratedImage } from "../ai/modelRouter.js";
 import type { UsageCounterStore } from "./quotaStore.js";
 import type { EntitlementStore } from "./entitlements.js";
-import { HERO_BOOK_POSES_BY_PLAN, HERO_SHEET_POSES_BY_PLAN, chargeHeroSheetCall, imagePlanFor } from "./imageQuota.js";
+import { HERO_BOOK_POSES_BY_PLAN, HERO_PLAN_POSES_BY_PLAN, HERO_SHEET_POSES_BY_PLAN, chargeHeroSheetCall, imagePlanFor } from "./imageQuota.js";
 import { heroPosePrompt } from "./heroPosePrompts.js";
 import { mockHeroPoseImage } from "./heroPoseMock.js";
 import { resolveHeroUrl } from "../lib/heroIdentity.js";
@@ -43,6 +43,7 @@ import {
   HERO_SHEET_PROMPT_VERSION,
   heroAvatarHash,
   isHeroBookPose,
+  isHeroPlanPose,
   isHeroPose,
   type HeroPoseId,
 } from "../lib/heroSheetContract.js";
@@ -172,10 +173,12 @@ export function createHeroPoseHandler(deps: HeroPoseDeps): RequestHandler {
     const pose = body.pose;
     if (!childId || childId.length > 128 || !isHeroPose(pose)) return refuse(400, "hero_pose_bad_request", "childId and a pose are required");
     const book = isHeroBookPose(pose);
+    // B-BOOK-75 follow-up: a plan pose is a book pose of the child's shared plan sheet (own counter, same anchor rule).
+    const planPose = isHeroPlanPose(pose);
 
     // 2. The plan's pose set (GD-5: Free = none by default; K2: book poses alike).
     const plan = await imagePlanFor(req, deps.entitlements);
-    const allowed = book ? HERO_BOOK_POSES_BY_PLAN[plan] : HERO_SHEET_POSES_BY_PLAN[plan];
+    const allowed = planPose ? HERO_PLAN_POSES_BY_PLAN[plan] : book ? HERO_BOOK_POSES_BY_PLAN[plan] : HERO_SHEET_POSES_BY_PLAN[plan];
     if (!allowed.includes(pose)) return refuse(403, HERO_POSE_REFUSALS.plan, "Hero poses are part of Plus and Family", { plan });
 
     // 3. The stored hero: generated from text cues, inline.
@@ -199,13 +202,13 @@ export function createHeroPoseHandler(deps: HeroPoseDeps): RequestHandler {
     const images = [stored];
     if (pose !== "idle") {
       const anchor = hero.anchor ? parseDataUrl(hero.anchor) : null;
-      if (!anchor && book) return refuse(409, HERO_POSE_REFUSALS.bookAnchor, "The hero's game poses come first: a book pose is drawn from the approved idle");
+      if (!anchor && (book || planPose)) return refuse(409, HERO_POSE_REFUSALS.bookAnchor, "The hero's game poses come first: a book pose is drawn from the approved idle");
       if (!anchor) return refuse(409, HERO_POSE_REFUSALS.anchor, "The first pose is not ready yet");
       images.unshift(anchor);
     }
 
     // 4. The sheet allowance (own counters + breaker; never the scene buckets).
-    const charge = await chargeHeroSheetCall(deps.counters, { plan, uid: owner, childId, avatarHash, kind: book ? "book" : "game" });
+    const charge = await chargeHeroSheetCall(deps.counters, { plan, uid: owner, childId, avatarHash, kind: planPose ? "plan" : book ? "book" : "game" });
     // No strictNullChecks in this app: `!charge.ok` does not narrow, so the refusal is read through a cast.
     if (!charge.ok) { const refusal = charge as Extract<typeof charge, { ok: false }>; res.status(refusal.status).json(refusal.body); return; }
 

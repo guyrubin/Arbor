@@ -13,6 +13,7 @@
  */
 
 /** The eight game poses (ruling G4), the anchor first. */
+import { PLAN_POSES, type PlanPose } from "./library/plans/planPoses.js";
 export const HERO_SHEET_POSE_IDS = ["idle", "tiptoe", "dash", "freeze-a", "freeze-b", "oops", "cheer", "hold-up"] as const;
 export type HeroSheetPoseId = (typeof HERO_SHEET_POSE_IDS)[number];
 export const HERO_SHEET_ANCHOR: HeroSheetPoseId = "idle";
@@ -47,9 +48,23 @@ export type HeroBookPoseId = (typeof HERO_BOOK_POSE_SETS)[keyof typeof HERO_BOOK
 export const HERO_BOOK_POSE_IDS: readonly HeroBookPoseId[] = [...new Set(Object.values(HERO_BOOK_POSE_SETS).flatMap((set) => [...set]))];
 export const isHeroBookPose = (v: unknown): v is HeroBookPoseId =>
   typeof v === "string" && (HERO_BOOK_POSE_IDS as readonly string[]).includes(v);
-/** A pose the route draws: a game pose or a book pose. */
-export type HeroPoseId = HeroSheetPoseId | HeroBookPoseId;
-export const isHeroPose = (v: unknown): v is HeroPoseId => isHeroSheetPose(v) || isHeroBookPose(v);
+/* ── B-BOOK-75 follow-up: the child's ONE shared PLAN sheet (bookAssets/plan-poses).
+ * The route draws the twelve shared plan poses under a `plan-` prefix so a plan
+ * pose never collides with a book pose of the same name ("stand-tall" is David
+ * in armour in five-smooth-stones and the hero in their own clothes here); the
+ * sheet's files and manifest keep the bare plan pose id the plan books name. */
+export const PLAN_ROUTE_PREFIX = "plan-";
+export type HeroPlanPoseId = `${typeof PLAN_ROUTE_PREFIX}${PlanPose}`;
+export const HERO_PLAN_POSE_IDS: readonly HeroPlanPoseId[] = PLAN_POSES.map((p) => `${PLAN_ROUTE_PREFIX}${p}` as HeroPlanPoseId);
+export const isHeroPlanPose = (v: unknown): v is HeroPlanPoseId =>
+  typeof v === "string" && (HERO_PLAN_POSE_IDS as readonly string[]).includes(v);
+/** The route pose of a plan pose, and back. */
+export const planRoutePose = (pose: PlanPose): HeroPlanPoseId => `${PLAN_ROUTE_PREFIX}${pose}`;
+export const planPoseOfRoute = (id: HeroPlanPoseId): PlanPose => id.slice(PLAN_ROUTE_PREFIX.length) as PlanPose;
+
+/** A pose the route draws: a game pose, a book pose or a plan pose. */
+export type HeroPoseId = HeroSheetPoseId | HeroBookPoseId | HeroPlanPoseId;
+export const isHeroPose = (v: unknown): v is HeroPoseId => isHeroSheetPose(v) || isHeroBookPose(v) || isHeroPlanPose(v);
 
 export interface HeroSheetPoseDoc {
   id: HeroSheetPoseId;
