@@ -19,6 +19,11 @@ vi.mock("react", async (original) => {
   return { ...react, lazy: () => () => null, useEffect: (effect: () => void | (() => void)) => { state.effects.push(effect); } };
 });
 vi.mock("../../lib/kpiEvents", () => ({ trackCompanionPanelOpen: vi.fn() }));
+// B-VOICE-08: the door's tap is observed at the one conversation seam.
+vi.mock("../../lib/companionConversation", async (original) => ({
+  ...(await original<typeof import("../../lib/companionConversation")>()),
+  startConversationVoice: vi.fn(() => true),
+}));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({
   ...state, childProfile: { id: "child-a", name: "Noa", age: 4 }, activeFamilyTopic: state.topic,
   setActiveTab: vi.fn(), setChatInput: vi.fn(),
@@ -49,6 +54,7 @@ import CompanionWorkspace from "./CompanionWorkspace";
 import { trackCompanionPanelOpen } from "../../lib/kpiEvents";
 import { translate } from "../../lib/i18n";
 import { FAMILY_TOPIC_SHEET_EVENT } from "./familyTopicEvents";
+import { startConversationVoice } from "../../lib/companionConversation";
 
 const render = (kidLocked = false) => renderToStaticMarkup(<CompanionWorkspace kidLocked={kidLocked}><main>Page content</main></CompanionWorkspace>);
 const button = (label: string) => state.nodes.find(n => n.type === "button" && React.Children.toArray(n.props.children).includes(label))!.props;
@@ -192,6 +198,76 @@ describe("the compact, single global Ask and capture entry", () => {
     if (typeof cleanup === "function") cleanup();
     expect(disconnect).toHaveBeenCalledOnce();
     expect(removeEventListener.mock.calls.map(([event]) => event)).toEqual(["resize", "pointerdown"]);
+  });
+});
+
+describe("B-VOICE-08 — Now offers one tap into a spoken conversation", () => {
+  const door = () => state.nodes.find(n => n.type === "button" && n.props["data-testid"] === "launcher-voice")?.props;
+
+  it.each(["en", "he"] as const)("Now's launcher carries the voice door, named for what it does (%s)", lang => {
+    state.lang = lang;
+    const html = render();
+    expect(door()).toBeDefined();
+    const name = translate(lang, "companion.launcher.voice-aria");
+    expect(door()!["aria-label"]).toBe(name);
+    // Icon-only like the composer's Talk: the name says what it does; the hover title is Talk's own words.
+    expect(name).toContain(translate(lang, "companion.input.talk"));
+    expect(door()!.title).toBe(translate(lang, "companion.input.talk"));
+    expect(React.Children.toArray(door()!.children).some((c: any) => c?.props?.name === "graphic_eq")).toBe(true);
+    if (lang === "he") expect(name).not.toMatch(/[A-Za-z]/);
+    // The launcher's own 48 x 44 px door class (companionWorkspace.css), beside Ask.
+    expect(door()!.className).toBe("companion-launch-save companion-launch-voice");
+    expect(html.indexOf('data-testid="launcher-voice"')).toBeGreaterThan(html.indexOf('class="companion-launch-main"'));
+  });
+
+  it("the tap opens the conversation and starts Talk inside the same call (no await, no timer)", () => {
+    render();
+    const menu = state.nodes.find(n => n.type === "details")!.props;
+    menu.ref.current = { open: true };
+    door()!.onClick();
+    expect(menu.ref.current.open).toBe(false);
+    expect(startConversationVoice).toHaveBeenCalledExactlyOnceWith({ source: "now-voice" });
+    expect(state.openCaptureSheet).not.toHaveBeenCalled();
+  });
+
+  it("Ask keeps its arrow beside the door (chromeHygiene); the launcher is marked for the phone layout", () => {
+    render();
+    const ask = state.nodes.find(n => n.props.className === "companion-launch-main")!.props;
+    const kids = React.Children.toArray(ask.children) as React.ReactElement<any>[];
+    expect(kids.some(k => k.props?.name === "arrow_forward")).toBe(true);
+    expect(state.nodes.find(n => n.props["data-testid"] === "companion-launcher")!.props.className).toBe("arbor-parent companion-launcher has-voice");
+    // The mark steps aside on phones through its own wrapper class, never by
+    // overriding ArborMark's inline display with !important.
+    expect(kids[0]?.props?.className).toBe("companion-launch-mark");
+    const workspaceCss = readFileSync(new URL("./companionWorkspace.css", import.meta.url), "utf8");
+    expect(workspaceCss).not.toContain("!important");
+    expect(workspaceCss).toMatch(/@media \(max-width: 520px\) \{ \.companion-launcher\.has-voice \.companion-launch-mark \{ display: none; \} \}/);
+  });
+
+  it("other places keep the bar as it was (no voice door)", () => {
+    for (const tab of ["development", "together", "journal", "milestones"]) {
+      state.nodes = [];
+      state.activeTab = tab;
+      render();
+      expect(door(), tab).toBeUndefined();
+    }
+    state.nodes = [];
+    state.activeTab = "overview";
+    expect(render(true)).not.toContain('data-testid="launcher-voice"');
+  });
+
+  it("the conversation mounts hidden once the page is idle, so the door can start inside a tap", () => {
+    render();
+    const effect = state.effects.find(effect => String(effect).includes("requestIdleCallback"));
+    expect(effect).toBeDefined();
+    const run = vi.fn((callback: () => void, _options?: { timeout: number }) => { callback(); return 7; });
+    const cancel = vi.fn();
+    vi.stubGlobal("window", { requestIdleCallback: run, cancelIdleCallback: cancel });
+    const cleanup = effect!();
+    expect(run).toHaveBeenCalledOnce();
+    expect(run.mock.calls[0][1]).toEqual({ timeout: 4000 });
+    if (typeof cleanup === "function") cleanup();
+    expect(cancel).toHaveBeenCalledWith(7);
   });
 });
 

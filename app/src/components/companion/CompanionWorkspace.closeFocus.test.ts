@@ -27,6 +27,7 @@ async function mountedCloseProof() {
   const view = { document: doc, HTMLIFrameElement: class {}, HTMLElement: class {}, addEventListener() {}, removeEventListener() {}, navigator: { userAgent: "node-workspace-proof" }, location: { protocol: "http:" },
     matchMedia: () => ({ matches: wide, addEventListener() {}, removeEventListener() {} }) };
   const frames = new Map(); let nextFrame = 0;
+  const door = { drops: 0, read: null };
   Object.assign(globalThis, { document: doc, window: view, requestAnimationFrame: callback => { const id = ++nextFrame; frames.set(id, callback); return id; }, cancelAnimationFrame: id => frames.delete(id) });
   doc.defaultView = view; doc.activeElement = doc.body;
   const React = require("react"), { createRoot } = require("react-dom/client"), { flushSync } = require("react-dom");
@@ -47,7 +48,10 @@ async function mountedCloseProof() {
     if (name === "../../hooks/useVisualViewportInset") return { useVisualViewportInset() {} };
     if (name === "../../lib/i18n") return { translate: (_lang, key) => key };
     if (name === "../../lib/kidModeGate") return { isKidModeActive: () => gate };
-    if (name === "../../lib/companionConversation") return { COMPANION_CONVERSATION_EVENT: "test-conversation" };
+    // B-VOICE-08 round 3: the door seam records what the workspace reports.
+    if (name === "../../lib/companionConversation") return { COMPANION_CONVERSATION_EVENT: "test-conversation",
+      dropQueuedConversationVoice() { door.drops += 1; },
+      registerConversationShown(read) { door.read = read; return () => { if (door.read === read) door.read = null; }; } };
     if (name === "../../lib/kpiEvents") return { trackCompanionPanelOpen() {} };
     if (name === "../../content/selectCards") return { availableHardMomentCards: () => [] };
     if (name === "../../lib/childAge") return { ageMonthsFromProfile: () => 48 };
@@ -134,7 +138,21 @@ async function mountedCloseProof() {
   gate = false; k.update({ kidLocked: false });
   Object.assign(kidHeld, { settled: k.tab(), launcher: !!k.launcher(), panel: k.panel() });
   k.unmount();
-  process.stdout.write(JSON.stringify({ returned, cancelled, noUnrequestedFocus, memory, kidHeld }));
+  // B-VOICE-08 round 3: an explicit close says "not shown" at once and drops
+  // a door tap still queued, before anything repaints.
+  const d = mount("milestones"); d.launch();
+  const doorOnClose: Record<string, unknown> = { shownWhileOpen: door.read ? door.read() : null };
+  const dropsBefore = door.drops;
+  callbacks.close();
+  doorOnClose.shownInsideTheClose = door.read ? door.read() : null;
+  doorOnClose.droppedInsideTheClose = door.drops > dropsBefore;
+  flushSync(() => {}); paint();
+  doorOnClose.shownAfter = door.read ? door.read() : null;
+  d.update({ kidLocked: true });
+  doorOnClose.shownUnderKidMode = door.read ? door.read() : null;
+  d.unmount();
+  doorOnClose.readerAfterUnmount = door.read;
+  process.stdout.write(JSON.stringify({ returned, cancelled, noUnrequestedFocus, memory, kidHeld, doorOnClose }));
 }
 
 function proof() {
@@ -157,6 +175,9 @@ describe("CompanionWorkspace explicit close focus after real React commits", () 
   it("FEAT-01: 'What Arbor remembers' closes the panel at every width, opens the memory page and returns focus to the launcher", () => {
     expect(result.memory).toHaveLength(4);
     for (const row of result.memory) expect(row, JSON.stringify(row)).toMatchObject({ target: "memory", launcher: true, beforePaint: false, focused: true, preventScroll: true });
+  });
+  it("B-VOICE-08 round 3: closing reports the conversation hidden inside the close and drops a queued door tap", () => {
+    expect(result.doorOnClose).toEqual({ shownWhileOpen: true, shownInsideTheClose: false, droppedInsideTheClose: true, shownAfter: false, shownUnderKidMode: false, readerAfterUnmount: null });
   });
   it("F-TALK-1 review r1: #/coach under Kid Mode is held, then settles on the place when the parent is back", () => {
     // Before the fix the route effect called the frozen setActiveTab, so the

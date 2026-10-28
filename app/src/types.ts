@@ -53,6 +53,8 @@ export interface ChildProfile {
   activeGoals?: import('./practice/goalBuilder').ActiveGoal[];
   /** B-CAREPRO-33: when each Care-quoted fact was last written or confirmed (ISO). */
   factsAsOf?: import('./lib/factsAsOf').FactsAsOf;
+  /** B-NEXT-01: when the parent says hearing was last checked, with the day they said it (lib/hearingCheck; dark behind its pilot flag). */
+  hearingCheck?: import('./lib/hearingCheck').HearingCheck;
   /**
    * CI-29: Parent-entered interest tags (e.g. "Trains", "Dinosaurs").
    * Parent-facing only — the child never enters this field.

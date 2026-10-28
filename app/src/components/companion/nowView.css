@@ -6,6 +6,12 @@
 .now-lifecycle-note { margin-block-start: 8px; font-size: var(--t-sm); color: var(--arbor-clay-deep); }
 .now-loop-lead { min-inline-size: 0; }
 .now-loop-adapt { margin-block-start: 10px; }
+/* B-VOICE-02: the practice lead's two ways to talk it over, each at the 44 px
+   floor, inset like the practice card's own text (px-4 sm:px-5). */
+.now-loop-actions { display: flex; flex-wrap: wrap; align-items: center; column-gap: 22px; margin-block-start: 4px; padding-inline: 16px; }
+@media (min-width: 640px) { .now-loop-actions { padding-inline: 20px; } }
+.now-loop-actions > .companion-text-button { min-block-size: 44px; }
+.now-loop-actions > .now-loop-adapt { margin-block-start: 0; }
 .now-notice { margin-block-start: 26px; min-inline-size: 0; padding: 8px 18px; border-radius: 18px; background: var(--arbor-paper-elevated); box-shadow: 0 0 0 1px var(--arbor-rule), var(--shadow-xs); container: notice / inline-size; }
 /* v4 (Arbor v4 · NOTICE TODAY): ONE head line — chip · name · open count · sub (one line, ellipsis) · chevron; the whole line folds the rows. */
 .now-notice-heading { margin: 0; }

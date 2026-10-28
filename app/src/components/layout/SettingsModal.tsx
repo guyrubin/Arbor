@@ -541,7 +541,10 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         {/* MOB-20: Settings had no version and no way to reach a human — the
             two things a parent needs when something is wrong and they are
             about to write to us. `hello@arbor.app` is the address the app
-            already gives (auth.accessFail, EN+HE). B-INF-05: the build is the
+            gave on its sign-in screen until B-RESID-05 retired that line; this
+            row is now its one home (public/support.html names
+            support@arbor.family; which is canonical is an owner decision).
+            B-INF-05: the build is the
             7-char commit SHA stamped by vite (`lib/buildVersion.ts`), "dev" locally. */}
         <Row icon={<Icon name="info" size={18} />} title={t("elev.accountSettings.about.title")} sub={t("elev.accountSettings.about.sub", { version: APP_BUILD })}>
           <a
