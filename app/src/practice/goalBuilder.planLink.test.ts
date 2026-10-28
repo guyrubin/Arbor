@@ -68,7 +68,10 @@ describe("focusNextStep — the next unfinished step of the newest linked plan",
 describe("the three plan-start paths stamp the link (ArborContext)", () => {
   const src = readFileSync(path.resolve(__dirname, "../context/ArborContext.tsx"), "utf8");
   it("generated, template and routine plans go through withFocusGoal on the one profile accessor", () => {
-    expect(src).toContain("await plansCol.upsert(withFocusGoal(planData, childProfile.activeGoals));");
+    // The generated plan is stamped in place, so the N1-01 latch pin (kpiEvents.test) still reads the same write.
+    const stamp = src.indexOf("Object.assign(planData, withFocusGoal(planData, childProfile.activeGoals));");
+    expect(stamp).toBeGreaterThan(-1);
+    expect(src.indexOf("await plansCol.upsert(planData);")).toBeGreaterThan(stamp);
     expect(src).toContain("const startPlanFromTemplate = (plan: ActionPlan) => plansCol.upsert(withFocusGoal(plan, childProfile.activeGoals));");
     expect(src).toContain("const startRoutinePlan = (plan: ActionPlan) => plansCol.upsert(withFocusGoal(plan, childProfile.activeGoals), { awaitServer: true });");
     // Edits of an existing plan (steps, checks, runs) never re-link it.

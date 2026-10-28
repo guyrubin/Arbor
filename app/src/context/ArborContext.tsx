@@ -1686,7 +1686,8 @@ function useArborState() {
       );
       planData.id = `plan-${Date.now()}`;
       // B-GROWTH-40: a plan started while a goal is current records it.
-      await plansCol.upsert(withFocusGoal(planData, childProfile.activeGoals));
+      Object.assign(planData, withFocusGoal(planData, childProfile.activeGoals));
+      await plansCol.upsert(planData);
       // N1-01-R3: step two — the actionPlans row is written, so a coach answer
       // that armed the latch becomes one plan_from_answer. A plan typed from
       // scratch in PlansTab finds no latch and emits nothing.
