@@ -84,7 +84,7 @@ export const en: Record<string, string> = {
   // the clinical wording review, GA B-GA-02). One bounded choice, kept with
   // its day; "Not sure" points to a nurse or the paediatrician, never a verdict.
   "elev.hearing.question": "When was hearing last checked?",
-  "elev.hearing.why": "A speech therapist asks this first. Your answer is kept with today's date and goes into the speech therapist's packet.",
+  "elev.hearing.why": "This is a speech therapist's first question. Your answer is kept with today's date and goes into the intake packet.",
   "elev.hearing.answer.recent": "In the last 6 months",
   "elev.hearing.answer.year": "6 to 12 months ago",
   "elev.hearing.answer.older": "More than a year ago",
@@ -170,7 +170,7 @@ export const he: Record<string, string> = {
 
   // ── B-NEXT-01 · שמיעה קודם (כבוי מאחורי הדגל עד בדיקת הניסוח הקליני)
   "elev.hearing.question": "מתי נבדקה השמיעה בפעם האחרונה?",
-  "elev.hearing.why": "קלינאית תקשורת שואלת את זה ראשון. התשובה נשמרת עם התאריך של היום ונכנסת לדף לקלינאית התקשורת.",
+  "elev.hearing.why": "זו השאלה הראשונה של קלינאי/ת תקשורת. התשובה נשמרת עם התאריך של היום ונכנסת לתיק ההיכרות.",
   "elev.hearing.answer.recent": "בחצי השנה האחרונה",
   "elev.hearing.answer.year": "לפני חצי שנה עד שנה",
   "elev.hearing.answer.older": "לפני יותר משנה",

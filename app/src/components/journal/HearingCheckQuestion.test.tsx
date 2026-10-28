@@ -86,6 +86,19 @@ describe("B-NEXT-01 · the question", () => {
   }
 });
 
+describe("B-NEXT-01 · the why line names the profession and the packet as the screen does", () => {
+  it.each(["en", "he"] as const)("%s: the same profession label and packet name as the pro view", (lang) => {
+    const why = translate(lang, "elev.hearing.why");
+    const profession = translate(lang, "elev.professions.intake.slp");
+    const packet = translate(lang, "elev.shelfJournal.pro.packetTitle", { profession: "" }).replace(/[\s·]+$/u, "");
+    expect(why.toLowerCase()).toContain(profession.toLowerCase());
+    if (lang === "en") expect(why.toLowerCase()).toContain(packet.toLowerCase());
+    else expect(why).toContain(packet.replace(/^(\S+) /u, "$1 ה"));
+    // negative control: the round-1 Hebrew used a second form of the profession
+    expect("קלינאית תקשורת שואלת את זה ראשון.").not.toContain(profession);
+  });
+});
+
 describe("B-NEXT-01 · its own card beside the packet, bare inside the shelf's card", () => {
   it("bare drops the card chrome; the default keeps it", () => {
     expect(renderToStaticMarkup(<HearingCheckQuestion testId="pro-hearing-check" />)).toMatch(/^<section[^>]*class="arbor-depth-card min-w-0 p-4"/);
