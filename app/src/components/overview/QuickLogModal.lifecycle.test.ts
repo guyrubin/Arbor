@@ -671,9 +671,12 @@ describe("B-ASKJB-36 optional kept capture — production handlers", () => {
    that opens the choices — and following it literally opens them. */
 describe("B-SHELL-43 keep-as hint on words that arrive in the box", () => {
   const COMPOSER_WORDS = "Noa said “I did it myself” and put her shoes on";
-  const hint = (tree: View) => nodes(tree).find(n => n.type === "p" && /kept\.capture\.ownNote|saved as a moment|יישמרו כרגע/.test(text(n)));
+  // Found by its key (the harness's t resolves the real dictionary line).
+  let hintLang: "en" | "he" = "en";
+  const hint = (tree: View) => nodes(tree).find(n => n.type === "p" && text(n) === translate(hintLang, "kept.capture.ownNote"));
 
   it.each(["en", "he"] as const)("%s: shows on composer words, asks for nothing that keeps the chips shut, and following it opens them", lang => {
+    hintLang = lang;
     const h = captureHarness({ text: "", initialText: COMPOSER_WORDS, lang });
     const first = h.render();
     expect(h.state.newLogTrigger).toBe(COMPOSER_WORDS);
