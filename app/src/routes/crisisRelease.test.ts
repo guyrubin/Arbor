@@ -184,14 +184,34 @@ function screenedRoutes(source = readFileSync(path.join(ROOT, "app", "src", "rou
   return { routes: [...out].sort(), unattributed };
 }
 
-/** Server files other than routes/api.ts that screen for crisis (a router mounted from server/ would be a channel this matrix cannot see). */
-function otherServerScreens(): string[] {
-  const dirs = ["server", "routes", "services"].map((d) => path.join(ROOT, "app", "src", d));
-  const files: string[] = [];
-  const walk = (dir: string) => { for (const e of readdirSync(dir, { withFileTypes: true })) { const p = path.join(dir, e.name); if (e.isDirectory()) walk(p); else if (/\.ts$/.test(e.name) && !/\.test\.ts$/.test(e.name)) files.push(p); } };
-  dirs.forEach(walk);
-  return files.filter((f) => !f.endsWith(path.join("routes", "api.ts")) && /screenForImmediateEscalation\(/.test(readFileSync(f, "utf8")))
-    .map((f) => path.relative(path.join(ROOT, "app", "src"), f));
+/** Directories that only ever run in the browser (React components, contexts, hooks, the native shell). */
+const CLIENT_ONLY_DIRS = ["components", "context", "hooks", "native"];
+/** Modules outside those directories that call the screen in the browser, before posting to a
+ *  server route that screens again; each with the route the matrix covers. */
+const CLIENT_SCREENS: Record<string, string> = {
+  "lib/describeChild.ts": "the browser describe session screens before it posts; POST /describe-child screens again (in the matrix)",
+  "lib/onboardingFirstRun.ts": "the browser first-run flow screens the worry words before it posts; POST /describe-child screens again (in the matrix)",
+};
+const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
+
+/** Every non-client, non-test source file other than routes/api.ts that calls the screen and is not a
+ *  registered browser module: a wrapper in safety/ or lib/, or a router mounted from server/, would be a
+ *  channel this matrix cannot see. `extra` adds synthetic files for the negative control. */
+function unregisteredScreens(extra: Record<string, string> = {}): string[] {
+  const srcRoot = path.join(ROOT, "app", "src");
+  const files: Record<string, string> = {};
+  const walk = (dir: string) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      const rel = path.relative(srcRoot, p).split(path.sep).join("/");
+      if (e.isDirectory()) { if (!CLIENT_ONLY_DIRS.includes(rel)) walk(p); }
+      else if (/\.tsx?$/.test(e.name) && !/\.(test|spec)\.tsx?$|\.d\.ts$/.test(e.name)) files[rel] = readFileSync(p, "utf8");
+    }
+  };
+  walk(srcRoot);
+  return Object.entries({ ...files, ...extra })
+    .filter(([rel, src]) => rel !== "routes/api.ts" && !(rel in CLIENT_SCREENS) && /\bscreenForImmediateEscalation\(/.test(stripComments(src)))
+    .map(([rel]) => rel).sort();
 }
 
 /** The category's own resources are there; the other category's are not. */
@@ -250,7 +270,7 @@ describe("B-GA-05 — every enabled crisis channel directs to help before anythi
   it("the matrix covers every route that calls screenForImmediateEscalation (derived from the source)", () => {
     const { routes, unattributed } = screenedRoutes();
     expect(unattributed, `screenForImmediateEscalation( at routes/api.ts line(s) ${unattributed.join(", ")} has no enclosing router route: inline it in the route or register the channel here`).toEqual([]);
-    expect(otherServerScreens(), "a server file outside routes/api.ts screens for crisis: add its channel to this matrix").toEqual([]);
+    expect(unregisteredScreens(), "a source file outside routes/api.ts calls the crisis screen: inline it in the route, add the channel to this matrix, or register a browser-only module in CLIENT_SCREENS").toEqual([]);
     expect(routes.length).toBeGreaterThanOrEqual(18);
     expect(routes).toContain("/live/turn");
     expect([...Object.keys(CHANNELS), ...Object.keys(NOT_A_CHANNEL)].sort()).toEqual(routes);
@@ -262,6 +282,16 @@ describe("B-GA-05 — every enabled crisis channel directs to help before anythi
     const { routes, unattributed } = screenedRoutes(helper);
     expect(routes).not.toContain("/synthetic-helper-route");
     expect(unattributed).toHaveLength(1);
+  });
+
+  it("negative control: a screen wrapper in safety/ or lib/, or a router in server/, is flagged", () => {
+    const wrapper = 'import { screenForImmediateEscalation } from "./escalation";\nexport const screenParentWords = (t: string) => screenForImmediateEscalation({ message: t });\n';
+    expect(unregisteredScreens({ "safety/syntheticWrapper.ts": wrapper, "lib/syntheticWrapper.ts": wrapper, "server/syntheticRouter.ts": wrapper }))
+      .toEqual(["lib/syntheticWrapper.ts", "safety/syntheticWrapper.ts", "server/syntheticRouter.ts"]);
+    // A mention in a comment is not a call.
+    expect(unregisteredScreens({ "safety/commentOnly.ts": "// calls screenForImmediateEscalation(x) upstream\nexport const x = 1;\n" })).toEqual([]);
+    // The registered browser modules still screen (the registry is not stale).
+    for (const rel of Object.keys(CLIENT_SCREENS)) expect(readFileSync(path.join(ROOT, "app", "src", rel), "utf8")).toMatch(/screenForImmediateEscalation\(/);
   });
 });
 
