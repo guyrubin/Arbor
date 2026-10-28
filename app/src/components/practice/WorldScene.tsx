@@ -80,10 +80,12 @@ export default function WorldScene({
   const art = key ? (resolved?.key === key ? resolved.url : getScene(key)) : undefined;
   const generated = art && !(failedGenerated?.key === key && failedGenerated.url === art) ? art : undefined;
   // B-BOOK-31 / B-KID-143: a static card that paints a hero paints the reference
-  // family's child; the tile takes the theme's hero-free play card instead (the
-  // child's own hero stands in front of it, as children).
+  // family's child; the tile takes that world's own hero-free painting (the
+  // worlds/v2 set, as the parent's Together page shows it), else the theme's
+  // hero-free play card. The child's own hero stands in front of it (children).
   const candidate = worldArtwork(worldId, theme);
-  const fallback = candidate && !candidate.hasHero ? candidate : worldArtwork("kid-quest", theme);
+  const painted = candidate?.hasHero ? worldArtwork(worldId, "storybook") : undefined;
+  const fallback = candidate && !candidate.hasHero ? candidate : painted && !painted.hasHero ? painted : worldArtwork("kid-quest", theme);
 
   useEffect(() => {
     if (!heroUrl || !key) return;

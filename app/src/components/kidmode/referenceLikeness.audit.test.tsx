@@ -118,10 +118,11 @@ describe("a second synthetic child, every catalogue cover and page", () => {
       }
     });
   }
-  it("WorldScene keeps an illustrated, hero-free tile where the static card painted a hero", () => {
+  it("WorldScene keeps an illustrated, hero-free tile where the static card painted a hero: that world's own painting", () => {
     expect(kidArt("film3d", "world.memory.tile")?.hasHero).toBe(true);
     const html = renderToStaticMarkup(<WorldScene worldId="memory" theme="film3d" imagePrompt="synthetic" sizes="200px">{null}</WorldScene>);
-    expect(html).toContain(kidArt("film3d", "world.kid-quest.tile")!.src480);
+    expect(html).toContain(kidArt("storybook", "world.memory.tile")!.src480);
+    expect(kidArt("storybook", "world.memory.tile")!.hasHero).toBe(false);
   });
 });
 
