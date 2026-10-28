@@ -1,4 +1,4 @@
-import type { ActionLoopEntry } from "../../actionLoop/model";
+import { isObservationAction, type ActionLoopEntry } from "../../actionLoop/model";
 import type { ActiveTab } from "../../lib/routes";
 import { companionEn, companionHe } from "../../lib/i18nCompanion";
 
@@ -12,6 +12,17 @@ export function nextChosenAction(rows: readonly ActionLoopEntry[], topicId?: str
   const open = rows.filter((row) => row.status === "accepted" && !row.outcome && row.recommendation.trim());
   const linked = topicId ? open.filter((row) => (row as ActionLoopEntry & { topicId?: string }).topicId === topicId) : [];
   return [...(linked.length ? linked : open)].sort((a, b) => b.acceptedAt.localeCompare(a.acceptedAt))[0] ?? null;
+}
+
+/** B-TODAY-37: "Record a moment" on an older observation question links
+ * `#/overview?observe=<id>`. Now answers THAT question with its own form
+ * (the same saveTodayObservation seam) only while it is still open; anything
+ * else (answered, superseded, a non-observation step, an unknown id) is
+ * ignored and Now keeps its own choice. */
+export function requestedObservation(rows: readonly ActionLoopEntry[], id: string | null | undefined): ActionLoopEntry | null {
+  if (!id) return null;
+  const row = rows.find((entry) => entry.id === id);
+  return row && row.status === "accepted" && !row.outcome && row.recommendation.trim() && isObservationAction(row) ? row : null;
 }
 
 /** v4: Together is three filters — Routines (Today's rhythm), Play (the games
