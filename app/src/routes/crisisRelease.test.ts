@@ -1,20 +1,30 @@
 /* B-GA-05 — the release proof that every enabled crisis channel on THIS
- * candidate stops before any model call and hands the parent crisis direction.
+ * candidate hands the parent crisis direction before anything ordinary.
  *
- * One matrix, EN + HE crisis input per channel, through the real router with a
- * provider that records every call. For each channel: zero model calls, zero
- * ledger reads (so an active program's script and approved memory can never
- * precede the crisis direction), the channel's escalation contract (the coach
- * routes return the full resources with tel: links, voice speaks the request
- * language and carries the resources for the loop to stop on, every other
- * route answers 409 + escalationCategory, which lib/api.ts turns into
- * EscalationRequiredError). The channel list is tied to the AI caller
- * inventory: a route the inventory marks as crisis-screened without a case
- * here fails. Synthetic data only; no network. */
+ * One matrix through the real router with a provider that records every call:
+ * two crisis categories (self-harm, abuse) × EN + HE per channel. For each
+ * case: zero server model calls, zero ledger reads (so an active program's
+ * script and approved memory can never precede the crisis direction), and the
+ * channel's escalation contract DIRECTED to the input's category (the
+ * category's own resources block, never the other one's): the coach routes
+ * return the resources with tel: links; voice speaks the request language and
+ * carries the resources for the loop to stop on; Live's /live/turn answers
+ * stop_crisis with the resources and a spoken redirect; every other route
+ * answers 409 + escalationCategory (lib/api.ts → EscalationRequiredError).
+ *
+ * Live is the one channel where a model hears the parent first: the browser
+ * streams audio to the Live model, and /live/turn screens the transcript. Its
+ * guarantee is the halt (the client guard stops the session and releases no
+ * model audio for the turn: lib/liveTurnGuard.test.ts), not "no model call".
+ *
+ * The channel list is derived from the screenForImmediateEscalation( call
+ * sites in routes/api.ts (TypeScript AST), so a newly screened route without a
+ * case here fails. Synthetic data only; no network. */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import ts from "typescript";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createApiRouter } from "./api.js";
@@ -31,7 +41,7 @@ import { createAdminMetricsStore } from "../server/adminMetrics.js";
 import { createWaitlistStore } from "../server/waitlist.js";
 import type { CompanionLedgerSource } from "../server/companionContext.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
-import { renderEscalationMarkdown, screenForImmediateEscalation } from "../safety/escalation.js";
+import { escalationMatchForCategory, renderEscalationMarkdown, screenForImmediateEscalation } from "../safety/escalation.js";
 import { PROGRAMS, programMeta } from "../content/programs/index.js";
 import { enrolInProgram } from "../lib/programs/enrolment.js";
 
@@ -39,7 +49,13 @@ const ROOT = path.resolve(__dirname, "..", "..", "..");
 const UID = "synthetic-parent-ga05";
 const CHILD = "synthetic-child-ga05";
 const PROFILE = { id: CHILD, name: "Noa", age: 5, challenges: [] as string[] };
-const CRISIS = { en: "My child says he wants to die", he: "הילדה אומרת שהיא רוצה למות" } as const;
+/** One input per category and language; the screen must route each to its own category. */
+const CRISIS = {
+  self_harm: { en: "My child says he wants to die", he: "הילדה אומרת שהיא רוצה למות" },
+  abuse_or_unsafe_home: { en: "Someone is hurting my child at home", he: "פוגעים בה בבית" },
+} as const;
+type Category = keyof typeof CRISIS;
+const OTHER: Record<Category, Category> = { self_harm: "abuse_or_unsafe_home", abuse_or_unsafe_home: "self_harm" };
 const PROGRAM = PROGRAMS[0];
 const PROGRAM_NAME = programMeta(PROGRAM.id)!.name.en;
 const MEMORY_CANARY = "GA05_MEMORY_CANARY likes the blue cup.";
@@ -113,7 +129,7 @@ async function post(route: string, body: unknown) {
 /* ── the channel matrix ───────────────────────────────────────────────────── */
 
 type Lang = "en" | "he";
-type Channel = { kind: "coach" | "voice" | "409"; body: (text: string, lang: Lang) => Record<string, unknown> };
+type Channel = { kind: "coach" | "voice" | "live" | "409"; body: (text: string, lang: Lang) => Record<string, unknown> };
 const who = { childProfile: PROFILE, contextChildId: CHILD, childId: CHILD };
 const IMAGE = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==";
 
@@ -121,6 +137,7 @@ const CHANNELS: Record<string, Channel> = {
   "/chat": { kind: "coach", body: (t, l) => ({ message: t, language: l, ...who }) },
   "/council": { kind: "coach", body: (t, l) => ({ message: t, language: l, ...who }) },
   "/voice": { kind: "voice", body: (t, l) => ({ message: t, language: l, ...who }) },
+  "/live/turn": { kind: "live", body: (t, l) => ({ role: "user", text: t, language: l, ...who }) },
   "/extract-log": { kind: "409", body: (t, l) => ({ message: t, language: l, ...who }) },
   "/describe-child": { kind: "409", body: (t, l) => ({ text: t, language: l, ...who }) },
   "/conversation/proposals": { kind: "409", body: (t, l) => ({ transcript: t, milestones: [], language: l, ...who }) },
@@ -143,46 +160,81 @@ const NOT_A_CHANNEL: Record<string, string> = {
 
 /* ── the release proof ────────────────────────────────────────────────────── */
 
-describe("B-GA-05 — every enabled crisis channel stops before the model and directs to help", () => {
+/** Every `router.<method>("/path", …)` in routes/api.ts that calls screenForImmediateEscalation. */
+function screenedRoutes(): string[] {
+  const file = ts.createSourceFile("api.ts", readFileSync(path.join(ROOT, "app", "src", "routes", "api.ts"), "utf8"), ts.ScriptTarget.Latest, true);
+  const out = new Set<string>();
+  const visit = (node: ts.Node) => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "screenForImmediateEscalation") {
+      for (let p: ts.Node | undefined = node.parent; p; p = p.parent) {
+        if (ts.isCallExpression(p) && ts.isPropertyAccessExpression(p.expression) && p.expression.expression.getText(file) === "router"
+          && p.arguments[0] && ts.isStringLiteral(p.arguments[0])) { out.add(p.arguments[0].text); break; }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return [...out].sort();
+}
+
+/** The category's own resources are there; the other category's are not. */
+function directed(markdown: string, category: Category) {
+  expect(markdown).toContain(escalationMatchForCategory(category).resources);
+  expect(markdown).not.toContain(escalationMatchForCategory(OTHER[category]).resources);
+}
+const sentences = (text: string) => text.split(/[.!?](?:\s|$)/).filter((x) => x.trim()).length;
+
+describe("B-GA-05 — every enabled crisis channel directs to help before anything ordinary", () => {
   for (const [route, channel] of Object.entries(CHANNELS)) {
-    for (const lang of ["en", "he"] as const) {
-      it(`${route} (${lang}): zero model calls, zero ledger reads, the channel's crisis contract`, async () => {
-        const match = screenForImmediateEscalation({ message: CRISIS[lang] })!;
-        expect(match.category).toBe("self_harm");
-        const r = await post(route, channel.body(CRISIS[lang], lang));
-        expect(calls, `${route} called the model`).toEqual([]);
-        expect(loadLedger).not.toHaveBeenCalled();
-        expect(r.raw).not.toContain(PROGRAM_NAME);
-        expect(r.raw).not.toContain(MEMORY_CANARY);
-        if (channel.kind === "coach") {
-          expect(r.status).toBe(200);
-          expect(r.json.text).toBe(renderEscalationMarkdown(match));
-          expect(r.json.escalationCategory).toBe("self_harm");
-          expect(r.json.text).toContain(lang === "he" ? "(tel:1201)" : "(tel:988)");
-          expect(r.json.contract).toBeUndefined();
-        } else if (channel.kind === "voice") {
-          const spoken = r.frames.filter((f) => f.event === "delta").map((f) => f.data.text).join("");
-          const done = r.frames.find((f) => f.event === "done")!.data;
-          expect(done.escalation).toBe("self_harm");
-          expect(done.resourcesMarkdown).toBe(renderEscalationMarkdown(match));
-          // The spoken line is in the request language and stays at most three sentences.
-          expect(/[֐-׿]/.test(spoken)).toBe(lang === "he");
-          expect(spoken.split(/[.!?](?:\s|$)/).filter((s) => s.trim()).length).toBeLessThanOrEqual(3);
-        } else {
-          expect(r.status, r.raw).toBe(409);
-          expect(r.json.escalationCategory).toBe("self_harm");
-        }
-      });
+    for (const category of Object.keys(CRISIS) as Category[]) {
+      for (const lang of ["en", "he"] as const) {
+        it(`${route} (${category}, ${lang}): zero model calls, zero ledger reads, the directed crisis contract`, async () => {
+          const input = CRISIS[category][lang];
+          const match = screenForImmediateEscalation({ message: input })!;
+          expect(match.category).toBe(category);
+          const r = await post(route, channel.body(input, lang));
+          expect(calls, `${route} called the model`).toEqual([]);
+          expect(loadLedger).not.toHaveBeenCalled();
+          expect(r.raw).not.toContain(PROGRAM_NAME);
+          expect(r.raw).not.toContain(MEMORY_CANARY);
+          if (channel.kind === "coach") {
+            expect(r.status).toBe(200);
+            expect(r.json.escalationCategory).toBe(category);
+            expect(r.json.text).toBe(renderEscalationMarkdown(match));
+            directed(r.json.text, category);
+            expect(r.json.contract).toBeUndefined();
+          } else if (channel.kind === "voice") {
+            const spoken = r.frames.filter((f) => f.event === "delta").map((f) => f.data.text).join("");
+            const done = r.frames.find((f) => f.event === "done")!.data;
+            expect(done.escalation).toBe(category);
+            expect(done.resourcesMarkdown).toBe(renderEscalationMarkdown(match));
+            directed(done.resourcesMarkdown, category);
+            // The spoken redirect is in the request language, at most three sentences.
+            expect(/[֐-׿]/.test(spoken)).toBe(lang === "he");
+            expect(sentences(spoken)).toBeLessThanOrEqual(3);
+          } else if (channel.kind === "live") {
+            // The Live model heard the parent; the server verdict halts the turn.
+            expect(r.status).toBe(200);
+            expect(r.json.action).toBe("stop_crisis");
+            expect(r.json.category).toBe(category);
+            expect(r.json.resourcesMarkdown).toBe(renderEscalationMarkdown(match));
+            directed(r.json.resourcesMarkdown, category);
+            expect(/[֐-׿]/.test(r.json.spokenText)).toBe(lang === "he");
+            expect(sentences(r.json.spokenText)).toBeLessThanOrEqual(3);
+          } else {
+            expect(r.status, r.raw).toBe(409);
+            expect(r.json.escalationCategory).toBe(category);
+          }
+        });
+      }
     }
   }
 
-  it("the matrix covers every route the AI caller inventory marks as crisis-screened", () => {
-    const doc = readFileSync(path.join(ROOT, "docs", "architecture", "ai-caller-inventory.md"), "utf8");
-    const screened = doc.split("\n").filter((l) => /^\| api POST /.test(l))
-      .map((l) => l.slice(1, -1).split("|").map((c) => c.trim()))
-      .filter((cells) => cells[6] === "yes").map((cells) => cells[0].replace("api POST ", ""));
-    expect(screened.length).toBeGreaterThanOrEqual(15);
-    expect([...Object.keys(CHANNELS), ...Object.keys(NOT_A_CHANNEL)].sort()).toEqual(screened.sort());
+  it("the matrix covers every route that calls screenForImmediateEscalation (derived from the source)", () => {
+    const screened = screenedRoutes();
+    expect(screened.length).toBeGreaterThanOrEqual(18);
+    expect(screened).toContain("/live/turn");
+    expect([...Object.keys(CHANNELS), ...Object.keys(NOT_A_CHANNEL)].sort()).toEqual(screened);
   });
 });
 
@@ -202,6 +254,12 @@ describe("B-GA-05 — controls (the zeros above are the screen, not a dead harne
     const r = await post("/generate-plan", CHANNELS["/generate-plan"].body("Taking turns with a sibling", "en"));
     expect(r.status, r.raw).not.toBe(409);
     expect(calls.some((c) => c.method === "generateJson")).toBe(true);
+  });
+
+  it("a benign Live user turn continues (the stop_crisis above is the screen)", async () => {
+    const r = await post("/live/turn", CHANNELS["/live/turn"].body("How do I make mornings calmer?", "en"));
+    expect(r.status).toBe(200);
+    expect(r.json.action).toBe("continue");
   });
 
   it("a benign /voice turn streams a model reply (the crisis frames above are the screen)", async () => {
