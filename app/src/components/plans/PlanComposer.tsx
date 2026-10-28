@@ -38,7 +38,8 @@ const BTN = "inline-flex min-h-11 items-center justify-center gap-2 rounded-full
 
 export interface PlanComposerProps {
   def: PatternDef;
-  child: BookReaderChild;
+  /** B-KID-168: `nameLatin` lets the English voice say the name in English letters. */
+  child: BookReaderChild & { nameLatin?: string | null };
   /** Persist the approved document (the `books` collection seam). */
   onSaved: (doc: PlanBookDoc) => Promise<void> | void;
   onClose: () => void;
@@ -71,6 +72,13 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
       const { doc } = await composePlan(child.id, composeRequestOf(state));
       await onSaved(doc);
       setSavedDoc(doc);
+      // PR C (Everyday Plans): the parent's approval is the explicit act that
+      // starts the plan book's narration in the child's name (when the child's
+      // plan sheet is complete). Parent side only; the approved document rides
+      // along so the run does not wait for the collection to settle.
+      void import("../kidmode/hero/buildPlanNarration")
+        .then((m) => m.ensurePlanNarration(child, m.narrationFolder(doc.lang, child.gender), { planDoc: doc }))
+        .catch(() => undefined);
       // BD-54: the first useful action — ids only (pattern, language, own-step origin).
       trackPlanApproved({ pattern: def.id, lang, ownStep: state.ownStep ? (state.ownStep.origin ?? "parent") : "none" });
       dispatch({ type: "approved" });

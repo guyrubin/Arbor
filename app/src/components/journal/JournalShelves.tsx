@@ -290,7 +290,7 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
         <PlanComposer
           key={planDef.id}
           def={planDef}
-          child={{ id: childProfile.id, name: childProfile.name, gender: childProfile.gender }}
+          child={{ id: childProfile.id, name: childProfile.name, nameLatin: childProfile.nameLatin, gender: childProfile.gender }}
           initialState={composerFromDoc(planDef, planRows.items.find((r) => r?.id === `${planDef.id}.${childProfile.id}` && r.status === "active"), locale)}
           onSaved={savePlanDoc}
           onClose={() => goToRoute("journal")}

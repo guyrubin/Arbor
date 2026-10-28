@@ -60,6 +60,7 @@ import { createBookAssetsRouter, defaultBookAssetBucket, eraseChildBookAssets, t
 import { createBookAssetsDocStore, createBookSheetRouter } from "../server/bookSheet.js";
 import { createPlansRouter } from "../server/plans.js";
 import { createBookNarrationRouter, FirestoreNarrationChildSource, googleBookTts, localNarrationChildSource, mockBookTts } from "../server/bookNarration.js";
+import { createPlanNarrationRouter, FirestorePlanBookSource, localPlanBookSource } from "../server/planNarration.js";
 import { localBookAssetBucket } from "../server/localBookAssetBucket.js";
 import { requireConsent } from "../server/requireConsent.js";
 import { CANONICAL_BEHAVIOR_TYPES } from "../content/behaviorTaxonomy.js";
@@ -454,20 +455,42 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // (env models, Sulafat), checked by the server's ASR when one is usable,
   // its own quota; MODEL_PROVIDER=mock answers a tone.
   const narrationMock = config.modelProvider === "mock";
+  const narrationChildren = config.memoryAdapter === "firestore" ? new FirestoreNarrationChildSource(config) : localNarrationChildSource;
+  const narrationProvider = narrationMock ? mockBookTts : googleBookTts(config);
+  const narrationCheck = !narrationMock && childAsrConfigured(config)
+    ? async (audio: Buffer, ext: "mp3" | "wav", firstName: string) => {
+        const r = await scoreChildUtterance(config, modelProvider, { target: firstName, sound: "", level: "word", audio: { data: audio.toString("base64"), mimeType: ext === "wav" ? "audio/wav" : "audio/mpeg" } });
+        return r.result === "got" || (r.heard ?? "").toLowerCase().includes(firstName.toLowerCase());
+      }
+    : null;
   router.use(createBookNarrationRouter({
     getBucket: getBookBucket,
     requireOwnership,
     docs: bookDocs,
-    children: config.memoryAdapter === "firestore" ? new FirestoreNarrationChildSource(config) : localNarrationChildSource,
+    children: narrationChildren,
     counters,
     entitlements: entitlementStore,
-    provider: narrationMock ? mockBookTts : googleBookTts(config),
-    check: !narrationMock && childAsrConfigured(config)
-      ? async (audio, ext, firstName) => {
-          const r = await scoreChildUtterance(config, modelProvider, { target: firstName, sound: "", level: "word", audio: { data: audio.toString("base64"), mimeType: ext === "wav" ? "audio/wav" : "audio/mpeg" } });
-          return r.result === "got" || (r.heard ?? "").toLowerCase().includes(firstName.toLowerCase());
-        }
-      : null,
+    provider: narrationProvider,
+    check: narrationCheck,
+    mock: narrationMock,
+    local: localBooks,
+    config,
+    disabled: !narrationMock && config.ttsDisabled,
+  }));
+  // PR C (Everyday Plans): a PLAN book's narration in the child's name through
+  // the same pipeline (server/planNarration.ts): the words from the child's
+  // stored plan document, every page per child into the child's own set,
+  // the EU path for a name line, the same quota and kill switch.
+  router.use(createPlanNarrationRouter({
+    getBucket: getBookBucket,
+    requireOwnership,
+    docs: bookDocs,
+    children: narrationChildren,
+    plans: config.memoryAdapter === "firestore" ? new FirestorePlanBookSource(config) : localPlanBookSource,
+    counters,
+    entitlements: entitlementStore,
+    provider: narrationProvider,
+    check: narrationCheck,
     mock: narrationMock,
     local: localBooks,
     config,

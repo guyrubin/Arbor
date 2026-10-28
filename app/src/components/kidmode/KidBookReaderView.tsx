@@ -46,13 +46,15 @@ function OwnedBookReader({ entry, edition, owner, lang, onClose }: { entry: Libr
   const [resolved, setResolved] = useState<ResolvedBookAssets | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const doc = entry.doc;
+  // PR C: a plan book's narration (the child's own set under the pattern) rides beside the shared plan sheet
+  const narration = entry.narration ?? null;
   useEffect(() => {
     let live = true;
     let got: ResolvedBookAssets | null = null;
     setResolved(null);
     setUnavailable(false);
     // K2: a file that arrives late (a passing failure, retried) re-renders the page with it
-    resolveBookAssets(childProfile.id, doc, folder, { isCurrent: () => live && progressRef.current.current(), onLate: (next) => { if (live && progressRef.current.current()) setResolved(next); } })
+    resolveBookAssets(childProfile.id, doc, folder, { narration, isCurrent: () => live && progressRef.current.current(), onLate: (next) => { if (live && progressRef.current.current()) setResolved(next); } })
       .then((r) => {
         got = r;
         if (live && progressRef.current.current()) setResolved(r);
@@ -63,7 +65,7 @@ function OwnedBookReader({ entry, edition, owner, lang, onClose }: { entry: Libr
       live = false;
       got?.revoke();
     };
-  }, [childProfile.id, doc, folder]);
+  }, [childProfile.id, doc, narration, folder]);
   // A book that cannot open goes back home rather than showing a broken page.
   useEffect(() => {
     if (unavailable) onClose();

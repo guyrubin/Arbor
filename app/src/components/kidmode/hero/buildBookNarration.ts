@@ -23,6 +23,7 @@ import type { BookReaderChild } from "../../../lib/library/types";
 import { heroSheetOwnerKey } from "../../../lib/heroSheetStore";
 export { narrationFolder } from "../../../lib/library/narrationVoice";
 import { DEFAULT_SHEET_BOOK, keepLocalBookDoc } from "./buildBookSheet";
+import { ensurePlanNarration } from "./buildPlanNarration";
 
 export type NarrationCall =
   | { ok: true; complete: boolean; cached: boolean; doc?: BookAssetsDoc; local?: boolean }
@@ -149,6 +150,14 @@ const markerOf = (c: NarrationContext) => JSON.stringify({ v: 2, owner: c.ownerK
 const currentContext = (child: string, c: NarrationContext) => c.isCurrent()
   && heroSheetOwnerKey() === c.ownerKey && contexts.get(contextKey(c.ownerKey, child)) === c;
 
+/** PR C (Everyday Plans): the child's plan books follow the same explicit
+ *  parent triggers (the handover, the sheet's commit) in the same lifetime —
+ *  the browser wiring only; an injected canonical builder never starts it. */
+function planNarrationFor(childId: string, ctx: NarrationContext): void {
+  const scope = { ownerKey: ctx.ownerKey, isCurrent: () => currentContext(childId, ctx) };
+  void ensurePlanNarration({ id: childId, name: ctx.name, nameLatin: ctx.latin, gender: ctx.gender }, ctx.folder, { scope, storage: ctx.storage })?.catch(() => undefined);
+}
+
 function start(childId: string, ctx: NarrationContext, deps?: NarrationBuilderDeps): Promise<NarrationBuildResult> {
   const key = jobKey(childId, ctx);
   const live = running.get(key);
@@ -191,6 +200,7 @@ export function ensureBookNarration(
     isCurrent: scope?.isCurrent ?? (() => heroSheetOwnerKey() === ownerKey), storage };
   const ctx = previous && currentContext(child.id, previous) && keyOf(previous) === keyOf(next) ? previous : next;
   contexts.set(slot, ctx);
+  if (!deps) planNarrationFor(child.id, ctx);
   const key = jobKey(child.id, ctx);
   if (completed.has(key)) return null;
   let done: string | null = null;
@@ -203,7 +213,10 @@ export function ensureBookNarration(
  * this same owner/child lifetime. It cannot revive a retired account's work. */
 export function afterBookSheet(childId: string, deps?: NarrationBuilderDeps): Promise<NarrationBuildResult> | null {
   const ctx = contexts.get(contextKey(heroSheetOwnerKey(), childId));
-  return ctx && currentContext(childId, ctx) ? start(childId, ctx, deps) : null;
+  if (!ctx || !currentContext(childId, ctx)) return null;
+  // PR C: the plan sheet commits through this same hook; the plan books follow
+  if (!deps) planNarrationFor(childId, ctx);
+  return start(childId, ctx, deps);
 }
 
 /** Test seam. */
