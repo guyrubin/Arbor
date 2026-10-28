@@ -164,34 +164,44 @@ export function findClinicalDiagnosisTerm(text: string): string | null {
  * happened (companion-topics-v1 topic-enjoy-he, 10 Oct), and on a re-run
  * "נצפתה אינטראקציה חיובית…" (an interaction "was observed"). A note written
  * for a teacher or clinician is the one place an invented negative finding
- * reads as a result, so this floor runs on the model's output before any note
- * is shown or handed on. Two classes:
+ * reads as a result, so this floor runs on the model's output (after the
+ * output safety screen) before any note is shown or handed on. Two classes:
  *   1. an ABSENCE-of-finding outcome — "no evidence of", "shows no signs of",
  *      "no … difficulties", "ruled out", "within normal limits", a screening
  *      result, "developing normally";
- *   2. an UNATTRIBUTED observation — "was observed / noted", "נצפתה": Arbor
- *      observed nothing, and the parent's own report says "the parent saw".
- * English on word boundaries (case-insensitive); Hebrew as substrings or with
- * letter look-arounds (`\b` cannot bound a Hebrew word, and particles glue).
- * A matching SENTENCE is dropped and the rest of the note is kept verbatim;
- * over-matching is the safe direction (a sentence a professional never reads). */
+ *   2. an UNATTRIBUTED observation — "was observed / noted / seen" with no
+ *      agent, "נצפתה": Arbor observed nothing.
+ * A clause that matches is dropped and the rest of the note kept verbatim,
+ * EXCEPT (critic round 1):
+ *   - a REPORTED finding — a named reporter or the first person comes before
+ *     it ("Mom reports no sleep difficulties", "the pediatrician, who ruled
+ *     out…", "הגננת סיפרה שהוא נצפה…"), or an agent follows ("was seen by a
+ *     speech therapist");
+ *   - an ESCALATION line — a condition ("If…", "אם…") or a referral action
+ *     ("call…", "talk with your pediatrician", "להתקשר מיד") is the safety
+ *     message itself and is never removed;
+ *   - the School Brief's `crisisEscalationTrigger` field is never scrubbed.
+ * English on word boundaries (case-insensitive); Hebrew as whole words with
+ * a glued particle (`\b` cannot bound a Hebrew word: "לשלול" is not inside
+ * "לשלוליות"). Event descriptions such as "fell asleep without any
+ * difficulty" / "מטפסת ללא חשש" are not findings and are not listed. */
 const NOUN_EN = String.raw`(?:signs?|evidence|indications?|indicators?|symptoms?|red\s+flags?|difficult(?:y|ies)|delays?|deficits?|impairments?|concerns?|problems?|issues?)`;
 export const HANDOFF_FINDING_PATTERNS_EN: readonly RegExp[] = [
-  new RegExp(String.raw`\bno\s+(?:clear\s+|obvious\s+|apparent\s+|real\s+|significant\s+|further\s+|current\s+)?(?:evidence|signs?|indications?|indicators?|symptoms?|red\s+flags?|traces?)\s+(?:of|that|for)\b`, "i"),
-  new RegExp(String.raw`\b(?:show|shows|showed|showing|display|displays|displayed|exhibit|exhibits|exhibited|present|presents|presented|demonstrate|demonstrates|demonstrated)\s+no\s+(?:\w+\s+){0,3}?${NOUN_EN}\b`, "i"),
-  new RegExp(String.raw`\b(?:does|did|do|is|was|are|were)\s*(?:not|n['’]t)\s+(?:show|showing|display|exhibit|present\s+with|demonstrate|have|appear\s+to\s+have)\s+(?:any\s+)?(?:\w+\s+){0,3}?${NOUN_EN}\b`, "i"),
-  new RegExp(String.raw`\bno\s+(?:\w+[\s,]+){0,4}?(?:difficult(?:y|ies)|delays?|deficits?|impairments?|red\s+flags?)\b`, "i"),
-  new RegExp(String.raw`\bno\s+(?:\w+\s+){0,3}?concerns?\s+(?:were\s+|was\s+|have\s+been\s+|has\s+been\s+)?(?:noted|observed|found|identified|detected|raised|present|seen)\b`, "i"),
-  new RegExp(String.raw`\b(?:without|free\s+(?:of|from))\s+(?:any\s+)?(?:signs?|evidence|indications?|symptoms?|difficult(?:y|ies)|delays?)\b`, "i"),
-  new RegExp(String.raw`\brul(?:e|es|ed|ing)\s+out\b`, "i"),
-  new RegExp(String.raw`\bwithin\s+(?:the\s+)?normal\s+(?:limits|range)\b`, "i"),
-  new RegExp(String.raw`\bnothing\s+(?:to\s+suggest|suggests|that\s+suggests|indicates|that\s+indicates|concerning|of\s+concern)\b`, "i"),
-  new RegExp(String.raw`\b(?:screen(?:ed|ing)?\s+(?:negative|clear|normal)|pass(?:ed|es)?\s+(?:the\s+|a\s+)?(?:screening|screen))\b`, "i"),
-  new RegExp(String.raw`\b(?:typical|normal)\s+development\b|\bdevelop(?:s|ing)\s+(?:normally|typically|on\s+track)\b|\bdevelopmentally\s+(?:normal|typical|on\s+track)\b`, "i"),
-  new RegExp(String.raw`\b(?:was|were|has\s+been|have\s+been|had\s+been)\s+(?:observed|noted|seen|identified|detected)\b`, "i"),
+  new RegExp(String.raw`\bno\s+(?:clear\s+|obvious\s+|apparent\s+|real\s+|significant\s+|further\s+|current\s+)?(?:evidence|signs?|indications?|indicators?|symptoms?|red\s+flags?|traces?)\s+(?:of|that|for)\b`, "gi"),
+  new RegExp(String.raw`\b(?:show|shows|showed|showing|display|displays|displayed|exhibit|exhibits|exhibited|present|presents|presented|demonstrate|demonstrates|demonstrated)\s+no\s+(?:\w+\s+){0,3}?${NOUN_EN}\b`, "gi"),
+  new RegExp(String.raw`\b(?:does|did|do|is|was|are|were)\s*(?:not|n['’]t)\s+(?:show|showing|display|exhibit|present\s+with|demonstrate|have|appear\s+to\s+have)\s+(?:any\s+)?(?:\w+\s+){0,3}?${NOUN_EN}\b`, "gi"),
+  new RegExp(String.raw`\bno\s+(?:\w+[\s,]+){0,4}?(?:difficult(?:y|ies)|delays?|deficits?|impairments?|red\s+flags?)\b`, "gi"),
+  new RegExp(String.raw`\bno\s+(?:\w+\s+){0,3}?concerns?\s+(?:were\s+|was\s+|have\s+been\s+|has\s+been\s+)?(?:noted|observed|found|identified|detected|raised|present|seen)\b`, "gi"),
+  new RegExp(String.raw`\b(?:without|free\s+(?:of|from))\s+(?:any\s+)?(?:signs?|evidence|indications?|symptoms?)\s+of\b`, "gi"),
+  new RegExp(String.raw`\brul(?:e|es|ed|ing)\s+out\b`, "gi"),
+  new RegExp(String.raw`\bwithin\s+(?:the\s+)?normal\s+(?:limits|range)\b`, "gi"),
+  new RegExp(String.raw`\bnothing\s+(?:to\s+suggest|suggests|that\s+suggests|indicates|that\s+indicates|concerning|of\s+concern)\b`, "gi"),
+  new RegExp(String.raw`\b(?:screen(?:ed|ing)?\s+(?:negative|clear|normal)|pass(?:ed|es)?\s+(?:the\s+|a\s+)?(?:screening|screen))\b`, "gi"),
+  new RegExp(String.raw`\b(?:typical|normal)\s+development\b|\bdevelop(?:s|ing)\s+(?:normally|typically|on\s+track)\b|\bdevelopmentally\s+(?:normal|typical|on\s+track)\b`, "gi"),
+  new RegExp(String.raw`\b(?:was|were|has\s+been|have\s+been|had\s+been)\s+(?:observed|noted|seen|identified|detected)\b(?!\s+by\b)`, "gi"),
 ];
 
-/** Hebrew absence-of-finding phrases, matched as substrings. */
+/** Hebrew absence-of-finding phrases, matched as whole words (a glued ו/ש/כש allowed). */
 export const HANDOFF_FINDING_TERMS_HE = [
   // "no evidence of"
   "אין עדות", "ללא עדות", "אין הוכחה", "ללא הוכחה",
@@ -199,41 +209,66 @@ export const HANDOFF_FINDING_TERMS_HE = [
   "אין סימנים", "אין סימן", "ללא סימנים", "ללא סימן", "לא נראים סימנים", "לא נראה סימן", "לא נראו סימנים",
   "לא נצפו סימנים", "לא נצפה סימן", "לא מראה סימנים", "לא מראה סימן", "אינו מראה סימנים", "אינה מראה סימנים",
   "לא הראה סימנים", "לא הראתה סימנים", "אין אינדיקציה", "ללא אינדיקציה",
-  // "no concern / difficulty / delay"
-  "אין חשש", "ללא חשש", "אין קשיים", "ללא קשיים", "אין קושי", "ללא קושי", "לא נמצאו קשיים", "לא נצפו קשיים",
-  "לא נמצא קושי", "אין עיכוב", "ללא עיכוב",
+  // "no concern / difficulty / delay" (as a finding; "ללא קושי"/"ללא חשש" describe an event and are not listed)
+  "אין חשש", "אין קשיים", "אין קושי", "לא נמצאו קשיים", "לא נצפו קשיים", "לא נמצא קושי", "אין עיכוב",
   // "ruled out" / "within normal limits" / "developing normally"
   "לשלול", "נשלל", "נשללה", "נשללו", "שולל", "שוללת",
   "בטווח התקין", "בטווח הנורמה", "בגבולות הנורמה", "בגבולות התקין", "התפתחות תקינה",
   "מתפתח כרגיל", "מתפתחת כרגיל", "מתפתח באופן תקין", "מתפתחת באופן תקין",
 ] as const;
+const heWhole = (phrase: string) => String.raw`(?<!\p{L})(?:ו|ש|כש)?${phrase.trim().split(/\s+/).join(String.raw`\s+`)}(?!\p{L})`;
+const HANDOFF_FINDING_HE = new RegExp(HANDOFF_FINDING_TERMS_HE.map(heWhole).join("|"), "gu");
 /** Hebrew unattributed observation ("was observed / identified"), as whole words. */
-const UNATTRIBUTED_FINDING_HE = /(?<!\p{L})ו?(?:נצפה|נצפתה|נצפו|זוהה|זוהתה|זוהו)(?!\p{L})/u;
+const UNATTRIBUTED_FINDING_HE = /(?<!\p{L})(?:ו|ש|כש)?(?:נצפה|נצפתה|נצפו|זוהה|זוהתה|זוהו)(?!\p{L})/gu;
 
-/** The first invented-finding phrase in the text, or null. Language-agnostic at the call site. */
+/** Someone who can report: the first person, a family member, a named professional. */
+const REPORTER_EN = /\b(?:I|I['’]m|I['’]ve|we|we['’]ve|my|our|me|us|mom|mum|mommy|mother|dad|daddy|father|parents?|grand(?:ma|pa|mother|father|parents?)|family|teachers?|nanny|caregiver|babysitter|doctor|pediatrician|paediatrician|therapist|nurse|psychologist|clinician|specialist|audiologist)\b/i;
+const REPORTER_HE = /(?<!\p{L})(?:ו|ש|כש|ה|ל)?(?:אני|אנחנו|ראיתי|ראינו|שמתי|שמנו|הבחנתי|הבחנו|אמא|אבא|הורה|הורים|גננת|גנן|מורה|מטפלת|מטפל|רופא|רופאה|רופאת|אחות|סבתא|סבא|משפחה|סיפר|סיפרה|סיפרו|אמר|אמרה|אמרו|ציין|ציינה|דיווח|דיווחה|מספר|מספרת|מספרים|לדברי|לדבריה|לדבריו|לפי)(?!\p{L})/u;
+/** A condition or a referral action: the line is a safety message, kept verbatim. */
+const ESCALATION_EN = /^\s*(?:if|unless|should|in\s+case)\b|\b(?:call|calls|calling|contact|phone|seek|emergency|ambulance|right\s+away|immediately|urgent(?:ly)?|112|911|101|100|988)\b|\b(?:talk|speak|discuss|consult|check|follow\s+up)\b(?:\s+\w+){0,4}?\s+(?:pediatrician|paediatrician|doctor|GP|professional|clinician|nurse|therapist|specialist)s?\b/i;
+const ESCALATION_HE = /^\s*(?:ו)?(?:אם|במידה|במקרה)(?!\p{L})|(?<!\p{L})(?:ל|ו)?(?:התקשר\p{L}*|להתקשר|פנו|לפנות|פנה|פני|מיד|מייד|דחוף|בדחיפות|חירום|112|101|100)(?!\p{L})|(?<!\p{L})(?:לדבר|לשוחח|להתייעץ|להיוועץ|דברו|שוחחו|התייעצו)(?:\s+\S+){0,3}?\s+(?:עם\s+)?(?:ה)?(?:רופא\p{L}*|אחות|איש\s+מקצוע|אשת\s+מקצוע|אנשי\s+מקצוע|מטפל\p{L}*)/u;
+
+type FindingMatch = { phrase: string; index: number };
+const findingsIn = (text: string): FindingMatch[] => {
+  const out: FindingMatch[] = [];
+  for (const re of [...HANDOFF_FINDING_PATTERNS_EN, HANDOFF_FINDING_HE, UNATTRIBUTED_FINDING_HE]) {
+    re.lastIndex = 0;
+    for (const m of text.matchAll(re)) out.push({ phrase: m[0], index: m.index ?? 0 });
+  }
+  return out.sort((a, b) => a.index - b.index);
+};
+
+/** The first invented-finding phrase in the text, or null (attribution is not considered here). */
 export function findHandoffFinding(text: string): string | null {
-  for (const re of HANDOFF_FINDING_PATTERNS_EN) {
-    const m = re.exec(text);
-    if (m) return m[0];
-  }
-  for (const term of HANDOFF_FINDING_TERMS_HE) {
-    if (text.includes(term)) return term;
-  }
-  return UNATTRIBUTED_FINDING_HE.exec(text)?.[0] ?? null;
+  return findingsIn(text)[0]?.phrase.trim() ?? null;
 }
 
-/** Drop every sentence that states an invented finding; an untouched note is returned byte-identical. */
-export function withoutHandoffFindings(text: string): string {
-  if (!findHandoffFinding(text)) return text;
-  const sentences = text.match(/[^.!?。\n]+[.!?。]*\s*/g) ?? [text];
-  return sentences.filter((sentence) => !findHandoffFinding(sentence)).join("").trim();
+/** True when this clause states a finding nobody reported (and is not a safety message). */
+export function statesUnreportedFinding(clause: string): boolean {
+  if (ESCALATION_EN.test(clause) || ESCALATION_HE.test(clause)) return false;
+  return findingsIn(clause).some(({ index }) => {
+    const before = clause.slice(0, index);
+    return !REPORTER_EN.test(before) && !REPORTER_HE.test(before);
+  });
 }
+
+/** Drop every clause that states an unreported finding; an untouched note is returned byte-identical. */
+export function withoutHandoffFindings(text: string): string {
+  const clauses = text.match(/[^.!?;。\n]+[.!?;。]*\s*/g) ?? [text];
+  if (!clauses.some(statesUnreportedFinding)) return text;
+  return clauses.filter((clause) => !statesUnreportedFinding(clause)).join("").trim();
+}
+
+/** Fields of a School Brief draft the floor never touches: the escalation line is the safety message. */
+export const HANDOFF_BRIEF_UNSCRUBBED_FIELDS: readonly string[] = ["crisisEscalationTrigger"];
 
 /** The same floor over a structured School Brief / handoff draft: every string
- *  field and every list item. Returns how many fields changed. Mutates in place. */
+ *  field and list item except the escalation line. Returns how many fields
+ *  changed. Mutates in place. */
 export function scrubHandoffBriefFindings(brief: Record<string, unknown>): number {
   let changed = 0;
   for (const [key, value] of Object.entries(brief)) {
+    if (HANDOFF_BRIEF_UNSCRUBBED_FIELDS.includes(key)) continue;
     if (typeof value === "string") {
       const next = withoutHandoffFindings(value);
       if (next !== value) { brief[key] = next; changed++; }

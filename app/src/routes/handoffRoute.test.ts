@@ -231,6 +231,24 @@ describe("B-ASKJB-44 · /api/generate-handoff invented-finding floor", () => {
     expect(json.suggestedTeacherStrategies).toEqual(["Give a two-minute warning"]);
     draft = CLEAN_DRAFT;
   });
+  it("the escalation line survives verbatim in EN and HE (crisisEscalationTrigger is never scrubbed)", async () => {
+    for (const trigger of [
+      "If he shows no signs of calming after 20 minutes, or hurts himself or others, call the parent and the school nurse right away.",
+      "אם אין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.",
+    ]) {
+      draft = { ...CLEAN_DRAFT, crisisEscalationTrigger: trigger };
+      const res = await fetch(`${baseUrl}/api/generate-handoff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ childProfile: { name: "Mia", age: 4 }, logs: [], milestones: [] }),
+      });
+      const json = (await res.json()) as Record<string, unknown>;
+      // A self-harm line may route to the 409 escalation card; it is never silently deleted.
+      if (res.status === 409) expect(json.escalationCategory).toBeTruthy();
+      else expect(json.crisisEscalationTrigger).toBe(trigger);
+    }
+    draft = CLEAN_DRAFT;
+  });
   it("a clean draft is returned unchanged", async () => {
     draft = CLEAN_DRAFT;
     const res = await fetch(`${baseUrl}/api/generate-handoff`, {
