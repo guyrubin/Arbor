@@ -338,7 +338,7 @@ export default function HardMomentNowSheet() {
                   "I used these words" (the ONE capture sheet opens on the
                   hard-moment form with this guide's words, removable; Save
                   stores coRegulationScript) beside "Send these words". */}
-              <div data-testid="hard-moment-now-words-row" className="grid min-w-0 grid-cols-2 items-start gap-2">
+              <div data-testid="hard-moment-now-words-row" className="grid min-w-0 grid-cols-2 items-stretch gap-2">
                 <button
                   type="button"
                   data-testid="hard-moment-now-used"
@@ -348,7 +348,7 @@ export default function HardMomentNowSheet() {
                 >
                   <Icon name="bookmark_add" size={16} /> <span className="min-w-0">{t("elev.closeloop.hm.usedKeep")}</span>
                 </button>
-                <SendWordsButton card={card} locale={locale} parentName={parentFirst} childName={childFirst} t={t} />
+                <SendWordsButton card={card} locale={locale} parentName={parentFirst} childName={childFirst} t={t} inRow />
               </div>
               <PublicGuideShare key={`${card.id}-${locale}`} card={card} locale={locale} />
               <button

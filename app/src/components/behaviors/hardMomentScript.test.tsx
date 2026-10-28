@@ -169,3 +169,21 @@ describe("B-DATA-16 — the guide card's 'I used these words' is the parent's ex
     }
   });
 });
+
+describe("B-DATA-16 — the guide card stays calm: the two word actions share one row", () => {
+  it("'I used these words' and 'Send these words' sit in one two-column row, each >= 44 px; the name option spans below", () => {
+    for (const lang of ["en", "he"] as const) {
+      harness.lang = lang;
+      const html = renderToStaticMarkup(<HardMomentNowSheet />);
+      const start = html.indexOf('data-testid="hard-moment-now-words-row"');
+      expect(start).toBeGreaterThan(-1);
+      const rowOpen = html.slice(html.lastIndexOf("<div", start), html.indexOf(">", start) + 1);
+      expect(rowOpen).toMatch(/grid-cols-2/);
+      const row = html.slice(start, html.indexOf('data-testid="hm-send-name"', start));
+      expect(row).toContain('data-testid="hard-moment-now-used"');
+      expect(row).toContain('data-testid="hm-send-words"');
+      for (const b of row.match(/<button[^>]*>/g) ?? []) expect(b).toMatch(/min-h-11/);
+      expect(html).toMatch(/<label class="[^"]*col-span-2[^"]*"[^>]*><input type="checkbox" data-testid="hm-send-name"/);
+    }
+  });
+});

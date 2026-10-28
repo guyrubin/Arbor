@@ -68,12 +68,15 @@ export function hardMomentWordsText(card: HardMomentCard, opts: {
  * plain text; no link, no referral code, no image; share sheet else copy). The child's first name is included
  * only when the parent ticks it (default off).
  */
-export function SendWordsButton({ card, locale, parentName, childName, t }: {
+export function SendWordsButton({ card, locale, parentName, childName, t, inRow = false }: {
   card: HardMomentCard;
   locale: "en" | "he";
   parentName: string;
   childName: string;
   t: T;
+  /** B-DATA-16: one cell of a two-column action row (the guide card's words
+   *  row): the button takes its grid cell, the name option spans the row. */
+  inRow?: boolean;
 }) {
   const [withName, setWithName] = useState(false);
   // B-SHELL-29: the tap opens the ONE send sheet with these words, editable.
@@ -84,17 +87,17 @@ export function SendWordsButton({ card, locale, parentName, childName, t }: {
     setOpen(true);
   };
   return (
-    <div className="min-w-0 space-y-1">
+    <div className={inRow ? "contents" : "min-w-0 space-y-1"}>
       <button
         type="button"
         data-testid="hm-send-words"
         onClick={send}
-        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition"
+        className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition ${inRow ? "min-w-0 px-3" : "px-4"}`}
         style={{ color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)", background: "var(--arbor-paper-elevated)" }}
       >
         <Icon name="ios_share" size={16} /> {t("hm.send.cta")}
       </button>
-      <label className="flex min-h-11 cursor-pointer items-center gap-2 px-1 text-[13px]" style={{ color: "var(--arbor-muted)" }}>
+      <label className={`flex min-h-11 cursor-pointer items-center gap-2 px-1 text-[13px]${inRow ? " col-span-2" : ""}`} style={{ color: "var(--arbor-muted)" }}>
         <input type="checkbox" data-testid="hm-send-name" checked={withName} onChange={(e) => setWithName(e.target.checked)} className="h-4 w-4" />
         <bdi>{t("hm.send.includeName", { name: childName })}</bdi>
       </label>
