@@ -198,11 +198,12 @@ export function findClinicalDiagnosisTerm(text: string): string | null {
  * Known false negatives (the floor fails closed: a faithful note loses the
  * clause): a note in a different language from the parent's words; a clause
  * whose words the parent spread over two sentences ("The teacher called. She
- * said…"); a reworded noun ("evidence" for "signs"); a Hebrew word whose
- * stem changes inside ("קושי" / "קשיים"); a parent's statement with an extra
- * negation in it ("no signs of anxiety, not even at drop-off").
- * Known leak: two statements a parent joins with a bare comma and no new
- * subject ("Dr. Levi checked his ears, no signs of anxiety") read as one.
+ * said…"); a reworded noun ("evidence" for "signs"); a Hebrew noun and
+ * verb of one root ("ריב" / "רבו"); a parent's statement with an
+ * extra negation in it ("no signs of anxiety, not even at drop-off"); a
+ * subject the parent put in a neighbouring comma part that narrates ("He was
+ * seen by the pediatrician last month, who ruled out…"): a neighbouring part
+ * counts only when it just names who said it.
  * English on word boundaries (case-insensitive); Hebrew as whole words with
  * a glued particle (`\b` cannot bound a Hebrew word: "לשלול" is not inside
  * "לשלוליות"). Event descriptions such as "fell asleep without any
@@ -293,76 +294,114 @@ const insideCondition = (text: string, index: number, starts: RegExp): boolean =
 /** Who a referral reaches: a doctor by title counts ("talk with Dr. Levi", "דברו עם ד"ר לוי"). */
 const PROFESSIONAL_EN = String.raw`(?:pediatrician|paediatrician|doctor|dr|GP|professional|clinician|nurse|therapist|specialist|psychologist|psychiatrist|counsell?or|parents?|family|families)`;
 
-/* Round 6 (critic rounds 5–6): an escalation line is a sentence whose MAIN
- * clause opens with an imperative referral ("call the family", "talk with
- * your pediatrician", "the teacher should contact the family", "יש להתקשר
- * להורים", "כדאי להתייעץ עם…", "דברו עם ד"ר לוי") and that a real condition
- * governs. Only a finding INSIDE that condition is exempt — it is the
- * trigger, not a claim. The condition is either
+/* Rounds 6–7 (critic rounds 5–7): an escalation line is a sentence whose
+ * MAIN clause opens with an imperative referral ("call the family", "talk
+ * with your pediatrician", "the teacher should contact the family", "יש
+ * להתקשר להורים", "כדאי להתייעץ עם…", "דברו עם ד"ר לוי") and that a real
+ * condition governs. Only a finding INSIDE that condition is exempt — it is
+ * the trigger, not a claim. The condition is either
  *   - leading: from the start up to the comma or dash just before the
  *     imperative, however many commas it holds ("If he hurts himself or
- *     others, or shows no signs of calming…, call…", "אם, אחרי 20 דקות, אין
- *     סימנים…, יש להתקשר…"); or
- *   - after the command: from a real conditional conjunction ("Call the
- *     family if …", "Please contact the family if, after two weeks, …") to a
- *     colon, a dash or the end.
+ *     others, or shows no signs of calming…, call…", "After 20 minutes with
+ *     no signs of calming, call…", "כעבור 20 דקות ללא סימנים…, התקשרו…"); or
+ *   - after the command: from a real conjunction ("Call the family if …",
+ *     "… should he show no signs …", "… in the event that …", "התקשרו להורים
+ *     בכל מקרה ש…") to the first place a new clause starts: ", and",
+ *     ", though", ", ו", a Hebrew "ו" before a new clause, a comma that opens
+ *     a new subject (the comma pair of "if, after two weeks, …" excepted), a
+ *     colon or a dash.
  * Either way it stops at a tail — ", who / which / as / since / because /
  * so", ", כי", ", ש…" — and a finding there, or anywhere in the main clause,
- * is checked like any other ("Talk with Dr. Levi, who found no signs of
- * delay…" drops). "if / unless / in case / אם / במידה / במקרה" are
- * conditions; "when / whenever / once / כש / כאשר / ברגע" only before a
- * subject ("when he…", "once there are…", "כשאין…", "כשהוא…"), so "once a
- * week" and "when convenient" are not. A leading condition cut by a colon
- * ("If useful for context: …") is a framing; a narrated past ("When tested
- * last month he showed no signs…") is never a trigger; "she told us to call",
- * "so contact…", "ואפשר לפנות" open no main clause. */
-const REFERRAL_VERB_EN = String.raw`(?:call|phone|contact|notify|inform|alert|let\s+(?:\S+\s+){1,6}?know|check\s+(?:in\s+)?with|reach\s+out\s+to|talk\s+(?:with|to)|speak\s+(?:with|to)|consult|seek\s+(?:help|care|advice|support)|get\s+(?:help|medical\s+help|emergency\s+help)|(?:see|tell|discuss\s+(?:it\s+|this\s+|that\s+)?with|refer\s+(?:him\s+|her\s+|them\s+)?to)\s+(?:\S+\s+){0,3}?${PROFESSIONAL_EN}s?)\b`;
+ * is checked like any other. A condition that is not a hypothetical and holds
+ * a past-tense verb narrates ("When tested last month he showed no signs…")
+ * and is never a trigger. "Once a week", "when convenient", "Contact with
+ * peers…", "פנו ההורים", "התקשרו אלינו", "she told us to call" and "ואפשר
+ * לפנות" are not conditions or commands. */
+/** A bare call / contact needs its object ("call the family", "contact Dr. Levi", "call 112"); "Contact with peers…" is a noun. Talk / see / consult name a professional or the family. */
+const REFERRAL_OBJECT_EN = String.raw`(?:the|your|his|her|their|our|a|an|us|me|them|him|dr|mr|mrs|ms|prof|911|112|999|101|988|emergency|${PROFESSIONAL_EN})`;
+const REFERRAL_VERB_EN = String.raw`(?:(?:call|phone|contact|notify|inform|alert)\s+${REFERRAL_OBJECT_EN}|let\s+(?:\S+\s+){1,6}?know|seek\s+(?:help|care|advice|support)|get\s+(?:help|medical\s+help|emergency\s+help)|(?:check\s+(?:in\s+)?with|reach\s+out\s+to|talk\s+(?:with|to)|speak\s+(?:with|to)|consult|see|tell|discuss\s+(?:it\s+|this\s+|that\s+)?with|refer\s+(?:him\s+|her\s+|them\s+)?to)\s+(?:\S+\s+){0,3}?${PROFESSIONAL_EN}s?)\b`;
 const IMPERATIVE_EN = new RegExp(String.raw`^\s*(?:(?:then|please|immediately|right\s+away|always)\s+)*(?:(?:you|staff|we|teachers?|the\s+(?:teacher|teachers|staff|school|nurse|caregiver))\s+(?:should|must|need\s+to|needs\s+to|have\s+to|has\s+to)\s+(?:(?:immediately|always|please|also)\s+)?)?${REFERRAL_VERB_EN}`, "i");
 const REFERRAL_INFINITIVE_HE = String.raw`(?:להתקשר|לפנות|לעדכן|להודיע|ליידע|לדבר|לשוחח|להתייעץ|להיוועץ|להפנות)`;
-const IMPERATIVE_HE = new RegExp(String.raw`^\s*(?:(?:אז|מיד|נא)\s+)?(?:(?:יש|כדאי|מומלץ|צריך|חשוב)\s+(?:\S+\s+)?${REFERRAL_INFINITIVE_HE}|התקשרו|התקשרי|פנו|פני|דברו|דברי|עדכנו|עדכני|הודיעו|הודיעי|יידעו|התייעצו|התייעצי|שוחחו|שוחחי)(?!\p{L})`, "u");
+/** A Hebrew command form is also a past tense ("פנו ההורים לרופאה", "התקשרו אלינו מהגן"): followed by a subject, an "us/me", or "from the …", it narrates. */
+const HE_COMMAND = String.raw`(?:התקשרו|התקשרי|פנו|פני|דברו|דברי|עדכנו|עדכני|הודיעו|הודיעי|יידעו|התייעצו|התייעצי|שוחחו|שוחחי)`;
+const HE_PAST_FOLLOWER = String.raw`(?:ה\p{L}+|אלינו|אליי|אלי|אליו|אליה|אותנו|אותי|לנו|לי|מה\p{L}+)`;
+const IMPERATIVE_HE = new RegExp(String.raw`^\s*(?:(?:אז|מיד|נא)\s+)?(?:(?:יש|כדאי|מומלץ|צריך|חשוב)\s+(?:\S+\s+)?${REFERRAL_INFINITIVE_HE}(?!\p{L})|${HE_COMMAND}(?!\p{L})(?!\s+${HE_PAST_FOLLOWER}(?!\p{L})))`, "u");
 const opensWithReferral = (text: string) => IMPERATIVE_EN.test(text) || IMPERATIVE_HE.test(text);
-/** A temporal condition (when / once / כש / כאשר / ברגע) with a past-tense
- *  finding narrates what happened ("When tested last month he showed no signs
- *  of delay…", "כשהרופאה בדקה אותו לא נמצאו…"): never an escalation trigger. */
-const TEMPORAL_START = /^\s*(?:when|whenever|once|as\s+soon\s+as)\b|^\s*ו?(?:כאשר|ברגע)(?!\p{L})|^\s*ו?כש(?=\p{L})/iu;
+/** A condition that is not a hypothetical (when / once / after 20 minutes /
+ *  with no … / כש / כאשר / כעבור / אחרי / ללא) and holds a past-tense verb
+ *  narrates what happened ("When tested last month he showed no signs of
+ *  delay…", "כשהרופאה בדקה אותו לא נמצאו…"): never an escalation trigger. */
+const HYPOTHETICAL_LEAD = /^\s*(?:if|unless|in\s+case|should|in\s+the\s+event)\b|^\s*ו?(?:אם|במידה|במקרה|בכל\s+מקרה)(?!\p{L})/iu;
 const PAST_EN = /\b(?:found|showed|displayed|exhibited|demonstrated|presented|saw|ruled|tested|assessed|checked|evaluated|examined|screened|diagnosed|did\s*(?:not|n['’]t)|(?:was|were|had\s+been|has\s+been|have\s+been)\s+(?:\w+\s+)?(?:seen|tested|assessed|checked|evaluated|examined|screened|observed|noted|found|ruled))\b/i;
 const PAST_HE = /(?<!\p{L})(?:ו|ש|כש)?(?:נמצא|נמצאה|נמצאו|הראה|הראתה|הראו|נבדק|נבדקה|נבדקו|בדק|בדקה|בדקו|מצא|מצאה|מצאו|נצפה|נצפתה|נצפו|נשלל|נשללה|נשללו|היה|הייתה|היו|אובחן|אובחנה|ראה|ראתה)(?!\p{L})/u;
-const narratesPast = (condition: string) => TEMPORAL_START.test(condition) && (PAST_EN.test(condition) || PAST_HE.test(condition));
-/** Where a real condition starts: if / unless / in case anywhere; when / whenever / once / as soon as before a subject; אם / במידה / במקרה; כאשר / ברגע / a glued כש before a subject. */
-const SUBJECT_EN = String.raw`(?:(?:he|she|they|it|we|you|i|there|the|his|her|their|this|that|your|my|our)\b|[A-Z])`;
+const narratesPast = (condition: string) => !HYPOTHETICAL_LEAD.test(condition) && (PAST_EN.test(condition) || PAST_HE.test(condition));
+/** Where a real condition starts.
+ *  Anywhere: if / unless / in case / in the event / should + subject; when /
+ *  whenever / once / as soon as before a subject, "after", "no" or a comma
+ *  ("when, after 20 minutes, …"); after + a time ("after 20 minutes"); אם /
+ *  במידה / במקרה / בכל מקרה ש; כאשר / ברגע / a glued כש before a subject;
+ *  כעבור / אחרי + a time. Leading only: "with no …", "without …", "ללא …".
+ *  So "once a week", "when convenient", "when playing" are not conditions. */
+const SUBJECT_EN = String.raw`(?:(?:he|she|they|it|we|you|i|there|the|his|her|their|this|that|your|my|our|no|after|before|within|still)\b|[A-Z]|,)`;
+const TIME_EN = String.raw`(?:\d+|a|an|one|two|three|four|five|six|ten|fifteen|twenty|thirty|several|some|a\s+few)\s+(?:more\s+)?(?:minutes?|hours?|days?|weeks?|months?)`;
+const TIME_HE = String.raw`(?:\d+|כמה|שבוע|שבועיים|חודש|חודשיים|יום|יומיים|שעה|רבע|חצי)`;
 const CONJUNCTIONS = [
-  /\b(?:if|unless|in\s+case)\b|^\s*should\s+(?=(?:he|she|they|it|we|you|there|the)\b)/giu,
-  new RegExp(String.raw`\b(?:[Ww]hen|[Ww]henever|[Oo]nce|[Aa]s\s+soon\s+as)\s+(?=${SUBJECT_EN})`, "gu"),
-  /(?<!\p{L})ו?(?:אם|במידה|במקרה)(?!\p{L})/gu,
+  /\b(?:if|unless|in\s+case|in\s+the\s+event)\b|\bshould\s+(?=(?:he|she|they|it|we|you|there|the)\b)/giu,
+  new RegExp(String.raw`\b(?:[Ww]hen|[Ww]henever|[Oo]nce|[Aa]s\s+soon\s+as)\s*(?=${SUBJECT_EN})|\b[Aa]fter\s+(?=${TIME_EN}\b)`, "gu"),
+  /(?<!\p{L})ו?(?:אם|במידה|במקרה)(?!\p{L})|(?<!\p{L})בכל\s+מקרה\s+(?=ש\p{L})/gu,
   /(?<!\p{L})ו?(?:כאשר|ברגע)\s+(?=(?:ה\p{L}|הוא|היא|הם|הן|אני|אנחנו|אין|יש|לא|ש\p{L}))/gu,
   /(?<!\p{L})ו?כש(?=(?:ה\p{L}|אין|יש|לא|אני|אנחנו|את))/gu,
+  new RegExp(String.raw`(?<!\p{L})(?:כעבור|אחרי|לאחר)\s+(?=${TIME_HE}(?!\p{L}))`, "gu"),
 ];
-const conjunctionsIn = (text: string): number[] => CONJUNCTIONS.flatMap((re) => {
-  re.lastIndex = 0;
-  return [...text.matchAll(re)].map((m) => m.index ?? 0);
-}).sort((x, y) => x - y);
-/** Where a condition stops: a colon or dash, or a tail (", who / which / as / since / because / so", ", כי", ", ש…"). */
+const LEADING_ONLY = /^\s*(?:with\s+no|without)\b|^\s*ללא(?!\p{L})/iu;
+const conjunctionsIn = (text: string): { at: number; end: number }[] => {
+  const out = CONJUNCTIONS.flatMap((re) => {
+    re.lastIndex = 0;
+    return [...text.matchAll(re)].map((m) => ({ at: m.index ?? 0, end: (m.index ?? 0) + m[0].length }));
+  });
+  const lead = LEADING_ONLY.exec(text);
+  if (lead) out.push({ at: lead.index, end: lead.index + lead[0].length });
+  return out.sort((x, y) => x.at - y.at);
+};
+/** Where a leading condition stops: a colon or dash, or a tail (", who / which / as / since / because / so", ", כי", ", ש…"). */
 const CONDITION_STOP = /[:–—]|,\s*(?:(?:who|which|whose|as|since|because|so|that)\b|כי(?!\p{L})|ש(?=\p{L}))/iu;
 const stopAfter = (text: string, from: number): number => {
   const m = CONDITION_STOP.exec(text.slice(from));
   return m ? from + m.index : text.length;
 };
+/** After a command, a condition also stops where a new clause starts: ", and",
+ *  ", though", ", ו", a Hebrew "ו" before a new clause ("ואין", "והוא"), or a
+ *  comma that opens a new subject — except the comma pair of a parenthetical
+ *  right after the conjunction ("if, after two weeks, there are…"). */
+const NEW_CLAUSE_STOP = /,\s*(?:and|though|although|but|while|whereas|yet)\b|,\s*ו(?=\p{L})|\sו(?=(?:אין|יש|לא|ה\p{L}|אני|אנחנו)(?!\p{L}))/iu;
+const trailingStop = (text: string, conjunction: { at: number; end: number }): number => {
+  let from = conjunction.end;
+  const parenthetical = /^\s*,[^,]*,/.exec(text.slice(from));
+  if (parenthetical) from += parenthetical[0].length;
+  let end = Math.min(stopAfter(text, from), (() => { const m = NEW_CLAUSE_STOP.exec(text.slice(from)); return m ? from + m.index : text.length; })());
+  for (const m of text.slice(from, end).matchAll(/,/g)) {
+    const at = from + (m.index ?? 0);
+    const next = text.slice(at + 1).split(/[,:–—]/)[0];
+    if (opensNewSubject(next) && !isCreditPart(next)) { end = at; break; }
+  }
+  return end;
+};
 /** The span of the condition that governs an escalation line's imperative referral, or null when the clause is not one. */
 export function escalationCondition(clause: string): { start: number; end: number } | null {
   if (opensWithReferral(clause)) {
-    const start = conjunctionsIn(clause).find((at) => at > 0);
-    if (start === undefined) return null;
-    const end = stopAfter(clause, start);
-    return narratesPast(clause.slice(start, end)) ? null : { start, end };
+    const conjunction = conjunctionsIn(clause).find((c) => c.at > 0 && !LEADING_ONLY.test(clause.slice(c.at)));
+    if (conjunction === undefined) return null;
+    const end = trailingStop(clause, conjunction);
+    return narratesPast(clause.slice(conjunction.at, end)) ? null : { start: conjunction.at, end };
   }
   const lead = conjunctionsIn(clause)[0];
-  if (lead === undefined || clause.slice(0, lead).trim() !== "") return null;
+  if (lead === undefined || clause.slice(0, lead.at).trim() !== "") return null;
   for (const m of clause.matchAll(/[,–—]/g)) {
     const at = m.index ?? 0;
     if (clause.slice(0, at).includes(":")) return null;
     if (!opensWithReferral(clause.slice(at + 1))) continue;
-    const end = Math.min(at, stopAfter(clause, lead));
-    return narratesPast(clause.slice(0, at)) ? null : { start: lead, end };
+    const end = Math.min(at, stopAfter(clause, lead.at));
+    return narratesPast(clause.slice(0, at)) ? null : { start: lead.at, end };
   }
   return null;
 }
@@ -438,6 +477,8 @@ const HE_PARTICLES = /^[והשלבכמ]{1,3}/;
 const HE_ENDINGS = ["יות", "יימ", "ימ", "ות", "ית", "יי", "ה", "ת", "י", "ו"];
 const heEndingForms = (word: string): string[] => {
   const out = [word];
+  // a present participle and its past share a stem: נושכ / נשכ, בוכה / בכה
+  if (word.length === 4 && word[1] === "ו") out.push(word[0] + word.slice(2));
   for (const end of HE_ENDINGS) if (word.length - end.length >= 2 && word.endsWith(end)) out.push(word.slice(0, -end.length));
   return out;
 };
@@ -465,7 +506,18 @@ const heSame = (a: string, b: string): boolean => {
   const prep = hePrepless(a);
   return oneSided(a, b) || oneSided(b, a) || (prep !== null && prep === hePrepless(b));
 };
+/** Irregular forms a parent and a note swap ("fought" / "a fight", "bit" / "biting"). */
+const EN_IRREGULAR: Readonly<Record<string, string>> = {
+  bit: "bite", bites: "bite", biting: "bite", bitten: "bite", fought: "fight", fights: "fight", fighting: "fight",
+  threw: "throw", thrown: "throw", throws: "throw", throwing: "throw", hit: "hit", hits: "hit", hitting: "hit",
+  ran: "run", runs: "run", running: "run", cried: "cry", cries: "cry", crying: "cry", fell: "fall", fallen: "fall", falling: "fall",
+  took: "take", taken: "take", taking: "take", gave: "give", given: "give", giving: "give", got: "get", gotten: "get", getting: "get",
+  slept: "sleep", sleeping: "sleep", ate: "eat", eaten: "eat", eating: "eat", went: "go", gone: "go", came: "come", coming: "come",
+  spoke: "speak", spoken: "speak", woke: "wake", woken: "wake", sat: "sit", sitting: "sit",
+};
 const enStem = (word: string): string => {
+  const irregular = EN_IRREGULAR[word.replace(/'s$/, "")];
+  if (irregular) return irregular;
   let s = word.replace(/'s$/, "");
   if (s.length > 4 && s.endsWith("ies")) return `${s.slice(0, -3)}y`;
   if (s.length > 4 && /(?:s|x|z|ch|sh)es$/.test(s)) return s.slice(0, -2);
@@ -509,14 +561,30 @@ const partsOf = (text: string): { start: number; end: number }[] => {
   out.push({ start, end: text.length });
   return out;
 };
-/** A short part that only credits a source: "according to her teacher", "his teacher said", "אמרה הגננת", "לדברי הגננת". */
+/** A short part that only names who said it — a reporter or a name and at
+ *  most a saying verb: "according to her teacher", "his teacher said", "the
+ *  teacher told me", "אמרה הגננת", "לדברי הגננת". A part that narrates an
+ *  event ("Saw Dr. Levi for his ears", "היינו אצל ד"ר לוי") never does. */
 const CREDIT_LEAD = ["according", "per", ...heWords(["לדברי", "לדבריה", "לדבריו", "לדבריהם", "לפי", "כפי"])];
+const SAYING_WORDS = ["says", "said", "reports", "reported", "tells", "told", "notes", "noted", "mentions", "mentioned", "writes", "wrote",
+  "explains", "explained", "confirms", "confirmed", "thinks", "thought", "believes", "believed", "feels", "felt", "concludes", "concluded",
+  "shares", "shared", "describes", "described",
+  ...heWords(["סיפר", "סיפרה", "סיפרו", "מספר", "מספרת", "מספרים", "מספרות", "אמר", "אמרה", "אמרו", "ציין", "ציינה", "ציינו", "מציין",
+    "מציינת", "דיווח", "דיווחה", "דיווחו", "מדווח", "מדווחת", "מדווחים", "כתב", "כתבה", "כתבו", "קבע", "קבעה", "אומר", "אומרת", "אומרים",
+    "אומרות", "חושב", "חושבת", "חושבים", "סבור", "סבורה", "מסר", "מסרה", "מסרו", "טוען", "טוענת"])];
+const OBJECT_PRONOUNS: ReadonlySet<string> = new Set(["me", "us", "him", "her", "them", ...heWords(["לי", "לנו", "לו", "לה", "להם"])]);
 const isCreditPart = (text: string): boolean => {
   const words = tokenize(text);
+  while (words.length > 1 && OBJECT_PRONOUNS.has(words[words.length - 1])) words.pop();
   if (words.length === 0 || words.length > 6) return false;
   const [first, second] = words;
-  return isOneOf(first, CREDIT_LEAD) || isOneOf(words[words.length - 1], ATTRIBUTION_WORDS)
-    || (isHebrewWord(first) && (isOneOf(first, ATTRIBUTION_WORDS) || (first === "כך" && second !== undefined && isOneOf(second, ATTRIBUTION_WORDS))));
+  return isOneOf(first, CREDIT_LEAD) || isOneOf(words[words.length - 1], SAYING_WORDS)
+    || (isHebrewWord(first) && (isOneOf(first, SAYING_WORDS) || (first === "כך" && second !== undefined && isOneOf(second, SAYING_WORDS))));
+};
+/** A part of the note that credits someone, however it says so ("Dr. Levi found", "according to the teacher"). */
+const creditsSomeone = (text: string): boolean => {
+  const words = tokenize(text);
+  return words.length > 0 && words.length <= 6 && words.some((word) => isOneOf(word, CREDIT_LEAD) || isOneOf(word, ATTRIBUTION_WORDS));
 };
 /** The text with its finding phrases blanked, to count the negations outside them. */
 const outsidePhrases = (text: string, findings: readonly FindingMatch[]) =>
@@ -535,9 +603,11 @@ const HEDGE = /\b(?:not\s+sure|unsure|can['’]?t\s+say|cannot\s+say|didn['’]?
 /** In its own comma part, a parent's finding reaches back this many words for its subject or source ("Her teacher said that she thinks there are no signs…"). */
 const SPAN_LEAD_WORDS = 8;
 type Statement = {
+  /** Its words. */
+  words: readonly string[];
   /** The kinds of finding it states (outside any "if"). */
   keys: ReadonlySet<FindingKey>;
-  /** Each finding it states, with the words next to it: up to SPAN_LEAD_WORDS before it and the rest of its comma part, and the parts on either side. */
+  /** Each finding it states, with the words next to it: up to SPAN_LEAD_WORDS before it and the rest of its comma part, and a part on either side that only names who said it. */
   spans: { key: FindingKey; words: readonly string[] }[];
   /** Negations outside its finding phrases ("I'm NOT sure there are no signs"). */
   negations: number;
@@ -585,12 +655,14 @@ const buildParentIndex = (text: string): ParentIndex => {
       const partWords = parts.map((part) => tokenize(statementText.slice(part.start, part.end)));
       const id = statements.length;
       statements.push({
+        words,
         keys: new Set(reported.map((f) => f.key)),
         spans: reported.map((f) => {
           const i = parts.findIndex((part) => f.index >= part.start && f.index < part.end);
           const before = tokenize(statementText.slice(parts[i].start, f.index)).length;
           const own = partWords[i].slice(Math.max(0, before - SPAN_LEAD_WORDS));
-          return { key: f.key, words: [...(partWords[i - 1] ?? []), ...own, ...(partWords[i + 1] ?? [])] };
+          const credit = (j: number) => (parts[j] && isCreditPart(statementText.slice(parts[j].start, parts[j].end)) ? partWords[j] : []);
+          return { key: f.key, words: [...credit(i - 1), ...own, ...credit(i + 1)] };
         }),
         negations: tokenize(outsidePhrases(statementText, local)).filter(isNegation).length,
       });
@@ -659,7 +731,7 @@ const anchorsOf = (clause: string, findings: readonly FindingMatch[]): string[] 
   for (const part of partsOf(clause)) {
     const inPart = findings.find((f) => f.index >= part.start && f.index < part.end);
     if (inPart) out.push(...tokenize(clause.slice(part.start, inPart.index)));
-    else if (part.end <= first || isCreditPart(clause.slice(part.start, part.end))) out.push(...tokenize(clause.slice(part.start, part.end)));
+    else if (part.end <= first || creditsSomeone(clause.slice(part.start, part.end))) out.push(...tokenize(clause.slice(part.start, part.end)));
   }
   return out;
 };
@@ -676,12 +748,16 @@ export function statesUnreportedFinding(clause: string, opts: HandoffFloorOption
   const names = (opts.childNames ?? []).flatMap((name) => tokenize(name));
   const words = tokenize(clause);
   const negations = tokenize(outsidePhrases(clause, findings)).filter(isNegation).length;
-  const keys = [...new Set(findings.map((finding) => finding.key))];
+  // An observation ("He was observed biting…", "הוא נצפה נושך…") needs the
+  // parent's words for what happened, not a passive "observed" of their own.
+  const keys: FindingKey[] = [...new Set(findings.map((finding) => finding.key))].filter((key) => key !== "observed");
   const isParent = (word?: string) => word !== undefined && isOneOf(word, REPORTER_PARENT);
   // The parent's own possessor ("Noa's mom", "אמה של נועה") is the parent too.
   const ofParent = (i: number) => (words[i].endsWith("'s") && isParent(words[i + 1])) || (words[i - 1] === "של" && isParent(words[i - 2]));
+  // The passive frame of an observation ("was observed", "נצפה") is not something the parent must have written.
+  const frame = findings.filter((finding) => finding.key === "observed").flatMap((finding) => tokenize(finding.phrase));
   const required = [...new Set(words.filter((word, i) => !isStopWord(word) && !isNegation(word) && !isOneOf(word, ATTRIBUTION_WORDS)
-    && !isParent(word) && !isOneOf(word, names) && !ofParent(i)))];
+    && !isParent(word) && !isOneOf(word, names) && !ofParent(i) && !frame.includes(word)))];
   const anchors = [...new Set(anchorsOf(clause, findings))].filter((word) => required.includes(word));
   // A statement of the parent's that states the same kind of finding, with the
   // same negations outside it, holding every content word of the clause …
@@ -693,8 +769,10 @@ export function statesUnreportedFinding(clause: string, opts: HandoffFloorOption
     candidates = candidates.filter((id) => ids.has(id));
   }
   // … with the subject and any credited source next to its finding.
-  return !candidates.some((id) => parent.statements[id].spans.some((span) =>
-    keys.includes(span.key) && anchors.every((anchor) => span.words.some((word) => sameWord(anchor, word)))));
+  const near = (words: readonly string[]) => anchors.every((anchor) => words.some((word) => sameWord(anchor, word)));
+  return !candidates.some((id) => (keys.length === 0
+    ? near(parent.statements[id].words)
+    : parent.statements[id].spans.some((span) => keys.includes(span.key) && near(span.words))));
 }
 
 /** Drop every clause that states an unreported finding; an untouched note is returned byte-identical. */

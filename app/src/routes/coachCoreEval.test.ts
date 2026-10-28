@@ -699,6 +699,58 @@ const COMPARE_PARENT_HE = "הוא נשך חבר בגן כשרבו על צעצו�
 const compareParent = (p: string) => (p === "EN" ? COMPARE_PARENT_EN : p === "HE" ? COMPARE_PARENT_HE : p);
 const COMPARE_PART_D7 = "If you are worried, talk with the pediatrician;";
 
+/* Critic round 6 → round 7 rows (compare6.txt F/G/H, extra6.txt T/FN), with
+   the verdict the branch must give: F the bare-comma leak (dropped), G
+   escalation phrasings (kept), H Hebrew past tense / English nouns that look
+   like commands (dropped), T a condition after a command that runs into a new
+   clause (dropped; T6 keeps, as main does), FN observations and documented
+   false negatives (FN1 "was observed biting" and FN5 "קושי/קשיים" kept; FN3
+   "ריב/רבו" stays a documented false negative). */
+const ROUND7_ROWS: [string, string, string, "keep" | "drop" | "part"][] = [
+  ["F1 EN comma leak doctor", "Dr. Levi found no signs of a speech delay.", "Saw Dr. Levi for his ears this morning, no signs of a speech delay at home, he is chatting nonstop.", "drop"],
+  ["F2 EN comma leak teacher", "His teacher sees no signs of anxiety at drop-off.", "Met his teacher about the biting, no signs of anxiety at drop-off since the chart.", "drop"],
+  ["F3 EN comma leak pediatrician ruled out", "The pediatrician ruled out a hearing problem.", "Pediatrician visit for his cough, no hearing problem as far as we can tell, ruled out an ear infection.", "drop"],
+  ["F4 HE comma leak ד\\\"ר", "ד\"ר לוי מצא שאין סימנים לעיכוב בדיבור.", "היינו אצל ד\"ר לוי בגלל האוזניים, אין סימנים לעיכוב בדיבור בבית.", "drop"],
+  ["F5 HE comma leak גננת", "לדברי הגננת, אין סימנים לחרדה בפרידה.", "דיברתי עם הגננת על הנשיכות, אין סימנים לחרדה בפרידה מאז הלוח.", "drop"],
+  ["F6 EN control new subject", "Dr. Levi found no signs of a speech delay.", "Dr. Levi checked his ears, there are no signs of a speech delay at home.", "drop"],
+  ["G1 Call … should he", "Call the family should he show no signs of calming after 20 minutes.", "EN", "keep"],
+  ["G2 After 20 min with no signs, call", "After 20 minutes with no signs of calming, call the family.", "EN", "keep"],
+  ["G3 Call … when, after 20 min,", "Call the family when, after 20 minutes, there are no signs of calming.", "EN", "keep"],
+  ["G4 Call … when after 20 min there", "Call the family when after 20 minutes there are still no signs of calming.", "EN", "keep"],
+  ["G5 Call … after 20 min without signs", "Call the family after 20 minutes without signs of calming.", "EN", "keep"],
+  ["G6 With no signs …, call", "With no signs of calming after 20 minutes, call the family.", "EN", "keep"],
+  ["G7 Call … in the event that", "Call the family in the event that he shows no signs of calming.", "EN", "keep"],
+  ["G8 Should he show …, call (leading)", "Should he show no signs of calming after 20 minutes, call the family.", "EN", "keep"],
+  ["G9 HE התקשרו … בכל מקרה ש", "התקשרו להורים בכל מקרה שאין סימנים של רגיעה אחרי 20 דקות.", "HE", "keep"],
+  ["G10 HE כעבור 20 דקות ללא סימנים, התקשרו", "כעבור 20 דקות ללא סימנים של רגיעה, התקשרו להורים.", "HE", "keep"],
+  ["G11 HE אחרי 20 דקות שאין סימנים, יש להתקשר", "אחרי 20 דקות שאין סימנים של רגיעה, יש להתקשר להורים.", "HE", "keep"],
+  ["G12 HE יש להתקשר … אם אחרי", "יש להתקשר להורים אם אחרי 20 דקות אין סימנים של רגיעה.", "HE", "keep"],
+  ["G13 EN Call if, after", "Call the family if, after 20 minutes, there are no signs of calming.", "EN", "keep"],
+  ["G14 EN the teacher should call if", "The teacher should call the family if there are no signs of calming after 20 minutes.", "EN", "keep"],
+  ["G15 EN when no signs appear", "Call the family when no signs of calming appear after 20 minutes.", "EN", "keep"],
+  ["H1 HE אתמול פנו … שלא מצאה", "אתמול פנו ההורים לרופאה, שמצאה שאין סימנים לעיכוב.", "HE", "drop"],
+  ["H2 HE פנו (past) … כשהוא, ואין", "פנו ההורים לרופאה כשהוא חלה, ואין סימנים לעיכוב בדיבור.", "HE", "drop"],
+  ["H3 HE התקשרו (past) אלינו … כשהוא בכה, ואין", "התקשרו אלינו מהגן כשהוא בכה, ואין סימנים לחרדה בבית.", "HE", "drop"],
+  ["H4 HE דברו (past) … כשהם, אין", "דברו עם הגננת כשהם נפגשו ואין סימנים לחרדה בפרידה.", "HE", "drop"],
+  ["H5 EN noun Contact … when he", "Contact with peers when he is tired shows no signs of distress.", "EN", "drop"],
+  ["H6 EN Talk … when he (narrative)", "Talk with peers when he is calm shows no signs of a language delay.", "EN", "drop"],
+  ["H7 HE התקשרו (past) … אם, אין", "התקשרו מהגן לשאול אם הוא רעב, ואין סימנים לקשיי אכילה.", "HE", "drop"],
+  ["T1 EN imperative-first if…, and <finding>", "Call the family if he cries for more than 20 minutes, and there is no evidence of a speech delay.", "EN", "drop"],
+  ["T2 EN imperative-first when he…, and <finding>", "Contact the family when he is upset at drop-off, and note there are no signs of attention difficulties.", "EN", "drop"],
+  ["T3 EN please call if…, though <finding>", "Please call the family if he is upset for long, though he shows no signs of delay.", "EN", "drop"],
+  ["T4 HE יש להתקשר אם…, ואין", "יש להתקשר להורים אם הוא בוכה יותר מ-20 דקות, ואין סימנים לעיכוב בדיבור.", "HE", "drop"],
+  ["T5 HE התקשרו כשהוא…, ואין", "התקשרו להורים כשהוא נסער בבוקר, ואין סימנים לקשיי קשב.", "HE", "drop"],
+  ["T6 EN imperative-first if… with no comma tail", "Call the family if he is upset and there is no evidence of a speech delay.", "EN", "keep"],
+  ["FN1 EN was observed biting", "He was observed biting a friend at preschool during a fight over a toy.", "EN", "keep"],
+  ["FN2 EN has been noted to bite", "He has been noted to bite when toys are contested.", "EN", "drop"],
+  ["FN3 HE נצפה נושך", "הוא נצפה נושך חבר בגן בזמן ריב על צעצוע.", "HE", "drop"],
+  ["FN4 EN parent's absence, reworded noun", "No evidence of anxiety at drop-off since the picture chart.", "No signs of anxiety at drop-off since the picture chart", "drop"],
+  ["FN5 HE stem change", "אין קשיים בשינה מאז השגרה החדשה.", "אין קושי בשינה מאז השגרה החדשה", "keep"],
+  ["FN6 EN extra negation", "No signs of anxiety at drop-off.", "No signs of anxiety at drop-off, not even on Mondays", "drop"],
+  ["FN7 cross-language", "No signs of anxiety at drop-off since the picture chart.", "אין סימנים לחרדה בפרידה מאז לוח התמונות", "drop"],
+  ["FN8 EN split sentences", "No signs of anxiety at drop-off, according to her teacher.", "The teacher called today. She said there are no signs of anxiety at drop off.", "drop"],
+];
+
 /* Critic round 5's esc5 lines (B-ASKJB-44 round 6 hotfix): every one was kept on 5fb5666f. */
 const ESCALATION_LINES_R6 = [
   "If, after 20 minutes, he shows no signs of calming, call the family.",
@@ -783,6 +835,19 @@ describe("B-ASKJB-44 · /api/chat handoff notes carry no invented finding", () =
       // Never silently deleted: kept verbatim, or the whole turn becomes the crisis card.
       if (done?.outputBlocked) expect(done?.blockedCategory, teacher).toBeTruthy();
       else expect(coachResponseZodSchema.parse(done?.contract).handoffNotes.teacher, teacher).toBe(teacher);
+    }
+  });
+  it("round 7: every F/G/H/T/FN row through /api/chat (EN + HE)", async () => {
+    for (const [label, sentence, parent, verdict] of ROUND7_ROWS) {
+      contractOverrides = { handoffNotes: { teacher: sentence, professional: "" } };
+      const { events } = await postChatStreamed({
+        message: compareParent(parent),
+        childProfile: { id: "c1", name: "Noa" },
+        language: /[\u05D0-\u05EA]/.test(sentence) ? "he" : "en",
+      });
+      const done = doneOf(events);
+      if (done?.outputBlocked && verdict === "keep") { expect(done?.blockedCategory, label).toBeTruthy(); continue; }
+      expect(coachResponseZodSchema.parse(done?.contract).handoffNotes.teacher, label).toBe(verdict === "keep" ? sentence : "");
     }
   });
   it("round 6: every critic compare row through /api/chat — escalation lines kept (or the turn routes to crisis help), invented or narrated findings dropped (EN + HE)", async () => {
