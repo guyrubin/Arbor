@@ -1,0 +1,101 @@
+name: Arbor plan plates
+# B-BOOK-76 follow-up: paint the Everyday-plan pattern plates (child-free,
+# text-free masters, standard §4) with the project's Vertex image model and
+# open a PR with the files. Manual only: dispatching this run is the spend.
+on:
+  workflow_dispatch:
+    inputs:
+      patterns:
+        description: "Space-separated pattern ids (empty = every pattern in PLAN_PLATE_BRIEFS)"
+        required: false
+        default: ""
+      dry_run:
+        description: "Print the plan (prompts, paths) without any model call or commit"
+        required: false
+        default: false
+        type: boolean
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+concurrency:
+  group: arbor-plan-plates
+  cancel-in-progress: false
+jobs:
+  paint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ARBOR_ENV: dev
+      MODEL_PROVIDER: vertex
+      MEMORY_ADAPTER: local
+      ENABLE_LOCAL_MEMORY_ADAPTER: 'true'
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      FIREBASE_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      VERTEX_LOCATION: europe-west3
+      VERTEX_IMAGE_REGIONS: europe-west4,europe-west1,europe-west3
+      VERTEX_MODEL_IMAGE: gemini-2.5-flash-image
+      VERTEX_MODEL_ANALYSIS: gemini-3.5-flash-lite
+      TTS_DISABLED: 'true'
+      LIVE_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+        working-directory: app
+      - name: Install the WebP encoder (cwebp)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq webp
+      - uses: google-github-actions/auth@v2
+        if: vars.GCP_WIF_PROVIDER != ''
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/auth@v2
+        if: vars.GCP_WIF_PROVIDER == ''
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Paint the plates (idempotent; skips files already committed)
+        working-directory: app
+        env:
+          PATTERNS: ${{ inputs.patterns }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -o pipefail
+          args=""
+          for p in $PATTERNS; do args="$args --pattern $p"; done
+          if [ "$DRY_RUN" = "true" ]; then args="$args --dry-run"; fi
+          npx tsx scripts/plan-plates.mts $args 2>&1 | tee plan-plates.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plan-plates-log
+          path: app/plan-plates.log
+          retention-days: 14
+      - name: Open or update the plates PR
+        if: inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- app/public/visuals/plans && [ -z "$(git ls-files --others --exclude-standard app/public/visuals/plans)" ]; then
+            echo "No new plates: nothing to commit."; exit 0
+          fi
+          branch="claude/plan-plates-$(date -u +%F)"
+          git config user.name "arbor-plan-plates[bot]"
+          git config user.email "plan-plates@users.noreply.github.com"
+          git fetch origin "$branch" && git checkout -B "$branch" "origin/$branch" || git checkout -B "$branch"
+          git add app/public/visuals/plans
+          git commit -m "[claude] B-BOOK-76: plan plates painted by the Vertex image model (${{ inputs.patterns || 'all patterns' }})" \
+            -m "Child-free, text-free 3:2 masters per PLAN_PLATE_BRIEFS and kid-books-standard §4, with a provenance JSON per plate (model, prompt hash, QC verdict). Painted by the manual arbor-plan-plates workflow; the parent reviews each plate full size before it is shown (lane B §4.9)."
+          git push -u origin "$branch"
+          if gh pr view "$branch" --json number >/dev/null 2>&1; then
+            echo "PR for $branch already open; updated with the new commit."
+          else
+            gh pr create --base main --head "$branch" \
+              --title "[claude] B-BOOK-76: plan plates (${{ inputs.patterns || 'all patterns' }})" \
+              --body "Everyday-plan pattern plates painted by the project's Vertex image model from \`PLAN_PLATE_BRIEFS\` (child-free, text-free, one key light, hero slot empty, game-tile look; kid-books-standard §4). Each plate carries a provenance JSON (model, prompt hash, QC verdict). The parent-side review (lane B §4.9) still views every plate full size before it is shown. Painted by the manual \`arbor-plan-plates\` workflow run ${{ github.run_id }}."
+          fi
