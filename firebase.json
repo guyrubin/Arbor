@@ -27,6 +27,7 @@
       { "source": "/privacy", "destination": "/privacy.html" },
       { "source": "/terms", "destination": "/terms.html" },
       { "source": "/support", "destination": "/support.html" },
+      { "source": "/for-professionals", "destination": "/for-professionals.html" },
       { "source": "/guides", "destination": "/guides/index.html" },
       { "source": "/guides/**", "destination": "/guides/index.html" },
       {

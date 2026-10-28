@@ -1523,6 +1523,12 @@ function assertNoteAllowed(preset: ConsultPreset, note: string): void {
  *  `familyQuestion` is the one "Our question: …" line the parent turned on
  *  (insertFamilyQuestion); it joins BEFORE the final guards run, so the same
  *  ceiling, term scan and percentage block cover it. */
+/** B-CAREPRO-47 — the copied/sent packet ends with the ONE Arbor line (the
+ *  same key the print shell ends with: lib/reportExport arborDocumentLine),
+ *  scanned with the rest of the egress text. */
+const withArborLine = (md: string, lang: UiLang): string =>
+  `${md.replace(/\s+$/, "")}\n\n_${translate(lang, "elev.reports.arborLine")}_\n`;
+
 export function serializeForExport(
   audience: ExportAudience,
   packet: ConsultPacket,
@@ -1533,7 +1539,7 @@ export function serializeForExport(
   familyQuestion: string = ""
 ): string {
   if (audience === "self") {
-    const md = appendParentNote(insertFamilyQuestion(serializePacket(packet, excludedIds, lang), familyQuestion), note, noteHeading);
+    const md = withArborLine(appendParentNote(insertFamilyQuestion(serializePacket(packet, excludedIds, lang), familyQuestion), note, noteHeading), lang);
     assertClinicianExportCeiling(md);
     return md;
   }
@@ -1541,7 +1547,7 @@ export function serializeForExport(
   const preset = CONSULT_PRESETS[audience];
   assertNoteAllowed(preset, note);
   assertNoteAllowed(preset, familyQuestion);
-  const md = appendParentNote(insertFamilyQuestion(serializePresetPacket(preset.audience, packet, excludedIds, lang), familyQuestion), note, noteHeading);
+  const md = withArborLine(appendParentNote(insertFamilyQuestion(serializePresetPacket(preset.audience, packet, excludedIds, lang), familyQuestion), note, noteHeading), lang);
   assertWithinCeiling(preset, md);
   assertClinicianExportCeiling(md);
   return md;

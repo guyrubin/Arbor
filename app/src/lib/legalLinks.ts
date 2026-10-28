@@ -18,6 +18,11 @@ export const LEGAL_LINKS = {
 
 export type LegalLinkKey = keyof typeof LEGAL_LINKS;
 
+/** B-CAREPRO-47: the static, account-free page every document a parent shares
+ *  points to (public/for-professionals.html; firebase.json /for-professionals).
+ *  The document line prints it without the scheme. */
+export const FOR_PROFESSIONALS_URL = `${LEGAL_ORIGIN}/for-professionals`;
+
 /** Render order everywhere: Privacy · Terms · Support. */
 export const LEGAL_LINK_ORDER: readonly LegalLinkKey[] = ["privacy", "terms", "support"];
 
@@ -38,7 +43,18 @@ export async function openLegalLink(
     openWeb?: (url: string) => unknown;
   },
 ): Promise<boolean> {
-  const url = LEGAL_LINKS[key];
+  return openLegalUrl(LEGAL_LINKS[key], deps);
+}
+
+/** The same opener for any page on the product domain (B-CAREPRO-47). */
+export async function openLegalUrl(
+  url: string,
+  deps: {
+    isNative: boolean;
+    openNative?: (url: string) => Promise<unknown>;
+    openWeb?: (url: string) => unknown;
+  },
+): Promise<boolean> {
   try {
     if (deps.isNative) {
       const openNative =

@@ -277,6 +277,8 @@ export const en: Record<string, string> = {
   "elev.reports.printHint": "Reports open in a new tab — use your browser's Save as PDF. Every report carries Arbor's non-diagnostic framing.",
   "elev.reports.printMeta": "Generated {date} · Parent-prepared · Non-diagnostic",
   "elev.reports.printFooter": "Arbor is non-diagnostic and does not replace professional advice. This report reflects parent observations and is shared with the parent's consent.",
+  // B-CAREPRO-47: the ONE Arbor line every packet, school brief and report ends with.
+  "elev.reports.arborLine": "Prepared by the parent with Arbor, a parent's notebook for child development. What this document is: arborparentingapp.com/for-professionals",
   "elev.reports.weekly.title": "Weekly Insight",
   "elev.reports.weekly.desc": "This week's summary for your records or to share.",
   "elev.reports.teacher.title": "Teacher Handoff",
@@ -546,6 +548,7 @@ export const he: Record<string, string> = {
   "elev.reports.printHint": "המסמכים נפתחים בלשונית חדשה — השתמשו ב\"שמירה כ-PDF\" של הדפדפן. בכל מסמך מופיעה ההבהרה שארבור אינו מאבחן.",
   "elev.reports.printMeta": "הופק ב-{date} · הוכן על ידי ההורים · אינו אבחנה",
   "elev.reports.printFooter": "ארבור אינו מאבחן ואינו מחליף ייעוץ מקצועי. המסמך משקף תצפיות של ההורים ומשותף בהסכמתם.",
+  "elev.reports.arborLine": "הוכן על ידי ההורים עם ארבור, מחברת הורים על התפתחות ילדים. מה המסמך הזה: arborparentingapp.com/for-professionals",
   "elev.reports.weekly.title": "סיכום שבועי",
   "elev.reports.weekly.desc": "סיכום השבוע לתיעוד שלכם או לשיתוף.",
   "elev.reports.teacher.title": "מסירה לגננת או למורה",

@@ -11,6 +11,8 @@ import { ALL_MILESTONES } from "../../lib/milestoneData";
 import { CHILD_DATA_ROWS } from "../../lib/childDataGroups";
 import { contentCitedSourceUrls } from "../../lib/citedSources";
 import { requestOpenSettings } from "../layout/settingsBus";
+import { FOR_PROFESSIONALS_URL, openLegalUrl } from "../../lib/legalLinks";
+import { isNativePlatform } from "../../lib/runtime";
 
 /**
  * Trust Center — masterplan 3.3 + 3.4 + 3.1 (Maytal Row-2, all six frames).
@@ -530,6 +532,17 @@ export default function SciencePage() {
               sub={tt("elev.trust.more.contactSub")}
               onGo={() => setActiveTab("consult")}
               testId="trust-contact-consult"
+            />
+          </div>
+          {/* B-CAREPRO-47: #/science is a live door to the account-free page
+              every shared document's last line points to. */}
+          <div className="mt-2">
+            <LinkRow
+              icon="description"
+              label={tt("elev.trust.more.forPros")}
+              sub={tt("elev.trust.more.forProsSub")}
+              onGo={() => void openLegalUrl(FOR_PROFESSIONALS_URL, { isNative: isNativePlatform })}
+              testId="trust-for-professionals"
             />
           </div>
         </SectionCard>

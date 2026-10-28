@@ -176,7 +176,9 @@ const heInput: BuildPacketInput = {
 const hePacket = buildConsultPacket(heInput);
 /** The Latin a Hebrew document may carry: the child's name, catalogued
  *  milestone titles (GD-6) and phrases the parent logged as heard. */
-const ALLOWED_LATIN = ["Dylan", "Says two-word phrases", "Takes turns in games", "more juice"];
+const ALLOWED_LATIN = ["Dylan", "Says two-word phrases", "Takes turns in games", "more juice",
+  // B-CAREPRO-47: the Arbor line's page address (a web address stays Latin).
+  "arborparentingapp.com/for-professionals"];
 const latinLeft = (text: string) => {
   let rest = text;
   for (const a of ALLOWED_LATIN) rest = rest.split(a).join("");
