@@ -84,7 +84,7 @@ export const isStaticSuite = (suite: EvalSuite): boolean =>
 
 /**
  * B-PROV-10 — live-tier honesty, OPT-IN per suite. A suite whose runner
- * declares `deterministicCiGate` (voice-loop-v1) keeps its deterministic
+ * declares `deterministicCiGate` (for example voice-loop-v1) keeps its deterministic
  * scenarios for CI only: they carry a stubbed model reply, a scripted stream
  * or a screening-down condition the live route cannot reproduce, so the live
  * judge grades only `tier: "live"` (or untiered) scenarios and names the
@@ -101,6 +101,14 @@ export const liveJudgePlan = (suite: Pick<EvalSuite, "runner" | "scenarios">): {
     skippedDeterministic: suite.scenarios.filter((scenario) => !isLive(scenario)).map((scenario) => scenario.id),
     ciGate: ciGate.trim(),
   };
+};
+
+/** A deterministic-only suite is not a successful live run. Refuse it before
+ * creating a provider/server or appending a results row (B-AI-11). */
+export const requireLiveScenarios = (suite: EvalSuite): void => {
+  if (liveJudgePlan(suite).judged.length === 0) {
+    throw new Error(`suite "${suite.suite}" has no live-judgeable scenarios; its deterministic CI gate is not live model validation`);
+  }
 };
 
 const LOCALE_NAME: Record<string, string> = { en: "English", he: "Hebrew" };
@@ -236,6 +244,7 @@ export type SuiteRunResult = { row: ResultsRow; violations: string[]; ok: boolea
 
 /** Run every scenario, judge each once, and assemble the results row. */
 export const runSuiteWithDeps = async (suite: EvalSuite, deps: JudgeDeps): Promise<SuiteRunResult> => {
+  requireLiveScenarios(suite);
   const perScenario: ScenarioVerdict[] = [];
   const violations: string[] = [];
   // B-PROV-10: a suite with a deterministic CI gate is judged on its live tier only.

@@ -43,6 +43,7 @@ import { hardMomentCards, type HardMomentCard } from "../content/hardMomentCards
 import { buildHardMomentSeedPrompt, HARD_MOMENT_SEED_ESCALATION_NOTE } from "../content/hardMomentSurface.js";
 import { seededEscalationLine } from "../safety/seededEscalation.js";
 import { HARD_MOMENT_PILOT } from "../content/pilotRelease.js";
+import { liveJudgePlan } from "./judge.js";
 
 export type EvalScenario = {
   id: string;
@@ -387,8 +388,10 @@ export const defaultConfigForPinning = (): ArborConfig => {
 
 /** `contentWarnings` (B-LOOP-14) are printed as WARN beside `warnings`, never failed.
  *  `mode` / `scenarioCount` (B-LOOP-14 guard) let the live tier tell a static
- *  suite from a route suite without re-reading the file. */
-export type SuiteReport = { suite: string; file: string; errors: string[]; warnings: string[]; contentWarnings?: string[]; mode?: string; scenarioCount?: number };
+ *  suite from a route suite without re-reading the file. `liveScenarioCount`
+ *  comes from the existing judge tier selector; zero is implementation-pending
+ *  and blocks a requested aggregate before any paid suite starts. */
+export type SuiteReport = { suite: string; file: string; errors: string[]; warnings: string[]; contentWarnings?: string[]; mode?: string; scenarioCount?: number; liveScenarioCount: number };
 
 /**
  * B-LOOP-14 (guard): the live judge tier of check:acceptance runs whenever
@@ -413,6 +416,15 @@ export const partitionLiveSuites = (
   for (const report of reports) (isStaticSuiteReport(report) && !optedIn ? skipped : live).push(report);
   return { live, skipped };
 };
+
+/** B-AI-11: inspect the WHOLE requested aggregate before loading any live
+ * runner. A known incomplete suite must not spend on earlier suites and then
+ * fail. This is implementation-pending, not a skip or a permission-only gate.
+ * The caller passes the opt-in partition, so unrequested static work remains
+ * outside the plan. Individual-suite CLI selection is unchanged. */
+export const liveSuitePreflightErrors = (requested: readonly SuiteReport[]): string[] =>
+  requested.filter(report => !Number.isInteger(report.liveScenarioCount) || report.liveScenarioCount < 1)
+    .map(report => `${report.suite}: live implementation pending; no live-judgeable scenarios. Deterministic CI is not live validation. Faithful live scenario orchestration is required before this aggregate can run.`);
 
 /** The one line check:acceptance prints for the static suites it did not judge. */
 export const staticSuitesSkippedLine = (skipped: readonly SuiteReport[]): string | null => {
@@ -453,6 +465,7 @@ export const runOfflineAcceptance = (repoRoot: string): { reports: SuiteReport[]
       ...(contentWarnings.length ? { contentWarnings } : {}),
       ...(typeof suite.runner?.mode === "string" ? { mode: suite.runner.mode } : {}),
       scenarioCount: Array.isArray(suite.scenarios) ? suite.scenarios.length : 0,
+      liveScenarioCount: liveJudgePlan(suite).judged.length,
     });
   }
   return { reports, globalErrors };
