@@ -21,7 +21,7 @@ Device: iPhone model, iOS version, Safari or the installed app, Wi-Fi or cellula
 
 ## Cases (English first, then Hebrew)
 
-Run C1 to C10 in English. Then Settings → Language & appearance → App language: Hebrew, and run every case marked HE again. In Hebrew, also check: the layout reads right to left, no English word appears where a Hebrew one belongs, numbers and phone numbers stay left to right.
+Run C1 to C13 in English. Then Settings → Language & appearance → App language: Hebrew, and run every case marked HE again. In Hebrew, also check: the layout reads right to left, no English word appears where a Hebrew one belongs, numbers and phone numbers stay left to right.
 
 | ID | Case | Do | Expect | HE |
 |---|---|---|---|---|
