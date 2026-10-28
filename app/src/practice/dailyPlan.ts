@@ -38,7 +38,8 @@
 
 import { screenModelOutputLexical } from "../safety/outputScreen";
 import { isolate } from "../lib/bidi";
-import type { ActiveGoal } from "./goalBuilder";
+import { translate } from "../lib/i18n";
+import { goalLabel, type ActiveGoal } from "./goalBuilder";
 import type { ScoredActivity, SessionLength } from "../playbank/select";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -107,6 +108,33 @@ const WHY_LINE_TEMPLATES = {
     "Gets more personalized as you log more days. Developmentally informed, grounded in CDC/AAP/ASHA/WHO.",
 };
 
+/** B-PLAY-25 — the same why-lines in Hebrew. Codex PR #128 saw "an inherited
+ *  English sparse daily-plan rationale" under a Hebrew interface and never
+ *  located it: it was this table, English-only, rendered by DailyPlanCard
+ *  (#/daily-play) whatever the UI language. Same provenance register, the
+ *  app's plural address, and no gendered verb on the child (the name is a
+ *  possessive or an object, never a subject). The firewall tail is the
+ *  dictionary's own `plan.card.firewall` sentence. */
+const WHY_LINE_TEMPLATES_HE: Record<keyof typeof WHY_LINE_TEMPLATES, string> = {
+  withGoalAndInterest:
+    "נבחר כי אתם עובדים על {goal}, ובזכות האהבה של {name} ל{interest}. מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.",
+  withGoalOnly:
+    "נבחר כי אתם עובדים עם {name} על {goal}. מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.",
+  withInterestOnly:
+    "נבחר בזכות האהבה של {name} ל{interest}, וכי זה מתאים לשלב הזה. מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.",
+  stage:
+    "מתאים לשלב הנוכחי של {name}. מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.",
+  weekend:
+    "תוכנית לסוף השבוע: קצת יותר זמן היום. נבחר כי אתם עובדים על {goal}. מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.",
+  weekendNoGoal:
+    "תוכנית לסוף השבוע: קצת יותר זמן היום. מתאים לשלב הנוכחי של {name}. מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.",
+  sparse:
+    "ככל שתתעדו עוד ימים, ההצעות יהיו אישיות יותר. מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.",
+};
+
+export type WhyLineLang = "en" | "he";
+const TEMPLATES: Record<WhyLineLang, Record<keyof typeof WHY_LINE_TEMPLATES, string>> = { en: WHY_LINE_TEMPLATES, he: WHY_LINE_TEMPLATES_HE };
+
 // Assert templates are clean at module load time.
 for (const [key, tmpl] of Object.entries(WHY_LINE_TEMPLATES)) {
   if (key === "sparse") continue; // sparse line is a single fixed string — no interpolation
@@ -134,12 +162,18 @@ export function assembleWhyLine(opts: {
   matchedInterest: string | null;
   isWeekend: boolean;
   sparse: boolean;
+  /** B-PLAY-25: the reader's language. Default English (the original contract). */
+  lang?: WhyLineLang;
 }): { whyLine: string; wasFlagged: boolean } {
-  const { goalLabel, matchedInterest, isWeekend, sparse } = opts;
+  const { goalLabel, isWeekend, sparse } = opts;
+  const lang: WhyLineLang = opts.lang === "he" ? "he" : "en";
+  const WHY_LINE_TEMPLATES = TEMPLATES[lang];
   // N5/RES-BIDI: the why-line is display prose (rendered by DailyPlanCard,
   // never a key/seed) — bidi-isolate the name at interpolation so an RTL name
-  // can't reorder the English template (no-op for LTR names).
-  const childName = isolate(opts.childName);
+  // can't reorder the English template (no-op for LTR names). B-PLAY-25: the
+  // Hebrew line isolates the mirror case (a Latin name or interest).
+  const childName = isolate(opts.childName, lang);
+  const matchedInterest = opts.matchedInterest === null ? null : lang === "he" ? isolate(opts.matchedInterest, lang) : opts.matchedInterest;
 
   if (sparse) {
     return { whyLine: WHY_LINE_TEMPLATES.sparse, wasFlagged: false };
@@ -205,8 +239,11 @@ export function buildDailyPlan(opts: {
   childName: string;
   loggedDayCount: number;
   nowMs: number;
+  /** B-PLAY-25: the UI language the why-line is written in. Default English. */
+  lang?: WhyLineLang;
 }): DailyPlan | null {
   const { picks, activeGoals, childName, loggedDayCount, nowMs } = opts;
+  const lang: WhyLineLang = opts.lang === "he" ? "he" : "en";
   if (!picks.length) return null;
 
   const top = picks[0];
@@ -222,12 +259,15 @@ export function buildDailyPlan(opts: {
     top.reason === "interest-match" ? (top.matchedInterest ?? null) : null;
 
   // Assemble + screen the why-line.
+  // B-PLAY-25: the goal is named in the reader's language (the tile's own
+  // dictionary label; a retired tile falls back to its stored label).
   const { whyLine, wasFlagged } = assembleWhyLine({
-    goalLabel: matchingGoal?.label ?? null,
+    goalLabel: matchingGoal ? (lang === "en" ? matchingGoal.label : goalLabel(matchingGoal, (key) => translate(lang, key))) : null,
     childName,
     matchedInterest,
     isWeekend,
     sparse,
+    lang,
   });
 
   const defaultSessionLength: SessionLength = isWeekend ? "extended" : "standard";

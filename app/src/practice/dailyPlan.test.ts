@@ -502,3 +502,43 @@ describe("no progress-aggregation code path (gate requiredFix #3)", () => {
     }
   });
 });
+
+// ── B-PLAY-25: the why-line in the reader's language ─────────────────────────
+
+describe("B-PLAY-25 — Hebrew why-lines", () => {
+  const variants = [
+    { goalLabel: "לתת שם לרגשות גדולים ולהתמודד איתם", childName: "נועה", matchedInterest: "רכבות", isWeekend: false, sparse: false },
+    { goalLabel: "לתת שם לרגשות גדולים ולהתמודד איתם", childName: "נועה", matchedInterest: null, isWeekend: false, sparse: false },
+    { goalLabel: null, childName: "נועה", matchedInterest: "חלל", isWeekend: false, sparse: false },
+    { goalLabel: null, childName: "נועה", matchedInterest: null, isWeekend: false, sparse: false },
+    { goalLabel: "שינה רגועה", childName: "נועה", matchedInterest: null, isWeekend: true, sparse: false },
+    { goalLabel: null, childName: "נועה", matchedInterest: null, isWeekend: true, sparse: false },
+    { goalLabel: null, childName: "נועה", matchedInterest: null, isWeekend: false, sparse: true },
+  ];
+
+  it("every variant is Hebrew, fully interpolated, screened clean, and keeps the source tail", () => {
+    for (const v of variants) {
+      const { whyLine, wasFlagged } = assembleWhyLine({ ...v, lang: "he" });
+      expect(wasFlagged, whyLine).toBe(false);
+      expect(screenModelOutputLexical(whyLine).flagged, whyLine).toBe(false);
+      expect(whyLine).not.toMatch(/[{}]/);
+      expect(whyLine.replace("CDC/AAP/ASHA/WHO", "")).not.toMatch(/[A-Za-z]/);
+      expect(whyLine).toContain("מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.");
+      if (v.goalLabel && !v.sparse) expect(whyLine).toContain(v.goalLabel);
+      if (v.matchedInterest && !v.goalLabel) expect(whyLine).toContain(v.matchedInterest);
+    }
+  });
+
+  it("buildDailyPlan names the goal by its Hebrew tile label, not the stored English one", () => {
+    const plan = buildDailyPlan({ picks: [MOCK_SCORED_ACTIVITY], activeGoals: [MOCK_GOAL], childName: "נועה", loggedDayCount: 10, nowMs: new Date("2026-06-24T09:00:00Z").getTime(), lang: "he" })!;
+    expect(plan.whyLine).toContain("לתת שם לרגשות גדולים ולהתמודד איתם");
+    expect(plan.whyLine).not.toContain("Naming and managing");
+  });
+
+  it("a flagged Hebrew line falls back to the Hebrew sparse line", () => {
+    const { whyLine, wasFlagged } = assembleWhyLine({ goalLabel: "יש לה אוטיזם", childName: "נועה", matchedInterest: null, isWeekend: false, sparse: false, lang: "he" });
+    expect(wasFlagged).toBe(true);
+    expect(whyLine).toBe(assembleWhyLine({ goalLabel: null, childName: "נועה", matchedInterest: null, isWeekend: false, sparse: true, lang: "he" }).whyLine);
+    expect(whyLine).not.toContain("אוטיזם");
+  });
+});
