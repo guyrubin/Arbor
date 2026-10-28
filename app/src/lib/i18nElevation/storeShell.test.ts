@@ -46,8 +46,10 @@ describe("storeShell module contract", () => {
 const PROMISE_EN = /\bwe['’]ll (email|notify|let you know|tell you|be in touch|follow up)\b|\bnotify you\b|\bemail you\b|\btell me when\b/i;
 const PROMISE_HE = /נעדכן אתכם|נודיע לכם|נשלח לכם|עדכנו אותי/;
 
-/** Keys allowed to promise: the request IS persisted (api.requestAccess). */
-const PERSISTED_PROMISES = new Set(["auth.accessReceived"]);
+/** Keys allowed to promise because the request IS persisted. B-RESID-05: the
+ *  login screen's access request (auth.accessReceived) left with the
+ *  invite-only line, so none is allowed today. */
+const PERSISTED_PROMISES = new Set<string>([]);
 
 /** Dead pre-launch copy — lane T owns lib/i18n.ts; until deleted these must be unreferenced. */
 const DEAD_PENDING_LANE_T = new Set<string>([]); // Wave T: the three pre-launch keys were deleted from lib/i18n.ts
@@ -95,7 +97,8 @@ describe("MOB-13 — no shipped key promises an email/notification nobody sends"
     expect(PROMISE_EN.test("Checkout isn't live yet — we'll email you the moment it opens.")).toBe(true);
     expect(PROMISE_EN.test("Tell me when Plus launches")).toBe(true);
     expect(PROMISE_HE.test("תודה! נעדכן אתכם ברגע שתשלום ארבור פלוס יהיה מוכן.")).toBe(true);
-    // …and the allow-listed persisted copy is a promise too (so the allow-list is load-bearing)
-    expect(PROMISE_EN.test(baseEn["auth.accessReceived"])).toBe(true);
+    // …and the once allow-listed access-request receipt (removed, B-RESID-05) was a promise too
+    expect(PROMISE_EN.test("Access request received — we’ll follow up by email.")).toBe(true);
+    expect(baseEn["auth.accessReceived"]).toBeUndefined();
   });
 });

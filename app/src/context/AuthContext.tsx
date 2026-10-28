@@ -4,6 +4,8 @@ import {
   signInWithPopup,
   signInWithRedirect,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signOut as firebaseSignOut,
   onAuthStateChanged,
@@ -36,6 +38,8 @@ type AuthContextValue = {
   error: string | null;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
+  /** B-RESID-05: a new family creates its account with e-mail (Google stays). */
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   getIdToken: () => Promise<string | null>;
@@ -119,6 +123,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // B-RESID-05: e-mail sign-up. The account is created signed in; a link to
+  // confirm the address follows (shares match a VERIFIED address only, see
+  // server/authMiddleware), and recovery is the existing password reset.
+  const signUpWithEmail = async (email: string, password: string) => {
+    if (!firebaseEnabled || !auth) return;
+    setError(null);
+    try {
+      const credential = await createUserWithEmailAndPassword(auth, email, password);
+      clearMathExit(); // STORE-3: credentialed sign-in = parent verification
+      try {
+        await sendEmailVerification(credential.user);
+      } catch {
+        /* the account exists either way; the link can be sent again later */
+      }
+    } catch (err: any) {
+      setError(friendlyAuthError(err));
+      throw err;
+    }
+  };
+
   const resetPassword = async (email: string) => {
     if (!firebaseEnabled || !auth) return;
     setError(null);
@@ -191,6 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error,
     signInWithGoogle,
     signInWithEmail,
+    signUpWithEmail,
     resetPassword,
     signOut,
     getIdToken,
