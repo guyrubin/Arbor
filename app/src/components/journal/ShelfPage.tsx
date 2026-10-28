@@ -255,23 +255,33 @@ export default function ShelfPage({
         ) : (
           <p data-testid="shelf-no-practice" className="t-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.shelfJournal.noPractice")}</p>
         )}
-        {notice && (
-          <div data-testid="shelf-notice" className="arbor-depth-card p-4 pb-1" style={{ background: "var(--arbor-paper-elevated)", borderRadius: "var(--r-lg)" }}>
-            <SectionHead icon="visibility" title={t("elev.shelfJournal.notice")} />
-            <NoticeCard
-              key={notice.id}
-              milestone={notice}
-              shelf={shelf}
-              gender={gender}
-              childName={childName}
-              variant="row"
-              hideShelf
-              answers="segmented"
-              {...noticeHandlers}
-            />
+        {(notice || askHearing) && (
+          <div data-testid={notice ? "shelf-notice" : "shelf-hearing-card"} className="arbor-depth-card p-4 pb-1" style={{ background: "var(--arbor-paper-elevated)", borderRadius: "var(--r-lg)" }}>
+            {notice && (
+              <>
+                <SectionHead icon="visibility" title={t("elev.shelfJournal.notice")} />
+                <NoticeCard
+                  key={notice.id}
+                  milestone={notice}
+                  shelf={shelf}
+                  gender={gender}
+                  childName={childName}
+                  variant="row"
+                  hideShelf
+                  answers="segmented"
+                  {...noticeHandlers}
+                />
+              </>
+            )}
+            {/* B-NEXT-01: the hearing question folds into the shelf's one card
+                (a hairline under the notice), never a second card. */}
+            {askHearing && (
+              <div data-testid="shelf-hearing-fold" className={notice ? "mt-1 pt-3 pb-3" : "pb-3"} style={notice ? { borderBlockStart: "1px solid var(--arbor-rule)" } : undefined}>
+                {askHearing}
+              </div>
+            )}
           </div>
         )}
-        {askHearing}
       </section>
 
       <section data-module="shelf-entries" aria-labelledby="shelf-entries-title" className="min-w-0">

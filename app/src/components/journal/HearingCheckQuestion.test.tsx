@@ -86,15 +86,25 @@ describe("B-NEXT-01 · the question", () => {
   }
 });
 
+describe("B-NEXT-01 · its own card beside the packet, bare inside the shelf's card", () => {
+  it("bare drops the card chrome; the default keeps it", () => {
+    expect(renderToStaticMarkup(<HearingCheckQuestion testId="pro-hearing-check" />)).toMatch(/^<section[^>]*class="arbor-depth-card min-w-0 p-4"/);
+    const bare = renderToStaticMarkup(<HearingCheckQuestion testId="shelf-hearing-check" bare />);
+    expect(bare).toMatch(/^<section[^>]*class="min-w-0"/);
+    expect(bare).not.toContain("arbor-depth-card");
+    expect(bare).not.toMatch(/^<section[^>]*style=/);
+  });
+});
+
 describe("B-NEXT-01 · mounted only behind the pilot flag, on Words and beside the speech therapist's packet", () => {
   it("the journal reads the flag once and mounts the question only where it belongs", () => {
     expect(SHELVES).toContain("const hearingOn = useMemo(() => hearingQuestionOn(), []);");
-    expect(SHELVES).toContain('askHearing={hearingOn && shelf === "words" ? <HearingCheckQuestion testId="shelf-hearing-check" /> : undefined}');
+    expect(SHELVES).toContain('askHearing={hearingOn && shelf === "words" ? <HearingCheckQuestion testId="shelf-hearing-check" bare /> : undefined}');
     expect(SHELVES).toContain('askHearing={hearingOn && profession === "slp" ? <HearingCheckQuestion testId="pro-hearing-check" /> : undefined}');
   });
 
   it("the shelf page places it under the Notice card; the pro view above the packet, whose hearing line comes first", () => {
-    expect(SHELF.indexOf("{askHearing}")).toBeGreaterThan(SHELF.indexOf('data-testid="shelf-notice"'));
+    expect(SHELF.indexOf("{askHearing}")).toBeGreaterThan(SHELF.indexOf("<NoticeCard"));
     expect(SHELF.indexOf("{askHearing}")).toBeLessThan(SHELF.indexOf('data-module="shelf-entries"'));
     expect(PRO.indexOf("{askHearing}")).toBeLessThan(PRO.indexOf('data-testid="pro-packet"'));
     expect(PRO).toMatch(/PACKET_LINES[^=]*=\s*\[\s*\{ section: "intake-hearing", labelKey: "elev.hearing.packet.title", onlyWhenPresent: true \},/);

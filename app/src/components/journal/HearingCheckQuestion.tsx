@@ -13,8 +13,10 @@ import { Icon } from "../ui/Icon";
  * one routing line (a nurse or the paediatrician can check). Parent register,
  * neutral ink, 44 px answers, no colour, no verdict. Mounted only while the
  * pilot flag is on (hearingQuestionOn) — the callers own that gate.
+ * `bare` drops the card chrome so a host card can fold the question in (the
+ * Words shelf holds it inside its one Notice card).
  */
-export default function HearingCheckQuestion({ testId = "hearing-check" }: { testId?: string }) {
+export default function HearingCheckQuestion({ testId = "hearing-check", bare = false }: { testId?: string; bare?: boolean }) {
   const { childProfile, updateChild } = useArbor();
   const { t, uiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
@@ -33,7 +35,7 @@ export default function HearingCheckQuestion({ testId = "hearing-check" }: { tes
   };
   const asking = !stored || editing;
   return (
-    <section data-testid={testId} aria-labelledby={`${id}-q`} className="arbor-depth-card min-w-0 p-4" style={{ background: "var(--arbor-paper-elevated)", borderRadius: "var(--r-lg)" }}>
+    <section data-testid={testId} aria-labelledby={`${id}-q`} className={bare ? "min-w-0" : "arbor-depth-card min-w-0 p-4"} style={bare ? undefined : { background: "var(--arbor-paper-elevated)", borderRadius: "var(--r-lg)" }}>
       <h3 id={`${id}-q`} className="flex items-center gap-2 t-base font-semibold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>
         <Icon name="hearing" size={20} style={{ color: "var(--arbor-ink-soft)" }} />{t("elev.hearing.question")}
       </h3>

@@ -341,7 +341,7 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
           onAdd={() => setCapture({ open: true, mode: "text" })}
           primaryMoveProps={primaryMoveProps}
           plansSection={plansSectionFor(shelf)}
-          askHearing={hearingOn && shelf === "words" ? <HearingCheckQuestion testId="shelf-hearing-check" /> : undefined}
+          askHearing={hearingOn && shelf === "words" ? <HearingCheckQuestion testId="shelf-hearing-check" bare /> : undefined}
         />
       ) : (
         <ShelfGrid
