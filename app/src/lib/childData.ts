@@ -325,6 +325,13 @@ function recordServerSinks(sinks: SinkLedger, res: Awaited<ReturnType<typeof api
   sinks["storage:books"] = n(res?.storage?.books);
 }
 
+/** B-BOOK-20: the parent keeps the erase receipt as a file (the counts and
+ *  the per-place ledger; the child's id, never the child's data or name). Not
+ *  an export: LC-02's downloadJson call-site guard stays about exports. */
+export function downloadDeletionReceipt(receipt: DeletionReceipt) {
+  downloadJson(`arbor-deletion-receipt-${receipt.erasedAt.slice(0, 10)}.json`, receipt);
+}
+
 /** Trigger a browser download of a JSON object. */
 export function downloadJson(filename: string, data: unknown, assertCurrent: () => void = () => undefined) {
   assertCurrent();

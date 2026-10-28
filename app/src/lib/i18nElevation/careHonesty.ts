@@ -86,6 +86,14 @@ export const en: Record<string, string> = {
   // B-BOOK-20: the receipt names what was erased beyond the server ledger.
   "elev.learnCare.receipt.records": "Saved records erased",
   "elev.learnCare.receipt.storageFiles": "Photos and book files erased",
+  // B-BOOK-20 (critic r1): a deletion that could not reach every place says so.
+  "elev.learnCare.receipt.unfinishedTitle": "Deletion not finished",
+  "elev.learnCare.receipt.unfinishedBody": "We couldn't reach every place {name}'s data is kept, so this deletion isn't finished. Everything counted below is already erased. Try again to finish it.",
+  "elev.learnCare.receipt.notReached": "Not reached",
+  "elev.learnCare.receipt.retry": "Try again",
+  "elev.learnCare.receipt.save": "Save receipt",
+  "elev.learnCare.receipt.details": "Every place checked ({n})",
+  "elev.learnCare.receipt.cleared": "Cleared",
   "elev.learnCare.saved.browse": "Browse picks for {name}",
   // R12: the shelf pages at 30 reads. This is a LENGTH control, not an age
   // one — "Show all ages" next to it is the age control, and the two must
@@ -356,6 +364,13 @@ export const he: Record<string, string> = {
   "elev.learnCare.receipt.clientDocs": "רשומות שנמחקו מהמכשיר הזה",
   "elev.learnCare.receipt.records": "רשומות שמורות שנמחקו",
   "elev.learnCare.receipt.storageFiles": "תמונות וקובצי ספרים שנמחקו",
+  "elev.learnCare.receipt.unfinishedTitle": "המחיקה לא הסתיימה",
+  "elev.learnCare.receipt.unfinishedBody": "לא הצלחנו להגיע לכל המקומות שבהם שמורים הנתונים של {name}, ולכן המחיקה עוד לא הסתיימה. כל מה שנספר כאן כבר נמחק. נסו שוב כדי לסיים.",
+  "elev.learnCare.receipt.notReached": "לא הושלם",
+  "elev.learnCare.receipt.retry": "לנסות שוב",
+  "elev.learnCare.receipt.save": "לשמור את הקבלה",
+  "elev.learnCare.receipt.details": "כל המקומות שנבדקו ({n})",
+  "elev.learnCare.receipt.cleared": "נוקה",
   "elev.learnCare.saved.browse": "לעיין בהמלצות עבור {name}",
   "elev.learnCare.shelf.more": "להציג עוד קריאות ({n})",
   "elev.learnCare.shelf.fewer": "להציג פחות קריאות",

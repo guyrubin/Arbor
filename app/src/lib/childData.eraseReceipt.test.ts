@@ -258,3 +258,72 @@ describe("B-BOOK-20 · a synthetic child through export, then erase", () => {
     for (const name of CHILD_SUBCOLLECTIONS) expect(local.getItem(`arbor.${name}.${SIBLING}`), name).not.toBeNull();
   });
 });
+
+/* Critic r1: the parent's receipt must reconcile. A forced server failure or a
+   partial result is "not finished" (and says which rows were not reached); a
+   clean run keeps today's complete state; a retry folds into one receipt. */
+describe("B-BOOK-20 · the receipt the parent reads reconciles with the ledger", async () => {
+  const { receiptView, mergeErasureReceipts, receiptTitleKey } = await import("./childDataSinks");
+  const view = (r: Awaited<ReturnType<typeof eraseEverything>>) => receiptView(r.sinks, {
+    memoryEvents: r.counts.memoryEvents, shares: r.counts.shares, consents: r.counts.consents ?? 0,
+    storageFiles: r.counts.storageFiles ?? 0, clientDocs: r.counts.clientDocs ?? 0,
+  });
+
+  it("a clean run is finished: every row counts, the title is today's", async () => {
+    const v = view(await eraseEverything(UID, CHILD));
+    expect(v.finished).toBe(true);
+    expect(v.rows).toMatchObject({ memoryEvents: 3, shares: 1, consents: 2, storageFiles: 7, clientDocs: 3 });
+    expect(receiptTitleKey(v.finished)).toBe("sec.sharing.receipt.title");
+  });
+
+  it("a forced server failure (500) is not finished, and every server row says not reached", async () => {
+    fx.serverErase = "offline";
+    const v = view(await eraseEverything(UID, CHILD));
+    expect(v.finished).toBe(false);
+    expect(v.rows).toMatchObject({ memoryEvents: "not-reached", shares: "not-reached", consents: "not-reached", storageFiles: "not-reached", records: "not-reached" });
+    expect(typeof v.rows.clientDocs).toBe("number"); // the device half did run
+    expect(receiptTitleKey(v.finished)).toBe("elev.learnCare.receipt.unfinishedTitle");
+  });
+
+  it("a partial result (one collection unreachable) is not finished; only its row says so", async () => {
+    fx.failCollection = "keepsakes";
+    const v = view(await eraseEverything(UID, CHILD));
+    expect(v.finished).toBe(false);
+    expect(v.rows.records).toBe("not-reached");
+    expect(v.rows).toMatchObject({ memoryEvents: 3, storageFiles: 7 });
+  });
+
+  it("a receipt without a ledger proves nothing and is not finished", () => {
+    expect(receiptView(undefined, { memoryEvents: 0, shares: 0, consents: 0, storageFiles: 0, clientDocs: 0 }).finished).toBe(false);
+  });
+
+  it("a retry after the failure folds into one finished receipt", async () => {
+    fx.serverErase = "offline";
+    const first = await eraseEverything(UID, CHILD);
+    fx.serverErase = "ok";
+    const retry = await eraseEverything(UID, CHILD);
+    const merged = mergeErasureReceipts(first, retry);
+    const v = view(merged);
+    expect(v.finished).toBe(true);
+    expect(merged.sinks![subcollectionSinkId("behaviorLogs")]).toBe(1); // erased once, on the first attempt
+    expect(merged.sinks!["server:memoryEvents"]).toBe(3);
+    expect(Object.keys(merged.sinks!)).toEqual(childSinkIds(CHILD_SUBCOLLECTIONS));
+  });
+});
+
+describe("B-BOOK-20 · the saved receipt", () => {
+  it("downloads the receipt itself (counts + ledger), named by date, never the child's data", async () => {
+    const { downloadDeletionReceipt } = await import("./childData");
+    const blobs: Blob[] = [];
+    const clicks: string[] = [];
+    vi.stubGlobal("URL", { createObjectURL: (b: Blob) => { blobs.push(b); return "blob:x"; }, revokeObjectURL: () => {} });
+    vi.stubGlobal("document", { createElement: () => ({ set href(_v: string) {}, set download(v: string) { clicks.push(v); }, click: () => {} }) });
+    const receipt = await eraseEverything(UID, CHILD);
+    downloadDeletionReceipt(receipt);
+    expect(clicks).toEqual([`arbor-deletion-receipt-${receipt.erasedAt.slice(0, 10)}.json`]);
+    const saved = JSON.parse(await blobs[0].text());
+    expect(saved).toEqual(JSON.parse(JSON.stringify(receipt)));
+    expect(Object.keys(saved.sinks)).toEqual(childSinkIds(CHILD_SUBCOLLECTIONS));
+    expect(JSON.stringify(saved)).not.toContain("Synthetic");
+  });
+});

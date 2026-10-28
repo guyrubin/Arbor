@@ -294,3 +294,71 @@ export const CHILD_DEVICE_KEY_PREFIXES: readonly string[] = [
   "arbor.screen.watch", // lib/screeningWatch.ts: `${PREFIX}.${childId}`
   "arbor.${name}.${id}", // lib/demoFamilyHydrate.ts: a registered collection of a demo child
 ];
+
+/* ── The receipt the parent reads (B-BOOK-20, critic r1) ────────────────── */
+
+/** The rows of the erase receipt, in display order. */
+export type ReceiptRowId = "records" | "memoryEvents" | "shares" | "consents" | "storageFiles" | "clientDocs";
+export const RECEIPT_ROWS: readonly ReceiptRowId[] = ["records", "memoryEvents", "shares", "consents", "storageFiles", "clientDocs"];
+
+/** Which receipt row a registered sink belongs to. */
+export function receiptRowOf(sinkId: string): ReceiptRowId {
+  if (sinkId === "profile" || sinkId === "server:consultRequests" || sinkId.startsWith("firestore:")) return "records";
+  if (sinkId === "server:memoryEvents" || sinkId === "server:familyChildRef") return "memoryEvents";
+  if (sinkId === "server:shares") return "shares";
+  if (sinkId === "server:consents") return "consents";
+  if (sinkId.startsWith("storage:")) return "storageFiles";
+  return "clientDocs";
+}
+
+export interface ReceiptView {
+  /** True only when every registered sink was reached. A receipt without a
+   *  sink ledger proves nothing, so it is not finished either. */
+  finished: boolean;
+  /** Each row's count, or "not-reached" when any sink of that row failed. */
+  rows: Record<ReceiptRowId, number | "not-reached">;
+}
+
+/**
+ * The receipt as the parent reads it. The counts are the receipt's own
+ * (`counts`, the server's and the device sweep's); the sink ledger decides
+ * whether each row was reached and counts the saved records.
+ */
+export function receiptView(
+  sinks: Readonly<Record<string, SinkErasure>> | undefined,
+  counts: Readonly<Record<Exclude<ReceiptRowId, "records">, number>>,
+): ReceiptView {
+  const unreached = new Set<ReceiptRowId>();
+  for (const [id, v] of Object.entries(sinks ?? {})) if (v === "not-reached") unreached.add(receiptRowOf(id));
+  const rows = { records: erasedRecordCount(sinks), ...counts } as Record<ReceiptRowId, number | "not-reached">;
+  for (const row of unreached) rows[row] = "not-reached";
+  return { finished: !!sinks && Object.keys(sinks).length > 0 && unreached.size === 0, rows };
+}
+
+/** The title key of the receipt sheet. */
+export const receiptTitleKey = (finished: boolean): string =>
+  finished ? "sec.sharing.receipt.title" : "elev.learnCare.receipt.unfinishedTitle";
+
+const mergeSink = (a: SinkErasure | undefined, b: SinkErasure | undefined): SinkErasure | undefined => {
+  if (a === undefined) return b;
+  if (b === undefined) return a;
+  if (a === "not-reached") return b;
+  if (b === "not-reached") return a;
+  if (typeof a === "number" && typeof b === "number") return a + b;
+  return typeof a === "number" ? a : typeof b === "number" ? b : "cleared";
+};
+
+/**
+ * A retry's receipt folded into the first one: what either attempt erased is
+ * counted once per attempt, and a sink the first attempt could not reach takes
+ * the retry's result. The parent keeps ONE receipt for the child.
+ */
+export function mergeErasureReceipts<R extends { erasedAt: string; counts: Record<string, number | undefined>; sinks?: Record<string, SinkErasure> }>(prev: R, next: R): R {
+  const counts: Record<string, number | undefined> = { ...prev.counts };
+  for (const [k, v] of Object.entries(next.counts)) counts[k] = typeof v === "number" ? (counts[k] ?? 0) + v : counts[k];
+  const ids = [...new Set([...Object.keys(prev.sinks ?? {}), ...Object.keys(next.sinks ?? {})])];
+  const sinks = next.sinks || prev.sinks
+    ? Object.fromEntries(ids.map((id) => [id, mergeSink(prev.sinks?.[id], next.sinks?.[id]) as SinkErasure]))
+    : undefined;
+  return { ...next, counts: counts as R["counts"], ...(sinks ? { sinks } : {}) };
+}
