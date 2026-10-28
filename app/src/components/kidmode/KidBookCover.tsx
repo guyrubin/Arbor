@@ -55,16 +55,27 @@ export interface KidBookCoverProps {
   hero?: React.ReactNode;
 }
 
-export function KidBookTitleCard({ title, pack }: { title: string; pack: HeroPackId }) {
+/**
+ * The designed title card. B-BOOK-26: with `hero` (the child's OWN approved
+ * portrait, badge-less), the card carries it as a disc in its end corner —
+ * ONE composition for the shelf tile and, scaled by `heroSize`, the reader's
+ * cover page. Without it (a hero-less child) the card is the complete book.
+ */
+export function KidBookTitleCard({ title, pack, hero, heroSize = 44, titleSize = 17 }: { title: string; pack: HeroPackId; hero?: React.ReactNode; heroSize?: number; titleSize?: number }) {
   const tint = KID_BOOK_TINT[pack];
   return (
     <span aria-hidden="true" data-kid-book-titlecard="" style={{ position: "absolute", inset: 0, display: "block", background: tint.page }}>
       <span style={{ position: "absolute", insetBlock: 0, insetInlineStart: 0, inlineSize: 10, background: tint.spine }} />
       <span style={{ position: "absolute", insetBlock: 10, insetInlineStart: 18, insetInlineEnd: 8, display: "grid", placeItems: "center", padding: 10, background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", borderRadius: 12 }}>
-        <span style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 4, overflow: "hidden", textAlign: "center", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, lineHeight: 1.15, color: "var(--arbor-ink)" }}>
+        <span style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 4, overflow: "hidden", textAlign: "center", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: titleSize, lineHeight: 1.15, color: "var(--arbor-ink)" }}>
           {title}
         </span>
       </span>
+      {hero && (
+        <span data-kid-book-own-hero="" style={{ position: "absolute", insetBlockEnd: Math.round(heroSize * 0.09), insetInlineEnd: Math.round(heroSize * 0.09), inlineSize: heroSize, blockSize: heroSize, display: "grid", placeItems: "center", overflow: "hidden", borderRadius: 999, background: "var(--arbor-paper-elevated)", border: "2px solid var(--comic-ink)" }}>
+          {hero}
+        </span>
+      )}
     </span>
   );
 }
@@ -118,14 +129,7 @@ export function KidBookCover({ storyId, title, pack, theme, read, readLabel, onO
           />
           </>
         ) : (
-          <>
-            <KidBookTitleCard title={title} pack={pack} />
-            {hero && (
-              <span aria-hidden="true" data-kid-book-own-hero="" style={{ position: "absolute", insetBlockEnd: 4, insetInlineEnd: 4, inlineSize: layout === "row" ? 34 : 44, blockSize: layout === "row" ? 34 : 44, display: "grid", placeItems: "center", overflow: "hidden", borderRadius: 999, background: "var(--arbor-paper-elevated)", border: "2px solid var(--comic-ink)" }}>
-                {hero}
-              </span>
-            )}
-          </>
+          <KidBookTitleCard title={title} pack={pack} hero={hero} heroSize={layout === "row" ? 34 : 44} />
         )}
         {read && (
           <span

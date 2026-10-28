@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 import { kidBooks, kidShelfFor } from "./kidBooks";
 import { pickTonightsStory } from "./tonightsStory";
 import { fiveSmoothStones } from "../../lib/library/books/fiveSmoothStones";
-import { KidBookCover } from "./KidBookCover";
+import { KidBookCover, KidBookTitleCard } from "./KidBookCover";
 import { HERO_STORIES, KID_RETIRED_STORY_IDS, KID_SHELF_STORIES, storyHasLanguage } from "../../lib/heroJourneys";
 import { kidArt, storyCoverKey } from "../../lib/kidThemeManifest";
 
@@ -123,6 +123,22 @@ describe("KidBookCover — the one cover", () => {
     const lib = readFileSync(path.join(__dirname, "KidLibrary.tsx"), "utf8");
     expect(lib).toContain("const ownHero = resolveHeroUrl(childProfile) ? <HeroAvatar");
     expect(lib).toContain("hero={ownHero}");
+    // T7: the portrait on a cover carries no star badge
+    expect(lib).toMatch(/<HeroAvatar size=\{40\}[^>]*badge=\{false\}/);
+  });
+
+  it("B-BOOK-26 (critic r1 P1): the legacy reader's cover is the same composition scaled — the title card with the child's large own portrait, the title once", () => {
+    const own = <img data-own="" src="data:image/png;base64,T1dO" alt="" />;
+    const big = renderToStaticMarkup(<span style={{ position: "relative", display: "block", width: 350, height: 466 }}><KidBookTitleCard title="Noah's Ark" pack="courage" hero={own} heroSize={162} titleSize={28} /></span>);
+    expect(big).toContain("data-kid-book-own-hero");
+    expect(big).toMatch(/inline-size:162px;block-size:162px/);
+    expect(big).toContain("font-size:28px");
+    expect(big.match(/Noah&#x27;s Ark/g)).toHaveLength(1);
+    const tab = readFileSync(path.join(__dirname, "..", "tabs", "HeroJourneyTab.tsx"), "utf8");
+    expect(tab).toContain("const coverHero = heroAvatarUrl ? <HeroAvatar size={150} mood=\"wave\" animate={false} ring={false} badge={false} decorative /> : undefined;");
+    expect(tab).toMatch(/<KidBookTitleCard title=\{[^}]+\}[^>]*hero=\{coverHero\} heroSize=\{162\} titleSize=\{28\} \/>/);
+    // the title line under the art only when the art is a picture (the card already names the book)
+    expect(tab).toContain("{bookArt && <p lang={renderLang} dir={langDir(renderLang)} data-kid-book-title=\"\"");
   });
 
   it("B-KID-122: the home row and the library mark their first row eager; Tonight's cover is high priority", () => {
