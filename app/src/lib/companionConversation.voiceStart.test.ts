@@ -4,12 +4,15 @@
  * A voice door outside the conversation starts the ONE Talk path inside the
  * parent's own tap: the panel opens and the mounted conversation's start runs
  * in the same call stack (the iOS microphone rule). Before the conversation
- * has mounted, the door falls back to the B-VOICE-06 ready-to-talk request.
+ * can start, the panel opens and the tap is queued until it registers.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   COMPANION_CONVERSATION_EVENT,
+  CONVERSATION_VOICE_REQUEST_TTL_MS,
   consumeConversationVoiceRequest,
+  conversationDoorQueued,
+  requestCompanionClose,
   conversationVoiceReady,
   conversationVoiceRequestPending,
   registerConversationVoiceStarter,
@@ -24,6 +27,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   events.length = 0;
   consumeConversationVoiceRequest();
+  requestCompanionClose(); // no queued tap leaks into the next case
 });
 
 const withWindow = () => {
@@ -69,12 +73,37 @@ describe("startConversationVoice", () => {
     unregister();
   });
 
-  it("before the conversation mounts: the B-VOICE-06 ready-to-talk request (Talk focused, the mic waits for its tap)", () => {
+  it("before the conversation can start, ONE tap is enough: the panel opens and the start runs when the conversation registers", () => {
     withWindow();
     expect(conversationVoiceReady()).toBe(false);
-    expect(startConversationVoice({ source: "now-voice", opening: "words" })).toBe(false);
-    expect(events).toEqual([{ source: "now-voice", voice: true }]);
-    expect(consumeConversationVoiceRequest()).toBe(true);
+    expect(startConversationVoice({ source: "hard-moment", opening: "I'm here." }, 1_000)).toBe(false);
+    // The panel opens now; no B-VOICE-06 "tap again" request is left behind.
+    expect(events).toEqual([{ source: "hard-moment" }]);
+    expect(conversationVoiceRequestPending()).toBe(false);
+    expect(conversationDoorQueued()).toBe(true);
+    const start = vi.fn(() => true);
+    const unregister = registerConversationVoiceStarter(start, 1_000 + 2_500);
+    expect(start).toHaveBeenCalledExactlyOnceWith("I'm here.");
+    expect(conversationDoorQueued()).toBe(false);
+    // Registering again (a remount) never replays the tap.
+    unregister();
+    const again = vi.fn(() => true);
+    registerConversationVoiceStarter(again, 1_000 + 3_000)();
+    expect(again).not.toHaveBeenCalled();
+  });
+
+  it("a queued tap is dropped once stale, and when the panel steps aside", () => {
+    withWindow();
+    startConversationVoice({ source: "now-voice" }, 1_000);
+    const late = vi.fn(() => true);
+    registerConversationVoiceStarter(late, 1_000 + CONVERSATION_VOICE_REQUEST_TTL_MS + 1)();
+    expect(late).not.toHaveBeenCalled();
+    startConversationVoice({ source: "now-voice" }, 5_000);
+    requestCompanionClose();
+    expect(conversationDoorQueued()).toBe(false);
+    const after = vi.fn(() => true);
+    registerConversationVoiceStarter(after, 5_100)();
+    expect(after).not.toHaveBeenCalled();
   });
 
   it("a stale unregister never removes a newer conversation's start (a child switch remounts it)", () => {

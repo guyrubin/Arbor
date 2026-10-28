@@ -30,6 +30,7 @@ export function requestCompanionConversation(detail: CompanionConversationReques
 export function requestCompanionClose(): void {
   voiceRequestedAt = null;
   panelRequest = null;
+  queuedDoor = null;
   if (typeof window !== "undefined") window.dispatchEvent(new Event(COMPANION_CLOSE_EVENT));
 }
 
@@ -63,10 +64,22 @@ export function consumeConversationPanelRequest(now: number = Date.now()): Compa
  *  a voice session began inside the call. */
 export type ConversationVoiceStart = (opening?: string) => boolean;
 let voiceStarter: ConversationVoiceStart | null = null;
+/** A door tapped before the conversation could start (still loading, or the
+ *  Live probe not answered yet): held, and run once the start registers —
+ *  only while fresh, so a talk never begins long after its tap. */
+let queuedDoor: { opening?: string; at: number } | null = null;
 
-export function registerConversationVoiceStarter(start: ConversationVoiceStart): () => void {
+export function registerConversationVoiceStarter(start: ConversationVoiceStart, now: number = Date.now()): () => void {
   voiceStarter = start;
+  const queued = queuedDoor;
+  queuedDoor = null;
+  if (queued && now - queued.at >= 0 && now - queued.at <= CONVERSATION_VOICE_REQUEST_TTL_MS) start(queued.opening);
   return () => { if (voiceStarter === start) voiceStarter = null; };
+}
+
+/** A door tap is waiting for the conversation (does not consume it). */
+export function conversationDoorQueued(): boolean {
+  return queuedDoor !== null;
 }
 
 /** True while a mounted conversation can start talking inside a tap. */
@@ -77,13 +90,15 @@ export function conversationVoiceReady(): boolean {
 /** One tap → a spoken conversation. Call it INSIDE the parent's tap: the
  *  panel opens and Talk starts in the same call stack (the iOS microphone
  *  rule), through the conversation's own toggle (its notice, review and stop
- *  rules unchanged). Before the conversation has mounted, the tap falls back
- *  to the B-VOICE-06 request (the panel opens ready to talk, Talk focused).
+ *  rules unchanged). Before the conversation can start (it is still loading,
+ *  or its Live probe has not answered), the panel opens and the tap is queued:
+ *  the start runs once the conversation registers, so one tap is enough.
  *  Returns true when the voice session began inside this tap. */
-export function startConversationVoice(detail: { source: string; opening?: string }): boolean {
+export function startConversationVoice(detail: { source: string; opening?: string }, now: number = Date.now()): boolean {
   const start = voiceStarter;
   if (!start) {
-    requestCompanionConversation({ source: detail.source, voice: true });
+    queuedDoor = { ...(detail.opening ? { opening: detail.opening } : {}), at: now };
+    requestCompanionConversation({ source: detail.source });
     return false;
   }
   requestCompanionConversation({ source: detail.source });
