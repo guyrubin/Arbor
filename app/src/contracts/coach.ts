@@ -544,8 +544,9 @@ export const scrubHypothesisConfidence = <T extends Pick<CoachResponse, "nonDiag
 };
 
 /**
- * B-ASKJB-44 (coach_chat 1.10.0) — the deterministic floor under the
- * handoffNotes field rule: a teacher or professional note never carries an
+ * B-ASKJB-44 — the deterministic floor on handoffNotes (the matching
+ * coach_chat field rule is parked on claude/askjb44-prompt-bump-2026-10-28
+ * until its live suites run): a teacher or professional note never carries an
  * invented finding ("no evidence of …", "shows no signs of …", "was
  * observed", EN + HE; lib/clinicalScan withoutHandoffFindings). The matching
  * sentence is dropped and the rest kept; an emptied note is hidden by

@@ -6,7 +6,6 @@ import {
   COACH_CHAT_FIELD_RULES,
   COACH_CHAT_GOVERNED_ESCALATION_BLOCK,
   COACH_CHAT_MEMORY_LEAD,
-  HANDOFF_NOTES_RULE,
   MODEL_PROFILE_FIELDS,
   PROMPT_VERSIONS,
   ROUTINE_ESCALATION_GUIDANCE,
@@ -190,13 +189,10 @@ describe("EVAL-6 — builders keep the byte contract of the old inline templates
 describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.4.1 pin)", () => {
   // 1.5.1 (B-AI-14 coach-core): escalateIf rule sentence + the memory lead (facts present here) — new bytes.
   // 1.5.3 (B-AI-14): facts present here, so the approved-memory block moved to the first block after the contract — new bytes.
-  // 1.10.0 (B-ASKJB-44): the handoffNotes rule closes COACH_CHAT_FIELD_RULES,
-  // which render on every turn — new bytes for all three renders below
-  // (1.9.0 digests: 3ec52ba9…, no-fact bb85929a…, blank-fact e19e666e…).
-  const COACH_CHAT_BLOCK_FREE_SHA256 = "434fb65c1d6e6a2181ca61c0ef86a82b44e2981f7408ab9ebff37f7c86a24f58";
-  // 1.5.3 parity: WITHOUT facts the memory block stays where it was (the 1.5.2 layout), re-pinned at 1.10.0.
-  const COACH_CHAT_NO_FACT_SHA256_152 = "404eccf6ffdfe7dcd70b7cad3761c306ef4fdbeecb72fbd6a59663b61176ca65";
-  const COACH_CHAT_BLANK_FACT_SHA256_152 = "a1d37bac471080d9fb13b53e10529d5c39d3b781905c3602fe3e8e743f989210";
+  const COACH_CHAT_BLOCK_FREE_SHA256 = "3ec52ba919df8d3557a6e33798ca9baac462c6994c2adfaba5c9ac8698a60efe";
+  // 1.5.3 parity: WITHOUT facts the bytes are the 1.5.2 bytes (digests taken on 1.5.2 before the change).
+  const COACH_CHAT_NO_FACT_SHA256_152 = "bb85929a284f1c387d4a26036b957e43dca81b01f116b5710aa37f3ea85f25b6";
+  const COACH_CHAT_BLANK_FACT_SHA256_152 = "e19e666ead45e69ebf934b3c7639f518d8f97ce1ce2760f3ef7ea24eae5957f3";
   const sha256 = (text: string) => createHash("sha256").update(text, "utf8").digest("hex");
   const legacyArgs = {
     developmentalFramework: "«framework»",
@@ -225,7 +221,7 @@ describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.4.1 pin)", ()
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/Return "escalateIf": \[\]/);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/shepherd/);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/do not reword it/);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.10.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.9.0");
   });
 
   it("empty recentTurns / null weeklyContext (the sanitizers' degenerate outputs) also keep the block-free bytes", () => {
@@ -506,12 +502,7 @@ describe("coach_chat 1.4.1 — field rules", () => {
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never write that condition's name or any label back/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/In a routine answer no field names self-harm/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never low, medium, high/);
-    // 1.10.0 (B-ASKJB-44): handoff notes restate only what the parent reported.
-    expect(COACH_CHAT_FIELD_RULES).toContain(`- ${HANDOFF_NOTES_RULE}`);
-    expect(HANDOFF_NOTES_RULE).toMatch(/restate only what the parent reported/);
-    expect(HANDOFF_NOTES_RULE).toMatch(/no evidence of/);
-    expect(HANDOFF_NOTES_RULE).toMatch(/has not happened yet/);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.10.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.9.0");
   });
   it("coach_chat 1.5.1: escalateIf thresholds stay on the behaviour the parent described", () => {
     expect(COACH_CHAT_FIELD_RULES).toContain("Thresholds are about the behaviour the parent described and never introduce a danger the parent did not raise.");
@@ -638,7 +629,7 @@ describe("B-PROG-01 — the active-program line", () => {
     // an empty skill or name renders nothing
     expect(buildChatPrompt({ ...chatArgs, activeProgram: { ...program, skill: " " } })).toBe(buildChatPrompt(chatArgs));
     expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.4.0");
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.10.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.9.0");
     expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.10.6");
     expect(PROMPT_VERSIONS.live_session.version).toBe("1.6.0");
   });
@@ -728,9 +719,9 @@ describe("B-LOOP-13 — the journal block and today's practice line", () => {
     expect(warm).toContain("(the journal's notes per shelf cover the last 30 days)");
   });
 
-  it("versions: todays_focus 1.4.0 · coach_chat 1.10.0 (B-ASKJB-44) · voice_reply 1.10.6 · live_session 1.6.0", () => {
+  it("versions: todays_focus 1.4.0 · coach_chat 1.9.0 (B-SHELL-39) · voice_reply 1.10.6 · live_session 1.6.0", () => {
     expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.4.0");
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.10.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.9.0");
     expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.10.6");
     expect(PROMPT_VERSIONS.live_session.version).toBe("1.6.0");
   });

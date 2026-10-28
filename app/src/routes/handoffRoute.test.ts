@@ -207,9 +207,9 @@ describe("allowListHandoffInput — the pure allow-list", () => {
   });
 });
 
-/* B-ASKJB-44 — the School Brief restates only what the family logged: the
-   prompt carries the rule, and a drafted absence-of-finding or unattributed
-   observation is dropped before the output screen and the reply. */
+/* B-ASKJB-44 — the School Brief floor: a drafted absence-of-finding or
+   unattributed observation is dropped before the output screen and the reply
+   (the prompt rule is parked on claude/askjb44-prompt-bump-2026-10-28). */
 describe("B-ASKJB-44 · /api/generate-handoff invented-finding floor", () => {
   it("drops 'no evidence of' / 'was observed' sentences (EN + HE) and keeps the rest of the brief", async () => {
     draft = {
@@ -229,7 +229,6 @@ describe("B-ASKJB-44 · /api/generate-handoff invented-finding floor", () => {
     expect(json.overview).toBe("Mia does best with a warning before a change.");
     expect(json.keyStrengths).toEqual(["Curious"]);
     expect(json.suggestedTeacherStrategies).toEqual(["Give a two-minute warning"]);
-    expect(prompts[0]).toContain("Every field restates only what the logs and milestones above show");
     draft = CLEAN_DRAFT;
   });
   it("a clean draft is returned unchanged", async () => {

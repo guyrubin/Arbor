@@ -13,9 +13,9 @@ import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/mo
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, toFileTurnContract, renderFileDeclinedResponse, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence, type CoachResponse } from "../contracts/coach.js";
 import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildDescribeChildPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE, renderCouncilContinuity } from "../ai/prompts.js";
-// B-ASKJB-44: handoff notes and the School Brief restate only what the family reported.
+// B-ASKJB-44: no invented finding reaches a handoff note or the School Brief
+// (the matching prompt rules are parked on claude/askjb44-prompt-bump-2026-10-28).
 import { scrubHandoffNotes } from "../contracts/coach.js";
-import { HANDOFF_BRIEF_RULE } from "../ai/prompts.js";
 import { scrubHandoffBriefFindings } from "../lib/clinicalScan.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
@@ -3814,7 +3814,6 @@ Key Logged Behaviors: ${JSON.stringify(logs)}
 Milestone Context: ${JSON.stringify(milestones)}
 ${ROUTINE_ESCALATION_GUIDANCE}
 When no crisis has been reported, crisisEscalationTrigger should contain only a relevant routine threshold for professional advice; do not invent a crisis scenario.
-${HANDOFF_BRIEF_RULE}
 Return JSON with title, date, overview, keyStrengths, classroomChallenges, languageSupportPlan, suggestedTeacherStrategies, crisisEscalationTrigger.${handoffLanguageDirective}
 `;
       const privacy = createRedaction(childProfile?.name);
