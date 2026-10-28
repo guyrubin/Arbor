@@ -158,12 +158,12 @@ function captureHarness(options: { save?: () => Promise<any>; edit?: boolean; ch
 }
 
 function contextHarness(existing?: Record<string, any>, draft?: Record<string, any>) {
-  const setters = Object.fromEntries(["Type", "Intensity", "Duration", "Trigger", "Response", "Notes", "Context", "Photo"].map(key => [`setNewLog${key}`, vi.fn()]));
+  const setters = Object.fromEntries(["Type", "Intensity", "Duration", "Trigger", "Response", "Notes", "Context", "Photo", "Script"].map(key => [`setNewLog${key}`, vi.fn()]));
   const scope = { childId: "child-a" };
   const env: Record<string, any> = { ...taxonomy, ...setters,
     childProfile: { id: "child-a" }, captureScope: scope, captureScopeRef: { current: scope },
     captureWritesRef: { current: new Set() }, captureRevisionRef: { current: 0 }, currentCaptureDraftRef: { current: "draft-a" }, editingLogSnapshotRef: { current: existing ?? null },
-    newLogType: "Moment", newLogTrigger: "Corrected words", newLogResponse: "", newLogNotes: "A detail", newLogPhoto: "photo", newLogContext: "", newLogDuration: 0, newLogIntensity: 3,
+    newLogType: "Moment", newLogTrigger: "Corrected words", newLogResponse: "", newLogNotes: "A detail", newLogPhoto: "photo", newLogScript: "", newLogContext: "", newLogDuration: 0, newLogIntensity: 3,
     editingLogId: existing?.id ?? null, behaviorLogs: [], setEditingLogId: vi.fn(), setLastSavedBehavior: vi.fn(),
     track: vi.fn(), trackCaptureSaved: vi.fn(), toast: vi.fn(), t: (key: string) => key,
     logsCol: { upsert: vi.fn(async (_row: any) => {}), remove: vi.fn(async (_id: string) => {}) },
@@ -232,6 +232,25 @@ describe("capture durability — actual production callbacks", () => {
     const h = contextHarness();
     expect(await h.addMoment("Built blocks", { callerShowsFailure: true })).not.toHaveProperty("callerShowsFailure");
     expect(h.env.logsCol.upsert.mock.calls[0][0]).not.toHaveProperty("callerShowsFailure");
+  });
+  it("B-DATA-16: a hard moment stores the guide the parent said they used; a plain moment or a removed choice stores none", async () => {
+    const hard = { newLogType: "Transition Refusal", newLogResponse: "Named the feeling", newLogScript: "tantrum" };
+    const h = contextHarness(undefined, hard);
+    expect(await h.handleAddLog(formEvent())).toMatchObject({ behaviorType: "Transition Refusal", coRegulationScript: "tantrum" });
+    expect(h.env.logsCol.upsert.mock.calls[0][0].coRegulationScript).toBe("tantrum");
+    // A save consumes the choice: the next capture starts without it.
+    expect(h.env.setNewLogScript).toHaveBeenCalledWith("");
+    // A plain Moment never carries a script, even if one was armed.
+    const plain = contextHarness(undefined, { newLogScript: "tantrum" });
+    expect((await plain.handleAddLog(formEvent()))?.coRegulationScript).toBeUndefined();
+    // Edit: the parent removed it in the sheet → the full-row write drops it.
+    const original = { ...saved, behaviorType: "Transition Refusal", response: "Named the feeling", coRegulationScript: "tantrum" };
+    const edited = contextHarness(original, { ...hard, newLogScript: "" });
+    const row = await edited.handleAddLog(formEvent());
+    expect(row).toHaveProperty("coRegulationScript", undefined);
+    // Edit that keeps it: the stored id survives.
+    const kept = contextHarness(original, hard);
+    expect((await kept.handleAddLog(formEvent()))?.coRegulationScript).toBe("tantrum");
   });
   it("retires A → B → A writes and does not erase a replacement draft", async () => {
     const h = contextHarness(), pending = deferred<void>();

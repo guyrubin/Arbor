@@ -677,6 +677,8 @@ function useArborState() {
   const [newLogNotes, setNewLogNotes] = useState<string>("");
   const [newLogContext, setNewLogContext] = useState<BehaviorContext | "">("");
   const [newLogPhoto, setNewLogPhoto] = useState<string>("");
+  // B-DATA-16: the guide card id the parent said they used (hard moments only).
+  const [newLogScript, setNewLogScript] = useState<string>("");
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
 
   // Form states: Generated Action Plan
@@ -1440,7 +1442,7 @@ function useArborState() {
   }
   const captureScope = captureScopeRef.current;
   const currentCaptureDraftRef = useRef("");
-  currentCaptureDraftRef.current = JSON.stringify([newLogType, newLogIntensity, newLogDuration, newLogTrigger, newLogResponse, newLogNotes, newLogContext, newLogPhoto, editingLogId]);
+  currentCaptureDraftRef.current = JSON.stringify([newLogType, newLogIntensity, newLogDuration, newLogTrigger, newLogResponse, newLogNotes, newLogContext, newLogPhoto, newLogScript, editingLogId]);
   const captureWritesRef = useRef(new Set<string>());
   const captureRevisionRef = useRef(0);
   const editingLogSnapshotRef = useRef<BehaviorLog | null>(null);
@@ -1455,6 +1457,7 @@ function useArborState() {
     setNewLogResponse("");
     setNewLogNotes("");
     setNewLogPhoto("");
+    setNewLogScript("");
     setEditingLogId(null);
   };
 
@@ -1494,6 +1497,10 @@ function useArborState() {
       resolved: existing ? existing.resolved : false,
       resolutionNotes: existing?.resolutionNotes,
       photoAttachment: newLogPhoto || undefined,
+      // B-DATA-16: only a hard moment carries the script the parent said they
+      // used; removing it in the sheet (or turning the row into a plain
+      // Moment) drops it from the stored row on this full-row write.
+      coRegulationScript: isIncidentType(newLogType) && newLogScript ? newLogScript : undefined,
     };
 
     // A problem's dormant marker cannot turn into a kept thing on conversion.
@@ -1588,6 +1595,7 @@ function useArborState() {
     captureRevisionRef.current++;
     setNewLogContext(log.context || "");
     setNewLogPhoto(log.photoAttachment || "");
+    setNewLogScript(log.coRegulationScript || "");
     setEditingLogId(id);
   };
   const cancelEditLog = () => resetLogForm();
@@ -1600,11 +1608,15 @@ function useArborState() {
   //    updates the row through handleAddLog's editingLogId branch.
   // capture_started is emitted here for a capture (an edit is not one), and
   // pendingCaptureMode is NOT armed — Behaviors must not re-open it later.
-  const [captureSheet, setCaptureSheet] = useState<{ open: boolean; mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialPhoto?: string }>({ open: false });
-  const openCaptureSheet = (opts: { mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialPhoto?: string } = {}) => {
+  //  - `coRegulationScript` (B-DATA-16): opened from a hard-moment guide's
+  //    "I used these words" — the hard-moment form opens with that guide named
+  //    and removable; Save stores the card id on the row.
+  const [captureSheet, setCaptureSheet] = useState<{ open: boolean; mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialPhoto?: string; coRegulationScript?: string }>({ open: false });
+  const openCaptureSheet = (opts: { mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialPhoto?: string; coRegulationScript?: string } = {}) => {
     if (opts.editLogId) startEditLog(opts.editLogId, opts.editLog);
     else {
       if (!opts.review) resetLogForm();
+      if (opts.coRegulationScript) setNewLogScript(opts.coRegulationScript);
       trackCaptureStarted(opts.review === "ai-draft" ? "ai-draft" : opts.mode ?? "text");
     }
     setCaptureSheet({ open: true, ...opts });
@@ -2013,6 +2025,8 @@ function useArborState() {
     setNewLogContext,
     newLogPhoto,
     setNewLogPhoto,
+    newLogScript,
+    setNewLogScript,
     editingLogId,
     startEditLog,
     cancelEditLog,

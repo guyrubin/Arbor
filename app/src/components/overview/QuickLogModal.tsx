@@ -31,7 +31,7 @@ import { dayKey } from "../../practice/signals";
 import { SayThis } from "../ui/AiBlock";
 import { hardMomentPilotText } from "../../content/hardMomentPilotText";
 import { hardMomentPublication } from "../../content/pilotRelease";
-import { renderSayThis, type HardMomentCard } from "../../content/hardMomentCards";
+import { hardMomentCatalogue, renderSayThis, type HardMomentCard } from "../../content/hardMomentCards";
 import { locText } from "../../content/hardMomentSurface";
 import { isolate } from "../../lib/bidi";
 import type { BehaviorLog } from "../../types";
@@ -118,6 +118,8 @@ export default function QuickLogModal({
     setNewLogNotes,
     newLogPhoto,
     setNewLogPhoto,
+    newLogScript,
+    setNewLogScript,
     childProfile,
     behaviorLogs,
     handleAddLog,
@@ -316,8 +318,13 @@ export default function QuickLogModal({
   };
   useEffect(() => {
     if (open && hardMomentNow) toggleHardMoment(true);
+    // B-DATA-16: a guide's "I used these words" opens the hard-moment form.
+    else if (open && !editLogId && !review && newLogScript) toggleHardMoment(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, hardMomentNow]);
+  // B-DATA-16: the guide the parent said they used, named and removable.
+  const usedScript = newLogScript ? hardMomentCatalogue.find((card) => card.id === newLogScript) : undefined;
+  const usedScriptTitle = usedScript ? locText(usedScript.title, uiLang === "he" ? "he" : "en") : "";
   const hardGuide = (() => {
     if (!open || !hardMomentNow) return null;
     const now = new Date();
@@ -958,6 +965,8 @@ export default function QuickLogModal({
           { label: t("ql.review.trigger"), value: newLogTrigger, onChange: setNewLogTrigger },
           { label: t("ql.review.response"), value: newLogResponse, onChange: setNewLogResponse },
           { label: t("beh.notes"), value: newLogNotes, onChange: setNewLogNotes },
+          // B-DATA-16: the stored script is reviewed like every other field.
+          ...(isIncidentType(newLogType) && usedScriptTitle ? [{ label: t("elev.closeloop.hm.usedLabel"), value: usedScriptTitle }] : []),
         ]}
         intensity={isIncidentType(newLogType) ? newLogIntensity : undefined}
         onIntensityChange={setNewLogIntensity}
@@ -1071,6 +1080,18 @@ export default function QuickLogModal({
           <label htmlFor="quick-log-response" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ql.response")}</label>
           <input id="quick-log-response" value={newLogResponse} onChange={(e) => setNewLogResponse(e.target.value)} placeholder={t("ql.responsePh")} className="min-h-11 w-full rounded-xl p-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
         </div>
+
+        {/* B-DATA-16: the words the parent said they used (from the guide's
+            "I used these words"), stored on this row; one tap removes them. */}
+        {usedScriptTitle && (
+          <div data-testid="quicklog-script" className="flex min-w-0 flex-wrap items-center justify-between gap-2" lang={uiLang} dir={uiLang === "he" ? "rtl" : "ltr"}>
+            <p className="min-w-0 text-xs" style={{ color: "var(--arbor-ink-soft)" }}><bdi>{t("elev.closeloop.hm.usedLine", { guide: usedScriptTitle })}</bdi></p>
+            <button type="button" data-testid="quicklog-script-remove" onClick={() => setNewLogScript("")}
+              className="inline-flex min-h-11 items-center gap-1 rounded-xl px-3 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
+              <Icon name="close" size={16} /> {t("elev.closeloop.hm.usedRemove")}
+            </button>
+          </div>
+        )}
 
         {optionalDetails}
         {/* B-STATUS-01: the drafting spinner in the button became the ONE

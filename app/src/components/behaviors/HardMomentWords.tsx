@@ -14,22 +14,25 @@ type T = (key: string, vars?: Record<string, string | number>) => string;
  * card), dated. Renders only when the parent answered "held the plan" for
  * this card (lastHeldFor). Provider-less so the guard renders it bare.
  */
-export function LastTimeLead({ card, childName, at, locale, t }: {
+export function LastTimeLead({ card, childName, at, locale, t, basis = "held" }: {
   card: HardMomentCard;
   childName: string;
   at: string;
   locale: "en" | "he";
   t: T;
+  /** B-DATA-16: "used" — the parent logged a hard moment saying they used
+   *  these words (coRegulationScript) but has not said they helped. */
+  basis?: "held" | "used";
 }) {
   const sentence = locText(renderSayThis(card, childName), locale);
   return (
-    <section data-testid="hm-last-time" lang={locale} dir={locale === "he" ? "rtl" : "ltr"} className="min-w-0 text-start">
+    <section data-testid="hm-last-time" lang={locale} dir={locale === "he" ? "rtl" : "ltr"} data-basis={basis} className="min-w-0 text-start">
       {/* P1-NEXTLEVEL critic r2: no dir="auto" on the lead or the quote — their
           only child is a <bdi>, which the first-strong scan skips, so they fell
           back to ltr in Hebrew (bar on the left). They inherit the section's
           locale direction; the <bdi> keeps the words isolated. */}
       <p className="text-[13px] font-semibold" style={{ color: "var(--arbor-muted)" }}>
-        <bdi>{t("hm.lastTime.lead", { name: childName })}</bdi>
+        <bdi>{t(basis === "used" ? "elev.closeloop.hm.usedLead" : "hm.lastTime.lead", { name: childName })}</bdi>
       </p>
       <blockquote
         data-testid="hm-last-time-words"
