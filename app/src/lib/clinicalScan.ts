@@ -180,12 +180,17 @@ export function findClinicalDiagnosisTerm(text: string): string | null {
  *     minutes", "with no…", "כעבור"), is about a change (calming,
  *     improvement, רגיעה, שיפור). That condition is the safety message's
  *     trigger, not a claim, and in a School Brief the line may be the only
- *     "call the family" a teacher's copy carries. An invented add-on after
- *     the line (", and there is no evidence…", ", who found…", ", כי אין…")
- *     is cut off and the referral with its condition kept;
+ *     "call the family" a teacher's copy carries. A second escalation in
+ *     the same line (", and if …, call the family", ", and the school nurse
+ *     if …", ", ולאחות … אם …") has its own condition (escalationConditions).
+ *     An invented add-on after the line (", and there is no evidence…",
+ *     ", who found…", ", כי אין…") is cut off and the referral with its
+ *     condition kept — never a second escalation;
  *   - it is an OBSERVATION ("He was observed biting a peer…", "הוא נצפה
  *     נושך…") of an event the parent logged: the event and another of its
- *     words in one part of one parent statement (parentReportsEvent);
+ *     words in one part of one parent statement, and every person and setting
+ *     it names in that statement (a friend, a peer, a classmate are one
+ *     person) (parentReportsEvent);
  *   - the PARENT'S OWN WORDS carry it (critic rounds 3–6): one statement the
  *     parent wrote holds a finding of the same kind ("doesn't show any signs
  *     of" = "no signs of") and EVERY content word of the clause in any order,
@@ -424,14 +429,39 @@ export function escalationCondition(clause: string): { start: number; end: numbe
  *  delay at his checkup" (critic round 7 P1-B). */
 const CHANGE_EN = /\b(?:calm(?:s|ed|ing)?|settl(?:e|es|ed|ing)|improv(?:e|es|ed|ing|ement)|progress|better|eas(?:e|es|ed|ing))\b/i;
 const CHANGE_HE = /(?<!\p{L})[ולבשה]{0,2}(?:רגיעה|להירגע|נרגע|נרגעת|שיפור|השתפרות|התקדמות|הקלה)(?!\p{L})/u;
-const aboutChange = (clause: string, finding: FindingMatch): boolean => {
-  const object = clause.slice(finding.index, finding.index + finding.phrase.length + 60);
-  return CHANGE_EN.test(object) || CHANGE_HE.test(object);
-};
 /** True when the clause is an escalation line (its main clause an imperative referral, a real condition governing it). */
 export function isEscalationLine(clause: string): boolean {
   return escalationCondition(clause) !== null;
 }
+/** Where a line's second part starts: ", and" / ", though" / ", but" / ", or" / ", ו". */
+const SECOND_PART = /,\s*(?:(?:and|though|although|but|or|while)\s+|ו(?=\p{L}))/giu;
+/** A referral whose verb the second part leaves out: ", and the school nurse if …", ", ולאחות בית הספר אם …". */
+const ELIDED_REFERRAL_EN = new RegExp(String.raw`^\s*(?:(?:the|his|her|your)\s+)?(?:school\s+)?(?:${PROFESSIONAL_EN}s?|911|112|999|nurse)\b[^,]{0,40}?\s(?=(?:if|unless|when|should|in\s+case)\b)`, "iu");
+const ELIDED_REFERRAL_HE = /^\s*ל(?:ה)?(?:אחות|הורים|רופא\p{L}*|ד["״]ר|פסיכולוג\p{L}*|גננת|מטפל\p{L}*|משפחה)(?!\p{L})[^,]{0,40}?\s(?=ו?(?:אם|כש|כאשר|במידה|במקרה)(?!\p{L})|כש\p{L})/u;
+/** Every escalation condition of a line: its own, and that of a second escalation after ", and" / ", ו" (critic round 8 P1-A). */
+export function escalationConditions(clause: string): { start: number; end: number; hypothetical: boolean }[] {
+  const out: { start: number; end: number; hypothetical: boolean }[] = [];
+  const own = escalationCondition(clause);
+  if (own) out.push(own);
+  SECOND_PART.lastIndex = 0;
+  for (const m of clause.matchAll(SECOND_PART)) {
+    const from = (m.index ?? 0) + m[0].length;
+    const tail = clause.slice(from);
+    const second = escalationCondition(tail);
+    if (second) { out.push({ start: from + second.start, end: from + second.end, hypothetical: second.hypothetical }); continue; }
+    const elided = ELIDED_REFERRAL_EN.exec(tail) ?? ELIDED_REFERRAL_HE.exec(tail);
+    if (!elided) continue;
+    const start = from + elided[0].length;
+    const conjunction = conjunctionsIn(clause.slice(start))[0];
+    if (!conjunction || conjunction.at !== 0) continue;
+    const end = trailingStop(clause, { at: start, end: start + conjunction.end });
+    if (!narratesPast(clause.slice(start, end))) out.push({ start, end, hypothetical: HYPOTHETICAL_LEAD.test(clause.slice(start, end)) });
+  }
+  return out;
+}
+/** True when a line's part starting at `from` is itself an escalation (its own referral, or one left implied). */
+const startsEscalation = (clause: string, from: number): boolean =>
+  escalationConditions(clause).some((condition) => condition.start >= from);
 
 /* ── Words: "does the parent's text carry this clause?" ────────────────────
  * Tokens are lower-cased words (a hyphen splits: "drop-off" = "drop off";
@@ -454,6 +484,8 @@ const tokenize = (text: string): string[] =>
     .toLocaleLowerCase().replace(/[’`]/g, "'").match(/[\p{L}\p{N}]+(?:['״׳][\p{L}\p{N}]+)*/gu) ?? [])
     .map((word) => (isHebrewWord(word) ? foldHe(word) : word));
 const heWords = (words: readonly string[]): ReadonlySet<string> => new Set(words.map(foldHe));
+/** A list of English words written as one string (quoted single words read as icon names to the icon-font guard). */
+const wordList = (text: string): string[] => text.split(" ");
 
 /** Hebrew function words a restatement may add or drop. Negations are counted, never here. */
 const HE_STOP = heWords([
@@ -566,6 +598,15 @@ const sameWord = (a: string, b: string): boolean => {
 const isOneOf = (word: string, list: readonly string[]) => list.some((member) => sameWord(word, member));
 const isStopWord = (word: string) => (isHebrewWord(word) ? heBare(word, true).some((rest) => HE_STOP.has(rest)) : EN_STOP.has(word));
 
+/** The words of a finding's own frame ("no signs of", "shows no", "אין סימנים של"): what follows them is its object. */
+const FINDING_FRAME_WORDS: ReadonlySet<string> = new Set([...wordList("no not any sign signs evidence indication indications indicator indicators symptom symptoms trace traces red flag flags show shows showed showing display displays displayed exhibit exhibits exhibited present presents presented demonstrate demonstrates demonstrated does did do is was are were still clear obvious apparent real significant further current without free from of for that with"), ...heWords(["אין", "ללא", "לא", "סימנים", "סימן", "עדות", "הוכחה", "אינדיקציה", "נראים", "נראה", "נראו", "נצפו", "נצפה", "מראה",
+    "הראה", "הראתה", "אינו", "אינה", "של", "עדיין"])]);
+const isFrameWord = (word: string) =>
+  FINDING_FRAME_WORDS.has(word) || EN_STOP.has(word) || FINDING_FRAME_WORDS.has(word.replace(/^(?:ו|ש|כש)(?=[\u05D0-\u05EA])/, ""));
+const aboutChange = (clause: string, finding: FindingMatch): boolean => {
+  const object = tokenize(clause.slice(finding.index)).find((word) => !isFrameWord(word));
+  return object !== undefined && (CHANGE_EN.test(object) || CHANGE_HE.test(object));
+};
 /* ── The parent's statements, indexed once per parent text ─────────────── */
 /** Cost caps (critic round 4 P2): the parent's text is read up to this many
  *  words (a full 200-log School Brief is ~16k), and one note or brief checks
@@ -769,9 +810,9 @@ const anchorsOf = (clause: string, findings: readonly FindingMatch[]): string[] 
 export function statesUnreportedFinding(clause: string, opts: HandoffFloorOptions = {}, budget?: FloorBudget): boolean {
   // A finding inside an escalation line's condition is its trigger, never a
   // claim — after a time, only when it is about a change.
-  const condition = escalationCondition(clause);
-  const exempt = (f: FindingMatch) => condition !== null && f.index >= condition.start && f.index < condition.end
-    && (condition.hypothetical || aboutChange(clause, f));
+  const conditions = escalationConditions(clause);
+  const exempt = (f: FindingMatch) => conditions.some((condition) => f.index >= condition.start && f.index < condition.end
+    && (condition.hypothetical || aboutChange(clause, f)));
   const findings = findingsIn(clause).filter((f) => !exempt(f));
   if (findings.length === 0) return false;
   if (!opts.parentText) return true;
@@ -822,6 +863,12 @@ const sameEvent = (a: string, b: string): boolean => {
   const bs = new Set(heSkeleton(b));
   return heSkeleton(a).some((form) => bs.has(form));
 };
+/** People and settings an observation names: each must be in the parent's statement (critic round 8 P1-B);
+ *  a friend, a peer, a classmate and a playmate are one person. */
+const PEER_WORDS = [...wordList("friend peer classmate playmate"), ...heWords(["חבר", "חברה", "חברים", "חברות"])];
+const PERSON_WORDS = [...PEER_WORDS, ...wordList("teacher aide assistant staff nurse sister brother sibling cousin adult grandma grandpa grandmother grandfather therapist doctor babysitter nanny caregiver"), ...heWords(["גננת", "גנן", "מורה", "סייעת", "אחות", "אח", "אחים", "בן דוד", "סבתא", "סבא", "מטפלת", "מטפל", "רופא", "רופאה", "בייביסיטר"])];
+const SETTING_WORDS = [...wordList("preschool school daycare kindergarten class classroom playground yard garden park home house lunch snack nap naptime circle bathroom hallway bus car pool gym library dinner breakfast pickup recess outside store shop slide sandbox"), ...heWords(["גן", "בית", "חצר", "מגלשה", "ארוחה", "צהריים", "מעגל", "שירותים", "אוטובוס", "פארק", "גינה", "בריכה", "כיתה", "תור", "ארגז חול", "מכונית"])];
+const samePerson = (a: string, b: string) => sameEvent(a, b) || (isOneOf(a, PEER_WORDS) && isOneOf(b, PEER_WORDS));
 /** Other action words of a clause: English "-ing" forms, Hebrew present participles (CוCC). */
 const isActionWord = (word: string) => (isHebrewWord(word) ? word.length === 4 && word[1] === "ו" : word.length >= 5 && word.endsWith("ing"));
 const parentReportsEvent = (clause: string, findings: readonly FindingMatch[], required: readonly string[], negations: number, parent: ParentIndex): boolean => {
@@ -833,10 +880,12 @@ const parentReportsEvent = (clause: string, findings: readonly FindingMatch[], r
   if (!event) return false;
   const others = required.filter((word) => word !== event);
   const actions = others.filter(isActionWord);
+  const named = others.filter((word) => isOneOf(word, PERSON_WORDS) || isOneOf(word, SETTING_WORDS));
   return parent.statements.some((statement) => statement.parts.some((part) =>
     part.words.some((word) => sameEvent(event, word))
-    && (others.length === 0 || others.some((word) => part.words.some((w) => sameEvent(word, w))))
+    && (others.length === 0 || others.some((word) => part.words.some((w) => samePerson(word, w))))
     && actions.every((word) => statement.words.some((w) => sameEvent(word, w)))
+    && named.every((word) => statement.words.some((w) => samePerson(word, w)))
     && part.negations === negations));
 };
 
@@ -845,7 +894,11 @@ export function withoutHandoffFindings(text: string, opts: HandoffFloorOptions =
   const clauses = text.match(CLAUSES) ?? [text];
   const dropped = clauses.map((clause) => statesUnreportedFinding(clause, opts, budget));
   if (!dropped.includes(true)) return text;
-  return clauses.map((clause, i) => (dropped[i] ? escalationWithoutAddOn(clause, opts) ?? "" : clause)).join("").trim();
+  return clauses.map((clause, i) => {
+    if (dropped[i]) return escalationWithoutAddOn(clause, opts) ?? "";
+    // "Teachers can check in briefly; <dropped>" reads as a whole sentence: end it with a full stop
+    return dropped[i + 1] ? clause.replace(/;(\s*)$/, ".$1") : clause;
+  }).join("").trim();
 }
 
 /** Where an add-on joins an escalation line: ", and" / ", though" / ", but",
@@ -860,6 +913,8 @@ const escalationWithoutAddOn = (clause: string, opts: HandoffFloorOptions): stri
   const ending = /[.!?;。]*\s*$/.exec(clause)?.[0] ?? "";
   ADD_ON.lastIndex = 0;
   for (const m of clause.matchAll(ADD_ON)) {
+    // "…, and the school nurse if …", "…, though if …, call 911": a second escalation is never an add-on
+    if (startsEscalation(clause, m.index ?? 0)) return null;
     const head = clause.slice(0, m.index).trimEnd();
     if (head && isEscalationLine(head) && !statesUnreportedFinding(head, opts)) return `${head}${ending.trim() || "."}${/\s*$/.exec(ending)?.[0] ?? ""}`;
   }

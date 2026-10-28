@@ -193,9 +193,9 @@ describe("B-ASKJB-44 · round 2 — invented findings behind a lead-in are dropp
 
   it("clause level: the real fixture note keeps its first clause and drops the finding", () => {
     expect(withoutHandoffFindings("The child responds well to short connection times; no evidence of attention or regulation difficulties in this context."))
-      .toBe("The child responds well to short connection times;");
+      .toBe("The child responds well to short connection times.");
     expect(withoutHandoffFindings("Teachers can check in briefly; there is no evidence of a learning difficulty."))
-      .toBe("Teachers can check in briefly;");
+      .toBe("Teachers can check in briefly.");
   });
 
   it("a trailing attribution to a named reporter (P2d) is kept only when the parent wrote the finding and named the reporter (round 4)", () => {
@@ -687,7 +687,8 @@ const COMPARE_ROWS: [string, string, string, string][] = [
 const COMPARE_PARENT_EN = "He bit a friend at preschool when they fought over a toy; Dr. Levi saw him last week\nWe separated them and he calmed after a hug";
 const COMPARE_PARENT_HE = "הוא נשך חבר בגן כשרבו על צעצוע; ד\"ר לוי ראה אותו בשבוע שעבר\nהפרדנו ביניהם והוא נרגע אחרי חיבוק";
 const compareParent = (p: string) => (p === "EN" ? COMPARE_PARENT_EN : p === "HE" ? COMPARE_PARENT_HE : p);
-const COMPARE_PART_D7 = "If you are worried, talk with the pediatrician;";
+// round 9 (P2-1): a clause kept before a dropped one ends with a full stop, not ";"
+const COMPARE_PART_D7 = "If you are worried, talk with the pediatrician.";
 /** What a row's note must become: keep → itself, drop → "", part → D7's kept clause, part:<text> → that text. */
 const expectedOut = (sentence: string, verdict: string) =>
   verdict === "keep" ? sentence : verdict === "drop" ? "" : verdict === "part" ? COMPARE_PART_D7 : verdict.slice("part:".length);

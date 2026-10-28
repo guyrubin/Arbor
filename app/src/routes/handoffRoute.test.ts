@@ -273,7 +273,8 @@ const COMPARE_ROWS: [string, string, string, string][] = [
 const COMPARE_PARENT_EN = "He bit a friend at preschool when they fought over a toy; Dr. Levi saw him last week\nWe separated them and he calmed after a hug";
 const COMPARE_PARENT_HE = "הוא נשך חבר בגן כשרבו על צעצוע; ד\"ר לוי ראה אותו בשבוע שעבר\nהפרדנו ביניהם והוא נרגע אחרי חיבוק";
 const compareParent = (p: string) => (p === "EN" ? COMPARE_PARENT_EN : p === "HE" ? COMPARE_PARENT_HE : p);
-const COMPARE_PART_D7 = "If you are worried, talk with the pediatrician;";
+// round 9 (P2-1): a clause kept before a dropped one ends with a full stop, not ";"
+const COMPARE_PART_D7 = "If you are worried, talk with the pediatrician.";
 
 /* Critic round 6 → round 7 rows (compare6.txt F/G/H, extra6.txt T/FN), with
    the verdict the branch must give: F the bare-comma leak (dropped), G
