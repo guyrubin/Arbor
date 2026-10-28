@@ -10,7 +10,9 @@
  *        Paints every brief in scope (one pattern, one plate, or all) through
  *        the same provider path as /generate-scene (modelProvider.generateImage,
  *        the approved model and region pins), the brief plus the standard
- *        rules (PLAN_PLATE_RULES). Idempotent: a painted plate is skipped
+ *        rules (PLAN_PLATE_RULES: the style, light and rule blocks of the
+ *        closed PR #170's painting script and the hero sheet's TAIL, so the
+ *        in-product paint is the offline paint's prompt). Idempotent: a painted plate is skipped
  *        unless `repaint`. Per run: at most PLAN_PLATES_MAX_IMAGES images or
  *        PLAN_PLATES_MAX_USD estimated (429 plan_plates_cap before a call is
  *        made). Every provider call goes through the image routes' global
@@ -42,7 +44,9 @@ import { createHash } from "node:crypto";
 import type { ArborConfig } from "../config/env.js";
 import type { GeneratedImage, GenerateImageOptions } from "../ai/modelRouter.js";
 import { isAbortError } from "../ai/modelRetry.js";
+import type { LightRig } from "../lib/library/bookPlates.js";
 import { PLAN_PLATE_BRIEFS, planPlateTable } from "../lib/library/plans/planPlates.js";
+import { TAIL } from "./heroPosePrompts.js";
 import { isPatternId, PATTERN_IDS } from "../lib/library/plans/planVisibility.js";
 import type { PatternId } from "../lib/library/types.js";
 import type { BookAssetBucket, BookAssetFile } from "./bookAssets.js";
@@ -68,31 +72,48 @@ export const PLAN_PLATE_IMAGE_MS = 60_000;
 
 const PLATE_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
-/** The standard rules every plate brief is painted under (the plate contract). */
-export const PLAN_PLATE_RULES = [
-  "This is a background PLATE for a children's picture book, landscape 3:2 (1536 by 1024).",
-  "Warm, semi-realistic game-tile look: soft painted surfaces, gentle depth, friendly colours.",
-  "One key light from the upper left; one consistent light direction across the whole scene.",
-  "The hero floor slot — the open area of floor in the middle foreground — stays EMPTY: no figure, no object there.",
-  "No people and no child-like figure of any kind: no child, no doll, no silhouette of a person, no face, no hands, no toy that looks like a person.",
-  "No text of any kind: no letters, no numbers, no words, no signs, no labels, no logos, no writing on anything.",
-  "No religious symbols. No weapon of any kind; nothing pointed toward the viewer.",
-  "Nothing scary, nothing sad: a calm home or outdoor place a young child knows.",
-].join(" ");
+/* ── The prompt (reused verbatim from the plan-plates painting script of the
+ *    closed PR #170, so the in-product paint and the offline paint are the same
+ *    prompt; TAIL is the hero sheet's own no-text / no-weapon block). ── */
 
-const LIGHT_WORDS: Record<string, string> = {
-  morning: "clear morning light",
-  day: "soft daylight",
-  golden: "warm golden-hour light",
-  dusk: "soft dusk light",
-  night: "calm night light with a low lamp glow",
+/** The style every plate shares (standard §4: the game-tile look). */
+export const PLATE_STYLE = "A painted picture-book BACKGROUND PLATE in the Arbor game-tile look: soft rounded shapes, clean edges, "
+  + "calm saturated colours, gentle paper texture, a storybook watercolour-and-gouache finish; never photorealistic, never 3D render.";
+
+export const PLATE_LIGHT: Record<LightRig, string> = {
+  morning: "soft clear morning light from a low sun, cool-white with a gentle warm edge, long soft shadows",
+  day: "even bright daylight, white key light from high on one side, soft short shadows",
+  golden: "warm golden-hour light from low on one side, long warm shadows, amber highlights",
+  dusk: "soft dusk light, lavender-blue sky light with a last warm glow at the horizon, gentle shadows",
+  night: "calm night light: one warm low lamp or moonlight through a window, deep soft blue shadows, nothing scary",
 };
 
-/** The prompt of one plate: its brief, its light rig, the standard rules. */
+/** The rules every plate obeys (child-free, text-free, hero slot empty, one key light). */
+export const PLATE_RULES = "ABSOLUTELY NO PEOPLE and NO CHILD anywhere: no figure, no silhouette, no shadow of a person, no face, no hands, "
+  + "no reflection of a person, no doll or toy figure with a face; the hero slot named in the scene stays EMPTY — the character is "
+  + "composited later. ONE key light only, as the light description says, consistent across the scene. Landscape 3:2 picture, the "
+  + "whole scene inside the frame, calm composition with an open area where the hero slot is.";
+
+/** The plate contract's two rules the script's block leaves implicit. */
+export const PLATE_EXTRA = "The one key light comes from the UPPER LEFT of the picture. No religious symbols, flags or emblems of any kind; "
+  + "no weapon of any kind, and nothing pointed toward the viewer.";
+
+/** The standard rules every plate brief is painted under (the plate contract), in prompt order. */
+export const PLAN_PLATE_RULES = [PLATE_RULES, PLATE_EXTRA, TAIL].join(" ");
+
+/** The one prompt of a plate: the style, its brief, its light rig, the hero slot, the rules. */
 export function planPlatePrompt(patternId: PatternId, plateId: string): string | null {
   const spec = PLAN_PLATE_BRIEFS[patternId]?.[plateId];
   if (!spec) return null;
-  return `Paint one background plate. Scene: ${spec.brief}. Light: ${LIGHT_WORDS[spec.light] ?? spec.light}. ${PLAN_PLATE_RULES}`;
+  const slot = spec.cx == null ? "centre" : spec.cx < 0.45 ? "left of centre" : spec.cx > 0.55 ? "right of centre" : "centre";
+  const textZone = spec.textZone ? ` Keep the ${spec.textZone === "bottom" ? "bottom" : spec.textZone === "inline-start" ? "left" : "right"} part of the picture calm and plain, with no detail (a text panel sits there).` : "";
+  return [
+    PLATE_STYLE,
+    `SCENE (${patternId} / ${plateId}): ${spec.brief}.`,
+    `LIGHT: ${PLATE_LIGHT[spec.light]}.`,
+    `The hero slot is ${slot}, on the ground plane, empty.${textZone}`,
+    PLAN_PLATE_RULES,
+  ].join(" ").replace(/ {2,}/g, " ");
 }
 
 const envList = (env: NodeJS.ProcessEnv, name: string): string[] =>

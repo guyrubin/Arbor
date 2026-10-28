@@ -17,7 +17,8 @@ import { afterAll, describe, expect, it } from "vitest";
 import type { BookAssetBucket, BookAssetFile, BookAssetSaveOptions } from "./bookAssets";
 import { IMAGE_COUNTERS, IMAGE_GLOBAL_DAILY } from "./imageQuota";
 import { MemoryCounterStore } from "./quotaStore";
-import { createPlanPlatesRouter, estimatePaintUsd, imageDimensions, isPlatePainter, PLAN_PLATE_PREFIX, PLAN_PLATE_RULES, PLAN_PLATES_COUNTER, PLAN_PLATES_MAX_IMAGES, PLAN_PLATES_MAX_USD, planPlateObject, planPlatePrompt, plateStatesFrom } from "./planPlates";
+import { createPlanPlatesRouter, estimatePaintUsd, imageDimensions, isPlatePainter, PLAN_PLATE_PREFIX, PLAN_PLATE_RULES, PLAN_PLATES_COUNTER, PLAN_PLATES_MAX_IMAGES, PLAN_PLATES_MAX_USD, PLATE_LIGHT, PLATE_RULES, PLATE_STYLE, planPlateObject, planPlatePrompt, plateStatesFrom } from "./planPlates";
+import { TAIL } from "./heroPosePrompts";
 import { PLAN_PLATE_BRIEFS, planPlateTable } from "../lib/library/plans/planPlates";
 import { PATTERN_IDS } from "../lib/library/plans/planVisibility";
 import { childBookAssetPrefix } from "../lib/library/bookAssetPaths";
@@ -100,17 +101,25 @@ describe("isPlatePainter", () => {
 
 describe("the prompt, the object names and the cost", () => {
   it("every brief paints under the standard rules: child-free, text-free, key light upper left, hero slot empty, no religious symbol, no weapon", () => {
-    expect(PLAN_PLATE_RULES).toMatch(/upper left/);
-    expect(PLAN_PLATE_RULES).toMatch(/hero floor slot/i);
-    expect(PLAN_PLATE_RULES).toMatch(/no child/i);
+    expect(PLAN_PLATE_RULES).toMatch(/UPPER LEFT/);
+    expect(PLAN_PLATE_RULES).toMatch(/hero slot .* stays EMPTY/);
+    expect(PLAN_PLATE_RULES).toMatch(/NO CHILD/);
     expect(PLAN_PLATE_RULES).toMatch(/no letters/i);
     expect(PLAN_PLATE_RULES).toMatch(/no religious symbols/i);
-    expect(PLAN_PLATE_RULES).toMatch(/no weapon/i);
+    expect(PLAN_PLATE_RULES).toMatch(/no weapons?/i);
     expect(PLAN_PLATE_RULES).toMatch(/3:2/);
+    // the script's blocks verbatim (the closed PR #170) + the hero sheet's TAIL
+    expect(PLAN_PLATE_RULES).toContain(PLATE_RULES);
+    expect(PLAN_PLATE_RULES).toContain(TAIL);
+    expect(PLATE_STYLE).toMatch(/game-tile look/);
     for (const p of PATTERN_IDS) for (const id of Object.keys(planPlateTable(p))) {
       const prompt = planPlatePrompt(p, id)!;
-      expect(prompt).toContain(PLAN_PLATE_BRIEFS[p]![id].brief);
-      expect(prompt).toContain(PLAN_PLATE_RULES);
+      const spec = PLAN_PLATE_BRIEFS[p]![id];
+      expect(prompt).toContain(`SCENE (${p} / ${id}): ${spec.brief}.`);
+      expect(prompt).toContain(`LIGHT: ${PLATE_LIGHT[spec.light]}.`);
+      expect(prompt.startsWith(PLATE_STYLE)).toBe(true);
+      expect(prompt.endsWith(TAIL)).toBe(true);
+      if (spec.textZone) expect(prompt).toMatch(/a text panel sits there/);
       // no diagnosis noun, no public figure, no child's name reaches the painter
       expect(prompt).not.toMatch(/\b(adhd|autis\w*|anxiety disorder|diagnos\w*|disorder)\b/i);
     }
