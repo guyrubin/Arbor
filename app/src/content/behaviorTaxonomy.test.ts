@@ -6,6 +6,7 @@ import {
   BEHAVIOR_TYPES,
   CANONICAL_BEHAVIOR_TYPES,
   DEFAULT_BEHAVIOR_TYPE,
+  extractionNeedsIncidentType,
   extractionOpensIncidentReview,
   hasIncidentCue,
   mapExtractedLabelToType,
@@ -223,6 +224,31 @@ describe("B-ASKJB-48 — context-only extraction labels stay neutral", () => {
       expect(draft.behaviorType, label).toBe(legacy.type);
     }
     expect(compared).toBeGreaterThanOrEqual(30);
+  });
+
+  it("critic round 2: a concern with no canonical type opens the hard-moment flow with no type preset", () => {
+    for (const label of ["Bit a friend at preschool", "Tantrum at the store", "Scratched a classmate", "נשך חבר בגן", "התקף זעם בסופר"]) {
+      const draft = normalizeExtractedLog({ behaviorType: label, intensity: 3 });
+      expect(draft, label).toMatchObject({ behaviorType: MOMENT_BEHAVIOR_TYPE, typeMatched: false, concern: true });
+      expect(extractionNeedsIncidentType(draft), label).toBe(true);
+      expect(extractionOpensIncidentReview(draft), label).toBe(true);
+    }
+    // A context-only label stays a neutral moment.
+    const neutral = normalizeExtractedLog({ behaviorType: "Family dinner" });
+    expect(neutral.concern).toBe(false);
+    expect(extractionNeedsIncidentType(neutral)).toBe(false);
+    expect(extractionOpensIncidentReview(neutral)).toBe(false);
+  });
+
+  it("critic round 2: the Hebrew extraction keywords never change how a SAVED free label displays", () => {
+    const t = (key: string) => en[key] ?? key;
+    for (const stored of ["ארוחת ערב משפחתית", "משחק עם אחיו", "קריאה עם האח הגדול"]) {
+      expect(behaviorTypeLabel(stored, t), stored).toBe(stored);
+      expect(mapLabelToType(stored).matched, stored).toBe(false);
+    }
+    // ...while new extraction still reads the aggression forms they carry.
+    expect(normalizeExtractedLog({ behaviorType: "הרביץ לאח שלו" })).toMatchObject({ behaviorType: "Sibling Conflict", typeMatched: true });
+    expect(normalizeExtractedLog({ behaviorType: "זרק צעצועים בארוחת הערב" })).toMatchObject({ behaviorType: "Food Refusal", typeMatched: true });
   });
 
   it("saved records are not re-read: legacy stored free labels keep their localized label", () => {

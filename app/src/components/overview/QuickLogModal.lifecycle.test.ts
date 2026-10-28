@@ -976,3 +976,39 @@ describe("B-ASKJB-48 — aggression labels still open the incident review (actua
     expect(review.props.intensity).toBe(4);
   });
 });
+
+/** Critic round 2 (B-ASKJB-48 P2): a dictated concern that fits no canonical
+ *  type opens the hard-moment form with the drafted fields and NO type preset;
+ *  the parent must choose the type before the review, then the one write. */
+describe("B-ASKJB-48 — a concern with no canonical type: the parent chooses the type (actual handlers)", () => {
+  it.each([
+    ["en", "He bit a friend at preschool when they took his shovel away", "Bit a friend at preschool"],
+    ["he", "הוא נשך חבר בגן כשלקחו לו את האת מהארגז חול", "נשך חבר בגן"],
+  ] as const)("%s: no type preset, no neutral save; choosing a type opens the review", async (lang, said, label) => {
+    const h = captureHarness({ text: "", lang });
+    one(h.render(), n => n.type === "button" && n.props.onClick?.name === "startVoice").props.onClick();
+    h.speech[0].callbacks.onResult(said);
+    h.extracts[0].resolve({ behaviorType: label, trigger: "Shovel taken", response: "", intensity: 3, durationMinutes: 5 });
+    await tick();
+    const tree = h.render();
+    expect(nodes(tree).some(n => typeof n.props.onConfirm === "function")).toBe(false);
+    const select = one(tree, n => n.props.id === "quick-log-type");
+    expect(select.props.value).toBe("");
+    expect(select.props.required).toBe(true);
+    expect(nodes(select).some(n => n.type === "option" && n.props.value === "" && n.props.disabled)).toBe(true);
+    // Save without a type: no review, no write, nothing saved as a neutral moment.
+    one(h.render(), n => n.type === "form").props.onSubmit(formEvent());
+    expect(nodes(h.render()).some(n => typeof n.props.onConfirm === "function")).toBe(false);
+    expect(h.state.addMoment).not.toHaveBeenCalled();
+    expect(h.state.handleAddLog).not.toHaveBeenCalled();
+    // The parent chooses; Save opens the review with Arbor-draft provenance.
+    one(h.render(), n => n.props.id === "quick-log-type").props.onChange({ target: { value: "Sibling Conflict" } });
+    h.state.newLogResponse = "Gave the shovel back";
+    one(h.render(), n => n.type === "form").props.onSubmit(formEvent());
+    const review = one(h.render(), n => typeof n.props.onConfirm === "function");
+    expect(review.props.source).toBe("ai-draft");
+    expect(h.state.newLogType).toBe("Sibling Conflict");
+    await review.props.onConfirm(formEvent());
+    expect(h.state.handleAddLog).toHaveBeenCalledTimes(1);
+  });
+});

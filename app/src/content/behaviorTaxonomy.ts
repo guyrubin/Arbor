@@ -81,8 +81,18 @@ export const isIncidentType = (behaviorType: string): boolean => INCIDENT_TYPES.
  * behaviorType "Moment", no intensity — B-DATA-09). Never a joyful line filed as a
  * Transition Refusal at 3/5.
  */
-export const extractionOpensIncidentReview = (n: { typeMatched: boolean; behaviorType: string }): boolean =>
-  n.typeMatched && isIncidentType(n.behaviorType);
+export const extractionOpensIncidentReview = (n: { typeMatched: boolean; behaviorType: string; concern?: boolean }): boolean =>
+  (n.typeMatched && isIncidentType(n.behaviorType)) || extractionNeedsIncidentType(n);
+
+/**
+ * B-ASKJB-48 (critic round 2) — a label that names a concern but fits no
+ * canonical type ("Bit a friend at preschool", "Tantrum at the store") is a
+ * hard moment the parent types themselves: the capture opens the hard-moment
+ * form with the extraction's fields and NO type preset. A concern never reads
+ * as a neutral moment, and Arbor never guesses the type.
+ */
+export const extractionNeedsIncidentType = (n: { typeMatched: boolean; concern?: boolean }): boolean =>
+  !n.typeMatched && n.concern === true;
 
 /** Minimal draft shape every capture surface holds before a write. */
 export type BehaviorLogDraft = {
@@ -163,14 +173,25 @@ export const EXTRACT_CONTEXTS = ["Home", "School", "Transit", "Public"] as const
  *  lands on Screentime Dispute, not Sleep/Sensory. */
 const TYPE_KEYWORDS: [CanonicalBehaviorType, RegExp][] = [
   ["Screentime Dispute", /screen|tablet|ipad|tv\b|phone|device|video|מסך|טאבלט|טלפון/i],
-  // B-ASKJB-48: + the Hebrew "brother" as a whole word (אח, לאח, אחיו) and the
-  // meal stem ארוח (ארוחת ערב / בארוחת) — the Hebrew forms the cue list now reaches.
-  ["Sibling Conflict", /sibling|brother|sister|אחים|אחות|בין אחים|(?<![֐-׿])(?:ה|ל|ו|ב|ש|מה|לה)?אח(?:יו|יה|י)?(?![֐-׿])/i],
-  ["Food Refusal", /food|eat|meal|dinner|lunch|breakfast|picky|snack|אוכל|אכיל|ארוח/i],
+  ["Sibling Conflict", /sibling|brother|sister|אחים|אחות|בין אחים/i],
+  ["Food Refusal", /food|eat|meal|dinner|lunch|breakfast|picky|snack|אוכל|אכיל|ארוחה/i],
   ["Sleep Meltdown", /sleep|bed|night|nap|wake|שינה|שנת|מיטה|לילה/i],
   ["Sensory Overload", /sensor|noise|loud|crowd|overload|overstim|חוש|רעש|עומס/i],
   ["Transition Refusal", /transition|refus|leav|morning|dress|depart|goodbye|drop-?off|cling|מעבר|סירוב|בוקר|יציאה/i],
 ];
+
+/**
+ * B-ASKJB-48 — the keyword table NEW extraction uses: the legacy table plus
+ * the Hebrew "brother" as a whole word (אח, לאח, אחיו) and the meal stem ארוח
+ * (ארוחת ערב / בארוחת), the Hebrew forms the cue list now reaches. Kept out of
+ * TYPE_KEYWORDS on purpose (critic round 2): that table also localizes how a
+ * SAVED free label displays, and a stored "ארוחת ערב משפחתית" must keep
+ * reading as the parent's words, not as an eating difficulty.
+ */
+const EXTRACTION_TYPE_KEYWORDS: [CanonicalBehaviorType, RegExp][] = TYPE_KEYWORDS.map(([type, re]) =>
+  type === "Sibling Conflict" ? [type, /sibling|brother|sister|אחים|אחות|בין אחים|(?<![֐-׿])(?:ה|ל|ו|ב|ש|מה|לה)?אח(?:יו|יה|י)?(?![֐-׿])/i]
+  : type === "Food Refusal" ? [type, /food|eat|meal|dinner|lunch|breakfast|picky|snack|אוכל|אכיל|ארוח/i]
+  : [type, re]);
 
 /**
  * B-ASKJB-48 — the words that make a FREE extraction label read as an
@@ -263,8 +284,10 @@ export function mapExtractedLabelToType(
   const exact = BEHAVIOR_TYPES.find((b) => b.value.toLowerCase() === raw.toLowerCase());
   if (exact) return { type: exact.value, matched: true };
   if (!opts.incidentDeclared && !hasIncidentCue(raw)) return { type: MOMENT_BEHAVIOR_TYPE, matched: false };
-  const mapped = mapLabelToType(raw);
-  return mapped.matched ? mapped : { type: MOMENT_BEHAVIOR_TYPE, matched: false };
+  for (const [type, re] of EXTRACTION_TYPE_KEYWORDS) {
+    if (re.test(raw)) return { type, matched: true };
+  }
+  return { type: MOMENT_BEHAVIOR_TYPE, matched: false };
 }
 
 /** B-DATA-09: an explicit numeric intensity clamps to 1–5; a missing or
@@ -293,6 +316,8 @@ export type NormalizedExtractedLog = {
   /** false ⇒ the model's free label didn't fit the canonical set (it is
    *  preserved in `notes`). */
   typeMatched: boolean;
+  /** B-ASKJB-48: the free label names a concern (an incident cue), typed or not. */
+  concern: boolean;
   /** The model's original label, verbatim. */
   freeLabel: string;
   /** B-DATA-09: undefined when the model gave no usable number — never an
@@ -327,6 +352,7 @@ export function normalizeExtractedLog(
   return {
     behaviorType: type,
     typeMatched: matched,
+    concern: !!freeLabel && hasIncidentCue(freeLabel),
     freeLabel,
     intensity: clampIntensity(d?.intensity),
     durationMinutes: Math.max(1, Math.round(Number(d?.durationMinutes)) || 10),
