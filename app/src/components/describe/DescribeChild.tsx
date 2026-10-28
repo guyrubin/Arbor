@@ -26,6 +26,7 @@ import { markVoiceDoorNoticeSeen, voiceDoorNoticeSeen } from "../../lib/voiceDoo
 import { ASPECT_ICONS, ASPECT_IDS, type AspectId } from "../../lib/aboutAspects";
 import { DESCRIBE_TEXT_MAX } from "../../lib/describeChild";
 import "./describe.css";
+import AiDisclosureLine from "../companion/AiDisclosureLine";
 
 /** A mic for one text field: starts dictation in the AI language, shows the
  *  RecordingIndicator while it is live, and appends the parent's words. */
@@ -134,6 +135,8 @@ export default function DescribeChild({ name, lang, value, onChange, disabled, a
         onChange={(event) => onChange(event.target.value)} />
     </label>
     {!micFirst && mic}
+    {/* B-GA-11: the Art. 50 line where the conversation starts, as Talk's composer foot. */}
+    <AiDisclosureLine language={lang} />
     {onAspect && <div className="describe-fills" role="group" aria-label={t("elev.describe.quickFills")}>
       <p className="describe-hints-label">{t("elev.describe.quickFills")}</p>
       <div>{ASPECT_IDS.map((id) => <button type="button" key={id} className="describe-chip" disabled={disabled} onClick={() => onAspect?.(id)} data-fill={id}

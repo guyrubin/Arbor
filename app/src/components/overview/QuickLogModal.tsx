@@ -54,6 +54,7 @@ import { freshCaptureKeep, typedCaptureKeep, selectedCaptureKeep } from "../../l
 // and the two anchors under it) instead of a bare number out of five; the
 // review stepper and the evidence sheet read the same five words.
 import { INTENSITY_WORDS, intensityWordKey } from "../../lib/intensityWords";
+import AiDisclosureLine from "../companion/AiDisclosureLine";
 
 /** Lightweight behavior log capture that can be opened from anywhere (e.g. Overview).
  *
@@ -1016,6 +1017,9 @@ export default function QuickLogModal({
             line after 400 ms (never a spinner, never a flash). */}
         <PendingLine active={drafting} testId="quicklog-drafting">{t("beh.parsing")}</PendingLine>
         <p data-testid="quicklog-privacy" className="text-[11.5px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("companion.capture.privacy")}</p>
+        {/* B-GA-11: the parent's words, voice or photo can go to Arbor's AI to
+            fill the form, so the Art. 50 line sits here, as in Talk. */}
+        <AiDisclosureLine language={uiLang === "he" ? "he" : "en"} />
         <button type="submit" disabled={saving || drafting || photoPreparing} className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 py-3 font-extrabold text-xs rounded-xl transition active:scale-[0.98]" style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)" }}>
           {!saving && !editLogId && <Icon name="bookmark_add" size={18} />}
           {saving ? t("companion.family-topic-sheet.saving") : editLogId ? t("companion.capture.saveChanges") : t("companion.capture.keep")}

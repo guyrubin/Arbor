@@ -14,6 +14,7 @@ import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { ShareButton } from "../ui/ShareButton";
 import { TrustPanel } from "../ui/TrustPanel";
 import { startHeroSheet } from "../kidmode/hero/buildHeroSheet";
+import AiDisclosureLine from "../companion/AiDisclosureLine";
 import {
   isAvatarDraftCurrent,
   runAvatarGeneration,
@@ -242,6 +243,8 @@ export default function AvatarCreator({
               </button>
             </div>
             <p className="text-xs mb-4" style={{ color: "var(--arbor-muted)" }}>{t("trust.avatar.notRealPhoto")}</p>
+            {/* B-GA-11: the parent's photo or description goes to Arbor's AI here. */}
+            <div className="-mt-3 mb-4"><AiDisclosureLine language={uiLang === "he" ? "he" : "en"} /></div>
 
             {currentAvatarUrl && !visibleResult && (
               <div className="mb-4 flex items-center gap-3 rounded-2xl p-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
