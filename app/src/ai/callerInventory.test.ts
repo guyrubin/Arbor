@@ -35,7 +35,8 @@ const DOC = readFileSync(path.join(REPO, "docs", "architecture", "ai-caller-inve
 const PINNED = JSON.parse(readFileSync(path.join(REPO, "evals", "pinned-models.json"), "utf8"));
 const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8");
 
-/** Shrink-only: rows whose true request the current decision does not evaluate. */
+/** Exact, shrink-only: rows whose true request the current decision does not
+ *  evaluate. A new gap fails; a closed gap fails until this number drops. */
 const GAP_ROWS_BASELINE = 16;
 
 /* ── discovery ────────────────────────────────────────────────────────────── */
@@ -211,6 +212,7 @@ function inventoryErrors(doc: string, handlers: Map<string, Handler>, others: st
   }
   const gaps = rows.filter((r) => r["True-request result"] !== "eligible").length;
   if (gaps > GAP_ROWS_BASELINE) errors.push(`${gaps} gap rows, baseline ${GAP_ROWS_BASELINE} (shrink-only)`);
+  if (gaps < GAP_ROWS_BASELINE) errors.push(`${gaps} gap rows: a gap closed, lower GAP_ROWS_BASELINE to ${gaps} (shrink-only lock)`);
   return errors;
 }
 
@@ -290,6 +292,12 @@ describe("B-AIOPS-08 — negative controls", () => {
     const errors = inventoryErrors(flipped, HANDLERS, OTHERS);
     expect(errors).toContain("api POST /explain: crisis screen reads no, source says yes");
     expect(errors).toContain("api POST /generate-avatar: consent gate reads none, source says face_processing");
+  });
+
+  it("a closed gap fails until the baseline is lowered (the lock is exact)", () => {
+    const closed = DOC.replace(/(\| api POST \/generate-adventure \| structured_text \| )child( \|[^\n]*\| routeDecisionFor \| )rejects: audience( \|)/, "$1parent$2eligible$3");
+    expect(closed).not.toBe(DOC);
+    expect(inventoryErrors(closed, HANDLERS, OTHERS)).toContain(`${GAP_ROWS_BASELINE - 1} gap rows: a gap closed, lower GAP_ROWS_BASELINE to ${GAP_ROWS_BASELINE - 1} (shrink-only lock)`);
   });
 
   it("a new gap row beyond the baseline fails the ratchet", () => {
