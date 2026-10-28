@@ -55,7 +55,8 @@ import { KID_BOOK_EAGER_COUNT, KidBookCover } from "./KidBookCover";
 import { useChildLibraryBooks } from "./useChildLibraryBooks";
 import { LibraryBookCover } from "./LibraryBookCover";
 import { KidStickerStrip } from "./rewards/KidSouvenir";
-import { kidOfflineArtUrls, precacheKidArt, recentlyOpenedStoryIds } from "../../lib/kidOfflineArt";
+import { kidOfflineArtUrls, libraryBookArtUrls, offlineLibraryBooks, precacheKidArt, recentlyOpenedStoryIds } from "../../lib/kidOfflineArt";
+import { BOOK_READS, type BookRead } from "../../lib/bookReads";
 import { useKidSouvenirs } from "./rewards/useKidSouvenirs";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 
@@ -393,6 +394,15 @@ export default function KidDashboard({
     [kidTheme, tonightsStoryId, heroRunsCol.items],
   );
   useEffect(() => { precacheKidArt(offlineArtKey ? offlineArtKey.split("|") : []); }, [offlineArtKey]);
+  // B-BOOK-27 (T15): Tonight's library book and the 3 the child finished last
+  // keep their shared plates and overlays too, one bounded message per book
+  // (the child's own sheet and narration stay on the device from the first open).
+  const bookReadsCol = useChildCollection<BookRead>(childProfile.id, BOOK_READS);
+  const offlineBooksKey = useMemo(
+    () => offlineLibraryBooks(onOpenBook ? libraryBooks : [], bookReadsCol.items).map((e) => libraryBookArtUrls(e.book).join("|")).join("\n"),
+    [onOpenBook, libraryBooks, bookReadsCol.items],
+  );
+  useEffect(() => { for (const list of offlineBooksKey ? offlineBooksKey.split("\n") : []) precacheKidArt(list ? list.split("|") : []); }, [offlineBooksKey]);
   // B-KID-06: the banner names the one story it opens (HE title in Hebrew),
   // instead of "Start a hero story / Pick a world" on a door with no choice.
   const tonightsStory = HERO_STORIES.find((s) => s.id === tonightsStoryId);
