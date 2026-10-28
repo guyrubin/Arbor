@@ -724,7 +724,7 @@ export type AdminOverview = {
     totalTokens: number;
     byProvider: Record<string, { calls?: number; promptTokens?: number; outputTokens?: number }>;
     approxCostEur: number;
-    live?: { observedSessionMs: number; openedSessions: number };
+    live?: { observedSessionMs: number; openedSessions: number; reservedMs?: number; fallbackTurnMs?: number; restingRefusals?: number };
   };
   generatedAt: string;
 };

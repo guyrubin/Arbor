@@ -45,6 +45,20 @@ At boot the server logs `Ops alert delivery: log|log_and_webhook; owner named|un
 **Readable balance:** `GET /api/admin/prepay` (founder accounts only) returns `credit`, `currency`, `since`, `liveMinutes`, `spent`, `remaining`, `low` and `basis: "reserved_live_minutes"`, or `{ "configured": false }`. The balance is read from Arbor's own meter: every delivered Live token's reserved slice (B-AIOPS-02) since the top-up day × the configured rate. Reserved minutes bound connection time from above, so a rate at or above the real per-minute cost makes the alarm early, never late. Text, image and TTS routes run on Vertex and Cloud TTS, not on the AI Studio prepay.
 **Do:** top up in Google AI Studio by hand (auto-reload stays off), then update `AI_PREPAY_LEDGER` with the new credit and `since` day.
 
+## Cost and budget outputs (B-GA-26, BD-06, BD-52)
+
+The AI cost gate (B-GA-26), the trial/paid AI cost measure (BD-06) and the true-profit and cash model (BD-52) read these fields. Every one is a count, milliseconds or money; none carries a family, uid or content.
+
+| Field (where it is written) | Read at | Feeds |
+|---|---|---|
+| `usageRollup/{day}.live.reservedMs`, `.reservations`, `.byPlan.{plan}.reservedMs` (every delivered Live slice, `routes/api.ts` → `recordLiveBudgetRollup`) | `GET /api/admin/overview` → `usageToday.live.reservedMs` | B-GA-26: the upper bound of provider-billable Live time per day, Free vs paid; BD-06: trial/paid split by plan |
+| `usageRollup/{day}.live.fallbackTurnMs`, `.fallbackTurns` (settled browser-loop turns) | `usageToday.live.fallbackTurnMs` | B-GA-26: voice time that ran on the EU text path instead of Live |
+| `usageRollup/{day}.live.restingRefusals` (mints or turns refused because the family's time was spent) | `usageToday.live.restingRefusals` | BD-06: how often the 3/20-minute allowance binds |
+| `usageRollup/{day}.live.observedSessionMs`, `.openedSessions` (client-reported connection time, `liveUsage.ts`) | `usageToday.live.observedSessionMs` | B-GA-26: observed vs reserved Live time |
+| `usageRollup/{day}.estimatedCostUsd`, `.pricedCalls`, `.calls` (priced text/image calls) | `GET /api/admin/overview` → `cost30d.estimatedCostUsd`, `cost30d.perActiveFamilyUsd` | B-GA-26 and BD-52: the €2 per active family read (text and image only; Live is not priced there) |
+| `opsLedger/aiStudioPrepay_{since}.reservedMs` × `AI_PREPAY_LEDGER.perLiveMinute` | `GET /api/admin/prepay` → `liveMinutes`, `spent`, `remaining`, `low` | BD-52: Live spend against the prepaid balance; the 20 % alarm |
+| `aiQuota/live_family_{familyId}_{day}` `consumedMs` and `reservations` (per family-day; Admin SDK only) | the allowance itself (`server/liveBudget.ts`) | B-AIOPS-02 enforcement; not a reporting source |
+
 ## Proof (28 October 2026)
 
 Dated delivery and recovery tests with a fake sink per signal: `app/src/server/opsAlerts.test.ts` (sink thresholds and recovery, 5xx through Express, all four billing reasons through the real webhook router, webhook payload and config defaults), `app/src/routes/opsAlertsRoute.test.ts` (mint, connect, residency and store failures through the real token and usage routes; the prepay alarm and the founder-only balance) and `app/src/server/prepayBalance.test.ts` (parsing, balance arithmetic, once-per-crossing, recovery after a top-up, no reload). Every incident in those tests is checked for the child's name, ids, uid, email and secrets.

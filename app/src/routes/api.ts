@@ -3,6 +3,7 @@ import { createLiveUsageStore, withLiveUsageDeadline, type LiveUsageEvent } from
 import { createLiveBudgetStore, LIVE_RESTING_BODY } from "../server/liveBudget.js";
 import { spokenMsForChars, type ReserveResult } from "../server/liveBudget.js";
 import { entitlementForRequest } from "../server/entitlements.js";
+import { recordLiveBudgetRollup } from "../server/usageRollup.js";
 import { createOpsAlerts, type OpsAlerts } from "../server/opsAlerts.js";
 import { createPrepayCounter, createPrepayMonitor, type PrepayCounter } from "../server/prepayBalance.js";
 import { liveVoiceNoticeId, voiceNoticeIdFor, VOICE_NOTICE_REQUIRED, VOICE_PROVIDER_UNAPPROVED } from "../ai/voiceProviderNotice.js";
@@ -1601,12 +1602,14 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         setLiveQuotaHeaders(res, turn);
         if (!turn.ok) {
           logger.info("live.budget.resting", { requestId: requestIdOf(req), familyId, plan: entitlement.plan, path: "fallback", remainingMs: turn.remainingMs });
+          recordLiveBudgetRollup({ kind: "resting", plan: entitlement.plan });
           res.status(429).json({ ...LIVE_RESTING_BODY, remainingMs: turn.remainingMs, resetAt: new Date(turn.resetAt).toISOString() });
           return;
         }
         const { day, id } = turn.reservation;
         res.on("close", () => {
           const chargedMs = spokenMsForChars(message.length + (Number(res.locals.spokenChars) || 0));
+          recordLiveBudgetRollup({ kind: "turn", plan: entitlement.plan, settledMs: chargedMs });
           liveBudget.settleTurn(familyId, day, id, chargedMs)
             .catch((error) => logger.error("Voice turn settlement failed", error, { requestId: requestIdOf(req) }));
         });
@@ -1953,6 +1956,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         // B-KID-05 posture: exhaustion is not "busy" — no Retry-After. The
         // typed coach and the crisis path stay open; only realtime voice rests.
         logger.info("live.budget.resting", { requestId: requestIdOf(req), familyId, plan: entitlement.plan, remainingMs: outcome.remainingMs });
+        recordLiveBudgetRollup({ kind: "resting", plan: entitlement.plan });
         res.status(429).json({ ...LIVE_RESTING_BODY, remainingMs: outcome.remainingMs, resetAt: new Date(outcome.resetAt).toISOString() });
         return;
       }
@@ -2043,6 +2047,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // its reserved slice is the spend the prepay balance is read from.
       alerts.ok("live_unavailable", ["mint_failed", "eu_mint_failed", "residency_denied", "budget_store_unavailable"]);
       void prepay.onLiveReserved(reservation.ms);
+      recordLiveBudgetRollup({ kind: "live", plan: entitlementPlan, reservedMs: reservation.ms });
       res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime, systemInstruction, speechConfig, usageSessionId,
         budget: { reservedMs: reservation.ms, remainingMs: reserved.remainingMs, allowanceMs: reserved.allowanceMs, resetAt: new Date(reserved.resetAt).toISOString() } });
     } catch (error: any) {
