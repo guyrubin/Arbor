@@ -62,9 +62,10 @@ export const liveSliceMs = (): number =>
  *  never more than the family has left. It is CHAINED: it starts where the
  *  slice it renews ends, so every reserved minute is a minute the family can
  *  talk. The client renews 30 s before a slice ends, never earlier, so a talk
- *  that stops is charged what it used plus at most the rest of its last slice
- *  (a 2-minute talk is charged 1 + 2 = 3 minutes). A 20-minute paid talk is
- *  1 + 2 + 4 + 8 + 5 minutes: four seams; Free is 1 + 2: one seam. */
+ *  that stops is charged through the end of the last slice reserved for it
+ *  (2:00 talked costs 3 minutes, 3:30 costs 7, 9:00 costs 15). A 20-minute
+ *  paid talk is 1 + 2 + 4 + 8 + 5 minutes: four seams; Free is 1 + 2: one
+ *  seam. The cap trades seams against unused time (release note). */
 export const LIVE_RENEWAL_MAX_MS = 8 * MINUTE_MS;
 export const LIVE_SLICE_GROWTH = 2;
 export const liveRenewalSliceMs = (renewedMs: number): number =>
@@ -184,11 +185,19 @@ export function recordObserved(doc: LiveBudgetDay, id: string, obs: ObservedUpda
 }
 
 /** Release a reservation whose token was NEVER minted (a server-side fact,
- *  not a client report). A reservation that has observed time is kept. */
+ *  not a client report). A reservation that has observed time is kept.
+ *  B-AIOPS-02: a released RENEWAL never happened, so the slice it renewed is
+ *  free to be renewed again (the client's retry); a minted renewal is never
+ *  released here, so it keeps its mark. */
 export function cancelUnminted(doc: LiveBudgetDay, id: string, now: number): LiveBudgetDay {
   const r = doc.reservations[id];
   if (!r || r.settledMs !== null || r.observedMs > 0 || r.closed) return doc;
   const { [id]: _dropped, ...rest } = doc.reservations;
+  for (const [key, other] of Object.entries(rest)) {
+    if (other.renewedBy !== id) continue;
+    const { renewedBy: _released, ...renewable } = other;
+    rest[key] = renewable;
+  }
   return { ...doc, reservations: rest, updatedAt: now };
 }
 

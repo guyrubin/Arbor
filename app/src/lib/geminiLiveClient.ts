@@ -183,7 +183,7 @@ export const releaseLiveMicrophone = (stream: MediaStream | null | undefined): v
 /** B-AIOPS-02 renewal (round 4). Every slice is renewed 30 s before it ends,
  *  never earlier: the server sizes each renewal to twice the slice it renews
  *  (1 -> 2 -> 4 -> 8 minutes, never more than the family has left), so a talk
- *  that stops is charged what it used plus at most the rest of its last slice,
+ *  that stops is charged through the end of the last slice reserved for it,
  *  and a 20-minute talk has about four seams, none longer than a provider
  *  connection lives. A renewal is retried at 15 s and at 5 s before the end;
  *  each attempt runs until it answers, the first slice to arrive wins and any

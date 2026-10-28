@@ -278,6 +278,32 @@ describe("round 3/4 — renewal at the mint route", () => {
     }
   });
 
+  it("round 5: a provider failure on the first renewal releases it; the retry renews the same slice; nothing double-reserved", async () => {
+    delete process.env.LIVE_RESERVATION_MINUTES;
+    try {
+      const first = await mint("parent-a");
+      expect(first.status).toBe(200);
+      expect((await report("parent-a", first.body.usageSessionId, "opened")).status).toBe(200);
+      // The provider answers 503 to the first renewal's mint.
+      sdk.create.mockImplementationOnce(async () => { throw Object.assign(new Error("Service Unavailable"), { status: 503 }); });
+      const failed = await mint("parent-a", { renewOf: first.body.usageSessionId });
+      expect(failed.body.available).toBe(false);
+      const retry = await mint("parent-a", { renewOf: first.body.usageSessionId });
+      expect(retry.status).toBe(200);
+      expect(retry.body.available).toBe(true);
+      expect(retry.body.budget).toMatchObject({ reservedMs: 2 * 60_000, remainingMs: 7 * 60_000 });
+      expect(Date.parse(retry.body.expiresAt) - Date.parse(first.body.expiresAt)).toBe(2 * 60_000);
+      // One first slice and one renewal on the family-day ledger.
+      const live = Object.values([...budget.days.values()][0].reservations).filter((r) => r.kind !== "turn");
+      expect(live).toHaveLength(2);
+      // The renewal that was delivered renews its slice once: a further retry is refused.
+      const third = await mint("parent-a", { renewOf: first.body.usageSessionId });
+      expect(third.status).toBe(409);
+    } finally {
+      process.env.LIVE_RESERVATION_MINUTES = "5";
+    }
+  });
+
   it("round 4: a CLOSED usage session is no renewal: 409, nothing reserved or minted", async () => {
     delete process.env.LIVE_RESERVATION_MINUTES;
     try {

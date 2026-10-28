@@ -376,6 +376,34 @@ describe("round 4 — renewals GROW 1 → 2 → 4 → 8 minutes, chained, so a s
     expect(slices[1].expiresAt).toBe(T0 + 3 * MIN);
   });
 
+  it("round 5: a renewal released unminted (provider failure) frees the renewed slice for the retry; a minted one keeps it renewed once", async () => {
+    delete process.env.LIVE_RESERVATION_MINUTES;
+    const store = new MemoryLiveBudgetStore();
+    const first = await store.reserve({ familyId: "fam", plan: "plus", uid: "a" });
+    if (!first.ok) throw new Error("expected the first slice");
+    vi.setSystemTime(first.reservation.expiresAt - 30_000);
+    const failed = await renewFrom(store, "plus", "a", first.reservation.id);
+    if (!failed.ok) throw new Error("expected the renewal reservation");
+    // The provider mint failed: the route releases the renewal it reserved.
+    await store.cancel("fam", failed.reservation.day, failed.reservation.id);
+    const day = () => [...store.days.values()][0];
+    expect(day().reservations[first.reservation.id].renewedBy).toBeUndefined();
+    vi.setSystemTime(first.reservation.expiresAt - 15_000);
+    const retry = await renewFrom(store, "plus", "a", first.reservation.id);
+    if (!retry.ok) throw new Error("expected the retry to renew");
+    expect(retry.reservation.expiresAt).toBe(first.reservation.expiresAt + 2 * MIN);
+    expect(day().reservations[first.reservation.id].renewedBy).toBe(retry.reservation.id);
+    // Nothing double-reserved: one first slice and one renewal.
+    expect(Object.keys(day().reservations)).toHaveLength(2);
+    expect((await store.peek("fam", "plus")).committedMs).toBe(3 * MIN);
+    // A renewal that was minted (observed) cannot be released: the slice stays renewed once.
+    await store.observe("fam", retry.reservation.day, retry.reservation.id, { observedMs: 1_000, incomplete: false, closed: false });
+    await store.cancel("fam", retry.reservation.day, retry.reservation.id);
+    expect(day().reservations[first.reservation.id].renewedBy).toBe(retry.reservation.id);
+    const again = await renewFrom(store, "plus", "a", first.reservation.id);
+    expect(again.ok === false && again.code).toBe("renewal_invalid");
+  });
+
   it("a renewal must chain onto the caller's own live slice, inside its last 90 s, once — anything else is refused and reserves nothing", async () => {
     delete process.env.LIVE_RESERVATION_MINUTES;
     const store = new MemoryLiveBudgetStore();
