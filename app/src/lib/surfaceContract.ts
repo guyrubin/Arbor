@@ -436,9 +436,10 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     route: "appointments", hub: "care", depth: 1,
     job: "Keep every appointment and its follow-ups in one place.",
     primaryMove: "add-appointment", moduleBudget: 2, demotionTarget: "consult",
-    // Chips requested/confirmed/done; no appointment source in buildTimeline —
-    // "none".
-    threadWrite: "none",
+    // B-CAREPRO-37: the after-visit note is a buildTimeline source — one dated
+    // "visit" row per note on the Journal, naming the profession. The booking
+    // chips (requested/confirmed/done) stay the booking's own.
+    threadWrite: "apptFollowUps",
   },
   {
     route: "reports", hub: "care", depth: 1,
