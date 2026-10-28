@@ -974,7 +974,7 @@ export default function QuickLogModal({
           { label: t("beh.notes"), value: newLogNotes, onChange: setNewLogNotes },
           // B-DATA-16: the stored script is reviewed like every other field.
           ...(isIncidentType(newLogType) && usedScriptQuote ? [{
-            label: t("elev.closeloop.hm.usedLabel"), value: `${usedScriptQuote} · ${usedScriptFrom}`,
+            label: t("elev.closeloop.hm.usedLabel"), value: usedScriptQuote, detail: usedScriptFrom,
             onRemove: () => setNewLogScript(""), removeLabel: t("elev.closeloop.hm.usedRemove"),
           }] : []),
         ]}
@@ -1096,8 +1096,8 @@ export default function QuickLogModal({
         {usedScriptQuote && (
           <div data-testid="quicklog-script" className="flex min-w-0 items-start justify-between gap-2" lang={uiLang} dir={uiLang === "he" ? "rtl" : "ltr"}>
             <div className="min-w-0">
-              <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}><bdi>{usedScriptFrom}</bdi></p>
-              <p data-testid="quicklog-script-words" className="mt-0.5 text-sm leading-snug" style={{ color: "var(--arbor-ink)" }}><bdi>{usedScriptQuote}</bdi></p>
+              <p data-testid="quicklog-script-words" className="text-sm leading-snug" style={{ color: "var(--arbor-ink)" }}><bdi>{usedScriptQuote}</bdi></p>
+              <p className="mt-0.5 text-xs" style={{ color: "var(--arbor-muted)" }}><bdi>{usedScriptFrom}</bdi></p>
             </div>
             <button type="button" data-testid="quicklog-script-remove" onClick={() => setNewLogScript("")}
               className="inline-flex min-h-11 flex-none items-center gap-1 rounded-xl px-3 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>

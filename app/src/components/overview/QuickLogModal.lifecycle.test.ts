@@ -111,7 +111,7 @@ function deferred<T>() {
 const modalCode = compile(modalSource);
 const formEvent = () => ({ preventDefault: vi.fn() });
 const saved = { id: "log-1", behaviorType: "Moment", trigger: "Built a tower", timestamp: "2026-10-09T09:00:00Z", durationMinutes: 0, resolved: true };
-function captureHarness(options: { save?: () => Promise<any>; edit?: boolean; child?: string; review?: "ai-draft"; text?: string; initialText?: string; lang?: "en" | "he"; gender?: ChildProfile["gender"]; script?: string } = {}) {
+function captureHarness(options: { save?: () => Promise<any>; edit?: boolean; child?: string; review?: "ai-draft"; text?: string; initialText?: string; lang?: "en" | "he"; gender?: ChildProfile["gender"]; script?: string; tVars?: boolean } = {}) {
   const state: Record<string, any> = {
     newLogType: options.edit ? "Moment" : taxonomy.DEFAULT_BEHAVIOR_TYPE, newLogIntensity: 3,
     newLogTrigger: options.text ?? "Built a tower", newLogResponse: "", newLogNotes: "", newLogContext: "", newLogDuration: 0, newLogPhoto: "", newLogScript: options.script ?? "",
@@ -142,7 +142,7 @@ function captureHarness(options: { save?: () => Promise<any>; edit?: boolean; ch
   }
   Object.assign(imports, {
     "../../context/ArborContext": { useArbor: () => state },
-    "../../context/LanguageContext": { useLanguage: () => ({ t: (key: string) => options.lang ? translate(options.lang, key) : key, uiLang: options.lang ?? "en" }) },
+    "../../context/LanguageContext": { useLanguage: () => ({ t: (key: string, vars?: Record<string, string | number>) => options.lang ? translate(options.lang, key) : options.tVars && vars ? `${key}(${Object.values(vars).join("|")})` : key, uiLang: options.lang ?? "en" }) },
     "../../context/ToastContext": { useToast: () => ({ toast }) },
     "../../content/behaviorTaxonomy": taxonomy,
     "../../lib/captureSession": { createCaptureSession },
@@ -321,17 +321,20 @@ describe("one capture sheet — real rendered handlers with deferred I/O", () =>
     expect(h.state.addMoment).not.toHaveBeenCalled();
   });
   it("B-DATA-16: the used guide shows its Say-this words, quoted, with where they came from; Remove works in the form and in review", () => {
-    const h = captureHarness({ script: "tantrum", text: "Leaving the park" });
+    const h = captureHarness({ script: "tantrum", text: "Leaving the park", tVars: true });
     h.state.newLogResponse = "Named the feeling";
     const card = hardMomentCardsModule.hardMomentCatalogue.find((c) => c.id === "tantrum")!;
     const words = hardMomentSurfaceModule.locText(hardMomentCardsModule.renderSayThis(card, "Dylan"), "en");
+    const quoted = `elev.loop.ms.quoted(${words})`, from = `elev.closeloop.hm.usedFrom(${card.title.en})`;
+    // The words go through the app's one quote pair; where they came from sits on the line under them.
     const block = one(h.render(), n => n.props["data-testid"] === "quicklog-script");
-    expect(text(block)).toContain("elev.closeloop.hm.usedFrom");
-    expect(text(block)).toContain(`“${words}”`);
+    expect(text(block).indexOf(quoted)).toBeGreaterThan(-1);
+    expect(text(block).indexOf(from)).toBeGreaterThan(text(block).indexOf(quoted));
     one(h.render(), n => n.type === "form").props.onSubmit(formEvent());
     let review = one(h.render(), n => typeof n.props.onConfirm === "function");
     const row = review.props.rows.find((r: any) => r.label === "elev.closeloop.hm.usedLabel");
-    expect(row.value).toContain(`“${words}”`);
+    expect(row.value).toBe(quoted);
+    expect(row.detail).toBe(from);
     expect(row.removeLabel).toBe("elev.closeloop.hm.usedRemove");
     row.onRemove();
     expect(h.state.newLogScript).toBe("");

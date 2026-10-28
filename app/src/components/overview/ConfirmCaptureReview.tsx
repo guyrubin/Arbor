@@ -49,6 +49,8 @@ export type ReviewRow = {
    *  they said they used). A 44 px "Remove" sits beside the value. */
   onRemove?: () => void;
   removeLabel?: string;
+  /** B-DATA-16: a quiet second line under the value (where it came from). */
+  detail?: string;
 };
 
 /** AI-CAP-5 — tap-to-edit text row: renders as plain text until tapped, then
@@ -86,7 +88,10 @@ function EditableRow({ row, fromNoteLabel }: { row: ReviewRow; fromNoteLabel?: s
         </button>
       ) : row.onRemove ? (
         <div className="mt-1 flex items-start justify-between gap-2">
-          <p className="min-w-0 text-xs leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{row.value}</p>
+          <div className="min-w-0">
+            <p className="text-xs leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{row.value}</p>
+            {row.detail && <p className="mt-0.5 text-xs" dir="auto" style={{ color: "var(--arbor-muted)" }}>{row.detail}</p>}
+          </div>
           <button type="button" onClick={row.onRemove} aria-label={`${row.removeLabel ?? ""} — ${row.label}`}
             className="inline-flex min-h-11 flex-none items-center gap-1 rounded-xl px-2 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
             <Icon name="close" size={14} aria-hidden />{row.removeLabel}
