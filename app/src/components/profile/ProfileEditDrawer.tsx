@@ -23,6 +23,9 @@ import RewardsCard from "./RewardsCard";
 import { stampChangedFacts } from "../../lib/factsAsOf";
 import { childPicture } from "../../lib/childPicture";
 import { cleanNameLatin, NAME_LATIN_MAX, offersNameLatin } from "../../lib/storyName";
+// B-SHELL-44: Add child's language and focus choices, one vocabulary for both forms.
+import { ChildFocusChoices, ChildLanguageChoices } from "./AddChildFields";
+import { challengesToSave, otherChallengesText } from "../../lib/childProfileChoices";
 // B-CAREPRO-35: the drawer no longer exports or deletes (GP-18's typed-name
 // delete moved, with its receipt, to Settings › Your data — YourDataSheet).
 
@@ -61,9 +64,14 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
     setAgeMonths(y * 12 + m);
   };
   const [schoolContext, setSchoolContext] = useState(activeChild.schoolContext);
-  const [languages, setLanguages] = useState(activeChild.languages.join(", "));
+  // B-SHELL-44: languages and focus areas are Add child's chips; every stored
+  // value (custom, legacy, the other language's label) stays as it was until
+  // the parent toggles that one choice. The textarea holds only the parent's
+  // own other lines.
+  const [languages, setLanguages] = useState<string[]>(activeChild.languages);
   const [strengths, setStrengths] = useState(activeChild.strengths.join("\n"));
-  const [challenges, setChallenges] = useState(activeChild.challenges.join("\n"));
+  const [challengeItems, setChallengeItems] = useState<string[]>(activeChild.challenges);
+  const [otherChallenges, setOtherChallenges] = useState(() => otherChallengesText(activeChild.challenges));
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(activeChild.photoUrl);
   const [comicAvatarUrl, setComicAvatarUrl] = useState(activeChild.comicAvatarUrl);
   const [avatarMeta, setAvatarMeta] = useState<ChildProfile["avatar"]>(activeChild.avatar);
@@ -115,9 +123,10 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
     setNameLatin(activeChild.nameLatin ?? "");
     setAgeMonths(ageMonthsFromProfile(activeChild) ?? 0);
     setSchoolContext(activeChild.schoolContext);
-    setLanguages(activeChild.languages.join(", "));
+    setLanguages(activeChild.languages);
     setStrengths(activeChild.strengths.join("\n"));
-    setChallenges(activeChild.challenges.join("\n"));
+    setChallengeItems(activeChild.challenges);
+    setOtherChallenges(otherChallengesText(activeChild.challenges));
     setPhotoUrl(activeChild.photoUrl);
     setComicAvatarUrl(activeChild.comicAvatarUrl);
     setAvatarMeta(activeChild.avatar);
@@ -170,9 +179,9 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
       // last written — only a field whose value changed is re-stamped.
       const facts = {
         schoolContext,
-        languages: languages.split(",").map((s) => s.trim()).filter(Boolean),
+        languages: languages.map((s) => s.trim()).filter(Boolean),
         strengths: strengths.split("\n").map((s) => s.trim()).filter(Boolean),
-        challenges: challenges.split("\n").map((s) => s.trim()).filter(Boolean),
+        challenges: challengesToSave(challengeItems, otherChallenges, otherChallengesText(activeChild.challenges)),
       };
       const persisted = await updateChild(activeChild.id, {
         name: name.trim() || activeChild.name,
@@ -229,7 +238,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Edit profile</h3>
+              <h3 className="text-lg font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("aria.editChildProfile")}</h3>
               <button onClick={requestClose} className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-lg transition" style={{ minWidth: "var(--touch-min)", minHeight: "var(--touch-min)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label={t("aria.close")}>
                 <Icon name="close" size={16} />
               </button>
@@ -262,7 +271,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
               <HeroSheetPanel child={activeChild} />
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Name</label>
+                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ob.step.ready.labelName")}</label>
                 <input ref={nameInputRef} value={name} onChange={(e) => setName(e.target.value)} className="w-full min-h-11 rounded-xl px-4 py-2.5 focus:outline-none" style={inputStyle} />
               </div>
 
@@ -327,13 +336,14 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>School context</label>
+                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("cp.f.school")}</label>
                 <input value={schoolContext} onChange={(e) => setSchoolContext(e.target.value)} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Languages <span style={{ color: "var(--arbor-muted)", opacity: 0.7 }}>(comma separated)</span></label>
-                <input value={languages} onChange={(e) => setLanguages(e.target.value)} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
+              {/* B-SHELL-44: the same six language chips as Add child. */}
+              <div className="space-y-2">
+                <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ob.langsAtHome")}</p>
+                <ChildLanguageChoices value={languages} onChange={setLanguages} />
               </div>
 
               {/* CI-29: Interests section — parent-entered only, never child-facing.
@@ -424,13 +434,20 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Strengths <span style={{ color: "var(--arbor-muted)", opacity: 0.7 }}>(one per line)</span></label>
+                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ac.strengths")} <span style={{ color: "var(--arbor-muted)", opacity: 0.7 }}>{t("ac.optLines")}</span></label>
                 <textarea value={strengths} onChange={(e) => setStrengths(e.target.value)} rows={3} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
               </div>
 
+              {/* B-SHELL-44: Add child's seven focus areas (the parent's focus,
+                  never an assessment), then the parent's own other lines. */}
+              <div className="space-y-2">
+                <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ob.step.ready.labelDomains")}</p>
+                <ChildFocusChoices value={challengeItems} onChange={setChallengeItems} />
+              </div>
+
               <div className="space-y-1.5">
-                <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>Challenges <span style={{ color: "var(--arbor-muted)", opacity: 0.7 }}>(one per line)</span></label>
-                <textarea value={challenges} onChange={(e) => setChallenges(e.target.value)} rows={3} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
+                <label htmlFor="profile-other-challenges" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ac.challenges")} <span style={{ color: "var(--arbor-muted)", opacity: 0.7 }}>{t("ac.optLines")}</span></label>
+                <textarea id="profile-other-challenges" data-testid="profile-other-challenges" value={otherChallenges} onChange={(e) => setOtherChallenges(e.target.value)} rows={3} className="w-full rounded-xl px-4 py-2.5 text-xs focus:outline-none" style={inputStyle} />
               </div>
 
               <button
@@ -439,7 +456,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                 className="w-full mt-2 py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-60"
                 style={{ background: "var(--arbor-gradient-primary)" }}
               >
-                {saving ? "Saving…" : "Save changes"}
+                {saving ? t("companion.family-topic-sheet.saving") : t("companion.capture.saveChanges")}
               </button>
 
               {/* A5: earned-through-play rewards */}

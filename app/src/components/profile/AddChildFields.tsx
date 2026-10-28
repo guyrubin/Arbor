@@ -5,15 +5,75 @@ import { useLanguage } from "../../context/LanguageContext";
 import { Icon } from "../ui/Icon";
 import { LegalLinks } from "../billing/LegalLinks";
 import { isUnderThree } from "../../lib/age/forChild";
-export const DOMAINS: { id: string; nameKey: string; subKey: string; icon: React.ReactNode }[] = [
-  { id: "feelings", nameKey: "ob.step.domains.feelings", subKey: "ob.step.domains.feelings.sub", icon: <Icon name="favorite" size={20} /> },
-  { id: "language", nameKey: "ob.step.domains.language", subKey: "ob.step.domains.language.sub", icon: <Icon name="chat_bubble" size={20} /> },
-  { id: "social", nameKey: "ob.step.domains.social", subKey: "ob.step.domains.social.sub", icon: <Icon name="group" size={20} /> },
-  { id: "sleep", nameKey: "ob.step.domains.sleep", subKey: "ob.step.domains.sleep.sub", icon: <Icon name="bedtime" size={20} /> },
-  { id: "focus", nameKey: "ob.step.domains.focus", subKey: "ob.step.domains.focus.sub", icon: <Icon name="menu_book" size={20} /> },
-  { id: "behavior", nameKey: "ob.step.domains.behavior", subKey: "ob.step.domains.behavior.sub", icon: <Icon name="repeat" size={20} /> },
-  { id: "eating", nameKey: "ob.step.domains.eating", subKey: "ob.step.domains.eating.sub", icon: <Icon name="restaurant" size={20} /> },
-];
+import {
+  CHILD_FOCUS_AREAS, CHILD_LANGUAGES, customLanguages, focusAliases, hasChoice, languageAliases, languageLabelKey, toggleChoice,
+} from "../../lib/childProfileChoices";
+
+/** The focus glyphs; the areas themselves are lib/childProfileChoices CHILD_FOCUS_AREAS. */
+const FOCUS_ICONS: Record<(typeof CHILD_FOCUS_AREAS)[number]["id"], string> = {
+  feelings: "favorite", language: "chat_bubble", social: "group", sleep: "bedtime", focus: "menu_book", behavior: "repeat", eating: "restaurant",
+};
+export const DOMAINS: { id: string; nameKey: string; subKey: string; icon: React.ReactNode }[] = CHILD_FOCUS_AREAS.map((area) => ({
+  ...area,
+  icon: <Icon name={FOCUS_ICONS[area.id]} size={20} />,
+}));
+
+/** B-SHELL-44 — the ONE toggle chip Add child and Edit child render for a
+ *  language or focus choice (the add-child language chip, now shared). */
+function ChoiceChip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      className="inline-flex min-h-11 items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition"
+      style={
+        on
+          ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid color-mix(in srgb, var(--arbor-green-ink) 40%, transparent)" }
+          : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
+      }
+    >
+      {children}
+    </button>
+  );
+}
+
+/** B-SHELL-44 — languages at home, the same six localized choices in Add and
+ *  Edit. A stored language that is none of them (an older free-text entry)
+ *  stays on the record as its own pressed chip; tapping it removes it. */
+export function ChildLanguageChoices({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
+  const { t } = useLanguage();
+  return (
+    <div className="flex flex-wrap gap-2" role="group" aria-label={t("ob.langsAtHome")} data-testid="child-language-choices">
+      {CHILD_LANGUAGES.map((language) => (
+        <ChoiceChip key={language} on={hasChoice(value, languageAliases(language))} onClick={() => onChange(toggleChoice(value, languageAliases(language), language))}>
+          {t(languageLabelKey(language))}
+        </ChoiceChip>
+      ))}
+      {customLanguages(value).map((custom) => (
+        <ChoiceChip key={`custom:${custom}`} on onClick={() => onChange(value.filter((item) => item !== custom))}>
+          <bdi>{custom}</bdi>
+        </ChoiceChip>
+      ))}
+    </div>
+  );
+}
+
+/** B-SHELL-44 — the seven focus areas as Edit child shows them: the same
+ *  areas, names and stored form (`t(nameKey)` in `challenges`) as Add's
+ *  StepDomains. A line saved in the other language still reads as chosen. */
+export function ChildFocusChoices({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
+  const { t } = useLanguage();
+  return (
+    <div className="flex flex-wrap gap-2" role="group" aria-label={t("ob.step.ready.labelDomains")} data-testid="child-focus-choices">
+      {DOMAINS.map((d) => (
+        <ChoiceChip key={d.id} on={hasChoice(value, focusAliases(d.nameKey))} onClick={() => onChange(toggleChoice(value, focusAliases(d.nameKey), t(d.nameKey)))}>
+          <Icon name={FOCUS_ICONS[d.id as keyof typeof FOCUS_ICONS]} size={16} />{t(d.nameKey)}
+        </ChoiceChip>
+      ))}
+    </div>
+  );
+}
 
 function clampInt(raw: string, lo: number, hi: number): number {
   const n = parseInt(raw, 10);
@@ -38,8 +98,6 @@ interface StepChildProps {
   creating: boolean;
   onNext: () => void;
 }
-
-const LANGUAGES = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
 
 /** Exported for the guard test, as StepReady is (MOB-12 precedent). */
 export function StepChild({
@@ -79,9 +137,6 @@ export function StepChild({
     setAgeYears(years);
     if (years >= 3) setAgeMonthsPart(0);
   };
-
-  const toggleLang = (l: string) =>
-    setLanguages(languages.includes(l) ? languages.filter((x) => x !== l) : [...languages, l]);
 
   const totalAgeMonths = ageYears * 12 + ageMonthsPart;
   const ageDisplayLabel =
@@ -209,23 +264,7 @@ export function StepChild({
       ) : (
         <div className="space-y-2">
           <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("ob.langsAtHome")}</label>
-          <div className="flex flex-wrap gap-2">
-            {LANGUAGES.map((l) => (
-              <button
-                key={l}
-                type="button"
-                onClick={() => toggleLang(l)}
-                className="min-h-11 px-3 py-1.5 rounded-xl text-xs font-bold transition"
-                style={
-                  languages.includes(l)
-                    ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid color-mix(in srgb, var(--arbor-green-ink) 40%, transparent)" }
-                    : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
-                }
-              >
-                {t("ob.lang." + l.toLowerCase())}
-              </button>
-            ))}
-          </div>
+          <ChildLanguageChoices value={languages} onChange={setLanguages} />
         </div>
       )}
 
