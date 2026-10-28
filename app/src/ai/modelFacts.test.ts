@@ -1,6 +1,12 @@
-/* B-AIOPS-06 — the app's model pins, price table and retirement record agree
- * with the dated facts record (docs/ops/model-facts.md), and that record is
- * never older than 30 days.
+/* B-AIOPS-06 — the app's model pins, price table, retirement record and AI SDK
+ * versions agree with the dated facts record (docs/ops/model-facts.md).
+ *
+ * Hard failures (any day): a drift between the app and the record, and a
+ * pinned model past its recorded retirement. The record's age follows the
+ * helpline record's shape (LC-15): it fails only after 90 days and prints a
+ * GitHub `::warning` line from 14 days before, so a routine re-read never
+ * blocks a release or a hotfix. An SDK past its announced removal also prints
+ * a `::warning` on every run (the record must say so and name the successor).
  *
  * What is checked deterministically: every model the app pins, deploys, judges
  * with, records as retired or prices has a row; PRICE_TABLE and the TTS price
@@ -21,8 +27,20 @@ const REPO = path.resolve(here, "..", "..", "..");
 const RECORD = readFileSync(path.join(REPO, "docs", "ops", "model-facts.md"), "utf8");
 const PINNED = JSON.parse(readFileSync(path.join(REPO, "evals", "pinned-models.json"), "utf8"));
 const DAY = 86_400_000;
-const MAX_AGE_DAYS = 30;
-const WARN_DAYS = 7;
+const MAX_AGE_DAYS = 90;
+const WARN_DAYS = 14;
+const APP = path.join(REPO, "app");
+const PACKAGE = JSON.parse(readFileSync(path.join(APP, "package.json"), "utf8"));
+const LOCK = JSON.parse(readFileSync(path.join(APP, "package-lock.json"), "utf8"));
+/** The AI SDKs a server path can call a model through. */
+const AI_SDK = /^(@google-cloud\/vertexai|@google\/genai|@google-cloud\/(aiplatform|text-to-speech|speech)|@anthropic-ai\/.+|openai)$/;
+type Deps = Record<string, { pinned: string; installed: string | undefined }>;
+const DEPS: Deps = Object.fromEntries(Object.entries({ ...PACKAGE.dependencies, ...PACKAGE.devDependencies } as Record<string, string>)
+  .filter(([name]) => AI_SDK.test(name))
+  .map(([name, pinned]) => [name, { pinned, installed: LOCK.packages?.[`node_modules/${name}`]?.version }]));
+/** Visible in a GitHub Actions log (stdout, own line), harmless anywhere else. */
+const annotate = (title: string, message: string) => console.log(`::warning file=docs/ops/model-facts.md,title=${title}::${message}`);
+const STALE_HELP = 're-read sources A–D listed in docs/ops/model-facts.md (A model pricing, B TTS pricing, C model versions and retirement, D SDK registry notes), update the rows, then the "Checked on:" line';
 
 /** What production deploys, read from the deploy config itself (cloudbuild.prod.yaml env). */
 const PROD_ENV = Object.fromEntries(
@@ -32,10 +50,10 @@ const PROD_ENV = Object.fromEntries(
 
 type Row = Record<string, string>;
 
-function factsTable(doc: string): Row[] {
-  const start = doc.indexOf("\n## Facts\n");
+function factsTable(doc: string, heading = "Facts"): Row[] {
+  const start = doc.indexOf(`\n## ${heading}\n`);
   if (start < 0) return [];
-  const rest = doc.slice(start + 10);
+  const rest = doc.slice(start + heading.length + 5);
   const end = rest.search(/\n## /);
   const lines = (end < 0 ? rest : rest.slice(0, end)).split("\n").filter((l) => l.startsWith("|"));
   const cells = (line: string) => line.slice(1, -1).split("|").map((c) => c.trim());
@@ -76,7 +94,7 @@ function recordAge(doc: string, nowMs: number): { checkedOn: string | null; ageD
   return { checkedOn: date, ageDays, stale: !date || ageDays > MAX_AGE_DAYS, daysRemaining: MAX_AGE_DAYS - ageDays };
 }
 
-function factsErrors(doc: string, pinned: Pinned, priceTable: Readonly<Record<string, ModelPrice>>, nowMs: number, deployed: Record<string, string> = PROD_ENV): string[] {
+function factsErrors(doc: string, pinned: Pinned, priceTable: Readonly<Record<string, ModelPrice>>, nowMs: number, deployed: Record<string, string> = PROD_ENV, deps: Deps = DEPS): string[] {
   const errors: string[] = [];
   const rows = factsTable(doc);
   if (!rows.length) return ["no Facts table"];
@@ -133,6 +151,22 @@ function factsErrors(doc: string, pinned: Pinned, priceTable: Readonly<Record<st
     }
   }
 
+  // SDKs: every AI SDK dependency has a row matching package.json and the
+  // lockfile; a row past its announced removal says so and names the successor.
+  const sdkRows = factsTable(doc, "SDKs");
+  for (const [name, dep] of Object.entries(deps)) {
+    const row = sdkRows.find((r) => r.Package === name);
+    if (!row) { errors.push(`AI SDK ${name} has no row`); continue; }
+    if (row.Pinned !== dep.pinned) errors.push(`${name}: pinned ${dep.pinned} in package.json, ${row.Pinned} in the record`);
+    if (row.Installed !== dep.installed) errors.push(`${name}: installed ${dep.installed} in package-lock.json, ${row.Installed} in the record`);
+    const removal = /^\d{4}-\d{2}-\d{2}$/.test(row.Removal ?? "") ? row.Removal : null;
+    if (removal && Date.parse(removal) <= nowMs) {
+      if (!/past removal/i.test(row.Lifecycle ?? "")) errors.push(`${name}: removed ${removal} but the lifecycle does not say "past removal"`);
+      if (!row.Successor || row.Successor === "—" || !(row["Owner action"] ?? "").includes(row.Successor)) errors.push(`${name}: past removal without a successor named in the owner action`);
+    }
+  }
+  for (const row of sdkRows) if (!(row.Package in deps)) errors.push(`SDK row ${row.Package} is not a dependency`);
+
   // The app's price dates are not later than the check that confirmed them.
   if (date && PRICE_TABLE_AS_OF > date) errors.push(`PRICE_TABLE_AS_OF ${PRICE_TABLE_AS_OF} is later than the record (${date})`);
   if (date && TTS_PRICE_AS_OF > date) errors.push(`TTS_PRICE_AS_OF ${TTS_PRICE_AS_OF} is later than the record (${date})`);
@@ -179,13 +213,21 @@ describe("B-AIOPS-06 — model facts record matches the app", () => {
 /* LC-15 pattern: the real clock. The run that reliably happens is CI, so the
  * staleness check runs here against Date.now(); fixing a red run means
  * re-reading the sources and updating the record, never widening the window. */
-describe("B-AIOPS-06 — the record was checked within 30 days (real clock)", () => {
-  it(`docs/ops/model-facts.md is at most ${MAX_AGE_DAYS} days old`, () => {
+describe("B-AIOPS-06 — the record's age and the SDK notices (real clock)", () => {
+  it(`docs/ops/model-facts.md "Checked on:" is at most ${MAX_AGE_DAYS} days old (warning from ${WARN_DAYS} days before)`, () => {
     const age = recordAge(RECORD, Date.now());
     if (!age.stale && age.daysRemaining <= WARN_DAYS) {
-      console.warn(`[arbor-ai] model facts re-check due in ${age.daysRemaining} day(s): re-read the official pages and update docs/ops/model-facts.md (${age.checkedOn}).`);
+      annotate("Model facts re-check due", `docs/ops/model-facts.md "Checked on: ${age.checkedOn}" reaches ${MAX_AGE_DAYS} days in ${age.daysRemaining} day(s); ${STALE_HELP}.`);
     }
-    expect(age.stale, `model facts last checked ${age.checkedOn} (${age.ageDays} days ago): re-read the sources and update the record`).toBe(false);
+    expect(age.stale, `docs/ops/model-facts.md "Checked on: ${age.checkedOn}" is ${age.ageDays} days old (limit ${MAX_AGE_DAYS}): ${STALE_HELP}`).toBe(false);
+  });
+
+  it("an SDK past its announced removal is reported on every run", () => {
+    const now = Date.now();
+    const past = factsTable(RECORD, "SDKs").filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.Removal ?? "") && Date.parse(r.Removal) <= now && r.Package in DEPS);
+    for (const r of past) annotate("AI SDK past removal", `${r.Package} ${DEPS[r.Package].installed}: removal announced for ${r.Removal}; successor ${r.Successor}. ${r["Owner action"]}`);
+    // The notice is a warning, not a gate: production still answers on it. The record must carry it.
+    for (const r of past) expect(r["Owner action"]).toContain(r.Successor);
   });
 
   it("no pinned model is past its recorded retirement today", () => {
@@ -201,7 +243,7 @@ describe("B-AIOPS-06 — the record was checked within 30 days (real clock)", ()
 describe("B-AIOPS-06 — negative controls", () => {
   const at = Date.parse(checkedOn(RECORD)!);
 
-  it("a record older than 30 days is stale; one 30 days old is not", () => {
+  it(`a record older than ${MAX_AGE_DAYS} days is stale; one ${MAX_AGE_DAYS} days old is not`, () => {
     expect(recordAge(RECORD, at + MAX_AGE_DAYS * DAY).stale).toBe(false);
     expect(recordAge(RECORD, at + (MAX_AGE_DAYS + 1) * DAY).stale).toBe(true);
     expect(recordAge(RECORD.replace(/^Checked on: .*$/m, ""), at).stale).toBe(true);
@@ -238,5 +280,16 @@ describe("B-AIOPS-06 — negative controls", () => {
     const live = factsTable(RECORD).find((r) => /not priced by the app/.test(r["Price basis"]))!;
     const priced = { ...PRICE_TABLE, [live.Model]: { inputPerM: 1, outputPerM: 1 } };
     expect(factsErrors(RECORD, PINNED, priced, at)).toContain(`${live.Model}: the record says the app does not price it, but PRICE_TABLE does`);
+  });
+
+  it("an AI SDK version drift, a missing SDK row, or a past-removal row without its successor fails", () => {
+    const [name] = Object.keys(DEPS);
+    expect(factsErrors(RECORD, PINNED, PRICE_TABLE, at, PROD_ENV, { ...DEPS, [name]: { ...DEPS[name], installed: "0.0.1" } }))
+      .toContain(`${name}: installed 0.0.1 in package-lock.json, ${DEPS[name].installed} in the record`);
+    expect(factsErrors(RECORD, PINNED, PRICE_TABLE, at, PROD_ENV, { ...DEPS, "openai": { pinned: "^9.0.0", installed: "9.0.0" } }))
+      .toContain("AI SDK openai has no row");
+    const past = factsTable(RECORD, "SDKs").find((r) => /past removal/i.test(r.Lifecycle))!;
+    const stripped = RECORD.replace(past["Owner action"], "Nothing planned");
+    expect(factsErrors(stripped, PINNED, PRICE_TABLE, at)).toContain(`${past.Package}: past removal without a successor named in the owner action`);
   });
 });
