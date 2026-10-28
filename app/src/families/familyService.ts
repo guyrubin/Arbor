@@ -9,6 +9,20 @@ export const LEGACY_FAMILY_ID = "default-family";
 export const ERASED_CHILDREN_COLLECTION = "erasedChildren";
 export const ERASE_TOMBSTONE_DAYS = 30;
 
+/** B-GA-09 round 8: a write to a child whose erase is under way or done. The
+ *  routes answer it as 410 Gone; nothing is written and nothing re-created. */
+export class ChildErasedError extends Error {
+  readonly status = 410;
+  constructor() {
+    super("This child's data was erased.");
+    this.name = "ChildErasedError";
+  }
+}
+
+/** Does this erase record still stand (unexpired)? */
+const recordStands = (record: Record<string, unknown> | undefined): boolean =>
+  !!record && toMillis(record.expireAt) > Date.now();
+
 /** A Firestore Timestamp, Date or ISO string → epoch ms (NaN when absent). */
 const toMillis = (v: unknown): number =>
   v instanceof Date ? v.getTime()
@@ -57,6 +71,11 @@ export class FamilyService {
     return memberSnap.exists;
   }
 
+  /** B-GA-09 round 8: is this child's erase under way or done (an unexpired erase record)? */
+  async isErased(childId: string): Promise<boolean> {
+    return recordStands((await this.db.collection(ERASED_CHILDREN_COLLECTION).doc(childId).get()).data());
+  }
+
   /** B-GA-09 round 5: may `uid` (re)run the erase of `childId`? While the child doc
    *  exists, only its owner (ownsChild). Once it is gone (an earlier erase reached
    *  its last step), a member of the family named in the child's unexpired erase
@@ -90,6 +109,12 @@ export class FamilyService {
       const familyRef = this.db.collection("families").doc(familyId);
       const childRef = this.db.collection("children").doc(childId);
       const childRefInFamily = familyRef.collection("childRefs").doc(childId);
+
+      // B-GA-09 round 8: an erase under way or done (an unexpired erase record)
+      // is final: a request that passed the owner check before the erase must
+      // not bring children/{id} back for its family afterwards.
+      const erased = await transaction.get(this.db.collection(ERASED_CHILDREN_COLLECTION).doc(childId));
+      if (erased.exists && recordStands(erased.data())) return false;
 
       const existing = await transaction.get(childRef);
       const ownerFamily = existing.exists ? (existing.data()?.familyId as unknown) : undefined;

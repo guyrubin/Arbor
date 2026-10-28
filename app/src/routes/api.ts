@@ -62,6 +62,7 @@ import { logger, requestIdOf } from "../server/logger.js";
 import { requireChildOwnership } from "../server/requireChildOwnership.js";
 import { createBookAssetsRouter, defaultBookAssetBucket, type BookAssetBucket } from "../server/bookAssets.js";
 import { childEraseTotal, eraseChildServerData, type ChildEraseStores } from "../server/childErase.js";
+import { ChildErasedError } from "../families/familyService.js";
 import { createBookAssetsDocStore, createBookSheetRouter } from "../server/bookSheet.js";
 import { createPlansRouter } from "../server/plans.js";
 import { createPlanPlatesRouter, isPlatePainter } from "../server/planPlates.js";
@@ -660,6 +661,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       );
       res.json({ items });
     } catch (error: any) {
+      // B-GA-09 round 8: the child was erased after this request passed the owner check.
+      if (error instanceof ChildErasedError) { res.status(410).json({ error: error.message }); return; }
       logger.error("Memory Propose Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to propose Arbor memory item", details: error.message });
     }
@@ -703,6 +706,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
 
       res.json(result);
     } catch (error: any) {
+      if (error instanceof ChildErasedError) { res.status(410).json({ error: error.message }); return; }
       logger.error("Memory Update Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to update Arbor memory review item", details: error.message });
     }

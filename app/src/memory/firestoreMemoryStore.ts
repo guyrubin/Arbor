@@ -1,7 +1,7 @@
 import { getApps, initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import type { ArborConfig } from "../config/env.js";
-import { ERASED_CHILDREN_COLLECTION, ERASE_TOMBSTONE_DAYS, FamilyService, LEGACY_FAMILY_ID } from "../families/familyService.js";
+import { ChildErasedError, ERASED_CHILDREN_COLLECTION, ERASE_TOMBSTONE_DAYS, FamilyService } from "../families/familyService.js";
 import type { MemoryLedgerEvent, MemoryStore } from "./types.js";
 
 export class FirestoreMemoryStore implements MemoryStore {
@@ -29,6 +29,10 @@ export class FirestoreMemoryStore implements MemoryStore {
   }
 
   async appendEvent(event: MemoryLedgerEvent) {
+    // B-GA-09 round 8: no late write (a request that passed the owner check
+    // before the erase) reaches an erased child's ledger or re-creates its doc,
+    // through any path, the legacy-family one included.
+    if (await this.families.isErased(event.childId)) throw new ChildErasedError();
     // B-DATA-15: a family that does not own the child never writes to its
     // ledger (ensureChild alone left the child untouched but still appended).
     if (!(await this.families.admitsLedgerAppend(event.familyId, event.childId))) {
@@ -88,9 +92,10 @@ export class FirestoreMemoryStore implements MemoryStore {
    *  account deletion find a child whose erase stopped half way. */
   async recordErase(childId: string): Promise<void> {
     const familyId = await this.erasingFamily(childId);
-    // The shared placeholder family is nobody's: no record that would let its
-    // unrelated members in (round 7). Its child doc still anchors the retry.
-    if (!familyId || familyId === LEGACY_FAMILY_ID) return;
+    // Round 8: a placeholder-family child gets a record too (it stops a late
+    // write re-creating the child); its record lets nobody in (mayEraseChild)
+    // and account deletion never sweeps that family (round 7).
+    if (!familyId) return;
     const now = Date.now();
     await this.db.collection(ERASED_CHILDREN_COLLECTION).doc(childId).set({
       childId, familyId, erasedAt: new Date(now).toISOString(), expireAt: new Date(now + ERASE_TOMBSTONE_DAYS * 86_400_000),

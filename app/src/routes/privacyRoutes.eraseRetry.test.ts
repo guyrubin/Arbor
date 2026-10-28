@@ -48,6 +48,7 @@ vi.mock("firebase-admin/firestore", () => {
   const query = (pick: (p: string) => boolean, filters: Filter[] = [], lim = Infinity): any => ({
     where: (field: string, op: string, value: unknown) => query(pick, [...filters, { field, op, value }], lim),
     limit: (n: number) => query(pick, filters, n),
+    orderBy: () => query(pick, filters, lim),
     get: async () => {
       const hits = [...docs.keys()].filter((p) => pick(p) && filters.every((f) => matches(p, f))).sort().slice(0, lim);
       return { empty: hits.length === 0, size: hits.length, docs: hits.map((p) => ({ ref: ref(p), id: p.split("/").at(-1), data: () => docs.get(p) })) };
@@ -64,6 +65,8 @@ vi.mock("firebase-admin/firestore", () => {
     collection: (name: string) => col(name),
     collectionGroup: (name: string) => query((p) => parentOf(p).split("/").at(-1) === name),
     doc: (path: string) => ref(path),
+    runTransaction: async <T>(fn: (t: any) => Promise<T>): Promise<T> =>
+      fn({ get: (r: any) => r.get(), set: (r: any, data: Record<string, unknown>, opts?: { merge?: boolean }) => { void r.set(data, opts); } }),
     batch: () => {
       const doomed: string[] = [];
       return { delete: (r: { path: string }) => { doomed.push(r.path); }, commit: async () => { for (const p of doomed) docs.delete(p); } };
@@ -135,7 +138,7 @@ beforeEach(async () => {
   await consentStore.set(grant);
 });
 
-async function serve(): Promise<string> {
+async function serve(storeFor: (config: ReturnType<typeof createTestConfig>) => any = (config) => new FirestoreMemoryStore(config)): Promise<string> {
   const config = createTestConfig({ storageBucket: "synthetic-bucket", memoryAdapter: "firestore" });
   const entitlementStore = createEntitlementStore(createTestConfig({}));
   const app = express();
@@ -144,7 +147,7 @@ async function serve(): Promise<string> {
   app.use("/api", createApiRouter({
     config,
     modelProvider: { generateJson: async () => ({}) } as unknown as ModelProvider,
-    memoryStore: new FirestoreMemoryStore(config),
+    memoryStore: storeFor(config),
     shareStore: {
       listByOwner: async (owner: string, childId?: string) => shares.filter((s) => s.ownerUid === owner && (!childId || s.childId === childId)),
       eraseByChild: async (owner: string, childId: string) => {
@@ -400,5 +403,72 @@ describe("B-GA-09 round 7 · account deletion finishes the erases this device st
     expect(res.status).toBe(200);
     expect(docs.has("children/kid-x")).toBe(true);
     expect(docs.has("children/kid-x/memoryEvents/e1")).toBe(true);
+  });
+});
+
+/* Round 8 (B-GA-09 "erase prevents late hydration and resurrection"): a
+   request that passed the owner check before the erase appends to the ledger
+   afterwards; appendEvent → admitsLedgerAppend → ensureChild used to re-create
+   children/{id} for its family. The erase record now refuses it. */
+describe("B-GA-09 round 8 · an erased child is never brought back by a late write", () => {
+  const event = (childId: string, familyId = FAMILY) => ({
+    eventId: `ev-${childId}-${Math.random().toString(36).slice(2)}`, memoryId: `m-${childId}`, familyId, childId,
+    eventType: "proposed", status: "pending", fact: "Synthetic fact", source: "rhythm", retention: "90d",
+    createdAt: new Date().toISOString(), actor: "parent", prompt: "synthetic", frameRouting: null,
+  }) as never;
+  const config = () => createTestConfig({ storageBucket: "synthetic-bucket", memoryAdapter: "firestore" });
+  const gone = () => [...docs.keys()].filter((p) => p.includes(CHILD) && !p.startsWith("erasedChildren/") && !p.startsWith("users/"));
+
+  it("after the erase, a late append (its owner check passed before the erase) is refused and the child stays gone", async () => {
+    const base = await serve();
+    expect((await erase(base)).status).toBe(200);
+    expect(gone()).toEqual([]);
+    const store = new FirestoreMemoryStore(config());
+    await expect(store.appendEvent(event(CHILD))).rejects.toThrow(/erased/);
+    // the same through the legacy-family path, which admitsLedgerAppend lets through
+    await expect(store.appendEvent(event(CHILD, "default-family"))).rejects.toThrow(/erased/);
+    expect(gone()).toEqual([]);
+  });
+
+  it("the memory route answers 410 and writes nothing, for a request that passed the owner check before the erase", async () => {
+    // the owner check already passed (the request began before the erase): ownsChild says yes
+    const base = await serve((c) => Object.assign(new FirestoreMemoryStore(c), { ownsChild: async () => true }));
+    expect((await erase(base)).status).toBe(200);
+    const res = await fetch(`${base}/api/memory/${CHILD}/propose`, { method: "POST", headers: { "Content-Type": "application/json", "x-test-user": OWNER }, body: JSON.stringify({ fact: "Likes the swing in the morning", source: "rhythm" }) });
+    expect(res.status).toBe(410);
+    expect(await res.json()).toEqual({ error: "This child's data was erased." });
+    expect(gone()).toEqual([]);
+  });
+
+  it("an onboarding upsert of the erased id does not re-create it either", async () => {
+    const base = await serve();
+    await erase(base);
+    const store = new FirestoreMemoryStore(config());
+    await store.ensureFamilyChild({ familyId: FAMILY, childId: CHILD, userId: OWNER, childProfile: { name: "Synthetic Child" } });
+    expect(gone()).toEqual([]);
+  });
+
+  it("during a half-finished erase (record written, child doc still there) a late append is refused too", async () => {
+    const base = await serve();
+    failConsentsOnce();
+    expect((await erase(base)).status).toBe(500);
+    const before = docs.get(`children/${CHILD}`);
+    const store = new FirestoreMemoryStore(config());
+    await expect(store.appendEvent(event(CHILD))).rejects.toThrow(/erased/);
+    expect(docs.get(`children/${CHILD}`)).toEqual(before);
+    expect([...docs.keys()].filter((p) => p.startsWith(`children/${CHILD}/memoryEvents/`))).toHaveLength(2); // only the two it had
+  });
+
+  it("a legitimate new child with a fresh id is unaffected, and an expired record no longer blocks", async () => {
+    const base = await serve();
+    await erase(base);
+    const store = new FirestoreMemoryStore(config());
+    await store.appendEvent(event("kid-new"));
+    expect(docs.get("children/kid-new")).toMatchObject({ childId: "kid-new", familyId: FAMILY });
+    expect([...docs.keys()].some((p) => p.startsWith("children/kid-new/memoryEvents/"))).toBe(true);
+    const record = docs.get(`erasedChildren/${CHILD}`)!;
+    docs.set(`erasedChildren/${CHILD}`, { ...record, expireAt: new Date(Date.now() - 1000) });
+    await store.appendEvent(event(CHILD));
+    expect(docs.has(`children/${CHILD}`)).toBe(true);
   });
 });
