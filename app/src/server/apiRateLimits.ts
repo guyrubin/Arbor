@@ -16,7 +16,7 @@ import rateLimit from "express-rate-limit";
 import type { Request, RequestHandler } from "express";
 
 /** The book-asset routes, as seen under the /api mount. */
-export const BOOK_ASSET_ROUTE = /^\/children\/[^/]+\/(?:book-assets\/[^/]+\/(?:file|commit)|book-narration)\/?$/;
+export const BOOK_ASSET_ROUTE = /^\/children\/[^/]+\/(?:book-assets\/[^/]+\/(?:file|commit)|book-narration|plan-narration)\/?$/;
 export const isBookAssetRoute = (path: string): boolean => BOOK_ASSET_ROUTE.test(path);
 
 export const API_PER_IP_PER_MIN = 30;

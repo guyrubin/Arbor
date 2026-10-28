@@ -14,6 +14,11 @@
  *   (he-f reads he-m where the words are the same); a name-bearing file is
  *   NEVER taken from it. A cue sidecar follows its audio: a page played from
  *   the shared set reads the shared sidecar (static JSON, loadStaticJson).
+ * - PR C (Everyday Plans): a PLAN book's narration is the child's own set
+ *   under the pattern's registered doc (`bookAssets/{pattern}`, every page
+ *   file in the child's name — lib/library/plans/planNarration); the entry
+ *   carries it beside the shared plan sheet and the reader loads it from
+ *   there. No doc, no file = silence.
  * - Never a model call.
  */
 import { fetchBookAssetResult, openBookAssetReadScope } from "./bookAssetStore";
@@ -25,6 +30,7 @@ import type { HeroSheet } from "./library/heroSheet";
 import { cueFileOf, sharedNarrationUrls } from "./library/narrationFiles";
 import { PLAN_SHEET_BOOK_ID } from "./library/plans/planPoses";
 import { planBookFromDoc } from "./library/plans/planBookDoc";
+import { isPlanNarrationDoc, planNarrationDocId } from "./library/plans/planNarration";
 import { activePlans } from "./plans/planWeek";
 import { loadStaticJson } from "./library/staticJson";
 import type { AnyBook } from "./library/types";
@@ -41,6 +47,9 @@ export interface LibraryBookEntry {
   /** The private files the reader uses: the book's own sheet, or (plan) the
    *  child's ONE shared plan sheet (`bookAssets/plan-poses`). */
   doc: BookAssetsDoc;
+  /** PR C: a plan book's narration doc (`bookAssets/{pattern}`, the child's own
+   *  set), when any of it is rendered; absent = the book reads in silence. */
+  narration?: BookAssetsDoc;
 }
 
 /** The poses a bookAssets doc really has files for. */
@@ -56,7 +65,8 @@ function sheetPoses(doc: BookAssetsDoc): string[] | null {
 export function libraryBookEntries(docs: readonly BookAssetsDoc[], planDocs: readonly unknown[] = [], now: Date = new Date()): LibraryBookEntry[] {
   const out: LibraryBookEntry[] = [];
   for (const doc of docs) {
-    const book = doc?.bookId && doc.bookId !== PLAN_SHEET_BOOK_ID ? getLibraryBook(doc.bookId) : undefined;
+    // the plan sheet and a pattern's narration-only doc are never books to open
+    const book = doc?.bookId && doc.bookId !== PLAN_SHEET_BOOK_ID && !isPlanNarrationDoc(doc) ? getLibraryBook(doc.bookId) : undefined;
     const poses = book ? sheetPoses(doc) : null;
     if (book && poses && missingBookPoses(book, poses).length === 0) out.push({ book, doc });
   }
@@ -70,7 +80,8 @@ export function libraryBookEntries(docs: readonly BookAssetsDoc[], planDocs: rea
     for (const plan of activePlans(planDocs, now)) {
       const book = planBookFromDoc(plan.doc);
       if (!book || missingBookPoses(book, planPoses).length) continue;
-      (plan.daysLeft > 0 ? first : out).push({ book, doc: planSheet });
+      const narration = docs.find((d) => d?.bookId === planNarrationDocId(book.pattern) && isPlanNarrationDoc(d));
+      (plan.daysLeft > 0 ? first : out).push({ book, doc: planSheet, ...(narration ? { narration } : {}) });
     }
     return [...first, ...out];
   }
@@ -100,12 +111,14 @@ export const LATE_RETRY_MS = [2000, 4000, 8000, 16000, 30000];
  * quick retries is never treated as absent: it is retried in the background
  * and `onLate` hands the reader a new snapshot the moment it arrives (the page
  * shows the hero then). Only a 404 is absent. `revoke` also stops the retries.
+ * PR C: `opts.narration` (a plan book's own narration doc) is read for the
+ * voice folder instead of `doc`; the sheet still comes from `doc`.
  */
 export async function resolveBookAssets(
   childId: string,
   doc: BookAssetsDoc,
   folder: "en" | "he-m" | "he-f",
-  opts: { onLate?: (next: ResolvedBookAssets) => void; lateRetryMs?: readonly number[]; sleep?: (ms: number) => Promise<void>; isCurrent?: () => boolean } = {},
+  opts: { onLate?: (next: ResolvedBookAssets) => void; lateRetryMs?: readonly number[]; sleep?: (ms: number) => Promise<void>; isCurrent?: () => boolean; narration?: BookAssetsDoc | null } = {},
 ): Promise<ResolvedBookAssets> {
   const scope = openBookAssetReadScope(childId, opts.isCurrent);
   const urls: string[] = [];
@@ -116,20 +129,20 @@ export async function resolveBookAssets(
     urls.splice(0).forEach((u) => URL.revokeObjectURL(u));
   };
   try {
-  const late: { rel: string; apply: (blob: Blob) => Promise<void> }[] = [];
   const blobUrl = (blob: Blob) => {
     scope.assert();
     const u = URL.createObjectURL(blob);
     urls.push(u);
     return u;
   };
+  const late: { rel: string; from: BookAssetsDoc; apply: (blob: Blob) => Promise<void> }[] = [];
   /** Fetch one file and apply it; a passing failure goes to the late list. */
-  const take = async (rel: string, apply: (blob: Blob) => Promise<void>) => {
+  const take = async (rel: string, apply: (blob: Blob) => Promise<void>, from: BookAssetsDoc = doc) => {
     scope.assert();
-    const r = await fetchBookAssetResult(childId, doc, rel, 4, scope);
+    const r = await fetchBookAssetResult(childId, from, rel, 4, scope);
     scope.assert();
     if ("blob" in r) await apply(r.blob);
-    else if ("transient" in r) late.push({ rel, apply });
+    else if ("transient" in r) late.push({ rel, from, apply });
   };
   const base = `hero-sheets/${doc.sheetId}/`;
   const m = doc.sheetManifest;
@@ -152,8 +165,10 @@ export async function resolveBookAssets(
   );
   const files: Record<string, string> = {};
   const cues: Record<string, CueTimes> = {};
-  const dir = `narration/${doc.setId}/${folder}/`;
-  await inBatches(doc.files.filter((f) => f.startsWith(dir)), 6, (rel) => {
+  // PR C: a plan book's narration lives in its own doc (the child's set under the pattern)
+  const voice = opts.narration ?? doc;
+  const dir = `narration/${voice.setId}/${folder}/`;
+  await inBatches(voice.files.filter((f) => f.startsWith(dir)), 6, (rel) => {
     const name = rel.slice(dir.length);
     if (name.endsWith(".cues.json")) {
       return take(rel, async (blob) => {
@@ -162,13 +177,13 @@ export async function resolveBookAssets(
         } catch {
           /* a bad sidecar = the fractions */
         }
-      });
+      }, voice);
     }
     return take(rel, async (blob) => {
       files[`${folder}/${name}`] = blobUrl(blob);
-    });
+    }, voice);
   });
-  await fillSharedNarration(doc.bookId, folder, files, cues);
+  await fillSharedNarration(voice.bookId, folder, files, cues);
   scope.assert();
   const snapshot = (): ResolvedBookAssets => ({
     sheet: { ...sheet, poses: { ...sheet.poses }, anchors: { ...sheet.anchors }, prints: { ...sheet.prints }, choices: { ...sheet.choices } },
@@ -188,7 +203,7 @@ export async function resolveBookAssets(
         const round = late.splice(0);
         let arrived = false;
         for (const job of round) {
-          const r = await fetchBookAssetResult(childId, doc, job.rel, 1, scope);
+          const r = await fetchBookAssetResult(childId, job.from, job.rel, 1, scope);
           scope.assert();
           if ("blob" in r) {
             await job.apply(r.blob);
