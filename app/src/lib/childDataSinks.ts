@@ -183,6 +183,7 @@ export const OTHER_FIRESTORE_COLLECTIONS: Readonly<Record<string, OtherChildSink
   retentionRollups: "account: per-family counts for the cohort report",
   digestOptIn: "account: weekly digest mailing consent",
   usageRollup: "aggregate: daily token spend, no uid or child",
+  opsLedger: "aggregate: AI Studio prepay reserved milliseconds since a top-up date (server/prepayBalance.ts), no uid or child",
 };
 
 /** The registered Storage prefixes (path templates). */
@@ -285,6 +286,7 @@ export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.trialNotice.dismissed": "UI marker",
   "arbor.uiLang": "language preference",
   "arbor.voiceDoor.dataUseSeen": "UI marker",
+  "arbor.voiceNotice.acknowledged": "the voice-provider notice ids the parent acknowledged on this device (lib/voiceProviderNotice.ts), no child data",
   "arbor.wowPending": "legacy onboarding marker (read once, then removed)",
   "arbor.agefilter.showAll.${surface}": "per-surface filter preference",
   "arbor.syncBanner.dismissed.${kind}": "per-banner dismissal",
