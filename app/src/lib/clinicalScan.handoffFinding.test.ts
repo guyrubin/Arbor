@@ -5,7 +5,7 @@
  * evals/companion-topics-v1.results.jsonl.
  */
 import { describe, expect, it } from "vitest";
-import { HANDOFF_FLOOR_MAX_CHECKS, HANDOFF_PARENT_WORDS_MAX, findHandoffFinding, isEscalationLine, scrubHandoffBriefFindings, statesUnreportedFinding, withoutHandoffFindings } from "./clinicalScan";
+import { HANDOFF_FLOOR_MAX_CHECKS, HANDOFF_PARENT_WORDS_MAX, escalationCondition, findHandoffFinding, isEscalationLine, scrubHandoffBriefFindings, statesUnreportedFinding, withoutHandoffFindings } from "./clinicalScan";
 
 const SHIPPED_PROFESSIONAL_HE = "הילד מגיב היטב לזמני חיבור קצרים המבוססים על ויסות משותף ומשחק חופשי, ללא עדות לקשיי קשב או ויסות משמעותיים בהקשר זה.";
 const SHIPPED_PROFESSIONAL_HE_2 = "נצפתה אינטראקציה חיובית סביב ציור משותף חופשי; מומלץ להמשיך לעודד פעילויות מבוססות קשר וויסות הדדי.";
@@ -540,5 +540,163 @@ describe("B-ASKJB-44 · round 6 hotfix — an imperative referral as the main cl
   ])("not an escalation line, the finding drops: %s", (line) => {
     expect(isEscalationLine(line)).toBe(false);
     expect(withoutHandoffFindings(line, { parentText: PARENT_EN })).toBe("");
+  });
+});
+
+/* Critic round 5, the rule set (round 6, commit 2). Every case is the critic's
+   probe5 sentence and parent text. */
+describe("B-ASKJB-44 · round 6 — a narrated 'when' with a past finding is never an escalation line (P1-A, EN + HE)", () => {
+  const P_EN = "He bit a friend at preschool when they fought over a toy; Dr. Levi saw him last week\nWe separated them and he calmed after a hug";
+  const P_HE = "הוא נשך חבר בגן כשרבו על צעצוע; ד\"ר לוי ראה אותו בשבוע שעבר\nהפרדנו ביניהם והוא נרגע אחרי חיבוק";
+  it.each([
+    ["When the pediatrician found no signs of delay, she told us to call if anything changes.", P_EN],
+    ["When the pediatrician saw him last month she found no signs of delay, and the family will call if anything changes.", P_EN],
+    ["When tested last month he showed no signs of delay, so contact the family with questions.", P_EN],
+    ["Once assessed he showed no signs of a speech delay, so the teacher can call the family with questions.", P_EN],
+    ["When we call him in from the garden he shows no signs of distress.", P_EN],
+    ["When in contact with peers he shows no signs of anxiety.", P_EN],
+    ["When he gets to tell his parents about his day he shows no signs of anxiety.", P_EN],
+    ["Whenever the teacher calls him he shows no signs of distress.", P_EN],
+    // a real imperative does not rescue a narrated past finding
+    ["When tested last month he showed no signs of delay, call the family with questions.", P_EN],
+    ["כשהרופאה בדקה אותו לא נמצאו קשיים בדיבור, והיא אמרה להתקשר אם משהו משתנה.", P_HE],
+    ["כאשר הוא נבדק בחודש שעבר הוא לא הראה סימנים לעיכוב, ואפשר לפנות להורים בכל שאלה.", P_HE],
+    ["כשמתקשרים אליו מהחצר אין סימנים למצוקה.", P_HE],
+    ["כשהרופאה בדקה אותו לא נמצאו קשיים בדיבור, יש להתקשר להורים בכל שאלה.", P_HE],
+  ])("dropped: %s", (sentence, parentText) => {
+    expect(isEscalationLine(sentence)).toBe(false);
+    expect(withoutHandoffFindings(sentence, { parentText, childNames: ["Noa"] })).toBe("");
+  });
+
+  it.each([
+    "If there are no signs of improvement in two weeks, see your pediatrician.",
+    "When she shows no signs of calming after 20 minutes, call the family.",
+    "כשאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.",
+    "Call the family right away when he shows no signs of calming after 20 minutes.",
+  ])("a present-tense escalation line is still kept: %s", (line) => {
+    expect(isEscalationLine(line)).toBe(true);
+    expect(withoutHandoffFindings(line, { parentText: P_EN })).toBe(line);
+  });
+});
+
+describe("B-ASKJB-44 · round 6 — one parent statement, the source and subject next to the finding, no borrowed or hedged negation (P1-C, EN + HE)", () => {
+  it.each([
+    // ", and" / ", ו" / a comma before a new subject start a new statement
+    ["No signs of delay in his speech, according to the teacher.", "No signs of delay in walking, and the teacher is worried about a delay in his speech."],
+    ["Dr. Levi says there are no signs of anxiety at drop-off.", "Teacher says no signs of anxiety at drop-off, and Dr. Levi wants to recheck his hearing."],
+    ["No signs of delay in his speech.", "No signs of delay in walking, his speech is behind his sister's."],
+    ["אין סימנים לעיכוב בדיבור, לדברי הגננת.", "אין סימנים לעיכוב בהליכה, והגננת מודאגת בגלל עיכוב בדיבור."],
+    ["ד\"ר לוי אומר שאין סימנים לחרדה בפרידה.", "הגננת אומרת שאין סימנים לחרדה בפרידה, וד\"ר לוי רוצה לבדוק שוב את השמיעה."],
+    ["אין סימנים לעיכוב בדיבור.", "אין סימנים לעיכוב בהליכה, הדיבור שלו מאחור."],
+    // the source must sit next to the parent's finding, not anywhere in the statement
+    ["Dr. Levi says there are no signs of anxiety at drop-off.", "Dr. Levi checked his ears on Monday because he had a cold so we asked about everything and no signs of anxiety at drop-off."],
+    // negations and hedges
+    ["There are no signs of delay in his speech.", "The teacher sees signs of delay in his speech."],
+    ["There are no signs of delay in his speech.", "I'm not sure there are no signs of delay in his speech."],
+    ["There are no signs of a speech delay.", "I can't say there are no signs of a speech delay."],
+    ["The doctor found no signs of delay.", "The doctor didn't say she found no signs of delay."],
+    ["אין סימנים לעיכוב בדיבור.", "אני לא בטוחה שאין סימנים לעיכוב בדיבור."],
+    ["הרופאה מצאה שאין סימנים לעיכוב.", "הרופאה לא אמרה שאין סימנים לעיכוב."],
+    ["There are no signs of delay.", "No one has told us there are no signs of delay."],
+    ["There are no signs of delay.", "Maybe there are no signs of delay, we will see."],
+    ["אין סימנים לעיכוב.", "אף אחד לא אמר לנו שאין סימנים לעיכוב."],
+    ["There are no signs of anxiety at drop-off.", "If he sleeps well, there are no signs of anxiety at drop-off."],
+  ])("dropped: %s", (sentence, parentText) => {
+    expect(statesUnreportedFinding(sentence, { parentText, childNames: ["Noa"] })).toBe(true);
+    expect(withoutHandoffFindings(sentence, { parentText, childNames: ["Noa"] })).toBe("");
+  });
+
+  it.each([
+    ["There are no signs of delay in his speech.", "The teacher says there are no signs of delay in his speech."],
+    ["No signs of anxiety at drop-off, according to her teacher.", "No signs of anxiety at drop-off, her teacher said, and he cries at pickup."],
+    ["אין סימנים לחרדה בפרידה, לדברי הגננת.", "אין סימנים לחרדה בפרידה, אמרה הגננת, והוא בוכה באיסוף."],
+    ["There are no signs of distress at drop-off.", "No signs of anxiety, distress or crying at drop-off this week."],
+    ["There are no signs of anxiety at drop-off.", "I'm not sure about mornings, but there are no signs of anxiety at drop-off."],
+  ])("kept: the parent's own statement, with its source next to the finding: %s", (sentence, parentText) => {
+    expect(withoutHandoffFindings(sentence, { parentText, childNames: ["Noa"] })).toBe(sentence);
+  });
+});
+
+/* Critic round 6 compare.txt: every row, with the verdict the branch must give
+   (A/A2: real escalation lines, kept; B/C/D/E: invented or narrated findings,
+   dropped; D7 keeps its referral and drops the finding clause after ";").
+   "EN"/"HE" stand for the critic's two hard-moment parent texts. */
+const COMPARE_ROWS: [string, string, string, "keep" | "drop" | "part"][] = [
+  ["A esc5-1", "If, after 20 minutes, he shows no signs of calming, call the family.", "EN", "keep"],
+  ["A esc5-2", "If he hurts himself or others, or shows no signs of calming after 20 minutes, call the parent and the school nurse right away.", "EN", "keep"],
+  ["A esc5-3", "If he bites, hits or kicks, or there are no signs of calming after 20 minutes, call the family.", "EN", "keep"],
+  ["A esc5-4", "If refusals grow, sleep worsens, or there are no signs of improvement in a month, talk with your pediatrician.", "EN", "keep"],
+  ["A esc5-5", "אם, אחרי 20 דקות, אין סימנים של רגיעה, יש להתקשר להורים.", "HE", "keep"],
+  ["A esc5-6", "אם הוא פוגע בעצמו או באחרים, או שאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.", "HE", "keep"],
+  ["A esc5-7", "If there are no signs of calming after 20 minutes — or he hurts himself — call the family.", "EN", "keep"],
+  ["A esc5-8", "Call the family if there are no signs of calming after 20 minutes.", "EN", "keep"],
+  ["A esc5-9", "Please contact the family if, after two weeks, there are no signs of improvement.", "EN", "keep"],
+  ["A2 when/call", "When she shows no signs of calming after 20 minutes, call the family.", "EN", "keep"],
+  ["A2 if/see ped", "If there are no signs of improvement in two weeks, see your pediatrician.", "EN", "keep"],
+  ["A2 if/let know", "If he shows no signs of calming after 20 minutes, let the family know right away.", "EN", "keep"],
+  ["A2 if/notify", "If he shows no signs of calming after 20 minutes, notify the family.", "EN", "keep"],
+  ["A2 if/consult psych", "If there are no signs of improvement in a month, consult a child psychologist.", "EN", "keep"],
+  ["A2 if/talk Dr", "If there are no signs of improvement after two weeks, talk with Dr. Levi.", "EN", "keep"],
+  ["A2 HE כש", "כשאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.", "HE", "keep"],
+  ["A2 HE כאשר", "כאשר אין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.", "HE", "keep"],
+  ["A2 HE במידה/פסיכולוג", "במידה ואין סימנים לשיפור תוך שבועיים, כדאי להתייעץ עם פסיכולוג גן.", "HE", "keep"],
+  ["A2 HE אם/לעדכן", "אם אין סימנים של רגיעה אחרי 20 דקות, יש לעדכן את ההורים ואת ד\"ר לוי.", "HE", "keep"],
+  ["A2 HE אם/דברו ד\"ר", "אם אין סימנים של רגיעה אחרי 20 דקות, דברו עם ד\"ר לוי.", "HE", "keep"],
+  ["B L1 builder worry", "When the pediatrician found no signs of delay, she told us to call if anything changes.", "EN", "drop"],
+  ["B L2", "When the pediatrician saw him last month she found no signs of delay, and the family will call if anything changes.", "EN", "drop"],
+  ["B L3", "When tested last month he showed no signs of delay, so contact the family with questions.", "EN", "drop"],
+  ["B L4", "Once assessed he showed no signs of a speech delay, so the teacher can call the family with questions.", "EN", "drop"],
+  ["B L5", "When we call him in from the garden he shows no signs of distress.", "EN", "drop"],
+  ["B L6", "When in contact with peers he shows no signs of anxiety.", "EN", "drop"],
+  ["B L7", "When he gets to tell his parents about his day he shows no signs of anxiety.", "EN", "drop"],
+  ["B L8 HE", "כשהרופאה בדקה אותו לא נמצאו קשיים בדיבור, והיא אמרה להתקשר אם משהו משתנה.", "HE", "drop"],
+  ["B L9 HE", "כאשר הוא נבדק בחודש שעבר הוא לא הראה סימנים לעיכוב, ואפשר לפנות להורים בכל שאלה.", "HE", "drop"],
+  ["B L11", "Whenever the teacher calls him he shows no signs of distress.", "EN", "drop"],
+  ["C J1", "No signs of delay in his speech, according to the teacher.", "No signs of delay in walking, and the teacher is worried about a delay in his speech.", "drop"],
+  ["C J2", "Dr. Levi says there are no signs of anxiety at drop-off.", "Teacher says no signs of anxiety at drop-off, and Dr. Levi wants to recheck his hearing.", "drop"],
+  ["C J3", "No signs of delay in his speech.", "No signs of delay in walking, his speech is behind his sister's.", "drop"],
+  ["C J4 HE", "אין סימנים לעיכוב בדיבור, לדברי הגננת.", "אין סימנים לעיכוב בהליכה, והגננת מודאגת בגלל עיכוב בדיבור.", "drop"],
+  ["C J5 HE", "ד\"ר לוי אומר שאין סימנים לחרדה בפרידה.", "הגננת אומרת שאין סימנים לחרדה בפרידה, וד\"ר לוי רוצה לבדוק שוב את השמיעה.", "drop"],
+  ["C N2", "There are no signs of delay in his speech.", "I'm not sure there are no signs of delay in his speech.", "drop"],
+  ["C N3", "There are no signs of a speech delay.", "I can't say there are no signs of a speech delay.", "drop"],
+  ["C N4", "The doctor found no signs of delay.", "The doctor didn't say she found no signs of delay.", "drop"],
+  ["C N5 HE", "אין סימנים לעיכוב בדיבור.", "אני לא בטוחה שאין סימנים לעיכוב בדיבור.", "drop"],
+  ["C N7", "There are no signs of delay.", "No one has told us there are no signs of delay.", "drop"],
+  ["D1 talk with Dr, who found … when", "Talk with Dr. Levi, who found no signs of delay when she assessed him.", "EN", "drop"],
+  ["D2 if questions, contact Dr, who found", "If you have questions, contact Dr. Levi, who found no signs of delay at his last visit.", "EN", "drop"],
+  ["D3 contact family — finding when", "Please contact the family with any questions — he shows no signs of delay when playing with peers.", "EN", "drop"],
+  ["D4 talk with family about … when", "Talk with the family about how he shows no signs of delay when he plays.", "EN", "drop"],
+  ["D5 call if needed: finding", "Call the family if needed: there are no signs of a speech delay.", "EN", "drop"],
+  ["D6 see ped, who ruled out … when", "See your pediatrician, who ruled out a hearing problem when he was two.", "EN", "drop"],
+  ["D7 if worried, talk w ped; no evidence of", "If you are worried, talk with the pediatrician; there is no evidence of a delay.", "EN", "part"],
+  ["D8 if worried, contact the family, as there are no signs", "If you are worried, contact the family, as there are no signs of a speech delay at home.", "EN", "drop"],
+  ["D9 when convenient, call; finding", "When convenient, call the family, since he shows no signs of delay.", "EN", "drop"],
+  ["D10 contact the family once ... no evidence", "Contact the family once a week, as there is no evidence of attention difficulties.", "EN", "drop"],
+  ["D11 HE דברו עם ד\"ר, שאמרה שאין … כש", "דברו עם ד\"ר לוי, שאמרה שאין סימנים לעיכוב כשבדקה אותו.", "HE", "drop"],
+  ["D12 HE אם יש שאלות, יש לפנות … שאין", "אם יש שאלות, יש לפנות לד\"ר לוי, שמצאה שאין סימנים לעיכוב בביקור האחרון.", "HE", "drop"],
+  ["D13 HE כדאי לעדכן … כי אין", "אם יש שינוי, כדאי לעדכן את ההורים, כי אין סימנים לעיכוב בדיבור.", "HE", "drop"],
+  ["D14 HE התקשרו אם צריך: אין", "התקשרו להורים אם צריך: אין סימנים לעיכוב בדיבור.", "HE", "drop"],
+  ["E1 colon framing", "If useful for context: there are no signs of a speech delay, so call the family only if needed.", "EN", "drop"],
+  ["E2 she can call", "Should the teacher ask, there is no evidence of ADHD, and she can call the family.", "EN", "drop"],
+  ["E3 condition, no referral", "If there are no signs of anxiety at drop-off, she can join circle time.", "EN", "drop"],
+];
+const COMPARE_PARENT_EN = "He bit a friend at preschool when they fought over a toy; Dr. Levi saw him last week\nWe separated them and he calmed after a hug";
+const COMPARE_PARENT_HE = "הוא נשך חבר בגן כשרבו על צעצוע; ד\"ר לוי ראה אותו בשבוע שעבר\nהפרדנו ביניהם והוא נרגע אחרי חיבוק";
+const compareParent = (p: string) => (p === "EN" ? COMPARE_PARENT_EN : p === "HE" ? COMPARE_PARENT_HE : p);
+const COMPARE_PART_D7 = "If you are worried, talk with the pediatrician;";
+
+describe("B-ASKJB-44 · round 6 — every critic compare row: real escalation lines kept, invented or narrated findings dropped (EN + HE)", () => {
+  it.each(COMPARE_ROWS)("%s", (_label, sentence, parent, verdict) => {
+    const out = withoutHandoffFindings(sentence, { parentText: compareParent(parent), childNames: ["Noa"] });
+    expect(out).toBe(verdict === "keep" ? sentence : verdict === "part" ? COMPARE_PART_D7 : "");
+  });
+  it("a finding is exempt only inside the escalation line's condition, never in its tail or main clause", () => {
+    expect(escalationCondition("Talk with Dr. Levi, who found no signs of delay when she assessed him.")).toBeNull();
+    expect(escalationCondition("Contact the family once a week, as there is no evidence of attention difficulties.")).toBeNull();
+    expect(escalationCondition("When convenient, call the family, since he shows no signs of delay.")).toBeNull();
+    const line = "If you are worried, contact the family, as there are no signs of a speech delay at home.";
+    expect(escalationCondition(line)).toEqual({ start: 0, end: line.indexOf(",") });
+    const he = "התקשרו להורים אם צריך: אין סימנים לעיכוב בדיבור.";
+    expect(escalationCondition(he)).toEqual({ start: he.indexOf("אם"), end: he.indexOf(":") });
   });
 });

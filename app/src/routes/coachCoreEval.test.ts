@@ -631,6 +631,74 @@ describe("B-AI-14 (route) — an applicable approved fact always reaches the ans
   });
 });
 
+/* Critic round 6 compare.txt: every row, with the verdict the branch must give
+   (A/A2: real escalation lines, kept; B/C/D/E: invented or narrated findings,
+   dropped; D7 keeps its referral and drops the finding clause after ";").
+   "EN"/"HE" stand for the critic's two hard-moment parent texts. */
+const COMPARE_ROWS: [string, string, string, "keep" | "drop" | "part"][] = [
+  ["A esc5-1", "If, after 20 minutes, he shows no signs of calming, call the family.", "EN", "keep"],
+  ["A esc5-2", "If he hurts himself or others, or shows no signs of calming after 20 minutes, call the parent and the school nurse right away.", "EN", "keep"],
+  ["A esc5-3", "If he bites, hits or kicks, or there are no signs of calming after 20 minutes, call the family.", "EN", "keep"],
+  ["A esc5-4", "If refusals grow, sleep worsens, or there are no signs of improvement in a month, talk with your pediatrician.", "EN", "keep"],
+  ["A esc5-5", "אם, אחרי 20 דקות, אין סימנים של רגיעה, יש להתקשר להורים.", "HE", "keep"],
+  ["A esc5-6", "אם הוא פוגע בעצמו או באחרים, או שאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.", "HE", "keep"],
+  ["A esc5-7", "If there are no signs of calming after 20 minutes — or he hurts himself — call the family.", "EN", "keep"],
+  ["A esc5-8", "Call the family if there are no signs of calming after 20 minutes.", "EN", "keep"],
+  ["A esc5-9", "Please contact the family if, after two weeks, there are no signs of improvement.", "EN", "keep"],
+  ["A2 when/call", "When she shows no signs of calming after 20 minutes, call the family.", "EN", "keep"],
+  ["A2 if/see ped", "If there are no signs of improvement in two weeks, see your pediatrician.", "EN", "keep"],
+  ["A2 if/let know", "If he shows no signs of calming after 20 minutes, let the family know right away.", "EN", "keep"],
+  ["A2 if/notify", "If he shows no signs of calming after 20 minutes, notify the family.", "EN", "keep"],
+  ["A2 if/consult psych", "If there are no signs of improvement in a month, consult a child psychologist.", "EN", "keep"],
+  ["A2 if/talk Dr", "If there are no signs of improvement after two weeks, talk with Dr. Levi.", "EN", "keep"],
+  ["A2 HE כש", "כשאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.", "HE", "keep"],
+  ["A2 HE כאשר", "כאשר אין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.", "HE", "keep"],
+  ["A2 HE במידה/פסיכולוג", "במידה ואין סימנים לשיפור תוך שבועיים, כדאי להתייעץ עם פסיכולוג גן.", "HE", "keep"],
+  ["A2 HE אם/לעדכן", "אם אין סימנים של רגיעה אחרי 20 דקות, יש לעדכן את ההורים ואת ד\"ר לוי.", "HE", "keep"],
+  ["A2 HE אם/דברו ד\"ר", "אם אין סימנים של רגיעה אחרי 20 דקות, דברו עם ד\"ר לוי.", "HE", "keep"],
+  ["B L1 builder worry", "When the pediatrician found no signs of delay, she told us to call if anything changes.", "EN", "drop"],
+  ["B L2", "When the pediatrician saw him last month she found no signs of delay, and the family will call if anything changes.", "EN", "drop"],
+  ["B L3", "When tested last month he showed no signs of delay, so contact the family with questions.", "EN", "drop"],
+  ["B L4", "Once assessed he showed no signs of a speech delay, so the teacher can call the family with questions.", "EN", "drop"],
+  ["B L5", "When we call him in from the garden he shows no signs of distress.", "EN", "drop"],
+  ["B L6", "When in contact with peers he shows no signs of anxiety.", "EN", "drop"],
+  ["B L7", "When he gets to tell his parents about his day he shows no signs of anxiety.", "EN", "drop"],
+  ["B L8 HE", "כשהרופאה בדקה אותו לא נמצאו קשיים בדיבור, והיא אמרה להתקשר אם משהו משתנה.", "HE", "drop"],
+  ["B L9 HE", "כאשר הוא נבדק בחודש שעבר הוא לא הראה סימנים לעיכוב, ואפשר לפנות להורים בכל שאלה.", "HE", "drop"],
+  ["B L11", "Whenever the teacher calls him he shows no signs of distress.", "EN", "drop"],
+  ["C J1", "No signs of delay in his speech, according to the teacher.", "No signs of delay in walking, and the teacher is worried about a delay in his speech.", "drop"],
+  ["C J2", "Dr. Levi says there are no signs of anxiety at drop-off.", "Teacher says no signs of anxiety at drop-off, and Dr. Levi wants to recheck his hearing.", "drop"],
+  ["C J3", "No signs of delay in his speech.", "No signs of delay in walking, his speech is behind his sister's.", "drop"],
+  ["C J4 HE", "אין סימנים לעיכוב בדיבור, לדברי הגננת.", "אין סימנים לעיכוב בהליכה, והגננת מודאגת בגלל עיכוב בדיבור.", "drop"],
+  ["C J5 HE", "ד\"ר לוי אומר שאין סימנים לחרדה בפרידה.", "הגננת אומרת שאין סימנים לחרדה בפרידה, וד\"ר לוי רוצה לבדוק שוב את השמיעה.", "drop"],
+  ["C N2", "There are no signs of delay in his speech.", "I'm not sure there are no signs of delay in his speech.", "drop"],
+  ["C N3", "There are no signs of a speech delay.", "I can't say there are no signs of a speech delay.", "drop"],
+  ["C N4", "The doctor found no signs of delay.", "The doctor didn't say she found no signs of delay.", "drop"],
+  ["C N5 HE", "אין סימנים לעיכוב בדיבור.", "אני לא בטוחה שאין סימנים לעיכוב בדיבור.", "drop"],
+  ["C N7", "There are no signs of delay.", "No one has told us there are no signs of delay.", "drop"],
+  ["D1 talk with Dr, who found … when", "Talk with Dr. Levi, who found no signs of delay when she assessed him.", "EN", "drop"],
+  ["D2 if questions, contact Dr, who found", "If you have questions, contact Dr. Levi, who found no signs of delay at his last visit.", "EN", "drop"],
+  ["D3 contact family — finding when", "Please contact the family with any questions — he shows no signs of delay when playing with peers.", "EN", "drop"],
+  ["D4 talk with family about … when", "Talk with the family about how he shows no signs of delay when he plays.", "EN", "drop"],
+  ["D5 call if needed: finding", "Call the family if needed: there are no signs of a speech delay.", "EN", "drop"],
+  ["D6 see ped, who ruled out … when", "See your pediatrician, who ruled out a hearing problem when he was two.", "EN", "drop"],
+  ["D7 if worried, talk w ped; no evidence of", "If you are worried, talk with the pediatrician; there is no evidence of a delay.", "EN", "part"],
+  ["D8 if worried, contact the family, as there are no signs", "If you are worried, contact the family, as there are no signs of a speech delay at home.", "EN", "drop"],
+  ["D9 when convenient, call; finding", "When convenient, call the family, since he shows no signs of delay.", "EN", "drop"],
+  ["D10 contact the family once ... no evidence", "Contact the family once a week, as there is no evidence of attention difficulties.", "EN", "drop"],
+  ["D11 HE דברו עם ד\"ר, שאמרה שאין … כש", "דברו עם ד\"ר לוי, שאמרה שאין סימנים לעיכוב כשבדקה אותו.", "HE", "drop"],
+  ["D12 HE אם יש שאלות, יש לפנות … שאין", "אם יש שאלות, יש לפנות לד\"ר לוי, שמצאה שאין סימנים לעיכוב בביקור האחרון.", "HE", "drop"],
+  ["D13 HE כדאי לעדכן … כי אין", "אם יש שינוי, כדאי לעדכן את ההורים, כי אין סימנים לעיכוב בדיבור.", "HE", "drop"],
+  ["D14 HE התקשרו אם צריך: אין", "התקשרו להורים אם צריך: אין סימנים לעיכוב בדיבור.", "HE", "drop"],
+  ["E1 colon framing", "If useful for context: there are no signs of a speech delay, so call the family only if needed.", "EN", "drop"],
+  ["E2 she can call", "Should the teacher ask, there is no evidence of ADHD, and she can call the family.", "EN", "drop"],
+  ["E3 condition, no referral", "If there are no signs of anxiety at drop-off, she can join circle time.", "EN", "drop"],
+];
+const COMPARE_PARENT_EN = "He bit a friend at preschool when they fought over a toy; Dr. Levi saw him last week\nWe separated them and he calmed after a hug";
+const COMPARE_PARENT_HE = "הוא נשך חבר בגן כשרבו על צעצוע; ד\"ר לוי ראה אותו בשבוע שעבר\nהפרדנו ביניהם והוא נרגע אחרי חיבוק";
+const compareParent = (p: string) => (p === "EN" ? COMPARE_PARENT_EN : p === "HE" ? COMPARE_PARENT_HE : p);
+const COMPARE_PART_D7 = "If you are worried, talk with the pediatrician;";
+
 /* Critic round 5's esc5 lines (B-ASKJB-44 round 6 hotfix): every one was kept on 5fb5666f. */
 const ESCALATION_LINES_R6 = [
   "If, after 20 minutes, he shows no signs of calming, call the family.",
@@ -715,6 +783,20 @@ describe("B-ASKJB-44 · /api/chat handoff notes carry no invented finding", () =
       // Never silently deleted: kept verbatim, or the whole turn becomes the crisis card.
       if (done?.outputBlocked) expect(done?.blockedCategory, teacher).toBeTruthy();
       else expect(coachResponseZodSchema.parse(done?.contract).handoffNotes.teacher, teacher).toBe(teacher);
+    }
+  });
+  it("round 6: every critic compare row through /api/chat — escalation lines kept (or the turn routes to crisis help), invented or narrated findings dropped (EN + HE)", async () => {
+    for (const [label, sentence, parent, verdict] of COMPARE_ROWS) {
+      contractOverrides = { handoffNotes: { teacher: sentence, professional: "" } };
+      const { events } = await postChatStreamed({
+        message: compareParent(parent),
+        childProfile: { id: "c1", name: "Noa" },
+        language: /[\u05D0-\u05EA]/.test(sentence) ? "he" : "en",
+      });
+      const done = doneOf(events);
+      if (done?.outputBlocked && verdict === "keep") { expect(done?.blockedCategory, label).toBeTruthy(); continue; }
+      const want = verdict === "keep" ? sentence : verdict === "part" ? COMPARE_PART_D7 : "";
+      expect(coachResponseZodSchema.parse(done?.contract).handoffNotes.teacher, label).toBe(want);
     }
   });
   it("a clean handoff note passes the floor byte-identical", async () => {
