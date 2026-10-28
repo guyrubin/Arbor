@@ -19,7 +19,7 @@ const collectionNames = [...read('src/lib/childData.ts').split('export const CHI
 const dataFor = (fixture: any) => ({
   exportedAt: '2026-10-10T00:00:00.000Z', profile: fixture.child, exportNote: 'Invented private export note.',
   collections: { ...Object.fromEntries(collectionNames.map(name => [name, []])), ...fixture.collections },
-  serverData: { memoryEvents: [], shares: [] },
+  serverData: { memoryEvents: [], shares: [], consents: [], consultRequests: [] },
   exportReceipt: { status: 'incomplete', serverData: 'included', collections: Object.fromEntries(collectionNames.map(name => [name, 'included'])) },
   privateBookAssets: { format: 'arbor-private-book-assets-v1', status: 'incomplete', inventory: 'unavailable', issues: ['unauthorized'], includedFiles: 0, includedBytes: 0, files: [] },
 });
@@ -86,7 +86,7 @@ describe('bounded private export capture contract, no browser or sockets', () =>
     expect(privateExportApiDisposition('POST', '/api/todays-focus', id)).toBe('read');
   });
   it.each(['en', 'he'])('validates exact partial bytes, identity, filename, registered collections and absence of sibling data (%s)', lang => {
-    expect(collectionNames).toHaveLength(46); // B-BOOK-75: + books
+    expect(collectionNames).toHaveLength(47); // B-BOOK-75: + books; B-GA-09: + studioCreations
     const fixture = privateExportFixture(seed, lang); const data = dataFor(fixture);
     expect(validatePartialExport(JSON.stringify(data), fixture.filename, fixture)).toBe(true);
     const mutate = (change: (data: any) => void) => { const copy = structuredClone(data); change(copy); expect(validatePartialExport(JSON.stringify(copy), fixture.filename, fixture)).toBe(false); };
@@ -107,6 +107,9 @@ describe('bounded private export capture contract, no browser or sockets', () =>
     mutate(d => { d.privateBookAssets.status = 'complete'; });
     mutate(d => { d.privateBookAssets.issues = []; });
     mutate(d => { d.serverData.memoryEvents = [{ unrelated: true }]; });
+    mutate(d => { delete d.serverData.consents; });
+    mutate(d => { d.serverData.consultRequests = [{ unrelated: true }]; });
+    mutate(d => { delete d.collections.studioCreations; });
     mutate(d => { d.exportNote = ''; });
     expect(validatePartialExport(JSON.stringify(data), fixture.filename.replace('.partial', ''), fixture)).toBe(false);
     expect(validatePartialExport(JSON.stringify(data), 'download', fixture)).toBe(false);

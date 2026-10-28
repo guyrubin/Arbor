@@ -20,7 +20,9 @@
  * Pure: no Firebase, no React.
  */
 
-export type ChildSinkKind = "profile" | "server" | "storage" | "device";
+/** `cloud-storage`, hyphenated on purpose: the bare quoted word is a Material
+ *  Symbols ligature to the icon-font subsetter (scripts/build-icon-font.mjs). */
+export type ChildSinkKind = "profile" | "server" | "cloud-storage" | "device";
 
 export interface ChildDataSink {
   /** Stable id: the erase receipt's key and the DPIA register's row. */
@@ -83,14 +85,14 @@ export const OTHER_CHILD_SINKS = [
   },
   {
     id: "storage:photos",
-    kind: "storage",
+    kind: "cloud-storage",
     where: "users/{uid}/children/{childId}/ (profile and keepsake photos)",
     exportedAs: "by reference: the download URL in profile.photoUrl and keepsakes[].photoUrl",
     erasedBy: "/privacy/erase deletes the prefix (storage.photos, in counts.storageFiles)",
   },
   {
     id: "storage:books",
-    kind: "storage",
+    kind: "cloud-storage",
     where: "children/{childId}/books/ (hero sheet, prints, narration in the child's name; sandbox: app/.data/book-assets/, git-ignored)",
     exportedAs: "privateBookAssets (bytes and a per-file receipt)",
     erasedBy: "/privacy/erase eraseChildBookAssets (storage.books, in counts.storageFiles)",
