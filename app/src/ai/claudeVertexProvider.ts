@@ -159,6 +159,9 @@ export class ClaudeVertexProvider {
       }
       completed = true;
     } finally {
+      // B-AIOPS-01: an early stop cancels the upstream body, so Vertex stops
+      // generating (and billing) instead of streaming into a dropped reader.
+      if (!completed) { try { await reader.cancel(); } catch { /* already closed */ } }
       try { reader.releaseLock(); } catch { /* stream already closed */ }
       // B-AIOPS-01: an early stop keeps its receipt (input tokens arrive first).
       if (!completed) recordUsage({ route: options.route, provider: "vertex_claude", model, resolvedModel: model, promptVersion: options.promptVersion, endedEarly: true }, Object.keys(usage).length ? usage : undefined, timer.finish());

@@ -164,12 +164,26 @@ describe("B-AIOPS-01 — a stream that stops early still leaves one receipt", ()
       { type: "message_delta", usage: { output_tokens: 9 } },
       { type: "message_stop" },
     ];
-    const body = events.map((e) => `event: ${e.type}\ndata: ${JSON.stringify(e)}\n`).join("\n") + "\n";
-    globalThis.fetch = (async () => ({ ok: true, body: new Response(body).body })) as unknown as typeof fetch;
+    const bytes = new TextEncoder().encode(events.map((e) => `event: ${e.type}\ndata: ${JSON.stringify(e)}\n`).join("\n") + "\n");
+    // One event per pull, so the upstream body is still open when the consumer stops.
+    let offset = 0;
+    const cancelled = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (offset >= bytes.length) { controller.close(); return; }
+        const end = bytes.indexOf(10, bytes.indexOf(10, offset) + 1) + 1 || bytes.length;
+        controller.enqueue(bytes.slice(offset, end)); offset = end;
+      },
+      cancel: cancelled,
+    });
+    globalThis.fetch = (async () => ({ ok: true, body })) as unknown as typeof fetch;
     const provider = new ClaudeVertexProvider(createTestConfig());
     for await (const _ of provider.generateJsonStream({ route: "coach_high_stakes", prompt: "synthetic", schema: { type: Type.OBJECT, properties: { text: { type: Type.STRING } } } })) break;
     const lines = usageLines(spy);
     expect(lines).toHaveLength(1);
     expect(lines[0]).toMatchObject({ endedEarly: true, provider: "vertex_claude", promptTokens: 321 });
+    // The upstream body is cancelled, so generation (and billing) stops.
+    expect(cancelled).toHaveBeenCalledTimes(1);
+    expect(offset).toBeLessThan(bytes.length);
   });
 });
