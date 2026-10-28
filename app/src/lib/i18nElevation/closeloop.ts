@@ -85,9 +85,9 @@ export const en: Record<string, string> = {
   // ── B-DATA-16: the guide's words the parent says they used, stored on the
   //    hard moment (coRegulationScript). "Used" is the parent's action, never
   //    "helped" — only the parent's own held answer says that.
-  "elev.closeloop.hm.usedKeep": "I used these words — keep this moment",
+  "elev.closeloop.hm.usedKeep": "I used these words",
   "elev.closeloop.hm.usedLabel": "Words you used",
-  "elev.closeloop.hm.usedLine": "Words you used: {guide}",
+  "elev.closeloop.hm.usedFrom": "From the {guide} guide",
   "elev.closeloop.hm.usedRemove": "Remove",
   "elev.closeloop.hm.usedLead": "Last time you used these words with {name}:",
 
@@ -181,9 +181,9 @@ export const he: Record<string, string> = {
   "elev.closeloop.hm.allGuides": "כל המדריכים ({n})",
   "elev.closeloop.hm.fewer": "להציג פחות",
   // ── B-DATA-16
-  "elev.closeloop.hm.usedKeep": "השתמשתי במילים האלה — לשמור את הרגע",
+  "elev.closeloop.hm.usedKeep": "השתמשתי במילים האלה",
   "elev.closeloop.hm.usedLabel": "המילים שהשתמשתם בהן",
-  "elev.closeloop.hm.usedLine": "המילים שהשתמשתם בהן: {guide}",
+  "elev.closeloop.hm.usedFrom": "מתוך המדריך „{guide}”",
   "elev.closeloop.hm.usedRemove": "להסיר",
   "elev.closeloop.hm.usedLead": "בפעם הקודמת השתמשתם במילים האלה עם {name}:",
 

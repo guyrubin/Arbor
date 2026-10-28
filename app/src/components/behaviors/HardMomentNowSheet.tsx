@@ -334,19 +334,22 @@ export default function HardMomentNowSheet() {
                   )}
                 </>
               )}
-              {/* B-DATA-16: the parent says they used these words; the ONE
-                  capture sheet opens on the hard-moment form with this guide
-                  named (removable) and Save stores it as coRegulationScript. */}
-              <button
-                type="button"
-                data-testid="hard-moment-now-used"
-                onClick={() => { closeHardMomentNow(); openCaptureSheet({ mode: "text", coRegulationScript: card.id }); }}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition"
-                style={{ color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)", background: "var(--arbor-paper-elevated)" }}
-              >
-                <Icon name="bookmark_add" size={16} /> {t("elev.closeloop.hm.usedKeep")}
-              </button>
-              <SendWordsButton card={card} locale={locale} parentName={parentFirst} childName={childFirst} t={t} />
+              {/* B-DATA-16: the two actions about these words share one row —
+                  "I used these words" (the ONE capture sheet opens on the
+                  hard-moment form with this guide's words, removable; Save
+                  stores coRegulationScript) beside "Send these words". */}
+              <div data-testid="hard-moment-now-words-row" className="grid min-w-0 grid-cols-2 items-start gap-2">
+                <button
+                  type="button"
+                  data-testid="hard-moment-now-used"
+                  onClick={() => { closeHardMomentNow(); openCaptureSheet({ mode: "text", coRegulationScript: card.id }); }}
+                  className="inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition"
+                  style={{ color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)", background: "var(--arbor-paper-elevated)" }}
+                >
+                  <Icon name="bookmark_add" size={16} /> <span className="min-w-0">{t("elev.closeloop.hm.usedKeep")}</span>
+                </button>
+                <SendWordsButton card={card} locale={locale} parentName={parentFirst} childName={childFirst} t={t} />
+              </div>
               <PublicGuideShare key={`${card.id}-${locale}`} card={card} locale={locale} />
               <button
                 type="button"

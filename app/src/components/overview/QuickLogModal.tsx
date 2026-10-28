@@ -311,6 +311,8 @@ export default function QuickLogModal({
   const closeSheet = () => {
     sessionRef.current.invalidate();
     setKeepDraft(freshCaptureKeep());
+    // B-DATA-16: an abandoned capture never carries its guide into the next one.
+    if (newLogScript) setNewLogScript("");
     stopRef.current?.();
     // An edit that is closed without saving must not leave editingLogId armed.
     if (editLogId) cancelEditLog();
@@ -322,9 +324,14 @@ export default function QuickLogModal({
     else if (open && !editLogId && !review && newLogScript) toggleHardMoment(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, hardMomentNow]);
-  // B-DATA-16: the guide the parent said they used, named and removable.
+  // B-DATA-16: the guide the parent said they used — its Say-this words,
+  // quoted, and where they came from ("From the Refusal guide"); removable.
   const usedScript = newLogScript ? hardMomentCatalogue.find((card) => card.id === newLogScript) : undefined;
-  const usedScriptTitle = usedScript ? locText(usedScript.title, uiLang === "he" ? "he" : "en") : "";
+  const scriptLang = uiLang === "he" ? "he" : "en";
+  const usedScriptTitle = usedScript ? locText(usedScript.title, scriptLang) : "";
+  const usedScriptWords = usedScript ? locText(renderSayThis(usedScript, (childProfile.name || "").split(" ")[0]), scriptLang) : "";
+  const usedScriptQuote = usedScriptWords ? (scriptLang === "he" ? `„${usedScriptWords}”` : `“${usedScriptWords}”`) : "";
+  const usedScriptFrom = usedScriptTitle ? t("elev.closeloop.hm.usedFrom", { guide: usedScriptTitle }) : "";
   const hardGuide = (() => {
     if (!open || !hardMomentNow) return null;
     const now = new Date();
@@ -966,7 +973,10 @@ export default function QuickLogModal({
           { label: t("ql.review.response"), value: newLogResponse, onChange: setNewLogResponse },
           { label: t("beh.notes"), value: newLogNotes, onChange: setNewLogNotes },
           // B-DATA-16: the stored script is reviewed like every other field.
-          ...(isIncidentType(newLogType) && usedScriptTitle ? [{ label: t("elev.closeloop.hm.usedLabel"), value: usedScriptTitle }] : []),
+          ...(isIncidentType(newLogType) && usedScriptQuote ? [{
+            label: t("elev.closeloop.hm.usedLabel"), value: `${usedScriptQuote} · ${usedScriptFrom}`,
+            onRemove: () => setNewLogScript(""), removeLabel: t("elev.closeloop.hm.usedRemove"),
+          }] : []),
         ]}
         intensity={isIncidentType(newLogType) ? newLogIntensity : undefined}
         onIntensityChange={setNewLogIntensity}
@@ -1083,11 +1093,14 @@ export default function QuickLogModal({
 
         {/* B-DATA-16: the words the parent said they used (from the guide's
             "I used these words"), stored on this row; one tap removes them. */}
-        {usedScriptTitle && (
-          <div data-testid="quicklog-script" className="flex min-w-0 flex-wrap items-center justify-between gap-2" lang={uiLang} dir={uiLang === "he" ? "rtl" : "ltr"}>
-            <p className="min-w-0 text-xs" style={{ color: "var(--arbor-ink-soft)" }}><bdi>{t("elev.closeloop.hm.usedLine", { guide: usedScriptTitle })}</bdi></p>
+        {usedScriptQuote && (
+          <div data-testid="quicklog-script" className="flex min-w-0 items-start justify-between gap-2" lang={uiLang} dir={uiLang === "he" ? "rtl" : "ltr"}>
+            <div className="min-w-0">
+              <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}><bdi>{usedScriptFrom}</bdi></p>
+              <p data-testid="quicklog-script-words" className="mt-0.5 text-sm leading-snug" style={{ color: "var(--arbor-ink)" }}><bdi>{usedScriptQuote}</bdi></p>
+            </div>
             <button type="button" data-testid="quicklog-script-remove" onClick={() => setNewLogScript("")}
-              className="inline-flex min-h-11 items-center gap-1 rounded-xl px-3 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
+              className="inline-flex min-h-11 flex-none items-center gap-1 rounded-xl px-3 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
               <Icon name="close" size={16} /> {t("elev.closeloop.hm.usedRemove")}
             </button>
           </div>

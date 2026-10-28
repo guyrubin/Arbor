@@ -1623,13 +1623,16 @@ function useArborState() {
     if (opts.editLogId) startEditLog(opts.editLogId, opts.editLog);
     else {
       if (!opts.review) resetLogForm();
-      if (opts.coRegulationScript) setNewLogScript(opts.coRegulationScript);
+      // B-DATA-16: every new capture states its own guide (none for a review
+      // of an AI draft), so an earlier sheet's choice never leaks into it.
+      setNewLogScript(opts.coRegulationScript ?? "");
       trackCaptureStarted(opts.review === "ai-draft" ? "ai-draft" : opts.mode ?? "text");
     }
     setCaptureSheet({ open: true, ...opts });
   };
   const closeCaptureSheet = () => {
     captureRevisionRef.current++;
+    setNewLogScript("");
     setCaptureSheet({ open: false });
   };
   useEffect(() => {

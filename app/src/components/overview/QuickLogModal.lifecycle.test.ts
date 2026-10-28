@@ -13,6 +13,8 @@ import { translate } from "../../lib/i18n";
 import { createCaptureSession } from "../../lib/captureSession";
 import { undoSavedCapture } from "../../lib/savedCaptureUndo";
 import { routeHash } from "../../lib/routes";
+import * as hardMomentCardsModule from "../../content/hardMomentCards";
+import * as hardMomentSurfaceModule from "../../content/hardMomentSurface";
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), "src", path), "utf8");
 const modalSource = read("components/overview/QuickLogModal.tsx");
@@ -109,10 +111,10 @@ function deferred<T>() {
 const modalCode = compile(modalSource);
 const formEvent = () => ({ preventDefault: vi.fn() });
 const saved = { id: "log-1", behaviorType: "Moment", trigger: "Built a tower", timestamp: "2026-10-09T09:00:00Z", durationMinutes: 0, resolved: true };
-function captureHarness(options: { save?: () => Promise<any>; edit?: boolean; child?: string; review?: "ai-draft"; text?: string; initialText?: string; lang?: "en" | "he"; gender?: ChildProfile["gender"] } = {}) {
+function captureHarness(options: { save?: () => Promise<any>; edit?: boolean; child?: string; review?: "ai-draft"; text?: string; initialText?: string; lang?: "en" | "he"; gender?: ChildProfile["gender"]; script?: string } = {}) {
   const state: Record<string, any> = {
     newLogType: options.edit ? "Moment" : taxonomy.DEFAULT_BEHAVIOR_TYPE, newLogIntensity: 3,
-    newLogTrigger: options.text ?? "Built a tower", newLogResponse: "", newLogNotes: "", newLogContext: "", newLogDuration: 0, newLogPhoto: "",
+    newLogTrigger: options.text ?? "Built a tower", newLogResponse: "", newLogNotes: "", newLogContext: "", newLogDuration: 0, newLogPhoto: "", newLogScript: options.script ?? "",
     childProfile: { id: options.child ?? "child-a", name: "Dylan", gender: options.gender }, behaviorLogs: [saved], milestones: [],
     addMoment: vi.fn(options.save ?? (async () => saved)), handleAddLog: vi.fn(options.save ?? (async () => saved)),
     deleteLog: vi.fn(async () => {}), seedCoach: vi.fn(), cancelEditLog: vi.fn(), setMilestoneObservation: vi.fn(async () => {}), fileMomentOnShelf: vi.fn(async () => {}),
@@ -147,6 +149,8 @@ function captureHarness(options: { save?: () => Promise<any>; edit?: boolean; ch
     "../../lib/kept/captureKeep": captureKeep,
     "../../lib/savedCaptureUndo": { undoSavedCapture },
     "../../lib/routes": { routeHash },
+    "../../content/hardMomentCards": hardMomentCardsModule,
+    "../../content/hardMomentSurface": hardMomentSurfaceModule,
     "../../lib/image": { fileToThumbnail: () => { const pending = deferred<string>(); photos.push(pending); return pending.promise; } },
     "../../lib/api": { api: { extractLog: () => { const pending = deferred<any>(); extracts.push(pending); return pending.promise; } }, getAiLanguage: () => "en", EscalationRequiredError },
     "../../safety/escalation": { escalationCategories: [{ category: "self-harm", label: "Safety", resources: [] }], renderEscalationMarkdown: () => "Seek immediate support" },
@@ -315,6 +319,45 @@ describe("one capture sheet — real rendered handlers with deferred I/O", () =>
     await review.props.onConfirm(formEvent());
     expect(h.state.handleAddLog).toHaveBeenCalledTimes(1);
     expect(h.state.addMoment).not.toHaveBeenCalled();
+  });
+  it("B-DATA-16: the used guide shows its Say-this words, quoted, with where they came from; Remove works in the form and in review", () => {
+    const h = captureHarness({ script: "tantrum", text: "Leaving the park" });
+    h.state.newLogResponse = "Named the feeling";
+    const card = hardMomentCardsModule.hardMomentCatalogue.find((c) => c.id === "tantrum")!;
+    const words = hardMomentSurfaceModule.locText(hardMomentCardsModule.renderSayThis(card, "Dylan"), "en");
+    const block = one(h.render(), n => n.props["data-testid"] === "quicklog-script");
+    expect(text(block)).toContain("elev.closeloop.hm.usedFrom");
+    expect(text(block)).toContain(`“${words}”`);
+    one(h.render(), n => n.type === "form").props.onSubmit(formEvent());
+    let review = one(h.render(), n => typeof n.props.onConfirm === "function");
+    const row = review.props.rows.find((r: any) => r.label === "elev.closeloop.hm.usedLabel");
+    expect(row.value).toContain(`“${words}”`);
+    expect(row.removeLabel).toBe("elev.closeloop.hm.usedRemove");
+    row.onRemove();
+    expect(h.state.newLogScript).toBe("");
+    review = one(h.render(), n => typeof n.props.onConfirm === "function");
+    expect(review.props.rows.some((r: any) => r.label === "elev.closeloop.hm.usedLabel")).toBe(false);
+  });
+  it("B-DATA-16: closing an abandoned capture drops the guide it was opened with", () => {
+    const h = captureHarness({ script: "tantrum" });
+    one(h.render(), n => n.props["data-testid"] === "quicklog-script");
+    one(h.render(), n => typeof n.props.onClose === "function" && n.props.scrimBlur === true).props.onClose();
+    expect(h.state.newLogScript).toBe("");
+    expect(h.close).toHaveBeenCalledTimes(1);
+  });
+  it("B-DATA-16: every capture states its own guide — a later AI-draft review or a closed sheet never inherits one", () => {
+    const env: Record<string, any> = { startEditLog: vi.fn(), resetLogForm: vi.fn(), setNewLogScript: vi.fn(), trackCaptureStarted: vi.fn(), setCaptureSheet: vi.fn(), captureRevisionRef: { current: 0 } };
+    const code = compile(`export default function Bind({ ${Object.keys(env).join(",")} }) { ${declaration("openCaptureSheet")} ${declaration("closeCaptureSheet")} return { openCaptureSheet, closeCaptureSheet }; }`);
+    const mod = { exports: {} as any };
+    new Function("module", "exports", code)(mod, mod.exports);
+    const { openCaptureSheet, closeCaptureSheet } = mod.exports.default(env);
+    openCaptureSheet({ mode: "text", coRegulationScript: "tantrum" });
+    expect(env.setNewLogScript).toHaveBeenLastCalledWith("tantrum");
+    openCaptureSheet({ review: "ai-draft" });
+    expect(env.resetLogForm).toHaveBeenCalledTimes(1);
+    expect(env.setNewLogScript).toHaveBeenLastCalledWith("");
+    env.setNewLogScript.mockClear(); closeCaptureSheet();
+    expect(env.setNewLogScript).toHaveBeenCalledWith("");
   });
   it("an AI handoff opens directly in review; discarding never writes", () => {
     const h = captureHarness({ review: "ai-draft" });

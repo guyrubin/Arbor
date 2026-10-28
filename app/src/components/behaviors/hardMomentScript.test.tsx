@@ -141,7 +141,7 @@ describe("B-DATA-16 — 'what helped last time' names the words (rendered, EN + 
   }
 
   it("the copy says used in both locales and never 'helped'", () => {
-    for (const k of ["elev.closeloop.hm.usedKeep", "elev.closeloop.hm.usedLabel", "elev.closeloop.hm.usedLine", "elev.closeloop.hm.usedRemove", "elev.closeloop.hm.usedLead"]) {
+    for (const k of ["elev.closeloop.hm.usedKeep", "elev.closeloop.hm.usedLabel", "elev.closeloop.hm.usedFrom", "elev.closeloop.hm.usedRemove", "elev.closeloop.hm.usedLead"]) {
       expect(translate("en", k), k).not.toBe(k);
       expect(translate("he", k), k).not.toBe(k);
       expect(translate("he", k).replace(/\{\w+\}/g, ""), k).not.toMatch(/[A-Za-z]/);
