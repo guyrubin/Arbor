@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 /* B-PLAY-25 — the daily-plan rationale is Hebrew in the Hebrew interface.
 
-   Located (Codex PR #128 named it and never found it): DailyPlanCard on
+   Located (Codex PR 128 named it and never found it): DailyPlanCard on
    #/daily-play renders `plan.whyLine` when there is no goal or the record is
    sparse, and always in its done state. The line came from
    practice/dailyPlan.ts WHY_LINE_TEMPLATES, English only, so a Hebrew parent

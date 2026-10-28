@@ -108,7 +108,7 @@ const WHY_LINE_TEMPLATES = {
     "Gets more personalized as you log more days. Developmentally informed, grounded in CDC/AAP/ASHA/WHO.",
 };
 
-/** B-PLAY-25 — the same why-lines in Hebrew. Codex PR #128 saw "an inherited
+/** B-PLAY-25 — the same why-lines in Hebrew. Codex PR 128 saw "an inherited
  *  English sparse daily-plan rationale" under a Hebrew interface and never
  *  located it: it was this table, English-only, rendered by DailyPlanCard
  *  (#/daily-play) whatever the UI language. Same provenance register, the
