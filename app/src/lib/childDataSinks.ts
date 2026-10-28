@@ -147,13 +147,13 @@ export function childSinkIds(subcollections: readonly string[]): string[] {
 }
 
 /** What the receipt shows as "Saved records erased": the subcollection
- *  documents, the profile and the parent's consult requests about the child
- *  (the memory ledger, shares and consents have rows of their own). */
+ *  documents and the profile (the server-held categories, consult requests
+ *  included, have rows of their own). */
 export function erasedRecordCount(sinks: Readonly<Record<string, SinkErasure>> | undefined): number {
   if (!sinks) return 0;
   let n = 0;
   for (const [id, v] of Object.entries(sinks)) {
-    if ((id === "profile" || id === "server:consultRequests" || id.startsWith("firestore:")) && typeof v === "number") n += v;
+    if ((id === "profile" || id.startsWith("firestore:")) && typeof v === "number") n += v;
   }
   return n;
 }
@@ -298,15 +298,18 @@ export const CHILD_DEVICE_KEY_PREFIXES: readonly string[] = [
 /* ── The receipt the parent reads (B-BOOK-20, critic r1) ────────────────── */
 
 /** The rows of the erase receipt, in display order. */
-export type ReceiptRowId = "records" | "memoryEvents" | "shares" | "consents" | "storageFiles" | "clientDocs";
-export const RECEIPT_ROWS: readonly ReceiptRowId[] = ["records", "memoryEvents", "shares", "consents", "storageFiles", "clientDocs"];
+export type ReceiptRowId = "records" | "memoryEvents" | "shares" | "consents" | "consultRequests" | "storageFiles" | "clientDocs";
+export const RECEIPT_ROWS: readonly ReceiptRowId[] = ["records", "memoryEvents", "shares", "consents", "consultRequests", "storageFiles", "clientDocs"];
 
-/** Which receipt row a registered sink belongs to. */
+/** Which receipt row a registered sink belongs to. Each row's state comes
+ *  only from its own places (critic r2: consult requests are server-held and
+ *  have their own row, so a server failure never marks the saved records). */
 export function receiptRowOf(sinkId: string): ReceiptRowId {
-  if (sinkId === "profile" || sinkId === "server:consultRequests" || sinkId.startsWith("firestore:")) return "records";
+  if (sinkId === "profile" || sinkId.startsWith("firestore:")) return "records";
   if (sinkId === "server:memoryEvents" || sinkId === "server:familyChildRef") return "memoryEvents";
   if (sinkId === "server:shares") return "shares";
   if (sinkId === "server:consents") return "consents";
+  if (sinkId === "server:consultRequests") return "consultRequests";
   if (sinkId.startsWith("storage:")) return "storageFiles";
   return "clientDocs";
 }
@@ -317,6 +320,10 @@ export interface ReceiptView {
   finished: boolean;
   /** Each row's count, or "not-reached" when any sink of that row failed. */
   rows: Record<ReceiptRowId, number | "not-reached">;
+  /** How many registered places each row stands for, and how many of them
+   *  were not reached: the sheet's plain-language summary of the ledger (the
+   *  raw per-place ids live only in the saved receipt file). */
+  places: Record<ReceiptRowId, { total: number; unreached: number }>;
 }
 
 /**
@@ -329,10 +336,15 @@ export function receiptView(
   counts: Readonly<Record<Exclude<ReceiptRowId, "records">, number>>,
 ): ReceiptView {
   const unreached = new Set<ReceiptRowId>();
-  for (const [id, v] of Object.entries(sinks ?? {})) if (v === "not-reached") unreached.add(receiptRowOf(id));
+  const places = Object.fromEntries(RECEIPT_ROWS.map((row) => [row, { total: 0, unreached: 0 }])) as ReceiptView["places"];
+  for (const [id, v] of Object.entries(sinks ?? {})) {
+    const row = receiptRowOf(id);
+    places[row].total++;
+    if (v === "not-reached") { unreached.add(row); places[row].unreached++; }
+  }
   const rows = { records: erasedRecordCount(sinks), ...counts } as Record<ReceiptRowId, number | "not-reached">;
   for (const row of unreached) rows[row] = "not-reached";
-  return { finished: !!sinks && Object.keys(sinks).length > 0 && unreached.size === 0, rows };
+  return { finished: !!sinks && Object.keys(sinks).length > 0 && unreached.size === 0, rows, places };
 }
 
 /** The title key of the receipt sheet. */

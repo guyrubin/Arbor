@@ -208,7 +208,7 @@ describe("B-BOOK-20 · a synthetic child through export, then erase", () => {
     // What the parent reads on the receipt.
     expect(receipt.counts.storageFiles).toBe(7);
     expect(receipt.counts.clientDocs).toBe(3);
-    expect(erasedRecordCount(receipt.sinks)).toBe(CHILD_SUBCOLLECTIONS.length + 1 + 1);
+    expect(erasedRecordCount(receipt.sinks)).toBe(CHILD_SUBCOLLECTIONS.length + 1); // + the profile
 
     expect(childRemains(CHILD)).toEqual([]);
     expect(await getComicPage(CHILD, "scene")).toBeUndefined();
@@ -266,13 +266,14 @@ describe("B-BOOK-20 · the receipt the parent reads reconciles with the ledger",
   const { receiptView, mergeErasureReceipts, receiptTitleKey } = await import("./childDataSinks");
   const view = (r: Awaited<ReturnType<typeof eraseEverything>>) => receiptView(r.sinks, {
     memoryEvents: r.counts.memoryEvents, shares: r.counts.shares, consents: r.counts.consents ?? 0,
-    storageFiles: r.counts.storageFiles ?? 0, clientDocs: r.counts.clientDocs ?? 0,
+    consultRequests: r.counts.consultRequests ?? 0, storageFiles: r.counts.storageFiles ?? 0, clientDocs: r.counts.clientDocs ?? 0,
   });
 
   it("a clean run is finished: every row counts, the title is today's", async () => {
     const v = view(await eraseEverything(UID, CHILD));
     expect(v.finished).toBe(true);
-    expect(v.rows).toMatchObject({ memoryEvents: 3, shares: 1, consents: 2, storageFiles: 7, clientDocs: 3 });
+    expect(v.rows).toMatchObject({ memoryEvents: 3, shares: 1, consents: 2, consultRequests: 1, storageFiles: 7, clientDocs: 3 });
+    expect(v.places.records).toEqual({ total: CHILD_SUBCOLLECTIONS.length + 1, unreached: 0 });
     expect(receiptTitleKey(v.finished)).toBe("sec.sharing.receipt.title");
   });
 
@@ -280,7 +281,11 @@ describe("B-BOOK-20 · the receipt the parent reads reconciles with the ledger",
     fx.serverErase = "offline";
     const v = view(await eraseEverything(UID, CHILD));
     expect(v.finished).toBe(false);
-    expect(v.rows).toMatchObject({ memoryEvents: "not-reached", shares: "not-reached", consents: "not-reached", storageFiles: "not-reached", records: "not-reached" });
+    expect(v.rows).toMatchObject({ memoryEvents: "not-reached", shares: "not-reached", consents: "not-reached", consultRequests: "not-reached", storageFiles: "not-reached" });
+    // Critic r2: each row's state comes from its own places, so the saved
+    // records the device erased are counted, not marked by the server failure.
+    expect(v.rows.records).toBe(CHILD_SUBCOLLECTIONS.length + 1);
+    expect(v.places.records.unreached).toBe(0);
     expect(typeof v.rows.clientDocs).toBe("number"); // the device half did run
     expect(receiptTitleKey(v.finished)).toBe("elev.learnCare.receipt.unfinishedTitle");
   });
@@ -290,11 +295,12 @@ describe("B-BOOK-20 · the receipt the parent reads reconciles with the ledger",
     const v = view(await eraseEverything(UID, CHILD));
     expect(v.finished).toBe(false);
     expect(v.rows.records).toBe("not-reached");
-    expect(v.rows).toMatchObject({ memoryEvents: 3, storageFiles: 7 });
+    expect(v.places.records).toEqual({ total: CHILD_SUBCOLLECTIONS.length + 1, unreached: 1 });
+    expect(v.rows).toMatchObject({ memoryEvents: 3, storageFiles: 7, consultRequests: 1 });
   });
 
   it("a receipt without a ledger proves nothing and is not finished", () => {
-    expect(receiptView(undefined, { memoryEvents: 0, shares: 0, consents: 0, storageFiles: 0, clientDocs: 0 }).finished).toBe(false);
+    expect(receiptView(undefined, { memoryEvents: 0, shares: 0, consents: 0, consultRequests: 0, storageFiles: 0, clientDocs: 0 }).finished).toBe(false);
   });
 
   it("a retry after the failure folds into one finished receipt", async () => {

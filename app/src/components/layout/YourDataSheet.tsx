@@ -176,6 +176,7 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
     memoryEvents: receipt.counts.memoryEvents,
     shares: receipt.counts.shares,
     consents: receipt.counts.consents ?? 0,
+    consultRequests: receipt.counts.consultRequests ?? 0,
     storageFiles: receipt.counts.storageFiles ?? 0,
     clientDocs: receipt.counts.clientDocs ?? 0,
   }) : null;
@@ -197,25 +198,16 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
           <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
             {/* B-BOOK-20: the child's saved records and Storage files are part of the
                 proof; LC-18: so is the device the parent is holding. A row the
-                erase could not reach says so instead of a silent 0. */}
-            {RECEIPT_ROWS.map((row) => (
-              <ReceiptRow key={row} label={t(RECEIPT_LABEL[row])} value={view.rows[row] === "not-reached" ? t("elev.learnCare.receipt.notReached") : view.rows[row]} />
-            ))}
-            {/* The full per-place ledger (DeletionReceipt.sinks), folded: what the
-                DPIA register asks to check against the console. */}
-            {receipt.sinks && <details data-testid="delete-receipt-ledger" className="pt-1">
-              <summary className="flex min-h-11 cursor-pointer items-center text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
-                {t("elev.learnCare.receipt.details", { n: Object.keys(receipt.sinks).length })}
-              </summary>
-              <ul className="space-y-1 text-xs">
-                {Object.entries(receipt.sinks).map(([id, value]) => (
-                  <li key={id} className="flex items-center justify-between gap-3">
-                    <span dir="ltr" style={{ color: "var(--arbor-muted)" }}>{id}</span>
-                    <span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{value === "not-reached" ? t("elev.learnCare.receipt.notReached") : value === "cleared" ? t("elev.learnCare.receipt.cleared") : value}</span>
-                  </li>
-                ))}
-              </ul>
-            </details>}
+                erase could not reach says so instead of a silent 0. A row that
+                stands for several places says how many, in plain words; the
+                per-place ids live only in the saved receipt file. */}
+            {RECEIPT_ROWS.map((row) => {
+              const { total, unreached } = view.places[row];
+              const note = total > 1 || unreached > 0
+                ? (unreached > 0 ? t("elev.learnCare.receipt.placesSome", { n: total, m: unreached }) : t("elev.learnCare.receipt.placesAll", { n: total }))
+                : undefined;
+              return <ReceiptRow key={row} label={t(RECEIPT_LABEL[row])} note={note} value={view.rows[row] === "not-reached" ? t("elev.learnCare.receipt.notReached") : view.rows[row]} />;
+            })}
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             {!view.finished && (
@@ -315,20 +307,24 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
 }
 
 /** The receipt rows, in order: saved records, the server ledger, grants,
- *  consents, Storage files, this device. */
+ *  consents, consult requests, Storage files, this device. */
 const RECEIPT_LABEL: Record<ReceiptRowId, string> = {
   records: "elev.learnCare.receipt.records",
   memoryEvents: "sec.sharing.receipt.memoryEvents",
   shares: "sec.sharing.receipt.shares",
   consents: "sec.sharing.receipt.consents",
+  consultRequests: "elev.learnCare.receipt.consultRequests",
   storageFiles: "elev.learnCare.receipt.storageFiles",
   clientDocs: "elev.learnCare.receipt.clientDocs",
 };
 
-function ReceiptRow({ label, value }: { label: string; value: number | string }) {
+function ReceiptRow({ label, value, note }: { label: string; value: number | string; note?: string }) {
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
-      <span className="min-w-0" style={{ color: "var(--arbor-muted)" }}>{label}</span>
+      <span className="min-w-0" style={{ color: "var(--arbor-muted)" }}>
+        {label}
+        {note && <span className="block text-xs" data-receipt-places="">{note}</span>}
+      </span>
       <span className="shrink-0 whitespace-nowrap font-bold" style={{ color: "var(--arbor-ink)" }}>{value}</span>
     </div>
   );

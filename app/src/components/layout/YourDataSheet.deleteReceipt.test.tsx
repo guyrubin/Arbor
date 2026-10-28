@@ -5,8 +5,9 @@
  * synthetic boundary returning the receipt shapes eraseEverything produces.
  *  - a clean erase keeps today's complete state;
  *  - a forced server failure (500) and a partial result read "Deletion not
- *    finished", name the rows not reached, offer Try again and Save receipt,
- *    and keep the full per-place ledger;
+ *    finished", name the rows not reached, offer Try again and Save receipt;
+ *  - the sheet says how many places each row stands for in plain words and
+ *    shows no internal place id; the saved receipt file keeps every id;
  *  - Try again erases the same child again and folds into one receipt.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -58,7 +59,7 @@ const ledger = (over: Record<string, number | "cleared" | "not-reached"> = {}) =
   Object.fromEntries(IDS.map((id) => [id, over[id] ?? (id.startsWith("device:") && id !== "device:webStorage" ? "cleared" : 1)])) as DeletionReceipt["sinks"];
 const receipt = (sinks: DeletionReceipt["sinks"], counts: Partial<DeletionReceipt["counts"]> = {}): DeletionReceipt => ({
   childId: h.child.id, erasedAt: "2026-10-28T10:00:00.000Z",
-  counts: { memoryEvents: 3, shares: 1, consents: 2, storageFiles: 7, clientDocs: 4, ...counts }, sinks,
+  counts: { memoryEvents: 3, shares: 1, consents: 2, consultRequests: 1, storageFiles: 7, clientDocs: 4, ...counts }, sinks,
 });
 
 function elements(value: any): any[] {
@@ -87,6 +88,8 @@ async function eraseWith(result: DeletionReceipt) {
   return render();
 }
 const titleOf = (tree: any) => tree.props.title;
+/** Each row's plain-language places line, by label. */
+const notes = (tree: any) => Object.fromEntries(elements(byTestId(tree, "delete-receipt")).filter((e) => "label" in (e.props ?? {}) && "value" in e.props && e.props.note).map((e) => [e.props.label, e.props.note]));
 /** The receipt rows as rendered: label → value (ReceiptRow elements). */
 const rows = (tree: any) => Object.fromEntries(elements(byTestId(tree, "delete-receipt")).filter((e) => "label" in (e.props ?? {}) && "value" in e.props).map((e) => [e.props.label, e.props.value]));
 const rowValues = (tree: any) => text(byTestId(tree, "delete-receipt"));
@@ -104,8 +107,13 @@ describe.each(["en", "he"] as const)("delete receipt (%s)", (lang) => {
     expect(byTestId(tree, "delete-receipt-retry")).toBeUndefined();
     expect(Object.values(rows(tree))).not.toContain(t("elev.learnCare.receipt.notReached"));
     expect(rows(tree)[t("elev.learnCare.receipt.storageFiles")]).toBe(7);
+    expect(Object.keys(rows(tree))).toHaveLength(7);
     expect(rowValues(tree)).toContain(t("sec.sharing.receipt.body", { name: "Synthetic", date: "" }).split("{")[0].slice(0, 12));
-    expect(byTestId(tree, "delete-receipt-ledger")).toBeDefined();
+    // The places, in plain words: the saved records stand for 3 places here
+    // (2 collections + the profile), the device for 5.
+    expect(notes(tree)[t("elev.learnCare.receipt.records")]).toBe(t("elev.learnCare.receipt.placesAll", { n: 3 }));
+    expect(notes(tree)[t("elev.learnCare.receipt.clientDocs")]).toBe(t("elev.learnCare.receipt.placesAll", { n: 5 }));
+    expect(byTestId(tree, "delete-receipt-ledger")).toBeUndefined();
   });
 
   it("a forced server failure (500): not finished, the server rows say not reached, Try again and Save are offered", async () => {
@@ -116,11 +124,16 @@ describe.each(["en", "he"] as const)("delete receipt (%s)", (lang) => {
     expect(byTestId(tree, "delete-receipt").props["data-receipt-state"]).toBe("unfinished");
     expect(rowValues(tree)).toContain(t("elev.learnCare.receipt.unfinishedBody", { name: "Synthetic" }));
     const shown = rows(tree);
-    for (const key of ["elev.learnCare.receipt.records", "sec.sharing.receipt.memoryEvents", "sec.sharing.receipt.shares", "sec.sharing.receipt.consents", "elev.learnCare.receipt.storageFiles"]) {
+    for (const key of ["sec.sharing.receipt.memoryEvents", "sec.sharing.receipt.shares", "sec.sharing.receipt.consents", "elev.learnCare.receipt.consultRequests", "elev.learnCare.receipt.storageFiles"]) {
       expect(shown[t(key)], key).toBe(t("elev.learnCare.receipt.notReached"));
     }
+    // Each row's state comes from its own places: the saved records the
+    // device erased are counted, the server failure does not mark them.
+    expect(shown[t("elev.learnCare.receipt.records")]).toBe(3);
     expect(shown[t("elev.learnCare.receipt.clientDocs")]).toBe(4); // the device half did run
-    expect(Object.keys(shown)).toHaveLength(6);
+    expect(Object.keys(shown)).toHaveLength(7);
+    expect(notes(tree)[t("sec.sharing.receipt.memoryEvents")]).toBe(t("elev.learnCare.receipt.placesSome", { n: 2, m: 2 }));
+    expect(notes(tree)[t("sec.sharing.receipt.shares")]).toBe(t("elev.learnCare.receipt.placesSome", { n: 1, m: 1 }));
     expect(byTestId(tree, "delete-receipt-retry")).toBeDefined();
     byTestId(tree, "delete-receipt-save").props.onClick();
     expect(h.downloads).toHaveLength(1);
@@ -134,7 +147,7 @@ describe.each(["en", "he"] as const)("delete receipt (%s)", (lang) => {
     expect(titleOf(tree)).toBe(t("elev.learnCare.receipt.unfinishedTitle"));
     const shown = rows(tree);
     expect(Object.entries(shown).filter(([, v]) => v === t("elev.learnCare.receipt.notReached")).map(([k]) => k)).toEqual([t("elev.learnCare.receipt.records")]);
-    expect(rowValues(tree)).toContain("firestore:milestones"); // the ledger names the place
+    expect(notes(tree)[t("elev.learnCare.receipt.records")]).toBe(t("elev.learnCare.receipt.placesSome", { n: 3, m: 1 }));
   });
 
   it("Try again erases the same child again and folds into one finished receipt", async () => {
@@ -148,5 +161,19 @@ describe.each(["en", "he"] as const)("delete receipt (%s)", (lang) => {
     expect(h.deleteChild).toHaveBeenCalledWith("child-a");
     expect(titleOf(tree)).toBe(t("sec.sharing.receipt.title"));
     expect(byTestId(tree, "delete-receipt-retry")).toBeUndefined();
+  });
+});
+
+describe("the sheet speaks in places, never in internal ids (critic r2)", () => {
+  it.each(["en", "he"] as const)("no firestore:/device:/storage:/server: id is rendered; the saved receipt keeps them (%s)", async (lang) => {
+    h.lang = lang;
+    const failed = ledger({ "server:shares": "not-reached", "firestore:milestones": "not-reached" });
+    const tree = await eraseWith(receipt(failed, { shares: 0 }));
+    const rendered = JSON.stringify(elements(byTestId(tree, "delete-receipt")).map((e) => [e.props?.label, e.props?.note, e.props?.value, typeof e.props?.children === "string" ? e.props.children : ""]));
+    expect(rendered).not.toMatch(/firestore:|device:|storage:|server:/);
+    byTestId(tree, "delete-receipt-save").props.onClick();
+    const saved = h.downloads.at(-1)![1] as DeletionReceipt;
+    expect(Object.keys(saved.sinks!)).toEqual(IDS);
+    expect(saved.sinks!["firestore:milestones"]).toBe("not-reached");
   });
 });

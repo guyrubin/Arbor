@@ -92,8 +92,9 @@ export const en: Record<string, string> = {
   "elev.learnCare.receipt.notReached": "Not reached",
   "elev.learnCare.receipt.retry": "Try again",
   "elev.learnCare.receipt.save": "Save receipt",
-  "elev.learnCare.receipt.details": "Every place checked ({n})",
-  "elev.learnCare.receipt.cleared": "Cleared",
+  "elev.learnCare.receipt.consultRequests": "Consult requests erased",
+  "elev.learnCare.receipt.placesAll": "{n} places · all erased",
+  "elev.learnCare.receipt.placesSome": "{n} places · {m} not reached",
   "elev.learnCare.saved.browse": "Browse picks for {name}",
   // R12: the shelf pages at 30 reads. This is a LENGTH control, not an age
   // one — "Show all ages" next to it is the age control, and the two must
@@ -369,8 +370,9 @@ export const he: Record<string, string> = {
   "elev.learnCare.receipt.notReached": "לא הושלם",
   "elev.learnCare.receipt.retry": "לנסות שוב",
   "elev.learnCare.receipt.save": "לשמור את הקבלה",
-  "elev.learnCare.receipt.details": "כל המקומות שנבדקו ({n})",
-  "elev.learnCare.receipt.cleared": "נוקה",
+  "elev.learnCare.receipt.consultRequests": "בקשות ייעוץ שנמחקו",
+  "elev.learnCare.receipt.placesAll": "{n} מקומות · הכול נמחק",
+  "elev.learnCare.receipt.placesSome": "{n} מקומות · {m} לא הושלמו",
   "elev.learnCare.saved.browse": "לעיין בהמלצות עבור {name}",
   "elev.learnCare.shelf.more": "להציג עוד קריאות ({n})",
   "elev.learnCare.shelf.fewer": "להציג פחות קריאות",
