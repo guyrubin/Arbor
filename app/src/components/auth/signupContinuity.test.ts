@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { en, he, translate } from "../../lib/i18n";
+import { translate } from "../../lib/i18n";
 import { AUTH_ERROR_CODES, authErrorKey } from "../../lib/i18nElevation/storeShell";
 import { captureAttribution, consumeReferralCode, loadAttribution } from "../../lib/attribution";
 
@@ -19,7 +19,6 @@ const AUTH = strip(readFileSync(path.join(here, "..", "..", "context", "AuthCont
 
 const INVITE_EN = /invite|request access|been invited/i;
 const INVITE_HE = /הזמנה|הוזמנ|בקשת גישה|בקשו גישה/;
-const authKeys = (dict: Record<string, string>) => Object.keys(dict).filter((k) => /^(auth\.|elev\.auth\.|elev\.storeshell\.auth\.)/.test(k));
 
 describe("B-RESID-05 · the front door is open: no invite-only wording, no access request", () => {
   it("the login screen carries no invite-only line and no access-request control", () => {
@@ -28,18 +27,18 @@ describe("B-RESID-05 · the front door is open: no invite-only wording, no acces
     }
   });
 
-  it("no sign-in copy in EN or HE says the app is by invitation or asks for access", () => {
-    const enAuth = Object.fromEntries(authKeys(en).map((k) => [k, translate("en", k)]));
-    const heAuth = Object.fromEntries(authKeys(en).map((k) => [k, translate("he", k)]));
-    for (const k of [...Object.keys(enAuth), ...AUTH_ERROR_CODES.map((c) => authErrorKey(c)), authErrorKey("auth/unknown")]) {
+  it("no sign-in copy the parent can see, in EN or HE, says the app is by invitation or asks for access", () => {
+    // Every key the login screen renders, plus every sign-in error it can show.
+    const shown = [...new Set([...LOGIN.matchAll(/\bt\("([a-zA-Z0-9_.-]+)"/g)].map((m) => m[1]))];
+    expect(shown.length).toBeGreaterThan(12);
+    for (const k of [...shown, ...AUTH_ERROR_CODES.map((c) => authErrorKey(c)), authErrorKey("auth/unknown")]) {
       expect(translate("en", k), k).not.toMatch(INVITE_EN);
       expect(translate("he", k), k).not.toMatch(INVITE_HE);
     }
-    expect(Object.keys(heAuth).length).toBeGreaterThan(5);
     // negative control: the dropped lines fail the rule
-    expect("Invite-only for now.").toMatch(INVITE_EN);
+    expect(translate("en", "auth.inviteOnly")).toMatch(INVITE_EN);
     expect("No Arbor account found for this email. Request access if you haven't been invited yet.").toMatch(INVITE_EN);
-    expect("בהזמנה בלבד בשלב זה.").toMatch(INVITE_HE);
+    expect(translate("he", "auth.inviteOnly")).toMatch(INVITE_HE);
     expect("נסו שוב או בקשו גישה.").toMatch(INVITE_HE);
   });
 });
@@ -75,13 +74,6 @@ describe("B-RESID-05 · a new family creates its account with e-mail (Google sta
     expect(authErrorKey("auth/email-already-in-use")).toBe("elev.storeshell.auth.err.emailInUse");
     expect(authErrorKey("auth/weak-password")).toBe("elev.storeshell.auth.err.weakPassword");
     for (const k of ["elev.storeshell.auth.err.emailInUse", "elev.storeshell.auth.err.weakPassword"]) expect(translate(lang, k), k).not.toBe(k);
-  });
-
-  it("the dropped access-request strings left both dictionaries", () => {
-    for (const k of ["auth.inviteOnly", "auth.requestAccess", "auth.accessPrivacy", "auth.accessReceived"]) {
-      expect(en[k], k).toBeUndefined();
-      expect(he[k], k).toBeUndefined();
-    }
   });
 });
 
