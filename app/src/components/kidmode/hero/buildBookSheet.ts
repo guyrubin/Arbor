@@ -388,8 +388,13 @@ export function startBrowserBookSheet(childId: string, avatarHash: string): Prom
 export const planSheetRoutePose = (pose: string): HeroPoseId => planRoutePose(pose as PlanPose);
 
 export function startBrowserPlanSheet(childId: string, avatarHash: string, poses: readonly string[]): Promise<BookBuildResult> {
-  return startBookSheet(
+  const job = startBookSheet(
     { childId, avatarHash, bookId: PLAN_SHEET_BOOK_ID, poses },
     (cancelled) => browserBookBuilderDeps(childId, cancelled, PLAN_SHEET_BOOK_ID, planSheetRoutePose),
   );
+  // The plan sheet shows the hero: the plan-book narration attaches here (buildBookNarration.afterPlanSheet), as the book's does after its sheet.
+  void job.then((r) => {
+    if (r.status === "complete" || r.status === "already") void import("./buildBookNarration").then((m) => m.afterPlanSheet(childId)).catch(() => undefined);
+  });
+  return job;
 }

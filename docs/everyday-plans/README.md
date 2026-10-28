@@ -53,14 +53,13 @@ code on PR 2 of the programme:
    from the `books` rows — on approval and on load; the parent reviews the
    poses in the hero review strip. This spends in production per child
    (≈ 12 poses at the image model's price), on the product's own meter.
-3. **Plates.** `app/scripts/plan-plates.mts` paints each pattern's plates from
-   `PLAN_PLATE_BRIEFS` (child-free, text-free, one key light, hero slot empty,
-   game-tile look) on the project's Vertex image model, QC-checks each with the
-   vision route, writes `app/public/visuals/plans/<pattern>/<plate>.webp` and a
-   provenance JSON, idempotently. The manual workflow
-   `.github/workflows/arbor-plan-plates.yml` (WIF auth as the eval run) runs it
-   and opens a PR; dispatching it is the spend, and an IAM refusal names
-   `roles/aiplatform.user`. Narration stays held: silence plays.
+3. **Plates and narration** are in-product too, on sibling PRs: the shared,
+   child-free plates are painted once through the server's own image provider
+   and served to every signed-in user from the shared prefix of the assets
+   bucket; plan-book narration attaches to `afterPlanSheet(childId)`
+   (`app/src/components/kidmode/hero/buildBookNarration.ts`), the one hook the
+   plan sheet builder calls when the child's plan sheet shows the hero — the
+   same place canonical books start theirs. Nothing is run by hand.
 
 ## The review packets (B-GA-37)
 
