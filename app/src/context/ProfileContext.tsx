@@ -132,9 +132,9 @@ async function provisionOwnership(childId: string, childProfile: Partial<ChildPr
  */
 export const GOAL_CONFIRM_MS = 10_000;
 const deviceOffline = () => typeof navigator !== "undefined" && navigator.onLine === false;
-function withinGoalBound<T>(write: Promise<T>): Promise<T> {
+function withinGoalBound<T>(write: Promise<T>, onTimeout?: () => void): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_resolve, reject) => { timer = setTimeout(() => reject(new Error("The goal was not confirmed")), GOAL_CONFIRM_MS); });
+  const timeout = new Promise<never>((_resolve, reject) => { timer = setTimeout(() => { onTimeout?.(); reject(new Error("The server did not answer in time")); }, GOAL_CONFIRM_MS); });
   void write.catch(() => {});
   return Promise.race([write, timeout]).finally(() => clearTimeout(timer));
 }
@@ -143,13 +143,18 @@ function withinGoalBound<T>(write: Promise<T>): Promise<T> {
  * B-DATA-15: a new child's id is ISSUED by the server — random, and created
  * already parented to this account's family — never chosen on the device in a
  * shared `child-<timestamp>` namespace another account could collide with or
- * claim. A failure (offline, server down) rejects: the caller keeps its form.
+ * claim. A failure (offline, server down, or no answer within the same
+ * bound a goal choice has, GOAL_CONFIRM_MS) rejects: the caller keeps its
+ * form and shows its existing error — Add child never sits on "Saving…".
  */
 async function issueChildId(current: () => boolean): Promise<string> {
-  const headers = await authHeaders();
-  if (!current()) throw new Error("The profile session changed");
-  const res = await fetch("/api/onboarding/child-id", { method: "POST", headers });
-  const body = res.ok ? (await res.json()) as { childId?: unknown } : null;
+  const aborter = typeof AbortController === "undefined" ? null : new AbortController();
+  const body = await withinGoalBound((async () => {
+    const headers = await authHeaders();
+    if (!current()) throw new Error("The profile session changed");
+    const res = await fetch("/api/onboarding/child-id", { method: "POST", headers, ...(aborter ? { signal: aborter.signal } : {}) });
+    return res.ok ? (await res.json()) as { childId?: unknown } : null;
+  })(), () => aborter?.abort());
   if (!current()) throw new Error("The profile session changed");
   if (!body || typeof body.childId !== "string" || !body.childId) throw new Error("A child id was not issued");
   return body.childId;

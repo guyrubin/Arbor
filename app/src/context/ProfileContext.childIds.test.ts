@@ -5,12 +5,14 @@
  * issued (offline, server down) addChild rejects and writes nothing — the
  * caller keeps its form. Synthetic SDK/fetch boundaries only.
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { harness } from "./ProfileContext.testSupport";
 import type { ChildProfile } from "../types";
 
 const input: Omit<ChildProfile, "id"> = { name: "Synthetic", age: 4, birthMonth: "2022-04", languages: ["English"], schoolContext: "", strengths: [], challenges: [], onboardingComplete: true };
 const owned = (id: string): ChildProfile => ({ ...input, id });
+
+afterEach(() => { vi.useRealTimers(); });
 
 describe("B-DATA-15 — new child ids are server-issued", () => {
   it("addChild writes the profile under the issued id, then provisions that id", async () => {
@@ -34,6 +36,17 @@ describe("B-DATA-15 — new child ids are server-issued", () => {
     expect(h.calls.sets).toEqual(["users/A/children/child-issued-1"]);
   });
 
+  it("no answer from the server → addChild fails within GOAL_CONFIRM_MS (never an endless Saving…) and writes nothing", async () => {
+    const h = harness({ rows: [owned("A-child")] }); h.effects(); await h.flush();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const { GOAL_CONFIRM_MS } = await import("./ProfileContext");
+    h.transport.headers = () => new Promise(() => {});
+    const state = { error: null as unknown };
+    void h.value.addChild(input).catch((e) => { state.error = e; });
+    await vi.advanceTimersByTimeAsync(GOAL_CONFIRM_MS - 1); expect(state.error).toBeNull();
+    await vi.advanceTimersByTimeAsync(1); expect(state.error).toBeInstanceOf(Error);
+    expect(h.calls.sets).toEqual([]);
+  });
   it("no issued id → addChild rejects and writes nothing", async () => {
     const h = harness({ rows: [owned("A-child")] }); h.effects(); await h.flush();
     h.transport.headers = async () => { throw Error("offline"); };
