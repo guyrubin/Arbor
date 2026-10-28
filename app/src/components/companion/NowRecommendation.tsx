@@ -71,14 +71,18 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
     ...(topic ? { topicDomains: GUIDE_ART[topic].domains } : {}),
   }), [childProfile, behaviorLogs, playLogs, signals.lastActionRecommendation, signals.lastActionOutcome, topic, minute]);
   const pick = picks[libraryIndex % Math.max(1, picks.length)];
-  const activity = pick ? localizeActivity(pick.activity, lang) : null;
   const aiHeadline = focusHeadlineFor(focus);
   const aiStep = focus?.tryToday?.trim() || aiHeadline;
   const useAi = !!aiHeadline && !preferLibrary;
+  // v3 question continuity (audit #3): a question with a guide area, no
+  // screened step and no library idea in its areas gets the honest empty
+  // state, never a previous question's step or an unrelated idea.
+  const questionEmpty = !!topic && !useAi && !picks.some((row) => row.reason === "topic-match");
+  const activity = pick && !questionEmpty ? localizeActivity(pick.activity, lang) : null;
   // FEAT-02 r1: a failed choice outlives the remount its optimistic write causes.
   const acceptFailed = useAcceptFailed(childProfile.id, useAi ? aiStep : null);
-  const headline = useAi ? aiStep : activity?.title ?? copy.noOffer;
-  const body = useAi ? focusBodyFor(focus) : activity?.whatItBuilds ?? copy.noOfferBody;
+  const headline = useAi ? aiStep : activity?.title ?? (questionEmpty ? copy.noStepForQuestion : copy.noOffer);
+  const body = useAi ? focusBodyFor(focus) : activity?.whatItBuilds ?? (questionEmpty ? copy.noStepForQuestionBody : copy.noOfferBody);
   // Why it was picked, in the parent's words. The child's age is said once, up
   // front, so the list never repeats it; a first idea with no moments yet says
   // so plainly instead of naming age alone.
@@ -95,7 +99,7 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
         .map(key => (parts.vars.n !== undefined ? t(key, { n: parts.vars.n }) : t(key)))
         .join(t("today.intent.why.sep"));
     }
-    if (!activity) return copy.noOfferWhy;
+    if (!activity) return questionEmpty ? copy.noStepForQuestionWhy : copy.noOfferWhy;
     return pick?.continuation ? copy.continuationWhy
       : pick?.reason === "topic-match" ? copy.topicWhy
       : pick?.reason === "goal-match" ? copy.goalsWhy
@@ -129,12 +133,13 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
   const failed = saveError || acceptFailed;
   // FEAT-02 r2: the question is quoted only on a library idea picked for its
   // area, never on an AI pick the model made without it.
-  const asked = !useAi && activity && pick?.reason === "topic-match" ? activeFamilyTopic?.title ?? null : null;
+  const asked = (!useAi && activity && pick?.reason === "topic-match") || questionEmpty ? activeFamilyTopic?.title ?? null : null;
   const offered = useAi || !!activity;
+  const askAboutQuestion = () => onTalkOpen(copy.askQuestionPrompt(activeFamilyTopic?.title ?? ""));
   // The guide's title is the face's h2; the body below never repeats it.
   return <NowPlanFrame kind="recommendation" lang={lang} tag={copy.planTag.recommendation} say={say ?? copy.planSay.recommendation} quoted={!!say} title={headline} titleId={`${id}-title`}
     meta={useAi ? copy.noStepYet : activity ? copy.planMeta.recommendation : undefined} question={activeFamilyTopic?.title}>
-  <section className="now-lead arbor-depth-primary" data-module="now-recommendation" data-recommendation-source={useAi ? "ai" : "library"} aria-labelledby={`${id}-title`}>
+  <section className="now-lead arbor-depth-primary" data-module="now-recommendation" data-recommendation-source={useAi ? "ai" : questionEmpty ? "none" : "library"} data-testid={questionEmpty ? "now-question-empty" : undefined} aria-labelledby={`${id}-title`}>
     <p className="now-plan-kicker">{copy.stepKicker}</p>
     {!useAi && activity && activity.steps.length > 0 && <p className="now-next">{copy.nextStep(activity.steps[0])}</p>}
     {body && <p className="now-lead-body" dir="auto">{body}</p>}
@@ -142,14 +147,16 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
     <div className="now-lead-actions">
       {useAi || activity
         ? <button type="button" className="companion-primary" data-primary-move="choose-next-step" aria-haspopup="dialog" onClick={() => { if (!useAi) setPreferLibrary(true); setReaderOpen(true); }}>{copy.begin}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>
-        : <button type="button" className="companion-primary" data-primary-move="choose-next-step" onClick={() => setActiveTab("practice")}>{copy.togetherTitle}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>}
+        : questionEmpty
+          ? <button type="button" className="companion-primary" data-primary-move="choose-next-step" onClick={askAboutQuestion}>{t("ms.askArbor")}<Icon name="chat_bubble" size={19} /></button>
+          : <button type="button" className="companion-primary" data-primary-move="choose-next-step" onClick={() => setActiveTab("practice")}>{copy.togetherTitle}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>}
       {adapt && <button type="button" className="companion-text-button" onClick={adapt}>{copy.adapt}<Icon name="chat_bubble" size={17} /></button>}
     </div>
     {failed && !readerOpen && <p className="now-inline-status" role="alert">{copy.saveError}</p>}
     <NowPlanBody why={reason} time={offered ? (useAi ? copy.readMinutes(readMinutes) : copy.minutes(activity!.durationMin)) : null} size={offered ? copy.oneAction : null}
       name={offered && ageText ? name : undefined} ageText={ageText} question={asked} />
 
-    {(useAi ? picks.length > 0 : picks.length > 1) && <div className="now-alternatives">
+    {!questionEmpty && (useAi ? picks.length > 0 : picks.length > 1) && <div className="now-alternatives">
       <button type="button" className="companion-text-button" onClick={another}>{copy.otherIdea}<Icon name="arrow_forward" size={17} className="rtl:-scale-x-100" /></button>
     </div>}
     {/* B-STATUS-01: Arbor's idea is still coming — the ONE pending line,

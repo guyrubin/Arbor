@@ -10,7 +10,7 @@ import { leadPlan, nightMomentText, recordNight, unrecordNight } from "../../lib
 import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import { dayKey } from "../../practice/signals";
 import { isObservationAction, type ActionLoopEntry } from "../../actionLoop/model";
-import { nextChosenAction } from "./companionChoices";
+import { nextChosenAction, shelvesForQuestion } from "./companionChoices";
 import { NOW_COPY } from "./nowViewCopy";
 import NowRecommendation from "./NowRecommendation";
 import { NowAgendaExtras, NowNoticeExtras, NowWhatChangedLines } from "./NowTodayLines";
@@ -117,7 +117,11 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const openPlan = () => { setActiveTab("journal"); window.location.hash = `#/journal?plan=${plan?.def.id ?? ""}`; };
   // v4: the agenda row says where the family is in it ("Week 2 of 4"), counts only.
   const programWeeks = Array.isArray(program?.program.weeks) ? program.program.weeks.length : 0;
+  // v3 question continuity (audit #3): only a step chosen under the active
+  // question leads it; the loop's picks are drawn from the question's shelves.
   const action = useMemo(() => nextChosenAction(actionLoop, topic?.id), [actionLoop, topic?.id]);
+  const questionShelves = useMemo(() => shelvesForQuestion(topic?.title), [topic?.title]);
+  const questionGuided = !!topic && questionShelves.length > 0;
   const [receiptAction, setReceiptAction] = useState<{ scope: object; action: ActionLoopEntry } | null>(null);
   const [, refreshSaving] = useState(0);
   const [saveError, setSaveError] = useState(false);
@@ -193,6 +197,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     now,
     aiPracticeId: focus?.practiceVia === "ai" ? focus.practiceId : undefined,
     openPhotoCapture: () => openCaptureSheet({ mode: "photo" }),
+    questionShelves,
   });
   const [tonightOpen, setTonightOpen] = useState(false);
   // ── Return hooks (parity 9 Oct): the visit stamp, a lifecycle note, the offer. ──
@@ -256,7 +261,10 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     ? (loop.pick.via === "ai" && focus?.why?.trim()) || t(loop.whyReason && (loop.whyReason !== "since" || loop.whyDate) ? WHY_KEY[loop.whyReason] : "elev.loop.practice.whyShelf", { shelf: shelfLabel(loop.pick.shelf, t), name, date: loop.whyDate ?? "" })
     : "";
   const planWhy = shownLead === "practice" ? practiceWhy || copy.pickedWhy.practice : shownLead === "tonight" && tonightOpen ? copy.pickedTonightOpen : copy.pickedWhy[shownLead];
-  const planQuestion = shownLead === "step" && chosen && topic && chosen.topicId === topic.id ? topic.title : null;
+  // The question is named only where it drove the pick: a step chosen under
+  // it, or a practice/notice drawn from its shelves.
+  const planQuestion = shownLead === "step" && chosen && topic && chosen.topicId === topic.id ? topic.title
+    : (shownLead === "practice" || shownLead === "notice") && questionGuided ? topic.title : null;
 
   return <div className="companion-page now-page" dir={he ? "rtl" : "ltr"}>
     <header className="now-heading">

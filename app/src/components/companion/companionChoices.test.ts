@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import { STUDIO_WORLDS } from "../practice/studioWorlds";
-import { nextChosenAction, STORY_DOORS, WORLD_ART } from "./companionChoices";
+import { nextChosenAction, shelvesForQuestion, STORY_DOORS, WORLD_ART } from "./companionChoices";
 
 const row = (id: string, date: string, extra: Partial<ActionLoopEntry> & { topicId?: string } = {}): ActionLoopEntry => ({
   id, acceptedAt: date, recommendation: `Try ${id}`, source: "coach", capacity: "tiny", status: "accepted", ...extra,
@@ -26,10 +26,30 @@ describe("Now's parent-chosen step", () => {
     expect(nextChosenAction([unrelated, linked], "question-a")).toEqual(linked);
     expect(nextChosenAction([linked, unrelated])).toEqual(unrelated);
   });
+  // v3 question continuity (audit #3): the review's P0 "drawing question inherits morning plan".
+  it("with a question set and nothing linked, returns null rather than a previous question's step", () => {
+    const mornings = row("mornings-step", "2026-10-07", { topicId: "question-mornings" });
+    const unlinked = row("old-coach-step", "2026-10-08");
+    expect(nextChosenAction([mornings, unlinked], "question-drawing")).toBeNull();
+    expect(nextChosenAction([mornings, unlinked])).toEqual(unlinked);
+  });
   it("ignores blank recommendations and never mutates the ledger's ordering", () => {
     const rows = [row("old", "2026-10-01"), row("new", "2026-10-07"), row("blank", "2026-10-08", { recommendation: "  " })];
     expect(nextChosenAction(rows)?.id).toBe("new");
     expect(rows.map((item) => item.id)).toEqual(["old", "new", "blank"]);
+  });
+});
+
+describe("the active question's shelves (audit #3)", () => {
+  it("maps a question's guide areas to parent shelves in both languages, splitting body by what the guide pictures", () => {
+    expect(shelvesForQuestion("Mornings end in a fight")).toEqual(["hands", "family"]);
+    expect(shelvesForQuestion("הבקרים נגמרים בריב")).toEqual(["hands", "family"]);
+    expect(shelvesForQuestion("Bedtime takes forever")).toEqual(["sleep", "family"]);
+    expect(shelvesForQuestion("He will not eat dinner")).toEqual(["food", "family"]);
+  });
+  it("is empty when the question names no guide, so the loop keeps its own order", () => {
+    expect(shelvesForQuestion("Why does he hum?")).toEqual([]);
+    expect(shelvesForQuestion(null)).toEqual([]);
   });
 });
 

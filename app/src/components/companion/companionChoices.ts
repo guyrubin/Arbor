@@ -1,17 +1,41 @@
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import type { ActiveTab } from "../../lib/routes";
 import { companionEn, companionHe } from "../../lib/i18nCompanion";
+import { GUIDE_ART, guideTopicFor, type GuideTopic } from "../../lib/guideArt";
+import { shelvesOfDomain, type ShelfId } from "../../lib/shelves/registry";
 
 /** Copy lives in the dictionaries (native-review packet covers it); a pair is read here. */
 type CopyKey = keyof typeof companionEn & keyof typeof companionHe;
 const pair = (key: CopyKey) => ({ en: companionEn[key], he: companionHe[key] });
 
 /** A parent's still-open choice survives midnight. Completed/superseded rows
- * never become a new task, and a different topic never borrows its outcome. */
+ * never become a new task. v3 question continuity (audit #3): with an active
+ * question only a step chosen under it leads; nothing links → null, never a
+ * previous question's step. Without a question the newest open step leads. */
 export function nextChosenAction(rows: readonly ActionLoopEntry[], topicId?: string): ActionLoopEntry | null {
   const open = rows.filter((row) => row.status === "accepted" && !row.outcome && row.recommendation.trim());
-  const linked = topicId ? open.filter((row) => (row as ActionLoopEntry & { topicId?: string }).topicId === topicId) : [];
-  return [...(linked.length ? linked : open)].sort((a, b) => b.acceptedAt.localeCompare(a.acceptedAt))[0] ?? null;
+  const pool = topicId ? open.filter((row) => (row as ActionLoopEntry & { topicId?: string }).topicId === topicId) : open;
+  return [...pool].sort((a, b) => b.acceptedAt.localeCompare(a.acceptedAt))[0] ?? null;
+}
+
+/** The two body shelves split by what the guide pictures; any other body topic takes both. */
+const BODY_SHELF_BY_TOPIC: Partial<Record<GuideTopic, ShelfId>> = { bedtime: "sleep", meals: "food" };
+
+/**
+ * v3 question continuity: the parent shelves the active question speaks to,
+ * through its guide topic's areas (lib/guideArt GUIDE_ART.domains). Empty when
+ * the question's words name no guide, so the loop keeps its own order and the
+ * card never claims a match it cannot show.
+ */
+export function shelvesForQuestion(title: string | null | undefined): ShelfId[] {
+  const topic = title ? guideTopicFor({ title }) : undefined;
+  if (!topic) return [];
+  const out = new Set<ShelfId>();
+  for (const domain of GUIDE_ART[topic].domains) {
+    const bodyShelf = domain === "body" ? BODY_SHELF_BY_TOPIC[topic] : undefined;
+    for (const shelf of bodyShelf ? [bodyShelf] : shelvesOfDomain(domain)) out.add(shelf);
+  }
+  return [...out];
 }
 
 /** v4: Together is three filters — Routines (Today's rhythm), Play (the games

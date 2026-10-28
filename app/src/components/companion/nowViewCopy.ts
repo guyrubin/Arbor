@@ -105,6 +105,11 @@ export const NOW_COPY = {
     pickedBecause: "Picked because:",
     pickedFirstLook: "a first idea — keep a moment and the next one gets sharper",
     noOfferWhy: "no new idea fits today, so start with time together",
+    // v3 question continuity (audit #3): the honest empty state when nothing yet speaks to the active question.
+    noStepForQuestion: "No step for this question yet",
+    noStepForQuestionBody: "Nothing here speaks to this question yet. Ask Arbor, and the step you choose together will wait for you here.",
+    noStepForQuestionWhy: "nothing in today’s ideas speaks to it yet",
+    askQuestionPrompt: (question: string) => `Help me with this question: ${question}`,
     readMinutes: (m: number) => `${m} min read`,
     oneAction: "One small action",
     noStepYet: "Not chosen yet",
@@ -227,6 +232,11 @@ export const NOW_COPY = {
     pickedBecause: "נבחר בגלל:",
     pickedFirstLook: "רעיון ראשון — שמרו רגע, והבא יהיה מדויק יותר",
     noOfferWhy: "אין היום רעיון חדש שמתאים, אז מתחילים מזמן ביחד",
+    // v3 question continuity (audit #3): the honest empty state when nothing yet speaks to the active question.
+    noStepForQuestion: "עוד אין צעד לשאלה הזאת",
+    noStepForQuestionBody: "עוד אין כאן משהו שעונה לשאלה הזאת. שאלו את ארבור, והצעד שתבחרו יחד יחכה לכם כאן.",
+    noStepForQuestionWhy: "עוד אין ברעיונות של היום משהו שעונה לה",
+    askQuestionPrompt: (question: string) => `עזור לי עם השאלה הזאת: ${question}`,
     readMinutes: (m: number) => `${m} דק׳ קריאה`,
     oneAction: "פעולה קטנה אחת",
     noStepYet: "עוד לא נבחר",
