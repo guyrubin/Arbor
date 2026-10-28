@@ -8,6 +8,7 @@ import { firstCopyKeys } from "../../lib/firsts";
 import type { useWeeklyRecap } from "../../hooks/useWeeklyRecap";
 import { collectMomentTimestamps } from "./sinceVisitEvents";
 import { coldStartLineKey, type WhatChangedLine } from "./whatChangedEvents";
+import { languageName } from "../../lib/languageName";
 
 /**
  * B-TODAY-21 — the ONE "What changed since you left" card on Today.
@@ -34,6 +35,8 @@ export const LINE_ICON: Record<WhatChangedLine["kind"], string> = {
   facts: "bookmark",
   ideas: "lightbulb",
   moments: "edit_note",
+  // B-GROWTH-15: the words the parent wrote down (the Words shelf's own glyph).
+  words: "chat_bubble",
   noticed: "visibility",
 };
 
@@ -69,6 +72,9 @@ export function whatChangedLineText(line: WhatChangedLine, t: TFn, lang: string,
         title: line.count === 1 ? t("elev.brief.changed.moments.one") : t("elev.brief.changed.moments.many", { n: num(line.count) }),
         sub: line.quote ? t("elev.loop.ms.quoted", { text: line.quote }) : undefined,
       };
+    case "words":
+      // B-GROWTH-15: the record's own words line ("2 new words in Hebrew") — the count and the language, never the words.
+      return { title: t(line.count === 1 ? "elev.growth.words.timeline.one" : "elev.growth.words.timeline.many", { count: num(line.count), language: languageName(line.language, t) }) };
     case "noticed":
       return { title: t("elev.sincevisit.row.noticed") };
   }

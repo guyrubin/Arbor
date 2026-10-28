@@ -8,7 +8,7 @@ import { translate } from "../../lib/i18n";
 import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 import { shelfLabel } from "../../lib/shelves/registry";
 import { routeHash } from "../../lib/routes";
-import { TONIGHT_STEPS } from "../../lib/loop/tonight";
+import { SELF_COUNT_CHOICES, SELF_COUNT_MAX, TONIGHT_STEPS } from "../../lib/loop/tonight";
 import { practiceText } from "./PracticeCard";
 import type { TonightFlowProps } from "./TonightFlow";
 
@@ -30,7 +30,7 @@ function setup(overrides: Partial<TonightFlowProps> = {}, lang: "en" | "he" = "e
     ...overrides,
   };
   const env = {
-    React, TONIGHT_STEPS, resolveHebrewSlash, shelfLabel, routeHash, practiceText,
+    React, TONIGHT_STEPS, SELF_COUNT_CHOICES, SELF_COUNT_MAX, resolveHebrewSlash, shelfLabel, routeHash, practiceText,
     pillBase: "button", Icon: "icon", FreeText: "free-text", ShelfGlyph: "shelf-glyph", Receipt: "receipt", NoticeCard: "notice-card",
     useLanguage: () => ({ uiLang: lang, t: (key: string, vars?: any) => translate(lang, key, vars) }),
     useState: (initial: any) => {
@@ -110,5 +110,34 @@ describe("Tonight keeps the shared object's persistence promise intact", () => {
     expect(notice).toMatchObject({ scopeKey: "owner:child-a", selected: "not_sure", observedAt: null, savedWords: "Separate parent words", confirmed: true });
     expect(notice.onAnswer("yes")).toBe(write.promise);
     expect(notice.onOpen).toBe(h.props.noticeActions!.onOpen); write.resolve(); h.unmount();
+  });
+});
+
+describe("B-PROG-03 — the parent proxy tap writes at once, through its own seam", () => {
+  const practice = PRACTICES.find(p => p.shelf === "words")!;
+  const pick = { practice, milestone: ALL_MILESTONES.find(m => m.id === practice.milestoneId)!, shelf: "words" as const, via: "program" as const, programId: "talk-together" };
+  it("turns: a tap calls onCount with the number (5+ = 5) and readies Save & next", () => {
+    const onCount = vi.fn();
+    const h = setup({ practice: pick, doseAnswer: "did", initialStep: 1, parentProxy: { kind: "turns", value: null, onCount } });
+    h.render();
+    expect(h.byId("tonight-save-next")["data-ready"]).toBe("false");
+    const tree = h.render();
+    const choices = tree.filter(e => e.props["data-testid"] === "tonight-proxy-choice");
+    expect(choices.map(c => c.props["data-value"])).toEqual(["0", "1", "2", "3", "4", "5"]);
+    choices[5].props.onClick();
+    expect(onCount).toHaveBeenCalledWith(5);
+    const after = h.render();
+    expect(after.find(e => e.props["data-testid"] === "tonight-save-next")!.props["data-ready"]).toBe("true");
+    expect(after.filter(e => e.props["data-testid"] === "tonight-proxy-choice" && e.props["aria-pressed"]).map(e => e.props["data-value"])).toEqual(["5"]);
+    h.unmount();
+  });
+  it("routine: a tap calls onRoutine with the answer", () => {
+    const onRoutine = vi.fn();
+    const h = setup({ practice: { ...pick, programId: "steady-nights" }, doseAnswer: "did", initialStep: 1, parentProxy: { kind: "routine", value: null, onRoutine } }, "he");
+    const choices = h.render().filter(e => e.props["data-testid"] === "tonight-proxy-choice");
+    expect(choices.map(c => c.props["data-value"])).toEqual(["done_in_order", "not_tonight"]);
+    choices[0].props.onClick();
+    expect(onRoutine).toHaveBeenCalledWith("done_in_order");
+    h.unmount();
   });
 });
