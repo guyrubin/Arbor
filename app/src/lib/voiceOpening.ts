@@ -50,3 +50,32 @@ export function runOpening(line: string, deps: { speak: OpeningSpeaker; stopSpea
   deps.speak(line, { onEnd: () => finish("done"), onError: () => finish("done") });
   return run;
 }
+
+/**
+ * The door's decision (CoachTab startFromDoor), pure so it is tested as it
+ * runs. Busy (voice on, a review open, a notice handoff waiting) refuses.
+ * Card words with a voice to say them: the words start and the toggle is NOT
+ * called here; the opening's end calls it. No words: the ONE toggle,
+ * synchronously, and true only when it began an attempt. So a toggle that a
+ * notice or a review holds back (B-PROV-12's provider notice on the ai-ops
+ * branch returns before begin()) can never drop the card's words.
+ */
+export function startDoor(opening: string | undefined, deps: {
+  busy: () => boolean;
+  canSpeak: () => boolean;
+  playWords: (line: string) => void;
+  toggle: () => void;
+  attempt: () => unknown;
+}): boolean {
+  if (deps.busy()) return false;
+  const line = opening?.replace(/\s+/g, " ").trim() || null;
+  if (line && deps.canSpeak()) {
+    deps.playWords(line);
+    return true;
+  }
+  const before = deps.attempt();
+  deps.toggle();
+  const after = deps.attempt();
+  return after !== null && after !== undefined && after !== before;
+}
+

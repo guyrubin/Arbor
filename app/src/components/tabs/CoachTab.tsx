@@ -50,7 +50,7 @@ import { startDictation, speechSupported } from "../../lib/speech";
 // B-VOICE-08: a door outside this panel starts Talk inside its own tap.
 import { registerConversationVoiceStarter } from "../../lib/companionConversation";
 // B-VOICE-02: a card's words are said before the microphone opens.
-import { runOpening, type OpeningRun } from "../../lib/voiceOpening";
+import { runOpening, startDoor, type OpeningRun } from "../../lib/voiceOpening";
 import { speakText } from "../../lib/voice";
 // AI-V2(a): the chip/orb tap contract (start / interrupt / stop) is a pure
 // tested decision function — while Arbor speaks on the fallback loop a tap
@@ -1045,38 +1045,37 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // once the Live probe has answered, so the tap takes the right route; a tap
   // that lands before that is queued (lib/companionConversation) and runs here
   // the moment this registers.
-  const startFromDoor = (opening?: string): boolean => {
-    if (voicePhase !== "off" || voiceReviewOpen || readNoticeTalk()) return false;
-    const line = opening?.replace(/\s+/g, " ").trim() || null;
-    if (line && ttsSupported()) {
-      // B-VOICE-02: the card's words first, on Live and on the browser loop
-      // alike: "speaking" paints now, inside the tap; the microphone and the
-      // session start only when the words have finished or the parent taps to
-      // skip them (lib/voiceOpening), so the words can never be transcribed as
-      // the parent's turn. Text-to-speech only: never sent, never in the thread.
-      const token = {};
-      openingTokenRef.current = token;
-      setVoiceNotice(null);
-      setOpeningCaption(line);
-      setVoicePhase("speaking");
-      openingRunRef.current = runOpening(line, {
-        speak: (text, handlers) => { speakText(text, handlers); },
-        stopSpeaking,
-        onDone: () => {
-          if (openingTokenRef.current !== token) return;
-          openingTokenRef.current = null;
-          openingRunRef.current = null;
-          setOpeningCaption("");
-          setVoicePhase("off");
-          setStartAfterOpening((n) => n + 1);
-        },
-      });
-      return true;
-    }
-    const before = voiceLifetimeRef.current.current;
-    void toggleVoice();
-    return voiceLifetimeRef.current.current !== null && voiceLifetimeRef.current.current !== before;
+  // B-VOICE-02: the card's words first, on Live and on the browser loop
+  // alike: "speaking" paints now, inside the tap; the microphone and the
+  // session start only when the words have finished or the parent taps to
+  // skip them (lib/voiceOpening), so the words can never be transcribed as
+  // the parent's turn. Text-to-speech only: never sent, never in the thread.
+  const playOpening = (line: string) => {
+    const token = {};
+    openingTokenRef.current = token;
+    setVoiceNotice(null);
+    setOpeningCaption(line);
+    setVoicePhase("speaking");
+    openingRunRef.current = runOpening(line, {
+      speak: (text, handlers) => { speakText(text, handlers); },
+      stopSpeaking,
+      onDone: () => {
+        if (openingTokenRef.current !== token) return;
+        openingTokenRef.current = null;
+        openingRunRef.current = null;
+        setOpeningCaption("");
+        setVoicePhase("off");
+        setStartAfterOpening((n) => n + 1);
+      },
+    });
   };
+  const startFromDoor = (opening?: string): boolean => startDoor(opening, {
+    busy: () => voicePhase !== "off" || voiceReviewOpen || !!readNoticeTalk(),
+    canSpeak: ttsSupported,
+    playWords: playOpening,
+    toggle: () => { void toggleVoice(); },
+    attempt: () => voiceLifetimeRef.current.current,
+  });
   // B-VOICE-02: the session starts on the render after the words, through the
   // ONE toggle (its notice, review and stop rules unchanged).
   useEffect(() => {

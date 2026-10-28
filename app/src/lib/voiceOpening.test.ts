@@ -3,7 +3,7 @@
  * microphone and the session only after them; a stop starts nothing.
  */
 import { describe, expect, it, vi } from "vitest";
-import { runOpening, type OpeningSpeaker } from "./voiceOpening";
+import { runOpening, startDoor, type OpeningSpeaker } from "./voiceOpening";
 
 const harness = () => {
   const order: string[] = [];
@@ -62,3 +62,55 @@ describe("B-VOICE-02 · the card's words before the microphone", () => {
     expect(order).toEqual(["speak", "start"]);
   });
 });
+
+/** The door as CoachTab wires it, with the toggle's own outcomes faked:
+ *  "begins" starts a voice attempt; "held" is B-PROV-12's provider notice on
+ *  the ai-ops branch (it returns before begin()); "review" is an open review. */
+function door(toggleOutcome: "begins" | "held", opts: { busy?: boolean; canSpeak?: boolean } = {}) {
+  const log: string[] = [];
+  let attempt: object | null = null;
+  const deps = {
+    busy: () => opts.busy === true,
+    canSpeak: () => opts.canSpeak !== false,
+    playWords: (line: string) => { log.push(`words:${line}`); },
+    toggle: () => { log.push("toggle"); if (toggleOutcome === "begins") attempt = {}; },
+    attempt: () => attempt,
+  };
+  return { log, deps };
+}
+
+describe("B-VOICE-02 / B-PROV-12 · the door (lib/voiceOpening startDoor, as CoachTab runs it)", () => {
+  it("card words: the words start and the toggle is not called in the tap (the opening's end calls it)", () => {
+    const { log, deps } = door("begins");
+    expect(startDoor("  Same bedtime\n as every night. ", deps)).toBe(true);
+    expect(log).toEqual(["words:Same bedtime as every night."]);
+  });
+
+  it("B-PROV-12: a toggle that a provider notice holds back cannot drop the card's words", () => {
+    const { log, deps } = door("held");
+    expect(startDoor("Let's breathe together.", deps)).toBe(true);
+    expect(log).toEqual(["words:Let's breathe together."]);
+    // …and when the words end, the toggle runs and the notice is what the parent sees.
+    deps.toggle();
+    expect(log).toEqual(["words:Let's breathe together.", "toggle"]);
+  });
+
+  it("no words: the ONE toggle in the same call; true only when it began an attempt", () => {
+    const begins = door("begins");
+    expect(startDoor(undefined, begins.deps)).toBe(true);
+    expect(begins.log).toEqual(["toggle"]);
+    const held = door("held");
+    expect(startDoor(undefined, held.deps)).toBe(false);
+    expect(held.log).toEqual(["toggle"]);
+  });
+
+  it("no voice to say the words: straight to the toggle; busy: nothing at all", () => {
+    const mute = door("begins", { canSpeak: false });
+    expect(startDoor("Words", mute.deps)).toBe(true);
+    expect(mute.log).toEqual(["toggle"]);
+    const busy = door("begins", { busy: true });
+    expect(startDoor("Words", busy.deps)).toBe(false);
+    expect(busy.log).toEqual([]);
+  });
+});
+

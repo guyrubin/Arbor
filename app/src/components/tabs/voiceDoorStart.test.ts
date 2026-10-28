@@ -34,29 +34,30 @@ const slice = (from: string, to: string) => {
 };
 
 describe("B-VOICE-08 · the door's start is the conversation's own toggle", () => {
-  const start = slice("const startFromDoor = (opening?: string): boolean => {", "if (!startAfterOpening) return;");
+  const start = slice("const startFromDoor = (opening?: string): boolean => startDoor(opening, {", "});");
 
   it("registers only after the Live probe answered, and always calls the latest start", () => {
     expect(COACH).toMatch(/useEffect\(\(\) => \{\s*if \(!liveProbed\) return;\s*return registerConversationVoiceStarter\(\(opening\) => startFromDoorRef\.current\(opening\)\);\s*\}, \[liveProbed\]\);/);
     expect(COACH).toContain("startFromDoorRef.current = startFromDoor;");
   });
 
-  it("without card words it starts through toggleVoice in the same call: no await, no timer, no new voice path", () => {
-    const plain = start.slice(start.indexOf("const before = voiceLifetimeRef.current.current;"));
-    expect(plain).toMatch(/const before = voiceLifetimeRef\.current\.current;\s*void toggleVoice\(\);\s*return voiceLifetimeRef\.current\.current !== null && voiceLifetimeRef\.current\.current !== before;/);
+  it("the decision is lib/voiceOpening startDoor (tested as it runs); its toggle is toggleVoice, its attempt the voice lifetime", () => {
+    expect(start).toContain("toggle: () => { void toggleVoice(); },");
+    expect(start).toContain("attempt: () => voiceLifetimeRef.current.current,");
+    expect(start).toContain("playWords: playOpening,");
+    expect(start).toContain("canSpeak: ttsSupported,");
     expect(start).not.toMatch(/\bawait\b|setTimeout|requestAnimationFrame|startDictation|getUserMedia|startGeminiLive|liveToken/);
   });
 
   it("refuses while voice is on, a review is open or a notice handoff waits", () => {
-    expect(start).toMatch(/if \(voicePhase !== "off" \|\| voiceReviewOpen \|\| readNoticeTalk\(\)\) return false;/);
+    expect(start).toContain('busy: () => voicePhase !== "off" || voiceReviewOpen || !!readNoticeTalk(),');
     // negative control: a door that toggled while voice was on would STOP the talk
     expect("void toggleVoice();").not.toContain('voicePhase !== "off"');
   });
 });
 
 describe("B-VOICE-02 · the card's words are spoken BEFORE the microphone opens, on every route", () => {
-  const start = slice("const startFromDoor = (opening?: string): boolean => {", "if (!startAfterOpening) return;");
-  const words = start.slice(start.indexOf("if (line && ttsSupported()) {"), start.indexOf("const before = voiceLifetimeRef.current.current;"));
+  const words = slice("const playOpening = (line: string) => {", "const startFromDoor = ");
   const browser = slice("const startBrowserVoice = () => {", "const toggleVoice = async");
 
   it("with words: paint \"speaking\" in the tap and run the opening; no toggle, no microphone, no route choice inside it", () => {
