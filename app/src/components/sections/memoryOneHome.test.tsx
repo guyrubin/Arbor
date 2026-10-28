@@ -73,9 +73,12 @@ describe("B-CAREPRO-38 · every door lands on About", () => {
   it("About opens the ledger in place when the parent arrives on a retired memory link or taps the door", () => {
     const about = read("components/sections/ChildProfile.tsx");
     expect(about).toContain('const ledgerAsked = activeTab === "memory" || routeKey === "memory" || routeKey === "child-memory";');
-    expect(about).toContain("<AboutMemoryCard areas={aspects} ledgerOpen={ledgerOpen} onLedger={() => setLedgerOpen((o) => !o)} />");
+    // r2: once per arrival, keyed on the query VALUE (useLedgerArrival.test covers re-render + close)
+    expect(about).toContain('const [ledgerOpen, toggleLedger] = useLedgerArrival(ledgerAsked, hashQuery.get("section"));');
+    expect(about).not.toMatch(/\[[^\]]*\bhashQuery\]\)/);
+    expect(about).toContain("<AboutMemoryCard areas={aspects} ledgerOpen={ledgerOpen} onLedger={toggleLedger} />");
     expect(about).toContain('<ChildMemoryLedger embedded hidePendingIds={askedHere} />');
-    expect(about).toContain('id="about-memory-ledger"');
+    expect(about).toContain("id={LEDGER_ID}");
   });
 });
 

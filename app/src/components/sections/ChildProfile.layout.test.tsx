@@ -23,6 +23,8 @@ vi.mock("react", async (original) => {
   useState:(initial:unknown) => harness.callback ? [typeof initial==="function" ? (initial as () => unknown)() : initial,harness.setState] : real.useState(initial),
   useMemo:(fn:()=>unknown,deps:unknown[]) => harness.callback ? fn() : real.useMemo(fn,deps),
   useEffect:(fn:()=>void,deps:unknown[]) => {if(!harness.callback)real.useEffect(fn,deps);},
+  // B-CAREPRO-38 r2: the ledger's arrival hook keeps its handled arrival in a ref.
+  useRef:(initial:unknown) => harness.callback ? {current:initial} : real.useRef(initial),
  };
 });
 vi.mock("../../context/ArborContext",()=>({useArbor:()=>({

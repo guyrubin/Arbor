@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -20,6 +20,7 @@ import { useHashQuery, useHashRouteKey } from "../../hooks/useHashQuery";
 import { asAspectId, buildAspects, toldSummary, type AspectId } from "../../lib/aboutAspects";
 import AspectCard from "../about/AspectCard";
 import AboutMemoryCard, { aboutAskedPendingIds } from "../about/AboutMemoryCard";
+import { LEDGER_ID, useLedgerArrival } from "../about/useLedgerArrival";
 import TellArborMore from "../describe/TellArborMore";
 import "../about/about.css";
 
@@ -83,17 +84,8 @@ export default function ChildProfile() {
   // or an in-app door that still names "memory" — opens the ledger in place.
   const routeKey = useHashRouteKey();
   const ledgerAsked = activeTab === "memory" || routeKey === "memory" || routeKey === "child-memory";
-  const [ledgerOpen, setLedgerOpen] = useState(ledgerAsked);
-  useEffect(() => {
-    if (!ledgerAsked) return;
-    setLedgerOpen(true);
-    // `?section=coach` is CoachDataContract's own scroll; any other arrival lands on the ledger.
-    if (hashQuery.get("section") === "coach") return;
-    const id = window.setTimeout(() => {
-      try { document.getElementById("about-memory-ledger")?.scrollIntoView({ block: "start" }); } catch { /* SSR */ }
-    }, 250);
-    return () => window.clearTimeout(id);
-  }, [ledgerAsked, hashQuery]);
+  // Once per arrival (the query VALUE, never the per-render URLSearchParams); then the toggle owns it.
+  const [ledgerOpen, toggleLedger] = useLedgerArrival(ledgerAsked, hashQuery.get("section"));
   const [tap, setTap] = useState<{ from: AspectId | null; open: SheetOpen | null } | null>(null);
   const sheet: SheetOpen | null = tap && tap.from === queryAspect
     ? tap.open
@@ -164,9 +156,9 @@ export default function ChildProfile() {
           approved facts, the door to the ledger), then the eight areas. One
           module: the card belongs to what Arbor knows. */}
       <section data-module="about-aspects" aria-labelledby="about-aspects-title" className="flex flex-col gap-3">
-        <AboutMemoryCard areas={aspects} ledgerOpen={ledgerOpen} onLedger={() => setLedgerOpen((o) => !o)} />
+        <AboutMemoryCard areas={aspects} ledgerOpen={ledgerOpen} onLedger={toggleLedger} />
         {ledgerOpen && (
-          <div id="about-memory-ledger" data-testid="about-memory-ledger" className="about-memory-ledger" style={{ scrollMarginBlockStart: "calc(var(--sticky-offset, 0px) + 12px)" }}>
+          <div id={LEDGER_ID} data-testid="about-memory-ledger" className="about-memory-ledger" style={{ scrollMarginBlockStart: "calc(var(--sticky-offset, 0px) + 12px)" }}>
             <React.Suspense fallback={<p role="status" className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("aria.loading")}</p>}>
               <ChildMemoryLedger embedded hidePendingIds={askedHere} />
             </React.Suspense>
