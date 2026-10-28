@@ -93,6 +93,19 @@ describe("B-AIOPS-02 · the family's voice time at the one voice path", () => {
     expect(end).not.toContain("setAiFailure");
   });
 
+  it("round 4: a talk whose next slice never arrived ends with the calm closing line in the review — never the connection-ended notice", () => {
+    const end = /onTalkEnd: \(\) => \{[\s\S]*?\n              \},/.exec(toggle)?.[0] ?? "";
+    expect(end).toContain("setVoiceTalkEnded(true)");
+    expect(end).toContain("setVoiceReviewOpen(true)");
+    expect(end).not.toContain("microphoneRecovery");
+    expect(end).not.toContain("setVoiceNotice");
+    expect(end).not.toContain("setAiFailure");
+    expect(end).not.toContain("setVoiceResting");
+    const line = /\{voiceTalkEnded && !voiceResting && <p [^>]*>[\s\S]*?<\/p>\}/.exec(coach)?.[0] ?? "";
+    expect(line).toContain('role="status"');
+    expect(line).toContain('t("elev.aierrors.voiceTalkEnded")');
+  });
+
   it("a spent allowance (mint or fallback turn) is the resting line, never the failure card", () => {
     expect(toggle).toMatch(/if \(isLiveResting\(err\)\) \{\s*attempt\.end\(\);\s*setVoicePhase\("off"\);\s*setVoiceResting\(true\);\s*return;\s*\}/);
     expect(coach).toMatch(/if \(ownsTurn\(\) && isLiveResting\(err\)\) \{\s*stopVoice\(false\);\s*setVoiceResting\(true\);/);

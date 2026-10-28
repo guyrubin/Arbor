@@ -6,7 +6,7 @@
  * never on a client report alone, and an unminted token releases its slice. */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  MemoryLiveBudgetStore, LIVE_RESTING, LIVE_SLICE_MAX_MS, LIVE_MIN_SLICE_MS, liveAllowanceMs, liveSliceMs,
+  MemoryLiveBudgetStore, LIVE_RESTING, LIVE_SLICE_MAX_MS, LIVE_RENEWAL_MAX_MS, LIVE_MIN_SLICE_MS, liveAllowanceMs, liveSliceMs,
   settleExpired, recordObserved, cancelUnminted, committedMs, emptyLiveBudgetDay, liveBudgetDay, liveBudgetDayEnd,
   VOICE_TURN_RESERVE_MS, settleTurnCharge, spokenMsForChars,
   type LiveReservation,
@@ -293,43 +293,87 @@ describe("P1-1 — the default slice is one minute: a failed start never costs t
   });
 });
 
-describe("round 3 — a long renewal CHAINED onto the slice it renews: two seams, charged = talk time", () => {
+describe("round 4 — renewals GROW 1 → 2 → 4 → 8 minutes, chained, so a short talk is never charged a long slice", () => {
   const renewFrom = async (store: InstanceType<typeof MemoryLiveBudgetStore>, plan: "free" | "plus", uid: string, renewOf: string) =>
     store.reserve({ familyId: "fam", plan, uid, renewOf });
+  /** One talk of `talkMs` from now: the first slice, then a renewal 30 s
+   *  before each slice ends while the talk is still going (the client rule). */
+  const talk = async (store: InstanceType<typeof MemoryLiveBudgetStore>, plan: "free" | "plus", talkMs: number) => {
+    const start = Date.now();
+    const slices: { ms: number; startsAt: number; expiresAt: number }[] = [];
+    let current = await store.reserve({ familyId: "fam", plan, uid: "a" });
+    if (!current.ok) throw new Error("expected the first slice");
+    slices.push({ ms: current.reservation.ms, startsAt: start, expiresAt: current.reservation.expiresAt });
+    while (current.ok && current.reservation.expiresAt - 30_000 < start + talkMs && current.remainingMs >= 30_000) {
+      vi.setSystemTime(current.reservation.expiresAt - 30_000);
+      const previousEnd = current.reservation.expiresAt;
+      current = await renewFrom(store, plan, "a", current.reservation.id);
+      if (!current.ok) break;
+      slices.push({ ms: current.reservation.ms, startsAt: previousEnd, expiresAt: current.reservation.expiresAt });
+    }
+    vi.setSystemTime(start + talkMs);
+    return slices;
+  };
 
-  it("paid: 1 + 10 + 9 minutes; each renewal starts where the renewed slice ends, so the family is charged exactly the 20 minutes it can talk", async () => {
+  it("paid: a 20-minute talk is 1 + 2 + 4 + 8 + 5 minutes — four seams, every slice under the provider's connection lifetime, charged = talk window", async () => {
     delete process.env.LIVE_RESERVATION_MINUTES;
     const store = new MemoryLiveBudgetStore();
-    const first = await store.reserve({ familyId: "fam", plan: "plus", uid: "a" });
-    if (!first.ok) throw new Error("expected the first slice");
-    expect(first.reservation.ms).toBe(MIN);
-    vi.setSystemTime(T0 + 20_000); // the first exchange completed
-    const second = await renewFrom(store, "plus", "a", first.reservation.id);
-    if (!second.ok) throw new Error("expected a renewal");
-    expect(second.reservation.ms).toBe(10 * MIN);
-    expect(second.reservation.expiresAt).toBe(first.reservation.expiresAt + 10 * MIN);
-    vi.setSystemTime(second.reservation.expiresAt - 30_000);
-    const third = await renewFrom(store, "plus", "a", second.reservation.id);
-    if (!third.ok) throw new Error("expected the second renewal");
-    expect(third.reservation.ms).toBe(9 * MIN);
-    expect(third.reservation.expiresAt).toBe(T0 + 20 * MIN);
-    expect(third.remainingMs).toBe(0);
-    // Charged: 20 minutes. Talk window: T0 → T0 + 20 min.
+    const slices = await talk(store, "plus", 20 * MIN);
+    expect(slices.map((slice) => slice.ms / MIN)).toEqual([1, 2, 4, 8, 5]);
+    // Each renewal starts where the renewed slice ends: one unbroken window.
+    for (let i = 1; i < slices.length; i++) expect(slices[i].expiresAt - slices[i].ms).toBe(slices[i - 1].expiresAt);
+    expect(Math.max(...slices.map((slice) => slice.ms))).toBeLessThanOrEqual(LIVE_RENEWAL_MAX_MS);
+    expect(LIVE_RENEWAL_MAX_MS).toBe(8 * MIN);
+    expect(slices[slices.length - 1].expiresAt).toBe(T0 + 20 * MIN);
     vi.setSystemTime(T0 + 20 * MIN);
     expect((await store.peek("fam", "plus")).committedMs).toBe(20 * MIN);
+  });
+
+  it("the ledger of a 2-minute paid talk: 1 + 2 = 3 minutes — what it used plus the rest of its last slice, never a long slice", async () => {
+    delete process.env.LIVE_RESERVATION_MINUTES;
+    const store = new MemoryLiveBudgetStore();
+    const slices = await talk(store, "plus", 2 * MIN);
+    expect(slices.map((slice) => slice.ms / MIN)).toEqual([1, 2]);
+    vi.setSystemTime(T0 + 3 * MIN);
+    const charged = (await store.peek("fam", "plus")).committedMs;
+    // At most the time talked plus the slice it had just started.
+    expect(charged).toBe(3 * MIN);
+    expect(charged).toBeLessThanOrEqual(2 * MIN + slices[slices.length - 1].ms);
+    // Two short talks leave most of the day: a third (and many more) still start.
+    vi.setSystemTime(T0 + 30 * MIN);
+    await talk(store, "plus", 2 * MIN);
+    vi.setSystemTime(T0 + 60 * MIN);
+    expect((await store.peek("fam", "plus")).remainingMs).toBe(14 * MIN);
+    expect((await store.reserve({ familyId: "fam", plan: "plus", uid: "a" })).ok).toBe(true);
+  });
+
+  it("no renewal is accepted right after the first exchange: only in the slice's last 90 s", async () => {
+    delete process.env.LIVE_RESERVATION_MINUTES;
+    process.env.LIVE_RESERVATION_MINUTES = "5";
+    try {
+      const store = new MemoryLiveBudgetStore();
+      const first = await store.reserve({ familyId: "fam", plan: "plus", uid: "a" });
+      if (!first.ok) throw new Error("expected the first slice");
+      expect(first.reservation.ms).toBe(5 * MIN);
+      vi.setSystemTime(T0 + 20_000); // the first exchange completed
+      const early = await renewFrom(store, "plus", "a", first.reservation.id);
+      expect(early.ok === false && early.code).toBe("renewal_invalid");
+      vi.setSystemTime(first.reservation.expiresAt - 30_000);
+      const renewed = await renewFrom(store, "plus", "a", first.reservation.id);
+      if (!renewed.ok) throw new Error("expected a renewal");
+      // Twice five minutes would outlive a provider connection: capped at eight.
+      expect(renewed.reservation.ms).toBe(8 * MIN);
+    } finally {
+      delete process.env.LIVE_RESERVATION_MINUTES;
+    }
   });
 
   it("Free: 60 s, then the remaining 120 s chained — one seam, 180 s charged for 180 s of talk", async () => {
     delete process.env.LIVE_RESERVATION_MINUTES;
     const store = new MemoryLiveBudgetStore();
-    const first = await store.reserve({ familyId: "fam", plan: "free", uid: "a" });
-    if (!first.ok) throw new Error("expected the first slice");
-    vi.setSystemTime(T0 + 15_000);
-    const second = await renewFrom(store, "free", "a", first.reservation.id);
-    if (!second.ok) throw new Error("expected a renewal");
-    expect(second.reservation.ms).toBe(2 * MIN);
-    expect(second.reservation.expiresAt).toBe(T0 + 3 * MIN);
-    expect((await renewFrom(store, "free", "a", second.reservation.id)).ok).toBe(false);
+    const slices = await talk(store, "free", 3 * MIN);
+    expect(slices.map((slice) => slice.ms / MIN)).toEqual([1, 2]);
+    expect(slices[1].expiresAt).toBe(T0 + 3 * MIN);
   });
 
   it("a renewal must chain onto the caller's own live slice, inside its last 90 s, once — anything else is refused and reserves nothing", async () => {
@@ -349,7 +393,7 @@ describe("round 3 — a long renewal CHAINED onto the slice it renews: two seams
     expect(ok.ok).toBe(true);
     await refused(renewFrom(store, "plus", "a", first.reservation.id)); // a slice renews once
     if (!ok.ok) throw new Error("unreachable");
-    await refused(renewFrom(store, "plus", "a", ok.reservation.id)); // 10 minutes before its end: too early
+    await refused(renewFrom(store, "plus", "a", ok.reservation.id)); // two minutes before its end: too early
     vi.setSystemTime(ok.reservation.expiresAt + 1);
     await refused(renewFrom(store, "plus", "a", ok.reservation.id)); // expired
     const turn = await store.reserveTurn({ familyId: "fam", plan: "plus", uid: "a", holdMs: 30_000 });

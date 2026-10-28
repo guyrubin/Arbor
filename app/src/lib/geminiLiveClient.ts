@@ -66,6 +66,10 @@ export type LiveHandlers = {
    *  (no renewal was possible). The session is ALREADY closed when this fires;
    *  this is a resting state, never a connection failure. */
   onAllowanceEnd?: () => void;
+  /** B-AIOPS-02: no next slice arrived before this one ended although the
+   *  family still has time (the renewal and its retries failed). A calm end,
+   *  never a connection failure; the session is ALREADY closed when it fires. */
+  onTalkEnd?: () => void;
 };
 export type LiveSessionOptions = {
   /** Cancels pending microphone/socket startup as well as an adopted session. */
@@ -87,7 +91,8 @@ export type LiveSessionOptions = {
   remainingMs?: number;
   /** B-AIOPS-02: mint the next slice before this one ends. Resolves the next
    *  slice, or null when the family's voice time is spent (the conversation
-   *  then ends calmly at `expiresAt`). Absent: no renewal (legacy tokens). */
+   *  then ends calmly at `expiresAt`); a rejection is retried. Absent: no
+   *  renewal (legacy tokens). */
   renew?: (renewOf?: string) => Promise<LiveSlice | null>;
   /** B-AIOPS-02: this first slice's usage-session id (its renewal names it). */
   usageId?: string;
@@ -175,27 +180,47 @@ export const releaseLiveMicrophone = (stream: MediaStream | null | undefined): v
   if (stream) releaseTracks(stream);
 };
 
-/** B-AIOPS-02 renewal. The first slice is short (a start that never reaches
- *  audio costs only it). It is renewed with a LONG slice, chained server-side
- *  onto its end, as soon as the first exchange has completed (or RENEW_LEAD_MS
- *  before it ends); every later slice is renewed RENEW_LEAD_MS before its end.
+/** B-AIOPS-02 renewal (round 4). Every slice is renewed 30 s before it ends,
+ *  never earlier: the server sizes each renewal to twice the slice it renews
+ *  (1 -> 2 -> 4 -> 8 minutes, never more than the family has left), so a talk
+ *  that stops is charged what it used plus at most the rest of its last slice,
+ *  and a 20-minute talk has about four seams, none longer than a provider
+ *  connection lives. A renewal is retried at 15 s and at 5 s before the end;
+ *  each attempt runs until it answers, the first slice to arrive wins and any
+ *  other, or one arriving after the end, is discarded, never applied. If no
+ *  slice arrives the talk ends calmly at the slice end (onTalkEnd, or
+ *  onAllowanceEnd when the family's time is spent), never as a connection
+ *  failure. A provider goAway brings the attempts forward to the socket's
+ *  announced end.
  *  The socket is swapped only at a QUIET moment: no model turn open, screening
- *  or playing, no reply awaited, the parent silent for QUIET_INPUT_MS — so no
- *  seam cuts the model; only if the slice is about to expire (SWAP_MARGIN_MS)
- *  is the swap forced, where the provider would end the socket anyway. The
- *  new socket is seeded with every turn of this talk, so nothing said before
- *  the seam is lost. A slice is only renewed while the family has at least
- *  MIN_RENEWABLE_MS left (the server treats less as spent). */
-const RENEW_LEAD_MS = 30_000;
+ *  or playing, no reply awaited, the parent silent for QUIET_INPUT_MS. Only
+ *  in the socket's last second is the swap forced, and even then nothing the
+ *  parent hears is cut: screened audio already playing plays out, a turn
+ *  still being screened joins the new socket's history once released, and a
+ *  reply still being generated (never heard: audio plays only after its
+ *  screen) is dropped and asked again of the new socket. The new socket is
+ *  seeded with every screened turn of the talk (and any words of the parent
+ *  it has not heard), so no exchange is lost at a seam. */
+const RENEW_ATTEMPT_LEADS_MS = [30_000, 15_000, 5_000] as const;
+/** The server accepts a renewal in the last 90 s of a slice; the client stays
+ *  inside that with a margin for clock difference. */
+const RENEW_WINDOW_MS = 80_000;
 const SWAP_MARGIN_MS = 1_000;
 const QUIET_INPUT_MS = 1_500;
 /** Microphone level above which the parent counts as speaking right now. */
 const VOICE_LEVEL = 0.02;
 const MIN_RENEWABLE_MS = 30_000;
 /** A budget end stops the session just before the provider's own expiry; a
- *  provider close this close to the end of a final slice is the same end. */
+ *  provider close this close to the end of a slice is the same end. */
 const ALLOWANCE_END_MARGIN_MS = 500;
 const PROVIDER_CLOSE_GRACE_MS = 5_000;
+/** A goAway without a usable timeLeft, and how long a talk whose socket is
+ *  already gone waits for a renewal still on its way. */
+const GOAWAY_DEFAULT_MS = 10_000;
+const DEAD_HOLD_MS = 15_000;
+/** Parent words this recent with no reply yet are owed an answer at a forced
+ *  seam; older unanswered words (room noise) are history only. */
+const OWED_REPLY_MS = 8_000;
 
 export async function startGeminiLive(
   opts: LiveSessionOptions,
@@ -219,17 +244,33 @@ export async function startGeminiLive(
   let sliceEnd = Date.parse(opts.expiresAt ?? "");
   let remainingMs = opts.remainingMs;
   let sliceTimer: ReturnType<typeof setTimeout> | undefined;
+  let holdTimer: ReturnType<typeof setTimeout> | undefined;
+  const attemptTimers = new Set<ReturnType<typeof setTimeout>>();
   let gen = 0;
-  let renewing = false;
   let turnOpen = false;
   let lastInputAt = 0;
-  // B-AIOPS-02 quiet-moment and seed state: a model turn being screened, a
-  // parent turn still waiting for its reply, whether the first (short) slice
-  // has been renewed, the current slice's usage id, and every screened turn
-  // of this talk (re-sent to a new socket so no exchange is lost at a seam).
+  let lastWordsAt = 0;
+  // B-AIOPS-02 renewal state, per slice (`round`): attempts made and still
+  // answering, a minted next slice connecting or waiting to swap, the family's
+  // time spent, the current socket's end (sooner after a goAway) and whether
+  // it is already gone. `swapNow` wakes a waiting swap at once.
+  let round = 0;
+  let attemptsMade = 0;
+  let attemptsPending = 0;
+  let incoming = false;
+  let spent = false;
+  let socketEnd = sliceEnd;
+  let goingAway = false;
+  let currentDead = false;
+  let swapNow: () => void = () => {};
+  // Quiet-moment and seed state: a model turn being screened, a parent turn
+  // still waiting for its reply, the parent's words no turn holds yet, the
+  // current slice's usage id, and every screened turn of this talk (re-sent
+  // to a new socket so no exchange is lost at a seam).
   let screening = false;
   let awaitingReply = false;
-  let renewedOnce = false;
+  let pendingUserText = "";
+  let lateSeed = false;
   let usageId = opts.usageId;
   const heard: { role: "user" | "model"; text: string }[] = [];
   let opened = false;
@@ -278,6 +319,9 @@ export async function startGeminiLive(
     stopped = true;
     clearInterval(usageTimer);
     clearTimeout(sliceTimer);
+    clearTimeout(holdTimer);
+    for (const timer of attemptTimers) clearTimeout(timer);
+    attemptTimers.clear();
     if (usageStarted) reportUsage("closed");
     opts.signal?.removeEventListener("abort", onAbort);
     guard.dispose();
@@ -305,8 +349,14 @@ export async function startGeminiLive(
     // Stop all resources BEFORE the guard's crisis/blocked/fail-closed render.
     halt: stopAll,
     onInterrupt: stopPlayback,
-    onUserTurn: (text) => { if (!stopped) { heard.push({ role: "user", text }); handlers.onUserTurn?.(text); } },
-    onModelTurn: (text) => { if (!stopped) { heard.push({ role: "model", text }); handlers.onModelTurn?.(text); } },
+    onUserTurn: (text) => { if (!stopped) { pendingUserText = ""; heard.push({ role: "user", text }); handlers.onUserTurn?.(text); } },
+    onModelTurn: (text) => {
+      if (stopped) return;
+      heard.push({ role: "model", text });
+      // A turn screened across a forced seam joins the new socket's history.
+      if (lateSeed) { lateSeed = false; seed([{ role: "model", text }], false); }
+      handlers.onModelTurn?.(text);
+    },
     // stopped is expected here: guard.halt already ran. An EXTERNAL abort,
     // however, retires even these terminal notifications.
     onCrisis: (verdict) => { if (!opts.signal?.aborted) handlers.onCrisis?.(verdict); },
@@ -318,13 +368,17 @@ export async function startGeminiLive(
   // B-AIOPS-02 renewal swap) is ignored, so its late frames never play.
   const onServerMessage = (msg: any, from: number) => {
     if (stopped || from !== gen) return;
+    // B-AIOPS-02: the provider will end this socket soon — renew before then.
+    if (msg?.goAway) onGoAway(msg.goAway.timeLeft);
     // ALL audio remains buffered behind the lexical + server screens.
     if (msg?.data) { turnOpen = true; guard.pushAudio(msg.data); }
     if (stopped) return;
     const sc = msg?.serverContent;
     if (sc?.inputTranscription?.text) {
       lastInputAt = Date.now();
+      lastWordsAt = lastInputAt;
       awaitingReply = true;
+      pendingUserText += sc.inputTranscription.text;
       guard.pushInputTranscription(sc.inputTranscription.text);
       handlers.onUserInterim?.(sc.inputTranscription.text);
     }
@@ -343,9 +397,6 @@ export async function startGeminiLive(
         screening = false;
         if (!stopped && !guard.halted) handlers.onPhase?.("listening");
       });
-      // The first completed exchange proves the talk works: renew the short
-      // first slice with a long one now (B-AIOPS-02).
-      if (!renewedOnce && ready) void renewSlice();
     }
   };
 
@@ -462,44 +513,97 @@ export async function startGeminiLive(
   // ── B-AIOPS-02: slices, renewal and the calm end ─────────────────────────
   // (function declarations: hoisted, called only after readiness)
 
-  /** Schedule what happens at the end of the current slice: mint the next one
-   *  while the family has time left, otherwise end calmly at the slice end. */
+  /** Arm the current slice: its calm end, and its renewal attempts while the
+   *  family has time left after it. */
   function armSlice() {
     clearTimeout(sliceTimer);
+    clearTimeout(holdTimer);
+    for (const timer of attemptTimers) clearTimeout(timer);
+    attemptTimers.clear();
     if (stopped || !Number.isFinite(sliceEnd)) return;
-    if (opts.renew && (remainingMs ?? 0) >= MIN_RENEWABLE_MS) {
-      // (the first slice may also renew earlier, at its first completed exchange)
-      sliceTimer = setTimeout(() => { void renewSlice(); }, Math.max(0, sliceEnd - RENEW_LEAD_MS - Date.now()));
-    } else {
-      sliceTimer = setTimeout(endForAllowance, Math.max(0, sliceEnd - ALLOWANCE_END_MARGIN_MS - Date.now()));
+    sliceTimer = setTimeout(endCalmly, Math.max(0, sliceEnd - ALLOWANCE_END_MARGIN_MS - Date.now()));
+    scheduleAttempts();
+  }
+
+  function renewable() {
+    return !!opts.renew && !spent && (remainingMs ?? 0) >= MIN_RENEWABLE_MS;
+  }
+
+  /** The attempts not yet made, at 30, 15 and 5 s before the socket's end and
+   *  never before the server's renewal window; one already due starts now. */
+  function scheduleAttempts() {
+    for (const timer of attemptTimers) clearTimeout(timer);
+    attemptTimers.clear();
+    if (stopped || incoming || !renewable()) return;
+    const now = Date.now();
+    const windowOpens = sliceEnd - RENEW_WINDOW_MS;
+    const forRound = round;
+    let last = -Infinity;
+    for (const lead of RENEW_ATTEMPT_LEADS_MS.slice(attemptsMade)) {
+      const at = Math.max(now, socketEnd - lead, windowOpens);
+      // (an attempt still answering is not doubled at once)
+      if (at <= last || (at <= now && attemptsPending > 0)) continue;
+      last = at;
+      const timer = setTimeout(() => { attemptTimers.delete(timer); void attemptRenewal(forRound); }, at - now);
+      attemptTimers.add(timer);
     }
   }
 
-  /** The family's voice time ended the conversation: a resting state. */
-  function endForAllowance() {
+  /** The talk ends calmly: the family's time is spent (the resting line), or
+   *  no next slice arrived (the closing line). Never a connection failure. */
+  function endCalmly() {
     if (stopped) return;
+    const rest = spent || !opts.renew || (remainingMs ?? 0) < MIN_RENEWABLE_MS;
     stopAll();
-    handlers.onAllowanceEnd?.();
+    if (rest) handlers.onAllowanceEnd?.();
+    else if (handlers.onTalkEnd) handlers.onTalkEnd();
+    else handlers.onRemoteClose?.();
   }
 
-  /** The current socket closed after readiness. Near the end of a final slice
-   *  that is the allowance, not a failure; otherwise it is a remote close. */
+  /** The current socket closed after readiness. With the next slice on its
+   *  way the talk holds (microphone open) and swaps the moment it is ready;
+   *  at a slice's end, or after a goAway, it is a calm end; any other close
+   *  is a connection end. */
   function currentClosed() {
-    const finalSlice = !opts.renew || (remainingMs ?? 0) < MIN_RENEWABLE_MS;
-    if (Number.isFinite(sliceEnd) && finalSlice && Date.now() >= sliceEnd - PROVIDER_CLOSE_GRACE_MS) {
-      endForAllowance();
+    if (stopped) return;
+    const now = Date.now();
+    const underway = incoming || attemptsPending > 0 || (goingAway && attemptTimers.size > 0);
+    if (underway && sliceEnd - now <= RENEW_WINDOW_MS && now < sliceEnd - ALLOWANCE_END_MARGIN_MS) {
+      currentDead = true;
+      handlers.onPhase?.("connecting");
+      clearTimeout(holdTimer);
+      holdTimer = setTimeout(endCalmly, Math.max(0, Math.min(sliceEnd - ALLOWANCE_END_MARGIN_MS - now, DEAD_HOLD_MS)));
+      if (incoming) swapNow();
+      else if (attemptsPending === 0) {
+        for (const timer of attemptTimers) clearTimeout(timer);
+        attemptTimers.clear();
+        void attemptRenewal(round);
+      }
+      return;
+    }
+    if (goingAway || (Number.isFinite(sliceEnd) && now >= sliceEnd - PROVIDER_CLOSE_GRACE_MS)) {
+      endCalmly();
       return;
     }
     stopAll();
     handlers.onRemoteClose?.();
   }
 
-  /** A renewal that could not be minted or connected: the conversation runs
-   *  to the end of the slice it has, then ends as a connection end. */
-  function renewalFailed() {
-    renewing = false;
-    clearTimeout(sliceTimer);
-    sliceTimer = setTimeout(() => { if (!stopped) { stopAll(); handlers.onRemoteClose?.(); } }, Math.max(0, sliceEnd - ALLOWANCE_END_MARGIN_MS - Date.now()));
+  /** The provider announced the end of this socket: renew before it. */
+  function onGoAway(timeLeft: unknown) {
+    if (stopped || !ready) return;
+    goingAway = true;
+    const seconds = typeof timeLeft === "string" ? Number.parseFloat(timeLeft) : Number.NaN;
+    const leftMs = Number.isFinite(seconds) && seconds >= 0 ? seconds * 1_000 : GOAWAY_DEFAULT_MS;
+    socketEnd = Math.min(Number.isFinite(sliceEnd) ? sliceEnd : Number.POSITIVE_INFINITY, Date.now() + leftMs);
+    if (!incoming) scheduleAttempts();
+  }
+
+  /** Nothing more can arrive for this slice: a socket already gone ends the
+   *  talk now; otherwise it runs to its slice end (endCalmly). */
+  function renewalSettled() {
+    if (stopped || incoming || attemptsPending > 0 || attemptTimers.size > 0) return;
+    if (currentDead) endCalmly();
   }
 
   /** Quiet = no model turn open, screening or playing, no parent turn still
@@ -508,28 +612,55 @@ export async function startGeminiLive(
     return !turnOpen && !screening && !awaitingReply && activeSources.size === 0 && Date.now() - lastInputAt >= QUIET_INPUT_MS;
   }
 
-  async function renewSlice() {
-    if (stopped || renewing || !opts.renew || !Number.isFinite(sliceEnd) || (remainingMs ?? 0) < MIN_RENEWABLE_MS) return;
-    renewing = true;
-    clearTimeout(sliceTimer);
-    let next: LiveSlice | null;
+  /** History for the current socket; it answers only when asked to. */
+  function seed(turns: { role: "user" | "model"; text: string }[], turnComplete: boolean) {
+    if (!turns.length) return;
     try {
-      // The server chains a long slice only onto a session it knows opened.
+      session?.sendClientContent({ turns: turns.map((turn) => ({ role: turn.role, parts: [{ text: turn.text }] })), turnComplete });
+    } catch { /* a seed that cannot be sent leaves the pinned context */ }
+  }
+
+  async function attemptRenewal(forRound: number) {
+    if (stopped || forRound !== round || incoming || !renewable() || attemptsMade >= RENEW_ATTEMPT_LEADS_MS.length) return;
+    attemptsMade++;
+    attemptsPending++;
+    let next: LiveSlice | null = null;
+    let failed = false;
+    try {
+      // The server chains a renewal only onto a session it knows opened.
       await usageQueue;
-      next = await opts.renew(usageId);
+      next = await opts.renew!(usageId);
     } catch {
-      if (!stopped) renewalFailed();
+      failed = true;
+    }
+    attemptsPending--;
+    const current = !stopped && forRound === round;
+    if (!failed && next === null) {
+      // The family's time is spent: the talk ends calmly when this slice ends.
+      if (current && !incoming) {
+        spent = true;
+        remainingMs = 0;
+        for (const timer of attemptTimers) clearTimeout(timer);
+        attemptTimers.clear();
+        if (currentDead) endCalmly();
+      }
       return;
     }
-    if (stopped) return;
-    if (next === null) {
-      // The family's time is spent: end calmly when this slice ends.
-      renewing = false;
-      remainingMs = 0;
-      armSlice();
+    if (failed || !next) {
+      if (current) renewalSettled();
       return;
     }
-    const slice = next;
+    // A slice arriving after the end, or after another attempt's, is discarded.
+    if (!current || incoming || Date.now() >= sliceEnd - SWAP_MARGIN_MS) {
+      if (next.reportUsage) void next.reportUsage("failed").catch(() => {});
+      if (current) renewalSettled();
+      return;
+    }
+    await connectAndSwap(next, forRound);
+  }
+
+  async function connectAndSwap(slice: LiveSlice, forRound: number) {
+    incoming = true;
     const myGen = gen + 1;
     let resolveReady: () => void = () => {};
     let rejectReady: (error: Error) => void = () => {};
@@ -540,7 +671,7 @@ export async function startGeminiLive(
     let abandonedNext = false;
     try {
       // Same config as the first socket; the new token's constraints pin it,
-      // including the conversation so far in its system instruction.
+      // including the conversation as it stood when the talk began.
       const nextAi = new GoogleGenAI({ apiKey: slice.token, httpOptions: { apiVersion: "v1beta" } });
       const nextConnecting = nextAi.live.connect({
         model: slice.model,
@@ -581,34 +712,62 @@ export async function startGeminiLive(
       abandonedNext = true;
       try { connectedNext?.close(); } catch { /* closed */ }
       if (slice.reportUsage) void slice.reportUsage("failed").catch(() => {});
-      if (!stopped) renewalFailed();
+      incoming = false;
+      if (!stopped && forRound === round) renewalSettled();
       return;
     }
-    // Swap at a quiet moment, or at the latest just before the slice ends.
-    while (!stopped && !quiet() && Date.now() < sliceEnd - SWAP_MARGIN_MS) {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    }
-    if (stopped) { try { nextSession.close(); } catch { /* closed */ } return; }
-    const forced = !quiet();
+    // Swap at a quiet moment, at once if the current socket is gone, or at the
+    // latest just before the current socket ends.
+    await new Promise<void>((resolve) => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const check = () => {
+        clearTimeout(timer);
+        if (stopped || forRound !== round || currentDead || quiet() || Date.now() >= socketEnd - SWAP_MARGIN_MS) {
+          swapNow = () => {};
+          resolve();
+          return;
+        }
+        timer = setTimeout(check, 200);
+      };
+      swapNow = check;
+      check();
+    });
+    if (stopped || forRound !== round) { try { nextSession.close(); } catch { /* closed */ } incoming = false; return; }
+    // A reply still being generated was never heard (audio plays only after
+    // its screen, and a new model turn only follows the parent's words, which
+    // already stopped the previous answer): drop it, and ask the new socket
+    // for it instead. Screened audio still playing is never stopped here.
+    const cutReply = turnOpen;
+    const parentSpeaking = Date.now() - lastInputAt < QUIET_INPUT_MS;
     const previous = session;
     gen = myGen;
     session = nextSession;
-    if (forced) { turnOpen = false; screening = false; awaitingReply = false; guard.interrupt(); stopPlayback(); }
-    // Seed the new socket with this whole talk (its token's context was built
-    // at the start of the talk), as history only: it does not answer it.
-    if (heard.length) {
-      try {
-        nextSession.sendClientContent({ turns: heard.map((turn) => ({ role: turn.role, parts: [{ text: turn.text }] })), turnComplete: false });
-      } catch { /* a seed that cannot be sent leaves the pinned context */ }
+    if (cutReply) {
+      turnOpen = false;
+      guard.interrupt();
     }
+    if (screening) lateSeed = true;
+    // Seed the new socket with this whole talk (its token's context was built
+    // at the start of the talk), as history, plus any words of the parent it
+    // has not heard. It answers only a parent turn the old socket left owed.
+    const turns = heard.slice();
+    const unheard = pendingUserText.trim();
+    if (unheard) turns.push({ role: "user", text: unheard });
+    const asked = cutReply || (awaitingReply && Date.now() - lastWordsAt < OWED_REPLY_MS);
+    const owesReply = asked && !parentSpeaking && turns[turns.length - 1]?.role === "user";
+    seed(turns, owesReply);
     reportUsage("closed");
     reportCurrent = slice.reportUsage;
     usageId = slice.usageId;
     reportUsage("opened");
     sliceEnd = Date.parse(slice.expiresAt ?? "");
+    socketEnd = sliceEnd;
     remainingMs = slice.remainingMs;
-    renewedOnce = true;
-    renewing = false;
+    round++;
+    attemptsMade = 0;
+    incoming = false;
+    currentDead = false;
+    goingAway = false;
     try { previous?.close(); } catch { /* already closed */ }
     if (!stopped && !guard.halted) handlers.onPhase?.("listening");
     armSlice();

@@ -315,6 +315,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // or a fallback-loop turn). A resting state with its own calm status line —
   // never the failure card, never the connection-ended notice.
   const [voiceResting, setVoiceResting] = useState(false);
+  // B-AIOPS-02: a Live talk ended calmly because its next slice did not
+  // arrive (the family still has time) — the review says so, never an error.
+  const [voiceTalkEnded, setVoiceTalkEnded] = useState(false);
 
   // AI-24: ONE offline seam, wrapping the context's send. Every entry point on
   // this surface — the composer button, Enter, a follow-up chip, a fast-start
@@ -824,6 +827,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     if (tap === "acknowledge_and_start") acknowledgeVoiceNotice(noticeId);
     setNoticePending(null);
     setVoiceResting(false);
+    setVoiceTalkEnded(false);
     reviewAttemptRef.current = null;
     voiceSessionIdRef.current = "voice-session-" + Date.now() + "-" + (++voiceTurnRef.current);
     setConversationProposals([]);
@@ -939,6 +943,19 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                 finalizeVoiceAiTurn();
                 setVoicePhase("off");
                 setVoiceResting(true);
+                setVoiceReviewOpen(true);
+              },
+              // B-AIOPS-02: the next slice never arrived (renewal and retries
+              // failed) — a calm closing line, never the connection-ended notice.
+              onTalkEnd: () => {
+                if (!attempt.isCurrent()) return;
+                attempt.end();
+                clearLiveRefs();
+                voiceOnRef.current = false;
+                setVoiceInterim("");
+                finalizeVoiceAiTurn();
+                setVoicePhase("off");
+                setVoiceTalkEnded(true);
                 setVoiceReviewOpen(true);
               },
               onError: () => {
@@ -1899,6 +1916,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             says so first (the same resting words, never an error). */}
         {voiceResting && <p role="status" data-testid="voice-review-resting" className="text-xs leading-relaxed pb-2" dir="auto" style={{ color: "var(--arbor-ink)" }}>
           {t("elev.aierrors.voiceResting.title")}. {t("elev.aierrors.voiceResting.body")}
+        </p>}
+        {voiceTalkEnded && !voiceResting && <p role="status" data-testid="voice-review-ended" className="text-xs leading-relaxed pb-2" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+          {t("elev.aierrors.voiceTalkEnded")}
         </p>}
         <ConversationProposalTray
           inline

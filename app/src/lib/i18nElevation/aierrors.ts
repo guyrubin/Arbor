@@ -26,6 +26,9 @@ export const en: Record<string, string> = {
   // ── B-AIOPS-02 — the family's realtime-voice minutes for today are spent.
   "elev.aierrors.voiceResting.title": "Voice is resting until tomorrow",
   "elev.aierrors.voiceResting.body": "You can keep typing, and Arbor is still here if something urgent happens.",
+  // B-AIOPS-02: a voice talk ended because its next slice did not arrive
+  // (the family still has time): calm, never the connection-error notice.
+  "elev.aierrors.voiceTalkEnded": "This voice talk has ended. Your conversation is still here — tap the voice button to carry on, or keep typing.",
 
   // ── 451 — fail-closed: no parental consent grant for this purpose.
   "elev.aierrors.consent.title": "Your permission is needed first",
@@ -52,6 +55,7 @@ export const he: Record<string, string> = {
 
   "elev.aierrors.voiceResting.title": "הקול נח עד מחר",
   "elev.aierrors.voiceResting.body": "אפשר להמשיך לכתוב, וארבור כאן גם אם קורה משהו דחוף.",
+  "elev.aierrors.voiceTalkEnded": "שיחת הקול הזו הסתיימה. השיחה נשמרה כאן — הקישו על כפתור הקול כדי להמשיך, או המשיכו בכתיבה.",
 
   "elev.aierrors.consent.title": "צריך קודם את האישור שלכם",
   "elev.aierrors.consent.body": "ארבור לא יסתכל על תמונה ולא יאזין להקלטה של {name} עד שתאשרו. אפשר לתת — או לבטל — את האישור בכל רגע.",

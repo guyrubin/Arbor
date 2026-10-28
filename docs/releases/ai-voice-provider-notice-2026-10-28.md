@@ -33,7 +33,11 @@ These strings are new and need the copy/privacy review before activation (keys i
 | `elev.wave2Daily.capture.voice.dataUseDevice` | No recording is kept. This device's speech service turns your words into text, and only the text is kept. | שום הקלטה לא נשמרת. שירות הדיבור של המכשיר הופך את המילים שלכם לטקסט, ורק הטקסט נשמר. |
 | `elev.coachcontract.uses.liveResidencyEu` | Live runs in Google's EU region. | שיחת קול חיה פועלת באזור האיחוד האירופי של Google. |
 
-The B-AIOPS-02 resting copy (`elev.aierrors.voiceResting.title` / `.body`: "Voice is resting until tomorrow" / "You can keep typing, and Arbor is still here if something urgent happens.") is new parent copy too.
+The B-AIOPS-02 resting copy (`elev.aierrors.voiceResting.title` / `.body`: "Voice is resting until tomorrow" / "You can keep typing, and Arbor is still here if something urgent happens.") is new parent copy too, and so is its round-4 closing line for a talk whose next slice never arrived (`app/src/lib/i18nElevation/aierrors.ts`):
+
+| Key | EN | HE |
+|---|---|---|
+| `elev.aierrors.voiceTalkEnded` | This voice talk has ended. Your conversation is still here — tap the voice button to carry on, or keep typing. | שיחת הקול הזו הסתיימה. השיחה נשמרה כאן — הקישו על כפתור הקול כדי להמשיך, או המשיכו בכתיבה. |
 
 ## Entries covered
 

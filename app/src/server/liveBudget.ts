@@ -7,10 +7,10 @@
  * a browser "closed" report would let a modified client keep spending the
  * token. The enforceable unit is therefore a NON-REFUNDABLE, EXPIRING
  * RESERVATION: minting a token reserves a short slice (60 s by default, never
- * more than 5 min) against
+ * more than 5 min; a renewal grows to at most 8 min) against
  * today's family allowance inside one transaction, and the token's provider
- * `expireTime` IS the reservation end. Renewal is simply the next mint: it
- * reserves the next slice only while allowance remains. Observed connection time is recorded
+ * `expireTime` IS the reservation end. Renewal is the next mint, chained onto
+ * the slice it renews: it reserves the next slice only while allowance remains. Observed connection time is recorded
  * beside the reservation for B-GA-26 reconciliation; it never credits the
  * budget on a client report, and even the opt-in expiry credit can never
  * exceed the unconsumed part of an expired reservation.
@@ -56,16 +56,19 @@ export const LIVE_SLICE_MAX_MS = 5 * MINUTE_MS;
 export const LIVE_SLICE_DEFAULT_MINUTES = 1;
 export const liveSliceMs = (): number =>
   Math.min(LIVE_SLICE_MAX_MS, Math.max(MINUTE_MS, envNum("LIVE_RESERVATION_MINUTES", LIVE_SLICE_DEFAULT_MINUTES) * MINUTE_MS));
-/** A RENEWAL of a slice whose audio session actually opened is long: up to
- *  ten minutes (the provider's own connection lifetime), never more than 15,
+/** A RENEWAL of a slice whose audio session actually opened GROWS: twice the
+ *  slice it renews (1 -> 2 -> 4 -> 8 minutes), never more than 8 minutes (each
+ *  socket stays inside the provider's ~10-minute connection lifetime) and
  *  never more than the family has left. It is CHAINED: it starts where the
- *  slice it renews ends, so the minutes charged are the minutes the family can
- *  talk (the early overlap on the new token is not charged twice). A 20-minute
- *  paid talk is 1 + 10 + 9 minutes: two seams, the first before anyone spoke. */
-export const LIVE_RENEWAL_DEFAULT_MINUTES = 10;
-export const LIVE_RENEWAL_MAX_MS = 15 * MINUTE_MS;
-export const liveRenewalSliceMs = (): number =>
-  Math.min(LIVE_RENEWAL_MAX_MS, Math.max(MINUTE_MS, envNum("LIVE_RENEWAL_MINUTES", LIVE_RENEWAL_DEFAULT_MINUTES) * MINUTE_MS));
+ *  slice it renews ends, so every reserved minute is a minute the family can
+ *  talk. The client renews 30 s before a slice ends, never earlier, so a talk
+ *  that stops is charged what it used plus at most the rest of its last slice
+ *  (a 2-minute talk is charged 1 + 2 = 3 minutes). A 20-minute paid talk is
+ *  1 + 2 + 4 + 8 + 5 minutes: four seams; Free is 1 + 2: one seam. */
+export const LIVE_RENEWAL_MAX_MS = 8 * MINUTE_MS;
+export const LIVE_SLICE_GROWTH = 2;
+export const liveRenewalSliceMs = (renewedMs: number): number =>
+  Math.min(LIVE_RENEWAL_MAX_MS, Math.max(MINUTE_MS, renewedMs * LIVE_SLICE_GROWTH));
 /** A renewal is accepted only this close to the end of the slice it renews,
  *  once per slice: at most two tokens of one family overlap, never longer. */
 export const LIVE_RENEW_WINDOW_MS = 90_000;
@@ -245,7 +248,7 @@ const reserveWith = (
     const remainingMs = Math.max(0, allowanceMs - committedMs(settled));
     return { doc: settled, result: { ok: false, code: LIVE_RENEWAL_INVALID, allowanceMs, remainingMs, resetAt } };
   }
-  const planned = planReservation(settled, input.plan, prev ? liveRenewalSliceMs() : liveSliceMs());
+  const planned = planReservation(settled, input.plan, prev ? liveRenewalSliceMs(prev.ms) : liveSliceMs());
   if (planned.ok === false) {
     const remainingMs = planned.remainingMs;
     return { doc: settled, result: { ok: false, code: LIVE_RESTING, allowanceMs, remainingMs, resetAt } };

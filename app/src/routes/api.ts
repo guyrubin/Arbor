@@ -1951,13 +1951,13 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       entitlementPlan = entitlement.plan;
       familyId = resolvedFamilyId;
       // B-AIOPS-02: a renewal names the caller's OWN usage session; only one
-      // whose audio actually opened may chain a long slice onto its
-      // reservation. Anything else is refused before anything is reserved.
+      // whose audio opened and that is still open may chain the next slice
+      // onto its reservation. Anything else is refused before anything is reserved.
       const renewOf = typeof req.body?.renewOf === "string" ? req.body.renewOf : undefined;
       let renewReservation: string | undefined;
       if (renewOf !== undefined) {
         const previous = await liveUsage.get(actor.uid, renewOf);
-        if (!previous || previous.openedAt === undefined || !previous.budget) {
+        if (!previous || previous.openedAt === undefined || previous.closed || !previous.budget) {
           res.status(409).json({ available: false, code: "live_renewal_invalid", reason: "Live voice is not available right now." });
           return;
         }

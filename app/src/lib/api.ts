@@ -248,12 +248,16 @@ function liveUsageRequest(sessionId: string, event: "opened" | "heartbeat" | "cl
 }
 // Live startup includes auth-token refresh and response JSON, not only fetch.
 // Bound the whole operation and never send after an owner has cancelled it.
-function liveStartupRequest<T>(body: unknown, signal?: AbortSignal): Promise<T> {
+// B-AIOPS-02: a renewal mint may take longer; it starts 30 s before its slice
+// ends and the Live client discards one that arrives after that end.
+const LIVE_STARTUP_TIMEOUT_MS = 10_000;
+const LIVE_RENEWAL_TIMEOUT_MS = 30_000;
+function liveStartupRequest<T>(body: unknown, signal?: AbortSignal, timeoutMs = LIVE_STARTUP_TIMEOUT_MS): Promise<T> {
   const controller = new AbortController();
   return new Promise<T>((resolve, reject) => {
     const cleanup = () => { clearTimeout(timer); signal?.removeEventListener("abort", cancel); };
     const cancel = () => { cleanup(); controller.abort(); reject(new DOMException("Voice start cancelled", "AbortError")); };
-    const timer = setTimeout(() => { cleanup(); controller.abort(); reject(new Error("live-token-timeout")); }, 10_000);
+    const timer = setTimeout(() => { cleanup(); controller.abort(); reject(new Error("live-token-timeout")); }, timeoutMs);
     signal?.addEventListener("abort", cancel, { once: true });
     if (signal?.aborted) { cancel(); return; }
     request<T>("/api/live/token", "POST", body, controller.signal).then(
@@ -603,12 +607,13 @@ export const api = {
     topicId?: string;
     /** B-PROV-12: the provider notice id the parent acknowledged. */
     noticeAck?: string;
-    /** B-AIOPS-02: renew this opened slice (its usage-session id) with a long chained one. */
+    /** B-AIOPS-02: renew this opened slice (its usage-session id) with the next chained one. */
     renewOf?: string;
   } = {}, opts: { signal?: AbortSignal } = {}) =>
     liveStartupRequest<{ available: boolean; token?: string; model?: string; expiresAt?: string; usageSessionId?: string; reason?: string; systemInstruction?: string; speechConfig?: unknown;
       /** B-AIOPS-02: the server-reserved slice and what the family has left today. */
-      budget?: { reservedMs: number; remainingMs: number; allowanceMs: number; resetAt: string } }>(payload, opts.signal),
+      budget?: { reservedMs: number; remainingMs: number; allowanceMs: number; resetAt: string } }>(payload, opts.signal,
+        payload.renewOf ? LIVE_RENEWAL_TIMEOUT_MS : LIVE_STARTUP_TIMEOUT_MS),
   // VC-2/VC-3: the authoritative per-turn Live screen. The liveTurnGuard treats
   // ANY failure of this call (network / non-200 / timeout) as FLAGGED (VC-5).
   // B-AIOPS-03: "failed" = the audio never came up after the mint.

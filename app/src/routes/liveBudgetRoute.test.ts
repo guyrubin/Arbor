@@ -250,7 +250,7 @@ describe("B-AIOPS-02 P1-1 — the default slice is one minute", () => {
   });
 });
 
-describe("round 3 — renewal at the mint route", () => {
+describe("round 3/4 — renewal at the mint route", () => {
   it("a renewal names the caller's own OPENED usage session; unopened or someone else's is a 409 that reserves and mints nothing", async () => {
     delete process.env.LIVE_RESERVATION_MINUTES;
     try {
@@ -267,11 +267,32 @@ describe("round 3 — renewal at the mint route", () => {
       expect(sdk.create.mock.calls.length).toBe(created);
       const renewed = await mint("parent-a", { renewOf: first.body.usageSessionId });
       expect(renewed.status).toBe(200);
-      // 10 paid minutes in this file: 1 + the remaining 9, chained onto the first slice.
-      expect(renewed.body.budget).toMatchObject({ reservedMs: 9 * 60_000, remainingMs: 0 });
-      expect(Date.parse(renewed.body.expiresAt) - Date.parse(first.body.expiresAt)).toBe(9 * 60_000);
+      // Round 4: the renewal is twice the renewed slice (10 paid minutes in
+      // this file: 1, then 2 of the remaining 9), chained onto its end.
+      expect(renewed.body.budget).toMatchObject({ reservedMs: 2 * 60_000, remainingMs: 7 * 60_000 });
+      expect(Date.parse(renewed.body.expiresAt) - Date.parse(first.body.expiresAt)).toBe(2 * 60_000);
       const arg = sdk.create.mock.calls.at(-1)![0] as any;
       expect(arg.config.expireTime).toBe(renewed.body.expiresAt);
+    } finally {
+      process.env.LIVE_RESERVATION_MINUTES = "5";
+    }
+  });
+
+  it("round 4: a CLOSED usage session is no renewal: 409, nothing reserved or minted", async () => {
+    delete process.env.LIVE_RESERVATION_MINUTES;
+    try {
+      const first = await mint("parent-a");
+      expect(first.status).toBe(200);
+      expect((await report("parent-a", first.body.usageSessionId, "opened")).status).toBe(200);
+      expect((await report("parent-a", first.body.usageSessionId, "closed")).status).toBe(200);
+      const created = sdk.create.mock.calls.length;
+      const closed = await mint("parent-a", { renewOf: first.body.usageSessionId });
+      expect(closed.status).toBe(409);
+      expect(closed.body.code).toBe("live_renewal_invalid");
+      expect(sdk.create.mock.calls.length).toBe(created);
+      // Nothing was reserved: the family still has all but the first minute.
+      const next = await mint("parent-a");
+      expect(next.body.budget.remainingMs).toBe(8 * 60_000);
     } finally {
       process.env.LIVE_RESERVATION_MINUTES = "5";
     }
