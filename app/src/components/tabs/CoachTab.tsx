@@ -40,7 +40,7 @@ import { screenForImmediateEscalation } from "../../safety/escalation";
 import type { ComposerAttachment } from "../../lib/companionAttachments";
 import { requestCompanionConsentReview } from "../../lib/companionConsent";
 import { COMPANION_CONVERSATION_EVENT, consumeConversationPanelRequest, consumeConversationVoiceRequest, conversationVoiceRequestPending, type CompanionConversationRequest } from "../../lib/companionConversation";
-import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError } from "../../lib/api";
+import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError, isLiveResting } from "../../lib/api";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { recurringScenario } from "../../lib/patternEcho";
 import { localDayKey } from "../../lib/firstsKeepsake";
@@ -661,7 +661,15 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       voiceBufRef.current = "";
       streamDoneRef.current = true;
       pumpTts();
-    } catch {
+    } catch (err) {
+      // B-AIOPS-02: the family's voice time for today is spent on the fallback
+      // loop too. Same resting card as the Live mint: voice off, no re-listen
+      // loop; the typed composer and the crisis door stay where they are.
+      if (ownsTurn() && isLiveResting(err)) {
+        stopVoice(false);
+        setAiFailure(classifyAiFailure(err, { online, childName: childFirst }));
+        return;
+      }
       // COACH-2: keep the partial caption on abort/error — the parent keeps
       // whatever was already said instead of the turn vanishing.
       // AI-V2(a): an ABORT is always driven by bargeInVoice/stopVoice, which
@@ -924,6 +932,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
         // the same refusal, so "falling back" was a silent dead end. Now the
         // status survives (lib/api streamVoice) and the parent is told which
         // of the two happened, and what to do about it.
+        // B-AIOPS-02: the family's daily Live allowance (`live_resting`) is
+        // the same shape — a typed card, voice off, the typed composer and
+        // the crisis path untouched; no reload, no fallback loop, no retry.
         if (err instanceof ApiError && (err.status === 429 || err.status === 451)) {
           attempt.end();
           setVoicePhase("off");
@@ -1635,13 +1646,17 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               same request could actually succeed. */}
           {failureCopy && !isChatLoading && (
             <div
-              role="alert"
+              // B-AIOPS-02: a spent voice allowance is a resting state, not a
+              // failure — announced politely in a calm tint, never the alarm.
+              role={failureCopy.kind === "voiceResting" ? "status" : "alert"}
               data-testid="coach-failure-card"
               data-failure-kind={failureCopy.kind}
               className="flex items-start gap-3 rounded-2xl p-4 me-auto max-w-[85%]"
-              style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}
+              style={failureCopy.kind === "voiceResting"
+                ? { background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }
+                : { background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}
             >
-              <Icon name={failureCopy.kind === "offline" ? "cloud_off" : failureCopy.kind === "consent" ? "lock" : "warning"} size={16} className="flex-shrink-0 mt-0.5" />
+              <Icon name={failureCopy.kind === "offline" ? "cloud_off" : failureCopy.kind === "consent" ? "lock" : failureCopy.kind === "voiceResting" ? "mic_off" : "warning"} size={16} className="flex-shrink-0 mt-0.5" />
               <div className="space-y-2">
                 <p className="text-xs leading-relaxed font-extrabold" dir="auto">{t(failureCopy.titleKey)}</p>
                 <p className="text-xs leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>

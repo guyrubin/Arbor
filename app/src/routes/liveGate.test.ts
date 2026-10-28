@@ -122,11 +122,18 @@ beforeAll(async () => {
 });
 
 const priorHourlyLimit = process.env.AI_USER_HOURLY_LIMIT;
+// B-AIOPS-02: every mint here reserves against ONE sandbox family's daily Live
+// allowance (routes/liveBudgetRoute.test.ts pins that cap); keep it out of the
+// way so this file keeps testing the enablement gate, not the budget.
+const priorLivePaid = process.env.LIVE_PAID_MINUTES_PER_DAY;
+process.env.LIVE_PAID_MINUTES_PER_DAY = "1000";
 
 afterAll(async () => {
   // Restore the env the metering test narrowed (worker processes are reused).
   if (priorHourlyLimit === undefined) delete process.env.AI_USER_HOURLY_LIMIT;
   else process.env.AI_USER_HOURLY_LIMIT = priorHourlyLimit;
+  if (priorLivePaid === undefined) delete process.env.LIVE_PAID_MINUTES_PER_DAY;
+  else process.env.LIVE_PAID_MINUTES_PER_DAY = priorLivePaid;
   await Promise.all(
     servers.map((s) => new Promise<void>((resolve, reject) => s.close((e) => (e ? reject(e) : resolve())))),
   );

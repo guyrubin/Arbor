@@ -22,10 +22,10 @@
  * Pure and dependency-light on purpose: it returns i18n KEYS + params, so the
  * render site owns t() and the copy stays translatable. No React, no I/O.
  */
-import { ApiError, EscalationRequiredError, PaywallError } from "./api";
+import { ApiError, EscalationRequiredError, PaywallError, isLiveResting } from "./api";
 import type { ActiveTab } from "./routes";
 
-export type AiFailureKind = "offline" | "quota" | "consent" | "paywall" | "escalation" | "generic";
+export type AiFailureKind = "offline" | "quota" | "voiceResting" | "consent" | "paywall" | "escalation" | "generic";
 
 export interface AiFailureCopy {
   kind: AiFailureKind;
@@ -88,6 +88,18 @@ export function classifyAiFailure(err: unknown, ctx: AiFailureContext = {}): AiF
       kind: "offline",
       titleKey: "elev.aierrors.offline.title",
       bodyKey: "elev.aierrors.offline.body",
+      bodyParams: {},
+      retryable: false,
+    };
+  }
+
+  // B-AIOPS-02: the family's realtime-voice minutes for today are spent. Not
+  // the hourly quota — waiting an hour changes nothing, and typing still works.
+  if (isLiveResting(err)) {
+    return {
+      kind: "voiceResting",
+      titleKey: "elev.aierrors.voiceResting.title",
+      bodyKey: "elev.aierrors.voiceResting.body",
       bodyParams: {},
       retryable: false,
     };

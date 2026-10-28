@@ -1,0 +1,33 @@
+# B-AIOPS-02 — Shared-family Live allowance (18 October 2026)
+
+Builds on the 15 October Live usage observation slice. Accepted intent (GA backlog, Interpretation): Free 3 minutes, Plus and Family 20 minutes of realtime voice per family per day, shared across every parent, session and device.
+
+## What is enforced
+
+- `POST /api/live/token` reserves a slice of the family's daily allowance **before** the provider is touched. Family and plan are server-resolved (`ensureFamilyForUser`, `resolveEntitlement`); the client supplies nothing.
+- A reservation is at most 5 minutes (`LIVE_RESERVATION_MINUTES`, capped) and is **non-refundable**. The provider token's `expireTime` is the reservation end, and `newSessionExpireTime` is one minute, so a minted token cannot be parked and spent later.
+- Overlapping mints from any member of the family serialize on one Firestore document per family-day (`aiQuota/live_family_{familyId}_{YYYY-MM-DD}`, UTC day, the same boundary the observation slice splits on). Two parents cannot exceed the allowance together.
+- Renewal is the next mint: it reserves the next slice only if allowance remains; a remainder under 30 seconds is treated as spent. The allowance resets at UTC midnight.
+- Exhaustion returns a typed `429 { code: "live_resting", retryable: false }` with `X-Live-Quota-*` headers and **no `Retry-After`**. Nothing is minted. The client shows a calm "voice is resting" card (EN/HE), turns voice off, keeps the typed composer, draft and crisis path, and never reloads or falls back into a loop.
+- A provider mint failure releases the reservation (server fact). A reservation-store failure refuses the mint (503), never fails open.
+- Reconciliation: `/live/usage` reports (open/heartbeat/close) are recorded beside the reservation. They **never** credit the budget. By default an expired reservation is charged in full. `LIVE_RECONCILE_CREDIT=observed` (off) would charge observed time instead, bounded by the slice, only after provider expiry, and only for complete telemetry (clean close, no heartbeat gap).
+- Admin/comp families (`ARBOR_FAMILY_*`, `ARBOR_PLUS_*`) resolve through the existing entitlement path to the paid 20-minute allowance. No new bypass exists.
+
+## 28 October completion
+
+- **Fallback path.** The browser loop (device speech-to-text → `POST /api/voice` → read-aloud) spends the same family-day allowance. After the crisis screen (a crisis turn is never metered or refused), each turn reserves 30 seconds before the model is called; when the response ends the server settles it to the spoken length it handled: the parent's words plus every released sentence at 14 characters per second. Exhaustion is the same typed `429 live_resting` with `X-Live-Quota-*` and no `Retry-After`; a store outage is `503 voice_budget_unavailable`. A server crash mid-turn leaves the turn unsettled and it is charged its full reserve at the voice deadline plus 10 seconds.
+- **Timeout and caller-gone.** A provider that has not answered the mint within 8 seconds is abandoned and the slice released. A token minted after the caller hung up reaches nobody, so its slice is released too. Both are server facts, never client reports.
+- **Client.** The loop's `live_resting` stops voice (no re-listen loop) and shows the same resting card as the Live mint, in a calm sky tint announced as a status, not an alert: "Voice is resting until tomorrow. You can keep typing, and Arbor is still here if something urgent happens." (EN/HE). The composer and the crisis door stay where they are.
+- **Tests.** Boundary (remainder under 30 s is spent; UTC reset), overlap (ten concurrent mints; mixed concurrent turns and mints from two parents), crash (unsettled turn charged in full; expired token charged in full), timeout (hung provider mint released), caller-gone release, retry (each retry is a new reservation; total bounded), fallback refusal after Live spent, crisis never refused.
+
+## Data
+
+Family-level usage only: parent uids, millisecond counts and timestamps in `aiQuota`. No child data, audio, transcripts or names. `aiQuota` has no client rules match (Admin SDK only) and the existing TTL field `expireAt` applies. Account deletion already clears uid-keyed `aiQuota` meters; a family-day document outlives a member only as a count and is removed with the family-day TTL.
+
+## Not proved by this slice (B-GA-26)
+
+- Provider-billed audio minutes versus reserved minutes; the reservation bounds spend, it does not measure it.
+- A Live start that fails after the mint (microphone refusal, socket closed before setup) keeps its slice: the server cannot tell a failed start from a session the client hid. Requesting the microphone before the mint would remove that cost for honest failures; it is a client follow-up, not done here.
+- Plans are per parent: in a family with mixed plans, each mint and turn is checked against the caller's own allowance over the shared family-day total.
+- Live production exercise of the 429 card on a signed-in EN/HE device, and whether Gemini closes an in-progress session at `expireTime` (SDK documents "may preemptively close"); the reservation is charged either way.
+- Exhaustion itself is not an incident; Live unavailability and budget-store outages are (B-AIOPS-03).

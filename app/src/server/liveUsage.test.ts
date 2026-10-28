@@ -40,9 +40,11 @@ describe("Live observed duration", () => {
     expect(await store.report("parent", "../invalid", "opened")).toBeNull();
     await store.report("parent", id, "opened");
     vi.setSystemTime(11_000);
-    expect(await store.report("parent", id, "closed")).toEqual({ observedMs: 10_000, incomplete: false });
+    // B-AIOPS-02: the report also carries the family/budget pointer for the
+    // route's reconciliation write; the client still sees observedMs/incomplete only.
+    expect(await store.report("parent", id, "closed")).toEqual({ observedMs: 10_000, incomplete: false, closed: true, familyId: "family" });
     vi.setSystemTime(21_000);
-    expect(await store.report("parent", id, "closed")).toEqual({ observedMs: 10_000, incomplete: false });
+    expect(await store.report("parent", id, "closed")).toEqual({ observedMs: 10_000, incomplete: false, closed: true, familyId: "family" });
   });
 });
 

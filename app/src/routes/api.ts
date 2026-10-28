@@ -1,5 +1,8 @@
 import { liveUsageRateLimit } from "../server/apiRateLimits.js";
 import { createLiveUsageStore, withLiveUsageDeadline, type LiveUsageEvent } from "../server/liveUsage.js";
+import { createLiveBudgetStore, LIVE_RESTING_BODY } from "../server/liveBudget.js";
+import { spokenMsForChars, type ReserveResult } from "../server/liveBudget.js";
+import { entitlementForRequest } from "../server/entitlements.js";
 import { attachmentTurnPolicy } from "../ai/attachmentSourcePolicy.js";
 import { parseCompanionAttachments, type ComposerAttachment } from "../lib/companionAttachments.js";
 import express from "express";
@@ -135,6 +138,9 @@ type ApiDeps = {
    *  (actionLoops, kept insights). Injectable for tests; defaults to the
    *  Firestore/null source derived from config. */
   companionLedgerSource?: CompanionLedgerSource;
+  /** B-AIOPS-02: the family-day Live reservation store. Injectable for tests;
+   *  defaults to the Firestore/memory store derived from config. */
+  liveBudgetStore?: import("../server/liveBudget.js").LiveBudgetStore;
   /** N1-05: the founder-side cohort reader (injectable for tests); defaults
    *  to the Firestore/null store derived from config. */
   cohortMetricsStore?: CohortMetricsStore;
@@ -188,7 +194,30 @@ const beginSse = (res: express.Response) => {
 const writeSse = (res: express.Response, event: string, data: unknown) => {
   res.write(`event: ${event}\n`);
   res.write(`data: ${JSON.stringify(data)}\n\n`);
+  // B-AIOPS-02: the characters this response released as speakable text — the
+  // /voice fallback turn is charged from it (a count, never the text itself).
+  const text = event === "delta" ? (data as { text?: unknown } | null)?.text : undefined;
+  if (typeof text === "string") res.locals.spokenChars = (Number(res.locals.spokenChars) || 0) + text.length;
 };
+
+/** B-AIOPS-02: the family's remaining realtime-voice allowance, on every
+ *  reservation answer (Live mint and fallback turn alike). */
+const setLiveQuotaHeaders = (res: express.Response, outcome: ReserveResult) => {
+  res.setHeader("X-Live-Quota-Limit", String(Math.round(outcome.allowanceMs / 1000)));
+  res.setHeader("X-Live-Quota-Remaining", String(Math.round(outcome.remainingMs / 1000)));
+  res.setHeader("X-Live-Quota-Reset", new Date(outcome.resetAt).toISOString());
+};
+
+/** B-AIOPS-02: a Live mint the provider has not answered within this window is
+ *  abandoned and its reservation released (the client gives up at 10 s, so a
+ *  token minted later would reach nobody). */
+const liveMintDeadlineMs = (): number => {
+  const fromEnv = Number(process.env.LIVE_MINT_DEADLINE_MS);
+  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : 8_000;
+};
+/** B-AIOPS-02: a fallback turn not settled within the voice deadline plus this
+ *  grace is treated as a crashed turn and charged its full reserve. */
+const VOICE_TURN_GRACE_MS = 10_000;
 
 /**
  * AI-07 — the screened sentence relay, as ONE seam.
@@ -402,9 +431,11 @@ export const allowListHandoffInput = (
   return { logs: safeLogs, milestones: safeMilestones };
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, digestJobSource, jobCallerVerifier, aiCapabilityRegistry, heroPoseSource }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, digestJobSource, jobCallerVerifier, aiCapabilityRegistry, heroPoseSource, liveBudgetStore }: ApiDeps) => {
   const router = express.Router();
   const liveUsage = createLiveUsageStore(config);
+  // B-AIOPS-02: the shared-family daily Live allowance (injectable for tests).
+  const liveBudget = liveBudgetStore ?? createLiveBudgetStore(config);
   // CARE-2: the recipient shared-view read seam (Firestore in prod, null locally).
   const sharedSource = sharedChildSource ?? createSharedChildRecordSource(config, memoryStore);
   // B-AI-01: the companion ledger read (Firestore in prod, null locally).
@@ -1544,6 +1575,36 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       return;
     }
     const escalationMatch = screenForImmediateEscalation({ message });
+    // B-AIOPS-02: the browser fallback loop spends the SAME family-day voice
+    // allowance as Live. A crisis turn is never metered and never refused —
+    // the resources below answer first. Otherwise one turn is reserved before
+    // the model is touched and settled by the server when this response ends:
+    // the parent's words plus every released sentence, at the spoken rate.
+    if (!escalationMatch) {
+      try {
+        const [entitlement, familyId] = await Promise.all([
+          entitlementForRequest(req, entitlementStore), resolveFamilyId(req, undefined),
+        ]);
+        const turn = await liveBudget.reserveTurn({ familyId, plan: entitlement.plan, uid: actorOf(req).uid, holdMs: routeBudgetMs("voice") + VOICE_TURN_GRACE_MS });
+        setLiveQuotaHeaders(res, turn);
+        if (!turn.ok) {
+          logger.info("live.budget.resting", { requestId: requestIdOf(req), familyId, plan: entitlement.plan, path: "fallback", remainingMs: turn.remainingMs });
+          res.status(429).json({ ...LIVE_RESTING_BODY, remainingMs: turn.remainingMs, resetAt: new Date(turn.resetAt).toISOString() });
+          return;
+        }
+        const { day, id } = turn.reservation;
+        res.on("close", () => {
+          const chargedMs = spokenMsForChars(message.length + (Number(res.locals.spokenChars) || 0));
+          liveBudget.settleTurn(familyId, day, id, chargedMs)
+            .catch((error) => logger.error("Voice turn settlement failed", error, { requestId: requestIdOf(req) }));
+        });
+      } catch (error) {
+        // Same posture as the Live mint: a cap that fails open is not a cap.
+        logger.error("Voice turn reservation failed", error, { requestId: requestIdOf(req) });
+        res.status(503).json({ error: "Voice is not available right now", code: "voice_budget_unavailable" });
+        return;
+      }
+    }
     beginSse(res);
     if (escalationMatch) {
       // VC-4: voice parents must get the SAME crisis help as typists. Speak a
@@ -1786,7 +1847,18 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     try {
       const result = await liveUsage.report(actorOf(req).uid, sessionId, event as LiveUsageEvent);
       if (!result) { res.status(404).json({ error: "Session not found" }); return; }
-      res.json(result);
+      // B-AIOPS-02 reconciliation: observed time is RECORDED beside the
+      // family reservation. It never credits the budget here — a client
+      // report cannot shorten a token that the provider still honours.
+      if (result.budget) {
+        try {
+          await liveBudget.observe(result.familyId, result.budget.day, result.budget.reservationId,
+            { observedMs: result.observedMs, incomplete: result.incomplete, closed: result.closed });
+        } catch (error) {
+          logger.error("Live budget reconciliation failed", error, { requestId: requestIdOf(req) });
+        }
+      }
+      res.json({ observedMs: result.observedMs, incomplete: result.incomplete });
     } catch (error) {
       logger.error("Live usage write failed", error, { requestId: requestIdOf(req) });
       res.status(503).json({ error: "Usage reporting unavailable" });
@@ -1815,6 +1887,47 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       exception_until: live.exceptionUntil ?? null,
     });
     const euPath = selected.provider === LIVE_VERTEX_EU_PROVIDER;
+
+    // B-AIOPS-02: reserve BEFORE the provider is touched. The family, plan and
+    // slice are server-resolved; the client supplies none of them. A token is
+    // spend the provider honours until expiry, so the reservation is
+    // non-refundable and the token's expireTime IS the reservation end.
+    // Overlapping mints from any parent/device of the family serialize on
+    // the family-day document; renewal after expiry is simply the next mint.
+    // A store failure refuses the mint (503): the
+    // browser voice loop keeps its own meters, and a cap that fails open on
+    // an outage is not a cap.
+    const actor = actorOf(req);
+    let reserved: Extract<Awaited<ReturnType<typeof liveBudget.reserve>>, { ok: true }>;
+    let entitlementPlan: import("../server/entitlements.js").Plan;
+    let familyId: string;
+    try {
+      const [entitlement, resolvedFamilyId] = await Promise.all([
+        entitlementForRequest(req, entitlementStore), resolveFamilyId(req, undefined),
+      ]);
+      entitlementPlan = entitlement.plan;
+      familyId = resolvedFamilyId;
+      const outcome = await liveBudget.reserve({ familyId, plan: entitlement.plan, uid: actor.uid });
+      setLiveQuotaHeaders(res, outcome);
+      if (!outcome.ok) {
+        // B-KID-05 posture: exhaustion is not "busy" — no Retry-After. The
+        // typed coach and the crisis path stay open; only realtime voice rests.
+        logger.info("live.budget.resting", { requestId: requestIdOf(req), familyId, plan: entitlement.plan, remainingMs: outcome.remainingMs });
+        res.status(429).json({ ...LIVE_RESTING_BODY, remainingMs: outcome.remainingMs, resetAt: new Date(outcome.resetAt).toISOString() });
+        return;
+      }
+      reserved = outcome;
+    } catch (error) {
+      logger.error("Live budget reservation failed", error, { requestId: requestIdOf(req) });
+      res.status(503).json({ available: false, code: "live_budget_unavailable", reason: "Live voice is not available right now." });
+      return;
+    }
+    const { reservation } = reserved;
+    const expireTime = new Date(reservation.expiresAt).toISOString();
+    // B-AIOPS-02: a caller that hangs up before the token is delivered never
+    // holds it, so its reservation is released (a server fact, not a report).
+    let callerGone = false;
+    res.on("close", () => { if (!res.writableEnded) callerGone = true; });
     try {
       const { GoogleGenAI } = await import("@google/genai");
       // The EU attempt mints on Vertex in the configured EU location; the
@@ -1823,7 +1936,6 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         ? new GoogleGenAI({ vertexai: true, project: config.gcpProjectId, location: config.liveVertexLocation || config.vertexLocation })
         : new GoogleGenAI({ apiKey: config.geminiApiKey as string });
       const model = config.liveModel;
-      const expireTime = new Date(Date.now() + 20 * 60 * 1000).toISOString();
       // AI-V9: the instruction + voice are built per session language from the
       // ONE shared spoken-persona module and pinned server-side.
       const { childProfile, recentTurns, contextChildId, privateMode, topicId } = req.body ?? {};
@@ -1832,17 +1944,22 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const companionContext = await assembleSpokenContext({
         memoryStore, childProfile, recentTurns, contextChildId, privateMode, topicId,
         canReadMemory, maxMemoryFacts: config.memoryPromptMaxFacts,
-        ledgerSource, uid: actorOf(req).uid,
+        ledgerSource, uid: actor.uid,
       });
       // Direct audio cannot restore the text route's child-name alias. Keep
       // names/contact PII out of the token pin and use natural generic wording.
       const liveContext = liveContextWithoutNames(companionContext, companionContext.profile?.name);
       const systemInstruction = buildLiveSystemInstruction(req.body?.language, liveContext);
       const speechConfig = liveSpeechConfig(req.body?.language);
-      const token = await ai.authTokens.create({
+      let mintTimer: ReturnType<typeof setTimeout> | undefined;
+      const token = await Promise.race([ai.authTokens.create({
         config: {
           uses: 1,
+          // B-AIOPS-02: the reserved slice bounds the token; the provider
+          // rejects messages after it. A new session may start on the token
+          // only in the next minute, so a parked token cannot be spent later.
           expireTime,
+          newSessionExpireTime: new Date(Date.now() + 60_000).toISOString(),
           // FW-NEW-P0: pin the persona, voice, and transcription-on INTO the
           // token's constraints at mint time. The Live API rejects a connect
           // config that conflicts with these, so a modified client cannot
@@ -1860,27 +1977,35 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
           },
           httpOptions: { apiVersion: "v1beta" }
         }
-      });
+      }), new Promise<never>((_, reject) => {
+        mintTimer = setTimeout(() => reject(new Error("Live token mint timed out")), liveMintDeadlineMs());
+      })]).finally(() => clearTimeout(mintTimer));
+      if (callerGone) {
+        // Minted for a caller that already left: nobody holds this token.
+        await liveBudget.cancel(familyId, reservation.day, reservation.id)
+          .catch((cancelError) => logger.error("Live budget release failed", cancelError, { requestId: requestIdOf(req) }));
+        return;
+      }
       // The pinned instruction/speechConfig are echoed back so the client's
       // connect config stays byte-identical to the pin (cosmetic — the token
       // constraints are authoritative).
       // Telemetry failure must not strand a successfully minted voice token.
       let usageSessionId: string | undefined;
       try {
-        usageSessionId = await withLiveUsageDeadline(async () => {
-          const actor = actorOf(req);
-          const [entitlement, familyId] = await Promise.all([
-            resolveEntitlement(entitlementStore, actor), resolveFamilyId(req, undefined),
-          ]);
-          return liveUsage.create({ uid: actor.uid, familyId, plan: entitlement.plan,
-            model, expiresAt: Date.parse(expireTime) });
-        });
+        usageSessionId = await withLiveUsageDeadline(async () =>
+          liveUsage.create({ uid: actor.uid, familyId, plan: entitlementPlan, model, expiresAt: reservation.expiresAt,
+            budget: { day: reservation.day, reservationId: reservation.id } }));
       } catch (error) {
         logger.error("Live usage session creation failed", error, { requestId: requestIdOf(req) });
       }
-      res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime, systemInstruction, speechConfig, usageSessionId });
+      res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime, systemInstruction, speechConfig, usageSessionId,
+        budget: { reservedMs: reservation.ms, remainingMs: reserved.remainingMs, allowanceMs: reserved.allowanceMs, resetAt: new Date(reserved.resetAt).toISOString() } });
     } catch (error: any) {
       logger.error("Arbor Live Token Error", error, { requestId: requestIdOf(req), provider: selected.provider, region: selected.region });
+      // No token was issued: the reservation is released on this SERVER fact
+      // (never on a client report). Failure here is logged, not surfaced.
+      try { await liveBudget.cancel(familyId, reservation.day, reservation.id); }
+      catch (cancelError) { logger.error("Live budget release failed", cancelError, { requestId: requestIdOf(req) }); }
       if (euPath) {
         // B-PROV-01: the Vertex `eu` attempt could not mint (ephemeral Live
         // tokens are a Developer-API feature today). 503, browser fallback.
