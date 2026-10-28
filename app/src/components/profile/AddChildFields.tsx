@@ -6,7 +6,7 @@ import { Icon } from "../ui/Icon";
 import { LegalLinks } from "../billing/LegalLinks";
 import { isUnderThree } from "../../lib/age/forChild";
 import {
-  CHILD_FOCUS_AREAS, CHILD_LANGUAGES, customLanguages, focusAliases, hasChoice, languageAliases, languageLabelKey, storedLanguage, toggleChoice, toggleLanguage,
+  CHILD_FOCUS_AREAS, CHILD_LANGUAGES, customLanguages, focusAliases, hasChoice, languageAliases, storedLanguage, toggleChoice, toggleLanguage,
 } from "../../lib/childProfileChoices";
 
 /** The focus glyphs; the areas themselves are lib/childProfileChoices CHILD_FOCUS_AREAS. */
@@ -51,7 +51,7 @@ export function ChildLanguageChoices({ value, onChange }: { value: string[]; onC
         const qualified = stored !== undefined && !hasChoice([stored], languageAliases(language));
         return (
           <ChoiceChip key={language} on={stored !== undefined} onClick={() => onChange(toggleLanguage(value, language))}>
-            {qualified ? <bdi>{stored}</bdi> : t(languageLabelKey(language))}
+            {qualified ? <bdi>{stored}</bdi> : t("ob.lang." + language.toLowerCase())}
           </ChoiceChip>
         );
       })}
