@@ -156,14 +156,17 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const saving = !!chosen && savingAction.current.has(chosen.id);
   const observationNeedsWords = !observationWords.trim();
   const observationInput = useRef<HTMLTextAreaElement>(null);
-  // B-TODAY-37: the requested question's form takes focus once it is the lead.
+  const stepTitle = useRef<HTMLHeadingElement>(null);
+  // B-TODAY-37: the requested question's form takes focus once it is the lead,
+  // and the page scrolls to the QUESTION (its title, clear of the sticky place
+  // pills by its scroll margin) so the parent reads what they are answering.
   const requestedOpen = !!observeId && chosen?.id === observeId && observation && !receipt;
   useEffect(() => {
     if (!requestedOpen) return;
     const input = observationInput.current;
     if (!input) return;
     input.focus({ preventScroll: true });
-    input.scrollIntoView?.({ block: "center" });
+    (stepTitle.current ?? input).scrollIntoView?.({ block: "start" });
   }, [requestedOpen, observeId]);
   const talk = (prompt?: string) => onTalkOpen ? onTalkOpen(prompt) : seedCoach({ prompt: prompt ?? "", source: "companion-now" });
   const saveOutcome = async (outcome: "helped" | "not_today" | { whatHappened: string }) => {
@@ -258,7 +261,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // v3 F-NOW-1 r2: the guide's title on the face is the lead's own h2, moved up
   // from its section (which keeps it as its label). The loop leads' cards carry
   // their own heading, so their face has the say line and meta only.
-  const planTitle = shownLead === "step" && chosen ? <h2 id={`${id}-step`} className="now-plan-title" dir="auto" style={observation ? { whiteSpace: "pre-wrap" } : undefined}>{receipt && !observation ? copy.finishedTitle : chosen.recommendation}</h2>
+  const planTitle = shownLead === "step" && chosen ? <h2 ref={stepTitle} id={`${id}-step`} className="now-plan-title" dir="auto" style={observation ? { whiteSpace: "pre-wrap", scrollMarginBlockStart: "calc(var(--sticky-offset) + 12px)" } : undefined}>{receipt && !observation ? copy.finishedTitle : chosen.recommendation}</h2>
     : shownLead === "visit" && visit ? <h2 id={`${id}-visit`} className="now-plan-title" dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</h2>
       : shownLead === "program" && program ? <h2 id={`${id}-program`} className="now-plan-title" dir="auto">{program.content.skill[lang]}</h2> : planWeekTitle;
   // The one plan body under every lead: why it was picked, always visible. The

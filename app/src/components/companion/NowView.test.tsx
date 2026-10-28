@@ -559,6 +559,8 @@ describe("B-TODAY-37 · 'Record a moment' on an older question opens that questi
     expect(asked).toContain('data-testid="now-observation-answer"');
     expect(asked).toContain(lang === "he" ? "השאלה שבחרתם" : "The question you chose");
     expect(asked.match(/data-primary-move=/g)).toHaveLength(1);
+    // Critic r1: the deep link scrolls to the QUESTION, clear of the sticky place pills.
+    expect(asked).toMatch(/<h2 id="[^"]+-step" class="now-plan-title" dir="auto" style="[^"]*scroll-margin-block-start:calc\(var\(--sticky-offset\) \+ 12px\)/);
   });
 
   it("an answered, unknown or non-observation id is ignored: Now keeps its own choice", () => {
