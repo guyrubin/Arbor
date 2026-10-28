@@ -36,7 +36,7 @@ export const he: Record<string, string> = {
   "elev.sync.dismiss": "להסתיר את ההודעה",
 
   "elev.sync.savedOnPhone": "נשמר בטלפון. יישלח כשהחיבור יחזור.",
-  "elev.sync.savedOnPhoneSending": "נשמר בטלפון. עדיין נשלח…",
+  "elev.sync.savedOnPhoneSending": "נשמר בטלפון. עדיין בשליחה…",
   "elev.sync.goalOffline": "אין חיבור, ולכן המטרה עוד לא נשמרה. נסו שוב כשהחיבור יחזור.",
   "elev.sync.addChildFailed": "לא הצלחנו להוסיף את הפרופיל. בדקו את החיבור ונסו שוב.",
 
