@@ -600,6 +600,21 @@ export async function buildCohortReport(
   };
 }
 
+/**
+ * B-GAME-18 / B-BOOK-51: the founder panel's ONE read — the weekly Kid Mode
+ * play summary alone (no retention, funnels or census), over the same bounded
+ * scan and the same internal/demo exclusion as the cohort report.
+ */
+export async function buildKidPlayReport(
+  store: CohortMetricsStore,
+  opts: { since: string; now?: Date; includeInternal?: boolean },
+): Promise<{ since: string; kidPlay: KidPlaySummary; scanned: { events: number; mode: "firestore" | "null" }; generatedAt: string }> {
+  const [allRollups, allEvents] = await Promise.all([store.listRetentionRollups(), store.listEvents(opts.since)]);
+  const kidEvents = allEvents.filter((e) => (KID_PLAY_EVENTS as readonly string[]).includes(e.event));
+  const { events } = excludeInternal(allRollups, kidEvents, opts.includeInternal === true);
+  return { since: opts.since, kidPlay: summariseKidPlay(events), scanned: { events: events.length, mode: store.mode }, generatedAt: (opts.now ?? new Date()).toISOString() };
+}
+
 /** The key pattern no response value may ever be filed under. Exported so the
  *  guard and any future reader assert against ONE definition. */
 export const FORBIDDEN_RESPONSE_KEY = /child|name|note|text|transcript/i;

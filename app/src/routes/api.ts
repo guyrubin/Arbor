@@ -71,6 +71,7 @@ import { resolveEmailProvider, sendWeeklyDigestEmail, type DigestEmailMessage } 
 import {
   FUNNEL_CHAINS,
   buildCohortReport,
+  buildKidPlayReport,
   createCohortMetricsStore,
   type CohortMetricsStore,
 } from "../server/cohortMetrics.js";
@@ -4061,6 +4062,24 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
     } catch (error: any) {
       logger.error("Arbor Cohort Report Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to build the cohort report", details: error.message });
+    }
+  });
+
+  // B-GAME-18 / B-BOOK-51: the founder panel's narrow read — the weekly Kid
+  // Mode play summary only (cells under 5 families hidden). Same admin gate.
+  router.get("/admin/kid-play", async (req, res) => {
+    const actor = actorOf(req);
+    if (!isAdmin(actor)) {
+      res.status(403).json({ error: "Not authorized" });
+      return;
+    }
+    try {
+      const sinceParam = typeof req.query.since === "string" ? req.query.since : "";
+      const since = Number.isFinite(Date.parse(sinceParam)) ? sinceParam : new Date(Date.now() - 28 * 86_400_000).toISOString();
+      res.json(await buildKidPlayReport(cohortMetrics, { since }));
+    } catch (error: any) {
+      logger.error("Arbor Kid Play Report Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to build the kid play report" });
     }
   });
 

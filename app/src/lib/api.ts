@@ -590,8 +590,8 @@ export const api = {
   billingPortal: () => get<{ url: string | null }>("/api/billing/portal"),
   // ADM-1: founder dashboard — users + paying-by-plan + today's token spend (403 if not admin).
   adminOverview: () => get<AdminOverview>("/api/admin/overview"),
-  // B-GAME-18 / B-BOOK-51: the cohort report's weekly Kid Mode play (403 if not admin).
-  adminKidPlay: (since: string) => get<{ kidPlay?: AdminKidPlay; generatedAt: string }>(`/api/admin/cohorts?since=${encodeURIComponent(since)}`),
+  // B-GAME-18 / B-BOOK-51: the weekly Kid Mode play summary — the narrow read (403 if not admin).
+  adminKidPlay: (since: string) => get<{ kidPlay?: AdminKidPlay; generatedAt: string }>(`/api/admin/kid-play?since=${encodeURIComponent(since)}`),
   // RET-1: "{child}'s week" digest (stats are computed server-side from the data we send).
   // B-AI-16: counts, types, contexts and outcomes only — no trigger / notes /
   // response / photo leaves the device for the digest (lib/digestPayload).

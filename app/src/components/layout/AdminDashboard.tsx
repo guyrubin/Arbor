@@ -99,7 +99,9 @@ export function KidPlayPanel({ data }: { data: AdminKidPlay | null | "unavailabl
   const books = data && data !== "unavailable" ? data.books : [];
   const of = (n: number | null, m: number | null) => (n == null || m == null ? "Hidden" : `${n} of ${m}`);
   return (
-    <div data-admin-kid-play="" className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+    // The founder dashboard is English-only: the panel is set left to right so
+    // "3 of 10" never reorders inside a Hebrew page.
+    <div data-admin-kid-play="" dir="ltr" lang="en" className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
       <div className="flex items-center gap-2 mb-2">
         <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg" style={{ background: "var(--arbor-paper)", color: "var(--arbor-green-ink)" }}><Icon name="sports_esports" size={16} /></span>
         <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>Kid Mode play · last 4 weeks</p>
@@ -133,7 +135,7 @@ export function KidPlayPanel({ data }: { data: AdminKidPlay | null | "unavailabl
               ))}
             </tbody>
           </table>
-          <p className="text-xs mt-3" style={muted}>Weeks with fewer than {data.minFamilies} families are hidden. Kid Mode sends no push into a game, so a return is unprompted. Play is never read as a sign about a child.</p>
+          <p className="text-xs mt-3" style={muted}>Cells about fewer than {data.minFamilies} families are hidden. Kid Mode sends no push into a game, so a return is unprompted. Play is never read as a sign about a child.</p>
         </>
       )}
     </div>

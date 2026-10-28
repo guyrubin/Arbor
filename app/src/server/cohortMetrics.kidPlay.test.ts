@@ -8,6 +8,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCohortReport,
+  buildKidPlayReport,
   KID_EVENT_PROP_ALLOWLIST,
   MIN_CELL_FAMILIES,
   projectEventProps,
@@ -71,5 +72,28 @@ describe("egress and the report", () => {
     expect(report.kidPlay.games).toHaveLength(1);
     expect(scanForbiddenKeys(report)).toEqual([]);
     expect(JSON.stringify(report.kidPlay)).not.toMatch(/"u\d"/);
+  });
+});
+
+describe("buildKidPlayReport — the founder panel's narrow read", () => {
+  it("returns the kid play summary only, Kid Mode events only, internal and demo families out", async () => {
+    const events: CohortEventDoc[] = [
+      ...families(6).map((u) => sit(u, 19, "puzzle")),
+      sit("demo-uid", 19, "puzzle"), sit("internal-uid", 19, "puzzle"),
+      { uid: "u0", event: "session_open", at: at(19), props: { source: "ad" } },
+    ];
+    const store: CohortMetricsStore = {
+      mode: "null",
+      listRetentionRollups: async () => [
+        { uid: "demo-uid", cohort: "demo", firstSeen: "2026-10-01", activeDays: ["2026-10-19"], source: null, market: null },
+        { uid: "internal-uid", cohort: "internal", firstSeen: "2026-10-01", activeDays: ["2026-10-19"], source: null, market: null },
+      ],
+      listEvents: async () => events,
+    };
+    const r = await buildKidPlayReport(store, { since: at(1), now: new Date(at(28)) });
+    expect(Object.keys(r).sort()).toEqual(["generatedAt", "kidPlay", "scanned", "since"]);
+    expect(r.kidPlay.games).toEqual([{ week: "2026-W43", game: "puzzle", hidden: false, families: 6, sittings: 6, replays: 0, returned7d: 0 }]);
+    expect(r.scanned.events).toBe(6);
+    expect(scanForbiddenKeys(r)).toEqual([]);
   });
 });
