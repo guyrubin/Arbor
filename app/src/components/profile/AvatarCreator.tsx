@@ -243,8 +243,6 @@ export default function AvatarCreator({
               </button>
             </div>
             <p className="text-xs mb-4" style={{ color: "var(--arbor-muted)" }}>{t("trust.avatar.notRealPhoto")}</p>
-            {/* B-GA-11: the parent's photo or description goes to Arbor's AI here. */}
-            <div className="-mt-3 mb-4"><AiDisclosureLine language={uiLang === "he" ? "he" : "en"} /></div>
 
             {currentAvatarUrl && !visibleResult && (
               <div className="mb-4 flex items-center gap-3 rounded-2xl p-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
@@ -414,6 +412,9 @@ export default function AvatarCreator({
                 </button>
               )}
             </div>
+            {/* B-GA-11: Create sends the photo or the description to Arbor's AI;
+                the Art. 50 line is the foot of that action, as Talk's composer foot. */}
+            <AiDisclosureLine language={uiLang === "he" ? "he" : "en"} />
             {visibleResult && (
               <div className="mt-2 flex justify-center">
                 <ShareButton
