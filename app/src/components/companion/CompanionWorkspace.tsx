@@ -4,7 +4,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useDialog } from "../../hooks/useDialog";
 import { useVisualViewportInset } from "../../hooks/useVisualViewportInset";
-import { COMPANION_CLOSE_EVENT, COMPANION_CONVERSATION_EVENT, requestCompanionConversation, startConversationVoice, type CompanionConversationRequest } from "../../lib/companionConversation";
+import { COMPANION_CLOSE_EVENT, COMPANION_CONVERSATION_EVENT, dropQueuedConversationVoice, registerConversationShown, requestCompanionConversation, startConversationVoice, type CompanionConversationRequest } from "../../lib/companionConversation";
 import { trackCompanionPanelOpen } from "../../lib/kpiEvents";
 import { isKidModeActive } from "../../lib/kidModeGate";
 import Icon from "../ui/Icon";
@@ -73,6 +73,10 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   const modal = visible && (!wide || expanded);
   const close = () => {
     closeFocus.current = { childId: childProfile.id, tab: activeTab };
+    // B-VOICE-08: closed means closed, now: a door tap still queued for the
+    // conversation is dropped and no voice start is accepted from here on.
+    openRef.current = false;
+    dropQueuedConversationVoice();
     setOpen(false);
   };
   // Replaces the conversation address with the place's own (replaceState, so
@@ -151,6 +155,14 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   // A ref, not `open`: the seed listener's closure can be a render behind.
   const openRef = useRef(open);
   openRef.current = open;
+  const kidLockedRef = useRef(kidLocked);
+  kidLockedRef.current = kidLocked;
+  // B-VOICE-08 / B-VOICE-02: a voice start (a door, a queued tap, the start
+  // after a card's words) is accepted only while the conversation is shown or
+  // opening inside this tap (show() sets the ref before the start runs); every
+  // way it hides drops a tap still queued for it.
+  useEffect(() => registerConversationShown(() => openRef.current && !kidLockedRef.current), []);
+  useEffect(() => { if (!visible) dropQueuedConversationVoice(); }, [visible]);
   // v3 F-SHELL-3: the chrome door (outside the workspace: the phone dock, the
   // sidebar) that opened the conversation, so an explicit close returns to it.
   const opener = useRef<HTMLElement | null>(null);

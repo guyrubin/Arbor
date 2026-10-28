@@ -73,8 +73,30 @@ export function registerConversationVoiceStarter(start: ConversationVoiceStart, 
   voiceStarter = start;
   const queued = queuedDoor;
   queuedDoor = null;
-  if (queued && now - queued.at >= 0 && now - queued.at <= CONVERSATION_VOICE_REQUEST_TTL_MS) start(queued.opening);
+  if (queued && now - queued.at >= 0 && now - queued.at <= CONVERSATION_VOICE_REQUEST_TTL_MS && conversationShown()) start(queued.opening);
   return () => { if (voiceStarter === start) voiceStarter = null; };
+}
+
+/** B-VOICE-08 / B-VOICE-02 — whether the conversation is on screen (or opening
+ *  inside this tap). The workspace reports it (CompanionWorkspace); a voice
+ *  start refuses while it is hidden, so closing the conversation always means
+ *  no microphone. With no workspace mounted the conversation is its own page. */
+let shownReader: (() => boolean) | null = null;
+
+export function registerConversationShown(read: () => boolean): () => void {
+  shownReader = read;
+  return () => { if (shownReader === read) shownReader = null; };
+}
+
+export function conversationShown(): boolean {
+  return shownReader ? shownReader() : true;
+}
+
+/** The parent closed the conversation: a door tap still waiting for it (and a
+ *  ready-to-talk request) is dropped, never run later. */
+export function dropQueuedConversationVoice(): void {
+  queuedDoor = null;
+  voiceRequestedAt = null;
 }
 
 /** A door tap is waiting for the conversation (does not consume it). */

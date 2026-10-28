@@ -12,6 +12,9 @@ import {
   CONVERSATION_VOICE_REQUEST_TTL_MS,
   consumeConversationVoiceRequest,
   conversationDoorQueued,
+  conversationShown,
+  dropQueuedConversationVoice,
+  registerConversationShown,
   requestCompanionClose,
   conversationVoiceReady,
   conversationVoiceRequestPending,
@@ -104,6 +107,36 @@ describe("startConversationVoice", () => {
     const after = vi.fn(() => true);
     registerConversationVoiceStarter(after, 5_100)();
     expect(after).not.toHaveBeenCalled();
+  });
+
+  it("B-VOICE-08 round 3: a tap queued, then the conversation closed: nothing starts when it registers", () => {
+    withWindow();
+    let shown = true;
+    const unshown = registerConversationShown(() => shown);
+    startConversationVoice({ source: "now-voice" }, 1_000);
+    expect(conversationDoorQueued()).toBe(true);
+    // The parent closes the panel (CompanionWorkspace close(): shown off, queue dropped).
+    shown = false;
+    dropQueuedConversationVoice();
+    expect(conversationDoorQueued()).toBe(false);
+    const start = vi.fn(() => true);
+    registerConversationVoiceStarter(start, 1_000 + 5_000)();
+    expect(start).not.toHaveBeenCalled();
+    unshown();
+  });
+
+  it("B-VOICE-08 round 3: even with the tap still queued, a hidden conversation never runs it, and drops it", () => {
+    withWindow();
+    let shown = true;
+    const unshown = registerConversationShown(() => shown);
+    startConversationVoice({ source: "hard-moment", opening: "I'm here." }, 1_000);
+    shown = false; // a hide path that did not drop the queue
+    const start = vi.fn(() => true);
+    registerConversationVoiceStarter(start, 1_000 + 2_000)();
+    expect(start).not.toHaveBeenCalled();
+    expect(conversationDoorQueued()).toBe(false);
+    unshown();
+    expect(conversationShown()).toBe(true); // no workspace: the conversation is its own page
   });
 
   it("a stale unregister never removes a newer conversation's start (a child switch remounts it)", () => {
