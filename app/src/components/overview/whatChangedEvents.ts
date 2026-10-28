@@ -31,6 +31,7 @@
 import { buildSinceVisitRows } from "./sinceVisitEvents";
 import { detectFirsts, type FirstKind, type FirstsState } from "../../lib/firsts";
 import type { ActionOutcome } from "../../actionLoop/model";
+import { wordDays } from "../../lib/record/counts";
 
 export const WHAT_CHANGED_MAX_LINES = 4;
 /** The quoted latest moment is a cue, not the record — clipped for one line. */
@@ -44,6 +45,11 @@ export type WhatChangedLine =
   /** B-TODAY-23: "Keep this" ideas the parent kept (kept-insight rows). */
   | { kind: "ideas"; count: number }
   | { kind: "moments"; count: number; quote: string; focusId: string }
+  /** B-GROWTH-15: words the parent wrote down (`langObs`) in ONE language since
+   *  the last visit — the count and the language only (the words stay in the
+   *  record, on tap); `focusId` is the newest day's Journal row (signalTimeline
+   *  `words-<language>-<day>`), so the line and the record agree. */
+  | { kind: "words"; count: number; language: string; focusId: string }
   | { kind: "noticed" };
 
 export type WhatChanged = {
@@ -88,6 +94,8 @@ export function composeWhatChanged(input: {
   keptIdeasSince?: number;
   /** B-TODAY-23: Weekly's card 1 leaves step outcomes to card 2. Default true. */
   includeSteps?: boolean;
+  /** B-GROWTH-15: the words the parent wrote down (`langObs`); absent = no words line. */
+  langObs?: ReadonlyArray<{ timestamp: string; language: string; phrase: string }>;
 }): WhatChanged {
   const sinceMs = parseMs(input.previousVisitAt ?? undefined);
   if (!Number.isFinite(sinceMs)) return { lines: [], hiddenCount: 0 };
@@ -161,6 +169,27 @@ export function composeWhatChanged(input: {
     events += ideas;
   }
 
+  // 4c. B-GROWTH-15 — words written down since the last visit, one line per
+  //     language (newest first): the SAME day fold the Journal's words rows use
+  //     (lib/record/counts wordDays), so "2 new words in Hebrew" here is the
+  //     record's own count. Counts only; never the words, never a comparison.
+  const wordRows = wordDays((input.langObs ?? []).filter((o) => parseMs(o.timestamp) > sinceMs));
+  const byLanguage = new Map<string, { language: string; count: number; latest: string; focusId: string }>();
+  for (const row of wordRows) {
+    const key = row.language.toLowerCase();
+    const prev = byLanguage.get(key);
+    const focusId = `words-${encodeURIComponent(key)}-${row.day}`;
+    if (!prev) byLanguage.set(key, { language: row.language, count: row.phrases.length, latest: row.latest, focusId });
+    else {
+      prev.count += row.phrases.length;
+      if (row.latest > prev.latest) { prev.latest = row.latest; prev.focusId = focusId; }
+    }
+  }
+  for (const w of [...byLanguage.values()].sort((a, b) => (a.latest < b.latest ? 1 : -1))) {
+    lines.push({ kind: "words", count: w.count, language: w.language, focusId: w.focusId });
+    events += w.count;
+  }
+
   // 5. moments kept (behaviour logs + plays), the latest one quoted.
   const kept = [
     ...input.behaviorLogs.map((l) => ({ at: parseMs(l.timestamp), quote: l.trigger || l.notes || "", focusId: `moment-${l.id}` })),
@@ -179,7 +208,7 @@ export function composeWhatChanged(input: {
   }
 
   const shown = lines.slice(0, maxLines);
-  const eventsIn = (l: WhatChangedLine) => (l.kind === "moments" || l.kind === "facts" || l.kind === "ideas" ? l.count : 1);
+  const eventsIn = (l: WhatChangedLine) => (l.kind === "moments" || l.kind === "facts" || l.kind === "ideas" || l.kind === "words" ? l.count : 1);
   const shownEvents = shown.reduce((s, l) => s + eventsIn(l), 0);
   return { lines: shown, hiddenCount: Math.max(0, events - shownEvents) };
 }
