@@ -13,9 +13,34 @@ export function sourceFontUrl(source) {
   if (imports.length !== 1 || imports[0] !== SOURCE_CSS_URL) throw new Error('FONT_SOURCE_URL_CHANGED');
   return SOURCE_CSS_URL;
 }
+/** The two public resource shapes the Google stylesheet is observed to emit for one
+ * family: a static path (`/s/<family>/v<n>/<file>.woff2`) or, nondeterministically for
+ * the Hebrew kits, a kit URL (`/l/font?kit=<id>&skey=<16 hex>&v=v<n>`). Both are the
+ * same origin, credential-free, canonical and recorded with the resolved bytes' hash.
+ * Any other origin, path, query key, value shape, credential or fragment is refused. */
+const STATIC_FONT_PATH = /^\/s\/[a-z0-9]+\/v\d+\/[a-zA-Z0-9_-]+\.woff2$/;
+const KIT_FONT_PATH = '/l/font';
+const KIT_FONT_QUERY = Object.freeze({ kit: /^[a-zA-Z0-9_-]{8,128}$/, skey: /^[a-f0-9]{16}$/, v: /^v\d{1,4}$/ });
+export const FONT_RESOURCE_SHAPES = Object.freeze(['static', 'kit']);
+/** 'static' | 'kit' for an accepted gstatic WOFF2 URL, else null. Never requests anything. */
+export function fontResourceShape(raw) {
+  let url;
+  try { url = new URL(raw); } catch { return null; }
+  if (url.origin !== 'https://fonts.gstatic.com' || url.username || url.password || url.hash || raw !== url.href) return null;
+  if (!url.search && STATIC_FONT_PATH.test(url.pathname)) return 'static';
+  if (url.pathname !== KIT_FONT_PATH || !url.search) return null;
+  // Raw pairs, not decoded searchParams: no percent-encoding, empty pair or repeat is canonical.
+  const pairs = url.search.slice(1).split('&').map((pair) => pair.split('='));
+  const expected = Object.keys(KIT_FONT_QUERY);
+  if (pairs.length !== expected.length || pairs.some((pair) => pair.length !== 2)) return null;
+  const keys = pairs.map(([key]) => key);
+  if (new Set(keys).size !== keys.length || expected.some((key) => !keys.includes(key))) return null;
+  if (pairs.some(([key, value]) => !KIT_FONT_QUERY[key].test(value))) return null;
+  return 'kit';
+}
 export function assertFontUrl(raw) {
   const url = new URL(raw);
-  if (url.origin !== 'https://fonts.gstatic.com' || url.username || url.password || url.search || url.hash || raw !== url.href || !/^\/s\/[a-z0-9]+\/v\d+\/[a-zA-Z0-9_-]+\.woff2$/.test(url.pathname)) {
+  if (!fontResourceShape(raw)) {
     // Diagnose only the public stylesheet's resource shape. Never request a
     // rejected URL or log credentials, query values, unknown hosts or raw CSS.
     throw Object.assign(new Error('FONT_RESOURCE_URL_DENIED'), { fontResource: {
