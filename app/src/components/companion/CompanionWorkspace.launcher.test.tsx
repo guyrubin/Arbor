@@ -236,6 +236,12 @@ describe("B-VOICE-08 — Now offers one tap into a spoken conversation", () => {
     const kids = React.Children.toArray(ask.children) as React.ReactElement<any>[];
     expect(kids.some(k => k.props?.name === "arrow_forward")).toBe(true);
     expect(state.nodes.find(n => n.props["data-testid"] === "companion-launcher")!.props.className).toBe("arbor-parent companion-launcher has-voice");
+    // The mark steps aside on phones through its own wrapper class, never by
+    // overriding ArborMark's inline display with !important.
+    expect(kids[0]?.props?.className).toBe("companion-launch-mark");
+    const workspaceCss = readFileSync(new URL("./companionWorkspace.css", import.meta.url), "utf8");
+    expect(workspaceCss).not.toContain("!important");
+    expect(workspaceCss).toMatch(/@media \(max-width: 520px\) \{ \.companion-launcher\.has-voice \.companion-launch-mark \{ display: none; \} \}/);
   });
 
   it("other places keep the bar as it was (no voice door)", () => {

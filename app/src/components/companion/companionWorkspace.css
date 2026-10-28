@@ -42,13 +42,12 @@
 @media (max-width: 520px) { .companion-launch-save-label { display: none; } }
 /* B-VOICE-08: Now's one-tap voice door sits beside Ask at the 44 px floor,
    icon-only at every width like the composer's own Talk button. On phones
-   Ask's mark steps aside for it (the arrow stays), and on the narrowest the
-   bar tightens, so Ask keeps its two lines in Hebrew at 375 px. */
+   Ask's mark (its own wrapper, so no inline style is fought) steps aside for
+   it (the arrow stays), and on the narrowest the bar tightens, so Ask keeps
+   its two lines in Hebrew at 375 px. */
+.companion-launch-mark { display: flex; flex: none; }
 .companion-launch-voice { min-inline-size: 44px; padding-inline: 4px; }
-@media (max-width: 520px) {
-  /* ui/ArborMark sets an inline display; only this rule may lift it. */
-  .companion-launcher.has-voice .companion-launch-main > img { display: none !important; }
-}
+@media (max-width: 520px) { .companion-launcher.has-voice .companion-launch-mark { display: none; } }
 @media (max-width: 380px) { .companion-launcher.has-voice .companion-launch-main { padding-inline: 4px; gap: 6px; } }
 /* F-TALK-2 / MOB-03: the full-screen panel ends where the phone's keyboard
    begins (useVisualViewportInset publishes the covered height). */
