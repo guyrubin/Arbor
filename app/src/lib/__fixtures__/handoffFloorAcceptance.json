@@ -1,5 +1,5 @@
 {
- "about": "B-ASKJB-44 acceptance: every row the critic used in rounds 1-8 (fresh-r8 rows: the critic's round-8 fresh set) (r1-r3 floor probes, r4 probe, probe5, compare6/7, extra6/7, probe7, esc5, esc6), with main's (5fb5666f) verdict and the required verdict. keep: a real escalation line, a parent-reported finding or hard moment, or no finding. drop: an invented, narrated, hedged or misattributed finding. part:<text>: the note keeps exactly this text (an escalation line loses an invented add-on, or a finding clause after ';'). keep|fn: a parent's reassuring 'no problem' statement the floor may drop (documented false negative). parent '' means the parent wrote nothing that reports it.",
+ "about": "B-ASKJB-44 acceptance: every row the critic used in rounds 1-9 (fresh-r8 / fresh-r9 rows: the critic's fresh sets) (r1-r3 floor probes, r4 probe, probe5, compare6/7, extra6/7, probe7, esc5, esc6), with main's (5fb5666f) verdict and the required verdict. keep: a real escalation line, a parent-reported finding or hard moment, or no finding. drop: an invented, narrated, hedged or misattributed finding. part:<text>: the note keeps exactly this text (an escalation line loses an invented add-on, or a finding clause after ';'). keep|fn: a parent's reassuring 'no problem' statement the floor may drop (documented false negative). parent '' means the parent wrote nothing that reports it.",
  "rows": [
   {
    "id": "R001",
@@ -2394,6 +2394,240 @@
    "parent": "הגננת אמרה לי שאין לו שום קושי בפרידה החודש",
    "main": "drop",
    "required": "keep|fn"
+  },
+  {
+   "id": "S01",
+   "source": "fresh-r9",
+   "label": "EN second escalation, implied referral outside vocab (bus driver)",
+   "note": "Call the family if he cries for more than 20 minutes, and the bus driver if there are no signs of calming.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "main": "keep",
+   "required": "keep"
+  },
+  {
+   "id": "S02",
+   "source": "fresh-r9",
+   "label": "EN second escalation, implied referral (head teacher)",
+   "note": "Call the family if he cries for more than 20 minutes, and the head teacher if there are no signs of calming.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "main": "keep",
+   "required": "keep"
+  },
+  {
+   "id": "S03",
+   "source": "fresh-r9",
+   "label": "HE second escalation, implied referral (למנהלת)",
+   "note": "יש להתקשר להורים אם הוא בוכה יותר מ-20 דקות, ולמנהלת אם אין סימנים של רגיעה.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק",
+   "main": "keep",
+   "required": "keep"
+  },
+  {
+   "id": "S04",
+   "source": "fresh-r9",
+   "label": "EN second escalation after bare and",
+   "note": "Call the family if he cries for more than 20 minutes and the school nurse if there are no signs of calming.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "main": "keep",
+   "required": "keep"
+  },
+  {
+   "id": "S05",
+   "source": "fresh-r9",
+   "label": "HE second escalation after bare ו",
+   "note": "יש להתקשר להורים אם הוא בוכה יותר מ-20 דקות ולאחות אם אין סימנים של רגיעה.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק",
+   "main": "keep",
+   "required": "keep"
+  },
+  {
+   "id": "S06",
+   "source": "fresh-r9",
+   "label": "EN , or + finding inside the if (hypothetical, main keeps)",
+   "note": "Call the family if he bites, or there are no signs of a speech delay at home.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "main": "keep",
+   "required": "keep"
+  },
+  {
+   "id": "S07",
+   "source": "fresh-r9",
+   "label": "EN , but + asserted invented finding",
+   "note": "Call the family if he bites, but there are no signs of a speech delay at home.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "main": "keep",
+   "required": "part:Call the family if he bites."
+  },
+  {
+   "id": "S08",
+   "source": "fresh-r9",
+   "label": "EN observed, invented person outside list (janitor)",
+   "note": "He was observed biting a friend and the janitor at preschool.",
+   "parent": "He bit a friend at preschool when they fought over a toy",
+   "main": "drop",
+   "required": "drop"
+  },
+  {
+   "id": "S09",
+   "source": "fresh-r9",
+   "label": "HE observed, invented person outside list (השומר)",
+   "note": "הוא נצפה נושך חבר ואת השומר בגן.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע",
+   "main": "drop",
+   "required": "drop"
+  },
+  {
+   "id": "S10",
+   "source": "fresh-r9",
+   "label": "EN observed, invented place outside list (art room)",
+   "note": "He was observed biting a friend in the art room.",
+   "parent": "He bit a friend at preschool when they fought over a toy",
+   "main": "drop",
+   "required": "drop"
+  },
+  {
+   "id": "S11",
+   "source": "fresh-r9",
+   "label": "HE observed, invented place outside list (חדר האומנות)",
+   "note": "הוא נצפה נושך חבר בחדר האומנות.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע",
+   "main": "drop",
+   "required": "drop"
+  },
+  {
+   "id": "S12",
+   "source": "fresh-r9",
+   "label": "EN real hard moment, person outside list (bus driver)",
+   "note": "He was observed kicking the bus driver when told to sit down.",
+   "parent": "He kicked the bus driver when he was told to sit down",
+   "main": "drop",
+   "required": "keep"
+  },
+  {
+   "id": "S13",
+   "source": "fresh-r9",
+   "label": "HE real hard moment, person outside list (שומר)",
+   "note": "הוא נצפה בועט בשומר כשביקשו ממנו לשבת.",
+   "parent": "הוא בעט בשומר כשביקשו ממנו לשבת",
+   "main": "drop",
+   "required": "keep"
+  },
+  {
+   "id": "S14",
+   "source": "fresh-r9",
+   "label": "EN time + no signs of real improvement",
+   "note": "After two weeks with no signs of real improvement, talk with your pediatrician.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "main": "drop",
+   "required": "keep"
+  },
+  {
+   "id": "S15",
+   "source": "fresh-r9",
+   "label": "EN time + no signs of any calming",
+   "note": "After 20 minutes with no signs of any calming, call the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "main": "drop",
+   "required": "keep"
+  },
+  {
+   "id": "S16",
+   "source": "fresh-r9",
+   "label": "HE time + ללא סימנים של שום שיפור",
+   "note": "אחרי שבועיים ללא סימנים של שום שיפור, יש לפנות לרופאת הילדים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק",
+   "main": "drop",
+   "required": "keep"
+  },
+  {
+   "id": "S17",
+   "source": "fresh-r9",
+   "label": "EN when + no signs of genuine improvement",
+   "note": "When there are still no signs of genuine improvement after a month, contact the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "main": "drop",
+   "required": "keep"
+  },
+  {
+   "id": "S18",
+   "source": "fresh-r9",
+   "label": "EN time + improvement in his speech delay (clinical label)",
+   "note": "After a month with no signs of improvement in his speech delay, contact the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "main": "drop",
+   "required": "drop"
+  },
+  {
+   "id": "S19",
+   "source": "fresh-r9",
+   "label": "HE time + שיפור בעיכוב השפתי (clinical label)",
+   "note": "כעבור חודש ללא סימנים לשיפור בעיכוב השפתי שלו, יש לעדכן את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק",
+   "main": "drop",
+   "required": "drop"
+  },
+  {
+   "id": "S20",
+   "source": "fresh-r9",
+   "label": "EN kept clause before dropped one (; -> .)",
+   "note": "Teachers can offer a two-minute warning; there is no evidence of a learning difficulty.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "main": "part:Teachers can offer a two-minute warning;",
+   "required": "part:Teachers can offer a two-minute warning."
+  },
+  {
+   "id": "S21",
+   "source": "fresh-r9",
+   "label": "HE kept clause before dropped one (; -> .)",
+   "note": "כדאי לתת התראה של שתי דקות; אין עדות לקושי בלמידה.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק",
+   "main": "part:כדאי לתת התראה של שתי דקות;",
+   "required": "part:כדאי לתת התראה של שתי דקות."
+  },
+  {
+   "id": "S22",
+   "source": "fresh-r9",
+   "label": "EN escalation + narrated past second part",
+   "note": "Call the family if he cries for more than 20 minutes, and when the pediatrician found no signs of delay she said to call too.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "main": "keep",
+   "required": "part:Call the family if he cries for more than 20 minutes."
+  },
+  {
+   "id": "S23",
+   "source": "fresh-r9",
+   "label": "EN real reassurance with added setting (fn ok)",
+   "note": "According to the school nurse, there are no signs of an ear infection.",
+   "parent": "The nurse said there are no signs of an ear infection",
+   "main": "keep",
+   "required": "keep|fn"
+  },
+  {
+   "id": "S24",
+   "source": "fresh-r9",
+   "label": "EN unless-laundering, so call (main keeps)",
+   "note": "Unless he is tired, there are no signs of attention difficulties, so call the family only if that changes.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "main": "keep",
+   "required": "drop"
+  },
+  {
+   "id": "S25",
+   "source": "fresh-r9",
+   "label": "HE second escalation implied referral with כש",
+   "note": "יש להתקשר להורים אם הוא נושך, ולאחות כשאין סימנים של רגיעה אחרי 20 דקות.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק",
+   "main": "keep",
+   "required": "keep"
+  },
+  {
+   "id": "S26",
+   "source": "fresh-r9",
+   "label": "EN , or tell the teacher + asserted finding",
+   "note": "Call the family if he bites, or tell the teacher there are no signs of a speech delay at home.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "main": "keep",
+   "required": "part:Call the family if he bites."
   }
  ]
 }

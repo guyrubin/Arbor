@@ -181,16 +181,19 @@ export function findClinicalDiagnosisTerm(text: string): string | null {
  *     improvement, רגיעה, שיפור). That condition is the safety message's
  *     trigger, not a claim, and in a School Brief the line may be the only
  *     "call the family" a teacher's copy carries. A second escalation in
- *     the same line (", and if …, call the family", ", and the school nurse
- *     if …", ", ולאחות … אם …") has its own condition (escalationConditions).
+ *     the same line (", and if …, call the family", ", and the bus driver
+ *     if …", ", ולמנהלת אם …" — any short noun phrase before the condition)
+ *     has its own condition (escalationConditions). A change into a clinical
+ *     label ("no signs of improvement in his speech delay") is no trigger.
  *     An invented add-on after the line (", and there is no evidence…",
  *     ", who found…", ", כי אין…") is cut off and the referral with its
  *     condition kept — never a second escalation;
  *   - it is an OBSERVATION ("He was observed biting a peer…", "הוא נצפה
  *     נושך…") of an event the parent logged: the event and another of its
- *     words in one part of one parent statement, and every person and setting
- *     it names in that statement (a friend, a peer, a classmate are one
- *     person) (parentReportsEvent);
+ *     words in one part of one parent statement, and every word that names
+ *     something (a person, a place, an object) in that statement — a friend,
+ *     a peer and a classmate are one person, a conflict is a fight
+ *     (parentReportsEvent);
  *   - the PARENT'S OWN WORDS carry it (critic rounds 3–6): one statement the
  *     parent wrote holds a finding of the same kind ("doesn't show any signs
  *     of" = "no signs of") and EVERY content word of the clause in any order,
@@ -384,7 +387,7 @@ const stopAfter = (text: string, from: number): number => {
  *  ", though", ", ו", a Hebrew "ו" before a new clause ("ואין", "והוא"), or a
  *  comma that opens a new subject — except the comma pair of a parenthetical
  *  right after the conjunction ("if, after two weeks, there are…"). */
-const NEW_CLAUSE_STOP = /,\s*(?:and|though|although|but|while|whereas|yet)\b|,\s*ו(?=\p{L})|\sו(?=(?:אין|יש|לא|ה\p{L}|אני|אנחנו)(?!\p{L}))/iu;
+const NEW_CLAUSE_STOP = /,\s*(?:and|though|although|but|while|whereas|yet)\b|,\s*ו(?=\p{L})|\sו(?=(?:אין|יש|לא|ה\p{L}|אני|אנחנו)(?!\p{L}))|,\s*or\s+(?=(?:tell|ask|let|note|remind|check|give|have|make|keep|offer|try|see|call|phone|contact|notify|inform|talk|speak|explain|mention|share|write)\b)|,\s*או\s+(?=(?:ספרו|ספרי|אמרו|אמרי|ציינו|התקשרו|פנו|דברו|עדכנו|הודיעו|כתבו)(?!\p{L}))/iu;
 const trailingStop = (text: string, conjunction: { at: number; end: number }): number => {
   let from = conjunction.end;
   const parenthetical = /^\s*,[^,]*,/.exec(text.slice(from));
@@ -399,7 +402,7 @@ const trailingStop = (text: string, conjunction: { at: number; end: number }): n
   }
   return end;
 };
-const LIST_OR = /,\s*or\b|,\s*או(?!\p{L})|\sאו\s/iu;
+const LIST_OR = /,\s*or\b(?!\s+(?:tell|ask|let|note|remind|check|give|have|make|keep|offer|try|see|call|phone|contact|notify|inform|talk|speak|explain|mention|share|write)\b)|,\s*או(?!\p{L})|\sאו\s/iu;
 /** The span of the condition that governs an escalation line's imperative
  *  referral, and whether it is a hypothetical ("if", "should he", "אם") or a
  *  time ("when", "after 20 minutes", "with no…", "כש", "כעבור"), or null
@@ -435,9 +438,14 @@ export function isEscalationLine(clause: string): boolean {
 }
 /** Where a line's second part starts: ", and" / ", though" / ", but" / ", or" / ", ו". */
 const SECOND_PART = /,\s*(?:(?:and|though|although|but|or|while)\s+|ו(?=\p{L}))/giu;
-/** A referral whose verb the second part leaves out: ", and the school nurse if …", ", ולאחות בית הספר אם …". */
-const ELIDED_REFERRAL_EN = new RegExp(String.raw`^\s*(?:(?:the|his|her|your)\s+)?(?:school\s+)?(?:${PROFESSIONAL_EN}s?|911|112|999|nurse)\b[^,]{0,40}?\s(?=(?:if|unless|when|should|in\s+case)\b)`, "iu");
-const ELIDED_REFERRAL_HE = /^\s*ל(?:ה)?(?:אחות|הורים|רופא\p{L}*|ד["״]ר|פסיכולוג\p{L}*|גננת|מטפל\p{L}*|משפחה)(?!\p{L})[^,]{0,40}?\s(?=ו?(?:אם|כש|כאשר|במידה|במקרה)(?!\p{L})|כש\p{L})/u;
+/** A referral whose verb the second part leaves out, in a line that is
+ *  already an escalation: ", and the bus driver if …", ", and the head
+ *  teacher when …", ", ולמנהלת אם …", ", ולאחות כש…" — any short noun phrase
+ *  (one to four words; Hebrew with the "to" ל) right before the condition. */
+const ELIDED_REFERRAL_EN = /^\s*(?:[^\s,;:]+\s+){1,4}?(?=(?:if|unless|when|whenever|should|in\s+case)\b)/iu;
+const ELIDED_REFERRAL_HE = /^\s*ל\p{L}+(?:\s+[^\s,;:]+){0,3}?\s+(?=ו?(?:אם|כאשר|במידה|במקרה)(?!\p{L})|כש\p{L})/u;
+/** A second part that joins with "and" / "ו" (not "but", "or", "though"). */
+const AND_PART = /^,\s*(?:and\s+|ו)/iu;
 /** Every escalation condition of a line: its own, and that of a second escalation after ", and" / ", ו" (critic round 8 P1-A). */
 export function escalationConditions(clause: string): { start: number; end: number; hypothetical: boolean }[] {
   const out: { start: number; end: number; hypothetical: boolean }[] = [];
@@ -449,8 +457,8 @@ export function escalationConditions(clause: string): { start: number; end: numb
     const tail = clause.slice(from);
     const second = escalationCondition(tail);
     if (second) { out.push({ start: from + second.start, end: from + second.end, hypothetical: second.hypothetical }); continue; }
-    const elided = ELIDED_REFERRAL_EN.exec(tail) ?? ELIDED_REFERRAL_HE.exec(tail);
-    if (!elided) continue;
+    const elided = own && AND_PART.test(m[0]) ? ELIDED_REFERRAL_EN.exec(tail) ?? ELIDED_REFERRAL_HE.exec(tail) : null;
+    if (!elided || findingsIn(elided[0]).length > 0 || tokenize(elided[0]).some(isNegation)) continue;
     const start = from + elided[0].length;
     const conjunction = conjunctionsIn(clause.slice(start))[0];
     if (!conjunction || conjunction.at !== 0) continue;
@@ -599,13 +607,22 @@ const isOneOf = (word: string, list: readonly string[]) => list.some((member) =>
 const isStopWord = (word: string) => (isHebrewWord(word) ? heBare(word, true).some((rest) => HE_STOP.has(rest)) : EN_STOP.has(word));
 
 /** The words of a finding's own frame ("no signs of", "shows no", "אין סימנים של"): what follows them is its object. */
-const FINDING_FRAME_WORDS: ReadonlySet<string> = new Set([...wordList("no not any sign signs evidence indication indications indicator indicators symptom symptoms trace traces red flag flags show shows showed showing display displays displayed exhibit exhibits exhibited present presents presented demonstrate demonstrates demonstrated does did do is was are were still clear obvious apparent real significant further current without free from of for that with"), ...heWords(["אין", "ללא", "לא", "סימנים", "סימן", "עדות", "הוכחה", "אינדיקציה", "נראים", "נראה", "נראו", "נצפו", "נצפה", "מראה",
+const FINDING_FRAME_WORDS: ReadonlySet<string> = new Set([...wordList("no not any sign signs evidence indication indications indicator indicators symptom symptoms trace traces red flag flags show shows showed showing display displays displayed exhibit exhibits exhibited present presents presented demonstrate demonstrates demonstrated does did do is was are were still clear obvious apparent real significant further current without free from of for that with genuine meaningful noticeable visible measurable true"), ...heWords(["אין", "ללא", "לא", "סימנים", "סימן", "עדות", "הוכחה", "אינדיקציה", "נראים", "נראה", "נראו", "נצפו", "נצפה", "מראה", "שום", "ממשי", "משמעותי", "ניכר", "אמיתי",
     "הראה", "הראתה", "אינו", "אינה", "של", "עדיין"])]);
 const isFrameWord = (word: string) =>
   FINDING_FRAME_WORDS.has(word) || EN_STOP.has(word) || FINDING_FRAME_WORDS.has(word.replace(/^(?:ו|ש|כש)(?=[\u05D0-\u05EA])/, ""));
+/** "…improvement in his speech delay", "…לשיפור בעיכוב השפתי": a change into a clinical label claims the label (critic round 9 P1-C). */
+const CLINICAL_EN = /^(?:delay|delays|delayed|difficulty|difficulties|disorder|disorders|deficit|deficits|impairment|impairments|condition|diagnosis|adhd|autism|dyslexia|apraxia|stutter|stuttering)$/;
+const CLINICAL_HE = /^(?:[ובלשה]{0,2})(?:עיכוב|קושי|קשיי|קשיים|הפרעה|הפרעת|ליקוי|לקות|תסמונת|אבחנה|אבחון|גמגום)/u;
 const aboutChange = (clause: string, finding: FindingMatch): boolean => {
-  const object = tokenize(clause.slice(finding.index)).find((word) => !isFrameWord(word));
-  return object !== undefined && (CHANGE_EN.test(object) || CHANGE_HE.test(object));
+  const words = tokenize(clause.slice(finding.index));
+  const at = words.findIndex((word) => !isFrameWord(word));
+  const object = words[at];
+  if (object === undefined || !(CHANGE_EN.test(object) || CHANGE_HE.test(object))) return false;
+  // what the change is in or of: "in his speech delay", "בעיכוב השפתי", "of attention difficulties"
+  const next = words.slice(at + 1, at + 5);
+  const into = next[0] === "in" || next[0] === "of" || (next[0] !== undefined && /^[בל]/u.test(next[0]));
+  return !(into && next.some((word) => CLINICAL_EN.test(enStem(word)) || CLINICAL_EN.test(word) || CLINICAL_HE.test(word)));
 };
 /* ── The parent's statements, indexed once per parent text ─────────────── */
 /** Cost caps (critic round 4 P2): the parent's text is read up to this many
@@ -863,12 +880,16 @@ const sameEvent = (a: string, b: string): boolean => {
   const bs = new Set(heSkeleton(b));
   return heSkeleton(a).some((form) => bs.has(form));
 };
-/** People and settings an observation names: each must be in the parent's statement (critic round 8 P1-B);
- *  a friend, a peer, a classmate and a playmate are one person. */
-const PEER_WORDS = [...wordList("friend peer classmate playmate"), ...heWords(["חבר", "חברה", "חברים", "חברות"])];
-const PERSON_WORDS = [...PEER_WORDS, ...wordList("teacher aide assistant staff nurse sister brother sibling cousin adult grandma grandpa grandmother grandfather therapist doctor babysitter nanny caregiver"), ...heWords(["גננת", "גנן", "מורה", "סייעת", "אחות", "אח", "אחים", "בן דוד", "סבתא", "סבא", "מטפלת", "מטפל", "רופא", "רופאה", "בייביסיטר"])];
-const SETTING_WORDS = [...wordList("preschool school daycare kindergarten class classroom playground yard garden park home house lunch snack nap naptime circle bathroom hallway bus car pool gym library dinner breakfast pickup recess outside store shop slide sandbox"), ...heWords(["גן", "בית", "חצר", "מגלשה", "ארוחה", "צהריים", "מעגל", "שירותים", "אוטובוס", "פארק", "גינה", "בריכה", "כיתה", "תור", "ארגז חול", "מכונית"])];
-const samePerson = (a: string, b: string) => sameEvent(a, b) || (isOneOf(a, PEER_WORDS) && isOneOf(b, PEER_WORDS));
+/** Things an observation and a parent name the same way (critic rounds 8–9). */
+const SAME_THINGS: readonly (readonly string[])[] = [
+  wordList("friend peer classmate playmate"), wordList("conflict fight argument quarrel dispute"),
+  [...heWords(["חבר", "חברה", "חברים", "חברות"])], [...heWords(["ריב", "ויכוח", "מריבה", "רבו", "רבה", "רב"])],
+  [...heWords(["המתנה", "חיכה", "חיכתה", "חיכו", "לחכות", "מחכה"])],
+];
+const samePerson = (a: string, b: string) => sameEvent(a, b) || SAME_THINGS.some((group) => isOneOf(a, group) && isOneOf(b, group));
+/** A word of an observation that names something (a person, a place, an object): every one must be the parent's.
+ *  English -ing / -ed / -ly forms and Hebrew present participles are actions, checked as such. */
+const namesSomething = (word: string) => (isHebrewWord(word) ? !(word.length === 4 && word[1] === "ו") : !/(?:ing|ed|ly)$/.test(word));
 /** Other action words of a clause: English "-ing" forms, Hebrew present participles (CוCC). */
 const isActionWord = (word: string) => (isHebrewWord(word) ? word.length === 4 && word[1] === "ו" : word.length >= 5 && word.endsWith("ing"));
 const parentReportsEvent = (clause: string, findings: readonly FindingMatch[], required: readonly string[], negations: number, parent: ParentIndex): boolean => {
@@ -880,7 +901,7 @@ const parentReportsEvent = (clause: string, findings: readonly FindingMatch[], r
   if (!event) return false;
   const others = required.filter((word) => word !== event);
   const actions = others.filter(isActionWord);
-  const named = others.filter((word) => isOneOf(word, PERSON_WORDS) || isOneOf(word, SETTING_WORDS));
+  const named = others.filter(namesSomething);
   return parent.statements.some((statement) => statement.parts.some((part) =>
     part.words.some((word) => sameEvent(event, word))
     && (others.length === 0 || others.some((word) => part.words.some((w) => samePerson(word, w))))
@@ -904,7 +925,7 @@ export function withoutHandoffFindings(text: string, opts: HandoffFloorOptions =
 /** Where an add-on joins an escalation line: ", and" / ", though" / ", but",
  *  a tail (", who / which / as / since / because / so"), ", ו", ", כי",
  *  ", ש…", ", אבל", a colon or a dash. */
-const ADD_ON = /\s*(?:[:–—]|,\s*(?=(?:(?:and|though|although|but|while|whereas|yet|who|which|whose|as|since|because|so|that)\b|ו\p{L}|כי(?!\p{L})|ש\p{L}|אבל(?!\p{L})|אך(?!\p{L}))))/giu;
+const ADD_ON = /\s*(?:[:–—]|,\s*(?=(?:(?:and|or|though|although|but|while|whereas|yet|who|which|whose|as|since|because|so|that)\b|ו\p{L}|כי(?!\p{L})|ש\p{L}|אבל(?!\p{L})|אך(?!\p{L}))))/giu;
 /** An escalation line that carries an invented add-on keeps its referral and
  *  condition and loses the add-on: "Call the family if he cries for more than
  *  20 minutes, and there is no evidence of a speech delay." → "Call the
