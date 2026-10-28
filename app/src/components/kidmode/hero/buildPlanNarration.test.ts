@@ -20,7 +20,8 @@ import type { BookAssetsDoc } from "../../../lib/library/bookAssetPaths";
 import { planBookFromDoc, type PlanBookDoc } from "../../../lib/library/plans/planBookDoc";
 import { emptyPlanNarrationDoc, planNarrationFiles, planNarrationRel, planNarrationRequest } from "../../../lib/library/plans/planNarration";
 import { PLAN_POSES, PLAN_SHEET_BOOK_ID } from "../../../lib/library/plans/planPoses";
-import { buildPlanNarration, ensurePlanNarration, planEntriesOf, resetPlanNarrationForTest, spokenFirstName, type PlanNarrationBuilderDeps, type PlanNarrationCall, type PlanNarrationSource } from "./buildPlanNarration";
+import { afterPlanSheetNarration, buildPlanNarration, ensurePlanNarration, planEntriesOf, resetPlanNarrationForTest, spokenFirstName, type PlanNarrationBuilderDeps, type PlanNarrationCall, type PlanNarrationSource } from "./buildPlanNarration";
+import { afterPlanSheet } from "./buildBookNarration";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const CHILD = "synthetic-child";
@@ -177,12 +178,33 @@ describe("PR C: when it runs", () => {
     expect(owned.bodies).toHaveLength(1);
   });
 
-  it("the canonical triggers start it: the handover (ensureBookNarration) and the sheet's commit (afterBookSheet) in the browser wiring; the plan's approval in the composer", () => {
+  it("the plan sheet's commit (afterPlanSheet) continues the approval the drawing sheet refused; nothing remembered, or another owner, starts nothing", async () => {
+    // the approval: the sheet is still drawing, the server refuses for now
+    const drawing = fake(one, () => ({ ok: false, status: 409, code: "plan_narration_no_sheet" }));
+    expect(await ensurePlanNarration(child, "en", { deps: drawing.deps, storage: null, scope: { ownerKey: "owner-a", isCurrent: () => true } })).toMatchObject({ status: "not-started", stoppedBy: "plan_narration_no_sheet" });
+    expect(drawing.bodies).toHaveLength(1);
+    // the sheet commits: the same owner/child continues without a second parent act
+    const after = fake(one);
+    expect((await afterPlanSheetNarration(child.id, after.deps))?.status).toBe("complete");
+    expect(after.bodies).toHaveLength(9);
+    expect(after.bodies.every((b) => b.lang === "en")).toBe(true);
+    // the ONE hook the sheet builder calls delegates here
+    expect(await afterPlanSheet(child.id, fake(one).deps)).toBeNull(); // finished configuration: nothing to ask
+    expect(afterPlanSheetNarration("nobody", fake(one).deps)).toBeNull();
+    expect(afterPlanSheet("nobody", fake(one).deps)).toBeNull();
+    h.owner = "owner-b";
+    expect(afterPlanSheetNarration(child.id, fake(one).deps)).toBeNull();
+  });
+
+  it("the canonical triggers start it: the handover (ensureBookNarration), the sheets' commits (afterBookSheet, afterPlanSheet) in the browser wiring; the plan's approval in the composer", () => {
     const narration = readFileSync(path.join(here, "buildBookNarration.ts"), "utf8");
-    expect(narration).toContain('import { ensurePlanNarration } from "./buildPlanNarration";');
+    expect(narration).toContain('import { afterPlanSheetNarration, ensurePlanNarration, type PlanNarrationBuilderDeps, type PlanNarrationBuildResult } from "./buildPlanNarration";');
     expect(narration).toContain("if (!deps) planNarrationFor(child.id, ctx);");
     expect(narration).toContain("if (!deps) planNarrationFor(childId, ctx);");
-    expect((narration.match(/planNarrationFor\(/g) ?? []).length).toBe(3);
+    expect(narration).toContain("return afterPlanSheetNarration(childId, deps);");
+    expect((narration.match(/planNarrationFor\(/g) ?? []).length).toBe(4);
+    const sheet = readFileSync(path.join(here, "buildBookSheet.ts"), "utf8");
+    expect(sheet).toContain('void import("./buildBookNarration").then((m) => m.afterPlanSheet(childId))');
     const composer = readFileSync(path.resolve(here, "../../plans/PlanComposer.tsx"), "utf8");
     expect(composer).toContain('import("../kidmode/hero/buildPlanNarration")');
     expect(composer).toContain("m.ensurePlanNarration(child, m.narrationFolder(doc.lang, child.gender), { planDoc: doc })");
@@ -190,8 +212,7 @@ describe("PR C: when it runs", () => {
     const builder = readFileSync(path.join(here, "buildPlanNarration.ts"), "utf8");
     expect(builder).not.toMatch(/firebase/);
     expect(builder).toContain('from "../../../lib/planNarrationSource"');
-    // the only parent doors: no other module starts it
-    const sheet = readFileSync(path.join(here, "buildBookSheet.ts"), "utf8");
+    // the only parent doors: the sheet builder reaches the plan step through afterPlanSheet alone
     expect(sheet).not.toContain("buildPlanNarration");
   });
 });

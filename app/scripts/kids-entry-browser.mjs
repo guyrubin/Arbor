@@ -17,7 +17,7 @@ const stubs = {
   buildHeroSheet: 'export const ensureHeroSheet=async()=>{};',
   buildBookSheet: 'export const DEFAULT_SHEET_BOOK="five-smooth-stones";export const keepLocalBookDoc=()=>async()=>{};',
   // PR C: the plan books' builder shares the canonical triggers; this check covers the canonical lifetime only
-  buildPlanNarration: 'export const ensurePlanNarration=()=>null;export {narrationFolder} from "./src/lib/library/narrationVoice";',
+  buildPlanNarration: 'export const ensurePlanNarration=()=>null;export const afterPlanSheetNarration=()=>null;export {narrationFolder} from "./src/lib/library/narrationVoice";',
   api: 'export const authHeaders=async()=>({"Content-Type":"application/json"});',
   kidModeGate: `export const isKidModeActive=()=>window.evidence.locked;
     export const subscribeKidMode=fn=>{window.evidence.listeners.add(fn);return ()=>window.evidence.listeners.delete(fn);};`,

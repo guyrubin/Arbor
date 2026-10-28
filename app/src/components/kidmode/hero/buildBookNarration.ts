@@ -23,7 +23,7 @@ import type { BookReaderChild } from "../../../lib/library/types";
 import { heroSheetOwnerKey } from "../../../lib/heroSheetStore";
 export { narrationFolder } from "../../../lib/library/narrationVoice";
 import { DEFAULT_SHEET_BOOK, keepLocalBookDoc } from "./buildBookSheet";
-import { ensurePlanNarration } from "./buildPlanNarration";
+import { afterPlanSheetNarration, ensurePlanNarration, type PlanNarrationBuilderDeps, type PlanNarrationBuildResult } from "./buildPlanNarration";
 
 export type NarrationCall =
   | { ok: true; complete: boolean; cached: boolean; doc?: BookAssetsDoc; local?: boolean }
@@ -222,12 +222,15 @@ export function afterBookSheet(childId: string, deps?: NarrationBuilderDeps): Pr
 /** B-BOOK-75 follow-up — the ONE stable attach point for plan-book narration:
  * called by the plan sheet builder (buildBookSheet.startBrowserPlanSheet) when
  * the child's shared plan sheet commits or already shows this hero, exactly
- * where `afterBookSheet` is called for a canonical book. Today it starts
- * nothing (the plan-narration step attaches here, same deps, same ledger);
- * it never renders at read time and never runs for a child without a sheet. */
-export function afterPlanSheet(childId: string, deps?: NarrationBuilderDeps): Promise<NarrationBuildResult> | null {
-  void childId; void deps;
-  return null;
+ * where `afterBookSheet` is called for a canonical book. PR C attaches the
+ * plan-narration step here (buildPlanNarration: the same ledger and the same
+ * server pipeline): it continues an explicit parent act of this owner/child
+ * lifetime — the handover's context, or the plan approval the drawing sheet
+ * refused — and starts nothing otherwise. Never at read time. */
+export function afterPlanSheet(childId: string, deps?: PlanNarrationBuilderDeps): Promise<PlanNarrationBuildResult | null> | null {
+  const ctx = contexts.get(contextKey(heroSheetOwnerKey(), childId));
+  if (ctx && currentContext(childId, ctx) && !deps) planNarrationFor(childId, ctx);
+  return afterPlanSheetNarration(childId, deps);
 }
 
 /** Test seam. */

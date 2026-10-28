@@ -9,11 +9,14 @@
  * child's shared plan sheet covers — lib/bookAssets.libraryBookEntries), in
  * the voice folder the child hears (EN, HE-f for a girl, HE-m otherwise):
  *   - after a deliberate parent handover into Kids (buildBookNarration's
- *     ensureBookNarration), and after the plan sheet commits in that same
- *     owner/child lifetime (afterBookSheet — the sheet builder's one hook);
- *   - when the parent approves a plan while a complete plan sheet exists
- *     (PlanComposer: the approved document rides along, so the run does
- *     not wait for the collection to settle).
+ *     ensureBookNarration), and after a sheet commits in that same
+ *     owner/child lifetime (afterBookSheet / afterPlanSheet — the sheet
+ *     builders' one hook each);
+ *   - when the parent approves a plan (PlanComposer: the approved document
+ *     rides along, so the run does not wait for the collection to settle);
+ *     with the plan sheet still drawing, the server refuses for now and the
+ *     approval is REMEMBERED for this owner/child lifetime, so the sheet's
+ *     commit (afterPlanSheet) continues it without a second parent act.
  * Per file it asks the server (ids only; the sandbox adds the plan document
  * the server has no record of):
  *   POST /api/children/:cid/plan-narration { pattern, lang, file }
@@ -195,6 +198,9 @@ export interface PlanNarrationScope {
 const MARK = (childId: string) => `arbor.planNarration.${childId}`;
 const running = new Map<string, Promise<PlanNarrationBuildResult | null>>();
 const completed = new Set<string>();
+/** The last explicit parent act per owner/child (the approval, the handover): what a sheet's commit may continue. */
+const remembered = new Map<string, { child: PlanNarrationChild; folder: VoiceFolder; scope?: PlanNarrationScope; storage?: NarrationStorage }>();
+const rememberKey = (owner: string, child: string) => JSON.stringify([owner, child]);
 const jobKey = (owner: string, child: string, folder: VoiceFolder) => JSON.stringify([owner, child, folder]);
 const markerOf = (owner: string, configuration: string) => JSON.stringify({ v: 1, owner, configuration });
 
@@ -216,6 +222,7 @@ export function ensurePlanNarration(
   if (ownerKey === "signed-out" || ownerKey !== heroSheetOwnerKey() || opts.scope?.isCurrent() === false) return null;
   const isCurrent = () => heroSheetOwnerKey() === ownerKey && opts.scope?.isCurrent() !== false && opts.deps?.isCurrent?.() !== false;
   const storage = opts.storage === undefined ? defaultStorage() : opts.storage;
+  remembered.set(rememberKey(ownerKey, child.id), { child, folder, ...(opts.scope ? { scope: opts.scope } : {}), ...(opts.storage !== undefined ? { storage: opts.storage } : {}) });
   const key = jobKey(ownerKey, child.id, folder);
   const live = running.get(key);
   if (live) return live;
@@ -246,8 +253,19 @@ export function ensurePlanNarration(
   return job;
 }
 
+/** The plan sheet's commit (buildBookNarration.afterPlanSheet) continues the
+ *  last explicit parent act for this owner/child in this page lifetime — the
+ *  approval whose run the drawing sheet refused, or the handover. Nothing
+ *  remembered, or a retired owner, starts nothing. */
+export function afterPlanSheetNarration(childId: string, deps?: PlanNarrationBuilderDeps): Promise<PlanNarrationBuildResult | null> | null {
+  const r = remembered.get(rememberKey(heroSheetOwnerKey(), childId));
+  if (!r || r.scope?.isCurrent() === false) return null;
+  return ensurePlanNarration(r.child, r.folder, { ...(r.scope ? { scope: r.scope } : {}), ...(deps ? { deps } : {}), ...(r.storage !== undefined ? { storage: r.storage } : {}) });
+}
+
 /** Test seam. */
 export function resetPlanNarrationForTest(): void {
   running.clear();
   completed.clear();
+  remembered.clear();
 }
