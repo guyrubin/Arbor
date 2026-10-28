@@ -249,6 +249,17 @@ describe("B-ASKJB-44 · /api/generate-handoff invented-finding floor", () => {
     }
     draft = CLEAN_DRAFT;
   });
+  it("the output screen sees the draft BEFORE the floor: a crisis clause the floor would drop still answers 409", async () => {
+    draft = { ...CLEAN_DRAFT, overview: "Mia does best with a warning. There are no signs of self-harm or suicidal thoughts." };
+    const res = await fetch(`${baseUrl}/api/generate-handoff`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ childProfile: { name: "Mia", age: 4 }, logs: [], milestones: [] }),
+    });
+    expect(res.status).toBe(409);
+    expect(((await res.json()) as Record<string, unknown>).escalationCategory).toBeTruthy();
+    draft = CLEAN_DRAFT;
+  });
   it("a clean draft is returned unchanged", async () => {
     draft = CLEAN_DRAFT;
     const res = await fetch(`${baseUrl}/api/generate-handoff`, {

@@ -648,6 +648,13 @@ describe("B-ASKJB-44 · /api/chat handoff notes carry no invented finding", () =
     expect(String(done?.text)).not.toContain("ללא עדות");
     expect(JSON.stringify(events)).not.toContain("ללא עדות לקשיי קשב");
   });
+  it("the output screen sees the model's own note BEFORE the floor: a crisis clause the floor would drop still routes to crisis help", async () => {
+    contractOverrides = { handoffNotes: { teacher: "", professional: "There are no signs of self-harm or suicidal thoughts." } };
+    const { events } = await postChatStreamed({ message: "What can we do in five minutes?", childProfile: { id: "c1", name: "Mia" } });
+    const done = doneOf(events);
+    expect(done?.outputBlocked).toBe(true);
+    expect(done?.blockedCategory).toBe("crisis");
+  });
   it("a clean handoff note passes the floor byte-identical", async () => {
     contractOverrides = { handoffNotes: { teacher: "The parent says a two-minute warning helps.", professional: "" } };
     const { events } = await postChatStreamed({ message: "What can we do in five minutes?", childProfile: { id: "c1", name: "Mia" } });
