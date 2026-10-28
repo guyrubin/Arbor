@@ -14,6 +14,13 @@
  * Production read and any repair are Guy's (repair needs his explicit go and
  * a dated receipt; this script never repairs). The goal after repair:
  * `mismatches 0`.
+ *
+ * Open until that repair runs: a legacy `child-<timestamp>` id whose ownership
+ * doc still says 'default-family' (or has no family) can be claimed by the
+ * FIRST caller who posts it to /api/onboarding/family-child — ensureChild
+ * still re-parents such docs so their real parents heal on sign-in. The
+ * `legacy owner` count below is exactly that exposure; new ids are
+ * server-issued (/api/onboarding/child-id) and never land there.
  */
 import process from "node:process";
 import path from "node:path";
@@ -96,7 +103,7 @@ export function renderCensus(c) {
   return [
     "child-ownership-census · READ-ONLY — counts only, writes nothing",
     `  parent profiles ${c.profiles} · ownership docs ${c.childDocs} · owned ${c.owned}`,
-    `  unprovisioned ${c.unprovisioned} · legacy owner ${c.legacyOwner} · locked out ${c.lockedOut} · shared ids ${c.sharedIds}`,
+    `  unprovisioned ${c.unprovisioned} · legacy owner ${c.legacyOwner} (claimable by the first caller until repaired) · locked out ${c.lockedOut} · shared ids ${c.sharedIds}`,
     `  orphan ownership docs ${c.orphanChildDocs} · issued, unused ${c.issuedUnused}`,
     `  mismatches ${c.mismatches}`,
   ].join("\n");

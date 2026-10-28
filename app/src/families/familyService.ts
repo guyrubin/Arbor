@@ -54,6 +54,34 @@ export class FamilyService {
    *  posting its id to /onboarding/family-child and pass requireChildOwnership
    *  on its ledger, private book files, export and erase. Returns whether the
    *  child is now parented to `familyId` (false = left with its own family). */
+  async ensureChild(familyId: string, childId: string, profileSeed: Record<string, unknown> = {}): Promise<boolean> {
+    const now = new Date().toISOString();
+    return this.db.runTransaction(async (transaction) => {
+      const familyRef = this.db.collection("families").doc(familyId);
+      const childRef = this.db.collection("children").doc(childId);
+      const childRefInFamily = familyRef.collection("childRefs").doc(childId);
+
+      const existing = await transaction.get(childRef);
+      const ownerFamily = existing.exists ? (existing.data()?.familyId as unknown) : undefined;
+      if (typeof ownerFamily === "string" && ownerFamily && ownerFamily !== LEGACY_FAMILY_ID && ownerFamily !== familyId) return false;
+
+      transaction.set(familyRef, { familyId, updatedAt: now }, { merge: true });
+      transaction.set(childRef, {
+        ...profileSeed,
+        childId,
+        familyId,
+        ...(existing.exists ? {} : { createdAt: now }),
+        updatedAt: now
+      }, { merge: true });
+      transaction.set(childRefInFamily, {
+        childId,
+        familyId,
+        updatedAt: now
+      }, { merge: true });
+      return true;
+    });
+  }
+
   /** B-DATA-15: a NEW child id is issued here, never chosen by a client. The
    *  id is random (not guessable, no shared timestamp namespace) and its
    *  children/{id} doc is created in the same transaction, already parented
@@ -95,33 +123,5 @@ export class FamilyService {
       if ((await this.db.collection("families").doc(owner).collection("members").doc(member.id).get()).exists) return true;
     }
     return false;
-  }
-
-  async ensureChild(familyId: string, childId: string, profileSeed: Record<string, unknown> = {}): Promise<boolean> {
-    const now = new Date().toISOString();
-    return this.db.runTransaction(async (transaction) => {
-      const familyRef = this.db.collection("families").doc(familyId);
-      const childRef = this.db.collection("children").doc(childId);
-      const childRefInFamily = familyRef.collection("childRefs").doc(childId);
-
-      const existing = await transaction.get(childRef);
-      const ownerFamily = existing.exists ? (existing.data()?.familyId as unknown) : undefined;
-      if (typeof ownerFamily === "string" && ownerFamily && ownerFamily !== LEGACY_FAMILY_ID && ownerFamily !== familyId) return false;
-
-      transaction.set(familyRef, { familyId, updatedAt: now }, { merge: true });
-      transaction.set(childRef, {
-        ...profileSeed,
-        childId,
-        familyId,
-        ...(existing.exists ? {} : { createdAt: now }),
-        updatedAt: now
-      }, { merge: true });
-      transaction.set(childRefInFamily, {
-        childId,
-        familyId,
-        updatedAt: now
-      }, { merge: true });
-      return true;
-    });
   }
 }
