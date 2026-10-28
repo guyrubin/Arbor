@@ -50,7 +50,7 @@ import HeroCreateDialog from "../profile/HeroCreateDialog";
 import TonightFromToday from "../stories/TonightFromToday";
 import { consumeTonightMode, type TonightMode } from "../../lib/tonightMode";
 import { useKidTheme } from "../../hooks/useKidTheme";
-import { kidArt, kidArtSrcSet, storyCoverKey } from "../../lib/kidThemeManifest";
+import { kidArtSrcSet, storyCoverArt } from "../../lib/kidThemeManifest";
 import { StoryCard, STORY_PACK_LABEL, STORY_PACK_SOFT } from "../stories/StoryCard";
 import { consumeStoryOpen } from "../../lib/storyOpenRequest";
 import { setKidSurfaceTitle } from "../kidmode/kidSurfaceTitle";
@@ -301,7 +301,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const kidTheme = useKidTheme();
   // B-KID-70 (R-4): a story's cover in the child's ONE theme (manifest), or null
   // — then today's rendering (emoji motif / SVG hills) stays; never another theme's file.
-  const storyCover = (id: string) => kidArt(kidTheme, storyCoverKey(id));
+  const storyCover = (id: string) => storyCoverArt(kidTheme, id);
   // B-KID-01: the fallback-page cameo is the generated hero or Sprout — a
   // photo-only child (photoUrl, no avatar) resolves to null here, never the photo.
   const heroCameoUrl = resolveHeroUrl(childProfile) ?? undefined;

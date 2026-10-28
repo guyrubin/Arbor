@@ -31,10 +31,11 @@ describe("WorldScene current-key lifecycle and decorative fallback",()=>{
   const tree=render({heroUrl:undefined});const img=image(tree)!;
   expect(img.props.src).toContain("mood-mountain-v2-480.webp");expect(img.props.srcSet).toContain("960w");expect(img.props.loading).toBe("lazy");expect(img.props.alt).toBe("");expect(img.props["aria-hidden"]).toBe("true");expect(h.generate).not.toHaveBeenCalled();
  });
- it("B-KID-70: film3d shows the theme's own card, top-focused, never the storybook tile",()=>{
+ it("B-KID-70: film3d shows the theme's own card, never the storybook tile; B-BOOK-31: a card that paints a hero gives way to the theme's hero-free play card",()=>{
   const img=image(render({heroUrl:undefined,theme:"film3d"}))!;
-  expect(img.props.src).toContain("/cards/web/game-feelings-480.webp");expect(img.props.srcSet).toBe("/visuals/cards/web/game-feelings-480.webp 480w");
-  expect(img.props.src).not.toContain("mood-mountain");expect(img.props.style.objectPosition).toBe("50% 22%");
+  expect(img.props.src).not.toContain("game-feelings");
+  expect(img.props.src).toContain("/cards/web/arbor-academy-play-hero-bg-480.webp");expect(img.props.srcSet).toBe("/visuals/cards/web/arbor-academy-play-hero-bg-480.webp 480w");
+  expect(img.props.src).not.toContain("mood-mountain");expect(img.props.style.objectPosition).toBe("50% 62%");
  });
  it("hides the whole decorative slot, including a covered named fallback and ultimate icon",()=>{
   const labelledFallback=<span role="img" aria-label="Dylan, the hero">hero fallback</span>;

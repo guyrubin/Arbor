@@ -77,17 +77,18 @@ describe("KidBookCover — the one cover", () => {
   const base = { title: "The Lantern Path", pack: "courage" as const, theme: "film3d" as const, readLabel: "I read this", onOpen: () => {} };
 
   it("a story covered in the theme shows its cover, edge to edge (B-KID-122: over its title card, which shows until the picture has loaded)", () => {
-    const html = renderToStaticMarkup(<KidBookCover {...base} storyId="noahs-ark" title="Noah's Ark" layout="grid" />);
+    // B-BOOK-31 re-pin: a hero-free cover (the storybook plate) is the covered case.
+    const html = renderToStaticMarkup(<KidBookCover {...base} theme="storybook" storyId="the-lantern-path" layout="grid" />);
     expect(html).toContain("<img");
-    expect(html).toContain("story-noahs-ark");
+    expect(html).toContain("lantern-path-v1");
     // B-KID-122 re-pin: the title card is the loading placeholder UNDER the image (before it in the DOM).
     expect(html.indexOf("data-kid-book-titlecard")).toBeGreaterThan(-1);
     expect(html.indexOf("data-kid-book-titlecard")).toBeLessThan(html.indexOf("<img"));
   });
 
   it("B-KID-122: first-row covers load eagerly; the rest lazy; the picture fades in over a sized slot", () => {
-    const eager = renderToStaticMarkup(<KidBookCover {...base} storyId="noahs-ark" title="Noah's Ark" layout="row" eager />);
-    const lazy = renderToStaticMarkup(<KidBookCover {...base} storyId="noahs-ark" title="Noah's Ark" layout="row" />);
+    const eager = renderToStaticMarkup(<KidBookCover {...base} theme="storybook" storyId="the-lantern-path" title="Noah's Ark" layout="row" eager />);
+    const lazy = renderToStaticMarkup(<KidBookCover {...base} theme="storybook" storyId="the-lantern-path" title="Noah's Ark" layout="row" />);
     expect(eager).toMatch(/<img[^>]*loading="eager"/);
     expect(lazy).toMatch(/<img[^>]*loading="lazy"/);
     expect(eager).toMatch(/<img[^>]*width="\d+"[^>]*height="\d+"/);
@@ -95,6 +96,18 @@ describe("KidBookCover — the one cover", () => {
     expect(eager).toMatch(/<img[^>]*data-kid-book-img="pending"[^>]*opacity:0/);
     expect(eager).toContain("motion-reduce:transition-none");
     expect(eager).toContain("Noah&#x27;s Ark");
+  });
+
+  it("B-BOOK-31: a cover that paints the reference family's child is never another child's cover — the book keeps its complete title card", () => {
+    for (const id of HERO_STORIES.map((x) => x.id)) {
+      const painted = kidArt("film3d", storyCoverKey(id));
+      if (!painted?.hasHero) continue;
+      const html = renderToStaticMarkup(<KidBookCover {...base} storyId={id} title="A book" layout="grid" />);
+      expect(html, id).not.toContain("/visuals/cards/");
+      expect(html, id).not.toContain("<img");
+      expect(html, id).toContain("data-kid-book-titlecard");
+      expect(html, id).toContain("A book");
+    }
   });
 
   it("B-KID-122: the home row and the library mark their first row eager; Tonight's cover is high priority", () => {

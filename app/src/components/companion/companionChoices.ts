@@ -24,16 +24,26 @@ export type TogetherCategory = "routines" | "games" | "stories";
  *  (Away from the screen) lands on Play, where the away ideas now live. */
 export type TogetherFilterParam = TogetherCategory | "all" | "offscreen";
 
+/** B-BOOK-31 / B-KID-143: each world's card is its painted world (the hero-free
+ *  `/visuals/worlds/v2/` set the storybook theme already uses), never a
+ *  `/visuals/cards/` game card: those paint the reference family's child, and
+ *  this page is every family's. */
 export const WORLD_ART: Readonly<Record<string, string>> = {
-  speech: "speech", "word-world": "reading", feelings: "feelings", mimic: "mimic",
-  adventures: "adventures", memory: "memory", reading: "reading", beat: "beat", pose: "pose", pattern: "pattern",
+  speech: "sound-lab", "word-world": "spell-forge", feelings: "mood-mountain", mimic: "mimic-studio",
+  adventures: "story-quest", memory: "mind-vault", reading: "spell-forge", beat: "beat-keeper", pose: "hero-pose", pattern: "pattern-power",
 };
+/** The world card's two web sizes (480 and the large derivative). */
+export const worldArtSrc = (worldId: string): { src480: string; src: string } => ({
+  src480: `/visuals/worlds/v2/${WORLD_ART[worldId]}-v2-480.webp`,
+  src: `/visuals/worlds/v2/${WORLD_ART[worldId]}-v2.webp`,
+});
 
 /** These are parent preview destinations, never direct child-mode entrances. */
 export const STORY_DOORS: readonly { id: string; tab: ActiveTab; icon: string; art: string; title: { en: string; he: string }; detail: { en: string; he: string } }[] = [
   { id: "library", tab: "stories", icon: "auto_stories", art: "/visuals/worlds/v2/tonight-story-v2-480.webp", title: pair("companion.story.library.title"), detail: pair("companion.story.library.detail") },
   { id: "bedtime", tab: "bedtime-stories", icon: "bedtime", art: "/visuals/worlds/v2/story-quest-v2-480.webp", title: pair("companion.story.bedtime.title"), detail: pair("companion.story.bedtime.detail") },
-  { id: "comics", tab: "comics", icon: "menu_book", art: "/visuals/cards/web/story-david-and-goliath-480.webp", title: pair("companion.story.comics.title"), detail: pair("companion.story.comics.detail") },
+  // B-BOOK-31: a hero-free story plate (the David cover paints the reference family's child).
+  { id: "comics", tab: "comics", icon: "menu_book", art: "/visuals/stories/v1/little-bridge-builders-v1-480.webp", title: pair("companion.story.comics.title"), detail: pair("companion.story.comics.detail") },
   { id: "family", tab: "family", icon: "favorite", art: "/visuals/parent/v1/together-480.webp", title: pair("companion.story.family.title"), detail: pair("companion.story.family.detail") },
 ];
 

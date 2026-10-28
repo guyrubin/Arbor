@@ -31,7 +31,9 @@ describe("which picture is the stage", () => {
   });
   it("a game = its world card; a book = its cover; the library = the garden", () => {
     expect(kidStageArt("film3d", { kind: "world", worldId: "pattern" }).wide?.src).toContain("kid-discovery-garden-v2");
-    expect(kidStageArt("film3d", { kind: "story", storyId: "noahs-ark" }).wide?.src).toContain("story-noahs-ark");
+    // B-BOOK-31: a story cover that paints the reference family's child is no stage either (like a world card).
+    expect(kidStageArt("film3d", { kind: "story", storyId: "noahs-ark" }).wide?.src).toContain("kid-discovery-garden-v2");
+    expect(kidStageArt("storybook", { kind: "story", storyId: "the-lantern-path" }).wide?.src).toContain("lantern-path-v1");
     expect(kidStageArt("film3d", { kind: "library" }).wide?.src).toContain("kid-discovery-garden-v2");
     expect([KID_STAGE_BLUR.library, KID_STAGE_BLUR.world, KID_STAGE_BLUR.story]).toEqual([10, 22, 26]);
   });

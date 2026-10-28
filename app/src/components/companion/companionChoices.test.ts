@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import { STUDIO_WORLDS } from "../practice/studioWorlds";
-import { nextChosenAction, STORY_DOORS, WORLD_ART } from "./companionChoices";
+import { nextChosenAction, STORY_DOORS, WORLD_ART, worldArtSrc } from "./companionChoices";
 
 const row = (id: string, date: string, extra: Partial<ActionLoopEntry> & { topicId?: string } = {}): ActionLoopEntry => ({
   id, acceptedAt: date, recommendation: `Try ${id}`, source: "coach", capacity: "tiny", status: "accepted", ...extra,
@@ -35,7 +35,18 @@ describe("Now's parent-chosen step", () => {
 
 describe("Together preview assets", () => {
   it("has a real preview asset for every existing age-filtered world", () => {
-    for (const world of STUDIO_WORLDS) expect(existsSync(resolve("public/visuals/cards", `game-${WORLD_ART[world.id]}.png`)), world.id).toBe(true);
+    for (const world of STUDIO_WORLDS) {
+      const art = worldArtSrc(world.id);
+      expect(WORLD_ART[world.id], world.id).toBeTruthy();
+      expect(existsSync(resolve("public", art.src480.slice(1))), world.id).toBe(true);
+      expect(existsSync(resolve("public", art.src.slice(1))), world.id).toBe(true);
+    }
+  });
+  it("B-BOOK-31 / B-KID-143: no Together card shows a /visuals/cards/ picture (they paint the reference family's child)", () => {
+    for (const door of STORY_DOORS) expect(door.art, door.id).not.toContain("/visuals/cards/");
+    for (const world of STUDIO_WORLDS) expect(JSON.stringify(worldArtSrc(world.id)), world.id).not.toContain("/visuals/cards/");
+    const view = readFileSync(resolve("src/components/companion/TogetherView.tsx"), "utf8");
+    expect(view).not.toContain("/visuals/cards/");
   });
   it("keeps all story formats reachable and every card image present", () => {
     expect(STORY_DOORS.map((door) => door.tab)).toEqual(["stories", "bedtime-stories", "comics", "family"]);

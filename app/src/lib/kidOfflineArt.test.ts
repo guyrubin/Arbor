@@ -30,12 +30,16 @@ describe("what the home asks to keep", () => {
     expect(KID_RECENT_BOOKS).toBe(3);
   });
   it("Tonight's cover + 3 recent covers (both web sizes) + every home tile (480) of the active theme; webp only, deduped", () => {
+    // B-BOOK-31: only hero-free covers are kept (the storybook plates); a cover
+    // that paints the reference family's child is shown nowhere, so never kept.
+    const kept = kidOfflineArtUrls("storybook", "the-lantern-path", ["the-cloud-orchestra", "the-lantern-path", "noahs-ark", "the-little-bridge-builders"]);
+    const lantern = kidArt("storybook", storyCoverKey("the-lantern-path"))!;
+    expect(kept).toContain(lantern.src480);
+    expect(kept).toContain(lantern.src);
+    expect(kept).toContain(kidArt("storybook", storyCoverKey("the-cloud-orchestra"))!.src480);
+    expect(kept.some((u) => u.includes("bridge-builders"))).toBe(false); // 4th recent: not kept
     const urls = kidOfflineArtUrls("film3d", "noahs-ark", ["david-and-goliath", "noahs-ark", "the-lantern-path", "jonah-and-the-great-fish"]);
-    const noah = kidArt("film3d", storyCoverKey("noahs-ark"))!;
-    expect(urls).toContain(noah.src480);
-    expect(urls).toContain(noah.src);
-    expect(urls).toContain(kidArt("film3d", storyCoverKey("david-and-goliath"))!.src480);
-    expect(urls.some((u) => u.includes("jonah"))).toBe(false); // 4th recent: not kept
+    expect(urls.some((u) => u.includes("/cards/web/story-"))).toBe(false);
     for (const id of KID_WORLD_TILE_IDS) expect(urls).toContain(kidArt("film3d", `world.${id}.tile`)!.src480);
     expect(urls.every((u) => u.startsWith("/visuals/") && u.endsWith(".webp"))).toBe(true);
     expect(new Set(urls).size).toBe(urls.length);

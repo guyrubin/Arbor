@@ -15,7 +15,7 @@
  */
 import { useState } from "react";
 import type { HeroPackId } from "../../types";
-import { kidArt, kidArtSrcSet, storyCoverKey, type KidThemeId } from "../../lib/kidThemeManifest";
+import { kidArtSrcSet, storyCoverArt, type KidThemeId } from "../../lib/kidThemeManifest";
 
 /** The pack's soft tint (page) and full colour (spine) — the same pack tokens
  *  the catalogue uses, so a title card belongs to its pack, never a random hue. */
@@ -66,7 +66,7 @@ export function KidBookTitleCard({ title, pack }: { title: string; pack: HeroPac
 }
 
 export function KidBookCover({ storyId, title, pack, theme, read, readLabel, onOpen, layout, eager = false }: KidBookCoverProps) {
-  const art = kidArt(theme, storyCoverKey(storyId));
+  const art = storyCoverArt(theme, storyId);
   // B-KID-122: until the picture has loaded the slot shows the book's own
   // title card (pack tint + title, tokens only), and the picture fades in over
   // it (no fade under reduced motion). The slot's 3:4 box never changes size.
