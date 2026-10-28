@@ -464,8 +464,6 @@ describe("B-ASKJB-44 · round 5 — faithful rewordings (P2-1)", () => {
     // round 7 (P1-L): a neighbouring comma part counts only when it just names who said it
     ["Speech and language: no signs of delay.", "The clinic said: speech and language, no signs of delay."],
     ["He has been seen by the pediatrician, who ruled out an ear infection.", "He was seen by the pediatrician last month, who ruled out an ear infection."],
-    // a noun and a verb of one Hebrew root ("ריב" / "רבו") are different words to the matcher
-    ["הוא נצפה נושך חבר בגן בזמן ריב על צעצוע.", "הוא נשך חבר בגן כשרבו על צעצוע"],
   ])("documented false negative, the floor fails closed: %s", (sentence, parentText) => {
     expect(withoutHandoffFindings(sentence, { parentText })).toBe("");
   });
@@ -627,7 +625,7 @@ describe("B-ASKJB-44 · round 6 — one parent statement, the source and subject
    (A/A2: real escalation lines, kept; B/C/D/E: invented or narrated findings,
    dropped; D7 keeps its referral and drops the finding clause after ";").
    "EN"/"HE" stand for the critic's two hard-moment parent texts. */
-const COMPARE_ROWS: [string, string, string, "keep" | "drop" | "part"][] = [
+const COMPARE_ROWS: [string, string, string, string][] = [
   ["A esc5-1", "If, after 20 minutes, he shows no signs of calming, call the family.", "EN", "keep"],
   ["A esc5-2", "If he hurts himself or others, or shows no signs of calming after 20 minutes, call the parent and the school nurse right away.", "EN", "keep"],
   ["A esc5-3", "If he bites, hits or kicks, or there are no signs of calming after 20 minutes, call the family.", "EN", "keep"],
@@ -669,19 +667,19 @@ const COMPARE_ROWS: [string, string, string, "keep" | "drop" | "part"][] = [
   ["C N5 HE", "אין סימנים לעיכוב בדיבור.", "אני לא בטוחה שאין סימנים לעיכוב בדיבור.", "drop"],
   ["C N7", "There are no signs of delay.", "No one has told us there are no signs of delay.", "drop"],
   ["D1 talk with Dr, who found … when", "Talk with Dr. Levi, who found no signs of delay when she assessed him.", "EN", "drop"],
-  ["D2 if questions, contact Dr, who found", "If you have questions, contact Dr. Levi, who found no signs of delay at his last visit.", "EN", "drop"],
+  ["D2 if questions, contact Dr, who found", "If you have questions, contact Dr. Levi, who found no signs of delay at his last visit.", "EN", "part:If you have questions, contact Dr. Levi."],
   ["D3 contact family — finding when", "Please contact the family with any questions — he shows no signs of delay when playing with peers.", "EN", "drop"],
   ["D4 talk with family about … when", "Talk with the family about how he shows no signs of delay when he plays.", "EN", "drop"],
-  ["D5 call if needed: finding", "Call the family if needed: there are no signs of a speech delay.", "EN", "drop"],
+  ["D5 call if needed: finding", "Call the family if needed: there are no signs of a speech delay.", "EN", "part:Call the family if needed."],
   ["D6 see ped, who ruled out … when", "See your pediatrician, who ruled out a hearing problem when he was two.", "EN", "drop"],
   ["D7 if worried, talk w ped; no evidence of", "If you are worried, talk with the pediatrician; there is no evidence of a delay.", "EN", "part"],
-  ["D8 if worried, contact the family, as there are no signs", "If you are worried, contact the family, as there are no signs of a speech delay at home.", "EN", "drop"],
+  ["D8 if worried, contact the family, as there are no signs", "If you are worried, contact the family, as there are no signs of a speech delay at home.", "EN", "part:If you are worried, contact the family."],
   ["D9 when convenient, call; finding", "When convenient, call the family, since he shows no signs of delay.", "EN", "drop"],
   ["D10 contact the family once ... no evidence", "Contact the family once a week, as there is no evidence of attention difficulties.", "EN", "drop"],
   ["D11 HE דברו עם ד\"ר, שאמרה שאין … כש", "דברו עם ד\"ר לוי, שאמרה שאין סימנים לעיכוב כשבדקה אותו.", "HE", "drop"],
-  ["D12 HE אם יש שאלות, יש לפנות … שאין", "אם יש שאלות, יש לפנות לד\"ר לוי, שמצאה שאין סימנים לעיכוב בביקור האחרון.", "HE", "drop"],
-  ["D13 HE כדאי לעדכן … כי אין", "אם יש שינוי, כדאי לעדכן את ההורים, כי אין סימנים לעיכוב בדיבור.", "HE", "drop"],
-  ["D14 HE התקשרו אם צריך: אין", "התקשרו להורים אם צריך: אין סימנים לעיכוב בדיבור.", "HE", "drop"],
+  ["D12 HE אם יש שאלות, יש לפנות … שאין", "אם יש שאלות, יש לפנות לד\"ר לוי, שמצאה שאין סימנים לעיכוב בביקור האחרון.", "HE", "part:אם יש שאלות, יש לפנות לד\"ר לוי."],
+  ["D13 HE כדאי לעדכן … כי אין", "אם יש שינוי, כדאי לעדכן את ההורים, כי אין סימנים לעיכוב בדיבור.", "HE", "part:אם יש שינוי, כדאי לעדכן את ההורים."],
+  ["D14 HE התקשרו אם צריך: אין", "התקשרו להורים אם צריך: אין סימנים לעיכוב בדיבור.", "HE", "part:התקשרו להורים אם צריך."],
   ["E1 colon framing", "If useful for context: there are no signs of a speech delay, so call the family only if needed.", "EN", "drop"],
   ["E2 she can call", "Should the teacher ask, there is no evidence of ADHD, and she can call the family.", "EN", "drop"],
   ["E3 condition, no referral", "If there are no signs of anxiety at drop-off, she can join circle time.", "EN", "drop"],
@@ -690,20 +688,23 @@ const COMPARE_PARENT_EN = "He bit a friend at preschool when they fought over a 
 const COMPARE_PARENT_HE = "הוא נשך חבר בגן כשרבו על צעצוע; ד\"ר לוי ראה אותו בשבוע שעבר\nהפרדנו ביניהם והוא נרגע אחרי חיבוק";
 const compareParent = (p: string) => (p === "EN" ? COMPARE_PARENT_EN : p === "HE" ? COMPARE_PARENT_HE : p);
 const COMPARE_PART_D7 = "If you are worried, talk with the pediatrician;";
+/** What a row's note must become: keep → itself, drop → "", part → D7's kept clause, part:<text> → that text. */
+const expectedOut = (sentence: string, verdict: string) =>
+  verdict === "keep" ? sentence : verdict === "drop" ? "" : verdict === "part" ? COMPARE_PART_D7 : verdict.slice("part:".length);
 
 describe("B-ASKJB-44 · round 6 — every critic compare row: real escalation lines kept, invented or narrated findings dropped (EN + HE)", () => {
   it.each(COMPARE_ROWS)("%s", (_label, sentence, parent, verdict) => {
     const out = withoutHandoffFindings(sentence, { parentText: compareParent(parent), childNames: ["Noa"] });
-    expect(out).toBe(verdict === "keep" ? sentence : verdict === "part" ? COMPARE_PART_D7 : "");
+    expect(out).toBe(expectedOut(sentence, verdict));
   });
   it("a finding is exempt only inside the escalation line's condition, never in its tail or main clause", () => {
     expect(escalationCondition("Talk with Dr. Levi, who found no signs of delay when she assessed him.")).toBeNull();
     expect(escalationCondition("Contact the family once a week, as there is no evidence of attention difficulties.")).toBeNull();
     expect(escalationCondition("When convenient, call the family, since he shows no signs of delay.")).toBeNull();
     const line = "If you are worried, contact the family, as there are no signs of a speech delay at home.";
-    expect(escalationCondition(line)).toEqual({ start: 0, end: line.indexOf(",") });
+    expect(escalationCondition(line)).toEqual({ start: 0, end: line.indexOf(","), hypothetical: true });
     const he = "התקשרו להורים אם צריך: אין סימנים לעיכוב בדיבור.";
-    expect(escalationCondition(he)).toEqual({ start: he.indexOf("אם"), end: he.indexOf(":") });
+    expect(escalationCondition(he)).toEqual({ start: he.indexOf("אם"), end: he.indexOf(":"), hypothetical: true });
   });
 });
 
@@ -714,7 +715,7 @@ describe("B-ASKJB-44 · round 6 — every critic compare row: real escalation li
    clause (dropped; T6 keeps, as main does), FN observations and documented
    false negatives (FN1 "was observed biting" and FN5 "קושי/קשיים" kept; FN3
    "ריב/רבו" stays a documented false negative). */
-const ROUND7_ROWS: [string, string, string, "keep" | "drop" | "part"][] = [
+const ROUND7_ROWS: [string, string, string, string][] = [
   ["F1 EN comma leak doctor", "Dr. Levi found no signs of a speech delay.", "Saw Dr. Levi for his ears this morning, no signs of a speech delay at home, he is chatting nonstop.", "drop"],
   ["F2 EN comma leak teacher", "His teacher sees no signs of anxiety at drop-off.", "Met his teacher about the biting, no signs of anxiety at drop-off since the chart.", "drop"],
   ["F3 EN comma leak pediatrician ruled out", "The pediatrician ruled out a hearing problem.", "Pediatrician visit for his cough, no hearing problem as far as we can tell, ruled out an ear infection.", "drop"],
@@ -743,15 +744,15 @@ const ROUND7_ROWS: [string, string, string, "keep" | "drop" | "part"][] = [
   ["H5 EN noun Contact … when he", "Contact with peers when he is tired shows no signs of distress.", "EN", "drop"],
   ["H6 EN Talk … when he (narrative)", "Talk with peers when he is calm shows no signs of a language delay.", "EN", "drop"],
   ["H7 HE התקשרו (past) … אם, אין", "התקשרו מהגן לשאול אם הוא רעב, ואין סימנים לקשיי אכילה.", "HE", "drop"],
-  ["T1 EN imperative-first if…, and <finding>", "Call the family if he cries for more than 20 minutes, and there is no evidence of a speech delay.", "EN", "drop"],
-  ["T2 EN imperative-first when he…, and <finding>", "Contact the family when he is upset at drop-off, and note there are no signs of attention difficulties.", "EN", "drop"],
-  ["T3 EN please call if…, though <finding>", "Please call the family if he is upset for long, though he shows no signs of delay.", "EN", "drop"],
-  ["T4 HE יש להתקשר אם…, ואין", "יש להתקשר להורים אם הוא בוכה יותר מ-20 דקות, ואין סימנים לעיכוב בדיבור.", "HE", "drop"],
-  ["T5 HE התקשרו כשהוא…, ואין", "התקשרו להורים כשהוא נסער בבוקר, ואין סימנים לקשיי קשב.", "HE", "drop"],
+  ["T1 EN imperative-first if…, and <finding>", "Call the family if he cries for more than 20 minutes, and there is no evidence of a speech delay.", "EN", "part:Call the family if he cries for more than 20 minutes."],
+  ["T2 EN imperative-first when he…, and <finding>", "Contact the family when he is upset at drop-off, and note there are no signs of attention difficulties.", "EN", "part:Contact the family when he is upset at drop-off."],
+  ["T3 EN please call if…, though <finding>", "Please call the family if he is upset for long, though he shows no signs of delay.", "EN", "part:Please call the family if he is upset for long."],
+  ["T4 HE יש להתקשר אם…, ואין", "יש להתקשר להורים אם הוא בוכה יותר מ-20 דקות, ואין סימנים לעיכוב בדיבור.", "HE", "part:יש להתקשר להורים אם הוא בוכה יותר מ-20 דקות."],
+  ["T5 HE התקשרו כשהוא…, ואין", "התקשרו להורים כשהוא נסער בבוקר, ואין סימנים לקשיי קשב.", "HE", "part:התקשרו להורים כשהוא נסער בבוקר."],
   ["T6 EN imperative-first if… with no comma tail", "Call the family if he is upset and there is no evidence of a speech delay.", "EN", "keep"],
   ["FN1 EN was observed biting", "He was observed biting a friend at preschool during a fight over a toy.", "EN", "keep"],
-  ["FN2 EN has been noted to bite", "He has been noted to bite when toys are contested.", "EN", "drop"],
-  ["FN3 HE נצפה נושך", "הוא נצפה נושך חבר בגן בזמן ריב על צעצוע.", "HE", "drop"],
+  ["FN2 EN has been noted to bite", "He has been noted to bite when toys are contested.", "EN", "keep"],
+  ["FN3 HE נצפה נושך", "הוא נצפה נושך חבר בגן בזמן ריב על צעצוע.", "HE", "keep"],
   ["FN4 EN parent's absence, reworded noun", "No evidence of anxiety at drop-off since the picture chart.", "No signs of anxiety at drop-off since the picture chart", "drop"],
   ["FN5 HE stem change", "אין קשיים בשינה מאז השגרה החדשה.", "אין קושי בשינה מאז השגרה החדשה", "keep"],
   ["FN6 EN extra negation", "No signs of anxiety at drop-off.", "No signs of anxiety at drop-off, not even on Mondays", "drop"],
@@ -762,6 +763,6 @@ const ROUND7_ROWS: [string, string, string, "keep" | "drop" | "part"][] = [
 describe("B-ASKJB-44 · round 7 — commands need a real condition, a neighbour part only names a source, observations need the parent's words (EN + HE)", () => {
   it.each(ROUND7_ROWS)("%s", (_label, sentence, parent, verdict) => {
     const out = withoutHandoffFindings(sentence, { parentText: compareParent(parent), childNames: ["Noa"] });
-    expect(out).toBe(verdict === "keep" ? sentence : "");
+    expect(out).toBe(expectedOut(sentence, verdict));
   });
 });

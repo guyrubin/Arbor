@@ -176,11 +176,16 @@ export function findClinicalDiagnosisTerm(text: string): string | null {
  *   - the finding sits inside the CONDITION of an escalation line — a
  *     sentence whose main clause opens with an imperative referral ("If …,
  *     call the family", "Call the family if …", "אם …, יש להתקשר להורים";
- *     escalationCondition below). That condition is the safety message's
+ *     escalationCondition below) — and, after a time ("when", "after 20
+ *     minutes", "with no…", "כעבור"), is about a change (calming,
+ *     improvement, רגיעה, שיפור). That condition is the safety message's
  *     trigger, not a claim, and in a School Brief the line may be the only
- *     "call the family" a teacher's copy carries. A finding in the line's
- *     tail (", who found…", ", as there is no evidence…", ", כי אין…") or
- *     main clause is checked like any other;
+ *     "call the family" a teacher's copy carries. An invented add-on after
+ *     the line (", and there is no evidence…", ", who found…", ", כי אין…")
+ *     is cut off and the referral with its condition kept;
+ *   - it is an OBSERVATION ("He was observed biting a peer…", "הוא נצפה
+ *     נושך…") of an event the parent logged: the event and another of its
+ *     words in one part of one parent statement (parentReportsEvent);
  *   - the PARENT'S OWN WORDS carry it (critic rounds 3–6): one statement the
  *     parent wrote holds a finding of the same kind ("doesn't show any signs
  *     of" = "no signs of") and EVERY content word of the clause in any order,
@@ -195,11 +200,11 @@ export function findClinicalDiagnosisTerm(text: string): string | null {
  *     person ("Mom reports", "לדברי אמה של נועה") and the child's own name
  *     need no match;
  *   - it sits in the School Brief's `crisisEscalationTrigger`, never scrubbed.
- * Known false negatives (the floor fails closed: a faithful note loses the
- * clause): a note in a different language from the parent's words; a clause
+ * Known false negatives — each a parent's reassuring "no problem" statement,
+ * never a hard moment (the floor fails closed: a faithful note loses the
+ * clause; src/lib/__fixtures__/handoffFloorAcceptance.json pins them "keep|fn"): a note in a different language from the parent's words; a clause
  * whose words the parent spread over two sentences ("The teacher called. She
- * said…"); a reworded noun ("evidence" for "signs"); a Hebrew noun and
- * verb of one root ("ריב" / "רבו"); a parent's statement with an
+ * said…"); a reworded noun ("evidence" for "signs"); a parent's statement with an
  * extra negation in it ("no signs of anxiety, not even at drop-off"); a
  * subject the parent put in a neighbouring comma part that narrates ("He was
  * seen by the pediatrician last month, who ruled out…"): a neighbouring part
@@ -237,6 +242,7 @@ export const HANDOFF_FINDING_TERMS_HE = [
   "לא הראה סימנים", "לא הראתה סימנים", "אין אינדיקציה", "ללא אינדיקציה",
   // "no concern / difficulty / delay" (as a finding; "ללא קושי"/"ללא חשש" describe an event and are not listed)
   "אין חשש", "אין קשיים", "אין קושי", "לא נמצאו קשיים", "לא נצפו קשיים", "לא נמצא קושי", "אין עיכוב",
+  "לא מצא סימנים", "לא מצאה סימנים", "לא מצאו סימנים", "לא מצא קשיים", "לא מצאה קשיים", "לא מצאו קשיים",
   // "ruled out" / "within normal limits" / "developing normally"
   "לשלול", "נשלל", "נשללה", "נשללו", "שולל", "שוללת",
   "בטווח התקין", "בטווח הנורמה", "בגבולות הנורמה", "בגבולות התקין", "התפתחות תקינה",
@@ -332,7 +338,7 @@ const opensWithReferral = (text: string) => IMPERATIVE_EN.test(text) || IMPERATI
  *  narrates what happened ("When tested last month he showed no signs of
  *  delay…", "כשהרופאה בדקה אותו לא נמצאו…"): never an escalation trigger. */
 const HYPOTHETICAL_LEAD = /^\s*(?:if|unless|in\s+case|should|in\s+the\s+event)\b|^\s*ו?(?:אם|במידה|במקרה|בכל\s+מקרה)(?!\p{L})/iu;
-const PAST_EN = /\b(?:found|showed|displayed|exhibited|demonstrated|presented|saw|ruled|tested|assessed|checked|evaluated|examined|screened|diagnosed|did\s*(?:not|n['’]t)|(?:was|were|had\s+been|has\s+been|have\s+been)\s+(?:\w+\s+)?(?:seen|tested|assessed|checked|evaluated|examined|screened|observed|noted|found|ruled))\b/i;
+const PAST_EN = /\b(?:found|showed|displayed|exhibited|demonstrated|presented|saw|ruled|tested|assessed|checked|evaluated|examined|screened|diagnosed|there\s+(?:were|was)|did\s*(?:not|n['’]t)|(?:was|were|had\s+been|has\s+been|have\s+been)\s+(?:\w+\s+)?(?:seen|tested|assessed|checked|evaluated|examined|screened|observed|noted|found|ruled))\b/i;
 const PAST_HE = /(?<!\p{L})(?:ו|ש|כש)?(?:נמצא|נמצאה|נמצאו|הראה|הראתה|הראו|נבדק|נבדקה|נבדקו|בדק|בדקה|בדקו|מצא|מצאה|מצאו|נצפה|נצפתה|נצפו|נשלל|נשללה|נשללו|היה|הייתה|היו|אובחן|אובחנה|ראה|ראתה)(?!\p{L})/u;
 const narratesPast = (condition: string) => !HYPOTHETICAL_LEAD.test(condition) && (PAST_EN.test(condition) || PAST_HE.test(condition));
 /** Where a real condition starts.
@@ -382,17 +388,24 @@ const trailingStop = (text: string, conjunction: { at: number; end: number }): n
   for (const m of text.slice(from, end).matchAll(/,/g)) {
     const at = from + (m.index ?? 0);
     const next = text.slice(at + 1).split(/[,:–—]/)[0];
+    // "if he bites, the teacher is hurt, or there are no signs…" is one list: an "or" item still follows
+    if (LIST_OR.test(text.slice(at + 1, end))) continue;
     if (opensNewSubject(next) && !isCreditPart(next)) { end = at; break; }
   }
   return end;
 };
-/** The span of the condition that governs an escalation line's imperative referral, or null when the clause is not one. */
-export function escalationCondition(clause: string): { start: number; end: number } | null {
+const LIST_OR = /,\s*or\b|,\s*או(?!\p{L})|\sאו\s/iu;
+/** The span of the condition that governs an escalation line's imperative
+ *  referral, and whether it is a hypothetical ("if", "should he", "אם") or a
+ *  time ("when", "after 20 minutes", "with no…", "כש", "כעבור"), or null
+ *  when the clause is not an escalation line. */
+export function escalationCondition(clause: string): { start: number; end: number; hypothetical: boolean } | null {
   if (opensWithReferral(clause)) {
     const conjunction = conjunctionsIn(clause).find((c) => c.at > 0 && !LEADING_ONLY.test(clause.slice(c.at)));
     if (conjunction === undefined) return null;
     const end = trailingStop(clause, conjunction);
-    return narratesPast(clause.slice(conjunction.at, end)) ? null : { start: conjunction.at, end };
+    const condition = clause.slice(conjunction.at, end);
+    return narratesPast(condition) ? null : { start: conjunction.at, end, hypothetical: HYPOTHETICAL_LEAD.test(condition) };
   }
   const lead = conjunctionsIn(clause)[0];
   if (lead === undefined || clause.slice(0, lead.at).trim() !== "") return null;
@@ -401,10 +414,20 @@ export function escalationCondition(clause: string): { start: number; end: numbe
     if (clause.slice(0, at).includes(":")) return null;
     if (!opensWithReferral(clause.slice(at + 1))) continue;
     const end = Math.min(at, stopAfter(clause, lead.at));
-    return narratesPast(clause.slice(0, at)) ? null : { start: lead.at, end };
+    return narratesPast(clause.slice(0, at)) ? null : { start: lead.at, end, hypothetical: HYPOTHETICAL_LEAD.test(clause.slice(lead.at)) };
   }
   return null;
 }
+/** After a time ("when …", "after 20 minutes …", "with no …", "כעבור …"),
+ *  only a finding about a change is a trigger — no signs of calming,
+ *  settling, improvement or progress; a time never carries "no signs of
+ *  delay at his checkup" (critic round 7 P1-B). */
+const CHANGE_EN = /\b(?:calm(?:s|ed|ing)?|settl(?:e|es|ed|ing)|improv(?:e|es|ed|ing|ement)|progress|better|eas(?:e|es|ed|ing))\b/i;
+const CHANGE_HE = /(?<!\p{L})[ולבשה]{0,2}(?:רגיעה|להירגע|נרגע|נרגעת|שיפור|השתפרות|התקדמות|הקלה)(?!\p{L})/u;
+const aboutChange = (clause: string, finding: FindingMatch): boolean => {
+  const object = clause.slice(finding.index, finding.index + finding.phrase.length + 60);
+  return CHANGE_EN.test(object) || CHANGE_HE.test(object);
+};
 /** True when the clause is an escalation line (its main clause an imperative referral, a real condition governing it). */
 export function isEscalationLine(clause: string): boolean {
   return escalationCondition(clause) !== null;
@@ -427,7 +450,7 @@ const isHebrewWord = (word: string) => HE_LETTER.test(word);
 const HE_FINAL: Record<string, string> = { "ך": "כ", "ם": "מ", "ן": "נ", "ף": "פ", "ץ": "צ" };
 const foldHe = (word: string) => word.replace(/[ךםןףץ]/g, (c) => HE_FINAL[c] ?? c);
 const tokenize = (text: string): string[] =>
-  (text.normalize("NFC").replace(/\p{M}/gu, "").replace(/(?<=[א-ת])"(?=[א-ת])/g, "״").replace(/(?<=[א-ת])'(?=[א-ת])/g, "׳")
+  (text.normalize("NFC").replace(/\b(a\s+(?:little\s+|tiny\s+)?)bit\b/gi, "$1somewhat").replace(/\p{M}/gu, "").replace(/(?<=[א-ת])"(?=[א-ת])/g, "״").replace(/(?<=[א-ת])'(?=[א-ת])/g, "׳")
     .toLocaleLowerCase().replace(/[’`]/g, "'").match(/[\p{L}\p{N}]+(?:['״׳][\p{L}\p{N}]+)*/gu) ?? [])
     .map((word) => (isHebrewWord(word) ? foldHe(word) : word));
 const heWords = (words: readonly string[]): ReadonlySet<string> => new Set(words.map(foldHe));
@@ -448,7 +471,7 @@ const EN_STOP: ReadonlySet<string> = new Set([
   "them", "their", "theirs", "i", "me", "my", "mine", "we", "us", "our", "ours", "you", "your", "is", "are", "was", "were", "be",
   "been", "being", "am", "has", "have", "had", "having", "do", "does", "did", "any", "some", "very", "really", "just", "also",
   "still", "even", "now", "all", "much", "quite", "who", "which", "whom", "whose", "what", "when", "where", "since", "during",
-  "after", "before", "over", "under",
+  "after", "before", "over", "under", "somewhat", "little",
   // the child, named by the role rather than the name the note uses
   "child", "children", "kid", "kids", "son", "daughter", "boy", "girl", "baby", "toddler",
 ]);
@@ -605,6 +628,8 @@ const SPAN_LEAD_WORDS = 8;
 type Statement = {
   /** Its words. */
   words: readonly string[];
+  /** Its comma parts (with a part on either side that only names who said it), each with its negations. */
+  parts: { words: readonly string[]; negations: number }[];
   /** The kinds of finding it states (outside any "if"). */
   keys: ReadonlySet<FindingKey>;
   /** Each finding it states, with the words next to it: up to SPAN_LEAD_WORDS before it and the rest of its comma part, and a part on either side that only names who said it. */
@@ -656,6 +681,10 @@ const buildParentIndex = (text: string): ParentIndex => {
       const id = statements.length;
       statements.push({
         words,
+        parts: parts.map((part, j) => {
+          const credit = (k: number) => (parts[k] && isCreditPart(statementText.slice(parts[k].start, parts[k].end)) ? partWords[k] : []);
+          return { words: [...credit(j - 1), ...partWords[j], ...credit(j + 1)], negations: partWords[j].filter(isNegation).length };
+        }),
         keys: new Set(reported.map((f) => f.key)),
         spans: reported.map((f) => {
           const i = parts.findIndex((part) => f.index >= part.start && f.index < part.end);
@@ -738,9 +767,12 @@ const anchorsOf = (clause: string, findings: readonly FindingMatch[]): string[] 
 
 /** True when this clause states a finding the parent's words do not carry (and is not an escalation line). */
 export function statesUnreportedFinding(clause: string, opts: HandoffFloorOptions = {}, budget?: FloorBudget): boolean {
-  // A finding inside an escalation line's condition is its trigger, never a claim.
+  // A finding inside an escalation line's condition is its trigger, never a
+  // claim — after a time, only when it is about a change.
   const condition = escalationCondition(clause);
-  const findings = findingsIn(clause).filter((f) => !(condition && f.index >= condition.start && f.index < condition.end));
+  const exempt = (f: FindingMatch) => condition !== null && f.index >= condition.start && f.index < condition.end
+    && (condition.hypothetical || aboutChange(clause, f));
+  const findings = findingsIn(clause).filter((f) => !exempt(f));
   if (findings.length === 0) return false;
   if (!opts.parentText) return true;
   if (budget && budget.checks-- <= 0) return true;
@@ -748,9 +780,6 @@ export function statesUnreportedFinding(clause: string, opts: HandoffFloorOption
   const names = (opts.childNames ?? []).flatMap((name) => tokenize(name));
   const words = tokenize(clause);
   const negations = tokenize(outsidePhrases(clause, findings)).filter(isNegation).length;
-  // An observation ("He was observed biting…", "הוא נצפה נושך…") needs the
-  // parent's words for what happened, not a passive "observed" of their own.
-  const keys: FindingKey[] = [...new Set(findings.map((finding) => finding.key))].filter((key) => key !== "observed");
   const isParent = (word?: string) => word !== undefined && isOneOf(word, REPORTER_PARENT);
   // The parent's own possessor ("Noa's mom", "אמה של נועה") is the parent too.
   const ofParent = (i: number) => (words[i].endsWith("'s") && isParent(words[i + 1])) || (words[i - 1] === "של" && isParent(words[i - 2]));
@@ -758,6 +787,8 @@ export function statesUnreportedFinding(clause: string, opts: HandoffFloorOption
   const frame = findings.filter((finding) => finding.key === "observed").flatMap((finding) => tokenize(finding.phrase));
   const required = [...new Set(words.filter((word, i) => !isStopWord(word) && !isNegation(word) && !isOneOf(word, ATTRIBUTION_WORDS)
     && !isParent(word) && !isOneOf(word, names) && !ofParent(i) && !frame.includes(word)))];
+  if (findings.every((finding) => finding.key === "observed")) return !parentReportsEvent(clause, findings, required, negations, parent);
+  const keys: FindingKey[] = [...new Set(findings.map((finding) => finding.key))].filter((key) => key !== "observed");
   const anchors = [...new Set(anchorsOf(clause, findings))].filter((word) => required.includes(word));
   // A statement of the parent's that states the same kind of finding, with the
   // same negations outside it, holding every content word of the clause …
@@ -770,18 +801,70 @@ export function statesUnreportedFinding(clause: string, opts: HandoffFloorOption
   }
   // … with the subject and any credited source next to its finding.
   const near = (words: readonly string[]) => anchors.every((anchor) => words.some((word) => sameWord(anchor, word)));
-  return !candidates.some((id) => (keys.length === 0
-    ? near(parent.statements[id].words)
-    : parent.statements[id].spans.some((span) => keys.includes(span.key) && near(span.words))));
+  return !candidates.some((id) => parent.statements[id].spans.some((span) => keys.includes(span.key) && near(span.words)));
 }
+
+/* ── Observations (critic round 7 P1-C/D) ──────────────────────────────────
+ * "He was observed biting a peer during a conflict over a toy" restates a
+ * hard moment the parent logged ("He bit a friend at preschool when they
+ * fought over a toy"); dropping it would take a real event out of the
+ * teacher's copy. An observation is the parent's when one comma part of one
+ * of their statements holds its EVENT — the verb after the frame ("biting",
+ * "נושך"; Hebrew also by root, "ריב" ~ "רבו"), or the noun before it ("No
+ * aggression was observed") — and at least one more of its content words, the
+ * clause's other actions ("…and hitting a teacher") appear in that
+ * statement, and that part has as many negations as the clause. */
+const heSkeleton = (word: string): string[] =>
+  heBare(word).flatMap(heEndingForms).map((form) => form.replace(/(?<=.)[וי](?=.)/g, "")).filter((form) => form.length >= 2);
+const sameEvent = (a: string, b: string): boolean => {
+  if (sameWord(a, b)) return true;
+  if (!isHebrewWord(a) || !isHebrewWord(b)) return false;
+  const bs = new Set(heSkeleton(b));
+  return heSkeleton(a).some((form) => bs.has(form));
+};
+/** Other action words of a clause: English "-ing" forms, Hebrew present participles (CוCC). */
+const isActionWord = (word: string) => (isHebrewWord(word) ? word.length === 4 && word[1] === "ו" : word.length >= 5 && word.endsWith("ing"));
+const parentReportsEvent = (clause: string, findings: readonly FindingMatch[], required: readonly string[], negations: number, parent: ParentIndex): boolean => {
+  const first = findings[0];
+  const after = tokenize(clause.slice(first.index + first.phrase.length)).filter((word) => !isStopWord(word) || word === "to");
+  const before = tokenize(clause.slice(0, first.index)).filter((word) => !isStopWord(word) && !isNegation(word));
+  const verbAfter = after[0] === "to" ? after[1] : after[0];
+  const event = verbAfter && (isHebrewWord(verbAfter) || isActionWord(verbAfter) || after[0] === "to") ? verbAfter : before[before.length - 1] ?? verbAfter;
+  if (!event) return false;
+  const others = required.filter((word) => word !== event);
+  const actions = others.filter(isActionWord);
+  return parent.statements.some((statement) => statement.parts.some((part) =>
+    part.words.some((word) => sameEvent(event, word))
+    && (others.length === 0 || others.some((word) => part.words.some((w) => sameEvent(word, w))))
+    && actions.every((word) => statement.words.some((w) => sameEvent(word, w)))
+    && part.negations === negations));
+};
 
 /** Drop every clause that states an unreported finding; an untouched note is returned byte-identical. */
 export function withoutHandoffFindings(text: string, opts: HandoffFloorOptions = {}, budget: FloorBudget = { checks: HANDOFF_FLOOR_MAX_CHECKS }): string {
   const clauses = text.match(CLAUSES) ?? [text];
   const dropped = clauses.map((clause) => statesUnreportedFinding(clause, opts, budget));
   if (!dropped.includes(true)) return text;
-  return clauses.filter((_, i) => !dropped[i]).join("").trim();
+  return clauses.map((clause, i) => (dropped[i] ? escalationWithoutAddOn(clause, opts) ?? "" : clause)).join("").trim();
 }
+
+/** Where an add-on joins an escalation line: ", and" / ", though" / ", but",
+ *  a tail (", who / which / as / since / because / so"), ", ו", ", כי",
+ *  ", ש…", ", אבל", a colon or a dash. */
+const ADD_ON = /\s*(?:[:–—]|,\s*(?=(?:(?:and|though|although|but|while|whereas|yet|who|which|whose|as|since|because|so|that)\b|ו\p{L}|כי(?!\p{L})|ש\p{L}|אבל(?!\p{L})|אך(?!\p{L}))))/giu;
+/** An escalation line that carries an invented add-on keeps its referral and
+ *  condition and loses the add-on: "Call the family if he cries for more than
+ *  20 minutes, and there is no evidence of a speech delay." → "Call the
+ *  family if he cries for more than 20 minutes." (critic round 7 P2-1). */
+const escalationWithoutAddOn = (clause: string, opts: HandoffFloorOptions): string | null => {
+  const ending = /[.!?;。]*\s*$/.exec(clause)?.[0] ?? "";
+  ADD_ON.lastIndex = 0;
+  for (const m of clause.matchAll(ADD_ON)) {
+    const head = clause.slice(0, m.index).trimEnd();
+    if (head && isEscalationLine(head) && !statesUnreportedFinding(head, opts)) return `${head}${ending.trim() || "."}${/\s*$/.exec(ending)?.[0] ?? ""}`;
+  }
+  return null;
+};
 
 /** Fields of a School Brief draft the floor never touches: the escalation line is the safety message. */
 export const HANDOFF_BRIEF_UNSCRUBBED_FIELDS: readonly string[] = ["crisisEscalationTrigger"];
