@@ -40,11 +40,14 @@ const budget = new MemoryLiveBudgetStore();
 let server: Server;
 let base = "";
 const priorPaid = process.env.LIVE_PAID_MINUTES_PER_DAY;
+const priorSlice = process.env.LIVE_RESERVATION_MINUTES;
 
 beforeAll(async () => {
   // Local config is unenforced → every parent resolves to Plus (20 min). Keep
   // the test short: 10 minutes = two 5-minute slices per family-day.
   process.env.LIVE_PAID_MINUTES_PER_DAY = "10";
+  // These cases count 5-minute slices; the 60-second default has its own case.
+  process.env.LIVE_RESERVATION_MINUTES = "5";
   const config = createTestConfig({ liveEnabled: true });
   const entitlementStore = createEntitlementStore(config);
   const memoryStore = new LocalMemoryStore();
@@ -68,6 +71,7 @@ beforeAll(async () => {
 });
 afterAll(async () => {
   if (priorPaid === undefined) delete process.env.LIVE_PAID_MINUTES_PER_DAY; else process.env.LIVE_PAID_MINUTES_PER_DAY = priorPaid;
+  if (priorSlice === undefined) delete process.env.LIVE_RESERVATION_MINUTES; else process.env.LIVE_RESERVATION_MINUTES = priorSlice;
   await new Promise<void>((resolve) => server.close(() => resolve()));
 });
 beforeEach(() => {
@@ -227,5 +231,21 @@ describe("B-AIOPS-02 — timeout and caller-gone on the mint", () => {
     expect(Object.keys(familyDay()?.reservations ?? {})).toHaveLength(0);
     expect((await mint("parent-a")).status).toBe(200);
     expect((await mint("parent-b")).status).toBe(200);
+  });
+});
+
+describe("B-AIOPS-02 P1-1 — the default slice is one minute", () => {
+  it("a mint reserves 60 s: the token ends a minute out and the response says what the family has left", async () => {
+    delete process.env.LIVE_RESERVATION_MINUTES;
+    try {
+      const before = Date.now();
+      const { status, body } = await mint("parent-a");
+      expect(status).toBe(200);
+      expect(body.budget).toMatchObject({ reservedMs: 60_000, remainingMs: 9 * 60_000 });
+      expect(Date.parse(body.expiresAt) - before).toBeLessThanOrEqual(61_000);
+      expect(Date.parse(body.expiresAt) - before).toBeGreaterThan(55_000);
+    } finally {
+      process.env.LIVE_RESERVATION_MINUTES = "5";
+    }
   });
 });

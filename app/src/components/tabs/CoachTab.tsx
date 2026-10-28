@@ -41,7 +41,7 @@ import type { ComposerAttachment } from "../../lib/companionAttachments";
 import { requestCompanionConsentReview } from "../../lib/companionConsent";
 import { COMPANION_CONVERSATION_EVENT, consumeConversationPanelRequest, consumeConversationVoiceRequest, conversationVoiceRequestPending, type CompanionConversationRequest } from "../../lib/companionConversation";
 import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError, isLiveResting, VoiceNoticeRequiredError } from "../../lib/api";
-import { acknowledgeVoiceNotice, liveNoticeIdFrom, runtimeVoiceNoticeId, voiceNoticeAcknowledged, voiceNoticeLine } from "../../lib/voiceProviderNotice";
+import { acknowledgeVoiceNotice, liveNoticeIdFrom, runtimeVoiceNoticeId, voiceNoticeAcknowledged, voiceNoticeShortLine, voiceNoticeTap } from "../../lib/voiceProviderNotice";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { recurringScenario } from "../../lib/patternEcho";
 import { localDayKey } from "../../lib/firstsKeepsake";
@@ -137,6 +137,13 @@ const ECHO_PROMPTS: Readonly<Record<string, string>> = {
   "Sleep Meltdown": "Bedtime keeps falling apart. What may be happening, and what do I do next time it starts?",
 };
 const ECHO_FALLBACK_PROMPT = "This keeps happening: {type}. What may be happening, and what do I do next time it starts?";
+
+/** B-AIOPS-02: release a microphone the Live session never took over. */
+const releaseTracks = (stream: MediaStream | null) => {
+  for (const track of stream?.getTracks() ?? []) {
+    try { track.stop(); } catch { /* release the rest */ }
+  }
+};
 
 export default function CoachTab({ embedded = false, visible = true }: { embedded?: boolean; visible?: boolean }) {
   const {
@@ -304,6 +311,10 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // the context's `apiError` string, which carries no status at all.
   const [aiFailure, setAiFailure] = useState<AiFailureCopy | null>(null);
   useEffect(() => { if (!apiError) setAiFailure(null); }, [apiError]);
+  // B-AIOPS-02: the family's daily voice time is spent (Live mint, renewal,
+  // or a fallback-loop turn). A resting state with its own calm status line —
+  // never the failure card, never the connection-ended notice.
+  const [voiceResting, setVoiceResting] = useState(false);
 
   // AI-24: ONE offline seam, wrapping the context's send. Every entry point on
   // this surface — the composer button, Enter, a follow-up chip, a fast-start
@@ -324,6 +335,11 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       return;
     }
     setAiFailure(null);
+    // B-PROV-12: typing instead of tapping again declines the pending voice
+    // notice (nothing was acknowledged); B-AIOPS-02: the resting line has
+    // done its job once the parent carries on in text.
+    setNoticePending(null);
+    setVoiceResting(false);
     const pendingNotice = readNoticeTalk();
     const question = customPrompt ?? chatInput;
     // Immediate-help messages keep the governed existing route, without any
@@ -674,7 +690,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       // loop; the typed composer and the crisis door stay where they are.
       if (ownsTurn() && isLiveResting(err)) {
         stopVoice(false);
-        setAiFailure(classifyAiFailure(err, { online, childName: childFirst }));
+        setVoiceResting(true);
         return;
       }
       // COACH-2: keep the partial caption on abort/error — the parent keeps
@@ -741,6 +757,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const stopVoice = (review = true) => {
     const reviewAttempt = voiceLifetimeRef.current.current;
     voiceLifetimeRef.current.cancel();
+    // B-PROV-12: leaving (stop, a new thread, the panel hidden) cancels a
+    // notice that was showing; nothing was acknowledged.
+    setNoticePending(null);
     if (review && reviewAttempt && voicePhase !== "off") {
       reviewAttemptRef.current = reviewAttempt;
       setVoiceReviewOpen(true);
@@ -800,11 +819,11 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     // this same button while it shows is the acknowledgement, remembered per
     // device and per notice id — a new provider, region or purpose asks again.
     const noticeId = runtimeVoiceNoticeId(liveAvail ? liveNoticeId : null);
-    if (!voiceNoticeAcknowledged(noticeId)) {
-      if (noticePending !== noticeId) { setVoiceNotice(null); setNoticePending(noticeId); return; }
-      acknowledgeVoiceNotice(noticeId);
-    }
+    const tap = voiceNoticeTap(noticeId, noticePending, voiceNoticeAcknowledged(noticeId));
+    if (tap === "show") { setVoiceNotice(null); setNoticePending(noticeId); return; }
+    if (tap === "acknowledge_and_start") acknowledgeVoiceNotice(noticeId);
     setNoticePending(null);
+    setVoiceResting(false);
     reviewAttemptRef.current = null;
     voiceSessionIdRef.current = "voice-session-" + Date.now() + "-" + (++voiceTurnRef.current);
     setConversationProposals([]);
@@ -819,31 +838,66 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     let liveClosed = false;
     // B-PROV-06: where the attempt failed (token mint vs socket start), so a
     // fallback counts as ONE live_unavailable event with a closed-enum reason.
-    let liveStage: "mint" | "socket" = "mint";
+    // B-AIOPS-02: "mic" = the microphone is requested BEFORE any mint, so a
+    // refusal there never spends the family's voice time (and is no
+    // availability signal either).
+    let liveStage: "mint" | "socket" | "mic" = "mic";
     // B-AIOPS-03: the minted session's telemetry id, so a start that never
     // reaches audio is reported to the server's incident sink (event only).
     let liveUsageId: string | undefined;
+    // B-AIOPS-02: the microphone opened for this attempt, until the Live
+    // session takes it over (released on every path that does not).
+    let micStream: MediaStream | null = null;
+    const releaseMic = () => { releaseTracks(micStream); micStream = null; };
+    // The ONE mint: the first slice and every renewal carry the same pinned
+    // context (built fresh, so a renewal includes the conversation so far)
+    // and the same acknowledged notice.
+    const mintLive = () => api.liveToken({ ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}), language: getAiLanguage(), childId: childProfile.id, childProfile, ...buildVoiceContext(voiceMessagesRef.current, childProfile.id), noticeAck: noticeId }, { signal: attempt.signal });
+    type MintedLive = Awaited<ReturnType<typeof mintLive>>;
+    const usageFor = (minted: MintedLive) => minted.usageSessionId
+      ? (event: "opened" | "heartbeat" | "closed" | "failed") => api.liveUsage(minted.usageSessionId!, event)
+      : undefined;
 
     if (liveAvail) {
       try {
-        const fresh = await api.liveToken({ ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}), language: getAiLanguage(), childId: childProfile.id, childProfile, ...buildVoiceContext(voiceMessagesRef.current, childProfile.id), noticeAck: noticeId }, { signal: attempt.signal });
+        const { requestLiveMicrophone, startGeminiLive } = await import("../../lib/geminiLiveClient");
         if (!attempt.isCurrent()) return;
+        micStream = await requestLiveMicrophone(attempt.signal);
+        if (!attempt.isCurrent()) { releaseMic(); return; }
+        liveStage = "mint";
+        const fresh = await mintLive();
+        if (!attempt.isCurrent()) { releaseMic(); return; }
         if (!(fresh.available && fresh.token && fresh.model)) trackLiveUnavailable("token_error");
         if (fresh.available && fresh.token && fresh.model) {
           liveStage = "socket";
           liveUsageId = fresh.usageSessionId;
-          const { startGeminiLive } = await import("../../lib/geminiLiveClient");
-          if (!attempt.isCurrent()) return;
+          const stream = micStream;
+          micStream = null; // the session owns (and releases) the microphone now
           const ctl = await startGeminiLive(
             {
               signal: attempt.signal,
               token: fresh.token,
-              reportUsage: fresh.usageSessionId
-                ? (event) => api.liveUsage(fresh.usageSessionId!, event)
-                : undefined,
+              reportUsage: usageFor(fresh),
               model: fresh.model,
               systemInstruction: fresh.systemInstruction || "",
               speechConfig: fresh.speechConfig,
+              stream: stream ?? undefined,
+              // B-AIOPS-02: the slice this token covers; the next one is
+              // minted before it ends while the family has time left, and a
+              // spent allowance ends the conversation calmly (onAllowanceEnd).
+              expiresAt: fresh.expiresAt,
+              remainingMs: fresh.budget?.remainingMs,
+              renew: async () => {
+                try {
+                  const next = await mintLive();
+                  if (!(next.available && next.token && next.model)) throw new Error("live-renew-unavailable");
+                  return { token: next.token, model: next.model, systemInstruction: next.systemInstruction || "", speechConfig: next.speechConfig,
+                    expiresAt: next.expiresAt, remainingMs: next.budget?.remainingMs, reportUsage: usageFor(next) };
+                } catch (renewError) {
+                  if (isLiveResting(renewError)) return null;
+                  throw renewError;
+                }
+              },
             },
             {
               onPhase: (p) => {
@@ -869,6 +923,19 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                 finalizeVoiceAiTurn();
                 setVoicePhase("off");
                 setVoiceNotice(microphoneRecovery("connection", uiLang));
+                setVoiceReviewOpen(true);
+              },
+              // B-AIOPS-02: the family's voice time ended the conversation —
+              // a resting state, never the connection-ended notice.
+              onAllowanceEnd: () => {
+                if (!attempt.isCurrent()) return;
+                attempt.end();
+                clearLiveRefs();
+                voiceOnRef.current = false;
+                setVoiceInterim("");
+                finalizeVoiceAiTurn();
+                setVoicePhase("off");
+                setVoiceResting(true);
                 setVoiceReviewOpen(true);
               },
               onError: () => {
@@ -941,6 +1008,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           return;
         }
       } catch (err) {
+        releaseMic();
         if (!attempt.isCurrent()) return;
         clearLiveRefs();
         if (err instanceof PaywallError) {
@@ -966,9 +1034,15 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
         // the same refusal, so "falling back" was a silent dead end. Now the
         // status survives (lib/api streamVoice) and the parent is told which
         // of the two happened, and what to do about it.
-        // B-AIOPS-02: the family's daily Live allowance (`live_resting`) is
-        // the same shape — a typed card, voice off, the typed composer and
-        // the crisis path untouched; no reload, no fallback loop, no retry.
+        // B-AIOPS-02: the family's daily voice time (`live_resting`) is not a
+        // failure: voice off, the calm resting line, the typed composer and
+        // the crisis door untouched; no reload, no fallback loop, no retry.
+        if (isLiveResting(err)) {
+          attempt.end();
+          setVoicePhase("off");
+          setVoiceResting(true);
+          return;
+        }
         if (err instanceof ApiError && (err.status === 429 || err.status === 451)) {
           attempt.end();
           setVoicePhase("off");
@@ -984,7 +1058,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
         console.warn("Live voice start failed — falling back to browser voice", err);
         // B-PROV-06: the balance alarm — a depleted prepay shows up as
         // "closed before open"; count it (closed enum, no text) before falling back.
-        const unavailable = liveUnavailableReason(err, liveStage);
+        const unavailable = liveStage === "mic" ? null : liveUnavailableReason(err, liveStage);
         if (unavailable) trackLiveUnavailable(unavailable);
         if (liveUsageId && (unavailable === "closed_before_open" || unavailable === "closed_during_start")) {
           void api.liveUsage(liveUsageId, "failed").catch(() => {});
@@ -1093,7 +1167,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const composerDocked = embedded || userTurnExists;
   // Fresh state has no transcript messages, status, or failure card. Keep the
   // coach header and footer reachable without reserving a blank message canvas.
-  const hasThreadContent = chatMessages.length > 0 || isChatLoading || !!failureCopy;
+  const hasThreadContent = chatMessages.length > 0 || isChatLoading || !!failureCopy || voiceResting;
   // R24: the contract stamp lives on THIS element, not on the docked wrapper.
   // B-ASKJB-06: only `data-primary-move` now — the composer sits INSIDE
   // coach-orientation, so a `data-module` here was a fourth module stamp
@@ -1232,7 +1306,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             onSend={handleChatSend} onVoice={() => void toggleVoice()} voiceActive={voicePhase !== "off"} voiceLabel={voiceLabel}
             onKeep={(text, photo) => openCaptureSheet({ mode: "text", initialText: text, initialPhoto: photo })}
             onAttachmentsChange={setComposerFiles}
-            onHardMoment={composerHardMoment} footAction={composerFoot} />
+            onHardMoment={composerHardMoment} footAction={composerFoot} voiceResting={voiceResting} />
           {composerCrisis && (
             <UrgentSupport
               testId="coach-composer-urgent-support"
@@ -1241,7 +1315,10 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             />
           )}
           {!online && <p data-testid="coach-offline-note" role="status" className="text-xs py-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.aierrors.offline.composer")}</p>}
-          {noticePending && voicePhase === "off" && !voiceNotice && <p role="status" data-testid="voice-provider-notice" data-voice-notice={noticePending} className="companion-voice-invite" dir="auto">{voiceNoticeLine(t, noticePending)} {inputText(uiLang, "companion.input.tap-talk-to-start")}</p>}
+          {noticePending && voicePhase === "off" && !voiceNotice && <div role="status" data-testid="voice-provider-notice" data-voice-notice={noticePending}>
+            <p className="companion-voice-invite" dir="auto">{voiceNoticeShortLine(t, noticePending)}</p>
+            <p className="companion-voice-invite" dir="auto">{t("elev.wave2Daily.capture.voice.tapAgain")}</p>
+          </div>}
           {voiceInvite && !noticePending && voicePhase === "off" && !voiceNotice && <p role="status" data-testid="voice-door-invite" className="companion-voice-invite" dir="auto">{inputText(uiLang, "companion.input.tap-talk-to-start")}</p>}
           {voiceNotice && voicePhase === "off" && <MicrophoneNotice message={voiceNotice} lang={uiLang} onRetry={() => void toggleVoice()} onDismiss={() => setVoiceNotice(null)} />}
         </section>
@@ -1674,6 +1751,26 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             </div>
           )}
 
+          {/* B-AIOPS-02 — the resting line: the family's voice time for today
+              is spent. Its own polite status in the place the thread ends (a
+              resting state is not a failure, so it is never the alert card):
+              the same calm card shape in the sky tint, title + one sentence,
+              no countdown, no retry. Typing and the crisis door are unchanged. */}
+          {voiceResting && !isChatLoading && !failureCopy && (
+            <div
+              role="status"
+              data-testid="coach-voice-resting"
+              className="flex items-start gap-3 rounded-2xl p-4 me-auto max-w-[85%]"
+              style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}
+            >
+              <Icon name="mic_off" size={16} className="flex-shrink-0 mt-0.5" />
+              <div className="space-y-2">
+                <p className="text-xs leading-relaxed font-extrabold" dir="auto">{t("elev.aierrors.voiceResting.title")}</p>
+                <p className="text-xs leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{t("elev.aierrors.voiceResting.body")}</p>
+              </div>
+            </div>
+          )}
+
           {/* AI-06 / AI-24 — the failure card. It used to say ONE sentence
               (t("coach.error") + Retry) for every failure, so "the account has
               used its hour of AI" and "you have not given permission for a
@@ -1685,17 +1782,12 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           {failureCopy && !isChatLoading && (
             <div
               role="alert"
-              // B-AIOPS-02: a spent voice allowance is a resting state, not a
-              // failure — announced politely (status) in a calm tint, never the alarm.
-              {...(failureCopy.kind === "voiceResting" ? { role: "status" } : {})}
               data-testid="coach-failure-card"
               data-failure-kind={failureCopy.kind}
               className="flex items-start gap-3 rounded-2xl p-4 me-auto max-w-[85%]"
-              style={failureCopy.kind === "voiceResting"
-                ? { background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }
-                : { background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}
+              style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}
             >
-              <Icon name={failureCopy.kind === "offline" ? "cloud_off" : failureCopy.kind === "consent" ? "lock" : failureCopy.kind === "voiceResting" ? "mic_off" : "warning"} size={16} className="flex-shrink-0 mt-0.5" />
+              <Icon name={failureCopy.kind === "offline" ? "cloud_off" : failureCopy.kind === "consent" ? "lock" : "warning"} size={16} className="flex-shrink-0 mt-0.5" />
               <div className="space-y-2">
                 <p className="text-xs leading-relaxed font-extrabold" dir="auto">{t(failureCopy.titleKey)}</p>
                 <p className="text-xs leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>

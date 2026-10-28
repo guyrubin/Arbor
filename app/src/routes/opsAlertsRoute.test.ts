@@ -156,6 +156,8 @@ describe("signal 4 — the prepay balance: readable by the founder, alarm at 20 
   it("every delivered Live token counts its reserved slice; at 20 % of the credit the alarm fires once; the founder reads the balance", async () => {
     const saved = process.env.ARBOR_ADMIN_EMAILS;
     process.env.ARBOR_ADMIN_EMAILS = "founder@example.com";
+    // The arithmetic below counts 5-minute slices.
+    process.env.LIVE_RESERVATION_MINUTES = "5";
     try {
       const h = await start({ aiPrepayLedger: ledger });
       // €10 credit at €0.50/min = 20 min; 20 % = €2 left = 16 reserved minutes.
@@ -174,6 +176,7 @@ describe("signal 4 — the prepay balance: readable by the founder, alarm at 20 
       expect((await h.get("/admin/prepay", "parent@example.com")).status).toBe(403);
       contentFree(h.delivered);
     } finally {
+      delete process.env.LIVE_RESERVATION_MINUTES;
       if (saved === undefined) delete process.env.ARBOR_ADMIN_EMAILS; else process.env.ARBOR_ADMIN_EMAILS = saved;
     }
   });

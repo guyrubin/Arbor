@@ -6,7 +6,8 @@
  * provider expiry, so a client-side countdown proves nothing and a refund on
  * a browser "closed" report would let a modified client keep spending the
  * token. The enforceable unit is therefore a NON-REFUNDABLE, EXPIRING
- * RESERVATION: minting a token reserves a bounded slice (<= 5 min) against
+ * RESERVATION: minting a token reserves a short slice (60 s by default, never
+ * more than 5 min) against
  * today's family allowance inside one transaction, and the token's provider
  * `expireTime` IS the reservation end. Renewal is simply the next mint: it
  * reserves the next slice only while allowance remains. Observed connection time is recorded
@@ -48,8 +49,13 @@ export const liveAllowanceMs = (plan: Plan): number =>
   (plan === "free" ? envNum("LIVE_FREE_MINUTES_PER_DAY", 3) : envNum("LIVE_PAID_MINUTES_PER_DAY", 20)) * MINUTE_MS;
 /** One reservation (and token lifetime) is at most 5 minutes; never longer. */
 export const LIVE_SLICE_MAX_MS = 5 * MINUTE_MS;
+/** The default slice is ONE minute: a start that never reaches audio (a socket
+ *  closed before setup) costs at most that, never a Free family's whole day.
+ *  The client renews the next slice before this one ends, so a conversation
+ *  runs on as long as the family has time (lib/geminiLiveClient.ts). */
+export const LIVE_SLICE_DEFAULT_MINUTES = 1;
 export const liveSliceMs = (): number =>
-  Math.min(LIVE_SLICE_MAX_MS, Math.max(MINUTE_MS, envNum("LIVE_RESERVATION_MINUTES", 5) * MINUTE_MS));
+  Math.min(LIVE_SLICE_MAX_MS, Math.max(MINUTE_MS, envNum("LIVE_RESERVATION_MINUTES", LIVE_SLICE_DEFAULT_MINUTES) * MINUTE_MS));
 /** A remainder shorter than this cannot carry a conversation: treat as spent. */
 export const LIVE_MIN_SLICE_MS = 30_000;
 /** Expiry reconciliation policy. "none" (default): an expired reservation is

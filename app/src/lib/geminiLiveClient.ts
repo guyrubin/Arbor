@@ -24,6 +24,21 @@ import { createLiveTurnGuard, type LiveTurnRole, type LiveTurnVerdict } from "./
 import { screenModelOutputLexical } from "../safety/outputScreenLexical";
 
 export type LivePhase = "connecting" | "listening" | "speaking" | "closed";
+/** B-AIOPS-03: "failed" = a minted slice whose audio never came up. */
+export type LiveUsageEvent = "opened" | "heartbeat" | "closed" | "failed";
+/** B-AIOPS-02: one server-reserved slice of the family's daily voice time —
+ *  the token, its pinned config, when it ends and what the family has left. */
+export type LiveSlice = {
+  token: string;
+  model: string;
+  systemInstruction: string;
+  speechConfig?: unknown;
+  /** ISO end of the reservation (= the token's provider expiry). */
+  expiresAt?: string;
+  /** What the family has left after this slice, in ms. */
+  remainingMs?: number;
+  reportUsage?: (event: LiveUsageEvent) => Promise<unknown>;
+};
 export type LiveHandlers = {
   onPhase?: (p: LivePhase) => void;
   onError?: (msg: string) => void;
@@ -45,11 +60,15 @@ export type LiveHandlers = {
   onBlocked?: (verdict: LiveTurnVerdict) => void;
   /** VC-5 fail-closed degrade — the session is ALREADY closed when this fires. */
   onFailClosed?: (reason: string) => void;
+  /** B-AIOPS-02: the family's daily voice time ended the conversation calmly
+   *  (no renewal was possible). The session is ALREADY closed when this fires;
+   *  this is a resting state, never a connection failure. */
+  onAllowanceEnd?: () => void;
 };
 export type LiveSessionOptions = {
   /** Cancels pending microphone/socket startup as well as an adopted session. */
   signal?: AbortSignal;
-  reportUsage?: (event: "opened" | "heartbeat" | "closed") => Promise<unknown>;
+  reportUsage?: (event: LiveUsageEvent) => Promise<unknown>;
   token: string;
   model: string;
   /** The server-pinned instruction returned by /live/token (cosmetic here —
@@ -57,6 +76,17 @@ export type LiveSessionOptions = {
   systemInstruction: string;
   /** The server-pinned per-language speechConfig returned by /live/token. */
   speechConfig?: unknown;
+  /** B-AIOPS-02: the microphone the caller opened BEFORE the mint (see
+   *  requestLiveMicrophone). Ownership passes to the session: it is released
+   *  with the session, whatever ends it. */
+  stream?: MediaStream;
+  /** B-AIOPS-02: when this slice ends and what the family has left after it. */
+  expiresAt?: string;
+  remainingMs?: number;
+  /** B-AIOPS-02: mint the next slice before this one ends. Resolves the next
+   *  slice, or null when the family's voice time is spent (the conversation
+   *  then ends calmly at `expiresAt`). Absent: no renewal (legacy tokens). */
+  renew?: () => Promise<LiveSlice | null>;
 };
 export type LiveController = { stop: () => void };
 
@@ -110,6 +140,51 @@ const b64ToFloat32 = (b64: string): Float32Array => {
   return out;
 };
 
+const MIC_CONSTRAINTS: MediaStreamConstraints = { audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } };
+const releaseTracks = (granted: MediaStream) => {
+  for (const track of granted.getTracks()) {
+    try { track.stop(); } catch { /* release the other tracks too */ }
+  }
+};
+
+/**
+ * B-AIOPS-02: open the microphone BEFORE any token is minted. A refused,
+ * missing or stuck microphone then fails here, and the family's daily voice
+ * time is never spent on a conversation that could not start. A grant that
+ * arrives after cancellation or the deadline releases itself.
+ */
+export async function requestLiveMicrophone(signal?: AbortSignal): Promise<MediaStream> {
+  if (signal?.aborted) throw abortError();
+  const micRequest = navigator.mediaDevices.getUserMedia(MIC_CONSTRAINTS);
+  let abandoned = false;
+  void micRequest.then((granted) => { if (abandoned) releaseTracks(granted); }).catch(() => {});
+  try {
+    return await withDeadline(micRequest, MIC_TIMEOUT_MS, "live-mic-timeout", signal);
+  } catch (error) {
+    abandoned = true;
+    throw error;
+  }
+}
+
+/** Release a microphone that never reached a session (e.g. the mint failed). */
+export const releaseLiveMicrophone = (stream: MediaStream | null | undefined): void => {
+  if (stream) releaseTracks(stream);
+};
+
+/** B-AIOPS-02 renewal timing. The next slice is minted RENEW_LEAD_MS before
+ *  this one ends and the socket is swapped at a quiet moment (no model audio
+ *  playing or buffered, the parent silent for QUIET_INPUT_MS), or at the
+ *  latest SWAP_MARGIN_MS before the end. A slice is only renewed while the
+ *  family has at least MIN_RENEWABLE_MS left (the server treats less as spent). */
+const RENEW_LEAD_MS = 8_000;
+const SWAP_MARGIN_MS = 1_000;
+const QUIET_INPUT_MS = 1_500;
+const MIN_RENEWABLE_MS = 30_000;
+/** A budget end stops the session just before the provider's own expiry; a
+ *  provider close this close to the end of a final slice is the same end. */
+const ALLOWANCE_END_MARGIN_MS = 500;
+const PROVIDER_CLOSE_GRACE_MS = 5_000;
+
 export async function startGeminiLive(
   opts: LiveSessionOptions,
   handlers: LiveHandlers,
@@ -119,10 +194,23 @@ export async function startGeminiLive(
   let usageTimer: ReturnType<typeof setInterval> | undefined;
   let usageStarted = false;
   let usageQueue = Promise.resolve();
-  const reportUsage = (event: "opened" | "heartbeat" | "closed") => {
-    if (!opts.reportUsage) return;
-    usageQueue = usageQueue.then(async () => { await opts.reportUsage!(event); }).catch(() => {});
+  // B-AIOPS-02: usage telemetry follows the CURRENT slice (each slice is its
+  // own server reservation); the target is captured when the event is queued.
+  let reportCurrent = opts.reportUsage;
+  const reportUsage = (event: LiveUsageEvent) => {
+    const target = reportCurrent;
+    if (!target) return;
+    usageQueue = usageQueue.then(async () => { await target(event); }).catch(() => {});
   };
+  // B-AIOPS-02: the slice this session runs on, the socket generation that
+  // owns the microphone and playback, and the renewal state.
+  let sliceEnd = Date.parse(opts.expiresAt ?? "");
+  let remainingMs = opts.remainingMs;
+  let sliceTimer: ReturnType<typeof setTimeout> | undefined;
+  let gen = 0;
+  let renewing = false;
+  let turnOpen = false;
+  let lastInputAt = 0;
   let opened = false;
   let ready = false;
   let stream: MediaStream | null = null;
@@ -168,6 +256,7 @@ export async function startGeminiLive(
     if (stopped) return;
     stopped = true;
     clearInterval(usageTimer);
+    clearTimeout(sliceTimer);
     if (usageStarted) reportUsage("closed");
     opts.signal?.removeEventListener("abort", onAbort);
     guard.dispose();
@@ -204,6 +293,34 @@ export async function startGeminiLive(
     onFailClosed: (reason) => { if (!opts.signal?.aborted) handlers.onFailClosed?.(reason); },
   });
 
+  // One handler for every socket generation; a retired socket (after a
+  // B-AIOPS-02 renewal swap) is ignored, so its late frames never play.
+  const onServerMessage = (msg: any, from: number) => {
+    if (stopped || from !== gen) return;
+    // ALL audio remains buffered behind the lexical + server screens.
+    if (msg?.data) { turnOpen = true; guard.pushAudio(msg.data); }
+    if (stopped) return;
+    const sc = msg?.serverContent;
+    if (sc?.inputTranscription?.text) {
+      lastInputAt = Date.now();
+      guard.pushInputTranscription(sc.inputTranscription.text);
+      handlers.onUserInterim?.(sc.inputTranscription.text);
+    }
+    if (stopped) return;
+    if (sc?.outputTranscription?.text) { turnOpen = true; guard.pushOutputTranscription(sc.outputTranscription.text); }
+    if (sc?.interrupted) {
+      turnOpen = false;
+      guard.interrupt();
+      if (!stopped && !guard.halted) handlers.onPhase?.("listening");
+    }
+    if (sc?.turnComplete) {
+      turnOpen = false;
+      void guard.endModelTurn().then(() => {
+        if (!stopped && !guard.halted) handlers.onPhase?.("listening");
+      });
+    }
+  };
+
   // The listener exists before requesting the microphone. X can release an
   // already granted stream while the SDK's connect promise is still pending.
   opts.signal?.addEventListener("abort", onAbort, { once: true });
@@ -212,16 +329,20 @@ export async function startGeminiLive(
     handlers.onPhase?.("connecting");
     assertRunning();
     const ai = new GoogleGenAI({ apiKey: opts.token, httpOptions: { apiVersion: "v1beta" } });
-    const micRequest = navigator.mediaDevices.getUserMedia({
-      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
-    });
-    // Own the grant as soon as it arrives. A grant after cancellation/deadline
-    // releases itself; no AudioContext or socket is created for that grant.
-    void micRequest.then((granted) => {
-      if (stopped) stopTracks(granted);
-      else stream = granted;
-    }).catch(() => {});
-    stream = await withDeadline(micRequest, MIC_TIMEOUT_MS, "live-mic-timeout", opts.signal);
+    // B-AIOPS-02: the caller normally opened the microphone before the mint
+    // and hands it over; the session owns (and releases) it from here.
+    if (opts.stream) {
+      stream = opts.stream;
+    } else {
+      const micRequest = navigator.mediaDevices.getUserMedia(MIC_CONSTRAINTS);
+      // Own the grant as soon as it arrives. A grant after cancellation/deadline
+      // releases itself; no AudioContext or socket is created for that grant.
+      void micRequest.then((granted) => {
+        if (stopped) stopTracks(granted);
+        else stream = granted;
+      }).catch(() => {});
+      stream = await withDeadline(micRequest, MIC_TIMEOUT_MS, "live-mic-timeout", opts.signal);
+    }
     assertRunning();
     inCtx = new AudioContext({ sampleRate: 16000 });
     outCtx = new AudioContext({ sampleRate: 24000 });
@@ -251,42 +372,23 @@ export async function startGeminiLive(
         onmessage: (msg: any) => {
           if (stopped) return;
           if (msg?.setupComplete) resolveSetup();
-          // ALL audio remains buffered behind the lexical + server screens.
-          if (msg?.data) guard.pushAudio(msg.data);
-          if (stopped) return;
-          const sc = msg?.serverContent;
-          if (sc?.inputTranscription?.text) {
-            guard.pushInputTranscription(sc.inputTranscription.text);
-            handlers.onUserInterim?.(sc.inputTranscription.text);
-          }
-          if (stopped) return;
-          if (sc?.outputTranscription?.text) guard.pushOutputTranscription(sc.outputTranscription.text);
-          if (sc?.interrupted) {
-            guard.interrupt();
-            if (!stopped && !guard.halted) handlers.onPhase?.("listening");
-          }
-          if (sc?.turnComplete) {
-            void guard.endModelTurn().then(() => {
-              if (!stopped && !guard.halted) handlers.onPhase?.("listening");
-            });
-          }
+          onServerMessage(msg, 0);
         },
         onerror: (error: any) => {
-          if (stopped) return;
+          if (stopped || gen !== 0) return;
           const failure = new Error(error?.message || "Gemini Live error");
           if (!ready) { rejectBeforeOpen(failure); stopAll(); return; }
           stopAll();
           handlers.onError?.(failure.message);
         },
         onclose: () => {
-          if (stopped) return;
+          if (stopped || gen !== 0) return;
           if (!ready) {
             rejectBeforeOpen(new Error(opened ? "live-closed-during-start" : "live-closed-before-open"));
             stopAll();
             return;
           }
-          stopAll();
-          handlers.onRemoteClose?.();
+          currentClosed();
         },
       },
     });
@@ -314,14 +416,156 @@ export async function startGeminiLive(
     ready = true;
     usageStarted = true;
     reportUsage("opened");
-    if (opts.reportUsage) usageTimer = setInterval(() => reportUsage("heartbeat"), 15_000);
+    if (opts.reportUsage || opts.renew) usageTimer = setInterval(() => reportUsage("heartbeat"), 15_000);
     handlers.onPhase?.("listening");
     assertRunning();
+    armSlice();
     return { stop: stopAll };
   } catch (err) {
     // Covers mic, both AudioContext constructors, SDK connect AND graph setup.
     // In particular, partial construction never strands a granted microphone.
     stopAll();
     throw err;
+  }
+
+  // ── B-AIOPS-02: slices, renewal and the calm end ─────────────────────────
+  // (function declarations: hoisted, called only after readiness)
+
+  /** Schedule what happens at the end of the current slice: mint the next one
+   *  while the family has time left, otherwise end calmly at the slice end. */
+  function armSlice() {
+    clearTimeout(sliceTimer);
+    if (stopped || !Number.isFinite(sliceEnd)) return;
+    if (opts.renew && (remainingMs ?? 0) >= MIN_RENEWABLE_MS) {
+      sliceTimer = setTimeout(() => { void renewSlice(); }, Math.max(0, sliceEnd - RENEW_LEAD_MS - Date.now()));
+    } else {
+      sliceTimer = setTimeout(endForAllowance, Math.max(0, sliceEnd - ALLOWANCE_END_MARGIN_MS - Date.now()));
+    }
+  }
+
+  /** The family's voice time ended the conversation: a resting state. */
+  function endForAllowance() {
+    if (stopped) return;
+    stopAll();
+    handlers.onAllowanceEnd?.();
+  }
+
+  /** The current socket closed after readiness. Near the end of a final slice
+   *  that is the allowance, not a failure; otherwise it is a remote close. */
+  function currentClosed() {
+    const finalSlice = !opts.renew || (remainingMs ?? 0) < MIN_RENEWABLE_MS;
+    if (Number.isFinite(sliceEnd) && finalSlice && Date.now() >= sliceEnd - PROVIDER_CLOSE_GRACE_MS) {
+      endForAllowance();
+      return;
+    }
+    stopAll();
+    handlers.onRemoteClose?.();
+  }
+
+  /** A renewal that could not be minted or connected: the conversation runs
+   *  to the end of the slice it has, then ends as a connection end. */
+  function renewalFailed() {
+    renewing = false;
+    clearTimeout(sliceTimer);
+    sliceTimer = setTimeout(() => { if (!stopped) { stopAll(); handlers.onRemoteClose?.(); } }, Math.max(0, sliceEnd - ALLOWANCE_END_MARGIN_MS - Date.now()));
+  }
+
+  /** Quiet = no model turn open or audio playing, the parent silent a moment. */
+  function quiet() {
+    return !turnOpen && activeSources.size === 0 && Date.now() - lastInputAt >= QUIET_INPUT_MS;
+  }
+
+  async function renewSlice() {
+    if (stopped || renewing || !opts.renew) return;
+    renewing = true;
+    let next: LiveSlice | null;
+    try {
+      next = await opts.renew();
+    } catch {
+      if (!stopped) renewalFailed();
+      return;
+    }
+    if (stopped) return;
+    if (next === null) {
+      // The family's time is spent: end calmly when this slice ends.
+      renewing = false;
+      remainingMs = 0;
+      armSlice();
+      return;
+    }
+    const slice = next;
+    const myGen = gen + 1;
+    let resolveReady: () => void = () => {};
+    let rejectReady: (error: Error) => void = () => {};
+    const readyNext = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
+    void readyNext.catch(() => {});
+    let nextSession: Awaited<ReturnType<GoogleGenAI["live"]["connect"]>> | null = null;
+    let connectedNext: Awaited<ReturnType<GoogleGenAI["live"]["connect"]>> | null = null;
+    let abandonedNext = false;
+    try {
+      // Same config as the first socket; the new token's constraints pin it,
+      // including the conversation so far in its system instruction.
+      const nextAi = new GoogleGenAI({ apiKey: slice.token, httpOptions: { apiVersion: "v1beta" } });
+      const nextConnecting = nextAi.live.connect({
+        model: slice.model,
+        config: {
+          responseModalities: [Modality.AUDIO],
+          systemInstruction: slice.systemInstruction,
+          inputAudioTranscription: {},
+          outputAudioTranscription: {},
+          ...(slice.speechConfig ? { speechConfig: slice.speechConfig as never } : {}),
+        },
+        callbacks: {
+          onopen: () => {},
+          onmessage: (msg: any) => {
+            if (stopped) return;
+            if (msg?.setupComplete) resolveReady();
+            onServerMessage(msg, myGen);
+          },
+          onerror: (error: any) => {
+            if (stopped) return;
+            if (gen !== myGen) { rejectReady(new Error(error?.message || "live-renew-error")); return; }
+            stopAll();
+            handlers.onError?.(error?.message || "Gemini Live error");
+          },
+          onclose: () => {
+            if (stopped) return;
+            if (gen !== myGen) { rejectReady(new Error("live-renew-closed")); return; }
+            currentClosed();
+          },
+        },
+      });
+      void nextConnecting.then((connected) => {
+        connectedNext = connected;
+        if (stopped || abandonedNext) { try { connected.close(); } catch { /* closed */ } }
+      }).catch(() => {});
+      const budget = Math.max(1_000, Math.min(CONNECT_TIMEOUT_MS, sliceEnd - Date.now()));
+      nextSession = await withDeadline(Promise.all([nextConnecting, readyNext]).then(([connected]) => connected), budget, "live-renew-timeout");
+    } catch {
+      abandonedNext = true;
+      try { connectedNext?.close(); } catch { /* closed */ }
+      if (slice.reportUsage) void slice.reportUsage("failed").catch(() => {});
+      if (!stopped) renewalFailed();
+      return;
+    }
+    // Swap at a quiet moment, or at the latest just before the slice ends.
+    while (!stopped && !quiet() && Date.now() < sliceEnd - SWAP_MARGIN_MS) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    if (stopped) { try { nextSession.close(); } catch { /* closed */ } return; }
+    const forced = !quiet();
+    const previous = session;
+    gen = myGen;
+    session = nextSession;
+    if (forced) { turnOpen = false; guard.interrupt(); stopPlayback(); }
+    reportUsage("closed");
+    reportCurrent = slice.reportUsage;
+    reportUsage("opened");
+    sliceEnd = Date.parse(slice.expiresAt ?? "");
+    remainingMs = slice.remainingMs;
+    renewing = false;
+    try { previous?.close(); } catch { /* already closed */ }
+    if (!stopped && !guard.halted) handlers.onPhase?.("listening");
+    armSlice();
   }
 }

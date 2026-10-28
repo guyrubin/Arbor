@@ -18,6 +18,9 @@ const envKeys = ["LIVE_FREE_MINUTES_PER_DAY", "LIVE_PAID_MINUTES_PER_DAY", "LIVE
 const saved = new Map<string, string | undefined>();
 beforeEach(() => {
   for (const k of envKeys) { saved.set(k, process.env[k]); delete process.env[k]; }
+  // The arithmetic in these blocks uses 5-minute slices; the 60-second
+  // default is pinned in its own block below.
+  process.env.LIVE_RESERVATION_MINUTES = "5";
   vi.useFakeTimers(); vi.setSystemTime(T0);
 });
 afterEach(() => {
@@ -262,5 +265,30 @@ describe("retry: a client that retries the mint cannot buy more than the allowan
     for (let i = 0; i < 6; i++) outcomes.push(await store.reserve({ familyId: "fam", plan: "plus", uid: "a" }));
     expect(outcomes.filter((o) => o.ok)).toHaveLength(4);
     expect((await store.peek("fam", "plus")).committedMs).toBe(20 * MIN);
+  });
+});
+
+describe("P1-1 — the default slice is one minute: a failed start never costs the day", () => {
+  it("a Free family's first mint reserves 60 s, not all 180 s; three slices make the day", async () => {
+    delete process.env.LIVE_RESERVATION_MINUTES;
+    expect(liveSliceMs()).toBe(MIN);
+    const store = new MemoryLiveBudgetStore();
+    const first = await store.reserve({ familyId: "fam", plan: "free", uid: "a" });
+    if (!first.ok) throw new Error("expected a slice");
+    expect(first.reservation.ms).toBe(MIN);
+    expect(first.reservation.expiresAt).toBe(T0 + MIN);
+    // The socket never reached audio and the token simply expired: 60 s gone, 120 s left.
+    vi.setSystemTime(T0 + MIN);
+    expect((await store.peek("fam", "free")).remainingMs).toBe(2 * MIN);
+    expect((await store.reserve({ familyId: "fam", plan: "free", uid: "a" })).ok).toBe(true);
+    expect((await store.reserve({ familyId: "fam", plan: "free", uid: "a" })).ok).toBe(true);
+    expect((await store.reserve({ familyId: "fam", plan: "free", uid: "a" })).ok).toBe(false);
+  });
+
+  it("a paid family's twenty minutes are twenty one-minute slices", async () => {
+    delete process.env.LIVE_RESERVATION_MINUTES;
+    const store = new MemoryLiveBudgetStore();
+    const results = await Promise.all(Array.from({ length: 22 }, () => store.reserve({ familyId: "fam", plan: "plus", uid: "a" })));
+    expect(results.filter((r) => r.ok)).toHaveLength(20);
   });
 });

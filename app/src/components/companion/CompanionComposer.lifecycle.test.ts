@@ -30,7 +30,7 @@ function oneSource(source: ts.SourceFile, predicate: (node: ts.Node) => boolean)
 // decisions. This catches conversation-key remounts as well as local hook races.
 const composerSlot = oneSource(coachSource, node => ts.isJsxSelfClosingElement(node) && node.tagName.getText(coachSource) === "CompanionComposer");
 const slotSource = `import React from "react"; import CompanionComposer from "./CompanionComposer";
-export default function Slot({ childProfile, activeConversationId, conversationRevision, uiLang, chatInput, setChatInput, isChatLoading, visible, handleChatSend, toggleVoice, voicePhase, voiceLabel, openCaptureSheet, setComposerFiles, composerHardMoment, composerFoot, noticeTalkController = { current: null } }) { return ${composerSlot}; }`;
+export default function Slot({ childProfile, activeConversationId, conversationRevision, uiLang, chatInput, setChatInput, isChatLoading, visible, handleChatSend, toggleVoice, voicePhase, voiceLabel, openCaptureSheet, setComposerFiles, composerHardMoment, composerFoot, noticeTalkController = { current: null }, voiceResting = false }) { return ${composerSlot}; }`;
 const controls = ["newConversation", "prepareTopicConversation", "openConversation"].map(name =>
   oneSource(contextSource, node => ts.isVariableStatement(node) && node.declarationList.declarations.some(declaration => ts.isIdentifier(declaration.name) && declaration.name.text === name)),
 ).join("\n");
@@ -162,6 +162,8 @@ function harness(options: { send?: () => Promise<boolean | undefined>; text?: st
     topicState: { familyTopics: [], selectFamilyTopic: vi.fn() },
     uiLang: "en" as "en" | "he", chatInput: options.text ?? "A moment from today", isChatLoading: false,
     visible: true, voicePhase: "off", voiceLabel: "Talk with Arbor",
+    // B-AIOPS-02: CoachTab passes whether the family's voice time is resting.
+    voiceResting: false,
     // F-TALK-1: CoachTab's tray door and foot chip (absent unless a test sets them).
     composerHardMoment: undefined as undefined | (() => void), composerFoot: undefined as unknown,
     setChatInput: (value: string) => { state.chatInput = value; },
