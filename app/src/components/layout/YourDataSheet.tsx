@@ -203,7 +203,8 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
                 per-place ids live only in the saved receipt file. */}
             {RECEIPT_ROWS.map((row) => {
               const { total, unreached } = view.places[row];
-              const note = total > 1 || unreached > 0
+              // One place: the value alone says it ("Not reached" or the count).
+              const note = total > 1
                 ? (unreached > 0 ? t("elev.learnCare.receipt.placesSome", { n: total, m: unreached }) : t("elev.learnCare.receipt.placesAll", { n: total }))
                 : undefined;
               return <ReceiptRow key={row} label={t(RECEIPT_LABEL[row])} note={note} value={view.rows[row] === "not-reached" ? t("elev.learnCare.receipt.notReached") : view.rows[row]} />;

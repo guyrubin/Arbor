@@ -133,7 +133,7 @@ describe.each(["en", "he"] as const)("delete receipt (%s)", (lang) => {
     expect(shown[t("elev.learnCare.receipt.clientDocs")]).toBe(4); // the device half did run
     expect(Object.keys(shown)).toHaveLength(7);
     expect(notes(tree)[t("sec.sharing.receipt.memoryEvents")]).toBe(t("elev.learnCare.receipt.placesSome", { n: 2, m: 2 }));
-    expect(notes(tree)[t("sec.sharing.receipt.shares")]).toBe(t("elev.learnCare.receipt.placesSome", { n: 1, m: 1 }));
+    expect(notes(tree)[t("sec.sharing.receipt.shares")]).toBeUndefined(); // one place: the value says it
     expect(byTestId(tree, "delete-receipt-retry")).toBeDefined();
     byTestId(tree, "delete-receipt-save").props.onClick();
     expect(h.downloads).toHaveLength(1);
