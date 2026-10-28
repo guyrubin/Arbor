@@ -11,6 +11,16 @@
  */
 export const QUEUED_ACK_MS = 4000;
 
+/**
+ * B-DATA-14: the receipt for a write kept on this phone, chosen by the
+ * connection at the moment it is read: offline → "Saved on this phone.
+ * Sending when you're back online."; online but not yet acknowledged (a slow
+ * server) → "Saved on this phone. Still sending…". Both clear on the ack.
+ */
+export function savedOnPhoneKey(online: boolean = typeof navigator === "undefined" || navigator.onLine !== false): string {
+  return online ? "elev.sync.savedOnPhoneSending" : "elev.sync.savedOnPhone";
+}
+
 export async function settleOrQueue(
   write: Promise<void>,
   opts: { online?: () => boolean; ackMs?: number; requireAcknowledgement?: boolean } = {},

@@ -49,6 +49,7 @@ export function HeroAvatar({
   decorative = false,
   alt,
   className = "",
+  badge: showBadge = true,
 }: {
   size?: number;
   mood?: MascotMood;
@@ -63,6 +64,9 @@ export function HeroAvatar({
    *  already gave. Ignored when `decorative`. */
   alt?: string;
   className?: string;
+  /** B-BOOK-26 (T7): false drops the little star badge — a book cover on a
+   *  kid screen carries no star, count or score chip. */
+  badge?: boolean;
 }) {
   const { url, name } = useHeroAvatar();
   // The document language LanguageContext sets (uiLang); English where there is no DOM.
@@ -105,13 +109,13 @@ export function HeroAvatar({
         />
       </div>
       {/* Little hero star badge. */}
-      <span
+      {showBadge && <span
         className="absolute -bottom-0.5 -right-0.5 grid place-items-center rounded-full text-white"
         style={{ width: badge, height: badge, background: "var(--arbor-clay)", boxShadow: "0 2px 6px rgba(41,51,63,0.25)", fontSize: badge * 0.6 }}
         aria-hidden="true"
       >
         ★
-      </span>
+      </span>}
     </div>
   );
 }

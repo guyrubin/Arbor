@@ -245,3 +245,13 @@ describe("B-GROWTH-19 — the logPlayCompletion seam takes a bare course activit
     expect(pre).not.toContain("logPlayCompletion");
   });
 });
+
+describe("B-PLAY-25 — the plan DailyPlayTab hands to DailyPlanCard is written in the page's language", () => {
+  it("under uiLang he the why-line is Hebrew (no English rationale on a Hebrew page)", async () => {
+    await render();
+    const why = captured.plan?.plan?.whyLine ?? "";
+    expect(why).toMatch(/[\u0590-\u05FF]/);
+    expect(why.replace(/[\u2066-\u2069]/g, "").replace("CDC/AAP/ASHA/WHO", "")).not.toMatch(/[A-Za-z]/);
+    expect(why).not.toContain("Gets more personalized");
+  });
+});

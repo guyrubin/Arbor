@@ -63,6 +63,7 @@ This file has one line for every place Arbor keeps data about one child. Export 
 | `firestore:coachSessions` | Guided-tier sessions booked and what was agreed | B-PROG-10 |
 | `firestore:heroSheet` | The hero's pose sheet (generated art from the generated hero, never a photo) | B-GAME-13c |
 | `firestore:studioCreations` | The child's saved studio toys (a corner layout, a short melody) | **Found by this sweep (28 Oct):** it escaped export and erase until registered |
+| `firestore:bookReads` | The finished-book ledger: catalogue book id, language, time per true ending; never the path or the choice | B-BOOK-51 (X28); export and erase |
 
 ## Profile, server, Storage and device sinks
 

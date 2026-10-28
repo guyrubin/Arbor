@@ -6,7 +6,7 @@ import { fmtDay } from "../../lib/formatDate";
 import { keptThings } from "../../lib/kept/keptThings";
 import { milestoneText } from "../../lib/milestoneData";
 import type { ObservationSources } from "../../lib/observations";
-import { focusGoal, goalLabel } from "../../practice/goalBuilder";
+import { focusGoal, focusNextStep, goalLabel } from "../../practice/goalBuilder";
 import TellArborMore from "../describe/TellArborMore";
 import { Icon } from "../ui/Icon";
 import { latestKeptMoment, latestStrength } from "./milestonesModel";
@@ -25,7 +25,9 @@ import "./developmentMap.css";
  *     goal picker the page owns (GoalBuilderModal). It keeps the label
  *     "What we're working on": the one-focus copy pin bans a second "focus"
  *     word on this page, so the mock's label is a recorded departure. The
- *     icon (bookmark) and the source line follow the mock.
+ *     icon (bookmark) and the source line follow the mock. B-GROWTH-40: with
+ *     a plan started for that goal, ONE line under it, "Next: {step}"
+ *     (focusNextStep), the plan's next unfinished step. No new card.
  *
  * A card with nothing to show says "Not told yet" and offers "Tell Arbor"
  * (the describe conversation for a strength, the capture sheet for a
@@ -40,7 +42,7 @@ export interface PortraitCardsProps {
 }
 
 export default function PortraitCards({ sources, onEditGoal }: PortraitCardsProps) {
-  const { childProfile, openCaptureSheet } = useArbor();
+  const { childProfile, openCaptureSheet, actionPlans } = useArbor();
   const { t, uiLang } = useLanguage();
   const [telling, setTelling] = useState(false);
   const gender = childProfile.gender ?? null;
@@ -52,6 +54,8 @@ export default function PortraitCards({ sources, onEditGoal }: PortraitCardsProp
     keepsakes: sources.keepsakes?.filter((item): item is KeepsakeDoc => typeof (item as Partial<KeepsakeDoc>).id === "string"),
   }, childProfile), sources.behaviorLogs, Date.now()), [sources.behaviorLogs, sources.milestones, sources.langObs, sources.keepsakes, childProfile, t, gender]);
   const goal = focusGoal(childProfile.activeGoals ?? []);
+  // B-GROWTH-40: the plan started for this goal says what to do next (one line, inside this card).
+  const next = useMemo(() => focusNextStep(goal, actionPlans ?? []), [goal, actionPlans]);
   const notTold = (testId: string, onTell: () => void) => (
     <>
       <p className="portrait-card-empty">{t("companion.milestones.notTold")}</p>
@@ -95,6 +99,7 @@ export default function PortraitCards({ sources, onEditGoal }: PortraitCardsProp
           <span>{t("elev.goal.profile.title")}</span>
         </span>
         <span className="portrait-card-words">{goal ? <bdi>{goalLabel(goal, t)}</bdi> : t("elev.goal.profile.empty")}</span>
+        {next && <span className="portrait-card-next" data-testid="portrait-goal-next">{t("companion.milestones.goalNext", { step: next })}</span>}
         {goal && (
           <span className="portrait-card-src" data-testid="portrait-goal-src">
             {t("companion.milestones.srcGoal")} · <span className="portrait-card-change">{t("elev.goal.profile.edit")}</span>

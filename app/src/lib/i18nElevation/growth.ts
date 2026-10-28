@@ -36,8 +36,6 @@ export const en: Record<string, string> = {
   // ── Development screen deep-dive link cards (the former inner-tab facets)
   "elev.growth.link.milestones.sub": "The full checklist — mark what you've noticed",
   "elev.growth.link.journey.sub": "The month-by-month development timeline",
-  "elev.growth.link.copilot.label": "This week's focus",
-  "elev.growth.link.copilot.sub": "One clear next step from milestones and daily practice",
 
   // ── Builder F · GP-17 / item 8 (chrome half) · Growth chrome that stayed
   // English inside the Hebrew app. Plural forms are explicit KEYS, never a
@@ -119,7 +117,6 @@ export const en: Record<string, string> = {
   "elev.growth.record.tab.tree": "Tree",
   "elev.growth.deeper.title": "Go deeper",
   "elev.growth.more.title": "More from Growth",
-  "elev.growth.more.sub": "The month in review and the Full Picture.",
 
   // v3 VIS-02 — CountPips (components/ui/CountPips.tsx): the one sentence a
   // screen reader hears for a domain's dots. A count of what the parent marked
@@ -151,8 +148,6 @@ export const he: Record<string, string> = {
 
   "elev.growth.link.milestones.sub": "הרשימה המלאה — סמנו מה ששמתם לב אליו",
   "elev.growth.link.journey.sub": "ציר ההתפתחות חודש אחר חודש",
-  "elev.growth.link.copilot.label": "המיקוד של השבוע",
-  "elev.growth.link.copilot.sub": "צעד הבא ברור אחד מאבני דרך ותרגול יומי",
 
   // ── Builder F · GP-17 / item 8 (chrome half)
   "elev.growth.play.setFocus": "לבחור מוקד",
@@ -225,7 +220,6 @@ export const he: Record<string, string> = {
   "elev.growth.record.tab.tree": "עץ",
   "elev.growth.deeper.title": "להעמיק",
   "elev.growth.more.title": "עוד בהתפתחות",
-  "elev.growth.more.sub": "סיכום החודש והתמונה המלאה.",
 
   // v3 VIS-02 — CountPips: המשפט שקורא המסך מקריא לנקודות של תחום (ספירה בלבד)
   "elev.pips.aria": "ראיתם עד עכשיו: {n}",

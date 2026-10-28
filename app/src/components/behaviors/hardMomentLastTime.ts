@@ -10,7 +10,8 @@
  * never read here. Pure; zero model calls.
  */
 import type { ActionLoopEntry } from "../../actionLoop/model";
-import type { HardMomentCard } from "../../content/hardMomentCards";
+import { hardMomentCatalogue, type HardMomentCard } from "../../content/hardMomentCards";
+import type { BehaviorLog } from "../../types";
 
 /** True when a ledger row is this card's booked step. */
 export function rowIsCard(row: Pick<ActionLoopEntry, "source" | "recommendation">, card: Pick<HardMomentCard, "doNow">): boolean {
@@ -36,4 +37,37 @@ export function heldRowsSince(loop: readonly ActionLoopEntry[], sinceMs: number,
     .filter((r) => r.source === "hard-moment" && r.held === "yes" && r.outcomeAt)
     .filter((r) => { const t = Date.parse(r.outcomeAt!); return Number.isFinite(t) && t >= sinceMs && t <= nowMs; })
     .sort((a, b) => (b.outcomeAt ?? "").localeCompare(a.outcomeAt ?? ""));
+}
+
+/** B-DATA-16 — the authored guide a stored `coRegulationScript` names (any
+ *  age pack), or undefined for an unknown / retired id. */
+export function scriptCard(id: string | undefined): HardMomentCard | undefined {
+  return id ? hardMomentCatalogue.find((card) => card.id === id) : undefined;
+}
+
+/** B-DATA-16 — the newest hard moment on which the parent said they used this
+ *  guide's words (`coRegulationScript`), or null. A fact about the parent's
+ *  action only: it never says the words helped. */
+export function lastUsedFor(
+  card: Pick<HardMomentCard, "id">,
+  logs: readonly Pick<BehaviorLog, "coRegulationScript" | "timestamp">[],
+): { at: string } | null {
+  const rows = logs
+    .filter((l) => l.coRegulationScript === card.id && Number.isFinite(Date.parse(l.timestamp)))
+    .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  return rows[0] ? { at: rows[0].timestamp } : null;
+}
+
+/** "What helped last time" for one guide: the parent's own "held the plan"
+ *  answer leads (B-ASKJB-33, the one that may say "helped"); without one, the
+ *  last hard moment the parent logged with these words names them as USED. */
+export function lastTimeFor(
+  card: Pick<HardMomentCard, "id" | "doNow">,
+  loop: readonly ActionLoopEntry[],
+  logs: readonly Pick<BehaviorLog, "coRegulationScript" | "timestamp">[],
+): { at: string; basis: "held" | "used" } | null {
+  const held = lastHeldFor(card, loop);
+  if (held) return { ...held, basis: "held" };
+  const used = lastUsedFor(card, logs);
+  return used ? { ...used, basis: "used" } : null;
 }

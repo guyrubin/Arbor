@@ -41,8 +41,10 @@ import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { withChildSignals } from "../../lib/i18nElevation/childsignals";
-import { countsSince, kidActivityLedgers, kidExitRecapLine, type KidActivityLedgers } from "../../lib/kidExitRecap";
+import { countsSince, kidActivityLedgers, kidExitRecapWithBook, type KidActivityLedgers } from "../../lib/kidExitRecap";
 import { offerSneakHandBack, reachedTheCatToday } from "./games/sneakFreeze/handBack";
+import { BOOK_READS, lastReadSince, type BookRead } from "../../lib/bookReads";
+import { bookAskAfter } from "../../lib/bookAskAfter";
 
 export default function KidExitRecap() {
   const { childProfile, addMoment } = useArbor();
@@ -52,6 +54,12 @@ export default function KidExitRecap() {
   // B-SHELL-04: hero stories are a ledger of their own (heroRuns), not part of
   // usePracticeData — read here so a finished hero story is named on exit.
   const heroRuns = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
+  // B-BOOK-47: the one read ledger (B-BOOK-51) — the last book finished in this
+  // session is named with its AUTHORED ask-after question (never the path the
+  // child chose: the ledger holds none).
+  const bookReads = useChildCollection<BookRead>(childProfile.id, BOOK_READS);
+  const readsRef = useRef<BookRead[]>([]);
+  readsRef.current = bookReads.items;
 
   // The baseline: when this child's Kid Mode session began. Device-local, in
   // memory only — nothing is persisted.
@@ -65,11 +73,11 @@ export default function KidExitRecap() {
   const speakRef = useRef<() => void>(() => undefined);
   speakRef.current = () => {
     const counts = countsSince(ledgersRef.current, openedAtRef.current);
-    const line = kidExitRecapLine(
-      counts,
-      withChildSignals(t, uiLang === "he"),
-      (childProfile.name || "").split(" ")[0]
-    );
+    const firstName = (childProfile.name || "").split(" ")[0];
+    const lang = uiLang === "he" ? "he" : "en";
+    const lastRead = lastReadSince(readsRef.current, openedAtRef.current);
+    const book = lastRead ? bookAskAfter(lastRead.bookId, lang, childProfile.gender, firstName) : null;
+    const line = kidExitRecapWithBook(counts, withChildSignals(t, uiLang === "he"), firstName, book);
     // Nothing happened → no strip. An empty toast is worse than silence.
     // B-SHELL-04: the toast carries a Keep action, so it stays until the
     // parent keeps it or dismisses it (ToastContext never auto-removes an

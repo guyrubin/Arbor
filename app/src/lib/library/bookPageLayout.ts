@@ -809,3 +809,35 @@ export function computeBookPageLayout(page: Page, box: Box, lang: BookLang, opts
   }
   return layoutStacked(c);
 }
+
+/**
+ * B-BOOK-26: where an overlay sits on the plate (compose.py: (x, y) is ALWAYS
+ * the bottom edge; "center" only centres x — the worn helmet; "feet" puts the
+ * feet-band centre on x). One definition for the screen (BookPage) and the
+ * canvas twin (lib/shareCard "bookPage"), so the two cannot drift.
+ */
+export function overlayRect(o: { x: number; y: number; scale: number; aspect?: number; anchor?: "feet" | "center"; footX?: number }, plate: Rect): Rect {
+  const h = o.scale * plate.h;
+  const w = h * (o.aspect ?? 1);
+  const x = plate.x + o.x * plate.w;
+  const y = plate.y + o.y * plate.h;
+  return { x: x - (o.anchor === "center" ? 0.5 : o.footX ?? 0.5) * w, y: y - h, w, h };
+}
+
+/** A rect as fractions of a frame (0..1 of its width / height). */
+export interface FracRect { x: number; y: number; w: number; h: number }
+
+/**
+ * B-BOOK-26: a page's phone picture window, as FRACTIONS of that window — the
+ * plate and the hero rect of the reader's own stacked layout (the same layout
+ * object, the same inputs), so a thumbnail of any size (the shelf cover) shows
+ * the picture the book opens on: the plate's 3:4 window with the child's own
+ * hero composited where the book puts it. Scale-free (the stacked window is
+ * 3:4 at every width).
+ */
+export function pageWindowFractions(page: Page, opts: Omit<LayoutOpts, "content"> = {}): { plate: FracRect; hero: (FracRect & { flip: boolean }) | null } {
+  const l = computeBookPageLayout(page, { width: 300, height: 1200 }, "en", { ...opts, cover: false });
+  const a = l.art;
+  const f = (r: Rect): FracRect => ({ x: (r.x - a.x) / a.w, y: (r.y - a.y) / a.h, w: r.w / a.w, h: r.h / a.h });
+  return { plate: f(l.plate), hero: l.hero ? { ...f(l.hero), flip: l.hero.flip } : null };
+}

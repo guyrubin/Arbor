@@ -25,8 +25,33 @@ describe("chosen outcome callback ownership", () => {
   });
   it("deduplicates rapid taps and keeps a retry after rejection without a receipt", async () => {
     const h = setup(); const save = h.call("helped"); await h.call("not_today"); expect(h.saveTodayOutcome).toHaveBeenCalledTimes(1);
-    expect(h.saveTodayOutcome).toHaveBeenCalledWith("step-a", "helped", "card", undefined, { awaitServer: true });
+    // B-DATA-14: the save takes the bounded offline answer (kept on this phone).
+    expect(h.saveTodayOutcome).toHaveBeenCalledWith("step-a", "helped", "card", undefined, { awaitServer: true, offline: { onQueued: expect.any(Function), onSynced: expect.any(Function), onRejected: expect.any(Function) } });
     h.reject(Error("rules")); await save; expect(h.setReceiptAction).not.toHaveBeenCalled(); expect(h.setRetryAction).toHaveBeenCalledOnce(); expect(h.setSaveError).toHaveBeenLastCalledWith(true);
+  });
+  it("B-DATA-14: kept on this phone → the receipt says so, and the server's later answer clears it", async () => {
+    const h = setup(); const save = h.call("helped");
+    const options = (h.saveTodayOutcome.mock.calls[0] as unknown as [string, string, string, undefined, { offline: { onQueued: () => void; onSynced: () => void } }])[4];
+    options.offline.onQueued(); h.resolve(); await save;
+    expect(h.setReceiptAction).toHaveBeenCalledWith({ scope: h.scopeLease, action: h.action, queued: true });
+    options.offline.onSynced();
+    const update = h.setReceiptAction.mock.calls.at(-1)![0] as (previous: unknown) => unknown;
+    expect(update({ scope: h.scopeLease, action: h.action, queued: true })).toEqual({ scope: h.scopeLease, action: h.action, queued: false });
+  });
+  it("B-DATA-14: a rejection after the kept-on-this-phone receipt takes the receipt back and offers the answer again", async () => {
+    const h = setup(); const save = h.call("helped");
+    const options = (h.saveTodayOutcome.mock.calls[0] as unknown as [string, string, string, undefined, { offline: { onQueued: () => void; onRejected: () => void } }])[4];
+    options.offline.onQueued(); h.resolve(); await save;
+    expect(h.completedAction.current.has("step-a")).toBe(true);
+    options.offline.onRejected();
+    expect(h.completedAction.current.has("step-a")).toBe(false);
+    const take = h.setReceiptAction.mock.calls.at(-1)![0] as (previous: unknown) => unknown;
+    expect(take({ scope: h.scopeLease, action: h.action, queued: true })).toBeNull();
+    expect(h.setRetryAction).toHaveBeenLastCalledWith({ scope: h.scopeLease, action: h.action });
+    expect(h.setSaveError).toHaveBeenLastCalledWith(true);
+    // The answer can be given again.
+    h.saveTodayOutcome.mockImplementationOnce(async () => {});
+    await h.call("helped"); expect(h.saveTodayOutcome).toHaveBeenCalledTimes(2);
   });
   it("does not update disposed state after unmount", async () => {
     const h = setup(); const save = h.call("helped"); h.outcomeMounted.current = false;

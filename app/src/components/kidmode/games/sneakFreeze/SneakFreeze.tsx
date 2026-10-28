@@ -52,6 +52,7 @@ import { noteKidActivity } from "../../../../lib/kidModeGate";
 import { Ending, captionKey } from "./Ending";
 import { Icon } from "../../../ui/Icon";
 import { CourtyardPetals, DustPuff, LanternGlint, TagBurst } from "./courtyardLife";
+import { trackGameSitting } from "../../../../lib/kpiEvents";
 
 /** HE lines addressed to the child: `.boy` / `.girl`, else the plural base. */
 export function formKey(base: string, gender: string | undefined): string {
@@ -437,6 +438,13 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
   }, [childId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [sitting, setSitting] = useState(0);
+  // B-GAME-18: the first sitting of this visit (later ones are counted by Play again).
+  const firstSat = useRef(false);
+  useEffect(() => {
+    if (firstSat.current) return;
+    firstSat.current = true;
+    trackGameSitting({ game: "sneak", replay: false });
+  }, []);
   const stateRef = useRef<SneakState | null>(null);
   // B-GAME-07e: the demonstration on the device's first sitting only.
   if (!stateRef.current) stateRef.current = startSitting({ seed: newSeed(childId, 0), track: start.track, level: start.level, intro: !demoSeen() });
@@ -586,6 +594,8 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
     soundsRef.current?.newSitting();
     setV(viewOf(stateRef.current));
     setSitting(n);
+    // B-GAME-18: an in-game Play again is a new sitting.
+    trackGameSitting({ game: "sneak", replay: true });
   };
 
   const signal = signalOf(v);

@@ -377,6 +377,12 @@ export interface BehaviorLog {
   shelf?: import("./lib/shelves/registry").ShelfId;
   /** B-LOOP-06 — the milestone this moment is evidence for (parent-confirmed). */
   milestoneId?: string;
+  /** B-DATA-16 — the authored co-regulation script (a hard-moment guide card
+   *  id, content/hardMomentCards) the parent SAID they used, chosen from that
+   *  guide and removable before save or on edit. Hard moments only. A fact
+   *  about the parent's action, never an outcome: whether it helped stays the
+   *  parent's own answer on the action ledger (`held`), never inferred here. */
+  coRegulationScript?: string;
 }
 
 /** A completed Daily Play activity — a positive, lightweight "win" written to
@@ -550,6 +556,13 @@ export interface ActionPlan {
    * second device never celebrates the same day twice.
    */
   routineCelebratedOn?: string;
+  /**
+   * B-GROWTH-40: the `goalId` of the family's current goal (focusGoal) when
+   * this plan was started, so My child's focus line can say what to do next.
+   * Written only at start (practice/goalBuilder withFocusGoal); older plans
+   * are never backfilled, and a plan carries no area of its own.
+   */
+  focusGoalId?: string;
 }
 
 /** B-ASKJB-26: one weekly check-in on a plan — the parent's own answer, never a score. */

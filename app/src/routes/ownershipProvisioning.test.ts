@@ -65,6 +65,12 @@ class MockCollection {
   get id() { return this.pathSegs[this.pathSegs.length - 1]; }
   get parent() { return this.pathSegs.length > 1 ? new MockDoc(this.db, this.pathSegs.slice(0, -1)) : null; }
   doc(id: string) { return new MockDoc(this.db, [...this.pathSegs, id]); }
+  /** B-DATA-15: list direct children (FamilyService reads a family's members). */
+  async get() {
+    const prefix = `${this.pathSegs.join("/")}/`;
+    const ids = [...this.db.docs.keys()].filter((p) => p.startsWith(prefix) && !p.slice(prefix.length).includes("/"));
+    return { docs: ids.map((p) => ({ id: p.slice(prefix.length), ref: new MockDoc(this.db, p.split("/")) })) };
+  }
 }
 
 class MockDb {
@@ -103,8 +109,15 @@ class TestOwnershipMemoryStore implements MemoryStore {
     return childId ? this.events.filter((e) => e.childId === childId) : [...this.events];
   }
   async appendEvent(event: MemoryLedgerEvent) {
-    await this.families.ensureChild(event.familyId, event.childId);
+    // B-DATA-15: the same admission FirestoreMemoryStore.appendEvent applies.
+    if (!(await this.families.admitsLedgerAppend(event.familyId, event.childId))) {
+      throw new Error("This family is not authorized to write this child's memory.");
+    }
     this.events.push(event);
+  }
+  async issueChildId(input: { familyId: string; userId: string }) {
+    await this.families.ensureFamilyMembership(input.familyId, input.userId);
+    return this.families.issueChild(input.familyId);
   }
   ensureFamilyForUser(uid: string) {
     return this.families.ensureFamilyForUser(uid);
@@ -346,5 +359,28 @@ describe("OWN-1 — PATCH /memory/:memoryId enforces ownership via the ledger", 
 
     const missing = await postJson(owner, "/api/memory/no-such-memory", { status: "approved" }, "PATCH");
     expect(missing.status).toBe(404);
+  });
+});
+
+describe("B-DATA-15 — new child ids are issued by the server, already owned", () => {
+  it("POST /api/onboarding/child-id returns a fresh random id the caller's family already owns", async () => {
+    const one = await postJson(owner, "/api/onboarding/child-id", {});
+    const two = await postJson(owner, "/api/onboarding/child-id", { childId: "client-chosen" });
+    expect(one.status).toBe(200);
+    expect(one.body.childId).toMatch(/^child-[0-9a-f-]{36}$/);
+    expect(two.body.childId).not.toBe(one.body.childId);
+    expect(two.body.childId).not.toBe("client-chosen");
+    expect(store.childDoc(one.body.childId)?.familyId).toBe(ownerFamilyId);
+    // The parent's own provisioning call for that id is a no-op success…
+    expect((await postJson(owner, "/api/onboarding/family-child", { childId: one.body.childId })).status).toBe(200);
+    expect((await getJson(owner, `/api/memory/${one.body.childId}`)).status).toBe(200);
+  });
+
+  it("another account can neither claim an issued id nor write to its ledger", async () => {
+    const { body } = await postJson(owner, "/api/onboarding/child-id", {});
+    const claim = await postJson(attacker, "/api/onboarding/family-child", { childId: body.childId, childProfile: { name: "Taken" } });
+    expect(claim.status).toBe(403);
+    expect(store.childDoc(body.childId)?.familyId).toBe(ownerFamilyId);
+    expect((await postJson(attacker, `/api/memory/${body.childId}/propose`, { fact: "Injected" })).status).toBe(403);
   });
 });

@@ -19,9 +19,21 @@ describe("legacy action readers preserve observation semantics", () => {
     for (const component of [<TodayActionLoop />, <CarryOverActionAsk />]) {
       const html = renderToStaticMarkup(component);
       expect(html).toContain(row.recommendation);
-      expect(html).toContain('href="#/overview"');
+      // B-TODAY-37: the carry-over strip renders ON Now, so it names its question
+      // (#/overview alone did nothing there); the legacy loop card keeps the bare door.
+      expect(html).toContain(component.type === CarryOverActionAsk ? `href="#/overview?observe=${row.id}"` : 'href="#/overview"');
+      expect(html).toContain(lang === "he" ? "לתעד רגע" : "Record a moment");
       expect(html).not.toMatch(/It helped|A little|Not today|זה עזר|קצת|לא היום/);
     }
+  });
+  it("B-TODAY-37: once Now shows that question's form, the strip stops offering the door", () => {
+    state.lang = "en";
+    vi.stubGlobal("window", { location: { hash: `#/overview?observe=${row.id}` }, addEventListener: vi.fn(), removeEventListener: vi.fn(), localStorage: { getItem: () => null, setItem: () => undefined } });
+    try {
+      const html = renderToStaticMarkup(<CarryOverActionAsk />);
+      expect(html).toContain(row.recommendation);
+      expect(html).not.toContain('data-testid="carry-over-record"');
+    } finally { vi.unstubAllGlobals(); }
   });
   it("a completed observation reads its recorded words without an efficacy receipt", () => {
     state.lang = "en"; state.row = { ...row, observation: true, status: "completed", whatHappened: "The parent's exact moment." };

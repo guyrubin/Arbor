@@ -5,7 +5,7 @@ import { parseCompanionAttachments, type ComposerAttachment } from "../lib/compa
 import express from "express";
 import { PROGRAM_IMPORT_PROMPT } from "../ai/programImportPrompt.js";
 import { parseProgramDocument, parseRecommendationDraft, PROGRAM_IMPORT_VERSION } from "../lib/programImport.js";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { ArborConfig } from "../config/env.js";
 import { normalizeAvatarStyle } from "../lib/avatarStyle.js";
 import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider } from "../ai/modelRouter.js";
@@ -13,6 +13,10 @@ import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/mo
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, toFileTurnContract, renderFileDeclinedResponse, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence, type CoachResponse } from "../contracts/coach.js";
 import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildDescribeChildPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE, renderCouncilContinuity } from "../ai/prompts.js";
+// B-ASKJB-44: no invented finding reaches a handoff note or the School Brief
+// (the matching prompt rules are parked on claude/askjb44-prompt-bump-2026-10-28).
+import { scrubHandoffNotes } from "../contracts/coach.js";
+import { scrubHandoffBriefFindings } from "../lib/clinicalScan.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
 // the byte-identical legacy prompt on any malformed/absent input.
@@ -60,7 +64,9 @@ import { createBookAssetsRouter, defaultBookAssetBucket, type BookAssetBucket } 
 import { childEraseTotal, eraseChildServerData, type ChildEraseStores } from "../server/childErase.js";
 import { createBookAssetsDocStore, createBookSheetRouter } from "../server/bookSheet.js";
 import { createPlansRouter } from "../server/plans.js";
+import { createPlanPlatesRouter, isPlatePainter } from "../server/planPlates.js";
 import { createBookNarrationRouter, FirestoreNarrationChildSource, googleBookTts, localNarrationChildSource, mockBookTts } from "../server/bookNarration.js";
+import { createPlanNarrationRouter, FirestorePlanBookSource, localPlanBookSource } from "../server/planNarration.js";
 import { localBookAssetBucket } from "../server/localBookAssetBucket.js";
 import { requireConsent } from "../server/requireConsent.js";
 import { CANONICAL_BEHAVIOR_TYPES } from "../content/behaviorTaxonomy.js";
@@ -70,6 +76,7 @@ import { resolveEmailProvider, sendWeeklyDigestEmail, type DigestEmailMessage } 
 import {
   FUNNEL_CHAINS,
   buildCohortReport,
+  buildKidPlayReport,
   createCohortMetricsStore,
   type CohortMetricsStore,
 } from "../server/cohortMetrics.js";
@@ -455,26 +462,53 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // reviewer's signature per pattern and language, server-held) and the
   // compose route that refuses an unsigned pattern outside the sandbox and
   // the owner allow-list (server/plans.ts). No model call.
-  router.use(createPlansRouter({ config, requireOwnership, modelProvider }));
+  router.use(createPlansRouter({ config, requireOwnership, modelProvider, painter: isPlatePainter }));
+  // B-BOOK-75 plates painted in-product: the shared, child-free pattern
+  // plates under shared/plans/ in the same bucket (never a child path),
+  // painted by the admin / comped accounts through the same provider path as
+  // /generate-scene and read by any signed-in user (server/planPlates.ts).
+  router.use(createPlanPlatesRouter({ config, getBucket: getBookBucket, generate: (o) => modelProvider.generateImage(o), counters, allowLocal: localBooks }));
   // K2 2b (B-BOOK-30): the name pages of a library book in the child's name
   // (server/bookNarration.ts): the name from the child record, Gemini-TTS
   // (env models, Sulafat), checked by the server's ASR when one is usable,
   // its own quota; MODEL_PROVIDER=mock answers a tone.
   const narrationMock = config.modelProvider === "mock";
+  const narrationChildren = config.memoryAdapter === "firestore" ? new FirestoreNarrationChildSource(config) : localNarrationChildSource;
+  const narrationProvider = narrationMock ? mockBookTts : googleBookTts(config);
+  const narrationCheck = !narrationMock && childAsrConfigured(config)
+    ? async (audio: Buffer, ext: "mp3" | "wav", firstName: string) => {
+        const r = await scoreChildUtterance(config, modelProvider, { target: firstName, sound: "", level: "word", audio: { data: audio.toString("base64"), mimeType: ext === "wav" ? "audio/wav" : "audio/mpeg" } });
+        return r.result === "got" || (r.heard ?? "").toLowerCase().includes(firstName.toLowerCase());
+      }
+    : null;
   router.use(createBookNarrationRouter({
     getBucket: getBookBucket,
     requireOwnership,
     docs: bookDocs,
-    children: config.memoryAdapter === "firestore" ? new FirestoreNarrationChildSource(config) : localNarrationChildSource,
+    children: narrationChildren,
     counters,
     entitlements: entitlementStore,
-    provider: narrationMock ? mockBookTts : googleBookTts(config),
-    check: !narrationMock && childAsrConfigured(config)
-      ? async (audio, ext, firstName) => {
-          const r = await scoreChildUtterance(config, modelProvider, { target: firstName, sound: "", level: "word", audio: { data: audio.toString("base64"), mimeType: ext === "wav" ? "audio/wav" : "audio/mpeg" } });
-          return r.result === "got" || (r.heard ?? "").toLowerCase().includes(firstName.toLowerCase());
-        }
-      : null,
+    provider: narrationProvider,
+    check: narrationCheck,
+    mock: narrationMock,
+    local: localBooks,
+    config,
+    disabled: !narrationMock && config.ttsDisabled,
+  }));
+  // PR C (Everyday Plans): a PLAN book's narration in the child's name through
+  // the same pipeline (server/planNarration.ts): the words from the child's
+  // stored plan document, every page per child into the child's own set,
+  // the EU path for a name line, the same quota and kill switch.
+  router.use(createPlanNarrationRouter({
+    getBucket: getBookBucket,
+    requireOwnership,
+    docs: bookDocs,
+    children: narrationChildren,
+    plans: config.memoryAdapter === "firestore" ? new FirestorePlanBookSource(config) : localPlanBookSource,
+    counters,
+    entitlements: entitlementStore,
+    provider: narrationProvider,
+    check: narrationCheck,
     mock: narrationMock,
     local: localBooks,
     config,
@@ -810,6 +844,26 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     } catch (error: any) {
       logger.error("Arbor Onboarding Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to create Arbor family/child documents", details: error.message });
+    }
+  });
+
+  // B-DATA-15: a new child's id is issued here, never chosen by the client —
+  // random, created already parented to the caller's (uid-derived) family, so
+  // no other account can collide with it or claim it. Single-tenant (local)
+  // stores have no shared namespace; they get a random id with no doc.
+  router.post("/onboarding/child-id", async (req, res) => {
+    try {
+      const { uid } = actorOf(req);
+      if (!memoryStore.issueChildId || !memoryStore.ensureFamilyForUser) {
+        res.json({ childId: `child-${randomUUID()}`, adapter: "local" });
+        return;
+      }
+      const { familyId } = await memoryStore.ensureFamilyForUser(uid);
+      const childId = await memoryStore.issueChildId({ familyId, userId: uid });
+      res.json({ childId, adapter: "firestore" });
+    } catch (error: any) {
+      logger.error("Arbor Child Id Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to issue a child id" });
     }
   });
 
@@ -1198,6 +1252,16 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         }
         return;
       }
+      // B-ASKJB-44: no invented finding reaches a teacher or professional
+      // note. Runs AFTER the output screen saw the model's own words (a
+      // dropped clause can never hide a crisis signal), then re-renders. A
+      // finding the parent wrote (this message or their earlier turns) is theirs.
+      const parentText = [message, ...sanitizeRecentTurns(recentTurns).filter((turn) => turn.role === "parent").map((turn) => turn.text)].join("\n");
+      if (scrubHandoffNotes(structured, { parentText }) > 0) {
+        renderedText = seededFollowUp ? renderCoachFollowUpResponse(structured, renderLanguage)
+          : structured.fileDeclined ? renderFileDeclinedResponse(structured)
+          : renderCoachResponse(structured, renderLanguage);
+      }
 
       // OBJ-JOURNAL-05: the memory queue is a parent surface — a proposal
       // arrives as a fact the parent is asked to approve, so it must be in
@@ -1472,7 +1536,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // B-AI-01 eval fix: same verdict scrub + session-language labels as /chat.
       const renderLanguage = language === "he" ? "he" : "en";
       scrubHypothesisConfidence(structured, renderLanguage);
-      const renderedText = renderCoachResponse(structured, renderLanguage);
+      let renderedText = renderCoachResponse(structured, renderLanguage);
       const outputVerdict = await screenModelOutput(modelProvider, renderedText);
       if (outputVerdict.flagged) {
         // Done-time flag (lexical floor on the FULL rendered answer + the
@@ -1492,6 +1556,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // arrives as a fact the parent is asked to approve, so it must be in
       // their words. scrubMemoryProposals rewrites the assessment register and
       // DROPS any fact that cannot be stated plainly (server/parentWordsScrub).
+      // B-ASKJB-44: the handoff-note floor, after the screen saw the model's words.
+      const parentText = [message, ...councilTurns.filter((turn) => turn.role === "parent").map((turn) => turn.text)].join("\n");
+      if (scrubHandoffNotes(structured, { parentText }) > 0) renderedText = renderCoachResponse(structured, renderLanguage);
       const memoryReviewItems: [] = [];
       budget.settle();
       const payload = { text: renderedText, contract: structured, council: restoredTakes, memoryReviewItems };
@@ -3856,6 +3923,12 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
         });
         return;
       }
+      // B-ASKJB-44: the invented-finding floor ("no evidence of…", "was
+      // observed", EN + HE; never the escalation line) runs AFTER the output
+      // screen saw the model's own words, then the brief is sent.
+      // The parent's own logged words (trigger, response) may carry a finding they reported.
+      const parentText = logs.map((log) => [log.trigger, log.response].filter((v) => typeof v === "string").join(" ")).join("\n");
+      if (brief && typeof brief === "object") scrubHandoffBriefFindings(brf, { parentText });
       res.json(brief);
     } catch (error: any) {
       logger.error("Arbor Handoff Brief Error", error, { requestId: requestIdOf(req) });
@@ -4039,6 +4112,24 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
     } catch (error: any) {
       logger.error("Arbor Cohort Report Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to build the cohort report", details: error.message });
+    }
+  });
+
+  // B-GAME-18 / B-BOOK-51: the founder panel's narrow read — the weekly Kid
+  // Mode play summary only (cells under 5 families hidden). Same admin gate.
+  router.get("/admin/kid-play", async (req, res) => {
+    const actor = actorOf(req);
+    if (!isAdmin(actor)) {
+      res.status(403).json({ error: "Not authorized" });
+      return;
+    }
+    try {
+      const sinceParam = typeof req.query.since === "string" ? req.query.since : "";
+      const since = Number.isFinite(Date.parse(sinceParam)) ? sinceParam : new Date(Date.now() - 28 * 86_400_000).toISOString();
+      res.json(await buildKidPlayReport(cohortMetrics, { since }));
+    } catch (error: any) {
+      logger.error("Arbor Kid Play Report Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to build the kid play report" });
     }
   });
 

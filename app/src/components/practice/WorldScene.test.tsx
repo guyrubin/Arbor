@@ -31,10 +31,14 @@ describe("WorldScene current-key lifecycle and decorative fallback",()=>{
   const tree=render({heroUrl:undefined});const img=image(tree)!;
   expect(img.props.src).toContain("mood-mountain-v2-480.webp");expect(img.props.srcSet).toContain("960w");expect(img.props.loading).toBe("lazy");expect(img.props.alt).toBe("");expect(img.props["aria-hidden"]).toBe("true");expect(h.generate).not.toHaveBeenCalled();
  });
- it("B-KID-70: film3d shows the theme's own card, top-focused, never the storybook tile",()=>{
+ it("B-KID-70 / B-BOOK-31: a film3d card that paints a hero gives way to that world's own hero-free painting (worlds/v2), never another child",()=>{
   const img=image(render({heroUrl:undefined,theme:"film3d"}))!;
-  expect(img.props.src).toContain("/cards/web/game-feelings-480.webp");expect(img.props.srcSet).toBe("/visuals/cards/web/game-feelings-480.webp 480w");
-  expect(img.props.src).not.toContain("mood-mountain");expect(img.props.style.objectPosition).toBe("50% 22%");
+  expect(img.props.src).not.toContain("game-feelings");
+  expect(img.props.src).toContain("/visuals/worlds/v2/mood-mountain-v2-480.webp");
+  // each world keeps its own painting, so the picker never shows nine identical tiles
+  const srcs=["memory","pattern","beat","pose","speech"].map(worldId=>image(render({heroUrl:undefined,theme:"film3d",worldId}))!.props.src);
+  expect(new Set(srcs).size).toBe(srcs.length);
+  for(const src of srcs)expect(src).not.toContain("/visuals/cards/web/game-");
  });
  it("hides the whole decorative slot, including a covered named fallback and ultimate icon",()=>{
   const labelledFallback=<span role="img" aria-label="Dylan, the hero">hero fallback</span>;

@@ -20,6 +20,7 @@ import { milestoneAgeGroupText, milestoneText } from "./milestoneData";
 import type { FirstKeepsake } from "./firstsKeepsake";
 import type { LangObservation } from "../growth/vocabAgg";
 import { momentRowsSince, wordDays } from "./record/counts";
+import { shownContentSource } from "./kept/photoOnly";
 
 /**
  * The Signal Timeline — Arbor's unified developmental activity stream.
@@ -467,7 +468,8 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
       at: log.timestamp || null,
       refTitle: log.behaviorType || undefined,
       detail: log.trigger || log.notes || "",
-      ...(log.contentSource !== undefined ? { contentSource: log.contentSource } : {}),
+      // B-ASKJB-43: a photo-only moment carries no text-source label.
+      ...(shownContentSource(log) !== undefined ? { contentSource: shownContentSource(log) } : {}),
       // B-DATA-10: tone derives from kind only (like action rows below);
       // `resolved` travels as data and renders as a label, never a colour.
       tone: "lav",

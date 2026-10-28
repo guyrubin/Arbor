@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from "react";
 import ToneSheet, { toneLabel } from "../coach/ToneSheet";
+// S1 (surfacing) 4(a): the owner-only Everyday Plans tooling, behind the
+// server's visibility flag (never a family's).
+import { usePlanVisibility } from "../../lib/plans/usePlanVisibility";
+import { planString } from "../../lib/plans/planStrings";
+import OwnerTools from "../plans/OwnerTools";
 import { Icon } from "../ui/Icon";
 import { APP_BUILD } from "../../lib/buildVersion";
 import { Modal } from "../ui/Modal";
@@ -62,6 +67,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const [cadence, setCadence] = useState<Cadence>(DEFAULT_CADENCE);
   const nativeOffering = useNativeOffering();
   const [adminOpen, setAdminOpen] = useState(false);
+  const planVisibility = usePlanVisibility();
   const [deleteOpen, setDeleteOpen] = useState(false);
   // B-CAREPRO-35: Settings › Your data — export / delete child / delete account.
   const [dataOpen, setDataOpen] = useState(false);
@@ -578,6 +584,15 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                 {t("set.admin.open")}
               </button>
             </Row>
+          </Section>
+        )}
+
+        {/* S1 4(a): Owner tools — the Everyday Plans plate painter, gated by the
+            SAME server flag as before (GET /api/plans/visibility `admin`); it
+            left the parent's journal grid so no family surface shows a plate. */}
+        {planVisibility?.admin === true && (
+          <Section title={planString("owner.title", uiLang === "he" ? "he" : "en")} sub={planString("owner.sub", uiLang === "he" ? "he" : "en")}>
+            <OwnerTools lang={uiLang === "he" ? "he" : "en"} />
           </Section>
         )}
 

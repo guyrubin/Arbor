@@ -46,7 +46,8 @@ describe("AI-CAP-1 — voice capture goes through the ONE hardened extraction ow
   });
 
   it("all extracted fields are normalized before touching the shared draft", () => {
-    const normalize = extract.indexOf('const n = normalizeExtractedLog(d, text)');
+    // B-ASKJB-48: the hard-moment form's own toggle is the incident cue.
+    const normalize = extract.indexOf('const n = normalizeExtractedLog(d, text, { incidentDeclared: from === "incident" })');
     expect(normalize).toBeGreaterThan(-1);
     for (const field of ['Type', 'Intensity', 'Duration', 'Context', 'Trigger', 'Response', 'Notes']) {
       expect(extract.indexOf(`setNewLog${field}(`), field).toBeGreaterThan(normalize);

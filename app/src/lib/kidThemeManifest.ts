@@ -211,6 +211,27 @@ export function kidArt(theme: KidThemeId, key: KidArtKey): KidArt | null {
   return KID_THEME_MANIFEST[theme]?.[key] ?? null;
 }
 
+/**
+ * B-BOOK-31 / B-KID-143 — the SHARED art any account may be shown. A picture
+ * that already paints a hero (`hasHero`: the 5 Oct glossy story covers and
+ * game cards) paints the reference family's child; in a shared catalogue slot
+ * it puts that child into every other child's books. Every shared story-cover
+ * slot reads through here and gets null for such a picture, so the slot falls
+ * back to its honest, complete hero-free state (the book's title card, the
+ * theme's stage). A child's own hero reaches a cover only from that child's
+ * own private prints (LibraryBookCover) and approved sheet. The files stay
+ * where they are (Guy, 5 Oct); only the shared slots stop showing them.
+ */
+export function sharedKidArt(theme: KidThemeId, key: KidArtKey): KidArt | null {
+  const art = kidArt(theme, key);
+  return art && !art.hasHero ? art : null;
+}
+
+/** A story's cover in the child's theme, hero-free (sharedKidArt), or null. */
+export function storyCoverArt(theme: KidThemeId, storyId: string): KidArt | null {
+  return sharedKidArt(theme, storyCoverKey(storyId));
+}
+
 /** srcSet for an <img>: 480w + the large derivative. */
 export function kidArtSrcSet(art: KidArt): string {
   return `${art.src480} 480w, ${art.src} ${art.width}w`;

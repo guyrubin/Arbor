@@ -75,3 +75,24 @@ describe("F-CHILD-2 · the review stepper says the intensity in words", () => {
     }
   });
 });
+
+describe("B-DATA-16 — a removable row keeps its value, its source on the line below, and a 44 px Remove", () => {
+  for (const lang of LANGS) {
+    it(`${lang}: value, then detail, then Remove`, () => {
+      state.lang = lang;
+      const quote = translate(lang, "elev.loop.ms.quoted", { text: lang === "he" ? "זה צריך לקרות" : "This needs to happen" });
+      const from = translate(lang, "elev.closeloop.hm.usedFrom", { guide: lang === "he" ? "סירוב" : "Refusal" });
+      const remove = translate(lang, "elev.closeloop.hm.usedRemove");
+      const html = renderToStaticMarkup(
+        <ConfirmCaptureReview source="text" rows={[{ label: translate(lang, "elev.closeloop.hm.usedLabel"), value: quote, detail: from, onRemove: noop, removeLabel: remove }]}
+          onEdit={noop} onDiscard={noop} onConfirm={noop} />,
+      );
+      const at = (s: string) => html.indexOf(s);
+      expect(at(quote)).toBeGreaterThan(-1);
+      expect(at(from)).toBeGreaterThan(at(quote));
+      expect(at(remove)).toBeGreaterThan(at(from));
+      const button = html.slice(html.lastIndexOf("<button", at(remove)), html.indexOf("</button>", at(remove)));
+      expect(button).toMatch(/class="[^"]*min-h-11/);
+    });
+  }
+});

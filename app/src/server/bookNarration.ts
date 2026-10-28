@@ -26,7 +26,7 @@
  *   children/{cid}/books/{bookId}/narration/n-<hash of the first name(s)>/<lang>/<file>
  * and once the voice folder has every name file, the bookAssets doc switches
  * to that set (setId) and an older name's set is removed. Quota: per child
- * tts_book_30d (BOOK_TTS_PER_CHILD_30D, default 30 takes) and a global daily
+ * tts_book_30d (BOOK_TTS_PER_CHILD_30D, default 60 takes: a plan book spends 9, a canonical book 5) and a global daily
  * limit (BOOK_TTS_GLOBAL_DAILY, default 300); Free gets none (the book poses'
  * plan table). MODEL_PROVIDER=mock answers a short tone (WAV), no spend.
  */
@@ -59,7 +59,7 @@ const envNum = (name: string, fallback: number) => {
   return process.env[name] !== undefined && Number.isFinite(v) && v >= 0 ? v : fallback;
 };
 export const BOOK_TTS_COUNTERS = { child: "tts_book_30d", global: "tts_book_global_daily" } as const;
-export const bookTtsLimits = () => ({ perChild30d: envNum("BOOK_TTS_PER_CHILD_30D", 30), globalDaily: envNum("BOOK_TTS_GLOBAL_DAILY", 300) });
+export const bookTtsLimits = () => ({ perChild30d: envNum("BOOK_TTS_PER_CHILD_30D", 60), globalDaily: envNum("BOOK_TTS_GLOBAL_DAILY", 300) });
 export const BOOK_TTS_TAKES = 3;
 export const BOOK_TTS_TIMEOUT_MS = 60_000;
 

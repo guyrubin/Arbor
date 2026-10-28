@@ -146,6 +146,9 @@ export const en: Record<string, string> = {
   "elev.learnCare.kidExit.keep": "Keep in the journal",
   // A failed Keep: the one failure message, re-offering the same line.
   "elev.learnCare.kidExit.keepFailed": "Not kept in the journal yet. {line}",
+  // B-BOOK-47: the book finished in this session, and its authored ask-after question.
+  "elev.learnCare.kidExit.book": "read {title}",
+  "elev.learnCare.kidExit.askAfter": "Ask about it: {question}",
 
   // Builder M — R25 — #/sharing (and #/care-team, same leaf) demotion disclosure and its door to #/consult.
   "elev.learnCare.share.more.title": "Shared with you, your data and the record",
@@ -292,6 +295,8 @@ export const he: Record<string, string> = {
   "elev.learnCare.kidExit.join": " · ",
   "elev.learnCare.kidExit.keep": "לשמור ביומן",
   "elev.learnCare.kidExit.keepFailed": "עוד לא נשמר ביומן. {line}",
+  "elev.learnCare.kidExit.book": "הספר {title}",
+  "elev.learnCare.kidExit.askAfter": "אפשר לשאול: {question}",
 
   // Builder M — R25 — #/sharing (and #/care-team, same leaf) demotion disclosure and its door to #/consult.
   "elev.learnCare.share.more.title": "מה שותף אתכם, הנתונים והרשומה",

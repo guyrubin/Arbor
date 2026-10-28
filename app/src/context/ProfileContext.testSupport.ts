@@ -4,6 +4,7 @@ import ts from "typescript";
 import type { ChildProfile } from "../types";
 import * as goalsModule from "../practice/goalBuilder";
 import { CLEARABLE_PROFILE_FIELDS, RETIRED_PROFILE_FIELDS } from "../lib/childAge";
+import * as syncStoreModule from "../lib/syncStore";
 
 const child = (id: string, name = id): ChildProfile => ({ id, name, age: 4, birthMonth: "2022-04", languages: ["English"], schoolContext: "", strengths: [], challenges: [], onboardingComplete: false });
 type Provider = ReturnType<typeof import("./ProfileContext").useProfile>;
@@ -11,8 +12,8 @@ type HookSlot = { value?: any; deps?: unknown[]; cleanup?: () => void };
 
 /** Runs the actual provider, retaining hook state and cleaning up effects on
  * owner changes. Every SDK, storage, token and fetch boundary is synthetic. */
-export function harness({ owner = "A", rows = [child("A-child")], local = [child("local-private")] } = {}) {
-  let uid = owner, cursor = 0, dirty = true, value: Provider;
+export function harness({ owner = "A", rows = [child("A-child")], local = [child("local-private")], server = new Map<string, Record<string, unknown>>() } = {}) {
+  let uid = owner, cursor = 0, dirty = true, value: Provider, issuedIds = 0;
   let actualUser: { uid: string } | null = { uid: owner };
   const authListeners = new Set<(user: typeof actualUser) => void>();
   const auth = { get currentUser() { return actualUser; } };
@@ -26,9 +27,15 @@ export function harness({ owner = "A", rows = [child("A-child")], local = [child
     set: async (_path: string, _data: unknown) => {},
     update: async (_path: string, _data: unknown) => {},
     headers: async () => ({ Authorization: `test-${actualUser?.uid}` }),
+    /** The stored document a transaction reads: the synthetic server copy
+     *  (shared between harnesses passed the same `server`), else the seed row. */
+    readDoc: async (path: string): Promise<Record<string, unknown> | undefined> => storedDoc(path),
     /** Firestore answered from the local cache (offline or blocked), not the server. */
     fromCache: false,
   };
+  function storedDoc(path: string): Record<string, unknown> | undefined {
+    return server.has(path) ? server.get(path) : (rows.find(row => row.id === path.split("/").pop()) as unknown as Record<string, unknown> | undefined);
+  }
   const changed = (a?: unknown[], b?: unknown[]) => !a || !b || a.length !== b.length || a.some((v, i) => !Object.is(v, b[i]));
   const react = {
     createContext: () => ({ Provider: "Provider" }), useContext: () => null,
@@ -58,7 +65,25 @@ export function harness({ owner = "A", rows = [child("A-child")], local = [child
       collection: (_db: unknown, path: string) => path, doc: (_db: unknown, ...parts: string[]) => parts.join("/"), deleteField: () => Symbol.for("delete"),
       getDocs: async (path: string) => { calls.reads.push(path); const rows = await transport.read(path); return { docs: rows.map(c => ({ id: c.id, data: () => c })), empty: rows.length === 0, metadata: { fromCache: transport.fromCache } }; },
       setDoc: async (path: string, data: unknown) => { calls.sets.push(path); await transport.set(path, data); },
-      updateDoc: async (path: string, data: unknown) => { calls.updates.push(path); await transport.update(path, data); },
+      updateDoc: async (path: string, data: unknown) => {
+        calls.updates.push(path); await transport.update(path, data);
+        server.set(path, { ...storedDoc(path), ...(data as Record<string, unknown>) });
+      },
+      // B-DATA-13: a synthetic transaction — reads the stored copy, commits
+      // through the same `transport.update` gate, then becomes the stored copy.
+      runTransaction: async (_db: unknown, fn: (tx: unknown) => Promise<unknown>) => {
+        const writes: [string, Record<string, unknown>][] = [];
+        const tx = {
+          get: async (path: string) => { const data = await transport.readDoc(path); return { exists: () => data !== undefined, data: () => data }; },
+          update: (path: string, data: Record<string, unknown>) => { writes.push([path, data]); },
+        };
+        const result = await fn(tx);
+        for (const [path, data] of writes) {
+          calls.updates.push(path); await transport.update(path, data);
+          server.set(path, { ...storedDoc(path), ...data });
+        }
+        return result;
+      },
     },
     "firebase/auth": { onAuthStateChanged: (_auth: unknown, fn: (user: typeof actualUser) => void) => { authListeners.add(fn); fn(actualUser); return () => authListeners.delete(fn); } },
     "../lib/firebase": { db: {}, auth, firebaseEnabled: true }, "./AuthContext": { useAuth: () => ({ user: uid ? { uid } : null, firebaseEnabled: true }) },
@@ -68,6 +93,8 @@ export function harness({ owner = "A", rows = [child("A-child")], local = [child
     "../lib/onboardingGate": { computeNeedsOnboarding: (remote: boolean, loading: boolean, profiles: ChildProfile[]) => remote && !loading && (!profiles.length || profiles.some(p => p.onboardingComplete === false)) },
     "../lib/childAge": { CLEARABLE_PROFILE_FIELDS, RETIRED_PROFILE_FIELDS },
     "../practice/goalBuilder": goalsModule,
+    // B-DATA-14: the one freshness banner's registry (real module, no I/O).
+    "../lib/syncStore": syncStoreModule,
   };
   const code = ts.transpileModule(readFileSync(new URL("./ProfileContext.tsx", import.meta.url), "utf8"), { compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React, esModuleInterop: true,
@@ -76,12 +103,13 @@ export function harness({ owner = "A", rows = [child("A-child")], local = [child
   new Function("require", "module", "exports", "localStorage", "sessionStorage", "fetch", code)(
     (name: string) => { if (!(name in imports)) throw Error("Unmocked boundary: " + name); return imports[name]; }, module, module.exports,
     { ...storage(localStore), getItem: (key: string) => { calls.localReads.push(key); return localStore.get(key) ?? null; } }, storage(sessionStore),
-    async (url: string, opts: RequestInit) => { calls.fetch.push({ url, opts }); return { ok: true }; },
+    // B-DATA-15: the server issues new child ids (synthetic, sequential here).
+    async (url: string, opts: RequestInit) => { calls.fetch.push({ url, opts }); return { ok: true, json: async () => (url === "/api/onboarding/child-id" ? { childId: `child-issued-${++issuedIds}` } : {}) }; },
   );
   const render = () => { cursor = 0; dirty = false; value = module.exports.ProfileProvider({ children: null }); return value; };
   const effects = () => { while (queue.length) queue.shift()!(); };
   const flush = async () => { for (let n = 0; n < 25; n++) { await Promise.resolve(); if (dirty) render(); effects(); } return value; };
   render();
-  return { get value() { return value; }, get actualUser() { return actualUser; }, transport, calls, localStore, sessionStore, effects, flush, setActualUser,
+  return { get value() { return value; }, get actualUser() { return actualUser; }, transport, calls, server, localStore, sessionStore, effects, flush, setActualUser,
     setOwner(next: string) { uid = next; setActualUser(next ? { uid: next } : null); render(); effects(); } };
 }

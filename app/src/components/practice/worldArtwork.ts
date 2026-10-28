@@ -4,7 +4,7 @@
  * Storybook provenance/approval: docs/design/world-art-v2.json. */
 import { SNEAK_FREEZE_WORLD } from "../kidmode/kidWorlds";
 import { STUDIO_V2_GAME_WORLDS } from "../kidmode/studioGameWorlds";
-import { KID_THEME_TILE_SHAPE, KID_WORLD_TILE_IDS, kidArt, kidArtSrcSet, storyCoverKey, worldTileKey, type KidArt, type KidThemeId, type KidWorldTileId } from "../../lib/kidThemeManifest";
+import { KID_THEME_TILE_SHAPE, KID_WORLD_TILE_IDS, kidArt, kidArtSrcSet, storyCoverArt, worldTileKey, type KidArt, type KidThemeId, type KidWorldTileId } from "../../lib/kidThemeManifest";
 export interface WorldArtwork { src: string; srcSet: string; objectPosition: string; provenanceId: string; hasHero: boolean }
 // R-2b: portrait themes render tiles/cards ≤ ~300 css px, so they take the 480
 // derivative only (the 1024 file is for full-bleed pages, R-4).
@@ -18,7 +18,7 @@ export const WORLD_ARTWORK:Record<KidWorldTileId,WorldArtwork>=Object.fromEntrie
 export function worldArtwork(worldId:string,theme:KidThemeId):WorldArtwork|undefined {
  // B-KID-42/KA-28: `story-<id>` (the Tonight banner, the story cards) = that
  // story's own cover in this theme, or nothing (callers keep today's art).
- if(worldId.startsWith("story-"))return toArtwork(kidArt(theme,storyCoverKey(worldId.slice("story-".length))),theme);
+ if(worldId.startsWith("story-"))return toArtwork(storyCoverArt(theme,worldId.slice("story-".length)),theme);
  // B-GAME-15a: the Sneak & Freeze tile is a manifest slot outside the gating list (film-3D only).
  if(worldId===SNEAK_FREEZE_WORLD.worldId)return adapt(theme,worldId);
  // V2 art resolves independently; the legacy Parent picker/gating list stays fixed.

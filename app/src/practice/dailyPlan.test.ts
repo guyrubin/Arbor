@@ -21,6 +21,7 @@ import {
   buildGoalObservation,
   estimateLoggedDayCount,
   isWeekendDate,
+  whyTemplateLint,
 } from "./dailyPlan";
 import { screenModelOutputLexical } from "../safety/outputScreen";
 import type { ActiveGoal } from "./goalBuilder";
@@ -500,5 +501,70 @@ describe("no progress-aggregation code path (gate requiredFix #3)", () => {
     for (const field of forbidden) {
       expect(keys, `DailyPlan must not have field "${field}"`).not.toContain(field);
     }
+  });
+});
+
+// ── B-PLAY-25: the why-line in the reader's language ─────────────────────────
+
+describe("B-PLAY-25 — Hebrew why-lines", () => {
+  const variants = [
+    { goalLabel: "לתת שם לרגשות גדולים ולהתמודד איתם", childName: "נועה", matchedInterest: "רכבות", isWeekend: false, sparse: false },
+    { goalLabel: "לתת שם לרגשות גדולים ולהתמודד איתם", childName: "נועה", matchedInterest: null, isWeekend: false, sparse: false },
+    { goalLabel: null, childName: "נועה", matchedInterest: "חלל", isWeekend: false, sparse: false },
+    { goalLabel: null, childName: "נועה", matchedInterest: null, isWeekend: false, sparse: false },
+    { goalLabel: "שינה רגועה", childName: "נועה", matchedInterest: null, isWeekend: true, sparse: false },
+    { goalLabel: null, childName: "נועה", matchedInterest: null, isWeekend: true, sparse: false },
+    { goalLabel: null, childName: "נועה", matchedInterest: null, isWeekend: false, sparse: true },
+  ];
+
+  it("every variant is Hebrew, fully interpolated, screened clean, and keeps the source tail", () => {
+    for (const v of variants) {
+      const { whyLine, wasFlagged } = assembleWhyLine({ ...v, lang: "he" });
+      expect(wasFlagged, whyLine).toBe(false);
+      expect(screenModelOutputLexical(whyLine).flagged, whyLine).toBe(false);
+      expect(whyLine).not.toMatch(/[{}]/);
+      expect(whyLine.replace("CDC/AAP/ASHA/WHO", "")).not.toMatch(/[A-Za-z]/);
+      expect(whyLine).toContain("מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.");
+      if (v.goalLabel && !v.sparse) expect(whyLine).toContain(v.goalLabel);
+      if (v.matchedInterest && !v.goalLabel) expect(whyLine).toContain(v.matchedInterest);
+    }
+  });
+
+  it("buildDailyPlan names the goal by its Hebrew tile label, not the stored English one", () => {
+    const plan = buildDailyPlan({ picks: [MOCK_SCORED_ACTIVITY], activeGoals: [MOCK_GOAL], childName: "נועה", loggedDayCount: 10, nowMs: new Date("2026-06-24T09:00:00Z").getTime(), lang: "he" })!;
+    expect(plan.whyLine).toContain("לתת שם לרגשות גדולים ולהתמודד איתם");
+    expect(plan.whyLine).not.toContain("Naming and managing");
+  });
+
+  it("a flagged Hebrew line falls back to the Hebrew sparse line", () => {
+    const { whyLine, wasFlagged } = assembleWhyLine({ goalLabel: "יש לה אוטיזם", childName: "נועה", matchedInterest: null, isWeekend: false, sparse: false, lang: "he" });
+    expect(wasFlagged).toBe(true);
+    expect(whyLine).toBe(assembleWhyLine({ goalLabel: null, childName: "נועה", matchedInterest: null, isWeekend: false, sparse: true, lang: "he" }).whyLine);
+    expect(whyLine).not.toContain("אוטיזם");
+  });
+});
+
+describe("B-PLAY-25 (critic r1) — the module-load template lint covers the Hebrew table", () => {
+  it("every Hebrew variant passes the Hebrew effect-verb and comprehension lint", () => {
+    const lines = [
+      assembleWhyLine({ goalLabel: "תורות ושיתוף", childName: "נועה", matchedInterest: "רכבות", isWeekend: false, sparse: false, lang: "he" }).whyLine,
+      assembleWhyLine({ goalLabel: null, childName: "נועה", matchedInterest: null, isWeekend: true, sparse: false, lang: "he" }).whyLine,
+      assembleWhyLine({ goalLabel: null, childName: "נועה", matchedInterest: null, isWeekend: false, sparse: true, lang: "he" }).whyLine,
+    ];
+    for (const line of lines) expect(whyTemplateLint("he", line), line).toBeNull();
+    // The shared firewall tail is not a false positive ("התפתחותית" is not "מפתח").
+    expect(whyTemplateLint("he", "מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.")).toBeNull();
+  });
+
+  it("NEGATIVE CONTROL — Hebrew effect verbs and comprehension claims on the child are caught, with prefixes and endings", () => {
+    for (const bad of ["המשחק משפר את הריכוז של {name}", "פעילות שבונה ביטחון", "זה מחזקת את {name}", "כך מפתחים שפה", "תרגול שמרגיע את {name}"]) {
+      expect(whyTemplateLint("he", bad), bad).toBe("effect-verb");
+    }
+    for (const bad of ["{name} מבינה יותר", "{name} עוקבת אחר הוראות"]) {
+      expect(whyTemplateLint("he", bad), bad).toBe("comprehension");
+    }
+    // The English lint is unchanged.
+    expect(whyTemplateLint("en", "This game builds attention.")).toBe("effect-verb");
+    expect(whyTemplateLint("en", "{name} follows directions now.")).toBe("comprehension");
   });
 });

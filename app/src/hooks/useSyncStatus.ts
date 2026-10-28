@@ -37,6 +37,16 @@ export type SyncStatus = {
   retry: () => void;
 };
 
+/**
+ * B-DATA-14: browser connectivity alone, live via the online/offline events —
+ * for a "saved on this phone" receipt that must switch from "…when you're back
+ * online" to "Still sending…" the moment the phone reconnects. No server
+ * render exists in this app, so the snapshot is read the same way everywhere.
+ */
+export function useOnline(): boolean {
+  return useSyncExternalStore(subscribeOnline, getOnline, getOnline);
+}
+
 export function useSyncStatus(): SyncStatus {
   const online = useSyncExternalStore(subscribeOnline, getOnline, () => true);
   const snap: SyncSnapshot = useSyncExternalStore(subscribeSyncStatus, getSyncSnapshot, getSyncSnapshot);

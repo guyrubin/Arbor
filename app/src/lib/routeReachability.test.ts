@@ -99,7 +99,7 @@ export function retiredRouteIsReachable(
  * tools, which the F-CHILD-1 brief removes).
  */
 export const PENDING_HOME: Readonly<Record<string, string>> = {
-  copilot: "My child's record tools held its last door (removed by F-CHILD-1); EXTRA-TALK sends #/copilot to the Talk panel, and the brief keeps the route live until then.",
+  // B-GROWTH-22: copilot left — #/copilot is retired to development (RETIRED_ROUTES), its home.
 };
 
 /** Is `route` a route row in the real search index (title in EN and HE)? */

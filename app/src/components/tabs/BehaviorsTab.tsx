@@ -6,7 +6,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { cardCls } from "../ui/kit";
 import PatternInsights from "../behaviors/PatternInsights";
 import HardMomentsSection from "../behaviors/HardMomentsSection";
-import { heldRowsSince } from "../behaviors/hardMomentLastTime";
+import { heldRowsSince, scriptCard } from "../behaviors/hardMomentLastTime";
 import QuickCaptureBar from "../overview/QuickCaptureBar";
 import { availableHardMomentCards, matchToRecentBehaviors } from "../../content/selectCards";
 import { locText, recentBehaviorTypes } from "../../content/hardMomentSurface";
@@ -77,7 +77,8 @@ export default function BehaviorsTab() {
   // P1-NEXTLEVEL critic r2 (one warm moment per screen): while the hard-moment
   // section leads with a held "Last time, this helped" row (peach + editorial
   // serif), the capture card's last-words line is quiet body text.
-  const heldRowShown = heldRowsSince(actionLoop ?? [], 0).length > 0;
+  // B-DATA-16: a hard moment logged with a guide's words leads that section too.
+  const heldRowShown = heldRowsSince(actionLoop ?? [], 0).length > 0 || behaviorLogs.some((l) => !!scriptCard(l.coRegulationScript));
   const warmLine = useMemo((): { kind: "quote"; words: string; day: string } | { kind: "guide"; guide: string } | null => {
     // "Last time you wrote" quotes only a row the parent wrote: never a
     // conversation proposal, an Arbor draft or a co-parent's note

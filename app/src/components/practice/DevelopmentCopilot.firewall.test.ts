@@ -20,10 +20,13 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { en as fpEn, he as fpHe } from "../../lib/i18nElevation/fullpicture";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const copilotSrc = readFileSync(path.join(here, "DevelopmentCopilot.tsx"), "utf8");
+/* B-GROWTH-22: the Full Picture leaf (DevelopmentCopilot.tsx) is deleted —
+   #/copilot retired into My child — so the per-file "source is clean" and
+   "zero-regression" blocks that read it have no subject left. The negative
+   controls, the Growth-leaf scans and the repo-wide TrustSafetyBar scan stay;
+   the leaf's absence is guarded below. */
 // Parity 9 Oct: #/development is the child portrait (with its watch row and
 // keepsake disclosure); the Growth hub file is gone.
 // v3 F-CHILD-1: the page is now the Milestones pill (portrait cards + the areas
@@ -94,62 +97,6 @@ describe("1.7 firewall guard — regexes still recognize the OLD banned mechanis
   });
 });
 
-describe("1.7 firewall guard — DevelopmentCopilot.tsx source is clean", () => {
-  it("has no Discuss/Monitor verdict tags", () => {
-    expect(copilotSrc).not.toMatch(B1_LEVEL_TAGS);
-  });
-  it("has no watch-level conditional driving a graded tone", () => {
-    expect(copilotSrc).not.toMatch(B2_LEVEL_TONE);
-  });
-  it("has no dashboardRisk grade and no graded risk union type", () => {
-    expect(copilotSrc).not.toMatch(B3_DASHBOARD_RISK);
-    expect(copilotSrc).not.toMatch(B5_RISK_UNION);
-  });
-  it("never feeds TrustSafetyBar a risk prop (constant posture tone)", () => {
-    expect(copilotSrc).not.toMatch(B4_TRUSTBAR_RISK);
-    // …but the bar itself must still be mounted (posture text stays).
-    expect(copilotSrc).toContain("<TrustSafetyBar");
-  });
-  it("renders no band value, watch level, score value, or trend helper (GD-10)", () => {
-    expect(copilotSrc).not.toMatch(B6_SCORE_RENDER);
-    expect(copilotSrc).not.toMatch(B7_BAND_OR_LEVEL_RENDER);
-  });
-  it("resolves its copy from i18nElevation/fullpicture (positive control)", () => {
-    expect(copilotSrc).toContain("i18nElevation/fullpicture");
-    expect(copilotSrc).toContain("elev.fullpicture.");
-  });
-});
-
-describe("1.7 zero-regression — every capability stays reachable, reframed", () => {
-  it("B-CAREPRO-34: the escalation signal reads the parent's watch answers only, never the retired profile verdict", () => {
-    expect(copilotSrc).toContain('const escalationSignal = watch.some((w) => w.level === "discuss");');
-    expect(copilotSrc).not.toMatch(/childProfile\.riskLevel/);
-    // NEGATIVE CONTROL: the pre-change read is what the rule catches.
-    expect(/childProfile\.riskLevel/.test('childProfile.riskLevel !== "Low" || watch.some((w) => w.level === "discuss")')).toBe(true);
-  });
-  it("keeps the escalate path (B-CAREPRO-19: to Consult, not the retired directory), gated on the internal signal only", () => {
-    expect(copilotSrc).toContain('setActiveTab("consult")');
-    expect(copilotSrc).not.toContain('setActiveTab("find-pro")');
-    expect(copilotSrc).toContain("escalationSignal");
-  });
-  it("keeps all sections: domain picture, weekly focus, conversation rows, history, pulse, clinician summary", () => {
-    // R22 (Builder L): the four section headings moved from English literals
-    // to keys (growthTruth, EN + HE) — the capability claim is the same, and
-    // it is now made against the mechanism that renders in both languages.
-    expect(copilotSrc).toContain("elev.growthTruth.copilot.domains.title");
-    expect(copilotSrc).toContain("elev.growthTruth.copilot.focus.title");
-    expect(copilotSrc).toContain("elev.fullpicture.watch.title");
-    expect(copilotSrc).toContain("elev.growthTruth.copilot.history.title");
-    expect(copilotSrc).toContain("elev.growthTruth.copilot.share.title");
-    expect(copilotSrc).toContain('setActiveTab("reports")');
-    expect(copilotSrc).toContain("copilot_summary_copied");
-  });
-  it("keeps the observational row register: neutral lav chips + observation counts", () => {
-    expect(copilotSrc).toContain('Chip tone="lav"');
-    expect(copilotSrc).toContain("elev.fullpicture.watch.row.");
-  });
-});
-
 describe("1.7 mount — the Growth leaf (My child, the Milestones pill)", () => {
   /* B-GROWTH-03 — three foreign cards went to the homes that own their job:
      the Growth SpineRibbon (-> Academy) is removed (the Journal ribbon keeps
@@ -171,18 +118,9 @@ describe("1.7 mount — the Growth leaf (My child, the Milestones pill)", () => 
     expect(devTabSrc).not.toContain('setActiveTab("copilot")');
     expect(devTabSrc).not.toMatch(/goToRoute\(\s*"copilot"/);
   });
-});
-
-describe("1.7 i18n — fullpicture module en/he parity", () => {
-  it("has identical key sets in both languages, all elev.fullpicture.*-namespaced", () => {
-    const enKeys = Object.keys(fpEn).sort();
-    const heKeys = Object.keys(fpHe).sort();
-    expect(enKeys).toEqual(heKeys);
-    for (const k of enKeys) expect(k.startsWith("elev.fullpicture.")).toBe(true);
-  });
-  it("keeps the surface title in parent language in both registers", () => {
-    expect(fpEn["elev.fullpicture.title"]).toBe("The Full Picture");
-    expect(fpHe["elev.fullpicture.title"]).toBe("התמונה המלאה");
+  it("B-GROWTH-22: the Full Picture leaf and its dictionary are deleted (nothing left to grade)", () => {
+    expect(() => statSync(path.join(here, "DevelopmentCopilot.tsx"))).toThrow();
+    expect(() => statSync(path.join(here, "..", "..", "lib", "i18nElevation", "fullpicture.ts"))).toThrow();
   });
 });
 
@@ -228,7 +166,8 @@ describe("GP-05 repo-wide — no <TrustSafetyBar> call site passes a risk expres
   it("scans a non-trivial number of call sites (the walker is not vacuous)", () => {
     // Parity 9 Oct: 6 -> 5 — sections/ScreeningSheet.tsx (dead since the
     // companion rewrite, deleted with it) carried the sixth call site.
-    expect(sites.length).toBeGreaterThanOrEqual(5);
+    // B-GROWTH-22: 5 -> 4 — the deleted Full Picture leaf carried the fifth.
+    expect(sites.length).toBeGreaterThanOrEqual(4);
     expect(sites.some((s) => s.file.endsWith("CoachTab.tsx"))).toBe(true);
   });
 

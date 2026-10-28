@@ -23,12 +23,15 @@ import { useLanguage } from "../../context/LanguageContext";
 import { composeRequestOf, composerProblems, composerReducer, compositionOf, initialComposer, redLinesOf, slotMenu, type ComposerState } from "../../lib/plans/composer";
 import { composePlan, phraseOwnStep, PlanApiError } from "../../lib/plans/planApi";
 import { planString } from "../../lib/plans/planStrings";
+import { useAutoPaint } from "../../lib/plans/useAutoPaint";
+import type { AutoPaintState } from "../../lib/plans/autoPaint";
 import { trackPlanApproved } from "../../lib/kpiEvents";
 import { composePlanBook, fillStepLine, OWN_STEP, PLAN_TIMES, type OwnStepOrigin, type PlanTime } from "../../lib/library/plans/composePlanBook";
 import type { PatternDef } from "../../lib/library/plans/patterns";
 import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import type { BookLang, BookReaderChild } from "../../lib/library/types";
 import { heGender } from "../../lib/library/bookText";
+import { screenForImmediateEscalation } from "../../safety/escalation";
 
 const CARD: React.CSSProperties = { background: "var(--arbor-paper-elevated)", borderRadius: "var(--r-lg)", boxShadow: "var(--arbor-shadow-card)" };
 const PRIMARY: React.CSSProperties = { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }; // solid accent: the gradient is each surface's one primaryMove (primaryMove.gradient.test)
@@ -38,7 +41,8 @@ const BTN = "inline-flex min-h-11 items-center justify-center gap-2 rounded-full
 
 export interface PlanComposerProps {
   def: PatternDef;
-  child: BookReaderChild;
+  /** B-KID-168: `nameLatin` lets the English voice say the name in English letters. */
+  child: BookReaderChild & { nameLatin?: string | null };
   /** Persist the approved document (the `books` collection seam). */
   onSaved: (doc: PlanBookDoc) => Promise<void> | void;
   onClose: () => void;
@@ -46,11 +50,17 @@ export interface PlanComposerProps {
   onSafety?: () => void;
   /** B-BOOK-79 door (b): the parent-only printed copy, offered once the plan is saved. */
   onPrint?: (doc: PlanBookDoc) => void;
+  /** S1 4(b): the server's `admin` flag — an owner opening a pattern whose
+   *  shared plates are not all painted starts the paint in the background
+   *  (lib/plans/autoPaint). A family never passes true. */
+  ownerPaint?: boolean;
   /** Test seam. */
   initialState?: ComposerState;
+  /** Test seam: the progress line's initial state. */
+  initialPaint?: AutoPaintState;
 }
 
-export default function PlanComposer({ def, child, onSaved, onClose, onSafety, onPrint, initialState }: PlanComposerProps) {
+export default function PlanComposer({ def, child, onSaved, onClose, onSafety, onPrint, ownerPaint = false, initialState, initialPaint }: PlanComposerProps) {
   const { uiLang } = useLanguage();
   const lang: BookLang = uiLang === "he" ? "he" : "en";
   const s = (key: Parameters<typeof planString>[0], vars?: Record<string, string | number>) => planString(key, lang, vars);
@@ -62,6 +72,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
   const [savedDoc, setSavedDoc] = useState<PlanBookDoc | null>(null);
   const title = def.title[lang];
   const dir = lang === "he" ? "rtl" : "ltr";
+  const paint = useAutoPaint(def.id, ownerPaint, initialPaint);
 
   const approve = async () => {
     if (saving || problems.length) return;
@@ -71,6 +82,13 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
       const { doc } = await composePlan(child.id, composeRequestOf(state));
       await onSaved(doc);
       setSavedDoc(doc);
+      // PR C (Everyday Plans): the parent's approval is the explicit act that
+      // starts the plan book's narration in the child's name (when the child's
+      // plan sheet is complete). Parent side only; the approved document rides
+      // along so the run does not wait for the collection to settle.
+      void import("../kidmode/hero/buildPlanNarration")
+        .then((m) => m.ensurePlanNarration(child, m.narrationFolder(doc.lang, child.gender), { planDoc: doc }))
+        .catch(() => undefined);
       // BD-54: the first useful action — ids only (pattern, language, own-step origin).
       trackPlanApproved({ pattern: def.id, lang, ownStep: state.ownStep ? (state.ownStep.origin ?? "parent") : "none" });
       dispatch({ type: "approved" });
@@ -90,6 +108,12 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
         </button>
         <p className="arbor-type-kicker" style={{ color: "var(--arbor-muted)" }}>{s("stage.door.kicker")}</p>
       </header>
+      {/* S1 4(b): owner only — the shared plates paint themselves in the background; no button. */}
+      {ownerPaint && paint.painting && (
+        <p role="status" className="flex items-center gap-2 t-sm" style={{ color: "var(--arbor-muted)" }} data-plan-painting={paint.done}>
+          <Icon name="brush" size={16} />{s("paint.progress", { done: paint.done, total: paint.total })}
+        </p>
+      )}
 
       {state.stage === "door" && (
         <section style={CARD} className="p-5" data-plan-stage="door">
@@ -139,7 +163,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
         );
       })()}
 
-      {state.stage === "steps" && <StepsStage def={def} lang={lang} childName={name} state={state} dispatch={dispatch} problems={problems.length} />}
+      {state.stage === "steps" && <StepsStage def={def} lang={lang} childName={name} state={state} dispatch={dispatch} problems={problems.length} onSafety={onSafety} />}
 
       {state.stage === "the-box" && (
         <section style={CARD} className="p-5" data-plan-stage="the-box">
@@ -197,7 +221,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
   );
 }
 
-function StepsStage({ def, lang, childName, state, dispatch, problems }: { def: PatternDef; lang: BookLang; childName: string; state: ComposerState; dispatch: React.Dispatch<Parameters<typeof composerReducer>[2]>; problems: number }) {
+function StepsStage({ def, lang, childName, state, dispatch, problems, onSafety }: { def: PatternDef; lang: BookLang; childName: string; state: ComposerState; dispatch: React.Dispatch<Parameters<typeof composerReducer>[2]>; problems: number; onSafety?: () => void }) {
   const s = (key: Parameters<typeof planString>[0], vars?: Record<string, string | number>) => planString(key, lang, vars);
   const [ownSlot, setOwnSlot] = useState<1 | 2 | 3>(2);
   const [ownText, setOwnText] = useState("");
@@ -205,14 +229,23 @@ function StepsStage({ def, lang, childName, state, dispatch, problems }: { def: 
   const [ownOrigin, setOwnOrigin] = useState<OwnStepOrigin>("parent");
   const [phrasing, setPhrasing] = useState(false);
   const [refused, setRefused] = useState(false);
+  // B-GA-05 (28 Oct): crisis language in the parent's words never becomes a
+  // plan step and never reads as "could not phrase". The same screen the server
+  // runs fires here first (no request), and the server's 409 contract (lib/api
+  // DUX-032) is honoured if it arrives anyway; the notice carries the one door
+  // to Help and safety, where the helplines live.
+  const [crisis, setCrisis] = useState(false);
   const phrase = async () => {
     if (phrasing || ownText.trim().length < 3) return;
-    setPhrasing(true);
     setRefused(false);
+    if (screenForImmediateEscalation({ message: ownText.trim() })) { setCrisis(true); return; }
+    setCrisis(false);
+    setPhrasing(true);
     try {
       const { step } = await phraseOwnStep({ pattern: def.id, slot: ownSlot, lang, text: ownText.trim(), origin: ownOrigin });
       dispatch({ type: "ownStepPhrased", step });
     } catch (e) {
+      if (e instanceof PlanApiError && e.status === 409) { setCrisis(true); return; }
       setRefused(!(e instanceof PlanApiError) || e.status !== 401);
     } finally {
       setPhrasing(false);
@@ -286,6 +319,12 @@ function StepsStage({ def, lang, childName, state, dispatch, problems }: { def: 
             <textarea className="min-h-11 flex-1 p-3 t-base" style={FIELD} rows={2} maxLength={240} value={ownText} data-plan-own-text="" dir="auto" onChange={(e) => setOwnText(e.target.value)} />
           </div>
           {refused && <p role="alert" className="mt-2 t-sm" style={{ color: "var(--arbor-ink)" }}>{s("stage.steps.ownRefused")}</p>}
+          {crisis && (
+            <div role="alert" className="mt-2" data-plan-own-crisis="">
+              <p className="t-sm" style={{ color: "var(--arbor-ink)" }}>{s("stage.steps.ownCrisis")}</p>
+              {onSafety && <button type="button" className={`${BTN} mt-2`} style={QUIET} onClick={onSafety}><Icon name="health_and_safety" size={18} />{s("stage.steps.ownCrisisDoor")}</button>}
+            </div>
+          )}
           <div className="mt-2"><button type="button" className={BTN} style={QUIET} disabled={phrasing || ownText.trim().length < 3} data-plan-own-phrase="" onClick={() => void phrase()}><Icon name="auto_awesome" size={18} />{phrasing ? s("stage.steps.ownPhrasing") : s("stage.steps.ownPhrase")}</button></div>
         </div>
       )}

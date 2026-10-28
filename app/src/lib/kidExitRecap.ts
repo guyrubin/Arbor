@@ -130,6 +130,22 @@ export function kidExitRecapLine(
   });
 }
 
+/**
+ * B-BOOK-47: the exit line with the book finished in this session — its title
+ * among the parts, then its AUTHORED ask-after question. Parent register (the
+ * exit strip); the book comes from the read ledger, which holds no path or
+ * choice, so the line can never name the one the child took.
+ */
+export function kidExitRecapWithBook(
+  counts: KidActivityCounts,
+  t: Translate,
+  childName: string,
+  book: { title: string; question: string } | null,
+): string | null {
+  const strip = kidExitRecapLine(counts, t, childName, book ? { extraParts: [t("elev.learnCare.kidExit.book", { title: book.title })] } : {});
+  return strip && book?.question ? `${strip}. ${t("elev.learnCare.kidExit.askAfter", { question: book.question })}` : strip;
+}
+
 /** B-PLAY-05: the fallback window when no Kid Mode session is known (7 days). */
 export const SINCE_LAST_PLAY_FALLBACK_MS = 7 * 24 * 60 * 60 * 1000;
 
