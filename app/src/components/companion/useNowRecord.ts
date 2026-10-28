@@ -37,7 +37,9 @@ export function useNowRecord(now: Date) {
   const saving = !saidOwnsRow && (confirming || (ownAttempt?.saving ?? false) || shared?.status === "saving");
   const error = !saidOwnsRow && ((ownAttempt?.error ?? false) || shared?.status === "failed");
   const answer = async (value: FromRecordAnswer) => {
-    if (!opener || receipt || saving || lock.current === lease || settled.current === lease || current.current !== lease || !mounted.current) return;
+    // B-DATA-14: an answer the server rejected after its receipt can be given again.
+    const retryable = shared?.status === "failed";
+    if (!opener || receipt || saving || lock.current === lease || (settled.current === lease && !retryable) || current.current !== lease || !mounted.current) return;
     lock.current = lease;
     const original = opener;
     const at = new Date(now.getTime());

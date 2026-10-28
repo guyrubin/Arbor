@@ -582,6 +582,11 @@ function useArborState() {
     const write = actionLoopCol.upsert(entry, { awaitServer: true, offline: {
       onQueued: () => { queued = true; },
       onSynced: () => setRecordAnswerWrites(rows => rows[key]?.status === "queued" ? { ...rows, [key]: { ...rows[key], status: "saved" } } : rows),
+      // Rejected after the receipt: the question comes back with its error.
+      onRejected: () => {
+        recordWritesRef.current.set(key, null);
+        setRecordAnswerWrites(rows => rows[key]?.status === "queued" ? { ...rows, [key]: { opener, status: "failed" } } : rows);
+      },
     } })
       .then(() => {
         try { track("today_record_answer", { kind: opener.kind, answer }); } catch { /* noop */ }

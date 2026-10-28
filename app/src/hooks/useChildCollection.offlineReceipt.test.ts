@@ -13,6 +13,7 @@ import type { ChildCollection } from "./useChildCollection";
 import type { ActionLoopEntry } from "../actionLoop/model";
 import { settleOrQueue, QUEUED_ACK_MS } from "../lib/firestoreWrite";
 import { sameLocalHistoryRows } from "../lib/historyWindow";
+import * as syncStore from "../lib/syncStore";
 
 function collectionHarness() {
   const write = vi.fn<(path: string, row: ActionLoopEntry) => Promise<void>>().mockResolvedValue();
@@ -24,7 +25,7 @@ function collectionHarness() {
     react,
     "firebase/firestore": { doc: (_db: unknown, ...parts: string[]) => parts.join("/"), setDoc: (path: string, row: ActionLoopEntry) => write(path, row) },
     "../lib/firebase": { db: {}, firebaseEnabled: true }, "../context/AuthContext": { useAuth: () => ({ user: { uid: "owner" } }) },
-    "../lib/syncStore": {}, "../lib/firestoreWrite": { settleOrQueue }, "../lib/historyWindow": { sameLocalHistoryRows },
+    "../lib/syncStore": syncStore, "../lib/firestoreWrite": { settleOrQueue }, "../lib/historyWindow": { sameLocalHistoryRows },
   };
   const code = ts.transpileModule(readFileSync(new URL("./useChildCollection.ts", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const module = { exports: {} as { useChildCollection: (child: string, name: string) => ChildCollection<ActionLoopEntry> } };
@@ -75,6 +76,18 @@ describe("B-DATA-14 — a receipt write answers in bounded time", () => {
     const saving = expect(h.collection.upsert(row, { awaitServer: true, offline: { onQueued } })).rejects.toThrow("permission-denied");
     pending.reject(new Error("permission-denied")); await saving;
     expect(onQueued).not.toHaveBeenCalled();
+  });
+
+  it("a rejection AFTER the receipt is never swallowed: the sync banner reports it and onRejected takes the receipt back", async () => {
+    syncStore.__resetSyncStoreForTests();
+    const h = collectionHarness(), pending = deferred(); h.write.mockReturnValue(pending.promise);
+    vi.stubGlobal("navigator", { onLine: false });
+    const onQueued = vi.fn(), onSynced = vi.fn(), onRejected = vi.fn();
+    await h.collection.upsert(row, { awaitServer: true, offline: { onQueued, onSynced, onRejected } });
+    expect(onQueued).toHaveBeenCalledOnce();
+    pending.reject(new Error("permission-denied")); await vi.advanceTimersByTimeAsync(0);
+    expect(onRejected).toHaveBeenCalledOnce(); expect(onSynced).not.toHaveBeenCalled();
+    expect(syncStore.getSyncSnapshot().errors).toContainEqual({ name: "actionLoops:write", childId: "child-a" });
   });
 
   it("without `offline`, an awaited receipt still waits for the server (unchanged callers)", async () => {

@@ -19,7 +19,7 @@ describe("actual record write seam", () => {
     const one = h.call(opener, "easier", at), two = h.call(opener, "hard_again", at);
     expect(one).toBeInstanceOf(Promise); expect(h.actionLoopCol.upsert).toHaveBeenCalledTimes(1);
     // B-DATA-14: the answer takes the bounded offline answer (kept on this phone).
-    expect(h.actionLoopCol.upsert).toHaveBeenCalledWith(expect.any(Object), { awaitServer: true, offline: { onQueued: expect.any(Function), onSynced: expect.any(Function) } });
+    expect(h.actionLoopCol.upsert).toHaveBeenCalledWith(expect.any(Object), { awaitServer: true, offline: { onQueued: expect.any(Function), onSynced: expect.any(Function), onRejected: expect.any(Function) } });
     expect(h.track).not.toHaveBeenCalled(); resolve(); await Promise.all([one, two]);
     expect(h.track).toHaveBeenCalledTimes(1); await h.call(opener, "other", at); expect(h.actionLoopCol.upsert).toHaveBeenCalledTimes(1);
   });
@@ -47,6 +47,20 @@ describe("actual record write seam", () => {
     onSynced();
     rows = (h.setRecordAnswerWrites.mock.calls.at(-1)![0] as (r: Record<string, any>) => Record<string, any>)(rows);
     expect(rows[key].status).toBe("saved");
+  });
+  it("B-DATA-14: a rejection after the kept-on-this-phone receipt turns the answer 'failed' and frees it for retry", async () => {
+    const upsert = vi.fn(async (_row: unknown, options: { offline: { onQueued: () => void; onSynced: () => void; onRejected: () => void } }) => { options.offline.onQueued(); });
+    const h = setup(upsert as any); const at = new Date(2026, 9, 12, 8);
+    await h.call(opener, "easier", at);
+    const key = fromRecordRowId("a", at);
+    let rows: Record<string, any> = {};
+    for (const [update] of h.setRecordAnswerWrites.mock.calls) rows = (update as (r: Record<string, any>) => Record<string, any>)(rows);
+    expect(rows[key].status).toBe("queued");
+    (upsert.mock.calls[0][1] as { offline: { onRejected: () => void } }).offline.onRejected();
+    rows = (h.setRecordAnswerWrites.mock.calls.at(-1)![0] as (r: Record<string, any>) => Record<string, any>)(rows);
+    expect(rows[key].status).toBe("failed");
+    expect(h.recordWritesRef.current.get(key)).toBeNull();
+    await h.call(opener, "easier", at); expect(upsert).toHaveBeenCalledTimes(2);
   });
   it("will not execute a callback captured for an old child", async () => {
     const h = setup(); h.currentChildRef.current = "b";

@@ -170,6 +170,13 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     const offline = {
       onQueued: () => { queued = true; },
       onSynced: () => { if (outcomeMounted.current) setReceiptAction(previous => previous?.action.id === target.id && previous.queued ? { ...previous, queued: false } : previous); },
+      // Rejected after the receipt: take it back and offer this answer again.
+      onRejected: () => {
+        completedAction.current.delete(target.id);
+        if (!outcomeMounted.current || currentOutcomeScope.current !== scopeLease) return;
+        setReceiptAction(previous => previous?.action.id === target.id ? null : previous);
+        setRetryAction({ scope: scopeLease, action: target }); setSaveError(true);
+      },
     };
     try {
       const saved = typeof outcome === "object"

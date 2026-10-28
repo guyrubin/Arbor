@@ -111,6 +111,15 @@ describe("record answer lifecycle", () => {
     h.shared[row.id] = { opener: first.opener, status: "saved", entry: row };
     expect(render()).toMatchObject({ queued: false, receipt: { reflection: "easier" } });
   });
+  it("B-DATA-14: an answer the server rejected after its receipt shows its error and can be given again", async () => {
+    const first = render(); const opener = first.opener!;
+    await first.answer("easier"); expect(h.write).toHaveBeenCalledOnce();
+    expect(render().receipt).not.toBeNull();
+    h.shared[fromRecordRowId("a", now)] = { opener, status: "failed" };
+    const after = render();
+    expect(after).toMatchObject({ receipt: null, error: true, opener: expect.objectContaining({ key: opener.key }) });
+    await after.answer("easier"); expect(h.write).toHaveBeenCalledTimes(2);
+  });
   it("re-entry or a language remount keeps an in-flight or failed shared answer honest", () => {
     const first = render(); const row = fromRecordEntry(first.opener!, "easier", "a", now);
     h.loop = [row]; h.shared[row.id] = { opener: first.opener, status: "saving" };
