@@ -13,7 +13,7 @@ import CompanionConsentReview from "./CompanionConsentReview";
 import { COMPANION_CONSENT_COPY } from "./companionConsentCopy";
 import "./companionComposer.css";
 
-export default function CompanionComposer({ childId, conversationRevision, language, value, onChange, busy, visible, onSend, onVoice, voiceActive, voiceLabel, onKeep, onAttachmentsChange, onHardMoment, footAction }: {
+export default function CompanionComposer({ childId, conversationRevision, language, value, onChange: setDraft, busy, visible, onSend, onVoice, voiceActive, voiceLabel, onKeep, onAttachmentsChange, onHardMoment, footAction }: {
   childId: string; conversationRevision: number; language: "en" | "he"; value: string; onChange: (value: string) => void;
   busy: boolean; visible: boolean; onSend: (prompt?: string, options?: { attachments?: ComposerAttachment[] }) => Promise<boolean | undefined>;
   onVoice: () => void; voiceActive: boolean; voiceLabel: string;
@@ -61,12 +61,12 @@ export default function CompanionComposer({ childId, conversationRevision, langu
   textRef.current = value;
   // B-ASKJB-43: who wrote the draft, by the capture sheet's own chain
   // (lib/kept/captureKeep). The parent's typing and dictation go through
-  // changeDraft; a seed or any other change from outside is not theirs until
-  // they clear the field. Read only when the words are kept.
+  // onChange here; a seed or any other change from outside is not theirs
+  // until they clear the field. Read only when the words are kept.
   const authorRef = useRef(freshCaptureKeep(value));
-  const changeDraft = (next: string) => {
+  const onChange = (next: string) => {
     authorRef.current = composerCaptureKeep(authorRef.current, textRef.current, next);
-    onChange(next);
+    setDraft(next);
   };
   useEffect(() => {
     if (accountRef.current !== consent.accountId) {
@@ -122,7 +122,7 @@ export default function CompanionComposer({ childId, conversationRevision, langu
     const turn = speechScope.current;
     setError(""); setListening(true);
     stopRef.current = startDictation({
-      onResult: text => { if (turn === speechScope.current && text.trim()) changeDraft([textRef.current.trim(), text.trim()].filter(Boolean).join(" ")); },
+      onResult: text => { if (turn === speechScope.current && text.trim()) onChange([textRef.current.trim(), text.trim()].filter(Boolean).join(" ")); },
       onInterim: text => { if (turn === speechScope.current) setInterim(text); },
       onError: reason => { if (turn === speechScope.current) setError(microphoneRecovery(reason, language)); },
       onEnd: () => { if (turn === speechScope.current) { setListening(false); setInterim(""); stopRef.current = null; } },
@@ -200,7 +200,7 @@ export default function CompanionComposer({ childId, conversationRevision, langu
           aria-label={inputText(language, "companion.input.add-or-save")} onClick={() => setToolsOpen(open => !open)}>
           <Icon name="add" size={22} />
         </button>
-        <textarea ref={textareaRef} className="field-bare" value={value} onChange={event => changeDraft(event.target.value)} rows={1} disabled={busy || sending || voiceActive}
+        <textarea ref={textareaRef} className="field-bare" value={value} onChange={event => onChange(event.target.value)} rows={1} disabled={busy || sending || voiceActive}
           onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(); } }}
           placeholder={inputText(language, "companion.input.share-a-moment-a-question-a-thought")}
           aria-label={inputText(language, "companion.input.what-would-you-like-to-share-with-arbor")} />
