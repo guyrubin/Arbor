@@ -492,9 +492,14 @@ export default function QuickLogModal({
     try {
       const d = await api.extractLog({ message: text, childProfile, language: getAiLanguage() });
       if (!isCurrent()) return;
-      const n = normalizeExtractedLog(d, text);
+      // B-ASKJB-48: a free label that names only a context (sibling, dinner,
+      // bedtime, tablet) is a neutral Moment; from the hard-moment form the
+      // parent's own toggle is the incident cue (incidentDeclared).
+      const n = normalizeExtractedLog(d, text, { incidentDeclared: from === "incident" });
       if (from === "moment" && !extractionOpensIncidentReview(n)) return;
-      setNewLogType(n.behaviorType);
+      // An unmatched label never replaces the incident type the parent chose
+      // (the incident select lists incident types only).
+      if (isIncidentType(n.behaviorType)) setNewLogType(n.behaviorType);
       if (typeof n.intensity === "number") setNewLogIntensity(n.intensity);
       setNewLogDuration(n.durationMinutes);
       setNewLogContext(n.context as BehaviorContext);

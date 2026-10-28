@@ -855,3 +855,74 @@ describe("generated fields cannot be laundered through later text or dictation",
     expect(h.state.addMoment.mock.calls[0][1]).not.toHaveProperty("kept");
   });
 });
+
+/**
+ * B-ASKJB-48 — the actual sheet handlers: a dictated moment whose extraction
+ * label only names a context (a sibling, a book, bedtime) stays the parent's
+ * neutral moment through draft → save → reload. Before the change the keyword
+ * map turned "Sister reading together" into Sibling Conflict and the incident
+ * review opened over the parent's words with the model's intensity.
+ */
+describe("B-ASKJB-48 — context-only labels keep the moment neutral (actual handlers)", () => {
+  const startDictating = (h: ReturnType<typeof captureHarness>) =>
+    one(h.render(), n => n.type === "button" && n.props.onClick?.name === "startVoice").props.onClick();
+  it.each([
+    ["en", "Maya and her sister read a whole book together on the sofa", "Sister reading together"],
+    ["he", "מאיה ואחותה קראו יחד ספר שלם על הספה בערב", "אחים קוראים ביחד"],
+  ] as const)("%s: no incident review; Save writes a plain moment with the parent's words and no intensity", async (lang, said, label) => {
+    // Negative control: the legacy keyword map read this label as an incident.
+    expect(taxonomy.mapLabelToType(label)).toEqual({ type: "Sibling Conflict", matched: true });
+    const h = captureHarness({ text: "", lang });
+    startDictating(h);
+    h.speech[0].callbacks.onResult(said);
+    h.extracts[0].resolve({ behaviorType: label, trigger: "Generated", response: "Generated response", intensity: 4, durationMinutes: 5, notes: "Generated notes" });
+    await tick();
+    expect(nodes(h.render()).some(n => typeof n.props.onConfirm === "function")).toBe(false);
+    expect(h.state.newLogTrigger).toBe(said);
+    expect(h.state.newLogNotes).toBe("");
+    expect(h.state.newLogResponse).toBe("");
+    expect(h.state.newLogType).not.toBe("Sibling Conflict");
+    const context = contextHarness();
+    h.state.addMoment = vi.fn(context.addMoment);
+    await one(h.render(), n => n.type === "form").props.onSubmit(formEvent());
+    expect(h.state.handleAddLog).not.toHaveBeenCalled();
+    const written = context.env.logsCol.upsert.mock.calls[0][0];
+    expect(written).toMatchObject({ behaviorType: "Moment", trigger: said });
+    expect(written).not.toHaveProperty("intensity");
+    expect(written).not.toHaveProperty("contentSource");
+    // Reload: the stored row reads back as the parent's own words, not an incident.
+    expect(taxonomy.isIncidentType(written.behaviorType)).toBe(false);
+    expect(parentWords(written)).toBe(said);
+    expect(toObservations({ behaviorLogs: [written] }, { id: "child-a" })[0].source).not.toBe("unverified");
+  });
+
+  it("a real concern label still opens the incident review with Arbor-draft provenance", async () => {
+    const h = captureHarness({ text: "" });
+    startDictating(h);
+    h.speech[0].callbacks.onResult("He screamed at his sister and they fought over the blocks again");
+    h.extracts[0].resolve({ behaviorType: "Fight with sister", trigger: "Blocks", response: "Separated them", intensity: 4, durationMinutes: 5 });
+    await tick();
+    const review = one(h.render(), n => typeof n.props.onConfirm === "function");
+    expect(review.props.source).toBe("ai-draft");
+    expect(h.state.newLogType).toBe("Sibling Conflict");
+    expect(review.props.intensity).toBe(4);
+    await review.props.onConfirm(formEvent());
+    expect(h.state.handleAddLog).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ contentSource: "ai_draft" }));
+    expect(h.state.addMoment).not.toHaveBeenCalled();
+  });
+
+  it("the parent's own incident choice survives an extraction whose label names no incident", async () => {
+    const h = captureHarness({ text: "" });
+    hardToggle(h, true);
+    one(h.render(), n => n.props.id === "quick-log-type").props.onChange({ target: { value: "Food Refusal" } });
+    const typed = "Glitter everywhere after the craft table, then a long cleanup";
+    one(h.render(), n => n.props.id === "quick-log-trigger").props.onChange({ target: { value: typed } });
+    one(h.render(), n => n.props.id === "quick-log-trigger").props.onKeyDown({ key: "Enter", preventDefault: vi.fn() });
+    h.extracts[0].resolve({ behaviorType: "Glitter everywhere incident", trigger: typed, response: "", intensity: 2, durationMinutes: 5 });
+    await tick();
+    one(h.render(), n => typeof n.props.onConfirm === "function");
+    // Before: the unmatched label overwrote the parent's choice with the default incident type.
+    expect(h.state.newLogType).toBe("Food Refusal");
+    expect(h.state.newLogNotes).toContain("Glitter everywhere incident");
+  });
+});

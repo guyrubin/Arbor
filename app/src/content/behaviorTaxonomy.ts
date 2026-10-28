@@ -170,9 +170,60 @@ const TYPE_KEYWORDS: [CanonicalBehaviorType, RegExp][] = [
   ["Transition Refusal", /transition|refus|leav|morning|dress|depart|goodbye|drop-?off|cling|מעבר|סירוב|בוקר|יציאה/i],
 ];
 
+/**
+ * B-ASKJB-48 — the words that make a FREE extraction label read as an
+ * incident. A context noun by itself ("Sister reading together", "Goodnight
+ * routine", "Family dinner", "Played on the tablet", "First word this
+ * morning") names where a moment happened, not a concern, so it never earns
+ * the incident review on its own: the keyword map below only runs on a free
+ * label that also carries one of these cues, or when the parent has already
+ * declared a hard moment. A canonical label ("Sibling Conflict") is the
+ * model choosing from the list and is never gated. Under-matching is the safe
+ * direction here: a missed cue leaves the parent's words as a neutral moment
+ * they can still mark as hard; an extra cue files a joyful line as an incident.
+ * English on word boundaries; Hebrew as whole words with a glued particle
+ * (`\b` cannot bound a Hebrew word), listing forms rather than open stems
+ * where a stem is also an everyday word (ריבה is jam, בקשה a request).
+ */
+const INCIDENT_CUE_EN = new RegExp(
+  [
+    String.raw`\b(?:refus|resist|tantrum|conflict|disput|argu|standoff|stand-off|overload|overwhelm|overstimul|struggl|upset|distress|scream|yell|shout|avoid|difficult|troubl|anxi|disrupt|defian|frustrat|aggress|protest|clash|whin|fuss)\w*`,
+    String.raw`\bmeltdown\w*|\bmelt(?:s|ed|ing)?\s+down\b`,
+    String.raw`\b(?<!(?:pillow|play|tickle|water|snowball|nerf|pretend)\s)(?:fight\w*|fought|battle\w*)`,
+    String.raw`\bproblem(?!-?\s?solv)\w*`,
+    String.raw`\b(?:cr(?:y|ies|ied|ying)|angry|anger|rage|raging|panic\w*|hitting|hits|biting|bites|grabb\w*|picky)\b`,
+    String.raw`\b(?:won|wouldn|didn|doesn|don)['’]?t\s+(?:want|let|stop|eat|sleep|go|leave)\b|\b(?:won|wouldn)['’]?t\b`,
+  ].join("|"),
+  "i",
+);
+const HE_PARTICLE = "(?:[ובהלמשכ]|וה|וב|ול|ומ|וש|כש)?";
+const INCIDENT_CUE_HE = new RegExp(
+  String.raw`(?<!\p{L})${HE_PARTICLE}(?:` +
+    [
+      String.raw`סירוב\p{L}*`, String.raw`סירב\p{L}*`, String.raw`מסרב\p{L}*`, "סרב",
+      "ריב", "ריבים", String.raw`מריב\p{L}*`,
+      String.raw`ו?ויכוח\p{L}*`, String.raw`התווכח\p{L}*`, String.raw`מתווכח\p{L}*`,
+      "קושי", "קשיים",
+      "בכי", "בכה", "בכתה", "בכו", "בוכה", "בוכים", "בוכות",
+      String.raw`צעק\p{L}*`, String.raw`צועק\p{L}*`, String.raw`צרח\p{L}*`, String.raw`צורח\p{L}*`,
+      String.raw`התפרצ\p{L}*`, String.raw`התקף\p{L}*`, "עומס", "חרדה", "חרדות", String.raw`מאבק\p{L}*`,
+      "זעם", String.raw`כעס\p{L}*`, String.raw`כועס\p{L}*`, "תסכול", String.raw`מתוסכל\p{L}*`,
+      String.raw`התנגד\p{L}*`, String.raw`מתנגד\p{L}*`, "הימנעות", String.raw`נמנע\p{L}*`,
+      String.raw`הרביצ\p{L}*`, "הרביץ", String.raw`מרביצ\p{L}*`, "מכות", String.raw`נשיכ\p{L}*`, "נשך", "נשכה",
+    ].join("|") +
+    String.raw`)(?!\p{L})|(?<!\p{L})ו?לא\s+(?:רוצה|רצה|רצתה|רצו|מוכן|מוכנה|הסכים|הסכימה|מסכים|מסכימה)(?!\p{L})`,
+  "u",
+);
+
+/** B-ASKJB-48: true when a free extraction label names a concern, not only a context. */
+export const hasIncidentCue = (label: string): boolean => INCIDENT_CUE_EN.test(label) || INCIDENT_CUE_HE.test(label);
+
 /** Map a (possibly free) extraction label onto the canonical set.
  *  `matched: false` means the label didn't fit — the caller preserves it in
- *  notes and the type is the documented fallback. */
+ *  notes and the type is the documented fallback. This is the LEGACY reader
+ *  (behaviorTypeLabel localizes stored free labels through it, so a saved
+ *  record reads as it always did); new extraction goes through
+ *  `mapExtractedLabelToType`, which adds the B-ASKJB-48 incident-cue gate. */
 export function mapLabelToType(label: string): { type: CanonicalBehaviorType; matched: boolean } {
   const raw = String(label ?? "").trim();
   if (!raw) return { type: DEFAULT_BEHAVIOR_TYPE, matched: false };
@@ -182,6 +233,28 @@ export function mapLabelToType(label: string): { type: CanonicalBehaviorType; ma
     if (re.test(raw)) return { type, matched: true };
   }
   return { type: DEFAULT_BEHAVIOR_TYPE, matched: false };
+}
+
+/**
+ * B-ASKJB-48 — the mapping every NEW extraction result goes through. An exact
+ * canonical label always matches (including "Moment", which is not an
+ * incident). A free label maps through the keyword table only when it carries
+ * an incident cue, or when the parent already declared a hard moment
+ * (`incidentDeclared`: the parent's own toggle is the cue, and the keyword
+ * then only picks which incident type). Otherwise it is unmatched, and
+ * `normalizeExtractedLog` keeps it as the neutral Moment.
+ */
+export function mapExtractedLabelToType(
+  label: string,
+  opts: { incidentDeclared?: boolean } = {},
+): { type: CanonicalBehaviorType; matched: boolean } {
+  const raw = String(label ?? "").trim();
+  if (!raw) return { type: MOMENT_BEHAVIOR_TYPE, matched: false };
+  const exact = BEHAVIOR_TYPES.find((b) => b.value.toLowerCase() === raw.toLowerCase());
+  if (exact) return { type: exact.value, matched: true };
+  if (!opts.incidentDeclared && !hasIncidentCue(raw)) return { type: MOMENT_BEHAVIOR_TYPE, matched: false };
+  const mapped = mapLabelToType(raw);
+  return mapped.matched ? mapped : { type: MOMENT_BEHAVIOR_TYPE, matched: false };
 }
 
 /** B-DATA-09: an explicit numeric intensity clamps to 1–5; a missing or
@@ -205,6 +278,7 @@ export type ExtractedLogDraft = {
 };
 
 export type NormalizedExtractedLog = {
+  /** B-ASKJB-48: the neutral "Moment" whenever the label did not match. */
   behaviorType: CanonicalBehaviorType;
   /** false ⇒ the model's free label didn't fit the canonical set (it is
    *  preserved in `notes`). */
@@ -227,9 +301,15 @@ export type NormalizedExtractedLog = {
  * capture (AI-CAP-8 acceptance: any extraction renders a valid visible
  * selection in both forms; free labels survive in notes).
  */
-export function normalizeExtractedLog(d: ExtractedLogDraft, fallbackTrigger = ""): NormalizedExtractedLog {
+export function normalizeExtractedLog(
+  d: ExtractedLogDraft,
+  fallbackTrigger = "",
+  opts: { incidentDeclared?: boolean } = {},
+): NormalizedExtractedLog {
   const freeLabel = String(d?.behaviorType ?? "").trim();
-  const { type, matched } = mapLabelToType(freeLabel);
+  // B-ASKJB-48: an unmatched label is the neutral Moment, never a default
+  // incident type; the parent can still mark the moment as hard themselves.
+  const { type, matched } = mapExtractedLabelToType(freeLabel, opts);
   const baseNotes = String(d?.notes ?? "").trim();
   // Preserve an unmatched free label in notes — never silently dropped.
   const notes = matched || !freeLabel ? baseNotes : baseNotes ? `${baseNotes} · ${freeLabel}` : freeLabel;
