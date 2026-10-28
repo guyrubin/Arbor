@@ -37,7 +37,7 @@ export default function KidLibrary({ books, theme, lang, childProfile, loadingId
   // A saved comic open in the reader takes the whole surface.
   const [readingComic, setReadingComic] = useState(false);
   // B-BOOK-26: the child's own approved portrait on every title-card cover (never a shared likeness).
-  const ownHero = resolveHeroUrl(childProfile) ? <HeroAvatar size={40} mood="wave" animate={false} ring={false} decorative /> : undefined;
+  const ownHero = resolveHeroUrl(childProfile) ? <HeroAvatar size={40} mood="wave" animate={false} ring={false} badge={false} decorative /> : undefined;
   return (
     <div className="space-y-6" data-testid="kid-library">
       {!readingComic && (books.length > 0 ? (
