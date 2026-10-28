@@ -238,7 +238,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("aria.editChildProfile")}</h3>
+              <h3 className="text-lg font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("profile.edit.title")}</h3>
               <button onClick={requestClose} className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-lg transition" style={{ minWidth: "var(--touch-min)", minHeight: "var(--touch-min)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }} aria-label={t("aria.close")}>
                 <Icon name="close" size={16} />
               </button>
@@ -456,7 +456,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                 className="w-full mt-2 py-3 text-white font-extrabold text-sm rounded-2xl transition active:scale-[0.98] disabled:opacity-60"
                 style={{ background: "var(--arbor-gradient-primary)" }}
               >
-                {saving ? t("companion.family-topic-sheet.saving") : t("companion.capture.saveChanges")}
+                {saving ? t("profile.edit.saving") : t("profile.edit.save")}
               </button>
 
               {/* A5: earned-through-play rewards */}
