@@ -4184,7 +4184,7 @@ export const he: Dict = {
   "plan.card.eyebrow": "התוכנית של היום",
   "plan.card.noGoalBody": "אפשר לבחור דבר אחד לעבוד עליו יחד.",
   "plan.card.setGoalCta": "בחרו על מה אתם עובדים",
-  "plan.card.whyPrefix": "תואם למטרה שלך —",
+  "plan.card.whyPrefix": "תואם למטרה שלכם —",
   "plan.card.andInterest": "ולאהבה של {name} ל{interest}",
   "plan.card.firewall": "מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.",
   "plan.card.observePrompt": "מה שמתם לב אליו במהלך הפעילות?",

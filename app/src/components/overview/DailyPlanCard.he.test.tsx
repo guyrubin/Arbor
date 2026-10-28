@@ -61,6 +61,16 @@ describe("B-PLAY-25 · DailyPlanCard (#/daily-play) renders a Hebrew rationale u
     expect(html).not.toMatch(/personalized|A good fit|weekend plan|Chosen because|Picked because/);
   });
 
+  it("with a goal and a full record the card's own reason line is Hebrew, in the app's plural address", () => {
+    state.lang = "he";
+    const he = buildDailyPlan({ picks: [pick("goal-match")], activeGoals: [GOAL], childName: "נועה", loggedDayCount: 9, nowMs: TUESDAY, lang: "he" })!;
+    const html = render(he);
+    expect(html).toContain("תואם למטרה שלכם —");
+    expect(html).not.toContain("שלך —");
+    expect(html).toContain("לתת שם לרגשות גדולים ולהתמודד איתם");
+    expect(html).not.toContain("Naming and managing");
+  });
+
   it("the done state's rationale is Hebrew too", () => {
     state.lang = "he";
     const he = CASES[0].plan("he");
