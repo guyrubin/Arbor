@@ -275,3 +275,33 @@ describe.each(["en", "he"] as const)("an unfinished erase survives close and reo
     expect(byTestId(render(true), "finish-erase-btn")).toBeDefined();
   });
 });
+
+/* Round 10: the 1b release sweep read three of the sheet's buttons at 42 px in
+   Hebrew at 375. They lay out at 44 (offsetHeight 44, the settled rect 44):
+   the 42 x 278 it saw is exactly 0.95 of 44 x 293, the shell Modal's entrance
+   frame (initial scale 0.95, on main since 9 Oct), sampled before the panel
+   settled. This pins the floor itself: every button the sheet renders, in
+   every state and both languages, carries min-h-11 (2.75rem = 44 px). */
+describe.each(["en", "he"] as const)("every button in the sheet holds the 44 px floor (%s)", (lang) => {
+  const buttons = (tree: any) => elements(tree).filter((e) => e.type === "button");
+  const floor = (tree: any) => buttons(tree).map((b) => [b.props["data-testid"] ?? text(b.props.children).trim(), /(^|\s)min-h-11(\s|$)/.test(b.props.className ?? "")]);
+
+  it("the menu (with the Finish offer), the typed-name confirmation, an unfinished and a complete receipt", async () => {
+    h.lang = lang;
+    const states: any[] = [];
+    // an unfinished receipt, then the menu that offers to finish it
+    states.push(await eraseWith(receipt(ledger({ "server:memoryEvents": "not-reached", "server:familyChildRef": "not-reached" }), { memoryEvents: 0 })));
+    byTestId(states[0], "delete-receipt-close").props.onClick();
+    render(false);
+    states.push(render(true));
+    // the typed-name confirmation
+    byTestId(states[1], "delete-child-btn").props.onClick();
+    states.push(render());
+    // a complete receipt
+    states.push(await eraseWith(receipt(ledger())));
+    expect(byTestId(states[1], "finish-erase-btn")).toBeDefined();
+    const all = states.flatMap(floor);
+    expect(all.length).toBeGreaterThanOrEqual(10);
+    expect(all.filter(([, ok]) => !ok)).toEqual([]);
+  });
+});
