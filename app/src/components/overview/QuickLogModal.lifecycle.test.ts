@@ -855,3 +855,29 @@ describe("generated fields cannot be laundered through later text or dictation",
     expect(h.state.addMoment.mock.calls[0][1]).not.toHaveProperty("kept");
   });
 });
+
+/* B-GA-11 (critic r1): the Art. 50 line must render AT each input whose words
+   reach Arbor's AI — the moment field (typed or dictated) and the hard-moment
+   field — directly under it, so it is on screen before anything is sent. The
+   rendered tree is the production JSX; the line's component is a boundary. */
+describe("B-GA-11 — the AI line renders directly under each capture field that reaches the AI", () => {
+  const lineUnder = (tree: View, inputId: string) => {
+    const parent = one(tree, node => Array.isArray(node.props.children) && node.props.children.flat(Infinity).some((c: any) => c?.props?.id === inputId));
+    const kids = (parent.props.children as any[]).flat(Infinity).filter((c: any) => c && typeof c === "object" && "props" in c);
+    const at = kids.findIndex((c: any) => c.props.id === inputId);
+    return kids[at + 1];
+  };
+  it.each(["en", "he"] as const)("moment field and hard-moment field each carry the line, in the UI language (%s)", (lang) => {
+    // The modal's default import of ../companion/AiDisclosureLine is the
+    // harness boundary (CommonJS interop wraps it as { default }).
+    const isLine = (el: any) => el?.props?.language !== undefined && (el.type?.default?.name ?? el.type?.name) === "Boundary";
+    const h = captureHarness({ text: "", lang });
+    const moment = lineUnder(h.render(), "quick-log-moment");
+    expect(isLine(moment)).toBe(true);
+    expect(moment.props.language).toBe(lang);
+    hardToggle(h, true);
+    const hard = lineUnder(h.render(), "quick-log-trigger");
+    expect(isLine(hard)).toBe(true);
+    expect(hard.props.language).toBe(lang);
+  });
+});

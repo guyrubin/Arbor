@@ -16,6 +16,7 @@
  * Negative controls prove each check can fail.
  */
 import { describe, expect, it } from "vitest";
+import ts from "typescript";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -79,6 +80,43 @@ describe("1 · every client call to a model is classified", () => {
   });
 });
 
+/**
+ * The JSX elements of a file in render (source) order: tag, id, data-testid
+ * and onClick handler. Used to prove WHERE the line renders, not only that the
+ * file mentions it: right after each AI input, before the next form control.
+ */
+function jsxOrder(src: string): { tag: string; id?: string; testId?: string; onClick?: string }[] {
+  const file = ts.createSourceFile("surface.tsx", src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const out: { tag: string; id?: string; testId?: string; onClick?: string }[] = [];
+  const attr = (attrs: ts.JsxAttributes, name: string) => {
+    for (const a of attrs.properties) {
+      if (!ts.isJsxAttribute(a) || a.name.getText(file) !== name || !a.initializer) continue;
+      if (ts.isStringLiteral(a.initializer)) return a.initializer.text;
+      if (ts.isJsxExpression(a.initializer) && a.initializer.expression) return a.initializer.expression.getText(file);
+    }
+    return undefined;
+  };
+  const visit = (node: ts.Node) => {
+    const opening = ts.isJsxElement(node) ? node.openingElement : ts.isJsxSelfClosingElement(node) ? node : null;
+    if (opening) out.push({ tag: opening.tagName.getText(file), id: attr(opening.attributes, "id"), testId: attr(opening.attributes, "data-testid"), onClick: attr(opening.attributes, "onClick") });
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return out;
+}
+const CONTROLS = new Set(["input", "textarea", "select"]);
+/** Is an AiDisclosureLine rendered within `reach` elements after `anchor`, before the next form control? */
+function lineFollows(src: string, anchor: string, reach = 8): boolean {
+  const els = jsxOrder(src);
+  const at = els.findIndex((e) => e.id === anchor || e.testId === anchor || e.onClick === anchor);
+  if (at < 0) return false;
+  for (const e of els.slice(at + 1, at + 1 + reach)) {
+    if (e.tag === "AiDisclosureLine") return true;
+    if (CONTROLS.has(e.tag)) return false;
+  }
+  return false;
+}
+
 /** Does the surface's source render its approved line? */
 function renders(surface: Extract<AiSurface, { kind: "interaction" }>, src: string): boolean {
   if (surface.via === "CompanionComposer") return /<CompanionComposer\b/.test(src);
@@ -95,6 +133,27 @@ describe("2 · each interaction surface shows its approved line at the input", (
 
   it.each(interactions.map((s) => [`${s.file} → ${s.via ?? s.disclosure}`, s] as const))("%s", (_label, surface) => {
     expect(renders(surface, read(surface.file))).toBe(true);
+  });
+
+  const placed = interactions.filter((s) => s.via === "AiDisclosureLine");
+  it.each(placed.flatMap((s) => (s.inputs ?? []).map((input) => [`${s.file} · under ${input}`, s.file, input] as const)))("%s", (_label, file, input) => {
+    expect(lineFollows(read(file), input), `the Art. 50 line must render right after ${input}, before the next form control`).toBe(true);
+  });
+
+  it("every AiDisclosureLine surface names its AI inputs, and each one has its own line", () => {
+    for (const s of placed) {
+      expect(s.inputs?.length, s.file).toBeGreaterThan(0);
+      const lines = (read(s.file).match(/<AiDisclosureLine\b/g) ?? []).length;
+      expect(lines, s.file).toBeGreaterThanOrEqual(s.inputs!.length);
+    }
+  });
+
+  it("negative control: a line below the next field, or missing for a second input, is caught", () => {
+    const belowTheFold = `const X = () => <form><input id="quick-log-moment" /><fieldset><button>a</button></fieldset><input type="checkbox" /><AiDisclosureLine language="en" /></form>;`;
+    expect(lineFollows(belowTheFold, "quick-log-moment")).toBe(false);
+    const missingSecond = `const X = () => <form><input id="quick-log-moment" /><AiDisclosureLine language="en" /><input id="quick-log-trigger" /><input id="quick-log-response" /></form>;`;
+    expect(lineFollows(missingSecond, "quick-log-moment")).toBe(true);
+    expect(lineFollows(missingSecond, "quick-log-trigger")).toBe(false);
   });
 
   it("negative control: a surface without its line is caught", () => {
@@ -132,8 +191,11 @@ describe("3 · every approved wording is AI-explicit in English and Hebrew", () 
 });
 
 describe("4 · never a second disclosure wording", () => {
-  const dicts: Record<string, string>[] = [{ ...elevationEn, ...en }, { ...elevationHe, ...he }, PLAN_STRINGS.en as Record<string, string>];
-  const mentions = (d: Record<string, string>) => Object.entries(d).filter(([, v]) => /\bAI\b|artificial intelligence/i.test(v)).map(([k]) => k);
+  const dicts: Record<string, string>[] = [{ ...elevationEn, ...en }, { ...elevationHe, ...he }, PLAN_STRINGS.en as Record<string, string>, PLAN_STRINGS.he as Record<string, string>];
+  // Latin "AI" in either language, and the Hebrew wording, so a second
+  // Hebrew-only disclosure cannot slip in beside an English one.
+  const AI_WORDING = /\bAI\b|artificial intelligence|בינה\s+ה?מלאכותית|בינה\s+מלאכותית/i;
+  const mentions = (d: Record<string, string>) => Object.entries(d).filter(([, v]) => AI_WORDING.test(v)).map(([k]) => k);
   const known = (k: string) => k in AI_DISCLOSURE_KEYS || k in AI_MENTIONS;
 
   it("every string that mentions AI is an approved disclosure or a listed mention", () => {
@@ -142,8 +204,10 @@ describe("4 · never a second disclosure wording", () => {
     expect([...found].filter((k) => !known(k)).sort(), "a new AI wording must be an approved disclosure (AI_DISCLOSURE_KEYS) or a listed mention").toEqual([]);
   });
 
-  it("negative control: a new disclosure-like wording is flagged", () => {
+  it("negative control: a new disclosure-like wording is flagged, in English or Hebrew only", () => {
     expect(mentions({ "elev.new.aiLine": "This answer was written by AI." }).filter((k) => !known(k))).toEqual(["elev.new.aiLine"]);
+    expect(mentions({ "elev.new.heOnly": "התשובה נכתבה על ידי הבינה המלאכותית." }).filter((k) => !known(k))).toEqual(["elev.new.heOnly"]);
+    expect(mentions({ "elev.new.heOnly2": "נוצר בבינה מלאכותית." }).filter((k) => !known(k))).toEqual(["elev.new.heOnly2"]);
   });
 
   it("no registration is stale", () => {

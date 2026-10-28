@@ -24,7 +24,14 @@
  */
 
 export type AiSurface =
-  | { file: string; kind: "interaction"; disclosure: AiDisclosureKey; via?: "CompanionComposer" | "AiDisclosureLine" }
+  | {
+      file: string; kind: "interaction"; disclosure: AiDisclosureKey; via?: "CompanionComposer" | "AiDisclosureLine";
+      /** AiDisclosureLine surfaces: every input whose words, voice or file go
+       *  to the AI (an element id, a data-testid, or the onClick handler of
+       *  the action that sends them). The guard checks the line renders right
+       *  after each one, before the next form control. */
+      inputs?: readonly string[];
+    }
   | { file: string; kind: "generated" | "kid" | "voice-output"; why: string };
 
 /** The approved Art. 50 wordings (EN + HE in the i18n dictionaries; the plan
@@ -82,14 +89,14 @@ export const AI_CALLERS: Readonly<Record<string, { endpoints: readonly string[];
   "lib/describeChildClient.ts": {
     endpoints: ["api.describeChild"],
     surfaces: [
-      { file: "components/describe/DescribeChild.tsx", kind: "interaction", disclosure: "companion.input.foot", via: "AiDisclosureLine" },
-      { file: "components/describe/DescribeThread.tsx", kind: "interaction", disclosure: "companion.input.foot", via: "AiDisclosureLine" },
+      { file: "components/describe/DescribeChild.tsx", kind: "interaction", disclosure: "companion.input.foot", via: "AiDisclosureLine", inputs: ["describe-text"] },
+      { file: "components/describe/DescribeThread.tsx", kind: "interaction", disclosure: "companion.input.foot", via: "AiDisclosureLine", inputs: ["describe-answer-text"] },
       { file: "components/describe/DescribeReadback.tsx", kind: "interaction", disclosure: "elev.describe.aiLine" },
     ],
   },
   "components/overview/QuickLogModal.tsx": {
     endpoints: ["api.extractLog"],
-    surfaces: [{ file: "components/overview/QuickLogModal.tsx", kind: "interaction", disclosure: "companion.input.foot", via: "AiDisclosureLine" }],
+    surfaces: [{ file: "components/overview/QuickLogModal.tsx", kind: "interaction", disclosure: "companion.input.foot", via: "AiDisclosureLine", inputs: ["quick-log-moment", "quick-log-trigger"] }],
   },
   "components/program/HomeProgramImport.tsx": {
     endpoints: ["api.importHomeRecommendations"],
@@ -97,7 +104,7 @@ export const AI_CALLERS: Readonly<Record<string, { endpoints: readonly string[];
   },
   "components/profile/AvatarCreator.tsx": {
     endpoints: ["api.generateAvatar"],
-    surfaces: [{ file: "components/profile/AvatarCreator.tsx", kind: "interaction", disclosure: "companion.input.foot", via: "AiDisclosureLine" }],
+    surfaces: [{ file: "components/profile/AvatarCreator.tsx", kind: "interaction", disclosure: "companion.input.foot", via: "AiDisclosureLine", inputs: ["generate"] }],
   },
   "lib/plans/planApi.ts": {
     endpoints: ["/api/plans/phrase"],

@@ -991,6 +991,10 @@ export default function QuickLogModal({
             className="min-h-11 w-full rounded-xl p-2.5 text-sm focus:outline-none"
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
           />
+          {/* B-GA-11: typed or dictated words in this field can go to Arbor's
+              AI to fill the form, so the Art. 50 line sits directly under it
+              (visible when the sheet opens), as Talk's composer foot does. */}
+          <AiDisclosureLine language={uiLang === "he" ? "he" : "en"} />
         </div>
         {!editLogId && <fieldset data-testid="quicklog-keep-as" className="min-w-0 space-y-2 border-0 p-0" lang={uiLang} dir={uiLang === "he" ? "rtl" : "ltr"}>
           <legend className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t("kept.capture.label")}</legend>
@@ -1017,9 +1021,6 @@ export default function QuickLogModal({
             line after 400 ms (never a spinner, never a flash). */}
         <PendingLine active={drafting} testId="quicklog-drafting">{t("beh.parsing")}</PendingLine>
         <p data-testid="quicklog-privacy" className="text-[11.5px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("companion.capture.privacy")}</p>
-        {/* B-GA-11: the parent's words, voice or photo can go to Arbor's AI to
-            fill the form, so the Art. 50 line sits here, as in Talk. */}
-        <AiDisclosureLine language={uiLang === "he" ? "he" : "en"} />
         <button type="submit" disabled={saving || drafting || photoPreparing} className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 py-3 font-extrabold text-xs rounded-xl transition active:scale-[0.98]" style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)" }}>
           {!saving && !editLogId && <Icon name="bookmark_add" size={18} />}
           {saving ? t("companion.family-topic-sheet.saving") : editLogId ? t("companion.capture.saveChanges") : t("companion.capture.keep")}
@@ -1069,6 +1070,8 @@ export default function QuickLogModal({
             className="min-h-11 w-full rounded-xl p-2.5 text-xs focus:outline-none"
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
           />
+          {/* B-GA-11: the hard-moment field drafts the log through Arbor's AI too. */}
+          <AiDisclosureLine language={uiLang === "he" ? "he" : "en"} />
         </div>
 
         <div className="space-y-1.5">
