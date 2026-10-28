@@ -46,6 +46,7 @@ import { canComposePlan, isPatternId, planVisibilityFor, readReviewFlags, type P
 import type { BookLang, BookLine } from "../lib/library/types.js";
 import type { PatternDef } from "../lib/library/plans/patterns.js";
 import { logger, requestIdOf } from "./logger.js";
+import { screenForImmediateEscalation } from "../safety/escalation";
 
 export interface PlansRouterDeps {
   config: Pick<ArborConfig, "plansReviewed" | "plansOwnerUids" | "plansOwnerEmails" | "memoryAdapter" | "arborEnv" | "modelProvider">;
@@ -136,6 +137,15 @@ export function createPlansRouter(deps: PlansRouterDeps): express.Router {
     const text = typeof b.text === "string" ? b.text.trim().slice(0, OWN_WORDS_MAX) : "";
     if (text.length < 3) return refuse(res, 400, "plan_empty_words", "Write the step in a few words");
     const lang: BookLang = b.lang === "he" ? "he" : "en";
+    // Safety first (B-GA-05 finding, 28 Oct): the parent's free text is screened
+    // BEFORE the gate and BEFORE any model call, with the same 409 contract every
+    // other parent-text route returns (routes/api.ts) — the client turns it into
+    // the helplines, never into "could not phrase that line".
+    const escalationMatch = screenForImmediateEscalation({ message: text });
+    if (escalationMatch) {
+      res.status(409).json({ error: "Professional support recommended", escalationCategory: escalationMatch.category });
+      return;
+    }
     // B-BOOK-79 door (a): the parent relays a step from the professional who works with the child; the line is phrased and screened the same way, and labelled.
     const origin: OwnStepOrigin = b.origin === "practitioner" ? "practitioner" : "parent";
     const viewer = viewerOf(req, deps.config);
