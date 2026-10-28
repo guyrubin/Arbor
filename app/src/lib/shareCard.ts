@@ -13,6 +13,8 @@
  */
 import type { LoopArtifact } from "./loopEvents";
 import { isolate } from "./i18n";
+import { isKidModeActive } from "./kidModeGate";
+import { overlayRect, type BookPageLayout, type Rect, type ShadowEllipse } from "./library/bookPageLayout";
 
 const W = 1080;
 const H = 1350;
@@ -351,4 +353,142 @@ export function renderShareCard(artifact: LoopArtifact, opts: ShareCardOpts): Pr
 export async function renderHeroCard(opts: { imageUrl: string; name: string; age?: number }): Promise<string> {
   const { dataUrl } = await renderAvatarCard(opts);
   return dataUrl;
+}
+
+/* ── B-BOOK-26: "bookPage" — the canvas twin of <BookPage> ────────────────────
+ * The export renderer of one book page's picture. It takes the SAME layout
+ * object the screen takes (lib/library/bookPageLayout computeBookPageLayout ->
+ * components/library/BookPage) and draws the same layers at the same rects,
+ * bottom to top: plate (or the print, "cover"-fitted into the plate rect) ->
+ * under-overlays -> the contact shadow (cast, then core) -> the hero sprite
+ * (contain, bottom-centre, flipped by facing) -> fg -> over-overlays. Repair
+ * tap targets are controls, not picture: they are not drawn. The canvas is the
+ * art window (layout.art) at `scale`.
+ * PARENT-ONLY: refused while Kid Mode is open (no download in Kid Mode), and
+ * no kid surface imports it.
+ */
+export interface BookPageImages {
+  plate: CanvasImageSource & { width: number; height: number };
+  printed?: boolean;
+  hero?: (CanvasImageSource & { width: number; height: number }) | null;
+  fg?: CanvasImageSource | null;
+  overlays?: readonly { o: { x: number; y: number; scale: number; aspect?: number; anchor?: "feet" | "center"; footX?: number; z?: "over" | "under"; rotate?: number }; img: CanvasImageSource & { width: number; height: number } }[];
+}
+
+/** The 2D calls the twin makes (a CanvasRenderingContext2D satisfies it). */
+export type BookPageCtx = Pick<CanvasRenderingContext2D, "save" | "restore" | "beginPath" | "rect" | "clip" | "drawImage" | "translate" | "scale" | "rotate" | "ellipse" | "fill"> & {
+  globalAlpha: number;
+  filter: string;
+  fillStyle: CanvasRenderingContext2D["fillStyle"];
+};
+
+/** Fit `iw x ih` inside a box: contain + bottom-centre (the sprite and overlays), or cover. */
+function fitIn(iw: number, ih: number, box: Rect, mode: "contain-bottom" | "cover"): Rect {
+  const s = mode === "cover" ? Math.max(box.w / iw, box.h / ih) : Math.min(box.w / iw, box.h / ih);
+  const w = iw * s, h = ih * s;
+  return mode === "cover"
+    ? { x: box.x + (box.w - w) / 2, y: box.y + (box.h - h) / 2, w, h }
+    : { x: box.x + (box.w - w) / 2, y: box.y + box.h - h, w, h };
+}
+
+/** Draw one page's picture into ctx (origin = the art window's top-left). Pure over ctx. */
+export function drawBookPage(ctx: BookPageCtx, layout: BookPageLayout, imgs: BookPageImages, opts: { scale?: number; shadowColor?: string } = {}): void {
+  const k = opts.scale ?? 1;
+  const { art, plate, hero, shadow } = layout;
+  const at = (r: Rect): Rect => ({ x: (r.x - art.x) * k, y: (r.y - art.y) * k, w: r.w * k, h: r.h * k });
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, art.w * k, art.h * k);
+  ctx.clip();
+  const P = at(plate);
+  if (imgs.printed) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(P.x, P.y, P.w, P.h);
+    ctx.clip();
+    const c = fitIn(imgs.plate.width, imgs.plate.height, P, "cover");
+    ctx.drawImage(imgs.plate, c.x, c.y, c.w, c.h);
+    ctx.restore();
+  } else {
+    ctx.drawImage(imgs.plate, P.x, P.y, P.w, P.h);
+  }
+  const overlay = (z: "under" | "over") => {
+    for (const { o, img } of imgs.overlays ?? []) {
+      if ((o.z === "under") !== (z === "under")) continue;
+      const b = at(overlayRect(o, plate));
+      const r = fitIn(img.width, img.height, b, "contain-bottom");
+      if (o.rotate) {
+        ctx.save();
+        ctx.translate(r.x + r.w / 2, r.y + r.h / 2);
+        ctx.rotate((o.rotate * Math.PI) / 180);
+        ctx.drawImage(img, -r.w / 2, -r.h / 2, r.w, r.h);
+        ctx.restore();
+      } else ctx.drawImage(img, r.x, r.y, r.w, r.h);
+    }
+  };
+  overlay("under");
+  const showHero = !imgs.printed && !!hero && !!imgs.hero;
+  if (showHero && shadow) {
+    const ell = (e: ShadowEllipse) => {
+      ctx.save();
+      ctx.globalAlpha = e.opacity;
+      ctx.filter = `blur(${e.blur * k}px)`;
+      ctx.fillStyle = opts.shadowColor ?? "black";
+      ctx.beginPath();
+      ctx.ellipse((e.cx - art.x) * k, (e.cy - art.y) * k, e.rx * k, e.ry * k, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    };
+    ell(shadow.cast);
+    ell(shadow);
+  }
+  if (showHero && hero && imgs.hero) {
+    const H = at(hero);
+    const r = fitIn(imgs.hero.width, imgs.hero.height, H, "contain-bottom");
+    ctx.save();
+    ctx.filter = "saturate(0.93)"; // .bk-hero-img
+    if (hero.flip) {
+      ctx.translate(H.x * 2 + H.w, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(imgs.hero, r.x, r.y, r.w, r.h);
+    ctx.restore();
+  }
+  if (imgs.fg && !imgs.printed) ctx.drawImage(imgs.fg, P.x, P.y, P.w, P.h);
+  overlay("over");
+  ctx.restore();
+}
+
+/** The book shadow's colour, resolved from the same tokens the screen uses. */
+function bookShadowColor(): string {
+  try {
+    const probe = document.createElement("div");
+    probe.className = "arbor-play";
+    probe.style.background = "color-mix(in oklab, var(--comic-ink) 82%, var(--arbor-ochre))";
+    document.body.appendChild(probe);
+    const c = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return c || "black";
+  } catch {
+    return "black";
+  }
+}
+
+/** Export one page's picture as a PNG (parent-only). `width` = the PNG's width in px. */
+export async function renderBookPageCard(input: { layout: BookPageLayout; plateSrc: string; printed?: boolean; heroSrc?: string | null; fgSrc?: string | null; width?: number }): Promise<RenderedCard> {
+  if (isKidModeActive()) throw new Error("Book page export is parent-only");
+  const { layout } = input;
+  const scale = (input.width ?? 1080) / Math.max(1, layout.art.w);
+  const [plate, hero, fg] = await Promise.all([
+    loadImage(input.plateSrc),
+    input.heroSrc ? loadImage(input.heroSrc).catch(() => null) : Promise.resolve(null),
+    input.fgSrc ? loadImage(input.fgSrc).catch(() => null) : Promise.resolve(null),
+  ]);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(layout.art.w * scale);
+  canvas.height = Math.round(layout.art.h * scale);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas unavailable");
+  drawBookPage(ctx, layout, { plate, printed: input.printed, hero, fg }, { scale, shadowColor: bookShadowColor() });
+  return finalize(canvas);
 }
