@@ -75,7 +75,7 @@ const start = async (over: Partial<ArborConfig> = {}) => {
     const res = await fetch(`${base}/api${path}`, { headers: { "x-test-email": email } });
     return { status: res.status, body: (await res.json()) as Record<string, any> };
   };
-  const mintBody = { childProfile: { id: "child-7c1", name: "Synthetic Child" }, language: "en" };
+  const mintBody = { childProfile: { id: "child-7c1", name: "Synthetic Child" }, language: "en", noticeAck: "google-global-realtime-v1" };
   return { delivered, alerts, counter, post, get, mint: (uid = "uid-123") => post("/live/token", mintBody, uid) };
 };
 const contentFree = (incidents: OpsIncident[]) => {

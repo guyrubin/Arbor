@@ -77,7 +77,8 @@ beforeEach(() => {
 });
 
 const mint = async (uid: string, body: Record<string, unknown> = {}) => {
-  const res = await fetch(`${base}/api/live/token`, { method: "POST", headers: { "Content-Type": "application/json", "x-test-uid": uid }, body: JSON.stringify(body) });
+  // B-PROV-12: every mint acknowledges the runtime route's approved notice.
+  const res = await fetch(`${base}/api/live/token`, { method: "POST", headers: { "Content-Type": "application/json", "x-test-uid": uid }, body: JSON.stringify({ noticeAck: "google-global-realtime-v1", ...body }) });
   return { status: res.status, headers: res.headers, body: (await res.json()) as Record<string, any> };
 };
 const report = async (uid: string, sessionId: string, event: string) => {
@@ -216,7 +217,7 @@ describe("B-AIOPS-02 — timeout and caller-gone on the mint", () => {
     let deliver: (v: { name: string }) => void = () => {};
     sdk.create.mockImplementationOnce(() => new Promise((resolve) => { deliver = resolve; }));
     const controller = new AbortController();
-    const pending = fetch(`${base}/api/live/token`, { method: "POST", headers: { "Content-Type": "application/json", "x-test-uid": "parent-a" }, body: "{}", signal: controller.signal }).catch(() => null);
+    const pending = fetch(`${base}/api/live/token`, { method: "POST", headers: { "Content-Type": "application/json", "x-test-uid": "parent-a" }, body: JSON.stringify({ noticeAck: "google-global-realtime-v1" }), signal: controller.signal }).catch(() => null);
     await new Promise((resolve) => setTimeout(resolve, 50));
     controller.abort();
     await pending;

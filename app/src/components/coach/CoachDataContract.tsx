@@ -11,6 +11,7 @@ import { useHashQuery } from "../../hooks/useHashQuery";
 import { api } from "../../lib/api";
 import { coachContractText } from "../../lib/i18nElevation/coachcontract";
 import { liveResidencyUntil } from "../../lib/liveResidency";
+import { liveNoticeIdFrom, voiceNoticeResidencyKey } from "../../lib/voiceProviderNotice";
 import { fmtDayLong } from "../../lib/formatDate";
 // GP-14: the disclosure names WHICH approved facts and WHICH profile fields
 // travel with a question, not just how many.
@@ -55,12 +56,16 @@ export default function CoachDataContract({ ledgerUnreadable = false }: { ledger
   // residency exception's last day (null → the undated line).
   const [liveAvail, setLiveAvail] = useState(false);
   const [liveUntil, setLiveUntil] = useState<Date | null>(null);
+  // B-PROV-12: the residency clause follows the runtime route's notice (the
+  // EU route has its own; the global route keeps the dated exception line).
+  const [liveResidencyKey, setLiveResidencyKey] = useState<string | undefined>(undefined);
   useEffect(() => {
     let cancelled = false;
     api.liveAvailability().then((r) => {
       if (cancelled || !r.available) return;
       setLiveAvail(true);
       setLiveUntil(liveResidencyUntil(r));
+      setLiveResidencyKey(voiceNoticeResidencyKey(liveNoticeIdFrom(r)));
     }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
@@ -130,7 +135,9 @@ export default function CoachDataContract({ ledgerUnreadable = false }: { ledger
           // B-ASKJB-02: whenever Live is the path, its line names the global
           // endpoint and the exception's end date.
           ...(liveAvail ? [tcc("elev.coachcontract.uses.spokenLive", {
-            residency: liveUntil
+            residency: liveResidencyKey && liveResidencyKey !== "elev.coachcontract.uses.liveResidencyUndated"
+              ? tcc(liveResidencyKey)
+              : liveUntil
               ? tcc("elev.coachcontract.uses.liveResidency", { date: fmtDayLong(liveUntil, lang) })
               : tcc("elev.coachcontract.uses.liveResidencyUndated"),
           })] : []),

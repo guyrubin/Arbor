@@ -40,7 +40,8 @@ import { screenForImmediateEscalation } from "../../safety/escalation";
 import type { ComposerAttachment } from "../../lib/companionAttachments";
 import { requestCompanionConsentReview } from "../../lib/companionConsent";
 import { COMPANION_CONVERSATION_EVENT, consumeConversationPanelRequest, consumeConversationVoiceRequest, conversationVoiceRequestPending, type CompanionConversationRequest } from "../../lib/companionConversation";
-import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError, isLiveResting } from "../../lib/api";
+import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError, isLiveResting, VoiceNoticeRequiredError } from "../../lib/api";
+import { acknowledgeVoiceNotice, liveNoticeIdFrom, runtimeVoiceNoticeId, voiceNoticeAcknowledged, voiceNoticeLine } from "../../lib/voiceProviderNotice";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { recurringScenario } from "../../lib/patternEcho";
 import { localDayKey } from "../../lib/firstsKeepsake";
@@ -462,6 +463,11 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const [voiceInvite, setVoiceInvite] = useState(false);
   useEffect(() => { if (voicePhase !== "off") setVoiceInvite(false); }, [voicePhase]);
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+  // B-PROV-12: the approved notice of the Live route the server selected
+  // (null: no Live route, the device speech notice applies) and the notice
+  // waiting for its one-tap acknowledgement in the B-VOICE-06 line slot.
+  const [liveNoticeId, setLiveNoticeId] = useState<string | null>(null);
+  const [noticePending, setNoticePending] = useState<string | null>(null);
   // AI-V7: live caption of the PARENT'S OWN words while they speak (interim
   // browser-STT partials / Live input transcription — never model output).
   const [voiceInterim, setVoiceInterim] = useState("");
@@ -542,6 +548,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     api.liveAvailability().then((r) => {
       if (cancelled || !r.available) return;
       setLiveAvail(true);
+      setLiveNoticeId(liveNoticeIdFrom(r));
     }).catch(() => {}).finally(() => { if (!cancelled) setLiveProbed(true); });
     return () => { cancelled = true; };
   }, []);
@@ -787,6 +794,17 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     if (action !== "start") { stopVoice(); return; }
     if (readNoticeTalk()) { toast(NOTICE_HANDOFF_COPY[uiLang === "he" ? "he" : "en"].voice, "error"); return; }
     if (voiceReviewOpen) return;
+    // B-PROV-12: before any audio is processed, the approved notice of the
+    // route this tap takes (Live when the server selected one, else device
+    // speech) shows in the B-VOICE-06 line under the composer. The next tap on
+    // this same button while it shows is the acknowledgement, remembered per
+    // device and per notice id — a new provider, region or purpose asks again.
+    const noticeId = runtimeVoiceNoticeId(liveAvail ? liveNoticeId : null);
+    if (!voiceNoticeAcknowledged(noticeId)) {
+      if (noticePending !== noticeId) { setVoiceNotice(null); setNoticePending(noticeId); return; }
+      acknowledgeVoiceNotice(noticeId);
+    }
+    setNoticePending(null);
     reviewAttemptRef.current = null;
     voiceSessionIdRef.current = "voice-session-" + Date.now() + "-" + (++voiceTurnRef.current);
     setConversationProposals([]);
@@ -808,7 +826,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
 
     if (liveAvail) {
       try {
-        const fresh = await api.liveToken({ ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}), language: getAiLanguage(), childId: childProfile.id, childProfile, ...buildVoiceContext(voiceMessagesRef.current, childProfile.id) }, { signal: attempt.signal });
+        const fresh = await api.liveToken({ ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}), language: getAiLanguage(), childId: childProfile.id, childProfile, ...buildVoiceContext(voiceMessagesRef.current, childProfile.id), noticeAck: noticeId }, { signal: attempt.signal });
         if (!attempt.isCurrent()) return;
         if (!(fresh.available && fresh.token && fresh.model)) trackLiveUnavailable("token_error");
         if (fresh.available && fresh.token && fresh.model) {
@@ -929,6 +947,18 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           attempt.end();
           setVoicePhase("off");
           openPaywall(err.feature || "coach_unlimited", err.plan);
+          return;
+        }
+        // B-PROV-12: the server's route changed since the probe (a new
+        // provider, region or purpose). Never a silent fallback: voice stays
+        // off and the new route's notice waits for its own tap.
+        if (err instanceof VoiceNoticeRequiredError) {
+          attempt.end();
+          setVoicePhase("off");
+          const next = liveNoticeIdFrom({ available: true, notice: { id: err.noticeId } });
+          setLiveNoticeId(next);
+          if (!next) setLiveAvail(false);
+          setNoticePending(runtimeVoiceNoticeId(next));
           return;
         }
         // AI-06: a quota (429) or consent (451) refusal is NOT a transport
@@ -1211,7 +1241,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             />
           )}
           {!online && <p data-testid="coach-offline-note" role="status" className="text-xs py-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.aierrors.offline.composer")}</p>}
-          {voiceInvite && voicePhase === "off" && !voiceNotice && <p role="status" data-testid="voice-door-invite" className="companion-voice-invite" dir="auto">{inputText(uiLang, "companion.input.tap-talk-to-start")}</p>}
+          {noticePending && voicePhase === "off" && !voiceNotice && <p role="status" data-testid="voice-provider-notice" data-voice-notice={noticePending} className="companion-voice-invite" dir="auto">{voiceNoticeLine(t, noticePending)} {inputText(uiLang, "companion.input.tap-talk-to-start")}</p>}
+          {voiceInvite && !noticePending && voicePhase === "off" && !voiceNotice && <p role="status" data-testid="voice-door-invite" className="companion-voice-invite" dir="auto">{inputText(uiLang, "companion.input.tap-talk-to-start")}</p>}
           {voiceNotice && voicePhase === "off" && <MicrophoneNotice message={voiceNotice} lang={uiLang} onRetry={() => void toggleVoice()} onDismiss={() => setVoiceNotice(null)} />}
         </section>
   );

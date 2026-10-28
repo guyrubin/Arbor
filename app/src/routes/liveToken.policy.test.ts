@@ -83,8 +83,10 @@ async function serve(over: Partial<ArborConfig>): Promise<string> {
   return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
 const availability = async (base: string) => (await fetch(`${base}/api/live/availability`)).json() as Promise<Record<string, unknown>>;
+// B-PROV-12: the client acknowledges the notice the availability probe names.
 const token = async (base: string) => {
-  const res = await fetch(`${base}/api/live/token`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+  const notice = (await availability(base)).notice as { id?: string } | undefined;
+  const res = await fetch(`${base}/api/live/token`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ noticeAck: notice?.id }) });
   return { status: res.status, body: (await res.json()) as Record<string, unknown> };
 };
 
@@ -102,7 +104,7 @@ describe("B-PROV-01 · production Live under the dated residency exception", () 
   it("prod with a future exception → mints on the global key, availability carries exceptionUntil, the decision is logged", async () => {
     const until = isoDay(30);
     const base = await serve({ liveGlobalExceptionUntil: until });
-    expect(await availability(base)).toEqual({ available: true, exceptionUntil: until });
+    expect(await availability(base)).toEqual({ available: true, exceptionUntil: until, notice: { id: "google-global-realtime-v1" } });
     const info = vi.spyOn(logger, "info");
     const { status, body } = await token(base);
     expect(status).toBe(200);
@@ -132,7 +134,7 @@ describe("B-PROV-01 · production Live under the dated residency exception", () 
 describe("B-PROV-01 · the Vertex `eu` attempt (LIVE_VERTEX_EU)", () => {
   it("EU path on: available after the exception, no exceptionUntil, mints on Vertex europe-west4 — never the global key", async () => {
     const base = await serve({ liveGlobalExceptionUntil: isoDay(-1), liveVertexEu: true, liveVertexLocation: "europe-west4", gcpProjectId: "arbor-prod" });
-    expect(await availability(base)).toEqual({ available: true });
+    expect(await availability(base)).toEqual({ available: true, notice: { id: "google-eu-realtime-v1" } });
     const { status } = await token(base);
     expect(status).toBe(200);
     expect(sdk.ctor).toHaveBeenCalledWith({ vertexai: true, project: "arbor-prod", location: "europe-west4" });
@@ -141,7 +143,7 @@ describe("B-PROV-01 · the Vertex `eu` attempt (LIVE_VERTEX_EU)", () => {
 
   it("EU path outranks the global one even while the exception runs", async () => {
     const base = await serve({ liveGlobalExceptionUntil: isoDay(30), liveVertexEu: true, gcpProjectId: "arbor-prod" });
-    expect(await availability(base)).toEqual({ available: true });
+    expect(await availability(base)).toEqual({ available: true, notice: { id: "google-eu-realtime-v1" } });
     await token(base);
     expect(sdk.ctor).toHaveBeenCalledWith(expect.objectContaining({ vertexai: true }));
   });
@@ -168,6 +170,6 @@ describe("B-PROV-01 · the env contract", () => {
 
   it("non-prod still answers available without an exception date (dev key is global by policy)", async () => {
     const base = await serve({ arborEnv: "local", liveGlobalExceptionUntil: undefined });
-    expect(await availability(base)).toEqual({ available: true });
+    expect(await availability(base)).toEqual({ available: true, notice: { id: "google-global-realtime-v1" } });
   });
 });

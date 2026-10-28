@@ -52,6 +52,8 @@ export const en: Record<string, string> = {
   // used only when no truthful date can be printed.
   "elev.coachcontract.uses.liveResidency": "Live runs on Google's global endpoint, not the EU region, until {date}.",
   "elev.coachcontract.uses.liveResidencyUndated": "Live runs on Google's global endpoint, not the EU region.",
+  // B-PROV-12: the residency clause when the runtime route is the Vertex EU one.
+  "elev.coachcontract.uses.liveResidencyEu": "Live runs in Google's EU region.",
 
   // ── What Arbor stores
   "elev.coachcontract.stores.thread": "This conversation is saved so you can come back to it",
@@ -117,6 +119,7 @@ export const he: Record<string, string> = {
   "elev.coachcontract.uses.spokenLive": "שיחת קול חיה היא שיחת אודיו ישירה עם המודל: היא נושאת את המילים שלכם, את הפרופיל, את עובדות הזיכרון שאישרתם ואת החילופים האחרונים בשיחה הזו, ללא שמות — אף פעם לא את ספירת הרגעים של השבוע. {residency}",
   "elev.coachcontract.uses.liveResidency": "שיחת קול חיה פועלת על נקודת הקצה הגלובלית של Google, לא באזור האיחוד האירופי, עד {date}.",
   "elev.coachcontract.uses.liveResidencyUndated": "שיחת קול חיה פועלת על נקודת הקצה הגלובלית של Google, לא באזור האיחוד האירופי.",
+  "elev.coachcontract.uses.liveResidencyEu": "שיחת קול חיה פועלת באזור האיחוד האירופי של Google.",
 
   "elev.coachcontract.stores.thread": "השיחה הזו נשמרת כדי שתוכלו לחזור אליה",
 

@@ -79,7 +79,9 @@ const body = {
   language: "en",
 };
 const post = async (route: string, payload: unknown) => {
-  const res = await fetch(base + route, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  // B-PROV-12: a Live mint acknowledges the runtime route's approved notice.
+  const sent = route === "/api/live/token" ? { ...(payload as object), noticeAck: "google-global-realtime-v1" } : payload;
+  const res = await fetch(base + route, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sent) });
   return { status: res.status, raw: await res.text() };
 };
 

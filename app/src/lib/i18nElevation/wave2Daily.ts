@@ -14,6 +14,8 @@ export const en: Record<string, string> = {
   "elev.wave2Daily.capture.voice.talkSub": "A spoken conversation with Arbor",
   // First use only. {residency} = elev.coachcontract.uses.liveResidencyUndated (the existing Live line).
   "elev.wave2Daily.capture.voice.dataUse": "No recording is kept. This device's speech service turns your words into text (in a Live conversation, Google's model hears them directly), and only the text is kept. {residency}",
+  // B-PROV-12: the same notice when no Live route is selected (device speech only).
+  "elev.wave2Daily.capture.voice.dataUseDevice": "No recording is kept. This device's speech service turns your words into text, and only the text is kept.",
 };
 
 export const he: Record<string, string> = {
@@ -29,4 +31,5 @@ export const he: Record<string, string> = {
   "elev.wave2Daily.capture.voice.talk": "לדבר על זה",
   "elev.wave2Daily.capture.voice.talkSub": "שיחה בקול עם ארבור",
   "elev.wave2Daily.capture.voice.dataUse": "שום הקלטה לא נשמרת. שירות הדיבור של המכשיר הופך את המילים שלכם לטקסט (בשיחה חיה, המודל של Google שומע אותן ישירות), ורק הטקסט נשמר. {residency}",
+  "elev.wave2Daily.capture.voice.dataUseDevice": "שום הקלטה לא נשמרת. שירות הדיבור של המכשיר הופך את המילים שלכם לטקסט, ורק הטקסט נשמר.",
 };

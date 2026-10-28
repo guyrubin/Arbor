@@ -100,6 +100,17 @@ export class ApiError extends Error {
   }
 }
 
+/** B-PROV-12: `/live/token` refused because the request did not acknowledge
+ *  the runtime route's approved provider notice (`noticeId`, null if absent).
+ *  Nothing was reserved or minted; the caller shows that notice. */
+export const VOICE_NOTICE_REQUIRED = "voice_notice_required";
+export class VoiceNoticeRequiredError extends ApiError {
+  constructor(readonly noticeId: string | null) {
+    super(VOICE_NOTICE_REQUIRED, 428);
+    this.name = "VoiceNoticeRequiredError";
+  }
+}
+
 /** B-CAREPRO-12: one behaviour log as the School Brief sends it — what
  *  happened, what set it off, what helped, and the day. No notes, intensity,
  *  duration, photo or excerpt. */
@@ -206,6 +217,9 @@ async function request<T>(url: string, method: string, body?: unknown, signal?: 
     }
     if (res.status === 429 && errData?.code === LIVE_RESTING) {
       throw new ApiError(LIVE_RESTING, 429);
+    }
+    if (res.status === 428 && errData?.code === VOICE_NOTICE_REQUIRED) {
+      throw new VoiceNoticeRequiredError(typeof errData?.notice?.id === "string" ? errData.notice.id : null);
     }
     if (res.status === 409) {
       // Server escalation contract (see routes/api.ts): 409 == a safety trigger
@@ -572,7 +586,8 @@ export const api = {
   // Probe THIS on mount; call liveToken only when the parent toggles voice on.
   // B-ASKJB-02: `exceptionUntil` (YYYY-MM-DD) is the Live residency exception's
   // last day once lane X (B-PROV-01) serves it; lib/liveResidency falls back.
-  liveAvailability: () => get<{ available: boolean; exceptionUntil?: string }>("/api/live/availability"),
+  // B-PROV-12: `notice.id` names the runtime route's approved provider notice.
+  liveAvailability: () => get<{ available: boolean; exceptionUntil?: string; notice?: { id: string } }>("/api/live/availability"),
   /** Returns ephemeral review proposals only; this endpoint cannot commit records. */
   extractConversationProposals: (payload: { transcript: string; childProfile: ChildProfile; milestones: Pick<Milestone, "id" | "title" | "checked" | "observationStatus">[]; language?: "en" | "he" }) =>
     post<{ proposals: unknown[] }>("/api/conversation/proposals", payload),
@@ -586,6 +601,8 @@ export const api = {
     contextChildId?: string;
     privateMode?: boolean;
     topicId?: string;
+    /** B-PROV-12: the provider notice id the parent acknowledged. */
+    noticeAck?: string;
   } = {}, opts: { signal?: AbortSignal } = {}) =>
     liveStartupRequest<{ available: boolean; token?: string; model?: string; expiresAt?: string; usageSessionId?: string; reason?: string; systemInstruction?: string; speechConfig?: unknown;
       /** B-AIOPS-02: the server-reserved slice and what the family has left today. */

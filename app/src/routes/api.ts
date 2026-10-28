@@ -5,6 +5,7 @@ import { spokenMsForChars, type ReserveResult } from "../server/liveBudget.js";
 import { entitlementForRequest } from "../server/entitlements.js";
 import { createOpsAlerts, type OpsAlerts } from "../server/opsAlerts.js";
 import { createPrepayCounter, createPrepayMonitor, type PrepayCounter } from "../server/prepayBalance.js";
+import { liveVoiceNoticeId, voiceNoticeIdFor, VOICE_NOTICE_REQUIRED, VOICE_PROVIDER_UNAPPROVED } from "../ai/voiceProviderNotice.js";
 import { attachmentTurnPolicy } from "../ai/attachmentSourcePolicy.js";
 import { parseCompanionAttachments, type ComposerAttachment } from "../lib/companionAttachments.js";
 import express from "express";
@@ -1841,9 +1842,12 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // endpoint keyed on the key alone would recreate the VC-7 hazard.)
   router.get("/live/availability", (_req, res) => {
     const live = decideLive(config);
+    // B-PROV-12: the approved notice of the route a tap would take. A selected
+    // route with no approved notice is not offered (no unreviewed processor).
+    const noticeId = liveVoiceNoticeId(live);
     // B-PROV-01 / B-ASKJB-02: `exceptionUntil` names the dated exception only
     // while it is what admits the global endpoint.
-    res.json({ available: live.available, ...(live.exceptionUntil ? { exceptionUntil: live.exceptionUntil } : {}) });
+    res.json({ available: live.available && noticeId !== null, ...(live.exceptionUntil && noticeId ? { exceptionUntil: live.exceptionUntil } : {}), ...(noticeId ? { notice: { id: noticeId } } : {}) });
   });
 
   // RT-1 (v6): Gemini Live streaming. Mint a short-lived ephemeral token so the
@@ -1909,6 +1913,20 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       exception_until: live.exceptionUntil ?? null,
     });
     const euPath = selected.provider === LIVE_VERTEX_EU_PROVIDER;
+    // B-PROV-12: no audio reaches a provider the parent has not acknowledged.
+    // The acknowledgement must name THIS route's approved notice; a changed
+    // provider, region or purpose carries a new id. Checked before anything
+    // is reserved or minted.
+    const noticeId = voiceNoticeIdFor(selected);
+    if (!noticeId) {
+      logger.warn("Live route has no approved provider notice", { requestId: requestIdOf(req), provider: selected.provider, region: selected.region });
+      res.status(503).json({ available: false, code: VOICE_PROVIDER_UNAPPROVED, reason: "Live voice is not available right now." });
+      return;
+    }
+    if (req.body?.noticeAck !== noticeId) {
+      res.status(428).json({ available: false, code: VOICE_NOTICE_REQUIRED, notice: { id: noticeId } });
+      return;
+    }
 
     // B-AIOPS-02: reserve BEFORE the provider is touched. The family, plan and
     // slice are server-resolved; the client supplies none of them. A token is

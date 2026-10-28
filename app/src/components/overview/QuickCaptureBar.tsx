@@ -1,10 +1,12 @@
-import React, { useId, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import type { CaptureMode } from "../../context/ArborContext";
 import { requestCompanionConversation } from "../../lib/companionConversation";
 import { markVoiceDoorNoticeSeen, voiceDoorNoticeSeen } from "../../lib/voiceDoor";
+import { api } from "../../lib/api";
+import { acknowledgeVoiceNotice, DEVICE_VOICE_NOTICE_ID, liveNoticeIdFrom, runtimeVoiceNoticeId, voiceNoticeLine } from "../../lib/voiceProviderNotice";
 
 /* Quick Capture — the ambient door into logging a moment, above the forms in
    the capture hierarchy. First in Today's DOM so keyboard users reach capture
@@ -81,11 +83,28 @@ export default function QuickCaptureBar({
   // conversation seam, asked to start talking). No new voice path.
   const [voiceChoice, setVoiceChoice] = useState(false);
   const [firstUse, setFirstUse] = useState(() => !voiceDoorNoticeSeen());
+  // B-PROV-12: the line names the RUNTIME route's approved notice, asked of
+  // the config-only availability probe when the choice first opens (null
+  // until it answers; a failed probe is the device-only route).
+  const [noticeId, setNoticeId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!voiceChoice || !firstUse || noticeId) return;
+    let cancelled = false;
+    api.liveAvailability()
+      .then((r) => { if (!cancelled) setNoticeId(runtimeVoiceNoticeId(liveNoticeIdFrom(r))); })
+      .catch(() => { if (!cancelled) setNoticeId(DEVICE_VOICE_NOTICE_ID); });
+    return () => { cancelled = true; };
+  }, [voiceChoice, firstUse, noticeId]);
   const choiceId = useId();
   const voiceTileRef = useRef<HTMLButtonElement>(null);
   const chooseVoice = (door: "note" | "talk") => {
     setVoiceChoice(false);
-    if (firstUse) { markVoiceDoorNoticeSeen(); setFirstUse(false); }
+    if (firstUse) {
+      markVoiceDoorNoticeSeen(); setFirstUse(false);
+      // B-PROV-12: choosing to talk with the runtime notice on screen is its
+      // acknowledgement — the Talk button then starts on the first tap.
+      if (door === "talk" && noticeId) acknowledgeVoiceNotice(noticeId);
+    }
     if (door === "note") onMode("voice");
     else requestCompanionConversation({ source: "capture-voice", voice: true });
   };
@@ -158,13 +177,15 @@ export default function QuickCaptureBar({
     </motion.div>
     {/* B-VOICE-06: the Voice choice, under the bar (it adds to the bar, never
         replaces a tile). The first time it opens it says once what happens to
-        the audio; the residency sentence is the existing Live line (this bar
-        reads no /live/availability, so it carries the undated form). Escape
-        closes it and returns focus to the Voice tile. */}
+        the audio. B-PROV-12: the line is the approved notice of the route a
+        Talk tap would take now (the config-only /live/availability probe),
+        never a fixed provider. Escape closes it and returns focus to the
+        Voice tile. */}
     {voiceChoice && (
       <VoiceChoice
         id={choiceId}
         firstUse={firstUse}
+        noticeId={noticeId}
         t={t}
         onChoose={chooseVoice}
         onEscape={() => { setVoiceChoice(false); voiceTileRef.current?.focus(); }}
@@ -180,6 +201,7 @@ const CHOICE_STYLE = { color: "var(--arbor-ink)", ["--tw-ring-color" as string]:
 export function VoiceChoice({
   id,
   firstUse,
+  noticeId,
   t,
   onChoose,
   onEscape,
@@ -187,6 +209,8 @@ export function VoiceChoice({
   id?: string;
   /** The one data-use line shows only until the parent has picked a door once. */
   firstUse: boolean;
+  /** B-PROV-12: the runtime route's approved notice id (null while the probe answers). */
+  noticeId: string | null;
   t: (key: string, vars?: Record<string, string | number>) => string;
   onChoose: (door: "note" | "talk") => void;
   onEscape: () => void;
@@ -205,9 +229,9 @@ export function VoiceChoice({
       className="mt-2 rounded-[18px] p-1.5"
       style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}`, boxShadow: "var(--shadow-sm)" }}
     >
-      {firstUse && (
-        <p data-testid="capture-voice-data-use" className="px-3 pt-2 pb-1.5 text-[12px] leading-snug" style={{ color: "var(--arbor-muted)" }}>
-          {t("elev.wave2Daily.capture.voice.dataUse", { residency: t("elev.coachcontract.uses.liveResidencyUndated") })}
+      {firstUse && noticeId && (
+        <p data-testid="capture-voice-data-use" data-voice-notice={noticeId} className="px-3 pt-2 pb-1.5 text-[12px] leading-snug" style={{ color: "var(--arbor-muted)" }}>
+          {voiceNoticeLine(t, noticeId)}
         </p>
       )}
       <div className="grid grid-cols-1 gap-1 @md:grid-cols-2">

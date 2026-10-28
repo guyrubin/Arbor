@@ -149,11 +149,13 @@ const getAvailability = async (base: string) => {
   return { status: res.status, body: (await res.json()) as { available: boolean } };
 };
 
+// B-PROV-12: a mint must acknowledge the runtime route's approved notice.
+const GLOBAL_NOTICE = "google-global-realtime-v1";
 const postToken = async (base: string) => {
   const res = await fetch(`${base}/api/live/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: "{}",
+    body: JSON.stringify({ noticeAck: GLOBAL_NOTICE }),
   });
   return { status: res.status, body: (await res.json()) as Record<string, unknown> };
 };
@@ -172,7 +174,7 @@ describe("GET /api/live/availability (AI-V8) — config-only, never the SDK", ()
 
   it("returns available:true only when BOTH the flag and the key are set", async () => {
     const { body } = await getAvailability(flagOnUrl);
-    expect(body).toEqual({ available: true });
+    expect(body).toEqual({ available: true, notice: { id: GLOBAL_NOTICE } });
   });
 
   it("makes zero SDK constructor / authTokens.create calls and answers <50ms (no network)", async () => {
@@ -238,7 +240,7 @@ describe("POST /api/live/token (VC-7) — gated on liveEnabled && geminiApiKey",
     const res = await fetch(`${flagOnUrl}/api/live/token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ language: "he" }),
+      body: JSON.stringify({ language: "he", noticeAck: GLOBAL_NOTICE }),
     });
     const body = (await res.json()) as Record<string, any>;
     const arg = sdkSpies.create.mock.calls[0][0] as any;
