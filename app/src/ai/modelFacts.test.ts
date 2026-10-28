@@ -1,12 +1,18 @@
 /* B-AIOPS-06 — the app's model pins, price table, retirement record and AI SDK
  * versions agree with the dated facts record (docs/ops/model-facts.md).
  *
- * Hard failures (any day): a drift between the app and the record, and a
- * pinned model past its recorded retirement. The record's age follows the
- * helpline record's shape (LC-15): it fails only after 90 days and prints a
- * GitHub `::warning` line from 14 days before, so a routine re-read never
- * blocks a release or a hotfix. An SDK past its announced removal also prints
- * a `::warning` on every run (the record must say so and name the successor).
+ * Hard failures (any day): a drift between the app and the record, a pinned
+ * model past its recorded retirement, and an SDK still in use on or after its
+ * recorded hard-fail date. The record's age follows the helpline record's shape
+ * (LC-15): it fails only after 90 days and warns from 14 days before, so a
+ * routine re-read never blocks a release or a hotfix. An SDK past its announced
+ * removal warns on every run until its hard-fail date, which must fall before
+ * the earliest recorded retirement of a pinned model.
+ *
+ * Warnings go through the test context's annotate(message, "warning"): in CI
+ * (GITHUB_ACTIONS=true) vitest's github-actions reporter prints them as clean
+ * `::warning file=…,line=…::` workflow commands; a console line would carry
+ * reporter colour codes before the `::` and never render.
  *
  * What is checked deterministically: every model the app pins, deploys, judges
  * with, records as retired or prices has a row; PRICE_TABLE and the TTS price
@@ -38,8 +44,6 @@ type Deps = Record<string, { pinned: string; installed: string | undefined }>;
 const DEPS: Deps = Object.fromEntries(Object.entries({ ...PACKAGE.dependencies, ...PACKAGE.devDependencies } as Record<string, string>)
   .filter(([name]) => AI_SDK.test(name))
   .map(([name, pinned]) => [name, { pinned, installed: LOCK.packages?.[`node_modules/${name}`]?.version }]));
-/** Visible in a GitHub Actions log (stdout, own line), harmless anywhere else. */
-const annotate = (title: string, message: string) => console.log(`::warning file=docs/ops/model-facts.md,title=${title}::${message}`);
 const STALE_HELP = 're-read sources A–D listed in docs/ops/model-facts.md (A model pricing, B TTS pricing, C model versions and retirement, D SDK registry notes), update the rows, then the "Checked on:" line';
 
 /** What production deploys, read from the deploy config itself (cloudbuild.prod.yaml env). */
@@ -163,6 +167,11 @@ function factsErrors(doc: string, pinned: Pinned, priceTable: Readonly<Record<st
     if (removal && Date.parse(removal) <= nowMs) {
       if (!/past removal/i.test(row.Lifecycle ?? "")) errors.push(`${name}: removed ${removal} but the lifecycle does not say "past removal"`);
       if (!row.Successor || row.Successor === "—" || !(row["Owner action"] ?? "").includes(row.Successor)) errors.push(`${name}: past removal without a successor named in the owner action`);
+      if (!row["Migration row"] || row["Migration row"] === "—" || !row["Migration row"].includes(row.Successor)) errors.push(`${name}: past removal without a migration row naming ${row.Successor || "its successor"}`);
+      const hardFail = /^\d{4}-\d{2}-\d{2}$/.test(row["Hard fail from"] ?? "") ? row["Hard fail from"] : null;
+      const firstRetirement = rows.filter((r) => scheduled(r) && idsOf(r).some((id) => activeModels(pinned).includes(id))).map((r) => scheduled(r)!).sort()[0];
+      if (!hardFail) errors.push(`${name}: past removal without a hard-fail date`);
+      else if (firstRetirement && hardFail >= firstRetirement) errors.push(`${name}: hard-fail date ${hardFail} is not before the first pinned retirement (${firstRetirement})`);
     }
   }
   for (const row of sdkRows) if (!(row.Package in deps)) errors.push(`SDK row ${row.Package} is not a dependency`);
@@ -213,21 +222,28 @@ describe("B-AIOPS-06 — model facts record matches the app", () => {
 /* LC-15 pattern: the real clock. The run that reliably happens is CI, so the
  * staleness check runs here against Date.now(); fixing a red run means
  * re-reading the sources and updating the record, never widening the window. */
+/** SDKs still installed on or after their recorded hard-fail date. */
+function sdkPastHardFail(doc: string, nowMs: number, deps: Deps = DEPS): Row[] {
+  return factsTable(doc, "SDKs").filter((r) => r.Package in deps && /^\d{4}-\d{2}-\d{2}$/.test(r["Hard fail from"] ?? "") && Date.parse(r["Hard fail from"]) <= nowMs);
+}
+
 describe("B-AIOPS-06 — the record's age and the SDK notices (real clock)", () => {
-  it(`docs/ops/model-facts.md "Checked on:" is at most ${MAX_AGE_DAYS} days old (warning from ${WARN_DAYS} days before)`, () => {
+  it(`docs/ops/model-facts.md "Checked on:" is at most ${MAX_AGE_DAYS} days old (warning from ${WARN_DAYS} days before)`, async ({ annotate }) => {
     const age = recordAge(RECORD, Date.now());
     if (!age.stale && age.daysRemaining <= WARN_DAYS) {
-      annotate("Model facts re-check due", `docs/ops/model-facts.md "Checked on: ${age.checkedOn}" reaches ${MAX_AGE_DAYS} days in ${age.daysRemaining} day(s); ${STALE_HELP}.`);
+      await annotate(`Model facts re-check due: docs/ops/model-facts.md "Checked on: ${age.checkedOn}" reaches ${MAX_AGE_DAYS} days in ${age.daysRemaining} day(s); ${STALE_HELP}.`, "warning");
     }
     expect(age.stale, `docs/ops/model-facts.md "Checked on: ${age.checkedOn}" is ${age.ageDays} days old (limit ${MAX_AGE_DAYS}): ${STALE_HELP}`).toBe(false);
   });
 
-  it("an SDK past its announced removal is reported on every run", () => {
+  it("an SDK past its announced removal warns on every run until its hard-fail date, then fails", async ({ annotate }) => {
     const now = Date.now();
     const past = factsTable(RECORD, "SDKs").filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.Removal ?? "") && Date.parse(r.Removal) <= now && r.Package in DEPS);
-    for (const r of past) annotate("AI SDK past removal", `${r.Package} ${DEPS[r.Package].installed}: removal announced for ${r.Removal}; successor ${r.Successor}. ${r["Owner action"]}`);
-    // The notice is a warning, not a gate: production still answers on it. The record must carry it.
-    for (const r of past) expect(r["Owner action"]).toContain(r.Successor);
+    for (const r of past) {
+      await annotate(`AI SDK past removal: ${r.Package} ${DEPS[r.Package].installed} (removal announced for ${r.Removal}); CI fails from ${r["Hard fail from"]}. Migration row: ${r["Migration row"]}.`, "warning");
+    }
+    const due = sdkPastHardFail(RECORD, now);
+    expect(due.map((r) => r.Package), due.map((r) => `${r.Package} is still installed on or after its hard-fail date ${r["Hard fail from"]} (docs/ops/model-facts.md, SDKs): land "${r["Migration row"]}" or record Guy's new date`).join("; ")).toEqual([]);
   });
 
   it("no pinned model is past its recorded retirement today", () => {
@@ -291,5 +307,19 @@ describe("B-AIOPS-06 — negative controls", () => {
     const past = factsTable(RECORD, "SDKs").find((r) => /past removal/i.test(r.Lifecycle))!;
     const stripped = RECORD.replace(past["Owner action"], "Nothing planned");
     expect(factsErrors(stripped, PINNED, PRICE_TABLE, at)).toContain(`${past.Package}: past removal without a successor named in the owner action`);
+  });
+
+  it("a past-removal SDK needs a migration row and a hard-fail date before the first pinned retirement", () => {
+    const past = factsTable(RECORD, "SDKs").find((r) => /past removal/i.test(r.Lifecycle))!;
+    expect(factsErrors(RECORD.replace(past["Migration row"], "—"), PINNED, PRICE_TABLE, at)).toContain(`${past.Package}: past removal without a migration row naming ${past.Successor}`);
+    expect(factsErrors(RECORD.replace(`| ${past["Hard fail from"]} |`, "| — |"), PINNED, PRICE_TABLE, at)).toContain(`${past.Package}: past removal without a hard-fail date`);
+    expect(factsErrors(RECORD.replace(`| ${past["Hard fail from"]} |`, "| 2027-04-01 |"), PINNED, PRICE_TABLE, at).some((e) => e.startsWith(`${past.Package}: hard-fail date 2027-04-01 is not before the first pinned retirement`))).toBe(true);
+  });
+
+  it("the SDK hard fail trips on its date, not the day before", () => {
+    const past = factsTable(RECORD, "SDKs").find((r) => /past removal/i.test(r.Lifecycle))!;
+    const day = Date.parse(past["Hard fail from"]);
+    expect(sdkPastHardFail(RECORD, day - 1).map((r) => r.Package)).toEqual([]);
+    expect(sdkPastHardFail(RECORD, day).map((r) => r.Package)).toEqual([past.Package]);
   });
 });
