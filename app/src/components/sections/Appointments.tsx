@@ -1,5 +1,9 @@
 import { appointmentRoleLabel, PROFESSION_KEY } from "../../lib/appointmentLabel";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import RecordingIndicator from "../ui/RecordingIndicator";
+import { speechSupported, startDictation } from "../../lib/speech";
+import { microphoneRecovery } from "../../lib/microphoneRecovery";
+import { numberedQuestions, rehearsalQuestions, REHEARSAL_MAX_QUESTIONS } from "../../consult/rehearsalQuestions";
 import { parentWords } from "../../lib/recordCounts";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
@@ -159,6 +163,15 @@ export default function Appointments() {
       }),
     });
     setActiveTab("consult");
+  };
+  /** B-VOICE-03: only the parent's Keep writes rehearsed questions (in their
+   *  reviewed order) to the questions the visit summary carries. */
+  const keepRehearsal = (reviewed: string[]) => {
+    const clean = reviewed.map((x) => x.trim()).filter(Boolean).slice(0, REHEARSAL_MAX_QUESTIONS);
+    if (!clean.length) return;
+    const stamp = Date.now();
+    clean.forEach((text, i) => void questionsCol.upsert({ id: `q${stamp}-${String(i).padStart(2, "0")}`, text }));
+    receipt.show({ text: clean.length === 1 ? t("elev.learnCare.appt.rehearse.kept.one") : t("elev.learnCare.appt.rehearse.kept.many", { n: clean.length }) });
   };
   const addQ = () => {
     if (q.trim()) {
@@ -437,6 +450,7 @@ export default function Appointments() {
           <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addQ()} placeholder={t("elev.learnCare.appt.questions.placeholder")} aria-label={t("elev.learnCare.appt.questions.placeholder")} className="flex-1 rounded-xl px-3 py-2.5 text-sm min-h-[44px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
           <button onClick={addQ} className="inline-flex items-center gap-1 font-bold text-sm rounded-xl px-4 min-h-[44px]" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}><Icon name="add" size={18} /> {t("elev.learnCare.appt.questions.add")}</button>
         </div>
+        <RehearseQuestions lang={uiLang === "he" ? "he" : "en"} onKeep={keepRehearsal} />
         {/* LC-12 + LC-20: the prepared questions ride into the consult summary. */}
         <p className="t-xs mt-2.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
           {t("elev.learnCare.appt.questions.toPacket")}
@@ -577,6 +591,92 @@ function ApptRow({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/** B-VOICE-03 (agent half) — "Talk it through" before the visit, inside the
+ *  visit's questions card (no new surface). The parent says what worries them
+ *  and what they want to leave with; their own questions (and voiced worries)
+ *  come back NUMBERED for editing (consult/rehearsalQuestions, deterministic,
+ *  no model), and nothing is kept until Keep. Rephrasing a worry into a
+ *  question is the model's half, behind its own live eval. The microphone
+ *  shows the REC-01 indicator while it is open (B-STATUS-02). */
+function RehearseQuestions({ lang, onKeep }: { lang: "en" | "he"; onKeep: (questions: string[]) => void }) {
+  const { t } = useLanguage();
+  const [supported] = useState(() => speechSupported());
+  const [listening, setListening] = useState(false);
+  const [interim, setInterim] = useState("");
+  const [draft, setDraft] = useState<string[] | null>(null);
+  const [error, setError] = useState("");
+  const stopRef = useRef<(() => void) | null>(null);
+  const scope = useRef(0);
+  useEffect(() => () => { scope.current++; stopRef.current?.(); stopRef.current = null; }, []);
+  if (!supported) return null;
+  const start = () => {
+    const turn = ++scope.current;
+    setError(""); setDraft(null); setListening(true);
+    stopRef.current = startDictation({
+      onResult: (text) => { if (turn === scope.current) setDraft(rehearsalQuestions(text)); },
+      onInterim: (text) => { if (turn === scope.current) setInterim(text); },
+      onError: (reason) => { if (turn === scope.current) setError(microphoneRecovery(reason, lang)); },
+      onEnd: () => { if (turn === scope.current) { setListening(false); setInterim(""); stopRef.current = null; } },
+    }, lang === "he" ? "he-IL" : "en-US", { continuous: true });
+  };
+  const keep = () => { if (draft) { onKeep(draft); setDraft(null); } };
+  const quiet = "inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 text-sm font-bold";
+  return (
+    <div data-testid="appt-rehearse" className="mt-3 space-y-2" dir={lang === "he" ? "rtl" : "ltr"} lang={lang}>
+      {!listening && !draft && (
+        <>
+          <button type="button" data-testid="appt-rehearse-start" onClick={start} className={quiet} style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
+            <Icon name="mic" size={18} /> {t("coach.voice.talk")}
+          </button>
+          <p className="t-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.rehearse.dataUse")}</p>
+        </>
+      )}
+      {listening && (
+        <RecordingIndicator interim={interim} hint={t("elev.learnCare.appt.rehearse.hint")} label={t("elev.rec.on")} stopLabel={t("elev.describe.done")}
+          stopAria={t("elev.rec.stopAria")} onStop={() => stopRef.current?.()} testId="appt-rehearse-recording" captionTestId="appt-rehearse-caption" />
+      )}
+      {draft && draft.length === 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.rehearse.none")}</p>
+          <button type="button" onClick={start} className={quiet} style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>{t("kept.retry")}</button>
+        </div>
+      )}
+      {draft && draft.length > 0 && (
+        <div data-testid="appt-rehearse-review" className="space-y-2">
+          <p className="t-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.packet.section.questions")}</p>
+          <ol className="space-y-2">
+            {numberedQuestions(draft).map((line, i) => (
+              <li key={i} className="flex items-center gap-2" data-rehearse-line={line}>
+                <span className="t-sm font-bold tabular-nums" style={{ color: "var(--arbor-muted)" }} aria-hidden="true">{i + 1}.</span>
+                <input
+                  value={draft[i]}
+                  dir="auto"
+                  aria-label={t("elev.learnCare.appt.rehearse.edit", { n: i + 1 })}
+                  onChange={(e) => setDraft((d) => d ? d.map((x, j) => (j === i ? e.target.value : x)) : d)}
+                  className="min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm"
+                  style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+                />
+                <button type="button" aria-label={t("elev.learnCare.appt.rehearse.remove", { n: i + 1 })} onClick={() => setDraft((d) => d ? d.filter((_, j) => j !== i) : d)} className="touch-target flex-shrink-0">
+                  <Icon name="close" size={16} style={{ color: "var(--arbor-muted)" }} />
+                </button>
+              </li>
+            ))}
+          </ol>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" data-testid="appt-rehearse-keep" onClick={keep} className={quiet} style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>
+              <Icon name="check" size={18} /> {t("elev.learnCare.appt.rehearse.keep")}
+            </button>
+            <button type="button" data-testid="appt-rehearse-discard" onClick={() => setDraft(null)} className={quiet} style={{ color: "var(--arbor-muted)" }}>
+              {t("elev.learnCare.appt.rehearse.discard")}
+            </button>
+          </div>
+        </div>
+      )}
+      {error && <p className="t-sm" role="alert" style={{ color: "var(--arbor-ink)" }}>{error}</p>}
     </div>
   );
 }
