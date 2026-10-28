@@ -44,6 +44,7 @@ import { composePlanBook } from "../../lib/library/plans/composePlanBook";
 import type { PlanVisibility } from "../../lib/plans/planApi";
 import type { BookReaderChild } from "../../lib/library/types";
 import { sharedEscalation } from "../../content/hardMomentCards";
+import { PLAN_STRINGS } from "../../lib/plans/planStrings";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const src = (rel: string) => readFileSync(path.resolve(here, rel), "utf8").replace(/\r\n/g, "\n");
@@ -280,5 +281,32 @@ describe("the composer's stage order (B-BOOK-77)", () => {
     expect(preview).toContain('data-plan-approve=""');
     expect(preview).not.toContain("arbor-play");
     expect(visible(preview)).toContain("Noa");
+  });
+});
+
+describe("B-GA-05: crisis language in the parent's own words never becomes a plan step", () => {
+  it("the composer screens before any request, honours the server's 409 contract, and shows the helplines door instead of 'could not phrase'", () => {
+    const composer = src("PlanComposer.tsx");
+    expect(composer).toContain('import { screenForImmediateEscalation } from "../../safety/escalation";');
+    expect(composer).toContain("if (screenForImmediateEscalation({ message: ownText.trim() })) { setCrisis(true); return; }");
+    expect(composer).toContain("if (e instanceof PlanApiError && e.status === 409) { setCrisis(true); return; }");
+    expect(composer).toContain('data-plan-own-crisis=""');
+    expect(composer).toContain('s("stage.steps.ownCrisisDoor")');
+    // the server screens the same text BEFORE the gate and the model call
+    const server = src("../../server/plans.ts");
+    expect(server.indexOf("screenForImmediateEscalation({ message: text })")).toBeLessThan(server.indexOf("canComposePlan({ patternId: def.id, lang, flags, viewer, owners })"));
+    expect(server).toContain('res.status(409).json({ error: "Professional support recommended", escalationCategory: escalationMatch.category });');
+  });
+
+  it("both locales carry the crisis notice and the door, and neither names a diagnosis", () => {
+    for (const lang of ["en", "he"] as const) {
+      const notice = PLAN_STRINGS[lang]["stage.steps.ownCrisis"];
+      const door = PLAN_STRINGS[lang]["stage.steps.ownCrisisDoor"];
+      expect(notice.length).toBeGreaterThan(20);
+      expect(door.length).toBeGreaterThan(3);
+      expect(notice).not.toMatch(/depress|anxiety|disorder|ADHD|autis|דיכאון|חרדה|הפרעה|אוטיז/i);
+    }
+    expect(PLAN_STRINGS.en["stage.steps.ownCrisis"]).toContain("emergency");
+    expect(PLAN_STRINGS.he["stage.steps.ownCrisis"]).toContain("חירום");
   });
 });

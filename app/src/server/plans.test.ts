@@ -204,6 +204,21 @@ describe("B-GA-11: POST /plans/phrase", () => {
     expect((await own.json()).step.origin).toBeUndefined();
   });
 
+  it("B-GA-05: crisis language in the parent's words is screened BEFORE the gate and the model — 409 with the escalation contract, provider never called", async () => {
+    let calls = 0;
+    const provider = { generateJson: async () => { calls += 1; return { en: "Step two: x.", he_m: "שלב שני: x.", he_f: "שלב שני: x." }; } } as unknown as NonNullable<Parameters<typeof createPlansRouter>[0]["modelProvider"]>;
+    const owner = await serve({ ...base, modelProvider: "vertex" } as Cfg, { uid: "owner-uid" }, provider);
+    const outside = await serve({ ...base, modelProvider: "vertex" } as Cfg, { uid: "family-1" }, provider);
+    servers.push(owner, outside);
+    const r = await json(`${owner.url}/plans/phrase`, { pattern: "plan-poo-sit", slot: 2, lang: "en", text: "he says he wants to hurt himself when we sit" });
+    expect(r.status).toBe(409);
+    expect(await r.json()).toMatchObject({ error: "Professional support recommended", escalationCategory: "self_harm" });
+    // The screen outranks the visibility gate: a family outside the owner list gets the helplines, not a 403.
+    const gated = await json(`${outside.url}/plans/phrase`, { pattern: "plan-poo-sit", slot: 2, lang: "en", text: "I am thinking about suicide" });
+    expect(gated.status).toBe(409);
+    expect(calls).toBe(0);
+  });
+
   it("the gate holds here too; empty words and a bad slot are refused", async () => {
     const outside = await serve(base, { uid: "family-1" });
     const owner = await serve(base, { uid: "owner-uid" });
