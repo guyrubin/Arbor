@@ -57,7 +57,7 @@ export const en: Record<string, string> = {
   "elev.coachcontract.stores.thread": "This conversation is saved so you can come back to it",
 
   // ── What you control
-  "elev.coachcontract.controls.memory": "You approve or remove memory facts any time in Profile › Child Memory",
+  "elev.coachcontract.controls.memory": "You approve or remove memory facts any time in My child › About › Everything Arbor remembers",
   "elev.coachcontract.controls.weekly": "Turn weekly context off any time — it stops with your next question",
 
   // AI-10 — the in-product quality signal on a coach answer (thumbs).
@@ -120,7 +120,7 @@ export const he: Record<string, string> = {
 
   "elev.coachcontract.stores.thread": "השיחה הזו נשמרת כדי שתוכלו לחזור אליה",
 
-  "elev.coachcontract.controls.memory": "אתם מאשרים או מסירים עובדות זיכרון בכל רגע בפרופיל › זיכרון הילד",
+  "elev.coachcontract.controls.memory": "אתם מאשרים או מסירים עובדות זיכרון בכל רגע במסך הילד שלי › אודות › כל מה שארבור זוכרת",
   "elev.coachcontract.controls.weekly": "אפשר לכבות את ההקשר השבועי בכל רגע — הוא נעצר כבר מהשאלה הבאה",
 
   // AI-10 — משוב על התשובה (לא על הילד). פנייה בלשון רבים, שקטה.

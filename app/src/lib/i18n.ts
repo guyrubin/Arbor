@@ -576,7 +576,7 @@ export const en: Dict = {
   "coach.doc.error": "This was not saved. Try again.",
   "coach.doc.saved": "Waiting for your approval",
   "coach.doc.retry": "Try again",
-  "coach.doc.pendingNote": "Saved items wait for your approval in Profile › Child Memory — nothing is used until you approve it.",
+  "coach.doc.pendingNote": "Saved items wait for your approval in My child › About › Everything Arbor remembers — nothing is used until you approve it.",
   "coach.cards.copiedNote": "Copied note",
   // COACH-1 — six-frame routing chip labels (FRAME_LABELS).
   // COACH-1 — prominent escalation panel headline (quiet tier = coach.escalate.title).
@@ -3194,7 +3194,7 @@ export const he: Dict = {
   "coach.doc.error": "הפריט לא נשמר. אפשר לנסות שוב.",
   "coach.doc.saved": "ממתין לאישור שלכם",
   "coach.doc.retry": "לנסות שוב",
-  "coach.doc.pendingNote": "פריטים שנשמרו ממתינים לאישורכם בפרופיל › זיכרון הילד — שום דבר לא נכנס לשימוש עד שתאשרו.",
+  "coach.doc.pendingNote": "פריטים שנשמרו ממתינים לאישורכם במסך הילד שלי › אודות › כל מה שארבור זוכרת — שום דבר לא נכנס לשימוש עד שתאשרו.",
   "coach.cards.copiedNote": "הפתק הועתק",
   // COACH-1 — six-frame routing chip labels (he).
   // COACH-1 — prominent escalation panel headline (he). Escalation semantics
