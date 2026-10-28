@@ -3,7 +3,7 @@ import { Type } from "@google/genai";
 import type { FrameworkDefinition } from "../services/framework.js";
 import { domainLabel } from "../lib/domains/registry.js";
 import { he as DOMAIN_NAMES_HE } from "../lib/i18nElevation/domains.js";
-import { withoutHandoffFindings } from "../lib/clinicalScan.js";
+import { withoutHandoffFindings, type HandoffFloorOptions } from "../lib/clinicalScan.js";
 
 export const NON_DIAGNOSTIC_CONTRACT = `
 ARBOR DEVELOPMENTAL AI CONTRACT:
@@ -553,14 +553,14 @@ export const scrubHypothesisConfidence = <T extends Pick<CoachResponse, "nonDiag
  * CoachAnswerCards and the rendered answer. Runs before the output screen and
  * before anything is sent. Mutates in place; returns how many notes changed.
  */
-export const scrubHandoffNotes = <T extends Pick<CoachResponse, "handoffNotes">>(response: T): number => {
+export const scrubHandoffNotes = <T extends Pick<CoachResponse, "handoffNotes">>(response: T, opts: HandoffFloorOptions = {}): number => {
   let changed = 0;
   const notes = response.handoffNotes;
   if (!notes) return changed;
   for (const key of ["teacher", "professional"] as const) {
     const note = notes[key];
     if (typeof note !== "string" || !note) continue;
-    const next = withoutHandoffFindings(note);
+    const next = withoutHandoffFindings(note, opts);
     if (next !== note) { notes[key] = next; changed++; }
   }
   return changed;

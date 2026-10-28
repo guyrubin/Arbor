@@ -1197,8 +1197,10 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       }
       // B-ASKJB-44: no invented finding reaches a teacher or professional
       // note. Runs AFTER the output screen saw the model's own words (a
-      // dropped clause can never hide a crisis signal), then re-renders.
-      if (scrubHandoffNotes(structured) > 0) {
+      // dropped clause can never hide a crisis signal), then re-renders. A
+      // finding the parent wrote (this message or their earlier turns) is theirs.
+      const parentText = [message, ...sanitizeRecentTurns(recentTurns).filter((turn) => turn.role === "parent").map((turn) => turn.text)].join("\n");
+      if (scrubHandoffNotes(structured, { parentText }) > 0) {
         renderedText = seededFollowUp ? renderCoachFollowUpResponse(structured, renderLanguage)
           : structured.fileDeclined ? renderFileDeclinedResponse(structured)
           : renderCoachResponse(structured, renderLanguage);
@@ -1498,7 +1500,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // their words. scrubMemoryProposals rewrites the assessment register and
       // DROPS any fact that cannot be stated plainly (server/parentWordsScrub).
       // B-ASKJB-44: the handoff-note floor, after the screen saw the model's words.
-      if (scrubHandoffNotes(structured) > 0) renderedText = renderCoachResponse(structured, renderLanguage);
+      const parentText = [message, ...councilTurns.filter((turn) => turn.role === "parent").map((turn) => turn.text)].join("\n");
+      if (scrubHandoffNotes(structured, { parentText }) > 0) renderedText = renderCoachResponse(structured, renderLanguage);
       const memoryReviewItems: [] = [];
       budget.settle();
       const payload = { text: renderedText, contract: structured, council: restoredTakes, memoryReviewItems };
@@ -3866,7 +3869,9 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       // B-ASKJB-44: the invented-finding floor ("no evidence of…", "was
       // observed", EN + HE; never the escalation line) runs AFTER the output
       // screen saw the model's own words, then the brief is sent.
-      if (brief && typeof brief === "object") scrubHandoffBriefFindings(brf);
+      // The parent's own logged words (trigger, response) may carry a finding they reported.
+      const parentText = logs.map((log) => [log.trigger, log.response].filter((v) => typeof v === "string").join(" ")).join("\n");
+      if (brief && typeof brief === "object") scrubHandoffBriefFindings(brf, { parentText });
       res.json(brief);
     } catch (error: any) {
       logger.error("Arbor Handoff Brief Error", error, { requestId: requestIdOf(req) });

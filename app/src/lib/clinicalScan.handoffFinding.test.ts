@@ -148,3 +148,62 @@ describe("B-ASKJB-44 · what the parent reported is kept (the critic's probes)",
     expect(findHandoffFinding("קשה לשלול קושי בקשב")).toBe("לשלול");
   });
 });
+
+/* Critic round 2 (P1): attribution and escalation are structural. A reporter
+   word or an urgent word earlier in the clause no longer launders a finding;
+   only the parent's own input, a reporter + reporting verb that directly
+   govern the finding, a trailing "according to <reporter>", or a condition
+   together with a referral action keep it. */
+describe("B-ASKJB-44 · round 2 — invented findings behind a lead-in are dropped", () => {
+  it.each([
+    "Parent reports morning separation crying, with no evidence of attention or regulation difficulties.",
+    "During parent-child play, no signs of attention or regulation difficulties were observed.",
+    "In free play with his mother, Noa shows no signs of sensory overload.",
+    "Our conversation suggests no evidence of a language delay.",
+    "He settled immediately and showed no signs of anxiety at drop-off.",
+    "My son shows no signs of attention difficulties.",
+    "We see no evidence of developmental delay in his play.",
+    "If useful for context: there are no signs of a speech delay.",
+    "Should the teacher ask, there is no evidence of ADHD.",
+    "ההורים מדווחים שהילד מגיב היטב לזמני חיבור קצרים, ללא עדות לקשיי קשב או ויסות משמעותיים בהקשר זה.",
+    "במשחק משותף עם אמא נצפתה אינטראקציה חיובית.",
+    "הוא נרגע מיד וללא סימנים למצוקה.",
+    "נראה שאין סימנים לקושי בקשב.",
+    "הילד שיחק בקוביות ונצפתה הנאה רבה.",
+    "חשוב לציין שנצפתה התקדמות בשפה.",
+    "כשנצפה בגן, הוא שיחק לבד.",
+    "ההתנהגות תקינה ואין סימנים לעיכוב שפתי.",
+    "האחות אמרה שהם שיחקו יפה, ללא סימנים למצוקה.",
+  ])("dropped: %s", (sentence) => {
+    expect(statesUnreportedFinding(sentence)).toBe(true);
+    expect(withoutHandoffFindings(sentence)).toBe("");
+  });
+
+  it("clause level: the real fixture note keeps its first clause and drops the finding", () => {
+    expect(withoutHandoffFindings("The child responds well to short connection times; no evidence of attention or regulation difficulties in this context."))
+      .toBe("The child responds well to short connection times;");
+    expect(withoutHandoffFindings("Teachers can check in briefly; there is no evidence of a learning difficulty."))
+      .toBe("Teachers can check in briefly;");
+  });
+
+  it("kept: a trailing attribution to a named reporter (P2d)", () => {
+    for (const s of ["No signs of anxiety at drop-off, according to her teacher.", "אין סימנים לחרדה בפרידה, לדברי הגננת."]) {
+      expect(withoutHandoffFindings(s)).toBe(s);
+    }
+  });
+
+  it("kept: a finding the parent's own input contains (first person passes only this way)", () => {
+    const parentText = "My son shows no signs of attention difficulties at home, his teacher agrees.";
+    expect(withoutHandoffFindings("My son shows no signs of attention difficulties.", { parentText })).toBe("My son shows no signs of attention difficulties.");
+    expect(withoutHandoffFindings("My son shows no signs of attention difficulties.")).toBe("");
+    const heParent = "הרופאה אמרה לנו שאין עדות לדלקת אוזניים.";
+    expect(withoutHandoffFindings("אין עדות לדלקת אוזניים.", { parentText: heParent })).toBe("אין עדות לדלקת אוזניים.");
+  });
+
+  it("the urgent or reporter-like word alone no longer keeps a line: a condition needs a referral action", () => {
+    expect(statesUnreportedFinding("If he is calm, there are no signs of distress.")).toBe(true);
+    // A referral with no condition keeps only its own clause; the finding clause still drops.
+    expect(withoutHandoffFindings("There are no signs of distress; call the family immediately.")).toBe("call the family immediately.");
+    expect(statesUnreportedFinding("If there are no signs of calming after 20 minutes, call the family.")).toBe(false);
+  });
+});

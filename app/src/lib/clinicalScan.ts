@@ -221,12 +221,30 @@ const HANDOFF_FINDING_HE = new RegExp(HANDOFF_FINDING_TERMS_HE.map(heWhole).join
 /** Hebrew unattributed observation ("was observed / identified"), as whole words. */
 const UNATTRIBUTED_FINDING_HE = /(?<!\p{L})(?:ו|ש|כש)?(?:נצפה|נצפתה|נצפו|זוהה|זוהתה|זוהו)(?!\p{L})/gu;
 
-/** Someone who can report: the first person, a family member, a named professional. */
-const REPORTER_EN = /\b(?:I|I['’]m|I['’]ve|we|we['’]ve|my|our|me|us|mom|mum|mommy|mother|dad|daddy|father|parents?|grand(?:ma|pa|mother|father|parents?)|family|teachers?|nanny|caregiver|babysitter|doctor|pediatrician|paediatrician|therapist|nurse|psychologist|clinician|specialist|audiologist)\b/i;
-const REPORTER_HE = /(?<!\p{L})(?:ו|ש|כש|ה|ל)?(?:אני|אנחנו|ראיתי|ראינו|שמתי|שמנו|הבחנתי|הבחנו|אמא|אבא|הורה|הורים|גננת|גנן|מורה|מטפלת|מטפל|רופא|רופאה|רופאת|אחות|סבתא|סבא|משפחה|סיפר|סיפרה|סיפרו|אמר|אמרה|אמרו|ציין|ציינה|דיווח|דיווחה|מספר|מספרת|מספרים|לדברי|לדבריה|לדבריו|לפי)(?!\p{L})/u;
-/** A condition or a referral action: the line is a safety message, kept verbatim. */
-const ESCALATION_EN = /^\s*(?:if|unless|should|in\s+case)\b|\b(?:call|calls|calling|contact|phone|seek|emergency|ambulance|right\s+away|immediately|urgent(?:ly)?|112|911|101|100|988)\b|\b(?:talk|speak|discuss|consult|check|follow\s+up)\b(?:\s+\w+){0,4}?\s+(?:pediatrician|paediatrician|doctor|GP|professional|clinician|nurse|therapist|specialist)s?\b/i;
-const ESCALATION_HE = /^\s*(?:ו)?(?:אם|במידה|במקרה)(?!\p{L})|(?<!\p{L})(?:ל|ו)?(?:התקשר\p{L}*|להתקשר|פנו|לפנות|פנה|פני|מיד|מייד|דחוף|בדחיפות|חירום|112|101|100)(?!\p{L})|(?<!\p{L})(?:לדבר|לשוחח|להתייעץ|להיוועץ|דברו|שוחחו|התייעצו)(?:\s+\S+){0,3}?\s+(?:עם\s+)?(?:ה)?(?:רופא\p{L}*|אחות|איש\s+מקצוע|אשת\s+מקצוע|אנשי\s+מקצוע|מטפל\p{L}*)/u;
+/* Critic round 2: attribution and escalation are decided by STRUCTURE, never
+ * by a reporter-like or urgent word anywhere earlier in the clause. */
+/** A third-person reporter a parent can quote (the first person is the model
+ *  writing in the parent's voice and never counts on grammar alone). */
+const REPORTER_EN = String.raw`(?:(?:the|her|his|their|our|my|a|an)\s+)?(?:\w+\s+)?(?:mom|mum|mommy|mother|dad|daddy|father|parents?|grand(?:ma|pa|mother|father|parents?)|family|teachers?|nanny|caregiver|babysitter|doctor|pediatrician|paediatrician|therapist|nurse|psychologist|clinician|specialist|audiologist)`;
+const REPORTING_VERB_EN = String.raw`(?:reports?|reported|says?|said|notes?|noted|tells?|told|mentions?|mentioned|shares?|shared|observes?|observed|notices?|noticed|describes?|described|writes?|wrote|explains?|explained|confirms?|confirmed|finds?|found|sees|saw)`;
+const NOT_CONJUNCTION_EN = String.raw`(?!(?:and|but|or|with|while|so|then|yet|although|though|because)\b)`;
+/** "Mom reports …", "Her teacher said she was observed …": the reporter and a
+ *  reporting verb directly govern the finding — at most three plain words
+ *  between them, no comma, colon or conjunction. */
+const GOVERNED_EN = new RegExp(String.raw`\b${REPORTER_EN}\s+(?:\w+\s+)?${REPORTING_VERB_EN}(?:\s+that)?(?:\s+${NOT_CONJUNCTION_EN}\w+){0,3}\s*$`, "i");
+/** "… the pediatrician, who ruled out …": the reporter is the subject of the finding. */
+const RELATIVE_EN = new RegExp(String.raw`\b${REPORTER_EN},?\s+(?:who|that)\s+(?:has\s+|had\s+|also\s+)?$`, "i");
+/** "No signs of anxiety at drop-off, according to her teacher." */
+const TRAILING_EN = new RegExp(String.raw`,?\s*(?:according\s+to|as\s+reported\s+by|as\s+noted\s+by|per)\s+${REPORTER_EN}\b[\s.!?]*$`, "i");
+const REPORTER_HE = String.raw`(?:ה|ו)?(?:אמא|אבא|הורה|הורים|גננת|גנן|מורה|מורים|מטפלת|מטפל|רופא|רופאה|רופאת|סבתא|סבא|משפחה)(?:\s+\p{L}+)?`;
+const REPORTING_VERB_HE = String.raw`(?:סיפר|סיפרה|סיפרו|מספר|מספרת|מספרים|מספרות|אמר|אמרה|אמרו|ציין|ציינה|ציינו|מציין|מציינת|דיווח|דיווחה|דיווחו|מדווח|מדווחת|מדווחים|ראה|ראתה|ראו|הבחין|הבחינה|הבחינו|כתב|כתבה|כתבו|קבע|קבעה)`;
+const GOVERNED_HE = new RegExp(String.raw`(?<!\p{L})${REPORTER_HE}\s+${REPORTING_VERB_HE}(?:\s+(?!ו)\p{L}+){0,3}?(?:\s+(?:ש|כי)?)?\s*$|(?<!\p{L})${REPORTER_HE}\s+${REPORTING_VERB_HE}\s+(?:ש|כי\s+)?(?!ו)\p{L}*\s*$`, "u");
+const TRAILING_HE = new RegExp(String.raw`,?\s*(?:לדבר(?:י|יה|יו)|לפי|כפי\s+ש(?:סיפר|סיפרה|אמר|אמרה|ציין|ציינה))(?:\s+${REPORTER_HE})?[\s.!?]*$`, "u");
+/** A condition AND a referral action together: the line is a safety message. */
+const CONDITION_EN = /\b(?:if|unless|in\s+case)\b/i;
+const REFERRAL_EN = /\b(?:call|calls|calling|contact|phone|seek\s+(?:help|care|advice|support)|emergency|ambulance|112|911|101|988)\b|\b(?:talk|speak|discuss|consult|tell|refer)\b(?:\s+\w+){0,4}?\s+(?:pediatrician|paediatrician|doctor|GP|professional|clinician|nurse|therapist|specialist|parents?|family)s?\b/i;
+const CONDITION_HE = /(?<!\p{L})(?:ו)?(?:אם|במידה|במקרה)(?!\p{L})/u;
+const REFERRAL_HE = /(?<!\p{L})(?:ל|ו)?(?:התקשר\p{L}*|להתקשר|פנו|לפנות|פנה|פני|חירום|112|101)(?!\p{L})|(?<!\p{L})(?:לדבר|לשוחח|להתייעץ|להיוועץ|דברו|שוחחו|התייעצו|ליידע|יידעו)(?:\s+\S+){0,3}?\s+(?:עם\s+|את\s+)?(?:ה)?(?:רופא\p{L}*|איש\s+מקצוע|אשת\s+מקצוע|אנשי\s+מקצוע|מטפל\p{L}*|הורים|משפחה)/u;
 
 type FindingMatch = { phrase: string; index: number };
 const findingsIn = (text: string): FindingMatch[] => {
@@ -243,20 +261,35 @@ export function findHandoffFinding(text: string): string | null {
   return findingsIn(text)[0]?.phrase.trim() ?? null;
 }
 
+/** Whitespace- and case-normalized, for "the parent's own input contains it". */
+const normalize = (text: string) => text.toLocaleLowerCase().replace(/\s+/g, " ").trim();
+/** The finding's own words without a glued Hebrew particle. */
+const findingCore = (phrase: string) => phrase.trim().replace(/^(?:ו|ש|כש)(?=[֐-׿])/, "");
+
+export type HandoffFloorOptions = {
+  /** The parent's own words this answer or brief was made from (the chat
+   *  message, the parent's earlier turns, the logged triggers and responses).
+   *  A finding the parent wrote is theirs to pass on. */
+  parentText?: string;
+};
+
 /** True when this clause states a finding nobody reported (and is not a safety message). */
-export function statesUnreportedFinding(clause: string): boolean {
-  if (ESCALATION_EN.test(clause) || ESCALATION_HE.test(clause)) return false;
-  return findingsIn(clause).some(({ index }) => {
+export function statesUnreportedFinding(clause: string, opts: HandoffFloorOptions = {}): boolean {
+  if ((CONDITION_EN.test(clause) && REFERRAL_EN.test(clause)) || (CONDITION_HE.test(clause) && REFERRAL_HE.test(clause))) return false;
+  if (TRAILING_EN.test(clause) || TRAILING_HE.test(clause)) return false;
+  const parent = opts.parentText ? normalize(opts.parentText) : "";
+  return findingsIn(clause).some(({ phrase, index }) => {
+    if (parent && parent.includes(normalize(findingCore(phrase)))) return false;
     const before = clause.slice(0, index);
-    return !REPORTER_EN.test(before) && !REPORTER_HE.test(before);
+    return !GOVERNED_EN.test(before) && !RELATIVE_EN.test(before) && !GOVERNED_HE.test(before);
   });
 }
 
 /** Drop every clause that states an unreported finding; an untouched note is returned byte-identical. */
-export function withoutHandoffFindings(text: string): string {
+export function withoutHandoffFindings(text: string, opts: HandoffFloorOptions = {}): string {
   const clauses = text.match(/[^.!?;。\n]+[.!?;。]*\s*/g) ?? [text];
-  if (!clauses.some(statesUnreportedFinding)) return text;
-  return clauses.filter((clause) => !statesUnreportedFinding(clause)).join("").trim();
+  if (!clauses.some((clause) => statesUnreportedFinding(clause, opts))) return text;
+  return clauses.filter((clause) => !statesUnreportedFinding(clause, opts)).join("").trim();
 }
 
 /** Fields of a School Brief draft the floor never touches: the escalation line is the safety message. */
@@ -265,16 +298,16 @@ export const HANDOFF_BRIEF_UNSCRUBBED_FIELDS: readonly string[] = ["crisisEscala
 /** The same floor over a structured School Brief / handoff draft: every string
  *  field and list item except the escalation line. Returns how many fields
  *  changed. Mutates in place. */
-export function scrubHandoffBriefFindings(brief: Record<string, unknown>): number {
+export function scrubHandoffBriefFindings(brief: Record<string, unknown>, opts: HandoffFloorOptions = {}): number {
   let changed = 0;
   for (const [key, value] of Object.entries(brief)) {
     if (HANDOFF_BRIEF_UNSCRUBBED_FIELDS.includes(key)) continue;
     if (typeof value === "string") {
-      const next = withoutHandoffFindings(value);
+      const next = withoutHandoffFindings(value, opts);
       if (next !== value) { brief[key] = next; changed++; }
     } else if (Array.isArray(value)) {
       const next = value
-        .map((item) => (typeof item === "string" ? withoutHandoffFindings(item) : item))
+        .map((item) => (typeof item === "string" ? withoutHandoffFindings(item, opts) : item))
         .filter((item) => typeof item !== "string" || item.trim() !== "");
       if (next.length !== value.length || next.some((item, i) => item !== value[i])) { brief[key] = next; changed++; }
     }

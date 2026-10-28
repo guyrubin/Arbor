@@ -655,6 +655,14 @@ describe("B-ASKJB-44 · /api/chat handoff notes carry no invented finding", () =
     expect(done?.outputBlocked).toBe(true);
     expect(done?.blockedCategory).toBe("crisis");
   });
+  it("round 2: a finding the parent wrote in this message passes; the same words the parent never wrote are dropped", async () => {
+    const note = "My son shows no signs of hearing problems since the ear tubes.";
+    contractOverrides = { handoffNotes: { teacher: "", professional: note } };
+    const own = await postChatStreamed({ message: "The ENT says my son shows no signs of hearing problems since the ear tubes. What can we do at bedtime?", childProfile: { id: "c1", name: "Mia" } });
+    expect(coachResponseZodSchema.parse(doneOf(own.events)?.contract).handoffNotes.professional).toBe(note);
+    const invented = await postChatStreamed({ message: "What can we do at bedtime?", childProfile: { id: "c1", name: "Mia" } });
+    expect(coachResponseZodSchema.parse(doneOf(invented.events)?.contract).handoffNotes.professional).toBe("");
+  });
   it("a clean handoff note passes the floor byte-identical", async () => {
     contractOverrides = { handoffNotes: { teacher: "The parent says a two-minute warning helps.", professional: "" } };
     const { events } = await postChatStreamed({ message: "What can we do in five minutes?", childProfile: { id: "c1", name: "Mia" } });
