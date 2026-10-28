@@ -66,9 +66,38 @@ export function toggleChoice(items: readonly string[], aliases: readonly string[
     : [...items, stored.trim()];
 }
 
+/** A qualifier after the language name in an older free-text entry: "Hebrew (Native)", "English - school". */
+const QUALIFIER = /^\s*[(\-–—:,/]/;
+
+/** Which of the six choices a stored language means: an alias, or an alias
+ *  followed by a qualifier ("Hebrew (Native)"). Null for a custom language. */
+export function languageOf(item: string): ChildLanguage | null {
+  const value = item.trim();
+  if (!value) return null;
+  const lower = value.toLocaleLowerCase();
+  for (const language of CHILD_LANGUAGES) {
+    for (const alias of languageAliases(language)) {
+      const a = alias.trim().toLocaleLowerCase();
+      if (lower === a || (lower.startsWith(a) && QUALIFIER.test(value.slice(a.length)))) return language;
+    }
+  }
+  return null;
+}
+
+/** The stored entry that makes this language chosen (the first one), if any. */
+export const storedLanguage = (items: readonly string[], language: ChildLanguage): string | undefined =>
+  items.find((item) => languageOf(item) === language);
+
+/** Toggle a language: remove every stored entry that means it, else append its token. */
+export function toggleLanguage(items: readonly string[], language: ChildLanguage): string[] {
+  return storedLanguage(items, language) !== undefined
+    ? items.filter((item) => languageOf(item) !== language)
+    : [...items, language];
+}
+
 /** Stored languages that match none of the six choices (kept, shown as their own words). */
 export const customLanguages = (items: readonly string[]): string[] =>
-  items.filter((item) => item.trim() && !CHILD_LANGUAGES.some((language) => hasChoice([item], languageAliases(language))));
+  items.filter((item) => item.trim() && languageOf(item) === null);
 
 /** True when a `challenges` line is one of the seven focus choices (any shipped language). */
 export const isFocusChoice = (item: string): boolean =>

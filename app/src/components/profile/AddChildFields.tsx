@@ -6,7 +6,7 @@ import { Icon } from "../ui/Icon";
 import { LegalLinks } from "../billing/LegalLinks";
 import { isUnderThree } from "../../lib/age/forChild";
 import {
-  CHILD_FOCUS_AREAS, CHILD_LANGUAGES, customLanguages, focusAliases, hasChoice, languageAliases, languageLabelKey, toggleChoice,
+  CHILD_FOCUS_AREAS, CHILD_LANGUAGES, customLanguages, focusAliases, hasChoice, languageAliases, languageLabelKey, storedLanguage, toggleChoice, toggleLanguage,
 } from "../../lib/childProfileChoices";
 
 /** The focus glyphs; the areas themselves are lib/childProfileChoices CHILD_FOCUS_AREAS. */
@@ -39,17 +39,22 @@ function ChoiceChip({ on, onClick, children }: { on: boolean; onClick: () => voi
 }
 
 /** B-SHELL-44 — languages at home, the same six localized choices in Add and
- *  Edit. A stored language that is none of them (an older free-text entry)
- *  stays on the record as its own pressed chip; tapping it removes it. */
+ *  Edit. An older free-text entry that names one of them with a qualifier
+ *  ("Hebrew (Native)") presses that chip and keeps its own words on it; any
+ *  other stored language stays as its own pressed chip; tapping removes it. */
 export function ChildLanguageChoices({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
   const { t } = useLanguage();
   return (
     <div className="flex flex-wrap gap-2" role="group" aria-label={t("ob.langsAtHome")} data-testid="child-language-choices">
-      {CHILD_LANGUAGES.map((language) => (
-        <ChoiceChip key={language} on={hasChoice(value, languageAliases(language))} onClick={() => onChange(toggleChoice(value, languageAliases(language), language))}>
-          {t(languageLabelKey(language))}
-        </ChoiceChip>
-      ))}
+      {CHILD_LANGUAGES.map((language) => {
+        const stored = storedLanguage(value, language);
+        const qualified = stored !== undefined && !hasChoice([stored], languageAliases(language));
+        return (
+          <ChoiceChip key={language} on={stored !== undefined} onClick={() => onChange(toggleLanguage(value, language))}>
+            {qualified ? <bdi>{stored}</bdi> : t(languageLabelKey(language))}
+          </ChoiceChip>
+        );
+      })}
       {customLanguages(value).map((custom) => (
         <ChoiceChip key={`custom:${custom}`} on onClick={() => onChange(value.filter((item) => item !== custom))}>
           <bdi>{custom}</bdi>

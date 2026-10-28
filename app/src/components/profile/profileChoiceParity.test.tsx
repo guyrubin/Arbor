@@ -17,7 +17,7 @@ import { describe, expect, it, vi } from "vitest";
 import { en, he, translate, type UiLang } from "../../lib/i18n";
 import {
   CHILD_FOCUS_AREAS, CHILD_LANGUAGES, challengesToSave, customLanguages, focusAliases, hasChoice, isFocusChoice,
-  languageAliases, otherChallengesText, toggleChoice,
+  languageAliases, languageOf, otherChallengesText, toggleChoice, toggleLanguage,
 } from "../../lib/childProfileChoices";
 import { buildNewChildInput } from "../../lib/childProfileInput";
 import { stampChangedFacts } from "../../lib/factsAsOf";
@@ -137,11 +137,25 @@ describe("B-SHELL-44 · Add → save → Edit → change → save → reload kee
     const html = renderDrawer("he", { languages: legacy, challenges: [] });
     expect(pressed(html, "child-language-choices")).toEqual([he["ob.lang.hebrew"], he["ob.lang.english"], "Deutsch"]);
     // Toggling Arabic on and off returns the exact original list.
-    const withArabic = toggleChoice(legacy, languageAliases("Arabic"), "Arabic");
+    const withArabic = toggleLanguage(legacy, "Arabic");
     expect(withArabic).toEqual([...legacy, "Arabic"]);
-    expect(toggleChoice(withArabic, languageAliases("Arabic"), "Arabic")).toEqual(legacy);
+    expect(toggleLanguage(withArabic, "Arabic")).toEqual(legacy);
     // Removing Hebrew removes only its aliases.
-    expect(toggleChoice(legacy, languageAliases("Hebrew"), "Hebrew")).toEqual(["Deutsch", "english"]);
+    expect(toggleLanguage(legacy, "Hebrew")).toEqual(["Deutsch", "english"]);
+  });
+
+  it("a qualified older entry ('Hebrew (Native)') presses its own chip with its own words, never a duplicate", () => {
+    const legacy = ["Hebrew (Native)", "English - at school", "Englishman"];
+    expect(languageOf("Hebrew (Native)")).toBe("Hebrew");
+    expect(languageOf("English - at school")).toBe("English");
+    expect(languageOf("Englishman")).toBeNull();
+    expect(customLanguages(legacy)).toEqual(["Englishman"]);
+    const html = renderDrawer("he", { languages: legacy, challenges: [] });
+    expect(pressed(html, "child-language-choices")).toEqual(["Hebrew (Native)", "English - at school", "Englishman"]);
+    expect(chips(html, "child-language-choices").map((c) => c.label)).not.toContain(he["ob.lang.hebrew"]);
+    // Tapping Hebrew removes the qualified entry; tapping again adds the plain token.
+    expect(toggleLanguage(legacy, "Hebrew")).toEqual(["English - at school", "Englishman"]);
+    expect(toggleLanguage(toggleLanguage(legacy, "Hebrew"), "Hebrew")).toEqual(["English - at school", "Englishman", "Hebrew"]);
   });
 
   it("empty values: no chip is pressed and the parent's lines box is empty", () => {
