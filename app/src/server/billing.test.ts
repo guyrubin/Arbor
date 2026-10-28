@@ -534,6 +534,27 @@ describe("B-GA-20 restore across accounts: a TRANSFER moves the entitlement once
     expect(comp).toEqual({ grants: [], removals: [] });
   });
 
+  it("the receiving account keeps a comp or another store's subscription that lasts at least as long", () => {
+    const moved: EntitlementRecord = { plan: "plus", status: "active", provider: "app_store", productId: "arbor_plus_monthly", willRenew: true, currentPeriodEnd: new Date(T0 + 30 * DAY).toISOString(), lastEventTs: T0 };
+    const evt = transfer(T0 + DAY, ["fam-a"], ["fam-b"]);
+    const now = T0 + DAY;
+    // A comp month ending later than the moved subscription stays.
+    const longComp: EntitlementRecord = { plan: "plus", status: "active", provider: "comp", productId: "referral_month", willRenew: false, currentPeriodEnd: new Date(T0 + 60 * DAY).toISOString() };
+    expect(transferWritesFromRevenueCat(evt, { "fam-a": moved }, { "fam-b": longComp }, now).grants).toEqual([]);
+    // A web subscription that runs longer stays too.
+    const web: EntitlementRecord = { plan: "plus", status: "active", provider: "stripe", productId: "plus_annual", willRenew: true, currentPeriodEnd: new Date(T0 + 365 * DAY).toISOString() };
+    expect(transferWritesFromRevenueCat(evt, { "fam-a": moved }, { "fam-b": web }, now).grants).toEqual([]);
+    // The old account still drops the moved subscription either way.
+    expect(transferWritesFromRevenueCat(evt, { "fam-a": moved }, { "fam-b": web }, now).removals.map((w) => w.uid)).toEqual(["fam-a"]);
+    // A shorter comp, a lapsed record, or the same store's record is replaced.
+    const shortComp = { ...longComp, currentPeriodEnd: new Date(T0 + 5 * DAY).toISOString() };
+    expect(transferWritesFromRevenueCat(evt, { "fam-a": moved }, { "fam-b": shortComp }, now).grants.map((w) => w.uid)).toEqual(["fam-b"]);
+    const lapsed: EntitlementRecord = { ...web, status: "expired", plan: "free" };
+    expect(transferWritesFromRevenueCat(evt, { "fam-a": moved }, { "fam-b": lapsed }, now).grants.map((w) => w.uid)).toEqual(["fam-b"]);
+    const sameStore: EntitlementRecord = { ...moved, currentPeriodEnd: new Date(T0 + 90 * DAY).toISOString() };
+    expect(transferWritesFromRevenueCat(evt, { "fam-a": moved }, { "fam-b": sameStore }, now).grants.map((w) => w.uid)).toEqual(["fam-b"]);
+  });
+
   it("only Arbor accounts take part: RevenueCat anonymous ids and an id on both sides are left out", () => {
     expect(transferPartiesFromRevenueCat(transfer(T0, ["$RCAnonymousID:1", "fam-a"], ["$RCAnonymousID:2", "fam-b"]))).toEqual({ from: ["fam-a"], to: ["fam-b"] });
     expect(transferPartiesFromRevenueCat(transfer(T0, ["fam-a", "fam-b"], ["fam-b"]))).toEqual({ from: ["fam-a"], to: [] });
@@ -566,13 +587,13 @@ describe("B-GA-20 restore across accounts: a TRANSFER moves the entitlement once
       const res = await post(transfer(T0 + DAY, ["fam-a"], ["fam-b"], { environment: "SANDBOX" }));
       expect(res.status).toBe(200);
       expect(await res.json()).toEqual({ ok: true, transferred: true });
-      expect(calls).toEqual(["read:fam-a", "write:fam-b:plus", "write:fam-a:free"]);
+      expect(calls).toEqual(["read:fam-a", "read:fam-b", "write:fam-b:plus", "write:fam-a:free"]);
       expect(records.get("fam-b")).toMatchObject({ plan: "plus", provider: "app_store", lastEventTs: T0 + DAY });
 
       const empty = await post(transfer(T0 + 2 * DAY, ["$RCAnonymousID:1"], ["fam-b"]));
       expect(empty.status).toBe(202);
       expect(await empty.json()).toEqual({ ok: true, skipped: "transfer without account ids" });
-      expect(calls).toHaveLength(3);
+      expect(calls).toHaveLength(4);
     } finally {
       server.close();
     }

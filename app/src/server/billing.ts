@@ -26,6 +26,7 @@ import express from "express";
 import type { ArborConfig } from "../config/env.js";
 import {
   isStaleBillingEvent,
+  recordStillEntitles,
   type BillingProvider,
   type EntitlementRecord,
   type EntitlementStatus,
@@ -241,10 +242,16 @@ const BILLED = new Set<BillingProvider>(["app_store", "play_store", "stripe"]);
  *  - No fabricated paid success: when the old account holds nothing to move
  *    (the TRANSFER arrived before its purchase), nothing is granted; the old
  *    account is still stamped Free so the late purchase cannot unlock it.
+ *  - The receiving account keeps what it already has when that lasts at least
+ *    as long: a comp month, or another store's live subscription, is never
+ *    overwritten by a shorter transferred one (`targets`, the receivers'
+ *    current records; the same store's record is the one being replaced).
  */
 export const transferWritesFromRevenueCat = (
   event: RevenueCatEvent,
   sources: Readonly<Record<string, EntitlementRecord | null | undefined>>,
+  targets: Readonly<Record<string, EntitlementRecord | null | undefined>> = {},
+  now: number = Date.now(),
 ): { grants: BillingWrite[]; removals: BillingWrite[] } => {
   const none = { grants: [], removals: [] };
   if (String(event.type ?? "").toUpperCase() !== TRANSFER) return none;
@@ -281,8 +288,15 @@ export const transferWritesFromRevenueCat = (
       },
     });
   }
+  const endOf = (r: EntitlementRecord) => (r.currentPeriodEnd ? Date.parse(r.currentPeriodEnd) : Number.POSITIVE_INFINITY);
+  const keepsOwn = (uid: string) => {
+    const own = targets[uid];
+    if (!own || !moving || own.plan === "free" || !recordStillEntitles(own, now)) return false;
+    if (own.provider === moving.provider) return false; // the same store's subscription: the transfer replaces it
+    return endOf(own) >= endOf(moving);
+  };
   const grants: BillingWrite[] = moving
-    ? to.map((uid) => ({
+    ? to.filter((uid) => !keepsOwn(uid)).map((uid) => ({
         uid,
         record: {
           plan: moving!.plan,
@@ -346,7 +360,9 @@ export const createBillingWebhookRouter = (config: ArborConfig, store: Entitleme
         }
         const sources: Record<string, EntitlementRecord | null> = {};
         for (const uid of from) sources[uid] = await store.getRecord(uid);
-        const { grants, removals } = transferWritesFromRevenueCat(event, sources);
+        const targets: Record<string, EntitlementRecord | null> = {};
+        for (const uid of to) targets[uid] = await store.getRecord(uid);
+        const { grants, removals } = transferWritesFromRevenueCat(event, sources, targets);
         // Grant before removing: a failure between the two leaves the
         // subscription on both accounts until RevenueCat retries, and the
         // retry finishes the move. The reverse order would lose it on retry.
