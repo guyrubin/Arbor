@@ -4300,8 +4300,9 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       const memoryEvents = await memoryStore.eraseChild(childId);
       const shares = await shareStore.eraseByChild(uid, childId);
       const consents = await consentStore.eraseByChild(childId);
-      // B-GA-09: the parent's consult requests about this child go with it.
-      const consultRequests = await consultStore.eraseByChild(uid, childId);
+      // B-GA-09: the consult requests about this child go with it, including a
+      // co-parent's (the store keys them by child).
+      const consultRequests = await consultStore.eraseByChild(childId);
       // GDPR Art. 17 parity with /account/delete, which purges Storage. Erasing
       // ONE child left that child's uploaded photos in the bucket — Firestore
       // was swept, the images were not. Scoped to this child's own prefix

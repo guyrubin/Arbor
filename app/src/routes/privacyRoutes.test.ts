@@ -109,16 +109,19 @@ describe("B-GA-09 · server export and erase cover every server-held category ab
     await f.consentStore.set(f.grant("c2", SIBLING));
     await f.consultStore.create(buildConsultRequest({ ownerUid: OWNER, ownerEmail: null, childId: CHILD, professionalId: "p", professionalName: "Synthetic SLP" }));
     await f.consultStore.create(buildConsultRequest({ ownerUid: OWNER, ownerEmail: null, childId: SIBLING, professionalId: "p", professionalName: "Synthetic SLP" }));
+    // A co-parent's request about the same child goes too (critic r1).
+    await f.consultStore.create(buildConsultRequest({ ownerUid: "synthetic-co-parent", ownerEmail: null, childId: CHILD, professionalId: "p", professionalName: "Synthetic SLP" }));
     const base = await serve(f);
     const res = await fetch(`${base}/api/privacy/erase`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ childId: CHILD }) });
     expect(res.status).toBe(200);
     const body = await res.json() as { erased: Record<string, number>; storage: Record<string, number>; storageNote?: string };
-    expect(body.erased).toEqual({ memoryEvents: 1, shares: 1, consents: 1, consultRequests: 1, storageFiles: 0 });
+    expect(body.erased).toEqual({ memoryEvents: 1, shares: 1, consents: 1, consultRequests: 2, storageFiles: 0 });
     // No bucket in the test config: each registered prefix is still named.
     expect(body.storage).toEqual({ photos: 0, books: 0 });
     expect(body.storageNote).toMatch(/no storage bucket/);
     expect(await f.consentStore.list(CHILD)).toEqual([]);
     expect(await f.consultStore.listByChild(OWNER, CHILD)).toEqual([]);
+    expect(await f.consultStore.listByChild("synthetic-co-parent", CHILD)).toEqual([]);
     expect(f.events.has(CHILD)).toBe(false);
     // The sibling's records stay.
     expect(await f.consentStore.list(SIBLING)).toHaveLength(1);

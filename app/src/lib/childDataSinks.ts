@@ -79,9 +79,9 @@ export const OTHER_CHILD_SINKS = [
   {
     id: "server:consultRequests",
     kind: "server",
-    where: "consultRequests/* where ownerUid and childId match",
-    exportedAs: "serverData.consultRequests",
-    erasedBy: "/privacy/erase consultStore.eraseByChild (counts.consultRequests)",
+    where: "consultRequests/* where childId matches (filed by the parent or a co-parent)",
+    exportedAs: "serverData.consultRequests (the exporting parent's own)",
+    erasedBy: "/privacy/erase consultStore.eraseByChild, every request naming the child (counts.consultRequests)",
   },
   {
     id: "storage:photos",

@@ -118,6 +118,24 @@ describe("Firestore · every per-child subcollection is in CHILD_SUBCOLLECTIONS"
     expect(bad.map(([seg, files]) => `${seg} (${[...files].join(", ")})`)).toEqual([]);
   });
 
+  // Critic r1 P2: a write through a path variable (`${path}/programs/${id}`,
+  // ConsultTab) never matched the literal users/…/children/… scan.
+  const VIA_PATH_VAR = /\b(?:doc|collection|getDocs|onSnapshot)\(\s*[A-Za-z_]+\s*,\s*`\$\{[A-Za-z_.]+\}\/([A-Za-z_]+)/g;
+  const viaPath = allMatches(VIA_PATH_VAR, (m) => m[1]);
+
+  it("writes through a path variable (`${path}/<name>/…`) land only in registered subcollections", () => {
+    expect(viaPath.has("programs")).toBe(true); // ConsultTab's batch
+    const bad = [...viaPath].filter(([seg]) => !CHILD_SUBCOLLECTIONS.includes(seg) && !(seg in OTHER_FIRESTORE_COLLECTIONS));
+    expect(bad.map(([seg, files]) => `${seg} (${[...files].join(", ")})`)).toEqual([]);
+  });
+
+  it("negative control: an unregistered collection written through a path variable is caught", () => {
+    const src = "batch.set(doc(db, `${path}/voiceNotes/${note.id}`), note);";
+    const found = [...src.matchAll(VIA_PATH_VAR)].map((m) => m[1]);
+    expect(found).toEqual(["voiceNotes"]);
+    expect(CHILD_SUBCOLLECTIONS.includes("voiceNotes")).toBe(false);
+  });
+
   it("CHILD_SUBCOLLECTIONS has no duplicate", () => {
     expect(new Set(CHILD_SUBCOLLECTIONS).size).toBe(CHILD_SUBCOLLECTIONS.length);
   });
