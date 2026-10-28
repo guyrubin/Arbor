@@ -20,6 +20,7 @@ import { browserBuilderDeps, markHeroPoseOk, redrawHeroPose, resumeHeroSheet } f
 import { heroSheetStoreFor } from "../../lib/heroSheetStore";
 import { useHeroSheetDocs } from "../kidmode/hero/useHeroSheet";
 import BookSheetStrip from "./BookSheetStrip";
+import { PLAN_SHEET_TARGET } from "./sheetStripTargets";
 import type { ChildProfile } from "../../types";
 import { resolveHeroUrl } from "../../lib/heroIdentity";
 
@@ -56,6 +57,7 @@ export default function HeroSheetPanel({ child }: { child: Pick<ChildProfile, "i
           {t(formKeyFor("elev.hero.sheet.building", child.gender), name)}
         </p>
         <BookSheetStrip child={child} avatarHash={hash} />
+        <BookSheetStrip child={child} avatarHash={hash} target={PLAN_SHEET_TARGET} />
       </div>
     );
   }
@@ -119,6 +121,7 @@ export default function HeroSheetPanel({ child }: { child: Pick<ChildProfile, "i
         })}
       </ul>
       <BookSheetStrip child={child} avatarHash={hash} />
+        <BookSheetStrip child={child} avatarHash={hash} target={PLAN_SHEET_TARGET} />
     </section>
   );
 }

@@ -13,7 +13,8 @@
  * but the pose id. SPRITE_STYLE, STAGE's background and TAIL are verbatim.
  * Prompt order (as in the proof): SPRITE_STYLE REFS HERO STAGE POSE TAIL.
  */
-import { isHeroBookPose, type HeroBookPoseId, type HeroPoseId, type HeroSheetPoseId } from "../lib/heroSheetContract.js";
+import { isHeroBookPose, isHeroPlanPose, planPoseOfRoute, type HeroBookPoseId, type HeroPlanPoseId, type HeroPoseId, type HeroSheetPoseId } from "../lib/heroSheetContract.js";
+import type { PlanPose } from "../lib/library/plans/planPoses.js";
 
 /** ONE CHARACTER EVERYWHERE (Guy, 8 Oct): the hero looks the same on every kid
  *  surface - tiles, books, games. The finish is the stored hero's own; the pose
@@ -120,6 +121,7 @@ export const POSES: Readonly<Record<HeroSheetPoseId, string>> = {
  *  rest = anchored on the approved idle; a book pose = the book prompt (K2,
  *  below). Fixed text only. */
 export function heroPosePrompt(pose: HeroPoseId): string {
+  if (isHeroPlanPose(pose)) return planPosePrompt(pose);
   if (isHeroBookPose(pose)) return bookPosePrompt(pose);
   const game = pose as HeroSheetPoseId;
   const refs = game === "idle" ? REFS_ANCHOR : REFS_POSE;
@@ -309,6 +311,101 @@ export const BOOK_POSES: Readonly<Record<HeroBookPoseId, BookPose>> = {
 function bookPosePrompt(pose: HeroBookPoseId): string {
   const b = BOOK_POSES[pose];
   return [SPRITE_STYLE, REFS_POSE, HERO, STAGE_BOOK, b.outfit ?? BAG, `POSE: ${b.pose}`, b.props, `Inside the frame, besides the whole body: ${b.extent}.`, TAIL_BOOK]
+    .join(" ")
+    .replace(/ {2,}/g, " ");
+}
+
+/* ── B-BOOK-75 follow-up: the PLAN poses ─────────────────────────────────────
+ * The child's hero as THEMSELF, at home, in the hero's own clothes (standard
+ * §0: the plan book's childRole is SELF): no bag, no costume, nothing in the
+ * hands unless the pose names it. One shared sheet of twelve, every pattern. */
+const OWN_CLOTHES = "OUTFIT: only the hero's own clothes and shoes from the reference — no bag, no costume, no hat, nothing added.";
+const EMPTY_HANDS = "Props: none; both hands empty.";
+
+export const PLAN_POSE_PROMPTS: Readonly<Record<PlanPose, BookPose>> = {
+  "sit-calm": {
+    outfit: OWN_CLOTHES,
+    pose: "sitting calmly on an invisible low seat (no seat drawn: the hero sits in the air on the flat green), facing the viewer, "
+      + "back comfortably straight, knees bent at a right angle with both feet flat on the ground a little apart, both hands resting "
+      + "open on the knees, shoulders relaxed, a soft calm closed-mouth smile, eyes on the viewer.",
+    props: EMPTY_HANDS, extent: "both shoes and both hands",
+  },
+  "stand-tall": {
+    outfit: OWN_CLOTHES,
+    pose: "standing tall and proud, facing the viewer, back straight, shoulders back, chest open, chin level, feet a little apart "
+      + "and flat on the ground, arms relaxed at the sides a hand's width from the body, a warm confident closed-mouth smile.",
+    props: EMPTY_HANDS, extent: "both shoes and both hands",
+  },
+  "point-up": {
+    outfit: OWN_CLOTHES,
+    pose: "standing facing the viewer, feet a little apart, the right arm raised straight up with the index finger pointing to the "
+      + "sky, the left arm relaxed at the side, the face turned slightly up with bright curious eyes and an open-mouthed happy grin.",
+    props: EMPTY_HANDS, extent: "the raised pointing finger and both shoes",
+  },
+  "hug-knees": {
+    outfit: OWN_CLOTHES,
+    pose: "sitting on the ground on the flat green in a three-quarter view facing the viewer's left, knees pulled up to the chest, "
+      + "both arms wrapped around the shins, chin resting on the knees, a calm thoughtful face with a small soft smile, eyes open.",
+    props: EMPTY_HANDS, extent: "both shoes and both arms",
+  },
+  "hold-tummy": {
+    outfit: OWN_CLOTHES,
+    pose: "standing facing the viewer, feet a little apart, both hands resting gently flat on the tummy one above the other, "
+      + "shoulders relaxed, head tilted a little, a calm attentive face with a small closed-mouth smile, never a grimace, never in pain.",
+    props: EMPTY_HANDS, extent: "both hands on the tummy and both shoes",
+  },
+  wave: {
+    outfit: OWN_CLOTHES,
+    pose: "standing facing the viewer, feet a little apart, the right hand raised beside the head with the open palm toward the "
+      + "viewer in a friendly wave, the left arm relaxed at the side, a bright open-mouthed happy smile.",
+    props: EMPTY_HANDS, extent: "the waving hand and both shoes",
+  },
+  "lie-down": {
+    outfit: OWN_CLOTHES,
+    pose: "lying on the back on the flat green as if on a bed, the body in full profile with the head toward the viewer's left, "
+      + "legs straight and together, both arms resting along the sides, eyes closed, a peaceful resting face with a tiny smile; "
+      + "no bed, no pillow, no blanket drawn (the page provides them).",
+    props: EMPTY_HANDS, extent: "the whole body from the hair to both shoes",
+  },
+  "sit-at-table": {
+    outfit: OWN_CLOTHES,
+    pose: "sitting upright on an invisible chair (no chair, no table drawn: the hero sits in the air on the flat green), facing the "
+      + "viewer, both forearms resting flat in front at waist height as if on a table edge, hands open and relaxed, an interested "
+      + "closed-mouth smile, eyes looking a little down toward the invisible table.",
+    props: EMPTY_HANDS, extent: "both forearms and both shoes",
+  },
+  "open-mouth-wide": {
+    outfit: OWN_CLOTHES,
+    pose: "sitting upright on an invisible chair facing the viewer, hands resting on the knees, the mouth open wide in a playful "
+      + "'aaah' as if about to taste something, eyebrows raised, eyes bright and happy, head tilted slightly back; nothing in the mouth.",
+    props: EMPTY_HANDS, extent: "the open mouth and both shoes",
+  },
+  "hold-hand": {
+    outfit: OWN_CLOTHES,
+    pose: "standing in a three-quarter view facing the viewer's right, feet a little apart, the right arm raised out to the side "
+      + "to shoulder height with the small hand gently curled as if holding a grown-up's hand just outside the frame — NOBODY else "
+      + "in the picture, no second hand drawn; the left arm relaxed; a calm brave closed-mouth smile, eyes forward.",
+    props: EMPTY_HANDS, extent: "the raised reaching hand and both shoes",
+  },
+  "hold-box": {
+    outfit: OWN_CLOTHES,
+    pose: "standing facing the viewer, feet a little apart, both hands holding a small plain cardboard box with its lid open, held "
+      + "at chest height in front of the body; the hero looks down into the box with wide curious eyes and a delighted open-mouthed smile.",
+    props: "Props: one small plain light-brown cardboard box, lid open, held in both hands; the box is EMPTY inside.",
+    extent: "the whole box and both shoes",
+  },
+  "hands-up": {
+    outfit: OWN_CLOTHES,
+    pose: "standing on both feet, feet flat and a little apart, both arms thrown straight up high in a wide V with the fingers "
+      + "spread, head up, a big open-mouthed joyful laugh with crinkled happy eyes.",
+    props: EMPTY_HANDS, extent: "both raised hands and both shoes",
+  },
+};
+
+/** The prompt of one plan pose: anchored on the approved idle, the hero as themself. */
+function planPosePrompt(id: HeroPlanPoseId): string {
+  const b = PLAN_POSE_PROMPTS[planPoseOfRoute(id)];
+  return [SPRITE_STYLE, REFS_POSE, HERO, STAGE_BOOK, b.outfit ?? OWN_CLOTHES, `POSE: ${b.pose}`, b.props, `Inside the frame, besides the whole body: ${b.extent}.`, TAIL_BOOK]
     .join(" ")
     .replace(/ {2,}/g, " ");
 }

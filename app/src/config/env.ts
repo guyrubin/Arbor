@@ -188,6 +188,16 @@ export const loadConfig = (): ArborConfig => {
   const vertexLocation = process.env.VERTEX_LOCATION || "europe-west3";
   const gcpRegion = process.env.GCP_REGION || "europe-west4";
 
+  // B-BOOK-79 follow-up (28 Oct): the owner allow-list for unsigned plans.
+  // ARBOR_PLANS_OWNER_* is the explicit override; when BOTH lists are empty,
+  // the comped founder family (ARBOR_FAMILY_EMAILS, set in production) is the
+  // owner, so Guy's own account composes dark patterns without a second flag.
+  const plansOwnerUids = listFromEnv(process.env.ARBOR_PLANS_OWNER_UIDS);
+  const explicitPlansOwnerEmails = listFromEnv(process.env.ARBOR_PLANS_OWNER_EMAILS).map((e) => e.toLowerCase());
+  const plansOwnerEmails = plansOwnerUids.length || explicitPlansOwnerEmails.length
+    ? explicitPlansOwnerEmails
+    : listFromEnv(process.env.ARBOR_FAMILY_EMAILS).map((e) => e.toLowerCase());
+
   const config: ArborConfig = {
     nodeEnv: process.env.NODE_ENV || "development",
     arborEnv,
@@ -241,8 +251,8 @@ export const loadConfig = (): ArborConfig => {
     firestoreDatabaseId: process.env.FIRESTORE_DATABASE_ID || "(default)",
     knowledgePath: process.env.ARBOR_KNOWLEDGE_PATH || process.env.KNOWLEDGE_PATH,
     plansReviewed: jsonObjectFromEnv(process.env.PLANS_REVIEWED),
-    plansOwnerUids: listFromEnv(process.env.ARBOR_PLANS_OWNER_UIDS),
-    plansOwnerEmails: listFromEnv(process.env.ARBOR_PLANS_OWNER_EMAILS).map((e) => e.toLowerCase()),
+    plansOwnerUids,
+    plansOwnerEmails,
     memoryAdapter,
     enableLocalMemoryAdapter,
     enableHighRiskReviewQueue: boolFromEnv(process.env.ENABLE_HIGH_RISK_REVIEW_QUEUE, true),

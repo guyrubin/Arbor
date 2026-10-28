@@ -3,11 +3,13 @@
  * Everyday Plans.
  *
  *   GET  /api/plans/visibility
- *        → { reviewed, composable } per pattern and language for THIS viewer:
+ *        → { reviewed, composable, admin } per pattern and language for THIS viewer:
  *          `reviewed` is the licensed reviewer's record (config.plansReviewed,
  *          default nothing); `composable` adds the sandbox and the owner
  *          allow-list. The client's pattern door reads this and never decides
- *          on its own (lib/library/plans/planVisibility).
+ *          on its own (lib/library/plans/planVisibility). `admin` (B-BOOK-75
+ *          plates): the viewer may paint the shared plates (deps.painter,
+ *          server/planPlates.isPlatePainter); false for every family.
  *   POST /api/plans/phrase   { pattern, slot, lang, text }
  *        → B-GA-11: the parent's own words phrased into the book's register,
  *          ONE model call at composition time (never at read time), the
@@ -51,6 +53,8 @@ export interface PlansRouterDeps {
   /** The model router (one JSON generation per phrasing); absent or mock = the deterministic phrasing. */
   modelProvider?: { generateJson(options: GenerateJsonOptions): Promise<unknown> } | null;
   now?: () => string;
+  /** B-BOOK-75 plates: may this viewer paint the shared plates? Absent = nobody. */
+  painter?: (viewer: PlanViewer) => boolean;
 }
 
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -118,7 +122,8 @@ export function createPlansRouter(deps: PlansRouterDeps): express.Router {
 
   router.get("/plans/visibility", (req, res) => {
     res.setHeader("Cache-Control", "no-store");
-    res.json(planVisibilityFor(flags, viewerOf(req, deps.config), owners));
+    const viewer = viewerOf(req, deps.config);
+    res.json({ ...planVisibilityFor(flags, viewer, owners), admin: deps.painter ? deps.painter(viewer) === true : false });
   });
 
   router.post("/plans/phrase", express.json({ limit: "8kb" }), async (req, res) => {
