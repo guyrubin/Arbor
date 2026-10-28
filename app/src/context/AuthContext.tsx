@@ -23,6 +23,7 @@ import { purgeAllHeroRenders } from "../lib/heroRenderStore";
 import { purgeBookAssets } from "../lib/bookAssetStore";
 import { clearPrewarmedComic } from "../lib/comicPrewarm";
 import { clearMathExit } from "../components/kidmode/parentGate";
+import { markVerifySent } from "../lib/signupNotice";
 
 export type AuthUser = {
   uid: string;
@@ -134,6 +135,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearMathExit(); // STORE-3: credentialed sign-in = parent verification
       try {
         await sendEmailVerification(credential.user);
+        // Said where the new family lands; the login screen is gone by now.
+        markVerifySent();
       } catch {
         /* the account exists either way; the link can be sent again later */
       }

@@ -3,6 +3,7 @@ import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 import { findIncompleteOnboardingChild } from "../../lib/onboardingGate";
+import { clearVerifySent, subscribeVerifySent, verifySentPending } from "../../lib/signupNotice";
 import { ageMonthsFromBirthMonth } from "../../lib/childAge";
 import { DOMAIN_IDS } from "../../lib/domains/registry";
 import { DOMAIN_ICONS } from "../../lib/domains/icons";
@@ -213,6 +214,10 @@ export default function OnboardingFlow() {
       trackOnboardingCompleted({ domainCount: onboardingChoices(state.worry).filter(choice => DOMAIN_IDS.includes(choice as typeof DOMAIN_IDS[number])).length, hasAvatar: false });
     },
   };
+  // B-RESID-05: a new e-mail account lands here (the login screen is gone), so
+  // the confirmation-link line is said here, on the first step only.
+  const verifySent = useSyncExternalStore(subscribeVerifySent, verifySentPending, () => false);
+  useEffect(() => { if (state.step > 1) clearVerifySent(); }, [state.step]);
   const card = state.step === 3 ? firstRunCard(state, uiLang === "he" ? "he" : "en") : null;
   return <main className="arbor-app first-run" dir={uiLang === "he" ? "rtl" : "ltr"}>
     <div className="first-run-shell"><header className="first-run-header">
@@ -221,6 +226,7 @@ export default function OnboardingFlow() {
         {[1, 2, 3].map(step => <span key={step} data-active={step === state.step} />)}
       </div>
     </header>
+      {verifySent && state.step === 1 && <p role="status" className="first-run-hint first-run-sent" data-testid="onboarding-verify-sent">{t("elev.auth.signup.verifySent")}</p>}
       {state.step === 1 && <StepChild state={state} onEdit={edit => controller.edit(edit)} onNext={() => void controller.next()} />}
       {state.step === 2 && <StepDomains state={state} onWorry={worry => controller.worry(worry)} onNext={() => controller.next()} onSkip={() => void controller.skipDescribe()}
         describe={controller.describe} onAnswer={text => controller.describeAnswer(text)} onFinish={() => controller.describeFinish()} />}

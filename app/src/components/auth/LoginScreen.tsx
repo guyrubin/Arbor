@@ -21,7 +21,6 @@ export default function LoginScreen() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [busy, setBusy] = useState<"google" | "email" | null>(null);
   const [resetMsg, setResetMsg] = useState("");
-  const [signupMsg, setSignupMsg] = useState("");
 
   const handleReset = async () => {
     if (!email.trim()) {
@@ -53,8 +52,9 @@ export default function LoginScreen() {
     setBusy("email");
     try {
       if (mode === "signup") {
+        // B-RESID-05: the account exists and this screen unmounts; the
+        // confirmation-link line is said where the parent lands (lib/signupNotice).
         await signUpWithEmail(email.trim(), password);
-        setSignupMsg(t("elev.auth.signup.verifySent"));
       } else {
         await signInWithEmail(email.trim(), password);
       }
@@ -194,12 +194,11 @@ export default function LoginScreen() {
               {busy === "email" ? <Icon name="refresh" size={16} className="animate-spin" /> : null}
               {mode === "signup" ? t("elev.auth.signup.cta") : t("auth.signIn")}
             </button>
-            {signupMsg && <p role="status" data-testid="login-signup-sent" className="text-[11px]" style={{ color: "var(--arbor-green-ink)" }}>{signupMsg}</p>}
             <div className="flex flex-wrap items-center justify-between gap-x-3">
               {mode === "signin" && <button type="button" data-testid="login-forgot" onClick={handleReset} className="inline-flex items-center min-h-11 text-[11px] transition" style={{ color: "var(--arbor-muted)" }}>
                 {t("auth.forgot")}
               </button>}
-              <button type="button" data-testid="login-mode-switch" onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setResetMsg(""); setSignupMsg(""); }}
+              <button type="button" data-testid="login-mode-switch" onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setResetMsg(""); }}
                 className="inline-flex items-center min-h-11 text-[11px] font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
                 {mode === "signin" ? t("elev.auth.signup.toSignup") : t("elev.auth.signup.toSignin")}
               </button>

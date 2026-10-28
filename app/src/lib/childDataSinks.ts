@@ -239,6 +239,7 @@ export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.aiLang": "language preference",
   "arbor.analytics.optOut": "analytics preference",
   "arbor.attribution": "first-touch campaign source",
+  "arbor.auth.verifySent": "a one-shot sign-up notice (B-RESID-05; no address)",
   "arbor.bell.read": "notification read marker",
   "arbor.billingReturn": "checkout return marker",
   "arbor.children": "sandbox profile list: the profile sink; ProfileContext.deleteChild drops the child's row",

@@ -46,7 +46,10 @@ describe("B-RESID-05 · the front door is open: no invite-only wording, no acces
 describe("B-RESID-05 · a new family creates its account with e-mail (Google stays)", () => {
   it("one e-mail form, two modes: sign in, or create an account", () => {
     const submit = LOGIN.slice(LOGIN.indexOf("const handleEmail"), LOGIN.indexOf("return (\n"));
-    expect(submit).toMatch(/if \(mode === "signup"\) \{\s*await signUpWithEmail\(email\.trim\(\), password\);\s*setSignupMsg\(t\("elev\.auth\.signup\.verifySent"\)\);\s*\} else \{\s*await signInWithEmail\(email\.trim\(\), password\);/);
+    expect(submit).toMatch(/if \(mode === "signup"\) \{\s*await signUpWithEmail\(email\.trim\(\), password\);\s*\} else \{\s*await signInWithEmail\(email\.trim\(\), password\);/);
+    // The screen unmounts once the account exists, so it says nothing more:
+    // the confirmation-link line is said where the parent lands.
+    expect(LOGIN).not.toContain("elev.auth.signup.verifySent");
     expect(LOGIN).toContain('data-testid="login-mode-switch"');
     expect(LOGIN).toContain('{mode === "signup" ? t("elev.auth.signup.cta") : t("auth.signIn")}');
     expect(LOGIN).toContain('{mode === "signin" ? t("elev.auth.signup.toSignup") : t("elev.auth.signup.toSignin")}');
@@ -59,7 +62,7 @@ describe("B-RESID-05 · a new family creates its account with e-mail (Google sta
   it("sign-up creates the account, then sends the confirmation link; refusals are keys, never Firebase text", () => {
     const signUp = AUTH.slice(AUTH.indexOf("const signUpWithEmail"), AUTH.indexOf("const resetPassword"));
     expect(signUp).toMatch(/const credential = await createUserWithEmailAndPassword\(auth, email, password\);/);
-    expect(signUp).toMatch(/await sendEmailVerification\(credential\.user\);/);
+    expect(signUp).toMatch(/await sendEmailVerification\(credential\.user\);\s*markVerifySent\(\);/);
     expect(signUp.indexOf("createUserWithEmailAndPassword")).toBeLessThan(signUp.indexOf("sendEmailVerification"));
     expect(signUp).toContain("setError(friendlyAuthError(err));");
     expect(AUTH).toMatch(/signInWithEmail,\s*signUpWithEmail,\s*resetPassword,/);
