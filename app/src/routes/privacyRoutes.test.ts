@@ -8,7 +8,7 @@
  *  - Erase (Art. 17) removes the same categories, scoped to this owner and
  *    this child, and the receipt counts each one, Storage per prefix.
  */
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import express from "express";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
@@ -23,6 +23,7 @@ import { LocalConsultStore, buildConsultRequest } from "../server/consultRequest
 import { createAdminMetricsStore } from "../server/adminMetrics.js";
 import { createWaitlistStore } from "../server/waitlist.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
+import { ARBOR_PROFESSIONALS, type Professional } from "../services/professionals.js";
 
 const servers: Server[] = [];
 afterAll(async () => {
@@ -58,12 +59,12 @@ function fixture() {
   return { events, shares, memoryStore, shareStore, consentStore, grant, consultStore };
 }
 
-async function serve(f: ReturnType<typeof fixture>): Promise<string> {
+async function serve(f: ReturnType<typeof fixture> & { memoryStore: Record<string, unknown> }): Promise<string> {
   const config = createTestConfig({});
   const entitlementStore = createEntitlementStore(config);
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => { (req as { user?: { uid: string } }).user = { uid: OWNER }; next(); });
+  app.use((req, _res, next) => { (req as { user?: { uid: string } }).user = { uid: req.header("x-test-user") || OWNER }; next(); });
   app.use("/api", createApiRouter({
     config,
     modelProvider: { generateJson: async () => ({}) } as unknown as ModelProvider,
@@ -137,5 +138,52 @@ describe("B-GA-09 · server export and erase cover every server-held category ab
     await post();
     const again = await (await post()).json() as { erased: Record<string, number> };
     expect(again.erased).toEqual({ memoryEvents: 0, shares: 0, consents: 0, consultRequests: 0, storageFiles: 0 });
+  });
+});
+
+/* B-GA-09 follow-up — a consult request names a child and carries a parent's
+   note about them: only the family that owns the child may open one, through
+   the same requireChildOwnership check the other child routes use. The live
+   directory is empty (no unverified provider is ever shown), so the test adds
+   one synthetic professional for its own run. */
+describe("B-GA-09 · a consult request can only be opened for a child the caller's family owns", () => {
+  const PRO: Professional = { id: "synthetic-pro", name: "Synthetic SLP", role: "Speech therapist", creds: "", langs: "en", city: "", mode: "video", ages: "", approach: "", handles: "", price: "", rating: 0, verified: false, tone: "" };
+  beforeAll(() => { ARBOR_PROFESSIONALS.push(PRO); });
+  afterAll(() => { ARBOR_PROFESSIONALS.splice(ARBOR_PROFESSIONALS.indexOf(PRO), 1); });
+  const FAMILY: Record<string, string[]> = { [CHILD]: [OWNER, "synthetic-family-member"] };
+  const owned = () => {
+    const f = fixture();
+    return { ...f, memoryStore: { ...f.memoryStore, ownsChild: async (uid: string, childId: string) => (FAMILY[childId] ?? []).includes(uid) } };
+  };
+  const open = (base: string, user: string, body: Record<string, unknown>) =>
+    fetch(`${base}/api/consult-requests`, { method: "POST", headers: { "Content-Type": "application/json", "x-test-user": user }, body: JSON.stringify(body) });
+  const ask = { professionalId: PRO.id, note: "synthetic note" };
+
+  it("the owner and a member of the owning family may; a stranger gets 403 and nothing is stored", async () => {
+    const f = owned();
+    const base = await serve(f);
+    expect((await open(base, OWNER, { ...ask, childId: CHILD })).status).toBe(200);
+    expect((await open(base, "synthetic-family-member", { ...ask, childId: CHILD })).status).toBe(200);
+    const stranger = await open(base, "synthetic-stranger", { ...ask, childId: CHILD });
+    expect(stranger.status).toBe(403);
+    expect(await stranger.json()).toEqual({ error: "Not authorized for this child." });
+    expect(await f.consultStore.listByOwner("synthetic-stranger")).toEqual([]);
+    expect(await f.consultStore.listByChild(OWNER, CHILD)).toHaveLength(1);
+  });
+
+  it("a co-parent through a share grant (not a family member) is refused: grants scope activities and moments, not consult requests", async () => {
+    const base = await serve(owned());
+    expect((await open(base, "synthetic-grant-co-parent", { ...ask, childId: CHILD })).status).toBe(403);
+  });
+
+  it("a request about no child is not a child route: it still opens", async () => {
+    const base = await serve(owned());
+    expect((await open(base, "synthetic-stranger", ask)).status).toBe(200);
+  });
+
+  it("the route carries the owner check (the middleware the other child routes use)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const api = readFileSync(new URL("./api.ts", import.meta.url), "utf8");
+    expect(api).toMatch(/router\.post\("\/consult-requests", requireOwnership, async/);
   });
 });

@@ -4386,7 +4386,10 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
 
   // MON-3 v1: professional intro/booking — records a durable consult request and
   // returns a ready-to-send email draft (email-based transaction first cut).
-  router.post("/consult-requests", async (req, res) => {
+  // B-GA-09: a consult request names a child and carries a parent's note about
+  // them, so only the family that owns the child may open one (the same
+  // owner check as every other child route; no child named → nothing to check).
+  router.post("/consult-requests", requireOwnership, async (req, res) => {
     const { uid, email } = actorOf(req);
     const { professionalId, childId, note, preferredMode } = req.body;
     const professional = ARBOR_PROFESSIONALS.find((p) => p.id === professionalId);
