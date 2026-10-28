@@ -44,6 +44,8 @@ import type { ModelProvider } from "../ai/modelRouter.js";
 import { escalationMatchForCategory, renderEscalationMarkdown, screenForImmediateEscalation } from "../safety/escalation.js";
 import { PROGRAMS, programMeta } from "../content/programs/index.js";
 import { enrolInProgram } from "../lib/programs/enrolment.js";
+import { PATTERN_IDS } from "../lib/library/plans/planVisibility.js";
+import { getPattern } from "../lib/library/plans/planBooks.js";
 
 const ROOT = path.resolve(__dirname, "..", "..", "..");
 const UID = "synthetic-parent-ga05";
@@ -59,6 +61,8 @@ const OTHER: Record<Category, Category> = { self_harm: "abuse_or_unsafe_home", a
 const PROGRAM = PROGRAMS[0];
 const PROGRAM_NAME = programMeta(PROGRAM.id)!.name.en;
 const MEMORY_CANARY = "GA05_MEMORY_CANARY likes the blue cup.";
+/** An authored Everyday Plans pattern, so /plans/phrase reaches its crisis screen. */
+const PLAN_PATTERN = PATTERN_IDS.find((id) => getPattern(id))!;
 
 /* ── a provider that records every call, and a ledger with an active program ─ */
 
@@ -151,6 +155,8 @@ const CHANNELS: Record<string, Channel> = {
   "/generate-bedtime-story": { kind: "409", body: (t, l) => ({ childName: PROFILE.name, age: PROFILE.age, dayEvents: [{ description: t, tone: "hard" }], language: l, ...who }) },
   "/analyze-behavior": { kind: "409", body: (t, l) => ({ logs: [{ behaviorType: "meltdown", trigger: "bedtime", response: "hug", notes: t }], language: l, ...who }) },
   "/generate-handoff": { kind: "409", body: (t, l) => ({ logs: [{ behaviorType: "meltdown", trigger: "bedtime", response: "hug", notes: t }], milestones: [], language: l, ...who }) },
+  // Everyday Plans (server/plans.ts, mounted through router.use): screened before the visibility gate and the model since main 283c3b84.
+  "/plans/phrase": { kind: "409", body: (t, l) => ({ pattern: PLAN_PATTERN, slot: 1, text: t, lang: l }) },
 };
 
 /** Screened routes with no parent or child free text: no case can reach them. */
@@ -200,9 +206,11 @@ const clientScreenRegistryErrors = (registry: Record<string, string>): string[] 
 const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
 
 /** Every non-client, non-test source file other than routes/api.ts that calls the screen and is not a
- *  registered browser module: a wrapper in safety/ or lib/, or a router mounted from server/, would be a
- *  channel this matrix cannot see. `extra` adds synthetic files for the negative control. */
-function unregisteredScreens(extra: Record<string, string> = {}): string[] {
+ *  registered browser module. A router module whose every screen call sits inside a
+ *  `router.<method>("/path", …)` contributes those routes as channels (`routes`); any other call
+ *  (a wrapper in safety/ or lib/, a helper in server/) is `unregistered`, a channel this matrix cannot
+ *  see. `extra` adds synthetic files for the negative controls. */
+function serverScreens(extra: Record<string, string> = {}): { unregistered: string[]; routes: Record<string, string[]> } {
   const srcRoot = path.join(ROOT, "app", "src");
   const files: Record<string, string> = {};
   const walk = (dir: string) => {
@@ -214,10 +222,17 @@ function unregisteredScreens(extra: Record<string, string> = {}): string[] {
     }
   };
   walk(srcRoot);
-  return Object.entries({ ...files, ...extra })
-    .filter(([rel, src]) => rel !== "routes/api.ts" && !(rel in CLIENT_SCREENS) && /\bscreenForImmediateEscalation\(/.test(stripComments(src)))
-    .map(([rel]) => rel).sort();
+  const unregistered: string[] = [];
+  const routes: Record<string, string[]> = {};
+  for (const [rel, src] of Object.entries({ ...files, ...extra })) {
+    if (rel === "routes/api.ts" || rel in CLIENT_SCREENS || !/\bscreenForImmediateEscalation\(/.test(stripComments(src))) continue;
+    const found = screenedRoutes(src);
+    if (found.routes.length && !found.unattributed.length) routes[rel] = found.routes;
+    else unregistered.push(rel);
+  }
+  return { unregistered: unregistered.sort(), routes };
 }
+const unregisteredScreens = (extra: Record<string, string> = {}) => serverScreens(extra).unregistered;
 
 /** The category's own resources are there; the other category's are not. */
 function directed(markdown: string, category: Category) {
@@ -277,9 +292,21 @@ describe("B-GA-05 — every enabled crisis channel directs to help before anythi
     expect(unattributed, `screenForImmediateEscalation( at routes/api.ts line(s) ${unattributed.join(", ")} has no enclosing router route: inline it in the route or register the channel here`).toEqual([]);
     expect(clientScreenRegistryErrors(CLIENT_SCREENS)).toEqual([]);
     expect(unregisteredScreens(), "a source file outside routes/api.ts calls the crisis screen: in server code, inline it in the route and add the channel to this matrix (server/, routes/, services/ and safety/ can never be registered); only a browser-only module may go in CLIENT_SCREENS, with the route that screens again").toEqual([]);
-    expect(routes.length).toBeGreaterThanOrEqual(18);
-    expect(routes).toContain("/live/turn");
-    expect([...Object.keys(CHANNELS), ...Object.keys(NOT_A_CHANNEL)].sort()).toEqual(routes);
+    // Router modules mounted from server/ (today server/plans.ts → /plans/phrase) are channels too.
+    const moduleRoutes = Object.values(serverScreens().routes).flat();
+    expect(moduleRoutes).toContain("/plans/phrase");
+    const derived = [...new Set([...routes, ...moduleRoutes])].sort();
+    expect(derived.length).toBeGreaterThanOrEqual(19);
+    expect(derived).toContain("/live/turn");
+    expect([...Object.keys(CHANNELS), ...Object.keys(NOT_A_CHANNEL)].sort()).toEqual(derived);
+  });
+
+  it("negative control: a router module in server/ that screens a new route adds a channel the matrix must cover", () => {
+    const router = 'import { screenForImmediateEscalation } from "../safety/escalation";\nexport const build = (router: any) => { router.post("/synthetic-module-route", (req: any, res: any) => res.json(screenForImmediateEscalation({ message: req.body.text }))); };\n';
+    const { unregistered, routes } = serverScreens({ "server/syntheticModuleRouter.ts": router });
+    expect(unregistered).toEqual([]);
+    expect(routes["server/syntheticModuleRouter.ts"]).toEqual(["/synthetic-module-route"]);
+    expect(Object.keys(CHANNELS)).not.toContain("/synthetic-module-route");
   });
 
   it("negative control: a screen reached through a helper const is flagged, not silently missed", () => {
@@ -324,6 +351,11 @@ describe("B-GA-05 — controls (the zeros above are the screen, not a dead harne
     const r = await post("/generate-plan", CHANNELS["/generate-plan"].body("Taking turns with a sibling", "en"));
     expect(r.status, r.raw).not.toBe(409);
     expect(calls.some((c) => c.method === "generateJson")).toBe(true);
+  });
+
+  it("a benign /plans/phrase step is not a 409 (the 409 above is the screen)", async () => {
+    const r = await post("/plans/phrase", CHANNELS["/plans/phrase"].body("We read one book and then lights out", "en"));
+    expect(r.status, r.raw).not.toBe(409);
   });
 
   it("a benign Live user turn continues (the stop_crisis above is the screen)", async () => {

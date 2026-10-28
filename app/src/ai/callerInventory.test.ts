@@ -40,7 +40,7 @@ const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8");
 const GAP_ROWS_BASELINE = 16;
 /** Exact, both ways: the rows that carry a parent's or child's words or voice
  *  (Text in) and run no crisis screen (Crisis screen starts with "no"). */
-const CRISIS_SCREEN_GAPS = ["api POST /score-utterance", "server/childAsr.ts", "server/planNarration.ts", "server/plans.ts"];
+const CRISIS_SCREEN_GAPS = ["api POST /score-utterance", "server/childAsr.ts", "server/planNarration.ts"];
 const SCREEN_CALL = /\bscreenForImmediateEscalation\(/;
 const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
 
@@ -340,12 +340,20 @@ describe("B-AIOPS-08 — negative controls", () => {
     const grown = DOC.replace("| none: the stored hero picture |", "| parent text |");
     expect(grown).not.toBe(DOC);
     expect(inventoryErrors(grown, HANDLERS, OTHERS)).toContain("api POST /hero-pose: carries parent text with no crisis screen and is not in CRISIS_SCREEN_GAPS");
-    // Mark the plans row screened: the lock must shrink with it (and the module check catches the false claim).
-    const screened = DOC.replace("| no (POST /plans/phrase; gap 8) |", "| yes (POST /plans/phrase) |");
-    expect(screened).not.toBe(DOC);
+    // Mark the plan narration row screened: the lock must shrink with it (and the module check catches the false claim).
+    const row = DOC.split("\n").find((l) => l.startsWith("| server/planNarration.ts |"))!;
+    const cells = row.slice(1, -1).split("|").map((c) => c.trim());
+    const header = DOC.split("\n").find((l) => l.startsWith("| Key |"))!.slice(1, -1).split("|").map((c) => c.trim());
+    cells[header.indexOf("Crisis screen")] = "yes (synthetic claim)";
+    const screened = DOC.replace(row, `| ${cells.join(" | ")} |`);
     const errors = inventoryErrors(screened, HANDLERS, OTHERS);
-    expect(errors).toContain("server/plans.ts: listed in CRISIS_SCREEN_GAPS but no longer an unscreened text or voice row: remove it from the lock");
-    expect(errors.some((e) => e.startsWith("server/plans.ts: crisis screen reads \"yes (POST /plans/phrase)\", but the module does not call"))).toBe(true);
+    expect(errors).toContain("server/planNarration.ts: listed in CRISIS_SCREEN_GAPS but no longer an unscreened text or voice row: remove it from the lock");
+    expect(errors.some((e) => e.startsWith("server/planNarration.ts: crisis screen reads \"yes (synthetic claim)\", but the module does not call"))).toBe(true);
+    // The real plans row is screened in the source (main 283c3b84), so calling it unscreened fails too.
+    const plansRow = DOC.split("\n").find((l) => l.startsWith("| server/plans.ts |"))!;
+    const plansCells = plansRow.slice(1, -1).split("|").map((c) => c.trim());
+    plansCells[header.indexOf("Crisis screen")] = "no (synthetic claim)";
+    expect(inventoryErrors(DOC.replace(plansRow, `| ${plansCells.join(" | ")} |`), HANDLERS, OTHERS).some((e) => e.startsWith("server/plans.ts: crisis screen reads \"no (synthetic claim)\", but the module calls"))).toBe(true);
   });
 
   it("a 'via' cell must name a route whose handler really screens", () => {
