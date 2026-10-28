@@ -20,7 +20,8 @@
  */
 import { labelFor, lineFor, NAME_TOKEN } from "./bookText";
 import { NARRATION_ROOT, narrationFileName, type VoiceFolder } from "./narration";
-import type { Book, BookLang, HeGender, Page } from "./types";
+import { bookChoices, decisionOf, narrationBookId, rejoinPageIdOf } from "./bookShape";
+import type { AnyBook, BookLang, HeGender, Page } from "./types";
 
 export type { VoiceFolder };
 export const VOICE_FOLDERS: readonly VoiceFolder[] = ["en", "he-m", "he-f"];
@@ -47,19 +48,23 @@ const join = (...parts: (string | undefined)[]) => parts.filter(Boolean).join(" 
 const hasCues = (p: Page) => !!p.artStates?.some((s) => s.cueKey);
 
 /** Every narration file of a book for one voice folder, in reading order. */
-export function bookNarrationFiles(book: Book, folder: VoiceFolder): NarrationFile[] {
+export function bookNarrationFiles(book: AnyBook, folder: VoiceFolder): NarrationFile[] {
   const { lang, gender } = voiceOf(folder);
   const line = (l: Page["text"]) => lineFor(l, lang, gender);
   const out: NarrationFile[] = [];
   const push = (pageId: string, when: string, text: string, opts: { choiceId?: string; cues?: boolean } = {}) =>
     out.push({ file: narrationFileName(pageId, opts.choiceId), when, text, cues: !!opts.cues });
   push("cover", "the child taps the cover picture (never on its own)", join(`${labelFor(book.title, lang)}.`, book.coverNameLine ? `${labelFor(book.coverNameLine, lang)}.` : undefined, labelFor(book.coverLine, lang)));
-  const decisionAt = book.pages.findIndex((p) => p.id === book.decision.pageId);
+  const decision = decisionOf(book);
+  const choices = bookChoices(book);
+  // a plan book (B-BOOK-75) is linear: every page is "before", nothing after
+  const decisionAt = decision ? book.pages.findIndex((p) => p.id === decision.pageId) : book.pages.length - 1;
   const before = book.pages.slice(0, decisionAt + 1);
-  const after = book.pages.slice(book.pages.findIndex((p) => p.id === book.rejoinPageId));
+  const rejoinAt = decision ? book.pages.findIndex((p) => p.id === rejoinPageIdOf(book)) : -1;
+  const after = rejoinAt >= 0 ? book.pages.slice(rejoinAt) : [];
   const add = (p: Page, when: string) => {
     if (p.echo) {
-      for (const c of book.decision.choices) {
+      for (const c of choices) {
         const echo = p.echo[c.id];
         push(p.id, `${when}, path ${c.id} (${c.type})`, join(line(p.text), echo ? line(echo) : undefined, p.closing ? line(p.closing) : undefined), { choiceId: c.id, cues: hasCues(p) });
       }
@@ -78,8 +83,8 @@ export function bookNarrationFiles(book: Book, folder: VoiceFolder): NarrationFi
     push(p.id, when, join(line(p.text), p.closing ? line(p.closing) : undefined), { cues: hasCues(p) });
   };
   for (const p of before) add(p, p.id);
-  for (const c of book.decision.choices) push(`${book.decision.pageId}-choice`, `choice card ${c.id} (${c.type}) tapped`, labelFor(c.label, lang), { choiceId: c.id });
-  for (const c of book.decision.choices) for (const p of c.branch) add(p, `${p.id} (path ${c.id})`);
+  if (decision) for (const c of choices) push(`${decision.pageId}-choice`, `choice card ${c.id} (${c.type}) tapped`, labelFor(c.label, lang), { choiceId: c.id });
+  for (const c of choices) for (const p of c.branch) add(p, `${p.id} (path ${c.id})`);
   for (const p of after) add(p, p.id);
   return out;
 }
@@ -92,7 +97,7 @@ export const cueFileOf = (file: string): string => file.replace(/\.(mp3|wav)$/, 
 
 /** The file names (audio + cue sidecars) that must never leave the child's
  *  private files, for one voice folder. */
-export function nameBearingFiles(book: Book, folder: VoiceFolder): string[] {
+export function nameBearingFiles(book: AnyBook, folder: VoiceFolder): string[] {
   return bookNarrationFiles(book, folder)
     .filter(isNameBearing)
     .flatMap((f) => [f.file, ...(f.cues ? [cueFileOf(f.file)] : [])]);
@@ -100,7 +105,7 @@ export function nameBearingFiles(book: Book, folder: VoiceFolder): string[] {
 
 /** The files the book's shared set SHIPS, per voice folder: every name-free
  *  file of en and he-m, and of he-f only those whose words differ from he-m. */
-export function sharedNarrationShipped(book: Book): Record<VoiceFolder, string[]> {
+export function sharedNarrationShipped(book: AnyBook): Record<VoiceFolder, string[]> {
   const heM = new Map(bookNarrationFiles(book, "he-m").map((f) => [f.file, f.text]));
   const out = {} as Record<VoiceFolder, string[]>;
   for (const folder of VOICE_FOLDERS) {
@@ -114,12 +119,13 @@ export function sharedNarrationShipped(book: Book): Record<VoiceFolder, string[]
 /** The shared files one voice folder may use: file name → public URL (a he-f
  *  file with the he-m words is read from he-m). Empty when the book has no
  *  shared set. A name-bearing file is never in it. */
-export function sharedNarrationUrls(book: Book, folder: VoiceFolder): Record<string, string> {
-  const setId = Object.prototype.hasOwnProperty.call(SHARED_NARRATION_SETS, book.id) ? SHARED_NARRATION_SETS[book.id] : null;
+export function sharedNarrationUrls(book: AnyBook, folder: VoiceFolder): Record<string, string> {
+  const narrId = narrationBookId(book);
+  const setId = Object.prototype.hasOwnProperty.call(SHARED_NARRATION_SETS, narrId) ? SHARED_NARRATION_SETS[narrId] : null;
   if (!setId) return {};
   const shipped = sharedNarrationShipped(book);
   const own = new Set(shipped[folder]);
-  const base = (from: VoiceFolder) => `${NARRATION_ROOT}/${book.id}/${setId}/${from}/`;
+  const base = (from: VoiceFolder) => `${NARRATION_ROOT}/${narrId}/${setId}/${from}/`;
   const out: Record<string, string> = {};
   for (const f of bookNarrationFiles(book, folder)) {
     if (isNameBearing(f)) continue;

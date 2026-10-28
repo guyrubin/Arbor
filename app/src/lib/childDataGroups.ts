@@ -56,7 +56,8 @@ export const CHILD_DATA_ROWS: readonly ChildDataRow[] = [
   // B-BOOK release: the child's own picture-book files (hero sheet, prints,
   // narration in the child's name) — the metadata here; the files in Storage,
   // erased with the child.
-  { id: "books", icon: "auto_stories", collections: ["bookAssets", "bookBookmarks"] },
+  // B-BOOK-75: `books` = the composed Everyday Plan books (the parent's choices).
+  { id: "books", icon: "auto_stories", collections: ["bookAssets", "bookBookmarks", "books"] },
   { id: "plans", icon: "checklist", collections: ["actionPlans", "actionLoops", "routines", "goals", "goalObservations", "savedLearn", "weeklyReports", "programs", "familyGoals", "coachSessions"] },
   { id: "screening", icon: "fact_check", collections: ["screenings", "devScoreSnapshots", "bandSnapshots"] },
   { id: "coach", icon: "forum", collections: ["conversations", "conversationChanges", "familyTopics"] },

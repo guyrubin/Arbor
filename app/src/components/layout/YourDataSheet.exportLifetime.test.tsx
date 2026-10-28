@@ -212,7 +212,7 @@ describe("final browser boundary and fresh parent action", () => {
     expect(data.profile.name).toBe(name); expect(h.child.name).toBe(name);
     expect(data.exportReceipt.status).toBe(partial ? "incomplete" : "complete");
     expect(data.exportNote).toBe(translate(lang, "sec.sharing.data.exportNote"));
-    expect(Object.keys(data.collections)).toHaveLength(46);
+    expect(Object.keys(data.collections)).toHaveLength(47); // Plan books and Studio creations
     expect(data.collections.studioCreations).toEqual([]);
     expect(data.exportReceipt.collections.studioCreations).toBe("included");
     expect(h.paths).toContain("users/owner/children/child-a/studioCreations");

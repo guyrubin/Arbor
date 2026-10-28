@@ -21,7 +21,7 @@ describe("JournalTab v2 — the grid is the journal's top", () => {
     expect(journal).toContain(feedDoor);
     expect(journal.replace(' || pendingJournalFilter', '')).not.toContain(feedDoor);
     expect(journal.replace('key={childProfile.id}', '')).not.toContain(feedDoor);
-    expect(journal).toContain('return <JournalShelves shelf={shelf} pro={view === "pro"} intakeFor={query.get("for")} primaryMoveProps={primaryMoveProps} />;');
+    expect(journal).toContain('return <JournalShelves shelf={shelf} pro={view === "pro"} intakeFor={query.get("for")} plan={query.get("plan")} primaryMoveProps={primaryMoveProps} />;');
     expect(journal).toContain("function JournalFeed(");
   });
   it("an evidence deep-link always lands on the thread, where its row is rendered", () => {

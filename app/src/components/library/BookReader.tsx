@@ -56,19 +56,21 @@ import {
 } from "../../lib/library/bookFlow";
 import { computeBookPageLayout, type Box, type LayoutContent, type Rect } from "../../lib/library/bookPageLayout";
 import { focusBackground, overlaySources, plateSources, type PlateTable } from "../../lib/library/bookPlates";
-import { BOOK_PLATES } from "../../lib/library/books";
+import { bookPlatesFor } from "../../lib/library/books";
+import { bookChoices, decisionOf, narrationBookId } from "../../lib/library/bookShape";
 import { bookString } from "../../lib/library/bookStrings";
 import { TURN_GLYPHS } from "../../lib/library/bookGlyphs";
 import { heGender, heroDisplayName, heroParts, labelFor, lineFor, pageParagraphs, paragraphChars } from "../../lib/library/bookText";
 import { choicePictureSources, heroPrint, heroSpriteUrl, resolveHeroSheet, resolvePose, sheetAnchorOf, type HeroSheet } from "../../lib/library/heroSheet";
 import { declaredAudio, DEV_NARRATION_ROOT, NARRATION_ROOT, narrationKey, narrationSetsPath, pageNarrationSrc, pickNarrationSet } from "../../lib/library/narration";
-import type { Book, BookLang, BookReaderChild, Page } from "../../lib/library/types";
+import type { AnyBook, BookLang, BookReaderChild, Page } from "../../lib/library/types";
 import "./bookReader.css";
 import { useBookProgress } from "./useBookProgress";
 import type { BookProgressPosition } from "../../lib/library/bookBookmarks";
 
 export interface BookReaderProps {
-  book: Book;
+  /** A canonical book or a composed PLAN book (B-BOOK-75). */
+  book: AnyBook;
   lang: BookLang;
   child: BookReaderChild;
   /** Close returns to wherever the reader was opened. */
@@ -177,7 +179,9 @@ export function BookReader({
   voiceSet = null,
   assets = null,
 }: BookReaderProps) {
-  const plateTable = plates ?? BOOK_PLATES[book.id] ?? {};
+  const plateTable = plates ?? bookPlatesFor(book);
+  const choices = bookChoices(book);
+  const decisionPageId = decisionOf(book)?.pageId ?? null;
   const [state, dispatch] = useReducer((s: BookFlowState, a: Parameters<typeof bookFlowReducer>[2]) => bookFlowReducer(book, s, a), initialState ?? initialBookFlow());
   useBookProgress(book, state, onProgress, onComplete);
   const gender = heGender(child.gender);
@@ -258,7 +262,7 @@ export function BookReader({
       }
     : {
         paras: paragraphChars(paras, name),
-        choices: decision ? book.decision.choices.length : undefined,
+        choices: decision ? choices.length : undefined,
         choosing: decision && choosingAt === state.at,
         prompt: pending,
       };
@@ -279,7 +283,8 @@ export function BookReader({
     };
   }, [book.id, root, narration, voiceSet, assets]);
   const voiceKey = voiceSet?.trim() || preferredSet || child.heroSheetId?.trim() || child.id;
-  const keyBase = { bookId: book.id, lang, gender, voiceKey };
+  // a plan book's name-free narration is shared per pattern (bookShape.narrationBookId)
+  const keyBase = { bookId: narrationBookId(book), lang, gender, voiceKey };
   const probe = narration === "probe";
   // With the child's own files (production), a path resolves to its blob URL
   // (.mp3, else the set's .wav) or to nothing.
@@ -413,8 +418,8 @@ export function BookReader({
     dispatch({ type: "repair", itemId: id });
   };
   const choose = (choiceId: string) => {
-    const c = book.decision.choices.find((x) => x.id === choiceId);
-    voice.playClip(declaredAudio(c?.audio, lang, gender) ?? via(probe ? narrationKey({ ...keyBase, pageId: `${book.decision.pageId}-choice`, choiceId }, root) : null));
+    const c = choices.find((x) => x.id === choiceId);
+    voice.playClip(declaredAudio(c?.audio, lang, gender) ?? via(probe && decisionPageId ? narrationKey({ ...keyBase, pageId: `${decisionPageId}-choice`, choiceId }, root) : null));
     // a tap selects (and speaks); "This one!" commits (ruling 2)
     if (state.selected !== choiceId) dispatch({ type: "choose", choiceId });
   };
@@ -492,7 +497,7 @@ export function BookReader({
     paddingBlock: px(pad.block),
   };
   const wordsStyle: CSSProperties = { fontSize: px(typePx), lineHeight: layout.lineHeight };
-  const decisionPlate = plateTable[book.pages.find((p) => p.id === book.decision.pageId)?.plateId ?? ""];
+  const decisionPlate = plateTable[book.pages.find((p) => p.id === decisionPageId)?.plateId ?? ""];
 
   const forward = (() => {
     if (onCover) {
@@ -535,7 +540,7 @@ export function BookReader({
       data-plan={plan.mode}
       style={{ gap: px(plan.gap), "--card-w": px(plan.cardW), "--pic-w": px(plan.picW), "--pic-h": px(plan.picH) } as CSSProperties}
     >
-      {book.decision.choices.map((c, i) => {
+      {choices.map((c, i) => {
         const focus = decisionPlate?.focus?.[c.id];
         const bg = focus && decisionPlate ? focusBackground(decisionPlate, focus, plan.picW, plan.picH) : null;
         const srcs = decisionPlate ? plateSources(decisionPlate, { dev }) : [];
@@ -553,7 +558,7 @@ export function BookReader({
             onClick={() => choose(c.id)}
           >
             <CardPicture
-              srcs={choicePictureSources(sheet, book.decision.choiceArt, c.id)}
+              srcs={choicePictureSources(sheet, decisionOf(book)?.choiceArt, c.id)}
               fallback={
                 bg ? (
                   <span

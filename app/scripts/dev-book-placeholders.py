@@ -56,6 +56,88 @@ PLATES = {
         "PL6": ("morning", "The brook"),
         "PL7": ("day", "The duel"),
     },
+    # B-BOOK-75 Everyday Plans: the pattern's SHARED plates (hero slot empty);
+    # briefs in src/lib/library/plans/planPlates.ts. Placeholders only.
+    "plan-poo-sit": {
+        "PP1": ("morning", "Living room, toys mid-play"),
+        "PP2": ("day", "How a body works, drawn like a game map"),
+        "PP3": ("day", "Hallway, the bathroom door half open"),
+        "PP4": ("golden", "Kitchen table after dinner, the idea bulb"),
+        "PP5": ("golden", "Calm bathroom, the toilet and the little step"),
+        "PP6": ("golden", "Bathroom floor, the wonder box open"),
+        "PP7": ("dusk", "Bathroom at dusk, very still"),
+        "PP8": ("morning", "Sunny garden, a kite"),
+    },
+    "plan-sleep-alone": {
+        "PS1": ("night", "Bedroom at night, the bed"),
+        "PS2": ("day", "Playground in daylight"),
+        "PS3": ("night", "Bedroom, the door a little open"),
+        "PS4": ("golden", "Kitchen table, the idea bulb"),
+        "PS5": ("dusk", "Bath, pyjamas, one book"),
+        "PS6": ("night", "Bedroom, the chair by the bed"),
+        "PS7": ("morning", "Kitchen table in the morning"),
+        "PS8": ("morning", "Bedroom window at sunrise"),
+    },
+    "plan-dropoff": {
+        "PD1": ("morning", "The kindergarten gate"),
+        "PD2": ("morning", "Hallway at home, shoes by the door"),
+        "PD3": ("morning", "The kindergarten door, half open"),
+        "PD4": ("golden", "Kitchen table, the idea bulb"),
+        "PD5": ("morning", "The gate, the high five and the kiss"),
+        "PD6": ("day", "The pocket on the shelf"),
+        "PD7": ("day", "The room inside, the clock"),
+        "PD8": ("golden", "The gate in the afternoon, the door wide open"),
+    },
+    "plan-big-feelings": {
+        "PF1": ("day", "Living room, blocks mid-build"),
+        "PF2": ("day", "The kettle and the hot-to-cool band"),
+        "PF3": ("day", "Living room after a storm"),
+        "PF4": ("golden", "Kitchen table, the idea bulb"),
+        "PF5": ("day", "The doorway, the word card"),
+        "PF6": ("golden", "The calm corner"),
+        "PF7": ("golden", "Living room put back together"),
+        "PF8": ("morning", "Living room in the morning"),
+    },
+    "plan-screen-end": {
+        "PE1": ("day", "Family room, the tablet face down"),
+        "PE2": ("day", "The sofa, the tablet glowing"),
+        "PE3": ("day", "The sofa, the tablet dark"),
+        "PE4": ("golden", "Kitchen table, the idea bulb"),
+        "PE5": ("day", "Two more songs"),
+        "PE6": ("day", "The sand timer"),
+        "PE7": ("day", "Three picture cards"),
+        "PE8": ("golden", "The door open to the park"),
+    },
+    "plan-new-food": {
+        "PN1": ("day", "The table, the plate with the empty spot"),
+        "PN2": ("day", "Garden path, the picnic blanket"),
+        "PN3": ("day", "The tongue drawn like a map"),
+        "PN4": ("day", "The plate pushed to the edge"),
+        "PN5": ("golden", "Kitchen table, the idea bulb"),
+        "PN6": ("golden", "The plate close up, the tiny spoon"),
+        "PN7": ("day", "The counter, washing vegetables"),
+        "PN8": ("morning", "The table in the morning"),
+    },
+    "plan-toilet-start": {
+        "PT1": ("morning", "Hallway, the potty through a door"),
+        "PT2": ("day", "The tummy as a tank"),
+        "PT3": ("day", "Playroom floor, the damp patch"),
+        "PT4": ("golden", "Kitchen table, the idea bulb"),
+        "PT5": ("morning", "The potty on the bathroom floor"),
+        "PT6": ("morning", "The potty and the box"),
+        "PT7": ("day", "Dry pants on the shelf"),
+        "PT8": ("morning", "The garden in the morning"),
+    },
+    "plan-stay-in-bed": {
+        "PB1": ("night", "Bedroom at night, water by the bed"),
+        "PB2": ("day", "Playground in daylight"),
+        "PB3": ("night", "The dark hallway"),
+        "PB4": ("golden", "Kitchen table, the idea bulb"),
+        "PB5": ("night", "The bed, the cuddly, the night light"),
+        "PB6": ("night", "The card on the bedside table"),
+        "PB7": ("morning", "Kitchen table in the morning, the card"),
+        "PB8": ("morning", "Bedroom window at sunrise"),
+    },
 }
 
 def make_overlay(path: Path, kind: str):
@@ -150,7 +232,9 @@ SHAPES = {
 def shape_of(pose: str) -> str:
     p = pose.lower()
     for key, base in (("arms-wide", "arms-wide"), ("stretch", "arms-wide"), ("armour", "arms-wide"), ("sling", "wave"), ("wave", "wave"),
-                      ("run", "run"), ("walk", "walk"), ("squat", "squat"), ("kneel", "squat"), ("crouch", "squat"), ("hunched", "sit"), ("sit", "sit")):
+                      ("run", "run"), ("walk", "walk"), ("squat", "squat"), ("kneel", "squat"), ("crouch", "squat"), ("hunched", "sit"), ("sit", "sit"),
+                      # B-BOOK-75 plan poses: the nearest mannequin shape
+                      ("hug-knees", "sit"), ("lie-down", "sit"), ("hands-up", "arms-wide")):
         if key in p:
             return base
     return "stand"
@@ -222,6 +306,11 @@ def pose_ids() -> list:
     found = set()
     for f in SRC_DIR.glob("books/*.geometry.json"):
         found |= set(re.findall(r'"pose":\s*"([A-Za-z0-9_-]+)"', f.read_text(encoding="utf-8")))
+    # B-BOOK-75: the twelve shared plan poses (lib/library/plans/planPoses.ts)
+    # and every pose a pattern names.
+    for f in [SRC_DIR / "plans" / "planPoses.ts", *SRC_DIR.glob("plans/patterns/*.ts")]:
+        found |= set(re.findall(r'^\s*"([a-z][a-z0-9-]+)",\s*$', f.read_text(encoding="utf-8"), re.M))
+        found |= set(re.findall(r'pose:\s*"([A-Za-z0-9_-]+)"', f.read_text(encoding="utf-8")))
     for f in SRC_DIR.glob("books/*.ts"):
         found |= set(re.findall(r'pose:\s*"([A-Za-z0-9_-]+)"', f.read_text(encoding="utf-8")))
         found |= set(re.findall(r'heroOf\("[^"]+",\s*"([A-Za-z0-9_-]+)"\)', f.read_text(encoding="utf-8")))

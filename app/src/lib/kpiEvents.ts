@@ -90,6 +90,10 @@ export const KpiEvent = {
   PracticeStudioOpen: "practice_studio_open",
   /** Together: an away-from-the-screen idea was kept as a moment. */
   PracticeTogetherDid: "practice_together_did",
+  /* ── Everyday plans (BD-54, B-BOOK-77) ─────────────────────────────────── */
+  /** "This is {name}'s plan": a parent approved an Everyday plan — the first
+   *  useful action the BD-54 funnel reads. Pattern id and language only. */
+  PlanApproved: "plan_approved",
 } as const;
 
 /** The capture entry modes (mirrors ArborContext's CaptureMode union). */
@@ -529,4 +533,21 @@ export function trackPracticeStudioOpen(world: string, via: string): void {
 export function trackPracticeTogetherDid(card: string): void {
   if (isKidModeActive()) return;
   track(KpiEvent.PracticeTogetherDid, { card: shortId(card) });
+}
+
+/* ── Everyday plans (BD-54) ─────────────────────────────────────────────── */
+
+/** Whose words the plan's optional own step came from: none, the parent's
+ *  own, or a step relayed from the professional who works with the child. */
+export type PlanOwnStepOrigin = "none" | "parent" | "practitioner";
+
+/** A parent approved an Everyday plan (the composer's explicit tap, after the
+ *  server saved it). Props are IDS: the pattern, the language, the own-step
+ *  origin. Never the child's name, never the parent's typed words, never the
+ *  phrased line. The acquisition `source` (a practitioner's link reads
+ *  `utm_source=practitioner`) rides in from the global attribution props, so
+ *  BD-54 reads "first useful action = plan" per source without a second seam. */
+export function trackPlanApproved(args: { pattern: string; lang: string; ownStep: PlanOwnStepOrigin }): void {
+  const id = (v: string) => String(v).replace(/[^a-z0-9_-]/gi, "").slice(0, 40);
+  track(KpiEvent.PlanApproved, { pattern: id(args.pattern), lang: id(args.lang), own_step: args.ownStep });
 }

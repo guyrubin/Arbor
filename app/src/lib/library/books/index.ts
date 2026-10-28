@@ -8,7 +8,9 @@
  *   on the DEV route.
  */
 import type { BookPlate, PlateTable } from "../bookPlates";
-import type { Book } from "../types";
+import { getPlanFixtureBook } from "../plans/planBooks";
+import { planPlateTable } from "../plans/planPlates";
+import { isPlanBook, type AnyBook, type Book } from "../types";
 import { abramsLongRoad, abramsLongRoadPlates } from "./abramsLongRoad";
 import { fiveSmoothStones, fiveSmoothStonesPlates } from "./fiveSmoothStones";
 
@@ -45,4 +47,19 @@ export function getPlate(bookId: string, plateId: string): BookPlate | undefined
 /** Every book the DEV route and the tests know (real + fixtures). */
 export function allBooks(): Book[] {
   return [...Object.values(LIBRARY_BOOKS), ...Object.values(FIXTURE_BOOKS)];
+}
+
+/** B-BOOK-75: a book of ANY kind the DEV route and the tests know — a real or
+ *  fixture canonical book, else a composed fixture PLAN book (`<pattern>--demo`).
+ *  Production plan books are per-child documents (lib/library/plans/planBookDoc),
+ *  never looked up here. */
+export function getAnyBook(id: string): AnyBook | undefined {
+  return getLibraryBook(id) ?? getPlanFixtureBook(id);
+}
+
+/** The plate table a book reads from: its own (canonical) or its pattern's
+ *  shared table (plan). */
+export function bookPlatesFor(book: AnyBook): PlateTable {
+  if (isPlanBook(book)) return planPlateTable(book.pattern);
+  return own(BOOK_PLATES, book.id) ? BOOK_PLATES[book.id] : {};
 }

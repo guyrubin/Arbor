@@ -34,6 +34,15 @@ import { intakeQuestionLines, readIntakeQuestionsText, writeIntakeQuestionsText 
 import { programPageModel } from "../../lib/programPage";
 import type { SleepLogEntry } from "../../types";
 import type { FamilyGoal } from "../../lib/goals";
+import PlansSection from "../plans/PlansSection";
+import { openPrintablePlan } from "../../lib/plans/planPrint";
+import PlanComposer from "../plans/PlanComposer";
+import { getPattern } from "../../lib/library/plans/planBooks";
+import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
+import { closePlan, keepPlan, type ActivePlan } from "../../lib/plans/planWeek";
+import { usePlanVisibility } from "../../lib/plans/usePlanVisibility";
+import { isPatternId } from "../../lib/library/plans/planVisibility";
+import { composerFromDoc } from "../../lib/plans/composerFromDoc";
 
 /** A query value that names a shelf, or null (an unknown id falls back to the grid). */
 export function shelfFromQuery(v: string | null): ShelfId | null {
@@ -49,8 +58,10 @@ export function shelfFromQuery(v: string | null): ShelfId | null {
  * (QuickLogModal, pre-filed on the shelf). No new write path except the
  * device-local "Try it today" pin (lib/practice/todayPin).
  */
-export default function JournalShelves({ shelf, pro = false, intakeFor = null, primaryMoveProps }: {
+export default function JournalShelves({ shelf, pro = false, intakeFor = null, plan = null, primaryMoveProps }: {
   shelf: ShelfId | null;
+  /** B-BOOK-77: `#/journal?plan=<patternId>` — the Everyday Plans composer for that pattern. */
+  plan?: string | null;
   /** B-LOOP-12: `#/journal?view=pro` — the professional view. */
   pro?: boolean;
   /** B-LOOP-12: `&for=<profession>` preselects a chip (default: speech therapist). */
@@ -71,6 +82,34 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
 
   // ── the ONE capture sheet, pre-filed on the open shelf ──
   const [capture, setCapture] = useState<{ open: boolean; mode: CaptureMode }>({ open: false, mode: "text" });
+
+  // ── B-BOOK-77/78: Everyday Plans — the child's plan books (the `books` seam:
+  //    the parent's choices, persisted here after the server's approval), the
+  //    server's visibility table (never decided on the device), and the
+  //    composer for `?plan=<pattern>`. Keep / close write the same row;
+  //    "change" reopens the composer on the saved choices. ──
+  const planRows = useChildCollection<PlanBookDoc>(childProfile.id, "books");
+  const planVisibility = usePlanVisibility();
+  const planDef = plan && isPatternId(plan) ? getPattern(plan) : undefined;
+  const openPlanDoor = (pattern: string) => goToRoute("journal", { plan: pattern });
+  const savePlanDoc = async (doc: PlanBookDoc) => { await planRows.upsert(doc); };
+  const keepPlanRow = (p: ActivePlan) => { void planRows.upsert(keepPlan(p.doc, new Date())); };
+  const closePlanRow = (p: ActivePlan) => { void planRows.upsert(closePlan(p.doc, new Date())); };
+  const plansSectionFor = (scope?: ShelfId) => (
+    <PlansSection
+      childName={childName}
+      planRows={planRows.items}
+      visibility={planVisibility}
+      now={now}
+      shelf={scope}
+      onOpenDoor={openPlanDoor}
+      onOpenPlan={(p) => openPlanDoor(p.def.id)}
+      onKeep={keepPlanRow}
+      onChange={(p) => openPlanDoor(p.def.id)}
+      onClose={closePlanRow}
+      onPrint={(p) => void openPrintablePlan({ doc: p.doc, child: childProfile, lang: locale, now: new Date() })}
+    />
+  );
 
   // ── the shelf's practice (the chooser, scoped) and "Try it today" ──
   const comparisonMonths = comparisonMonthsOf(childProfile, now);
@@ -247,7 +286,18 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="w-full min-w-0">
-      {pro && intakePacket ? (
+      {planDef ? (
+        <PlanComposer
+          key={planDef.id}
+          def={planDef}
+          child={{ id: childProfile.id, name: childProfile.name, gender: childProfile.gender }}
+          initialState={composerFromDoc(planDef, planRows.items.find((r) => r?.id === `${planDef.id}.${childProfile.id}` && r.status === "active"), locale)}
+          onSaved={savePlanDoc}
+          onClose={() => goToRoute("journal")}
+          onPrint={(doc) => void openPrintablePlan({ doc, child: childProfile, lang: locale, now: new Date() })}
+          onSafety={() => goToRoute("safety")}
+        />
+      ) : pro && intakePacket ? (
         <ProView
           childName={childName}
           profession={profession}
@@ -277,6 +327,7 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
           onBack={() => goToRoute("journal")}
           onAdd={() => setCapture({ open: true, mode: "text" })}
           primaryMoveProps={primaryMoveProps}
+          plansSection={plansSectionFor(shelf)}
         />
       ) : (
         <ShelfGrid
@@ -301,6 +352,7 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
               onHardMoment={hardMomentTile ? () => openHardMomentNow() : undefined}
             />
           }
+          plansSection={plansSectionFor()}
         />
       )}
       <QuickLogModal open={capture.open} mode={capture.mode} shelf={shelf ?? undefined} onClose={() => setCapture((c) => ({ ...c, open: false }))} />

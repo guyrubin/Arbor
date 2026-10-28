@@ -86,7 +86,7 @@ describe('bounded private export capture contract, no browser or sockets', () =>
     expect(privateExportApiDisposition('POST', '/api/todays-focus', id)).toBe('read');
   });
   it.each(['en', 'he'])('validates exact partial bytes, identity, filename, registered collections and absence of sibling data (%s)', lang => {
-    expect(collectionNames).toHaveLength(46);
+    expect(collectionNames).toHaveLength(47); // B-BOOK-75 books + B-BOOK-20 Studio creations
     expect(collectionNames).toContain('studioCreations');
     const fixture = privateExportFixture(seed, lang); const data = dataFor(fixture);
     expect(fixture.collections.studioCreations).toEqual([{ id: 'corner', ownerId: 'local-sandbox', childId: fixture.child.id,

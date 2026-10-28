@@ -1,28 +1,37 @@
 User-agent: *
 Allow: /
+Disallow: /marketing/plans/
 
 User-agent: Googlebot
 Allow: /
+Disallow: /marketing/plans/
 
 User-agent: GPTBot
 Allow: /
+Disallow: /marketing/plans/
 
 User-agent: OAI-SearchBot
 Allow: /
+Disallow: /marketing/plans/
 
 User-agent: ChatGPT-User
 Allow: /
+Disallow: /marketing/plans/
 
 User-agent: ClaudeBot
 Allow: /
+Disallow: /marketing/plans/
 
 User-agent: Claude-User
 Allow: /
+Disallow: /marketing/plans/
 
 User-agent: PerplexityBot
 Allow: /
+Disallow: /marketing/plans/
 
 User-agent: Google-Extended
 Allow: /
+Disallow: /marketing/plans/
 
 Sitemap: https://arborparentingapp.com/sitemap.xml

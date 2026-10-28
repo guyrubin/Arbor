@@ -62,10 +62,10 @@ export function validatePartialExport(text, filename, fixture) {
   return Boolean(filename === fixture.filename && data?.profile?.id === fixture.child.id && data.profile.name === fixture.child.name && data.profile.demo === true
     && !text.includes(fixture.sibling.id) && !text.includes(fixture.siblingMarker)
     && typeof data.exportedAt === 'string' && Number.isFinite(Date.parse(data.exportedAt)) && typeof data.exportNote === 'string' && data.exportNote.length > 0
-    && collections && Object.keys(collections).length === 46 && Object.values(collections).every(Array.isArray)
+    && collections && Object.keys(collections).length === 47 && Object.values(collections).every(Array.isArray)
     && Object.entries(fixture.collections).every(([name, value]) => JSON.stringify(collections[name]) === JSON.stringify(value))
     && receipt?.status === 'incomplete' && receipt.serverData === 'included'
-    && Object.keys(receipt.collections ?? {}).length === 46 && Object.keys(collections).every(name => receipt.collections[name] === 'included')
+    && Object.keys(receipt.collections ?? {}).length === 47 && Object.keys(collections).every(name => receipt.collections[name] === 'included')
     && Array.isArray(data.serverData?.memoryEvents) && data.serverData.memoryEvents.length === 0 && Array.isArray(data.serverData?.shares) && data.serverData.shares.length === 0
     && assets?.format === 'arbor-private-book-assets-v1' && assets.status === 'incomplete' && assets.inventory === 'unavailable'
     && JSON.stringify(assets.issues) === '["unauthorized"]' && assets.includedFiles === 0 && assets.includedBytes === 0 && Array.isArray(assets.files) && assets.files.length === 0);

@@ -2,10 +2,10 @@ import React from "react";
 import Icon from "../ui/Icon";
 import { guideFaceFor } from "./nowGuideFace";
 
-export type NowPlanKind = "urgent" | "practice" | "step" | "recommendation" | "program" | "record" | "visit" | "tonight" | "notice";
+export type NowPlanKind = "urgent" | "practice" | "step" | "recommendation" | "program" | "plan" | "record" | "visit" | "tonight" | "notice";
 
 const PLAN_ICON: Record<NowPlanKind, string> = {
-  practice: "lightbulb", step: "flag", recommendation: "auto_awesome", program: "menu_book",
+  practice: "lightbulb", step: "flag", recommendation: "auto_awesome", program: "menu_book", plan: "auto_stories",
   record: "edit_note", visit: "event", tonight: "bedtime", notice: "visibility", urgent: "gpp_maybe",
 };
 

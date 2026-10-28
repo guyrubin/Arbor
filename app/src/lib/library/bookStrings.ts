@@ -33,6 +33,10 @@ export type BookStringKey =
   | "grownUp.askMore"
   | "grownUp.together"
   | "grownUp.source"
+  | "grownUp.planSteps"
+  | "grownUp.watchFor"
+  | "grownUp.sources"
+  | "grownUp.firstWeek"
   | "name.fallback.m"
   | "name.fallback.f";
 
@@ -62,6 +66,10 @@ const EN: Record<BookStringKey, string> = {
   "grownUp.askMore": "Ask after, optional (5–7)",
   "grownUp.together": "Reading together",
   "grownUp.source": "Source note",
+  "grownUp.planSteps": "The plan, as you will do it",
+  "grownUp.watchFor": "When this plan is not the answer: talk to your doctor if",
+  "grownUp.sources": "Where the steps come from",
+  "grownUp.firstWeek": "The first week",
   "name.fallback.m": "the hero",
   "name.fallback.f": "the hero",
 };
@@ -92,6 +100,10 @@ const HE: Record<BookStringKey, string> = {
   "grownUp.askMore": "שאלה נוספת, לבחירה (5–7)",
   "grownUp.together": "כשקוראים יחד",
   "grownUp.source": "הערת מקור",
+  "grownUp.planSteps": "התוכנית, כמו שתעשו אותה",
+  "grownUp.watchFor": "כשהתוכנית הזאת היא לא התשובה: דברו עם הרופא אם",
+  "grownUp.sources": "מאיפה השלבים מגיעים",
+  "grownUp.firstWeek": "השבוע הראשון",
   "name.fallback.m": "הגיבור",
   "name.fallback.f": "הגיבורה",
 };

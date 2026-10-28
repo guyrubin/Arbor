@@ -26,6 +26,8 @@ const OWNS_FAILURE = [
 const SEAM_TOASTS = [
   // Tonight's "What happened?" on Now (parity 9 Oct): TonightFlow has no inline error.
   "components/companion/useNowLoop.ts",
+  // B-BOOK-78: the plan lead's "keep tonight in the journal" tap has no inline error (NowPlanLead only counts nights).
+  "components/companion/NowView.tsx",
   "components/kidmode/SneakHandBackCard.tsx",
   "components/tabs/BedtimeStoriesTab.tsx",
 ];

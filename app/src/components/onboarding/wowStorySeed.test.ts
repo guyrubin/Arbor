@@ -97,6 +97,7 @@ describe("CHILD_SUBCOLLECTIONS registry pin — the seed invented NO new sink", 
       "studioQuestProgress", // fixed finite quest choices, child export and erase
       "studioCreations", // B-BOOK-20: registered child-owned saved Studio designs
       "bookBookmarks", // edition-bound private reading position
+      "books", // B-BOOK-75: composed Everyday Plan books (the parent's choices)
       "journeyObjectives",
       "adventureResults",
       "bandSnapshots",

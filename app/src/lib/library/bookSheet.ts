@@ -16,7 +16,8 @@
  * (components/kidmode/hero/buildBookSheet.ts). Pure.
  */
 import type { SpriteAnchor } from "./bookPageLayout";
-import type { Book, Page } from "./types";
+import { allBookPages } from "./bookShape";
+import type { AnyBook } from "./types";
 
 /** One sprite file may be at most this big (WebP with alpha). */
 export const BOOK_SPRITE_MAX_BYTES = 300 * 1024;
@@ -45,16 +46,12 @@ export function sheetFileIn(have: Iterable<string>, relOf: (ext: SheetImageExt) 
   return null;
 }
 
-function pagesOf(book: Book): Page[] {
-  return [book.cover, ...book.pages, ...book.decision.choices.flatMap((c) => c.branch)];
-}
-
 /** The poses the builder draws: every pose a page slot, a repair end or an art
  *  state shows — NOT a costume-only pose (`heroAlt`: the kid door never passes
  *  a costume; Book.poseFallbacks covers it). Sorted. */
-export function bookSheetDrawPoses(book: Book): string[] {
+export function bookSheetDrawPoses(book: AnyBook): string[] {
   const out = new Set<string>();
-  for (const p of pagesOf(book)) {
+  for (const p of allBookPages(book)) {
     if (p.hero) out.add(p.hero.pose);
     if (p.repair?.heroAfter) out.add(p.repair.heroAfter.pose);
     for (const st of p.artStates ?? []) if (st.pose) out.add(st.pose);

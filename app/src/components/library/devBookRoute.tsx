@@ -7,7 +7,8 @@
  *
  *   /?book=five-smooth-stones&hero=dylan-v2&lang=he&gender=f&name=Noa&prints=0&costume=tunic
  *
- * - book   : a library or fixture book id (unknown / empty → the default
+ * - book   : a library or fixture book id, or a fixture plan book
+ *            (`plan-poo-sit--demo`, B-BOOK-75) (unknown / empty → the default
  *            review book, "five-smooth-stones").
  * - hero   : the DEV hero sheet at public/_dev/hero-sheets/<hero>/<pose>.webp
  *            (default dylan-v2; `none` = no hero).
@@ -30,7 +31,7 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { BookReader } from "./BookReader";
-import { DEFAULT_REVIEW_BOOK, getLibraryBook } from "../../lib/library/books";
+import { DEFAULT_REVIEW_BOOK, getAnyBook } from "../../lib/library/books";
 import { closeKidAudio, setKidAudioChild } from "../kidmode/audio/kidAudio";
 import { installKidVoiceUnlock } from "../../lib/kidVoicePlayer";
 import { loadHeroSheet, type HeroSheet } from "../../lib/library/heroSheet";
@@ -53,7 +54,8 @@ const SEGMENT = /^[A-Za-z0-9_-]{1,64}$/;
 export function parseDevBookParams(search: string): DevBookParams {
   const q = new URLSearchParams(search);
   const asked = q.get("book") ?? "";
-  const bookId = SEGMENT.test(asked) && getLibraryBook(asked) ? asked : DEFAULT_REVIEW_BOOK;
+  // B-BOOK-75: a composed fixture PLAN book opens too (`?book=plan-poo-sit--demo`)
+  const bookId = SEGMENT.test(asked) && getAnyBook(asked) ? asked : DEFAULT_REVIEW_BOOK;
   const lang: BookLang = q.get("lang") === "he" ? "he" : "en";
   const gender = q.get("gender") === "f" ? "girl" : "boy";
   const heroAsked = q.get("hero") ?? "dylan-v2";
@@ -71,7 +73,7 @@ export function parseDevBookParams(search: string): DevBookParams {
 }
 
 export function DevBookRoute({ params }: { params: DevBookParams }) {
-  const book = getLibraryBook(params.bookId)!;
+  const book = getAnyBook(params.bookId)!;
   const [opening, setOpening] = useState(0);
   const [sheet, setSheet] = useState<HeroSheet | null | undefined>(undefined);
   useEffect(() => {

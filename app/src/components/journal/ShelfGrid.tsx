@@ -61,6 +61,8 @@ export interface ShelfGridProps {
   /** B-LOOP-NEW-1c (2) / critic c2 r1 (journal product P1): the capture dock,
    *  unfiled — the grid's third module (budget 3). */
   captureDock?: React.ReactNode;
+  /** B-BOOK-77/78: the Everyday Plans section (running plans + doors), after the dock. */
+  plansSection?: React.ReactNode;
 }
 
 /** B-DESIGN-04 (blend frame 02): the detail line leads with its verb in ink
@@ -116,7 +118,7 @@ export function shelfTileStyle(shelf: ShelfId): React.CSSProperties {
  * never the count; a shelf with nothing shows the one-thing-to-try line,
  * never "0", "empty", a colour or a comparison.
  */
-export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, onOpenAll, primaryMoveProps, latest = null, tileWords = {}, tileTry = {}, tileNotice = {}, captureDock }: ShelfGridProps) {
+export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, onOpenAll, primaryMoveProps, latest = null, tileWords = {}, tileTry = {}, tileNotice = {}, captureDock, plansSection }: ShelfGridProps) {
   const { t, uiLang } = useLanguage();
   const ordered = [...SHELVES].sort((a, b) => a.order - b.order);
   return (
@@ -239,6 +241,7 @@ export default function ShelfGrid({ childName, counts, onOpenShelf, onOpenPro, o
           {captureDock}
         </section>
       )}
+      {plansSection}
     </div>
   );
 }
