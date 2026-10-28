@@ -43,6 +43,7 @@ import { buildDigestPrompt } from "../server/digest.js";
 import { toAnalyzeLogInputs } from "../lib/analyzeLogPayload.js";
 import { CONCERN_CUES_EN, CONCERN_CUES_HE } from "../lib/loop/concernCues.js";
 import { screenForConditionQuestion } from "../safety/conditionQuestion.js";
+import { PLAIN_PARENT_WORDS_CLAUSE } from "../server/parentWordsScrub.js";
 
 // ── AI-12 / GP-16: the ONE profile allow-list every prompt goes through ──────
 //
@@ -288,7 +289,11 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // profile carries them. Without wishes the bytes equal 1.8.0 (sha 670672691c…,
   // parity pinned in prompts.test.ts). Re-pin: coach-core-v1 (+2 wishes
   // scenarios: "don't push reading", "never tell me to see a doctor").
-  coach_chat: { version: "1.9.0", sha256: "13aea4f4a0107b772f41f3ae61b842f18c8ad65bc2bd3697b4b6c40c08a3bc1a" },
+  // 1.10.0 (B-AI-09, 2026-10-28): the field rules gain the memoryProposals
+  // rule and PLAIN_PARENT_WORDS_CLAUSE (static text: every rendering moves).
+  // Re-pin: coach-core-v1 live run with the clinical-wording memory scenario
+  // (EN + HE) — Guy's half; the suites stay pinned at 1.9.0 until it runs.
+  coach_chat: { version: "1.10.0", sha256: "41717836e9bd9e8adfe0a53278b81b2f49c1b29d852ee7703e6a1069b747d65d" },
   council_synthesis: { version: "1.4.0", sha256: "db095a77e6305b1d788394ea55c068680447b1c4f63413abaf86db37e28746c8" },
   // voice_reply 1.7.0 / live_session 1.5.0 (B-PROG-01, 2026-10-06): the
   // spoken context (ai/spokenContext.ts) renders the OPTIONAL "Active
@@ -455,12 +460,20 @@ export const ROUTINE_ESCALATION_GUIDANCE = "Escalation guidance must be proporti
  * ignored; (3) "does she have ADHD?" was answered with invented behaviours;
  * (4) hypothesis confidence came back as low/medium/high — a graded label.
  * Council and voice keep ROUTINE_ESCALATION_GUIDANCE alone (their pins hold).
+ *
+ * coach_chat 1.10.0 (B-AI-09, 2026-10-28) — the memory proposals carry the
+ * plain-parent-words clause BEFORE the scrub: a memoryProposals rule plus the
+ * ONE PLAIN_PARENT_WORDS_CLAUSE (server/parentWordsScrub, already on
+ * /analyze-behavior). The after-the-fact scrub (scrubMemoryProposals) stays
+ * the floor; nothing is ever written to memory without the parent.
  */
 export const COACH_CHAT_FIELD_RULES = `Field rules:
 - When a fact under ARBOR APPROVED CHILD MEMORY bears on the question, build the answer on it first and name it (what already works for this child) in "text" and todayPlan, before adding anything new.
 - If the parent asks whether the child has a condition or a label, never write that condition's name or any label back, not even to decline. Say plainly in "text" that Arbor cannot answer that question and only a qualified professional can assess it. Do not describe behaviours the parent did not report: ask what they have noticed, and make todayPlan about noticing and writing down concrete moments to bring to that conversation.
 - escalateIf: 1-3 thresholds built only from what the parent reported (how often, how long, how intense, in how many settings, skills lost, daily life disrupted) and whom to talk to. Thresholds are about the behaviour the parent described and never introduce a danger the parent did not raise. In a routine answer no field names self-harm, suicide, abuse, violence or injury.
-- nonDiagnosticHypotheses[].confidence: an uncertainty phrase such as "one possibility", never low, medium, high, a score or a percentage.`;
+- nonDiagnosticHypotheses[].confidence: an uncertainty phrase such as "one possibility", never low, medium, high, a score or a percentage.
+- memoryProposals[].fact: only a fact the parent stated about this child, written in plain parent words in the language of your other text values. A clinical or diagnostic word the parent used is never copied into a fact: keep what happened and what it looked like (for example "Big tantrums at bedtime when the tablet goes off"). When the parent stated no fact, return memoryProposals as [].
+${PLAIN_PARENT_WORDS_CLAUSE}`;
 
 /**
  * coach_chat 1.5.0 (B-AI-14 live fix, 2026-10-06) — the governed-escalation
