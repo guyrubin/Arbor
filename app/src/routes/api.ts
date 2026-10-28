@@ -79,8 +79,6 @@ import {
   createCohortMetricsStore,
   type CohortMetricsStore,
 } from "../server/cohortMetrics.js";
-import { createProgramPilotStore, summariseProgramPilot, type ProgramPilotStore } from "../server/programPilot.js";
-import { dayKeyOf } from "../lib/retention.js";
 import {
   buildDigestOptIn,
   createDigestOptInStore,
@@ -147,9 +145,6 @@ type ApiDeps = {
   /** N1-05: the founder-side cohort reader (injectable for tests); defaults
    *  to the Firestore/null store derived from config. */
   cohortMetricsStore?: CohortMetricsStore;
-  /** B-PROG-12: the program pilot's enrolment reader (injectable for tests);
-   *  defaults to the Firestore/null store derived from config. */
-  programPilotStore?: ProgramPilotStore;
   /** N1-07: server-side weekly-digest opt-in rows (injectable for tests);
    *  defaults to the Firestore/null store derived from config. */
   digestOptInStore?: DigestOptInStore;
@@ -414,7 +409,7 @@ export const allowListHandoffInput = (
   return { logs: safeLogs, milestones: safeMilestones };
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, digestJobSource, jobCallerVerifier, aiCapabilityRegistry, heroPoseSource, programPilotStore }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, digestJobSource, jobCallerVerifier, aiCapabilityRegistry, heroPoseSource }: ApiDeps) => {
   const router = express.Router();
   const liveUsage = createLiveUsageStore(config);
   // CARE-2: the recipient shared-view read seam (Firestore in prod, null locally).
@@ -424,7 +419,6 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // N1-07: the weekly-digest mail wire. Defaults here rather than in createApp
   // so the seams stay injectable for the guard without a second wiring site.
   const cohortMetrics = cohortMetricsStore ?? createCohortMetricsStore(config);
-  const programPilot = programPilotStore ?? createProgramPilotStore(config);
   const digestOptIns = digestOptInStore ?? createDigestOptInStore(config);
   const resolveVerifiedEmail = verifiedEmailResolver ?? firebaseVerifiedEmailResolver;
   const sendDigestEmail = digestEmailSender ?? ((msg: DigestEmailMessage) => sendWeeklyDigestEmail(msg));
@@ -4111,34 +4105,6 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
     } catch (error: any) {
       logger.error("Arbor Cohort Report Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to build the cohort report", details: error.message });
-    }
-  });
-
-  // B-PROG-12: the program pilot's kill-criteria rows (thesis §10) — counts
-  // and shares only, never per child, never on a parent surface. Same admin
-  // gate as /admin/cohorts: a non-admin request reads NOTHING (the stores are
-  // not touched before isAdmin). Demo families always, internal by default,
-  // are excluded through the same rollup tags. The one admin reader that
-  // touches child sub-collections does it inside server/programPilot, projected
-  // at the store's egress; this route returns only its summary.
-  router.get("/admin/program-pilot", async (req, res) => {
-    const actor = actorOf(req);
-    if (!isAdmin(actor)) {
-      res.status(403).json({ error: "Not authorized" });
-      return;
-    }
-    try {
-      const includeInternal = req.query.includeInternal === "1" || req.query.includeInternal === "true";
-      const now = new Date();
-      const [records, rollups] = await Promise.all([programPilot.listEnrolmentRecords(), cohortMetrics.listRetentionRollups()]);
-      res.json(summariseProgramPilot(records, rollups, {
-        asOfDay: dayKeyOf(now) ?? now.toISOString().slice(0, 10),
-        includeInternal,
-        mode: programPilot.mode,
-      }));
-    } catch (error: any) {
-      logger.error("Arbor Program Pilot Report Error", error, { requestId: requestIdOf(req) });
-      res.status(500).json({ error: "Failed to build the program pilot report" });
     }
   });
 

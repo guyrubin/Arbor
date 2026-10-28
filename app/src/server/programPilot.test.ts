@@ -4,19 +4,8 @@ import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { createApiRouter } from "../routes/api.js";
 import { createTestConfig } from "../testConfig.js";
-import { loadFramework } from "../services/framework.js";
-import { LocalMemoryStore } from "../memory/localMemoryStore.js";
-import { LocalShareStore } from "../sharing/shares.js";
-import { LocalConsentStore } from "../sharing/consent.js";
-import { createCounterStore } from "./quotaStore.js";
-import { createEntitlementStore } from "./entitlements.js";
-import { createReferralStore } from "./referral.js";
-import { createConsultStore } from "./consultRequests.js";
-import { createAdminMetricsStore } from "./adminMetrics.js";
-import { createWaitlistStore } from "./waitlist.js";
-import type { ModelProvider } from "../ai/modelRouter.js";
+import { createProgramPilotRouter } from "./programPilotRoute.js";
 import { scanForbiddenKeys, type CohortMetricsStore, type StoredRollup } from "./cohortMetrics.js";
 import {
   PROGRAM_PILOT_METRIC_VERSION, projectEnrolment, projectPracticeRow, summariseProgramPilot,
@@ -188,12 +177,6 @@ describe("B-PROG-12 — privacy: counts and shares only, nothing per child", () 
 
 /* ── the route: the admin gate first ───────────────────────────────────── */
 
-const stubModelProvider = {
-  async *streamText() { yield ""; },
-  generateJson: async () => ({}),
-  async *generateJsonStream() { yield "{}"; },
-} as unknown as ModelProvider;
-
 class FakePilotStore implements ProgramPilotStore {
   readonly mode = "firestore" as const;
   reads = 0;
@@ -214,20 +197,21 @@ describe("GET /api/admin/program-pilot — the gate", () => {
   });
   const harness = async (uid: string, pilot: ProgramPilotStore, cohort: CohortMetricsStore) => {
     const config = createTestConfig();
-    const entitlementStore = createEntitlementStore(config);
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => { (req as any).user = { uid, email: null }; next(); });
-    app.use("/api", createApiRouter({
-      config, modelProvider: stubModelProvider, memoryStore: new LocalMemoryStore(), shareStore: new LocalShareStore(), consentStore: new LocalConsentStore(),
-      framework: loadFramework(), entitlementStore, referralStore: createReferralStore(config, entitlementStore), counters: createCounterStore(config),
-      consultStore: createConsultStore(config), adminMetrics: createAdminMetricsStore(config), waitlistStore: createWaitlistStore(config),
-      cohortMetricsStore: cohort, programPilotStore: pilot,
-    }));
+    app.use("/api", createProgramPilotRouter({ config, programPilotStore: pilot, cohortMetricsStore: cohort }));
     const server = await new Promise<Server>((resolve) => { const s = app.listen(0, "127.0.0.1", () => resolve(s)); });
     servers.push(server);
     return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   };
+
+  it("createApp mounts the read-out under /api after auth; the shared routes/api.ts carries no pilot code", () => {
+    const app = readFileSync(path.join(__dirname, "createApp.ts"), "utf8");
+    const mount = app.indexOf('app.use("/api", createProgramPilotRouter({ config }));');
+    expect(mount).toBeGreaterThan(app.indexOf('app.use("/api", createAuthMiddleware(config));'));
+    expect(readFileSync(path.join(__dirname, "..", "routes", "api.ts"), "utf8")).not.toMatch(/programPilot|program-pilot/);
+  });
 
   it("a non-admin gets 403 and NOTHING is read", async () => {
     process.env.ARBOR_ADMIN_UIDS = "founder-uid";
