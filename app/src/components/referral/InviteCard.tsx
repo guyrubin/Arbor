@@ -5,7 +5,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { api, type ReferralCodeInfo } from "../../lib/api";
-import { trackInviteSent } from "../../lib/loopEvents";
+import { shareInviteLink } from "../../lib/share";
 import { T } from "../../lib/tokens";
 
 type State =
@@ -34,7 +34,9 @@ export function referralEarnedCopy(earnedMonths: number): { key: string; vars: R
  * the weekly letter (components/tabs/WeeklyTab.tsx), the ONE place a link
  * leaves the app; it carries no child content.
  * Shows the parent's stable referral link with Copy + Share (Web Share API when
- * available, clipboard fallback otherwise), wires `trackInviteSent`, and honestly
+ * available; without it the caption and the link are copied together), sends
+ * through lib/share `shareInviteLink` (B-RESID-05: share attribution on the
+ * link, share_completed + invite_sent on every completed send), and honestly
  * surfaces the earned-months counter / cap. Loading, anon, and error states are
  * all reachable. The link field stays LTR even in Hebrew; copy follows the doc dir.
  */
@@ -73,29 +75,14 @@ export default function InviteCard() {
     copyTimer.current = setTimeout(() => setCopied(false), reduce ? 1600 : 1200);
   };
 
-  const doCopy = async (link: string) => {
-    try {
-      await navigator.clipboard.writeText(link);
-      flashCopied();
-      trackInviteSent("copy");
-    } catch {
-      toast(t("set.referral.error"), "error");
-    }
+  // One path for both buttons (lib/share): a dismissed sheet says nothing.
+  const send = async (link: string, mode: "share" | "copy") => {
+    const result = await shareInviteLink({ link, caption: t("set.referral.shareText"), surface: "weekly_invite", mode });
+    if (result === "copied") flashCopied();
+    else if (result === "error") toast(t("set.referral.error"), "error");
   };
-
-  const doShare = async (link: string) => {
-    const shareData = { title: "Arbor", text: t("set.referral.shareText"), url: link };
-    if (typeof navigator.share === "function") {
-      try {
-        await navigator.share(shareData);
-        trackInviteSent("web_share");
-      } catch {
-        /* user dismissed the share sheet — no error, no event */
-      }
-    } else {
-      await doCopy(link); // fallback already emits trackInviteSent("copy")
-    }
-  };
+  const doCopy = (link: string) => send(link, "copy");
+  const doShare = (link: string) => send(link, "share");
 
   if (state.kind === "loading") {
     return (
