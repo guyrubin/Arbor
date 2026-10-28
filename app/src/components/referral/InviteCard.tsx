@@ -46,7 +46,9 @@ export default function InviteCard() {
   const { toast } = useToast();
   const reduce = useReducedMotion();
   const [state, setState] = useState<State>({ kind: "loading" });
-  const [copied, setCopied] = useState(false);
+  // What the last send copied: the link alone (Copy), or the message and the
+  // link together (Share with no share sheet), so the button says which.
+  const [copied, setCopied] = useState<null | "link" | "invite">(null);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const signedIn = firebaseEnabled ? Boolean(user) : true;
@@ -68,17 +70,17 @@ export default function InviteCard() {
 
   useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
 
-  const flashCopied = () => {
-    setCopied(true);
+  const flashCopied = (what: "link" | "invite") => {
+    setCopied(what);
     if (copyTimer.current) clearTimeout(copyTimer.current);
     // Respect reduced-motion: still flip the label, just no timed swap-back delay change.
-    copyTimer.current = setTimeout(() => setCopied(false), reduce ? 1600 : 1200);
+    copyTimer.current = setTimeout(() => setCopied(null), reduce ? 1600 : 1200);
   };
 
   // One path for both buttons (lib/share): a dismissed sheet says nothing.
   const send = async (link: string, mode: "share" | "copy") => {
     const result = await shareInviteLink({ link, caption: t("set.referral.shareText"), surface: "weekly_invite", mode });
-    if (result === "copied") flashCopied();
+    if (result === "copied") flashCopied(mode === "share" ? "invite" : "link");
     else if (result === "error") toast(t("set.referral.error"), "error");
   };
   const doCopy = (link: string) => send(link, "copy");
@@ -147,8 +149,8 @@ export default function InviteCard() {
           className="inline-flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 min-h-[44px] transition"
           style={{ background: "var(--arbor-blue)", color: T.onAccent }}
         >
-          {copied ? <Icon name="check" size={14} /> : <Icon name="content_copy" size={14} />}
-          {copied ? t("set.referral.copied") : t("set.referral.copy")}
+          {copied === "link" ? <Icon name="check" size={14} /> : <Icon name="content_copy" size={14} />}
+          {copied === "link" ? t("set.referral.copied") : t("set.referral.copy")}
         </button>
         <button
           onClick={() => void doShare(link)}
@@ -156,7 +158,7 @@ export default function InviteCard() {
           className="inline-flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 min-h-[44px] transition"
           style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
         >
-          <Icon name="share" size={14} /> {t("set.referral.share")}
+          {copied === "invite" ? <><Icon name="check" size={14} /> {t("elev.words.invite.copied")}</> : <><Icon name="share" size={14} /> {t("set.referral.share")}</>}
         </button>
       </div>
       <p className="text-xs mt-2" style={{ color: "var(--arbor-muted)" }} aria-live="polite">

@@ -4,8 +4,9 @@
  *    sheet gets the caption and the attributed link; without a sheet the
  *    caption and the link are copied together; a dismissed sheet records
  *    nothing; "Copy" copies the link the card shows;
- *  · the branded-card engine's download fallback also copies the caption
- *    with its deep link (ref + utm), so the saved picture is never linkless.
+ *  (The branded-card engine, lib/share shareCard, has had no caller since
+ *  B-SHELL-29 made child content text-only, so the invite is the one place a
+ *  caption and a link leave the app.)
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
@@ -14,9 +15,9 @@ import { fileURLToPath } from "node:url";
 
 const h = vi.hoisted(() => ({ events: [] as [string, Record<string, unknown>][] }));
 vi.mock("./analytics", () => ({ track: (event: string, props: Record<string, unknown> = {}) => { h.events.push([event, props]); } }));
-vi.mock("./shareCard", () => ({ renderShareCard: async () => ({ blob: new Blob(["png"], { type: "image/png" }) }) }));
 
-import { attributeShareLink, captionWithLink, shareCard, shareInviteLink } from "./share";
+import { attributeShareLink, captionWithLink, shareInviteLink } from "./share";
+import { translate } from "./i18n";
 
 const LINK = "https://arborparentingapp.com/?ref=ABC2345";
 const CAPTION = "I use Arbor to understand my kid's development. Here's a free month of Plus 🌱";
@@ -89,30 +90,19 @@ describe("B-RESID-05 · shareInviteLink (the invite card's one send path)", () =
     expect(card).toContain('const doShare = (link: string) => send(link, "share");');
     expect(card).not.toMatch(/navigator\.(share|clipboard)/);
   });
-});
 
-describe("B-RESID-05 · the branded card's download fallback copies the caption with its link", () => {
-  it("no native sheet, no web share: the picture downloads and the caption + deep link (ref, utm) are copied", async () => {
-    const { clipboard: cb, writes } = clipboard();
-    const anchor = { href: "", download: "", click: vi.fn() };
-    vi.stubGlobal("window", {});
-    vi.stubGlobal("navigator", { clipboard: cb });
-    vi.stubGlobal("document", { createElement: () => anchor });
-    const result = await shareCard({ artifact: "growth_card", surface: "firsts", opts: { headline: "A first", name: "Noa" } as never, captionTemplate: "{name}'s first, kept in Arbor {url}", refCode: "ABC2345" });
-    expect(result).toEqual({ ok: true, channel: "download", captionCopied: true });
-    expect(anchor.click).toHaveBeenCalledOnce();
-    expect(writes).toHaveLength(1);
-    expect(writes[0]).toMatch(/^Noa's first, kept in Arbor https:\/\/\S+\?ref=ABC2345&utm_source=share&utm_medium=growth_card&utm_campaign=organic_share$/);
-    expect(names()).toEqual([["share_initiated", "growth_card", null], ["share_completed", "growth_card", "download"]]);
-  });
-
-  it("a refused clipboard still saves the picture and says the caption was not copied", async () => {
-    const anchor = { href: "", download: "", click: vi.fn() };
-    vi.stubGlobal("window", {});
-    vi.stubGlobal("navigator", { clipboard: { writeText: async () => { throw new Error("no activation"); } } });
-    vi.stubGlobal("document", { createElement: () => anchor });
-    const result = await shareCard({ artifact: "growth_card", surface: "firsts", opts: { headline: "A first" } as never, captionTemplate: "Kept in Arbor {url}" });
-    expect(result).toEqual({ ok: true, channel: "download", captionCopied: false });
-    expect(anchor.click).toHaveBeenCalledOnce();
+  it("the card says what was copied: the link (Copy), or the message and the link (Share with no sheet), EN and HE", () => {
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const card = readFileSync(path.join(here, "..", "components", "referral", "InviteCard.tsx"), "utf8");
+    expect(card).toContain('if (result === "copied") flashCopied(mode === "share" ? "invite" : "link");');
+    expect(card).toContain('{copied === "link" ? t("set.referral.copied") : t("set.referral.copy")}');
+    expect(card).toContain('{copied === "invite" ? <><Icon name="check" size={14} /> {t("elev.words.invite.copied")}</>');
+    for (const lang of ["en", "he"] as const) {
+      const said = translate(lang, "elev.words.invite.copied");
+      expect(said, lang).not.toBe("elev.words.invite.copied");
+      expect(said).not.toBe(translate(lang, "set.referral.copied"));
+      if (lang === "he") expect(said).toMatch(/[\u0590-\u05FF]/);
+    }
+    expect(translate("en", "elev.words.invite.copied")).toMatch(/message and link/i);
   });
 });

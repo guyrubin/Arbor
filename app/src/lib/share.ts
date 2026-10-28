@@ -141,7 +141,7 @@ export type ShareArgs = {
 };
 
 export type ShareResult =
-  | { ok: true; channel: ShareChannel; captionCopied?: boolean }
+  | { ok: true; channel: ShareChannel }
   | { ok: false; cancelled: true }
   | { ok: false; error: true };
 
@@ -187,17 +187,14 @@ export async function shareCard(args: ShareArgs): Promise<ShareResult> {
     // fall through to download
   }
 
-  // 3) Download fallback. B-RESID-05: the picture alone carries no link, so
-  // the caption with its deep link (ref + utm) goes to the clipboard too, for
-  // the parent to paste beside the picture.
+  // 3) Download fallback.
   try {
     downloadBlob(blob, filename);
+    trackShareCompleted(args.artifact, "download");
+    return { ok: true, channel: "download" };
   } catch {
     return { ok: false, error: true };
   }
-  const captionCopied = await copyText(caption);
-  trackShareCompleted(args.artifact, "download");
-  return { ok: true, channel: "download", captionCopied };
 }
 
 /* ── B-RESID-05 — the invite (components/referral/InviteCard) ─────────────
