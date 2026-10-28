@@ -537,3 +537,44 @@ describe("v3 F-NOW-1 · the plan card's body and the guide reader", () => {
     expect(css).not.toMatch(/(?:^|[\s;{-])(?:left|right)\s*:/m);
   });
 });
+
+describe("B-TODAY-37 · 'Record a moment' on an older question opens that question's form on Now", () => {
+  const older: ActionLoopEntry = { id: "today.child-a.2026-10-09", recommendation: "What did Noa notice outside?", source: "onboarding", status: "accepted", acceptedAt: "2026-10-09T11:00:00Z", capacity: "tiny", acceptanceKey: "onboarding-v1.child-a.test" };
+  const newer: ActionLoopEntry = { id: "today.child-a.2026-10-10", recommendation: "Read one book together.", source: "coach", status: "accepted", acceptedAt: "2026-10-10T09:00:00Z", capacity: "tiny" };
+  const at = (hash: string) => vi.stubGlobal("window", { location: { hash }, addEventListener: vi.fn(), removeEventListener: vi.fn() });
+
+  it.each(["en", "he"] as const)("without the request Now leads with the newer step; with it, the older question's form (%s)", (lang) => {
+    vi.setSystemTime(new Date("2026-10-10T12:00:00Z"));
+    state.lang = lang;
+    state.actionLoop = [older, newer];
+    at("#/overview");
+    const plain = renderToStaticMarkup(<NowView />);
+    expect(plain).toContain("Read one book together.");
+    expect(plain).not.toContain('data-testid="now-observation-answer"');
+
+    at(`#/overview?observe=${older.id}`);
+    const asked = renderToStaticMarkup(<NowView />);
+    expect(asked).toContain('data-module="now-step"');
+    expect(asked).toContain("What did Noa notice outside?");
+    expect(asked).toContain('data-testid="now-observation-answer"');
+    expect(asked).toContain(lang === "he" ? "השאלה שבחרתם" : "The question you chose");
+    expect(asked.match(/data-primary-move=/g)).toHaveLength(1);
+    // Critic r1: the deep link scrolls to the QUESTION, clear of the sticky place pills.
+    expect(asked).toMatch(/<h2 id="[^"]+-step" class="now-plan-title" dir="auto" style="[^"]*scroll-margin-block-start:calc\(var\(--sticky-offset\) \+ 12px\)/);
+  });
+
+  it("an answered, unknown or non-observation id is ignored: Now keeps its own choice", () => {
+    vi.setSystemTime(new Date("2026-10-10T12:00:00Z"));
+    for (const [rows, id] of [
+      [[{ ...older, status: "completed" as const, whatHappened: "Birds." }, newer], older.id],
+      [[older, newer], "today.child-a.1999-01-01"],
+      [[older, newer], newer.id],
+    ] as const) {
+      state.actionLoop = [...rows];
+      at(`#/overview?observe=${id}`);
+      const html = renderToStaticMarkup(<NowView />);
+      expect(html).toContain("Read one book together.");
+      expect(html).not.toContain('data-testid="now-observation-answer"');
+    }
+  });
+});

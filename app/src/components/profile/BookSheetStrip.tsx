@@ -7,6 +7,11 @@
  * on this device: one calm line. While the book still holds an earlier hero
  * (B-BOOK-69): one line saying it keeps that hero until the new sheet commits.
  * Nothing when the book has never shown a hero of this child.
+ * B-BOOK-69 residue (28 Oct): the "earlier hero" claim needs a CONFIRMED read
+ * of the child's book record (never a cached, pending or failed one), and the
+ * line follows the device's build as it starts and stops (a stopped build
+ * leaves the earlier book, so the line goes back to "previous", never stuck
+ * on "replacing").
  * The pictures come through the owner-checked proxy (lib/bookAssetStore).
  */
 import React, { useEffect, useMemo, useState } from "react";
@@ -30,7 +35,7 @@ export type { SheetStripTarget };
 
 export default function BookSheetStrip({ child, avatarHash, target = BOOK_TARGET }: { child: Pick<ChildProfile, "id" | "name" | "gender">; avatarHash: string; target?: SheetStripTarget }) {
   const { t } = useLanguage();
-  const col = useChildCollection<BookAssetsDoc>(child.id, "bookAssets");
+  const col = useChildCollection<BookAssetsDoc>(child.id, "bookAssets", { trackConfirmation: true });
   const [override, setOverride] = useState<BookAssetsDoc | null>(null);
   const sheetId = bookSheetId(avatarHash);
   const stored = col.items.find((d) => d?.bookId === target.bookId && d.sheetId === sheetId) ?? null;
@@ -39,6 +44,17 @@ export default function BookSheetStrip({ child, avatarHash, target = BOOK_TARGET
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [failed, setFailed] = useState<Record<string, boolean>>({});
+  // B-BOOK-69: the build runs in module state on this device (buildBookSheet);
+  // re-read it while no sheet of this hero is committed, so the line follows a
+  // build that starts, stops or fails. Local only: no request, no child data.
+  const [running, setRunning] = useState(() => bookSheetRunning(child.id, target.bookId));
+  useEffect(() => {
+    if (doc) return;
+    const read = () => setRunning(bookSheetRunning(child.id, target.bookId));
+    read();
+    const timer = setInterval(read, 1500);
+    return () => clearInterval(timer);
+  }, [child.id, target.bookId, doc]);
 
   useEffect(() => {
     if (!doc) return;
@@ -63,9 +79,10 @@ export default function BookSheetStrip({ child, avatarHash, target = BOOK_TARGET
 
   const name = { name: child.name };
   if (!doc) {
-    // B-BOOK-69: the book of an earlier hero stays readable until this hero's sheet commits; say so.
-    const previous = col.items.some((d) => d?.bookId === target.bookId && !!d.sheetId && d.sheetId !== sheetId);
-    const state = bookSheetRunning(child.id, target.bookId) ? (previous ? "replacing" : "building") : previous ? "previous" : null;
+    // B-BOOK-69: the book of an earlier hero stays readable until this hero's sheet commits; say so,
+    // but only from a confirmed read (a cached, pending or failed snapshot is not the stored book).
+    const previous = col.confirmed && !col.error && col.items.some((d) => d?.bookId === target.bookId && !!d.sheetId && d.sheetId !== sheetId);
+    const state = running ? (previous ? "replacing" : "building") : previous ? "previous" : null;
     return state ? (
       <p data-book-sheet={state} data-sheet={target.bookId} role="status" className="text-xs" style={muted}>
         {t(formKey(`${target.keyBase}.${state}`, child.gender), name)}

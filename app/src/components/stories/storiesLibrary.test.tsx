@@ -35,15 +35,25 @@ const story = (id: string) => HERO_STORIES.find((s) => s.id === id)!;
 
 describe("StoryCard — one parent card for a library book", () => {
   it("a book with a cover in the theme renders that cover (manifest file), 3:4, the title under it", () => {
-    const s = story("david-and-goliath");
-    const art = kidArt("film3d", storyCoverKey(s.id))!;
+    // B-BOOK-31 re-pin: the covered case is a hero-free cover (the storybook plate).
+    const s = story("the-lantern-path");
+    const art = kidArt("storybook", storyCoverKey(s.id))!;
     expect(art).toBeTruthy();
-    const html = renderToStaticMarkup(<StoryCard story={s} lang="en" theme="film3d" onOpen={() => {}} />);
+    const html = renderToStaticMarkup(<StoryCard story={s} lang="en" theme="storybook" onOpen={() => {}} />);
     expect(html).toContain(`src="${art.src480}"`);
     expect(html).toContain("aspect-ratio:3 / 4");
     expect(html).toContain(s.title);
     expect(html).not.toContain("data-story-card-titlecard");
     expect(html).not.toMatch(EMOJI);
+  });
+
+  it("B-BOOK-31: a cover that paints the reference family's child is never shown to another family's parent — the title card stands", () => {
+    const s = story("david-and-goliath");
+    expect(kidArt("film3d", storyCoverKey(s.id))?.hasHero).toBe(true);
+    const html = renderToStaticMarkup(<StoryCard story={s} lang="en" theme="film3d" onOpen={() => {}} />);
+    expect(html).not.toContain("/visuals/cards/");
+    expect(html).toContain("data-story-card-titlecard");
+    expect(html).toContain(s.title);
   });
 
   it("a book with no cover in the theme gets the token title card (never another theme's file)", () => {

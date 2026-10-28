@@ -244,3 +244,59 @@ export function startablePrograms(ageMonths: number | null, lang: ProgramLang): 
     };
   });
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   B-PROG-15 — a draft program says it is a pilot.
+
+   Talk Together and Steady Nights ship `reviewStatus: "draft"` and
+   startablePrograms has no review gate, so they reach parents with no label,
+   unlike the hard-moment guides (PilotNote). The line shows while the
+   program's reviewStatus is "draft" and disappears when the reviewer signs
+   (GA B-GA-02 sets it to "approved"); a retired program never shows it.
+
+   SHOWN BY DEFAULT. The row's gate is Guy's decided default ("show the
+   pilot line until GA B-GA-02 signs"; CoS/decisions/log.md 11 Oct, "Guy
+   takes the defaults on every GUY row", B-PROG-15 under buildable now), so
+   PROGRAM_PILOT_LINE_EXPOSED is true. The house device flag
+   (lib/entitlementsGuided: `arbor.flags.<name>`) stays as a review switch:
+   localStorage["arbor.flags.programPilot"] = "0" hides the line on that
+   device (for comparing renders), "1" shows it even if the default is ever
+   turned off. A storage error reads as no flag (the default applies).
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/** The release default: Guy's decided default shows the line on every draft program. */
+export const PROGRAM_PILOT_LINE_EXPOSED = true;
+/** The device review switch: "0" = off on this device, "1" = on. */
+export const PROGRAM_PILOT_FLAG_KEY = "arbor.flags.programPilot";
+
+type FlagStorage = Pick<Storage, "getItem"> | null | undefined;
+
+const flagStorage = (): FlagStorage => {
+  try {
+    return typeof localStorage === "undefined" ? null : localStorage;
+  } catch {
+    return null;
+  }
+};
+
+/** Does this program's page carry the pilot line? Draft, and the default (or the device switch) shows it. */
+export function programPilotLine(programId: string, opts: { exposed?: boolean; storage?: FlagStorage } = {}): boolean {
+  if (programById(programId)?.reviewStatus !== "draft") return false;
+  const storage = opts.storage === undefined ? flagStorage() : opts.storage;
+  let flag: string | null = null;
+  try {
+    flag = storage?.getItem(PROGRAM_PILOT_FLAG_KEY) ?? null;
+  } catch {
+    flag = null;
+  }
+  if (flag === "0") return false;
+  if (flag === "1") return true;
+  return opts.exposed ?? PROGRAM_PILOT_LINE_EXPOSED;
+}
+
+/** The note's number: the enrolled program's page says "this pilot program";
+ *  the chooser above two draft programs says "these pilot programs". */
+export function programPilotCount(programIds: readonly string[], opts: { exposed?: boolean; storage?: FlagStorage } = {}): "one" | "many" | null {
+  const n = programIds.filter((id) => programPilotLine(id, opts)).length;
+  return n === 0 ? null : n === 1 ? "one" : "many";
+}

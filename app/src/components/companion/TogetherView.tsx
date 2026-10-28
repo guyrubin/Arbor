@@ -17,7 +17,7 @@ import { BrandChip } from "../ui/BrandChip";
 import { EmptyState } from "../ui/EmptyState";
 import { Modal } from "../ui/Modal";
 import { Sheet, useCompactSurface } from "../ui/Sheet";
-import { OFFSCREEN_IDEAS, STORY_DOORS, WORLD_ART, type TogetherCategory } from "./companionChoices";
+import { OFFSCREEN_IDEAS, STORY_DOORS, worldArtSrc, type TogetherCategory } from "./companionChoices";
 import { trackCompanionPlaceOpen, trackPracticeStudioOpen, trackPracticeTogetherDid } from "../../lib/kpiEvents";
 import { TOGETHER_ART } from "../../lib/parentArt";
 import { useTogetherNavigation } from "./togetherNavigation";
@@ -198,7 +198,7 @@ export default function TogetherView() {
           v4: one filter shows at a time — Play is the games and the away ideas. */}
       {kidAvailable && <section hidden={!show("games")} className="companion-collection" data-module="together-games" aria-labelledby={`${filterId}-games`}>
         <div className="companion-section-heading"><div><span className="companion-eyebrow">{t("companion.together-view.first-choose-then-play")}</span><h2 id={`${filterId}-games`} tabIndex={-1}>{t("companion.together-view.little-invitations-to-play")}</h2></div></div>
-        {worlds.length ? <div className="companion-world-grid">{worlds.map((world) => <button key={world.id} type="button" data-together-return={`world-${world.id}`} className="companion-world-card" onClick={() => setPreview({ kind: "world", world })}><img src={`/visuals/cards/web/game-${WORLD_ART[world.id]}-480.webp`} srcSet={`/visuals/cards/web/game-${WORLD_ART[world.id]}-480.webp 1x, /visuals/cards/web/game-${WORLD_ART[world.id]}-1024.webp 2x`} alt="" width="480" height="320" loading="lazy" decoding="async" /><div><h3>{t(world.kidNameKey)}</h3>{category === "games" && <div className="together-world-count-slot" aria-busy={!playLoaded}>{category === "games" && (counts.byWorld[world.id] ?? 0) > 0 && <span className="companion-world-count" data-testid="together-world-count">{t(studioCountKey(world.unit, counts.byWorld[world.id]), { n: counts.byWorld[world.id] })}</span>}</div>}<p>{t(`practice.world.${world.key}.skill`)}</p><span className="companion-door-link">{t("companion.together-view.preview-before-playing")}<Icon name="arrow_forward" size={17} className="companion-arrow rtl:-scale-x-100" /></span></div></button>)}</div> : <p className="companion-caption">{t("companion.together-view.there-are-no-listed-screen-games-for-this")}</p>}
+        {worlds.length ? <div className="companion-world-grid">{worlds.map((world) => <button key={world.id} type="button" data-together-return={`world-${world.id}`} className="companion-world-card" onClick={() => setPreview({ kind: "world", world })}><img src={worldArtSrc(world.id).src480} srcSet={`${worldArtSrc(world.id).src480} 1x, ${worldArtSrc(world.id).src} 2x`} alt="" width="480" height="320" loading="lazy" decoding="async" /><div><h3>{t(world.kidNameKey)}</h3>{category === "games" && <div className="together-world-count-slot" aria-busy={!playLoaded}>{category === "games" && (counts.byWorld[world.id] ?? 0) > 0 && <span className="companion-world-count" data-testid="together-world-count">{t(studioCountKey(world.unit, counts.byWorld[world.id]), { n: counts.byWorld[world.id] })}</span>}</div>}<p>{t(`practice.world.${world.key}.skill`)}</p><span className="companion-door-link">{t("companion.together-view.preview-before-playing")}<Icon name="arrow_forward" size={17} className="companion-arrow rtl:-scale-x-100" /></span></div></button>)}</div> : <p className="companion-caption">{t("companion.together-view.there-are-no-listed-screen-games-for-this")}</p>}
       </section>}
 
       <section hidden={!show("stories")} className="companion-collection" data-module="together-stories" aria-labelledby={`${filterId}-stories`}>
@@ -232,7 +232,7 @@ export default function TogetherView() {
       {heroStep}
       <PreviewSurface open={preview !== null} onClose={() => setPreview(null)} title={previewTitle}>
         {preview?.kind === "world" && <div className="companion-preview" dir={he ? "rtl" : "ltr"}>
-          <img src={`/visuals/cards/web/game-${WORLD_ART[preview.world.id]}-480.webp`} srcSet={`/visuals/cards/web/game-${WORLD_ART[preview.world.id]}-480.webp 1x, /visuals/cards/web/game-${WORLD_ART[preview.world.id]}-1024.webp 2x`} width="480" height="320" alt="" decoding="async" />
+          <img src={worldArtSrc(preview.world.id).src480} srcSet={`${worldArtSrc(preview.world.id).src480} 1x, ${worldArtSrc(preview.world.id).src} 2x`} width="480" height="320" alt="" decoding="async" />
           <p>{t(`practice.world.${preview.world.key}.skill`)}</p>
           <p className="companion-caption">{!worksInLanguage(preview.world, lang) ? (t("companion.together-view.this-voice-game-is-currently-in-english-op")) : opensInKidMode(preview.world) ? (t("companion.together-view.when-you-are-ready-enter-the-child-area-yo")) : (t("companion.together-view.open-the-language-tools-in-the-parent-area"))}</p>
           <button type="button" className="companion-primary" onClick={() => openWorld(preview.world)}><Icon name="play_arrow" size={20} />{worksInLanguage(preview.world, lang) && opensInKidMode(preview.world) ? (t("companion.together-view.start-playing")) : (t("companion.together-view.open"))}</button>

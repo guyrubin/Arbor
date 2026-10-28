@@ -631,6 +631,8 @@ export const api = {
   billingPortal: () => get<{ url: string | null }>("/api/billing/portal"),
   // ADM-1: founder dashboard — users + paying-by-plan + today's token spend (403 if not admin).
   adminOverview: () => get<AdminOverview>("/api/admin/overview"),
+  // B-GAME-18 / B-BOOK-51: the weekly Kid Mode play summary — the narrow read (403 if not admin).
+  adminKidPlay: (since: string) => get<{ kidPlay?: AdminKidPlay; generatedAt: string }>(`/api/admin/kid-play?since=${encodeURIComponent(since)}`),
   // RET-1: "{child}'s week" digest (stats are computed server-side from the data we send).
   // B-AI-16: counts, types, contexts and outcomes only — no trigger / notes /
   // response / photo leaves the device for the digest (lib/digestPayload).
@@ -638,9 +640,9 @@ export const api = {
     post<WeeklyDigest>("/api/digest", { ...payload, logs: toDigestLogInputs(payload.logs), milestones: toDigestMilestoneInputs(payload.milestones) }),
   // CMP-2: GDPR server-side export + erasure.
   privacyExport: (childId: string, signal?: AbortSignal, beforeDispatch?: () => void) =>
-    request<{ exportedAt: string; childId: string; serverData: { memoryEvents: unknown[]; shares: unknown[] } }>(`/api/privacy/export/${encodeURIComponent(childId)}`, "GET", undefined, signal, beforeDispatch),
+    request<{ exportedAt: string; childId: string; serverData: { memoryEvents: unknown[]; shares: unknown[]; consents?: unknown[]; consultRequests?: unknown[] } }>(`/api/privacy/export/${encodeURIComponent(childId)}`, "GET", undefined, signal, beforeDispatch),
   privacyErase: (childId: string) =>
-    post<{ erased: { memoryEvents: number; shares: number; consents?: number }; erasedAt: string }>("/api/privacy/erase", { childId }),
+    post<{ erased: { memoryEvents: number; shares: number; consents?: number; consultRequests?: number; storageFiles?: number }; storage?: { photos: number; books: number }; erasedAt: string }>("/api/privacy/erase", { childId }),
   // STORE-4: FULL account deletion (Apple 5.1.1(v) / Play / GDPR Art. 17) — the
   // per-class receipt is honest: any failure ⇒ complete:false, account survives
   // for retry. Client wipes device-local stores only after a complete receipt.
@@ -734,6 +736,14 @@ export type AdminOverview = {
     live?: { observedSessionMs: number; openedSessions: number; reservedMs?: number; fallbackTurnMs?: number; restingRefusals?: number };
   };
   generatedAt: string;
+};
+
+/** B-GAME-18 / B-BOOK-51 (server/cohortMetrics KidPlaySummary): counts per
+ *  game and book per ISO week; a cell under `minFamilies` families is hidden. */
+export type AdminKidPlay = {
+  minFamilies: number;
+  games: { week: string; game: string; hidden: boolean; families: number | null; sittings: number | null; replays: number | null; returned7d: number | null }[];
+  books: { week: string; book: string; hidden: boolean; families: number | null; opened: number | null; finished: number | null }[];
 };
 
 export type WeeklyDigest = {

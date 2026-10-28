@@ -34,6 +34,10 @@ export interface PlanBookDoc extends PlanComposition {
    *  happened (a sit, a night) — a COUNT on the parent's shelf, never a rate,
    *  a streak or a verdict; nothing the child sees. */
   nights?: string[];
+  /** S1 (surfacing): the LOCAL day keys the child tapped "I tried!" on the
+   *  kid home rail — a COUNT beside `nights` (the parent's confirmations),
+   *  never a streak, a rate or a verdict; "missed" is not a word here. */
+  tries?: string[];
   /** ISO time the parent closed the plan (status "closed"). */
   closedAt?: string;
 }
@@ -72,10 +76,13 @@ export function readPlanBookDoc(raw: unknown): PlanBookDoc | null {
   if (!str(r.approvedAt) || !str(r.approvedBy) || (r.lang !== "en" && r.lang !== "he")) return null;
   const ownStep = readOwnStep(r.ownStep);
   if (r.stepMenuIds.includes(OWN_STEP) && !ownStep) return null;
-  const nights = Array.isArray(r.nights) ? r.nights.filter((d): d is string => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)) : [];
+  const dayKeys = (v: unknown): string[] => (Array.isArray(v) ? v.filter((d): d is string => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)) : []);
+  const nights = dayKeys(r.nights);
+  const tries = dayKeys(r.tries);
   return {
     ...(ownStep ? { ownStep } : {}),
     ...(nights.length ? { nights: [...new Set(nights)].sort() } : {}),
+    ...(tries.length ? { tries: [...new Set(tries)].sort() } : {}),
     ...(str(r.closedAt) ? { closedAt: r.closedAt } : {}),
     id: r.id,
     kind: "plan",

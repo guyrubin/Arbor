@@ -630,3 +630,42 @@ describe("B-AI-14 (route) — an applicable approved fact always reaches the ans
     expect(factClause("שעון חול עוזר.", "he")).toBe("שעון חול עוזר");
   });
 });
+
+/* B-ASKJB-44 — the /chat route runs the handoff-note floor before the
+   contract leaves the server (the exact professional note that shipped on
+   companion-topics-v1 topic-enjoy-he is the stubbed model output). */
+describe("B-ASKJB-44 · /api/chat handoff notes carry no invented finding", () => {
+  const shipped = "הילד מגיב היטב לזמני חיבור קצרים המבוססים על ויסות משותף ומשחק חופשי, ללא עדות לקשיי קשב או ויסות משמעותיים בהקשר זה.";
+  it("the shipped HE professional note never reaches the done contract or the rendered answer; the teacher note stays", async () => {
+    contractOverrides = {
+      text: "איזה יופי שיש לכם כמה דקות יחד. נסו לצייר יחד בלי משימות.",
+      handoffNotes: { teacher: "Noa enjoys drawing without set tasks, the parent says.", professional: shipped },
+    };
+    const { events } = await postChatStreamed({ message: "יש לנו כמה דקות יחד. מה אפשר לעשות?", childProfile: { id: "c1", name: "נועה" }, language: "he" });
+    const done = doneOf(events);
+    const parsed = coachResponseZodSchema.parse(done?.contract);
+    expect(parsed.handoffNotes).toEqual({ teacher: "Noa enjoys drawing without set tasks, the parent says.", professional: "" });
+    expect(String(done?.text)).not.toContain("ללא עדות");
+    expect(JSON.stringify(events)).not.toContain("ללא עדות לקשיי קשב");
+  });
+  it("the output screen sees the model's own note BEFORE the floor: a crisis clause the floor would drop still routes to crisis help", async () => {
+    contractOverrides = { handoffNotes: { teacher: "", professional: "There are no signs of self-harm or suicidal thoughts." } };
+    const { events } = await postChatStreamed({ message: "What can we do in five minutes?", childProfile: { id: "c1", name: "Mia" } });
+    const done = doneOf(events);
+    expect(done?.outputBlocked).toBe(true);
+    expect(done?.blockedCategory).toBe("crisis");
+  });
+  it("round 2: a finding the parent wrote in this message passes; the same words the parent never wrote are dropped", async () => {
+    const note = "My son shows no signs of hearing problems since the ear tubes.";
+    contractOverrides = { handoffNotes: { teacher: "", professional: note } };
+    const own = await postChatStreamed({ message: "The ENT says my son shows no signs of hearing problems since the ear tubes. What can we do at bedtime?", childProfile: { id: "c1", name: "Mia" } });
+    expect(coachResponseZodSchema.parse(doneOf(own.events)?.contract).handoffNotes.professional).toBe(note);
+    const invented = await postChatStreamed({ message: "What can we do at bedtime?", childProfile: { id: "c1", name: "Mia" } });
+    expect(coachResponseZodSchema.parse(doneOf(invented.events)?.contract).handoffNotes.professional).toBe("");
+  });
+  it("a clean handoff note passes the floor byte-identical", async () => {
+    contractOverrides = { handoffNotes: { teacher: "The parent says a two-minute warning helps.", professional: "" } };
+    const { events } = await postChatStreamed({ message: "What can we do in five minutes?", childProfile: { id: "c1", name: "Mia" } });
+    expect(coachResponseZodSchema.parse(doneOf(events)?.contract).handoffNotes).toEqual({ teacher: "The parent says a two-minute warning helps.", professional: "" });
+  });
+});

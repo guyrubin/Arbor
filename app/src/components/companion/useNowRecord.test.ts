@@ -94,6 +94,32 @@ describe("record answer lifecycle", () => {
     expect(render()).toMatchObject({ receipt: null, saving: true, confirming: true });
     h.confirmed = true; expect(render().receipt?.recommendation).toBe(NOTE);
   });
+  it("B-DATA-14: offline with an unconfirmed ledger the record lead steps aside — no endless 'Checking…', no cached claim", () => {
+    vi.stubGlobal("navigator", { onLine: false });
+    try {
+      const online = (() => { vi.stubGlobal("navigator", { onLine: true }); h.confirmed = true; const r = render(); vi.stubGlobal("navigator", { onLine: false }); return r; })();
+      h.confirmed = false; h.slots = []; h.effects = [];
+      expect(render()).toMatchObject({ opener: null, receipt: null, saving: false, confirming: false });
+      h.loop = [fromRecordEntry(online.opener!, "easier", "a", now)];
+      expect(render()).toMatchObject({ opener: null, receipt: null, saving: false, confirming: false });
+    } finally { vi.unstubAllGlobals(); }
+  });
+  it("B-DATA-14: an answer kept on this phone keeps its receipt and says so", () => {
+    const first = render(); const row = fromRecordEntry(first.opener!, "easier", "a", now);
+    h.shared[row.id] = { opener: first.opener, status: "queued", entry: row };
+    expect(render()).toMatchObject({ queued: true, saving: false, receipt: { reflection: "easier" } });
+    h.shared[row.id] = { opener: first.opener, status: "saved", entry: row };
+    expect(render()).toMatchObject({ queued: false, receipt: { reflection: "easier" } });
+  });
+  it("B-DATA-14: an answer the server rejected after its receipt shows its error and can be given again", async () => {
+    const first = render(); const opener = first.opener!;
+    await first.answer("easier"); expect(h.write).toHaveBeenCalledOnce();
+    expect(render().receipt).not.toBeNull();
+    h.shared[fromRecordRowId("a", now)] = { opener, status: "failed" };
+    const after = render();
+    expect(after).toMatchObject({ receipt: null, error: true, opener: expect.objectContaining({ key: opener.key }) });
+    await after.answer("easier"); expect(h.write).toHaveBeenCalledTimes(2);
+  });
   it("re-entry or a language remount keeps an in-flight or failed shared answer honest", () => {
     const first = render(); const row = fromRecordEntry(first.opener!, "easier", "a", now);
     h.loop = [row]; h.shared[row.id] = { opener: first.opener, status: "saving" };

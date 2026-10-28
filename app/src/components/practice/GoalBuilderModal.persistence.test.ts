@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from 'node:fs';
 import ts from "typescript";
 import { harness } from "../../context/ProfileContext.testSupport";
@@ -11,6 +11,9 @@ const goal = (id: string, date = '2026-09-01T00:00:00Z'): ActiveGoal => {
   return { goalId: id, label: tile.label, domainId: tile.domainId, addedAt: date };
 };
 const child = (activeGoals: ActiveGoal[]) => ({ id: 'A-child', name: 'A child', age: 4, languages: ['English'], schoolContext: '', strengths: [], challenges: [], onboardingComplete: true, activeGoals });
+/** B-DATA-13: a goal write is a transaction (read the stored list, then commit),
+ *  so it is issued a few microtasks after the tap rather than inside it. */
+const issued = async () => { for (let n = 0; n < 10; n++) await Promise.resolve(); };
 const deferred = () => {
   let resolve!: () => void, reject!: (e: Error) => void;
   const promise = new Promise<void>((ok, no) => { resolve = ok; reject = no; });
@@ -83,13 +86,13 @@ describe('B-GROWTH-40 actual picker and profile persistence boundary', () => {
     const writes: { data: any; gate: ReturnType<typeof deferred> }[] = [];
     let persisted: ActiveGoal[] = [seed];
     p.transport.update = async (_, data: any) => { const gate = deferred(); writes.push({ data, gate }); await gate.promise; persisted = data.activeGoals; };
-    const first = picker(p); first.click('goal-choice-big-feelings'); first.click('goal-save');
+    const first = picker(p); first.click('goal-choice-big-feelings'); first.click('goal-save'); await issued();
     expect(writes).toHaveLength(1); expect(writes[0].data.activeGoals.map((g: ActiveGoal) => g.goalId)).toEqual(['transitions', 'big-feelings']);
     expect(p.value.activeChild.activeGoals).toEqual([seed]);
     first.close(); expect(first.closed).toBe(true); first.dispose();
     const second = picker(p);
     expect(second.find('goal-save')?.props.disabled).toBe(true);
-    second.click('goal-save');
+    second.click('goal-save'); await issued();
     expect(writes).toHaveLength(1);
     writes[0].gate.resolve(); await p.flush();
     expect(persisted.map(g => g.goalId)).toEqual(['transitions', 'big-feelings']); expect(second.closed).toBe(false);
@@ -97,12 +100,27 @@ describe('B-GROWTH-40 actual picker and profile persistence boundary', () => {
     second.click('goal-choice-taking-turns');
     expect(second.find('goal-confirm')).toBeDefined();
     expect(writes).toHaveLength(1);
-    second.click('goal-save');
+    second.click('goal-save'); await issued();
     expect(writes).toHaveLength(2);
     expect(writes[1].data.activeGoals.map((g: ActiveGoal) => g.goalId)).toEqual(['transitions', 'big-feelings', 'taking-turns']);
     writes[1].gate.resolve(); await p.flush(); expect(second.closed).toBe(true);
     expect(p.value.activeChild.activeGoals).toEqual(persisted);
     expect(persisted.map(g => g.goalId)).toEqual(['transitions', 'big-feelings', 'taking-turns']);
+  });
+  it('B-DATA-14: offline, the choice fails at once with the offline line (EN key), writes nothing, and Retry saves it online', async () => {
+    const seed = goal('transitions'); const p = harness({ rows: [child([seed])] }); p.effects(); await p.flush();
+    vi.stubGlobal('navigator', { onLine: false });
+    try {
+      const first = picker(p); first.click('goal-choice-big-feelings'); first.click('goal-save'); await p.flush();
+      const alert = first.nodes().find(n => n.props.role === 'alert');
+      expect(alert?.props.children).toContain('elev.sync.goalOffline');
+      expect(p.calls.updates).toEqual([]);
+      expect(first.find('goal-save')?.props.children).toContain('elev.goal.modal.retry');
+      vi.stubGlobal('navigator', { onLine: true });
+      first.click('goal-save'); await p.flush();
+      expect(first.closed).toBe(true);
+      expect(p.value.activeChild.activeGoals?.map(g => g.goalId)).toEqual(['transitions', 'big-feelings']);
+    } finally { vi.unstubAllGlobals(); }
   });
   it('a dismissed write failure remains visibly retryable after reopening the same child', async () => {
     const seed = goal('transitions'); const p = harness({ rows: [child([seed])] }); p.effects(); await p.flush();
@@ -143,7 +161,7 @@ describe('goal write admission and owner/child lifetime', () => {
     const first = picker(p), second = picker(p);
     first.click('goal-choice-big-feelings'); second.click('goal-choice-taking-turns');
     const staleSubmit = second.find('goal-save')!.props.onClick;
-    first.click('goal-save'); staleSubmit();
+    first.click('goal-save'); staleSubmit(); await issued();
     expect(p.calls.updates).toHaveLength(1);
     pending.resolve(); await p.flush(); expect(second.closed).toBe(false);
     second.click('goal-save'); await p.flush();
@@ -184,9 +202,9 @@ describe('goal write admission and owner/child lifetime', () => {
     p.setOwner('B'); await p.flush(); p.setOwner('A'); await p.flush();
     expect(p.value.goalSession).not.toBe(oldSession);
     const returning = picker(p); expect(returning.find('goal-save')).toBeUndefined();
-    staleSubmit(); expect(p.calls.updates).toHaveLength(1);
+    staleSubmit(); await issued(); expect(p.calls.updates).toHaveLength(1);
     const freshPending = deferred(); p.transport.update = async () => freshPending.promise;
-    returning.click('goal-choice-taking-turns'); returning.click('goal-save');
+    returning.click('goal-choice-taking-turns'); returning.click('goal-save'); await issued();
     expect(p.calls.updates).toHaveLength(2);
     expect(p.value.getGoalSelection('A-child')!.attempt).toMatchObject({ status: 'pending', goal: { goalId: 'taking-turns' } });
     if (outcome === 'failed') pending.reject(Error('obsolete failure')); else pending.resolve();

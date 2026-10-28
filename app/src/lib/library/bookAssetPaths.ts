@@ -87,4 +87,8 @@ export interface BookAssetsDoc {
   files: string[];
   bytes: number;
   createdAt: string;
+  /** PR C (plan narration): per stored narration file, the hash of exactly
+   *  what the voice read (lib/library/plans/planNarration). A file whose
+   *  words changed is rendered again, deliberately; absent for other sets. */
+  narrationText?: Record<string, string>;
 }

@@ -186,6 +186,7 @@ Every route below builds its prompt, then passes it through **`privacy.redact(pr
 - **Server tree:** `children/{childId}/memoryEvents` + child doc (`firestoreMemoryStore.ts:52-68`).
 - **Client tree:** `users/{uid}/children/{childId}/...` for 8 subcollections (`CHILD_SUBCOLLECTIONS` in `lib/childData.ts`: behaviorLogs, milestones, actionPlans, savedStories, contacts, weeklyReports, briefs, insights; `firestore.rules:22-27`).
 - **Implication:** `CMP-3` export and erasure must traverse **both trees** + share grants + Cloud Storage (avatars, forward-proofed) and write a **tombstone** (`CMP-5`). Risk R-3 tracks the split.
+- **Current per-sink register (B-GA-09, 28 Oct 2026):** the 8-collection list above dates from June. The current line-per-sink register, covering every subcollection, server store, Storage prefix and device store, is `docs/compliance/child-data-register.md`, and a guard test keeps it complete.
 
 ---
 

@@ -169,7 +169,7 @@ export default function GoalBuilderModal({ open, onClose, childId, childName, co
         {choice ? <div ref={confirmationRef} tabIndex={-1} data-testid="goal-confirm" className="space-y-3" aria-live="polite">
           <p className="text-sm" style={{ color: INK }}>{current && current.goalId !== choice.goal.goalId ? t("elev.goal.modal.replace", { goal: goalLabel(current, t) }) : t("elev.goal.modal.keepNotes")}</p>
           <p className="text-base font-semibold" style={{ color: INK }}><bdi>{goalLabel(choice.goal, t)}</bdi></p>
-          {error && <p role="alert" className="text-sm" style={{ color: INK }}>{t("elev.goal.modal.saveError")}</p>}
+          {error && <p role="alert" className="text-sm" style={{ color: INK }}>{t(attempt?.reason === "offline" ? "elev.sync.goalOffline" : "elev.goal.modal.saveError")}</p>}
           <div className="flex flex-wrap gap-2">
             <button type="button" data-testid="goal-save" disabled={saving} onClick={() => void save()} className="min-h-11 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>{saving ? t("elev.goal.modal.saving") : error ? t("elev.goal.modal.retry") : t("elev.goal.modal.makeCurrent")}</button>
             <button type="button" data-testid="goal-cancel" disabled={saving} onClick={cancel} className="min-h-11 rounded-xl px-4 py-2 text-sm" style={{ color: MUTED, border: `1px solid ${RULE}` }}>{t("elev.goal.modal.cancel")}</button>

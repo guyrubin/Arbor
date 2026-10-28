@@ -94,6 +94,13 @@ export const KpiEvent = {
   /** "This is {name}'s plan": a parent approved an Everyday plan — the first
    *  useful action the BD-54 funnel reads. Pattern id and language only. */
   PlanApproved: "plan_approved",
+  /* ── Kids books and games (B-BOOK-51, B-GAME-18) ───────────────────────── */
+  /** A book opened in Kid Mode: catalogue book id, language, own|stock hero. */
+  BookOpened: "book_opened",
+  /** A book read to its true ending in this sitting (never a resumed END). */
+  BookFinished: "book_finished",
+  /** One game sitting began (a start, or a Play again). */
+  GameSitting: "game_sitting",
 } as const;
 
 /** The capture entry modes (mirrors ArborContext's CaptureMode union). */
@@ -554,4 +561,41 @@ export type PlanOwnStepOrigin = "none" | "parent" | "practitioner";
 export function trackPlanApproved(args: { pattern: string; lang: string; ownStep: PlanOwnStepOrigin }): void {
   const id = (v: string) => String(v).replace(/[^a-z0-9_-]/gi, "").slice(0, 40);
   track(KpiEvent.PlanApproved, { pattern: id(args.pattern), lang: id(args.lang), own_step: args.ownStep });
+}
+
+/* ── Kids books and games (B-BOOK-51, B-GAME-18) ─────────────────────────────
+ * Fired by the child's surfaces, so `track` tags them `kid_mode: true` and
+ * strips attribution (the kid egress gate). The projection is an explicit
+ * ALLOW-LIST of catalogue ids: a book id is the CATALOGUE id (a composed plan
+ * book is reported by its pattern: `plan-<pattern>`, never its per-child row
+ * id), a game is the activity id. Never a child id, never the path or choice
+ * the child took, never a count of anything the child got right — play is not
+ * evidence about the child (no developmental inference). The guard
+ * (kidPlayEvents.guard.test.ts) fails if a choice id or child id gets in.
+ */
+export type BookHero = "own" | "stock";
+export const KID_PLAY_EVENT_KEYS = { book: ["book_id", "lang", "hero"], game: ["game", "replay"] } as const;
+/** A catalogue id: lowercase letter words joined by '-' (no catalogue id has a
+ *  digit), 3+ characters — a timestamp, a generated row id, a production child
+ *  id or a one-letter choice id never passes. */
+const CATALOGUE_ID = /^[a-z]+(?:-[a-z]+)*$/;
+export const catalogueId = (v: unknown): string | null =>
+  typeof v === "string" && v.length >= 3 && v.length <= 64 && CATALOGUE_ID.test(v) && !/^child\b|child-/.test(v) ? v : null;
+const bookProps = (args: { bookId: string; lang: string; hero: BookHero }): Record<string, unknown> | null => {
+  const book = catalogueId(args.bookId);
+  if (!book) return null;
+  return { book_id: book, lang: args.lang === "he" ? "he" : "en", hero: args.hero === "own" ? "own" : "stock" };
+};
+export function trackBookOpened(args: { bookId: string; lang: string; hero: BookHero }): void {
+  const props = bookProps(args);
+  if (props) track(KpiEvent.BookOpened, props);
+}
+export function trackBookFinished(args: { bookId: string; lang: string; hero: BookHero }): void {
+  const props = bookProps(args);
+  if (props) track(KpiEvent.BookFinished, props);
+}
+/** ONE event per sitting. `replay`: the child chose Play again in this visit. */
+export function trackGameSitting(args: { game: string; replay: boolean }): void {
+  const game = catalogueId(args.game);
+  if (game) track(KpiEvent.GameSitting, { game, replay: args.replay === true });
 }

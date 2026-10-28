@@ -60,7 +60,8 @@ export function shelfFromQuery(v: string | null): ShelfId | null {
  */
 export default function JournalShelves({ shelf, pro = false, intakeFor = null, plan = null, primaryMoveProps }: {
   shelf: ShelfId | null;
-  /** B-BOOK-77: `#/journal?plan=<patternId>` — the Everyday Plans composer for that pattern. */
+  /** B-BOOK-77: `#/journal?plan=<patternId>` — the Everyday Plans composer for that pattern;
+   *  S1: `?plan=choose` lands on the grid with the pattern chooser open. */
   plan?: string | null;
   /** B-LOOP-12: `#/journal?view=pro` — the professional view. */
   pro?: boolean;
@@ -105,6 +106,7 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
       visibility={planVisibility}
       now={now}
       shelf={scope}
+      initialChooserOpen={plan === "choose"}
       onOpenDoor={openPlanDoor}
       onOpenPlan={(p) => openPlanDoor(p.def.id)}
       onKeep={keepPlanRow}
@@ -293,8 +295,9 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
         <PlanComposer
           key={planDef.id}
           def={planDef}
-          child={{ id: childProfile.id, name: childProfile.name, gender: childProfile.gender }}
+          child={{ id: childProfile.id, name: childProfile.name, nameLatin: childProfile.nameLatin, gender: childProfile.gender }}
           initialState={composerFromDoc(planDef, planRows.items.find((r) => r?.id === `${planDef.id}.${childProfile.id}` && r.status === "active"), locale)}
+          ownerPaint={planVisibility?.admin === true}
           onSaved={savePlanDoc}
           onClose={() => goToRoute("journal")}
           onPrint={(doc) => void openPrintablePlan({ doc, child: childProfile, lang: locale, now: new Date() })}

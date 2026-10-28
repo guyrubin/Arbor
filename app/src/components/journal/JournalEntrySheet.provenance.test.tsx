@@ -117,3 +117,35 @@ for (const lang of ["en", "he"] as const) describe(`${lang}: Journal content-sou
     expect(log.contentSource).toBe(contentSource);
   });
 });
+
+/* B-ASKJB-43 — the parent's own photo moment (kept from Ask, stored with the
+   "unverified" lineage under Arbor's photo caption) reads like any parent
+   entry: no "Text source not verified" on the sheet or on its share card. */
+for (const lang of ["en", "he"] as const) describe(`${lang}: B-ASKJB-43 photo-only moment and its share card`, () => {
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
+  const photo = (over: Partial<BehaviorLog> = {}): BehaviorLog => Object.freeze({ id: "photo", timestamp: "2026-10-20T09:00:00Z", behaviorType: "Moment", trigger: t("elev.capture.photo.caption"), durationMinutes: 0, photoAttachment: "data:image/jpeg;base64,AAAA", contentSource: "unverified", ...over });
+  const render = (log: BehaviorLog) => {
+    h.lang = lang;
+    const signal = buildTimeline({ behaviorLogs: [log] })[0];
+    const html = renderToStaticMarkup(<JournalEntrySheet signal={signal} momentLog={log} domain={null} domainLabel="" prov="manual" provLabel={t("journal.manual")} when="20 Oct" title="A moment" detail={log.trigger} onClose={vi.fn()} onEdit={vi.fn()} />);
+    const payload = shareButtonText(h.share.getCardOpts(), { caption: h.share.captionKey, parent: "Parent", childName: "Noa", t });
+    return { html, payload };
+  };
+  it("no not-verified line on the sheet or the share card; the entry reads as noted by the parent", () => {
+    const { html, payload } = render(photo());
+    expect(html).not.toContain(t("kept.capture.source.unverified"));
+    expect(html).toContain(t("elev.closeloop.entry.noted"));
+    expect(payload).not.toContain(t("kept.capture.source.unverified"));
+    expect(h.share.getCardOpts()).not.toHaveProperty("sub");
+  });
+  it("NEGATIVE CONTROL: the same lineage on written words still prints the line, on the sheet and the card", () => {
+    const { html, payload } = render(photo({ trigger: lang === "en" ? "Words from somewhere" : "מילים ממקום אחר" }));
+    expect(html).toContain(t("kept.capture.source.unverified"));
+    expect(payload.split("\n")[0]).toBe(t("kept.capture.source.unverified"));
+  });
+  it("Arbor-drafted wording still says so on a photo moment", () => {
+    const { html, payload } = render(photo({ trigger: lang === "en" ? "Shoes on after two choices" : "נעליים אחרי שתי בחירות", contentSource: "ai_draft" }));
+    expect(html).toContain(t("kept.capture.source.ai_draft"));
+    expect(payload.split("\n")[0]).toBe(t("kept.capture.source.ai_draft"));
+  });
+});

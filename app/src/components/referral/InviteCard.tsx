@@ -15,6 +15,21 @@ type State =
   | { kind: "ready"; info: ReferralCodeInfo };
 
 /**
+ * B-SHELL-43 — the earned-months line, 0/1/n. It printed "You've earned 0
+ * free month(s)" on Weekly. Zero says nothing (the sub line above already
+ * says how a month is earned); one has its own sentence in both languages;
+ * many carries `{n}` and English's `{plural}` suffix, which the `t` every
+ * component holds resolves (LanguageContext resolvePlural — Hebrew takes the
+ * explicit one/many key pair instead of a suffix).
+ */
+export function referralEarnedCopy(earnedMonths: number): { key: string; vars: Record<string, number> } | null {
+  const n = Number.isFinite(earnedMonths) ? Math.max(0, Math.floor(earnedMonths)) : 0;
+  if (n === 0) return null;
+  if (n === 1) return { key: "set.referral.earned.one", vars: {} };
+  return { key: "set.referral.earned", vars: { n } };
+}
+
+/**
  * mk-p0-2 referral loop — the in-app invite surface. B-SHELL-29: it closes
  * the weekly letter (components/tabs/WeeklyTab.tsx), the ONE place a link
  * leaves the app; it carries no child content.
@@ -121,6 +136,7 @@ export default function InviteCard() {
 
   const { info } = state;
   const link = info.link ?? "";
+  const earned = referralEarnedCopy(info.earnedMonths);
 
   return (
     <div className="mt-3">
@@ -157,7 +173,7 @@ export default function InviteCard() {
         </button>
       </div>
       <p className="text-xs mt-2" style={{ color: "var(--arbor-muted)" }} aria-live="polite">
-        {info.maxed ? t("set.referral.maxed") : t("set.referral.earned", { count: info.earnedMonths })}
+        {info.maxed ? t("set.referral.maxed") : earned && t(earned.key, earned.vars)}
       </p>
     </div>
   );

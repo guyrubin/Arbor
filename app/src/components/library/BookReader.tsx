@@ -66,6 +66,7 @@ import { declaredAudio, DEV_NARRATION_ROOT, NARRATION_ROOT, narrationKey, narrat
 import type { AnyBook, BookLang, BookReaderChild, Page } from "../../lib/library/types";
 import "./bookReader.css";
 import { useBookProgress } from "./useBookProgress";
+import { usePlanPlateSrcs } from "../../lib/plans/planPlateSource";
 import type { BookProgressPosition } from "../../lib/library/bookBookmarks";
 
 export interface BookReaderProps {
@@ -463,10 +464,13 @@ export function BookReader({
   });
 
   // ── art inputs ─────────────────────────────────────────────────────────────
-  const plateSrcs = print ? [print.url] : plate ? plateSources(plate, { dev }) : [];
+  // B-BOOK-75 plates: a plan plate in shared storage is read with the app's
+  // auth and shown as a blob: URL (lib/plans/planPlateSource); static plates pass through.
+  const plateSrcs = usePlanPlateSrcs(print ? [print.url] : plate ? plateSources(plate, { dev }) : []);
   const statePlateId = staged ? statePlateAt(artStates, stage) : null;
   const statePlate = statePlateId ? plateTable[statePlateId] : undefined;
-  const statePlateSrcs = statePlate ? plateSources(statePlate, { dev }) : null;
+  const statePlateSrcsRaw = usePlanPlateSrcs(statePlate ? plateSources(statePlate, { dev }) : []);
+  const statePlateSrcs = statePlate ? statePlateSrcsRaw : null;
   const heroSrc = heroSpriteUrl(sheet, slot?.pose);
   // Only the next piece glows and can be tapped (ordered repairs, ruling 4).
   const items: BookPageItem[] = pending && repair

@@ -14,7 +14,10 @@ import { inventoryChildBookAssets } from "./bookAssetExport.js";
  *     auth middleware is not enforcing),
  *   - checks the caller's family owns the child (requireChildOwnership),
  *   - serves only the path shapes bookAssetPaths allows,
- *   - answers `Cache-Control: private` (the client keeps its own IndexedDB copy).
+ *   - answers `Cache-Control: private, no-store` (B-GA-09 / LC-18): the client
+ *     keeps its own IndexedDB copy, which the child's erase purges, while a
+ *     browser HTTP-cache copy of the child's likeness or name audio would
+ *     outlive the erase for a day and no script can clear it.
  * The erase sweep (eraseChildBookAssets) runs from /privacy/erase and from the
  * account deletion, and returns the number of files it removed.
  * K2: the sandbox (MEMORY_ADAPTER=local, no Firebase) serves the same paths
@@ -117,7 +120,7 @@ export function createBookAssetsRouter(deps: { getBucket: () => Promise<BookAsse
         return;
       }
       res.setHeader("Content-Type", bookAssetContentType(rel));
-      res.setHeader("Cache-Control", req.query.export === "1" ? "private, no-store" : "private, max-age=86400");
+      res.setHeader("Cache-Control", "private, no-store");
       res.setHeader("X-Content-Type-Options", "nosniff");
       const stream = file.createReadStream();
       stream.on("error", (err: Error) => {

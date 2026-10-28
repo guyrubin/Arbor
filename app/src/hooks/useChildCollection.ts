@@ -12,6 +12,18 @@ type WithId = { id: string };
 export interface ChildWriteOptions {
   awaitServer?: boolean;
   requireAcknowledgement?: boolean;
+  /**
+   * B-DATA-14: with `awaitServer`, answer in bounded time. Offline, or with no
+   * server answer after QUEUED_ACK_MS, the write is already kept on this phone
+   * (the persistent local cache sends it on reconnect): `onQueued` runs and
+   * the call resolves, so the caller shows "saved on this phone" instead of an
+   * endless "Saving…"; `onSynced` runs if the server acknowledges it later. A
+   * rejection that arrives in time (rules, invalid data) still rejects. A
+   * rejection that arrives AFTER the receipt is never swallowed: the one sync
+   * banner reports it (Retry re-reads the true state) and `onRejected` lets
+   * the caller take its receipt back and offer its own retry.
+   */
+  offline?: { onQueued: () => void; onSynced?: () => void; onRejected?: () => void };
 }
 
 export interface ChildCollection<T extends WithId> {
@@ -106,6 +118,9 @@ export function useChildCollection<T extends WithId>(
   useEffect(() => {
     if (!childId) return;
     let active = true;
+    // B-DATA-14: the banner's Retry (a new subscription) also retires a late
+    // write rejection it reported; the caller keeps its own retry in place.
+    clearSyncError(`${name}:write`, childId);
     receiptRef.current++;
     seededRef.current = false;
     setLoaded(false);
@@ -190,8 +205,22 @@ export function useChildCollection<T extends WithId>(
       if (remote && db && uid) {
         const write = setDoc(doc(db, `users/${uid}/children/${childId}/${name}`, item.id), item as Record<string, unknown>);
         // Existing callers retain queued-write semantics. A receipt that claims
-        // acknowledgement opts in and stays pending while offline.
-        if (options?.awaitServer) await write;
+        // acknowledgement opts in and stays pending while offline — unless it
+        // also takes the B-DATA-14 bounded answer (`offline`).
+        if (options?.awaitServer && options.offline) {
+          const { onQueued, onSynced, onRejected } = options.offline;
+          if ((await settleOrQueue(write)) === "queued") {
+            if (scopeRef.current !== scope) throw new Error("The active child changed");
+            onQueued();
+            void write.then(
+              () => { if (scopeRef.current === scope) onSynced?.(); },
+              () => {
+                reportSyncError(`${name}:write`, childId);
+                if (scopeRef.current === scope) onRejected?.();
+              },
+            );
+          }
+        } else if (options?.awaitServer) await write;
         else await settleOrQueue(write, options);
         if (scopeRef.current !== scope) throw new Error("The active child changed");
       } else {

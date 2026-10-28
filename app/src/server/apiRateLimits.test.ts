@@ -38,7 +38,7 @@ const open: RequestHandler = (_req, _res, next) => next();
 
 describe("the book-asset routes leave the per-IP /api limit", () => {
   it("matches exactly the proxy, the sheet's PUT and commit, and the narration route", () => {
-    for (const p of ["/children/kid1/book-assets/five-smooth-stones/file", "/children/kid1/book-assets/b/commit", "/children/kid1/book-narration"]) expect(isBookAssetRoute(p), p).toBe(true);
+    for (const p of ["/children/kid1/book-assets/five-smooth-stones/file", "/children/kid1/book-assets/b/commit", "/children/kid1/book-narration", "/children/kid1/plan-narration"]) expect(isBookAssetRoute(p), p).toBe(true);
     for (const p of ["/hero-pose", "/children/kid1/photos", "/children/kid1/book-assets/b/other", "/chat", "/children/kid1/book-assets/b/file/x"]) expect(isBookAssetRoute(p), p).toBe(false);
     expect(bookAssetRates()).toEqual({ reads: 600, writes: 120 });
   });

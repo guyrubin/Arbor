@@ -14,6 +14,7 @@ import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { ShareButton } from "../ui/ShareButton";
 import { TrustPanel } from "../ui/TrustPanel";
 import { startHeroSheet } from "../kidmode/hero/buildHeroSheet";
+import AiDisclosureLine from "../companion/AiDisclosureLine";
 import {
   isAvatarDraftCurrent,
   runAvatarGeneration,
@@ -411,6 +412,9 @@ export default function AvatarCreator({
                 </button>
               )}
             </div>
+            {/* B-GA-11: Create sends the photo or the description to Arbor's AI;
+                the Art. 50 line is the foot of that action, as Talk's composer foot. */}
+            <AiDisclosureLine language={uiLang === "he" ? "he" : "en"} />
             {visibleResult && (
               <div className="mt-2 flex justify-center">
                 <ShareButton

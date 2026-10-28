@@ -71,6 +71,10 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
       await addChild({ ...input, ...(birthDate ? { birthDate } : {}) });
       toast(t("ac.addedToast", { name: childName }), "success");
       close();
+    } catch {
+      // B-DATA-15: a new child's id comes from the server; offline (or a
+      // failed write) the form stays filled and says so, never silently.
+      toast(t("elev.sync.addChildFailed"), "error");
     } finally {
       setSaving(false);
     }

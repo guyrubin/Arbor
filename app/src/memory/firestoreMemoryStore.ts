@@ -29,7 +29,11 @@ export class FirestoreMemoryStore implements MemoryStore {
   }
 
   async appendEvent(event: MemoryLedgerEvent) {
-    await this.families.ensureChild(event.familyId, event.childId);
+    // B-DATA-15: a family that does not own the child never writes to its
+    // ledger (ensureChild alone left the child untouched but still appended).
+    if (!(await this.families.admitsLedgerAppend(event.familyId, event.childId))) {
+      throw new Error("This family is not authorized to write this child's memory.");
+    }
     await this.db
       .collection("children")
       .doc(event.childId)
@@ -54,6 +58,12 @@ export class FirestoreMemoryStore implements MemoryStore {
     await this.families.ensureChild(input.familyId, input.childId, input.childProfile);
   }
 
+  /** B-DATA-15: a new child id, issued and parented server-side. */
+  async issueChildId(input: { familyId: string; userId: string }): Promise<string> {
+    await this.families.ensureFamilyMembership(input.familyId, input.userId);
+    return this.families.issueChild(input.familyId);
+  }
+
   /** Authorization: is `uid` a member of the family that owns `childId`? */
   ownsChild(uid: string, childId: string): Promise<boolean> {
     return this.families.ownsChild(uid, childId);
@@ -62,6 +72,11 @@ export class FirestoreMemoryStore implements MemoryStore {
   /** GDPR erasure: hard-delete the child's memory event subcollection and child doc. */
   async eraseChild(childId: string) {
     const childRef = this.db.collection("children").doc(childId);
+    // B-GA-09: the family's pointer to this child (ids only) goes with it.
+    const familyId = (await childRef.get()).data()?.familyId;
+    if (typeof familyId === "string" && familyId) {
+      await this.db.collection("families").doc(familyId).collection("childRefs").doc(childId).delete();
+    }
     const events = await childRef.collection("memoryEvents").get();
     let removed = 0;
     // Firestore batches cap at 500 writes.

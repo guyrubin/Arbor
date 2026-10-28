@@ -160,8 +160,9 @@ describe("B-PROV-01 · the Vertex `eu` attempt (LIVE_VERTEX_EU)", () => {
 
 describe("B-PROV-01 · the env contract", () => {
   it("unset → the program's dated default; off → none; garbage → none (fail closed)", () => {
-    expect(LIVE_GLOBAL_EXCEPTION_UNTIL).toBe("2026-10-31");
-    expect(liveExceptionFromEnv(undefined)).toBe("2026-10-31");
+    // B-GA-06 / G-V1: the program default is Gate A, 31 Mar 2027.
+    expect(LIVE_GLOBAL_EXCEPTION_UNTIL).toBe("2027-03-31");
+    expect(liveExceptionFromEnv(undefined)).toBe("2027-03-31");
     expect(liveExceptionFromEnv("2026-11-15")).toBe("2026-11-15");
     expect(liveExceptionFromEnv("off")).toBeUndefined();
     expect(liveExceptionFromEnv("")).toBeUndefined();

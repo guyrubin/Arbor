@@ -8,6 +8,7 @@ import { exportPrivateBookAssets } from "./bookAssetExport";
 import { withChildExportSession } from "./childExportSession";
 import type { PortableBookAssets } from "./library/bookAssetExportContract";
 import { clearChildLocalState } from "./childLocalState";
+import { childSinkIds, subcollectionSinkId, type SinkErasure } from "./childDataSinks";
 import { ChildProfile, DeletionReceipt } from "../types";
 
 /** Per-child subcollections that hold parent-generated data. */
@@ -106,6 +107,15 @@ export const CHILD_SUBCOLLECTIONS = [
   // B-GAME-13c: the hero's pose sheet — one doc per pose (generated art drawn
   // from the stored generated hero, never a photo) + `_meta`. Export + erase.
   "heroSheet",
+  // B-GA-09: the child's saved studio toys (a corner layout or a short melody;
+  // kidmode/studioV2/studioCreations.ts). The sink was written with a
+  // single-quoted name, which the old guard regex could not see, so it escaped
+  // export and erase. Registered here; childDataSinks.guard.test.ts now reads
+  // every quote style.
+  "studioCreations",
+  // B-BOOK-51 (X28): the one finished-book ledger — catalogue book id, language,
+  // time per true ending; never the path or choice. Export + erase.
+  "bookReads",
 ];
 
 const remoteActive = (uid?: string) =>
@@ -118,7 +128,7 @@ export async function exportChildData(uid: string | undefined, child: ChildProfi
       exportedAt: string;
       profile: ChildProfile;
       collections: Record<string, unknown[]>;
-      serverData?: { memoryEvents: unknown[]; shares: unknown[] };
+      serverData?: { memoryEvents: unknown[]; shares: unknown[]; consents?: unknown[]; consultRequests?: unknown[] };
       privateBookAssets?: PortableBookAssets;
       exportReceipt: { status: "complete" | "incomplete"; scope: string; serverData: "included" | "unavailable"; collections: Record<string, "included" | "unavailable"> };
     } = {
@@ -178,48 +188,82 @@ export async function exportChildData(uid: string | undefined, child: ChildProfi
   });
 }
 
+/** B-BOOK-20: what one erase did to each registered sink (DeletionReceipt.sinks). */
+type SinkLedger = Record<string, SinkErasure>;
+
+/** Sandbox profile list (ProfileContext LS_PROFILES). */
+const SANDBOX_PROFILES_KEY = "arbor.children";
+
 /** Client-side wipe only: all subcollections + the child doc (Firestore or
- *  localStorage). Server erasure is handled separately by `api.privacyErase`. */
-async function wipeClientChildData(uid: string | undefined, childId: string): Promise<number> {
+ *  localStorage). Server erasure is handled separately by `api.privacyErase`.
+ *  Each sink's outcome is written into `sinks` for the receipt. */
+async function wipeClientChildData(uid: string | undefined, childId: string, sinks: SinkLedger = {}): Promise<number> {
+  const purge = async (id: string, run: () => Promise<void>) => {
+    try {
+      await run();
+      sinks[id] = "cleared";
+    } catch {
+      /* best effort: the receipt says so instead of claiming it */
+      sinks[id] = "not-reached";
+    }
+  };
   // AIX-S5 firewall condition: the device-local IndexedDB comic-page store is
   // purged in the SAME erase flow as the registered subcollections — a
   // GDPR-erased child leaves no comic pages on this device. Runs in both the
   // remote and sandbox branches (the store is device-local either way).
-  try {
-    await purgeComicPages(childId);
-  } catch {
-    /* best effort */
-  }
+  await purge("device:comicPages", () => purgeComicPages(childId));
   // B-KID-127: the device copy of the child's kept story text goes with them.
-  try {
-    await purgeHeroRenders(childId);
-  } catch {
-    /* best effort */
-  }
+  await purge("device:heroRenders", () => purgeHeroRenders(childId));
   // B-BOOK release: the device copy of the child's private book files.
-  await purgeBookAssets(childId);
+  await purge("device:bookAssets", () => purgeBookAssets(childId));
   if (remoteActive(uid) && db) {
+    let cacheClean = true;
     for (const name of CHILD_SUBCOLLECTIONS) {
       try {
         const snap = await getDocs(collection(db, `users/${uid}/children/${childId}/${name}`));
         await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+        sinks[subcollectionSinkId(name)] = snap.docs.length;
       } catch {
         /* best effort */
+        sinks[subcollectionSinkId(name)] = "not-reached";
+        cacheClean = false;
       }
     }
     try {
       await deleteDoc(doc(db, `users/${uid}/children/${childId}`));
+      sinks.profile = 1;
     } catch {
       /* ignore */
+      sinks.profile = "not-reached";
+      cacheClean = false;
     }
+    // The SDK's offline cache drops a document when its delete goes through.
+    sinks["device:firestoreCache"] = cacheClean ? "cleared" : "not-reached";
   } else {
     for (const name of CHILD_SUBCOLLECTIONS) {
+      const key = `arbor.${name}.${childId}`;
       try {
-        localStorage.removeItem(`arbor.${name}.${childId}`);
+        const rows: unknown = JSON.parse(localStorage.getItem(key) || "[]");
+        localStorage.removeItem(key);
+        sinks[subcollectionSinkId(name)] = Array.isArray(rows) ? rows.length : 0;
       } catch {
         /* ignore */
+        try { localStorage.removeItem(key); sinks[subcollectionSinkId(name)] = "cleared"; } catch { sinks[subcollectionSinkId(name)] = "not-reached"; }
       }
     }
+    // Sandbox: the profile is a row of the device's profile list. Drop it here
+    // so the receipt can count it (ProfileContext.deleteChild drops the same
+    // row from its state).
+    try {
+      const list: unknown = JSON.parse(localStorage.getItem(SANDBOX_PROFILES_KEY) || "[]");
+      const rows = Array.isArray(list) ? list : [];
+      const kept = rows.filter((p) => !(p && typeof p === "object" && (p as { id?: unknown }).id === childId));
+      if (kept.length !== rows.length) localStorage.setItem(SANDBOX_PROFILES_KEY, JSON.stringify(kept));
+      sinks.profile = rows.length - kept.length;
+    } catch {
+      sinks.profile = "not-reached";
+    }
+    sinks["device:firestoreCache"] = "cleared"; // no Firestore in the sandbox
   }
   // LC-18: the loop above only reaches the keys named in CHILD_SUBCOLLECTIONS,
   // so every OTHER per-child device key survived a delete — the safety
@@ -249,17 +293,46 @@ export async function deleteChildData(uid: string | undefined, childId: string) 
  *  the parent can keep as proof of deletion. */
 export async function eraseEverything(uid: string | undefined, childId: string): Promise<DeletionReceipt> {
   let counts: DeletionReceipt["counts"] = { memoryEvents: 0, shares: 0 };
+  // B-BOOK-20: the receipt lists EVERY registered sink. A server sink the
+  // erase could not reach says so ("not-reached"), never a silent zero.
+  const sinks: SinkLedger = {};
   try {
     const res = await api.privacyErase(childId);
     if (res?.erased) counts = res.erased;
+    recordServerSinks(sinks, res);
   } catch {
     /* best effort: client wipe still proceeds, receipt reports zeros */
   }
   // LC-18: the receipt is the parent's PROOF of deletion, and it counted only
   // what the server erased — the device the parent is holding was absent from
   // it. `clientDocs` is what the local sweep actually removed.
-  const clientDocs = await wipeClientChildData(uid, childId);
-  return { childId, erasedAt: new Date().toISOString(), counts: { ...counts, clientDocs } };
+  const clientDocs = await wipeClientChildData(uid, childId, sinks);
+  sinks["device:webStorage"] = clientDocs;
+  const ordered: SinkLedger = {};
+  for (const id of childSinkIds(CHILD_SUBCOLLECTIONS)) ordered[id] = sinks[id] ?? "not-reached";
+  return { childId, erasedAt: new Date().toISOString(), counts: { ...counts, clientDocs }, sinks: ordered };
+}
+
+/** The server's erase answer, per registered server and Storage sink. */
+function recordServerSinks(sinks: SinkLedger, res: Awaited<ReturnType<typeof api.privacyErase>> | undefined): void {
+  const erased = res?.erased;
+  if (!erased) return;
+  const n = (v: unknown): SinkErasure => (typeof v === "number" && Number.isFinite(v) ? v : "not-reached");
+  sinks["server:memoryEvents"] = n(erased.memoryEvents);
+  // Deleted in the same server call as the ledger (memoryStore.eraseChild).
+  sinks["server:familyChildRef"] = typeof erased.memoryEvents === "number" ? "cleared" : "not-reached";
+  sinks["server:shares"] = n(erased.shares);
+  sinks["server:consents"] = n(erased.consents);
+  sinks["server:consultRequests"] = n(erased.consultRequests);
+  sinks["storage:photos"] = n(res?.storage?.photos);
+  sinks["storage:books"] = n(res?.storage?.books);
+}
+
+/** B-BOOK-20: the parent keeps the erase receipt as a file (the counts and
+ *  the per-place ledger; the child's id, never the child's data or name). Not
+ *  an export: LC-02's downloadJson call-site guard stays about exports. */
+export function downloadDeletionReceipt(receipt: DeletionReceipt) {
+  downloadJson(`arbor-deletion-receipt-${receipt.erasedAt.slice(0, 10)}.json`, receipt);
 }
 
 /** Trigger a browser download of a JSON object. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HYPOTHESIS_UNCERTAINTY, buildSourceCards, coachResponseZodSchema, renderCoachResponse, scrubHypothesisConfidence } from "./coach.js";
+import { HYPOTHESIS_UNCERTAINTY, buildSourceCards, coachResponseZodSchema, renderCoachResponse, scrubHandoffNotes, scrubHypothesisConfidence } from "./coach.js";
 
 const validCoach = {
   riskLevel: "routine",
@@ -165,5 +165,29 @@ describe("renderCoachResponse language + confidence scrub (B-AI-01 eval fix)", (
     const heGraded = { ...structuredClone(validCoach) };
     scrubHypothesisConfidence(heGraded as any, "he");
     expect(heGraded.nonDiagnosticHypotheses[0].confidence).toBe("אפשרות אחת");
+  });
+});
+
+/* B-ASKJB-44 — the handoff-note floor. The professional note that shipped on
+   topic-enjoy-he (coach_chat 1.9.0) is the negative control. */
+describe("B-ASKJB-44 · scrubHandoffNotes", () => {
+  const shipped = "הילד מגיב היטב לזמני חיבור קצרים המבוססים על ויסות משותף ומשחק חופשי, ללא עדות לקשיי קשב או ויסות משמעותיים בהקשר זה.";
+  it("drops the invented finding from both notes before render; the parent's report stays", () => {
+    const contract = { ...structuredClone(validCoach), handoffNotes: {
+      teacher: "The parent says a two-minute warning helps. She shows no signs of anxiety at school.",
+      professional: shipped,
+    } };
+    // Negative control: unscrubbed, the finding renders into the answer and the note.
+    expect(renderCoachResponse(contract as any, "he")).toContain("ללא עדות לקשיי קשב");
+    expect(scrubHandoffNotes(contract as any)).toBe(2);
+    expect(contract.handoffNotes).toEqual({ teacher: "The parent says a two-minute warning helps.", professional: "" });
+    const text = renderCoachResponse(contract as any, "he");
+    expect(text).not.toContain("ללא עדות");
+    expect(text).not.toMatch(/no signs of/i);
+  });
+  it("leaves a clean note byte-identical and an empty one empty", () => {
+    const contract = { ...structuredClone(validCoach), handoffNotes: { teacher: "Use the same card.", professional: "" } };
+    expect(scrubHandoffNotes(contract as any)).toBe(0);
+    expect(contract.handoffNotes).toEqual({ teacher: "Use the same card.", professional: "" });
   });
 });

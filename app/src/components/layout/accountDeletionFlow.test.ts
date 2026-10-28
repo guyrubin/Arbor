@@ -192,6 +192,10 @@ function settings(source = settingsSource) {
     "../../lib/i18n": { translate: (_lang: string, key: string) => key },
     // MOB-20 / B-INF-05: the About row reads the stamped build identity.
     "../../lib/buildVersion": { APP_BUILD: "dev" },
+    // S1 (surfacing): Owner tools render only on the server's `admin` flag (null here: a family's Settings).
+    "../../lib/plans/usePlanVisibility": { usePlanVisibility: () => null },
+    "../../lib/plans/planStrings": { planString: (key: string) => key },
+    "../plans/OwnerTools": { default: "OwnerTools", __esModule: true },
   };
   const r = renderer(source, imports);
   const onClose = vi.fn();

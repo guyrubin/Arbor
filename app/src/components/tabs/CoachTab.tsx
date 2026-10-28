@@ -1324,7 +1324,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           <CompanionComposer key={childProfile.id} childId={childProfile.id} conversationRevision={conversationRevision} language={uiLang === "he" ? "he" : "en"}
             value={chatInput} onChange={value => { noticeTalkController.current?.revoke(); setChatInput(value); }} busy={isChatLoading} visible={visible}
             onSend={handleChatSend} onVoice={() => void toggleVoice()} voiceActive={voicePhase !== "off"} voiceLabel={voiceLabel}
-            onKeep={(text, photo) => openCaptureSheet({ mode: "text", initialText: text, initialPhoto: photo })}
+            onKeep={(text, photo, parentWritten) => openCaptureSheet({ mode: "text", initialText: text, initialPhoto: photo, ...(parentWritten ? { initialTextParentWritten: true } : {}) })}
             onAttachmentsChange={setComposerFiles}
             onHardMoment={composerHardMoment} footAction={composerFoot} voiceResting={voiceResting} />
           {composerCrisis && (

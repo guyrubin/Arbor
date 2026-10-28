@@ -38,7 +38,7 @@ import { usePracticeData } from "../../practice/usePracticeData";
 import WorldScene from "../practice/WorldScene";
 import { useKidTheme } from "../../hooks/useKidTheme";
 import { prefetchKidSurfaces } from "./kidPrefetch";
-import { KID_THEME_TILE_SHAPE, kidArt, storyCoverKey, worldTileKey, type KidThemeId } from "../../lib/kidThemeManifest";
+import { KID_THEME_TILE_SHAPE, kidArt, storyCoverArt, worldTileKey, type KidThemeId } from "../../lib/kidThemeManifest";
 import { HoldExitButton } from "./HoldExitButton";
 import { kidIsolate } from "./kidText";
 import { greetingWorldNameKey, lastPlayedWorldYesterday } from "./kidGreeting";
@@ -378,7 +378,7 @@ export default function KidDashboard({
       ageMonths: ageMonthsFromProfile(childProfile),
       showAllAges: loadShowAllAges("hero-journeys"),
       // R-4b: lead with stories illustrated in this child's theme.
-      prefer: (s) => kidArt(kidTheme, storyCoverKey(s.id)) !== null,
+      prefer: (s) => storyCoverArt(kidTheme, s.id) !== null,
       // B-KID-46: only stories that can be told in the child's language (FIRST).
       lang: storyLanguage(uiLang, aiLang),
       stories: kidShelf,
@@ -400,10 +400,10 @@ export default function KidDashboard({
   // B-KID-42 / KA-28: the banner wears tonight's story's OWN cover in the
   // child's theme (same art + scene key as its Stories card); a story with no
   // cover in this theme keeps the reviewed `kid-quest` tile.
-  const tonightsArtId = tonightsStory && kidArt(kidTheme, storyCoverKey(tonightsStory.id)) ? `story-${tonightsStory.id}` : "kid-quest";
+  const tonightsArtId = tonightsStory && storyCoverArt(kidTheme, tonightsStory.id) ? `story-${tonightsStory.id}` : "kid-quest";
   // R-2b: no sticker portrait pasted over art that already shows a hero; a
   // portrait theme gives the banner a 3:4 side panel (the cover's own shape).
-  const tonightsArtHasHero = Boolean(kidArt(kidTheme, tonightsArtId === "kid-quest" ? worldTileKey("kid-quest") : storyCoverKey(tonightsStory!.id))?.hasHero);
+  const tonightsArtHasHero = Boolean((tonightsArtId === "kid-quest" ? kidArt(kidTheme, worldTileKey("kid-quest")) : storyCoverArt(kidTheme, tonightsStory!.id))?.hasHero);
   const tilePortrait = KID_THEME_TILE_SHAPE[kidTheme] === "portrait";
   const tonightsArtPrompt = tonightsStory && tonightsArtId !== "kid-quest" ? `${tonightsStory.title} — ${tonightsStory.theme}` : "an epic castle scene on a hill with a glowing open magic book";
   // B-KID-88: "My books" - the child's books (language + age view, opened
@@ -413,7 +413,7 @@ export default function KidDashboard({
       lang: storyLanguage(uiLang, aiLang),
       ageMonths: ageMonthsFromProfile(childProfile),
       showAllAges: loadShowAllAges("hero-journeys"),
-      hasCover: (id) => kidArt(kidTheme, storyCoverKey(id)) !== null,
+      hasCover: (id) => storyCoverArt(kidTheme, id) !== null,
       runs: heroRunsCol.items,
       stories: kidShelf,
     }), tonightLib ? "" : tonightsStoryId),

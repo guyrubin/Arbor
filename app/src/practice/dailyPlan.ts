@@ -38,7 +38,8 @@
 
 import { screenModelOutputLexical } from "../safety/outputScreen";
 import { isolate } from "../lib/bidi";
-import type { ActiveGoal } from "./goalBuilder";
+import { translate } from "../lib/i18n";
+import { goalLabel, type ActiveGoal } from "./goalBuilder";
 import type { ScoredActivity, SessionLength } from "../playbank/select";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -107,14 +108,57 @@ const WHY_LINE_TEMPLATES = {
     "Gets more personalized as you log more days. Developmentally informed, grounded in CDC/AAP/ASHA/WHO.",
 };
 
-// Assert templates are clean at module load time.
-for (const [key, tmpl] of Object.entries(WHY_LINE_TEMPLATES)) {
-  if (key === "sparse") continue; // sparse line is a single fixed string — no interpolation
-  if (EFFECT_VERBS_RE.test(tmpl)) {
-    throw new Error(`[CI-30 lint] Why-line template "${key}" contains a banned effect-verb.`);
-  }
-  if (COMPREHENSION_TOKENS_RE.test(tmpl)) {
-    throw new Error(`[CI-30 lint] Why-line template "${key}" contains a banned comprehension token.`);
+/** B-PLAY-25 — the same why-lines in Hebrew. Codex PR 128 saw "an inherited
+ *  English sparse daily-plan rationale" under a Hebrew interface and never
+ *  located it: it was this table, English-only, rendered by DailyPlanCard
+ *  (#/daily-play) whatever the UI language. Same provenance register, the
+ *  app's plural address, and no gendered verb on the child (the name is a
+ *  possessive or an object, never a subject). The firewall tail is the
+ *  dictionary's own `plan.card.firewall` sentence. */
+const WHY_LINE_TEMPLATES_HE: Record<keyof typeof WHY_LINE_TEMPLATES, string> = {
+  withGoalAndInterest:
+    "נבחר כי אתם עובדים על {goal}, ובזכות האהבה של {name} ל{interest}. מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.",
+  withGoalOnly:
+    "נבחר כי אתם עובדים עם {name} על {goal}. מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.",
+  withInterestOnly:
+    "נבחר בזכות האהבה של {name} ל{interest}, וכי זה מתאים לשלב הזה. מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.",
+  stage:
+    "מתאים לשלב הנוכחי של {name}. מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.",
+  weekend:
+    "תוכנית לסוף השבוע: קצת יותר זמן היום. נבחר כי אתם עובדים על {goal}. מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.",
+  weekendNoGoal:
+    "תוכנית לסוף השבוע: קצת יותר זמן היום. מתאים לשלב הנוכחי של {name}. מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.",
+  sparse:
+    "ככל שתתעדו עוד ימים, ההצעות יהיו אישיות יותר. מבוסס מבחינה התפתחותית, על פי CDC/AAP/ASHA/WHO.",
+};
+
+export type WhyLineLang = "en" | "he";
+const TEMPLATES: Record<WhyLineLang, Record<keyof typeof WHY_LINE_TEMPLATES, string>> = { en: WHY_LINE_TEMPLATES, he: WHY_LINE_TEMPLATES_HE };
+
+/* B-PLAY-25 (critic r1) — the same ban in Hebrew. `\b` does not see Hebrew
+   letters, so a word edge is "no Hebrew letter on either side", with the
+   one-letter prefixes (ו ה ש ל ב כ מ) allowed in front and the gender/number
+   endings after: משפר/משפרת/משפרים, בונה, מחזק, מפתח, מפחית, מרגיע, מתקן, מעריך,
+   מאבחן, בודק, מודד, מאמן; comprehension: מבין/מבינה, עוקב אחר הוראות. */
+const HE_EDGE_BEFORE = "(?<![\u05D0-\u05EA])[והשלבכמ]?";
+const HE_EDGE_AFTER = "(?:ת|ה|ים|ות)?(?![\u05D0-\u05EA])";
+export const HE_EFFECT_VERBS_RE = new RegExp(`${HE_EDGE_BEFORE}(?:משפר|בונ|מחזק|מפתח|מפחית|מרגיע|מתקן|מעריך|מאבחן|בודק|מודד|מאמן)${HE_EDGE_AFTER}`, 'u');
+export const HE_COMPREHENSION_RE = new RegExp(`${HE_EDGE_BEFORE}(?:מבינ|מבין)${HE_EDGE_AFTER}|עוקב(?:ת|ים|ות)? אחר הוראות`, 'u');
+
+/** The module-load lint for one template table: the first banned token found, or null. */
+export function whyTemplateLint(lang: WhyLineLang, tmpl: string): "effect-verb" | "comprehension" | null {
+  if ((lang === "en" ? EFFECT_VERBS_RE : HE_EFFECT_VERBS_RE).test(tmpl)) return "effect-verb";
+  if ((lang === "en" ? COMPREHENSION_TOKENS_RE : HE_COMPREHENSION_RE).test(tmpl)) return "comprehension";
+  return null;
+}
+
+// Assert templates are clean at module load time — both languages.
+for (const lang of Object.keys(TEMPLATES) as WhyLineLang[]) {
+  for (const [key, tmpl] of Object.entries(TEMPLATES[lang])) {
+    if (lang === "en" && key === "sparse") continue; // sparse line is a single fixed string — no interpolation
+    const hit = whyTemplateLint(lang, tmpl);
+    if (hit === "effect-verb") throw new Error(`[CI-30 lint] Why-line template "${key}" (${lang}) contains a banned effect-verb.`);
+    if (hit === "comprehension") throw new Error(`[CI-30 lint] Why-line template "${key}" (${lang}) contains a banned comprehension token.`);
   }
 }
 
@@ -134,12 +178,18 @@ export function assembleWhyLine(opts: {
   matchedInterest: string | null;
   isWeekend: boolean;
   sparse: boolean;
+  /** B-PLAY-25: the reader's language. Default English (the original contract). */
+  lang?: WhyLineLang;
 }): { whyLine: string; wasFlagged: boolean } {
-  const { goalLabel, matchedInterest, isWeekend, sparse } = opts;
+  const { goalLabel, isWeekend, sparse } = opts;
+  const lang: WhyLineLang = opts.lang === "he" ? "he" : "en";
+  const WHY_LINE_TEMPLATES = TEMPLATES[lang];
   // N5/RES-BIDI: the why-line is display prose (rendered by DailyPlanCard,
   // never a key/seed) — bidi-isolate the name at interpolation so an RTL name
-  // can't reorder the English template (no-op for LTR names).
-  const childName = isolate(opts.childName);
+  // can't reorder the English template (no-op for LTR names). B-PLAY-25: the
+  // Hebrew line isolates the mirror case (a Latin name or interest).
+  const childName = isolate(opts.childName, lang);
+  const matchedInterest = opts.matchedInterest === null ? null : lang === "he" ? isolate(opts.matchedInterest, lang) : opts.matchedInterest;
 
   if (sparse) {
     return { whyLine: WHY_LINE_TEMPLATES.sparse, wasFlagged: false };
@@ -205,8 +255,11 @@ export function buildDailyPlan(opts: {
   childName: string;
   loggedDayCount: number;
   nowMs: number;
+  /** B-PLAY-25: the UI language the why-line is written in. Default English. */
+  lang?: WhyLineLang;
 }): DailyPlan | null {
   const { picks, activeGoals, childName, loggedDayCount, nowMs } = opts;
+  const lang: WhyLineLang = opts.lang === "he" ? "he" : "en";
   if (!picks.length) return null;
 
   const top = picks[0];
@@ -222,12 +275,15 @@ export function buildDailyPlan(opts: {
     top.reason === "interest-match" ? (top.matchedInterest ?? null) : null;
 
   // Assemble + screen the why-line.
+  // B-PLAY-25: the goal is named in the reader's language (the tile's own
+  // dictionary label; a retired tile falls back to its stored label).
   const { whyLine, wasFlagged } = assembleWhyLine({
-    goalLabel: matchingGoal?.label ?? null,
+    goalLabel: matchingGoal ? (lang === "en" ? matchingGoal.label : goalLabel(matchingGoal, (key) => translate(lang, key))) : null,
     childName,
     matchedInterest,
     isWeekend,
     sparse,
+    lang,
   });
 
   const defaultSessionLength: SessionLength = isWeekend ? "extended" : "standard";

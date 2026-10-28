@@ -32,3 +32,10 @@ describe("HeroAvatar decorative decode resilience",()=>{
   const html=renderToStaticMarkup(fallback);expect(html).toContain('role="img"');expect(html).toContain('aria-label="Sprout, Arbor mascot"');expect(html).not.toContain('aria-hidden="true"');
  });
 });
+
+describe("B-BOOK-26 (T7): the portrait on a kid book cover carries no star badge",()=>{
+ it("badge={false} drops the ★; the default keeps it",()=>{
+  expect(renderToStaticMarkup(HeroAvatar({decorative:true,size:40}))).toContain("★");
+  expect(renderToStaticMarkup(HeroAvatar({decorative:true,size:40,badge:false}))).not.toContain("★");
+ });
+});

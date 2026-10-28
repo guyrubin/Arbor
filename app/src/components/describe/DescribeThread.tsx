@@ -17,13 +17,14 @@ import { DESCRIBE_TEXT_MAX, type DescribeSession, type ThreadTurn } from "../../
 import { primeQuestionVoice, type QuestionVoice } from "../../lib/describeChildClient";
 import { UrgentSupport } from "../safety/UrgentSupport";
 import { DictateButton } from "./DescribeChild";
+import AiDisclosureLine from "../companion/AiDisclosureLine";
 import "./describe.css";
 
 function AnswerBox({ turn, lang, busy, onSend, onSkip, onDone, onListen }: {
   turn: ThreadTurn; lang: "en" | "he"; busy: boolean;
   onSend: (text: string, viaMic: boolean) => void; onSkip: () => void; onDone: () => void; onListen: () => void;
 }) {
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const fieldId = useId();
   const [answer, setAnswer] = useState(turn.answer ?? "");
   const [viaMic, setViaMic] = useState(false);
@@ -44,6 +45,8 @@ function AnswerBox({ turn, lang, busy, onSend, onSkip, onDone, onListen }: {
         <button type="button" className="describe-link" disabled={busy} onClick={onDone} data-testid="describe-done">{t("elev.describe.toReadback")}</button>
       </div>
     </div>
+    {/* B-GA-11: the conversation goes on here, so the Art. 50 line stays at its foot. */}
+    <AiDisclosureLine language={uiLang === "he" ? "he" : "en"} />
   </div>;
 }
 

@@ -51,3 +51,15 @@ describe("settleOrQueue — a capture never waits on the network to be kept", ()
     expect(hook).not.toMatch(/await setDoc\(|await deleteDoc\(/);
   });
 });
+
+describe("B-DATA-14 — the kept-on-this-phone line follows the connection", () => {
+  it("offline → sending when back online; online but unacknowledged → still sending (EN + HE)", async () => {
+    const { savedOnPhoneKey } = await import("./firestoreWrite");
+    const { translate } = await import("./i18n");
+    expect(savedOnPhoneKey(false)).toBe("elev.sync.savedOnPhone");
+    expect(savedOnPhoneKey(true)).toBe("elev.sync.savedOnPhoneSending");
+    expect(translate("en", savedOnPhoneKey(false))).toBe("Saved on this phone. Sending when you're back online.");
+    expect(translate("en", savedOnPhoneKey(true))).toBe("Saved on this phone. Still sending…");
+    for (const online of [true, false]) expect(translate("he", savedOnPhoneKey(online))).toMatch(/^נשמר בטלפון\./);
+  });
+});
