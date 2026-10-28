@@ -4304,7 +4304,10 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       // B-GA-09 round 5: the memory ledger and the child doc go LAST. The child
       // doc anchors the owner check, so a share, consent, consult or Storage
       // step that fails leaves the parent able to retry; if the response is
-      // lost after the anchor went, the erase tombstone lets the same family in.
+      // lost after the anchor went, the erase record lets the same family in.
+      // Round 6: the record is written FIRST, so account deletion also finds a
+      // child whose erase stopped half way.
+      await memoryStore.recordErase?.(childId);
       const shares = await shareStore.eraseByChild(uid, childId);
       const consents = await consentStore.eraseByChild(childId);
       // B-GA-09: the consult requests about this child go with it, including a
@@ -4345,7 +4348,7 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
           storage = { photos: 0, books: 0 }; // checked: the bucket holds nothing
         }
       }
-      const memoryEvents = await memoryStore.eraseChild(childId, { tombstone: true });
+      const memoryEvents = await memoryStore.eraseChild(childId);
       logger.info("GDPR erasure executed", { requestId: requestIdOf(req), childId, memoryEvents, shares, consents, consultRequests, storageFiles });
       res.json({ erased: { memoryEvents, shares, consents, consultRequests, storageFiles }, storage, storageNote, childId, erasedAt: new Date().toISOString() });
     } catch (error: any) {

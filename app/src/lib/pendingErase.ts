@@ -9,21 +9,23 @@
  * kept here so Your data can offer "Finish deleting a child's data" until a
  * retry completes it; it is cleared then.
  *
- * Round 5 (critic r4 P1-2), a shared device:
+ * A shared device (rounds 5 and 6):
  *  - each entry carries the uid of the account that started the erase, and
- *    only that account's entries are read back;
- *  - sign-out purges the whole key (AuthContext.signOut), so the next account
- *    never sees it;
+ *    only that account's entries are read back, so the next account never
+ *    sees it;
  *  - an entry holds only what the retry needs: the child's id (to erase it
  *    again) and the receipt so far (counts and the per-place ledger, to fold
  *    the retry into one honest receipt). No name: the child's name is data
  *    the parent asked us to erase, so the offer and the receipt it reopens
- *    say "a child" instead.
+ *    say "a child" instead;
+ *  - sign-out keeps it: the server still holds what the erase missed, and
+ *    the same account must find the offer again after signing back in.
+ *    Account deletion removes every `arbor*` key (DeleteAccountModal).
  *
  * Account-level key on purpose: the child's own erase sweeps every key that
  * carries the child id (clearChildLocalState), and a retry runs that sweep, so
  * a child-scoped key would delete itself before the erase finished.
- * Registered in ACCOUNT_DEVICE_KEYS; account deletion removes every `arbor*` key.
+ * Registered in ACCOUNT_DEVICE_KEYS.
  */
 import type { DeletionReceipt } from "../types";
 import { mergeErasureReceipts, receiptView } from "./childDataSinks";
@@ -90,11 +92,6 @@ export function settlePendingErase(uid: string, receipt: DeletionReceipt, storag
   const others = readAll(storage).filter((p) => !(p.uid === uid && p.childId === receipt.childId));
   write(done ? others : [...others, { uid, childId: receipt.childId, receipt }], storage);
   return done;
-}
-
-/** Sign-out: nothing about an erase outlives the session on this device. */
-export function forgetPendingErases(storage?: Storage | null): void {
-  try { store(storage)?.removeItem(PENDING_ERASE_KEY); } catch { /* best effort */ }
 }
 
 /** The app shell, when no child is left to open Your data from: retry each of

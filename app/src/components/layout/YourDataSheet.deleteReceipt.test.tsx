@@ -264,11 +264,14 @@ describe.each(["en", "he"] as const)("an unfinished erase survives close and reo
     expect(JSON.parse(device.getItem("arbor.pendingErase")!)).toHaveLength(1);
   });
 
-  it("another account on the same device is never offered it", async () => {
+  it("sign out, another account signs in: never offered; the same account signs back in: offered again (round 6)", async () => {
     h.lang = lang;
     await eraseWith(unfinished());
     h.uid = "synthetic-next-account";
     h.slots = []; h.effects = [];
     expect(byTestId(render(true), "finish-erase-btn")).toBeUndefined();
+    h.uid = "owner";
+    h.slots = []; h.effects = [];
+    expect(byTestId(render(true), "finish-erase-btn")).toBeDefined();
   });
 });

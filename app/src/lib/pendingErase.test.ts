@@ -1,12 +1,13 @@
 /**
- * B-GA-09 round 5 (critic r4 P1-2) — an unfinished erase is kept for the
- * account that started it, holds no name, and leaves with sign-out.
+ * B-GA-09 rounds 5–6 — an unfinished erase is kept for the account that
+ * started it, holds no name, and survives that account's sign-out (the server
+ * still holds what the erase missed), while another account never sees it.
  * Synthetic ids only.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
-  PENDING_ERASE_KEY, finishPendingErases, forgetPendingErases, readPendingErases, receiptFinished, settlePendingErase,
+  PENDING_ERASE_KEY, finishPendingErases, readPendingErases, receiptFinished, settlePendingErase,
 } from "./pendingErase";
 import { ACCOUNT_DEVICE_KEYS, childSinkIds } from "./childDataSinks";
 import { CHILD_SUBCOLLECTIONS } from "./childData";
@@ -62,14 +63,18 @@ describe("B-GA-09 · pending erases are per account and nameless", () => {
     expect(receiptFinished(receipt("kid-a", true))).toBe(true);
   });
 
-  it("sign-out purges the key, and AuthContext.signOut calls it", () => {
+  it("sign-out keeps it: AuthContext.signOut never touches the key, and only the same uid reads it back", () => {
     const s = new MemStore() as unknown as Storage;
     settlePendingErase("synthetic-a", receipt("kid-a", false), s);
-    forgetPendingErases(s);
-    expect(s.getItem(PENDING_ERASE_KEY)).toBeNull();
     const auth = readFileSync(new URL("../context/AuthContext.tsx", import.meta.url), "utf8");
-    const signOut = auth.slice(auth.indexOf("const signOut = async"), auth.indexOf("firebaseSignOut(auth)"));
-    expect(signOut).toMatch(/forgetPendingErases\(\)/);
+    const signOut = auth.slice(auth.indexOf("const signOut = async"), auth.indexOf("const getIdToken"));
+    expect(signOut).toContain("firebaseSignOut(auth)");
+    // no code touches it (the comment there says why it stays)
+    const code = signOut.replace(/\/\/.*$/gm, "");
+    expect(code).not.toMatch(/PendingErase|PENDING_ERASE_KEY|pendingErase|localStorage\.(clear|removeItem)/);
+    // signed out, then another account on the device, then the same account again
+    expect(readPendingErases("synthetic-b", s)).toEqual([]);
+    expect(readPendingErases("synthetic-a", s).map((p) => p.childId)).toEqual(["kid-a"]);
   });
 
   it("the app shell finishes this account's erases: a finished retry clears it, a failing one stays", async () => {
@@ -94,9 +99,9 @@ describe("B-GA-09 · pending erases are per account and nameless", () => {
     expect(app).toMatch(/finishPendingErases\(uid, \(childId\) => eraseEverything\(uid \|\| undefined, childId\)\)/);
   });
 
-  it("the registry describes the key as it is: per account, ids and counts only, purged at sign-out", () => {
+  it("the registry describes the key as it is: per account, ids and counts only, kept across that account's sign-out", () => {
     expect(ACCOUNT_DEVICE_KEYS[PENDING_ERASE_KEY]).toMatch(/uid/);
-    expect(ACCOUNT_DEVICE_KEYS[PENDING_ERASE_KEY]).toMatch(/sign-out/);
+    expect(ACCOUNT_DEVICE_KEYS[PENDING_ERASE_KEY]).toMatch(/kept across its sign-out/);
     expect(ACCOUNT_DEVICE_KEYS[PENDING_ERASE_KEY]).not.toMatch(/name/);
   });
 });

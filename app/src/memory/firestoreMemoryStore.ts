@@ -64,22 +64,35 @@ export class FirestoreMemoryStore implements MemoryStore {
     return this.families.mayEraseChild(uid, childId);
   }
 
+  /** The family that owns (or owned) the child: the child doc, else its erase record. */
+  private async erasingFamily(childId: string): Promise<string | undefined> {
+    const childFamily = (await this.db.collection("children").doc(childId).get()).data()?.familyId;
+    if (typeof childFamily === "string" && childFamily) return childFamily;
+    const recorded = (await this.db.collection(ERASED_CHILDREN_COLLECTION).doc(childId).get()).data()?.familyId;
+    return typeof recorded === "string" && recorded ? recorded : undefined;
+  }
+
+  /** B-GA-09: the per-child erase's FIRST step. `erasedChildren/{childId}` (the
+   *  child and family ids, expiring in 30 days; firestore.indexes.json TTL) lets
+   *  the same family retry once the child doc is gone (mayEraseChild), and lets
+   *  account deletion find a child whose erase stopped half way. */
+  async recordErase(childId: string): Promise<void> {
+    const familyId = await this.erasingFamily(childId);
+    if (!familyId) return;
+    const now = Date.now();
+    await this.db.collection(ERASED_CHILDREN_COLLECTION).doc(childId).set({
+      childId, familyId, erasedAt: new Date(now).toISOString(), expireAt: new Date(now + ERASE_TOMBSTONE_DAYS * 86_400_000),
+    });
+  }
+
   /** GDPR erasure: hard-delete the child's memory event subcollection and child doc.
    *  B-GA-09 round 5: the child doc is the ownership anchor (FamilyService.ownsChild
    *  reads its familyId), so it goes LAST: a step that fails before it leaves the
-   *  owner able to retry. With `tombstone`, `erasedChildren/{childId}` (the child and
-   *  family ids, expiring in 30 days) is written FIRST, so a retry after the anchor
-   *  went (a lost response) still passes mayEraseChild. */
-  async eraseChild(childId: string, opts: { tombstone?: boolean } = {}) {
+   *  owner able to retry. */
+  async eraseChild(childId: string) {
     const childRef = this.db.collection("children").doc(childId);
-    const tombRef = this.db.collection(ERASED_CHILDREN_COLLECTION).doc(childId);
-    const childFamily = (await childRef.get()).data()?.familyId;
-    const familyId = typeof childFamily === "string" && childFamily ? childFamily : (await tombRef.get()).data()?.familyId;
-    if (typeof familyId === "string" && familyId) {
-      if (opts.tombstone) {
-        const now = Date.now();
-        await tombRef.set({ childId, familyId, erasedAt: new Date(now).toISOString(), expireAt: new Date(now + ERASE_TOMBSTONE_DAYS * 86_400_000) });
-      }
+    const familyId = await this.erasingFamily(childId);
+    if (familyId) {
       // B-GA-09: the family's pointer to this child (ids only) goes with it.
       await this.db.collection("families").doc(familyId).collection("childRefs").doc(childId).delete();
     }

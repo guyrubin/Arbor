@@ -182,7 +182,7 @@ export const OTHER_FIRESTORE_COLLECTIONS: Readonly<Record<string, OtherChildSink
   pushTokenIndex: "account: push token index",
   retentionRollups: "account: per-family counts for the cohort report",
   digestOptIn: "account: weekly digest mailing consent",
-  erasedChildren: "account: the family's erase record (the erased child's id and the family id, no child data; 30-day TTL) so a retried erase can finish",
+  erasedChildren: "account: the family's erase record, keyed by the erased child's id (ids and dates only, no child data) so a retried erase and account deletion can finish it; removed by account deletion and a 30-day TTL (firestore.indexes.json)",
   usageRollup: "aggregate: daily token spend, no uid or child",
 };
 
@@ -231,7 +231,7 @@ export const CACHE_STORAGE_CACHES: Readonly<Record<string, string>> = {
  * whose erase has already run: the id the retry must erase again and the
  * receipt so far, never the child's name or content. It cannot be
  * child-scoped (the erase it finishes would sweep it), so it is scoped to the
- * account instead and purged at sign-out.
+ * account instead: only that uid reads it back, across its own sign-outs.
  */
 export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.": "the namespace root the sweep matches on",
@@ -273,7 +273,7 @@ export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.nudge.shown.": "prefix: a nudge shown on a day",
   "arbor.ownershipProvisioned.": "prefix: session marker per account",
   "arbor.parentPin": "the parent gate PIN",
-  "arbor.pendingErase": "an erase still to finish (lib/pendingErase.ts), per account: the uid that started it, the erased child's id and the receipt so far (counts and per-place ledger); cleared when a retry completes, purged at sign-out",
+  "arbor.pendingErase": "an erase still to finish (lib/pendingErase.ts), per account: the uid that started it, the erased child's id and the receipt so far (counts and per-place ledger); read back only by that uid, kept across its sign-out, cleared when a retry completes",
   "arbor.plan.previewDismissed": "UI marker",
   "arbor.purchaseIntent.v1": "the plan a parent chose before checkout",
   "arbor.recap.emailOptIn": "mailing preference",

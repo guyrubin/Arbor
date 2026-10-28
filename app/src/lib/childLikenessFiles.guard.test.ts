@@ -14,13 +14,16 @@
  *    book's shared, name-free set (lib/library/narrationFiles
  *    SHARED_NARRATION_SETS; bookRelease.guard checks each of its files is
  *    name-free). A plain prints/ folder elsewhere (docs/prints/…) is not a
- *    book shape.
+ *    book shape, and neither is a voice folder (he-m/) outside the book
+ *    audio grammar, such as the kid sneak audio.
  * 2. Named likeness. Files that already show the proof child (the hero
  *    sheet, the shared card tiles, the avatar) cannot be told apart by shape,
- *    so they are NAMED, each group with the row that owns its removal
- *    (childLikenessFiles.named.ts). The tree must hold exactly that list in
- *    the likeness families: a new one fails until it is named with an owner,
- *    and a removed one fails until its line goes, so the list only shrinks.
+ *    so they are NAMED, each with the row that owns its removal and the
+ *    sha256 of the reviewed bytes (childLikenessFiles.named.ts). The tree must
+ *    hold exactly that list in the likeness families (matched in any case):
+ *    a new one fails until it is named with an owner, a removed one fails
+ *    until its line goes (the list only shrinks), and a named one redrawn
+ *    fails until the new picture is reviewed and re-pinned.
  *
  * The reader clauses of T16 (no photo URL in any reader image; `bookReads`
  * the only write) are rendered checks on real private book files and stay
@@ -28,6 +31,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -47,11 +51,11 @@ const PRIVATE_SHAPES: readonly RegExp[] = [
   /(^|\/)children\/[^/]+\/books\//i, // the Storage prefix itself, any file
   /(^|\/)hero[-_]?sheets?\//i, // hero-sheets/…, hero-sheet/…, heroSheets/…, incl. choices/ prints/ manifest.json
   /(^|\/)hero\/(.+\/)?[^/]+$/i, // a hero pose folder at any depth (filtered to media/json below)
+  /(^|\/)pose[-_]?sheets?\//i, // a pose sheet by its other name
   /(^|\/)sheet\.json$/i,
   /(^|\/)books\/(.+\/)?(prints|choices)\//i, // a print or choice card flattened out of its sheet folder
   /(^|\/)books\/[^/]+\/manifest\.json$/i,
   new RegExp(`(^|/)narration/[^/]+/${VOICE}/`, "i"),
-  /(^|\/)he-[mf]\//i, // a gendered narration voice folder anywhere
   /(^|\/)audio\/books\//i, // any book audio (the shared set is let through below)
 ];
 
@@ -64,7 +68,14 @@ function inSharedSet(p: string): boolean {
 /** Repo-relative, forward slashes, `..` resolved (so `_proof/../x` is `x`). */
 const norm = (p: string) => path.posix.normalize(p.split(path.sep).join("/").replace(/\\/g, "/"));
 
-const NAMED = new Map(NAMED_LIKENESS_FILES.flatMap((g) => g.files.map((f) => [f, g.owner] as const)));
+const NAMED = new Map(NAMED_LIKENESS_FILES.flatMap((g) => Object.keys(g.files).map((f) => [f, g.owner] as const)));
+const PINS = new Map(NAMED_LIKENESS_FILES.flatMap((g) => Object.entries(g.files)));
+
+/** sha256 of a file's bytes; JSON with LF line ends (a Windows checkout may write CRLF). */
+export function likenessDigest(bytes: Buffer, file: string): string {
+  const body = /\.json$/i.test(file) ? Buffer.from(bytes.toString("utf8").replace(/\r\n/g, "\n"), "utf8") : bytes;
+  return createHash("sha256").update(body).digest("hex");
+}
 
 export function shapeOffenders(paths: readonly string[], named: ReadonlyMap<string, string> = NAMED): string[] {
   return [...new Set(paths.map(norm))]
@@ -76,8 +87,8 @@ export function shapeOffenders(paths: readonly string[], named: ReadonlyMap<stri
 
 /** The families the proof child's likeness already lives in; any file here must be named. */
 const LIKENESS_FAMILIES: readonly RegExp[] = [
-  /^app\/public\/_proof\//,
-  /^app\/public\/visuals\/cards\/(.+\/)?(game|story)-[^/]+$/,
+  /^app\/public\/_proof\//i,
+  /^app\/public\/visuals\/cards\/(.+\/)?(game|story)-[^/]+$/i,
   new RegExp(`^app/public/(.+/)?[^/]*avatar[^/]*\\.(${IMAGE})$`, "i"),
 ];
 export function unnamedLikeness(paths: readonly string[], named: ReadonlyMap<string, string> = NAMED): string[] {
@@ -127,7 +138,7 @@ describe("T16 static clause — no sprite, print or audio of a real child in git
 
   it("the named list only shrinks: every named file still exists, once, and each group names an owner row", () => {
     const all = new Set([...files, ...pub].map(norm));
-    const listed = NAMED_LIKENESS_FILES.flatMap((g) => g.files);
+    const listed = NAMED_LIKENESS_FILES.flatMap((g) => Object.keys(g.files));
     expect(listed.filter((f) => !all.has(f))).toEqual([]);
     expect(new Set(listed).size).toBe(listed.length);
     for (const g of NAMED_LIKENESS_FILES) expect(g.owner).toMatch(/^B-(BOOK|GAME)-\d+/);
@@ -135,6 +146,23 @@ describe("T16 static clause — no sprite, print or audio of a real child in git
     expect(NAMED.get("app/public/visuals/dylan-hero-avatar.png")).toMatch(/B-BOOK-31/);
     expect(NAMED.get("app/public/visuals/cards/game-mimic.png")).toMatch(/B-BOOK-31/);
     expect(NAMED.get("app/public/_proof/hero/sheet.json")).toMatch(/B-GAME-35/);
+  });
+
+  it("each named file still holds the reviewed picture: its bytes match the pinned sha256", () => {
+    const changed = [...PINS].filter(([f, pin]) => likenessDigest(readFileSync(path.join(REPO, f)), f) !== pin).map(([f]) => f);
+    expect(changed, "a named file was redrawn: review the new picture, then re-pin it with its owner row").toEqual([]);
+    for (const pin of PINS.values()) expect(pin).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("negative control: a redrawn named file is caught, and CRLF JSON reads as its LF self", () => {
+    const tile = "app/public/visuals/cards/game-mimic.png";
+    const bytes = readFileSync(path.join(REPO, tile));
+    expect(likenessDigest(bytes, tile)).toBe(PINS.get(tile));
+    const redrawn = Buffer.concat([bytes.subarray(0, bytes.length - 1), Buffer.from([bytes[bytes.length - 1] ^ 1])]);
+    expect(likenessDigest(redrawn, tile)).not.toBe(PINS.get(tile));
+    const sheet = "app/public/_proof/hero/sheet.json";
+    const lf = readFileSync(path.join(REPO, sheet));
+    expect(likenessDigest(Buffer.from(lf.toString("utf8").replace(/\n/g, "\r\n"), "utf8"), sheet)).toBe(PINS.get(sheet));
   });
 
   it("negative control: every private shape is caught, in any case and any folder; the shared set and plain prints/ folders are not", () => {
@@ -148,6 +176,7 @@ describe("T16 static clause — no sprite, print or audio of a real child in git
       "app/public/visuals/heroSheets/s1/idle.webp",
       "app/public/visuals/hero/idle.gif",
       "app/public/visuals/hero/sheet.JSON",
+      "app/public/visuals/pose-sheet/idle.webp",
       "app/public/_proof/../visuals/hero/idle.webp",
       "app/public/audio/books/fss/he-m/p1.mp3",
       "app/public/audio/books/five-smooth-stones/kid-a-v3/en/p1.mp3",
@@ -159,6 +188,7 @@ describe("T16 static clause — no sprite, print or audio of a real child in git
       "docs/prints/layout.png",
       "app/public/visuals/prints/catalog.svg",
       "app/public/audio/kid/sneak/en/p1.mp3",
+      "app/public/audio/kid/sneak/he-m/p1.mp3",
       "app/src/components/kidmode/hero/HeroSprite.tsx",
     ])).toEqual([
       "app/public/audio/books/five-smooth-stones/kid-a-v3/en/p1.mp3",
@@ -174,6 +204,7 @@ describe("T16 static clause — no sprite, print or audio of a real child in git
       "app/public/visuals/hero/s1/idle.webp",
       "app/public/visuals/hero/sheet.JSON",
       "app/public/visuals/heroSheets/s1/idle.webp",
+      "app/public/visuals/pose-sheet/idle.webp",
       "children/kid-a/books/fss/manifest.json",
     ]);
   });
@@ -188,11 +219,22 @@ describe("T16 static clause — no sprite, print or audio of a real child in git
       "app/public/_proof/hero/new-pose.webp",
       "app/public/visuals/kid-avatar.webp",
       "app/public/visuals/cards/web/kid-discovery-garden-v2-480.webp",
+      // any case (critic r5): a family match is not fooled by capitals
+      "app/public/visuals/cards/Game-New.png",
+      "app/public/visuals/Cards/game-new.png",
+      "app/public/visuals/kid/AVATAR.PNG",
+      "app/public/_Proof/hero/idle.webp",
+      "app/public/visuals/cards/GAME-MIMIC.png",
     ])).toEqual([
+      "app/public/_Proof/hero/idle.webp",
       "app/public/_proof/hero/new-pose.webp",
+      "app/public/visuals/Cards/game-new.png",
+      "app/public/visuals/cards/GAME-MIMIC.png",
+      "app/public/visuals/cards/Game-New.png",
       "app/public/visuals/cards/game-new-tile.png",
       "app/public/visuals/cards/web/story-new-1024.webp",
       "app/public/visuals/kid-avatar.webp",
+      "app/public/visuals/kid/AVATAR.PNG",
     ]);
     // a named file is excused from the shape check only while it is named
     expect(shapeOffenders(["app/public/_proof/hero/sheet.json"])).toEqual([]);
