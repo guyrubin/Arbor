@@ -62,6 +62,15 @@ export const RETENTION_ROLLUP_COLLECTION = "retentionRollups";
  *  campaign filter `aggregateFunnel` needs — nothing else, ever. */
 export const EVENT_PROP_ALLOWLIST = ["source", "market", "utm_campaign"] as const;
 
+/** B-BOOK-51 / B-GAME-18: the Kid Mode play events, and the ONLY props they
+ *  may carry out of the store (catalogue ids, language, own|stock, replay,
+ *  the kid-mode tag). Projected for these events alone; never a child id or a
+ *  choice id (the client projection refuses both, kidPlayEvents.guard.test). */
+export const KID_PLAY_EVENTS = ["game_sitting", "book_opened", "book_finished"] as const;
+export const KID_EVENT_PROP_ALLOWLIST = ["game", "replay", "book_id", "lang", "hero", "kid_mode"] as const;
+/** A weekly cell about fewer families than this is hidden (B-BOOK-51 boundary). */
+export const MIN_CELL_FAMILIES = 5;
+
 /** Hard ceilings on a single report, so a founder command can never become an
  *  unbounded scan of production. Both are reported in the response. */
 export const MAX_ROLLUPS_SCANNED = 5000;
@@ -161,15 +170,23 @@ export class NullCohortMetricsStore implements CohortMetricsStore {
 
 /** Keep only the grouping props. The projection is here, at the egress, not at
  *  the call sites — a new event surface is covered the day it is written. */
-const projectProps = (raw: unknown): Record<string, unknown> => {
+/** Exported for the guard: the egress projection of one event's props. */
+export const projectEventProps = (raw: unknown, event?: string): Record<string, unknown> => projectProps(raw, event);
+function projectProps(raw: unknown, event?: string): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   if (!raw || typeof raw !== "object") return out;
   for (const key of EVENT_PROP_ALLOWLIST) {
     const v = (raw as Record<string, unknown>)[key];
     if (typeof v === "string" || typeof v === "number") out[key] = v;
   }
+  if (event && (KID_PLAY_EVENTS as readonly string[]).includes(event)) {
+    for (const key of KID_EVENT_PROP_ALLOWLIST) {
+      const v = (raw as Record<string, unknown>)[key];
+      if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") out[key] = v;
+    }
+  }
   return out;
-};
+}
 
 const toIso = (v: unknown): string | null => {
   if (!v) return null;
@@ -238,7 +255,7 @@ export class FirestoreCohortMetricsStore implements CohortMetricsStore {
         if (at && Date.parse(at) < since.getTime()) continue;
         // users/{uid}/events/{id} — the uid is the grandparent document id.
         const uid = d.ref.parent.parent?.id ?? "unknown";
-        out.push({ uid, event, at, props: projectProps(data.props) });
+        out.push({ uid, event, at, props: projectProps(data.props, event) });
       }
       return out;
     };
@@ -262,6 +279,93 @@ export class FirestoreCohortMetricsStore implements CohortMetricsStore {
 
 export const createCohortMetricsStore = (config: ArborConfig): CohortMetricsStore =>
   config.memoryAdapter === "firestore" ? new FirestoreCohortMetricsStore(config) : new NullCohortMetricsStore();
+
+/* ── Kid Mode play (B-GAME-18 / B-BOOK-51) ─────────────────────────────────── */
+
+/** One game in one ISO week. Every number is null when the cell is hidden. */
+export type KidGameWeek = {
+  week: string;
+  game: string;
+  hidden: boolean;
+  families: number | null;
+  sittings: number | null;
+  /** Sittings that were a Play again — the replay share is replays of sittings
+   *  (two counts; this module never divides, the reader prints "n of m"). */
+  replays: number | null;
+  /** Families that came back to this game unprompted on a later day within 7
+   *  days of their first sitting that week (Kid Mode has no push into a game). */
+  returned7d: number | null;
+};
+export type KidBookWeek = { week: string; book: string; hidden: boolean; families: number | null; opened: number | null; finished: number | null };
+export type KidPlaySummary = { minFamilies: number; games: KidGameWeek[]; books: KidBookWeek[] };
+
+const DAY = 86_400_000;
+const dayOf = (ms: number) => Math.floor(ms / DAY);
+
+/**
+ * Weekly Kid Mode play, per game and per book, aggregated across families —
+ * counts and shares of PLAY, never a statement about any child (no
+ * developmental inference, no per-family row). A cell about fewer than
+ * MIN_CELL_FAMILIES families is hidden: its numbers are null. Only events the
+ * client tagged `kid_mode: true` count.
+ */
+export function summariseKidPlay(events: readonly CohortEventDoc[], minFamilies = MIN_CELL_FAMILIES): KidPlaySummary {
+  const kid = events.filter((e) => e.props?.kid_mode === true && (KID_PLAY_EVENTS as readonly string[]).includes(e.event) && e.at && Number.isFinite(Date.parse(e.at)));
+  // every sitting of a (uid, game), by day, for the return check
+  const sittingDays = new Map<string, number[]>();
+  type GameCell = { uids: Set<string>; sittings: number; replays: number; first: Map<string, number> };
+  const games = new Map<string, GameCell>();
+  type BookCell = { uids: Set<string>; opened: number; finished: number };
+  const books = new Map<string, BookCell>();
+  for (const e of kid) {
+    const ms = Date.parse(e.at!);
+    const week = isoWeekOf(e.at);
+    if (!week) continue;
+    if (e.event === "game_sitting") {
+      const game = typeof e.props.game === "string" ? e.props.game : null;
+      if (!game) continue;
+      const key = `${week}|${game}`;
+      const cell = games.get(key) ?? { uids: new Set(), sittings: 0, replays: 0, first: new Map() };
+      cell.uids.add(e.uid);
+      cell.sittings += 1;
+      if (e.props.replay === true) cell.replays += 1;
+      const prev = cell.first.get(e.uid);
+      if (prev === undefined || ms < prev) cell.first.set(e.uid, ms);
+      games.set(key, cell);
+      const k = `${e.uid}|${game}`;
+      sittingDays.set(k, [...(sittingDays.get(k) ?? []), dayOf(ms)]);
+    } else {
+      const book = typeof e.props.book_id === "string" ? e.props.book_id : null;
+      if (!book) continue;
+      const key = `${week}|${book}`;
+      const cell = books.get(key) ?? { uids: new Set(), opened: 0, finished: 0 };
+      cell.uids.add(e.uid);
+      if (e.event === "book_opened") cell.opened += 1;
+      else cell.finished += 1;
+      books.set(key, cell);
+    }
+  }
+  const gameRows: KidGameWeek[] = [...games.entries()].map(([key, c]) => {
+    const [week, game] = key.split("|");
+    const families = c.uids.size;
+    if (families < minFamilies) return { week, game, hidden: true, families: null, sittings: null, replays: null, returned7d: null };
+    let returned = 0;
+    for (const [uid, firstMs] of c.first) {
+      const d0 = dayOf(firstMs);
+      if ((sittingDays.get(`${uid}|${game}`) ?? []).some((d) => d > d0 && d <= d0 + 7)) returned += 1;
+    }
+    return { week, game, hidden: false, families, sittings: c.sittings, replays: c.replays, returned7d: returned };
+  });
+  const bookRows: KidBookWeek[] = [...books.entries()].map(([key, c]) => {
+    const [week, book] = key.split("|");
+    const families = c.uids.size;
+    return families < minFamilies
+      ? { week, book, hidden: true, families: null, opened: null, finished: null }
+      : { week, book, hidden: false, families, opened: c.opened, finished: c.finished };
+  });
+  const order = <T extends { week: string }>(rows: T[], k: (r: T) => string) => rows.sort((a, b) => b.week.localeCompare(a.week) || k(a).localeCompare(k(b)));
+  return { minFamilies, games: order(gameRows, (r) => r.game), books: order(bookRows, (r) => r.book) };
+}
 
 /* ── activation ──────────────────────────────────────────────────────────── */
 
@@ -384,6 +488,8 @@ export type CohortReport = {
   funnels: Record<string, FunnelGroupRow[]>;
   /** B-MEAS-02: present when the `loop` funnel was asked for. */
   loop?: LoopSummary;
+  /** B-GAME-18 / B-BOOK-51: weekly Kid Mode play; small cells hidden. */
+  kidPlay: KidPlaySummary;
   eventCensus: FunnelStageCount[];
   scanned: { rollups: number; events: number; mode: "firestore" | "null" };
   /** B-MEAS-01: internal families (founder, comped, smoke) left out of every
@@ -483,6 +589,7 @@ export async function buildCohortReport(
     activation: { ...activationCounts, definition: null },
     funnels,
     ...(loop ? { loop } : {}),
+    kidPlay: summariseKidPlay(events),
     eventCensus: [...census.entries()]
       .map(([stage, count]) => ({ stage, count }))
       .sort((a, b) => b.count - a.count || a.stage.localeCompare(b.stage)),

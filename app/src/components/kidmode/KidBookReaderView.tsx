@@ -21,6 +21,9 @@ import { bookEdition } from "../../lib/library/bookBookmarks";
 import { heroSheetOwnerKey, subscribeHeroSheetOwner } from "../../lib/heroSheetStore";
 import { useBookBookmark } from "../library/useBookBookmark";
 import { useKidSouvenirs } from "./rewards/useKidSouvenirs";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import { BOOK_READS, bookReadRow, catalogueBookId, type BookRead } from "../../lib/bookReads";
+import { trackBookFinished, trackBookOpened } from "../../lib/kpiEvents";
 
 export default function KidBookReaderView({ bookId, onClose }: { bookId: string; onClose: () => void }) {
   const { childProfile } = useArbor();
@@ -40,6 +43,19 @@ function OwnedBookReader({ entry, edition, owner, lang, onClose }: { entry: Libr
   const { childProfile } = useArbor();
   const progress = useBookBookmark(childProfile.id, entry.book, edition, owner);
   const souvenirs = useKidSouvenirs(childProfile.id);
+  // B-BOOK-51: one open event per opening, one finish per true ending (the
+  // reader's last-page -> END transition; a resumed END never counts), and the
+  // one read ledger. Catalogue ids only: never the child, never the path chosen.
+  const reads = useChildCollection<BookRead>(childProfile.id, BOOK_READS);
+  const readsRef = useRef(reads);
+  readsRef.current = reads;
+  const bookEvent = useMemo(() => ({ bookId: catalogueBookId(entry.book), lang, hero: "own" as const }), [entry.book, lang]);
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current) return;
+    opened.current = true;
+    trackBookOpened(bookEvent);
+  }, [bookEvent]);
   const progressRef = useRef(progress);
   progressRef.current = progress;
   const folder = lang === "he" ? (heGender(childProfile.gender) === "f" ? "he-f" : "he-m") : "en";
@@ -78,6 +94,11 @@ function OwnedBookReader({ entry, edition, owner, lang, onClose }: { entry: Libr
       {resolved && progress.initialState ? (
         <BookReader book={entry.book} lang={lang} child={child} onClose={onClose} dev={false} sheet={resolved.sheet} assets={resolved.narration} voiceSet={entry.doc.setId} initialState={progress.initialState} onProgress={progress.save} onComplete={() => {
           if (progress.current() && souvenirs.loaded && souvenirs.isCurrent()) void souvenirs.awardOnce("book", entry.book.id).catch(() => undefined);
+          if (progress.current()) {
+            trackBookFinished(bookEvent);
+            const row = bookReadRow(bookEvent.bookId, lang, new Date());
+            if (row) void readsRef.current.upsert(row).catch(() => undefined);
+          }
         }} progressNotice={progress.status === "error" ? <button type="button" onClick={progress.retry} aria-label={lang === "he" ? "הסימנייה לא נשמרה. נסו שוב" : "Bookmark not saved. Retry"} style={{ minHeight: 44, maxWidth: "100%", padding: "4px 8px", borderRadius: 12, background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", fontSize: 16 }}>
           {lang === "he" ? "סימנייה · נסו שוב" : "Bookmark · Retry"}
         </button> : null} />

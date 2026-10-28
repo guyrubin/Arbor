@@ -43,6 +43,8 @@ import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { STORY_COMIC, clearJourneyPageFailure, generateJourneyPage, journeyPageKey, shelveBookPages, toSavedComicMeta, type SavedComicMeta } from "../../lib/heroComics";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
+import { trackBookFinished, trackBookOpened } from "../../lib/kpiEvents";
+import { BOOK_READS, bookReadRow, type BookRead } from "../../lib/bookReads";
 import { ComicPage, usePrefersReducedMotion } from "../ui/playkit";
 import { statesText } from "../../lib/i18nElevation/states";
 import { HeroAvatar, resolveHeroUrl } from "../ui/HeroAvatar";
@@ -203,6 +205,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const kidMode = useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive);
 
   const runsCol = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
+  // B-BOOK-51: the one finished-book ledger (a Kid Mode finish, once per opening).
+  const readsCol = useChildCollection<BookRead>(childProfile.id, BOOK_READS);
+  const finishedOpening = useRef<string | null>(null);
   // B-BOOK-28: kept renders belong only to the parent door. An empty child
   // scope disables useChildCollection's device read and account subscription.
   const rendersCol = useChildCollection<SavedHeroRender>(kidMode ? "" : childProfile.id, "heroRenders");
@@ -486,6 +491,8 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     }
     const opening = kidBookOpening(story, childProfile.id, kidTellLang, kidArtTheme(story), storyHero, dayKey(new Date()));
     startedAtRef.current = new Date().toISOString();
+    // B-BOOK-51: catalogue id, language, own|stock hero — never the child or a choice.
+    trackBookOpened({ bookId: story.id, lang: kidTellLang, hero: heroAvatarUrl ? "own" : "stock" });
     setRefusedPin(null);
     setActiveStory(story);
     setRender(opening.render);
@@ -680,6 +687,13 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       // story, its title and the child's choice never leave this function.
       // A no-op outside Kid Mode.
       noteKidActivity();
+      // B-BOOK-51: ONE finish per opening, in Kid Mode, into the one read ledger.
+      if (kidMode && finishedOpening.current !== run.startedAt) {
+        finishedOpening.current = run.startedAt;
+        trackBookFinished({ bookId: activeStory.id, lang: renderLang, hero: heroAvatarUrl ? "own" : "stock" });
+        const row = bookReadRow(activeStory.id, renderLang, new Date(run.completedAt!));
+        if (row) void readsCol.upsert(row).catch(() => undefined);
+      }
       setSaved(true);
       celebrate({ kind: "complete" });
       if (!kidMode) {

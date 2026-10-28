@@ -106,6 +106,9 @@ export const CHILD_SUBCOLLECTIONS = [
   // B-GAME-13c: the hero's pose sheet — one doc per pose (generated art drawn
   // from the stored generated hero, never a photo) + `_meta`. Export + erase.
   "heroSheet",
+  // B-BOOK-51 (X28): the one finished-book ledger — catalogue book id, language,
+  // time per true ending; never the path or choice. Export + erase.
+  "bookReads",
 ];
 
 const remoteActive = (uid?: string) =>
