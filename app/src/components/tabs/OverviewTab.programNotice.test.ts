@@ -7,8 +7,7 @@ import { toObservations } from "../../lib/observations";
 import { shelfCoverage, selectNextMilestonesByShelf } from "../../lib/milestones/selectByShelf";
 import { comparisonMonthsOf } from "../../lib/age/forChild";
 import { enrolInProgram, activeProgramWeek } from "../../lib/programs/enrolment";
-import { selectNoticeWithProgram, type NoticeProgram } from "../../lib/programs/notice";
-
+import { selectNoticeWithProgram, type NoticeProgram } from "../../lib/programs/notice";
 import { todayLiveSource } from "../../testTodaySource";
 
 /* B-PROG-03 (seam): Today's Notice reads the program wrapper. With an ACTIVE
