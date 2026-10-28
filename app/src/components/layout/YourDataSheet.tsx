@@ -328,8 +328,8 @@ const RECEIPT_LABEL: Record<ReceiptRowId, string> = {
 function ReceiptRow({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
-      <span style={{ color: "var(--arbor-muted)" }}>{label}</span>
-      <span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{value}</span>
+      <span className="min-w-0" style={{ color: "var(--arbor-muted)" }}>{label}</span>
+      <span className="shrink-0 whitespace-nowrap font-bold" style={{ color: "var(--arbor-ink)" }}>{value}</span>
     </div>
   );
 }
