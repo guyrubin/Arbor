@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FONT_CACHE_DIR, chromiumUserAgent, cssFontResources, fontMode, readPublicResource, sha256, sourceFontUrl } from './font-cache.mjs';
+import { FONT_CACHE_DIR, chromiumUserAgent, cssFontResources, fontMode, fontResourceShape, readPublicResource, sha256, sourceFontUrl } from './font-cache.mjs';
 
 export async function prepareFontCache() {
   const mode = fontMode(process.env.CAPTURE_FONT_MODE);
@@ -29,7 +29,8 @@ export async function prepareFontCache() {
     const file = `${fetched.sha256}.${kind}`;
     await writeFile(path.join(FONT_CACHE_DIR, file), fetched.bytes);
     const { bytes, ...metadata } = fetched;
-    resources.push({ url, kind, file, ...metadata });
+    // Provenance: the observed URL shape (static path or /l/font kit) travels with the byte hash.
+    resources.push({ url, kind, file, ...(kind === 'woff2' ? { shape: fontResourceShape(url) } : {}), ...metadata });
     return bytes;
   }
   const stylesheet = await store(url, 'css');
@@ -40,7 +41,8 @@ export async function prepareFontCache() {
     cssUrl: url, userAgent, playwrightVersion, chromiumVersion: browser.browserVersion,
     chromiumRevision: browser.revision, completedAt: new Date().toISOString(), resources, faces,
   }, null, 2));
-  console.log(`Exact source-font cache prepared: ${urls.length} WOFF2 resources; ${total} bytes. Runtime remains offline.`);
+  const kits = resources.filter((item) => item.shape === 'kit').length;
+  console.log(`Exact source-font cache prepared: ${urls.length} WOFF2 resources (${kits} via /l/font kit URLs); ${total} bytes. Runtime remains offline.`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

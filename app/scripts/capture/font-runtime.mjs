@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FONT_CACHE_DIR, FONT_FAMILIES, SOURCE_CSS_URL, assertFontUrl, cssFontResources, sha256 } from './font-cache.mjs';
+import { FONT_CACHE_DIR, FONT_FAMILIES, SOURCE_CSS_URL, assertFontUrl, cssFontResources, fontResourceShape, sha256 } from './font-cache.mjs';
 
 const sourceFile = fileURLToPath(new URL('../../src/index.css', import.meta.url));
 let cached;
@@ -17,7 +17,7 @@ export function validateFontCache(root = FONT_CACHE_DIR, source = readFileSync(s
   const resources = new Map();
   for (const item of manifest.resources) {
     if (item.kind === 'css') { if (item.url !== SOURCE_CSS_URL) throw new Error('FONT_CACHE_URL_INVALID'); }
-    else if (item.kind === 'woff2') assertFontUrl(item.url);
+    else if (item.kind === 'woff2') { assertFontUrl(item.url); if (item.shape !== fontResourceShape(item.url)) throw new Error('FONT_CACHE_SHAPE_INVALID'); }
     else throw new Error('FONT_CACHE_TYPE_INVALID');
     if (!/^[a-f0-9]{64}$/.test(item.sha256) || item.file !== `${item.sha256}.${item.kind}` || resources.has(item.url)) throw new Error('FONT_CACHE_FILE_INVALID');
     const body = readFileSync(path.join(root, item.file));

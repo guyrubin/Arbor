@@ -60,6 +60,30 @@ current answer screenshot fails the job; retained unreachable historical states 
 findings, not silently passed tests. A successful capture is evidence collection,
 not a visual-quality approval.
 
+## Exact source fonts (`CAPTURE_FONT_MODE=exact`)
+
+`prepare-font-cache.mjs` runs once per cell in a disposable, network-bridged CI container
+(never inside the offline capture container) and fetches only the one stylesheet named in
+`app/src/index.css` plus the WOFF2 resources that stylesheet declares. Its allow-list is
+the provenance guarantee: the runtime later serves a font only when the browser asks for
+the exact URL the stylesheet named, and `font-provenance.json` (the cache manifest)
+records every URL with the hash of the bytes it resolved to. Nothing is substituted,
+rewritten, redirected or fetched from another origin; a refused shape stops the cell.
+
+Google Fonts is observed to serve the same family through two URL shapes, and the choice
+is not deterministic across requests (the Hebrew kits flipped between them on 28 Oct 2026):
+
+| Shape | Form | Recorded as |
+|---|---|---|
+| static | `https://fonts.gstatic.com/s/<family>/v<n>/<file>.woff2`, no query | `shape: "static"` |
+| kit | `https://fonts.gstatic.com/l/font?kit=<id>&skey=<16 hex>&v=v<n>`, exactly those keys | `shape: "kit"` |
+
+Both are canonical: same origin, no credentials, no fragment, URL equals its parsed
+form. The kit shape is accepted only with that key set and those value classes; any other
+path, query key, value shape or origin is still `FONT_RESOURCE_URL_DENIED`, diagnosed by
+key names and hashes only (values are never logged). Contract tests:
+`scripts/capture/font-cache.test.ts` and `scripts/captureFonts.test.ts`.
+
 ## Local verification without starting browsers
 
 From `app`, run one file at a time:

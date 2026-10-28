@@ -57,7 +57,7 @@ describe('source-font cache contracts, stubbed fetch only', () => {
     const resources = [['css', SOURCE_CSS_URL, Buffer.from(css)], ['woff2', url, Buffer.from('wOF2synthetic-test-only')]].map(([kind, url, body]: any[]) => {
       const hash = sha256(body); const file = `${hash}.${kind}`;
       writeFileSync(path.join(dir, file), body);
-      return { kind, url, sha256: hash, file, size: body.length };
+      return { kind, url, sha256: hash, file, size: body.length, ...(kind === 'woff2' ? { shape: 'static' } : {}) };
     });
     const manifest = { schema: 1, mode: 'exact', cssUrl: SOURCE_CSS_URL, sourceCssSha256: sha256(source), resources, userAgent: chromiumUserAgent('140.0.0.0') };
     try {
