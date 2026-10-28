@@ -622,7 +622,7 @@ export const companionHe = {
   "companion.input.attached-to-this-turn-original-not-saved": "נותח בשיחה זו · המקור לא נשמר",
   "companion.input.finish-dictating": "סיום ההכתבה",
   "companion.input.dictate-your-moment": "להכתיב את הרגע",
-  "companion.input.keeping": "שומר…",
+  "companion.input.keeping": "שומרים…",
   "companion.input.keep-this-advice": "לשמור את העצה",
   "companion.input.making-sense-of-it": "נעשה סדר",
   "companion.input.select-the-text-to-copy-it": "אפשר לבחור ולהעתיק את הטקסט",
