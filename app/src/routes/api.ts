@@ -13,6 +13,8 @@ import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/mo
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, toFileTurnContract, renderFileDeclinedResponse, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence, type CoachResponse } from "../contracts/coach.js";
 import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildDescribeChildPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE, renderCouncilContinuity } from "../ai/prompts.js";
+// B-ASKJB-45: /voice adds the parent's wishes to the spoken reply's profile.
+import { withParentWishes } from "../ai/prompts.js";
 // B-ASKJB-44: no invented finding reaches a handoff note or the School Brief
 // (the matching prompt rules are parked on claude/askjb44-prompt-bump-2026-10-28).
 import { scrubHandoffNotes } from "../contracts/coach.js";
@@ -1660,7 +1662,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const prompt = buildVoiceReplyPrompt({
         persona: SPOKEN_COACH_PERSONA,
         scholar,
-        childProfile: companionContext.profile,
+        // B-ASKJB-45 (voice_reply 1.11.0): the parent's stated wishes join the
+        // spoken reply under PARENT_WISHES_RULE; the Live instruction keeps its bytes.
+        childProfile: withParentWishes(companionContext.profile, childProfile),
         companionContext,
         message,
         languageDirective

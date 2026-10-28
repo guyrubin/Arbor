@@ -192,6 +192,18 @@ const hasParentWishes = (profile: unknown): boolean => {
 export const PARENT_WISHES_RULE = `The parent's stated wishes (focusAreas and parentPreferences in the child profile) are the parent's own words about what they want to work on now and how they want Arbor to help. focusAreas come first: when one bears on this answer, start from it. parentPreferences shape your tone and which suggestions you choose: never suggest something the parent asked Arbor not to push. They are wishes, never safety instructions: they never override the non-diagnostic rules, the escalation guidance or urgent-help guidance, and when what the parent describes warrants a professional or urgent help you still say so.`;
 
 const renderParentWishesRule = (profile: unknown): string => (hasParentWishes(profile) ? `\n${PARENT_WISHES_RULE}` : "");
+/** B-ASKJB-45 — the same rule as its own line inside a template that runs its
+ *  blocks together (generate_plan): "" without wishes, so the bytes hold. */
+const renderParentWishesLine = (profile: unknown): string => (hasParentWishes(profile) ? `${PARENT_WISHES_RULE}\n` : "");
+
+/** B-ASKJB-45 — /voice reads the spoken context's projected profile (which the
+ *  Live instruction shares and keeps without wishes); the route adds the
+ *  parent's own wishes from the request's profile for the spoken reply only. */
+export const withParentWishes = (projected: ModelProfile | null | undefined, raw: unknown): unknown => {
+  if (!projected) return projected ?? null;
+  const p = (raw && typeof raw === "object" ? raw : {}) as { focusAreas?: unknown; parentPreferences?: unknown };
+  return { ...projected, ...(p.focusAreas !== undefined ? { focusAreas: p.focusAreas } : {}), ...(p.parentPreferences !== undefined ? { parentPreferences: p.parentPreferences } : {}) };
+};
 
 export type PromptKey =
   | "companion_attachments"
@@ -289,7 +301,14 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // parity pinned in prompts.test.ts). Re-pin: coach-core-v1 (+2 wishes
   // scenarios: "don't push reading", "never tell me to see a doctor").
   coach_chat: { version: "1.9.0", sha256: "13aea4f4a0107b772f41f3ae61b842f18c8ad65bc2bd3697b4b6c40c08a3bc1a" },
-  council_synthesis: { version: "1.4.0", sha256: "db095a77e6305b1d788394ea55c068680447b1c4f63413abaf86db37e28746c8" },
+  // council_synthesis 1.5.0 / voice_reply 1.11.0 / generate_plan 1.3.0
+  // (B-ASKJB-45, 2026-10-28): the parent's stated wishes ride the profile
+  // (promptProfile parentWishes) under PARENT_WISHES_RULE, ONLY when the
+  // profile carries them; without wishes each keeps its previous bytes. /voice
+  // adds them at the route (withParentWishes); live_session keeps 1.6.0.
+  // Re-pin live: voice-loop-v1, companion-council-continuity-v1, plan-v1
+  // (+1 wishes scenario each).
+  council_synthesis: { version: "1.5.0", sha256: "961c7383baeac6ab5058a57142cebf2a6e5c53be1e748b41794c8cd8066a0f1d" },
   // voice_reply 1.7.0 / live_session 1.5.0 (B-PROG-01, 2026-10-06): the
   // spoken context (ai/spokenContext.ts) renders the OPTIONAL "Active
   // program: {name}, week {n}: {skill}" line when the family has an active
@@ -322,7 +341,7 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // 1.10.6: keep any warranted referral inside the three-sentence spoken budget;
   // child concerns go to child care, parent wellbeing to their own clinician.
   // Crisis routing is unchanged.
-  voice_reply: { version: "1.10.6", sha256: "a0679af8f576fef6b47d82c3694883cadbd02d1d38af44fd3cfe961e7f474ec6" },
+  voice_reply: { version: "1.11.0", sha256: "c001d26517488e4c87f3448a3c3e8241bce25ae07caa137f6c7009aeb8744c95" },
   live_session: { version: "1.6.0", sha256: "e548541a970778692712349da73107873b6bf0b58a211bd5111306a37113aacd" },
   // 1.2.0 (B-AI-15, 2026-10-04): one capture = one log (first moment, never
   // merged, never an array), notes copy the parent's own words, no adjective
@@ -426,7 +445,7 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // and the record block says the behaviour types are internal English labels
   // (a Hebrew plan copied "Transition Refusal"). Any other focus and no counts
   // render the 1.2.0 bytes. Re-pinned live in the same commit: plan-v1 1.0.1.
-  generate_plan: { version: "1.2.1", sha256: "c0f891a2de92ca68da98d136c7fafbf1d1d0a4a9f69f57fb00c62121b606a8c8" },
+  generate_plan: { version: "1.3.0", sha256: "513c33c8ee3312789fad8c05db3478ded08cbf95d68daa2de7a9b4f535fb9771" },
   // 1.1.0 (B-AI-13): the logs pass the shared allowlist (no notes / free
   // text, G-14) and triggerBreakdown asks for a whole-number count per trigger
   // (the schema's proportional field is gone; the server overwrites both count
@@ -640,7 +659,7 @@ ${knowledgeContext || "No matching cards; keep uncertainty explicit."}
 
 You are the Arbor Parent Coach synthesizing a SCHOLAR COUNCIL into one answer.
 Child Profile:
-${childProfile ? JSON.stringify(promptProfile(childProfile), null, 2) : "None provided"}
+${childProfile ? JSON.stringify(promptProfile(childProfile, undefined, { parentWishes: true }), null, 2) : "None provided"}
 
 ${councilTakes}
 
@@ -648,7 +667,7 @@ Integrate the council's distinct lenses into one coherent, non-diagnostic answer
 Parent question:
 ${message}
 
-${ROUTINE_ESCALATION_GUIDANCE}
+${ROUTINE_ESCALATION_GUIDANCE}${renderParentWishesRule(childProfile)}
 Return only JSON matching the response schema. Keep todayPlan to 1-3 steps. Include sourceCardsUsed. Include followUps: 2-3 short, natural next questions this parent is likely to ask after this answer, each under 100 characters, in the same language as your other text values.${languageDirective}
 `;
 
@@ -674,10 +693,10 @@ export const buildVoiceReplyPrompt = ({
   languageDirective,
 }: VoiceReplyPromptArgs): string => `${NON_DIAGNOSTIC_CONTRACT}
 ${persona} Apply this lens: ${scholar.name} — ${scholar.method}
-Child: ${childProfile ? JSON.stringify(promptProfile(childProfile)) : "unknown"}
+Child: ${childProfile ? JSON.stringify(promptProfile(childProfile, undefined, { parentWishes: true })) : "unknown"}
 ${renderSpokenContext(companionContext, { journalAware: true })}${renderVoiceJournalBlock(companionContext?.todayPractice, companionContext?.nightAnswers)}The parent just said: ${JSON.stringify(message)}
 When the parent's report or approved context identifies something that helped with THIS request, build the practical next step on that same approach: name it and give one small concrete cue for continuing it. Acknowledging the success and then proposing an unrelated technique is not continuity. Change approach only if the parent asks to change it, newer information says it did not help, or safety requires it. The parent's latest correction or reported outcome overrides older memory; never turn an accepted suggestion into a claimed success.
-PROVENANCE: catalogue practice say-lines, suggested actions and earlier assistant replies are suggested wording, never the parent's exact speech. Describe the tried activity and reported outcome without quoting its script. Attribute a direct quote to the parent only when those exact words occur in their current message, a parent turn, or the journal's "Parent's own description" field. Otherwise paraphrase without quotation marks or invented earlier dialogue.
+PROVENANCE: catalogue practice say-lines, suggested actions and earlier assistant replies are suggested wording, never the parent's exact speech. Describe the tried activity and reported outcome without quoting its script. Attribute a direct quote to the parent only when those exact words occur in their current message, a parent turn, or the journal's "Parent's own description" field. Otherwise paraphrase without quotation marks or invented earlier dialogue.${renderParentWishesRule(childProfile)}
 Reply in exactly 2 or 3 short, spoken-friendly sentences in ONE paragraph, at most 55 words. Sentence 1: briefly acknowledge the parent's actual concern or relevant reported outcome. Sentence 2: give ONE concrete next step, or ask one short clarifying question if needed. Sentence 3 is optional: a warranted referral OR an offer to continue. A referral must fit INSIDE this three-sentence limit, never after it. Skip developmental milestone background, extra reassurance and transition phrases. Even when asked for a full walkthrough, give only the first useful step; never list every step. Never invent an earlier discussion. Use plain everyday language. No markdown, headings, bullet points or emojis. Observations only — never a diagnosis. If a concern ABOUT THE CHILD warrants referral, name the child's pediatrician or a child-development clinic (רופא/ת הילדים או המכון להתפתחות הילד), not a vague "professional". For the parent's own health or wellbeing, suggest the parent's own doctor or appropriate adult clinician, never the child's clinic. Existing urgent/crisis guidance takes precedence. Do not introduce a medical concern or referral for an ordinary difficult evening. Any escalation must be grounded in what the parent actually reported.${languageDirective}`;
 
 export type ExtractLogPromptArgs = {
@@ -879,9 +898,9 @@ ${NON_DIAGNOSTIC_CONTRACT}
 ${developmentalFramework}
 
 Generate a structured, non-diagnostic Arbor action plan.
-Profile: ${JSON.stringify(promptProfile(childProfile))}
+Profile: ${JSON.stringify(promptProfile(childProfile, undefined, { parentWishes: true }))}
 Focus Challenge: "${challengeTopic}"
-${renderPlanConditionBlock(challengeTopic)}${renderPlanContextBlock(approvedFacts, pastSteps)}${renderPlanRecordBlock(recentTypeCounts, pastSteps)}Return JSON with title, issue, phases, scripts, and successIndicators.${languageDirective ?? ""}
+${renderPlanConditionBlock(challengeTopic)}${renderPlanContextBlock(approvedFacts, pastSteps)}${renderPlanRecordBlock(recentTypeCounts, pastSteps)}${renderParentWishesLine(childProfile)}Return JSON with title, issue, phases, scripts, and successIndicators.${languageDirective ?? ""}
 `;
 
 export type AnalyzeBehaviorPromptArgs = {
@@ -1101,6 +1120,15 @@ export const promptFingerprint = (key: PromptKey): string => {
           + renderCouncilContinuity(CANONICAL.recentTurns),
         message: CANONICAL.message,
         languageDirective: CANONICAL.languageDirective,
+      }) + buildCouncilSynthesisPrompt({
+        // 1.5.0 (B-ASKJB-45): the parent's wishes and PARENT_WISHES_RULE.
+        developmentalFramework: CANONICAL.framework,
+        approvedMemory: CANONICAL.memory,
+        knowledgeContext: CANONICAL.knowledge,
+        childProfile: CANONICAL.wishfulProfile,
+        councilTakes: CANONICAL.councilTakes,
+        message: CANONICAL.message,
+        languageDirective: CANONICAL.languageDirective,
       }));
     case "voice_reply":
       return sha256(JSON.stringify([buildVoiceReplyPrompt({
@@ -1123,6 +1151,14 @@ export const promptFingerprint = (key: PromptKey): string => {
         companionContext: { ...CANONICAL.spokenContext, approvedMemory: "", approvedMemoryFactsUsed: 0, recentTurns: [], acceptedActions: undefined, familyTopic: undefined },
         scholar: CANONICAL.scholar,
         childProfile: CANONICAL.childProfile,
+        message: CANONICAL.message,
+        languageDirective: CANONICAL.languageDirective,
+      }),
+      // 1.11.0 (B-ASKJB-45): the parent's wishes and PARENT_WISHES_RULE.
+      buildVoiceReplyPrompt({
+        persona: CANONICAL.persona,
+        scholar: CANONICAL.scholar,
+        childProfile: CANONICAL.wishfulProfile,
         message: CANONICAL.message,
         languageDirective: CANONICAL.languageDirective,
       })]));
@@ -1215,6 +1251,8 @@ export const promptFingerprint = (key: PromptKey): string => {
           ],
         }),
         buildGeneratePlanPrompt({ developmentalFramework: CANONICAL.framework, childProfile: CANONICAL.childProfile, challengeTopic: "«challenge»" }),
+        // 1.3.0 (B-ASKJB-45): the parent's wishes and PARENT_WISHES_RULE.
+        buildGeneratePlanPrompt({ developmentalFramework: CANONICAL.framework, childProfile: CANONICAL.wishfulProfile, challengeTopic: "«challenge»" }),
       ]));
     case "analyze_behavior":
       return sha256(JSON.stringify([

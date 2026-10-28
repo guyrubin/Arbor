@@ -255,12 +255,15 @@ describe("voice-loop-v1 — suite schema (EVAL-1 compatibility)", () => {
       "live-happy-path-he",
       "live-long-answer-cadence-en",
       "live-register-he",
+      // B-ASKJB-45 (voice_reply 1.11.0): the parent's stated wish rides the runner's synthetic profile.
+      "live-wishes-no-reading-en",
     ]);
     for (const s of live) {
       expect(s.route, s.id).toBe("/api/voice");
       expect(typeof s.input.parentMessage, s.id).toBe("string");
       // Nothing a live route cannot receive: no stub, no scripted stream, no screening-down condition.
-      for (const key of Object.keys(s.input)) expect(["parentMessage", "recentTurns"], `${s.id}.${key}`).toContain(key);
+      // parentPreferences: the runner puts the parent's wishes on the profile the route receives (eval-judge syntheticProfileFor).
+      for (const key of Object.keys(s.input)) expect(["parentMessage", "recentTurns", "parentPreferences"], `${s.id}.${key}`).toContain(key);
       if (s.locale === "he") expect(HEBREW.test(s.input.parentMessage), s.id).toBe(true);
     }
     expect(new Set(live.map((s: { locale: string }) => s.locale))).toEqual(new Set(["en", "he"]));

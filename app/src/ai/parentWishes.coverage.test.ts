@@ -18,7 +18,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildChatPrompt, buildTodaysFocusPrompt, PARENT_WISHES_RULE } from "./prompts";
+import { buildChatPrompt, buildCouncilSynthesisPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, buildVoiceReplyPrompt, PARENT_WISHES_RULE, withParentWishes, promptProfile } from "./prompts";
 
 const SRC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const FILES = ["ai/prompts.ts", "routes/api.ts", "server/companionContext.ts"];
@@ -30,9 +30,10 @@ const PARKED = "claude/askjb45-prompt-bump-2026-10-28 (voice_reply 1.11.0 · cou
 const PARENT_WISHES_COVERAGE: Readonly<Record<string, Coverage>> = {
   "ai/prompts.ts:buildChatPrompt": { kind: "wishes" },
   "ai/prompts.ts:buildTodaysFocusPrompt": { kind: "wishes" },
-  "ai/prompts.ts:buildCouncilSynthesisPrompt": { kind: "pending", row: "B-ASKJB-45", parked: PARKED },
-  "ai/prompts.ts:buildVoiceReplyPrompt": { kind: "pending", row: "B-ASKJB-45", parked: PARKED },
-  "ai/prompts.ts:buildGeneratePlanPrompt": { kind: "pending", row: "B-ASKJB-45", parked: PARKED },
+  // B-ASKJB-45 (council_synthesis 1.5.0 · voice_reply 1.11.0 · generate_plan 1.3.0).
+  "ai/prompts.ts:buildCouncilSynthesisPrompt": { kind: "wishes" },
+  "ai/prompts.ts:buildVoiceReplyPrompt": { kind: "wishes" },
+  "ai/prompts.ts:buildGeneratePlanPrompt": { kind: "wishes" },
   "ai/prompts.ts:buildExtractLogPrompt": { kind: "outside", why: "turns the parent's description into one log; no advice" },
   "ai/prompts.ts:buildAnalyzeBehaviorPrompt": { kind: "outside", why: "\"Find a pattern\" over the moments already kept (counts); not an answer route of B-ASKJB-45" },
   "routes/api.ts:/council": { kind: "outside", why: "the scholars' lens takes; the council synthesis is the answer the parent reads" },
@@ -41,7 +42,7 @@ const PARENT_WISHES_COVERAGE: Readonly<Record<string, Coverage>> = {
   "routes/api.ts:/vision": { kind: "outside", why: "describes a photo or document the parent sent" },
   "routes/api.ts:/generate-handoff": { kind: "outside", why: "a note for a teacher restating what the parent reported (B-ASKJB-44)" },
   "routes/api.ts:/digest": { kind: "outside", why: "the weekly recap from the week's counts" },
-  "server/companionContext.ts:assembleCompanionContext": { kind: "outside", why: "the spoken context's profile; the Live instruction keeps its own bytes and /voice adds the wishes at the route once B-ASKJB-45 ships" },
+  "server/companionContext.ts:assembleCompanionContext": { kind: "outside", why: "the spoken context's profile; the Live instruction keeps its own bytes and /voice adds the wishes at the route (withParentWishes)" },
 };
 
 const strip = (code: string) => code.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " ")).replace(/(^|[^:"'`\\])\/\/.*$/gm, (m, p1) => p1 + " ".repeat(m.length - p1.length));
@@ -87,15 +88,15 @@ describe("B-ASKJB-45 · every prompt that meets a child profile is classified fo
     for (const [key, c] of Object.entries(PARENT_WISHES_COVERAGE)) {
       if (!key.startsWith("ai/prompts.ts:")) continue;
       const fn = body(key.slice("ai/prompts.ts:".length));
-      const optsIn = /promptProfile\([^)]*\{ parentWishes: true \}\)/.test(fn) && /renderParentWishesRule\(/.test(fn);
+      const optsIn = /promptProfile\([^)]*\{ parentWishes: true \}\)/.test(fn) && /renderParentWishes(?:Rule|Line)\(/.test(fn);
       if (c.kind === "wishes") expect(optsIn, key).toBe(true);
       if (c.kind === "pending") expect(optsIn, `${key} opts in: move it to "wishes" (the pending list only shrinks)`).toBe(false);
     }
   });
 
-  it("the pending list only shrinks: B-ASKJB-45's three answer routes, nothing else", () => {
+  it("the pending list only shrinks: B-ASKJB-45 emptied it", () => {
     const pending = Object.entries(PARENT_WISHES_COVERAGE).filter(([, c]) => c.kind === "pending").map(([k]) => k).sort();
-    expect(pending.length).toBeLessThanOrEqual(3);
+    expect(pending).toEqual([]);
     for (const k of pending) expect(["ai/prompts.ts:buildCouncilSynthesisPrompt", "ai/prompts.ts:buildGeneratePlanPrompt", "ai/prompts.ts:buildVoiceReplyPrompt"]).toContain(k);
   });
 
@@ -108,6 +109,26 @@ describe("B-ASKJB-45 · every prompt that meets a child profile is classified fo
     expect(focus).toContain("Calmer mornings");
     const plain = buildChatPrompt({ developmentalFramework: "F", approvedMemory: "", knowledgeContext: "", childProfile: { id: "c", name: "N", age: 4 }, scholar: { name: "s", concept: "c", method: "m", defaultFrame: "f" }, message: "m", languageDirective: "" });
     expect(plain).not.toContain(PARENT_WISHES_RULE);
+  });
+
+  it("B-ASKJB-45: voice, council and plans carry the words and the rule; without wishes no rule renders", () => {
+    const wishful = { id: "c", name: "N", age: 4, parentPreferences: [{ words: "Don't push reading" }], focusAreas: [{ words: "Calmer mornings", domainId: "feelings" }] };
+    const plainProfile = { id: "c", name: "N", age: 4 };
+    const council = (childProfile: unknown) => buildCouncilSynthesisPrompt({ developmentalFramework: "F", approvedMemory: "", knowledgeContext: "", childProfile, councilTakes: "T", message: "m", languageDirective: "" });
+    const voice = (childProfile: unknown) => buildVoiceReplyPrompt({ persona: "P", scholar: { name: "s", method: "m" }, childProfile, message: "m", languageDirective: "" });
+    const plan = (childProfile: unknown) => buildGeneratePlanPrompt({ developmentalFramework: "F", childProfile, challengeTopic: "mornings" });
+    for (const build of [council, voice, plan]) {
+      const withWishes = build(wishful);
+      expect(withWishes).toContain("Don't push reading");
+      expect(withWishes).toContain("Calmer mornings");
+      expect(withWishes).toContain(PARENT_WISHES_RULE);
+      expect(build(plainProfile)).not.toContain(PARENT_WISHES_RULE);
+    }
+    // /voice: the projected spoken profile gains the request's wishes; no profile stays none.
+    const spoken = withParentWishes(promptProfile(plainProfile), wishful);
+    expect(voice(spoken)).toContain("Don't push reading");
+    expect(withParentWishes(null, wishful)).toBeNull();
+    expect(withParentWishes(promptProfile(plainProfile), plainProfile)).toEqual(promptProfile(plainProfile));
   });
 
   it("the rule keeps safety above the wishes", () => {

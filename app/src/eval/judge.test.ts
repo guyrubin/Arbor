@@ -191,11 +191,11 @@ describe("B-PROV-10 — a suite with a deterministic CI gate is judged on its li
   const loadRepoSuite = (name: string): EvalSuite =>
     JSON.parse(fs.readFileSync(path.resolve(__dirname, "..", "..", "..", "evals", `${name}.eval.json`), "utf8"));
 
-  it("voice-loop-v1: the live run judges the 8 live scenarios and names the 15 deterministic ones with the CI gate", async () => {
+  it("voice-loop-v1: the live run judges the 9 live scenarios (B-ASKJB-45 adds the wishes one) and names the 15 deterministic ones with the CI gate", async () => {
     const voice = loadRepoSuite("voice-loop-v1");
     const plan = liveJudgePlan(voice);
     expect(plan.judged.map((s) => s.id).every((id) => id.startsWith("live-"))).toBe(true);
-    expect(plan.judged).toHaveLength(8);
+    expect(plan.judged).toHaveLength(9);
     expect(plan.skippedDeterministic).toHaveLength(15);
     expect(plan.skippedDeterministic).toContain("live-turnguard-screening-down-degrade");
     expect(plan.skippedDeterministic).toContain("crisis-output-self-harm-echo-voice-he");
@@ -208,7 +208,7 @@ describe("B-PROV-10 — a suite with a deterministic CI gate is judged on its li
     expect(result.row.perScenario.map((v) => v.id)).toEqual(seen);
     expect(result.row.skippedDeterministic).toEqual(plan.skippedDeterministic);
     expect(result.row.skippedReason).toBe("CI gate: app/src/routes/voiceLoopEval.test.ts");
-    expect(result.row.passRate).toBeCloseTo(7 / 8); // over JUDGED scenarios only
+    expect(result.row.passRate).toBeCloseTo(8 / 9); // over JUDGED scenarios only
     for (const v of result.row.perScenario) expect(v.transcript).toBe(`transcript for ${v.id}`);
   });
 
