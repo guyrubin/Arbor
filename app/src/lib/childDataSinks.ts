@@ -192,8 +192,9 @@ export const STORAGE_PREFIXES: Readonly<Record<"storage:photos" | "storage:books
 };
 
 /** Every module that reads or writes Firebase Storage, with what it touches.
- *  `account` = the whole users/{uid}/ prefix on account deletion. */
-export const STORAGE_MODULES: Readonly<Record<string, readonly ("storage:photos" | "storage:books" | "account" | "init")[]>> = {
+ *  `account` = the whole users/{uid}/ prefix on account deletion; `shared` = a
+ *  non-child prefix that holds no family data. */
+export const STORAGE_MODULES: Readonly<Record<string, readonly ("storage:photos" | "storage:books" | "account" | "init" | "shared")[]>> = {
   "lib/firebase.ts": ["init"],
   "lib/storage.ts": ["storage:photos"],
   "routes/api.ts": ["storage:photos", "storage:books"],
@@ -202,6 +203,8 @@ export const STORAGE_MODULES: Readonly<Record<string, readonly ("storage:photos"
   "server/bookAssetExport.ts": ["storage:books"],
   "server/bookSheet.ts": ["storage:books"],
   "server/bookNarration.ts": ["storage:books"],
+  "server/planNarration.ts": ["storage:books"],
+  "server/planPlates.ts": ["shared"], // Everyday Plans plates: a shared, non-child prefix in the child-assets bucket (planPlates.ts PLAN_PLATE_PREFIX)
 };
 
 /** Every IndexedDB database the app opens (by name) and the sink for it. The
@@ -250,6 +253,7 @@ export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.firstSteps": "legacy onboarding marker (read once, then removed)",
   "arbor.flags.guidedTier": "feature flag",
   "arbor.flags.homeProgramLink": "feature flag",
+  "arbor.flags.programPilot": "feature flag (B-PROG-15: show the pilot line)",
   "arbor.flags.sneakFreeze": "feature flag",
   "arbor.gate.mathExit": "parent gate state",
   "arbor.gate.pinNudgeShown": "parent gate marker",
