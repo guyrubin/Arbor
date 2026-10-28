@@ -6,10 +6,9 @@ import { describe, expect, it, vi } from "vitest";
 
 /* B-PROG-09 (read link, client) — the professional's read-only link to the
    home program. The page renders ONLY the home program's section and only
-   when the SERVER's resolved scopes carry `home-program-adherence`; today's
-   server drops the scope (not in SHARE_SCOPE_IDS: fail closed), so the page
-   is unreachable and the grant card stays OFF until the server mirror lands
-   (REJECTIONS P6-PRACTICE 8 Oct). Consent sentence EN + HE; revocable in place. */
+   when the SERVER's resolved scopes carry `home-program-adherence` (the
+   server mirror landed 28 Oct); the grant card waits for the pilot device
+   flag. Consent sentence EN + HE; revocable in place. */
 
 const state = vi.hoisted(() => ({ lang: "en" as "en" | "he" }));
 vi.mock("../../context/LanguageContext", async () => {
@@ -42,17 +41,18 @@ const sections = [
 ];
 
 describe("B-PROG-09 read link · the gate (never a dead or an open door)", () => {
-  it("the scope is pending the server: not a recognised scope today, so the server drops it (fail closed)", () => {
+  it("the server enforces the scope now (server/sharedPacket.homeProgram.test.ts proves 200 / 403 / revoke)", () => {
     expect(HOME_PROGRAM_SCOPE_ID).toBe("home-program-adherence");
-    expect((SHARE_SCOPE_IDS as readonly string[]).includes(HOME_PROGRAM_SCOPE_ID)).toBe(false);
-    expect(normalizeScopes([HOME_PROGRAM_SCOPE_ID])).toEqual([]);
-    expect(HOME_PROGRAM_SCOPE_SERVER_READY).toBe(false);
+    expect((SHARE_SCOPE_IDS as readonly string[]).includes(HOME_PROGRAM_SCOPE_ID)).toBe(true);
+    expect(normalizeScopes([HOME_PROGRAM_SCOPE_ID])).toEqual([HOME_PROGRAM_SCOPE_ID]);
+    expect(HOME_PROGRAM_SCOPE_SERVER_READY).toBe(true);
   });
 
-  it("the grant card is OFF until the server is ready, even with the pilot flag set", () => {
-    expect(homeProgramLinkOn({ storage: flagOn })).toBe(false);
+  it("the grant card waits for the pilot device flag; a server that does not enforce keeps it OFF", () => {
+    expect(homeProgramLinkOn({ storage: null })).toBe(false);
+    expect(homeProgramLinkOn({ storage: flagOn })).toBe(true);
+    expect(homeProgramLinkOn({ serverReady: false, storage: flagOn })).toBe(false);
     expect(homeProgramLinkOn({ serverReady: true, storage: null })).toBe(false);
-    expect(homeProgramLinkOn({ serverReady: true, storage: flagOn })).toBe(true);
   });
 });
 
@@ -77,6 +77,14 @@ describe("B-PROG-09 read link · the read-only page renders the home program and
       expect(loopFirewallHits(plain)).toEqual([]);
     });
   }
+
+  it("HE: a keyed line from the server reads in Hebrew (the server builds it in English)", () => {
+    state.lang = "he";
+    const keyed = [{ id: HOME_PROGRAM_SECTION_ID, items: [{ id: "k1", text: "Name the toy, then wait: done on 2 days", textKey: "elev.homeProgram.packet.exercise", vars: { text: "Name the toy, then wait", n: 2 } }] }];
+    const plain = text(renderToStaticMarkup(<HomeProgramAdherenceView view={{ scopes: [HOME_PROGRAM_SCOPE_ID], sections: keyed }} />));
+    expect(plain).toContain(translate("he", "elev.homeProgram.packet.exercise", { text: "Name the toy, then wait", n: 2 }));
+    expect(plain).not.toContain("done on 2 days");
+  });
 
   it("without the scope the page renders nothing at all", () => {
     state.lang = "en";
@@ -113,5 +121,7 @@ describe("B-PROG-09 read link · the grant card (consent, revocable in place)", 
     expect(src).toMatch(/scopes: \[HOME_PROGRAM_SCOPE_ID\], duration: "until_revoked"/);
     expect(src).toMatch(/sharedViewMode\(view\) === "home-program" && <HomeProgramAdherenceView view=\{view\} \/>/);
     expect(src).toMatch(/sharedViewMode\(view\) === "packet" && \(/);
+    // the inbound home-program grant opens as the link: the server answers that one scope or 403s
+    expect(src).toContain("api.sharedPacket(g.id, grantsHomeProgram(g.scopes) ? HOME_PROGRAM_SCOPE_ID : undefined)");
   });
 });

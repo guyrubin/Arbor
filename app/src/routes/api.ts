@@ -851,6 +851,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         recipientEmail: email,
         shareStore,
         source: sharedSource,
+        // B-PROG-09: the link's one scope; a scope the grant lacks → 403.
+        requestedScope: typeof req.query.scope === "string" ? req.query.scope : null,
       });
       if (result.status === 200) {
         res.json(result.view);

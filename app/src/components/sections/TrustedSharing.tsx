@@ -15,7 +15,7 @@ import { PageHeader, SectionCard, cardCls, Chip, PASTEL, PastelKey, InitialsTile
 import { ErrorState } from "../ui/ErrorState";
 import { REPORTS } from "./Reports";
 import { isProfessionalReportType } from "../../lib/reportExport";
-import { HOME_PROGRAM_SCOPE_ID, REPORT_SCOPE_BY_TYPE, WEEK_SHARE_SCOPES, WEEK_SHARE_DURATION, type ShareScopeId, scopeDisplayLabels, shareScopeLabelKey } from "../../lib/shareScopes";
+import { HOME_PROGRAM_SCOPE_ID, grantsHomeProgram, REPORT_SCOPE_BY_TYPE, WEEK_SHARE_SCOPES, WEEK_SHARE_DURATION, type ShareScopeId, scopeDisplayLabels, shareScopeLabelKey } from "../../lib/shareScopes";
 import { fmtDay } from "../../lib/formatDate";
 import CoParentInvite from "../sharing/CoParentInvite";
 import { coParentLink } from "../../lib/coParentApi";
@@ -395,7 +395,9 @@ export default function TrustedSharing() {
     setViewError(null);
     setViewLoading(true);
     try {
-      setView(await api.sharedPacket(g.id));
+      // B-PROG-09: a home-program grant opens as the home-program link — the
+      // server answers that one scope or 403s.
+      setView(await api.sharedPacket(g.id, grantsHomeProgram(g.scopes) ? HOME_PROGRAM_SCOPE_ID : undefined));
     } catch (e: any) {
       if (e instanceof ApiError && (e.status === 403 || e.status === 404)) {
         // Server says no access NOW (revoked/expired/fail-closed scopes):

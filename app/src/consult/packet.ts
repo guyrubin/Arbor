@@ -29,7 +29,8 @@ import type { ActionLoopEntry } from "../actionLoop/model";
 import { SPLIT_CLINICIAN_PRESETS } from "../content/consultPresets";
 import { programPacketLine, type ProgramPageModel } from "../lib/programPage";
 import { activeGoals, goalForPacket, goalParentLine, type FamilyGoal } from "../lib/goals";
-import { activeHomeEnrolmentFor, homeAdherence, homeProgramGoals } from "../content/programs/homeProgram";
+import { activeHomeEnrolmentFor, activeHomeEnrolments, homeAdherence, homeProgramGoals, homeProgramProfession, type HomeProfession } from "../content/programs/homeProgram";
+import { HOME_PROGRAM_SCOPE_ID } from "../lib/shareScopes";
 import { planBookFromDoc, readPlanBookDoc } from "../lib/library/plans/planBookDoc";
 import { getPattern } from "../lib/library/plans/planBooks";
 
@@ -134,7 +135,9 @@ export interface PacketInputGrowthEntry {
 export type PacketVar =
   | string
   | number
-  | { key: string; vars?: Record<string, PacketVar>; fallback?: string }
+  /** `lowerEn`: the resolved English reads lower-case inside a sentence
+   *  ("Proposed by the occupational therapist"); other languages as written. */
+  | { key: string; vars?: Record<string, PacketVar>; fallback?: string; lowerEn?: true }
   | { list: PacketVar[]; join: "and" | "comma" | "semicolon" }
   | { ageMonths: number }
   | { momentType: string }
@@ -181,7 +184,8 @@ function resolveVar(v: PacketVar, lang: UiLang): string | number {
     const out = translate(lang, v.key, resolveVars(v.vars, lang));
     // A key the dictionary does not carry (a custom domain id) reads as its
     // human fallback, never as the raw key.
-    return out === v.key && v.fallback !== undefined ? v.fallback : out;
+    const read = out === v.key && v.fallback !== undefined ? v.fallback : out;
+    return v.lowerEn && lang === "en" ? read.toLowerCase() : read;
   }
   if ("list" in v) {
     const parts = v.list.map((x) => String(resolveVar(x, lang)));
@@ -329,6 +333,12 @@ export interface BuildPacketInput {
   heldOutcomes?: { at: string; held: "yes" | "no"; child?: "calmer" | "same" | "harder" }[];
   /** B-BOOK-79: the child's Everyday plans (the `books` rows), as counts. */
   everydayPlans?: PacketInputEverydayPlan[];
+  /** B-PROG-09 (read link): the child's `programs` rows and `familyGoals`,
+   *  raw. Read ONLY by the `home-program-adherence` share scope
+   *  (buildSharedScopePacket → homeProgramPacketItems); no other section
+   *  reads them. */
+  homePrograms?: readonly unknown[];
+  familyGoals?: readonly FamilyGoal[];
 }
 
 /* ── LC-17b — ONE input assembler for every packet call site ─────────────────
@@ -414,6 +424,9 @@ export interface RawChildRecord {
   memory: RawPacketMemory[];
   /** B-BOOK-79: the child's `books` rows (Everyday plans), raw; re-validated by the plan row reader. */
   books?: unknown[];
+  /** B-PROG-09 (read link): loaded only for a `home-program-adherence` grant (server/sharedPacket). */
+  programs?: unknown[];
+  familyGoals?: FamilyGoal[];
 }
 
 /** B-BOOK-79: Everyday plans → counts. A row that no longer reads (malformed,
@@ -546,6 +559,9 @@ export function buildPacketInput(record: RawChildRecord, nowMs: number): BuildPa
     })),
     memory: record.memory.map((m) => ({ fact: rawStr(m.fact), status: rawStr(m.status) })),
     everydayPlans: rawEverydayPlans(record.books),
+    // B-PROG-09: passed through raw; homeProgramPacketItems re-validates each row.
+    ...(record.programs ? { homePrograms: record.programs } : {}),
+    ...(record.familyGoals ? { familyGoals: record.familyGoals } : {}),
     nowMs,
   };
 }
@@ -1295,6 +1311,12 @@ export function serializePresetPacket(
  * derived, counts-only section lines do.
  */
 
+/** B-PROG-09 (read link): the ONE section the `home-program-adherence` scope
+ *  (lib/shareScopes HOME_PROGRAM_SCOPE_ID) unlocks — filled by
+ *  homeProgramPacketItems, never through SHARED_SCOPE_SECTIONS (no other
+ *  section may ride this grant). */
+export const HOME_PROGRAM_SECTION_ID = "intake-home-program";
+
 /** Stable share-scope ID → the packet sections it unlocks. FAILS CLOSED: a
  *  scope not in this map (e.g. an unmigrated legacy string) unlocks nothing.
  *  The report_* scopes mirror their audience preset ceilings exactly. */
@@ -1329,8 +1351,12 @@ export function buildSharedScopePacket(
   recipientIsClinician: boolean,
   input: BuildPacketInput
 ): ConsultPacket {
+  // B-PROG-09 (read link): the home-program scope is EXCLUSIVE — a grant that
+  // carries it reads the home program's section and nothing else, whatever
+  // else the stored grant lists (the parent's card sends it alone).
+  const homeProgramGrant = scopes.includes(HOME_PROGRAM_SCOPE_ID);
   const allowed = new Set<string>();
-  for (const scope of scopes) {
+  for (const scope of homeProgramGrant ? [] : scopes) {
     for (const sectionId of SHARED_SCOPE_SECTIONS[scope] ?? []) allowed.add(sectionId);
   }
   // W2-CAREPRO c2 r1: the week grant ("Share {name}'s week") reads the week —
@@ -1348,6 +1374,11 @@ export function buildSharedScopePacket(
       .filter((s) => allowed.has(s.id))
       .map((s) => ({ ...s, items: s.items.filter((it) => keepItem(s.id, it)) })),
   };
+  if (homeProgramGrant) {
+    const items = sharedHomeProgramItems(input.homePrograms ?? [], input.familyGoals ?? [], input.nowMs);
+    if (items.length) capped.sections.push({ id: HOME_PROGRAM_SECTION_ID, title: translate("en", "elev.homeProgram.pro.line"), titleKey: "elev.homeProgram.pro.line", items });
+    allowed.add(HOME_PROGRAM_SECTION_ID);
+  }
   const guardPreset: ConsultPreset = recipientIsClinician
     ? CONSULT_PRESETS.therapist
     : { audience: "teacher", sections: [...allowed], dataCeiling: CONSULT_PRESETS.teacher.dataCeiling, clinicalTermScan: true };
@@ -1747,6 +1778,68 @@ export function intakeDay(iso: string, lang: UiLang): string {
   return new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short", year: "numeric" }).format(t);
 }
 
+/** B-PROG-09 — the home program a professional gave, as the family keeps it:
+ *  ONE source for the intake packet (the parent's preparation) and the
+ *  professional's read-only link (`home-program-adherence`, the shared view).
+ *  The program line ("Home program · Occupational therapist: week 2 of 4 ·
+ *  practice days 3/7 this week · 5 practice days since 8 Oct 2026"), one line
+ *  per exercise in the family's words with its days, and each goal the
+ *  professional proposed in the family's words with the family's own last
+ *  word. Counts and words only: no %, no rate, no score. [] when this
+ *  profession has no ACTIVE home program.
+ *  `keyed`: the lines also carry `textKey` + `vars`, so a reader in another
+ *  language re-renders them (the shared view is built in English and read in
+ *  the recipient's language); the intake packet is built in the parent's
+ *  language and keeps its plain text. */
+export function homeProgramPacketItems(
+  profession: HomeProfession,
+  homePrograms: readonly unknown[],
+  familyGoals: readonly FamilyGoal[],
+  nowMs: number,
+  lang: UiLang,
+  opts: { keyed?: boolean } = {},
+): PacketItem[] {
+  const home = activeHomeEnrolmentFor(homePrograms, profession);
+  if (!home) return [];
+  const t = (k: string, v?: Record<string, string | number>) => translate(lang, k, v);
+  const keyed = opts.keyed === true;
+  const audienceKey = `elev.carehonesty.consult.audience.${profession}`;
+  const a = homeAdherence(home, new Date(nowMs));
+  const name = t("elev.homeProgram.name", { profession: t(audienceKey) });
+  const proposed = t("elev.homeProgram.goal.proposedBy", { profession: lang === "en" ? t(audienceKey).toLowerCase() : t(audienceKey) });
+  const proposedVar: PacketVar = { key: "elev.homeProgram.goal.proposedBy", vars: { profession: { key: audienceKey, lowerEn: true } } };
+  const item = (id: string, textKey: string, vars: Record<string, PacketVar>, text: string): PacketItem =>
+    keyed ? { id, text, textKey, vars } : { id, text };
+  const lineVars = { n: a.week, total: a.weeks, d: a.daysThisWeek, all: a.daysInAll };
+  return [
+    item(
+      `intake-home-${home.programId}`,
+      "elev.homeProgram.packet.line",
+      { ...lineVars, program: { key: "elev.homeProgram.name", vars: { profession: { key: audienceKey } } }, date: { dayOf: home.startedAt } },
+      t("elev.homeProgram.packet.line", { ...lineVars, program: name, date: intakeDay(`${home.startedAt}T12:00:00`, lang) }),
+    ),
+    ...a.exercises.map((e): PacketItem => {
+      const key = e.days === 0 ? "elev.homeProgram.packet.exercise.none" : e.days === 1 ? "elev.homeProgram.packet.exercise.one" : "elev.homeProgram.packet.exercise";
+      return item(`intake-home-ex-${e.id}`, key, { text: e.text, n: e.days }, t(key, { text: e.text, n: e.days }));
+    }),
+    ...homeProgramGoals(familyGoals, home).map((g): PacketItem => {
+      const line = goalParentLine(g);
+      const key = line.word ? "elev.homeProgram.packet.goal" : "elev.homeProgram.packet.goal.none";
+      const words = line.word ? { text: line.text, word: line.word } : { text: line.text };
+      return item(`intake-home-goal-${g.id}`, key, { ...words, proposed: proposedVar }, t(key, { ...words, proposed }));
+    }),
+  ];
+}
+
+/** B-PROG-09 (read link): every ACTIVE home program of the child, each under
+ *  its own profession — what a `home-program-adherence` grant reads. */
+export function sharedHomeProgramItems(homePrograms: readonly unknown[], familyGoals: readonly FamilyGoal[], nowMs: number): PacketItem[] {
+  return activeHomeEnrolments(homePrograms).flatMap((e) => {
+    const profession = homeProgramProfession(e.programId);
+    return profession ? homeProgramPacketItems(profession, homePrograms, familyGoals, nowMs, "en", { keyed: true }) : [];
+  });
+}
+
 export function buildIntakePacket(profession: IntakeProfession, input: IntakePacketInput): ConsultPacket {
   const lang: UiLang = input.lang ?? "en";
   const t = (k: string, v?: Record<string, string | number>) => translate(lang, k, v);
@@ -1868,27 +1961,7 @@ export function buildIntakePacket(profession: IntakeProfession, input: IntakePac
   //   line per exercise in the family's words with its days, and each goal
   //   the professional proposed in the family's words with the family's own
   //   last word. Counts and words only: no %, no rate, no score here.
-  const home = activeHomeEnrolmentFor(input.homePrograms ?? [], profession);
-  if (home) {
-    const a = homeAdherence(home, new Date(input.nowMs));
-    const name = t("elev.homeProgram.name", { profession: t(`elev.carehonesty.consult.audience.${profession}`) });
-    const proposed = t("elev.homeProgram.goal.proposedBy", { profession: lang === "en" ? t(`elev.carehonesty.consult.audience.${profession}`).toLowerCase() : t(`elev.carehonesty.consult.audience.${profession}`) });
-    const homeItems: PacketItem[] = [
-      { id: `intake-home-${home.programId}`, text: t("elev.homeProgram.packet.line", { program: name, n: a.week, total: a.weeks, d: a.daysThisWeek, all: a.daysInAll, date: intakeDay(`${home.startedAt}T12:00:00`, lang) }) },
-      ...a.exercises.map((e): PacketItem => ({
-        id: `intake-home-ex-${e.id}`,
-        text: t(e.days === 0 ? "elev.homeProgram.packet.exercise.none" : e.days === 1 ? "elev.homeProgram.packet.exercise.one" : "elev.homeProgram.packet.exercise", { text: e.text, n: e.days }),
-      })),
-      ...homeProgramGoals(input.familyGoals ?? [], home).map((g): PacketItem => {
-        const line = goalParentLine(g);
-        return {
-          id: `intake-home-goal-${g.id}`,
-          text: line.word ? t("elev.homeProgram.packet.goal", { text: line.text, proposed, word: line.word }) : t("elev.homeProgram.packet.goal.none", { text: line.text, proposed }),
-        };
-      }),
-    ];
-    section("intake-home-program", "elev.homeProgram.pro.line", homeItems);
-  }
+  section("intake-home-program", "elev.homeProgram.pro.line", homeProgramPacketItems(profession, input.homePrograms ?? [], input.familyGoals ?? [], input.nowMs, lang));
 
   // · Family goals — B-PROG-07: the family's words and the latest mark on the
   //   FAMILY-SET scale (the number + the family's own word for it). Goals are
