@@ -1,7 +1,8 @@
 import React, { useId, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import PracticeCard from "../loop/PracticeCard";
+import PracticeCard, { practiceText } from "../loop/PracticeCard";
+import { startConversationVoice } from "../../lib/companionConversation";
 import NoticeCard from "../loop/NoticeCard";
 import TonightFlow from "../loop/TonightFlow";
 import { NowNoticeRow } from "./NowNoticeRow";
@@ -59,8 +60,23 @@ export function NowPracticeLead({ loop, name, whyText, headerNote, onAdapt, adap
     {/* B-STATUS-01: Arbor may still swap in its pick (B-LOOP-13) — ONE quiet
         line after 400 ms, gone once it answers or the dose is in. */}
     <PendingLine active={choosing && !loop.doseAnswer} testId="now-practice-pending">{t("elev.loop.pending.practice")}</PendingLine>
-    <button type="button" className="companion-text-button now-loop-adapt" onClick={onAdapt}>{adaptLabel}<Icon name="chat_bubble" size={18} /></button>
+    {/* B-VOICE-02: "Talk it through" starts the spoken conversation on this
+        tap; Arbor says the practice's words first (text-to-speech, never the
+        prompt), then listens. Adapting it in writing stays beside it. */}
+    <div className="now-loop-actions">
+      <button type="button" className="companion-text-button" data-testid="now-practice-talk"
+        onClick={() => startConversationVoice({ source: "practice", opening: practiceWords(pick.practice, uiLang === "he" ? "he" : "en", childProfile.gender) })}>
+        {t("companion.input.talk")}<Icon name="graphic_eq" size={18} />
+      </button>
+      <button type="button" className="companion-text-button now-loop-adapt" onClick={onAdapt}>{adaptLabel}<Icon name="chat_bubble" size={18} /></button>
+    </div>
   </>;
+}
+
+/** B-VOICE-02: the words a practice's "Talk it through" says first — its own
+ *  "say" line, else what to do (page language, Hebrew forms by gender). */
+export function practiceWords(practice: Parameters<typeof practiceText>[0], lang: "en" | "he", gender?: string | null): string {
+  return practiceText(practice, "say", lang, gender) || practiceText(practice, "do", lang, gender);
 }
 
 /** No practice for the window: the thinnest shelf's Notice card leads. */
