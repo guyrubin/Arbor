@@ -96,7 +96,7 @@ export default function TellArborMore({ onClose, aspect: openOn = null, mode = "
         <DescribeChild name={name} lang={lang} value={text} onChange={(next) => { setText(next); setEmpty(false); }} disabled={drafting} autoFocus onVoiceText={() => setViaMic(true)}
           aspect={aspect} onAspect={(id) => setAspect((current) => (current === id ? null : id))} opening={opening} voice={mode === "voice"} />
         {/* B-ASKJB-49: the client screen or the route's 409: helplines in the request's language. */}
-        {state.error === "crisis" && <UrgentSupport testId="describe-urgent-support" requestLang={lang} onSafety={() => { onClose(); setActiveTab("safety"); }} />}
+        {state.error === "crisis" && <UrgentSupport testId="describe-urgent-support" requestLang={lang} lead={t("elev.safety.paused")} onSafety={() => { onClose(); setActiveTab("safety"); }} />}
         {state.error === "model" && <p className="describe-note" role="alert">{t("elev.describe.failed")}</p>}
         {empty && <p className="describe-note" role="status">{t("elev.describe.empty")}</p>}
         <div className="describe-footer">

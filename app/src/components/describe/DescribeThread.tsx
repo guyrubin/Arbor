@@ -113,6 +113,6 @@ export default function DescribeThread({ name, lang, session, onAnswer, onSkip, 
     {state.error === "followUp" && <p className="describe-note" role="alert">{t("elev.describe.followUpFailed")}</p>}
     {/* B-ASKJB-49: the client screen or the route's 409: helplines in the
         answer's language, and the door to Safety where the app has one. */}
-    {state.error === "crisis" && <UrgentSupport testId="describe-thread-urgent-support" requestLang={lang} onSafety={onSafety} />}
+    {state.error === "crisis" && <UrgentSupport testId="describe-thread-urgent-support" requestLang={lang} lead={t("elev.safety.paused")} onSafety={onSafety} />}
   </section>;
 }

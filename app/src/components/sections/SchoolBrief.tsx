@@ -362,7 +362,7 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
           danger line and helplines in the request's language; the section's
           own button below stays the one door to Safety. */}
       {escalationBlocked && (
-        <UrgentSupport testId="school-brief-urgent-support" requestLang={uiLang === "he" ? "he" : "en"} className="min-w-0 text-[13px] leading-relaxed text-[var(--arbor-ink)]" />
+        <UrgentSupport testId="school-brief-urgent-support" requestLang={uiLang === "he" ? "he" : "en"} className="min-w-0 rounded-xl border border-[var(--arbor-rule)] px-3 py-2 text-[13px] leading-relaxed text-[var(--arbor-ink)]" />
       )}
       <p className="text-[11.5px] leading-relaxed" style={{ color: MUTED }}>{t("elev.learnCare.brief.escalation.body")}</p>
       <button
