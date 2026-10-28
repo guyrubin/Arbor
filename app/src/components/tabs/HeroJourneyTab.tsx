@@ -9,6 +9,7 @@ import { latestNotedMoment } from "../../lib/bedtimeStories";
 import { storyBuildsShort } from "../../lib/storyBuildsShort";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
+import { Receipt } from "../ui/Receipt";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { api } from "../../lib/api";
 import { normalizeAvatarStyle } from "../../lib/avatarStyle";
@@ -358,6 +359,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const { ref: dialogRef, requestClose } = useDialog({ open: Boolean(kidNav) && immersive && Boolean(activeStory && render), onClose: () => setImmersive(false), returnFocusRef: immersiveTriggerRef });
   const [questionsChecked, setQuestionsChecked] = useState<Record<number, boolean>>({});
   const [saved, setSaved] = useState(false);
+  // B-STATUS-01: the parent's "journey complete" is the ONE receipt line where
+  // the finish button was (the comic's shelf named when it landed there).
+  const [savedOnShelf, setSavedOnShelf] = useState(false);
   // B-KID-127: the parent's explicit "Write a new version" (the only way a kept
   // story is written again; never in Kid Mode, never automatic).
   const [rewriting, setRewriting] = useState(false);
@@ -696,14 +700,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       }
       setSaved(true);
       celebrate({ kind: "complete" });
-      if (!kidMode) {
-        toast(
-          shelved
-            ? (aiLang === "he" ? "המסע הושלם — הסיפור נשמר והקומיקס על המדף" : "Journey complete — story saved and the comic is on the shelf")
-            : (aiLang === "he" ? "המסע הושלם — הסיפור נשמר" : "Journey complete — story saved"),
-          "success",
-        );
-      }
+      if (!kidMode) setSavedOnShelf(shelved);
     } finally {
       finishingRef.current = false;
       setFinishing(false);
@@ -1488,9 +1485,11 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               </button>
             </div>
           ) : (
-            <div className="text-center text-sm font-bold flex items-center justify-center gap-2" style={{ color: "var(--arbor-green-ink)" }}>
-              <Icon name="check" size={16} /> {aiLang === "he" ? `נשמר לסיפור של ${isolate(childProfile.name)}` : `Saved to ${isolate(childProfile.name)}'s story`}
-            </div>
+            <Receipt testId="journey-saved-receipt" tone="ink" strong className="flex justify-center">
+              {savedOnShelf
+                ? (aiLang === "he" ? "המסע הושלם — הסיפור נשמר והקומיקס על המדף" : "Journey complete — story saved and the comic is on the shelf")
+                : (aiLang === "he" ? `המסע הושלם — נשמר לסיפור של ${isolate(childProfile.name)}` : `Journey complete — saved to ${isolate(childProfile.name)}'s story`)}
+            </Receipt>
           )}
         </div>
       )}

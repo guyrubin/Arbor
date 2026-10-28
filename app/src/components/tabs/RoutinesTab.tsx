@@ -6,7 +6,7 @@ import { ProgressBar } from "../ui/kit";
 import { PASTEL } from "../../lib/tokens";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { useToast } from "../../context/ToastContext";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { ROUTINES, routineById, localized } from "../../lib/routines";
 import { isolate } from "../../lib/i18n";
 
@@ -62,7 +62,9 @@ function StepSwitch({ on, tone, label }: { on: boolean; tone: keyof typeof PASTE
 export default function RoutinesTab() {
   const { childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
-  const { toast } = useToast();
+  // B-STATUS-01: the last step answers with ONE receipt line under the steps
+  // (Undo puts that step back), not a vanishing toast.
+  const doneReceipt = useReceiptNote();
 
   const firstName = (childProfile.name || "your child").split(" ")[0];
 
@@ -100,10 +102,17 @@ export default function RoutinesTab() {
       // pressure mechanic (law 3). It now names what happened, to the parent.
       const nowComplete = nextKeys.length === total && total > 0;
       if (!wasOn && nowComplete) {
-        toast(t("routines.doneToast"), "success");
-      }
+        doneReceipt.show({
+          text: t("routines.doneToast"),
+          undo: {
+            label: t("elev.loop.notice.undo"),
+            testId: "routines-receipt-undo",
+            onUndo: () => { doneReceipt.clear(); persist({ ...doneMap, [selected.id]: current }); },
+          },
+        });
+      } else if (wasOn) doneReceipt.clear();
     },
-    [doneMap, selected.id, total, persist, toast, t]
+    [doneMap, selected.id, total, persist, doneReceipt, t]
   );
 
   const resetRoutine = useCallback(() => {
@@ -271,6 +280,8 @@ export default function RoutinesTab() {
             );
           })}
         </div>
+
+        <ReceiptNoteLine note={doneReceipt.note} testId="routines-receipt" className="mt-3" />
 
         {/* Celebration banner — shows only when ALL steps are done. */}
         <AnimatePresence>

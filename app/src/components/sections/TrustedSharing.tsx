@@ -13,6 +13,7 @@ import type { ShareGrant, ShareRole, SharedPacketView } from "../../types";
 import Modal from "../ui/Modal";
 import { PageHeader, SectionCard, cardCls, Chip, PASTEL, PastelKey, InitialsTile } from "../ui/kit";
 import { ErrorState } from "../ui/ErrorState";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { REPORTS } from "./Reports";
 import { isProfessionalReportType } from "../../lib/reportExport";
 import { HOME_PROGRAM_SCOPE_ID, REPORT_SCOPE_BY_TYPE, WEEK_SHARE_SCOPES, WEEK_SHARE_DURATION, type ShareScopeId, scopeDisplayLabels, shareScopeLabelKey } from "../../lib/shareScopes";
@@ -114,6 +115,9 @@ export default function TrustedSharing() {
   const booksCol = useChildCollection<PlanBookDoc>(childProfile.id, "books");
   const { user } = useAuth();
   const { toast } = useToast();
+  // B-STATUS-01: a grant, a home-program link or a revoke answers with ONE
+  // receipt line above the roster it changed (Undo takes a new grant back).
+  const receipt = useReceiptNote();
   const { t, uiLang } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
@@ -298,13 +302,25 @@ export default function TrustedSharing() {
 
   const setScope = (f: ShareScopeId) => setDraft((d) => ({ ...d, scopes: d.scopes.includes(f) ? d.scopes.filter((x) => x !== f) : [...d.scopes, f] }));
 
+  /** B-STATUS-01: Undo on a fresh grant revokes it (the server keeps the
+   *  revoked grant in Sharing history, as any revoke does). */
+  const undoFor = (created: ShareGrant | null | undefined) => created?.id ? {
+    label: t("elev.loop.notice.undo"),
+    testId: "sharing-receipt-undo",
+    onUndo: () => {
+      receipt.clear();
+      setInvite((current) => (current?.email === created.recipientEmail ? null : current));
+      void api.revokeShare(created.id).then(() => load(), () => toast(t("sec.sharing.audit.revokeError"), "error"));
+    },
+  } : null;
+
   /** One grant path for the week card and the custom wizard (same toasts,
    *  same invite hand-off, same seat / paywall handling). */
   const grant = async (g: { email: string; role: ShareRole; scopes: ShareScopeId[]; duration: string }, busyKey: string, onDone: () => void) => {
     setBusy(busyKey);
     try {
-      await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: g.email, role: g.role, scopes: g.scopes, duration: g.duration });
-      toast(t("sec.sharing.audit.shared", { scopes: scopesLabel(g.scopes), email: g.email, role: roleLabel(g.role) }), "success");
+      const created = await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: g.email, role: g.role, scopes: g.scopes, duration: g.duration });
+      receipt.show({ text: t("sec.sharing.audit.shared", { scopes: scopesLabel(g.scopes), email: g.email, role: roleLabel(g.role) }), undo: undoFor(created) });
       setInvite({ email: g.email });
       setSeatInUse(null);
       onDone();
@@ -353,8 +369,8 @@ export default function TrustedSharing() {
   const grantHomeProgram = async (email: string) => {
     setBusy("home-program");
     try {
-      await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: email, role: "professional", scopes: [HOME_PROGRAM_SCOPE_ID], duration: "until_revoked" });
-      toast(t("elev.homeProgram.share.done", { email }), "success");
+      const created = await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: email, role: "professional", scopes: [HOME_PROGRAM_SCOPE_ID], duration: "until_revoked" });
+      receipt.show({ text: t("elev.homeProgram.share.done", { email }), undo: undoFor(created) });
       await load();
     } catch {
       toast(t("sec.sharing.audit.createError"), "error");
@@ -369,7 +385,7 @@ export default function TrustedSharing() {
       await api.revokeShare(g.id);
       // CARE-6: no ephemeral log needed — the reload moves the revoked grant
       // (with its revocation date) into the persistent Sharing history card.
-      toast(t("sec.sharing.audit.revoked", { email: g.recipientEmail }), "success");
+      receipt.show({ text: t("sec.sharing.audit.revoked", { email: g.recipientEmail }) });
       await load();
     } catch (e: any) {
       toast(t("sec.sharing.audit.revokeError"), "error");
@@ -586,6 +602,7 @@ export default function TrustedSharing() {
           )}
         </section>
       )}
+      <ReceiptNoteLine note={receipt.note} testId="sharing-receipt" />
       {invite && (
         <div data-testid="share-invite" className="border-y py-4 flex flex-wrap items-center gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
           <span className="text-sm font-bold break-all" dir="auto" style={{ color: "var(--arbor-ink)" }}>{invite.email}</span>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { useLanguage } from "../../context/LanguageContext";
 
@@ -243,6 +243,35 @@ export function Receipt({
         </button>
       )}
     </div>
+  );
+}
+
+/** B-STATUS-01 — what a former success toast becomes: ONE receipt slot a host
+ *  owns, drawn where the action happened. `show` replaces the line (a new
+ *  `seq` remounts it, so the same words twice are announced twice); `clear`
+ *  takes it away (Undo, a new start, a child switch). */
+export interface ReceiptNote {
+  text: string;
+  link?: ReceiptLink | null;
+  undo?: ReceiptUndo | null;
+}
+
+export type ShownReceiptNote = ReceiptNote & { seq: number };
+
+export function useReceiptNote(): { note: ShownReceiptNote | null; show: (n: ReceiptNote) => void; clear: () => void } {
+  const [note, setNote] = useState<ShownReceiptNote | null>(null);
+  const show = useCallback((n: ReceiptNote) => setNote((prev) => ({ ...n, seq: (prev?.seq ?? 0) + 1 })), []);
+  const clear = useCallback(() => setNote(null), []);
+  return { note, show, clear };
+}
+
+/** The host's receipt slot: nothing until an action answers. */
+export function ReceiptNoteLine({ note, testId, className, size }: { note: ShownReceiptNote | null; testId: string; className?: string; size?: "sm" | "base" }) {
+  if (!note) return null;
+  return (
+    <Receipt key={note.seq} testId={testId} className={className} size={size} link={note.link ?? null} undo={note.undo ?? null}>
+      {note.text}
+    </Receipt>
   );
 }
 

@@ -53,6 +53,9 @@ const followUpUpsert = vi.fn((...args: unknown[]) => {
 });
 const apptUpsert = vi.fn(async (..._args: unknown[]) => undefined);
 const toast = vi.fn();
+/** B-STATUS-01: "Saved" is the ONE receipt line now (components/ui/Receipt
+ *  useReceiptNote), never a success toast. */
+const receiptShow = vi.fn();
 const AskSpecialist = () => null;
 const CareVisitHead = () => null;
 const CareAside = () => null;
@@ -73,6 +76,8 @@ const env = {
   useArbor: () => ({ childProfile: { id: "c-outcome", name: "Mika" }, activeTab: tab, setActiveTab: vi.fn() }),
   useLanguage: () => ({ uiLang: "en", t: (key: string) => key }),
   useToast: () => ({ toast }),
+  useReceiptNote: () => ({ note: null, show: receiptShow, clear: vi.fn() }),
+  ReceiptNoteLine: () => null,
   useChildCollection: (_child: string, name: string) => collection(name),
   // the real open-loop rule: a follow-up for the visit closes it
   visitAwaitingOutcome, isIntakeProfession: () => false, consultHeading: () => "generic", activeHomeEnrolments: () => [], guidedTierOn: () => false,
@@ -92,7 +97,11 @@ const byId = (all: El[], id: string) => all.find((el) => el.props["data-testid"]
 const save = (all: El[]) => byId(all, "consult-visit-outcome-save")!;
 const input = (all: El[]) => byId(all, "consult-visit-outcome-input");
 const type = (value: string) => input(render())!.props.onChange({ target: { value } });
-const successToasts = () => toast.mock.calls.filter((c) => c[1] === "success");
+/** What answered "saved": the receipt lines shown, plus any success toast (there must be none). */
+const successToasts = () => [
+  ...receiptShow.mock.calls.map((c) => [(c[0] as { text: string }).text, "receipt"]),
+  ...toast.mock.calls.filter((c) => c[1] === "success"),
+];
 const later = (fn: () => void) => {
   const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 5_000);
   try { fn(); } finally { clock.mockRestore(); }
@@ -101,7 +110,7 @@ const later = (fn: () => void) => {
 beforeEach(() => {
   cursor = 0; slots = []; tab = "consult"; writes.length = 0;
   remote = false; cacheApplies = false; followUps = [];
-  followUpUpsert.mockClear(); apptUpsert.mockClear(); toast.mockClear();
+  followUpUpsert.mockClear(); apptUpsert.mockClear(); toast.mockClear(); receiptShow.mockClear();
 });
 
 describe("v3 EXTRA-CARE · the visit-outcome receipt shows only after persistence", () => {
@@ -126,7 +135,7 @@ describe("v3 EXTRA-CARE · the visit-outcome receipt shows only after persistenc
     writes[0].resolve();
     await flush();
     expect(apptUpsert).toHaveBeenCalledWith(expect.objectContaining({ id: "past-visit", status: "done" }));
-    expect(successToasts()).toEqual([["elev.learnCare.appt.followUp.saved", "success"]]);
+    expect(successToasts()).toEqual([["elev.learnCare.appt.followUp.saved", "receipt"]]);
     expect(input(render())!.props.value).toBe("");
   });
 
@@ -151,7 +160,7 @@ describe("v3 EXTRA-CARE · the visit-outcome receipt shows only after persistenc
     expect(second.id).toBe(first.id);
     writes[1].resolve();
     await flush();
-    expect(successToasts()).toEqual([["elev.learnCare.appt.followUp.saved", "success"]]);
+    expect(successToasts()).toEqual([["elev.learnCare.appt.followUp.saved", "receipt"]]);
   });
 
   it("an edited answer after a failure replaces the held record: the same id, the new words (one follow-up, never two)", async () => {
@@ -199,7 +208,7 @@ describe("v3 EXTRA-CARE · the visit-outcome receipt shows only after persistenc
     expect(successToasts()).toEqual([]);
     writes[1].resolve();
     await flush();
-    expect(successToasts()).toEqual([["elev.learnCare.appt.followUp.saved", "success"]]);
+    expect(successToasts()).toEqual([["elev.learnCare.appt.followUp.saved", "receipt"]]);
     // acknowledged: the record now closes the loop
     expect(byId(render(), "consult-visit-outcome")).toBeUndefined();
   });
@@ -216,11 +225,13 @@ describe("v3 EXTRA-CARE · the visit-outcome receipt shows only after persistenc
     expect(input(render())!.props.value).toBe("Swing at the park twice a week");
   });
 
-  it("source pin: the receipt is awaited, acknowledged and the only success toast of the save", () => {
+  it("source pin: the receipt is awaited, acknowledged and the only answer of the save (a receipt line, never a success toast)", () => {
     const text = source.getFullText().replace(/\r\n/g, "\n");
     expect(text).toContain("await followUpsCol.upsert(record, { requireAcknowledgement: true });");
     const body = text.slice(text.indexOf("const saveOutcome = async () => {"), text.indexOf("const saveHomeProgram"));
-    expect(body.indexOf('toast(t("elev.learnCare.appt.followUp.saved"), "success")')).toBeGreaterThan(body.indexOf("await followUpsCol.upsert"));
+    expect(body).not.toContain('"success"');
+    expect(body.indexOf('text: t("elev.learnCare.appt.followUp.saved")')).toBeGreaterThan(body.indexOf("await followUpsCol.upsert"));
+    expect(body).toContain('testId: "consult-receipt-undo"');
   });
 });
 

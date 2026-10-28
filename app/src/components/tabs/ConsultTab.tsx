@@ -11,6 +11,7 @@ import { appointmentRoleLabel } from "../../lib/appointmentLabel";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { fmtDay } from "../../lib/formatDate";
 import { Icon } from "../ui/Icon";
@@ -85,6 +86,10 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
   currentChild.current = childProfile.id;
   const { t, uiLang } = useLanguage();
   const { toast } = useToast();
+  // B-STATUS-01: a kept visit answer or home program answers with ONE receipt
+  // line at the head of the packet module (the answered field leaves with the
+  // visit), Undo on the follow-up.
+  const receipt = useReceiptNote();
   const firstName = (childProfile.name || "").split(" ")[0];
   const apptsCol = useChildCollection<Appointment>(childProfile.id, "appointments", { trackConfirmation: true });
   const followUpsCol = useChildCollection<AppointmentFollowUp>(childProfile.id, "apptFollowUps");
@@ -174,13 +179,27 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
       toast(t(queued ? "elev.consult.visitOutcome.queued" : "elev.consult.visitOutcome.saveError"), "error");
       return;
     }
-    if (appointmentStatus(awaiting) !== "done") {
-      try { await apptsCol.upsert({ ...awaiting, status: "done" }); } catch { /* the follow-up already closed the loop */ }
+    const before = awaiting;
+    const wasDone = appointmentStatus(before) === "done";
+    if (!wasDone) {
+      try { await apptsCol.upsert({ ...before, status: "done" }); } catch { /* the follow-up already closed the loop */ }
     }
     if (currentChild.current !== childId) return;
     setHeldOutcome(null);
     setOutcome("");
-    toast(t("elev.learnCare.appt.followUp.saved"), "success");
+    receipt.show({
+      text: t("elev.learnCare.appt.followUp.saved"),
+      undo: {
+        label: t("elev.loop.notice.undo"),
+        testId: "consult-receipt-undo",
+        onUndo: () => {
+          receipt.clear();
+          void followUpsCol.remove(record.id);
+          if (!wasDone) void apptsCol.upsert(before);
+          setOutcome(note);
+        },
+      },
+    });
   };
 
   // B-PROG-09 (assignment in): the ONLY place the home program is written —
@@ -209,7 +228,7 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
     }
     if (currentChild.current !== childId) return;
     setHomeOpen(false);
-    toast(t("elev.homeProgram.saved"), "success");
+    receipt.show({ text: t("elev.homeProgram.saved") });
   };
   const activeHome = activeHomeEnrolments(programsCol.items);
 
@@ -314,6 +333,7 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
       </header>
       <div data-testid="consult-landing" className={landing ? "flex flex-col gap-6 lg:grid lg:grid-cols-3 lg:items-start min-[1600px]:grid-cols-[minmax(0,1fr)_20rem] min-[1600px]:gap-8" : undefined}>
       <div data-module="consult-packet" className={landing ? "min-w-0 lg:col-span-3 min-[1600px]:col-span-1" : "min-w-0"}>
+        <ReceiptNoteLine note={receipt.note} testId="consult-receipt" className="mb-5" />
         {!landing && homeEntry}
         {!landing && homeDays}
         {!summary && awaiting && (

@@ -79,9 +79,12 @@ describe("GP-29 · the routine itself is untouched", () => {
     expect(TAB).toContain('t("routines.reset")');
   });
 
-  it("the completion toast still fires on the last step — and names no star (B-GROWTH-24)", () => {
+  it("the completion receipt still answers the last step — and names no star (B-GROWTH-24)", () => {
     expect(TAB).toContain("const nowComplete = nextKeys.length === total && total > 0;");
-    expect(TAB).toContain('toast(t("routines.doneToast"), "success")');
+    // B-STATUS-01: the success toast became the ONE receipt line, with Undo.
+    expect(TAB).not.toContain('toast(t("routines.doneToast"), "success")');
+    expect(TAB).toMatch(/doneReceipt\.show\(\{\s*text: t\("routines\.doneToast"\)/);
+    expect(TAB).toContain('<ReceiptNoteLine note={doneReceipt.note} testId="routines-receipt"');
     expect(TAB).not.toContain("routines.starEarned");
     for (const lang of LANGS) {
       const s = translate(lang, "routines.doneToast");

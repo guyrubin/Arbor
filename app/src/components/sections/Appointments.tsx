@@ -6,6 +6,7 @@ import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
 import { fmtDay } from "../../lib/formatDate";
@@ -95,6 +96,9 @@ export default function Appointments() {
   const { setActiveTab, childProfile, requestConsultPrefill, behaviorLogs } = useArbor();
   const { t, uiLang } = useLanguage();
   const { toast } = useToast();
+  // B-STATUS-01: a saved calendar file or follow-up answers with ONE receipt
+  // line under the page header (Undo takes a follow-up back).
+  const receipt = useReceiptNote();
   const apptsCol = useChildCollection<Appointment>(childProfile.id, "appointments");
   const questionsCol = useChildCollection<PrepQuestion>(childProfile.id, "apptQuestions");
   const followUpsCol = useChildCollection<AppointmentFollowUp>(childProfile.id, "apptFollowUps");
@@ -189,7 +193,7 @@ export default function Appointments() {
     const file = appointmentToIcs(a, Date.now());
     if (!file) return;
     const channel = await saveIcsFile(file, defaultIcsEgressDeps());
-    if (channel === "download") toast(t("elev.learnCare.appt.ics.done"), "success");
+    if (channel === "download") receipt.show({ text: t("elev.learnCare.appt.ics.done") });
     else if (channel === "unavailable") toast(t("elev.learnCare.appt.ics.failed"), "error");
   };
 
@@ -199,8 +203,20 @@ export default function Appointments() {
     void followUpsCol.upsert(record);
     // The visit demonstrably happened — the booking moves to "done". This is a
     // fact about the BOOKING; nothing about the child is inferred.
-    if (appointmentStatus(a) !== "done") void apptsCol.upsert({ ...a, status: "done" });
-    toast(t("elev.learnCare.appt.followUp.saved"), "success");
+    const wasDone = appointmentStatus(a) === "done";
+    if (!wasDone) void apptsCol.upsert({ ...a, status: "done" });
+    receipt.show({
+      text: t("elev.learnCare.appt.followUp.saved"),
+      undo: {
+        label: t("elev.loop.notice.undo"),
+        testId: "appt-receipt-undo",
+        onUndo: () => {
+          receipt.clear();
+          void followUpsCol.remove(record.id);
+          if (!wasDone) void apptsCol.upsert(a);
+        },
+      },
+    });
     return true;
   };
 
@@ -253,6 +269,7 @@ export default function Appointments() {
           </button>
         }
       />
+      <ReceiptNoteLine note={receipt.note} testId="appt-receipt" />
 
       {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (what moduleBudget counts);

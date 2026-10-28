@@ -5,6 +5,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { api, PaywallError, EscalationRequiredError } from "../../lib/api";
 import type { BehaviorLog, Milestone, SchoolBrief as SchoolBriefData } from "../../types";
 import type { HandoffLogInput, HandoffMilestoneInput } from "../../lib/api";
@@ -119,6 +120,8 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
   const { childProfile, behaviorLogs, milestones, actionPlans, setActiveTab, openPaywall } = useArbor();
   const { t, uiLang } = useLanguage();
   const { toast } = useToast();
+  // B-STATUS-01: an approved print answers under the actions row it came from.
+  const printReceipt = useReceiptNote();
   const reduceMotion = useReducedMotion();
   const egress = useConsultEgress(egressGuard);
   const firstName = (childProfile.name || "your child").split(" ")[0];
@@ -332,7 +335,7 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
       // v4: an approved teacher brief is a Care export like any other — it
       // lands in Care › Past exports (metadata only: audience + time).
       recordExport(childProfile.id, "teacher");
-      toast(t("elev.learnCare.brief.printed"), "success");
+      printReceipt.show({ text: t("elev.learnCare.brief.printed") });
     } catch (err) {
       // Condition 3 fail-closed: a diagnosis term (incl. one edited in) means we DO NOT export.
       if (err instanceof ClinicalLanguageError) toast(t("schoolBrief.nonDiagnostic", { name: firstName }), "error");
@@ -440,6 +443,7 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
                     <span className="text-[11px] font-extrabold rounded-full px-2 py-0.5" style={{ background: "var(--arbor-lav-wash)", color: "var(--arbor-lav-ink)" }}>{t("elev.learnCare.brief.plus")}</span></>)}
             </button>
           </div>
+          <ReceiptNoteLine note={printReceipt.note} testId="school-brief-receipt" size="sm" />
 
           {/* The rendered brief — curated sections only (editable when `editing`). */}
           <div data-module="brief-draft" className="rounded-2xl p-5 md:p-6 space-y-5" style={{ background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}>

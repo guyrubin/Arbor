@@ -158,11 +158,13 @@ if (process.env.TOAST_BASELINE_WRITE === "1") {
 
 describe("B-STATUS-01 · toasts are for errors and undo — the rest is a shrink-only ratchet", () => {
   it("the scan reads the real corpus (non-vacuity)", () => {
-    expect(SITES.length).toBeGreaterThan(80);
+    // B-STATUS-01 wave 3 turned 24 success toasts into receipt lines (80 call
+    // sites remain, errors and Undo included); the corpus is still far from empty.
+    expect(SITES.length).toBeGreaterThan(60);
     const kinds = new Set(SITES.map((s) => s.kind));
     for (const k of ["error", "action", "success", "info", "dynamic"] as const) expect(kinds.has(k), k).toBe(true);
-    // a known file, counted by hand: Consult's two success toasts (follow-up saved, home program saved)
-    expect(CURRENT["components/tabs/ConsultTab.tsx"]?.success).toBe(2);
+    // a known file, counted by hand: ArborContext's two success toasts (plan woven, analysis kept)
+    expect(CURRENT["context/ArborContext.tsx"]?.success).toBe(2);
     // the capture tray's keep toast carries its Undo: an action, never a success
     expect(SITES.filter((s) => s.file === "components/capture/CaptureProposalsTray.tsx" && s.kind === "action")).toHaveLength(1);
   });
@@ -198,6 +200,39 @@ describe("B-STATUS-01 · toasts are for errors and undo — the rest is a shrink
       expect(existsSync(path.join(SRC, f)), f).toBe(true);
       expect(CURRENT[f], f).toBeUndefined();
     }
+  });
+});
+
+describe("B-STATUS-01 · wave 3: the success toasts of these surfaces became receipt lines", () => {
+  /* Each file answered a save, a share, a copy or a finish with a vanishing
+     success toast (baseline 9 Oct). Each now draws the ONE Receipt line where
+     the action happened (components/ui/Receipt.tsx: Receipt, or the host slot
+     useReceiptNote + ReceiptNoteLine), Undo where the write can be reversed. */
+  const RECEIPTED = [
+    "components/sections/TrustedSharing.tsx",
+    "components/sections/Screening.tsx",
+    "components/sections/AskSpecialist.tsx",
+    "components/sections/Appointments.tsx",
+    "components/sections/SchoolBrief.tsx",
+    "components/tabs/RoutinesTab.tsx",
+    "components/tabs/ConsultTab.tsx",
+    "components/tabs/CoachTab.tsx",
+    "components/tabs/BedtimeStoriesTab.tsx",
+    "components/tabs/DailyPlayTab.tsx",
+    "components/tabs/HeroJourneyTab.tsx",
+    "components/layout/SettingsModal.tsx",
+    "components/layout/ParentalGatePanel.tsx",
+  ];
+  it("none of them holds a success toast, and each draws a receipt line", () => {
+    for (const f of RECEIPTED) {
+      expect(CURRENT[f]?.success, f).toBeUndefined();
+      const src = readFileSync(path.join(SRC, f), "utf8");
+      expect(src, f).toMatch(/<Receipt\b|<ReceiptNoteLine\b/);
+    }
+  });
+  it("NEGATIVE CONTROL: the pre-change Consult save is a ratcheted success toast", () => {
+    const pre = 'setOutcome("");\n    toast(t("elev.learnCare.appt.followUp.saved"), "success");';
+    expect(toastCallSites(pre, "x.tsx").map((s) => s.kind)).toEqual(["success"]);
   });
 });
 

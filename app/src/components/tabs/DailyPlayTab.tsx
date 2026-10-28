@@ -2,7 +2,8 @@ import React, { useMemo, useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
-import { useToast } from "../../context/ToastContext";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { routeHash } from "../../lib/routes";
 import { useLanguage } from "../../context/LanguageContext";
 import DailyPlayCard from "../overview/DailyPlayCard";
 import SourceActivities from "../practice/SourceActivities";
@@ -48,7 +49,13 @@ function AgeChip({ profile }: { profile: ChildProfile }) {
 
 export default function DailyPlayTab() {
   const { behaviorLogs, childProfile, setActiveTab, logPlayCompletion, seedCoach, actionLoop } = useArbor();
-  const { toast } = useToast();
+  // B-STATUS-01: a logged play answers with ONE receipt line under the header
+  // (where it went: the Journal), never a vanishing success toast.
+  const playReceipt = useReceiptNote();
+  const savedToJournal = () => playReceipt.show({
+    text: t("elev.growth.play.toast.added", { name: firstName }),
+    link: { where: t("nav.tab.journal"), href: `#${routeHash("journal")}`, testId: "play-receipt-open" },
+  });
   const { t, uiLang } = useLanguage();
   const firstName = (childProfile.name || t("learn.yourChild")).split(" ")[0];
 
@@ -135,7 +142,7 @@ export default function DailyPlayTab() {
     const activity = courseActivities(course).find((a) => a.id === activityId);
     if (!activity) return;
     logPlayCompletion(activity, "course", course.id);
-    toast(t("elev.growth.play.toast.added", { name: firstName }), "success");
+    savedToJournal();
   };
 
   // Readiness tracks — parent-chosen goal courses (school / sibling / sleep).
@@ -158,7 +165,7 @@ export default function DailyPlayTab() {
         localStorage.setItem(`arbor.play.done.${childProfile.id}`, JSON.stringify([...cur, p.activity.id]));
       }
     } catch { /* ignore */ }
-    toast(t("elev.growth.play.toast.added", { name: firstName }), "success");
+    savedToJournal();
   };
   const coach = (p: ScoredActivity) => {
     seedCoach({ prompt: t("seed.play", { title: p.activity.title, name: firstName, domain: p.activity.domain }), source: "daily-play" });
@@ -221,7 +228,7 @@ export default function DailyPlayTab() {
         JSON.stringify({ date: new Date().toISOString().slice(0, 10), activityId: plan.scoredActivity.activity.id })
       );
     } catch { /* ignore */ }
-    toast(t("elev.growth.play.toast.added", { name: firstName }), "success");
+    savedToJournal();
   };
 
   const handlePlanCoach = (plan: DailyPlan) => {
@@ -240,7 +247,7 @@ export default function DailyPlayTab() {
     // arbor-safety review gates prod (requiredFix #4).
     const obs = buildGoalObservation({ plan: dailyPlan, observationText: text });
     await goalObservationsCol.upsert(obs);
-    toast(t("elev.growth.play.toast.recorded", { name: firstName }), "success");
+    playReceipt.show({ text: t("elev.growth.play.toast.recorded", { name: firstName }) });
   };
 
   // CI-31: DailyPlanCard carries its own session length derived from the plan's
@@ -277,6 +284,7 @@ export default function DailyPlayTab() {
           </div>
         </div>
         <div className="mt-3 max-w-[640px]"><GoalFocusLine goals={activeGoals} testId="daily-play-goals-edit" onClick={() => setGoalModalOwner(childProfile.id)} /></div>
+        <ReceiptNoteLine note={playReceipt.note} testId="play-receipt" className="mt-3 max-w-[640px]" />
       </header>
 
       {/* CI-30: DailyPlanCard hero — goal-linked daily plan, mounts above existing CourseCard.

@@ -184,14 +184,14 @@ describe("B-ASKJB-03 — one voice Keep raises exactly one toast", () => {
     expect(harness.toast).toHaveBeenCalledTimes(1);
   });
 
-  it("CoachTab's onConfirm raises no second success toast (milestone only, which the tray never toasts)", async () => {
+  it("CoachTab's onConfirm raises no success toast; a milestone (which the tray never toasts) answers with the receipt line (B-STATUS-01)", async () => {
     const { readFileSync } = await import("node:fs");
     const path = await import("node:path");
     const src = readFileSync(path.join(__dirname, "..", "tabs", "CoachTab.tsx"), "utf8").replace(/\r\n/g, "\n");
     const block = src.slice(src.indexOf("<ConversationProposalTray"), src.indexOf("/>", src.indexOf("onConfirm={async (proposal)")));
     const successToasts = [...block.matchAll(/toast\(t\("[^"]+"\), "success"\)/g)].map((m) => m[0]);
-    expect(successToasts).toHaveLength(1);
-    expect(block).toContain('if (proposal.target === "milestone") toast(t("coach.voice.proposalSaved"), "success");');
+    expect(successToasts).toHaveLength(0);
+    expect(block).toContain('if (proposal.target === "milestone") proposalReceipt.show({ text: t("coach.voice.proposalSaved") });');
     // The error toast on a failed commit stays.
     expect(block).toContain('toast(t("coach.voice.proposalSaveError"), "error");');
   });

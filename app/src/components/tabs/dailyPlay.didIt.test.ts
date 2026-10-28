@@ -39,6 +39,8 @@ const captureSourceButton = (type: unknown, props: unknown) => {
 
 const logPlayCompletion = vi.fn();
 const toast = vi.fn();
+/** B-STATUS-01: "saved to the journal" is the ONE receipt line now. */
+const receiptShow = vi.fn();
 const state = {
   behaviorLogs: [] as unknown[],
   childProfile: { id: "c1", name: "נועה כהן", age: 4, birthDate: "2022-03-01", interests: [], activeGoals: [] },
@@ -52,6 +54,7 @@ const state = {
 
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => state }));
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ toast }) }));
+vi.mock("../ui/Receipt", () => ({ useReceiptNote: () => ({ note: null, show: receiptShow, clear: vi.fn() }), ReceiptNoteLine: () => null }));
 vi.mock("../../context/LanguageContext", async () => {
   const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
   return {
@@ -130,6 +133,7 @@ beforeEach(() => {
   state.playLogs = [];
   logPlayCompletion.mockClear();
   toast.mockClear();
+  receiptShow.mockClear();
 });
 afterEach(() => { vi.useRealTimers(); });
 
@@ -184,15 +188,19 @@ describe("B-GROWTH-19 — all four 'did it' paths write the playLogs record", ()
     onToggle(course.activityIds[0]); // was ON → OFF
     expect(logPlayCompletion).not.toHaveBeenCalled();
     expect(toast).not.toHaveBeenCalled();
+    expect(receiptShow).not.toHaveBeenCalled();
   });
 
-  it("every toast under he is Hebrew — 0 English toasts", async () => {
+  it("every receipt line under he is Hebrew — 0 English lines, 0 success toasts (B-STATUS-01)", async () => {
     await render();
     captured.plan!.onDid(captured.plan!.plan!);
     captured.courses[0].onToggle(captured.courses[0].course.activityIds[0]);
     captured.picks[0].onDid(captured.picks[0].pick);
-    expect(toast).toHaveBeenCalledTimes(3);
-    for (const [msg] of toast.mock.calls) {
+    expect(toast).not.toHaveBeenCalled();
+    expect(receiptShow).toHaveBeenCalledTimes(3);
+    for (const [{ text: msg, link }] of receiptShow.mock.calls) {
+      // where it went: the Journal, a real hash link
+      expect(link?.href).toBe("#/journal");
       expect(msg).not.toMatch(/[A-Za-z]/);
       expect(msg).toContain("נועה");
     }

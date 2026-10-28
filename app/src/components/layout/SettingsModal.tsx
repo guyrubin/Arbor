@@ -29,6 +29,7 @@ import { useLanguage, type AiLang } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { useEntitlement } from "../../hooks/useEntitlement";
 import { useCheckout } from "../../hooks/useCheckout";
 import { T } from "../../lib/tokens";
@@ -52,6 +53,8 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const memoryCount = (pendingMemoryItems?.length ?? 0) + (approvedMemoryItems?.length ?? 0);
   const { user, signOut, firebaseEnabled } = useAuth();
   const { toast } = useToast();
+  // B-STATUS-01: the saved language answers with ONE receipt line in its own row.
+  const langReceipt = useReceiptNote();
   // MOB-08: `loading` → skeleton row (never "Free" while unsure); `isFallback`
   // → "couldn't verify — showing last known · Retry" line.
   const { entitlement, loading: entitlementLoading, isFallback: entitlementUnverified, retry: retryEntitlement } = useEntitlement();
@@ -129,7 +132,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
     // the confirmation of a switch to Hebrew arrived in English — the one
     // string in the app whose language IS the thing being confirmed. Translated
     // against the incoming language explicitly.
-    toast(translate(draftUiLang, "set.language.saved"), "success");
+    langReceipt.show({ text: translate(draftUiLang, "set.language.saved") });
   };
 
   const handleCancelLanguage = () => {
@@ -225,6 +228,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               </button>
             </div>
           </div>
+          <ReceiptNoteLine note={langReceipt.note} testId="settings-language-receipt" size="sm" className="mt-2" />
         </Row>
 
         {/* LANG-ADV-OVERRIDE: advanced — let the AI answer in a different language than the UI */}

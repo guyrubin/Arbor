@@ -29,6 +29,8 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
+import { Receipt, ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { routeHash } from "../../lib/routes";
 import { api, EscalationRequiredError } from "../../lib/api";
 import { isolate } from "../../lib/i18n";
 import { bedtimePrefillLatest } from "../../lib/bedtimeStories";
@@ -69,7 +71,7 @@ export default function BedtimeStoriesTab() {
 }
 
 export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
-  const { childProfile, behaviorLogs, addMoment, openPaywall } = useArbor();
+  const { childProfile, behaviorLogs, addMoment, openPaywall, deleteLog } = useArbor();
   const { aiLang, uiLang, t } = useLanguage();
   const { toast } = useToast();
   // B-PROG-13: the active program frames the request as an optional input
@@ -127,6 +129,10 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
   // answers the parent has already kept (one moment each, never twice).
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [kept, setKept] = useState<Record<number, boolean>>({});
+  // B-STATUS-01: what was kept answers with the ONE receipt line (where it
+  // went: the Journal; Undo removes the moment), never a success toast.
+  const keptIds = useRef<Record<number, string>>({});
+  const nightReceipt = useReceiptNote();
   const [pageIndex, setPageIndex] = useState(0);
 
   // Avatar description from the child's existing generated avatar — reuse, no new capture.
@@ -209,8 +215,8 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
     if (!answer || kept[i]) return;
     const written = await addMoment(t("elev.bedtime.keep.line", { question, name, answer }));
     if (written) {
+      if (written.id) keptIds.current[i] = written.id;
       setKept((k) => ({ ...k, [i]: true }));
-      toast(t("elev.bedtime.goodnight.saved"), "success");
     }
   };
 
@@ -237,7 +243,15 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
       : t("elev.bedtime.goodnight.moment");
     const written = await addMoment(line);
     if (written) {
-      toast(t("elev.bedtime.goodnight.saved"), "success");
+      nightReceipt.show({
+        text: t("elev.bedtime.goodnight.saved"),
+        link: { where: t("nav.tab.journal"), href: `#${routeHash("journal")}`, testId: "bedtime-night-receipt-open" },
+        undo: written.id ? {
+          label: t("elev.loop.notice.undo"),
+          testId: "bedtime-night-receipt-undo",
+          onUndo: () => { nightReceipt.clear(); void deleteLog(written.id); },
+        } : null,
+      });
       reset();
     }
   };
@@ -436,9 +450,23 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
                 </p>
                 {/* B-PLAY-14: "Keep what {name} said" — one parent moment per answer. */}
                 {kept[i] ? (
-                  <p className="text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)" }} data-testid="bedtime-answer-kept">
+                  <Receipt
+                    testId="bedtime-answer-kept"
+                    size="sm"
+                    link={{ where: t("nav.tab.journal"), href: `#${routeHash("journal")}`, testId: "bedtime-answer-kept-open" }}
+                    undo={keptIds.current[i] ? {
+                      label: t("elev.loop.notice.undo"),
+                      testId: "bedtime-answer-kept-undo",
+                      onUndo: () => {
+                        const id = keptIds.current[i];
+                        delete keptIds.current[i];
+                        setKept((k) => ({ ...k, [i]: false }));
+                        if (id) void deleteLog(id);
+                      },
+                    } : null}
+                  >
                     {t("elev.bedtime.keep.done")}
-                  </p>
+                  </Receipt>
                 ) : (
                   <div className="flex items-end gap-2">
                     <label className="flex-1 min-w-0">
@@ -526,6 +554,8 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
             : "A personalised story born from today — read together at bedtime"}
         />
       )}
+
+      <ReceiptNoteLine note={nightReceipt.note} testId="bedtime-night-receipt" />
 
       {/* item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (counted against the route's
