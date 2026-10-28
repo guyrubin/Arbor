@@ -11,6 +11,7 @@ import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import { dayKey } from "../../practice/signals";
 import { isObservationAction, type ActionLoopEntry } from "../../actionLoop/model";
 import { nextChosenAction, requestedObservation } from "./companionChoices";
+import { scrollQuestionIntoMain } from "./nowDeepLinkScroll";
 import { NOW_COPY } from "./nowViewCopy";
 import NowRecommendation from "./NowRecommendation";
 import { NowAgendaExtras, NowNoticeExtras, NowWhatChangedLines } from "./NowTodayLines";
@@ -158,15 +159,16 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const observationInput = useRef<HTMLTextAreaElement>(null);
   const stepTitle = useRef<HTMLHeadingElement>(null);
   // B-TODAY-37: the requested question's form takes focus once it is the lead,
-  // and the page scrolls to the QUESTION (its title, clear of the sticky place
-  // pills by its scroll margin) so the parent reads what they are answering.
+  // and <main> alone scrolls the QUESTION (its title) to just under the sticky
+  // place pills, so the parent reads what they are answering. Never
+  // scrollIntoView: it also scrolled the shell wrapper and the art panel.
   const requestedOpen = !!observeId && chosen?.id === observeId && observation && !receipt;
   useEffect(() => {
     if (!requestedOpen) return;
     const input = observationInput.current;
     if (!input) return;
     input.focus({ preventScroll: true });
-    (stepTitle.current ?? input).scrollIntoView?.({ block: "start" });
+    scrollQuestionIntoMain(stepTitle.current);
   }, [requestedOpen, observeId]);
   const talk = (prompt?: string) => onTalkOpen ? onTalkOpen(prompt) : seedCoach({ prompt: prompt ?? "", source: "companion-now" });
   const saveOutcome = async (outcome: "helped" | "not_today" | { whatHappened: string }) => {
