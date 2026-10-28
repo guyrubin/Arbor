@@ -1,7 +1,7 @@
 /**
  * B-PROG-02 [content — clinical] — TALK TOGETHER v0.1 (מדברים ביחד): eight
  * weeks on the Words shelf. The definition of record is the human-readable
- * program document PAI/projects/arbor/PROGRAM-TALK-TOGETHER-v0.1.md; this
+ * program document PROGRAM-TALK-TOGETHER-v0.1.md (private product record); this
  * file transcribes it 1:1 (same order, same ids, same words). Edit the
  * document first, then this file.
  *

@@ -5,7 +5,7 @@
  * first-touch attribution (market/source/referral_code/utm_*) is attached
  * automatically. Keep event names stable — dashboards depend on them.
  *
- * See PAI/projects/parenting-os-plugin/marketing/arbor-loop-eng-spec.md.
+ * Spec: the Arbor loop engineering spec (private product record).
  */
 import { track } from "./analytics";
 import { trackSessionClose } from "./kpiEvents";

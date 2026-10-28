@@ -1,8 +1,8 @@
 # Spec F — AI/ML Architecture (NIST AI RMF GenAI)
 
 **Migration wave:** 2026-06-17 · **Domain owner:** AI/ML safety + model governance
-**Canonical code root:** `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src`
-**Infra root:** `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-`
+**Canonical code root:** `app/src`
+**Infra root:** the repo root (`./`)
 
 ## Domain intro
 
@@ -41,10 +41,10 @@ This spec maps every mission onto that real code. The guiding principles: **addi
   - Classifier failure **fails open to the regex baseline** (never blocks delivery, never throws to the user) — logged as `input_classifier_error`.
 - **Approach:** Mirror the proven `outputScreen.ts` pattern. Refactor `escalation.ts` so `screenForImmediateEscalation` returns a typed verdict (it already returns `EscalationMatch | null` — keep as-is, just export an internal `EscalationVerdict` carrying `{ source: "regex" }`). Add `src/safety/inputScreen.ts` exporting `screenInputSemantic` that calls `modelProvider.generateJson({ route: "analysis_structured", temperature: 0, schema })` with a Hebrew-aware prompt instructing the model to classify into the 5 existing `EscalationCategory` values + `none`, explicitly covering paraphrase, indirect phrasing, and mixed HE/EN. At each api.ts call site, after the existing `if (escalationMatch) { … return; }` block, add `const semantic = await screenInputSemantic(...)` guarded by the env flag, reusing the same render+return. Because there are ~14 call sites, factor a single helper `runInputSafety(modelProvider, fields, config)` in `src/safety/inputScreen.ts` that does regex-first-then-optional-semantic and returns `EscalationMatch | null`, then replace the 14 `screenForImmediateEscalation(...)` calls with `await runInputSafety(...)`. This keeps the change mechanical and conflict-light.
 - **Files to CREATE:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/safety/inputScreen.ts`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/safety/inputScreen.test.ts`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/scripts/redteam/input-cases.jsonl`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/scripts/redteam-input.mjs`
+  - `app/src/safety/inputScreen.ts`
+  - `app/src/safety/inputScreen.test.ts`
+  - `scripts/redteam/input-cases.jsonl`
+  - `scripts/redteam-input.mjs`
 - **Files to MODIFY:**
   - `src/routes/api.ts` **(SHARED/high-traffic)** — replace the ~14 `screenForImmediateEscalation(...)` calls with `await runInputSafety(...)`; the call sites already early-return, so behaviour is preserved when the flag is off.
   - `src/safety/escalation.ts` **(SHARED safety)** — export the verdict type; no behavioural change to regex.
@@ -89,10 +89,10 @@ This spec maps every mission onto that real code. The guiding principles: **addi
   - A new injection-eval (`scripts/redteam/injection-cases.jsonl`) feeds adversarial memory facts / messages and asserts the model does **not** follow embedded instructions; gated in CI.
 - **Approach:** Currently `getApprovedMemoryContext` returns bare `- ${item.fact}` lines (memoryService.ts 75) and api.ts interpolates them and `renderKnowledgeContext(...)` directly into the prompt (243-264) with no boundary. Add `src/safety/promptHardening.ts` exporting `stripControlPhrases(s)` (regex blocklist: `/ignore (all|previous|the above)/i`, `/system\s*:/i`, `/\b(assistant|user|system)\s*:/i`, `/<\/?(arbor:|system|instruction)/i`, HE/NL equivalents like `התעלם מ`, `negeer`) and `wrapUntrusted(tag, body)`. In `getApprovedMemoryContext`, map each fact through `stripControlPhrases` before joining. In api.ts, rebuild the two coach prompts (lines 243-264, 375-408) so memory/cards/parent-message sit inside `<arbor:memory>…</arbor:memory>`, `<arbor:source>…</arbor:source>`, `<arbor:parent_message>…</arbor:parent_message>`, and prepend a hierarchy clause to `NON_DIAGNOSTIC_CONTRACT` usage (or add a constant `INSTRUCTION_HIERARCHY` in `src/contracts/coach.ts`). The parent message itself is also untrusted — wrap `${message}` (line 261) and run `stripControlPhrases` on it for the *delimiter-escape* class only (do not alter the user's legitimate wording semantically; only neutralise fake closing tags).
 - **Files to CREATE:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/safety/promptHardening.ts`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/safety/promptHardening.test.ts`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/scripts/redteam/injection-cases.jsonl`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/scripts/redteam-injection.mjs`
+  - `app/src/safety/promptHardening.ts`
+  - `app/src/safety/promptHardening.test.ts`
+  - `scripts/redteam/injection-cases.jsonl`
+  - `scripts/redteam-injection.mjs`
 - **Files to MODIFY:**
   - `src/memory/memoryService.ts` **(SHARED — memory core)** — apply `stripControlPhrases` in `getApprovedMemoryContext` (line 75 map).
   - `src/routes/api.ts` **(SHARED/high-traffic)** — coach prompt (243-264) and council prompt (375-408): wrap memory/cards/message in delimiters; add hierarchy clause.
@@ -112,9 +112,9 @@ This spec maps every mission onto that real code. The guiding principles: **addi
 - **Objective / done-when:** Every Express route in `src/routes/api.ts` validates its `req.body`/`req.params` against a Zod schema before use; invalid input returns `400` with a safe error; no route reads untyped `req.body.*` directly. `zod@^4.4.3` is already a dependency (`package.json`).
 - **Approach:** Zod is already used for the coach response (`coachResponseZodSchema`, api.ts 289) — extend the pattern to *inputs*. Create `src/routes/schemas.ts` with one schema per endpoint (e.g. `coachRequestSchema`, `councilRequestSchema`, `digestRequestSchema`, `memoryPatchSchema`, the story/handoff/avatar bodies). Add a tiny `parseBody(schema, req, res)` helper (or Express middleware `validate(schema)`) that returns parsed data or sends 400. Replace each route's destructure (`const { message, childProfile } = req.body;`) with `const parsed = coachRequestSchema.safeParse(req.body); if (!parsed.success) return res.status(400)...`. This is mechanical and per-route, so it sequences cleanly behind AI-1/AI-3 edits in the same file — **apply AI-4 last** in api.ts to avoid churn.
 - **Files to CREATE:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/routes/schemas.ts`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/routes/schemas.test.ts`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/server/validate.ts` (helper/middleware)
+  - `app/src/routes/schemas.ts`
+  - `app/src/routes/schemas.test.ts`
+  - `app/src/server/validate.ts` (helper/middleware)
 - **Files to MODIFY:**
   - `src/routes/api.ts` **(SHARED/high-traffic — heaviest editor of this file)** — every route handler gains a parse step. Coordinate sequencing with AI-1/AI-3.
 - **Interfaces/contracts:** `validate<T>(schema: ZodType<T>)` middleware OR `parseBody(schema, req, res): T | undefined`; one exported schema per route. No env/infra.
@@ -133,12 +133,12 @@ This spec maps every mission onto that real code. The guiding principles: **addi
   - The existing static `eval:safety` (copy grep, scripts/safety-eval.mjs) **stays** as the fast lexical gate; behavioural is additive.
 - **Approach:** Keep `scripts/safety-eval.mjs` untouched. Add `scripts/eval-behavioural.mjs` that imports the compiled safety modules (or runs via `tsx`) against `scripts/eval/cases/*.jsonl` (escalation, groundedness, age-fit). For cases needing model output, run against a **stubbed/recorded** provider by default (deterministic, free, CI-safe) and against live Vertex only behind `EVAL_LIVE=1` (manual/nightly). Persist last-known baselines in `scripts/eval/baseline.json`; the gate compares and exits non-zero on regression. The model card is rendered from the scorecard JSON via a template.
 - **Files to CREATE:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/scripts/eval-behavioural.mjs`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/scripts/eval/cases/escalation.jsonl`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/scripts/eval/cases/groundedness.jsonl`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/scripts/eval/cases/age-fit.jsonl`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/scripts/eval/baseline.json`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/docs/model-cards/arbor-coach-template.md`
+  - `scripts/eval-behavioural.mjs`
+  - `scripts/eval/cases/escalation.jsonl`
+  - `scripts/eval/cases/groundedness.jsonl`
+  - `scripts/eval/cases/age-fit.jsonl`
+  - `scripts/eval/baseline.json`
+  - `docs/model-cards/arbor-coach-template.md`
 - **Files to MODIFY:**
   - `package.json` **(SHARED)** — add `"eval:safety:behavioural"` and `"eval:modelcard"`.
   - `.github/workflows/arbor-ci.yml` **(SHARED CI)** — add a step after line 26 (`npm run eval:safety:behavioural`); keep it deterministic (no live model) so it doesn't add CI cost/flakiness.
@@ -158,10 +158,10 @@ This spec maps every mission onto that real code. The guiding principles: **addi
   - An admin reviewer surface lists open reviews and lets an admin resolve them; a metric exposes **queue depth and oldest-item age** via the existing `/admin/overview` route (`adminMetrics.ts`).
 - **Approach:** The `firestore.rules` already declares `safetyReviews` (create-only client, server read/write). Reuse the `FirestoreAdminMetricsStore` pattern (`src/server/adminMetrics.ts`) — add a `SafetyReviewStore` (Null + Firestore impls, same as AdminMetricsStore) with `record(review)`, `listOpen()`, `resolve(id, actor)`, `queueStats()`. Call `record(...)` from the api.ts escalation/output-block branches (the same ~14 input sites + the two output-block sites at 297-311 / 425). Add admin routes near the existing `/admin/overview` (api.ts 1469): `GET /admin/safety-reviews`, `PATCH /admin/safety-reviews/:id` (guarded by the existing `isAdmin(actorOf(req))`). Extend `AdminOverview` with `safetyQueue: { open, oldestAgeMin }`. The reviewer UI rides the existing admin/Safety surface (`src/components/tabs/SafetyTab.tsx`).
 - **Files to CREATE:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/server/safetyReviewStore.ts`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/server/safetyReviewStore.test.ts`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/docs/runbooks/safety-review-sla.md`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/components/admin/SafetyReviewQueue.tsx`
+  - `app/src/server/safetyReviewStore.ts`
+  - `app/src/server/safetyReviewStore.test.ts`
+  - `docs/runbooks/safety-review-sla.md`
+  - `app/src/components/admin/SafetyReviewQueue.tsx`
 - **Files to MODIFY:**
   - `src/routes/api.ts` **(SHARED/high-traffic)** — inject `safetyReviewStore` into `ApiDeps` + `createApiRouter`; call `record(...)` at escalation + output-block branches; add 2 admin routes near 1469.
   - `src/server/createApp.ts` **(SHARED — DI wiring)** — construct `SafetyReviewStore` (Firestore in prod, Null in local) and pass to the router.
@@ -181,8 +181,8 @@ This spec maps every mission onto that real code. The guiding principles: **addi
 - **Objective / done-when:** A quarterly process exists to evaluate the pinned coach model (today `claude-3-5-sonnet@anthropic` per `env.ts` `vertexModelChat` default, v2 and aging) against newer Claude/Gemini releases on the AI-5 eval suite; the decision (keep/migrate) is recorded as an **ADR** under `docs/architecture/adr/`. First ADR ships this wave establishing the cadence + the current pin rationale.
 - **Approach:** This is process + light tooling, not runtime code. Add `docs/architecture/adr/ADR-00XX-coach-model-fitness.md` (using the EA `adr-writer` style). Add a scheduled checklist (`docs/runbooks/model-fitness-review.md`) that runs `EVAL_LIVE=1 npm run eval:safety:behavioural` against candidate models by overriding `VERTEX_MODEL_CHAT` on a throwaway revision, compares scorecards, and records the ADR. Model ids are already fully env-driven (`env.ts` lines 99-104: `VERTEX_MODEL_CHAT`, `VERTEX_MODEL_STORY`, etc.) so a swap is config-only — **no code change to migrate models**, which de-risks the whole mission.
 - **Files to CREATE:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/docs/architecture/adr/ADR-coach-model-fitness-2026-06-17.md`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/docs/runbooks/model-fitness-review.md`
+  - `docs/architecture/adr/ADR-coach-model-fitness-2026-06-17.md`
+  - `docs/runbooks/model-fitness-review.md`
 - **Files to MODIFY:**
   - `src/ai/modelRouter.ts` **(SHARED)** — *comment only*: note model pins are env-driven and reviewed quarterly (cross-reference ADR). No logic change. Flag to conflict-mapper so AI-1's optional route alias doesn't clash.
   - `src/config/env.ts` **(SHARED)** — *comment only* near the `vertexModelChat` default documenting the review cadence.
@@ -202,9 +202,9 @@ This spec maps every mission onto that real code. The guiding principles: **addi
   - The rates surface in `/admin/overview` (`adminMetrics.ts`) alongside the queue stats.
 - **Approach:** Extend the `SafetyReviewStore` (AI-6) `resolve()` to accept `outcome`. Add a `safetyDriftRollup()` aggregation (mirror the existing `usageRollup.ts` daily-doc pattern in `src/server/`) computing FP/FN per category over a window, writing a `safetyDrift/<date>` doc. Surface in `AdminOverview.safetyQueue` (add `fpRate7d`, `fnCount7d`). Alerting rides **managed config, not new infra**: emit a structured `logger.warn("safety_drift_alert", {...})` when thresholds breach, and define a **Cloud Logging log-based metric + alert policy** (documented in the runbook) rather than standing up a new alerting service. A nightly Cloud Run job or scheduled function calls the rollup (can reuse the existing scheduled-task mechanism).
 - **Files to CREATE:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/server/safetyDriftRollup.ts`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/server/safetyDriftRollup.test.ts`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/docs/runbooks/safety-drift-alerting.md`
+  - `app/src/server/safetyDriftRollup.ts`
+  - `app/src/server/safetyDriftRollup.test.ts`
+  - `docs/runbooks/safety-drift-alerting.md`
 - **Files to MODIFY:**
   - `src/server/safetyReviewStore.ts` (from AI-6) — add `outcome` to schema + `resolve()`.
   - `src/server/adminMetrics.ts` **(SHARED)** — fold drift rates into `AdminOverview`.

@@ -1,7 +1,7 @@
 /**
  * B-PROG-06 [content — clinical] — STEADY NIGHTS v0.1 (לילות רגועים): six
  * weeks on the Sleep shelf. The definition of record is the human-readable
- * program document PAI/projects/arbor/PROGRAM-STEADY-NIGHTS-v0.1.md; this file
+ * program document PROGRAM-STEADY-NIGHTS-v0.1.md (private product record); this file
  * transcribes it 1:1 (same order, same ids, same words). Edit the document
  * first, then this file.
  *
