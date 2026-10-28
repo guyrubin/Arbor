@@ -1684,9 +1684,10 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               same request could actually succeed. */}
           {failureCopy && !isChatLoading && (
             <div
+              role="alert"
               // B-AIOPS-02: a spent voice allowance is a resting state, not a
-              // failure — announced politely in a calm tint, never the alarm.
-              role={failureCopy.kind === "voiceResting" ? "status" : "alert"}
+              // failure — announced politely (status) in a calm tint, never the alarm.
+              {...(failureCopy.kind === "voiceResting" ? { role: "status" } : {})}
               data-testid="coach-failure-card"
               data-failure-kind={failureCopy.kind}
               className="flex items-start gap-3 rounded-2xl p-4 me-auto max-w-[85%]"

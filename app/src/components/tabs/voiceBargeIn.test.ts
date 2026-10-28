@@ -55,7 +55,9 @@ describe("AI-V2(a) — chip tap = interrupt while speaking (fallback loop)", () 
   });
 
   it("an ABORTED stream never double-restarts — only genuine failures recover in the catch", () => {
-    expect(coach).toMatch(/catch \{[\s\S]{0,700}if \(ownsTurn\(\)\) \{[\s\S]{0,200}startListening\(\)/);
+    // B-AIOPS-02: the catch binds the error (a spent family voice allowance stops
+    // the loop before this recovery); the recovery itself is unchanged.
+    expect(coach).toMatch(/catch (?:\(err\) )?\{[\s\S]{0,700}if \(ownsTurn\(\)\) \{[\s\S]{0,200}startListening\(\)/);
   });
 });
 
