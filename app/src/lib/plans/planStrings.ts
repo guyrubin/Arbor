@@ -40,6 +40,8 @@ export type PlanStringKey =
   | "stage.steps.ownApprove"
   | "stage.steps.ownDrop"
   | "stage.steps.ownRefused"
+  | "stage.steps.ownCrisis"
+  | "stage.steps.ownCrisisDoor"
   | "stage.steps.origin"
   | "stage.steps.origin.parent"
   | "stage.steps.origin.practitioner"
@@ -163,6 +165,8 @@ const EN: Record<PlanStringKey, string> = {
   "stage.steps.ownApprove": "Approve this exact line",
   "stage.steps.ownDrop": "Drop it",
   "stage.steps.ownRefused": "Arbor could not phrase that line for a child's book. Try plainer words, or choose a step from the menu.",
+  "stage.steps.ownCrisis": "What you wrote may need a person now, not a plan step. If anyone is in danger, call emergency services. Help and safety has the helplines.",
+  "stage.steps.ownCrisisDoor": "Help and safety",
   "stage.steps.origin": "Whose step is this?",
   "stage.steps.origin.parent": "My own words",
   "stage.steps.origin.practitioner": "A step from the professional who works with {name}",
@@ -277,6 +281,8 @@ const HE: Record<PlanStringKey, string> = {
   "stage.steps.ownApprove": "לאשר את השורה המדויקת הזאת",
   "stage.steps.ownDrop": "לוותר עליה",
   "stage.steps.ownRefused": "Arbor לא הצליחה לנסח את השורה הזאת לספר ילדים. נסו מילים פשוטות יותר, או בחרו שלב מהתפריט.",
+  "stage.steps.ownCrisis": "מה שכתבתם אולי צריך עכשיו אדם, לא שלב בתוכנית. אם מישהו בסכנה, התקשרו לשירותי החירום. בעזרה ובטיחות יש את קווי הסיוע.",
+  "stage.steps.ownCrisisDoor": "עזרה ובטיחות",
   "stage.steps.origin": "של מי השלב הזה?",
   "stage.steps.origin.parent": "במילים שלי",
   "stage.steps.origin.practitioner": "שלב מאיש או אשת המקצוע שעובדים עם {name}",

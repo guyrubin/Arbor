@@ -31,6 +31,7 @@ import type { PatternDef } from "../../lib/library/plans/patterns";
 import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import type { BookLang, BookReaderChild } from "../../lib/library/types";
 import { heGender } from "../../lib/library/bookText";
+import { screenForImmediateEscalation } from "../../safety/escalation";
 
 const CARD: React.CSSProperties = { background: "var(--arbor-paper-elevated)", borderRadius: "var(--r-lg)", boxShadow: "var(--arbor-shadow-card)" };
 const PRIMARY: React.CSSProperties = { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }; // solid accent: the gradient is each surface's one primaryMove (primaryMove.gradient.test)
@@ -162,7 +163,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
         );
       })()}
 
-      {state.stage === "steps" && <StepsStage def={def} lang={lang} childName={name} state={state} dispatch={dispatch} problems={problems.length} />}
+      {state.stage === "steps" && <StepsStage def={def} lang={lang} childName={name} state={state} dispatch={dispatch} problems={problems.length} onSafety={onSafety} />}
 
       {state.stage === "the-box" && (
         <section style={CARD} className="p-5" data-plan-stage="the-box">
@@ -220,7 +221,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
   );
 }
 
-function StepsStage({ def, lang, childName, state, dispatch, problems }: { def: PatternDef; lang: BookLang; childName: string; state: ComposerState; dispatch: React.Dispatch<Parameters<typeof composerReducer>[2]>; problems: number }) {
+function StepsStage({ def, lang, childName, state, dispatch, problems, onSafety }: { def: PatternDef; lang: BookLang; childName: string; state: ComposerState; dispatch: React.Dispatch<Parameters<typeof composerReducer>[2]>; problems: number; onSafety?: () => void }) {
   const s = (key: Parameters<typeof planString>[0], vars?: Record<string, string | number>) => planString(key, lang, vars);
   const [ownSlot, setOwnSlot] = useState<1 | 2 | 3>(2);
   const [ownText, setOwnText] = useState("");
@@ -228,14 +229,23 @@ function StepsStage({ def, lang, childName, state, dispatch, problems }: { def: 
   const [ownOrigin, setOwnOrigin] = useState<OwnStepOrigin>("parent");
   const [phrasing, setPhrasing] = useState(false);
   const [refused, setRefused] = useState(false);
+  // B-GA-05 (28 Oct): crisis language in the parent's words never becomes a
+  // plan step and never reads as "could not phrase". The same screen the server
+  // runs fires here first (no request), and the server's 409 contract (lib/api
+  // DUX-032) is honoured if it arrives anyway; the notice carries the one door
+  // to Help and safety, where the helplines live.
+  const [crisis, setCrisis] = useState(false);
   const phrase = async () => {
     if (phrasing || ownText.trim().length < 3) return;
-    setPhrasing(true);
     setRefused(false);
+    if (screenForImmediateEscalation({ message: ownText.trim() })) { setCrisis(true); return; }
+    setCrisis(false);
+    setPhrasing(true);
     try {
       const { step } = await phraseOwnStep({ pattern: def.id, slot: ownSlot, lang, text: ownText.trim(), origin: ownOrigin });
       dispatch({ type: "ownStepPhrased", step });
     } catch (e) {
+      if (e instanceof PlanApiError && e.status === 409) { setCrisis(true); return; }
       setRefused(!(e instanceof PlanApiError) || e.status !== 401);
     } finally {
       setPhrasing(false);
@@ -309,6 +319,12 @@ function StepsStage({ def, lang, childName, state, dispatch, problems }: { def: 
             <textarea className="min-h-11 flex-1 p-3 t-base" style={FIELD} rows={2} maxLength={240} value={ownText} data-plan-own-text="" dir="auto" onChange={(e) => setOwnText(e.target.value)} />
           </div>
           {refused && <p role="alert" className="mt-2 t-sm" style={{ color: "var(--arbor-ink)" }}>{s("stage.steps.ownRefused")}</p>}
+          {crisis && (
+            <div role="alert" className="mt-2" data-plan-own-crisis="">
+              <p className="t-sm" style={{ color: "var(--arbor-ink)" }}>{s("stage.steps.ownCrisis")}</p>
+              {onSafety && <button type="button" className={`${BTN} mt-2`} style={QUIET} onClick={onSafety}><Icon name="health_and_safety" size={18} />{s("stage.steps.ownCrisisDoor")}</button>}
+            </div>
+          )}
           <div className="mt-2"><button type="button" className={BTN} style={QUIET} disabled={phrasing || ownText.trim().length < 3} data-plan-own-phrase="" onClick={() => void phrase()}><Icon name="auto_awesome" size={18} />{phrasing ? s("stage.steps.ownPhrasing") : s("stage.steps.ownPhrase")}</button></div>
         </div>
       )}
