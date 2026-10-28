@@ -16,6 +16,8 @@ const stubs = {
   heroSheetStore: 'export const heroSheetOwnerKey=()=>window.evidence.owner;',
   buildHeroSheet: 'export const ensureHeroSheet=async()=>{};',
   buildBookSheet: 'export const DEFAULT_SHEET_BOOK="five-smooth-stones";export const keepLocalBookDoc=()=>async()=>{};',
+  // PR C: the plan books' builder shares the canonical triggers; this check covers the canonical lifetime only
+  buildPlanNarration: 'export const ensurePlanNarration=()=>null;export {narrationFolder} from "./src/lib/library/narrationVoice";',
   api: 'export const authHeaders=async()=>({"Content-Type":"application/json"});',
   kidModeGate: `export const isKidModeActive=()=>window.evidence.locked;
     export const subscribeKidMode=fn=>{window.evidence.listeners.add(fn);return ()=>window.evidence.listeners.delete(fn);};`,
@@ -39,7 +41,7 @@ const bundled = await build({ stdin: { contents: fixture, resolveDir: process.cw
   bundle: true, write: false, platform: 'browser', format: 'iife',
   define: { 'process.env.NODE_ENV': '"development"', 'import.meta.env': '{}' },
   plugins: [{ name: 'synthetic-entry-boundaries', setup(plugin) {
-    plugin.onResolve({ filter: /\/(ArborContext|ProfileContext|LanguageContext|heroSheetStore|buildHeroSheet|buildBookSheet|api|kidModeGate|KidModeContext|HeroFirstStep)$/ },
+    plugin.onResolve({ filter: /\/(ArborContext|ProfileContext|LanguageContext|heroSheetStore|buildHeroSheet|buildBookSheet|buildPlanNarration|api|kidModeGate|KidModeContext|HeroFirstStep)$/ },
       args => ({ path: args.path.split('/').pop(), namespace: 'entry-fixture' }));
     plugin.onLoad({ filter: /.*/, namespace: 'entry-fixture' }, args => ({ contents: stubs[args.path], loader: 'tsx', resolveDir: process.cwd() }));
   } }],
