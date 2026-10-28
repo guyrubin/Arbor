@@ -19,20 +19,23 @@ export const DOMAINS: { id: string; nameKey: string; subKey: string; icon: React
 }));
 
 /** B-SHELL-44 — the ONE toggle chip Add child and Edit child render for a
- *  language or focus choice (the add-child language chip, now shared). */
+ *  language choice: the profile drawer's existing interest pill (rounded-full,
+ *  the check glyph when chosen, DESIGN.md "Chips/pills"), so the drawer shows
+ *  one chip shape and Add child shows the same one. */
 function ChoiceChip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       type="button"
       aria-pressed={on}
       onClick={onClick}
-      className="inline-flex min-h-11 items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition"
+      className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold transition"
       style={
         on
-          ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid color-mix(in srgb, var(--arbor-green-ink) 40%, transparent)" }
-          : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
+          ? { background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-clay-border)", color: "var(--arbor-green-ink)" }
+          : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-muted)" }
       }
     >
+      {on && <Icon name="check" size={12} />}
       {children}
     </button>
   );
@@ -64,19 +67,69 @@ export function ChildLanguageChoices({ value, onChange }: { value: string[]; onC
   );
 }
 
-/** B-SHELL-44 — the seven focus areas as Edit child shows them: the same
- *  areas, names and stored form (`t(nameKey)` in `challenges`) as Add's
- *  StepDomains. A line saved in the other language still reads as chosen. */
-export function ChildFocusChoices({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
+/** B-SHELL-44 — the seven focus tiles, ONE component for Add child (step 3,
+ *  StepDomains) and Edit child: the same tile, icon, name and line. No score,
+ *  status, warning or red styling. */
+function FocusAreaTiles({ isOn, onToggle, testId }: { isOn: (id: string) => boolean; onToggle: (id: string) => void; testId?: string }) {
   const { t } = useLanguage();
   return (
-    <div className="flex flex-wrap gap-2" role="group" aria-label={t("ob.step.ready.labelDomains")} data-testid="child-focus-choices">
-      {DOMAINS.map((d) => (
-        <ChoiceChip key={d.id} on={hasChoice(value, focusAliases(d.nameKey))} onClick={() => onChange(toggleChoice(value, focusAliases(d.nameKey), t(d.nameKey)))}>
-          <Icon name={FOCUS_ICONS[d.id as keyof typeof FOCUS_ICONS]} size={16} />{t(d.nameKey)}
-        </ChoiceChip>
-      ))}
+    <div className="grid grid-cols-1 gap-2" role="group" aria-label={t("ob.step.ready.labelDomains")} {...(testId ? { "data-testid": testId } : {})}>
+      {DOMAINS.map((d) => {
+        const on = isOn(d.id);
+        return (
+          <button
+            key={d.id}
+            type="button"
+            data-focus-id={d.id}
+            onClick={() => onToggle(d.id)}
+            className="flex items-start gap-3 px-4 py-3 rounded-2xl text-start transition active:scale-[0.99]"
+            style={
+              on
+                ? { background: "var(--arbor-green-soft)", border: "1px solid color-mix(in srgb, var(--arbor-green-ink) 40%, transparent)" }
+                : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }
+            }
+            aria-pressed={on}
+          >
+            <span
+              className="mt-0.5 flex-shrink-0"
+              style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}
+            >
+              {d.icon}
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-extrabold" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>
+                {t(d.nameKey)}
+              </span>
+              <span className="block text-xs leading-snug mt-0.5" style={{ color: "var(--arbor-muted)" }}>
+                {t(d.subKey)}
+              </span>
+            </span>
+            {on && (
+              <span className="flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center self-center" style={{ background: "var(--arbor-green-ink)" }}>
+                <svg viewBox="0 0 10 8" width="10" height="8" fill="none">
+                  <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+            )}
+          </button>
+        );
+      })}
     </div>
+  );
+}
+
+/** B-SHELL-44 — Edit child's focus areas: Add child's own FocusAreaTiles over
+ *  the stored `challenges` lines (`t(nameKey)`, Add's stored form). A line
+ *  saved in the other language still reads as chosen. */
+export function ChildFocusChoices({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
+  const { t } = useLanguage();
+  const nameKeyOf = (id: string) => DOMAINS.find((d) => d.id === id)?.nameKey ?? "";
+  return (
+    <FocusAreaTiles
+      testId="child-focus-choices"
+      isOn={(id) => hasChoice(value, focusAliases(nameKeyOf(id)))}
+      onToggle={(id) => onChange(toggleChoice(value, focusAliases(nameKeyOf(id)), t(nameKeyOf(id))))}
+    />
   );
 }
 
@@ -360,48 +413,9 @@ export function StepDomains({
         </p>
       </div>
 
-      {/* 7 domain tiles — multi-select; no score/status/warning/red styling */}
-      <div className="grid grid-cols-1 gap-2">
-        {DOMAINS.map((d) => {
-          const on = selectedDomains.includes(d.id);
-          return (
-            <button
-              key={d.id}
-              type="button"
-              onClick={() => toggle(d.id)}
-              className="flex items-start gap-3 px-4 py-3 rounded-2xl text-start transition active:scale-[0.99]"
-              style={
-                on
-                  ? { background: "var(--arbor-green-soft)", border: "1px solid color-mix(in srgb, var(--arbor-green-ink) 40%, transparent)" }
-                  : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }
-              }
-              aria-pressed={on}
-            >
-              <span
-                className="mt-0.5 flex-shrink-0"
-                style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}
-              >
-                {d.icon}
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="block text-sm font-extrabold" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>
-                  {t(d.nameKey)}
-                </span>
-                <span className="block text-xs leading-snug mt-0.5" style={{ color: "var(--arbor-muted)" }}>
-                  {t(d.subKey)}
-                </span>
-              </span>
-              {on && (
-                <span className="flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center self-center" style={{ background: "var(--arbor-green-ink)" }}>
-                  <svg viewBox="0 0 10 8" width="10" height="8" fill="none">
-                    <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      {/* 7 domain tiles — multi-select; no score/status/warning/red styling.
+          B-SHELL-44: the same FocusAreaTiles Edit child renders. */}
+      <FocusAreaTiles isOn={(id) => selectedDomains.includes(id)} onToggle={toggle} />
 
       {/* Footer reassurance — VERBATIM copy from clearance */}
       <p className="text-[11px] text-center" style={{ color: "var(--arbor-muted)" }}>

@@ -61,15 +61,20 @@ const renderDrawer = (l: UiLang, overrides: Record<string, unknown>) => {
     vi.unstubAllGlobals();
   }
 };
-/** The pressed/unpressed chips of one rendered group, by visible label. */
+/** The pressed/unpressed language chips, by visible label (the check glyph is a ligature). */
 const chips = (html: string, testId: string) => {
   const group = new RegExp(`data-testid="${testId}"[^>]*>([\\s\\S]*?)</div>`).exec(html)?.[1] ?? "";
   return [...group.matchAll(/<button[^>]*aria-pressed="(true|false)"[^>]*>([\s\S]*?)<\/button>/g)].map((m) => ({
     pressed: m[1] === "true",
-    label: m[2].replace(/<[^>]+>/g, "").replace(/^(favorite|chat_bubble|group|bedtime|menu_book|repeat|restaurant)/, "").trim(),
+    label: m[2].replace(/<[^>]+>/g, "").replace(/^check/, "").trim(),
   }));
 };
-const pressed = (html: string, testId: string) => chips(html, testId).filter((c) => c.pressed).map((c) => c.label);
+/** The focus tiles (Add child's FocusAreaTiles) that are pressed, by their localized name. */
+const pressedFocus = (html: string, l: UiLang) =>
+  [...html.matchAll(/<button[^>]*data-focus-id="(\w+)"[^>]*aria-pressed="true"/g)]
+    .map((m) => translate(l, CHILD_FOCUS_AREAS.find((a) => a.id === m[1])!.nameKey));
+const pressed = (html: string, testId: string, l: UiLang = lang) =>
+  testId === "child-focus-choices" ? pressedFocus(html, l) : chips(html, testId).filter((c) => c.pressed).map((c) => c.label);
 
 describe("B-SHELL-44 · one vocabulary: the same choices and stored forms in Add and Edit", () => {
   it("Add's StepChild and the Edit drawer render the SAME language and focus components", () => {
@@ -79,6 +84,15 @@ describe("B-SHELL-44 · one vocabulary: the same choices and stored forms in Add
     expect(drawer).toMatch(/<ChildLanguageChoices value=\{languages\} onChange=\{setLanguages\} \/>/);
     expect(drawer).toMatch(/<ChildFocusChoices value=\{challengeItems\} onChange=\{setChallengeItems\} \/>/);
     expect(DOMAINS.map((d) => d.nameKey)).toEqual(CHILD_FOCUS_AREAS.map((a) => a.nameKey));
+    // Critic round 1 (f): one focus component — Add's step 3 and Edit both render FocusAreaTiles.
+    const stepDomains = fields.slice(fields.indexOf("export function StepDomains("));
+    expect(stepDomains).toMatch(/<FocusAreaTiles isOn=/);
+    expect(fields.slice(fields.indexOf("export function ChildFocusChoices("), fields.indexOf("function clampInt("))).toMatch(/<FocusAreaTiles/);
+    // Critic round 1 (c): one chip shape in the drawer — the language chip is the interest pill.
+    const chip = fields.slice(fields.indexOf("function ChoiceChip("), fields.indexOf("export function ChildLanguageChoices("));
+    expect(chip).toContain("rounded-full");
+    expect(drawer).toMatch(/className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 py-1\.5 text-\[12px\] font-bold transition"/);
+    expect(chip).toContain('className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold transition"');
     // The comma/newline free-text contract is gone from Edit.
     expect(drawer).not.toMatch(/\(comma separated\)|languages\.split\(","\)|setChallenges\(/);
   });
@@ -95,7 +109,9 @@ describe("B-SHELL-44 · one vocabulary: the same choices and stored forms in Add
       const focusHtml = unescape(renderToStaticMarkup(React.createElement(ChildFocusChoices, { value: [], onChange: () => undefined })));
       for (const language of CHILD_LANGUAGES) expect(languagesHtml).toContain(translate(l, `ob.lang.${language.toLowerCase()}`));
       for (const area of CHILD_FOCUS_AREAS) expect(focusHtml).toContain(translate(l, area.nameKey));
-      expect((languagesHtml + focusHtml).match(/<button\b[^>]*>/g)?.every((b) => /min-h-11/.test(b) && /aria-pressed/.test(b))).toBe(true);
+      expect(languagesHtml.match(/<button\b[^>]*>/g)?.every((b) => /min-h-11/.test(b) && /rounded-full/.test(b) && /aria-pressed/.test(b))).toBe(true);
+      expect(focusHtml.match(/<button\b[^>]*>/g)?.every((b) => /data-focus-id/.test(b) && /aria-pressed/.test(b))).toBe(true);
+      for (const area of CHILD_FOCUS_AREAS) expect(focusHtml).toContain(translate(l, area.subKey));
     });
   }
 });
@@ -171,7 +187,7 @@ describe("B-SHELL-44 · Edit child reads in the parent's language and keeps the 
   for (const l of ["en", "he"] as const) {
     it(`${l}: field labels, Save and the Your data link are localized; the link opens Settings › Your data`, () => {
       const html = renderDrawer(l, { languages: ["Hebrew"], challenges: [] });
-      for (const key of ["aria.editChildProfile", "ob.step.ready.labelName", "cp.f.school", "ob.langsAtHome", "ob.step.ready.labelDomains", "ac.strengths", "ac.challenges", "companion.capture.saveChanges", "elev.yourData.row.title"]) {
+      for (const key of ["profile.edit.title", "ob.step.ready.labelName", "cp.f.school", "ob.langsAtHome", "ob.step.ready.labelDomains", "ac.strengths", "ac.challenges", "profile.edit.save", "elev.yourData.row.title"]) {
         expect(html, key).toContain(translate(l, key));
       }
       expect(html).toContain('data-testid="profile-your-data-link"');
