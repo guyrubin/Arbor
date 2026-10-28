@@ -38,6 +38,11 @@ const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8");
 /** Exact, shrink-only: rows whose true request the current decision does not
  *  evaluate. A new gap fails; a closed gap fails until this number drops. */
 const GAP_ROWS_BASELINE = 16;
+/** Exact, both ways: the rows that carry a parent's or child's words or voice
+ *  (Text in) and run no crisis screen (Crisis screen starts with "no"). */
+const CRISIS_SCREEN_GAPS = ["api POST /score-utterance", "server/childAsr.ts", "server/planNarration.ts", "server/plans.ts"];
+const SCREEN_CALL = /\bscreenForImmediateEscalation\(/;
+const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
 
 /* ── discovery ────────────────────────────────────────────────────────────── */
 
@@ -184,6 +189,11 @@ function trueRequestResult(row: Row): string {
 const OUTPUT_SCREENS = /\b(screenModelOutput|screenStructuredModelOutput|screenModelOutputLexical|screenAndSynthesizeSpeech|sendScreenedJson|createScreenedProseRelay)\(/;
 const KILL_SWITCH_SOURCES = ["config/env.ts", "server/imageQuota.ts", "safety/outputScreen.ts"].map(read).join("\n");
 
+/** A module row's source: the file named by its key (non-route rows only). */
+function moduleSource(key: string): string {
+  try { return read(key); } catch { return ""; }
+}
+
 function inventoryErrors(doc: string, handlers: Map<string, Handler>, others: string[]): string[] {
   const errors: string[] = [];
   const rows = inventory(doc);
@@ -210,6 +220,25 @@ function inventoryErrors(doc: string, handlers: Map<string, Handler>, others: st
     if (row["True-request result"] !== computed) errors.push(`${row.Key}: true-request result reads "${row["True-request result"]}", the policy decides "${computed}"`);
     if (row["Kill switch"] !== "—" && !KILL_SWITCH_SOURCES.includes(row["Kill switch"])) errors.push(`${row.Key}: kill switch ${row["Kill switch"]} is not read anywhere`);
   }
+  // Module rows (not a route handler): the crisis cell matches the module's own
+  // source, and a "via POST /x" cell names a route whose handler really screens.
+  for (const row of rows) {
+    if (handlers.has(row.Key)) continue;
+    const calls = SCREEN_CALL.test(stripComments(moduleSource(row.Key)));
+    const cell = row["Crisis screen"] ?? "";
+    if (/^yes/.test(cell) !== calls) errors.push(`${row.Key}: crisis screen reads "${cell}", but the module ${calls ? "calls" : "does not call"} screenForImmediateEscalation(`);
+    for (const [column, screens] of [["Crisis screen", (t: string) => t.includes("screenForImmediateEscalation(")], ["Output screen", (t: string) => OUTPUT_SCREENS.test(t)]] as const) {
+      const via = (row[column] ?? "").match(/^via (POST \/[\w/-]+)/)?.[1];
+      if (!via) continue;
+      const h = handlers.get(`api ${via}`);
+      if (!h || !screens(h.text)) errors.push(`${row.Key}: ${column} reads "via ${via}", but that route does not screen`);
+    }
+  }
+  // Second exact lock: unscreened rows that carry a parent's or child's words or voice.
+  const unscreened = rows.filter((r) => /^no\b/.test(r["Crisis screen"] ?? "") && !/^none\b/.test(r["Text in"] ?? "")).map((r) => r.Key).sort();
+  for (const k of unscreened) if (!CRISIS_SCREEN_GAPS.includes(k)) errors.push(`${k}: carries ${rows.find((r) => r.Key === k)!["Text in"]} with no crisis screen and is not in CRISIS_SCREEN_GAPS`);
+  for (const k of CRISIS_SCREEN_GAPS) if (!unscreened.includes(k)) errors.push(`${k}: listed in CRISIS_SCREEN_GAPS but no longer an unscreened text or voice row: remove it from the lock`);
+
   const gaps = rows.filter((r) => r["True-request result"] !== "eligible").length;
   if (gaps > GAP_ROWS_BASELINE) errors.push(`${gaps} gap rows, baseline ${GAP_ROWS_BASELINE} (shrink-only)`);
   if (gaps < GAP_ROWS_BASELINE) errors.push(`${gaps} gap rows: a gap closed, lower GAP_ROWS_BASELINE to ${gaps} (shrink-only lock)`);
@@ -287,7 +316,7 @@ describe("B-AIOPS-08 — negative controls", () => {
   });
 
   it("a wrong crisis-screen or consent cell fails", () => {
-    const flipped = DOC.replace("| api POST /explain | structured_text | parent | child_profile | analysis_structured | none | yes |", "| api POST /explain | structured_text | parent | child_profile | analysis_structured | none | no |")
+    const flipped = DOC.replace("| api POST /explain | structured_text | parent | child_profile | analysis_structured | none | parent text | yes |", "| api POST /explain | structured_text | parent | child_profile | analysis_structured | none | parent text | no |")
       .replace("| face_processing |", "| none |");
     const errors = inventoryErrors(flipped, HANDLERS, OTHERS);
     expect(errors).toContain("api POST /explain: crisis screen reads no, source says yes");
@@ -304,5 +333,24 @@ describe("B-AIOPS-08 — negative controls", () => {
     const grown = DOC.replace("| api POST /council | text_stream | parent | account, child_profile |", "| api POST /council | text_stream | child | account, child_profile |")
       .replace(/(\| api POST \/council \|[^\n]*\| routeDecisionFor \| )eligible( \|)/, "$1rejects: audience$2");
     expect(inventoryErrors(grown, HANDLERS, OTHERS)).toContain(`${GAP_ROWS_BASELINE + 1} gap rows, baseline ${GAP_ROWS_BASELINE} (shrink-only)`);
+  });
+
+  it("crisis-screen lock: a new unscreened text row fails, and a screened one must leave the lock", () => {
+    // /hero-pose carries no text today; claim it does and it becomes an unlisted unscreened row.
+    const grown = DOC.replace("| none: the stored hero picture |", "| parent text |");
+    expect(grown).not.toBe(DOC);
+    expect(inventoryErrors(grown, HANDLERS, OTHERS)).toContain("api POST /hero-pose: carries parent text with no crisis screen and is not in CRISIS_SCREEN_GAPS");
+    // Mark the plans row screened: the lock must shrink with it (and the module check catches the false claim).
+    const screened = DOC.replace("| no (POST /plans/phrase; gap 8) |", "| yes (POST /plans/phrase) |");
+    expect(screened).not.toBe(DOC);
+    const errors = inventoryErrors(screened, HANDLERS, OTHERS);
+    expect(errors).toContain("server/plans.ts: listed in CRISIS_SCREEN_GAPS but no longer an unscreened text or voice row: remove it from the lock");
+    expect(errors.some((e) => e.startsWith("server/plans.ts: crisis screen reads \"yes (POST /plans/phrase)\", but the module does not call"))).toBe(true);
+  });
+
+  it("a 'via' cell must name a route whose handler really screens", () => {
+    const wrong = DOC.replace("| via POST /council | via POST /council |", "| via POST /todays-focus | via POST /council |");
+    expect(wrong).not.toBe(DOC);
+    expect(inventoryErrors(wrong, HANDLERS, OTHERS)).toContain('services/council.ts: Crisis screen reads "via POST /todays-focus", but that route does not screen');
   });
 });

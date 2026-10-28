@@ -192,6 +192,11 @@ const CLIENT_SCREENS: Record<string, string> = {
   "lib/describeChild.ts": "the browser describe session screens before it posts; POST /describe-child screens again (in the matrix)",
   "lib/onboardingFirstRun.ts": "the browser first-run flow screens the worry words before it posts; POST /describe-child screens again (in the matrix)",
 };
+/** Server-side directories: a module there is never a browser module, so it can never be registered. */
+const SERVER_DIRS = ["server/", "routes/", "services/", "safety/"];
+const clientScreenRegistryErrors = (registry: Record<string, string>): string[] =>
+  Object.keys(registry).filter((rel) => SERVER_DIRS.some((d) => rel.startsWith(d)))
+    .map((rel) => `${rel} is server code and cannot be registered as a browser module: inline the screen in its route and add the channel to this matrix`);
 const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
 
 /** Every non-client, non-test source file other than routes/api.ts that calls the screen and is not a
@@ -270,7 +275,8 @@ describe("B-GA-05 — every enabled crisis channel directs to help before anythi
   it("the matrix covers every route that calls screenForImmediateEscalation (derived from the source)", () => {
     const { routes, unattributed } = screenedRoutes();
     expect(unattributed, `screenForImmediateEscalation( at routes/api.ts line(s) ${unattributed.join(", ")} has no enclosing router route: inline it in the route or register the channel here`).toEqual([]);
-    expect(unregisteredScreens(), "a source file outside routes/api.ts calls the crisis screen: inline it in the route, add the channel to this matrix, or register a browser-only module in CLIENT_SCREENS").toEqual([]);
+    expect(clientScreenRegistryErrors(CLIENT_SCREENS)).toEqual([]);
+    expect(unregisteredScreens(), "a source file outside routes/api.ts calls the crisis screen: in server code, inline it in the route and add the channel to this matrix (server/, routes/, services/ and safety/ can never be registered); only a browser-only module may go in CLIENT_SCREENS, with the route that screens again").toEqual([]);
     expect(routes.length).toBeGreaterThanOrEqual(18);
     expect(routes).toContain("/live/turn");
     expect([...Object.keys(CHANNELS), ...Object.keys(NOT_A_CHANNEL)].sort()).toEqual(routes);
@@ -282,6 +288,13 @@ describe("B-GA-05 — every enabled crisis channel directs to help before anythi
     const { routes, unattributed } = screenedRoutes(helper);
     expect(routes).not.toContain("/synthetic-helper-route");
     expect(unattributed).toHaveLength(1);
+  });
+
+  it("negative control: server code can never be registered as a browser module", () => {
+    for (const rel of ["server/syntheticRouter.ts", "routes/syntheticRoutes.ts", "services/syntheticService.ts", "safety/syntheticWrapper.ts"]) {
+      expect(clientScreenRegistryErrors({ ...CLIENT_SCREENS, [rel]: "a reason" })).toEqual([`${rel} is server code and cannot be registered as a browser module: inline the screen in its route and add the channel to this matrix`]);
+    }
+    expect(clientScreenRegistryErrors({ ...CLIENT_SCREENS, "lib/syntheticBrowserFlow.ts": "a reason" })).toEqual([]);
   });
 
   it("negative control: a screen wrapper in safety/ or lib/, or a router in server/, is flagged", () => {
