@@ -57,6 +57,8 @@ const FUNNEL_CHAINS = {
   billing: ["paywall_view", "checkout_start", "entitlement_active"],
   // B-MEAS-02: the pilot's primary metric (server/cohortMetrics.ts summariseLoop).
   loop: ["today_action_accepted", "today_action_outcome", "loop_continued"],
+  // B-RESID-05: the share → activation chain (server/cohortMetrics.ts).
+  share: ["share_completed", "invite_activated"],
 };
 
 /* ── flags ───────────────────────────────────────────────────────────────── */

@@ -84,6 +84,10 @@ export const FUNNEL_CHAINS: Record<string, readonly string[]> = {
   // B-MEAS-02: the pilot's primary metric — accept a step, report how it
   // went, and the next focus is built from that report.
   loop: ["today_action_accepted", "today_action_outcome", "loop_continued"],
+  // B-RESID-05: a send of the invite link, then a referred family's first
+  // activation (lib/share shareInviteLink → lib/referralActivation). Names
+  // only; the grouping props are the allow-listed source/market.
+  share: ["share_completed", "invite_activated"],
 };
 
 /* ── the loop metric (B-MEAS-02) ──────────────────────────────────────────── */
