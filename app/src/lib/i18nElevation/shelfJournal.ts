@@ -79,6 +79,24 @@ export const en: Record<string, string> = {
   "elev.packet.intake.questions": "The parent's questions",
   "elev.packet.intake.practiceLine": "{shelf} · {n} practice days in the last {days} days",
   "elev.packet.intake.practiceLine.one": "{shelf} · 1 practice day in the last {days} days",
+
+  // ── B-NEXT-01 · hearing first (DARK behind arbor.flags.hearingQuestion until
+  // the clinical wording review, GA B-GA-02). One bounded choice, kept with
+  // its day; "Not sure" points to a nurse or the paediatrician, never a verdict.
+  "elev.hearing.question": "When was hearing last checked?",
+  "elev.hearing.why": "A speech therapist asks this first. Your answer is kept with today's date and goes into the speech therapist's packet.",
+  "elev.hearing.answer.recent": "In the last 6 months",
+  "elev.hearing.answer.year": "6 to 12 months ago",
+  "elev.hearing.answer.older": "More than a year ago",
+  "elev.hearing.answer.notSince": "Not since the newborn check",
+  "elev.hearing.answer.notSure": "Not sure",
+  "elev.hearing.notSure": "A nurse or your paediatrician can check hearing. You can ask at the next visit.",
+  "elev.hearing.kept": "Kept on {date}: {answer}",
+  "elev.hearing.change": "Change",
+  "elev.hearing.saveError": "That wasn't saved. Try again.",
+  "elev.hearing.packet.title": "Hearing",
+  "elev.hearing.packet.line": "Last checked: {answer} (the parent's answer, {date})",
+  "elev.hearing.packet.notSure": "The parent is not sure when hearing was last checked ({date})",
 };
 
 export const he: Record<string, string> = {
@@ -149,4 +167,20 @@ export const he: Record<string, string> = {
   "elev.packet.intake.questions": "השאלות של ההורה",
   "elev.packet.intake.practiceLine": "{shelf} · {n} ימי תרגול ב־{days} הימים האחרונים",
   "elev.packet.intake.practiceLine.one": "{shelf} · יום תרגול אחד ב־{days} הימים האחרונים",
+
+  // ── B-NEXT-01 · שמיעה קודם (כבוי מאחורי הדגל עד בדיקת הניסוח הקליני)
+  "elev.hearing.question": "מתי נבדקה השמיעה בפעם האחרונה?",
+  "elev.hearing.why": "קלינאית תקשורת שואלת את זה ראשון. התשובה נשמרת עם התאריך של היום ונכנסת לדף לקלינאית התקשורת.",
+  "elev.hearing.answer.recent": "בחצי השנה האחרונה",
+  "elev.hearing.answer.year": "לפני חצי שנה עד שנה",
+  "elev.hearing.answer.older": "לפני יותר משנה",
+  "elev.hearing.answer.notSince": "לא מאז הבדיקה אחרי הלידה",
+  "elev.hearing.answer.notSure": "לא בטוחים",
+  "elev.hearing.notSure": "אחות או רופא הילדים יכולים לבדוק את השמיעה. אפשר לשאול בביקור הבא.",
+  "elev.hearing.kept": "נשמר ב־{date}: {answer}",
+  "elev.hearing.change": "שינוי",
+  "elev.hearing.saveError": "השמירה לא הצליחה. אפשר לנסות שוב.",
+  "elev.hearing.packet.title": "שמיעה",
+  "elev.hearing.packet.line": "נבדקה לאחרונה: {answer} (תשובת ההורה, {date})",
+  "elev.hearing.packet.notSure": "לא ידוע להורה מתי נבדקה השמיעה לאחרונה ({date})",
 };

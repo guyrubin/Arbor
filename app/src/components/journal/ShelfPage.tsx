@@ -72,6 +72,8 @@ export interface ShelfPageProps {
   leadWords?: { id: string; text: string; day: string } | null;
   /** B-BOOK-77: this shelf's Everyday Plans (running + doors), after the entries. */
   plansSection?: React.ReactNode;
+  /** B-NEXT-01: the Words shelf's hearing question (its caller owns the pilot flag). */
+  askHearing?: React.ReactNode;
 }
 
 /** P7-DESIGN fix r1 (framer ruling R5): the entries with the shelf's words as
@@ -136,6 +138,7 @@ export default function ShelfPage({
   onAdd,
   primaryMoveProps,
   plansSection,
+  askHearing,
 }: ShelfPageProps) {
   const { t, uiLang } = useLanguage();
   const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
@@ -268,6 +271,7 @@ export default function ShelfPage({
             />
           </div>
         )}
+        {askHearing}
       </section>
 
       <section data-module="shelf-entries" aria-labelledby="shelf-entries-title" className="min-w-0">

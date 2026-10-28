@@ -252,6 +252,7 @@ export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.firstPlanTracked": "an analytics stamp",
   "arbor.firstSteps": "legacy onboarding marker (read once, then removed)",
   "arbor.flags.guidedTier": "feature flag",
+  "arbor.flags.hearingQuestion": "feature flag (B-NEXT-01: the hearing question, dark until clinical review)",
   "arbor.flags.homeProgramLink": "feature flag",
   "arbor.flags.programPilot": "feature flag (B-PROG-15: show the pilot line)",
   "arbor.flags.sneakFreeze": "feature flag",

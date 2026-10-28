@@ -29,6 +29,8 @@ import QuickLogModal from "../overview/QuickLogModal";
 import ShelfGrid from "./ShelfGrid";
 import ShelfPage, { type ShelfDayGroup } from "./ShelfPage";
 import ProView from "./ProView";
+import HearingCheckQuestion from "./HearingCheckQuestion";
+import { hearingCheckOf, hearingQuestionOn } from "../../lib/hearingCheck";
 import { buildIntakePacket, isIntakeProfession, type IntakeProfession } from "../../consult/packet";
 import { intakeQuestionLines, readIntakeQuestionsText, writeIntakeQuestionsText } from "../../consult/intakeDraft";
 import { programPageModel } from "../../lib/programPage";
@@ -202,6 +204,8 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
     () => (pro ? programPageModel(programRows.items, { childId: childProfile.id, actionLoops: actionLoop, sleepLogs: sleepLogs.items, observations }, now, uiLang === "he" ? "he" : "en", childProfile.gender ?? null) : null),
     [pro, programRows.items, childProfile.id, childProfile.gender, actionLoop, sleepLogs.items, observations, now, uiLang],
   );
+  // B-NEXT-01: dark until the clinical wording review (GA B-GA-02).
+  const hearingOn = useMemo(() => hearingQuestionOn(), []);
   const intakePacket = useMemo(
     () => (pro ? buildIntakePacket(profession, {
       child: childProfile,
@@ -217,8 +221,10 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
       program: intakeProgram,
       homePrograms: programRows.items,
       familyGoals: familyGoalsCol.items,
+      // B-NEXT-01: the parent's hearing answer, only while the pilot flag is on
+      hearing: hearingOn ? hearingCheckOf(childProfile) : null,
     }) : null),
-    [pro, profession, childProfile, milestones, behaviorLogs, actionLoop, questions, comparisonMonths, now, uiLang, keepsakes.items, intakeProgram, programRows.items, familyGoalsCol.items],
+    [pro, profession, childProfile, milestones, behaviorLogs, actionLoop, questions, comparisonMonths, now, uiLang, keepsakes.items, intakeProgram, programRows.items, familyGoalsCol.items, hearingOn],
   );
   const domainCounts = useMemo(() => proDomainCounts(observations, (s) => shelfDef(s).domain, now), [observations, now]);
 
@@ -315,6 +321,7 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
           counts={domainCounts}
           onBack={() => goToRoute("journal")}
           primaryMoveProps={primaryMoveProps}
+          askHearing={hearingOn && profession === "slp" ? <HearingCheckQuestion testId="pro-hearing-check" /> : undefined}
         />
       ) : shelf ? (
         <ShelfPage
@@ -334,6 +341,7 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
           onAdd={() => setCapture({ open: true, mode: "text" })}
           primaryMoveProps={primaryMoveProps}
           plansSection={plansSectionFor(shelf)}
+          askHearing={hearingOn && shelf === "words" ? <HearingCheckQuestion testId="shelf-hearing-check" /> : undefined}
         />
       ) : (
         <ShelfGrid
