@@ -11,6 +11,7 @@ import { createChildExportRun } from "../../lib/childExportRun";
 import { childExportFilename } from "../../lib/childExportFilename";
 import { withChildExportSession } from "../../lib/childExportSession";
 import { fmtDay } from "../../lib/formatDate";
+import { erasedRecordCount } from "../../lib/childDataSinks";
 import type { DeletionReceipt } from "../../types";
 
 /**
@@ -165,9 +166,12 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
             {t("sec.sharing.receipt.body", { name: deletedName, date: fmtDay(receipt.erasedAt, uiLang) })}
           </p>
           <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+            {/* B-BOOK-20: the child's saved records and Storage files are part of the proof. */}
+            <ReceiptRow label={t("elev.learnCare.receipt.records")} value={erasedRecordCount(receipt.sinks)} />
             <ReceiptRow label={t("sec.sharing.receipt.memoryEvents")} value={receipt.counts.memoryEvents} />
             <ReceiptRow label={t("sec.sharing.receipt.shares")} value={receipt.counts.shares} />
             <ReceiptRow label={t("sec.sharing.receipt.consents")} value={receipt.counts.consents ?? 0} />
+            <ReceiptRow label={t("elev.learnCare.receipt.storageFiles")} value={receipt.counts.storageFiles ?? 0} />
             {/* LC-18: the device the parent is holding is part of the proof. */}
             <ReceiptRow label={t("elev.learnCare.receipt.clientDocs")} value={receipt.counts.clientDocs ?? 0} />
           </div>

@@ -99,7 +99,8 @@ describe("LC-18 · the wiring is the shared sweep, not a second copy", () => {
     expect(src).toContain('import { clearChildLocalState } from "./childLocalState";');
     expect(src).toContain("return clearChildLocalState(childId);");
     // The receipt carries the number that sweep returned.
-    expect(src).toContain("const clientDocs = await wipeClientChildData(uid, childId);");
+    // B-BOOK-20: the same wipe also fills the receipt's per-sink ledger.
+    expect(src).toContain("const clientDocs = await wipeClientChildData(uid, childId, sinks);");
     expect(src).toContain("counts: { ...counts, clientDocs }");
   });
 

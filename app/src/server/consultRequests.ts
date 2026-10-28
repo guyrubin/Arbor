@@ -29,6 +29,11 @@ export type ConsultRequest = {
 export interface ConsultStore {
   create(request: ConsultRequest): Promise<ConsultRequest>;
   listByOwner(ownerUid: string): Promise<ConsultRequest[]>;
+  /** B-GA-09: the requests this owner made about one child (the note is the
+   *  parent's words about the child): exported with the child (Art. 15/20)… */
+  listByChild(ownerUid: string, childId: string): Promise<ConsultRequest[]>;
+  /** …and erased with the child (Art. 17). Returns how many were removed. */
+  eraseByChild(ownerUid: string, childId: string): Promise<number>;
 }
 
 export class LocalConsultStore implements ConsultStore {
@@ -38,6 +43,14 @@ export class LocalConsultStore implements ConsultStore {
     return [...this.requests.values()]
       .filter((r) => r.ownerUid === ownerUid)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+  async listByChild(ownerUid: string, childId: string) {
+    return (await this.listByOwner(ownerUid)).filter((r) => r.childId === childId);
+  }
+  async eraseByChild(ownerUid: string, childId: string) {
+    const doomed = await this.listByChild(ownerUid, childId);
+    for (const r of doomed) this.requests.delete(r.id);
+    return doomed.length;
   }
 }
 
@@ -59,6 +72,16 @@ export class FirestoreConsultStore implements ConsultStore {
     return snap.docs
       .map((d) => d.data() as ConsultRequest)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+  // Filtered in memory after the owner query (the one existing index), so no
+  // composite index is needed: a family has a handful of requests.
+  async listByChild(ownerUid: string, childId: string) {
+    return (await this.listByOwner(ownerUid)).filter((r) => r.childId === childId);
+  }
+  async eraseByChild(ownerUid: string, childId: string) {
+    const doomed = await this.listByChild(ownerUid, childId);
+    for (const r of doomed) await this.col().doc(r.id).delete();
+    return doomed.length;
   }
 }
 

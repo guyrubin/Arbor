@@ -83,6 +83,9 @@ export const en: Record<string, string> = {
   "elev.charter.default.kindness": "Kindness",
   "elev.charter.remove": "Remove {value}",
   "elev.learnCare.receipt.clientDocs": "Records removed from this device",
+  // B-BOOK-20: the receipt names what was erased beyond the server ledger.
+  "elev.learnCare.receipt.records": "Saved records erased",
+  "elev.learnCare.receipt.storageFiles": "Photos and book files erased",
   "elev.learnCare.saved.browse": "Browse picks for {name}",
   // R12: the shelf pages at 30 reads. This is a LENGTH control, not an age
   // one — "Show all ages" next to it is the age control, and the two must
@@ -351,6 +354,8 @@ export const he: Record<string, string> = {
   "elev.charter.default.kindness": "טוב לב",
   "elev.charter.remove": "הסרת {value}",
   "elev.learnCare.receipt.clientDocs": "רשומות שנמחקו מהמכשיר הזה",
+  "elev.learnCare.receipt.records": "רשומות שמורות שנמחקו",
+  "elev.learnCare.receipt.storageFiles": "תמונות וקובצי ספרים שנמחקו",
   "elev.learnCare.saved.browse": "לעיין בהמלצות עבור {name}",
   "elev.learnCare.shelf.more": "להציג עוד קריאות ({n})",
   "elev.learnCare.shelf.fewer": "להציג פחות קריאות",
