@@ -27,3 +27,24 @@ const text = {
 export function hardMomentPilotText(locale: ContentLocale) {
   return text[locale];
 }
+
+/**
+ * B-PROG-15 — a draft program's pilot line: the guide's sentence, said of a
+ * program. Shown by the program page while the program's reviewStatus is
+ * "draft" and gone once the clinical reviewer signs (lib/programPage
+ * programPilotLine), through the same PilotNote the guides use.
+ */
+const programText = {
+  en: {
+    status: "Pilot program",
+    explanation: "Practical ideas to try gently. This pilot program has not yet had clinical review. Adapt it to your child; pause if a step adds distress.",
+  },
+  he: {
+    status: "תוכנית בפיילוט",
+    explanation: "רעיונות מעשיים שאפשר לנסות בעדינות. תוכנית הפיילוט הזאת עדיין לא עברה בדיקה קלינית. התאימו אותה לילד או לילדה; אם צעד מגביר מצוקה, עצרו.",
+  },
+} as const;
+
+export function programPilotText(locale: ContentLocale) {
+  return programText[locale];
+}

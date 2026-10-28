@@ -244,3 +244,50 @@ export function startablePrograms(ageMonths: number | null, lang: ProgramLang): 
     };
   });
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   B-PROG-15 — a draft program says it is a pilot.
+
+   Talk Together and Steady Nights ship `reviewStatus: "draft"` and
+   startablePrograms has no review gate, so they reach parents with no label,
+   unlike the hard-moment guides (PilotNote). The line shows while the
+   program's reviewStatus is "draft" and disappears when the reviewer signs
+   (GA B-GA-02 sets it to "approved"); a retired program never shows it.
+
+   EXPOSURE IS GUY'S WORD (PRIORITY 11 Oct: "build dark on the default now;
+   exposure waits for Guy's word"). Built dark in the house device-flag
+   pattern (lib/entitlementsGuided: `arbor.flags.<name>` = "1"):
+     - PROGRAM_PILOT_LINE_EXPOSED = false → no parent sees it yet;
+     - localStorage["arbor.flags.programPilot"] = "1" shows it on a device
+       (review, sandbox, the critic's render);
+     - Guy's word = flip PROGRAM_PILOT_LINE_EXPOSED to true (the decided
+       default, "show the pilot line until GA B-GA-02 signs", then applies to
+       every family). Fails closed on storage errors.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/** The release switch. Flip to true on Guy's word; nothing else changes. */
+export const PROGRAM_PILOT_LINE_EXPOSED = false;
+/** The device flag (value "1" = on), for review before release. */
+export const PROGRAM_PILOT_FLAG_KEY = "arbor.flags.programPilot";
+
+type FlagStorage = Pick<Storage, "getItem"> | null | undefined;
+
+const flagStorage = (): FlagStorage => {
+  try {
+    return typeof localStorage === "undefined" ? null : localStorage;
+  } catch {
+    return null;
+  }
+};
+
+/** Does this program's page carry the pilot line? Draft + exposed (or the device flag). */
+export function programPilotLine(programId: string, opts: { exposed?: boolean; storage?: FlagStorage } = {}): boolean {
+  if (programById(programId)?.reviewStatus !== "draft") return false;
+  if (opts.exposed ?? PROGRAM_PILOT_LINE_EXPOSED) return true;
+  const storage = opts.storage === undefined ? flagStorage() : opts.storage;
+  try {
+    return storage?.getItem(PROGRAM_PILOT_FLAG_KEY) === "1";
+  } catch {
+    return false;
+  }
+}

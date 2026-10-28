@@ -265,3 +265,87 @@ describe("B-PROG-05 — the container and the door", () => {
     expect((s.match(/\bdata-primary-move\b(?!-)/g) || []).length).toBe(1);
   });
 });
+
+import { PROGRAM_PILOT_FLAG_KEY, programPilotLine } from "../../lib/programPage";
+import { programById } from "../../content/programs";
+import { programPilotText, hardMomentPilotText } from "../../content/hardMomentPilotText";
+import { PilotNote } from "../ui/PilotNote";
+
+/* B-PROG-15 — a draft program says it is a pilot, in the hard-moment guide's
+   own PilotNote, while its reviewStatus is "draft"; signed, the line goes.
+   Built dark: PROGRAM_PILOT_LINE_EXPOSED is false until Guy's word, and the
+   house device flag shows it for review. */
+describe("B-PROG-15 — the pilot line on a draft program", () => {
+  const flagged = (value: string | null) => ({ getItem: (key: string) => (key === PROGRAM_PILOT_FLAG_KEY ? value : null) });
+
+  it("draft + exposed shows; dark by default; the device flag shows it for review; a broken store fails closed", () => {
+    for (const id of ["talk-together", "steady-nights"]) {
+      expect(programById(id)?.reviewStatus).toBe("draft");
+      expect(programPilotLine(id, { exposed: true, storage: null })).toBe(true);
+      expect(programPilotLine(id, { storage: null })).toBe(false);
+      expect(programPilotLine(id, { storage: flagged("1") })).toBe(true);
+      expect(programPilotLine(id, { storage: flagged("0") })).toBe(false);
+      expect(programPilotLine(id, { storage: { getItem: () => { throw new Error("blocked"); } } })).toBe(false);
+    }
+    expect(programPilotLine("not-a-program", { exposed: true })).toBe(false);
+  });
+
+  it("signed (approved) or retired: the line disappears even when exposed", () => {
+    const program = programById("talk-together")!;
+    const was = program.reviewStatus;
+    try {
+      for (const status of ["approved", "retired"] as const) {
+        (program as { reviewStatus: string }).reviewStatus = status;
+        expect(programPilotLine("talk-together", { exposed: true })).toBe(false);
+      }
+    } finally {
+      (program as { reviewStatus: string }).reviewStatus = was;
+    }
+  });
+
+  it.each(["en", "he"] as const)("the page renders it in the header module, enrolled and quiet, with the device flag (%s)", (lang) => {
+    state.lang = lang;
+    vi.stubGlobal("localStorage", flagged("1"));
+    try {
+      const copy = programPilotText(lang);
+      state.rows = { programs: [ENROLMENT] };
+      const enrolled = renderToStaticMarkup(<ProgramPage />);
+      expect(enrolled).toContain('data-testid="program-pilot"');
+      expect(text(enrolled)).toContain(copy.status);
+      expect(text(enrolled)).toContain(copy.explanation);
+      // Inside the existing header module: no new module, the budget is unchanged.
+      const header = enrolled.slice(enrolled.indexOf('data-module="program-week"'), enrolled.indexOf('data-testid="program-week-band"'));
+      expect(header).toContain('data-testid="program-pilot"');
+      state.rows = {};
+      const quiet = renderToStaticMarkup(<ProgramPage />);
+      expect(quiet.match(/data-testid="program-pilot"/g)).toHaveLength(1);
+      expect(text(quiet)).toContain(copy.explanation);
+    } finally {
+      vi.unstubAllGlobals();
+      state.rows = {};
+    }
+  });
+
+  it("dark by default: no flag, no line", () => {
+    state.lang = "en";
+    vi.stubGlobal("localStorage", flagged(null));
+    try {
+      state.rows = { programs: [ENROLMENT] };
+      expect(renderToStaticMarkup(<ProgramPage />)).not.toContain('data-testid="program-pilot"');
+    } finally {
+      vi.unstubAllGlobals();
+      state.rows = {};
+    }
+  });
+
+  it("the same component and tone as the hard-moment guide's pilot label; EN says 'not yet had clinical review', HE the same in Hebrew", () => {
+    const guide = renderToStaticMarkup(<PilotNote {...hardMomentPilotText("en")} />);
+    const program = renderToStaticMarkup(<PilotNote {...programPilotText("en")} />);
+    const shape = (html: string) => html.replace(/>[^<]*</g, "><");
+    expect(shape(program)).toBe(shape(guide));
+    expect(guide).toContain('role="note"');
+    expect(programPilotText("en").explanation).toMatch(/not yet had clinical review/);
+    expect(programPilotText("he").explanation).toMatch(/עדיין לא עברה בדיקה קלינית/);
+    expect(programPilotText("he").status).toMatch(/פיילוט/);
+  });
+});

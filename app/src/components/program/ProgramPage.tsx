@@ -28,9 +28,12 @@ import {
   type ProgramEnrolment,
 } from "../../lib/programs/enrolment";
 import { programWeekMeasures } from "../../lib/programs/measures";
+import { PilotNote } from "../ui/PilotNote";
+import { programPilotText } from "../../content/hardMomentPilotText";
 import {
   programPacketLine,
   programPageModel,
+  programPilotLine,
   startablePrograms,
   type ProgramCount,
   type ProgramPageModel,
@@ -72,6 +75,9 @@ export interface ProgramPageViewProps {
    *  primary move in the week band (absent when the week names no world or
    *  Kid Mode cannot open it; never shown on a paused week). */
   kidDoor?: React.ReactNode;
+  /** B-PROG-15: the pilot line, in the header module (lib/programPage
+   *  programPilotLine: the program is still a draft and the line is exposed). */
+  pilot?: boolean;
 }
 
 function CountRow({ c, week }: { c: ProgramCount; week: number }) {
@@ -134,8 +140,11 @@ export function ProgramPageView({
   goals,
   coach,
   kidDoor,
+  pilot = false,
 }: ProgramPageViewProps) {
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
+  const pilotCopy = programPilotText(uiLang === "he" ? "he" : "en");
+  const pilotNote = pilot ? <div className="mt-3"><PilotNote status={pilotCopy.status} explanation={pilotCopy.explanation} testId="program-pilot" /></div> : null;
   const compact = useCompactSurface();
   const [confirm, setConfirm] = useState<"toPause" | "toFinish" | null>(null);
   const ageT = (k: string, v?: Record<string, number>) => t(k, v);
@@ -163,6 +172,7 @@ export function ProgramPageView({
             {t("elev.program.none.title")}
           </h1>
           <p data-testid="program-none-lede" className="mt-2 t-base leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.program.none.lede")}</p>
+          {pilotNote}
         </header>
         <section data-module="program-choices" className="flex min-w-0 flex-col gap-3">
           {startable.map((p, i) => (
@@ -248,6 +258,7 @@ export function ProgramPageView({
               </p>
             </div>
           </div>
+          {pilotNote}
         </header>
         <article data-testid="program-week-band" className="overflow-hidden" style={CARD}>
           {/* The band's caption is a FLAT fill: the page's ONE gradient is the
@@ -372,6 +383,8 @@ export default function ProgramPage() {
   const months = ageMonthsOf(childProfile);
   const startable = useMemo(() => startablePrograms(Number.isFinite(months) ? months : null, lang), [months, lang]);
   const packetLine = model ? programPacketLine(model, t) : "";
+  // B-PROG-15: the enrolled program, or (on the quiet page) any program offered, still a draft.
+  const pilot = model ? programPilotLine(model.programId) : startable.some((p) => programPilotLine(p.id));
 
   // The family's own first-week child count, captured once when week 1 has closed.
   useEffect(() => {
@@ -395,6 +408,7 @@ export default function ProgramPage() {
       model={model}
       startable={startable}
       packetLine={packetLine}
+      pilot={pilot}
       onBack={() => goToRoute("development")}
       onDoToday={() => goToRoute("overview")}
       onResume={() => {
