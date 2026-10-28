@@ -16,12 +16,12 @@
  *    module returns the words for it (`nightMomentText`) and never writes.
  */
 import { daysBetween, dayKey as localDayKey } from "../programs/enrolment";
-import { readPlanBookDoc, type PlanBookDoc } from "../library/plans/planBookDoc";
+import { planBookFromDoc, readPlanBookDoc, type PlanBookDoc } from "../library/plans/planBookDoc";
 import { getPattern } from "../library/plans/planBooks";
 import type { PatternDef } from "../library/plans/patterns";
 import { isolate } from "../i18n";
 import type { ShelfId } from "../shelves/registry";
-import type { BookLang, PatternId } from "../library/types";
+import type { BookLang, HeGender, PatternId } from "../library/types";
 
 export { localDayKey as dayKey };
 
@@ -79,6 +79,56 @@ export function unrecordNight(doc: PlanBookDoc, now: Date): PlanBookDoc {
   const key = localDayKey(now);
   const nights = (doc.nights ?? []).filter((d) => d !== key);
   return { ...doc, ...(nights.length ? { nights } : { nights: [] }), updatedAt: now.toISOString() };
+}
+
+/* ── S1 (surfacing): the child's "I tried!" and tonight's step ─────────────
+ *  The kid home rail records the child's own tap as a LOCAL day key under
+ *  `tries` (beside the parent's `nights`); both are counts. The parent card
+ *  shows "{k} tries this week": the distinct days of the last seven (today and
+ *  the six before) with a confirmed night or a child's try. Never a streak,
+ *  never "missed". */
+
+/** Did the child already tap "I tried!" today? */
+export const tryRecorded = (doc: Pick<PlanBookDoc, "tries">, now: Date): boolean => !!doc.tries?.includes(localDayKey(now));
+
+/** The row to write after the child's tap (idempotent per day). */
+export function recordTry(doc: PlanBookDoc, now: Date): PlanBookDoc {
+  const key = localDayKey(now);
+  const tries = [...new Set([...(doc.tries ?? []), key])].sort();
+  return { ...doc, tries, updatedAt: now.toISOString() };
+}
+
+/** Days with a try this week (the parent's confirmed nights and the child's
+ *  taps, one per day), over today and the six days before. A count. */
+export function triesThisWeek(doc: Pick<PlanBookDoc, "nights" | "tries">, now: Date): number {
+  const today = localDayKey(now);
+  let n = 0;
+  for (const day of new Set([...(doc.nights ?? []), ...(doc.tries ?? [])])) {
+    const back = daysBetween(day, today);
+    if (back >= 0 && back < 7) n += 1;
+  }
+  return n;
+}
+
+const STEP_LABEL = /^(?:step\s+(?:one|1)|שלב\s+(?:ראשון|1))\s*[:：]\s*/i;
+
+/** Tonight's step for the CHILD: the first sentence of step one (the act) in
+ *  the child's own first-person words, without its "Step one:" label. Kid
+ *  register only — never the parent line. Null when the stored choices no
+ *  longer compose. */
+export function tonightStepForChild(doc: PlanBookDoc, lang: BookLang, gender: HeGender): string | null {
+  const book = planBookFromDoc(doc);
+  if (!book) return null;
+  const line = book.steps[0].text;
+  const text = (lang === "he" ? line.he[gender] : line.en).replace(STEP_LABEL, "").trim();
+  return text.match(/^[^.!?]*[.!?]/)?.[0] ?? text;
+}
+
+/** Tonight's step for the PARENT: step one as the grown-ups do it (the
+ *  pattern's parent line, minutes and time filled). Parent register only. */
+export function tonightStepForParent(doc: PlanBookDoc, lang: BookLang): string | null {
+  const book = planBookFromDoc(doc);
+  return book ? book.parent.planSteps[0][lang] : null;
 }
 
 /** Keep going: the same plan for another stretch (bounded like the composer's). */

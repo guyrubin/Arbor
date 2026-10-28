@@ -6,7 +6,10 @@ import { useTodaysFocus, type Focus } from "../../hooks/useTodaysFocus";
 import { useLastVisit } from "../../hooks/useLastVisit";
 import { activeProgramWeek } from "../../lib/programs/enrolment";
 import NowPlanLead from "../plans/NowPlanLead";
-import { leadPlan, nightMomentText, recordNight, unrecordNight } from "../../lib/plans/planWeek";
+import PlansSection from "../plans/PlansSection";
+import { closePlan, keepPlan, leadPlan, nightMomentText, recordNight, unrecordNight } from "../../lib/plans/planWeek";
+import { usePlanVisibility } from "../../lib/plans/usePlanVisibility";
+import { openPrintablePlan } from "../../lib/plans/planPrint";
 import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import { dayKey } from "../../practice/signals";
 import { isObservationAction, type ActionLoopEntry } from "../../actionLoop/model";
@@ -114,7 +117,12 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // and the answer is a COUNT (the `books` row), never a verdict.
   const planRows = useChildCollection<PlanBookDoc>(childProfile.id, "books");
   const plan = useMemo(() => leadPlan(planRows.items, now), [planRows.items, now]);
-  const openPlan = () => { setActiveTab("journal"); window.location.hash = `#/journal?plan=${plan?.def.id ?? ""}`; };
+  // S1 (surfacing): the plan's front door on Today — the ONE "Everyday plans"
+  // card under the lead (the running plan(s), then "Something hard right
+  // now?" → the pattern chooser → the existing composer on #/journal?plan=).
+  const planVisibility = usePlanVisibility();
+  const openPattern = (pattern: string) => { setActiveTab("journal"); window.location.hash = `#/journal?plan=${pattern}`; };
+  const openPlan = () => openPattern(plan?.def.id ?? "");
   // v4: the agenda row says where the family is in it ("Week 2 of 4"), counts only.
   const programWeeks = Array.isArray(program?.program.weeks) ? program.program.weeks.length : 0;
   const action = useMemo(() => nextChosenAction(actionLoop, topic?.id), [actionLoop, topic?.id]);
@@ -337,6 +345,12 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
         {shownLead !== "recommendation" && shownLead !== "urgent" && <div className="now-plan-foot"><NowPlanBody why={planWhy} time={copy.planTime[shownLead]} size={copy.planSize[shownLead]} question={planQuestion} /></div>}
         </NowPlanFrame>
         {lifecycleNote && lead !== "practice" && <p className="now-lifecycle-note" role="note">{lifecycleNote}</p>}
+        {/* S1: the Everyday plans card sits under the lead, where the lifecycle note does; a plan already leading is not
+            repeated, and on the urgent day (B-TODAY-38) the help lines stand alone in the column. */}
+        {lead !== "urgent" && <PlansSection surface="today" childName={name} planRows={planRows.items} visibility={planVisibility} now={now} excludePlanId={shownLead === "plan" && plan ? plan.doc.id : undefined}
+          onOpenDoor={openPattern} onOpenPlan={(p) => openPattern(p.def.id)} onChange={(p) => openPattern(p.def.id)}
+          onKeep={(p) => void planRows.upsert(keepPlan(p.doc, now))} onClose={(p) => void planRows.upsert(closePlan(p.doc, now))}
+          onPrint={(p) => void openPrintablePlan({ doc: p.doc, child: childProfile, lang, now })} />}
 
         {/* v4: the say-back question and "Arbor noticed" are Notice today's last rows; with no notice rows today they stand
             alone — except beside the urgent help lines, which stand alone in the column (B-TODAY-38). */}

@@ -1,18 +1,24 @@
 /**
- * B-BOOK-77/78 — the three parent surfaces of an Everyday plan render from
- * data alone (no server, no model call): the journal's "Everyday plans"
- * section (doors only for patterns the server opened, running plans as
- * COUNTS, the keep / change / close choice once the duration ran out), the
- * Today lead (the three parent lines, the night question in the evening, the
- * explicit journal tap only after a recorded night) and the composer's stage
- * order — the red lines come FIRST and one ticked sign is the care line and
- * no plan. Parent register throughout: the composer's preview does not wear
- * the kid register (IA-08, playShell.register.test).
+ * B-BOOK-77/78 → S1 (surfacing) — the parent surfaces of an Everyday plan
+ * render from data alone (no server, no model call): the ONE "Everyday plans"
+ * card (the running plan(s) as COUNTS with tonight's step and the five
+ * actions, then "Something hard right now?" → the pattern chooser, hero
+ * titles first, never the symptom sentence as the headline; the same card on
+ * Today, where a plan already leading is not repeated), the Today lead (the
+ * three parent lines, the night question in the evening, the explicit journal
+ * tap only after a recorded night), the composer's stage order (the red lines
+ * come FIRST and one ticked sign is the care line and no plan) and the owner's
+ * auto-paint line (owner only). Parent register throughout: the composer's
+ * preview does not wear the kid register (IA-08, playShell.register.test).
  *
  * FIREWALL: nothing a parent sees here grades the child — no percentage, no
- * streak, no Low/Medium/High, no colour chip; a count of nights only.
+ * streak, no Low/Medium/High, no colour chip; counts only. No plate code, no
+ * "painted", no "owner" on a family surface.
  */
 import React from "react";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -30,14 +36,17 @@ vi.mock("../../context/LanguageContext", async () => {
 import PlansSection from "./PlansSection";
 import NowPlanLead from "./NowPlanLead";
 import PlanComposer from "./PlanComposer";
-import { getPattern } from "../../lib/library/plans/planBooks";
+import { authoredPatterns, getPattern } from "../../lib/library/plans/planBooks";
 import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
-import { activePlans, recordNight } from "../../lib/plans/planWeek";
+import { activePlans, recordNight, recordTry } from "../../lib/plans/planWeek";
 import { composerReducer, compositionOf, initialComposer, type ComposerAction, type ComposerState } from "../../lib/plans/composer";
 import { composePlanBook } from "../../lib/library/plans/composePlanBook";
 import type { PlanVisibility } from "../../lib/plans/planApi";
 import type { BookReaderChild } from "../../lib/library/types";
 import { sharedEscalation } from "../../content/hardMomentCards";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const src = (rel: string) => readFileSync(path.resolve(here, rel), "utf8").replace(/\r\n/g, "\n");
 
 const def = getPattern("plan-poo-sit")!;
 const NOA: BookReaderChild = { id: "demo-child", name: "Noa", gender: "girl", heroSheetId: "placeholder" };
@@ -51,73 +60,124 @@ const APPROVED = "2026-10-20T18:00:00.000Z";
 const DAY_7 = new Date("2026-10-26T19:00:00.000Z");
 const DAY_22 = new Date("2026-11-10T19:00:00.000Z");
 const OPEN: PlanVisibility = { composable: { "plan-poo-sit": { en: true, he: true } } } as PlanVisibility;
+const ALL_OPEN: PlanVisibility = { composable: Object.fromEntries(authoredPatterns().map((d) => [d.id, { en: true, he: true }])) } as PlanVisibility;
 
 const html = (node: React.ReactElement) => renderToStaticMarkup(node).replace(/<!-- -->/g, "");
 const visible = (h: string) => h.replace(/<[^>]*>/g, " ").replace(/&[a-z#0-9]+;/gi, " ");
 /** The parent-side verdict firewall (app/PRODUCT.md "counts, never verdicts"). */
-const VERDICT = /\d+\s?%|\bstreak\b|\b(?:low|medium|high) (?:risk|level)\b|\bon track\b|\bbehind\b|\bscore\b/i;
+const VERDICT = /\d+\s?%|\bstreak\b|\b(?:low|medium|high) (?:risk|level)\b|\bon track\b|\bbehind\b|\bscore\b|\bmissed\b/i;
+/** S1 terminology: no plate code, no painter state, no "owner", no "Make {name}'s plan" where a parent looks. */
+const OWNER_WORDS = /\bP[PTSBDFEN]\d\b|\bpainted\b|\bnot painted\b|\bowner\b|Make Noa's plan|\bPaint plates\b/;
 const noop = () => {};
 const section = (props: Partial<React.ComponentProps<typeof PlansSection>>) =>
   html(<PlansSection childName="Noa" planRows={[]} visibility={null} now={DAY_7} onOpenDoor={noop} onOpenPlan={noop} onKeep={noop} onChange={noop} onClose={noop} onPrint={noop} {...props} />);
 
-describe("the journal's Everyday plans section (B-BOOK-77)", () => {
-  it("renders no door while the server's table is unknown or the pattern is dark for this family", () => {
-    expect(section({ visibility: null })).not.toContain("data-plan-door");
+describe("the ONE Everyday plans card (S1)", () => {
+  it("renders nothing while the server's table is unknown, or when every pattern is dark for this family", () => {
+    expect(section({ visibility: null, initialChooserOpen: true })).toBe("");
     const dark: PlanVisibility = { composable: { "plan-poo-sit": { en: false, he: false } } } as PlanVisibility;
-    expect(section({ visibility: dark })).not.toContain("data-plan-door");
+    expect(section({ visibility: dark, initialChooserOpen: true })).toBe("");
   });
 
-  it("opens one door per composable pattern, in the parent's own words, and the lede names the child", () => {
-    const h = section({ visibility: OPEN });
-    expect(h).toContain('data-plan-door="plan-poo-sit"');
-    expect(h).toContain(def.parentWords.en);
-    expect(visible(h)).toContain("Noa");
-    expect(h).not.toContain('data-plan-door="plan-sleep-alone"');
+  it("one card: the 'Something hard right now?' line is collapsed by default and opens the chooser; a door is never a bare symptom", () => {
+    const closed = section({ visibility: OPEN });
+    expect(closed).toContain('data-module="everyday-plans"');
+    expect(closed).toContain('data-plans-chooser-toggle=""');
+    expect(closed).toContain('aria-expanded="false"');
+    expect(visible(closed)).toContain("Something hard right now?");
+    expect(closed).not.toContain("data-plan-door");
+    expect(closed).not.toContain('data-plans-chooser=""');
+    const open = section({ visibility: OPEN, initialChooserOpen: true });
+    expect(open).toContain('data-plan-door="plan-poo-sit"');
+    expect(open).not.toContain('data-plan-door="plan-sleep-alone"');
+    // the hero title is the headline, the parent's words the subtitle, the age range a quiet tag
+    expect(open).toMatch(new RegExp(`data-plan-door-title="">${def.title.en}</b>`));
+    expect(open).toContain(def.parentWords.en);
+    expect(open).toContain(`data-plan-door-age="">Ages ${def.ageText}</small>`);
+    expect(open.indexOf(def.title.en)).toBeLessThan(open.indexOf(def.parentWords.en));
+    expect(visible(open)).not.toMatch(OWNER_WORDS);
+    expect(visible(open)).not.toMatch(VERDICT);
   });
 
-  it("a running plan shows its COUNT of nights and the days to go, and its pattern has no door", () => {
-    const rows = [recordNight(recordNight(docAt(APPROVED), new Date("2026-10-21T19:00:00.000Z")), new Date("2026-10-22T19:00:00.000Z"))];
+  it("the chooser lists every composable pattern once, as eight hero titles, and never a running one", () => {
+    const all = section({ visibility: ALL_OPEN, initialChooserOpen: true });
+    for (const d of authoredPatterns()) {
+      expect(all).toContain(`data-plan-door="${d.id}"`);
+      expect(all).toContain(d.title.en);
+    }
+    expect((all.match(/data-plan-door="/g) ?? []).length).toBe(8);
+    const running = section({ visibility: ALL_OPEN, initialChooserOpen: true, planRows: [docAt(APPROVED)] });
+    expect(running).not.toContain('data-plan-door="plan-poo-sit"');
+    expect((running.match(/data-plan-door="/g) ?? []).length).toBe(7);
+  });
+
+  it("a running plan: 'A plan for Noa', the hero title, Night n of total, tries this week as a COUNT, tonight's step as the grown-ups do it, five actions", () => {
+    const rows = [recordTry(recordNight(recordNight(docAt(APPROVED), new Date("2026-10-18T19:00:00.000Z")), new Date("2026-10-25T19:00:00.000Z")), DAY_7)];
     const h = section({ visibility: OPEN, planRows: rows });
     expect(h).toContain('data-plan-running="plan-poo-sit"');
-    expect(h).toContain('data-plan-nights="2"');
-    expect(h).not.toContain("data-plan-door");
+    expect(visible(h)).toContain("A plan for Noa");
+    expect(visible(h)).toContain(def.title.en);
+    expect(h).toContain('data-plan-night="7"');
+    expect(h).toContain('data-plan-tries="2"'); // the 25th (a parent night) and the 26th (the child's try); the 18th is eight days back
+    expect(visible(h)).toContain("Night 7 of 14");
+    expect(visible(h)).toContain("2 tries this week");
+    expect(h).toContain('data-plan-tonight=""');
+    expect(visible(h)).toContain("Tonight: ");
+    for (const a of ["open", "print", "keep", "change", "close"]) expect(h).toContain(`data-plan-${a}=""`);
     expect(h).not.toContain("data-plan-review");
+    expect(h).not.toContain("data-plan-door");
     expect(visible(h)).not.toMatch(VERDICT);
+    expect(visible(h)).not.toMatch(OWNER_WORDS);
+    // one try reads in the singular
+    expect(visible(section({ visibility: OPEN, planRows: [recordTry(docAt(APPROVED), DAY_7)] }))).toContain("1 try this week");
   });
 
-  it("past the duration the parent chooses: keep, change or close — never a verdict", () => {
+  it("past the duration the parent chooses: keep, change or close — the night never exceeds the total, never a verdict", () => {
     const h = section({ visibility: OPEN, planRows: [docAt(APPROVED)], now: DAY_22 });
-    expect(h).toContain("data-plan-review");
+    expect(h).toContain('data-plan-review=""');
+    expect(h).toContain('data-plan-night="14"');
     for (const a of ["keep", "change", "close"]) expect(h).toContain(`data-plan-${a}=""`);
     expect(visible(h)).not.toMatch(VERDICT);
   });
 
-  it("B-BOOK-75 plates: the painter control renders ONLY when the server's table says admin; a family's table never shows it", () => {
-    for (const vis of [null, OPEN, { ...OPEN, admin: false }, { ...OPEN, admin: "yes" as unknown as boolean }]) {
-      const h = section({ visibility: vis });
-      expect(h).not.toContain("data-plan-plates");
-      expect(visible(h)).not.toMatch(/Paint plates|Pattern plates/);
-    }
-    const h = section({ visibility: { ...OPEN, admin: true } });
-    expect(h).toContain('data-plan-plates=""');
-    expect(h).toContain('data-plan-plates-paint="plan-poo-sit"');
-    expect(h).toContain('data-plan-plate="plan-poo-sit/PP1"');
-    expect(visible(h)).toContain("Paint plates");
-    // a shelf-scoped section never carries the control, and the admin flag opens no door
-    expect(section({ visibility: { ...OPEN, admin: true }, shelf: "sleep" })).not.toContain("data-plan-plates");
-    expect(section({ visibility: { composable: {}, admin: true } as unknown as PlanVisibility })).not.toContain("data-plan-door");
-    expect(visible(h)).not.toMatch(VERDICT);
-    state.lang = "he";
-    expect(visible(section({ visibility: { ...OPEN, admin: true } }))).toContain("לצייר לוחות");
-    state.lang = "en";
+  it("on Today the same card carries no module stamp and does not repeat the plan already leading", () => {
+    const rows = [docAt(APPROVED)];
+    const today = section({ visibility: ALL_OPEN, planRows: rows, surface: "today", excludePlanId: "plan-poo-sit.c1" });
+    expect(today).toContain('data-everyday-plans="today"');
+    expect(today).not.toContain("data-module=");
+    expect(today).not.toContain("data-plan-running");
+    expect(today).toContain('data-plans-chooser-toggle=""');
+    const todayOther = section({ visibility: ALL_OPEN, planRows: rows, surface: "today" });
+    expect(todayOther).toContain('data-plan-running="plan-poo-sit"');
+    // a lead plan excluded with nothing else to choose: no card at all
+    expect(section({ visibility: null, planRows: rows, surface: "today", excludePlanId: "plan-poo-sit.c1" })).toBe("");
   });
 
-  it("Hebrew: the section is RTL and the door speaks the pattern's Hebrew parent words", () => {
+  it("the owner's plate painter never renders on a family surface, whatever the table says (it lives under Settings › Owner tools)", () => {
+    for (const vis of [{ ...OPEN, admin: true }, { ...OPEN, admin: false }]) {
+      const h = section({ visibility: vis, initialChooserOpen: true, planRows: [docAt(APPROVED)] });
+      expect(h).not.toContain("data-plan-plates");
+      expect(visible(h)).not.toMatch(OWNER_WORDS);
+    }
+    expect(src("PlansSection.tsx")).not.toContain("PlanPlatePainter");
+    const settings = src("../layout/SettingsModal.tsx");
+    expect(settings).toContain("planVisibility?.admin === true && (");
+    expect(settings).toContain('import OwnerTools from "../plans/OwnerTools";');
+    expect(settings).toMatch(/planVisibility\?\.admin === true && \([\s\S]{0,400}<OwnerTools lang=/);
+    expect(src("OwnerTools.tsx")).toContain("<PlanPlatePainter");
+  });
+
+  it("Hebrew: the card is RTL, the door's headline is the pattern's Hebrew title and the lines are Hebrew", () => {
     state.lang = "he";
     try {
-      const h = section({ visibility: OPEN });
+      const h = section({ visibility: OPEN, initialChooserOpen: true, planRows: [docAt(APPROVED, { id: "plan-sleep-alone.c1", bookId: "plan-sleep-alone.c1", pattern: "plan-sleep-alone", stepMenuIds: ["four-steps", "sit-further", "morning-check-in"] })] });
       expect(h).toContain('dir="rtl"');
+      expect(h).toContain(def.title.he);
       expect(h).toContain(def.parentWords.he);
+      expect(visible(h)).toContain("משהו קשה עכשיו?");
+      expect(visible(h)).toContain("תוכנית לNoa");
+      expect(visible(h)).toContain("לילה 7 מתוך 14");
+      expect(visible(h)).not.toMatch(/Night|Tonight|tries/);
     } finally { state.lang = "en"; }
   });
 });
@@ -151,7 +211,7 @@ describe("the Today lead of a running plan (B-BOOK-78)", () => {
 
 describe("the composer's stage order (B-BOOK-77)", () => {
   const run = (...actions: ComposerAction[]): ComposerState => actions.reduce((s, a) => composerReducer(def, s, a), initialComposer(def, "en"));
-  const composer = (initialState?: ComposerState) => html(<PlanComposer def={def} child={NOA} onSaved={noop} onClose={noop} initialState={initialState} />);
+  const composer = (initialState?: ComposerState, extra: Partial<React.ComponentProps<typeof PlanComposer>> = {}) => html(<PlanComposer def={def} child={NOA} onSaved={noop} onClose={noop} initialState={initialState} {...extra} />);
 
   it("opens on the door, then the red lines come FIRST — before any step is shown", () => {
     const door = composer();
@@ -178,6 +238,23 @@ describe("the composer's stage order (B-BOOK-77)", () => {
     expect(steps).toContain("data-plan-swap");
     expect(steps).toContain("data-plan-minutes");
     expect(steps).toContain("data-plan-time");
+  });
+
+  it("S1 4(b): the auto-paint line shows for an OWNER while the plates paint, with the count; a family never sees it, even mid-paint", () => {
+    const painting = { painting: true, done: 3, total: 8 };
+    const owner = composer(undefined, { ownerPaint: true, initialPaint: painting });
+    expect(owner).toContain('data-plan-painting="3"');
+    expect(visible(owner)).toContain("Painting the pictures… 3 of 8");
+    expect(owner).not.toMatch(/<button[^>]*data-plan-plates/); // zero buttons on the normal path
+    const family = composer(undefined, { initialPaint: painting });
+    expect(family).not.toContain("data-plan-painting");
+    expect(visible(family)).not.toContain("Painting the pictures");
+    const idle = composer(undefined, { ownerPaint: true, initialPaint: { painting: false, done: 8, total: 8 } });
+    expect(idle).not.toContain("data-plan-painting");
+    // the hook is gated by the flag: a family's composer never reaches the routes
+    expect(src("PlanComposer.tsx")).toContain("useAutoPaint(def.id, ownerPaint, initialPaint)");
+    expect(src("../../lib/plans/useAutoPaint.ts")).toContain("if (!enabled) return;");
+    expect(src("../journal/JournalShelves.tsx")).toContain("ownerPaint={planVisibility?.admin === true}");
   });
 
   it("door (a): the own-words entry offers whose step it is, and a step relayed from the child's professional is labelled as such on the step and in the parent panel", () => {

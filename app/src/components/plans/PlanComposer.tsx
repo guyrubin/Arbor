@@ -23,6 +23,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import { composeRequestOf, composerProblems, composerReducer, compositionOf, initialComposer, redLinesOf, slotMenu, type ComposerState } from "../../lib/plans/composer";
 import { composePlan, phraseOwnStep, PlanApiError } from "../../lib/plans/planApi";
 import { planString } from "../../lib/plans/planStrings";
+import { useAutoPaint } from "../../lib/plans/useAutoPaint";
+import type { AutoPaintState } from "../../lib/plans/autoPaint";
 import { trackPlanApproved } from "../../lib/kpiEvents";
 import { composePlanBook, fillStepLine, OWN_STEP, PLAN_TIMES, type OwnStepOrigin, type PlanTime } from "../../lib/library/plans/composePlanBook";
 import type { PatternDef } from "../../lib/library/plans/patterns";
@@ -47,11 +49,17 @@ export interface PlanComposerProps {
   onSafety?: () => void;
   /** B-BOOK-79 door (b): the parent-only printed copy, offered once the plan is saved. */
   onPrint?: (doc: PlanBookDoc) => void;
+  /** S1 4(b): the server's `admin` flag — an owner opening a pattern whose
+   *  shared plates are not all painted starts the paint in the background
+   *  (lib/plans/autoPaint). A family never passes true. */
+  ownerPaint?: boolean;
   /** Test seam. */
   initialState?: ComposerState;
+  /** Test seam: the progress line's initial state. */
+  initialPaint?: AutoPaintState;
 }
 
-export default function PlanComposer({ def, child, onSaved, onClose, onSafety, onPrint, initialState }: PlanComposerProps) {
+export default function PlanComposer({ def, child, onSaved, onClose, onSafety, onPrint, ownerPaint = false, initialState, initialPaint }: PlanComposerProps) {
   const { uiLang } = useLanguage();
   const lang: BookLang = uiLang === "he" ? "he" : "en";
   const s = (key: Parameters<typeof planString>[0], vars?: Record<string, string | number>) => planString(key, lang, vars);
@@ -63,6 +71,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
   const [savedDoc, setSavedDoc] = useState<PlanBookDoc | null>(null);
   const title = def.title[lang];
   const dir = lang === "he" ? "rtl" : "ltr";
+  const paint = useAutoPaint(def.id, ownerPaint, initialPaint);
 
   const approve = async () => {
     if (saving || problems.length) return;
@@ -98,6 +107,12 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
         </button>
         <p className="arbor-type-kicker" style={{ color: "var(--arbor-muted)" }}>{s("stage.door.kicker")}</p>
       </header>
+      {/* S1 4(b): owner only — the shared plates paint themselves in the background; no button. */}
+      {ownerPaint && paint.painting && (
+        <p role="status" className="flex items-center gap-2 t-sm" style={{ color: "var(--arbor-muted)" }} data-plan-painting={paint.done}>
+          <Icon name="brush" size={16} />{s("paint.progress", { done: paint.done, total: paint.total })}
+        </p>
+      )}
 
       {state.stage === "door" && (
         <section style={CARD} className="p-5" data-plan-stage="door">

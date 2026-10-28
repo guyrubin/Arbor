@@ -11,11 +11,8 @@ export type PlanStringKey =
   | "section.title"
   | "section.lede"
   | "section.running"
-  | "section.doors"
   | "section.nights"
-  | "section.daysLeft"
   | "section.review"
-  | "section.empty"
   | "door.open"
   | "door.dark"
   | "stage.door.kicker"
@@ -111,19 +108,36 @@ export type PlanStringKey =
   | "plates.unpainted"
   | "plates.error"
   | "plates.cap"
-  | "plates.stopped";
+  | "plates.stopped"
+  | "section.hard"
+  | "chooser.age"
+  | "card.night"
+  | "card.tries"
+  | "card.tries.one"
+  | "card.tonight"
+  | "card.open"
+  | "owner.title"
+  | "owner.sub"
+  | "paint.progress";
 
 const EN: Record<PlanStringKey, string> = {
   "section.title": "Everyday plans",
   "section.lede": "{name}'s own story for one hard everyday pattern, with the steps you choose. A developmentally informed parent practice, read with zero AI at bedtime.",
   "section.running": "Running now",
-  "section.doors": "Start a plan",
   "section.nights": "{count} nights confirmed",
-  "section.daysLeft": "{count} days to go",
   "section.review": "The plan's time is up: keep going, change a step, or close it.",
-  "section.empty": "No plan is running. Pick the pattern you are living with this month.",
-  "door.open": "Make {name}'s plan",
+  "door.open": "A plan for {name}",
   "door.dark": "Being reviewed; not available for your family yet.",
+  "section.hard": "Something hard right now?",
+  "chooser.age": "Ages {age}",
+  "card.night": "Night {n} of {total}",
+  "card.tries": "{count} tries this week",
+  "card.tries.one": "1 try this week",
+  "card.tonight": "Tonight: {step}",
+  "card.open": "Open book",
+  "owner.title": "Owner tools",
+  "owner.sub": "Shown only to accounts on the owner list; a family never sees this section.",
+  "paint.progress": "Painting the pictures… {done} of {total}",
   "stage.door.kicker": "Everyday plan",
   "stage.door.body": "In a few minutes you will have {name}'s own story for this: a short first-person book with three small steps you choose from a sourced menu, read with zero AI. First, a few questions that decide whether a plan is the right next step.",
   "stage.door.start": "Let's see",
@@ -224,13 +238,20 @@ const HE: Record<PlanStringKey, string> = {
   "section.title": "תוכניות ליום-יום",
   "section.lede": "הסיפור של {name} על דפוס יום-יומי קשה אחד, עם השלבים שאתם בוחרים. תרגול הורי מבוסס התפתחות, שנקרא בלי AI לפני השינה.",
   "section.running": "רץ עכשיו",
-  "section.doors": "להתחיל תוכנית",
   "section.nights": "{count} לילות אושרו",
-  "section.daysLeft": "עוד {count} ימים",
   "section.review": "הזמן של התוכנית נגמר: להמשיך, לשנות שלב, או לסגור.",
-  "section.empty": "אין תוכנית שרצה. בחרו את הדפוס שאתם חיים איתו החודש.",
-  "door.open": "להכין את התוכנית של {name}",
+  "door.open": "תוכנית ל{name}",
   "door.dark": "בבדיקה; עדיין לא זמין למשפחה שלכם.",
+  "section.hard": "משהו קשה עכשיו?",
+  "chooser.age": "גילאים {age}",
+  "card.night": "לילה {n} מתוך {total}",
+  "card.tries": "{count} ניסיונות השבוע",
+  "card.tries.one": "ניסיון אחד השבוע",
+  "card.tonight": "הלילה: {step}",
+  "card.open": "לפתוח את הספר",
+  "owner.title": "כלי בעלים",
+  "owner.sub": "מוצג רק לחשבונות ברשימת הבעלים; משפחה אף פעם לא רואה את הקטע הזה.",
+  "paint.progress": "מציירים את התמונות… {done} מתוך {total}",
   "stage.door.kicker": "תוכנית ליום-יום",
   "stage.door.body": "בעוד כמה דקות יהיה ל{name} סיפור משלו על זה: ספר קצר בגוף ראשון עם שלושה שלבים קטנים שאתם בוחרים מתפריט מבוסס מקורות, שנקרא בלי AI. קודם, כמה שאלות שמחליטות אם תוכנית היא הצעד הנכון.",
   "stage.door.start": "בואו נראה",

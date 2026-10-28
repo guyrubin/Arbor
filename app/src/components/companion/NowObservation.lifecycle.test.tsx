@@ -45,6 +45,8 @@ function setup(lang: "en" | "he" = "en") {
     Avatar: "avatar", Icon: "icon", PrimaryMove: "primary-move", Receipt: "receipt", UrgentSupport: "urgent-support", NowRecommendation: "recommendation", NowAgendaExtras: "agenda-extras", NowNoticeExtras: "notice-extras", NowWhatChangedLines: "what-changed-lines", BrandChip: "brand-chip", NowNoticeBlock: "notice", NowTonightPointer: "tonight-pointer", TOGETHER_ART: {},
     useObservations: () => [], NowQuestionRow: "question-row", NowPlanFrame: "plan-frame", NowKidWorld: "kid-world", NowWeekSoFar: "week-so-far",
     NowPlanBody: "plan-body", NowGuideReader: "guide-reader", stepLines: (text: string) => [text], WHY_KEY: {}, shelfLabel: () => "",
+    // S1 (surfacing): the Everyday plans card under the lead (its own render test: components/plans/planSurfaces.test).
+    PlansSection: "plans-section", usePlanVisibility: () => null, openPrintablePlan: vi.fn(), keepPlan: (d: any) => d, closePlan: (d: any) => d,
   };
   const renderContent = new Function(...Object.keys(env), code)(...Object.values(env));
   let tree: React.ReactNode;
