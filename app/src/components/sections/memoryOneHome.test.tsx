@@ -77,7 +77,7 @@ describe("B-CAREPRO-38 · every door lands on About", () => {
     expect(about).toContain('const [ledgerOpen, toggleLedger] = useLedgerArrival(ledgerAsked, hashQuery.get("section"));');
     expect(about).not.toMatch(/\[[^\]]*\bhashQuery\]\)/);
     expect(about).toContain("<AboutMemoryCard areas={aspects} ledgerOpen={ledgerOpen} onLedger={toggleLedger} />");
-    expect(about).toContain('<ChildMemoryLedger embedded hidePendingIds={askedHere} />');
+    expect(about).toContain('<ChildMemoryLedger hidePendingIds={askedHere} />');
     expect(about).toContain("id={LEDGER_ID}");
   });
 });
@@ -88,7 +88,7 @@ describe("B-CAREPRO-38 · the embedded ledger: approve, correct and forget on Ab
       harness.locale = locale;
       harness.pending = [item("p-asked", "pending", "Asked in an area already"), item("p-ledger", "pending", "Only the ledger asks this")];
       harness.approved = [item("a1", "approved", "Loves the moon story")];
-      const html = renderToStaticMarkup(<ChildMemory embedded hidePendingIds={new Set(["p-asked"])} />);
+      const html = renderToStaticMarkup(<ChildMemory hidePendingIds={new Set(["p-asked"])} />);
       // one approval home: the proposal About asks elsewhere is not asked twice
       expect(html).not.toContain("Asked in an area already");
       expect(html).toContain("Only the ledger asks this");
@@ -105,16 +105,18 @@ describe("B-CAREPRO-38 · the embedded ledger: approve, correct and forget on Ab
       const stamps = html.match(/<[^>]*data-module="[^"]+"[^>]*>/g) ?? [];
       expect(stamps.length).toBeGreaterThan(0);
       for (const s of stamps) expect(s, s).toContain("data-module-demoted");
-      expect(html).not.toContain(translate(locale, "elev.childmem.more.door"));
+      // the retired door back to the profile is gone (the ledger is on it)
+      expect(html).not.toMatch(locale === "en" ? /Open the profile/ : /פתחו את הפרופיל/);
     });
   }
 
-  it("NEGATIVE CONTROL: the stand-alone ledger still stamps its move and its modules (the embedded flag is what removes them)", () => {
-    harness.locale = "en";
-    harness.pending = [item("p1", "pending", "Something to approve")];
-    harness.approved = [];
-    const html = renderToStaticMarkup(<ChildMemory />);
-    expect(html).toContain('data-primary-move="approve-memory-fact"');
-    expect(html).toMatch(/data-module="memory-pending"(?! data-module-demoted)/);
+  it("r2: there is no stand-alone ledger left — ChildMemory is About's embedded ledger only, and its one mount is About's", () => {
+    const shellAndPages = ["components/layout/Shell.tsx", "components/sections/ChildProfile.tsx"].map(read).join("\n");
+    expect(shellAndPages).toContain('React.lazy(() => import("./ChildMemory"))');
+    expect(read("components/layout/Shell.tsx")).not.toContain('import("../sections/ChildMemory")');
+    const src = read("components/sections/ChildMemory.tsx");
+    expect(src).not.toMatch(/embedded\??:/);
+    expect(src).not.toContain("<PageHeader");
+    expect(src).not.toContain("approve-memory-fact");
   });
 });

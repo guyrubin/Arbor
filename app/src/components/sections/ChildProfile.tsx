@@ -163,7 +163,7 @@ export default function ChildProfile() {
         {ledgerOpen && (
           <div id={LEDGER_ID} data-testid="about-memory-ledger" className="about-memory-ledger" style={{ scrollMarginBlockStart: "calc(var(--sticky-offset, 0px) + 12px)" }}>
             <React.Suspense fallback={<p role="status" className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("aria.loading")}</p>}>
-              <ChildMemoryLedger embedded hidePendingIds={askedHere} />
+              <ChildMemoryLedger hidePendingIds={askedHere} />
             </React.Suspense>
           </div>
         )}

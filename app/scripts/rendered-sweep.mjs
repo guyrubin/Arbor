@@ -1366,12 +1366,14 @@ const STATES = {
       },
     },
     {
+      // r2: About asks the first proposals on the "What Arbor remembers" card
+      // (Remember · Not this); the demo seed's pending facts land there.
       name: "pending-group",
       run: async (h) => {
         await h.need("[data-testid=about-memory-ledger]", "the ledger, open in place on About (#/memory retired)");
-        const groups = await h.first("[data-testid=about-memory-ledger] [data-testid=memory-groups]", 5_000);
-        if (!groups) skip("no pending fact beyond the ones About already asks about (its areas and the card)");
-        await h.top(groups);
+        const pending = await h.first("[data-testid=about-memory-pending]", 5_000);
+        if (!pending) skip("no pending fact on the server memory ledger");
+        await h.top(await h.need("[data-testid=about-memory]", "the What Arbor remembers card"));
       },
     },
     {
