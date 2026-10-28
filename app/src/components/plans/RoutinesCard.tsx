@@ -7,11 +7,14 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { cardCls } from "../ui/kit";
+import { savedOnPhoneKey } from "../../lib/firestoreWrite";
+import { useOnline } from "../../hooks/useSyncStatus";
 
 type Step = { text: string; done: boolean };
 type Routine = { id: string; name: string; steps: Step[] };
 
-type Attempt = { id: number; from: Routine; target: Routine; complete: boolean; status: "pending" | "acknowledged" | "saved" | "failed" };
+/** queued (B-DATA-14): kept on this phone, not yet acknowledged by the server. */
+type Attempt = { id: number; from: Routine; target: Routine; complete: boolean; status: "pending" | "queued" | "acknowledged" | "saved" | "failed" };
 type Row = { source: Routine; attempt?: Attempt };
 type Scope = { key: string; rows: Map<string, Row> };
 const sameRoutine = (a: Routine, b: Routine) => sameLocalHistoryRows([a], JSON.stringify([b]));
@@ -22,6 +25,11 @@ export default function RoutinesCard() {
   const { childProfile } = useArbor();
   const { t } = useLanguage();
   const col = useChildCollection<Routine>(childProfile.id, "routines", { trackConfirmation: true });
+  // B-DATA-14: offline the server cannot confirm a read, so the checklist
+  // works from this phone's copy (the persistent cache sends the write on
+  // reconnect) and says so; online the confirmed-read rule is unchanged.
+  const online = useOnline();
+  const offlineRead = col.remote && !online && col.loaded && !col.error;
   const routines = useMemo(() => [...col.items].sort((a, b) => (a.id < b.id ? -1 : 1)), [col.items]);
   const [newName, setNewName] = useState("");
   const [stepText, setStepText] = useState<Record<string, string>>({});
@@ -51,12 +59,12 @@ export default function RoutinesCard() {
     // arrive in either order. An unrelated source edit retires the attempt.
     const expected = attempt && (sameRoutine(r, attempt.target)
       ? attempt.status !== "failed" || !col.confirmed
-      : (attempt.status === "pending" || attempt.status === "failed") && sameRoutine(r, attempt.from));
+      : (attempt.status === "pending" || attempt.status === "queued" || attempt.status === "failed") && sameRoutine(r, attempt.from));
     if (expected) row.source = r;
     else scope.rows.set(r.id, { source: r });
   }
   const current = (r: Routine, row: Row) => inScope() && scope.rows.get(r.id) === row;
-  const actionable = (r: Routine, row: Row) => current(r, row) && col.isCurrent();
+  const actionable = (r: Routine, row: Row) => current(r, row) && (col.isCurrent() || offlineRead);
   const retire = (r: Routine) => { const row: Row = { source: r }; scope.rows.set(r.id, row); refresh(n => n + 1); return row; };
   const writeChecklist = async (r: Routine, row: Row, target: Routine) => {
     if (!actionable(r, row)) return;
@@ -66,9 +74,19 @@ export default function RoutinesCard() {
     const next = retire(r);
     const attempt: Attempt = { id: ++sequence.current, from: r, target, complete: target.steps.length > 0 && target.steps.every(s => s.done), status: "pending" };
     next.attempt = attempt;
+    const mine = () => current(r, next) && next.attempt === attempt;
+    const move = (status: Attempt["status"]) => { if (!mine()) return; attempt.status = status; refresh(n => n + 1); };
+    let queued = false;
     try {
-      await col.upsert(target, { awaitServer: true });
-      if (!current(r, next) || next.attempt !== attempt) return;
+      // B-DATA-14: a tick made offline answers at once: the row says it is
+      // kept on this phone, and the acknowledgement (or a late rejection)
+      // moves it on. Online the write still waits for the server (above).
+      await col.upsert(target, online ? { awaitServer: true } : { awaitServer: true, offline: {
+        onQueued: () => { queued = true; move("queued"); },
+        onSynced: () => move("acknowledged"),
+        onRejected: () => move("failed"),
+      } });
+      if (!mine() || queued) return;
       attempt.status = "acknowledged";
     } catch {
       if (!current(r, next) || next.attempt !== attempt) return;
@@ -108,7 +126,7 @@ export default function RoutinesCard() {
           const confirmedTarget = attempt && col.confirmed && col.isCurrent() && sameRoutine(r, attempt.target);
           if (attempt?.status === "acknowledged" && confirmedTarget) attempt.status = "saved";
           const pending = !!attempt && (attempt.status === "pending" || (attempt.status === "acknowledged" && !confirmedTarget));
-          const unavailable = !col.confirmed || pending;
+          const unavailable = (!col.confirmed && !offlineRead) || pending;
           const done = r.steps.filter((s) => s.done).length;
           return (
             <div key={r.id} data-testid={`routine-row-${r.id}`} className="rounded-xl p-3 space-y-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
@@ -131,13 +149,16 @@ export default function RoutinesCard() {
                 ))}
               </div>
               <PendingLine key={attempt ? `${scopeKey}:${r.id}:${attempt.id}` : `${scopeKey}:${r.id}`} active={pending} testId={`routine-pending-${r.id}`}>{t("elev.closeloop.routines.pending")}</PendingLine>
+              {attempt?.status === "queued" && (
+                <Receipt testId={`routine-queued-${r.id}`} size="sm">{t(savedOnPhoneKey(online))}</Receipt>
+              )}
               {attempt?.status === "saved" && attempt.complete && confirmedTarget && (
                 <Receipt testId={`routine-receipt-${r.id}`} size="sm">{t(col.remote ? "elev.closeloop.routines.saved" : "elev.closeloop.routines.savedLocal")}</Receipt>
               )}
               {attempt?.status === "failed" && (
                 <div data-testid={`routine-failed-${r.id}`} className="flex flex-wrap items-center gap-2">
                   <p role="alert" className="t-sm" style={{ color: "var(--arbor-ink-soft)" }}>{t(col.remote ? "elev.closeloop.routines.failed" : "elev.closeloop.routines.failedLocal")}</p>
-                  <button type="button" data-testid={`routine-retry-${r.id}`} disabled={!col.confirmed}
+                  <button type="button" data-testid={`routine-retry-${r.id}`} disabled={!col.confirmed && !offlineRead}
                     onClick={() => { if (row.attempt === attempt) void writeChecklist(r, row, attempt.target); }}
                     className="min-h-11 rounded-lg px-3 t-sm font-semibold" style={{ color: "var(--arbor-clay)" }}>{t("elev.closeloop.routines.retry")}</button>
                 </div>

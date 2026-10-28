@@ -4,6 +4,8 @@ import { PendingLine, Receipt } from "../ui/Receipt";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { celebrate } from "../../lib/celebrate";
+import { savedOnPhoneKey } from "../../lib/firestoreWrite";
+import { useOnline } from "../../hooks/useSyncStatus";
 import { localized, ROUTINES } from "../../lib/routines";
 import {
   isRoutineRunComplete,
@@ -35,6 +37,11 @@ import type { ActionPlan } from "../../types";
    in the last two weeks. That record line reads the plan AS STORED, so it
    moves only after a write resolved. No share, no bar, no streak, no colour
    verdict.
+   B-DATA-14: offline (or with no server answer in bounded time) a tick is
+   kept on this phone: the board says "Saved on this phone. Sending when
+   you're back online." (then "Still sending…" once reconnected), never an
+   endless "Saving…"; the "Saved" receipt and the celebration wait for the
+   server's acknowledgement, and a later rejection shows the retry.
    Parent register: tokens only, logical properties, 44 px switches.
    The host passes its contract stamp (primaryProps) for the first step still
    to do; this file never names the move itself.
@@ -51,7 +58,8 @@ type Attempt = {
   next: ActionPlan;
   /** True when this write finishes today's run AND marks the day celebrated. */
   celebrates: boolean;
-  status: "pending" | "saved" | "failed";
+  /** queued: kept on this phone, not yet acknowledged (B-DATA-14). */
+  status: "pending" | "queued" | "saved" | "failed";
 };
 
 /** The stored plan with an attempt's run (and celebrated day) laid over it. */
@@ -77,6 +85,7 @@ export default function RoutineRunBoard({ plan, primaryProps, now }: {
 }) {
   const { setRoutineRun } = useArbor();
   const { t, uiLang } = useLanguage();
+  const online = useOnline();
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const latest = useRef(0);
   const mounted = useRef(true);
@@ -110,14 +119,29 @@ export default function RoutineRunBoard({ plan, primaryProps, now }: {
     const id = ++latest.current;
     const planId = plan.id;
     setAttempt({ id, planId, day, next, celebrates, status: "pending" });
+    const settle = (status: Attempt["status"]) => {
+      if (!mounted.current || latest.current !== id) return false;
+      setAttempt((a) => (a && a.id === id ? { ...a, status } : a));
+      return true;
+    };
+    let queued = false;
+    const saved = () => {
+      // Persisted with the day marked: the one moment for this day.
+      if (settle("saved") && celebrates) celebrate({ kind: "routine" });
+    };
     let request: Promise<void>;
-    try { request = Promise.resolve(setRoutineRun(next)); } catch (error) { request = Promise.reject(error); }
+    try {
+      request = Promise.resolve(setRoutineRun(next, {
+        onQueued: () => { queued = true; settle("queued"); },
+        onSynced: saved,
+        onRejected: () => { settle("failed"); },
+      }));
+    } catch (error) { request = Promise.reject(error); }
     request.then(
       () => {
-        if (!mounted.current || latest.current !== id) return;
-        setAttempt((a) => (a && a.id === id ? { ...a, status: "saved" } : a));
-        // Persisted with the day marked: the one moment for this day.
-        if (celebrates) celebrate({ kind: "routine" });
+        // Kept on this phone: the receipt waits for onSynced.
+        if (queued) return;
+        saved();
       },
       () => {
         if (!mounted.current || latest.current !== id) return;
@@ -192,12 +216,15 @@ export default function RoutineRunBoard({ plan, primaryProps, now }: {
         </p>
       )}
       <PendingLine active={pending} testId="routine-run-pending">{t("elev.plans.routineRun.saving")}</PendingLine>
+      {live?.status === "queued" && (
+        <Receipt testId="routine-run-queued" size="sm">{t(savedOnPhoneKey(online))}</Receipt>
+      )}
       {live?.status === "saved" && (
         <Receipt testId="routine-run-saved" size="sm">
           {complete ? t("elev.plans.routineRun.doneToday", { routine: title }) : t("elev.plans.routineRun.saved")}
         </Receipt>
       )}
-      {complete && (!live || live.status === "failed") && (
+      {complete && (!live || live.status === "failed" || live.status === "queued") && (
         <p data-testid="routine-run-done-today" className="t-sm" style={{ color: "var(--arbor-ink-soft)" }}>
           {t("elev.plans.routineRun.doneToday", { routine: title })}
         </p>

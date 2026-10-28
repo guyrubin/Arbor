@@ -19,7 +19,9 @@ vi.mock("react", async original => {
   return { ...actual,
     useState: (initial: any) => { const i = h.cursor++, slots = h.slots; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial; return [slots[i], (next: any) => { const value = typeof next === "function" ? next(slots[i]) : next; if (!Object.is(slots[i], value)) { slots[i] = value; h.dirty = true; } }]; },
     useRef: (initial: any) => { const i = h.cursor++; return h.slots[i] ??= { current: initial }; },
-    useMemo: memo, useCallback: (fn: unknown, deps: unknown[]) => memo(() => fn, deps), useSyncExternalStore: () => 0,
+    useMemo: memo, useCallback: (fn: unknown, deps: unknown[]) => memo(() => fn, deps),
+    // B-DATA-14: useOnline's store reads navigator (a boolean); every other store reads 0.
+    useSyncExternalStore: (_subscribe: unknown, get: () => unknown) => { const value = get(); return typeof value === "boolean" ? value : 0; },
     useEffect: (effect: () => void | (() => void), deps: unknown[]) => { const i = h.cursor++, slots = h.slots, prev = slots[i]; if (prev && deps.every((d, n) => Object.is(d, prev.deps[n]))) return; const slot = { deps, cleanup: undefined as any }; slots[i] = slot; h.effects.push(() => { prev?.cleanup?.(); slot.cleanup = effect(); }); },
   };
 });
@@ -188,5 +190,58 @@ describe("Acknowledgement and lifetime boundaries", () => {
   it("retired callbacks cannot restart a deleted or edited row", async () => {
     render(); const heldStep = byId("routine-step-morning-1").props.onClick;
     click("routine-delete-morning"); await flush(); await heldStep(); expect(stored()).toEqual([goodbye()]);
+  });
+});
+
+/* B-DATA-14 — offline the checklist ticks from this phone's copy and says so;
+   online the confirmed-read and acknowledgement rules above are unchanged. */
+describe("B-DATA-14 · routines tick offline", () => {
+  const queuedLine = (id = "morning") => findId(`routine-queued-${id}`);
+  function offlineStart() {
+    vi.stubGlobal("navigator", { onLine: false });
+    h.remote = true; render(); source([morning(), goodbye()], { fromCache: true }); render();
+  }
+
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: offline the cached checklist is tickable and answers 'Saved on this phone…' at once, never Saving… or a receipt`, async () => {
+      h.lang = lang; offlineStart();
+      expect(byId("routine-step-morning-1").props.disabled).toBe(false);
+      click("routine-step-morning-1"); await flush();
+      expect(h.writes).toHaveLength(1);
+      expect(h.writes[0].row.steps[1].done).toBe(true);
+      const line = queuedLine()!;
+      expect(line.type).toBe(Receipt);
+      expect(line.props.children).toBe(translate(lang, "elev.sync.savedOnPhone"));
+      expect(byId("routine-pending-morning").props.active).toBe(false);
+      expect(receipt()).toBeUndefined();
+      // The phone's own echo keeps the tick; another tick offline still works.
+      source([morning(true), goodbye()], { fromCache: true, hasPendingWrites: true }); render();
+      expect(byId("routine-step-morning-1").props["aria-pressed"]).toBe(true);
+      expect(byId("routine-step-goodbye-0").props.disabled).toBe(false);
+    });
+  }
+
+  it("reconnected: 'Still sending…' until the server acknowledges, then the saved receipt", async () => {
+    offlineStart(); click("routine-step-morning-1"); await flush();
+    vi.stubGlobal("navigator", { onLine: true });
+    expect(queuedLine()!.props.children).toBe(translate("en", "elev.sync.savedOnPhoneSending"));
+    h.writes[0].resolve(); await flush();
+    expect(queuedLine()).toBeUndefined();
+    source([morning(true), goodbye()]); render();
+    expect(receipt()!.props.children).toBe(translate("en", "elev.closeloop.routines.saved"));
+  });
+
+  it("a rejection after the phone kept it takes the line back and offers the retry", async () => {
+    offlineStart(); click("routine-step-morning-1"); await flush();
+    h.writes[0].reject(Error("Denied")); await flush();
+    expect(queuedLine()).toBeUndefined();
+    expect(byId("routine-failed-morning")).toBeDefined();
+    expect(receipt()).toBeUndefined();
+  });
+
+  it("negative control: online, an unconfirmed (cached) read still locks the checklist", () => {
+    h.remote = true; render(); source([morning(), goodbye()], { fromCache: true }); render();
+    expect(byId("routine-step-morning-1").props.disabled).toBe(true);
+    click("routine-step-morning-1"); expect(h.writes).toHaveLength(0);
   });
 });

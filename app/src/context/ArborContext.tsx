@@ -1812,7 +1812,9 @@ function useArborState() {
   // FEAT-07: the Together sheet starts a routine plan and runs it day by day.
   // Both wait for the server, so a receipt only ever follows a persisted write.
   const startRoutinePlan = (plan: ActionPlan) => plansCol.upsert(withFocusGoal(plan, childProfile.activeGoals), { awaitServer: true });
-  const setRoutineRun = (plan: ActionPlan) => plansCol.upsert(plan, { awaitServer: true });
+  // B-DATA-14: with `offline`, the tick answers in bounded time: kept on this
+  // phone (onQueued) when offline or unacknowledged, then onSynced / onRejected.
+  const setRoutineRun = (plan: ActionPlan, offline?: ChildWriteOptions["offline"]) => plansCol.upsert(plan, { awaitServer: true, ...(offline ? { offline } : {}) });
   const deleteMilestone = (id: string) => void milestonesCol.remove(id);
 
   // Toggle milestone checking
