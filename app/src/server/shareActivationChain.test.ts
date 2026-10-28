@@ -37,7 +37,7 @@ import { createConsultStore } from "./consultRequests.js";
 import { createAdminMetricsStore } from "./adminMetrics.js";
 import { createWaitlistStore } from "./waitlist.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
-import { FUNNEL_CHAINS, projectEventProps, scanForbiddenKeys, type CohortEventDoc, type CohortMetricsStore } from "./cohortMetrics.js";
+import { FUNNEL_CHAINS, ONE_ROW_CHAINS, ONE_ROW_KEY, projectEventProps, scanForbiddenKeys, type CohortEventDoc, type CohortMetricsStore } from "./cohortMetrics.js";
 import * as reportScript from "../../scripts/cohort-report.mjs";
 import { setAnalyticsUser, setGlobalProps } from "../lib/analytics";
 import { setAnalyticsOptOut } from "../lib/analyticsOptOut";
@@ -162,15 +162,39 @@ describe("B-RESID-05 · share → activation is measurable end to end, without c
     const totals = Object.fromEntries(FUNNEL_CHAINS.share.map((stage) => [stage, 0]));
     for (const row of report.funnels.share) for (const s of row.stages) totals[s.stage] += s.count;
     expect(totals).toEqual({ share_completed: 1, invite_activated: 1 });
-    expect(report.funnels.share.find((row: { key: string }) => row.key === "share").stages).toEqual([{ stage: "share_completed", count: 0 }, { stage: "invite_activated", count: 1 }]);
+    // One family sends, another activates: the chain is ONE row, never split by source (0 → 1 would read NOT MONOTONIC).
+    expect(report.funnels.share).toEqual([{ key: ONE_ROW_KEY, stages: [{ stage: "share_completed", count: 1 }, { stage: "invite_activated", count: 1 }] }]);
+    expect(report.funnels.acquisition.length).toBeGreaterThanOrEqual(0); // other funnels still group by source
+    // The founder's printed report reads the same row, monotonic.
+    const printed = reportScript.print({ ...report, scanned: { ...report.scanned, mode: "ordered" } }, reportScript.parseArgs(["--funnel", "share"]));
+    expect(printed).toMatch(/Funnel — share[\s\S]*all\s+share_completed 1\s+→\s+invite_activated 1/);
+    expect(printed).not.toContain("NOT MONOTONIC");
     expect(scanForbiddenKeys(report)).toEqual([]);
     expect(JSON.stringify(report)).not.toContain(code);
     expect(JSON.stringify(report)).not.toMatch(/sharer-uid|recipient-uid/);
   });
 
-  it("the share chain is one definition: server and the cohort-report script agree", () => {
+  it("the share chain is one definition: server and the cohort-report script agree, one row in both", async () => {
     expect([...FUNNEL_CHAINS.share]).toEqual(["share_completed", "invite_activated"]);
     expect(reportScript.FUNNEL_CHAINS.share).toEqual([...FUNNEL_CHAINS.share]);
+    expect(reportScript.ONE_ROW_CHAINS).toEqual([...ONE_ROW_CHAINS]);
+    expect(reportScript.ONE_ROW_KEY).toBe(ONE_ROW_KEY);
+    // The script's own fetch path, with the two families' events as Firestore holds them.
+    const at = new Date().toISOString();
+    const eventDocs = [
+      { data: () => ({ event: "share_completed", at, props: { source: "direct", artifact: "invite", channel: "clipboard" } }), ref: { parent: { parent: { id: "sharer" } } } },
+      { data: () => ({ event: "invite_activated", at, props: { source: "share", role: "referred" } }), ref: { parent: { parent: { id: "recipient" } } } },
+    ];
+    const db = {
+      collection: () => ({ limit: () => ({ get: async () => ({ docs: [] }) }) }),
+      collectionGroup: () => ({ orderBy: () => ({ limit: () => ({ get: async () => ({ docs: eventDocs }) }) }), limit: () => ({ get: async () => ({ docs: eventDocs }) }) }),
+    };
+    const report = await reportScript.buildReport(db, reportScript.parseArgs(["--since", new Date(Date.now() - 86_400_000).toISOString(), "--funnel", "share", "--funnel", "acquisition"]));
+    expect(report.funnels.share).toEqual([{ key: "all", stages: [{ stage: "share_completed", count: 1 }, { stage: "invite_activated", count: 1 }] }]);
+    expect(reportScript.print(report, reportScript.parseArgs(["--funnel", "share"]))).not.toContain("NOT MONOTONIC");
+    // negative control: grouped by source, the same events split and the printer flags it
+    const split = reportScript.countFunnelChain(await Promise.all(eventDocs.map(async (d) => ({ event: d.data().event, props: d.data().props }))), FUNNEL_CHAINS.share, "source");
+    expect(split.find((row: { key: string }) => row.key === "share").stages).toEqual([{ stage: "share_completed", count: 0 }, { stage: "invite_activated", count: 1 }]);
   });
 
   it("negative control: a share whose recipient never activates counts 1 → 0", async () => {
@@ -187,5 +211,6 @@ describe("B-RESID-05 · share → activation is measurable end to end, without c
     const totals = Object.fromEntries(FUNNEL_CHAINS.share.map((stage) => [stage, 0]));
     for (const row of report.funnels.share) for (const s of row.stages) totals[s.stage] += s.count;
     expect(totals).toEqual({ share_completed: 1, invite_activated: 0 });
+    expect(report.funnels.share).toEqual([{ key: ONE_ROW_KEY, stages: [{ stage: "share_completed", count: 1 }, { stage: "invite_activated", count: 0 }] }]);
   });
 });
