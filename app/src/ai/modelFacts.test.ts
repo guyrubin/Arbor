@@ -167,7 +167,10 @@ function factsErrors(doc: string, pinned: Pinned, priceTable: Readonly<Record<st
     if (removal && Date.parse(removal) <= nowMs) {
       if (!/past removal/i.test(row.Lifecycle ?? "")) errors.push(`${name}: removed ${removal} but the lifecycle does not say "past removal"`);
       if (!row.Successor || row.Successor === "—" || !(row["Owner action"] ?? "").includes(row.Successor)) errors.push(`${name}: past removal without a successor named in the owner action`);
-      if (!row["Migration row"] || row["Migration row"] === "—" || !row["Migration row"].includes(row.Successor)) errors.push(`${name}: past removal without a migration row naming ${row.Successor || "its successor"}`);
+      const migration = row["Migration row"] ?? "";
+      const migrationId = migration.match(/^(B-AIOPS-\d+)\b/)?.[1];
+      if (!migrationId) errors.push(`${name}: past removal without a migration row id (B-AIOPS-n) at the start of the cell`);
+      else if (!migration.includes(row.Successor)) errors.push(`${name}: migration row ${migrationId} does not name ${row.Successor}`);
       const hardFail = /^\d{4}-\d{2}-\d{2}$/.test(row["Hard fail from"] ?? "") ? row["Hard fail from"] : null;
       const firstRetirement = rows.filter((r) => scheduled(r) && idsOf(r).some((id) => activeModels(pinned).includes(id))).map((r) => scheduled(r)!).sort()[0];
       if (!hardFail) errors.push(`${name}: past removal without a hard-fail date`);
@@ -311,7 +314,11 @@ describe("B-AIOPS-06 — negative controls", () => {
 
   it("a past-removal SDK needs a migration row and a hard-fail date before the first pinned retirement", () => {
     const past = factsTable(RECORD, "SDKs").find((r) => /past removal/i.test(r.Lifecycle))!;
-    expect(factsErrors(RECORD.replace(past["Migration row"], "—"), PINNED, PRICE_TABLE, at)).toContain(`${past.Package}: past removal without a migration row naming ${past.Successor}`);
+    expect(factsErrors(RECORD.replace(past["Migration row"], "—"), PINNED, PRICE_TABLE, at)).toContain(`${past.Package}: past removal without a migration row id (B-AIOPS-n) at the start of the cell`);
+    // Prose without a backlog id is not a migration row.
+    const prose = past["Migration row"].replace(/^B-AIOPS-\d+:\s*/, "");
+    expect(factsErrors(RECORD.replace(past["Migration row"], prose), PINNED, PRICE_TABLE, at)).toContain(`${past.Package}: past removal without a migration row id (B-AIOPS-n) at the start of the cell`);
+    expect(factsErrors(RECORD.replace(past["Migration row"], "B-AIOPS-99: move off the old SDK"), PINNED, PRICE_TABLE, at)).toContain(`${past.Package}: migration row B-AIOPS-99 does not name ${past.Successor}`);
     expect(factsErrors(RECORD.replace(`| ${past["Hard fail from"]} |`, "| — |"), PINNED, PRICE_TABLE, at)).toContain(`${past.Package}: past removal without a hard-fail date`);
     expect(factsErrors(RECORD.replace(`| ${past["Hard fail from"]} |`, "| 2027-04-01 |"), PINNED, PRICE_TABLE, at).some((e) => e.startsWith(`${past.Package}: hard-fail date 2027-04-01 is not before the first pinned retirement`))).toBe(true);
   });
