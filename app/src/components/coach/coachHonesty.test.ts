@@ -264,14 +264,15 @@ describe("B-ASKJB-02 — the Live line names the global endpoint and the excepti
     for (const v of [en, he]) expect(v).not.toContain("{");
   });
 
+  // B-GA-06 / G-V1: the program constant moved to Gate A, 31 Mar 2027.
   it("no server date → the program constant; a lapsed date is never printed", () => {
-    expect(LIVE_RESIDENCY_EXCEPTION_UNTIL).toBe("2026-10-31");
+    expect(LIVE_RESIDENCY_EXCEPTION_UNTIL).toBe("2027-03-31");
     const fallback = liveResidencyUntil({}, new Date(2026, 9, 1).getTime());
-    expect(fallback?.getFullYear()).toBe(2026);
-    expect(fallback?.getMonth()).toBe(9);
+    expect(fallback?.getFullYear()).toBe(2027);
+    expect(fallback?.getMonth()).toBe(2);
     expect(fallback?.getDate()).toBe(31);
     expect(liveResidencyUntil({ exceptionUntil: "not-a-date" }, new Date(2026, 9, 1).getTime())?.getDate()).toBe(31);
-    expect(liveResidencyUntil({}, new Date(2026, 10, 1).getTime())).toBeNull();
+    expect(liveResidencyUntil({}, new Date(2027, 3, 1).getTime())).toBeNull();
     expect(live("en", null)).toMatch(/Google's global endpoint, not the EU region\.$/);
     expect(live("he", null)).toMatch(/לא באזור האיחוד האירופי\.$/);
   });
