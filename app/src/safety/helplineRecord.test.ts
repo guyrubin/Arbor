@@ -133,7 +133,7 @@ function recordErrors(doc: string, facts: Facts): string[] {
   }
   for (const r of rows) {
     if (r.tel !== "—" && !facts.directory.some((h) => h.id === r.ID)) errors.push(`row ${r.ID} has a tel target but no directory entry`);
-    if (!/https:\/\/|gov\.il/.test(r["Official source"] ?? "")) errors.push(`row ${r.ID} names no official source`);
+    if (!/https:\/\/[a-z0-9.-]+\.[a-z]{2,}/i.test(r["Official source"] ?? "")) errors.push(`row ${r.ID} names no official source URL`);
   }
 
   // Only a baseline or a Guy-approved complete run may set the constant.
@@ -149,7 +149,10 @@ function recordErrors(doc: string, facts: Facts): string[] {
       for (const r of rows) {
         if (!(r["Last recorded check"] ?? "").startsWith(latest.Date)) errors.push(`row ${r.ID} was not checked on ${latest.Date}`);
         if (!/^(confirmed|changed: .+)$/.test(r["Result of latest run"] ?? "")) errors.push(`row ${r.ID} has no result for ${latest.Date}`);
-        if (!/https:\/\//.test(r["Official source"] ?? "")) errors.push(`row ${r.ID} has no exact source URL for ${latest.Date}`);
+        // An approved run names the page it read. gov.il hosts every ministry,
+        // so a gov.il source must name the service's page, never the site root.
+        const src = r["Official source"] ?? "";
+        if (!/https:\/\/[a-z0-9.-]+\.[a-z]{2,}/i.test(src) || /https:\/\/(www\.)?gov\.il\/?(\s|$|\()/i.test(src)) errors.push(`row ${r.ID} has no exact source page for ${latest.Date}`);
       }
     }
   }
@@ -199,6 +202,11 @@ describe("B-GA-04 — negative controls", () => {
     expect(errors.some((e) => e.startsWith("number 0800 99 999 is shown but has no row"))).toBe(true);
   });
 
+  it("a source that is not a URL fails (a bare 'gov.il' is not a source)", () => {
+    const bare = RECORD.replace("| https://www.mdais.org/ |", "| gov.il |");
+    expect(recordErrors(bare, LIVE)).toContain("row il_mda names no official source URL");
+  });
+
   it("a row for a number the app dropped fails", () => {
     const errors = recordErrors(RECORD, { ...LIVE, displayed: LIVE.displayed.filter((n) => digits(n) !== "070245245"), displayOnly: { "113": DISPLAY_ONLY_HELPLINE_NUMBERS["113"], "105": DISPLAY_ONLY_HELPLINE_NUMBERS["105"] } });
     expect(errors).toContain("row be_antigif names 070 245 245, which the app no longer shows");
@@ -220,6 +228,7 @@ describe("B-GA-04 — negative controls", () => {
     const partial = recordErrors(approvedBySomeone, facts);
     expect(partial).toContain(`run ${date} is not approved by Guy`);
     expect(partial).toContain(`row il_eran was not checked on ${date}`);
+    expect(partial).toContain(`row il_105 has no exact source page for ${date}`); // gov.il root
 
     // Complete run: every row checked on the date with a result and a URL.
     const lines = bumped.replace(/\n\nKinds:/, `\n${runRow("Guy")}`).split("\n");
@@ -230,7 +239,7 @@ describe("B-GA-04 — negative controls", () => {
       const cells = l.slice(1, -1).split("|").map((c) => c.trim());
       cells[cols.indexOf("Last recorded check")] = date;
       cells[cols.indexOf("Result of latest run")] = "confirmed";
-      if (!/https:\/\//.test(cells[cols.indexOf("Official source")])) cells[cols.indexOf("Official source")] = "https://www.gov.il/";
+      if (/https:\/\/(www\.)?gov\.il\/?(\s|$|\()/i.test(cells[cols.indexOf("Official source")])) cells[cols.indexOf("Official source")] = "https://www.gov.il/he/departments/synthetic-page";
       return `| ${cells.join(" | ")} |`;
     }).join("\n");
     expect(recordErrors(complete, facts)).toEqual([]);
