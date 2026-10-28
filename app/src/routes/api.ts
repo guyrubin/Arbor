@@ -1250,7 +1250,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // dropped clause can never hide a crisis signal), then re-renders. A
       // finding the parent wrote (this message or their earlier turns) is theirs.
       const parentText = [message, ...sanitizeRecentTurns(recentTurns).filter((turn) => turn.role === "parent").map((turn) => turn.text)].join("\n");
-      if (scrubHandoffNotes(structured, { parentText }) > 0) {
+      if (scrubHandoffNotes(structured, { parentText, childNames: childNamesFrom(childProfile?.name) }) > 0) {
         renderedText = seededFollowUp ? renderCoachFollowUpResponse(structured, renderLanguage)
           : structured.fileDeclined ? renderFileDeclinedResponse(structured)
           : renderCoachResponse(structured, renderLanguage);
@@ -1551,7 +1551,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // DROPS any fact that cannot be stated plainly (server/parentWordsScrub).
       // B-ASKJB-44: the handoff-note floor, after the screen saw the model's words.
       const parentText = [message, ...councilTurns.filter((turn) => turn.role === "parent").map((turn) => turn.text)].join("\n");
-      if (scrubHandoffNotes(structured, { parentText }) > 0) renderedText = renderCoachResponse(structured, renderLanguage);
+      if (scrubHandoffNotes(structured, { parentText, childNames: childNamesFrom(childProfile?.name) }) > 0) renderedText = renderCoachResponse(structured, renderLanguage);
       const memoryReviewItems: [] = [];
       budget.settle();
       const payload = { text: renderedText, contract: structured, council: restoredTakes, memoryReviewItems };
@@ -3923,7 +3923,7 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       // trigger and response is its own sentence, so a finding and its object
       // must sit in one field.
       const parentText = logs.flatMap((log) => [log.trigger, log.response]).filter((v) => typeof v === "string" && v).join("\n");
-      if (brief && typeof brief === "object") scrubHandoffBriefFindings(brf, { parentText });
+      if (brief && typeof brief === "object") scrubHandoffBriefFindings(brf, { parentText, childNames: childNamesFrom(childProfile?.name) });
       res.json(brief);
     } catch (error: any) {
       logger.error("Arbor Handoff Brief Error", error, { requestId: requestIdOf(req) });

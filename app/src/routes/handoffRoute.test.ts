@@ -276,6 +276,63 @@ describe("B-ASKJB-44 · /api/generate-handoff invented-finding floor", () => {
     expect(json.classroomChallenges).toEqual([]);
     draft = CLEAN_DRAFT;
   });
+  it("round 5: every escalation line inside a condition survives in the teacher's strategies, EN and HE (the escalation field is not in the teacher's copy)", async () => {
+    const day = new Date().toISOString().slice(0, 10);
+    const logsEn = [{ behaviorType: "Hard moment", trigger: "He bit a friend at preschool when they fought over a toy; Dr. Levi saw him last week", response: "We separated them and he calmed after a hug", day }];
+    const logsHe = [{ behaviorType: "Hard moment", trigger: "הוא נשך חבר בגן כשרבו על צעצוע; ד\"ר לוי ראה אותו בשבוע שעבר", response: "הפרדנו ביניהם והוא נרגע אחרי חיבוק", day }];
+    const lines: [string, typeof logsEn, string][] = [
+      ["When she shows no signs of calming after 20 minutes, call the family.", logsEn, "en"],
+      ["If there are no signs of improvement in two weeks, see your pediatrician.", logsEn, "en"],
+      ["If she shows no signs of calming after 20 minutes, let the family and Dr. Levi know right away.", logsEn, "en"],
+      ["If there are no signs of improvement in a month, consult a child psychologist.", logsEn, "en"],
+      ["If there are no signs of calming after 20 minutes, talk with Dr. Levi.", logsEn, "en"],
+      ["Call the family right away when he shows no signs of calming after 20 minutes.", logsEn, "en"],
+      ["כשאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.", logsHe, "he"],
+      ["במידה ואין סימנים לשיפור תוך שבועיים, כדאי להתייעץ עם פסיכולוג גן.", logsHe, "he"],
+      ["אם אין סימנים של רגיעה אחרי 20 דקות, יש לעדכן את ההורים ואת ד\"ר לוי.", logsHe, "he"],
+      ["אם אין סימנים של רגיעה אחרי 20 דקות, דברו עם ד\"ר לוי.", logsHe, "he"],
+    ];
+    for (const [line, logs, language] of lines) {
+      draft = { ...CLEAN_DRAFT, suggestedTeacherStrategies: ["Give a two-minute warning", line] };
+      const res = await fetch(`${baseUrl}/api/generate-handoff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ childProfile: { name: "Noa", age: 4 }, language, logs, milestones: [] }),
+      });
+      const json = (await res.json()) as Record<string, unknown>;
+      expect(res.status, line).toBe(200);
+      expect(json.suggestedTeacherStrategies, line).toEqual(["Give a two-minute warning", line]);
+    }
+    draft = CLEAN_DRAFT;
+  });
+  it("round 5: an invented subject or a source named only in another log is dropped; the child's name needs no match", async () => {
+    const day = new Date().toISOString().slice(0, 10);
+    draft = {
+      ...CLEAN_DRAFT,
+      overview: "Noa shows no signs of anxiety at drop-off.",
+      keyStrengths: ["Curious", "Speech and language: no signs of delay.", "No signs of anxiety at lunch, according to her teacher."],
+      classroomChallenges: ["בתחום השפה אין סימנים לעיכוב."],
+    };
+    const res = await fetch(`${baseUrl}/api/generate-handoff`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        childProfile: { name: "Noa", age: 4 },
+        logs: [
+          { behaviorType: "Transition", trigger: "Walking: no signs of delay, she runs everywhere now", response: "She shows no signs of anxiety at drop-off now", day },
+          { behaviorType: "Transition", trigger: "teacher asked him to tidy up", response: "No signs of anxiety at lunch since the chart", day },
+          { behaviorType: "Transition", trigger: "בתחום המוטורי אין סימנים לעיכוב", response: "חיבוק", day },
+        ],
+        milestones: [],
+      }),
+    });
+    const json = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(json.overview).toBe("Noa shows no signs of anxiety at drop-off.");
+    expect(json.keyStrengths).toEqual(["Curious"]);
+    expect(json.classroomChallenges).toEqual([]);
+    draft = CLEAN_DRAFT;
+  });
   it("the output screen sees the draft BEFORE the floor: a crisis clause the floor would drop still answers 409", async () => {
     draft = { ...CLEAN_DRAFT, overview: "Mia does best with a warning. There are no signs of self-harm or suicidal thoughts." };
     const res = await fetch(`${baseUrl}/api/generate-handoff`, {

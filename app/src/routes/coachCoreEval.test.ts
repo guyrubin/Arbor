@@ -683,6 +683,16 @@ describe("B-ASKJB-44 · /api/chat handoff notes carry no invented finding", () =
     });
     expect(coachResponseZodSchema.parse(doneOf(own.events)?.contract).handoffNotes.teacher).toBe(he);
   });
+  it("round 5: an escalation line inside a condition stays in the teacher note, EN and HE", async () => {
+    for (const [teacher, language] of [
+      ["When she shows no signs of calming after 20 minutes, call the family.", "en"],
+      ["כשאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.", "he"],
+    ]) {
+      contractOverrides = { handoffNotes: { teacher, professional: "" } };
+      const { events } = await postChatStreamed({ message: "What can we do at drop-off?", childProfile: { id: "c1", name: "Mia" }, language });
+      expect(coachResponseZodSchema.parse(doneOf(events)?.contract).handoffNotes.teacher).toBe(teacher);
+    }
+  });
   it("a clean handoff note passes the floor byte-identical", async () => {
     contractOverrides = { handoffNotes: { teacher: "The parent says a two-minute warning helps.", professional: "" } };
     const { events } = await postChatStreamed({ message: "What can we do in five minutes?", childProfile: { id: "c1", name: "Mia" } });
