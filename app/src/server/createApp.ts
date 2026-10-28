@@ -21,6 +21,7 @@ import { createCounterStore } from "./quotaStore.js";
 import { createEntitlementStore, requireActiveAccess, requirePlusFeature } from "./entitlements.js";
 import { createReferralStore } from "./referral.js";
 import { createBillingWebhookRouter } from "./billing.js";
+import { apiFailureObserver, createOpsAlertsFromConfig } from "./opsAlerts.js";
 import { createAdminMetricsStore } from "./adminMetrics.js";
 import { initUsageRollup } from "./usageRollup.js";
 import { createConsultStore } from "./consultRequests.js";
@@ -141,8 +142,15 @@ export const createApp = (config: ArborConfig) => {
   const adminMetrics = createAdminMetricsStore(config);
   initUsageRollup(config);
 
+  // B-AIOPS-03: the one content-free incident sink (structured log always;
+  // OPS_ALERT_WEBHOOK_URL when set), addressed to OPS_ALERT_OWNER.
+  const opsAlerts = createOpsAlertsFromConfig(config);
+  logger.info(`Ops alert delivery: ${opsAlerts.delivery}; owner ${config.opsAlertOwner ? "named" : "unassigned"}`);
+
   // OPS-1: request ids + structured request logs on every route.
   app.use(requestObservability);
+  // B-AIOPS-03: API 5xx bursts (status + route template only).
+  app.use("/api", apiFailureObserver(opsAlerts));
   // COST-2: carry request id + uid through the async chain for token-usage attribution.
   app.use(requestContextMiddleware);
 
@@ -166,7 +174,7 @@ export const createApp = (config: ArborConfig) => {
   // MON-2: billing webhook — mounted BEFORE the /api auth + rate-limit chain
   // (RevenueCat carries its own shared-secret header, not a Firebase token) and
   // parses its own JSON body. It is the only writer of entitlements/{uid}.
-  app.use("/webhooks/billing", createBillingWebhookRouter(config, entitlementStore));
+  app.use("/webhooks/billing", createBillingWebhookRouter(config, entitlementStore, opsAlerts));
   // B-DIST-01: the sandbox's demo-family bundle — null (not mounted) in prod.
   const demoFamilyRouter = createDemoFamilyRouter(config);
   if (demoFamilyRouter) app.use(demoFamilyRouter);
@@ -255,7 +263,7 @@ export const createApp = (config: ArborConfig) => {
   app.use(["/api/chat", "/api/council"], createCoachGate(counters, entitlementStore, { exemptHourly: aiHourlyExempt(config) }));
   app.use("/api/generate-handoff", requirePlusFeature(entitlementStore, "professionalReports", "Professional reports"));
   app.use("/api/generate-plan", requirePlusFeature(entitlementStore, "advancedPlans", "Advanced growth plans"));
-  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, aiCapabilityRegistry }));
+  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, aiCapabilityRegistry, opsAlerts }));
 
   return app;
 };

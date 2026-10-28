@@ -129,6 +129,15 @@ export type ArborConfig = {
    *  the max number of referral months a single referrer can ever earn. */
   referralSecret: string;
   referralMaxGrants: number;
+  /** B-AIOPS-03: the named human every ops incident is addressed to
+   *  (`OPS_ALERT_OWNER`, default "off" → incidents say "unassigned"). */
+  opsAlertOwner?: string;
+  /** B-AIOPS-03: where incidents are delivered beyond the structured log
+   *  (`OPS_ALERT_WEBHOOK_URL`, https only, default "off" → log only). Secret. */
+  opsAlertWebhookUrl?: string;
+  /** B-AIOPS-03: the AI Studio prepay ledger for the readable balance and the
+   *  20 % alarm (`AI_PREPAY_LEDGER`, JSON, default "off"; server/prepayBalance). */
+  aiPrepayLedger?: PrepayLedgerConfig;
 };
 
 const boolFromEnv = (value: string | undefined, fallback: boolean) => {
@@ -294,6 +303,12 @@ export const loadConfig = (): ArborConfig => {
     // No PII goes into the code; the salt only makes the code non-enumerable.
     referralSecret: process.env.REFERRAL_SECRET || "arbor-referral-dev-salt",
     referralMaxGrants: Number(process.env.REFERRAL_MAX_GRANTS || 5),
+    opsAlertOwner: (() => {
+      const v = (process.env.OPS_ALERT_OWNER || "").trim();
+      return v && !/^(off|none|false|0)$/i.test(v) ? v.slice(0, 60) : undefined;
+    })(),
+    opsAlertWebhookUrl: opsWebhookUrl(process.env.OPS_ALERT_WEBHOOK_URL),
+    aiPrepayLedger: parsePrepayLedger(process.env.AI_PREPAY_LEDGER),
   };
 
   if (config.arborEnv === "prod") {
@@ -323,3 +338,35 @@ export const loadConfig = (): ArborConfig => {
 
   return config;
 };
+
+/** B-AIOPS-03: the ops webhook target — https only; unset/"off"/anything else is off. */
+export const opsWebhookUrl = (value: string | undefined): string | undefined => {
+  const v = value?.trim();
+  if (!v || /^(off|none|false|0)$/i.test(v)) return undefined;
+  try {
+    return new URL(v).protocol === "https:" ? v : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/** B-AIOPS-03: the AI Studio prepay ledger (server/prepayBalance.ts). */
+export type PrepayLedgerConfig = { credit: number; currency: string; since: string; perLiveMinute: number };
+
+/** `AI_PREPAY_LEDGER` → the ledger, or undefined (off, malformed, or any
+ *  non-positive number: a half-set ledger must never read as a balance). */
+export function parsePrepayLedger(value: string | undefined): PrepayLedgerConfig | undefined {
+  const v = value?.trim();
+  if (!v || /^(off|none|false|0)$/i.test(v)) return undefined;
+  try {
+    const raw = JSON.parse(v) as Record<string, unknown>;
+    const credit = Number(raw.credit);
+    const perLiveMinute = Number(raw.perLiveMinute);
+    const currency = typeof raw.currency === "string" && /^[A-Z]{3}$/.test(raw.currency) ? raw.currency : "EUR";
+    const since = typeof raw.since === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw.since) && !Number.isNaN(Date.parse(`${raw.since}T00:00:00Z`)) ? raw.since : "";
+    if (!(credit > 0) || !(perLiveMinute > 0) || !since) return undefined;
+    return { credit, currency, since, perLiveMinute };
+  } catch {
+    return undefined;
+  }
+}

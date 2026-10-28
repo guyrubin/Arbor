@@ -90,8 +90,6 @@ export type LiveReservation = {
   observedMs: number;
   incomplete: boolean;
   closed: boolean;
-  /** The client reported the audio session open (B-AIOPS-03 connect signal). */
-  opened?: boolean;
   /** Charged amount once the token has expired; null while live. */
   settledMs: number | null;
 };
@@ -145,7 +143,7 @@ export function planReservation(doc: LiveBudgetDay, plan: Plan): ReservePlan {
   return { ok: false, remainingMs };
 }
 
-export type ObservedUpdate = { observedMs: number; incomplete: boolean; closed: boolean; opened?: boolean };
+export type ObservedUpdate = { observedMs: number; incomplete: boolean; closed: boolean };
 /** Record observed connection time. Pure bookkeeping: committedMs is unchanged. */
 export function recordObserved(doc: LiveBudgetDay, id: string, obs: ObservedUpdate, now: number): LiveBudgetDay {
   const r = doc.reservations[id];
@@ -155,7 +153,6 @@ export function recordObserved(doc: LiveBudgetDay, id: string, obs: ObservedUpda
     observedMs: Math.min(r.ms, Math.max(r.observedMs, obs.observedMs)),
     incomplete: r.incomplete || obs.incomplete,
     closed: r.closed || obs.closed,
-    ...(r.opened || obs.opened ? { opened: true } : {}),
   };
   return { ...doc, reservations: { ...doc.reservations, [id]: next }, updatedAt: now };
 }

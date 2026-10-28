@@ -221,7 +221,7 @@ async function request<T>(url: string, method: string, body?: unknown, signal?: 
 const post = <T>(url: string, body: unknown, beforeDispatch?: () => void) => request<T>(url, "POST", body, undefined, beforeDispatch);
 // Bound auth refresh as well as fetch, so a hung report cannot accumulate
 // heartbeats or prevent the eventual close report from being attempted.
-function liveUsageRequest(sessionId: string, event: "opened" | "heartbeat" | "closed") {
+function liveUsageRequest(sessionId: string, event: "opened" | "heartbeat" | "closed" | "failed") {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout>;
   const deadline = new Promise<never>((_, reject) => {
@@ -592,7 +592,8 @@ export const api = {
       budget?: { reservedMs: number; remainingMs: number; allowanceMs: number; resetAt: string } }>(payload, opts.signal),
   // VC-2/VC-3: the authoritative per-turn Live screen. The liveTurnGuard treats
   // ANY failure of this call (network / non-200 / timeout) as FLAGGED (VC-5).
-  liveUsage: (sessionId: string, event: "opened" | "heartbeat" | "closed") =>
+  // B-AIOPS-03: "failed" = the audio never came up after the mint.
+  liveUsage: (sessionId: string, event: "opened" | "heartbeat" | "closed" | "failed") =>
     liveUsageRequest(sessionId, event),
   liveTurn: (payload: { role: "user" | "model"; text: string; language?: "en" | "he"; childId?: string }) =>
     post<import("./liveTurnGuard").LiveTurnVerdict>("/api/live/turn", payload),

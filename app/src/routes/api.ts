@@ -3,6 +3,8 @@ import { createLiveUsageStore, withLiveUsageDeadline, type LiveUsageEvent } from
 import { createLiveBudgetStore, LIVE_RESTING_BODY } from "../server/liveBudget.js";
 import { spokenMsForChars, type ReserveResult } from "../server/liveBudget.js";
 import { entitlementForRequest } from "../server/entitlements.js";
+import { createOpsAlerts, type OpsAlerts } from "../server/opsAlerts.js";
+import { createPrepayCounter, createPrepayMonitor, type PrepayCounter } from "../server/prepayBalance.js";
 import { attachmentTurnPolicy } from "../ai/attachmentSourcePolicy.js";
 import { parseCompanionAttachments, type ComposerAttachment } from "../lib/companionAttachments.js";
 import express from "express";
@@ -141,6 +143,11 @@ type ApiDeps = {
   /** B-AIOPS-02: the family-day Live reservation store. Injectable for tests;
    *  defaults to the Firestore/memory store derived from config. */
   liveBudgetStore?: import("../server/liveBudget.js").LiveBudgetStore;
+  /** B-AIOPS-03: the content-free incident sink (createApp builds it from
+   *  config); defaults to the structured log only. */
+  opsAlerts?: OpsAlerts;
+  /** B-AIOPS-03: the prepay reserved-minutes counter (injectable for tests). */
+  prepayCounter?: PrepayCounter;
   /** N1-05: the founder-side cohort reader (injectable for tests); defaults
    *  to the Firestore/null store derived from config. */
   cohortMetricsStore?: CohortMetricsStore;
@@ -431,11 +438,15 @@ export const allowListHandoffInput = (
   return { logs: safeLogs, milestones: safeMilestones };
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, digestJobSource, jobCallerVerifier, aiCapabilityRegistry, heroPoseSource, liveBudgetStore }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, digestJobSource, jobCallerVerifier, aiCapabilityRegistry, heroPoseSource, liveBudgetStore, opsAlerts, prepayCounter }: ApiDeps) => {
   const router = express.Router();
   const liveUsage = createLiveUsageStore(config);
   // B-AIOPS-02: the shared-family daily Live allowance (injectable for tests).
   const liveBudget = liveBudgetStore ?? createLiveBudgetStore(config);
+  // B-AIOPS-03: incidents (Live unavailability, budget-store outages) and the
+  // readable AI Studio prepay balance with its 20 % alarm.
+  const alerts = opsAlerts ?? createOpsAlerts();
+  const prepay = createPrepayMonitor(config.aiPrepayLedger, prepayCounter ?? createPrepayCounter(config), alerts);
   // CARE-2: the recipient shared-view read seam (Firestore in prod, null locally).
   const sharedSource = sharedChildSource ?? createSharedChildRecordSource(config, memoryStore);
   // B-AI-01: the companion ledger read (Firestore in prod, null locally).
@@ -1601,6 +1612,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       } catch (error) {
         // Same posture as the Live mint: a cap that fails open is not a cap.
         logger.error("Voice turn reservation failed", error, { requestId: requestIdOf(req) });
+        alerts.record("live_unavailable", "budget_store_unavailable");
         res.status(503).json({ error: "Voice is not available right now", code: "voice_budget_unavailable" });
         return;
       }
@@ -1841,12 +1853,21 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // Metered by createAiQuota in createApp.ts (same list as the other paid mints).
   router.post("/live/usage", liveUsageRateLimit(), async (req, res) => {
     const { sessionId, event } = req.body ?? {};
-    if (typeof sessionId !== "string" || !["opened", "heartbeat", "closed"].includes(event)) {
+    if (typeof sessionId !== "string" || !["opened", "heartbeat", "closed", "failed"].includes(event)) {
       res.status(400).json({ error: "Invalid session event" }); return;
     }
     try {
       const result = await liveUsage.report(actorOf(req).uid, sessionId, event as LiveUsageEvent);
       if (!result) { res.status(404).json({ error: "Session not found" }); return; }
+      // B-AIOPS-03: a minted token whose audio never came up is the depleted-
+      // prepay signature (docs/ops/live-balance-alert.md); a session that
+      // opened is the healthy path. Event names only — never content.
+      if (event === "failed" && !result.opened) {
+        logger.warn("live_unavailable", { requestId: requestIdOf(req), reason: "connect_failed" });
+        alerts.record("live_unavailable", "connect_failed");
+      } else if (event === "opened") {
+        alerts.ok("live_unavailable", ["connect_failed"]);
+      }
       // B-AIOPS-02 reconciliation: observed time is RECORDED beside the
       // family reservation. It never credits the budget here — a client
       // report cannot shorten a token that the provider still honours.
@@ -1871,6 +1892,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         // B-PROV-01: residency refused (prod, exception lapsed, no EU path).
         // 503 → the client takes the EU STT → text → TTS loop.
         logger.warn("Live denied by the realtime residency policy", { requestId: requestIdOf(req), exception_until: config.liveGlobalExceptionUntil ?? null });
+        alerts.record("live_unavailable", "residency_denied");
         res.status(503).json({ available: false, code: "live_residency_denied", reason: "Live voice is not available in this region right now." });
         return;
       }
@@ -1919,6 +1941,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       reserved = outcome;
     } catch (error) {
       logger.error("Live budget reservation failed", error, { requestId: requestIdOf(req) });
+      alerts.record("live_unavailable", "budget_store_unavailable");
       res.status(503).json({ available: false, code: "live_budget_unavailable", reason: "Live voice is not available right now." });
       return;
     }
@@ -1998,10 +2021,15 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       } catch (error) {
         logger.error("Live usage session creation failed", error, { requestId: requestIdOf(req) });
       }
+      // B-AIOPS-03: a delivered token is the mint path's healthy signal, and
+      // its reserved slice is the spend the prepay balance is read from.
+      alerts.ok("live_unavailable", ["mint_failed", "eu_mint_failed", "residency_denied", "budget_store_unavailable"]);
+      void prepay.onLiveReserved(reservation.ms);
       res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime, systemInstruction, speechConfig, usageSessionId,
         budget: { reservedMs: reservation.ms, remainingMs: reserved.remainingMs, allowanceMs: reserved.allowanceMs, resetAt: new Date(reserved.resetAt).toISOString() } });
     } catch (error: any) {
       logger.error("Arbor Live Token Error", error, { requestId: requestIdOf(req), provider: selected.provider, region: selected.region });
+      alerts.record("live_unavailable", euPath ? "eu_mint_failed" : "mint_failed");
       // No token was issued: the reservation is released on this SERVER fact
       // (never on a client report). Failure here is logged, not surfaced.
       try { await liveBudget.cancel(familyId, reservation.day, reservation.id); }
@@ -4129,6 +4157,22 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
     } catch (error: any) {
       logger.error("Arbor Admin Overview Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to load admin overview", details: error.message });
+    }
+  });
+
+  // B-AIOPS-03: the readable AI Studio prepay balance (founder only). Reading
+  // it also re-checks the 20 % alarm. Nothing here reloads or pays.
+  router.get("/admin/prepay", async (req, res) => {
+    if (!isAdmin(actorOf(req))) {
+      res.status(403).json({ error: "Not authorized" });
+      return;
+    }
+    try {
+      const balance = await prepay.read();
+      res.json(balance ? { configured: true, ...balance } : { configured: false });
+    } catch (error) {
+      logger.error("Prepay balance read failed", error, { requestId: requestIdOf(req) });
+      res.status(503).json({ error: "Prepay balance unavailable" });
     }
   });
 

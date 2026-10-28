@@ -32,6 +32,7 @@ import type {
   Plan,
 } from "./entitlements.js";
 import { logger } from "./logger.js";
+import type { OpsAlerts } from "./opsAlerts.js";
 
 /** Minimal shape of a RevenueCat webhook `event` (fields we read; many more exist). */
 export type RevenueCatEvent = {
@@ -198,16 +199,22 @@ export const recordFromRevenueCat = (
  * Mounted OUTSIDE the auth-gated `/api` group (RevenueCat carries no Firebase
  * token). Path: POST /webhooks/billing/revenuecat.
  */
-export const createBillingWebhookRouter = (config: ArborConfig, store: EntitlementStore) => {
+export const createBillingWebhookRouter = (config: ArborConfig, store: EntitlementStore, alerts?: OpsAlerts) => {
   const router = express.Router();
   router.post("/revenuecat", express.json({ limit: "256kb" }), async (req, res) => {
+    // B-AIOPS-03: every refusal or failure is a content-free billing incident
+    // (a reason code only — never the event body, uid or header); every
+    // accepted delivery is the healthy signal that resolves one.
+    res.on("finish", () => { if (res.statusCode < 300) alerts?.ok("billing_webhook_failure"); });
     const expected = config.revenueCatWebhookAuth;
     if (!expected) {
       logger.error("RevenueCat webhook hit but REVENUECAT_WEBHOOK_AUTH is unset");
+      alerts?.record("billing_webhook_failure", "not_configured");
       res.status(503).json({ error: "Billing webhook not configured" });
       return;
     }
     if (req.header("authorization") !== expected) {
+      alerts?.record("billing_webhook_failure", "bad_signature");
       res.status(401).json({ error: "Unauthorized webhook" });
       return;
     }
@@ -222,6 +229,7 @@ export const createBillingWebhookRouter = (config: ArborConfig, store: Entitleme
     }
     if (!store.setEntitlement) {
       logger.error("Entitlement store is read-only; cannot persist billing event");
+      alerts?.record("billing_webhook_failure", "store_read_only");
       res.status(503).json({ error: "Entitlement store not writable" });
       return;
     }
@@ -242,6 +250,7 @@ export const createBillingWebhookRouter = (config: ArborConfig, store: Entitleme
       res.status(200).json({ ok: true });
     } catch (error) {
       logger.error("RevenueCat webhook processing failed", error);
+      alerts?.record("billing_webhook_failure", "handler_error");
       res.status(500).json({ error: "Webhook processing failed" });
     }
   });

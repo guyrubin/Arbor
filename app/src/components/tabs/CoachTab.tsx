@@ -802,6 +802,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     // B-PROV-06: where the attempt failed (token mint vs socket start), so a
     // fallback counts as ONE live_unavailable event with a closed-enum reason.
     let liveStage: "mint" | "socket" = "mint";
+    // B-AIOPS-03: the minted session's telemetry id, so a start that never
+    // reaches audio is reported to the server's incident sink (event only).
+    let liveUsageId: string | undefined;
 
     if (liveAvail) {
       try {
@@ -810,6 +813,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
         if (!(fresh.available && fresh.token && fresh.model)) trackLiveUnavailable("token_error");
         if (fresh.available && fresh.token && fresh.model) {
           liveStage = "socket";
+          liveUsageId = fresh.usageSessionId;
           const { startGeminiLive } = await import("../../lib/geminiLiveClient");
           if (!attempt.isCurrent()) return;
           const ctl = await startGeminiLive(
@@ -952,6 +956,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
         // "closed before open"; count it (closed enum, no text) before falling back.
         const unavailable = liveUnavailableReason(err, liveStage);
         if (unavailable) trackLiveUnavailable(unavailable);
+        if (liveUsageId && (unavailable === "closed_before_open" || unavailable === "closed_during_start")) {
+          void api.liveUsage(liveUsageId, "failed").catch(() => {});
+        }
         setVoiceNotice(t("coach.toast.voiceFallback"));
       }
     }

@@ -21,7 +21,9 @@ export async function withLiveUsageDeadline<T>(work: () => Promise<T>): Promise<
   finally { clearTimeout(timer!); }
 }
 
-export type LiveUsageEvent = "opened" | "heartbeat" | "closed";
+/** B-AIOPS-03: "failed" = the audio session never came up after the mint
+ *  (closed before or during setup). It closes the session like "closed". */
+export type LiveUsageEvent = "opened" | "heartbeat" | "closed" | "failed";
 export type LiveUsageSession = {
   uid: string; familyId: string; plan: Plan; model: string;
   createdAt: number; expiresAt: number; openedAt?: number; lastSeenAt?: number;
@@ -34,6 +36,8 @@ export type LiveUsageSession = {
 export type LiveUsageReport = {
   observedMs: number; incomplete: boolean; closed: boolean;
   familyId: string; budget?: { day: string; reservationId: string };
+  /** The session reported "opened" at some point (B-AIOPS-03 connect signal). */
+  opened?: boolean;
 };
 const MAX_GAP_MS = 45_000;
 export function advanceLiveUsage(session: LiveUsageSession, event: LiveUsageEvent, now: number) {
@@ -54,7 +58,7 @@ export function advanceLiveUsage(session: LiveUsageSession, event: LiveUsageEven
     next.observedMs += deltaMs;
     next.lastSeenAt = Math.max(next.lastSeenAt, time);
   }
-  if (event === "closed" || now >= next.expiresAt) next.closed = true;
+  if (event === "closed" || event === "failed" || now >= next.expiresAt) next.closed = true;
   return { session: next, deltaMs, opened };
 }
 
@@ -90,7 +94,7 @@ export class MemoryLiveUsageStore implements LiveUsageStore {
     const result = advanceLiveUsage(session, event, Date.now());
     this.sessions.set(id, result.session);
     return { observedMs: result.session.observedMs, incomplete: result.session.incomplete, closed: result.session.closed,
-      familyId: session.familyId, ...(session.budget ? { budget: session.budget } : {}) };
+      familyId: session.familyId, ...(session.budget ? { budget: session.budget } : {}), opened: result.session.openedAt !== undefined };
   }
 }
 
@@ -133,7 +137,8 @@ export function createLiveUsageStore(config: ArborConfig): LiveUsageStore {
           }
         }
         return { observedMs: result.session.observedMs, incomplete: result.session.incomplete, closed: result.session.closed,
-          deltaMs: result.deltaMs, familyId: previous.familyId, plan: previous.plan, model: previous.model, budget: previous.budget };
+          deltaMs: result.deltaMs, familyId: previous.familyId, plan: previous.plan, model: previous.model, budget: previous.budget,
+          opened: result.session.openedAt !== undefined };
       });
       if (committed) {
         logger.info("ai.usage", { route: "realtime_audio", provider: "gemini_live", model: committed.model,
@@ -141,7 +146,7 @@ export function createLiveUsageStore(config: ArborConfig): LiveUsageStore {
           usageUnit: "observed_connection_ms", observedMs: committed.deltaMs,
           incomplete: committed.incomplete, billingVerified: false });
         return { observedMs: committed.observedMs, incomplete: committed.incomplete, closed: committed.closed,
-          familyId: committed.familyId, ...(committed.budget ? { budget: committed.budget } : {}) };
+          familyId: committed.familyId, ...(committed.budget ? { budget: committed.budget } : {}), opened: committed.opened };
       }
       return null;
     },
