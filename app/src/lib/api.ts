@@ -597,9 +597,9 @@ export const api = {
     post<WeeklyDigest>("/api/digest", { ...payload, logs: toDigestLogInputs(payload.logs), milestones: toDigestMilestoneInputs(payload.milestones) }),
   // CMP-2: GDPR server-side export + erasure.
   privacyExport: (childId: string, signal?: AbortSignal, beforeDispatch?: () => void) =>
-    request<{ exportedAt: string; childId: string; serverData: { memoryEvents: unknown[]; shares: unknown[] } }>(`/api/privacy/export/${encodeURIComponent(childId)}`, "GET", undefined, signal, beforeDispatch),
+    request<{ exportedAt: string; childId: string; serverData: { memoryEvents: unknown[]; shares: unknown[]; consents?: unknown[]; consultRequests?: unknown[] } }>(`/api/privacy/export/${encodeURIComponent(childId)}`, "GET", undefined, signal, beforeDispatch),
   privacyErase: (childId: string) =>
-    post<{ erased: { memoryEvents: number; shares: number; consents?: number }; erasedAt: string }>("/api/privacy/erase", { childId }),
+    post<{ erased: { memoryEvents: number; shares: number; consents?: number; consultRequests?: number; storageFiles?: number }; storage?: { photos: number; books: number }; erasedAt: string }>("/api/privacy/erase", { childId }),
   // STORE-4: FULL account deletion (Apple 5.1.1(v) / Play / GDPR Art. 17) — the
   // per-class receipt is honest: any failure ⇒ complete:false, account survives
   // for retry. Client wipes device-local stores only after a complete receipt.

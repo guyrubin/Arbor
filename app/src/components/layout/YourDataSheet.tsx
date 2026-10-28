@@ -6,11 +6,12 @@ import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useProfile } from "../../context/ProfileContext";
 import { useToast } from "../../context/ToastContext";
-import { downloadJson, exportChildData } from "../../lib/childData";
+import { downloadDeletionReceipt, downloadJson, exportChildData } from "../../lib/childData";
 import { createChildExportRun } from "../../lib/childExportRun";
 import { childExportFilename } from "../../lib/childExportFilename";
 import { withChildExportSession } from "../../lib/childExportSession";
 import { fmtDay } from "../../lib/formatDate";
+import { mergeErasureReceipts, RECEIPT_ROWS, receiptTitleKey, receiptView, type ReceiptRowId } from "../../lib/childDataSinks";
 import type { DeletionReceipt } from "../../types";
 
 /**
@@ -134,6 +135,26 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
     if (hadReceipt) setActiveTab("overview");
   };
 
+  // B-BOOK-20 (critic r1): a deletion that did not reach every registered
+  // place is NOT "complete". Retry erases the same child again (by id; the
+  // child has already left the switcher) and folds the result into the one
+  // receipt the parent keeps.
+  const retryDelete = async () => {
+    if (!receipt || erasing) return;
+    setErasing(true);
+    try {
+      const r = await deleteChild(receipt.childId);
+      if (r) setReceipt((prev) => (prev ? mergeErasureReceipts(prev, r) : r));
+    } catch {
+      /* the receipt still says not finished; the parent can try again */
+    } finally {
+      setErasing(false);
+    }
+  };
+  const saveReceipt = () => {
+    if (receipt) downloadDeletionReceipt(receipt);
+  };
+
   const confirmDelete = async () => {
     if (!nameMatches || erasing) return;
     setErasing(true);
@@ -151,28 +172,54 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
     }
   };
 
-  const title = receipt
-    ? t("sec.sharing.receipt.title")
+  const view = receipt ? receiptView(receipt.sinks, {
+    memoryEvents: receipt.counts.memoryEvents,
+    shares: receipt.counts.shares,
+    consents: receipt.counts.consents ?? 0,
+    consultRequests: receipt.counts.consultRequests ?? 0,
+    storageFiles: receipt.counts.storageFiles ?? 0,
+    clientDocs: receipt.counts.clientDocs ?? 0,
+  }) : null;
+  const title = receipt && view
+    ? t(receiptTitleKey(view.finished))
     : deleting
       ? t("sec.sharing.delete.title", { name: first })
       : t("sec.sharing.data.title");
 
   return (
     <Modal open={open} onClose={closeAll} title={title}>
-      {receipt ? (
-        <div className="space-y-4" data-testid="delete-receipt" aria-live="polite">
+      {receipt && view ? (
+        <div className="space-y-4" data-testid="delete-receipt" data-receipt-state={view.finished ? "complete" : "unfinished"} aria-live="polite">
           <p className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
-            {t("sec.sharing.receipt.body", { name: deletedName, date: fmtDay(receipt.erasedAt, uiLang) })}
+            {view.finished
+              ? t("sec.sharing.receipt.body", { name: deletedName, date: fmtDay(receipt.erasedAt, uiLang) })
+              : t("elev.learnCare.receipt.unfinishedBody", { name: deletedName })}
           </p>
           <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-            <ReceiptRow label={t("sec.sharing.receipt.memoryEvents")} value={receipt.counts.memoryEvents} />
-            <ReceiptRow label={t("sec.sharing.receipt.shares")} value={receipt.counts.shares} />
-            <ReceiptRow label={t("sec.sharing.receipt.consents")} value={receipt.counts.consents ?? 0} />
-            {/* LC-18: the device the parent is holding is part of the proof. */}
-            <ReceiptRow label={t("elev.learnCare.receipt.clientDocs")} value={receipt.counts.clientDocs ?? 0} />
+            {/* B-BOOK-20: the child's saved records and Storage files are part of the
+                proof; LC-18: so is the device the parent is holding. A row the
+                erase could not reach says so instead of a silent 0. A row that
+                stands for several places says how many, in plain words; the
+                per-place ids live only in the saved receipt file. */}
+            {RECEIPT_ROWS.map((row) => {
+              const { total, unreached } = view.places[row];
+              // One place: the value alone says it ("Not reached" or the count).
+              const note = total > 1
+                ? (unreached > 0 ? t("elev.learnCare.receipt.placesSome", { n: total, m: unreached }) : t("elev.learnCare.receipt.placesAll", { n: total }))
+                : undefined;
+              return <ReceiptRow key={row} label={t(RECEIPT_LABEL[row])} note={note} value={view.rows[row] === "not-reached" ? t("elev.learnCare.receipt.notReached") : view.rows[row]} />;
+            })}
           </div>
-          <div className="flex sm:justify-end">
-            <button onClick={closeAll} className="w-full sm:w-auto rounded-xl px-4 min-h-11 text-sm font-bold" style={{ background: "var(--arbor-green-ink)", color: "var(--arbor-paper-elevated)" }}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            {!view.finished && (
+              <button type="button" data-testid="delete-receipt-retry" onClick={() => void retryDelete()} disabled={erasing} className="w-full sm:w-auto rounded-xl px-4 min-h-11 text-sm font-bold disabled:opacity-60" style={{ background: "var(--arbor-green-ink)", color: "var(--arbor-paper-elevated)" }}>
+                {erasing ? t("sec.sharing.delete.working") : t("elev.learnCare.receipt.retry")}
+              </button>
+            )}
+            <button type="button" data-testid="delete-receipt-save" onClick={saveReceipt} className="w-full sm:w-auto rounded-xl px-4 min-h-11 text-sm font-bold" style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
+              {t("elev.learnCare.receipt.save")}
+            </button>
+            <button onClick={closeAll} disabled={erasing} className="w-full sm:w-auto rounded-xl px-4 min-h-11 text-sm font-bold" style={view.finished ? { background: "var(--arbor-green-ink)", color: "var(--arbor-paper-elevated)" } : { border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
               {t("sec.sharing.receipt.done")}
             </button>
           </div>
@@ -260,11 +307,26 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
   );
 }
 
-function ReceiptRow({ label, value }: { label: string; value: number }) {
+/** The receipt rows, in order: saved records, the server ledger, grants,
+ *  consents, consult requests, Storage files, this device. */
+const RECEIPT_LABEL: Record<ReceiptRowId, string> = {
+  records: "elev.learnCare.receipt.records",
+  memoryEvents: "sec.sharing.receipt.memoryEvents",
+  shares: "sec.sharing.receipt.shares",
+  consents: "sec.sharing.receipt.consents",
+  consultRequests: "elev.learnCare.receipt.consultRequests",
+  storageFiles: "elev.learnCare.receipt.storageFiles",
+  clientDocs: "elev.learnCare.receipt.clientDocs",
+};
+
+function ReceiptRow({ label, value, note }: { label: string; value: number | string; note?: string }) {
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
-      <span style={{ color: "var(--arbor-muted)" }}>{label}</span>
-      <span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{value}</span>
+      <span className="min-w-0" style={{ color: "var(--arbor-muted)" }}>
+        {label}
+        {note && <span className="block text-xs" data-receipt-places="">{note}</span>}
+      </span>
+      <span className="shrink-0 whitespace-nowrap font-bold" style={{ color: "var(--arbor-ink)" }}>{value}</span>
     </div>
   );
 }

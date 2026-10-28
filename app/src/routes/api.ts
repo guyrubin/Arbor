@@ -4299,11 +4299,15 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       const childId = req.params.childId;
       const memoryEvents = await memoryStore.listEvents(childId);
       const shares = await shareStore.listByOwner(uid, childId);
+      // B-GA-09: the consent records and the consult requests about this child
+      // are retained categories too, so the export carries them.
+      const consents = await consentStore.list(childId);
+      const consultRequests = await consultStore.listByChild(uid, childId);
       res.json({
         product: "Arbor",
         exportedAt: new Date().toISOString(),
         childId,
-        serverData: { memoryEvents, shares },
+        serverData: { memoryEvents, shares, consents, consultRequests },
       });
     } catch (error: any) {
       logger.error("Arbor Privacy Export Error", error, { requestId: requestIdOf(req) });
@@ -4325,12 +4329,17 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       const memoryEvents = await memoryStore.eraseChild(childId);
       const shares = await shareStore.eraseByChild(uid, childId);
       const consents = await consentStore.eraseByChild(childId);
+      // B-GA-09: the consult requests about this child go with it, including a
+      // co-parent's (the store keys them by child).
+      const consultRequests = await consultStore.eraseByChild(childId);
       // GDPR Art. 17 parity with /account/delete, which purges Storage. Erasing
       // ONE child left that child's uploaded photos in the bucket — Firestore
       // was swept, the images were not. Scoped to this child's own prefix
       // (lib/storage.ts writes users/{uid}/children/{childId}/photos/...), so a
       // sibling's data is never touched.
       let storageFiles = 0;
+      // B-BOOK-20: the receipt names each registered prefix's count.
+      const storage = { photos: 0, books: 0 };
       let storageNote: string | undefined;
       const bucketName = config.storageBucket;
       if (!bucketName) {
@@ -4345,6 +4354,8 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
           await bucket.deleteFiles({ prefix: `users/${uid}/children/${childId}/` });
           const bookFiles = await eraseChildBookAssets(bucket as unknown as BookAssetBucket, childId);
           storageFiles = photoFiles.length + bookFiles;
+          storage.photos = photoFiles.length;
+          storage.books = bookFiles;
           storageNote = `storage prefixes users/{uid}/children/${childId}/ and children/${childId}/books/ removed`;
         } catch (err: unknown) {
           // A bucket that was never provisioned is a clean no-op, not a failure.
@@ -4353,8 +4364,8 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
           storageNote = "bucket not provisioned";
         }
       }
-      logger.info("GDPR erasure executed", { requestId: requestIdOf(req), childId, memoryEvents, shares, consents, storageFiles });
-      res.json({ erased: { memoryEvents, shares, consents, storageFiles }, storageNote, childId, erasedAt: new Date().toISOString() });
+      logger.info("GDPR erasure executed", { requestId: requestIdOf(req), childId, memoryEvents, shares, consents, consultRequests, storageFiles });
+      res.json({ erased: { memoryEvents, shares, consents, consultRequests, storageFiles }, storage, storageNote, childId, erasedAt: new Date().toISOString() });
     } catch (error: any) {
       logger.error("Arbor Privacy Erasure Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to erase server-side data", details: error.message });
@@ -4404,7 +4415,10 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
 
   // MON-3 v1: professional intro/booking — records a durable consult request and
   // returns a ready-to-send email draft (email-based transaction first cut).
-  router.post("/consult-requests", async (req, res) => {
+  // B-GA-09: a consult request names a child and carries a parent's note about
+  // them, so only the family that owns the child may open one (the same
+  // owner check as every other child route; no child named → nothing to check).
+  router.post("/consult-requests", requireOwnership, async (req, res) => {
     const { uid, email } = actorOf(req);
     const { professionalId, childId, note, preferredMode } = req.body;
     const professional = ARBOR_PROFESSIONALS.find((p) => p.id === professionalId);

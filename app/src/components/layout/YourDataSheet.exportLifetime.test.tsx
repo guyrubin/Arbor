@@ -212,7 +212,7 @@ describe("final browser boundary and fresh parent action", () => {
     expect(data.profile.name).toBe(name); expect(h.child.name).toBe(name);
     expect(data.exportReceipt.status).toBe(partial ? "incomplete" : "complete");
     expect(data.exportNote).toBe(translate(lang, "sec.sharing.data.exportNote"));
-    expect(Object.keys(data.collections)).toHaveLength(46); // B-BOOK-75: + books
+    expect(Object.keys(data.collections)).toHaveLength(47); // B-BOOK-75: + books; B-GA-09: + studioCreations
     expect(data.collections.studioQuestProgress).toEqual([{ id: "calm-corner-v1:spot", questId: "calm-corner-v1", step: "spot", choice: "right" }]);
     expect(data.collections.bookBookmarks).toEqual([{ id: "book", v: 1, edition: "v1-synthetic", pageId: "page-1", branchId: null }]);
     expect(h.paths.filter(path => /studioQuestProgress|bookBookmarks/.test(path))).toEqual(["users/owner/children/child-a/studioQuestProgress", "users/owner/children/child-a/bookBookmarks"]);

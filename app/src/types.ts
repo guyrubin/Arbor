@@ -228,8 +228,14 @@ export interface SharedPacketView {
 export interface DeletionReceipt {
   childId: string;
   erasedAt: string;
-  /** LC-18: `clientDocs` = device-local keys the sweep removed on THIS device. */
-  counts: { memoryEvents: number; shares: number; consents?: number; clientDocs?: number };
+  /** LC-18: `clientDocs` = device-local keys the sweep removed on THIS device.
+   *  `storageFiles` = the child's photos and private book files the server
+   *  removed from Storage (B-BOOK-20). */
+  counts: { memoryEvents: number; shares: number; consents?: number; consultRequests?: number; storageFiles?: number; clientDocs?: number };
+  /** B-BOOK-20: every registered sink (lib/childDataSinks.ts childSinkIds) →
+   *  what this erase removed there: a count, "cleared" (no count available)
+   *  or "not-reached" (that part of the erase failed; never claimed). */
+  sinks?: Record<string, number | "cleared" | "not-reached">;
 }
 
 /** COPPA-2026 consent purposes + grant record (client mirror of sharing/consent.ts). */

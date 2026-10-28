@@ -29,6 +29,12 @@ export type ConsultRequest = {
 export interface ConsultStore {
   create(request: ConsultRequest): Promise<ConsultRequest>;
   listByOwner(ownerUid: string): Promise<ConsultRequest[]>;
+  /** B-GA-09: the requests this owner made about one child (the note is the
+   *  parent's words about the child): exported with the child (Art. 15/20)… */
+  listByChild(ownerUid: string, childId: string): Promise<ConsultRequest[]>;
+  /** …and erased with the child (Art. 17), whoever filed them: a co-parent's
+   *  request about the child goes too (critic r1). Returns how many. */
+  eraseByChild(childId: string): Promise<number>;
 }
 
 export class LocalConsultStore implements ConsultStore {
@@ -38,6 +44,14 @@ export class LocalConsultStore implements ConsultStore {
     return [...this.requests.values()]
       .filter((r) => r.ownerUid === ownerUid)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+  async listByChild(ownerUid: string, childId: string) {
+    return (await this.listByOwner(ownerUid)).filter((r) => r.childId === childId);
+  }
+  async eraseByChild(childId: string) {
+    const doomed = [...this.requests.values()].filter((r) => r.childId === childId);
+    for (const r of doomed) this.requests.delete(r.id);
+    return doomed.length;
   }
 }
 
@@ -59,6 +73,16 @@ export class FirestoreConsultStore implements ConsultStore {
     return snap.docs
       .map((d) => d.data() as ConsultRequest)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+  // Filtered in memory after the owner query (the one existing index), so no
+  // composite index is needed: a family has a handful of requests.
+  async listByChild(ownerUid: string, childId: string) {
+    return (await this.listByOwner(ownerUid)).filter((r) => r.childId === childId);
+  }
+  async eraseByChild(childId: string) {
+    const snap = await this.col().where("childId", "==", childId).get();
+    for (const d of snap.docs) await d.ref.delete();
+    return snap.docs.length;
   }
 }
 

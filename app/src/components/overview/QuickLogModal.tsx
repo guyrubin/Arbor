@@ -54,6 +54,7 @@ import { freshCaptureKeep, typedCaptureKeep, selectedCaptureKeep } from "../../l
 // and the two anchors under it) instead of a bare number out of five; the
 // review stepper and the evidence sheet read the same five words.
 import { INTENSITY_WORDS, intensityWordKey } from "../../lib/intensityWords";
+import AiDisclosureLine from "../companion/AiDisclosureLine";
 
 /** Lightweight behavior log capture that can be opened from anywhere (e.g. Overview).
  *
@@ -990,6 +991,10 @@ export default function QuickLogModal({
             className="min-h-11 w-full rounded-xl p-2.5 text-sm focus:outline-none"
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
           />
+          {/* B-GA-11: typed or dictated words in this field can go to Arbor's
+              AI to fill the form, so the Art. 50 line sits directly under it
+              (visible when the sheet opens), as Talk's composer foot does. */}
+          <AiDisclosureLine language={uiLang === "he" ? "he" : "en"} />
         </div>
         {!editLogId && <fieldset data-testid="quicklog-keep-as" className="min-w-0 space-y-2 border-0 p-0" lang={uiLang} dir={uiLang === "he" ? "rtl" : "ltr"}>
           <legend className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t("kept.capture.label")}</legend>
@@ -1065,6 +1070,8 @@ export default function QuickLogModal({
             className="min-h-11 w-full rounded-xl p-2.5 text-xs focus:outline-none"
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
           />
+          {/* B-GA-11: the hard-moment field drafts the log through Arbor's AI too. */}
+          <AiDisclosureLine language={uiLang === "he" ? "he" : "en"} />
         </div>
 
         <div className="space-y-1.5">

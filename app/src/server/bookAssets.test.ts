@@ -97,14 +97,17 @@ describe("the owner-checked proxy", () => {
   afterAll(() => new Promise<void>((r) => server.close(() => r())));
   const get = (url: string, user?: string) => fetch(base + url, { headers: user ? { "x-test-user": user } : {} });
 
-  it("serves the owner's file with its type and a private cache header", async () => {
+  // B-GA-09 / LC-18: never a browser HTTP-cache copy (it would outlive the
+  // child's erase); the device copy is the IndexedDB one the erase purges.
+  it("serves the owner's file with its type and a private, no-store cache header", async () => {
     const res = await get(bookAssetUrl("kid1", "five-smooth-stones", "hero-sheets/dylan-v2/look-up.webp"), "owner");
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("image/webp");
-    expect(res.headers.get("cache-control")).toBe("private, max-age=86400");
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
     expect(await res.text()).toBe("WEBP");
     const mp3 = await get(bookAssetUrl("kid1", "five-smooth-stones", "narration/dylan-v3/en/p1.mp3"), "owner");
     expect(mp3.headers.get("content-type")).toBe("audio/mpeg");
+    expect(mp3.headers.get("cache-control")).toBe("private, no-store");
   });
 
   it("fails closed: no verified caller 401, another family 403, a bad path 400, a missing file 404", async () => {

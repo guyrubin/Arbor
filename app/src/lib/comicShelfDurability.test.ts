@@ -210,6 +210,9 @@ describe("AIX-S5 — firewall condition: device-local ONLY (no network reads the
       "components/layout/accountDeletionFlow.test.ts",
       "components/tabs/ComicsTab.tsx", // doc comment only (consumes via heroComics)
       "components/stories/ComicReader.tsx", // captures a child-lifetime epoch for build/retry cancellation
+      // B-BOOK-20: the export → erase walk puts the real store on an in-memory
+      // backend and proves the child's pages leave it; no network or upload.
+      "lib/childData.eraseReceipt.test.ts",
     ]);
     const offenders: string[] = [];
     const walk = (dir: string) => {

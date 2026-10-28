@@ -24,12 +24,14 @@
  */
 import express from "express";
 import type { ArborConfig } from "../config/env.js";
-import type {
-  BillingProvider,
-  EntitlementRecord,
-  EntitlementStatus,
-  EntitlementStore,
-  Plan,
+import {
+  isStaleBillingEvent,
+  recordStillEntitles,
+  type BillingProvider,
+  type EntitlementRecord,
+  type EntitlementStatus,
+  type EntitlementStore,
+  type Plan,
 } from "./entitlements.js";
 import { logger } from "./logger.js";
 
@@ -47,6 +49,11 @@ export type RevenueCatEvent = {
   store?: string; // APP_STORE | PLAY_STORE | STRIPE | RC_BILLING | ...
   expiration_at_ms?: number | string;
   environment?: string; // PRODUCTION | SANDBOX
+  /** TRANSFER only (a restore on another account): the App User IDs the
+   *  subscription leaves and the ones it now belongs to. TRANSFER carries no
+   *  app_user_id, product or expiry of its own. */
+  transferred_from?: string[];
+  transferred_to?: string[];
 };
 
 // Event types that (re)grant access. TEMPORARY_ENTITLEMENT_GRANT is RevenueCat's
@@ -73,9 +80,12 @@ const GRACE = new Set(["BILLING_ISSUE"]);
 const REVOKING = new Set(["EXPIRATION", "REFUND"]);
 /** Every type that changes an entitlement. Anything else (INVOICE_ISSUANCE, an
  *  unpaid invoice; EXPERIMENT_ENROLLMENT; VIRTUAL_CURRENCY_TRANSACTION;
- *  PURCHASE_REDEEMED; PRICE_INCREASE_*; TRANSFER, which names no app_user_id)
- *  is acknowledged and never written: none of them is a payment. */
+ *  PURCHASE_REDEEMED; PRICE_INCREASE_*) is acknowledged and never written:
+ *  none of them is a payment. */
 const ENTITLEMENT_TYPES = new Set([...GRANTING, ...CANCELLED, ...GRACE, ...REVOKING]);
+/** B-GA-20: a restore on another account. It moves an EXISTING subscription
+ *  (transferWritesFromRevenueCat), so it is applied, never mapped as a grant. */
+const TRANSFER = "TRANSFER";
 /** Stores whose sandbox needs a tester the account owner invited (TestFlight,
  *  Play license testers) and which App Review uses against the prod backend. */
 const NATIVE_STORES = new Set(["APP_STORE", "MAC_APP_STORE", "PLAY_STORE"]);
@@ -129,7 +139,7 @@ export const webhookSkipReason = (
 ): "test" | "ignored" | "sandbox" | null => {
   const type = String(event.type ?? "").toUpperCase();
   if (type === "TEST") return "test";
-  if (!ENTITLEMENT_TYPES.has(type)) return "ignored";
+  if (!ENTITLEMENT_TYPES.has(type) && type !== TRANSFER) return "ignored";
   const sandbox = String(event.environment ?? "").toUpperCase() === "SANDBOX";
   if (sandbox && config.billingAcceptSandbox !== true && !NATIVE_STORES.has(String(event.store ?? "").toUpperCase())) return "sandbox";
   return null;
@@ -194,6 +204,116 @@ export const recordFromRevenueCat = (
   };
 };
 
+/** A RevenueCat anonymous id never names an Arbor account: the SDK logs in
+ *  with the Firebase uid, so only those ids hold an `entitlements/{uid}` doc. */
+const isAccountId = (id: unknown): id is string =>
+  typeof id === "string" && id.trim().length > 0 && !id.startsWith("$RCAnonymousID:");
+
+/** B-GA-20: the accounts a TRANSFER moves a subscription between. An id on
+ *  both sides is neither (it keeps what it has). */
+export const transferPartiesFromRevenueCat = (event: RevenueCatEvent): { from: string[]; to: string[] } => {
+  const from = new Set((Array.isArray(event.transferred_from) ? event.transferred_from : []).filter(isAccountId));
+  const to = new Set((Array.isArray(event.transferred_to) ? event.transferred_to : []).filter(isAccountId));
+  return { from: [...from].filter((uid) => !to.has(uid)), to: [...to].filter((uid) => !from.has(uid)) };
+};
+
+export type BillingWrite = { uid: string; record: EntitlementRecord };
+
+/** Providers whose records the RevenueCat webhook writes (a comp is not one). */
+const BILLED = new Set<BillingProvider>(["app_store", "play_store", "stripe"]);
+
+/**
+ * B-GA-20 — a restore across accounts. RevenueCat sends TRANSFER when a store
+ * account's purchases move to another App User ID (a parent restores on a
+ * second Arbor account). The event names only the two sides, so the
+ * entitlement FOLLOWS the subscription: the record the old account holds is
+ * written to the new one, and the old one drops to Free. Pure: the caller
+ * reads the old accounts' records and applies the writes, grants first.
+ *
+ *  - Only a billed record is moved: a comp (referral month, founder grant) is
+ *    not a store purchase, so it neither moves nor is removed.
+ *  - Only the subscription the transfer names: when the event names a store,
+ *    a record from another store (a web subscription beside an App Store one)
+ *    is left where it is.
+ *  - Stale-guarded like every other event, with the TRANSFER's own id and
+ *    timestamp on every write: a resend writes nothing new, an older event
+ *    delivered late cannot re-unlock the old account, and a record that
+ *    post-dates the transfer is neither moved nor removed.
+ *  - No fabricated paid success: when the old account holds nothing to move
+ *    (the TRANSFER arrived before its purchase), nothing is granted; the old
+ *    account is still stamped Free so the late purchase cannot unlock it.
+ *  - The receiving account keeps what it already has when that lasts at least
+ *    as long: a comp month, or another store's live subscription, is never
+ *    overwritten by a shorter transferred one (`targets`, the receivers'
+ *    current records; the same store's record is the one being replaced).
+ */
+export const transferWritesFromRevenueCat = (
+  event: RevenueCatEvent,
+  sources: Readonly<Record<string, EntitlementRecord | null | undefined>>,
+  targets: Readonly<Record<string, EntitlementRecord | null | undefined>> = {},
+  now: number = Date.now(),
+): { grants: BillingWrite[]; removals: BillingWrite[] } => {
+  const none = { grants: [], removals: [] };
+  if (String(event.type ?? "").toUpperCase() !== TRANSFER) return none;
+  const { from, to } = transferPartiesFromRevenueCat(event);
+  if (!from.length || !to.length) return none;
+  const store = providerFromStore(event.store);
+  const lastEventId = event.id;
+  const lastEventTs = event.event_timestamp_ms ? Number(event.event_timestamp_ms) : undefined;
+  const stamp = { lastEventTs };
+
+  let moving: EntitlementRecord | null = null;
+  const removals: BillingWrite[] = [];
+  for (const uid of from) {
+    const current = sources[uid] ?? null;
+    // Written after this transfer: not the subscription it moved.
+    if (current && isStaleBillingEvent(current, stamp)) continue;
+    const billed = !!current?.provider && BILLED.has(current.provider);
+    const paid = !!current && current.plan !== "free" && current.status !== "expired";
+    // A comp, or another store's subscription, stays exactly as it is.
+    if (paid && (!billed || (store !== "none" && current!.provider !== store))) continue;
+    if (paid && (!moving || Date.parse(current!.currentPeriodEnd ?? "") > Date.parse(moving.currentPeriodEnd ?? ""))) moving = current;
+    removals.push({
+      uid,
+      record: {
+        plan: "free",
+        status: "expired",
+        provider: current?.provider ?? store,
+        productId: current?.productId ?? null,
+        willRenew: false,
+        currentPeriodEnd: null,
+        rcOriginalAppUserId: current?.rcOriginalAppUserId ?? uid,
+        lastEventId,
+        lastEventTs,
+      },
+    });
+  }
+  const endOf = (r: EntitlementRecord) => (r.currentPeriodEnd ? Date.parse(r.currentPeriodEnd) : Number.POSITIVE_INFINITY);
+  const keepsOwn = (uid: string) => {
+    const own = targets[uid];
+    if (!own || !moving || own.plan === "free" || !recordStillEntitles(own, now)) return false;
+    if (own.provider === moving.provider) return false; // the same store's subscription: the transfer replaces it
+    return endOf(own) >= endOf(moving);
+  };
+  const grants: BillingWrite[] = moving
+    ? to.filter((uid) => !keepsOwn(uid)).map((uid) => ({
+        uid,
+        record: {
+          plan: moving!.plan,
+          status: moving!.status,
+          provider: moving!.provider,
+          productId: moving!.productId ?? null,
+          willRenew: moving!.willRenew,
+          currentPeriodEnd: moving!.currentPeriodEnd ?? null,
+          rcOriginalAppUserId: uid,
+          lastEventId,
+          lastEventTs,
+        },
+      }))
+    : [];
+  return { grants, removals };
+};
+
 /**
  * Mounted OUTSIDE the auth-gated `/api` group (RevenueCat carries no Firebase
  * token). Path: POST /webhooks/billing/revenuecat.
@@ -227,6 +347,37 @@ export const createBillingWebhookRouter = (config: ArborConfig, store: Entitleme
     }
     try {
       const event: RevenueCatEvent = req.body?.event ?? req.body ?? {};
+      if (String(event.type ?? "").toUpperCase() === TRANSFER) {
+        const { from, to } = transferPartiesFromRevenueCat(event);
+        if (!from.length || !to.length) {
+          res.status(202).json({ ok: true, skipped: "transfer without account ids" });
+          return;
+        }
+        if (!store.getRecord) {
+          logger.error("Entitlement store cannot read records; cannot apply a transfer");
+          res.status(503).json({ error: "Entitlement store not readable" });
+          return;
+        }
+        const sources: Record<string, EntitlementRecord | null> = {};
+        for (const uid of from) sources[uid] = await store.getRecord(uid);
+        const targets: Record<string, EntitlementRecord | null> = {};
+        for (const uid of to) targets[uid] = await store.getRecord(uid);
+        const { grants, removals } = transferWritesFromRevenueCat(event, sources, targets);
+        // Grant before removing: a failure between the two leaves the
+        // subscription on both accounts until RevenueCat retries, and the
+        // retry finishes the move. The reverse order would lose it on retry.
+        for (const write of grants) await store.setEntitlement(write.uid, write.record);
+        for (const write of removals) await store.setEntitlement(write.uid, write.record);
+        logger.info("Billing entitlement transferred", {
+          from,
+          to,
+          moved: grants.length > 0,
+          plan: grants[0]?.record.plan ?? null,
+          eventType: TRANSFER,
+        });
+        res.status(200).json({ ok: true, transferred: grants.length > 0 });
+        return;
+      }
       const mapped = recordFromRevenueCat(event);
       if (!mapped) {
         res.status(202).json({ ok: true, skipped: "missing app_user_id" });
