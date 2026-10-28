@@ -47,7 +47,17 @@ export default function HeroSheetPanel({ child }: { child: Pick<ChildProfile, "i
 
   const hash = heroUrl ? heroAvatarHash(heroUrl) : null;
   const meta = docs?.meta && hash && docs.meta.avatarHash === hash ? docs.meta : null;
-  if (!meta || !docs || !hash) return null;
+  // B-BOOK-69: the book's own old/new line, for the CURRENT hero. It renders
+  // nothing unless the book holds an earlier hero or this device draws one, so
+  // it also stands alone before the game sheet of a new hero exists (the
+  // parent changed the hero: the book keeps the previous one until then).
+  const bookLines = hash ? (
+    <>
+      <BookSheetStrip child={child} avatarHash={hash} />
+      <BookSheetStrip child={child} avatarHash={hash} target={PLAN_SHEET_TARGET} />
+    </>
+  ) : null;
+  if (!meta || !docs || !hash) return bookLines;
   const name = { name: child.name };
   if (meta.status === "building") {
     // B-BOOK-69: while the new hero learns to move, the book's line says it keeps the previous hero.
@@ -56,13 +66,12 @@ export default function HeroSheetPanel({ child }: { child: Pick<ChildProfile, "i
         <p data-hero-sheet="building" role="status" className="text-xs" style={muted}>
           {t(formKeyFor("elev.hero.sheet.building", child.gender), name)}
         </p>
-        <BookSheetStrip child={child} avatarHash={hash} />
-        <BookSheetStrip child={child} avatarHash={hash} target={PLAN_SHEET_TARGET} />
+        {bookLines}
       </div>
     );
   }
   const shown = HERO_SHEET_POSE_IDS.filter((p) => docs.poses[p]?.avatarHash === hash || busy[p] || failed[p]);
-  if (!shown.length) return null;
+  if (!shown.length) return bookLines;
 
   const ok = async (pose: HeroSheetPoseId) => { await markHeroPoseOk(heroSheetStoreFor(child.id), pose).catch(() => false); };
   const redraw = async (pose: HeroSheetPoseId) => {
@@ -120,8 +129,7 @@ export default function HeroSheetPanel({ child }: { child: Pick<ChildProfile, "i
           );
         })}
       </ul>
-      <BookSheetStrip child={child} avatarHash={hash} />
-        <BookSheetStrip child={child} avatarHash={hash} target={PLAN_SHEET_TARGET} />
+      {bookLines}
     </section>
   );
 }

@@ -9,9 +9,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BookAssetsDoc } from "../../lib/library/bookAssetPaths";
 
-const env = vi.hoisted(() => ({ items: [] as unknown[], running: false }));
+const env = vi.hoisted(() => ({ items: [] as unknown[], running: false, confirmed: true, error: false, opts: undefined as unknown }));
 vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ t: (key: string) => key }) }));
-vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: () => ({ items: env.items, loaded: true, remote: true }) }));
+vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: (_c: string, _n: string, opts?: unknown) => { env.opts = opts; return { items: env.items, loaded: true, remote: true, confirmed: env.confirmed, error: env.error }; } }));
 vi.mock("../../lib/bookAssetStore", () => ({ fetchBookAsset: vi.fn(async () => null) }));
 vi.mock("../kidmode/hero/buildBookSheet", () => ({
   bookSheetRunning: () => env.running,
@@ -28,7 +28,7 @@ const docFor = (hash: string, bookId = "five-smooth-stones") =>
   ({ bookId, sheetId: bookSheetId(hash), createdAt: "2026-10-20T00:00:00Z", files: [], sheetManifest: { poses: {} } }) as unknown as BookAssetsDoc;
 const render = () => renderToStaticMarkup(<BookSheetStrip child={child} avatarHash={NEW_HASH} />);
 
-beforeEach(() => { env.items = []; env.running = false; });
+beforeEach(() => { env.items = []; env.running = false; env.confirmed = true; env.error = false; env.opts = undefined; });
 
 describe("B-BOOK-69: the parent's old/new book sheet line", () => {
   it("no book and nothing drawing: no line", () => {
@@ -52,6 +52,19 @@ describe("B-BOOK-69: the parent's old/new book sheet line", () => {
   it("another book's sheet is not this book's previous hero", () => {
     env.items = [docFor(OLD_HASH, "another-book")];
     expect(render()).toBe("");
+  });
+  it("28 Oct: the earlier-hero claim needs a confirmed read of the book record (asked for, and honoured)", () => {
+    env.items = [docFor(OLD_HASH)];
+    render();
+    expect(env.opts).toMatchObject({ trackConfirmation: true });
+    env.confirmed = false;
+    expect(render()).toBe("");
+    env.confirmed = true; env.error = true;
+    expect(render()).toBe("");
+    // A build in flight is still said honestly, without the unconfirmed earlier-hero claim.
+    env.running = true;
+    expect(render()).toContain('data-book-sheet="building"');
+    expect(render()).not.toContain("replacing");
   });
   it("the current hero's sheet committed: the review row, no state line", () => {
     env.running = true; env.items = [docFor(OLD_HASH), docFor(NEW_HASH)];

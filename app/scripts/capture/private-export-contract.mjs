@@ -58,10 +58,10 @@ export function validatePartialExport(text, filename, fixture) {
   return Boolean(filename === fixture.filename && data?.profile?.id === fixture.child.id && data.profile.name === fixture.child.name && data.profile.demo === true
     && !text.includes(fixture.sibling.id) && !text.includes(fixture.siblingMarker)
     && typeof data.exportedAt === 'string' && Number.isFinite(Date.parse(data.exportedAt)) && typeof data.exportNote === 'string' && data.exportNote.length > 0
-    && collections && Object.keys(collections).length === 47 && Object.values(collections).every(Array.isArray)
+    && collections && Object.keys(collections).length === 48 && Object.values(collections).every(Array.isArray)
     && Object.entries(fixture.collections).every(([name, value]) => JSON.stringify(collections[name]) === JSON.stringify(value))
     && receipt?.status === 'incomplete' && receipt.serverData === 'included'
-    && Object.keys(receipt.collections ?? {}).length === 47 && Object.keys(collections).every(name => receipt.collections[name] === 'included')
+    && Object.keys(receipt.collections ?? {}).length === 48 && Object.keys(collections).every(name => receipt.collections[name] === 'included')
     && Array.isArray(data.serverData?.memoryEvents) && data.serverData.memoryEvents.length === 0 && Array.isArray(data.serverData?.shares) && data.serverData.shares.length === 0
     // B-GA-09: the server export now carries the consent records and consult requests too.
     && Array.isArray(data.serverData?.consents) && data.serverData.consents.length === 0 && Array.isArray(data.serverData?.consultRequests) && data.serverData.consultRequests.length === 0

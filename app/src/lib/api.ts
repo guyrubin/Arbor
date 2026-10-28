@@ -590,6 +590,8 @@ export const api = {
   billingPortal: () => get<{ url: string | null }>("/api/billing/portal"),
   // ADM-1: founder dashboard — users + paying-by-plan + today's token spend (403 if not admin).
   adminOverview: () => get<AdminOverview>("/api/admin/overview"),
+  // B-GAME-18 / B-BOOK-51: the weekly Kid Mode play summary — the narrow read (403 if not admin).
+  adminKidPlay: (since: string) => get<{ kidPlay?: AdminKidPlay; generatedAt: string }>(`/api/admin/kid-play?since=${encodeURIComponent(since)}`),
   // RET-1: "{child}'s week" digest (stats are computed server-side from the data we send).
   // B-AI-16: counts, types, contexts and outcomes only — no trigger / notes /
   // response / photo leaves the device for the digest (lib/digestPayload).
@@ -693,6 +695,14 @@ export type AdminOverview = {
     live?: { observedSessionMs: number; openedSessions: number };
   };
   generatedAt: string;
+};
+
+/** B-GAME-18 / B-BOOK-51 (server/cohortMetrics KidPlaySummary): counts per
+ *  game and book per ISO week; a cell under `minFamilies` families is hidden. */
+export type AdminKidPlay = {
+  minFamilies: number;
+  games: { week: string; game: string; hidden: boolean; families: number | null; sittings: number | null; replays: number | null; returned7d: number | null }[];
+  books: { week: string; book: string; hidden: boolean; families: number | null; opened: number | null; finished: number | null }[];
 };
 
 export type WeeklyDigest = {

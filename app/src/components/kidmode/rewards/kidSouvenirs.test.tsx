@@ -66,17 +66,21 @@ describe("the ledger: once each, only ever grows", () => {
 describe("the sticker: existing art, die-cut", () => {
   it("a world's sticker is its card; a book's is its cover (or the Tonight card) — never another theme", () => {
     expect(souvenirArt({ kind: "world", refId: "memory" }, "film3d")!.src480).toContain("game-memory");
-    expect(souvenirArt({ kind: "book", refId: "noahs-ark" }, "film3d")!.src480).toContain("noahs-ark");
-    // B-KID-131 re-pin: film3d covers every book now; the Tonight-card fallback is proven on a storybook book without a cover.
-    expect(souvenirArt({ kind: "book", refId: "the-lantern-path" }, "film3d")!.provenanceId).toBe("film3d-card:story-the-lantern-path");
+    // B-BOOK-31 re-pin: the film3d story covers paint the reference family's child,
+    // so a film3d book's sticker is the hero-free Tonight card; a hero-free cover still is the sticker.
+    expect(souvenirArt({ kind: "book", refId: "noahs-ark" }, "film3d")!.provenanceId).toBe("film3d-card:arbor-academy-play-hero-bg");
+    expect(souvenirArt({ kind: "book", refId: "the-lantern-path" }, "film3d")!.hasHero).toBe(false);
+    expect(souvenirArt({ kind: "book", refId: "the-lantern-path" }, "storybook")!.provenanceId).toBe("story-art-v1:lantern-path");
     expect(souvenirArt({ kind: "book", refId: "noahs-ark" }, "storybook")!.provenanceId).toBe("world-art-v2:tonight-story");
     expect(souvenirArt({ kind: "world", refId: "memory" }, "storybook")!.provenanceId).toBe("world-art-v2:mind-vault");
   });
-  it("never substitutes a stock child in current world rewards, preserving historic book covers", () => {
+  it("never substitutes a stock child in current world rewards; a book sticker never shows the reference family's child (B-BOOK-31)", () => {
     const world = renderToStaticMarkup(<KidSouvenirSticker kind="world" refId="memory" />);
     expect(world).toContain("data-kid-sticker-icon");
     expect(world).not.toContain("<img");
-    expect(renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="noahs-ark" />)).toContain("story-noahs-ark");
+    const book = renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="noahs-ark" />);
+    expect(book).not.toContain("story-noahs-ark");
+    expect(book).toContain("arbor-academy-play-hero-bg");
   });
   it("round: a CSS mask on the picture and a token border, decorative", () => {
     const html = renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="noahs-ark" />);

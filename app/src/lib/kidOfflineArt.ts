@@ -8,7 +8,7 @@
  * full-bleed page uses). Device-local cache, no child data leaves the page —
  * the message carries art paths only.
  */
-import { KID_WORLD_TILE_IDS, kidArt, storyCoverKey, worldTileKey, type KidArt, type KidThemeId } from "./kidThemeManifest";
+import { KID_WORLD_TILE_IDS, kidArt, storyCoverArt, worldTileKey, type KidArt, type KidThemeId } from "./kidThemeManifest";
 
 export const KID_RECENT_BOOKS = 3;
 
@@ -33,8 +33,8 @@ export function recentlyOpenedStoryIds(runs: readonly { storyId: string; started
 export function kidOfflineArtUrls(theme: KidThemeId, tonightStoryId: string | null | undefined, recentStoryIds: readonly string[]): string[] {
   const urls: string[] = [];
   const cover = (a: KidArt | null) => { if (a) urls.push(a.src480, a.src); };
-  if (tonightStoryId) cover(kidArt(theme, storyCoverKey(tonightStoryId)));
-  for (const id of recentStoryIds.slice(0, KID_RECENT_BOOKS)) cover(kidArt(theme, storyCoverKey(id)));
+  if (tonightStoryId) cover(storyCoverArt(theme, tonightStoryId));
+  for (const id of recentStoryIds.slice(0, KID_RECENT_BOOKS)) cover(storyCoverArt(theme, id));
   for (const id of KID_WORLD_TILE_IDS) {
     const tile = kidArt(theme, worldTileKey(id));
     if (tile) urls.push(tile.src480);

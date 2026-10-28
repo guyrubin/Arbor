@@ -113,6 +113,9 @@ export const CHILD_SUBCOLLECTIONS = [
   // export and erase. Registered here; childDataSinks.guard.test.ts now reads
   // every quote style.
   "studioCreations",
+  // B-BOOK-51 (X28): the one finished-book ledger — catalogue book id, language,
+  // time per true ending; never the path or choice. Export + erase.
+  "bookReads",
 ];
 
 const remoteActive = (uid?: string) =>

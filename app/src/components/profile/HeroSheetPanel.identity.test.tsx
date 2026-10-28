@@ -24,7 +24,15 @@ const docsFor = (url: string): HeroSheetDocs => {
 };
 describe("parent pose review follows the canonical profile identity", () => {
   it("hides an old photo-slot sheet while the canonical comic hero is selected", () => {
-    h.docs = docsFor(photoUrl); expect(renderToStaticMarkup(<HeroSheetPanel child={child} />)).toBe("");
+    h.docs = docsFor(photoUrl);
+    const html = renderToStaticMarkup(<HeroSheetPanel child={child} />);
+    expect(html).not.toContain("data-hero-sheet"); expect(html).not.toContain("data:image/webp;base64,POSE");
+  });
+  it("B-BOOK-69: before the new hero's game sheet exists, the book's old/new line still stands (for the CURRENT hero)", () => {
+    h.docs = docsFor(photoUrl); // the stored game sheet belongs to another (earlier) picture
+    expect(renderToStaticMarkup(<HeroSheetPanel child={child} />)).toContain('data-strip=""');
+    h.docs = null; // no game sheet at all yet
+    expect(renderToStaticMarkup(<HeroSheetPanel child={child} />)).toContain('data-strip=""');
   });
   it("shows the matching canonical sheet for review", () => {
     h.docs = docsFor(comicAvatarUrl); const html = renderToStaticMarkup(<HeroSheetPanel child={child} />);

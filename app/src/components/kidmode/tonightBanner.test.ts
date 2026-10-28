@@ -15,15 +15,16 @@ const tab = read("components/tabs/HeroJourneyTab.tsx");
 
 describe("B-KID-42: the banner art is tonight's story cover", () => {
   it("resolves a story cover per theme, never across themes", () => {
-    expect(worldArtwork("story-noahs-ark", "film3d")?.src).toContain("/cards/web/story-noahs-ark-480.webp");
+    // B-BOOK-31 re-pin: the film3d story covers paint the reference family's child,
+    // so no shared slot shows them; the hero-free storybook plates still show.
+    expect(worldArtwork("story-noahs-ark", "film3d")).toBeUndefined();
     expect(worldArtwork("story-noahs-ark", "storybook")).toBeUndefined();
     expect(worldArtwork("story-the-lantern-path", "storybook")?.src).toContain("lantern-path-v1-480.webp");
-    // B-KID-131 re-pin: film3d now has its own lantern-path cover; it is never the storybook plate.
-    expect(worldArtwork("story-the-lantern-path", "film3d")?.src).toContain("/cards/web/story-the-lantern-path-480.webp");
-    expect(worldArtwork("story-the-lantern-path", "film3d")?.src).not.toContain("/stories/v1/");
+    // film3d's own lantern-path cover is hero-painted: never shown, and never replaced by the storybook plate.
+    expect(worldArtwork("story-the-lantern-path", "film3d")).toBeUndefined();
   });
   it("the banner picks the cover when the theme has it, else the kid-quest tile", () => {
-    expect(dash).toContain("kidArt(kidTheme, storyCoverKey(tonightsStory.id)) ? `story-${tonightsStory.id}` : \"kid-quest\"");
+    expect(dash).toContain("storyCoverArt(kidTheme, tonightsStory.id) ? `story-${tonightsStory.id}` : \"kid-quest\"");
     expect(dash).toContain("<WorldScene worldId={tonightsArtId} theme={kidTheme}");
     // B-BOOK release re-pin: tonight's hero story opens the story surface; a
     // library book made with the child's own hero (when there is one) opens itself
@@ -39,7 +40,7 @@ describe("B-KID-70 (R-2b): a portrait theme is image-led", () => {
     expect(banner).toContain("WebkitLineClamp: 2");
   });
   it("film3d tiles take the 480 derivative only (no 1024 request on the home)", () => {
-    for (const id of ["kid-playbank", "kid-hero", "memory", "story-noahs-ark"]) {
+    for (const id of ["kid-playbank", "kid-hero", "memory"]) {
       expect(worldArtwork(id, "film3d")!.srcSet, id).not.toContain("1024");
     }
     expect(worldArtwork("kid-hero", "storybook")!.srcSet).toContain("960w");
@@ -91,14 +92,15 @@ describe("B-KID-70 (R-4b): tonight and the catalogue lead with illustrated stori
     expect(none.story!.id).toBe(pickTonightsStory("2026-10-05", "child-a", { showAllAges: true }).story!.id);
   });
   it("(a) both surfaces pass the same preference (banner and cover name one story)", () => {
-    expect(dash).toContain("prefer: (s) => kidArt(kidTheme, storyCoverKey(s.id)) !== null,");
+    expect(dash).toContain("prefer: (s) => storyCoverArt(kidTheme, s.id) !== null,");
     expect(tab).toContain("prefer: (s) => storyCover(s.id) !== null,");
     expect(tab).toContain("const ageCandidates = illustratedFirst(");
   });
   it("(c) a covered tonight story wears its cover and no sticker box when the cover shows a hero", async () => {
     const { kidArt, storyCoverKey } = await import("../../lib/kidThemeManifest");
     expect(kidArt("film3d", storyCoverKey("noahs-ark"))?.hasHero).toBe(true);
-    expect(worldArtwork("story-noahs-ark", "film3d")?.hasHero).toBe(true);
+    // B-BOOK-31: that hero is the reference family's child, so the cover is not offered at all.
+    expect(worldArtwork("story-noahs-ark", "film3d")).toBeUndefined();
     expect(dash).toContain("{!tonightLib && !tonightsArtHasHero && ("); // B-BOOK release re-pin
   });
   it("(d) the reader uses the cover on every beat, cropped per beat, without the cameo over a hero cover", () => {
