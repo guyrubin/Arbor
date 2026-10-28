@@ -750,11 +750,12 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const stopVoice = (review = true) => {
     const reviewAttempt = voiceLifetimeRef.current.current;
     voiceLifetimeRef.current.cancel();
-    cancelOpening();
     if (review && reviewAttempt && voicePhase !== "off") {
       reviewAttemptRef.current = reviewAttempt;
       setVoiceReviewOpen(true);
     }
+    // B-VOICE-02: the card's words end here, before the engine is stopped below.
+    cancelOpening();
     setVoiceNotice(null);
     voiceOnRef.current = false;
     streamDoneRef.current = false;

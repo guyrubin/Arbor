@@ -78,9 +78,11 @@ describe("B-VOICE-02 · the card's words are spoken BEFORE the microphone opens,
 
   it("round 3: every stop cancels the words synchronously, before the engine is told to stop, and a hidden conversation starts nothing", () => {
     // stopVoice is what X, the panel hiding and a new thread all call.
-    expect(COACH).toMatch(/const stopVoice = \(review = true\) => \{\s*const reviewAttempt = voiceLifetimeRef\.current\.current;\s*voiceLifetimeRef\.current\.cancel\(\);\s*cancelOpening\(\);/);
     const stop = slice("const stopVoice = (review = true) => {", "const bargeInVoice = ");
+    // after the attempt is invalidated, before anything stops the engine
+    expect(stop.indexOf("cancelOpening();")).toBeGreaterThan(stop.indexOf("voiceLifetimeRef.current.cancel();"));
     expect(stop.indexOf("cancelOpening();")).toBeLessThan(stop.indexOf("stopSpeaking();"));
+    expect(stop.indexOf("cancelOpening();")).toBeLessThan(stop.indexOf("voiceAbortRef.current?.abort();"));
     const cancel = slice("const cancelOpening = () => {", "const stopVoice = ");
     expect(cancel).toMatch(/openingTokenRef\.current = null;\s*const run = openingRunRef\.current;\s*openingRunRef\.current = null;\s*run\?\.cancel\(\);/);
     expect(COACH).toMatch(/useEffect\(\(\) => \{ if \(!visible\) stopVoice\(false\); \}, \[visible\]\);/);
