@@ -608,11 +608,14 @@ export async function buildCohortReport(
 export async function buildKidPlayReport(
   store: CohortMetricsStore,
   opts: { since: string; now?: Date; includeInternal?: boolean },
-): Promise<{ since: string; kidPlay: KidPlaySummary; scanned: { events: number; mode: "firestore" | "null" }; generatedAt: string }> {
+): Promise<{ since: string; kidPlay: KidPlaySummary; scanned: { events: number; kept: number; mode: "firestore" | "null" }; generatedAt: string }> {
   const [allRollups, allEvents] = await Promise.all([store.listRetentionRollups(), store.listEvents(opts.since)]);
   const kidEvents = allEvents.filter((e) => (KID_PLAY_EVENTS as readonly string[]).includes(e.event));
   const { events } = excludeInternal(allRollups, kidEvents, opts.includeInternal === true);
-  return { since: opts.since, kidPlay: summariseKidPlay(events), scanned: { events: events.length, mode: store.mode }, generatedAt: (opts.now ?? new Date()).toISOString() };
+  // Wave-3 carry-over: `events` is what the read scanned (every event since
+  // `since`, of any name); `kept` is the Kid Mode events the summary counted
+  // (internal and demo families out). It reported `kept` as `events` before.
+  return { since: opts.since, kidPlay: summariseKidPlay(events), scanned: { events: allEvents.length, kept: events.length, mode: store.mode }, generatedAt: (opts.now ?? new Date()).toISOString() };
 }
 
 /** The key pattern no response value may ever be filed under. Exported so the
