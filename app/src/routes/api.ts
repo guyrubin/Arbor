@@ -13,6 +13,10 @@ import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/mo
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, toFileTurnContract, renderFileDeclinedResponse, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence, type CoachResponse } from "../contracts/coach.js";
 import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildDescribeChildPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE, renderCouncilContinuity } from "../ai/prompts.js";
+// B-ASKJB-44: no invented finding reaches a handoff note or the School Brief
+// (the matching prompt rules are parked on claude/askjb44-prompt-bump-2026-10-28).
+import { scrubHandoffNotes } from "../contracts/coach.js";
+import { scrubHandoffBriefFindings } from "../lib/clinicalScan.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
 // the byte-identical legacy prompt on any malformed/absent input.
@@ -1221,6 +1225,16 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         }
         return;
       }
+      // B-ASKJB-44: no invented finding reaches a teacher or professional
+      // note. Runs AFTER the output screen saw the model's own words (a
+      // dropped clause can never hide a crisis signal), then re-renders. A
+      // finding the parent wrote (this message or their earlier turns) is theirs.
+      const parentText = [message, ...sanitizeRecentTurns(recentTurns).filter((turn) => turn.role === "parent").map((turn) => turn.text)].join("\n");
+      if (scrubHandoffNotes(structured, { parentText }) > 0) {
+        renderedText = seededFollowUp ? renderCoachFollowUpResponse(structured, renderLanguage)
+          : structured.fileDeclined ? renderFileDeclinedResponse(structured)
+          : renderCoachResponse(structured, renderLanguage);
+      }
 
       // OBJ-JOURNAL-05: the memory queue is a parent surface — a proposal
       // arrives as a fact the parent is asked to approve, so it must be in
@@ -1495,7 +1509,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // B-AI-01 eval fix: same verdict scrub + session-language labels as /chat.
       const renderLanguage = language === "he" ? "he" : "en";
       scrubHypothesisConfidence(structured, renderLanguage);
-      const renderedText = renderCoachResponse(structured, renderLanguage);
+      let renderedText = renderCoachResponse(structured, renderLanguage);
       const outputVerdict = await screenModelOutput(modelProvider, renderedText);
       if (outputVerdict.flagged) {
         // Done-time flag (lexical floor on the FULL rendered answer + the
@@ -1515,6 +1529,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // arrives as a fact the parent is asked to approve, so it must be in
       // their words. scrubMemoryProposals rewrites the assessment register and
       // DROPS any fact that cannot be stated plainly (server/parentWordsScrub).
+      // B-ASKJB-44: the handoff-note floor, after the screen saw the model's words.
+      const parentText = [message, ...councilTurns.filter((turn) => turn.role === "parent").map((turn) => turn.text)].join("\n");
+      if (scrubHandoffNotes(structured, { parentText }) > 0) renderedText = renderCoachResponse(structured, renderLanguage);
       const memoryReviewItems: [] = [];
       budget.settle();
       const payload = { text: renderedText, contract: structured, council: restoredTakes, memoryReviewItems };
@@ -3879,6 +3896,12 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
         });
         return;
       }
+      // B-ASKJB-44: the invented-finding floor ("no evidence of…", "was
+      // observed", EN + HE; never the escalation line) runs AFTER the output
+      // screen saw the model's own words, then the brief is sent.
+      // The parent's own logged words (trigger, response) may carry a finding they reported.
+      const parentText = logs.map((log) => [log.trigger, log.response].filter((v) => typeof v === "string").join(" ")).join("\n");
+      if (brief && typeof brief === "object") scrubHandoffBriefFindings(brf, { parentText });
       res.json(brief);
     } catch (error: any) {
       logger.error("Arbor Handoff Brief Error", error, { requestId: requestIdOf(req) });

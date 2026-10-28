@@ -983,6 +983,10 @@ export const en: Dict = {
   // B-KID-168: the name in English letters — ProfileEditDrawer
   "profile.nameLatin.label": "Name in English letters (optional)",
   "profile.nameLatin.helper": "Used only in English stories, their choices and narration.",
+  // B-SHELL-44: the Edit child drawer's own heading and Save (critic round 1)
+  "profile.edit.title": "Edit child profile",
+  "profile.edit.save": "Save changes",
+  "profile.edit.saving": "Saving…",
   // CI-29: profile.interests — ProfileEditDrawer section
   "profile.interests.label": "What is {name} really into right now?",
   "profile.interests.helper": "Arbor uses this to frame activities in things {name} already loves.",
@@ -1524,6 +1528,7 @@ export const en: Dict = {
   "ql.type.food": "Selective Eating",
   "ql.type.sleep": "Bedtime Resistance",
   "ql.type.moment": "A moment",
+  "ql.type.choose": "Choose the kind of moment",
   "ql.intensity": "Intensity:",
   "ql.trigger": "What triggered this?",
   "ql.triggerPh": "e.g. tablet turned off",
@@ -3573,6 +3578,10 @@ export const he: Dict = {
   // B-KID-168: the name in English letters — ProfileEditDrawer (Hebrew)
   "profile.nameLatin.label": "השם באותיות לועזיות (לא חובה)",
   "profile.nameLatin.helper": "משמש רק בסיפורים באנגלית, בבחירות שלהם ובהקראה.",
+  // B-SHELL-44: כותרת מגירת עריכת הילד/ה וכפתור השמירה שלה
+  "profile.edit.title": "עריכת פרופיל הילד/ה",
+  "profile.edit.save": "שמירת שינויים",
+  "profile.edit.saving": "שומרים…",
   // CI-29: profile.interests — ProfileEditDrawer section (Hebrew)
   "profile.interests.label": "במה {name} ממש מוקסם/ת כרגע?",
   "profile.interests.helper": "ארבור משתמש בזה כדי לעצב פעילויות סביב מה ש{name} כבר אוהב/ת.",
@@ -4096,6 +4105,7 @@ export const he: Dict = {
   "ql.type.food": "אכלנות בררנית",
   "ql.type.sleep": "התנגדות לשעת שינה",
   "ql.type.moment": "רגע",
+  "ql.type.choose": "בחרו את סוג הרגע",
   "ql.intensity": "עוצמה:",
   "ql.trigger": "מה עורר את זה?",
   "ql.triggerPh": "למשל הטאבלט כובה",

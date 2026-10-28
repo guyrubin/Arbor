@@ -881,3 +881,160 @@ describe("B-GA-11 — the AI line renders directly under each capture field that
     expect(hard.props.language).toBe(lang);
   });
 });
+
+/**
+ * B-ASKJB-48 — the actual sheet handlers: a dictated moment whose extraction
+ * label only names a context (a sibling, a book, bedtime) stays the parent's
+ * neutral moment through draft → save → reload. Before the change the keyword
+ * map turned "Sister reading together" into Sibling Conflict and the incident
+ * review opened over the parent's words with the model's intensity.
+ */
+describe("B-ASKJB-48 — context-only labels keep the moment neutral (actual handlers)", () => {
+  const startDictating = (h: ReturnType<typeof captureHarness>) =>
+    one(h.render(), n => n.type === "button" && n.props.onClick?.name === "startVoice").props.onClick();
+  it.each([
+    ["en", "Maya and her sister read a whole book together on the sofa", "Sister reading together"],
+    ["he", "מאיה ואחותה קראו יחד ספר שלם על הספה בערב", "אחים קוראים ביחד"],
+  ] as const)("%s: no incident review; Save writes a plain moment with the parent's words and no intensity", async (lang, said, label) => {
+    // Negative control: the legacy keyword map read this label as an incident.
+    expect(taxonomy.mapLabelToType(label)).toEqual({ type: "Sibling Conflict", matched: true });
+    const h = captureHarness({ text: "", lang });
+    startDictating(h);
+    h.speech[0].callbacks.onResult(said);
+    h.extracts[0].resolve({ behaviorType: label, trigger: "Generated", response: "Generated response", intensity: 4, durationMinutes: 5, notes: "Generated notes" });
+    await tick();
+    expect(nodes(h.render()).some(n => typeof n.props.onConfirm === "function")).toBe(false);
+    expect(h.state.newLogTrigger).toBe(said);
+    expect(h.state.newLogNotes).toBe("");
+    expect(h.state.newLogResponse).toBe("");
+    expect(h.state.newLogType).not.toBe("Sibling Conflict");
+    const context = contextHarness();
+    h.state.addMoment = vi.fn(context.addMoment);
+    await one(h.render(), n => n.type === "form").props.onSubmit(formEvent());
+    expect(h.state.handleAddLog).not.toHaveBeenCalled();
+    const written = context.env.logsCol.upsert.mock.calls[0][0];
+    expect(written).toMatchObject({ behaviorType: "Moment", trigger: said });
+    expect(written).not.toHaveProperty("intensity");
+    expect(written).not.toHaveProperty("contentSource");
+    // Reload: the stored row reads back as the parent's own words, not an incident.
+    expect(taxonomy.isIncidentType(written.behaviorType)).toBe(false);
+    expect(parentWords(written)).toBe(said);
+    expect(toObservations({ behaviorLogs: [written] }, { id: "child-a" })[0].source).not.toBe("unverified");
+  });
+
+  it("a real concern label still opens the incident review with Arbor-draft provenance", async () => {
+    const h = captureHarness({ text: "" });
+    startDictating(h);
+    h.speech[0].callbacks.onResult("He screamed at his sister and they fought over the blocks again");
+    h.extracts[0].resolve({ behaviorType: "Fight with sister", trigger: "Blocks", response: "Separated them", intensity: 4, durationMinutes: 5 });
+    await tick();
+    const review = one(h.render(), n => typeof n.props.onConfirm === "function");
+    expect(review.props.source).toBe("ai-draft");
+    expect(h.state.newLogType).toBe("Sibling Conflict");
+    expect(review.props.intensity).toBe(4);
+    await review.props.onConfirm(formEvent());
+    expect(h.state.handleAddLog).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ contentSource: "ai_draft" }));
+    expect(h.state.addMoment).not.toHaveBeenCalled();
+  });
+
+  it("the parent's own incident choice survives an extraction whose label names no incident", async () => {
+    const h = captureHarness({ text: "" });
+    hardToggle(h, true);
+    one(h.render(), n => n.props.id === "quick-log-type").props.onChange({ target: { value: "Food Refusal" } });
+    const typed = "Glitter everywhere after the craft table, then a long cleanup";
+    one(h.render(), n => n.props.id === "quick-log-trigger").props.onChange({ target: { value: typed } });
+    one(h.render(), n => n.props.id === "quick-log-trigger").props.onKeyDown({ key: "Enter", preventDefault: vi.fn() });
+    h.extracts[0].resolve({ behaviorType: "Glitter everywhere incident", trigger: typed, response: "", intensity: 2, durationMinutes: 5 });
+    await tick();
+    one(h.render(), n => typeof n.props.onConfirm === "function");
+    // Before: the unmatched label overwrote the parent's choice with the default incident type.
+    expect(h.state.newLogType).toBe("Food Refusal");
+    expect(h.state.newLogNotes).toContain("Glitter everywhere incident");
+  });
+});
+
+/** B-ASKJB-43 — words kept from Ask: when the opener vouches they are the
+ *  parent's own (Ask's composer chain), the saved moment carries no negative
+ *  lineage and reads as the parent's words; without it, unknown prefills keep
+ *  "unverified" (the existing fail-closed case above). */
+describe("B-ASKJB-43 — words kept from Ask (actual handlers)", () => {
+  function askHarness(parentWritten: boolean) {
+    const h = captureHarness({ text: "", initialText: "Noa said ball and rolled it back" });
+    (h.props as Record<string, unknown>).initialTextParentWritten = parentWritten;
+    return h;
+  }
+  it("the parent's own Ask words save with no content-source lineage and stay theirs after reload", async () => {
+    const h = askHarness(true);
+    h.render();
+    const context = contextHarness();
+    h.state.addMoment = vi.fn(context.addMoment);
+    await one(h.render(), n => n.type === "form").props.onSubmit(formEvent());
+    const written = context.env.logsCol.upsert.mock.calls[0][0];
+    expect(written).toMatchObject({ behaviorType: "Moment", trigger: "Noa said ball and rolled it back" });
+    expect(written).not.toHaveProperty("contentSource");
+    expect(parentWords(written)).toBe("Noa said ball and rolled it back");
+    expect(toObservations({ behaviorLogs: [written] }, { id: "child-a" })[0].source).toBe("parent_typed");
+  });
+  it("NEGATIVE CONTROL: the same words without the vouch keep the unverified lineage", async () => {
+    const h = askHarness(false);
+    h.render();
+    await one(h.render(), n => n.type === "form").props.onSubmit(formEvent());
+    expect(h.state.addMoment.mock.calls[0][1]).toMatchObject({ contentSource: "unverified" });
+  });
+});
+
+/** Critic round 1 (B-ASKJB-48 P1): a dictated moment whose label names
+ *  hurting someone opens the incident review through the actual handlers. */
+describe("B-ASKJB-48 — aggression labels still open the incident review (actual handlers)", () => {
+  it.each([
+    ["en", "He hit his brother with a toy car when it was time to stop", "Hit his brother", "Sibling Conflict"],
+    ["he", "הוא הרביץ לאח שלו עם מכונית צעצוע כשהיה צריך להפסיק", "הרביץ לאח שלו", "Sibling Conflict"],
+    ["en", "The screen went off and the evening ended in tears again", "Screen time ended in tears", "Screentime Dispute"],
+  ] as const)("%s: %s", async (lang, said, label, type) => {
+    const h = captureHarness({ text: "", lang });
+    one(h.render(), n => n.type === "button" && n.props.onClick?.name === "startVoice").props.onClick();
+    h.speech[0].callbacks.onResult(said);
+    h.extracts[0].resolve({ behaviorType: label, trigger: "Stop time", response: "", intensity: 4, durationMinutes: 5 });
+    await tick();
+    const review = one(h.render(), n => typeof n.props.onConfirm === "function");
+    expect(review.props.source).toBe("ai-draft");
+    expect(h.state.newLogType).toBe(type);
+    expect(review.props.intensity).toBe(4);
+  });
+});
+
+/** Critic round 2 (B-ASKJB-48 P2): a dictated concern that fits no canonical
+ *  type opens the hard-moment form with the drafted fields and NO type preset;
+ *  the parent must choose the type before the review, then the one write. */
+describe("B-ASKJB-48 — a concern with no canonical type: the parent chooses the type (actual handlers)", () => {
+  it.each([
+    ["en", "He bit a friend at preschool when they took his shovel away", "Bit a friend at preschool"],
+    ["he", "הוא נשך חבר בגן כשלקחו לו את האת מהארגז חול", "נשך חבר בגן"],
+  ] as const)("%s: no type preset, no neutral save; choosing a type opens the review", async (lang, said, label) => {
+    const h = captureHarness({ text: "", lang });
+    one(h.render(), n => n.type === "button" && n.props.onClick?.name === "startVoice").props.onClick();
+    h.speech[0].callbacks.onResult(said);
+    h.extracts[0].resolve({ behaviorType: label, trigger: "Shovel taken", response: "", intensity: 3, durationMinutes: 5 });
+    await tick();
+    const tree = h.render();
+    expect(nodes(tree).some(n => typeof n.props.onConfirm === "function")).toBe(false);
+    const select = one(tree, n => n.props.id === "quick-log-type");
+    expect(select.props.value).toBe("");
+    expect(select.props.required).toBe(true);
+    expect(nodes(select).some(n => n.type === "option" && n.props.value === "" && n.props.disabled)).toBe(true);
+    // Save without a type: no review, no write, nothing saved as a neutral moment.
+    one(h.render(), n => n.type === "form").props.onSubmit(formEvent());
+    expect(nodes(h.render()).some(n => typeof n.props.onConfirm === "function")).toBe(false);
+    expect(h.state.addMoment).not.toHaveBeenCalled();
+    expect(h.state.handleAddLog).not.toHaveBeenCalled();
+    // The parent chooses; Save opens the review with Arbor-draft provenance.
+    one(h.render(), n => n.props.id === "quick-log-type").props.onChange({ target: { value: "Sibling Conflict" } });
+    h.state.newLogResponse = "Gave the shovel back";
+    one(h.render(), n => n.type === "form").props.onSubmit(formEvent());
+    const review = one(h.render(), n => typeof n.props.onConfirm === "function");
+    expect(review.props.source).toBe("ai-draft");
+    expect(h.state.newLogType).toBe("Sibling Conflict");
+    await review.props.onConfirm(formEvent());
+    expect(h.state.handleAddLog).toHaveBeenCalledTimes(1);
+  });
+});

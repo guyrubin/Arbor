@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { recapWeekId, recapWeekStartMs } from "../hooks/useWeeklyRecap";
 import { translate } from "./i18n";
+import { toObservations } from "./observations";
 import { en as foundationEn, he as foundationHe } from "./i18nElevation/foundation";
 import type { DomainId } from "./domains/registry";
 import type { Observation } from "./observations";
@@ -218,5 +219,30 @@ describe("weekGlance copy — counts, never a share, a ratio or a trend sign (EN
     expect(translate("he", "elev.wk.glance.sub")).toBe("מה שמרתם, מה עזר ומה לקחת לשבוע הבא. ספירות, לא ציונים.");
     expect(translate("en", "elev.wk.glance.tried", { n: 3 })).toBe("tried on 3 days");
     expect(translate("he", "elev.wk.glance.tried", { n: 3 })).toBe("נוסו ב-3 ימים");
+  });
+});
+
+/* B-ASKJB-43 (critic round 1, P2b) — the intended count, pinned. A photo the
+   parent keeps with no words is one parent moment in Now's moments tile,
+   whichever door it came through: from the Now photo tile it is stored with
+   no text source; kept from Ask it carries the "unverified" lineage under the
+   same app caption. Before B-ASKJB-43 the Ask copy read "not verified" and
+   was left out of the tile while the identical Now copy counted; both count
+   once now. A moment with real unverified text is still not counted. */
+describe("weekGlance — a parent's photo-only moment counts once, from any door", () => {
+  const caption = translate("en", "elev.capture.photo.caption");
+  const log = (id: string, extra: Record<string, unknown>) => ({
+    id, timestamp: new Date(START + 26 * 3600_000).toISOString(), behaviorType: "Moment", trigger: caption,
+    durationMinutes: 0, resolved: true, photoAttachment: "data:image/jpeg;base64,AAAA", ...extra,
+  });
+  const count = (logs: Record<string, unknown>[]) =>
+    weekGlance({ observations: toObservations({ behaviorLogs: logs as never }, { id: "child-a" }), actionLoop: [], now: NOW, weekStartMs: START }).counts.moments;
+  it("from the Now photo tile (no text source) and kept from Ask (unverified lineage): one each", () => {
+    expect(count([log("now-tile", {})])).toBe(1);
+    expect(count([log("ask-keep", { contentSource: "unverified" })])).toBe(1);
+    expect(count([log("now-tile", {}), log("ask-keep", { contentSource: "unverified" })])).toBe(2);
+  });
+  it("NEGATIVE CONTROL: unverified WORDS are still not counted as the parent's moment", () => {
+    expect(count([log("words", { contentSource: "unverified", trigger: "Words from somewhere" })])).toBe(0);
   });
 });

@@ -1600,8 +1600,9 @@ function useArborState() {
   //    updates the row through handleAddLog's editingLogId branch.
   // capture_started is emitted here for a capture (an edit is not one), and
   // pendingCaptureMode is NOT armed — Behaviors must not re-open it later.
-  const [captureSheet, setCaptureSheet] = useState<{ open: boolean; mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialPhoto?: string }>({ open: false });
-  const openCaptureSheet = (opts: { mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialPhoto?: string } = {}) => {
+  // B-ASKJB-43: `initialTextParentWritten` — the opener knows the words are the parent's own (Ask's composer chain).
+  const [captureSheet, setCaptureSheet] = useState<{ open: boolean; mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialTextParentWritten?: boolean; initialPhoto?: string }>({ open: false });
+  const openCaptureSheet = (opts: { mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialTextParentWritten?: boolean; initialPhoto?: string } = {}) => {
     if (opts.editLogId) startEditLog(opts.editLogId, opts.editLog);
     else {
       if (!opts.review) resetLogForm();

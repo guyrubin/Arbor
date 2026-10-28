@@ -81,8 +81,18 @@ export const isIncidentType = (behaviorType: string): boolean => INCIDENT_TYPES.
  * behaviorType "Moment", no intensity — B-DATA-09). Never a joyful line filed as a
  * Transition Refusal at 3/5.
  */
-export const extractionOpensIncidentReview = (n: { typeMatched: boolean; behaviorType: string }): boolean =>
-  n.typeMatched && isIncidentType(n.behaviorType);
+export const extractionOpensIncidentReview = (n: { typeMatched: boolean; behaviorType: string; concern?: boolean }): boolean =>
+  (n.typeMatched && isIncidentType(n.behaviorType)) || extractionNeedsIncidentType(n);
+
+/**
+ * B-ASKJB-48 (critic round 2) — a label that names a concern but fits no
+ * canonical type ("Bit a friend at preschool", "Tantrum at the store") is a
+ * hard moment the parent types themselves: the capture opens the hard-moment
+ * form with the extraction's fields and NO type preset. A concern never reads
+ * as a neutral moment, and Arbor never guesses the type.
+ */
+export const extractionNeedsIncidentType = (n: { typeMatched: boolean; concern?: boolean }): boolean =>
+  !n.typeMatched && n.concern === true;
 
 /** Minimal draft shape every capture surface holds before a write. */
 export type BehaviorLogDraft = {
@@ -170,9 +180,81 @@ const TYPE_KEYWORDS: [CanonicalBehaviorType, RegExp][] = [
   ["Transition Refusal", /transition|refus|leav|morning|dress|depart|goodbye|drop-?off|cling|מעבר|סירוב|בוקר|יציאה/i],
 ];
 
+/**
+ * B-ASKJB-48 — the keyword table NEW extraction uses: the legacy table plus
+ * the Hebrew "brother" as a whole word (אח, לאח, אחיו) and the meal stem ארוח
+ * (ארוחת ערב / בארוחת), the Hebrew forms the cue list now reaches. Kept out of
+ * TYPE_KEYWORDS on purpose (critic round 2): that table also localizes how a
+ * SAVED free label displays, and a stored "ארוחת ערב משפחתית" must keep
+ * reading as the parent's words, not as an eating difficulty.
+ */
+const EXTRACTION_TYPE_KEYWORDS: [CanonicalBehaviorType, RegExp][] = TYPE_KEYWORDS.map(([type, re]) =>
+  type === "Sibling Conflict" ? [type, /sibling|brother|sister|אחים|אחות|בין אחים|(?<![֐-׿])(?:ה|ל|ו|ב|ש|מה|לה)?אח(?:יו|יה|י)?(?![֐-׿])/i]
+  : type === "Food Refusal" ? [type, /food|eat|meal|dinner|lunch|breakfast|picky|snack|אוכל|אכיל|ארוח/i]
+  : [type, re]);
+
+/**
+ * B-ASKJB-48 — the words that make a FREE extraction label read as an
+ * incident. A context noun by itself ("Sister reading together", "Goodnight
+ * routine", "Family dinner", "Played on the tablet", "First word this
+ * morning") names where a moment happened, not a concern, so it never earns
+ * the incident review on its own: the keyword map below only runs on a free
+ * label that also carries one of these cues, or when the parent has already
+ * declared a hard moment. A canonical label ("Sibling Conflict") is the
+ * model choosing from the list and is never gated. Under-matching is the safe
+ * direction here: a missed cue leaves the parent's words as a neutral moment
+ * they can still mark as hard; an extra cue files a joyful line as an incident.
+ * English on word boundaries; Hebrew as whole words with a glued particle
+ * (`\b` cannot bound a Hebrew word), listing forms rather than open stems
+ * where a stem is also an everyday word (ריבה is jam, בקשה a request).
+ */
+const INCIDENT_CUE_EN = new RegExp(
+  [
+    String.raw`\b(?:refus|resist|tantrum|conflict|disput|argu|standoff|stand-off|overload|overwhelm|overstimul|struggl|upset|distress|scream|yell|shout|avoid|difficult|troubl|anxi|disrupt|defian|frustrat|aggress|protest|clash|whin|fuss)\w*`,
+    String.raw`\bmeltdown\w*|\bmelt(?:s|ed|ing)?\s+down\b`,
+    String.raw`\b(?<!(?:pillow|play|tickle|water|snowball|nerf|pretend)\s)(?:fight\w*|fought|battle\w*)`,
+    String.raw`\bproblem(?!-?\s?solv)\w*`,
+    String.raw`\b(?:cr(?:y|ies|ied|ying)|tears|tearful|teary|angry|anger|rage|raging|panic\w*|grabb\w*|picky|jealous\w*)\b`,
+    // Critic round 1: hurting someone is always a concern, never a context.
+    String.raw`\b(?:hit|hits|hitting|push|pushes|pushed|pushing|shov\w*|kick|kicks|kicked|kicking|throw|throws|threw|thrown|throwing|bite|bites|biting|bitten|scratch(?:es|ed|ing)?|slap\w*|punch\w*|pinch\w*|spit|spits|spat|spitting|hurt|hurts|hurting)\b`,
+    String.raw`(?<!\b(?:a|little)\s)\bbit\b`,
+    String.raw`\b(?:won|wouldn|didn|doesn|don)['’]?t\s+(?:want|let|stop|eat|sleep|go|leave)\b|\b(?:won|wouldn)['’]?t\b`,
+  ].join("|"),
+  "i",
+);
+const HE_PARTICLE = "(?:[ובהלמשכ]|וה|וב|ול|ומ|וש|כש)?";
+const INCIDENT_CUE_HE = new RegExp(
+  String.raw`(?<!\p{L})${HE_PARTICLE}(?:` +
+    [
+      String.raw`סירוב\p{L}*`, String.raw`סירב\p{L}*`, String.raw`מסרב\p{L}*`, "סרב",
+      "ריב", "ריבים", String.raw`מריב\p{L}*`,
+      String.raw`ו?ויכוח\p{L}*`, String.raw`התווכח\p{L}*`, String.raw`מתווכח\p{L}*`,
+      "קושי", "קשיים",
+      "בכי", "בכה", "בכתה", "בכו", "בוכה", "בוכים", "בוכות",
+      String.raw`צעק\p{L}*`, String.raw`צועק\p{L}*`, String.raw`צרח\p{L}*`, String.raw`צורח\p{L}*`,
+      String.raw`התפרצ\p{L}*`, String.raw`התקף\p{L}*`, "עומס", "חרדה", "חרדות", String.raw`מאבק\p{L}*`,
+      "זעם", String.raw`כעס\p{L}*`, String.raw`כועס\p{L}*`, "תסכול", String.raw`מתוסכל\p{L}*`,
+      String.raw`התנגד\p{L}*`, String.raw`מתנגד\p{L}*`, "הימנעות", String.raw`נמנע\p{L}*`,
+      String.raw`הרביצ\p{L}*`, "הרביץ", String.raw`מרביצ\p{L}*`, "מכות", String.raw`נשיכ\p{L}*`, "נשך", "נשכה",
+      // Critic round 1: hitting, pushing, kicking, throwing, biting, scratching, tears, jealousy.
+      "היכה", "הכה", "הכתה", "מכה", "דחף", "דחפה", "דחפו", "דוחף", "דוחפת", "דחיפה", "דחיפות",
+      "בעט", "בעטה", "בעטו", "בועט", "בועטת", "בעיטה", "בעיטות", "זרק", "זרקה", "זרקו", "זורק", "זורקת", "זריקה", "זריקת",
+      "נושך", "נושכת", "שרט", "שרטה", "שריטה", "צבט", "צבטה", "צביטה", "סטר", "סטירה", "ירק", "ירקה", "יריקה",
+      "דמעות", "בדמעות", "קנאה", String.raw`מקנא\p{L}*`, "פגע", "פגעה", "פוגע", "פוגעת",
+    ].join("|") +
+    String.raw`)(?!\p{L})|(?<!\p{L})ו?לא\s+(?:רוצה|רצה|רצתה|רצו|מוכן|מוכנה|הסכים|הסכימה|מסכים|מסכימה)(?!\p{L})`,
+  "u",
+);
+
+/** B-ASKJB-48: true when a free extraction label names a concern, not only a context. */
+export const hasIncidentCue = (label: string): boolean => INCIDENT_CUE_EN.test(label) || INCIDENT_CUE_HE.test(label);
+
 /** Map a (possibly free) extraction label onto the canonical set.
  *  `matched: false` means the label didn't fit — the caller preserves it in
- *  notes and the type is the documented fallback. */
+ *  notes and the type is the documented fallback. This is the LEGACY reader
+ *  (behaviorTypeLabel localizes stored free labels through it, so a saved
+ *  record reads as it always did); new extraction goes through
+ *  `mapExtractedLabelToType`, which adds the B-ASKJB-48 incident-cue gate. */
 export function mapLabelToType(label: string): { type: CanonicalBehaviorType; matched: boolean } {
   const raw = String(label ?? "").trim();
   if (!raw) return { type: DEFAULT_BEHAVIOR_TYPE, matched: false };
@@ -182,6 +264,30 @@ export function mapLabelToType(label: string): { type: CanonicalBehaviorType; ma
     if (re.test(raw)) return { type, matched: true };
   }
   return { type: DEFAULT_BEHAVIOR_TYPE, matched: false };
+}
+
+/**
+ * B-ASKJB-48 — the mapping every NEW extraction result goes through. An exact
+ * canonical label always matches (including "Moment", which is not an
+ * incident). A free label maps through the keyword table only when it carries
+ * an incident cue, or when the parent already declared a hard moment
+ * (`incidentDeclared`: the parent's own toggle is the cue, and the keyword
+ * then only picks which incident type). Otherwise it is unmatched, and
+ * `normalizeExtractedLog` keeps it as the neutral Moment.
+ */
+export function mapExtractedLabelToType(
+  label: string,
+  opts: { incidentDeclared?: boolean } = {},
+): { type: CanonicalBehaviorType; matched: boolean } {
+  const raw = String(label ?? "").trim();
+  if (!raw) return { type: MOMENT_BEHAVIOR_TYPE, matched: false };
+  const exact = BEHAVIOR_TYPES.find((b) => b.value.toLowerCase() === raw.toLowerCase());
+  if (exact) return { type: exact.value, matched: true };
+  if (!opts.incidentDeclared && !hasIncidentCue(raw)) return { type: MOMENT_BEHAVIOR_TYPE, matched: false };
+  for (const [type, re] of EXTRACTION_TYPE_KEYWORDS) {
+    if (re.test(raw)) return { type, matched: true };
+  }
+  return { type: MOMENT_BEHAVIOR_TYPE, matched: false };
 }
 
 /** B-DATA-09: an explicit numeric intensity clamps to 1–5; a missing or
@@ -205,10 +311,13 @@ export type ExtractedLogDraft = {
 };
 
 export type NormalizedExtractedLog = {
+  /** B-ASKJB-48: the neutral "Moment" whenever the label did not match. */
   behaviorType: CanonicalBehaviorType;
   /** false ⇒ the model's free label didn't fit the canonical set (it is
    *  preserved in `notes`). */
   typeMatched: boolean;
+  /** B-ASKJB-48: the free label names a concern (an incident cue), typed or not. */
+  concern: boolean;
   /** The model's original label, verbatim. */
   freeLabel: string;
   /** B-DATA-09: undefined when the model gave no usable number — never an
@@ -227,9 +336,15 @@ export type NormalizedExtractedLog = {
  * capture (AI-CAP-8 acceptance: any extraction renders a valid visible
  * selection in both forms; free labels survive in notes).
  */
-export function normalizeExtractedLog(d: ExtractedLogDraft, fallbackTrigger = ""): NormalizedExtractedLog {
+export function normalizeExtractedLog(
+  d: ExtractedLogDraft,
+  fallbackTrigger = "",
+  opts: { incidentDeclared?: boolean } = {},
+): NormalizedExtractedLog {
   const freeLabel = String(d?.behaviorType ?? "").trim();
-  const { type, matched } = mapLabelToType(freeLabel);
+  // B-ASKJB-48: an unmatched label is the neutral Moment, never a default
+  // incident type; the parent can still mark the moment as hard themselves.
+  const { type, matched } = mapExtractedLabelToType(freeLabel, opts);
   const baseNotes = String(d?.notes ?? "").trim();
   // Preserve an unmatched free label in notes — never silently dropped.
   const notes = matched || !freeLabel ? baseNotes : baseNotes ? `${baseNotes} · ${freeLabel}` : freeLabel;
@@ -237,6 +352,7 @@ export function normalizeExtractedLog(d: ExtractedLogDraft, fallbackTrigger = ""
   return {
     behaviorType: type,
     typeMatched: matched,
+    concern: !!freeLabel && hasIncidentCue(freeLabel),
     freeLabel,
     intensity: clampIntensity(d?.intensity),
     durationMinutes: Math.max(1, Math.round(Number(d?.durationMinutes)) || 10),

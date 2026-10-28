@@ -7,15 +7,18 @@ import { startDictation, speechSupported } from "../../lib/speech";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
 import { MAX_COMPANION_ATTACHMENTS, parseCompanionAttachments, prepareCompanionAttachment, type ComposerAttachment } from "../../lib/companionAttachments";
 import { screenForImmediateEscalation } from "../../safety/escalation";
+import { composerCaptureKeep, freshCaptureKeep } from "../../lib/kept/captureKeep";
 import { useCompanionConsent } from "./useCompanionConsent";
 import CompanionConsentReview from "./CompanionConsentReview";
 import { COMPANION_CONSENT_COPY } from "./companionConsentCopy";
 import "./companionComposer.css";
 
-export default function CompanionComposer({ childId, conversationRevision, language, value, onChange, busy, visible, onSend, onVoice, voiceActive, voiceLabel, onKeep, onAttachmentsChange, onHardMoment, footAction }: {
+export default function CompanionComposer({ childId, conversationRevision, language, value, onChange: setDraft, busy, visible, onSend, onVoice, voiceActive, voiceLabel, onKeep, onAttachmentsChange, onHardMoment, footAction }: {
   childId: string; conversationRevision: number; language: "en" | "he"; value: string; onChange: (value: string) => void;
   busy: boolean; visible: boolean; onSend: (prompt?: string, options?: { attachments?: ComposerAttachment[] }) => Promise<boolean | undefined>;
-  onVoice: () => void; voiceActive: boolean; voiceLabel: string; onKeep: (text: string, photo?: string) => void;
+  onVoice: () => void; voiceActive: boolean; voiceLabel: string;
+  /** B-ASKJB-43: `parentWritten` is true only when the parent typed or dictated these words from an empty field. */
+  onKeep: (text: string, photo?: string, parentWritten?: boolean) => void;
   /** How many files the input holds (a count, never the files). */
   onAttachmentsChange?: (count: number) => void;
   /** F-TALK-1: the hard-moment door rides in the tray. The host passes it only
@@ -56,6 +59,15 @@ export default function CompanionComposer({ childId, conversationRevision, langu
   visibleRef.current = visible;
   const textRef = useRef(value);
   textRef.current = value;
+  // B-ASKJB-43: who wrote the draft, by the capture sheet's own chain
+  // (lib/kept/captureKeep). The parent's typing and dictation go through
+  // onChange here; a seed or any other change from outside is not theirs
+  // until they clear the field. Read only when the words are kept.
+  const authorRef = useRef(freshCaptureKeep(value));
+  const onChange = (next: string) => {
+    authorRef.current = composerCaptureKeep(authorRef.current, textRef.current, next);
+    setDraft(next);
+  };
   useEffect(() => {
     if (accountRef.current !== consent.accountId) {
       accountRef.current = consent.accountId;
@@ -141,7 +153,7 @@ export default function CompanionComposer({ childId, conversationRevision, langu
         const bytes = Uint8Array.from(atob(photo.dataUrl.split(",")[1]), c => c.charCodeAt(0));
         thumbnail = await fileToThumbnail(new File([bytes], photo.name, { type: photo.mimeType }));
       }
-      if (turn === scope.current) onKeep(textRef.current, thumbnail);
+      if (turn === scope.current) onKeep(textRef.current, thumbnail, authorRef.current.parentWritten && authorRef.current.text === textRef.current);
     } catch { if (turn === scope.current) setError(inputText(language, "companion.input.we-couldn-t-prepare-the-photo-your-draft-is-still-here")); }
   };
   const closeTools = () => { setToolsOpen(false); toolsToggleRef.current?.focus(); };

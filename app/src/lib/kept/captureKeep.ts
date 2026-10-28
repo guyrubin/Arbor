@@ -33,3 +33,11 @@ export function typedCaptureKeep(previous: CaptureKeep, before: string, text: st
 export function selectedCaptureKeep(draft: CaptureKeep, text: string, hardMoment: boolean): BehaviorLog["kept"] {
   return !hardMoment && draft.parentWritten && draft.text === text && !!text.trim() ? draft.selected : undefined;
 }
+
+/** B-ASKJB-43 — the same chain for Ask's composer, whose field can also be
+ * changed from outside (a seeded prompt, a cleared field after Send). An
+ * outside change restarts the chain from that text as NOT the parent's, so
+ * only words typed or dictated from an empty field count as theirs. */
+export function composerCaptureKeep(previous: CaptureKeep, before: string, text: string): CaptureKeep {
+  return typedCaptureKeep(previous.text === before ? previous : freshCaptureKeep(before), before, text);
+}

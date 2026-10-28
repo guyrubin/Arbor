@@ -14,7 +14,7 @@ import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { api, EscalationRequiredError, getAiLanguage } from "../../lib/api";
 import { escalationCategories, renderEscalationMarkdown } from "../../safety/escalation";
-import { BEHAVIOR_TYPES, DEFAULT_BEHAVIOR_TYPE, EXTRACT_CONTEXTS, behaviorTypeLabel, extractionOpensIncidentReview, isIncidentType, normalizeExtractedLog, validateLogDraft } from "../../content/behaviorTaxonomy";
+import { BEHAVIOR_TYPES, DEFAULT_BEHAVIOR_TYPE, EXTRACT_CONTEXTS, behaviorTypeLabel, extractionNeedsIncidentType, extractionOpensIncidentReview, isIncidentType, normalizeExtractedLog, validateLogDraft } from "../../content/behaviorTaxonomy";
 import type { BehaviorContext } from "../../types";
 import { speechSupported, startDictation } from "../../lib/speech";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
@@ -76,10 +76,15 @@ export default function QuickLogModal({
   editLogId,
   shelf: openedShelf,
   initialText,
+  initialTextParentWritten = false,
   initialPhoto,
 }: {
   open: boolean;
   initialText?: string;
+  /** B-ASKJB-43: the opener vouches that `initialText` is the parent's own
+   *  words (Ask's composer: typed or dictated from an empty field). Absent ⇒
+   *  unknown provenance, saved with the negative "unverified" lineage. */
+  initialTextParentWritten?: boolean;
   initialPhoto?: string;
   onClose: () => void;
   mode?: CaptureMode;
@@ -160,7 +165,7 @@ export default function QuickLogModal({
   // F-CHILD-2: Write · Dictate · Photo. Dictate is "on" while listening;
   // Photo shows the picker tile and its note.
   const [captureMode, setCaptureMode] = useState<"text" | "photo">(mode === "photo" ? "photo" : "text");
-  const [keepDraft, setKeepDraft] = useState(() => freshCaptureKeep(initialText ?? newLogTrigger));
+  const [keepDraft, setKeepDraft] = useState(() => initialText !== undefined ? freshCaptureKeep(initialText, initialTextParentWritten) : freshCaptureKeep(newLogTrigger));
   const keepAllowed = !editLogId && !review && source !== "ai-draft" && keepDraft.parentWritten && keepDraft.text === newLogTrigger && !!newLogTrigger.trim();
   const kept = keepAllowed ? selectedCaptureKeep(keepDraft, newLogTrigger, hardMoment) : undefined;
   // Full translation keys keep grammatical variants explicit. These are
@@ -245,7 +250,7 @@ export default function QuickLogModal({
     if (!open) return;
     if (initialText !== undefined) {
       setNewLogTrigger(initialText);
-      setKeepDraft(freshCaptureKeep(initialText));
+      setKeepDraft(freshCaptureKeep(initialText, initialTextParentWritten));
     }
     if (initialPhoto) attachPhoto(initialPhoto);
     else if (editLogId) setPhoto(newLogPhoto);
@@ -493,9 +498,17 @@ export default function QuickLogModal({
     try {
       const d = await api.extractLog({ message: text, childProfile, language: getAiLanguage() });
       if (!isCurrent()) return;
-      const n = normalizeExtractedLog(d, text);
+      // B-ASKJB-48: a free label that names only a context (sibling, dinner,
+      // bedtime, tablet) is a neutral Moment; from the hard-moment form the
+      // parent's own toggle is the incident cue (incidentDeclared).
+      const n = normalizeExtractedLog(d, text, { incidentDeclared: from === "incident" });
       if (from === "moment" && !extractionOpensIncidentReview(n)) return;
-      setNewLogType(n.behaviorType);
+      // An unmatched label never replaces the incident type the parent chose
+      // (the incident select lists incident types only). A concern with no
+      // canonical type opens the hard-moment form with no type preset.
+      const chooseType = from === "moment" && extractionNeedsIncidentType(n);
+      if (isIncidentType(n.behaviorType)) setNewLogType(n.behaviorType);
+      else if (chooseType) setNewLogType("");
       if (typeof n.intensity === "number") setNewLogIntensity(n.intensity);
       setNewLogDuration(n.durationMinutes);
       setNewLogContext(n.context as BehaviorContext);
@@ -505,6 +518,8 @@ export default function QuickLogModal({
       if (n.notes) setNewLogNotes(n.notes);
       setSource("ai-draft");
       setHardMoment(true);
+      // The parent picks the type in the form; Save then opens the review.
+      if (chooseType) return;
       setReviewing(true);
     } catch (err) {
       // FAIL-CLOSED: the escalation branch runs FIRST, on the screening lease
@@ -656,6 +671,12 @@ export default function QuickLogModal({
     e.preventDefault();
     if (busyRef.current || drafting || photoPreparing) return;
     stopCaptureWork();
+    // B-ASKJB-48: no type preset yet (a concern Arbor could not type): the
+    // parent chooses it before the review; the select says so.
+    if (hardMoment && !isIncidentType(newLogType)) {
+      if (typeof document !== "undefined") document.getElementById("quick-log-type")?.focus();
+      return;
+    }
     if (validateLogDraft({ behaviorType: newLogType, trigger: newLogTrigger, response: newLogResponse })) {
       toast(t("ql.errToast"), "error");
       return;
@@ -1036,7 +1057,8 @@ export default function QuickLogModal({
               duplicated option literals across capture forms. TJB-01: the
               incident form lists incident types only; the neutral Moment is
               the other branch of this modal. */}
-          <select id="quick-log-type" value={newLogType} onChange={(e) => setNewLogType(e.target.value)} className="min-h-11 w-full rounded-xl p-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
+          <select id="quick-log-type" required aria-invalid={!isIncidentType(newLogType)} value={newLogType} onChange={(e) => setNewLogType(e.target.value)} className="min-h-11 w-full rounded-xl p-2.5 text-xs focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
+            {!isIncidentType(newLogType) && <option value="" disabled>{t("ql.type.choose")}</option>}
             {BEHAVIOR_TYPES.map((b) => (
               isIncidentType(b.value) ? <option key={b.value} value={b.value}>{t(b.shortLabelKey)}</option> : null
             ))}
