@@ -352,7 +352,9 @@ describe("R25 — every leaf renders within its declared moduleBudget", () => {
     // Every route R25 named, with the disclosure it now carries. find-pro is the
     // exception ON PURPOSE: its two stamps were one module in two mutually
     // exclusive branches, so the fix was one wrapper stamp and zero demotions.
-    for (const route of ["profile", "safety", "memory", "weekly", "copilot", "sharing", "appointments", "smart-reminders", "language"]) {
+    // B-GROWTH-22: copilot left this list — its leaf is deleted and its seat
+    // renders the development leaf (asserted below, like find-pro).
+    for (const route of ["profile", "safety", "memory", "weekly", "sharing", "appointments", "smart-reminders", "language"]) {
       const c = countModules(leaves.get(route)!);
       expect(c.demoted, `${route} must demote, not delete, the modules it folded away`).toBeGreaterThan(0);
       expect(c.disclosures, `${route} must carry exactly one disclosure`).toBe(1);
@@ -362,6 +364,10 @@ describe("R25 — every leaf renders within its declared moduleBudget", () => {
     const findPro = countModules(leaves.get("find-pro")!);
     expect(findPro.topLevel).toBeLessThanOrEqual(2);
     expect(leaves.get("find-pro")).toBe(leaves.get("consult"));
+    // B-GROWTH-22: #/copilot is retired to development — its seat renders the
+    // My child leaf inside that leaf's own budget, and no copilot leaf remains.
+    expect(leaves.get("copilot")).toBe(leaves.get("development"));
+    expect(countModules(leaves.get("copilot")!).topLevel).toBeLessThanOrEqual(contractFor("copilot" as ActiveTab)!.moduleBudget);
   });
 
   it("negative control: a leaf one stamp over budget is rejected by the same arithmetic", () => {

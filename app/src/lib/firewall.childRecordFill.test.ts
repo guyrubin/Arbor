@@ -62,7 +62,6 @@ const SCANNED = [
   // v3 F-CHILD-3: About's eight areas and the read that fills them.
   "components/about/AspectCard.tsx",
   "lib/aboutAspects.ts",
-  "components/practice/DevelopmentCopilot.tsx",
   "components/sections/AcademyForYou.tsx",
 ];
 
