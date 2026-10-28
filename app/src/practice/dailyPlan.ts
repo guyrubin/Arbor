@@ -135,14 +135,30 @@ const WHY_LINE_TEMPLATES_HE: Record<keyof typeof WHY_LINE_TEMPLATES, string> = {
 export type WhyLineLang = "en" | "he";
 const TEMPLATES: Record<WhyLineLang, Record<keyof typeof WHY_LINE_TEMPLATES, string>> = { en: WHY_LINE_TEMPLATES, he: WHY_LINE_TEMPLATES_HE };
 
-// Assert templates are clean at module load time.
-for (const [key, tmpl] of Object.entries(WHY_LINE_TEMPLATES)) {
-  if (key === "sparse") continue; // sparse line is a single fixed string — no interpolation
-  if (EFFECT_VERBS_RE.test(tmpl)) {
-    throw new Error(`[CI-30 lint] Why-line template "${key}" contains a banned effect-verb.`);
-  }
-  if (COMPREHENSION_TOKENS_RE.test(tmpl)) {
-    throw new Error(`[CI-30 lint] Why-line template "${key}" contains a banned comprehension token.`);
+/* B-PLAY-25 (critic r1) — the same ban in Hebrew. `\b` does not see Hebrew
+   letters, so a word edge is "no Hebrew letter on either side", with the
+   one-letter prefixes (ו ה ש ל ב כ מ) allowed in front and the gender/number
+   endings after: משפר/משפרת/משפרים, בונה, מחזק, מפתח, מפחית, מרגיע, מתקן, מעריך,
+   מאבחן, בודק, מודד, מאמן; comprehension: מבין/מבינה, עוקב אחר הוראות. */
+const HE_EDGE_BEFORE = "(?<![\u05D0-\u05EA])[והשלבכמ]?";
+const HE_EDGE_AFTER = "(?:ת|ה|ים|ות)?(?![\u05D0-\u05EA])";
+export const HE_EFFECT_VERBS_RE = new RegExp(`${HE_EDGE_BEFORE}(?:משפר|בונ|מחזק|מפתח|מפחית|מרגיע|מתקן|מעריך|מאבחן|בודק|מודד|מאמן)${HE_EDGE_AFTER}`, "u");
+export const HE_COMPREHENSION_RE = new RegExp(`${HE_EDGE_BEFORE}(?:מבינ|מבין)${HE_EDGE_AFTER}|עוקב(?:ת|ים|ות)? אחר הוראות`, "u");
+
+/** The module-load lint for one template table: the first banned token found, or null. */
+export function whyTemplateLint(lang: WhyLineLang, tmpl: string): "effect-verb" | "comprehension" | null {
+  if ((lang === "en" ? EFFECT_VERBS_RE : HE_EFFECT_VERBS_RE).test(tmpl)) return "effect-verb";
+  if ((lang === "en" ? COMPREHENSION_TOKENS_RE : HE_COMPREHENSION_RE).test(tmpl)) return "comprehension";
+  return null;
+}
+
+// Assert templates are clean at module load time — both languages.
+for (const lang of ["en", "he"] as const) {
+  for (const [key, tmpl] of Object.entries(TEMPLATES[lang])) {
+    if (lang === "en" && key === "sparse") continue; // sparse line is a single fixed string — no interpolation
+    const hit = whyTemplateLint(lang, tmpl);
+    if (hit === "effect-verb") throw new Error(`[CI-30 lint] Why-line template "${key}" (${lang}) contains a banned effect-verb.`);
+    if (hit === "comprehension") throw new Error(`[CI-30 lint] Why-line template "${key}" (${lang}) contains a banned comprehension token.`);
   }
 }
 
