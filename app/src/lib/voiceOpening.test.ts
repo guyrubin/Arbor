@@ -2,7 +2,7 @@
  * B-VOICE-02 — the opening controller: the card's words first, the
  * microphone and the session only after them; a stop starts nothing.
  */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { runOpening, startDoor, type OpeningSpeaker } from "./voiceOpening";
 
 const harness = () => {
@@ -111,6 +111,50 @@ describe("B-VOICE-02 / B-PROV-12 · the door (lib/voiceOpening startDoor, as Coa
     const busy = door("begins", { busy: true });
     expect(startDoor("Words", busy.deps)).toBe(false);
     expect(busy.log).toEqual([]);
+  });
+});
+
+/* ── B-VOICE-02 round 3: a stop while the words play, against the REAL voice
+   engine (lib/voice) with an engine that reports its cancel as an async
+   "interrupted" error, as Chrome's does. Nothing may start after it. ── */
+describe("B-VOICE-02 round 3 · closing mid-words never opens the microphone", () => {
+  const engine = () => {
+    const spoken: { onend: null | (() => void); onerror: null | ((e?: unknown) => void); onstart: null | (() => void) }[] = [];
+    vi.stubGlobal("SpeechSynthesisUtterance", class { text: string; lang = ""; rate = 1; pitch = 1; voice = null; onstart = null; onend = null; onerror = null; constructor(t: string) { this.text = t; } });
+    vi.stubGlobal("window", { speechSynthesis: {
+      getVoices: () => [],
+      speak: (u: (typeof spoken)[number]) => { spoken.push(u); },
+      cancel: () => { const u = spoken[spoken.length - 1]; setTimeout(() => u?.onerror?.({ error: "interrupted" }), 0); },
+    } });
+    return spoken;
+  };
+  afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
+
+  it.each(["stop cancels the opening first (CoachTab stopVoice)", "only the engine is stopped (the round-2 order)"] as const)("%s: the late error starts nothing", async (order) => {
+    vi.useFakeTimers();
+    const { speakText, stopVoice } = await import("./voice");
+    engine();
+    const start = vi.fn();
+    const run = runOpening("I can see this is hard right now.", { speak: (text, handlers) => { speakText(text, handlers, "en"); }, stopSpeaking: stopVoice, onDone: start });
+    if (order.startsWith("stop cancels")) run.cancel(); else stopVoice();
+    await vi.runAllTimersAsync();
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it("negative control: the same engine error on the utterance still playing does finish the words (and starts once)", async () => {
+    vi.useFakeTimers();
+    const { speakText } = await import("./voice");
+    const spoken = engine();
+    const start = vi.fn();
+    runOpening("Same bedtime as every night.", { speak: (text, handlers) => { speakText(text, handlers, "en"); }, stopSpeaking: () => undefined, onDone: start });
+    spoken[0].onerror?.({ error: "synthesis-failed" });
+    expect(start).toHaveBeenCalledOnce();
+  });
+
+  it("a hidden conversation refuses the door outright", () => {
+    const log: string[] = [];
+    expect(startDoor("Words", { busy: () => true, canSpeak: () => true, playWords: () => log.push("words"), toggle: () => log.push("toggle"), attempt: () => null })).toBe(false);
+    expect(log).toEqual([]);
   });
 });
 

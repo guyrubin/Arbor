@@ -50,7 +50,7 @@ describe("B-VOICE-08 · the door's start is the conversation's own toggle", () =
   });
 
   it("refuses while voice is on, a review is open or a notice handoff waits", () => {
-    expect(start).toContain('busy: () => voicePhase !== "off" || voiceReviewOpen || !!readNoticeTalk(),');
+    expect(start).toContain('busy: () => voicePhase !== "off" || voiceReviewOpen || !!readNoticeTalk() || !conversationShown(),');
     // negative control: a door that toggled while voice was on would STOP the talk
     expect("void toggleVoice();").not.toContain('voicePhase !== "off"');
   });
@@ -68,7 +68,7 @@ describe("B-VOICE-02 · the card's words are spoken BEFORE the microphone opens,
 
   it("the session starts only from the opening's end (or skip): the next render calls the ONE toggle", () => {
     expect(words).toMatch(/onDone: \(\) => \{\s*if \(openingTokenRef\.current !== token\) return;[\s\S]*setVoicePhase\("off"\);\s*setStartAfterOpening\(\(n\) => n \+ 1\);/);
-    expect(COACH).toMatch(/useEffect\(\(\) => \{\s*if \(!startAfterOpening\) return;\s*void toggleVoice\(\);/);
+    expect(COACH).toMatch(/useEffect\(\(\) => \{\s*if \(!startAfterOpening\) return;\s*if \(!visibleRef\.current \|\| !conversationShown\(\)\) return;\s*void toggleVoice\(\);/);
   });
 
   it("the browser loop no longer speaks anything before it listens (the Live-refused fallback cannot hear the card)", () => {
@@ -76,8 +76,18 @@ describe("B-VOICE-02 · the card's words are spoken BEFORE the microphone opens,
     expect(COACH).not.toContain("openingLineRef");
   });
 
-  it("a stop while the words play cancels them, and nothing starts after", () => {
-    expect(COACH).toMatch(/if \(voicePhase !== "off" \|\| !openingRunRef\.current\) return;\s*openingRunRef\.current\.cancel\(\);/);
+  it("round 3: every stop cancels the words synchronously, before the engine is told to stop, and a hidden conversation starts nothing", () => {
+    // stopVoice is what X, the panel hiding and a new thread all call.
+    expect(COACH).toMatch(/const stopVoice = \(review = true\) => \{\s*const reviewAttempt = voiceLifetimeRef\.current\.current;\s*voiceLifetimeRef\.current\.cancel\(\);\s*cancelOpening\(\);/);
+    const stop = slice("const stopVoice = (review = true) => {", "const bargeInVoice = ");
+    expect(stop.indexOf("cancelOpening();")).toBeLessThan(stop.indexOf("stopSpeaking();"));
+    const cancel = slice("const cancelOpening = () => {", "const stopVoice = ");
+    expect(cancel).toMatch(/openingTokenRef\.current = null;\s*const run = openingRunRef\.current;\s*openingRunRef\.current = null;\s*run\?\.cancel\(\);/);
+    expect(COACH).toMatch(/useEffect\(\(\) => \{ if \(!visible\) stopVoice\(false\); \}, \[visible\]\);/);
+    expect(COACH).toMatch(/useEffect\(\(\) => \{ stopVoice\(false\); \}, \[conversationRevision\]\);/);
+    // The start after the words, and the door itself, refuse a hidden conversation.
+    expect(COACH).toMatch(/if \(!startAfterOpening\) return;\s*if \(!visibleRef\.current \|\| !conversationShown\(\)\) return;\s*void toggleVoice\(\);/);
+    expect(COACH).toContain('busy: () => voicePhase !== "off" || voiceReviewOpen || !!readNoticeTalk() || !conversationShown(),');
     expect(COACH).toContain("useEffect(() => () => { openingTokenRef.current = null; openingRunRef.current?.cancel(); }, []);");
   });
 

@@ -48,7 +48,7 @@ import { handleVoiceDone } from "../../lib/voiceSafetyEvents";
 import type { ChatMessage } from "../../context/ArborContext";
 import { startDictation, speechSupported } from "../../lib/speech";
 // B-VOICE-08: a door outside this panel starts Talk inside its own tap.
-import { registerConversationVoiceStarter } from "../../lib/companionConversation";
+import { conversationShown, registerConversationVoiceStarter } from "../../lib/companionConversation";
 // B-VOICE-02: a card's words are said before the microphone opens.
 import { runOpening, startDoor, type OpeningRun } from "../../lib/voiceOpening";
 import { speakText } from "../../lib/voice";
@@ -728,9 +728,29 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     setLiveSession(false);
   };
 
+  // B-VOICE-02: the opening in flight (its words show as the caption while
+  // they play) and the start that follows it.
+  const openingRunRef = useRef<OpeningRun | null>(null);
+  const openingTokenRef = useRef<object | null>(null);
+  const [openingCaption, setOpeningCaption] = useState("");
+  const [startAfterOpening, setStartAfterOpening] = useState(0);
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
+  // Every stop (X, the panel hiding, a new thread, unmount) cancels the card's
+  // words HERE, synchronously, before the engine is told to stop: a late
+  // engine callback then finds nothing to finish, and nothing starts after.
+  const cancelOpening = () => {
+    openingTokenRef.current = null;
+    const run = openingRunRef.current;
+    openingRunRef.current = null;
+    run?.cancel();
+    setOpeningCaption("");
+  };
+
   const stopVoice = (review = true) => {
     const reviewAttempt = voiceLifetimeRef.current.current;
     voiceLifetimeRef.current.cancel();
+    cancelOpening();
     if (review && reviewAttempt && voicePhase !== "off") {
       reviewAttemptRef.current = reviewAttempt;
       setVoiceReviewOpen(true);
@@ -1033,12 +1053,6 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, liveProbed, voiceAsk]);
 
-  // B-VOICE-02: the opening in flight (its words show as the caption while
-  // they play) and the start that follows it.
-  const openingRunRef = useRef<OpeningRun | null>(null);
-  const openingTokenRef = useRef<object | null>(null);
-  const [openingCaption, setOpeningCaption] = useState("");
-  const [startAfterOpening, setStartAfterOpening] = useState(0);
   // B-VOICE-08 / B-VOICE-02: a door outside this panel (Now's Talk, a card's
   // "Talk it through") starts Talk inside the parent's own tap, through the
   // ONE toggle (its notice, review and stop rules unchanged). Registered only
@@ -1070,7 +1084,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     });
   };
   const startFromDoor = (opening?: string): boolean => startDoor(opening, {
-    busy: () => voicePhase !== "off" || voiceReviewOpen || !!readNoticeTalk(),
+    busy: () => voicePhase !== "off" || voiceReviewOpen || !!readNoticeTalk() || !conversationShown(),
     canSpeak: ttsSupported,
     playWords: playOpening,
     toggle: () => { void toggleVoice(); },
@@ -1080,17 +1094,17 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // ONE toggle (its notice, review and stop rules unchanged).
   useEffect(() => {
     if (!startAfterOpening) return;
+    // A conversation closed meanwhile never opens a microphone.
+    if (!visibleRef.current || !conversationShown()) return;
     void toggleVoice();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startAfterOpening]);
   // A stop while the words play (X, the panel hiding, a new thread) cancels
   // them; nothing starts after.
+  // Belt and braces: any other way the phase leaves "speaking" ends the words too.
   useEffect(() => {
     if (voicePhase !== "off" || !openingRunRef.current) return;
-    openingRunRef.current.cancel();
-    openingRunRef.current = null;
-    openingTokenRef.current = null;
-    setOpeningCaption("");
+    cancelOpening();
   }, [voicePhase]);
   useEffect(() => () => { openingTokenRef.current = null; openingRunRef.current?.cancel(); }, []);
   const startFromDoorRef = useRef(startFromDoor);
