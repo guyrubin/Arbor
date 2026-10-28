@@ -10,7 +10,7 @@
  *    shows no internal place id; the saved receipt file keeps every id;
  *  - Try again erases the same child again and folds into one receipt.
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChildProfile, DeletionReceipt } from "../../types";
 import { translate, type UiLang } from "../../lib/i18n";
 
@@ -71,7 +71,7 @@ function text(value: any): string {
   if (value == null || typeof value === "boolean") return "";
   return typeof value === "object" ? text(value.props?.children) : String(value);
 }
-const render = () => { h.cursor = 0; const tree = YourDataSheet({ open: true, onClose: vi.fn() }); for (const e of h.effects.splice(0)) e(); return tree; };
+const render = (open = true) => { h.cursor = 0; const tree = YourDataSheet({ open, onClose: vi.fn() }); for (const e of h.effects.splice(0)) e(); return tree; };
 const byTestId = (tree: any, id: string) => elements(tree).find((e) => e.props?.["data-testid"] === id);
 const tick = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
 
@@ -94,7 +94,18 @@ const notes = (tree: any) => Object.fromEntries(elements(byTestId(tree, "delete-
 const rows = (tree: any) => Object.fromEntries(elements(byTestId(tree, "delete-receipt")).filter((e) => "label" in (e.props ?? {}) && "value" in e.props).map((e) => [e.props.label, e.props.value]));
 const rowValues = (tree: any) => text(byTestId(tree, "delete-receipt"));
 
-afterEach(() => { h.lang = "en"; });
+class MemStore {
+  map = new Map<string, string>();
+  get length() { return this.map.size; }
+  key(i: number) { return [...this.map.keys()][i] ?? null; }
+  getItem(k: string) { return this.map.get(k) ?? null; }
+  setItem(k: string, v: string) { this.map.set(k, String(v)); }
+  removeItem(k: string) { this.map.delete(k); }
+  clear() { this.map.clear(); }
+}
+let device: MemStore;
+beforeEach(() => { device = new MemStore(); vi.stubGlobal("localStorage", device as unknown as Storage); });
+afterEach(() => { h.lang = "en"; vi.unstubAllGlobals(); });
 
 describe.each(["en", "he"] as const)("delete receipt (%s)", (lang) => {
   const t = (k: string, v?: Record<string, string | number>) => translate(lang, k, v);
@@ -147,7 +158,7 @@ describe.each(["en", "he"] as const)("delete receipt (%s)", (lang) => {
     expect(titleOf(tree)).toBe(t("elev.learnCare.receipt.unfinishedTitle"));
     const shown = rows(tree);
     expect(Object.entries(shown).filter(([, v]) => v === t("elev.learnCare.receipt.notReached")).map(([k]) => k)).toEqual([t("elev.learnCare.receipt.records")]);
-    expect(notes(tree)[t("elev.learnCare.receipt.records")]).toBe(t("elev.learnCare.receipt.placesSome", { n: 3, m: 1 }));
+    expect(notes(tree)[t("elev.learnCare.receipt.records")]).toBe(t("elev.learnCare.receipt.placesOne", { n: 3 }));
   });
 
   it("Try again erases the same child again and folds into one finished receipt", async () => {
@@ -175,5 +186,59 @@ describe("the sheet speaks in places, never in internal ids (critic r2)", () => 
     const saved = h.downloads.at(-1)![1] as DeletionReceipt;
     expect(Object.keys(saved.sinks!)).toEqual(IDS);
     expect(saved.sinks!["firestore:milestones"]).toBe("not-reached");
+  });
+});
+
+/* Round 4 (critic r3 P1): Done or × on an unfinished receipt used to throw it
+   away, and the child had already left the switcher, so nothing could finish
+   the server erase. The unfinished receipt is kept under one account-level
+   key and Your data offers "Finish deleting {name}" until a retry completes. */
+describe.each(["en", "he"] as const)("an unfinished erase survives close and reopen (%s)", (lang) => {
+  const t = (k: string, v?: Record<string, string | number>) => translate(lang, k, v);
+  const unfinished = () => receipt(ledger({ "server:memoryEvents": "not-reached", "server:familyChildRef": "not-reached" }), { memoryEvents: 0 });
+
+  it("close → reopen shows Finish deleting {name}; the retry completes and the offer is gone", async () => {
+    h.lang = lang;
+    let tree = await eraseWith(unfinished());
+    expect(byTestId(tree, "delete-receipt").props["data-receipt-state"]).toBe("unfinished");
+    expect(JSON.parse(device.getItem("arbor.pendingErase")!)).toMatchObject([{ childId: "child-a", name: "Synthetic" }]);
+
+    // Done closes the sheet; the receipt leaves the screen, not the device.
+    const done = elements(byTestId(tree, "delete-receipt")).find((e) => e.type === "button" && text(e.props.children).includes(t("sec.sharing.receipt.done")));
+    done.props.onClick();
+    render(false);
+    tree = render(true);
+    expect(byTestId(tree, "delete-receipt")).toBeUndefined();
+    const offer = byTestId(tree, "pending-erase-child-a");
+    expect(text(offer)).toContain(t("elev.learnCare.receipt.finishNote", { name: "Synthetic" }));
+    const finish = byTestId(tree, "finish-erase-btn");
+    expect(text(finish)).toContain(t("elev.learnCare.receipt.finish", { name: "Synthetic" }));
+
+    // The retry runs through the real handler with the kept receipt.
+    h.deleteChild = vi.fn(async () => receipt(ledger({ "firestore:behaviorLogs": 0, "firestore:milestones": 0, profile: 0 }), { shares: 0, consents: 0, consultRequests: 0, storageFiles: 0, clientDocs: 0 }));
+    await finish.props.onClick();
+    await tick();
+    tree = render();
+    expect(h.deleteChild).toHaveBeenCalledWith("child-a");
+    expect(titleOf(tree)).toBe(t("sec.sharing.receipt.title"));
+    expect(device.getItem("arbor.pendingErase")).toBeNull();
+
+    elements(byTestId(tree, "delete-receipt")).find((e) => e.type === "button" && text(e.props.children).includes(t("sec.sharing.receipt.done"))).props.onClick();
+    render(false);
+    expect(byTestId(render(true), "pending-erase-child-a")).toBeUndefined();
+  });
+
+  it("a fresh session (the app reloaded) still offers to finish, and a retry that fails again keeps the offer", async () => {
+    h.lang = lang;
+    await eraseWith(unfinished());
+    h.slots = []; h.effects = [];           // a new mount reads the device
+    let tree = render(true);
+    expect(byTestId(tree, "finish-erase-btn")).toBeDefined();
+    h.deleteChild = vi.fn(async () => unfinished());
+    await byTestId(tree, "finish-erase-btn").props.onClick();
+    await tick();
+    tree = render();
+    expect(titleOf(tree)).toBe(t("elev.learnCare.receipt.unfinishedTitle"));
+    expect(JSON.parse(device.getItem("arbor.pendingErase")!)).toHaveLength(1);
   });
 });

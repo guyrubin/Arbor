@@ -267,6 +267,7 @@ export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.nudge.shown.": "prefix: a nudge shown on a day",
   "arbor.ownershipProvisioned.": "prefix: session marker per account",
   "arbor.parentPin": "the parent gate PIN",
+  "arbor.pendingErase": "a child erase still to finish (lib/pendingErase.ts): the erased child's id, first name and receipt, cleared when a retry completes",
   "arbor.plan.previewDismissed": "UI marker",
   "arbor.purchaseIntent.v1": "the plan a parent chose before checkout",
   "arbor.recap.emailOptIn": "mailing preference",
