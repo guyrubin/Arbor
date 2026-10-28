@@ -59,6 +59,7 @@ import { requireChildOwnership } from "../server/requireChildOwnership.js";
 import { createBookAssetsRouter, defaultBookAssetBucket, eraseChildBookAssets, type BookAssetBucket } from "../server/bookAssets.js";
 import { createBookAssetsDocStore, createBookSheetRouter } from "../server/bookSheet.js";
 import { createPlansRouter } from "../server/plans.js";
+import { createPlanPlatesRouter, isPlatePainter } from "../server/planPlates.js";
 import { createBookNarrationRouter, FirestoreNarrationChildSource, googleBookTts, localNarrationChildSource, mockBookTts } from "../server/bookNarration.js";
 import { createPlanNarrationRouter, FirestorePlanBookSource, localPlanBookSource } from "../server/planNarration.js";
 import { localBookAssetBucket } from "../server/localBookAssetBucket.js";
@@ -449,7 +450,12 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // reviewer's signature per pattern and language, server-held) and the
   // compose route that refuses an unsigned pattern outside the sandbox and
   // the owner allow-list (server/plans.ts). No model call.
-  router.use(createPlansRouter({ config, requireOwnership, modelProvider }));
+  router.use(createPlansRouter({ config, requireOwnership, modelProvider, painter: isPlatePainter }));
+  // B-BOOK-75 plates painted in-product: the shared, child-free pattern
+  // plates under shared/plans/ in the same bucket (never a child path),
+  // painted by the admin / comped accounts through the same provider path as
+  // /generate-scene and read by any signed-in user (server/planPlates.ts).
+  router.use(createPlanPlatesRouter({ config, getBucket: getBookBucket, generate: (o) => modelProvider.generateImage(o), counters, allowLocal: localBooks }));
   // K2 2b (B-BOOK-30): the name pages of a library book in the child's name
   // (server/bookNarration.ts): the name from the child record, Gemini-TTS
   // (env models, Sulafat), checked by the server's ASR when one is usable,

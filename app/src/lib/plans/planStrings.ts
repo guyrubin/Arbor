@@ -98,7 +98,20 @@ export type PlanStringKey =
   | "review.body"
   | "review.keep"
   | "review.change"
-  | "review.close";
+  | "review.close"
+  | "plates.title"
+  | "plates.body"
+  | "plates.paint"
+  | "plates.repaint"
+  | "plates.painting"
+  | "plates.loading"
+  | "plates.noStorage"
+  | "plates.painted"
+  | "plates.failed"
+  | "plates.unpainted"
+  | "plates.error"
+  | "plates.cap"
+  | "plates.stopped";
 
 const EN: Record<PlanStringKey, string> = {
   "section.title": "Everyday plans",
@@ -142,6 +155,19 @@ const EN: Record<PlanStringKey, string> = {
   "stage.steps.practitionerLabel": "A step from the professional who works with {name}, in your words — phrased by Arbor's AI. Not in the book until you approve it.",
   "stage.approved.print": "Print {name}'s plan",
   "section.print": "Print",
+  "plates.title": "Pattern plates (owner)",
+  "plates.body": "The shared, child-free art of each pattern, painted once in storage and read by every family. Only accounts on the owner list see this.",
+  "plates.paint": "Paint plates",
+  "plates.repaint": "Repaint all",
+  "plates.painting": "Painting…",
+  "plates.loading": "Reading the plate list…",
+  "plates.noStorage": "Plate storage is not configured here.",
+  "plates.painted": "painted",
+  "plates.failed": "failed",
+  "plates.unpainted": "not painted",
+  "plates.error": "Painting did not finish. Try again.",
+  "plates.cap": "Over the per-run cap. Paint one pattern at a time.",
+  "plates.stopped": "Stopped early; run again to continue.",
   "print.kicker": "Parent copy — not for the child's shelf",
   "print.title": "{name}'s plan",
   "print.approved": "Approved by a parent on {date}, for {days} days.",
@@ -236,6 +262,19 @@ const HE: Record<PlanStringKey, string> = {
   "stage.steps.practitionerLabel": "שלב מאיש או אשת המקצוע שעובדים עם {name}, במילים שלכם — נוסח על ידי ה-AI של Arbor. לא בספר עד שתאשרו.",
   "stage.approved.print": "להדפיס את התוכנית של {name}",
   "section.print": "להדפיס",
+  "plates.title": "לוחות הדפוס (בעלים)",
+  "plates.body": "האיור המשותף של כל דפוס, בלי ילד ובלי טקסט, מצויר פעם אחת לאחסון ונקרא על ידי כל משפחה. רק חשבונות ברשימת הבעלים רואים את זה.",
+  "plates.paint": "לצייר לוחות",
+  "plates.repaint": "לצייר הכול מחדש",
+  "plates.painting": "מציירים…",
+  "plates.loading": "קוראים את רשימת הלוחות…",
+  "plates.noStorage": "אחסון הלוחות לא מוגדר כאן.",
+  "plates.painted": "צויר",
+  "plates.failed": "נכשל",
+  "plates.unpainted": "לא צויר",
+  "plates.error": "הציור לא הסתיים. נסו שוב.",
+  "plates.cap": "מעבר למכסה לריצה. ציירו דפוס אחד בכל פעם.",
+  "plates.stopped": "נעצר מוקדם; הריצו שוב כדי להמשיך.",
   "print.kicker": "עותק להורים — לא למדף של הילד",
   "print.title": "התוכנית של {name}",
   "print.approved": "אושרה על ידי הורה ב-{date}, ל-{days} ימים.",

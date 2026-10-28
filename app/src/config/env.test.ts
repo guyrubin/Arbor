@@ -21,6 +21,9 @@ const KEYS = [
   "TTS_PROVIDER",
   "TTS_DISABLED",
   "CHILD_ASR_PROVIDER",
+  "ARBOR_FAMILY_EMAILS",
+  "ARBOR_PLANS_OWNER_EMAILS",
+  "ARBOR_PLANS_OWNER_UIDS",
 ] as const;
 let saved: Record<string, string | undefined> = {};
 
@@ -92,5 +95,36 @@ describe("B-INF-04 · MODEL_PROVIDER=mock env invariants", () => {
     process.env.ARBOR_ENV = "local";
     process.env.MODEL_PROVIDER = "openai";
     expect(() => loadConfig()).toThrow(/Invalid MODEL_PROVIDER/);
+  });
+});
+
+describe("B-BOOK-79 follow-up · the plans-owner allow-list defaults to the founder family", () => {
+  const dev = () => { process.env.ARBOR_ENV = "dev"; process.env.MODEL_PROVIDER = "mock"; };
+
+  it("no ARBOR_PLANS_OWNER_* set: the owner emails are ARBOR_FAMILY_EMAILS, lower-cased", () => {
+    dev();
+    process.env.ARBOR_FAMILY_EMAILS = "Founder@Example.test, second@example.test";
+    const c = loadConfig();
+    expect(c.plansOwnerEmails).toEqual(["founder@example.test", "second@example.test"]);
+    expect(c.plansOwnerUids).toEqual([]);
+  });
+
+  it("an explicit ARBOR_PLANS_OWNER_EMAILS or _UIDS overrides the default entirely", () => {
+    dev();
+    process.env.ARBOR_FAMILY_EMAILS = "founder@example.test";
+    process.env.ARBOR_PLANS_OWNER_EMAILS = "Reviewer@Example.test";
+    expect(loadConfig().plansOwnerEmails).toEqual(["reviewer@example.test"]);
+    delete process.env.ARBOR_PLANS_OWNER_EMAILS;
+    process.env.ARBOR_PLANS_OWNER_UIDS = "uid-1";
+    const c = loadConfig();
+    expect(c.plansOwnerUids).toEqual(["uid-1"]);
+    expect(c.plansOwnerEmails).toEqual([]); // uids named: the family default does not creep back in
+  });
+
+  it("nothing set anywhere: no owner (every unsigned pattern stays dark outside the sandbox)", () => {
+    dev();
+    const c = loadConfig();
+    expect(c.plansOwnerEmails).toEqual([]);
+    expect(c.plansOwnerUids).toEqual([]);
   });
 });

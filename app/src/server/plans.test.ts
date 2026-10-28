@@ -47,6 +47,21 @@ describe("B-KID-167: GET /plans/visibility", () => {
     expect(Object.keys(body.composable)).toHaveLength(8);
   });
 
+  it("B-BOOK-75 plates: `admin` is false for everyone unless the painter dep says so for THIS viewer", async () => {
+    const s = await serve(base, { uid: "owner-uid", email: "guy@example.test" });
+    servers.push(s);
+    expect((await (await fetch(`${s.url}/plans/visibility`)).json()).admin).toBe(false);
+    const app = express();
+    app.use((req, _res, next) => { (req as any).user = { uid: "founder", email: "founder@example.test" }; next(); });
+    app.use("/api", createPlansRouter({ config: base, requireOwnership: (_req, _res, next) => next(), painter: (v) => v.email === "founder@example.test" }));
+    const server = await new Promise<import("node:http").Server>((resolve) => { const srv = app.listen(0, () => resolve(srv)); });
+    servers.push({ close: () => server.close() });
+    const body = await (await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/api/plans/visibility`)).json();
+    expect(body.admin).toBe(true);
+    // the flag opens no door: the table itself is unchanged
+    expect(body.composable["plan-poo-sit"]).toEqual({ en: false, he: false });
+  });
+
   it("the owner (uid or verified email) may compose an unsigned pattern; nothing reads as reviewed", async () => {
     for (const user of [{ uid: "owner-uid" }, { uid: "someone", email: "Guy@Example.test" }]) {
       const s = await serve(base, user);

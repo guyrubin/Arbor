@@ -43,8 +43,12 @@ describe("a plan book in the reader", () => {
     expect(html).toContain("The toilet champion");
     expect(html).toContain('<bdi data-book-name="">Noa</bdi>&#x27;s special plan');
     expect(html).toContain("data-book-open");
-    // the pattern's shared plate (the DEV placeholder is the runtime fallback on an image error)
-    expect(html).toContain('src="/visuals/plans/plan-poo-sit/PP1.webp"');
+    // the pattern's shared plate: with no plate committed under public/visuals/plans
+    // it is the shared-storage route, read with the app's auth after mount
+    // (lib/plans/planPlateSource) and NEVER a plain <img src>; the DEV
+    // placeholder stays the runtime fallback on an image error
+    expect(html).not.toContain('src="/api/plans/plates/');
+    expect(html).toContain('src="/_dev/plates/plan-poo-sit/PP1.webp"');
     expect(html).toContain('src="/_dev/hero-sheets/placeholder/hands-up.webp"');
   });
 

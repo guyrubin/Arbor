@@ -18,6 +18,7 @@ import KidModeButton from "./KidModeButton";
 import SafetyRing from "./SafetyRing";
 import ChildContextHeader from "./ChildContextHeader";
 import MobileNav from "./MobileNav";
+import PlanSheetEnsurer from "./PlanSheetEnsurer";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { ArborMark } from "../ui/ArborMark";
 import { TabSkeleton } from "../ui/Skeleton";
@@ -648,6 +649,8 @@ export default function Shell() {
 
       </div>
 
+      {/* B-BOOK-75 follow-up: the child's shared plan sheet, ensured from the parent shell (renders nothing). */}
+      <PlanSheetEnsurer />
       <MobileNav />
       {!kidLocked && topicSheet?.childId === childProfile.id && <Suspense fallback={null}><FamilyTopicSheet key={childProfile.id} {...topicSheet} onClose={() => setTopicSheet(null)}/></Suspense>}
       {/* KID-LOCK (W0.9, LEAK 5): these three portal to document.body — outside
