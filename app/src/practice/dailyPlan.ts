@@ -153,7 +153,7 @@ export function whyTemplateLint(lang: WhyLineLang, tmpl: string): "effect-verb" 
 }
 
 // Assert templates are clean at module load time — both languages.
-for (const lang of ["en", "he"] as const) {
+for (const lang of Object.keys(TEMPLATES) as WhyLineLang[]) {
   for (const [key, tmpl] of Object.entries(TEMPLATES[lang])) {
     if (lang === "en" && key === "sparse") continue; // sparse line is a single fixed string — no interpolation
     const hit = whyTemplateLint(lang, tmpl);
