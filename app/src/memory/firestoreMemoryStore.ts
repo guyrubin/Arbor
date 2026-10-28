@@ -29,7 +29,11 @@ export class FirestoreMemoryStore implements MemoryStore {
   }
 
   async appendEvent(event: MemoryLedgerEvent) {
-    await this.families.ensureChild(event.familyId, event.childId);
+    // B-DATA-15: a family that does not own the child never writes to its
+    // ledger (ensureChild alone left the child untouched but still appended).
+    if (!(await this.families.admitsLedgerAppend(event.familyId, event.childId))) {
+      throw new Error("This family is not authorized to write this child's memory.");
+    }
     await this.db
       .collection("children")
       .doc(event.childId)
@@ -52,6 +56,12 @@ export class FirestoreMemoryStore implements MemoryStore {
   }) {
     await this.families.ensureFamilyMembership(input.familyId, input.userId);
     await this.families.ensureChild(input.familyId, input.childId, input.childProfile);
+  }
+
+  /** B-DATA-15: a new child id, issued and parented server-side. */
+  async issueChildId(input: { familyId: string; userId: string }): Promise<string> {
+    await this.families.ensureFamilyMembership(input.familyId, input.userId);
+    return this.families.issueChild(input.familyId);
   }
 
   /** Authorization: is `uid` a member of the family that owns `childId`? */

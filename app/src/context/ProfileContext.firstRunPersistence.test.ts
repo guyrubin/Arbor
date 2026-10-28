@@ -4,6 +4,7 @@ import ts from "typescript";
 import * as goalsModule from "../practice/goalBuilder";
 import type { ChildProfile } from "../types";
 import { CLEARABLE_PROFILE_FIELDS, RETIRED_PROFILE_FIELDS } from "../lib/childAge";
+import * as syncStoreModule from "../lib/syncStore";
 
 /** Execute the real provider's update callback with hooks and Firestore at
  * explicit offline boundaries. No effects run, so no ownership/network work. */
@@ -33,19 +34,24 @@ function harness() {
     "firebase/firestore": { updateDoc, setDoc, doc: (_db: unknown, ...p: string[]) => p.join("/"), deleteField: () => "deleted" },
     "../lib/firebase": { db: {}, auth, firebaseEnabled: true }, "./AuthContext": { useAuth: () => ({ user: { uid: "owner" }, firebaseEnabled: true }) },
     "../initialData": { defaultChildProfile: profiles[0] }, "../lib/childData": {}, "../lib/childLocalState": {},
-    "../lib/api": {}, "../lib/loopEvents": {}, "../lib/screening": {},
+    "../lib/api": { authHeaders: async () => ({}) }, "../lib/loopEvents": {}, "../lib/screening": {},
     "../lib/onboardingGate": { computeNeedsOnboarding: () => false },
     "../lib/childAge": { CLEARABLE_PROFILE_FIELDS, RETIRED_PROFILE_FIELDS },
     "../practice/goalBuilder": goalsModule,
+    // B-DATA-14: the one freshness banner's registry (real module, no I/O).
+    "../lib/syncStore": syncStoreModule,
   };
   const code = ts.transpileModule(readFileSync(new URL("./ProfileContext.tsx", import.meta.url), "utf8"), { compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React, esModuleInterop: true,
   } }).outputText;
   const module = { exports: {} as { ProfileProvider: (props: { children: null }) => TestProvider } };
-  new Function("require", "module", "exports", "localStorage", code)((name: string) => {
+  // B-DATA-15: new child ids are server-issued (synthetic, sequential here).
+  let issuedIds = 0;
+  const fetch = async (url: string) => ({ ok: true, json: async () => (url === "/api/onboarding/child-id" ? { childId: `child-issued-${++issuedIds}` } : {}) });
+  new Function("require", "module", "exports", "localStorage", "fetch", code)((name: string) => {
     if (!(name in imports)) throw new Error("Unmocked boundary: " + name);
     return imports[name];
-  }, module, module.exports, { getItem: () => "child-a" });
+  }, module, module.exports, { getItem: () => "child-a" }, fetch);
   const provider = module.exports.ProfileProvider({ children: null });
   return { ...provider, updateDoc, setDoc, profiles: () => profiles };
 }

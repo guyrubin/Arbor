@@ -511,7 +511,7 @@ function useArborState() {
   // B-TODAY-15: `via` = where the outcome was rated (the step card or the
   // carry-over ask); the event carries via + daysLate (ids/enums/counts only).
   // B-ASKJB-33: a hard-moment row also stores `held` (the two-tap ask).
-  const saveTodayOutcome = async (id: string, outcome: ActionOutcome, via: TodayOutcomeVia = "card", held?: HeldAnswer, options?: { awaitServer?: boolean }) => {
+  const saveTodayOutcome = async (id: string, outcome: ActionOutcome, via: TodayOutcomeVia = "card", held?: HeldAnswer, options?: Pick<ChildWriteOptions, "awaitServer" | "offline">) => {
     const item = actionLoop.find((entry) => entry.id === id);
     if (!item) throw new Error("The selected action is no longer available");
     if (isObservationAction(item)) throw new Error("Observations record a moment, not an efficacy outcome");
@@ -529,7 +529,7 @@ function useArborState() {
    * The caller pins its visible question while an optimistic snapshot changes. */
   const observationAcceptSequence = acceptScope.sequence;
   const observationLifetime = captureOnboardingLifetime?.(childProfile.id);
-  const saveTodayObservation = async (id: string, words: string, options?: { isCurrent?: () => boolean }) => {
+  const saveTodayObservation = async (id: string, words: string, options?: { isCurrent?: () => boolean; offline?: ChildWriteOptions["offline"] }) => {
     const assertCurrent = () => {
       if (acceptScopeRef.current !== acceptScope || acceptScope.sequence !== observationAcceptSequence || observationLifetime?.() === false || options?.isCurrent?.() === false) throw new Error("The observation request is no longer current");
     };
@@ -537,7 +537,8 @@ function useArborState() {
     const item = actionLoop.find(entry => entry.id === id);
     if (!item) throw new Error("The selected observation is no longer available");
     const completed = completeObservation(item, words);
-    await actionLoopCol.upsert(completed, { awaitServer: true });
+    // B-DATA-14: with `offline`, a kept-on-this-phone write answers in bounded time.
+    await actionLoopCol.upsert(completed, { awaitServer: true, ...(options?.offline ? { offline: options.offline } : {}) });
     assertCurrent();
     return completed;
   };
@@ -564,7 +565,9 @@ function useArborState() {
   // B-TODAY-28 — Today's "From your record" answer: ONE row on the same
   // actionLoops ledger (source "from-record", the parent's reflection), never
   // a new collection. ids/enums only in the event.
-  const [recordAnswerWrites, setRecordAnswerWrites] = useState<Record<string, { opener: FromRecordOpener; status: "saving" | "failed" | "saved"; entry?: ActionLoopEntry }>>({});
+  // B-DATA-14: "queued" = kept on this phone (offline / unconfirmed in time),
+  // sending on reconnect; it becomes "saved" when the server acknowledges it.
+  const [recordAnswerWrites, setRecordAnswerWrites] = useState<Record<string, { opener: FromRecordOpener; status: "saving" | "failed" | "saved" | "queued"; entry?: ActionLoopEntry }>>({});
   const recordWritesRef = useRef(new Map<string, Promise<ActionLoopEntry> | null>());
   const recordFromRecordAnswer = (opener: FromRecordOpener, answer: FromRecordAnswer, at = new Date()): Promise<ActionLoopEntry> => {
     if (currentChildRef.current !== childProfile.id) return Promise.reject(new Error("The active child changed"));
@@ -576,10 +579,19 @@ function useArborState() {
     if (saved && !recordWritesRef.current.has(key)) return Promise.resolve(saved);
     const entry = fromRecordEntry(opener, answer, childProfile.id, at);
     setRecordAnswerWrites(rows => ({ ...rows, [key]: { opener, status: "saving" } }));
-    const write = actionLoopCol.upsert(entry, { awaitServer: true })
+    let queued = false;
+    const write = actionLoopCol.upsert(entry, { awaitServer: true, offline: {
+      onQueued: () => { queued = true; },
+      onSynced: () => setRecordAnswerWrites(rows => rows[key]?.status === "queued" ? { ...rows, [key]: { ...rows[key], status: "saved" } } : rows),
+      // Rejected after the receipt: the question comes back with its error.
+      onRejected: () => {
+        recordWritesRef.current.set(key, null);
+        setRecordAnswerWrites(rows => rows[key]?.status === "queued" ? { ...rows, [key]: { opener, status: "failed" } } : rows);
+      },
+    } })
       .then(() => {
         try { track("today_record_answer", { kind: opener.kind, answer }); } catch { /* noop */ }
-        setRecordAnswerWrites(rows => ({ ...rows, [key]: { opener, status: "saved", entry } }));
+        setRecordAnswerWrites(rows => ({ ...rows, [key]: { opener, status: queued ? "queued" : "saved", entry } }));
         return entry;
       })
       .catch((error: unknown) => {
@@ -678,6 +690,8 @@ function useArborState() {
   const [newLogNotes, setNewLogNotes] = useState<string>("");
   const [newLogContext, setNewLogContext] = useState<BehaviorContext | "">("");
   const [newLogPhoto, setNewLogPhoto] = useState<string>("");
+  // B-DATA-16: the guide card id the parent said they used (hard moments only).
+  const [newLogScript, setNewLogScript] = useState<string>("");
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
 
   // Form states: Generated Action Plan
@@ -1441,7 +1455,7 @@ function useArborState() {
   }
   const captureScope = captureScopeRef.current;
   const currentCaptureDraftRef = useRef("");
-  currentCaptureDraftRef.current = JSON.stringify([newLogType, newLogIntensity, newLogDuration, newLogTrigger, newLogResponse, newLogNotes, newLogContext, newLogPhoto, editingLogId]);
+  currentCaptureDraftRef.current = JSON.stringify([newLogType, newLogIntensity, newLogDuration, newLogTrigger, newLogResponse, newLogNotes, newLogContext, newLogPhoto, newLogScript, editingLogId]);
   const captureWritesRef = useRef(new Set<string>());
   const captureRevisionRef = useRef(0);
   const editingLogSnapshotRef = useRef<BehaviorLog | null>(null);
@@ -1456,6 +1470,7 @@ function useArborState() {
     setNewLogResponse("");
     setNewLogNotes("");
     setNewLogPhoto("");
+    setNewLogScript("");
     setEditingLogId(null);
   };
 
@@ -1495,6 +1510,10 @@ function useArborState() {
       resolved: existing ? existing.resolved : false,
       resolutionNotes: existing?.resolutionNotes,
       photoAttachment: newLogPhoto || undefined,
+      // B-DATA-16: only a hard moment carries the script the parent said they
+      // used; removing it in the sheet (or turning the row into a plain
+      // Moment) drops it from the stored row on this full-row write.
+      coRegulationScript: isIncidentType(newLogType) && newLogScript ? newLogScript : undefined,
     };
 
     // A problem's dormant marker cannot turn into a kept thing on conversion.
@@ -1589,6 +1608,7 @@ function useArborState() {
     captureRevisionRef.current++;
     setNewLogContext(log.context || "");
     setNewLogPhoto(log.photoAttachment || "");
+    setNewLogScript(log.coRegulationScript || "");
     setEditingLogId(id);
   };
   const cancelEditLog = () => resetLogForm();
@@ -1602,17 +1622,24 @@ function useArborState() {
   // capture_started is emitted here for a capture (an edit is not one), and
   // pendingCaptureMode is NOT armed — Behaviors must not re-open it later.
   // B-ASKJB-43: `initialTextParentWritten` — the opener knows the words are the parent's own (Ask's composer chain).
-  const [captureSheet, setCaptureSheet] = useState<{ open: boolean; mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialTextParentWritten?: boolean; initialPhoto?: string }>({ open: false });
-  const openCaptureSheet = (opts: { mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialTextParentWritten?: boolean; initialPhoto?: string } = {}) => {
+  //  - `coRegulationScript` (B-DATA-16): opened from a hard-moment guide's
+  //    "I used these words" — the hard-moment form opens with that guide named
+  //    and removable; Save stores the card id on the row.
+  const [captureSheet, setCaptureSheet] = useState<{ open: boolean; mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialTextParentWritten?: boolean; initialPhoto?: string; coRegulationScript?: string }>({ open: false });
+  const openCaptureSheet = (opts: { mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialTextParentWritten?: boolean; initialPhoto?: string; coRegulationScript?: string } = {}) => {
     if (opts.editLogId) startEditLog(opts.editLogId, opts.editLog);
     else {
       if (!opts.review) resetLogForm();
+      // B-DATA-16: every new capture states its own guide (none for a review
+      // of an AI draft), so an earlier sheet's choice never leaks into it.
+      setNewLogScript(opts.coRegulationScript ?? "");
       trackCaptureStarted(opts.review === "ai-draft" ? "ai-draft" : opts.mode ?? "text");
     }
     setCaptureSheet({ open: true, ...opts });
   };
   const closeCaptureSheet = () => {
     captureRevisionRef.current++;
+    setNewLogScript("");
     setCaptureSheet({ open: false });
   };
   useEffect(() => {
@@ -2017,6 +2044,8 @@ function useArborState() {
     setNewLogContext,
     newLogPhoto,
     setNewLogPhoto,
+    newLogScript,
+    setNewLogScript,
     editingLogId,
     startEditLog,
     cancelEditLog,

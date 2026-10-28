@@ -405,11 +405,12 @@ describe("ENG-24 — Today mounts the honest anchor, and only the honest one", (
     // question (#/overview?observe=<id>) is the one thing ahead of it.
     expect(OVERVIEW).toContain("const action = useMemo(() => requestedObservation(actionLoop, observeId) ?? nextChosenAction(actionLoop, topic?.id), [actionLoop, observeId, topic?.id]);");
     expect(OVERVIEW).toContain("const target = retryAction?.scope === scopeLease ? retryAction.action : action;");
-    const save = "(await saveTodayOutcome(target.id, outcome, \"card\", undefined, { awaitServer: true }), target)";
+    // B-DATA-14: both saves take the bounded offline answer (`offline`).
+    const save = "(await saveTodayOutcome(target.id, outcome, \"card\", undefined, { awaitServer: true, offline }), target)";
     expect(OVERVIEW).toContain("const saved = typeof outcome === \"object\"");
-    expect(OVERVIEW).toContain("await saveTodayObservation(target.id, outcome.whatHappened, { isCurrent: () => outcomeMounted.current && currentOutcomeScope.current === scopeLease })");
+    expect(OVERVIEW).toContain("await saveTodayObservation(target.id, outcome.whatHappened, { isCurrent: () => outcomeMounted.current && currentOutcomeScope.current === scopeLease, offline })");
     expect(OVERVIEW).toContain(save);
-    expect(OVERVIEW.indexOf("setReceiptAction({ scope: scopeLease, action: saved })")).toBeGreaterThan(OVERVIEW.indexOf(save));
+    expect(OVERVIEW.indexOf("setReceiptAction({ scope: scopeLease, action: saved, ...(queued ? { queued: true } : {}) })")).toBeGreaterThan(OVERVIEW.indexOf(save));
     expect(OVERVIEW).toContain("outcomeMounted.current && currentOutcomeScope.current === scopeLease");
     const chain = stripComments(read("chooseTodayAction.ts"));
     const at = (s: string) => chain.indexOf(s);

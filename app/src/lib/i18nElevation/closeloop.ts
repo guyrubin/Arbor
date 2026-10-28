@@ -82,6 +82,14 @@ export const en: Record<string, string> = {
   "elev.closeloop.hm.matched": "Closest to what you have been noting",
   "elev.closeloop.hm.allGuides": "All guides ({n})",
   "elev.closeloop.hm.fewer": "Show fewer",
+  // ── B-DATA-16: the guide's words the parent says they used, stored on the
+  //    hard moment (coRegulationScript). "Used" is the parent's action, never
+  //    "helped" — only the parent's own held answer says that.
+  "elev.closeloop.hm.usedKeep": "I used these words",
+  "elev.closeloop.hm.usedLabel": "Words you used",
+  "elev.closeloop.hm.usedFrom": "From the {guide} guide",
+  "elev.closeloop.hm.usedRemove": "Remove",
+  "elev.closeloop.hm.usedLead": "Last time you used these words with {name}:",
 
   // ── Builder E2 · OBJ-BEH-09: the Routines card on Plans. A reusable
   //    co-regulation checklist is part of running a plan, so its strings live
@@ -172,6 +180,12 @@ export const he: Record<string, string> = {
   "elev.closeloop.hm.matched": "הכי קרוב למה שתיעדתם לאחרונה",
   "elev.closeloop.hm.allGuides": "כל המדריכים ({n})",
   "elev.closeloop.hm.fewer": "להציג פחות",
+  // ── B-DATA-16
+  "elev.closeloop.hm.usedKeep": "השתמשתי במילים האלה",
+  "elev.closeloop.hm.usedLabel": "המילים שהשתמשתם בהן",
+  "elev.closeloop.hm.usedFrom": "מתוך המדריך ״{guide}״",
+  "elev.closeloop.hm.usedRemove": "להסיר",
+  "elev.closeloop.hm.usedLead": "בפעם הקודמת השתמשתם במילים האלה עם {name}:",
 
   // ── Builder E2 · OBJ-BEH-09
   "elev.closeloop.routines.title": "שגרות",

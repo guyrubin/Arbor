@@ -548,11 +548,10 @@ function readSrc(relPath) {
 
 // ── F18b: BehaviorLog retains 6 required fields ───────────────────────────────
 // Required: intensity, context, trigger, response, photoAttachment, coRegulationScript
-// NOTE: coRegulationScript is NOT present in the current codebase -- PRE-EXISTING gap.
-// The field was identified by the spec as a "keep live" requirement but was never
-// in BehaviorLog. Gate: WARN (documents gap, does not block Wave 1; any wave that
-// touches BehaviorLog / behavior-log UI must add this field).
-// Owned by: arbor-memory pod (add coRegulationScript?: string to BehaviorLog in types.ts).
+// B-DATA-16 closed the long-standing gap: coRegulationScript is the guide card id
+// the parent said they used, written by the hard-moment capture (ArborContext
+// handleAddLog) and read by "what helped last time" (hardMomentLastTime.ts).
+// A missing field still WARNs here; removing one is a regression to fix.
 {
   const text = readSrc("types.ts");
   if (!text) {
