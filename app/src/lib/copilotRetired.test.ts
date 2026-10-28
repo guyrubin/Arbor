@@ -64,7 +64,7 @@ describe("B-GROWTH-22 · #/copilot lands on My child", () => {
     for (const lang of ["en", "he"] as const) {
       expect(Object.keys(PORTRAIT_COPY[lang])).not.toContain("copilot");
       expect(Object.keys(PORTRAIT_COPY[lang])).not.toContain("copilotSub");
-      for (const key of ["prac.copilot.title", "elev.growth.link.copilot.label", "elev.growth.more.sub", "elev.growthTruth.copilot.focus.title", "elev.fullpicture.title"]) {
+      for (const key of ["nav.tab.copilot", "elev.waveR.why.copilotFocus", "elev.waveR.why.copilotWatch", "prac.copilot.title", "elev.growth.link.copilot.label", "elev.growth.more.sub", "elev.growthTruth.copilot.focus.title", "elev.fullpicture.title"]) {
         expect(translate(lang, key), `${lang} ${key}`).toBe(key);
       }
     }
