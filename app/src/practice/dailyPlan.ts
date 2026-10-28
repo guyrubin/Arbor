@@ -142,8 +142,8 @@ const TEMPLATES: Record<WhyLineLang, Record<keyof typeof WHY_LINE_TEMPLATES, str
    מאבחן, בודק, מודד, מאמן; comprehension: מבין/מבינה, עוקב אחר הוראות. */
 const HE_EDGE_BEFORE = "(?<![\u05D0-\u05EA])[והשלבכמ]?";
 const HE_EDGE_AFTER = "(?:ת|ה|ים|ות)?(?![\u05D0-\u05EA])";
-export const HE_EFFECT_VERBS_RE = new RegExp(`${HE_EDGE_BEFORE}(?:משפר|בונ|מחזק|מפתח|מפחית|מרגיע|מתקן|מעריך|מאבחן|בודק|מודד|מאמן)${HE_EDGE_AFTER}`, "u");
-export const HE_COMPREHENSION_RE = new RegExp(`${HE_EDGE_BEFORE}(?:מבינ|מבין)${HE_EDGE_AFTER}|עוקב(?:ת|ים|ות)? אחר הוראות`, "u");
+export const HE_EFFECT_VERBS_RE = new RegExp(`${HE_EDGE_BEFORE}(?:משפר|בונ|מחזק|מפתח|מפחית|מרגיע|מתקן|מעריך|מאבחן|בודק|מודד|מאמן)${HE_EDGE_AFTER}`, 'u');
+export const HE_COMPREHENSION_RE = new RegExp(`${HE_EDGE_BEFORE}(?:מבינ|מבין)${HE_EDGE_AFTER}|עוקב(?:ת|ים|ות)? אחר הוראות`, 'u');
 
 /** The module-load lint for one template table: the first banned token found, or null. */
 export function whyTemplateLint(lang: WhyLineLang, tmpl: string): "effect-verb" | "comprehension" | null {
