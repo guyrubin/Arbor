@@ -5,7 +5,7 @@
  * corpora (every string literal of three words or more), the round-10
  * acceptance table (__fixtures__/handoffFloorAcceptance.json, 292 rows, copied
  * read-only from a9b91e66), the critic's fresh sets (__fixtures__/
- * handoffFloorFreshSets.json: r9-r16, floor-probe 1-4) and every adjacent
+ * handoffFloorFreshSets.json: r9-r17, floor-probe 1-4) and every adjacent
  * pair of rows as a two-sentence note — and for five parent texts each (the
  * row's own, none, an EN and an HE hard moment, and the note itself):
  *
@@ -31,7 +31,10 @@
  *      negates a change, never an unspoken reassurance — and no deferral
  *      (round 16); a negated list is masked whole, a vital sign's absence
  *      qualifies, and timing is an allow-list: no time phrase but an
- *      immediate one outside the hard-moment condition (round 17).
+ *      immediate one outside the hard-moment condition (round 17); a negated
+ *      before / until stays a deferral, a condition after the action that is
+ *      not about the hard moment is its time, a visit is the object only when
+ *      booked, and "change" counts only bare or on the hard moment (round 18).
  */
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -197,7 +200,7 @@ function governingCondition(clause: string, command: string): string | null {
    Round 17 (P1-C): a negated finding's list is masked whole ("no signs of biting or hitting", "בכי או צרחות"),
    a vital sign's absence qualifies ("no signs of normal breathing"), and timing is an allow-list: outside its
    hard-moment condition a restored piece carries no time phrase but an immediate one. */
-const T_CHANGE = /\b(?:calm\p{L}*|settl\p{L}*|improv\p{L}*|better|progress\p{L}*|stop\p{L}*|eas(?:e|es|ed|ing)|respon\p{L}*|chang\p{L}*|recover\p{L}*|let\s+up)\b|(?<!\p{L})[ולשה]?(?:רגיע\p{L}*|נרגע\p{L}*|הרגע\p{L}*|שיפור|השתפר\p{L}*|מפסיק\p{L}*|הפסק\p{L}*|נפסק\p{L}*|נעצר\p{L}*|פוסק\p{L}*|התקדמות|הקלה|שינוי|תגוב\p{L}*)(?!\p{L})/iu;
+const T_CHANGE = /\b(?:calm\p{L}*|settl\p{L}*|improv\p{L}*|better|progress\p{L}*|stop\p{L}*|eas(?:e|es|ed|ing)|respon\p{L}*|recover\p{L}*|let\s+up)\b|(?<!\p{L})[ולשה]?(?:רגיע\p{L}*|נרגע\p{L}*|הרגע\p{L}*|שיפור|השתפר\p{L}*|מפסיק\p{L}*|הפסק\p{L}*|נפסק\p{L}*|נעצר\p{L}*|פוסק\p{L}*|התקדמות|הקלה|תגוב\p{L}*)(?!\p{L})/iu;
 const T_VITAL = /\b(?:breath\p{L}*|conscious\p{L}*|responsive\p{L}*|pulse|heartbeat|awake)\b|(?<!\p{L})[ולשהב]?(?:נשימה|נושם|נושמת|הכרה|דופק|מגיב|מגיבה)(?!\p{L})/iu;
 const T_HARM = /\b(?:hurt\p{L}*|harm\p{L}*|injur\p{L}*|danger\p{L}*|unsafe|bleed\p{L}*|bit|bites?|biting|hit|hits|hitting|kick\p{L}*|throw\p{L}*|threw|scream\p{L}*|cr(?:y|ies|ied|ying)|tantrum\p{L}*|meltdown\p{L}*|suicid\p{L}*|chok\p{L}*|breath\p{L}*|fever\p{L}*|seizure\p{L}*|faint\p{L}*|vomit\p{L}*|r[au]ns?\s+(?:away|off))\b|(?<!\p{L})[ושכה]{0,2}(?:פוגע\p{L}*|נפגע\p{L}*|פגיע\p{L}*|מרביץ\p{L}*|הרביץ\p{L}*|נשך\p{L}*|נושך\p{L}*|בועט\p{L}*|בעט\p{L}*|דוחף\p{L}*|זורק\p{L}*|צורח\p{L}*|צרח\p{L}*|בורח\p{L}*|ברח\p{L}*|בוכה|בכי|בכה|סכנה|מסוכן\p{L}*|התקף\p{L}*|חום|נשימה|מקיא\p{L}*|התעלפ\p{L}*|להרביץ|לנשוך|לבעוט|לדחוף|לזרוק|לצרוח|לברוח|לבכות|להכות|לפגוע|נשיכ\p{L}*|הרבצ\p{L}*|מכות|בעיט\p{L}*|דחיפ\p{L}*)(?!\p{L})/iu;
 const T_DISTRESS = /\b(?:upset|distress\p{L}*|agitat\p{L}*|overwhelm\p{L}*|panic\p{L}*|scared|afraid|frightened|anxious|terrified|inconsolable)\b|(?<!\p{L})(?:ו|ש|כש|ה)?(?:נסער\p{L}*|מתוסכל\p{L}*|כועס\p{L}*|מפוחד\p{L}*|מבוהל\p{L}*|נבהל\p{L}*|לחוץ|לחוצה|מוצף|מוצפת|פאניקה|בהלה)(?!\p{L})/iu;
@@ -224,8 +227,18 @@ const negatedObjects = (text: string) => [...text.matchAll(new RegExp(NEGATED_FI
     if (join[0].trim().startsWith(",") && !(T_HARM.test(piece) || hasIncidentCue(piece) || T_CHANGE.test(piece))) break;
     end += join[0].length + piece.length;
   }
-  return { start, end, text: text.slice(start, end) };
+  return { start, end, text: text.slice(start, end), object: text.slice(start + m[0].length + (tail.length - afterHead.length), end) };
 });
+/* Round 18 (P1-C, mirroring P2): "change" is a negated change only bare ("no signs of change", "לשינוי") or on the
+   hard moment ("change in the crying", "שינוי בבכי"); "mood changes", "behavior changes" are not. */
+const T_CHANGE_NOUN = /\bchang\p{L}*|(?<!\p{L})[ולשה]?שינוי\p{L}*/giu;
+const changeCounts = (object: string) => object.search(T_CHANGE_NOUN) >= 0
+  && (object.replace(T_CHANGE_NOUN, " ").replace(/\b(?:any|a|an|the|real|significant|further|his|her)\b|(?<!\p{L})(?:כלשהו|כלשהי|משמעותי)(?!\p{L})/giu, " ").trim() === ""
+    || words(object).some((w) => T_HARM.test(w) || T_DISTRESS.test(w) || T_HARM.test(w.replace(/^[בלמ]/u, ""))));
+/** A vital sign's own absence, not a problem with it ("breathing trouble", "קשיי נשימה" are findings). */
+const T_VITAL_PROBLEM = /\b(?:troubl\p{L}*|problem\p{L}*|difficult\p{L}*|issue\p{L}*|asthma\p{L}*|disorder\p{L}*)\b|(?:קוש|קשי|בעי|קוצר|אסתמ|הפרע)/iu;
+const vitalAbsent = (object: string) => T_VITAL.test(object) && !T_VITAL_PROBLEM.test(object);
+const negatesChange = (o: { text: string; object: string }) => T_CHANGE.test(o.text) || vitalAbsent(o.object) || changeCounts(o.object);
 const blankSpans = (text: string, spans: { start: number; end: number }[]) => spans.reduce((t, o) => t.slice(0, o.start) + " ".repeat(o.end - o.start) + t.slice(o.end), text);
 /** What the condition asserts: a harm, an incident (main's cues) or a distress state outside every negated finding. */
 const assertsMoment = (condition: string) => {
@@ -236,12 +249,12 @@ const assertsMoment = (condition: string) => {
 const qualifies = (condition: string) => {
   const found = negatedObjects(condition);
   const asserted = blankSpans(condition, found);
-  return T_HARM.test(asserted) || hasIncidentCue(asserted) || found.every((o) => T_CHANGE.test(o.text) || T_VITAL.test(o.text));
+  return T_HARM.test(asserted) || hasIncidentCue(asserted) || found.every(negatesChange);
 };
 /** A condition about the hard moment itself: qualifying, and naming a moment or a negated change / vital sign. */
 const moment = (condition: string) => qualifies(condition) && (assertsMoment(condition) || condition.search(T_CONDITION_NEGATION) >= 0
-  || negatedObjects(condition).some((o) => T_CHANGE.test(o.text) || T_VITAL.test(o.text)));
-type Run = { start: number; end: number; text: string; parts?: Run[] };
+  || negatedObjects(condition).some(negatesChange));
+type Run = { start: number; end: number; text: string; parts?: Run[]; sentence?: number };
 const SENTENCE_SPLIT = /(?<=(?<!\b(?:Dr|Mr|Mrs|Ms|Prof|St))[.!?])\s+|;\s*|\n/u;
 const piecesOf = (text: string, sep: RegExp): Run[] => {
   const out: Run[] = [];
@@ -272,25 +285,44 @@ function conditionRuns(piece: string): Run[] {
         text += `,${next.text}`;
         parts.push({ start: sentence.start + next.start, end: sentence.start + next.end, text: next.text });
       }
-      return [{ start: parts[0].start, end: sentence.start + chunks[j].end, text, parts }];
+      return [{ start: parts[0].start, end: sentence.start + chunks[j].end, text, parts, sentence: sentence.start }];
     });
   });
 }
-const T_IMMEDIATE = /\b(?:right\s+now|now|right\s+away|straight\s+away|at\s+once|immediately|today|as\s+soon\s+as\s+possible|asap|without\s+(?:delay|waiting)|urgently|no\s+matter\s+(?:the\s+time|how\s+late(?:\s+it\s+is)?|what\s+time)|(?:at\s+)?any\s+(?:time|hour)|day\s+or\s+night)\b|(?<!\p{L})ו?(?:מיד|מייד|מיידית|עכשיו|היום|בהקדם(?:\s+האפשרי)?|(?:ללא|בלי)\s+דיחוי|בכל\s+(?:שעה|זמן)|לא\s+משנה\s+(?:מה\s+)?השעה)(?!\p{L})/giu;
+const T_IMMEDIATE = /\b(?:right\s+now|now|right\s+away|straight\s+away|at\s+once|immediately|today|as\s+soon\s+as\s+possible|asap|without\s+(?:delay|waiting)|urgently|no\s+matter\s+(?:the\s+time|how\s+late(?:\s+it\s+is)?|what\s+time)|(?:at\s+)?any\s+(?:time|hour)(?!\s+(?:he|she|they|there|you|it|the|his|her)\b)|day\s+or\s+night)\b|(?<!\p{L})ו?(?:מיד|מייד|מיידית|עכשיו|היום|בהקדם(?:\s+האפשרי)?|(?:ללא|בלי)\s+דיחוי|בכל\s+(?:שעה|זמן)|לא\s+משנה\s+(?:מה\s+)?השעה)(?!\p{L})/giu;
 const T_TIME = /\b(?:tomorrow|tonight|morning|afternoon|evening|night|noon|lunch(?:time)?|days?|weeks?|weekends?|fortnight|months?|years?|hours?|minutes?|spring|summer|autumn|winter|holidays?|vacations?|breaks?|terms?|semesters?|next|later|eventually|soon|sometime|upcoming|wait\p{L}*|before|after|until|till|once|end(?:s|ing)?|start(?:s|ing)?)\b|\b(?:at|during|until|till|before|after|for|by|on)\s+(?:(?:the|a|an|his|her|their|our|your|next|upcoming|regular|routine|annual|end-of-\p{L}+|parent-teacher|parent|parents['’]?)\s+){0,3}(?:meetings?|conferences?|evenings?|visits?|appointments?|check-?ups?|reviews?|pick-?ups?|drop-?offs?)\b|\bin\s+(?:a|an|one|two|three|\d+|a\s+few|a\s+couple\s+of)\s+\p{L}+|(?<!\p{L})[ובלמהכש]{0,3}(?:יום|ימים|יומיים|שבוע\p{L}*|חודש\p{L}*|שנה|שנים|שנתיים|שעה|שעות|שעתיים|דקות|בוקר|ערב|לילה|צהריים|מחר|סוף|קיץ|חורף|חג|חגים|חופש\p{L}*|פגרה|הבא|הבאה|הקרוב\p{L}*|המשך|אחרי|לאחר|לפני|עד|בעוד|מתישהו|חכו|לחכות|להמתין|המתינו|לדחות|מסתיימ\p{L}*|נגמר\p{L}*|לקראת)(?!\p{L})|(?<!\p{L})(?:ב|ל)(?:פגיש\p{L}*|אסיפ\p{L}*|אספ\p{L}*|ביקור\p{L}*|איסוף)(?!\p{L})/iu;
-const T_NEGATED_TIMING = /\b(?:not|rather\s+than|instead\s+of|(?:do\s+not|don['’]t|never)\s+wait|without\s+waiting)\b[^,;:.!?—–\n]*?(?=\s+but\b|[,;:.!?—–\n]|$)|(?<!\p{L})ו?(?:לא|אל\s+תחכו|בלי\s+לחכות|במקום)(?!\p{L})[^,;:.!?—–\n]*?(?=\s+אלא(?!\p{L})|[,;:.!?—–\n]|$)/giu;
+/* Round 18 (P1-C): a negation that governs before / until / till / earlier / sooner (לפני, עד, מוקדם) is a deferral
+   ("but not before next week", "רק לא לפני סוף החודש") and is never stripped; "don't wait until pickup" is. */
+const T_NEGATED_TIMING = /\b(?:(?:not|rather\s+than|instead\s+of)(?!\s+(?:before|until|till|earlier|sooner)\b)|(?:do\s+not|don['’]t|never)\s+wait|without\s+waiting)\b[^,;:.!?—–\n]*?(?=\s+but\b|[,;:.!?—–\n]|$)|(?<!\p{L})ו?(?:(?:לא|במקום)(?!\p{L})(?!\s+(?:לפני|עד|מוקדם)(?!\p{L}))|(?:אל\s+תחכו|בלי\s+לחכות)(?!\p{L}))[^,;:.!?—–\n]*?(?=\s+אלא(?!\p{L})|[,;:.!?—–\n]|$)/giu;
 /** A monitoring duration is part of a condition; this test's own list. */
 const T_DURATION = /\b(?:after|within|over|for|by)\s+(?:(?:a|an|one|two|three|five|ten|twenty|\d+|a\s+few|several)\s+)?(?:minutes?|hours?|days?|weeks?|months?)\b|\bby\s+(?:lunch(?:time)?|noon|bedtime)\b|(?<!\p{L})ו?(?:אחרי|לאחר|תוך|כעבור|במשך|עד)\s+(?:\S+\s+)?(?:דקות|דקה|שעה|שעות|שעתיים|יום|ימים|יומיים|שבוע\p{L}*|חודש\p{L}*|הצהריים)(?!\p{L})/giu;
 const onlyDuration = (text: string) => !T_TIME.test(text.replace(T_DURATION, (m) => " ".repeat(m.length)));
-/** A visit with a professional is the escalation's object, not its timing. */
-const T_VISIT_PRO = /\b(?:visits?|appointments?|check-?ups?|consultations?|evaluations?|assessments?)\s+(?:to|with|at)\s+(?:\S+\s+){0,2}?(?:pediatrician|paediatrician|doctor|gp|nurse|therapist|psychologist|psychiatrist|specialist|clinician|professional|dr\.?\s*\p{Lu}\p{L}*)|(?:ביקור|תור|פגישה|בדיקה|הערכה|אבחון|ייעוץ)\s+(?:(?:אצל|עם)\s+)?(?:ה|ל)?(?:רופא|אחות|פסיכולוג|מטפל|קלינאי|יועצ|איש\s+מקצוע|ד"ר)/giu;
-/** A non-immediate time phrase outside the piece's hard-moment conditions, its actions and its negated deferrals. */
+/** A visit with a professional is the escalation's object, not its timing, only when the piece books, suggests,
+ *  refers or schedules it (round 18); "during their visit with the pediatrician", "בביקור אצל רופאת הילדים" is timing. */
+const T_VISIT_PRO = /\b(?:book|schedule|arrange|suggest|recommend|refer|make|set\s+up|request|offer)\s+(?:\S+\s+){0,2}?(?:visits?|appointments?|check-?ups?|consultations?|evaluations?|assessments?)\s+(?:to|with|at)\s+(?:\S+\s+){0,2}?(?:pediatrician|paediatrician|doctor|gp|nurse|therapist|psychologist|psychiatrist|specialist|clinician|professional|dr\.?\s*\p{Lu}\p{L}*)|(?<!\p{L})ו?(?:קבעו|לקבוע|הציעו|להציע|הפנו|להפנות|המליצו|להמליץ|תאמו|לתאם)\s+(?:\S+\s+){0,2}?(?:ביקור|תור|פגישה|בדיקה|הערכה|אבחון|ייעוץ)\s+(?:(?:אצל|עם)\s+)?(?:ה|ל)?(?:רופא|אחות|פסיכולוג|מטפל|קלינאי|יועצ|איש\s+מקצוע|ד"ר)/giu;
+/** A non-immediate time phrase outside the piece's hard-moment conditions, its actions and its negated deferrals;
+ *  or (round 18) a condition after an action that is not about the hard moment ("tell the family when they pick
+ *  him up", "ספרו להורים כשתראו אותם"): that is the time of the action, whatever its words. */
 function timingIn(text: string): string | null {
+  const plain = text.replace(T_IMMEDIATE, (m) => " ".repeat(m.length)); // "as soon as possible", "any time" open no condition
+  const runs = conditionRuns(plain);
+  for (const r of runs) {
+    if (moment(r.text)) continue;
+    if (plain.slice(r.sentence ?? 0, r.start).search(ACTION_TEST) >= 0) return r.text.trim();
+  }
   // a hard-moment condition is no timing: its first chunk, and each further chunk of it that holds no calendar time
-  const spans: { start: number; end: number }[] = conditionRuns(text).filter((r) => moment(r.text))
+  const spans: { start: number; end: number }[] = runs.filter((r) => moment(r.text))
     .flatMap((r) => (r.parts ?? [r]).filter((part, i) => i === 0 || onlyDuration(part.text)));
-  for (const re of [ACTION_TEST, T_VISIT_PRO]) for (const m of text.matchAll(re)) spans.push({ start: m.index ?? 0, end: (m.index ?? 0) + m[0].length });
-  const masked = blankSpans(text, spans).replace(T_NEGATED_TIMING, (m) => (T_TIME.test(m) ? " ".repeat(m.length) : m))
+  // the actions are no timing, but "visit" is left to read ("during their visit" is the time of the action), and an
+  // action stem inside another word is no action ("פני" in "לפני")
+  for (const m of text.matchAll(ACTION_TEST)) {
+    const at = m.index ?? 0;
+    if (/^visit/iu.test(m[0]) || /\p{L}/u.test(text[at - 1] ?? "") || /\p{L}/u.test(text[at + m[0].length] ?? "")) continue;
+    spans.push({ start: at, end: at + m[0].length });
+  }
+  for (const m of text.matchAll(T_VISIT_PRO)) spans.push({ start: m.index ?? 0, end: (m.index ?? 0) + m[0].length });
+  // negated deferrals are read on the note's own words, before anything is blanked
+  const masked = blankSpans(text.replace(T_NEGATED_TIMING, (m) => (T_TIME.test(m) ? " ".repeat(m.length) : m)), spans)
     .replace(T_IMMEDIATE, (m) => " ".repeat(m.length)).replace(T_ENCOURAGING, (m) => " ".repeat(m.length));
   return T_TIME.exec(masked)?.[0] ?? null;
 }
@@ -389,7 +421,8 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
 describe("B-ASKJB-44 · the wrapper is monotonic over main's floor (property, every corpus, EN + HE)", () => {
   it("the corpora are all present", () => {
     expect(acceptance.length).toBe(292);
-    expect(fresh.length).toBe(455);
+    expect(fresh.length).toBe(530);
+    expect(fresh.filter((r) => r.id.startsWith("r17-")).length).toBe(75);
     expect(fresh.filter((r) => r.id.startsWith("r16-")).length).toBe(103);
     expect(fresh.filter((r) => r.id.startsWith("r15-")).length).toBe(46);
     expect(fresh.filter((r) => r.id.startsWith("r14-")).length).toBe(36);
@@ -406,7 +439,7 @@ describe("B-ASKJB-44 · the wrapper is monotonic over main's floor (property, ev
   it.each([
     ["main's clinicalScan*.test.ts corpora", () => mainCorpus],
     ["the 292-row acceptance table (a9b91e66, read-only)", () => acceptance],
-    ["the critic's fresh sets r9 / r10 / r11 / r12 / r13 / r14 / r15 / r16 / floor-probe 1-4", () => fresh],
+    ["the critic's fresh sets r9 / r10 / r11 / r12 / r13 / r14 / r15 / r16 / r17 / floor-probe 1-4", () => fresh],
     ["every adjacent pair of rows as one two-sentence note", () => pairs],
   ] as const)("%s", (_name, corpus) => {
     const stats: Stats = { runs: 0, restored: 0, removed: 0, untouched: 0 };
