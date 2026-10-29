@@ -43,7 +43,6 @@ const KIDMODE_FILES = readdirSync(KIDMODE_DIR)
 // EarlyReadingTrack and JourneyTab were child-facing yet unscanned).
 const PRACTICE_DIR = path.join(COMPONENTS, "practice");
 const PARENT_REGISTER_PRACTICE = new Set([
-  "DevelopmentCopilot.tsx", // parent clinical surface (own firewall test)
   "GoalBuilderModal.tsx", // parent goal picker (CI-28, clinical-gate copy)
   "SessionLengthChips.tsx", // parent time-budget selector (CI-31)
 ]);

@@ -69,41 +69,12 @@ export const en: Record<string, string> = {
   // (B-GROWTH-26: the five practice-domain names moved to the one domain
   //  registry, lib/i18nElevation/domains.ts.)
 
-  // ── Builder L · R22 · the Full Picture (DevelopmentCopilot) chrome. The
-  //    whole body rendered English under lang=he. Counts and mechanism only —
-  //    no band, verdict or trend crosses into either language (law 1).
-  "elev.growthTruth.copilot.eyebrow": "Growth",
-  "elev.growthTruth.copilot.trustNote": "Counts reflect parent-observed data only. They are a conversation starter for professionals — never a diagnosis.",
-  "elev.growthTruth.copilot.domains.title": "Domain picture — age {age}",
-  "elev.growthTruth.copilot.domains.count": "{reached} of {total} milestones noticed",
-  "elev.growthTruth.copilot.domains.mechanism": "More play and observation will add to the picture.",
-  "elev.growthTruth.copilot.domains.limits": "We show counts of what you've noticed — not a score or a “developmental age.” Home observation can't honestly support either. A professional assessment is what turns this into conclusions.",
-  "elev.growthTruth.copilot.focus.title": "This week's focus",
-  "elev.growthTruth.copilot.focus.cta": "Today's mission →",
-  "elev.growthTruth.copilot.watch.evidence": "Evidence: {text}",
-  "elev.growthTruth.copilot.watch.prepare": "Prepare a professional summary →",
-  "elev.growthTruth.copilot.history.title": "Weekly history",
-  "elev.growthTruth.copilot.history.empty": "The first weekly snapshot will appear here once the dashboard has loaded practice data. It records how many milestones you've noticed in each domain — a log, not a score.",
-  "elev.growthTruth.copilot.history.count": "{reached} of {total} noticed",
-  "elev.growthTruth.copilot.share.title": "Share with a professional",
-  "elev.growthTruth.copilot.share.body": "A speech-language professional, psychologist or pediatrician gets months of between-session data in one paragraph — the thing the single-skill practice apps never close the loop on.",
-  "elev.growthTruth.copilot.share.copy": "Copy summary",
-  "elev.growthTruth.copilot.share.copied": "Copied",
-  "elev.growthTruth.copilot.share.reports": "Full reports →",
-  // The summary itself stays in one stable language for the professional who
-  // reads it (the same rule growthTruth's exportEvidence follows). Saying so
-  // is the honest half: the parent is told why the block below is English.
-  "elev.growthTruth.copilot.share.lang": "The summary below is written in English so any professional can read it.",
-  "elev.growthTruth.copilot.share.blocked": "This summary did not pass Arbor's export safety check, so nothing was exported. Please try again after your next practice session.",
+  // (B-GROWTH-22: the Full Picture's chrome keys left with the retired #/copilot leaf.)
 
   // ── Builder L · R22 · the Milestones map's celebrate affordance
   "elev.growthTruth.ms.celebrate": "Celebrate",
 
 
-  // Builder M — R25 — #/copilot demotion disclosure and its door to #/development.
-  "elev.growthTruth.copilot.more.title": "The fuller picture",
-  "elev.growthTruth.copilot.more.sub": "Areas to keep watching, weekly history, practice moments and the clinician summary.",
-  "elev.growthTruth.copilot.more.door": "Open Development",
 
   // Builder M — R25 — #/profile demotion disclosure (chapters 3-7 and the jump strip).
   "elev.growthTruth.profile.more.title": "The rest of the story",
@@ -170,35 +141,11 @@ export const he: Record<string, string> = {
 
   // (B-GROWTH-26: שמות התחומים עברו למרשם התחומים, lib/i18nElevation/domains.ts.)
 
-  // ── Builder L · R22 · התמונה המלאה (DevelopmentCopilot)
-  "elev.growthTruth.copilot.eyebrow": "התפתחות",
-  "elev.growthTruth.copilot.trustNote": "הספירות משקפות רק מה שאתם שמתם לב אליו. הן פתח לשיחה עם איש מקצוע — לעולם לא אבחנה.",
-  "elev.growthTruth.copilot.domains.title": "תמונת התחומים — גיל {age}",
-  "elev.growthTruth.copilot.domains.count": "{reached} מתוך {total} אבני דרך שסימנתם",
-  "elev.growthTruth.copilot.domains.mechanism": "עוד משחק ועוד תצפית יוסיפו לתמונה.",
-  "elev.growthTruth.copilot.domains.limits": "אנחנו מציגים ספירה של מה ששמתם לב אליו — לא ציון ולא ״גיל התפתחותי״. תצפית בבית לא באמת יכולה לתמוך באף אחד מהשניים. הערכה מקצועית היא מה שהופך את זה למסקנות.",
-  "elev.growthTruth.copilot.focus.title": "המיקוד של השבוע",
-  "elev.growthTruth.copilot.focus.cta": "המשימה של היום ←",
-  "elev.growthTruth.copilot.watch.evidence": "מה נצפה: {text}",
-  "elev.growthTruth.copilot.watch.prepare": "להכין סיכום לאיש מקצוע ←",
-  "elev.growthTruth.copilot.history.title": "היסטוריה שבועית",
-  "elev.growthTruth.copilot.history.empty": "התמונה השבועית הראשונה תופיע כאן אחרי שייאסף מספיק תרגול. היא רושמת כמה אבני דרך סימנתם בכל תחום — יומן, לא ציון.",
-  "elev.growthTruth.copilot.history.count": "{reached} מתוך {total} שסימנתם",
-  "elev.growthTruth.copilot.share.title": "לשתף עם איש מקצוע",
-  "elev.growthTruth.copilot.share.body": "קלינאית תקשורת, פסיכולוג או רופא ילדים מקבלים חודשים של מידע מהבית בפסקה אחת — בדיוק מה שאפליקציות תרגול בודדות אף פעם לא סוגרות.",
-  "elev.growthTruth.copilot.share.copy": "להעתיק סיכום",
-  "elev.growthTruth.copilot.share.copied": "הועתק",
-  "elev.growthTruth.copilot.share.reports": "כל הדוחות ←",
-  "elev.growthTruth.copilot.share.lang": "הסיכום שלמטה כתוב באנגלית כדי שכל איש מקצוע יוכל לקרוא אותו.",
-  "elev.growthTruth.copilot.share.blocked": "הסיכום לא עבר את בדיקת הבטיחות של ארבור, ולכן שום דבר לא יוצא. נסו שוב אחרי מפגש התרגול הבא.",
+  // (B-GROWTH-22: מפתחות התמונה המלאה יצאו עם #/copilot.)
 
   "elev.growthTruth.ms.celebrate": "לחגוג",
 
 
-  // Builder M — R25 — #/copilot demotion disclosure and its door to #/development.
-  "elev.growthTruth.copilot.more.title": "התמונה הרחבה",
-  "elev.growthTruth.copilot.more.sub": "תחומים להמשך מעקב, היסטוריה שבועית, רגעי תרגול והסיכום לאיש המקצוע.",
-  "elev.growthTruth.copilot.more.door": "פתחו את מרחב ההתפתחות",
 
   // Builder M — R25 — #/profile demotion disclosure (chapters 3-7 and the jump strip).
   "elev.growthTruth.profile.more.title": "המשך הסיפור",

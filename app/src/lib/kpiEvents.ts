@@ -94,6 +94,13 @@ export const KpiEvent = {
   /** "This is {name}'s plan": a parent approved an Everyday plan — the first
    *  useful action the BD-54 funnel reads. Pattern id and language only. */
   PlanApproved: "plan_approved",
+  /* ── Kids books and games (B-BOOK-51, B-GAME-18) ───────────────────────── */
+  /** A book opened in Kid Mode: catalogue book id, language, own|stock hero. */
+  BookOpened: "book_opened",
+  /** A book read to its true ending in this sitting (never a resumed END). */
+  BookFinished: "book_finished",
+  /** One game sitting began (a start, or a Play again). */
+  GameSitting: "game_sitting",
 } as const;
 
 /** The capture entry modes (mirrors ArborContext's CaptureMode union). */
@@ -472,11 +479,15 @@ export type LiveUnavailableReason = (typeof LIVE_UNAVAILABLE_REASONS)[number];
  * Maps a failed Live start to its reason, or null when the failure is not an
  * availability signal (a mic denial, a paywall, a quota/consent refusal and a
  * mid-start timeout are told to the parent elsewhere and are not counted).
- * `stage` is where the attempt was: minting the token, or opening the socket.
+ * `stage` is where the attempt was: opening the microphone (B-AIOPS-02: it
+ * opens BEFORE any token is minted), minting the token, or opening the socket.
+ * Nothing that fails at the microphone stage is an availability signal — a
+ * refused, missing or stuck microphone says nothing about Live.
  * "live-closed-before-open" is the depleted-prepay signature (the provider
  * accepts the socket handshake and closes it before setup).
  */
-export function liveUnavailableReason(err: unknown, stage: "mint" | "socket"): LiveUnavailableReason | null {
+export function liveUnavailableReason(err: unknown, stage: "mic" | "mint" | "socket"): LiveUnavailableReason | null {
+  if (stage === "mic") return null;
   const message = err instanceof Error ? err.message : "";
   if (message === "live-closed-before-open") return "closed_before_open";
   if (message === "live-closed-during-start") return "closed_during_start";
@@ -550,4 +561,41 @@ export type PlanOwnStepOrigin = "none" | "parent" | "practitioner";
 export function trackPlanApproved(args: { pattern: string; lang: string; ownStep: PlanOwnStepOrigin }): void {
   const id = (v: string) => String(v).replace(/[^a-z0-9_-]/gi, "").slice(0, 40);
   track(KpiEvent.PlanApproved, { pattern: id(args.pattern), lang: id(args.lang), own_step: args.ownStep });
+}
+
+/* ── Kids books and games (B-BOOK-51, B-GAME-18) ─────────────────────────────
+ * Fired by the child's surfaces, so `track` tags them `kid_mode: true` and
+ * strips attribution (the kid egress gate). The projection is an explicit
+ * ALLOW-LIST of catalogue ids: a book id is the CATALOGUE id (a composed plan
+ * book is reported by its pattern: `plan-<pattern>`, never its per-child row
+ * id), a game is the activity id. Never a child id, never the path or choice
+ * the child took, never a count of anything the child got right — play is not
+ * evidence about the child (no developmental inference). The guard
+ * (kidPlayEvents.guard.test.ts) fails if a choice id or child id gets in.
+ */
+export type BookHero = "own" | "stock";
+export const KID_PLAY_EVENT_KEYS = { book: ["book_id", "lang", "hero"], game: ["game", "replay"] } as const;
+/** A catalogue id: lowercase letter words joined by '-' (no catalogue id has a
+ *  digit), 3+ characters — a timestamp, a generated row id, a production child
+ *  id or a one-letter choice id never passes. */
+const CATALOGUE_ID = /^[a-z]+(?:-[a-z]+)*$/;
+export const catalogueId = (v: unknown): string | null =>
+  typeof v === "string" && v.length >= 3 && v.length <= 64 && CATALOGUE_ID.test(v) && !/^child\b|child-/.test(v) ? v : null;
+const bookProps = (args: { bookId: string; lang: string; hero: BookHero }): Record<string, unknown> | null => {
+  const book = catalogueId(args.bookId);
+  if (!book) return null;
+  return { book_id: book, lang: args.lang === "he" ? "he" : "en", hero: args.hero === "own" ? "own" : "stock" };
+};
+export function trackBookOpened(args: { bookId: string; lang: string; hero: BookHero }): void {
+  const props = bookProps(args);
+  if (props) track(KpiEvent.BookOpened, props);
+}
+export function trackBookFinished(args: { bookId: string; lang: string; hero: BookHero }): void {
+  const props = bookProps(args);
+  if (props) track(KpiEvent.BookFinished, props);
+}
+/** ONE event per sitting. `replay`: the child chose Play again in this visit. */
+export function trackGameSitting(args: { game: string; replay: boolean }): void {
+  const game = catalogueId(args.game);
+  if (game) track(KpiEvent.GameSitting, { game, replay: args.replay === true });
 }

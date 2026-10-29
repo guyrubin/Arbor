@@ -14,22 +14,25 @@ type T = (key: string, vars?: Record<string, string | number>) => string;
  * card), dated. Renders only when the parent answered "held the plan" for
  * this card (lastHeldFor). Provider-less so the guard renders it bare.
  */
-export function LastTimeLead({ card, childName, at, locale, t }: {
+export function LastTimeLead({ card, childName, at, locale, t, basis = "held" }: {
   card: HardMomentCard;
   childName: string;
   at: string;
   locale: "en" | "he";
   t: T;
+  /** B-DATA-16: "used" — the parent logged a hard moment saying they used
+   *  these words (coRegulationScript) but has not said they helped. */
+  basis?: "held" | "used";
 }) {
   const sentence = locText(renderSayThis(card, childName), locale);
   return (
-    <section data-testid="hm-last-time" lang={locale} dir={locale === "he" ? "rtl" : "ltr"} className="min-w-0 text-start">
+    <section data-testid="hm-last-time" lang={locale} dir={locale === "he" ? "rtl" : "ltr"} data-basis={basis} className="min-w-0 text-start">
       {/* P1-NEXTLEVEL critic r2: no dir="auto" on the lead or the quote — their
           only child is a <bdi>, which the first-strong scan skips, so they fell
           back to ltr in Hebrew (bar on the left). They inherit the section's
           locale direction; the <bdi> keeps the words isolated. */}
       <p className="text-[13px] font-semibold" style={{ color: "var(--arbor-muted)" }}>
-        <bdi>{t("hm.lastTime.lead", { name: childName })}</bdi>
+        <bdi>{t(basis === "used" ? "elev.closeloop.hm.usedLead" : "hm.lastTime.lead", { name: childName })}</bdi>
       </p>
       <blockquote
         data-testid="hm-last-time-words"
@@ -65,12 +68,15 @@ export function hardMomentWordsText(card: HardMomentCard, opts: {
  * plain text; no link, no referral code, no image; share sheet else copy). The child's first name is included
  * only when the parent ticks it (default off).
  */
-export function SendWordsButton({ card, locale, parentName, childName, t }: {
+export function SendWordsButton({ card, locale, parentName, childName, t, inRow = false }: {
   card: HardMomentCard;
   locale: "en" | "he";
   parentName: string;
   childName: string;
   t: T;
+  /** B-DATA-16: one cell of a two-column action row (the guide card's words
+   *  row): the button takes its grid cell, the name option spans the row. */
+  inRow?: boolean;
 }) {
   const [withName, setWithName] = useState(false);
   // B-SHELL-29: the tap opens the ONE send sheet with these words, editable.
@@ -81,17 +87,17 @@ export function SendWordsButton({ card, locale, parentName, childName, t }: {
     setOpen(true);
   };
   return (
-    <div className="min-w-0 space-y-1">
+    <div className={inRow ? "contents" : "min-w-0 space-y-1"}>
       <button
         type="button"
         data-testid="hm-send-words"
         onClick={send}
-        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition"
+        className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition ${inRow ? "min-w-0 px-3" : "px-4"}`}
         style={{ color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)", background: "var(--arbor-paper-elevated)" }}
       >
         <Icon name="ios_share" size={16} /> {t("hm.send.cta")}
       </button>
-      <label className="flex min-h-11 cursor-pointer items-center gap-2 px-1 text-[13px]" style={{ color: "var(--arbor-muted)" }}>
+      <label className={`flex min-h-11 cursor-pointer items-center gap-2 px-1 text-[13px]${inRow ? " col-span-2" : ""}`} style={{ color: "var(--arbor-muted)" }}>
         <input type="checkbox" data-testid="hm-send-name" checked={withName} onChange={(e) => setWithName(e.target.checked)} className="h-4 w-4" />
         <bdi>{t("hm.send.includeName", { name: childName })}</bdi>
       </label>

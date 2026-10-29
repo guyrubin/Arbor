@@ -22,10 +22,10 @@
  * Pure and dependency-light on purpose: it returns i18n KEYS + params, so the
  * render site owns t() and the copy stays translatable. No React, no I/O.
  */
-import { ApiError, EscalationRequiredError, PaywallError } from "./api";
+import { ApiError, EscalationRequiredError, NON_CRISIS_409_CODES, PaywallError, SEAT_IN_USE, isLiveResting } from "./api";
 import type { ActiveTab } from "./routes";
 
-export type AiFailureKind = "offline" | "quota" | "consent" | "paywall" | "escalation" | "generic";
+export type AiFailureKind = "offline" | "quota" | "voiceResting" | "consent" | "paywall" | "escalation" | "generic";
 
 export interface AiFailureCopy {
   kind: AiFailureKind;
@@ -66,8 +66,13 @@ const ESCALATION_STATUS = 409;
 export const QUOTA_STATUS = 429;
 export const CONSENT_STATUS = 451;
 
+const isNonCrisis409 = (err: ApiError) => err.message === SEAT_IN_USE || NON_CRISIS_409_CODES.has(err.message);
 const statusOf = (err: unknown): number | null => {
-  if (err instanceof ApiError) return err.status;
+  // Wave 4: a 409 whose code is a known state (the co-parent seat, a book's
+  // missing hero, an invalid Live renewal: lib/api.ts NON_CRISIS_409_CODES) is
+  // never the crisis copy. Fail closed like request(): an ApiError 409 with any
+  // other message (a raw-fetch path that built it from the status) keeps it.
+  if (err instanceof ApiError) return err.status === ESCALATION_STATUS && isNonCrisis409(err) ? null : err.status;
   if (err instanceof PaywallError) return PAYWALL_STATUS;
   if (err instanceof EscalationRequiredError) return ESCALATION_STATUS;
   // A DOM/network TypeError from fetch carries no status at all.
@@ -88,6 +93,18 @@ export function classifyAiFailure(err: unknown, ctx: AiFailureContext = {}): AiF
       kind: "offline",
       titleKey: "elev.aierrors.offline.title",
       bodyKey: "elev.aierrors.offline.body",
+      bodyParams: {},
+      retryable: false,
+    };
+  }
+
+  // B-AIOPS-02: the family's realtime-voice minutes for today are spent. Not
+  // the hourly quota — waiting an hour changes nothing, and typing still works.
+  if (isLiveResting(err)) {
+    return {
+      kind: "voiceResting",
+      titleKey: "elev.aierrors.voiceResting.title",
+      bodyKey: "elev.aierrors.voiceResting.body",
       bodyParams: {},
       retryable: false,
     };
@@ -131,11 +148,17 @@ export function classifyAiFailure(err: unknown, ctx: AiFailureContext = {}): AiF
       };
     case ESCALATION_STATUS:
       // Owned by the escalation screen (DUX-032/VC-8) — resources, not errors.
+      // B-ASKJB-49: a surface that classifies a 409 says what it is (the
+      // professional-support title and the danger line) and sends the parent
+      // to Safety, where the helplines are; never "something went wrong, try
+      // again". The surface's own crisis card (UrgentSupport) carries the tel: lines.
       return {
         kind: "escalation",
-        titleKey: "elev.aierrors.generic.title",
-        bodyKey: "elev.aierrors.generic.body",
+        titleKey: "beh.escalation.title",
+        bodyKey: "elev.safety.crisis.danger",
         bodyParams: {},
+        actionKey: "elev.safety.open",
+        actionRoute: "safety",
         retryable: false,
       };
     default:

@@ -2,7 +2,7 @@
  * W5 — Wow → Story seed. The onboarding comic must become a durable artifact
  * through the EXISTING savedComics shelf path (Masterplan Wave 5), never a new
  * collection or write pipeline. Source-based guards (vitest in node, no jsdom)
- * + a reviewed pin on the CHILD_SUBCOLLECTIONS GDPR inventory.
+ * + a hard pin on the CHILD_SUBCOLLECTIONS GDPR registry staying unchanged.
  */
 import { describe, expect, it } from "vitest";
 import * as fs from "node:fs";
@@ -95,7 +95,6 @@ describe("CHILD_SUBCOLLECTIONS registry pin — the seed invented NO new sink", 
       "heroRenders", // B-KID-127: the kept personalised story text
       "kidSouvenirs", // B-KID-96: the souvenir ledger (registered, not invented by the seed)
       "studioQuestProgress", // fixed finite quest choices, child export and erase
-      "studioCreations", // B-BOOK-20: registered child-owned saved Studio designs
       "bookBookmarks", // edition-bound private reading position
       "books", // B-BOOK-75: composed Everyday Plan books (the parent's choices)
       "journeyObjectives",
@@ -113,6 +112,8 @@ describe("CHILD_SUBCOLLECTIONS registry pin — the seed invented NO new sink", 
       "familyGoals", // B-PROG-07: the family's goals in their own words, their own scale labels and scores — exported and erased with the child
       "coachSessions", // B-PROG-10: the guided tier's booked sessions (slot, day, the family's agreed line) — exported and erased with the child
       "heroSheet", // B-GAME-13c: the hero's pose sheet (generated art, registered for export + erase)
+      "studioCreations", // B-GA-09: the child's saved studio toys (kid mode), found by the sink sweep
+      "bookReads", // B-BOOK-51: the one finished-book ledger (catalogue id, language, time; no path or choice)
     ]);
   });
 });

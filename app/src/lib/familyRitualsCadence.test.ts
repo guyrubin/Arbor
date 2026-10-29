@@ -328,7 +328,8 @@ describe("SHIP-FIX r3 · #/family — the move clears the nav, and starter words
     expect(family).toContain('{!saved && values.length > 0 && (');
     expect(family).toContain('t("elev.family.way.starter")');
     // an edit is a save: the label goes and the value reaches the card
-    expect(family).toContain("const commit = (next: string[]) => { setValues(saveFamilyCharter(next)); setSaved(true); };");
+    // (B-PLAY-21: the same save also stamps the family way for the account sync.)
+    expect(family).toContain("const commit = (next: string[]) => { setValues(saveFamilyCharter(next)); setSaved(true); noteFamilyWayChange(); };");
     expect(en["elev.family.way.starter"]).toBe("Starter values");
     expect(he["elev.family.way.starter"]).toBeTruthy();
     expect(he["elev.family.way.starter"]).not.toMatch(/[A-Za-z]/);

@@ -112,6 +112,8 @@ describe("B-SHELL-37 · current-place search subtitles", () => {
       ...ALL_MILESTONES.map((milestone) => [`milestone:${milestone.id}`, pair(milestone.domain)]),
       ...HERO_STORIES.map((story) => [`journey:${story.id}`, pair(story.pack)]),
       ...WORLDS.map((world) => [`world:${world.id}`, pair(world.status === "live" ? "available" : "coming soon")]),
+      // B-ASKJB-36: the kept reader, a mode of My child, sits under My child.
+      ["page:development:kept", pair(placeForTab("development").en, placeForTab("development").he)],
     ];
     expect(getSearchIndex().filter((row) => row.kind !== "route").map((row) => [row.id, row.sub])).toEqual(expected);
   });

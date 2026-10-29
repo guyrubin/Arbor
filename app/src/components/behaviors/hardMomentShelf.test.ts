@@ -296,7 +296,8 @@ describe("critic r1 — behaviors capture reads first, one primary fill", async 
     expect(fills).toHaveLength(0);
     expect(BEH).not.toMatch(/<form|<motion\.form/);
     const modal = strip(read("components/overview/QuickLogModal.tsx"));
-    expect(modal).toMatch(/type="submit"[^\n]+--arbor-gradient-primary/);
+    // B-ASKJB-47: the sheet's save is the solid accent fill, no gradient.
+    expect(modal).toMatch(/type="submit"[^\n]+background: "var\(--arbor-clay\)"/);
   });
   it("the hero zero line is muted, regular weight", () => {
     const zero = HERO.slice(HERO.indexOf("{allZero && zeroLine && ("), HERO.indexOf("{zeroLine}"));
@@ -366,7 +367,8 @@ describe("critic r2 — behaviors: guides under the capture, one warm line, no s
   it("P1-NEXTLEVEL critic r2 — one warm moment: while the held 'Last time' row shows, the capture warm line is quiet sans muted text", () => {
     const at = BEH.indexOf('data-testid="behaviors-warm-line"');
     const line = BEH.slice(at, BEH.indexOf(">", at));
-    expect(BEH).toContain("const heldRowShown = heldRowsSince(actionLoop ?? [], 0).length > 0;");
+    // B-DATA-16: the section's lead row also shows for words the parent logged as used.
+    expect(BEH).toContain("const heldRowShown = heldRowsSince(actionLoop ?? [], 0).length > 0 || behaviorLogs.some((l) => !!scriptCard(l.coRegulationScript));");
     expect(line).toContain('style={heldRowShown ? { fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" } :');
   });
   it("one warm line in the capture card: the parent's own words (<= 70 chars) or the top guide by name, EN + HE", () => {

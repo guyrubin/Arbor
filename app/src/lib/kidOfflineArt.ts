@@ -8,9 +8,14 @@
  * full-bleed page uses). Device-local cache, no child data leaves the page —
  * the message carries art paths only.
  */
-import { KID_WORLD_TILE_IDS, kidArt, storyCoverKey, worldTileKey, type KidArt, type KidThemeId } from "./kidThemeManifest";
+import { KID_WORLD_TILE_IDS, kidArt, storyCoverArt, worldTileKey, type KidArt, type KidThemeId } from "./kidThemeManifest";
+import { allBookPages } from "./library/bookShape";
+import { bookPlatesFor } from "./library/books";
+import { isPlanBook, type AnyBook } from "./library/types";
 
 export const KID_RECENT_BOOKS = 3;
+/** The most art URLs the worker warms from one message (public/sw.js ART_MAX). */
+export const KID_ART_MESSAGE_MAX = 40;
 
 const webp = (u: string | undefined): u is string => !!u && u.startsWith("/visuals/") && u.endsWith(".webp");
 
@@ -33,8 +38,8 @@ export function recentlyOpenedStoryIds(runs: readonly { storyId: string; started
 export function kidOfflineArtUrls(theme: KidThemeId, tonightStoryId: string | null | undefined, recentStoryIds: readonly string[]): string[] {
   const urls: string[] = [];
   const cover = (a: KidArt | null) => { if (a) urls.push(a.src480, a.src); };
-  if (tonightStoryId) cover(kidArt(theme, storyCoverKey(tonightStoryId)));
-  for (const id of recentStoryIds.slice(0, KID_RECENT_BOOKS)) cover(kidArt(theme, storyCoverKey(id)));
+  if (tonightStoryId) cover(storyCoverArt(theme, tonightStoryId));
+  for (const id of recentStoryIds.slice(0, KID_RECENT_BOOKS)) cover(storyCoverArt(theme, id));
   for (const id of KID_WORLD_TILE_IDS) {
     const tile = kidArt(theme, worldTileKey(id));
     if (tile) urls.push(tile.src480);
@@ -51,4 +56,43 @@ export function precacheKidArt(urls: readonly string[]): void {
   } catch {
     /* no service worker: the art simply loads online */
   }
+}
+
+/**
+ * B-BOOK-27 (T15): every SHARED art file a library book reads — the plate of
+ * each page and art state, and each overlay — as public webp paths, in the
+ * order a read meets them. Never a sprite, print or narration: those are the
+ * child's private files, kept on this device (IndexedDB arbor-book-assets,
+ * lib/bookAssetStore) by the book's first open. A plan plate painted in
+ * product reads through the signed-in route and is not a /visuals path, so
+ * it is left out (the worker never caches /api).
+ */
+export function libraryBookArtUrls(book: AnyBook): string[] {
+  const table = bookPlatesFor(book);
+  const urls: string[] = [];
+  for (const page of allBookPages(book)) {
+    const plates = [page.plateId, ...(page.artStates ?? []).map((st) => st.plateId).filter((id): id is string => !!id)];
+    for (const id of plates) if (Object.prototype.hasOwnProperty.call(table, id)) urls.push(table[id].file);
+    for (const o of page.overlays ?? []) urls.push(o.file);
+  }
+  return [...new Set(urls.filter(webp))];
+}
+
+/**
+ * B-BOOK-27 (T15): the library books to keep offline — Tonight's (the shelf's
+ * first entry) and up to `n` other books the child finished most recently
+ * (the one read ledger, bookReads; a plan book is read under its pattern id).
+ */
+export function offlineLibraryBooks<T extends { book: AnyBook }>(
+  entries: readonly T[],
+  reads: readonly { bookId: string; finishedAt?: string }[],
+  n = KID_RECENT_BOOKS,
+): T[] {
+  if (!entries.length) return [];
+  const readId = (e: T) => (isPlanBook(e.book) ? e.book.pattern : e.book.id);
+  const last = new Map<string, string>();
+  for (const r of reads) if (typeof r.bookId === "string" && (r.finishedAt ?? "") > (last.get(r.bookId) ?? "")) last.set(r.bookId, r.finishedAt ?? "");
+  const [tonight, ...rest] = entries;
+  const recent = rest.filter((e) => last.has(readId(e))).sort((a, b) => (last.get(readId(b))! > last.get(readId(a))! ? 1 : last.get(readId(b))! < last.get(readId(a))! ? -1 : 0));
+  return [tonight, ...recent.slice(0, n)];
 }

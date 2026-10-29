@@ -1,7 +1,7 @@
 /**
  * B-PROG-02 [content — clinical] — TALK TOGETHER v0.1 (מדברים ביחד): eight
  * weeks on the Words shelf. The definition of record is the human-readable
- * program document PAI/projects/arbor/PROGRAM-TALK-TOGETHER-v0.1.md; this
+ * program document PROGRAM-TALK-TOGETHER-v0.1.md (private product record); this
  * file transcribes it 1:1 (same order, same ids, same words). Edit the
  * document first, then this file.
  *
@@ -16,7 +16,7 @@
  *  - Measures are counts over time against the child's own first week; never
  *    a grade, a percentage, a colour or a comparison.
  *  - `reviewStatus: "draft"`: the clinical reviewer (G-01, E6) signs before any
- *    public use. Review rows: execution/2026-10-06--milestone-loop/REVIEW-SHEET.md
+ *    public use. Review rows: the milestone-loop REVIEW-SHEET.md (private record),
  *    "B-PROG-02 Talk Together v0.1"; Hebrew review pack:
  *    `npx tsx scripts/milestone-he-review.mts --programs export`.
  *
@@ -72,6 +72,7 @@ export const TALK_TOGETHER: Program = {
   weeks: [
     {
       n: 1,
+      lesson: "gestures-before-words",
       skill: L(
         "Observe, wait, listen: notice what interests your child, then wait for their turn.",
         "להתבונן, לחכות, להקשיב: לשים לב למה שמעניין את הילד/ה, ולחכות לתור שלו/שלה.",
@@ -86,6 +87,7 @@ export const TALK_TOGETHER: Program = {
     },
     {
       n: 2,
+      lesson: "process-over-product",
       skill: L(
         "Follow the lead: play and talk about what your child chooses.",
         "ללכת אחרי הילד/ה: לשחק ולדבר על מה שהוא/היא בוחר/ת.",
@@ -100,6 +102,7 @@ export const TALK_TOGETHER: Program = {
     },
     {
       n: 3,
+      lesson: "serve-and-return",
       skill: L(
         "Serve and return: answer each look, sound or word, and keep the turns going.",
         "הלוך ושוב: לענות לכל מבט, קול או מילה, ולהמשיך את התורות.",
@@ -114,6 +117,7 @@ export const TALK_TOGETHER: Program = {
     },
     {
       n: 4,
+      // B-PROG-14: no Learn read teaches saying the child's words back yet — no door this week (B-GA-02 / content).
       skill: L(
         "Say it back: repeat their words clearly, as a reply, never a correction.",
         "להחזיר את המילה: לחזור על המילים שלו/שלה בבהירות, כתשובה ולא כתיקון.",
@@ -128,6 +132,7 @@ export const TALK_TOGETHER: Program = {
     },
     {
       n: 5,
+      lesson: "language-explosion",
       skill: L(
         "Add one word: say their words back with one word more.",
         "להוסיף מילה אחת: לחזור על המילים שלו/שלה עם עוד מילה אחת.",
@@ -142,6 +147,7 @@ export const TALK_TOGETHER: Program = {
     },
     {
       n: 6,
+      lesson: "reading-aloud",
       skill: L(
         "Share a book: take turns on each page instead of reading every word.",
         "ספר ביחד: לקחת תורות בכל דף במקום לקרוא כל מילה.",
@@ -157,6 +163,7 @@ export const TALK_TOGETHER: Program = {
     },
     {
       n: 7,
+      // B-PROG-14: the book-prompt read is week 6's (reading-aloud covers dialogic reading) — no door this week.
       skill: L(
         "Book prompts (PEER): prompt, respond, add a word, invite them to say it again.",
         "שאלות על הספר: להזמין, להגיב, להוסיף מילה, ולהזמין לומר שוב.",
@@ -172,6 +179,7 @@ export const TALK_TOGETHER: Program = {
     },
     {
       n: 8,
+      lesson: "music-and-brain",
       skill: L(
         "Leave a gap: pause in songs, rhymes and routines so they can fill in the word.",
         "להשאיר רווח: לעצור בשירים, בחרוזים ובשגרה כדי שהילד/ה ישלים/תשלים את המילה.",

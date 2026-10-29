@@ -17,7 +17,7 @@ import { useState } from "react";
 import type { ChildProfile, HeroStorySpec } from "../../types";
 import type { KidThemeId } from "../../lib/kidThemeManifest";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
-import { HeroAvatar } from "../ui/HeroAvatar";
+import { HeroAvatar, resolveHeroUrl } from "../ui/HeroAvatar";
 import { KID_BOOK_EAGER_COUNT, KidBookCover } from "./KidBookCover";
 import KidComicsShelf from "./KidComicsShelf";
 import { kidIsolate } from "./kidText";
@@ -36,6 +36,8 @@ export interface KidLibraryProps {
 export default function KidLibrary({ books, theme, lang, childProfile, loadingId, onOpen }: KidLibraryProps) {
   // A saved comic open in the reader takes the whole surface.
   const [readingComic, setReadingComic] = useState(false);
+  // B-BOOK-26: the child's own approved portrait on every title-card cover (never a shared likeness).
+  const ownHero = resolveHeroUrl(childProfile) ? <HeroAvatar size={40} mood="wave" animate={false} ring={false} badge={false} decorative /> : undefined;
   return (
     <div className="space-y-6" data-testid="kid-library">
       {!readingComic && (books.length > 0 ? (
@@ -52,6 +54,7 @@ export default function KidLibrary({ books, theme, lang, childProfile, loadingId
                 read={b.state === "finished"}
                 readLabel={kidsStoriesText("kidBooks.readMark", lang)}
                 onOpen={() => { if (!loadingId) onOpen(b.story); }}
+                hero={ownHero}
               />
             </li>
           ))}

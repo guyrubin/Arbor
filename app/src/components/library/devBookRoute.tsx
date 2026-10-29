@@ -20,6 +20,8 @@
  * - prints : 0 = show the live composite on every page (default: the sheet's
  *            printed pages where it has them).
  * - costume: tunic = the p5 A/B (BR5): p5 shows `worried-tunic`.
+ * - mode   : bedtime | together (B-BOOK-45/46: the read's mode; default the
+ *            child's own read).
  * - voice  : the narration set (folder under /_dev/narration/<book>/), default
  *            the hero sheet id (dylan-v2) — e.g. dylan-v2-expressive, to
  *            compare a performed reading without replacing files.
@@ -36,6 +38,7 @@ import { closeKidAudio, setKidAudioChild } from "../kidmode/audio/kidAudio";
 import { installKidVoiceUnlock } from "../../lib/kidVoicePlayer";
 import { loadHeroSheet, type HeroSheet } from "../../lib/library/heroSheet";
 import type { BookLang, BookReaderChild } from "../../lib/library/types";
+import type { ReadMode } from "../../lib/library/readMode";
 
 export interface DevBookParams {
   bookId: string;
@@ -46,6 +49,8 @@ export interface DevBookParams {
   costume: string | null;
   /** The narration set (folder), or null = the hero sheet id. */
   voiceSet: string | null;
+  /** B-BOOK-45/46: the read's mode (lib/library/readMode). */
+  readMode: ReadMode;
 }
 
 const SEGMENT = /^[A-Za-z0-9_-]{1,64}$/;
@@ -69,6 +74,7 @@ export function parseDevBookParams(search: string): DevBookParams {
     prints: q.get("prints") !== "0",
     costume: q.get("costume") === "tunic" ? "tunic" : null,
     voiceSet: SEGMENT.test(q.get("voice") ?? "") ? q.get("voice") : null,
+    readMode: q.get("mode") === "bedtime" ? "bedtime" : q.get("mode") === "together" ? "together" : "alone",
   };
 }
 
@@ -110,6 +116,7 @@ export function DevBookRoute({ params }: { params: DevBookParams }) {
           sheet={sheet}
           prints={params.prints}
           costume={params.costume}
+          readMode={params.readMode}
           dev
           onClose={() => setOpening((n) => n + 1)}
         />

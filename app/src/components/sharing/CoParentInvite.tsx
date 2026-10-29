@@ -10,6 +10,16 @@ import type { ShareGrant } from "../../types";
 import Icon from "../ui/Icon";
 import { CoParentRequests } from "../../lib/coParentRequests";
 
+type CoParentErrorKey = "createError" | "createSignIn" | "createNotAllowed" | "createLater" | "error";
+/** B-CAREPRO-53: a failed invitation names what failed (server/coParent.ts POST
+ * /co-parent/invitations): 400 a bad or own address → check the email; 401 →
+ * sign in first; 403 the child is not this account's → not allowed; anything
+ * else (503, 429, no network) → try again later. Never "check the email" for a
+ * failure the email did not cause. */
+export function inviteFailureKey(e: unknown): CoParentErrorKey {
+  const status = e instanceof CoParentError ? e.status : 0;
+  return status === 400 ? "createError" : status === 401 ? "createSignIn" : status === 403 ? "createNotAllowed" : "createLater";
+}
 const button = "min-h-11 rounded-xl px-4 py-2 text-sm font-bold inline-flex items-center justify-center gap-2 disabled:cursor-wait";
 type CoParentInviteProps = { childId: string; childName: string; grants: ShareGrant[]; onChanged: () => Promise<void> };
 export default function CoParentInvite(props: CoParentInviteProps) {
@@ -25,7 +35,8 @@ function CoParentInviteSession({ childId, childName, grants, onChanged }: CoPare
   const c = coParentCopy[uiLang];
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  // B-CAREPRO-53: the failure is kept as its copy key, so the line follows a language switch.
+  const [error, setError] = useState<CoParentErrorKey | "">("");
   const [notice, setNotice] = useState("");
   const [invited, setInvited] = useState<ShareGrant | null>(null);
   const [selection, setSelection] = useState<CoParentActivitySelection | null>(null);
@@ -103,7 +114,7 @@ function CoParentInviteSession({ childId, childName, grants, onChanged }: CoPare
       if (!invitationRequests.current.latest(ticket)) return;
       setInvited(grant); setEmail(""); await onChanged();
     }
-    catch { if (invitationRequests.current.latest(ticket)) setError(c.createError); }
+    catch (e) { if (invitationRequests.current.latest(ticket)) setError(inviteFailureKey(e)); }
     finally { if (invitationRequests.current.latest(ticket)) setBusy(false); }
   };
   const copy = async (id: string) => {
@@ -119,7 +130,7 @@ function CoParentInviteSession({ childId, childName, grants, onChanged }: CoPare
     const ticket = invitationRequests.current.begin();
     setBusy(true); setError("");
     try { await api.revokeShare(id); if (!invitationRequests.current.latest(ticket)) return; setInvited(null); setNotice(c.stopped); await onChanged(); }
-    catch { if (invitationRequests.current.latest(ticket)) setError(c.error); }
+    catch { if (invitationRequests.current.latest(ticket)) setError("error"); }
     finally { if (invitationRequests.current.latest(ticket)) setBusy(false); }
   };
   return <section className="rounded-2xl p-5 space-y-4 arbor-depth-card min-w-0" style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)" }} data-testid="coparent-invite">
@@ -140,12 +151,13 @@ function CoParentInviteSession({ childId, childName, grants, onChanged }: CoPare
       </details>
       {activityError && <div role="alert" className="space-y-2"><p className="text-sm" style={{ color: "var(--arbor-pink-ink)" }}>{activityError}</p><button type="button" disabled={activityBusy || activityLoading} onClick={() => void loadActivities()} className={button} style={{ color: "var(--arbor-clay)" }}>{c.refresh}</button></div>}
     </div>
-    <form onSubmit={(e) => void create(e)} className="space-y-3">
+    {/* B-CAREPRO-53: signed out, no invite form; the card's one sign-in line is the activity panel's (round 2: never two). */}
+    {signedIn && <form onSubmit={(e) => void create(e)} className="space-y-3">
       <label htmlFor="coparent-email" className="block text-sm font-bold">{c.email}</label>
       <div className="flex flex-col sm:flex-row gap-2"><input id="coparent-email" type="email" autoComplete="email" inputMode="email" required maxLength={254} dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} className="min-w-0 w-full min-h-11 rounded-xl px-3 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} /><button type="submit" disabled={busy} className={`${button} shrink-0`} style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>{busy ? c.creating : c.invite}</button></div>
       <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{c.consent}</p>
-    </form>
-    {error && <p role="alert" className="text-sm" style={{ color: "var(--arbor-pink-ink)" }}>{error}</p>}
+    </form>}
+    {error && <p role="alert" className="text-sm" style={{ color: "var(--arbor-pink-ink)" }}>{c[error]}</p>}
     {invited && <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--arbor-paper-deep)" }}><h3 className="font-bold">{c.ready}</h3><p className="text-sm break-all" dir="auto">{invited.recipientEmail}</p><p className="text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{c.sendHint}</p><div className="flex flex-wrap gap-2"><button type="button" className={button} style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }} onClick={() => void share(invited.id)}>{c.send}</button><button type="button" className={button} style={{ color: "var(--arbor-clay)" }} onClick={() => void copy(invited.id)}>{c.copy}</button></div><input aria-label={c.copy} value={coParentLink(invited.id)} readOnly dir="ltr" className="w-full min-w-0 min-h-11 rounded-lg px-2 text-xs" style={{ background: "var(--arbor-paper-elevated)" }} onFocus={(e) => e.target.select()} /></div>}
     {notice && <p role="status" className="text-sm">{notice}</p>}
     {team.length > 0 && <ul aria-label={c.roster} className="divide-y" style={{ borderColor: "var(--arbor-rule)" }}>{team.map((g) => <li key={g.id} className="py-3 flex flex-wrap items-center gap-2"><div className="min-w-0 flex-1"><p dir="auto" className="text-sm font-bold break-all">{g.recipientEmail}</p><p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{g.acceptedAt ? c.statusAccepted : c.statusPending}</p></div><button type="button" onClick={() => setInvited(g)} className={button} style={{ color: "var(--arbor-clay)" }}>{c.send}</button><button type="button" disabled={busy} onClick={() => void revoke(g.id)} className={button} style={{ color: "var(--arbor-muted)" }}>{c.stop}</button></li>)}</ul>}

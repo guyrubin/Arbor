@@ -5,18 +5,45 @@
  * every family who composes that pattern — so a pattern is painted once.
  *
  *   public/visuals/plans/<patternId>/<plateId>.webp   (3:2 master, committed)
+ *   shared/plans/<patternId>/<plateId>.webp in the child-assets bucket, a
+ *     NON-child prefix painted in-product by the admin route
+ *     (server/planPlates.ts) and read through GET /api/plans/plates/:pattern/:plate
  *   the DEV placeholder folder, <patternId>/<plateId>.webp (git-ignored; bookPlates.devPlaceholderPath)
  *
- * The plate table reuses BookPlate with `bookId` = the pattern id, so
- * plateSources' DEV fallback lands on the placeholder path above. Provenance
- * starts EMPTY (childFree / textFree false, reviewedBy null) and is set only
- * when a plate has been viewed full size (lane B §4.9). Pure.
+ * A plate's `file` resolves (planPlateFile) to the committed static path when
+ * the build-time manifest (planPlateManifest.ts, generated from the public
+ * folder) lists it, else to the GET route; a 404 there keeps today's
+ * behaviour (the renderer advances on image error). No DEV placeholder in
+ * production. The plate table reuses BookPlate with `bookId` = the pattern
+ * id, so plateSources' DEV fallback lands on the placeholder path above.
+ * Provenance starts EMPTY (childFree / textFree false, reviewedBy null) and
+ * is set only when a plate has been viewed full size (lane B §4.9). Pure.
  */
 import { makePlate, type BookPlate, type LightRig, type PlateTable } from "../bookPlates";
 import type { PatternId } from "../types";
+import { COMMITTED_PLAN_PLATES } from "./planPlateManifest";
 
 /** The public root of the real (committed) plan plates. */
 export const PLAN_PLATE_ROOT = "/visuals/plans";
+/** The read route of the plates painted in-product (shared storage). */
+export const PLAN_PLATE_API_ROOT = "/api/plans/plates";
+
+const COMMITTED: ReadonlySet<string> = new Set(COMMITTED_PLAN_PLATES);
+
+/** Is this plate's master committed under public/visuals/plans (at build time)? */
+export function planPlateCommitted(patternId: string, plateId: string, committed: ReadonlySet<string> = COMMITTED): boolean {
+  return committed.has(`${patternId}/${plateId}`);
+}
+
+/** The static path of a committed plate, else the shared-storage route. */
+export function planPlateFile(patternId: string, plateId: string, committed: ReadonlySet<string> = COMMITTED): string {
+  return planPlateCommitted(patternId, plateId, committed) ? `${PLAN_PLATE_ROOT}/${patternId}/${plateId}.webp` : `${PLAN_PLATE_API_ROOT}/${patternId}/${plateId}`;
+}
+
+/** A plate source the device must read through the signed-in route (never a plain <img src>). */
+export function isApiPlanPlateUrl(src: string): boolean {
+  return src.startsWith(`${PLAN_PLATE_API_ROOT}/`);
+}
 
 interface PlateSpec {
   light: LightRig;
@@ -32,7 +59,7 @@ function table(patternId: PatternId, specs: Record<string, PlateSpec>): PlateTab
   for (const [id, s] of Object.entries(specs)) {
     out[id] = {
       ...makePlate(patternId, id, s.light, { window: { cx: s.cx ?? 0.5 }, ...(s.textZone ? { textZone: s.textZone } : {}) }),
-      file: `${PLAN_PLATE_ROOT}/${patternId}/${id}.webp`,
+      file: planPlateFile(patternId, id),
     };
   }
   return out;

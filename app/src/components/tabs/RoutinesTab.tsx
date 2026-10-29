@@ -6,7 +6,6 @@ import { ProgressBar } from "../ui/kit";
 import { PASTEL } from "../../lib/tokens";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { useToast } from "../../context/ToastContext";
 import { ROUTINES, routineById, localized } from "../../lib/routines";
 import { isolate } from "../../lib/i18n";
 
@@ -62,7 +61,6 @@ function StepSwitch({ on, tone, label }: { on: boolean; tone: keyof typeof PASTE
 export default function RoutinesTab() {
   const { childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
-  const { toast } = useToast();
 
   const firstName = (childProfile.name || "your child").split(" ")[0];
 
@@ -93,17 +91,12 @@ export default function RoutinesTab() {
       const wasOn = current.includes(stepKey);
       const nextKeys = wasOn ? current.filter((k) => k !== stepKey) : [...current, stepKey];
       persist({ ...doneMap, [selected.id]: nextKeys });
-
-      // B-GROWTH-24: the completion toast fires only on the transition INTO
-      // all-done. It used to say "⭐ {name} earned a star in their world!" —
-      // no star is written anywhere, and a reward aimed at the child is a
-      // pressure mechanic (law 3). It now names what happened, to the parent.
-      const nowComplete = nextKeys.length === total && total > 0;
-      if (!wasOn && nowComplete) {
-        toast(t("routines.doneToast"), "success");
-      }
+      // B-STATUS-01 (critic r1): no receipt here — #/routines redirects to
+      // Plans (lib/routes.ts, B-GROWTH-25), so a line on this leaf would never
+      // be seen. The all-done banner below is its answer (B-GROWTH-24: it
+      // names what happened, no star, no reward aimed at the child).
     },
-    [doneMap, selected.id, total, persist, toast, t]
+    [doneMap, selected.id, persist]
   );
 
   const resetRoutine = useCallback(() => {

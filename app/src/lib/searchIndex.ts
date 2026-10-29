@@ -70,7 +70,11 @@ export type SearchKind =
   | "activity"
   | "milestone"
   | "journey"
-  | "world";
+  | "world"
+  // B-ASKJB-36: a MODE of a route (`#/<tab>?view=<view>`) a parent looks for
+  // by name — the kept reader on My child. Never a route row (the route list
+  // and the zero-query command list stay exactly the routes).
+  | "page";
 
 /** Bilingual display pair. `he` falls back to `en` for EN-only catalogs. */
 export interface LocalizedPair {
@@ -94,6 +98,8 @@ export interface SearchEntry {
   /** B-ASKJB-12: a scholar entry opens Ask with this lens id preselected
    *  (written to `selectedLens`, the ToneSheet's store) before navigating. */
   lens?: string;
+  /** B-ASKJB-36: a `page` entry opens this `?view=` mode of `tab`. */
+  view?: string;
   /** Precomputed normalized haystacks (both languages, always searched). */
   normTitles: string[];
   normKeywords: string[];
@@ -318,6 +324,27 @@ function buildIndex(): readonly SearchEntry[] {
       { en: [], he: [] },
       "practice",
     ));
+  }
+
+  // 12. B-ASKJB-36 — the kept reader, a mode of My child: "kept" / "שמרנו"
+  //     land on `#/development?view=kept`. Labels from the reader's own
+  //     dictionary (i18n.ts carries i18nKept); the sub is My child's place.
+  {
+    const place = placeForTab("development");
+    entries.push({
+      ...entry(
+        "page:development:kept",
+        "page",
+        pair(translate("en", "kept.view"), translate("he", "kept.view")),
+        pair(place.en, place.he),
+        {
+          en: ["kept", "keepsakes", "kept things", "things we kept", "saved words", "firsts", "her words"],
+          he: ["שמרנו", "ששמרנו", "שמרתם", "ששמרתם", "שמורים", "מזכרות", "פעמים ראשונות", "מילים ששמרנו"],
+        },
+        "development",
+      ),
+      view: "kept",
+    });
   }
 
   return Object.freeze(entries);

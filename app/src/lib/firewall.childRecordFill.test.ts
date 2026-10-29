@@ -1,6 +1,6 @@
 /**
  * B-GROWTH-07 — CLINICAL FIREWALL clause: "no proportional fill of a child
- * record" (PAI/projects/arbor/reference/ui-enforcement-and-audit.md).
+ * record" (app/PRODUCT.md: counts, never verdicts).
  *
  * The Milestones Development Map drew the child's checked/total as a ring
  * (`RadialProgress`) and every domain as a fill bar (`ProgressBar`). A fill is
@@ -62,7 +62,6 @@ const SCANNED = [
   // v3 F-CHILD-3: About's eight areas and the read that fills them.
   "components/about/AspectCard.tsx",
   "lib/aboutAspects.ts",
-  "components/practice/DevelopmentCopilot.tsx",
   "components/sections/AcademyForYou.tsx",
 ];
 

@@ -3,11 +3,13 @@
  * Everyday Plans.
  *
  *   GET  /api/plans/visibility
- *        → { reviewed, composable } per pattern and language for THIS viewer:
+ *        → { reviewed, composable, admin } per pattern and language for THIS viewer:
  *          `reviewed` is the licensed reviewer's record (config.plansReviewed,
  *          default nothing); `composable` adds the sandbox and the owner
  *          allow-list. The client's pattern door reads this and never decides
- *          on its own (lib/library/plans/planVisibility).
+ *          on its own (lib/library/plans/planVisibility). `admin` (B-BOOK-75
+ *          plates): the viewer may paint the shared plates (deps.painter,
+ *          server/planPlates.isPlatePainter); false for every family.
  *   POST /api/plans/phrase   { pattern, slot, lang, text }
  *        → B-GA-11: the parent's own words phrased into the book's register,
  *          ONE model call at composition time (never at read time), the
@@ -44,6 +46,7 @@ import { canComposePlan, isPatternId, planVisibilityFor, readReviewFlags, type P
 import type { BookLang, BookLine } from "../lib/library/types.js";
 import type { PatternDef } from "../lib/library/plans/patterns.js";
 import { logger, requestIdOf } from "./logger.js";
+import { screenForImmediateEscalation } from "../safety/escalation";
 
 export interface PlansRouterDeps {
   config: Pick<ArborConfig, "plansReviewed" | "plansOwnerUids" | "plansOwnerEmails" | "memoryAdapter" | "arborEnv" | "modelProvider">;
@@ -51,6 +54,8 @@ export interface PlansRouterDeps {
   /** The model router (one JSON generation per phrasing); absent or mock = the deterministic phrasing. */
   modelProvider?: { generateJson(options: GenerateJsonOptions): Promise<unknown> } | null;
   now?: () => string;
+  /** B-BOOK-75 plates: may this viewer paint the shared plates? Absent = nobody. */
+  painter?: (viewer: PlanViewer) => boolean;
 }
 
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -118,7 +123,8 @@ export function createPlansRouter(deps: PlansRouterDeps): express.Router {
 
   router.get("/plans/visibility", (req, res) => {
     res.setHeader("Cache-Control", "no-store");
-    res.json(planVisibilityFor(flags, viewerOf(req, deps.config), owners));
+    const viewer = viewerOf(req, deps.config);
+    res.json({ ...planVisibilityFor(flags, viewer, owners), admin: deps.painter ? deps.painter(viewer) === true : false });
   });
 
   router.post("/plans/phrase", express.json({ limit: "8kb" }), async (req, res) => {
@@ -131,6 +137,15 @@ export function createPlansRouter(deps: PlansRouterDeps): express.Router {
     const text = typeof b.text === "string" ? b.text.trim().slice(0, OWN_WORDS_MAX) : "";
     if (text.length < 3) return refuse(res, 400, "plan_empty_words", "Write the step in a few words");
     const lang: BookLang = b.lang === "he" ? "he" : "en";
+    // Safety first (B-GA-05 finding, 28 Oct): the parent's free text is screened
+    // BEFORE the gate and BEFORE any model call, with the same 409 contract every
+    // other parent-text route returns (routes/api.ts) — the client turns it into
+    // the helplines, never into "could not phrase that line".
+    const escalationMatch = screenForImmediateEscalation({ message: text });
+    if (escalationMatch) {
+      res.status(409).json({ error: "Professional support recommended", escalationCategory: escalationMatch.category });
+      return;
+    }
     // B-BOOK-79 door (a): the parent relays a step from the professional who works with the child; the line is phrased and screened the same way, and labelled.
     const origin: OwnStepOrigin = b.origin === "practitioner" ? "practitioner" : "parent";
     const viewer = viewerOf(req, deps.config);

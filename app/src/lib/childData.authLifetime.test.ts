@@ -15,9 +15,7 @@ vi.mock("firebase/firestore", () => ({
   getDocs: async (path: string) => {
     state.paths.push(path);
     await state.getDocsHook?.(path);
-    return { docs: [{ id: "synthetic", data: () => path.endsWith("/bookAssets") ? { bookId: "book", files: ["manifest.json"] }
-      : path.endsWith("/studioCreations") ? { ownerId: "owner", childId: "child", creation: { kind: "melody", notes: [0], tempo: 760 } }
-      : { synthetic: "prior-owner-record" } }] };
+    return { docs: [{ id: "synthetic", data: () => path.endsWith("/bookAssets") ? { bookId: "book", files: ["manifest.json"] } : { synthetic: "prior-owner-record" } }] };
   },
   doc: vi.fn(), deleteDoc: vi.fn(),
 }));
@@ -32,7 +30,8 @@ const fetchResult = (url: string) => url.includes("privacy/export")
   ? new Response(JSON.stringify({ serverData: { memoryEvents: [{ synthetic: "prior-owner-ledger" }], shares: [] } }))
   : url.endsWith("export-manifest")
     ? new Response(JSON.stringify({ version: 1, childId: "child", status: "complete", issues: [], files: [{ bookId: "book", path: "manifest.json", bytes: 4 }] }))
-    : new Response("DATA");
+    // B-CAREPRO-50: the server's digest and Content-Type ride on every export read.
+    : new Response("DATA", { headers: { "content-type": "application/json", "x-arbor-sha256": "c97c29c7a71b392b437ee03fd17f09bb10b75e879466fc0eb757b2c4a78ac938" } });
 beforeEach(() => {
   state.currentUser = { uid: "owner" }; state.enabled = true; state.getDocsHook = null; state.paths.length = 0;
   setAuthTokenProvider(async () => `${state.currentUser?.uid}-synthetic-token`);

@@ -73,7 +73,9 @@ import { STEADY_NIGHTS_DOSE, STEADY_NIGHTS_META } from "../src/content/programs/
 import type { MeasureDef } from "../src/content/programs/types.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-export const DEFAULT_OUT_DIR = "C:/Users/dguyr/ROS/PAI/projects/arbor/execution/2026-10-06--milestone-loop";
+// B-INF-15: the default lands in the git-ignored app/sweeps/ (never a path on a maintainer's machine);
+// pass --out to write the sheet where the reviewer works.
+export const DEFAULT_OUT_DIR = path.resolve(HERE, "..", "sweeps", "he-review");
 export const DEFAULT_CATALOGUE = path.resolve(HERE, "..", "src", "lib", "i18nElevation", "milestoneCatalogue.ts");
 export const DEFAULT_DATA = path.resolve(HERE, "..", "src", "lib", "milestoneData.ts");
 

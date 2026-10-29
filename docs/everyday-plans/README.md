@@ -34,6 +34,33 @@ Rules that hold everywhere here:
 | `plan-toilet-start` | [definition-plan-toilet-start.md](definition-plan-toilet-start.md) | `app/src/lib/library/plans/patterns/planToiletStart.ts` | owed | owed |
 | `plan-stay-in-bed` | [definition-plan-stay-in-bed.md](definition-plan-stay-in-bed.md) | `app/src/lib/library/plans/patterns/planStayInBed.ts` | owed | owed |
 
+## Making the books visible (28 Oct follow-up)
+
+Three gaps kept a composed plan book off a real family's shelf; all three are
+code on PR 2 of the programme:
+
+1. **Owner default.** With no `ARBOR_PLANS_OWNER_*` set, the owner allow-list
+   for unsigned patterns is `ARBOR_FAMILY_EMAILS` (the comped founder family,
+   set in `cloudbuild.prod.yaml`); an explicit `ARBOR_PLANS_OWNER_EMAILS` /
+   `_UIDS` overrides it entirely (`app/src/config/env.ts`).
+2. **The plan sheet.** The child's ONE shared plan sheet
+   (`bookAssets/plan-poses`) is built in-product on the hero pipeline: the
+   route draws the twelve shared plan poses under a `plan-` prefix (the hero
+   as themself, own clothes; its own per-sheet call counter), the sheet stores
+   the bare pose ids the plan books name, the commit is an open set, and the
+   shelf offers each plan book only once its poses are there (fail soft). The
+   parent shell ensures it (`app/src/components/layout/PlanSheetEnsurer.tsx`)
+   from the `books` rows — on approval and on load; the parent reviews the
+   poses in the hero review strip. This spends in production per child
+   (≈ 12 poses at the image model's price), on the product's own meter.
+3. **Plates and narration** are in-product too, on sibling PRs: the shared,
+   child-free plates are painted once through the server's own image provider
+   and served to every signed-in user from the shared prefix of the assets
+   bucket; plan-book narration attaches to `afterPlanSheet(childId)`
+   (`app/src/components/kidmode/hero/buildBookNarration.ts`), the one hook the
+   plan sheet builder calls when the child's plan sheet shows the hero — the
+   same place canonical books start theirs. Nothing is run by hand.
+
 ## The review packets (B-GA-37)
 
 [review/README.md](review/README.md) indexes one packet per pattern and
@@ -103,3 +130,29 @@ Before a practitioner can compose a plan for a family, counsel is asked:
 Until these are answered and recorded in STATUS, door (c) has no code path,
 no flag and no landing copy.
 
+## The pattern plates (B-BOOK-75, painted in-product)
+
+A pattern's eight plates are child-free, text-free backgrounds shared by every
+family who composes it (`app/src/lib/library/plans/planPlates.ts` holds the
+briefs). They are painted once, in-product, not committed:
+
+- `POST /api/admin/plan-plates` `{ pattern?, plate?, repaint? }` — only a
+  verified account whose email is on `ARBOR_ADMIN_EMAILS` or
+  `ARBOR_FAMILY_EMAILS`; the same image provider, model and region pins as
+  `/generate-scene`; each brief plus the standard rules (no child-like figure,
+  no text, one key light upper-left, the hero floor slot empty, no religious
+  symbol, no weapon). Painted plates are skipped unless `repaint`; a run is
+  refused past 80 images or an estimated USD 10; every call goes through the
+  image routes' global breaker and a per-painter ledger. The masters live in
+  the child-assets bucket under the non-child prefix `shared/plans/<pattern>/
+  <plate>.webp|png` with a provenance JSON beside each (model, location,
+  prompt sha256, painter, time, cost; `childFree`/`textFree` stay false and
+  `qc: "unverified"` until a person has viewed the plate full size).
+- `GET /api/plans/plates/:pattern/:plate` — any signed-in user, long cache
+  headers, 404 until painted (the reader advances on an image error).
+- A plate committed under `app/public/visuals/plans/<pattern>/<plate>.webp`
+  wins: `npm run build` regenerates `planPlateManifest.ts` from that folder
+  and the plate resolves to the static path instead of the route.
+- The owner-only "Paint plates" control sits under the parent's Everyday plans
+  section; it renders only when `/api/plans/visibility` answers `admin: true`.
+  A full paint of all eight patterns is 64 images, about USD 2.50.

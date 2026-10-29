@@ -39,7 +39,7 @@ import { StoryCard, STORY_PACK_LABEL, STORY_PACK_SOFT } from "../stories/StoryCa
 import StoryTextReader from "../stories/StoryTextReader";
 import { storyShelfTextBooks } from "../../lib/storyShelf";
 import { fmtDay } from "../../lib/formatDate";
-import { kidArt, storyCoverKey } from "../../lib/kidThemeManifest";
+import { storyCoverArt } from "../../lib/kidThemeManifest";
 import { useKidTheme } from "../../hooks/useKidTheme";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { requestStoryOpen } from "../../lib/storyOpenRequest";
@@ -326,7 +326,7 @@ export default function ComicsTab() {
   const storyBookTile = (run: HeroJourneyRun) => {
     const spec = getStorySpec(run.storyId);
     const title = runTitle(run, uiLang === "he" ? "he" : "en");
-    const face = kidArt(kidTheme, storyCoverKey(run.storyId));
+    const face = storyCoverArt(kidTheme, run.storyId);
     return (
       <div key={`run-${run.id}`} className="comic-panel overflow-hidden" data-book-kind="story" data-testid="comics-story-book">
         <div className="relative" style={{ aspectRatio: "3 / 2", borderBottom: "var(--comic-line)" }}>
@@ -645,7 +645,7 @@ export default function ComicsTab() {
       <div data-module="comics-shelf" data-primary-move="open-comic" className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
         {shelfAdventures.map((a) => {
           const w = { bg: STORY_PACK_SOFT[a.pack], ink: STORY_PACK_LABEL[a.pack].ink, label: STORY_PACK_LABEL[a.pack].en, labelHe: STORY_PACK_LABEL[a.pack].he };
-          const bookCover = kidArt(kidTheme, storyCoverKey(a.adventureId));
+          const bookCover = storyCoverArt(kidTheme, a.adventureId);
           const saved = a.meta;
           // Cover thumbnail read from the device store for this exact slot.
           const coverThumb = saved ? scopedCovers[a.id] : undefined;

@@ -55,9 +55,22 @@ export type MemoryStore = {
     userId: string;
     childProfile?: Record<string, unknown>;
   }): Promise<void>;
-  /** GDPR erasure: permanently delete every memory event (and the child doc) for a child. Returns the number of events removed. */
+  /** B-DATA-15: issue a NEW child id server-side, already parented to the
+   *  caller's family. Optional — single-tenant (local) stores omit it. */
+  issueChildId?(input: { familyId: string; userId: string }): Promise<string>;
+  /** GDPR erasure: permanently delete every memory event (and the child doc) for a child. Returns the number of events removed.
+   *  The child doc (the ownership anchor) goes LAST. */
   eraseChild(childId: string): Promise<number>;
+  /** B-GA-09: the per-child /privacy/erase's FIRST step: record that the child's family started erasing it
+   *  (erasedChildren/{childId}), so a retry still passes mayEraseChild once the child doc is gone, and account
+   *  deletion finds a half-erased child. Optional (single-tenant stores omit it). */
+  recordErase?(childId: string): Promise<void>;
+  /** B-GA-09 round 7: remove the child's erase record once its erase is finished for good (account deletion). */
+  dropEraseRecord?(childId: string): Promise<void>;
   /** Authorization: does `uid` belong to the family that owns `childId`? Optional —
    *  single-tenant (local) stores omit it, and the ownership middleware then no-ops. */
   ownsChild?(uid: string, childId: string): Promise<boolean>;
+  /** B-GA-09: may `uid` (re)run the erase of `childId`? The owner; or, once the child doc is gone, a member of the
+   *  family named in the child's erase tombstone (30 days). Optional, like ownsChild. */
+  mayEraseChild?(uid: string, childId: string): Promise<boolean>;
 };

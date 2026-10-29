@@ -19,7 +19,7 @@ const collectionNames = [...read('src/lib/childData.ts').split('export const CHI
 const dataFor = (fixture: any) => ({
   exportedAt: '2026-10-10T00:00:00.000Z', profile: fixture.child, exportNote: 'Invented private export note.',
   collections: { ...Object.fromEntries(collectionNames.map(name => [name, []])), ...fixture.collections },
-  serverData: { memoryEvents: [], shares: [] },
+  serverData: { memoryEvents: [], shares: [], consents: [], consultRequests: [] },
   exportReceipt: { status: 'incomplete', serverData: 'included', collections: Object.fromEntries(collectionNames.map(name => [name, 'included'])) },
   privateBookAssets: { format: 'arbor-private-book-assets-v1', status: 'incomplete', inventory: 'unavailable', issues: ['unauthorized'], includedFiles: 0, includedBytes: 0, files: [] },
 });
@@ -86,12 +86,8 @@ describe('bounded private export capture contract, no browser or sockets', () =>
     expect(privateExportApiDisposition('POST', '/api/todays-focus', id)).toBe('read');
   });
   it.each(['en', 'he'])('validates exact partial bytes, identity, filename, registered collections and absence of sibling data (%s)', lang => {
-    expect(collectionNames).toHaveLength(47); // B-BOOK-75 books + B-BOOK-20 Studio creations
-    expect(collectionNames).toContain('studioCreations');
+    expect(collectionNames).toHaveLength(48); // B-BOOK-75: + books; B-GA-09: + studioCreations; B-BOOK-51: + bookReads
     const fixture = privateExportFixture(seed, lang); const data = dataFor(fixture);
-    expect(fixture.collections.studioCreations).toEqual([{ id: 'corner', ownerId: 'local-sandbox', childId: fixture.child.id,
-      creation: { kind: 'corner', layout: ['plant', null, 'books', null, null, null], light: 'night', scene: 'garden' } }]);
-    expect(fixture.parsed.siblings[0].collections.studioCreations[0].childId).toBe(fixture.sibling.id);
     expect(validatePartialExport(JSON.stringify(data), fixture.filename, fixture)).toBe(true);
     const mutate = (change: (data: any) => void) => { const copy = structuredClone(data); change(copy); expect(validatePartialExport(JSON.stringify(copy), fixture.filename, fixture)).toBe(false); };
     mutate(d => { d.profile.id = fixture.sibling.id; });
@@ -102,8 +98,6 @@ describe('bounded private export capture contract, no browser or sockets', () =>
     mutate(d => { d.exportReceipt.collections.bookAssets = 'unavailable'; });
     mutate(d => { delete d.collections.heroSheet; });
     mutate(d => { delete d.collections.studioQuestProgress; });
-    mutate(d => { delete d.collections.studioCreations; });
-    mutate(d => { d.collections.studioCreations[0].childId = fixture.sibling.id; });
     mutate(d => { delete d.collections.bookBookmarks; });
     mutate(d => { d.collections.studioQuestProgress[0].choice = 'left'; });
     mutate(d => { d.collections.bookBookmarks[0].edition = 'wrong-edition'; });
@@ -113,6 +107,9 @@ describe('bounded private export capture contract, no browser or sockets', () =>
     mutate(d => { d.privateBookAssets.status = 'complete'; });
     mutate(d => { d.privateBookAssets.issues = []; });
     mutate(d => { d.serverData.memoryEvents = [{ unrelated: true }]; });
+    mutate(d => { delete d.serverData.consents; });
+    mutate(d => { d.serverData.consultRequests = [{ unrelated: true }]; });
+    mutate(d => { delete d.collections.studioCreations; });
     mutate(d => { d.exportNote = ''; });
     expect(validatePartialExport(JSON.stringify(data), fixture.filename.replace('.partial', ''), fixture)).toBe(false);
     expect(validatePartialExport(JSON.stringify(data), 'download', fixture)).toBe(false);

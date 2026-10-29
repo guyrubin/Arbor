@@ -53,6 +53,8 @@ export interface ChildProfile {
   activeGoals?: import('./practice/goalBuilder').ActiveGoal[];
   /** B-CAREPRO-33: when each Care-quoted fact was last written or confirmed (ISO). */
   factsAsOf?: import('./lib/factsAsOf').FactsAsOf;
+  /** B-NEXT-01: when the parent says hearing was last checked, with the day they said it (lib/hearingCheck; dark behind its pilot flag). */
+  hearingCheck?: import('./lib/hearingCheck').HearingCheck;
   /**
    * CI-29: Parent-entered interest tags (e.g. "Trains", "Dinosaurs").
    * Parent-facing only — the child never enters this field.
@@ -135,6 +137,14 @@ export interface ChildProfile {
    */
   kidTheme?: import('./lib/kidThemeManifest').KidThemeId;
   /**
+   * B-BOOK-45 — the parent's bedtime ("HH:MM", Settings › Kid Mode): from this
+   * time until 06:00 a library book opens as the bedtime read (night stage,
+   * slower narration, a Goodnight ending that opens nothing else). A field ON
+   * the profile document like kidTheme (rides profile sync/export/erase).
+   * Absent = off. Read only through lib/library/readMode.validBedtime.
+   */
+  bedtimeFrom?: string;
+  /**
    * B-SHELL-39 — what the parent wants to work on now, in their own words,
    * kept from "Tell Arbor about {name}" (≤ 3). A parent wish, never an
    * assessment. Fields ON the child doc: they ride the existing profile
@@ -198,6 +208,8 @@ export interface ShareGrant {
   recipientEmail: string;
   role: ShareRole;
   scopes: string[];
+  /** B-CAREPRO-41: the domain ceiling the server stored (sharing/shares.ts). */
+  domains?: string[];
   createdAt: string;
   expiresAt: string | null;
   revokedAt: string | null;
@@ -228,8 +240,14 @@ export interface SharedPacketView {
 export interface DeletionReceipt {
   childId: string;
   erasedAt: string;
-  /** LC-18: `clientDocs` = device-local keys the sweep removed on THIS device. */
-  counts: { memoryEvents: number; shares: number; consents?: number; clientDocs?: number };
+  /** LC-18: `clientDocs` = device-local keys the sweep removed on THIS device.
+   *  `storageFiles` = the child's photos and private book files the server
+   *  removed from Storage (B-BOOK-20). */
+  counts: { memoryEvents: number; shares: number; consents?: number; consultRequests?: number; storageFiles?: number; clientDocs?: number };
+  /** B-BOOK-20: every registered sink (lib/childDataSinks.ts childSinkIds) →
+   *  what this erase removed there: a count, "cleared" (no count available)
+   *  or "not-reached" (that part of the erase failed; never claimed). */
+  sinks?: Record<string, number | "cleared" | "not-reached">;
 }
 
 /** COPPA-2026 consent purposes + grant record (client mirror of sharing/consent.ts). */
@@ -371,6 +389,12 @@ export interface BehaviorLog {
   shelf?: import("./lib/shelves/registry").ShelfId;
   /** B-LOOP-06 — the milestone this moment is evidence for (parent-confirmed). */
   milestoneId?: string;
+  /** B-DATA-16 — the authored co-regulation script (a hard-moment guide card
+   *  id, content/hardMomentCards) the parent SAID they used, chosen from that
+   *  guide and removable before save or on edit. Hard moments only. A fact
+   *  about the parent's action, never an outcome: whether it helped stays the
+   *  parent's own answer on the action ledger (`held`), never inferred here. */
+  coRegulationScript?: string;
 }
 
 /** A completed Daily Play activity — a positive, lightweight "win" written to
@@ -518,6 +542,9 @@ export interface MilestoneSource {
 
 export type StepStatus = 'todo' | 'doing' | 'done';
 
+/** B-DATA-14 (wave 4): one routine step ticked offline, with its words to match it by. */
+export type RoutineOfflineTick = { text: string; done: boolean; at: string };
+
 export interface ActionPlan {
   id: string;
   title: string;
@@ -544,6 +571,20 @@ export interface ActionPlan {
    * second device never celebrates the same day twice.
    */
   routineCelebratedOn?: string;
+  /**
+   * B-DATA-14 (wave 4): steps ticked on a phone while it was offline, by local
+   * day then step index. Written alone (a merge write of one step), so a second
+   * phone's run survives; folded into `routineRuns` on the next confirmed read
+   * and dropped. null: this phone took its own pending tick back.
+   */
+  routineOfflineTicks?: Record<string, Record<string, RoutineOfflineTick | null>>;
+  /**
+   * B-GROWTH-40: the `goalId` of the family's current goal (focusGoal) when
+   * this plan was started, so My child's focus line can say what to do next.
+   * Written only at start (practice/goalBuilder withFocusGoal); older plans
+   * are never backfilled, and a plan carries no area of its own.
+   */
+  focusGoalId?: string;
 }
 
 /** B-ASKJB-26: one weekly check-in on a plan — the parent's own answer, never a score. */

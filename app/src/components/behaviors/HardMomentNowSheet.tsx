@@ -4,7 +4,7 @@ import { Modal } from "../ui/Modal";
 import { Sheet, useCompactSurface } from "../ui/Sheet";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import type { HardMomentCard, HardMomentCategory } from "../../content/hardMomentCards";
+import { renderSayThis, type HardMomentCard, type HardMomentCategory } from "../../content/hardMomentCards";
 import { HARD_MOMENT_CATEGORIES, locText, recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { availableHardMomentCards, matchToRecentBehaviors } from "../../content/selectCards";
 import type { HardMomentContext } from "../../content/pilotRelease";
@@ -16,12 +16,12 @@ import { tryItState } from "../coach/CoachAnswerCards";
 import { HardMomentGuideContent } from "./HardMomentsSection";
 import type { BehaviorLog } from "../../types";
 import { useAuth } from "../../context/AuthContext";
-import { lastHeldFor } from "./hardMomentLastTime";
+import { lastTimeFor } from "./hardMomentLastTime";
 import { LastTimeLead, SendWordsButton } from "./HardMomentWords";
 import { PublicGuideShare } from "./PublicGuideShare";
 import { ParentBreathPacer } from "./ParentBreathPacer";
 import { SayThis } from "../ui/AiBlock";
-import { requestCompanionConversation } from "../../lib/companionConversation";
+import { startConversationVoice } from "../../lib/companionConversation";
 import "./hardMomentSheet.css";
 
 /**
@@ -144,7 +144,7 @@ export function HardMomentFirstView({ childName, lang, t, onTalk, onKeep, onSafe
           className={action}
           style={{ background: "var(--arbor-ink)", color: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-ink)" }}
         >
-          <Icon name="forum" size={18} />{t("hm.first.talk")}
+          <Icon name="graphic_eq" size={18} />{t("hm.first.talk")}
         </button>
         <button
           type="button"
@@ -190,11 +190,13 @@ export default function HardMomentNowSheet() {
   const Surface = useCompactSurface() ? Sheet : Modal;
   const locale = uiLang === "he" ? "he" : "en";
   const open = hardMomentNow.open;
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Opened on a card, the first paint is that card (the effect below re-syncs
+  // every later open); no frame of the "you first" view flashes before it.
+  const [selectedId, setSelectedId] = useState<string | null>(() => (open ? hardMomentNow.cardId ?? null : null));
   const [booked, setBooked] = useState<string | null>(null);
   // FEAT-06: the "you first" view leads a fresh open; once the parent has
   // opened a card (or arrived on one) the picker shows the plain breath row.
-  const [pastFirst, setPastFirst] = useState(false);
+  const [pastFirst, setPastFirst] = useState(() => open && Boolean(hardMomentNow.cardId));
 
   useEffect(() => {
     if (open) { setSelectedId(hardMomentNow.cardId ?? null); setBooked(null); setPastFirst(Boolean(hardMomentNow.cardId)); }
@@ -231,8 +233,9 @@ export default function HardMomentNowSheet() {
 
   const doNow = card ? locText(card.doNow, locale) : "";
   const tryState = card ? (booked === card.id ? "accepted" : tryItState(doNow, activeTodayAction)) : "accept";
-  // B-ASKJB-33: the newest "held the plan calmly" answer for this card.
-  const lastTime = card ? lastHeldFor(card, actionLoop || []) : null;
+  // B-ASKJB-33: the newest "held the plan calmly" answer for this card;
+  // B-DATA-16: else the last hard moment logged with these words (as "used").
+  const lastTime = card ? lastTimeFor(card, actionLoop || [], behaviorLogs || []) : null;
   const parentFirst = (user?.displayName || t("nav.parent")).split(" ")[0];
 
   return (
@@ -250,7 +253,7 @@ export default function HardMomentNowSheet() {
                 childName={childFirst}
                 lang={locale}
                 t={t}
-                onTalk={() => { setAskHardMomentRef(null); closeHardMomentNow(); requestCompanionConversation({ source: "hard-moment" }); }}
+                onTalk={() => { setAskHardMomentRef(null); closeHardMomentNow(); startConversationVoice({ source: "hard-moment", opening: t("hm.first.say") }); }}
                 onKeep={() => { closeHardMomentNow(); openCaptureSheet({ mode: "text" }); }}
                 onSafety={() => { closeHardMomentNow(); setActiveTab("safety"); }}
               />
@@ -297,7 +300,7 @@ export default function HardMomentNowSheet() {
         ) : (
           <>
             {/* B-ASKJB-33: "Last time, this helped with {name}" leads the card. */}
-            {lastTime && <LastTimeLead card={card} childName={childFirst} at={lastTime.at} locale={locale} t={t} />}
+            {lastTime && <LastTimeLead card={card} childName={childFirst} at={lastTime.at} basis={lastTime.basis} locale={locale} t={t} />}
             <button
               type="button"
               onClick={() => setSelectedId(null)}
@@ -331,7 +334,22 @@ export default function HardMomentNowSheet() {
                   )}
                 </>
               )}
-              <SendWordsButton card={card} locale={locale} parentName={parentFirst} childName={childFirst} t={t} />
+              {/* B-DATA-16: the two actions about these words share one row —
+                  "I used these words" (the ONE capture sheet opens on the
+                  hard-moment form with this guide's words, removable; Save
+                  stores coRegulationScript) beside "Send these words". */}
+              <div data-testid="hard-moment-now-words-row" className="grid min-w-0 grid-cols-2 items-stretch gap-2">
+                <button
+                  type="button"
+                  data-testid="hard-moment-now-used"
+                  onClick={() => { closeHardMomentNow(); openCaptureSheet({ mode: "text", coRegulationScript: card.id }); }}
+                  className="inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition"
+                  style={{ color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)", background: "var(--arbor-paper-elevated)" }}
+                >
+                  <Icon name="bookmark_add" size={16} /> <span className="min-w-0">{t("elev.closeloop.hm.usedKeep")}</span>
+                </button>
+                <SendWordsButton card={card} locale={locale} parentName={parentFirst} childName={childFirst} t={t} inRow />
+              </div>
               <PublicGuideShare key={`${card.id}-${locale}`} card={card} locale={locale} />
               <button
                 type="button"
@@ -342,12 +360,15 @@ export default function HardMomentNowSheet() {
                   setAskHardMomentRef(card.id);
                   closeHardMomentNow();
                   // F-TALK-1: Talk is a panel over this place, never a page.
-                  requestCompanionConversation({ source: "hard-moment" });
+                  // B-VOICE-02: hands-free from this tap — Arbor says the
+                  // card's words first (text-to-speech, never the prompt),
+                  // then listens; the conversation's own urgent-help rules hold.
+                  startConversationVoice({ source: "hard-moment", opening: locText(renderSayThis(card, childFirst), locale) });
                 }}
                 className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition"
                 style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}
               >
-                <Icon name="forum" size={16} /> {t("hm.now.talk")}
+                <Icon name="graphic_eq" size={16} /> {t("hm.now.talk")}
               </button>
               {/* Law 6: the Learn read the shelf's guide modal offered stays one tap away. */}
               {(() => {

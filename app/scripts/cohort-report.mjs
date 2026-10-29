@@ -6,10 +6,14 @@
  *
  * Runs on Application Default Credentials against production Firestore and
  * prints one dated table. ADC bypasses security rules, which is exactly why
- * this script reads only two things:
+ * this script reads only these, each projected on read:
  *   1. `retentionRollups/{uid}` — day keys, counts and two acquisition props
- *      (N1-04 pins the key set), and
- *   2. event NAMES plus three grouping props.
+ *      (N1-04 pins the key set),
+ *   2. event NAMES plus three grouping props,
+ *   3. B-GROWTH-43 / BD-25: `offerRedemptions` and `referralGrants` (offer ids
+ *      and credited uids), `entitlements` (reduced to paid / lapsed booleans)
+ *      and co-parent `shares` (the owner and co-parent uids only); no uid is
+ *      ever printed.
  * It never touches `users/{uid}/children/**`. A recursive key scan of the
  * printed object refuses /child|name|note|text|transcript/i outright.
  *
@@ -23,9 +27,20 @@
  * At T+7 a `d28` bucket with eligible = 0 is the CORRECT answer, not a miss —
  * no cohort is 28 days old yet. WAVE-N1 §6 states the thresholds.
  *
- * Flags: --retention --activation --funnel <name> --events
+ * Flags: --retention --activation --funnel <name> --events --households
  *        --since <ISO|YYYY-MM-DD> --group-by source|market --json
  *        --include-internal
+ *
+ * B-GROWTH-43: `--households` prints one line per group — families that
+ * started in the window → the offer each redeemed (`offerRedemptions/{uid}`)
+ * → activated → paying / lapsed (`entitlements/{uid}`, reduced to booleans
+ * on read). Mirrors server/cohortMetrics.ts summariseHouseholds; the guard
+ * runs both on one fixture.
+ *
+ * BD-25: `--contract` prints the metric contract (lib/metricContract.ts):
+ * D7 first value, W4 (a value action on day 22–28), D30 paid, each as
+ * numerator of a MATURED all-start denominator, per source and per offer;
+ * Gate A's two halves; and every missing-data line, every time.
  * With no section flag, every section prints.
  *
  * B-MEAS-01: families whose rollup carries `cohort: "internal"` (founder,
@@ -57,7 +72,13 @@ const FUNNEL_CHAINS = {
   billing: ["paywall_view", "checkout_start", "entitlement_active"],
   // B-MEAS-02: the pilot's primary metric (server/cohortMetrics.ts summariseLoop).
   loop: ["today_action_accepted", "today_action_outcome", "loop_continued"],
+  // B-RESID-05: the share → activation chain (server/cohortMetrics.ts).
+  share: ["share_completed", "invite_activated"],
 };
+// B-RESID-05: one family sends, another activates, so the chain is counted in
+// ONE row (server/cohortMetrics.ts ONE_ROW_CHAINS), never split by source.
+const ONE_ROW_CHAINS = ["share"];
+const ONE_ROW_KEY = "all";
 
 /* ── flags ───────────────────────────────────────────────────────────────── */
 
@@ -68,6 +89,9 @@ function parseArgs(argv) {
     if (a === "--retention") out.sections.add("retention");
     else if (a === "--activation") out.sections.add("activation");
     else if (a === "--events") out.sections.add("events");
+    else if (a === "--households") out.sections.add("households");
+    else if (a === "--contract") out.sections.add("contract");
+    else if (a === "--contract-since") out.contractSince = argv[++i];
     else if (a === "--funnel") { out.sections.add("funnel"); out.funnels.push(argv[++i]); }
     else if (a === "--since") out.since = argv[++i];
     else if (a === "--group-by") out.groupBy = argv[++i] === "market" ? "market" : "source";
@@ -76,10 +100,12 @@ function parseArgs(argv) {
     else if (a === "--help" || a === "-h") out.help = true;
   }
   if (out.sections.size === 0) {
-    out.sections = new Set(["retention", "activation", "funnel", "events"]);
+    out.sections = new Set(["retention", "activation", "funnel", "events", "households", "contract"]);
     if (out.funnels.length === 0) out.funnels = Object.keys(FUNNEL_CHAINS);
   }
   if (!out.since) out.since = new Date(Date.now() - 7 * DAY_MS).toISOString();
+  // BD-25: the contract reads matured households, by default the last 90 days.
+  if (!out.contractSince || !Number.isFinite(Date.parse(out.contractSince))) out.contractSince = new Date(Date.now() - CONTRACT_WINDOW_DAYS * DAY_MS).toISOString();
   return out;
 }
 
@@ -282,6 +308,283 @@ export function summariseActivation(events, asOf, windowDays) {
   return { count: activated.size, denominator: eligible.size };
 }
 
+/* ── B-GROWTH-43: the household line (mirrors server/cohortMetrics.ts) ───── */
+
+/** lib/offers.ts OFFER_IDS, restated (pinned by the guard). */
+export const OFFER_IDS = ["referral_month", "founding_family"];
+export const OFFER_REDEMPTIONS_COLLECTION = "offerRedemptions";
+const BILLED_PROVIDERS = new Set(["stripe", "app_store", "play_store"]);
+
+/** server/entitlements.ts recordStillEntitles, restated. */
+function recordStillEntitles(record, now) {
+  if (record.plan === "free") return true;
+  if (record.status === "expired") return false;
+  if (record.currentPeriodEnd && record.willRenew === false && record.status !== "in_trial") {
+    const end = Date.parse(record.currentPeriodEnd);
+    if (Number.isFinite(end) && end < now) return false;
+  }
+  return true;
+}
+
+/** Mirrors cohortMetrics.billingStateOf: a billing record reduced to three booleans. */
+export function billingStateOf(record, now = Date.now()) {
+  const billed = !!record?.provider && BILLED_PROVIDERS.has(record.provider);
+  if (!record || !billed) return { billed: false, paying: false, lapsed: false };
+  const entitles = record.plan !== "free" && recordStillEntitles(record, now);
+  return { billed, paying: entitles && record.status !== "in_trial", lapsed: !entitles };
+}
+
+/* BD-37 — lib/acquisitionChannel.ts restated (the guard runs both on one table). */
+export const ACQUISITION_CHANNELS = ["practitioner", "centre", "presenter", "sponsor", "studio", "founding", "referral", "content", "search", "store", "direct", "other"];
+const SELF_NAMED_CHANNELS = new Set(["practitioner", "centre", "presenter", "sponsor", "studio", "founding", "referral", "direct"]);
+const CONTENT_SOURCES = new Set(["instagram", "tiktok", "youtube", "facebook", "whatsapp", "telegram", "creator", "pr", "newsletter", "landing", "qr"]);
+const CONTENT_HOST = /(^|\.)(instagram\.com|facebook\.com|fb\.com|tiktok\.com|youtube\.com|youtu\.be|whatsapp\.com|wa\.me|t\.me|telegram\.org|linkedin\.com|lnkd\.in|t\.co|x\.com|twitter\.com|reddit\.com|pinterest\.com)$/;
+const SEARCH_HOST = /(^|\.)(google\.[a-z.]+|bing\.com|duckduckgo\.com|search\.yahoo\.com|yahoo\.com|ecosia\.org|yandex\.[a-z.]+|baidu\.com|search\.brave\.com)$/;
+const STORE_SOURCES = new Set(["appstore", "playstore", "apps.apple.com", "play.google.com"]);
+
+export function channelOfSource(source) {
+  const s = String(source ?? "").trim().toLowerCase();
+  if (!s) return "other";
+  if (SELF_NAMED_CHANNELS.has(s)) return s;
+  if (CONTENT_SOURCES.has(s) || CONTENT_HOST.test(s)) return "content";
+  if (STORE_SOURCES.has(s)) return "store";
+  if (SEARCH_HOST.test(s)) return "search";
+  return "other";
+}
+
+/** Mirrors cohortMetrics.householdGroupKey. */
+export const householdGroupKey = (r, groupBy) => (groupBy === "channel" ? channelOfSource(r.source) : String(r[groupBy] ?? "unknown"));
+
+/** Mirrors cohortMetrics.summariseHouseholds. */
+export function summariseHouseholds(rollups, events, offers, billing, groupBy, startedSince = null) {
+  const activated = new Set(events.filter((e) => e.event === "activated").map((e) => e.uid));
+  const offerOf = new Map((offers ?? []).map((o) => [o.uid, o.offerId]));
+  const billingOf = new Map((billing ?? []).map((b) => [b.uid, b]));
+  const groups = new Map();
+  const seen = new Set();
+  for (const r of rollups) {
+    if (!r.uid || seen.has(r.uid)) continue;
+    if (startedSince && r.firstSeen < startedSince) continue;
+    seen.add(r.uid);
+    const key = householdGroupKey(r, groupBy);
+    const line = groups.get(key) ?? {
+      key,
+      households: 0,
+      offers: [...OFFER_IDS, "none"].map((offer) => ({ offer, households: 0 })),
+      activated: 0,
+      paying: 0,
+      lapsed: 0,
+    };
+    line.households += 1;
+    const offer = offerOf.get(r.uid);
+    const slot = line.offers.find((o) => o.offer === (offer && OFFER_IDS.includes(offer) ? offer : "none"));
+    if (slot) slot.households += 1;
+    if (activated.has(r.uid)) line.activated += 1;
+    const b = billingOf.get(r.uid);
+    if (b?.paying) line.paying += 1;
+    if (b?.lapsed) line.lapsed += 1;
+    groups.set(key, line);
+  }
+  return {
+    lines: [...groups.values()].sort((a, b) => b.households - a.households || a.key.localeCompare(b.key)),
+    offersRead: offers !== null,
+    billingRead: billing !== null,
+  };
+}
+
+/* ── BD-25: the metric contract (mirrors server/cohortMetrics.ts) ────────── */
+
+/** lib/metricContract.ts, restated; the guard pins every constant. */
+export const METRIC_CONTRACT_VERSION = "bd25-2026-10-28";
+export const PAID_EVENT = "paid";
+export const CONTRACT_WINDOW_DAYS = 90;
+export const MATURITY_DAYS = { d7: 7, w4: 28, d30: 30 };
+export const W4_DAYS = { from: 22, to: 28 };
+export const VALUE_EVENTS = ["capture_saved", "today_action_accepted", "today_action_outcome", "keep_this", "plan_approved"];
+export const GATE_A = { activatedMaturedW4: 50, fullPricePayers: 10 };
+export const MEASURE_DEFINITIONS = {
+  d7: "D7 first value: households activated (lib/activation.ts definition) among households whose access began at least 7 days ago",
+  w4: "W4: households with a value action (" + VALUE_EVENTS.join(", ") + ") on day 22 to 28 after access, among households whose access began at least 28 days ago",
+  d30: "D30 paid: households with a paid event by day 30 after access, confirmed by a store billing record (not a comp), among households whose access began at least 30 days ago",
+  offer: "offer: the one offer a household redeemed (lib/offers.ts); a referral past the referrer's cap still counts, the family got its month",
+  renewal: "renewal: an actual second charge, including charges outside the D30 window; not restricted to the D30-paid count",
+};
+export const STANDING_MISSING_DATA = [
+  "renewal (second charge): the entitlement record keeps no charge history; needs the billing export",
+  "full price: price, discount and refund are not in the entitlement record; full-price payers here are store payers with no offer, to reconcile against receipts",
+];
+
+/** Mirrors cohortMetrics.coParentLinksOf. */
+export function coParentLinksOf(shares) {
+  return shares.flatMap((s) =>
+    s?.role === "co_parent" && typeof s.ownerUid === "string" && typeof s.recipientUid === "string" && s.ownerUid && s.recipientUid && s.ownerUid !== s.recipientUid
+      ? [{ ownerUid: s.ownerUid, recipientUid: s.recipientUid }]
+      : []);
+}
+
+/** Mirrors cohortMetrics.foldCoParents: a co-parent folds into the owner's household. */
+export function foldCoParents({ rollups, events, offers, billing, coParents }) {
+  if (coParents === null) return { rollups: [...rollups], events: [...events], offers: offers ? [...offers] : null, billing: billing ? [...billing] : null, folded: null };
+  const owners = new Set(rollups.map((r) => r.uid).filter((u) => !!u));
+  const ownerOf = new Map();
+  for (const l of coParents) if (owners.has(l.ownerUid) && !ownerOf.has(l.recipientUid) && l.recipientUid !== l.ownerUid) ownerOf.set(l.recipientUid, l.ownerUid);
+  const canon = (uid) => ownerOf.get(uid) ?? uid;
+  const keptRollups = rollups.filter((r) => !r.uid || !ownerOf.has(r.uid));
+  const folded = rollups.length - keptRollups.length;
+  let foldedOffers = null;
+  if (offers !== null) {
+    const by = new Map();
+    for (const o of offers) if (!ownerOf.has(o.uid)) by.set(o.uid, o);
+    for (const o of offers) if (ownerOf.has(o.uid) && !by.has(canon(o.uid))) by.set(canon(o.uid), { uid: canon(o.uid), offerId: o.offerId });
+    foldedOffers = [...by.values()];
+  }
+  let foldedBilling = null;
+  if (billing !== null) {
+    const by = new Map();
+    for (const b of billing) {
+      const uid = canon(b.uid);
+      const prev = by.get(uid);
+      if (!prev) { by.set(uid, { ...b, uid }); continue; }
+      const paying = prev.paying || b.paying;
+      by.set(uid, { uid, billed: prev.billed || b.billed, paying, lapsed: !paying && (prev.lapsed || b.lapsed) });
+    }
+    foldedBilling = [...by.values()];
+  }
+  return { rollups: keptRollups, events: events.map((e) => (ownerOf.has(e.uid) ? { ...e, uid: canon(e.uid) } : e)), offers: foldedOffers, billing: foldedBilling, folded };
+}
+
+const dayKeyOfIso = (at) => {
+  const ms = Date.parse(at);
+  return Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : null;
+};
+
+/** Mirrors cohortMetrics.summariseMetricContract. */
+export function summariseMetricContract(input) {
+  const folded = foldCoParents({ rollups: input.rollups, events: input.events, offers: input.offers, billing: input.billing, coParents: input.coParents ?? null });
+  const { rollups, events, offers, billing } = folded;
+  const { groupBy, asOfDay } = input;
+  const activated = new Set(events.filter((e) => e.event === "activated").map((e) => e.uid));
+  const paidDays = new Map();
+  for (const e of events) {
+    if (e.event !== PAID_EVENT || !e.at) continue;
+    const d = dayKeyOfIso(e.at);
+    if (d) paidDays.set(e.uid, [...(paidDays.get(e.uid) ?? []), d]);
+  }
+  const valueDays = new Map();
+  for (const e of events) {
+    if (!VALUE_EVENTS.includes(e.event) || !e.at) continue;
+    const d = dayKeyOfIso(e.at);
+    if (d) valueDays.set(e.uid, [...(valueDays.get(e.uid) ?? []), d]);
+  }
+  const offerOf = new Map((offers ?? []).map((o) => [o.uid, OFFER_IDS.includes(o.offerId) ? o.offerId : "none"]));
+  const billingOf = new Map((billing ?? []).map((b) => [b.uid, b]));
+  const households = [];
+  const seen = new Set();
+  for (const r of rollups) {
+    if (!r.uid || seen.has(r.uid)) continue;
+    if (input.startedSince && r.firstSeen < input.startedSince) continue;
+    const age = dayIndex(r.firstSeen, asOfDay);
+    if (age === null) continue;
+    seen.add(r.uid);
+    households.push({ uid: r.uid, group: householdGroupKey(r, groupBy), channel: channelOfSource(r.source), offer: offerOf.get(r.uid) ?? "none", age, firstSeen: r.firstSeen });
+  }
+  const paidByDay30 = (h) => (paidDays.get(h.uid) ?? []).some((d) => {
+    const i = dayIndex(h.firstSeen, d);
+    return i !== null && i >= 0 && i <= MATURITY_DAYS.d30;
+  });
+  let unconfirmedPaid = 0;
+  for (const h of households) if (h.age >= MATURITY_DAYS.d30 && paidByDay30(h) && billing !== null && !billingOf.get(h.uid)?.billed) unconfirmedPaid += 1;
+  const row = (key, hs) => {
+    const d7 = { n: 0, of: 0 };
+    const w4 = { n: 0, of: 0 };
+    const d30 = { n: 0, of: 0 };
+    for (const h of hs) {
+      if (h.age >= MATURITY_DAYS.d7) {
+        d7.of += 1;
+        if (activated.has(h.uid)) d7.n += 1;
+      }
+      if (h.age >= MATURITY_DAYS.w4) {
+        w4.of += 1;
+        const inWeek4 = (valueDays.get(h.uid) ?? []).some((d) => {
+          const i = dayIndex(h.firstSeen, d);
+          return i !== null && i >= W4_DAYS.from && i <= W4_DAYS.to;
+        });
+        if (inWeek4) w4.n += 1;
+      }
+      if (h.age >= MATURITY_DAYS.d30) {
+        d30.of += 1;
+        if (paidByDay30(h) && billingOf.get(h.uid)?.billed) d30.n += 1;
+      }
+    }
+    return { key, starts: hs.length, d7, w4, d30Paid: billing === null ? null : d30 };
+  };
+  const split = (by, order) => {
+    const groups = new Map();
+    for (const k of order ?? []) groups.set(k, []);
+    for (const h of households) groups.set(by(h), [...(groups.get(by(h)) ?? []), h]);
+    const rows = [...groups.entries()].map(([k, hs]) => row(k, hs));
+    return order ? rows : rows.sort((a, b) => b.starts - a.starts || a.key.localeCompare(b.key));
+  };
+  const activatedMaturedW4 = households.filter((h) => h.age >= MATURITY_DAYS.w4 && activated.has(h.uid)).length;
+  const fullPricePayers = billing === null || offers === null
+    ? null
+    : households.filter((h) => h.offer === "none" && billingOf.get(h.uid)?.paying).length;
+  const missing = [...STANDING_MISSING_DATA];
+  if (offers === null) missing.push("offers: the redemption records were not read; the offer split and full-price payers are unknown");
+  if (billing === null) missing.push("billing: the entitlement records were not read; D30 paid and full-price payers are unknown");
+  if (input.eventsTruncated) missing.push("events: the scan hit its ceiling; activation, W4 and D30 counts may be low");
+  if (unconfirmedPaid > 0) missing.push(`D30 paid: ${unconfirmedPaid} household(s) show a paid event with no store billing record; not counted until billing confirms`);
+  if (folded.folded === null) missing.push("household: the co-parent shares were not read; a co-parent's own account counts as a second household");
+  return {
+    version: METRIC_CONTRACT_VERSION,
+    asOfDay,
+    definitions: { ...MEASURE_DEFINITIONS },
+    overall: row("all", households),
+    byGroup: split((h) => h.group),
+    byOffer: split((h) => h.offer, [...OFFER_IDS, "none"]),
+    byChannel: split((h) => h.channel, ACQUISITION_CHANNELS).filter((r) => r.starts > 0),
+    gateA: {
+      activatedMaturedW4: { n: activatedMaturedW4, required: GATE_A.activatedMaturedW4 },
+      fullPricePayers: { n: fullPricePayers, required: GATE_A.fullPricePayers },
+      met: fullPricePayers === null ? null : activatedMaturedW4 >= GATE_A.activatedMaturedW4 && fullPricePayers >= GATE_A.fullPricePayers,
+    },
+    missing,
+    startedSince: input.startedSince ?? null,
+    coParentsFolded: folded.folded,
+  };
+}
+
+/** "n of m · x%", and "not answerable yet" on an empty denominator (the second printing law). */
+const fraction = (f) => (f === null ? "unknown (not read)" : `${f.n} of ${f.of}  ·  ${pct(f.n, f.of)}`);
+
+/** Mirrors cohortMetrics.withLegacyRedemptions + referral.legacyRedemptionsFromLedgers:
+ *  a family a referrer ledger credits, with no redemption record, holds the referral month. */
+export function withLegacyRedemptions(offers, ledgers) {
+  const legacy = new Set();
+  for (const l of ledgers) if (Array.isArray(l?.activatedBy)) for (const u of l.activatedBy) if (typeof u === "string" && u) legacy.add(u);
+  const seen = new Set(offers.map((o) => o.uid));
+  return [...offers, ...[...legacy].filter((uid) => !seen.has(uid)).map((uid) => ({ uid, offerId: "referral_month" }))];
+}
+
+async function fetchOfferRedemptions(db) {
+  const [snap, ledgers] = await Promise.all([
+    db.collection(OFFER_REDEMPTIONS_COLLECTION).limit(MAX_ROLLUPS).get(),
+    db.collection("referralGrants").limit(MAX_ROLLUPS).get(),
+  ]);
+  const explicit = snap.docs.flatMap((d) => (typeof d.data().offerId === "string" ? [{ uid: d.id, offerId: d.data().offerId }] : []));
+  return withLegacyRedemptions(explicit, ledgers.docs.map((d) => d.data()));
+}
+
+async function fetchCoParentLinks(db) {
+  const snap = await db.collection("shares").where("role", "==", "co_parent").limit(MAX_ROLLUPS).get();
+  return coParentLinksOf(snap.docs.map((d) => d.data()));
+}
+
+async function fetchBillingStates(db, now) {
+  const snap = await db.collection("entitlements").limit(MAX_ROLLUPS).get();
+  return snap.docs.map((d) => ({ uid: d.id, ...billingStateOf(d.data(), now) }));
+}
+
 /* ── Firestore, on ADC ───────────────────────────────────────────────────── */
 
 const projectProps = (raw) => {
@@ -403,6 +706,38 @@ function print(report, args) {
     }
   }
 
+  if (args.sections.has("households") && report.households) {
+    const h = report.households;
+    lines.push(rule("Households by acquisition channel — started in the window → offer → activated → paying"));
+    if (!h.offersRead) lines.push("  ! offer redemptions not read — the offer columns are unknown, not zero");
+    if (!h.billingRead) lines.push("  ! billing records not read — paying and lapsed are unknown, not zero");
+    if (h.lines.length === 0) lines.push("  no family started in the window — not answerable yet");
+    for (const l of h.lines) {
+      const offers = l.offers.map((o) => `${o.offer} ${o.households}`).join(", ");
+      lines.push(`  ${l.key.padEnd(14)} started ${l.households}  ·  offer [${offers}]  →  activated ${l.activated} of ${l.households}  →  paying ${l.paying} of ${l.households}  ·  lapsed ${l.lapsed}`);
+    }
+    lines.push("  (lapsed = a store record that no longer entitles: expired, refunded, an unpaid store trial or a moved subscription; net paid needs the billing export)");
+  }
+
+  if (args.sections.has("contract") && report.contract) {
+    const c = report.contract;
+    lines.push(rule(`Metric contract (${c.version}) — households started since ${c.startedSince ?? "the window"}, matured all-start denominators, as of ${c.asOfDay}`));
+    if (c.coParentsFolded !== null && c.coParentsFolded !== undefined) lines.push(`  co-parent accounts folded into their family's household: ${c.coParentsFolded}`);
+    for (const key of ["d7", "w4", "d30"]) lines.push(`  ${c.definitions[key]}`);
+    const printRow = (r) => lines.push(`  ${r.key.padEnd(16)} starts ${String(r.starts).padStart(4)}  ·  D7 ${fraction(r.d7)}  ·  W4 ${fraction(r.w4)}  ·  D30 paid ${fraction(r.d30Paid)}`);
+    printRow(c.overall);
+    lines.push(`  by ${report.groupBy ?? "source"}:`);
+    for (const r of c.byGroup) printRow(r);
+    lines.push("  by offer:");
+    for (const r of c.byOffer) printRow(r);
+    lines.push("  by acquisition channel:");
+    for (const r of c.byChannel ?? []) printRow(r);
+    const g = c.gateA;
+    lines.push(`  Gate A: activated with matured W4 ${g.activatedMaturedW4.n} of ${g.activatedMaturedW4.required} needed  ·  full-price payers ${g.fullPricePayers.n ?? "unknown"} of ${g.fullPricePayers.required} needed  ·  ${g.met === null ? "not answerable yet" : g.met ? "MET" : "not met"}`);
+    lines.push("  missing data:");
+    for (const m of c.missing) lines.push(`    - ${m}`);
+  }
+
   if (args.sections.has("events")) {
     lines.push(rule("Event census"));
     if (report.eventCensus.length === 0) lines.push("  no events in the window");
@@ -415,10 +750,23 @@ function print(report, args) {
 /* ── main ────────────────────────────────────────────────────────────────── */
 
 export async function buildReport(db, args, now = new Date()) {
-  const [allRollups, eventsResult] = await Promise.all([fetchRollups(db), fetchEvents(db, args.since)]);
+  const sinceMs = Date.parse(args.since);
+  const contractSince = args.contractSince && Number.isFinite(Date.parse(args.contractSince)) ? args.contractSince : args.since;
+  const widened = Number.isFinite(sinceMs) && Date.parse(contractSince) < sinceMs;
+  const [allRollups, eventsResult, offerDocs, billingDocs, coParentLinks] = await Promise.all([
+    fetchRollups(db),
+    fetchEvents(db, widened ? contractSince : args.since),
+    fetchOfferRedemptions(db).catch(() => null),
+    fetchBillingStates(db, now.getTime()).catch(() => null),
+    fetchCoParentLinks(db).catch(() => null),
+  ]);
   const { mode } = eventsResult;
   const includeInternal = args.includeInternal === true;
-  const { rollups, events, excluded } = excludeInternal(allRollups, eventsResult.events, includeInternal);
+  // BD-25: the contract reads the wider scan; every other section keeps --since.
+  const windowEvents = widened ? eventsResult.events.filter((e) => !e.at || Date.parse(e.at) >= sinceMs) : eventsResult.events;
+  const { rollups, events, excluded } = excludeInternal(allRollups, windowEvents, includeInternal);
+  const contractEvents = widened ? excludeInternal(allRollups, eventsResult.events, includeInternal).events : events;
+  const householdInputs = foldCoParents({ rollups, events, offers: offerDocs, billing: billingDocs, coParents: coParentLinks });
   const asOfDay = now.toISOString().slice(0, 10);
   const census = new Map();
   for (const e of events) census.set(e.event, (census.get(e.event) ?? 0) + 1);
@@ -426,7 +774,8 @@ export async function buildReport(db, args, now = new Date()) {
   for (const name of args.funnels) {
     const chain = FUNNEL_CHAINS[name];
     if (!chain) continue;
-    funnels[name] = countFunnelChain(events, chain, args.groupBy);
+    const counted = ONE_ROW_CHAINS.includes(name) ? events.map((e) => ({ ...e, props: { ...e.props, [args.groupBy]: ONE_ROW_KEY } })) : events;
+    funnels[name] = countFunnelChain(counted, chain, args.groupBy);
   }
   const loop = args.funnels.includes("loop") ? summariseLoop(events) : undefined;
   const { definition, definitionStatus } = readActivationDefinition();
@@ -438,6 +787,18 @@ export async function buildReport(db, args, now = new Date()) {
     activation: { ...summariseActivation(events, now.getTime(), 7), definition, definitionStatus },
     funnels,
     ...(loop ? { loop } : {}),
+    households: summariseHouseholds(householdInputs.rollups, householdInputs.events, householdInputs.offers, householdInputs.billing, "channel", Number.isFinite(Date.parse(args.since)) ? new Date(args.since).toISOString().slice(0, 10) : null),
+    contract: summariseMetricContract({
+      rollups,
+      events: contractEvents,
+      offers: offerDocs,
+      billing: billingDocs,
+      coParents: coParentLinks,
+      groupBy: args.groupBy,
+      asOfDay,
+      startedSince: Number.isFinite(Date.parse(contractSince)) ? new Date(contractSince).toISOString().slice(0, 10) : null,
+      eventsTruncated: eventsResult.events.length >= MAX_EVENTS,
+    }),
     eventCensus: [...census.entries()].map(([stage, count]) => ({ stage, count })).sort((a, b) => b.count - a.count || a.stage.localeCompare(b.stage)),
     scanned: { rollups: rollups.length, events: events.length, mode },
     internal: { excluded, included: includeInternal },
@@ -448,7 +809,7 @@ export async function buildReport(db, args, now = new Date()) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    process.stdout.write(`cohort-report — the founder's cohort read\n\n  --retention --activation --funnel <${Object.keys(FUNNEL_CHAINS).join("|")}> --events\n  --since <ISO|YYYY-MM-DD>  --group-by source|market  --json  --include-internal\n\nRuns on ADC. Reads retentionRollups + event names only. Internal (founder/comped/smoke) families are excluded unless --include-internal.\n`);
+    process.stdout.write(`cohort-report — the founder's cohort read\n\n  --retention --activation --funnel <${Object.keys(FUNNEL_CHAINS).join("|")}> --events --households --contract\n  --since <ISO|YYYY-MM-DD>  --contract-since <ISO|YYYY-MM-DD> (default: 90 days)  --group-by source|market  --json  --include-internal\n\nRuns on ADC. Reads retentionRollups, event names and three grouping props, offerRedemptions and the referral ledgers (offer ids), entitlements (reduced to paid/lapsed booleans) and co-parent shares (the two uids). No uid, name or child record is printed. Internal (founder/comped/smoke) families are excluded unless --include-internal.\n`);
     return;
   }
   let db;
@@ -479,4 +840,4 @@ if (invokedDirectly) {
   });
 }
 
-export { parseArgs, print, FUNNEL_CHAINS };
+export { parseArgs, print, FUNNEL_CHAINS, ONE_ROW_CHAINS, ONE_ROW_KEY };

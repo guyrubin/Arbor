@@ -109,9 +109,12 @@ describe("COACH-8 — Behaviors capture is an honest launcher (critic r2)", () =
     expect(code).toContain("onHardMoment={guideLead.any ? () => openHardMomentNow() : undefined}");
     expect(code).not.toContain('id="behaviors-capture-text"');
     expect(code).not.toMatch(/onChange=\{\(e\) => \{ setBarText\(e\.target\.value\); openFromBar/);
-    // NEGATIVE CONTROL: the shipped r1 shape is recognised as the trap.
-    const r1 = `onChange={(e) => { setBarText(e.target.value); openFromBar(e.target.value); }}`;
-    expect(/onChange=\{\(e\) => \{ setBarText\(e\.target\.value\); openFromBar/.test(r1)).toBe(true);
+    // NEGATIVE CONTROL (B-INF-13): the shipped r1 trap, put back into the real BehaviorsTab
+    // source, is caught by the same check (not a literal tested against itself).
+    const r1 = `<input onChange={(e) => { setBarText(e.target.value); openFromBar(e.target.value); }} />`;
+    const trapped = code.replace("<QuickCaptureBar", `${r1}\n          <QuickCaptureBar`);
+    expect(trapped).not.toBe(code);
+    expect(trapped).toMatch(/onChange=\{\(e\) => \{ setBarText\(e\.target\.value\); openFromBar/);
   });
 
   it("the shared sheet owns the immediately editable input without a hub focus jump", () => {
@@ -123,16 +126,28 @@ describe("COACH-8 — Behaviors capture is an honest launcher (critic r2)", () =
     expect(modal).toMatch(/const changeTrigger = \(text: string\) => \{\s*stopCaptureWork\(\);\s*setNewLogTrigger\(text\);/);
   });
 
+  /** One write seam: submit only opens review, and the sheet calls handleAddLog exactly once. */
+  const oneWriteSeam = (modal: string) => {
+    const submit = /const submit = [\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
+    return !!submit && submit.includes("setReviewing(true)") && !submit.includes("handleAddLog") && count(modal, "handleAddLog(") === 1;
+  };
+
   it("zero duplicate writers — the sheet confirms through the existing one write seam", () => {
     const modal = read("components/overview/QuickLogModal.tsx");
     expect(code).not.toMatch(/handleAddLog\(|addMoment\(/);
     expect(count(modal, "handleAddLog(e, { callerShowsFailure: true, ...contentProvenance })")).toBe(1);
     expect(modal).toContain('onConfirm={confirm}');
+    expect(oneWriteSeam(modal)).toBe(true);
+  });
+
+  it("NEGATIVE CONTROL (B-INF-13 r2): the real submit, turned into a second writer, breaks the seam", () => {
+    const modal = read("components/overview/QuickLogModal.tsx");
     const submit = /const submit = [\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
     expect(submit).toContain("setReviewing(true)");
-    expect(submit).not.toContain("handleAddLog");
-    // Negative control: the retired second writer is detected, not ignored.
-    expect('const submitLog = (e) => handleAddLog(e);').toMatch(/handleAddLog\(/);
+    // The retired direct-submit shape: the real submit body writes instead of opening review.
+    const writing = modal.replace(submit, submit.replace("setReviewing(true)", "void handleAddLog(e)"));
+    expect(writing).not.toBe(modal);
+    expect(oneWriteSeam(writing)).toBe(false);
   });
 });
 

@@ -200,7 +200,6 @@ const HEX_ALLOWLIST: Record<string, readonly string[]> = {
   "components/overview/CourseCard.tsx": ["#fff"],
   "components/overview/DailyPlanCard.tsx": ["#fff"],
   "components/overview/DailyPlayCard.tsx": ["#fff"],
-  "components/practice/DevelopmentCopilot.tsx": ["#fff"],
   "components/practice/EarlyReadingTrack.tsx": ["#fff", "#ffffff"],
   "components/practice/MemoryMatch.tsx": ["#fff"],
   "components/practice/MimicMatch.tsx": ["#1c222b", "#5fce97", "#a8a093"], // game canvas art
@@ -757,49 +756,33 @@ describe("W4.1 token-leak freeze — flat block mirrors :root byte-for-byte", ()
    ═══════════════════════════════════════════════════════════════════════════ */
 const RGBA_BASELINE: Record<string, number> = {
   "components/auth/LoginScreen.tsx": 1,
-  "components/profile/AddChildFields.tsx": 3, // B-SHELL-07: six rgba(52,178,119,…) → green-ink color-mix tokens
-  "components/ErrorBoundary.tsx": 2,
+  "components/profile/AddChildFields.tsx": 2, // B-SHELL-07: six rgba(52,178,119,…) → green-ink color-mix tokens
   "components/kidmode/ParentChallenge.tsx": 1,
-  "components/layout/MobileNav.tsx": 2,
   "components/layout/SettingsModal.tsx": 1,
-  "components/overview/CourseCard.tsx": 1,
   "components/plans/RoutinesCard.tsx": 1,
-  "components/practice/AdventuresTab.tsx": 1,
   "components/practice/EarlyReadingTrack.tsx": 2,
-  "components/practice/FeelingsLabTab.tsx": 1,
   "components/practice/HeroArcade.tsx": 1,
   "components/practice/MemoryMatch.tsx": 1,
   "components/practice/MimicMatch.tsx": 5,
   "components/practice/MimicStudioTab.tsx": 1,
-  "components/practice/SpeechCoachTab.tsx": 2,
-  "components/profile/AddChildModal.tsx": 2,
   "components/profile/AvatarCreator.tsx": 6,
   "components/profile/ProfileEditDrawer.tsx": 1,
-  "components/profile/ProfileSwitcher.tsx": 1,
   "components/search/TopbarSearch.tsx": 1,
-  "components/sections/AskSpecialist.tsx": 2,
-  "components/sections/DevScoreCard.tsx": 1,
   "components/sections/Masterclasses.tsx": 3,
-  "components/sections/Screening.tsx": 3,
+  "components/sections/Screening.tsx": 2,
   "components/sections/SmartRemindersPanel.tsx": 1,
   "components/stories/ComicReader.tsx": 1,
-  "components/tabs/BedtimeStoriesTab.tsx": 3,
-  "components/tabs/CoachTab.tsx": 3,
-  "components/tabs/ComicsTab.tsx": 1,
-  "components/tabs/HeroJourneyTab.tsx": 5,
-  "components/tabs/LanguageLabVocabView.tsx": 2,
-  "components/tabs/MilestonesTab.tsx": 4,
-  "components/tabs/PlansTab.tsx": 1,
+  "components/tabs/CoachTab.tsx": 1,
+  "components/tabs/HeroJourneyTab.tsx": 3,
   "components/tabs/SciencePage.tsx": 1,
-  "components/tabs/StoryTimelineTab.tsx": 2,
   "components/ui/Button.tsx": 2,
   "components/ui/EmotionAvatar.tsx": 1,
   "components/ui/HeroAvatar.tsx": 2,
   "components/ui/Modal.tsx": 1,
-  "components/ui/playkit.tsx": 8,
+  "components/ui/playkit.tsx": 7,
   "components/ui/ProvenanceBadge.tsx": 1,
   "context/ToastContext.tsx": 3,
-  "index.css": 64, // P1-NEXTLEVEL r2: six parent -soft gradients flattened (12 rgba stops gone)
+  "index.css": 57, // P1-NEXTLEVEL r2: six parent -soft gradients flattened (12 rgba stops gone)
   "lib/shareCard.ts": 2,
 };
 
@@ -826,6 +809,18 @@ describe("rgba-creep ratchet — src/**/*.{ts,tsx,css} may only shrink", () => {
 
   it("scans a non-trivial set (sanity)", () => {
     expect(counts.size).toBeGreaterThan(20);
+  });
+
+  // B-INF-13: an allowance is the file's count, not a ceiling with slack — a decrease that
+  // left the old number would let the next commit add rgba() back unseen.
+  it("every allowance equals its file's current count (ratcheted down, no slack, no stale file)", () => {
+    const slack = Object.entries(RGBA_BASELINE)
+      .filter(([rel, allowed]) => (counts.get(rel) ?? 0) !== allowed)
+      .map(([rel, allowed]) => `${rel}: allowance ${allowed}, file has ${counts.get(rel) ?? 0}`);
+    expect(slack, `ratchet RGBA_BASELINE down to the file counts:\n${slack.join("\n")}`).toEqual([]);
+    // Negative control: the 10 Oct shape (AddChildFields allowed 3 while holding 2) is caught.
+    const stale = { ...RGBA_BASELINE, "components/profile/AddChildFields.tsx": (counts.get("components/profile/AddChildFields.tsx") ?? 0) + 1 };
+    expect(Object.entries(stale).filter(([rel, allowed]) => (counts.get(rel) ?? 0) !== allowed)).toHaveLength(1);
   });
 
   it("no file grows its rgba() count; unlisted files introduce none", () => {

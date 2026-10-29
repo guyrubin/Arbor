@@ -6,7 +6,7 @@
  * in the plural; no string here carries a child-gendered verb (the program's
  * own content resolves its slash forms from the profile gender in
  * lib/programPage). Clinically sensitive lines have rows in
- * execution/2026-10-06--milestone-loop/REVIEW-SHEET.md "B-PROG-05".
+ * the milestone-loop REVIEW-SHEET.md (private record), "B-PROG-05".
  */
 
 export const en: Record<string, string> = {

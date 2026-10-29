@@ -5,15 +5,133 @@ import { useLanguage } from "../../context/LanguageContext";
 import { Icon } from "../ui/Icon";
 import { LegalLinks } from "../billing/LegalLinks";
 import { isUnderThree } from "../../lib/age/forChild";
-export const DOMAINS: { id: string; nameKey: string; subKey: string; icon: React.ReactNode }[] = [
-  { id: "feelings", nameKey: "ob.step.domains.feelings", subKey: "ob.step.domains.feelings.sub", icon: <Icon name="favorite" size={20} /> },
-  { id: "language", nameKey: "ob.step.domains.language", subKey: "ob.step.domains.language.sub", icon: <Icon name="chat_bubble" size={20} /> },
-  { id: "social", nameKey: "ob.step.domains.social", subKey: "ob.step.domains.social.sub", icon: <Icon name="group" size={20} /> },
-  { id: "sleep", nameKey: "ob.step.domains.sleep", subKey: "ob.step.domains.sleep.sub", icon: <Icon name="bedtime" size={20} /> },
-  { id: "focus", nameKey: "ob.step.domains.focus", subKey: "ob.step.domains.focus.sub", icon: <Icon name="menu_book" size={20} /> },
-  { id: "behavior", nameKey: "ob.step.domains.behavior", subKey: "ob.step.domains.behavior.sub", icon: <Icon name="repeat" size={20} /> },
-  { id: "eating", nameKey: "ob.step.domains.eating", subKey: "ob.step.domains.eating.sub", icon: <Icon name="restaurant" size={20} /> },
-];
+import {
+  CHILD_FOCUS_AREAS, CHILD_LANGUAGES, customLanguages, focusAliases, hasChoice, languageAliases, storedLanguage, toggleChoice, toggleLanguage,
+} from "../../lib/childProfileChoices";
+
+/** The focus glyphs; the areas themselves are lib/childProfileChoices CHILD_FOCUS_AREAS. */
+const FOCUS_ICONS: Record<(typeof CHILD_FOCUS_AREAS)[number]["id"], string> = {
+  feelings: "favorite", language: "chat_bubble", social: "group", sleep: "bedtime", focus: "menu_book", behavior: "repeat", eating: "restaurant",
+};
+export const DOMAINS: { id: string; nameKey: string; subKey: string; icon: React.ReactNode }[] = CHILD_FOCUS_AREAS.map((area) => ({
+  ...area,
+  icon: <Icon name={FOCUS_ICONS[area.id]} size={20} />,
+}));
+
+/** B-SHELL-44 — the ONE toggle chip Add child and Edit child render for a
+ *  language choice: the profile drawer's existing interest pill (rounded-full,
+ *  the check glyph when chosen, DESIGN.md "Chips/pills"), so the drawer shows
+ *  one chip shape and Add child shows the same one. */
+function ChoiceChip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      className="inline-flex min-h-11 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold transition"
+      style={
+        on
+          ? { background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-clay-border)", color: "var(--arbor-green-ink)" }
+          : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-muted)" }
+      }
+    >
+      {on && <Icon name="check" size={12} />}
+      {children}
+    </button>
+  );
+}
+
+/** B-SHELL-44 — languages at home, the same six localized choices in Add and
+ *  Edit. An older free-text entry that names one of them with a qualifier
+ *  ("Hebrew (Native)") presses that chip and keeps its own words on it; any
+ *  other stored language stays as its own pressed chip; tapping removes it. */
+export function ChildLanguageChoices({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
+  const { t } = useLanguage();
+  return (
+    <div className="flex flex-wrap gap-2" role="group" aria-label={t("ob.langsAtHome")} data-testid="child-language-choices">
+      {CHILD_LANGUAGES.map((language) => {
+        const stored = storedLanguage(value, language);
+        const qualified = stored !== undefined && !hasChoice([stored], languageAliases(language));
+        return (
+          <ChoiceChip key={language} on={stored !== undefined} onClick={() => onChange(toggleLanguage(value, language))}>
+            {qualified ? <bdi>{stored}</bdi> : t("ob.lang." + language.toLowerCase())}
+          </ChoiceChip>
+        );
+      })}
+      {customLanguages(value).map((custom) => (
+        <ChoiceChip key={`custom:${custom}`} on onClick={() => onChange(value.filter((item) => item !== custom))}>
+          <bdi>{custom}</bdi>
+        </ChoiceChip>
+      ))}
+    </div>
+  );
+}
+
+/** B-SHELL-44 — the seven focus tiles, ONE component for Add child (step 3,
+ *  StepDomains) and Edit child: the same tile, icon, name and line. No score,
+ *  status, warning or red styling. */
+function FocusAreaTiles({ isOn, onToggle, testId }: { isOn: (id: string) => boolean; onToggle: (id: string) => void; testId?: string }) {
+  const { t } = useLanguage();
+  return (
+    <div className="grid grid-cols-1 gap-2" role="group" aria-label={t("ob.step.ready.labelDomains")} {...(testId ? { "data-testid": testId } : {})}>
+      {DOMAINS.map((d) => {
+        const on = isOn(d.id);
+        return (
+          <button
+            key={d.id}
+            type="button"
+            data-focus-id={d.id}
+            onClick={() => onToggle(d.id)}
+            className="flex items-start gap-3 px-4 py-3 rounded-2xl text-start transition active:scale-[0.99]"
+            style={
+              on
+                ? { background: "var(--arbor-green-soft)", border: "1px solid color-mix(in srgb, var(--arbor-green-ink) 40%, transparent)" }
+                : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }
+            }
+            aria-pressed={on}
+          >
+            <span
+              className="mt-0.5 flex-shrink-0"
+              style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}
+            >
+              {d.icon}
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-extrabold" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>
+                {t(d.nameKey)}
+              </span>
+              <span className="block text-xs leading-snug mt-0.5" style={{ color: "var(--arbor-muted)" }}>
+                {t(d.subKey)}
+              </span>
+            </span>
+            {on && (
+              <span className="flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center self-center" style={{ background: "var(--arbor-green-ink)" }}>
+                <svg viewBox="0 0 10 8" width="10" height="8" fill="none">
+                  <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** B-SHELL-44 — Edit child's focus areas: Add child's own FocusAreaTiles over
+ *  the stored `challenges` lines (`t(nameKey)`, Add's stored form). A line
+ *  saved in the other language still reads as chosen. */
+export function ChildFocusChoices({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
+  const { t } = useLanguage();
+  const nameKeyOf = (id: string) => DOMAINS.find((d) => d.id === id)?.nameKey ?? "";
+  return (
+    <FocusAreaTiles
+      testId="child-focus-choices"
+      isOn={(id) => hasChoice(value, focusAliases(nameKeyOf(id)))}
+      onToggle={(id) => onChange(toggleChoice(value, focusAliases(nameKeyOf(id)), t(nameKeyOf(id))))}
+    />
+  );
+}
 
 function clampInt(raw: string, lo: number, hi: number): number {
   const n = parseInt(raw, 10);
@@ -38,8 +156,6 @@ interface StepChildProps {
   creating: boolean;
   onNext: () => void;
 }
-
-const LANGUAGES = ["Hebrew", "English", "Arabic", "Russian", "French", "Other"];
 
 /** Exported for the guard test, as StepReady is (MOB-12 precedent). */
 export function StepChild({
@@ -79,9 +195,6 @@ export function StepChild({
     setAgeYears(years);
     if (years >= 3) setAgeMonthsPart(0);
   };
-
-  const toggleLang = (l: string) =>
-    setLanguages(languages.includes(l) ? languages.filter((x) => x !== l) : [...languages, l]);
 
   const totalAgeMonths = ageYears * 12 + ageMonthsPart;
   const ageDisplayLabel =
@@ -209,23 +322,7 @@ export function StepChild({
       ) : (
         <div className="space-y-2">
           <label className="text-xs font-bold block" style={{ color: "var(--arbor-muted)" }}>{t("ob.langsAtHome")}</label>
-          <div className="flex flex-wrap gap-2">
-            {LANGUAGES.map((l) => (
-              <button
-                key={l}
-                type="button"
-                onClick={() => toggleLang(l)}
-                className="min-h-11 px-3 py-1.5 rounded-xl text-xs font-bold transition"
-                style={
-                  languages.includes(l)
-                    ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid color-mix(in srgb, var(--arbor-green-ink) 40%, transparent)" }
-                    : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
-                }
-              >
-                {t("ob.lang." + l.toLowerCase())}
-              </button>
-            ))}
-          </div>
+          <ChildLanguageChoices value={languages} onChange={setLanguages} />
         </div>
       )}
 
@@ -316,48 +413,9 @@ export function StepDomains({
         </p>
       </div>
 
-      {/* 7 domain tiles — multi-select; no score/status/warning/red styling */}
-      <div className="grid grid-cols-1 gap-2">
-        {DOMAINS.map((d) => {
-          const on = selectedDomains.includes(d.id);
-          return (
-            <button
-              key={d.id}
-              type="button"
-              onClick={() => toggle(d.id)}
-              className="flex items-start gap-3 px-4 py-3 rounded-2xl text-start transition active:scale-[0.99]"
-              style={
-                on
-                  ? { background: "var(--arbor-green-soft)", border: "1px solid color-mix(in srgb, var(--arbor-green-ink) 40%, transparent)" }
-                  : { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }
-              }
-              aria-pressed={on}
-            >
-              <span
-                className="mt-0.5 flex-shrink-0"
-                style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}
-              >
-                {d.icon}
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="block text-sm font-extrabold" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>
-                  {t(d.nameKey)}
-                </span>
-                <span className="block text-xs leading-snug mt-0.5" style={{ color: "var(--arbor-muted)" }}>
-                  {t(d.subKey)}
-                </span>
-              </span>
-              {on && (
-                <span className="flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center self-center" style={{ background: "var(--arbor-green-ink)" }}>
-                  <svg viewBox="0 0 10 8" width="10" height="8" fill="none">
-                    <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      {/* 7 domain tiles — multi-select; no score/status/warning/red styling.
+          B-SHELL-44: the same FocusAreaTiles Edit child renders. */}
+      <FocusAreaTiles isOn={(id) => selectedDomains.includes(id)} onToggle={toggle} />
 
       {/* Footer reassurance — VERBATIM copy from clearance */}
       <p className="text-[11px] text-center" style={{ color: "var(--arbor-muted)" }}>

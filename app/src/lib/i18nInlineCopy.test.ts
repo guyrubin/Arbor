@@ -320,12 +320,12 @@ describe("OBJ-PRACTICE-02 — hardcoded English on the practice doors is a shrin
     ).toBeLessThanOrEqual(frozen);
   });
 
-  it("JourneyTab, the launcher and the Full Picture are CLEAN", () => {
+  it("JourneyTab and the launcher are CLEAN", () => {
     expect(englishLines("components/practice/JourneyTab.tsx")).toEqual([]);
     expect(englishLines("components/companion/TogetherView.tsx")).toEqual([]);
-    // R22 (Builder L) — the ratchet reached zero on this file; pinned so a
-    // future edit cannot re-add a literal under a restored freeze entry.
-    expect(englishLines("components/practice/DevelopmentCopilot.tsx")).toEqual([]);
+    // R22 (Builder L) pinned the Full Picture here at zero; B-GROWTH-22
+    // deleted the leaf with #/copilot, so it cannot re-add a literal.
+    expect(fs.existsSync(path.join(SRC_ROOT, "components/practice/DevelopmentCopilot.tsx"))).toBe(false);
   });
 
   it("NEGATIVE CONTROL: the pre-fix JourneyTab literals are what the scan rejects", () => {
@@ -458,56 +458,12 @@ describe("R22 — the practice domain names and the Full Picture body carry both
     }
   });
 
-  it("the Full Picture chrome is keyed in both languages at every render site", () => {
-    const src = stripComments(readSrc("components/practice/DevelopmentCopilot.tsx"));
-    for (const key of [
-      "elev.growthTruth.copilot.eyebrow",
-      "elev.growthTruth.copilot.trustNote",
-      "elev.growthTruth.copilot.domains.title",
-      "elev.growthTruth.copilot.domains.count",
-      "elev.growthTruth.copilot.domains.mechanism",
-      "elev.growthTruth.copilot.domains.limits",
-      "elev.growthTruth.copilot.focus.title",
-      "elev.growthTruth.copilot.focus.cta",
-      "elev.growthTruth.copilot.watch.evidence",
-      "elev.growthTruth.copilot.watch.prepare",
-      "elev.growthTruth.copilot.history.title",
-      "elev.growthTruth.copilot.history.empty",
-      "elev.growthTruth.copilot.history.count",
-      "elev.growthTruth.copilot.share.title",
-      "elev.growthTruth.copilot.share.body",
-      "elev.growthTruth.copilot.share.copy",
-      "elev.growthTruth.copilot.share.copied",
-      "elev.growthTruth.copilot.share.reports",
-      "elev.growthTruth.copilot.share.blocked",
-    ]) {
-      expect(src, `Full Picture: ${key} not resolved at render`).toContain(key);
-      expect(growthTruthEn[key], `${key} has no EN value`).toBeTruthy();
-      expect(HEBREW_SCRIPT.test(growthTruthHe[key] ?? ""), `${key} has no Hebrew value`).toBe(true);
-    }
-    // The rendered domain row and the watch row take the KEYED label.
-    expect(src).toContain('domainLabel("practice", b.domain, t)');
-    expect(src).toContain("domainText(w.area, w.domain)");
-  });
-
-  it("NEGATIVE CONTROL: the Full Picture's own pre-fix literals are gone", () => {
-    const src = stripComments(readSrc("components/practice/DevelopmentCopilot.tsx"));
-    for (const preFix of [
-      'eyebrow="Growth"',
-      "Counts reflect parent-observed data only",
-      'title="This week',
-      'title="Weekly history"',
-      'title="Share with a professional"',
-      "Prepare a professional summary",
-      "Full reports",
-      "const MECHANISM_NOTE =",
-    ]) {
-      expect(src, `pre-fix literal survives: ${preFix}`).not.toContain(preFix);
-    }
-    // The clinician EXPORT keeps its English on purpose — one stable language
-    // for the professional reading it — and the parent is now told so.
-    expect(src).toContain("milestones noticed by parent");
-    expect(src).toContain("elev.growthTruth.copilot.share.lang");
+  /* B-GROWTH-22: the Full Picture chrome tests (keyed in both languages;
+     its own pre-fix literals gone) had DevelopmentCopilot.tsx as their only
+     subject. The leaf and its growthTruth copilot.* keys left with #/copilot. */
+  it("B-GROWTH-22: no Full Picture chrome key survives in either dictionary", () => {
+    expect(Object.keys(growthTruthEn).filter((k) => k.startsWith("elev.growthTruth.copilot."))).toEqual([]);
+    expect(Object.keys(growthTruthHe).filter((k) => k.startsWith("elev.growthTruth.copilot."))).toEqual([]);
   });
 
   it("the four other chrome residues resolve through a resolver that already shipped", () => {
@@ -580,9 +536,10 @@ describe("B-GROWTH-19 — DailyPlayTab carries no English literal", () => {
     const offenders = code.split("\n").filter((l) => TOAST_LITERAL.test(l));
     expect(offenders).toEqual([]);
     // The goal picker now owns its acknowledged receipt, so Daily Play lost
-    // its old focus-set success toast. All four remaining calls use t().
-    expect(code.match(/\btoast\s*\(/g) ?? []).toHaveLength(4);
-    expect(code.match(/toast\(t\("elev\.growth\.play\.toast\./g) ?? []).toHaveLength(4);
+    // its old focus-set success toast. B-STATUS-01: the four "did it" toasts
+    // became the ONE receipt line; both of its texts still go through t().
+    expect(code.match(/\btoast\s*\(/g) ?? []).toHaveLength(0);
+    expect(code.match(/text: t\("elev\.growth\.play\.toast\./g) ?? []).toHaveLength(2);
   });
 
   it("no English attribute, JSX text node or English fallback name", () => {

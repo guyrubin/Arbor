@@ -35,10 +35,10 @@ describe("LoginScreen inputs are autofill-ready", () => {
     expect(tag).toContain('inputMode="email"');
   });
 
-  it("password: name=password, autoComplete=current-password", () => {
+  it("password: name=password; autoComplete is current-password to sign in, new-password to sign up (B-RESID-05)", () => {
     const tag = inputTag("password");
     expect(tag).toContain('name="password"');
-    expect(tag).toContain('autoComplete="current-password"');
+    expect(tag).toContain('autoComplete={mode === "signup" ? "new-password" : "current-password"}');
   });
 
   it("negative control: the matcher sees a bare pre-fix input as lacking autofill", () => {
@@ -106,13 +106,19 @@ describe("B-SHELL-15 · the front door promises the companion first", () => {
     expect("Stories and comics starring your child").not.toMatch(/hard moment/i);
   });
 
-  it("Forgot and Request access are 44 px targets", () => {
-    for (const id of ["login-forgot", "login-request-access"]) {
+  it("Forgot and the create-account switch are 44 px targets", () => {
+    for (const id of ["login-forgot", "login-mode-switch"]) {
       const at = login.indexOf(`data-testid="${id}"`);
       expect(at, id).toBeGreaterThan(-1);
       const tag = login.slice(login.lastIndexOf("<button", at), login.indexOf(">", login.indexOf("className", at)));
       expect(tag, id).toContain("min-h-11");
+      // On the type scale, never an arbitrary pixel size.
+      expect(tag, id).not.toMatch(/text-\[\d+(\.\d+)?px\]/);
+      expect(tag, id).toMatch(/\bt-(sm|base)\b/);
     }
+    // Creating an account is the new family's way in: body size, not a footnote.
+    const sw = login.indexOf('data-testid="login-mode-switch"');
+    expect(login.slice(sw, login.indexOf(">", login.indexOf("className", sw)))).toContain("t-base font-bold");
   });
 
   it("LegalLinks is mounted under the card", () => {

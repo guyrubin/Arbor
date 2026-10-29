@@ -10,7 +10,8 @@ import { bookSheetDrawPoses } from "../../../lib/library/bookSheet";
 import { fiveSmoothStones as book } from "../../../lib/library/books/fiveSmoothStones";
 import type { BookAssetsDoc } from "../../../lib/library/bookAssetPaths";
 import type { HeroPoseId } from "../../../lib/heroSheetContract";
-import { buildBookSheet, keepLocalBookDoc, redrawBookPose, startBookSheet, type BookBuilderDeps, type BookPoseResponse, type CommitProbe } from "./buildBookSheet";
+import { buildBookSheet, keepLocalBookDoc, planSheetRoutePose, redrawBookPose, startBookSheet, type BookBuilderDeps, type BookPoseResponse, type CommitProbe } from "./buildBookSheet";
+import { PLAN_SHEET_BOOK_ID } from "../../../lib/library/plans/planPoses";
 
 const HASH = "0123456789abcdef";
 const DRAW = bookSheetDrawPoses(book);
@@ -160,4 +161,39 @@ describe("K2 4b: the book sheet builder", () => {
     expect(await redrawBookPose({ childId: "kid1", avatarHash: HASH, pose: "sit" }, quota.deps)).toEqual({ ok: false, reason: "hero_sheet_resting" });
     expect(quota.commits).toEqual([]);
   }, 60_000);
+});
+
+describe("B-BOOK-75 follow-up: the child's shared PLAN sheet rides the same builder", () => {
+  const PLAN = ["sit-calm", "hold-box", "stand-tall"];
+
+  it("draws exactly the named plan poses under the route's plan- prefix, stores them under the bare id, then commits", async () => {
+    const f = fakeDeps({ routePose: planSheetRoutePose, decode: async () => mockHeroPoseRaster("sit") });
+    const r = await buildBookSheet({ childId: "kid1", avatarHash: HASH, bookId: PLAN_SHEET_BOOK_ID, poses: PLAN }, f.deps);
+    expect(r).toMatchObject({ status: "complete", calls: 3, skipped: [] });
+    expect(f.poses.sort()).toEqual(["plan-hold-box", "plan-sit-calm", "plan-stand-tall"]);
+    expect(f.uploads.map((u) => u.rel).sort()).toEqual(["hold-box", "sit-calm", "stand-tall"].map(rel));
+    expect(f.commits).toEqual([HASH]);
+  }, 60_000);
+
+  it("resumes from the poses already there; a redraw of a plan pose is allowed only for a pose of the sheet", async () => {
+    const f = fakeDeps({ routePose: planSheetRoutePose, decode: async () => mockHeroPoseRaster("sit"), have: [rel("sit-calm")] });
+    const r = await buildBookSheet({ childId: "kid1", avatarHash: HASH, bookId: PLAN_SHEET_BOOK_ID, poses: PLAN }, f.deps);
+    expect(r.status).toBe("complete");
+    expect(f.poses.sort()).toEqual(["plan-hold-box", "plan-stand-tall"]);
+    const no = await redrawBookPose({ childId: "kid1", avatarHash: HASH, pose: "sling-swing", bookId: PLAN_SHEET_BOOK_ID, poses: PLAN }, f.deps);
+    expect(no).toEqual({ ok: false, reason: "not-in-sheet" });
+  }, 60_000);
+
+  it("runs beside the book sheet of the same child, never joining or cancelling it", async () => {
+    const a = fakeDeps();
+    const b = fakeDeps({ routePose: planSheetRoutePose, decode: async () => mockHeroPoseRaster("sit") });
+    const [book, plan] = await Promise.all([
+      startBookSheet({ childId: "kid2", avatarHash: HASH }, () => a.deps),
+      startBookSheet({ childId: "kid2", avatarHash: HASH, bookId: PLAN_SHEET_BOOK_ID, poses: PLAN }, () => b.deps),
+    ]);
+    expect(book.status).toBe("complete");
+    expect(plan.status).toBe("complete");
+    expect(a.poses).toHaveLength(DRAW.length);
+    expect(b.poses).toHaveLength(3);
+  }, 120_000);
 });

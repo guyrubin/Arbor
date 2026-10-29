@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FONT_CACHE_DIR, chromiumUserAgent, cssFontResources, fontMode, readPublicResource, sha256, sourceFontUrl } from './font-cache.mjs';
+import { FONT_CACHE_DIR, chromiumUserAgent, cssFontResources, fontMode, readPublicResource, sha256, sourceFontUrl, sourceFontsSelfHosted } from './font-cache.mjs';
 
 export async function prepareFontCache() {
   const mode = fontMode(process.env.CAPTURE_FONT_MODE);
@@ -12,12 +12,23 @@ export async function prepareFontCache() {
   const deadline = AbortSignal.timeout(120_000);
   const app = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
   const source = await readFile(path.join(app, 'src/index.css'));
-  const url = sourceFontUrl(source.toString());
   const pwDir = path.dirname(fileURLToPath(import.meta.resolve('playwright-core/package.json')));
   const browsers = JSON.parse(await readFile(path.join(pwDir, 'browsers.json'), 'utf8'));
   const browser = browsers.browsers.find((entry) => entry.name === 'chromium');
   const userAgent = chromiumUserAgent(browser.browserVersion);
   const playwrightVersion = JSON.parse(await readFile(path.join(pwDir, 'package.json'), 'utf8')).version;
+  if (sourceFontsSelfHosted(source.toString())) {
+    // B-SHELL-24: nothing to fetch — the faces ship in public/fonts/text and load from the
+    // app's own origin offline. The manifest records that, so the runtime knows no cache exists.
+    await mkdir(FONT_CACHE_DIR);
+    await writeFile(path.join(FONT_CACHE_DIR, 'manifest.json'), JSON.stringify({
+      schema: 1, mode: 'self-hosted', source: 'app/src/index.css', sourceCssSha256: sha256(source), userAgent, playwrightVersion,
+      chromiumVersion: browser.browserVersion, chromiumRevision: browser.revision, completedAt: new Date().toISOString(), resources: [], faces: [],
+    }, null, 2));
+    console.log('Text fonts are self-hosted (src/textFonts.css): nothing fetched; the capture serves them from the app origin.');
+    return;
+  }
+  const url = sourceFontUrl(source.toString());
   await mkdir(FONT_CACHE_DIR); // Refuse reusing a stale/preexisting cache.
   const resources = [];
   let total = 0;

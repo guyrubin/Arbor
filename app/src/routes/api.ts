@@ -1,11 +1,18 @@
 import { liveUsageRateLimit } from "../server/apiRateLimits.js";
 import { createLiveUsageStore, withLiveUsageDeadline, type LiveUsageEvent } from "../server/liveUsage.js";
+import { createLiveBudgetStore, LIVE_RESTING_BODY } from "../server/liveBudget.js";
+import { spokenMsForChars, type ReserveResult } from "../server/liveBudget.js";
+import { entitlementForRequest } from "../server/entitlements.js";
+import { recordLiveBudgetRollup } from "../server/usageRollup.js";
+import { createOpsAlerts, type OpsAlerts } from "../server/opsAlerts.js";
+import { createPrepayCounter, createPrepayMonitor, type PrepayCounter } from "../server/prepayBalance.js";
+import { liveVoiceNoticeId, voiceNoticeIdFor, VOICE_NOTICE_REQUIRED, VOICE_PROVIDER_UNAPPROVED } from "../ai/voiceProviderNotice.js";
 import { attachmentTurnPolicy } from "../ai/attachmentSourcePolicy.js";
 import { parseCompanionAttachments, type ComposerAttachment } from "../lib/companionAttachments.js";
 import express from "express";
 import { PROGRAM_IMPORT_PROMPT } from "../ai/programImportPrompt.js";
 import { parseProgramDocument, parseRecommendationDraft, PROGRAM_IMPORT_VERSION } from "../lib/programImport.js";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { ArborConfig } from "../config/env.js";
 import { normalizeAvatarStyle } from "../lib/avatarStyle.js";
 import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider } from "../ai/modelRouter.js";
@@ -13,6 +20,10 @@ import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/mo
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, toFileTurnContract, renderFileDeclinedResponse, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence, type CoachResponse } from "../contracts/coach.js";
 import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildDescribeChildPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE, renderCouncilContinuity } from "../ai/prompts.js";
+// B-ASKJB-44: no invented finding reaches a handoff note or the School Brief
+// (the matching prompt rules are parked on claude/askjb44-prompt-bump-2026-10-28).
+import { scrubHandoffNotes } from "../contracts/coach.js";
+import { scrubHandoffBriefFindings } from "../lib/clinicalScan.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
 // the byte-identical legacy prompt on any malformed/absent input.
@@ -56,10 +67,14 @@ import { scrubMemoryProposals, toParentWords, PLAIN_PARENT_WORDS_CLAUSE } from "
 import { assembleHeroJourneyScreenable } from "../safety/heroJourneyScreenable.js";
 import { logger, requestIdOf } from "../server/logger.js";
 import { requireChildOwnership } from "../server/requireChildOwnership.js";
-import { createBookAssetsRouter, defaultBookAssetBucket, eraseChildBookAssets, type BookAssetBucket } from "../server/bookAssets.js";
+import { createBookAssetsRouter, defaultBookAssetBucket, type BookAssetBucket } from "../server/bookAssets.js";
+import { childEraseTotal, eraseChildServerData, type ChildEraseStores } from "../server/childErase.js";
+import { ChildErasedError } from "../families/familyService.js";
 import { createBookAssetsDocStore, createBookSheetRouter } from "../server/bookSheet.js";
 import { createPlansRouter } from "../server/plans.js";
+import { createPlanPlatesRouter, isPlatePainter } from "../server/planPlates.js";
 import { createBookNarrationRouter, FirestoreNarrationChildSource, googleBookTts, localNarrationChildSource, mockBookTts } from "../server/bookNarration.js";
+import { createPlanNarrationRouter, FirestorePlanBookSource, localPlanBookSource } from "../server/planNarration.js";
 import { localBookAssetBucket } from "../server/localBookAssetBucket.js";
 import { requireConsent } from "../server/requireConsent.js";
 import { CANONICAL_BEHAVIOR_TYPES } from "../content/behaviorTaxonomy.js";
@@ -69,7 +84,9 @@ import { resolveEmailProvider, sendWeeklyDigestEmail, type DigestEmailMessage } 
 import {
   FUNNEL_CHAINS,
   buildCohortReport,
+  buildKidPlayReport,
   createCohortMetricsStore,
+  defaultContractSince,
   type CohortMetricsStore,
 } from "../server/cohortMetrics.js";
 import {
@@ -89,6 +106,7 @@ import { createHeroPoseHandler, createHeroPoseSource, type HeroPoseSource } from
 import { decideLive, LIVE_VERTEX_EU_PROVIDER } from "../ai/liveResidency.js";
 import { accessEnded, cohortTagFor, resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
+import { redemptionViaOf } from "../lib/offers.js";
 import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../server/childAsr.js";
 import { dispatchSpeechSynthesis, screenAndSynthesizeSpeech, synthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured, UnsafeTtsOutputError } from "../server/tts.js";
 import { AiProviderError } from "../ai/capabilities/contracts.js";
@@ -110,6 +128,7 @@ import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
 import { buildWaitlistEntry, isValidEmail, notifyWaitlistSafely, type WaitlistNotifier, type WaitlistStore } from "../server/waitlist.js";
 import { createSharedChildRecordSource, resolveSharedPacket, type SharedChildRecordSource } from "../server/sharedPacket.js";
+import { programWeekScript } from "../lib/programs/weekScript.js";
 import { createCoParentRouter } from "../server/coParent.js";
 
 type ApiDeps = {
@@ -135,6 +154,14 @@ type ApiDeps = {
    *  (actionLoops, kept insights). Injectable for tests; defaults to the
    *  Firestore/null source derived from config. */
   companionLedgerSource?: CompanionLedgerSource;
+  /** B-AIOPS-02: the family-day Live reservation store. Injectable for tests;
+   *  defaults to the Firestore/memory store derived from config. */
+  liveBudgetStore?: import("../server/liveBudget.js").LiveBudgetStore;
+  /** B-AIOPS-03: the content-free incident sink (createApp builds it from
+   *  config); defaults to the structured log only. */
+  opsAlerts?: OpsAlerts;
+  /** B-AIOPS-03: the prepay reserved-minutes counter (injectable for tests). */
+  prepayCounter?: PrepayCounter;
   /** N1-05: the founder-side cohort reader (injectable for tests); defaults
    *  to the Firestore/null store derived from config. */
   cohortMetricsStore?: CohortMetricsStore;
@@ -188,7 +215,30 @@ const beginSse = (res: express.Response) => {
 const writeSse = (res: express.Response, event: string, data: unknown) => {
   res.write(`event: ${event}\n`);
   res.write(`data: ${JSON.stringify(data)}\n\n`);
+  // B-AIOPS-02: the characters this response released as speakable text — the
+  // /voice fallback turn is charged from it (a count, never the text itself).
+  const text = event === "delta" ? (data as { text?: unknown } | null)?.text : undefined;
+  if (typeof text === "string") res.locals.spokenChars = (Number(res.locals.spokenChars) || 0) + text.length;
 };
+
+/** B-AIOPS-02: the family's remaining realtime-voice allowance, on every
+ *  reservation answer (Live mint and fallback turn alike). */
+const setLiveQuotaHeaders = (res: express.Response, outcome: ReserveResult) => {
+  res.setHeader("X-Live-Quota-Limit", String(Math.round(outcome.allowanceMs / 1000)));
+  res.setHeader("X-Live-Quota-Remaining", String(Math.round(outcome.remainingMs / 1000)));
+  res.setHeader("X-Live-Quota-Reset", new Date(outcome.resetAt).toISOString());
+};
+
+/** B-AIOPS-02: a Live mint the provider has not answered within this window is
+ *  abandoned and its reservation released (the client gives up at 10 s, so a
+ *  token minted later would reach nobody). */
+const liveMintDeadlineMs = (): number => {
+  const fromEnv = Number(process.env.LIVE_MINT_DEADLINE_MS);
+  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : 8_000;
+};
+/** B-AIOPS-02: a fallback turn not settled within the voice deadline plus this
+ *  grace is treated as a crashed turn and charged its full reserve. */
+const VOICE_TURN_GRACE_MS = 10_000;
 
 /**
  * AI-07 — the screened sentence relay, as ONE seam.
@@ -402,9 +452,15 @@ export const allowListHandoffInput = (
   return { logs: safeLogs, milestones: safeMilestones };
 };
 
-export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, digestJobSource, jobCallerVerifier, aiCapabilityRegistry, heroPoseSource }: ApiDeps) => {
+export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, digestJobSource, jobCallerVerifier, aiCapabilityRegistry, heroPoseSource, liveBudgetStore, opsAlerts, prepayCounter }: ApiDeps) => {
   const router = express.Router();
   const liveUsage = createLiveUsageStore(config);
+  // B-AIOPS-02: the shared-family daily Live allowance (injectable for tests).
+  const liveBudget = liveBudgetStore ?? createLiveBudgetStore(config);
+  // B-AIOPS-03: incidents (Live unavailability, budget-store outages) and the
+  // readable AI Studio prepay balance with its 20 % alarm.
+  const alerts = opsAlerts ?? createOpsAlerts();
+  const prepay = createPrepayMonitor(config.aiPrepayLedger, prepayCounter ?? createPrepayCounter(config), alerts);
   // CARE-2: the recipient shared-view read seam (Firestore in prod, null locally).
   const sharedSource = sharedChildSource ?? createSharedChildRecordSource(config, memoryStore);
   // B-AI-01: the companion ledger read (Firestore in prod, null locally).
@@ -429,6 +485,12 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   const fileTurnCoachResponseSchema = createFileTurnCoachResponseGeminiSchema(framework);
   // Per-child authorization (closes the IDOR on child-scoped reads/erasure).
   const requireOwnership = requireChildOwnership(memoryStore);
+  // B-GA-09 round 7: the one per-child server erase, for /privacy/erase and account deletion.
+  const childEraseStores: ChildEraseStores = { memoryStore, shareStore, consentStore, consultStore, storageBucket: config.storageBucket };
+  // B-GA-09 round 5: a retried erase must still pass after an earlier attempt removed the child doc (the anchor).
+  const requireEraseOwnership = memoryStore.mayEraseChild
+    ? requireChildOwnership({ ownsChild: (uid: string, childId: string) => memoryStore.mayEraseChild!(uid, childId) })
+    : requireOwnership;
   router.use(createCoParentRouter({ config, shareStore, requireOwnership }));
   // B-BOOK release: a child's private book files (hero sheet, prints, narration)
   // — read only through this owner-checked proxy (server/bookAssets.ts).
@@ -448,26 +510,53 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // reviewer's signature per pattern and language, server-held) and the
   // compose route that refuses an unsigned pattern outside the sandbox and
   // the owner allow-list (server/plans.ts). No model call.
-  router.use(createPlansRouter({ config, requireOwnership, modelProvider }));
+  router.use(createPlansRouter({ config, requireOwnership, modelProvider, painter: isPlatePainter }));
+  // B-BOOK-75 plates painted in-product: the shared, child-free pattern
+  // plates under shared/plans/ in the same bucket (never a child path),
+  // painted by the admin / comped accounts through the same provider path as
+  // /generate-scene and read by any signed-in user (server/planPlates.ts).
+  router.use(createPlanPlatesRouter({ config, getBucket: getBookBucket, generate: (o) => modelProvider.generateImage(o), counters, allowLocal: localBooks }));
   // K2 2b (B-BOOK-30): the name pages of a library book in the child's name
   // (server/bookNarration.ts): the name from the child record, Gemini-TTS
   // (env models, Sulafat), checked by the server's ASR when one is usable,
   // its own quota; MODEL_PROVIDER=mock answers a tone.
   const narrationMock = config.modelProvider === "mock";
+  const narrationChildren = config.memoryAdapter === "firestore" ? new FirestoreNarrationChildSource(config) : localNarrationChildSource;
+  const narrationProvider = narrationMock ? mockBookTts : googleBookTts(config);
+  const narrationCheck = !narrationMock && childAsrConfigured(config)
+    ? async (audio: Buffer, ext: "mp3" | "wav", firstName: string) => {
+        const r = await scoreChildUtterance(config, modelProvider, { target: firstName, sound: "", level: "word", audio: { data: audio.toString("base64"), mimeType: ext === "wav" ? "audio/wav" : "audio/mpeg" } });
+        return r.result === "got" || (r.heard ?? "").toLowerCase().includes(firstName.toLowerCase());
+      }
+    : null;
   router.use(createBookNarrationRouter({
     getBucket: getBookBucket,
     requireOwnership,
     docs: bookDocs,
-    children: config.memoryAdapter === "firestore" ? new FirestoreNarrationChildSource(config) : localNarrationChildSource,
+    children: narrationChildren,
     counters,
     entitlements: entitlementStore,
-    provider: narrationMock ? mockBookTts : googleBookTts(config),
-    check: !narrationMock && childAsrConfigured(config)
-      ? async (audio, ext, firstName) => {
-          const r = await scoreChildUtterance(config, modelProvider, { target: firstName, sound: "", level: "word", audio: { data: audio.toString("base64"), mimeType: ext === "wav" ? "audio/wav" : "audio/mpeg" } });
-          return r.result === "got" || (r.heard ?? "").toLowerCase().includes(firstName.toLowerCase());
-        }
-      : null,
+    provider: narrationProvider,
+    check: narrationCheck,
+    mock: narrationMock,
+    local: localBooks,
+    config,
+    disabled: !narrationMock && config.ttsDisabled,
+  }));
+  // PR C (Everyday Plans): a PLAN book's narration in the child's name through
+  // the same pipeline (server/planNarration.ts): the words from the child's
+  // stored plan document, every page per child into the child's own set,
+  // the EU path for a name line, the same quota and kill switch.
+  router.use(createPlanNarrationRouter({
+    getBucket: getBookBucket,
+    requireOwnership,
+    docs: bookDocs,
+    children: narrationChildren,
+    plans: config.memoryAdapter === "firestore" ? new FirestorePlanBookSource(config) : localPlanBookSource,
+    counters,
+    entitlements: entitlementStore,
+    provider: narrationProvider,
+    check: narrationCheck,
     mock: narrationMock,
     local: localBooks,
     config,
@@ -619,6 +708,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       );
       res.json({ items });
     } catch (error: any) {
+      // B-GA-09 round 8: the child was erased after this request passed the owner check.
+      if (error instanceof ChildErasedError) { res.status(410).json({ error: error.message }); return; }
       logger.error("Memory Propose Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to propose Arbor memory item", details: error.message });
     }
@@ -662,6 +753,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
 
       res.json(result);
     } catch (error: any) {
+      if (error instanceof ChildErasedError) { res.status(410).json({ error: error.message }); return; }
       logger.error("Memory Update Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to update Arbor memory review item", details: error.message });
     }
@@ -682,6 +774,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   router.post("/shares", requireOwnership, async (req, res) => {
     const { uid, email } = actorOf(req);
     const { childId, childName, recipientEmail, role, scopes, duration } = req.body;
+    // B-CAREPRO-41: an optional domain ceiling (fail closed in buildGrant).
+    const domains = Array.isArray(req.body?.domains) ? req.body.domains : undefined;
     if (!childId || !recipientEmail) {
       res.status(400).json({ error: "childId and recipientEmail are required" });
       return;
@@ -690,7 +784,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     // contract; writable same-child access requires the explicit workspace invite.
     try {
       const grant = await shareStore.create(
-        buildGrant({ ownerUid: uid, ownerEmail: email, childId, childName, recipientEmail, role, scopes, duration }),
+        buildGrant({ ownerUid: uid, ownerEmail: email, childId, childName, recipientEmail, role, scopes, duration, domains }),
       );
       res.json(grant);
     } catch (error: any) {
@@ -762,6 +856,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         recipientEmail: email,
         shareStore,
         source: sharedSource,
+        // B-PROG-09: the link's one scope; a scope the grant lacks → 403.
+        requestedScope: typeof req.query.scope === "string" ? req.query.scope : null,
       });
       if (result.status === 200) {
         res.json(result.view);
@@ -803,6 +899,26 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     } catch (error: any) {
       logger.error("Arbor Onboarding Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to create Arbor family/child documents", details: error.message });
+    }
+  });
+
+  // B-DATA-15: a new child's id is issued here, never chosen by the client —
+  // random, created already parented to the caller's (uid-derived) family, so
+  // no other account can collide with it or claim it. Single-tenant (local)
+  // stores have no shared namespace; they get a random id with no doc.
+  router.post("/onboarding/child-id", async (req, res) => {
+    try {
+      const { uid } = actorOf(req);
+      if (!memoryStore.issueChildId || !memoryStore.ensureFamilyForUser) {
+        res.json({ childId: `child-${randomUUID()}`, adapter: "local" });
+        return;
+      }
+      const { familyId } = await memoryStore.ensureFamilyForUser(uid);
+      const childId = await memoryStore.issueChildId({ familyId, userId: uid });
+      res.json({ childId, adapter: "firestore" });
+    } catch (error: any) {
+      logger.error("Arbor Child Id Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to issue a child id" });
     }
   });
 
@@ -1152,6 +1268,15 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         }
       }
 
+      // B-PROG-04 (dark, config.programScriptInCoach): an on-shelf turn opens
+      // with the active week's coach script, verbatim (authored program
+      // content, never model prose). Seeded, file and escalation turns never
+      // reach it (escalation answered above, byte-identical). The output
+      // screen below covers it like any line.
+      const weekScript = config.programScriptInCoach && !seededEscalation && !attachments.length && !structured.fileDeclined
+        ? programWeekScript(companion.program, message, renderLanguage, childProfile?.gender) : null;
+      if (weekScript) structured.text = `${weekScript}\n\n${structured.text ?? ""}`.trim();
+
       // AI-2: output-side safety screen (lexical floor + optional semantic classifier).
       let renderedText = seededFollowUp ? renderCoachFollowUpResponse(structured, renderLanguage)
         : structured.fileDeclined ? renderFileDeclinedResponse(structured)
@@ -1190,6 +1315,16 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
           res.json(blockedPayload);
         }
         return;
+      }
+      // B-ASKJB-44: no invented finding reaches a teacher or professional
+      // note. Runs AFTER the output screen saw the model's own words (a
+      // dropped clause can never hide a crisis signal), then re-renders. A
+      // finding the parent wrote (this message or their earlier turns) is theirs.
+      const parentText = [message, ...sanitizeRecentTurns(recentTurns).filter((turn) => turn.role === "parent").map((turn) => turn.text)].join("\n");
+      if (scrubHandoffNotes(structured, { parentText }) > 0) {
+        renderedText = seededFollowUp ? renderCoachFollowUpResponse(structured, renderLanguage)
+          : structured.fileDeclined ? renderFileDeclinedResponse(structured)
+          : renderCoachResponse(structured, renderLanguage);
       }
 
       // OBJ-JOURNAL-05: the memory queue is a parent surface — a proposal
@@ -1465,7 +1600,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // B-AI-01 eval fix: same verdict scrub + session-language labels as /chat.
       const renderLanguage = language === "he" ? "he" : "en";
       scrubHypothesisConfidence(structured, renderLanguage);
-      const renderedText = renderCoachResponse(structured, renderLanguage);
+      let renderedText = renderCoachResponse(structured, renderLanguage);
       const outputVerdict = await screenModelOutput(modelProvider, renderedText);
       if (outputVerdict.flagged) {
         // Done-time flag (lexical floor on the FULL rendered answer + the
@@ -1485,6 +1620,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // arrives as a fact the parent is asked to approve, so it must be in
       // their words. scrubMemoryProposals rewrites the assessment register and
       // DROPS any fact that cannot be stated plainly (server/parentWordsScrub).
+      // B-ASKJB-44: the handoff-note floor, after the screen saw the model's words.
+      const parentText = [message, ...councilTurns.filter((turn) => turn.role === "parent").map((turn) => turn.text)].join("\n");
+      if (scrubHandoffNotes(structured, { parentText }) > 0) renderedText = renderCoachResponse(structured, renderLanguage);
       const memoryReviewItems: [] = [];
       budget.settle();
       const payload = { text: renderedText, contract: structured, council: restoredTakes, memoryReviewItems };
@@ -1544,6 +1682,39 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       return;
     }
     const escalationMatch = screenForImmediateEscalation({ message });
+    // B-AIOPS-02: the browser fallback loop spends the SAME family-day voice
+    // allowance as Live. A crisis turn is never metered and never refused —
+    // the resources below answer first. Otherwise one turn is reserved before
+    // the model is touched and settled by the server when this response ends:
+    // the parent's words plus every released sentence, at the spoken rate.
+    if (!escalationMatch) {
+      try {
+        const [entitlement, familyId] = await Promise.all([
+          entitlementForRequest(req, entitlementStore), resolveFamilyId(req, undefined),
+        ]);
+        const turn = await liveBudget.reserveTurn({ familyId, plan: entitlement.plan, uid: actorOf(req).uid, holdMs: routeBudgetMs("voice") + VOICE_TURN_GRACE_MS });
+        setLiveQuotaHeaders(res, turn);
+        if (!turn.ok) {
+          logger.info("live.budget.resting", { requestId: requestIdOf(req), familyId, plan: entitlement.plan, path: "fallback", remainingMs: turn.remainingMs });
+          recordLiveBudgetRollup({ kind: "resting", plan: entitlement.plan });
+          res.status(429).json({ ...LIVE_RESTING_BODY, remainingMs: turn.remainingMs, resetAt: new Date(turn.resetAt).toISOString() });
+          return;
+        }
+        const { day, id } = turn.reservation;
+        res.on("close", () => {
+          const chargedMs = spokenMsForChars(message.length + (Number(res.locals.spokenChars) || 0));
+          recordLiveBudgetRollup({ kind: "turn", plan: entitlement.plan, settledMs: chargedMs });
+          liveBudget.settleTurn(familyId, day, id, chargedMs)
+            .catch((error) => logger.error("Voice turn settlement failed", error, { requestId: requestIdOf(req) }));
+        });
+      } catch (error) {
+        // Same posture as the Live mint: a cap that fails open is not a cap.
+        logger.error("Voice turn reservation failed", error, { requestId: requestIdOf(req) });
+        alerts.record("live_unavailable", "budget_store_unavailable");
+        res.status(503).json({ error: "Voice is not available right now", code: "voice_budget_unavailable" });
+        return;
+      }
+    }
     beginSse(res);
     if (escalationMatch) {
       // VC-4: voice parents must get the SAME crisis help as typists. Speak a
@@ -1653,6 +1824,14 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         });
         res.end();
       };
+
+      // B-PROG-04 (dark, config.programScriptInCoach): an on-shelf spoken
+      // answer opens with the active week's coach script, verbatim — its own
+      // first delta, lexically screened like every released sentence.
+      const weekScript = config.programScriptInCoach ? programWeekScript(companionContext.programScripts, message, ttsLang, childProfile?.gender) : null;
+      if (weekScript && !screenModelOutputLexical(weekScript).flagged) {
+        writeSse(res, "delta", { text: `${weekScript} `, tts: { text: weekScript, token: mintTtsToken(weekScript, ttsLang) } });
+      }
 
       if (outputClassifierEnabled()) {
         // Full-buffer path (config-gated): the semantic classifier judges the
@@ -1768,9 +1947,12 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // endpoint keyed on the key alone would recreate the VC-7 hazard.)
   router.get("/live/availability", (_req, res) => {
     const live = decideLive(config);
+    // B-PROV-12: the approved notice of the route a tap would take. A selected
+    // route with no approved notice is not offered (no unreviewed processor).
+    const noticeId = liveVoiceNoticeId(live);
     // B-PROV-01 / B-ASKJB-02: `exceptionUntil` names the dated exception only
     // while it is what admits the global endpoint.
-    res.json({ available: live.available, ...(live.exceptionUntil ? { exceptionUntil: live.exceptionUntil } : {}) });
+    res.json({ available: live.available && noticeId !== null, ...(live.exceptionUntil && noticeId ? { exceptionUntil: live.exceptionUntil } : {}), ...(noticeId ? { notice: { id: noticeId } } : {}) });
   });
 
   // RT-1 (v6): Gemini Live streaming. Mint a short-lived ephemeral token so the
@@ -1780,13 +1962,33 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // Metered by createAiQuota in createApp.ts (same list as the other paid mints).
   router.post("/live/usage", liveUsageRateLimit(), async (req, res) => {
     const { sessionId, event } = req.body ?? {};
-    if (typeof sessionId !== "string" || !["opened", "heartbeat", "closed"].includes(event)) {
+    if (typeof sessionId !== "string" || !["opened", "heartbeat", "closed", "failed"].includes(event)) {
       res.status(400).json({ error: "Invalid session event" }); return;
     }
     try {
       const result = await liveUsage.report(actorOf(req).uid, sessionId, event as LiveUsageEvent);
       if (!result) { res.status(404).json({ error: "Session not found" }); return; }
-      res.json(result);
+      // B-AIOPS-03: a minted token whose audio never came up is the depleted-
+      // prepay signature (docs/ops/live-balance-alert.md); a session that
+      // opened is the healthy path. Event names only — never content.
+      if (event === "failed" && !result.opened) {
+        logger.warn("live_unavailable", { requestId: requestIdOf(req), reason: "connect_failed" });
+        alerts.record("live_unavailable", "connect_failed");
+      } else if (event === "opened") {
+        alerts.ok("live_unavailable", ["connect_failed"]);
+      }
+      // B-AIOPS-02 reconciliation: observed time is RECORDED beside the
+      // family reservation. It never credits the budget here — a client
+      // report cannot shorten a token that the provider still honours.
+      if (result.budget) {
+        try {
+          await liveBudget.observe(result.familyId, result.budget.day, result.budget.reservationId,
+            { observedMs: result.observedMs, incomplete: result.incomplete, closed: result.closed });
+        } catch (error) {
+          logger.error("Live budget reconciliation failed", error, { requestId: requestIdOf(req) });
+        }
+      }
+      res.json({ observedMs: result.observedMs, incomplete: result.incomplete });
     } catch (error) {
       logger.error("Live usage write failed", error, { requestId: requestIdOf(req) });
       res.status(503).json({ error: "Usage reporting unavailable" });
@@ -1799,6 +2001,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         // B-PROV-01: residency refused (prod, exception lapsed, no EU path).
         // 503 → the client takes the EU STT → text → TTS loop.
         logger.warn("Live denied by the realtime residency policy", { requestId: requestIdOf(req), exception_until: config.liveGlobalExceptionUntil ?? null });
+        alerts.record("live_unavailable", "residency_denied");
         res.status(503).json({ available: false, code: "live_residency_denied", reason: "Live voice is not available in this region right now." });
         return;
       }
@@ -1815,6 +2018,80 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       exception_until: live.exceptionUntil ?? null,
     });
     const euPath = selected.provider === LIVE_VERTEX_EU_PROVIDER;
+    // B-PROV-12: no audio reaches a provider the parent has not acknowledged.
+    // The acknowledgement must name THIS route's approved notice; a changed
+    // provider, region or purpose carries a new id. Checked before anything
+    // is reserved or minted.
+    const noticeId = voiceNoticeIdFor(selected);
+    if (!noticeId) {
+      logger.warn("Live route has no approved provider notice", { requestId: requestIdOf(req), provider: selected.provider, region: selected.region });
+      res.status(503).json({ available: false, code: VOICE_PROVIDER_UNAPPROVED, reason: "Live voice is not available right now." });
+      return;
+    }
+    if (req.body?.noticeAck !== noticeId) {
+      res.status(428).json({ available: false, code: VOICE_NOTICE_REQUIRED, notice: { id: noticeId } });
+      return;
+    }
+
+    // B-AIOPS-02: reserve BEFORE the provider is touched. The family, plan and
+    // slice are server-resolved; the client supplies none of them. A token is
+    // spend the provider honours until expiry, so the reservation is
+    // non-refundable and the token's expireTime IS the reservation end.
+    // Overlapping mints from any parent/device of the family serialize on
+    // the family-day document; renewal after expiry is simply the next mint.
+    // A store failure refuses the mint (503): the
+    // browser voice loop keeps its own meters, and a cap that fails open on
+    // an outage is not a cap.
+    const actor = actorOf(req);
+    let reserved: Extract<Awaited<ReturnType<typeof liveBudget.reserve>>, { ok: true }>;
+    let entitlementPlan: import("../server/entitlements.js").Plan;
+    let familyId: string;
+    try {
+      const [entitlement, resolvedFamilyId] = await Promise.all([
+        entitlementForRequest(req, entitlementStore), resolveFamilyId(req, undefined),
+      ]);
+      entitlementPlan = entitlement.plan;
+      familyId = resolvedFamilyId;
+      // B-AIOPS-02: a renewal names the caller's OWN usage session; only one
+      // whose audio opened and that is still open may chain the next slice
+      // onto its reservation. Anything else is refused before anything is reserved.
+      const renewOf = typeof req.body?.renewOf === "string" ? req.body.renewOf : undefined;
+      let renewReservation: string | undefined;
+      if (renewOf !== undefined) {
+        const previous = await liveUsage.get(actor.uid, renewOf);
+        if (!previous || previous.openedAt === undefined || previous.closed || !previous.budget) {
+          res.status(409).json({ available: false, code: "live_renewal_invalid", reason: "Live voice is not available right now." });
+          return;
+        }
+        renewReservation = previous.budget.reservationId;
+      }
+      const outcome = await liveBudget.reserve({ familyId, plan: entitlement.plan, uid: actor.uid, ...(renewReservation ? { renewOf: renewReservation } : {}) });
+      setLiveQuotaHeaders(res, outcome);
+      if (outcome.ok === false && outcome.code === "renewal_invalid") {
+        res.status(409).json({ available: false, code: "live_renewal_invalid", reason: "Live voice is not available right now." });
+        return;
+      }
+      if (!outcome.ok) {
+        // B-KID-05 posture: exhaustion is not "busy" — no Retry-After. The
+        // typed coach and the crisis path stay open; only realtime voice rests.
+        logger.info("live.budget.resting", { requestId: requestIdOf(req), familyId, plan: entitlement.plan, remainingMs: outcome.remainingMs });
+        recordLiveBudgetRollup({ kind: "resting", plan: entitlement.plan });
+        res.status(429).json({ ...LIVE_RESTING_BODY, remainingMs: outcome.remainingMs, resetAt: new Date(outcome.resetAt).toISOString() });
+        return;
+      }
+      reserved = outcome;
+    } catch (error) {
+      logger.error("Live budget reservation failed", error, { requestId: requestIdOf(req) });
+      alerts.record("live_unavailable", "budget_store_unavailable");
+      res.status(503).json({ available: false, code: "live_budget_unavailable", reason: "Live voice is not available right now." });
+      return;
+    }
+    const { reservation } = reserved;
+    const expireTime = new Date(reservation.expiresAt).toISOString();
+    // B-AIOPS-02: a caller that hangs up before the token is delivered never
+    // holds it, so its reservation is released (a server fact, not a report).
+    let callerGone = false;
+    res.on("close", () => { if (!res.writableEnded) callerGone = true; });
     try {
       const { GoogleGenAI } = await import("@google/genai");
       // The EU attempt mints on Vertex in the configured EU location; the
@@ -1823,7 +2100,6 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         ? new GoogleGenAI({ vertexai: true, project: config.gcpProjectId, location: config.liveVertexLocation || config.vertexLocation })
         : new GoogleGenAI({ apiKey: config.geminiApiKey as string });
       const model = config.liveModel;
-      const expireTime = new Date(Date.now() + 20 * 60 * 1000).toISOString();
       // AI-V9: the instruction + voice are built per session language from the
       // ONE shared spoken-persona module and pinned server-side.
       const { childProfile, recentTurns, contextChildId, privateMode, topicId } = req.body ?? {};
@@ -1832,17 +2108,22 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       const companionContext = await assembleSpokenContext({
         memoryStore, childProfile, recentTurns, contextChildId, privateMode, topicId,
         canReadMemory, maxMemoryFacts: config.memoryPromptMaxFacts,
-        ledgerSource, uid: actorOf(req).uid,
+        ledgerSource, uid: actor.uid,
       });
       // Direct audio cannot restore the text route's child-name alias. Keep
       // names/contact PII out of the token pin and use natural generic wording.
       const liveContext = liveContextWithoutNames(companionContext, companionContext.profile?.name);
       const systemInstruction = buildLiveSystemInstruction(req.body?.language, liveContext);
       const speechConfig = liveSpeechConfig(req.body?.language);
-      const token = await ai.authTokens.create({
+      let mintTimer: ReturnType<typeof setTimeout> | undefined;
+      const token = await Promise.race([ai.authTokens.create({
         config: {
           uses: 1,
+          // B-AIOPS-02: the reserved slice bounds the token; the provider
+          // rejects messages after it. A new session may start on the token
+          // only in the next minute, so a parked token cannot be spent later.
           expireTime,
+          newSessionExpireTime: new Date(Date.now() + 60_000).toISOString(),
           // FW-NEW-P0: pin the persona, voice, and transcription-on INTO the
           // token's constraints at mint time. The Live API rejects a connect
           // config that conflicts with these, so a modified client cannot
@@ -1860,27 +2141,42 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
           },
           httpOptions: { apiVersion: "v1beta" }
         }
-      });
+      }), new Promise<never>((_, reject) => {
+        mintTimer = setTimeout(() => reject(new Error("Live token mint timed out")), liveMintDeadlineMs());
+      })]).finally(() => clearTimeout(mintTimer));
+      if (callerGone) {
+        // Minted for a caller that already left: nobody holds this token.
+        await liveBudget.cancel(familyId, reservation.day, reservation.id)
+          .catch((cancelError) => logger.error("Live budget release failed", cancelError, { requestId: requestIdOf(req) }));
+        return;
+      }
       // The pinned instruction/speechConfig are echoed back so the client's
       // connect config stays byte-identical to the pin (cosmetic — the token
       // constraints are authoritative).
       // Telemetry failure must not strand a successfully minted voice token.
       let usageSessionId: string | undefined;
       try {
-        usageSessionId = await withLiveUsageDeadline(async () => {
-          const actor = actorOf(req);
-          const [entitlement, familyId] = await Promise.all([
-            resolveEntitlement(entitlementStore, actor), resolveFamilyId(req, undefined),
-          ]);
-          return liveUsage.create({ uid: actor.uid, familyId, plan: entitlement.plan,
-            model, expiresAt: Date.parse(expireTime) });
-        });
+        usageSessionId = await withLiveUsageDeadline(async () =>
+          liveUsage.create({ uid: actor.uid, familyId, plan: entitlementPlan, model, expiresAt: reservation.expiresAt,
+            budget: { day: reservation.day, reservationId: reservation.id } }));
       } catch (error) {
         logger.error("Live usage session creation failed", error, { requestId: requestIdOf(req) });
       }
-      res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime, systemInstruction, speechConfig, usageSessionId });
+      // B-AIOPS-03: a delivered token is the mint path's healthy signal, and
+      // its reserved slice is the spend the prepay balance is read from.
+      alerts.ok("live_unavailable", ["mint_failed", "eu_mint_failed", "residency_denied", "budget_store_unavailable"]);
+      // Only the global AI Studio route is paid from the prepaid balance.
+      if (!euPath) void prepay.onLiveReserved(reservation.ms);
+      recordLiveBudgetRollup({ kind: "live", plan: entitlementPlan, reservedMs: reservation.ms });
+      res.json({ available: true, token: (token as any).name, model, expiresAt: expireTime, systemInstruction, speechConfig, usageSessionId,
+        budget: { reservedMs: reservation.ms, remainingMs: reserved.remainingMs, allowanceMs: reserved.allowanceMs, resetAt: new Date(reserved.resetAt).toISOString() } });
     } catch (error: any) {
       logger.error("Arbor Live Token Error", error, { requestId: requestIdOf(req), provider: selected.provider, region: selected.region });
+      alerts.record("live_unavailable", euPath ? "eu_mint_failed" : "mint_failed");
+      // No token was issued: the reservation is released on this SERVER fact
+      // (never on a client report). Failure here is logged, not surfaced.
+      try { await liveBudget.cancel(familyId, reservation.day, reservation.id); }
+      catch (cancelError) { logger.error("Live budget release failed", cancelError, { requestId: requestIdOf(req) }); }
       if (euPath) {
         // B-PROV-01: the Vertex `eu` attempt could not mint (ephemeral Live
         // tokens are a Developer-API feature today). 503, browser fallback.
@@ -3394,7 +3690,11 @@ RULES:
           }
         }
       });
-      await sendScreenedJson(res, privacy.restoreDeep(response));
+      // B-ASKJB-35 (route half; the prompt half is parked on
+      // claude/askjb35-prompt-bump-2026-10-28): the "signs it's working" list
+      // (child outcomes to watch for, verdict-shaped) never reaches the parent
+      // — empty whatever the model returns. The prompt and schema are unchanged.
+      await sendScreenedJson(res, { ...(privacy.restoreDeep(response) as Record<string, unknown>), successIndicators: [] });
     } catch (error: any) {
       logger.error("Arbor Action Plan Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to generate Arbor action plan", details: error.message });
@@ -3849,6 +4149,12 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
         });
         return;
       }
+      // B-ASKJB-44: the invented-finding floor ("no evidence of…", "was
+      // observed", EN + HE; never the escalation line) runs AFTER the output
+      // screen saw the model's own words, then the brief is sent.
+      // The parent's own logged words (trigger, response) may carry a finding they reported.
+      const parentText = logs.map((log) => [log.trigger, log.response].filter((v) => typeof v === "string").join(" ")).join("\n");
+      if (brief && typeof brief === "object") scrubHandoffBriefFindings(brf, { parentText });
       res.json(brief);
     } catch (error: any) {
       logger.error("Arbor Handoff Brief Error", error, { requestId: requestIdOf(req) });
@@ -3978,7 +4284,8 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
         res.status(400).json({ error: "Missing referral code" });
         return;
       }
-      const result = await referralStore.activateReferral({ code, redeemerUid: actor.uid });
+      // B-GROWTH-43: a typed code (`via: "typed"`) redeems like the link; one per family.
+      const result = await referralStore.activateReferral({ code, redeemerUid: actor.uid, via: redemptionViaOf(req.body?.via) });
       if (!result.ok) {
         // Soft-fail: an unknown/self code is not an error the parent should see.
         res.json(result);
@@ -4007,6 +4314,22 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
     }
   });
 
+  // B-AIOPS-03: the readable AI Studio prepay balance (founder only). Reading
+  // it also re-checks the 20 % alarm. Nothing here reloads or pays.
+  router.get("/admin/prepay", async (req, res) => {
+    if (!isAdmin(actorOf(req))) {
+      res.status(403).json({ error: "Not authorized" });
+      return;
+    }
+    try {
+      const balance = await prepay.read();
+      res.json(balance ? { configured: true, ...balance } : { configured: false });
+    } catch (error) {
+      logger.error("Prepay balance read failed", error, { requestId: requestIdOf(req) });
+      res.status(503).json({ error: "Prepay balance unavailable" });
+    }
+  });
+
   // N1-05: the cohort read lane. The founder dashboard could report users /
   // paying / usageToday and nothing about whether a family came back, because
   // no cross-user reader existed at all. Same gate as /admin/overview: 403 for
@@ -4028,10 +4351,31 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       // B-MEAS-01: internal (founder / comped / smoke) families are excluded
       // by default; `?includeInternal=1` puts them back. The count is reported.
       const includeInternal = req.query.includeInternal === "1" || req.query.includeInternal === "true";
-      res.json(await buildCohortReport(cohortMetrics, { since, groupBy, funnels: Object.keys(FUNNEL_CHAINS), includeInternal }));
+      // BD-25: the metric contract reads matured households (default: the last 90 days).
+      const contractParam = typeof req.query.contractSince === "string" ? req.query.contractSince : "";
+      const contractSince = Number.isFinite(Date.parse(contractParam)) ? contractParam : defaultContractSince();
+      res.json(await buildCohortReport(cohortMetrics, { since, groupBy, funnels: Object.keys(FUNNEL_CHAINS), includeInternal, contractSince }));
     } catch (error: any) {
       logger.error("Arbor Cohort Report Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to build the cohort report", details: error.message });
+    }
+  });
+
+  // B-GAME-18 / B-BOOK-51: the founder panel's narrow read — the weekly Kid
+  // Mode play summary only (cells under 5 families hidden). Same admin gate.
+  router.get("/admin/kid-play", async (req, res) => {
+    const actor = actorOf(req);
+    if (!isAdmin(actor)) {
+      res.status(403).json({ error: "Not authorized" });
+      return;
+    }
+    try {
+      const sinceParam = typeof req.query.since === "string" ? req.query.since : "";
+      const since = Number.isFinite(Date.parse(sinceParam)) ? sinceParam : new Date(Date.now() - 28 * 86_400_000).toISOString();
+      res.json(await buildKidPlayReport(cohortMetrics, { since }));
+    } catch (error: any) {
+      logger.error("Arbor Kid Play Report Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to build the kid play report" });
     }
   });
 
@@ -4270,11 +4614,15 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       const childId = req.params.childId;
       const memoryEvents = await memoryStore.listEvents(childId);
       const shares = await shareStore.listByOwner(uid, childId);
+      // B-GA-09: the consent records and the consult requests about this child
+      // are retained categories too, so the export carries them.
+      const consents = await consentStore.list(childId);
+      const consultRequests = await consultStore.listByChild(uid, childId);
       res.json({
         product: "Arbor",
         exportedAt: new Date().toISOString(),
         childId,
-        serverData: { memoryEvents, shares },
+        serverData: { memoryEvents, shares, consents, consultRequests },
       });
     } catch (error: any) {
       logger.error("Arbor Privacy Export Error", error, { requestId: requestIdOf(req) });
@@ -4285,7 +4633,7 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
   // CMP-2 (GDPR Art. 17): REAL server-side erasure — replaces the former
   // "processed server-side" placeholder. Hard-deletes the child's memory-event
   // ledger + child doc and every share grant the caller created for the child.
-  router.post("/privacy/erase", requireOwnership, async (req, res) => {
+  router.post("/privacy/erase", requireEraseOwnership, async (req, res) => {
     const { uid } = actorOf(req);
     const { childId } = req.body;
     if (!childId || typeof childId !== "string") {
@@ -4293,39 +4641,15 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       return;
     }
     try {
-      const memoryEvents = await memoryStore.eraseChild(childId);
-      const shares = await shareStore.eraseByChild(uid, childId);
-      const consents = await consentStore.eraseByChild(childId);
-      // GDPR Art. 17 parity with /account/delete, which purges Storage. Erasing
-      // ONE child left that child's uploaded photos in the bucket — Firestore
-      // was swept, the images were not. Scoped to this child's own prefix
-      // (lib/storage.ts writes users/{uid}/children/{childId}/photos/...), so a
-      // sibling's data is never touched.
-      let storageFiles = 0;
-      let storageNote: string | undefined;
-      const bucketName = config.storageBucket;
-      if (!bucketName) {
-        storageNote = "skipped: no storage bucket configured";
-      } else {
-        try {
-          const { getStorage } = await import("firebase-admin/storage");
-          const bucket = getStorage().bucket(bucketName);
-          // The receipt COUNTS the files: the child's photos, then (B-BOOK
-          // release) the child's private book files under children/{childId}/books/.
-          const [photoFiles] = await bucket.getFiles({ prefix: `users/${uid}/children/${childId}/` });
-          await bucket.deleteFiles({ prefix: `users/${uid}/children/${childId}/` });
-          const bookFiles = await eraseChildBookAssets(bucket as unknown as BookAssetBucket, childId);
-          storageFiles = photoFiles.length + bookFiles;
-          storageNote = `storage prefixes users/{uid}/children/${childId}/ and children/${childId}/books/ removed`;
-        } catch (err: unknown) {
-          // A bucket that was never provisioned is a clean no-op, not a failure.
-          const message = err instanceof Error ? err.message : String(err);
-          if (!/not exist|notFound|404/i.test(message)) throw err;
-          storageNote = "bucket not provisioned";
-        }
-      }
-      logger.info("GDPR erasure executed", { requestId: requestIdOf(req), childId, memoryEvents, shares, consents, storageFiles });
-      res.json({ erased: { memoryEvents, shares, consents, storageFiles }, storageNote, childId, erasedAt: new Date().toISOString() });
+      // B-GA-09: the ONE per-child server erase (server/childErase), shared with
+      // account deletion: the erase record first, then shares, consents,
+      // consult requests (a co-parent's too) and both Storage prefixes, each
+      // counted; the ledger and the child doc (the owner check's anchor) last.
+      // With no bucket the Storage step is skipped and claims no count.
+      const { memoryEvents, shares, consents, consultRequests, storageFiles, storage, storageNote } =
+        await eraseChildServerData(childEraseStores, uid, childId);
+      logger.info("GDPR erasure executed", { requestId: requestIdOf(req), childId, memoryEvents, shares, consents, consultRequests, storageFiles });
+      res.json({ erased: { memoryEvents, shares, consents, consultRequests, storageFiles }, storage, storageNote, childId, erasedAt: new Date().toISOString() });
     } catch (error: any) {
       logger.error("Arbor Privacy Erasure Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to erase server-side data", details: error.message });
@@ -4351,10 +4675,18 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       return;
     }
     try {
+      // B-GA-09 round 7: the children this device still has an unfinished erase
+      // for (DeleteAccountModal sends them), each only if this account may erase
+      // it (the owner, or its family's unexpired erase record). Ids only.
+      const sent: unknown[] = Array.isArray(req.body?.pendingChildIds) ? req.body.pendingChildIds.slice(0, 50) : [];
+      const pendingChildIds: string[] = [];
+      for (const id of new Set(sent.filter((v): v is string => typeof v === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(v)))) {
+        if (memoryStore.mayEraseChild && await memoryStore.mayEraseChild(uid, id)) pendingChildIds.push(id);
+      }
       const ops = createFirestoreDeletionOps(config, {
-        memoryEraseChild: (childId) => memoryStore.eraseChild(childId),
-        consentEraseByChild: (childId) => consentStore.eraseByChild(childId),
-        shareEraseByChild: (ownerUid, childId) => shareStore.eraseByChild(ownerUid, childId),
+        // The same per-child erase as /privacy/erase (server/childErase); the erase record goes too.
+        eraseChild: async (ownerUid, childId) => childEraseTotal(await eraseChildServerData(childEraseStores, ownerUid, childId, { dropRecord: true })),
+        pendingChildIds,
         pushTokensRemove: (u) => pushTokenStore.remove(u),
         // B-DATA-01: the digest consent row holds the email address.
         digestOptInRemove: (u) => digestOptIns.remove(u),
@@ -4375,7 +4707,10 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
 
   // MON-3 v1: professional intro/booking — records a durable consult request and
   // returns a ready-to-send email draft (email-based transaction first cut).
-  router.post("/consult-requests", async (req, res) => {
+  // B-GA-09: a consult request names a child and carries a parent's note about
+  // them, so only the family that owns the child may open one (the same
+  // owner check as every other child route; no child named → nothing to check).
+  router.post("/consult-requests", requireOwnership, async (req, res) => {
     const { uid, email } = actorOf(req);
     const { professionalId, childId, note, preferredMode } = req.body;
     const professional = ARBOR_PROFESSIONALS.find((p) => p.id === professionalId);

@@ -7,7 +7,7 @@ import { toObservations } from "../../lib/observations";
 import { shelfCoverage, selectNextMilestonesByShelf } from "../../lib/milestones/selectByShelf";
 import { comparisonMonthsOf } from "../../lib/age/forChild";
 import { enrolInProgram, activeProgramWeek } from "../../lib/programs/enrolment";
-import { selectNoticeWithProgram, type NoticeProgram } from "../../lib/programs/notice";
+import { selectNoticeWithProgram, type NoticeProgram } from "../../lib/programs/notice";
 import { todayLiveSource } from "../../testTodaySource";
 
 /* B-PROG-03 (seam): Today's Notice reads the program wrapper. With an ACTIVE
@@ -58,7 +58,9 @@ describe("B-PROG-03 (seam) — Today's Notice reads the program wrapper", () => 
   it("OverviewTab wires it: the programs collection → activeProgramWeek → selectNoticeWithProgram", () => {
     const src = todayLiveSource();
     expect(src).toContain('useChildCollection<{ id: string }>(childProfile.id, "programs")');
-    expect(src).toContain("return active ? { shelf: active.program.shelf, watchFor: active.content.watchFor } : null;");
+    // B-PROG-03: one enrolment read (activeProgram) feeds the chooser, Notice and the week-end goals.
+    expect(src).toContain("const activeProgram = useMemo(() => activeProgramWeek(programRows.items, now), [programRows.items, now]);");
+    expect(src).toContain("(activeProgram ? { shelf: activeProgram.program.shelf, watchFor: activeProgram.content.watchFor } : null)");
     expect(src).toContain("selectNoticeWithProgram(milestones, comparisonMonths, {");
     expect(src).not.toContain("selectNextMilestonesByShelf(");
   });

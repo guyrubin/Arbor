@@ -237,7 +237,9 @@ function surfaceDemotionTargets() {
  * disclosure under a route target before the rule existed — SHRINK-ONLY: a
  * route leaves when its contract or its markup is reconciled, none is added.
  */
-const LEGACY_DISCLOSURE_TARGET = new Set(["copilot", "appointments", "memory", "sharing", "weekly", "strengths", "care-team"]);
+// B-GROWTH-22: copilot left (its seat renders the reconciled development leaf).
+// B-CAREPRO-38: memory left (its seat renders the reconciled About leaf).
+const LEGACY_DISCLOSURE_TARGET = new Set(["appointments", "sharing", "weekly", "strengths", "care-team"]);
 
 const budgets = surfaceBudgets();
 const demotionTargets = surfaceDemotionTargets();

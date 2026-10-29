@@ -368,10 +368,17 @@ describe("law 1 by the back door — no component imports the rate modules", () 
     expect(/from\s+["'][^"']*\b(retention|cohortMetrics)\b/.test('import { cohortRetention } from "../../lib/retention";')).toBe(true);
   });
 
-  it("AdminDashboard.tsx is untouched by this item — the reader is a command", () => {
+  it("AdminDashboard.tsx never reads the cohort report — the reader is a command; its one play read is the narrowed kid-play summary (B-GAME-18)", () => {
     const dash = path.resolve(__dirname, "..", "components", "layout", "AdminDashboard.tsx");
     if (!fs.existsSync(dash)) return;
-    expect(fs.readFileSync(dash, "utf8")).not.toMatch(/cohort/i);
+    const src = fs.readFileSync(dash, "utf8");
+    // N1-05's contract, narrowed: no cohort report, retention, funnel or activation read on the panel.
+    expect(src).not.toMatch(/cohort|retention|funnel|activation/i);
+    // B-GAME-18 / B-BOOK-51: the one play read, through lib/api, to the narrow route — counts, small cells hidden.
+    expect(src).toContain("api.adminKidPlay(");
+    const api = fs.readFileSync(path.resolve(__dirname, "..", "lib", "api.ts"), "utf8");
+    expect(api).toContain("`/api/admin/kid-play?since=${encodeURIComponent(since)}`");
+    expect(api).not.toMatch(/adminKidPlay[^\n]*\/admin\/cohorts/);
   });
 });
 
@@ -479,6 +486,21 @@ describe("GET /api/admin/cohorts — the gate", () => {
     expect(res.status).toBe(200);
     expect((await res.json()).scanned.mode).toBe("null");
   });
+
+  it("B-GAME-18: /api/admin/kid-play — the same gate (403, nothing read); an admin gets the kid play summary only", async () => {
+    process.env.ARBOR_ADMIN_UIDS = "founder-uid";
+    const store = new FakeStore([rollup(10, [0, 1])], [ev("u1", "session_open", 1)]);
+    const eventSpy = vi.spyOn(store, "listEvents");
+    const parent = await harness("some-parent", store);
+    expect((await fetch(`${parent}/api/admin/kid-play`)).status).toBe(403);
+    expect(eventSpy).toHaveBeenCalledTimes(0);
+    const founder = await harness("founder-uid", store);
+    const res = await fetch(`${founder}/api/admin/kid-play?since=${iso(7)}`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Object.keys(body).sort()).toEqual(["generatedAt", "kidPlay", "scanned", "since"]);
+    expect(scanForbiddenKeys(body)).toEqual([]);
+  });
 });
 
 /* ── the lead's command surface ──────────────────────────────────────────── */
@@ -498,7 +520,8 @@ describe("cohort-report.mjs — the flags the measure plan names", () => {
 
   it("with no section flag it prints everything, over every known funnel", () => {
     const args = reportScript.parseArgs([]);
-    expect([...args.sections].sort()).toEqual(["activation", "events", "funnel", "retention"]);
+    // B-GROWTH-43: + the household line (source → offer → activated → paying); BD-25: + the metric contract.
+    expect([...args.sections].sort()).toEqual(["activation", "contract", "events", "funnel", "households", "retention"]);
     expect(args.funnels.sort()).toEqual(Object.keys(FUNNEL_CHAINS).sort());
     expect(Date.parse(args.since)).toBeLessThan(Date.now());
   });

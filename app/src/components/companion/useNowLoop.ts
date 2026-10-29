@@ -17,15 +17,16 @@ import { dayKey } from "../../practice/signals";
 import { readTodayPin, readPracticeShown } from "../../lib/practice/todayPin";
 import { shelfCoverage } from "../../lib/milestones/selectByShelf";
 import { selectNoticeWithProgram, type NoticeProgram } from "../../lib/programs/notice";
-import { activeProgramWeek, dayKey as programDayKey } from "../../lib/programs/enrolment";
+import { activeProgramWeek, chooserProgram, dayKey as programDayKey } from "../../lib/programs/enrolment";
 import { programWeekDays } from "../../lib/programs/measures";
 import { activeGoals, scoreGoal, type FamilyGoal } from "../../lib/goals";
 import type { ObserveStatus, ObservedWhen } from "../../lib/milestones/observe";
 import { lastNightWords, shelfWordsThenNow } from "../../lib/today/shelfWords";
-import { quoteKeepsakeDoc, tonightDayQuestion, tonightLineEntry, tonightOutcomeEntry } from "../../lib/loop/tonight";
+import { quoteKeepsakeDoc, tonightDayQuestion, tonightLineEntry, tonightOutcomeEntry, tonightParentProxyKind, tonightSelfCountEntry } from "../../lib/loop/tonight";
+import { recordRoutineTap, type RoutineAnswer } from "../../lib/sleepDiary";
 import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
 import { openNoticeDetail } from "../../lib/noticeNavigation";
-import type { Milestone } from "../../types";
+import type { Milestone, SleepLogEntry } from "../../types";
 import { shelfLabel, type ShelfId } from "../../lib/shelves/registry";
 import { practiceText, type PracticeQuote, type PracticeWhyReason } from "../loop/PracticeCard";
 import { adaptPractice, adaptationSessionKey, type PracticeAdaptationKey } from "../../content/practiceAdaptations";
@@ -67,6 +68,13 @@ export function useNowLoop({ aiPracticeId, now }: { aiPracticeId?: string; openP
   const [tonightEarly, setTonightEarly] = useState(false);
   const evening = bedtimeDoorOpen(now.getHours(), rhythm.windDownHour) || tonightEarly;
 
+  // ── B-PROG-03: the active program's week FRAMES the day — its practice list
+  //    feeds the chooser (lib/practice/choosePractice program rule) and its
+  //    watch-for rows lead Notice; one read of the enrolment for all three. ──
+  const programRows = useChildCollection<{ id: string }>(childProfile.id, "programs");
+  const activeProgram = useMemo(() => activeProgramWeek(programRows.items, now), [programRows.items, now]);
+  const program = useMemo(() => chooserProgram(activeProgram), [activeProgram]);
+
   // ── B-LOOP-09: today's practice (the pure chooser; the AI focus may name a
   //    practiceId from the same candidates — B-LOOP-13 — and wins only then). ──
   const observations = useObservations();
@@ -77,7 +85,7 @@ export function useNowLoop({ aiPracticeId, now }: { aiPracticeId?: string; openP
   // B-LOOP-13: the journal the focus route chooses from (ids and counts only).
   const journal = useMemo(() => {
     if (comparisonMonths === null) return undefined;
-    const base = { childId: childProfile.id, milestones, comparisonMonths, practices: PRACTICES, coverage, today: now, recentPracticeIds: recentIds };
+    const base = { childId: childProfile.id, milestones, comparisonMonths, practices: PRACTICES, coverage, today: now, recentPracticeIds: recentIds, program };
     return buildJournalRequest({
       childId: childProfile.id,
       dateKey: dayKey(now),
@@ -88,7 +96,7 @@ export function useNowLoop({ aiPracticeId, now }: { aiPracticeId?: string; openP
       pinnedPracticeId: readTodayPin(childProfile.id, now),
       actionLoop,
     });
-  }, [childProfile.id, milestones, comparisonMonths, coverage, now, recentIds, actionLoop]);
+  }, [childProfile.id, milestones, comparisonMonths, coverage, now, recentIds, actionLoop, program]);
   const basePick = useMemo(
     () => choosePractice({
       childId: childProfile.id,
@@ -103,8 +111,9 @@ export function useNowLoop({ aiPracticeId, now }: { aiPracticeId?: string; openP
       todayPracticeId: dose?.practiceId ?? readTodayPin(childProfile.id, now),
       todayAdaptation: dose?.practiceAdaptation,
       aiPracticeId,
+      program,
     }),
-    [childProfile.id, milestones, comparisonMonths, coverage, now, recentIds, dose?.practiceId, dose?.practiceAdaptation, aiPracticeId],
+    [childProfile.id, milestones, comparisonMonths, coverage, now, recentIds, dose?.practiceId, dose?.practiceAdaptation, aiPracticeId, program],
   );
   const adaptationKey = adaptationSessionKey(childProfile.id, basePick?.practice.id ?? "", dayKey(now));
   const [adaptationPreview, setAdaptationPreview] = useState<{ session: string; key: PracticeAdaptationKey | null } | null>(null);
@@ -151,21 +160,20 @@ export function useNowLoop({ aiPracticeId, now }: { aiPracticeId?: string; openP
 
   // ── B-LOOP-04 + B-PROG-03: Notice today; with an active program the week's
   //    watchFor rows are served first (lib/programs/notice). ──
-  const programRows = useChildCollection<{ id: string }>(childProfile.id, "programs");
-  const noticeProgram = useMemo<NoticeProgram | null>(() => {
-    const active = activeProgramWeek(programRows.items, now);
-    return active ? { shelf: active.program.shelf, watchFor: active.content.watchFor } : null;
-  }, [programRows.items, now]);
+  const noticeProgram = useMemo<NoticeProgram | null>(
+    () => (activeProgram ? { shelf: activeProgram.program.shelf, watchFor: activeProgram.content.watchFor } : null),
+    [activeProgram],
+  );
   // B-PROG-07: on the LAST day of the program week, Tonight asks how each of
   // the family's goals went — never while a coach step is open.
   const familyGoals = useChildCollection<FamilyGoal>(childProfile.id, "familyGoals");
   const weeklyGoals = useMemo<FamilyGoal[] | undefined>(() => {
     if (activeTodayAction?.status === "accepted") return undefined;
-    const active = activeProgramWeek(programRows.items, now);
+    const active = activeProgram;
     if (!active || programDayKey(now) !== programWeekDays(active.enrolment, active.week).to) return undefined;
     const goals = activeGoals(familyGoals.items);
     return goals.length ? goals : undefined;
-  }, [activeTodayAction?.status, programRows.items, familyGoals.items, now]);
+  }, [activeTodayAction?.status, activeProgram, familyGoals.items, now]);
   const noticePicks = useMemo(
     () => (comparisonMonths === null ? [] : selectNoticeWithProgram(milestones, comparisonMonths, {
       perShelf: 1, total: 3, coverage, now, excludeShelves: pick ? [pick.shelf] : [],
@@ -211,6 +219,35 @@ export function useNowLoop({ aiPracticeId, now }: { aiPracticeId?: string; openP
   const tonightHasQuestions = !!pick || behaviorLogs.length + playLogs.length > 0 || !!tonightNotice;
   // Tonight asks "Did you try it today?" only about a practice the parent SAW.
   const practiceShown = !!dose || tonightEarly || !!readTodayPin(childProfile.id, now) || (!!pick && readPracticeShown(childProfile.id, now) === pick.practice.id);
+  // ── B-PROG-03: Tonight's parent proxy on a program day — asked in step 1
+  //    after "Did it", only for a practice the active program's week served,
+  //    by the program's own measure id (lib/loop/tonight). Turns → the dose
+  //    row's selfCount; the bedtime routine → the night's sleepLogs row. ──
+  const proxyKind = activeProgram && pick?.programId && pick.programId === activeProgram.program.id
+    ? tonightParentProxyKind(activeProgram.program.measures?.parentProxy?.id)
+    : null;
+  const nightKey = programDayKey(now);
+  const sleepChildId = proxyKind === "routine" ? childProfile.id : "";
+  const sleepLogs = useChildCollection<SleepLogEntry & { id: string }>(sleepChildId, "sleepLogs");
+  const tonightNight = sleepLogs.items.find((n) => n.id === nightKey || n.date === nightKey);
+  const parentProxy = !pick || !activeProgram ? undefined
+    : proxyKind === "turns" ? {
+      kind: "turns" as const,
+      value: typeof dose?.selfCount === "number" ? dose.selfCount : null,
+      onCount: (n: number) => {
+        const row = tonightSelfCountEntry(dose ?? practiceDoseEntry(pick, "did", childProfile.id, sayText), n);
+        if (row) recordPracticeDose(row);
+      },
+    }
+    : proxyKind === "routine" ? {
+      kind: "routine" as const,
+      value: tonightNight?.routine ?? null,
+      onRoutine: (answer: RoutineAnswer) => {
+        const entry = recordRoutineTap(tonightNight, { date: nightKey, answer, now: new Date().toISOString(), programId: activeProgram.program.id });
+        void sleepLogs.upsert({ ...entry, id: nightKey });
+      },
+    }
+    : undefined;
   const plan = planToday({
     evening,
     practice: !!pick || !!slotNotice,
@@ -232,6 +269,7 @@ export function useNowLoop({ aiPracticeId, now }: { aiPracticeId?: string; openP
       const row = dose ?? practiceDoseEntry(pick, "did", childProfile.id, sayText);
       recordPracticeDose(tonightOutcomeEntry(row, outcome));
     },
+    parentProxy,
     onWhatHappened: async (text: string) => {
       if (!pick) return false;
       // The seam's own toast is this write's one failure message (Tonight has no inline error).

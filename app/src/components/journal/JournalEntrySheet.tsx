@@ -10,6 +10,7 @@ import { fmtDay } from "../../lib/formatDate";
 import type { KeptProvenance } from "../../lib/captureProvenance";
 import { signalContentSource, type TimelineSignal, type SignalProvenance } from "../../lib/signalTimeline";
 import JournalMomentDetails from "./JournalMomentDetails";
+import { isPhotoOnlyMoment } from "../../lib/kept/photoOnly";
 import type { BehaviorLog, DevelopmentalDomainId } from "../../types";
 
 /**
@@ -74,7 +75,9 @@ export default function JournalEntrySheet({
   const { childProfile } = useArbor();
   const childName = (childProfile?.name || "").split(" ")[0];
   const observation = signal?.kind === "action" && signal.actionObservation === true;
-  const contentSourceLabel = signalContentSource({ contentSource: signal?.contentSource ?? momentLog?.contentSource }, t);
+  // B-ASKJB-43: the detail line and the share card read the same source; a
+  // photo-only moment has none (lib/kept/photoOnly).
+  const contentSourceLabel = signalContentSource({ contentSource: isPhotoOnlyMoment(momentLog) ? undefined : signal?.contentSource ?? momentLog?.contentSource }, t);
   const tone: PastelKey = signal
     ? (domain ? domainVisual(domain).tone : (signal.tone as PastelKey))
     : "lav";

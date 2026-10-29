@@ -63,6 +63,8 @@ export const assembleSpokenContext = async (input: {
   context.approvedMemoryFactsUsed = companion.approvedFacts.length;
   const program = programPromptLine(companion.program);
   if (program) context.program = program;
+  // B-PROG-04 (dark): the week's scripts ride beside the context for the route, never into a prompt.
+  if (companion.program) context.programScripts = { shelf: companion.program.shelf, scripts: companion.program.scripts.map((s) => ({ en: s.en, he: s.he })) };
   const practice = todayPracticeLine(companion.journal);
   if (practice) context.todayPractice = practice;
   if (companion.familyTopic) context.familyTopic = companion.familyTopic;

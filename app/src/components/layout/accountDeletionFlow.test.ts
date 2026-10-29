@@ -127,6 +127,7 @@ function boundaries() {
   const removeItem = vi.fn((key: string) => { order.push("remove:" + key); delete storage[key]; });
   Object.defineProperty(storage, "removeItem", { value: removeItem });
   const leases = createAccountDeletionLeases();
+  const pending: Array<{ uid: string; childId: string }> = [];
   const imports: Record<string, any> = {
     "../ui/Modal": { Modal: "Modal" },
     // MOB-28: SettingsModal picks its surface at render (Sheet below lg, Modal
@@ -141,8 +142,10 @@ function boundaries() {
     "../../lib/comicPageStore": { purgeAllComicPages },
     "../../lib/heroRenderStore": { purgeAllHeroRenders: async () => {} }, // B-KID-127
     "../kidmode/parentGate": { commerceAllowed },
+    // B-GA-09 round 7: this account's unfinished child erases (none unless a test adds them).
+    "../../lib/pendingErase": { readPendingErases: (uid: string) => pending.filter((p) => p.uid === uid) },
   };
-  return { imports, leases, auth, language, api, commerceAllowed, purgeAllComicPages, signOut, toast, storage, removeItem, order };
+  return { imports, leases, auth, language, api, commerceAllowed, purgeAllComicPages, signOut, toast, storage, removeItem, order, pending };
 }
 function deletion(source = deletionSource, b = boundaries()) {
   const onClose = vi.fn(() => { b.order.push("close"); });
@@ -162,6 +165,8 @@ function settings(source = settingsSource) {
   const imports = { ...b.imports,
     "../ui/Icon": { Icon: "Icon" }, "./AdminDashboard": { default: "AdminDashboard", __esModule: true },
     "./ParentalGatePanel": { default: "ParentalGatePanel", __esModule: true },
+    // B-STATUS-01: the saved-language receipt line (Settings' own slot).
+    "../ui/Receipt": { ReceiptNoteLine: "ReceiptNoteLine", useReceiptNote: () => ({ note: null, show: () => {}, clear: () => {} }) },
     // B-PLAY-06: Settings consumes a requested row focus on open.
     "./settingsBus": { consumeSettingsFocus: () => null, SETTINGS_FOCUS_ANCHOR: { pin: "settings-pin-row" } },
     "./DeleteAccountModal": { default: "DeleteAccountModal", __esModule: true },
@@ -172,6 +177,7 @@ function settings(source = settingsSource) {
     // B-PLAY-21: section 1 opens the ONE tone sheet (B-ASKJB-12's).
     "../coach/ToneSheet": { default: "ToneSheet", toneLabel: () => "", __esModule: true },
     "../referral/InviteCard": { default: "InviteCard", __esModule: true },
+    "../referral/OfferCodeField": { default: "OfferCodeField", __esModule: true }, // B-GROWTH-43
     "../billing/PlanPrices": { PlanPrices: "PlanPrices" }, "../billing/LegalLinks": { LegalLinks: "LegalLinks" },
     // B-GA-12: annual default + the native offering gate (web here: never blocked).
     "../billing/paywallModel": { DEFAULT_CADENCE: "annual", offeringGate: () => ({ blocked: false, notice: null }) },
@@ -188,10 +194,16 @@ function settings(source = settingsSource) {
     "../../lib/theme": { ACCENT_THEMES: ["green", "teal", "blue"], getSavedTheme: () => "green", setTheme: vi.fn() },
     // B-KID-70 (R-5): one selectable look → the Kid Mode Look row stays hidden here.
     "../../lib/kidThemeManifest": { selectableThemes: () => ["film3d"], resolveKidTheme: () => "film3d" },
+    // B-BOOK-45: the bedtime row's pure helpers (real module, no I/O).
+    "../../lib/library/readMode": { BEDTIME_TIMES: ["18:30", "19:00", "19:30", "20:00", "20:30"], validBedtime: (v: unknown) => (typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : null) },
     "../../lib/formatDate": { fmtDay: () => "" },
     "../../lib/i18n": { translate: (_lang: string, key: string) => key },
     // MOB-20 / B-INF-05: the About row reads the stamped build identity.
     "../../lib/buildVersion": { APP_BUILD: "dev" },
+    // S1 (surfacing): Owner tools render only on the server's `admin` flag (null here: a family's Settings).
+    "../../lib/plans/usePlanVisibility": { usePlanVisibility: () => null },
+    "../../lib/plans/planStrings": { planString: (key: string) => key },
+    "../plans/OwnerTools": { default: "OwnerTools", __esModule: true },
   };
   const r = renderer(source, imports);
   const onClose = vi.fn();
@@ -243,6 +255,15 @@ describe("production account-deletion callbacks", () => {
     expect(f.api.accountDelete).not.toHaveBeenCalled();
     f.type(" מחיקה "); button(f.tree, "set.acctDel.confirm").props.onClick(); await f.settle();
     expect(f.api.accountDelete).toHaveBeenCalledOnce();
+  });
+  it("B-GA-09 round 7: this account's unfinished child erases go with the request (ids only); another account's never do", async () => {
+    const f = deletion();
+    f.pending.push({ uid: "parent-a", childId: "kid-pending" }, { uid: "parent-b", childId: "kid-other-account" });
+    f.type("DELETE"); button(f.tree, "set.acctDel.confirm").props.onClick(); await f.settle();
+    expect(f.api.accountDelete).toHaveBeenCalledWith(["kid-pending"]);
+    const g = deletion();
+    g.type("DELETE"); button(g.tree, "set.acctDel.confirm").props.onClick(); await g.settle();
+    expect(g.api.accountDelete).toHaveBeenCalledWith([]);
   });
   it("fresh opening clears confirmation, receipt, retry authorization and error feedback", async () => {
     const f = deletion(); f.type("DELETE");

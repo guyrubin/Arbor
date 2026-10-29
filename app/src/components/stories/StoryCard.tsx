@@ -14,7 +14,7 @@
  */
 import type { ReactNode } from "react";
 import type { HeroPackId, HeroStorySpec } from "../../types";
-import { kidArt, kidArtSrcSet, storyCoverKey, type KidThemeId } from "../../lib/kidThemeManifest";
+import { kidArtSrcSet, storyCoverArt, type KidThemeId } from "../../lib/kidThemeManifest";
 
 /** The pack's soft tint (the parent register's art band). */
 export const STORY_PACK_SOFT: Record<HeroPackId, string> = {
@@ -53,7 +53,7 @@ export interface StoryCardProps {
 }
 
 export function StoryCard({ story, lang, theme, onOpen, disabled, ribbon, children, testId }: StoryCardProps) {
-  const art = kidArt(theme, storyCoverKey(story.id));
+  const art = storyCoverArt(theme, story.id);
   const title = storyCardTitle(story, lang);
   return (
     <button

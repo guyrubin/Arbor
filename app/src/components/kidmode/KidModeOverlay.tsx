@@ -167,8 +167,11 @@ export default function KidModeOverlay() {
   // B-BOOK release: the library book open over the shell (device-local UI state;
   // its close toy is the one way back, to the kid home).
   const [openBookId, setOpenBookId] = useState<string | null>(null);
+  // B-BOOK-46: Together is set only by the door that opened Kid Mode with a
+  // book (openKidMode({ book, together })); a child's own tap reads alone.
+  const [readTogether, setReadTogether] = useState(false);
   useEffect(() => {
-    if (!isKidModeOpen) setOpenBookId(null);
+    if (!isKidModeOpen) { setOpenBookId(null); setReadTogether(false); }
   }, [isKidModeOpen]);
   const openSurface = (s: KidSurface, worldId?: string) => {
     setArcadeWorldId(worldId ?? null);
@@ -212,6 +215,7 @@ export default function KidModeOverlay() {
       const asked = restoredKidView(p.view, p.worldId);
       setView(asked);
       setArcadeWorldId(asked === "home" ? null : p.worldId ?? null);
+      if (p.book) { setOpenBookId(p.book); setReadTogether(p.together === true); }
     }
     wasOpenRef.current = isKidModeOpen;
   }, [isKidModeOpen]);
@@ -520,7 +524,7 @@ export default function KidModeOverlay() {
                   style={sneakOpen ? { flex: 1, minBlockSize: 0, position: "relative" } : studioOpen ? { minHeight: "100%" } : undefined}
                 >
                   {view === "home" ? (
-                    <Suspense fallback={<KidStageFallback />}><StudioHome onWorld={(id) => openStudio("studio-world", id)} onCollection={() => openStudio("studio-collection")} onQuest={() => openStudio("studio-quest")} onExit={closeKidMode} /></Suspense>
+                    <Suspense fallback={<KidStageFallback />}><StudioHome onWorld={(id) => openStudio("studio-world", id)} onCollection={() => openStudio("studio-collection")} onQuest={() => openStudio("studio-quest")} onExit={closeKidMode} onOpenBook={setOpenBookId} /></Suspense>
                   ) : view === "studio-world" ? (
                     <Suspense fallback={<KidStageFallback />}><StudioWorld worldId={arcadeWorldId as StudioWorldId} onActivity={openActivity} onBooks={() => openSurface("journeys")} onOpenBook={setOpenBookId} /></Suspense>
                   ) : view === "studio-game" ? (
@@ -550,7 +554,7 @@ export default function KidModeOverlay() {
           </div>
           {openBookId && (
             <Suspense fallback={null}>
-              <KidBookReaderView key={`${scopeKey}:${openBookId}`} bookId={openBookId} onClose={() => setOpenBookId(null)} />
+              <KidBookReaderView key={`${scopeKey}:${openBookId}:${readTogether ? "together" : "child"}`} bookId={openBookId} together={readTogether} onClose={() => { setOpenBookId(null); setReadTogether(false); }} />
             </Suspense>
           )}
         </motion.div>

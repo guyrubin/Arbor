@@ -7,7 +7,7 @@
 
 ### Changelog
 
-- **1.3 (2026-06-29)** — Enrichment pass closing the thin-PRD gaps identified in the cross-product investigation. Added three new sections without deleting or rewriting existing content: (1) **Developmental Frameworks (Evidence Base)** — grounds each capability in child-development science (attachment, Piaget/Vygotsky, emotional co-regulation, executive-function development, milestone evidence, red-flag screening rigor) with a per-framework evidence base, age-band content, and decision logic; (2) **Capability Depth** — specifies the under-specified modules (medical guardrail evidence base, screening-instrument strategy, engagement/avatar surface, consent/capacity model, eval gate, age-band engine, life-stage abstraction layer); (3) **Sibling product: Arbor Third Age** — cross-reference to `PAI/projects/arbor-third-age/SPEC.md`. Version history below preserved verbatim.
+- **1.3 (2026-06-29)** — Enrichment pass closing the thin-PRD gaps identified in the cross-product investigation. Added three new sections without deleting or rewriting existing content: (1) **Developmental Frameworks (Evidence Base)** — grounds each capability in child-development science (attachment, Piaget/Vygotsky, emotional co-regulation, executive-function development, milestone evidence, red-flag screening rigor) with a per-framework evidence base, age-band content, and decision logic; (2) **Capability Depth** — specifies the under-specified modules (medical guardrail evidence base, screening-instrument strategy, engagement/avatar surface, consent/capacity model, eval gate, age-band engine, life-stage abstraction layer); (3) **Sibling product: Arbor Third Age** — cross-reference to the Arbor Third Age spec (private product record; public page `docs/third-age/arbor-senior.html`). Version history below preserved verbatim.
 - **1.2 (2026-06-03)** — Information Architecture v2: six-capability model (see "Information Architecture v2" below).
 
 ## Executive Summary
@@ -681,7 +681,7 @@ register and aphasia/dysarthria rehab; and the **mandatory eval gate (CD-6)** an
 **safety-threshold governance (CD-5)** become non-negotiable for the higher-stakes senior
 cohort.
 
-**Canonical spec:** `PAI/projects/arbor-third-age/SPEC.md` (capability crosswalk,
+**Canonical spec:** the Arbor Third Age `SPEC.md` in the private product record (capability crosswalk,
 geropsych/geriatric capability sets, re-targeted AI layer, HMO care-network spec, and the
 consolidated dignity-firewall & safety-escalation rules). This PRD remains scoped to the
 child product (Birth to 12); the senior product is tracked as a separate sibling under PAI.

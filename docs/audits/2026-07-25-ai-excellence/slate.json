@@ -12,9 +12,9 @@
     "problem": "routes/api.ts:611-648 (SAFE-V1 comment) assembles the FULL model reply, then runs screenModelOutput (a second full model round-trip), then emits everything as a single `delta`. The client sentence-splitter (CoachTab.tsx:192-194) therefore receives the entire answer at once: the user waits through full generation + full screen + TTS start in silence ('thinking'). lib/api.ts:130-133 still documents token-by-token streaming that no longer happens. This is the single largest contributor to the non-AVM cadence: AVM bar is <800ms first-audio; Arbor is 4-8s.",
     "fix": "Incremental screened-sentence release, still fail-closed: split the model stream on sentence boundaries server-side; screen sentence N while sentence N+1 generates; emit each sentence as its own `delta` ONLY after its screen passes (screen the sentence with accumulated context so cross-sentence risk is caught; on any flag, stop the stream and emit the existing calm fallback + `outputBlocked`). Nothing unscreened ever leaves the server, but the parent hears sentence 1 while the rest is still generating. Acceptance: (1) SSE for a 3-sentence reply contains >=3 delta events; (2) first delta arrives < 1.5s after sentence 1 completes generation; (3) a reply whose 2nd sentence is flagged emits sentence 1 + the fallback, never the flagged text (add a route test); (4) lib/api.ts comment corrected; (5) escalation/abort behavior unchanged.",
     "files": [
-     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/lib/api.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx"
+     "app/src/routes/api.ts",
+     "app/src/lib/api.ts",
+     "app/src/components/tabs/CoachTab.tsx"
     ],
     "gate": "none"
    },
@@ -27,8 +27,8 @@
     "problem": "Fallback: while voicePhase==='speaking' the mic is off and the only control is the chip, whose tap runs stopVoice() (CoachTab.tsx:247-248, 230-243) — aborting the stream, flushing the queue, and turning voice OFF entirely; interrupting Arbor requires stop + re-press talk. Live: geminiLiveClient.ts never handles msg.serverContent.interrupted, and playChunk (lines 58-70) schedules AudioBufferSourceNodes it never retains — when Gemini's server VAD detects the user speaking over the model, already-scheduled audio keeps playing on top of the new turn (garbled overlap). AVM's defining interaction — just start talking to cut the model off — is impossible.",
     "fix": "(a) Fallback: while speaking, chip tap = INTERRUPT not off — flush ttsQueueRef, stopSpeaking(), abort the voice stream if still open, finalizeVoiceAiTurn(), and immediately startListening() (voice stays on; a second tap during 'listening' turns it off). (b) Live: retain scheduled sources in an array; on serverContent.interrupted, stop() them all, reset playHead to currentTime, and set phase 'listening'. Acceptance: (1) speaking→tap reaches 'listening' with mic active in <300ms; (2) unit test on a Live message sequence {data..., interrupted} asserts all sources stopped and playHead reset; (3) double-tap fully stops (parity with today).",
     "files": [
-     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
-     "C:/Users/dguyr/ROS/Arbor/app/src/lib/geminiLiveClient.ts"
+     "app/src/components/tabs/CoachTab.tsx",
+     "app/src/lib/geminiLiveClient.ts"
     ],
     "gate": "none"
    },
@@ -41,8 +41,8 @@
     "problem": "startDictation's onError fires on common events ('no-speech', 'aborted', transient network) and recognition then ENDS — but CoachTab.tsx:224 handles it with `if (voiceOnRef.current) setVoicePhase(\"listening\")`, which only sets the LABEL; no new recognition is started (startListening is not called, and CoachTab passes no onEnd). Result: the chip says 'Listening' while nothing is listening — the literal 'I'm pressing talk and it's not working' experience. lib/speech.ts:38-42 also swallows the distinction between fatal ('not-allowed') and recoverable errors.",
     "fix": "In onError: for recoverable errors, call startListening() again (with a short backoff and a max-retry circuit breaker); for 'not-allowed'/'service-not-allowed', stop voice and toast the mic-permission message. Pass onEnd and restart there too if voiceOnRef is still true and no result arrived, so recognition auto-cycles like a continuous mic. Acceptance: (1) simulated 'no-speech' error → a new startDictation call is made (spy test) and the phase stays truthful; (2) 'not-allowed' → voice off + toast; (3) no infinite restart loop (breaker test).",
     "files": [
-     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
-     "C:/Users/dguyr/ROS/Arbor/app/src/lib/speech.ts"
+     "app/src/components/tabs/CoachTab.tsx",
+     "app/src/lib/speech.ts"
     ],
     "gate": "none"
    },
@@ -55,9 +55,9 @@
     "problem": "voice.ts startBrowser (lines 125-127) creates SpeechSynthesisUtterance with rate 0.92, pitch 1, and never sets utterance.lang nor picks a voice from speechSynthesis.getVoices(). Consequences: (1) EN sounds slow and robotic — nothing like AVM prosody; (2) Hebrew answers are rendered by the browser's DEFAULT (usually English) voice — mangled speech, an HE/RTL parity failure. Meanwhile the neural Cloud TTS path that would fix prosody (server/tts.ts, naturalVoice.ts) is DOUBLE-gated off: server TTS_PROVIDER defaults 'none' (config/env.ts:154) AND the client requires build flag VITE_TTS_PROVIDER (naturalVoice.ts:17-23) — two flags must agree before anyone hears the good voice.",
     "fix": "In-repo now: thread a lang parameter through speakText→startBrowser; set utterance.lang ('he-IL'/'en-US') from getAiLanguage(); select the best matching voice from getVoices() (prefer localService 'natural/neural'-named voices, cache the pick, handle the async voiceschanged event); rate 1.0. Collapse the double gate: drop the VITE flag and let the existing /api/tts configured probe (naturalVoice.ts:103-106) alone flip the engine, so enabling neural voice becomes a single server env change. Acceptance: (1) HE utterance has lang='he-IL' and an he voice when available (unit test with mocked getVoices); (2) engine flips to 'natural' with only TTS_PROVIDER=google set server-side. Separately gate:guy — enable the Cloud TTS API on the GCP project and set TTS_PROVIDER=google in prod (same project ADC, no new vendor/DPA per server/tts.ts:15-18).",
     "files": [
-     "C:/Users/dguyr/ROS/Arbor/app/src/lib/voice.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/lib/naturalVoice.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/config/env.ts"
+     "app/src/lib/voice.ts",
+     "app/src/lib/naturalVoice.ts",
+     "app/src/config/env.ts"
     ],
     "gate": "guy"
    },
@@ -70,10 +70,10 @@
     "problem": "pumpTts (CoachTab.tsx:152-174) only dequeues the next sentence AFTER the previous finishes, and each sentence then does: POST /api/tts → screenModelOutput (a FULL model round-trip, routes/api.ts:886 → server/tts.ts:136-140) → Cloud TTS synth → download full base64 MP3 → play (naturalVoice.ts:45-78). Every inter-sentence boundary costs a screen call + synth + network, even though /voice ALREADY screened the assembled text (routes/api.ts:627). Worse, the 1500ms TTFB watchdog (voice.ts:43) will routinely trip on that per-sentence latency and permanently degrade the session back to the robo floor mid-answer — jarring voice switches.",
     "fix": "(1) Prefetch: while sentence N plays, start fetching sentence N+1's audio (queue of {text, audioPromise} in the pump; keep the single-owner interruption semantics of voice.ts). (2) Kill the double screen without opening the trust boundary: have /voice emit an HMAC (server secret, short TTL) per screened sentence and let /api/tts skip re-screening when a valid screened-token accompanies the text — arbitrary client text still gets fully screened (fail-closed unchanged). (3) Scale the TTFB watchdog: apply it to fetch-start rather than audio-start when a prefetched buffer exists. Acceptance: (1) inter-sentence gap <250ms with a mocked 800ms synth (timer test); (2) /api/tts with no/invalid token still screens (existing tts tests keep passing); (3) no engine downgrade during a normal multi-sentence answer.",
     "files": [
-     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
-     "C:/Users/dguyr/ROS/Arbor/app/src/lib/naturalVoice.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/server/tts.ts"
+     "app/src/components/tabs/CoachTab.tsx",
+     "app/src/lib/naturalVoice.ts",
+     "app/src/routes/api.ts",
+     "app/src/server/tts.ts"
     ],
     "gate": "none"
    },
@@ -86,8 +86,8 @@
     "problem": "geminiLiveClient.ts:74 configures only `responseModalities: [Modality.AUDIO]` — no inputAudioTranscription/outputAudioTranscription — so when Live turns on: (a) no text ever reaches screenForImmediateEscalation or any crisis path (the standing ZERO-crisis-screening P0); (b) no captions and no persisted turns, breaking COACH-2 parity (CoachTab passes no onText handler at lines 257-265, and appendVoiceUserTurn/finalizeVoiceAiTurn are never called on this path); (c) nothing in the transcript for the clinical firewall to audit. The audio also plays raw model output with no output screen — fail-closed is violated by design on this path.",
     "fix": "Wire it now so it ships inert until GD-3 provisioning: enable input+output audio transcription in live.connect config; stream input transcripts through the same escalation trigger seam used by /voice (client-side match on the shared trigger lexicon, or relay transcripts to a lightweight server screen endpoint); on trigger, stop() the session immediately and render the existing calm crisis-resources module (counts-never-verdicts register, EN+HE). Persist turns via the existing appendVoiceUserTurn/appendVoiceAiDelta/finalizeVoiceAiTurn seams so Live conversations land in the thread like fallback ones. Acceptance: (1) unit test: a transcript containing a crisis trigger closes the session and shows resources in <1 turn; (2) Live turns appear in chat history identically to fallback turns; (3) no Live session can start when the screen seam is unavailable (fail closed). Crisis copy and trigger thresholds need clinical sign-off.",
     "files": [
-     "C:/Users/dguyr/ROS/Arbor/app/src/lib/geminiLiveClient.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx"
+     "app/src/lib/geminiLiveClient.ts",
+     "app/src/components/tabs/CoachTab.tsx"
     ],
     "gate": "clinical"
    },
@@ -100,8 +100,8 @@
     "problem": "The entire voice UI is the composer pill at CoachTab.tsx:340-357 — label text swaps ('Listening/Thinking/Speaking'), one 1.5px pulsing dot, and a caption capped at max-w-[180px] truncate. There is no orb, no amplitude feedback, no visible distinction between 'mic is hearing you' and 'mic is dead' (see AI-V3), and no live caption of the USER'S words (speech.ts:28 sets interimResults=false, so the parent sees nothing while speaking). AVM's perceived magic is substantially this feedback loop; without it the identical backend feels broken.",
     "fix": "A calm voice overlay (bottom sheet over the coach thread) owned by voicePhase !== 'off': phase-animated orb (listening = soft green pulse driven by real mic level via an AnalyserNode on a shared getUserMedia stream; thinking = slow shimmer; speaking = waveform), live captions dir=\"auto\" for both the interim user transcript (flip interimResults=true and surface partials via a new onInterim handler in lib/speech.ts) and the streaming answer, tap-anywhere-on-orb = barge-in (AI-V2), X = end. Tokens only (--arbor-green-soft/-green-ink/-paper-deep etc.), green primary calm register, full HE/RTL mirroring, prefers-reduced-motion = static phase states. Acceptance: (1) all four phases visually distinct without reading text; (2) interim user words render <500ms after speech starts; (3) axe clean, aria-live on captions, reduced-motion snapshot test; (4) chip remains as the entry point (no new capture path).",
     "files": [
-     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
-     "C:/Users/dguyr/ROS/Arbor/app/src/lib/speech.ts"
+     "app/src/components/tabs/CoachTab.tsx",
+     "app/src/lib/speech.ts"
     ],
     "gate": "none"
    },
@@ -114,9 +114,9 @@
     "problem": "CoachTab.tsx:145-149 probes availability by POSTing /api/live/token, and routes/api.ts:663-687 responds by creating a real ephemeral auth token (uses:1, 20-min expiry) that the probe throws away; toggling talk then mints a second one. Every coach-tab visit burns a token-create call against the Gemini API for a boolean. The model is also env-defaulted to gemini-2.0-flash-live-001 (api.ts:672), the older half-cascade voice — when Live is provisioned, the native-audio Live models are the ones that actually deliver AVM-grade prosody/emotion.",
     "fix": "Add GET /api/live/availability returning {available} from config alone (no SDK call, no token); CoachTab probes that on mount and only POSTs /live/token inside toggleVoice. Surface LIVE_MODEL in config/env.ts like the other model knobs with a comment pointing at the native-audio upgrade path (actual model/provision choice = gate:guy, GD-3). Acceptance: (1) mounting CoachTab makes zero authTokens.create calls (route spy test); (2) toggle still gets a fresh token per session; (3) availability endpoint responds <50ms without network.",
     "files": [
-     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
-     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/config/env.ts"
+     "app/src/components/tabs/CoachTab.tsx",
+     "app/src/routes/api.ts",
+     "app/src/config/env.ts"
     ],
     "gate": "none"
    },
@@ -129,9 +129,9 @@
     "problem": "CoachTab.tsx:260 passes a fixed English systemInstruction to startGeminiLive, and geminiLiveClient.ts:74 requests no speechConfig/voice and no language hint — a Hebrew-mode parent who taps the 'HD' talk button gets an English-speaking coach, violating the HE/EN parity constraint on the flagship path. The instruction also duplicates persona text that /voice builds server-side from NON_DIAGNOSTIC_CONTRACT + lens (routes/api.ts:602-606), so the two paths will drift.",
     "fix": "Build the Live instruction from the same shared persona constants used by /voice (extract the spoken-coach persona + non-diagnostic contract into a shared module), append the aiLang-driven directive ('Speak natural, warm Hebrew' when he), and pass a speechConfig voice appropriate per language in live.connect config. Acceptance: (1) unit test asserts the instruction contains the HE directive when getAiLanguage()==='he'; (2) one source of truth for the spoken persona (grep shows no duplicated contract string); (3) EN behavior unchanged.",
     "files": [
-     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
-     "C:/Users/dguyr/ROS/Arbor/app/src/lib/geminiLiveClient.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts"
+     "app/src/components/tabs/CoachTab.tsx",
+     "app/src/lib/geminiLiveClient.ts",
+     "app/src/routes/api.ts"
     ],
     "gate": "none"
    }
@@ -150,10 +150,10 @@
     "problem": "geminiLiveClient.ts config is `{ responseModalities: [Modality.AUDIO], systemInstruction }` only (line 74) — neither outputAudioTranscription nor inputAudioTranscription is requested — and every audio chunk is played the instant it arrives (`if (msg?.data) { ... playChunk(msg.data); }`, line 78). CoachTab.tsx:257-265 passes no onText handler. Contrast the text spine: /chat screens output at routes/api.ts:423, /council at :554, and /voice deliberately BUFFERS the whole reply and screens it before a single token is spoken (SAFE-V1 comment, :608-613, screen at :627); server TTS throws UnsafeTtsOutputError pre-synthesis (server/tts.ts:136-139). Live is the only surface in the app that can speak a diagnosis, a dose, or worse, with zero interposition — the standing P0 blocking GD-3.",
     "fix": "(1) Add `outputAudioTranscription: {}` and `inputAudioTranscription: {}` to the live.connect config. (2) Introduce a pure `liveTurnGuard` module: playback chunks are buffered per model turn/sentence and released ONLY after the accumulated output transcription for that span passes screenModelOutputLexical (pure + synchronous — extract it to a shared module so the client imports it without the @google/genai Type dependency) AND the async server verdict from /api/live/turn (VC-3). On flag: drop all buffered + queued audio (reset playHead), close the session, append the blocked-fallback message, and speak the same calm fallback line /voice uses (routes/api.ts:638). Route ALL calls to playChunk through the guard — playChunk itself becomes module-private. Acceptance: a guard unit test proving playChunk is unreachable except via the guard; feeding the existing outputScreen fixtures ('Noah is autistic and needs therapy.', '3 mg of melatonin') as a turn transcript emits ZERO audio samples and yields the fallback; a clean transcript releases audio in order.",
     "files": [
-     "C:/Users/dguyr/ROS/Arbor/app/src/lib/geminiLiveClient.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
-     "C:/Users/dguyr/ROS/Arbor/app/src/safety/outputScreen.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts"
+     "app/src/lib/geminiLiveClient.ts",
+     "app/src/components/tabs/CoachTab.tsx",
+     "app/src/safety/outputScreen.ts",
+     "app/src/routes/api.ts"
     ],
     "gate": "none"
    },
@@ -166,10 +166,10 @@
     "problem": "Mic PCM is streamed raw to Gemini (geminiLiveClient.ts:92-95, sendRealtimeInput) with nothing between the parent's words and the model. Every other input path runs screenForImmediateEscalation (safety/escalation.ts:118) first: /chat at routes/api.ts:328, /voice at :587, /extract-log at :700, and 6 more. A parent saying 'I'm afraid I will hurt him' (caregiver_distress pattern, escalation.ts:105) into Live gets whatever a prompt-level 'suggest professional help' instruction (CoachTab.tsx:260) produces — prompt guidance is not fail-closed and the crisis resource card (1201/113/1813/988, escalation.ts:30-43) never appears.",
     "fix": "With inputAudioTranscription enabled (VC-1), POST each final user-turn transcript to /api/live/turn (VC-3). Server runs screenForImmediateEscalation on it; on match returns {action:'stop_crisis', category, resourcesMarkdown: renderEscalationMarkdown(match)}. Client: immediately stop the Live session, append the resources markdown as an AI ChatMessage (same shape /chat returns at routes/api.ts:330-334), and speak one short localized redirect sentence via the existing speak() seam. Acceptance: integration test — a self_harm-pattern transcript posted as a user turn returns stop_crisis with resources containing '988'; client-side test that the session controller's stop() is called and the escalation message is appended before any subsequent model audio would play.",
     "files": [
-     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/safety/escalation.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
-     "C:/Users/dguyr/ROS/Arbor/app/src/lib/geminiLiveClient.ts"
+     "app/src/routes/api.ts",
+     "app/src/safety/escalation.ts",
+     "app/src/components/tabs/CoachTab.tsx",
+     "app/src/lib/geminiLiveClient.ts"
     ],
     "gate": "none"
    },
@@ -182,9 +182,9 @@
     "problem": "After minting the token (routes/api.ts:663-687) the server never sees the conversation again — grep confirms no /live/turn, /live/log, or transcription handling anywhere in the repo. Client-side is equally blind: the COACH-2 transcript reducers (lib/voiceTranscript.ts:20-46) are wired only into the browser-STT loop (CoachTab.tsx:190, :221); the Live path persists nothing because it has no text at all. A crisis conversation over Live leaves zero record for the parent, for audit, or for the safety review that GD-3 requires.",
     "fix": "Add POST /api/live/turn {role:'user'|'model', text, language, childId} inside createApiRouter (inherits the /api auth middleware, createApp.ts:186). Server: role 'user' → screenForImmediateEscalation; role 'model' → screenModelOutput (same function as :423/:627); ALWAYS logger.info('live.turn', {requestId, uid, role, chars, verdictCategory}) so every turn is auditable even when clean; respond {action:'continue'|'stop_crisis'|'stop_blocked', resourcesMarkdown?}. Client: append user transcripts via appendVoiceUser and model transcripts via applyVoiceDelta/settleVoiceTurn — the SAME reducers the browser loop uses, so Live turns persist through the existing conversationsCol upsert with no new capture path (voiceTranscript.ts:9-12 documents exactly this seam). Acceptance: route test — both roles logged with verdicts; reducer test — a Live session's turns land in chatMessages and survive settle; flagged model turn returns stop_blocked.",
     "files": [
-     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/lib/voiceTranscript.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx"
+     "app/src/routes/api.ts",
+     "app/src/lib/voiceTranscript.ts",
+     "app/src/components/tabs/CoachTab.tsx"
     ],
     "gate": "none"
    },
@@ -197,9 +197,9 @@
     "problem": "On escalation, /voice speaks ONE generic sentence ('…please reach out to a professional or local support line') and buries the category in the SSE done event (routes/api.ts:589-593) — the full resources block with real numbers is never sent. Worse, the client's streamVoice parser handles ONLY 'delta' and 'error' events (lib/api.ts:165-166); the done payload (escalation category AND outputBlocked flag) is silently discarded, so CoachTab cannot react at all. The identical utterance typed into /chat returns the full renderEscalationMarkdown card with 112/988/1201/0800-0113 (routes/api.ts:328-334, escalation.ts:135-157). Voice-mode parents — plausibly the ones in the most acute distress — get strictly less crisis help than typists, and the loop then resumes listening as if nothing happened.",
     "fix": "(1) Server: include resourcesMarkdown (renderEscalationMarkdown(match)) in the done payload at :591. (2) Client: extend streamVoice with an onEvent(name, data) callback; wire done handling. (3) CoachTab: on escalation done — stop the voice loop (do NOT resume listening), append the resources markdown as a persisted AI ChatMessage so the numbers are on screen, and speak a short redirect; on outputBlocked done — surface the blocked notice visibly instead of dropping it. Acceptance: test that an escalation done event produces an on-screen message containing '988' and that startListening is not re-invoked; outputBlocked done renders a visible blocked state.",
     "files": [
-     "C:/Users/dguyr/ROS/Arbor/app/src/lib/api.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx"
+     "app/src/lib/api.ts",
+     "app/src/routes/api.ts",
+     "app/src/components/tabs/CoachTab.tsx"
     ],
     "gate": "none"
    },
@@ -212,9 +212,9 @@
     "problem": "There is no defined behavior for 'screening endpoint down while Live is speaking'. Today's only Live error handling is onError → toast + silent fallback (CoachTab.tsx:263), and a naïve VC-1/VC-3 implementation that treats a failed /api/live/turn call as 'no verdict yet' would keep releasing audio — i.e., voice would continue unscreened exactly when the safety rail is broken. The repo's own precedent is strict: server TTS throws UnsafeTtsOutputError rather than synthesize unscreened text (server/tts.ts:136-139), and /voice buffers rather than relay (routes/api.ts:608-613). Live must inherit that posture.",
     "fix": "Contract in liveTurnGuard: a /live/turn network error, non-200, or timeout (~3s) is treated as FLAGGED — drop buffered audio, stop the Live session, then visibly degrade: toast/banner ('Voice switched to standard mode') + startBrowserVoice(), whose every turn is server-screened via /voice (:587 input, :627 output). No code path may resume Live without a passing verdict; the lexical client-side screen (VC-1) still runs even in this window so nothing lexically flagged ever played. Acceptance: guard test — mock /live/turn returning 500 → stop() called within one turn, zero further audio released, browser loop started, visible notice shown; a test asserting there is no branch that continues Live playback on a screening error (fail-closed by construction, not by catch-and-continue).",
     "files": [
-     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx",
-     "C:/Users/dguyr/ROS/Arbor/app/src/lib/geminiLiveClient.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/server/tts.ts"
+     "app/src/components/tabs/CoachTab.tsx",
+     "app/src/lib/geminiLiveClient.ts",
+     "app/src/server/tts.ts"
     ],
     "gate": "none"
    },
@@ -227,8 +227,8 @@
     "problem": "/voice reads `language` (routes/api.ts:582) and localizes the MODEL prompt ('Reply in warm, natural spoken Hebrew', :600) — but the escalation fallback (:590) and the blocked-output fallback (:638) are hardcoded English strings. A Hebrew-speaking parent mid-crisis, in a Hebrew voice session, hears an English sentence spoken by an he-IL-configured loop (CoachTab.tsx:226 sets he-IL dictation). The Live system instruction (CoachTab.tsx:260) is likewise English-only with no language directive at all, so Hebrew Live sessions start off-register entirely. Escalation patterns themselves already cover Hebrew input (escalation.ts:40, :57, :73) — detection works, the response doesn't.",
     "fix": "Server-side he/en map for the two safety fallback strings, keyed on the request language (mirror the :600 pattern); pass the same language directive into the Live systemInstruction string in CoachTab (and into /api/live/turn responses' spoken redirect from VC-2/VC-4). Acceptance: unit test — /voice with language:'he' + a self_harm message returns a Hebrew delta; language:'he' + a flagged output returns the Hebrew blocked fallback; Live systemInstruction contains the Hebrew directive when aiLang==='he'.",
     "files": [
-     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/components/tabs/CoachTab.tsx"
+     "app/src/routes/api.ts",
+     "app/src/components/tabs/CoachTab.tsx"
     ],
     "gate": "none"
    },
@@ -241,9 +241,9 @@
     "problem": "Live availability is solely `if (!config.geminiApiKey)` (routes/api.ts:664-668) — there is no LIVE_ENABLED flag, no entitlement check, and no metering (createApp.ts:228 meters only /api/chat and /api/council). Setting GEMINI_API_KEY in prod for ANY other reason (e.g., a dev-API fallback) would instantly flip every client's probe (CoachTab.tsx:147) to Live and route all voice around the screened /voice path — the GD-3 hazard is an accidental env change, not a decision. Tokens are also minted without quota (20-min, uses:1, :673-681) so Live usage is unbounded and invisible to the coach meter.",
     "fix": "Add `liveEnabled` to ArborConfig (env LIVE_ENABLED, default false) and gate /live/token on `config.liveEnabled && config.geminiApiKey`; put /api/live/token (and /api/live/turn) under the coach meter or a dedicated per-user daily token quota via the existing UsageCounterStore. The eventual flag flip to true IS the GD-3 unlock and stays a deliberate Guy decision once VC-1..VC-5 are green. Acceptance: token endpoint returns available:false with key present but flag off; metered 402/429 path covered by test; flag-on + key-on returns a token.",
     "files": [
-     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/config/env.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/server/createApp.ts"
+     "app/src/routes/api.ts",
+     "app/src/config/env.ts",
+     "app/src/server/createApp.ts"
     ],
     "gate": "guy"
    },
@@ -256,9 +256,9 @@
     "problem": "The lexical output screen covers exactly three categories: diagnosis, medication, treatment_directive (outputScreen.ts:70-113). The semantic layer that could catch broader harm is default-OFF and fails OPEN (:115-116, :153-155). Crisis patterns exist only on the INPUT side (escalation.ts:38-108). So a pathological model output that echoes or normalizes self-harm/caregiver-harm language ('sounds like you want to hurt him — that's understandable') is spoken aloud by /voice, /chat, and (post-VC-1) Live, because no output-side pattern matches it. For spoken audio the harm ceiling is higher than text — you can't un-hear it.",
     "fix": "Add a fourth lexical output category 'crisis' that reuses the compiled pattern lists from escalationCategories (self_harm, abuse_or_unsafe_home, caregiver_distress) against MODEL output, returning flagged verdicts that route to the crisis fallback + resources (not the generic renderBlockedOutputMarkdown), in /voice (:627), /chat (:423), and the VC-3 live/turn model-role screen. Tune with a small allow-list so legitimate coach language ('if you ever feel you might hurt your child, call…') — which itself contains the trigger phrases — is exempted (e.g., skip matches inside help-directive frames). Acceptance: outputScreen tests — harm-normalizing output flagged with category 'crisis' and the voice path speaks the crisis fallback + shows resources; the legitimate help-referral sentence and all existing clean fixtures remain unflagged (zero regressions in outputScreen.test.ts).",
     "files": [
-     "C:/Users/dguyr/ROS/Arbor/app/src/safety/outputScreen.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/safety/escalation.ts",
-     "C:/Users/dguyr/ROS/Arbor/app/src/routes/api.ts"
+     "app/src/safety/outputScreen.ts",
+     "app/src/safety/escalation.ts",
+     "app/src/routes/api.ts"
     ],
     "gate": "clinical"
    }
@@ -801,7 +801,7 @@
     "type": "infra",
     "priority": "P0",
     "effort": "M",
-    "problem": "app/package.json has no check:acceptance script and .github/workflows/arbor-ci.yml:22-28 runs only lint/test/check:framework/check:floors/eval:safety/build. The ai-eval-harness skill (ROS/.claude/skills/ai-eval-harness/SKILL.md:17,44), the AR-AI ledger Epic B (docs/architecture/ai-integration-backlog-2026-06-29.md:86-100, acceptance #1: 'npm run eval gate blocks a PR that regresses non-diagnostic compliance or groundedness'), and evals/coach-hardmoment-seed-v1.eval.json all reference it as the eval-as-CI gate. PR #68 ('arbor-eval-gate', merge 8441bed6) only added 16 lines to app/scripts/safety-eval.mts. Result: no AI-quality regression gate exists; any prompt or model change ships with zero quality check.",
+    "problem": "app/package.json has no check:acceptance script and .github/workflows/arbor-ci.yml:22-28 runs only lint/test/check:framework/check:floors/eval:safety/build. The ai-eval-harness skill (private ROS skill SKILL.md:17,44), the AR-AI ledger Epic B (docs/architecture/ai-integration-backlog-2026-06-29.md:86-100, acceptance #1: 'npm run eval gate blocks a PR that regresses non-diagnostic compliance or groundedness'), and evals/coach-hardmoment-seed-v1.eval.json all reference it as the eval-as-CI gate. PR #68 ('arbor-eval-gate', merge 8441bed6) only added 16 lines to app/scripts/safety-eval.mts. Result: no AI-quality regression gate exists; any prompt or model change ships with zero quality check.",
     "fix": "Add app/scripts/acceptance-eval.mts + package.json script 'check:acceptance'. Offline tier (always, CI): validate every evals/*.eval.json against a suite schema (pinned judgeModel, semver version, rubric with hard-safe gate, >=5 scenarios incl. one safety-trip — codify the checks hardMomentSurfaces.test.ts:142-153 already makes ad hoc), then run each suite's deterministic contract assertions. Live tier (when Vertex ADC/ANTHROPIC_API_KEY present): invoke the judge runner (EVAL-5) per suite and fail on any safe===false or pass-rate below the suite passBar. Wire 'npm run check:acceptance' into arbor-ci.yml after eval:safety. Acceptance: (1) a deliberately malformed suite (unpinned judge, no safety-trip scenario) fails CI; (2) check:acceptance exits non-zero when any suite's deterministic contract fails; (3) CI log shows per-suite verdict lines; (4) offline tier adds <60s to CI.",
     "files": [
      "app/package.json",

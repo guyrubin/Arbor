@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planFromRevenueCat, recordFromRevenueCat, billingCheckoutUrl, offeredCurrencies, SOLD_PLANS, webhookSkipReason, createBillingWebhookRouter } from "./billing.js";
+import { planFromRevenueCat, recordFromRevenueCat, billingCheckoutUrl, offeredCurrencies, SOLD_PLANS, webhookSkipReason, createBillingWebhookRouter, transferPartiesFromRevenueCat, transferWritesFromRevenueCat } from "./billing.js";
 import type { ArborConfig } from "../config/env.js";
 import { isStaleBillingEvent, recordStillEntitles, type EntitlementRecord } from "./entitlements.js";
 
@@ -215,7 +215,6 @@ describe("the webhook never grants Plus from a test or a sandbox event in prod",
       "EXPERIMENT_ENROLLMENT",
       "VIRTUAL_CURRENCY_TRANSACTION",
       "PURCHASE_REDEEMED",
-      "TRANSFER",
       "SUBSCRIBER_ALIAS",
       "PRICE_INCREASE_CONSENT_REQUIRED",
       "PRICE_INCREASE_CONSENT_APPROVED",
@@ -225,6 +224,11 @@ describe("the webhook never grants Plus from a test or a sandbox event in prod",
       expect(webhookSkipReason({ ...purchase, type, environment: "PRODUCTION" }, { billingAcceptSandbox: false }), type).toBe("ignored");
       expect(recordFromRevenueCat({ ...purchase, type }), type).toBeNull();
     }
+    // B-GA-20: TRANSFER is now applied (it MOVES an existing subscription,
+    // see the restore-across-accounts block below) but is still never mapped
+    // as a grant of its own.
+    expect(webhookSkipReason({ ...purchase, type: "TRANSFER", environment: "PRODUCTION" }, { billingAcceptSandbox: false })).toBeNull();
+    expect(recordFromRevenueCat({ ...purchase, type: "TRANSFER" })).toBeNull();
     for (const type of ["INITIAL_PURCHASE", "RENEWAL", "CANCELLATION", "EXPIRATION", "BILLING_ISSUE", "TEMPORARY_ENTITLEMENT_GRANT", "REFUND_REVERSED", "SUBSCRIPTION_PAUSED"]) {
       expect(webhookSkipReason({ ...purchase, type, environment: "PRODUCTION" }, { billingAcceptSandbox: false }), type).toBeNull();
     }
@@ -371,5 +375,227 @@ describe("B-GA-20 webhook replay with native event shapes reconciles the entitle
     expect(isStaleBillingEvent({ lastEventTs: T0 }, { lastEventTs: undefined })).toBe(false);
     expect(isStaleBillingEvent({ lastEventTs: T0 }, { lastEventTs: T0 })).toBe(true);
     expect(isStaleBillingEvent({ lastEventTs: T0 }, { lastEventTs: T0 + 1 })).toBe(false);
+  });
+});
+
+describe("B-GA-20 restore across accounts: a TRANSFER moves the entitlement once", () => {
+  const DAY = 86_400_000;
+  const T0 = Date.parse("2026-11-01T10:00:00.000Z");
+  // Several entitlements/{uid} docs, each written the way the webhook writes:
+  // map, skip stale, merge without undefined. A TRANSFER reads the old
+  // accounts' records, then grants before it removes (the router's order).
+  const ledger = () => {
+    const docs = new Map<string, EntitlementRecord>();
+    const write = (uid: string, record: EntitlementRecord) => {
+      if (isStaleBillingEvent(docs.get(uid) ?? null, record)) return false;
+      const clean = Object.fromEntries(Object.entries(record).filter(([, v]) => v !== undefined));
+      docs.set(uid, { ...(docs.get(uid) ?? {}), ...clean } as EntitlementRecord);
+      return true;
+    };
+    const apply = (event: Parameters<typeof recordFromRevenueCat>[0]) => {
+      const mapped = recordFromRevenueCat(event);
+      return !!mapped && write(mapped.uid, mapped.record);
+    };
+    const transfer = (event: Parameters<typeof transferWritesFromRevenueCat>[0]) => {
+      const { from } = transferPartiesFromRevenueCat(event);
+      const sources = Object.fromEntries(from.map((uid) => [uid, docs.get(uid) ?? null]));
+      const { grants, removals } = transferWritesFromRevenueCat(event, sources);
+      const applied = [...grants, ...removals].map((w) => write(w.uid, w.record));
+      return { grants: grants.map((w) => w.uid), removals: removals.map((w) => w.uid), applied: applied.filter(Boolean).length };
+    };
+    return {
+      apply,
+      transfer,
+      write,
+      doc: (uid: string) => docs.get(uid) ?? null,
+      entitles: (uid: string, now: number) => {
+        const d = docs.get(uid);
+        return !!d && d.plan !== "free" && recordStillEntitles(d, now);
+      },
+    };
+  };
+  const purchase = (type: string, ts: number, uid: string, over: Record<string, unknown> = {}) => ({
+    id: `evt-${type}-${uid}-${ts}`,
+    type,
+    app_user_id: uid,
+    original_app_user_id: uid,
+    product_id: "arbor_plus_monthly",
+    entitlement_ids: ["plus"],
+    period_type: "NORMAL",
+    store: "APP_STORE",
+    environment: "PRODUCTION",
+    event_timestamp_ms: ts,
+    expiration_at_ms: T0 + 30 * DAY,
+    ...over,
+  });
+  // RevenueCat's TRANSFER shape: no app_user_id, product or expiry; the two sides only.
+  const transfer = (ts: number, from: string[], to: string[], over: Record<string, unknown> = {}) => ({
+    id: `evt-TRANSFER-${ts}`,
+    type: "TRANSFER",
+    store: "APP_STORE",
+    environment: "PRODUCTION",
+    event_timestamp_ms: ts,
+    transferred_from: from,
+    transferred_to: to,
+    ...over,
+  });
+
+  it("is applied, not acknowledged unwritten; the native-sandbox-in-prod rule is unchanged", () => {
+    const prod = { billingAcceptSandbox: false };
+    expect(webhookSkipReason(transfer(T0, ["a"], ["b"]), prod)).toBeNull();
+    // App Review restores in the native sandbox against prod: applies.
+    expect(webhookSkipReason(transfer(T0, ["a"], ["b"], { environment: "SANDBOX" }), prod)).toBeNull();
+    expect(webhookSkipReason(transfer(T0, ["a"], ["b"], { environment: "SANDBOX", store: "PLAY_STORE" }), prod)).toBeNull();
+    // A web sandbox transfer still never touches prod.
+    expect(webhookSkipReason(transfer(T0, ["a"], ["b"], { environment: "SANDBOX", store: "RC_BILLING" }), prod)).toBe("sandbox");
+    // It is never mapped as a grant of its own (it names no app_user_id).
+    expect(recordFromRevenueCat(transfer(T0, ["a"], ["b"]))).toBeNull();
+  });
+
+  it("the entitlement follows the subscription to the new account and leaves the old one", () => {
+    const l = ledger();
+    expect(l.apply(purchase("INITIAL_PURCHASE", T0, "fam-a"))).toBe(true);
+    expect(l.transfer(transfer(T0 + DAY, ["fam-a"], ["fam-b"]))).toEqual({ grants: ["fam-b"], removals: ["fam-a"], applied: 2 });
+    expect(l.doc("fam-b")).toMatchObject({ plan: "plus", status: "active", provider: "app_store", productId: "arbor_plus_monthly", willRenew: true, currentPeriodEnd: new Date(T0 + 30 * DAY).toISOString(), rcOriginalAppUserId: "fam-b", lastEventTs: T0 + DAY });
+    expect(l.doc("fam-a")).toMatchObject({ plan: "free", status: "expired", willRenew: false, lastEventTs: T0 + DAY });
+    expect(l.entitles("fam-b", T0 + 2 * DAY)).toBe(true);
+    // Account-bound: the restore cannot leave a second family unlocked.
+    expect(l.entitles("fam-a", T0 + 2 * DAY)).toBe(false);
+  });
+
+  it("a duplicate TRANSFER changes nothing", () => {
+    const l = ledger();
+    l.apply(purchase("INITIAL_PURCHASE", T0, "fam-a"));
+    const evt = transfer(T0 + DAY, ["fam-a"], ["fam-b"]);
+    l.transfer(evt);
+    const before = { a: l.doc("fam-a"), b: l.doc("fam-b") };
+    expect(l.transfer(evt).applied).toBe(0);
+    expect({ a: l.doc("fam-a"), b: l.doc("fam-b") }).toEqual(before);
+    expect(l.doc("fam-b")?.plan).toBe("plus");
+  });
+
+  it("an older event for the old account delivered late cannot unlock it again", () => {
+    const l = ledger();
+    l.apply(purchase("INITIAL_PURCHASE", T0, "fam-a"));
+    l.transfer(transfer(T0 + 2 * DAY, ["fam-a"], ["fam-b"]));
+    expect(l.apply(purchase("RENEWAL", T0 + DAY, "fam-a", { expiration_at_ms: T0 + 60 * DAY }))).toBe(false);
+    expect(l.entitles("fam-a", T0 + 3 * DAY)).toBe(false);
+    expect(l.entitles("fam-b", T0 + 3 * DAY)).toBe(true);
+  });
+
+  it("a newer event already on the new account is not overwritten by a late TRANSFER", () => {
+    const l = ledger();
+    l.apply(purchase("INITIAL_PURCHASE", T0, "fam-a"));
+    // The renewal to the new owner arrives before the transfer that preceded it.
+    l.apply(purchase("RENEWAL", T0 + 3 * DAY, "fam-b", { expiration_at_ms: T0 + 90 * DAY }));
+    const out = l.transfer(transfer(T0 + DAY, ["fam-a"], ["fam-b"]));
+    expect(out.grants).toEqual(["fam-b"]);
+    expect(out.applied).toBe(1); // only the removal: the grant was stale
+    expect(l.doc("fam-b")).toMatchObject({ currentPeriodEnd: new Date(T0 + 90 * DAY).toISOString(), lastEventTs: T0 + 3 * DAY });
+    expect(l.doc("fam-a")?.plan).toBe("free");
+  });
+
+  it("a TRANSFER before its purchase grants nothing (no fabricated paid success) and keeps the old account locked", () => {
+    const l = ledger();
+    expect(l.transfer(transfer(T0 + DAY, ["fam-a"], ["fam-b"]))).toEqual({ grants: [], removals: ["fam-a"], applied: 1 });
+    expect(l.doc("fam-b")).toBeNull();
+    // The purchase it moved, delivered late, is older than the transfer.
+    expect(l.apply(purchase("INITIAL_PURCHASE", T0, "fam-a"))).toBe(false);
+    expect(l.entitles("fam-a", T0 + 2 * DAY)).toBe(false);
+  });
+
+  it("a retry after a failed removal finishes the move without a second grant", () => {
+    const l = ledger();
+    l.apply(purchase("INITIAL_PURCHASE", T0, "fam-a"));
+    const evt = transfer(T0 + DAY, ["fam-a"], ["fam-b"]);
+    // First delivery: the grant landed, the removal failed (500, RevenueCat
+    // retries). The router writes grants first, so nothing is lost meanwhile.
+    const { grants } = transferWritesFromRevenueCat(evt, { "fam-a": l.doc("fam-a") });
+    for (const g of grants) expect(l.write(g.uid, g.record)).toBe(true);
+    const granted = l.doc("fam-b");
+    expect(l.entitles("fam-a", T0 + 2 * DAY)).toBe(true);
+    // The retry reads the old account again: the grant is stale, the removal lands.
+    expect(l.transfer(evt)).toEqual({ grants: ["fam-b"], removals: ["fam-a"], applied: 1 });
+    expect(l.doc("fam-b")).toEqual(granted);
+    expect(l.entitles("fam-a", T0 + 2 * DAY)).toBe(false);
+    expect(l.transfer(evt).applied).toBe(0);
+  });
+
+  it("another store's subscription and a comp month stay where they are", () => {
+    const l = ledger();
+    l.apply(purchase("INITIAL_PURCHASE", T0, "fam-a", { store: "STRIPE", product_id: "plus_monthly" }));
+    expect(l.transfer(transfer(T0 + DAY, ["fam-a"], ["fam-b"]))).toEqual({ grants: [], removals: [], applied: 0 });
+    expect(l.doc("fam-a")).toMatchObject({ plan: "plus", provider: "stripe" });
+    expect(l.doc("fam-b")).toBeNull();
+
+    const comp = transferWritesFromRevenueCat(transfer(T0 + DAY, ["fam-c"], ["fam-d"]), {
+      "fam-c": { plan: "plus", status: "active", provider: "comp", productId: "referral_month", willRenew: false, currentPeriodEnd: new Date(T0 + 30 * DAY).toISOString() },
+    });
+    expect(comp).toEqual({ grants: [], removals: [] });
+  });
+
+  it("the receiving account keeps a comp or another store's subscription that lasts at least as long", () => {
+    const moved: EntitlementRecord = { plan: "plus", status: "active", provider: "app_store", productId: "arbor_plus_monthly", willRenew: true, currentPeriodEnd: new Date(T0 + 30 * DAY).toISOString(), lastEventTs: T0 };
+    const evt = transfer(T0 + DAY, ["fam-a"], ["fam-b"]);
+    const now = T0 + DAY;
+    // A comp month ending later than the moved subscription stays.
+    const longComp: EntitlementRecord = { plan: "plus", status: "active", provider: "comp", productId: "referral_month", willRenew: false, currentPeriodEnd: new Date(T0 + 60 * DAY).toISOString() };
+    expect(transferWritesFromRevenueCat(evt, { "fam-a": moved }, { "fam-b": longComp }, now).grants).toEqual([]);
+    // A web subscription that runs longer stays too.
+    const web: EntitlementRecord = { plan: "plus", status: "active", provider: "stripe", productId: "plus_annual", willRenew: true, currentPeriodEnd: new Date(T0 + 365 * DAY).toISOString() };
+    expect(transferWritesFromRevenueCat(evt, { "fam-a": moved }, { "fam-b": web }, now).grants).toEqual([]);
+    // The old account still drops the moved subscription either way.
+    expect(transferWritesFromRevenueCat(evt, { "fam-a": moved }, { "fam-b": web }, now).removals.map((w) => w.uid)).toEqual(["fam-a"]);
+    // A shorter comp, a lapsed record, or the same store's record is replaced.
+    const shortComp = { ...longComp, currentPeriodEnd: new Date(T0 + 5 * DAY).toISOString() };
+    expect(transferWritesFromRevenueCat(evt, { "fam-a": moved }, { "fam-b": shortComp }, now).grants.map((w) => w.uid)).toEqual(["fam-b"]);
+    const lapsed: EntitlementRecord = { ...web, status: "expired", plan: "free" };
+    expect(transferWritesFromRevenueCat(evt, { "fam-a": moved }, { "fam-b": lapsed }, now).grants.map((w) => w.uid)).toEqual(["fam-b"]);
+    const sameStore: EntitlementRecord = { ...moved, currentPeriodEnd: new Date(T0 + 90 * DAY).toISOString() };
+    expect(transferWritesFromRevenueCat(evt, { "fam-a": moved }, { "fam-b": sameStore }, now).grants.map((w) => w.uid)).toEqual(["fam-b"]);
+  });
+
+  it("only Arbor accounts take part: RevenueCat anonymous ids and an id on both sides are left out", () => {
+    expect(transferPartiesFromRevenueCat(transfer(T0, ["$RCAnonymousID:1", "fam-a"], ["$RCAnonymousID:2", "fam-b"]))).toEqual({ from: ["fam-a"], to: ["fam-b"] });
+    expect(transferPartiesFromRevenueCat(transfer(T0, ["fam-a", "fam-b"], ["fam-b"]))).toEqual({ from: ["fam-a"], to: [] });
+    expect(transferPartiesFromRevenueCat({ type: "TRANSFER" })).toEqual({ from: [], to: [] });
+    expect(transferWritesFromRevenueCat(transfer(T0, ["$RCAnonymousID:1"], ["fam-b"]), {})).toEqual({ grants: [], removals: [] });
+    // Not a TRANSFER: no writes, whatever it names.
+    expect(transferWritesFromRevenueCat({ ...transfer(T0, ["fam-a"], ["fam-b"]), type: "RENEWAL" }, { "fam-a": { plan: "plus", provider: "app_store", status: "active" } })).toEqual({ grants: [], removals: [] });
+  });
+
+  it("over HTTP: a native-sandbox TRANSFER in prod reads the old account, grants the new one, then removes the old", async () => {
+    const express = (await import("express")).default;
+    const records = new Map<string, EntitlementRecord>([["fam-a", { plan: "plus", status: "active", provider: "app_store", productId: "arbor_plus_monthly", willRenew: true, currentPeriodEnd: new Date(T0 + 30 * DAY).toISOString(), lastEventTs: T0 }]]);
+    const calls: string[] = [];
+    const store = {
+      getPlan: async () => null,
+      getRecord: async (uid: string) => { calls.push(`read:${uid}`); return records.get(uid) ?? null; },
+      setEntitlement: async (uid: string, record: EntitlementRecord) => { calls.push(`write:${uid}:${record.plan}`); records.set(uid, record); },
+    };
+    const app = express();
+    app.use("/webhooks/billing", createBillingWebhookRouter(cfg({ revenueCatWebhookAuth: "Bearer s3cret", billingAcceptSandbox: false }), store as never));
+    const server = app.listen(0);
+    try {
+      const { port } = server.address() as { port: number };
+      const post = (event: object) =>
+        fetch(`http://127.0.0.1:${port}/webhooks/billing/revenuecat`, {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: "Bearer s3cret" },
+          body: JSON.stringify({ api_version: "1.0", event }),
+        });
+      const res = await post(transfer(T0 + DAY, ["fam-a"], ["fam-b"], { environment: "SANDBOX" }));
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ ok: true, transferred: true });
+      expect(calls).toEqual(["read:fam-a", "read:fam-b", "write:fam-b:plus", "write:fam-a:free"]);
+      expect(records.get("fam-b")).toMatchObject({ plan: "plus", provider: "app_store", lastEventTs: T0 + DAY });
+
+      const empty = await post(transfer(T0 + 2 * DAY, ["$RCAnonymousID:1"], ["fam-b"]));
+      expect(empty.status).toBe(202);
+      expect(await empty.json()).toEqual({ ok: true, skipped: "transfer without account ids" });
+      expect(calls).toHaveLength(4);
+    } finally {
+      server.close();
+    }
   });
 });

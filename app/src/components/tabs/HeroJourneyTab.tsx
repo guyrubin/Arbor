@@ -9,6 +9,7 @@ import { latestNotedMoment } from "../../lib/bedtimeStories";
 import { storyBuildsShort } from "../../lib/storyBuildsShort";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
+import { Receipt } from "../ui/Receipt";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { api } from "../../lib/api";
 import { normalizeAvatarStyle } from "../../lib/avatarStyle";
@@ -43,6 +44,8 @@ import { ProvenanceBadge } from "../ui/ProvenanceBadge";
 import { STORY_COMIC, clearJourneyPageFailure, generateJourneyPage, journeyPageKey, shelveBookPages, toSavedComicMeta, type SavedComicMeta } from "../../lib/heroComics";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
+import { trackBookFinished, trackBookOpened } from "../../lib/kpiEvents";
+import { BOOK_READS, bookReadRow, type BookRead } from "../../lib/bookReads";
 import { ComicPage, usePrefersReducedMotion } from "../ui/playkit";
 import { statesText } from "../../lib/i18nElevation/states";
 import { HeroAvatar, resolveHeroUrl } from "../ui/HeroAvatar";
@@ -50,7 +53,7 @@ import HeroCreateDialog from "../profile/HeroCreateDialog";
 import TonightFromToday from "../stories/TonightFromToday";
 import { consumeTonightMode, type TonightMode } from "../../lib/tonightMode";
 import { useKidTheme } from "../../hooks/useKidTheme";
-import { kidArt, kidArtSrcSet, storyCoverKey } from "../../lib/kidThemeManifest";
+import { kidArtSrcSet, storyCoverArt } from "../../lib/kidThemeManifest";
 import { StoryCard, STORY_PACK_LABEL, STORY_PACK_SOFT } from "../stories/StoryCard";
 import { consumeStoryOpen } from "../../lib/storyOpenRequest";
 import { setKidSurfaceTitle } from "../kidmode/kidSurfaceTitle";
@@ -203,6 +206,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const kidMode = useSyncExternalStore(subscribeKidMode, isKidModeActive, isKidModeActive);
 
   const runsCol = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
+  // B-BOOK-51: the one finished-book ledger (a Kid Mode finish, once per opening).
+  const readsCol = useChildCollection<BookRead>(childProfile.id, BOOK_READS);
+  const finishedOpening = useRef<string | null>(null);
   // B-BOOK-28: kept renders belong only to the parent door. An empty child
   // scope disables useChildCollection's device read and account subscription.
   const rendersCol = useChildCollection<SavedHeroRender>(kidMode ? "" : childProfile.id, "heroRenders");
@@ -301,7 +307,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const kidTheme = useKidTheme();
   // B-KID-70 (R-4): a story's cover in the child's ONE theme (manifest), or null
   // — then today's rendering (emoji motif / SVG hills) stays; never another theme's file.
-  const storyCover = (id: string) => kidArt(kidTheme, storyCoverKey(id));
+  const storyCover = (id: string) => storyCoverArt(kidTheme, id);
   // B-KID-01: the fallback-page cameo is the generated hero or Sprout — a
   // photo-only child (photoUrl, no avatar) resolves to null here, never the photo.
   const heroCameoUrl = resolveHeroUrl(childProfile) ?? undefined;
@@ -353,6 +359,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const { ref: dialogRef, requestClose } = useDialog({ open: Boolean(kidNav) && immersive && Boolean(activeStory && render), onClose: () => setImmersive(false), returnFocusRef: immersiveTriggerRef });
   const [questionsChecked, setQuestionsChecked] = useState<Record<number, boolean>>({});
   const [saved, setSaved] = useState(false);
+  // B-STATUS-01: the parent's "journey complete" is the ONE receipt line where
+  // the finish button was (the comic's shelf named when it landed there).
+  const [savedOnShelf, setSavedOnShelf] = useState(false);
   // B-KID-127: the parent's explicit "Write a new version" (the only way a kept
   // story is written again; never in Kid Mode, never automatic).
   const [rewriting, setRewriting] = useState(false);
@@ -486,6 +495,8 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     }
     const opening = kidBookOpening(story, childProfile.id, kidTellLang, kidArtTheme(story), storyHero, dayKey(new Date()));
     startedAtRef.current = new Date().toISOString();
+    // B-BOOK-51: catalogue id, language, own|stock hero — never the child or a choice.
+    trackBookOpened({ bookId: story.id, lang: kidTellLang, hero: heroAvatarUrl ? "own" : "stock" });
     setRefusedPin(null);
     setActiveStory(story);
     setRender(opening.render);
@@ -680,16 +691,16 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       // story, its title and the child's choice never leave this function.
       // A no-op outside Kid Mode.
       noteKidActivity();
+      // B-BOOK-51: ONE finish per opening, in Kid Mode, into the one read ledger.
+      if (kidMode && finishedOpening.current !== run.startedAt) {
+        finishedOpening.current = run.startedAt;
+        trackBookFinished({ bookId: activeStory.id, lang: renderLang, hero: heroAvatarUrl ? "own" : "stock" });
+        const row = bookReadRow(activeStory.id, renderLang, new Date(run.completedAt!));
+        if (row) void readsCol.upsert(row).catch(() => undefined);
+      }
       setSaved(true);
       celebrate({ kind: "complete" });
-      if (!kidMode) {
-        toast(
-          shelved
-            ? (aiLang === "he" ? "המסע הושלם — הסיפור נשמר והקומיקס על המדף" : "Journey complete — story saved and the comic is on the shelf")
-            : (aiLang === "he" ? "המסע הושלם — הסיפור נשמר" : "Journey complete — story saved"),
-          "success",
-        );
-      }
+      if (!kidMode) setSavedOnShelf(shelved);
     } finally {
       finishingRef.current = false;
       setFinishing(false);
@@ -1474,9 +1485,11 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               </button>
             </div>
           ) : (
-            <div className="text-center text-sm font-bold flex items-center justify-center gap-2" style={{ color: "var(--arbor-green-ink)" }}>
-              <Icon name="check" size={16} /> {aiLang === "he" ? `נשמר לסיפור של ${isolate(childProfile.name)}` : `Saved to ${isolate(childProfile.name)}'s story`}
-            </div>
+            <Receipt testId="journey-saved-receipt" tone="ink" strong className="flex justify-center">
+              {savedOnShelf
+                ? (aiLang === "he" ? "המסע הושלם — הסיפור נשמר והקומיקס על המדף" : "Journey complete — story saved and the comic is on the shelf")
+                : (aiLang === "he" ? `המסע הושלם — נשמר לסיפור של ${isolate(childProfile.name)}` : `Journey complete — saved to ${isolate(childProfile.name)}'s story`)}
+            </Receipt>
           )}
         </div>
       )}
@@ -1526,11 +1539,16 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   // is unchanged.
   if (kidMode) {
     const bookArt = storyCover(activeStory.id)?.src;
+    // B-BOOK-26: no shared picture (B-BOOK-31 dropped the reference family's
+    // cover) -> the book's title card with the child's OWN portrait, the shelf
+    // tile's composition scaled up; the card then carries the title, so the
+    // line under it is not repeated. A hero-less child: the complete card.
+    const coverHero = heroAvatarUrl ? <HeroAvatar size={150} mood="wave" animate={false} ring={false} badge={false} decorative /> : undefined;
     const bookArtBox = (
       <div className={KID_BOOK_ART_CLASS} data-kid-book-art="" style={{ background: "var(--arbor-paper-deep)" }}>
         {bookArt
           ? <img src={bookArt} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: storyCover(activeStory.id)?.objectPosition }} />
-          : <KidBookTitleCard title={render.title || activeStory.title} pack={activeStory.pack} />}
+          : <KidBookTitleCard title={isolateNameIn(render.title || activeStory.title, childProfile.name?.split(" ")[0], renderLang)} pack={activeStory.pack} hero={coverHero} heroSize={162} titleSize={28} />}
       </div>
     );
     const isLastBeat = !onCover && sceneIndex === scenes.length - 1;
@@ -1600,7 +1618,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             <motion.div key="kid-book-cover" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-cover="" className={KID_BOOK_SPREAD_CLASS}>
               {bookArtBox}
               <div className={KID_BOOK_SIDE_CLASS}>
-              <p lang={renderLang} dir={langDir(renderLang)} data-kid-book-title="" className="font-black px-5 pt-4 text-center" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 26, lineHeight: 1.2, color: "var(--arbor-ink)" }}>{isolateNameIn(render.title || activeStory.title, childProfile.name?.split(" ")[0], renderLang)}</p>
+              {bookArt && <p lang={renderLang} dir={langDir(renderLang)} data-kid-book-title="" className="font-black px-5 pt-4 text-center" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 26, lineHeight: 1.2, color: "var(--arbor-ink)" }}>{isolateNameIn(render.title || activeStory.title, childProfile.name?.split(" ")[0], renderLang)}</p>}
               {bookSide}
               </div>
             </motion.div>

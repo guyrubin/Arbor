@@ -1,7 +1,7 @@
 import type { RequestHandler } from "express";
 import type { UsageCounterStore } from "./quotaStore.js";
 import { accessEnded, entitlementForRequest, entitlementsEnforced, type EntitlementStore, type Plan } from "./entitlements.js";
-import { HERO_BOOK_POSE_IDS } from "../lib/heroSheetContract.js";
+import { HERO_BOOK_POSE_IDS, HERO_PLAN_POSE_IDS } from "../lib/heroSheetContract.js";
 
 /**
  * S2 — per-user DAILY cap + global circuit breaker on the image-generation
@@ -202,6 +202,13 @@ export const HERO_BOOK_POSES_BY_PLAN: Readonly<Record<ImageAllowancePlan, readon
   plus: HERO_BOOK_POSE_IDS,
   family: HERO_BOOK_POSE_IDS,
 };
+/** B-BOOK-75 follow-up: the plan sheet's poses, Plus and Family like the book's. */
+export const HERO_PLAN_POSES_BY_PLAN: Readonly<Record<ImageAllowancePlan, readonly string[]>> = {
+  signed_out: [],
+  free: [],
+  plus: HERO_PLAN_POSE_IDS,
+  family: HERO_PLAN_POSE_IDS,
+};
 /** Global sheet breaker, provider attempts per day (≈ $58 at $0.039). */
 export const IMAGE_SHEET_GLOBAL_DAILY = envNum("IMAGE_SHEET_GLOBAL_DAILY", 1500);
 /** Calls one (child, hero) sheet may make: 8 poses + 8 QA retries + 8 redraws. */
@@ -209,11 +216,14 @@ export const IMAGE_SHEET_CALLS_PER_SHEET = envNum("IMAGE_SHEET_CALLS_PER_SHEET",
 /** K2: the BOOK poses of the same (child, hero) count on their own per-sheet
  *  counter: 17 drawn poses (worried-tunic is skipped) + QA retries + redraws. */
 export const IMAGE_SHEET_BOOK_CALLS_PER_SHEET = envNum("IMAGE_SHEET_BOOK_CALLS_PER_SHEET", 40);
+/** The PLAN sheet of the same (child, hero): 12 shared poses + QA retries + redraws, its own counter. */
+export const IMAGE_SHEET_PLAN_CALLS_PER_SHEET = envNum("IMAGE_SHEET_PLAN_CALLS_PER_SHEET", 30);
 export const IMAGE_SHEET_COUNTERS = {
   sheet: "img_sheet_30d",
   charged: "img_sheet_charged_30d",
   calls: "img_sheet_calls_30d",
   bookCalls: "img_sheet_book_calls_30d",
+  planCalls: "img_sheet_plan_calls_30d",
   global: "img_sheet_global_daily",
 } as const;
 /** Sheets per child per 30 days: one per hero creation the plan allows. */
@@ -231,7 +241,7 @@ export type SheetCharge =
  */
 export const chargeHeroSheetCall = async (
   counters: UsageCounterStore,
-  input: { plan: ImageAllowancePlan; uid: string; childId: string; avatarHash: string; kind?: "game" | "book" },
+  input: { plan: ImageAllowancePlan; uid: string; childId: string; avatarHash: string; kind?: "game" | "book" | "plan" },
 ): Promise<SheetCharge> => {
   const refused = (window: string, resetAt: number): SheetCharge => ({
     ok: false, status: 429, body: { ...IMAGE_RESTING_BODY, code: "hero_sheet_resting", window, resetAt: new Date(resetAt).toISOString() },
@@ -255,12 +265,13 @@ export const chargeHeroSheetCall = async (
   }
   // K2: a book pose counts on its own per-sheet counter; the game's is untouched.
   const book = input.kind === "book";
-  const callsName = book ? IMAGE_SHEET_COUNTERS.bookCalls : IMAGE_SHEET_COUNTERS.calls;
-  const callsCap = book ? IMAGE_SHEET_BOOK_CALLS_PER_SHEET : IMAGE_SHEET_CALLS_PER_SHEET;
+  const planSheet = input.kind === "plan";
+  const callsName = planSheet ? IMAGE_SHEET_COUNTERS.planCalls : book ? IMAGE_SHEET_COUNTERS.bookCalls : IMAGE_SHEET_COUNTERS.calls;
+  const callsCap = planSheet ? IMAGE_SHEET_PLAN_CALLS_PER_SHEET : book ? IMAGE_SHEET_BOOK_CALLS_PER_SHEET : IMAGE_SHEET_CALLS_PER_SHEET;
   const calls = await counters.increment(callsName, sheetKey, MONTH_MS, { limit: callsCap });
   if (calls.count > callsCap) {
     await counters.add(callsName, sheetKey, -1, MONTH_MS);
-    return refused(book ? "book-sheet" : "sheet", calls.resetAt);
+    return refused(planSheet ? "plan-sheet" : book ? "book-sheet" : "sheet", calls.resetAt);
   }
   let released = false;
   return {

@@ -55,7 +55,9 @@ describe("AI-V2(a) — chip tap = interrupt while speaking (fallback loop)", () 
   });
 
   it("an ABORTED stream never double-restarts — only genuine failures recover in the catch", () => {
-    expect(coach).toMatch(/catch \{[\s\S]{0,700}if \(ownsTurn\(\)\) \{[\s\S]{0,200}startListening\(\)/);
+    // B-AIOPS-02: the catch binds the error (a spent family voice allowance stops
+    // the loop before this recovery); the recovery itself is unchanged.
+    expect(coach).toMatch(/catch (?:\(err\) )?\{[\s\S]{0,700}if \(ownsTurn\(\)\) \{[\s\S]{0,200}startListening\(\)/);
   });
 });
 
@@ -107,12 +109,15 @@ describe("AI-V7 — the overlay is a surface, never an entry point", () => {
 
   it("captions carry the parent's interim words + the screened live answer only", () => {
     expect(overlay).toContain("interimText={voiceInterim}");
-    expect(overlay).toContain("answerText={liveVoiceText}");
+    // B-VOICE-02: or, while a card's words play before the microphone opens,
+    // those authored words (never model output, never the parent's turn).
+    expect(overlay).toContain("answerText={liveVoiceText || openingCaption}");
   });
 
   it("orb tap can only barge in on the fallback loop; X is stopVoice; nothing starts voice", () => {
     expect(overlay).toContain("canInterrupt={voicePhase === \"speaking\" && !liveSession}");
-    expect(overlay).toMatch(/onOrbTap=\{\(\) => \{ if \(voicePhase === "speaking" && !liveCtlRef\.current && voiceOnRef\.current\) bargeInVoice\(\); \}\}/);
+    // B-VOICE-02: a tap during a card's words skips them (the talk then starts); otherwise the barge-in rule is unchanged.
+    expect(overlay).toMatch(/onOrbTap=\{\(\) => \{ if \(openingRunRef\.current\?\.skip\(\)\) return; if \(voicePhase === "speaking" && !liveCtlRef\.current && voiceOnRef\.current\) bargeInVoice\(\); \}\}/);
     expect(overlay).toContain("onClose={stopVoice}");
     expect(overlay).not.toContain("toggleVoice");
     expect(overlay).not.toContain("startBrowserVoice");
@@ -148,8 +153,10 @@ describe("S5 — every Talk tap paints a visible outcome", () => {
 
   it("the overlay (connecting state) paints SYNCHRONOUSLY on tap, before any await", () => {
     // Pinned order inside toggleVoice: paint → attempt claim → first await.
+    // B-AIOPS-02: the first await is now the Live client import and the
+    // microphone (opened BEFORE the mint), so the pin is on ANY first await.
     const paintAt = toggle.indexOf('setVoicePhase("connecting")');
-    const firstAwait = toggle.indexOf("await api.liveToken(");
+    const firstAwait = toggle.indexOf("await ");
     expect(paintAt).toBeGreaterThan(-1);
     expect(firstAwait).toBeGreaterThan(-1);
     expect(paintAt).toBeLessThan(firstAwait);
@@ -171,11 +178,16 @@ describe("S5 — every Talk tap paints a visible outcome", () => {
   it("stop and unmount invalidate ownership before abort/cleanup; awaits cannot adopt stale starts", () => {
     expect(coach).toMatch(/const stopVoice = \(review = true\) => \{\s*const reviewAttempt = voiceLifetimeRef\.current\.current;\s*voiceLifetimeRef\.current\.cancel\(\);/);
     expect(coach).toMatch(/useEffect\(\(\) => \(\) => \{\s*voiceLifetimeRef\.current\.cancel\(\);/);
-    expect(toggle).toMatch(/await api\.liveToken\([\s\S]{0,250}\);\s*if \(!attempt\.isCurrent\(\)\) return;/);
+    // B-AIOPS-02: every start await (import, microphone, mint) is followed by
+    // the ownership check; a lost attempt also releases the opened microphone.
+    expect(toggle).toMatch(/await import\("\.\.\/\.\.\/lib\/geminiLiveClient"\);\s*if \(!attempt\.isCurrent\(\)\) return;/);
+    expect(toggle).toMatch(/await requestLiveMicrophone\(attempt\.signal\);\s*if \(!attempt\.isCurrent\(\)\) \{ releaseMic\(\); return; \}/);
+    expect(toggle).toMatch(/await mintLive\(\);\s*if \(!attempt\.isCurrent\(\)\) \{ releaseMic\(\); return; \}/);
+    expect(toggle).toMatch(/const mintLive = \(renewOf\?: string\) => api\.liveToken\([\s\S]{0,400}\{ signal: attempt\.signal \}\);/);
     expect(toggle).toContain("signal: attempt.signal");
     expect(toggle).toMatch(/if \(!attempt\.adopt\(ctl\)\) return;\s*liveCtlRef\.current = ctl;/);
     expect(toggle).toMatch(/if \(liveClosed\) \{ ctl\.stop\(\); attempt\.end\(\); return; \}/);
-    expect(toggle).toMatch(/catch \(err\) \{\s*if \(!attempt\.isCurrent\(\)\) return;\s*clearLiveRefs\(\);/);
+    expect(toggle).toMatch(/catch \(err\) \{\s*releaseMic\(\);\s*if \(!attempt\.isCurrent\(\)\) return;\s*clearLiveRefs\(\);/);
   });
   it("terminal path: quota/paywall ends visible (paywall opens, phase off)", () => {
     expect(toggle).toMatch(/err instanceof PaywallError[\s\S]{0,200}setVoicePhase\("off"\);\s*openPaywall\(/);

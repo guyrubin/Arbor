@@ -39,3 +39,9 @@ export function searchSections(rows: readonly SearchRow[]): SearchSection[] {
   }
   return sections;
 }
+
+/** B-SHELL-37: at lg and above the top-bar field IS the search surface, so Ctrl/Cmd-K
+ *  focuses it (TopbarSearch listens) instead of opening a second, different surface. */
+export const SEARCH_FIELD_FOCUS_EVENT = "arbor:search:focus-field";
+/** The width from which the Topbar (and its search field) is shown: Tailwind `lg`. */
+export const SEARCH_FIELD_MIN_WIDTH = "(min-width: 1024px)";

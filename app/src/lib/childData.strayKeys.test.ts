@@ -99,14 +99,18 @@ describe("LC-18 · the wiring is the shared sweep, not a second copy", () => {
     expect(src).toContain('import { clearChildLocalState } from "./childLocalState";');
     expect(src).toContain("return clearChildLocalState(childId);");
     // The receipt carries the number that sweep returned.
-    expect(src).toContain("const clientDocs = await wipeClientChildData(uid, childId);");
+    // B-BOOK-20: the same wipe also fills the receipt's per-sink ledger.
+    expect(src).toContain("const clientDocs = await wipeClientChildData(uid, childId, sinks);");
     expect(src).toContain("counts: { ...counts, clientDocs }");
   });
 
   it("the receipt surface shows the count to the parent", () => {
     // B-CAREPRO-35: the receipt lives on the one delete path, Settings › Your data.
     const sheet = read("components/layout/YourDataSheet.tsx");
-    expect(sheet).toContain('t("elev.learnCare.receipt.clientDocs")');
+    // B-BOOK-20: the rows render from one label table (RECEIPT_LABEL), so the
+    // device row is the clientDocs key rendered through t(), fed by the count.
+    expect(sheet).toContain('clientDocs: "elev.learnCare.receipt.clientDocs"');
+    expect(sheet).toContain("t(RECEIPT_LABEL[row])");
     expect(sheet).toContain("receipt.counts.clientDocs ?? 0");
   });
 });

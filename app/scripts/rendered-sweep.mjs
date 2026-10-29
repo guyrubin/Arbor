@@ -7,9 +7,20 @@
  *   node scripts/rendered-sweep.mjs --out <dir> [--base http://localhost:4805] [--routes a,b]
  *        [--diff <prev sweep.json>] [--no-shots] [--no-api-cache] [--runs 1]  (npm run sweep -- …)
  *        [--seed demo|day0] [--states | --no-states]   (v2, below; --routes also takes "shell")
- *        [--matrix release|device] [--viewport <id>]   (device = the matrix of record, DEVICE_VIEWPORTS)
- *        [--report-only]   (AR-REL-1: exit 3 = SWEEP-LAW FAIL — an unmounted base cell, or any rendered
- *        cell with a console error or horizontal overflow; scripts/capture/sweep-law.mjs; --report-only keeps 0)
+ *        [--matrix release|device|design] [--viewport <id>[,<id>…]]   (device = the matrix of record,
+ *        DEVICE_VIEWPORTS; design = B-DESIGN-05's cells, scripts/capture/route-accounting.mjs)
+ *        [--deadline <minutes>]   (B-INF-11: the run's bound; default = warm-up + 30 s per cell)
+ *        [--report-only]   (AR-REL-1: exit 3 = SWEEP-LAW FAIL — an unmounted, unready, shotless or MISSING
+ *        base cell, or any rendered cell with a console error or horizontal overflow;
+ *        scripts/capture/sweep-law.mjs; --report-only keeps 0)
+ *
+ * B-INF-11 bounds (scripts/capture/sweep-bound.mjs): the server must answer its own origin (a dev
+ * sandbox whose CORS_ORIGINS omits --base answers every module 500 and renders blank: exit 2 with
+ * the fix); the warm-up must reach ready (exit 2 with the cause, never 172 blank cells); every cell
+ * waits for the route, the network AND document.fonts before it is recorded, and for every open
+ * overlay to settle (a Modal opens at scale 0.95: measured on its first frame each 44 px control
+ * read 42 px); one cell never runs past CELL_BOUND_MS; the run stops at its deadline and the cells
+ * it never reached are recorded as missing (sweep.json `expected`, `deadlineExpired`).
  *
  * Routes = every `route:` in SURFACE_CONTRACTS (src/lib/surfaceContract.ts); the run aborts
  * (exit 1) if that set differs from ROUTE_IDS (src/lib/routes.ts). Each route is a FULL LOAD
@@ -80,8 +91,11 @@ import { networkInterfaces } from "node:os";
 import { assertLoopbackOnly, captureRevision } from "./capture/config.mjs";
 import { DEVICE_VIEWPORTS, RELEASE_VIEWPORTS, expectedSeedMarker, requiresConversationReadiness } from "./capture/release-config.mjs";
 import { classifyReleaseConsole, createRuntimeDiagnostics } from "./capture/runtime-diagnostics.mjs";
-import { SWEEP_LAW_EXIT, sweepLawFailures, sweepLawLines } from "./capture/sweep-law.mjs";
+import { SWEEP_LAW_EXIT, expectedBaseCells, sweepLawExplained, sweepLawExplainedLines, sweepLawFailures, sweepLawLines } from "./capture/sweep-law.mjs";
 import { initializeSyntheticOnline } from "./capture/small-state.mjs";
+import { CELL_BOUND_MS, SETTLE_BUDGET_MS, WARMUP_BOUND_MS, raceBound, settleOverlayGeometry, sweepDeadlineMs } from "./capture/sweep-bound.mjs";
+import { VERDICT_TEXT_PATTERNS } from "./capture/verdict-tokens.mjs";
+import { DESIGN_VIEWPORT_IDS } from "./capture/route-accounting.mjs";
 import { captureFontContextOptions, installOfflineFonts, captureScreenshot } from "./capture/font-runtime.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -105,7 +119,7 @@ const SHELL = "shell";
 
 /* ── args ─────────────────────────────────────────────────────────────────── */
 function parseArgs(argv) {
-  const out = { base: "http://localhost:4805", shots: true, apiCache: true, runs: 1, routes: null, diff: null, out: null, seed: "demo", states: null, viewport: null, matrix: "release", reportOnly: false };
+  const out = { base: "http://localhost:4805", shots: true, apiCache: true, runs: 1, routes: null, diff: null, out: null, seed: "demo", states: null, viewport: null, matrix: "release", reportOnly: false, deadline: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => {
@@ -117,13 +131,17 @@ function parseArgs(argv) {
     else if (a === "--base") out.base = next().replace(/\/+$/, "");
     else if (a === "--routes") out.routes = next().split(",").map((s) => s.trim()).filter(Boolean);
     else if (a === "--viewport") {
-      const id = next();
-      out.viewport = DEVICE_VIEWPORTS.find((vp) => vp.id === id);
-      if (!out.viewport) fail("unknown release viewport");
+      // B-INF-11: a comma list cuts a run to named cells (e.g. wide-en,mobile-he).
+      out.viewport = next().split(",").map((part) => part.trim()).filter(Boolean).map((id) => DEVICE_VIEWPORTS.find((vp) => vp.id === id));
+      if (!out.viewport.length || out.viewport.some((vp) => !vp)) fail("unknown release viewport");
+    }
+    else if (a === "--deadline") {
+      out.deadline = Number(next());
+      if (!Number.isFinite(out.deadline) || out.deadline <= 0) fail("--deadline takes minutes > 0");
     }
     else if (a === "--matrix") {
       out.matrix = next();
-      if (!["release", "device"].includes(out.matrix)) fail(`--matrix must be release or device (got ${out.matrix})`);
+      if (!["release", "device", "design"].includes(out.matrix)) fail(`--matrix must be release, device or design (got ${out.matrix})`);
     }
     else if (a === "--diff") out.diff = next();
     else if (a === "--no-shots") out.shots = false;
@@ -137,7 +155,9 @@ function parseArgs(argv) {
     else if (a === "--no-states") out.states = false;
     else fail(`unknown argument ${a}`);
   }
-  out.viewports = out.viewport ? [out.viewport] : out.matrix === "device" ? DEVICE_VIEWPORTS : VIEWPORTS;
+  // B-DESIGN-05: `design` = the design acceptance cells (EN/HE at 375 and 1280, plus 1920 EN).
+  const designCells = DESIGN_VIEWPORT_IDS.map((id) => DEVICE_VIEWPORTS.find((vp) => vp.id === id));
+  out.viewports = out.viewport ? out.viewport : out.matrix === "design" ? designCells : out.matrix === "device" ? DEVICE_VIEWPORTS : VIEWPORTS;
   if (out.states === null) out.states = out.seed === "demo";
   if (!out.out) {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -229,9 +249,15 @@ async function waitForServer(base) {
   let last = "no response";
   while (Date.now() < deadline) {
     try {
-      const res = await fetch(`${base}/`, { signal: AbortSignal.timeout(5000) });
+      // B-INF-11: ask as the page will. A module script carries `Origin: <base>`; a sandbox
+      // whose CORS_ORIGINS omits it answers every module 500, so the app renders blank.
+      const res = await fetch(`${base}/`, { signal: AbortSignal.timeout(5000), headers: { Origin: base } });
       if (res.status === 200) return;
       last = `HTTP ${res.status}`;
+      const bare = await fetch(`${base}/`, { signal: AbortSignal.timeout(5000) }).then((r) => r.status, () => 0);
+      if (bare === 200) {
+        fail(`server ${base} refuses its own origin (HTTP ${res.status} with Origin: ${base}, 200 without): every module script will fail and every cell render blank. Start the sandbox with CORS_ORIGINS=${base}`, 2);
+      }
     } catch (err) {
       last = err?.cause?.code ?? err?.message ?? String(err);
     }
@@ -339,7 +365,7 @@ function initScript({ lang }) {
 }
 
 /* ── in-page: the per-cell record ────────────────────────────────────────── */
-function collect({ lang, allowLatin }) {
+function collect({ lang, allowLatin, verdict = [], region: regionKind = "main" }) {
   const vh = window.innerHeight;
   const SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "HEAD", "TITLE", "META", "LINK"]);
   const boxOf = (el) => {
@@ -405,7 +431,13 @@ function collect({ lang, allowLatin }) {
   const modules = moduleEls.map((el) => el.getAttribute("data-module"));
   const demotedModules = moduleEls.filter((el) => el.hasAttribute("data-module-demoted")).map((el) => el.getAttribute("data-module"));
 
-  const pmEl = document.querySelector("[data-primary-move]");
+  // B-INF-11: the rendered stamp only — a hidden (display:none, 0×0) stamp is not the screen's
+  // move (Speech HE read a 0×0 stamp when the route rendered none).
+  const pmEl = [...document.querySelectorAll("[data-primary-move]")].find((el) => {
+    if (!visible(el)) return false;
+    const r = rectOf(el);
+    return r.width > 1 && r.height > 1;
+  }) ?? null;
   let primaryMove = null;
   if (pmEl) {
     const r = rectOf(pmEl);
@@ -483,6 +515,10 @@ function collect({ lang, allowLatin }) {
     if (el.closest('[aria-hidden="true"], [inert]')) continue;
     const r = el.getBoundingClientRect();
     if (r.width <= 1 || r.height <= 1) continue; // visually-hidden (sr-only) control
+    // B-INF-11: a clipped sr-only control (the skip link: 1 px + its 1 px border = 2×2) is not a
+    // tap target until focus unclips it — measured as one, it put a "sub-44" in every cell.
+    const clipCs = getComputedStyle(el);
+    if (/^inset\(50%\)$/.test(clipCs.clipPath) || /^rect\(0(px)?,? 0(px)?,? 0(px)?,? 0(px)?\)$/.test(clipCs.clip)) continue;
     if (r.top >= vh || r.bottom <= 0) continue;
     if (r.width >= 44 && r.height >= 44) continue;
     if (!visible(el)) continue;
@@ -504,8 +540,13 @@ function collect({ lang, allowLatin }) {
   //   uppercase         elements holding visible text with text-transform: uppercase
   //   gradients         elements whose computed background-image contains "gradient"
   //   screens           main's height / viewport height, one decimal
+  //   verdictTokens     B-INF-08: percentages, achievement ratios, graded words (the pattern
+  //                     sources come from scripts/capture/verdict-tokens.mjs), progress bars,
+  //                     and area rows painted in more than one background (counted once)
+  // A state that declares `measure: "dialog"` (capture-open) is weighed in its open modal.
   const weight = (() => {
-    const region = main || root;
+    const dialogRegion = regionKind === "dialog" ? [...document.querySelectorAll('[role="dialog"][aria-modal="true"]')].find((el) => visible(el)) : null;
+    const region = dialogRegion || main || root;
     const iconFontEl = (el) => /material (symbols|icons)/i.test(getComputedStyle(el).fontFamily);
     const hasBox = (el) => {
       const r = el.getBoundingClientRect();
@@ -526,6 +567,8 @@ function collect({ lang, allowLatin }) {
       if (r.top < vh && r.bottom > 0) tappableAboveFold++;
     }
     const sizes = new Set();
+    const verdictPatterns = verdict.map((source) => new RegExp(source, "iu"));
+    let verdictTokens = 0;
     for (const el of region.querySelectorAll("*")) {
       if (SKIP.has(el.tagName)) continue;
       const cs = getComputedStyle(el);
@@ -537,12 +580,57 @@ function collect({ lang, allowLatin }) {
         if (px < 12) under12++;
       }
       if (cs.textTransform === "uppercase") uppercase++;
+      const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent || "").join(" ");
+      if (verdictPatterns.some((re) => re.test(own))) verdictTokens++;
     }
+    for (const el of region.querySelectorAll('[role="progressbar"], progress')) if (visible(el) && hasBox(el)) verdictTokens++;
+    const rowPaint = new Set([...region.querySelectorAll('[data-testid="dev-map-row"], [data-testid="dev-map-tile"]')]
+      .filter((el) => visible(el)).map((el) => { const cs = getComputedStyle(el); return `${cs.backgroundColor}|${cs.backgroundImage}`; }));
+    if (rowPaint.size > 1) verdictTokens++;
     const height = Math.max(region.scrollHeight || 0, region.getBoundingClientRect().height || 0);
     return {
       tappableAboveFold, tappable, textSizes: sizes.size, under12, uppercase, gradients,
       screens: Math.round((height / vh) * 10) / 10,
+      verdictTokens,
+      ...(dialogRegion ? { region: "dialog" } : {}),
     };
+  })();
+
+  // B-INF-09 — the chrome's own weight, over every [data-chrome] region (the phone dock and
+  // strip, the sidebar, the top bar): tappable controls, distinct text sizes, text under 12 px,
+  // upper case, gradients and controls under 44 px. Visible elements only, icon spans excluded.
+  const chromeWeight = (() => {
+    const regions = [...document.querySelectorAll("[data-chrome]")].filter((el) => visible(el));
+    const iconFontEl = (el) => /material (symbols|icons)/i.test(getComputedStyle(el).fontFamily);
+    const holdsText = (el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+    const CONTROL = 'a[href], button, [role="button"], input:not([type="hidden"]), select, textarea';
+    const controls = new Set();
+    const texts = new Set();
+    for (const region of regions) {
+      for (const el of region.querySelectorAll(CONTROL)) controls.add(el);
+      for (const el of region.querySelectorAll("*")) texts.add(el);
+    }
+    let tappable = 0, sub44 = 0, under12 = 0, uppercase = 0, gradients = 0;
+    const sizes = new Set();
+    for (const el of controls) {
+      if (el.closest('[aria-hidden="true"], [inert]') || !visible(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width <= 1 || r.height <= 1) continue;
+      const cs = getComputedStyle(el);
+      if (/^inset\(50%\)$/.test(cs.clipPath)) continue; // a clipped sr-only control
+      tappable++;
+      if (r.width < 44 || r.height < 44) sub44++;
+    }
+    for (const el of texts) {
+      if (SKIP.has(el.tagName) || !visible(el)) continue;
+      const cs = getComputedStyle(el);
+      if ((cs.backgroundImage || "").includes("gradient")) gradients++;
+      if (!holdsText(el) || iconFontEl(el)) continue;
+      const px = parseFloat(cs.fontSize);
+      if (Number.isFinite(px)) { sizes.add(cs.fontSize); if (px < 12) under12++; }
+      if (cs.textTransform === "uppercase") uppercase++;
+    }
+    return { regions: regions.map((el) => el.getAttribute("data-chrome")), tappable, textSizes: sizes.size, under12, uppercase, gradients, sub44 };
   })();
 
   const de = document.documentElement;
@@ -567,6 +655,7 @@ function collect({ lang, allowLatin }) {
     sub44AboveFold: sub44,
     sub44Count: sub44.length,
     weight,
+    chromeWeight,
     overflow: { scrollWidth: de.scrollWidth, clientWidth: de.clientWidth },
   };
 }
@@ -576,6 +665,26 @@ let SEED = null; // { seed, body, info } — set once in main()
 
 /** A state whose precondition is absent (no pending fact, visit is past…): recorded, not retried. */
 class Unreached extends Error {}
+/** B-INF-14: a state's authored target never rendered (stale selector or a regression): retried, then a law failure. */
+class StateTargetMissing extends Error {}
+/** B-INF-14: the route under the state never mounted, or the state outran its budget. */
+class StateRouteUnmounted extends Error {}
+class StateBudgetExceeded extends Error {}
+/** The named category of a state that did not reach its screen (never OTHER_ERROR). */
+function stateFailureReason(err) {
+  if (err instanceof Unreached) return "STATE_PRECONDITION_ABSENT";
+  if (err instanceof StateTargetMissing) return "STATE_TARGET_MISSING";
+  if (err instanceof StateRouteUnmounted) return "STATE_ROUTE_UNMOUNTED";
+  if (err instanceof StateBudgetExceeded) return "STATE_BUDGET_EXCEEDED";
+  if (err?.name === "TimeoutError") return "STATE_ACTION_TIMEOUT";
+  const kind = classifyReleaseConsole(err?.message);
+  return kind === "OTHER_ERROR" ? "STATE_ASSERTION_FAILED" : kind;
+}
+/** The first line of a state's thrown message, URL queries cut, at most 240 characters. */
+function stateMessage(err) {
+  const line = String(err?.message ?? "").split("\n").map((l) => l.trim()).find(Boolean) ?? "";
+  return line.replace(/(https?:\/\/[^\s?#]+)[?#][^\s]*/g, "$1").slice(0, 240);
+}
 const skip = (reason) => { throw new Unreached(reason); };
 
 function stateHelpers(page, vp, tr) {
@@ -607,14 +716,16 @@ function stateHelpers(page, vp, tr) {
       const labels = asList(texts);
       const cands = [...asList(selectors), ...labels.flatMap((t) => [page.getByRole("button", { name: t }), page.getByText(t, { exact: true })])];
       const el = await h.first(cands);
-      if (!el) skip(`${what} not found (${asList(selectors).join(" | ")}${labels.length ? ` | text ${labels.map((t) => JSON.stringify(t)).join(" / ")}` : ""})`);
+      // B-INF-14: a missing target is a failure, not an absent precondition (a state that
+      // knows its precondition says so with skip()).
+      if (!el) throw new StateTargetMissing(`${what} not found (${asList(selectors).join(" | ")}${labels.length ? ` | text ${labels.map((t) => JSON.stringify(t)).join(" / ")}` : ""})`);
       await el.click({ timeout: 5_000 });
       return el;
     },
     async need(cands, what, timeout = 8_000) {
       const el = await h.first(cands, timeout);
-      // Retryable (plain Error): a slow answer or a dropped load gets one fresh context.
-      if (!el) throw new Error(`${what} did not render`);
+      // Retryable: a slow answer or a dropped load gets one fresh context.
+      if (!el) throw new StateTargetMissing(`${what} did not render`);
       return el;
     },
     async has(cands, timeout = 1_500) {
@@ -662,6 +773,18 @@ const momentCount = (page) =>
     return n;
   });
 
+/**
+ * B-INF-14: Now has ONE lead (v3, CoS 18 Oct; lib/today/dayCard.ts selectNowLead). The practice
+ * card leads only as the fallback, after an urgent line, a chosen step, a from-record question,
+ * a visit, Tonight and a plan; on a record where one of those leads, the practice states have
+ * no screen to render. That is an absent precondition, named, not a failure.
+ */
+async function practiceLeads(h) {
+  if (await h.has("main [data-module=today-practice]", 4_000)) return;
+  const lead = await h.page.evaluate(() => document.querySelector("main [data-module^=now-], main [data-module=today-tonight]")?.getAttribute("data-module") ?? null);
+  skip(`the practice card is not Now's lead on this record: ${lead ?? "no lead"} leads (selectNowLead: the practice card is the fallback after an urgent line, a chosen step, a from-record question, a visit, Tonight and a plan)`);
+}
+
 /** Today (P5 pass A9): the practice card's own Undo; true when the answers ask again. */
 async function undoPractice(h) {
   await h.page.locator("main [data-testid=practice-undo]").first().click({ timeout: 5_000 });
@@ -703,16 +826,6 @@ async function firstOpen(h, ready, what) {
   return { via: zeros.length ? `"0" strings ${zeros.length}: ${zeros.slice(0, 5).map((z) => JSON.stringify(z)).join(" · ")}` : '"0" strings 0' };
 }
 
-/** Coach: send the fixture question and wait for the four-block answer (mock provider). */
-async function askAnswered(h) {
-  const box = await h.need("[data-primary-move=ask] textarea", "the Ask composer");
-  await box.fill(ASK_Q[h.lang]);
-  await h.click("[data-testid=coach-send]", [], "the send button");
-  const cards = await h.need("[data-testid=coach-answer-cards]", "the four-block answer (read · Try this · Say this · More)", 12_000);
-  await h.need("[data-testid=coach-answer-more]", "the More block of the answer");
-  return cards;
-}
-
 /** Consult step 1 → choose the pediatrician (the first audience). */
 async function consultPediatrician(h) {
   await h.click("[data-module=consult-packet] [role=radio] >> nth=0", [], "the Pediatrician audience");
@@ -734,6 +847,36 @@ async function openSettings(h) {
 }
 
 /**
+ * B-PROG-12 — the program seed states (src/demo/demoPrograms.ts, built by the
+ * engine's own writers): one state merged by id into this throwaway context's
+ * local record, its device flags set, then a reload; `ready` is the program
+ * page of that program. The base demo family carries no enrolment.
+ */
+const PROGRAM_STATE_WRITES = "one program seed state (src/demo/demoPrograms.ts: the enrolment, its practice rows and the state's words, diary nights or booked session) merged by id into the throwaway context's local record before a reload; nothing leaves the context";
+let demoProgramsModule = null;
+async function programState(h, name) {
+  if (!demoProgramsModule) {
+    const { tsImport } = await import("tsx/esm/api");
+    demoProgramsModule = await tsImport(pathToFileURL(path.join(APP_DIR, "src", "demo", "demoPrograms.ts")).href, import.meta.url);
+  }
+  const childId = await h.page.evaluate(() => localStorage.getItem("arbor.activeChildId"));
+  if (!childId) h.skip("no active child in the sandbox record");
+  const st = demoProgramsModule.buildDemoProgramState(name, { now: Date.now(), lang: h.lang, childId });
+  await h.page.evaluate(({ id, state }) => {
+    for (const [col, docs] of Object.entries(state.collections)) {
+      const key = `arbor.${col}.${id}`;
+      let old = [];
+      try { old = JSON.parse(localStorage.getItem(key) || "[]"); } catch { old = []; }
+      const ids = new Set(docs.map((d) => d.id));
+      localStorage.setItem(key, JSON.stringify([...(Array.isArray(old) ? old : []).filter((d) => !ids.has(d?.id)), ...docs]));
+    }
+    for (const [k, v] of Object.entries(state.flags ?? {})) localStorage.setItem(k, v);
+  }, { id: childId, state: st });
+  await h.page.reload({ waitUntil: "domcontentloaded" });
+  return h.need(`[data-testid=program-page][data-program-id=${st.programId}]`, `the ${st.programId} program page (${name})`, 12_000);
+}
+
+/**
  * THE STATES TABLE. route → [{ name, run(h), from?, now?, only?(vp), writes? }].
  *  `from` = the hash the state loads (a route, or a route + query: "journal?view=all");
  *  `now` = the page clock, "HH:MM" local or ISO (B-LOOP-17: `/?now=` → lib/devClock, honoured
@@ -743,21 +886,20 @@ async function openSettings(h) {
  *  leaves nothing behind. Every state runs in a throwaway context.
  */
 const STATES = {
+  // B-INF-14: "answered" waited for the answer's More block (coach-answer-more), which the
+  // structured report no longer has, so it failed on every cell as OTHER_ERROR; it now asks
+  // through the companion composer and ends on the report. "more-open" opened that block and
+  // is retired with it (the report's own sections are the release harness's "ask" group,
+  // scripts/capture/release-interactions.mjs).
   coach: [
     {
       name: "answered",
       writes: "POST /api/chat (mock fixture, zero model calls); the thread lives only in this state's throwaway context",
-      run: async (h) => { await h.top(await askAnswered(h)); },
-    },
-    {
-      name: "more-open",
-      writes: "POST /api/chat (mock fixture, zero model calls); the thread lives only in this state's throwaway context",
       run: async (h) => {
-        await askAnswered(h);
-        const more = await h.need("[data-testid=coach-answer-more]", "the More block");
-        await more.locator("button").first().click({ timeout: 5_000 });
-        await h.need('[data-testid=coach-answer-more] button[aria-expanded="true"]', "the open More disclosure");
-        await h.top(more);
+        const box = await h.need([".companion-conversation:not([hidden]) [data-testid=companion-composer] textarea", "[data-primary-move=ask] textarea"], "the Ask composer");
+        await box.fill(ASK_Q[h.lang]);
+        await h.click([".companion-conversation:not([hidden]) [data-testid=coach-send]", "[data-testid=coach-send]"], [], "the send button");
+        await h.top(await h.need("[data-testid=coach-answer-cards]", "the structured answer (the coach report)", 12_000));
       },
     },
     {
@@ -769,32 +911,6 @@ const STATES = {
     },
   ],
   overview: [
-    {
-      name: "capture-reply",
-      writes: "one text moment in the local record; the reply's Undo removes it after the shot (cell.undone = moment count back to before)",
-      run: async (h) => {
-        const before = await momentCount(h.page);
-        await h.click("main [data-capture-tile=text]", [], "the Text capture tile");
-        const input = await h.need("[role=dialog] #quick-log-moment, [role=dialog] input[type=text], [role=dialog] textarea", "the capture sheet");
-        await input.fill(CAPTURE_TEXT[h.lang]);
-        await h.click("[role=dialog] button[type=submit]", [], "the Save moment button");
-        await h.need("[data-testid=quicklog-reply-undo]", "the capture reply (echo · next move · Undo)");
-        return {
-          undo: async () => {
-            await h.page.locator("[data-testid=quicklog-reply-undo]").first().click({ timeout: 5_000 });
-            await h.page.waitForTimeout(600);
-            return (await momentCount(h.page)) === before;
-          },
-        };
-      },
-    },
-    {
-      name: "hard-moment",
-      run: async (h) => {
-        await h.click("main [data-capture-tile=hard-moment]", [], "the Hard moment tile");
-        await h.need("[role=dialog]", "the Hard moment sheet");
-      },
-    },
     // P5 critic r1 on #/overview (pass A9, 6 Oct): the loop's own states.
     // practice-did = loop-morning-did; practice-quotes = loop-quotes.
     // B-LOOP-17: `now` = the page clock (`/?now=HH:MM`, lib/devClock — dev server only);
@@ -803,6 +919,7 @@ const STATES = {
       name: "loop-morning",
       now: "07:30",
       run: async (h) => {
+        await practiceLeads(h);
         await h.need("main [data-module=today-practice] [data-testid=practice-answers] [data-answer=did]", "today's practice, pending (Did it · Not today) at 07:30", 12_000);
         return { via: "clock 07:30" };
       },
@@ -812,6 +929,7 @@ const STATES = {
       now: "07:30",
       writes: "one practice dose row in the local record; the card's Undo removes it after the shot (cell.undone = the answers ask again)",
       run: async (h) => {
+        await practiceLeads(h);
         await h.click("main [data-testid=practice-answers] [data-answer=did]", [h.tr("elev.loop.practice.didIt")], "the practice card's Did it");
         await h.top(await h.need("main [data-testid=practice-receipt]", "the Did-it receipt (filed on the shelf)"));
         return { undo: () => undoPractice(h) };
@@ -822,6 +940,7 @@ const STATES = {
       now: "07:30",
       writes: "one practice dose row (not today) in the local record; Undo removes it after the shot",
       run: async (h) => {
+        await practiceLeads(h);
         await h.click("main [data-testid=practice-answers] [data-answer=not_today]", [h.tr("elev.loop.practice.notToday")], "the practice card's Not today");
         await h.top(await h.need("main [data-testid=practice-receipt]", "the Not-today line (Tomorrow is fine.)"));
         return { undo: () => undoPractice(h) };
@@ -865,6 +984,7 @@ const STATES = {
       now: "07:30",
       writes: "two dated notes on the practice's shelf, and yesterday's dose row without its 'What happened' line, in this throwaway context's local record only (outside the 30-day count, so the pick is unchanged)",
       run: async (h) => {
+        await practiceLeads(h);
         const card = await h.need("main [data-testid=practice-card]", "the practice card");
         const shelf = await card.getAttribute("data-shelf");
         if (!shelf) skip("the practice card carries no shelf");
@@ -912,6 +1032,7 @@ const STATES = {
       now: "07:30",
       writes: "only when the seed is not anchored on the sweep's local day: the seed's newest dose row with a 'What happened' line is re-dated to yesterday (moved, not copied — the dose count is unchanged) in this throwaway context's local record",
       run: async (h) => {
+        await practiceLeads(h);
         const anchor = await h.page.evaluate(() => {
           const id = localStorage.getItem("arbor.activeChildId");
           if (!id) return { error: "no active child in the local record" };
@@ -963,7 +1084,8 @@ const STATES = {
       now: "21:00",
       writes: FIRST_OPEN_WRITES,
       run: async (h) => {
-        const res = await firstOpen(h, "main [data-module=today-practice]", "Today's practice on an evening first open");
+        const res = await firstOpen(h, "main [data-module^=now-], main [data-module^=today-]", "Now's lead on an evening first open");
+        await practiceLeads(h);
         const order = await h.page.evaluate(() =>
           [...document.querySelectorAll("main [data-module]")]
             .filter((el) => !el.parentElement || !el.parentElement.closest("[data-module]"))
@@ -1140,6 +1262,48 @@ const STATES = {
   // B-LOOP-11 moved the day-grouped list to #/journal?view=all (#/journal is the shelf
   // grid now): search and hard-filter open there (B-LOOP-17). The loop states follow.
   journal: [
+    // B-INF-14: moved from #/overview — Now carries no capture tiles since v4 (blueprint
+    // decision 6: the launcher is the one door on Now); the capture bar lives on Journal
+    // (JournalShelves) and Behaviors, so these two states open there.
+    {
+      name: "capture-reply",
+      writes: "one text moment in the local record; the reply's Undo removes it after the shot (cell.undone = moment count back to before)",
+      run: async (h) => {
+        const before = await momentCount(h.page);
+        await h.click("main [data-capture-tile=text]", [], "the Text capture tile");
+        const input = await h.need("[role=dialog] #quick-log-moment, [role=dialog] input[type=text], [role=dialog] textarea", "the capture sheet");
+        await input.fill(CAPTURE_TEXT[h.lang]);
+        await h.click("[role=dialog] button[type=submit]", [], "the Save moment button");
+        await h.need("[data-testid=quicklog-reply-undo]", "the capture reply (echo · next move · Undo)");
+        return {
+          undo: async () => {
+            await h.page.locator("[data-testid=quicklog-reply-undo]").first().click({ timeout: 5_000 });
+            await h.page.waitForTimeout(600);
+            return (await momentCount(h.page)) === before;
+          },
+        };
+      },
+    },
+    {
+      name: "hard-moment",
+      run: async (h) => {
+        await h.click("main [data-capture-tile=hard-moment]", [], "the Hard moment tile");
+        await h.need("[role=dialog]", "the Hard moment sheet");
+      },
+    },
+    {
+      // B-INF-08: the capture sheet open with a note typed — weighed in the sheet itself
+      // (`measure: "dialog"`), so its buttons, hints and fills meet the weight caps.
+      name: "capture-open",
+      measure: "dialog",
+      writes: "types a note into the capture sheet; nothing is saved (the sheet is never submitted)",
+      run: async (h) => {
+        await h.click("main [data-capture-tile=text]", [], "the Text capture tile");
+        const input = await h.need("[role=dialog] #quick-log-moment, [role=dialog] textarea, [role=dialog] input[type=text]", "the capture sheet");
+        await input.fill(CAPTURE_TEXT[h.lang]);
+        await h.need("[role=dialog] button[type=submit]", "the capture sheet's Save");
+      },
+    },
     {
       name: "search",
       from: "journal?view=all",
@@ -1299,15 +1463,51 @@ const STATES = {
       },
     },
   ],
+  // B-PROG-12: the program seed states on #/development?view=program (the
+  // program page) — Talk Together week 1 and week 5 (counts beside the
+  // family's own first week), Steady Nights (routine taps + diary), and the
+  // guided tier's booked first session. (`prog-video-consent` waits on the
+  // video self-review build behind Guy's E4 gate: there is no surface yet.)
+  development: [
+    { name: "prog-week1", from: "development?view=program", writes: PROGRAM_STATE_WRITES, run: async (h) => { await programState(h, "prog-week1"); } },
+    {
+      name: "prog-week5",
+      from: "development?view=program",
+      writes: PROGRAM_STATE_WRITES,
+      run: async (h) => {
+        await programState(h, "prog-week5");
+        await h.top(await h.need("[data-module=program-counts]", "the three counts beside the first week"));
+      },
+    },
+    { name: "prog-steady-nights", from: "development?view=program", writes: PROGRAM_STATE_WRITES, run: async (h) => { await programState(h, "prog-steady-nights"); } },
+    {
+      name: "prog-coach",
+      from: "development?view=program",
+      writes: PROGRAM_STATE_WRITES,
+      run: async (h) => {
+        await programState(h, "prog-coach");
+        await h.top(await h.need('[data-testid=coach-slot][data-booked="yes"]', "the booked first session (guided tier)"));
+      },
+    },
+  ],
+  // B-CAREPRO-38: #/memory is retired into My child › About, which opens the
+  // ledger in place (one home for approve, correct and forget).
   memory: [
     {
+      name: "ledger",
+      run: async (h) => {
+        await h.top(await h.need("[data-testid=about-memory-ledger]", "the ledger, open in place on About (#/memory retired)"));
+      },
+    },
+    {
+      // r2: About asks the first proposals on the "What Arbor remembers" card
+      // (Remember · Not this); the demo seed's pending facts land there.
       name: "pending-group",
       run: async (h) => {
-        const approve = await h.first("[data-primary-move=approve-memory-fact]", 5_000);
-        if (!approve) skip("no pending fact on the server memory ledger");
-        const group = approve.locator("xpath=ancestor::*[.//h2][1]");
-        const heading = group.locator("h2").first();
-        await h.top((await heading.count()) ? heading : approve);
+        await h.need("[data-testid=about-memory-ledger]", "the ledger, open in place on About (#/memory retired)");
+        const pending = await h.first("[data-testid=about-memory-pending]", 5_000);
+        if (!pending) skip("no pending fact on the server memory ledger");
+        await h.top(await h.need("[data-testid=about-memory]", "the What Arbor remembers card"));
       },
     },
     {
@@ -1468,6 +1668,7 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
 
   const t0 = Date.now();
   let readyTimedOut = false;
+  let fontsReady = false;
   let retried = false;
   let navError = null;
   try {
@@ -1489,6 +1690,11 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
       await page.waitForTimeout(100);
     }
     readyTimedOut = !(present && inflight === 0 && Date.now() - lastNet >= QUIET_MS);
+    // B-INF-11: ready includes the text faces — a shot taken before them is not the screen.
+    fontsReady = await page
+      .evaluate((ms) => Promise.race([document.fonts.ready.then(() => document.fonts.status === "loaded"), new Promise((r) => setTimeout(() => r(false), ms))]), Math.max(1_000, deadline - Date.now()))
+      .catch(() => false);
+    if (!fontsReady) readyTimedOut = true;
   } catch (err) {
     navError = classifyReleaseConsole(err?.message);
     readyTimedOut = true;
@@ -1512,11 +1718,11 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
     let stateName = state.name;
     const tState = Date.now();
     try {
-      if (readyTimedOut && !(await page.locator(READY_SELECTOR).count().catch(() => 0))) throw new Error(`route did not mount (${navError ?? "ready timeout"})`);
+      if (readyTimedOut && !(await page.locator(READY_SELECTOR).count().catch(() => 0))) throw new StateRouteUnmounted(`route did not mount (${navError ?? "ready timeout"})`);
       let timer;
       const out = await Promise.race([
         state.run(h),
-        new Promise((_, rej) => { timer = setTimeout(() => rej(new Error(`state budget ${STATE_BUDGET_MS / 1000}s exceeded`)), STATE_BUDGET_MS); }),
+        new Promise((_, rej) => { timer = setTimeout(() => rej(new StateBudgetExceeded(`state budget ${STATE_BUDGET_MS / 1000}s exceeded`)), STATE_BUDGET_MS); }),
       ]).finally(() => clearTimeout(timer));
       if (out?.name) stateName = out.name;
       undo = out?.undo ?? null;
@@ -1525,12 +1731,15 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
       while (Date.now() < settle && !(inflight === 0 && Date.now() - lastNet >= QUIET_MS)) await page.waitForTimeout(100);
       stateRec = { state: stateName, reached: true, stateMs: Date.now() - tState, ...(state.now ? { clock: state.now } : {}), ...(state.from ? { opened: `#/${state.from}` } : {}), ...(state.writes ? { writes: state.writes } : {}), ...(out?.via ? { via: out.via } : {}) };
     } catch (err) {
-      // Preserve only known diagnostic categories, never state exception text.
-      const reason = err instanceof Unreached ? "STATE_PRECONDITION_ABSENT" : classifyReleaseConsole(err?.message);
+      // B-INF-11: the category AND the thrown message (first line, bounded): an OTHER_ERROR with
+      // no words sent the release to a Playwright probe to learn why a state failed. The
+      // sweep's own messages name an authored target; page text in them is synthetic seed data.
+      const reason = stateFailureReason(err);
+      const message = stateMessage(err);
       await page.close();
       return {
         route, viewport: `${vp.w}x${vp.h}`, lang: vp.lang, ...seedRec,
-        state: state.name, reached: false, reason, retryable: !(err instanceof Unreached),
+        state: state.name, reached: false, reason, ...(message ? { message } : {}), retryable: !(err instanceof Unreached),
         consoleErrors: [...errors], runtimeDiagnostics: diagnostics.snapshot(), rateLimited, apiRequests: api.sort(), loadMs, shot: null,
       };
     }
@@ -1538,9 +1747,11 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
     stateRec = { state: "base" };
   }
 
+  // B-INF-11: an overlay opens through a 0.95-scale/opacity transition; measure it settled.
+  const geometry = await page.evaluate(settleOverlayGeometry, SETTLE_BUDGET_MS).catch(() => ({ settled: false }));
   let rec;
   try {
-    rec = await page.evaluate(collect, { lang: vp.lang, allowLatin });
+    rec = await page.evaluate(collect, { lang: vp.lang, allowLatin, verdict: VERDICT_TEXT_PATTERNS, region: run?.state.measure ?? "main" });
   } catch (err) {
     rec = { mounted: false, collectError: classifyReleaseConsole(err?.message) };
   }
@@ -1597,6 +1808,8 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
     apiRequests: api.sort(),
     loadMs,
     readyTimedOut,
+    fontsReady,
+    geometrySettled: geometry.settled === true,
     ...(retried ? { retried } : {}),
     ...(navError ? { navError } : {}),
     shot,
@@ -1669,14 +1882,33 @@ async function warmUp(browser, base) {
   await applySeed(context, SEED);
   await installOfflineFonts(context);
   const page = await context.newPage();
+  // B-INF-11: name why a warm-up never reaches ready instead of sweeping blank pages.
+  const refused = new Map();
+  page.on("response", (res) => {
+    try {
+      if (new URL(res.url()).origin === base && res.status() >= 400) refused.set(res.status(), (refused.get(res.status()) ?? 0) + 1);
+    } catch { /* non-URL */ }
+  });
+  let pageErrors = 0;
+  page.on("pageerror", () => { pageErrors++; });
   const t0 = Date.now();
+  let cause = null;
   try {
-    await page.goto(`${base}/?cb=${++cbCounter}#/overview`, { waitUntil: "domcontentloaded", timeout: 180_000 });
-    await page.waitForSelector(READY_SELECTOR, { timeout: 120_000 });
+    await page.goto(`${base}/?cb=${++cbCounter}#/overview`, { waitUntil: "domcontentloaded", timeout: WARMUP_BOUND_MS });
+    await page.waitForSelector(READY_SELECTOR, { timeout: Math.max(5_000, WARMUP_BOUND_MS - (Date.now() - t0)) });
   } catch (err) {
-    console.error(`sweep: warm-up did not reach ready (${String(err?.message ?? err).split("\n")[0]})`);
+    cause = err?.name === "TimeoutError" ? "READY_TIMEOUT" : classifyReleaseConsole(err?.message);
   }
   await context.close();
+  if (cause) {
+    const statuses = [...refused].map(([status, n]) => `${n}× HTTP ${status}`).join(", ");
+    fail(
+      `warm-up did not reach ready at ${base}/#/overview within ${Math.round((Date.now() - t0) / 1000)} s (${cause}` +
+        `${statuses ? `; same-origin answers: ${statuses}` : ""}${pageErrors ? `; ${pageErrors} page errors` : ""}). ` +
+        "Nothing was swept: every cell would be a blank page. A 500 on the app's own scripts is usually CORS_ORIGINS not listing --base.",
+      2,
+    );
+  }
   return Date.now() - t0;
 }
 
@@ -1733,10 +1965,17 @@ async function sweep(browser, opts, routes, outDir, withShots, allowLatin, tr) {
   mkdirSync(outDir, { recursive: true });
   if (withShots) mkdirSync(path.join(outDir, "shots"), { recursive: true });
   const startedAt = new Date().toISOString();
+  const t0 = Date.now();
   const sha = gitSha(); // the dev server serves the working tree; HEAD can move mid-run
   const cells = [];
   const apiCache = new Map(); // one per run: run 2 re-reads the server
   const pageRoutes = routes.filter((r) => r !== SHELL);
+  // B-INF-11: the matrix this run sets out to render, and the bound it must finish inside.
+  const expected = expectedBaseCells(pageRoutes, opts.viewports);
+  const stateTotal = opts.states ? opts.viewports.reduce((n, vp) => n + routes.reduce((m, r) => m + statesFor(r, vp).length, 0), 0) : 0;
+  const deadlineMs = sweepDeadlineMs({ baseCells: expected.length, stateCells: stateTotal, minutes: opts.deadline });
+  let deadlineExpired = false;
+  const overDeadline = () => (deadlineExpired ||= Date.now() - t0 > deadlineMs);
   const checkpoint = (completed = false) => {
     const isBase = (c) => (c.state ?? "base") === "base";
     const reached = cells.filter((c) => isBase(c) || c.reached);
@@ -1751,6 +1990,10 @@ async function sweep(browser, opts, routes, outDir, withShots, allowLatin, tr) {
       seed: SEED.seed,
       ...(SEED.info ? { seedBundle: SEED.info } : {}),
       states: opts.states,
+      shots: withShots,
+      expected: { routes: pageRoutes, viewports: opts.viewports.map((vp) => vp.id), cells: expected },
+      deadlineMs,
+      ...(deadlineExpired ? { deadlineExpired: true } : {}),
       startedAt,
       completed,
       ...(completed ? { finishedAt: new Date().toISOString() } : {}),
@@ -1778,17 +2021,31 @@ async function sweep(browser, opts, routes, outDir, withShots, allowLatin, tr) {
     return doc;
   };
   checkpoint();
-  for (const vp of opts.viewports) {
-    const context = await newSweepContext(browser, vp, opts, apiCache);
+  // B-INF-11: one cell never holds the run. A cell past CELL_BOUND_MS is recorded unmounted
+  // and unready, its context is closed (that ends the stuck page) and the next cell gets a fresh one.
+  const boundCell = (route, vp, state) => ({
+    route, viewport: `${vp.w}x${vp.h}`, lang: vp.lang, ...(state ? { state: state.name, reached: false, reason: "CELL_BOUND_EXCEEDED", retryable: true } : { state: "base" }),
+    mounted: false, readyTimedOut: true, cellBoundExceeded: true, consoleErrors: [], apiRequests: [], shot: null,
+  });
+  outer: for (const vp of opts.viewports) {
+    let context = await newSweepContext(browser, vp, opts, apiCache);
+    const boundedVisit = async (route, shotPath) => {
+      const result = await raceBound(visit(context, opts.base, route, vp, allowLatin, shotPath), CELL_BOUND_MS);
+      if (!result.timedOut) return result.value;
+      await context.close().catch(() => {});
+      context = await newSweepContext(browser, vp, opts, apiCache);
+      return boundCell(route, vp, null);
+    };
     for (const route of routes) {
       if (route !== SHELL) {
+        if (overDeadline()) break outer;
         const shotPath = withShots ? path.join(outDir, "shots", `${route}.${vp.w}x${vp.h}.${vp.lang}.png`) : null;
-        let cell = await visit(context, opts.base, route, vp, allowLatin, shotPath);
-        if (!cell.mounted || cell.readyTimedOut) {
+        let cell = await boundedVisit(route, shotPath);
+        if ((!cell.mounted || cell.readyTimedOut) && !overDeadline()) {
           // One fresh retry: a dev server under a concurrent builder's edits (or a browser
           // short of memory) can drop one load; a route that is really broken fails twice.
           const first = { mounted: cell.mounted, loadMs: cell.loadMs, readyTimedOut: cell.readyTimedOut, consoleErrors: cell.consoleErrors };
-          cell = { ...(await visit(context, opts.base, route, vp, allowLatin, shotPath)), firstAttempt: first };
+          cell = { ...(await boundedVisit(route, shotPath)), firstAttempt: first };
         }
         cells.push(cell);
         checkpoint();
@@ -1796,14 +2053,21 @@ async function sweep(browser, opts, routes, outDir, withShots, allowLatin, tr) {
       }
       if (!opts.states) continue;
       for (const state of statesFor(route, vp)) {
+        if (overDeadline()) break outer;
         const shotFor = withShots ? (name) => path.join(outDir, "shots", `${route}.${vp.w}x${vp.h}.${vp.lang}.${name}.png`) : null;
-        cells.push(await stateCell(browser, opts, apiCache, route, vp, state, allowLatin, shotFor, tr));
+        const result = await raceBound(stateCell(browser, opts, apiCache, route, vp, state, allowLatin, shotFor, tr), CELL_BOUND_MS * 2);
+        cells.push(result.timedOut ? boundCell(route, vp, state) : result.value);
         checkpoint();
       }
     }
-    await context.close();
+    await context.close().catch(() => {});
   }
-  const doc = checkpoint(true);
+  if (deadlineExpired) {
+    const missing = expected.length - cells.filter((c) => (c.state ?? "base") === "base").length;
+    console.error(`sweep: deadline ${Math.round(deadlineMs / 60_000)} min reached; ${missing} base cells never rendered (recorded as missing)`);
+  }
+  // A run that hit its deadline did not complete: the law fails its missing cells.
+  const doc = checkpoint(!deadlineExpired);
   return doc;
 }
 
@@ -1938,6 +2202,12 @@ async function main() {
   }
   // AR-REL-1: the law decides the exit code (run 1 is the recorded run).
   const lawFailures = sweepLawFailures(docs[0]);
+  // B-INF-14: nothing passes silently — every explained diagnostic is printed with its reason.
+  const explainedHits = sweepLawExplained(docs[0]);
+  if (explainedHits.length) {
+    console.log(`SWEEP-LAW EXPLAINED ${explainedHits.length}`);
+    for (const line of sweepLawExplainedLines(explainedHits)) console.log(line);
+  }
   if (lawFailures.length === 0) console.log("SWEEP-LAW PASS");
   else {
     console.log(`SWEEP-LAW FAIL ${lawFailures.length} cells${opts.reportOnly ? " (report only)" : ""}`);

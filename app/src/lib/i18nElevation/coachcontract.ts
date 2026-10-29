@@ -52,12 +52,14 @@ export const en: Record<string, string> = {
   // used only when no truthful date can be printed.
   "elev.coachcontract.uses.liveResidency": "Live runs on Google's global endpoint, not the EU region, until {date}.",
   "elev.coachcontract.uses.liveResidencyUndated": "Live runs on Google's global endpoint, not the EU region.",
+  // B-PROV-12: the residency clause when the runtime route is the Vertex EU one.
+  "elev.coachcontract.uses.liveResidencyEu": "Live runs in Google's EU region.",
 
   // ── What Arbor stores
   "elev.coachcontract.stores.thread": "This conversation is saved so you can come back to it",
 
   // ── What you control
-  "elev.coachcontract.controls.memory": "You approve or remove memory facts any time in Profile › Child Memory",
+  "elev.coachcontract.controls.memory": "You approve or remove memory facts any time in My child › About › Everything Arbor remembers",
   "elev.coachcontract.controls.weekly": "Turn weekly context off any time — it stops with your next question",
 
   // AI-10 — the in-product quality signal on a coach answer (thumbs).
@@ -117,10 +119,11 @@ export const he: Record<string, string> = {
   "elev.coachcontract.uses.spokenLive": "שיחת קול חיה היא שיחת אודיו ישירה עם המודל: היא נושאת את המילים שלכם, את הפרופיל, את עובדות הזיכרון שאישרתם ואת החילופים האחרונים בשיחה הזו, ללא שמות — אף פעם לא את ספירת הרגעים של השבוע. {residency}",
   "elev.coachcontract.uses.liveResidency": "שיחת קול חיה פועלת על נקודת הקצה הגלובלית של Google, לא באזור האיחוד האירופי, עד {date}.",
   "elev.coachcontract.uses.liveResidencyUndated": "שיחת קול חיה פועלת על נקודת הקצה הגלובלית של Google, לא באזור האיחוד האירופי.",
+  "elev.coachcontract.uses.liveResidencyEu": "שיחת קול חיה פועלת באזור האיחוד האירופי של Google.",
 
   "elev.coachcontract.stores.thread": "השיחה הזו נשמרת כדי שתוכלו לחזור אליה",
 
-  "elev.coachcontract.controls.memory": "אתם מאשרים או מסירים עובדות זיכרון בכל רגע בפרופיל › זיכרון הילד",
+  "elev.coachcontract.controls.memory": "אתם מאשרים או מסירים עובדות זיכרון בכל רגע במסך הילד שלי › אודות › כל מה שארבור זוכרת",
   "elev.coachcontract.controls.weekly": "אפשר לכבות את ההקשר השבועי בכל רגע — הוא נעצר כבר מהשאלה הבאה",
 
   // AI-10 — משוב על התשובה (לא על הילד). פנייה בלשון רבים, שקטה.

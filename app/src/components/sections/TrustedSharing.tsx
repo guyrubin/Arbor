@@ -13,9 +13,10 @@ import type { ShareGrant, ShareRole, SharedPacketView } from "../../types";
 import Modal from "../ui/Modal";
 import { PageHeader, SectionCard, cardCls, Chip, PASTEL, PastelKey, InitialsTile } from "../ui/kit";
 import { ErrorState } from "../ui/ErrorState";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { REPORTS } from "./Reports";
 import { isProfessionalReportType } from "../../lib/reportExport";
-import { HOME_PROGRAM_SCOPE_ID, REPORT_SCOPE_BY_TYPE, WEEK_SHARE_SCOPES, WEEK_SHARE_DURATION, type ShareScopeId, scopeDisplayLabels, shareScopeLabelKey } from "../../lib/shareScopes";
+import { HOME_PROGRAM_SCOPE_ID, grantsHomeProgram, REPORT_SCOPE_BY_TYPE, WEEK_SHARE_SCOPES, WEEK_SHARE_DURATION, type ShareScopeId, scopeDisplayLabels, shareScopeLabelKey } from "../../lib/shareScopes";
 import { fmtDay } from "../../lib/formatDate";
 import CoParentInvite from "../sharing/CoParentInvite";
 import { coParentLink } from "../../lib/coParentApi";
@@ -23,7 +24,8 @@ import { coParentCopy } from "../../lib/i18nElevation/coParent";
 import { CoParentRequests } from "../../lib/coParentRequests";
 // LC-17: the review step shows the RECIPIENT'S ACTUAL VIEW, built by the same
 // function the server uses for them — not a list of scope labels.
-import { buildPacketInput, buildSharedScopePacket, itemParts, sectionTitle, sectionNote, type PacketItem } from "../../consult/packet";
+import { buildGrantPacket, buildPacketInput, buildSharedScopePacket, itemParts, sectionTitle, sectionNote, type PacketItem } from "../../consult/packet";
+import { defaultGrantDomains } from "../../lib/shareDomains";
 import type { UiLang } from "../../lib/i18n";
 
 /** W2-CAREPRO c2 r2 — one preview row per thing the recipient reads, every
@@ -114,6 +116,9 @@ export default function TrustedSharing() {
   const booksCol = useChildCollection<PlanBookDoc>(childProfile.id, "books");
   const { user } = useAuth();
   const { toast } = useToast();
+  // B-STATUS-01: a grant, a home-program link or a revoke answers with ONE
+  // receipt line above the roster it changed (Undo takes a new grant back).
+  const receipt = useReceiptNote();
   const { t, uiLang } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
@@ -167,13 +172,13 @@ export default function TrustedSharing() {
       // came to drop every log `trigger` (so the parent approved a preview with
       // no triggers section while the recipient read their own trigger words)
       // and to derive an age the server did not.
-      const packet = buildSharedScopePacket(
-        draft.scopes,
-        draft.role === "professional",
-        buildPacketInput(
-          { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems, books: booksCol.items },
-          Date.now()
-        )
+      // B-CAREPRO-41: the grant the server will store (a professional report
+      // grant defaults to its profession's domains + family), through the ONE
+      // grant builder the recipient's view runs — so this preview IS that view.
+      const packet = buildGrantPacket(
+        { role: draft.role, scopes: draft.scopes, domains: defaultGrantDomains(draft.role, draft.scopes) },
+        { profile: childProfile, logs: behaviorLogs, milestones, plans: actionPlans, memory: approvedMemoryItems, books: booksCol.items },
+        Date.now()
       );
       return { sections: packet.sections, blocked: false };
     } catch (err) {
@@ -251,7 +256,12 @@ export default function TrustedSharing() {
     return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
-  const load = useCallback(async () => {
+  // B-INF-16: "shared with you" changes only when someone else grants. The page's
+  // first load and Retry read both lists; the parent's own grant, link, revoke,
+  // undo and co-parent invite re-read only their own grants (reloadOwn): one
+  // request after each change instead of two.
+  const load = useCallback(async (opts: { inbound?: boolean } = {}) => {
+    const withInbound = opts.inbound !== false;
     const ticket = rosterRequests.current.begin();
     setLoading(true);
     setError(false);
@@ -264,18 +274,20 @@ export default function TrustedSharing() {
         // CARE-6: one owner fetch returns the FULL grant record set (history=1);
         // live grants form the roster, ended ones the sharing history below.
         api.listShares(childProfile.id, { history: true }).catch(() => { aFailed = true; return { shares: [] }; }),
-        api.sharedWithMe().catch(() => { bFailed = true; return { shares: [] }; }),
+        withInbound ? api.sharedWithMe().catch(() => { bFailed = true; return { shares: [] }; }) : null,
       ]);
       if (!rosterRequests.current.latest(ticket)) return;
-      setShares(mine.shares || []);
-      setInbound(toMe.shares || []);
-      if (aFailed && bFailed) setError(true);
+      // An own-grants re-read that fails keeps the roster on screen under the error.
+      if (withInbound || !aFailed) setShares(mine.shares || []);
+      if (toMe) setInbound(toMe.shares || []);
+      if (aFailed && (bFailed || !withInbound)) setError(true);
     } catch {
       if (rosterRequests.current.latest(ticket)) setError(true);
     } finally {
       if (rosterRequests.current.latest(ticket)) setLoading(false);
     }
   }, [childProfile.id]);
+  const reloadOwn = useCallback(() => load({ inbound: false }), [load]);
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { if (adding) recipientRef.current?.focus(); }, [adding]);
@@ -298,17 +310,29 @@ export default function TrustedSharing() {
 
   const setScope = (f: ShareScopeId) => setDraft((d) => ({ ...d, scopes: d.scopes.includes(f) ? d.scopes.filter((x) => x !== f) : [...d.scopes, f] }));
 
+  /** B-STATUS-01: Undo on a fresh grant revokes it (the server keeps the
+   *  revoked grant in Sharing history, as any revoke does). */
+  const undoFor = (created: ShareGrant | null | undefined) => created?.id ? {
+    label: t("elev.loop.notice.undo"),
+    testId: "sharing-receipt-undo",
+    onUndo: () => {
+      receipt.clear();
+      setInvite((current) => (current?.email === created.recipientEmail ? null : current));
+      void api.revokeShare(created.id).then(() => reloadOwn(), () => toast(t("sec.sharing.audit.revokeError"), "error"));
+    },
+  } : null;
+
   /** One grant path for the week card and the custom wizard (same toasts,
    *  same invite hand-off, same seat / paywall handling). */
   const grant = async (g: { email: string; role: ShareRole; scopes: ShareScopeId[]; duration: string }, busyKey: string, onDone: () => void) => {
     setBusy(busyKey);
     try {
-      await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: g.email, role: g.role, scopes: g.scopes, duration: g.duration });
-      toast(t("sec.sharing.audit.shared", { scopes: scopesLabel(g.scopes), email: g.email, role: roleLabel(g.role) }), "success");
+      const created = await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: g.email, role: g.role, scopes: g.scopes, duration: g.duration });
+      receipt.show({ text: t("sec.sharing.audit.shared", { scopes: scopesLabel(g.scopes), email: g.email, role: roleLabel(g.role) }), undo: undoFor(created) });
       setInvite({ email: g.email });
       setSeatInUse(null);
       onDone();
-      await load();
+      await reloadOwn();
     } catch (e: any) {
       if (e instanceof ApiError && e.status === 409 && e.message === SEAT_IN_USE) {
         // No paywall: the parent already holds the seat. Point at the row.
@@ -353,9 +377,9 @@ export default function TrustedSharing() {
   const grantHomeProgram = async (email: string) => {
     setBusy("home-program");
     try {
-      await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: email, role: "professional", scopes: [HOME_PROGRAM_SCOPE_ID], duration: "until_revoked" });
-      toast(t("elev.homeProgram.share.done", { email }), "success");
-      await load();
+      const created = await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: email, role: "professional", scopes: [HOME_PROGRAM_SCOPE_ID], duration: "until_revoked" });
+      receipt.show({ text: t("elev.homeProgram.share.done", { email }), undo: undoFor(created) });
+      await reloadOwn();
     } catch {
       toast(t("sec.sharing.audit.createError"), "error");
     } finally {
@@ -369,8 +393,8 @@ export default function TrustedSharing() {
       await api.revokeShare(g.id);
       // CARE-6: no ephemeral log needed — the reload moves the revoked grant
       // (with its revocation date) into the persistent Sharing history card.
-      toast(t("sec.sharing.audit.revoked", { email: g.recipientEmail }), "success");
-      await load();
+      receipt.show({ text: t("sec.sharing.audit.revoked", { email: g.recipientEmail }) });
+      await reloadOwn();
     } catch (e: any) {
       toast(t("sec.sharing.audit.revokeError"), "error");
     } finally {
@@ -395,7 +419,9 @@ export default function TrustedSharing() {
     setViewError(null);
     setViewLoading(true);
     try {
-      setView(await api.sharedPacket(g.id));
+      // B-PROG-09: a home-program grant opens as the home-program link — the
+      // server answers that one scope or 403s.
+      setView(await api.sharedPacket(g.id, grantsHomeProgram(g.scopes) ? HOME_PROGRAM_SCOPE_ID : undefined));
     } catch (e: any) {
       if (e instanceof ApiError && (e.status === 403 || e.status === 404)) {
         // Server says no access NOW (revoked/expired/fail-closed scopes):
@@ -455,7 +481,7 @@ export default function TrustedSharing() {
           hand-off it produces (LC-17) are two steps of one capability, so
           they carry one stamp between them rather than competing as two. */}
       <div data-module="sharing-grant" style={{ display: "contents" }}>
-      <CoParentInvite key={childProfile.id} childId={childProfile.id} childName={childProfile.name} grants={shares} onChanged={load} />
+      <CoParentInvite key={childProfile.id} childId={childProfile.id} childName={childProfile.name} grants={shares} onChanged={reloadOwn} />
       {!error && (
         <section data-testid="share-week-card" className="rounded-[22px] p-5 flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-x-6 lg:gap-y-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
           {/* W2-CAREPRO r2: at lg the card is two columns — what is shared on
@@ -586,6 +612,7 @@ export default function TrustedSharing() {
           )}
         </section>
       )}
+      <ReceiptNoteLine note={receipt.note} testId="sharing-receipt" />
       {invite && (
         <div data-testid="share-invite" className="border-y py-4 flex flex-wrap items-center gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
           <span className="text-sm font-bold break-all" dir="auto" style={{ color: "var(--arbor-ink)" }}>{invite.email}</span>
@@ -738,13 +765,20 @@ export default function TrustedSharing() {
                 const tone = ROLE_TONE[g.role] || ROLE_TONE.viewer;
                 return (
                   <div key={g.id} id={`share-row-${g.id}`} tabIndex={-1} className="min-w-0 border-b p-4 last:border-b-0" style={{ borderColor: "var(--arbor-rule)" }}>
-                    <div className="flex items-center gap-3">
+                    {/* Round 2 (B-SHELL-45 follow-up): at 375 the email had 66 px. The
+                        words' column keeps at least 9rem, so on a phone the Revoke
+                        button wraps to its own line at the end edge instead of
+                        squeezing it; the email is its own direction (an address reads
+                        from its start in Hebrew too; a short one sits at the row's
+                        start edge, `end` of its own LTR line) and the role never
+                        breaks mid-word. Wide rows are unchanged. */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <InitialsTile name={g.recipientEmail} tone={tone} />
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-extrabold truncate" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{g.recipientEmail}</h3>
-                        <p className="text-xs" style={{ color: PASTEL[tone].ink }}>{roleLabel(g.role)}</p>
+                      <div className="flex-1 min-w-[9rem]">
+                        <h3 className="text-sm font-extrabold truncate" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textAlign: uiLang === "he" ? "end" : "start" }}>{g.recipientEmail}</h3>
+                        <p className="text-xs" style={{ color: PASTEL[tone].ink, overflowWrap: "normal" }}>{roleLabel(g.role)}</p>
                       </div>
-                      <button onClick={() => revoke(g)} disabled={busy === g.id} className="inline-flex min-h-11 items-center gap-1 px-2 text-xs font-bold disabled:opacity-50" style={{ color: "var(--arbor-pink-ink)" }}>
+                      <button onClick={() => revoke(g)} disabled={busy === g.id} className="ms-auto inline-flex min-h-11 items-center gap-1 px-2 text-xs font-bold disabled:opacity-50" style={{ color: "var(--arbor-pink-ink)" }}>
                         {busy === g.id ? <Icon name="progress_activity" size={14} className="animate-spin" /> : <Icon name="close" size={15} />} {t("sec.sharing.revoke")}
                       </button>
                     </div>

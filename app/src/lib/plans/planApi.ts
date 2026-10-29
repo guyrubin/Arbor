@@ -15,6 +15,21 @@ import type { BookLang, PatternId } from "../library/types";
 export interface PlanVisibility {
   reviewed: Record<PatternId, Record<BookLang, boolean>>;
   composable: Record<PatternId, Record<BookLang, boolean>>;
+  /** B-BOOK-75 plates: the server says this viewer may paint the shared plates (admin / comped). Absent or false for every family. */
+  admin?: boolean;
+}
+
+export type PlanPlateState = "painted" | "failed" | "unpainted";
+export interface PlanPlateStatus {
+  storage: boolean;
+  patterns: Record<PatternId, Record<string, PlanPlateState>>;
+  costPerImageUsd: number;
+  maxImagesPerRun: number;
+  maxUsdPerRun: number;
+}
+export interface PlanPlateRun {
+  run: { planned: number; painted: number; failed: number; skipped: number; left: number; stopped: "deadline" | "breaker" | "client" | null; estimatedUsd: number; spentUsd: number };
+  results: { pattern: PatternId; plate: string; state: PlanPlateState | "skipped"; reason?: string }[];
 }
 
 export class PlanApiError extends Error {
@@ -44,3 +59,10 @@ export const phraseOwnStep = (input: { pattern: PatternId; slot: 1 | 2 | 3; lang
  *  device persists the returned document. */
 export const composePlan = (childId: string, body: ComposeRequest): Promise<{ doc: PlanBookDoc; why: string }> =>
   call(`/api/children/${encodeURIComponent(childId)}/plan-books`, { method: "POST", body: JSON.stringify(body) });
+
+/** B-BOOK-75 plates (admin / comped only; 403 for a family): the per-plate state. */
+export const fetchPlanPlateStatus = (): Promise<PlanPlateStatus> => call<PlanPlateStatus>("/api/admin/plan-plates");
+
+/** Paint one pattern's plates (or one plate) in shared storage; painted plates are skipped unless `repaint`. */
+export const paintPlanPlates = (input: { pattern?: PatternId; plate?: string; repaint?: boolean }): Promise<PlanPlateRun> =>
+  call("/api/admin/plan-plates", { method: "POST", body: JSON.stringify(input) });

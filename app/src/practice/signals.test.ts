@@ -194,8 +194,11 @@ describe("domainBands + recommend", () => {
     const rec = recommend(bands, []);
     expect(["language", "emotional", "social", "speech", "cognition"]).toContain(rec.domain);
     expect(rec.missionId).toBeTruthy();
-    expect(rec.headline).toMatch(/Increase/);
     expect(rec.whyKey).toMatch(/^elev\./);
+    // B-GROWTH-22: no English directive ships from this module ("Increase …
+    // this week" printed on Hebrew pages); the reason is a key, nothing else.
+    expect(rec).not.toHaveProperty("headline");
+    expect(JSON.stringify(rec)).not.toMatch(/Increase|this week/);
   });
 });
 
@@ -511,7 +514,8 @@ describe("B-KID-02 · mood-checkin never enters accuracy or stars", async () => 
  * no reader — the bands, the watch rules, the clinician export — reads it. */
 describe("W2-SHELLPLAY r2 · no reader of adventures.items touches .correct", () => {
   const SRC = nodePath.resolve(nodePath.dirname(fileURLToPath(import.meta.url)), "..");
-  const READERS = ["practice/signals.ts", "practice/watch.ts", "components/practice/DevelopmentCopilot.tsx"];
+  // B-GROWTH-22: the Full Picture (the clinician-export reader) is deleted with #/copilot.
+  const READERS = ["practice/signals.ts", "practice/watch.ts"];
   const READ_CORRECT = /adventures?[\w.]*\.(?:items\.)?filter\(\(\w+\) => \w+\.correct\)|advCorrect|adventureCorrect|first-try correct/;
 
   it("bands, watch and the clinician export never read adventure correctness", () => {

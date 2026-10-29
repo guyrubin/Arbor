@@ -21,8 +21,12 @@ import { bookEdition } from "../../lib/library/bookBookmarks";
 import { heroSheetOwnerKey, subscribeHeroSheetOwner } from "../../lib/heroSheetStore";
 import { useBookBookmark } from "../library/useBookBookmark";
 import { useKidSouvenirs } from "./rewards/useKidSouvenirs";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import { BOOK_READS, bookReadRow, catalogueBookId, type BookRead } from "../../lib/bookReads";
+import { trackBookFinished, trackBookOpened } from "../../lib/kpiEvents";
+import { readModeFor, type ReadMode } from "../../lib/library/readMode";
 
-export default function KidBookReaderView({ bookId, onClose }: { bookId: string; onClose: () => void }) {
+export default function KidBookReaderView({ bookId, onClose, together = false }: { bookId: string; onClose: () => void; together?: boolean }) {
   const { childProfile } = useArbor();
   const { uiLang, aiLang } = useLanguage();
   const { user, firebaseEnabled } = useAuth();
@@ -33,26 +37,44 @@ export default function KidBookReaderView({ bookId, onClose }: { bookId: string;
   const edition = useMemo(() => entry ? bookEdition(entry.book, entry.doc) : "", [entry]);
   const recordOwner = firebaseEnabled ? user?.uid ?? "signed-out" : "local-sandbox";
   if (!entry || owner !== recordOwner || owner === "signed-out") return <KidStageFallback />;
-  return <OwnedBookReader key={JSON.stringify([owner, childProfile.id, bookId, edition])} entry={entry} edition={edition} owner={owner} lang={lang} onClose={onClose} />;
+  return <OwnedBookReader key={JSON.stringify([owner, childProfile.id, bookId, edition])} entry={entry} edition={edition} owner={owner} lang={lang} onClose={onClose} together={together} />;
 }
 
-function OwnedBookReader({ entry, edition, owner, lang, onClose }: { entry: LibraryBookEntry; edition: string; owner: string; lang: "en" | "he"; onClose: () => void }) {
+function OwnedBookReader({ entry, edition, owner, lang, onClose, together }: { entry: LibraryBookEntry; edition: string; owner: string; lang: "en" | "he"; onClose: () => void; together: boolean }) {
   const { childProfile } = useArbor();
+  // B-BOOK-45 / B-BOOK-46: the read's mode is fixed at open — Together when a
+  // grown-up's door asked for it, else bedtime by the parent's time, else alone.
+  const [readMode] = useState<ReadMode>(() => readModeFor({ together, bedtimeFrom: childProfile.bedtimeFrom, now: new Date() }));
   const progress = useBookBookmark(childProfile.id, entry.book, edition, owner);
   const souvenirs = useKidSouvenirs(childProfile.id);
+  // B-BOOK-51: one open event per opening, one finish per true ending (the
+  // reader's last-page -> END transition; a resumed END never counts), and the
+  // one read ledger. Catalogue ids only: never the child, never the path chosen.
+  const reads = useChildCollection<BookRead>(childProfile.id, BOOK_READS);
+  const readsRef = useRef(reads);
+  readsRef.current = reads;
+  const bookEvent = useMemo(() => ({ bookId: catalogueBookId(entry.book), lang, hero: "own" as const }), [entry.book, lang]);
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current) return;
+    opened.current = true;
+    trackBookOpened(bookEvent);
+  }, [bookEvent]);
   const progressRef = useRef(progress);
   progressRef.current = progress;
   const folder = lang === "he" ? (heGender(childProfile.gender) === "f" ? "he-f" : "he-m") : "en";
   const [resolved, setResolved] = useState<ResolvedBookAssets | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const doc = entry.doc;
+  // PR C: a plan book's narration (the child's own set under the pattern) rides beside the shared plan sheet
+  const narration = entry.narration ?? null;
   useEffect(() => {
     let live = true;
     let got: ResolvedBookAssets | null = null;
     setResolved(null);
     setUnavailable(false);
     // K2: a file that arrives late (a passing failure, retried) re-renders the page with it
-    resolveBookAssets(childProfile.id, doc, folder, { isCurrent: () => live && progressRef.current.current(), onLate: (next) => { if (live && progressRef.current.current()) setResolved(next); } })
+    resolveBookAssets(childProfile.id, doc, folder, { narration, isCurrent: () => live && progressRef.current.current(), onLate: (next) => { if (live && progressRef.current.current()) setResolved(next); } })
       .then((r) => {
         got = r;
         if (live && progressRef.current.current()) setResolved(r);
@@ -63,7 +85,7 @@ function OwnedBookReader({ entry, edition, owner, lang, onClose }: { entry: Libr
       live = false;
       got?.revoke();
     };
-  }, [childProfile.id, doc, folder]);
+  }, [childProfile.id, doc, narration, folder]);
   // A book that cannot open goes back home rather than showing a broken page.
   useEffect(() => {
     if (unavailable) onClose();
@@ -76,8 +98,13 @@ function OwnedBookReader({ entry, edition, owner, lang, onClose }: { entry: Libr
   return (
     <div className="arbor-play" data-kid-library-book={entry.book.id} style={{ position: "fixed", inset: 0, zIndex: 80 }}>
       {resolved && progress.initialState ? (
-        <BookReader book={entry.book} lang={lang} child={child} onClose={onClose} dev={false} sheet={resolved.sheet} assets={resolved.narration} voiceSet={entry.doc.setId} initialState={progress.initialState} onProgress={progress.save} onComplete={() => {
+        <BookReader book={entry.book} lang={lang} child={child} onClose={onClose} dev={false} readMode={readMode} sheet={resolved.sheet} assets={resolved.narration} voiceSet={entry.doc.setId} initialState={progress.initialState} onProgress={progress.save} onComplete={() => {
           if (progress.current() && souvenirs.loaded && souvenirs.isCurrent()) void souvenirs.awardOnce("book", entry.book.id).catch(() => undefined);
+          if (progress.current()) {
+            trackBookFinished(bookEvent);
+            const row = bookReadRow(bookEvent.bookId, lang, new Date());
+            if (row) void readsRef.current.upsert(row).catch(() => undefined);
+          }
         }} progressNotice={progress.status === "error" ? <button type="button" onClick={progress.retry} aria-label={lang === "he" ? "הסימנייה לא נשמרה. נסו שוב" : "Bookmark not saved. Retry"} style={{ minHeight: 44, maxWidth: "100%", padding: "4px 8px", borderRadius: 12, background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", fontSize: 16 }}>
           {lang === "he" ? "סימנייה · נסו שוב" : "Bookmark · Retry"}
         </button> : null} />

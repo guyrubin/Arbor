@@ -15,8 +15,11 @@
  *    false) — the panel then states the residency without a date.
  */
 
-/** The dated exception's last day (program decision, 1 Oct 2026). */
-export const LIVE_RESIDENCY_EXCEPTION_UNTIL = "2026-10-31";
+/** The dated exception's last day. B-GA-06 / G-V1 (Guy, 8 Oct 2026): the
+ *  Israel-only pilot keeps the global Live endpoint through Gate A,
+ *  31 Mar 2027. Must equal ai/liveResidency.ts LIVE_GLOBAL_EXCEPTION_UNTIL
+ *  (pinned by ai/liveResidency.test.ts). */
+export const LIVE_RESIDENCY_EXCEPTION_UNTIL = "2027-03-31";
 
 const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
 

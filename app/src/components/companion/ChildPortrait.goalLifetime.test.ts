@@ -42,7 +42,8 @@ function mountedPortraitProof(duplicateKey: boolean) {
     }, module, module.exports);
     return module.exports;
   };
-  const goals = load("src/practice/goalBuilder.ts", { "../lib/tokens": { BRAND_HEX: {} } });
+  // B-GROWTH-40: goalBuilder reads plan progress for the focus line's "Next: {step}".
+  const goals = load("src/practice/goalBuilder.ts", { "../lib/tokens": { BRAND_HEX: {} }, "../lib/plans": { planProgress: () => ({ nextSteps: [], planComplete: true }) } });
   const seed = id => ({ id, name: "Synthetic", activeGoals: [], interests: [], strengths: [] });
   let child = seed("synthetic-a"), session = {}, refresh, setRoute, watchMounts = 0, watchDisposals = 0, registrations = 0, disposals = 0, writes = 0;
   const hook = load("src/hooks/useDialog.ts", { "../lib/dialogStack": { registerDialog: options => {

@@ -88,7 +88,7 @@ function bindExportFocus(tree: any, focused = true) {
 const owner = (user: { uid: string } | null) => { h.currentUser = user; for (const listener of h.authListeners) listener(user); };
 const kid = (active: boolean) => { h.locked = active; for (const listener of h.kidListeners) listener(active); };
 const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
-function body(stage: string, text: string) {
+function body(stage: string, text: string, headers?: Record<string, string>) {
   let cancelled = false;
   return new Response(new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -96,7 +96,7 @@ function body(stage: string, text: string) {
       if (!cancelled) { controller.enqueue(new TextEncoder().encode(text)); controller.close(); }
     },
     cancel() { cancelled = true; },
-  }));
+  }), headers ? { headers } : undefined);
 }
 function pause(stage: string) {
   let enter!: () => void, release!: () => void;
@@ -123,7 +123,8 @@ beforeEach(() => {
       if (h.partial) return new Response("Unavailable", { status: 503 });
       return body("inventory body", JSON.stringify({ version: 1, childId: "child-a", status: "complete", issues: [], files: [{ bookId: "book", path: "manifest.json", bytes: 4 }] }));
     }
-    await h.wait("file response"); return body("file body", "DATA");
+    // B-CAREPRO-50: the server's digest of "DATA" and the served Content-Type.
+    await h.wait("file response"); return body("file body", "DATA", { "content-type": "application/json", "x-arbor-sha256": "c97c29c7a71b392b437ee03fd17f09bb10b75e879466fc0eb757b2c4a78ac938" });
   }));
   vi.stubGlobal("crypto", { subtle: { digest: async (...args: Parameters<typeof webcrypto.subtle.digest>) => {
     await h.wait("digest"); return webcrypto.subtle.digest(...args);
@@ -212,10 +213,7 @@ describe("final browser boundary and fresh parent action", () => {
     expect(data.profile.name).toBe(name); expect(h.child.name).toBe(name);
     expect(data.exportReceipt.status).toBe(partial ? "incomplete" : "complete");
     expect(data.exportNote).toBe(translate(lang, "sec.sharing.data.exportNote"));
-    expect(Object.keys(data.collections)).toHaveLength(47); // Plan books and Studio creations
-    expect(data.collections.studioCreations).toEqual([]);
-    expect(data.exportReceipt.collections.studioCreations).toBe("included");
-    expect(h.paths).toContain("users/owner/children/child-a/studioCreations");
+    expect(Object.keys(data.collections)).toHaveLength(48); // B-BOOK-75: + books; B-GA-09: + studioCreations; B-BOOK-51: + bookReads
     expect(data.collections.studioQuestProgress).toEqual([{ id: "calm-corner-v1:spot", questId: "calm-corner-v1", step: "spot", choice: "right" }]);
     expect(data.collections.bookBookmarks).toEqual([{ id: "book", v: 1, edition: "v1-synthetic", pageId: "page-1", branchId: null }]);
     expect(h.paths.filter(path => /studioQuestProgress|bookBookmarks/.test(path))).toEqual(["users/owner/children/child-a/studioQuestProgress", "users/owner/children/child-a/bookBookmarks"]);

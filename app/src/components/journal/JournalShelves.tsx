@@ -29,10 +29,13 @@ import QuickLogModal from "../overview/QuickLogModal";
 import ShelfGrid from "./ShelfGrid";
 import ShelfPage, { type ShelfDayGroup } from "./ShelfPage";
 import ProView from "./ProView";
-import { buildIntakePacket, isIntakeProfession, type IntakeProfession } from "../../consult/packet";
+import HearingCheckQuestion from "./HearingCheckQuestion";
+import { hearingCheckOf, hearingQuestionOn } from "../../lib/hearingCheck";
+import { buildIntakePacket, intakeLangObs, isIntakeProfession, type IntakeProfession } from "../../consult/packet";
 import { intakeQuestionLines, readIntakeQuestionsText, writeIntakeQuestionsText } from "../../consult/intakeDraft";
 import { programPageModel } from "../../lib/programPage";
 import type { SleepLogEntry } from "../../types";
+import type { LangObservation } from "../../growth/vocabAgg";
 import type { FamilyGoal } from "../../lib/goals";
 import PlansSection from "../plans/PlansSection";
 import { openPrintablePlan } from "../../lib/plans/planPrint";
@@ -60,7 +63,8 @@ export function shelfFromQuery(v: string | null): ShelfId | null {
  */
 export default function JournalShelves({ shelf, pro = false, intakeFor = null, plan = null, primaryMoveProps }: {
   shelf: ShelfId | null;
-  /** B-BOOK-77: `#/journal?plan=<patternId>` — the Everyday Plans composer for that pattern. */
+  /** B-BOOK-77: `#/journal?plan=<patternId>` — the Everyday Plans composer for that pattern;
+   *  S1: `?plan=choose` lands on the grid with the pattern chooser open. */
   plan?: string | null;
   /** B-LOOP-12: `#/journal?view=pro` — the professional view. */
   pro?: boolean;
@@ -92,6 +96,9 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
   const planVisibility = usePlanVisibility();
   const planDef = plan && isPatternId(plan) ? getPattern(plan) : undefined;
   const openPlanDoor = (pattern: string) => goToRoute("journal", { plan: pattern });
+  // B-BOOK-75 follow-up: saving the row is enough — the parent shell's
+  // PlanSheetEnsurer (components/layout) reads the `books` rows and starts the
+  // child's shared plan sheet for the poses this plan needs (fail soft).
   const savePlanDoc = async (doc: PlanBookDoc) => { await planRows.upsert(doc); };
   const keepPlanRow = (p: ActivePlan) => { void planRows.upsert(keepPlan(p.doc, new Date())); };
   const closePlanRow = (p: ActivePlan) => { void planRows.upsert(closePlan(p.doc, new Date())); };
@@ -102,6 +109,7 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
       visibility={planVisibility}
       now={now}
       shelf={scope}
+      initialChooserOpen={plan === "choose"}
       onOpenDoor={openPlanDoor}
       onOpenPlan={(p) => openPlanDoor(p.def.id)}
       onKeep={keepPlanRow}
@@ -193,10 +201,15 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
   const sleepLogs = useChildCollection<SleepLogEntry & { id: string }>(childProfile.id, "sleepLogs");
   // B-PROG-09: the home program's goal words (the pro view renders the home-program line only, never the number)
   const familyGoalsCol = useChildCollection<FamilyGoal>(childProfile.id, "familyGoals");
+  // B-CAREPRO-39 (round 2): the logged words, counted per language by the SLP
+  // intake schema (dark until signed) — the same read Care's packet makes.
+  const langObsCol = useChildCollection<LangObservation>(childProfile.id, "langObs", { orderByField: "timestamp", orderDir: "desc", max: 200 });
   const intakeProgram = useMemo(
     () => (pro ? programPageModel(programRows.items, { childId: childProfile.id, actionLoops: actionLoop, sleepLogs: sleepLogs.items, observations }, now, uiLang === "he" ? "he" : "en", childProfile.gender ?? null) : null),
     [pro, programRows.items, childProfile.id, childProfile.gender, actionLoop, sleepLogs.items, observations, now, uiLang],
   );
+  // B-NEXT-01: dark until the clinical wording review (GA B-GA-02).
+  const hearingOn = useMemo(() => hearingQuestionOn(), []);
   const intakePacket = useMemo(
     () => (pro ? buildIntakePacket(profession, {
       child: childProfile,
@@ -212,8 +225,11 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
       program: intakeProgram,
       homePrograms: programRows.items,
       familyGoals: familyGoalsCol.items,
+      // B-NEXT-01: the parent's hearing answer, only while the pilot flag is on
+      hearing: hearingOn ? hearingCheckOf(childProfile) : null,
+      langObs: intakeLangObs(langObsCol.items),
     }) : null),
-    [pro, profession, childProfile, milestones, behaviorLogs, actionLoop, questions, comparisonMonths, now, uiLang, keepsakes.items, intakeProgram, programRows.items, familyGoalsCol.items],
+    [pro, profession, childProfile, milestones, behaviorLogs, actionLoop, questions, comparisonMonths, now, uiLang, keepsakes.items, intakeProgram, programRows.items, familyGoalsCol.items, hearingOn, langObsCol.items],
   );
   const domainCounts = useMemo(() => proDomainCounts(observations, (s) => shelfDef(s).domain, now), [observations, now]);
 
@@ -290,8 +306,9 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
         <PlanComposer
           key={planDef.id}
           def={planDef}
-          child={{ id: childProfile.id, name: childProfile.name, gender: childProfile.gender }}
+          child={{ id: childProfile.id, name: childProfile.name, nameLatin: childProfile.nameLatin, gender: childProfile.gender }}
           initialState={composerFromDoc(planDef, planRows.items.find((r) => r?.id === `${planDef.id}.${childProfile.id}` && r.status === "active"), locale)}
+          ownerPaint={planVisibility?.admin === true}
           onSaved={savePlanDoc}
           onClose={() => goToRoute("journal")}
           onPrint={(doc) => void openPrintablePlan({ doc, child: childProfile, lang: locale, now: new Date() })}
@@ -309,6 +326,7 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
           counts={domainCounts}
           onBack={() => goToRoute("journal")}
           primaryMoveProps={primaryMoveProps}
+          askHearing={hearingOn && profession === "slp" ? <HearingCheckQuestion testId="pro-hearing-check" /> : undefined}
         />
       ) : shelf ? (
         <ShelfPage
@@ -328,6 +346,7 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
           onAdd={() => setCapture({ open: true, mode: "text" })}
           primaryMoveProps={primaryMoveProps}
           plansSection={plansSectionFor(shelf)}
+          askHearing={hearingOn && shelf === "words" ? <HearingCheckQuestion testId="shelf-hearing-check" bare /> : undefined}
         />
       ) : (
         <ShelfGrid

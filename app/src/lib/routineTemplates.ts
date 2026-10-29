@@ -51,6 +51,38 @@ export function routineToPlan(routine: Routine, lang: UiLang, firstName: string,
   };
 }
 
+/** B-ASKJB-26 — the nine problem-named template chips on Plans are FOLDED
+ *  into the authored routine boards: each one only ever started one of these
+ *  boards (two started the same one), so the ready-made routines row is the
+ *  one way to start a board — the board's own EN + HE steps, zero
+ *  generate-plan calls, no new copy (the row's Gate).
+ *
+ *  After a start the new plan leads the page, above the row the parent tapped.
+ *  This names the lead plan that has just appeared — not seen on this page
+ *  before and created in the last two minutes (both plan id shapes end in the
+ *  creation epoch: `routine-<id>-<ms>`, `plan-<ms>`) — so the page can answer
+ *  where the parent is looking. A child switch or a synced older plan is
+ *  never "just started". */
+export const JUST_STARTED_MS = 120_000;
+export function justStartedPlanId(plans: readonly { id: string }[], seen: ReadonlySet<string>, nowMs: number): string | null {
+  const lead = plans[0];
+  if (!lead || seen.has(lead.id)) return null;
+  const m = /-(\d{13})$/.exec(lead.id);
+  if (!m) return null;
+  const age = nowMs - Number(m[1]);
+  return age >= 0 && age <= JUST_STARTED_MS ? lead.id : null;
+}
+
+/** Critic r2: the page's memory of plans already seen. The FIRST load primes
+ *  it with every plan there (no receipt: a reload within two minutes of a
+ *  start is not a new start); later loads name a just-started lead plan. */
+export function nextStartedPlan(seen: ReadonlySet<string> | null, plans: readonly { id: string }[], nowMs: number): { seen: Set<string>; leadId: string | null } {
+  const next = new Set(seen ?? []);
+  const leadId = seen === null ? null : justStartedPlanId(plans, seen, nowMs);
+  for (const p of plans) next.add(p.id);
+  return { seen: next, leadId };
+}
+
 /** The templates offered for a child of this age (months; null = every one). */
 export function routineTemplatesForAge(months: number | null | undefined): Routine[] {
   return routinesForAge(months);
@@ -172,6 +204,37 @@ export function isRoutineRunComplete(plan: ActionPlan, dayKey: string): boolean 
 /** Whether `dayKey`'s finished run already had its celebration (on any device). */
 export function routineCelebrated(plan: ActionPlan, dayKey: string): boolean {
   return routineIdOfPlan(plan) !== null && plan.routineCelebratedOn === dayKey;
+}
+
+/**
+ * B-DATA-14 (wave 4): the ticks a phone held offline (`routineOfflineTicks`)
+ * laid over each day's run, matched by the step's words: its own index first,
+ * then anywhere on the board. A tick whose step is gone (changed or removed on
+ * another device) is lost, never forced onto a different step. Pure: the plan
+ * back carries no `routineOfflineTicks`; `lost` names each lost step.
+ */
+export function foldRoutineOfflineTicks(plan: ActionPlan): { plan: ActionPlan; lost: string[] } {
+  const { routineOfflineTicks: held, ...rest } = plan;
+  if (!held) return { plan: rest, lost: [] };
+  const steps = (plan.phases ?? []).flatMap((ph) => (ph.steps ?? []).map((s) => s.text));
+  const runs: Record<string, number[]> = { ...(plan.routineRuns ?? {}) };
+  const lost: string[] = [];
+  for (const [day, ticks] of Object.entries(held)) {
+    const run = new Set(cleanRun(runs[day], steps.length));
+    for (const [slot, tick] of Object.entries(ticks ?? {})) {
+      if (!tick) continue;
+      const at = steps[Number(slot)] === tick.text ? Number(slot) : steps.indexOf(tick.text);
+      if (at < 0) { lost.push(tick.text); continue; }
+      if (tick.done) run.add(at); else run.delete(at);
+    }
+    runs[day] = [...run].sort((x, y) => x - y);
+  }
+  return { plan: { ...rest, routineRuns: runs }, lost };
+}
+
+/** The ticks a plan holds from offline (a taken-back tick is not one). */
+export function heldRoutineTicks(plan: Pick<ActionPlan, "routineOfflineTicks">): number {
+  return Object.values(plan.routineOfflineTicks ?? {}).reduce((n, ticks) => n + Object.values(ticks ?? {}).filter(Boolean).length, 0);
 }
 
 /** The plan with `dayKey` marked as celebrated (same plan back for a non-routine plan). */
