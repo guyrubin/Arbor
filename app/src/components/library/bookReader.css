@@ -464,6 +464,19 @@
 .arbor-play .bk-reader[data-read-mode="bedtime"][dir="rtl"] .bk-stage::after {
   background: radial-gradient(circle at 12% 10%, color-mix(in srgb, var(--arbor-yellow) 34%, transparent) 0, transparent 34%);
 }
+/* B-BOOK-45 residue (wave 4): the night reaches the words panel and the
+   toys too, never only the pictures. The panel's paper takes a share of the
+   ink (the type stays the ink: about 10:1, still easy to read); the toys take
+   the pictures' own night filter. Tokens only; nothing new moves. */
+.arbor-play .bk-reader[data-read-mode="bedtime"] .bk-text {
+  background:
+    repeating-linear-gradient(0deg, color-mix(in oklab, var(--arbor-ink) 2%, transparent) 0 1px, transparent 1px 4px),
+    color-mix(in oklab, var(--arbor-paper-elevated) 82%, var(--arbor-ink));
+}
+.arbor-play .bk-reader[data-read-mode="bedtime"] .bk-text[data-kind="panel"] {
+  background: color-mix(in oklab, color-mix(in oklab, var(--arbor-paper-elevated) 82%, var(--arbor-ink)) 94%, transparent);
+}
+.arbor-play .bk-reader[data-read-mode="bedtime"] .kid-toy { filter: brightness(0.78) saturate(0.85); }
 .arbor-play .bk-end[data-goodnight] { animation: bk-goodnight-in 1200ms var(--kid-ease-out) both; }
 @keyframes bk-goodnight-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {

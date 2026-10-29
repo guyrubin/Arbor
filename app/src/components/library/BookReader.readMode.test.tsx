@@ -94,6 +94,32 @@ describe("B-BOOK-45: the bedtime read", () => {
     // the child's own read keeps The End and Read again
     expect(html("alone", st(END, "a"), lang)).toContain("data-book-read-again");
   });
+  it.each(["en", "he"] as const)("%s: the night reaches the words panel and the button (tokens only, nothing new moves)", (lang) => {
+    // the bedtime page carries the words panel and the Next toy inside the night stage
+    const page = html("bedtime", st("p2", null), lang);
+    expect(page).toContain('data-read-mode="bedtime"');
+    expect(page).toMatch(/class="bk-text"[^>]*data-kind="/);
+    expect(page).toMatch(/class="kid-toy[^"]*"[^>]*data-book-next=""|data-book-next=""[^>]*class="kid-toy/);
+    const css = readFileSync(new URL("./bookReader.css", import.meta.url), "utf8");
+    const rule = (sel: string) => { const at = css.indexOf(`${sel} {`); return at < 0 ? "" : css.slice(at, css.indexOf("}", at)); };
+    const panel = rule('.arbor-play .bk-reader[data-read-mode="bedtime"] .bk-text');
+    const floating = rule('.arbor-play .bk-reader[data-read-mode="bedtime"] .bk-text[data-kind="panel"]');
+    const toy = rule('.arbor-play .bk-reader[data-read-mode="bedtime"] .kid-toy');
+    // dimmed through the night's own means: the paper mixed with the ink token, the pictures' night filter
+    expect(panel).toContain("color-mix(in oklab, var(--arbor-paper-elevated) 82%, var(--arbor-ink))");
+    expect(floating).toContain("color-mix(in oklab, var(--arbor-paper-elevated) 82%, var(--arbor-ink))");
+    expect(toy).toContain("filter: brightness(0.78) saturate(0.85)");
+    expect(rule('.arbor-play .bk-reader[data-read-mode="bedtime"] .bk-stage img')).toContain("filter: brightness(0.78) saturate(0.85)");
+    for (const r of [panel, floating, toy]) {
+      expect(r, "no raw colour").not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i);
+      expect(r, "nothing new moves").not.toMatch(/animation|transition/);
+    }
+    // the child's own daytime read keeps the daylight panel (the night rules are bedtime-scoped only)
+    const night = css.match(/[^}\n]*\.bk-text[^{]*\{[^}]*82%, var\(--arbor-ink\)/g) ?? [];
+    expect(night.length).toBe(2);
+    expect(night.every((r) => r.includes('[data-read-mode="bedtime"]'))).toBe(true);
+    expect(html("alone", st("p2", null), lang)).toContain('data-read-mode="alone"');
+  });
   it("narration plays at 0.92x and the reader's sounds at half gain (the shared element keeps its rate across a load)", () => {
     const el = { defaultPlaybackRate: 1, playbackRate: 1 } as unknown as HTMLAudioElement;
     setRate(el, 0.92);
