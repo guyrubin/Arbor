@@ -46,7 +46,9 @@ const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").repl
 
 /* ── discovery ────────────────────────────────────────────────────────────── */
 
-const PROVIDER_IMPLEMENTATIONS = new Set(["ai/modelRouter.ts", "ai/claudeVertexProvider.ts", "ai/mockProvider.ts", "ai/modelDeadlines.ts"]);
+// server/studioPlanPlates.ts decorates the provider (B-KID-150): it implements generateImage by
+// delegation and carries no words of its own; see the inventory note 9.
+const PROVIDER_IMPLEMENTATIONS = new Set(["ai/modelRouter.ts", "ai/claudeVertexProvider.ts", "ai/mockProvider.ts", "ai/modelDeadlines.ts", "server/studioPlanPlates.ts"]);
 const PROVIDER_METHODS = new Set(["generateJson", "generateJsonStream", "streamText", "generateImage"]);
 /** Server-side AI egress that is not a ModelProvider method. */
 const EGRESS_FUNCTIONS = new Set(["scoreChildUtterance", "synthesizeSpeech", "dispatchSpeechSynthesis", "screenAndSynthesizeSpeech"]);
