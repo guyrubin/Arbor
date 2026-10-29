@@ -90,6 +90,8 @@
 .now-handback-copy b, .now-handback-copy small { display: block; }
 .now-handback-copy b { font-size: var(--t-sm); font-weight: 600; }
 .now-handback-copy small { margin-block-start: 4px; font-size: var(--t-xs); line-height: 1.45; color: var(--arbor-muted); }
+/* a receipt row: the book's tomorrow line keeps to three lines (the house clamp; the whole line stays in the DOM and in the book's grown-up panel) */
+.now-handback-copy .now-handback-tomorrow { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
 .now-handback-actions { display: flex; flex: none; align-items: center; gap: 2px; margin-inline-start: auto; }
 .now-handback-log, .now-handback-hide { display: inline-flex; align-items: center; justify-content: center; min-block-size: 44px; min-inline-size: 44px; padding: 0 8px; border: 0; border-radius: var(--r); background: transparent; color: var(--arbor-clay); font-size: var(--t-xs); font-weight: 700; }
 .now-handback-hide { color: var(--arbor-muted); }

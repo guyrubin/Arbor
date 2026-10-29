@@ -57,7 +57,7 @@ export default function NowKidHandback() {
         : <BrandChip icon="auto_stories" tone="lav" shape="arch" />}
       <span className="now-handback-copy">
         <b dir="auto">{copy.bookRowTitle(book.title)}</b>
-        <small dir="auto">{book.tomorrow}</small>
+        <small dir="auto" className="now-handback-tomorrow">{book.tomorrow}</small>
         <small dir="auto">{ask}</small>
       </span>
       <span className="now-handback-actions">

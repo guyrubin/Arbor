@@ -100,6 +100,9 @@ describe("B-BOOK-66 + B-GAME-23 · Today's hand-back rows", () => {
     const css = readFileSync(path.join(__dirname, "nowView.css"), "utf8");
     const row = css.slice(css.indexOf(".now-handback-row {"), css.indexOf("}", css.indexOf(".now-handback-row {")));
     expect(row).not.toMatch(/box-shadow|background:|border:/);
+    // P2(a): the tomorrow line keeps to three lines, so the book row reads as a receipt (it ran ~250px at 375)
+    expect(css).toMatch(/\.now-handback-copy \.now-handback-tomorrow \{ display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; \}/);
+    expect(renderToStaticMarkup(<NowKidHandback />)).toContain('<small dir="auto" class="now-handback-tomorrow">');
     // 44 px targets for both actions
     expect(css).toMatch(/\.now-handback-log, \.now-handback-hide \{[^}]*min-block-size: 44px; min-inline-size: 44px;/);
   });
