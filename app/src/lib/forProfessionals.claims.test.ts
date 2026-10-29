@@ -8,12 +8,12 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { FOR_PROFESSIONALS_URL } from "./legalLinks";
+import { FOR_PROFESSIONALS_URL, forProfessionalsUrl } from "./legalLinks";
 
 const APP = path.resolve(__dirname, "..", "..");
 const PAGE = readFileSync(path.join(APP, "public", "for-professionals.html"), "utf8");
 const text = (html: string) => html.replace(/<!--[\s\S]*?-->/g, " ").replace(/<style>[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/g, " ").replace(/\s+/g, " ");
-const section = (lang: "en" | "he") => new RegExp(`<section lang="${lang}" dir="${lang === "he" ? "rtl" : "ltr"}"[^>]*>([\\s\\S]*?)</section>`).exec(PAGE)?.[1] ?? "";
+const section = (lang: "en" | "he") => new RegExp(`<section id="${lang}" lang="${lang}" dir="${lang === "he" ? "rtl" : "ltr"}"[^>]*>([\\s\\S]*?)</section>`).exec(PAGE)?.[1] ?? "";
 
 /** The claim gate: clinical claims, verdict words and treatment claims. */
 const DENY_EN = /\bdiagnos\w*|\bscreen(?:ing|s|ed)?\b|\bclinical(?:ly)?\b|\bvalidated\b|\bcertified\b|\btreat(?:s|ment|ing)?\b|\btherap(?:y|ies|ist)\b|\bcure\b|\bassess\w*|\bscore\w*|\brisk\b|\bdelay\w*|\bdisorder\w*|\bspecialist\w*|\bexpert\w*|%/i;
@@ -62,7 +62,14 @@ describe("B-CAREPRO-47 · /for-professionals", () => {
 
   it("#/science stays a live door to the page", () => {
     const science = readFileSync(path.join(APP, "src", "components", "tabs", "SciencePage.tsx"), "utf8");
-    expect(science).toContain('onGo={() => void openLegalUrl(FOR_PROFESSIONALS_URL, { isNative: isNativePlatform })}');
+    expect(science).toContain('onGo={() => void openLegalUrl(forProfessionalsUrl(uiLang), { isNative: isNativePlatform })}');
     expect(science).toContain('testId="trust-for-professionals"');
+  });
+
+  it("critic r1: a Hebrew reader lands on the Hebrew section (#he); English on the page itself", () => {
+    expect(PAGE).toContain('<section id="he" lang="he" dir="rtl"');
+    expect(PAGE).toContain('<section id="en" lang="en" dir="ltr"');
+    expect(forProfessionalsUrl("he")).toBe(`${FOR_PROFESSIONALS_URL}#he`);
+    expect(forProfessionalsUrl("en")).toBe(FOR_PROFESSIONALS_URL);
   });
 });

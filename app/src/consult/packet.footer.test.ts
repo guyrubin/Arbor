@@ -37,6 +37,9 @@ describe("B-CAREPRO-47 · the one Arbor line", () => {
       expect(line).toContain(host);
     }
     expect(arborDocumentLine("he")).not.toBe(arborDocumentLine("en"));
+    // Critic r1: the Hebrew line lands on the page's Hebrew section.
+    expect(arborDocumentLine("he")).toContain(`${host}#he`);
+    expect(arborDocumentLine("en")).not.toContain("#he");
     expect(arborDocumentLine("he")).toMatch(/[֐-׿]/);
   });
 

@@ -548,7 +548,7 @@ export const he: Record<string, string> = {
   "elev.reports.printHint": "המסמכים נפתחים בלשונית חדשה — השתמשו ב\"שמירה כ-PDF\" של הדפדפן. בכל מסמך מופיעה ההבהרה שארבור אינו מאבחן.",
   "elev.reports.printMeta": "הופק ב-{date} · הוכן על ידי ההורים · אינו אבחנה",
   "elev.reports.printFooter": "ארבור אינו מאבחן ואינו מחליף ייעוץ מקצועי. המסמך משקף תצפיות של ההורים ומשותף בהסכמתם.",
-  "elev.reports.arborLine": "הוכן על ידי ההורים עם ארבור, מחברת הורים על התפתחות ילדים. מה המסמך הזה: arborparentingapp.com/for-professionals",
+  "elev.reports.arborLine": "הוכן על ידי ההורים עם ארבור, מחברת הורים על התפתחות ילדים. מה המסמך הזה: arborparentingapp.com/for-professionals#he",
   "elev.reports.weekly.title": "סיכום שבועי",
   "elev.reports.weekly.desc": "סיכום השבוע לתיעוד שלכם או לשיתוף.",
   "elev.reports.teacher.title": "מסירה לגננת או למורה",

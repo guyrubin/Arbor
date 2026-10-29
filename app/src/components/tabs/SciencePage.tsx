@@ -11,7 +11,7 @@ import { ALL_MILESTONES } from "../../lib/milestoneData";
 import { CHILD_DATA_ROWS } from "../../lib/childDataGroups";
 import { contentCitedSourceUrls } from "../../lib/citedSources";
 import { requestOpenSettings } from "../layout/settingsBus";
-import { FOR_PROFESSIONALS_URL, openLegalUrl } from "../../lib/legalLinks";
+import { forProfessionalsUrl, openLegalUrl } from "../../lib/legalLinks";
 import { isNativePlatform } from "../../lib/runtime";
 
 /**
@@ -541,7 +541,7 @@ export default function SciencePage() {
               icon="description"
               label={tt("elev.trust.more.forPros")}
               sub={tt("elev.trust.more.forProsSub")}
-              onGo={() => void openLegalUrl(FOR_PROFESSIONALS_URL, { isNative: isNativePlatform })}
+              onGo={() => void openLegalUrl(forProfessionalsUrl(uiLang), { isNative: isNativePlatform })}
               testId="trust-for-professionals"
             />
           </div>

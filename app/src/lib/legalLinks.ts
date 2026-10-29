@@ -22,6 +22,8 @@ export type LegalLinkKey = keyof typeof LEGAL_LINKS;
  *  points to (public/for-professionals.html; firebase.json /for-professionals).
  *  The document line prints it without the scheme. */
 export const FOR_PROFESSIONALS_URL = `${LEGAL_ORIGIN}/for-professionals`;
+/** Critic r1: a Hebrew reader lands on the page's Hebrew section (#he). */
+export const forProfessionalsUrl = (lang: string): string => (lang === "he" ? `${FOR_PROFESSIONALS_URL}#he` : FOR_PROFESSIONALS_URL);
 
 /** Render order everywhere: Privacy · Terms · Support. */
 export const LEGAL_LINK_ORDER: readonly LegalLinkKey[] = ["privacy", "terms", "support"];
