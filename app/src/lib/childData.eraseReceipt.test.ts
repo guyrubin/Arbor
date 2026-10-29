@@ -126,7 +126,7 @@ function seed(child: string) {
   for (const name of CHILD_SUBCOLLECTIONS) {
     fx.docs.set(`${base(child)}/${name}/d1`, name === "bookAssets"
       ? { bookId: "synthetic-book", files: ["hero-sheets/s/look-up.webp", "narration/s/en/p1.mp3"] }
-      : { synthetic: name });
+      : name === "studioCreations" ? { synthetic: name, ownerId: UID, childId: child } : { synthetic: name });
   }
   local.setItem(`arbor.safetyChecklist.${child}`, "1");
   local.setItem(`arbor.growth.month.seen.${child}.2026-10`, "1");
@@ -242,8 +242,10 @@ describe("B-BOOK-20 · a synthetic child through export, then erase", () => {
     fx.firebaseEnabled = false;
     fx.docs.clear();
     for (const name of CHILD_SUBCOLLECTIONS) {
-      local.setItem(`arbor.${name}.${CHILD}`, JSON.stringify([{ id: "d1" }, { id: "d2" }]));
-      local.setItem(`arbor.${name}.${SIBLING}`, JSON.stringify([{ id: "d1" }]));
+      const ownedRows = [{ id: "d1" }, { id: "d2" }].map(row => name === "studioCreations" ? { ...row, ownerId: "local", childId: CHILD } : row);
+      const siblingRows = [{ id: "d1" }].map(row => name === "studioCreations" ? { ...row, ownerId: "local", childId: SIBLING } : row);
+      local.setItem(`arbor.${name}.${CHILD}`, JSON.stringify(ownedRows));
+      local.setItem(`arbor.${name}.${SIBLING}`, JSON.stringify(siblingRows));
     }
     local.setItem("arbor.children", JSON.stringify([{ id: CHILD, name: "Synthetic" }, { id: SIBLING, name: "Sibling" }]));
     const exported = await exportChildData(undefined, { id: CHILD, name: "Synthetic" } as ChildProfile);
