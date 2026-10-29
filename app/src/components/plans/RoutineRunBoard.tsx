@@ -69,6 +69,8 @@ type Attempt = {
   status: "pending" | "queued" | "saved" | "failed";
   /** How it was sent: an offline step write retries as the same step write. */
   send?: Send;
+  /** Wave 4: the words of each held tick a fold could not place (its step changed elsewhere). */
+  lost?: string[];
 };
 type Send = (offline: { onQueued: () => void; onSynced: () => void; onRejected: () => void }) => Promise<void> | void;
 
@@ -131,10 +133,10 @@ export default function RoutineRunBoard({ plan, primaryProps, now }: {
   const firstOpen = steps.findIndex((_, i) => !ticked.includes(i));
   const { style: stampStyle, ...stampAttrs } = primaryProps ?? {};
 
-  const write = (next: ActionPlan, celebrates: boolean, send: Send = (offline) => setRoutineRun(next, offline)) => {
+  const write = (next: ActionPlan, celebrates: boolean, send: Send = (offline) => setRoutineRun(next, offline), lost: string[] = []) => {
     const id = ++latest.current;
     const planId = plan.id;
-    setAttempt({ id, planId, day, next, celebrates, status: "pending", send });
+    setAttempt({ id, planId, day, next, celebrates, status: "pending", send, lost });
     const settle = (status: Attempt["status"]) => {
       if (!mounted.current || latest.current !== id) return false;
       setAttempt((a) => (a && a.id === id ? { ...a, status } : a));
@@ -174,8 +176,11 @@ export default function RoutineRunBoard({ plan, primaryProps, now }: {
     const celebrates = finishes && !routineCelebrated(view, day);
     if (!online) {
       // B-DATA-14 (wave 4): only this step is written. The celebration waits
-      // for the fold that lands the run on the server (below).
-      const tick: RoutineOfflineTick = { text: steps[idx], done: !ticked.includes(idx), at: new Date(now ?? Date.now()).toISOString() };
+      // for the fold that lands the run on the server (below). Tapping a step
+      // this phone already holds a tick for takes it back (null): the server's
+      // value stands, so another phone's tick is never overridden.
+      const mine = base.routineOfflineTicks?.[day]?.[String(idx)];
+      const tick: RoutineOfflineTick | null = mine ? null : { text: steps[idx], done: !ticked.includes(idx), at: new Date(now ?? Date.now()).toISOString() };
       const ticks = { ...(base.routineOfflineTicks ?? {}), [day]: { ...(base.routineOfflineTicks?.[day] ?? {}), [String(idx)]: tick } };
       write({ ...base, routineOfflineTicks: ticks }, false, (offline) => setRoutineRunStep(base, day, idx, tick, offline));
       return;
@@ -192,9 +197,10 @@ export default function RoutineRunBoard({ plan, primaryProps, now }: {
     const key = JSON.stringify([plan.id, plan.routineOfflineTicks]);
     if (folded.current === key) return;
     folded.current = key;
-    const next = foldRoutineOfflineTicks(plan).plan;
+    const { plan: next, lost } = foldRoutineOfflineTicks(plan);
     const celebrates = isRoutineRunComplete(next, day) && !routineCelebrated(plan, day);
-    write(celebrates ? markRoutineCelebrated(next, day) : next, celebrates);
+    const marked = celebrates ? markRoutineCelebrated(next, day) : next;
+    write(marked, celebrates, (offline) => setRoutineRun(marked, offline), lost);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online, plansConfirmed, plan, liveStatus, day]);
   const reset = () => {
@@ -267,6 +273,11 @@ export default function RoutineRunBoard({ plan, primaryProps, now }: {
         <p data-testid="routine-run-done-today" className="t-sm" style={{ color: "var(--arbor-ink-soft)" }}>
           {t("elev.plans.routineRun.doneToday", { routine: title })}
         </p>
+      )}
+      {!!live?.lost?.length && live.status === "saved" && (
+        <div role="alert" data-testid="routine-run-lost" className="t-sm" style={{ color: "var(--arbor-ink-soft)" }}>
+          {live.lost.map((step, n) => <p key={n} dir="auto">{t("elev.closeloop.routines.lostStep", { step })}</p>)}
+        </div>
       )}
       {live?.status === "failed" && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">

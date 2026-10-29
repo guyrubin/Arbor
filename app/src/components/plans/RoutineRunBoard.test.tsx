@@ -421,3 +421,49 @@ for (const lang of ["en", "he"] as const) describe(`B-DATA-14 · the board write
     expect(h.writes[1].step).toMatchObject({ day: TODAY, idx: 1, tick: { done: true } });
   });
 });
+
+/* Wave 4 — an offline tick then untick of the same step takes this phone's tick
+   back (null), so the other phone's tick stands on reconnect; a held tick the
+   fold cannot place names its step. */
+for (const lang of ["en", "he"] as const) describe(`B-DATA-14 · tick then untick, and the lost step · ${lang}`, () => {
+  beforeEach(() => { h.lang = lang; });
+  const words = (plan: ActionPlan) => plan.phases.flatMap((ph) => ph.steps.map((s) => s.text));
+
+  it("offline tick then untick writes the tick, then takes it back; the other phone's tick survives the fold", async () => {
+    h.online = false; h.confirmed = false;
+    const stored = routinePlan();
+    props = { plan: stored, now: NOW };
+    render(); tap(1); h.writes[0].offline!.onQueued(); h.writes[0].resolve(); await flush();
+    tap(1);
+    expect(h.writes).toHaveLength(2);
+    expect(h.writes[1].step).toEqual({ day: TODAY, idx: 1, tick: null });
+    expect(byId("routine-run-step-1").props["aria-checked"]).toBe(false);
+    h.writes[1].offline!.onQueued(); h.writes[1].resolve(); await flush();
+    // Back online: the other phone ticked step 1 meanwhile; this phone's field holds null.
+    h.online = true; h.confirmed = true;
+    props = { plan: { ...routinePlan([1]), id: stored.id, routineOfflineTicks: { [TODAY]: { "1": null } } }, now: NOW };
+    render();
+    expect(h.writes).toHaveLength(3);
+    expect(routineRunToday(h.writes[2].plan, TODAY)).toEqual([1]);
+  });
+
+  it("negative control: without the take-back, the second tap would write the opposite tick", () => {
+    h.online = false; h.confirmed = false;
+    props = { plan: routinePlan([1]), now: NOW }; // ticked on the server already, no held tick
+    render(); tap(1);
+    expect(h.writes[0].step).toMatchObject({ idx: 1, tick: { done: false } });
+  });
+
+  it("a held tick whose step changed elsewhere is not forced onto another step, and the alert names it", async () => {
+    h.online = true; h.confirmed = true;
+    const stored = routinePlan();
+    props = { plan: { ...stored, routineOfflineTicks: { [TODAY]: { "1": { text: "A step renamed on the other phone", done: true, at: new Date(NOW).toISOString() } } } }, now: NOW };
+    render();
+    expect(routineRunToday(h.writes[0].plan, TODAY)).toEqual([]);
+    h.writes[0].resolve(); await flush();
+    const lost = byId("routine-run-lost");
+    expect(lost.props.role).toBe("alert");
+    expect(elements(lost).filter((el) => el.type === "p").map((el) => el.props.children)).toEqual([translate(lang, "elev.closeloop.routines.lostStep", { step: "A step renamed on the other phone" })]);
+    expect(words(stored)).not.toContain("A step renamed on the other phone");
+  });
+});
