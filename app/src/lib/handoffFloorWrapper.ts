@@ -225,7 +225,7 @@ export const wordInParentText = (word: string, parentText: string): boolean => {
 /** The object's content words the parent's text never contains (empty = the parent said X, or X has no content). */
 /** Round 12: the parent's own word for the same finding counts ("no sleep problems" says "sleep difficulties"). */
 const SYNONYM_CLASSES: readonly (readonly string[])[] = [
-  ["difficult", "problem", "issue", "trouble", "struggl"],
+  ["difficult", "probl", "issue", "troubl", "struggl"], // stems: a word starting with one belongs to the class
   ["קושי", "קשיי", "קשיים", "קשה", "בעיה", "בעיות", "בעיית"],
 ];
 const synonymInParent = (word: string, parentText: string) =>
