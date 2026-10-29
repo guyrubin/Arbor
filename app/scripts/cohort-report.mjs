@@ -57,7 +57,13 @@ const FUNNEL_CHAINS = {
   billing: ["paywall_view", "checkout_start", "entitlement_active"],
   // B-MEAS-02: the pilot's primary metric (server/cohortMetrics.ts summariseLoop).
   loop: ["today_action_accepted", "today_action_outcome", "loop_continued"],
+  // B-RESID-05: the share → activation chain (server/cohortMetrics.ts).
+  share: ["share_completed", "invite_activated"],
 };
+// B-RESID-05: one family sends, another activates, so the chain is counted in
+// ONE row (server/cohortMetrics.ts ONE_ROW_CHAINS), never split by source.
+const ONE_ROW_CHAINS = ["share"];
+const ONE_ROW_KEY = "all";
 
 /* ── flags ───────────────────────────────────────────────────────────────── */
 
@@ -426,7 +432,8 @@ export async function buildReport(db, args, now = new Date()) {
   for (const name of args.funnels) {
     const chain = FUNNEL_CHAINS[name];
     if (!chain) continue;
-    funnels[name] = countFunnelChain(events, chain, args.groupBy);
+    const counted = ONE_ROW_CHAINS.includes(name) ? events.map((e) => ({ ...e, props: { ...e.props, [args.groupBy]: ONE_ROW_KEY } })) : events;
+    funnels[name] = countFunnelChain(counted, chain, args.groupBy);
   }
   const loop = args.funnels.includes("loop") ? summariseLoop(events) : undefined;
   const { definition, definitionStatus } = readActivationDefinition();
@@ -479,4 +486,4 @@ if (invokedDirectly) {
   });
 }
 
-export { parseArgs, print, FUNNEL_CHAINS };
+export { parseArgs, print, FUNNEL_CHAINS, ONE_ROW_CHAINS, ONE_ROW_KEY };

@@ -132,6 +132,12 @@ export default function VoiceOverlay({
         <span className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>
           {phaseLabel}
         </span>
+        {/* B-VOICE-08: a door outside the panel can start this sheet in one
+            tap, before the composer's honesty line was ever on screen, so the
+            voice surface names itself (the approved Talk identity, EN + HE). */}
+        <span data-testid="voice-ai-identity" className="text-[11px] font-semibold" style={{ color: "var(--arbor-muted)" }}>
+          · {t("elev.aihonesty.coachStatus")}
+        </span>
         <button
           type="button"
           onClick={requestClose}

@@ -15,11 +15,13 @@ import { scrubMemoryProposals, toParentWords } from "../../server/parentWordsScr
 // GP-01: the months-precise age label.
 import { formatChildAge } from "../../lib/age/format";
 import { fmtDay } from "../../lib/formatDate";
-import { useHashQuery } from "../../hooks/useHashQuery";
+import { useHashQuery, useHashRouteKey } from "../../hooks/useHashQuery";
 // v3 F-CHILD-3 — the eight areas and the ONE guided conversation.
 import { asAspectId, buildAspects, toldSummary, type AspectId } from "../../lib/aboutAspects";
 import AspectCard from "../about/AspectCard";
-import AboutMemoryCard from "../about/AboutMemoryCard";
+import AboutMemoryCard, { aboutAskedPendingIds } from "../about/AboutMemoryCard";
+import AboutLastVisit from "../about/AboutLastVisit";
+import { LEDGER_ID, useLedgerArrival } from "../about/useLedgerArrival";
 import TellArborMore from "../describe/TellArborMore";
 import "../about/about.css";
 
@@ -47,6 +49,10 @@ import "../about/about.css";
  * journal door in Moments, Care in More), so the memory card is the page's
  * one door to #/memory at every width.
  */
+/** B-CAREPRO-38 — the full ledger ("Everything Arbor remembers"), loaded when
+ *  the parent opens it (or arrives on a retired #/memory link). */
+const ChildMemoryLedger = React.lazy(() => import("./ChildMemory"));
+
 /** The route's ONE primary move (B-SHELL-26): capture-moment, now on "Tell
  *  Arbor by voice" — telling Arbor one thing, rendered once in every state. */
 const CAPTURE_MOVE = { "data-primary-move": "capture-moment" } as const;
@@ -59,7 +65,7 @@ type SheetOpen = { aspect: AspectId | null; mode: SheetMode };
 const dayOf = (value: string): string => (/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value);
 
 export default function ChildProfile() {
-  const { childProfile, approvedMemoryItems, pendingMemoryItems } = useArbor();
+  const { childProfile, approvedMemoryItems, pendingMemoryItems, activeTab } = useArbor();
   const { t, uiLang } = useLanguage();
   // B-SHELL-27: ONE resolver (hero render → photo → initial) — the same face
   // the sidebar and the switcher show; "Create hero" only when there is none.
@@ -72,7 +78,15 @@ export default function ChildProfile() {
   // The query wins: `?aspect=lang` opens the conversation on that area. A tap
   // (or closing) is remembered against the query it was made under, so a new
   // `?aspect=` reopens and the same one does not reopen after Close.
-  const queryAspect = asAspectId(useHashQuery().get("aspect"));
+  const hashQuery = useHashQuery();
+  const queryAspect = asAspectId(hashQuery.get("aspect"));
+  // B-CAREPRO-38: #/memory and #/child-memory retired into this page (one home
+  // for approve, correct and forget). Arriving on one — a typed or shared link,
+  // or an in-app door that still names "memory" — opens the ledger in place.
+  const routeKey = useHashRouteKey();
+  const ledgerAsked = activeTab === "memory" || routeKey === "memory" || routeKey === "child-memory";
+  // Once per arrival (the query VALUE, never the per-render URLSearchParams); then the toggle owns it.
+  const [ledgerOpen, toggleLedger] = useLedgerArrival(ledgerAsked, hashQuery.get("section"));
   const [tap, setTap] = useState<{ from: AspectId | null; open: SheetOpen | null } | null>(null);
   const sheet: SheetOpen | null = tap && tap.from === queryAspect
     ? tap.open
@@ -89,6 +103,8 @@ export default function ChildProfile() {
     words: toParentWords,
   }), [childProfile, approvedMemoryItems, pendingMemoryItems]);
   const { told, dated } = toldSummary(aspects);
+  // B-CAREPRO-38: the proposals this page already asks about (areas + the card) — the ledger leaves them out.
+  const askedHere = useMemo(() => aboutAskedPendingIds(pendingMemoryItems, aspects), [pendingMemoryItems, aspects]);
   const toldLine = told === 0
     ? t("companion.about.toldNone")
     : told === 1
@@ -141,7 +157,16 @@ export default function ChildProfile() {
           approved facts, the door to the ledger), then the eight areas. One
           module: the card belongs to what Arbor knows. */}
       <section data-module="about-aspects" aria-labelledby="about-aspects-title" className="flex flex-col gap-3">
-        <AboutMemoryCard areas={aspects} />
+        <AboutMemoryCard areas={aspects} ledgerOpen={ledgerOpen} onLedger={toggleLedger} />
+        {/* B-CAREPRO-37: the newest after-visit note, its own line under the card. */}
+        <AboutLastVisit />
+        {ledgerOpen && (
+          <div id={LEDGER_ID} data-testid="about-memory-ledger" className="about-memory-ledger" style={{ scrollMarginBlockStart: "calc(var(--sticky-offset, 0px) + 12px)" }}>
+            <React.Suspense fallback={<p role="status" className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("aria.loading")}</p>}>
+              <ChildMemoryLedger hidePendingIds={askedHere} />
+            </React.Suspense>
+          </div>
+        )}
         <div className="about-aspects-head">
           <p className="about-kicker">{t("companion.about.aspectsKicker")}</p>
           <h2 id="about-aspects-title">{t("companion.about.aspectsTitle")}</h2>

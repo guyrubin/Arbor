@@ -35,11 +35,11 @@ import type { ExplainAnswer } from "../lib/explainAnswer";
 import { track } from "../lib/analytics";
 import { isKidModeActive } from "../lib/kidModeGate";
 import { runInstrumented } from "../hooks/useAsyncAction";
-import { trackFirstPlan, trackInviteActivated, trackPlayCompleted } from "../lib/loopEvents";
+import { trackFirstPlan, trackPlayCompleted } from "../lib/loopEvents";
 import { trackCaptureStarted, trackCaptureSaved, trackPlanGenerated } from "../lib/kpiEvents";
 import { todayOutcomeProps, type TodayOutcomeVia } from "../lib/loopEvents";
 import { notePlanCreatedFromAnswer } from "../lib/captureProposals";
-import { consumeReferralCode } from "../lib/attribution";
+import { activateCapturedReferral } from "../lib/referralActivation";
 import { refreshEntitlement } from "../hooks/useEntitlement";
 import { takeCoachSeed } from "../lib/onboardingJourney";
 import { matchLearnCards, type SavedLearnItem } from "../learn/learnLibrary";
@@ -2134,34 +2134,10 @@ function useArborState() {
   };
 }
 
-const LS_REFERRAL_ACTIVATED = "arbor.referralActivated";
-
-/**
- * mk-p0-2 referral loop (referred side). Fired alongside the family's first
- * generated plan: if a referral code was captured first-touch and we haven't
- * redeemed yet on this device, POST it once. On a real grant we announce the
- * activation event and refresh the entitlement so the Plan badge flips to Plus.
- * Best-effort and fully guarded — never blocks plan creation.
- */
+/** mk-p0-2 referral loop (referred side): lib/referralActivation; a real
+ *  activation refreshes the entitlement so the Plan badge flips to Plus. */
 async function maybeActivateReferral(): Promise<void> {
-  const code = consumeReferralCode();
-  if (!code) return;
-  try {
-    if (localStorage.getItem(LS_REFERRAL_ACTIVATED)) return;
-    localStorage.setItem(LS_REFERRAL_ACTIVATED, new Date().toISOString());
-  } catch {
-    /* storage blocked — proceed (server still dedupes per uid) */
-  }
-  try {
-    const result = await api.referralActivate(code);
-    if (result.ok && result.status === "granted") {
-      trackInviteActivated("referred");
-      void refreshEntitlement();
-    }
-  } catch {
-    // Roll back the device guard so a transient failure can retry next time.
-    try { localStorage.removeItem(LS_REFERRAL_ACTIVATED); } catch { /* ignore */ }
-  }
+  await activateCapturedReferral({ activate: api.referralActivate, onActivated: () => { void refreshEntitlement(); } });
 }
 
 type ArborContextValue = ReturnType<typeof useArborState>;

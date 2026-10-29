@@ -115,6 +115,8 @@ const KIND_MS: Record<SignalKind, string> = {
   action: "task_alt",
   // B-AI-04 — a suggestion line the parent kept.
   kept: "bookmark_added",
+  // B-CAREPRO-37 — the parent's note after a visit.
+  visit: "event_available",
 };
 
 function JournalRow({
@@ -165,7 +167,9 @@ function JournalRow({
   // rows keep theirs, in sentence case.
   // P1-NEXTLEVEL critic r2: a kept memory fact is the parent's too — the fact
   // leads in the serif, captioned "Kept · time" (no machine title, no chip).
-  const parentLead = prov === "manual" && (signal.kind === "moment" || signal.kind === "memory") && !!detail.trim();
+  // B-CAREPRO-37: an after-visit note is the parent's words too — it leads,
+  // captioned "Visit · {profession} · {day}".
+  const parentLead = prov === "manual" && (signal.kind === "moment" || signal.kind === "memory" || signal.kind === "visit") && !!detail.trim();
   // P1-NEXTLEVEL critic r2: an Arbor row (prov auto) never leads the day at
   // full weight — t-sm secondary ink, no 40 px disc, no chip, "Arbor" a word
   // in the caption.

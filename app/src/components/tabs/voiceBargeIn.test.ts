@@ -109,12 +109,15 @@ describe("AI-V7 — the overlay is a surface, never an entry point", () => {
 
   it("captions carry the parent's interim words + the screened live answer only", () => {
     expect(overlay).toContain("interimText={voiceInterim}");
-    expect(overlay).toContain("answerText={liveVoiceText}");
+    // B-VOICE-02: or, while a card's words play before the microphone opens,
+    // those authored words (never model output, never the parent's turn).
+    expect(overlay).toContain("answerText={liveVoiceText || openingCaption}");
   });
 
   it("orb tap can only barge in on the fallback loop; X is stopVoice; nothing starts voice", () => {
     expect(overlay).toContain("canInterrupt={voicePhase === \"speaking\" && !liveSession}");
-    expect(overlay).toMatch(/onOrbTap=\{\(\) => \{ if \(voicePhase === "speaking" && !liveCtlRef\.current && voiceOnRef\.current\) bargeInVoice\(\); \}\}/);
+    // B-VOICE-02: a tap during a card's words skips them (the talk then starts); otherwise the barge-in rule is unchanged.
+    expect(overlay).toMatch(/onOrbTap=\{\(\) => \{ if \(openingRunRef\.current\?\.skip\(\)\) return; if \(voicePhase === "speaking" && !liveCtlRef\.current && voiceOnRef\.current\) bargeInVoice\(\); \}\}/);
     expect(overlay).toContain("onClose={stopVoice}");
     expect(overlay).not.toContain("toggleVoice");
     expect(overlay).not.toContain("startBrowserVoice");

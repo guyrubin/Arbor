@@ -478,6 +478,13 @@ export const companionEn = {
   "companion.about.memory.note": "Nothing is remembered without your approval. Edit or delete any fact, any time.",
   "companion.about.memory.open": "Everything Arbor remembers",
   "companion.about.memory.loadFailed": "What Arbor remembers didn't load. Open it to try again.",
+  // B-CAREPRO-37 — the after-visit note on the record: a Journal row and the
+  // newest one on About (the parent's words; the profession names the visit).
+  "companion.visit.title": "Visit · {profession}",
+  "companion.visit.kind": "Visit",
+  "companion.visit.filter": "Visits",
+  "companion.about.visit.title": "Last visit · {profession} · {date}",
+  "companion.about.visit.open": "All visits",
   // v3 F-CHILD-4 (MOB-02) — My child on a phone: the area tiles' line and the
   // doors under a pill (each door's title is the place's own name, as the
   // mock's phone grid: icon and title, never a count).
@@ -553,6 +560,8 @@ export const companionEn = {
   // Words only: never a count, dot or badge.
   "companion.input.foot": "Arbor is an AI companion, not a doctor. Files are analysed only when sent.",
   "companion.launcher.label": "Ask Arbor — text, photo or voice",
+  // B-VOICE-08: Now's one-tap voice door (its visible words are companion.input.talk).
+  "companion.launcher.voice-aria": "Talk it through by voice",
   "companion.panel.history": "History",
   "companion.panel.new.sub": "Keeps the question; starts a fresh thread",
   "companion.panel.history.sub": "Earlier conversations",
@@ -1049,6 +1058,13 @@ export const companionHe = {
   "companion.about.memory.note": "שום דבר לא נזכר בלי האישור שלכם. אפשר לערוך או למחוק כל עובדה, תמיד.",
   "companion.about.memory.open": "כל מה שארבור זוכרת",
   "companion.about.memory.loadFailed": "מה שארבור זוכרת לא נטען. אפשר לפתוח ולנסות שוב.",
+  // B-CAREPRO-37 — the after-visit note on the record: a Journal row and the
+  // newest one on About (the parent's words; the profession names the visit).
+  "companion.visit.title": "ביקור · {profession}",
+  "companion.visit.kind": "ביקור",
+  "companion.visit.filter": "ביקורים",
+  "companion.about.visit.title": "הביקור האחרון · {profession} · {date}",
+  "companion.about.visit.open": "כל הביקורים",
   // v3 F-CHILD-4 (MOB-02) — My child on a phone: the area tiles' line and the
   // doors under a pill (each door's title is the place's own name, as the
   // mock's phone grid: icon and title, never a count).
@@ -1120,6 +1136,7 @@ export const companionHe = {
   // F-TALK-1: Talk is a panel over the place (see the English block).
   "companion.input.foot": "ארבור הוא מלווה בינה מלאכותית, לא רופא. קבצים מנותחים רק בשליחה.",
   "companion.launcher.label": "שואלים את ארבור — טקסט, תמונה או קול",
+  "companion.launcher.voice-aria": "לדבר על זה בקול",
   "companion.panel.history": "היסטוריה",
   "companion.panel.new.sub": "השאלה נשארת; שיחה חדשה מתחילה",
   "companion.panel.history.sub": "שיחות קודמות",
