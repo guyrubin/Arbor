@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
+import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 import { Avatar } from "../ui/Avatar";
 import AddChildModal from "../profile/AddChildModal";
 // B-INF-10: the ONE child-age formatter (months under 3, years from 3).
@@ -181,6 +182,11 @@ export function ChildIdentity({ child, t }: { child: ChildProfile; t: (key: stri
 export default function TopbarKidSwitcher({ maxWidth = "180px", fullWidth = false, shrink = false }: { maxWidth?: string; fullWidth?: boolean; /** In a flex row (the phone strip): take the natural width, shrink when the row is full — no fixed cap (c2 r1). */ shrink?: boolean } = {}) {
   const { profiles, activeChild, setActiveChild } = useProfile();
   const { t } = useLanguage();
+  // B-SHELL-42: when the profile knows the child's gender the strip names the child in it —
+  // never "ילד/ה פעיל/ה" (Law 8, lib/hebrewSlashGender). An unknown gender keeps the inclusive
+  // slash; English has no pairs, so it is unchanged.
+  const knownGender = activeChild.gender === "boy" || activeChild.gender === "girl";
+  const childT = (key: string, vars?: Record<string, string>) => (knownGender ? resolveHebrewSlash(t(key, vars), activeChild.gender) : t(key, vars));
   const [open, setOpen] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -218,7 +224,7 @@ export default function TopbarKidSwitcher({ maxWidth = "180px", fullWidth = fals
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={t("aria.activeChildSwitch", { name: activeChild.name })}
+        aria-label={childT("aria.activeChildSwitch", { name: activeChild.name })}
         style={{
           display: fullWidth ? "flex" : "inline-flex",
           width: fullWidth ? "100%" : undefined,
@@ -264,7 +270,7 @@ export default function TopbarKidSwitcher({ maxWidth = "180px", fullWidth = fals
           />
           <div
             role="listbox"
-            aria-label={t("aria.switchChild")}
+            aria-label={childT("aria.switchChild")}
             style={{
               position: "absolute",
               top: "calc(100% + 8px)",
