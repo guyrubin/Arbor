@@ -55,7 +55,8 @@ const FILES = sourceFiles(SRC).map((f) => ({ rel: path.relative(SRC, f).split(pa
 /* ── 1 · the server's screened 409 routes ──────────────────────────────── */
 
 const SERVER_FILE = /^(routes|server)\//;
-const ROUTE_START = /router\.(?:get|post|put|patch|delete)\(\s*"([^"]+)"/g;
+/** A route registration; its path in double quotes, single quotes or a template literal (wave 4). */
+const ROUTE_START = /router\.(?:get|post|put|patch|delete)\(\s*(["'`])([^"'`]+)\1/g;
 const SCREEN_CALL = /\bscreenForImmediateEscalation\(/g;
 /** A 409 answer, direct or through a local `refuse(res, 409, …)`-style helper. */
 const ANSWERS_409 = /\.status\(\s*409\s*\)|\b\w+\(\s*res\s*,\s*409\b/;
@@ -68,8 +69,8 @@ function serverRoutes(files: { rel: string; src: string }[]): Map<string, { scre
     const starts = [...src.matchAll(ROUTE_START)];
     starts.forEach((m, i) => {
       const body = src.slice(m.index!, starts[i + 1]?.index ?? src.length);
-      const prev = out.get(m[1]) ?? { screens: false, answers409: false };
-      out.set(m[1], {
+      const prev = out.get(m[2]) ?? { screens: false, answers409: false };
+      out.set(m[2], {
         screens: prev.screens || body.includes("screenForImmediateEscalation("),
         answers409: prev.answers409 || ANSWERS_409.test(body),
       });
@@ -192,17 +193,23 @@ const IN_BAND = ["/chat", "/council", "/voice", "/live/turn"] as const;
 const SERVER_SIDE = /^(server|routes|ai|eval|memory|sharing|families|services|safety|knowledge|config|contracts|actionLoop|consult|schoolBrief|growth|learn|playbank|practice|types)\//;
 const isClient = (rel: string) => !(SERVER_SIDE.test(rel) && !rel.startsWith("practice/") && !rel.startsWith("consult/"));
 
-/** call token → the client files that use it (lib/api.ts defines the methods). */
+/** call token → the client files that use it (lib/api.ts defines the methods).
+ *  A path token ("/api/x") is found in double quotes, single quotes or a
+ *  template literal (wave 4). */
 function callSites(files: { rel: string; src: string }[], token: string): string[] {
   const re = token.startsWith('"')
     ? null
     : new RegExp(`\\b${token.replace(".", "\\s*\\.\\s*")}\\b`);
+  const path = token.slice(1, -1);
   return files
     .filter(({ rel }) => isClient(rel) && rel !== "lib/api.ts" && rel !== "lib/aiEntrySurfaces.ts")
-    .filter(({ src }) => (re ? re.test(src) : src.includes(token) || src.includes(`\`${token.slice(1, -1)}`)))
+    .filter(({ src }) => (re ? re.test(src) : src.includes(token) || src.includes(`'${path}'`) || src.includes(`\`${path}`)))
     .map(({ rel }) => rel)
     .sort();
 }
+/** Whether lib/api.ts's `method` posts to `route` (any of the three quotes). */
+const apiMethodPosts = (api: string, method: string, route: string) =>
+  new RegExp(`\\b${method}: \\([\\s\\S]{0,900}?["'\`]/api${route.replace(/\//g, "\\/")}["'\`]`).test(api);
 
 /** The UrgentSupport element that follows `condition` in `src`, or null. */
 function cardAfter(src: string, condition: string): string | null {
@@ -244,6 +251,16 @@ describe("1 · the server's screened 409 routes are exactly the registered ones"
     expect("/new-thing" in SCREENED_409).toBe(false);
   });
 
+  it("probe: a screened route registered in single quotes or a template literal is found (the double-quoted read was the only one)", () => {
+    const single = [...FILES, { rel: "routes/singleQuoted.ts", src: "router.post('/single-quoted', (req, res) => { if (screenForImmediateEscalation({ note })) { res.status(409).json({}); return; } });" }];
+    expect(screened409(single)).toContain("/single-quoted");
+    const template = [...FILES, { rel: "server/templated.ts", src: "router.post(`/templated`, (req, res) => { if (screenForImmediateEscalation({ note })) { return refuse(res, 409, 'crisis', 'x'); } });" }];
+    expect(screened409(template)).toContain("/templated");
+    // Mixed quotes never close a path.
+    const mixed = [...FILES, { rel: "server/mixed.ts", src: "router.post(\"/mixed', (req, res) => { if (screenForImmediateEscalation({ note })) { res.status(409).json({}); } });" }];
+    expect(screened409(mixed)).not.toContain("/mixed");
+  });
+
   it("probe: a screened route answering through refuse(res, 409, …) is found, and one that never answers 409 is still classified", () => {
     const viaRefuse = [...FILES, { rel: "server/newBook.ts", src: 'const refuse = (res, status, code, error) => res.status(status).json({ error, code });\nexport function mount(router) {\n  router.post("/new-book", (req, res) => {\n    const match = screenForImmediateEscalation({ note: req.body.note });\n    if (match) return refuse(res, 409, "crisis", "Professional support recommended");\n  });\n}' }];
     expect(screened409(viaRefuse)).toContain("/new-book");
@@ -261,8 +278,7 @@ describe("2 · every client call site of a screened route is registered", () => 
     const api = read("lib/api.ts");
     for (const [route, { calls }] of Object.entries(SCREENED_409)) {
       for (const call of calls.filter((c) => c.startsWith("api."))) {
-        const method = call.slice(4);
-        expect(api, `${call} → ${route}`).toMatch(new RegExp(`\\b${method}: \\([\\s\\S]{0,900}?"/api${route.replace(/\//g, "\\/")}"`));
+        expect(apiMethodPosts(api, call.slice(4), route), `${call} → ${route}`).toBe(true);
       }
     }
   });
@@ -280,6 +296,18 @@ describe("2 · every client call site of a screened route is registered", () => 
       const hits = callSites(FILES, `"/api${route}"`);
       expect(hits, route).toEqual(direct.length ? Object.keys(SCREENED_409[route].sites).sort() : []);
     }
+  });
+
+  it("probe: a direct call in single quotes or a template literal is found, and an api method in either quote posts", () => {
+    const single = [...FILES, { rel: "components/new/SingleQuoted.tsx", src: "await fetch('/api/extract-log', { method: 'POST' });" }];
+    expect(callSites(single, '"/api/extract-log"')).toContain("components/new/SingleQuoted.tsx");
+    const template = [...FILES, { rel: "components/new/Templated.tsx", src: "await fetch(`/api/extract-log`, { method: 'POST' });" }];
+    expect(callSites(template, '"/api/extract-log"')).toContain("components/new/Templated.tsx");
+    expect(apiMethodPosts("extractLog: (body) => post('/api/extract-log', body),", "extractLog", "/extract-log")).toBe(true);
+    expect(apiMethodPosts("extractLog: (body) => post(`/api/extract-log`, body),", "extractLog", "/extract-log")).toBe(true);
+    expect(apiMethodPosts('extractLog: (body) => post("/api/extract-log", body),', "extractLog", "/extract-log")).toBe(true);
+    // Negative control: another route never matches.
+    expect(apiMethodPosts("extractLog: (body) => post('/api/extract-logs', body),", "extractLog", "/extract-log")).toBe(false);
   });
 
   it("negative control: a new call site is found", () => {
