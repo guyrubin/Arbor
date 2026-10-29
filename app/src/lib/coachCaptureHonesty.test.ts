@@ -109,9 +109,12 @@ describe("COACH-8 — Behaviors capture is an honest launcher (critic r2)", () =
     expect(code).toContain("onHardMoment={guideLead.any ? () => openHardMomentNow() : undefined}");
     expect(code).not.toContain('id="behaviors-capture-text"');
     expect(code).not.toMatch(/onChange=\{\(e\) => \{ setBarText\(e\.target\.value\); openFromBar/);
-    // NEGATIVE CONTROL: the shipped r1 shape is recognised as the trap.
-    const r1 = `onChange={(e) => { setBarText(e.target.value); openFromBar(e.target.value); }}`;
-    expect(/onChange=\{\(e\) => \{ setBarText\(e\.target\.value\); openFromBar/.test(r1)).toBe(true);
+    // NEGATIVE CONTROL (B-INF-13): the shipped r1 trap, put back into the real BehaviorsTab
+    // source, is caught by the same check (not a literal tested against itself).
+    const r1 = `<input onChange={(e) => { setBarText(e.target.value); openFromBar(e.target.value); }} />`;
+    const trapped = code.replace("<QuickCaptureBar", `${r1}\n          <QuickCaptureBar`);
+    expect(trapped).not.toBe(code);
+    expect(trapped).toMatch(/onChange=\{\(e\) => \{ setBarText\(e\.target\.value\); openFromBar/);
   });
 
   it("the shared sheet owns the immediately editable input without a hub focus jump", () => {
@@ -131,8 +134,10 @@ describe("COACH-8 — Behaviors capture is an honest launcher (critic r2)", () =
     const submit = /const submit = [\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
     expect(submit).toContain("setReviewing(true)");
     expect(submit).not.toContain("handleAddLog");
-    // Negative control: the retired second writer is detected, not ignored.
-    expect('const submitLog = (e) => handleAddLog(e);').toMatch(/handleAddLog\(/);
+    // NEGATIVE CONTROL (B-INF-13): a second writer added to the real sheet source is counted.
+    const second = modal.replace(submit, `${submit}\n  const submitLog = (e) => handleAddLog(e, { callerShowsFailure: true, ...contentProvenance });`);
+    expect(second).not.toBe(modal);
+    expect(count(second, "handleAddLog(e, { callerShowsFailure: true, ...contentProvenance })")).toBe(2);
   });
 });
 
