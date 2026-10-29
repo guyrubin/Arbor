@@ -24,6 +24,8 @@ import { createBillingWebhookRouter } from "./billing.js";
 import { apiFailureObserver, createOpsAlertsFromConfig } from "./opsAlerts.js";
 import { createAdminMetricsStore } from "./adminMetrics.js";
 import { initUsageRollup } from "./usageRollup.js";
+import { initStudioCostLedger } from "./studioCostLedger.js";
+import { withStudioPlanPlates } from "./studioPlanPlates.js";
 import { createConsultStore } from "./consultRequests.js";
 import { createWaitlistNotifierFromEnv, createWaitlistStore } from "./waitlist.js";
 import { createPushTokenStore } from "./pushTokens.js";
@@ -31,6 +33,8 @@ import { requestObservability, logger } from "./logger.js";
 import { requestContextMiddleware, bindUidToContext } from "./requestContext.js";
 import { createDemoFamilyRouter } from "./demoFamilyRoute.js";
 import { healthzHandler } from "./healthz.js";
+// B-PROG-12: the program pilot admin read-out router.
+import { createProgramPilotRouter } from "./programPilotRoute.js";
 
 /**
  * SEC-2: tightened Content-Security-Policy (was disabled). Allows exactly what
@@ -107,7 +111,7 @@ export const createApp = (config: ArborConfig) => {
   // ERR_ERL_UNEXPECTED_X_FORWARDED_FOR and rate-limits everyone as one IP.)
   app.set("trust proxy", 1);
   const framework = loadFramework();
-  const modelProvider = createModelProvider(config);
+  const modelProvider = withStudioPlanPlates(createModelProvider(config)); // B-KID-150: a plan-plate paint is studio spend
   // COACH-3 + AIR-8: register the config's real AI adapters at boot (duplicate
   // or malformed registrations throw here, not mid-request). The registry is
   // handed to the API router — /api/tts dispatches synthesis through it.
@@ -141,6 +145,8 @@ export const createApp = (config: ArborConfig) => {
   // ADM-1 / COST-3: founder metrics read-side + the daily token-usage rollup writer.
   const adminMetrics = createAdminMetricsStore(config);
   initUsageRollup(config);
+  // B-KID-150: studio production spend per shared asset, apart from the family meter.
+  initStudioCostLedger(config);
 
   // B-AIOPS-03: the one content-free incident sink (structured log always;
   // OPS_ALERT_WEBHOOK_URL when set), addressed to OPS_ALERT_OWNER.
@@ -195,6 +201,8 @@ export const createApp = (config: ArborConfig) => {
   app.use("/api", createAuthMiddleware(config));
   // COST-2: now that auth has resolved, stamp the uid onto the active usage context.
   app.use("/api", bindUidToContext);
+  // B-PROG-12: the program pilot's admin read-out (its own router; admin gate inside, counts only).
+  app.use("/api", createProgramPilotRouter({ config }));
   // A1/A2 (CIL-bugs-imagegen-quota-missing): per-user hourly cap on EVERY
   // route that calls a paid model or mints a paid token. The original allow-list
   // was missing /voice, /extract-log, /generate-adventure, /generate-hero-journey,

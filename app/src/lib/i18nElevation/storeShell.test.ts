@@ -3,8 +3,9 @@
  *
  *  1. EN/HE key parity, elev.storeshell.* namespace, registered in index.ts.
  *  2. Honesty: no shipped key may promise "we'll email / notify / let you know"
- *     unless the request is actually persisted (api.requestAccess →
- *     auth.accessReceived). The two pre-launch promises still in the base
+ *     unless the request is actually persisted (the one such key,
+ *     auth.accessReceived, left with invite-only in B-RESID-05, so the
+ *     allow-list is empty). The two pre-launch promises still in the base
  *     dictionary (set.plan.checkoutSoon, ac.notify*) are dead copy owned by
  *     lane T: they must have ZERO references in shipped source until deleted.
  */
@@ -46,8 +47,9 @@ describe("storeShell module contract", () => {
 const PROMISE_EN = /\bwe['’]ll (email|notify|let you know|tell you|be in touch|follow up)\b|\bnotify you\b|\bemail you\b|\btell me when\b/i;
 const PROMISE_HE = /נעדכן אתכם|נודיע לכם|נשלח לכם|עדכנו אותי/;
 
-/** Keys allowed to promise: the request IS persisted (api.requestAccess). */
-const PERSISTED_PROMISES = new Set(["auth.accessReceived"]);
+/** Keys allowed to promise: the request IS persisted. Empty since B-RESID-05
+ *  removed the access request (auth.accessReceived); shrink-only. */
+const PERSISTED_PROMISES = new Set<string>([]);
 
 /** Dead pre-launch copy — lane T owns lib/i18n.ts; until deleted these must be unreferenced. */
 const DEAD_PENDING_LANE_T = new Set<string>([]); // Wave T: the three pre-launch keys were deleted from lib/i18n.ts
@@ -95,7 +97,9 @@ describe("MOB-13 — no shipped key promises an email/notification nobody sends"
     expect(PROMISE_EN.test("Checkout isn't live yet — we'll email you the moment it opens.")).toBe(true);
     expect(PROMISE_EN.test("Tell me when Plus launches")).toBe(true);
     expect(PROMISE_HE.test("תודה! נעדכן אתכם ברגע שתשלום ארבור פלוס יהיה מוכן.")).toBe(true);
-    // …and the allow-listed persisted copy is a promise too (so the allow-list is load-bearing)
-    expect(PROMISE_EN.test(baseEn["auth.accessReceived"])).toBe(true);
+    // …and the retired access-request line (B-RESID-05) was a promise too, so
+    // re-adding it without a persisted request fails the scan above.
+    expect(PROMISE_EN.test("Access request received — we’ll follow up by email.")).toBe(true);
+    expect(baseEn["auth.accessReceived"]).toBeUndefined();
   });
 });

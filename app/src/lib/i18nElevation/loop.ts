@@ -122,6 +122,13 @@ export const en: Record<string, string> = {
   "elev.loop.tonight.notice.title": "One thing to notice",
   "elev.loop.tonight.done": "That's tonight. Sleep well.",
   "elev.loop.tonight.story": "Read tonight's story",
+  // ── B-PROG-03 · Tonight's parent proxy on a program day ─────────────────
+  "elev.loop.tonight.proxy.turns.q": "How many times did you wait for {name} to take a turn?",
+  "elev.loop.tonight.proxy.turns.max": "{n}+",
+  "elev.loop.tonight.proxy.turns.helper": "This counts your waiting, not your child.",
+  "elev.loop.tonight.proxy.routine.q": "How did tonight's bedtime routine go?",
+  "elev.loop.tonight.proxy.routine.done_in_order": "Done in order",
+  "elev.loop.tonight.proxy.routine.not_tonight": "Not tonight",
   // ── B-LOOP-10 · Things {name} said (#/memory) ──────────────────────────
   "elev.loop.said.title": "Things {name} said",
   "elev.loop.said.empty": "Words you keep from tonight's question land here.",
@@ -267,6 +274,13 @@ export const he: Record<string, string> = {
   "elev.loop.tonight.notice.title": "דבר אחד לשים לב אליו",
   "elev.loop.tonight.done": "זה הכול להערב. לילה טוב.",
   "elev.loop.tonight.story": "לקרוא את סיפור הערב",
+  // ── B-PROG-03 · Tonight's parent proxy on a program day ─────────────────
+  "elev.loop.tonight.proxy.turns.q": "כמה פעמים חיכיתם ו{name} לקח/ה תור?",
+  "elev.loop.tonight.proxy.turns.max": "{n}+",
+  "elev.loop.tonight.proxy.turns.helper": "זו ספירה של ההמתנה שלכם, לא של הילד/ה.",
+  "elev.loop.tonight.proxy.routine.q": "איך הלך טקס השינה הערב?",
+  "elev.loop.tonight.proxy.routine.done_in_order": "נעשה לפי הסדר",
+  "elev.loop.tonight.proxy.routine.not_tonight": "לא הערב",
   // ── B-LOOP-10 · Things {name} said (#/memory) ──────────────────────────
   "elev.loop.said.title": "דברים ש{name} אמר/ה",
   "elev.loop.said.empty": "מילים שתשמרו בשאלת הערב יגיעו לכאן.",

@@ -18,6 +18,7 @@ import RoutineTemplates from "../plans/RoutineTemplates";
 // v3 FEAT-07: a routine plan runs again every day, on its own board.
 import RoutineRunBoard from "../plans/RoutineRunBoard";
 import { routineIdOfPlan } from "../../lib/routineTemplates";
+import { UrgentSupport } from "../safety/UrgentSupport";
 import { useChildCollection } from "../../hooks/useChildCollection";
 /* B-ASKJB-28: the routines row only counts docs; their shape stays RoutinesCard's. */
 import { lastPlanOutcomes, planDoneSteps, planEcho, suggestedChallenges, todaysPlanStep } from "../../lib/plans";
@@ -50,10 +51,12 @@ export default function PlansTab() {
     acceptTodayAction,
     removeTodayAction,
     recordPlanWeeklyCheck,
+    escalatedSurface,
+    setActiveTab,
   } = useArbor();
   const now = Date.now();
   const todayKey = dayKey(new Date(now));
-  const { t, uiLang } = useLanguage();
+  const { t, uiLang, aiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
   const first = childProfile.name.split(" ")[0];
   // B-ASKJB-28: the routines row's count (the same collection RoutinesCard reads).
@@ -172,6 +175,13 @@ export default function PlansTab() {
           {isPlanGenerating ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("plan.creating")}</>) : (<><Icon name="auto_awesome" size={16} /> {t("plan.createBtn")}</>)}
         </button>
       </div>
+      {/* B-ASKJB-49: the crisis screen answered 409 to this challenge: the
+          shared crisis card (helplines in the request's language), never the
+          server's English error. */}
+      {escalatedSurface === "plans" && (
+        <UrgentSupport testId="plans-urgent-support" requestLang={aiLang} lead={t("elev.safety.paused")} onSafety={() => setActiveTab("safety")}
+          className="mt-3 min-w-0 rounded-xl border border-[var(--arbor-rule-strong)] bg-[var(--arbor-paper-deep)] px-3 py-2 t-sm leading-relaxed text-[var(--arbor-ink)]" />
+      )}
     </div>
   );
 

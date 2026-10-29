@@ -4,7 +4,7 @@ import { Modal } from "../ui/Modal";
 import { Sheet, useCompactSurface } from "../ui/Sheet";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import type { HardMomentCard, HardMomentCategory } from "../../content/hardMomentCards";
+import { renderSayThis, type HardMomentCard, type HardMomentCategory } from "../../content/hardMomentCards";
 import { HARD_MOMENT_CATEGORIES, locText, recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { availableHardMomentCards, matchToRecentBehaviors } from "../../content/selectCards";
 import type { HardMomentContext } from "../../content/pilotRelease";
@@ -21,7 +21,7 @@ import { LastTimeLead, SendWordsButton } from "./HardMomentWords";
 import { PublicGuideShare } from "./PublicGuideShare";
 import { ParentBreathPacer } from "./ParentBreathPacer";
 import { SayThis } from "../ui/AiBlock";
-import { requestCompanionConversation } from "../../lib/companionConversation";
+import { startConversationVoice } from "../../lib/companionConversation";
 import "./hardMomentSheet.css";
 
 /**
@@ -144,7 +144,7 @@ export function HardMomentFirstView({ childName, lang, t, onTalk, onKeep, onSafe
           className={action}
           style={{ background: "var(--arbor-ink)", color: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-ink)" }}
         >
-          <Icon name="forum" size={18} />{t("hm.first.talk")}
+          <Icon name="graphic_eq" size={18} />{t("hm.first.talk")}
         </button>
         <button
           type="button"
@@ -253,7 +253,7 @@ export default function HardMomentNowSheet() {
                 childName={childFirst}
                 lang={locale}
                 t={t}
-                onTalk={() => { setAskHardMomentRef(null); closeHardMomentNow(); requestCompanionConversation({ source: "hard-moment" }); }}
+                onTalk={() => { setAskHardMomentRef(null); closeHardMomentNow(); startConversationVoice({ source: "hard-moment", opening: t("hm.first.say") }); }}
                 onKeep={() => { closeHardMomentNow(); openCaptureSheet({ mode: "text" }); }}
                 onSafety={() => { closeHardMomentNow(); setActiveTab("safety"); }}
               />
@@ -360,12 +360,15 @@ export default function HardMomentNowSheet() {
                   setAskHardMomentRef(card.id);
                   closeHardMomentNow();
                   // F-TALK-1: Talk is a panel over this place, never a page.
-                  requestCompanionConversation({ source: "hard-moment" });
+                  // B-VOICE-02: hands-free from this tap — Arbor says the
+                  // card's words first (text-to-speech, never the prompt),
+                  // then listens; the conversation's own urgent-help rules hold.
+                  startConversationVoice({ source: "hard-moment", opening: locText(renderSayThis(card, childFirst), locale) });
                 }}
                 className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition"
                 style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}
               >
-                <Icon name="forum" size={16} /> {t("hm.now.talk")}
+                <Icon name="graphic_eq" size={16} /> {t("hm.now.talk")}
               </button>
               {/* Law 6: the Learn read the shelf's guide modal offered stays one tap away. */}
               {(() => {
