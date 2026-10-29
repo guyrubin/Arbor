@@ -189,12 +189,10 @@ describe("EVAL-6 — builders keep the byte contract of the old inline templates
 describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.4.1 pin)", () => {
   // 1.5.1 (B-AI-14 coach-core): escalateIf rule sentence + the memory lead (facts present here) — new bytes.
   // 1.5.3 (B-AI-14): facts present here, so the approved-memory block moved to the first block after the contract — new bytes.
-  // 1.10.0 (B-AI-09): the field rules gain the memoryProposals rule + the plain-parent-words clause — new bytes.
-  const COACH_CHAT_BLOCK_FREE_SHA256 = "1e5952e1c6d7dcca43b4da5f5d920f302cc3b84d37132f7294dccf8d049b51d3";
+  const COACH_CHAT_BLOCK_FREE_SHA256 = "3ec52ba919df8d3557a6e33798ca9baac462c6994c2adfaba5c9ac8698a60efe";
   // 1.5.3 parity: WITHOUT facts the bytes are the 1.5.2 bytes (digests taken on 1.5.2 before the change).
-  // (1.10.0 re-pin, B-AI-09: the same static field-rule addition; the no-fact form is still the facts-free layout.)
-  const COACH_CHAT_NO_FACT_SHA256_152 = "de49371acf16cdd03072392edc566e6fff4fa7ad3395fc30785c79eb97c93947";
-  const COACH_CHAT_BLANK_FACT_SHA256_152 = "682b4c8f8ca222eafbbea22b6aadf488406cac285da6e5eb00b4305ad6eaef4b";
+  const COACH_CHAT_NO_FACT_SHA256_152 = "bb85929a284f1c387d4a26036b957e43dca81b01f116b5710aa37f3ea85f25b6";
+  const COACH_CHAT_BLANK_FACT_SHA256_152 = "e19e666ead45e69ebf934b3c7639f518d8f97ce1ce2760f3ef7ea24eae5957f3";
   const sha256 = (text: string) => createHash("sha256").update(text, "utf8").digest("hex");
   const legacyArgs = {
     developmentalFramework: "«framework»",
@@ -223,7 +221,7 @@ describe("Masterplan 1.3 — coach_chat block-free byte-parity (v1.4.1 pin)", ()
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/Return "escalateIf": \[\]/);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/shepherd/);
     expect(COACH_CHAT_GOVERNED_ESCALATION_BLOCK).toMatch(/do not reword it/);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.10.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.9.0");
   });
 
   it("empty recentTurns / null weeklyContext (the sanitizers' degenerate outputs) also keep the block-free bytes", () => {
@@ -504,7 +502,7 @@ describe("coach_chat 1.4.1 — field rules", () => {
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never write that condition's name or any label back/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/In a routine answer no field names self-harm/);
     expect(COACH_CHAT_FIELD_RULES).toMatch(/never low, medium, high/);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.10.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.9.0");
   });
   it("coach_chat 1.5.1: escalateIf thresholds stay on the behaviour the parent described", () => {
     expect(COACH_CHAT_FIELD_RULES).toContain("Thresholds are about the behaviour the parent described and never introduce a danger the parent did not raise.");
@@ -631,7 +629,7 @@ describe("B-PROG-01 — the active-program line", () => {
     // an empty skill or name renders nothing
     expect(buildChatPrompt({ ...chatArgs, activeProgram: { ...program, skill: " " } })).toBe(buildChatPrompt(chatArgs));
     expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.4.0");
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.10.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.9.0");
     expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.10.6");
     expect(PROMPT_VERSIONS.live_session.version).toBe("1.6.0");
   });
@@ -723,7 +721,7 @@ describe("B-LOOP-13 — the journal block and today's practice line", () => {
 
   it("versions: todays_focus 1.4.0 · coach_chat 1.9.0 (B-SHELL-39) · voice_reply 1.10.6 · live_session 1.6.0", () => {
     expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.4.0");
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.10.0");
+    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.9.0");
     expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.10.6");
     expect(PROMPT_VERSIONS.live_session.version).toBe("1.6.0");
   });
@@ -753,38 +751,5 @@ describe("B-LOOP-13 round 2 — voice_reply night answers", () => {
     expect(buildVoiceReplyPrompt({ ...voiceArgs, companionContext: { ...spoken, todayPractice: practice, nightAnswers: [] } }))
       .toBe(buildVoiceReplyPrompt({ ...voiceArgs, companionContext: { ...spoken, todayPractice: practice } }));
     expect(buildLiveSystemInstruction("en", { ...spoken, todayPractice: practice, nightAnswers: answers })).toBe(buildLiveSystemInstruction("en", spoken));
-  });
-});
-
-/* B-AI-09 — coach_chat 1.10.0: the /chat memory proposals carry the
-   plain-parent-words clause BEFORE the scrub (the scrub stays the floor).
-   The clinical-wording live scenario (EN + HE) is the live suite's — Guy's half. */
-describe("B-AI-09 — memoryProposals in plain parent words (coach_chat 1.10.0)", () => {
-  const args = {
-    developmentalFramework: "F", approvedMemory: "", knowledgeContext: "", childProfile: null,
-    scholar: { name: "s", concept: "c", method: "m", defaultFrame: "f" }, message: "he has tantrums every night", languageDirective: "",
-  };
-  it("the /chat field rules carry the memoryProposals rule and the ONE plain-parent-words clause, once", async () => {
-    const { PLAIN_PARENT_WORDS_CLAUSE } = await import("../server/parentWordsScrub.js");
-    const prompt = buildChatPrompt(args);
-    expect(COACH_CHAT_FIELD_RULES).toContain("- memoryProposals[].fact: only a fact the parent stated about this child, written in plain parent words");
-    expect(COACH_CHAT_FIELD_RULES).toContain("A clinical or diagnostic word the parent used is never copied into a fact");
-    expect(COACH_CHAT_FIELD_RULES.endsWith(PLAIN_PARENT_WORDS_CLAUSE)).toBe(true);
-    expect(prompt.split(PLAIN_PARENT_WORDS_CLAUSE).length).toBe(2);
-    expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.10.0");
-    expect(promptFingerprint("coach_chat")).toBe(PROMPT_VERSIONS.coach_chat.sha256);
-  });
-
-  it("the scrub stays the floor on the route, and the clause still rides /analyze-behavior", async () => {
-    const { readFileSync } = await import("node:fs");
-    const api = readFileSync(new URL("../routes/api.ts", import.meta.url), "utf8");
-    expect(api).toContain("scrubMemoryProposals(structured.memoryProposals)");
-    expect(api).toContain("${PLAIN_PARENT_WORDS_CLAUSE}");
-  });
-
-  it("NEGATIVE CONTROL: the 1.9.0 field rules said nothing about memoryProposals", () => {
-    const pre = COACH_CHAT_FIELD_RULES.slice(0, COACH_CHAT_FIELD_RULES.indexOf("\n- memoryProposals"));
-    expect(pre).not.toMatch(/memoryProposals|PLAIN PARENT WORDS/);
-    expect(pre.endsWith("never low, medium, high, a score or a percentage.")).toBe(true);
   });
 });
