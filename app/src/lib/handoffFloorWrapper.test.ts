@@ -1,0 +1,225 @@
+/**
+ * B-ASKJB-44 round 11 — the handoff floor as a monotonic wrapper over main's
+ * floor (lib/clinicalScan `withoutHandoffFindings`). Each rule's test carries
+ * its negative control: what main returns for the same note today.
+ * The property over every corpus is handoffFloor.monotonic.test.ts.
+ */
+import { describe, expect, it } from "vitest";
+import { scrubHandoffBriefFindings, withoutHandoffFindings } from "./clinicalScan";
+import { explainHandoffFloor, findEscalationCommands, handoffFloor, scrubHandoffBrief } from "./handoffFloorWrapper";
+
+const HARD_MOMENT_EN = "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug";
+const HARD_MOMENT_HE = "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק";
+const ASK_EN = "We have a few minutes together after dinner. What can we do? He loves drawing.";
+const ASK_HE = "יש לנו כמה דקות יחד אחרי ארוחת הערב. מה אפשר לעשות?";
+
+describe("rule (a) — an escalation line main dropped comes back with its condition (EN + HE)", () => {
+  it.each([
+    // the live wave-1 regression: an escalation inside a condition clause, dropped from the School Brief
+    ["When he shows no signs of calming after 20 minutes, call the family.", HARD_MOMENT_EN],
+    ["If there are no signs of improvement in two weeks, see your pediatrician.", HARD_MOMENT_EN],
+    ["במידה ואין סימנים לשיפור תוך שבועיים, כדאי להתייעץ עם פסיכולוג גן.", HARD_MOMENT_HE],
+    ["Whenever he shows no signs of settling after 20 minutes, call the family.", HARD_MOMENT_EN],
+    ["After 20 minutes with no signs of calming, call the family.", HARD_MOMENT_EN],
+    ["Call the family after 20 minutes without signs of calming.", HARD_MOMENT_EN],
+    ["If he shows no signs of calming after 20 minutes, let the family know right away.", HARD_MOMENT_EN],
+    ["If there are no signs of improvement in a month, consult a child psychologist.", HARD_MOMENT_EN],
+    ["כשאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.", HARD_MOMENT_HE],
+    ["בכל פעם שאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר להורים.", HARD_MOMENT_HE],
+    ["כעבור 20 דקות ללא סימנים של רגיעה, התקשרו להורים.", HARD_MOMENT_HE],
+    ["אם אין סימנים של רגיעה אחרי 20 דקות, יש לעדכן את ההורים.", HARD_MOMENT_HE],
+    ["אחרי שבועיים ללא סימנים לשיפור בשינה, יש לפנות לרופאת הילדים.", HARD_MOMENT_HE],
+  ])("restored verbatim: %s", (line, parentText) => {
+    expect(withoutHandoffFindings(line, { parentText })).not.toBe(line); // main drops or cuts it today
+    expect(handoffFloor(line, { parentText })).toBe(line);
+  });
+
+  it("a cut line comes back whole: a condition split off by ';' or a new line, a title's full stop", () => {
+    for (const line of [
+      "If there are no signs of calming after 20 minutes; call the family.",
+      "If there are no signs of calming after 20 minutes,\ncall the family.",
+      "Call the family; if there are no signs of calming after 20 minutes.",
+      "אם אין סימנים של רגיעה אחרי 20 דקות; יש להתקשר להורים.",
+      "If there are no signs of improvement after two weeks, talk with Dr. Levi.",
+    ]) {
+      expect(withoutHandoffFindings(line)).not.toBe(line);
+      expect(handoffFloor(line)).toBe(line);
+    }
+    expect(withoutHandoffFindings("If there are no signs of improvement after two weeks, talk with Dr. Levi.")).toBe("Levi.");
+  });
+
+  it.each([
+    ["Talk with Dr. Levi, who found no signs of delay when she assessed him.", "Talk with Dr. Levi."],
+    ["When convenient, call the family, since he shows no signs of delay.", "When convenient, call the family."],
+    ["Contact the family once a week, as there is no evidence of attention difficulties.", "Contact the family once a week."],
+    ["Contact the family when he is upset at drop-off, and note there are no signs of attention difficulties.", "Contact the family when he is upset at drop-off."],
+    ["Please contact the family with any questions — he shows no signs of delay when playing with peers.", "Please contact the family with any questions."],
+    ["When tested last month he showed no signs of delay, so contact the family with questions.", "Contact the family with questions."],
+    ["When he cries and there are no signs of calming, call the family, because this is a sign of separation anxiety.", "When he cries and there are no signs of calming, call the family."],
+    ["דברו עם ד\"ר לוי, שאמרה שאין סימנים לעיכוב כשבדקה אותו.", "דברו עם ד\"ר לוי."],
+    ["התקשרו להורים כשהוא נסער בבוקר, ואין סימנים לקשיי קשב.", "התקשרו להורים כשהוא נסער בבוקר."],
+    ["אם יש שינוי, כדאי לעדכן את ההורים, כי אין סימנים לעיכוב בדיבור.", "אם יש שינוי, כדאי לעדכן את ההורים."],
+    ["כשאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר להורים, כי זה סימן לחרדת פרידה.", "כשאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר להורים."],
+  ])("restored without the clause that states a finding: %s", (line, restored) => {
+    expect(withoutHandoffFindings(line, { parentText: HARD_MOMENT_EN })).not.toContain(restored); // main drops or cuts the line
+    expect(handoffFloor(line, { parentText: HARD_MOMENT_EN })).toBe(restored);
+  });
+
+  it("a condition naming a diagnosis the parent never wrote stays out; the command comes back (the parent's own word keeps it)", () => {
+    const line = "After a month with no signs of improvement in his speech delay, contact the family.";
+    expect(handoffFloor(line, { parentText: HARD_MOMENT_EN })).toBe("Contact the family.");
+    expect(handoffFloor("כעבור חודש ללא סימנים לשיפור בעיכוב השפתי שלו, יש לעדכן את ההורים.", { parentText: HARD_MOMENT_HE })).toBe("יש לעדכן את ההורים.");
+    expect(handoffFloor(line, { parentText: "His speech delay is our main worry this month." })).toBe(line);
+  });
+
+  it("no command, nothing restored: narrated lines and plain findings keep main's verdict", () => {
+    for (const [line, parentText] of [
+      ["When he gets to tell his parents about his day he shows no signs of anxiety.", HARD_MOMENT_EN],
+      ["She shows no signs of anxiety at drop-off.", HARD_MOMENT_EN],
+      ["אתמול פנו ההורים לרופאה, שמצאה שאין סימנים לעיכוב.", HARD_MOMENT_HE],
+      ["התקשרו אלינו מהגן כשהוא בכה, ואין סימנים לחרדה בבית.", HARD_MOMENT_HE],
+      ["Whenever the teacher calls him he shows no signs of distress.", HARD_MOMENT_EN],
+    ]) {
+      expect(handoffFloor(line, { parentText })).toBe(withoutHandoffFindings(line, { parentText }));
+    }
+  });
+});
+
+describe("rule (b) — a negated-finding reassurance the parent never said is removed (EN + HE)", () => {
+  it.each([
+    ["Parent reports no evidence of attention or regulation difficulties.", ASK_EN],
+    ["The parents say that he shows no signs of sensory overload.", ASK_EN],
+    ["There is no evidence of attention difficulties, according to the family.", ASK_EN],
+    ["No signs of anxiety at drop-off, according to her teacher.", ASK_EN],
+    ["There is no evidence of attention or regulation difficulties.", "The doctor found no evidence of an ear infection last week. He still cries at drop-off."],
+    ["ההורים מספרים שאין סימנים לקשיי קשב או ויסות.", ASK_HE],
+    ["הגננת סיפרה שאין סימנים לחרדה בפרידה.", ASK_HE],
+    ["אין עדות לקשיי קשב, לדברי ההורים.", ASK_HE],
+    ["הגננת סיפרה שלא נצפו סימנים לחרדה בפרידה.", ASK_HE],
+    ["הרופאה אמרה שלא נמצאו קשיים בדיבור.", ASK_HE],
+    ["אין סימנים לקשיי קשב או ויסות.", "הרופאה אמרה שאין סימנים לדלקת אוזניים. הוא עדיין בוכה בבוקר."],
+  ])("removed: %s", (line, parentText) => {
+    expect(withoutHandoffFindings(line, { parentText })).toBe(line); // main keeps it today
+    const trace = explainHandoffFloor(line, { parentText });
+    expect(trace.output).toBe("");
+    expect(trace.removedReassurances.length).toBeGreaterThan(0);
+    for (const r of trace.removedReassurances) expect(r.absentWords.length).toBeGreaterThan(0);
+  });
+
+  it("the parent said X: the sentence stays exactly as main leaves it (also in other words)", () => {
+    const cases: [string, string][] = [
+      ["My son shows no signs of hearing problems since the ear tubes.", "The ENT says my son shows no signs of hearing problems since the ear tubes."],
+      ["אין עדות לדלקת אוזניים.", "הרופאה אמרה לנו שאין עדות לדלקת אוזניים."],
+      ["No signs of anxiety at drop-off, according to her teacher.", "She isn't anxious at drop-off anymore since the picture chart."],
+      ["אין סימנים לחרדה בכניסה לגן, לדברי הגננת.", "הגננת אמרה שהחרדה בכניסה לגן עברה."],
+    ];
+    for (const [line, parentText] of cases) {
+      expect(withoutHandoffFindings(line, { parentText })).toBe(line);
+      expect(handoffFloor(line, { parentText })).toBe(line);
+    }
+  });
+
+  it("a condition is not a reassurance: kept as main keeps it", () => {
+    for (const line of [
+      "Call the family if he bites, or there are no signs of a speech delay at home.",
+      "Call the family if he is upset and there is no evidence of a speech delay.",
+      "Call the family if he cries for more than 20 minutes, and the bus driver if there are no signs of calming.",
+      "If he shows no signs of calming after 20 minutes, or hurts himself or others, call the parent and the school nurse right away.",
+      "אם אין סימנים של רגיעה אחרי 20 דקות, או שהוא פוגע בעצמו, יש להתקשר מיד להורים.",
+      "יש להתקשר להורים אם הוא בוכה יותר מ-20 דקות, ולאחות אם אין סימנים של רגיעה.",
+      "Mom says that if he shows no signs of calming, she picks him up.",
+    ]) {
+      expect(withoutHandoffFindings(line, { parentText: HARD_MOMENT_EN })).toBe(line);
+      expect(handoffFloor(line, { parentText: HARD_MOMENT_EN })).toBe(line);
+    }
+  });
+
+  it.each([
+    ["Call the family if he bites, but there are no signs of a speech delay at home.", "Call the family if he bites."],
+    ["Call the family if he cries for more than 20 minutes, and the nurse if he hurts himself, though there are no signs of a speech delay.", "Call the family if he cries for more than 20 minutes, and the nurse if he hurts himself."],
+    ["If you are worried, contact the family, as there are no signs of a speech delay at home.", "If you are worried, contact the family."],
+    ["If you have questions, contact Dr. Levi, who found no signs of delay at his last visit.", "If you have questions, contact Dr. Levi."],
+    ["יש להתקשר להורים אם הוא בוכה יותר מ-20 דקות, ולאחות אם הוא פוגע בעצמו, אבל אין סימנים לעיכוב בדיבור.", "יש להתקשר להורים אם הוא בוכה יותר מ-20 דקות, ולאחות אם הוא פוגע בעצמו."],
+    ["יש להתקשר להורים אם הוא בוכה יותר מ-20 דקות, ואין סימנים לעיכוב בדיבור.", "יש להתקשר להורים אם הוא בוכה יותר מ-20 דקות."],
+    ["התקשרו להורים אם הוא נושך, או ספרו לגננת שאין סימנים לעיכוב בדיבור בבית.", "התקשרו להורים אם הוא נושך."],
+  ])("an escalation keeps every command and condition; only the asserted add-on goes: %s", (line, out) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).not.toBe(out); // main keeps the add-on (or cuts the line)
+    expect(handoffFloor(line, { parentText })).toBe(out);
+    for (const command of findEscalationCommands(out)) expect(handoffFloor(line, { parentText })).toContain(command.text);
+  });
+
+  it("a hard moment in the same sentence stays; only the reassurance and its attribution go", () => {
+    const P_EN = "The doctor found no signs of an ear infection. He still cries at drop-off.";
+    const P_HE = "הרופאה אמרה שאין סימנים לדלקת אוזניים. הוא עדיין בוכה בבוקר.";
+    expect(handoffFloor("He bit a friend at preschool, and there are no signs of anxiety at drop-off, according to his teacher.")).toBe("He bit a friend at preschool.");
+    expect(handoffFloor("He bit a friend at preschool and there are no signs of anxiety at drop-off, according to his teacher.")).toBe("He bit a friend at preschool.");
+    expect(handoffFloor("He still cries at drop-off and there are no signs of anxiety.", { parentText: P_EN })).toBe("He still cries at drop-off.");
+    expect(handoffFloor("There are no signs of anxiety but he bit a friend twice.", { parentText: P_EN })).toBe("He bit a friend twice.");
+    expect(handoffFloor("הוא נשך חבר, ואין סימנים לחרדה, לדברי הגננת.")).toBe("הוא נשך חבר.");
+    expect(handoffFloor("הוא נשך חבר ואין סימנים לחרדה.", { parentText: P_HE })).toBe("הוא נשך חבר.");
+    expect(handoffFloor("הוא בוכה בבוקר והגננת אומרת שאין סימנים לחרדה.", { parentText: P_HE })).toBe("הוא בוכה בבוקר.");
+    expect(handoffFloor("Noa enjoys drawing with a parent. No signs of attention difficulties, according to mom. A short warning before cleanup helps."))
+      .toBe("Noa enjoys drawing with a parent. A short warning before cleanup helps.");
+  });
+});
+
+describe("everything else is main's output byte-for-byte", () => {
+  it.each([
+    "The parent reports that Noa cries at drop-off most mornings.",
+    "Mom reports no sleep difficulties since the new routine.",
+    "Shows no hesitation joining group games.",
+    "She did not wait for signs of tiredness before bed.",
+    "He was observed biting Lily at preschool.",
+    "Teachers can check in briefly; there is no evidence of a learning difficulty.",
+    "Call the family if he cries, because this is a sign of separation anxiety.",
+    "Persistent or worsening difficulty that disrupts daily life is a reason to talk with a professional.",
+    "הוא נצפה נושך חבר בגן בזמן ריב על צעצוע.",
+    "נצפתה אינטראקציה חיובית סביב ציור משותף חופשי; מומלץ להמשיך לעודד פעילויות מבוססות קשר וויסות הדדי.",
+    "",
+  ])("%s", (line) => {
+    for (const parentText of ["", HARD_MOMENT_EN, HARD_MOMENT_HE]) {
+      expect(handoffFloor(line, { parentText })).toBe(withoutHandoffFindings(line, { parentText }));
+    }
+  });
+});
+
+describe("escalation commands (EN + HE)", () => {
+  it("finds the command with its recipient; a narrated or past-tense verb is not one", () => {
+    expect(findEscalationCommands("If it persists, talk with your pediatrician.").map((c) => c.text)).toEqual(["talk with your pediatrician"]);
+    expect(findEscalationCommands("Call 112 right away.").map((c) => c.text)).toEqual(["Call 112"]);
+    expect(findEscalationCommands("אם זה נמשך, כדאי להתייעץ עם פסיכולוג גן.").map((c) => c.text)).toEqual(["כדאי להתייעץ", "להתייעץ עם פסיכולוג"]);
+    expect(findEscalationCommands("יש להתקשר מיד.").length).toBe(1);
+    expect(findEscalationCommands("We talked with the pediatrician last week.")).toEqual([]);
+    expect(findEscalationCommands("He gets to tell his parents about his day.")).toEqual([]);
+    expect(findEscalationCommands("אתמול פנו ההורים לרופאה.")).toEqual([]);
+    expect(findEscalationCommands("התקשרו אלינו מהגן.")).toEqual([]);
+  });
+});
+
+describe("scrubHandoffBrief — the wrapper over a School Brief draft", () => {
+  it("the escalation strategy main empties comes back; the crisis line is never touched; an emptied item goes", () => {
+    const draft = () => ({
+      title: "School note",
+      overview: "Noa does best with a warning. There is no evidence of attention difficulties, according to the family.",
+      keyStrengths: ["Curious", "No signs of anxiety at drop-off, according to her teacher."],
+      suggestedTeacherStrategies: ["Give a two-minute warning", "When he shows no signs of calming after 20 minutes, call the family."],
+      crisisEscalationTrigger: "No signs of distress so far; contact the family the same day if that changes.",
+    } as Record<string, unknown>);
+    const main = draft();
+    scrubHandoffBriefFindings(main, { parentText: ASK_EN });
+    expect(main.suggestedTeacherStrategies).toEqual(["Give a two-minute warning"]); // negative control: main loses the escalation
+    const brief = draft();
+    expect(scrubHandoffBrief(brief, { parentText: ASK_EN })).toBe(2);
+    expect(brief).toEqual({
+      title: "School note",
+      overview: "Noa does best with a warning.",
+      keyStrengths: ["Curious"],
+      suggestedTeacherStrategies: ["Give a two-minute warning", "When he shows no signs of calming after 20 minutes, call the family."],
+      crisisEscalationTrigger: "No signs of distress so far; contact the family the same day if that changes.",
+    });
+    const clean = { overview: "Mia does best with a warning.", keyStrengths: ["Curious"] };
+    expect(scrubHandoffBrief(clean)).toBe(0);
+    expect(clean).toEqual({ overview: "Mia does best with a warning.", keyStrengths: ["Curious"] });
+  });
+});
