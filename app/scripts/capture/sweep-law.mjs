@@ -10,6 +10,12 @@
  * set out to render (`expected`) — when an expected cell is MISSING (the run died, hit its
  * deadline or skipped it). A sweep.json without `expected`/`shots` (older runs) is judged as before.
  *
+ * B-INF-14: a named state that could not reach its screen for a retryable reason (its target
+ * never rendered, its route never mounted, an assertion failed, its budget ran out) fails as
+ * `state-unready`; an absent precondition (`retryable: false`, the state's own skip reason) does
+ * not. A console error or an unready state passes only when EXPLAINED_DIAGNOSTICS names it with a
+ * reason (scripts/capture/explained-diagnostics.mjs); `sweepLawExplained` lists each such hit.
+ *
  * Used by `rendered-sweep.mjs` (exit SWEEP_LAW_EXIT unless --report-only), by the release
  * runner (records `sweepLaw` instead of aborting) and by the Arbor capture workflow:
  *
@@ -18,6 +24,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { EXPLAINED_DIAGNOSTICS, explanationFor } from './explained-diagnostics.mjs';
 
 export const SWEEP_LAW_EXIT = 3;
 
@@ -36,22 +43,51 @@ export function missingBaseCells(doc) {
   return expected.filter((cell) => !present.has(`${cell.route} ${cell.viewport} ${cell.lang}`));
 }
 
+const cellName = (cell) => `${cell.route} ${cell.viewport} ${cell.lang}${isBase(cell) ? '' : ` ${cell.state}`}`;
+
 /** @param {{ cells?: any[] }} doc */
-export function sweepLawFailures(doc) {
+export function sweepLawFailures(doc, explained = EXPLAINED_DIAGNOSTICS) {
   const failures = [];
   for (const cell of doc?.cells ?? []) {
-    if (!isBase(cell) && cell.reached !== true) continue;
+    if (!isBase(cell) && cell.reached !== true) {
+      // B-INF-14: an intended state that never rendered is a failure unless its own
+      // precondition was absent (retryable false) or an entry explains its category.
+      if (cell.retryable === true && !explanationFor(cell, cell.reason, explained)) {
+        failures.push({ cell: cellName(cell), reasons: ['state-unready'], detail: `${cell.reason ?? 'UNNAMED'}${cell.message ? `: ${String(cell.message).replace(/\s+/g, ' ').slice(0, 200)}` : ''}` });
+      }
+      continue;
+    }
     const reasons = [];
     if (isBase(cell) && !cell.mounted) reasons.push('unmounted');
     if (isBase(cell) && cell.readyTimedOut === true) reasons.push('unready');
     if (isBase(cell) && doc.shots === true && !cell.shot) reasons.push('no-shot');
-    if ((cell.consoleErrors ?? []).length > 0) reasons.push('console-error');
+    const unexplained = (cell.consoleErrors ?? []).filter((kind) => !explanationFor(cell, kind, explained));
+    if (unexplained.length > 0) reasons.push('console-error');
     if (cell.overflow && cell.overflow.scrollWidth > cell.overflow.clientWidth) reasons.push('overflow');
-    const detail = reasons.includes('console-error') ? String(cell.consoleErrors[0]).replace(/\s+/g, ' ').slice(0, 240) : undefined;
-    if (reasons.length) failures.push({ cell: `${cell.route} ${cell.viewport} ${cell.lang}${isBase(cell) ? '' : ` ${cell.state}`}`, reasons, ...(detail ? { detail } : {}) });
+    const detail = reasons.includes('console-error') ? String(unexplained[0]).replace(/\s+/g, ' ').slice(0, 240) : undefined;
+    if (reasons.length) failures.push({ cell: cellName(cell), reasons, ...(detail ? { detail } : {}) });
   }
   for (const cell of missingBaseCells(doc)) failures.push({ cell: `${cell.route} ${cell.viewport} ${cell.lang}`, reasons: ['missing'] });
   return failures;
+}
+
+/** Every diagnostic the law let through, each with the reason that explains it (B-INF-14). */
+export function sweepLawExplained(doc, explained = EXPLAINED_DIAGNOSTICS) {
+  const hits = [];
+  for (const cell of doc?.cells ?? []) {
+    const kinds = !isBase(cell) && cell.reached !== true ? (cell.retryable === true ? [cell.reason] : []) : (cell.consoleErrors ?? []);
+    for (const kind of kinds) {
+      const entry = explanationFor(cell, kind, explained);
+      if (entry) hits.push({ cell: cellName(cell), kind, why: entry.why, owner: entry.owner });
+    }
+  }
+  return hits;
+}
+
+export function sweepLawExplainedLines(hits, limit = 20) {
+  const lines = hits.slice(0, limit).map((h) => `  explained ${h.cell}: ${h.kind} — ${h.why} (${h.owner})`);
+  if (hits.length > limit) lines.push(`  … ${hits.length - limit} more explained in sweep.json`);
+  return lines;
 }
 
 export function sweepLawLines(failures, limit = 20) {
@@ -71,6 +107,11 @@ function cli(file) {
     return 1;
   }
   const failures = sweepLawFailures(doc);
+  const explainedHits = sweepLawExplained(doc);
+  if (explainedHits.length) {
+    console.log(`SWEEP-LAW EXPLAINED ${explainedHits.length}`);
+    for (const line of sweepLawExplainedLines(explainedHits)) console.log(line);
+  }
   if (!failures.length) {
     console.log(`SWEEP-LAW PASS cells=${doc.cells.length}`);
     return 0;

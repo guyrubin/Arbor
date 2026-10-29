@@ -90,7 +90,7 @@ import { networkInterfaces } from "node:os";
 import { assertLoopbackOnly, captureRevision } from "./capture/config.mjs";
 import { DEVICE_VIEWPORTS, RELEASE_VIEWPORTS, expectedSeedMarker, requiresConversationReadiness } from "./capture/release-config.mjs";
 import { classifyReleaseConsole, createRuntimeDiagnostics } from "./capture/runtime-diagnostics.mjs";
-import { SWEEP_LAW_EXIT, expectedBaseCells, sweepLawFailures, sweepLawLines } from "./capture/sweep-law.mjs";
+import { SWEEP_LAW_EXIT, expectedBaseCells, sweepLawExplained, sweepLawExplainedLines, sweepLawFailures, sweepLawLines } from "./capture/sweep-law.mjs";
 import { initializeSyntheticOnline } from "./capture/small-state.mjs";
 import { CELL_BOUND_MS, SETTLE_BUDGET_MS, WARMUP_BOUND_MS, raceBound, settleOverlayGeometry, sweepDeadlineMs } from "./capture/sweep-bound.mjs";
 import { captureFontContextOptions, installOfflineFonts, captureScreenshot } from "./capture/font-runtime.mjs";
@@ -607,6 +607,21 @@ let SEED = null; // { seed, body, info } — set once in main()
 
 /** A state whose precondition is absent (no pending fact, visit is past…): recorded, not retried. */
 class Unreached extends Error {}
+/** B-INF-14: a state's authored target never rendered (stale selector or a regression): retried, then a law failure. */
+class StateTargetMissing extends Error {}
+/** B-INF-14: the route under the state never mounted, or the state outran its budget. */
+class StateRouteUnmounted extends Error {}
+class StateBudgetExceeded extends Error {}
+/** The named category of a state that did not reach its screen (never OTHER_ERROR). */
+function stateFailureReason(err) {
+  if (err instanceof Unreached) return "STATE_PRECONDITION_ABSENT";
+  if (err instanceof StateTargetMissing) return "STATE_TARGET_MISSING";
+  if (err instanceof StateRouteUnmounted) return "STATE_ROUTE_UNMOUNTED";
+  if (err instanceof StateBudgetExceeded) return "STATE_BUDGET_EXCEEDED";
+  if (err?.name === "TimeoutError") return "STATE_ACTION_TIMEOUT";
+  const kind = classifyReleaseConsole(err?.message);
+  return kind === "OTHER_ERROR" ? "STATE_ASSERTION_FAILED" : kind;
+}
 /** The first line of a state's thrown message, URL queries cut, at most 240 characters. */
 function stateMessage(err) {
   const line = String(err?.message ?? "").split("\n").map((l) => l.trim()).find(Boolean) ?? "";
@@ -643,14 +658,16 @@ function stateHelpers(page, vp, tr) {
       const labels = asList(texts);
       const cands = [...asList(selectors), ...labels.flatMap((t) => [page.getByRole("button", { name: t }), page.getByText(t, { exact: true })])];
       const el = await h.first(cands);
-      if (!el) skip(`${what} not found (${asList(selectors).join(" | ")}${labels.length ? ` | text ${labels.map((t) => JSON.stringify(t)).join(" / ")}` : ""})`);
+      // B-INF-14: a missing target is a failure, not an absent precondition (a state that
+      // knows its precondition says so with skip()).
+      if (!el) throw new StateTargetMissing(`${what} not found (${asList(selectors).join(" | ")}${labels.length ? ` | text ${labels.map((t) => JSON.stringify(t)).join(" / ")}` : ""})`);
       await el.click({ timeout: 5_000 });
       return el;
     },
     async need(cands, what, timeout = 8_000) {
       const el = await h.first(cands, timeout);
-      // Retryable (plain Error): a slow answer or a dropped load gets one fresh context.
-      if (!el) throw new Error(`${what} did not render`);
+      // Retryable: a slow answer or a dropped load gets one fresh context.
+      if (!el) throw new StateTargetMissing(`${what} did not render`);
       return el;
     },
     async has(cands, timeout = 1_500) {
@@ -698,6 +715,18 @@ const momentCount = (page) =>
     return n;
   });
 
+/**
+ * B-INF-14: Now has ONE lead (v3, CoS 18 Oct; lib/today/dayCard.ts selectNowLead). The practice
+ * card leads only as the fallback, after an urgent line, a chosen step, a from-record question,
+ * a visit, Tonight and a plan; on a record where one of those leads, the practice states have
+ * no screen to render. That is an absent precondition, named, not a failure.
+ */
+async function practiceLeads(h) {
+  if (await h.has("main [data-module=today-practice]", 4_000)) return;
+  const lead = await h.page.evaluate(() => document.querySelector("main [data-module^=now-], main [data-module=today-tonight]")?.getAttribute("data-module") ?? null);
+  skip(`the practice card is not Now's lead on this record: ${lead ?? "no lead"} leads (selectNowLead: the practice card is the fallback after an urgent line, a chosen step, a from-record question, a visit, Tonight and a plan)`);
+}
+
 /** Today (P5 pass A9): the practice card's own Undo; true when the answers ask again. */
 async function undoPractice(h) {
   await h.page.locator("main [data-testid=practice-undo]").first().click({ timeout: 5_000 });
@@ -737,16 +766,6 @@ async function firstOpen(h, ready, what) {
     return out;
   });
   return { via: zeros.length ? `"0" strings ${zeros.length}: ${zeros.slice(0, 5).map((z) => JSON.stringify(z)).join(" · ")}` : '"0" strings 0' };
-}
-
-/** Coach: send the fixture question and wait for the four-block answer (mock provider). */
-async function askAnswered(h) {
-  const box = await h.need("[data-primary-move=ask] textarea", "the Ask composer");
-  await box.fill(ASK_Q[h.lang]);
-  await h.click("[data-testid=coach-send]", [], "the send button");
-  const cards = await h.need("[data-testid=coach-answer-cards]", "the four-block answer (read · Try this · Say this · More)", 12_000);
-  await h.need("[data-testid=coach-answer-more]", "the More block of the answer");
-  return cards;
 }
 
 /** Consult step 1 → choose the pediatrician (the first audience). */
@@ -809,21 +828,20 @@ async function programState(h, name) {
  *  leaves nothing behind. Every state runs in a throwaway context.
  */
 const STATES = {
+  // B-INF-14: "answered" waited for the answer's More block (coach-answer-more), which the
+  // structured report no longer has, so it failed on every cell as OTHER_ERROR; it now asks
+  // through the companion composer and ends on the report. "more-open" opened that block and
+  // is retired with it (the report's own sections are the release harness's "ask" group,
+  // scripts/capture/release-interactions.mjs).
   coach: [
     {
       name: "answered",
       writes: "POST /api/chat (mock fixture, zero model calls); the thread lives only in this state's throwaway context",
-      run: async (h) => { await h.top(await askAnswered(h)); },
-    },
-    {
-      name: "more-open",
-      writes: "POST /api/chat (mock fixture, zero model calls); the thread lives only in this state's throwaway context",
       run: async (h) => {
-        await askAnswered(h);
-        const more = await h.need("[data-testid=coach-answer-more]", "the More block");
-        await more.locator("button").first().click({ timeout: 5_000 });
-        await h.need('[data-testid=coach-answer-more] button[aria-expanded="true"]', "the open More disclosure");
-        await h.top(more);
+        const box = await h.need([".companion-conversation:not([hidden]) [data-testid=companion-composer] textarea", "[data-primary-move=ask] textarea"], "the Ask composer");
+        await box.fill(ASK_Q[h.lang]);
+        await h.click([".companion-conversation:not([hidden]) [data-testid=coach-send]", "[data-testid=coach-send]"], [], "the send button");
+        await h.top(await h.need("[data-testid=coach-answer-cards]", "the structured answer (the coach report)", 12_000));
       },
     },
     {
@@ -835,32 +853,6 @@ const STATES = {
     },
   ],
   overview: [
-    {
-      name: "capture-reply",
-      writes: "one text moment in the local record; the reply's Undo removes it after the shot (cell.undone = moment count back to before)",
-      run: async (h) => {
-        const before = await momentCount(h.page);
-        await h.click("main [data-capture-tile=text]", [], "the Text capture tile");
-        const input = await h.need("[role=dialog] #quick-log-moment, [role=dialog] input[type=text], [role=dialog] textarea", "the capture sheet");
-        await input.fill(CAPTURE_TEXT[h.lang]);
-        await h.click("[role=dialog] button[type=submit]", [], "the Save moment button");
-        await h.need("[data-testid=quicklog-reply-undo]", "the capture reply (echo · next move · Undo)");
-        return {
-          undo: async () => {
-            await h.page.locator("[data-testid=quicklog-reply-undo]").first().click({ timeout: 5_000 });
-            await h.page.waitForTimeout(600);
-            return (await momentCount(h.page)) === before;
-          },
-        };
-      },
-    },
-    {
-      name: "hard-moment",
-      run: async (h) => {
-        await h.click("main [data-capture-tile=hard-moment]", [], "the Hard moment tile");
-        await h.need("[role=dialog]", "the Hard moment sheet");
-      },
-    },
     // P5 critic r1 on #/overview (pass A9, 6 Oct): the loop's own states.
     // practice-did = loop-morning-did; practice-quotes = loop-quotes.
     // B-LOOP-17: `now` = the page clock (`/?now=HH:MM`, lib/devClock — dev server only);
@@ -869,6 +861,7 @@ const STATES = {
       name: "loop-morning",
       now: "07:30",
       run: async (h) => {
+        await practiceLeads(h);
         await h.need("main [data-module=today-practice] [data-testid=practice-answers] [data-answer=did]", "today's practice, pending (Did it · Not today) at 07:30", 12_000);
         return { via: "clock 07:30" };
       },
@@ -878,6 +871,7 @@ const STATES = {
       now: "07:30",
       writes: "one practice dose row in the local record; the card's Undo removes it after the shot (cell.undone = the answers ask again)",
       run: async (h) => {
+        await practiceLeads(h);
         await h.click("main [data-testid=practice-answers] [data-answer=did]", [h.tr("elev.loop.practice.didIt")], "the practice card's Did it");
         await h.top(await h.need("main [data-testid=practice-receipt]", "the Did-it receipt (filed on the shelf)"));
         return { undo: () => undoPractice(h) };
@@ -888,6 +882,7 @@ const STATES = {
       now: "07:30",
       writes: "one practice dose row (not today) in the local record; Undo removes it after the shot",
       run: async (h) => {
+        await practiceLeads(h);
         await h.click("main [data-testid=practice-answers] [data-answer=not_today]", [h.tr("elev.loop.practice.notToday")], "the practice card's Not today");
         await h.top(await h.need("main [data-testid=practice-receipt]", "the Not-today line (Tomorrow is fine.)"));
         return { undo: () => undoPractice(h) };
@@ -931,6 +926,7 @@ const STATES = {
       now: "07:30",
       writes: "two dated notes on the practice's shelf, and yesterday's dose row without its 'What happened' line, in this throwaway context's local record only (outside the 30-day count, so the pick is unchanged)",
       run: async (h) => {
+        await practiceLeads(h);
         const card = await h.need("main [data-testid=practice-card]", "the practice card");
         const shelf = await card.getAttribute("data-shelf");
         if (!shelf) skip("the practice card carries no shelf");
@@ -978,6 +974,7 @@ const STATES = {
       now: "07:30",
       writes: "only when the seed is not anchored on the sweep's local day: the seed's newest dose row with a 'What happened' line is re-dated to yesterday (moved, not copied — the dose count is unchanged) in this throwaway context's local record",
       run: async (h) => {
+        await practiceLeads(h);
         const anchor = await h.page.evaluate(() => {
           const id = localStorage.getItem("arbor.activeChildId");
           if (!id) return { error: "no active child in the local record" };
@@ -1029,7 +1026,8 @@ const STATES = {
       now: "21:00",
       writes: FIRST_OPEN_WRITES,
       run: async (h) => {
-        const res = await firstOpen(h, "main [data-module=today-practice]", "Today's practice on an evening first open");
+        const res = await firstOpen(h, "main [data-module^=now-], main [data-module^=today-]", "Now's lead on an evening first open");
+        await practiceLeads(h);
         const order = await h.page.evaluate(() =>
           [...document.querySelectorAll("main [data-module]")]
             .filter((el) => !el.parentElement || !el.parentElement.closest("[data-module]"))
@@ -1206,6 +1204,35 @@ const STATES = {
   // B-LOOP-11 moved the day-grouped list to #/journal?view=all (#/journal is the shelf
   // grid now): search and hard-filter open there (B-LOOP-17). The loop states follow.
   journal: [
+    // B-INF-14: moved from #/overview — Now carries no capture tiles since v4 (blueprint
+    // decision 6: the launcher is the one door on Now); the capture bar lives on Journal
+    // (JournalShelves) and Behaviors, so these two states open there.
+    {
+      name: "capture-reply",
+      writes: "one text moment in the local record; the reply's Undo removes it after the shot (cell.undone = moment count back to before)",
+      run: async (h) => {
+        const before = await momentCount(h.page);
+        await h.click("main [data-capture-tile=text]", [], "the Text capture tile");
+        const input = await h.need("[role=dialog] #quick-log-moment, [role=dialog] input[type=text], [role=dialog] textarea", "the capture sheet");
+        await input.fill(CAPTURE_TEXT[h.lang]);
+        await h.click("[role=dialog] button[type=submit]", [], "the Save moment button");
+        await h.need("[data-testid=quicklog-reply-undo]", "the capture reply (echo · next move · Undo)");
+        return {
+          undo: async () => {
+            await h.page.locator("[data-testid=quicklog-reply-undo]").first().click({ timeout: 5_000 });
+            await h.page.waitForTimeout(600);
+            return (await momentCount(h.page)) === before;
+          },
+        };
+      },
+    },
+    {
+      name: "hard-moment",
+      run: async (h) => {
+        await h.click("main [data-capture-tile=hard-moment]", [], "the Hard moment tile");
+        await h.need("[role=dialog]", "the Hard moment sheet");
+      },
+    },
     {
       name: "search",
       from: "journal?view=all",
@@ -1620,11 +1647,11 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
     let stateName = state.name;
     const tState = Date.now();
     try {
-      if (readyTimedOut && !(await page.locator(READY_SELECTOR).count().catch(() => 0))) throw new Error(`route did not mount (${navError ?? "ready timeout"})`);
+      if (readyTimedOut && !(await page.locator(READY_SELECTOR).count().catch(() => 0))) throw new StateRouteUnmounted(`route did not mount (${navError ?? "ready timeout"})`);
       let timer;
       const out = await Promise.race([
         state.run(h),
-        new Promise((_, rej) => { timer = setTimeout(() => rej(new Error(`state budget ${STATE_BUDGET_MS / 1000}s exceeded`)), STATE_BUDGET_MS); }),
+        new Promise((_, rej) => { timer = setTimeout(() => rej(new StateBudgetExceeded(`state budget ${STATE_BUDGET_MS / 1000}s exceeded`)), STATE_BUDGET_MS); }),
       ]).finally(() => clearTimeout(timer));
       if (out?.name) stateName = out.name;
       undo = out?.undo ?? null;
@@ -1636,7 +1663,7 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
       // B-INF-11: the category AND the thrown message (first line, bounded): an OTHER_ERROR with
       // no words sent the release to a Playwright probe to learn why a state failed. The
       // sweep's own messages name an authored target; page text in them is synthetic seed data.
-      const reason = err instanceof Unreached ? "STATE_PRECONDITION_ABSENT" : classifyReleaseConsole(err?.message);
+      const reason = stateFailureReason(err);
       const message = stateMessage(err);
       await page.close();
       return {
@@ -2104,6 +2131,12 @@ async function main() {
   }
   // AR-REL-1: the law decides the exit code (run 1 is the recorded run).
   const lawFailures = sweepLawFailures(docs[0]);
+  // B-INF-14: nothing passes silently — every explained diagnostic is printed with its reason.
+  const explainedHits = sweepLawExplained(docs[0]);
+  if (explainedHits.length) {
+    console.log(`SWEEP-LAW EXPLAINED ${explainedHits.length}`);
+    for (const line of sweepLawExplainedLines(explainedHits)) console.log(line);
+  }
   if (lawFailures.length === 0) console.log("SWEEP-LAW PASS");
   else {
     console.log(`SWEEP-LAW FAIL ${lawFailures.length} cells${opts.reportOnly ? " (report only)" : ""}`);
