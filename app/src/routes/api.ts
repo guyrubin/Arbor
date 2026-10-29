@@ -75,7 +75,7 @@ import { createPlansRouter } from "../server/plans.js";
 import { createPlanPlatesRouter, isPlatePainter } from "../server/planPlates.js";
 import { createBookNarrationRouter, FirestoreNarrationChildSource, googleBookTts, localNarrationChildSource, mockBookTts } from "../server/bookNarration.js";
 import { createPlanNarrationRouter, FirestorePlanBookSource, localPlanBookSource } from "../server/planNarration.js";
-import { localBookAssetBucket } from "../server/localBookAssetBucket.js";
+import { localBookAssetBucket, localBookModeFor } from "../server/localBookAssetBucket.js";
 import { requireConsent } from "../server/requireConsent.js";
 import { CANONICAL_BEHAVIOR_TYPES } from "../content/behaviorTaxonomy.js";
 import { buildConsent, type ConsentPurpose, type ConsentStore } from "../sharing/consent.js";
@@ -496,7 +496,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // — read only through this owner-checked proxy (server/bookAssets.ts).
   // K2: the sandbox (MEMORY_ADAPTER=local, no Firebase) keeps them in a
   // git-ignored local folder (app/.data/book-assets) served by the same proxy.
-  const localBooks = config.memoryAdapter !== "firestore";
+  // B-BOOK-71: one predicate, dead under ARBOR_ENV=prod.
+  const localBooks = localBookModeFor(config);
   const localBookBucket = localBooks ? localBookAssetBucket() : null;
   const getBookBucket = (): Promise<BookAssetBucket | null> => (localBookBucket ? Promise.resolve(localBookBucket) : defaultBookAssetBucket(config.storageBucket));
   router.use(createBookAssetsRouter({ getBucket: getBookBucket, requireOwnership, allowLocal: localBooks }));

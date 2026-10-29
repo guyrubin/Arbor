@@ -152,6 +152,50 @@ describe("B-BOOK-71 / B-GAME-35: no production child id in the public source", (
     for (const id of ["proof-child", "c1"]) expect(proofAllowedFor(id, { firebase: true })).toBe(false);
     expect(proofAllowedFor("", { firebase: false })).toBe(false);
   });
+  it("B-BOOK-71 guard: a hosted production build never opens the sandbox seam, even without Firebase", async () => {
+    const { heroSandboxSeam, proofAllowedFor } = await import("./useHeroSheet");
+    expect(heroSandboxSeam({ firebase: false, hosted: false })).toBe(true); // the sandbox keeps its proof hero
+    expect(heroSandboxSeam({ firebase: false, hosted: true })).toBe(false);
+    expect(heroSandboxSeam({ firebase: true, hosted: false })).toBe(false);
+    expect(proofAllowedFor("c1", { firebase: false, hosted: true })).toBe(false);
+    expect(proofAllowedFor("c1", { firebase: false, hosted: false })).toBe(true);
+    // Every sandbox branch of the hook reads the one seam (no bare Firebase check left).
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const src = readFileSync(path.resolve(__dirname, "useHeroSheet.ts"), "utf8");
+    expect(src).toMatch(/allowUnboundProof: heroSandboxSeam\(\)/);
+    expect(src).not.toMatch(/firebaseEnabled \? null : readStoredHeroSheet|allowUnboundProof: !firebaseEnabled/);
+  });
+  it("B-BOOK-71 guard: no *_CHILD_IDS constant with a literal id exists under app/src (an allow-list of children is never public source)", async () => {
+    const { readFileSync, readdirSync, statSync } = await import("node:fs");
+    const path = await import("node:path");
+    const root = path.resolve(__dirname, "../../..");
+    // A declared constant whose name ends in _CHILD_ID(S), assigned a literal:
+    // an array or a Set of literals, or a string.
+    const literalAllowList = /\b(?:const|let|var)\s+[A-Z][A-Z0-9_]*_CHILD_IDS?\b\s*(?::[^=\n]*)?=\s*(?:new\s+Set\s*(?:<[^>]*>)?\(\s*)?(?:\[\s*)?["'`]/;
+    const retiredName = ["PROOF", "HERO", "CHILD", "IDS"].join("_");
+    // Negative controls (names built at run time so this file never matches itself).
+    const ids = ["SAMPLE", "CHILD", "IDS"].join("_");
+    const one = ["OWNER", "CHILD", "ID"].join("_");
+    expect(literalAllowList.test(`export const ${ids} = ["kid-a"];`)).toBe(true);
+    expect(literalAllowList.test(`const ${ids}: ReadonlySet<string> = new Set(['kid-a']);`)).toBe(true);
+    expect(literalAllowList.test(`const ${one} = "kid-a";`)).toBe(true);
+    expect(literalAllowList.test(`const ${ids} = readIdsFromConfig();`)).toBe(false);
+    expect(literalAllowList.test(`export const ${one} = defaultChildProfile.id;`)).toBe(false);
+    expect(literalAllowList.test(`f({ childId = ${one}, gender = "boy" })`)).toBe(false);
+    const hits: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const full = path.join(dir, name);
+        if (statSync(full).isDirectory()) { walk(full); continue; }
+        if (!/\.(ts|tsx|mts|mjs|json)$/.test(name)) continue;
+        const text = readFileSync(full, "utf8");
+        if (literalAllowList.test(text) || text.includes(retiredName)) hits.push(path.relative(root, full));
+      }
+    };
+    walk(root);
+    expect(hits).toEqual([]);
+  });
   it("no source file under app/src names a production child id (child-<13 digits>)", async () => {
     const { readFileSync, readdirSync, statSync } = await import("node:fs");
     const path = await import("node:path");

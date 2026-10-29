@@ -12,7 +12,7 @@
  * only and is never imported under kidmode/ outside its own files).
  */
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { firebaseEnabled } from "../../../lib/firebase";
+import { firebaseEnabled, firebaseRequiredForHostedApp } from "../../../lib/firebase";
 import { resolveHeroUrl } from "../../../lib/heroIdentity";
 import { heroAvatarHash, stockHeroSheetUrl } from "../../../lib/heroSheetContract";
 import { fetchProofJson } from "../proofAssets";
@@ -75,9 +75,21 @@ function sameDrawing(a: HeroSheet, b: HeroSheet): boolean {
   });
 }
 
-/** May this child play as the proof hero? Sandbox only (no Firebase). */
-export function proofAllowedFor(childId: string, opts: { firebase?: boolean } = {}): boolean {
-  return !!childId && (opts.firebase ?? firebaseEnabled) === false;
+/**
+ * B-BOOK-71 (production guard): the client's one sandbox seam — the proof
+ * sheet, an unbound sheet and the device sheet. Open only without Firebase
+ * AND off a hosted production build, so a production bundle that lost its
+ * Firebase config (which already fails closed, lib/firebase) still never
+ * plays them. Firebase is read first: the hosted check is not reached on a
+ * Firebase build.
+ */
+export function heroSandboxSeam(opts: { firebase?: boolean; hosted?: boolean } = {}): boolean {
+  return (opts.firebase ?? firebaseEnabled) === false && (opts.hosted ?? firebaseRequiredForHostedApp) === false;
+}
+
+/** May this child play as the proof hero? Sandbox only (heroSandboxSeam). */
+export function proofAllowedFor(childId: string, opts: { firebase?: boolean; hosted?: boolean } = {}): boolean {
+  return !!childId && heroSandboxSeam(opts);
 }
 
 export interface ChainSources {
@@ -160,7 +172,7 @@ export function useHeroSheetState(child: HeroChainChild | null | undefined): { i
   }, [identityKey, docs, hash]);
   const fallback = useMemo(() => {
     if (avatarUrl) return { sheet: avatarFallbackSheet(avatarUrl), from: "avatar" as const };
-    const device = firebaseEnabled ? null : readStoredHeroSheet(childId);
+    const device = heroSandboxSeam() ? readStoredHeroSheet(childId) : null;
     return device ? { sheet: device, from: "device" as const } : { sheet: devPlaceholderSheet(), from: "placeholder" as const };
   }, [identityKey, avatarUrl, childId]);
   const [resolved, setResolved] = useState<{ identityKey: string; docs: HeroSheetDocs | null; sheet: HeroSheet; from: HeroSheetFrom } | null>(null);
@@ -170,9 +182,9 @@ export function useHeroSheetState(child: HeroChainChild | null | undefined): { i
     void resolveHeroSheetChain(child!, {
       docs,
       proofAllowed: proofAllowedFor(childId),
-      allowUnboundProof: !firebaseEnabled,
+      allowUnboundProof: heroSandboxSeam(),
       loadProof: () => loadProofHeroSheet(),
-      readDevice: () => firebaseEnabled ? null : readStoredHeroSheet(childId),
+      readDevice: () => heroSandboxSeam() ? readStoredHeroSheet(childId) : null,
       loadStock: loadStockHeroSheet,
     }).then((r) => { if (alive && heroSheetOwnerKey() === ownerKey) setResolved({ identityKey, docs, ...r }); });
     return () => { alive = false; };

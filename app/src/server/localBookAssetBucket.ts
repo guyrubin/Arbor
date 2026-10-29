@@ -13,6 +13,21 @@
 import { createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { BookAssetBucket, BookAssetFile, BookAssetSaveOptions } from "./bookAssets.js";
+import type { ArborConfig } from "../config/env.js";
+
+/**
+ * B-BOOK-71 (production guard): the ONE predicate for the sandbox book mode
+ * (this local bucket, the anonymous "local-sandbox" reader on the book proxy,
+ * the sandbox seams of the sheet, narration and plate routes). It is false
+ * for ARBOR_ENV=prod whatever the adapter says, so the branch is dead in
+ * production twice over: loadConfig already refuses prod without
+ * MEMORY_ADAPTER=firestore (config/env.ts), and a hand-built prod config with
+ * a local adapter still gets no local book mode
+ * (localBookAssetBucket.prodGuard.test.ts).
+ */
+export function localBookModeFor(config: Pick<ArborConfig, "arborEnv" | "memoryAdapter">): boolean {
+  return config.arborEnv !== "prod" && config.memoryAdapter !== "firestore";
+}
 
 const META = ".meta.json";
 

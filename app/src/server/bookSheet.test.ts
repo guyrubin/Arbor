@@ -16,7 +16,7 @@ vi.mock("./logger.js", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: v
 
 import { createBookSheetRouter, LocalBookAssetsDocStore, isWebp, webpSize, type BookAssetsDocStore } from "./bookSheet";
 import { createBookAssetsRouter, type BookAssetBucket, type BookAssetFile } from "./bookAssets";
-import { LocalFsBookAssetBucket, localBookAssetBucket } from "./localBookAssetBucket";
+import { LocalFsBookAssetBucket, localBookAssetBucket, localBookModeFor } from "./localBookAssetBucket";
 import type { HeroPoseSource, StoredHero } from "./heroPoseRoute";
 import type { EntitlementStore, Plan } from "./entitlements";
 import { heroAvatarHash } from "../lib/heroSheetContract";
@@ -286,7 +286,10 @@ describe("K2 4a: the sandbox runs the same path on a local folder", () => {
     expect(localBookAssetBucket(app).root).toBe(path.join(app, ".data", "book-assets"));
     expect(readFileSync(path.join(app, ".gitignore"), "utf8")).toMatch(/^\.data\/$/m);
     const api = readFileSync(path.join(app, "src", "routes", "api.ts"), "utf8");
-    expect(api).toContain('const localBooks = config.memoryAdapter !== "firestore";');
+    // B-BOOK-71: one predicate, never with Firestore and never under ARBOR_ENV=prod.
+    expect(api).toContain("const localBooks = localBookModeFor(config);");
+    expect(localBookModeFor({ arborEnv: "local", memoryAdapter: "firestore" })).toBe(false);
+    expect(localBookModeFor({ arborEnv: "prod", memoryAdapter: "local" })).toBe(false);
     expect(api).toMatch(/createBookAssetsRouter\(\{ getBucket: getBookBucket, requireOwnership, allowLocal: localBooks \}\)/);
   });
 
