@@ -66,6 +66,8 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   // B-GA-12: annual is the accepted initial cadence (DEFAULT_CADENCE, shared
   // with PaywallModal); an explicit tap wins thereafter.
   const [cadence, setCadence] = useState<Cadence>(DEFAULT_CADENCE);
+  // B-GROWTH-43: a typed invite code added a month (the answer outlives the field).
+  const [codeGranted, setCodeGranted] = useState(false);
   const nativeOffering = useNativeOffering();
   const [adminOpen, setAdminOpen] = useState(false);
   const planVisibility = usePlanVisibility();
@@ -523,7 +525,16 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               Plan card; one invite per family (server/referral.ts). Not for a
               paying family: a comp month never overrides a paid record, so a
               code would spend their one invite on nothing. */}
-          {!isPaid && !entitlementLoading && !entitlementUnverified && <OfferCodeField onGranted={() => void retryEntitlement()} />}
+          {!isPaid && !entitlementLoading && !entitlementUnverified && !codeGranted && (
+            <OfferCodeField onGranted={() => { setCodeGranted(true); void retryEntitlement(); }} />
+          )}
+          {/* The month was added: the plan reloads (and the field leaves with
+              the free plan), so the answer is held here, not in the field. */}
+          {codeGranted && (
+            <p role="status" className="text-xs mt-3" style={{ color: "var(--arbor-ink)" }} data-testid="offer-code-granted">
+              {t("set.referral.code.granted")}
+            </p>
+          )}
         </div>
 
         {/* mk-p0-2 referral loop → B-SHELL-29: the invite card moved to the

@@ -54,7 +54,8 @@ describe("B-GROWTH-43 · the typed code field", () => {
 
   it("is mounted inside the Plan card, posts via typed, and is hidden from paying families", () => {
     const settings = readFileSync(path.resolve(__dirname, "../layout/SettingsModal.tsx"), "utf8");
-    expect(settings).toMatch(/!isPaid && !entitlementLoading && !entitlementUnverified && <OfferCodeField/);
+    expect(settings).toMatch(/!isPaid && !entitlementLoading && !entitlementUnverified && !codeGranted && \(\s*<OfferCodeField onGranted=\{\(\) => \{ setCodeGranted\(true\); void retryEntitlement\(\); \}\}/);
+    expect(settings).toMatch(/codeGranted && \([\s\S]{0,200}t\("set\.referral\.code\.granted"\)/);
     const field = readFileSync(path.resolve(__dirname, "OfferCodeField.tsx"), "utf8");
     expect(field).toContain('api.referralActivate(normalizeOfferCode(code), "typed")');
     const api = readFileSync(path.resolve(__dirname, "../../lib/api.ts"), "utf8");
