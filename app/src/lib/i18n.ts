@@ -3119,7 +3119,7 @@ export const he: Dict = {
   "coach.memory.grounded.one": "מבוסס על עובדה אחת שאישרתם",
   "coach.memory.manage": "ניהול",
   "coach.memory.reviewChip": "ארבור מציעה לזכור משהו — לבדיקה",
-  "coach.memory.factStep": "כבר גיליתם: „{fact}”. אפשר להתחיל משם היום.",
+  "coach.memory.factStep": "כבר גיליתם: ״{fact}״. אפשר להתחיל משם היום.",
   "coach.scenario.morning": "סירוב בבוקר",
   "coach.scenario.ipad": "מריבת מסך",
   "coach.scenario.sibling": "מריבת אחים",

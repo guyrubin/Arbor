@@ -60,9 +60,16 @@ describe("R2 · one quote pair per locale on the parent loop surfaces", () => {
   });
 
   it("the Hebrew loop strings shown on Today / Milestones use ״…״ too (no „…”)", () => {
-    for (const key of ["elev.loop.ms.firstCard", "elev.loop.practice.why", "elev.loop.tonight.day.fromMoment"]) {
+    // B-INF-13 r2: + the remembered-fact step ("כבר גיליתם: ״…״"), the parent's own words on Now.
+    for (const key of ["elev.loop.ms.firstCard", "elev.loop.practice.why", "elev.loop.tonight.day.fromMoment", "coach.memory.factStep"]) {
       expect(translate("he", key, { name: "D", title: "x", shelf: "s", moment: "m" }), key).not.toMatch(LATIN_QUOTES);
     }
+  });
+
+  it("the remembered fact is quoted ״…״ in Hebrew (the 28 Oct „…” pair fails here)", () => {
+    const he = translate("he", "coach.memory.factStep", { fact: "x" }).replace(/[\u2068\u2069]/g, "");
+    expect(he).toContain("\u05F4x\u05F4");
+    expect(he).not.toMatch(LATIN_QUOTES);
   });
 
   it("NEGATIVE CONTROL: the shipped PracticeCard say line trips the guard; a comment does not", () => {

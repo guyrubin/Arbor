@@ -600,7 +600,7 @@ describe("B-AI-14 (route) — an applicable approved fact always reaches the ans
     contractOverrides = { text: "הבקרים יכולים להיות לחוצים.", todayPlan: ["ציירו יחד את שלבי הבוקר."] };
     const done = doneOf((await postChatStreamed({ message: "יש רעיונות לבקרים?", childProfile: { id: "c-fact-he", name: "מיה" }, language: "he" })).events);
     const step1 = done?.contract?.todayPlan?.[0] as string;
-    expect(step1).toBe("כבר גיליתם: „מעברים הולכים טוב יותר עם שעון חול של חמש דקות”. אפשר להתחיל משם היום.");
+    expect(step1).toBe("כבר גיליתם: ״מעברים הולכים טוב יותר עם שעון חול של חמש דקות״. אפשר להתחיל משם היום.");
     expect(step1).toBe(translate("he", "coach.memory.factStep").replace("{fact}", factClause(fact, "he")));
     expect(done?.contract?.todayPlanProvenance).toEqual([{ step: 0, memoryId: "mem-fact-he", kind: "approved_fact" }]);
     expect(/[\u2066-\u2069]/.test(step1), "no display-time bidi marks stored on the contract").toBe(false);
