@@ -255,6 +255,18 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     expect(withoutHandoffFindings(line, { parentText })).not.toBe(line);
     expect(handoffFloor(line, { parentText })).toBe(line);
   });
+  /* Round 17 (P2): the Hebrew change forms — "נרגע" read as present under a negation, "נפסק" (HC03, HW01,
+     HW03, HV05). */
+  it.each([
+    "כשאין סימן שהבכי נרגע, התקשרו להורים מיד.",
+    "כשאין סימנים שהוא נרגע אחרי עשרים דקות, התקשרו לאמא שלו.",
+    "כשאין סימנים שהצרחות נפסקות, התקשרו להורים מיד.",
+    "כשהוא לא נרגע ואין סימנים של רגיעה, עדכנו את ההורים.",
+  ])("a Hebrew negated change restores: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).not.toBe(line);
+    expect(handoffFloor(line, { parentText })).toBe(line);
+  });
 
   it("a cut line comes back whole: a condition split off by ';' or a new line, a title's full stop", () => {
     for (const line of [

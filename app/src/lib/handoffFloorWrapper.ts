@@ -140,8 +140,12 @@ const LINKED_ABSENCE = /\b(?:with|without)\b|(?<!\p{L})(?:ללא|בלי)(?!\p{L}
 /** "With no signs of calming after 20 minutes, call …": an absolute phrase ahead of the command. */
 const ABSOLUTE_START = /^\s*(?:with|without)\b|^\s*(?:ללא|בלי)(?!\p{L})/iu;
 const PAST = /\b(?:was|were|did|had|found|saw|showed|tested|assessed|checked|examined|evaluated|screened|said|told|ruled|went|came|got|seemed|appeared|visited|met|played|cried|bit|hit|calmed|settled|ago|yesterday|earlier|last\s+(?:week|month|year|time|visit))\b|(?<!\p{L})(?:ו|ש|כש)?(?:היה|הייתה|היו|בדק|בדקה|בדקו|נבדק|נבדקה|נבדקו|ראה|ראתה|מצא|מצאה|מצאו|אמר|אמרה|אמרו|הראה|הראתה|ביקר|ביקרה|נפגש|נפגשה|נפגשו|בכה|בכתה|נרגע|נרגעה|שעבר|אתמול|שלשום|בעבר)(?!\p{L})/iu;
+/** Round 17 (P2): a negated change ("כשאין סימנים שהוא נרגע", "כשהוא לא נרגע", "when he hasn't calmed") is the
+ *  condition, not a narrated past: "נרגע" is present and past alike. */
+const NEGATED_CHANGE = /(?<!\p{L})(?:ו|ש|כש)?(?:אין|לא|ללא|בלי)(?:\s+\S+){0,3}?\s+(?:ש|שה|ה)?(?:נרגע\p{L}*|נפסק\p{L}*|נעצר\p{L}*)|\b(?:not|n['’]t|no\s+signs?\s+(?:of|that))(?:\s+\S+){0,3}?\s+(?:calmed|settled|stopped)\b/giu;
+const narratedPast = (text: string) => PAST.test(text.replace(NEGATED_CHANGE, (m) => " ".repeat(m.length)));
 const isConditionText = (text: string, escalation: boolean, beforeCommand = false) =>
-  CONDITION_ALWAYS.test(text) || (escalation && !PAST.test(text) && (CONDITION_WHEN.test(text)
+  CONDITION_ALWAYS.test(text) || (escalation && !narratedPast(text) && (CONDITION_WHEN.test(text)
     || (CONDITION_TIME.test(text) && LINKED_ABSENCE.test(text)) || (beforeCommand && ABSOLUTE_START.test(text))));
 /* Round 14 (P1-B): a discouraging word anywhere around a command — before or after it, outside its condition
  * and outside the negated finding that condition names — makes it no escalation: "there is no point calling",
@@ -210,7 +214,7 @@ function discouragedChunk(text: string, command: { index: number; text: string }
  * ללא …"), or an absolute "With no signs of …," ahead of the command; never narrated in the past. "once"
  * counts only before a subject ("once he …", never "once a week"). */
 const GOVERNING_WORD = /\b(?:if|unless|in\s+case|in\s+the\s+event|as\s+long\s+as|until|till|should\s+(?:he|she|they|it|there|the\s+\p{L}+)|when|whenever|where|wherever|as\s+soon\s+as|any\s+time|each\s+time|every\s+time|once\s+(?:he|she|they|it|there|you|the))\b|(?<!\p{L})(?:ו)?(?:אם|במידה|במקרה|בכל\s+מקרה|כל\s+עוד|כאשר|בכל\s+פעם)(?!\p{L})|(?<!\p{L})(?:ו)?(?:עד|ברגע|בזמן|במקום|במקרה|בכל\s+פעם)\s+ש(?=\p{L})|(?<!\p{L})(?:ו)?כש(?=\p{L})/iu;
-const governs = (text: string, beforeCommand: boolean) => !PAST.test(text) || CONDITION_ALWAYS.test(text)
+const governs = (text: string, beforeCommand: boolean) => !narratedPast(text) || CONDITION_ALWAYS.test(text)
   ? GOVERNING_WORD.test(text) || (CONDITION_TIME.test(text) && LINKED_ABSENCE.test(text)) || (beforeCommand && ABSOLUTE_START.test(text))
   : false;
 /** True when a condition governs a command in the text: inside the command's chunk, in a leading condition
@@ -248,7 +252,7 @@ function governedByCondition(text: string): boolean {
  * negate a change (calming, settling, improvement, stopping; רגיעה, שיפור, נרגע, מפסיק …), or the
  * condition must name a harm trigger or a hard moment. A condition with no negated finding ("If you are
  * worried", "When he bites") governs as before. */
-const CHANGE_WORD = /\b(?:calm\p{L}*|settl\p{L}*|improv\p{L}*|eas(?:e|es|ed|ing)|better|progress\p{L}*|respon\p{L}*|stop\p{L}*|chang\p{L}*|recover\p{L}*|relief|let\s+up)\b|(?<!\p{L})(?:ו|ל|ש|ה)?(?:רגיעה|הרגעות|שיפור|נרגע\p{L}*|מפסיק\p{L}*|הפסק\p{L}*|התקדמות|הקלה|תגובה|שינוי|החלמה)(?!\p{L})/iu;
+const CHANGE_WORD = /\b(?:calm\p{L}*|settl\p{L}*|improv\p{L}*|eas(?:e|es|ed|ing)|better|progress\p{L}*|respon\p{L}*|stop\p{L}*|chang\p{L}*|recover\p{L}*|relief|let\s+up)\b|(?<!\p{L})(?:ו|ל|ש|ה)?(?:רגיעה|הרגעות|שיפור|נרגע\p{L}*|מפסיק\p{L}*|הפסק\p{L}*|נפסק\p{L}*|נעצר\p{L}*|פוסק\p{L}*|התקדמות|הקלה|תגובה|שינוי|החלמה)(?!\p{L})/iu;
 const HARM_WORD = /\b(?:hurt\p{L}*|harm\p{L}*|injur\p{L}*|danger\p{L}*|unsafe|safety|bleed\p{L}*|bit|bite\p{L}*|biting|hit\p{L}*|kick\p{L}*|push\p{L}*|throw\p{L}*|threw|scream\p{L}*|run\p{L}*\s+(?:away|off|out)|ran\s+(?:away|off|out)|cr(?:y|ies|ied|ying)|tantrum\p{L}*|meltdown\p{L}*|self-harm|suicid\p{L}*|choking|breath\p{L}*|fever|seizure\p{L}*|faint\p{L}*|vomit\p{L}*)\b|(?<!\p{L})(?:ו|ש|כש|ה)?(?:פוגע\p{L}*|נפגע\p{L}*|פגיעה|מרביץ\p{L}*|הרביץ\p{L}*|נושך\p{L}*|נשך\p{L}*|בועט\p{L}*|דוחף\p{L}*|זורק\p{L}*|צורח\p{L}*|צרח\p{L}*|בורח\p{L}*|ברח\p{L}*|בוכה|בכי|בכה|סכנה|מסוכן\p{L}*|התקף\p{L}*|חום|נשימה|מקיא\p{L}*|התעלפ\p{L}*|להרביץ|לנשוך|לבעוט|לדחוף|לזרוק|לצרוח|לברוח|לבכות|להכות|לפגוע|נשיכ\p{L}*|הרבצ\p{L}*|מכות|בעיט\p{L}*|דחיפ\p{L}*|צרחות)(?!\p{L})/iu;
 /* Round 17 (P1-B): a negated finding's mask runs across its list ("no signs of biting or hitting", "hitting,
  * biting or kicking", "בכי או צרחות", "שהוא מרביץ או נושך"): every item of a negated list is masked before
