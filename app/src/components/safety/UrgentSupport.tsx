@@ -31,11 +31,14 @@ export function UrgentSupport({ testId = "onboarding-urgent-support", className 
   const lines: HelplineEntry[] = family
     ? [family.emergency, family.talk].filter((line): line is HelplineEntry => !!line)
     : HELPLINE_DIRECTORY.filter(line => DEFAULT_LINE_IDS.includes(line.id));
-  return <aside role={showInstructions ? "alert" : undefined} data-testid={testId} data-request-lang={requestLang} className={className}>
+  // B-ASKJB-49 r2: a div, not an <aside>: the shell's global `.arbor-app aside`
+  // rule (sidebar paper with !important, a one-sided hairline) belongs to the
+  // sidebar and the AI rail, and painted over every host's own tokens.
+  return <div role={showInstructions ? "alert" : undefined} data-testid={testId} data-request-lang={requestLang} className={className}>
     {showInstructions && lead && <p data-testid={`${testId}-lead`}>{lead}</p>}
     {showInstructions && (family ? <p>{t("elev.safety.crisis.danger")}</p> : <><p>{t("elev.safety.crisis.danger")}</p><p>{t("screen.safetyNote")}</p></>)}
     {lines.map(line =>
       <a key={line.id} className="inline-flex min-h-11 items-center underline px-2" href={`tel:${line.tel}`}>{t(`elev.safety.helpline.${line.id}`)} · {line.number}</a>)}
     {onSafety && <button type="button" data-testid={`${testId}-safety`} className="inline-flex min-h-11 items-center gap-1.5 underline px-2" onClick={onSafety}><Icon name="gpp_maybe" size={18} />{t(family?.findLine ? "elev.safety.crisis.findLine" : "elev.safety.open")}</button>}
-  </aside>;
+  </div>;
 }
