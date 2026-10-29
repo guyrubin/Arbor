@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { useLanguage } from "../../context/LanguageContext";
 
@@ -243,6 +243,56 @@ export function Receipt({
         </button>
       )}
     </div>
+  );
+}
+
+/** B-STATUS-01 — what a former success toast becomes: ONE receipt slot a host
+ *  owns, drawn where the action happened. `show` replaces the line (a new
+ *  `seq` remounts it, so the same words twice are announced twice); `clear`
+ *  takes it away (Undo, a new start, a child switch). */
+export interface ReceiptNote {
+  text: string;
+  link?: ReceiptLink | null;
+  undo?: ReceiptUndo | null;
+}
+
+export type ShownReceiptNote = ReceiptNote & { seq: number };
+
+export function useReceiptNote(): { note: ShownReceiptNote | null; show: (n: ReceiptNote) => void; clear: () => void } {
+  const [note, setNote] = useState<ShownReceiptNote | null>(null);
+  const show = useCallback((n: ReceiptNote) => setNote((prev) => ({ ...n, seq: (prev?.seq ?? 0) + 1 })), []);
+  const clear = useCallback(() => setNote(null), []);
+  return { note, show, clear };
+}
+
+/** Critic r1 (B-STATUS-01): a receipt the parent cannot see has not answered
+ *  them. When a new note lands outside the viewport (or under the fixed
+ *  dock), bring it to the middle of the screen; one already in view stays
+ *  put. Returns whether it scrolled. Reduced motion scrolls without easing. */
+export const RECEIPT_DOCK_CLEARANCE_PX = 96;
+export function revealReceipt(testId: string, doc: Document | undefined = typeof document === "undefined" ? undefined : document): boolean {
+  if (!doc) return false;
+  const el = doc.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
+  if (!el || typeof el.scrollIntoView !== "function") return false;
+  const view = doc.defaultView;
+  const height = view?.innerHeight ?? 0;
+  const box = el.getBoundingClientRect();
+  if (height > 0 && box.top >= 0 && box.bottom <= height - RECEIPT_DOCK_CLEARANCE_PX) return false;
+  const reduce = view?.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+  return true;
+}
+
+/** The host's receipt slot: nothing until an action answers; a new answer is
+ *  scrolled into view when it landed off-screen (revealReceipt). */
+export function ReceiptNoteLine({ note, testId, className, size }: { note: ShownReceiptNote | null; testId: string; className?: string; size?: "sm" | "base" }) {
+  const seq = note?.seq ?? 0;
+  useEffect(() => { if (seq) revealReceipt(testId); }, [seq, testId]);
+  if (!note) return null;
+  return (
+    <Receipt key={note.seq} testId={testId} className={className} size={size} link={note.link ?? null} undo={note.undo ?? null}>
+      {note.text}
+    </Receipt>
   );
 }
 

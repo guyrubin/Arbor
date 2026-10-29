@@ -1,9 +1,10 @@
 import { createHash, webcrypto } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
-import { exportPrivateBookAssets } from "./bookAssetExport";
+import { EXPORT_RETRY_ATTEMPTS, exportPrivateBookAssets, pauseWithin } from "./bookAssetExport";
 import { createChildExportRun } from "./childExportRun";
-import { BOOK_EXPORT_LIMITS, type BookExportFile, type BookExportInventory } from "./library/bookAssetExportContract";
+import { BOOK_EXPORT_DIGEST_HEADER, BOOK_EXPORT_LIMITS, type BookExportFile, type BookExportInventory } from "./library/bookAssetExportContract";
+import { bookAssetContentType } from "./library/bookAssetPaths";
 
 const auth = vi.hoisted(() => ({ token: "synthetic-owner-token", wait: null as null | Promise<void> }));
 const identity = vi.hoisted(() => ({ currentUser: { uid: "owner" } as { uid: string } | null, listeners: new Set<(user: { uid: string } | null) => void>() }));
@@ -17,7 +18,18 @@ const print = "hero-sheets/synthetic/prints/cover.webp";
 const audio = "narration/synthetic/he-f/p1.wav";
 const file = (path = sprite, bytes: number | null = 4): BookExportFile => ({ bookId: "synthetic-book", path, bytes });
 const docs = (files = [sprite]) => [{ bookId: "synthetic-book", files }];
-function install(files: BookExportFile[] = [file()], read: (url: string, init: RequestInit) => Response | Promise<Response> = () => new Response("DATA"), issues: BookExportInventory["issues"] = []) {
+/** B-CAREPRO-50: an export read as the server sends it — the bytes, their
+ *  SHA-256 and the Content-Type of the requested path (overridable). */
+const pathOf = (url: string) => new URL(url, "http://synthetic.invalid").searchParams.get("path") ?? "";
+function served(body: Uint8Array | string, url = "", headers: Record<string, string> = {}): Response {
+  const bytes = typeof body === "string" ? new TextEncoder().encode(body) : body;
+  return new Response(bytes, { headers: {
+    "content-type": bookAssetContentType(pathOf(url)),
+    [BOOK_EXPORT_DIGEST_HEADER]: createHash("sha256").update(bytes).digest("hex"),
+    ...headers,
+  } });
+}
+function install(files: BookExportFile[] = [file()], read: (url: string, init: RequestInit) => Response | Promise<Response> = (url) => served("DATA", url), issues: BookExportInventory["issues"] = []) {
   const calls: { url: string; init: RequestInit }[] = [];
   vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
     calls.push({ url, init });
@@ -33,7 +45,7 @@ afterEach(() => { expect(identity.listeners.size).toBe(0); vi.useRealTimers(); v
 describe("B-BOOK-20 bounded portable bytes", () => {
   it("round-trips sprites, prints, narration and orphaned private files byte-for-byte with SHA-256", async () => {
     const data = Uint8Array.from({ length: 1024 }, (_, i) => i % 256);
-    const calls = install([file(sprite, data.length), file(print, data.length), file(audio, data.length)], () => new Response(data));
+    const calls = install([file(sprite, data.length), file(print, data.length), file(audio, data.length)], (url) => served(data, url));
     // Only the sprite is currently registered; the authoritative prefix also exports old prints/audio.
     const out = await exportPrivateBookAssets("owner", childId, docs());
     expect(out.status).toBe("complete");
@@ -107,7 +119,7 @@ describe("B-BOOK-20 bounded portable bytes", () => {
       { files: [file(), file()] },
       { files: [file("../secret")] },
       { files: [file("new-folder/secret.png")] },
-      { files: Array.from({ length: 257 }, (_, i) => file(`hero-sheets/s/p${i}.png`)) },
+      { files: Array.from({ length: BOOK_EXPORT_LIMITS.files + 1 }, (_, i) => file(`hero-sheets/s/p${i}.png`)) },
     ]) {
       vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ version: 1, childId, status: "complete", files: [file()], issues: [], ...extra }))));
       const out = await exportPrivateBookAssets("owner", childId, docs());
@@ -122,7 +134,7 @@ describe("B-BOOK-20 bounded portable bytes", () => {
     const size = BOOK_EXPORT_LIMITS.fileBytes;
     const files = Array.from({ length: 5 }, (_, i) => file(`hero-sheets/s/p${i}.png`, size));
     files.push(file(audio, size + 1), file(print, null));
-    const calls = install(files, () => new Response(new Uint8Array(size)));
+    const calls = install(files, (url) => served(new Uint8Array(size), url));
     const out = await exportPrivateBookAssets("owner", childId, []);
     expect(out.includedFiles).toBe(4);
     expect(out.includedBytes).toBe(BOOK_EXPORT_LIMITS.totalBytes);
@@ -149,7 +161,7 @@ describe("B-BOOK-20 bounded portable bytes", () => {
   });
 
   it("checks original bytes rather than a compressed transport Content-Length", async () => {
-    install([file()], () => new Response("DATA", { headers: { "content-encoding": "gzip", "content-length": "24" } }));
+    install([file()], (url) => served("DATA", url, { "content-encoding": "gzip", "content-length": "24" }));
     const out = await exportPrivateBookAssets("owner", childId, docs());
     expect(out.status).toBe("complete");
     expect(out.includedBytes).toBe(4);
@@ -157,7 +169,7 @@ describe("B-BOOK-20 bounded portable bytes", () => {
 
   it("keeps successful bytes in a partial receipt and reports missing/offline files honestly", async () => {
     let n = 0;
-    install([file(sprite), file(print), file(audio)], () => ++n === 1 ? new Response("DATA") : new Response(null, { status: n === 2 ? 404 : 503 }));
+    install([file(sprite), file(print), file(audio)], (url) => ++n === 1 ? served("DATA", url) : new Response(null, { status: n === 2 ? 404 : 503 }));
     const out = await exportPrivateBookAssets("owner", childId, docs([sprite, print, audio]));
     expect(out.status).toBe("incomplete");
     expect(out.files.map((f) => f.status)).toEqual(["included", "missing", "unavailable"]);
@@ -245,6 +257,102 @@ describe("B-BOOK-20 bounded portable bytes", () => {
     expect(calls).toHaveLength(2);
     expect(cancelled).toHaveBeenCalledOnce();
   });
+});
+
+describe("B-CAREPRO-50 · the export matches what the server sent", () => {
+  it("keeps a file only when the device's SHA-256 equals the server's; a missing digest is a failure", async () => {
+    for (const headers of [{ [BOOK_EXPORT_DIGEST_HEADER]: createHash("sha256").update("ATAD").digest("hex") }, { [BOOK_EXPORT_DIGEST_HEADER]: "" }, { [BOOK_EXPORT_DIGEST_HEADER]: "not-a-digest" }]) {
+      install([file()], (url) => served("DATA", url, headers));
+      const out = await exportPrivateBookAssets("owner", childId, docs());
+      expect(out.status).toBe("incomplete");
+      expect(out.files[0].status).toBe("integrity");
+      expect(out.files[0]).not.toHaveProperty("data");
+      expect(out.includedBytes).toBe(0);
+    }
+  });
+
+  it("NEGATIVE CONTROL: the pre-change client kept any bytes with its own digest and typed them by path", () => {
+    const pre = 'out.files.push({ ...file, status: "included", encoding: "base64", mediaType: bookAssetContentType(file.path), sha256: Array.from(hash';
+    const now = readFileSync(new URL("./bookAssetExport.ts", import.meta.url), "utf8");
+    expect(now).not.toContain(pre);
+    expect(now).toContain("served.digest !== sha256");
+  });
+
+  it("types each file by the served Content-Type, never by its path; an unexpected type is a failure", async () => {
+    install([file(print)], (url) => served("DATA", url, { "content-type": "image/png; charset=binary" }));
+    const out = await exportPrivateBookAssets("owner", childId, docs([print]));
+    expect(out.status).toBe("complete");
+    expect(out.files[0].status === "included" && out.files[0].mediaType).toBe("image/png");
+    install([file(print)], (url) => served("DATA", url, { "content-type": "text/html" }));
+    expect((await exportPrivateBookAssets("owner", childId, docs([print]))).files[0].status).toBe("integrity");
+  });
+
+  it("a file the server refuses as too large is named byte_limit", async () => {
+    install([file()], () => new Response(null, { status: 413 }));
+    expect((await exportPrivateBookAssets("owner", childId, docs())).files[0].status).toBe("byte_limit");
+  });
+
+  it("critic r1: the server's per-account pace (429 + Retry-After) is waited out and the same file read again", async () => {
+    let refused = 0;
+    const calls = install([file(), file(print)], (url) => {
+      if (pathOf(url) === print && refused < 2) { refused++; return new Response(null, { status: 429, headers: { "retry-after": "0" } }); }
+      return served("DATA", url);
+    });
+    const out = await exportPrivateBookAssets("owner", childId, docs([sprite, print]));
+    expect(out.status).toBe("complete");
+    expect(out.files.map((f) => f.status)).toEqual(["included", "included"]);
+    expect(calls.filter((c) => pathOf(c.url) === print)).toHaveLength(3);
+  });
+
+  it("critic r1: a pace that never lifts ends that file as unavailable after the retries", async () => {
+    const calls = install([file()], () => new Response(null, { status: 429, headers: { "retry-after": "0" } }));
+    expect((await exportPrivateBookAssets("owner", childId, docs())).files[0].status).toBe("unavailable");
+    expect(calls.filter((c) => !c.url.endsWith("export-manifest"))).toHaveLength(EXPORT_RETRY_ATTEMPTS + 1);
+  });
+
+  it("critic r1: a wait that would pass the export's deadline is a timeout at once; cancel ends a wait", async () => {
+    await expect(pauseWithin(60_000, undefined, Date.now() + 1_000)).rejects.toMatchObject({ code: "timeout" });
+    const controller = new AbortController();
+    const waiting = pauseWithin(30_000, controller.signal, Date.now() + 60_000);
+    controller.abort();
+    await expect(waiting).rejects.toMatchObject({ code: "cancelled" });
+    await expect(pauseWithin(0, undefined, Date.now() + 1_000)).resolves.toBeUndefined();
+  });
+
+  /** A synthetic ten-book library: ~96 files a book (sheet, choices, prints, three narration voices). */
+  const library = (bytes: number): BookExportFile[] => Array.from({ length: 10 }, (_, b) => [
+    ...Array.from({ length: 6 }, (_, i) => `hero-sheets/s${b}/pose${i}.webp`),
+    ...Array.from({ length: 4 }, (_, i) => `hero-sheets/s${b}/choices/c${i}.webp`),
+    ...Array.from({ length: 12 }, (_, i) => `hero-sheets/s${b}/prints/p${i}.webp`),
+    `hero-sheets/s${b}/manifest.json`,
+    ...["en", "he-m", "he-f"].flatMap((v) => Array.from({ length: 12 }, (_, i) => [`narration/n${b}/${v}/p${i}.mp3`, `narration/n${b}/${v}/p${i}.cues.json`]).flat()),
+    "manifest.json",
+  ].map((path) => ({ bookId: `book-${b}`, path, bytes }))).flat();
+
+  it("a ten-book library inside the byte budget exports complete", async () => {
+    const files = library(2048);
+    expect(files.length).toBeGreaterThan(900);
+    expect(files.length).toBeLessThanOrEqual(BOOK_EXPORT_LIMITS.files);
+    const body = new Uint8Array(2048).fill(7);
+    install(files, (url) => served(body, url));
+    const out = await exportPrivateBookAssets("owner", childId, []);
+    expect(out.status).toBe("complete");
+    expect(out.includedFiles).toBe(files.length);
+  }, 60_000);
+
+  it("a ten-book library over the byte budget names exactly what is missing", async () => {
+    const files = library(40 * 1024);
+    const body = new Uint8Array(40 * 1024).fill(3);
+    install(files, (url) => served(body, url));
+    const out = await exportPrivateBookAssets("owner", childId, []);
+    expect(out.status).toBe("incomplete");
+    // every inventoried file is named — included, or with its reason
+    expect(out.files.map((f) => `${f.bookId}/${f.path}`).sort()).toEqual(files.map((f) => `${f.bookId}/${f.path}`).sort());
+    const missing = out.files.filter((f) => f.status !== "included");
+    expect(missing.length).toBe(files.length - out.includedFiles);
+    expect(new Set(missing.map((f) => f.status))).toEqual(new Set(["byte_limit"]));
+    expect(out.includedBytes).toBeLessThanOrEqual(BOOK_EXPORT_LIMITS.totalBytes);
+  }, 60_000);
 });
 
 describe("Settings export interruptions and repeat clicks", () => {

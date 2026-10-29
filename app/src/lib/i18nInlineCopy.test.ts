@@ -536,9 +536,10 @@ describe("B-GROWTH-19 — DailyPlayTab carries no English literal", () => {
     const offenders = code.split("\n").filter((l) => TOAST_LITERAL.test(l));
     expect(offenders).toEqual([]);
     // The goal picker now owns its acknowledged receipt, so Daily Play lost
-    // its old focus-set success toast. All four remaining calls use t().
-    expect(code.match(/\btoast\s*\(/g) ?? []).toHaveLength(4);
-    expect(code.match(/toast\(t\("elev\.growth\.play\.toast\./g) ?? []).toHaveLength(4);
+    // its old focus-set success toast. B-STATUS-01: the four "did it" toasts
+    // became the ONE receipt line; both of its texts still go through t().
+    expect(code.match(/\btoast\s*\(/g) ?? []).toHaveLength(0);
+    expect(code.match(/text: t\("elev\.growth\.play\.toast\./g) ?? []).toHaveLength(2);
   });
 
   it("no English attribute, JSX text node or English fallback name", () => {

@@ -291,6 +291,14 @@ export async function deliverPrintableHtml(html: string, filename: string, title
 export const slugForFile = (value: string) =>
   (value || "arbor-report").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "arbor-report";
 
+/** B-CAREPRO-47 — the ONE Arbor line every document a parent shares ends with:
+ *  who prepared it, with what, and the account-free page that explains it
+ *  (lib/legalLinks FOR_PROFESSIONALS_URL). The print shell and the packet's
+ *  copied text both end with it. */
+export function arborDocumentLine(lang: UiLang): string {
+  return translate(lang, "elev.reports.arborLine");
+}
+
 /** LC-13 / item 8: the printable shell carries `lang` and `dir`, so a Hebrew
  *  report actually renders right-to-left instead of a Hebrew document laid out
  *  left-to-right with its list bullets on the wrong side. */
@@ -327,6 +335,7 @@ export function renderPrintableHtml(doc: ReportDoc, childName: string, lang: UiL
     ul { margin: 0; padding-inline-start: 18px; }
     .muted { color:#9aa0a8; }
     .footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid #e8edea; color:#69747f; font-size: 11px; }
+    .arbor-line { margin: 8px 0 0; color:#69747f; font-size: 11px; }
     @media print { .noprint { display:none; } }
   </style></head><body>
   <div class="brand">${doc.heroImageUrl
@@ -337,6 +346,7 @@ export function renderPrintableHtml(doc: ReportDoc, childName: string, lang: UiL
   <p class="meta">${esc(translate(lang, "elev.reports.printMeta", { date: fmtDay(new Date(), lang) }))}</p>
   ${sectionsHtml}
   <div class="footer">${esc(translate(lang, "elev.reports.printFooter"))}</div>
+  <p class="arbor-line" data-arbor-line dir="${dir}">${esc(arborDocumentLine(lang))}</p>
   <script>window.onload=function(){setTimeout(function(){window.print();},250);}</script>
   </body></html>`;
 }

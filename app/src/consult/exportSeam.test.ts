@@ -128,8 +128,9 @@ describe("B-CAREPRO-28 — one preset per audience across Copy and PDF", () => {
         for (const note of ["", "Please ask about the countdown."]) {
           const md = serializeForExport(audience, packet, excluded, note, "Parent note");
           // The Markdown carries a document title + prepared line the print
-          // shell renders itself; everything after them must match line for line.
-          const copy = copyLines(md).slice(2);
+          // shell renders itself, and (B-CAREPRO-47) ends with the Arbor line
+          // the shell also prints; everything between must match line for line.
+          const copy = copyLines(md).slice(2, -1);
           expect(copy, `${audience}`).toEqual(pdfLines(packet, audience, excluded, note));
         }
       }

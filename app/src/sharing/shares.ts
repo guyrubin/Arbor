@@ -11,6 +11,7 @@ import { getApps, initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import type { ArborConfig } from "../config/env.js";
 import { normalizeScopes, type ShareScopeId } from "../lib/shareScopes.js";
+import { defaultGrantDomains, normalizeShareDomains } from "../lib/shareDomains.js";
 
 export type ShareRole = "co_parent" | "viewer" | "professional";
 
@@ -26,6 +27,11 @@ export type ShareGrant = {
    *  Pre-CARE-3 grants may still hold English display labels — always resolve
    *  through `grantScopes`/`grantAllowsScope`, never read this field raw. */
   scopes: string[];
+  /** B-CAREPRO-41: the developmental domains (lib/domains/registry ids) the
+   *  scopes may draw on. Absent = no ceiling (legacy grants); [] = only
+   *  unknown ids were asked for, so the grant unlocks nothing. Resolve
+   *  through `grantDomainCeiling` (lib/shareDomains), never read raw. */
+  domains?: string[];
   createdAt: string;
   expiresAt: string | null;   // ISO, or null = until revoked
   revokedAt: string | null;
@@ -78,9 +84,22 @@ export type NewShare = {
   scopes?: string[];
   duration?: string;
   accessMode?: "family_workspace";
+  /** B-CAREPRO-41: requested domain ceiling; omitted = the role's default. */
+  domains?: unknown[];
 };
 
-export const buildGrant = (input: NewShare, now: number = Date.now()): ShareGrant => ({
+/** B-CAREPRO-41: the stored ceiling — the request's ids (fail closed: unknown
+ *  ids dropped, possibly to none) or, when none were sent, the role's default
+ *  (a professional report grant reads its profession's domains + family). */
+const grantDomains = (input: NewShare, scopes: string[]): { domains?: string[] } => {
+  if (Array.isArray(input.domains)) return { domains: normalizeShareDomains(input.domains) };
+  const fallback = defaultGrantDomains(input.role, scopes);
+  return fallback ? { domains: fallback } : {};
+};
+
+export const buildGrant = (input: NewShare, now: number = Date.now()): ShareGrant => {
+  const scopes = input.scopes?.length ? normalizeScopes(input.scopes) : ["story_timeline" satisfies ShareScopeId];
+  return {
   id: randomUUID(),
   ownerUid: input.ownerUid,
   ownerEmail: input.ownerEmail ?? null,
@@ -92,12 +111,14 @@ export const buildGrant = (input: NewShare, now: number = Date.now()): ShareGran
   // English labels from an old client) normalize through the fail-closed map —
   // unrecognized strings are DROPPED, never widened. No scopes requested at all
   // keeps the historical narrowest default (timeline → story_timeline).
-  scopes: input.scopes?.length ? normalizeScopes(input.scopes) : ["story_timeline" satisfies ShareScopeId],
+  scopes,
+  ...grantDomains(input, scopes),
   createdAt: new Date(now).toISOString(),
   expiresAt: expiryFromDuration(input.duration, now),
   revokedAt: null,
   ...(input.role === "co_parent" && input.accessMode === "family_workspace" ? { accessMode: "family_workspace" as const } : {}),
-});
+  };
+};
 
 export const canAcceptCoParent = (g: ShareGrant, uid: string, email: string): boolean =>
   g.role === "co_parent" && g.accessMode === "family_workspace" && isShareActive(g)

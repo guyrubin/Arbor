@@ -1,11 +1,16 @@
 import { appointmentRoleLabel, PROFESSION_KEY } from "../../lib/appointmentLabel";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import RecordingIndicator from "../ui/RecordingIndicator";
+import { speechSupported, startDictation } from "../../lib/speech";
+import { microphoneRecovery } from "../../lib/microphoneRecovery";
+import { numberedQuestions, rehearsalRows, rehearsalQuestions, REHEARSAL_MAX_QUESTIONS } from "../../consult/rehearsalQuestions";
 import { parentWords } from "../../lib/recordCounts";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
 import { fmtDay } from "../../lib/formatDate";
@@ -95,6 +100,9 @@ export default function Appointments() {
   const { setActiveTab, childProfile, requestConsultPrefill, behaviorLogs } = useArbor();
   const { t, uiLang } = useLanguage();
   const { toast } = useToast();
+  // B-STATUS-01: a saved calendar file or follow-up answers with ONE receipt
+  // line under the page header (Undo takes a follow-up back).
+  const receipt = useReceiptNote();
   const apptsCol = useChildCollection<Appointment>(childProfile.id, "appointments");
   const questionsCol = useChildCollection<PrepQuestion>(childProfile.id, "apptQuestions");
   const followUpsCol = useChildCollection<AppointmentFollowUp>(childProfile.id, "apptFollowUps");
@@ -156,6 +164,15 @@ export default function Appointments() {
     });
     setActiveTab("consult");
   };
+  /** B-VOICE-03: only the parent's Keep writes rehearsed questions (in their
+   *  reviewed order) to the questions the visit summary carries. */
+  const keepRehearsal = (reviewed: string[]): string | null => {
+    const clean = reviewed.map((x) => x.trim()).filter(Boolean).slice(0, REHEARSAL_MAX_QUESTIONS);
+    if (!clean.length) return null;
+    const stamp = Date.now();
+    clean.forEach((text, i) => void questionsCol.upsert({ id: `q${stamp}-${String(i).padStart(2, "0")}`, text }));
+    return clean.length === 1 ? t("elev.learnCare.appt.rehearse.kept.one") : t("elev.learnCare.appt.rehearse.kept.many", { n: clean.length });
+  };
   const addQ = () => {
     if (q.trim()) {
       void questionsCol.upsert({ id: `q${Date.now()}`, text: q.trim() });
@@ -189,7 +206,7 @@ export default function Appointments() {
     const file = appointmentToIcs(a, Date.now());
     if (!file) return;
     const channel = await saveIcsFile(file, defaultIcsEgressDeps());
-    if (channel === "download") toast(t("elev.learnCare.appt.ics.done"), "success");
+    if (channel === "download") receipt.show({ text: t("elev.learnCare.appt.ics.done") });
     else if (channel === "unavailable") toast(t("elev.learnCare.appt.ics.failed"), "error");
   };
 
@@ -199,8 +216,20 @@ export default function Appointments() {
     void followUpsCol.upsert(record);
     // The visit demonstrably happened — the booking moves to "done". This is a
     // fact about the BOOKING; nothing about the child is inferred.
-    if (appointmentStatus(a) !== "done") void apptsCol.upsert({ ...a, status: "done" });
-    toast(t("elev.learnCare.appt.followUp.saved"), "success");
+    const wasDone = appointmentStatus(a) === "done";
+    if (!wasDone) void apptsCol.upsert({ ...a, status: "done" });
+    receipt.show({
+      text: t("elev.learnCare.appt.followUp.saved"),
+      undo: {
+        label: t("elev.loop.notice.undo"),
+        testId: "appt-receipt-undo",
+        onUndo: () => {
+          receipt.clear();
+          void followUpsCol.remove(record.id);
+          if (!wasDone) void apptsCol.upsert(a);
+        },
+      },
+    });
     return true;
   };
 
@@ -253,6 +282,7 @@ export default function Appointments() {
           </button>
         }
       />
+      <ReceiptNoteLine note={receipt.note} testId="appt-receipt" />
 
       {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (what moduleBudget counts);
@@ -364,6 +394,10 @@ export default function Appointments() {
             {worthWell}
           </div>
         )}
+        {/* B-VOICE-03 (critic r1): rehearsing is for the visit ahead, so it
+            sits on the Upcoming card — not inside the collapsed "Past visits
+            and what to ask" — and answers in place. */}
+        <RehearseQuestions lang={uiLang === "he" ? "he" : "en"} onKeep={keepRehearsal} />
       </SectionCard>
       </div>
 
@@ -560,6 +594,105 @@ function ApptRow({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Critic r1: the field grows to the whole question (Hebrew runs wider than
+ *  the row estimate), never under the 44 px floor. Runs on every render. */
+function fitRehearsalField(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${Math.max(44, el.scrollHeight)}px`;
+}
+
+/** B-VOICE-03 (agent half) — "Talk it through" before the visit, inside the
+ *  visit's questions card (no new surface). The parent says what worries them
+ *  and what they want to leave with; their own questions (and voiced worries)
+ *  come back NUMBERED for editing (consult/rehearsalQuestions, deterministic,
+ *  no model), and nothing is kept until Keep. Rephrasing a worry into a
+ *  question is the model's half, behind its own live eval. The microphone
+ *  shows the REC-01 indicator while it is open (B-STATUS-02). */
+function RehearseQuestions({ lang, onKeep }: { lang: "en" | "he"; onKeep: (questions: string[]) => string | null }) {
+  const { t } = useLanguage();
+  const kept = useReceiptNote();
+  const [supported] = useState(() => speechSupported());
+  const [listening, setListening] = useState(false);
+  const [interim, setInterim] = useState("");
+  const [draft, setDraft] = useState<string[] | null>(null);
+  const [error, setError] = useState("");
+  const stopRef = useRef<(() => void) | null>(null);
+  const scope = useRef(0);
+  useEffect(() => () => { scope.current++; stopRef.current?.(); stopRef.current = null; }, []);
+  if (!supported) return null;
+  const start = () => {
+    const turn = ++scope.current;
+    setError(""); setDraft(null); setListening(true); kept.clear();
+    stopRef.current = startDictation({
+      onResult: (text) => { if (turn === scope.current) setDraft(rehearsalQuestions(text)); },
+      onInterim: (text) => { if (turn === scope.current) setInterim(text); },
+      onError: (reason) => { if (turn === scope.current) setError(microphoneRecovery(reason, lang)); },
+      onEnd: () => { if (turn === scope.current) { setListening(false); setInterim(""); stopRef.current = null; } },
+    }, lang === "he" ? "he-IL" : "en-US", { continuous: true });
+  };
+  const keep = () => { if (draft) { const said = onKeep(draft); setDraft(null); if (said) kept.show({ text: said }); } };
+  const quiet = "inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 text-sm font-bold";
+  return (
+    <div data-testid="appt-rehearse" className="mt-3 space-y-2" dir={lang === "he" ? "rtl" : "ltr"} lang={lang}>
+      {!listening && !draft && (
+        <>
+          <button type="button" data-testid="appt-rehearse-start" onClick={start} className={quiet} style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
+            <Icon name="mic" size={18} /> {t("coach.voice.talk")}
+          </button>
+          <p className="t-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.rehearse.dataUse")}</p>
+        </>
+      )}
+      {listening && (
+        <RecordingIndicator interim={interim} hint={t("elev.learnCare.appt.rehearse.hint")} label={t("elev.rec.on")} stopLabel={t("elev.describe.done")}
+          stopAria={t("elev.rec.stopAria")} onStop={() => stopRef.current?.()} testId="appt-rehearse-recording" captionTestId="appt-rehearse-caption" />
+      )}
+      {draft && draft.length === 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.appt.rehearse.none")}</p>
+          <button type="button" onClick={start} className={quiet} style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>{t("kept.retry")}</button>
+        </div>
+      )}
+      {draft && draft.length > 0 && (
+        <div data-testid="appt-rehearse-review" className="space-y-2">
+          <p className="t-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.packet.section.questions")}</p>
+          <ol className="space-y-2">
+            {numberedQuestions(draft).map((line, i) => (
+              <li key={i} className="flex items-center gap-2" data-rehearse-line={line}>
+                <span className="t-sm font-bold tabular-nums" style={{ color: "var(--arbor-muted)" }} aria-hidden="true">{i + 1}.</span>
+                {/* Critic r1: a long question wraps in full (a single-line input cut it). */}
+                <textarea
+                  value={draft[i]}
+                  dir="auto"
+                  rows={rehearsalRows(draft[i])}
+                  ref={fitRehearsalField}
+                  aria-label={t("elev.learnCare.appt.rehearse.edit", { n: i + 1 })}
+                  onChange={(e) => setDraft((d) => d ? d.map((x, j) => (j === i ? e.target.value : x)) : d)}
+                  className="min-h-11 min-w-0 flex-1 resize-none rounded-xl px-3 py-2.5 text-sm leading-snug"
+                  style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+                />
+                <button type="button" aria-label={t("elev.learnCare.appt.rehearse.remove", { n: i + 1 })} onClick={() => setDraft((d) => d ? d.filter((_, j) => j !== i) : d)} className="touch-target flex-shrink-0">
+                  <Icon name="close" size={16} style={{ color: "var(--arbor-muted)" }} />
+                </button>
+              </li>
+            ))}
+          </ol>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" data-testid="appt-rehearse-keep" onClick={keep} className={quiet} style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>
+              <Icon name="check" size={18} /> {t("elev.learnCare.appt.rehearse.keep")}
+            </button>
+            <button type="button" data-testid="appt-rehearse-discard" onClick={() => setDraft(null)} className={quiet} style={{ color: "var(--arbor-muted)" }}>
+              {t("elev.learnCare.appt.rehearse.discard")}
+            </button>
+          </div>
+        </div>
+      )}
+      {error && <p className="t-sm" role="alert" style={{ color: "var(--arbor-ink)" }}>{error}</p>}
+      <ReceiptNoteLine note={kept.note} testId="appt-rehearse-receipt" size="sm" />
     </div>
   );
 }

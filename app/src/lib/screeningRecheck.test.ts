@@ -155,6 +155,14 @@ describe("re-check reminder source contract", () => {
     expect(src).toContain('useChildCollection<SavedScreening>(childProfile.id, "screenings")');
   });
 
+  it("critic r1: the reminder's receipt carries Undo, which writes the record back as it was", () => {
+    const src = readSrc("components/sections/Screening.tsx");
+    const remind = src.slice(src.indexOf("const remind = () => {"), src.indexOf("const restart = () => {"));
+    expect(remind).toContain('testId: "screen-recheck-undo"');
+    expect(remind).toContain("onUndo: () => { recheckReceipt.clear(); void col.upsert(base); }");
+    expect(remind.indexOf("void col.upsert({ ...base, recheckDueAt")).toBeLessThan(remind.indexOf("void col.upsert(base)"));
+  });
+
   it("Screening.tsx intro last-check card surfaces the due state on re-entry", () => {
     const src = readSrc("components/sections/Screening.tsx");
     expect(src).toContain('data-testid="screen-recheck-due"');

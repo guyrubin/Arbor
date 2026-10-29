@@ -773,6 +773,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   router.post("/shares", requireOwnership, async (req, res) => {
     const { uid, email } = actorOf(req);
     const { childId, childName, recipientEmail, role, scopes, duration } = req.body;
+    // B-CAREPRO-41: an optional domain ceiling (fail closed in buildGrant).
+    const domains = Array.isArray(req.body?.domains) ? req.body.domains : undefined;
     if (!childId || !recipientEmail) {
       res.status(400).json({ error: "childId and recipientEmail are required" });
       return;
@@ -781,7 +783,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     // contract; writable same-child access requires the explicit workspace invite.
     try {
       const grant = await shareStore.create(
-        buildGrant({ ownerUid: uid, ownerEmail: email, childId, childName, recipientEmail, role, scopes, duration }),
+        buildGrant({ ownerUid: uid, ownerEmail: email, childId, childName, recipientEmail, role, scopes, duration, domains }),
       );
       res.json(grant);
     } catch (error: any) {

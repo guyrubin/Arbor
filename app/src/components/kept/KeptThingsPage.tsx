@@ -10,6 +10,9 @@ import { keptByMonth, keptThings, type KeptKind } from "../../lib/kept/keptThing
 import KeptItem from "./KeptItem";
 import KeptMonthPage from "./KeptMonthPage";
 import { buildMonthPage } from "../../lib/keepsakeMonth";
+import { placeForTab } from "../../lib/companionPlaces";
+import { goToRoute } from "../../hooks/useHashQuery";
+import Icon from "../ui/Icon";
 
 export function keptMonthLabel(monthKey: string, lang: "en" | "he", currentYear = new Date().getUTCFullYear()): string {
   const date = new Date(`${monthKey}-01T12:00:00Z`);
@@ -17,8 +20,10 @@ export function keptMonthLabel(monthKey: string, lang: "en" | "he", currentYear 
 }
 
 /** Current My child disclosure. Reads only the four existing kept sources;
- * older records load explicitly and child changes reset filters and sheets. */
-export default function KeptThingsPage() {
+ * older records load explicitly and child changes reset filters and sheets.
+ * `asPage`: the reader IS the page (`#/development?view=kept`), so its title
+ * is the page's h1. */
+export default function KeptThingsPage({ asPage = false }: { asPage?: boolean } = {}) {
   const { childProfile, behaviorLogs, milestoneHistory, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
@@ -50,7 +55,7 @@ export default function KeptThingsPage() {
   };
 
   return <section className="kept-reader" data-testid="kept-reader" aria-label={t("kept.title", { name: first })}>
-    <h2>{t("kept.title", { name: first })}</h2>
+    {asPage ? <h1 data-testid="kept-reader-title">{t("kept.title", { name: first })}</h1> : <h2>{t("kept.title", { name: first })}</h2>}
     <div className="kept-filters" role="group" aria-label={t("kept.filter")}>
       {filters.map(kind => <button key={kind} type="button" aria-pressed={filter === kind} onClick={() => setFilter(kind)}>{t(`kept.filter.${kind}`)}</button>)}
     </div>
@@ -67,4 +72,30 @@ export default function KeptThingsPage() {
     {more && <button type="button" className="kept-text-button" disabled={loading || error} onClick={() => sources.forEach(source => source.loadMore())}>{t("kept.loadMore")}</button>}
     <button type="button" className="kept-text-button" onClick={() => setActiveTab("language")}>{t("kept.allWords")}</button>
   </section>;
+}
+
+/** B-ASKJB-36 — `#/development?view=kept` (also `#/development/kept`): My
+ *  child with the kept reader open, a MODE of the My child route like
+ *  `?view=program` (Shell picks it; no route id, no contract of its own).
+ *  Back — the browser's or this link — returns to My child. Search reaches it
+ *  ("kept", "שמרנו": lib/searchIndex.ts). The reader is the one that already
+ *  exists; nothing new is read or written here. */
+export function KeptReaderMode() {
+  const { childProfile } = useArbor();
+  const { uiLang } = useLanguage();
+  const lang = uiLang === "he" ? "he" : "en";
+  const place = placeForTab("development");
+  return <div data-testid="kept-mode" dir={lang === "he" ? "rtl" : "ltr"} lang={lang} className="mx-auto flex w-full min-w-0 max-w-[720px] flex-col gap-2">
+    <button
+      type="button"
+      data-testid="kept-back"
+      onClick={() => goToRoute("development")}
+      className="-ms-1 inline-flex min-h-11 items-center gap-1 self-start px-1 t-sm font-bold focus:outline-none focus-visible:ring-2"
+      style={{ color: "var(--arbor-muted)" }}
+    >
+      <Icon name="arrow_back" size={18} aria-hidden className="rtl:-scale-x-100" />
+      {place[lang]}
+    </button>
+    <KeptThingsPage key={childProfile.id} asPage />
+  </div>;
 }
