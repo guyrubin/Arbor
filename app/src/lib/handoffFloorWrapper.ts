@@ -76,7 +76,7 @@ const EN_NARRATIVE_BEFORE = /\b(?:gets?|got|getting|likes?|liked|loves?|loved|wa
 const NEGATED_BEFORE_EN = /\b(?:(?:no\s+need|no\s+reason)\s+(?:to|for)|(?:not|n['’]t)\s+(?:need(?:ed)?|necessary|required)\s+(?:to|for)|(?:do|does|did)\s+not\s+need\s+to|(?:don|doesn|didn)['’]t\s+need\s+to|need\s+not|needn['’]t)\s+(?:[^\s,;:.!?]+\s+)?$|\b(?:not|never|(?:do|does|did)\s+not|(?:don|doesn|didn)['’]t|(?:should|must|can|could|will|would)\s*(?:not|n['’]t))\s+$/iu;
 const NEGATED_AFTER_EN = /^\s*(?:[^\s,;:.!?]+\s+){0,3}?(?:is|are|was|were|will\s+be|would\s+be|seems?)\s+(?:not\s+|n['’]t\s+|un)(?:needed|necessary|required|recommended|indicated|warranted|advised)\b|^\s*(?:[^\s,;:.!?]+\s+){0,3}?(?:is|are|was|were)n['’]t\s+(?:needed|necessary|required|recommended)\b/iu;
 const NEGATED_BEFORE_HE = /(?<!\p{L})(?:ו|ש)?(?:אין\s+צורך|לא\s+צריכ?\p{L}*|אין\s+הכרח|אין\s+סיבה|אין\s+חובה|לא\s+חייב\p{L}*|לא\s+כדאי|לא\s+מומלץ)\s+(?:[^\s,;:.!?]+\s+)?$|(?<!\p{L})(?:ו|ש)?(?:אין|לא|אל)\s+$/u;
-const NAMING_AFTER_EN = /^\s*(?:by\s+(?:(?:their|his|her|its|the|a)\s+)?(?:first\s+|last\s+|full\s+|given\s+|nick)?names?\b|by\s+name\b|as\s+|["“'‘]|\p{Lu})/u;
+const NAMING_AFTER_EN = /^\s*(?:by\s+(?:(?:their|his|her|its|the|a)\s+)?(?:first\s+|last\s+|full\s+|given\s+|nick)?names?\b|by\s+name\b|as\s+|["“'‘]|\p{Lu}|(?:the|a|an)\s+\p{Lu})/u;
 const negatedCommand = (text: string, index: number, length: number) => {
   const before = text.slice(Math.max(0, index - 60), index);
   const after = text.slice(index + length, index + length + 80);
@@ -106,6 +106,7 @@ export function findEscalationCommands(text: string): EscalationCommand[] {
       const found = { text: m[0].slice(pre.length), index: index + pre.length };
       if (negatedCommand(text, found.index, found.text.length)) continue;
       if (re === COMMAND_EN_PASSIVE && NAMING_AFTER_EN.test(text.slice(found.index + found.text.length))) continue;
+      if (discouragedChunk(text, found)) continue;
       if (!out.some((c) => c.index === found.index && c.text === found.text)) out.push(found);
     }
   }
@@ -142,6 +143,42 @@ const PAST = /\b(?:was|were|did|had|found|saw|showed|tested|assessed|checked|exa
 const isConditionText = (text: string, escalation: boolean, beforeCommand = false) =>
   CONDITION_ALWAYS.test(text) || (escalation && !PAST.test(text) && (CONDITION_WHEN.test(text)
     || (CONDITION_TIME.test(text) && LINKED_ABSENCE.test(text)) || (beforeCommand && ABSOLUTE_START.test(text))));
+/* Round 14 (P1-B): a discouraging word anywhere around a command — before or after it, outside its condition
+ * and outside the negated finding that condition names — makes it no escalation: "there is no point calling",
+ * "you don't have to contact", "hold off on calling", "would be premature", "אין מה להזעיק", "אין טעם לפנות",
+ * "מיותר להתקשר", "אין שום צורך". The encouraging forms stay escalations: "don't hesitate", "do not wait",
+ * "אל תהססו", "אין לחכות", "לא לחכות". */
+const DISCOURAGING_EN = /\b(?:not|no|never|none|nor|hold\s+off|avoid\p{L}*|premature\p{L}*|unnecessar\p{L}*|needless\p{L}*|pointless\p{L}*|refrain\p{L}*|rather\s+than|instead\s+of|wait\s+(?:before|until|and\s+see)|too\s+early)\b|n['’]t\b/iu;
+const DISCOURAGING_HE = /(?<!\p{L})(?:ו|ש|כש|ה)?(?:אין|לא|אל|מיותר\p{L}*|להימנע|הימנעו|במקום\s+ל\p{L}+|מוקדם\s+מדי|עדיף\s+לחכות|כדאי\s+לחכות)(?!\p{L})/u;
+const ENCOURAGING = /\b(?:(?:do|does|did|should|must|will|would)\s+not|don['’]t|doesn['’]t|shouldn['’]t|never|not)\s+(?:hesitate|wait|delay)\b|\bwithout\s+(?:delay|waiting|hesitat\p{L}*)\b|(?<!\p{L})(?:אל\s+(?:תהסס\p{L}*|תחכ\p{L}*|תתמהמה\p{L}*)|(?:אין|לא)\s+(?:לחכות|להסס|להתמהמה)|(?:בלי|ללא)\s+(?:לחכות|להסס|דיחוי|היסוס))(?!\p{L})/giu;
+/** The negated finding a condition names ("no signs of calming", "does not settle", "אין סימנים", "לא נרגע"). */
+const CONDITION_NEGATION = /\b(?:no|without|not|n['’]t)\s+(?:\p{L}+\s+){0,3}?(?:signs?|evidence|indications?|symptoms?|improvement|progress|change|response|calm\p{L}*|settl\p{L}*|better|easing)\b|\b(?:does|did|do|is|are|was|were)\s*(?:not|n['’]t)\s+(?:calm|settl|stop|improv|respond|eat|sleep|ease|get\s+better)\p{L}*|(?<!\p{L})(?:ו|ש|כש)?(?:אין|ללא|בלי|לא)\s+(?:שום\s+)?(?:סימנ\p{L}*|סימן|עדות|שיפור|התקדמות|שינוי|תגובה|רגיעה|נרגע\p{L}*|מצליח\p{L}*|מפסיק\p{L}*)/giu;
+const CONDITION_MARKERS = () => [new RegExp(CONDITION_ALWAYS.source, "giu"), new RegExp(CONDITION_WHEN.source, "giu")];
+const blank = (text: string, start: number, end: number) => text.slice(0, start) + " ".repeat(Math.max(0, end - start)) + text.slice(end);
+/** True when the text, outside its conditions, encouraging forms and condition negations, discourages. */
+function discourages(text: string, commands: { index: number; text: string }[]): boolean {
+  let masked = text.replace(ENCOURAGING, (m) => " ".repeat(m.length));
+  for (const re of CONDITION_MARKERS()) {
+    for (const m of text.matchAll(re)) {
+      const at = m.index ?? 0;
+      const nextCommand = commands.find((c) => c.index > at);
+      masked = blank(masked, at, nextCommand ? nextCommand.index : text.length);
+    }
+  }
+  masked = masked.replace(CONDITION_NEGATION, (m) => " ".repeat(m.length));
+  return DISCOURAGING_EN.test(masked) || DISCOURAGING_HE.test(masked);
+}
+/** The command's own chunk (between clause punctuation) discourages it. */
+function discouragedChunk(text: string, command: { index: number; text: string }): boolean {
+  const before = text.slice(0, command.index);
+  const start = Math.max(...[",", ";", ":", ".", "!", "?", "—", "–", "\n"].map((p) => before.lastIndexOf(p))) + 1;
+  const afterIdx = command.index + command.text.length;
+  const tailMatch = text.slice(afterIdx).search(/[,;:.!?—–\n]/u);
+  const end = tailMatch < 0 ? text.length : afterIdx + tailMatch;
+  const chunk = text.slice(start, end);
+  return discourages(chunk, [{ index: command.index - start, text: command.text }]);
+}
+
 /** A chunk that continues a condition list: "…, or there are no signs…", "…, או שאין…". */
 const OR_START = /^(?:or|either|או)(?!\p{L})/iu;
 /** A chunk that asserts on its own: "…, but / though / as / since / because / and …", "…, אבל / כי / ו…". */
@@ -498,6 +535,8 @@ function restoreEscalation(segment: string, opts: HandoffFloorOptions): string |
   }
   if (!keep.some((p) => hasCommand(p.text))) return null;
   const restored = assemble(keep, tail, removedLast);
+  // Round 14 (P1-B): a restored line that discourages anywhere outside its condition is not an escalation.
+  if (discourages(restored, findEscalationCommands(restored))) return null;
   // Round 13 (P2): a relay command whose message was the cut finding ("Please tell the family [that there
   // are no signs …]", "ספרו להורים [שאין …]") has nothing left to relay and stays dropped, as on main; it
   // comes back with its condition or with content of its own.

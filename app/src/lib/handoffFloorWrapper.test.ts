@@ -65,6 +65,42 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     expect(handoffFloor(line, { parentText })).toBe(withoutHandoffFindings(line, { parentText }));
     expect(handoffFloor(line, { parentText })).toBe("");
   });
+  /* Round 14 (P1-B): a discouraging word anywhere around the command, outside its condition, makes it no
+     escalation; the encouraging forms ("don't hesitate", "do not wait", "אל תהססו", "אין לחכות") do not. */
+  it.each([
+    "There are no signs of a speech delay, so there is no point calling the speech therapist.",
+    "There are no signs of a speech delay, so calling the family isn't necessary.",
+    "There are no signs of a speech delay, so you don't have to contact the pediatrician.",
+    "There are no signs of a speech delay, so hold off on calling the family.",
+    "There are no signs of a speech delay, so a referral to a specialist would be premature.",
+    "There is no evidence of anxiety, so there is no reason for the teacher to call the family.",
+    "There is no evidence of anxiety, so there is no real need to call the family.",
+    "אין סימנים לעיכוב בדיבור, ולכן אין מה להזעיק את ההורים.",
+    "אין סימנים לעיכוב בדיבור, ולכן לא נדרשת הפניה לקלינאית תקשורת.",
+    "אין סימנים לעיכוב בדיבור, ולכן אין טעם לפנות לרופאת הילדים.",
+    "אין סימנים לחרדה, ולכן מיותר להתקשר להורים.",
+    "אין סימנים לחרדה, ולכן אין שום צורך להתקשר להורים.",
+    "אין סימנים לחרדה, ולכן אין צורך ממשי לפנות לאחות.",
+    "There are no signs of delay, and the family should be called the Cohens in class.",
+    "There are no signs of delay, and the nurse should be called Nurse Dana by the children.",
+  ])("a discouraged or naming line stays as main leaves it: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).toBe("");
+    expect(handoffFloor(line, { parentText })).toBe("");
+  });
+  it.each([
+    "Don't hesitate to call the family when there are no signs of calming.",
+    "When there are no signs of calming, do not wait: call the family.",
+    "When there are no signs of calming, you should not hesitate to call the family.",
+    "אל תהססו להתקשר להורים כשאין סימנים של רגיעה.",
+    "כשאין סימנים של רגיעה, אין לחכות ויש להתקשר להורים.",
+    "כשאין סימנים של רגיעה, לא לחכות – להתקשר מיד להורים.",
+  ])("an encouraging form keeps the escalation whole: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).toBe("");
+    expect(handoffFloor(line, { parentText })).toBe(line);
+  });
+
   it("a negated command is no command; the same command without the negation is one", () => {
     expect(findEscalationCommands("A referral to the speech therapist is not needed.")).toEqual([]);
     expect(findEscalationCommands("A referral to the speech therapist is recommended.").length).toBe(1);
