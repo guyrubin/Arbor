@@ -43,7 +43,7 @@ import PracticeCard, { practiceText } from "./PracticeCard";
 import { PRACTICES } from "../../content/practices";
 import { practiceTitle, titleIsWholeDo } from "../../lib/practice/practiceTitle";
 import { translate } from "../../lib/i18n";
-import { practiceDoNamed } from "../../lib/journal/shelfView";
+import { practiceDoNamed } from "../../lib/journal/shelfView";
 import { todayFile, todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));

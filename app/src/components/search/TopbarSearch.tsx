@@ -31,6 +31,7 @@ import { Icon } from "../ui/Icon";
 import { useSearchResults, type SearchRow } from "./useSearchResults";
 // v3 IA-05: the sections and the mirror rule are shared with SearchModal.
 import { CRUMB_SPOKEN_SEPARATOR, glyphMirror, searchSections } from "./searchSections";
+import { SEARCH_FIELD_FOCUS_EVENT } from "./searchSections";
 
 /** AP-045 global search input + results overlay (topbar slot 1). */
 export default function TopbarSearch() {
@@ -57,6 +58,13 @@ export default function TopbarSearch() {
   // the order the rows are drawn in.
   const sections = searchSections(ordered);
   const results: SearchRow[] = sections.flatMap((s) => s.rows);
+
+  // B-SHELL-37: Ctrl/Cmd-K at this width lands here — the one desktop search surface.
+  useEffect(() => {
+    const onFocusRequest = () => { setOpen(true); inputRef.current?.focus(); inputRef.current?.select(); };
+    window.addEventListener(SEARCH_FIELD_FOCUS_EVENT, onFocusRequest);
+    return () => window.removeEventListener(SEARCH_FIELD_FOCUS_EVENT, onFocusRequest);
+  }, []);
 
   // Reset active index whenever results change.
   useEffect(() => { setActiveIdx(0); }, [results.length]);

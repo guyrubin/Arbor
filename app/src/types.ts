@@ -542,6 +542,9 @@ export interface MilestoneSource {
 
 export type StepStatus = 'todo' | 'doing' | 'done';
 
+/** B-DATA-14 (wave 4): one routine step ticked offline, with its words to match it by. */
+export type RoutineOfflineTick = { text: string; done: boolean; at: string };
+
 export interface ActionPlan {
   id: string;
   title: string;
@@ -568,6 +571,13 @@ export interface ActionPlan {
    * second device never celebrates the same day twice.
    */
   routineCelebratedOn?: string;
+  /**
+   * B-DATA-14 (wave 4): steps ticked on a phone while it was offline, by local
+   * day then step index. Written alone (a merge write of one step), so a second
+   * phone's run survives; folded into `routineRuns` on the next confirmed read
+   * and dropped. null: this phone took its own pending tick back.
+   */
+  routineOfflineTicks?: Record<string, Record<string, RoutineOfflineTick | null>>;
   /**
    * B-GROWTH-40: the `goalId` of the family's current goal (focusGoal) when
    * this plan was started, so My child's focus line can say what to do next.

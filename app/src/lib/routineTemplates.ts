@@ -206,6 +206,37 @@ export function routineCelebrated(plan: ActionPlan, dayKey: string): boolean {
   return routineIdOfPlan(plan) !== null && plan.routineCelebratedOn === dayKey;
 }
 
+/**
+ * B-DATA-14 (wave 4): the ticks a phone held offline (`routineOfflineTicks`)
+ * laid over each day's run, matched by the step's words: its own index first,
+ * then anywhere on the board. A tick whose step is gone (changed or removed on
+ * another device) is lost, never forced onto a different step. Pure: the plan
+ * back carries no `routineOfflineTicks`; `lost` names each lost step.
+ */
+export function foldRoutineOfflineTicks(plan: ActionPlan): { plan: ActionPlan; lost: string[] } {
+  const { routineOfflineTicks: held, ...rest } = plan;
+  if (!held) return { plan: rest, lost: [] };
+  const steps = (plan.phases ?? []).flatMap((ph) => (ph.steps ?? []).map((s) => s.text));
+  const runs: Record<string, number[]> = { ...(plan.routineRuns ?? {}) };
+  const lost: string[] = [];
+  for (const [day, ticks] of Object.entries(held)) {
+    const run = new Set(cleanRun(runs[day], steps.length));
+    for (const [slot, tick] of Object.entries(ticks ?? {})) {
+      if (!tick) continue;
+      const at = steps[Number(slot)] === tick.text ? Number(slot) : steps.indexOf(tick.text);
+      if (at < 0) { lost.push(tick.text); continue; }
+      if (tick.done) run.add(at); else run.delete(at);
+    }
+    runs[day] = [...run].sort((x, y) => x - y);
+  }
+  return { plan: { ...rest, routineRuns: runs }, lost };
+}
+
+/** The ticks a plan holds from offline (a taken-back tick is not one). */
+export function heldRoutineTicks(plan: Pick<ActionPlan, "routineOfflineTicks">): number {
+  return Object.values(plan.routineOfflineTicks ?? {}).reduce((n, ticks) => n + Object.values(ticks ?? {}).filter(Boolean).length, 0);
+}
+
 /** The plan with `dayKey` marked as celebrated (same plan back for a non-routine plan). */
 export function markRoutineCelebrated(plan: ActionPlan, dayKey: string): ActionPlan {
   if (routineIdOfPlan(plan) === null) return plan;

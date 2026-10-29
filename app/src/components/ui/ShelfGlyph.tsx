@@ -12,9 +12,8 @@ import { shelfDef, type ShelfId, type ShelfTint } from "../../lib/shelves/regist
  * The tint names the SHELF, never the child: the props carry no count, answer or
  * state, so every shelf is drawn the same way whatever its record holds.
  *
- * Supersedes components/loop/ShelfGlyph (the shipped 36–40 px flat chip) once
- * B-DESIGN-03/04 move its seven call sites; until then both exist and this one
- * is mounted nowhere.
+ * The one ShelfGlyph (B-INF-13, 29 Oct): the flat 36–40 px chip in
+ * components/loop is deleted; its last consumer (ProgramPage) mounts this one.
  */
 export type ShelfTone = { jewel: string; soft: string; ink: string; wash: string };
 

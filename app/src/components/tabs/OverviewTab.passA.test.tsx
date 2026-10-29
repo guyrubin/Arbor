@@ -33,7 +33,7 @@ import { shelfWordsThenNow } from "../../lib/today/shelfWords";
 import { bandForAgeMonths, milestoneAgeWindow } from "../../lib/milestoneData";
 import { shelfLabel } from "../../lib/shelves/registry";
 import { translate } from "../../lib/i18n";
-import type { BehaviorLog } from "../../types";
+import type { BehaviorLog } from "../../types";
 import { todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));

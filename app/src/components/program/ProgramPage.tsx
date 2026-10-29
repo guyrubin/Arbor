@@ -7,7 +7,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { useObservations } from "../../hooks/useObservations";
 import { goToRoute } from "../../hooks/useHashQuery";
-import { ShelfGlyph } from "../loop/ShelfGlyph";
+import { ShelfGlyph } from "../ui/ShelfGlyph";
 import { ageMonthsOf } from "../../lib/age/forChild";
 import { formatAgeMonths } from "../../lib/age/format";
 import type { SleepLogEntry } from "../../types";
@@ -179,7 +179,7 @@ export function ProgramPageView({
           {startable.map((p, i) => (
             <article key={p.id} data-testid="program-choice" data-program-id={p.id} className="p-4" style={CARD}>
               <div className="flex items-center gap-3">
-                <ShelfGlyph shelf={p.shelf} size={40} />
+                <ShelfGlyph shelf={p.shelf} size={44} />
                 <div className="min-w-0">
                   <h2 className="t-lg font-semibold leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{p.name}</h2>
                   <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>

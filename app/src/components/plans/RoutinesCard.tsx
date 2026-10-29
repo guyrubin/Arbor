@@ -13,11 +13,12 @@ import { useOnline } from "../../hooks/useSyncStatus";
 type Step = { text: string; done: boolean };
 /** B-DATA-14 r2: a tick made offline, held in the routine's own document. */
 type OfflineTick = { text: string; done: boolean; at: string };
-export type Routine = { id: string; name: string; steps: Step[]; offlineTicks?: Record<string, OfflineTick> };
+export type Routine = { id: string; name: string; steps: Step[]; offlineTicks?: Record<string, OfflineTick | null> };
 
 /** queued (B-DATA-14): kept on this phone, not yet acknowledged by the server.
- *  lost: offline ticks whose step was changed or removed on another device. */
-type Attempt = { id: number; from: Routine; target: Routine; complete: boolean; lost: number; status: "pending" | "queued" | "acknowledged" | "saved" | "failed" };
+ *  lost: the words of each offline tick whose step was changed or removed on
+ *  another device (the alert names them). */
+type Attempt = { id: number; from: Routine; target: Routine; complete: boolean; lost: string[]; status: "pending" | "queued" | "acknowledged" | "saved" | "failed" };
 
 /**
  * B-DATA-14 r2: this phone's offline ticks laid over the routine as the server
@@ -25,12 +26,14 @@ type Attempt = { id: number; from: Routine; target: Routine; complete: boolean; 
  * the list). A tick whose step is gone (changed or removed on another device)
  * is counted as lost, never forced onto a different step. Pure.
  */
-export function foldOfflineTicks(r: Routine): { routine: Routine; lost: number } {
+export function foldOfflineTicks(r: Routine): { routine: Routine; lost: string[] } {
   const steps = (Array.isArray(r.steps) ? r.steps : []).map((step) => ({ ...step }));
-  let lost = 0;
+  const lost: string[] = [];
   for (const [slot, tick] of Object.entries(r.offlineTicks ?? {})) {
+    // Wave 4: null is a tick this phone took back: the server's value stands.
+    if (!tick) continue;
     const at = steps[Number(slot)]?.text === tick.text ? Number(slot) : steps.findIndex((step) => step.text === tick.text);
-    if (at < 0) { lost++; continue; }
+    if (at < 0) { lost.push(tick.text); continue; }
     steps[at].done = tick.done;
   }
   const { offlineTicks: _held, ...rest } = r;
@@ -92,7 +95,7 @@ export default function RoutinesCard() {
   const current = (r: Routine, row: Row) => inScope() && scope.rows.get(r.id) === row;
   const actionable = (r: Routine, row: Row) => current(r, row) && col.isCurrent();
   const retire = (r: Routine) => { const row: Row = { source: r }; scope.rows.set(r.id, row); refresh(n => n + 1); return row; };
-  const writeChecklist = async (r: Routine, row: Row, target: Routine, lost = 0) => {
+  const writeChecklist = async (r: Routine, row: Row, target: Routine, lost: string[] = []) => {
     if (!actionable(r, row)) return;
     // Retire old DOM callbacks synchronously, before upsert or React rerenders.
     // A pending remote snapshot is not a current confirmed read: no duplicate
@@ -119,13 +122,17 @@ export default function RoutinesCard() {
     refresh(n => n + 1);
   };
 
-  /** B-DATA-14 r2: a tick made offline writes only itself (see above). */
+  /** B-DATA-14 r2: a tick made offline writes only itself (see above).
+   *  Wave 4: tapping a step this phone already holds a tick for takes that
+   *  tick back (null) instead of writing the opposite, so on reconnect the
+   *  server's value stands and another phone's tick is never overridden. */
   const tickOffline = (r: Routine, row: Row, i: number) => {
     if (!current(r, row) || !offlineRead) return;
     const step = foldOfflineTicks(r).routine.steps[i];
     if (!step) return;
     retire(r);
-    const ticks = { ...(r.offlineTicks ?? {}), [String(i)]: { text: step.text, done: !step.done, at: new Date().toISOString() } };
+    const mine = r.offlineTicks?.[String(i)];
+    const ticks = { ...(r.offlineTicks ?? {}), [String(i)]: mine ? null : { text: step.text, done: !step.done, at: new Date().toISOString() } };
     void col.upsert({ id: r.id, offlineTicks: ticks } as Routine, { merge: true }).catch(() => { /* the sync banner reports a rejected write */ });
   };
 
@@ -210,8 +217,10 @@ export default function RoutinesCard() {
               {(attempt?.status === "queued" || held) && (
                 <Receipt testId={`routine-queued-${r.id}`} size="sm">{t(savedOnPhoneKey(online))}</Receipt>
               )}
-              {!!attempt?.lost && attempt.status !== "pending" && attempt.status !== "queued" && (
-                <p role="alert" data-testid={`routine-conflict-${r.id}`} className="t-sm" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.closeloop.routines.failed")}</p>
+              {!!attempt?.lost.length && attempt.status !== "pending" && attempt.status !== "queued" && (
+                <div role="alert" data-testid={`routine-conflict-${r.id}`} className="t-sm" style={{ color: "var(--arbor-ink-soft)" }}>
+                  {attempt.lost.map((step, n) => <p key={n} dir="auto">{t("elev.closeloop.routines.lostStep", { step })}</p>)}
+                </div>
               )}
               {attempt?.status === "saved" && attempt.complete && confirmedTarget && (
                 <Receipt testId={`routine-receipt-${r.id}`} size="sm">{t(col.remote ? "elev.closeloop.routines.saved" : "elev.closeloop.routines.savedLocal")}</Receipt>

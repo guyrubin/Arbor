@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Icon from "./Icon";
 import { SpeakButton } from "./SpeakButton";
-import type { UiLang } from "../../lib/i18n";
+import { translate, type UiLang } from "../../lib/i18n";
 
 /**
  * AI-17 — the shared structured-output primitive.
@@ -127,6 +127,9 @@ export function SayThis({
   const [ownCopied, setOwnCopied] = useState(false);
   const [copyFallback, setCopyFallback] = useState(false);
   const isCopied = copied ?? ownCopied;
+  // B-INF-13: the words carry the locale's ONE quote pair (״…״ in Hebrew, “…” in English,
+  // the capture sheet's key): a Latin “…” around a Hebrew sentence opens at its visual end.
+  const quoted = translate(lang, "elev.loop.ms.quoted", { text });
   const handleCopy = onCopy ?? (async () => {
     setOwnCopied(false); setCopyFallback(false);
     try {
@@ -149,7 +152,7 @@ export function SayThis({
   if (presentation === "quote") {
     return (
       <div data-testid="say-this" data-presentation="quote" role="group" aria-label={title} className="min-w-0">
-        <blockquote className="m-0 break-words text-xl leading-snug sm:text-2xl" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", borderInlineStart: "2px solid var(--arbor-ink)", paddingInlineStart: 14 }}>&ldquo;{text}&rdquo;</blockquote>
+        <blockquote className="m-0 break-words text-xl leading-snug sm:text-2xl" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)", borderInlineStart: "2px solid var(--arbor-ink)", paddingInlineStart: 14 }}>{quoted}</blockquote>
         <div className="mt-1" style={{ paddingInlineStart: 8 }}>{controls}</div>
         {fallback}
       </div>
@@ -161,7 +164,7 @@ export function SayThis({
       icon={<Icon name="format_quote" size={12} />} title={title} tint="var(--arbor-sky-ink)"
       action={controls}
     >
-      <p className="t-base leading-relaxed" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)", fontStyle: "normal" }}>&ldquo;{text}&rdquo;</p>
+      <p className="t-base leading-relaxed" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)", fontStyle: "normal" }}>{quoted}</p>
       {fallback}
     </AiBlock>
   );

@@ -121,6 +121,38 @@ export type HandoffMilestoneInput = { domain: string; title: string };
 /** B-CAREPRO-10: POST /shares 409 code — the owner's co-parent seat is in use. */
 export const SEAT_IN_USE = "seat_in_use";
 
+/**
+ * Wave 4 (B-ASKJB-49 follow-up): the 409s that are not the crisis screen. The
+ * book and plan routes (server/bookSheet.ts, bookNarration.ts, planNarration.ts)
+ * answer 409 with their own `code` when the hero, the sheet, the child's name or
+ * the plan is not there yet, and /live/token when a renewal is not valid: a
+ * state for the caller to explain, never the crisis card. Matched by exact code
+ * and only on a body without `escalationCategory`; every other 409 (no code, an
+ * unknown code, a body that cannot be parsed) still escalates.
+ * lib/api.nonCrisis409.test.ts keeps this set equal to what the server answers.
+ */
+export const NON_CRISIS_409_CODES: ReadonlySet<string> = new Set([
+  "hero_missing", "hero_photo_source", "hero_changed", "book_sheet_incomplete", "book_sheet_admin",
+  "book_narration_no_name", "book_narration_wrong_voice", "book_narration_no_book",
+  "plan_narration_no_plan", "plan_narration_closed", "plan_narration_no_sheet",
+  "live_renewal_invalid",
+  // Round 2: the hero-pose route's anchor states (heroSheetContract HERO_POSE_REFUSALS)
+  // and the co-parent activity conflict (server/coParent.ts, sent in `error`).
+  "hero_anchor_missing", "hero_book_anchor_missing", "activity_changed",
+]);
+/** /live/token's 409 code: the renewal names a session the server will not chain. */
+export const LIVE_RENEWAL_INVALID = "live_renewal_invalid";
+export const isLiveRenewalInvalid = (err: unknown): boolean =>
+  err instanceof ApiError && err.status === 409 && err.message === LIVE_RENEWAL_INVALID;
+/** A 409 body that names one of the non-crisis codes (and no crisis category). */
+export function nonCrisis409Code(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const { code, error, escalationCategory } = body as { code?: unknown; error?: unknown; escalationCategory?: unknown };
+  // The code field, or (co-parent shape) an `error` that is exactly a known code.
+  const named = typeof code === "string" ? code : typeof error === "string" ? error : null;
+  return named !== null && escalationCategory === undefined && NON_CRISIS_409_CODES.has(named) ? named : null;
+}
+
 /** B-KID-05: image endpoints' 429 code — today's drawing quota is spent
  *  (server/imageQuota.ts). Not "busy": no Retry-After, nothing to retry today. */
 export const IMAGE_RESTING = "image_resting";
@@ -211,6 +243,9 @@ async function request<T>(url: string, method: string, body?: unknown, signal?: 
     if (res.status === 409 && errData?.error === SEAT_IN_USE) {
       throw new ApiError(SEAT_IN_USE, 409);
     }
+    // Wave 4: a non-crisis 409 reaches its caller as its own code (message = code).
+    const conflict = res.status === 409 ? nonCrisis409Code(errData) : null;
+    if (conflict) throw new ApiError(conflict, 409);
     // B-KID-05: image quota exhaustion carries its own code and no retry hint.
     if (res.status === 429 && errData?.code === IMAGE_RESTING) {
       throw new ApiError(IMAGE_RESTING, 429);
