@@ -29,6 +29,10 @@
  *   tts          parentheses or a dash aside in the child's text
  *   digit        a digit, a score or a count shown to the child
  *   shame        a shame word in the child's text
+ *   practises    B-BOOK-66: the parent-only `practises` facet is one or two
+ *                repeatable acts (EN starts with an -ing verb, ≤ 14 words),
+ *                never a virtue noun or a trait of the child, no name token,
+ *                EN + HE
  *
  * The word lists are pipe-joined strings split at runtime (planLint's
  * pattern), so no literal reads as a Material Symbols glyph name to the
@@ -55,6 +59,11 @@ const MORAL_HE = /(המוסר הוא|השיעור הוא|תמיד צריך|תמ�
 /** Shame (§3 automatic fail): a scold, an ashamed or mocked-and-broken hero. */
 export const SHAME_EN = "ashamed|shame|shameful|naughty|stupid|silly boy|silly girl|bad boy|bad girl|cry baby|crybaby".split("|");
 export const SHAME_HE = "מתבייש|מתביישת|בושה|טיפש|טיפשה|ילד רע|ילדה רעה|בכיין|בכיינית".split("|");
+/** B-BOOK-66: a trait of the child (the practises facet names an act, never what the child is). */
+export const PRACTISE_TRAIT_EN = "confident|confidence|resilient|resilience|independent|independence|patient|patience|perseverance|grit|fearless|shy|timid|anxious|clingy|your child is|is a".split("|");
+export const PRACTISE_TRAIT_HE = "בטוח בעצמו|ביטחון עצמי|עצמאי|עצמאית|עצמאות|סבלני|סבלנית|סבלנות|ביישן|ביישנית|חרדתי|חרדתית|הילד שלכם הוא|הילדה שלכם היא".split("|");
+export const PRACTISES_CAP = 14;
+
 /** A score or a count shown to the child. */
 const SCORE_EN = /\b(points?|score|scores|stars? earned|level up)\b/i;
 const SCORE_HE = /(נקודות|ניקוד|ציון)/;
@@ -249,6 +258,21 @@ export function lintManuscript(book: Book, opts: ManuscriptLintOptions = {}): Li
       const texts = Object.values(echo).map((e) => e.en.trim());
       if (new Set(texts).size !== texts.length) hit("echo", p.id, "en", texts.join(" | "), "two paths share an echo line");
     }
+  }
+
+  // ── B-BOOK-66: the parent-only practises facet ─────────────────────────────
+  const practises = book.parent.practises;
+  if (practises) {
+    if (practises.length < 1 || practises.length > 2) hit("practises", "parent", "en", `${practises.length} lines`, "one or two acts");
+    practises.forEach((l, i) => {
+      const id = `parent:practises-${i}`;
+      if (!l.en.trim() || !/^\p{L}+ing\b/u.test(l.en.trim())) hit("practises", id, "en", l.en, "not an act (an -ing verb first)");
+      if (words(l.en) > PRACTISES_CAP) hit("practises", id, "en", l.en, `${words(l.en)} > ${PRACTISES_CAP} words`);
+      if (!/[֐-׿]/.test(l.he)) hit("practises", id, "he-m", l.he, "not Hebrew");
+      if (/\{(name|hero)\}/.test(l.en + l.he)) hit("practises", id, "en", l.en, "a name token");
+      for (const w of [...BOOK_VIRTUE_EN, ...PRACTISE_TRAIT_EN]) if (hasWordEn(l.en, w)) hit("practises", id, "en", l.en, w);
+      for (const w of [...BOOK_VIRTUE_HE, ...PRACTISE_TRAIT_HE]) if (hasWordHe(l.he, w)) hit("practises", id, "he-m", l.he, w);
+    });
   }
 
   // ── plate briefs (§1 God is never depicted; §4 no religious shape) ─────────

@@ -111,6 +111,21 @@ describe("B-BOOK-33: each automatic fail, injected once, is caught (and only it)
     expect(seeded((_, p) => { p.text.en = `${p.text.en} He is ashamed.`; })).toEqual(["shame"]);
     expect(seeded((_, p) => { p.text.he.f = `${p.text.he.f} איזו בושה.`; })).toEqual(["shame"]);
   });
+  // B-BOOK-66: the parent-only practises facet names an act, never a virtue or a trait of the child.
+  const acts = (b: Book) => b.parent.practises as { en: string; he: string }[];
+  it("practises: a virtue noun, EN and HE", () => {
+    expect(seeded((b) => { acts(b)[0].en = "Being brave when the giant comes"; })).toEqual(["practises"]);
+    expect(seeded((b) => { acts(b)[0].he = "להיות אמיץ מול הענק"; })).toEqual(["practises"]);
+  });
+  it("practises: a trait of the child, EN and HE", () => {
+    expect(seeded((b) => { acts(b)[1].en = "Showing your child is confident"; })).toEqual(["practises"]);
+    expect(seeded((b) => { acts(b)[1].he = "לחזק ביטחון עצמי"; })).toEqual(["practises"]);
+  });
+  it("practises: a noun, not an act; a name token; three lines", () => {
+    expect(seeded((b) => { acts(b)[0].en = "Small steps toward a fear"; })).toEqual(["practises"]);
+    expect(seeded((b) => { acts(b)[0].en = "Going toward a small fear with {name}"; })).toEqual(["practises"]);
+    expect(seeded((b) => { (b.parent as { practises: unknown[] }).practises = [...acts(b), acts(b)[0]]; })).toEqual(["practises"]);
+  });
   it("3–4 band: the caps tighten (8-word sentences, 25 EN words a page)", () => {
     const hits = lintManuscript(proof, { band: "3-4" });
     expect(rules(hits)).toEqual(expect.arrayContaining(["sentence", "words"]));

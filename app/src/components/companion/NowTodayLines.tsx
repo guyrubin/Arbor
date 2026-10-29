@@ -9,6 +9,7 @@ import CompanionOfferSlot from "../overview/CompanionOfferSlot";
 import type { useCompanionOffer } from "../overview/useCompanionOffer";
 import TodaySayBackLine from "../overview/TodaySayBackLine";
 import FamilyOfferLines from "../overview/FamilyOfferLines";
+import NowKidHandback from "./NowKidHandback";
 import ArborNoticedCard from "../sections/ArborNoticedCard";
 import { BrandChip } from "../ui/BrandChip";
 import Icon from "../ui/Icon";
@@ -110,6 +111,8 @@ export function NowAgendaExtras({ evening, storyFits, todayOffer, suppressVisit 
   return <div className="now-glance-extras" data-testid="now-agenda-extras">
     {!(suppressVisit && todayOffer.offer?.kind === "appointment") && <CompanionOfferSlot surface="today" offer={todayOffer.offer} controls={todayOffer} placement="under-step" />}
     <FamilyOfferLines activeChildId={childProfile.id} />
+    {/* B-BOOK-66 + B-GAME-23: yesterday's book and this week's play, as receipt-sized agenda rows. */}
+    <NowKidHandback />
     {storyRow && evening && storyFits && <button type="button" className="now-weekly-door now-agenda-row" data-testid="today-agenda-story" onClick={() => setActiveTab("bedtime-stories")}>
       <BrandChip icon="auto_stories" tone="lav" shape="arch" />
       <span><b>{t("elev.loop.tonight.story")}</b></span>

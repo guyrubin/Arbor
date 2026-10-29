@@ -83,6 +83,17 @@
 .now-glance-extras { display: grid; gap: 6px; min-inline-size: 0; }
 /* Each extra that actually renders is its own agenda row; an empty sibling list (empty:hidden) adds nothing. */
 .now-glance-extras > :not(:empty) { margin: 0; padding-block: 8px; border-block-end: 1px solid var(--arbor-rule); }
+/* B-BOOK-66 + B-GAME-23: Kid Mode's hand-back, a receipt-sized agenda row (art, two short lines, Log it / hide). */
+.now-handback-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 12px; min-inline-size: 0; padding-inline: 4px; color: var(--arbor-ink); }
+.now-handback-cover { flex: none; inline-size: 44px; block-size: 44px; border-radius: 10px; object-fit: cover; border: 1px solid var(--arbor-rule); }
+.now-handback-copy { flex: 1 1 180px; min-inline-size: 0; overflow-wrap: anywhere; }
+.now-handback-copy b, .now-handback-copy small { display: block; }
+.now-handback-copy b { font-size: var(--t-sm); font-weight: 600; }
+.now-handback-copy small { margin-block-start: 4px; font-size: var(--t-xs); line-height: 1.45; color: var(--arbor-muted); }
+.now-handback-actions { display: flex; flex: none; align-items: center; gap: 2px; margin-inline-start: auto; }
+.now-handback-log, .now-handback-hide { display: inline-flex; align-items: center; justify-content: center; min-block-size: 44px; min-inline-size: 44px; padding: 0 8px; border: 0; border-radius: var(--r); background: transparent; color: var(--arbor-clay); font-size: var(--t-xs); font-weight: 700; }
+.now-handback-hide { color: var(--arbor-muted); }
+.now-handback-log:focus-visible, .now-handback-hide:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; }
 /* v4: what changed since the last visit, inside "This week so far". */
 .now-week-changed { padding-block-start: 10px; border-block-start: 1px solid var(--arbor-rule); }
 .now-week-changed > ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }

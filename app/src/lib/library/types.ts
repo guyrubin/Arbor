@@ -254,6 +254,12 @@ export interface ParentPanel {
   askAfterOptional?: BookLine;
   /** v2: a line for reading together (the choice to try on a re-read). */
   together?: BookLabel;
+  /** B-BOOK-66: PARENT-ONLY — one or two acts a parent can repeat at home
+   *  ("going toward a small fear in small steps"), never a virtue noun and
+   *  never a trait of the child (manuscriptLint rule `practises`). Filters
+   *  the parent's library (booksPractising); never shown on a kid screen,
+   *  not even in the grown-up panel of the end page (parentSections). */
+  practises?: readonly BookLabel[];
   sourceNote: BookLabel;
 }
 

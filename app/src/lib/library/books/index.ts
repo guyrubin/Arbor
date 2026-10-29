@@ -44,6 +44,30 @@ export function getPlate(bookId: string, plateId: string): BookPlate | undefined
   return table && own(table, plateId) ? table[plateId] : undefined;
 }
 
+/**
+ * B-BOOK-66: the parent-only `practises` facet of the RELEASED library (no
+ * fixture): each act once, keyed by its English text, with the books that
+ * practise it, in library order. The parent's library filters on it
+ * (booksPractising); nothing under components/kidmode reads it.
+ */
+export function practisesFacet(lang: "en" | "he"): { key: string; label: string; bookIds: string[] }[] {
+  const out = new Map<string, { key: string; label: string; bookIds: string[] }>();
+  for (const book of Object.values(LIBRARY_BOOKS)) {
+    for (const act of book.parent.practises ?? []) {
+      const key = act.en.trim();
+      const row = out.get(key) ?? { key, label: (lang === "he" ? act.he : act.en).trim(), bookIds: [] };
+      if (!row.bookIds.includes(book.id)) row.bookIds.push(book.id);
+      out.set(key, row);
+    }
+  }
+  return [...out.values()];
+}
+
+/** The released library books that practise one act (the facet's key); none for an unknown key. */
+export function booksPractising(key: string): Book[] {
+  return Object.values(LIBRARY_BOOKS).filter((b) => (b.parent.practises ?? []).some((act) => act.en.trim() === key.trim()));
+}
+
 /** Every book the DEV route and the tests know (real + fixtures). */
 export function allBooks(): Book[] {
   return [...Object.values(LIBRARY_BOOKS), ...Object.values(FIXTURE_BOOKS)];
