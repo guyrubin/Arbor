@@ -256,7 +256,12 @@ export default function TrustedSharing() {
     return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
-  const load = useCallback(async () => {
+  // B-INF-16: "shared with you" changes only when someone else grants. The page's
+  // first load and Retry read both lists; the parent's own grant, link, revoke,
+  // undo and co-parent invite re-read only their own grants (reloadOwn): one
+  // request after each change instead of two.
+  const load = useCallback(async (opts: { inbound?: boolean } = {}) => {
+    const withInbound = opts.inbound !== false;
     const ticket = rosterRequests.current.begin();
     setLoading(true);
     setError(false);
@@ -269,18 +274,20 @@ export default function TrustedSharing() {
         // CARE-6: one owner fetch returns the FULL grant record set (history=1);
         // live grants form the roster, ended ones the sharing history below.
         api.listShares(childProfile.id, { history: true }).catch(() => { aFailed = true; return { shares: [] }; }),
-        api.sharedWithMe().catch(() => { bFailed = true; return { shares: [] }; }),
+        withInbound ? api.sharedWithMe().catch(() => { bFailed = true; return { shares: [] }; }) : null,
       ]);
       if (!rosterRequests.current.latest(ticket)) return;
-      setShares(mine.shares || []);
-      setInbound(toMe.shares || []);
-      if (aFailed && bFailed) setError(true);
+      // An own-grants re-read that fails keeps the roster on screen under the error.
+      if (withInbound || !aFailed) setShares(mine.shares || []);
+      if (toMe) setInbound(toMe.shares || []);
+      if (aFailed && (bFailed || !withInbound)) setError(true);
     } catch {
       if (rosterRequests.current.latest(ticket)) setError(true);
     } finally {
       if (rosterRequests.current.latest(ticket)) setLoading(false);
     }
   }, [childProfile.id]);
+  const reloadOwn = useCallback(() => load({ inbound: false }), [load]);
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { if (adding) recipientRef.current?.focus(); }, [adding]);
@@ -311,7 +318,7 @@ export default function TrustedSharing() {
     onUndo: () => {
       receipt.clear();
       setInvite((current) => (current?.email === created.recipientEmail ? null : current));
-      void api.revokeShare(created.id).then(() => load(), () => toast(t("sec.sharing.audit.revokeError"), "error"));
+      void api.revokeShare(created.id).then(() => reloadOwn(), () => toast(t("sec.sharing.audit.revokeError"), "error"));
     },
   } : null;
 
@@ -325,7 +332,7 @@ export default function TrustedSharing() {
       setInvite({ email: g.email });
       setSeatInUse(null);
       onDone();
-      await load();
+      await reloadOwn();
     } catch (e: any) {
       if (e instanceof ApiError && e.status === 409 && e.message === SEAT_IN_USE) {
         // No paywall: the parent already holds the seat. Point at the row.
@@ -372,7 +379,7 @@ export default function TrustedSharing() {
     try {
       const created = await api.createShare({ childId: childProfile.id, childName: childProfile.name, recipientEmail: email, role: "professional", scopes: [HOME_PROGRAM_SCOPE_ID], duration: "until_revoked" });
       receipt.show({ text: t("elev.homeProgram.share.done", { email }), undo: undoFor(created) });
-      await load();
+      await reloadOwn();
     } catch {
       toast(t("sec.sharing.audit.createError"), "error");
     } finally {
@@ -387,7 +394,7 @@ export default function TrustedSharing() {
       // CARE-6: no ephemeral log needed — the reload moves the revoked grant
       // (with its revocation date) into the persistent Sharing history card.
       receipt.show({ text: t("sec.sharing.audit.revoked", { email: g.recipientEmail }) });
-      await load();
+      await reloadOwn();
     } catch (e: any) {
       toast(t("sec.sharing.audit.revokeError"), "error");
     } finally {
@@ -472,7 +479,7 @@ export default function TrustedSharing() {
           hand-off it produces (LC-17) are two steps of one capability, so
           they carry one stamp between them rather than competing as two. */}
       <div data-module="sharing-grant" style={{ display: "contents" }}>
-      <CoParentInvite key={childProfile.id} childId={childProfile.id} childName={childProfile.name} grants={shares} onChanged={load} />
+      <CoParentInvite key={childProfile.id} childId={childProfile.id} childName={childProfile.name} grants={shares} onChanged={reloadOwn} />
       {!error && (
         <section data-testid="share-week-card" className="rounded-[22px] p-5 flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-x-6 lg:gap-y-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
           {/* W2-CAREPRO r2: at lg the card is two columns — what is shared on
