@@ -19,7 +19,7 @@
  * every expected shared file is shipped with its hash, or listed missing; a
  * listed-missing file that now exists must move to the hashed list; the
  * per-child lists match the books. The read half (a full read with the real
- * files makes no /api/tts call and finds every file it asks for) runs in the
+ * files makes no runtime TTS request and finds every file it asks for) runs in the
  * B-BOOK-27 reader harness (components/library/allBooks.fullRead.zeroCall).
  */
 import { KID_SHELF_STORIES } from "../heroJourneys";
