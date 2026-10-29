@@ -3,6 +3,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
 import { fmtDay } from "../../lib/formatDate";
+import { routeHash } from "../../lib/routes";
 import { keptThings } from "../../lib/kept/keptThings";
 import { milestoneText } from "../../lib/milestoneData";
 import type { ObservationSources } from "../../lib/observations";
@@ -90,6 +91,12 @@ export default function PortraitCards({ sources, onEditGoal }: PortraitCardsProp
           <>
             <p className="portrait-card-words" dir="auto">{kept.text}</p>
             {kept.at && <p className="portrait-card-src">{t("companion.milestones.srcParent", { date: fmtDay(kept.at, uiLang) })}</p>}
+            {/* B-ASKJB-36 (critic r1): the card opens the Kept reader, where
+                every kept moment sits by month. */}
+            <a className="portrait-card-tell" data-testid="portrait-card-kept-open" href={`#${routeHash("development", { view: "kept" })}`}>
+              {t("kept.view")}
+              <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
+            </a>
           </>
         ) : notTold("portrait-card-kept-tell", () => openCaptureSheet())}
       </article>

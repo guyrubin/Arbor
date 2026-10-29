@@ -511,7 +511,9 @@ export default function Shell() {
             >
               {pillRowFor(section, activeTab).map((it) => {
                 // v4: a leaf route lights the reading it belongs to (PILL_LIT).
-                const on = it.tab === pillLitTab(activeTab);
+                // B-ASKJB-36 (critic r1): the Kept reader is a mode of My child,
+                // not its Milestones reading — no pill reads selected there.
+                const on = it.tab === pillLitTab(activeTab) && !(activeTab === "development" && query.get("view") === "kept");
                 return (
                   <button
                     key={it.tab}

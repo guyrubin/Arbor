@@ -116,3 +116,28 @@ describe("B-ASKJB-36 · searching kept / שמרנו lands on the kept mode", () 
     expect(withoutPage.some((e) => e.tab === "development" && (e as { view?: string }).view === "kept")).toBe(false);
   });
 });
+
+describe("B-ASKJB-36 · critic r1: the way in, the pill row and the filter chips", () => {
+  const SRC = path.resolve(__dirname, "..", "..");
+  const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8");
+
+  it("My child's kept card links to the Kept reader (a 44 px pill, EN + HE label)", () => {
+    const cards = read("components/companion/PortraitCards.tsx");
+    expect(cards).toContain('data-testid="portrait-card-kept-open" href={`#${routeHash("development", { view: "kept" })}`}');
+    expect(splitHash("#/development?view=kept")).toMatchObject({ key: "development" });
+    for (const lang of ["en", "he"] as const) expect(translate(lang, "kept.view")).not.toBe("kept.view");
+    expect(read("components/companion/developmentMap.css")).toMatch(/\.portrait-card-tell \{[^}]*min-block-size: var\(--touch-min\)/);
+  });
+
+  it("no place pill reads selected in the Kept reader", () => {
+    const shell = read("components/layout/Shell.tsx");
+    expect(shell).toContain('const on = it.tab === pillLitTab(activeTab) && !(activeTab === "development" && query.get("view") === "kept");');
+  });
+
+  it("every filter chip, the one-word All included, is at least 44 px wide and tall", () => {
+    const css = read("components/kept/kept.css");
+    const rule = css.split("\n").find((l) => l.startsWith(".kept-filters button {")) ?? "";
+    expect(rule).toContain("min-block-size: 44px");
+    expect(rule).toContain("min-inline-size: 44px");
+  });
+});
