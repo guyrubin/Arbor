@@ -151,4 +151,16 @@ describe("B-ASKJB-49 — a 409 says what it is and sends the parent to Safety", 
     // Negative control: the crisis error still is.
     expect(classifyAiFailure(new EscalationRequiredError("x"), { online: true }).kind).toBe("escalation");
   });
+
+  it("round 2: fail closed — any other 409 ApiError keeps the crisis copy", () => {
+    // A raw-fetch path (streamVoice, the /chat stream) builds ApiError from the
+    // status and the server's words; that must never read as "try again".
+    for (const message of ["Professional support recommended", "Request failed", "something_new", "HERO_MISSING", ""]) {
+      const e = classifyAiFailure(new ApiError(message, 409), { online: true });
+      expect(e.kind, message).toBe("escalation");
+      expect(e.titleKey, message).toBe("beh.escalation.title");
+      expect(e.actionRoute, message).toBe("safety");
+      expect(e.retryable, message).toBe(false);
+    }
+  });
 });
