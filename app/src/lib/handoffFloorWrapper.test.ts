@@ -89,6 +89,20 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     expect(handoffFloor(line, { parentText: "His speech delay is our main worry this month." })).toBe(line);
   });
 
+  it("round 12 (P2): \"Where …\" is a condition like \"When …\"; a finding label the parent never wrote leaves the condition, never the command", () => {
+    const where = "Where there are no signs of calming after 20 minutes, phone the parents.";
+    expect(withoutHandoffFindings(where, { parentText: HARD_MOMENT_EN })).toBe("");
+    expect(handoffFloor(where, { parentText: HARD_MOMENT_EN })).toBe(where);
+    const t18 = "After a month with no signs of improvement in his articulation problems, contact the family.";
+    expect(handoffFloor(t18, { parentText: HARD_MOMENT_EN })).toBe("Contact the family.");
+    expect(handoffFloor("כעבור חודש ללא סימנים לשיפור בבעיית ההגייה שלו, יש לעדכן את ההורים.", { parentText: HARD_MOMENT_HE })).toBe("יש לעדכן את ההורים.");
+    expect(handoffFloor("After a month with no signs of improvement in his behavior difficulties, contact the family.", { parentText: HARD_MOMENT_EN })).toBe("Contact the family.");
+    // the parent's own label keeps the whole line; a plain trigger ("in his sleep") is no label
+    expect(handoffFloor(t18, { parentText: "His articulation problems worry us" })).toBe(t18);
+    const sleep = "After two weeks with no signs of improvement in his sleep, talk with your pediatrician.";
+    expect(handoffFloor(sleep, { parentText: HARD_MOMENT_EN })).toBe(sleep);
+  });
+
   it("no command, nothing restored: narrated lines and plain findings keep main's verdict", () => {
     for (const [line, parentText] of [
       ["When he gets to tell his parents about his day he shows no signs of anxiety.", HARD_MOMENT_EN],
@@ -134,6 +148,17 @@ describe("rule (b) — a negated-finding reassurance the parent never said is re
       expect(withoutHandoffFindings(line, { parentText })).toBe(line);
       expect(handoffFloor(line, { parentText })).toBe(line);
     }
+  });
+
+  it("round 12: the parent's own word for the finding counts as saying it (difficulties / problems, קשיים / בעיות)", () => {
+    for (const [line, parentText] of [
+      ["Mom reports no signs of sleep difficulties since the new routine.", "He's been sleeping through, no sleep problems since the new routine"],
+      ["אמא מספרת שאין סימנים לקשיי שינה מאז השגרה החדשה.", "הוא ישן טוב, אין בעיות שינה מאז השגרה החדשה"],
+    ]) {
+      expect(withoutHandoffFindings(line, { parentText })).toBe(line);
+      expect(handoffFloor(line, { parentText })).toBe(line);
+    }
+    expect(handoffFloor("Mom reports no signs of sleep difficulties since the new routine.", { parentText: ASK_EN })).toBe("");
   });
 
   it("a condition is not a reassurance: kept as main keeps it", () => {

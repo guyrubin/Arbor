@@ -113,7 +113,7 @@ const carriesEscalation = (text: string) => findEscalationSpans(text).length > 0
 /** Always a condition. */
 const CONDITION_ALWAYS = /\b(?:if|unless|in\s+case|in\s+the\s+event|as\s+long\s+as|until|till|should\s+(?:he|she|they|it|there|the\s+\p{L}+))\b|(?<!\p{L})(?:ו)?(?:אם|במידה|במקרה|בכל\s+מקרה|עד\s+ש|עד\s+אשר|כל\s+עוד)(?!\p{L})/iu;
 /** "when / once / כש / כאשר …": a condition inside an escalation line, unless narrated in the past. */
-const CONDITION_WHEN = /\b(?:when|whenever|once|as\s+soon\s+as|any\s+time|each\s+time|every\s+time)\b|(?<!\p{L})(?:ו)?(?:כש(?=\p{L})|כאשר(?!\p{L})|בכל\s+פעם|ברגע\s+ש|בזמן\s+ש)/iu;
+const CONDITION_WHEN = /\b(?:when|whenever|once|as\s+soon\s+as|any\s+time|each\s+time|every\s+time|where|wherever)\b|(?<!\p{L})(?:ו)?(?:כש(?=\p{L})|כאשר(?!\p{L})|בכל\s+פעם|ברגע\s+ש|בזמן\s+ש)/iu;
 /** "after / within / כעבור / אחרי …" makes a condition only with a linked absence ("after 20 minutes WITH no
  *  signs", "אחרי 20 דקות שאין", "כעבור 20 דקות ללא"); "after two weeks there are no signs of X" asserts X. */
 const CONDITION_TIME = /\b(?:after|within|over|by)\b|(?<!\p{L})(?:ו)?(?:אחרי|לאחר|כעבור|תוך)(?!\p{L})/iu;
@@ -223,8 +223,16 @@ export const wordInParentText = (word: string, parentText: string): boolean => {
   });
 };
 /** The object's content words the parent's text never contains (empty = the parent said X, or X has no content). */
+/** Round 12: the parent's own word for the same finding counts ("no sleep problems" says "sleep difficulties"). */
+const SYNONYM_CLASSES: readonly (readonly string[])[] = [
+  ["difficult", "problem", "issue", "trouble", "struggl"],
+  ["קושי", "קשיי", "קשיים", "קשה", "בעיה", "בעיות", "בעיית"],
+];
+const synonymInParent = (word: string, parentText: string) =>
+  SYNONYM_CLASSES.some((members) => wordVariants(word).some((v) => members.some((m) => v.startsWith(heNorm(m))))
+    && members.some((m) => heNorm(parentText.toLocaleLowerCase()).includes(heNorm(m))));
 export function objectWordsAbsentFromParent(object: string, parentText: string): string[] {
-  return contentWords(object).filter((w) => !wordInParentText(w, parentText));
+  return contentWords(object).filter((w) => !wordInParentText(w, parentText) && !synonymInParent(w, parentText));
 }
 
 /* ── clause anatomy ─────────────────────────────────────────────────────── */
@@ -348,11 +356,27 @@ const CUT_WORD = /\s(?:about|because|since|as|so|who|which|that|while|though|alt
 const statesFinding = (text: string, opts: HandoffFloorOptions) => statesUnreportedFinding(text, opts) || DIAGNOSTIC_SIGN.test(text);
 /** A clinical label in a condition that the parent never wrote: a stated finding, so it stays out of a restored line. */
 const unreportedDiagnosis = (text: string, opts: HandoffFloorOptions) => {
+  const parent = opts.parentText ?? "";
   const term = findClinicalDiagnosisTerm(text);
-  if (!term) return false;
-  const parent = (opts.parentText ?? "").toLocaleLowerCase();
-  return !parent.includes(term.toLocaleLowerCase());
+  if (term && !parent.toLocaleLowerCase().includes(term.toLocaleLowerCase())) return true;
+  // Round 12 (P2): a label from the floor's finding list with its qualifier ("articulation problems",
+  // "בעיית ההגייה") the parent never wrote is a stated finding as well.
+  return findingLabels(text).some((label) => objectWordsAbsentFromParent(label, parent).length > 0);
 };
+/** The floor's finding nouns (main's NOUN_EN / HANDOFF_FINDING_TERMS_HE classes) as labels with their qualifiers. */
+const LABEL_NOUN_EN = /\b(?:problems?|difficult(?:y|ies)|delays?|deficits?|impairments?|disorders?|issues?)\b/giu;
+const LABEL_NOUN_HE = /(?<!\p{L})(?:[ובהלמש]{0,2})(?:בעיית|בעיות|בעיה|קשיי|קשיים|קושי|עיכוב|עיכובים|ליקוי|ליקויים|לקות|הפרעת|הפרעה|הפרעות)(?!\p{L})(?:\s+[^\s,;:.!?—–]+){0,2}/gu;
+function findingLabels(text: string): string[] {
+  const labels: string[] = [];
+  LABEL_NOUN_EN.lastIndex = 0;
+  for (const m of text.matchAll(LABEL_NOUN_EN)) {
+    const before = text.slice(0, m.index ?? 0).match(/(?:[\p{L}'’-]+\s+){0,2}$/u)?.[0] ?? "";
+    labels.push(`${before}${m[0]}`);
+  }
+  LABEL_NOUN_HE.lastIndex = 0;
+  for (const m of text.matchAll(LABEL_NOUN_HE)) labels.push(m[0]);
+  return labels;
+}
 
 /** Inside one chunk: cut the text after the command at the last cut word before a stated finding. */
 type Span = { index: number; end: number };
@@ -542,7 +566,7 @@ export function explainHandoffFloor(text: string, opts: HandoffFloorOptions = {}
     members.forEach((c, k) => { c.restored = true; c.out = k === 0 ? restored : ""; });
   }
   // (a) a condition fragment main split from its command: "If …; call …" / "Call …; if …".
-  const STARTS_WITH_CONDITION = new RegExp(String.raw`^\s*(?:${CONDITION_ALWAYS.source}|when\b|whenever\b|כש(?=\p{L})|כאשר(?!\p{L}))`, "iu");
+  const STARTS_WITH_CONDITION = new RegExp(String.raw`^\s*(?:${CONDITION_ALWAYS.source}|when\b|whenever\b|where\b|wherever\b|כש(?=\p{L})|כאשר(?!\p{L}))`, "iu");
   for (let i = 0; i < clauses.length; i++) {
     const c = clauses[i];
     if (c.main === "kept" || c.restored) continue;
