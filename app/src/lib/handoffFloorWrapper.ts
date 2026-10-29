@@ -177,7 +177,19 @@ const NEGATED_TIMING = new RegExp(String.raw`\b(?:(?:not|rather\s+than|instead\s
 /** The text with every negated time phrase blanked ("today, not next week" → "today,"). */
 /** The command patterns without their filters (the filters call back into this check). */
 const RAW_COMMANDS = [COMMAND_EN, COMMAND_EN_PASSIVE, COMMAND_EN_BARE, HE_COMMAND, HE_COMMAND_BARE].map((re) => new RegExp(re.source, re.flags.replace("g", "")));
-const withoutNegatedTiming = (text: string) => text.replace(NEGATED_TIMING, (m) => (carriesTime(m) && !RAW_COMMANDS.some((re) => re.test(m)) ? " ".repeat(m.length) : m));
+/* Round 19 (P1-A): a negated time is stripped only when it sets off an immediate one in the same clause ("today,
+ * not next week", "right away rather than at pickup", "מיד, לא אחר כך") or is a "don't wait" form ("don't wait
+ * until pickup", "אל תחכו לאיסוף"). Any other negated time — "but not this week", "just not tonight", "not prior
+ * to the meeting", "not during the holidays", "אבל לא השבוע", "רק לא הערב", "לא קודם לסוף החודש", "אבל לא
+ * בחופש" — is a deferral, and the line stays as main leaves it. */
+const WAIT_NEGATION = /^(?:(?:do\s+not|don['’]t|never|no\s+need\s+to)\s+wait|without\s+waiting)\b|^(?:ו)?(?:אל\s+תחכ|אל\s+תמתינ|בלי\s+לחכות|ללא\s+המתנה|במקום\s+לחכות)/iu;
+const withoutNegatedTiming = (text: string) => {
+  const blanked = (m: string) => carriesTime(m) && !RAW_COMMANDS.some((re) => re.test(m));
+  // the immediate phrase must stand outside every negation ("but not today" sets nothing off)
+  const outside = text.replace(NEGATED_TIMING, (m) => " ".repeat(m.length));
+  const immediate = new RegExp(IMMEDIATE.source, "iu").test(outside);
+  return text.replace(NEGATED_TIMING, (m) => ((immediate || WAIT_NEGATION.test(m)) && blanked(m) ? " ".repeat(m.length) : m));
+};
 /** A visit or appointment WITH a professional is the escalation's own object only when the command books,
  *  suggests, refers or schedules it ("suggest a visit to the pediatrician", "הציעו ביקור אצל רופאת הילדים");
  *  a visit used as the time of the action ("tell the family during their visit with the pediatrician", "ספרו

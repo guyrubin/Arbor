@@ -241,6 +241,34 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     expect(withoutHandoffFindings(line, { parentText })).not.toBe(line);
     expect(handoffFloor(line, { parentText })).toBe(line);
   });
+  /* Round 19 (P1-A): a negated time is stripped only beside an immediate time or as a "don't wait" form;
+     otherwise it is a deferral (critic fresh18 A01-A05, HA01-HA04). A06-A08, HA05, HA06 still restore. */
+  it.each([
+    "When there are no signs of calming, call the family, but not this week.",
+    "When there are no signs of calming, tell the family, just not tonight.",
+    "When there are no signs of calming, call the family, but not any earlier than next week.",
+    "When there are no signs of calming, call the family, but not prior to the meeting.",
+    "When there are no signs of calming, let the family know, but not during the holidays.",
+    "כשאין סימנים של רגיעה, עדכנו את ההורים, אבל לא השבוע.",
+    "כשאין סימנים של רגיעה, התקשרו להורים, רק לא הערב.",
+    "כשאין סימנים של רגיעה, עדכנו את ההורים, אבל לא קודם לסוף החודש.",
+    "כשאין סימנים של רגיעה, ספרו להורים, אבל לא בחופש.",
+  ])("a negated time with no immediate one stays as main leaves it: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).toBe("");
+    expect(handoffFloor(line, { parentText })).toBe("");
+  });
+  it.each([
+    "When there are no signs of calming, call the family today rather than waiting for the meeting.",
+    "When there are no signs of calming, call the family right away, not later.",
+    "When there are no signs of calming, don't wait until the end of the day, call the family now.",
+    "כשאין סימנים של רגיעה, התקשרו להורים מיד, לא אחר כך.",
+    "כשאין סימנים של רגיעה, אל תחכו עד האיסוף, התקשרו להורים.",
+  ])("a negated time beside an immediate one, or a don't-wait, still restores: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).not.toBe(line);
+    expect(handoffFloor(line, { parentText })).toBe(line);
+  });
   /* Round 18 (P1-A): a negation that governs before / until / earlier (לפני, עד, מוקדם) is a deferral, never
      stripped (critic fresh17 N02, N03, HN02, HN03); "don't wait until pickup" still restores (N04, HN04). */
   it.each([
