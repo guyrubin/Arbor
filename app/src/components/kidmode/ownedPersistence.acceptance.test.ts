@@ -43,8 +43,8 @@ const STORES: Store[] = [
   },
   {
     name: "studioCreations", module: "components/kidmode/studioV2/studioCreations.ts", keeps: "replaced",
-    key: /upsert\(\{ id: clean\.kind, ownerId, childId, creation: clean \}\)/,
-    fixtures: [{ file: "components/kidmode/studioV2/studioCreations.test.ts", tests: ["does not expose another owner or child, even from a local fallback", "refuses a write before hydration, after scope retirement, or on a fallback error", "does not acknowledge a rejected storage write"] }],
+    key: /upsert\(\{\s*id:\s*clean\.kind,\s*ownerId,\s*childId,\s*creation:\s*clean\s*\},\s*\{\s*requireAcknowledgement:\s*true\s*\}\)/,
+    fixtures: [{ file: "components/kidmode/studioV2/studioCreations.test.ts", tests: ["does not expose another owner or child, even from a local fallback", "refuses a write before hydration, after scope retirement, or on a fallback error", "does not acknowledge a rejected storage write", "keeps a queued or unconfirmed remote save retryable, with the same bounded document identity"] }],
   },
   {
     name: "kidSouvenirs", module: "components/kidmode/rewards/useKidSouvenirs.ts", keeps: "kept once",
