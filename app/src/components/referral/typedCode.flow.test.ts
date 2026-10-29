@@ -12,10 +12,10 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../lib/loopEvents", () => ({ trackInviteActivated: vi.fn() }));
+vi.mock("../../lib/loopEvents", () => ({ trackInviteActivated: vi.fn(), hasTrackedFirstPlan: () => false }));
 
-import { offerCodeRoute } from "./OfferCodeField";
-import { holdTypedReferralCode, loadAttribution } from "../../lib/attribution";
+import { offerCodeRoute, refusalOutcome, submitTypedCode } from "./OfferCodeField";
+import { clearTypedReferralRefusal, holdTypedReferralCode, loadAttribution, peekTypedReferralRefusal } from "../../lib/attribution";
 import { activateCapturedReferral, LS_REFERRAL_ACTIVATED } from "../../lib/referralActivation";
 import { LocalReferralStore } from "../../server/referral";
 import type { EntitlementRecord, EntitlementStore } from "../../server/entitlements";
@@ -80,6 +80,62 @@ describe("B-GROWTH-43 · a typed code counts on the first plan", () => {
     await expect(activateCapturedReferral({ activate })).resolves.toBe("not_activated");
     expect(ent.records.get("family")?.currentPeriodEnd).toBe(end);
     expect(await server.earnedMonths("referrer")).toBe(1);
+  });
+
+  it("round 4: the parent's own code is refused while they type, and nothing is held", async () => {
+    const { code, activate } = await setup();
+    const own = await new LocalReferralStore("salt", 5, new Ent()).codeForUid("family");
+    const activateSpy = vi.fn(activate);
+    for (const hasPlan of [false, true]) {
+      expect(await submitTypedCode({ code: own.toLowerCase(), hasPlan, ownCode: async () => own, activate: activateSpy })).toBe("self");
+    }
+    expect(activateSpy).not.toHaveBeenCalled();
+    expect(loadAttribution()?.referralCode).toBeUndefined();
+    // A failed own-code read does not block a real code.
+    expect(await submitTypedCode({ code, hasPlan: false, ownCode: async () => { throw new Error("offline"); }, activate })).toBe("held");
+  });
+
+  it("round 4: a held typed code refused at the first plan is told once, and a corrected code can be typed", async () => {
+    const { code, activate, ent, server } = await setup();
+    // A one-character typo of a well-formed code: held, then refused at the first plan.
+    expect(await submitTypedCode({ code: "ARBOR-22222222", hasPlan: false, ownCode: async () => null, activate })).toBe("held");
+    await expect(activateCapturedReferral({ activate })).resolves.toBe("not_activated");
+    expect(ls.has(LS_REFERRAL_ACTIVATED)).toBe(false); // the device can try again
+    expect(loadAttribution()?.referralCode).toBeUndefined();
+    expect(refusalOutcome(peekTypedReferralRefusal())).toBe("heldRefused");
+    clearTypedReferralRefusal(); // the Plan card has shown it
+    expect(peekTypedReferralRefusal()).toBeNull(); // once
+    // The family now has its plan: the corrected code redeems at once, and the device is marked.
+    expect(await submitTypedCode({ code, hasPlan: true, ownCode: async () => null, activate })).toBe("granted");
+    expect(ls.has(LS_REFERRAL_ACTIVATED)).toBe(true);
+    expect(ent.records.get("family")?.productId).toBe("referral_month");
+    expect(await server.earnedMonths("referrer")).toBe(1);
+    // The other refusals keep their own lines.
+    expect(refusalOutcome("self")).toBe("self");
+    expect(refusalOutcome("already")).toBe("already");
+  });
+
+  it("round 4: a link code waiting for the first plan survives a typed hold, and is the one that redeems", async () => {
+    const { code, activate, server } = await setup();
+    const other = await server.codeForUid("someone-else");
+    ls.set("arbor.attribution", JSON.stringify({ referralCode: code, source: "referral", market: "il", landingAt: "2026-10-28T09:00:00Z" }));
+    expect(await submitTypedCode({ code: other, hasPlan: false, ownCode: async () => null, activate })).toBe("linkSaved");
+    expect(holdTypedReferralCode(other)).toBe(false);
+    expect(loadAttribution()).toMatchObject({ referralCode: code, source: "referral" });
+    expect(loadAttribution()?.referralVia).toBeUndefined();
+    await expect(activateCapturedReferral({ activate })).resolves.toBe("activated");
+    expect(await server.earnedMonths("referrer")).toBe(1);
+    expect(await server.earnedMonths("someone-else")).toBe(0);
+  });
+
+  it("round 4: an immediate grant marks this device redeemed, so a link code captured earlier never posts", async () => {
+    const { code, activate } = await setup();
+    ls.set("arbor.attribution", JSON.stringify({ referralCode: "ARBOR-33333333", source: "referral", market: "il", landingAt: "x" }));
+    expect(await submitTypedCode({ code, hasPlan: true, ownCode: async () => null, activate })).toBe("granted");
+    expect(ls.has(LS_REFERRAL_ACTIVATED)).toBe(true);
+    const later = vi.fn(activate);
+    await expect(activateCapturedReferral({ activate: later })).resolves.toBe("already_here");
+    expect(later).not.toHaveBeenCalled();
   });
 
   it("a code that is not one is refused before anything is held", () => {

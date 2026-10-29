@@ -14,12 +14,18 @@
 
 export type Market = "il" | "nl" | "be" | "ie" | "uk" | "intl";
 
+/** Why a held typed code was refused at the first plan. */
+export type TypedReferralRefusal = "unknown" | "self" | "already";
+
 export type Attribution = {
   referralCode?: string;
   /** B-GROWTH-43: "typed" when the parent typed the code in Settings before
    *  the family's first plan (holdTypedReferralCode); a ?ref= link leaves it
    *  unset. Never an analytics prop (attributionProps does not emit it). */
   referralVia?: "typed";
+  /** B-GROWTH-43: a held typed code the server refused at the first plan, kept
+   *  until the Plan card has told the parent once (releaseTypedReferralCode). */
+  referralRefused?: TypedReferralRefusal;
   source: string; // utm_source | referrer host | "referral" | "direct"
   market: Market;
   utmSource?: string;
@@ -137,13 +143,54 @@ export function consumeReferralVia(): "link" | "typed" {
   return loadAttribution()?.referralVia === "typed" ? "typed" : "link";
 }
 
+/** B-GROWTH-43: the code a `?ref=` link captured, while it is still held (a
+ *  typed code never displaces it before the server has accepted the typed one). */
+export function heldLinkReferralCode(): string | undefined {
+  const a = loadAttribution();
+  return a?.referralCode && a.referralVia !== "typed" ? a.referralCode : undefined;
+}
+
+/**
+ * B-GROWTH-43: a held TYPED code the server refused at the first plan. It is
+ * dropped from the record (so a corrected code can be typed) and why is kept
+ * until the Plan card has said so once. A link code is never touched here.
+ */
+export function releaseTypedReferralCode(reason: TypedReferralRefusal): void {
+  const a = loadAttribution();
+  if (!a || a.referralVia !== "typed") return;
+  const { referralCode: _code, referralVia: _via, ...rest } = a;
+  try {
+    localStorage.setItem(LS_ATTRIBUTION, JSON.stringify({ ...rest, referralRefused: reason }));
+  } catch {
+    /* storage blocked: nothing to tell later */
+  }
+}
+
+/** The refusal the Plan card has not shown yet (read only). */
+export function peekTypedReferralRefusal(): TypedReferralRefusal | null {
+  return loadAttribution()?.referralRefused ?? null;
+}
+
+/** Forget the refusal once it has been shown. */
+export function clearTypedReferralRefusal(): void {
+  const a = loadAttribution();
+  if (!a?.referralRefused) return;
+  const { referralRefused: _r, ...rest } = a;
+  try {
+    localStorage.setItem(LS_ATTRIBUTION, JSON.stringify(rest));
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * B-GROWTH-43: hold a code the parent typed before the family's first plan,
  * in the SAME first-touch record a `?ref=` link fills, so it redeems at the
  * first plan through the same path (lib/referralActivation). The acquisition
- * source, market and UTM stay the first touch; only the code (and how it was
- * entered) is replaced, the parent's latest explicit choice. False when the
- * device's storage refuses the write.
+ * source, market and UTM stay the first touch. A typed code held earlier is
+ * replaced (the parent's latest choice); a LINK code still held is never
+ * displaced (false; the field says a code is already saved). False too when
+ * the device's storage refuses the write.
  */
 export function holdTypedReferralCode(code: string): boolean {
   let current = loadAttribution();
@@ -156,8 +203,11 @@ export function holdTypedReferralCode(code: string): boolean {
       current = { source: "direct", market: "intl", landingAt: new Date().toISOString() };
     }
   }
+  // Never displaces a link code still waiting for the first plan.
+  if (current.referralCode && current.referralVia !== "typed") return false;
+  const { referralRefused: _r, ...rest } = current;
   try {
-    localStorage.setItem(LS_ATTRIBUTION, JSON.stringify({ ...current, referralCode: code, referralVia: "typed" }));
+    localStorage.setItem(LS_ATTRIBUTION, JSON.stringify({ ...rest, referralCode: code, referralVia: "typed" }));
     return loadAttribution()?.referralCode === code;
   } catch {
     return false;

@@ -44,7 +44,7 @@ import { fmtDay } from "../../lib/formatDate";
  *  notifications, billing, and account). */
 export default function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { uiLang, aiLang, setUiLang, setAiLang, t } = useLanguage();
-  const { setActiveTab, pendingMemoryItems, approvedMemoryItems, selectedLens, setSelectedLens, childProfile, updateChild, actionPlans } = useArbor();
+  const { setActiveTab, pendingMemoryItems, approvedMemoryItems, selectedLens, setSelectedLens, childProfile, updateChild } = useArbor();
   // B-KID-70 (R-5): the active child's Kid Mode look; the row exists only when
   // more than one theme covers every slot the app renders (the lib/theme.ts rule).
   const kidLooks = selectableThemes();
@@ -549,7 +549,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               paying family: a comp month never overrides a paid record, so a
               code would spend their one invite on nothing. */}
           {!isPaid && !entitlementLoading && !entitlementUnverified && !codeGranted && (
-            <OfferCodeField hasPlan={(actionPlans?.length ?? 0) > 0} onGranted={() => { setCodeGranted(true); void retryEntitlement(); }} />
+            <OfferCodeField onGranted={() => { setCodeGranted(true); void retryEntitlement(); }} />
           )}
           {/* The month was added: the plan reloads (and the field leaves with
               the free plan), so the answer is held here, not in the field. */}

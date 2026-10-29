@@ -56,6 +56,18 @@ export function trackProfileCreated(childCount: number, band?: string): void {
   track(LoopEvent.ProfileCreated, { child_count: childCount, ...(band ? { band } : {}) });
 }
 
+/** B-GROWTH-43: true once this device has seen the family's first generated
+ *  plan — the moment the referral link path redeems (ArborContext fires
+ *  trackFirstPlan and maybeActivateReferral together). A typed code uses the
+ *  same test, so both paths agree on "the family has a plan". */
+export function hasTrackedFirstPlan(): boolean {
+  try {
+    return Boolean(localStorage.getItem(LS_FIRST_PLAN));
+  } catch {
+    return false;
+  }
+}
+
 /** Activation signal — fires only on the family's FIRST generated plan (deduped per device). */
 export function trackFirstPlan(props: Record<string, unknown> = {}): void {
   if (once(LS_FIRST_PLAN)) track(LoopEvent.FirstPlan, props);

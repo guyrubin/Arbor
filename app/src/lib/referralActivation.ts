@@ -10,7 +10,7 @@
  * entitlement. Best-effort and fully guarded: it never blocks plan creation.
  */
 import type { ReferralActivateResult } from "./api";
-import { consumeReferralCode, consumeReferralVia } from "./attribution";
+import { consumeReferralCode, consumeReferralVia, releaseTypedReferralCode } from "./attribution";
 import { trackInviteActivated } from "./loopEvents";
 
 export const LS_REFERRAL_ACTIVATED = "arbor.referralActivated";
@@ -32,11 +32,20 @@ export async function activateCapturedReferral(deps: {
   try {
     // B-GROWTH-43: a code typed in Settings before the first plan is held in
     // the same record and redeems here, marked as typed.
-    const result = consumeReferralVia() === "typed" ? await deps.activate(code, "typed") : await deps.activate(code);
+    const via = consumeReferralVia();
+    const result = via === "typed" ? await deps.activate(code, "typed") : await deps.activate(code);
     if (result.ok && (result.status === "granted" || result.status === "maxed")) {
       trackInviteActivated("referred");
       deps.onActivated?.();
       return "activated";
+    }
+    // B-GROWTH-43: a held TYPED code the server refused (a typo, the parent's
+    // own code, a family that already redeemed) is dropped with its reason, for
+    // the Plan card to say once, and the device marker is cleared so a
+    // corrected code can be typed. A refused link code keeps its old behaviour.
+    if (via === "typed") {
+      releaseTypedReferralCode(!result.ok ? (result.status === "self_referral" ? "self" : "unknown") : "already");
+      try { localStorage.removeItem(LS_REFERRAL_ACTIVATED); } catch { /* ignore */ }
     }
     return "not_activated";
   } catch {

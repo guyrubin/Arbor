@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 import { api, type ReferralActivateResult } from "../../lib/api";
 import { normalizeOfferCode, offerForCode } from "../../lib/offers";
-import { trackInviteActivated } from "../../lib/loopEvents";
-import { holdTypedReferralCode } from "../../lib/attribution";
+import { hasTrackedFirstPlan, trackInviteActivated } from "../../lib/loopEvents";
+import { clearTypedReferralRefusal, heldLinkReferralCode, holdTypedReferralCode, peekTypedReferralRefusal, type TypedReferralRefusal } from "../../lib/attribution";
 import { LS_REFERRAL_ACTIVATED } from "../../lib/referralActivation";
 
 /**
@@ -20,13 +20,20 @@ import { LS_REFERRAL_ACTIVATED } from "../../lib/referralActivation";
  * code HELD in the same first-touch record a ?ref= link fills
  * (lib/attribution holdTypedReferralCode), and it redeems at the first plan
  * through the link's own path (lib/referralActivation). Only a family that
- * already has a plan redeems at once.
+ * already has a plan (this device has seen its first generated plan, the same
+ * test the link path's trigger uses) redeems at once.
+ *
+ * Round 4: the parent's own code is refused while they type (GET
+ * /api/referral/code); a link code still waiting for the first plan is never
+ * displaced by a typed one; and a held typed code the server refuses at the
+ * first plan is told here, once, with the device free to take a corrected
+ * code (no new toast: the Plan card is the code's own receipt).
  *
  * Why its own file: the Plan card had no code input, and InviteCard is the
  * SENDING side (Weekly). The outcome mapping is pure and tested.
  */
 
-export type OfferCodeOutcome = "granted" | "held" | "already" | "unknown" | "self" | "failed" | "signin";
+export type OfferCodeOutcome = "granted" | "held" | "linkSaved" | "heldRefused" | "already" | "unknown" | "self" | "failed" | "signin";
 
 /** The answer a parent reads for a server result, or for a request that threw
  *  (lib/api ApiError: 401 = not signed in; anything else = try again). */
@@ -42,6 +49,8 @@ export function offerCodeOutcome(result: ReferralActivateResult | unknown): Offe
 const OUTCOME_KEY: Record<OfferCodeOutcome, string> = {
   granted: "set.referral.code.granted",
   held: "set.referral.code.held",
+  linkSaved: "set.referral.code.linkSaved",
+  heldRefused: "set.referral.code.heldRefused",
   already: "set.referral.code.already",
   unknown: "set.referral.code.unknown",
   self: "set.referral.code.self",
@@ -59,41 +68,80 @@ export function offerCodeRoute(code: string, hasPlan: boolean): { route: "refuse
   return { route: hasPlan ? "redeem" : "hold", normalized };
 }
 
-export default function OfferCodeField({ hasPlan, onGranted }: { hasPlan: boolean; onGranted?: () => void }) {
+/** The line for a held typed code the server refused at the first plan. */
+export const refusalOutcome = (r: TypedReferralRefusal | null): OfferCodeOutcome | null =>
+  r === null ? null : r === "self" ? "self" : r === "already" ? "already" : "heldRefused";
+
+/**
+ * Everything a submitted code does, in order: not a code → refused; the
+ * parent's own code → refused; no plan yet → held beside nothing (a link code
+ * waiting for the first plan is kept, and the parent is told one is saved);
+ * a plan → redeemed now, and on a grant this device is marked redeemed so a
+ * link code captured earlier never posts again.
+ */
+export async function submitTypedCode(input: {
+  code: string;
+  hasPlan: boolean;
+  ownCode: () => Promise<string | null | undefined>;
+  activate: (code: string, via: "typed") => Promise<ReferralActivateResult>;
+}): Promise<OfferCodeOutcome> {
+  const { route, normalized } = offerCodeRoute(input.code, input.hasPlan);
+  if (route === "refuse") return "unknown";
+  let own: string | null | undefined = null;
+  try {
+    own = await input.ownCode();
+  } catch {
+    own = null; // the server refuses the parent's own code too
+  }
+  if (own && normalizeOfferCode(own) === normalized) return "self";
+  if (route === "hold") {
+    if (heldLinkReferralCode()) return "linkSaved";
+    return holdTypedReferralCode(normalized) ? "held" : "failed";
+  }
+  try {
+    const next = offerCodeOutcome(await input.activate(normalized, "typed"));
+    if (next === "granted") {
+      try { localStorage.setItem(LS_REFERRAL_ACTIVATED, new Date().toISOString()); } catch { /* the server still dedupes */ }
+      trackInviteActivated("referred");
+    }
+    return next;
+  } catch (error) {
+    return offerCodeOutcome(error);
+  }
+}
+
+export default function OfferCodeField({ onGranted }: { onGranted?: () => void }) {
   const { t } = useLanguage();
   const { user, firebaseEnabled } = useAuth();
   const signedIn = firebaseEnabled ? Boolean(user) : true;
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
-  const [outcome, setOutcome] = useState<OfferCodeOutcome | null>(null);
+  // A held typed code refused at the first plan is told here once: read on
+  // mount, forgotten after it has been shown.
+  const [outcome, setOutcome] = useState<OfferCodeOutcome | null>(() => refusalOutcome(peekTypedReferralRefusal()));
+  useEffect(() => { clearTypedReferralRefusal(); }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code.trim() || busy) return;
     if (!signedIn) { setOutcome("signin"); return; }
-    const { route, normalized } = offerCodeRoute(code, hasPlan);
-    if (route === "refuse") { setOutcome("unknown"); return; }
-    if (route === "hold") { setOutcome(holdTypedReferralCode(normalized) ? "held" : "failed"); return; }
     setBusy(true);
     setOutcome(null);
     try {
-      const result = await api.referralActivate(normalized, "typed");
-      const next = offerCodeOutcome(result);
+      const next = await submitTypedCode({
+        code,
+        hasPlan: hasTrackedFirstPlan(),
+        ownCode: async () => (await api.referralCode()).code,
+        activate: (c, via) => api.referralActivate(c, via),
+      });
       setOutcome(next);
-      if (next === "granted") {
-        // This device has redeemed: a link code captured earlier never posts again.
-        try { localStorage.setItem(LS_REFERRAL_ACTIVATED, new Date().toISOString()); } catch { /* the server still dedupes */ }
-        trackInviteActivated("referred");
-        onGranted?.();
-      }
-    } catch (error) {
-      setOutcome(offerCodeOutcome(error));
+      if (next === "granted") onGranted?.();
     } finally {
       setBusy(false);
     }
   };
 
-  const good = outcome === "granted" || outcome === "held";
+  const good = outcome === "granted" || outcome === "held" || outcome === "linkSaved";
   return (
     <form onSubmit={(e) => void submit(e)} className="mt-3 pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }} data-testid="offer-code-field">
       <label htmlFor="offer-code-input" className="block text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>
