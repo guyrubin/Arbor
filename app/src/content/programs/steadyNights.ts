@@ -71,6 +71,7 @@ export const STEADY_NIGHTS: Program = {
   weeks: [
     {
       n: 1,
+      lesson: "bedtime-routine",
       skill: L(
         "Keep one short, calm bedtime routine: the same steps, in the same order, every night.",
         "לשמור על טקס שינה אחד, קצר ורגוע: אותם שלבים, באותו סדר, בכל ערב.",
@@ -85,6 +86,7 @@ export const STEADY_NIGHTS: Program = {
     },
     {
       n: 2,
+      lesson: "screens-before-bed",
       skill: L(
         "Dim the evening and brighten the morning: low light and screens off before bed, daylight after waking.",
         "ערב חשוך ובוקר מואר: אור נמוך ומסכים כבויים לפני השינה, אור יום אחרי ההשכמה.",
@@ -99,6 +101,7 @@ export const STEADY_NIGHTS: Program = {
     },
     {
       n: 3,
+      lesson: "sleep-needs-by-age",
       skill: L(
         "Start winding down at about the same time each evening, when the first sleepy signs show.",
         "להתחיל להירגע לקראת שינה בערך באותה שעה בכל ערב, כשמופיעים סימני העייפות הראשונים.",
@@ -113,6 +116,7 @@ export const STEADY_NIGHTS: Program = {
     },
     {
       n: 4,
+      lesson: "nap-transitions",
       skill: L(
         "Keep a short sleep diary for a week, then read it together and notice one thing that repeats.",
         "לנהל יומן שינה קצר במשך שבוע, ואז לקרוא אותו יחד ולשים לב לדבר אחד שחוזר.",
@@ -127,6 +131,7 @@ export const STEADY_NIGHTS: Program = {
     },
     {
       n: 5,
+      lesson: "bedtime-stalling",
       skill: L(
         "Choose one small change at sleep time, keep the rest the same, and respond the same calm way each time.",
         "לבחור שינוי קטן אחד בזמן ההירדמות, לשמור על כל השאר, ולהגיב באותה דרך רגועה בכל פעם.",
@@ -141,6 +146,7 @@ export const STEADY_NIGHTS: Program = {
     },
     {
       n: 6,
+      lesson: "sleep-regressions",
       skill: L(
         "Keep the routine through disrupted nights, and come back to it as soon as you can.",
         "לשמור על הטקס גם בלילות לא רגילים, ולחזור אליו ברגע שאפשר.",

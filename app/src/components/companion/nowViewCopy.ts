@@ -26,6 +26,8 @@ export const NOW_COPY = {
     continueProgram: "Continue your program",
     programWhy: (week: number) => `Week ${week} of the program you chose. Your next step is ready when you are.`,
     programLabel: "Your chosen program",
+    /** B-PROG-14: the program week's one Learn read (the door's label; the read's title is its line). */
+    weekIdea: "This week’s idea",
     curatedWhy: "A library idea for this age. Choose what fits your day.",
     goalsWhy: "Selected for a focus you chose, from the activity library.",
     momentsWhy: "Selected for an area in your recent notes, from the activity library.",
@@ -148,6 +150,7 @@ export const NOW_COPY = {
     continueProgram: "ממשיכים בתוכנית",
     programWhy: (week: number) => `שבוע ${week} בתוכנית שבחרתם. הצעד הבא מחכה לזמן שמתאים לכם.`,
     programLabel: "התוכנית שבחרתם",
+    weekIdea: "הרעיון של השבוע",
     curatedWhy: "רעיון מהספרייה שמתאים לגיל. בוחרים מה שמתאים ליום שלכם.",
     goalsWhy: "נבחר מתוך הספרייה לפי תחום שבחרתם להתמקד בו.",
     momentsWhy: "נבחר מתוך הספרייה לפי תחום שעולה ברגעים האחרונים שתיעדתם.",
