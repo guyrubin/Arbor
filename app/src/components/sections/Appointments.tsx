@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import RecordingIndicator from "../ui/RecordingIndicator";
 import { speechSupported, startDictation } from "../../lib/speech";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
-import { numberedQuestions, rehearsalQuestions, REHEARSAL_MAX_QUESTIONS } from "../../consult/rehearsalQuestions";
+import { numberedQuestions, rehearsalRows, rehearsalQuestions, REHEARSAL_MAX_QUESTIONS } from "../../consult/rehearsalQuestions";
 import { parentWords } from "../../lib/recordCounts";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
@@ -166,12 +166,12 @@ export default function Appointments() {
   };
   /** B-VOICE-03: only the parent's Keep writes rehearsed questions (in their
    *  reviewed order) to the questions the visit summary carries. */
-  const keepRehearsal = (reviewed: string[]) => {
+  const keepRehearsal = (reviewed: string[]): string | null => {
     const clean = reviewed.map((x) => x.trim()).filter(Boolean).slice(0, REHEARSAL_MAX_QUESTIONS);
-    if (!clean.length) return;
+    if (!clean.length) return null;
     const stamp = Date.now();
     clean.forEach((text, i) => void questionsCol.upsert({ id: `q${stamp}-${String(i).padStart(2, "0")}`, text }));
-    receipt.show({ text: clean.length === 1 ? t("elev.learnCare.appt.rehearse.kept.one") : t("elev.learnCare.appt.rehearse.kept.many", { n: clean.length }) });
+    return clean.length === 1 ? t("elev.learnCare.appt.rehearse.kept.one") : t("elev.learnCare.appt.rehearse.kept.many", { n: clean.length });
   };
   const addQ = () => {
     if (q.trim()) {
@@ -394,6 +394,10 @@ export default function Appointments() {
             {worthWell}
           </div>
         )}
+        {/* B-VOICE-03 (critic r1): rehearsing is for the visit ahead, so it
+            sits on the Upcoming card — not inside the collapsed "Past visits
+            and what to ask" — and answers in place. */}
+        <RehearseQuestions lang={uiLang === "he" ? "he" : "en"} onKeep={keepRehearsal} />
       </SectionCard>
       </div>
 
@@ -450,7 +454,6 @@ export default function Appointments() {
           <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addQ()} placeholder={t("elev.learnCare.appt.questions.placeholder")} aria-label={t("elev.learnCare.appt.questions.placeholder")} className="flex-1 rounded-xl px-3 py-2.5 text-sm min-h-[44px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} />
           <button onClick={addQ} className="inline-flex items-center gap-1 font-bold text-sm rounded-xl px-4 min-h-[44px]" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)" }}><Icon name="add" size={18} /> {t("elev.learnCare.appt.questions.add")}</button>
         </div>
-        <RehearseQuestions lang={uiLang === "he" ? "he" : "en"} onKeep={keepRehearsal} />
         {/* LC-12 + LC-20: the prepared questions ride into the consult summary. */}
         <p className="t-xs mt-2.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
           {t("elev.learnCare.appt.questions.toPacket")}
@@ -602,8 +605,9 @@ function ApptRow({
  *  no model), and nothing is kept until Keep. Rephrasing a worry into a
  *  question is the model's half, behind its own live eval. The microphone
  *  shows the REC-01 indicator while it is open (B-STATUS-02). */
-function RehearseQuestions({ lang, onKeep }: { lang: "en" | "he"; onKeep: (questions: string[]) => void }) {
+function RehearseQuestions({ lang, onKeep }: { lang: "en" | "he"; onKeep: (questions: string[]) => string | null }) {
   const { t } = useLanguage();
+  const kept = useReceiptNote();
   const [supported] = useState(() => speechSupported());
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState("");
@@ -615,7 +619,7 @@ function RehearseQuestions({ lang, onKeep }: { lang: "en" | "he"; onKeep: (quest
   if (!supported) return null;
   const start = () => {
     const turn = ++scope.current;
-    setError(""); setDraft(null); setListening(true);
+    setError(""); setDraft(null); setListening(true); kept.clear();
     stopRef.current = startDictation({
       onResult: (text) => { if (turn === scope.current) setDraft(rehearsalQuestions(text)); },
       onInterim: (text) => { if (turn === scope.current) setInterim(text); },
@@ -623,7 +627,7 @@ function RehearseQuestions({ lang, onKeep }: { lang: "en" | "he"; onKeep: (quest
       onEnd: () => { if (turn === scope.current) { setListening(false); setInterim(""); stopRef.current = null; } },
     }, lang === "he" ? "he-IL" : "en-US", { continuous: true });
   };
-  const keep = () => { if (draft) { onKeep(draft); setDraft(null); } };
+  const keep = () => { if (draft) { const said = onKeep(draft); setDraft(null); if (said) kept.show({ text: said }); } };
   const quiet = "inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 text-sm font-bold";
   return (
     <div data-testid="appt-rehearse" className="mt-3 space-y-2" dir={lang === "he" ? "rtl" : "ltr"} lang={lang}>
@@ -652,12 +656,14 @@ function RehearseQuestions({ lang, onKeep }: { lang: "en" | "he"; onKeep: (quest
             {numberedQuestions(draft).map((line, i) => (
               <li key={i} className="flex items-center gap-2" data-rehearse-line={line}>
                 <span className="t-sm font-bold tabular-nums" style={{ color: "var(--arbor-muted)" }} aria-hidden="true">{i + 1}.</span>
-                <input
+                {/* Critic r1: a long question wraps in full (a single-line input cut it). */}
+                <textarea
                   value={draft[i]}
                   dir="auto"
+                  rows={rehearsalRows(draft[i])}
                   aria-label={t("elev.learnCare.appt.rehearse.edit", { n: i + 1 })}
                   onChange={(e) => setDraft((d) => d ? d.map((x, j) => (j === i ? e.target.value : x)) : d)}
-                  className="min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm"
+                  className="min-h-11 min-w-0 flex-1 resize-none rounded-xl px-3 py-2.5 text-sm leading-snug"
                   style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
                 />
                 <button type="button" aria-label={t("elev.learnCare.appt.rehearse.remove", { n: i + 1 })} onClick={() => setDraft((d) => d ? d.filter((_, j) => j !== i) : d)} className="touch-target flex-shrink-0">
@@ -677,6 +683,7 @@ function RehearseQuestions({ lang, onKeep }: { lang: "en" | "he"; onKeep: (quest
         </div>
       )}
       {error && <p className="t-sm" role="alert" style={{ color: "var(--arbor-ink)" }}>{error}</p>}
+      <ReceiptNoteLine note={kept.note} testId="appt-rehearse-receipt" size="sm" />
     </div>
   );
 }
