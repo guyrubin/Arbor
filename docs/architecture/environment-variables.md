@@ -38,6 +38,12 @@ Production config is explicit and fail-closed.
 
 Runbook: `docs/ops/incident-alerts.md`.
 
+## Client sign-in (build time, optional, default off)
+
+| Variable | Purpose |
+|---|---|
+| `VITE_AUTH_APPLE_ENABLED` | B-GA-19: `true` offers "Continue with Apple" on the login screen (`app/src/lib/nativeSignIn.ts`, `appleSignInOffered`). Set it only once the `apple.com` provider is enabled in Firebase Authentication and the Apple developer account (Services ID, key). On the web it uses the Firebase popup (redirect when blocked); in a native shell it is offered on iOS only, and only when the binary ships the native `FirebaseAuthentication` plugin. Unset or any other value: no Apple button. Vite inlines it at build time, so a change needs a rebuild. |
+
 ## M1 acceptance gates
 
 - `ARBOR_ENV=prod` rejects local memory.
