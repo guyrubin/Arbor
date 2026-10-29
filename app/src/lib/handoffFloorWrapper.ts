@@ -148,19 +148,41 @@ const isConditionText = (text: string, escalation: boolean, beforeCommand = fals
  * "you don't have to contact", "hold off on calling", "would be premature", "אין מה להזעיק", "אין טעם לפנות",
  * "מיותר להתקשר", "אין שום צורך". The encouraging forms stay escalations: "don't hesitate", "do not wait",
  * "אל תהססו", "אין לחכות", "לא לחכות". */
-/** Round 16 (P1-A): a deferral puts the contact off ("at pickup next week", "בפגישה הבאה", "להמתין … רק בחודש הבא"). */
-const DEFERRAL_EN = String.raw`\b(?:next\s+(?:week|month|year|time|term|semester|meeting|visit|checkup|check-up|appointment|conference|pickup|pick-up)|(?:at|by)\s+(?:the\s+)?end\s+of\s+(?:the\s+)?(?:year|term|month|week|semester)|later\s+(?:this|in\s+the)\s+(?:week|month|year|term)|when\s+you\s+next\s+see|(?:at|during)\s+(?:the\s+|a\s+)?(?:routine|regular|annual|yearly)\s+(?:checkup|check-up|visit|meeting)|in\s+a\s+(?:few|couple\s+of)\s+(?:weeks|months)|eventually|at\s+some\s+point|some\s+time\s+later)\b`;
-const DEFERRAL_HE = String.raw`(?<!\p{L})(?:ב?פגישה\s+הבאה|ב?חודש\s+הבא|ב?שבוע\s+הבא|ב?שנה\s+הבאה|ב?פעם\s+הבאה|באסיפה\p{L}*|באספה\p{L}*|בסוף\s+(?:השנה|החודש|השבוע|הקדנציה)|בבדיקה\s+השגרתית|בהמשך|מתישהו|להמתין|להמתנה)(?!\p{L})`;
-const DISCOURAGING_EN = new RegExp(String.raw`\b(?:not|no|never|none|nor|hold\s+off|avoid\p{L}*|premature\p{L}*|unnecessar\p{L}*|needless\p{L}*|pointless\p{L}*|refrain\p{L}*|rather\s+than|instead\s+of|wait\s+(?:before|until|and\s+see)|too\s+early)\b|n['’]t\b|${DEFERRAL_EN}`, "iu");
-const DISCOURAGING_HE = new RegExp(String.raw`(?<!\p{L})(?:ו|ש|כש|ה)?(?:אין|לא|אל|מיותר\p{L}*|להימנע|הימנעו|במקום\s+ל\p{L}+|מוקדם\s+מדי|עדיף\s+לחכות|כדאי\s+לחכות|להמתין|רק\s+ב\p{L}+)(?!\p{L})|${DEFERRAL_HE}`, "u");
-const ENCOURAGING = /\b(?:(?:do|does|did|should|must|will|would)\s+not|don['’]t|doesn['’]t|shouldn['’]t|never|not)\s+(?:hesitate|wait|delay|put\s+(?:it\s+)?off|hold\s+off)\b|\bwithout\s+(?:delay|waiting|hesitat\p{L}*)\b|\bnot\s+(?:just|only)\b|\bno\s+matter\b|(?<!\p{L})(?:אל\s+(?:תהסס\p{L}*|תחכ\p{L}*|תתמהמה\p{L}*|תדח\p{L}*)|(?:אין|לא)\s+(?:לחכות|להסס|להתמהמה|להתעכב|לדחות)|(?:בלי|ללא)\s+(?:לחכות|להסס|דיחוי|היסוס)|ו?לא\s+רק|לא\s+משנה)(?!\p{L})/giu;
+/* Round 17 (P1-A): timing is an allow-list. A restored command carries no time phrase, or only an immediate
+ * one (now, right away, today, at once, immediately, as soon as possible, without delay; מיד, עכשיו, היום,
+ * בהקדם, ללא דיחוי — and "at any hour", "no matter how late", "בכל שעה"). Any other time phrase outside its
+ * hard-moment condition (a day / week / month / year word, a season, holiday or school-calendar word, a
+ * meeting or visit, "before / after / once / until / in <time>", "wait", בעוד, אחרי, לפני, כש…מסתיים,
+ * פגישה, אסיפה, חופש, חג, שנה, שבוע, חודש, יום) defers the contact, so the line stays as main leaves it. A
+ * negated deferral ("not next week", "rather than at pickup", "don't wait for the meeting", "ולא בשבוע
+ * הבא", "ואל תחכו לפגישה") is stripped first. */
+const IMMEDIATE = /\b(?:right\s+now|now|right\s+away|straight\s+away|at\s+once|immediately|today|as\s+soon\s+as\s+possible|asap|without\s+(?:any\s+)?(?:delay|waiting)|urgently|promptly|no\s+matter\s+(?:the\s+(?:time|hour)|what\s+time(?:\s+it\s+is)?|how\s+late(?:\s+it\s+is)?|when)|(?:at\s+)?any\s+(?:time|hour)(?:\s+of\s+(?:the\s+)?(?:day|night))?|day\s+or\s+night|whatever\s+the\s+(?:time|hour))\b|(?<!\p{L})(?:ו)?(?:מיד|מייד|מיידית|באופן\s+מיידי|עכשיו|כבר\s+עכשיו|היום|עוד\s+היום|בהקדם(?:\s+האפשרי)?|(?:ללא|בלי)\s+(?:דיחוי|שיהוי|לחכות|המתנה)|בדחיפות|בכל\s+(?:שעה|זמן|רגע)|לא\s+משנה\s+(?:מה\s+|באיזו\s+)?(?:השעה|שעה|מתי)|גם\s+בלילה|יום\s+ולילה)(?!\p{L})/giu;
+const TIME_EN = /\b(?:tomorrow|tonight|yesterday|morning|afternoon|evening|night|noon|midday|lunch\p{L}*|bedtime|naptime|weekends?|days?|daily|weeks?|weekly|fortnight\p{L}*|months?|monthly|years?|yearly|annual\p{L}*|hours?|hourly|minutes?|spring|summer|autumn|winter|seasons?|holidays?|vacations?|breaks?|half-terms?|christmas|easter|hanukkah|chanukah|passover|ramadan|terms?|semesters?|quarters?|meetings?|conferences?|visits?|appointments?|check-?ups?|reviews?|pick-?ups?|drop-?offs?|open\s+(?:house|day)|later|eventually|soon|sometime|someday|next|upcoming|coming|following|end|ends|ended|ending|start|starts|started|beginning|before|after|until|till|once|wait\p{L}*|delay\p{L}*|postpon\p{L}*|defer\p{L}*|hold\s+off|times?|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|june|july|august|september|october|november|december)\b|\bin\s+(?:a|an|one|two|three|four|five|six|seven|eight|ten|\d+|a\s+few|a\s+couple\s+of|several)\s+\p{L}+/iu;
+const TIME_HE = /(?<!\p{L})[ובלמהכש]{0,3}(?:יום|ימים|יומיים|שבוע|שבועות|שבועיים|חודש|חודשים|חודשיים|שנה|שנים|שנתיים|שעה|שעות|שעתיים|דקה|דקות|בוקר|ערב|לילה|צהריים|צהרים|מחר|מחרתיים|סופ"ש|סוף|תחילת|קיץ|חורף|אביב|סתיו|חג|חגים|חגי|חופש|חופשה|חופשת|פגרה|פגישה|פגישת|פגישות|אסיפה|אסיפת|אספה|אספת|ביקור|ביקורי|איסוף|הבא|הבאה|הבאים|הבאות|הקרוב|הקרובה|הקרובים|הקרובות|המשך|אחר\s+כך|אחרי|לאחר|לפני|עד|בעוד|מתישהו|לחכות|חכו|חכה|חכי|נחכה|תחכו|להמתין|המתינו|המתן|לדחות|דחו|נדחה|מסתיים|מסתיימת|מסתיימים|נגמר|נגמרת|ייגמר|תיגמר|יסתיים|תסתיים|לקראת|שגרתי|שגרתית|קדנציה|סמסטר|מחצית)(?!\p{L})/u;
+const carriesTime = (text: string) => TIME_EN.test(text) || TIME_HE.test(text);
+/** A monitoring duration belongs to a condition ("…, after two weeks, …", "אחרי שבועיים", "by lunchtime"); a
+ *  calendar time ("next week", "after the holidays") between a condition and its command does not. */
+const DURATION = /\b(?:after|within|over|for|by)\s+(?:(?:a|an|one|two|three|four|five|six|ten|fifteen|twenty|thirty|\d+|a\s+few|a\s+couple\s+of|several|another|half\s+an?)\s+)?(?:minutes?|hours?|days?|weeks?|months?)\b|\bby\s+(?:lunch(?:time)?|noon|midday|bedtime)\b|(?<!\p{L})ו?(?:אחרי|לאחר|תוך|כעבור|במשך|עד)\s+(?:\S+\s+)?(?:דקה|דקות|שעה|שעות|שעתיים|יום|ימים|יומיים|שבוע|שבועות|שבועיים|חודש|חודשים|חודשיים|הצהריים|הצהרים)(?!\p{L})/giu;
+const onlyDuration = (text: string) => !carriesTime(text.replace(DURATION, (m) => " ".repeat(m.length)));
+const NEGATED_TIMING = /\b(?:not|rather\s+than|instead\s+of|(?:do\s+not|don['’]t|never|no\s+need\s+to)\s+wait|without\s+waiting)\b[^,;:.!?—–\n]*?(?=\s+(?:but|rather)\b|[,;:.!?—–\n]|$)|(?<!\p{L})(?:ו)?(?:לא|אל\s+תחכ\p{L}*|אל\s+תמתינ\p{L}*|בלי\s+לחכות|ללא\s+המתנה|במקום\s+לחכות|במקום)(?!\p{L})[^,;:.!?—–\n]*?(?=\s+(?:אלא|אבל)(?!\p{L})|[,;:.!?—–\n]|$)/giu;
+/** The text with every negated time phrase blanked ("today, not next week" → "today,"). */
+/** The command patterns without their filters (the filters call back into this check). */
+const RAW_COMMANDS = [COMMAND_EN, COMMAND_EN_PASSIVE, COMMAND_EN_BARE, HE_COMMAND, HE_COMMAND_BARE].map((re) => new RegExp(re.source, re.flags.replace("g", "")));
+const withoutNegatedTiming = (text: string) => text.replace(NEGATED_TIMING, (m) => (carriesTime(m) && !RAW_COMMANDS.some((re) => re.test(m)) ? " ".repeat(m.length) : m));
+/** A visit or appointment WITH a professional is the escalation's own object ("suggest a visit to the
+ *  pediatrician", "הציעו ביקור אצל רופאת הילדים"); a meeting with the family, or the next one, is timing. */
+const HE_PRO = String.raw`(?:רופא\p{L}*|איש\s+מקצוע|אשת\s+מקצוע|אנשי\s+מקצוע|גורם\s+מקצועי|גורמי\s+מקצוע|מטפל\p{L}*|פסיכולוג\p{L}*|פסיכיאטר\p{L}*|יועצ\p{L}*|יועץ|אחות|אחיות|קלינאי\p{L}*|מרפא\p{L}*|נוירולוג\p{L}*|טיפת\s+חלב|ד"ר|דוקטור)`;
+const VISIT_WITH_PRO = new RegExp(String.raw`\b(?:visits?|appointments?|check-?ups?|consultations?|evaluations?|assessments?)\s+(?:to|with|at|by)\s+(?:(?:a|an|the|your|his|her|their)\s+)?(?:[\p{L}'’-]+\s+){0,2}?${PRO_EN}\b|(?<!\p{L})[ולב]?(?:ביקור|תור|פגישה|בדיקה|הערכה|אבחון|ייעוץ)\s+(?:(?:אצל|עם|של)\s+)?(?:ה|ל|ב)?${HE_PRO}`, "giu");
+const DISCOURAGING_EN = new RegExp(String.raw`\b(?:not|no|never|none|nor|hold\s+off|avoid\p{L}*|premature\p{L}*|unnecessar\p{L}*|needless\p{L}*|pointless\p{L}*|refrain\p{L}*|rather\s+than|instead\s+of|wait\s+(?:before|until|and\s+see)|too\s+early)\b|n['’]t\b`, "iu");
+const DISCOURAGING_HE = new RegExp(String.raw`(?<!\p{L})(?:ו|ש|כש|ה)?(?:אין|לא|אל|מיותר\p{L}*|להימנע|הימנעו|במקום\s+ל\p{L}+|מוקדם\s+מדי|עדיף\s+לחכות|כדאי\s+לחכות|להמתין|רק\s+ב\p{L}+)(?!\p{L})`, "u");
+const ENCOURAGING = /\b(?:(?:do|does|did|should|must|will|would)\s+not|don['’]t|doesn['’]t|shouldn['’]t|never|not)\s+(?:hesitate|wait|delay|put\s+(?:it\s+)?off|hold\s+off)\b|\bwithout\s+(?:delay|waiting|hesitat\p{L}*)\b|\bnot\s+(?:just|only)\b|\bno\s+matter\b|(?<!\p{L})(?:ו?אל\s+(?:תהסס\p{L}*|תחכ\p{L}*|תתמהמה\p{L}*|תדח\p{L}*)|(?:אין|לא)\s+(?:לחכות|להסס|להתמהמה|להתעכב|לדחות)|(?:בלי|ללא)\s+(?:לחכות|להסס|דיחוי|היסוס)|ו?לא\s+רק|לא\s+משנה)(?!\p{L})/giu;
 /** The negated finding a condition names ("no signs of calming", "does not settle", "אין סימנים", "לא נרגע"). */
 const CONDITION_NEGATION = /\b(?:no|without|not|n['’]t)\s+(?:\p{L}+\s+){0,3}?(?:signs?|evidence|indications?|symptoms?|improvement|progress|change|response|calm\p{L}*|settl\p{L}*|better|easing)\b|\b(?:does|did|do|is|are|was|were)\s*(?:not|n['’]t)\s+(?:calm|settl|stop|improv|respond|eat|sleep|ease|get\s+better)\p{L}*|(?<!\p{L})(?:ו|ש|כש)?(?:אין|ללא|בלי|לא)\s+(?:שום\s+)?(?:סימנ\p{L}*|סימן|עדות|שיפור|התקדמות|שינוי|תגובה|רגיעה|נרגע\p{L}*|מצליח\p{L}*|מפסיק\p{L}*)/giu;
 const CONDITION_MARKERS = () => [new RegExp(CONDITION_ALWAYS.source, "giu"), new RegExp(CONDITION_WHEN.source, "giu")];
 const blank = (text: string, start: number, end: number) => text.slice(0, start) + " ".repeat(Math.max(0, end - start)) + text.slice(end);
 /** True when the text, outside its conditions, encouraging forms and condition negations, discourages. */
 function discourages(text: string, commands: { index: number; text: string }[]): boolean {
-  let masked = text.replace(ENCOURAGING, (m) => " ".repeat(m.length));
+  let masked = withoutNegatedTiming(text).replace(ENCOURAGING, (m) => " ".repeat(m.length));
   for (const re of CONDITION_MARKERS()) {
     for (const m of text.matchAll(re)) {
       const at = m.index ?? 0;
@@ -265,6 +287,80 @@ function qualifyingCondition(condition: string): boolean {
     const object = condition.slice(r.index, Math.max(r.objectEnd + 1, r.end));
     return CHANGE_WORD.test(r.object) || CHANGE_WORD.test(object) || VITAL_WORD.test(r.object);
   });
+}
+/** A condition about the hard moment itself — a harm, an incident, a negated change or vital sign — never a
+ *  time ("when the term ends", "once the holidays are over") and never an unspoken reassurance. */
+function momentCondition(condition: string): boolean {
+  if (!qualifyingCondition(condition)) return false;
+  const asserted = assertedPart(condition);
+  return HARM_WORD.test(asserted) || DISTRESS_WORD.test(asserted) || hasIncidentCue(asserted) || condition.search(CONDITION_NEGATION) >= 0;
+}
+/** A distress state the condition asserts ("when he is upset in the morning", "כשהוא נסער בבוקר"). */
+const DISTRESS_WORD = /\b(?:upset|distress\p{L}*|agitat\p{L}*|dysregulat\p{L}*|overwhelm\p{L}*|panic\p{L}*|scared|frightened|afraid|anxious|terrified|inconsolable|hysteric\p{L}*)\b|(?<!\p{L})(?:ו|ש|כש|ה)?(?:נסער|נסערת|נסערים|מתוסכל\p{L}*|כועס\p{L}*|מפוחד\p{L}*|מבוהל\p{L}*|נבהל\p{L}*|לחוץ|לחוצה|נלחץ\p{L}*|מוצף|מוצפת|חרד|פאניקה|בהלה|היסטרי\p{L}*|מתפרץ\p{L}*)(?!\p{L})/iu;
+/** True when the restored text defers the contact: a time phrase outside its hard-moment condition that is not
+ *  on the immediate allow-list (see IMMEDIATE above). */
+function defersContact(text: string): boolean {
+  const { body } = splitTail(text);
+  const chunks = chunksOf(body);
+  const chunkText = (k: number) => body.slice(chunks[k].start, chunks[k].end);
+  let masked = body;
+  for (let k = 0; k < chunks.length; k++) {
+    const own = chunkText(k);
+    const commands = findEscalationCommands(own);
+    if (!commands.length) continue;
+    const at = chunks[k].start;
+    // the command itself ("book an appointment with …", "לקבוע פגישה עם …") is no timing, nor a visit with a professional
+    for (const c of commands) masked = blank(masked, at + c.index, at + c.index + c.text.length);
+    for (const v of own.matchAll(VISIT_WITH_PRO)) masked = blank(masked, at + (v.index ?? 0), at + (v.index ?? 0) + v[0].length);
+    const first = commands[0];
+    const last = commands[commands.length - 1];
+    const head = own.slice(0, first.index);
+    if (governs(head, true) && momentCondition(head)) masked = blank(masked, at, at + first.index);
+    // a condition after the command in its chunk, from its condition word on ("… when there are no signs of calming")
+    const tailStart = last.index + last.text.length;
+    const tail = own.slice(tailStart);
+    const word = GOVERNING_WORD.exec(tail);
+    const time = CONDITION_TIME.exec(tail);
+    const starts = [word?.index, time && LINKED_ABSENCE.test(tail.slice(time.index)) ? time.index : undefined].filter((i): i is number => i !== undefined);
+    // a trailing condition runs on through the chunks after it until it names the moment ("Call the family when,
+    // after 20 minutes, there are no signs of calming"); what follows that is read again
+    const trailing = (from: number, first: string, m: number) => {
+      let condition = first;
+      const firstEnd = chunks[m].end;
+      const more: number[] = [];
+      while (m + 1 < chunks.length && !ASSERTIVE_START.test(chunkText(m + 1).trim()) && !hasCommand(chunkText(m + 1))
+        && (!momentCondition(condition) || onlyDuration(chunkText(m + 1)))) {
+        condition += `, ${chunkText(++m)}`;
+        more.push(m);
+      }
+      if (!momentCondition(condition)) return;
+      masked = blank(masked, from, firstEnd);
+      // a calendar time inside it is still read ("…, at the end of the term"); a monitoring duration is the condition's
+      for (const i of more) if (onlyDuration(chunkText(i))) masked = blank(masked, chunks[i].start, chunks[i].end);
+    };
+    if (starts.length) {
+      const p = Math.min(...starts);
+      if (governs(tail.slice(p), false)) trailing(at + tailStart + p, tail.slice(p), k);
+    } else if (k + 1 < chunks.length && governs(chunkText(k + 1).trim().split(/\s+/u).slice(0, 4).join(" "), false)) {
+      trailing(chunks[k + 1].start, chunkText(k + 1), k + 1);
+    }
+    // a leading condition clause, back to the chunk that opens it
+    for (let j = k - 1; j >= 0; j--) {
+      const t = chunkText(j);
+      if (governs(t, true)) {
+        // the condition chunks only: what stands before the command in its own chunk ("wait a day before") is read,
+        // and so is a calendar time between them ("…, next week, tell …"); a monitoring duration is the condition's
+        if (momentCondition([...Array(k - j).keys()].map((i) => chunkText(j + i)).join(", "))) {
+          masked = blank(masked, chunks[j].start, chunks[j].end);
+          for (let i = j + 1; i < k; i++) if (onlyDuration(chunkText(i))) masked = blank(masked, chunks[i].start, chunks[i].end);
+        }
+        break;
+      }
+      if (ASSERTIVE_START.test(t.trim()) || hasCommand(t)) break;
+    }
+  }
+  masked = withoutNegatedTiming(masked).replace(IMMEDIATE, (m) => " ".repeat(m.length)).replace(ENCOURAGING, (m) => " ".repeat(m.length));
+  return carriesTime(masked);
 }
 
 /** A chunk that continues a condition list: "…, or there are no signs…", "…, או שאין…". */
@@ -629,6 +725,8 @@ function restoreEscalation(segment: string, opts: HandoffFloorOptions): string |
   if (!governedByCondition(restored)) return null;
   // Round 14 (P1-B): a restored line that discourages anywhere outside its condition is not an escalation.
   if (discourages(restored, findEscalationCommands(restored))) return null;
+  // Round 17 (P1-A): a restored command carries no time phrase, or only an immediate one.
+  if (defersContact(restored)) return null;
   // Round 13 (P2): a relay command whose message was the cut finding ("Please tell the family [that there
   // are no signs …]", "ספרו להורים [שאין …]") has nothing left to relay and stays dropped, as on main; it
   // comes back with its condition or with content of its own.

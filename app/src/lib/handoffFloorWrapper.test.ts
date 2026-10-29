@@ -182,6 +182,41 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     }
   });
 
+  /* Round 17 (P1-A): timing is an allow-list. A command that carries any time phrase other than an immediate
+     one stays as main leaves it, whatever the wording (critic fresh16: C11-C13, C28, W11-W16, HC10-HC13,
+     HC27, HW11-HW14). */
+  it.each([
+    "When there are no signs of calming, tell the family at the next parent evening.",
+    "When there are no signs of calming, let the family know when the term ends.",
+    "When there are no signs of settling, mention it to the family after the holidays.",
+    "If there are no signs of calming, bring it up with the family at the parent-teacher conference.",
+    "When there are no signs of calming, let the family know at the end-of-year meeting.",
+    "When there are no signs of calming, tell the family once the holidays are over.",
+    "When there are no signs of settling, let the family know next school year.",
+    "When there are no signs of calming, let the family know in a month.",
+    "When there are no signs of settling, tell the family after the break.",
+    "When there are no signs of calming, wait a day before calling the family.",
+    "כשאין סימנים של רגיעה, עדכנו את ההורים בפגישת ההורים.",
+    "כשאין סימנים של רגיעה, ספרו להורים אחרי החגים.",
+    "כשאין סימנים של רגיעה, עדכנו את ההורים בעוד שבועיים.",
+    "כשאין סימנים של רגיעה, עדכנו את ההורים כשהשנה מסתיימת.",
+    "כשאין סימנים של רגיעה, חכו יום ורק אז התקשרו להורים.",
+    "כשאין סימנים של רגיעה, עדכנו את ההורים אחרי החופש.",
+    "כשאין סימנים של רגיעה, עדכנו את ההורים בעוד חודש.",
+    "כשאין סימנים של רגיעה, עדכנו את ההורים בפגישה הקרובה בעוד חודש.",
+    "כשאין סימנים של רגיעה, עדכנו את ההורים לקראת סוף השנה.",
+    "When there are no signs of calming, call the family, at the end of the term.",
+    "At the next meeting, when there are no signs of calming, tell the family.",
+    "Call the family when, after 20 minutes, there are no signs of calming, at the end of the term.",
+    "When there are no signs of calming, call the family not today but next week.",
+    "כשאין סימנים של רגיעה, התקשרו להורים לא היום אלא בשבוע הבא.",
+    "When there are no signs of calming, next week, tell the family.",
+    "כשאין סימנים של רגיעה, בשבוע הבא, ספרו להורים.",
+  ])("a deferred command stays as main leaves it: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).toBe("");
+    expect(handoffFloor(line, { parentText })).toBe("");
+  });
   /* Round 17 (P1-B): every item of a negated list is masked before a harm word may qualify the condition
      (C09, W05-W07, HW06, HW07). */
   it.each([
@@ -195,6 +230,21 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
     expect(withoutHandoffFindings(line, { parentText })).toBe("");
     expect(handoffFloor(line, { parentText })).toBe("");
+  });
+  /* Round 17 (P1-A): an immediate time or a negated deferral restores (W17, W19, HW16, HW17); a monitoring
+     duration is the condition's own, and a visit with a professional is the escalation's object. */
+  it.each([
+    "When there are no signs of calming, call the family today, not next week.",
+    "When there are no signs of calming, let the family know right away rather than at pickup.",
+    "כשאין סימנים של רגיעה, התקשרו להורים היום ולא בשבוע הבא.",
+    "כשאין סימנים של רגיעה, התקשרו להורים מיד ואל תחכו לפגישה הבאה.",
+    "Call the family when, after 20 minutes, there are no signs of calming.",
+    "When there are no signs of calming, suggest a visit to the pediatrician right away.",
+    "When there are no signs of improvement, after two weeks, talk with the pediatrician.",
+  ])("an immediate time restores: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).not.toBe(line);
+    expect(handoffFloor(line, { parentText })).toBe(line);
   });
   /* Round 17 (P1-B, critic P2): a vital sign's absence is the emergency itself (W20, HW19). */
   it.each([
