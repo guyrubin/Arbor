@@ -1,6 +1,6 @@
 # Canopy v3 — Deep Review, and the Missing Spine (v4)
 
-**Date:** 2026-08-16 · **Reviewer:** Claude (ROS/PAI) · **Subject:** "PROJECT CANOPY v3 · Multi-Agent Edition" (Qwen, 16 Aug)
+**Date:** 2026-08-16 · **Reviewer:** Claude (ROS, PAI domain) · **Subject:** "PROJECT CANOPY v3 · Multi-Agent Edition" (Qwen, 16 Aug)
 **Method:** every load-bearing claim tested against the working tree at `main` `710b05bc`. Claims that could not be verified are marked as such rather than repeated.
 **Verdict in one line:** Canopy v3 is a good *inventory* and a bad *plan* — it adds ~40 initiatives to a product whose own diagnosed disease is having too much, and it never deletes anything.
 

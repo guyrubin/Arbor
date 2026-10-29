@@ -1,6 +1,6 @@
 # B-GA-34 — signed-in family acceptance: the case list (28 October 2026)
 
-Claude's half of B-GA-34: the cases Guy runs on his iPhone with the real signed-in family on the production SHA. Nothing here is run by an agent: synthetic fixtures, the public shell and unsigned CI do not substitute. The receipt describes a real family, so it goes in the private ROS tree (`PAI/projects/arbor/execution/2026-10-28--backlog-wave/B-GA-34-receipt-<date>.md`), never in this public repo, and it holds no screenshots, no child names and no record text: pass or fail, the SHAs, the device, and one line per failure.
+Claude's half of B-GA-34: the cases Guy runs on his iPhone with the real signed-in family on the production SHA. Nothing here is run by an agent: synthetic fixtures, the public shell and unsigned CI do not substitute. The receipt describes a real family, so it goes in the private ROS tree (the backlog-wave folder of 28 Oct, `B-GA-34-receipt-<date>.md`), never in this public repo, and it holds no screenshots, no child names and no record text: pass or fail, the SHAs, the device, and one line per failure.
 
 Run it on main `5fb5666f` (wave 1, released 28 Oct 18:22 UTC) or any later production SHA.
 

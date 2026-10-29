@@ -51,4 +51,4 @@ Local gates could not run (RAM), so the deploy pipeline's own full gate chain wa
 - Guy's device had Kid Mode persisted open (`arbor.kidmode.active` = arcade/beat); while it is open the parent tabs render kid-register and hide the create-hero banners by design. Reset to closed for this validation.
 - Not validated in production: hero generation itself (a paid image call and the parent's character choice — Guy's act), story-as-comic pages and shelf save (need a hero), Hebrew UI (Guy's UI is EN). These were verified by tests and, for M2/M3, by the sandbox critics.
 
-final result: **passed with residuals** — all four modules live; the P2/P3 list above and the four unvalidated-in-production items go to `PAI/projects/arbor/ARBOR-OPEN-ITEMS-2026-09-15.md`.
+final result: **passed with residuals** — all four modules live; the P2/P3 list above and the four unvalidated-in-production items go to the private open-items list (`ARBOR-OPEN-ITEMS-2026-09-15.md`).

@@ -86,6 +86,7 @@ import {
   buildCohortReport,
   buildKidPlayReport,
   createCohortMetricsStore,
+  defaultContractSince,
   type CohortMetricsStore,
 } from "../server/cohortMetrics.js";
 import {
@@ -105,6 +106,7 @@ import { createHeroPoseHandler, createHeroPoseSource, type HeroPoseSource } from
 import { decideLive, LIVE_VERTEX_EU_PROVIDER } from "../ai/liveResidency.js";
 import { accessEnded, cohortTagFor, resolveEntitlement, COACH_METER, type EntitlementStore } from "../server/entitlements.js";
 import type { ReferralStore } from "../server/referral.js";
+import { redemptionViaOf } from "../lib/offers.js";
 import { scoreChildUtterance, childAsrConfigured, NotConfiguredError } from "../server/childAsr.js";
 import { dispatchSpeechSynthesis, screenAndSynthesizeSpeech, synthesizeSpeech, ttsConfigured, NotConfiguredError as TtsNotConfigured, UnsafeTtsOutputError } from "../server/tts.js";
 import { AiProviderError } from "../ai/capabilities/contracts.js";
@@ -126,6 +128,7 @@ import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
 import { buildWaitlistEntry, isValidEmail, notifyWaitlistSafely, type WaitlistNotifier, type WaitlistStore } from "../server/waitlist.js";
 import { createSharedChildRecordSource, resolveSharedPacket, type SharedChildRecordSource } from "../server/sharedPacket.js";
+import { programWeekScript } from "../lib/programs/weekScript.js";
 import { createCoParentRouter } from "../server/coParent.js";
 
 type ApiDeps = {
@@ -853,6 +856,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         recipientEmail: email,
         shareStore,
         source: sharedSource,
+        // B-PROG-09: the link's one scope; a scope the grant lacks → 403.
+        requestedScope: typeof req.query.scope === "string" ? req.query.scope : null,
       });
       if (result.status === 200) {
         res.json(result.view);
@@ -1262,6 +1267,15 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
           logger.info("memory_fact_step_inserted", { requestId: requestIdOf(req) });
         }
       }
+
+      // B-PROG-04 (dark, config.programScriptInCoach): an on-shelf turn opens
+      // with the active week's coach script, verbatim (authored program
+      // content, never model prose). Seeded, file and escalation turns never
+      // reach it (escalation answered above, byte-identical). The output
+      // screen below covers it like any line.
+      const weekScript = config.programScriptInCoach && !seededEscalation && !attachments.length && !structured.fileDeclined
+        ? programWeekScript(companion.program, message, renderLanguage, childProfile?.gender) : null;
+      if (weekScript) structured.text = `${weekScript}\n\n${structured.text ?? ""}`.trim();
 
       // AI-2: output-side safety screen (lexical floor + optional semantic classifier).
       let renderedText = seededFollowUp ? renderCoachFollowUpResponse(structured, renderLanguage)
@@ -1810,6 +1824,14 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         });
         res.end();
       };
+
+      // B-PROG-04 (dark, config.programScriptInCoach): an on-shelf spoken
+      // answer opens with the active week's coach script, verbatim — its own
+      // first delta, lexically screened like every released sentence.
+      const weekScript = config.programScriptInCoach ? programWeekScript(companionContext.programScripts, message, ttsLang, childProfile?.gender) : null;
+      if (weekScript && !screenModelOutputLexical(weekScript).flagged) {
+        writeSse(res, "delta", { text: `${weekScript} `, tts: { text: weekScript, token: mintTtsToken(weekScript, ttsLang) } });
+      }
 
       if (outputClassifierEnabled()) {
         // Full-buffer path (config-gated): the semantic classifier judges the
@@ -3668,7 +3690,11 @@ RULES:
           }
         }
       });
-      await sendScreenedJson(res, privacy.restoreDeep(response));
+      // B-ASKJB-35 (route half; the prompt half is parked on
+      // claude/askjb35-prompt-bump-2026-10-28): the "signs it's working" list
+      // (child outcomes to watch for, verdict-shaped) never reaches the parent
+      // — empty whatever the model returns. The prompt and schema are unchanged.
+      await sendScreenedJson(res, { ...(privacy.restoreDeep(response) as Record<string, unknown>), successIndicators: [] });
     } catch (error: any) {
       logger.error("Arbor Action Plan Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to generate Arbor action plan", details: error.message });
@@ -4258,7 +4284,8 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
         res.status(400).json({ error: "Missing referral code" });
         return;
       }
-      const result = await referralStore.activateReferral({ code, redeemerUid: actor.uid });
+      // B-GROWTH-43: a typed code (`via: "typed"`) redeems like the link; one per family.
+      const result = await referralStore.activateReferral({ code, redeemerUid: actor.uid, via: redemptionViaOf(req.body?.via) });
       if (!result.ok) {
         // Soft-fail: an unknown/self code is not an error the parent should see.
         res.json(result);
@@ -4324,7 +4351,10 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       // B-MEAS-01: internal (founder / comped / smoke) families are excluded
       // by default; `?includeInternal=1` puts them back. The count is reported.
       const includeInternal = req.query.includeInternal === "1" || req.query.includeInternal === "true";
-      res.json(await buildCohortReport(cohortMetrics, { since, groupBy, funnels: Object.keys(FUNNEL_CHAINS), includeInternal }));
+      // BD-25: the metric contract reads matured households (default: the last 90 days).
+      const contractParam = typeof req.query.contractSince === "string" ? req.query.contractSince : "";
+      const contractSince = Number.isFinite(Date.parse(contractParam)) ? contractParam : defaultContractSince();
+      res.json(await buildCohortReport(cohortMetrics, { since, groupBy, funnels: Object.keys(FUNNEL_CHAINS), includeInternal, contractSince }));
     } catch (error: any) {
       logger.error("Arbor Cohort Report Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to build the cohort report", details: error.message });

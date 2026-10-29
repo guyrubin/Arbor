@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-07
 **Scope:** Canonical app `PPPPtherapy-/PPPPtherapy-/app` (React 19 + Vite client). Source-level analysis of every navigable category.
-**Author:** EA/PAI review
+**Author:** EA and PAI review
 
 ---
 

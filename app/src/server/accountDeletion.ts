@@ -219,6 +219,9 @@ export function createFirestoreDeletionOps(
       let count = await deleteByQuery(db, db.collection("referralCodes").where("uid", "==", uid));
       await db.collection("referralGrants").doc(uid).delete();
       count += 1;
+      // B-GROWTH-43: the family's one offer redemption.
+      await db.collection("offerRedemptions").doc(uid).delete();
+      count += 1;
       // This uid also appears inside OTHER referrers' activatedBy ledgers.
       const ledgers = await db.collection("referralGrants").where("activatedBy", "array-contains", uid).get();
       for (const doc of ledgers.docs) {
