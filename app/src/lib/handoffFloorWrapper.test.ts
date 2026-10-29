@@ -266,6 +266,26 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     expect(withoutHandoffFindings(line, { parentText })).not.toBe(line);
     expect(handoffFloor(line, { parentText })).toBe(line);
   });
+  /* Round 18 (P2): "change" is a negated change only bare or on the hard moment (critic fresh17 X01, X02). */
+  it.each([
+    "When there are no signs of mood changes, let the family know.",
+    "When there are no signs of behavior changes at home, tell the family.",
+    "כשאין סימנים לשינויים במצב הרוח, עדכנו את ההורים.",
+  ])("a change of something else does not qualify: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).toBe("");
+    expect(handoffFloor(line, { parentText })).toBe("");
+  });
+  it.each([
+    "When there are no signs of change, call the family.",
+    "When there are no signs of change in the crying, call the family.",
+    "כשאין סימנים לשינוי, התקשרו להורים.",
+    "כשאין סימנים לשינוי בבכי, התקשרו להורים.",
+  ])("a bare change, or one in the hard moment, still qualifies: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).not.toBe(line);
+    expect(handoffFloor(line, { parentText })).toBe(line);
+  });
   /* Round 17 (P1-B): every item of a negated list is masked before a harm word may qualify the condition
      (C09, W05-W07, HW06, HW07). */
   it.each([

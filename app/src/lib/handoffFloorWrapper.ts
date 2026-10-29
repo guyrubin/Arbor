@@ -266,7 +266,7 @@ function governedByCondition(text: string): boolean {
  * negate a change (calming, settling, improvement, stopping; רגיעה, שיפור, נרגע, מפסיק …), or the
  * condition must name a harm trigger or a hard moment. A condition with no negated finding ("If you are
  * worried", "When he bites") governs as before. */
-const CHANGE_WORD = /\b(?:calm\p{L}*|settl\p{L}*|improv\p{L}*|eas(?:e|es|ed|ing)|better|progress\p{L}*|respon\p{L}*|stop\p{L}*|chang\p{L}*|recover\p{L}*|relief|let\s+up)\b|(?<!\p{L})(?:ו|ל|ש|ה)?(?:רגיעה|הרגעות|שיפור|נרגע\p{L}*|מפסיק\p{L}*|הפסק\p{L}*|נפסק\p{L}*|נעצר\p{L}*|פוסק\p{L}*|התקדמות|הקלה|תגובה|שינוי|החלמה)(?!\p{L})/iu;
+const CHANGE_WORD = /\b(?:calm\p{L}*|settl\p{L}*|improv\p{L}*|eas(?:e|es|ed|ing)|better|progress\p{L}*|respon\p{L}*|stop\p{L}*|recover\p{L}*|relief|let\s+up)\b|(?<!\p{L})(?:ו|ל|ש|ה)?(?:רגיעה|הרגעות|שיפור|נרגע\p{L}*|מפסיק\p{L}*|הפסק\p{L}*|נפסק\p{L}*|נעצר\p{L}*|פוסק\p{L}*|התקדמות|הקלה|תגובה|החלמה)(?!\p{L})/iu;
 const HARM_WORD = /\b(?:hurt\p{L}*|harm\p{L}*|injur\p{L}*|danger\p{L}*|unsafe|safety|bleed\p{L}*|bit|bite\p{L}*|biting|hit\p{L}*|kick\p{L}*|push\p{L}*|throw\p{L}*|threw|scream\p{L}*|run\p{L}*\s+(?:away|off|out)|ran\s+(?:away|off|out)|cr(?:y|ies|ied|ying)|tantrum\p{L}*|meltdown\p{L}*|self-harm|suicid\p{L}*|choking|breath\p{L}*|fever|seizure\p{L}*|faint\p{L}*|vomit\p{L}*)\b|(?<!\p{L})(?:ו|ש|כש|ה)?(?:פוגע\p{L}*|נפגע\p{L}*|פגיעה|מרביץ\p{L}*|הרביץ\p{L}*|נושך\p{L}*|נשך\p{L}*|בועט\p{L}*|דוחף\p{L}*|זורק\p{L}*|צורח\p{L}*|צרח\p{L}*|בורח\p{L}*|ברח\p{L}*|בוכה|בכי|בכה|סכנה|מסוכן\p{L}*|התקף\p{L}*|חום|נשימה|מקיא\p{L}*|התעלפ\p{L}*|להרביץ|לנשוך|לבעוט|לדחוף|לזרוק|לצרוח|לברוח|לבכות|להכות|לפגוע|נשיכ\p{L}*|הרבצ\p{L}*|מכות|בעיט\p{L}*|דחיפ\p{L}*|צרחות)(?!\p{L})/iu;
 /* Round 17 (P1-B): a negated finding's mask runs across its list ("no signs of biting or hitting", "hitting,
  * biting or kicking", "בכי או צרחות", "שהוא מרביץ או נושך"): every item of a negated list is masked before
@@ -297,13 +297,24 @@ const assertedPart = (condition: string, reassurances = reassurancesIn(condition
 /* Round 17 (P1-B, critic P2): a vital function's absence is the emergency itself ("no signs of normal
  * breathing", "אין סימנים לנשימה תקינה", no response, not conscious), so it qualifies like a negated change. */
 const VITAL_WORD = /\b(?:breath\p{L}*|conscious\p{L}*|responsive\p{L}*|pulse|heartbeat|awake)\b|(?<!\p{L})[ולשהב]?(?:נשימה|נושם|נושמת|הכרה|דופק|מגיב|מגיבה)(?!\p{L})/iu;
+/* Round 18 (P2): "change" counts as a negated change only bare ("no signs of change", "אין סימנים לשינוי") or on
+ * the hard moment ("no change in the crying", "שינוי בבכי"); "mood changes", "behavior changes", "a change of
+ * clothes", "changing table" are not. */
+const CHANGE_NOUN = /\bchang\p{L}*|(?<!\p{L})[ולשה]?שינוי\p{L}*/giu;
+const CHANGE_FILLER = /\b(?:any|a|an|the|real|significant|further|noticeable|clear|major|much|his|her|their)\b|(?<!\p{L})(?:כלשהו|כלשהי|משמעותי|ממשי|אמיתי)(?!\p{L})/giu;
+const changeOnMoment = (object: string) => {
+  if (object.search(CHANGE_NOUN) < 0) return false;
+  const rest = object.replace(CHANGE_NOUN, " ").replace(CHANGE_FILLER, " ").trim();
+  // "בבכי", "במכות": a Hebrew preposition glued to the hard moment
+  return rest === "" || [object, ...object.split(/\s+/u).map((w) => w.replace(/^[בלמ]/u, ""))].some((w) => HARM_WORD.test(w) || DISTRESS_WORD.test(w));
+};
 function qualifyingCondition(condition: string): boolean {
   const reassurances = reassurancesIn(condition);
   // a harm counts where the condition asserts it, never inside a negated finding or its list ("no signs of crying")
   if (HARM_WORD.test(assertedPart(condition, reassurances))) return true;
   return reassurances.every((r) => {
     const object = condition.slice(r.index, Math.max(r.objectEnd + 1, r.end));
-    return CHANGE_WORD.test(r.object) || CHANGE_WORD.test(object) || VITAL_WORD.test(r.object);
+    return CHANGE_WORD.test(r.object) || CHANGE_WORD.test(object) || VITAL_WORD.test(r.object) || changeOnMoment(r.object);
   });
 }
 /** A condition about the hard moment itself — a harm, an incident, a negated change or vital sign — never a
