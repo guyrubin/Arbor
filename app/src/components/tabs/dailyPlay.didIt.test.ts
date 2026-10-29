@@ -37,7 +37,8 @@ const captureSourceButton = (type: unknown, props: unknown) => {
   }
 };
 
-const logPlayCompletion = vi.fn();
+const logPlayCompletion = vi.fn((a: { activity?: { id: string }; id?: string }) => ({ id: `${a.activity?.id ?? a.id}.2026-10-08`, created: true }));
+const undoPlayCompletion = vi.fn();
 const toast = vi.fn();
 /** B-STATUS-01: "saved to the journal" is the ONE receipt line now. */
 const receiptShow = vi.fn();
@@ -46,6 +47,7 @@ const state = {
   childProfile: { id: "c1", name: "נועה כהן", age: 4, birthDate: "2022-03-01", interests: [], activeGoals: [] },
   setActiveTab: vi.fn(),
   logPlayCompletion,
+  undoPlayCompletion,
   updateChild: vi.fn(async () => {}),
   seedCoach: vi.fn(),
   actionLoop: [] as unknown[],
@@ -132,6 +134,7 @@ beforeEach(() => {
   captured.sourceButtons = [];
   state.playLogs = [];
   logPlayCompletion.mockClear();
+  undoPlayCompletion.mockClear();
   toast.mockClear();
   receiptShow.mockClear();
 });
@@ -204,6 +207,44 @@ describe("B-GROWTH-19 — all four 'did it' paths write the playLogs record", ()
       expect(msg).not.toMatch(/[A-Za-z]/);
       expect(msg).toContain("נועה");
     }
+  });
+});
+
+describe("critic r1 (B-STATUS-01) — the reversible play save carries Undo", () => {
+  type Shown = { undo?: { label: string; testId: string; onUndo: () => void } };
+  const lastUndo = () => (receiptShow.mock.calls.at(-1)?.[0] as Shown).undo!;
+
+  it("library pick: Undo removes the day's log this tap wrote and un-marks the pick on this device", async () => {
+    await render();
+    const { pick, onDid } = captured.picks[0];
+    onDid(pick);
+    expect(JSON.parse(localStorage.getItem("arbor.play.done.c1") || "[]")).toContain(pick.activity.id);
+    const undo = lastUndo();
+    expect(undo.testId).toBe("play-receipt-undo");
+    expect(undo.label).not.toMatch(/[A-Za-z]/);
+    undo.onUndo();
+    expect(undoPlayCompletion).toHaveBeenCalledWith({ id: `${pick.activity.id}.2026-10-08`, created: true });
+    expect(JSON.parse(localStorage.getItem("arbor.play.done.c1") || "[]")).not.toContain(pick.activity.id);
+  });
+
+  it("course step and the plan: Undo restores the step map and the plan flag", async () => {
+    await render();
+    const { course, onToggle } = captured.courses[0];
+    onToggle(course.activityIds[0]);
+    lastUndo().onUndo();
+    expect(undoPlayCompletion).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(localStorage.getItem("arbor.course.c1") || "{}")[course.id] ?? []).not.toContain(course.activityIds[0]);
+    captured.plan!.onDid(captured.plan!.plan!);
+    expect(localStorage.getItem("arbor.plan.done.c1")).not.toBeNull();
+    lastUndo().onUndo();
+    expect(undoPlayCompletion).toHaveBeenCalledTimes(2);
+    expect(localStorage.getItem("arbor.plan.done.c1")).toBeNull();
+  });
+
+  it("ArborContext removes the log only when that tap created it", () => {
+    const ctx = readFileSync(new URL("../../context/ArborContext.tsx", import.meta.url), "utf8");
+    expect(ctx).toContain("return { id, created: !alreadyDone };");
+    expect(ctx).toContain("if (done.created) void playLogCol.remove(done.id);");
   });
 });
 

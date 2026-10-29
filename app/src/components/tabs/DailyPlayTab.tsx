@@ -48,13 +48,20 @@ function AgeChip({ profile }: { profile: ChildProfile }) {
 }
 
 export default function DailyPlayTab() {
-  const { behaviorLogs, childProfile, setActiveTab, logPlayCompletion, seedCoach, actionLoop } = useArbor();
+  const { behaviorLogs, childProfile, setActiveTab, logPlayCompletion, undoPlayCompletion, seedCoach, actionLoop } = useArbor();
   // B-STATUS-01: a logged play answers with ONE receipt line under the header
-  // (where it went: the Journal), never a vanishing success toast.
+  // (where it went: the Journal), never a vanishing success toast. Critic r1:
+  // the save is reversible, so the line carries Undo (the tap's own state
+  // comes back and the day's log goes, only if this tap wrote it).
   const playReceipt = useReceiptNote();
-  const savedToJournal = () => playReceipt.show({
+  const savedToJournal = (done: { id: string; created: boolean }, restore: () => void) => playReceipt.show({
     text: t("elev.growth.play.toast.added", { name: firstName }),
     link: { where: t("nav.tab.journal"), href: `#${routeHash("journal")}`, testId: "play-receipt-open" },
+    undo: {
+      label: t("elev.loop.notice.undo"),
+      testId: "play-receipt-undo",
+      onUndo: () => { playReceipt.clear(); undoPlayCompletion(done); restore(); },
+    },
   });
   const { t, uiLang } = useLanguage();
   const firstName = (childProfile.name || t("learn.yourChild")).split(" ")[0];
@@ -141,8 +148,11 @@ export default function DailyPlayTab() {
     if (!adding) return;
     const activity = courseActivities(course).find((a) => a.id === activityId);
     if (!activity) return;
-    logPlayCompletion(activity, "course", course.id);
-    savedToJournal();
+    const done = logPlayCompletion(activity, "course", course.id);
+    savedToJournal(done, () => {
+      setCourseProg(courseProg);
+      try { localStorage.setItem(`arbor.course.${childProfile.id}`, JSON.stringify(courseProg)); } catch { /* ignore */ }
+    });
   };
 
   // Readiness tracks — parent-chosen goal courses (school / sibling / sleep).
@@ -157,15 +167,24 @@ export default function DailyPlayTab() {
 
   const markDone = (p: ScoredActivity) => {
     // Dual-write: moat (context/Firestore-synced) + local display state.
-    logPlayCompletion(p, "library"); // writes to the moat (synced) — single source of truth
+    const done = logPlayCompletion(p, "library"); // writes to the moat (synced) — single source of truth
+    const wasDone = doneIds.includes(p.activity.id);
+    const doneKey = `arbor.play.done.${childProfile.id}`;
     setDoneIds((prev) => prev.includes(p.activity.id) ? prev : [...prev, p.activity.id]);
     try {
-      const cur: string[] = JSON.parse(localStorage.getItem(`arbor.play.done.${childProfile.id}`) || "[]");
+      const cur: string[] = JSON.parse(localStorage.getItem(doneKey) || "[]");
       if (!cur.includes(p.activity.id)) {
-        localStorage.setItem(`arbor.play.done.${childProfile.id}`, JSON.stringify([...cur, p.activity.id]));
+        localStorage.setItem(doneKey, JSON.stringify([...cur, p.activity.id]));
       }
     } catch { /* ignore */ }
-    savedToJournal();
+    savedToJournal(done, () => {
+      if (wasDone) return;
+      setDoneIds((prev) => prev.filter((id) => id !== p.activity.id));
+      try {
+        const cur: string[] = JSON.parse(localStorage.getItem(doneKey) || "[]");
+        localStorage.setItem(doneKey, JSON.stringify(cur.filter((id) => id !== p.activity.id)));
+      } catch { /* ignore */ }
+    });
   };
   const coach = (p: ScoredActivity) => {
     seedCoach({ prompt: t("seed.play", { title: p.activity.title, name: firstName, domain: p.activity.domain }), source: "daily-play" });
@@ -220,7 +239,8 @@ export default function DailyPlayTab() {
   const handlePlanDid = (plan: DailyPlan) => {
     // B-GROWTH-19: the plan's "We did this" writes the same playLogs record as
     // every other path (it used to write only a device-local flag).
-    logPlayCompletion(plan.scoredActivity, "today");
+    const done = logPlayCompletion(plan.scoredActivity, "today");
+    const wasPlanDone = planDone;
     setPlanDone(true);
     try {
       localStorage.setItem(
@@ -228,7 +248,11 @@ export default function DailyPlayTab() {
         JSON.stringify({ date: new Date().toISOString().slice(0, 10), activityId: plan.scoredActivity.activity.id })
       );
     } catch { /* ignore */ }
-    savedToJournal();
+    savedToJournal(done, () => {
+      if (wasPlanDone) return;
+      setPlanDone(false);
+      try { localStorage.removeItem(`arbor.plan.done.${childProfile.id}`); } catch { /* ignore */ }
+    });
   };
 
   const handlePlanCoach = (plan: DailyPlan) => {

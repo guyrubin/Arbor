@@ -637,6 +637,13 @@ function useArborState() {
     };
     void playLogCol.upsert(rec); // fire-and-forget, optimistic + local-first
     if (!alreadyDone) trackPlayCompleted(activity.domain, reason, source);
+    return { id, created: !alreadyDone };
+  };
+  /** B-STATUS-01 (critic r1): the play receipt's Undo. Removes the day's log
+   *  only when that tap created it — Undo after a repeat tap leaves the
+   *  earlier record alone. */
+  const undoPlayCompletion = (done: { id: string; created: boolean }) => {
+    if (done.created) void playLogCol.remove(done.id);
   };
 
   // Active Interactive / Selection States
@@ -1974,6 +1981,7 @@ function useArborState() {
     playLogs,
     donePlayIds,
     logPlayCompletion,
+    undoPlayCompletion,
     actionLoop,
     actionLoopConfirmed: actionLoopCol.confirmed,
     conversationChanges: conversationChangesCol.items,
