@@ -20,7 +20,7 @@ import { recordTtsUsage } from "../ai/ttsUsage.js";
 import {
   _setStudioLedgerDb, billRowFields, billRowProblems, currentStudioScope, runAsStudioProduction, studioAsset, studioAssetKey, studioCostReport, studioUsageFields, STUDIO_COST_LEDGER_COLLECTION,
 } from "./studioCostLedger.js";
-import { asStudioPlanPlateGenerate, planPlateStudioAsset } from "./studioPlanPlates.js";
+import { planPlateStudioAsset, withStudioPlanPlates } from "./studioPlanPlates.js";
 import { planPlatePrompt } from "./planPlates.js";
 import { PLAN_PLATE_BRIEFS } from "../lib/library/plans/planPlates.js";
 import { OTHER_FIRESTORE_COLLECTIONS } from "../lib/childDataSinks.js";
@@ -93,16 +93,18 @@ describe("B-KID-150: the in-product plan-plate painter is studio production", ()
       n++;
     }
     expect(n).toBeGreaterThanOrEqual(64);
-    expect(planPlateStudioAsset("something else").ref).toMatch(/^unmatched\/[0-9a-f]{16}$/);
+    expect(planPlateStudioAsset("a family scene prompt")).toBeNull();
   });
 
-  it("the wrapped generate runs inside its plate's image scope; the route wires it", async () => {
-    const prompt = planPlatePrompt("plan-poo-sit", "PP3")!;
-    const seen = await asStudioPlanPlateGenerate(async (o: { prompt: string }) => currentStudioScope())({ prompt });
-    expect(seen).toEqual({ asset: { kind: "plan-plate", ref: "plan-poo-sit/PP3" }, modality: "image" });
-    const api = readFileSync(new URL("../routes/api.ts", import.meta.url), "utf8");
-    expect(api).toContain("generate: asStudioPlanPlateGenerate((o) => modelProvider.generateImage(o))");
+  it("the app's provider runs a plan-plate paint inside its plate's image scope and every other call outside it; the route line is the Plans track's own", async () => {
+    const provider = { calls: 0, generateImage(this: { calls: number }, _o: { prompt: string }) { this.calls++; return Promise.resolve({ data: "", mimeType: "image/webp", scope: currentStudioScope() } as never); } };
+    const wrapped = withStudioPlanPlates(provider as never) as unknown as { generateImage(o: { prompt: string }): Promise<{ scope: unknown }> };
+    expect((await wrapped.generateImage({ prompt: planPlatePrompt("plan-poo-sit", "PP3")! })).scope).toEqual({ asset: { kind: "plan-plate", ref: "plan-poo-sit/PP3" }, modality: "image" });
+    expect((await wrapped.generateImage({ prompt: "a family scene" })).scope).toBeUndefined();
+    expect(provider.calls).toBe(2); // the provider's own `this` is kept
+    expect(readFileSync(new URL("./createApp.ts", import.meta.url), "utf8")).toContain("const modelProvider = withStudioPlanPlates(createModelProvider(config));");
     expect(readFileSync(new URL("./createApp.ts", import.meta.url), "utf8")).toContain("initStudioCostLedger(config);");
+    expect(readFileSync(new URL("../routes/api.ts", import.meta.url), "utf8")).toContain("generate: (o) => modelProvider.generateImage(o), counters, allowLocal: localBooks }));");
   });
 });
 

@@ -73,7 +73,6 @@ import { ChildErasedError } from "../families/familyService.js";
 import { createBookAssetsDocStore, createBookSheetRouter } from "../server/bookSheet.js";
 import { createPlansRouter } from "../server/plans.js";
 import { createPlanPlatesRouter, isPlatePainter } from "../server/planPlates.js";
-import { asStudioPlanPlateGenerate } from "../server/studioPlanPlates.js";
 import { createBookNarrationRouter, FirestoreNarrationChildSource, googleBookTts, localNarrationChildSource, mockBookTts } from "../server/bookNarration.js";
 import { createPlanNarrationRouter, FirestorePlanBookSource, localPlanBookSource } from "../server/planNarration.js";
 import { localBookAssetBucket } from "../server/localBookAssetBucket.js";
@@ -513,8 +512,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   // plates under shared/plans/ in the same bucket (never a child path),
   // painted by the admin / comped accounts through the same provider path as
   // /generate-scene and read by any signed-in user (server/planPlates.ts).
-  // B-KID-150: each paint is studio production (its plate's ledger row), never family usage.
-  router.use(createPlanPlatesRouter({ config, getBucket: getBookBucket, generate: asStudioPlanPlateGenerate((o) => modelProvider.generateImage(o)), counters, allowLocal: localBooks }));
+  router.use(createPlanPlatesRouter({ config, getBucket: getBookBucket, generate: (o) => modelProvider.generateImage(o), counters, allowLocal: localBooks }));
   // K2 2b (B-BOOK-30): the name pages of a library book in the child's name
   // (server/bookNarration.ts): the name from the child record, Gemini-TTS
   // (env models, Sulafat), checked by the server's ASR when one is usable,
