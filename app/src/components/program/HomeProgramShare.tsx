@@ -66,8 +66,12 @@ export function HomeProgramAdherenceView({ view }: { view: { scopes: readonly st
   const { t, uiLang } = useLanguage();
   if (sharedViewMode(view) !== "home-program") return null;
   const section = view.sections.find((s) => s.id === HOME_PROGRAM_SECTION_ID);
+  // Round 2 (critic P2): each line reads in the READER's direction. dir="auto"
+  // took it from the first strong letter, so a Hebrew goal line that opens on
+  // the family's own (Latin) words turned left-to-right and scrambled.
+  const dir = uiLang === "he" ? "rtl" : "ltr";
   return (
-    <section data-testid="home-program-view" className="flex flex-col gap-2">
+    <section data-testid="home-program-view" className="flex flex-col gap-2" dir={dir}>
       <h3 className="t-base font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.homeProgram.pro.line")}</h3>
       <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.homeProgram.view.readOnly")}</p>
       {section && section.items.length ? (
@@ -76,7 +80,7 @@ export function HomeProgramAdherenceView({ view }: { view: { scopes: readonly st
             <li key={it.id} data-testid="home-program-view-line" className="border-t py-2 first:border-t-0 t-sm leading-relaxed" style={{ borderColor: "var(--arbor-rule)", color: "var(--arbor-ink)" }}>
               {/* The server builds the lines in English with their keys; the
                   professional reads them in their own language (EN + HE). */}
-              <bdi dir="auto">{itemText(it, uiLang === "he" ? "he" : "en")}</bdi>
+              <bdi dir={dir}>{itemText(it, uiLang === "he" ? "he" : "en")}</bdi>
             </li>
           ))}
         </ul>

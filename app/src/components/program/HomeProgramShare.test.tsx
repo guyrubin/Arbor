@@ -86,6 +86,18 @@ describe("B-PROG-09 read link · the read-only page renders the home program and
     expect(plain).not.toContain("done on 2 days");
   });
 
+  it("HE: a goal line that opens on the family's own Latin words still reads right-to-left (reader's direction, never dir=auto)", () => {
+    state.lang = "he";
+    const goal = [{ id: HOME_PROGRAM_SECTION_ID, items: [{ id: "g1", text: "Asks for more · Proposed by the speech therapist · not marked yet", textKey: "elev.homeProgram.packet.goal.none",
+      vars: { text: "Asks for more", proposed: { key: "elev.homeProgram.goal.proposedBy", vars: { profession: { key: "elev.carehonesty.consult.audience.slp", lowerEn: true as const } } } } }] }];
+    const html = renderToStaticMarkup(<HomeProgramAdherenceView view={{ scopes: [HOME_PROGRAM_SCOPE_ID], sections: goal }} />);
+    expect(html).toMatch(/<section[^>]*dir="rtl"/);
+    expect(html).toMatch(/<bdi dir="rtl">\u2068?Asks for more\u2069? · /);
+    expect(html).not.toContain('dir="auto"');
+    state.lang = "en";
+    expect(renderToStaticMarkup(<HomeProgramAdherenceView view={{ scopes: [HOME_PROGRAM_SCOPE_ID], sections: goal }} />)).toContain('<bdi dir="ltr">');
+  });
+
   it("without the scope the page renders nothing at all", () => {
     state.lang = "en";
     expect(renderToStaticMarkup(<HomeProgramAdherenceView view={{ scopes: ["report_slp"], sections }} />)).toBe("");

@@ -111,12 +111,35 @@ describe("B-PROG-09 read link · the professional sees the home program and noth
     expect(loopFirewallHits(he.join("\n"))).toEqual([]);
   });
 
-  it("the scope is EXCLUSIVE: a stored grant that also lists other scopes still reads only the home program", async () => {
+  it("the scope is EXCLUSIVE: a stored grant that also lists other scopes reads only the home program, and says so", async () => {
     const store = new LocalShareStore();
-    const g = await grant(store, [HOME_PROGRAM_SCOPE_ID, "story_timeline", "report_slp"]);
-    const r = await open(store, g.id, new SpySource());
+    const g = await grant(store, [HOME_PROGRAM_SCOPE_ID, "story_timeline", "milestones"]);
+    for (const asked of [undefined, HOME_PROGRAM_SCOPE_ID]) {
+      const r = await open(store, g.id, new SpySource(), asked);
+      expect(r.status).toBe(200);
+      if (r.status === 200) {
+        expect(r.view.sections.map((s) => s.id)).toEqual(["intake-home-program"]);
+        expect(r.view.scopes).toEqual([HOME_PROGRAM_SCOPE_ID]);
+      }
+    }
+  });
+
+  it("a mixed grant that also names a report scope carries that report's domain ceiling (B-CAREPRO-41): fail closed, no home program, nothing else", async () => {
+    const store = new LocalShareStore();
+    const g = await grant(store, [HOME_PROGRAM_SCOPE_ID, "report_slp"]);
+    const r = await open(store, g.id, new SpySource(), HOME_PROGRAM_SCOPE_ID);
     expect(r.status).toBe(200);
-    if (r.status === 200) expect(r.view.sections.map((s) => s.id)).toEqual(["intake-home-program"]);
+    if (r.status === 200) { expect(r.view.sections).toEqual([]); expect(r.view.scopes).toEqual([HOME_PROGRAM_SCOPE_ID]); }
+  });
+
+  it("round 2: a mixed grant asked for one of its OTHER scopes answers 403 (it never gives that view), with no child data", async () => {
+    const store = new LocalShareStore();
+    const g = await grant(store, [HOME_PROGRAM_SCOPE_ID, "story_timeline", "milestones"]);
+    for (const other of ["story_timeline", "milestones"]) {
+      const r = await open(store, g.id, new SpySource(), other);
+      expect(r.status, other).toBe(403);
+      expect(JSON.stringify(r)).not.toMatch(/Name the toy|PRIVATE-MOMENT/);
+    }
   });
 
   it("no active home program → the section is simply absent (no other section fills the page)", () => {

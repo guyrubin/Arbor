@@ -108,10 +108,16 @@ export async function resolveSharedPacket(opts: {
   if (scopes.length === 0) {
     return { status: 403, error: "This share does not grant any recognized scopes" };
   }
-  // B-PROG-09: a link asks for exactly one scope; any scope this grant does
-  // not carry answers 403 (an unrecognized one too — fail closed).
+  // B-PROG-09: the home-program scope is EXCLUSIVE — a grant that carries it
+  // grants the home program and nothing else, whatever else it lists (round
+  // 2: a mixed grant asked for one of its other scopes answered 200 with the
+  // home program; it now answers 403 like any scope the grant does not give).
+  const homeProgram = scopes.includes(HOME_PROGRAM_SCOPE_ID);
+  const granted: string[] = homeProgram ? [HOME_PROGRAM_SCOPE_ID] : scopes;
+  // A link asks for exactly one scope; any scope this grant does not give
+  // answers 403 (an unrecognized one too — fail closed).
   const requested = (opts.requestedScope ?? "").trim();
-  if (requested && !(scopes as readonly string[]).includes(requested)) {
+  if (requested && !granted.includes(requested)) {
     return { status: 403, error: "This share does not grant that view" };
   }
 
@@ -122,14 +128,13 @@ export async function resolveSharedPacket(opts: {
     return { status: 403, error: "This share does not grant any recognized areas" };
   }
 
-  const homeProgram = scopes.includes(HOME_PROGRAM_SCOPE_ID);
   const record = await source.load(grant.ownerUid, grant.childId, homeProgram ? { homeProgram } : undefined);
   if (!record) return { status: 404, error: "The shared child record is not available" };
 
   try {
     // The SAME builder the parent's preview calls (consult/packet buildGrantPacket):
     // domain ceiling → shared assembler → scope packet + guards.
-    const packet = buildGrantPacket({ role: grant.role, scopes, domains: grant.domains }, record, now);
+    const packet = buildGrantPacket({ role: grant.role, scopes: granted, domains: grant.domains }, record, now);
     return {
       status: 200,
       view: {
@@ -137,7 +142,7 @@ export async function resolveSharedPacket(opts: {
         ownerEmail: grant.ownerEmail ?? null,
         role: grant.role,
         expiresAt: grant.expiresAt ?? null,
-        scopes,
+        scopes: granted,
         generatedAt: packet.generatedAt,
         sections: packet.sections,
         // B-DIST-01: the recipient's view of the demo family says so.
