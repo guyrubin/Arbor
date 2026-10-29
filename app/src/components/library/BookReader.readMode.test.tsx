@@ -115,7 +115,7 @@ describe("B-BOOK-45: the bedtime read", () => {
       expect(r, "nothing new moves").not.toMatch(/animation|transition/);
     }
     // the child's own daytime read keeps the daylight panel (the night rules are bedtime-scoped only)
-    const night = css.match(/[^}\n]*\.bk-text[^{]*\{[^}]*82%, var\(--arbor-ink\)/g) ?? [];
+    const night: string[] = css.match(/[^}\n]*\.bk-text[^{]*\{[^}]*82%, var\(--arbor-ink\)/g) ?? [];
     expect(night.length).toBe(2);
     expect(night.every((r) => r.includes('[data-read-mode="bedtime"]'))).toBe(true);
     expect(html("alone", st("p2", null), lang)).toContain('data-read-mode="alone"');

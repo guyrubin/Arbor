@@ -77,14 +77,14 @@ describe("B-BOOK-66 · the finished book reaches Today the next day", () => {
 describe("B-GAME-23 · Play at home: visits, experiences met, one off-screen idea", () => {
   const sit = (id: string, day: string, extra: Record<string, unknown> = {}) => ({ id, game: "sneak-freeze", day, ...extra });
   it("counts the last seven days' sittings and names the experiences met, in a fixed order", () => {
-    const row = playAtHomeRow([
+    const row = playAtHomeRow(([
       sit("s1", "2026-10-29", { experiences: ["dash"] }),
       sit("s2", "2026-10-27", { experiences: ["sunglasses", "dash"] }),
       sit("s3", "2026-10-23"),
       sit("s0", "2026-10-22", { experiences: ["fake-turn"] }), // eight days back: out
       { id: "x1", game: "other-game", day: "2026-10-29", experiences: ["fake-turn"] },
       { id: "x2", kind: "speech", day: "2026-10-29" },
-    ], NOW);
+    ] as Record<string, unknown>[]), NOW);
     expect(row).toEqual({ key: "s1", game: "sneak-freeze", visits: 3, experiences: ["sunglasses", "dash"] });
   });
   it("firewall: rounds, prizes, duration, catches and a level change nothing", () => {

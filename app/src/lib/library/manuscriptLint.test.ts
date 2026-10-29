@@ -124,7 +124,7 @@ describe("B-BOOK-33: each automatic fail, injected once, is caught (and only it)
   it("practises: a noun, not an act; a name token; three lines", () => {
     expect(seeded((b) => { acts(b)[0].en = "Small steps toward a fear"; })).toEqual(["practises"]);
     expect(seeded((b) => { acts(b)[0].en = "Going toward a small fear with {name}"; })).toEqual(["practises"]);
-    expect(seeded((b) => { (b.parent as { practises: unknown[] }).practises = [...acts(b), acts(b)[0]]; })).toEqual(["practises"]);
+    expect(seeded((b) => { (b.parent as unknown as { practises: unknown[] }).practises = [...acts(b), acts(b)[0]]; })).toEqual(["practises"]);
   });
   it("3–4 band: the caps tighten (8-word sentences, 25 EN words a page)", () => {
     const hits = lintManuscript(proof, { band: "3-4" });
