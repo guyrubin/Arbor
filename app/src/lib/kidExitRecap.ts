@@ -94,6 +94,24 @@ export function countsSince(ledgers: KidActivityLedgers, sinceMs: number): KidAc
   return out;
 }
 
+/**
+ * B-KID-143 / B-BOOK-47: a recap belongs to the exact child/account that
+ * entered Kid Mode. If auth or the selected child ever changes mid-session,
+ * suppress the old recap rather than offering a potentially mixed-family
+ * Keep action after exit. A switch back does NOT revive the old session.
+ * This is ephemeral UI state; it records no child data.
+ */
+export function makeKidExitRecapScopeGuard(initialScope: string): {
+  observe(scope: string): void;
+  mayOffer(): boolean;
+} {
+  let changed = false;
+  return {
+    observe(scope: string) { if (scope !== initialScope) changed = true; },
+    mayOffer() { return !changed; },
+  };
+}
+
 /** Total rows across every kind — the "was anything at all done?" test. */
 export function totalActivity(counts: KidActivityCounts): number {
   return KID_ACTIVITY_KINDS.reduce((sum, kind) => sum + (counts[kind] ?? 0), 0);
