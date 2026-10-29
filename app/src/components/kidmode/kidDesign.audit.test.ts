@@ -98,6 +98,13 @@ describe("B-KID-133: kid type is the kid voices only, never a parent face", () =
     expect(index).toMatch(/html\[lang="he"\] \.arbor-play \{ --font-sans: "Heebo",/);
     expect(read("components/kidmode/studioV2/studioTokens.css")).toMatch(/--studio-font: Nunito, Heebo, sans-serif;/);
   });
+  it("round 2: kid components that name a font inline name a kid voice, and the hold-to-exit caption declares the toy voice", () => {
+    const INLINE_KID = new Set(["var(--font-sans)", "var(--font-display)", "var(--studio-font)", "inherit"]);
+    const bad = code.filter((f) => f.endsWith(".tsx")).flatMap((f) => [...read(f).matchAll(/fontFamily:\s*"([^"]+)"/g)].map((m) => [f, m[1]] as const)).filter(([, v]) => !INLINE_KID.has(v.trim()) || PARENT_FACES.test(v));
+    expect(bad).toEqual([]);
+    const exit = read("components/kidmode/HoldExitButton.tsx");
+    expect(exit.slice(exit.indexOf("data-kid-exit-caption"), exit.indexOf("data-kid-exit-caption") + 400)).toMatch(/fontFamily: "var\(--font-sans\)"/);
+  });
   it("no kid or library component uses a parent type class", () => {
     const leaks = code.filter((f) => f.endsWith(".tsx") && PARENT_TYPE_CLASS.test(read(f)));
     expect(leaks).toEqual([]);
