@@ -598,6 +598,14 @@ function ApptRow({
   );
 }
 
+/** Critic r1: the field grows to the whole question (Hebrew runs wider than
+ *  the row estimate), never under the 44 px floor. Runs on every render. */
+function fitRehearsalField(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${Math.max(44, el.scrollHeight)}px`;
+}
+
 /** B-VOICE-03 (agent half) — "Talk it through" before the visit, inside the
  *  visit's questions card (no new surface). The parent says what worries them
  *  and what they want to leave with; their own questions (and voiced worries)
@@ -661,6 +669,7 @@ function RehearseQuestions({ lang, onKeep }: { lang: "en" | "he"; onKeep: (quest
                   value={draft[i]}
                   dir="auto"
                   rows={rehearsalRows(draft[i])}
+                  ref={fitRehearsalField}
                   aria-label={t("elev.learnCare.appt.rehearse.edit", { n: i + 1 })}
                   onChange={(e) => setDraft((d) => d ? d.map((x, j) => (j === i ? e.target.value : x)) : d)}
                   className="min-h-11 min-w-0 flex-1 resize-none rounded-xl px-3 py-2.5 text-sm leading-snug"

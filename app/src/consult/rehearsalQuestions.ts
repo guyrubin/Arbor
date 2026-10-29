@@ -138,10 +138,11 @@ export function rehearsalQuestions(transcript: string): string[] {
   return out;
 }
 
-/** Rows for a rehearsed question's field: the whole question shows (≈ 36
- *  characters a line at 390 px), one to five lines. */
+/** Rows for a rehearsed question's field before layout (≈ 28 characters a
+ *  line at 390 px, Hebrew included), one to five lines; the page then fits
+ *  the field to its text. */
 export function rehearsalRows(text: string): number {
-  return Math.min(5, Math.max(1, Math.ceil((text ?? "").length / 36)));
+  return Math.min(5, Math.max(1, Math.ceil((text ?? "").length / 28)));
 }
 
 /** The numbered lines the visit page reviews ("1. …"), in the page's digits. */

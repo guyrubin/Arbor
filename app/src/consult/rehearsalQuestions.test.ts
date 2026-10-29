@@ -108,6 +108,9 @@ describe("B-VOICE-03 · the visit page: rehearse, review numbered, keep only on 
   it("a long question wraps in full: a textarea sized to the text (critic r1)", () => {
     expect(rehearse).toContain("<textarea");
     expect(rehearse).toContain("rows={rehearsalRows(draft[i])}");
+    expect(rehearse).toContain("ref={fitRehearsalField}");
+    expect(appts).toContain("el.style.height = `${Math.max(44, el.scrollHeight)}px`;");
+    expect(rehearsalRows("מה כדאי לתרגל בבית לפני הפגישה הבאה?")).toBe(2);
     expect(rehearsalRows("Short?")).toBe(1);
     expect(rehearsalRows("I'm worried that he doesn't answer when we call his name, even from close by")).toBeGreaterThanOrEqual(2);
     expect(rehearsalRows("x".repeat(1000))).toBe(5);
