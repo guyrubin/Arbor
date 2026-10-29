@@ -60,6 +60,7 @@ import MicrophoneNotice from "../ui/MicrophoneNotice";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
 import ConversationProposalTray from "../coach/ConversationProposalTray";
 import VoiceCloseCard from "../coach/VoiceCloseCard";
+import { voiceNextStep } from "../../lib/voiceTranscript";
 import CaptureProposalsTray from "../capture/CaptureProposalsTray";
 import { liveUnavailableReason, trackLiveUnavailable } from "../../lib/kpiEvents";
 // AI-06 / AI-24: one classifier from a thrown transport error (or from being
@@ -510,6 +511,12 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // Proposal drafts live at the voice interaction level and remain ephemeral
   // until the parent confirms one in the quiet review tray.
   const voiceSessionIdRef = useRef("voice-session-" + Date.now());
+  // B-VOICE-04: where this session's turns begin in the thread (the next-step
+  // synthesis reads only what Arbor said in THIS session).
+  const voiceStartIndexRef = useRef(0);
+  const [nextStepKeptFor, setNextStepKeptFor] = useState<string | null>(null);
+  const [nextStepBusy, setNextStepBusy] = useState(false);
+  const [nextStepFailed, setNextStepFailed] = useState(false);
   const voiceTurnRef = useRef(0);
   const [conversationProposals, setConversationProposals] = useState<ConversationProposal[]>([]);
   const [proposalBusyId, setProposalBusyId] = useState<string | null>(null);
@@ -526,7 +533,22 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     setProposalFailed(false);
     setVoiceReviewOpen(false);
   };
-  const discardVoiceReview = () => { if (!proposalCommitRef.current) clearVoiceReview(); };
+  const discardVoiceReview = () => { if (!proposalCommitRef.current && !nextStepBusy) clearVoiceReview(); };
+  // B-VOICE-04: next-action synthesis — deterministic, from what Arbor said in
+  // this session (lib/voiceTranscript voiceNextStep); null → no step shown.
+  const voiceNextText = voiceReviewOpen ? voiceNextStep(chatMessages, voiceStartIndexRef.current) : null;
+  const keepVoiceNextStep = async () => {
+    const step = voiceNextText;
+    const sessionId = voiceSessionIdRef.current;
+    if (!step || nextStepBusy) return;
+    setNextStepBusy(true); setNextStepFailed(false);
+    try {
+      await acceptTodayAction(step, "standard", "coach");
+      if (sessionId === voiceSessionIdRef.current) setNextStepKeptFor(sessionId);
+    } catch {
+      if (sessionId === voiceSessionIdRef.current) setNextStepFailed(true);
+    } finally { setNextStepBusy(false); }
+  };
 
   const deriveConversationProposals = async (transcript: string, attempt: VoiceAttempt | null = voiceLifetimeRef.current.current) => {
     if (!attempt?.isCurrent()) return;
@@ -830,6 +852,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     setVoiceTalkEnded(false);
     reviewAttemptRef.current = null;
     voiceSessionIdRef.current = "voice-session-" + Date.now() + "-" + (++voiceTurnRef.current);
+    voiceStartIndexRef.current = voiceMessagesRef.current.length;
+    setNextStepFailed(false);
     setConversationProposals([]);
     setProposalPending(0);
     setProposalFailed(false);
@@ -1911,7 +1935,13 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
 
       {visible && voiceReviewOpen && voicePhase === "off" && <VoiceCloseCard
         sessionId={voiceSessionIdRef.current} proposals={conversationProposals} language={uiLang}
-        pending={proposalPending > 0} failed={proposalFailed} busy={!!proposalBusyId} onClose={discardVoiceReview}>
+        pending={proposalPending > 0} failed={proposalFailed} busy={!!proposalBusyId || nextStepBusy} onClose={discardVoiceReview}
+        // B-VOICE-04: the session's one next step, kept as today's step only
+        // on the parent's tap, through the coach's own "try it" writer.
+        nextStep={voiceNextText ? { text: voiceNextText, language: getAiLanguage() === "he" ? "he" : "en" } : null}
+        nextStepKept={!!voiceNextText && (nextStepKeptFor === voiceSessionIdRef.current || activeTodayAction?.recommendation?.trim() === voiceNextText)}
+        nextStepBusy={nextStepBusy} nextStepFailed={nextStepFailed}
+        onKeepNextStep={() => void keepVoiceNextStep()}>
         {/* B-AIOPS-02: when the family's voice time ended the talk, the review
             says so first (the same resting words, never an error). */}
         {voiceResting && <p role="status" data-testid="voice-review-resting" className="text-xs leading-relaxed pb-2" dir="auto" style={{ color: "var(--arbor-ink)" }}>

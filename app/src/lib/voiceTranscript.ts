@@ -45,3 +45,32 @@ export const settleVoiceTurn = (prev: ChatMessage[]): ChatMessage[] => {
   const { voiceLive: _settled, ...rest } = last;
   return [...prev.slice(0, -1), rest];
 };
+
+/**
+ * B-VOICE-04 — the next-action synthesis for the closing review: the ONE
+ * concrete step Arbor said in this voice session, offered for the parent to
+ * keep as today's step (never kept on its own).
+ *
+ * Deterministic, no model call. The voice reply contract (voice_reply,
+ * ai/prompts.ts) is "Sentence 1 acknowledges; Sentence 2 gives ONE concrete
+ * next step, or asks one short clarifying question". So the step is the
+ * SECOND sentence of the last settled Arbor turn since the session began —
+ * only when it is a whole sentence (ends . or !), not a question, and short
+ * enough to be a step. Anything else → null: the review shows no step rather
+ * than a guessed one. The text is the already-screened spoken reply; it is
+ * the parent's tap that keeps it.
+ */
+export const VOICE_NEXT_STEP_MAX = 220;
+export const voiceNextStep = (messages: readonly ChatMessage[], fromIndex = 0): string | null => {
+  const turns = messages.slice(Math.max(0, fromIndex));
+  let last: ChatMessage | undefined;
+  for (let i = turns.length - 1; i >= 0; i--) {
+    if (turns[i].sender === "ai") { last = turns[i]; break; }
+  }
+  if (!last || last.voiceLive) return null;
+  const sentences = last.text.replace(/\s+/g, " ").trim().split(/(?<=[.!?…])\s+/).map((s) => s.trim()).filter(Boolean);
+  const step = sentences[1];
+  if (!step || !/[.!]$/.test(step) || /[?？]/.test(step)) return null;
+  if (step.length > VOICE_NEXT_STEP_MAX || step.split(" ").length < 3) return null;
+  return step;
+};

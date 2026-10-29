@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ChatMessage } from "../context/ArborContext";
-import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "./voiceTranscript";
+import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn, voiceNextStep } from "./voiceTranscript";
 
 /**
  * COACH-2 — the browser voice loop persists both turns through the same
@@ -77,5 +77,28 @@ describe("settleVoiceTurn", () => {
     const settled: ChatMessage[] = [WELCOME, { sender: "ai", text: "done" }];
     expect(settleVoiceTurn(settled)).toBe(settled);
     expect(settleVoiceTurn([])).toEqual([]);
+  });
+});
+
+describe("B-VOICE-04 · voiceNextStep — the one concrete step Arbor said in this session", () => {
+  const ai = (text: string, extra: object = {}) => ({ sender: "ai" as const, text, ...extra });
+  const user = (text: string) => ({ sender: "user" as const, text });
+
+  it("takes sentence 2 of the last settled Arbor turn since the session began", () => {
+    const thread = [ai("Old answer. Old step to ignore."), user("Bedtime is hard"), ai("That sounds tiring. Try a two-minute warning before the bath. I can say more.")];
+    expect(voiceNextStep(thread, 1)).toBe("Try a two-minute warning before the bath.");
+  });
+
+  it("Hebrew works the same way", () => {
+    expect(voiceNextStep([ai("זה נשמע מעייף. תנו התראה של שתי דקות לפני האמבטיה.")])).toBe("תנו התראה של שתי דקות לפני האמבטיה.");
+  });
+
+  it("never guesses: a question, a cut-off sentence, a one-sentence reply, a live bubble or a turn before the session → null", () => {
+    expect(voiceNextStep([ai("That sounds hard. How long does bedtime take now?")])).toBeNull();
+    expect(voiceNextStep([ai("That sounds hard. Try a warning before")])).toBeNull();
+    expect(voiceNextStep([ai("That sounds hard.")])).toBeNull();
+    expect(voiceNextStep([ai("That sounds hard. Try a warning first.", { voiceLive: true })])).toBeNull();
+    expect(voiceNextStep([ai("That sounds hard. Try a warning first."), user("thanks")], 1)).toBeNull();
+    expect(voiceNextStep([ai("Hi. Ok.")])).toBeNull();
   });
 });
