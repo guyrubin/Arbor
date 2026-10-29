@@ -22,7 +22,7 @@ import {
   EXPORT_AUDIENCES,
   DEFAULT_EXPORT_AUDIENCE,
   INTAKE_AUDIENCE,
-  buildIntakePacket,
+  buildIntakePacket, intakeLangObs,
   parentGoalPreview,
   type ExportAudience,
   type IntakeProfession,
@@ -426,7 +426,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       // B-NEXT-01: the parent's hearing answer, only while the pilot flag is on
       hearing: hearingQuestionOn() ? hearingCheckOf(childProfile) : null,
       // B-CAREPRO-39: the logged words, counted per language by the SLP intake schema (dark until signed)
-      langObs: langObsCol.items.map((o) => ({ phrase: o.phrase ?? "", language: o.language, at: o.timestamp })),
+      langObs: intakeLangObs(langObsCol.items),
     }) : null),
     [intake, childProfile, milestones, behaviorLogs, actionLoop, uiLang, keepsakesCol.items, intakeProgram, familyGoalsCol.items, programRows.items, langObsCol.items]
   );

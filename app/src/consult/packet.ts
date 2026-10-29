@@ -1917,6 +1917,16 @@ export function sharedHomeProgramItems(homePrograms: readonly unknown[], familyG
   });
 }
 
+/** B-CAREPRO-39 (round 2): the ONE mapping from the `langObs` rows (Language
+ *  Lab, lib growth/vocabAgg LangObservation) to the intake packet's logged
+ *  words — both intake call sites (Care's AskSpecialist and Journal's pro view)
+ *  use it, so a signed schema never says "Not recorded yet" for logged words. */
+export const intakeLangObs = (rows: ReadonlyArray<{ phrase?: string | null; language?: string | null; timestamp?: string | number | null }>): PacketInputLangObs[] =>
+  rows.flatMap((o) => {
+    const phrase = typeof o.phrase === "string" ? o.phrase.trim() : "";
+    return phrase ? [{ phrase, ...(o.language ? { language: o.language } : {}), ...(o.timestamp != null ? { at: o.timestamp } : {}) }] : [];
+  });
+
 /** B-CAREPRO-39 — one line per schema question: "{question} — {answer}".
  *  Answers come ONLY from the record: the parent's own milestone answers
  *  (dated, in their words: yes / not yet / not sure), a COUNT of logged words

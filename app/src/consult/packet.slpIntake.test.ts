@@ -6,7 +6,9 @@
  * schema existed and the SLP packet had no Intake section at all.
  */
 import { describe, expect, it } from "vitest";
-import { buildIntakePacket, slpIntakePacketItems, type IntakePacketInput } from "./packet";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { buildIntakePacket, intakeLangObs, slpIntakePacketItems, type IntakePacketInput } from "./packet";
 import { SLP_INTAKE_SCHEMA, slpIntakeSigned, type SlpIntakeSchema } from "../content/consultPresets";
 import { ALL_MILESTONES } from "../lib/milestoneData";
 import { translate } from "../lib/i18n";
@@ -94,5 +96,28 @@ describe("B-CAREPRO-39 · the schema guard: no thresholds, no scoring", () => {
       expect(loopFirewallHits(text)).toEqual([]);
       expect(text).not.toMatch(/%|\/\d/);
     }
+  });
+});
+
+describe("B-CAREPRO-39 round 2 · both intake call sites pass the logged words", () => {
+  it("intakeLangObs maps the langObs rows once (phrase, language, when); empty phrases drop", () => {
+    expect(intakeLangObs([
+      { phrase: " more ", language: "English", timestamp: "2026-10-01T10:00:00Z" },
+      { phrase: "", language: "Hebrew", timestamp: "2026-10-02T10:00:00Z" },
+      { phrase: "מים", language: "Hebrew" },
+    ])).toEqual([{ phrase: "more", language: "English", at: "2026-10-01T10:00:00Z" }, { phrase: "מים", language: "Hebrew" }]);
+  });
+  it("Care's packet and Journal's pro view both hand them to buildIntakePacket (old Journal said 'Not recorded yet' for logged words once signed)", () => {
+    const read = (rel: string) => readFileSync(path.resolve(__dirname, "..", rel), "utf8");
+    for (const rel of ["components/sections/AskSpecialist.tsx", "components/journal/JournalShelves.tsx"]) {
+      const src = read(rel);
+      expect(src, rel).toMatch(/useChildCollection<LangObservation>\(childProfile\.id, "langObs"/);
+      const call = src.slice(src.indexOf("buildIntakePacket(", src.indexOf("const intakePacket")));
+      expect(call.slice(0, call.indexOf("}) : null)")), rel).toContain("langObs: intakeLangObs(langObsCol.items)");
+    }
+  });
+  it("signed, the logged words answer 'which words now' through the shared mapping", () => {
+    const items = slpIntakePacketItems(SIGNED, input({ langObs: intakeLangObs([{ phrase: "ball", language: "English" }, { phrase: "כדור", language: "Hebrew" }]) }));
+    expect(items.find((i) => i.id === "intake-slp-wordsNow")!.text).toBe("Which words does Noa use now, in each language? — English: 1; Hebrew: 1 (words and phrases you logged)");
   });
 });
