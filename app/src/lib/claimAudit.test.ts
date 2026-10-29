@@ -213,6 +213,9 @@ describe("BD-13 · 4 · the shipped marketing pages", () => {
   });
 
   it("structured data offers no 0 price for a trial, and every ILS offer is a price the page shows", () => {
+    // Round 4: no page carries Offer markup while the IL price is unsettled
+    // (KNOWN_PRICE_DISCREPANCIES); the rule still holds for any that returns.
+    let offersSeen = 0;
     for (const rel of pages.filter((r) => r.endsWith(".html"))) {
       const html = readFileSync(path.join(MARKETING, rel), "utf8");
       const shown = new Set(marketingPrices(html));
@@ -227,12 +230,14 @@ describe("BD-13 · 4 · the shipped marketing pages", () => {
           }
         };
         walk(JSON.parse(m[1]));
+        offersSeen += offers.length;
         for (const o of offers) {
           expect(Number(o.price), `${rel}: a trial is not a 0-price offer`).toBeGreaterThan(0);
           if (o.priceCurrency === "ILS") expect(shown.has(`₪${Number(o.price).toFixed(2)}`), `${rel}: offer ₪${o.price} is not on the page`).toBe(true);
         }
       }
     }
+    expect(offersSeen, "an Offer returned to a marketing page: settle the IL price first (KNOWN_PRICE_DISCREPANCIES)").toBe(0);
   });
 
   it("negative controls: the IL page's old tiers are caught", () => {
