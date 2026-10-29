@@ -1,5 +1,5 @@
 {
- "about": "B-ASKJB-44 round 11: the critic's fresh sets, copied read-only as a corpus for the monotonicity property test (handoffFloor.monotonic.test.ts). critic-r9 = scratchpad critic-askjb/r9/fresh2.json, critic-r10 = r10/fresh3.json (`critic` is the critic's required verdict under the round-10 contract, kept for reference only); critic-r11 = r11/fresh11.json (62 rows) critic-r12 = r12/fresh12.json (44 rows) and critic-r13 = r13/fresh13.json (45 rows); `must` is text the critic requires in the output; floor-probe* = the critic's floor-probe.mts .. floor-probe4.mts cases (parent '' = the probe gave none; floor-probe4's parent is the probe's own). Synthetic text only.",
+ "about": "B-ASKJB-44 round 11: the critic's fresh sets, copied read-only as a corpus for the monotonicity property test (handoffFloor.monotonic.test.ts). critic-r9 = scratchpad critic-askjb/r9/fresh2.json, critic-r10 = r10/fresh3.json (`critic` is the critic's required verdict under the round-10 contract, kept for reference only); critic-r11 = r11/fresh11.json (62 rows) critic-r12 = r12/fresh12.json (44 rows) critic-r13 = r13/fresh13.json (45 rows) and critic-r14 = r14/fresh14.json (36 rows); `must` is text the critic requires in the output; floor-probe* = the critic's floor-probe.mts .. floor-probe4.mts cases (parent '' = the probe gave none; floor-probe4's parent is the probe's own). Synthetic text only.",
  "rows": [
   {
    "id": "r9-S01",
@@ -2095,6 +2095,294 @@
    "note": "When there are no signs of calming, you should not hesitate to call the family.",
    "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
    "must": "call the family"
+  },
+  {
+   "id": "r14-D01",
+   "source": "critic-r14",
+   "label": "noRestore: no required text",
+   "note": "There are no signs of a speech delay, so it is better to wait a few weeks before calling the speech therapist.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r14-D02",
+   "source": "critic-r14",
+   "label": "noRestore: no required text",
+   "note": "There are no signs of a speech delay, so I'd give it a few weeks before calling the pediatrician.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r14-D03",
+   "source": "critic-r14",
+   "label": "noRestore: no required text",
+   "note": "There is no evidence of anxiety, so there's no rush to call the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r14-D04",
+   "source": "critic-r14",
+   "label": "noRestore: no required text",
+   "note": "There is no evidence of anxiety, so calling the family can be left for later.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r14-D05",
+   "source": "critic-r14",
+   "label": "noRestore: no required text",
+   "note": "There are no signs of a speech delay, so let's see how the next month goes before contacting the speech therapist.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r14-D06",
+   "source": "critic-r14",
+   "label": "noRestore: no required text",
+   "note": "There are no signs of a speech delay, so a referral to a specialist can safely wait.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r14-D07",
+   "source": "critic-r14",
+   "label": "noRestore: no required text",
+   "note": "There are no signs of a speech delay, so give it two weeks before you call the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r14-D08",
+   "source": "critic-r14",
+   "label": "noRestore: no required text",
+   "note": "There are no signs of a speech delay, so instead of calling the pediatrician, wait for the next checkup.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r14-HD01",
+   "source": "critic-r14",
+   "label": "noRestore: no required text",
+   "note": "אין סימנים לעיכוב בדיבור, ולכן אפשר להמתין ורק אחר כך להתקשר להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r14-HD02",
+   "source": "critic-r14",
+   "label": "noRestore: no required text",
+   "note": "אין סימנים לחרדה, ולכן לא בוער להתקשר להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r14-HD03",
+   "source": "critic-r14",
+   "label": "noRestore: no required text",
+   "note": "אין סימנים לעיכוב בדיבור, ולכן כדאי להמתין שבועיים ורק אז לפנות לרופאת הילדים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r14-HD04",
+   "source": "critic-r14",
+   "label": "noRestore: no required text",
+   "note": "אין סימנים לחרדה, ולכן עוד מוקדם להתקשר להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r14-HD05",
+   "source": "critic-r14",
+   "label": "noRestore: no required text",
+   "note": "אין עדות לקשיי קשב, ולכן עדיף להמתין ולהתקשר להורים רק בחודש הבא.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r14-HD06",
+   "source": "critic-r14",
+   "label": "noRestore: no required text",
+   "note": "אין סימנים לחרדה, ולכן אין דחיפות להתקשר להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r14-HD07",
+   "source": "critic-r14",
+   "label": "noRestore: no required text",
+   "note": "אין סימנים לחרדה, ולכן במקום להתקשר להורים אפשר לחכות לאסיפה.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r14-HD08",
+   "source": "critic-r14",
+   "label": "noRestore: no required text",
+   "note": "אין סימנים לעיכוב בדיבור, ולכן נחכה חודש לפני שנפנה לקלינאית ובינתיים לא להתקשר להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r14-E01",
+   "source": "critic-r14",
+   "label": "restore: calling the family",
+   "note": "When there are no signs of calming, do not delay calling the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "calling the family"
+  },
+  {
+   "id": "r14-E02",
+   "source": "critic-r14",
+   "label": "restore: call the family",
+   "note": "When he shows no signs of settling within 20 minutes, call the family without waiting.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family"
+  },
+  {
+   "id": "r14-E03",
+   "source": "critic-r14",
+   "label": "restore: calling the family",
+   "note": "Where there are no signs of calming, don't put off calling the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "calling the family"
+  },
+  {
+   "id": "r14-E04",
+   "source": "critic-r14",
+   "label": "restore: call the family",
+   "note": "When there are no signs of calming, call the family, not just the teacher.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family"
+  },
+  {
+   "id": "r14-E05",
+   "source": "critic-r14",
+   "label": "restore: call the family",
+   "note": "When there are no signs of calming, call the family immediately, no matter the time.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family"
+  },
+  {
+   "id": "r14-HE01",
+   "source": "critic-r14",
+   "label": "restore: התקשרו מיד להורים",
+   "note": "כשאין סימנים של רגיעה, אין להתעכב – התקשרו מיד להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו מיד להורים"
+  },
+  {
+   "id": "r14-HE02",
+   "source": "critic-r14",
+   "label": "restore: התקשרו להורים",
+   "note": "כשאין סימנים של רגיעה, אל תדחו – התקשרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים"
+  },
+  {
+   "id": "r14-HE03",
+   "source": "critic-r14",
+   "label": "restore: יש להתקשר להורים",
+   "note": "כשאין סימנים לשיפור, יש להתקשר להורים בלי לחכות.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "יש להתקשר להורים"
+  },
+  {
+   "id": "r14-HE04",
+   "source": "critic-r14",
+   "label": "restore: התקשרו להורים",
+   "note": "כשאין סימנים של רגיעה, התקשרו להורים ולא רק לגננת.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים"
+  },
+  {
+   "id": "r14-C01",
+   "source": "critic-r14",
+   "label": "keepMain: contact the pediatrician",
+   "note": "If there is no improvement in two weeks, contact the pediatrician.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "contact the pediatrician"
+  },
+  {
+   "id": "r14-C02",
+   "source": "critic-r14",
+   "label": "restore: phone the family",
+   "note": "When she shows no signs of settling and does not stop crying, phone the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "phone the family"
+  },
+  {
+   "id": "r14-HC01",
+   "source": "critic-r14",
+   "label": "keepMain: פנו לרופאת הילדים",
+   "note": "אם אין שיפור תוך שבועיים, פנו לרופאת הילדים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "פנו לרופאת הילדים"
+  },
+  {
+   "id": "r14-HC02",
+   "source": "critic-r14",
+   "label": "restore: התקשרו להורים",
+   "note": "כשהיא לא נרגעת ואין סימנים של רגיעה, התקשרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים"
+  },
+  {
+   "id": "r14-P01",
+   "source": "critic-r14",
+   "label": "restore: התקשרו להורים",
+   "note": "במקום שאין סימנים של רגיעה, התקשרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים"
+  },
+  {
+   "id": "r14-B01",
+   "source": "critic-r14",
+   "label": "hard: still bites at drop-off",
+   "note": "Mom reports no signs of anxiety, and he still bites at drop-off.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "still bites at drop-off"
+  },
+  {
+   "id": "r14-HB01",
+   "source": "critic-r14",
+   "label": "hard: עדיין נושך בפרידה",
+   "note": "אמא מספרת שאין סימנים לחרדה, והוא עדיין נושך בפרידה.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "עדיין נושך בפרידה"
+  },
+  {
+   "id": "r14-K01",
+   "source": "critic-r14",
+   "label": "keepMain: call the family and do not leave him alone",
+   "note": "If he cannot be calmed within 20 minutes, call the family and do not leave him alone.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family and do not leave him alone"
+  },
+  {
+   "id": "r14-K02",
+   "source": "critic-r14",
+   "label": "keepMain: התקשרו להורים ואל תשאירו אותו לבד",
+   "note": "אם הוא לא נרגע תוך 20 דקות, התקשרו להורים ואל תשאירו אותו לבד.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים ואל תשאירו אותו לבד"
+  },
+  {
+   "id": "r14-K03",
+   "source": "critic-r14",
+   "label": "keepMain: call the family, not just the teacher",
+   "note": "If there are no signs of calming, call the family, not just the teacher.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family, not just the teacher"
+  },
+  {
+   "id": "r14-K04",
+   "source": "critic-r14",
+   "label": "keepMain: התקשרו להורים",
+   "note": "אם אין סימנים של רגיעה, אל תחכו ואל תשאירו אותו לבד – התקשרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים"
   }
  ]
 }

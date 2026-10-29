@@ -154,7 +154,7 @@ const BARE_RELAY = /^(?:please\s+)?(?:tell|let|inform|notify|update)\s+(?:\S+\s+
 /* Round 14 (P1-C): a restored piece holds no negation or discouraging word anywhere outside its condition
    and the negated finding that condition names; only the encouraging forms are exempt. This test's own lists. */
 const T_DISCOURAGING = /\b(?:not|no|never|none|nor|hold\s+off|avoid\p{L}*|premature\p{L}*|unnecessar\p{L}*|needless\p{L}*|pointless\p{L}*|refrain\p{L}*|rather\s+than|instead\s+of|too\s+early)\b|n['’]t\b|(?<!\p{L})(?:ו|ש|כש|ה)?(?:אין|לא|אל|מיותר\p{L}*|להימנע|במקום\s+ל\p{L}+|מוקדם\s+מדי|עדיף\s+לחכות)(?!\p{L})/iu;
-const T_ENCOURAGING = /\b(?:(?:do|does|should|must|will)\s+not|don['’]t|shouldn['’]t|never|not)\s+(?:hesitate|wait|delay)\b|\bwithout\s+(?:delay|waiting)\b|(?<!\p{L})(?:אל\s+(?:תהסס\p{L}*|תחכ\p{L}*)|(?:אין|לא)\s+(?:לחכות|להסס)|(?:בלי|ללא)\s+(?:לחכות|דיחוי))(?!\p{L})/giu;
+const T_ENCOURAGING = /\b(?:(?:do|does|should|must|will)\s+not|don['’]t|shouldn['’]t|never|not)\s+(?:hesitate|wait|delay|put\s+off)\b|\bwithout\s+(?:delay|waiting)\b|\bnot\s+(?:just|only)\b|\bno\s+matter\b|(?<!\p{L})(?:אל\s+(?:תהסס\p{L}*|תחכ\p{L}*|תדח\p{L}*)|(?:אין|לא)\s+(?:לחכות|להסס|להתעכב)|(?:בלי|ללא)\s+(?:לחכות|דיחוי)|ו?לא\s+רק|לא\s+משנה)(?!\p{L})/giu;
 const T_CONDITION_SPAN = /\b(?:if|when|whenever|where|unless|should|in\s+case|once|until|as\s+long\s+as)\b[^,;:—–]*|(?<!\p{L})(?:ו)?(?:אם|כש|כאשר|במידה|במקרה|בכל\s+פעם|ברגע\s+ש|עד\s+ש)[^,;:—–]*/giu;
 const T_CONDITION_NEGATION = /\b(?:no|without|not|n['’]t)\s+(?:\p{L}+\s+){0,3}?(?:signs?|evidence|improvement|progress|change|calm\p{L}*|settl\p{L}*|better)\b|(?<!\p{L})(?:ו|ש|כש)?(?:אין|ללא|בלי|לא)\s+(?:שום\s+)?(?:סימנ\p{L}*|סימן|עדות|שיפור|התקדמות|רגיעה|נרגע\p{L}*)/giu;
 const discouragingIn = (text: string) => {
@@ -248,6 +248,7 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
       // 7. every restored piece is an escalation: a non-negated command with a recipient (round 13, P1-C)
       for (const clause of trace.clauses.filter((c) => c.restored && c.out.trim())) {
         if (!hasEscalation(clause.out) && !(CONDITION_FRAGMENT.test(clause.out) && hasEscalation(out))) fail(`restored a piece with no escalation command: ${clause.out}`);
+        if (!T_GOVERNING.test(clause.out)) fail(`restored a piece no condition governs: ${clause.out}`);
         const discouraging = discouragingIn(clause.out);
         if (discouraging) fail(`restored a piece with a discouraging word ("${discouraging}"): ${clause.out}`);
         // round 13 (P2): a bare relay ("Please tell the family.") has nothing to pass on
@@ -267,7 +268,8 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
 describe("B-ASKJB-44 · the wrapper is monotonic over main's floor (property, every corpus, EN + HE)", () => {
   it("the corpora are all present", () => {
     expect(acceptance.length).toBe(292);
-    expect(fresh.length).toBe(270);
+    expect(fresh.length).toBe(306);
+    expect(fresh.filter((r) => r.id.startsWith("r14-")).length).toBe(36);
     expect(fresh.filter((r) => r.id.startsWith("r13-")).length).toBe(45);
     expect(fresh.filter((r) => r.id.startsWith("r11-")).length).toBe(62);
     expect(fresh.filter((r) => r.id.startsWith("r12-")).length).toBe(44);
@@ -281,7 +283,7 @@ describe("B-ASKJB-44 · the wrapper is monotonic over main's floor (property, ev
   it.each([
     ["main's clinicalScan*.test.ts corpora", () => mainCorpus],
     ["the 292-row acceptance table (a9b91e66, read-only)", () => acceptance],
-    ["the critic's fresh sets r9 / r10 / r11 / r12 / r13 / floor-probe 1-4", () => fresh],
+    ["the critic's fresh sets r9 / r10 / r11 / r12 / r13 / r14 / floor-probe 1-4", () => fresh],
     ["every adjacent pair of rows as one two-sentence note", () => pairs],
   ] as const)("%s", (_name, corpus) => {
     const stats: Stats = { runs: 0, restored: 0, removed: 0, untouched: 0 };
