@@ -5,6 +5,7 @@ import {
   BehaviorLog,
   Milestone,
   ActionPlan,
+  RoutineOfflineTick,
   BehaviorAnalysis,
   MemoryReviewItem,
   BehaviorContext,
@@ -56,7 +57,7 @@ import { hydrateMilestones } from "./milestoneHydration";
 import { completeObservation, isObservationAction, isUrgentOnboardingAction, activeActionFor, sortActionLoop, todayActionId, type ChildResponse, type HeldAnswer, type PlanStepRef } from "../actionLoop/model";
 import { planStepStatusAfter } from "../lib/plans";
 import { withFocusGoal } from "../practice/goalBuilder";
-import { routineIdOfPlan } from "../lib/routineTemplates";
+import { foldRoutineOfflineTicks, routineIdOfPlan } from "../lib/routineTemplates";
 import { answeredToday, fromRecordRowId, fromRecordEntry, type FromRecordAnswer, type FromRecordOpener } from "../lib/today/fromRecord";
 import { recentTypeCounts } from "../lib/planRecord";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
@@ -383,7 +384,9 @@ function useArborState() {
     sandboxSeed: initialMilestones,
     trackConfirmation: true,
   });
-  const plansCol = useChildCollection<ActionPlan>(childProfile.id, "actionPlans", { sandboxSeed: demoSeed.plans });
+  // B-DATA-14 (wave 4): the routine run board folds offline ticks only on a
+  // confirmed server read (plansConfirmed), as RoutinesCard does.
+  const plansCol = useChildCollection<ActionPlan>(childProfile.id, "actionPlans", { sandboxSeed: demoSeed.plans, trackConfirmation: true });
   // B-GROWTH-15: the words the parent wrote down (`langObs`) — only their
   // timestamps reach the coach, as the weekly wordsLoggedCount (never text).
   const langObsCol = useChildCollection<{ id: string; timestamp: string }>(childProfile.id, "langObs", {
@@ -1838,6 +1841,12 @@ function useArborState() {
   // B-DATA-14: with `offline`, the tick answers in bounded time: kept on this
   // phone (onQueued) when offline or unacknowledged, then onSynced / onRejected.
   const setRoutineRun = (plan: ActionPlan, offline?: ChildWriteOptions["offline"]) => plansCol.upsert(plan, { awaitServer: true, ...(offline ? { offline } : {}) });
+  // B-DATA-14 (wave 4): offline, a routine step writes only itself (a merge write
+  // of routineOfflineTicks[day][idx]); the board folds it in on reconnect. The
+  // sandbox has no second device, so there it is the step laid straight in.
+  const setRoutineRunStep = (plan: ActionPlan, day: string, idx: number, tick: RoutineOfflineTick | null, offline?: ChildWriteOptions["offline"]) => plansCol.remote
+    ? plansCol.upsert({ id: plan.id, routineOfflineTicks: { [day]: { [String(idx)]: tick } } } as unknown as ActionPlan, { merge: true, awaitServer: true, ...(offline ? { offline } : {}) })
+    : plansCol.upsert(foldRoutineOfflineTicks({ ...plan, routineOfflineTicks: { [day]: { [String(idx)]: tick } } }).plan);
   const deleteMilestone = (id: string) => void milestonesCol.remove(id);
 
   // Toggle milestone checking
@@ -2006,6 +2015,7 @@ function useArborState() {
     milestoneHistory: { items: milestones, sourceItems: milestonesCol.items },
     actionPlans,
     plansLoaded: plansCol.loaded,
+    plansConfirmed: plansCol.confirmed,
     // c2 — Daily Play completion moat (single source of truth)
     playLogs,
     donePlayIds,
@@ -2103,6 +2113,7 @@ function useArborState() {
     startPlanFromTemplate,
     startRoutinePlan,
     setRoutineRun,
+    setRoutineRunStep,
     deleteMilestone,
     planChallengeTopic,
     setPlanChallengeTopic,
