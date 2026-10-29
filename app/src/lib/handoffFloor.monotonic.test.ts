@@ -13,12 +13,17 @@
  *   2. every clause main keeps is in the output, word for word, except words
  *      inside a piece rule (b) removed;
  *   3. a rule-(b) piece is a negated-finding reassurance — not opened by a
- *      condition — with an object word that appears nowhere in the parent's
- *      text (checked here independently), or a short lead-in / attribution /
- *      frame beside it;
+ *      condition — holding only a lead-in, the negated finding, its object
+ *      (this test's own object boundary) and a short context frame, with an
+ *      object word that appears nowhere in the parent's text (checked here
+ *      independently); a piece carrying another verb, subject or event — any
+ *      hard-moment word main's incident cues know — fails (round 12, P1-2); or
+ *      a short lead-in / attribution / frame beside it, with no event either;
  *   4. every escalation command in the model's note is in the output, and every
  *      referral main recognises in a clause it keeps;
- *   5. the wrapper only deletes: every output word is a word of the note.
+ *   5. the wrapper only deletes: every output word is a word of the note;
+ *   6. a critic row's required text (`must`, fresh set r11) that main keeps,
+ *      the wrapper keeps.
  */
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -26,9 +31,10 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { REFERRAL_EN, REFERRAL_HE, withoutHandoffFindings } from "./clinicalScan";
 import { explainHandoffFloor, findEscalationCommands } from "./handoffFloorWrapper";
+import { hasIncidentCue } from "../content/behaviorTaxonomy";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-type Row = { id: string; note: string; parent?: string };
+type Row = { id: string; note: string; parent?: string; must?: string };
 
 const acceptance: Row[] = JSON.parse(readFileSync(path.join(here, "__fixtures__", "handoffFloorAcceptance.json"), "utf8")).rows;
 const fresh: Row[] = JSON.parse(readFileSync(path.join(here, "__fixtures__", "handoffFloorFreshSets.json"), "utf8")).rows;
@@ -47,8 +53,10 @@ const HARD_MOMENT_HE = "הוא נשך חבר בגן כשרבו על צעצוע\n
 const parentsFor = (row: Row) => [...new Set([row.parent ?? "", "", HARD_MOMENT_EN, HARD_MOMENT_HE, row.note])];
 
 /* The independent checks below share nothing with the wrapper's own matchers. */
-const JOINERS = new Set(["and", "but", "so", "or", "though", "although", "yet", "also", "plus", "as", "since", "because", "אבל", "אך", "כי", "או"]);
-const tokens = (text: string) => text.toLocaleLowerCase().split(/[^\p{L}\d'’"-]+/u).map((t) => t.replace(/^['’"-]+|['’"-]+$/gu, "").replace(/^ו(?=\p{Script=Hebrew}{2})/u, "")).filter((t) => t.length > 1 && !JOINERS.has(t));
+/** Joining words the wrapper may drop when the part they joined goes (and a glued "ו" / "ש" of the next word). */
+const JOINERS = new Set(["and", "but", "so", "or", "though", "although", "even", "yet", "also", "plus", "as", "since", "because", "while", "whereas",
+  "אבל", "אך", "כי", "או", "אולם", "למרות", "בעוד", "מאחר", "אף"]);
+const tokens = (text: string) => text.toLocaleLowerCase().split(/[^\p{L}\d'’"-]+/u).map((t) => t.replace(/^['’"-]+|['’"-]+$/gu, "").replace(/^[וש](?=\p{Script=Hebrew}{2})/u, "")).filter((t) => t.length > 1 && !JOINERS.has(t));
 const NEGATED_FINDING = /\b(?:no|not|n['’]t|without|free\s+(?:of|from))\b[^.;]*?\b(?:signs?|evidence|indications?|indicators?|symptoms?|red\s+flags?|traces?|hints?|difficult\p{L}*|delays?|deficits?|impairments?|concerns?|problems?|issues?)\b|(?:אין|ללא|בלי|לא\s+\p{L}+)\s+(?:\p{L}+\s+)?(?:סימנ|סימן|סממנ|עדות|עדויות|הוכח|אינדיקצי|ראי|ממצא|תסמינ|קשי|קושי|עיכוב|בעי|ליקוי|חשש)/iu;
 /** Absent from the parent's text: not even the word's first letters (4 EN, 3 HE after one glued particle) occur in it. */
 const absentFrom = (word: string, parentText: string) => {
@@ -61,6 +69,39 @@ const absentFrom = (word: string, parentText: string) => {
 const IF_WORD = /\b(?:if|unless|in\s+case)\b|(?<!\p{L})(?:ו)?(?:אם|במידה|במקרה)(?!\p{L})/iu;
 const CONDITION_WORD = /\b(?:if|unless|when|whenever|should)\b|(?<!\p{L})(?:ו)?(?:אם|במידה|כאשר|כש\p{L})/iu;
 const ATTRIBUTION = /^(?:according\s+to|as\s+(?:reported|noted|described|observed)\s+by|per|לדברי|לפי|כפי\s+ש)/iu;
+/* Round 12 (P1-2): what a removed reassurance may hold, by this test's own boundaries. */
+/** The object ends at clause punctuation, a subordinator, a subject pronoun or a frame preposition. */
+const OBJECT_END = /[,;:.!?—–()]|\b(?:before|after|when|whenever|while|since|because|as|until|though|although|but|so|then|who|which|that|he|she|they|we|i|you|it|according|at|in|during|on|for|with|this|today|yesterday)\b|(?<!\p{L})(?:לפני|אחרי|לאחר|בזמן|כש\p{L}*|כאשר|מאז|למרות|אבל|אך|כי|ש?הוא|ש?היא|ש?הם|ש?הן|אני|אנחנו|לדברי|לפי|ב\p{L}+)(?!\p{L})/iu;
+const REPORTING_ED = new Set("reported noted observed described explained confirmed mentioned shared noticed added agreed showed showing displayed exhibited presented demonstrated seemed appeared believed".split(" "));
+const FRAME_NOUNS = /\b(?:morning|mornings|evening|evenings|during|nothing|something|anything|everything|setting|building|spring|bedtime|weekend)\b/giu;
+const PRONOUN_EN = /\b(?:he|she|they|we|i|you|it|who)\b/iu;
+const PRONOUN_HE = /(?<!\p{L})(?:ו|ש|כש)?(?:הוא|היא|הם|הן|אני|אנחנו)(?!\p{L})/u;
+const GLUED_CLAUSE_HE = /(?<!\p{L})(?:ש|כש)(?!(?:בוע|בועות|עה|עות|ינה|לו|לה|להם|להן|לנו|תי|ני|לוש|ום|גרה|יחה|מיעה|פה|יפור)(?!\p{L}))\p{L}{2,}/u;
+const words = (text: string) => text.trim().split(/\s+/u).filter(Boolean);
+/** Why a removed reassurance holds more than lead-in + negated finding + object + frame, or null. */
+function extraClauseIn(piece: string): string | null {
+  const m = NEGATED_FINDING.exec(piece);
+  if (!m) return "no negated finding";
+  const lead = piece.slice(0, m.index);
+  const afterHead = piece.slice(m.index + m[0].length).replace(/^\p{L}*/u, "").replace(/^\s*(?:of|for|that|של|על)\s+/iu, "");
+  const objectEnd = afterHead.search(OBJECT_END);
+  const rest = objectEnd < 0 ? "" : afterHead.slice(objectEnd);
+  if (hasIncidentCue(lead)) return `an event before the reassurance: ${lead}`;
+  if (hasIncidentCue(rest)) return `an event after the reassurance: ${rest}`;
+  if (/\p{Script=Hebrew}/u.test(piece)) {
+    if (words(lead).length > 6) return `a long lead-in: ${lead}`;
+    if (/\S\s+ו\s*$/u.test(lead) || /\S\s+\S+\s+ו\s*$/u.test(lead)) return `a clause joined before the reassurance: ${lead}`;
+    if (PRONOUN_HE.test(rest) || GLUED_CLAUSE_HE.test(rest.replace(/^(?:ש|כש)?(?:אין|לא)\b/u, ""))) return `a clause after the reassurance: ${rest}`;
+  } else {
+    if (words(lead).length > 8) return `a long lead-in: ${lead}`;
+    if (words(lead).slice(1).some((w) => /^(?:and|but|so|then)$/iu.test(w))) return `a clause joined before the reassurance: ${lead}`;
+    if (words(lead).some((w) => /\p{L}{3,}(?:ed|ing)$/iu.test(w) && !REPORTING_ED.has(w.toLocaleLowerCase()))) return `a verb before the reassurance: ${lead}`;
+    const frame = rest.replace(FRAME_NOUNS, " ");
+    if (PRONOUN_EN.test(frame) || /\b\p{L}{3,}(?:ed|ing)\b|\b(?:is|was|were|are|has|had|did|does|went|came|got|took|made|bit|hit|threw|ran|fell)\b/iu.test(frame)) return `a clause after the reassurance: ${rest}`;
+  }
+  if (words(rest).length > 7) return `a long tail: ${rest}`;
+  return null;
+}
 const referralsIn = (text: string) => [REFERRAL_EN, REFERRAL_HE].flatMap((re) => [...text.matchAll(new RegExp(re.source, `g${re.flags}`))].map((m) => m[0]));
 
 type Stats = { runs: number; restored: number; removed: number; untouched: number };
@@ -95,12 +136,15 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
           if (!NEGATED_FINDING.test(piece.text)) fail(`removed piece is not a negated finding: ${piece.text}`);
           const head = piece.text.search(NEGATED_FINDING);
           if (IF_WORD.test(piece.text.slice(0, Math.max(0, head)))) fail(`removed a condition as a reassurance: ${piece.text}`);
+          const extra = extraClauseIn(piece.text);
+          if (extra) fail(`removed reassurance carries ${extra} — piece: ${piece.text}`);
           const r = trace.removedReassurances.find((x) => x.text === piece.text);
           if (!r || !r.absentWords.some((w) => absentFrom(w, parentText))) fail(`removed reassurance whose object the parent's text contains: ${piece.text}`);
         } else {
-          const words = piece.text.split(/\s+/).length;
+          const count = words(piece.text).length;
           if (findEscalationCommands(piece.text).length || referralsIn(piece.text).length) fail(`filler removal took an escalation: ${piece.text}`);
-          if (!ATTRIBUTION.test(piece.text) && (words > 8 || CONDITION_WORD.test(piece.text))) fail(`filler removal took a clause: ${piece.text}`);
+          if (!ATTRIBUTION.test(piece.text) && (count > 8 || CONDITION_WORD.test(piece.text))) fail(`filler removal took a clause: ${piece.text}`);
+          if (hasIncidentCue(piece.text)) fail(`filler removal took an event: ${piece.text}`);
         }
       }
       // 4. every escalation command, and every referral in a clause main keeps, reaches the output
@@ -109,6 +153,8 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
       for (const clause of trace.clauses.filter((c) => c.main === "kept")) {
         for (const referral of referralsIn(clause.text)) if (!lowerOut.includes(referral.toLocaleLowerCase())) fail(`referral main keeps lost: ${referral}`);
       }
+      // 6. a critic row's required text that main keeps, the wrapper keeps
+      if (row.must && main.toLocaleLowerCase().includes(row.must.toLocaleLowerCase()) && !lowerOut.includes(row.must.toLocaleLowerCase())) fail(`required text main keeps is lost: ${row.must}`);
       // 5. the wrapper only deletes
       const noteWords = new Set(tokens(row.note));
       const invented = tokens(out).filter((t) => !noteWords.has(t));
@@ -121,7 +167,8 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
 describe("B-ASKJB-44 · the wrapper is monotonic over main's floor (property, every corpus, EN + HE)", () => {
   it("the corpora are all present", () => {
     expect(acceptance.length).toBe(292);
-    expect(fresh.length).toBe(119);
+    expect(fresh.length).toBe(181);
+    expect(fresh.filter((r) => r.id.startsWith("r11-")).length).toBe(62);
     expect(fresh.filter((r) => r.id.startsWith("r9-")).length).toBe(26);
     expect(fresh.filter((r) => r.id.startsWith("r10-")).length).toBe(28);
     expect(mainTestFiles).toEqual(expect.arrayContaining(["clinicalScan.handoffFinding.test.ts", "clinicalScan.hebrew.test.ts"]));
@@ -132,7 +179,7 @@ describe("B-ASKJB-44 · the wrapper is monotonic over main's floor (property, ev
   it.each([
     ["main's clinicalScan*.test.ts corpora", () => mainCorpus],
     ["the 292-row acceptance table (a9b91e66, read-only)", () => acceptance],
-    ["the critic's fresh sets r9 / r10 / floor-probe 1-4", () => fresh],
+    ["the critic's fresh sets r9 / r10 / r11 / floor-probe 1-4", () => fresh],
     ["every adjacent pair of rows as one two-sentence note", () => pairs],
   ] as const)("%s", (_name, corpus) => {
     const stats: Stats = { runs: 0, restored: 0, removed: 0, untouched: 0 };
