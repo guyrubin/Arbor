@@ -66,6 +66,31 @@ describe("B-SHELL-24 · no request to fonts.googleapis.com or gstatic on load", 
     expect(directives).toContain(`fontSrc: ["'self'", "data:"]`);
   });
 
+  // Round 2: no public page asks Google either (the Israeli marketing page loaded Frank Ruhl
+  // Libre and Heebo from fonts.googleapis.com; it now declares the same self-hosted files).
+  it("no page under public/ requests a Google font, and the marketing faces exist on disk", () => {
+    const pages: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir, { withFileTypes: true })) {
+        const file = path.join(dir, name.name);
+        if (name.isDirectory()) walk(file);
+        else if (name.name.endsWith(".html")) pages.push(file);
+      }
+    };
+    walk(path.join(app, "public"));
+    expect(pages.length).toBeGreaterThan(0);
+    const asking = pages.filter((p) => googleFontRequests(code(readFileSync(p, "utf8"))).length > 0).map((p) => path.relative(app, p));
+    expect(asking).toEqual([]);
+    const il = read("public/marketing/arbor-il.html");
+    for (const family of ["Frank Ruhl Libre", "Heebo"]) expect(il).toContain(`font-family:'${family}'`);
+    for (const url of [...il.matchAll(/url\((\/fonts\/text\/[a-z0-9-]+\.woff2)\)/g)].map((m) => m[1])) {
+      expect(existsSync(path.join(app, "public", url)), url).toBe(true);
+    }
+    // NEGATIVE CONTROL: the 28 Oct stylesheet link, put back into the real page, is caught.
+    const shipped = il.replace("<style>", '<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400&display=swap" rel="stylesheet" />\n<style>');
+    expect(googleFontRequests(code(shipped))).toHaveLength(1);
+  });
+
   it("every face loads from /fonts/text, and every file it names is a real woff2 on disk", () => {
     const urls = [...faces.matchAll(/src:\s*url\(([^)]+)\)\s*format\('woff2'\)/g)].map((m) => m[1]);
     expect(urls.length).toBe((faces.match(/@font-face/g) ?? []).length);
