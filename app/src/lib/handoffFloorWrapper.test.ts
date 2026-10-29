@@ -217,6 +217,28 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     expect(withoutHandoffFindings(line, { parentText })).toBe("");
     expect(handoffFloor(line, { parentText })).toBe("");
   });
+  /* Round 18 (P1-A): a negation that governs before / until / earlier (לפני, עד, מוקדם) is a deferral, never
+     stripped (critic fresh17 N02, N03, HN02, HN03); "don't wait until pickup" still restores (N04, HN04). */
+  it.each([
+    "When there are no signs of calming, call the family, but not before next week.",
+    "When there are no signs of calming, tell the family, though not until the term ends.",
+    "When there are no signs of calming, call the family, but not earlier than Monday.",
+    "כשאין סימנים של רגיעה, עדכנו את ההורים, אבל לא לפני השבוע הבא.",
+    "כשאין סימנים של רגיעה, ספרו להורים, רק לא לפני סוף החודש.",
+    "כשאין סימנים של רגיעה, התקשרו להורים, אבל לא עד שהשבוע נגמר.",
+  ])("a negated before / until stays as main leaves it: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).toBe("");
+    expect(handoffFloor(line, { parentText })).toBe("");
+  });
+  it.each([
+    "When there are no signs of calming, don't wait until pickup, call the family.",
+    "כשאין סימנים של רגיעה, אל תחכו לאיסוף, התקשרו להורים.",
+  ])("a negated wait still restores: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).not.toBe(line);
+    expect(handoffFloor(line, { parentText })).toBe(line);
+  });
   /* Round 17 (P1-B): every item of a negated list is masked before a harm word may qualify the condition
      (C09, W05-W07, HW06, HW07). */
   it.each([

@@ -168,7 +168,12 @@ const carriesTime = (text: string) => TIME_EN.test(text) || TIME_HE.test(text);
  *  calendar time ("next week", "after the holidays") between a condition and its command does not. */
 const DURATION = /\b(?:after|within|over|for|by)\s+(?:(?:a|an|one|two|three|four|five|six|ten|fifteen|twenty|thirty|\d+|a\s+few|a\s+couple\s+of|several|another|half\s+an?)\s+)?(?:minutes?|hours?|days?|weeks?|months?)\b|\bby\s+(?:lunch(?:time)?|noon|midday|bedtime)\b|(?<!\p{L})ו?(?:אחרי|לאחר|תוך|כעבור|במשך|עד)\s+(?:\S+\s+)?(?:דקה|דקות|שעה|שעות|שעתיים|יום|ימים|יומיים|שבוע|שבועות|שבועיים|חודש|חודשים|חודשיים|הצהריים|הצהרים)(?!\p{L})/giu;
 const onlyDuration = (text: string) => !carriesTime(text.replace(DURATION, (m) => " ".repeat(m.length)));
-const NEGATED_TIMING = /\b(?:not|rather\s+than|instead\s+of|(?:do\s+not|don['’]t|never|no\s+need\s+to)\s+wait|without\s+waiting)\b[^,;:.!?—–\n]*?(?=\s+(?:but|rather)\b|[,;:.!?—–\n]|$)|(?<!\p{L})(?:ו)?(?:לא|אל\s+תחכ\p{L}*|אל\s+תמתינ\p{L}*|בלי\s+לחכות|ללא\s+המתנה|במקום\s+לחכות|במקום)(?!\p{L})[^,;:.!?—–\n]*?(?=\s+(?:אלא|אבל)(?!\p{L})|[,;:.!?—–\n]|$)/giu;
+/* Round 18 (P1-A): a negation followed by before / until / till / earlier / sooner (לפני, עד, מוקדם) governs a
+ * timing word — "but not before next week", "though not until the term ends", "אבל לא לפני השבוע הבא", "רק לא
+ * לפני סוף החודש" — so it is a deferral and is never stripped; "don't wait until pickup" still is. */
+const NOT_BEFORE_EN = String.raw`(?!\s+(?:before|until|till|earlier|sooner)\b)`;
+const NOT_BEFORE_HE = String.raw`(?!\s+(?:לפני|עד|מוקדם)(?!\p{L}))`;
+const NEGATED_TIMING = new RegExp(String.raw`\b(?:(?:not|rather\s+than|instead\s+of)${NOT_BEFORE_EN}|(?:do\s+not|don['’]t|never|no\s+need\s+to)\s+wait|without\s+waiting)\b[^,;:.!?—–\n]*?(?=\s+(?:but|rather)\b|[,;:.!?—–\n]|$)|(?<!\p{L})(?:ו)?(?:(?:לא|במקום)(?!\p{L})${NOT_BEFORE_HE}|(?:אל\s+תחכ\p{L}*|אל\s+תמתינ\p{L}*|בלי\s+לחכות|ללא\s+המתנה|במקום\s+לחכות)(?!\p{L}))[^,;:.!?—–\n]*?(?=\s+(?:אלא|אבל)(?!\p{L})|[,;:.!?—–\n]|$)`, "giu");
 /** The text with every negated time phrase blanked ("today, not next week" → "today,"). */
 /** The command patterns without their filters (the filters call back into this check). */
 const RAW_COMMANDS = [COMMAND_EN, COMMAND_EN_PASSIVE, COMMAND_EN_BARE, HE_COMMAND, HE_COMMAND_BARE].map((re) => new RegExp(re.source, re.flags.replace("g", "")));
