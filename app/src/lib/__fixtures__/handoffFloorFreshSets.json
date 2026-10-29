@@ -1,5 +1,5 @@
 {
- "about": "B-ASKJB-44 round 11: the critic's fresh sets, copied read-only as a corpus for the monotonicity property test (handoffFloor.monotonic.test.ts). critic-r9 = scratchpad critic-askjb/r9/fresh2.json, critic-r10 = r10/fresh3.json (`critic` is the critic's required verdict under the round-10 contract, kept for reference only); critic-r11 = r11/fresh11.json (62 rows) and critic-r12 = r12/fresh12.json (44 rows); `must` is text the critic requires in the output; floor-probe* = the critic's floor-probe.mts .. floor-probe4.mts cases (parent '' = the probe gave none; floor-probe4's parent is the probe's own). Synthetic text only.",
+ "about": "B-ASKJB-44 round 11: the critic's fresh sets, copied read-only as a corpus for the monotonicity property test (handoffFloor.monotonic.test.ts). critic-r9 = scratchpad critic-askjb/r9/fresh2.json, critic-r10 = r10/fresh3.json (`critic` is the critic's required verdict under the round-10 contract, kept for reference only); critic-r11 = r11/fresh11.json (62 rows) critic-r12 = r12/fresh12.json (44 rows) and critic-r13 = r13/fresh13.json (45 rows); `must` is text the critic requires in the output; floor-probe* = the critic's floor-probe.mts .. floor-probe4.mts cases (parent '' = the probe gave none; floor-probe4's parent is the probe's own). Synthetic text only.",
  "rows": [
   {
    "id": "r9-S01",
@@ -1735,6 +1735,366 @@
    "note": "אם אין סימנים של רגיעה, יש ליצור קשר מיד עם אחות בית הספר.",
    "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
    "must": "ליצור קשר מיד עם אחות"
+  },
+  {
+   "id": "r13-A01",
+   "source": "critic-r13",
+   "label": "reass: no required text",
+   "note": "Mom reports no signs of anxiety or regulation difficulties.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r13-A02",
+   "source": "critic-r13",
+   "label": "reass: no required text",
+   "note": "His teacher said there are no signs of attention or focus difficulties at circle time.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r13-HA01",
+   "source": "critic-r13",
+   "label": "reass: no required text",
+   "note": "אמא מספרת שאין סימנים לקשיי קשב או ויסות.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r13-HA02",
+   "source": "critic-r13",
+   "label": "reass: no required text",
+   "note": "הגננת אמרה שאין סימנים לחרדה או למצוקה בפרידה.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r13-B01",
+   "source": "critic-r13",
+   "label": "hard: screamed at the teacher",
+   "note": "Mom reports no signs of anxiety and screamed at the teacher during lunch.",
+   "parent": "He screamed at the teacher during lunch",
+   "must": "screamed at the teacher"
+  },
+  {
+   "id": "r13-B02",
+   "source": "critic-r13",
+   "label": "hard: ran out of the classroom",
+   "note": "His teacher said there were no signs of distress and ran out of the classroom twice.",
+   "parent": "He ran out of the classroom twice",
+   "must": "ran out of the classroom"
+  },
+  {
+   "id": "r13-B03",
+   "source": "critic-r13",
+   "label": "hard: tantrums at drop-off",
+   "note": "The teacher noted no signs of fear or tantrums at drop-off.",
+   "parent": "He had tantrums at drop-off all week",
+   "must": "tantrums at drop-off"
+  },
+  {
+   "id": "r13-B04",
+   "source": "critic-r13",
+   "label": "hard: broke his brother's toy",
+   "note": "Mom reports no signs of tiredness and broke his brother's toy on purpose.",
+   "parent": "He broke his brother's toy on purpose",
+   "must": "broke his brother's toy"
+  },
+  {
+   "id": "r13-B05",
+   "source": "critic-r13",
+   "label": "hard: swore at a classmate",
+   "note": "Per his teacher, no signs of worry and swore at a classmate.",
+   "parent": "He swore at a classmate",
+   "must": "swore at a classmate"
+  },
+  {
+   "id": "r13-HB01",
+   "source": "critic-r13",
+   "label": "hard: צרח על הגננת",
+   "note": "אמא מספרת שאין סימנים לחרדה וצרח על הגננת בארוחה.",
+   "parent": "הוא צרח על הגננת בארוחה",
+   "must": "צרח על הגננת"
+  },
+  {
+   "id": "r13-HB02",
+   "source": "critic-r13",
+   "label": "hard: ברח מהכיתה",
+   "note": "הגננת אמרה שאין סימנים לפחד וברח מהכיתה פעמיים.",
+   "parent": "הוא ברח מהכיתה פעמיים",
+   "must": "ברח מהכיתה"
+  },
+  {
+   "id": "r13-HB03",
+   "source": "critic-r13",
+   "label": "hard: התקפי זעם",
+   "note": "הגננת ציינה שאין סימנים למצוקה או להתקפי זעם בפרידה.",
+   "parent": "היו לו התקפי זעם בפרידה כל השבוע",
+   "must": "התקפי זעם"
+  },
+  {
+   "id": "r13-HB04",
+   "source": "critic-r13",
+   "label": "hard: שבר את הצעצוע",
+   "note": "אמא מספרת שאין סימנים לעייפות ושבר את הצעצוע של אחיו.",
+   "parent": "הוא שבר את הצעצוע של אחיו",
+   "must": "שבר את הצעצוע"
+  },
+  {
+   "id": "r13-HC01",
+   "source": "critic-r13",
+   "label": "hard: קילל ילד",
+   "note": "הגננת ציינה שאין סימנים למצוקה וקילל ילד בחצר.",
+   "parent": "הוא קילל ילד בחצר",
+   "must": "קילל ילד"
+  },
+  {
+   "id": "r13-HC02",
+   "source": "critic-r13",
+   "label": "hard: השתולל",
+   "note": "לפי הגננת, אין סימנים לעייפות והשתולל בזמן המנוחה.",
+   "parent": "הוא השתולל בזמן המנוחה",
+   "must": "השתולל"
+  },
+  {
+   "id": "r13-D01",
+   "source": "critic-r13",
+   "label": "noRestore: no required text",
+   "note": "There are no signs of a speech delay, so there is no point calling the speech therapist.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r13-D02",
+   "source": "critic-r13",
+   "label": "noRestore: no required text",
+   "note": "There are no signs of a speech delay, so calling the family isn't necessary.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r13-D03",
+   "source": "critic-r13",
+   "label": "noRestore: no required text",
+   "note": "There are no signs of a speech delay, so you don't have to contact the pediatrician.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r13-D04",
+   "source": "critic-r13",
+   "label": "noRestore: no required text",
+   "note": "There are no signs of a speech delay, so hold off on calling the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r13-D05",
+   "source": "critic-r13",
+   "label": "noRestore: no required text",
+   "note": "There are no signs of a speech delay, so a referral to a specialist would be premature.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r13-D06",
+   "source": "critic-r13",
+   "label": "noRestore: no required text",
+   "note": "There is no evidence of anxiety, so there is no reason for the teacher to call the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r13-D07",
+   "source": "critic-r13",
+   "label": "noRestore: no required text",
+   "note": "There is no evidence of anxiety, so there is no real need to call the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r13-HD01",
+   "source": "critic-r13",
+   "label": "noRestore: no required text",
+   "note": "אין סימנים לעיכוב בדיבור, ולכן אין מה להזעיק את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r13-HD02",
+   "source": "critic-r13",
+   "label": "noRestore: no required text",
+   "note": "אין סימנים לעיכוב בדיבור, ולכן לא נדרשת הפניה לקלינאית תקשורת.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r13-HD03",
+   "source": "critic-r13",
+   "label": "noRestore: no required text",
+   "note": "אין סימנים לעיכוב בדיבור, ולכן אין טעם לפנות לרופאת הילדים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r13-HD04",
+   "source": "critic-r13",
+   "label": "noRestore: no required text",
+   "note": "אין סימנים לחרדה, ולכן מיותר להתקשר להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r13-HD05",
+   "source": "critic-r13",
+   "label": "noRestore: no required text",
+   "note": "אין סימנים לחרדה, ולכן אין שום צורך להתקשר להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r13-HD06",
+   "source": "critic-r13",
+   "label": "noRestore: no required text",
+   "note": "אין סימנים לחרדה, ולכן אין צורך ממשי לפנות לאחות.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r13-E01",
+   "source": "critic-r13",
+   "label": "noRestore: no required text",
+   "note": "There are no signs of delay, and the family should be called the Cohens in class.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r13-E02",
+   "source": "critic-r13",
+   "label": "noRestore: no required text",
+   "note": "There are no signs of delay, and the nurse should be called Nurse Dana by the children.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r13-F01",
+   "source": "critic-r13",
+   "label": "restore: tell the family",
+   "note": "If he hurts himself, tell the family that there are no signs of a fever.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "tell the family"
+  },
+  {
+   "id": "r13-F02",
+   "source": "critic-r13",
+   "label": "noRestore: no required text",
+   "note": "Please let his parents know there is no evidence of attention difficulties.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r13-HF01",
+   "source": "critic-r13",
+   "label": "restore: ספרו להורים",
+   "note": "אם הוא נפגע, ספרו להורים שאין סימנים לחום.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "ספרו להורים"
+  },
+  {
+   "id": "r13-HF02",
+   "source": "critic-r13",
+   "label": "noRestore: no required text",
+   "note": "עדכנו את ההורים שאין עדות לקשיי קשב בגן.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r13-G01",
+   "source": "critic-r13",
+   "label": "reass: no required text",
+   "note": "Mom reports no signs of problems with his sister.",
+   "parent": "He has no problems with his sister anymore",
+   "must": ""
+  },
+  {
+   "id": "r13-G02",
+   "source": "critic-r13",
+   "label": "reass: no required text",
+   "note": "Mom reports no signs of problems at drop-off.",
+   "parent": "No problem with the new car seat",
+   "must": ""
+  },
+  {
+   "id": "r13-HG01",
+   "source": "critic-r13",
+   "label": "reass: no required text",
+   "note": "אמא מספרת שאין סימנים לבעיות שינה.",
+   "parent": "אין לו בעיות שינה בכלל",
+   "must": ""
+  },
+  {
+   "id": "r13-HG02",
+   "source": "critic-r13",
+   "label": "reass: no required text",
+   "note": "אמא מספרת שאין סימנים לבעיות התנהגות.",
+   "parent": "אין בעיות עם לוח ההתנהגות",
+   "must": ""
+  },
+  {
+   "id": "r13-HG03",
+   "source": "critic-r13",
+   "label": "reass: no required text",
+   "note": "אמא מספרת שאין סימנים לכאבי בטן.",
+   "parent": "היא לא מתלוננת על כאבי בטן",
+   "must": ""
+  },
+  {
+   "id": "r13-H01",
+   "source": "critic-r13",
+   "label": "restore: call the family",
+   "note": "Don't hesitate to call the family when there are no signs of calming.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family"
+  },
+  {
+   "id": "r13-H02",
+   "source": "critic-r13",
+   "label": "restore: call the family",
+   "note": "When there are no signs of calming, do not wait: call the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family"
+  },
+  {
+   "id": "r13-HH01",
+   "source": "critic-r13",
+   "label": "restore: להתקשר להורים",
+   "note": "אל תהססו להתקשר להורים כשאין סימנים של רגיעה.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "להתקשר להורים"
+  },
+  {
+   "id": "r13-HH02",
+   "source": "critic-r13",
+   "label": "restore: יש להתקשר להורים",
+   "note": "כשאין סימנים של רגיעה, אין לחכות ויש להתקשר להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "יש להתקשר להורים"
+  },
+  {
+   "id": "r13-HH03",
+   "source": "critic-r13",
+   "label": "restore: להתקשר מיד להורים",
+   "note": "כשאין סימנים של רגיעה, לא לחכות – להתקשר מיד להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "להתקשר מיד להורים"
+  },
+  {
+   "id": "r13-H03",
+   "source": "critic-r13",
+   "label": "restore: call the family",
+   "note": "When there are no signs of calming, you should not hesitate to call the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family"
   }
  ]
 }

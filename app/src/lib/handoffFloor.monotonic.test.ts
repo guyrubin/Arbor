@@ -135,17 +135,31 @@ function extraClauseIn(piece: string): string | null {
    beside it in the output. */
 const RECIPIENT_TEST = /\bdr\.?\s+\p{Lu}|\b(?:pediatricians?|paediatricians?|doctors?|gps?|nurses?|therapists?|psychologists?|psychiatrists?|counsell?ors?|specialists?|clinicians?|professionals?|helplines?|hotlines?|emergency|ambulance|hospital|medical|family|families|parents?|mother|father|mom|mum|dad|grand\p{L}+|guardians?|caregivers?)\b|\b(?:112|911|999|988|101)\b|(?:רופא|אחות|אחיות|פסיכולוג|פסיכיאטר|מטפל|קלינאי|מקצוע|יועצ|יועץ|הורים|הורה|משפחה|אמא|אבא|ד"ר|מוקד|חירום|מד"א|ער"ן|מיון|טיפת\s+חלב|112|101)/iu;
 const ACTION_TEST = /\b(?:call|calling|phone|ring|contact|text|email|notify|inform|alert|tell|let|reach\s+out|get\s+in\s+touch|get|talk|speak|chat|consult|see|book|visit|refer|referral|seek|ask|mention|discuss|check\s+in|follow\s+up|loop\s+in|involve|share|show|take|suggest)\b|\b(?:should|must|can|could|needs?\s+to|ought\s+to)\s+be\s+(?:called|contacted|phoned|notified|informed|alerted|told|consulted|seen)\b|(?:להתקשר|התקשרו|התקשר|לפנות|פנו|פנה|פני|צרו\s+קשר|ליצור\s+קשר|לעדכן|עדכנו|עדכן|לספר|ספרו|להודיע|הודיעו|לדבר|דברו|לשוחח|שוחחו|להתייעץ|התייעצו|להזעיק|הזעיקו|להפנות|הפנו|לקבוע\s+תור|קבעו\s+תור|ליידע|יידעו|לשתף|שתפו|להראות|הראו|להגיע|לגשת|גשו|לבקש|הציעו)/giu;
-const NEGATION_BEFORE = /(?:\b(?:no\s+need\s+to|not|never|need\s+not|needn['’]t|don['’]t|doesn['’]t)|אין\s+צורך|לא\s+צריכ?\p{L}*|(?<!\p{L})(?:אין|לא|אל))\s+(?:\S+\s+)?$/iu;
+const NEGATION_BEFORE = /(?:\b(?:no\s+need\s+to|not|never|need\s+not|needn['’]t|don['’]t|doesn['’]t)|אין\s+צורך|לא\s+צריכ?\p{L}*|(?<!\p{L})(?:אין|לא|אל))\s+(?:[^\s,;:.!?]+\s+)?$/iu;
 const NEGATION_AFTER = /^\s*(?:\S+\s+){0,4}?(?:is|are)\s+(?:not\s+|un)(?:needed|necessary|required)/iu;
 /** "should be called by their first names / Sound Orbit": named, not called. */
 const NAMING_AFTER = /^\s*(?:by\s+(?:(?:their|his|her|the)\s+)?(?:first\s+|last\s+|full\s+)?names?\b|as\s+|\p{Lu})/u;
-const hasEscalation = (text: string) => RECIPIENT_TEST.test(text) && [...text.matchAll(ACTION_TEST)].some((m) => {
-  const at = m.index ?? 0;
-  const after = text.slice(at + m[0].length, at + m[0].length + 60);
-  return !NEGATION_BEFORE.test(text.slice(Math.max(0, at - 30), at)) && !NEGATION_AFTER.test(after) && !(/called$/iu.test(m[0]) && NAMING_AFTER.test(after));
-});
+const hasEscalation = (text: string) => {
+  if (!RECIPIENT_TEST.test(text)) return false;
+  const masked = text.replace(T_ENCOURAGING, (e) => " ".repeat(e.length)); // "do not wait: call …" is no negation
+  return [...masked.matchAll(ACTION_TEST)].some((m) => {
+    const at = m.index ?? 0;
+    const after = masked.slice(at + m[0].length, at + m[0].length + 60);
+    return !NEGATION_BEFORE.test(masked.slice(Math.max(0, at - 30), at)) && !NEGATION_AFTER.test(after) && !(/called$/iu.test(m[0]) && NAMING_AFTER.test(after));
+  });
+};
 const RELAY_START = /^(?:please\s+)?(?:tell|let|inform|notify|update|mention|share)\b|^(?:ספרו|ספר|לספר|עדכנו|עדכן|לעדכן|יידעו|ליידע|הודיעו|להודיע|שתפו|לשתף)(?!\p{L})/iu;
 const BARE_RELAY = /^(?:please\s+)?(?:tell|let|inform|notify|update)\s+(?:\S+\s+){0,3}?(?:family|parents?|mother|father|mom|mum|dad)(?:\s+know)?[.!]?$|^(?:ספרו|עדכנו|יידעו|הודיעו)\s+(?:את\s+)?\S+[.!]?$/iu;
+/* Round 14 (P1-C): a restored piece holds no negation or discouraging word anywhere outside its condition
+   and the negated finding that condition names; only the encouraging forms are exempt. This test's own lists. */
+const T_DISCOURAGING = /\b(?:not|no|never|none|nor|hold\s+off|avoid\p{L}*|premature\p{L}*|unnecessar\p{L}*|needless\p{L}*|pointless\p{L}*|refrain\p{L}*|rather\s+than|instead\s+of|too\s+early)\b|n['’]t\b|(?<!\p{L})(?:ו|ש|כש|ה)?(?:אין|לא|אל|מיותר\p{L}*|להימנע|במקום\s+ל\p{L}+|מוקדם\s+מדי|עדיף\s+לחכות)(?!\p{L})/iu;
+const T_ENCOURAGING = /\b(?:(?:do|does|should|must|will)\s+not|don['’]t|shouldn['’]t|never|not)\s+(?:hesitate|wait|delay)\b|\bwithout\s+(?:delay|waiting)\b|(?<!\p{L})(?:אל\s+(?:תהסס\p{L}*|תחכ\p{L}*)|(?:אין|לא)\s+(?:לחכות|להסס)|(?:בלי|ללא)\s+(?:לחכות|דיחוי))(?!\p{L})/giu;
+const T_CONDITION_SPAN = /\b(?:if|when|whenever|where|unless|should|in\s+case|once|until|as\s+long\s+as)\b[^,;:—–]*|(?<!\p{L})(?:ו)?(?:אם|כש|כאשר|במידה|במקרה|בכל\s+פעם|ברגע\s+ש|עד\s+ש)[^,;:—–]*/giu;
+const T_CONDITION_NEGATION = /\b(?:no|without|not|n['’]t)\s+(?:\p{L}+\s+){0,3}?(?:signs?|evidence|improvement|progress|change|calm\p{L}*|settl\p{L}*|better)\b|(?<!\p{L})(?:ו|ש|כש)?(?:אין|ללא|בלי|לא)\s+(?:שום\s+)?(?:סימנ\p{L}*|סימן|עדות|שיפור|התקדמות|רגיעה|נרגע\p{L}*)/giu;
+const discouragingIn = (text: string) => {
+  const masked = text.replace(T_ENCOURAGING, " ").replace(T_CONDITION_SPAN, " ").replace(T_CONDITION_NEGATION, " ");
+  return T_DISCOURAGING.exec(masked)?.[0] ?? null;
+};
 const CONDITION_FRAGMENT = /^\s*(?:if|when|whenever|where|should|unless|in\s+case)\b|^\s*(?:ו)?(?:אם|כש|כאשר|במידה|במקרה)/iu;
 const referralsIn = (text: string) => [REFERRAL_EN, REFERRAL_HE].flatMap((re) => [...text.matchAll(new RegExp(re.source, `g${re.flags}`))].map((m) => m[0]));
 
@@ -208,6 +222,8 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
       // 7. every restored piece is an escalation: a non-negated command with a recipient (round 13, P1-C)
       for (const clause of trace.clauses.filter((c) => c.restored && c.out.trim())) {
         if (!hasEscalation(clause.out) && !(CONDITION_FRAGMENT.test(clause.out) && hasEscalation(out))) fail(`restored a piece with no escalation command: ${clause.out}`);
+        const discouraging = discouragingIn(clause.out);
+        if (discouraging) fail(`restored a piece with a discouraging word ("${discouraging}"): ${clause.out}`);
         // round 13 (P2): a bare relay ("Please tell the family.") has nothing to pass on
         if (BARE_RELAY.test(clause.out.trim())) fail(`restored a relay with nothing to relay: ${clause.out}`);
       }
@@ -225,7 +241,8 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
 describe("B-ASKJB-44 · the wrapper is monotonic over main's floor (property, every corpus, EN + HE)", () => {
   it("the corpora are all present", () => {
     expect(acceptance.length).toBe(292);
-    expect(fresh.length).toBe(225);
+    expect(fresh.length).toBe(270);
+    expect(fresh.filter((r) => r.id.startsWith("r13-")).length).toBe(45);
     expect(fresh.filter((r) => r.id.startsWith("r11-")).length).toBe(62);
     expect(fresh.filter((r) => r.id.startsWith("r12-")).length).toBe(44);
     expect(fresh.filter((r) => r.id.startsWith("r9-")).length).toBe(26);
@@ -238,7 +255,7 @@ describe("B-ASKJB-44 · the wrapper is monotonic over main's floor (property, ev
   it.each([
     ["main's clinicalScan*.test.ts corpora", () => mainCorpus],
     ["the 292-row acceptance table (a9b91e66, read-only)", () => acceptance],
-    ["the critic's fresh sets r9 / r10 / r11 / r12 / floor-probe 1-4", () => fresh],
+    ["the critic's fresh sets r9 / r10 / r11 / r12 / r13 / floor-probe 1-4", () => fresh],
     ["every adjacent pair of rows as one two-sentence note", () => pairs],
   ] as const)("%s", (_name, corpus) => {
     const stats: Stats = { runs: 0, restored: 0, removed: 0, untouched: 0 };
