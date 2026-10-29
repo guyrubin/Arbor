@@ -5,9 +5,12 @@
  * answers 409 + escalationCategory on the routes below. This guard keeps the
  * client honest about that contract, in three steps:
  *
- *  1. It reads the server source and lists every route that runs the screen
- *     AND answers 409. That set must equal SCREENED_409: a new screened route
- *     fails here until its client call sites are classified.
+ *  1. It reads the server source and lists every route that runs the screen.
+ *     Each one must be in SCREENED_409 (it answers 409, by `res.status(409)`
+ *     or through a `refuse(res, 409, …)` helper) or in IN_BAND (it answers
+ *     200 with the escalation payload and never 409): a new screened route
+ *     fails here until it is classified and its client call sites are too.
+ *     A screen call outside any route handler fails as well.
  *  2. It scans the client source for every call to those routes (the lib/api
  *     method, or the route string for a direct fetch). The files found must
  *     equal the sites registered for the route: a new call site fails here.
@@ -17,9 +20,6 @@
  *       card Talk's composer, Now and onboarding already show) with
  *       `requestLang` (Safety's own line selection for the request's
  *       language: tel: links, EN and HE) right after the named condition.
- *     - "door": the Everyday Plans composer's notice and its one door to Help
- *       and safety (283c3b84). Its file is frozen for this wave; the door is
- *       held to stay, and the tel: lines there are the open item.
  *     - "kid": kid mode. The screened text is the app's own catalogue (story
  *       themes, scene prompts), never a parent's or child's words, and the
  *       parent register (helplines) never renders in kid mode. Cross-checked
@@ -56,6 +56,9 @@ const FILES = sourceFiles(SRC).map((f) => ({ rel: path.relative(SRC, f).split(pa
 
 const SERVER_FILE = /^(routes|server)\//;
 const ROUTE_START = /router\.(?:get|post|put|patch|delete)\(\s*"([^"]+)"/g;
+const SCREEN_CALL = /\bscreenForImmediateEscalation\(/g;
+/** A 409 answer, direct or through a local `refuse(res, 409, …)`-style helper. */
+const ANSWERS_409 = /\.status\(\s*409\s*\)|\b\w+\(\s*res\s*,\s*409\b/;
 
 /** route → { screens, answers409 } for every router handler in the given sources. */
 function serverRoutes(files: { rel: string; src: string }[]): Map<string, { screens: boolean; answers409: boolean }> {
@@ -68,7 +71,7 @@ function serverRoutes(files: { rel: string; src: string }[]): Map<string, { scre
       const prev = out.get(m[1]) ?? { screens: false, answers409: false };
       out.set(m[1], {
         screens: prev.screens || body.includes("screenForImmediateEscalation("),
-        answers409: prev.answers409 || /status\(409\)/.test(body),
+        answers409: prev.answers409 || ANSWERS_409.test(body),
       });
     });
   }
@@ -76,6 +79,19 @@ function serverRoutes(files: { rel: string; src: string }[]): Map<string, { scre
 }
 const screened409 = (files: { rel: string; src: string }[]) =>
   [...serverRoutes(files)].filter(([, r]) => r.screens && r.answers409).map(([route]) => route).sort();
+const screenedAll = (files: { rel: string; src: string }[]) =>
+  [...serverRoutes(files)].filter(([, r]) => r.screens).map(([route]) => route).sort();
+
+/** Screen calls in server files that sit outside every route handler. */
+function strayScreens(files: { rel: string; src: string }[]): string[] {
+  const out: string[] = [];
+  for (const { rel, src } of files) {
+    if (!SERVER_FILE.test(rel)) continue;
+    const first = src.search(ROUTE_START);
+    for (const m of src.matchAll(SCREEN_CALL)) if (first < 0 || m.index! < first) out.push(rel);
+  }
+  return [...new Set(out)].sort();
+}
 
 /* ── 2 · the registry ─────────────────────────────────────────────────── */
 
@@ -84,7 +100,6 @@ type Site =
    *  render: file → the condition the card renders under (UrgentSupport with
    *  requestLang must follow it). */
   | { handling: "card"; branch: Readonly<Record<string, string>>; render: Readonly<Record<string, string>> }
-  | { handling: "door"; file: string; branch: string; door: string; why: string }
   | { handling: "kid"; why: string }
   | { handling: "fixed"; why: string };
 
@@ -133,7 +148,7 @@ const SCREENED_409: Readonly<Record<string, { calls: readonly string[]; sites: R
   } },
   "/generate-plan": { calls: ["api.generatePlan"], sites: {
     "context/ArborContext.tsx": { handling: "card",
-      branch: { "context/ArborContext.tsx": 'else if (err instanceof EscalationRequiredError) setEscalatedSurface("plans");' },
+      branch: { "context/ArborContext.tsx": 'if (err instanceof EscalationRequiredError) setEscalatedSurface("plans");' },
       render: { "components/tabs/PlansTab.tsx": '{escalatedSurface === "plans" &&' } },
   } },
   "/analyze-behavior": { calls: ["api.analyzeBehavior"], sites: {
@@ -152,10 +167,9 @@ const SCREENED_409: Readonly<Record<string, { calls: readonly string[]; sites: R
       render: { "components/sections/SchoolBrief.tsx": "{escalationBlocked &&" } },
   } },
   "/plans/phrase": { calls: ['"/api/plans/phrase"'], sites: {
-    "lib/plans/planApi.ts": { handling: "door", file: "components/plans/PlanComposer.tsx",
-      branch: "if (e instanceof PlanApiError && e.status === 409) { setCrisis(true); return; }",
-      door: 's("stage.steps.ownCrisisDoor")',
-      why: "Everyday Plans composer (frozen this wave): the crisis notice and its one door to Help and safety, where the tel: lines are" },
+    "lib/plans/planApi.ts": { handling: "card",
+      branch: { "components/plans/PlanComposer.tsx": "if (e instanceof PlanApiError && e.status === 409) { setCrisis(true); return; }" },
+      render: { "components/plans/PlanComposer.tsx": 'data-plan-own-crisis=""' } },
   } },
   "/generate-comic": { calls: ["api.generateComic"], sites: {
     "lib/heroComics.ts": { handling: "kid", why: "kid shelf comic pages: the screened theme and dialogue are the book's own catalogue text" },
@@ -211,6 +225,11 @@ describe("1 · the server's screened 409 routes are exactly the registered ones"
     expect(screened409(FILES), "a screened 409 route needs its client call sites classified in SCREENED_409").toEqual(Object.keys(SCREENED_409).sort());
   });
 
+  it("every route that calls the screen is either a registered 409 route or an in-band crisis route", () => {
+    expect(screenedAll(FILES), "classify the screened route: SCREENED_409 (answers 409) or IN_BAND (answers in-band)").toEqual([...Object.keys(SCREENED_409), ...IN_BAND].sort());
+    expect(strayScreens(FILES), "a screen call outside a route handler cannot be classified").toEqual([]);
+  });
+
   it("the in-band crisis routes screen and never answer 409", () => {
     const routes = serverRoutes(FILES);
     for (const r of IN_BAND) {
@@ -223,6 +242,17 @@ describe("1 · the server's screened 409 routes are exactly the registered ones"
     const fake = [...FILES, { rel: "routes/newThing.ts", src: 'router.post("/new-thing", (req, res) => { if (screenForImmediateEscalation({ note })) { res.status(409).json({}); return; } });' }];
     expect(screened409(fake)).toContain("/new-thing");
     expect("/new-thing" in SCREENED_409).toBe(false);
+  });
+
+  it("probe: a screened route answering through refuse(res, 409, …) is found, and one that never answers 409 is still classified", () => {
+    const viaRefuse = [...FILES, { rel: "server/newBook.ts", src: 'const refuse = (res, status, code, error) => res.status(status).json({ error, code });\nexport function mount(router) {\n  router.post("/new-book", (req, res) => {\n    const match = screenForImmediateEscalation({ note: req.body.note });\n    if (match) return refuse(res, 409, "crisis", "Professional support recommended");\n  });\n}' }];
+    expect(screened409(viaRefuse)).toContain("/new-book");
+    expect(screenedAll(viaRefuse)).toContain("/new-book");
+    const silent = [...FILES, { rel: "server/newQuiet.ts", src: 'router.post("/new-quiet", (req, res) => { screenForImmediateEscalation({ note: req.body.note }); res.json({}); });' }];
+    expect(screened409(silent)).not.toContain("/new-quiet");
+    expect(screenedAll(silent)).toContain("/new-quiet");
+    const stray = [...FILES, { rel: "server/helper.ts", src: "export const pre = (t) => screenForImmediateEscalation({ note: t });" }];
+    expect(strayScreens(stray)).toEqual(["server/helper.ts"]);
   });
 });
 
@@ -266,7 +296,14 @@ describe("3 · each site handles the 409 shape", () => {
     "%s: the 409 branch is there and the crisis card renders with the request's language",
     (_name, site) => {
       if (site.handling !== "card") return;
-      for (const [file, branch] of Object.entries(site.branch)) expect(read(file), `${file}: ${branch}`).toContain(branch);
+      for (const [file, branch] of Object.entries(site.branch)) {
+        const src = read(file);
+        expect(src, `${file}: ${branch}`).toContain(branch);
+        // A 409 is the crisis screen answering, never an application error.
+        const at = src.indexOf(branch);
+        const opened = src.lastIndexOf("catch", at);
+        if (opened >= 0 && at - opened < 400) expect(src.slice(opened, at), `${file}: logs before the 409 branch`).not.toMatch(/console\.error\(/);
+      }
       for (const [file, condition] of Object.entries(site.render)) {
         const card = cardAfter(read(file), condition);
         expect(card, `${file}: UrgentSupport after ${condition}`).not.toBeNull();
@@ -277,14 +314,10 @@ describe("3 · each site handles the 409 shape", () => {
     },
   );
 
-  it("the Everyday Plans composer keeps its 409 branch and its door to Help and safety", () => {
-    for (const { site } of sites) {
-      if (site.handling !== "door") continue;
-      const src = read(site.file);
-      expect(src).toContain(site.branch);
-      expect(src).toContain(site.door);
-      expect(src).toContain('data-plan-own-crisis=""');
-    }
+  it("the Everyday Plans composer keeps its door to Help and safety beside the lines", () => {
+    const src = read("components/plans/PlanComposer.tsx");
+    expect(src).toContain('s("stage.steps.ownCrisisDoor")');
+    expect(cardAfter(src, 'data-plan-own-crisis=""')!).toMatch(/requestLang=\{lang\}/);
   });
 
   it("every kid site is a kid surface in the AI-disclosure registry (two registers)", () => {
