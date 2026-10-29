@@ -24,8 +24,9 @@ import {
   type HouseholdBilling,
   type HouseholdOffer,
   type StoredRollup,
+  withLegacyRedemptions,
 } from "./cohortMetrics.js";
-import { LocalReferralStore, OFFER_REDEMPTIONS_COLLECTION as REFERRAL_COLLECTION } from "./referral.js";
+import { LocalReferralStore, OFFER_REDEMPTIONS_COLLECTION as REFERRAL_COLLECTION, legacyRedemptionsFromLedgers } from "./referral.js";
 import type { EntitlementRecord, EntitlementStore } from "./entitlements.js";
 import { OFFER_IDS } from "../lib/offers.js";
 import * as reportScript from "../../scripts/cohort-report.mjs";
@@ -146,6 +147,18 @@ describe("B-GROWTH-43 — the household line", () => {
     const report = await buildCohortReport(store(f), { since: iso(14), now: NOW });
     expect(scanForbiddenKeys(report.households)).toEqual([]);
     expect(JSON.stringify(report.households)).not.toMatch(/fam-/);
+  });
+});
+
+describe("B-GROWTH-43 — families that redeemed before the claim existed", () => {
+  it("a family a referrer ledger credits counts under the referral month, never as full price", () => {
+    const offers = withLegacyRedemptions([{ uid: "fam-new", offerId: "referral_month" }], legacyRedemptionsFromLedgers([{ activatedBy: ["fam-old", "fam-new"] }]));
+    expect(offers).toEqual([{ uid: "fam-new", offerId: "referral_month" }, { uid: "fam-old", offerId: "referral_month" }]);
+    expect(reportScript.withLegacyRedemptions([{ uid: "fam-new", offerId: "referral_month" }], [{ activatedBy: ["fam-old", "fam-new"] }])).toEqual(offers);
+    const rollups = [rollup("fam-old", "referral", 40)];
+    const billing = [{ uid: "fam-old", billed: true, paying: true, lapsed: false }];
+    const h = summariseHouseholds(rollups, [], offers, billing, "source");
+    expect(h.lines[0].offers.find((o) => o.offer === "referral_month")!.households).toBe(1);
   });
 });
 

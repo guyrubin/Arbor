@@ -22,8 +22,34 @@ const fake = vi.hoisted(() => {
       docs.set(path, opts?.merge ? { ...(docs.get(path) ?? {}), ...data } : { ...data });
     },
     delete: async () => { docs.delete(path); },
+    // B-GROWTH-43: the referral executor's ledger update (FieldValue.arrayRemove).
+    update: async (data: Record<string, unknown>) => {
+      const cur = { ...(docs.get(path) ?? {}) };
+      for (const [k, v] of Object.entries(data)) {
+        const rm = (v as { __arrayRemove?: unknown })?.__arrayRemove;
+        cur[k] = rm !== undefined && Array.isArray(cur[k]) ? (cur[k] as unknown[]).filter((x) => x !== rm) : v;
+      }
+      docs.set(path, cur);
+    },
   });
-  const db = { collection: (name: string) => ({ doc: (id: string) => docRef(`${name}/${id}`) }) };
+  // B-GROWTH-43: equality / array-contains queries and batched deletes, for the referral executor.
+  const query = (name: string, field: string, op: string, value: unknown, max = Infinity) => ({
+    limit: (n: number) => query(name, field, op, value, n),
+    get: async () => {
+      const hits = [...docs.entries()]
+        .filter(([p, d]) => p.startsWith(`${name}/`) && (op === "array-contains" ? Array.isArray(d[field]) && (d[field] as unknown[]).includes(value) : d[field] === value))
+        .slice(0, max)
+        .map(([p, d]) => ({ ref: docRef(p), data: () => d }));
+      return { empty: hits.length === 0, size: hits.length, docs: hits };
+    },
+  });
+  const db = {
+    collection: (name: string) => ({ doc: (id: string) => docRef(`${name}/${id}`), where: (f: string, op: string, v: unknown) => query(name, f, op, v) }),
+    batch: () => {
+      const pending: string[] = [];
+      return { delete: (ref: { path: string }) => { pending.push(ref.path); }, commit: async () => { for (const p of pending) docs.delete(p); } };
+    },
+  };
   return { docs, db };
 });
 vi.mock("firebase-admin/app", () => ({ getApps: () => [{}], initializeApp: vi.fn(), applicationDefault: vi.fn() }));
@@ -203,6 +229,23 @@ describe("B-DATA-01 · digestOptIn and retentionRollups die with the account", (
     expect(await digest.get("uid-opted")).toBeNull();
     // Only the deleted user's rows go.
     expect(fake.docs.has("digestOptIn/uid-other")).toBe(true);
+  });
+
+  it("B-GROWTH-43 fake Firestore: the referral executor removes the family's offer redemption, its code, its ledger and its place in others' ledgers", async () => {
+    const config = createTestConfig({ memoryAdapter: "firestore" });
+    fake.docs.set("referralCodes/ARBOR-AAAAAAAA", { uid: "uid-gone" });
+    fake.docs.set("referralGrants/uid-gone", { uid: "uid-gone", count: 1, activatedBy: ["uid-x"] });
+    fake.docs.set("referralGrants/uid-ref", { uid: "uid-ref", count: 2, activatedBy: ["uid-gone", "uid-y"] });
+    fake.docs.set("offerRedemptions/uid-gone", { offerId: "referral_month", offerVersion: 1, via: "typed", at: "2026-10-28T09:00:00.000Z" });
+    fake.docs.set("offerRedemptions/uid-y", { offerId: "referral_month", offerVersion: 1, via: "link", at: "2026-10-28T09:00:00.000Z" });
+    const ops = createFirestoreDeletionOps(config, { eraseChild: async () => 0, pushTokensRemove: async () => undefined, digestOptInRemove: async () => undefined });
+    expect(await ops.referral("uid-gone")).toBeGreaterThanOrEqual(3);
+    expect(fake.docs.has("offerRedemptions/uid-gone")).toBe(false);
+    expect(fake.docs.has("referralCodes/ARBOR-AAAAAAAA")).toBe(false);
+    expect(fake.docs.has("referralGrants/uid-gone")).toBe(false);
+    expect(fake.docs.get("referralGrants/uid-ref")?.activatedBy).toEqual(["uid-y"]);
+    // Another family's redemption stays.
+    expect(fake.docs.has("offerRedemptions/uid-y")).toBe(true);
   });
 
   it("api.ts wires the digest store's remove into the deletion ops", () => {

@@ -52,6 +52,7 @@ import { OFFER_IDS } from "../lib/offers.js";
 import { ACQUISITION_CHANNELS, channelOfSource } from "../lib/acquisitionChannel.js";
 import { GATE_A, MATURITY_DAYS, MEASURE_DEFINITIONS, METRIC_CONTRACT_VERSION, STANDING_MISSING_DATA, VALUE_EVENTS, W4_DAYS } from "../lib/metricContract.js";
 import { recordStillEntitles, type EntitlementRecord } from "./entitlements.js";
+import { legacyRedemptionsFromLedgers } from "./referral.js";
 
 /**
  * The collection N1-04's client writer owns. Declared here rather than
@@ -311,11 +312,15 @@ export class FirestoreHouseholdReads {
   constructor(private readonly db: Firestore) {}
   async offers(limit = MAX_ROLLUPS_SCANNED): Promise<HouseholdOffer[]> {
     try {
-      const snap = await this.db.collection(OFFER_REDEMPTIONS_COLLECTION).limit(limit).get();
-      return snap.docs.flatMap((d) => {
+      const [snap, ledgers] = await Promise.all([
+        this.db.collection(OFFER_REDEMPTIONS_COLLECTION).limit(limit).get(),
+        this.db.collection("referralGrants").limit(limit).get(),
+      ]);
+      const explicit = snap.docs.flatMap((d) => {
         const offerId = (d.data() as Record<string, unknown>).offerId;
         return typeof offerId === "string" ? [{ uid: d.id, offerId }] : [];
       });
+      return withLegacyRedemptions(explicit, legacyRedemptionsFromLedgers(ledgers.docs.map((d) => d.data())));
     } catch (error) {
       logger.error("Cohort offer scan failed", error);
       return [];
@@ -494,6 +499,14 @@ export function summariseActivation(
 export const OFFER_REDEMPTIONS_COLLECTION = "offerRedemptions";
 
 export type HouseholdOffer = { uid: string; offerId: string };
+
+/** B-GROWTH-43: a family a referrer ledger credits but with no redemption
+ *  record redeemed the referral month before the per-family claim existed;
+ *  it counts under that offer, never as full price. Pure. */
+export function withLegacyRedemptions(offers: readonly HouseholdOffer[], legacyUids: readonly string[]): HouseholdOffer[] {
+  const seen = new Set(offers.map((o) => o.uid));
+  return [...offers, ...legacyUids.filter((uid) => !seen.has(uid)).map((uid) => ({ uid, offerId: "referral_month" }))];
+}
 /** `billed`: the record came from a store (App Store, Play, web checkout), not
  *  a comp. `paying`: billed, a paid plan, past any store trial, still entitling.
  *  `lapsed`: billed and no longer entitling: expired, refunded, a store trial

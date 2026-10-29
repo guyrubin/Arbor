@@ -492,9 +492,22 @@ export function summariseMetricContract(input) {
 /** "n of m · x%", and "not answerable yet" on an empty denominator (the second printing law). */
 const fraction = (f) => (f === null ? "unknown (not read)" : `${f.n} of ${f.of}  ·  ${pct(f.n, f.of)}`);
 
+/** Mirrors cohortMetrics.withLegacyRedemptions + referral.legacyRedemptionsFromLedgers:
+ *  a family a referrer ledger credits, with no redemption record, holds the referral month. */
+export function withLegacyRedemptions(offers, ledgers) {
+  const legacy = new Set();
+  for (const l of ledgers) if (Array.isArray(l?.activatedBy)) for (const u of l.activatedBy) if (typeof u === "string" && u) legacy.add(u);
+  const seen = new Set(offers.map((o) => o.uid));
+  return [...offers, ...[...legacy].filter((uid) => !seen.has(uid)).map((uid) => ({ uid, offerId: "referral_month" }))];
+}
+
 async function fetchOfferRedemptions(db) {
-  const snap = await db.collection(OFFER_REDEMPTIONS_COLLECTION).limit(MAX_ROLLUPS).get();
-  return snap.docs.flatMap((d) => (typeof d.data().offerId === "string" ? [{ uid: d.id, offerId: d.data().offerId }] : []));
+  const [snap, ledgers] = await Promise.all([
+    db.collection(OFFER_REDEMPTIONS_COLLECTION).limit(MAX_ROLLUPS).get(),
+    db.collection("referralGrants").limit(MAX_ROLLUPS).get(),
+  ]);
+  const explicit = snap.docs.flatMap((d) => (typeof d.data().offerId === "string" ? [{ uid: d.id, offerId: d.data().offerId }] : []));
+  return withLegacyRedemptions(explicit, ledgers.docs.map((d) => d.data()));
 }
 
 async function fetchBillingStates(db, now) {

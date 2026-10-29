@@ -16,9 +16,13 @@
  * B-GROWTH-43: a family redeems ONE offer, ever. Before any grant the store
  * claims `offerRedemptions/{uid}` (create-if-absent), so a second code from
  * another referrer, a retry, or a second device racing the first is refused
- * with `already_activated` and grants nothing. The code (link or typed) is
- * normalised and resolved to its offer in lib/offers.ts, which also holds the
- * grant length; an unknown or self code never consumes the claim.
+ * with `already_activated` and grants nothing. A family a referrer ledger
+ * already credits (it redeemed before the claim existed) is refused the same
+ * way, and its claim is written then. The code (link or typed) is normalised
+ * and resolved to its offer in lib/offers.ts, which also holds the grant
+ * length; an unknown or self code never consumes the claim. If the family's
+ * own grant fails, the claim and the ledger entry are released so a retry
+ * can succeed.
  *
  * Privacy: codes carry no child data; the share link references the parent
  * account only. Pure helpers (`codeForUid`, alphabet) are unit-tested.
@@ -48,7 +52,21 @@ export type OfferRedemption = {
   offerVersion: number;
   via: RedemptionVia;
   at: string;
+  /** True for a family that redeemed before the per-family claim existed,
+   *  recorded from the referrer ledgers (referralGrants.activatedBy). */
+  legacy?: boolean;
 };
+
+/** B-GROWTH-43: families a referrer ledger credits. Families that redeemed
+ *  before the per-family claim existed have no `offerRedemptions` record; the
+ *  ledgers are their record. Pure. */
+export function legacyRedemptionsFromLedgers(ledgers: ReadonlyArray<{ activatedBy?: unknown }>): string[] {
+  const uids = new Set<string>();
+  for (const l of ledgers) {
+    if (Array.isArray(l.activatedBy)) for (const u of l.activatedBy) if (typeof u === "string" && u) uids.add(u);
+  }
+  return [...uids];
+}
 export const OFFER_REDEMPTIONS_COLLECTION = "offerRedemptions";
 
 /** Deterministic per-user code: HMAC(uid, secret) → 8 non-ambiguous chars. */
@@ -102,6 +120,11 @@ abstract class BaseReferralStore implements ReferralStore {
   protected abstract claimFamilyRedemption(redeemerUid: string, claim: OfferRedemption): Promise<boolean>;
   /** The family's redemption, or null when it has none. */
   abstract familyRedemption(uid: string): Promise<OfferRedemption | null>;
+  /** True when any referrer ledger already credits this family (a redemption
+   *  from before the per-family claim). */
+  protected abstract creditedByAnyLedger(redeemerUid: string): Promise<boolean>;
+  /** Undo a claim and a ledger entry whose grant failed, so a retry can succeed. */
+  protected abstract releaseRedemption(referrerUid: string, redeemerUid: string): Promise<void>;
 
   async activateReferral({ code, redeemerUid, via = "link" }: { code: string; redeemerUid: string; via?: RedemptionVia }): Promise<ActivationResult> {
     const normalized = normalizeOfferCode(code);
@@ -111,25 +134,42 @@ abstract class BaseReferralStore implements ReferralStore {
     if (!referrerUid) return { ok: false, status: "unknown_code" };
     if (referrerUid === redeemerUid) return { ok: false, status: "self_referral" };
 
-    // One redemption per family, claimed before anything is granted. A failed
-    // grant after the claim leaves the family claimed (never granted twice).
-    const claimed = await this.claimFamilyRedemption(redeemerUid, {
-      offerId: offer.id,
-      offerVersion: offer.version,
-      via,
-      at: new Date().toISOString(),
-    });
+    const at = new Date().toISOString();
+    // A family a ledger already credits redeemed before the claim existed:
+    // record that as its claim (once) and refuse, like any second redemption.
+    if (await this.creditedByAnyLedger(redeemerUid)) {
+      await this.claimFamilyRedemption(redeemerUid, { offerId: "referral_month", offerVersion: 1, via: "link", at, legacy: true });
+      return { ok: true, status: "already_activated" };
+    }
+
+    // One redemption per family, claimed before anything is granted.
+    const claimed = await this.claimFamilyRedemption(redeemerUid, { offerId: offer.id, offerVersion: offer.version, via, at });
     if (!claimed) return { ok: true, status: "already_activated" };
 
     const firstTime = await this.recordActivation(referrerUid, redeemerUid);
     if (!firstTime) return { ok: true, status: "already_activated" };
 
-    // The redeemed parent always gets their month. The referrer gets one too,
-    // up to the cap; beyond the cap the invite still "works" (200, no grant).
-    const periodEnd = await this.extendGrant(redeemerUid, offer.grantDays);
+    // The redeemed parent always gets their month. If that grant fails, the
+    // claim and the ledger entry are released and the error surfaces, so the
+    // client's retry (lib/referralActivation rolls its device guard back) can
+    // succeed instead of leaving the family claimed with nothing granted.
+    let periodEnd: string;
+    try {
+      periodEnd = await this.extendGrant(redeemerUid, offer.grantDays);
+    } catch (error) {
+      await this.releaseRedemption(referrerUid, redeemerUid).catch((releaseError) =>
+        logger.error("Referral claim release failed", releaseError, { referrerUid, redeemerUid }));
+      throw error;
+    }
+    // The referrer gets one too, up to the cap; beyond the cap the invite still
+    // "works" (200, no grant). A failed referrer grant never undoes the family's.
     const referrerEarned = await this.earnedMonths(referrerUid);
     if (offer.grantsReferrer && referrerEarned <= this.maxGrants) {
-      await this.extendGrant(referrerUid, offer.grantDays);
+      try {
+        await this.extendGrant(referrerUid, offer.grantDays);
+      } catch (error) {
+        logger.error("Referrer grant failed", error, { referrerUid, redeemerUid });
+      }
       logger.info("Referral activated", { referrerUid, redeemerUid, referrerEarned });
       return { ok: true, status: "granted", earnedMonths: referrerEarned, periodEnd };
     }
@@ -203,6 +243,21 @@ export class LocalReferralStore extends BaseReferralStore {
   async familyRedemption(uid: string): Promise<OfferRedemption | null> {
     return this.redemptions.get(uid) ?? null;
   }
+  protected async creditedByAnyLedger(redeemerUid: string): Promise<boolean> {
+    return legacyRedemptionsFromLedgers([...this.ledgers.values()]).includes(redeemerUid);
+  }
+  protected async releaseRedemption(referrerUid: string, redeemerUid: string): Promise<void> {
+    this.redemptions.delete(redeemerUid);
+    const ledger = this.ledgers.get(referrerUid);
+    if (ledger && ledger.activatedBy.includes(redeemerUid)) {
+      ledger.activatedBy = ledger.activatedBy.filter((u) => u !== redeemerUid);
+      ledger.count = Math.max(0, ledger.count - 1);
+    }
+  }
+  /** Test seam: a ledger as it stood before the per-family claim existed. */
+  seedLegacyLedger(referrerUid: string, activatedBy: string[]): void {
+    this.ledgers.set(referrerUid, { uid: referrerUid, count: activatedBy.length, activatedBy: [...activatedBy] });
+  }
 
   /** Override the comp grant so the conflict guard is honored without a record
    *  store in dev: skip the write when an active PAID record is present. */
@@ -268,6 +323,23 @@ export class FirestoreReferralStore extends BaseReferralStore {
   async familyRedemption(uid: string): Promise<OfferRedemption | null> {
     const data = (await this.db.collection(OFFER_REDEMPTIONS_COLLECTION).doc(uid).get()).data();
     return data ? (data as OfferRedemption) : null;
+  }
+  protected async creditedByAnyLedger(redeemerUid: string): Promise<boolean> {
+    const snap = await this.db.collection("referralGrants").where("activatedBy", "array-contains", redeemerUid).limit(1).get();
+    return !snap.empty;
+  }
+  protected async releaseRedemption(referrerUid: string, redeemerUid: string): Promise<void> {
+    await this.db.collection(OFFER_REDEMPTIONS_COLLECTION).doc(redeemerUid).delete();
+    const ref = this.db.collection("referralGrants").doc(referrerUid);
+    await this.db.runTransaction(async (tx) => {
+      const data = (await tx.get(ref)).data() as ReferralGrantLedger | undefined;
+      const activatedBy: string[] = Array.isArray(data?.activatedBy) ? data!.activatedBy : [];
+      if (!activatedBy.includes(redeemerUid)) return;
+      tx.set(ref, {
+        activatedBy: activatedBy.filter((u) => u !== redeemerUid),
+        count: Math.max(0, (typeof data?.count === "number" ? data.count : 1) - 1),
+      }, { merge: true });
+    });
   }
   protected async extendGrant(uid: string, days: number): Promise<string> {
     const current = this.entitlements.getRecord ? await this.entitlements.getRecord(uid) : null;
