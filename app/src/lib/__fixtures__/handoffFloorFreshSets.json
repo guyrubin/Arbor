@@ -1,5 +1,5 @@
 {
- "about": "B-ASKJB-44 round 11: the critic's fresh sets, copied read-only as a corpus for the monotonicity property test (handoffFloor.monotonic.test.ts). critic-r9 = scratchpad critic-askjb/r9/fresh2.json, critic-r10 = r10/fresh3.json (`critic` is the critic's required verdict under the round-10 contract, kept for reference only); critic-r11 = r11/fresh11.json (62 rows) critic-r12 = r12/fresh12.json (44 rows) critic-r13 = r13/fresh13.json (45 rows), critic-r14 = r14/fresh14.json (36 rows) and critic-r15 = r15/fresh15.json + fresh15b.json (46 rows); `must` is text the critic requires in the output; floor-probe* = the critic's floor-probe.mts .. floor-probe4.mts cases (parent '' = the probe gave none; floor-probe4's parent is the probe's own). Synthetic text only.",
+ "about": "B-ASKJB-44 round 11: the critic's fresh sets, copied read-only as a corpus for the monotonicity property test (handoffFloor.monotonic.test.ts). critic-r9 = scratchpad critic-askjb/r9/fresh2.json, critic-r10 = r10/fresh3.json (`critic` is the critic's required verdict under the round-10 contract, kept for reference only); critic-r11 = r11/fresh11.json (62 rows) critic-r12 = r12/fresh12.json (44 rows) critic-r13 = r13/fresh13.json (45 rows), critic-r14 = r14/fresh14.json (36 rows), critic-r15 = r15/fresh15.json + fresh15b.json (46 rows) and critic-r16 = r16/fresh16.json + fresh16b.json + fresh16c.json (103 rows; `forbid` is a label the critic flags if restored); `must` is text the critic requires in the output; floor-probe* = the critic's floor-probe.mts .. floor-probe4.mts cases (parent '' = the probe gave none; floor-probe4's parent is the probe's own). Synthetic text only.",
  "rows": [
   {
    "id": "r9-S01",
@@ -2751,6 +2751,841 @@
    "note": "כשאין סימנים לחרדה, אפשר להמתין ולעדכן את ההורים רק בחודש הבא.",
    "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
    "must": ""
+  },
+  {
+   "id": "r16-C01",
+   "source": "critic-r16",
+   "label": "restore: call his mother",
+   "note": "If there are no signs of him settling after twenty minutes, call his mother.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call his mother"
+  },
+  {
+   "id": "r16-C02",
+   "source": "critic-r16",
+   "label": "restore: phone the family",
+   "note": "If he shows no signs of improvement by lunchtime, phone the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "phone the family"
+  },
+  {
+   "id": "r16-C03",
+   "source": "critic-r16",
+   "label": "restore: call the family",
+   "note": "When there is no sign of the crying easing, call the family right away.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family"
+  },
+  {
+   "id": "r16-C16",
+   "source": "critic-r16",
+   "label": "restore: call the family",
+   "note": "If there are no signs of the hitting stopping, call the family immediately.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family"
+  },
+  {
+   "id": "r16-C20",
+   "source": "critic-r16",
+   "label": "restore: phone the family",
+   "note": "If there is no response when you call his name, phone the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "phone the family"
+  },
+  {
+   "id": "r16-C21",
+   "source": "critic-r16",
+   "label": "restore: call the family",
+   "note": "Only if there are no signs of calming, call the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family"
+  },
+  {
+   "id": "r16-C22",
+   "source": "critic-r16",
+   "label": "restore: call the family",
+   "note": "If there are no signs of calming at drop-off, call the family before the next activity.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family"
+  },
+  {
+   "id": "r16-C04",
+   "source": "critic-r16",
+   "label": "restore: call the family today",
+   "note": "If there are no signs of him calming down, call the family today, not next week.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family today"
+  },
+  {
+   "id": "r16-C05",
+   "source": "critic-r16",
+   "label": "restore: call the family now",
+   "note": "If there is no sign of him calming, call the family now rather than at pickup.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family now"
+  },
+  {
+   "id": "r16-C23",
+   "source": "critic-r16",
+   "label": "restore: call the family at once",
+   "note": "If there are no signs of calming, call the family at once; don't wait for the next meeting.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family at once"
+  },
+  {
+   "id": "r16-C24",
+   "source": "critic-r16",
+   "label": "restore: call the family now",
+   "note": "If there are no signs of calming, call the family now instead of waiting until next week.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family now"
+  },
+  {
+   "id": "r16-C06",
+   "source": "critic-r16",
+   "label": "restore: call the family",
+   "note": "If there are no signs of anxiety but he keeps hitting other children, call the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family",
+   "forbid": "anxiety"
+  },
+  {
+   "id": "r16-C07",
+   "source": "critic-r16",
+   "label": "restore: contact the family",
+   "note": "If there are no signs of a speech delay but he bites again, contact the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "contact the family",
+   "forbid": "speech delay"
+  },
+  {
+   "id": "r16-C08",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "If there are no signs of crying, call the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-C09",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "If there are no signs of biting or hitting, let the family know.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-C10",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "If there are no signs of attention difficulties, call the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-C27",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "When he shows no signs of tantrums, phone his mother.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-C25",
+   "source": "critic-r16",
+   "label": "noLabel: no required text",
+   "note": "If there are no signs of improvement in his anxiety, call the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "",
+   "forbid": "anxiety"
+  },
+  {
+   "id": "r16-C26",
+   "source": "critic-r16",
+   "label": "noLabel: no required text",
+   "note": "When his speech delay shows no signs of improving, contact the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "",
+   "forbid": "speech delay"
+  },
+  {
+   "id": "r16-C11",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "When there are no signs of calming, tell the family at the next parent evening.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-C12",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "When there are no signs of calming, let the family know when the term ends.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-C13",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "When there are no signs of settling, mention it to the family after the holidays.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-C14",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "If there is no sign of him calming, call the family in two weeks.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-C15",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "If he shows no signs of settling, wait a day before calling the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-C28",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "If there are no signs of calming, bring it up with the family at the parent-teacher conference.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-C19",
+   "source": "critic-r16",
+   "label": "restore: call an ambulance",
+   "note": "If there are no signs of breathing normally, call an ambulance.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call an ambulance"
+  },
+  {
+   "id": "r16-C17",
+   "source": "critic-r16",
+   "label": "hard: he hit a classmate today",
+   "note": "Mom says there are no signs of anxiety, and he hit a classmate today.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "he hit a classmate today"
+  },
+  {
+   "id": "r16-C18",
+   "source": "critic-r16",
+   "label": "keepMain: no required text",
+   "note": "If he hits again, call the family before the end of the day.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-HC01",
+   "source": "critic-r16",
+   "label": "restore: התקשרו לאמא שלו",
+   "note": "אם אין סימנים שהוא נרגע אחרי עשרים דקות, התקשרו לאמא שלו.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו לאמא שלו"
+  },
+  {
+   "id": "r16-HC02",
+   "source": "critic-r16",
+   "label": "restore: התקשרו להורים",
+   "note": "אם אין סימנים לשיפור עד הצהריים, התקשרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים"
+  },
+  {
+   "id": "r16-HC03",
+   "source": "critic-r16",
+   "label": "restore: התקשרו להורים",
+   "note": "כשאין סימן שהבכי נרגע, התקשרו להורים מיד.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים"
+  },
+  {
+   "id": "r16-HC14",
+   "source": "critic-r16",
+   "label": "restore: התקשרו להורים",
+   "note": "אם אין סימנים שהמכות נפסקות, התקשרו להורים מיד.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים"
+  },
+  {
+   "id": "r16-HC15",
+   "source": "critic-r16",
+   "label": "restore: התקשרו להורים",
+   "note": "אם אין תגובה כשקוראים בשמו, התקשרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים"
+  },
+  {
+   "id": "r16-HC19",
+   "source": "critic-r16",
+   "label": "restore: התקשרו להורים",
+   "note": "רק במקרה שאין סימנים של רגיעה, התקשרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים"
+  },
+  {
+   "id": "r16-HC20",
+   "source": "critic-r16",
+   "label": "restore: התקשרו להורים",
+   "note": "כשאין סימנים של רגיעה, התקשרו להורים, גם אם זה קורה רק בגן.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים"
+  },
+  {
+   "id": "r16-HC04",
+   "source": "critic-r16",
+   "label": "restore: התקשרו להורים היום",
+   "note": "אם אין סימנים של רגיעה, התקשרו להורים היום ולא בשבוע הבא.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים היום"
+  },
+  {
+   "id": "r16-HC21",
+   "source": "critic-r16",
+   "label": "restore: התקשרו להורים מיד",
+   "note": "אם אין סימנים של רגיעה, התקשרו להורים מיד ואל תחכו לפגישה הבאה.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים מיד"
+  },
+  {
+   "id": "r16-HC05",
+   "source": "critic-r16",
+   "label": "restore: התקשרו להורים",
+   "note": "אם אין סימנים לחרדה אבל הוא ממשיך להרביץ, התקשרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים",
+   "forbid": "חרדה"
+  },
+  {
+   "id": "r16-HC06",
+   "source": "critic-r16",
+   "label": "restore: פנו להורים",
+   "note": "אם אין סימנים לעיכוב בדיבור אבל הוא נושך שוב, פנו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "פנו להורים",
+   "forbid": "עיכוב"
+  },
+  {
+   "id": "r16-HC07",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "אם אין סימנים של בכי, התקשרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-HC08",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "אם אין סימנים של נשיכות או מכות, עדכנו את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-HC09",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "אם אין סימנים לקשיי קשב, התקשרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-HC25",
+   "source": "critic-r16",
+   "label": "noLabel: no required text",
+   "note": "אם אין שיפור בחרדה שלו, התקשרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "",
+   "forbid": "חרדה"
+  },
+  {
+   "id": "r16-HC26",
+   "source": "critic-r16",
+   "label": "noLabel: no required text",
+   "note": "כשאין סימנים לשיפור בעיכוב השפתי שלו, פנו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "",
+   "forbid": "עיכוב"
+  },
+  {
+   "id": "r16-HC10",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "כשאין סימנים של רגיעה, עדכנו את ההורים בפגישת ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-HC11",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "כשאין סימנים של רגיעה, ספרו להורים אחרי החגים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-HC12",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "כשאין סימנים של רגיעה, עדכנו את ההורים בעוד שבועיים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-HC13",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "כשאין סימנים של רגיעה, עדכנו את ההורים כשהשנה מסתיימת.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-HC27",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "כשאין סימנים של רגיעה, חכו יום ורק אז התקשרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-HC18",
+   "source": "critic-r16",
+   "label": "restore: הזמינו אמבולנס",
+   "note": "אם אין סימנים לנשימה תקינה, הזמינו אמבולנס.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "הזמינו אמבולנס"
+  },
+  {
+   "id": "r16-HC16",
+   "source": "critic-r16",
+   "label": "hard: הוא הרביץ לחבר היום",
+   "note": "אמא מספרת שאין סימנים לחרדה, והוא הרביץ לחבר היום.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "הוא הרביץ לחבר היום"
+  },
+  {
+   "id": "r16-HC17",
+   "source": "critic-r16",
+   "label": "keepMain: no required text",
+   "note": "אם הוא מרביץ שוב, התקשרו להורים לפני סוף היום.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-W01",
+   "source": "critic-r16",
+   "label": "restore: call his mother",
+   "note": "When he shows no signs of settling after twenty minutes, call his mother.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call his mother"
+  },
+  {
+   "id": "r16-W02",
+   "source": "critic-r16",
+   "label": "restore: let the family know",
+   "note": "When there are no signs of improvement by lunchtime, let the family know.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "let the family know"
+  },
+  {
+   "id": "r16-W03",
+   "source": "critic-r16",
+   "label": "restore: phone the family",
+   "note": "When there are no signs of the screaming stopping, phone the family right away.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "phone the family"
+  },
+  {
+   "id": "r16-HW01",
+   "source": "critic-r16",
+   "label": "restore: התקשרו לאמא שלו",
+   "note": "כשאין סימנים שהוא נרגע אחרי עשרים דקות, התקשרו לאמא שלו.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו לאמא שלו"
+  },
+  {
+   "id": "r16-HW02",
+   "source": "critic-r16",
+   "label": "restore: עדכנו את ההורים",
+   "note": "כשאין סימנים לשיפור עד הצהריים, עדכנו את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "עדכנו את ההורים"
+  },
+  {
+   "id": "r16-HW03",
+   "source": "critic-r16",
+   "label": "restore: התקשרו להורים",
+   "note": "כשאין סימנים שהצרחות נפסקות, התקשרו להורים מיד.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים"
+  },
+  {
+   "id": "r16-W04",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "When there are no signs of crying, let the family know.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-W05",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "When there are no signs of hitting or biting, tell the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-W06",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "When there are no signs of crying or screaming at drop-off, phone the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-W07",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "If there are no signs of hitting, biting or kicking, let the family know.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-W08",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "When he shows no signs of biting, and no signs of hitting, let the family know.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-HW04",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "כשאין סימנים של בכי, עדכנו את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-HW05",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "כשאין סימנים של נשיכה או הרבצה, ספרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-HW06",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "אם אין סימנים של בכי או צרחות, עדכנו את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-HW07",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "כשאין סימנים שהוא מרביץ או נושך, עדכנו את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-W09",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "When there are no signs of anxiety, phone the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-HW08",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "כשאין סימנים לחרדה, התקשרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-W10",
+   "source": "critic-r16",
+   "label": "restore: let the family know",
+   "note": "When there are no signs of anxiety but he keeps hitting, let the family know.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "let the family know",
+   "forbid": "anxiety"
+  },
+  {
+   "id": "r16-HW09",
+   "source": "critic-r16",
+   "label": "restore: עדכנו את ההורים",
+   "note": "כשאין סימנים לחרדה אבל הוא ממשיך להרביץ, עדכנו את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "עדכנו את ההורים",
+   "forbid": "חרדה"
+  },
+  {
+   "id": "r16-HW10",
+   "source": "critic-r16",
+   "label": "restore: עדכנו את ההורים",
+   "note": "כשאין סימנים לחרדה אבל הוא מרביץ שוב, עדכנו את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "עדכנו את ההורים",
+   "forbid": "חרדה"
+  },
+  {
+   "id": "r16-W11",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "When there are no signs of calming, let the family know at the end-of-year meeting.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-W12",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "When there are no signs of calming, tell the family once the holidays are over.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-W13",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "When there are no signs of settling, let the family know next school year.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-W14",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "When there are no signs of calming, let the family know in a month.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-W15",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "When there are no signs of settling, tell the family after the break.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-W16",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "When there are no signs of calming, wait a day before calling the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r16-HW11",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "כשאין סימנים של רגיעה, עדכנו את ההורים אחרי החופש.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-HW12",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "כשאין סימנים של רגיעה, עדכנו את ההורים בעוד חודש.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-HW13",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "כשאין סימנים של רגיעה, עדכנו את ההורים בפגישה הקרובה בעוד חודש.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-HW14",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "כשאין סימנים של רגיעה, עדכנו את ההורים לקראת סוף השנה.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-HW15",
+   "source": "critic-r16",
+   "label": "noRestore: no required text",
+   "note": "כשאין סימנים של רגיעה, חכו שבוע לפני שמעדכנים את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r16-W17",
+   "source": "critic-r16",
+   "label": "restore: call the family today",
+   "note": "When there are no signs of calming, call the family today, not next week.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family today"
+  },
+  {
+   "id": "r16-W18",
+   "source": "critic-r16",
+   "label": "restore: call the family now",
+   "note": "When there are no signs of calming, call the family now; don't wait for the next meeting.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call the family now"
+  },
+  {
+   "id": "r16-W19",
+   "source": "critic-r16",
+   "label": "restore: let the family know right away",
+   "note": "When there are no signs of calming, let the family know right away rather than at pickup.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "let the family know right away"
+  },
+  {
+   "id": "r16-HW16",
+   "source": "critic-r16",
+   "label": "restore: התקשרו להורים היום",
+   "note": "כשאין סימנים של רגיעה, התקשרו להורים היום ולא בשבוע הבא.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים היום"
+  },
+  {
+   "id": "r16-HW17",
+   "source": "critic-r16",
+   "label": "restore: התקשרו להורים מיד",
+   "note": "כשאין סימנים של רגיעה, התקשרו להורים מיד ואל תחכו לפגישה הבאה.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים מיד"
+  },
+  {
+   "id": "r16-HW18",
+   "source": "critic-r16",
+   "label": "restore: עדכנו את ההורים מיד",
+   "note": "כשאין סימנים של רגיעה, עדכנו את ההורים מיד, לא רק בסוף היום.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "עדכנו את ההורים מיד"
+  },
+  {
+   "id": "r16-W20",
+   "source": "critic-r16",
+   "label": "restore: call an ambulance",
+   "note": "When there are no signs of normal breathing, call an ambulance.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "call an ambulance"
+  },
+  {
+   "id": "r16-HW19",
+   "source": "critic-r16",
+   "label": "restore: הזמינו אמבולנס",
+   "note": "כשאין סימנים לנשימה תקינה, הזמינו אמבולנס.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "הזמינו אמבולנס"
+  },
+  {
+   "id": "r16-W21",
+   "source": "critic-r16",
+   "label": "hard: he kicked a teacher this morning",
+   "note": "Dad reports no signs of anxiety, but he kicked a teacher this morning.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "he kicked a teacher this morning"
+  },
+  {
+   "id": "r16-HW20",
+   "source": "critic-r16",
+   "label": "hard: הוא בעט בגננת הבוקר",
+   "note": "אבא מספר שאין סימנים לחרדה, אבל הוא בעט בגננת הבוקר.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "הוא בעט בגננת הבוקר"
+  },
+  {
+   "id": "r16-V01",
+   "source": "critic-r16",
+   "label": "restore: let the family know",
+   "note": "When he does not settle after twenty minutes, let the family know.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "let the family know"
+  },
+  {
+   "id": "r16-V02",
+   "source": "critic-r16",
+   "label": "restore: tell the family",
+   "note": "When he doesn't calm down, tell the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "tell the family"
+  },
+  {
+   "id": "r16-V03",
+   "source": "critic-r16",
+   "label": "restore: let the family know",
+   "note": "If he does not settle, let the family know.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "let the family know"
+  },
+  {
+   "id": "r16-V04",
+   "source": "critic-r16",
+   "label": "restore: let the family know",
+   "note": "When the crying does not stop, let the family know.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "let the family know"
+  },
+  {
+   "id": "r16-V05",
+   "source": "critic-r16",
+   "label": "restore: let the family know",
+   "note": "When he does not settle and there are no signs of calming, let the family know.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "let the family know"
+  },
+  {
+   "id": "r16-HV01",
+   "source": "critic-r16",
+   "label": "restore: עדכנו את ההורים",
+   "note": "כשהוא לא נרגע, עדכנו את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "עדכנו את ההורים"
+  },
+  {
+   "id": "r16-HV02",
+   "source": "critic-r16",
+   "label": "restore: ספרו להורים",
+   "note": "אם הוא לא נרגע אחרי עשרים דקות, ספרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "ספרו להורים"
+  },
+  {
+   "id": "r16-HV03",
+   "source": "critic-r16",
+   "label": "restore: עדכנו את ההורים",
+   "note": "כשהבכי לא נפסק, עדכנו את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "עדכנו את ההורים"
+  },
+  {
+   "id": "r16-HV04",
+   "source": "critic-r16",
+   "label": "restore: עדכנו את ההורים",
+   "note": "אם לא נרגע, עדכנו את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "עדכנו את ההורים"
+  },
+  {
+   "id": "r16-HV05",
+   "source": "critic-r16",
+   "label": "restore: עדכנו את ההורים",
+   "note": "כשהוא לא נרגע ואין סימנים של רגיעה, עדכנו את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "עדכנו את ההורים"
   }
  ]
 }

@@ -5,7 +5,7 @@
  * corpora (every string literal of three words or more), the round-10
  * acceptance table (__fixtures__/handoffFloorAcceptance.json, 292 rows, copied
  * read-only from a9b91e66), the critic's fresh sets (__fixtures__/
- * handoffFloorFreshSets.json: r9-r15, floor-probe 1-4) and every adjacent
+ * handoffFloorFreshSets.json: r9-r16, floor-probe 1-4) and every adjacent
  * pair of rows as a two-sentence note — and for five parent texts each (the
  * row's own, none, an EN and an HE hard moment, and the note itself):
  *
@@ -29,7 +29,9 @@
  *      discouraging word (round 14), a governing condition (round 15) that
  *      qualifies — it names a harm or a hard moment, or its negated finding
  *      negates a change, never an unspoken reassurance — and no deferral
- *      (round 16).
+ *      (round 16); a negated list is masked whole, a vital sign's absence
+ *      qualifies, and timing is an allow-list: no time phrase but an
+ *      immediate one outside the hard-moment condition (round 17).
  */
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -137,8 +139,8 @@ function extraClauseIn(piece: string): string | null {
 /* Round 13 (P1-C): a restored piece must carry a non-negated escalation command whose recipient is a
    professional, a helpline or the family (this test's own lists). A restored condition fragment needs one
    beside it in the output. */
-const RECIPIENT_TEST = /\bdr\.?\s+\p{Lu}|\b(?:pediatricians?|paediatricians?|doctors?|gps?|nurses?|therapists?|psychologists?|psychiatrists?|counsell?ors?|specialists?|clinicians?|professionals?|helplines?|hotlines?|emergency|ambulance|hospital|medical|family|families|parents?|mother|father|mom|mum|dad|grand\p{L}+|guardians?|caregivers?)\b|\b(?:112|911|999|988|101)\b|(?:רופא|אחות|אחיות|פסיכולוג|פסיכיאטר|מטפל|קלינאי|מקצוע|יועצ|יועץ|הורים|הורה|משפחה|אמא|אבא|ד"ר|מוקד|חירום|מד"א|ער"ן|מיון|טיפת\s+חלב|112|101)/iu;
-const ACTION_TEST = /\b(?:call|calling|phone|ring|contact|text|email|notify|inform|alert|tell|let|reach\s+out|get\s+in\s+touch|get|talk|speak|chat|consult|see|book|visit|refer|referral|seek|ask|mention|discuss|check\s+in|follow\s+up|loop\s+in|involve|share|show|take|suggest)\b|\b(?:should|must|can|could|needs?\s+to|ought\s+to)\s+be\s+(?:called|contacted|phoned|notified|informed|alerted|told|consulted|seen)\b|(?:להתקשר|התקשרו|התקשר|לפנות|פנו|פנה|פני|צרו\s+קשר|ליצור\s+קשר|לעדכן|עדכנו|עדכן|לספר|ספרו|להודיע|הודיעו|לדבר|דברו|לשוחח|שוחחו|להתייעץ|התייעצו|להזעיק|הזעיקו|להפנות|הפנו|לקבוע\s+תור|קבעו\s+תור|ליידע|יידעו|לשתף|שתפו|להראות|הראו|להגיע|לגשת|גשו|לבקש|הציעו)/giu;
+const RECIPIENT_TEST = /\bdr\.?\s+\p{Lu}|\b(?:pediatricians?|paediatricians?|doctors?|gps?|nurses?|therapists?|psychologists?|psychiatrists?|counsell?ors?|specialists?|clinicians?|professionals?|helplines?|hotlines?|emergency|ambulance|hospital|medical|family|families|parents?|mother|father|mom|mum|dad|grand\p{L}+|guardians?|caregivers?)\b|\b(?:112|911|999|988|101)\b|(?:רופא|אחות|אחיות|פסיכולוג|פסיכיאטר|מטפל|קלינאי|מקצוע|יועצ|יועץ|הורים|הורה|משפחה|אמא|אבא|ד"ר|מוקד|חירום|מד"א|ער"ן|מיון|אמבולנס|טיפת\s+חלב|112|101)/iu;
+const ACTION_TEST = /\b(?:call|calling|phone|ring|contact|text|email|notify|inform|alert|tell|let|reach\s+out|get\s+in\s+touch|get|talk|speak|chat|consult|see|book|visit|refer|referral|seek|ask|mention|discuss|check\s+in|follow\s+up|loop\s+in|involve|share|show|take|suggest)\b|\b(?:should|must|can|could|needs?\s+to|ought\s+to)\s+be\s+(?:called|contacted|phoned|notified|informed|alerted|told|consulted|seen)\b|(?:להתקשר|התקשרו|התקשר|לפנות|פנו|פנה|פני|צרו\s+קשר|ליצור\s+קשר|לעדכן|עדכנו|עדכן|לספר|ספרו|להודיע|הודיעו|לדבר|דברו|לשוחח|שוחחו|להתייעץ|התייעצו|להזעיק|הזעיקו|להפנות|הפנו|לקבוע\s+תור|קבעו\s+תור|ליידע|יידעו|לשתף|שתפו|להראות|הראו|להגיע|לגשת|גשו|לבקש|הציעו|להזמין|הזמינו)/giu;
 const NEGATION_BEFORE = /(?:\b(?:no\s+need\s+to|not|never|need\s+not|needn['’]t|don['’]t|doesn['’]t)|אין\s+צורך|לא\s+צריכ?\p{L}*|(?<!\p{L})(?:אין|לא|אל))\s+(?:[^\s,;:.!?]+\s+)?$/iu;
 const NEGATION_AFTER = /^\s*(?:\S+\s+){0,4}?(?:is|are)\s+(?:not\s+|un)(?:needed|necessary|required)/iu;
 /** "should be called by their first names / Sound Orbit": named, not called. */
@@ -159,9 +161,11 @@ const BARE_RELAY = /^(?:please\s+)?(?:tell|let|inform|notify|update)\s+(?:\S+\s+
 const T_DISCOURAGING = /\b(?:not|no|never|none|nor|hold\s+off|avoid\p{L}*|premature\p{L}*|unnecessar\p{L}*|needless\p{L}*|pointless\p{L}*|refrain\p{L}*|rather\s+than|instead\s+of|too\s+early)\b|n['’]t\b|(?<!\p{L})(?:ו|ש|כש|ה)?(?:אין|לא|אל|מיותר\p{L}*|להימנע|במקום\s+ל\p{L}+|מוקדם\s+מדי|עדיף\s+לחכות)(?!\p{L})/iu;
 const T_ENCOURAGING = /\b(?:(?:do|does|should|must|will)\s+not|don['’]t|shouldn['’]t|never|not)\s+(?:hesitate|wait|delay|put\s+off)\b|\bwithout\s+(?:delay|waiting)\b|\bnot\s+(?:just|only)\b|\bno\s+matter\b|(?<!\p{L})(?:אל\s+(?:תהסס\p{L}*|תחכ\p{L}*|תדח\p{L}*)|(?:אין|לא)\s+(?:לחכות|להסס|להתעכב)|(?:בלי|ללא)\s+(?:לחכות|דיחוי)|ו?לא\s+רק|לא\s+משנה)(?!\p{L})/giu;
 const T_CONDITION_SPAN = /\b(?:if|when|whenever|where|unless|should|in\s+case|once|until|as\s+long\s+as)\b[^,;:—–]*|(?<!\p{L})(?:ו)?(?:אם|כש|כאשר|במידה|במקרה|בכל\s+פעם|ברגע\s+ש|עד\s+ש)[^,;:—–]*/giu;
-const T_CONDITION_NEGATION = /\b(?:no|without|not|n['’]t)\s+(?:\p{L}+\s+){0,3}?(?:signs?|evidence|improvement|progress|change|calm\p{L}*|settl\p{L}*|better)\b|(?<!\p{L})(?:ו|ש|כש)?(?:אין|ללא|בלי|לא)\s+(?:שום\s+)?(?:סימנ\p{L}*|סימן|עדות|שיפור|התקדמות|רגיעה|נרגע\p{L}*)/giu;
+const T_CONDITION_NEGATION = /\b(?:no|without|not|n['’]t)\s+(?:\p{L}+\s+){0,3}?(?:signs?|evidence|improvement|progress|change|calm\p{L}*|settl\p{L}*|better|stop\p{L}*|respon\p{L}*|breath\p{L}*)\b|(?<!\p{L})(?:ו|ש|כש)?(?:אין|ללא|בלי|לא)\s+(?:שום\s+)?(?:סימנ\p{L}*|סימן|עדות|שיפור|התקדמות|רגיעה|נרגע\p{L}*|נפסק\p{L}*|מפסיק\p{L}*|תגובה|מגיב\p{L}*|נושם\p{L}*)/giu;
 const discouragingIn = (text: string) => {
-  const masked = text.replace(T_ENCOURAGING, " ").replace(T_CONDITION_SPAN, " ").replace(T_CONDITION_NEGATION, " ");
+  // round 17: a negated deferral ("today, not next week", "ולא בשבוע הבא") encourages
+  const masked = text.replace(T_NEGATED_TIMING, (m) => (T_TIME.test(m) ? " ".repeat(m.length) : m))
+    .replace(T_ENCOURAGING, " ").replace(T_CONDITION_SPAN, " ").replace(T_CONDITION_NEGATION, " ");
   return T_DISCOURAGING.exec(masked)?.[0] ?? null;
 };
 /* Round 15 (P1-C): main's own escalation line is a condition plus a referral. Every restored piece carries a
@@ -189,38 +193,106 @@ function governingCondition(clause: string, command: string): string | null {
 }
 /* Round 16 (P1-C): a governing condition qualifies only when it names a harm or a hard moment (this test's own
    list, or main's incident cues), or every negated finding in it negates a change ("no signs of calming");
-   "If there are no signs of anxiety" governs nothing. A restored piece never defers the contact. This test's own lists. */
-const T_CHANGE = /\b(?:calm\p{L}*|settl\p{L}*|improv\p{L}*|better|progress\p{L}*|stop\p{L}*|eas(?:e|es|ed|ing)|respon\p{L}*|chang\p{L}*|recover\p{L}*|let\s+up)\b|(?<!\p{L})[ולשה]?(?:רגיע\p{L}*|נרגע\p{L}*|הרגע\p{L}*|שיפור|השתפר\p{L}*|מפסיק\p{L}*|הפסק\p{L}*|התקדמות|הקלה|שינוי|תגוב\p{L}*)(?!\p{L})/iu;
-const T_HARM = /\b(?:hurt\p{L}*|harm\p{L}*|injur\p{L}*|danger\p{L}*|unsafe|bleed\p{L}*|bit|bites?|biting|hit|hits|hitting|kick\p{L}*|throw\p{L}*|threw|scream\p{L}*|cr(?:y|ies|ied|ying)|tantrum\p{L}*|meltdown\p{L}*|suicid\p{L}*|chok\p{L}*|breath\p{L}*|fever\p{L}*|seizure\p{L}*|faint\p{L}*|vomit\p{L}*|r[au]ns?\s+(?:away|off))\b|(?<!\p{L})[ושכה]{0,2}(?:פוגע\p{L}*|נפגע\p{L}*|פגיע\p{L}*|מרביץ\p{L}*|הרביץ\p{L}*|נשך\p{L}*|נושך\p{L}*|בועט\p{L}*|בעט\p{L}*|דוחף\p{L}*|זורק\p{L}*|צורח\p{L}*|צרח\p{L}*|בורח\p{L}*|ברח\p{L}*|בוכה|בכי|בכה|סכנה|מסוכן\p{L}*|התקף\p{L}*|חום|נשימה|מקיא\p{L}*|התעלפ\p{L}*)(?!\p{L})/iu;
-const T_DEFERRAL = /\b(?:next\s+(?:week|month|year|term|time|meeting|visit|appointment|check-?up|conference|pickup|pick-up)|(?:at|by)\s+the\s+end\s+of\s+the\s+(?:year|term|month|week|semester)|later\s+(?:this|in\s+the)\s+(?:week|month|year|term)|when\s+you\s+next\s+see|routine\s+check-?up|in\s+a\s+(?:few|couple\s+of)\s+(?:weeks|months)|eventually|at\s+some\s+point)\b|(?<!\p{L})(?:ב?פגישה\s+הבאה|ב?חודש\s+הבא|ב?שבוע\s+הבא|ב?שנה\s+הבאה|ב?פעם\s+הבאה|באסיפ\p{L}*|באספ\p{L}*|בסוף\s+ה(?:שנה|חודש|שבוע)|בהמשך|מתישהו|להמתין|רק\s+ב\p{L}+)(?!\p{L})/iu;
-const deferralIn = (text: string) => T_DEFERRAL.exec(text.replace(T_ENCOURAGING, " ").replace(T_CONDITION_SPAN, " "))?.[0] ?? null;
-/** Each negated finding in the text with its object (this test's own object boundary), as [start, end). */
+   "If there are no signs of anxiety" governs nothing. This test's own lists.
+   Round 17 (P1-C): a negated finding's list is masked whole ("no signs of biting or hitting", "בכי או צרחות"),
+   a vital sign's absence qualifies ("no signs of normal breathing"), and timing is an allow-list: outside its
+   hard-moment condition a restored piece carries no time phrase but an immediate one. */
+const T_CHANGE = /\b(?:calm\p{L}*|settl\p{L}*|improv\p{L}*|better|progress\p{L}*|stop\p{L}*|eas(?:e|es|ed|ing)|respon\p{L}*|chang\p{L}*|recover\p{L}*|let\s+up)\b|(?<!\p{L})[ולשה]?(?:רגיע\p{L}*|נרגע\p{L}*|הרגע\p{L}*|שיפור|השתפר\p{L}*|מפסיק\p{L}*|הפסק\p{L}*|נפסק\p{L}*|נעצר\p{L}*|פוסק\p{L}*|התקדמות|הקלה|שינוי|תגוב\p{L}*)(?!\p{L})/iu;
+const T_VITAL = /\b(?:breath\p{L}*|conscious\p{L}*|responsive\p{L}*|pulse|heartbeat|awake)\b|(?<!\p{L})[ולשהב]?(?:נשימה|נושם|נושמת|הכרה|דופק|מגיב|מגיבה)(?!\p{L})/iu;
+const T_HARM = /\b(?:hurt\p{L}*|harm\p{L}*|injur\p{L}*|danger\p{L}*|unsafe|bleed\p{L}*|bit|bites?|biting|hit|hits|hitting|kick\p{L}*|throw\p{L}*|threw|scream\p{L}*|cr(?:y|ies|ied|ying)|tantrum\p{L}*|meltdown\p{L}*|suicid\p{L}*|chok\p{L}*|breath\p{L}*|fever\p{L}*|seizure\p{L}*|faint\p{L}*|vomit\p{L}*|r[au]ns?\s+(?:away|off))\b|(?<!\p{L})[ושכה]{0,2}(?:פוגע\p{L}*|נפגע\p{L}*|פגיע\p{L}*|מרביץ\p{L}*|הרביץ\p{L}*|נשך\p{L}*|נושך\p{L}*|בועט\p{L}*|בעט\p{L}*|דוחף\p{L}*|זורק\p{L}*|צורח\p{L}*|צרח\p{L}*|בורח\p{L}*|ברח\p{L}*|בוכה|בכי|בכה|סכנה|מסוכן\p{L}*|התקף\p{L}*|חום|נשימה|מקיא\p{L}*|התעלפ\p{L}*|להרביץ|לנשוך|לבעוט|לדחוף|לזרוק|לצרוח|לברוח|לבכות|להכות|לפגוע|נשיכ\p{L}*|הרבצ\p{L}*|מכות|בעיט\p{L}*|דחיפ\p{L}*)(?!\p{L})/iu;
+const T_DISTRESS = /\b(?:upset|distress\p{L}*|agitat\p{L}*|overwhelm\p{L}*|panic\p{L}*|scared|afraid|frightened|anxious|terrified|inconsolable)\b|(?<!\p{L})(?:ו|ש|כש|ה)?(?:נסער\p{L}*|מתוסכל\p{L}*|כועס\p{L}*|מפוחד\p{L}*|מבוהל\p{L}*|נבהל\p{L}*|לחוץ|לחוצה|מוצף|מוצפת|פאניקה|בהלה)(?!\p{L})/iu;
+const T_LIST_JOIN = /^\s*,\s*(?:(?:and|or|nor)\s+|או\s+)?|^\s+(?:(?:and|or|nor|plus)\s+|או\s+|ו(?=\p{L}{2}))/iu;
+/** Each negated finding in the text with its object and the rest of its list (this test's own boundary), as [start, end). */
 const negatedObjects = (text: string) => [...text.matchAll(new RegExp(NEGATED_FINDING.source, "giu"))].map((m) => {
   const start = m.index ?? 0;
   const tail = text.slice(start + m[0].length);
-  const afterHead = tail.replace(/^\p{L}*/u, "").replace(/^\s*(?:of|for|that|של|על)\s+/iu, "");
-  const stop = afterHead.search(OBJECT_END);
-  const end = start + m[0].length + (tail.length - afterHead.length) + (stop < 0 ? afterHead.length : stop);
+  const afterHead = tail.replace(/^\p{L}*/u, "").replace(/^\s*(?:of|for|that|של|על)\s+/iu, "").replace(/^\s*(?:(?:that\s+)?(?:he|she|they|it)\s+|(?:ש|כש)?(?:הוא|היא|הם|הן)\s+)/iu, "");
+  // the object keeps at least its first word ("של בכי": "ב…" is no frame here)
+  const first = /^\s*[^\s,;:.!?—–()]+/u.exec(afterHead)?.[0] ?? "";
+  const stop = afterHead.slice(first.length).search(OBJECT_END);
+  let end = start + m[0].length + (tail.length - afterHead.length) + first.length + (stop < 0 ? afterHead.length - first.length : stop);
+  while (end > start && /\s/u.test(text[end - 1])) end--;
+  // a list continues it: "biting or hitting", "hitting, biting or kicking", "בכי או צרחות", "מרביץ או נושך"
+  for (;;) {
+    const join = T_LIST_JOIN.exec(text.slice(end));
+    if (!join) break;
+    const item = text.slice(end + join[0].length);
+    const itemFirst = /^[^\s,;:.!?—–()]+/u.exec(item)?.[0] ?? "";
+    const next = item.slice(itemFirst.length).search(OBJECT_END);
+    const piece = item.slice(0, itemFirst.length + (next < 0 ? item.length - itemFirst.length : next)).trimEnd();
+    if (!piece || PRONOUN_EN.test(piece) || PRONOUN_HE.test(piece) || piece.search(ACTION_TEST) >= 0 || T_GOVERNING.test(piece) || words(piece).length > 4) break;
+    if (join[0].trim().startsWith(",") && !(T_HARM.test(piece) || hasIncidentCue(piece) || T_CHANGE.test(piece))) break;
+    end += join[0].length + piece.length;
+  }
   return { start, end, text: text.slice(start, end) };
 });
-/** A harm or a hard moment the condition asserts (not one inside a negated finding), or only negated changes. */
+const blankSpans = (text: string, spans: { start: number; end: number }[]) => spans.reduce((t, o) => t.slice(0, o.start) + " ".repeat(o.end - o.start) + t.slice(o.end), text);
+/** What the condition asserts: a harm, an incident (main's cues) or a distress state outside every negated finding. */
+const assertsMoment = (condition: string) => {
+  const asserted = blankSpans(condition, negatedObjects(condition));
+  return T_HARM.test(asserted) || hasIncidentCue(asserted) || T_DISTRESS.test(asserted);
+};
+/** A harm or a hard moment the condition asserts, or only negated changes and vital signs. */
 const qualifies = (condition: string) => {
   const found = negatedObjects(condition);
-  const asserted = found.reduce((t, o) => t.slice(0, o.start) + " ".repeat(o.end - o.start) + t.slice(o.end), condition);
-  return T_HARM.test(asserted) || hasIncidentCue(asserted) || found.every((o) => T_CHANGE.test(o.text));
+  const asserted = blankSpans(condition, found);
+  return T_HARM.test(asserted) || hasIncidentCue(asserted) || found.every((o) => T_CHANGE.test(o.text) || T_VITAL.test(o.text));
 };
-/** Every governing condition in a restored piece: a governing chunk and the chunks after it up to the command's. */
-function conditionRuns(piece: string): string[] {
-  return piece.split(/(?<=(?<!\b(?:Dr|Mr|Mrs|Ms|Prof|St))[.!?])\s+|;\s*|\n/u).flatMap((sentence) => {
-    const chunks = sentence.split(T_CHUNK);
-    // "with no …" / "ללא …" governs only at the start of a sentence, not "…, without delay"
+/** A condition about the hard moment itself: qualifying, and naming a moment or a negated change / vital sign. */
+const moment = (condition: string) => qualifies(condition) && (assertsMoment(condition) || condition.search(T_CONDITION_NEGATION) >= 0
+  || negatedObjects(condition).some((o) => T_CHANGE.test(o.text) || T_VITAL.test(o.text)));
+type Run = { start: number; end: number; text: string; parts?: Run[] };
+const SENTENCE_SPLIT = /(?<=(?<!\b(?:Dr|Mr|Mrs|Ms|Prof|St))[.!?])\s+|;\s*|\n/u;
+const piecesOf = (text: string, sep: RegExp): Run[] => {
+  const out: Run[] = [];
+  let at = 0;
+  for (const m of text.matchAll(new RegExp(sep.source, `g${sep.flags}`))) {
+    out.push({ start: at, end: m.index ?? 0, text: text.slice(at, m.index) });
+    at = (m.index ?? 0) + m[0].length;
+  }
+  out.push({ start: at, end: text.length, text: text.slice(at) });
+  return out;
+};
+/** Every governing condition in a piece: from its condition word through the chunks after it with no action,
+ *  until it names the moment ("Call the family when, after 20 minutes, there are no signs of calming"). */
+function conditionRuns(piece: string): Run[] {
+  return piecesOf(piece, SENTENCE_SPLIT).flatMap((sentence) => {
+    const chunks = piecesOf(sentence.text, T_CHUNK);
     return chunks.flatMap((chunk, i) => {
-      if (!T_GOVERNING.test(i === 0 ? chunk : `· ${chunk}`)) return [];
-      let end = i + 1;
-      while (end < chunks.length && chunks[end].search(ACTION_TEST) < 0) end++;
-      return [chunks.slice(i, end).join(",")];
+      // "with no …" / "ללא …" governs only at the start of a sentence, not "…, without delay"
+      const g = T_GOVERNING.exec(i === 0 ? chunk.text : `· ${chunk.text}`);
+      if (!g) return [];
+      const offset = i === 0 ? g.index : Math.max(0, g.index - 2);
+      let j = i;
+      let text = chunk.text.slice(offset);
+      const parts: Run[] = [{ start: sentence.start + chunk.start + offset, end: sentence.start + chunk.end, text }];
+      // past the moment only a monitoring duration still belongs to it ("…, after two weeks, …")
+      while (j + 1 < chunks.length && chunks[j + 1].text.search(ACTION_TEST) < 0 && (!moment(text) || onlyDuration(chunks[j + 1].text))) {
+        const next = chunks[++j];
+        text += `,${next.text}`;
+        parts.push({ start: sentence.start + next.start, end: sentence.start + next.end, text: next.text });
+      }
+      return [{ start: parts[0].start, end: sentence.start + chunks[j].end, text, parts }];
     });
   });
+}
+const T_IMMEDIATE = /\b(?:right\s+now|now|right\s+away|straight\s+away|at\s+once|immediately|today|as\s+soon\s+as\s+possible|asap|without\s+(?:delay|waiting)|urgently|no\s+matter\s+(?:the\s+time|how\s+late(?:\s+it\s+is)?|what\s+time)|(?:at\s+)?any\s+(?:time|hour)|day\s+or\s+night)\b|(?<!\p{L})ו?(?:מיד|מייד|מיידית|עכשיו|היום|בהקדם(?:\s+האפשרי)?|(?:ללא|בלי)\s+דיחוי|בכל\s+(?:שעה|זמן)|לא\s+משנה\s+(?:מה\s+)?השעה)(?!\p{L})/giu;
+const T_TIME = /\b(?:tomorrow|tonight|morning|afternoon|evening|night|noon|lunch(?:time)?|days?|weeks?|weekends?|fortnight|months?|years?|hours?|minutes?|spring|summer|autumn|winter|holidays?|vacations?|breaks?|terms?|semesters?|next|later|eventually|soon|sometime|upcoming|wait\p{L}*|before|after|until|till|once|end(?:s|ing)?|start(?:s|ing)?)\b|\b(?:at|during|until|till|before|after|for|by|on)\s+(?:(?:the|a|an|his|her|their|our|your|next|upcoming|regular|routine|annual|end-of-\p{L}+|parent-teacher|parent|parents['’]?)\s+){0,3}(?:meetings?|conferences?|evenings?|visits?|appointments?|check-?ups?|reviews?|pick-?ups?|drop-?offs?)\b|\bin\s+(?:a|an|one|two|three|\d+|a\s+few|a\s+couple\s+of)\s+\p{L}+|(?<!\p{L})[ובלמהכש]{0,3}(?:יום|ימים|יומיים|שבוע\p{L}*|חודש\p{L}*|שנה|שנים|שנתיים|שעה|שעות|שעתיים|דקות|בוקר|ערב|לילה|צהריים|מחר|סוף|קיץ|חורף|חג|חגים|חופש\p{L}*|פגרה|הבא|הבאה|הקרוב\p{L}*|המשך|אחרי|לאחר|לפני|עד|בעוד|מתישהו|חכו|לחכות|להמתין|המתינו|לדחות|מסתיימ\p{L}*|נגמר\p{L}*|לקראת)(?!\p{L})|(?<!\p{L})(?:ב|ל)(?:פגיש\p{L}*|אסיפ\p{L}*|אספ\p{L}*|ביקור\p{L}*|איסוף)(?!\p{L})/iu;
+const T_NEGATED_TIMING = /\b(?:not|rather\s+than|instead\s+of|(?:do\s+not|don['’]t|never)\s+wait|without\s+waiting)\b[^,;:.!?—–\n]*?(?=\s+but\b|[,;:.!?—–\n]|$)|(?<!\p{L})ו?(?:לא|אל\s+תחכו|בלי\s+לחכות|במקום)(?!\p{L})[^,;:.!?—–\n]*?(?=\s+אלא(?!\p{L})|[,;:.!?—–\n]|$)/giu;
+/** A monitoring duration is part of a condition; this test's own list. */
+const T_DURATION = /\b(?:after|within|over|for|by)\s+(?:(?:a|an|one|two|three|five|ten|twenty|\d+|a\s+few|several)\s+)?(?:minutes?|hours?|days?|weeks?|months?)\b|\bby\s+(?:lunch(?:time)?|noon|bedtime)\b|(?<!\p{L})ו?(?:אחרי|לאחר|תוך|כעבור|במשך|עד)\s+(?:\S+\s+)?(?:דקות|דקה|שעה|שעות|שעתיים|יום|ימים|יומיים|שבוע\p{L}*|חודש\p{L}*|הצהריים)(?!\p{L})/giu;
+const onlyDuration = (text: string) => !T_TIME.test(text.replace(T_DURATION, (m) => " ".repeat(m.length)));
+/** A visit with a professional is the escalation's object, not its timing. */
+const T_VISIT_PRO = /\b(?:visits?|appointments?|check-?ups?|consultations?|evaluations?|assessments?)\s+(?:to|with|at)\s+(?:\S+\s+){0,2}?(?:pediatrician|paediatrician|doctor|gp|nurse|therapist|psychologist|psychiatrist|specialist|clinician|professional|dr\.?\s*\p{Lu}\p{L}*)|(?:ביקור|תור|פגישה|בדיקה|הערכה|אבחון|ייעוץ)\s+(?:(?:אצל|עם)\s+)?(?:ה|ל)?(?:רופא|אחות|פסיכולוג|מטפל|קלינאי|יועצ|איש\s+מקצוע|ד"ר)/giu;
+/** A non-immediate time phrase outside the piece's hard-moment conditions, its actions and its negated deferrals. */
+function timingIn(text: string): string | null {
+  // a hard-moment condition is no timing: its first chunk, and each further chunk of it that holds no calendar time
+  const spans: { start: number; end: number }[] = conditionRuns(text).filter((r) => moment(r.text))
+    .flatMap((r) => (r.parts ?? [r]).filter((part, i) => i === 0 || onlyDuration(part.text)));
+  for (const re of [ACTION_TEST, T_VISIT_PRO]) for (const m of text.matchAll(re)) spans.push({ start: m.index ?? 0, end: (m.index ?? 0) + m[0].length });
+  const masked = blankSpans(text, spans).replace(T_NEGATED_TIMING, (m) => (T_TIME.test(m) ? " ".repeat(m.length) : m))
+    .replace(T_IMMEDIATE, (m) => " ".repeat(m.length)).replace(T_ENCOURAGING, (m) => " ".repeat(m.length));
+  return T_TIME.exec(masked)?.[0] ?? null;
 }
 const CONDITION_FRAGMENT = /^\s*(?:if|when|whenever|where|should|unless|in\s+case)\b|^\s*(?:ו)?(?:אם|כש|כאשר|במידה|במקרה)/iu;
 const referralsIn = (text: string) => [REFERRAL_EN, REFERRAL_HE].flatMap((re) => [...text.matchAll(new RegExp(re.source, `g${re.flags}`))].map((m) => m[0]));
@@ -283,7 +355,7 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
           const condition = governingCondition(clause.text, command.text);
           if (!condition || T_PAST.test(condition) || T_LABEL.test(condition) || discouragingIn(clause.text)) continue;
           // round 16: nor one whose condition is only an unspoken reassurance, or that defers the contact
-          if (!qualifies(condition) || deferralIn(clause.text)) continue;
+          if (!qualifies(condition) || timingIn(clause.text)) continue;
         }
         fail(`escalation command lost: ${command.text}`);
       }
@@ -295,8 +367,8 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
         if (!hasEscalation(clause.out) && !(CONDITION_FRAGMENT.test(clause.out) && hasEscalation(out))) fail(`restored a piece with no escalation command: ${clause.out}`);
         const runs = conditionRuns(clause.out);
         if (!runs.length) fail(`restored a piece no condition governs: ${clause.out}`);
-        else if (!runs.some(qualifies)) fail(`restored a piece whose condition is only an unspoken reassurance ("${runs[0].trim()}"): ${clause.out}`);
-        const deferral = deferralIn(clause.out);
+        else if (!runs.some((r) => qualifies(r.text))) fail(`restored a piece whose condition is only an unspoken reassurance ("${runs[0].text.trim()}"): ${clause.out}`);
+        const deferral = timingIn(clause.out);
         if (deferral) fail(`restored a piece that defers the contact ("${deferral}"): ${clause.out}`);
         const discouraging = discouragingIn(clause.out);
         if (discouraging) fail(`restored a piece with a discouraging word ("${discouraging}"): ${clause.out}`);
@@ -317,7 +389,8 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
 describe("B-ASKJB-44 · the wrapper is monotonic over main's floor (property, every corpus, EN + HE)", () => {
   it("the corpora are all present", () => {
     expect(acceptance.length).toBe(292);
-    expect(fresh.length).toBe(352);
+    expect(fresh.length).toBe(455);
+    expect(fresh.filter((r) => r.id.startsWith("r16-")).length).toBe(103);
     expect(fresh.filter((r) => r.id.startsWith("r15-")).length).toBe(46);
     expect(fresh.filter((r) => r.id.startsWith("r14-")).length).toBe(36);
     expect(fresh.filter((r) => r.id.startsWith("r13-")).length).toBe(45);
@@ -333,7 +406,7 @@ describe("B-ASKJB-44 · the wrapper is monotonic over main's floor (property, ev
   it.each([
     ["main's clinicalScan*.test.ts corpora", () => mainCorpus],
     ["the 292-row acceptance table (a9b91e66, read-only)", () => acceptance],
-    ["the critic's fresh sets r9 / r10 / r11 / r12 / r13 / r14 / r15 / floor-probe 1-4", () => fresh],
+    ["the critic's fresh sets r9 / r10 / r11 / r12 / r13 / r14 / r15 / r16 / floor-probe 1-4", () => fresh],
     ["every adjacent pair of rows as one two-sentence note", () => pairs],
   ] as const)("%s", (_name, corpus) => {
     const stats: Stats = { runs: 0, restored: 0, removed: 0, untouched: 0 };
