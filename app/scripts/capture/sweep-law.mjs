@@ -45,7 +45,10 @@ export function missingBaseCells(doc) {
 
 const cellName = (cell) => `${cell.route} ${cell.viewport} ${cell.lang}${isBase(cell) ? '' : ` ${cell.state}`}`;
 
-/** @param {{ cells?: any[] }} doc */
+/**
+ * @param {{ cells?: any[], expected?: { cells?: any[] }, shots?: boolean, completed?: boolean, [key: string]: any }} doc
+ * @param {ReadonlyArray<{ route: string, state?: string, kind: string, why: string, owner: string }>} [explained]
+ */
 export function sweepLawFailures(doc, explained = EXPLAINED_DIAGNOSTICS) {
   const failures = [];
   for (const cell of doc?.cells ?? []) {
