@@ -18,8 +18,11 @@ import { NOW_COPY } from "./nowViewCopy";
  * in lib/kidHandback; this file only renders them.
  *
  *  · the book row: the hero-free cover plate, the book's `tomorrow` line, its
- *    `askAfter` question; "Log it" opens the ONE capture sheet empty, so the
- *    Journal moment is the parent's own words and only their Save writes it;
+ *    `askAfter` question; "Log it" opens the ONE capture sheet empty, with the
+ *    question as the sheet's cue above the field, so the Journal moment is the
+ *    parent's own words and only their Save writes it. "Log it" never hides the
+ *    row (a cancelled sheet must not lose it): the row stays for its day until
+ *    the parent hides it;
  *  · the play row: visits this week, the experiences met, one off-screen idea.
  * Each row hides for this read / sitting on "Hide" (device-local, per child).
  * A separate component like the agenda's other rows (CompanionOfferSlot,
@@ -57,7 +60,7 @@ export default function NowKidHandback() {
         <small dir="auto">{copy.bookRowAsk(book.askAfter)}</small>
       </span>
       <span className="now-handback-actions">
-        <button type="button" className="now-handback-log" aria-label={copy.logItAria} onClick={() => { hide({ book: book.key }); openCaptureSheet({ mode: "text" }); }}>{copy.logIt}</button>
+        <button type="button" className="now-handback-log" aria-label={copy.logItAria} onClick={() => openCaptureSheet({ mode: "text", cue: copy.bookRowAsk(book.askAfter) })}>{copy.logIt}</button>
         <button type="button" className="now-handback-hide" aria-label={copy.hideRow} onClick={() => hide({ book: book.key })}><Icon name="close" size={18} /></button>
       </span>
     </div>}

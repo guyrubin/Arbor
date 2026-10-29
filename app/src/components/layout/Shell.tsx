@@ -686,6 +686,7 @@ export default function Shell() {
           initialText={captureSheet.initialText}
           initialTextParentWritten={captureSheet.initialTextParentWritten}
           initialPhoto={captureSheet.initialPhoto}
+          cue={captureSheet.cue}
           open={captureSheet.open}
           mode={captureSheet.mode}
           review={captureSheet.review}

@@ -77,10 +77,15 @@ describe("B-BOOK-66 + B-GAME-23 · Today's hand-back rows", () => {
     expect(renderToStaticMarkup(<NowKidHandback />)).toBe("");
   });
 
-  it("Log it opens the ONE capture sheet empty (the parent's own words; only their Save writes a moment)", () => {
+  it("Log it opens the ONE capture sheet empty, the ask-after as its cue (the parent's own words; only their Save writes a moment)", () => {
     const src = readFileSync(path.join(__dirname, "NowKidHandback.tsx"), "utf8");
-    expect(src).toContain('openCaptureSheet({ mode: "text" })');
+    expect(src).toContain('openCaptureSheet({ mode: "text", cue: copy.bookRowAsk(book.askAfter) })');
     expect(src).not.toMatch(/initialText|addMoment|saveMoment|upsert\(|recordFromRecordAnswer/);
+    // the sheet shows the cue where it shows a prompt question, and never stores it
+    const modal = readFileSync(path.join(__dirname, "..", "overview", "QuickLogModal.tsx"), "utf8");
+    expect(modal).toMatch(/\{!promptKey && cue && \([\s\S]*?data-testid="quicklog-prompt-cue"[\s\S]*?\{cue\}/);
+    expect(modal).not.toMatch(/addMoment\([^)]*cue/);
+    expect(readFileSync(path.join(__dirname, "..", "layout", "Shell.tsx"), "utf8")).toContain("cue={captureSheet.cue}");
   });
 
   it("mounted once, as a row of the existing glance list (NowAgendaExtras), never its own card", () => {

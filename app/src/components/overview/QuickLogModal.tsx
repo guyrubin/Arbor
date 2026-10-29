@@ -79,6 +79,7 @@ export default function QuickLogModal({
   initialText,
   initialTextParentWritten = false,
   initialPhoto,
+  cue,
 }: {
   open: boolean;
   initialText?: string;
@@ -87,6 +88,10 @@ export default function QuickLogModal({
    *  unknown provenance, saved with the negative "unverified" lineage. */
   initialTextParentWritten?: boolean;
   initialPhoto?: string;
+  /** B-BOOK-66 (fix round 2): a question the opener shows as the cue above the
+   *  field (Today's book row: its ask-after) — the same cue as `promptKey`,
+   *  in words; never draft text and never stored on the log. */
+  cue?: string;
   onClose: () => void;
   mode?: CaptureMode;
   /** B-TODAY-19: the elev.prompt.* key of the question being answered. */
@@ -1038,6 +1043,12 @@ export default function QuickLogModal({
         {promptKey && (
           <p dir="auto" data-testid="quicklog-prompt-cue" className="rounded-xl px-3 py-2 text-[13px] font-semibold leading-snug" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
             {t(promptKey)}
+          </p>
+        )}
+        {/* B-BOOK-66 (fix round 2): the opener's question in words (Today's book row), the same cue; never draft text, never stored. */}
+        {!promptKey && cue && (
+          <p dir="auto" data-testid="quicklog-prompt-cue" className="rounded-xl px-3 py-2 text-[13px] font-semibold leading-snug" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
+            {cue}
           </p>
         )}
 

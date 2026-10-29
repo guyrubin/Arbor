@@ -1660,8 +1660,9 @@ function useArborState() {
   //  - `coRegulationScript` (B-DATA-16): opened from a hard-moment guide's
   //    "I used these words" — the hard-moment form opens with that guide named
   //    and removable; Save stores the card id on the row.
-  const [captureSheet, setCaptureSheet] = useState<{ open: boolean; mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialTextParentWritten?: boolean; initialPhoto?: string; coRegulationScript?: string }>({ open: false });
-  const openCaptureSheet = (opts: { mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialTextParentWritten?: boolean; initialPhoto?: string; coRegulationScript?: string } = {}) => {
+  const [captureSheet, setCaptureSheet] = useState<{ open: boolean; mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialTextParentWritten?: boolean; initialPhoto?: string; coRegulationScript?: string; cue?: string }>({ open: false });
+  // B-BOOK-66 (fix round 2): `cue` — a question shown above the field while the parent writes (never draft text, never stored).
+  const openCaptureSheet = (opts: { mode?: CaptureMode; review?: CaptureSource; editLogId?: string; editLog?: BehaviorLog; initialText?: string; initialTextParentWritten?: boolean; initialPhoto?: string; coRegulationScript?: string; cue?: string } = {}) => {
     if (opts.editLogId) startEditLog(opts.editLogId, opts.editLog);
     else {
       if (!opts.review) resetLogForm();
