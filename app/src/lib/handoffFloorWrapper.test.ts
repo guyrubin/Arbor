@@ -303,6 +303,11 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
       expect(handoffFloor(booked, { parentText: HARD_MOMENT_HE })).toBe(booked);
     }
   });
+  it("round 19 (cosmetic): a changed line that starts mid-sentence opens with a capital (critic fresh18 H02)", () => {
+    const line = "Mom says no signs of anxiety; he threw a chair at a teacher today.";
+    expect(withoutHandoffFindings(line, { parentText: HARD_MOMENT_EN })).toBe(line);
+    expect(handoffFloor(line, { parentText: HARD_MOMENT_EN })).toBe("He threw a chair at a teacher today.");
+  });
   /* Round 18 (P1-A): a negation that governs before / until / earlier (לפני, עד, מוקדם) is a deferral, never
      stripped (critic fresh17 N02, N03, HN02, HN03); "don't wait until pickup" still restores (N04, HN04). */
   it.each([

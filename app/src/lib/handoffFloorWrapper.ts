@@ -985,7 +985,10 @@ export function explainHandoffFloor(text: string, opts: HandoffFloorOptions = {}
     if (next !== line) members.forEach((c, k) => { c.out = k === 0 ? next : ""; });
   }
   const changed = clauses.some((c) => c.restored) || removedReassurances.length > 0;
-  const output = changed ? clauses.filter((c) => c.main === "kept" || c.restored).map((c) => c.out).join("").trim() : base;
+  const joined = changed ? clauses.filter((c) => c.main === "kept" || c.restored).map((c) => c.out).join("").trim() : base;
+  // Round 19 (cosmetic): a changed line that now starts mid-sentence ("he threw a chair …") opens with a capital,
+  // as the note did; Hebrew has no case, and an untouched line stays main's byte-for-byte.
+  const output = changed && /^\p{Ll}/u.test(joined) && /^[^\p{L}]*\p{Lu}/u.test(text) ? joined[0].toLocaleUpperCase() + joined.slice(1) : joined;
   return { clauses, removedReassurances, removedPieces, output };
 }
 
