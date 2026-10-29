@@ -137,6 +137,10 @@ export const NON_CRISIS_409_CODES: ReadonlySet<string> = new Set([
   "plan_narration_no_plan", "plan_narration_closed", "plan_narration_no_sheet",
   "live_renewal_invalid",
 ]);
+/** /live/token's 409 code: the renewal names a session the server will not chain. */
+export const LIVE_RENEWAL_INVALID = "live_renewal_invalid";
+export const isLiveRenewalInvalid = (err: unknown): boolean =>
+  err instanceof ApiError && err.status === 409 && err.message === LIVE_RENEWAL_INVALID;
 /** A 409 body that names one of the non-crisis codes (and no crisis category). */
 export function nonCrisis409Code(body: unknown): string | null {
   if (!body || typeof body !== "object") return null;

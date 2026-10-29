@@ -42,7 +42,7 @@ import { screenForImmediateEscalation } from "../../safety/escalation";
 import type { ComposerAttachment } from "../../lib/companionAttachments";
 import { requestCompanionConsentReview } from "../../lib/companionConsent";
 import { COMPANION_CONVERSATION_EVENT, consumeConversationPanelRequest, consumeConversationVoiceRequest, conversationVoiceRequestPending, type CompanionConversationRequest } from "../../lib/companionConversation";
-import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError, isLiveResting, VoiceNoticeRequiredError } from "../../lib/api";
+import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError, isLiveResting, isLiveRenewalInvalid, VoiceNoticeRequiredError } from "../../lib/api";
 import { acknowledgeVoiceNotice, liveNoticeIdFrom, runtimeVoiceNoticeId, voiceNoticeAcknowledged, voiceNoticeShortLine, voiceNoticeTap } from "../../lib/voiceProviderNotice";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { recurringScenario } from "../../lib/patternEcho";
@@ -910,7 +910,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
 
     if (liveAvail) {
       try {
-        const { requestLiveMicrophone, startGeminiLive } = await import("../../lib/geminiLiveClient");
+        const { requestLiveMicrophone, startGeminiLive, LIVE_RENEWAL_REFUSED } = await import("../../lib/geminiLiveClient");
         if (!attempt.isCurrent()) return;
         micStream = await requestLiveMicrophone(attempt.signal);
         if (!attempt.isCurrent()) { releaseMic(); return; }
@@ -946,6 +946,11 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                     expiresAt: next.expiresAt, remainingMs: next.budget?.remainingMs, reportUsage: usageFor(next), usageId: next.usageSessionId };
                 } catch (renewError) {
                   if (isLiveResting(renewError)) return null;
+                  // Wave 4: the server will not chain this session (409
+                  // live_renewal_invalid, never the crisis screen): no retry,
+                  // and the talk ends at this slice with the closing line
+                  // (onTalkEnd → elev.aierrors.voiceTalkEnded).
+                  if (isLiveRenewalInvalid(renewError)) return LIVE_RENEWAL_REFUSED;
                   throw renewError;
                 }
               },
