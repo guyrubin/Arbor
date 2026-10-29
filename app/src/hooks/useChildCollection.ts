@@ -24,6 +24,12 @@ export interface ChildWriteOptions {
    * the caller take its receipt back and offer its own retry.
    */
   offline?: { onQueued: () => void; onSynced?: () => void; onRejected?: () => void };
+  /**
+   * B-DATA-14 r2: write only the fields given (a Firestore merge write), so a
+   * change another device made to the rest of the document survives. The
+   * sandbox merges into the stored row the same way.
+   */
+  merge?: boolean;
 }
 
 export interface ChildCollection<T extends WithId> {
@@ -203,7 +209,8 @@ export function useChildCollection<T extends WithId>(
     async (item: T, options?: ChildWriteOptions) => {
       if (scopeRef.current !== scope) throw new Error("The active child changed");
       if (remote && db && uid) {
-        const write = setDoc(doc(db, `users/${uid}/children/${childId}/${name}`, item.id), item as Record<string, unknown>);
+        const ref = doc(db, `users/${uid}/children/${childId}/${name}`, item.id);
+        const write = options?.merge ? setDoc(ref, item as Record<string, unknown>, { merge: true }) : setDoc(ref, item as Record<string, unknown>);
         // Existing callers retain queued-write semantics. A receipt that claims
         // acknowledgement opts in and stays pending while offline — unless it
         // also takes the B-DATA-14 bounded answer (`offline`).
@@ -226,7 +233,7 @@ export function useChildCollection<T extends WithId>(
       } else {
         const previous = itemsRef.current;
         const next = previous.some(value => value.id === item.id)
-          ? previous.map(value => value.id === item.id ? item : value)
+          ? previous.map(value => value.id === item.id ? (options?.merge ? { ...value, ...item } : item) : value)
           : [item, ...previous];
         // Persist before acknowledging the write. Quota/privacy-mode failures
         // reject the promise; the caller can keep its draft and offer retry.

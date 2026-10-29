@@ -523,12 +523,17 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const [voiceReviewOpen, setVoiceReviewOpen] = useState(false);
   const [proposalPending, setProposalPending] = useState(0);
   const [proposalFailed, setProposalFailed] = useState(false);
+  // B-ASKJB-49: the proposals route's crisis screen answered 409 on the talk's
+  // transcript: the review shows the crisis card (never a failure line, and
+  // the microphone stays off: the card renders only with voice off).
+  const [proposalCrisis, setProposalCrisis] = useState(false);
   const clearVoiceReview = () => {
     reviewAttemptRef.current = null;
     voiceSessionIdRef.current = "discarded-" + Date.now();
     setConversationProposals([]);
     setProposalPending(0);
     setProposalFailed(false);
+    setProposalCrisis(false);
     setVoiceReviewOpen(false);
   };
   const discardVoiceReview = () => { if (!proposalCommitRef.current) clearVoiceReview(); };
@@ -555,10 +560,14 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       if (checked.length) setConversationProposals((current) => mayReview() ? [...current, ...checked].slice(-8) : current);
     } catch (error) {
       if (!mayReview()) return;
-      setProposalFailed(true);
-      // Escalation remains owned by the existing voice safety path. Extraction
-      // failure is non-blocking: conversation continues and nothing is saved.
-      if (!(error instanceof EscalationRequiredError)) console.warn("Harbor proposal extraction unavailable", error);
+      // Extraction failure is non-blocking: conversation continues and
+      // nothing is saved. B-ASKJB-49: a 409 is not a failure, it is the
+      // crisis card in the review (helplines in the request's language).
+      if (error instanceof EscalationRequiredError) setProposalCrisis(true);
+      else {
+        setProposalFailed(true);
+        console.warn("Harbor proposal extraction unavailable", error);
+      }
     } finally {
       if (sessionId === voiceSessionIdRef.current) setProposalPending(count => Math.max(0, count - 1));
     }
@@ -859,6 +868,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     setConversationProposals([]);
     setProposalPending(0);
     setProposalFailed(false);
+    setProposalCrisis(false);
     if (voiceOnRef.current || liveCtlRef.current) stopVoice(false);
     setVoiceNotice(null);
     // Paint before the token/import/mic/socket awaits; X owns cancellation
@@ -2007,6 +2017,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
         {voiceTalkEnded && !voiceResting && <p role="status" data-testid="voice-review-ended" className="text-xs leading-relaxed pb-2" dir="auto" style={{ color: "var(--arbor-ink)" }}>
           {t("elev.aierrors.voiceTalkEnded")}
         </p>}
+        {proposalCrisis && <UrgentSupport testId="voice-review-urgent-support" requestLang={getAiLanguage()} lead={t("elev.safety.paused")} onSafety={() => { discardVoiceReview(); setActiveTab("safety"); }}
+          className="mb-2 min-w-0 rounded-xl border border-[var(--arbor-rule-strong)] bg-[var(--arbor-paper-deep)] px-3 py-2 text-xs leading-relaxed text-[var(--arbor-ink)]" />}
         <ConversationProposalTray
           inline
           proposals={conversationProposals}

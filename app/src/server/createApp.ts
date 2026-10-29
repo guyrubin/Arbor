@@ -24,6 +24,8 @@ import { createBillingWebhookRouter } from "./billing.js";
 import { apiFailureObserver, createOpsAlertsFromConfig } from "./opsAlerts.js";
 import { createAdminMetricsStore } from "./adminMetrics.js";
 import { initUsageRollup } from "./usageRollup.js";
+import { initStudioCostLedger } from "./studioCostLedger.js";
+import { withStudioPlanPlates } from "./studioPlanPlates.js";
 import { createConsultStore } from "./consultRequests.js";
 import { createWaitlistNotifierFromEnv, createWaitlistStore } from "./waitlist.js";
 import { createPushTokenStore } from "./pushTokens.js";
@@ -109,7 +111,7 @@ export const createApp = (config: ArborConfig) => {
   // ERR_ERL_UNEXPECTED_X_FORWARDED_FOR and rate-limits everyone as one IP.)
   app.set("trust proxy", 1);
   const framework = loadFramework();
-  const modelProvider = createModelProvider(config);
+  const modelProvider = withStudioPlanPlates(createModelProvider(config)); // B-KID-150: a plan-plate paint is studio spend
   // COACH-3 + AIR-8: register the config's real AI adapters at boot (duplicate
   // or malformed registrations throw here, not mid-request). The registry is
   // handed to the API router — /api/tts dispatches synthesis through it.
@@ -143,6 +145,8 @@ export const createApp = (config: ArborConfig) => {
   // ADM-1 / COST-3: founder metrics read-side + the daily token-usage rollup writer.
   const adminMetrics = createAdminMetricsStore(config);
   initUsageRollup(config);
+  // B-KID-150: studio production spend per shared asset, apart from the family meter.
+  initStudioCostLedger(config);
 
   // B-AIOPS-03: the one content-free incident sink (structured log always;
   // OPS_ALERT_WEBHOOK_URL when set), addressed to OPS_ALERT_OWNER.

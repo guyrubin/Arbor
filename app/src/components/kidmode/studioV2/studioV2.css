@@ -13,13 +13,19 @@
 @media(max-width:640px){
 .studio-v2{border-radius:0;min-block-size:100%;overflow:hidden}
 .studio-v2--home{aspect-ratio:auto;display:flex;flex-direction:column;min-block-size:max(830px,100svh);block-size:auto;padding-block:574px 12px}
-.studio-v2__header{inset-inline:20px;inset-block-start:22px;gap:12px;align-items:flex-start}
-.studio-v2__greeting{max-inline-size:calc(100% - 78px)}
-.studio-v2__greeting h1{font-size:clamp(28px,7.8vw,36px);display:block;line-height:1.1}
+.studio-v2__header{inset-inline:20px;inset-block-start:22px;gap:4px 12px;align-items:flex-start;flex-wrap:wrap}
+/* B-KID-162: line 1 = the greeting beside the exit; this zero-height break puts only the keepsakes chip on line 2 */
+.studio-v2__header::after{content:"";order:3;flex-basis:100%;block-size:0}
+.studio-v2__greeting{max-inline-size:calc(100% - 78px);flex:1 1 0;min-inline-size:0}
+.studio-v2__greeting h1{font-size:clamp(24px,6.6vw,32px);display:block;line-height:1.1}
+/* B-KID-162: a long name keeps to two lines, so the keepsakes chip below it never meets the doors */
+.studio-v2__greeting h1>span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .studio-v2__greeting h1>svg{display:none}
 .studio-v2__greeting p{font-size:14px;max-inline-size:220px;margin-block-start:6px}
 .studio-v2__header-actions{display:contents}
-.studio-v2__header-actions>.studio-v2__glass-button{position:absolute;inset-inline-start:0;inset-block-start:82px;padding:8px 12px;min-block-size:44px;font-size:12px;gap:7px}
+/* B-KID-162: the keepsakes chip flows under the greeting (it was pinned at 82px, so a long name hid "Pick a world" under it); the exit stays top-end */
+.studio-v2__header-actions>.studio-v2__glass-button{position:static;order:4;padding:8px 12px;min-block-size:44px;font-size:12px;gap:7px}
+.studio-v2__header-actions>:not(.studio-v2__glass-button){order:2}
 .studio-v2__header-actions>.studio-v2__glass-button>svg{inline-size:18px}
 .studio-v2__door{inline-size:30%;padding:7px 7px 9px;border-radius:14px}
 .studio-v2__door[data-world=stories]{inset-inline-start:4%;inset-inline-end:auto;inset-block-start:166px}
@@ -70,3 +76,5 @@
 @media(max-width:640px){.arbor-play>.studio-v2-bar{min-block-size:76px;padding-inline:10px!important}.arbor-play>.studio-v2-bar>[data-kid-bar-title]{font-size:18px!important}}
 /* Child headings must win over the parent shell's important serif/weight rules. */
 .arbor-play .studio-v2 :is(h1,h2,h3){font-family:Nunito,Heebo,sans-serif!important;font-weight:800!important;color:#fff!important}
+/* T7 (wave-3 kids round 2): a step not yet taken is a dot, never a numeral */
+.studio-v2__quest-dot{display:block;inline-size:10px;block-size:10px;border-radius:50%;background:currentColor;opacity:.75}

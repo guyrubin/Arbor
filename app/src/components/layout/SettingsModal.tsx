@@ -35,6 +35,7 @@ import { useCheckout } from "../../hooks/useCheckout";
 import { T } from "../../lib/tokens";
 import { ACCENT_THEMES, getSavedTheme, setTheme, type AccentTheme } from "../../lib/theme";
 import { resolveKidTheme, selectableThemes } from "../../lib/kidThemeManifest";
+import { BEDTIME_TIMES, validBedtime } from "../../lib/library/readMode";
 import { translate, type UiLang } from "../../lib/i18n";
 import { fmtDay } from "../../lib/formatDate";
 
@@ -370,6 +371,24 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               </button>
             ))}
           </div>
+        </Row>
+        </div>
+        )}
+        {/* B-BOOK-45: the parent's bedtime — from this time a book opens as the
+            bedtime read (night stage, slower voice, a Goodnight ending). */}
+        {childProfile && (
+        <div data-testid="settings-bedtime">
+        <Row icon={<Icon name="bedtime" size={18} />} title={t("set.bedtime.title", { name: childProfile.name?.split(" ")[0] ?? "" })} sub={t("set.bedtime.sub")}>
+          <select
+            aria-label={t("set.bedtime.title", { name: childProfile.name?.split(" ")[0] ?? "" })}
+            value={validBedtime(childProfile.bedtimeFrom) ?? ""}
+            onChange={(e) => { const next = validBedtime(e.target.value); if (next !== (validBedtime(childProfile.bedtimeFrom) ?? null)) void updateChild(childProfile.id, { bedtimeFrom: next ?? "" }); }}
+            className="min-h-11 rounded-lg px-2 text-xs font-bold"
+            style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
+          >
+            <option value="">{t("set.bedtime.off")}</option>
+            {BEDTIME_TIMES.map((time) => <option key={time} value={time}>{time}</option>)}
+          </select>
         </Row>
         </div>
         )}

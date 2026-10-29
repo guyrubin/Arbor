@@ -1473,6 +1473,10 @@ export const en: Dict = {
   // B-KID-70 (R-5): the child's ONE Kid Mode look (shown only with a real choice).
   "set.kidLook.title": "Look for {name}",
   "set.kidLook.sub": "One look for all of Kid Mode, from the next open.",
+  // B-BOOK-45: the parent's bedtime for library books (parent register).
+  "set.bedtime.title": "Bedtime books for {name}",
+  "set.bedtime.sub": "From this time a book reads slower, darker and quieter, and ends with Goodnight.",
+  "set.bedtime.off": "Off",
   "set.kidLook.film3d": "3D film",
   "set.kidLook.storybook": "Storybook",
   "set.memory.title": "What Arbor remembers",
@@ -4053,6 +4057,10 @@ export const he: Dict = {
   "set.section.kidModePinSub": "הנעילה ששומרת את מצב ילדים לילד ואת ההגדרות לכם.",
   "set.kidLook.title": "המראה של {name}",
   "set.kidLook.sub": "מראה אחד לכל מצב הילדים, מהפתיחה הבאה.",
+  // B-BOOK-45: שעת השינה לספרים (משלב ההורים). כתיבה בעברית: נדרשת בדיקת דובר שפת אם.
+  "set.bedtime.title": "ספרים לפני השינה של {name}",
+  "set.bedtime.sub": "מהשעה הזאת ספר נקרא לאט יותר, חשוך ושקט יותר, ומסתיים בלילה טוב.",
+  "set.bedtime.off": "כבוי",
   "set.kidLook.film3d": "סרט תלת־ממד",
   "set.kidLook.storybook": "ספר מאויר",
   "set.memory.title": "מה ארבור זוכר",
