@@ -62,10 +62,10 @@ const OUTCOME_KEY: Record<OfferCodeOutcome, string> = {
  * What submitting a code does: a code that is not one is refused here; with
  * no plan yet it is held for the first plan; with a plan it is redeemed now.
  */
-export function offerCodeRoute(code: string, hasPlan: boolean): { route: "refuse" | "hold" | "redeem"; normalized: string } {
+export function offerCodeRoute(code: string, hasPlan: boolean): { route: "refuse" | "hold" | "grant"; normalized: string } {
   const normalized = normalizeOfferCode(code);
   if (!offerForCode(normalized)) return { route: "refuse", normalized };
-  return { route: hasPlan ? "redeem" : "hold", normalized };
+  return { route: hasPlan ? "grant" : "hold", normalized };
 }
 
 /** The line for a held typed code the server refused at the first plan. */

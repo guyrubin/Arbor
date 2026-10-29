@@ -36,7 +36,7 @@ describe("B-GROWTH-43 · the typed code field", () => {
   it("routes a code: not a code is refused, no plan holds it, a plan redeems it now", () => {
     expect(offerCodeRoute("hello", true)).toEqual({ route: "refuse", normalized: "HELLO" });
     expect(offerCodeRoute(" arbor-abcd efgh ", false)).toEqual({ route: "hold", normalized: "ARBOR-ABCDEFGH" });
-    expect(offerCodeRoute("ABCDEFGH", true)).toEqual({ route: "redeem", normalized: "ARBOR-ABCDEFGH" });
+    expect(offerCodeRoute("ABCDEFGH", true)).toEqual({ route: "grant", normalized: "ARBOR-ABCDEFGH" });
   });
 
   it("the held receipt says when the code counts, and the button reads the same in HE as the card", () => {

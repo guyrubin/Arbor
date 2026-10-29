@@ -46,7 +46,7 @@ describe("B-GROWTH-43 · a typed code counts on the first plan", () => {
   it("a family that already has a plan is granted now", async () => {
     const { server, code, activate, ent } = await setup();
     const { route, normalized } = offerCodeRoute(code.toLowerCase(), true);
-    expect(route).toBe("redeem");
+    expect(route).toBe("grant");
     expect(await activate(normalized, "typed")).toMatchObject({ ok: true, status: "granted" });
     expect(ent.records.get("family")?.productId).toBe("referral_month");
     expect(await server.familyRedemption("family")).toMatchObject({ via: "typed" });
