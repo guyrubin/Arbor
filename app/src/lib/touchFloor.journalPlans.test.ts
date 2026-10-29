@@ -30,6 +30,7 @@ const FILES = {
   behaviors: "components/tabs/BehaviorsTab.tsx",
   plans: "components/tabs/PlansTab.tsx",
   captureBar: "components/overview/QuickCaptureBar.tsx",
+  routineTemplates: "components/plans/RoutineTemplates.tsx",
   routines: "components/plans/RoutinesCard.tsx",
 } as const;
 
@@ -48,8 +49,9 @@ const CONTROLS: { id: string; file: keyof typeof FILES; near: string }[] = [
   // W2-ASKJB critic r2: the hub's own Voice · Photo · Text tiles left; its
   // capture is Today's QuickCaptureBar (48 px tiles), mounted in BehaviorsTab.
   { id: "OBJ-BEH-06 capture tiles", file: "captureBar", near: "const TILE =" },
-  // B-ASKJB-26: a template chip now starts its routine board (no topic prefill).
-  { id: "OBJ-BEH-08 template chips", file: "plans", near: "startTemplatePlan(key)" },
+  // B-ASKJB-26: the template chips folded into the ready-made routine boards —
+  // the one template row left is RoutineTemplates' board chips.
+  { id: "OBJ-BEH-08 template chips", file: "routineTemplates", near: "data-routine-template={r.id}" },
   { id: "OBJ-BEH-08 suggestion chips", file: "plans", near: "setPlanChallengeTopic(s.topic)" },
   { id: "OBJ-BEH-08 refine in coach", file: "plans", near: 'source: "plans-coreg"' },
   { id: "OBJ-BEH-08 routine step input", file: "routines", near: "elev.closeloop.routines.addStep" },
@@ -101,7 +103,7 @@ describe("touch floor · the sub-44 shapes stay out of these files", () => {
     const prefix = '<button onClick={() => setPlanChallengeTopic(tpl)} className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition">';
     expect(prefix).not.toMatch(FLOOR);
     // …and the post-fix markup passes it.
-    expect(shellAround(read(FILES.plans), "startTemplatePlan(key)")).toMatch(FLOOR);
+    expect(shellAround(read(FILES.routineTemplates), "data-routine-template={r.id}")).toMatch(FLOOR);
   });
 
   it("every icon-only Routines control opts in explicitly (.touch-target)", () => {

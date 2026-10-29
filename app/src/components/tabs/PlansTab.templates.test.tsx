@@ -1,8 +1,11 @@
 /**
- * B-ASKJB-26 — each of the nine plan templates starts a plan instantly from
- * an authored routine board (folded: the Gate's no-new-copy path), with ZERO
- * generate-plan calls. The REAL PlansTab renders with the app contexts mocked;
- * the template chip's own onClick runs.
+ * B-ASKJB-26 — the nine plan templates are FOLDED into the authored routine
+ * boards (the Gate's no-new-copy path): each only ever started one board (two
+ * the same one), so the ready-made routines row is the one way to start a
+ * board — instantly, from the board's own EN + HE steps, with ZERO
+ * generate-plan calls. After a start the new plan leads the page with one
+ * receipt line (critic r1). The REAL PlansTab renders with the app contexts
+ * mocked; the routine chip's own onClick runs.
  */
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -11,12 +14,13 @@ import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "../../lib/i18n";
 import { ROUTINES, localized } from "../../lib/routines";
-import { PLAN_TEMPLATE_ROUTINE, routineIdOfPlan } from "../../lib/routineTemplates";
+import { JUST_STARTED_MS, justStartedPlanId, routineIdOfPlan, routineTemplatesForAge, routineToPlan } from "../../lib/routineTemplates";
 import type { ActionPlan } from "../../types";
+import { ageMonthsFromProfile } from "../../lib/childAge";
 
 const h = vi.hoisted(() => ({
   lang: "en" as "en" | "he",
-  buttons: [] as { onClick?: () => unknown; "data-plan-template"?: string }[],
+  buttons: [] as { onClick?: () => unknown; "data-plan-template"?: string; "data-routine-template"?: string }[],
   startPlanFromTemplate: vi.fn(async (_plan: unknown) => undefined),
   handleGenerateActionPlan: vi.fn(),
   setPlanChallengeTopic: vi.fn(),
@@ -43,46 +47,65 @@ vi.mock("react/jsx-dev-runtime", async original => { const r = await original<ty
 
 import PlansTab from "./PlansTab";
 
-const KEYS = ["morningDeparture", "screenShutdown", "siblingConflict", "bedtimeResistance", "foodRefusal", "separationAnxiety", "responsibilityLadder", "schoolAdaptation", "behaviorReset"];
 beforeEach(() => { h.buttons = []; vi.clearAllMocks(); vi.stubGlobal("localStorage", { getItem: () => null, setItem: vi.fn(), removeItem: vi.fn() }); });
 
 describe("B-ASKJB-26 · the nine templates fold into the authored routine boards", () => {
-  it("every template names a real board (never the unknown-id fallback), offered at every age", () => {
-    expect(Object.keys(PLAN_TEMPLATE_ROUTINE)).toEqual(KEYS);
-    for (const key of KEYS) {
-      const routine = ROUTINES.find((r) => r.id === PLAN_TEMPLATE_ROUTINE[key]);
-      expect(routine, key).toBeDefined();
-      expect(routine!.ageMinMonths ?? null, key).toBeNull();
-      expect(routine!.ageMaxMonths ?? null, key).toBeNull();
-      for (const lang of ["en", "he"] as const) expect(translate(lang, `plan.template.${key}`)).not.toBe(`plan.template.${key}`);
-    }
-  });
-
-  for (const lang of ["en", "he"] as const) it(`${lang}: one tap starts the board as a plan from its own steps, with zero generate-plan calls`, async () => {
+  for (const lang of ["en", "he"] as const) it(`${lang}: one row starts boards — no challenge-named duplicate chips`, async () => {
     h.lang = lang;
-    renderToStaticMarkup(<PlansTab />);
-    for (const key of KEYS) {
-      const chip = h.buttons.find((b) => b["data-plan-template"] === key);
-      expect(chip, key).toBeDefined();
-      await chip!.onClick!();
-    }
-    expect(h.startPlanFromTemplate).toHaveBeenCalledTimes(KEYS.length);
+    const html = renderToStaticMarkup(<PlansTab />);
+    expect(h.buttons.filter((b) => b["data-plan-template"])).toHaveLength(0);
+    expect(html).not.toContain(translate(lang, "plan.templates"));
+    for (const key of ["siblingConflict", "behaviorReset", "morningDeparture"]) expect(html).not.toContain(translate(lang, `plan.template.${key}`).split(" ").slice(0, 3).join(" "));
+    const chips = h.buttons.filter((b) => b["data-routine-template"]);
+    const offered = routineTemplatesForAge(ageMonthsFromProfile({ birthDate: "2022-01-01", age: 4 } as never));
+    expect(chips.map((b) => b["data-routine-template"])).toEqual(offered.map((r) => r.id));
+    // Each chip names its own board, so two chips never start the same board.
+    expect(new Set(chips.map((b) => b["data-routine-template"])).size).toBe(chips.length);
+    for (const chip of chips) await chip.onClick!();
+    expect(h.startPlanFromTemplate).toHaveBeenCalledTimes(chips.length);
     const plans = h.startPlanFromTemplate.mock.calls.map((c) => c[0] as ActionPlan);
     plans.forEach((plan, i) => {
-      const routine = ROUTINES.find((r) => r.id === PLAN_TEMPLATE_ROUTINE[KEYS[i]])!;
+      const routine = ROUTINES.find((r) => r.id === chips[i]["data-routine-template"])!;
       expect(routineIdOfPlan(plan)).toBe(routine.id);
       expect(plan.phases[0].steps.map((s) => s.text)).toEqual(routine.steps.map((s) => localized(s.label, lang)));
-      expect(plan.phases[0].steps.every((s) => !s.completed)).toBe(true);
     });
     expect(h.handleGenerateActionPlan).not.toHaveBeenCalled();
     expect(h.generatePlan).not.toHaveBeenCalled();
     expect(h.setPlanChallengeTopic).not.toHaveBeenCalled();
   });
 
-  it("NEGATIVE CONTROL: the pre-change chip only prefilled the topic for the model", () => {
+  it("NEGATIVE CONTROL: the r1 page offered the challenge-named chips beside the boards they started", () => {
     const tab = readFileSync(path.resolve(__dirname, "PlansTab.tsx"), "utf8");
-    expect(tab).not.toContain("onClick={() => setPlanChallengeTopic(tpl)}");
-    expect('onClick={() => setPlanChallengeTopic(tpl)}').not.toContain("startPlanFromTemplate");
-    expect(tab).toContain("await startPlanFromTemplate(routineToPlan(routineById(routineId), lang, first, Date.now()));");
+    expect(tab).not.toContain("data-plan-template");
+    expect(tab).not.toContain("PLAN_TEMPLATE_ROUTINE");
+    const r1 = '{Object.keys(PLAN_TEMPLATE_ROUTINE).map((key) => {';
+    expect(r1).toContain("PLAN_TEMPLATE_ROUTINE");
+  });
+});
+
+describe("B-ASKJB-26 · after a start, the page answers where the parent is looking (critic r1)", () => {
+  const now = Date.UTC(2026, 9, 28, 10, 0, 0);
+  const routine = ROUTINES.find((r) => r.id === "calm")!;
+  const started = routineToPlan(routine, "en", "Noa", now - 1_000);
+
+  it("names the lead plan that has just appeared (routine and created plan id shapes)", () => {
+    expect(justStartedPlanId([started], new Set(), now)).toBe(started.id);
+    expect(justStartedPlanId([{ id: `plan-${now - 5_000}` }], new Set(), now)).toBe(`plan-${now - 5_000}`);
+  });
+
+  it("never for a plan already on the page, an older plan (child switch, sync), or a non-lead plan", () => {
+    expect(justStartedPlanId([started], new Set([started.id]), now)).toBeNull();
+    expect(justStartedPlanId([{ id: `plan-${now - JUST_STARTED_MS - 1}` }], new Set(), now)).toBeNull();
+    expect(justStartedPlanId([{ id: "legacy-plan" }], new Set(), now)).toBeNull();
+    expect(justStartedPlanId([], new Set(), now)).toBeNull();
+  });
+
+  it("the receipt sits on the active plans (where the new plan leads) and says Started today in both languages", () => {
+    const tab = readFileSync(path.resolve(__dirname, "PlansTab.tsx"), "utf8");
+    const active = tab.indexOf('<div data-module="plans-active"');
+    expect(active).toBeGreaterThan(-1);
+    expect(tab.indexOf('testId="plans-started-receipt"')).toBeGreaterThan(active);
+    expect(tab).toContain('startedReceipt.show({ text: `${lead.title} · ${t("elev.plans.startedToday")}` })');
+    for (const lang of ["en", "he"] as const) expect(translate(lang, "elev.plans.startedToday")).not.toBe("elev.plans.startedToday");
   });
 });

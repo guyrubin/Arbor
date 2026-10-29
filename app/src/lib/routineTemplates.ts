@@ -51,22 +51,27 @@ export function routineToPlan(routine: Routine, lang: UiLang, firstName: string,
   };
 }
 
-/** B-ASKJB-26 — the nine problem templates on Plans fold into the authored
- *  routine boards (the Gate: folding avoids new copy). A template chip starts
- *  its board as a plan through `routineToPlan` — the board's own EN + HE
- *  phase and steps — with ZERO generate-plan calls. Keys are the
- *  `plan.template.<key>` dictionary keys; values are ROUTINES ids. */
-export const PLAN_TEMPLATE_ROUTINE: Readonly<Record<string, string>> = Object.freeze({
-  morningDeparture: "morning",
-  screenShutdown: "screens",
-  siblingConflict: "calm",
-  bedtimeResistance: "bedtime",
-  foodRefusal: "meal",
-  separationAnxiety: "goodbye",
-  responsibilityLadder: "tidy",
-  schoolAdaptation: "reconnect",
-  behaviorReset: "calm",
-});
+/** B-ASKJB-26 — the nine problem-named template chips on Plans are FOLDED
+ *  into the authored routine boards: each one only ever started one of these
+ *  boards (two started the same one), so the ready-made routines row is the
+ *  one way to start a board — the board's own EN + HE steps, zero
+ *  generate-plan calls, no new copy (the row's Gate).
+ *
+ *  After a start the new plan leads the page, above the row the parent tapped.
+ *  This names the lead plan that has just appeared — not seen on this page
+ *  before and created in the last two minutes (both plan id shapes end in the
+ *  creation epoch: `routine-<id>-<ms>`, `plan-<ms>`) — so the page can answer
+ *  where the parent is looking. A child switch or a synced older plan is
+ *  never "just started". */
+export const JUST_STARTED_MS = 120_000;
+export function justStartedPlanId(plans: readonly { id: string }[], seen: ReadonlySet<string>, nowMs: number): string | null {
+  const lead = plans[0];
+  if (!lead || seen.has(lead.id)) return null;
+  const m = /-(\d{13})$/.exec(lead.id);
+  if (!m) return null;
+  const age = nowMs - Number(m[1]);
+  return age >= 0 && age <= JUST_STARTED_MS ? lead.id : null;
+}
 
 /** The templates offered for a child of this age (months; null = every one). */
 export function routineTemplatesForAge(months: number | null | undefined): Routine[] {

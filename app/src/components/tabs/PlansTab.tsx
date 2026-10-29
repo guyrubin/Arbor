@@ -17,8 +17,8 @@ import RoutinesCard from "../plans/RoutinesCard";
 import RoutineTemplates from "../plans/RoutineTemplates";
 // v3 FEAT-07: a routine plan runs again every day, on its own board.
 import RoutineRunBoard from "../plans/RoutineRunBoard";
-import { PLAN_TEMPLATE_ROUTINE, routineIdOfPlan, routineToPlan } from "../../lib/routineTemplates";
-import { routineById } from "../../lib/routines";
+import { justStartedPlanId, routineIdOfPlan } from "../../lib/routineTemplates";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { useChildCollection } from "../../hooks/useChildCollection";
 /* B-ASKJB-28: the routines row only counts docs; their shape stays RoutinesCard's. */
 import { lastPlanOutcomes, planDoneSteps, planEcho, suggestedChallenges, todaysPlanStep } from "../../lib/plans";
@@ -51,7 +51,6 @@ export default function PlansTab() {
     acceptTodayAction,
     removeTodayAction,
     recordPlanWeeklyCheck,
-    startPlanFromTemplate,
   } = useArbor();
   const now = Date.now();
   const todayKey = dayKey(new Date(now));
@@ -88,21 +87,19 @@ export default function PlansTab() {
   // Create. ONE object now carries both — the stamp and the primary fill — and
   // lands on exactly one control: today's "I'll try it" on the first plan, or
   // Create in the empty state (where creating IS the way to a step).
-  // B-ASKJB-26: a template starts its routine board as a plan at once —
-  // the board's authored EN + HE steps (lib/routineTemplates), no model call.
-  const [templateStarting, setTemplateStarting] = React.useState<string | null>(null);
-  const startTemplatePlan = async (key: string) => {
-    const routineId = PLAN_TEMPLATE_ROUTINE[key];
-    if (!routineId || templateStarting) return;
-    setTemplateStarting(key);
-    try {
-      await startPlanFromTemplate(routineToPlan(routineById(routineId), lang, first, Date.now()));
-      // Ids only — never the plan text.
-      try { track("plan_template_start", { surface: "plans", template: routineId }); } catch { /* noop */ }
-    } finally {
-      setTemplateStarting(null);
-    }
-  };
+  // B-ASKJB-26 (critic r1): a plan that has just started (a ready-made
+  // routine, or a created plan) leads the page above the row the parent
+  // tapped — one receipt line on it, scrolled into view (ReceiptNoteLine).
+  const startedReceipt = useReceiptNote();
+  const seenPlanIds = useRef<Set<string>>(new Set());
+  React.useEffect(() => {
+    if (!plansLoaded) return;
+    const fresh = justStartedPlanId(actionPlans, seenPlanIds.current, Date.now());
+    actionPlans.forEach((p) => seenPlanIds.current.add(p.id));
+    const lead = fresh ? actionPlans[0] : null;
+    if (lead) startedReceipt.show({ text: `${lead.title} · ${t("elev.plans.startedToday")}` });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plansLoaded, actionPlans]);
   const hasPlan = actionPlans.length > 0;
   const primaryStamp = {
     "data-primary-move": "advance-plan-step",
@@ -112,29 +109,8 @@ export default function PlansTab() {
     <div data-module="plans-create" className={`${cardCls} p-6 space-y-4`}>
       <span className="text-[13px] font-semibold block" style={{ color: "var(--arbor-ink)" }}>{t("plan.create")}</span>
 
-      {/* Templates — start from a common challenge */}
-      <div className="flex flex-wrap gap-1.5">
-        <span className="t-xs font-bold self-center me-1" style={{ color: "var(--arbor-muted)" }}>{t("plan.templates")}</span>
-        {/* B-ASKJB-26: each template IS an authored routine board — one tap
-            starts it as a plan (EN + HE phases from the board), no model call. */}
-        {Object.keys(PLAN_TEMPLATE_ROUTINE).map((key) => {
-          const tpl = t(`plan.template.${key}`);
-          return (
-          <button
-            key={key}
-            type="button"
-            data-plan-template={key}
-            disabled={templateStarting !== null}
-            onClick={() => void startTemplatePlan(key)}
-            className="inline-flex min-h-11 items-center px-3 py-1.5 rounded-lg text-[12px] font-semibold transition disabled:opacity-60"
-            style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
-          >
-            {tpl.split(" ").slice(0, 3).join(" ")}…
-          </button>
-          );
-        })}
-      </div>
-
+      {/* B-ASKJB-26: the nine challenge-named chips folded into these boards
+          (each started one of them) — ONE row starts a board. */}
       {/* B-GROWTH-25: #/routines retired here — the twelve boards are templates
           (age-windowed), one tap starts a plan with no goal. */}
       <RoutineTemplates />
@@ -245,6 +221,7 @@ export default function PlansTab() {
       )}
 
       <div data-module="plans-active" className="space-y-8">
+        <ReceiptNoteLine note={startedReceipt.note} testId="plans-started-receipt" />
         {/* B-ASKJB-35 (c): ONE active plan leads with today's step as the
             single primary move; every other plan sits in one disclosure. */}
         {actionPlans.map((plan, planIdx) => {
