@@ -5,7 +5,7 @@
  * corpora (every string literal of three words or more), the round-10
  * acceptance table (__fixtures__/handoffFloorAcceptance.json, 292 rows, copied
  * read-only from a9b91e66), the critic's fresh sets (__fixtures__/
- * handoffFloorFreshSets.json: r9, r10, floor-probe 1-4) and every adjacent
+ * handoffFloorFreshSets.json: r9-r15, floor-probe 1-4) and every adjacent
  * pair of rows as a two-sentence note — and for five parent texts each (the
  * row's own, none, an EN and an HE hard moment, and the note itself):
  *
@@ -26,7 +26,10 @@
  *      keeps, the wrapper keeps;
  *   7. every restored piece carries a non-negated escalation command whose
  *      recipient is a professional, a helpline or the family (round 13), no
- *      discouraging word (round 14) and a governing condition (round 15).
+ *      discouraging word (round 14), a governing condition (round 15) that
+ *      qualifies — it names a harm or a hard moment, or its negated finding
+ *      negates a change, never an unspoken reassurance — and no deferral
+ *      (round 16).
  */
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -169,6 +172,7 @@ const T_GOVERNING = /\b(?:if|unless|in\s+case|in\s+the\s+event|any\s+time|each\s
 const T_PAST = /\b(?:was|were|did|had|found|tested|assessed|checked|last\s+(?:week|month|year|visit))\b|(?<!\p{L})(?:ו|ש|כש)?(?:בדקה|בדק|נבדק|נבדקה|מצאה|מצא|הראה|הראתה|שעבר)(?!\p{L})/iu;
 const T_LABEL = /\b(?:problems?|difficult\p{L}*|delays?|deficits?|impairments?|disorders?|issues?)\b|(?<!\p{L})[ובהלמש]{0,2}(?:בעי\p{L}*|קשי\p{L}*|קושי|עיכוב\p{L}*|ליקוי\p{L}*|לקות|הפרע\p{L}*)(?!\p{L})/iu;
 const T_CHUNK = /[,;:—–]|\s-\s/u;
+const T_ASSERTING = /^\s*(?:and|but|though|although|as|since|because|so|yet|while|whereas|which|who|that|plus)\b|^\s*(?:ו(?=\p{L})|אבל|אך|כי|מאחר|למרות|בעוד|אולם)/iu;
 /** The governing condition of the command in this clause, or null. */
 function governingCondition(clause: string, command: string): string | null {
   // the sentence that holds the command (a title's full stop does not end it), then its chunks
@@ -177,7 +181,46 @@ function governingCondition(clause: string, command: string): string | null {
   const k = chunks.findIndex((c) => c.includes(command));
   if (k < 0) return null;
   const candidates = [...chunks.slice(0, k + 1), (chunks[k + 1] ?? "").trim().split(/\s+/u).slice(0, 4).join(" ")];
-  return candidates.find((c) => T_GOVERNING.test(c)) ?? null;
+  const g = candidates.findIndex((c) => T_GOVERNING.test(c));
+  // round 16: the whole condition, from its governing chunk to the command's chunk (or the next chunk); a
+  // condition two chunks back behind an asserting "and …" / "ו…" chunk is read as main reads it (P2: R02/HR02)
+  if (g >= 0 && g < k && chunks.slice(g + 1, k).some((c) => T_ASSERTING.test(c))) return null;
+  return g < 0 ? null : g < k ? chunks.slice(g, k).join(",") : g === k ? chunks[k] : chunks[k + 1];
+}
+/* Round 16 (P1-C): a governing condition qualifies only when it names a harm or a hard moment (this test's own
+   list, or main's incident cues), or every negated finding in it negates a change ("no signs of calming");
+   "If there are no signs of anxiety" governs nothing. A restored piece never defers the contact. This test's own lists. */
+const T_CHANGE = /\b(?:calm\p{L}*|settl\p{L}*|improv\p{L}*|better|progress\p{L}*|stop\p{L}*|eas(?:e|es|ed|ing)|respon\p{L}*|chang\p{L}*|recover\p{L}*|let\s+up)\b|(?<!\p{L})[ולשה]?(?:רגיע\p{L}*|נרגע\p{L}*|הרגע\p{L}*|שיפור|השתפר\p{L}*|מפסיק\p{L}*|הפסק\p{L}*|התקדמות|הקלה|שינוי|תגוב\p{L}*)(?!\p{L})/iu;
+const T_HARM = /\b(?:hurt\p{L}*|harm\p{L}*|injur\p{L}*|danger\p{L}*|unsafe|bleed\p{L}*|bit|bites?|biting|hit|hits|hitting|kick\p{L}*|throw\p{L}*|threw|scream\p{L}*|cr(?:y|ies|ied|ying)|tantrum\p{L}*|meltdown\p{L}*|suicid\p{L}*|chok\p{L}*|breath\p{L}*|fever\p{L}*|seizure\p{L}*|faint\p{L}*|vomit\p{L}*|r[au]ns?\s+(?:away|off))\b|(?<!\p{L})[ושכה]{0,2}(?:פוגע\p{L}*|נפגע\p{L}*|פגיע\p{L}*|מרביץ\p{L}*|הרביץ\p{L}*|נשך\p{L}*|נושך\p{L}*|בועט\p{L}*|בעט\p{L}*|דוחף\p{L}*|זורק\p{L}*|צורח\p{L}*|צרח\p{L}*|בורח\p{L}*|ברח\p{L}*|בוכה|בכי|בכה|סכנה|מסוכן\p{L}*|התקף\p{L}*|חום|נשימה|מקיא\p{L}*|התעלפ\p{L}*)(?!\p{L})/iu;
+const T_DEFERRAL = /\b(?:next\s+(?:week|month|year|term|time|meeting|visit|appointment|check-?up|conference|pickup|pick-up)|(?:at|by)\s+the\s+end\s+of\s+the\s+(?:year|term|month|week|semester)|later\s+(?:this|in\s+the)\s+(?:week|month|year|term)|when\s+you\s+next\s+see|routine\s+check-?up|in\s+a\s+(?:few|couple\s+of)\s+(?:weeks|months)|eventually|at\s+some\s+point)\b|(?<!\p{L})(?:ב?פגישה\s+הבאה|ב?חודש\s+הבא|ב?שבוע\s+הבא|ב?שנה\s+הבאה|ב?פעם\s+הבאה|באסיפ\p{L}*|באספ\p{L}*|בסוף\s+ה(?:שנה|חודש|שבוע)|בהמשך|מתישהו|להמתין|רק\s+ב\p{L}+)(?!\p{L})/iu;
+const deferralIn = (text: string) => T_DEFERRAL.exec(text.replace(T_ENCOURAGING, " ").replace(T_CONDITION_SPAN, " "))?.[0] ?? null;
+/** Each negated finding in the text with its object (this test's own object boundary), as [start, end). */
+const negatedObjects = (text: string) => [...text.matchAll(new RegExp(NEGATED_FINDING.source, "giu"))].map((m) => {
+  const start = m.index ?? 0;
+  const tail = text.slice(start + m[0].length);
+  const afterHead = tail.replace(/^\p{L}*/u, "").replace(/^\s*(?:of|for|that|של|על)\s+/iu, "");
+  const stop = afterHead.search(OBJECT_END);
+  const end = start + m[0].length + (tail.length - afterHead.length) + (stop < 0 ? afterHead.length : stop);
+  return { start, end, text: text.slice(start, end) };
+});
+/** A harm or a hard moment the condition asserts (not one inside a negated finding), or only negated changes. */
+const qualifies = (condition: string) => {
+  const found = negatedObjects(condition);
+  const asserted = found.reduce((t, o) => t.slice(0, o.start) + " ".repeat(o.end - o.start) + t.slice(o.end), condition);
+  return T_HARM.test(asserted) || hasIncidentCue(asserted) || found.every((o) => T_CHANGE.test(o.text));
+};
+/** Every governing condition in a restored piece: a governing chunk and the chunks after it up to the command's. */
+function conditionRuns(piece: string): string[] {
+  return piece.split(/(?<=(?<!\b(?:Dr|Mr|Mrs|Ms|Prof|St))[.!?])\s+|;\s*|\n/u).flatMap((sentence) => {
+    const chunks = sentence.split(T_CHUNK);
+    // "with no …" / "ללא …" governs only at the start of a sentence, not "…, without delay"
+    return chunks.flatMap((chunk, i) => {
+      if (!T_GOVERNING.test(i === 0 ? chunk : `· ${chunk}`)) return [];
+      let end = i + 1;
+      while (end < chunks.length && chunks[end].search(ACTION_TEST) < 0) end++;
+      return [chunks.slice(i, end).join(",")];
+    });
+  });
 }
 const CONDITION_FRAGMENT = /^\s*(?:if|when|whenever|where|should|unless|in\s+case)\b|^\s*(?:ו)?(?:אם|כש|כאשר|במידה|במקרה)/iu;
 const referralsIn = (text: string) => [REFERRAL_EN, REFERRAL_HE].flatMap((re) => [...text.matchAll(new RegExp(re.source, `g${re.flags}`))].map((m) => m[0]));
@@ -239,6 +282,8 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
         if (clause?.main === "dropped") {
           const condition = governingCondition(clause.text, command.text);
           if (!condition || T_PAST.test(condition) || T_LABEL.test(condition) || discouragingIn(clause.text)) continue;
+          // round 16: nor one whose condition is only an unspoken reassurance, or that defers the contact
+          if (!qualifies(condition) || deferralIn(clause.text)) continue;
         }
         fail(`escalation command lost: ${command.text}`);
       }
@@ -248,7 +293,11 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
       // 7. every restored piece is an escalation: a non-negated command with a recipient (round 13, P1-C)
       for (const clause of trace.clauses.filter((c) => c.restored && c.out.trim())) {
         if (!hasEscalation(clause.out) && !(CONDITION_FRAGMENT.test(clause.out) && hasEscalation(out))) fail(`restored a piece with no escalation command: ${clause.out}`);
-        if (!T_GOVERNING.test(clause.out)) fail(`restored a piece no condition governs: ${clause.out}`);
+        const runs = conditionRuns(clause.out);
+        if (!runs.length) fail(`restored a piece no condition governs: ${clause.out}`);
+        else if (!runs.some(qualifies)) fail(`restored a piece whose condition is only an unspoken reassurance ("${runs[0].trim()}"): ${clause.out}`);
+        const deferral = deferralIn(clause.out);
+        if (deferral) fail(`restored a piece that defers the contact ("${deferral}"): ${clause.out}`);
         const discouraging = discouragingIn(clause.out);
         if (discouraging) fail(`restored a piece with a discouraging word ("${discouraging}"): ${clause.out}`);
         // round 13 (P2): a bare relay ("Please tell the family.") has nothing to pass on
@@ -268,7 +317,8 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
 describe("B-ASKJB-44 · the wrapper is monotonic over main's floor (property, every corpus, EN + HE)", () => {
   it("the corpora are all present", () => {
     expect(acceptance.length).toBe(292);
-    expect(fresh.length).toBe(306);
+    expect(fresh.length).toBe(352);
+    expect(fresh.filter((r) => r.id.startsWith("r15-")).length).toBe(46);
     expect(fresh.filter((r) => r.id.startsWith("r14-")).length).toBe(36);
     expect(fresh.filter((r) => r.id.startsWith("r13-")).length).toBe(45);
     expect(fresh.filter((r) => r.id.startsWith("r11-")).length).toBe(62);
@@ -283,7 +333,7 @@ describe("B-ASKJB-44 · the wrapper is monotonic over main's floor (property, ev
   it.each([
     ["main's clinicalScan*.test.ts corpora", () => mainCorpus],
     ["the 292-row acceptance table (a9b91e66, read-only)", () => acceptance],
-    ["the critic's fresh sets r9 / r10 / r11 / r12 / r13 / r14 / floor-probe 1-4", () => fresh],
+    ["the critic's fresh sets r9 / r10 / r11 / r12 / r13 / r14 / r15 / floor-probe 1-4", () => fresh],
     ["every adjacent pair of rows as one two-sentence note", () => pairs],
   ] as const)("%s", (_name, corpus) => {
     const stats: Stats = { runs: 0, restored: 0, removed: 0, untouched: 0 };
