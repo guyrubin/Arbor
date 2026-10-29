@@ -669,3 +669,26 @@ describe("B-ASKJB-44 · /api/chat handoff notes carry no invented finding", () =
     expect(coachResponseZodSchema.parse(doneOf(events)?.contract).handoffNotes).toEqual({ teacher: "The parent says a two-minute warning helps.", professional: "" });
   });
 });
+
+/* B-ASKJB-44 round 11 — /api/chat runs the monotonic wrapper over the floor
+   (lib/handoffFloorWrapper): an escalation line the floor dropped reaches the
+   note again, and an attributed reassurance the parent never said goes. */
+describe("B-ASKJB-44 round 11 · /api/chat handoff notes: escalations kept, unspoken reassurance dropped (EN + HE)", () => {
+  it("the teacher note's escalation inside a condition survives; main's floor dropped it", async () => {
+    contractOverrides = { handoffNotes: {
+      teacher: "Mia joins circle time after a warning. If there are no signs of improvement in two weeks, see your pediatrician.",
+      professional: "כשאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.",
+    } };
+    const { events } = await postChatStreamed({ message: "Bedtime takes an hour every night. What can we try?", childProfile: { id: "c1", name: "Mia" } });
+    const notes = coachResponseZodSchema.parse(doneOf(events)?.contract).handoffNotes;
+    expect(notes.teacher).toBe("Mia joins circle time after a warning. If there are no signs of improvement in two weeks, see your pediatrician.");
+    expect(notes.professional).toBe("כשאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.");
+  });
+  it("a reported 'no evidence of …' the parent never said is dropped; the same words the parent wrote stay", async () => {
+    contractOverrides = { handoffNotes: { teacher: "Parent reports no evidence of attention or regulation difficulties.", professional: "ההורים מספרים שאין סימנים לקשיי קשב או ויסות." } };
+    const invented = await postChatStreamed({ message: "We have a few minutes together after dinner. What can we do?", childProfile: { id: "c1", name: "Mia" } });
+    expect(coachResponseZodSchema.parse(doneOf(invented.events)?.contract).handoffNotes).toEqual({ teacher: "", professional: "" });
+    const own = await postChatStreamed({ message: "Her teacher sees no evidence of attention or regulation difficulties. What can we do after dinner?", childProfile: { id: "c1", name: "Mia" } });
+    expect(coachResponseZodSchema.parse(doneOf(own.events)?.contract).handoffNotes.teacher).toBe("Parent reports no evidence of attention or regulation difficulties.");
+  });
+});
