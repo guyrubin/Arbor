@@ -8,6 +8,13 @@ export const fontMode = (mode = 'fallback') => {
   if (!['exact', 'fallback'].includes(mode)) throw new Error('FONT_MODE_INVALID');
   return mode;
 };
+/** B-SHELL-24: the app stylesheet self-hosts every text face (src/textFonts.css → /fonts/text) and
+ *  names no Google Fonts URL in code. The capture then needs no font cache: inside the offline
+ *  container the faces come from the app's own origin, like the icon font. */
+export function sourceFontsSelfHosted(source) {
+  const code = String(source).replace(/\/\*[\s\S]*?\*\//g, '');
+  return !/fonts\.(?:googleapis|gstatic)\.com/.test(code) && /@import\s+["']\.\/textFonts\.css["']\s*;/.test(code);
+}
 export function sourceFontUrl(source) {
   const imports = [...source.matchAll(/@import\s+url\(\s*['"]([^'"]+)['"]\s*\)\s*;/g)].map((m) => m[1]);
   if (imports.length !== 1 || imports[0] !== SOURCE_CSS_URL) throw new Error('FONT_SOURCE_URL_CHANGED');

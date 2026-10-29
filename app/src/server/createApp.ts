@@ -38,7 +38,7 @@ import { createProgramPilotRouter } from "./programPilotRoute.js";
 
 /**
  * SEC-2: tightened Content-Security-Policy (was disabled). Allows exactly what
- * the built client needs: self-hosted bundle, Google fonts, Firebase Auth
+ * the built client needs: self-hosted bundle and fonts, Firebase Auth
  * (popup iframe + token endpoints), Firestore, and the Gemini Live direct
  * browser session (HTTPS + WSS). Local dev keeps CSP off because the Vite dev
  * middleware injects inline/eval scripts and a websocket.
@@ -49,8 +49,9 @@ const cspDirectives = () => ({
   objectSrc: ["'none'"],
   frameAncestors: ["'self'"],
   scriptSrc: ["'self'", "https://apis.google.com"],
-  styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-  fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
+  // B-SHELL-24: every font is self-hosted (/fonts), so no Google Fonts origin is allowed.
+  styleSrc: ["'self'", "'unsafe-inline'"],
+  fontSrc: ["'self'", "data:"],
   imgSrc: ["'self'", "data:", "blob:", "https://lh3.googleusercontent.com"],
   mediaSrc: ["'self'", "blob:", "data:"],
   workerSrc: ["'self'", "blob:"],
