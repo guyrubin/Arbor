@@ -162,7 +162,7 @@ const isConditionText = (text: string, escalation: boolean, beforeCommand = fals
  * הבא", "ואל תחכו לפגישה") is stripped first. */
 const IMMEDIATE = /\b(?:right\s+now|now|right\s+away|straight\s+away|at\s+once|immediately|today|as\s+soon\s+as\s+possible|asap|without\s+(?:any\s+)?(?:delay|waiting)|urgently|promptly|no\s+matter\s+(?:the\s+(?:time|hour)|what\s+time(?:\s+it\s+is)?|how\s+late(?:\s+it\s+is)?|when)|(?:at\s+)?any\s+(?:time|hour)(?:\s+of\s+(?:the\s+)?(?:day|night))?|day\s+or\s+night|whatever\s+the\s+(?:time|hour))\b|(?<!\p{L})(?:ו)?(?:מיד|מייד|מיידית|באופן\s+מיידי|עכשיו|כבר\s+עכשיו|היום|עוד\s+היום|בהקדם(?:\s+האפשרי)?|(?:ללא|בלי)\s+(?:דיחוי|שיהוי|לחכות|המתנה)|בדחיפות|בכל\s+(?:שעה|זמן|רגע)|לא\s+משנה\s+(?:מה\s+|באיזו\s+)?(?:השעה|שעה|מתי)|גם\s+בלילה|יום\s+ולילה)(?!\p{L})/giu;
 const TIME_EN = /\b(?:tomorrow|tonight|yesterday|morning|afternoon|evening|night|noon|midday|lunch\p{L}*|bedtime|naptime|weekends?|days?|daily|weeks?|weekly|fortnight\p{L}*|months?|monthly|years?|yearly|annual\p{L}*|hours?|hourly|minutes?|spring|summer|autumn|winter|seasons?|holidays?|vacations?|breaks?|half-terms?|christmas|easter|hanukkah|chanukah|passover|ramadan|terms?|semesters?|quarters?|meetings?|conferences?|visits?|appointments?|check-?ups?|reviews?|pick-?ups?|drop-?offs?|open\s+(?:house|day)|later|eventually|soon|sometime|someday|next|upcoming|coming|following|end|ends|ended|ending|start|starts|started|beginning|before|after|until|till|once|wait\p{L}*|delay\p{L}*|postpon\p{L}*|defer\p{L}*|hold\s+off|times?|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|june|july|august|september|october|november|december)\b|\bin\s+(?:a|an|one|two|three|four|five|six|seven|eight|ten|\d+|a\s+few|a\s+couple\s+of|several)\s+\p{L}+/iu;
-const TIME_HE = /(?<!\p{L})[ובלמהכש]{0,3}(?:יום|ימים|יומיים|שבוע|שבועות|שבועיים|חודש|חודשים|חודשיים|שנה|שנים|שנתיים|שעה|שעות|שעתיים|דקה|דקות|בוקר|ערב|לילה|צהריים|צהרים|מחר|מחרתיים|סופ"ש|סוף|תחילת|קיץ|חורף|אביב|סתיו|חג|חגים|חגי|חופש|חופשה|חופשת|פגרה|פגישה|פגישת|פגישות|אסיפה|אסיפת|אספה|אספת|ביקור|ביקורי|איסוף|הבא|הבאה|הבאים|הבאות|הקרוב|הקרובה|הקרובים|הקרובות|המשך|אחר\s+כך|אחרי|לאחר|לפני|עד|בעוד|מתישהו|לחכות|חכו|חכה|חכי|נחכה|תחכו|להמתין|המתינו|המתן|לדחות|דחו|נדחה|מסתיים|מסתיימת|מסתיימים|נגמר|נגמרת|ייגמר|תיגמר|יסתיים|תסתיים|לקראת|שגרתי|שגרתית|קדנציה|סמסטר|מחצית)(?!\p{L})/u;
+const TIME_HE = /(?<!\p{L})[ובלמהכש]{0,3}(?:יום|ימים|יומיים|שבוע|שבועות|שבועיים|חודש|חודשים|חודשיים|שנה|שנים|שנתיים|שעה|שעות|שעתיים|דקה|דקות|בוקר|ערב|לילה|צהריים|צהרים|מחר|מחרתיים|סופ"ש|סוף|תחילת|קיץ|חורף|אביב|סתיו|חג|חגים|חגי|חופש|חופשה|חופשת|פגרה|פגישה|פגישת|פגישות|אסיפה|אסיפת|אספה|אספת|ביקור|ביקורי|תור|איסוף|הבא|הבאה|הבאים|הבאות|הקרוב|הקרובה|הקרובים|הקרובות|המשך|אחר\s+כך|אחרי|לאחר|לפני|עד|בעוד|מתישהו|לחכות|חכו|חכה|חכי|נחכה|תחכו|להמתין|המתינו|המתן|לדחות|דחו|נדחה|מסתיים|מסתיימת|מסתיימים|נגמר|נגמרת|ייגמר|תיגמר|יסתיים|תסתיים|לקראת|שגרתי|שגרתית|קדנציה|סמסטר|מחצית)(?!\p{L})/u;
 const carriesTime = (text: string) => TIME_EN.test(text) || TIME_HE.test(text);
 /** A monitoring duration belongs to a condition ("…, after two weeks, …", "אחרי שבועיים", "by lunchtime"); a
  *  calendar time ("next week", "after the holidays") between a condition and its command does not. */
@@ -200,6 +200,9 @@ const VISIT_NOUN_EN = String.raw`(?:visits?|appointments?|check-?ups?|consultati
 const VISIT_NOUN_HE = String.raw`(?:ביקור|תור|פגישה|בדיקה|הערכה|אבחון|ייעוץ)`;
 /** A command that is only the visit noun ("visit with the pediatrician"), with no booking verb before it. */
 const VISIT_COMMAND = new RegExp(String.raw`^(?:(?:the|a|an|his|her|their|your|our)\s+)?${VISIT_NOUN_EN}\b`, "iu");
+/* Round 19 (P1-B2): a Hebrew visit noun the command does not book is the time of the action ("עדכנו את ההורים
+ * בתור אצל רופאת הילדים"), as VISIT_COMMAND already reads the English one. */
+const VISIT_UNBOOKED_HE = new RegExp(String.raw`(?<!\p{L})[ולבמה]{0,2}${VISIT_NOUN_HE}(?!\p{L})`, "u");
 const BOOKED_BEFORE = new RegExp(String.raw`\b${BOOK_EN}\s+(?:\S+\s+){0,3}$|(?<!\p{L})ו?${BOOK_HE}\s+(?:\S+\s+){0,3}$`, "iu");
 const HE_PRO = String.raw`(?:רופא\p{L}*|איש\s+מקצוע|אשת\s+מקצוע|אנשי\s+מקצוע|גורם\s+מקצועי|גורמי\s+מקצוע|מטפל\p{L}*|פסיכולוג\p{L}*|פסיכיאטר\p{L}*|יועצ\p{L}*|יועץ|אחות|אחיות|קלינאי\p{L}*|מרפא\p{L}*|נוירולוג\p{L}*|טיפת\s+חלב|ד"ר|דוקטור)`;
 const VISIT_WITH_PRO = new RegExp(String.raw`\b${BOOK_EN}\s+(?:(?:a|an|the|another|their|his|her|your)\s+)?(?:[\p{L}'’-]+\s+){0,2}?${VISIT_NOUN_EN}\s+(?:to|with|at|by)\s+(?:(?:a|an|the|your|his|her|their)\s+)?(?:[\p{L}'’-]+\s+){0,2}?${PRO_EN}\b|(?<!\p{L})ו?${BOOK_HE}\s+(?:\S+\s+){0,2}?[ולב]?${VISIT_NOUN_HE}\s+(?:(?:אצל|עם|של)\s+)?(?:ה|ל|ב)?${HE_PRO}`, "giu");
@@ -439,7 +442,7 @@ function defersContact(text: string): boolean {
     }
   }
   masked = withoutNegatedTiming(masked).replace(IMMEDIATE, (m) => " ".repeat(m.length)).replace(ENCOURAGING, (m) => " ".repeat(m.length));
-  return deferred || carriesTime(masked);
+  return deferred || carriesTime(masked) || VISIT_UNBOOKED_HE.test(masked);
 }
 
 /** A chunk that continues a condition list: "…, or there are no signs…", "…, או שאין…". */

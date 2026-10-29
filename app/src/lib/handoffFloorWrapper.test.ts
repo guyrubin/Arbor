@@ -293,6 +293,16 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     expect(withoutHandoffFindings(line, { parentText })).not.toBe(line);
     expect(handoffFloor(line, { parentText })).toBe(line);
   });
+  /* Round 19 (P1-B2): a Hebrew visit noun the command does not book is timing (critic fresh18 HD02). */
+  it("an unbooked Hebrew visit stays as main leaves it; a booked one restores", () => {
+    const line = "כשאין סימנים של רגיעה, עדכנו את ההורים בתור אצל רופאת הילדים.";
+    expect(withoutHandoffFindings(line, { parentText: HARD_MOMENT_HE })).toBe("");
+    expect(handoffFloor(line, { parentText: HARD_MOMENT_HE })).toBe("");
+    for (const booked of ["כשאין סימנים של רגיעה, קבעו תור אצל רופאת הילדים.", "כשאין סימנים של רגיעה, הפנו לייעוץ אצל פסיכולוג."]) {
+      expect(withoutHandoffFindings(booked, { parentText: HARD_MOMENT_HE })).not.toBe(booked);
+      expect(handoffFloor(booked, { parentText: HARD_MOMENT_HE })).toBe(booked);
+    }
+  });
   /* Round 18 (P1-A): a negation that governs before / until / earlier (לפני, עד, מוקדם) is a deferral, never
      stripped (critic fresh17 N02, N03, HN02, HN03); "don't wait until pickup" still restores (N04, HN04). */
   it.each([
