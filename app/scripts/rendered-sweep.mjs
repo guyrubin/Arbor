@@ -93,6 +93,7 @@ import { classifyReleaseConsole, createRuntimeDiagnostics } from "./capture/runt
 import { SWEEP_LAW_EXIT, expectedBaseCells, sweepLawExplained, sweepLawExplainedLines, sweepLawFailures, sweepLawLines } from "./capture/sweep-law.mjs";
 import { initializeSyntheticOnline } from "./capture/small-state.mjs";
 import { CELL_BOUND_MS, SETTLE_BUDGET_MS, WARMUP_BOUND_MS, raceBound, settleOverlayGeometry, sweepDeadlineMs } from "./capture/sweep-bound.mjs";
+import { VERDICT_TEXT_PATTERNS } from "./capture/verdict-tokens.mjs";
 import { captureFontContextOptions, installOfflineFonts, captureScreenshot } from "./capture/font-runtime.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -360,7 +361,7 @@ function initScript({ lang }) {
 }
 
 /* ── in-page: the per-cell record ────────────────────────────────────────── */
-function collect({ lang, allowLatin }) {
+function collect({ lang, allowLatin, verdict = [], region: regionKind = "main" }) {
   const vh = window.innerHeight;
   const SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "HEAD", "TITLE", "META", "LINK"]);
   const boxOf = (el) => {
@@ -535,8 +536,13 @@ function collect({ lang, allowLatin }) {
   //   uppercase         elements holding visible text with text-transform: uppercase
   //   gradients         elements whose computed background-image contains "gradient"
   //   screens           main's height / viewport height, one decimal
+  //   verdictTokens     B-INF-08: percentages, achievement ratios, graded words (the pattern
+  //                     sources come from scripts/capture/verdict-tokens.mjs), progress bars,
+  //                     and area rows painted in more than one background (counted once)
+  // A state that declares `measure: "dialog"` (capture-open) is weighed in its open modal.
   const weight = (() => {
-    const region = main || root;
+    const dialogRegion = regionKind === "dialog" ? [...document.querySelectorAll('[role="dialog"][aria-modal="true"]')].find((el) => visible(el)) : null;
+    const region = dialogRegion || main || root;
     const iconFontEl = (el) => /material (symbols|icons)/i.test(getComputedStyle(el).fontFamily);
     const hasBox = (el) => {
       const r = el.getBoundingClientRect();
@@ -557,6 +563,8 @@ function collect({ lang, allowLatin }) {
       if (r.top < vh && r.bottom > 0) tappableAboveFold++;
     }
     const sizes = new Set();
+    const verdictPatterns = verdict.map((source) => new RegExp(source, "iu"));
+    let verdictTokens = 0;
     for (const el of region.querySelectorAll("*")) {
       if (SKIP.has(el.tagName)) continue;
       const cs = getComputedStyle(el);
@@ -568,12 +576,57 @@ function collect({ lang, allowLatin }) {
         if (px < 12) under12++;
       }
       if (cs.textTransform === "uppercase") uppercase++;
+      const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent || "").join(" ");
+      if (verdictPatterns.some((re) => re.test(own))) verdictTokens++;
     }
+    for (const el of region.querySelectorAll('[role="progressbar"], progress')) if (visible(el) && hasBox(el)) verdictTokens++;
+    const rowPaint = new Set([...region.querySelectorAll('[data-testid="dev-map-row"], [data-testid="dev-map-tile"]')]
+      .filter((el) => visible(el)).map((el) => { const cs = getComputedStyle(el); return `${cs.backgroundColor}|${cs.backgroundImage}`; }));
+    if (rowPaint.size > 1) verdictTokens++;
     const height = Math.max(region.scrollHeight || 0, region.getBoundingClientRect().height || 0);
     return {
       tappableAboveFold, tappable, textSizes: sizes.size, under12, uppercase, gradients,
       screens: Math.round((height / vh) * 10) / 10,
+      verdictTokens,
+      ...(dialogRegion ? { region: "dialog" } : {}),
     };
+  })();
+
+  // B-INF-09 — the chrome's own weight, over every [data-chrome] region (the phone dock and
+  // strip, the sidebar, the top bar): tappable controls, distinct text sizes, text under 12 px,
+  // upper case, gradients and controls under 44 px. Visible elements only, icon spans excluded.
+  const chromeWeight = (() => {
+    const regions = [...document.querySelectorAll("[data-chrome]")].filter((el) => visible(el));
+    const iconFontEl = (el) => /material (symbols|icons)/i.test(getComputedStyle(el).fontFamily);
+    const holdsText = (el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+    const CONTROL = 'a[href], button, [role="button"], input:not([type="hidden"]), select, textarea';
+    const controls = new Set();
+    const texts = new Set();
+    for (const region of regions) {
+      for (const el of region.querySelectorAll(CONTROL)) controls.add(el);
+      for (const el of region.querySelectorAll("*")) texts.add(el);
+    }
+    let tappable = 0, sub44 = 0, under12 = 0, uppercase = 0, gradients = 0;
+    const sizes = new Set();
+    for (const el of controls) {
+      if (el.closest('[aria-hidden="true"], [inert]') || !visible(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width <= 1 || r.height <= 1) continue;
+      const cs = getComputedStyle(el);
+      if (/^inset\(50%\)$/.test(cs.clipPath)) continue; // a clipped sr-only control
+      tappable++;
+      if (r.width < 44 || r.height < 44) sub44++;
+    }
+    for (const el of texts) {
+      if (SKIP.has(el.tagName) || !visible(el)) continue;
+      const cs = getComputedStyle(el);
+      if ((cs.backgroundImage || "").includes("gradient")) gradients++;
+      if (!holdsText(el) || iconFontEl(el)) continue;
+      const px = parseFloat(cs.fontSize);
+      if (Number.isFinite(px)) { sizes.add(cs.fontSize); if (px < 12) under12++; }
+      if (cs.textTransform === "uppercase") uppercase++;
+    }
+    return { regions: regions.map((el) => el.getAttribute("data-chrome")), tappable, textSizes: sizes.size, under12, uppercase, gradients, sub44 };
   })();
 
   const de = document.documentElement;
@@ -598,6 +651,7 @@ function collect({ lang, allowLatin }) {
     sub44AboveFold: sub44,
     sub44Count: sub44.length,
     weight,
+    chromeWeight,
     overflow: { scrollWidth: de.scrollWidth, clientWidth: de.clientWidth },
   };
 }
@@ -1234,6 +1288,19 @@ const STATES = {
       },
     },
     {
+      // B-INF-08: the capture sheet open with a note typed — weighed in the sheet itself
+      // (`measure: "dialog"`), so its buttons, hints and fills meet the weight caps.
+      name: "capture-open",
+      measure: "dialog",
+      writes: "types a note into the capture sheet; nothing is saved (the sheet is never submitted)",
+      run: async (h) => {
+        await h.click("main [data-capture-tile=text]", [], "the Text capture tile");
+        const input = await h.need("[role=dialog] #quick-log-moment, [role=dialog] textarea, [role=dialog] input[type=text]", "the capture sheet");
+        await input.fill(CAPTURE_TEXT[h.lang]);
+        await h.need("[role=dialog] button[type=submit]", "the capture sheet's Save");
+      },
+    },
+    {
       name: "search",
       from: "journal?view=all",
       run: async (h) => {
@@ -1680,7 +1747,7 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
   const geometry = await page.evaluate(settleOverlayGeometry, SETTLE_BUDGET_MS).catch(() => ({ settled: false }));
   let rec;
   try {
-    rec = await page.evaluate(collect, { lang: vp.lang, allowLatin });
+    rec = await page.evaluate(collect, { lang: vp.lang, allowLatin, verdict: VERDICT_TEXT_PATTERNS, region: run?.state.measure ?? "main" });
   } catch (err) {
     rec = { mounted: false, collectError: classifyReleaseConsole(err?.message) };
   }
