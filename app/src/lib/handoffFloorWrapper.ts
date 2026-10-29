@@ -132,7 +132,7 @@ const carriesEscalation = (text: string) => findEscalationSpans(text).length > 0
 /** Always a condition. */
 const CONDITION_ALWAYS = /\b(?:if|unless|in\s+case|in\s+the\s+event|as\s+long\s+as|until|till|should\s+(?:he|she|they|it|there|the\s+\p{L}+))\b|(?<!\p{L})(?:ו)?(?:אם|במידה|במקרה|בכל\s+מקרה|עד\s+ש|עד\s+אשר|כל\s+עוד)(?!\p{L})/iu;
 /** "when / once / כש / כאשר …": a condition inside an escalation line, unless narrated in the past. */
-const CONDITION_WHEN = /\b(?:when|whenever|once|as\s+soon\s+as|any\s+time|each\s+time|every\s+time|where|wherever)\b|(?<!\p{L})(?:ו)?(?:כש(?=\p{L})|כאשר(?!\p{L})|בכל\s+פעם|ברגע\s+ש|בזמן\s+ש)/iu;
+const CONDITION_WHEN = /\b(?:when|whenever|once|as\s+soon\s+as|any\s+time|each\s+time|every\s+time|where|wherever)\b|(?<!\p{L})(?:ו)?(?:כש(?=\p{L})|כאשר(?!\p{L})|בכל\s+פעם|ברגע\s+ש|בזמן\s+ש|במקום\s+ש(?=\p{L}))/iu;
 /** "after / within / כעבור / אחרי …" makes a condition only with a linked absence ("after 20 minutes WITH no
  *  signs", "אחרי 20 דקות שאין", "כעבור 20 דקות ללא"); "after two weeks there are no signs of X" asserts X. */
 const CONDITION_TIME = /\b(?:after|within|over|by)\b|(?<!\p{L})(?:ו)?(?:אחרי|לאחר|כעבור|תוך)(?!\p{L})/iu;
@@ -150,7 +150,7 @@ const isConditionText = (text: string, escalation: boolean, beforeCommand = fals
  * "אל תהססו", "אין לחכות", "לא לחכות". */
 const DISCOURAGING_EN = /\b(?:not|no|never|none|nor|hold\s+off|avoid\p{L}*|premature\p{L}*|unnecessar\p{L}*|needless\p{L}*|pointless\p{L}*|refrain\p{L}*|rather\s+than|instead\s+of|wait\s+(?:before|until|and\s+see)|too\s+early)\b|n['’]t\b/iu;
 const DISCOURAGING_HE = /(?<!\p{L})(?:ו|ש|כש|ה)?(?:אין|לא|אל|מיותר\p{L}*|להימנע|הימנעו|במקום\s+ל\p{L}+|מוקדם\s+מדי|עדיף\s+לחכות|כדאי\s+לחכות)(?!\p{L})/u;
-const ENCOURAGING = /\b(?:(?:do|does|did|should|must|will|would)\s+not|don['’]t|doesn['’]t|shouldn['’]t|never|not)\s+(?:hesitate|wait|delay)\b|\bwithout\s+(?:delay|waiting|hesitat\p{L}*)\b|(?<!\p{L})(?:אל\s+(?:תהסס\p{L}*|תחכ\p{L}*|תתמהמה\p{L}*)|(?:אין|לא)\s+(?:לחכות|להסס|להתמהמה)|(?:בלי|ללא)\s+(?:לחכות|להסס|דיחוי|היסוס))(?!\p{L})/giu;
+const ENCOURAGING = /\b(?:(?:do|does|did|should|must|will|would)\s+not|don['’]t|doesn['’]t|shouldn['’]t|never|not)\s+(?:hesitate|wait|delay|put\s+(?:it\s+)?off|hold\s+off)\b|\bwithout\s+(?:delay|waiting|hesitat\p{L}*)\b|\bnot\s+(?:just|only)\b|\bno\s+matter\b|(?<!\p{L})(?:אל\s+(?:תהסס\p{L}*|תחכ\p{L}*|תתמהמה\p{L}*|תדח\p{L}*)|(?:אין|לא)\s+(?:לחכות|להסס|להתמהמה|להתעכב|לדחות)|(?:בלי|ללא)\s+(?:לחכות|להסס|דיחוי|היסוס)|ו?לא\s+רק|לא\s+משנה)(?!\p{L})/giu;
 /** The negated finding a condition names ("no signs of calming", "does not settle", "אין סימנים", "לא נרגע"). */
 const CONDITION_NEGATION = /\b(?:no|without|not|n['’]t)\s+(?:\p{L}+\s+){0,3}?(?:signs?|evidence|indications?|symptoms?|improvement|progress|change|response|calm\p{L}*|settl\p{L}*|better|easing)\b|\b(?:does|did|do|is|are|was|were)\s*(?:not|n['’]t)\s+(?:calm|settl|stop|improv|respond|eat|sleep|ease|get\s+better)\p{L}*|(?<!\p{L})(?:ו|ש|כש)?(?:אין|ללא|בלי|לא)\s+(?:שום\s+)?(?:סימנ\p{L}*|סימן|עדות|שיפור|התקדמות|שינוי|תגובה|רגיעה|נרגע\p{L}*|מצליח\p{L}*|מפסיק\p{L}*)/giu;
 const CONDITION_MARKERS = () => [new RegExp(CONDITION_ALWAYS.source, "giu"), new RegExp(CONDITION_WHEN.source, "giu")];
@@ -177,6 +177,42 @@ function discouragedChunk(text: string, command: { index: number; text: string }
   const end = tailMatch < 0 ? text.length : afterIdx + tailMatch;
   const chunk = text.slice(start, end);
   return discourages(chunk, [{ index: command.index - start, text: command.text }]);
+}
+
+/* Round 15 (P1-B): what governs a command. The condition words main's own escalation line rests on (if /
+ * when / where / whenever / as soon as / should / in case / unless / until; אם / כש / כאשר / במקרה ש /
+ * ברגע ש / במידה ו …), a time with a linked absence ("after 20 minutes with no signs …", "כעבור 20 דקות
+ * ללא …"), or an absolute "With no signs of …," ahead of the command; never narrated in the past. "once"
+ * counts only before a subject ("once he …", never "once a week"). */
+const GOVERNING_WORD = /\b(?:if|unless|in\s+case|in\s+the\s+event|as\s+long\s+as|until|till|should\s+(?:he|she|they|it|there|the\s+\p{L}+)|when|whenever|where|wherever|as\s+soon\s+as|any\s+time|each\s+time|every\s+time|once\s+(?:he|she|they|it|there|you|the))\b|(?<!\p{L})(?:ו)?(?:אם|במידה|במקרה|בכל\s+מקרה|כל\s+עוד|כאשר|בכל\s+פעם)(?!\p{L})|(?<!\p{L})(?:ו)?(?:עד|ברגע|בזמן|במקום|במקרה|בכל\s+פעם)\s+ש(?=\p{L})|(?<!\p{L})(?:ו)?כש(?=\p{L})/iu;
+const governs = (text: string, beforeCommand: boolean) => !PAST.test(text) || CONDITION_ALWAYS.test(text)
+  ? GOVERNING_WORD.test(text) || (CONDITION_TIME.test(text) && LINKED_ABSENCE.test(text)) || (beforeCommand && ABSOLUTE_START.test(text))
+  : false;
+/** True when a condition governs a command in the text: inside the command's chunk, in a leading condition
+ *  clause attached to it, or in the clause right after it. */
+function governedByCondition(text: string): boolean {
+  const { body } = splitTail(text);
+  const chunks = chunksOf(body);
+  const chunkText = (k: number) => body.slice(chunks[k].start, chunks[k].end).trim();
+  for (let k = 0; k < chunks.length; k++) {
+    const own = chunkText(k);
+    const commands = findEscalationCommands(own);
+    if (!commands.length) continue;
+    const head = own.slice(0, commands[0].index);
+    const tail = own.slice(commands[commands.length - 1].index + commands[commands.length - 1].text.length);
+    if (governs(head, true) || governs(tail, false)) return true;
+    // a leading condition clause: the chunks before it, back to one that opens the condition
+    if (!ASSERTIVE_START.test(own) || /^then\b/iu.test(own)) {
+      for (let j = k - 1; j >= 0; j--) {
+        const t = chunkText(j);
+        if (governs(t, true)) return true;
+        if (ASSERTIVE_START.test(t) || hasCommand(t)) break;
+      }
+    }
+    // the condition right after it: "Call the family, if needed."
+    if (k + 1 < chunks.length && governs(chunkText(k + 1).split(/\s+/u).slice(0, 4).join(" "), false)) return true;
+  }
+  return false;
 }
 
 /** A chunk that continues a condition list: "…, or there are no signs…", "…, או שאין…". */
@@ -535,6 +571,10 @@ function restoreEscalation(segment: string, opts: HandoffFloorOptions): string |
   }
   if (!keep.some((p) => hasCommand(p.text))) return null;
   const restored = assemble(keep, tail, removedLast);
+  // Round 15 (P1-B): main's own escalation line is a condition plus a referral. A restored command must be
+  // governed by a condition (a leading condition clause, or its condition after it); an ungoverned command
+  // is never restored, whatever its wording. The discouraging check stays as a second line of defence.
+  if (!governedByCondition(restored)) return null;
   // Round 14 (P1-B): a restored line that discourages anywhere outside its condition is not an escalation.
   if (discourages(restored, findEscalationCommands(restored))) return null;
   // Round 13 (P2): a relay command whose message was the cut finding ("Please tell the family [that there

@@ -25,7 +25,8 @@
  *   6. a critic row's required text (`must`, fresh sets r11/r12) that main
  *      keeps, the wrapper keeps;
  *   7. every restored piece carries a non-negated escalation command whose
- *      recipient is a professional, a helpline or the family (round 13).
+ *      recipient is a professional, a helpline or the family (round 13), no
+ *      discouraging word (round 14) and a governing condition (round 15).
  */
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -160,6 +161,24 @@ const discouragingIn = (text: string) => {
   const masked = text.replace(T_ENCOURAGING, " ").replace(T_CONDITION_SPAN, " ").replace(T_CONDITION_NEGATION, " ");
   return T_DISCOURAGING.exec(masked)?.[0] ?? null;
 };
+/* Round 15 (P1-C): main's own escalation line is a condition plus a referral. Every restored piece carries a
+   governing condition, and a command main dropped must come back only when a condition governs it in the note
+   (in its own chunk, a leading chunk, or the start of the next), not narrated in the past, naming no finding
+   label, with no discouraging word. This test's own lists. */
+const T_GOVERNING = /\b(?:if|unless|in\s+case|in\s+the\s+event|any\s+time|each\s+time|every\s+time|should\s+(?:he|she|they|there|it|the\s+\p{L}+)|when|whenever|where|wherever|as\s+soon\s+as|until|once\s+(?:he|she|they|there|it))\b|(?<!\p{L})(?:ו)?(?:אם|במידה|במקרה|כאשר|בכל\s+פעם)(?!\p{L})|(?<!\p{L})(?:ו)?(?:כש|(?:ברגע|במקום|עד|בזמן|במקרה|בכל\s+מקרה|בכל\s+פעם)\s+ש)(?=\p{L})|\b(?:after|within)\b[^,;:]*\b(?:with\s+no|without)\b|(?<!\p{L})(?:אחרי|כעבור|תוך)(?!\p{L})[^,;:]*(?:ללא|בלי|שאין)|^\s*(?:with\s+no|without)\b|^\s*(?:ללא|בלי)(?!\p{L})/iu;
+const T_PAST = /\b(?:was|were|did|had|found|tested|assessed|checked|last\s+(?:week|month|year|visit))\b|(?<!\p{L})(?:ו|ש|כש)?(?:בדקה|בדק|נבדק|נבדקה|מצאה|מצא|הראה|הראתה|שעבר)(?!\p{L})/iu;
+const T_LABEL = /\b(?:problems?|difficult\p{L}*|delays?|deficits?|impairments?|disorders?|issues?)\b|(?<!\p{L})[ובהלמש]{0,2}(?:בעי\p{L}*|קשי\p{L}*|קושי|עיכוב\p{L}*|ליקוי\p{L}*|לקות|הפרע\p{L}*)(?!\p{L})/iu;
+const T_CHUNK = /[,;:—–]|\s-\s/u;
+/** The governing condition of the command in this clause, or null. */
+function governingCondition(clause: string, command: string): string | null {
+  // the sentence that holds the command (a title's full stop does not end it), then its chunks
+  const sentence = clause.split(/(?<=(?<!\b(?:Dr|Mr|Mrs|Ms|Prof|St))[.!?])\s+|;\s*|\n/u).find((t) => t.includes(command)) ?? clause;
+  const chunks = sentence.split(T_CHUNK);
+  const k = chunks.findIndex((c) => c.includes(command));
+  if (k < 0) return null;
+  const candidates = [...chunks.slice(0, k + 1), (chunks[k + 1] ?? "").trim().split(/\s+/u).slice(0, 4).join(" ")];
+  return candidates.find((c) => T_GOVERNING.test(c)) ?? null;
+}
 const CONDITION_FRAGMENT = /^\s*(?:if|when|whenever|where|should|unless|in\s+case)\b|^\s*(?:ו)?(?:אם|כש|כאשר|במידה|במקרה)/iu;
 const referralsIn = (text: string) => [REFERRAL_EN, REFERRAL_HE].flatMap((re) => [...text.matchAll(new RegExp(re.source, `g${re.flags}`))].map((m) => m[0]));
 
@@ -211,9 +230,16 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
       for (const command of findEscalationCommands(row.note)) {
         if (lowerOut.includes(command.text.toLocaleLowerCase())) continue;
         // round 13 (P2): a relay whose only message is the invented finding stays dropped, as on main
-        const clause = trace.clauses.find((c) => c.text.includes(command.text));
+        // a command split by main's own clause unit ("Talk with Dr. | Levi") is read in the whole note
+        const clause = trace.clauses.find((c) => c.text.includes(command.text))
+          ?? { text: row.note, main: trace.clauses.some((c) => c.main === "dropped") ? "dropped" as const : "kept" as const, restored: false, out: "" };
         const message = clause ? clause.text.slice(clause.text.indexOf(command.text) + command.text.length) : "";
         if (RELAY_START.test(command.text) && clause?.main === "dropped" && NEGATED_FINDING.test(message)) continue;
+        // round 15: in a line main dropped, only a governed escalation must come back
+        if (clause?.main === "dropped") {
+          const condition = governingCondition(clause.text, command.text);
+          if (!condition || T_PAST.test(condition) || T_LABEL.test(condition) || discouragingIn(clause.text)) continue;
+        }
         fail(`escalation command lost: ${command.text}`);
       }
       for (const clause of trace.clauses.filter((c) => c.main === "kept")) {

@@ -144,15 +144,58 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     expect(withoutHandoffFindings("If there are no signs of improvement after two weeks, talk with Dr. Levi.")).toBe("Levi.");
   });
 
+  /* Round 15 (P1-B): main's own escalation line is a condition plus a referral; a command no condition
+     governs is never restored, whatever its wording. Each stays as main leaves it. */
   it.each([
-    ["Talk with Dr. Levi, who found no signs of delay when she assessed him.", "Talk with Dr. Levi."],
+    "Talk with Dr. Levi, who found no signs of delay when she assessed him.",
+    "Contact the family once a week, as there is no evidence of attention difficulties.",
+    "Please contact the family with any questions — he shows no signs of delay when playing with peers.",
+    "When tested last month he showed no signs of delay, so contact the family with questions.",
+    "דברו עם ד\"ר לוי, שאמרה שאין סימנים לעיכוב כשבדקה אותו.",
+    "There are no signs of a speech delay, so it is better to wait a few weeks before calling the speech therapist.",
+    "There are no signs of a speech delay, so I'd give it a few weeks before calling the pediatrician.",
+    "There is no evidence of anxiety, so there's no rush to call the family.",
+    "There is no evidence of anxiety, so calling the family can be left for later.",
+    "There are no signs of a speech delay, so let's see how the next month goes before contacting the speech therapist.",
+    "There are no signs of a speech delay, so a referral to a specialist can safely wait.",
+    "There are no signs of a speech delay, so give it two weeks before you call the family.",
+    "There are no signs of a speech delay, so instead of calling the pediatrician, wait for the next checkup.",
+    "אין סימנים לעיכוב בדיבור, ולכן אפשר להמתין ורק אחר כך להתקשר להורים.",
+    "אין סימנים לחרדה, ולכן לא בוער להתקשר להורים.",
+    "אין סימנים לעיכוב בדיבור, ולכן כדאי להמתין שבועיים ורק אז לפנות לרופאת הילדים.",
+    "אין סימנים לחרדה, ולכן עוד מוקדם להתקשר להורים.",
+    "אין עדות לקשיי קשב, ולכן עדיף להמתין ולהתקשר להורים רק בחודש הבא.",
+    "אין סימנים לחרדה, ולכן אין דחיפות להתקשר להורים.",
+    "אין סימנים לחרדה, ולכן במקום להתקשר להורים אפשר לחכות לאסיפה.",
+    "אין סימנים לעיכוב בדיבור, ולכן נחכה חודש לפני שנפנה לקלינאית ובינתיים לא להתקשר להורים.",
+  ])("ungoverned, not restored: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(handoffFloor(line, { parentText })).toBe(withoutHandoffFindings(line, { parentText }));
+    expect(findEscalationCommands(handoffFloor(line, { parentText }))).toEqual([]);
+  });
+  it.each([
+    "When there are no signs of calming, do not delay calling the family.",
+    "When he shows no signs of settling within 20 minutes, call the family without waiting.",
+    "Where there are no signs of calming, don't put off calling the family.",
+    "When there are no signs of calming, call the family, not just the teacher.",
+    "When there are no signs of calming, call the family immediately, no matter the time.",
+    "When she shows no signs of settling and does not stop crying, phone the family.",
+    "כשאין סימנים של רגיעה, אין להתעכב – התקשרו מיד להורים.",
+    "כשאין סימנים של רגיעה, אל תדחו – התקשרו להורים.",
+    "כשאין סימנים לשיפור, יש להתקשר להורים בלי לחכות.",
+    "כשאין סימנים של רגיעה, התקשרו להורים ולא רק לגננת.",
+    "כשהיא לא נרגעת ואין סימנים של רגיעה, התקשרו להורים.",
+    "במקום שאין סימנים של רגיעה, התקשרו להורים.",
+  ])("governed, restored whole: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).toBe("");
+    expect(handoffFloor(line, { parentText })).toBe(line);
+  });
+
+  it.each([
     ["When convenient, call the family, since he shows no signs of delay.", "When convenient, call the family."],
-    ["Contact the family once a week, as there is no evidence of attention difficulties.", "Contact the family once a week."],
     ["Contact the family when he is upset at drop-off, and note there are no signs of attention difficulties.", "Contact the family when he is upset at drop-off."],
-    ["Please contact the family with any questions — he shows no signs of delay when playing with peers.", "Please contact the family with any questions."],
-    ["When tested last month he showed no signs of delay, so contact the family with questions.", "Contact the family with questions."],
     ["When he cries and there are no signs of calming, call the family, because this is a sign of separation anxiety.", "When he cries and there are no signs of calming, call the family."],
-    ["דברו עם ד\"ר לוי, שאמרה שאין סימנים לעיכוב כשבדקה אותו.", "דברו עם ד\"ר לוי."],
     ["התקשרו להורים כשהוא נסער בבוקר, ואין סימנים לקשיי קשב.", "התקשרו להורים כשהוא נסער בבוקר."],
     ["אם יש שינוי, כדאי לעדכן את ההורים, כי אין סימנים לעיכוב בדיבור.", "אם יש שינוי, כדאי לעדכן את ההורים."],
     ["כשאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר להורים, כי זה סימן לחרדת פרידה.", "כשאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר להורים."],
@@ -161,10 +204,10 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     expect(handoffFloor(line, { parentText: HARD_MOMENT_EN })).toBe(restored);
   });
 
-  it("a condition naming a diagnosis the parent never wrote stays out; the command comes back (the parent's own word keeps it)", () => {
+  it("a condition naming a diagnosis the parent never wrote stays out, and the command it governed stays out with it (round 15); the parent's own word keeps the line", () => {
     const line = "After a month with no signs of improvement in his speech delay, contact the family.";
-    expect(handoffFloor(line, { parentText: HARD_MOMENT_EN })).toBe("Contact the family.");
-    expect(handoffFloor("כעבור חודש ללא סימנים לשיפור בעיכוב השפתי שלו, יש לעדכן את ההורים.", { parentText: HARD_MOMENT_HE })).toBe("יש לעדכן את ההורים.");
+    expect(handoffFloor(line, { parentText: HARD_MOMENT_EN })).toBe("");
+    expect(handoffFloor("כעבור חודש ללא סימנים לשיפור בעיכוב השפתי שלו, יש לעדכן את ההורים.", { parentText: HARD_MOMENT_HE })).toBe("");
     expect(handoffFloor(line, { parentText: "His speech delay is our main worry this month." })).toBe(line);
   });
 
@@ -173,9 +216,10 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     expect(withoutHandoffFindings(where, { parentText: HARD_MOMENT_EN })).toBe("");
     expect(handoffFloor(where, { parentText: HARD_MOMENT_EN })).toBe(where);
     const t18 = "After a month with no signs of improvement in his articulation problems, contact the family.";
-    expect(handoffFloor(t18, { parentText: HARD_MOMENT_EN })).toBe("Contact the family.");
-    expect(handoffFloor("כעבור חודש ללא סימנים לשיפור בבעיית ההגייה שלו, יש לעדכן את ההורים.", { parentText: HARD_MOMENT_HE })).toBe("יש לעדכן את ההורים.");
-    expect(handoffFloor("After a month with no signs of improvement in his behavior difficulties, contact the family.", { parentText: HARD_MOMENT_EN })).toBe("Contact the family.");
+    // round 15: without its condition the command is ungoverned, so the whole line stays as main leaves it
+    expect(handoffFloor(t18, { parentText: HARD_MOMENT_EN })).toBe("");
+    expect(handoffFloor("כעבור חודש ללא סימנים לשיפור בבעיית ההגייה שלו, יש לעדכן את ההורים.", { parentText: HARD_MOMENT_HE })).toBe("");
+    expect(handoffFloor("After a month with no signs of improvement in his behavior difficulties, contact the family.", { parentText: HARD_MOMENT_EN })).toBe("");
     // the parent's own label keeps the whole line; a plain trigger ("in his sleep") is no label
     expect(handoffFloor(t18, { parentText: "His articulation problems worry us" })).toBe(t18);
     const sleep = "After two weeks with no signs of improvement in his sleep, talk with your pediatrician.";
@@ -242,10 +286,13 @@ describe("rule (b) — a negated-finding reassurance the parent never said is re
 
   it("round 13 (P2): a parent's word counts only about the child, never when it qualifies a thing", () => {
     // G01 / HG01: "problems with the behaviour chart" says nothing about his behavior; the label leaves, the command stays
+    // (round 15: with its label condition gone the command is ungoverned, so the line stays as main leaves it)
     expect(handoffFloor("After a month with no signs of improvement in his behavior problems, contact the family.", { parentText: "He had no problems with the behaviour chart this week" }))
-      .toBe("Contact the family.");
+      .toBe("");
     expect(handoffFloor("כעבור חודש ללא סימנים לשיפור בבעיות ההתנהגות שלו, יש לעדכן את ההורים.", { parentText: "לא היו לו בעיות עם לוח ההתנהגות השבוע" }))
-      .toBe("יש לעדכן את ההורים.");
+      .toBe("");
+    expect(handoffFloor("After a month with no signs of improvement in his behavior problems, contact the family.", { parentText: "His behavior problems are our main worry" }))
+      .toBe("After a month with no signs of improvement in his behavior problems, contact the family.");
     // G02: "No problem at all with the new car seat" is about the seat; main keeps the teacher's line, rule (b) removes it
     const g02 = "His teacher says there are no signs of problems at drop-off.";
     expect(withoutHandoffFindings(g02, { parentText: "No problem at all with the new car seat" })).toBe(g02);
