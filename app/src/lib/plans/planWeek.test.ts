@@ -5,7 +5,7 @@
  * words only on an explicit tap; and Tonight: an active plan sits first.
  */
 import { describe, expect, it } from "vitest";
-import { activePlans, closePlan, keepPlan, leadPlan, nightMomentText, nightRecorded, nightsCount, patternsOnShelf, planShelf, recordNight, recordTry, runningPatternIds, tonightStepForChild, tonightStepForParent, triesThisWeek, tryRecorded, unrecordNight } from "./planWeek";
+import { activePlans, closePlan, keepPlan, leadPlan, nightMomentText, nightRecorded, nightsCount, patternsOnShelf, planShelf, recordNight, recordTry, runningPatternIds, tonightStepForChild, tonightStepForParent, triesThisWeek, tryRecorded, unrecordNight, numberInWords, withoutDigits } from "./planWeek";
 import { authoredPatterns } from "../library/plans/planBooks";
 import { readPlanBookDoc, type PlanBookDoc } from "../library/plans/planBookDoc";
 import { libraryBookEntries } from "../bookAssets";
@@ -73,7 +73,7 @@ describe("the active plan", () => {
 
   it("S1: tonight's step — the child's first sentence of step one without its label; the parent's own line", () => {
     const kid = tonightStepForChild(doc(), "en", "f");
-    expect(kid).toBe("every evening, we sit calmly on the toilet for about 5 minutes.");
+    expect(kid).toBe("every evening, we sit calmly on the toilet for about five minutes.");
     expect(kid).not.toMatch(/^step one/i);
     const he = tonightStepForChild(doc(), "he", "m");
     expect(he).not.toMatch(/^שלב/);
@@ -126,5 +126,27 @@ describe("the active plan", () => {
     const sheet: BookAssetsDoc = { id: PLAN_SHEET_BOOK_ID, bookId: PLAN_SHEET_BOOK_ID, sheetId: "h-0123456789abcdef", setId: "none", sheetManifest: { poses: Object.fromEntries(PLAN_POSES.map((p) => [p, { file: `${p}.webp` }])) }, files: PLAN_POSES.map((p) => `hero-sheets/h-0123456789abcdef/${p}.webp`), bytes: 1, createdAt: "t" };
     expect(libraryBookEntries([sheet], [doc()], now).map((e) => e.book.id)).toEqual(["plan-poo-sit.c1"]);
     expect(libraryBookEntries([sheet], [doc({ approvedAt: "2026-09-01T18:00:00.000Z" })], now).map((e) => e.book.id)).toEqual(["plan-poo-sit.c1"]);
+  });
+});
+
+describe("T7 (kid register: no digits): tonight's step for the child carries no numeral", () => {
+  it("numbers 0–99 in words, EN and HE (feminine)", () => {
+    expect(numberInWords(5, "en")).toBe("five");
+    expect(numberInWords(12, "en")).toBe("twelve");
+    expect(numberInWords(25, "en")).toBe("twenty-five");
+    expect(numberInWords(40, "en")).toBe("forty");
+    expect(numberInWords(5, "he")).toBe("חמש");
+    expect(numberInWords(12, "he")).toBe("שתים עשרה");
+    expect(numberInWords(25, "he")).toBe("עשרים וחמש");
+    expect(numberInWords(120, "he")).toBe("120"); // out of range: unchanged (never produced by a plan)
+  });
+  it("minutes read as words, with the one- and two-minute forms right in Hebrew", () => {
+    expect(withoutDigits("we sit calmly on the toilet for about 5 minutes.", "en")).toBe("we sit calmly on the toilet for about five minutes.");
+    expect(withoutDigits("for 1 minute.", "en")).toBe("for one minute.");
+    expect(withoutDigits("אנחנו יושבים בשקט על האסלה בערך 5 דקות.", "he")).toBe("אנחנו יושבים בשקט על האסלה בערך חמש דקות.");
+    expect(withoutDigits("בערך 1 דקות.", "he")).toBe("בערך דקה אחת.");
+    expect(withoutDigits("בערך 2 דקות.", "he")).toBe("בערך שתי דקות.");
+    expect(withoutDigits("no numbers here.", "en")).toBe("no numbers here.");
+    expect(withoutDigits("step 3 of 3", "en")).not.toMatch(/\d/);
   });
 });

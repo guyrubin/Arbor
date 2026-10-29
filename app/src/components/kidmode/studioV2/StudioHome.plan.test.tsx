@@ -85,6 +85,19 @@ describe("the kid home with a running plan (S1)", () => {
     expect(html).toContain("Which game would you like to try?");
   });
 
+  it("T7: the rail and Sprout's line carry no numeral — the plan's minutes read as words (EN and HE)", () => {
+    for (const lang of ["en", "he"] as const) {
+      h.lang = lang; h.rows = [plan]; h.books = [entry]; h.evening = true;
+      const html = home();
+      expect(html).toContain("data-kid-plan-rail");
+      expect(html).toContain("data-kid-plan-bubble");
+      const attrs = [...html.matchAll(/\s(?:aria-label|title|alt|aria-valuetext)="([^"]*)"/g)].map((m) => m[1]);
+      const childFacing = [html.replace(/<[^>]*>/g, " ").replace(/&[a-z#0-9]+;/gi, " "), ...attrs].join(" ");
+      expect(childFacing).not.toMatch(/\d/);
+      expect(childFacing).toContain(lang === "he" ? "חמש דקות" : "five minutes");
+    }
+  });
+
   it("a running plan takes the rail: hero title, tonight's step in the child's words, Open my book, I tried!", () => {
     h.rows = [plan]; h.books = [entry];
     const html = home();
@@ -93,7 +106,7 @@ describe("the kid home with a running plan (S1)", () => {
     expect(html).toContain("MY PLAN");
     expect(html).toContain(def.title.en);
     expect(html).toContain('data-kid-plan-step=""');
-    expect(strip(html)).toContain("Tonight: every evening, we sit calmly on the toilet for about 5 minutes.");
+    expect(strip(html)).toContain("Tonight: every evening, we sit calmly on the toilet for about five minutes.");
     expect(html).toContain('data-kid-plan-open=""');
     expect(html).toContain('data-kid-plan-tried=""');
     expect(html).toContain('aria-pressed="false"');
@@ -147,7 +160,7 @@ describe("the kid home with a running plan (S1)", () => {
     h.evening = true;
     const html = home();
     expect(html).toContain('data-kid-plan-bubble="plan-poo-sit"');
-    expect(strip(html)).toContain("Tonight: every evening, we sit calmly on the toilet for about 5 minutes. Want to read our plan?");
+    expect(strip(html)).toContain("Tonight: every evening, we sit calmly on the toilet for about five minutes. Want to read our plan?");
     expect(strip(html)).toContain("Read our plan");
     expect(html).not.toContain("Which game would you like to try?");
     expect(strip(html)).not.toMatch(GROWN_UP);
@@ -159,7 +172,7 @@ describe("the kid home with a running plan (S1)", () => {
     h.lang = "he"; h.rows = [plan]; h.books = [entry]; h.evening = true;
     const html = home();
     expect(html).toContain(def.title.he);
-    expect(strip(html)).toContain("הלילה: כל ערב, אנחנו יושבים בשקט על האסלה בערך 5 דקות.");
+    expect(strip(html)).toContain("הלילה: כל ערב, אנחנו יושבים בשקט על האסלה בערך חמש דקות.");
     expect(strip(html)).toContain("רוצה לקרוא את התוכנית שלנו?");
     expect(strip(html)).toContain("ניסיתי!");
     expect(strip(html)).not.toMatch(/Tonight|I tried|MY PLAN/);
