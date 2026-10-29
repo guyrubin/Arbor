@@ -73,6 +73,16 @@ export function justStartedPlanId(plans: readonly { id: string }[], seen: Readon
   return age >= 0 && age <= JUST_STARTED_MS ? lead.id : null;
 }
 
+/** Critic r2: the page's memory of plans already seen. The FIRST load primes
+ *  it with every plan there (no receipt: a reload within two minutes of a
+ *  start is not a new start); later loads name a just-started lead plan. */
+export function nextStartedPlan(seen: ReadonlySet<string> | null, plans: readonly { id: string }[], nowMs: number): { seen: Set<string>; leadId: string | null } {
+  const next = new Set(seen ?? []);
+  const leadId = seen === null ? null : justStartedPlanId(plans, seen, nowMs);
+  for (const p of plans) next.add(p.id);
+  return { seen: next, leadId };
+}
+
 /** The templates offered for a child of this age (months; null = every one). */
 export function routineTemplatesForAge(months: number | null | undefined): Routine[] {
   return routinesForAge(months);

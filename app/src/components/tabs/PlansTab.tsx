@@ -17,7 +17,7 @@ import RoutinesCard from "../plans/RoutinesCard";
 import RoutineTemplates from "../plans/RoutineTemplates";
 // v3 FEAT-07: a routine plan runs again every day, on its own board.
 import RoutineRunBoard from "../plans/RoutineRunBoard";
-import { justStartedPlanId, routineIdOfPlan } from "../../lib/routineTemplates";
+import { nextStartedPlan, routineIdOfPlan } from "../../lib/routineTemplates";
 import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { useChildCollection } from "../../hooks/useChildCollection";
 /* B-ASKJB-28: the routines row only counts docs; their shape stays RoutinesCard's. */
@@ -91,12 +91,13 @@ export default function PlansTab() {
   // routine, or a created plan) leads the page above the row the parent
   // tapped — one receipt line on it, scrolled into view (ReceiptNoteLine).
   const startedReceipt = useReceiptNote();
-  const seenPlanIds = useRef<Set<string>>(new Set());
+  // Critic r2: null until the first load, which primes it (nextStartedPlan).
+  const seenPlanIds = useRef<Set<string> | null>(null);
   React.useEffect(() => {
     if (!plansLoaded) return;
-    const fresh = justStartedPlanId(actionPlans, seenPlanIds.current, Date.now());
-    actionPlans.forEach((p) => seenPlanIds.current.add(p.id));
-    const lead = fresh ? actionPlans[0] : null;
+    const { seen, leadId } = nextStartedPlan(seenPlanIds.current, actionPlans, Date.now());
+    seenPlanIds.current = seen;
+    const lead = leadId ? actionPlans[0] : null;
     if (lead) startedReceipt.show({ text: `${lead.title} · ${t("elev.plans.startedToday")}` });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plansLoaded, actionPlans]);

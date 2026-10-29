@@ -14,7 +14,7 @@ import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "../../lib/i18n";
 import { ROUTINES, localized } from "../../lib/routines";
-import { JUST_STARTED_MS, justStartedPlanId, routineIdOfPlan, routineTemplatesForAge, routineToPlan } from "../../lib/routineTemplates";
+import { JUST_STARTED_MS, justStartedPlanId, nextStartedPlan, routineIdOfPlan, routineTemplatesForAge, routineToPlan } from "../../lib/routineTemplates";
 import type { ActionPlan } from "../../types";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 
@@ -98,6 +98,24 @@ describe("B-ASKJB-26 · after a start, the page answers where the parent is look
     expect(justStartedPlanId([{ id: `plan-${now - JUST_STARTED_MS - 1}` }], new Set(), now)).toBeNull();
     expect(justStartedPlanId([{ id: "legacy-plan" }], new Set(), now)).toBeNull();
     expect(justStartedPlanId([], new Set(), now)).toBeNull();
+  });
+
+  it("critic r2: the first load primes what the page has seen — a reload within two minutes shows no receipt", () => {
+    const first = nextStartedPlan(null, [started], now);
+    expect(first.leadId).toBeNull();
+    expect(first.seen.has(started.id)).toBe(true);
+    const later = routineToPlan(ROUTINES.find((r) => r.id === "bedtime")!, "en", "Noa", now + 500);
+    const next = nextStartedPlan(first.seen, [later, started], now + 1_000);
+    expect(next.leadId).toBe(later.id);
+    expect(nextStartedPlan(next.seen, [later, started], now + 2_000).leadId).toBeNull();
+    // An empty first load still primes: the first plan started after it gets the receipt.
+    expect(nextStartedPlan(nextStartedPlan(null, [], now).seen, [started], now).leadId).toBe(started.id);
+  });
+
+  it("PlansTab starts its memory empty-handed (null) and lets the first load prime it", () => {
+    const tab = readFileSync(path.resolve(__dirname, "PlansTab.tsx"), "utf8");
+    expect(tab).toContain("const seenPlanIds = useRef<Set<string> | null>(null);");
+    expect(tab).toContain("nextStartedPlan(seenPlanIds.current, actionPlans, Date.now())");
   });
 
   it("the receipt sits on the active plans (where the new plan leads) and says Started today in both languages", () => {
