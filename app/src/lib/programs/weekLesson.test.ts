@@ -18,15 +18,23 @@ const PROGRAMS = [
 /** Round-2 critic P1: the read must teach the WEEK'S SKILL. These two opened a
  *  worried parent's first week on age norms (late-talker ranges) or sent a
  *  one-language family a bilingual read; no week may name them. */
-const OFF_SKILL_READS = ["late-talker-ranges", "bilingual-mixing"];
+const OFF_SKILL_READS = [
+  "late-talker-ranges", "bilingual-mixing",
+  // Round 3 (critic): an age norm and a when-to-see-a-professional point under "Follow the lead".
+  "attention-spans",
+];
+/** Weeks the catalogue holds no on-skill, age-fitting read for: NO lesson, so
+ *  no door (weekLessonDoor fails quiet) rather than an off-skill one. */
+const NO_LESSON_WEEKS: Record<string, readonly number[]> = { "talk-together": [], "steady-nights": [] };
 
 describe("B-PROG-14 · every program week names one reviewed Learn read", () => {
   for (const { program, meta } of PROGRAMS) {
     it(`${program.id}: each week's lesson is a live Learn card, one per week, all different, never an off-skill read`, () => {
-      const ids = program.weeks.map((w) => w.lesson);
-      expect(ids.every(Boolean), "a week without a lesson").toBe(true);
-      expect(new Set(ids).size).toBe(program.weeks.length);
-      for (const week of program.weeks) {
+      const empty = NO_LESSON_WEEKS[program.id] ?? [];
+      expect(program.weeks.filter((w) => !w.lesson).map((w) => w.n), "only the named weeks go without a read").toEqual([...empty]);
+      const ids = program.weeks.flatMap((w) => (w.lesson ? [w.lesson] : []));
+      expect(new Set(ids).size).toBe(ids.length);
+      for (const week of program.weeks.filter((w) => w.lesson)) {
         const card = programWeekLesson(week);
         expect(card, `week ${week.n}: ${week.lesson}`).not.toBeNull();
         expect(OFF_SKILL_READS, `week ${week.n}`).not.toContain(card!.id);
@@ -45,20 +53,22 @@ describe("B-PROG-14 · every program week names one reviewed Learn read", () => 
 
 describe("B-PROG-14 · Talk Together: each week's read teaches that week's skill (mapping awaits B-GA-02)", () => {
   // The reader-facing reason for each pairing, so the reviewer reads the claim, not just an id.
-  const MAPPING: Record<number, [string, RegExp]> = {
+  const MAPPING: Record<number, [string, RegExp] | null> = {
     1: ["gestures-before-words", /follow every point|name the thing/i],          // observe, wait, listen: answer what they show you
-    2: ["attention-spans", /something they chose|resist interrupting/i],         // follow the lead
+    2: ["process-over-product", /tell me about it/i],                            // follow the lead: talk about what they chose
     3: ["serve-and-return", /return every serve/i],                               // serve and return
-    4: ["questions-that-open", /specific opener|count/i],                         // say it back: a reply, not a correction or a quiz
+    4: ["questions-that-open", /specific opener|count/i],                         // say it back
     5: ["language-explosion", /name it, expand it/i],                              // add one word
-    6: ["reading-aloud", /fills in the last word|reads' one spread/i],           // share a book
+    6: ["reading-aloud", /fills in the last word|reads' one spread/i],           // share a book (dialogic reading for week 7 too)
     7: ["theory-of-mind", /During tonight's story, pause and ask/i],              // book prompts
     8: ["music-and-brain", /give it a song|same tune/i],                         // leave a gap in songs and routines
   };
   for (const week of TALK_TOGETHER.weeks) {
-    it(`week ${week.n} → ${MAPPING[week.n][0]}`, () => {
-      expect(week.lesson).toBe(MAPPING[week.n][0]);
-      expect(programWeekLesson(week)!.tryToday.en).toMatch(MAPPING[week.n][1]);
+    const m = MAPPING[week.n];
+    it(`week ${week.n} → ${m ? m[0] : "no read (no door)"}`, () => {
+      if (!m) { expect(week.lesson).toBeUndefined(); expect(weekLessonDoor(week, [])).toBeNull(); return; }
+      expect(week.lesson).toBe(m[0]);
+      expect(programWeekLesson(week)!.tryToday.en).toMatch(m[1]);
     });
   }
 });

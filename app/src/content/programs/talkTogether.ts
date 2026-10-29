@@ -87,7 +87,7 @@ export const TALK_TOGETHER: Program = {
     },
     {
       n: 2,
-      lesson: "attention-spans",
+      lesson: "process-over-product",
       skill: L(
         "Follow the lead: play and talk about what your child chooses.",
         "ללכת אחרי הילד/ה: לשחק ולדבר על מה שהוא/היא בוחר/ת.",
