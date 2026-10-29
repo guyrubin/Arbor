@@ -112,7 +112,9 @@ const PRE_SERVER = `
  *  hand-rolls no packet-input mapping of its own — a second mapping is exactly
  *  how these two drifted apart while both "used the same builder". */
 const usesSharedAssembler = (src: string): boolean =>
-  /buildPacketInput\(/.test(src) && !/behaviorType:/.test(src);
+  // B-CAREPRO-41: buildGrantPacket (consult/packet) runs buildPacketInput on
+  // the domain-scoped record — the same ONE assembler, one level down.
+  (/buildPacketInput\(/.test(src) || /buildGrantPacket\(/.test(src)) && !/behaviorType:/.test(src);
 
 describe("LC-17 · the preview IS the recipient's view — same INPUT, not just the same builder", () => {
   it("both call sites assemble their input with the ONE shared assembler", () => {
@@ -120,7 +122,9 @@ describe("LC-17 · the preview IS the recipient's view — same INPUT, not just 
     expect(sharing.length).toBeGreaterThan(3000);
     expect(server.length).toBeGreaterThan(500);
     expect(sharing).toContain("export default function TrustedSharing");
-    expect(server).toContain("buildSharedScopePacket(");
+    // B-CAREPRO-41: both sides build the grant view through the ONE builder.
+    expect(server).toContain("buildGrantPacket(");
+    expect(sharing).toContain("buildGrantPacket(");
 
     expect(usesSharedAssembler(sharing), "TrustedSharing.tsx hand-rolls its packet input").toBe(true);
     expect(usesSharedAssembler(server), "server/sharedPacket.ts hand-rolls its packet input").toBe(true);
@@ -193,7 +197,8 @@ describe("LC-17 · the review step mounts the preview, and the parent can invite
   });
 
   it("the review step builds and renders the recipient packet", () => {
-    expect(/buildSharedScopePacket\(\s*draft\.scopes,\s*draft\.role === "professional"/.exec(sharing)).toBeTruthy();
+    // B-CAREPRO-41: through the ONE grant builder the recipient's view runs.
+    expect(/buildGrantPacket\(\s*\{ role: draft\.role, scopes: draft\.scopes, domains: defaultGrantDomains\(draft\.role, draft\.scopes\) \}/.exec(sharing)).toBeTruthy();
     expect(/data-testid="share-scope-preview"/.exec(sharing)).toBeTruthy();
     expect(/data-testid="share-scope-preview"/.exec(PRE)).toBeNull();
     // The section items themselves are rendered, not just the section titles.

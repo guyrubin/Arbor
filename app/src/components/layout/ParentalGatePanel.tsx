@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
-import { useToast } from "../../context/ToastContext";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import {
   isMathExitSession,
   isPinShape,
@@ -27,7 +27,8 @@ import Icon from "../ui/Icon";
  */
 export default function ParentalGatePanel() {
   const { t } = useLanguage();
-  const { toast } = useToast();
+  // B-STATUS-01: an unlock or a saved PIN answers with ONE receipt line in the panel.
+  const gateReceipt = useReceiptNote();
   const [pinSet, setPinSet] = useState(() => readParentPin() !== null);
   const [restricted, setRestricted] = useState(() => isMathExitSession());
   const [current, setCurrent] = useState("");
@@ -66,7 +67,7 @@ export default function ParentalGatePanel() {
       setRestricted(false);
       setCurrent("");
       setWrong(false);
-      toast(t("elev.gate.unlocked"), "success");
+      gateReceipt.show({ text: t("elev.gate.unlocked") });
     } else {
       setWrong(true);
       setCurrent("");
@@ -88,7 +89,7 @@ export default function ParentalGatePanel() {
     setCurrent("");
     setNext("");
     setWrong(false);
-    toast(t("elev.gate.set.saved"), "success");
+    gateReceipt.show({ text: t("elev.gate.set.saved") });
   };
 
   if (restricted && !pinSet) {
@@ -160,6 +161,7 @@ export default function ParentalGatePanel() {
         </button>
       </div>
       {wrong && <p className="text-xs font-semibold" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.gate.pinWrong")}</p>}
+      <ReceiptNoteLine note={gateReceipt.note} testId="gate-receipt" size="sm" />
       {promises}
     </div>
   );

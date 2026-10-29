@@ -1,7 +1,9 @@
 import express, { type RequestHandler } from "express";
+import { createHash } from "node:crypto";
+import { BOOK_EXPORT_CONCURRENT_READS, BOOK_EXPORT_DIGEST_HEADER, BOOK_EXPORT_LIMITS } from "../lib/library/bookAssetExportContract.js";
 import { BOOK_ASSET_ID, bookAssetContentType, bookAssetObject, childBookAssetPrefix, isBookAssetRel } from "../lib/library/bookAssetPaths.js";
 import { logger, requestIdOf } from "./logger.js";
-import { bookAssetLimiter } from "./apiRateLimits.js";
+import { bookAssetLimiter, bookAssetRates } from "./apiRateLimits.js";
 import { inventoryChildBookAssets } from "./bookAssetExport.js";
 
 /**
@@ -36,7 +38,9 @@ export interface BookAssetSaveOptions {
 export interface BookAssetFile {
   name: string;
   /** Object metadata as listed (GCS: size as a string, custom keys under `metadata`). */
-  metadata?: { size?: string | number; metadata?: Record<string, string> };
+  metadata?: { size?: string | number; contentType?: string; metadata?: Record<string, string> };
+  /** GCS: the object's stored metadata (its contentType is what the write path saved). */
+  getMetadata?(): Promise<[{ contentType?: string; size?: string | number }]>;
   exists(): Promise<[boolean]>;
   createReadStream(): NodeJS.ReadableStream;
   delete(): Promise<unknown>;
@@ -45,7 +49,7 @@ export interface BookAssetFile {
 
 export interface BookAssetBucket {
   file(name: string): BookAssetFile;
-  getFiles(opts: { prefix: string; autoPaginate?: boolean; maxResults?: number }): Promise<[BookAssetFile[], unknown?]>;
+  getFiles(opts: { prefix: string; autoPaginate?: boolean; maxResults?: number; pageToken?: string }): Promise<[BookAssetFile[], unknown?]>;
 }
 
 /** The configured bucket, or null when none is configured. */
@@ -70,10 +74,48 @@ export async function eraseChildBookAssets(bucket: BookAssetBucket | null, child
   }
 }
 
-export function createBookAssetsRouter(deps: { getBucket: () => Promise<BookAssetBucket | null>; requireOwnership: RequestHandler; allowLocal?: boolean; readsPerMin?: number }): express.Router {
+/** B-CAREPRO-50 (critic r1): the object's stored media type (GCS metadata),
+ *  lower-cased without parameters; "application/octet-stream" when absent. */
+export async function storedContentType(file: BookAssetFile): Promise<string> {
+  try {
+    const meta = file.getMetadata ? (await file.getMetadata())[0] : file.metadata;
+    const type = typeof meta?.contentType === "string" ? meta.contentType.split(";")[0].trim().toLowerCase() : "";
+    return type || "application/octet-stream";
+  } catch {
+    return "application/octet-stream";
+  }
+}
+
+export function createBookAssetsRouter(deps: { getBucket: () => Promise<BookAssetBucket | null>; requireOwnership: RequestHandler; allowLocal?: boolean; readsPerMin?: number; exportReadsPerMin?: number }): express.Router {
   const router = express.Router();
   // K2: off the per-IP /api limit; its own per-account limit (a first open reads every file)
   const limit = bookAssetLimiter("read", deps.readsPerMin);
+  // B-CAREPRO-50: export reads keep their own per-account budget (they cannot
+  // spend the reader's), at the reader's rate — `&export=1` never lifts the
+  // per-minute read limit (critic r1); the client waits out a 429 and resumes.
+  const exportLimit = bookAssetLimiter("read", deps.exportReadsPerMin ?? deps.readsPerMin ?? bookAssetRates().reads);
+  // …and at most BOOK_EXPORT_CONCURRENT_READS in flight per account.
+  const inflight = new Map<string, number>();
+  const exportSlot: RequestHandler = (req, res, next) => {
+    const uid = (req as { user?: { uid?: string } }).user?.uid ?? "";
+    const held = inflight.get(uid) ?? 0;
+    if (held >= BOOK_EXPORT_CONCURRENT_READS) {
+      res.setHeader("Retry-After", "1");
+      res.status(429).json({ error: "Too many export reads at once" });
+      return;
+    }
+    inflight.set(uid, held + 1);
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      const left = (inflight.get(uid) ?? 1) - 1;
+      if (left > 0) inflight.set(uid, left); else inflight.delete(uid);
+    };
+    res.on("finish", release);
+    res.on("close", release);
+    next();
+  };
   const verified: RequestHandler = (req, res, next) => {
     const uid = (req as { user?: { uid?: string } }).user?.uid;
     if (deps.allowLocal && (!uid || uid === "local-sandbox")) return next();
@@ -100,7 +142,9 @@ export function createBookAssetsRouter(deps: { getBucket: () => Promise<BookAsse
     }
   });
   const verifiedRead: RequestHandler = (req, res, next) => req.query.export === "1" ? exportVerified(req, res, next) : verified(req, res, next);
-  router.get("/children/:childId/book-assets/:bookId/file", verifiedRead, limit, deps.requireOwnership, async (req, res) => {
+  const readLimit: RequestHandler = (req, res, next) => (req.query.export === "1" ? exportLimit : limit)(req, res, next);
+  const readSlot: RequestHandler = (req, res, next) => (req.query.export === "1" ? exportSlot(req, res, next) : next());
+  router.get("/children/:childId/book-assets/:bookId/file", verifiedRead, readLimit, readSlot, deps.requireOwnership, async (req, res) => {
     const { childId, bookId } = req.params;
     const rel = typeof req.query.path === "string" ? req.query.path : "";
     if (!BOOK_ASSET_ID.test(childId) || !BOOK_ASSET_ID.test(bookId) || !isBookAssetRel(rel)) {
@@ -117,6 +161,42 @@ export function createBookAssetsRouter(deps: { getBucket: () => Promise<BookAsse
       const [exists] = await file.exists();
       if (!exists) {
         res.status(404).json({ error: "Not found" });
+        return;
+      }
+      if (req.query.export === "1") {
+        // B-CAREPRO-50: an export read is the exact bytes plus the server's
+        // SHA-256 of them (the client keeps the file only on a match), with a
+        // length; bounded by the contract's per-file cap. A storage error, or
+        // a client gone mid-read, ends the response without a clean 200.
+        const stream = file.createReadStream();
+        res.on("close", () => { if ("destroy" in stream) (stream as import("node:stream").Readable).destroy(); });
+        const chunks: Buffer[] = [];
+        let size = 0;
+        try {
+          for await (const chunk of stream as AsyncIterable<Buffer | string>) {
+            const buf = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+            size += buf.byteLength;
+            if (size > BOOK_EXPORT_LIMITS.fileBytes) {
+              if ("destroy" in stream) (stream as import("node:stream").Readable).destroy();
+              res.status(413).json({ error: "Book file too large to export" });
+              return;
+            }
+            chunks.push(buf);
+          }
+        } catch {
+          res.destroy();
+          return;
+        }
+        const body = Buffer.concat(chunks, size);
+        // Critic r1: typed by what the write path STORED, never by the path's
+        // extension; an untyped object goes out as octet-stream, which the
+        // client refuses as an integrity failure.
+        res.setHeader("Content-Type", await storedContentType(file));
+        res.setHeader("Cache-Control", "private, no-store");
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        res.setHeader("Content-Length", String(size));
+        res.setHeader(BOOK_EXPORT_DIGEST_HEADER, createHash("sha256").update(body).digest("hex"));
+        res.end(body);
         return;
       }
       res.setHeader("Content-Type", bookAssetContentType(rel));

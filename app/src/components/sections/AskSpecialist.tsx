@@ -6,6 +6,7 @@ import { motion, useReducedMotion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor, type ConsultPrefill } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { useLanguage } from "../../context/LanguageContext";
 import {
   buildConsultPacket,
@@ -173,6 +174,8 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
 } = {}) {
   const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, actionLoop, setActiveTab, pendingConsultPrefill, consumeConsultPrefill, activeFamilyTopic } = useArbor();
   const { toast } = useToast();
+  // B-STATUS-01: "copied" answers under the export row it came from.
+  const copyReceipt = useReceiptNote();
   const { t, uiLang } = useLanguage();
   const reduceMotion = useReducedMotion();
   const printPdf = useConsultPdf();
@@ -594,7 +597,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       if (!canExportCurrent()) return;
       trackShareCompleted("story", "clipboard");
       recordExport(childProfile.id, audience);
-      toast(t("elev.packet.copied"), "success");
+      copyReceipt.show({ text: t("elev.packet.copied") });
     }
     catch { if (canExportCurrent()) toast(t("elev.packet.copyFailed"), "error"); }
   };
@@ -1251,6 +1254,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
                 {t("elev.learnCare.trusted.send")}
               </button>
             </div>
+            <ReceiptNoteLine note={copyReceipt.note} testId="consult-copy-receipt" size="sm" />
           </div>
           )}
         </div>

@@ -48,8 +48,6 @@ const SCOPE_FILES = [
  *   TodayRecommendation  — Today's `do-today-action` accept
  *   PromptCaptureCard    — the hero's mutually-exclusive day-0 sibling
  *   WeekOpenAnchorCard   — the week-open ritual's CTA (same slot)
- *   QuickLogModal        — capture submit
- *   ConfirmCaptureReview — capture confirm
  *   DailyPlanCard        — the DailyPlay hub's own hero
  *   HubHero / Button     — the shared primary recipes
  *   WeeklyTab            — one gradient per weekly state (3b037bfe)
@@ -62,8 +60,9 @@ const ALLOWED = new Set([
   // B-TODAY-26: Tonight is the step slot's evening state — Today's
   // `do-today-action`, mutually exclusive with TodayRecommendation.
   "overview/TonightCard.tsx",
-  "overview/QuickLogModal.tsx",
-  "overview/ConfirmCaptureReview.tsx",
+  // B-ASKJB-47: QuickLogModal (capture submit) and ConfirmCaptureReview
+  // (capture confirm) left the licence — the capture sheet's save buttons are
+  // a solid --arbor-clay fill (overview/captureSheet.weight.test.ts).
   "overview/DailyPlanCard.tsx",
   "ui/HubHero.tsx",
   "ui/Button.tsx",
@@ -199,10 +198,10 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     "auth/LoginScreen.tsx",
     "profile/AddChildFields.tsx", // B-SHELL-36: first-run primary moved to its CSS; add-child fields retain their existing primary.
     "journal/JournalEntrySheet.tsx",
-    "overview/ConfirmCaptureReview.tsx",
+    // (B-ASKJB-47: overview/ConfirmCaptureReview.tsx and overview/QuickLogModal.tsx
+    //  left the ratchet — the capture sheet saves on a solid accent fill.)
     "overview/DailyPlanCard.tsx",
     "overview/PromptCaptureCard.tsx",
-    "overview/QuickLogModal.tsx",
     "overview/TodayRecommendation.tsx",
     // B-TODAY-26: licensed above (Today's do-today-action, evening state).
     "overview/TonightCard.tsx",

@@ -8,6 +8,8 @@ import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { routeHash } from "../../lib/routes";
 import { useLanguage } from "../../context/LanguageContext";
 import { ArborMark } from "../ui/ArborMark";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
@@ -423,6 +425,12 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // Which answer's overflow ("…") menu is open. Only Copy stays inline; Log /
   // Plan / Share fold into this menu so a settled answer reads as calm text.
   const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
+  // B-STATUS-01: "Copied" answers under the answer it came from, and a
+  // confirmed milestone under the voice review's tray — receipt lines, not
+  // success toasts.
+  const copyReceipt = useReceiptNote();
+  const [copyReceiptIdx, setCopyReceiptIdx] = useState<number | null>(null);
+  const proposalReceipt = useReceiptNote();
   // B-ASKJB-12: the lens is chosen in ONE sheet ("How should Arbor talk with
   // you?"). F-TALK-1: it opens from the tone chip in the composer foot (label
   // = the current tone) and from the panel menu. Same store (selectedLens /
@@ -1724,6 +1732,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                   </>
                 )}
 
+                {copyReceiptIdx === idx && <ReceiptNoteLine note={copyReceipt.note} testId="coach-copy-receipt" size="sm" className="mt-2" />}
                 {msg.sender === "ai" && !msg.contract && !msg.voiceLive && !msg.chatLive && (
                   // F-TALK-2 (mock L400-404): a prose turn carries no toolbar.
                   // One quiet "More" at its end holds Copy, Keep, Plan and Share.
@@ -1750,7 +1759,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                             onClick={async () => {
                               setOpenMenuIdx(null);
                               await navigator.clipboard?.writeText(msg.text);
-                              toast(t("coach.copied"), "success");
+                              setCopyReceiptIdx(idx);
+                              copyReceipt.show({ text: t("coach.copied") });
                             }}
                             className="w-full text-start text-xs font-bold flex items-center gap-2 px-2.5 py-2 min-h-11 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1" style={{ color: "var(--arbor-ink)" }}
                           >
@@ -2071,12 +2081,19 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               // once the audit row lands; this success toast doubled it. Only a
               // milestone confirmation (which the tray deliberately gives no
               // Undo, and so no toast) still confirms here.
-              if (proposal.target === "milestone") toast(t("coach.voice.proposalSaved"), "success");
+              // Critic r1: a confirmed milestone is reversible, but only on the
+              // milestone's own surface (critic-vision BLOCK #1, lib/captureUndo)
+              // — so its receipt carries the door there, not an Undo.
+              if (proposal.target === "milestone") proposalReceipt.show({
+                text: t("coach.voice.proposalSaved"),
+                link: { where: t("nav.tab.milestones"), href: `#${routeHash("milestones")}`, testId: "voice-proposal-receipt-open" },
+              });
             } catch {
               toast(t("coach.voice.proposalSaveError"), "error");
             } finally { proposalCommitRef.current = false; setProposalBusyId(null); }
           }}
         />
+        <ReceiptNoteLine note={proposalReceipt.note} testId="voice-proposal-receipt" size="sm" className="pt-2" />
       </VoiceCloseCard>}
 
       {/* AI-V7: the voice surface — orb + live captions in a calm bottom

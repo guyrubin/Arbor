@@ -219,6 +219,8 @@ export function splitHash(raw: string): { key: string; query: URLSearchParams } 
  */
 export const SUB_ROUTES: Readonly<Record<string, { route: ActiveTab; query: Readonly<Record<string, string>> }>> = {
   "language/said": { route: "language", query: { view: "said" } },
+  // B-ASKJB-36: the kept reader on My child (B-SHELL-30's `#/development/kept`).
+  "development/kept": { route: "development", query: { view: "kept" } },
 };
 
 /** The query of a hash (`#/journal?shelf=sleep` → shelf=sleep); empty when none. */

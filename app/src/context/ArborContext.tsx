@@ -28,6 +28,8 @@ import {
   demoSeedFor,
 } from "../initialData";
 import { useProfile } from "./ProfileContext";
+import { useFamilyWaySync } from "../hooks/useFamilyWaySync";
+import { chooseFamilyLens } from "../lib/familyWay";
 import { api, ApiError, authHeaders, EscalationRequiredError, getAiLanguage, PaywallError, streamCouncil } from "../lib/api";
 import { useChildCollection, type ChildWriteOptions } from "../hooks/useChildCollection";
 import { useFamilyTopics } from "../hooks/useFamilyTopics";
@@ -635,6 +637,13 @@ function useArborState() {
     };
     void playLogCol.upsert(rec); // fire-and-forget, optimistic + local-first
     if (!alreadyDone) trackPlayCompleted(activity.domain, reason, source);
+    return { id, created: !alreadyDone };
+  };
+  /** B-STATUS-01 (critic r1): the play receipt's Undo. Removes the day's log
+   *  only when that tap created it — Undo after a repeat tap leaves the
+   *  earlier record alone. */
+  const undoPlayCompletion = (done: { id: string; created: boolean }) => {
+    if (done.created) void playLogCol.remove(done.id);
   };
 
   // Active Interactive / Selection States
@@ -994,6 +1003,13 @@ function useArborState() {
   // per-answer provenance, the Ask lane's item); drop its stored flag once.
   useEffect(() => { try { localStorage.removeItem("arbor.aiRail"); } catch { /* ignore */ } }, []);
   useEffect(() => writeLS("arbor.lens", selectedLens), [selectedLens]);
+  // B-PLAY-21 (dark, arbor.flags.familyWaySync): the tone and the charter
+  // follow the account. The parent's own choice stamps the change (never a
+  // load), so the newest device wins; a newer account copy sets the tone here.
+  useFamilyWaySync(setSelectedLens);
+  // The tone is written to the device store before the change event fires
+  // (chooseFamilyLens), so the sync uploads the NEW tone with the new stamp.
+  const chooseLens = React.useCallback((lens: string) => { setSelectedLens(lens); chooseFamilyLens(lens); }, []);
 
   // Developmental COUNTS (never a score): windowed to the child's current CDC
   // band + one earlier (Wave T, GP-08) — the same window Growth, Milestones
@@ -1994,6 +2010,7 @@ function useArborState() {
     playLogs,
     donePlayIds,
     logPlayCompletion,
+    undoPlayCompletion,
     actionLoop,
     actionLoopConfirmed: actionLoopCol.confirmed,
     conversationChanges: conversationChangesCol.items,
@@ -2020,7 +2037,7 @@ function useArborState() {
     askHardMomentRef,
     setAskHardMomentRef,
     selectedLens,
-    setSelectedLens,
+    setSelectedLens: chooseLens,
     chatInput,
     setChatInput,
     seedCoach,

@@ -40,6 +40,7 @@ const env = {
   useArbor: () => ({ childProfile: { id: "child-1", name: "Noa" }, activeTab: tab, setActiveTab: vi.fn() }),
   useLanguage: () => ({ uiLang: lang, t: (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars) }),
   useToast: () => ({ toast: vi.fn() }),
+  useReceiptNote: () => ({ note: null, show: vi.fn(), clear: vi.fn() }), ReceiptNoteLine: () => null,
   useChildCollection: (_child: string, name: string) => ({ items: name === "appointments" ? rows : [], loaded: true, error: false, confirmed: true, isCurrent: () => true }),
   // A visit is waiting for its outcome, a home program is active and the guided
   // pilot is on — everything #/consult carries besides the builder.
