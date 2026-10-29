@@ -67,6 +67,11 @@ describe("B-BOOK-46: reading together", () => {
     expect([...new Set(withPrompt)]).toEqual(["cover", book.decision.pageId, c.branch[0].id, book.rejoinPageId, book.pages[book.pages.length - 1].id]);
     expect(html("together", st(book.pages[book.pages.length - 1].id, c.id), lang)).toContain(book.parent.together![lang].replace(/"/g, "&quot;"));
   });
+  it("round 2: the grown-up can turn sound on in Together even when the child muted their own reader", () => {
+    const reader = readFileSync(new URL("./BookReader.tsx", import.meta.url), "utf8");
+    expect(reader).toContain('const muted = readMode === "together" ? !togetherSound : childMuted;');
+    expect(reader).not.toContain("childMuted || (readMode === \"together\"");
+  });
   it("larger words than the child's own read; the Sound toy starts off", () => {
     const size = (h: string) => Number(/class="bk-words"[^>]*style="font-size:(\d+)px/.exec(h)?.[1]);
     const s = st("p2", null);

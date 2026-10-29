@@ -198,9 +198,10 @@ export function BookReader({
   const anchorOf = useMemo(() => sheetAnchorOf(sheet), [sheet]);
   const childMuted = useKidReadAloudMuted(child.id);
   // B-BOOK-46: Together starts silent (the grown-up reads); its Sound toy turns
-  // the narration on for this read only, never the child's own setting.
+  // the narration on for this read only — even when the child muted their own
+  // reader — and never changes the child's setting.
   const [togetherSound, setTogetherSound] = useState(false);
-  const muted = childMuted || (readMode === "together" && !togetherSound);
+  const muted = readMode === "together" ? !togetherSound : childMuted;
   const sfxGain = readMode === "bedtime" ? BEDTIME_SFX_GAIN : 1;
   const dir = lang === "he" ? "rtl" : "ltr";
 
