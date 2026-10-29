@@ -100,7 +100,8 @@ describe("B-CAREPRO-38 · the embedded ledger: approve, correct and forget on Ab
       // the coach's view (consent switch) stays reachable here
       expect(html).toContain('data-testid="coach-contract-panel"');
       // About owns the page: no second header, no second move, no undemoted module
-      expect(html).not.toContain(translate(locale, "sec.mem.title"));
+      // (the retired "Child memory" page title — its key sec.mem.title is deleted, so the words are pinned here)
+      expect(html).not.toContain(locale === "he" ? "זיכרון הילד" : "Child memory");
       expect(html).not.toContain("data-primary-move");
       const stamps = html.match(/<[^>]*data-module="[^"]+"[^>]*>/g) ?? [];
       expect(stamps.length).toBeGreaterThan(0);

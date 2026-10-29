@@ -107,7 +107,6 @@ export default function ChildMemory({ hidePendingIds }: {
           (sec.mem.sub carries "only what you approve; nothing shared without
           you"). What stays here is the inline door to how Arbor decides. */}
 
-
       {/* OWN-1: a failed ledger read renders an honest error + retry card (the
           TrustedSharing twin) INSTEAD of the pending/approved lists — an
           unreadable ledger must never masquerade as "No memory yet". */}
@@ -313,8 +312,6 @@ export default function ChildMemory({ hidePendingIds }: {
           the profile alone, which is exactly what nothing else in the app
           could do. Never a completeness score: see lib/keepsakeCounts. */}
       <div data-module="memory-knows" data-module-demoted style={{ display: "contents" }}><ArborKnowsTile /></div>
-
-
         </div>
       </details>
     </motion.div>
