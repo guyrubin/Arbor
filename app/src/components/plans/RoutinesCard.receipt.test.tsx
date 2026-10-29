@@ -32,7 +32,7 @@ vi.mock("../../lib/firebase", () => ({ db: {}, get firebaseEnabled() { return h.
 vi.mock("../../lib/syncStore", () => ({ clearSyncError: vi.fn(), reportSyncError: vi.fn(), getSyncSnapshot: () => 0, subscribeSyncStatus: vi.fn() }));
 vi.mock("firebase/firestore", () => ({
   collection: (_db: unknown, path: string) => ({ path }), doc: (_db: unknown, path: string, id: string) => ({ path, id }), orderBy: vi.fn(), limit: vi.fn(), query: (q: unknown) => q,
-  setDoc: (ref: unknown, row: unknown) => new Promise<void>((resolve, reject) => { h.writes.push({ ref, row, resolve, reject }); }), deleteDoc: vi.fn(), writeBatch: vi.fn(),
+  setDoc: (ref: unknown, row: unknown, options?: unknown) => new Promise<void>((resolve, reject) => { h.writes.push({ ref, row, options, resolve, reject }); }), deleteDoc: vi.fn(), writeBatch: vi.fn(),
   onSnapshot: (q: any, ...args: any[]) => { const options = typeof args[0] === "function" ? null : args.shift(); const listener = { path: q.path, options, next: args[0], fail: args[1], stopped: false }; h.listeners.push(listener); return () => { listener.stopped = true; }; },
 }));
 import RoutinesCard from "./RoutinesCard";
@@ -193,50 +193,98 @@ describe("Acknowledgement and lifetime boundaries", () => {
   });
 });
 
-/* B-DATA-14 — offline the checklist ticks from this phone's copy and says so;
-   online the confirmed-read and acknowledgement rules above are unchanged. */
-describe("B-DATA-14 · routines tick offline", () => {
+/* B-DATA-14 — offline a step ticks from this phone's copy and says so. Only
+   the tick is written (a merge write of the routine's offlineTicks field);
+   back online it is folded into the server's copy, so a change made on the
+   parent's other device meanwhile survives. Online writes are bounded. */
+describe("B-DATA-14 · routines tick offline, merged on reconnect", () => {
   const queuedLine = (id = "morning") => findId(`routine-queued-${id}`);
+  type Tick = { text: string; done: boolean; at: string };
+  const withTicks = (r: Routine, ticks: Record<string, Tick>) => ({ ...r, offlineTicks: ticks });
   function offlineStart() {
     vi.stubGlobal("navigator", { onLine: false });
     h.remote = true; render(); source([morning(), goodbye()], { fromCache: true }); render();
   }
+  /** The tick as this phone wrote it, then the persistent cache's own echo. */
+  async function tickOffline(): Promise<Record<string, Tick>> {
+    click("routine-step-morning-1"); await flush();
+    const ticks = h.writes[0].row.offlineTicks as Record<string, Tick>;
+    source([withTicks(morning(), ticks) as Routine, goodbye()], { fromCache: true, hasPendingWrites: true }); render();
+    return ticks;
+  }
 
   for (const lang of ["en", "he"] as const) {
-    it(`${lang}: offline the cached checklist is tickable and answers 'Saved on this phone…' at once, never Saving… or a receipt`, async () => {
+    it(`${lang}: offline a step ticks at once and says 'Saved on this phone…'; only the tick is written`, async () => {
       h.lang = lang; offlineStart();
       expect(byId("routine-step-morning-1").props.disabled).toBe(false);
-      click("routine-step-morning-1"); await flush();
+      const ticks = await tickOffline();
       expect(h.writes).toHaveLength(1);
-      expect(h.writes[0].row.steps[1].done).toBe(true);
-      const line = queuedLine()!;
-      expect(line.type).toBe(Receipt);
-      expect(line.props.children).toBe(translate(lang, "elev.sync.savedOnPhone"));
+      expect(h.writes[0].options).toEqual({ merge: true });
+      // Negative control for the old write: never the whole cached routine.
+      expect(Object.keys(h.writes[0].row).sort()).toEqual(["id", "offlineTicks"]);
+      expect(ticks["1"]).toMatchObject({ text: "Open the curtains", done: true });
+      expect(byId("routine-step-morning-1").props["aria-pressed"]).toBe(true);
+      expect(queuedLine()!.props.children).toBe(translate(lang, "elev.sync.savedOnPhone"));
       expect(byId("routine-pending-morning").props.active).toBe(false);
       expect(receipt()).toBeUndefined();
-      // The phone's own echo keeps the tick; another tick offline still works.
-      source([morning(true), goodbye()], { fromCache: true, hasPendingWrites: true }); render();
-      expect(byId("routine-step-morning-1").props["aria-pressed"]).toBe(true);
-      expect(byId("routine-step-goodbye-0").props.disabled).toBe(false);
+      // Offline, reset / delete / new steps still wait for a confirmed read.
+      expect(byId("routine-reset-morning").props.disabled).toBe(true);
+      expect(byId("routine-delete-morning").props.disabled).toBe(true);
     });
   }
 
-  it("reconnected: 'Still sending…' until the server acknowledges, then the saved receipt", async () => {
-    offlineStart(); click("routine-step-morning-1"); await flush();
+  it("two devices: back online, the tick is folded into the server's copy and the other device's change survives", async () => {
+    offlineStart(); const ticks = await tickOffline();
     vi.stubGlobal("navigator", { onLine: true });
     expect(queuedLine()!.props.children).toBe(translate("en", "elev.sync.savedOnPhoneSending"));
-    h.writes[0].resolve(); await flush();
+    // Meanwhile the parent's other device renamed the routine and unticked step 0;
+    // the tick's own field arrived beside it (a merge write).
+    const elsewhere: Routine = { id: "morning", name: "Renamed on the other phone", steps: [{ text: "Find a cup", done: false }, { text: "Open the curtains", done: false }] };
+    source([withTicks(elsewhere, ticks) as Routine, goodbye()]); render();
+    expect(h.writes).toHaveLength(2);
+    expect(h.writes[1].options).toBeUndefined();
+    expect(h.writes[1].row).toEqual({ id: "morning", name: "Renamed on the other phone", steps: [{ text: "Find a cup", done: false }, { text: "Open the curtains", done: true }] });
+    h.writes[1].resolve(); await flush();
+    source([h.writes[1].row, goodbye()]); render();
     expect(queuedLine()).toBeUndefined();
-    source([morning(true), goodbye()]); render();
-    expect(receipt()!.props.children).toBe(translate("en", "elev.closeloop.routines.saved"));
+    expect(findId("routine-conflict-morning")).toBeUndefined();
+    expect(byId("routine-step-morning-0").props["aria-pressed"]).toBe(false);
+    expect(byId("routine-step-morning-1").props["aria-pressed"]).toBe(true);
   });
 
-  it("a rejection after the phone kept it takes the line back and offers the retry", async () => {
-    offlineStart(); click("routine-step-morning-1"); await flush();
-    h.writes[0].reject(Error("Denied")); await flush();
-    expect(queuedLine()).toBeUndefined();
-    expect(byId("routine-failed-morning")).toBeDefined();
+  it("two devices: a tick whose step was changed elsewhere is not forced onto another step; the row says it was not saved", async () => {
+    offlineStart(); const ticks = await tickOffline();
+    vi.stubGlobal("navigator", { onLine: true });
+    const changed: Routine = { id: "morning", name: "Invented morning", steps: [{ text: "Find a cup", done: true }, { text: "Open the blinds", done: false }] };
+    source([withTicks(changed, ticks) as Routine, goodbye()]); render();
+    expect(h.writes[1].row.steps).toEqual(changed.steps);
+    h.writes[1].resolve(); await flush();
+    source([h.writes[1].row, goodbye()]); render();
+    const conflict = byId("routine-conflict-morning");
+    expect(conflict.props.role).toBe("alert");
+    expect(conflict.props.children).toBe(translate("en", "elev.closeloop.routines.failed"));
+  });
+
+  it("a routine deleted on the other device while this phone held a tick is never listed and is cleared on reconnect", async () => {
+    const { deleteDoc } = await import("firebase/firestore");
+    offlineStart(); const ticks = await tickOffline();
+    vi.stubGlobal("navigator", { onLine: true });
+    source([{ id: "morning", offlineTicks: ticks } as unknown as Routine, goodbye()]); render();
+    expect(findId("routine-row-morning")).toBeUndefined();
+    expect(deleteDoc).toHaveBeenCalled();
+  });
+
+  it("online but unreachable: after the queue window the row says 'Still sending…', never an endless Saving…", async () => {
+    vi.useFakeTimers(); remoteStart();
+    click("routine-step-morning-1"); expect(h.writes).toHaveLength(1);
+    expect(byId("routine-pending-morning").props.active).toBe(true);
+    await vi.advanceTimersByTimeAsync(4100);
+    expect(queuedLine()!.props.children).toBe(translate("en", "elev.sync.savedOnPhoneSending"));
+    expect(byId("routine-pending-morning").props.active).toBe(false);
     expect(receipt()).toBeUndefined();
+    source([morning(true), goodbye()]); h.writes[0].resolve(); await flush(); render();
+    expect(queuedLine()).toBeUndefined();
+    expect(receipt()!.props.children).toBe(translate("en", "elev.closeloop.routines.saved"));
   });
 
   it("negative control: online, an unconfirmed (cached) read still locks the checklist", () => {
