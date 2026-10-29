@@ -138,6 +138,10 @@ export type ArborConfig = {
   /** B-AIOPS-03: the AI Studio prepay ledger for the readable balance and the
    *  20 % alarm (`AI_PREPAY_LEDGER`, JSON, default "off"; server/prepayBalance). */
   aiPrepayLedger?: PrepayLedgerConfig;
+  /** B-PROG-04 (dark until B-GA-02 + the live evals): an on-shelf /chat or
+   *  /voice answer opens with the active program week's coach script,
+   *  verbatim (`ARBOR_PROGRAM_SCRIPT_IN_COACH`, default off). */
+  programScriptInCoach?: boolean;
 };
 
 const boolFromEnv = (value: string | undefined, fallback: boolean) => {
@@ -309,6 +313,7 @@ export const loadConfig = (): ArborConfig => {
     })(),
     opsAlertWebhookUrl: opsWebhookUrl(process.env.OPS_ALERT_WEBHOOK_URL),
     aiPrepayLedger: parsePrepayLedger(process.env.AI_PREPAY_LEDGER),
+    programScriptInCoach: boolFromEnv(process.env.ARBOR_PROGRAM_SCRIPT_IN_COACH, false),
   };
 
   if (config.arborEnv === "prod") {

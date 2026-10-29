@@ -128,6 +128,7 @@ import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
 import { buildWaitlistEntry, isValidEmail, notifyWaitlistSafely, type WaitlistNotifier, type WaitlistStore } from "../server/waitlist.js";
 import { createSharedChildRecordSource, resolveSharedPacket, type SharedChildRecordSource } from "../server/sharedPacket.js";
+import { programWeekScript } from "../lib/programs/weekScript.js";
 import { createCoParentRouter } from "../server/coParent.js";
 
 type ApiDeps = {
@@ -855,6 +856,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         recipientEmail: email,
         shareStore,
         source: sharedSource,
+        // B-PROG-09: the link's one scope; a scope the grant lacks → 403.
+        requestedScope: typeof req.query.scope === "string" ? req.query.scope : null,
       });
       if (result.status === 200) {
         res.json(result.view);
@@ -1264,6 +1267,15 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
           logger.info("memory_fact_step_inserted", { requestId: requestIdOf(req) });
         }
       }
+
+      // B-PROG-04 (dark, config.programScriptInCoach): an on-shelf turn opens
+      // with the active week's coach script, verbatim (authored program
+      // content, never model prose). Seeded, file and escalation turns never
+      // reach it (escalation answered above, byte-identical). The output
+      // screen below covers it like any line.
+      const weekScript = config.programScriptInCoach && !seededEscalation && !attachments.length && !structured.fileDeclined
+        ? programWeekScript(companion.program, message, renderLanguage, childProfile?.gender) : null;
+      if (weekScript) structured.text = `${weekScript}\n\n${structured.text ?? ""}`.trim();
 
       // AI-2: output-side safety screen (lexical floor + optional semantic classifier).
       let renderedText = seededFollowUp ? renderCoachFollowUpResponse(structured, renderLanguage)
@@ -1812,6 +1824,14 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         });
         res.end();
       };
+
+      // B-PROG-04 (dark, config.programScriptInCoach): an on-shelf spoken
+      // answer opens with the active week's coach script, verbatim — its own
+      // first delta, lexically screened like every released sentence.
+      const weekScript = config.programScriptInCoach ? programWeekScript(companionContext.programScripts, message, ttsLang, childProfile?.gender) : null;
+      if (weekScript && !screenModelOutputLexical(weekScript).flagged) {
+        writeSse(res, "delta", { text: `${weekScript} `, tts: { text: weekScript, token: mintTtsToken(weekScript, ttsLang) } });
+      }
 
       if (outputClassifierEnabled()) {
         // Full-buffer path (config-gated): the semantic classifier judges the
@@ -3670,7 +3690,11 @@ RULES:
           }
         }
       });
-      await sendScreenedJson(res, privacy.restoreDeep(response));
+      // B-ASKJB-35 (route half; the prompt half is parked on
+      // claude/askjb35-prompt-bump-2026-10-28): the "signs it's working" list
+      // (child outcomes to watch for, verdict-shaped) never reaches the parent
+      // — empty whatever the model returns. The prompt and schema are unchanged.
+      await sendScreenedJson(res, { ...(privacy.restoreDeep(response) as Record<string, unknown>), successIndicators: [] });
     } catch (error: any) {
       logger.error("Arbor Action Plan Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to generate Arbor action plan", details: error.message });

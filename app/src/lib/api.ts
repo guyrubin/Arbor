@@ -577,7 +577,10 @@ export const api = {
   // CARE-2: the recipient's read-only view of a live grant — exactly the granted
   // scopes, assembled through the fail-closed consult-packet egress. 403 = the
   // share has ended (revoked/expired/not addressed to you) → drop the card.
-  sharedPacket: (grantId: string) => get<SharedPacketView>(`/api/shared/${encodeURIComponent(grantId)}/packet`),
+  // B-PROG-09: `scope` asks for exactly one scope (the home-program link);
+  // a scope the grant does not carry answers 403.
+  sharedPacket: (grantId: string, scope?: string) =>
+    get<SharedPacketView>(`/api/shared/${encodeURIComponent(grantId)}/packet${scope ? `?scope=${encodeURIComponent(scope)}` : ""}`),
   // COPPA-2026 consent: grant/list/revoke purpose-scoped parental consent.
   grantConsent: (payload: { childId: string; purpose: ConsentPurpose; granted?: boolean }) =>
     post<{ grant: ConsentGrant }>("/api/consent", payload),
