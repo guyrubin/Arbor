@@ -148,8 +148,11 @@ const isConditionText = (text: string, escalation: boolean, beforeCommand = fals
  * "you don't have to contact", "hold off on calling", "would be premature", "אין מה להזעיק", "אין טעם לפנות",
  * "מיותר להתקשר", "אין שום צורך". The encouraging forms stay escalations: "don't hesitate", "do not wait",
  * "אל תהססו", "אין לחכות", "לא לחכות". */
-const DISCOURAGING_EN = /\b(?:not|no|never|none|nor|hold\s+off|avoid\p{L}*|premature\p{L}*|unnecessar\p{L}*|needless\p{L}*|pointless\p{L}*|refrain\p{L}*|rather\s+than|instead\s+of|wait\s+(?:before|until|and\s+see)|too\s+early)\b|n['’]t\b/iu;
-const DISCOURAGING_HE = /(?<!\p{L})(?:ו|ש|כש|ה)?(?:אין|לא|אל|מיותר\p{L}*|להימנע|הימנעו|במקום\s+ל\p{L}+|מוקדם\s+מדי|עדיף\s+לחכות|כדאי\s+לחכות)(?!\p{L})/u;
+/** Round 16 (P1-A): a deferral puts the contact off ("at pickup next week", "בפגישה הבאה", "להמתין … רק בחודש הבא"). */
+const DEFERRAL_EN = String.raw`\b(?:next\s+(?:week|month|year|time|term|semester|meeting|visit|checkup|check-up|appointment|conference|pickup|pick-up)|(?:at|by)\s+(?:the\s+)?end\s+of\s+(?:the\s+)?(?:year|term|month|week|semester)|later\s+(?:this|in\s+the)\s+(?:week|month|year|term)|when\s+you\s+next\s+see|(?:at|during)\s+(?:the\s+|a\s+)?(?:routine|regular|annual|yearly)\s+(?:checkup|check-up|visit|meeting)|in\s+a\s+(?:few|couple\s+of)\s+(?:weeks|months)|eventually|at\s+some\s+point|some\s+time\s+later)\b`;
+const DEFERRAL_HE = String.raw`(?<!\p{L})(?:ב?פגישה\s+הבאה|ב?חודש\s+הבא|ב?שבוע\s+הבא|ב?שנה\s+הבאה|ב?פעם\s+הבאה|באסיפה\p{L}*|באספה\p{L}*|בסוף\s+(?:השנה|החודש|השבוע|הקדנציה)|בבדיקה\s+השגרתית|בהמשך|מתישהו|להמתין|להמתנה)(?!\p{L})`;
+const DISCOURAGING_EN = new RegExp(String.raw`\b(?:not|no|never|none|nor|hold\s+off|avoid\p{L}*|premature\p{L}*|unnecessar\p{L}*|needless\p{L}*|pointless\p{L}*|refrain\p{L}*|rather\s+than|instead\s+of|wait\s+(?:before|until|and\s+see)|too\s+early)\b|n['’]t\b|${DEFERRAL_EN}`, "iu");
+const DISCOURAGING_HE = new RegExp(String.raw`(?<!\p{L})(?:ו|ש|כש|ה)?(?:אין|לא|אל|מיותר\p{L}*|להימנע|הימנעו|במקום\s+ל\p{L}+|מוקדם\s+מדי|עדיף\s+לחכות|כדאי\s+לחכות|להמתין|רק\s+ב\p{L}+)(?!\p{L})|${DEFERRAL_HE}`, "u");
 const ENCOURAGING = /\b(?:(?:do|does|did|should|must|will|would)\s+not|don['’]t|doesn['’]t|shouldn['’]t|never|not)\s+(?:hesitate|wait|delay|put\s+(?:it\s+)?off|hold\s+off)\b|\bwithout\s+(?:delay|waiting|hesitat\p{L}*)\b|\bnot\s+(?:just|only)\b|\bno\s+matter\b|(?<!\p{L})(?:אל\s+(?:תהסס\p{L}*|תחכ\p{L}*|תתמהמה\p{L}*|תדח\p{L}*)|(?:אין|לא)\s+(?:לחכות|להסס|להתמהמה|להתעכב|לדחות)|(?:בלי|ללא)\s+(?:לחכות|להסס|דיחוי|היסוס)|ו?לא\s+רק|לא\s+משנה)(?!\p{L})/giu;
 /** The negated finding a condition names ("no signs of calming", "does not settle", "אין סימנים", "לא נרגע"). */
 const CONDITION_NEGATION = /\b(?:no|without|not|n['’]t)\s+(?:\p{L}+\s+){0,3}?(?:signs?|evidence|indications?|symptoms?|improvement|progress|change|response|calm\p{L}*|settl\p{L}*|better|easing)\b|\b(?:does|did|do|is|are|was|were)\s*(?:not|n['’]t)\s+(?:calm|settl|stop|improv|respond|eat|sleep|ease|get\s+better)\p{L}*|(?<!\p{L})(?:ו|ש|כש)?(?:אין|ללא|בלי|לא)\s+(?:שום\s+)?(?:סימנ\p{L}*|סימן|עדות|שיפור|התקדמות|שינוי|תגובה|רגיעה|נרגע\p{L}*|מצליח\p{L}*|מפסיק\p{L}*)/giu;
@@ -200,19 +203,40 @@ function governedByCondition(text: string): boolean {
     if (!commands.length) continue;
     const head = own.slice(0, commands[0].index);
     const tail = own.slice(commands[commands.length - 1].index + commands[commands.length - 1].text.length);
-    if (governs(head, true) || governs(tail, false)) return true;
+    if (governs(head, true) && qualifyingCondition(head)) return true;
+    if (governs(tail, false) && qualifyingCondition(tail)) return true;
     // a leading condition clause: the chunks before it, back to one that opens the condition
     if (!ASSERTIVE_START.test(own) || /^then\b/iu.test(own)) {
       for (let j = k - 1; j >= 0; j--) {
         const t = chunkText(j);
-        if (governs(t, true)) return true;
+        if (governs(t, true)) {
+          if (qualifyingCondition([...Array(k - j).keys()].map((i) => chunkText(j + i)).join(", ") + ` ${head}`)) return true;
+          break;
+        }
         if (ASSERTIVE_START.test(t) || hasCommand(t)) break;
       }
     }
     // the condition right after it: "Call the family, if needed."
-    if (k + 1 < chunks.length && governs(chunkText(k + 1).split(/\s+/u).slice(0, 4).join(" "), false)) return true;
+    if (k + 1 < chunks.length && governs(chunkText(k + 1).split(/\s+/u).slice(0, 4).join(" "), false) && qualifyingCondition(chunkText(k + 1))) return true;
   }
   return false;
+}
+/* Round 16 (P1-A): a condition that is itself an unspoken negated reassurance ("If there are no signs of
+ * anxiety") governs nothing — it is what rule (b) removes. A negated finding in a governing condition must
+ * negate a change (calming, settling, improvement, stopping; רגיעה, שיפור, נרגע, מפסיק …), or the
+ * condition must name a harm trigger or a hard moment. A condition with no negated finding ("If you are
+ * worried", "When he bites") governs as before. */
+const CHANGE_WORD = /\b(?:calm\p{L}*|settl\p{L}*|improv\p{L}*|eas(?:e|es|ed|ing)|better|progress\p{L}*|respon\p{L}*|stop\p{L}*|chang\p{L}*|recover\p{L}*|relief|let\s+up)\b|(?<!\p{L})(?:ו|ל|ש|ה)?(?:רגיעה|הרגעות|שיפור|נרגע\p{L}*|מפסיק\p{L}*|הפסק\p{L}*|התקדמות|הקלה|תגובה|שינוי|החלמה)(?!\p{L})/iu;
+const HARM_WORD = /\b(?:hurt\p{L}*|harm\p{L}*|injur\p{L}*|danger\p{L}*|unsafe|safety|bleed\p{L}*|bit|bite\p{L}*|biting|hit\p{L}*|kick\p{L}*|push\p{L}*|throw\p{L}*|threw|scream\p{L}*|run\p{L}*\s+(?:away|off|out)|ran\s+(?:away|off|out)|cr(?:y|ies|ied|ying)|tantrum\p{L}*|meltdown\p{L}*|self-harm|suicid\p{L}*|choking|breath\p{L}*|fever|seizure\p{L}*|faint\p{L}*|vomit\p{L}*)\b|(?<!\p{L})(?:ו|ש|כש|ה)?(?:פוגע\p{L}*|נפגע\p{L}*|פגיעה|מרביץ\p{L}*|הרביץ\p{L}*|נושך\p{L}*|נשך\p{L}*|בועט\p{L}*|דוחף\p{L}*|זורק\p{L}*|צורח\p{L}*|צרח\p{L}*|בורח\p{L}*|ברח\p{L}*|בוכה|בכי|בכה|סכנה|מסוכן\p{L}*|התקף\p{L}*|חום|נשימה|מקיא\p{L}*|התעלפ\p{L}*)(?!\p{L})/iu;
+function qualifyingCondition(condition: string): boolean {
+  const reassurances = reassurancesIn(condition);
+  // a harm counts where the condition asserts it, never inside a negated finding ("no signs of crying")
+  const asserted = reassurances.reduce((t, r) => {
+    const end = Math.max(r.end, r.objectEnd);
+    return t.slice(0, r.index) + " ".repeat(Math.max(0, end - r.index)) + t.slice(end);
+  }, condition);
+  if (HARM_WORD.test(asserted)) return true;
+  return reassurances.every((r) => CHANGE_WORD.test(r.object) || CHANGE_WORD.test(condition.slice(r.index, r.objectEnd + 1)));
 }
 
 /** A chunk that continues a condition list: "…, or there are no signs…", "…, או שאין…". */

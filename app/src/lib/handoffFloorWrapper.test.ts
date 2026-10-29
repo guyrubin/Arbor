@@ -130,6 +130,58 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     expect(handoffFloor("אם אין סימנים של רגיעה אחרי 20 דקות, יש לעדכן את ההורים.", { parentText: HARD_MOMENT_HE })).toBe("אם אין סימנים של רגיעה אחרי 20 דקות, יש לעדכן את ההורים.");
   });
 
+  /* Round 16 (P1-A): a deferred instruction is no escalation, and a condition that is itself an unspoken
+     negated reassurance ("If there are no signs of anxiety") governs nothing. Each stays as main leaves it. */
+  it.each([
+    "When there are no signs of anxiety, you can update the parents at the next meeting.",
+    "When there are no signs of a speech delay, it is enough to mention it to the family at the end of the year.",
+    "If there are no signs of anxiety, just let the family know at pickup next week.",
+    "When there are no signs of a speech delay, the pediatrician can be consulted at the routine checkup next year.",
+    "When there are no signs of anxiety, a short note to the family next month is enough.",
+    "When there are no signs of calming, tell the family at the next pickup.",
+    "כשאין סימנים לחרדה, ניתן לעדכן את ההורים בפגישה הבאה.",
+    "כשאין סימנים לעיכוב, מספיק לעדכן את ההורים בסוף השנה.",
+    "כשאין סימנים לחרדה, אפשר לספר להורים באסיפה של החודש הבא.",
+    "כשאין סימנים לעיכוב בדיבור, אפשר להתייעץ עם רופאת הילדים בבדיקה השגרתית בשנה הבאה.",
+    "כשאין סימנים לחרדה, אפשר להמתין ולעדכן את ההורים רק בחודש הבא.",
+    "When there are no signs of anxiety, call the family.",
+    "When there are no signs of crying at drop-off, call the family.",
+    "כשאין סימנים של בכי, התקשרו להורים.",
+    "כשאין סימנים לחרדה, התקשרו להורים.",
+    "If there are no signs of a speech delay, a referral to a specialist can safely wait.",
+    "כשאין סימנים לעיכוב, כדאי להמתין שבועיים ורק אז לעדכן את ההורים.",
+  ])("deferred, or governed only by an unspoken reassurance: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).toBe("");
+    expect(handoffFloor(line, { parentText })).toBe("");
+  });
+  it.each([
+    "Phone the family when there are no signs of calming after 20 minutes.",
+    "When, after 20 minutes, there are still no signs of settling, phone the family.",
+    "After 20 minutes with no signs of settling, call the family.",
+    "Once he shows no signs of settling after 20 minutes, phone the family.",
+    "When there are no signs of calming, call the family, not only the teacher.",
+    "When there are no signs of calming, call the family no matter how late it is.",
+    "When there are no signs of anxiety and he hurts himself, call the family.",
+    "התקשרו להורים כשאין סימנים של רגיעה אחרי 20 דקות.",
+    "ברגע שאין סימנים של רגיעה אחרי 20 דקות, עדכנו את ההורים מיד.",
+    "כשאין סימנים של רגיעה, התקשרו להורים בכל שעה.",
+    "במידה ואין סימנים לשיפור, יש לעדכן את ההורים ולא רק את הגננת.",
+    "כעבור 20 דקות ללא סימנים של רגיעה, התקשרו להורים.",
+    "כשאין סימנים של רגיעה, התקשרו להורים לא משנה מה השעה.",
+  ])("a condition that negates a change, or names a harm, still governs: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).toBe("");
+    expect(handoffFloor(line, { parentText })).toBe(line);
+  });
+  it("lines main keeps stay byte-identical (K01, HK01)", () => {
+    for (const line of ["If he cannot be calmed within 20 minutes, call the family and do not leave him alone.", "אם הוא לא נרגע תוך 20 דקות, התקשרו להורים ואל תשאירו אותו לבד."]) {
+      const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+      expect(withoutHandoffFindings(line, { parentText })).toBe(line);
+      expect(handoffFloor(line, { parentText })).toBe(line);
+    }
+  });
+
   it("a cut line comes back whole: a condition split off by ';' or a new line, a title's full stop", () => {
     for (const line of [
       "If there are no signs of calming after 20 minutes; call the family.",
