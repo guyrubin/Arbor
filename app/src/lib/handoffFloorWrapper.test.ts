@@ -224,6 +224,14 @@ describe("rule (b) — a negated-finding reassurance the parent never said is re
     ["אין סימנים להצטננות והוא בעט בילד בכניסה לגן.", "הוא בעט בילד בכניסה לגן. אין סימנים להצטננות השבוע."],
     ["הוא נשך חבר ואין סימנים לחרדה.", "הרופאה אמרה שאין סימנים לדלקת אוזניים. הוא עדיין בוכה בבוקר."],
     ["הוא בוכה בבוקר והגננת אומרת שאין סימנים לחרדה.", "הרופאה אמרה שאין סימנים לדלקת אוזניים. הוא עדיין בוכה בבוקר."],
+    // round 13 (P1-A): a hard moment joined to the reassurance by and / or / ו / או
+    ["His teacher said he showed no signs of distress and bit a classmate during circle time.", "He bit a classmate during circle time"],
+    ["The teacher noted no signs of fear and pushed a boy off the slide at recess.", "He pushed a boy off the slide at recess"],
+    ["Mom reports no signs of tiredness or hitting at home this week.", "He hit his sister at home this week"],
+    ["הגננת אמרה שאין סימנים למצוקה ונשך ילד במפגש.", "הוא נשך ילד במפגש"],
+    ["הגננת ציינה שאין סימנים לפחד ודחף ילד מהמגלשה בהפסקה.", "הוא דחף ילד מהמגלשה בהפסקה"],
+    ["אמא מספרת שאין סימנים לעייפות או למכות בבית השבוע.", "הוא הרביץ לאחותו בבית השבוע"],
+    ["אמא מספרת שאין סימנים לחרדה בפרידה והוא נשך חבר בגן.", "הוא נשך חבר בגן"],
   ])("kept whole, as main keeps it: %s", (line, parentText) => {
     expect(withoutHandoffFindings(line, { parentText })).toBe(line);
     expect(handoffFloor(line, { parentText })).toBe(line);

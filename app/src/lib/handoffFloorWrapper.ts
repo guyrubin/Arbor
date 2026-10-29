@@ -147,7 +147,7 @@ const REASSURE_FOUND_HE = new RegExp(String.raw`(?<!\p{L})(?:ו|ש|כש)?(?:לא
 
 type Reassurance = { index: number; end: number; object: string; objectEnd: number };
 /** Where the object stops: a clause boundary or a word that starts a new clause or a time/context frame. */
-const OBJECT_STOP = /[,;:.!?—–()]|\s-\s|\b(?:when|whenever|while|since|because|as|after|before|during|despite|unless|if|until|which|who|that|so|but|though|although|according|per|yet|even|today|yesterday|lately|recently|anymore|now|so\s+far|he|she|they|we|i|you)\b|(?<!\p{L})(?:כש\p{L}*|כאשר|מאז|אחרי|לאחר|לפני|במהלך|בזמן|למרות|כי|אבל|אך|לדברי|לפי|אם|עד|בעוד|מאחר|כפי|היום|כרגע|הוא|היא|הם|הן|אני|אנחנו|והוא|והיא|והם)(?!\p{L})/iu;
+const OBJECT_STOP = /[,;:.!?—–()]|\s-\s|\b(?:when|whenever|while|since|because|as|after|before|during|despite|unless|if|until|which|who|that|so|but|though|although|according|per|yet|even|today|yesterday|lately|recently|anymore|now|so\s+far|he|she|they|we|i|you|and|or|nor|plus)\b|(?<!\p{L})(?:כש\p{L}*|כאשר|מאז|אחרי|לאחר|לפני|במהלך|בזמן|למרות|כי|אבל|אך|לדברי|לפי|אם|עד|בעוד|מאחר|כפי|היום|כרגע|הוא|היא|הם|הן|אני|אנחנו|והוא|והיא|והם|או)(?!\p{L})|(?<!\p{L})ו(?=\p{L}{2})/iu;
 
 function reassurancesIn(text: string): Reassurance[] {
   const out: Reassurance[] = [];
@@ -285,15 +285,38 @@ const LEAD_SUBJECT_ONLY = /^(?:[\p{L}'’".-]+\s+){1,3}$/u;
 /** After the object: only a context frame — no subject, no verb, no new clause. */
 const TAIL_CLAUSE_EN = /\b(?:he|she|they|we|i|you|it|who|which|that)\b|\b\p{L}{3,}(?:ed|ing)\b|\b(?:is|was|were|are|has|had|did|does|went|came|got|took|made|gave|ran|fell|ate|slept|woke|sat|stood|left|said|told|saw|found|bit|hit|threw|kept|lost|broke)\b/iu;
 const TAIL_CLAUSE_HE = /(?<!\p{L})(?:ו|ש|כש)?(?:הוא|היא|הם|הן|אני|אנחנו|אתה|את|אתם)(?!\p{L})|(?<!\p{L})(?:ש|כש)(?!(?:בוע|בועות|עה|עות|ינה|לו|לה|להם|להן|לנו|תי|ני|לוש|ום|גרה|יחה|מיעה|פה|יפור)(?!\p{L}))\p{L}{2,}/u;
+/* Round 13 (P1-A): the object ends at "and / or / ו / או", so what follows is tested as a clause of its
+ * own; inside the object a hard-moment act (hit, bite, push …, הרביץ, נשך, דחף …) or a subject + verb is
+ * never part of a reassurance. A negated state ("no signs of anxiety") is the reassurance itself. */
+const OBJECT_ACT_EN = /\b(?:hit|hits|hitting|push\p{L}*|shov\p{L}*|kick\p{L}*|throw\p{L}*|threw|thrown|bite|bites|biting|bitten|bit|scratch\p{L}*|slap\p{L}*|punch\p{L}*|pinch\p{L}*|spit\p{L}*|spat|hurt\p{L}*|grabb\p{L}*|fight\p{L}*|fought)\b/iu;
+const OBJECT_ACT_HE = /(?<!\p{L})(?:[ובהלמשכ]|וה|ול|ומ|וב)?(?:הרביצ\p{L}*|הרביץ|מרביצ\p{L}*|מכות|מכה|היכה|הכה|הכתה|נשיכ\p{L}*|נשך|נשכה|נושך|נושכת|דחף|דחפה|דוחף|דוחפת|דחיפ\p{L}*|בעט|בעטה|בועט|בועטת|בעיט\p{L}*|זרק|זרקה|זורק|זורקת|זריק\p{L}*|שרט|שרטה|שריט\p{L}*|צבט|צבטה|צביט\p{L}*|סטר|סטיר\p{L}*|ירק|ירקה|יריק\p{L}*|פגע|פגעה|פוגע|פוגעת)(?!\p{L})/u;
+const LIST_JOIN = /^(?:(?:and|or|nor|plus)\s+|או\s+|ו(?=\p{L}{2}))/iu;
+/** A state or finding noun: what a reassurance's object list is made of ("anxiety or distress", "קשב או ויסות"). */
+const STATE_NOUN = /\b(?:anxi\p{L}*|distress|fear\p{L}*|worr\p{L}*|stress|tired\p{L}*|fatigue|difficult\p{L}*|delay\p{L}*|deficit\p{L}*|impairment\p{L}*|disorder\p{L}*|problem\p{L}*|issue\p{L}*|concern\p{L}*|regulation|dysregulation|attention|focus|overload|overwhelm\p{L}*|frustration|anger|sadness|withdrawal|hunger|pain|illness|fever|cold|infection|sensitivit\p{L}*|discomfort|upset)\b|(?<!\p{L})(?:[ובהלמש]{0,2})(?:חרד\p{L}*|מצוק\p{L}*|פחד\p{L}*|דאג\p{L}*|לחץ|עייפות|קושי|קשיי\p{L}*|קשיים|עיכוב\p{L}*|ליקוי\p{L}*|הפרע\p{L}*|בעי\p{L}*|ויסות|קשב|ריכוז|עומס|תסכול|כעס|עצב|רעב|כאב|חום|מחלה|דלקת\p{L}*)(?!\p{L})/iu;
+const OBJECT_CLAUSE = /\b(?:he|she|they|we|i|you|who)\b|\b(?:is|was|were|are|has|had|did|does|went|came|got|took|made)\b|(?<!\p{L})(?:ו|ש|כש)?(?:הוא|היא|הם|הן|אני|אנחנו)(?!\p{L})/iu;
 /** Nouns that only look like verbs in a frame ("this morning", "since the spring"). */
 const TAIL_NOUNS_EN = /\b(?:morning|mornings|evening|evenings|during|nothing|something|anything|everything|setting|settings|building|spring|ceiling|bedtime|weekend|weekends)\b/giu;
 const HE_GLUED_VAV_HEAD = /^ו/u;
 /** True when the chunk is the reassurance and nothing else (see above). */
-function onlyReassurance(chunkText: string, head: number, objectEnd: number): boolean {
+function onlyReassurance(chunkText: string, head: number, headEnd: number, objectEnd: number): boolean {
   const pre = chunkText.slice(0, head).trim();
-  const post = chunkText.slice(objectEnd).trim();
+  let object = chunkText.slice(headEnd, objectEnd);
+  let post = chunkText.slice(objectEnd).trim();
+  // "… or regulation difficulties", "… או ויסות": a further state in the same list belongs to the object;
+  // anything else after "and / or / ו / או" is a clause of its own and keeps main's whole sentence.
+  while (LIST_JOIN.test(post)) {
+    const item = post.replace(LIST_JOIN, "");
+    const next = item.slice(1).search(OBJECT_STOP); // the item's own first letter never ends it ("או ויסות")
+    const stop = next < 0 ? -1 : next + 1;
+    const piece = stop < 0 ? item : item.slice(0, stop);
+    if (!STATE_NOUN.test(piece) || OBJECT_ACT_EN.test(piece) || OBJECT_ACT_HE.test(piece) || OBJECT_CLAUSE.test(piece) || /\p{L}{3,}ed\b/iu.test(piece)) return false;
+    object += ` ${piece}`;
+    post = (stop < 0 ? "" : item.slice(stop)).trim();
+  }
   const headText = chunkText.slice(head);
   if (hasIncidentCue(pre) || hasIncidentCue(post)) return false;
+  // Round 13 (P1-A): the object itself carries no act and no clause ("no signs of distress and bit a classmate").
+  if (OBJECT_ACT_EN.test(object) || OBJECT_ACT_HE.test(object) || OBJECT_CLAUSE.test(object)) return false;
   if (post.split(/\s+/u).filter(Boolean).length > 6) return false;
   if (TAIL_CLAUSE_EN.test(post.replace(TAIL_NOUNS_EN, " ")) || TAIL_CLAUSE_HE.test(post)) return false;
   if (!pre) return true;
@@ -482,9 +505,9 @@ function removeReassurances(segment: string, opts: HandoffFloorOptions, removed:
       if (cutText === chunkText) continue;
       const tail = chunkText.slice(cutText.length).replace(/^[\s,;:—–-]+/u, "");
       const offset = chunkText.length - tail.length;
-      if (!onlyReassurance(tail, rel - offset, r.objectEnd - chunk.start - offset)) return segment;
+      if (!onlyReassurance(tail, rel - offset, r.end - chunk.start - offset, r.objectEnd - chunk.start - offset)) return segment;
       start = chunk.start + cutText.length;
-    } else if (!onlyReassurance(chunkText, rel, r.objectEnd - chunk.start)) {
+    } else if (!onlyReassurance(chunkText, rel, r.end - chunk.start, r.objectEnd - chunk.start)) {
       // Another clause shares the chunk: main's verdict stands for the whole sentence.
       return segment;
     }
