@@ -2,7 +2,7 @@
 // makes every text file check out with LF, so the source-reading guards (which split a
 // component's source on "\n") see the same bytes under core.autocrlf=true as on CI.
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,6 +41,25 @@ describe("line endings are LF in every checkout", () => {
     expect(lfRuleProblems(`${attributes}\n*.tsx text eol=crlf\n`)).toHaveLength(1);
     expect(lfRuleProblems(`${attributes}\n*.ts binary\n`)).toHaveLength(1);
     expect(lfRuleProblems(String(attributes).replace("* text=auto eol=lf", "* text=auto"))).toHaveLength(1);
+  });
+
+  // Round 2: 18 test files were committed with CRLF and a doubled CR (\r\r\n), which made git
+  // call them binary, so text=auto never converted them. No source file may carry a CR at all.
+  it("no source or test file under src/ and scripts/ holds a carriage return", () => {
+    const app = path.join(repo, "app");
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const file = path.join(dir, name);
+        if (statSync(file).isDirectory()) { if (name !== "node_modules") walk(file); }
+        else if (/\.(?:tsx?|mjs|cjs|js|css|json)$/.test(name)) files.push(file);
+      }
+    };
+    walk(path.join(app, "src"));
+    walk(path.join(app, "scripts"));
+    expect(files.length).toBeGreaterThan(500);
+    const withCr = files.filter((f) => readFileSync(f).includes(0x0d)).map((f) => path.relative(app, f));
+    expect(withCr).toEqual([]);
   });
 
   it.skipIf(!gitAvailable)("a core.autocrlf=true checkout writes LF with these rules and CRLF without them", () => {
