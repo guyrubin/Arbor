@@ -20,7 +20,9 @@
  *  - Shipped files: every plate file under public/visuals/books is a
  *    reviewed, registered plate of a library book, every overlay file is one
  *    a page of that book names, and every committed plan plate
- *    (public/visuals/plans) is a reviewed plate of its pattern.
+ *    (public/visuals/plans) is a reviewed plate of its pattern; and no book
+ *    or plan plate sits ANYWHERE else under public/visuals, where the review
+ *    check would not see it (strayPlateFindings).
  *
  * Pure: no fs, no React; the test hands it the file list.
  */
@@ -150,6 +152,26 @@ export function shippedPlateFindings(
       if (!entry) out.push(`${rel}: not a registered plate of pattern ${patternId}`);
       else if (!plateReviewed(entry)) out.push(`${rel}: unreviewed shared plate (${reviewGap(entry)})`);
     } else out.push(`${rel}: not a plate or overlay path`);
+  }
+  return out;
+}
+
+/**
+ * The rest of public/visuals: a file outside visuals/books and visuals/plans
+ * that is a book's or a pattern's plate or overlay (a folder named for a book
+ * or a pattern, an overlays/ or plates/ folder, or a registered plate id as
+ * its name) would ship past the review check. Paths relative to public/visuals.
+ */
+export function strayPlateFindings(files: readonly string[], known: { owners: ReadonlySet<string>; plateIds: ReadonlySet<string> }): string[] {
+  const out: string[] = [];
+  for (const rel of files) {
+    if (/^(books|plans)\//.test(rel)) continue;
+    const parts = rel.split("/");
+    const stem = (parts[parts.length - 1] ?? "").replace(/\.[A-Za-z0-9]+$/, "");
+    const owner = parts.slice(0, -1).find((p) => known.owners.has(p));
+    if (owner) out.push(`${rel}: a file of ${owner} outside visuals/books and visuals/plans`);
+    else if (parts.slice(0, -1).some((p) => p === "overlays" || p === "plates")) out.push(`${rel}: a plate or overlay folder outside visuals/books and visuals/plans`);
+    else if (known.plateIds.has(stem)) out.push(`${rel}: named like a registered plate (${stem}) outside visuals/books and visuals/plans`);
   }
   return out;
 }

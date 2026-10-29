@@ -18,7 +18,7 @@ import type { BookPlate, PlateTable } from "./bookPlates";
 import { PLAN_FIXTURE_BOOKS } from "./plans/planBooks";
 import { planPlateTable } from "./plans/planPlates";
 import { PATTERN_IDS } from "./plans/planVisibility";
-import { bookPlateFindings, plateReviewed, reviewGap, shippedPlateFindings, type ShippedBook } from "./platePolicy";
+import { bookPlateFindings, plateReviewed, reviewGap, shippedPlateFindings, strayPlateFindings, type ShippedBook } from "./platePolicy";
 import type { Book } from "./types";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -76,7 +76,18 @@ describe("B-BOOK-27: every library book's plates are reviewed and carry their sl
 });
 
 describe("B-BOOK-27: nothing unreviewed ships", () => {
-  const files = [...walk(path.join(VISUALS, "books")), ...walk(path.join(VISUALS, "plans"))].map(rel);
+  // the whole of public/visuals (round 2): a plate outside books/ and plans/ must not escape review
+  const all = walk(VISUALS).map(rel);
+  const files = all.filter((f) => /^(books|plans)\//.test(f));
+  const KNOWN = {
+    owners: new Set<string>([...Object.keys(BOOK_PLATES), ...PATTERN_IDS]),
+    plateIds: new Set<string>([...Object.values(BOOK_PLATES).flatMap((t) => Object.keys(t)), ...Object.values(PLAN_TABLES).flatMap((t) => Object.keys(t))]),
+  };
+
+  it("the scan reads the whole of public/visuals, and no book or plan plate sits outside visuals/books and visuals/plans", () => {
+    expect(all.length).toBeGreaterThan(files.length);
+    expect(strayPlateFindings(all, KNOWN)).toEqual([]);
+  });
 
   it("every plate and overlay file under public/visuals/books and /plans is a reviewed registry entry", () => {
     expect(files.some((f) => f.startsWith("books/five-smooth-stones/PL"))).toBe(true);
@@ -90,7 +101,7 @@ describe("B-BOOK-27: nothing unreviewed ships", () => {
     }
   });
 
-  it("the shared plan plates still unreviewed are a frozen list that may only shrink", () => {
+  it("the shared plan plates still unreviewed are EXACTLY the frozen list: a new one fails, and a reviewed one must leave it", () => {
     const unreviewed: Record<string, string[]> = {};
     for (const [pattern, table] of Object.entries(PLAN_TABLES)) {
       const ids = Object.keys(table).filter((id) => !plateReviewed(table[id]));
@@ -98,6 +109,9 @@ describe("B-BOOK-27: nothing unreviewed ships", () => {
     }
     for (const [pattern, ids] of Object.entries(unreviewed)) {
       for (const id of ids) expect(UNREVIEWED_PLAN_PLATES[pattern] ?? [], `${pattern}/${id} is a new unreviewed shared plate`).toContain(id);
+    }
+    for (const [pattern, ids] of Object.entries(UNREVIEWED_PLAN_PLATES)) {
+      for (const id of ids) expect(unreviewed[pattern] ?? [], `${pattern}/${id} is reviewed now: remove it from UNREVIEWED_PLAN_PLATES`).toContain(id);
     }
   });
 });
@@ -160,5 +174,20 @@ describe("B-BOOK-27: negative controls — each rule bites", () => {
       "books/five-smooth-stones/sheet.json: not a plate or overlay path",
     ]);
     expect(shippedPlateFindings(["books/five-smooth-stones/PL1.webp"], unreviewed)).toEqual(["books/five-smooth-stones/PL1.webp: unreviewed plate (not recorded child-free)"]);
+  });
+
+  it("a stray plate anywhere else under public/visuals is caught (a book's folder, an overlays/ folder, a plate id as a name)", () => {
+    const known = { owners: new Set(["five-smooth-stones", "plan-poo-sit"]), plateIds: new Set(["PL1", "PP1"]) };
+    expect(strayPlateFindings([
+      "stories/five-smooth-stones/PL9.webp",
+      "cards/overlays/helmet.webp",
+      "worlds/PP1.webp",
+      "books/five-smooth-stones/PL1.webp",
+      "cards/web/story-noahs-ark-480.webp",
+    ], known)).toEqual([
+      "stories/five-smooth-stones/PL9.webp: a file of five-smooth-stones outside visuals/books and visuals/plans",
+      "cards/overlays/helmet.webp: a plate or overlay folder outside visuals/books and visuals/plans",
+      "worlds/PP1.webp: named like a registered plate (PP1) outside visuals/books and visuals/plans",
+    ]);
   });
 });
