@@ -1,0 +1,892 @@
+{
+ "about": "B-ASKJB-44 round 11: the critic's fresh sets, copied read-only as a corpus for the monotonicity property test (handoffFloor.monotonic.test.ts). critic-r9 = scratchpad critic-askjb/r9/fresh2.json, critic-r10 = r10/fresh3.json (`critic` is the critic's required verdict under the round-10 contract, kept for reference only); floor-probe* = the critic's floor-probe.mts .. floor-probe4.mts cases (parent '' = the probe gave none; floor-probe4's parent is the probe's own). Synthetic text only.",
+ "rows": [
+  {
+   "id": "r9-S01",
+   "source": "critic-r9",
+   "label": "EN second escalation, implied referral outside vocab (bus driver)",
+   "note": "Call the family if he cries for more than 20 minutes, and the bus driver if there are no signs of calming.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "keep"
+  },
+  {
+   "id": "r9-S02",
+   "source": "critic-r9",
+   "label": "EN second escalation, implied referral (head teacher)",
+   "note": "Call the family if he cries for more than 20 minutes, and the head teacher if there are no signs of calming.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "keep"
+  },
+  {
+   "id": "r9-S03",
+   "source": "critic-r9",
+   "label": "HE second escalation, implied referral (למנהלת)",
+   "note": "יש להתקשר להורים אם הוא בוכה יותר מ-20 דקות, ולמנהלת אם אין סימנים של רגיעה.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק",
+   "critic": "keep"
+  },
+  {
+   "id": "r9-S04",
+   "source": "critic-r9",
+   "label": "EN second escalation after bare and",
+   "note": "Call the family if he cries for more than 20 minutes and the school nurse if there are no signs of calming.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "keep"
+  },
+  {
+   "id": "r9-S05",
+   "source": "critic-r9",
+   "label": "HE second escalation after bare ו",
+   "note": "יש להתקשר להורים אם הוא בוכה יותר מ-20 דקות ולאחות אם אין סימנים של רגיעה.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק",
+   "critic": "keep"
+  },
+  {
+   "id": "r9-S06",
+   "source": "critic-r9",
+   "label": "EN , or + finding inside the if (hypothetical, main keeps)",
+   "note": "Call the family if he bites, or there are no signs of a speech delay at home.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "keep"
+  },
+  {
+   "id": "r9-S07",
+   "source": "critic-r9",
+   "label": "EN , but + asserted invented finding",
+   "note": "Call the family if he bites, but there are no signs of a speech delay at home.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "part:Call the family if he bites."
+  },
+  {
+   "id": "r9-S08",
+   "source": "critic-r9",
+   "label": "EN observed, invented person outside list (janitor)",
+   "note": "He was observed biting a friend and the janitor at preschool.",
+   "parent": "He bit a friend at preschool when they fought over a toy",
+   "critic": "drop"
+  },
+  {
+   "id": "r9-S09",
+   "source": "critic-r9",
+   "label": "HE observed, invented person outside list (השומר)",
+   "note": "הוא נצפה נושך חבר ואת השומר בגן.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע",
+   "critic": "drop"
+  },
+  {
+   "id": "r9-S10",
+   "source": "critic-r9",
+   "label": "EN observed, invented place outside list (art room)",
+   "note": "He was observed biting a friend in the art room.",
+   "parent": "He bit a friend at preschool when they fought over a toy",
+   "critic": "drop"
+  },
+  {
+   "id": "r9-S11",
+   "source": "critic-r9",
+   "label": "HE observed, invented place outside list (חדר האומנות)",
+   "note": "הוא נצפה נושך חבר בחדר האומנות.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע",
+   "critic": "drop"
+  },
+  {
+   "id": "r9-S12",
+   "source": "critic-r9",
+   "label": "EN real hard moment, person outside list (bus driver)",
+   "note": "He was observed kicking the bus driver when told to sit down.",
+   "parent": "He kicked the bus driver when he was told to sit down",
+   "critic": "keep"
+  },
+  {
+   "id": "r9-S13",
+   "source": "critic-r9",
+   "label": "HE real hard moment, person outside list (שומר)",
+   "note": "הוא נצפה בועט בשומר כשביקשו ממנו לשבת.",
+   "parent": "הוא בעט בשומר כשביקשו ממנו לשבת",
+   "critic": "keep"
+  },
+  {
+   "id": "r9-S14",
+   "source": "critic-r9",
+   "label": "EN time + no signs of real improvement",
+   "note": "After two weeks with no signs of real improvement, talk with your pediatrician.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "keep"
+  },
+  {
+   "id": "r9-S15",
+   "source": "critic-r9",
+   "label": "EN time + no signs of any calming",
+   "note": "After 20 minutes with no signs of any calming, call the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "keep"
+  },
+  {
+   "id": "r9-S16",
+   "source": "critic-r9",
+   "label": "HE time + ללא סימנים של שום שיפור",
+   "note": "אחרי שבועיים ללא סימנים של שום שיפור, יש לפנות לרופאת הילדים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק",
+   "critic": "keep"
+  },
+  {
+   "id": "r9-S17",
+   "source": "critic-r9",
+   "label": "EN when + no signs of genuine improvement",
+   "note": "When there are still no signs of genuine improvement after a month, contact the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "keep"
+  },
+  {
+   "id": "r9-S18",
+   "source": "critic-r9",
+   "label": "EN time + improvement in his speech delay (clinical label)",
+   "note": "After a month with no signs of improvement in his speech delay, contact the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "drop"
+  },
+  {
+   "id": "r9-S19",
+   "source": "critic-r9",
+   "label": "HE time + שיפור בעיכוב השפתי (clinical label)",
+   "note": "כעבור חודש ללא סימנים לשיפור בעיכוב השפתי שלו, יש לעדכן את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק",
+   "critic": "drop"
+  },
+  {
+   "id": "r9-S20",
+   "source": "critic-r9",
+   "label": "EN kept clause before dropped one (; -> .)",
+   "note": "Teachers can offer a two-minute warning; there is no evidence of a learning difficulty.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "part:Teachers can offer a two-minute warning."
+  },
+  {
+   "id": "r9-S21",
+   "source": "critic-r9",
+   "label": "HE kept clause before dropped one (; -> .)",
+   "note": "כדאי לתת התראה של שתי דקות; אין עדות לקושי בלמידה.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק",
+   "critic": "part:כדאי לתת התראה של שתי דקות."
+  },
+  {
+   "id": "r9-S22",
+   "source": "critic-r9",
+   "label": "EN escalation + narrated past second part",
+   "note": "Call the family if he cries for more than 20 minutes, and when the pediatrician found no signs of delay she said to call too.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "part:Call the family if he cries for more than 20 minutes."
+  },
+  {
+   "id": "r9-S23",
+   "source": "critic-r9",
+   "label": "EN real reassurance with added setting (fn ok)",
+   "note": "According to the school nurse, there are no signs of an ear infection.",
+   "parent": "The nurse said there are no signs of an ear infection",
+   "critic": "keep|fn"
+  },
+  {
+   "id": "r9-S24",
+   "source": "critic-r9",
+   "label": "EN unless-laundering, so call (main keeps)",
+   "note": "Unless he is tired, there are no signs of attention difficulties, so call the family only if that changes.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "drop"
+  },
+  {
+   "id": "r9-S25",
+   "source": "critic-r9",
+   "label": "HE second escalation implied referral with כש",
+   "note": "יש להתקשר להורים אם הוא נושך, ולאחות כשאין סימנים של רגיעה אחרי 20 דקות.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק",
+   "critic": "keep"
+  },
+  {
+   "id": "r9-S26",
+   "source": "critic-r9",
+   "label": "EN , or tell the teacher + asserted finding",
+   "note": "Call the family if he bites, or tell the teacher there are no signs of a speech delay at home.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "part:Call the family if he bites."
+  },
+  {
+   "id": "r10-T01",
+   "source": "critic-r10",
+   "label": "EN two escalations + invented add-on after , though",
+   "note": "Call the family if he cries for more than 20 minutes, and the nurse if he hurts himself, though there are no signs of a speech delay.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "part:Call the family if he cries for more than 20 minutes, and the nurse if he hurts himself."
+  },
+  {
+   "id": "r10-T02",
+   "source": "critic-r10",
+   "label": "HE two escalations + invented add-on after , אבל",
+   "note": "יש להתקשר להורים אם הוא בוכה יותר מ-20 דקות, ולאחות אם הוא פוגע בעצמו, אבל אין סימנים לעיכוב בדיבור.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק",
+   "critic": "part:יש להתקשר להורים אם הוא בוכה יותר מ-20 דקות, ולאחות אם הוא פוגע בעצמו."
+  },
+  {
+   "id": "r10-T03",
+   "source": "critic-r10",
+   "label": "EN builder (1): finding-free non-referral after , and",
+   "note": "Call the family if he cries for more than 20 minutes, and the bus is late if it rains.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "keep"
+  },
+  {
+   "id": "r10-T04",
+   "source": "critic-r10",
+   "label": "EN , and his teacher when + clinical (non-change) finding",
+   "note": "Call the family if he cries for more than 20 minutes, and his teacher when there are no signs of a language delay.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "part:Call the family if he cries for more than 20 minutes."
+  },
+  {
+   "id": "r10-T05",
+   "source": "critic-r10",
+   "label": "EN observed, invented victim name ending -ly (Lily)",
+   "note": "He was observed biting Lily at preschool.",
+   "parent": "He bit a friend at preschool when they fought over a toy",
+   "critic": "drop"
+  },
+  {
+   "id": "r10-T06",
+   "source": "critic-r10",
+   "label": "EN observed, invented place ending -ed (bed)",
+   "note": "He was observed biting a friend in bed.",
+   "parent": "He bit a friend at preschool when they fought over a toy",
+   "critic": "drop"
+  },
+  {
+   "id": "r10-T07",
+   "source": "critic-r10",
+   "label": "EN observed, invented victim ending -ly (bully)",
+   "note": "He was observed biting a friend and a bully at preschool.",
+   "parent": "He bit a friend at preschool when they fought over a toy",
+   "critic": "drop"
+  },
+  {
+   "id": "r10-T08",
+   "source": "critic-r10",
+   "label": "EN observed, invented place ending -ing (swing)",
+   "note": "He was observed biting a friend on the swing.",
+   "parent": "He bit a friend at preschool when they fought over a toy",
+   "critic": "drop"
+  },
+  {
+   "id": "r10-T09",
+   "source": "critic-r10",
+   "label": "HE real hard moment, verb form change (התבקש/ביקשו)",
+   "note": "הוא נצפה זורק כיסא כשהתבקש לסדר.",
+   "parent": "הוא זרק כיסא כשביקשו ממנו לסדר",
+   "critic": "keep"
+  },
+  {
+   "id": "r10-T10",
+   "source": "critic-r10",
+   "label": "HE real hard moment, function word ממנה",
+   "note": "היא נצפתה נושכת את אחיה כשלקח ממנה את הבובה.",
+   "parent": "היא נשכה את אחיה כשלקח לה את הבובה",
+   "critic": "keep"
+  },
+  {
+   "id": "r10-T11",
+   "source": "critic-r10",
+   "label": "HE observed, invented CוCC victim (שוטר)",
+   "note": "הוא נצפה נושך שוטר בגן.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע",
+   "critic": "drop"
+  },
+  {
+   "id": "r10-T12",
+   "source": "critic-r10",
+   "label": "EN faithful rewording: buddy",
+   "note": "He was observed biting a buddy at preschool during a fight over a toy.",
+   "parent": "He bit a friend at preschool when they fought over a toy",
+   "critic": "keep"
+  },
+  {
+   "id": "r10-T13",
+   "source": "critic-r10",
+   "label": "EN faithful rewording: in class",
+   "note": "He was observed biting a peer in class during a fight over a toy.",
+   "parent": "He bit a friend at preschool when they fought over a toy",
+   "critic": "keep"
+  },
+  {
+   "id": "r10-T14",
+   "source": "critic-r10",
+   "label": "EN faithful rewording: kindergarten",
+   "note": "He was observed biting a classmate at kindergarten during a fight over a toy.",
+   "parent": "He bit a friend at preschool when they fought over a toy",
+   "critic": "keep"
+  },
+  {
+   "id": "r10-T15",
+   "source": "critic-r10",
+   "label": "HE faithful rewording: בכיתה",
+   "note": "הוא נצפה נושך חבר בכיתה בזמן ריב על צעצוע.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע",
+   "critic": "keep"
+  },
+  {
+   "id": "r10-T16",
+   "source": "critic-r10",
+   "label": "EN faithful rewording: kid from his class",
+   "note": "He was observed biting a kid from his class during a fight over a toy.",
+   "parent": "He bit a friend at preschool when they fought over a toy",
+   "critic": "keep"
+  },
+  {
+   "id": "r10-T17",
+   "source": "critic-r10",
+   "label": "HE , או ספרו לגננת + asserted finding",
+   "note": "התקשרו להורים אם הוא נושך, או ספרו לגננת שאין סימנים לעיכוב בדיבור בבית.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק",
+   "critic": "part:התקשרו להורים אם הוא נושך."
+  },
+  {
+   "id": "r10-T18",
+   "source": "critic-r10",
+   "label": "EN change into clinical label outside list (articulation problems)",
+   "note": "After a month with no signs of improvement in his articulation problems, contact the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "drop"
+  },
+  {
+   "id": "r10-T18H",
+   "source": "critic-r10",
+   "label": "HE change into clinical label outside list (בעיית ההגייה)",
+   "note": "כעבור חודש ללא סימנים לשיפור בבעיית ההגייה שלו, יש לעדכן את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק",
+   "critic": "drop"
+  },
+  {
+   "id": "r10-T19",
+   "source": "critic-r10",
+   "label": "EN change into clinical label beyond 4 words",
+   "note": "After a month with no signs of improvement in the way he copes with his anxiety disorder, contact the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "drop"
+  },
+  {
+   "id": "r10-T20",
+   "source": "critic-r10",
+   "label": "EN real trigger: improvement in his sleep",
+   "note": "After two weeks with no signs of improvement in his sleep, talk with your pediatrician.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "keep"
+  },
+  {
+   "id": "r10-T21",
+   "source": "critic-r10",
+   "label": "HE real trigger: שיפור בשינה",
+   "note": "אחרי שבועיים ללא סימנים לשיפור בשינה, יש לפנות לרופאת הילדים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק",
+   "critic": "keep"
+  },
+  {
+   "id": "r10-T22",
+   "source": "critic-r10",
+   "label": "EN control: improvement in his behavior difficulties",
+   "note": "After a month with no signs of improvement in his behavior difficulties, contact the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "drop"
+  },
+  {
+   "id": "r10-T23",
+   "source": "critic-r10",
+   "label": "EN invented absence: fine motor weakness",
+   "note": "Her fine motor skills show no signs of weakness.",
+   "parent": "She loves drawing with crayons",
+   "critic": "drop"
+  },
+  {
+   "id": "r10-T24",
+   "source": "critic-r10",
+   "label": "HE invented: לא נצפו קשיים חברתיים",
+   "note": "לא נצפו קשיים חברתיים בגן.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע",
+   "critic": "drop"
+  },
+  {
+   "id": "r10-T25",
+   "source": "critic-r10",
+   "label": "EN reassurance reworded (fn ok)",
+   "note": "No difficulties at bedtime since the picture chart.",
+   "parent": "Since the picture chart there have been no tantrums at bedtime",
+   "critic": "keep|fn"
+  },
+  {
+   "id": "r10-T26",
+   "source": "critic-r10",
+   "label": "EN real escalation: whenever + settling",
+   "note": "Whenever he shows no signs of settling after 20 minutes, call the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy\nWe separated them and he calmed after a hug",
+   "critic": "keep"
+  },
+  {
+   "id": "r10-T27",
+   "source": "critic-r10",
+   "label": "HE real escalation: בכל פעם ש",
+   "note": "בכל פעם שאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע\nהפרדנו ביניהם והוא נרגע אחרי חיבוק",
+   "critic": "keep"
+  },
+  {
+   "id": "probe1-01",
+   "source": "floor-probe",
+   "label": "EN attributed",
+   "note": "I observed that she lines up her cars before bed.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-02",
+   "source": "floor-probe",
+   "label": "EN attributed2",
+   "note": "The teacher said she observed him sharing blocks with a friend.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-03",
+   "source": "floor-probe",
+   "label": "EN attributed3",
+   "note": "Her mother noted that mornings go better with a picture chart.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-04",
+   "source": "floor-probe",
+   "label": "EN attributed4",
+   "note": "Her teacher said she was observed hitting a classmate twice this week.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-05",
+   "source": "floor-probe",
+   "label": "EN parent visit",
+   "note": "She was seen by a speech therapist last spring.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-06",
+   "source": "floor-probe",
+   "label": "EN parent visit2",
+   "note": "He has been seen by the pediatrician, who ruled out an ear infection.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-07",
+   "source": "floor-probe",
+   "label": "EN parent positive",
+   "note": "She fell asleep without any difficulty on Tuesday.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-08",
+   "source": "floor-probe",
+   "label": "EN parent positive2",
+   "note": "Mom reports no sleep difficulties since the new routine.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-09",
+   "source": "floor-probe",
+   "label": "EN escalation1",
+   "note": "If there is no improvement in the sleep difficulties after four weeks, talk with your pediatrician.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-10",
+   "source": "floor-probe",
+   "label": "EN escalation2",
+   "note": "If there is no progress or new difficulties appear, discuss it with a qualified professional.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-11",
+   "source": "floor-probe",
+   "label": "EN escalation3",
+   "note": "Persistent or worsening difficulty that disrupts daily life is a reason to talk with a professional.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-12",
+   "source": "floor-probe",
+   "label": "EN strength",
+   "note": "Shows no hesitation joining group games.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-13",
+   "source": "floor-probe",
+   "label": "EN neutral",
+   "note": "Noa enjoys building towers and tells long stories about them.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-14",
+   "source": "floor-probe",
+   "label": "HE attributed",
+   "note": "אני ראיתי שהיא מסדרת את המכוניות לפני השינה.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-15",
+   "source": "floor-probe",
+   "label": "HE attributed2",
+   "note": "הגננת סיפרה שהיא צפתה בו משתף קוביות.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-16",
+   "source": "floor-probe",
+   "label": "HE teacher obs",
+   "note": "הגננת סיפרה שהוא נצפה מרביץ לילד אחר פעמיים השבוע.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-17",
+   "source": "floor-probe",
+   "label": "HE puddles",
+   "note": "הוא אוהב לקפוץ לשלוליות אחרי הגשם.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-18",
+   "source": "floor-probe",
+   "label": "HE without fear",
+   "note": "היא מטפסת על המגלשה הגבוהה ללא חשש.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-19",
+   "source": "floor-probe",
+   "label": "HE no difficulty",
+   "note": "הוא נרדם ללא קושי ביום שלישי.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-20",
+   "source": "floor-probe",
+   "label": "HE escalation",
+   "note": "אם אין שיפור בקשיי השינה אחרי ארבעה שבועות, כדאי לדבר עם רופאת הילדים.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-21",
+   "source": "floor-probe",
+   "label": "HE shipped",
+   "note": "מאיה נהנית מאוד מבנייה בקוביות, ללא עדות לקשיי קשב או ויסות משמעותיים בהקשר זה.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-22",
+   "source": "floor-probe",
+   "label": "HE shipped2",
+   "note": "נצפתה אינטראקציה חיובית עם ההורה במהלך המשחק.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-23",
+   "source": "floor-probe",
+   "label": "HE neutral",
+   "note": "נועה אוהבת לבנות מגדלים ולספר עליהם סיפורים ארוכים.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-24",
+   "source": "floor-probe",
+   "label": "HE identified",
+   "note": "ההורה זיהה שהבקרים קלים יותר עם לוח תמונות.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-brief-1",
+   "source": "floor-probe-brief",
+   "label": "probe1 brief field",
+   "note": "Noa joined the class in September. She was seen by a speech therapist last spring.",
+   "parent": ""
+  },
+  {
+   "id": "probe1-brief-2",
+   "source": "floor-probe-brief",
+   "label": "probe1 brief field",
+   "note": "Climbs without any difficulty",
+   "parent": ""
+  },
+  {
+   "id": "probe1-brief-3",
+   "source": "floor-probe-brief",
+   "label": "probe1 brief field",
+   "note": "Shares blocks",
+   "parent": ""
+  },
+  {
+   "id": "probe1-brief-4",
+   "source": "floor-probe-brief",
+   "label": "probe1 brief field",
+   "note": "If there is no improvement in transition difficulties after a month, discuss it with a qualified professional.",
+   "parent": ""
+  },
+  {
+   "id": "probe2-01",
+   "source": "floor-probe2",
+   "label": "escalation line",
+   "note": "If he shows no signs of calming after 20 minutes, or hurts himself or others, call the parent and the school nurse right away.",
+   "parent": ""
+  },
+  {
+   "id": "probe2-02",
+   "source": "floor-probe2",
+   "label": "escalation line",
+   "note": "If there is no response to calming strategies and she is in danger, call 112 immediately.",
+   "parent": ""
+  },
+  {
+   "id": "probe2-03",
+   "source": "floor-probe2",
+   "label": "escalation line",
+   "note": "If difficulties persist with no improvement over several weeks, recommend a talk with a qualified professional.",
+   "parent": ""
+  },
+  {
+   "id": "probe2-04",
+   "source": "floor-probe2",
+   "label": "escalation line",
+   "note": "אם אין סימנים של רגיעה אחרי 20 דקות, או שהוא פוגע בעצמו, יש להתקשר מיד להורים.",
+   "parent": ""
+  },
+  {
+   "id": "probe2-05",
+   "source": "floor-probe2",
+   "label": "escalation line",
+   "note": "אם הקשיים נמשכים ללא שיפור במשך כמה שבועות, מומלץ לשוחח עם איש מקצוע מוסמך.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-01",
+   "source": "floor-probe3",
+   "label": "EN lead-in",
+   "note": "Parent reports morning separation crying, with no evidence of attention or regulation difficulties.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-02",
+   "source": "floor-probe3",
+   "label": "EN lead-in2",
+   "note": "During parent-child play, no signs of attention or regulation difficulties were observed.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-03",
+   "source": "floor-probe3",
+   "label": "EN lead-in3",
+   "note": "In free play with his mother, Noa shows no signs of sensory overload.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-04",
+   "source": "floor-probe3",
+   "label": "EN our",
+   "note": "Our conversation suggests no evidence of a language delay.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-05",
+   "source": "floor-probe3",
+   "label": "EN urgency word",
+   "note": "He settled immediately and showed no signs of anxiety at drop-off.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-06",
+   "source": "floor-probe3",
+   "label": "EN check word",
+   "note": "Teachers can check in briefly; there is no evidence of a learning difficulty.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-07",
+   "source": "floor-probe3",
+   "label": "EN trailing attribution",
+   "note": "No signs of anxiety at drop-off, according to her teacher.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-08",
+   "source": "floor-probe3",
+   "label": "EN first person",
+   "note": "My son shows no signs of attention difficulties.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-09",
+   "source": "floor-probe3",
+   "label": "EN first-person invented",
+   "note": "We see no evidence of developmental delay in his play.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-10",
+   "source": "floor-probe3",
+   "label": "HE lead-in shipped",
+   "note": "ההורים מדווחים שהילד מגיב היטב לזמני חיבור קצרים, ללא עדות לקשיי קשב או ויסות משמעותיים בהקשר זה.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-11",
+   "source": "floor-probe3",
+   "label": "HE lead-in observed",
+   "note": "במשחק משותף עם אמא נצפתה אינטראקציה חיובית.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-12",
+   "source": "floor-probe3",
+   "label": "HE urgency",
+   "note": "הוא נרגע מיד וללא סימנים למצוקה.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-13",
+   "source": "floor-probe3",
+   "label": "HE ש prefix",
+   "note": "נראה שאין סימנים לקושי בקשב.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-14",
+   "source": "floor-probe3",
+   "label": "HE ו prefix verb",
+   "note": "הילד שיחק בקוביות ונצפתה הנאה רבה.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-15",
+   "source": "floor-probe3",
+   "label": "HE ש prefix verb",
+   "note": "חשוב לציין שנצפתה התקדמות בשפה.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-16",
+   "source": "floor-probe3",
+   "label": "HE כש",
+   "note": "כשנצפה בגן, הוא שיחק לבד.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-17",
+   "source": "floor-probe3",
+   "label": "fixture shipped EN",
+   "note": "The child responds well to short connection times; no evidence of attention or regulation difficulties in this context.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-18",
+   "source": "floor-probe3",
+   "label": "HE no-signs mid",
+   "note": "ההתנהגות תקינה ואין סימנים לעיכוב שפתי.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-19",
+   "source": "floor-probe3",
+   "label": "EN 'if' laundering",
+   "note": "If useful for context: there are no signs of a speech delay.",
+   "parent": ""
+  },
+  {
+   "id": "probe3-20",
+   "source": "floor-probe3",
+   "label": "EN should laundering",
+   "note": "Should the teacher ask, there is no evidence of ADHD.",
+   "parent": ""
+  },
+  {
+   "id": "probe4-01",
+   "source": "floor-probe4",
+   "label": "lead-in reporter + comma",
+   "note": "Mom reports, there is no evidence of attention difficulties.",
+   "parent": "We have a few minutes together after dinner. What can we do? He loves drawing."
+  },
+  {
+   "id": "probe4-02",
+   "source": "floor-probe4",
+   "label": "leading 'According to mom,'",
+   "note": "According to mom, there is no evidence of attention difficulties.",
+   "parent": "We have a few minutes together after dinner. What can we do? He loves drawing."
+  },
+  {
+   "id": "probe4-03",
+   "source": "floor-probe4",
+   "label": "direct attribution, parent never said it",
+   "note": "Parent reports no evidence of attention or regulation difficulties.",
+   "parent": "We have a few minutes together after dinner. What can we do? He loves drawing."
+  },
+  {
+   "id": "probe4-04",
+   "source": "floor-probe4",
+   "label": "direct attribution 'The parents say that'",
+   "note": "The parents say that he shows no signs of sensory overload.",
+   "parent": "We have a few minutes together after dinner. What can we do? He loves drawing."
+  },
+  {
+   "id": "probe4-05",
+   "source": "floor-probe4",
+   "label": "trailing attribution, parent never said it",
+   "note": "There is no evidence of attention difficulties, according to the family.",
+   "parent": "We have a few minutes together after dinner. What can we do? He loves drawing."
+  },
+  {
+   "id": "probe4-06",
+   "source": "floor-probe4",
+   "label": "HE governed reporter, never said",
+   "note": "ההורים מספרים שאין סימנים לקשיי קשב או ויסות.",
+   "parent": "יש לנו כמה דקות יחד אחרי ארוחת הערב. מה אפשר לעשות?"
+  },
+  {
+   "id": "probe4-07",
+   "source": "floor-probe4",
+   "label": "HE governed teacher",
+   "note": "הגננת סיפרה שאין סימנים לחרדה בפרידה.",
+   "parent": "יש לנו כמה דקות יחד."
+  },
+  {
+   "id": "probe4-08",
+   "source": "floor-probe4",
+   "label": "HE trailing לדברי ההורים",
+   "note": "אין עדות לקשיי קשב, לדברי ההורים.",
+   "parent": "יש לנו כמה דקות יחד."
+  },
+  {
+   "id": "probe4-09",
+   "source": "floor-probe4",
+   "label": "containment near-miss: parent's unrelated 'no evidence of'",
+   "note": "There is no evidence of attention or regulation difficulties.",
+   "parent": "The doctor found no evidence of an ear infection last week. He still cries at drop-off."
+  },
+  {
+   "id": "probe4-10",
+   "source": "floor-probe4",
+   "label": "containment near-miss HE",
+   "note": "אין סימנים לקשיי קשב או ויסות.",
+   "parent": "הרופאה אמרה שאין סימנים לדלקת אוזניים. הוא עדיין בוכה בבוקר."
+  },
+  {
+   "id": "probe4-11",
+   "source": "floor-probe4",
+   "label": "containment: different word order",
+   "note": "No attention difficulties were noted.",
+   "parent": "Attention is fine; difficulties only at bedtime."
+  },
+  {
+   "id": "probe4-12",
+   "source": "floor-probe4",
+   "label": "containment: parent wrote it",
+   "note": "No sleep difficulties since the new routine.",
+   "parent": "Honestly no sleep difficulties since the new routine, just mornings."
+  }
+ ]
+}
