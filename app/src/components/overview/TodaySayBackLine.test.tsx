@@ -28,6 +28,9 @@ vi.mock("../../context/ArborContext", () => ({
   }),
 }));
 vi.mock("../../lib/age/forChild", () => ({ ageMonthsOf: () => 64 }));
+// B-DATA-14 (P2): the line subscribes through useOnline(); here it reads the
+// stubbed navigator directly, so the line can also be called as a plain function.
+vi.mock("../../hooks/useSyncStatus", () => ({ useOnline: () => typeof navigator === "undefined" || navigator.onLine !== false }));
 vi.mock("../../context/LanguageContext", async () => {
   const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
   return { useLanguage: () => ({ t: (k: string, v?: Record<string, string | number>) => translate(h.lang, k, v), uiLang: h.lang }) };

@@ -12,8 +12,9 @@ import type { ActionPlan } from "../../types";
 const h = vi.hoisted(() => ({
   cursor: 0, slots: [] as any[], effects: [] as (() => void)[], dirty: false,
   lang: "en" as "en" | "he",
-  writes: [] as { plan: ActionPlan; resolve: () => void; reject: (e: unknown) => void }[],
+  writes: [] as { plan: ActionPlan; resolve: () => void; reject: (e: unknown) => void; offline?: { onQueued: () => void; onSynced?: () => void; onRejected?: () => void } }[],
   celebrate: vi.fn(),
+  online: true,
 }));
 vi.mock("react", async (original) => {
   const actual = await original<typeof import("react")>();
@@ -26,12 +27,14 @@ vi.mock("react", async (original) => {
     useState: (initial: any) => { const i = h.cursor++, slots = h.slots; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial; return [slots[i], (next: any) => { const value = typeof next === "function" ? next(slots[i]) : next; if (!Object.is(slots[i], value)) { slots[i] = value; h.dirty = true; } }]; },
     useRef: (initial: any) => { const i = h.cursor++; return h.slots[i] ??= { current: initial }; },
     useMemo: memo, useCallback: (fn: unknown, deps: unknown[]) => memo(() => fn, deps),
+    // B-DATA-14: useOnline's store, read straight from the harness.
+    useSyncExternalStore: () => h.online,
     useEffect: (effect: () => void | (() => void), deps: unknown[]) => { const i = h.cursor++, slots = h.slots, prev = slots[i]; if (prev && deps.every((d, n) => Object.is(d, prev.deps[n]))) return; const slot = { deps, cleanup: undefined as any }; slots[i] = slot; h.effects.push(() => { prev?.cleanup?.(); slot.cleanup = effect(); }); },
   };
 });
 vi.mock("../../context/ArborContext", () => ({
   useArbor: () => ({
-    setRoutineRun: (plan: ActionPlan) => new Promise<void>((resolve, reject) => { h.writes.push({ plan, resolve, reject }); }),
+    setRoutineRun: (plan: ActionPlan, offline?: { onQueued: () => void; onSynced?: () => void; onRejected?: () => void }) => new Promise<void>((resolve, reject) => { h.writes.push({ plan, resolve, reject, offline }); }),
   }),
 }));
 vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ uiLang: h.lang, t: (key: string, vars?: Record<string, string | number>) => translate(h.lang, key, vars) }) }));
@@ -80,7 +83,7 @@ function dispose() { h.slots.forEach((slot) => slot?.cleanup?.()); h.slots = [];
 const steps = () => elements(render()).filter((el) => typeof el.props["data-testid"] === "string" && el.props["data-testid"].startsWith("routine-run-step-"));
 
 beforeEach(() => {
-  h.cursor = 0; h.slots = []; h.effects = []; h.dirty = false; h.lang = "en"; h.writes = []; h.celebrate.mockClear();
+  h.cursor = 0; h.slots = []; h.effects = []; h.dirty = false; h.lang = "en"; h.writes = []; h.celebrate.mockClear(); h.online = true;
   Board = RoutineRunBoard;
   props = { plan: routinePlan(), now: NOW };
 });
@@ -279,5 +282,59 @@ describe("FEAT-07 · the rows and the contract stamp", () => {
     expect(src).not.toMatch(/ProgressBar|progressbar|Math\.round\([^)]*100|%`|toFixed/);
     expect(src).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/);
     expect(src).not.toMatch(/\b(?:margin|padding)(?:Left|Right)\b|\b(?:left|right):/);
+  });
+});
+
+/* B-DATA-14 — offline, a tick is kept on this phone and says so in bounded
+   time; the "Saved" receipt and the celebration still wait for the server. */
+for (const lang of ["en", "he"] as const) describe(`B-DATA-14 · the routine run board offline · ${lang}`, () => {
+  beforeEach(() => { h.lang = lang; props = { plan: routinePlan(), now: NOW }; });
+
+  /** setRoutineRun as useChildCollection answers it offline: onQueued, then the call resolves. */
+  const keepOnPhone = async (i: number) => { const w = h.writes[i]; w.offline!.onQueued(); w.resolve(); await flush(); };
+
+  it("offline: the tick shows, 'Saved on this phone. Sending when you're back online.', no Saving…, no receipt, no celebration", async () => {
+    h.online = false;
+    props = { plan: routinePlan([0, 1, 2]), now: NOW };
+    render(); tap(3);
+    expect(h.writes[0].offline, "the board asks for the bounded answer").toBeDefined();
+    await keepOnPhone(0);
+    const queued = byId("routine-run-queued");
+    expect(queued.type).toBe(Receipt);
+    expect(queued.props.children).toBe(translate(lang, "elev.sync.savedOnPhone"));
+    expect(byId("routine-run-pending").props.active).toBe(false);
+    expect(findId("routine-run-saved")).toBeUndefined();
+    expect(byId("routine-run-step-3").props["aria-checked"]).toBe(true);
+    expect(h.celebrate).not.toHaveBeenCalled();
+    // Another tick offline still works and builds on the kept run.
+    tap(0);
+    expect(routineRunToday(h.writes[1].plan, TODAY)).not.toContain(0);
+  });
+
+  it("reconnected: 'Still sending…' until the server acknowledges, then the receipt and the one celebration", async () => {
+    h.online = false;
+    props = { plan: routinePlan([0, 1, 2]), now: NOW };
+    render(); tap(3); await keepOnPhone(0);
+    h.online = true;
+    expect(byId("routine-run-queued").props.children).toBe(translate(lang, "elev.sync.savedOnPhoneSending"));
+    h.writes[0].offline!.onSynced!(); await flush();
+    expect(findId("routine-run-queued")).toBeUndefined();
+    expect(byId("routine-run-saved").props.children).toBe(translate(lang, "elev.plans.routineRun.doneToday", { routine: bedtimeTitle(lang) }));
+    expect(h.celebrate).toHaveBeenCalledTimes(1);
+  });
+
+  it("a rejection after the phone kept it takes the receipt back and offers the retry", async () => {
+    h.online = false;
+    render(); tap(1); await keepOnPhone(0);
+    h.writes[0].offline!.onRejected!(); await flush();
+    expect(findId("routine-run-queued")).toBeUndefined();
+    expect(byId("routine-run-failed").props.role).toBe("alert");
+    expect(byId("routine-run-step-1").props["aria-checked"]).toBe(false);
+  });
+
+  it("negative control: online with a prompt ack, the old path is unchanged (no kept-on-phone line)", async () => {
+    render(); tap(1); h.writes[0].resolve(); await flush();
+    expect(findId("routine-run-queued")).toBeUndefined();
+    expect(byId("routine-run-saved").type).toBe(Receipt);
   });
 });

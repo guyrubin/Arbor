@@ -53,6 +53,8 @@ export interface ChildProfile {
   activeGoals?: import('./practice/goalBuilder').ActiveGoal[];
   /** B-CAREPRO-33: when each Care-quoted fact was last written or confirmed (ISO). */
   factsAsOf?: import('./lib/factsAsOf').FactsAsOf;
+  /** B-NEXT-01: when the parent says hearing was last checked, with the day they said it (lib/hearingCheck; dark behind its pilot flag). */
+  hearingCheck?: import('./lib/hearingCheck').HearingCheck;
   /**
    * CI-29: Parent-entered interest tags (e.g. "Trains", "Dinosaurs").
    * Parent-facing only — the child never enters this field.
@@ -134,6 +136,14 @@ export interface ChildProfile {
    * which ignore a value that is not a selectable theme.
    */
   kidTheme?: import('./lib/kidThemeManifest').KidThemeId;
+  /**
+   * B-BOOK-45 — the parent's bedtime ("HH:MM", Settings › Kid Mode): from this
+   * time until 06:00 a library book opens as the bedtime read (night stage,
+   * slower narration, a Goodnight ending that opens nothing else). A field ON
+   * the profile document like kidTheme (rides profile sync/export/erase).
+   * Absent = off. Read only through lib/library/readMode.validBedtime.
+   */
+  bedtimeFrom?: string;
   /**
    * B-SHELL-39 — what the parent wants to work on now, in their own words,
    * kept from "Tell Arbor about {name}" (≤ 3). A parent wish, never an

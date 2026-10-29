@@ -7,14 +7,14 @@ interface WorldCopy { title: string; description: string; headline: string; hint
 interface PlanCopy { kicker: string; tonight: (step: string) => string; open: string; tried: string; triedDone: string; bubble: (step: string) => string; read: string; ribbon: string }
 interface StudioCopy {
   hello: string; helloNoName: string; invitation: string; collection: string; hero: string; noHero: string; guide: string; takeMe: string;
-  quest: string; questTitle: string; questContinue: string; questOpen: string; questLoading: string; progress: (done: number) => string;
+  quest: string; questTitle: string; questContinue: string; questOpen: string; questLoading: string;
   books: string; allBooks: string; booksHint: string; activities: Record<StudioActivityId, ActivityCopy>; worlds: Record<StudioWorldId, WorldCopy>;
   play: string; kept: string; keepsake: string; keepsakeHint: string; empty: string; worldActivities: string;
   plan: PlanCopy;
 }
 const en: StudioCopy = {
   hello: "Hi", helloNoName: "Hi there!", invitation: "Pick a world to play in.", collection: "My keepsakes", hero: "Your hero", noHero: "A place for your hero", guide: "Tap Sprout for a hint", takeMe: "Take me",
-  quest: "MY COZY CORNER", questTitle: "A cozy corner", questContinue: "Keep going", questOpen: "Visit my corner", questLoading: "Opening your corner…", progress: n => `${n} of 4 done`,
+  quest: "MY COZY CORNER", questTitle: "A cozy corner", questContinue: "Keep going", questOpen: "Visit my corner", questLoading: "Opening your corner…",
   plan: { kicker: "MY PLAN", tonight: step => `Tonight: ${step}`, open: "Open my book", tried: "I tried!", triedDone: "I tried tonight!", bubble: step => `Tonight: ${step} Want to read our plan?`, read: "Read our plan", ribbon: "My plan" },
   books: "My books", allBooks: "Open my bookshelf", booksHint: "Pick a story to read.", play: "Play", kept: "Kept", keepsake: "A keepsake from your play", keepsakeHint: "Things you make and stories you finish stay in your collection.", empty: "More adventures are waiting as you grow.", worldActivities: "Pick something to play",
   worlds: {
@@ -44,7 +44,7 @@ const en: StudioCopy = {
 };
 const he: StudioCopy = {
   hello: "היי", helloNoName: "היי!", invitation: "בוחרים עולם לשחק בו.", collection: "המזכרות שלי", hero: "הגיבור שלך", noHero: "מקום לגיבור שלך", guide: "נוגעים בנבט לקבלת רמז", takeMe: "בואו נלך",
-  quest: "הפינה הנעימה שלי", questTitle: "פינה נעימה", questContinue: "ממשיכים", questOpen: "לפינה שלי", questLoading: "פותחים את הפינה…", progress: n => `${n} מתוך 4 הושלמו`,
+  quest: "הפינה הנעימה שלי", questTitle: "פינה נעימה", questContinue: "ממשיכים", questOpen: "לפינה שלי", questLoading: "פותחים את הפינה…",
   plan: { kicker: "התוכנית שלי", tonight: step => `הלילה: ${step}`, open: "לפתוח את הספר שלי", tried: "ניסיתי!", triedDone: "ניסיתי הלילה!", bubble: step => `הלילה: ${step} רוצה לקרוא את התוכנית שלנו?`, read: "לקרוא את התוכנית", ribbon: "התוכנית שלי" },
   books: "הספרים שלי", allBooks: "למדף הספרים שלי", booksHint: "בוחרים סיפור לקרוא.", play: "לשחק", kept: "נשמר", keepsake: "מזכרת מהמשחק שלך", keepsakeHint: "דברים שיצרת וסיפורים שסיימת נשארים באוסף שלך.", empty: "עוד הרפתקאות מחכות בהמשך.", worldActivities: "בוחרים במה לשחק",
   worlds: {

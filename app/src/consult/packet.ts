@@ -9,6 +9,7 @@
  */
 
 import { ClinicalLanguageError, findClinicalDiagnosisTerm, findTeacherBlockedTerm } from "../lib/clinicalScan";
+import { hearingAnswerKey, type HearingCheck } from "../lib/hearingCheck";
 import { isolate, translate, type UiLang } from "../lib/i18n";
 import { DOMAIN_LABEL } from "../lib/screening";
 import { milestoneAgeWindow, milestoneText } from "../lib/milestoneData";
@@ -1779,6 +1780,10 @@ export interface IntakePacketInput {
    *  adherence section: practice days as counts and the proposed goals in the
    *  family's words (the number stays in the family-goals section only). */
   homePrograms?: readonly unknown[];
+  /** B-NEXT-01: the parent's hearing answer (lib/hearingCheck), passed only
+   *  while its pilot flag is on. Printed first in the speech therapist's
+   *  packet, as the parent's own dated answer; never a verdict. */
+  hearing?: HearingCheck | null;
 }
 
 const INTAKE_MOMENTS_CAP = 8;
@@ -1829,6 +1834,16 @@ export function buildIntakePacket(profession: IntakeProfession, input: IntakePac
     if (!items.length) return;
     sections.push({ id, title: translate("en", key), titleKey: key, ...(noteKey ? { note: translate("en", noteKey), noteKey } : {}), items });
   };
+
+  // · Hearing — B-NEXT-01: the speech therapist's first question, as the
+  //   parent answered it and when. Only the profession that owns Words.
+  if (input.hearing && profession === "slp") {
+    const day = intakeDay(input.hearing.answeredAt, lang);
+    const text = input.hearing.answer === "notSure"
+      ? t("elev.hearing.packet.notSure", { date: day })
+      : t("elev.hearing.packet.line", { answer: t(hearingAnswerKey(input.hearing.answer)), date: day });
+    section("intake-hearing", "elev.hearing.packet.title", [{ id: "intake-hearing-last-checked", text }]);
+  }
 
   // · Seen — the parent's "yes", dated, oldest first
   const byId = new Map(input.milestones.map((m) => [m.id, m]));

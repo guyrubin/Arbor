@@ -32,6 +32,7 @@ import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import type { BookLang, BookReaderChild } from "../../lib/library/types";
 import { heGender } from "../../lib/library/bookText";
 import { screenForImmediateEscalation } from "../../safety/escalation";
+import { UrgentSupport } from "../safety/UrgentSupport";
 
 const CARD: React.CSSProperties = { background: "var(--arbor-paper-elevated)", borderRadius: "var(--r-lg)", boxShadow: "var(--arbor-shadow-card)" };
 const PRIMARY: React.CSSProperties = { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }; // solid accent: the gradient is each surface's one primaryMove (primaryMove.gradient.test)
@@ -322,6 +323,9 @@ function StepsStage({ def, lang, childName, state, dispatch, problems, onSafety 
           {crisis && (
             <div role="alert" className="mt-2" data-plan-own-crisis="">
               <p className="t-sm" style={{ color: "var(--arbor-ink)" }}>{s("stage.steps.ownCrisis")}</p>
+              {/* B-ASKJB-49: the helplines themselves, in the request's language
+                  (the shared crisis card's lines; this alert carries the words). */}
+              <UrgentSupport testId="plan-own-urgent-support" requestLang={lang} showInstructions={false} className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 t-sm" />
               {onSafety && <button type="button" className={`${BTN} mt-2`} style={QUIET} onClick={onSafety}><Icon name="health_and_safety" size={18} />{s("stage.steps.ownCrisisDoor")}</button>}
             </div>
           )}

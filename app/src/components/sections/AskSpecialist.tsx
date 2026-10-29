@@ -29,6 +29,7 @@ import {
   type ConsultPacket,
 } from "../../consult/packet";
 import { intakeQuestionLines, readIntakeQuestionsText } from "../../consult/intakeDraft";
+import { hearingCheckOf, hearingQuestionOn } from "../../lib/hearingCheck";
 import { SPLIT_CLINICIAN_AUDIENCES, SPLIT_CLINICIAN_PRESETS, isSplitClinicianAudience, type SplitClinicianAudience } from "../../content/consultPresets";
 import { comparisonMonthsOf } from "../../lib/age/forChild";
 import { ClinicalLanguageError } from "../../lib/clinicalScan";
@@ -130,7 +131,7 @@ type ExportBuild = { text: string; error: null } | { text: null; error: string }
 const BRING_GROUPS: readonly { id: string; icon: string; labelKey: string; sections: readonly string[] }[] = [
   { id: "moments", icon: "edit_note", labelKey: "elev.consult.bring.moments", sections: ["moments", "patterns", "triggers", "intake-moments"] },
   { id: "map", icon: "eco", labelKey: "elev.consult.bring.development", sections: ["development", "dev-noticed", "growth-measurements", "intake-seen", "intake-not-yet"] },
-  { id: "words", icon: "translate", labelKey: "elev.consult.bring.words", sections: ["language-observations"] },
+  { id: "words", icon: "translate", labelKey: "elev.consult.bring.words", sections: ["language-observations", "intake-hearing"] },
   { id: "steps", icon: "flag", labelKey: "elev.consult.bring.steps", sections: ["tried", "adults", "intake-practice", "intake-program", "intake-home-program", "intake-goals"] },
 ];
 
@@ -422,6 +423,8 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       familyGoals: familyGoalsCol.items,
       // B-PROG-09: the active home program from this profession (adherence: days + the family's words)
       homePrograms: programRows.items,
+      // B-NEXT-01: the parent's hearing answer, only while the pilot flag is on
+      hearing: hearingQuestionOn() ? hearingCheckOf(childProfile) : null,
     }) : null),
     [intake, childProfile, milestones, behaviorLogs, actionLoop, uiLang, keepsakesCol.items, intakeProgram, familyGoalsCol.items, programRows.items]
   );

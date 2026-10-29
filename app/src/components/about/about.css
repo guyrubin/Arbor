@@ -91,6 +91,13 @@
 .about-memory-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; }
 .about-memory-open { display: inline-flex; align-items: center; gap: 5px; min-block-size: var(--touch-min); padding: 0; border: 0; background: none; color: var(--arbor-clay); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 @media (max-width: 640px) { .about-memory { padding-inline: 16px; } }
+/* B-CAREPRO-37 — the newest after-visit note: its own line under the memory card. */
+.about-visit { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding-block: 10px; padding-inline: 16px; border: 1px solid var(--arbor-rule); border-radius: 12px; background: var(--arbor-paper); color: var(--arbor-ink); }
+.about-visit-icon { flex: none; color: var(--arbor-muted); }
+.about-visit-text { display: flex; flex-direction: column; gap: 2px; flex: 1 1 200px; min-inline-size: 0; margin: 0; }
+.about-visit-meta { color: var(--arbor-muted); font-size: 11.5px; font-weight: 600; }
+.about-visit-note { font-size: 13.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.about-visit-open { display: inline-flex; align-items: center; gap: 5px; min-block-size: var(--touch-min); padding: 0; border: 0; background: none; color: var(--arbor-clay); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 
 /* ── Details ─────────────────────────────────────────────────────────────── */
 .about-details { display: flex; flex-direction: column; border: 1px solid var(--arbor-rule); border-radius: var(--r-lg); background: var(--arbor-paper-elevated); }

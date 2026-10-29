@@ -25,6 +25,8 @@ export interface ProViewProps {
   onBack: () => void;
   /** TimelineTab's ONE stamp literal — on this view it rides on the packet's first verb. */
   primaryMoveProps?: Record<string, string>;
+  /** B-NEXT-01: the hearing question beside the speech therapist's packet (the caller owns the flag). */
+  askHearing?: React.ReactNode;
 }
 
 /** The packet's labelled lines, in the order an intake reads them. A line
@@ -32,6 +34,8 @@ export interface ProViewProps {
  *  section is absent. The family-goals section (the family-set scale number)
  *  is deliberately NOT a line here: this is a parent surface. */
 const PACKET_LINES: { section: string; labelKey: string; onlyWhenPresent?: boolean }[] = [
+  // B-NEXT-01: hearing first in the speech therapist's packet (dark behind its pilot flag).
+  { section: "intake-hearing", labelKey: "elev.hearing.packet.title", onlyWhenPresent: true },
   { section: "intake-seen", labelKey: "elev.shelfJournal.pro.line.seen" },
   { section: "intake-not-yet", labelKey: "elev.shelfJournal.pro.line.notYet" },
   { section: "intake-moments", labelKey: "elev.shelfJournal.pro.line.moments" },
@@ -87,6 +91,7 @@ export default function ProView({
   counts,
   onBack,
   primaryMoveProps,
+  askHearing,
 }: ProViewProps) {
   const { t, uiLang } = useLanguage();
   const sectionItems = (id: string) => packet.sections.find((s) => s.id === id)?.items ?? [];
@@ -143,6 +148,7 @@ export default function ProView({
           })}
         </div>
 
+        {askHearing}
         <article data-testid="pro-packet" className="p-4" style={CARD}>
           <h2 id="pro-packet-title" className="t-sm font-bold" style={{ color: "var(--arbor-muted)" }}>
             {t("elev.shelfJournal.pro.packetTitle", { profession: professionName })}

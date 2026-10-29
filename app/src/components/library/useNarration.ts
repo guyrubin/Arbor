@@ -35,6 +35,16 @@ export function narrationCandidates(src: string): string[] {
   return out.filter((u) => !failed.has(u));
 }
 
+/** Set an element's speed so it holds across its next load. */
+export function setRate(a: HTMLAudioElement, rate: number): void {
+  try {
+    a.defaultPlaybackRate = rate;
+    a.playbackRate = rate;
+  } catch {
+    /* an element without rate control plays at its own speed */
+  }
+}
+
 export interface NarrationState {
   /** The page narration finished, failed, or never started. */
   settled: boolean;
@@ -47,9 +57,14 @@ export interface NarrationState {
 
 export function useNarration(
   src: string | null,
-  opts: { showKey: string; muted: boolean; enabled: boolean; onClock?: (c: NarrationClock) => void },
+  opts: { showKey: string; muted: boolean; enabled: boolean; onClock?: (c: NarrationClock) => void; rate?: number },
 ): NarrationState {
   const { showKey, muted, enabled } = opts;
+  // B-BOOK-45: bedtime reads at 0.92x. The channel element is shared, so every
+  // play sets its rate (a new src resets playbackRate to defaultPlaybackRate).
+  const rate = opts.rate && Number.isFinite(opts.rate) && opts.rate > 0 ? opts.rate : 1;
+  const rateRef = useRef(rate);
+  rateRef.current = rate;
   const onClock = useRef(opts.onClock);
   onClock.current = opts.onClock;
   const pageAudio = useRef<HTMLAudioElement | null>(null);
@@ -87,6 +102,7 @@ export function useNarration(
       audio = a;
       pageAudio.current = a;
       a.src = urls[i];
+      setRate(a, rateRef.current);
       a.onended = () => {
         if (cancelled) return;
         clock(a, true);
@@ -155,6 +171,7 @@ export function useNarration(
         if (i >= urls.length) return;
         clipAudio.current = a;
         a.src = urls[i];
+        setRate(a, rateRef.current);
         a.onerror = () => {
           failed.add(urls[i]);
           tryAt(i + 1);

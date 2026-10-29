@@ -44,6 +44,7 @@ export const en: Record<string, string> = {
   "elev.safety.helpline.nl_113": "113 Suicide Prevention (free)",
   "elev.safety.helpline.nl_veiligthuis": "Veilig Thuis — abuse and domestic violence (free, 24/7)",
   "elev.safety.helpline.be_1813": "Zelfmoordlijn — suicide prevention",
+  "elev.safety.helpline.be_cps": "Centre de Prévention du Suicide — suicide prevention (French)",
   "elev.safety.helpline.be_1712": "Violence & abuse line",
   "elev.safety.helpline.us_988": "988 Suicide & Crisis Lifeline",
   "elev.safety.helpline.us_911": "Emergency services",
@@ -94,6 +95,11 @@ export const en: Record<string, string> = {
 
   // FEAT-06: UrgentSupport's door to the Safety & escalation tab.
   "elev.safety.open": "Open Safety & escalation",
+
+  // B-ASKJB-49: the crisis screen answered 409 on a parent surface; the lead
+  // line of the shared crisis card, and the fold over the full guidance.
+  "elev.safety.paused": "We paused here. Some of these words may need a person now, not an app.",
+  "elev.safety.paused.more": "Full guidance and every helpline",
 };
 
 export const he: Record<string, string> = {
@@ -129,6 +135,8 @@ export const he: Record<string, string> = {
   "elev.safety.helpline.nl_113": "113 מניעת אובדנות (שיחת חינם)",
   "elev.safety.helpline.nl_veiligthuis": "Veilig Thuis — התעללות ואלימות במשפחה (שיחת חינם, 24/7)",
   "elev.safety.helpline.be_1813": "Zelfmoordlijn — קו מניעת אובדנות",
+  // The French name is a bidi isolate (FSI…PDI, as lib/bidi.ts isolate does) so the Hebrew line cannot reorder it.
+  "elev.safety.helpline.be_cps": "\u2068Centre de Prévention du Suicide\u2069 — קו מניעת אובדנות (בצרפתית)",
   "elev.safety.helpline.be_1712": "קו אלימות והתעללות",
   "elev.safety.helpline.us_988": "988 — קו סיוע לאובדנות ומשבר",
   "elev.safety.helpline.us_911": "שירותי חירום",
@@ -179,6 +187,11 @@ export const he: Record<string, string> = {
 
   // FEAT-06: UrgentSupport's door to the Safety & escalation tab.
   "elev.safety.open": "למעבר לבטיחות והסלמה",
+
+  // B-ASKJB-49: the crisis screen answered 409 on a parent surface; the lead
+  // line of the shared crisis card, and the fold over the full guidance.
+  "elev.safety.paused": "עצרנו כאן. ייתכן שחלק מהמילים האלה צריכות עכשיו אדם, לא אפליקציה.",
+  "elev.safety.paused.more": "ההנחיות המלאות וכל קווי הסיוע (באנגלית)",
 };
 
 // The masterplan names these records safetyEn/safetyHe; the index registry

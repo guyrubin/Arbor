@@ -58,6 +58,7 @@ The AI cost gate (B-GA-26), the trial/paid AI cost measure (BD-06) and the true-
 | `usageRollup/{day}.estimatedCostUsd`, `.pricedCalls`, `.calls` (priced text/image calls) | `GET /api/admin/overview` → `cost30d.estimatedCostUsd`, `cost30d.perActiveFamilyUsd` | B-GA-26 and BD-52: the €2 per active family read (text and image only; Live is not priced there) |
 | `opsLedger/aiStudioPrepay_{since}.reservedMs` × `AI_PREPAY_LEDGER.perLiveMinute` | `GET /api/admin/prepay` → `liveMinutes`, `spent`, `remaining`, `low` | BD-52: Live spend against the prepaid balance; the 20 % alarm |
 | `aiQuota/live_family_{familyId}_{day}` `consumedMs` and `reservations` (per family-day; Admin SDK only) | the allowance itself (`server/liveBudget.ts`) | B-AIOPS-02 enforcement; not a reporting source |
+| `studioCostLedger/{kind}:{ref}` `calls.{modality}`, `estimatedCostUsd`, `unpricedCalls`; `billedCostUsd`, `billedSource`, `billedPeriod`, `acceptedSeconds` set by `scripts/studio-ledger-import.mts` (B-KID-150: production of shared kid assets — plan plates painted in product, book plates, shared narration, video, music) | `studioCostReport` (server/studioCostLedger.ts) | Studio production, reported APART from the €2 per active family read (BD-36): a call made as studio production never writes `usageRollup` (`ai/usage.ts`, `ai/ttsUsage.ts`) |
 
 ## Proof (28 October 2026)
 

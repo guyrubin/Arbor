@@ -4,8 +4,9 @@ import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import type { MemoryReviewItem } from "../../types";
-import { PageHeader, SectionCard, Chip, cardCls } from "../ui/kit";
+import { SectionCard, Chip, cardCls } from "../ui/kit";
 import { ErrorState } from "../ui/ErrorState";
+import { ContentWhyLine } from "../ui/ContentActionBar";
 import { learnCardById } from "../../learn/learnCards";
 import { learnCategoryById, type LearnCard } from "../../learn/learnLibrary";
 import { fmtDay } from "../../lib/formatDate";
@@ -28,7 +29,6 @@ import { findClinicalDiagnosisTerm } from "../../lib/clinicalScan";
 import { scrubMemoryProposals, toParentWords } from "../../server/parentWordsScrub";
 // GP-22 — the memory queue is a why-line surface too: every pending row is a
 // claim about the child, and nothing said where it came from.
-import { ContentWhyLine } from "../ui/ContentActionBar";
 import ArborKnowsTile from "./ArborKnowsTile";
 import FirstsMoment from "./FirstsMoment";
 // B-CAREPRO-25: the pending queue reads as one group per topic (G6: no bulk approve).
@@ -45,13 +45,26 @@ const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : tx
 
 /** Child Intelligence › Child Memory — parent-approved facts, wired to the real
  *  append-only memory service (/api/memory). A core moat: source-linked,
- *  time-stamped, editable via approve/forget, time-boxed when sensitive. */
-export default function ChildMemory() {
+ *  time-stamped, editable via approve/forget, time-boxed when sensitive.
+ *
+ *  B-CAREPRO-38 — ONE home: #/memory and #/child-memory retired into My child ›
+ *  About (#/profile). This is that page's ledger ("Everything Arbor
+ *  remembers"), opened in place under its "What Arbor remembers" card, and it
+ *  is ONLY that (r2: the stand-alone page is gone): no page header, no move of
+ *  its own (About's one move stays), every module it stamps is demoted (About's
+ *  budget counts its own three), and a pending fact the page already asks about
+ *  (in its area, or on the card) is not asked twice (`hidePendingIds`).
+ *  Approve, correct (Edit), forget, retention, the coach's view, the parent's
+ *  own description and the learning trail all stay here. */
+export default function ChildMemory({ hidePendingIds }: {
+  /** Pending facts the host page already asks about — never asked twice on one page. */
+  hidePendingIds?: ReadonlySet<string>;
+} = {}) {
   // B-LOOP-10 — "Things {name} said": the quote keepsakes from Tonight.
   const quoteChild = useArbor().childProfile;
   const quoteDocs = useChildCollection<KeepsakeDoc>(quoteChild.id, "keepsakes");
   const keptQuotes = useMemo(() => quotesFromDocs(quoteDocs.items), [quoteDocs.items]);
-  const { childProfile, approvedMemoryItems, pendingMemoryItems, handleMemoryDecision, isMemoryUpdating, memoryReviewError, memoryReviewErrorKind, retryMemoryReview, savedLearnIds, requestLearnRead, setActiveTab } = useArbor();
+  const { childProfile, approvedMemoryItems, pendingMemoryItems, handleMemoryDecision, isMemoryUpdating, memoryReviewError, memoryReviewErrorKind, retryMemoryReview, savedLearnIds, requestLearnRead } = useArbor();
   const { t, aiLang } = useLanguage();
   const he = aiLang === "he";
   const first = childProfile.name.split(" ")[0];
@@ -61,8 +74,10 @@ export default function ChildMemory() {
   // MemoryRow displays the scrubbed wording.
   const pendingQueue = useMemo(() => {
     const kept = new Set(scrubMemoryProposals(pendingMemoryItems).map((p) => p.memoryId));
-    return pendingMemoryItems.filter((m) => kept.has(m.memoryId));
-  }, [pendingMemoryItems]);
+    return pendingMemoryItems.filter((m) => kept.has(m.memoryId) && !hidePendingIds?.has(m.memoryId));
+  }, [pendingMemoryItems, hidePendingIds]);
+  // B-CAREPRO-38: every stamp is demoted (About, the host page, owns its budget).
+  const demoted = { "data-module-demoted": "" };
   const pendingGroups = useMemo(() => groupPendingMemory(pendingQueue), [pendingQueue]);
   const soleOther = pendingGroups.length === 1 && pendingGroups[0].topic === "other";
   // Saved Learn Library reads, newest first; stale bookmarks (removed cards) are dropped.
@@ -74,7 +89,11 @@ export default function ChildMemory() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-col gap-6 max-w-[920px]">
-      <PageHeader flush title={t("sec.mem.title")} subtitle={t("sec.mem.sub", { name: first })} />
+      {/* B-CAREPRO-38 (merged-tree finding): About owns the page header, but the ledger
+          keeps its ONE approval promise and its door to how Arbor decides (GP-22: the
+          memory queue is a trust-chain surface; whyLineTrustChain pins both). */}
+      <p className="t-sm" dir="auto" style={{ color: "var(--arbor-muted)" }}>{t("sec.mem.sub", { name: first })}</p>
+      <ContentWhyLine why="" trustLink surface="child-memory" className="-mt-3" />
 
       {/* AI-11: this is the surface where a parent APPROVES or FORGETS what
           Arbor may remember about their child. Its titles, its empty state and
@@ -87,7 +106,7 @@ export default function ChildMemory() {
       {/* W2-CAREPRO r2 (P0): the approval promise is said ONCE — the subtitle
           (sec.mem.sub carries "only what you approve; nothing shared without
           you"). What stays here is the inline door to how Arbor decides. */}
-      <ContentWhyLine why="" trustLink surface="child-memory" className="-mt-3" />
+
 
       {/* OWN-1: a failed ledger read renders an honest error + retry card (the
           TrustedSharing twin) INSTEAD of the pending/approved lists — an
@@ -123,7 +142,7 @@ export default function ChildMemory() {
         </p>
       )}
       {!memoryReviewError && pendingQueue.length > 0 && (
-        <div data-module="memory-pending" style={{ display: "contents" }}>
+        <div data-module="memory-pending" {...demoted} style={{ display: "contents" }}>
         {/* B-CAREPRO-25: one group per topic (newest fact shown, "See all N",
             "Dismiss all N"); the heading counts groups; neutral lav tone. */}
         <SectionCard
@@ -155,7 +174,7 @@ export default function ChildMemory() {
         </div>
       )}
 
-      <div data-module="memory-approved" style={{ display: "contents" }}>
+      <div data-module="memory-approved" {...demoted} style={{ display: "contents" }}>
       {!memoryReviewError && (
       <>
       <SectionCard title={t("elev.childmem.approved.title")} icon={<Icon name="bookmark" size={20} />} tone="lav">
@@ -202,7 +221,7 @@ export default function ChildMemory() {
           child's longitudinal picture. Renders only when something is saved;
           the Library's own Saved tab teaches the empty state. */}
       {savedLearnCards.length > 0 && (
-        <div data-module="memory-learning-trail" className={`${cardCls} p-5`}>
+        <div data-module="memory-learning-trail" {...demoted} className={`${cardCls} p-5`}>
           <div className="flex items-center gap-3">
             <span
               className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
@@ -285,11 +304,7 @@ export default function ChildMemory() {
         <div data-module="memory-quotes" data-module-demoted className="pt-1">
           <ThingsSaid quotes={keptQuotes} childName={(quoteChild.name || "").split(" ")[0]} gender={quoteChild.gender} />
         </div>
-        {/* demotionTarget: "profile" — the hub the contract sends these to. */}
-        <button onClick={() => setActiveTab("profile")} className="inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
-          <span>{t("elev.childmem.more.door")}</span>
-          <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
-        </button>
+
       {/* ENG-13 · the week-1 "first", at a threshold of ONE. Renders at most
           once ever per kind and returns null the rest of the time. */}
       <div data-module="memory-firsts" data-module-demoted style={{ display: "contents" }}><FirstsMoment /></div>
@@ -326,7 +341,9 @@ export async function settleOnConfirmed(
  *  controls; "Dismiss all N" asks once, then writes one reject per fact. */
 export function PendingGroupCard({ group, isMemoryUpdating, onDecide, onEdited, lead, hideLabel }: {
   group: PendingMemoryGroup;
-  /** W2-CAREPRO r1: the first group's newest row carries the route's ONE primary move. */
+  /** The first group's newest row says where the fact came from (B-CAREPRO-NEW-2l).
+   *  B-CAREPRO-38 r2: it no longer carries a move — the ledger lives on About,
+   *  whose one move is "Tell Arbor"; every Approve here is the same quiet button. */
   lead?: boolean;
   /** W2-CAREPRO r1: the sole group is the catch-all — no "Other notes" junk-drawer label. */
   hideLabel?: boolean;
@@ -357,7 +374,7 @@ export function PendingGroupCard({ group, isMemoryUpdating, onDecide, onEdited, 
           key={m.memoryId}
           m={m}
           nested
-          primary={lead && i === 0}
+          lead={lead && i === 0}
           busy={isMemoryUpdating === m.memoryId || dismissing}
           onApprove={() => onDecide(m.memoryId, "approved")}
           onReject={() => onDecide(m.memoryId, "rejected")}
@@ -433,14 +450,14 @@ const ROW_ACTION_CLS = "touch-target gap-1 px-2 font-bold";
  *  conversation with the coach), so the lead row may say "From what you wrote". */
 const PARENT_MEMORY_SOURCES: ReadonlySet<string> = new Set(["chat", "coach", "conversation", "journal"]);
 
-export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, primary, nested }: {
+export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, lead, nested }: {
   m: MemoryReviewItem;
   /** W2-CAREPRO r2: inside a pending group the row drops its own box. */
   nested?: boolean;
-  /** W2-CAREPRO r1: this row's Approve is the route's ONE primary move
-   *  (data-primary-move="approve-memory-fact"): the page's single gradient,
-   *  44 px, "Remember this"; Edit and Dismiss go quiet beside it. */
-  primary?: boolean;
+  /** The lead pending row: it says where the fact came from (B-CAREPRO-NEW-2l).
+   *  B-CAREPRO-38 r2: the retired #/memory page's own move and its gradient
+   *  are gone — on About every Approve is the same quiet button. */
+  lead?: boolean;
   busy?: boolean;
   onApprove?: () => void;
   onReject?: () => void;
@@ -606,7 +623,7 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, pr
         <>
           {/* B-CAREPRO-NEW-2l: on the lead row, where the fact came from — the
               parent's own words — when the source is a parent conversation. */}
-          {primary && dated && PARENT_MEMORY_SOURCES.has(m.source) && (
+          {lead && dated && PARENT_MEMORY_SOURCES.has(m.source) && (
             <p data-testid="memory-provenance" className="t-sm mb-1.5 px-3 py-2" style={{ background: "var(--arbor-paper-deep)", borderRadius: "var(--r)", color: "var(--arbor-ink)", fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)" }}>
               {t("elev.childmem.provenance.inference", { date: dated })}
             </p>
@@ -640,7 +657,7 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, pr
             aria-label={t("elev.waveR.mem.edit.aria")}
             data-testid="memory-edit-open"
             className={ROW_ACTION_CLS}
-            style={{ color: primary ? "var(--arbor-muted)" : "var(--arbor-lav-ink)" }}
+            style={{ color: "var(--arbor-lav-ink)" }}
           >
             <Icon name="edit" size={14} /> {t("elev.waveR.mem.edit")}
           </button>
@@ -648,18 +665,7 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, pr
       </div>
       {!busy && (onApprove || onReject || onForget) && (
       <div data-testid="memory-row-actions" className="flex flex-nowrap items-center gap-3 sm:ms-auto">
-        {onApprove && !busy && primary && (
-          <button
-            type="button"
-            data-primary-move="approve-memory-fact"
-            onClick={onApprove}
-            className="touch-target inline-flex items-center gap-1.5 rounded-xl px-4 t-sm font-extrabold"
-            style={{ minHeight: 44, background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
-          >
-            <Icon name="check" size={16} /> {t("elev.childmem.action.remember")}
-          </button>
-        )}
-        {onApprove && !busy && !primary && (
+        {onApprove && !busy && (
           <button onClick={onApprove} className={ROW_ACTION_CLS} style={{ color: "var(--arbor-green-ink)" }}>
             <Icon name="check" size={14} /> {t("elev.childmem.action.approve")}
           </button>

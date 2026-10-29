@@ -412,7 +412,8 @@ describe("NEXTLEVEL r1 — Journal: the parent's words are the row; sentence cas
   const JOURNAL = stripComments(read("components/tabs/JournalTab.tsx"));
   const SHEET = stripComments(read("components/journal/JournalEntrySheet.tsx"));
   it("a parent-written moment row leads with the words verbatim (body face, t-lg, FreeText); the type label + time are one quiet caption; no provenance chip", () => {
-    expect(JOURNAL).toContain('const parentLead = prov === "manual" && (signal.kind === "moment" || signal.kind === "memory") && !!detail.trim();');
+    // B-CAREPRO-37: an after-visit note is the parent's words too.
+    expect(JOURNAL).toContain('const parentLead = prov === "manual" && (signal.kind === "moment" || signal.kind === "memory" || signal.kind === "visit") && !!detail.trim();');
     const lead = JOURNAL.slice(JOURNAL.indexOf(": parentLead ? ("), JOURNAL.indexOf(") : (", JOURNAL.indexOf(": parentLead ? (")));
     expect(lead).toContain('data-testid="journal-row-words"');
     expect(lead).toContain("<FreeText text={detail} />");

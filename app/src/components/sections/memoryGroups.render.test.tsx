@@ -65,33 +65,32 @@ describe("B-CAREPRO-25 · a pending topic group (rendered)", () => {
   });
 });
 
-describe("W2-CAREPRO r1 · the stamp is the lead row's Approve, never a wrapper", () => {
+describe("B-CAREPRO-38 r2 · the ledger lives on About: no move of its own, no gradient (the retired approve-memory-fact)", () => {
   for (const locale of ["en", "he"] as const) {
-    it(`${locale}: lead group → ONE stamped gradient button "Remember this"; other groups unstamped`, () => {
+    it(`${locale}: the lead group's Approve is the same quiet button as every other; nothing is stamped`, () => {
       harness.locale = locale;
       const [group] = groupPendingMemory([fact(1, "Dylan cries at bedtime"), fact(2, "Dylan needs comfort at bedtime")]);
       const lead = renderToStaticMarkup(<PendingGroupCard group={group} lead isMemoryUpdating={null} onDecide={vi.fn()} />);
-      const stamps = lead.match(/data-primary-move="approve-memory-fact"/g) ?? [];
-      expect(stamps).toHaveLength(1);
-      const at = lead.indexOf('data-primary-move="approve-memory-fact"');
-      expect(lead.lastIndexOf("<button", at)).toBeGreaterThan(lead.lastIndexOf(">", lead.lastIndexOf("<button", at) - 1) - 1);
-      const btn = lead.slice(lead.lastIndexOf("<button", at), lead.indexOf("</button>", at));
-      expect(btn).toContain("var(--gradient-cta)");
-      expect(btn).toContain(translate(locale, "elev.childmem.action.remember"));
       const rest = renderToStaticMarkup(<PendingGroupCard group={group} isMemoryUpdating={null} onDecide={vi.fn()} />);
-      expect(rest).not.toContain("data-primary-move");
+      for (const html of [lead, rest]) {
+        expect(html).not.toContain("data-primary-move");
+        expect(html).not.toContain("var(--gradient-cta)");
+        expect(html).toContain(translate(locale, "elev.childmem.action.approve"));
+        expect(html).not.toContain(translate(locale, "elev.childmem.action.remember"));
+      }
     });
   }
 
-  it("page source: no display:contents wrapper carries the stamp (negative control on the old shape)", async () => {
+  it("page source: no move is stamped anywhere in the ledger (About's one move is Tell Arbor)", async () => {
     const { readFileSync } = await import("node:fs");
     const src = readFileSync(new URL("./ChildMemory.tsx", import.meta.url), "utf8")
       .replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
-    expect(src).not.toMatch(/data-primary-move="approve-memory-fact"[^>]*display: "contents"/);
-    expect((src.match(/data-primary-move="/g) ?? []).length).toBe(1);
+    expect((src.match(/data-primary-move="/g) ?? []).length).toBe(0);
+    expect(src).not.toContain("approve-memory-fact");
+    expect(src).not.toContain("--gradient-cta");
     expect(src).not.toContain("<TrustSafetyBar");
-    const pre = `<div data-module="memory-pending" data-primary-move="approve-memory-fact" style={{ display: "contents" }}>`;
-    expect(/data-primary-move="approve-memory-fact"[^>]*display: "contents"/.test(pre)).toBe(true);
+    // NEGATIVE CONTROL: the retired stamp is what the scan catches.
+    expect('data-primary-move="approve-memory-fact"'.match(/data-primary-move="/g)).toHaveLength(1);
   });
 
   it("the transitions fact lands in a topic, not 'other' (EN + HE); the sole catch-all hides its label", () => {
@@ -185,19 +184,20 @@ describe("W2-CAREPRO c2 r1 · 'Kept' settles only after the server confirms", ()
 
 describe("W2-CAREPRO c2 r1 · MemoryRow: a meta row and a no-wrap action row", () => {
   for (const locale of ["en", "he"] as const) {
-    it(`${locale}: the CTA and Dismiss share one flex-nowrap action row at inline start; Edit stays in the meta row`, () => {
+    it(`${locale}: Approve and Dismiss share one flex-nowrap action row at inline start; Edit stays in the meta row`, () => {
       harness.locale = locale;
       const html = renderToStaticMarkup(
-        <MemoryRow m={fact(1, "Dylan needs comfort at bedtime")} busy={false} primary onApprove={vi.fn()} onReject={vi.fn()} onEdited={vi.fn()} />,
+        <MemoryRow m={fact(1, "Dylan needs comfort at bedtime")} busy={false} lead onApprove={vi.fn()} onReject={vi.fn()} onEdited={vi.fn()} />,
       );
       const meta = html.slice(html.indexOf('data-testid="memory-row-meta"'), html.indexOf('data-testid="memory-row-actions"'));
       const actions = html.slice(html.indexOf('data-testid="memory-row-actions"'));
       expect(meta).toContain('data-testid="memory-edit-open"');
       expect(meta).not.toContain("data-primary-move");
       expect(actions).toMatch(/^data-testid="memory-row-actions" class="flex flex-nowrap items-center gap-3 sm:ms-auto"/);
-      expect(actions.indexOf('data-primary-move="approve-memory-fact"')).toBeGreaterThan(0);
+      expect(actions.indexOf(translate(locale, "elev.childmem.action.approve"))).toBeGreaterThan(0);
       expect(actions).toContain(translate(locale, "elev.childmem.action.dismiss"));
-      expect(actions.indexOf('data-primary-move="approve-memory-fact"')).toBeLessThan(actions.indexOf(translate(locale, "elev.childmem.action.dismiss")));
+      expect(actions.indexOf(translate(locale, "elev.childmem.action.approve"))).toBeLessThan(actions.indexOf(translate(locale, "elev.childmem.action.dismiss")));
+      expect(actions).not.toContain("data-primary-move");
       expect(html).not.toMatch(/\b(ml|mr|pl|pr)-\d/);
     });
   }

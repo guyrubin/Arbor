@@ -244,10 +244,8 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     "sections/AskSpecialist.tsx",
     // (B-SHELL-26: ChildProfile left the ratchet — the queue's gradient Keep is
     //  gone and the capture-moment door is a solid accent fill.)
-    // W2-CAREPRO r1: the lead pending row's "Remember this" carries
-    // data-primary-move="approve-memory-fact" (surfaceContract memory.primaryMove),
-    // the only gradient in the file; memoryGroups.render.test pins one stamp.
-    "sections/ChildMemory.tsx",
+    // (B-CAREPRO-38 r2: ChildMemory left the ratchet — the ledger lives on
+    //  About and carries no move or gradient of its own.)
     "sections/Masterclasses.tsx",
     // W2-CAREPRO r1: the lead record's "Save this week's record" button carries
     // data-primary-move="export-report" (surfaceContract reports.primaryMove) and
