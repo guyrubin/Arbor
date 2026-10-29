@@ -33,8 +33,16 @@ import type { ArborConfig } from "../config/env.js";
 import { AiProviderError, type CapabilityRequest } from "./capabilities/contracts.js";
 import { providerRegion, routePolicyFor, selectProvider, type PolicyDecision, type ProviderCandidate, type RoutePolicy } from "./capabilities/policy.js";
 
-/** The program's dated exception for the global Live endpoint (1 Oct 2026). */
-export const LIVE_GLOBAL_EXCEPTION_UNTIL = "2026-10-31";
+/** The program's dated exception for the global Live endpoint.
+ *  B-GA-06 / G-V1 (Guy, 8 Oct 2026): production is the Israel-only pilot, so
+ *  Live stays on the global endpoint through Gate A, 31 Mar 2027 (was
+ *  2026-10-31, the 1 Oct program date). Prod also sets the same day in
+ *  LIVE_GLOBAL_EXCEPTION_UNTIL; the code default is now the same day, so a
+ *  deploy that loses the env value cannot end Live a day early or run past
+ *  it. Any non-Israel market needs the EU path (B-AIOPS-05) first.
+ *  Pinned by liveResidency.test.ts (with the screen's copy in
+ *  lib/liveResidency.ts and the prod env value). */
+export const LIVE_GLOBAL_EXCEPTION_UNTIL = "2027-03-31";
 
 /** Provider ids — the token handler dispatches on these. */
 export const LIVE_GLOBAL_PROVIDER = "google-ai-studio-live";

@@ -112,6 +112,8 @@ describe("CHILD_SUBCOLLECTIONS registry pin — the seed invented NO new sink", 
       "familyGoals", // B-PROG-07: the family's goals in their own words, their own scale labels and scores — exported and erased with the child
       "coachSessions", // B-PROG-10: the guided tier's booked sessions (slot, day, the family's agreed line) — exported and erased with the child
       "heroSheet", // B-GAME-13c: the hero's pose sheet (generated art, registered for export + erase)
+      "studioCreations", // B-GA-09: the child's saved studio toys (kid mode), found by the sink sweep
+      "bookReads", // B-BOOK-51: the one finished-book ledger (catalogue id, language, time; no path or choice)
     ]);
   });
 });

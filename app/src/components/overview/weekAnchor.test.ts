@@ -16,7 +16,7 @@ import {
   weekAnchorSeenKey,
 } from "./weekAnchor";
 import { isRecapUnopened, recapWeekId } from "../../hooks/useWeeklyRecap";
-import { elevationEn, elevationHe } from "../../lib/i18nElevation/index";
+import { elevationEn, elevationHe } from "../../lib/i18nElevation/index";
 import { todayLiveSource } from "../../testTodaySource";
 
 /** Minimal in-memory Storage stand-in (the suite runs in `environment: "node"`). */

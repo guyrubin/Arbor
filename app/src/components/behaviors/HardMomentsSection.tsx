@@ -8,12 +8,13 @@ import { renderSayThis, type HardMomentCard, type HardMomentCategory } from "../
 import { HARD_MOMENT_CATEGORIES, escalationText, locText, recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { availableHardMomentCards, matchToRecentBehaviors } from "../../content/selectCards";
 import { hardMomentPublication, type HardMomentContext } from "../../content/pilotRelease";
+import { PilotNote } from "../ui/PilotNote";
 import { hardMomentAgeFit, explainsEmptyHardMoments } from "../../content/hardMomentAgeFit";
 import HardMomentAgeNotice from "./HardMomentAgeNotice";
 import { hardMomentPilotText } from "../../content/hardMomentPilotText";
 import { comparisonMonthsOf } from "../../lib/age/forChild";
 import { useAuth } from "../../context/AuthContext";
-import { lastHeldFor } from "./hardMomentLastTime";
+import { lastHeldFor, lastUsedFor } from "./hardMomentLastTime";
 import { LastTimeLead, SendWordsButton } from "./HardMomentWords";
 
 /** Renderable without a provider; also independently enforces the release policy. */
@@ -35,12 +36,7 @@ export function HardMomentGuideContent({ card, context, childName, t }: {
   ];
   return (
     <div lang={locale} dir={locale === "he" ? "rtl" : "ltr"} className="min-w-0 space-y-3 text-start">
-      {publication === "editorial-pilot" && (
-        <div className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }} role="note">
-          <p className="font-bold">{copy.status}</p>
-          <p>{copy.explanation}</p>
-        </div>
-      )}
+      {publication === "editorial-pilot" && <PilotNote status={copy.status} explanation={copy.explanation} />}
       {/* AI-17: the per-axis section is the shared AiBlock guide tone. This
           file used to hand-roll a third copy of the coach answer's frame. */}
       {/* B-ASKJB-24: the say-this axis renders through the shared SayThis
@@ -91,9 +87,11 @@ export const RESTING_GUIDES = 3;
  *  moment: peach-soft, the Say-this sentence as the largest text in the
  *  section (LastTimeLead), the guide's when / with-it line, and the text-only
  *  send. Tapping it opens that guide. Rendered only with a held answer. */
-function HardMomentLastTimeRow({ card, at, childName, locale, onOpen }: {
+function HardMomentLastTimeRow({ card, at, basis, childName, locale, onOpen }: {
   card: HardMomentCard;
   at: string;
+  /** B-DATA-16: "used" when only a logged hard moment names these words. */
+  basis: "held" | "used";
   childName: string;
   locale: "en" | "he";
   onOpen: () => void;
@@ -104,7 +102,7 @@ function HardMomentLastTimeRow({ card, at, childName, locale, onOpen }: {
   return (
     <div data-testid="hm-last-time-row" className="min-w-0 rounded-[var(--r-lg)] p-5" style={{ background: "var(--arbor-peach-soft)" }}>
       <button type="button" data-testid="hm-last-time-open" onClick={onOpen} className="block min-h-11 w-full min-w-0 text-start">
-        <LastTimeLead card={card} childName={childName} at={at} locale={locale} t={t} />
+        <LastTimeLead card={card} childName={childName} at={at} basis={basis} locale={locale} t={t} />
         <p className="mt-2 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
           <bdi>{t("hm.send.when", { when: locText(card.title, locale) })}</bdi>{" · "}<bdi>{t("hm.send.with", { doNow: locText(card.doNow, locale) })}</bdi>
         </p>
@@ -163,10 +161,17 @@ export default function HardMomentsSection() {
      sentence (lastHeldFor — the same reader the sheet uses), and that guide
      sorts first in the shelf. Newest held answer wins; nothing renders
      without one. */
-  const held = cards
+  const heldAnswer = cards
     .map((card) => ({ card, at: lastHeldFor(card, actionLoop ?? [])?.at ?? "" }))
     .filter((x) => x.at)
     .sort((a, b) => b.at.localeCompare(a.at))[0] ?? null;
+  // B-DATA-16: with no held answer, the newest hard moment the parent logged
+  // with a guide's words (coRegulationScript) leads instead — said as "used".
+  const usedWords = heldAnswer ? null : cards
+    .map((card) => ({ card, at: lastUsedFor(card, behaviorLogs ?? [])?.at ?? "" }))
+    .filter((x) => x.at)
+    .sort((a, b) => b.at.localeCompare(a.at))[0] ?? null;
+  const held = heldAnswer ? { ...heldAnswer, basis: "held" as const } : usedWords ? { ...usedWords, basis: "used" as const } : null;
   const ordered = (list: HardMomentCard[]) => (held ? [held.card, ...list.filter((c) => c.id !== held.card.id)] : list);
   const visible = expanded ? ordered(all) : ordered(featured).slice(0, Math.max(featured.length, 1));
 
@@ -210,7 +215,7 @@ export default function HardMomentsSection() {
       </div>
       )}
       {held && (
-        <HardMomentLastTimeRow card={held.card} at={held.at} childName={childFirst} locale={locale} onOpen={() => openHardMomentNow(held.card.id)} />
+        <HardMomentLastTimeRow card={held.card} at={held.at} basis={held.basis} childName={childFirst} locale={locale} onOpen={() => openHardMomentNow(held.card.id)} />
       )}
       {!expanded && matched.length > 0 && (
         <p className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.closeloop.hm.matched")}</p>

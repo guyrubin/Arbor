@@ -100,6 +100,17 @@ export class ApiError extends Error {
   }
 }
 
+/** B-PROV-12: `/live/token` refused because the request did not acknowledge
+ *  the runtime route's approved provider notice (`noticeId`, null if absent).
+ *  Nothing was reserved or minted; the caller shows that notice. */
+export const VOICE_NOTICE_REQUIRED = "voice_notice_required";
+export class VoiceNoticeRequiredError extends ApiError {
+  constructor(readonly noticeId: string | null) {
+    super(VOICE_NOTICE_REQUIRED, 428);
+    this.name = "VoiceNoticeRequiredError";
+  }
+}
+
 /** B-CAREPRO-12: one behaviour log as the School Brief sends it — what
  *  happened, what set it off, what helped, and the day. No notes, intensity,
  *  duration, photo or excerpt. */
@@ -110,6 +121,38 @@ export type HandoffMilestoneInput = { domain: string; title: string };
 /** B-CAREPRO-10: POST /shares 409 code — the owner's co-parent seat is in use. */
 export const SEAT_IN_USE = "seat_in_use";
 
+/**
+ * Wave 4 (B-ASKJB-49 follow-up): the 409s that are not the crisis screen. The
+ * book and plan routes (server/bookSheet.ts, bookNarration.ts, planNarration.ts)
+ * answer 409 with their own `code` when the hero, the sheet, the child's name or
+ * the plan is not there yet, and /live/token when a renewal is not valid: a
+ * state for the caller to explain, never the crisis card. Matched by exact code
+ * and only on a body without `escalationCategory`; every other 409 (no code, an
+ * unknown code, a body that cannot be parsed) still escalates.
+ * lib/api.nonCrisis409.test.ts keeps this set equal to what the server answers.
+ */
+export const NON_CRISIS_409_CODES: ReadonlySet<string> = new Set([
+  "hero_missing", "hero_photo_source", "hero_changed", "book_sheet_incomplete", "book_sheet_admin",
+  "book_narration_no_name", "book_narration_wrong_voice", "book_narration_no_book",
+  "plan_narration_no_plan", "plan_narration_closed", "plan_narration_no_sheet",
+  "live_renewal_invalid",
+  // Round 2: the hero-pose route's anchor states (heroSheetContract HERO_POSE_REFUSALS)
+  // and the co-parent activity conflict (server/coParent.ts, sent in `error`).
+  "hero_anchor_missing", "hero_book_anchor_missing", "activity_changed",
+]);
+/** /live/token's 409 code: the renewal names a session the server will not chain. */
+export const LIVE_RENEWAL_INVALID = "live_renewal_invalid";
+export const isLiveRenewalInvalid = (err: unknown): boolean =>
+  err instanceof ApiError && err.status === 409 && err.message === LIVE_RENEWAL_INVALID;
+/** A 409 body that names one of the non-crisis codes (and no crisis category). */
+export function nonCrisis409Code(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const { code, error, escalationCategory } = body as { code?: unknown; error?: unknown; escalationCategory?: unknown };
+  // The code field, or (co-parent shape) an `error` that is exactly a known code.
+  const named = typeof code === "string" ? code : typeof error === "string" ? error : null;
+  return named !== null && escalationCategory === undefined && NON_CRISIS_409_CODES.has(named) ? named : null;
+}
+
 /** B-KID-05: image endpoints' 429 code — today's drawing quota is spent
  *  (server/imageQuota.ts). Not "busy": no Retry-After, nothing to retry today. */
 export const IMAGE_RESTING = "image_resting";
@@ -117,6 +160,13 @@ export const IMAGE_RESTING = "image_resting";
 /** True for the image-quota "resting" refusal (matched by code, never by copy). */
 export const isImageResting = (err: unknown): boolean =>
   err instanceof ApiError && err.status === 429 && err.message === IMAGE_RESTING;
+
+/** B-AIOPS-02: /live/token's 429 code — the FAMILY's realtime-voice minutes
+ *  for today are reserved or spent (server/liveBudget.ts). Not the hourly AI
+ *  quota and not "busy": no Retry-After; typed coaching stays open. */
+export const LIVE_RESTING = "live_resting";
+export const isLiveResting = (err: unknown): boolean =>
+  err instanceof ApiError && err.status === 429 && err.message === LIVE_RESTING;
 
 /**
  * B-KID-119: whether this session's plan grants ANY scene/comic image. Learnt
@@ -193,9 +243,18 @@ async function request<T>(url: string, method: string, body?: unknown, signal?: 
     if (res.status === 409 && errData?.error === SEAT_IN_USE) {
       throw new ApiError(SEAT_IN_USE, 409);
     }
+    // Wave 4: a non-crisis 409 reaches its caller as its own code (message = code).
+    const conflict = res.status === 409 ? nonCrisis409Code(errData) : null;
+    if (conflict) throw new ApiError(conflict, 409);
     // B-KID-05: image quota exhaustion carries its own code and no retry hint.
     if (res.status === 429 && errData?.code === IMAGE_RESTING) {
       throw new ApiError(IMAGE_RESTING, 429);
+    }
+    if (res.status === 429 && errData?.code === LIVE_RESTING) {
+      throw new ApiError(LIVE_RESTING, 429);
+    }
+    if (res.status === 428 && errData?.code === VOICE_NOTICE_REQUIRED) {
+      throw new VoiceNoticeRequiredError(typeof errData?.notice?.id === "string" ? errData.notice.id : null);
     }
     if (res.status === 409) {
       // Server escalation contract (see routes/api.ts): 409 == a safety trigger
@@ -211,7 +270,7 @@ async function request<T>(url: string, method: string, body?: unknown, signal?: 
 const post = <T>(url: string, body: unknown, beforeDispatch?: () => void) => request<T>(url, "POST", body, undefined, beforeDispatch);
 // Bound auth refresh as well as fetch, so a hung report cannot accumulate
 // heartbeats or prevent the eventual close report from being attempted.
-function liveUsageRequest(sessionId: string, event: "opened" | "heartbeat" | "closed") {
+function liveUsageRequest(sessionId: string, event: "opened" | "heartbeat" | "closed" | "failed") {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout>;
   const deadline = new Promise<never>((_, reject) => {
@@ -224,12 +283,16 @@ function liveUsageRequest(sessionId: string, event: "opened" | "heartbeat" | "cl
 }
 // Live startup includes auth-token refresh and response JSON, not only fetch.
 // Bound the whole operation and never send after an owner has cancelled it.
-function liveStartupRequest<T>(body: unknown, signal?: AbortSignal): Promise<T> {
+// B-AIOPS-02: a renewal mint may take longer; it starts 30 s before its slice
+// ends and the Live client discards one that arrives after that end.
+const LIVE_STARTUP_TIMEOUT_MS = 10_000;
+const LIVE_RENEWAL_TIMEOUT_MS = 30_000;
+function liveStartupRequest<T>(body: unknown, signal?: AbortSignal, timeoutMs = LIVE_STARTUP_TIMEOUT_MS): Promise<T> {
   const controller = new AbortController();
   return new Promise<T>((resolve, reject) => {
     const cleanup = () => { clearTimeout(timer); signal?.removeEventListener("abort", cancel); };
     const cancel = () => { cleanup(); controller.abort(); reject(new DOMException("Voice start cancelled", "AbortError")); };
-    const timer = setTimeout(() => { cleanup(); controller.abort(); reject(new Error("live-token-timeout")); }, 10_000);
+    const timer = setTimeout(() => { cleanup(); controller.abort(); reject(new Error("live-token-timeout")); }, timeoutMs);
     signal?.addEventListener("abort", cancel, { once: true });
     if (signal?.aborted) { cancel(); return; }
     request<T>("/api/live/token", "POST", body, controller.signal).then(
@@ -293,12 +356,16 @@ export async function streamVoice(
   // caller can say which of the two happened, and what to do about it.
   if (!res.ok) {
     let detail = "Voice stream failed to start";
+    let code: unknown;
     try {
       const errData = await res.json();
       detail = errData?.details || errData?.error || detail;
+      code = errData?.code;
     } catch {
       /* non-JSON error body — keep the neutral default */
     }
+    // B-AIOPS-02: the fallback loop spends the same family voice allowance.
+    if (res.status === 429 && code === LIVE_RESTING) throw new ApiError(LIVE_RESTING, 429);
     throw new ApiError(detail, res.status, retryAfterOf(res));
   }
   if (!res.body) throw new Error("Voice stream failed to start");
@@ -529,7 +596,7 @@ export const api = {
   council: (payload: { topicId?: string; message: string; childProfile: ChildProfile; scholarLens?: string; language?: "en" | "he"; recentTurns?: { role: "parent" | "coach"; text: string }[]; contextChildId?: string }) =>
     post<{ text: string; contract?: CoachContract; council?: CouncilTake[]; memoryReviewItems?: MemoryReviewItem[] }>("/api/council", payload),
   // Co-parent / trusted sharing (server-enforced expiry).
-  createShare: (payload: { childId: string; childName?: string; recipientEmail: string; role?: ShareRole; scopes?: string[]; duration?: string }) =>
+  createShare: (payload: { childId: string; childName?: string; recipientEmail: string; role?: ShareRole; scopes?: string[]; duration?: string; domains?: string[] }) =>
     post<ShareGrant>("/api/shares", payload),
   // CARE-6: `history: true` also returns revoked/expired grants — the owner's
   // grant records are the sharing audit trail rendered as "Sharing history".
@@ -545,7 +612,10 @@ export const api = {
   // CARE-2: the recipient's read-only view of a live grant — exactly the granted
   // scopes, assembled through the fail-closed consult-packet egress. 403 = the
   // share has ended (revoked/expired/not addressed to you) → drop the card.
-  sharedPacket: (grantId: string) => get<SharedPacketView>(`/api/shared/${encodeURIComponent(grantId)}/packet`),
+  // B-PROG-09: `scope` asks for exactly one scope (the home-program link);
+  // a scope the grant does not carry answers 403.
+  sharedPacket: (grantId: string, scope?: string) =>
+    get<SharedPacketView>(`/api/shared/${encodeURIComponent(grantId)}/packet${scope ? `?scope=${encodeURIComponent(scope)}` : ""}`),
   // COPPA-2026 consent: grant/list/revoke purpose-scoped parental consent.
   grantConsent: (payload: { childId: string; purpose: ConsentPurpose; granted?: boolean }) =>
     post<{ grant: ConsentGrant }>("/api/consent", payload),
@@ -558,7 +628,8 @@ export const api = {
   // Probe THIS on mount; call liveToken only when the parent toggles voice on.
   // B-ASKJB-02: `exceptionUntil` (YYYY-MM-DD) is the Live residency exception's
   // last day once lane X (B-PROV-01) serves it; lib/liveResidency falls back.
-  liveAvailability: () => get<{ available: boolean; exceptionUntil?: string }>("/api/live/availability"),
+  // B-PROV-12: `notice.id` names the runtime route's approved provider notice.
+  liveAvailability: () => get<{ available: boolean; exceptionUntil?: string; notice?: { id: string } }>("/api/live/availability"),
   /** Returns ephemeral review proposals only; this endpoint cannot commit records. */
   extractConversationProposals: (payload: { transcript: string; childProfile: ChildProfile; milestones: Pick<Milestone, "id" | "title" | "checked" | "observationStatus">[]; language?: "en" | "he" }) =>
     post<{ proposals: unknown[] }>("/api/conversation/proposals", payload),
@@ -572,11 +643,19 @@ export const api = {
     contextChildId?: string;
     privateMode?: boolean;
     topicId?: string;
+    /** B-PROV-12: the provider notice id the parent acknowledged. */
+    noticeAck?: string;
+    /** B-AIOPS-02: renew this opened slice (its usage-session id) with the next chained one. */
+    renewOf?: string;
   } = {}, opts: { signal?: AbortSignal } = {}) =>
-    liveStartupRequest<{ available: boolean; token?: string; model?: string; expiresAt?: string; usageSessionId?: string; reason?: string; systemInstruction?: string; speechConfig?: unknown }>(payload, opts.signal),
+    liveStartupRequest<{ available: boolean; token?: string; model?: string; expiresAt?: string; usageSessionId?: string; reason?: string; systemInstruction?: string; speechConfig?: unknown;
+      /** B-AIOPS-02: the server-reserved slice and what the family has left today. */
+      budget?: { reservedMs: number; remainingMs: number; allowanceMs: number; resetAt: string } }>(payload, opts.signal,
+        payload.renewOf ? LIVE_RENEWAL_TIMEOUT_MS : LIVE_STARTUP_TIMEOUT_MS),
   // VC-2/VC-3: the authoritative per-turn Live screen. The liveTurnGuard treats
   // ANY failure of this call (network / non-200 / timeout) as FLAGGED (VC-5).
-  liveUsage: (sessionId: string, event: "opened" | "heartbeat" | "closed") =>
+  // B-AIOPS-03: "failed" = the audio never came up after the mint.
+  liveUsage: (sessionId: string, event: "opened" | "heartbeat" | "closed" | "failed") =>
     liveUsageRequest(sessionId, event),
   liveTurn: (payload: { role: "user" | "model"; text: string; language?: "en" | "he"; childId?: string }) =>
     post<import("./liveTurnGuard").LiveTurnVerdict>("/api/live/turn", payload),
@@ -590,6 +669,8 @@ export const api = {
   billingPortal: () => get<{ url: string | null }>("/api/billing/portal"),
   // ADM-1: founder dashboard — users + paying-by-plan + today's token spend (403 if not admin).
   adminOverview: () => get<AdminOverview>("/api/admin/overview"),
+  // B-GAME-18 / B-BOOK-51: the weekly Kid Mode play summary — the narrow read (403 if not admin).
+  adminKidPlay: (since: string) => get<{ kidPlay?: AdminKidPlay; generatedAt: string }>(`/api/admin/kid-play?since=${encodeURIComponent(since)}`),
   // RET-1: "{child}'s week" digest (stats are computed server-side from the data we send).
   // B-AI-16: counts, types, contexts and outcomes only — no trigger / notes /
   // response / photo leaves the device for the digest (lib/digestPayload).
@@ -597,21 +678,24 @@ export const api = {
     post<WeeklyDigest>("/api/digest", { ...payload, logs: toDigestLogInputs(payload.logs), milestones: toDigestMilestoneInputs(payload.milestones) }),
   // CMP-2: GDPR server-side export + erasure.
   privacyExport: (childId: string, signal?: AbortSignal, beforeDispatch?: () => void) =>
-    request<{ exportedAt: string; childId: string; serverData: { memoryEvents: unknown[]; shares: unknown[] } }>(`/api/privacy/export/${encodeURIComponent(childId)}`, "GET", undefined, signal, beforeDispatch),
+    request<{ exportedAt: string; childId: string; serverData: { memoryEvents: unknown[]; shares: unknown[]; consents?: unknown[]; consultRequests?: unknown[] } }>(`/api/privacy/export/${encodeURIComponent(childId)}`, "GET", undefined, signal, beforeDispatch),
   privacyErase: (childId: string) =>
-    post<{ erased: { memoryEvents: number; shares: number; consents?: number }; erasedAt: string }>("/api/privacy/erase", { childId }),
+    post<{ erased: { memoryEvents: number; shares: number; consents?: number; consultRequests?: number; storageFiles?: number }; storage?: { photos: number; books: number }; erasedAt: string }>("/api/privacy/erase", { childId }),
   // STORE-4: FULL account deletion (Apple 5.1.1(v) / Play / GDPR Art. 17) — the
   // per-class receipt is honest: any failure ⇒ complete:false, account survives
   // for retry. Client wipes device-local stores only after a complete receipt.
-  accountDelete: () => post<AccountDeletionReceipt>("/api/account/delete", { confirm: "DELETE" }),
+  // B-GA-09 round 7: the children this device still has an unfinished erase for go
+  // with the request (ids only); the server erases those this account may erase.
+  accountDelete: (pendingChildIds: readonly string[] = []) =>
+    post<AccountDeletionReceipt>("/api/account/delete", { confirm: "DELETE", ...(pendingChildIds.length ? { pendingChildIds } : {}) }),
   // MON-3 v1: durable consultation request (email-based transaction).
   requestConsult: (payload: { professionalId: string; childId?: string; note?: string; preferredMode?: string }) =>
     post<{ request: { id: string; professionalName: string; status: string; createdAt: string }; mailto: string | null }>("/api/consult-requests", payload),
   // mk-p0-2: the signed-in parent's stable invite code + shareable link + earned months.
   referralCode: () => get<ReferralCodeInfo>("/api/referral/code"),
   // mk-p0-2: redeem a captured referral code on the referred parent's activation.
-  referralActivate: (code: string) =>
-    post<ReferralActivateResult>("/api/referral/activate", { code }),
+  referralActivate: (code: string, via?: "link" | "typed") =>
+    post<ReferralActivateResult>("/api/referral/activate", via ? { code, via } : { code }),
   // Pre-auth access request from LoginScreen. This hits the server-side waitlist
   // pipeline rather than relying on the parent having a local mail client.
   requestAccess: (payload: { email: string; source?: string; market?: string }) =>
@@ -690,9 +774,17 @@ export type AdminOverview = {
     totalTokens: number;
     byProvider: Record<string, { calls?: number; promptTokens?: number; outputTokens?: number }>;
     approxCostEur: number;
-    live?: { observedSessionMs: number; openedSessions: number };
+    live?: { observedSessionMs: number; openedSessions: number; reservedMs?: number; fallbackTurnMs?: number; restingRefusals?: number };
   };
   generatedAt: string;
+};
+
+/** B-GAME-18 / B-BOOK-51 (server/cohortMetrics KidPlaySummary): counts per
+ *  game and book per ISO week; a cell under `minFamilies` families is hidden. */
+export type AdminKidPlay = {
+  minFamilies: number;
+  games: { week: string; game: string; hidden: boolean; families: number | null; sittings: number | null; replays: number | null; returned7d: number | null }[];
+  books: { week: string; book: string; hidden: boolean; families: number | null; opened: number | null; finished: number | null }[];
 };
 
 export type WeeklyDigest = {

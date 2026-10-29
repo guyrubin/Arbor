@@ -22,7 +22,7 @@ import { bookNarrationFiles } from "../narrationFiles";
 import { composePlanBook, defaultPlanComposition, validatePlanComposition } from "./composePlanBook";
 import { authoredPatterns, DEFAULT_REVIEW_PLAN_BOOK, getPlanFixtureBook, PLAN_FIXTURE_BOOKS } from "./planBooks";
 import { lintPlanBook, sentenceRatio } from "./planLint";
-import { getPlanPlate, PLAN_PLATE_BRIEFS, planPlateTable } from "./planPlates";
+import { getPlanPlate, PLAN_PLATE_BRIEFS, planPlateFile, planPlateTable } from "./planPlates";
 import { isPlanPose, PLAN_POSES, PLAN_POSES_PER_PATTERN_MAX } from "./planPoses";
 import { PATTERN_IDS } from "./planVisibility";
 import { getAnyBook, getLibraryBook } from "../books";
@@ -198,7 +198,9 @@ describe.each(Object.values(PLAN_FIXTURE_BOOKS))("plan book $id", (book) => {
     for (const p of allBookPages(book)) {
       const plate = table[p.plateId];
       expect(plate, `${p.id} → ${p.plateId}`).toBeDefined();
-      expect(plate.file).toBe(`/visuals/plans/${book.pattern}/${p.plateId}.webp`);
+      // the committed static path when the build manifest lists it, else the shared-storage route
+      expect(plate.file).toBe(planPlateFile(book.pattern, p.plateId));
+      expect(plate.file).toMatch(new RegExp(`^(?:/visuals/plans/${book.pattern}/${p.plateId}\\.webp|/api/plans/plates/${book.pattern}/${p.plateId})$`));
       expect(Math.abs(plate.width / plate.height - 1.5)).toBeLessThan(0.01);
       expect(PLAN_PLATE_BRIEFS[book.pattern]?.[p.plateId]?.brief, `${p.plateId} brief`).toBeTruthy();
       // provenance starts empty: nothing is claimed child-free before Fable has viewed it

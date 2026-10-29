@@ -284,9 +284,17 @@ export class GeminiDevProvider implements ModelProvider {
     );
 
     let usage: any;
-    for await (const chunk of abortableIterate(responseStream, options.budget?.signal)) {
-      if ((chunk as any).usageMetadata) usage = (chunk as any).usageMetadata;
-      if (chunk.text) { timer.markFirstChunk(); yield chunk.text; }
+    let completed = false;
+    try {
+      for await (const chunk of abortableIterate(responseStream, options.budget?.signal)) {
+        if ((chunk as any).usageMetadata) usage = (chunk as any).usageMetadata;
+        if (chunk.text) { timer.markFirstChunk(); yield chunk.text; }
+      }
+      completed = true;
+    } finally {
+      // B-AIOPS-01: a stream stopped early (output screen, abort, deadline, a
+      // closed client) still bills what was generated; it keeps its receipt.
+      if (!completed) recordUsage({ route: options.route, provider: "gemini_dev", model, promptVersion: options.promptVersion, endedEarly: true }, usage, timer.finish());
     }
     recordUsage({ route: options.route, provider: "gemini_dev", model, promptVersion: options.promptVersion }, usage, timer.finish());
   }
@@ -309,9 +317,17 @@ export class GeminiDevProvider implements ModelProvider {
       }), 3, options.budget
     );
     let usage: any;
-    for await (const chunk of abortableIterate(responseStream, options.budget?.signal)) {
-      if ((chunk as any).usageMetadata) usage = (chunk as any).usageMetadata;
-      if (chunk.text) { timer.markFirstChunk(); yield chunk.text; }
+    let completed = false;
+    try {
+      for await (const chunk of abortableIterate(responseStream, options.budget?.signal)) {
+        if ((chunk as any).usageMetadata) usage = (chunk as any).usageMetadata;
+        if (chunk.text) { timer.markFirstChunk(); yield chunk.text; }
+      }
+      completed = true;
+    } finally {
+      // B-AIOPS-01: a stream stopped early (output screen, abort, deadline, a
+      // closed client) still bills what was generated; it keeps its receipt.
+      if (!completed) recordUsage({ route: options.route, provider: "gemini_dev", model, promptVersion: options.promptVersion, endedEarly: true }, usage, timer.finish());
     }
     recordUsage({ route: options.route, provider: "gemini_dev", model, promptVersion: options.promptVersion }, usage, timer.finish());
   }
@@ -418,10 +434,18 @@ export class VertexGeminiProvider {
     );
 
     let usage: any;
-    for await (const item of abortableIterate<any>(result.stream, options.budget?.signal)) {
-      if (item.usageMetadata) usage = item.usageMetadata;
-      const text = item.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("") || "";
-      if (text) { timer.markFirstChunk(); yield text; }
+    let completed = false;
+    try {
+      for await (const item of abortableIterate<any>(result.stream, options.budget?.signal)) {
+        if (item.usageMetadata) usage = item.usageMetadata;
+        const text = item.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("") || "";
+        if (text) { timer.markFirstChunk(); yield text; }
+      }
+      completed = true;
+    } finally {
+      // B-AIOPS-01: an early stop keeps its receipt (tokens seen so far; the
+      // final usage chunk may never arrive, so the cost can stay unpriced).
+      if (!completed) recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId, promptVersion: options.promptVersion, endedEarly: true }, usage, timer.finish());
     }
     recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId, promptVersion: options.promptVersion }, usage ?? (await result.response)?.usageMetadata, timer.finish());
   }
@@ -442,10 +466,18 @@ export class VertexGeminiProvider {
       }), options.budget?.signal), 3, options.budget
     );
     let usage: any;
-    for await (const item of abortableIterate<any>(result.stream, options.budget?.signal)) {
-      if (item.usageMetadata) usage = item.usageMetadata;
-      const text = item.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("") || "";
-      if (text) { timer.markFirstChunk(); yield text; }
+    let completed = false;
+    try {
+      for await (const item of abortableIterate<any>(result.stream, options.budget?.signal)) {
+        if (item.usageMetadata) usage = item.usageMetadata;
+        const text = item.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("") || "";
+        if (text) { timer.markFirstChunk(); yield text; }
+      }
+      completed = true;
+    } finally {
+      // B-AIOPS-01: an early stop keeps its receipt (tokens seen so far; the
+      // final usage chunk may never arrive, so the cost can stay unpriced).
+      if (!completed) recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId, promptVersion: options.promptVersion, endedEarly: true }, usage, timer.finish());
     }
     recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId, promptVersion: options.promptVersion }, usage ?? (await result.response)?.usageMetadata, timer.finish());
   }

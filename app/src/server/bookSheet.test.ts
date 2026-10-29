@@ -23,6 +23,7 @@ import { heroAvatarHash } from "../lib/heroSheetContract";
 import { bookSheetDrawPoses } from "../lib/library/bookSheet";
 import { missingBookPoses } from "../lib/library/bookPoses";
 import { fiveSmoothStones as book } from "../lib/library/books/fiveSmoothStones";
+import { PLAN_SHEET_BOOK_ID } from "../lib/library/plans/planPoses";
 
 const HERO = "data:image/png;base64,SEVSTw==";
 const HASH = heroAvatarHash(HERO);
@@ -99,14 +100,14 @@ function serve(opts: { hero?: StoredHero | null; local?: boolean; bucket?: BookA
     docs,
     start: () => new Promise<void>((r) => { server = app.listen(0, () => { base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`; r(); }); }),
     stop: () => new Promise<void>((r) => server.close(() => r())),
-    put: (rel: string, body: Buffer, q: Record<string, string | number> = {}, user: string | null = "owner", type = "image/webp") =>
-      fetch(`${base}/api/children/kid1/book-assets/${BOOK}/file?${new URLSearchParams({ path: rel, ...Object.fromEntries(Object.entries(q).map(([k, v]) => [k, String(v)])) })}`, {
+    put: (rel: string, body: Buffer, q: Record<string, string | number> = {}, user: string | null = "owner", type = "image/webp", bookId = BOOK) =>
+      fetch(`${base}/api/children/kid1/book-assets/${bookId}/file?${new URLSearchParams({ path: rel, ...Object.fromEntries(Object.entries(q).map(([k, v]) => [k, String(v)])) })}`, {
         method: "PUT",
         headers: { "content-type": type, ...(user ? { "x-test-user": user } : {}) },
         body,
       }),
-    commit: (body: unknown, user: string | null = "owner", child = "kid1") =>
-      fetch(`${base}/api/children/${child}/book-assets/${BOOK}/commit`, { method: "POST", headers: { "content-type": "application/json", ...(user ? { "x-test-user": user } : {}) }, body: JSON.stringify(body) }),
+    commit: (body: unknown, user: string | null = "owner", child = "kid1", bookId = BOOK) =>
+      fetch(`${base}/api/children/${child}/book-assets/${bookId}/commit`, { method: "POST", headers: { "content-type": "application/json", ...(user ? { "x-test-user": user } : {}) }, body: JSON.stringify(body) }),
     get: (url: string, user: string | null = "owner") => fetch(base + url, { headers: user ? { "x-test-user": user } : {} }),
   };
 }
@@ -371,5 +372,48 @@ describe("B-BOOK-69: protect book sheets at persistence boundaries", () => {
       expect(write).not.toHaveBeenCalled();
       expect([...s.objects.entries()]).toEqual(previous);
     } finally { await s.stop(); }
+  });
+});
+
+describe("B-BOOK-75 follow-up: the child's shared PLAN sheet (bookAssets/plan-poses)", () => {
+  const PLAN = PLAN_SHEET_BOOK_ID;
+
+  it("accepts only the twelve bare plan pose ids as files; an empty sheet does not commit; any subset commits as an OPEN set the reader filters on", async () => {
+    const s = serve({});
+    await s.start();
+    expect((await s.put(poseRel("sling-swing"), webp(200, 400), ANCHOR, "owner", "image/webp", PLAN)).status).toBe(400);
+    expect((await s.put(poseRel("plan-sit-calm"), webp(200, 400), ANCHOR, "owner", "image/webp", PLAN)).status).toBe(400);
+    const probe0 = await (await s.commit({ avatarHash: HASH, dryRun: true }, "owner", "kid1", PLAN)).json();
+    expect(probe0).toMatchObject({ complete: false, committed: false, admin: false });
+    const empty = await s.commit({ avatarHash: HASH }, "owner", "kid1", PLAN);
+    expect(empty.status).toBe(409);
+    expect((await empty.json()).code).toBe("book_sheet_incomplete");
+    for (const pose of ["sit-calm", "hold-box"]) expect((await s.put(poseRel(pose), webp(200, 400), ANCHOR, "owner", "image/webp", PLAN)).status).toBe(200);
+    expect(await (await s.commit({ avatarHash: HASH, dryRun: true }, "owner", "kid1", PLAN)).json()).toMatchObject({ complete: true, missing: [], committed: false });
+    const r = await s.commit({ avatarHash: HASH }, "owner", "kid1", PLAN);
+    expect(r.status).toBe(200);
+    const doc = await s.docs.read("owner", "kid1", PLAN);
+    expect(doc).toMatchObject({ id: PLAN, bookId: PLAN, sheetId: `h-${HASH}` });
+    expect(Object.keys(doc!.sheetManifest.poses).sort()).toEqual(["hold-box", "sit-calm"]);
+    expect(doc!.sheetManifest.choices).toBeUndefined();
+    // a later pose joins the same sheet and recommits
+    expect((await s.put(poseRel("stand-tall"), webp(200, 400), ANCHOR, "owner", "image/webp", PLAN)).status).toBe(200);
+    expect((await s.commit({ avatarHash: HASH }, "owner", "kid1", PLAN)).status).toBe(200);
+    expect(Object.keys((await s.docs.read("owner", "kid1", PLAN))!.sheetManifest.poses).sort()).toEqual(["hold-box", "sit-calm", "stand-tall"]);
+    // the book's own sheet is untouched by the plan sheet
+    expect(await s.docs.read("owner", "kid1", BOOK)).toBeNull();
+    await s.stop();
+  });
+
+  it("the plan sheet keeps every other refusal: Free, another hero, a photo-styled hero", async () => {
+    const s = serve({});
+    await s.start();
+    expect((await s.put(poseRel("sit-calm"), webp(200, 400), ANCHOR, "free", "image/webp", PLAN)).status).toBe(403);
+    expect((await s.put(poseRel("sit-calm", OTHER), webp(200, 400), ANCHOR, "owner", "image/webp", PLAN)).status).toBe(409);
+    await s.stop();
+    const photo = serve({ hero: { photoUrl: HERO, source: "photo", anchor: null } });
+    await photo.start();
+    expect((await photo.commit({ avatarHash: HASH, dryRun: true }, "owner", "kid1", PLAN)).status).toBe(409);
+    await photo.stop();
   });
 });

@@ -2,7 +2,8 @@ import React, { useMemo, useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
-import { useToast } from "../../context/ToastContext";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { routeHash } from "../../lib/routes";
 import { useLanguage } from "../../context/LanguageContext";
 import DailyPlayCard from "../overview/DailyPlayCard";
 import SourceActivities from "../practice/SourceActivities";
@@ -47,8 +48,21 @@ function AgeChip({ profile }: { profile: ChildProfile }) {
 }
 
 export default function DailyPlayTab() {
-  const { behaviorLogs, childProfile, setActiveTab, logPlayCompletion, seedCoach, actionLoop } = useArbor();
-  const { toast } = useToast();
+  const { behaviorLogs, childProfile, setActiveTab, logPlayCompletion, undoPlayCompletion, seedCoach, actionLoop } = useArbor();
+  // B-STATUS-01: a logged play answers with ONE receipt line under the header
+  // (where it went: the Journal), never a vanishing success toast. Critic r1:
+  // the save is reversible, so the line carries Undo (the tap's own state
+  // comes back and the day's log goes, only if this tap wrote it).
+  const playReceipt = useReceiptNote();
+  const savedToJournal = (done: { id: string; created: boolean }, restore: () => void) => playReceipt.show({
+    text: t("elev.growth.play.toast.added", { name: firstName }),
+    link: { where: t("nav.tab.journal"), href: `#${routeHash("journal")}`, testId: "play-receipt-open" },
+    undo: {
+      label: t("elev.loop.notice.undo"),
+      testId: "play-receipt-undo",
+      onUndo: () => { playReceipt.clear(); undoPlayCompletion(done); restore(); },
+    },
+  });
   const { t, uiLang } = useLanguage();
   const firstName = (childProfile.name || t("learn.yourChild")).split(" ")[0];
 
@@ -134,8 +148,11 @@ export default function DailyPlayTab() {
     if (!adding) return;
     const activity = courseActivities(course).find((a) => a.id === activityId);
     if (!activity) return;
-    logPlayCompletion(activity, "course", course.id);
-    toast(t("elev.growth.play.toast.added", { name: firstName }), "success");
+    const done = logPlayCompletion(activity, "course", course.id);
+    savedToJournal(done, () => {
+      setCourseProg(courseProg);
+      try { localStorage.setItem(`arbor.course.${childProfile.id}`, JSON.stringify(courseProg)); } catch { /* ignore */ }
+    });
   };
 
   // Readiness tracks — parent-chosen goal courses (school / sibling / sleep).
@@ -150,15 +167,24 @@ export default function DailyPlayTab() {
 
   const markDone = (p: ScoredActivity) => {
     // Dual-write: moat (context/Firestore-synced) + local display state.
-    logPlayCompletion(p, "library"); // writes to the moat (synced) — single source of truth
+    const done = logPlayCompletion(p, "library"); // writes to the moat (synced) — single source of truth
+    const wasDone = doneIds.includes(p.activity.id);
+    const doneKey = `arbor.play.done.${childProfile.id}`;
     setDoneIds((prev) => prev.includes(p.activity.id) ? prev : [...prev, p.activity.id]);
     try {
-      const cur: string[] = JSON.parse(localStorage.getItem(`arbor.play.done.${childProfile.id}`) || "[]");
+      const cur: string[] = JSON.parse(localStorage.getItem(doneKey) || "[]");
       if (!cur.includes(p.activity.id)) {
-        localStorage.setItem(`arbor.play.done.${childProfile.id}`, JSON.stringify([...cur, p.activity.id]));
+        localStorage.setItem(doneKey, JSON.stringify([...cur, p.activity.id]));
       }
     } catch { /* ignore */ }
-    toast(t("elev.growth.play.toast.added", { name: firstName }), "success");
+    savedToJournal(done, () => {
+      if (wasDone) return;
+      setDoneIds((prev) => prev.filter((id) => id !== p.activity.id));
+      try {
+        const cur: string[] = JSON.parse(localStorage.getItem(doneKey) || "[]");
+        localStorage.setItem(doneKey, JSON.stringify(cur.filter((id) => id !== p.activity.id)));
+      } catch { /* ignore */ }
+    });
   };
   const coach = (p: ScoredActivity) => {
     seedCoach({ prompt: t("seed.play", { title: p.activity.title, name: firstName, domain: p.activity.domain }), source: "daily-play" });
@@ -192,9 +218,11 @@ export default function DailyPlayTab() {
         childName: firstName,
         loggedDayCount,
         nowMs: Date.now(),
+        // B-PLAY-25: the why-line is written in the page's language.
+        lang: uiLang === "he" ? "he" : "en",
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [picks, displayGoals, firstName, loggedDayCount]
+    [picks, displayGoals, firstName, loggedDayCount, uiLang]
   );
 
   // Whether the plan card has been marked done today (per-child localStorage).
@@ -211,7 +239,8 @@ export default function DailyPlayTab() {
   const handlePlanDid = (plan: DailyPlan) => {
     // B-GROWTH-19: the plan's "We did this" writes the same playLogs record as
     // every other path (it used to write only a device-local flag).
-    logPlayCompletion(plan.scoredActivity, "today");
+    const done = logPlayCompletion(plan.scoredActivity, "today");
+    const wasPlanDone = planDone;
     setPlanDone(true);
     try {
       localStorage.setItem(
@@ -219,7 +248,11 @@ export default function DailyPlayTab() {
         JSON.stringify({ date: new Date().toISOString().slice(0, 10), activityId: plan.scoredActivity.activity.id })
       );
     } catch { /* ignore */ }
-    toast(t("elev.growth.play.toast.added", { name: firstName }), "success");
+    savedToJournal(done, () => {
+      if (wasPlanDone) return;
+      setPlanDone(false);
+      try { localStorage.removeItem(`arbor.plan.done.${childProfile.id}`); } catch { /* ignore */ }
+    });
   };
 
   const handlePlanCoach = (plan: DailyPlan) => {
@@ -238,7 +271,7 @@ export default function DailyPlayTab() {
     // arbor-safety review gates prod (requiredFix #4).
     const obs = buildGoalObservation({ plan: dailyPlan, observationText: text });
     await goalObservationsCol.upsert(obs);
-    toast(t("elev.growth.play.toast.recorded", { name: firstName }), "success");
+    playReceipt.show({ text: t("elev.growth.play.toast.recorded", { name: firstName }) });
   };
 
   // CI-31: DailyPlanCard carries its own session length derived from the plan's
@@ -275,6 +308,7 @@ export default function DailyPlayTab() {
           </div>
         </div>
         <div className="mt-3 max-w-[640px]"><GoalFocusLine goals={activeGoals} testId="daily-play-goals-edit" onClick={() => setGoalModalOwner(childProfile.id)} /></div>
+        <ReceiptNoteLine note={playReceipt.note} testId="play-receipt" className="mt-3 max-w-[640px]" />
       </header>
 
       {/* CI-30: DailyPlanCard hero — goal-linked daily plan, mounts above existing CourseCard.

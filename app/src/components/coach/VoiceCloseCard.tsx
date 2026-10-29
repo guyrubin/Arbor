@@ -11,6 +11,8 @@ export const VOICE_CLOSE_COPY = {
     empty: "There are no new drafts to keep.", discard: "Don’t keep these drafts", done: "Done",
     journal: "Journal", milestone: "Milestones", intro: "Review before keeping:",
     stop: "Stop readback", audioFailed: "Readback could not play. You can read the drafts below or try Read aloud.",
+    next: "One thing to try", keepNext: "Make it today’s step", nextKept: "On today’s list",
+    nextFailed: "It was not added to today. You can try again.",
   },
   he: {
     title: "לפני שמסיימים", pending: "מכינים את הטיוטות…", failed: "לא הצלחנו להכין חלק מהטיוטות. עדיין אפשר לבדוק את הטיוטות שמופיעות כאן.",
@@ -18,6 +20,8 @@ export const VOICE_CLOSE_COPY = {
     empty: "אין טיוטות חדשות לשמירה.", discard: "לא לשמור את הטיוטות האלה", done: "סיום",
     journal: "יומן", milestone: "אבני דרך", intro: "לבדיקה לפני השמירה:",
     stop: "עצירת ההקראה", audioFailed: "לא הצלחנו להשמיע את ההקראה. אפשר לקרוא את הטיוטות למטה או לנסות שוב את כפתור ההקראה.",
+    next: "דבר אחד לנסות", keepNext: "להפוך לצעד של היום", nextKept: "ברשימה של היום",
+    nextFailed: "הצעד לא נוסף להיום. אפשר לנסות שוב.",
   },
 } as const;
 
@@ -28,11 +32,22 @@ export function voiceReadback(proposals: ConversationProposal[], language: "en" 
   return proposals.length ? `${copy.intro} ${proposals.map(p => `${p.target === "milestone" ? copy.milestone : copy.journal}: ${p.summary}`).join("\n")}` : copy.empty;
 }
 
+/** B-VOICE-04: the session's one next step (lib/voiceTranscript voiceNextStep),
+ *  in the language Arbor said it. */
+export interface VoiceNextStep { text: string; language: "en" | "he" }
+
+/** The spoken line for the next step ("One thing to try: …"). */
+export const voiceNextStepLine = (step: VoiceNextStep): string => `${VOICE_CLOSE_COPY[step.language].next}: ${step.text}`;
+
 /** Review uses the existing screened drafts and explicit commit controls. It
- * performs no generation, extraction, storage, or automatic confirmation. */
-export default function VoiceCloseCard({ sessionId, proposals, language, pending, failed, busy, onClose, children }: {
+ * performs no generation, extraction, storage, or automatic confirmation.
+ * B-VOICE-04: the session's one next step rides the same review — shown and
+ * read once, kept as today's step ONLY on the parent's tap (`onKeepNextStep`,
+ * the coach's existing "try it" writer), never on its own. */
+export default function VoiceCloseCard({ sessionId, proposals, language, pending, failed, busy, onClose, children, nextStep = null, nextStepKept = false, nextStepBusy = false, nextStepFailed = false, onKeepNextStep }: {
   sessionId: string; proposals: ConversationProposal[]; language: "en" | "he";
   pending: boolean; failed: boolean; busy: boolean; onClose: () => void; children: React.ReactNode;
+  nextStep?: VoiceNextStep | null; nextStepKept?: boolean; nextStepBusy?: boolean; nextStepFailed?: boolean; onKeepNextStep?: () => void;
 }) {
   const copy = VOICE_CLOSE_COPY[language];
   const { ref: dialogRef, requestClose, onBackdropClick } = useDialog<HTMLElement>({ open: true, onClose: () => { if (!busy) onClose(); } });
@@ -45,9 +60,12 @@ export default function VoiceCloseCard({ sessionId, proposals, language, pending
   useEffect(() => {
     if (pending || spoken.current === sessionId) return;
     let cancelled = false;
-    const chunks = proposals.length
-      ? proposals.map(p => ({ text: voiceReadback([p], p.sourceLanguage), language: p.sourceLanguage }))
-      : [{ text: readback, language }];
+    const chunks = [
+      ...(proposals.length
+        ? proposals.map(p => ({ text: voiceReadback([p], p.sourceLanguage), language: p.sourceLanguage }))
+        : [{ text: readback, language }]),
+      ...(nextStep ? [{ text: voiceNextStepLine(nextStep), language: nextStep.language }] : []),
+    ];
     let index = 0;
     const next = () => {
       if (cancelled) return;
@@ -78,7 +96,7 @@ export default function VoiceCloseCard({ sessionId, proposals, language, pending
     return () => {
       cancelReadback.current();
     };
-  }, [pending, sessionId, readback, language]);
+  }, [pending, sessionId, readback, language, nextStep?.text]);
   useEffect(() => subscribeVoice(() => {
     // A per-draft Read aloud or another surface can supersede this queue.
     // Completion invokes next() after the state emit, so it sets the next
@@ -98,7 +116,18 @@ export default function VoiceCloseCard({ sessionId, proposals, language, pending
     {reading && <button type="button" onClick={() => cancelReadback.current()} className="min-h-11 rounded-xl px-4 text-sm font-bold"
       style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>{copy.stop}</button>}
     </div>
-    <div className="min-h-0 overflow-y-auto">{children}</div>
+    <div className="min-h-0 overflow-y-auto">
+      {children}
+      {nextStep && <div data-testid="voice-next-step" className="mt-3 border-t pt-3" style={{ borderColor: "var(--arbor-rule)" }}>
+        <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{copy.next}</p>
+        <p className="my-1 text-sm leading-relaxed"><bdi dir="auto">{nextStep.text}</bdi></p>
+        {nextStepFailed && !nextStepKept && <p role="status" data-testid="voice-next-step-failed" className="mb-1 text-sm">{copy.nextFailed}</p>}
+        {nextStepKept
+          ? <p role="status" data-testid="voice-next-step-kept" className="text-sm font-bold" style={{ color: "var(--arbor-green-ink)" }}>{copy.nextKept}</p>
+          : onKeepNextStep && <button type="button" data-testid="voice-next-step-keep" disabled={busy || nextStepBusy} onClick={onKeepNextStep}
+            className="min-h-11 rounded-xl px-4 text-xs font-extrabold disabled:opacity-50" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>{copy.keepNext}</button>}
+      </div>}
+    </div>
     <button type="button" disabled={busy} onClick={requestClose} className="mt-3 min-h-11 shrink-0 rounded-xl px-4 text-sm font-bold disabled:opacity-50"
       style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
       {proposals.length || pending ? copy.discard : copy.done}

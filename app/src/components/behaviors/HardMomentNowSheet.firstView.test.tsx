@@ -33,6 +33,7 @@ const harness = vi.hoisted(() => ({
   acceptTodayAction: vi.fn(),
   requestLearnRead: vi.fn(),
   requestCompanionConversation: vi.fn(),
+  startConversationVoice: vi.fn(() => true),
   captured: [] as { type: unknown; props: Record<string, any> }[],
 }));
 
@@ -64,6 +65,7 @@ vi.mock("../../context/ArborContext", async (importOriginal) => ({
 vi.mock("../../lib/companionConversation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../lib/companionConversation")>()),
   requestCompanionConversation: harness.requestCompanionConversation,
+  startConversationVoice: harness.startConversationVoice,
 }));
 // The real Modal portals into document.body; the stub renders its children in place.
 vi.mock("../ui/Modal", () => {
@@ -225,7 +227,7 @@ describe("FEAT-06 — the ways on (handlers)", () => {
     expect(findElement(tree, (_p, type) => type === UrgentSupport)).toBeNull();
   });
 
-  it("the sheet wires Talk → an empty conversation panel (no seed, no stale guide card), Keep → the capture sheet, Safety → the Safety tab, each closing the sheet first", () => {
+  it("the sheet wires Talk → a spoken conversation that says the first view's words first (no seed, no stale guide card), Keep → the capture sheet, Safety → the Safety tab, each closing the sheet first", () => {
     renderToStaticMarkup(<HardMomentNowSheet />);
     const first = harness.captured.find((c) => c.type === HardMomentFirstView);
     expect(first, "the sheet renders HardMomentFirstView on a fresh open").toBeTruthy();
@@ -235,14 +237,18 @@ describe("FEAT-06 — the ways on (handlers)", () => {
     first!.props.onTalk();
     expect(harness.closeHardMomentNow).toHaveBeenCalledTimes(1);
     // F-TALK-1 re-pin: Talk is a panel over this place, never the coach page.
-    expect(harness.requestCompanionConversation).toHaveBeenCalledTimes(1);
-    expect(harness.requestCompanionConversation).toHaveBeenCalledWith({ source: "hard-moment" });
+    // B-VOICE-02 re-pin: the tap starts the spoken conversation, whose first
+    // line is the words this view shows (text-to-speech, never the prompt).
+    expect(harness.startConversationVoice).toHaveBeenCalledTimes(1);
+    expect(harness.startConversationVoice).toHaveBeenCalledWith({ source: "hard-moment", opening: translate("en", "hm.first.say") });
+    expect(harness.requestCompanionConversation).not.toHaveBeenCalled();
     expect(harness.setActiveTab).not.toHaveBeenCalled();
     // A guide card an earlier card-level Talk left above the composer is
     // cleared: the first view's Talk lands on the conversation with no card.
     expect(harness.setAskHardMomentRef).toHaveBeenCalledTimes(1);
     expect(harness.setAskHardMomentRef).toHaveBeenCalledWith(null);
-    expect(harness.setAskHardMomentRef.mock.invocationCallOrder[0]).toBeLessThan(harness.requestCompanionConversation.mock.invocationCallOrder[0]);
+    expect(harness.setAskHardMomentRef.mock.invocationCallOrder[0]).toBeLessThan(harness.startConversationVoice.mock.invocationCallOrder[0]);
+    expect(harness.closeHardMomentNow.mock.invocationCallOrder[0]).toBeLessThan(harness.startConversationVoice.mock.invocationCallOrder[0]);
     expect(harness.openCaptureSheet).not.toHaveBeenCalled();
 
     vi.clearAllMocks();
@@ -258,7 +264,7 @@ describe("FEAT-06 — the ways on (handlers)", () => {
   });
 
   it("source: no seed, no request on any of the three paths", () => {
-    expect(SHEET).toContain('onTalk={() => { setAskHardMomentRef(null); closeHardMomentNow(); requestCompanionConversation({ source: "hard-moment" }); }}');
+    expect(SHEET).toContain('onTalk={() => { setAskHardMomentRef(null); closeHardMomentNow(); startConversationVoice({ source: "hard-moment", opening: t("hm.first.say") }); }}');
     // F-TALK-1: no path in the sheet opens the coach page.
     expect(SHEET).not.toContain('setActiveTab("coach")');
     expect(SHEET).toContain('onKeep={() => { closeHardMomentNow(); openCaptureSheet({ mode: "text" }); }}');
@@ -401,5 +407,39 @@ describe("F-TALK-2 — the hard sheet's surface, title and picker fold", () => {
     expect(he["hm.first.kicker"]).toBe("רגע קשה · מילים וצעד אחד");
     expect(en["companion.hard.choose"] ?? translate("en", "companion.hard.choose")).toBe("Choose what's happening");
     expect(translate("he", "companion.hard.choose")).not.toMatch(/[A-Za-z]/);
+  });
+});
+
+describe("B-VOICE-02 — a guide's \"Talk it through\" starts a spoken conversation that says the guide's words first", () => {
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: the tap keeps the guide as the reference card, closes the sheet and starts voice with the card's say-this words`, async () => {
+      const { availableHardMomentCards } = await import("../../content/selectCards");
+      const { renderSayThis } = await import("../../content/hardMomentCards");
+      const { locText } = await import("../../content/hardMomentSurface");
+      harness.lang = lang;
+      const ageMonths = 48;
+      const card = availableHardMomentCards({ now: inPilot, ageMonths, locale: lang })[0];
+      expect(card, "a pilot guide is available").toBeTruthy();
+      harness.cardId = card.id;
+      const html = renderToStaticMarkup(<HardMomentNowSheet />);
+      expect(html).toContain('data-testid="hard-moment-now-talk"');
+      expect(html).toContain(escapeHtml(translate(lang, "hm.now.talk")));
+      const talk = harness.captured.find((c) => c.props?.["data-testid"] === "hard-moment-now-talk");
+      talk!.props.onClick();
+      expect(harness.setAskHardMomentRef).toHaveBeenCalledExactlyOnceWith(card.id);
+      expect(harness.closeHardMomentNow).toHaveBeenCalledOnce();
+      const words = locText(renderSayThis(card, "Mia"), lang);
+      expect(words.trim().length).toBeGreaterThan(0);
+      expect(harness.startConversationVoice).toHaveBeenCalledExactlyOnceWith({ source: "hard-moment", opening: words });
+      // The clinical veto holds: the words are never typed into the conversation.
+      expect(harness.requestCompanionConversation).not.toHaveBeenCalled();
+      expect(harness.closeHardMomentNow.mock.invocationCallOrder[0]).toBeLessThan(harness.startConversationVoice.mock.invocationCallOrder[0]);
+    });
+  }
+
+  it("both Talk controls carry the voice glyph the composer's Talk uses (the microphone opens on this tap)", () => {
+    expect(SHEET).toContain('<Icon name="graphic_eq" size={16} /> {t("hm.now.talk")}');
+    expect(SHEET).toContain('<Icon name="graphic_eq" size={18} />{t("hm.first.talk")}');
+    expect(SHEET).not.toContain("requestCompanionConversation(");
   });
 });

@@ -36,7 +36,7 @@ import { toAgeBand, type CanonicalBandId } from "./domains/ageBands";
  * uses. A row with no public source does not ship. The parent-facing age
  * sentence is built ONLY by `milestoneAgeLine` (lib/milestoneAgeLine.ts).
  * Every source family has a row in
- * PAI/projects/arbor/execution/2026-10-06--milestone-loop/REVIEW-SHEET.md for
+ * the milestone-loop REVIEW-SHEET.md (private product record) for
  * the clinical reviewer (G-01).
  */
 

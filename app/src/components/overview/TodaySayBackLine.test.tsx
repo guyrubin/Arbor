@@ -28,6 +28,9 @@ vi.mock("../../context/ArborContext", () => ({
   }),
 }));
 vi.mock("../../lib/age/forChild", () => ({ ageMonthsOf: () => 64 }));
+// B-DATA-14 (P2): the line subscribes through useOnline(); here it reads the
+// stubbed navigator directly, so the line can also be called as a plain function.
+vi.mock("../../hooks/useSyncStatus", () => ({ useOnline: () => typeof navigator === "undefined" || navigator.onLine !== false }));
 vi.mock("../../context/LanguageContext", async () => {
   const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
   return { useLanguage: () => ({ t: (k: string, v?: Record<string, string | number>) => translate(h.lang, k, v), uiLang: h.lang }) };
@@ -35,7 +38,7 @@ vi.mock("../../context/LanguageContext", async () => {
 
 import TodaySayBackLine, { sayBackDoorLine } from "./TodaySayBackLine";
 import { translate } from "../../lib/i18n";
-import { fromRecordEntry, type FromRecordOpener } from "../../lib/today/fromRecord";
+import { fromRecordEntry, fromRecordRowId, type FromRecordOpener } from "../../lib/today/fromRecord";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import { todayLiveSource } from "../../testTodaySource";
 
@@ -196,4 +199,31 @@ for (const lang of ["en", "he"] as const) it(`${lang}: retry keeps the full ques
   expect(html).toContain('role="alert" class="basis-full"');
   expect(html.indexOf('role="alert"')).toBeGreaterThan(html.lastIndexOf("</button>"));
   expect(html.match(/data-answer=/g)).toHaveLength(2);
+});
+
+describe("B-DATA-14 — offline the say-back line never waits on the network", () => {
+  it("unconfirmed ledger offline: no endless 'Checking…' line and no cached claim; online it still waits honestly", () => {
+    h.confirmed = false;
+    vi.stubGlobal("navigator", { onLine: false });
+    try {
+      expect(renderToStaticMarkup(<TodaySayBackLine keepsakeDocs={[quoteDoc()]} now={NOW} />)).toBe("");
+    } finally { vi.unstubAllGlobals(); }
+    vi.stubGlobal("navigator", { onLine: true });
+    try {
+      expect(renderToStaticMarkup(<TodaySayBackLine keepsakeDocs={[quoteDoc()]} now={NOW} />)).toContain('data-testid="today-door-saidback-pending"');
+    } finally { vi.unstubAllGlobals(); h.confirmed = true; }
+  });
+  it("an answer kept on this phone reads 'Saved on this phone…' in EN and HE, by connection", () => {
+    for (const [lang, online, key] of [["en", false, "elev.sync.savedOnPhone"], ["he", false, "elev.sync.savedOnPhone"], ["en", true, "elev.sync.savedOnPhoneSending"], ["he", true, "elev.sync.savedOnPhoneSending"]] as const) {
+      vi.stubGlobal("navigator", { onLine: online });
+      h.lang = lang;
+      const opener = { kind: "said", key: "said:quote-2026-10-05-aa" };
+      h.writes[fromRecordRowId("c1", NOW)] = { opener, status: "queued", entry: { sayBack: "yes" } };
+      const keys = Object.keys(h.writes);
+      const html = renderToStaticMarkup(<TodaySayBackLine keepsakeDocs={[quoteDoc()]} now={NOW} />);
+      for (const k of keys) delete h.writes[k];
+      vi.unstubAllGlobals();
+      expect(html).toContain(translate(lang, key).replace(/'/g, "&#x27;"));
+    }
+  });
 });

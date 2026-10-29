@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import type { Focus } from "../../hooks/useTodaysFocus";
 import { NOW_COPY } from "./nowViewCopy";
+import { learnCardById } from "../../learn/learnCards";
 
 const KNOWN_AGE = { id: "child-a", name: "Noa", age: 4, interests: [], activeGoals: [] };
 
@@ -16,10 +17,11 @@ const state = vi.hoisted(() => ({
   evening: false, moreProps: null as any, readerProps: null as any,
   activeFamilyTopic: null as null | { id: string; title: string },
   focus: null as Focus | null,
-  program: null as null | { week: number; program: { shelf: string }; enrolment: Record<string, string>; content: { skill: { en: string; he: string }; watchFor: string[] } },
+  program: null as null | { week: number; program: { shelf: string }; enrolment: Record<string, string>; content: { skill: { en: string; he: string }; watchFor: string[]; lesson?: string } },
   openCaptureSheet: vi.fn(), seedCoach: vi.fn(), setActiveTab: vi.fn(),
   openHardMomentNow: vi.fn(), saveTodayOutcome: vi.fn(async () => {}),
   acceptTodayAction: vi.fn(async () => {}), focusCalls: vi.fn(), recordPracticeDose: vi.fn(), noPractice: false,
+  requestLearnRead: vi.fn(), readIds: [] as string[],
   buttons: [] as { children?: React.ReactNode; onClick?: () => void; className?: string; "data-answer"?: string; "data-testid"?: string; "data-primary-move"?: string }[],
 }));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({
@@ -45,8 +47,11 @@ vi.mock("./NowTodayLines", () => ({
 }));
 // F-NOW-1: the guide reader is a sheet; its props are what the card hands it.
 vi.mock("./NowGuideReader", () => ({ default: (props: unknown) => { state.readerProps = props; return null; } }));
-vi.mock("../../lib/programs/enrolment", () => ({ activeProgramWeek: () => state.program, dayKey: (d: Date) => d.toISOString().slice(0, 10) }));
+// B-PROG-03: the chooser's program view is exercised in lib/programs/weekSelection.test (real weeks); this stub program has none.
+vi.mock("../../lib/programs/enrolment", () => ({ activeProgramWeek: () => state.program, chooserProgram: () => null, dayKey: (d: Date) => d.toISOString().slice(0, 10) }));
 vi.mock("../../lib/timeOfDay", () => ({ bedtimeDoorOpen: () => state.evening }));
+// B-PROG-14: the parent's Learn read state (per child) decides whether the week's door shows.
+vi.mock("../../learn/learnReadState", () => ({ readLearnReadIds: () => state.readIds }));
 vi.mock("../../lib/programs/measures", () => ({ programWeekDays: () => ({ from: "2026-10-05", to: "2026-10-11" }) }));
 // A known-age child whose catalogue has nothing for today: the fallbacks lead.
 vi.mock("../../lib/practice/choosePractice", async (original) => {
@@ -85,6 +90,7 @@ const PROGRAM = { week: 2, program: { shelf: "words", weeks: [{}, {}, {}, {}] },
 
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 9, 12, 8));
+  state.readIds = []; state.requestLearnRead.mockClear();
   state.actionPlans = []; state.approvedMemoryItems = []; state.behaviorLogs = []; state.appointments = []; state.evening = false; state.moreProps = null; state.readerProps = null; state.activeFamilyTopic = null;
   clearAcceptFailed("child-a");
   vi.clearAllMocks(); state.actionLoopReady = true; state.setActiveTab.mockReset(); state.buttons = []; state.lang = "en"; state.focus = null; state.program = null; state.actionLoop = []; state.childProfile = { ...KNOWN_AGE }; state.noPractice = false;
@@ -119,6 +125,29 @@ describe("Now leads with the milestone loop (parity 9 Oct)", () => {
     expect(html).toContain("Follow their story");
     // v4: the agenda row carries where the family is in the program, counts only.
     expect(html).toContain(`data-testid="now-program-week">${NOW_COPY.en.programWeekOf(2, 4)}</span>`);
+  });
+  it("B-PROG-14: the week's one Learn read is a door on Now until the parent opens it, EN + HE", () => {
+    state.program = { ...PROGRAM, content: { ...PROGRAM.content, lesson: "serve-and-return" } };
+    for (const lang of ["en", "he"] as const) {
+      state.lang = lang; state.buttons = [];
+      const html = renderToStaticMarkup(<NowView />);
+      expect(html).toContain('data-testid="now-week-lesson"');
+      expect(html).toContain(NOW_COPY[lang].weekIdea);
+      expect(html).toContain(learnCardById("serve-and-return")!.title[lang].replace(/'/g, "&#x27;"));
+      expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+    }
+    state.lang = "en"; state.buttons = [];
+    renderToStaticMarkup(<NowView />);
+    state.buttons.find((b) => b["data-testid"] === "now-week-lesson")!.onClick?.();
+    expect(state.requestLearnRead).toHaveBeenCalledWith({ cardId: "serve-and-return", source: "now-week-lesson" });
+    // Read → the door is gone for the rest of the week (the next week names another read).
+    state.readIds = ["serve-and-return"];
+    expect(renderToStaticMarkup(<NowView />)).not.toContain('data-testid="now-week-lesson"');
+    // A week with no lesson, or no program, shows no door.
+    state.readIds = []; state.program = PROGRAM;
+    expect(renderToStaticMarkup(<NowView />)).not.toContain('data-testid="now-week-lesson"');
+    state.program = null;
+    expect(renderToStaticMarkup(<NowView />)).not.toContain('data-testid="now-week-lesson"');
   });
   it("Tonight's pointer is a line under the morning practice", () => {
     renderToStaticMarkup(<NowView />);
@@ -535,5 +564,46 @@ describe("v3 F-NOW-1 · the plan card's body and the guide reader", () => {
     expect(phone).toMatch(/^[^@]*\.now-plan-medallion \{[^}]*inset-block-start: 18px;[^}]*inset-inline-end: 18px;/);
     expect(phone).toMatch(/^[^@]*\.now-plan-face \{ max-inline-size: calc\(100% - 96px\); \}/);
     expect(css).not.toMatch(/(?:^|[\s;{-])(?:left|right)\s*:/m);
+  });
+});
+
+describe("B-TODAY-37 · 'Record a moment' on an older question opens that question's form on Now", () => {
+  const older: ActionLoopEntry = { id: "today.child-a.2026-10-09", recommendation: "What did Noa notice outside?", source: "onboarding", status: "accepted", acceptedAt: "2026-10-09T11:00:00Z", capacity: "tiny", acceptanceKey: "onboarding-v1.child-a.test" };
+  const newer: ActionLoopEntry = { id: "today.child-a.2026-10-10", recommendation: "Read one book together.", source: "coach", status: "accepted", acceptedAt: "2026-10-10T09:00:00Z", capacity: "tiny" };
+  const at = (hash: string) => vi.stubGlobal("window", { location: { hash }, addEventListener: vi.fn(), removeEventListener: vi.fn() });
+
+  it.each(["en", "he"] as const)("without the request Now leads with the newer step; with it, the older question's form (%s)", (lang) => {
+    vi.setSystemTime(new Date("2026-10-10T12:00:00Z"));
+    state.lang = lang;
+    state.actionLoop = [older, newer];
+    at("#/overview");
+    const plain = renderToStaticMarkup(<NowView />);
+    expect(plain).toContain("Read one book together.");
+    expect(plain).not.toContain('data-testid="now-observation-answer"');
+
+    at(`#/overview?observe=${older.id}`);
+    const asked = renderToStaticMarkup(<NowView />);
+    expect(asked).toContain('data-module="now-step"');
+    expect(asked).toContain("What did Noa notice outside?");
+    expect(asked).toContain('data-testid="now-observation-answer"');
+    expect(asked).toContain(lang === "he" ? "השאלה שבחרתם" : "The question you chose");
+    expect(asked.match(/data-primary-move=/g)).toHaveLength(1);
+    // Critic r1: the deep link scrolls to the QUESTION, clear of the sticky place pills.
+    expect(asked).toMatch(/<h2 id="[^"]+-step" class="now-plan-title" dir="auto" style="[^"]*scroll-margin-block-start:calc\(var\(--sticky-offset\) \+ 12px\)/);
+  });
+
+  it("an answered, unknown or non-observation id is ignored: Now keeps its own choice", () => {
+    vi.setSystemTime(new Date("2026-10-10T12:00:00Z"));
+    for (const [rows, id] of [
+      [[{ ...older, status: "completed" as const, whatHappened: "Birds." }, newer], older.id],
+      [[older, newer], "today.child-a.1999-01-01"],
+      [[older, newer], newer.id],
+    ] as const) {
+      state.actionLoop = [...rows];
+      at(`#/overview?observe=${id}`);
+      const html = renderToStaticMarkup(<NowView />);
+      expect(html).toContain("Read one book together.");
+      expect(html).not.toContain('data-testid="now-observation-answer"');
+    }
   });
 });

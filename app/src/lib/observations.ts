@@ -36,6 +36,7 @@ import type { ScreeningResult } from "./screening";
 import { correctedAgeMonths, ageMonthsFromProfile } from "./childAge";
 import { DOMAIN_IDS, toDomains, type DomainId } from "./domains/registry";
 import { shelfDef, shelfOfOrUndefined, type ShelfId } from "./shelves/registry";
+import { shownContentSource } from "./kept/photoOnly";
 import type { ActionLoopEntry } from "../actionLoop/model";
 
 export type ObservationKind =
@@ -190,8 +191,10 @@ export function toObservations(sources: ObservationSources, child: ObservationCh
     push("behaviorLogs", l.id, l.timestamp, filed ? [filed.domain] : doms, {
       kind: "moment",
       value: { type: "moment", behaviorType: l.behaviorType, ...(l.context ? { context: l.context } : {}) },
-      source: l.contentSource === "ai_draft" ? "ai_proposed_parent_confirmed"
-        : l.contentSource !== undefined ? "unverified"
+      // B-ASKJB-43: a photo-only moment's only text is Arbor's caption — no
+      // "not verified" line on the parent's own photo.
+      source: shownContentSource(l) === "ai_draft" ? "ai_proposed_parent_confirmed"
+        : shownContentSource(l) !== undefined ? "unverified"
         : l.conversationProposalId ? "ai_proposed_parent_confirmed" : "parent_typed",
       ...(l.conversationProposalId ? { provenance: l.conversationProposalId } : l.milestoneId ? { provenance: l.milestoneId } : {}),
       ...(filedSubArea ? { subArea: filedSubArea } : {}),

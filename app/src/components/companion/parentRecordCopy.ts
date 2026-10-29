@@ -12,7 +12,7 @@ export const PARENT_RECORD_COPY = {
     records: "תיעוד", toolsAndSupport: "כלים ותמיכה",
     profile: "פרופיל", profileDetail: "פרטים, תחומי עניין והקשר משפחתי",
     memory: "הערות שמורות", memoryDetail: "לעבור על מה שארבור זוכר",
-    suggestedFocus: "משהו לשים לב אליו", chosenFocus: "מה שבחרתם לשים לב אליו", reviewObservation: "לעדכן תצפית",
+    suggestedFocus: "משהו לשים לב אליו", chosenFocus: "מה שבחרתם לשים לב אליו", reviewObservation: "לעבור על התצפית",
     watchCleared: "הבחירה שלכם במה לשים לב אליו נוקתה.", undo: "לבטל",
     storySummary: "תקציר הסיפור", reviewMemory: "לעבור על ההערות השמורות",
   },

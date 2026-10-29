@@ -206,3 +206,67 @@ describe("allowListHandoffInput — the pure allow-list", () => {
     expect(`Key Logged Behaviors: ${JSON.stringify(allowListHandoffInput(raw, [], NOW).logs)}`).not.toContain("secret");
   });
 });
+
+/* B-ASKJB-44 — the School Brief floor: a drafted absence-of-finding or
+   unattributed observation is dropped before the output screen and the reply
+   (the prompt rule is parked on claude/askjb44-prompt-bump-2026-10-28). */
+describe("B-ASKJB-44 · /api/generate-handoff invented-finding floor", () => {
+  it("drops 'no evidence of' / 'was observed' sentences (EN + HE) and keeps the rest of the brief", async () => {
+    draft = {
+      ...CLEAN_DRAFT,
+      overview: "Mia does best with a warning before a change. There is no evidence of attention difficulties.",
+      keyStrengths: ["Curious", "אין סימנים לקושי חברתי."],
+      suggestedTeacherStrategies: ["Give a two-minute warning", "A calm response was observed at pickup."],
+    };
+    prompts = [];
+    const res = await fetch(`${baseUrl}/api/generate-handoff`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ childProfile: { name: "Mia", age: 4 }, logs: [], milestones: [] }),
+    });
+    const json = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(json.overview).toBe("Mia does best with a warning before a change.");
+    expect(json.keyStrengths).toEqual(["Curious"]);
+    expect(json.suggestedTeacherStrategies).toEqual(["Give a two-minute warning"]);
+    draft = CLEAN_DRAFT;
+  });
+  it("the escalation line survives verbatim in EN and HE (crisisEscalationTrigger is never scrubbed)", async () => {
+    for (const trigger of [
+      "If he shows no signs of calming after 20 minutes, or hurts himself or others, call the parent and the school nurse right away.",
+      "אם אין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.",
+    ]) {
+      draft = { ...CLEAN_DRAFT, crisisEscalationTrigger: trigger };
+      const res = await fetch(`${baseUrl}/api/generate-handoff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ childProfile: { name: "Mia", age: 4 }, logs: [], milestones: [] }),
+      });
+      const json = (await res.json()) as Record<string, unknown>;
+      // A self-harm line may route to the 409 escalation card; it is never silently deleted.
+      if (res.status === 409) expect(json.escalationCategory).toBeTruthy();
+      else expect(json.crisisEscalationTrigger).toBe(trigger);
+    }
+    draft = CLEAN_DRAFT;
+  });
+  it("the output screen sees the draft BEFORE the floor: a crisis clause the floor would drop still answers 409", async () => {
+    draft = { ...CLEAN_DRAFT, overview: "Mia does best with a warning. There are no signs of self-harm or suicidal thoughts." };
+    const res = await fetch(`${baseUrl}/api/generate-handoff`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ childProfile: { name: "Mia", age: 4 }, logs: [], milestones: [] }),
+    });
+    expect(res.status).toBe(409);
+    expect(((await res.json()) as Record<string, unknown>).escalationCategory).toBeTruthy();
+    draft = CLEAN_DRAFT;
+  });
+  it("a clean draft is returned unchanged", async () => {
+    draft = CLEAN_DRAFT;
+    const res = await fetch(`${baseUrl}/api/generate-handoff`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ childProfile: { name: "Mia", age: 4 }, logs: [], milestones: [] }),
+    });
+    expect(await res.json()).toEqual(CLEAN_DRAFT);
+  });
+});

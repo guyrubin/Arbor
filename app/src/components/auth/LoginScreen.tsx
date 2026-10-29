@@ -3,23 +3,27 @@ import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { api } from "../../lib/api";
 import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
 import { LegalLinks } from "../billing/LegalLinks";
+import { appleSignInOffered } from "../../lib/nativeSignIn";
 
 function ArborMark() {
   return <ArborMarkIcon size={56} />;
 }
 
 export default function LoginScreen() {
-  const { signInWithGoogle, signInWithEmail, resetPassword, error } = useAuth();
+  const { signInWithGoogle, signInWithApple, signInWithEmail, signUpWithEmail, resetPassword, error } = useAuth();
+  // B-GA-19: dark until the Apple provider is configured (and, in a native shell, until iOS ships the plugin).
+  const offerApple = appleSignInOffered();
   const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showEmail, setShowEmail] = useState(false);
-  const [busy, setBusy] = useState<"google" | "email" | "access" | null>(null);
+  // B-RESID-05: one e-mail form, two modes. A new family creates its account
+  // here (Google stays); there is no invite-only gate and no access request.
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [busy, setBusy] = useState<"google" | "apple" | "email" | null>(null);
   const [resetMsg, setResetMsg] = useState("");
-  const [accessMsg, setAccessMsg] = useState("");
 
   const handleReset = async () => {
     if (!email.trim()) {
@@ -45,12 +49,10 @@ export default function LoginScreen() {
     }
   };
 
-  const handleEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim() || !password) return;
-    setBusy("email");
+  const handleApple = async () => {
+    setBusy("apple");
     try {
-      await signInWithEmail(email.trim(), password);
+      await signInWithApple();
     } catch {
       /* surfaced via context error */
     } finally {
@@ -58,25 +60,20 @@ export default function LoginScreen() {
     }
   };
 
-  const handleAccessRequest = async () => {
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      setShowEmail(true);
-      setAccessMsg(t("auth.accessNeedEmail"));
-      return;
-    }
-    if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
-      setShowEmail(true);
-      setAccessMsg(t("auth.accessInvalidEmail"));
-      return;
-    }
-    setBusy("access");
-    setAccessMsg("");
+  const handleEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password) return;
+    setBusy("email");
     try {
-      await api.requestAccess({ email: trimmedEmail, source: "login-access", market: "il" });
-      setAccessMsg(t("auth.accessReceived"));
+      if (mode === "signup") {
+        // B-RESID-05: the account exists and this screen unmounts; the
+        // confirmation-link line is said where the parent lands (lib/signupNotice).
+        await signUpWithEmail(email.trim(), password);
+      } else {
+        await signInWithEmail(email.trim(), password);
+      }
     } catch {
-      setAccessMsg(t("auth.accessFail"));
+      /* surfaced via context error */
     } finally {
       setBusy(null);
     }
@@ -155,6 +152,26 @@ export default function LoginScreen() {
           {t("auth.continueGoogle")}
         </button>
 
+        {offerApple && (
+          <button
+            type="button"
+            data-testid="auth-apple"
+            onClick={handleApple}
+            disabled={busy !== null}
+            className="w-full min-h-11 font-bold text-sm px-5 py-3 rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-60"
+            style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-ink)", color: "var(--arbor-ink)" }}
+          >
+            {busy === "apple" ? (
+              <Icon name="refresh" size={16} className="animate-spin" />
+            ) : (
+              <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+                <path d="M16.37 12.5c-.02-2.1 1.72-3.11 1.8-3.16-.98-1.43-2.5-1.63-3.04-1.65-1.29-.13-2.52.76-3.17.76-.66 0-1.67-.74-2.74-.72-1.41.02-2.71.82-3.44 2.08-1.47 2.55-.38 6.32 1.05 8.39.7 1.01 1.53 2.15 2.62 2.11 1.05-.04 1.45-.68 2.72-.68 1.27 0 1.63.68 2.74.66 1.13-.02 1.85-1.03 2.54-2.05.8-1.17 1.13-2.31 1.15-2.37-.03-.01-2.2-.84-2.23-3.37zM14.29 6.33c.58-.7.97-1.68.86-2.65-.83.03-1.84.55-2.44 1.25-.53.62-1 1.61-.88 2.57.93.07 1.88-.47 2.46-1.17z" />
+              </svg>
+            )}
+            {t("auth.continueApple")}
+          </button>
+        )}
+
         <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest" style={{ color: "var(--arbor-muted)" }}>
           <span className="flex-1 h-px" style={{ background: "var(--arbor-rule)" }} />
           {t("auth.or")}
@@ -190,7 +207,9 @@ export default function LoginScreen() {
               <input
                 type="password"
                 name="password"
-                autoComplete="current-password"
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                minLength={mode === "signup" ? 6 : undefined}
+                aria-describedby={mode === "signup" ? "login-password-hint" : undefined}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t("auth.passwordPlaceholder")}
@@ -198,41 +217,30 @@ export default function LoginScreen() {
                 style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
               />
             </div>
+            {mode === "signup" && <p id="login-password-hint" className="px-1 t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.auth.signup.passwordHint")}</p>}
             <button
               type="submit"
+              data-testid="login-email-submit"
               disabled={busy !== null}
               className="w-full text-white font-extrabold text-sm px-5 py-3 rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60"
               style={{ background: "var(--arbor-gradient-primary)" }}
             >
               {busy === "email" ? <Icon name="refresh" size={16} className="animate-spin" /> : null}
-              {t("auth.signIn")}
+              {mode === "signup" ? t("elev.auth.signup.cta") : t("auth.signIn")}
             </button>
-            <div className="flex items-center justify-between">
-              <button type="button" data-testid="login-forgot" onClick={handleReset} className="inline-flex items-center min-h-11 text-[11px] transition" style={{ color: "var(--arbor-muted)" }}>
+            <div className="flex flex-wrap items-center justify-between gap-x-3">
+              {mode === "signin" && <button type="button" data-testid="login-forgot" onClick={handleReset} className="inline-flex items-center min-h-11 t-sm transition" style={{ color: "var(--arbor-muted)" }}>
                 {t("auth.forgot")}
+              </button>}
+              <button type="button" data-testid="login-mode-switch" onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setResetMsg(""); }}
+                className="inline-flex items-center min-h-11 min-w-11 t-base font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
+                {mode === "signin" ? t("elev.auth.signup.toSignup") : t("elev.auth.signup.toSignin")}
               </button>
-              {resetMsg && <span className="text-[10px]" style={{ color: "var(--arbor-green-ink)" }}>{resetMsg}</span>}
+              {resetMsg && <span role="status" className="t-sm" style={{ color: "var(--arbor-green-ink)" }}>{resetMsg}</span>}
             </div>
           </form>
         )}
 
-        <div className="text-center text-[11px] space-y-1" style={{ color: "var(--arbor-muted)" }}>
-          <p>
-            {t("auth.inviteOnly")}{" "}
-            <button
-              type="button"
-              onClick={handleAccessRequest}
-              disabled={busy !== null}
-              data-testid="login-request-access"
-              className="inline-flex items-center min-h-11 font-bold hover:underline disabled:opacity-60"
-              style={{ color: "var(--arbor-green-ink)" }}
-            >
-              {busy === "access" ? t("auth.requestingAccess") : t("auth.requestAccess")}
-            </button>
-          </p>
-          <p className="text-[10px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("auth.accessPrivacy")}</p>
-          {accessMsg && <p aria-live="polite" style={{ color: "var(--arbor-green-ink)" }}>{accessMsg}</p>}
-        </div>
       </motion.div>
       {/* B-SHELL-15 / MOB-01: Privacy · Terms · Support before sign-in too —
           the fourth LegalLinks mount (44 px rows). */}

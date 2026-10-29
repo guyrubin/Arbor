@@ -96,7 +96,7 @@ export interface PracticeCardProps {
 
 /**
  * B-LOOP-09 / B-LOOP-07 → B-DESIGN-04 (P7-DESIGN, design of record
- * execution/2026-10-07--design-direction/option-ab-blend.html, frame 01):
+ * the 7 Oct design direction's A+B blend, private product tree, frame 01):
  * Today's practice is the screen's PRIMARY card — the one card with the deep
  * shadow (--arbor-shadow-primary) on --r-xl. It opens on a kicker row (the
  * 44 px duotone shelf glyph, the caption as a kicker over the shelf name, and

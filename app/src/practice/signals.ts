@@ -454,7 +454,8 @@ export function memorySetIndexForAge(age: number | undefined, setCount: number):
 export interface CopilotRecommendation {
   domain: PracticeDomain;
   missionId: string;
-  headline: string;
+  /* B-GROWTH-22: `headline` ("Increase … this week", English on every page)
+     left with its one reader, the retired Full Picture. */
   /** i18n key of the why-line. OBJ-GROWTH-05: the reason is resolved by the
    *  rendering surface (which knows the child's name and the reader's
    *  language); this module never ships a parent-facing English sentence, and
@@ -468,14 +469,6 @@ const DOMAIN_MISSION: Record<PracticeDomain, string> = {
   cognition: "story-retell",
   speech: "sound-safari",
   social: "social-play",
-};
-
-const DOMAIN_ACTIVITY: Record<PracticeDomain, string> = {
-  language: "naming and vocabulary play",
-  emotional: "emotion-recognition games",
-  cognition: "story retelling and sequencing play",
-  speech: "playful sound practice",
-  social: "turn-taking games",
 };
 
 /* ---------------- Weekly milestone closed-loop (Kinedu-style) ---------------- */
@@ -600,7 +593,6 @@ export function recommend(
   return {
     domain: target,
     missionId: DOMAIN_MISSION[target],
-    headline: `Increase ${DOMAIN_ACTIVITY[target]} this week`,
     whyKey: hasPractice ? "elev.growthTruth.focus.why.practised" : "elev.growthTruth.focus.why.day0",
   };
 }

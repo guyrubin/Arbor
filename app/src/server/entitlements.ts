@@ -222,6 +222,10 @@ export class FirestoreEntitlementStore implements EntitlementStore {
         currentPeriodEnd: periodEnd,
         rcOriginalAppUserId: data.rcOriginalAppUserId ?? null,
         updatedAt: typeof data.updatedAt === "string" ? data.updatedAt : undefined,
+        // B-GA-20: a TRANSFER reads the old account's record and must know
+        // whether it post-dates the transfer (isStaleBillingEvent).
+        lastEventId: typeof data.lastEventId === "string" ? data.lastEventId : undefined,
+        lastEventTs: typeof data.lastEventTs === "number" ? data.lastEventTs : undefined,
       };
     } catch (error) {
       logger.error("Entitlement store read failed — defaulting", error, { uid });

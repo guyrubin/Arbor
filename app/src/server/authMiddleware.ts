@@ -54,7 +54,10 @@ const PUBLIC_API_PATHS = new Set(["/waitlist"]);
 export const JOB_API_PATHS = new Set(["/jobs/weekly-digest"]);
 
 export const createAuthMiddleware = (config: ArborConfig): RequestHandler => {
-  const required = authRequired();
+  // B-RESID-05: production never answers a private route anonymously, even if
+  // a deploy drops REQUIRE_AUTH (a --set-env-vars release replaces the list).
+  // Local, dev and stage keep the opt-in so the sandbox runs without tokens.
+  const required = authRequired() || config.arborEnv === "prod";
 
   return async (req, res, next) => {
     const header = req.headers.authorization || "";

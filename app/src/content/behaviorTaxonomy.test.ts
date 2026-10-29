@@ -6,6 +6,10 @@ import {
   BEHAVIOR_TYPES,
   CANONICAL_BEHAVIOR_TYPES,
   DEFAULT_BEHAVIOR_TYPE,
+  extractionNeedsIncidentType,
+  extractionOpensIncidentReview,
+  hasIncidentCue,
+  mapExtractedLabelToType,
   mapLabelToType,
   normalizeExtractedLog,
   behaviorTypeLabel,
@@ -71,7 +75,8 @@ describe("AI-CAP-8 — normalizeExtractedLog clamps every field", () => {
 
   it("preserves an unmatched free label in notes — never dropped", () => {
     const n = normalizeExtractedLog({ behaviorType: "Glitter everywhere incident", notes: "calm after" });
-    expect(n.behaviorType).toBe(DEFAULT_BEHAVIOR_TYPE);
+    // B-ASKJB-48: an unmatched label is the neutral Moment, never a default incident type.
+    expect(n.behaviorType).toBe(MOMENT_BEHAVIOR_TYPE);
     expect(n.typeMatched).toBe(false);
     expect(n.notes).toContain("Glitter everywhere incident");
     expect(n.notes).toContain("calm after");
@@ -92,6 +97,165 @@ describe("AI-CAP-8 — normalizeExtractedLog clamps every field", () => {
       "she screamed in the bath",
     );
     expect(normalizeExtractedLog({ trigger: "bath started" }, "fallback").trigger).toBe("bath started");
+  });
+});
+
+/**
+ * B-ASKJB-48 — a context-only label stays a neutral moment. Before this, a
+ * free label that only named a context ("Sister reading together", "Family
+ * dinner", "Goodnight routine", "Played on the tablet", "First word this
+ * morning") hit the keyword map and came back matched:true as an incident type,
+ * so a joyful moment opened the incident review with an intensity.
+ */
+describe("B-ASKJB-48 — context-only extraction labels stay neutral", () => {
+  const CONTEXT_ONLY = {
+    en: [
+      "Sister reading together", "Brother and sister playing", "Family dinner", "Dinner with grandparents",
+      "Bedtime routine", "Goodnight routine", "Played on the tablet", "Tablet drawing app",
+      "First word this morning", "Pillow fight with brother", "Problem-solving with blocks at breakfast",
+    ],
+    he: [
+      "אחים משחקים ביחד", "אחות קוראת איתו ספר", "ארוחת ערב משפחתית", "ארוחת בוקר עם ריבה",
+      "שגרת שינה", "שגרת לילה טוב", "משחק בטאבלט", "מילה ראשונה בבוקר", "בקשה לעוד ארוחה",
+    ],
+  };
+  const CONCERN = {
+    en: [
+      ["Morning refusal", "Transition Refusal"], ["Screen shutoff meltdown", "Screentime Dispute"],
+      ["Sibling dispute over toys", "Sibling Conflict"], ["Bedtime resistance", "Sleep Meltdown"],
+      ["Dinner table standoff", "Food Refusal"], ["Loud party overwhelm", "Sensory Overload"],
+      ["Crying at bedtime", "Sleep Meltdown"], ["Won't eat dinner", "Food Refusal"],
+      ["Fight with sister", "Sibling Conflict"],
+    ],
+    he: [
+      ["ריב בין אחים", "Sibling Conflict"], ["סירוב בבוקר", "Transition Refusal"],
+      ["בכי לפני השינה", "Sleep Meltdown"], ["צעקות על המסך", "Screentime Dispute"],
+      ["לא רצה לישון במיטה", "Sleep Meltdown"],
+    ],
+  } as const;
+
+  it.each([...CONTEXT_ONLY.en, ...CONTEXT_ONLY.he])("%s → neutral Moment, typeMatched false, label kept in notes, no incident review", (label) => {
+    expect(hasIncidentCue(label), label).toBe(false);
+    expect(mapExtractedLabelToType(label)).toEqual({ type: MOMENT_BEHAVIOR_TYPE, matched: false });
+    const draft = normalizeExtractedLog({ behaviorType: label, intensity: 3, notes: "kept words" });
+    expect(draft.behaviorType).toBe(MOMENT_BEHAVIOR_TYPE);
+    expect(draft.typeMatched).toBe(false);
+    expect(draft.notes).toContain(label);
+    expect(draft.notes).toContain("kept words");
+    expect(extractionOpensIncidentReview(draft)).toBe(false);
+  });
+
+  it("negative control: the pre-change keyword map promoted these context labels to incidents", () => {
+    for (const label of ["Sister reading together", "Family dinner", "Bedtime routine", "Played on the tablet", "First word this morning", "אחים משחקים ביחד", "משחק בטאבלט"]) {
+      const legacy = mapLabelToType(label);
+      expect(legacy.matched, label).toBe(true);
+      expect(legacy.type, label).not.toBe(MOMENT_BEHAVIOR_TYPE);
+    }
+  });
+
+  it.each([...CONCERN.en, ...CONCERN.he])("%s still reaches the %s review", (label, type) => {
+    expect(hasIncidentCue(label), label).toBe(true);
+    const draft = normalizeExtractedLog({ behaviorType: label });
+    expect(draft).toMatchObject({ behaviorType: type, typeMatched: true });
+    expect(extractionOpensIncidentReview(draft)).toBe(true);
+  });
+
+  it("every canonical label still matches as itself, without a cue; Moment is never an incident", () => {
+    for (const value of CANONICAL_BEHAVIOR_TYPES) {
+      expect(mapExtractedLabelToType(value)).toEqual({ type: value, matched: true });
+      expect(mapExtractedLabelToType(value.toLowerCase()).matched).toBe(true);
+    }
+    expect(extractionOpensIncidentReview(normalizeExtractedLog({ behaviorType: "Moment" }))).toBe(false);
+    expect(extractionOpensIncidentReview(normalizeExtractedLog({ behaviorType: "Sibling Conflict" }))).toBe(true);
+  });
+
+  it("a declared hard moment keeps the keyword choice of incident type (the parent's toggle is the cue)", () => {
+    expect(mapExtractedLabelToType("Bedtime routine", { incidentDeclared: true })).toEqual({ type: "Sleep Meltdown", matched: true });
+    expect(mapExtractedLabelToType("Glitter everywhere incident", { incidentDeclared: true })).toEqual({ type: MOMENT_BEHAVIOR_TYPE, matched: false });
+    expect(normalizeExtractedLog({ behaviorType: "Family dinner" }, "", { incidentDeclared: true })).toMatchObject({ behaviorType: "Food Refusal", typeMatched: true });
+  });
+
+  // Critic round 1 (P1): a real concern must never read as neutral. These
+  // labels opened the incident review before the cue gate and must still.
+  const AGGRESSION_PROBES = [
+    ["Hit his brother", "Sibling Conflict"], ["Pushed sister off the couch", "Sibling Conflict"],
+    ["Kicking during bedtime", "Sleep Meltdown"], ["Screen time ended in tears", "Screentime Dispute"],
+    ["Threw toys at dinner", "Food Refusal"], ["Bit his sister at bath time", "Sibling Conflict"],
+    ["Shoved brother off the slide", "Sibling Conflict"], ["Sibling jealousy", "Sibling Conflict"],
+    ["Hitting at drop-off", "Transition Refusal"],
+    ["הרביץ לאח שלו", "Sibling Conflict"], ["דחף את אחותו מהספה", "Sibling Conflict"],
+    ["בעט בזמן השינה", "Sleep Meltdown"], ["המסך נגמר בדמעות", "Screentime Dispute"],
+    ["זרק צעצועים בארוחת הערב", "Food Refusal"], ["נשך את אחותו באמבטיה", "Sibling Conflict"],
+    ["קנאה בין אחים", "Sibling Conflict"],
+  ] as const;
+  it.each(AGGRESSION_PROBES)("aggression is a concern: %s still opens the %s review", (label, type) => {
+    expect(hasIncidentCue(label), label).toBe(true);
+    const draft = normalizeExtractedLog({ behaviorType: label, intensity: 4 });
+    expect(draft).toMatchObject({ behaviorType: type, typeMatched: true, intensity: 4 });
+    expect(extractionOpensIncidentReview(draft)).toBe(true);
+  });
+
+  it("'a bit' is not biting, and the context-only list stays neutral beside the aggression words", () => {
+    expect(hasIncidentCue("A bit tired at bedtime")).toBe(false);
+    expect(hasIncidentCue("A little bit of quiet time with sister")).toBe(false);
+    expect(hasIncidentCue("Bit his sister")).toBe(true);
+  });
+
+  it("NEGATIVE CONTROL: every incident fixture label that opened the review before the cue gate still opens it, with the same type", () => {
+    // The repo's incident fixtures: the capture-extract-v1 stubbed labels, the
+    // AI-CAP-8 alias labels, this row's concern lists and the critic's probes.
+    const evalSuite = fs.readFileSync(path.resolve(__dirname, "..", "..", "..", "evals", "capture-extract-v1.eval.json"), "utf8");
+    const evalLabels = [...evalSuite.matchAll(/"behaviorType":\s*"([^"]+)"/g)].map((m) => m[1]);
+    expect(evalLabels.length).toBeGreaterThanOrEqual(4);
+    const fixtures = [
+      ...evalLabels,
+      "Morning refusal", "Screen shutoff meltdown", "Sibling conflict", "Bedtime resistance", "Dinner table standoff",
+      "Loud party overwhelm", "ריב בין אחים", "סירוב בבוקר",
+      ...CONCERN.en.map(([label]) => label), ...CONCERN.he.map(([label]) => label),
+      ...AGGRESSION_PROBES.map(([label]) => label),
+    ];
+    let compared = 0;
+    for (const label of fixtures) {
+      const legacy = mapLabelToType(label);
+      if (!legacy.matched || legacy.type === MOMENT_BEHAVIOR_TYPE) continue; // never opened the review
+      compared++;
+      const draft = normalizeExtractedLog({ behaviorType: label });
+      expect(extractionOpensIncidentReview(draft), label).toBe(true);
+      expect(draft.behaviorType, label).toBe(legacy.type);
+    }
+    expect(compared).toBeGreaterThanOrEqual(30);
+  });
+
+  it("critic round 2: a concern with no canonical type opens the hard-moment flow with no type preset", () => {
+    for (const label of ["Bit a friend at preschool", "Tantrum at the store", "Scratched a classmate", "נשך חבר בגן", "התקף זעם בסופר"]) {
+      const draft = normalizeExtractedLog({ behaviorType: label, intensity: 3 });
+      expect(draft, label).toMatchObject({ behaviorType: MOMENT_BEHAVIOR_TYPE, typeMatched: false, concern: true });
+      expect(extractionNeedsIncidentType(draft), label).toBe(true);
+      expect(extractionOpensIncidentReview(draft), label).toBe(true);
+    }
+    // A context-only label stays a neutral moment.
+    const neutral = normalizeExtractedLog({ behaviorType: "Family dinner" });
+    expect(neutral.concern).toBe(false);
+    expect(extractionNeedsIncidentType(neutral)).toBe(false);
+    expect(extractionOpensIncidentReview(neutral)).toBe(false);
+  });
+
+  it("critic round 2: the Hebrew extraction keywords never change how a SAVED free label displays", () => {
+    const t = (key: string) => en[key] ?? key;
+    for (const stored of ["ארוחת ערב משפחתית", "משחק עם אחיו", "קריאה עם האח הגדול"]) {
+      expect(behaviorTypeLabel(stored, t), stored).toBe(stored);
+      expect(mapLabelToType(stored).matched, stored).toBe(false);
+    }
+    // ...while new extraction still reads the aggression forms they carry.
+    expect(normalizeExtractedLog({ behaviorType: "הרביץ לאח שלו" })).toMatchObject({ behaviorType: "Sibling Conflict", typeMatched: true });
+    expect(normalizeExtractedLog({ behaviorType: "זרק צעצועים בארוחת הערב" })).toMatchObject({ behaviorType: "Food Refusal", typeMatched: true });
+  });
+
+  it("saved records are not re-read: legacy stored free labels keep their localized label", () => {
+    const t = (key: string) => en[key] ?? key;
+    expect(behaviorTypeLabel("Sensory Meltdown", t)).toBe(en["ql.type.sensory"]);
+    expect(behaviorTypeLabel("Bedtime routine", t)).toBe(en["ql.type.sleep"]);
+    expect(DEFAULT_BEHAVIOR_TYPE).toBe("Transition Refusal");
   });
 });
 

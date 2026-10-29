@@ -257,6 +257,8 @@ export function HoldExitButton({ onExit, idleLabel, ariaIdle }: HoldExitButtonPr
         data-kid-exit-caption=""
         role={hinting ? "status" : undefined}
         style={{
+          // B-KID-133 (round 2): the toy voice, declared here — inherited, it was the parent face from <body>.
+          fontFamily: "var(--font-sans)",
           fontSize: "var(--t-xs)",
           fontWeight: hinting ? 800 : 700,
           color: hinting ? "var(--arbor-clay)" : "var(--arbor-muted)",

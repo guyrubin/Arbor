@@ -47,6 +47,21 @@ describe("B-KID-167: GET /plans/visibility", () => {
     expect(Object.keys(body.composable)).toHaveLength(8);
   });
 
+  it("B-BOOK-75 plates: `admin` is false for everyone unless the painter dep says so for THIS viewer", async () => {
+    const s = await serve(base, { uid: "owner-uid", email: "guy@example.test" });
+    servers.push(s);
+    expect((await (await fetch(`${s.url}/plans/visibility`)).json()).admin).toBe(false);
+    const app = express();
+    app.use((req, _res, next) => { (req as any).user = { uid: "founder", email: "founder@example.test" }; next(); });
+    app.use("/api", createPlansRouter({ config: base, requireOwnership: (_req, _res, next) => next(), painter: (v) => v.email === "founder@example.test" }));
+    const server = await new Promise<import("node:http").Server>((resolve) => { const srv = app.listen(0, () => resolve(srv)); });
+    servers.push({ close: () => server.close() });
+    const body = await (await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/api/plans/visibility`)).json();
+    expect(body.admin).toBe(true);
+    // the flag opens no door: the table itself is unchanged
+    expect(body.composable["plan-poo-sit"]).toEqual({ en: false, he: false });
+  });
+
   it("the owner (uid or verified email) may compose an unsigned pattern; nothing reads as reviewed", async () => {
     for (const user of [{ uid: "owner-uid" }, { uid: "someone", email: "Guy@Example.test" }]) {
       const s = await serve(base, user);
@@ -187,6 +202,21 @@ describe("B-GA-11: POST /plans/phrase", () => {
     const own = await json(`${s.url}/plans/phrase`, { pattern: "plan-poo-sit", slot: 2, lang: "en", text: "we blow bubbles while sitting", origin: "doctor" });
     expect(own.status).toBe(200);
     expect((await own.json()).step.origin).toBeUndefined();
+  });
+
+  it("B-GA-05: crisis language in the parent's words is screened BEFORE the gate and the model — 409 with the escalation contract, provider never called", async () => {
+    let calls = 0;
+    const provider = { generateJson: async () => { calls += 1; return { en: "Step two: x.", he_m: "שלב שני: x.", he_f: "שלב שני: x." }; } } as unknown as NonNullable<Parameters<typeof createPlansRouter>[0]["modelProvider"]>;
+    const owner = await serve({ ...base, modelProvider: "vertex" } as Cfg, { uid: "owner-uid" }, provider);
+    const outside = await serve({ ...base, modelProvider: "vertex" } as Cfg, { uid: "family-1" }, provider);
+    servers.push(owner, outside);
+    const r = await json(`${owner.url}/plans/phrase`, { pattern: "plan-poo-sit", slot: 2, lang: "en", text: "he says he wants to hurt himself when we sit" });
+    expect(r.status).toBe(409);
+    expect(await r.json()).toMatchObject({ error: "Professional support recommended", escalationCategory: "self_harm" });
+    // The screen outranks the visibility gate: a family outside the owner list gets the helplines, not a 403.
+    const gated = await json(`${outside.url}/plans/phrase`, { pattern: "plan-poo-sit", slot: 2, lang: "en", text: "I am thinking about suicide" });
+    expect(gated.status).toBe(409);
+    expect(calls).toBe(0);
   });
 
   it("the gate holds here too; empty words and a bad slot are refused", async () => {

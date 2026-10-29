@@ -4,7 +4,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useDialog } from "../../hooks/useDialog";
 import { useVisualViewportInset } from "../../hooks/useVisualViewportInset";
-import { COMPANION_CLOSE_EVENT, COMPANION_CONVERSATION_EVENT, requestCompanionConversation, type CompanionConversationRequest } from "../../lib/companionConversation";
+import { COMPANION_CLOSE_EVENT, COMPANION_CONVERSATION_EVENT, dropQueuedConversationVoice, registerConversationShown, requestCompanionConversation, startConversationVoice, type CompanionConversationRequest } from "../../lib/companionConversation";
 import { trackCompanionPanelOpen } from "../../lib/kpiEvents";
 import { isKidModeActive } from "../../lib/kidModeGate";
 import Icon from "../ui/Icon";
@@ -73,6 +73,10 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   const modal = visible && (!wide || expanded);
   const close = () => {
     closeFocus.current = { childId: childProfile.id, tab: activeTab };
+    // B-VOICE-08: closed means closed, now: a door tap still queued for the
+    // conversation is dropped and no voice start is accepted from here on.
+    openRef.current = false;
+    dropQueuedConversationVoice();
     setOpen(false);
   };
   // Replaces the conversation address with the place's own (replaceState, so
@@ -151,6 +155,14 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   // A ref, not `open`: the seed listener's closure can be a render behind.
   const openRef = useRef(open);
   openRef.current = open;
+  const kidLockedRef = useRef(kidLocked);
+  kidLockedRef.current = kidLocked;
+  // B-VOICE-08 / B-VOICE-02: a voice start (a door, a queued tap, the start
+  // after a card's words) is accepted only while the conversation is shown or
+  // opening inside this tap (show() sets the ref before the start runs); every
+  // way it hides drops a tap still queued for it.
+  useEffect(() => registerConversationShown(() => openRef.current && !kidLockedRef.current), []);
+  useEffect(() => { if (!visible) dropQueuedConversationVoice(); }, [visible]);
   // v3 F-SHELL-3: the chrome door (outside the workspace: the phone dock, the
   // sidebar) that opened the conversation, so an explicit close returns to it.
   const opener = useRef<HTMLElement | null>(null);
@@ -239,6 +251,11 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     setOpen(false); setMounted(false); setExpanded(false);
   }, [childProfile.id]);
   useEffect(() => { if (kidLocked) setOpen(false); }, [kidLocked]);
+  // B-VOICE-08 round 4: the conversation is NOT mounted ahead of a tap. A page
+  // the parent has not asked to talk on carries none of its DOM (no module or
+  // primary-move stamp, nothing to count or focus): the one-primary-move law.
+  // A voice door tap before it exists is queued (lib/companionConversation)
+  // and runs when the conversation mounts and registers its start.
   // The parent is back: a held conversation route goes quietly to the place
   // (the launcher is there; nothing opens on the child's last screen).
   useLayoutEffect(() => {
@@ -271,6 +288,14 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     return () => { observer?.disconnect(); window.removeEventListener("resize", measure); document.removeEventListener("pointerdown", closeOutside); };
   }, [visible, kidLocked, uiLang, activeTab, chatInput]);
 
+  // B-VOICE-08: Now offers one tap into a spoken conversation. The tap opens
+  // the panel and starts its ONE Talk path in the same call stack (the iOS
+  // microphone rule); on phones the mark steps aside so the bar keeps its two lines.
+  const voiceDoor = activeTab === "overview";
+  const talkNow = () => {
+    if (captureRef.current) captureRef.current.open = false;
+    startConversationVoice({ source: "now-voice" });
+  };
   const openQuestion = () => openFamilyTopicSheet();
   const topicTitle = activeFamilyTopic?.title ?? "";
   return <div ref={workspaceRef} className={`companion-workspace${visible ? " is-open" : ""}${expanded ? " is-expanded" : ""}`}>
@@ -304,10 +329,12 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
       </Suspense></ErrorBoundary>
     </aside>}
     </div>
-    {!visible && !kidLocked && <div className="arbor-parent companion-launcher-rail" data-testid="companion-launcher-rail"><div ref={launcherRef} className="arbor-parent companion-launcher" data-testid="companion-launcher">
+    {!visible && !kidLocked && <div className="arbor-parent companion-launcher-rail" data-testid="companion-launcher-rail"><div ref={launcherRef} className={`arbor-parent companion-launcher${voiceDoor ? " has-voice" : ""}`} data-testid="companion-launcher">
       <button ref={launchRef} type="button" className="companion-launch-main" onClick={() => show("launcher")} aria-haspopup="dialog" aria-label={launchLabel} aria-describedby={launcherTopic ? "companion-launch-topic" : undefined}>
-        <ArborMark size={24} /><span className="companion-launch-copy">{launchLabel}{launcherTopic && <span id="companion-launch-topic" className="companion-launch-topic">{topicBefore}<bdi dir="auto" className="companion-launch-topic-text">{launcherTopic}</bdi>{topicAfter || null}</span>}</span><Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
+        <span className="companion-launch-mark"><ArborMark size={24} /></span><span className="companion-launch-copy">{launchLabel}{launcherTopic && <span id="companion-launch-topic" className="companion-launch-topic">{topicBefore}<bdi dir="auto" className="companion-launch-topic-text">{launcherTopic}</bdi>{topicAfter || null}</span>}</span><Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
       </button>
+      {/* The composer's Talk glyph, icon-only at every width like the composer's own voice button (its name is the label). */}
+      {voiceDoor && <button type="button" className="companion-launch-save companion-launch-voice" data-testid="launcher-voice" onClick={talkNow} aria-label={inputText(uiLang, "companion.launcher.voice-aria")} title={inputText(uiLang, "companion.input.talk")}><Icon name="graphic_eq" size={22} /></button>}
       {hardMomentDoor && <button type="button" className="companion-launch-save companion-launch-hard" data-testid="launcher-hard-moment" onClick={() => openHardMomentNow()} aria-label={inputText(uiLang, "companion.input.hard-moment-aria")}><Icon name="volunteer_activism" size={21} /><span className="companion-launch-save-label">{inputText(uiLang, "companion.input.hard-moment")}</span></button>}
       <details ref={captureRef} className="companion-capture-menu" onKeyDown={event => {
         if (event.key === "Escape" && captureRef.current?.open) { event.stopPropagation(); captureRef.current.open = false; captureLabelRef.current?.focus(); }

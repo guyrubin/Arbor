@@ -8,6 +8,8 @@ import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { routeHash } from "../../lib/routes";
 import { useLanguage } from "../../context/LanguageContext";
 import { ArborMark } from "../ui/ArborMark";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
@@ -40,13 +42,19 @@ import { screenForImmediateEscalation } from "../../safety/escalation";
 import type { ComposerAttachment } from "../../lib/companionAttachments";
 import { requestCompanionConsentReview } from "../../lib/companionConsent";
 import { COMPANION_CONVERSATION_EVENT, consumeConversationPanelRequest, consumeConversationVoiceRequest, conversationVoiceRequestPending, type CompanionConversationRequest } from "../../lib/companionConversation";
-import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError } from "../../lib/api";
+import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError, isLiveResting, isLiveRenewalInvalid, VoiceNoticeRequiredError } from "../../lib/api";
+import { acknowledgeVoiceNotice, liveNoticeIdFrom, runtimeVoiceNoticeId, voiceNoticeAcknowledged, voiceNoticeShortLine, voiceNoticeTap } from "../../lib/voiceProviderNotice";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { recurringScenario } from "../../lib/patternEcho";
 import { localDayKey } from "../../lib/firstsKeepsake";
 import { handleVoiceDone } from "../../lib/voiceSafetyEvents";
 import type { ChatMessage } from "../../context/ArborContext";
 import { startDictation, speechSupported } from "../../lib/speech";
+// B-VOICE-08: a door outside this panel starts Talk inside its own tap.
+import { conversationShown, registerConversationVoiceStarter } from "../../lib/companionConversation";
+// B-VOICE-02: a card's words are said before the microphone opens.
+import { runOpening, startDoor, type OpeningRun } from "../../lib/voiceOpening";
+import { speakText } from "../../lib/voice";
 // AI-V2(a): the chip/orb tap contract (start / interrupt / stop) is a pure
 // tested decision function — while Arbor speaks on the fallback loop a tap
 // INTERRUPTS (voice stays on); a second tap during listening turns voice off.
@@ -59,6 +67,7 @@ import MicrophoneNotice from "../ui/MicrophoneNotice";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
 import ConversationProposalTray from "../coach/ConversationProposalTray";
 import VoiceCloseCard from "../coach/VoiceCloseCard";
+import { voiceNextStep } from "../../lib/voiceTranscript";
 import CaptureProposalsTray from "../capture/CaptureProposalsTray";
 import { liveUnavailableReason, trackLiveUnavailable } from "../../lib/kpiEvents";
 // AI-06 / AI-24: one classifier from a thrown transport error (or from being
@@ -92,6 +101,7 @@ import { prefetchNaturalAudio, registerTtsToken } from "../../lib/naturalVoice";
 // never resource-less on screen.
 import { escalationMatchForCategory, renderEscalationMarkdown } from "../../safety/escalation";
 import { usePrefersReducedMotion } from "../ui/playkit";
+import { hiddenStamps } from "../../lib/surfaceContract";
 
 // GP-05 / AI-08: the graded Risk type and its two mapping helpers (level →
 // grade, prose-regex → grade) are GONE — TrustSafetyBar is constant-posture now. The only
@@ -136,6 +146,13 @@ const ECHO_PROMPTS: Readonly<Record<string, string>> = {
   "Sleep Meltdown": "Bedtime keeps falling apart. What may be happening, and what do I do next time it starts?",
 };
 const ECHO_FALLBACK_PROMPT = "This keeps happening: {type}. What may be happening, and what do I do next time it starts?";
+
+/** B-AIOPS-02: release a microphone the Live session never took over. */
+const releaseTracks = (stream: MediaStream | null) => {
+  for (const track of stream?.getTracks() ?? []) {
+    try { track.stop(); } catch { /* release the rest */ }
+  }
+};
 
 export default function CoachTab({ embedded = false, visible = true }: { embedded?: boolean; visible?: boolean }) {
   const {
@@ -303,6 +320,13 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // the context's `apiError` string, which carries no status at all.
   const [aiFailure, setAiFailure] = useState<AiFailureCopy | null>(null);
   useEffect(() => { if (!apiError) setAiFailure(null); }, [apiError]);
+  // B-AIOPS-02: the family's daily voice time is spent (Live mint, renewal,
+  // or a fallback-loop turn). A resting state with its own calm status line —
+  // never the failure card, never the connection-ended notice.
+  const [voiceResting, setVoiceResting] = useState(false);
+  // B-AIOPS-02: a Live talk ended calmly because its next slice did not
+  // arrive (the family still has time) — the review says so, never an error.
+  const [voiceTalkEnded, setVoiceTalkEnded] = useState(false);
 
   // AI-24: ONE offline seam, wrapping the context's send. Every entry point on
   // this surface — the composer button, Enter, a follow-up chip, a fast-start
@@ -323,6 +347,11 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       return;
     }
     setAiFailure(null);
+    // B-PROV-12: typing instead of tapping again declines the pending voice
+    // notice (nothing was acknowledged); B-AIOPS-02: the resting line has
+    // done its job once the parent carries on in text.
+    setNoticePending(null);
+    setVoiceResting(false);
     const pendingNotice = readNoticeTalk();
     const question = customPrompt ?? chatInput;
     // Immediate-help messages keep the governed existing route, without any
@@ -397,6 +426,12 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // Which answer's overflow ("…") menu is open. Only Copy stays inline; Log /
   // Plan / Share fold into this menu so a settled answer reads as calm text.
   const [openMenuIdx, setOpenMenuIdx] = useState<number | null>(null);
+  // B-STATUS-01: "Copied" answers under the answer it came from, and a
+  // confirmed milestone under the voice review's tray — receipt lines, not
+  // success toasts.
+  const copyReceipt = useReceiptNote();
+  const [copyReceiptIdx, setCopyReceiptIdx] = useState<number | null>(null);
+  const proposalReceipt = useReceiptNote();
   // B-ASKJB-12: the lens is chosen in ONE sheet ("How should Arbor talk with
   // you?"). F-TALK-1: it opens from the tone chip in the composer foot (label
   // = the current tone) and from the panel menu. Same store (selectedLens /
@@ -462,6 +497,11 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const [voiceInvite, setVoiceInvite] = useState(false);
   useEffect(() => { if (voicePhase !== "off") setVoiceInvite(false); }, [voicePhase]);
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+  // B-PROV-12: the approved notice of the Live route the server selected
+  // (null: no Live route, the device speech notice applies) and the notice
+  // waiting for its one-tap acknowledgement in the B-VOICE-06 line slot.
+  const [liveNoticeId, setLiveNoticeId] = useState<string | null>(null);
+  const [noticePending, setNoticePending] = useState<string | null>(null);
   // AI-V7: live caption of the PARENT'S OWN words while they speak (interim
   // browser-STT partials / Live input transcription — never model output).
   const [voiceInterim, setVoiceInterim] = useState("");
@@ -485,6 +525,12 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // Proposal drafts live at the voice interaction level and remain ephemeral
   // until the parent confirms one in the quiet review tray.
   const voiceSessionIdRef = useRef("voice-session-" + Date.now());
+  // B-VOICE-04: where this session's turns begin in the thread (the next-step
+  // synthesis reads only what Arbor said in THIS session).
+  const voiceStartIndexRef = useRef(0);
+  const [nextStepKeptFor, setNextStepKeptFor] = useState<string | null>(null);
+  const [nextStepBusy, setNextStepBusy] = useState(false);
+  const [nextStepFailed, setNextStepFailed] = useState(false);
   const voiceTurnRef = useRef(0);
   const [conversationProposals, setConversationProposals] = useState<ConversationProposal[]>([]);
   const [proposalBusyId, setProposalBusyId] = useState<string | null>(null);
@@ -493,15 +539,35 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const [voiceReviewOpen, setVoiceReviewOpen] = useState(false);
   const [proposalPending, setProposalPending] = useState(0);
   const [proposalFailed, setProposalFailed] = useState(false);
+  // B-ASKJB-49: the proposals route's crisis screen answered 409 on the talk's
+  // transcript: the review shows the crisis card (never a failure line, and
+  // the microphone stays off: the card renders only with voice off).
+  const [proposalCrisis, setProposalCrisis] = useState(false);
   const clearVoiceReview = () => {
     reviewAttemptRef.current = null;
     voiceSessionIdRef.current = "discarded-" + Date.now();
     setConversationProposals([]);
     setProposalPending(0);
     setProposalFailed(false);
+    setProposalCrisis(false);
     setVoiceReviewOpen(false);
   };
-  const discardVoiceReview = () => { if (!proposalCommitRef.current) clearVoiceReview(); };
+  const discardVoiceReview = () => { if (!proposalCommitRef.current && !nextStepBusy) clearVoiceReview(); };
+  // B-VOICE-04: next-action synthesis — deterministic, from what Arbor said in
+  // this session (lib/voiceTranscript voiceNextStep); null → no step shown.
+  const voiceNextText = voiceReviewOpen ? voiceNextStep(chatMessages, voiceStartIndexRef.current) : null;
+  const keepVoiceNextStep = async () => {
+    const step = voiceNextText;
+    const sessionId = voiceSessionIdRef.current;
+    if (!step || nextStepBusy) return;
+    setNextStepBusy(true); setNextStepFailed(false);
+    try {
+      await acceptTodayAction(step, "standard", "coach");
+      if (sessionId === voiceSessionIdRef.current) setNextStepKeptFor(sessionId);
+    } catch {
+      if (sessionId === voiceSessionIdRef.current) setNextStepFailed(true);
+    } finally { setNextStepBusy(false); }
+  };
 
   const deriveConversationProposals = async (transcript: string, attempt: VoiceAttempt | null = voiceLifetimeRef.current.current) => {
     if (!attempt?.isCurrent()) return;
@@ -525,10 +591,14 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       if (checked.length) setConversationProposals((current) => mayReview() ? [...current, ...checked].slice(-8) : current);
     } catch (error) {
       if (!mayReview()) return;
-      setProposalFailed(true);
-      // Escalation remains owned by the existing voice safety path. Extraction
-      // failure is non-blocking: conversation continues and nothing is saved.
-      if (!(error instanceof EscalationRequiredError)) console.warn("Harbor proposal extraction unavailable", error);
+      // Extraction failure is non-blocking: conversation continues and
+      // nothing is saved. B-ASKJB-49: a 409 is not a failure, it is the
+      // crisis card in the review (helplines in the request's language).
+      if (error instanceof EscalationRequiredError) setProposalCrisis(true);
+      else {
+        setProposalFailed(true);
+        console.warn("Harbor proposal extraction unavailable", error);
+      }
     } finally {
       if (sessionId === voiceSessionIdRef.current) setProposalPending(count => Math.max(0, count - 1));
     }
@@ -542,6 +612,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     api.liveAvailability().then((r) => {
       if (cancelled || !r.available) return;
       setLiveAvail(true);
+      setLiveNoticeId(liveNoticeIdFrom(r));
     }).catch(() => {}).finally(() => { if (!cancelled) setLiveProbed(true); });
     return () => { cancelled = true; };
   }, []);
@@ -661,7 +732,15 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       voiceBufRef.current = "";
       streamDoneRef.current = true;
       pumpTts();
-    } catch {
+    } catch (err) {
+      // B-AIOPS-02: the family's voice time for today is spent on the fallback
+      // loop too. Same resting card as the Live mint: voice off, no re-listen
+      // loop; the typed composer and the crisis door stay where they are.
+      if (ownsTurn() && isLiveResting(err)) {
+        stopVoice(false);
+        setVoiceResting(true);
+        return;
+      }
       // COACH-2: keep the partial caption on abort/error — the parent keeps
       // whatever was already said instead of the turn vanishing.
       // AI-V2(a): an ABORT is always driven by bargeInVoice/stopVoice, which
@@ -723,13 +802,41 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     setLiveSession(false);
   };
 
+  // B-VOICE-02: the opening in flight (its words show as the caption while
+  // they play) and the start that follows it.
+  const openingRunRef = useRef<OpeningRun | null>(null);
+  const openingTokenRef = useRef<object | null>(null);
+  const [openingCaption, setOpeningCaption] = useState("");
+  const [startAfterOpening, setStartAfterOpening] = useState(0);
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
+  // Wave 4: closed, the conversation stays mounted (thread, draft, composer
+  // photos, voice proposals) but carries no stamp the one-primary-move law or
+  // the sweep could count on the page beside it.
+  const unstamped = hiddenStamps(embedded && !visible);
+  // Every stop (X, the panel hiding, a new thread, unmount) cancels the card's
+  // words HERE, synchronously, before the engine is told to stop: a late
+  // engine callback then finds nothing to finish, and nothing starts after.
+  const cancelOpening = () => {
+    openingTokenRef.current = null;
+    const run = openingRunRef.current;
+    openingRunRef.current = null;
+    run?.cancel();
+    setOpeningCaption("");
+  };
+
   const stopVoice = (review = true) => {
     const reviewAttempt = voiceLifetimeRef.current.current;
     voiceLifetimeRef.current.cancel();
+    // B-PROV-12: leaving (stop, a new thread, the panel hidden) cancels a
+    // notice that was showing; nothing was acknowledged.
+    setNoticePending(null);
     if (review && reviewAttempt && voicePhase !== "off") {
       reviewAttemptRef.current = reviewAttempt;
       setVoiceReviewOpen(true);
     }
+    // B-VOICE-02: the card's words end here, before the engine is stopped below.
+    cancelOpening();
     setVoiceNotice(null);
     voiceOnRef.current = false;
     streamDoneRef.current = false;
@@ -779,11 +886,26 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     if (action !== "start") { stopVoice(); return; }
     if (readNoticeTalk()) { toast(NOTICE_HANDOFF_COPY[uiLang === "he" ? "he" : "en"].voice, "error"); return; }
     if (voiceReviewOpen) return;
+    // B-PROV-12: before any audio is processed, the approved notice of the
+    // route this tap takes (Live when the server selected one, else device
+    // speech) shows in the B-VOICE-06 line under the composer. The next tap on
+    // this same button while it shows is the acknowledgement, remembered per
+    // device and per notice id — a new provider, region or purpose asks again.
+    const noticeId = runtimeVoiceNoticeId(liveAvail ? liveNoticeId : null);
+    const tap = voiceNoticeTap(noticeId, noticePending, voiceNoticeAcknowledged(noticeId));
+    if (tap === "show") { setVoiceNotice(null); setNoticePending(noticeId); return; }
+    if (tap === "acknowledge_and_start") acknowledgeVoiceNotice(noticeId);
+    setNoticePending(null);
+    setVoiceResting(false);
+    setVoiceTalkEnded(false);
     reviewAttemptRef.current = null;
     voiceSessionIdRef.current = "voice-session-" + Date.now() + "-" + (++voiceTurnRef.current);
+    voiceStartIndexRef.current = voiceMessagesRef.current.length;
+    setNextStepFailed(false);
     setConversationProposals([]);
     setProposalPending(0);
     setProposalFailed(false);
+    setProposalCrisis(false);
     if (voiceOnRef.current || liveCtlRef.current) stopVoice(false);
     setVoiceNotice(null);
     // Paint before the token/import/mic/socket awaits; X owns cancellation
@@ -793,27 +915,74 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     let liveClosed = false;
     // B-PROV-06: where the attempt failed (token mint vs socket start), so a
     // fallback counts as ONE live_unavailable event with a closed-enum reason.
-    let liveStage: "mint" | "socket" = "mint";
+    // B-AIOPS-02: "mic" = the microphone is requested BEFORE any mint, so a
+    // refusal there never spends the family's voice time (and is no
+    // availability signal either).
+    let liveStage: "mint" | "socket" | "mic" = "mic";
+    // B-AIOPS-03: the minted session's telemetry id, so a start that never
+    // reaches audio is reported to the server's incident sink (event only).
+    let liveUsageId: string | undefined;
+    // B-AIOPS-02: the microphone opened for this attempt, until the Live
+    // session takes it over (released on every path that does not).
+    let micStream: MediaStream | null = null;
+    const releaseMic = () => { releaseTracks(micStream); micStream = null; };
+    // The ONE mint: the first slice and every renewal carry the same pinned
+    // context — the conversation as it stood when this talk began (the Live
+    // client seeds each new socket with the talk itself) — and the same
+    // acknowledged notice. A renewal names the slice it renews (`renewOf`).
+    const talkContext = buildVoiceContext(voiceMessagesRef.current, childProfile.id);
+    const mintLive = (renewOf?: string) => api.liveToken({ ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}), language: getAiLanguage(), childId: childProfile.id, childProfile, ...talkContext, noticeAck: noticeId, ...(renewOf ? { renewOf } : {}) }, { signal: attempt.signal });
+    type MintedLive = Awaited<ReturnType<typeof mintLive>>;
+    const usageFor = (minted: MintedLive) => minted.usageSessionId
+      ? (event: "opened" | "heartbeat" | "closed" | "failed") => api.liveUsage(minted.usageSessionId!, event)
+      : undefined;
 
     if (liveAvail) {
       try {
-        const fresh = await api.liveToken({ ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}), language: getAiLanguage(), childId: childProfile.id, childProfile, ...buildVoiceContext(voiceMessagesRef.current, childProfile.id) }, { signal: attempt.signal });
+        const { requestLiveMicrophone, startGeminiLive, LIVE_RENEWAL_REFUSED } = await import("../../lib/geminiLiveClient");
         if (!attempt.isCurrent()) return;
+        micStream = await requestLiveMicrophone(attempt.signal);
+        if (!attempt.isCurrent()) { releaseMic(); return; }
+        liveStage = "mint";
+        const fresh = await mintLive();
+        if (!attempt.isCurrent()) { releaseMic(); return; }
         if (!(fresh.available && fresh.token && fresh.model)) trackLiveUnavailable("token_error");
         if (fresh.available && fresh.token && fresh.model) {
           liveStage = "socket";
-          const { startGeminiLive } = await import("../../lib/geminiLiveClient");
-          if (!attempt.isCurrent()) return;
+          liveUsageId = fresh.usageSessionId;
+          const stream = micStream;
+          micStream = null; // the session owns (and releases) the microphone now
           const ctl = await startGeminiLive(
             {
               signal: attempt.signal,
               token: fresh.token,
-              reportUsage: fresh.usageSessionId
-                ? (event) => api.liveUsage(fresh.usageSessionId!, event)
-                : undefined,
+              reportUsage: usageFor(fresh),
+              usageId: fresh.usageSessionId,
               model: fresh.model,
               systemInstruction: fresh.systemInstruction || "",
               speechConfig: fresh.speechConfig,
+              stream: stream ?? undefined,
+              // B-AIOPS-02: the slice this token covers; the next one is
+              // minted before it ends while the family has time left, and a
+              // spent allowance ends the conversation calmly (onAllowanceEnd).
+              expiresAt: fresh.expiresAt,
+              remainingMs: fresh.budget?.remainingMs,
+              renew: async (renewOf) => {
+                try {
+                  const next = await mintLive(renewOf);
+                  if (!(next.available && next.token && next.model)) throw new Error("live-renew-unavailable");
+                  return { token: next.token, model: next.model, systemInstruction: next.systemInstruction || "", speechConfig: next.speechConfig,
+                    expiresAt: next.expiresAt, remainingMs: next.budget?.remainingMs, reportUsage: usageFor(next), usageId: next.usageSessionId };
+                } catch (renewError) {
+                  if (isLiveResting(renewError)) return null;
+                  // Wave 4: the server will not chain this session (409
+                  // live_renewal_invalid, never the crisis screen): no retry,
+                  // and the talk ends at this slice with the closing line
+                  // (onTalkEnd → elev.aierrors.voiceTalkEnded).
+                  if (isLiveRenewalInvalid(renewError)) return LIVE_RENEWAL_REFUSED;
+                  throw renewError;
+                }
+              },
             },
             {
               onPhase: (p) => {
@@ -839,6 +1008,32 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                 finalizeVoiceAiTurn();
                 setVoicePhase("off");
                 setVoiceNotice(microphoneRecovery("connection", uiLang));
+                setVoiceReviewOpen(true);
+              },
+              // B-AIOPS-02: the family's voice time ended the conversation —
+              // a resting state, never the connection-ended notice.
+              onAllowanceEnd: () => {
+                if (!attempt.isCurrent()) return;
+                attempt.end();
+                clearLiveRefs();
+                voiceOnRef.current = false;
+                setVoiceInterim("");
+                finalizeVoiceAiTurn();
+                setVoicePhase("off");
+                setVoiceResting(true);
+                setVoiceReviewOpen(true);
+              },
+              // B-AIOPS-02: the next slice never arrived (renewal and retries
+              // failed) — a calm closing line, never the connection-ended notice.
+              onTalkEnd: () => {
+                if (!attempt.isCurrent()) return;
+                attempt.end();
+                clearLiveRefs();
+                voiceOnRef.current = false;
+                setVoiceInterim("");
+                finalizeVoiceAiTurn();
+                setVoicePhase("off");
+                setVoiceTalkEnded(true);
                 setVoiceReviewOpen(true);
               },
               onError: () => {
@@ -911,6 +1106,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           return;
         }
       } catch (err) {
+        releaseMic();
         if (!attempt.isCurrent()) return;
         clearLiveRefs();
         if (err instanceof PaywallError) {
@@ -919,11 +1115,32 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           openPaywall(err.feature || "coach_unlimited", err.plan);
           return;
         }
+        // B-PROV-12: the server's route changed since the probe (a new
+        // provider, region or purpose). Never a silent fallback: voice stays
+        // off and the new route's notice waits for its own tap.
+        if (err instanceof VoiceNoticeRequiredError) {
+          attempt.end();
+          setVoicePhase("off");
+          const next = liveNoticeIdFrom({ available: true, notice: { id: err.noticeId } });
+          setLiveNoticeId(next);
+          if (!next) setLiveAvail(false);
+          setNoticePending(runtimeVoiceNoticeId(next));
+          return;
+        }
         // AI-06: a quota (429) or consent (451) refusal is NOT a transport
         // hiccup — the browser-voice fallback calls the same server and gets
         // the same refusal, so "falling back" was a silent dead end. Now the
         // status survives (lib/api streamVoice) and the parent is told which
         // of the two happened, and what to do about it.
+        // B-AIOPS-02: the family's daily voice time (`live_resting`) is not a
+        // failure: voice off, the calm resting line, the typed composer and
+        // the crisis door untouched; no reload, no fallback loop, no retry.
+        if (isLiveResting(err)) {
+          attempt.end();
+          setVoicePhase("off");
+          setVoiceResting(true);
+          return;
+        }
         if (err instanceof ApiError && (err.status === 429 || err.status === 451)) {
           attempt.end();
           setVoicePhase("off");
@@ -941,6 +1158,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
         // "closed before open"; count it (closed enum, no text) before falling back.
         const unavailable = liveUnavailableReason(err, liveStage);
         if (unavailable) trackLiveUnavailable(unavailable);
+        if (liveUsageId && (unavailable === "closed_before_open" || unavailable === "closed_during_start")) {
+          void api.liveUsage(liveUsageId, "failed").catch(() => {});
+        }
         setVoiceNotice(t("coach.toast.voiceFallback"));
       }
     }
@@ -1028,6 +1248,67 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, liveProbed, voiceAsk]);
 
+  // B-VOICE-08 / B-VOICE-02: a door outside this panel (Now's Talk, a card's
+  // "Talk it through") starts Talk inside the parent's own tap, through the
+  // ONE toggle (its notice, review and stop rules unchanged). Registered only
+  // once the Live probe has answered, so the tap takes the right route; a tap
+  // that lands before that is queued (lib/companionConversation) and runs here
+  // the moment this registers.
+  // B-VOICE-02: the card's words first, on Live and on the browser loop
+  // alike: "speaking" paints now, inside the tap; the microphone and the
+  // session start only when the words have finished or the parent taps to
+  // skip them (lib/voiceOpening), so the words can never be transcribed as
+  // the parent's turn. Text-to-speech only: never sent, never in the thread.
+  const playOpening = (line: string) => {
+    const token = {};
+    openingTokenRef.current = token;
+    setVoiceNotice(null);
+    setOpeningCaption(line);
+    setVoicePhase("speaking");
+    openingRunRef.current = runOpening(line, {
+      speak: (text, handlers) => { speakText(text, handlers); },
+      stopSpeaking,
+      onDone: () => {
+        if (openingTokenRef.current !== token) return;
+        openingTokenRef.current = null;
+        openingRunRef.current = null;
+        setOpeningCaption("");
+        setVoicePhase("off");
+        setStartAfterOpening((n) => n + 1);
+      },
+    });
+  };
+  const startFromDoor = (opening?: string): boolean => startDoor(opening, {
+    busy: () => voicePhase !== "off" || voiceReviewOpen || !!readNoticeTalk() || !conversationShown(),
+    canSpeak: ttsSupported,
+    playWords: playOpening,
+    toggle: () => { void toggleVoice(); },
+    attempt: () => voiceLifetimeRef.current.current,
+  });
+  // B-VOICE-02: the session starts on the render after the words, through the
+  // ONE toggle (its notice, review and stop rules unchanged).
+  useEffect(() => {
+    if (!startAfterOpening) return;
+    // A conversation closed meanwhile never opens a microphone.
+    if (!visibleRef.current || !conversationShown()) return;
+    void toggleVoice();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startAfterOpening]);
+  // A stop while the words play (X, the panel hiding, a new thread) cancels
+  // them; nothing starts after.
+  // Belt and braces: any other way the phase leaves "speaking" ends the words too.
+  useEffect(() => {
+    if (voicePhase !== "off" || !openingRunRef.current) return;
+    cancelOpening();
+  }, [voicePhase]);
+  useEffect(() => () => { openingTokenRef.current = null; openingRunRef.current?.cancel(); }, []);
+  const startFromDoorRef = useRef(startFromDoor);
+  startFromDoorRef.current = startFromDoor;
+  useEffect(() => {
+    if (!liveProbed) return;
+    return registerConversationVoiceStarter((opening) => startFromDoorRef.current(opening));
+  }, [liveProbed]);
+
   const voiceLabel = voicePhase === "connecting" ? t("coach.voice.connecting") : voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
   // COACH-2: live caption text on the voicePhase chip while the answer streams
   // in / is spoken (the same screened text that fills the thread bubble).
@@ -1045,7 +1326,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const composerDocked = embedded || userTurnExists;
   // Fresh state has no transcript messages, status, or failure card. Keep the
   // coach header and footer reachable without reserving a blank message canvas.
-  const hasThreadContent = chatMessages.length > 0 || isChatLoading || !!failureCopy;
+  const hasThreadContent = chatMessages.length > 0 || isChatLoading || !!failureCopy || voiceResting;
   // R24: the contract stamp lives on THIS element, not on the docked wrapper.
   // B-ASKJB-06: only `data-primary-move` now — the composer sits INSIDE
   // coach-orientation, so a `data-module` here was a fourth module stamp
@@ -1141,6 +1422,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const composerSection = (
         <section
           data-primary-move="ask"
+          {...unstamped}
           className={composerDocked ? "py-2.5" : "pt-3 pb-4 sm:pt-4 sm:pb-5"}
           aria-label={t("elev.hero.ask.cta")}
         >
@@ -1182,9 +1464,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           <CompanionComposer key={childProfile.id} childId={childProfile.id} conversationRevision={conversationRevision} language={uiLang === "he" ? "he" : "en"}
             value={chatInput} onChange={value => { noticeTalkController.current?.revoke(); setChatInput(value); }} busy={isChatLoading} visible={visible}
             onSend={handleChatSend} onVoice={() => void toggleVoice()} voiceActive={voicePhase !== "off"} voiceLabel={voiceLabel}
-            onKeep={(text, photo) => openCaptureSheet({ mode: "text", initialText: text, initialPhoto: photo })}
+            onKeep={(text, photo, parentWritten) => openCaptureSheet({ mode: "text", initialText: text, initialPhoto: photo, ...(parentWritten ? { initialTextParentWritten: true } : {}) })}
             onAttachmentsChange={setComposerFiles}
-            onHardMoment={composerHardMoment} footAction={composerFoot} />
+            onHardMoment={composerHardMoment} footAction={composerFoot} voiceResting={voiceResting} />
           {composerCrisis && (
             <UrgentSupport
               testId="coach-composer-urgent-support"
@@ -1193,7 +1475,11 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             />
           )}
           {!online && <p data-testid="coach-offline-note" role="status" className="text-xs py-2" style={{ color: "var(--arbor-muted)" }}>{t("elev.aierrors.offline.composer")}</p>}
-          {voiceInvite && voicePhase === "off" && !voiceNotice && <p role="status" data-testid="voice-door-invite" className="companion-voice-invite" dir="auto">{inputText(uiLang, "companion.input.tap-talk-to-start")}</p>}
+          {noticePending && voicePhase === "off" && !voiceNotice && <div role="status" data-testid="voice-provider-notice" data-voice-notice={noticePending}>
+            <p className="companion-voice-invite" dir="auto">{voiceNoticeShortLine(t, noticePending)}</p>
+            <p className="companion-voice-invite" dir="auto">{t("elev.wave2Daily.capture.voice.tapAgain")}</p>
+          </div>}
+          {voiceInvite && !noticePending && voicePhase === "off" && !voiceNotice && <p role="status" data-testid="voice-door-invite" className="companion-voice-invite" dir="auto">{inputText(uiLang, "companion.input.tap-talk-to-start")}</p>}
           {voiceNotice && voicePhase === "off" && <MicrophoneNotice message={voiceNotice} lang={uiLang} onRetry={() => void toggleVoice()} onDismiss={() => setVoiceNotice(null)} />}
         </section>
   );
@@ -1206,7 +1492,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           surfaceContract.ts declares for this route. */}
       {/* One coaching workspace: orientation, conversation, composer. */}
       <div className={embedded ? "companion-transcript" : undefined} data-companion-scroll={embedded ? "true" : undefined}>
-      <div data-module="coach-orientation" className="space-y-4">
+      <div data-module="coach-orientation" {...unstamped} className="space-y-4">
         {embedded && !userTurnExists && <div className="companion-welcome"><h3>{inputText(uiLang, "companion.talk.welcome")}</h3><p>{inputText(uiLang, "companion.input.a-little-moment-a-big-question-a-photo-from-today-start-wherever-")}</p></div>}
         {/* Composer-first: the parent's question is the primary job on this page.
             COACH-4: this hero composer is the ONE input on the surface — the
@@ -1279,6 +1565,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       {historyOpen && (
         <section data-module="coach-history"
           ref={historyRef}
+          {...unstamped}
           className="companion-history rounded-2xl border p-2"
           style={{ borderColor: "var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
           aria-labelledby="coach-history-title"
@@ -1335,7 +1622,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           with the page (ArborContext auto-scrolls the viewport to the streaming
           answer via chatBottomRef). The min-height keeps the conversation canvas
           from shrinking below the previous min(70dvh,560px) viewport. */}
-      <div data-module="coach-thread" className={`${cardCls} flex min-w-0 flex-col overflow-hidden`}>
+      <div data-module="coach-thread" className={`${cardCls} flex min-w-0 flex-col overflow-hidden`} {...unstamped}>
         {/* F-TALK-1: no thread sub-header. The panel header already says
             "Arbor"; the composer foot carries the AI disclosure and the tone
             chip; "What the coach sees" and its weekly switch live on
@@ -1457,6 +1744,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                   </>
                 )}
 
+                {copyReceiptIdx === idx && <ReceiptNoteLine note={copyReceipt.note} testId="coach-copy-receipt" size="sm" className="mt-2" />}
                 {msg.sender === "ai" && !msg.contract && !msg.voiceLive && !msg.chatLive && (
                   // F-TALK-2 (mock L400-404): a prose turn carries no toolbar.
                   // One quiet "More" at its end holds Copy, Keep, Plan and Share.
@@ -1483,7 +1771,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                             onClick={async () => {
                               setOpenMenuIdx(null);
                               await navigator.clipboard?.writeText(msg.text);
-                              toast(t("coach.copied"), "success");
+                              setCopyReceiptIdx(idx);
+                              copyReceipt.show({ text: t("coach.copied") });
                             }}
                             className="w-full text-start text-xs font-bold flex items-center gap-2 px-2.5 py-2 min-h-11 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1" style={{ color: "var(--arbor-ink)" }}
                           >
@@ -1625,6 +1914,26 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             </div>
           )}
 
+          {/* B-AIOPS-02 — the resting line: the family's voice time for today
+              is spent. Its own polite status in the place the thread ends (a
+              resting state is not a failure, so it is never the alert card):
+              the same calm card shape in the sky tint, title + one sentence,
+              no countdown, no retry. Typing and the crisis door are unchanged. */}
+          {voiceResting && !isChatLoading && !failureCopy && (
+            <div
+              role="status"
+              data-testid="coach-voice-resting"
+              className="flex items-start gap-3 rounded-2xl p-4 me-auto max-w-[85%]"
+              style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}
+            >
+              <Icon name="mic_off" size={16} className="flex-shrink-0 mt-0.5" />
+              <div className="space-y-2">
+                <p className="text-xs leading-relaxed font-extrabold" dir="auto">{t("elev.aierrors.voiceResting.title")}</p>
+                <p className="text-xs leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{t("elev.aierrors.voiceResting.body")}</p>
+              </div>
+            </div>
+          )}
+
           {/* AI-06 / AI-24 — the failure card. It used to say ONE sentence
               (t("coach.error") + Retry) for every failure, so "the account has
               used its hour of AI" and "you have not given permission for a
@@ -1745,7 +2054,23 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
 
       {visible && voiceReviewOpen && voicePhase === "off" && <VoiceCloseCard
         sessionId={voiceSessionIdRef.current} proposals={conversationProposals} language={uiLang}
-        pending={proposalPending > 0} failed={proposalFailed} busy={!!proposalBusyId} onClose={discardVoiceReview}>
+        pending={proposalPending > 0} failed={proposalFailed} busy={!!proposalBusyId || nextStepBusy} onClose={discardVoiceReview}
+        // B-VOICE-04: the session's one next step, kept as today's step only
+        // on the parent's tap, through the coach's own "try it" writer.
+        nextStep={voiceNextText ? { text: voiceNextText, language: getAiLanguage() === "he" ? "he" : "en" } : null}
+        nextStepKept={!!voiceNextText && (nextStepKeptFor === voiceSessionIdRef.current || activeTodayAction?.recommendation?.trim() === voiceNextText)}
+        nextStepBusy={nextStepBusy} nextStepFailed={nextStepFailed}
+        onKeepNextStep={() => void keepVoiceNextStep()}>
+        {/* B-AIOPS-02: when the family's voice time ended the talk, the review
+            says so first (the same resting words, never an error). */}
+        {voiceResting && <p role="status" data-testid="voice-review-resting" className="text-xs leading-relaxed pb-2" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+          {t("elev.aierrors.voiceResting.title")}. {t("elev.aierrors.voiceResting.body")}
+        </p>}
+        {voiceTalkEnded && !voiceResting && <p role="status" data-testid="voice-review-ended" className="text-xs leading-relaxed pb-2" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+          {t("elev.aierrors.voiceTalkEnded")}
+        </p>}
+        {proposalCrisis && <UrgentSupport testId="voice-review-urgent-support" requestLang={getAiLanguage()} lead={t("elev.safety.paused")} onSafety={() => { discardVoiceReview(); setActiveTab("safety"); }}
+          className="mb-2 min-w-0 rounded-xl border border-[var(--arbor-rule-strong)] bg-[var(--arbor-paper-deep)] px-3 py-2 text-xs leading-relaxed text-[var(--arbor-ink)]" />}
         <ConversationProposalTray
           inline
           proposals={conversationProposals}
@@ -1768,12 +2093,19 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               // once the audit row lands; this success toast doubled it. Only a
               // milestone confirmation (which the tray deliberately gives no
               // Undo, and so no toast) still confirms here.
-              if (proposal.target === "milestone") toast(t("coach.voice.proposalSaved"), "success");
+              // Critic r1: a confirmed milestone is reversible, but only on the
+              // milestone's own surface (critic-vision BLOCK #1, lib/captureUndo)
+              // — so its receipt carries the door there, not an Undo.
+              if (proposal.target === "milestone") proposalReceipt.show({
+                text: t("coach.voice.proposalSaved"),
+                link: { where: t("nav.tab.milestones"), href: `#${routeHash("milestones")}`, testId: "voice-proposal-receipt-open" },
+              });
             } catch {
               toast(t("coach.voice.proposalSaveError"), "error");
             } finally { proposalCommitRef.current = false; setProposalBusyId(null); }
           }}
         />
+        <ReceiptNoteLine note={proposalReceipt.note} testId="voice-proposal-receipt" size="sm" className="pt-2" />
       </VoiceCloseCard>}
 
       {/* AI-V7: the voice surface — orb + live captions in a calm bottom
@@ -1787,14 +2119,14 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           notice={voiceNotice}
           lang={uiLang}
           interimText={voiceInterim}
-          answerText={liveVoiceText}
+          answerText={liveVoiceText || openingCaption}
           canInterrupt={voicePhase === "speaking" && !liveSession}
           reducedMotion={reducedMotion}
           // B-STATUS-02: "Recording · m:ss" whenever the microphone is open —
           // the fallback loop listens only in its listening turn; a Live call
           // streams the microphone for the whole session.
           recording={voicePhase === "listening" || liveSession}
-          onOrbTap={() => { if (voicePhase === "speaking" && !liveCtlRef.current && voiceOnRef.current) bargeInVoice(); }}
+          onOrbTap={() => { if (openingRunRef.current?.skip()) return; if (voicePhase === "speaking" && !liveCtlRef.current && voiceOnRef.current) bargeInVoice(); }}
           onClose={stopVoice}
         />
       )}

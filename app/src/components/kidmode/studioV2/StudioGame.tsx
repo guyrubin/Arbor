@@ -12,6 +12,7 @@ import { ArborMascot } from "../../ui/ArborMascot";
 import { HeroAvatar } from "../../ui/HeroAvatar";
 import { KidStageFallback } from "../KidStageFallback";
 import { sneakFreezeFlagOn } from "../kidWorlds";
+import { trackGameSitting } from "../../../lib/kpiEvents";
 import { kidSfx } from "../audio/kidAudio";
 import { GameFinish, GameShell } from "../game/GameShell";
 import { GameCompletionProvider } from "../game/GameSessionContext";
@@ -80,6 +81,16 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
     setPhase("result");
   }, [round]);
   useEffect(() => { if (phase === "result") kidSfx("finish"); }, [phase]);
+  // B-GAME-18: ONE analytics event per sitting — each start or Play again of a
+  // game. Sneak & Freeze counts its own sittings (it has its own Play again and
+  // a second host), so it is skipped here. The game id and whether it is a
+  // replay; nothing about the child or how they played.
+  const sat = useRef(-1);
+  useEffect(() => {
+    if (phase !== "play" || sat.current === round || activityId === "sneak") return;
+    sat.current = round;
+    trackGameSitting({ game: activityId, replay: round > 0 });
+  }, [phase, round, activityId]);
   const Component = STUDIO_GAME_COMPONENTS[activityId];
   const eligible = !!Component && studioActivityFits(activityId, childProfile, lang, undefined, { sneakEnabled: sneakFreezeFlagOn() });
 

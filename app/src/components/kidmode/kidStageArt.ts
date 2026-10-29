@@ -16,7 +16,7 @@ import {
   KID_THEME_TILE_SHAPE,
   KID_WORLD_TILE_IDS,
   kidArt,
-  storyCoverKey,
+  storyCoverArt,
   worldTileKey,
   type KidArt,
   type KidThemeId,
@@ -67,7 +67,7 @@ export function kidStageArt(theme: KidThemeId, scene: KidStageScene): KidStageAr
     if (art && !art.hasHero) return { wide: art, tall: art, blur, sharpTop: true, id: `world:${scene.worldId}` };
   }
   if (scene.kind === "story") {
-    const art = kidArt(theme, storyCoverKey(scene.storyId));
+    const art = storyCoverArt(theme, scene.storyId);
     if (art) return { wide: art, tall: art, blur, sharpTop: false, id: `story:${scene.storyId}` };
   }
   // Library, and any scene whose own art the theme lacks: the theme's home art.

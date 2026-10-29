@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
-import { collection, deleteField, doc, getDocs, setDoc, updateDoc } from "firebase/firestore";
+import { collection, deleteField, doc, getDocs, runTransaction, setDoc, updateDoc } from "firebase/firestore";
 import { auth, db, firebaseEnabled } from "../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { useAuth } from "./AuthContext";
@@ -13,8 +13,11 @@ import { bandForAge } from "../lib/screening";
 import { computeNeedsOnboarding } from "../lib/onboardingGate";
 import { selectFocusGoal, type ActiveGoal } from "../practice/goalBuilder";
 import { CLEARABLE_PROFILE_FIELDS, RETIRED_PROFILE_FIELDS } from "../lib/childAge";
+import { clearSyncError, getSyncSnapshot, reportSyncError, subscribeSyncStatus } from "../lib/syncStore";
 
 const LS_PROFILES = "arbor.children";
+/** B-DATA-14: the one global freshness banner's entry for a cached profile list. */
+const PROFILES_SYNC = "profiles";
 const LS_ACTIVE = "arbor.activeChildId";
 
 export type NewChildInput = Omit<ChildProfile, "id">;
@@ -22,7 +25,8 @@ export type ProfileWriteOptions = { isCurrent?: () => boolean; onPersisted?: () 
 type FirstCreateReservation = { child: ChildProfile; write: Promise<void>; status: "pending" | "acknowledged" | "rejected"; installed: boolean; adopter: object };
 
 
-export type GoalAttempt = { status: "pending" | "failed"; goal: Omit<ActiveGoal, "addedAt">; basis: string };
+/** B-DATA-14: `reason: "offline"` — the choice was not tried (no connection). */
+export type GoalAttempt = { status: "pending" | "failed"; goal: Omit<ActiveGoal, "addedAt">; basis: string; reason?: "offline" };
 export type GoalSelection = { goals: ActiveGoal[]; attempt?: GoalAttempt };
 export type GoalSaveResult = "saved" | "failed" | "pending" | "changed" | "obsolete";
 
@@ -34,6 +38,11 @@ type ProfileContextValue = {
   loading: boolean;
   /** Signed-in profile reads fail closed; Retry never imports another device-local family. */
   loadError: boolean;
+  /** B-DATA-14: the list on screen came from this phone's cache (offline or
+   *  blocked), not the server — provisional until a server read confirms it.
+   *  The global SyncStatusBanner says so; its Retry, or coming back online,
+   *  re-reads quietly. */
+  profilesProvisional: boolean;
   retryProfiles: () => void;
   /** Read-only owner lifetime fence for multi-write first-run continuations. */
   isCurrentSession: () => boolean;
@@ -113,6 +122,44 @@ async function provisionOwnership(childId: string, childProfile: Partial<ChildPr
   }
 }
 
+/**
+ * B-DATA-14: a goal choice merges onto the server's current list (a
+ * transaction, B-DATA-13), which cannot complete on this phone alone. So it
+ * answers in bounded time: offline it fails at once, online it fails after
+ * GOAL_CONFIRM_MS — the picker keeps the choice and offers Retry, never an
+ * endless "Saving…". A transaction still in flight may land later; a retry
+ * re-selects the same goal (selectFocusGoal moves it, never duplicates it).
+ */
+export const GOAL_CONFIRM_MS = 10_000;
+const deviceOffline = () => typeof navigator !== "undefined" && navigator.onLine === false;
+function withinGoalBound<T>(write: Promise<T>, onTimeout?: () => void): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_resolve, reject) => { timer = setTimeout(() => { onTimeout?.(); reject(new Error("The server did not answer in time")); }, GOAL_CONFIRM_MS); });
+  void write.catch(() => {});
+  return Promise.race([write, timeout]).finally(() => clearTimeout(timer));
+}
+
+/**
+ * B-DATA-15: a new child's id is ISSUED by the server — random, and created
+ * already parented to this account's family — never chosen on the device in a
+ * shared `child-<timestamp>` namespace another account could collide with or
+ * claim. A failure (offline, server down, or no answer within the same
+ * bound a goal choice has, GOAL_CONFIRM_MS) rejects: the caller keeps its
+ * form and shows its existing error — Add child never sits on "Saving…".
+ */
+async function issueChildId(current: () => boolean): Promise<string> {
+  const aborter = typeof AbortController === "undefined" ? null : new AbortController();
+  const body = await withinGoalBound((async () => {
+    const headers = await authHeaders();
+    if (!current()) throw new Error("The profile session changed");
+    const res = await fetch("/api/onboarding/child-id", { method: "POST", headers, ...(aborter ? { signal: aborter.signal } : {}) });
+    return res.ok ? (await res.json()) as { childId?: unknown } : null;
+  })(), () => aborter?.abort());
+  if (!current()) throw new Error("The profile session changed");
+  if (!body || typeof body.childId !== "string" || !body.childId) throw new Error("A child id was not issued");
+  return body.childId;
+}
+
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const { user, firebaseEnabled: authEnabled } = useAuth();
   const useFirestore = firebaseEnabled && authEnabled && !!user && user.uid !== "local-sandbox";
@@ -128,6 +175,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
   const [loadedScope, setLoadedScope] = useState<ProfileScope | null>(null);
   const [loadErrorScope, setLoadErrorScope] = useState<ProfileScope | null>(null);
+  const [provisionalScope, setProvisionalScope] = useState<ProfileScope | null>(null);
   const [loadVersion, setLoadVersion] = useState(0);
   const retryProfiles = useCallback(() => setLoadVersion(version => version + 1), []);
 
@@ -216,7 +264,8 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     const current = () => !cancelled && liveProfileScope(scope, writeScope.current, writeScopeKey);
     const load = async () => {
       if (!current()) return;
-      setLoading(true); setLoadErrorScope(null); setLoadedScope(null); setProfiles([]);
+      setLoading(true); setLoadErrorScope(null); setLoadedScope(null); setProfiles([]); setProvisionalScope(null);
+      clearSyncError(PROFILES_SYNC, "*");
       try {
         if (useFirestore && db && user) {
           const snap = await getDocs(collection(db, profilesPath));
@@ -229,6 +278,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
           if (snap.empty && snap.metadata?.fromCache) throw new Error("Profiles not confirmed by the server");
           const loaded = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ChildProfile, "id">) }));
           setProfiles(loaded); setLoadedScope(scope);
+          // B-DATA-14: a non-empty cached answer loads, but marked provisional
+          // (a partial cached set must never pass for the confirmed list).
+          if (snap.metadata?.fromCache) { setProvisionalScope(scope); reportSyncError(PROFILES_SYNC, "*"); }
           for (const child of loaded) {
             if (!current()) return;
             void ensureOwnership(child);
@@ -246,6 +298,37 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     void load();
     return () => { cancelled = true; };
   }, [useFirestore, user?.uid, writeScopeKey, ownerScope, loadVersion]);
+
+  // B-DATA-14: confirm a provisional (cached) list quietly — on the banner's
+  // Retry or when the phone is back online — without unmounting the app.
+  const profilesProvisional = provisionalScope === ownerScope && loadedScope === ownerScope;
+  useEffect(() => {
+    if (!profilesProvisional || !useFirestore || !db || !user) return;
+    const scope = ownerScope, firestore = db;
+    let cancelled = false, busy = false, version = getSyncSnapshot().version;
+    const confirm = async () => {
+      if (cancelled || busy) return;
+      busy = true;
+      try {
+        const snap = await getDocs(collection(firestore, profilesPath));
+        if (cancelled || !liveProfileScope(scope, writeScope.current, writeScopeKey) || snap.metadata?.fromCache) return;
+        const confirmed = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ChildProfile, "id">) }));
+        setProfiles(confirmed); setProvisionalScope(null);
+        clearSyncError(PROFILES_SYNC, "*");
+        for (const child of confirmed) void ensureOwnership(child);
+      } catch { /* still provisional: the banner keeps its Retry */ } finally { busy = false; }
+    };
+    const unsubscribe = subscribeSyncStatus(() => {
+      const next = getSyncSnapshot().version;
+      if (next !== version) { version = next; void confirm(); }
+    });
+    const onOnline = () => { void confirm(); };
+    if (typeof window !== "undefined") window.addEventListener("online", onOnline);
+    return () => {
+      cancelled = true; unsubscribe();
+      if (typeof window !== "undefined") window.removeEventListener("online", onOnline);
+    };
+  }, [profilesProvisional, useFirestore, user?.uid, ownerScope, profilesPath, writeScopeKey, ensureOwnership]);
 
   // Mirror sandbox profiles to localStorage.
   useEffect(() => {
@@ -285,8 +368,15 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       if (onboarding) {
         reservation = firstCreates.current.get(writeScopeKey);
         if (!reservation) {
-          reservation = { child: { ...input, id: `child-${Date.now()}` }, write: Promise.resolve(), status: "rejected", installed: false, adopter };
-          firstCreates.current.set(writeScopeKey, reservation);
+          // B-DATA-15: the reserved identity is server-issued (sandbox: local).
+          const id = useFirestore && db ? await issueChildId(callerCurrent) : `child-${Date.now()}`;
+          if (!callerCurrent()) throw new Error("The profile session changed");
+          // A concurrent first create may have reserved while this id was issued.
+          reservation = firstCreates.current.get(writeScopeKey);
+          if (!reservation) {
+            reservation = { child: { ...input, id }, write: Promise.resolve(), status: "rejected", installed: false, adopter };
+            firstCreates.current.set(writeScopeKey, reservation);
+          }
         }
         reservation.adopter = adopter;
         const reserved = reservation;
@@ -308,7 +398,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         }
         if (reserved.installed) return newChild;
       } else {
-        newChild = { ...input, id: `child-${Date.now()}` };
+        // B-DATA-15: server-issued id; offline this rejects and the form stays.
+        newChild = { ...input, id: useFirestore && db ? await issueChildId(callerCurrent) : `child-${Date.now()}` };
+        if (!current()) throw new Error("The profile session changed");
         if (useFirestore && db) {
           try { await setDoc(doc(db, profilesPath, newChild.id), newChild); }
           catch { /* existing add-child paths retain their local fallback */ }
@@ -428,12 +520,28 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     if (state.attempt?.status === "pending") return "pending";
     // Replacing a changed source always requires a newly rendered question.
     if (JSON.stringify(state.goals) !== basis) return "changed";
-    const merged = selectFocusGoal(state.goals, goal, new Date().toISOString());
     const attempt: GoalAttempt = { status: "pending", goal, basis };
     state.attempt = attempt;
     setGoalVersion(version => version + 1);
+    let offline = false;
     try {
-      if (useFirestore && db) await updateDoc(doc(db, profilesPath, id), { activeGoals: merged });
+      // B-DATA-13: the choice is merged onto the goals AS STORED NOW, inside a
+      // transaction, never a whole array built from this device's last read —
+      // a stale second device can no longer drop a goal another device chose.
+      // Sandbox (no server) merges onto the local list.
+      const firestore = useFirestore ? db : null;
+      if (firestore && deviceOffline()) { offline = true; throw new Error("Offline: the goal needs the stored list"); }
+      const merged = firestore
+        ? await withinGoalBound(runTransaction(firestore, async (tx) => {
+          const ref = doc(firestore, profilesPath, id);
+          const snap = await tx.get(ref);
+          if (!snap.exists()) throw new Error("The child profile is no longer stored");
+          const stored = (snap.data() as Partial<ChildProfile>).activeGoals;
+          const next = selectFocusGoal(Array.isArray(stored) ? stored : [], goal, new Date().toISOString());
+          tx.update(ref, { activeGoals: next });
+          return next;
+        }))
+        : selectFocusGoal(state.goals, goal, new Date().toISOString());
       if (!current()) return "obsolete";
       // Advance the admission basis before React renders the acknowledgement.
       // `observed` still points at the previous rendered array until that render.
@@ -445,7 +553,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       return "saved";
     } catch {
       if (!current()) return "obsolete";
-      goalSession.children.get(id)!.attempt = { ...attempt, status: "failed" };
+      goalSession.children.get(id)!.attempt = { ...attempt, status: "failed", ...(offline ? { reason: "offline" as const } : {}) };
       setGoalVersion(version => version + 1);
       return "failed";
     }
@@ -482,6 +590,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     activeChild,
     loading: profileLoading,
     loadError,
+    profilesProvisional,
     retryProfiles,
     isCurrentSession,
     captureOnboardingLifetime,

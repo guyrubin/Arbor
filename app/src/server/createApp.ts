@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import { apiRateLimit } from "./apiRateLimits.js";
+import { apiAccountRateLimit, apiRateLimit } from "./apiRateLimits.js";
 import type { ArborConfig } from "../config/env.js";
 import { createModelProvider, type GenerateJsonOptions, type ModelProvider } from "../ai/modelRouter.js";
 import { CapabilityRegistry } from "../ai/capabilities/registry.js";
@@ -21,8 +21,11 @@ import { createCounterStore } from "./quotaStore.js";
 import { createEntitlementStore, requireActiveAccess, requirePlusFeature } from "./entitlements.js";
 import { createReferralStore } from "./referral.js";
 import { createBillingWebhookRouter } from "./billing.js";
+import { apiFailureObserver, createOpsAlertsFromConfig } from "./opsAlerts.js";
 import { createAdminMetricsStore } from "./adminMetrics.js";
 import { initUsageRollup } from "./usageRollup.js";
+import { initStudioCostLedger } from "./studioCostLedger.js";
+import { withStudioPlanPlates } from "./studioPlanPlates.js";
 import { createConsultStore } from "./consultRequests.js";
 import { createWaitlistNotifierFromEnv, createWaitlistStore } from "./waitlist.js";
 import { createPushTokenStore } from "./pushTokens.js";
@@ -30,10 +33,12 @@ import { requestObservability, logger } from "./logger.js";
 import { requestContextMiddleware, bindUidToContext } from "./requestContext.js";
 import { createDemoFamilyRouter } from "./demoFamilyRoute.js";
 import { healthzHandler } from "./healthz.js";
+// B-PROG-12: the program pilot admin read-out router.
+import { createProgramPilotRouter } from "./programPilotRoute.js";
 
 /**
  * SEC-2: tightened Content-Security-Policy (was disabled). Allows exactly what
- * the built client needs: self-hosted bundle, Google fonts, Firebase Auth
+ * the built client needs: self-hosted bundle and fonts, Firebase Auth
  * (popup iframe + token endpoints), Firestore, and the Gemini Live direct
  * browser session (HTTPS + WSS). Local dev keeps CSP off because the Vite dev
  * middleware injects inline/eval scripts and a websocket.
@@ -44,8 +49,9 @@ const cspDirectives = () => ({
   objectSrc: ["'none'"],
   frameAncestors: ["'self'"],
   scriptSrc: ["'self'", "https://apis.google.com"],
-  styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-  fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
+  // B-SHELL-24: every font is self-hosted (/fonts), so no Google Fonts origin is allowed.
+  styleSrc: ["'self'", "'unsafe-inline'"],
+  fontSrc: ["'self'", "data:"],
   imgSrc: ["'self'", "data:", "blob:", "https://lh3.googleusercontent.com"],
   mediaSrc: ["'self'", "blob:", "data:"],
   workerSrc: ["'self'", "blob:"],
@@ -106,7 +112,7 @@ export const createApp = (config: ArborConfig) => {
   // ERR_ERL_UNEXPECTED_X_FORWARDED_FOR and rate-limits everyone as one IP.)
   app.set("trust proxy", 1);
   const framework = loadFramework();
-  const modelProvider = createModelProvider(config);
+  const modelProvider = withStudioPlanPlates(createModelProvider(config)); // B-KID-150: a plan-plate paint is studio spend
   // COACH-3 + AIR-8: register the config's real AI adapters at boot (duplicate
   // or malformed registrations throw here, not mid-request). The registry is
   // handed to the API router — /api/tts dispatches synthesis through it.
@@ -140,9 +146,18 @@ export const createApp = (config: ArborConfig) => {
   // ADM-1 / COST-3: founder metrics read-side + the daily token-usage rollup writer.
   const adminMetrics = createAdminMetricsStore(config);
   initUsageRollup(config);
+  // B-KID-150: studio production spend per shared asset, apart from the family meter.
+  initStudioCostLedger(config);
+
+  // B-AIOPS-03: the one content-free incident sink (structured log always;
+  // OPS_ALERT_WEBHOOK_URL when set), addressed to OPS_ALERT_OWNER.
+  const opsAlerts = createOpsAlertsFromConfig(config);
+  logger.info(`Ops alert delivery: ${opsAlerts.delivery}; owner ${config.opsAlertOwner ? "named" : "unassigned"}`);
 
   // OPS-1: request ids + structured request logs on every route.
   app.use(requestObservability);
+  // B-AIOPS-03: API 5xx bursts (status + route template only).
+  app.use("/api", apiFailureObserver(opsAlerts));
   // COST-2: carry request id + uid through the async chain for token-usage attribution.
   app.use(requestContextMiddleware);
 
@@ -166,11 +181,13 @@ export const createApp = (config: ArborConfig) => {
   // MON-2: billing webhook — mounted BEFORE the /api auth + rate-limit chain
   // (RevenueCat carries its own shared-secret header, not a Firebase token) and
   // parses its own JSON body. It is the only writer of entitlements/{uid}.
-  app.use("/webhooks/billing", createBillingWebhookRouter(config, entitlementStore));
+  app.use("/webhooks/billing", createBillingWebhookRouter(config, entitlementStore, opsAlerts));
   // B-DIST-01: the sandbox's demo-family bundle — null (not mounted) in prod.
   const demoFamilyRouter = createDemoFamilyRouter(config);
   if (demoFamilyRouter) app.use(demoFamilyRouter);
-  // The per-IP limit; the book-asset routes have their own per-account one (K2).
+  // B-INF-16: before auth, per IP — a read and a write ceiling, and the strict
+  // groups (model calls, invites, exports) at 30 a minute each. The book-asset
+  // routes have their own per-account one (K2).
   app.use("/api", apiRateLimit());
   // Vision/document images need a larger body than the default API limit.
   app.use("/api/vision", express.json({ limit: "12mb" }));
@@ -185,8 +202,13 @@ export const createApp = (config: ArborConfig) => {
   );
   app.use(express.json({ limit: "250kb" }));
   app.use("/api", createAuthMiddleware(config));
+  // B-INF-16: after auth, one budget per family member (keyed on the verified uid),
+  // so families behind one address never share it.
+  app.use("/api", apiAccountRateLimit());
   // COST-2: now that auth has resolved, stamp the uid onto the active usage context.
   app.use("/api", bindUidToContext);
+  // B-PROG-12: the program pilot's admin read-out (its own router; admin gate inside, counts only).
+  app.use("/api", createProgramPilotRouter({ config }));
   // A1/A2 (CIL-bugs-imagegen-quota-missing): per-user hourly cap on EVERY
   // route that calls a paid model or mints a paid token. The original allow-list
   // was missing /voice, /extract-log, /generate-adventure, /generate-hero-journey,
@@ -255,7 +277,7 @@ export const createApp = (config: ArborConfig) => {
   app.use(["/api/chat", "/api/council"], createCoachGate(counters, entitlementStore, { exemptHourly: aiHourlyExempt(config) }));
   app.use("/api/generate-handoff", requirePlusFeature(entitlementStore, "professionalReports", "Professional reports"));
   app.use("/api/generate-plan", requirePlusFeature(entitlementStore, "advancedPlans", "Advanced growth plans"));
-  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, aiCapabilityRegistry }));
+  app.use("/api", createApiRouter({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, aiCapabilityRegistry, opsAlerts }));
 
   return app;
 };

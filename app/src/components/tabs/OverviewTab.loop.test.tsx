@@ -54,7 +54,8 @@ describe("OverviewTab — three blocks and one door (source pins)", () => {
     // B-TODAY-38: the urgent-setup lead heads the one chain; the record lead is its unchanged next branch.
     expect(OV).toContain('{lead === "urgent" ? <section');
     expect(OV).toContain(': lead === "record" ? <section');
-    expect(OV).toContain('record.receipt ? <FromRecordReceipt /> : record.opener && <FromRecordCard');
+    // B-DATA-14: the receipt also says when the answer is kept on this phone.
+    expect(OV).toContain('record.receipt ? <FromRecordReceipt queued={record.queued} /> : record.opener && <FromRecordCard');
     expect(OV).toContain('stampMove="choose-next-step" disabled={record.saving} onAnswer={answer => void record.answer(answer)}');
   });
 

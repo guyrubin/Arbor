@@ -37,13 +37,17 @@ const captureSourceButton = (type: unknown, props: unknown) => {
   }
 };
 
-const logPlayCompletion = vi.fn();
+const logPlayCompletion = vi.fn((a: { activity?: { id: string }; id?: string }, ..._rest: unknown[]) => ({ id: `${a.activity?.id ?? a.id}.2026-10-08`, created: true }));
+const undoPlayCompletion = vi.fn();
 const toast = vi.fn();
+/** B-STATUS-01: "saved to the journal" is the ONE receipt line now. */
+const receiptShow = vi.fn();
 const state = {
   behaviorLogs: [] as unknown[],
   childProfile: { id: "c1", name: "נועה כהן", age: 4, birthDate: "2022-03-01", interests: [], activeGoals: [] },
   setActiveTab: vi.fn(),
   logPlayCompletion,
+  undoPlayCompletion,
   updateChild: vi.fn(async () => {}),
   seedCoach: vi.fn(),
   actionLoop: [] as unknown[],
@@ -52,6 +56,7 @@ const state = {
 
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => state }));
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ toast }) }));
+vi.mock("../ui/Receipt", () => ({ useReceiptNote: () => ({ note: null, show: receiptShow, clear: vi.fn() }), ReceiptNoteLine: () => null }));
 vi.mock("../../context/LanguageContext", async () => {
   const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
   return {
@@ -129,7 +134,9 @@ beforeEach(() => {
   captured.sourceButtons = [];
   state.playLogs = [];
   logPlayCompletion.mockClear();
+  undoPlayCompletion.mockClear();
   toast.mockClear();
+  receiptShow.mockClear();
 });
 afterEach(() => { vi.useRealTimers(); });
 
@@ -184,18 +191,60 @@ describe("B-GROWTH-19 — all four 'did it' paths write the playLogs record", ()
     onToggle(course.activityIds[0]); // was ON → OFF
     expect(logPlayCompletion).not.toHaveBeenCalled();
     expect(toast).not.toHaveBeenCalled();
+    expect(receiptShow).not.toHaveBeenCalled();
   });
 
-  it("every toast under he is Hebrew — 0 English toasts", async () => {
+  it("every receipt line under he is Hebrew — 0 English lines, 0 success toasts (B-STATUS-01)", async () => {
     await render();
     captured.plan!.onDid(captured.plan!.plan!);
     captured.courses[0].onToggle(captured.courses[0].course.activityIds[0]);
     captured.picks[0].onDid(captured.picks[0].pick);
-    expect(toast).toHaveBeenCalledTimes(3);
-    for (const [msg] of toast.mock.calls) {
+    expect(toast).not.toHaveBeenCalled();
+    expect(receiptShow).toHaveBeenCalledTimes(3);
+    for (const [{ text: msg, link }] of receiptShow.mock.calls) {
+      // where it went: the Journal, a real hash link
+      expect(link?.href).toBe("#/journal");
       expect(msg).not.toMatch(/[A-Za-z]/);
       expect(msg).toContain("נועה");
     }
+  });
+});
+
+describe("critic r1 (B-STATUS-01) — the reversible play save carries Undo", () => {
+  type Shown = { undo?: { label: string; testId: string; onUndo: () => void } };
+  const lastUndo = () => (receiptShow.mock.calls.at(-1)?.[0] as Shown).undo!;
+
+  it("library pick: Undo removes the day's log this tap wrote and un-marks the pick on this device", async () => {
+    await render();
+    const { pick, onDid } = captured.picks[0];
+    onDid(pick);
+    expect(JSON.parse(localStorage.getItem("arbor.play.done.c1") || "[]")).toContain(pick.activity.id);
+    const undo = lastUndo();
+    expect(undo.testId).toBe("play-receipt-undo");
+    expect(undo.label).not.toMatch(/[A-Za-z]/);
+    undo.onUndo();
+    expect(undoPlayCompletion).toHaveBeenCalledWith({ id: `${pick.activity.id}.2026-10-08`, created: true });
+    expect(JSON.parse(localStorage.getItem("arbor.play.done.c1") || "[]")).not.toContain(pick.activity.id);
+  });
+
+  it("course step and the plan: Undo restores the step map and the plan flag", async () => {
+    await render();
+    const { course, onToggle } = captured.courses[0];
+    onToggle(course.activityIds[0]);
+    lastUndo().onUndo();
+    expect(undoPlayCompletion).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(localStorage.getItem("arbor.course.c1") || "{}")[course.id] ?? []).not.toContain(course.activityIds[0]);
+    captured.plan!.onDid(captured.plan!.plan!);
+    expect(localStorage.getItem("arbor.plan.done.c1")).not.toBeNull();
+    lastUndo().onUndo();
+    expect(undoPlayCompletion).toHaveBeenCalledTimes(2);
+    expect(localStorage.getItem("arbor.plan.done.c1")).toBeNull();
+  });
+
+  it("ArborContext removes the log only when that tap created it", () => {
+    const ctx = readFileSync(new URL("../../context/ArborContext.tsx", import.meta.url), "utf8");
+    expect(ctx).toContain("return { id, created: !alreadyDone };");
+    expect(ctx).toContain("if (done.created) void playLogCol.remove(done.id);");
   });
 });
 
@@ -243,5 +292,15 @@ describe("B-GROWTH-19 — the logPlayCompletion seam takes a bare course activit
   it("NEGATIVE CONTROL — the pre-fix plan handler wrote only a local flag", () => {
     const pre = `const handlePlanDid = (plan: DailyPlan) => { setPlanDone(true); localStorage.setItem("arbor.plan.done.c1", "{}"); toast(\`Nice. Added to \${isolate(firstName)}'s day.\`, "success"); };`;
     expect(pre).not.toContain("logPlayCompletion");
+  });
+});
+
+describe("B-PLAY-25 — the plan DailyPlayTab hands to DailyPlanCard is written in the page's language", () => {
+  it("under uiLang he the why-line is Hebrew (no English rationale on a Hebrew page)", async () => {
+    await render();
+    const why = captured.plan?.plan?.whyLine ?? "";
+    expect(why).toMatch(/[\u0590-\u05FF]/);
+    expect(why.replace(/[\u2066-\u2069]/g, "").replace("CDC/AAP/ASHA/WHO", "")).not.toMatch(/[A-Za-z]/);
+    expect(why).not.toContain("Gets more personalized");
   });
 });

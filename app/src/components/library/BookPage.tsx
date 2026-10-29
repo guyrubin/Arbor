@@ -21,7 +21,7 @@
  * - The art is NOT mirrored in Hebrew (v1).
  */
 import { useEffect, useState, type CSSProperties } from "react";
-import type { BookPageLayout, Rect, ShadowEllipse } from "../../lib/library/bookPageLayout";
+import { overlayRect, type BookPageLayout, type Rect, type ShadowEllipse } from "../../lib/library/bookPageLayout";
 import type { PageOverlay, PlateOccluder } from "../../lib/library/types";
 
 export interface BookPageItem {
@@ -115,15 +115,8 @@ export function BookPage({ layout, plateSrcs, printed = false, statePlateSrcs = 
   useEffect(() => setHeroMissing(false), [heroSrc]);
   const showHero = !printed && !!hero && !!heroSrc && !heroMissing;
 
-  const overlayBox = (o: BookPageOverlay): Rect => {
-    const h = o.scale * plate.h;
-    const w = h * (o.aspect ?? 1);
-    const x = plate.x + o.x * plate.w;
-    const y = plate.y + o.y * plate.h;
-    // compose.py: (x, y) is ALWAYS the bottom edge; "center" only centres x
-    // (the worn helmet), "feet" puts the feet-band centre on x.
-    return { x: x - (o.anchor === "center" ? 0.5 : o.footX ?? 0.5) * w, y: y - h, w, h };
-  };
+  // B-BOOK-26: the one overlay rule, shared with the canvas twin (lib/shareCard "bookPage").
+  const overlayBox = (o: BookPageOverlay): Rect => overlayRect(o, plate);
   const renderOverlay = (o: BookPageOverlay) => {
     const b = overlayBox(o);
     const ground = !o.hidden && o.shadow && o.anchor !== "center";

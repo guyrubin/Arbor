@@ -204,15 +204,19 @@ describe("an uploaded photo lives inside the subtree child deletion already swee
     );
 
   const storageSrc = read("lib/storage.ts");
-  const childEraseSrc = read("routes/api.ts");
+  // B-GA-09 round 7: the one per-child erase, run by /privacy/erase and account deletion.
+  const childEraseSrc = read("server/childErase.ts");
+  const apiSrc = read("routes/api.ts");
   const accountEraseSrc = read("server/accountDeletion.ts");
 
   it("the scanned sources are real", () => {
     expect(storageSrc.length).toBeGreaterThan(200);
-    expect(childEraseSrc.length).toBeGreaterThan(50_000);
+    expect(childEraseSrc.length).toBeGreaterThan(1000);
+    expect(apiSrc.length).toBeGreaterThan(50_000);
     expect(accountEraseSrc.length).toBeGreaterThan(2000);
     expect(storageSrc).toContain("uploadChildPhoto");
     expect(childEraseSrc).toContain("/privacy/erase");
+    expect(apiSrc).toContain("await eraseChildServerData(childEraseStores, uid, childId);");
     expect(accountEraseSrc).toContain("deleteFiles");
   });
 
@@ -224,9 +228,9 @@ describe("an uploaded photo lives inside the subtree child deletion already swee
     }
   });
 
-  it("the child-erase prefix in routes/api.ts CONTAINS that path", () => {
+  it("the child-erase prefix in server/childErase.ts CONTAINS that path", () => {
     const prefix = paths(childEraseSrc).find((p) => p === `users/${UID}/children/${CHILD}/`);
-    expect(prefix, "routes/api.ts no longer deletes the per-child Storage prefix").toBeTruthy();
+    expect(prefix, "server/childErase.ts no longer deletes the per-child Storage prefix").toBeTruthy();
     for (const p of paths(storageSrc)) {
       expect(p.startsWith(prefix!), `"${p}" is OUTSIDE the swept prefix "${prefix}"`).toBe(true);
     }

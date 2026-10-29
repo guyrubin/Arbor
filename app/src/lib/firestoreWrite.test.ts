@@ -43,11 +43,26 @@ describe("settleOrQueue — a capture never waits on the network to be kept", ()
   it("remote writes keep queued defaults and require an explicit opt-in for server acknowledgement", () => {
     const hook = readFileSync(fileURLToPath(new URL("../hooks/useChildCollection.ts", import.meta.url)), "utf8");
     const upsert = hook.slice(hook.indexOf("const upsert = useCallback("), hook.indexOf("const remove = useCallback("));
-    expect(upsert).toContain("const write = setDoc(");
-    expect(upsert).toMatch(/if\s*\(options\?\.awaitServer\)\s*await write;\s*else\s*await settleOrQueue\(write, options\);/);
+    // B-DATA-14 (wave 3a): an opt-in merge write keeps the same queued default.
+    expect(upsert).toMatch(/const write = (options\?\.merge \? setDoc\(ref, item as Record<string, unknown>, \{ merge: true \}\) : )?setDoc\(/);
+    expect(upsert).toMatch(/else if\s*\(options\?\.awaitServer\)\s*await write;\s*else\s*await settleOrQueue\(write, options\);/);
+    // The bounded offline answer is reachable only through the explicit opt-in.
+    expect(upsert).toMatch(/if\s*\(options\?\.awaitServer && options\.offline\)/);
     const remove = hook.slice(hook.indexOf("const remove = useCallback("), hook.indexOf("const replaceAll = useCallback("));
     expect(remove).toContain("const write = deleteDoc(");
     expect(remove).toMatch(/if\s*\(options\?\.awaitServer\)\s*await write;\s*else\s*await settleOrQueue\(write, options\);/);
     expect(hook).not.toMatch(/await setDoc\(|await deleteDoc\(/);
+  });
+});
+
+describe("B-DATA-14 — the kept-on-this-phone line follows the connection", () => {
+  it("offline → sending when back online; online but unacknowledged → still sending (EN + HE)", async () => {
+    const { savedOnPhoneKey } = await import("./firestoreWrite");
+    const { translate } = await import("./i18n");
+    expect(savedOnPhoneKey(false)).toBe("elev.sync.savedOnPhone");
+    expect(savedOnPhoneKey(true)).toBe("elev.sync.savedOnPhoneSending");
+    expect(translate("en", savedOnPhoneKey(false))).toBe("Saved on this phone. Sending when you're back online.");
+    expect(translate("en", savedOnPhoneKey(true))).toBe("Saved on this phone. Still sending…");
+    for (const online of [true, false]) expect(translate("he", savedOnPhoneKey(online))).toMatch(/^נשמר בטלפון\./);
   });
 });

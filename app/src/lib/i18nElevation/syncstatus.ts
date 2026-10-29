@@ -15,6 +15,15 @@ export const en: Record<string, string> = {
   "elev.sync.retry": "Retry",
   "elev.sync.dismiss": "Hide this message",
 
+  // ── B-DATA-14: a save kept on this phone (sent on reconnect), and a goal
+  //    choice that needs the connection (it merges onto the stored list).
+  "elev.sync.savedOnPhone": "Saved on this phone. Sending when you're back online.",
+  "elev.sync.savedOnPhoneSending": "Saved on this phone. Still sending…",
+  "elev.sync.goalOffline": "You're offline, so this goal isn't saved yet. Try again when you're back online.",
+
+  // ── B-DATA-15: adding a child needs the server (it issues the child's id).
+  "elev.sync.addChildFailed": "Couldn't add the profile. Check your connection and try again.",
+
   // ── Topbar offline chip
   "elev.sync.chip": "Offline",
   "elev.sync.chipAria": "You're offline — showing saved data",
@@ -25,6 +34,11 @@ export const he: Record<string, string> = {
   "elev.sync.error": "לא הצלחנו לרענן חלק מהמידע — מציגים את הגרסה האחרונה שנשמרה",
   "elev.sync.retry": "לנסות שוב",
   "elev.sync.dismiss": "להסתיר את ההודעה",
+
+  "elev.sync.savedOnPhone": "נשמר בטלפון. יישלח כשהחיבור יחזור.",
+  "elev.sync.savedOnPhoneSending": "נשמר בטלפון. עדיין בשליחה…",
+  "elev.sync.goalOffline": "אין חיבור, ולכן המטרה עוד לא נשמרה. נסו שוב כשהחיבור יחזור.",
+  "elev.sync.addChildFailed": "לא הצלחנו להוסיף את הפרופיל. בדקו את החיבור ונסו שוב.",
 
   "elev.sync.chip": "לא מחוברים",
   "elev.sync.chipAria": "אין חיבור לאינטרנט — מציגים את המידע השמור",

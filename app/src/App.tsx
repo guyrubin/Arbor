@@ -14,6 +14,8 @@ import PurchaseIntentGate from "./components/billing/PurchaseIntentGate";
 import { firebaseClientMisconfigured, missingFirebaseClientConfig } from "./lib/firebase";
 import { refreshEntitlement, markBillingReturn } from "./hooks/useEntitlement";
 import { recordBillingTransition } from "./lib/billingTransition";
+import { eraseEverything } from "./lib/childData";
+import { finishPendingErases } from "./lib/pendingErase";
 
 /**
  * Gates the app behind authentication. When Firebase is configured, unauthenticated
@@ -95,8 +97,23 @@ function ProfileGate({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (needsOnboarding || forceOnboardingPreview) return <OnboardingFlow />;
+  if (needsOnboarding || forceOnboardingPreview) return <><PendingEraseSettler /><OnboardingFlow /></>;
   return <>{children}</>;
+}
+
+/**
+ * B-GA-09 round 5: a parent who deleted their only child lands on onboarding,
+ * where Your data (and its "Finish deleting a child's data") cannot be opened.
+ * An unfinished erase of this account is then finished here, once per start;
+ * one that still fails stays offered in Your data once a child exists.
+ */
+function PendingEraseSettler() {
+  const { user } = useAuth();
+  const uid = user?.uid ?? "";
+  React.useEffect(() => {
+    void finishPendingErases(uid, (childId) => eraseEverything(uid || undefined, childId));
+  }, [uid]);
+  return null;
 }
 
 /**

@@ -10,8 +10,22 @@ export async function inventoryChildBookAssets(bucket: BookAssetBucket | null, c
   const prefix = childBookAssetPrefix(childId);
   const out: BookExportInventory = { version: 1, childId, status: "complete", files: [], issues: [] };
   if (!bucket) return { ...out, status: "incomplete", issues: ["storage_unavailable"] };
-  const [files, nextPage] = await bucket.getFiles({ prefix, autoPaginate: false, maxResults: BOOK_EXPORT_LIMITS.files });
-  if (nextPage || files.length > BOOK_EXPORT_LIMITS.files) out.issues.push("inventory_limit");
+  // B-CAREPRO-50: page through the prefix (a bucket returns at most a page per
+  // call) until every object is listed or the contract's cap is reached. A
+  // continuation without a page token cannot be followed: fail closed.
+  const files: Awaited<ReturnType<BookAssetBucket["getFiles"]>>[0] = [];
+  let pageToken: string | undefined;
+  let more = false;
+  do {
+    const room = BOOK_EXPORT_LIMITS.files - files.length;
+    const [page, next] = await bucket.getFiles({ prefix, autoPaginate: false, maxResults: Math.min(BOOK_EXPORT_LIMITS.inventoryPage, room), ...(pageToken ? { pageToken } : {}) });
+    files.push(...page);
+    const token = next && typeof next === "object" ? (next as { pageToken?: unknown }).pageToken : undefined;
+    more = !!next;
+    pageToken = typeof token === "string" && token ? token : undefined;
+    if (more && (!pageToken || files.length >= BOOK_EXPORT_LIMITS.files)) break;
+  } while (pageToken);
+  if (more || files.length > BOOK_EXPORT_LIMITS.files) out.issues.push("inventory_limit");
   const seen = new Set<string>();
   for (const file of files.slice(0, BOOK_EXPORT_LIMITS.files)) {
     const relative = file.name.startsWith(prefix) ? file.name.slice(prefix.length) : "";

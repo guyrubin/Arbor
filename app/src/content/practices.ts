@@ -17,7 +17,7 @@
  *  - Every record ships `reviewStatus: "draft"`: nothing publishes before
  *    the clinical reviewer (G-01) signs (`isPracticePublishable` is the
  *    fail-closed gate). Each practice has a row in
- *    PAI/projects/arbor/execution/2026-10-06--milestone-loop/REVIEW-SHEET.md
+ *    the milestone-loop REVIEW-SHEET.md (private product record)
  *    ("B-LOOP-08 practices"); the Hebrew lines go through the native review
  *    pack (`npx tsx scripts/milestone-he-review.mts --practices export`).
  *
@@ -125,7 +125,7 @@ export const PRACTICE_SOURCES = {
   // B-PROG-06 (S3, opened 6 Oct): this record was MISTITLED "Start for Life" — the page it stands for is the NHS
   // baby-section page "Sleep and young children". The key is kept (practices cite it by key).
   nhsStartForLifeSleep: { org: "NHS", title: "Sleep and young children (NHS baby section, page reviewed 31 Mar 2023)", url: "https://www.nhs.uk/baby/health/sleep-and-young-children/", year: 2023, verified: true },
-  // B-PROG-06 — Steady Nights v0.1 (PAI/projects/arbor/PROGRAM-STEADY-NIGHTS-v0.1.md §sources). verified: true =
+  // B-PROG-06 — Steady Nights v0.1 (PROGRAM-STEADY-NIGHTS-v0.1.md §sources, private product record). verified: true =
   // opened by the author on 6 Oct; false = from knowledge, the reviewer confirms (REVIEW-SHEET §B-PROG-06).
   aapBedtimeTrouble: { org: "AAP", title: "HealthyChildren.org — Toddler Bedtime Trouble: 7 Tips for Parents (last updated 25 Aug 2022)", url: "https://www.healthychildren.org/English/healthy-living/sleep/Pages/bedtime-trouble.aspx", year: 2022, verified: true },
   aapMediaYoungMinds: { org: "AAP Council on Communications and Media", title: "Media and Young Minds (policy statement, Pediatrics 138(5):e20162591)", year: 2016, verified: false },

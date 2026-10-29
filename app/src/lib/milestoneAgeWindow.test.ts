@@ -144,10 +144,10 @@ describe("GP-08 — every denominator surface counts the window, not the catalog
   // W2-GROWTH r1: ChildProfile has NO denominator any more either (a plain
   // count from lib/pulse.noticedMilestoneCounts, guarded in
   // components/tabs/growthHeroCounts.test.ts), so it leaves this list.
-  it("Milestones map, Copilot picture and useDevScore go through ageWindowMilestones", () => {
+  // B-GROWTH-22: the Copilot picture (DevelopmentCopilot.tsx) is deleted with #/copilot.
+  it("Milestones map and useDevScore go through ageWindowMilestones", () => {
     for (const rel of [
       "components/tabs/MilestonesTab.tsx",
-      "components/practice/DevelopmentCopilot.tsx",
       "hooks/useDevScore.ts",
     ]) {
       const code = stripComments(read(rel));

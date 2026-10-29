@@ -45,6 +45,12 @@ export type ReviewRow = {
   value: string;
   /** AI-CAP-5: providing a setter makes the row tap-to-edit in place. */
   onChange?: (value: string) => void;
+  /** B-DATA-16: a read-only row the parent can take off this save (the words
+   *  they said they used). A 44 px "Remove" sits beside the value. */
+  onRemove?: () => void;
+  removeLabel?: string;
+  /** B-DATA-16: a quiet second line under the value (where it came from). */
+  detail?: string;
 };
 
 /** AI-CAP-5 — tap-to-edit text row: renders as plain text until tapped, then
@@ -55,8 +61,8 @@ function EditableRow({ row, fromNoteLabel }: { row: ReviewRow; fromNoteLabel?: s
   return (
     <div className="rounded-xl p-3" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.1em]" style={{ color: "var(--arbor-green-ink)" }}>{row.label}</p>
-        {fromNoteLabel && <span className="text-[9px] font-bold" style={{ color: "var(--arbor-muted)" }}>{fromNoteLabel}</span>}
+        <p className="text-xs font-extrabold uppercase tracking-[0.1em]" style={{ color: "var(--arbor-green-ink)" }}>{row.label}</p>
+        {fromNoteLabel && <span className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{fromNoteLabel}</span>}
       </div>
       {row.onChange && editing ? (
         <textarea
@@ -80,6 +86,17 @@ function EditableRow({ row, fromNoteLabel }: { row: ReviewRow; fromNoteLabel?: s
           <span className="text-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{row.value || t("ql.review.tapToEdit")}</span>
           <Icon name="edit" size={13} className="flex-shrink-0" style={{ color: "var(--arbor-muted)" }} aria-hidden />
         </button>
+      ) : row.onRemove ? (
+        <div className="mt-1 flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-xs leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{row.value}</p>
+            {row.detail && <p className="mt-0.5 text-xs" dir="auto" style={{ color: "var(--arbor-muted)" }}>{row.detail}</p>}
+          </div>
+          <button type="button" onClick={row.onRemove} aria-label={`${row.removeLabel ?? ""} — ${row.label}`}
+            className="inline-flex min-h-11 flex-none items-center gap-1 rounded-xl px-2 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>
+            <Icon name="close" size={14} aria-hidden />{row.removeLabel}
+          </button>
+        </div>
       ) : (
         <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{row.value}</p>
       )}
@@ -136,7 +153,7 @@ export default function ConfirmCaptureReview({
     <form onSubmit={onConfirm} aria-busy={busy} className="space-y-4 text-sm">
       <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-rule)" }} role="status">
         <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ql.review.title")}</p>
-        <p className="mt-1 text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t(SOURCE_KEY[source])}</p>
+        <p className="mt-1 text-xs" style={{ color: "var(--arbor-muted)" }}>{t(SOURCE_KEY[source])}</p>
         {/* N1-08 — the provenance chip, at keep time. It states the SAME plain
             fact the Keep toast states afterwards ("proposed by Arbor, confirmed
             by you"), so the parent gets one consistent account of where a row
@@ -145,7 +162,7 @@ export default function ConfirmCaptureReview({
         {source === "ai-draft" && (
           <span
             data-testid="keep-provenance-chip"
-            className="mt-2 inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold"
+            className="mt-2 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold"
             style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)" }}
           >
             {t("elev.keep.provenance")}
@@ -159,8 +176,8 @@ export default function ConfirmCaptureReview({
       {typeof intensity === "number" && onIntensityChange && (
         <div className="rounded-xl p-3" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.1em]" style={{ color: "var(--arbor-green-ink)" }}>{t("ql.review.intensity")}</p>
-            {fromNote && <span className="text-[9px] font-bold" style={{ color: "var(--arbor-muted)" }}>{fromNote}</span>}
+            <p className="text-xs font-extrabold uppercase tracking-[0.1em]" style={{ color: "var(--arbor-green-ink)" }}>{t("ql.review.intensity")}</p>
+            {fromNote && <span className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{fromNote}</span>}
           </div>
           <div className="mt-2 flex items-center gap-3">
             <button
@@ -201,8 +218,8 @@ export default function ConfirmCaptureReview({
       {context !== undefined && contextOptions && onContextChange && (
         <div className="rounded-xl p-3" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.1em]" style={{ color: "var(--arbor-green-ink)" }}>{t("ql.review.context")}</p>
-            {fromNote && <span className="text-[9px] font-bold" style={{ color: "var(--arbor-muted)" }}>{fromNote}</span>}
+            <p className="text-xs font-extrabold uppercase tracking-[0.1em]" style={{ color: "var(--arbor-green-ink)" }}>{t("ql.review.context")}</p>
+            {fromNote && <span className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{fromNote}</span>}
           </div>
           <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4" role="group" aria-label={t("ql.review.context")}>
             {contextOptions.map((c) => (
@@ -211,7 +228,7 @@ export default function ConfirmCaptureReview({
                 type="button"
                 onClick={() => onContextChange(c)}
                 aria-pressed={context === c}
-                className="min-h-11 rounded-lg py-1.5 text-[10px] font-bold transition"
+                className="min-h-11 rounded-lg py-1.5 text-xs font-bold transition"
                 style={context === c
                   ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule-strong)" }
                   : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
@@ -225,8 +242,8 @@ export default function ConfirmCaptureReview({
       {typeof durationMinutes === "number" && onDurationChange && (
         <div className="rounded-xl p-3" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
           <div className="flex items-center justify-between gap-2">
-            <label htmlFor="review-duration" className="text-[10px] font-extrabold uppercase tracking-[0.1em]" style={{ color: "var(--arbor-green-ink)" }}>{t("ql.review.duration")}</label>
-            {fromNote && <span className="text-[9px] font-bold" style={{ color: "var(--arbor-muted)" }}>{fromNote}</span>}
+            <label htmlFor="review-duration" className="text-xs font-extrabold uppercase tracking-[0.1em]" style={{ color: "var(--arbor-green-ink)" }}>{t("ql.review.duration")}</label>
+            {fromNote && <span className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{fromNote}</span>}
           </div>
           <input
             id="review-duration"
@@ -245,7 +262,7 @@ export default function ConfirmCaptureReview({
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <button type="button" disabled={busy} onClick={onEdit} className="min-h-11 rounded-xl px-3 text-xs font-bold" style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)" }}>{t("ql.review.edit")}</button>
         <button type="button" disabled={busy} onClick={onDiscard} className="min-h-11 rounded-xl px-3 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ql.review.discard")}</button>
-        <button type="submit" disabled={busy} className="col-span-2 min-h-11 rounded-xl px-3 text-xs font-extrabold text-white sm:col-span-1" style={{ background: "var(--arbor-gradient-primary)" }}>{busy ? t("companion.family-topic-sheet.saving") : t("ql.review.confirm")}</button>
+        <button type="submit" disabled={busy} className="col-span-2 min-h-11 rounded-xl px-3 text-xs font-extrabold sm:col-span-1" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>{busy ? t("companion.family-topic-sheet.saving") : t("ql.review.confirm")}</button>
       </div>
     </form>
   );

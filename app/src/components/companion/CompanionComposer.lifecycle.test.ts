@@ -7,6 +7,7 @@ import { MAX_COMPANION_ATTACHMENTS, parseCompanionAttachments, type ComposerAtta
 import { threadForTopic } from "../../lib/topicConversation";
 import { translate } from "../../lib/i18n";
 import { screenForImmediateEscalation } from "../../safety/escalation";
+import * as captureKeep from "../../lib/kept/captureKeep";
 import { COMPANION_CONSENT_COPY } from "./companionConsentCopy";
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), "src", path), "utf8");
@@ -30,7 +31,7 @@ function oneSource(source: ts.SourceFile, predicate: (node: ts.Node) => boolean)
 // decisions. This catches conversation-key remounts as well as local hook races.
 const composerSlot = oneSource(coachSource, node => ts.isJsxSelfClosingElement(node) && node.tagName.getText(coachSource) === "CompanionComposer");
 const slotSource = `import React from "react"; import CompanionComposer from "./CompanionComposer";
-export default function Slot({ childProfile, activeConversationId, conversationRevision, uiLang, chatInput, setChatInput, isChatLoading, visible, handleChatSend, toggleVoice, voicePhase, voiceLabel, openCaptureSheet, setComposerFiles, composerHardMoment, composerFoot, noticeTalkController = { current: null } }) { return ${composerSlot}; }`;
+export default function Slot({ childProfile, activeConversationId, conversationRevision, uiLang, chatInput, setChatInput, isChatLoading, visible, handleChatSend, toggleVoice, voicePhase, voiceLabel, openCaptureSheet, setComposerFiles, composerHardMoment, composerFoot, noticeTalkController = { current: null }, voiceResting = false }) { return ${composerSlot}; }`;
 const controls = ["newConversation", "prepareTopicConversation", "openConversation"].map(name =>
   oneSource(contextSource, node => ts.isVariableStatement(node) && node.declarationList.declarations.some(declaration => ts.isIdentifier(declaration.name) && declaration.name.text === name)),
 ).join("\n");
@@ -162,6 +163,8 @@ function harness(options: { send?: () => Promise<boolean | undefined>; text?: st
     topicState: { familyTopics: [], selectFamilyTopic: vi.fn() },
     uiLang: "en" as "en" | "he", chatInput: options.text ?? "A moment from today", isChatLoading: false,
     visible: true, voicePhase: "off", voiceLabel: "Talk with Arbor",
+    // B-AIOPS-02: CoachTab passes whether the family's voice time is resting.
+    voiceResting: false,
     // F-TALK-1: CoachTab's tray door and foot chip (absent unless a test sets them).
     composerHardMoment: undefined as undefined | (() => void), composerFoot: undefined as unknown,
     setChatInput: (value: string) => { state.chatInput = value; },
@@ -184,6 +187,8 @@ function harness(options: { send?: () => Promise<boolean | undefined>; text?: st
     "../../lib/microphoneRecovery": { microphoneRecovery: (reason: string) => `Microphone: ${reason}` },
     "../../lib/companionAttachments": { MAX_COMPANION_ATTACHMENTS, parseCompanionAttachments, prepareCompanionAttachment: prepare },
     "../../safety/escalation": { screenForImmediateEscalation },
+    // B-ASKJB-43: the draft's authorship chain is the real capture-sheet module.
+    "../../lib/kept/captureKeep": captureKeep,
     "./useCompanionConsent": { useCompanionConsent: () => consent },
     "./CompanionConsentReview": { __esModule: true, default: "CompanionConsentReview" },
     "./companionConsentCopy": { COMPANION_CONSENT_COPY },
@@ -504,5 +509,32 @@ describe("Companion secondary tools disclosure", () => {
     const event = { key: "Enter", shiftKey: false, nativeEvent: { isComposing: false }, preventDefault: vi.fn() };
     keydown(event); keydown(event); await tick();
     expect(event.preventDefault).toHaveBeenCalledTimes(2); expect(view.onSend).toHaveBeenCalledOnce();
+  });
+});
+
+/** B-ASKJB-43 — words the parent typed or dictated into Ask from an empty
+ *  field reach the capture sheet as theirs; a seeded draft does not. */
+describe("B-ASKJB-43 — Ask keeps the parent's own words as theirs", () => {
+  const typeDraft = (view: ReturnType<typeof harness>, value: string) => {
+    one(view.render(), node => node.type === "textarea").props.onChange({ target: { value } });
+    view.render();
+  };
+  it("typed from an empty field: the sheet opens vouched as the parent's words", async () => {
+    const view = harness({ text: "" });
+    typeDraft(view, "N"); typeDraft(view, "Noa rolled the ball back");
+    view.option("Keep a moment"); await tick();
+    expect(view.openCaptureSheet).toHaveBeenCalledWith({ mode: "text", initialText: "Noa rolled the ball back", initialPhoto: undefined, initialTextParentWritten: true });
+  });
+  it("dictated into an empty field: also the parent's", async () => {
+    const view = harness({ text: "" });
+    view.option("Dictate"); view.sessions[0].callbacks.onResult("She said ball"); view.sessions[0].callbacks.onEnd(); view.render();
+    view.option("Keep a moment"); await tick();
+    expect(view.openCaptureSheet).toHaveBeenCalledWith(expect.objectContaining({ initialText: "She said ball", initialTextParentWritten: true }));
+  });
+  it("NEGATIVE CONTROL: a seeded draft the parent only added to is not vouched", async () => {
+    const view = harness({ text: "How can I help Noa with bedtime?" });
+    typeDraft(view, "How can I help Noa with bedtime? She cried");
+    view.option("Keep a moment"); await tick();
+    expect(view.openCaptureSheet.mock.calls[0][0]).not.toHaveProperty("initialTextParentWritten");
   });
 });

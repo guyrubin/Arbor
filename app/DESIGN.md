@@ -33,7 +33,7 @@ Practice Studio uses `--arbor-coach-grad` behind its small heading/caption and r
 
 ## Typography
 
-Chosen 7 Oct (P7-DESIGN, Option A + three B elements; `execution/2026-10-07--design-direction/option-ab-blend.html` is the design of record).
+Chosen 7 Oct (P7-DESIGN, Option A + three B elements; the 7 Oct design direction's option A+B blend, kept in the private product tree, is the design of record).
 
 - Display `--font-display` Fraunces variable, optical size auto + `"SOFT" 40` (HE: Frank Ruhl Libre variable 300–900) — h1–h3 automatic; H1 weight `--arbor-w-hero` 500, titles `--arbor-w-title` 600, quotes 400
 - Body `--font-sans` **Instrument Sans / IBM Plex Sans Hebrew** — ONE Latin-first stack for both locales (a Latin name on a Hebrew page keeps the Latin face). The kid register (`.arbor-play`) keeps Nunito / Heebo; never cross them

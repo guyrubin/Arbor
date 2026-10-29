@@ -18,10 +18,12 @@ import KidModeButton from "./KidModeButton";
 import SafetyRing from "./SafetyRing";
 import ChildContextHeader from "./ChildContextHeader";
 import MobileNav from "./MobileNav";
+import PlanSheetEnsurer from "./PlanSheetEnsurer";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { ArborMark } from "../ui/ArborMark";
 import { TabSkeleton } from "../ui/Skeleton";
 import SearchModal, { SEARCH_OPEN_EVENT, requestOpenSearch, type SearchOpenSurface } from "../search/SearchModal";
+import { SEARCH_FIELD_FOCUS_EVENT, SEARCH_FIELD_MIN_WIDTH } from "../search/searchSections";
 import { track } from "../../lib/analytics";
 import SettingsModal from "./SettingsModal";
 import PaywallModal from "../billing/PaywallModal";
@@ -70,7 +72,6 @@ const SafetyTab = lazy(() => import("../tabs/SafetyTab"));
 
 // New capability views (IA refactor).
 const ChildProfile = lazy(() => import("../sections/ChildProfile"));
-const ChildMemory = lazy(() => import("../sections/ChildMemory"));
 const Screening = lazy(() => import("../sections/Screening"));
 // One timeline surface, two densities (Feed #/journal · Story #/timeline).
 const TimelineTab = lazy(() => import("../tabs/TimelineTab"));
@@ -91,11 +92,12 @@ const MimicStudioTab = lazy(() => import("../practice/MimicStudioTab"));
 const FeelingsLabTab = lazy(() => import("../practice/FeelingsLabTab"));
 const JourneyTab = lazy(() => import("../practice/JourneyTab"));
 const AdventuresTab = lazy(() => import("../practice/AdventuresTab"));
-const DevelopmentCopilot = lazy(() => import("../practice/DevelopmentCopilot"));
 
 // IA v3: consolidation hubs (merge confusable/duplicate leaves).
 const DevelopmentTab = lazy(() => import("../companion/ChildPortrait"));
 const ProgramPage = lazy(() => import("../program/ProgramPage"));
+// B-ASKJB-36: `?view=kept` — My child with the kept reader open (a mode).
+const KeptReaderMode = lazy(() => import("../kept/KeptThingsPage").then((m) => ({ default: m.KeptReaderMode })));
 const FamilyTopicSheet = lazy(() => import("../companion/FamilyTopicSheet"));
 const DailyPlayTab = lazy(() => import("../tabs/DailyPlayTab"));
 // IA fix (AR-IA): the parent #/practice route hosts the PARENT-register
@@ -140,7 +142,9 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   handoff: ConsultTab,
   safety: SafetyTab,
   profile: ChildProfile,
-  memory: ChildMemory,
+  // B-CAREPRO-38: retired to About (RETIRED_ROUTES) — the id keeps its seat and
+  // renders the About leaf, which opens the ledger (ChildMemory, embedded) in place.
+  memory: ChildProfile,
   // B-GROWTH-23: retired to Profile (RETIRED_ROUTES) — the id keeps its seat;
   // its content is Profile chapter 4, so the registry seat renders Profile.
   strengths: ChildProfile,
@@ -166,7 +170,8 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   feelings: FeelingsLabTab,
   journey: JourneyTab,
   adventures: AdventuresTab,
-  copilot: DevelopmentCopilot,
+  // B-GROWTH-22: retired to development (RETIRED_ROUTES); the seat renders My child.
+  copilot: DevelopmentTab,
   development: DevelopmentTab,
   "daily-play": DailyPlayTab,
   practice: PracticeStudioTab,
@@ -291,6 +296,13 @@ export default function Shell() {
         // outside the inert shield, steals focus, and Enter navigates parent
         // tabs — the hotkey is a no-op while Kid Mode is open.
         if (isKidModeActive()) return;
+        // B-SHELL-37: one search surface per width. At lg+ the top-bar field is it, so
+        // the hotkey focuses the field (its own search_open fires there); below lg the
+        // hotkey toggles the modal the strip icon opens.
+        if (window.matchMedia?.(SEARCH_FIELD_MIN_WIDTH).matches && !searchOpenRef.current) {
+          window.dispatchEvent(new Event(SEARCH_FIELD_FOCUS_EVENT));
+          return;
+        }
         if (!searchOpenRef.current) track("search_open", { surface: "desktop" });
         setSearchOpen((s) => !s);
       }
@@ -508,7 +520,9 @@ export default function Shell() {
             >
               {pillRowFor(section, activeTab).map((it) => {
                 // v4: a leaf route lights the reading it belongs to (PILL_LIT).
-                const on = it.tab === pillLitTab(activeTab);
+                // B-ASKJB-36 (critic r1): the Kept reader is a mode of My child,
+                // not its Milestones reading — no pill reads selected there.
+                const on = it.tab === pillLitTab(activeTab) && !(activeTab === "development" && query.get("view") === "kept");
                 return (
                   <button
                     key={it.tab}
@@ -629,7 +643,7 @@ export default function Shell() {
                         so the coach arm renders nothing of its own. */}
                     {activeTab === "coach" || activeTab === "scholar" ? null
                       : activeTab === "overview" ? <OverviewTab topic={activeFamilyTopic} onTopicCreate={createTopic} onTopicOpen={openTopic} onTalkOpen={(prompt) => requestCompanionConversation({ prompt, source: "now" })}/>
-                      : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : <DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) => { if (childId === childProfile.id) requestCompanionConversation({ prompt, source: "child-portrait" }); }}/>)
+                      : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : query.get("view") === "kept" ? <KeptReaderMode/> : <DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) => { if (childId === childProfile.id) requestCompanionConversation({ prompt, source: "child-portrait" }); }}/>)
                       : <ActiveTabComponent/>}
                   </SurfaceFrame>
                 </ErrorBoundary>
@@ -648,6 +662,8 @@ export default function Shell() {
 
       </div>
 
+      {/* B-BOOK-75 follow-up: the child's shared plan sheet, ensured from the parent shell (renders nothing). */}
+      <PlanSheetEnsurer />
       <MobileNav />
       {!kidLocked && topicSheet?.childId === childProfile.id && <Suspense fallback={null}><FamilyTopicSheet key={childProfile.id} {...topicSheet} onClose={() => setTopicSheet(null)}/></Suspense>}
       {/* KID-LOCK (W0.9, LEAK 5): these three portal to document.body — outside
@@ -668,6 +684,7 @@ export default function Shell() {
         <QuickLogModal
           key={childProfile.id}
           initialText={captureSheet.initialText}
+          initialTextParentWritten={captureSheet.initialTextParentWritten}
           initialPhoto={captureSheet.initialPhoto}
           open={captureSheet.open}
           mode={captureSheet.mode}

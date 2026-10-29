@@ -4,7 +4,7 @@ import { HeroAvatar } from "../ui/HeroAvatar";
 import { usePrefersReducedMotion } from "../ui/playkit";
 import { worldArtwork } from "../practice/worldArtwork";
 import { useKidTheme } from "../../hooks/useKidTheme";
-import { kidArt, kidArtSrcSet, storyCoverKey } from "../../lib/kidThemeManifest";
+import { kidArt, kidArtSrcSet, storyCoverArt } from "../../lib/kidThemeManifest";
 
 /**
  * B-KID-47 + B-KID-79 (KA-23) — the ONE kid loading state. What a child sees
@@ -21,7 +21,7 @@ export function KidStageFallback({ worldId, storyId }: { worldId?: string; story
   const candidate = worldId ? worldArtwork(worldId, theme) : undefined;
   const world = candidate?.hasHero ? undefined : candidate;
   // B-KID-124: while the reader's chunk loads, a tapped book shows ITS cover.
-  const cover = !world && storyId ? kidArt(theme, storyCoverKey(storyId)) : null;
+  const cover = !world && storyId ? storyCoverArt(theme, storyId) : null;
   const stageCandidate = !world && !cover ? kidArt(theme, "home.stage") : null;
   const stage = stageCandidate?.hasHero ? null : stageCandidate;
   const still = cover ?? stage;

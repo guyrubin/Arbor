@@ -72,7 +72,7 @@ Get-ChildItem -Path app/public -Include *.html,*.xml,*.txt,*.md -Recurse |
 Then rebuild and deploy:
 
 ```powershell
-cd C:\Users\dguyr\ROS\PPPPtherapy-\PPPPtherapy-\app
+cd app
 npm.cmd run build
 cd ..
 Remove-Item -LiteralPath 'app\dist\server.cjs','app\dist\server.cjs.map' -Force -ErrorAction SilentlyContinue

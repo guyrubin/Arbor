@@ -26,7 +26,8 @@ const rel = (p: string) => path.relative(SRC, p).split(path.sep).join("/");
 // K2 4b: the book sheet builder is the same kind of parent-side file.
 // The final parent-entry seam may dynamically prepare narration after handover;
 // no other builder import/route is exempted. Lifecycle tests cover admission.
-const BUILDER_FILES = new Set(["components/kidmode/hero/buildHeroSheet.ts", "components/kidmode/hero/buildBookSheet.ts", "components/kidmode/hero/choiceCards.ts", "components/kidmode/hero/buildBookNarration.ts"]);
+// PR C: the plan narration builder is the same kind of parent-side file.
+const BUILDER_FILES = new Set(["components/kidmode/hero/buildHeroSheet.ts", "components/kidmode/hero/buildBookSheet.ts", "components/kidmode/hero/choiceCards.ts", "components/kidmode/hero/buildBookNarration.ts", "components/kidmode/hero/buildPlanNarration.ts"]);
 
 describe("B-GAME-13c: Kid Mode never draws a hero", () => {
   const kid = walk(KIDMODE);

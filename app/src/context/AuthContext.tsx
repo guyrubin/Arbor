@@ -4,6 +4,8 @@ import {
   signInWithPopup,
   signInWithRedirect,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signOut as firebaseSignOut,
   onAuthStateChanged,
@@ -21,6 +23,8 @@ import { purgeAllHeroRenders } from "../lib/heroRenderStore";
 import { purgeBookAssets } from "../lib/bookAssetStore";
 import { clearPrewarmedComic } from "../lib/comicPrewarm";
 import { clearMathExit } from "../components/kidmode/parentGate";
+import { markVerifySent } from "../lib/signupNotice";
+import { appleProvider, isNativeCancel, nativeAppleSignIn, nativeGoogleSignIn, nativeSignInAvailable, nativeSignOut } from "../lib/nativeSignIn";
 
 export type AuthUser = {
   uid: string;
@@ -35,7 +39,11 @@ type AuthContextValue = {
   firebaseEnabled: boolean;
   error: string | null;
   signInWithGoogle: () => Promise<void>;
+  /** B-GA-19: Sign in with Apple — web popup/redirect, or the iOS system sheet (lib/nativeSignIn). */
+  signInWithApple: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
+  /** B-RESID-05: a new family creates its account with e-mail (Google stays). */
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   getIdToken: () => Promise<string | null>;
@@ -88,6 +96,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async () => {
     if (!firebaseEnabled || !auth) return;
     setError(null);
+    // B-GA-19: a native binary that ships the auth plugin signs in through the platform
+    // (a popup cannot complete inside the webview); every other surface keeps the web path.
+    if (nativeSignInAvailable()) {
+      try {
+        await nativeGoogleSignIn(auth);
+        clearMathExit(); // STORE-3: credentialed sign-in = parent verification
+      } catch (err: any) {
+        if (isNativeCancel(err)) return;
+        setError(friendlyAuthError(err));
+        throw err;
+      }
+      return;
+    }
     try {
       await signInWithPopup(auth, new GoogleAuthProvider());
       // STORE-3: a credentialed sign-in IS parent verification — lift any
@@ -107,12 +128,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // B-GA-19: Sign in with Apple. iOS with the native plugin uses the system sheet; the web
+  // uses Firebase's apple.com provider (popup, redirect when blocked). Offered only when the
+  // provider is configured (lib/nativeSignIn appleSignInOffered).
+  const signInWithApple = async () => {
+    if (!firebaseEnabled || !auth) return;
+    setError(null);
+    try {
+      if (nativeSignInAvailable()) await nativeAppleSignIn(auth);
+      else {
+        try {
+          await signInWithPopup(auth, appleProvider());
+        } catch (err: any) {
+          if (err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request") return;
+          if (err?.code === "auth/popup-blocked") { await signInWithRedirect(auth, appleProvider()); return; }
+          throw err;
+        }
+      }
+      clearMathExit(); // STORE-3: credentialed sign-in = parent verification
+    } catch (err: any) {
+      if (isNativeCancel(err)) return;
+      setError(friendlyAuthError(err));
+      throw err;
+    }
+  };
+
   const signInWithEmail = async (email: string, password: string) => {
     if (!firebaseEnabled || !auth) return;
     setError(null);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       clearMathExit(); // STORE-3: credentialed sign-in = parent verification
+    } catch (err: any) {
+      setError(friendlyAuthError(err));
+      throw err;
+    }
+  };
+
+  // B-RESID-05: e-mail sign-up. The account is created signed in; a link to
+  // confirm the address follows (shares match a VERIFIED address only, see
+  // server/authMiddleware), and recovery is the existing password reset.
+  const signUpWithEmail = async (email: string, password: string) => {
+    if (!firebaseEnabled || !auth) return;
+    setError(null);
+    try {
+      const credential = await createUserWithEmailAndPassword(auth, email, password);
+      clearMathExit(); // STORE-3: credentialed sign-in = parent verification
+      try {
+        await sendEmailVerification(credential.user);
+        // Said where the new family lands; the login screen is gone by now.
+        markVerifySent();
+      } catch {
+        /* the account exists either way; the link can be sent again later */
+      }
     } catch (err: any) {
       setError(friendlyAuthError(err));
       throw err;
@@ -147,7 +215,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // was called here and had no call site anywhere, so on a shared tab the
     // next account's onboarding could take the previous child's comic.
     clearPrewarmedComic();
+    // B-GA-09 round 6: arbor.pendingErase is deliberately NOT purged here. Its
+    // entries are per uid and nameless (lib/pendingErase), so the next account
+    // never sees them, and the same account must find its Finish offer again
+    // after signing back in: the server still holds what the erase missed.
     if (!firebaseEnabled || !auth) return;
+    await nativeSignOut(); // B-GA-19: the platform account too (no-op on the web)
     await firebaseSignOut(auth);
   };
 
@@ -190,7 +263,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     firebaseEnabled,
     error,
     signInWithGoogle,
+    signInWithApple,
     signInWithEmail,
+    signUpWithEmail,
     resetPassword,
     signOut,
     getIdToken,

@@ -71,6 +71,16 @@ export const en: Record<string, string> = {
   "elev.learnCare.appt.followUp.count.one": "1 follow-up note",
   "elev.learnCare.appt.followUp.count.many": "{count} follow-up notes",
   "elev.learnCare.appt.questions.toPacket": "Your prepared questions ride into the summary you hand over.",
+  // B-VOICE-03: "Talk it through" before the visit — the parent's own questions, numbered, kept only on Keep.
+  "elev.learnCare.appt.rehearse.hint": "Say what worries you and what you want to leave the visit with. Ask it as questions.",
+  "elev.learnCare.appt.rehearse.dataUse": "No recording is kept. This device's speech service turns your words into text, and nothing is kept until you choose Keep.",
+  "elev.learnCare.appt.rehearse.none": "No question came through. Try again, one question at a time.",
+  "elev.learnCare.appt.rehearse.edit": "Question {n}",
+  "elev.learnCare.appt.rehearse.remove": "Remove question {n}",
+  "elev.learnCare.appt.rehearse.keep": "Keep in the visit summary",
+  "elev.learnCare.appt.rehearse.discard": "Don't keep",
+  "elev.learnCare.appt.rehearse.kept.one": "1 question kept for the visit summary.",
+  "elev.learnCare.appt.rehearse.kept.many": "{n} questions kept for the visit summary.",
 
   // ── LC-09 · find → share → track, one flow ─────────────────────────────────
   "elev.learnCare.track.created": "Added to Appointments as requested — follow it there.",
@@ -146,6 +156,9 @@ export const en: Record<string, string> = {
   "elev.learnCare.kidExit.keep": "Keep in the journal",
   // A failed Keep: the one failure message, re-offering the same line.
   "elev.learnCare.kidExit.keepFailed": "Not kept in the journal yet. {line}",
+  // B-BOOK-47: the book finished in this session, and its authored ask-after question.
+  "elev.learnCare.kidExit.book": "read {title}",
+  "elev.learnCare.kidExit.askAfter": "Ask about it: {question}",
 
   // Builder M — R25 — #/sharing (and #/care-team, same leaf) demotion disclosure and its door to #/consult.
   "elev.learnCare.share.more.title": "Shared with you, your data and the record",
@@ -228,6 +241,15 @@ export const he: Record<string, string> = {
   "elev.learnCare.appt.followUp.count.one": "סיכום אחד",
   "elev.learnCare.appt.followUp.count.many": "{count} סיכומים",
   "elev.learnCare.appt.questions.toPacket": "השאלות שהכנתם נכנסות לסיכום שתמסרו.",
+  "elev.learnCare.appt.rehearse.hint": "ספרו מה מדאיג אתכם ועם מה תרצו לצאת מהפגישה. אפשר לנסח כשאלות.",
+  "elev.learnCare.appt.rehearse.dataUse": "שום הקלטה לא נשמרת. שירות הדיבור של המכשיר הופך את המילים לטקסט, ושום דבר לא נשמר עד שתבחרו לשמור.",
+  "elev.learnCare.appt.rehearse.none": "לא נקלטה שאלה. נסו שוב, שאלה אחת בכל פעם.",
+  "elev.learnCare.appt.rehearse.edit": "שאלה {n}",
+  "elev.learnCare.appt.rehearse.remove": "הסרת שאלה {n}",
+  "elev.learnCare.appt.rehearse.keep": "לשמור בסיכום לפגישה",
+  "elev.learnCare.appt.rehearse.discard": "לא לשמור",
+  "elev.learnCare.appt.rehearse.kept.one": "שאלה אחת נשמרה לסיכום לפגישה.",
+  "elev.learnCare.appt.rehearse.kept.many": "{n} שאלות נשמרו לסיכום לפגישה.",
 
   // ── LC-09 ──────────────────────────────────────────────────────────────────
   "elev.learnCare.track.created": "נוסף לפגישות כבקשה — אפשר לעקוב שם.",
@@ -292,6 +314,8 @@ export const he: Record<string, string> = {
   "elev.learnCare.kidExit.join": " · ",
   "elev.learnCare.kidExit.keep": "לשמור ביומן",
   "elev.learnCare.kidExit.keepFailed": "עוד לא נשמר ביומן. {line}",
+  "elev.learnCare.kidExit.book": "הספר {title}",
+  "elev.learnCare.kidExit.askAfter": "אפשר לשאול: {question}",
 
   // Builder M — R25 — #/sharing (and #/care-team, same leaf) demotion disclosure and its door to #/consult.
   "elev.learnCare.share.more.title": "מה שותף אתכם, הנתונים והרשומה",

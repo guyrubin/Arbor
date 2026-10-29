@@ -21,7 +21,7 @@ import RecapStoryCards, { buildRecapCards, type RecapCard, type RecapRecord } fr
 import { weeklyChipIds, isEmptyCurrentWeek } from "./weeklySelection";
 import { en as rcEn, he as rcHe } from "../../lib/i18nElevation/recap";
 import { recapWeekId, recapWeekStartMs, type WeeklyReport } from "../../hooks/useWeeklyRecap";
-import type { WeeklyDigest } from "../../lib/api";
+import type { WeeklyDigest } from "../../lib/api";
 import { todayLiveSource } from "../../testTodaySource";
 
 /**

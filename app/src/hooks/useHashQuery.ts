@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { hashQuery, routeHash, type ActiveTab } from "../lib/routes";
+import { hashQuery, routeHash, splitHash, type ActiveTab } from "../lib/routes";
 
 const readHash = (): string => {
   try {
@@ -24,6 +24,20 @@ export function useHashQuery(): URLSearchParams {
     return () => window.removeEventListener("hashchange", on);
   }, []);
   return hashQuery(raw);
+}
+
+/** B-CAREPRO-38 — the current hash's route KEY as typed (`#/memory?x=1` → "memory"),
+ *  before retirement or aliasing resolve it; re-read on every hashchange. A
+ *  host page that absorbed a retired route reads it to open what was asked. */
+export function useHashRouteKey(): string {
+  const [raw, setRaw] = useState<string>(readHash);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const on = () => setRaw(readHash());
+    window.addEventListener("hashchange", on);
+    return () => window.removeEventListener("hashchange", on);
+  }, []);
+  return splitHash(raw).key.toLowerCase();
 }
 
 /** Navigate to a route with parameters (a new history entry, so Back returns). */

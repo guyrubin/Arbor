@@ -14,7 +14,7 @@
  *
  * Pure data + art lookups; the hook lives in useKidSouvenirs.ts.
  */
-import { kidArt, storyCoverKey, worldTileKey, type KidArt, type KidThemeId, type KidWorldTileId } from "../../../lib/kidThemeManifest";
+import { kidArt, sharedKidArt, storyCoverArt, worldTileKey, type KidArt, type KidThemeId, type KidWorldTileId } from "../../../lib/kidThemeManifest";
 import { kidWorldByWorldId } from "../kidWorlds";
 
 export const QUEST_SOUVENIR_REF = "kid-quest";
@@ -54,7 +54,9 @@ export function souvenirArt(s: Pick<KidSouvenir, "kind" | "refId">, theme: KidTh
     const w = kidWorldByWorldId(s.refId);
     return w ? kidArt(theme, worldTileKey(w.worldId as KidWorldTileId)) : null;
   }
-  return kidArt(theme, storyCoverKey(s.refId)) ?? kidArt(theme, worldTileKey("kid-quest"));
+  // B-BOOK-31: a book's sticker is its hero-free cover, else the Tonight card
+  // (never a cover that paints the reference family's child).
+  return storyCoverArt(theme, s.refId) ?? sharedKidArt(theme, worldTileKey("kid-quest"));
 }
 
 /** The home strip: every earned souvenir once, newest first (unknown world

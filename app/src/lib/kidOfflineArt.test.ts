@@ -6,11 +6,11 @@
  * run for real here (public/sw.js in a vm with fake caches + fetch).
  */
 import { describe, expect, it, vi } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
-import { KID_RECENT_BOOKS, kidOfflineArtUrls, precacheKidArt, recentlyOpenedStoryIds } from "./kidOfflineArt";
+import { KID_ART_MESSAGE_MAX, KID_RECENT_BOOKS, kidOfflineArtUrls, libraryBookArtUrls, offlineLibraryBooks, precacheKidArt, recentlyOpenedStoryIds } from "./kidOfflineArt";
 import { KID_WORLD_TILE_IDS, kidArt, storyCoverKey } from "./kidThemeManifest";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -30,12 +30,16 @@ describe("what the home asks to keep", () => {
     expect(KID_RECENT_BOOKS).toBe(3);
   });
   it("Tonight's cover + 3 recent covers (both web sizes) + every home tile (480) of the active theme; webp only, deduped", () => {
+    // B-BOOK-31: only hero-free covers are kept (the storybook plates); a cover
+    // that paints the reference family's child is shown nowhere, so never kept.
+    const kept = kidOfflineArtUrls("storybook", "the-lantern-path", ["the-cloud-orchestra", "the-lantern-path", "noahs-ark", "the-little-bridge-builders"]);
+    const lantern = kidArt("storybook", storyCoverKey("the-lantern-path"))!;
+    expect(kept).toContain(lantern.src480);
+    expect(kept).toContain(lantern.src);
+    expect(kept).toContain(kidArt("storybook", storyCoverKey("the-cloud-orchestra"))!.src480);
+    expect(kept.some((u) => u.includes("bridge-builders"))).toBe(false); // 4th recent: not kept
     const urls = kidOfflineArtUrls("film3d", "noahs-ark", ["david-and-goliath", "noahs-ark", "the-lantern-path", "jonah-and-the-great-fish"]);
-    const noah = kidArt("film3d", storyCoverKey("noahs-ark"))!;
-    expect(urls).toContain(noah.src480);
-    expect(urls).toContain(noah.src);
-    expect(urls).toContain(kidArt("film3d", storyCoverKey("david-and-goliath"))!.src480);
-    expect(urls.some((u) => u.includes("jonah"))).toBe(false); // 4th recent: not kept
+    expect(urls.some((u) => u.includes("/cards/web/story-"))).toBe(false);
     for (const id of KID_WORLD_TILE_IDS) expect(urls).toContain(kidArt("film3d", `world.${id}.tile`)!.src480);
     expect(urls.every((u) => u.startsWith("/visuals/") && u.endsWith(".webp"))).toBe(true);
     expect(new Set(urls).size).toBe(urls.length);
@@ -179,5 +183,63 @@ describe('session-safe worker updates and bounded public artwork', () => {
       { method: 'POST', url: 'https://arbor.test/visuals/a.webp' },
     ]) expect(await w.run('fetch', { request })).toBeUndefined();
     expect(w.fetch).not.toHaveBeenCalled();
+  });
+});
+
+/* ── B-BOOK-27 (T15): Tonight's library book + the last 3 finished ───────── */
+describe("B-BOOK-27: a library book's shared art is kept offline", () => {
+  it("the proof book: every page's plate, every art-state plate and every overlay — public webp, one message", async () => {
+    const { fiveSmoothStones } = await import("./library/books/fiveSmoothStones");
+    const { allBookPages } = await import("./library/bookShape");
+    const { BOOK_PLATES } = await import("./library/books");
+    const urls = libraryBookArtUrls(fiveSmoothStones);
+    const table = BOOK_PLATES[fiveSmoothStones.id];
+    for (const page of allBookPages(fiveSmoothStones)) {
+      expect(urls, page.id).toContain(table[page.plateId].file);
+      for (const st of page.artStates ?? []) if (st.plateId) expect(urls, `${page.id} ${st.id}`).toContain(table[st.plateId].file);
+      for (const o of page.overlays ?? []) expect(urls, `${page.id} ${o.id}`).toContain(o.file);
+    }
+    expect(urls.every((u) => u.startsWith(`/visuals/books/${fiveSmoothStones.id}/`) && u.endsWith(".webp"))).toBe(true);
+    for (const u of urls) expect(existsSync(path.join(APP, "public", u)), u).toBe(true);
+    expect(new Set(urls).size).toBe(urls.length);
+  });
+  it("every book of the registry fits one worker message (so no plate of Tonight is cut off)", async () => {
+    const { allBooks } = await import("./library/books");
+    const { PLAN_FIXTURE_BOOKS } = await import("./library/plans/planBooks");
+    expect(KID_ART_MESSAGE_MAX).toBe(Number(/const ART_MAX = (\d+);/.exec(swSource)![1]));
+    for (const book of [...allBooks(), ...Object.values(PLAN_FIXTURE_BOOKS)]) expect(libraryBookArtUrls(book).length, book.id).toBeLessThanOrEqual(KID_ART_MESSAGE_MAX);
+    // a plan plate painted in product reads through the signed-in route: never handed to the worker
+    for (const book of Object.values(PLAN_FIXTURE_BOOKS)) expect(libraryBookArtUrls(book).every((u) => u.startsWith("/visuals/plans/")), book.id).toBe(true);
+  });
+  it("Tonight first, then up to 3 other books finished most recently (a plan book by its pattern id); unread books wait", () => {
+    const e = (id: string, pattern?: string) => ({ book: (pattern ? { id, kind: "plan", pattern } : { id }) as never });
+    const shelf = [e("tonight"), e("a"), e("b"), e("c"), e("d"), e("plan-x--1", "plan-x"), e("never-read")];
+    const reads = [
+      { bookId: "a", finishedAt: "2026-10-01T10:00:00Z" },
+      { bookId: "b", finishedAt: "2026-10-05T10:00:00Z" },
+      { bookId: "a", finishedAt: "2026-10-06T10:00:00Z" },
+      { bookId: "c", finishedAt: "2026-09-01T10:00:00Z" },
+      { bookId: "plan-x", finishedAt: "2026-10-04T10:00:00Z" },
+      { bookId: "d", finishedAt: "2026-08-01T10:00:00Z" },
+    ];
+    expect(offlineLibraryBooks(shelf, reads).map((x) => (x.book as { id: string }).id)).toEqual(["tonight", "a", "b", "plan-x--1"]);
+    expect(offlineLibraryBooks(shelf, []).map((x) => (x.book as { id: string }).id)).toEqual(["tonight"]);
+    expect(offlineLibraryBooks([], reads)).toEqual([]);
+  });
+  it("the worker keeps the whole book from one message and serves a plate offline", async () => {
+    const { fiveSmoothStones } = await import("./library/books/fiveSmoothStones");
+    const urls = libraryBookArtUrls(fiveSmoothStones);
+    const w = bootWorker();
+    await w.run("message", { data: { type: "kid-art-precache", urls } });
+    expect([...w.stores.get("arbor-kid-art-v1")!.keys()].sort()).toEqual([...urls].sort());
+    w.setOnline(false);
+    const res = await w.run("fetch", { request: { method: "GET", url: `https://arbor.test${urls[0]}`, mode: "no-cors" } });
+    expect(res).toBe(`net:${urls[0]}`);
+  });
+  it("the kid home hands the worker Tonight's and the last finished books, one message per book", () => {
+    const dash = readFileSync(path.join(__dirname, "..", "components", "kidmode", "KidDashboard.tsx"), "utf8");
+    expect(dash).toContain("offlineLibraryBooks(onOpenBook ? libraryBooks : [], bookReadsCol.items).map((e) => libraryBookArtUrls(e.book).join(\"|\"))");
+    expect(dash).toContain("useChildCollection<BookRead>(childProfile.id, BOOK_READS)");
+    expect(dash).toMatch(/for \(const list of offlineBooksKey \? offlineBooksKey\.split\("\\n"\) : \[\]\) precacheKidArt\(/);
   });
 });
