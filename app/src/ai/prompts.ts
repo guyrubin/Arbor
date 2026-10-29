@@ -426,13 +426,7 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // and the record block says the behaviour types are internal English labels
   // (a Hebrew plan copied "Transition Refusal"). Any other focus and no counts
   // render the 1.2.0 bytes. Re-pinned live in the same commit: plan-v1 1.0.1.
-  // 1.3.0 (B-ASKJB-35 round 2, 2026-10-29): PLAN_FIRST_STEP_RULES — step 1
-  // is an act with its Say-this line, never an observe/log step; no trend,
-  // comparison or severity word in any field; successIndicators is no longer
-  // asked for (the route returns it empty). Re-pin owed LIVE (Guy): plan-v1
-  // 0 unsafe EN + HE. NOTE: the parked claude/askjb45-prompt-bump branch also
-  // takes generate_plan to 1.3.0 — whichever merges second takes 1.4.0.
-  generate_plan: { version: "1.3.0", sha256: "97d88019f4d57bfaea35e5df20e2e007218b5b6fda42c1b5a69676c420593792" },
+  generate_plan: { version: "1.2.1", sha256: "c0f891a2de92ca68da98d136c7fafbf1d1d0a4a9f69f57fb00c62121b606a8c8" },
   // 1.1.0 (B-AI-13): the logs pass the shared allowlist (no notes / free
   // text, G-14) and triggerBreakdown asks for a whole-number count per trigger
   // (the schema's proportional field is gone; the server overwrites both count
@@ -879,23 +873,6 @@ export const jsonLanguageDirective = (language: unknown): string =>
     ? "\nIMPORTANT: Write every human-readable text value in the JSON response in natural, warm Hebrew (עברית). Keep JSON keys in English."
     : "";
 
-/**
- * generate_plan 1.3.0 (B-ASKJB-35, round 2 after the 7 Oct revert): the plan
- * starts with something to DO. Step 1 of phase 1 is one act the parent does
- * with the child the next time the moment comes, and scripts[0].say is the
- * exact sentence for it (the Say-this line). Watching or logging is never a
- * step (the follow-up question is the observation). The firewall clause the
- * reverted 1.3.0 lacked: no field states a trend ("getting worse every
- * week") or grades severity ("severe") — the two words its live run produced.
- * The "signs it's working" list (successIndicators: child outcomes to watch
- * for, verdict-shaped) is no longer asked for; the route returns it empty.
- */
-export const PLAN_FIRST_STEP_RULES = [
-  "The first step of the first phase is ONE thing the parent does with the child the next time this moment comes, and the first script's \"say\" is the exact sentence the parent says while doing it.",
-  "Watching, observing, noticing, tracking or logging is never a step: Arbor asks the parent afterwards how it went.",
-  "In every field, write only what the parent can see and do. Never say the behaviour is getting worse or better, never compare one week with another, and never grade it: no word such as mild, moderate, severe, significant or extreme.",
-].join("\n");
-
 /** /generate-plan — the structured action-plan prompt (moved out of routes/api.ts). */
 export const buildGeneratePlanPrompt = ({ developmentalFramework, childProfile, challengeTopic, approvedFacts, pastSteps, languageDirective, recentTypeCounts }: GeneratePlanPromptArgs): string => `
 ${NON_DIAGNOSTIC_CONTRACT}
@@ -904,8 +881,7 @@ ${developmentalFramework}
 Generate a structured, non-diagnostic Arbor action plan.
 Profile: ${JSON.stringify(promptProfile(childProfile))}
 Focus Challenge: "${challengeTopic}"
-${renderPlanConditionBlock(challengeTopic)}${renderPlanContextBlock(approvedFacts, pastSteps)}${renderPlanRecordBlock(recentTypeCounts, pastSteps)}${PLAN_FIRST_STEP_RULES}
-Return JSON with title, issue, phases and scripts.${languageDirective ?? ""}
+${renderPlanConditionBlock(challengeTopic)}${renderPlanContextBlock(approvedFacts, pastSteps)}${renderPlanRecordBlock(recentTypeCounts, pastSteps)}Return JSON with title, issue, phases, scripts, and successIndicators.${languageDirective ?? ""}
 `;
 
 export type AnalyzeBehaviorPromptArgs = {
