@@ -22,8 +22,10 @@
  *   4. every escalation command in the model's note is in the output, and every
  *      referral main recognises in a clause it keeps;
  *   5. the wrapper only deletes: every output word is a word of the note;
- *   6. a critic row's required text (`must`, fresh set r11) that main keeps,
- *      the wrapper keeps.
+ *   6. a critic row's required text (`must`, fresh sets r11/r12) that main
+ *      keeps, the wrapper keeps;
+ *   7. every restored piece carries a non-negated escalation command whose
+ *      recipient is a professional, a helpline or the family (round 13).
  */
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -71,7 +73,13 @@ const CONDITION_WORD = /\b(?:if|unless|when|whenever|should)\b|(?<!\p{L})(?:ו)?
 const ATTRIBUTION = /^(?:according\s+to|as\s+(?:reported|noted|described|observed)\s+by|per|לדברי|לפי|כפי\s+ש)/iu;
 /* Round 12 (P1-2): what a removed reassurance may hold, by this test's own boundaries. */
 /** The object ends at clause punctuation, a subordinator, a subject pronoun or a frame preposition. */
-const OBJECT_END = /[,;:.!?—–()]|\b(?:before|after|when|whenever|while|since|because|as|until|though|although|but|so|then|who|which|that|he|she|they|we|i|you|it|according|at|in|during|on|for|with|this|today|yesterday)\b|(?<!\p{L})(?:לפני|אחרי|לאחר|בזמן|כש\p{L}*|כאשר|מאז|למרות|אבל|אך|כי|ש?הוא|ש?היא|ש?הם|ש?הן|אני|אנחנו|לדברי|לפי|ב\p{L}+)(?!\p{L})/iu;
+const OBJECT_END = /[,;:.!?—–()]|\b(?:before|after|when|whenever|while|since|because|as|until|though|although|but|so|then|who|which|that|he|she|they|we|i|you|it|according|at|in|during|on|for|with|this|today|yesterday|and|or|nor|plus)\b|(?<!\p{L})(?:לפני|אחרי|לאחר|בזמן|כש\p{L}*|כאשר|מאז|למרות|אבל|אך|כי|ש?הוא|ש?היא|ש?הם|ש?הן|אני|אנחנו|לדברי|לפי|ב\p{L}+|או)(?!\p{L})|(?<!\p{L})ו(?=\p{L}{2})/iu;
+/* Round 13 (P1-C): the object ends at and / or / ו / או too; a further item joined there may only be
+   another state (a list), never an act, a verb or a subject. This test's own act list, not the wrapper's. */
+const LIST_ITEM_JOIN = /^\s*(?:(?:and|or|nor|plus)\s+|או\s+|ו(?=\p{L}{2}))/iu;
+const ACT_EN = /\b(?:hit|hits|hitting|push\p{L}*|shov\p{L}*|kick\p{L}*|throw\p{L}*|threw|bite|bites|biting|bit|bitten|scratch\p{L}*|slap\p{L}*|punch\p{L}*|pinch\p{L}*|spit\p{L}*|spat|hurt\p{L}*)\b/iu;
+const ACT_HE = /(?:הרביצ|הרביץ|מכות|מכה|היכה|הכה|נשך|נשכה|נשיכ|נושך|דחף|דחפה|דחיפ|בעט|בעטה|בעיט|זרק|זרקה|זריק|שרט|צבט|ירק)/u;
+const VERB_EN = /\b\p{L}{3,}ed\b|\b(?:is|was|were|are|has|had|did|does|went|came|got|took|made|plays?|played)\b/iu;
 const REPORTING_ED = new Set("reported noted observed described explained confirmed mentioned shared noticed added agreed showed showing displayed exhibited presented demonstrated seemed appeared believed".split(" "));
 const FRAME_NOUNS = /\b(?:morning|mornings|evening|evenings|during|nothing|something|anything|everything|setting|building|spring|bedtime|weekend)\b/giu;
 const PRONOUN_EN = /\b(?:he|she|they|we|i|you|it|who)\b/iu;
@@ -85,7 +93,18 @@ function extraClauseIn(piece: string): string | null {
   const lead = piece.slice(0, m.index);
   const afterHead = piece.slice(m.index + m[0].length).replace(/^\p{L}*/u, "").replace(/^\s*(?:of|for|that|של|על)\s+/iu, "");
   const objectEnd = afterHead.search(OBJECT_END);
-  const rest = objectEnd < 0 ? "" : afterHead.slice(objectEnd);
+  let object = objectEnd < 0 ? afterHead : afterHead.slice(0, objectEnd);
+  let rest = objectEnd < 0 ? "" : afterHead.slice(objectEnd);
+  while (LIST_ITEM_JOIN.test(rest)) {
+    const item = rest.replace(LIST_ITEM_JOIN, "");
+    const next = item.slice(1).search(OBJECT_END);
+    const end = next < 0 ? item.length : next + 1;
+    const joined = item.slice(0, end);
+    if (ACT_EN.test(joined) || ACT_HE.test(joined) || PRONOUN_EN.test(joined) || PRONOUN_HE.test(joined) || VERB_EN.test(joined)) return `a clause joined to the object: ${joined}`;
+    object += ` ${joined}`;
+    rest = item.slice(end);
+  }
+  if (ACT_EN.test(object) || ACT_HE.test(object) || PRONOUN_EN.test(object) || PRONOUN_HE.test(object)) return `an act or a subject inside the object: ${object}`;
   if (hasIncidentCue(lead)) return `an event before the reassurance: ${lead}`;
   if (hasIncidentCue(rest)) return `an event after the reassurance: ${rest}`;
   if (/\p{Script=Hebrew}/u.test(piece)) {
@@ -102,6 +121,21 @@ function extraClauseIn(piece: string): string | null {
   if (words(rest).length > 7) return `a long tail: ${rest}`;
   return null;
 }
+/* Round 13 (P1-C): a restored piece must carry a non-negated escalation command whose recipient is a
+   professional, a helpline or the family (this test's own lists). A restored condition fragment needs one
+   beside it in the output. */
+const RECIPIENT_TEST = /\bdr\.?\s+\p{Lu}|\b(?:pediatricians?|paediatricians?|doctors?|gps?|nurses?|therapists?|psychologists?|psychiatrists?|counsell?ors?|specialists?|clinicians?|professionals?|helplines?|hotlines?|emergency|ambulance|hospital|medical|family|families|parents?|mother|father|mom|mum|dad|grand\p{L}+|guardians?|caregivers?)\b|\b(?:112|911|999|988|101)\b|(?:רופא|אחות|אחיות|פסיכולוג|פסיכיאטר|מטפל|קלינאי|מקצוע|יועצ|יועץ|הורים|הורה|משפחה|אמא|אבא|ד"ר|מוקד|חירום|מד"א|ער"ן|מיון|טיפת\s+חלב|112|101)/iu;
+const ACTION_TEST = /\b(?:call|calling|phone|ring|contact|text|email|notify|inform|alert|tell|let|reach\s+out|get\s+in\s+touch|get|talk|speak|chat|consult|see|book|visit|refer|referral|seek|ask|mention|discuss|check\s+in|follow\s+up|loop\s+in|involve|share|show|take|suggest)\b|\b(?:should|must|can|could|needs?\s+to|ought\s+to)\s+be\s+(?:called|contacted|phoned|notified|informed|alerted|told|consulted|seen)\b|(?:להתקשר|התקשרו|התקשר|לפנות|פנו|פנה|פני|צרו\s+קשר|ליצור\s+קשר|לעדכן|עדכנו|עדכן|לספר|ספרו|להודיע|הודיעו|לדבר|דברו|לשוחח|שוחחו|להתייעץ|התייעצו|להזעיק|הזעיקו|להפנות|הפנו|לקבוע\s+תור|קבעו\s+תור|ליידע|יידעו|לשתף|שתפו|להראות|הראו|להגיע|לגשת|גשו|לבקש|הציעו)/giu;
+const NEGATION_BEFORE = /(?:\b(?:no\s+need\s+to|not|never|need\s+not|needn['’]t|don['’]t|doesn['’]t)|אין\s+צורך|לא\s+צריכ?\p{L}*|(?<!\p{L})(?:אין|לא|אל))\s+(?:\S+\s+)?$/iu;
+const NEGATION_AFTER = /^\s*(?:\S+\s+){0,4}?(?:is|are)\s+(?:not\s+|un)(?:needed|necessary|required)/iu;
+/** "should be called by their first names / Sound Orbit": named, not called. */
+const NAMING_AFTER = /^\s*(?:by\s+(?:(?:their|his|her|the)\s+)?(?:first\s+|last\s+|full\s+)?names?\b|as\s+|\p{Lu})/u;
+const hasEscalation = (text: string) => RECIPIENT_TEST.test(text) && [...text.matchAll(ACTION_TEST)].some((m) => {
+  const at = m.index ?? 0;
+  const after = text.slice(at + m[0].length, at + m[0].length + 60);
+  return !NEGATION_BEFORE.test(text.slice(Math.max(0, at - 30), at)) && !NEGATION_AFTER.test(after) && !(/called$/iu.test(m[0]) && NAMING_AFTER.test(after));
+});
+const CONDITION_FRAGMENT = /^\s*(?:if|when|whenever|where|should|unless|in\s+case)\b|^\s*(?:ו)?(?:אם|כש|כאשר|במידה|במקרה)/iu;
 const referralsIn = (text: string) => [REFERRAL_EN, REFERRAL_HE].flatMap((re) => [...text.matchAll(new RegExp(re.source, `g${re.flags}`))].map((m) => m[0]));
 
 type Stats = { runs: number; restored: number; removed: number; untouched: number };
@@ -153,6 +187,10 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
       for (const clause of trace.clauses.filter((c) => c.main === "kept")) {
         for (const referral of referralsIn(clause.text)) if (!lowerOut.includes(referral.toLocaleLowerCase())) fail(`referral main keeps lost: ${referral}`);
       }
+      // 7. every restored piece is an escalation: a non-negated command with a recipient (round 13, P1-C)
+      for (const clause of trace.clauses.filter((c) => c.restored && c.out.trim())) {
+        if (!hasEscalation(clause.out) && !(CONDITION_FRAGMENT.test(clause.out) && hasEscalation(out))) fail(`restored a piece with no escalation command: ${clause.out}`);
+      }
       // 6. a critic row's required text that main keeps, the wrapper keeps
       if (row.must && main.toLocaleLowerCase().includes(row.must.toLocaleLowerCase()) && !lowerOut.includes(row.must.toLocaleLowerCase())) fail(`required text main keeps is lost: ${row.must}`);
       // 5. the wrapper only deletes
@@ -167,8 +205,9 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
 describe("B-ASKJB-44 · the wrapper is monotonic over main's floor (property, every corpus, EN + HE)", () => {
   it("the corpora are all present", () => {
     expect(acceptance.length).toBe(292);
-    expect(fresh.length).toBe(181);
+    expect(fresh.length).toBe(225);
     expect(fresh.filter((r) => r.id.startsWith("r11-")).length).toBe(62);
+    expect(fresh.filter((r) => r.id.startsWith("r12-")).length).toBe(44);
     expect(fresh.filter((r) => r.id.startsWith("r9-")).length).toBe(26);
     expect(fresh.filter((r) => r.id.startsWith("r10-")).length).toBe(28);
     expect(mainTestFiles).toEqual(expect.arrayContaining(["clinicalScan.handoffFinding.test.ts", "clinicalScan.hebrew.test.ts"]));
@@ -179,7 +218,7 @@ describe("B-ASKJB-44 · the wrapper is monotonic over main's floor (property, ev
   it.each([
     ["main's clinicalScan*.test.ts corpora", () => mainCorpus],
     ["the 292-row acceptance table (a9b91e66, read-only)", () => acceptance],
-    ["the critic's fresh sets r9 / r10 / r11 / floor-probe 1-4", () => fresh],
+    ["the critic's fresh sets r9 / r10 / r11 / r12 / floor-probe 1-4", () => fresh],
     ["every adjacent pair of rows as one two-sentence note", () => pairs],
   ] as const)("%s", (_name, corpus) => {
     const stats: Stats = { runs: 0, restored: 0, removed: 0, untouched: 0 };

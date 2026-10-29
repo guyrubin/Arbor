@@ -1,5 +1,5 @@
 {
- "about": "B-ASKJB-44 round 11: the critic's fresh sets, copied read-only as a corpus for the monotonicity property test (handoffFloor.monotonic.test.ts). critic-r9 = scratchpad critic-askjb/r9/fresh2.json, critic-r10 = r10/fresh3.json (`critic` is the critic's required verdict under the round-10 contract, kept for reference only); critic-r11 = r11/fresh11.json (62 rows; `must` is text the critic requires in the output); floor-probe* = the critic's floor-probe.mts .. floor-probe4.mts cases (parent '' = the probe gave none; floor-probe4's parent is the probe's own). Synthetic text only.",
+ "about": "B-ASKJB-44 round 11: the critic's fresh sets, copied read-only as a corpus for the monotonicity property test (handoffFloor.monotonic.test.ts). critic-r9 = scratchpad critic-askjb/r9/fresh2.json, critic-r10 = r10/fresh3.json (`critic` is the critic's required verdict under the round-10 contract, kept for reference only); critic-r11 = r11/fresh11.json (62 rows) and critic-r12 = r12/fresh12.json (44 rows); `must` is text the critic requires in the output; floor-probe* = the critic's floor-probe.mts .. floor-probe4.mts cases (parent '' = the probe gave none; floor-probe4's parent is the probe's own). Synthetic text only.",
  "rows": [
   {
    "id": "r9-S01",
@@ -1383,6 +1383,358 @@
    "note": "No evidence of attention difficulties, but he hit a child in line for the slide.",
    "parent": "He hit a child in line for the slide. No evidence of a fever.",
    "must": "hit a child in line for the slide"
+  },
+  {
+   "id": "r12-A01",
+   "source": "critic-r12",
+   "label": "frame: no required text",
+   "note": "Mom reports no signs of anxiety at drop-off.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r12-A02",
+   "source": "critic-r12",
+   "label": "frame: no required text",
+   "note": "His teacher said there are no signs of sleep difficulties since the new routine.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r12-A03",
+   "source": "critic-r12",
+   "label": "frame: no required text",
+   "note": "According to his teacher, there are no signs of a speech delay at school this month.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r12-B01",
+   "source": "critic-r12",
+   "label": "same: bit a friend",
+   "note": "Mom reports no signs of anxiety at drop-off when he bit a friend.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "bit a friend"
+  },
+  {
+   "id": "r12-B02",
+   "source": "critic-r12",
+   "label": "same: bit a classmate",
+   "note": "His teacher said he showed no signs of distress and bit a classmate during circle time.",
+   "parent": "He bit a classmate during circle time",
+   "must": "bit a classmate"
+  },
+  {
+   "id": "r12-B03",
+   "source": "critic-r12",
+   "label": "same: pushed a boy off the slide",
+   "note": "The teacher noted no signs of fear and pushed a boy off the slide at recess.",
+   "parent": "He pushed a boy off the slide at recess",
+   "must": "pushed a boy off the slide"
+  },
+  {
+   "id": "r12-B04",
+   "source": "critic-r12",
+   "label": "same: hitting",
+   "note": "Mom reports no signs of tiredness or hitting at home this week.",
+   "parent": "He hit his sister at home this week",
+   "must": "hitting"
+  },
+  {
+   "id": "r12-B05",
+   "source": "critic-r12",
+   "label": "same: biting or kicking",
+   "note": "Per his teacher, no signs of anxiety, biting or kicking at lunch.",
+   "parent": "He bit and kicked a friend at lunch",
+   "must": "biting or kicking"
+  },
+  {
+   "id": "r12-C01",
+   "source": "critic-r12",
+   "label": "next: hit a classmate at lunch",
+   "note": "Mom reports no signs of anxiety at drop-off, but he hit a classmate at lunch.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "hit a classmate at lunch"
+  },
+  {
+   "id": "r12-C02",
+   "source": "critic-r12",
+   "label": "next: threw sand at a friend",
+   "note": "His teacher says there are no signs of a speech delay, and he threw sand at a friend twice.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "threw sand at a friend"
+  },
+  {
+   "id": "r12-D01",
+   "source": "critic-r12",
+   "label": "nest: bit a friend twice",
+   "note": "According to his teacher, who has known him for a year, there are no signs of a speech delay, although he bit a friend twice.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "bit a friend twice"
+  },
+  {
+   "id": "r12-D02",
+   "source": "critic-r12",
+   "label": "nest: kicked his brother",
+   "note": "Mom reports, after a hard week, no signs of anxiety at bedtime, though he kicked his brother on Sunday.",
+   "parent": "He kicked his brother on Sunday",
+   "must": "kicked his brother"
+  },
+  {
+   "id": "r12-E01",
+   "source": "critic-r12",
+   "label": "relay: tell the family",
+   "note": "Please tell the family that there are no signs of a speech delay.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "tell the family"
+  },
+  {
+   "id": "r12-E02",
+   "source": "critic-r12",
+   "label": "relay: Let his parents know",
+   "note": "Let his parents know there is no evidence of attention difficulties at school.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "Let his parents know"
+  },
+  {
+   "id": "r12-F01",
+   "source": "critic-r12",
+   "label": "over: no required text",
+   "note": "There is no evidence of a speech delay, so a referral to the speech therapist is not needed.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r12-F02",
+   "source": "critic-r12",
+   "label": "over: no required text",
+   "note": "There are no signs of a speech delay, and his family should be called by their first names at pickup.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r12-F03",
+   "source": "critic-r12",
+   "label": "over: no required text",
+   "note": "No signs of delay were found, so the game should be called Sound Orbit.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r12-F04",
+   "source": "critic-r12",
+   "label": "over: no required text",
+   "note": "There are no signs of anxiety, so the nurse does not need to be called.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r12-G01",
+   "source": "critic-r12",
+   "label": "syn: contact the family",
+   "note": "After a month with no signs of improvement in his behavior problems, contact the family.",
+   "parent": "He had no problems with the behaviour chart this week",
+   "must": "contact the family"
+  },
+  {
+   "id": "r12-G02",
+   "source": "critic-r12",
+   "label": "syn: no required text",
+   "note": "His teacher says there are no signs of problems at drop-off.",
+   "parent": "No problem at all with the new car seat",
+   "must": ""
+  },
+  {
+   "id": "r12-H01",
+   "source": "critic-r12",
+   "label": "esc: phone the parents",
+   "note": "Where there are no signs of calming after 20 minutes, phone the parents.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "phone the parents"
+  },
+  {
+   "id": "r12-H02",
+   "source": "critic-r12",
+   "label": "esc: school nurse should be contacted",
+   "note": "If there are no signs of calming, the school nurse should be contacted right away.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": "school nurse should be contacted"
+  },
+  {
+   "id": "r12-HA01",
+   "source": "critic-r12",
+   "label": "frame: no required text",
+   "note": "אמא מספרת שאין סימנים לחרדה בפרידה.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r12-HA02",
+   "source": "critic-r12",
+   "label": "frame: no required text",
+   "note": "הגננת אמרה שאין סימנים לקשיי שינה מאז השגרה החדשה.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r12-HA03",
+   "source": "critic-r12",
+   "label": "frame: no required text",
+   "note": "לדברי הגננת, אין סימנים לעיכוב בדיבור בגן החודש.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r12-HB01",
+   "source": "critic-r12",
+   "label": "same: נשך חבר",
+   "note": "אמא מספרת שאין סימנים לחרדה בפרידה כשהוא נשך חבר.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "נשך חבר"
+  },
+  {
+   "id": "r12-HB02",
+   "source": "critic-r12",
+   "label": "same: נשך ילד במפגש",
+   "note": "הגננת אמרה שאין סימנים למצוקה ונשך ילד במפגש.",
+   "parent": "הוא נשך ילד במפגש",
+   "must": "נשך ילד במפגש"
+  },
+  {
+   "id": "r12-HB03",
+   "source": "critic-r12",
+   "label": "same: דחף ילד מהמגלשה",
+   "note": "הגננת ציינה שאין סימנים לפחד ודחף ילד מהמגלשה בהפסקה.",
+   "parent": "הוא דחף ילד מהמגלשה בהפסקה",
+   "must": "דחף ילד מהמגלשה"
+  },
+  {
+   "id": "r12-HB04",
+   "source": "critic-r12",
+   "label": "same: למכות",
+   "note": "אמא מספרת שאין סימנים לעייפות או למכות בבית השבוע.",
+   "parent": "הוא הרביץ לאחותו בבית השבוע",
+   "must": "למכות"
+  },
+  {
+   "id": "r12-HB05",
+   "source": "critic-r12",
+   "label": "same: לנשיכות",
+   "note": "לפי הגננת, אין סימנים לחרדה, לנשיכות או לבעיטות בארוחת הצהריים.",
+   "parent": "הוא נשך ובעט בחבר בארוחת הצהריים",
+   "must": "לנשיכות"
+  },
+  {
+   "id": "r12-HB06",
+   "source": "critic-r12",
+   "label": "same: נשך חבר",
+   "note": "אמא מספרת שאין סימנים לחרדה בפרידה והוא נשך חבר בגן.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "נשך חבר"
+  },
+  {
+   "id": "r12-HC01",
+   "source": "critic-r12",
+   "label": "next: הרביץ לילד",
+   "note": "אמא מספרת שאין סימנים לחרדה בפרידה, אבל הוא הרביץ לילד בארוחת הצהריים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "הרביץ לילד"
+  },
+  {
+   "id": "r12-HC02",
+   "source": "critic-r12",
+   "label": "next: זרק חול על חבר",
+   "note": "הגננת אומרת שאין סימנים לעיכוב בדיבור, והוא זרק חול על חבר פעמיים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "זרק חול על חבר"
+  },
+  {
+   "id": "r12-HD01",
+   "source": "critic-r12",
+   "label": "nest: נשך חבר פעמיים",
+   "note": "לדברי הגננת, שמכירה אותו שנה, אין סימנים לעיכוב בדיבור, למרות שהוא נשך חבר פעמיים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "נשך חבר פעמיים"
+  },
+  {
+   "id": "r12-HD02",
+   "source": "critic-r12",
+   "label": "nest: בעט באחיו",
+   "note": "אמא מספרת, אחרי שבוע קשה, שאין סימנים לחרדה לפני השינה, אבל הוא בעט באחיו ביום ראשון.",
+   "parent": "הוא בעט באחיו ביום ראשון",
+   "must": "בעט באחיו"
+  },
+  {
+   "id": "r12-HE01",
+   "source": "critic-r12",
+   "label": "relay: ספרו להורים",
+   "note": "ספרו להורים שאין סימנים לעיכוב בדיבור.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "ספרו להורים"
+  },
+  {
+   "id": "r12-HE02",
+   "source": "critic-r12",
+   "label": "relay: עדכנו את ההורים",
+   "note": "עדכנו את ההורים שאין עדות לקשיי קשב בגן.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "עדכנו את ההורים"
+  },
+  {
+   "id": "r12-HF01",
+   "source": "critic-r12",
+   "label": "over: no required text",
+   "note": "אין עדות לעיכוב בדיבור, ולכן אין צורך להפנות לקלינאית תקשורת.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r12-HF02",
+   "source": "critic-r12",
+   "label": "over: no required text",
+   "note": "אין סימנים לחרדה, ולכן אין צורך להזעיק את האחות.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r12-HF03",
+   "source": "critic-r12",
+   "label": "over: no required text",
+   "note": "אין סימנים לעיכוב, ואת המשחק כדאי לקרוא סאונד אורביט.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r12-HG01",
+   "source": "critic-r12",
+   "label": "syn: יש לעדכן את ההורים",
+   "note": "כעבור חודש ללא סימנים לשיפור בבעיות ההתנהגות שלו, יש לעדכן את ההורים.",
+   "parent": "לא היו לו בעיות עם לוח ההתנהגות השבוע",
+   "must": "יש לעדכן את ההורים"
+  },
+  {
+   "id": "r12-HG02",
+   "source": "critic-r12",
+   "label": "syn: no required text",
+   "note": "הגננת אומרת שאין סימנים לבעיות בפרידה.",
+   "parent": "אין שום בעיה עם הכיסא החדש ברכב",
+   "must": ""
+  },
+  {
+   "id": "r12-HH01",
+   "source": "critic-r12",
+   "label": "esc: התקשרו להורים",
+   "note": "במקום שאין סימנים של רגיעה אחרי 20 דקות, התקשרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "התקשרו להורים"
+  },
+  {
+   "id": "r12-HH02",
+   "source": "critic-r12",
+   "label": "esc: ליצור קשר מיד עם אחות",
+   "note": "אם אין סימנים של רגיעה, יש ליצור קשר מיד עם אחות בית הספר.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": "ליצור קשר מיד עם אחות"
   }
  ]
 }
