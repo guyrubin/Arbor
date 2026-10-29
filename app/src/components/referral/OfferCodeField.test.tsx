@@ -18,8 +18,9 @@ const posted = vi.hoisted(() => [] as unknown[][]);
 vi.mock("../../lib/api", () => ({ api: { referralCode: () => Promise.resolve({ code: null }), referralActivate: (...args: unknown[]) => { posted.push(args); return Promise.resolve({ ok: true, status: "granted" }); } } }));
 vi.mock("../../lib/loopEvents", () => ({ trackInviteActivated: vi.fn(), hasTrackedFirstPlan: () => false }));
 
-import OfferCodeField, { offerCodeOutcome, offerCodeRoute } from "./OfferCodeField";
+import OfferCodeField, { offerCodeOutcome, offerCodeRoute, whenSeen } from "./OfferCodeField";
 import { translate } from "../../lib/i18n";
+import { peekTypedReferralRefusal } from "../../lib/attribution";
 
 describe("B-GROWTH-43 · the typed code field", () => {
   it("maps every server answer, and a refused or failed request, to its own line", () => {
@@ -46,6 +47,46 @@ describe("B-GROWTH-43 · the typed code field", () => {
     expect(translate("he", "set.referral.code.apply")).toBe("הפעלת הקוד");
     expect(translate("he", "set.referral.code.sub")).toContain("חודש פלוס");
     expect(translate("he", "set.referral.code.granted")).toContain("חודש פלוס");
+  });
+
+  it("round 5: a first-plan refusal survives a mount where its line is not in view, and is cleared once the line has been seen", () => {
+    const ls = new Map<string, string>([["arbor.attribution", JSON.stringify({ source: "direct", market: "il", landingAt: "x", referralRefused: "unknown" })]]);
+    vi.stubGlobal("localStorage", { getItem: (k: string) => ls.get(k) ?? null, setItem: (k: string, v: string) => void ls.set(k, v), removeItem: (k: string) => void ls.delete(k) });
+    try {
+      state.lang = "en";
+      // Mount: the line is rendered from the stored refusal, and nothing is cleared.
+      const html = renderToStaticMarkup(<OfferCodeField />);
+      expect(html.replace(/&#x27;/g, "'")).toContain(translate("en", "set.referral.code.heldRefused"));
+      expect(peekTypedReferralRefusal()).toBe("unknown");
+      // The observer reports the line below the fold: still kept.
+      let report: (entries: { isIntersecting: boolean }[]) => void = () => {};
+      const disconnect = vi.fn();
+      class FakeIO { constructor(cb: (e: { isIntersecting: boolean }[]) => void) { report = cb; } observe() {} disconnect() { disconnect(); } }
+      const seen = vi.fn(() => { ls.set("arbor.attribution", JSON.stringify({ source: "direct", market: "il", landingAt: "x" })); });
+      whenSeen({} as Element, seen, FakeIO as unknown as typeof IntersectionObserver);
+      report([{ isIntersecting: false }]);
+      expect(seen).not.toHaveBeenCalled();
+      expect(peekTypedReferralRefusal()).toBe("unknown");
+      // Scrolled into view: told, then forgotten, once.
+      report([{ isIntersecting: true }]);
+      expect(seen).toHaveBeenCalledOnce();
+      expect(disconnect).toHaveBeenCalled();
+      expect(peekTypedReferralRefusal()).toBeNull();
+      // No observer: nothing is reported, so the line waits for an edit or a submit.
+      const never = vi.fn();
+      whenSeen({} as Element, never, undefined);
+      expect(never).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("round 5: the field forgets the refusal on view, edit or submit — never on mount", () => {
+    const field = readFileSync(path.resolve(__dirname, "OfferCodeField.tsx"), "utf8");
+    expect(field).not.toMatch(/useEffect\(\(\) => \{ clearTypedReferralRefusal\(\); \}, \[\]\)/);
+    expect(field).toContain("return whenSeen(outcomeRef.current, () => { clearTypedReferralRefusal(); setRefusalPending(false); });");
+    expect(field).toContain("onChange={(e) => { setCode(e.target.value); forgetRefusal();");
+    expect(field).toMatch(/if \(!code\.trim\(\) \|\| busy\) return;\n\s*forgetRefusal\(\);/);
   });
 
   it("every line exists in EN and HE, and they differ", () => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 import { api, type ReferralActivateResult } from "../../lib/api";
@@ -110,6 +110,28 @@ export async function submitTypedCode(input: {
   }
 }
 
+/**
+ * Call `onSeen` once `el` has actually been on screen (at least half of it),
+ * then stop watching. Without IntersectionObserver nothing is reported: the
+ * stored refusal then waits for the parent to edit or submit the field.
+ * Returns the cleanup.
+ */
+export function whenSeen(
+  el: Element,
+  onSeen: () => void,
+  IO: typeof IntersectionObserver | undefined = typeof IntersectionObserver === "undefined" ? undefined : IntersectionObserver,
+): () => void {
+  if (!IO) return () => {};
+  const obs = new IO((entries) => {
+    if (entries.some((e) => e.isIntersecting)) {
+      obs.disconnect();
+      onSeen();
+    }
+  }, { threshold: 0.5 });
+  obs.observe(el);
+  return () => obs.disconnect();
+}
+
 export default function OfferCodeField({ onGranted }: { onGranted?: () => void }) {
   const { t } = useLanguage();
   const { user, firebaseEnabled } = useAuth();
@@ -117,13 +139,27 @@ export default function OfferCodeField({ onGranted }: { onGranted?: () => void }
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   // A held typed code refused at the first plan is told here once: read on
-  // mount, forgotten after it has been shown.
+  // mount, and forgotten only once the line has really been in view, or the
+  // parent edits or submits the field. Settings often opens with the Plan card
+  // below the fold; clearing on mount lost the line for a parent who came for
+  // something else.
   const [outcome, setOutcome] = useState<OfferCodeOutcome | null>(() => refusalOutcome(peekTypedReferralRefusal()));
-  useEffect(() => { clearTypedReferralRefusal(); }, []);
+  const [refusalPending, setRefusalPending] = useState(() => peekTypedReferralRefusal() !== null);
+  const outcomeRef = useRef<HTMLParagraphElement | null>(null);
+  const forgetRefusal = () => {
+    if (!refusalPending) return;
+    clearTypedReferralRefusal();
+    setRefusalPending(false);
+  };
+  useEffect(() => {
+    if (!refusalPending || !outcomeRef.current) return;
+    return whenSeen(outcomeRef.current, () => { clearTypedReferralRefusal(); setRefusalPending(false); });
+  }, [refusalPending]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code.trim() || busy) return;
+    forgetRefusal();
     if (!signedIn) { setOutcome("signin"); return; }
     setBusy(true);
     setOutcome(null);
@@ -152,7 +188,7 @@ export default function OfferCodeField({ onGranted }: { onGranted?: () => void }
         <input
           id="offer-code-input"
           value={code}
-          onChange={(e) => { setCode(e.target.value); if (outcome && outcome !== "granted") setOutcome(null); }}
+          onChange={(e) => { setCode(e.target.value); forgetRefusal(); if (outcome && outcome !== "granted") setOutcome(null); }}
           aria-label={t("set.referral.code.input")}
           placeholder="ARBOR-XXXXXXXX"
           dir="ltr"
@@ -177,6 +213,7 @@ export default function OfferCodeField({ onGranted }: { onGranted?: () => void }
       </div>
       {outcome && (
         <p
+          ref={outcomeRef}
           role={good ? "status" : "alert"}
           className="text-xs mt-2"
           style={{ color: good ? "var(--arbor-ink)" : "var(--arbor-peach-ink)" }}
