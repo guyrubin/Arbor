@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,0..100&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Heebo:wght@400;500;600;700;800;900&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&family=Frank+Ruhl+Libre:wght@300..900&family=Instrument+Serif:ital@0;1&display=swap');
+/* B-SHELL-24: the text faces are self-hosted (src/textFonts.css → public/fonts/text); no Google Fonts request. */
+@import "./textFonts.css";
 @import "tailwindcss";
 
 /* ─── Design Tokens — Arbor 2035 Sapphire ────────────────────────────────────
@@ -329,8 +330,17 @@ body {
   font-optical-sizing: auto;
   letter-spacing: 0;
   line-height: 1.18;
-  text-wrap: balance;
   color: var(--arbor-ink);
+}
+/* B-SHELL-45: balance only the headings that wrap by design. `text-wrap` is a
+   shorthand that also sets text-wrap-mode, and this unlayered rule outranks the
+   layered Tailwind utilities, so on a heading with `truncate` (or a nowrap
+   utility) it turned wrapping back on: the sharing roster email broke into
+   pieces at 375. The :where() keeps the specificity of `.arbor-app h3`. */
+.arbor-app h1:where(:not(.truncate, .whitespace-nowrap, .text-nowrap)),
+.arbor-app h2:where(:not(.truncate, .whitespace-nowrap, .text-nowrap)),
+.arbor-app h3:where(:not(.truncate, .whitespace-nowrap, .text-nowrap)) {
+  text-wrap: balance;
 }
 .arbor-app h4,
 .arbor-app h5,

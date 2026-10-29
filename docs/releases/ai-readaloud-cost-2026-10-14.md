@@ -4,7 +4,7 @@
 
 Application baseline: `fa3f994715e2dba1ef782480c13863dfab0597cf` (Parent V3 + Kids Studio V2). Isolated release candidate, not deployed. Parallel PRs #138/#139 are not composed here.
 
-The authority is ROS `CoS/decisions/log.md`, entry **2026-10-11 — Arbor Parent: Guy takes the defaults on every GUY row**. It ratifies B-RESID-08 / M1–M5. The older 10 October model-allocation reference still says decisions are open in its header; that header is stale and must not override the later decision.
+The authority is the private ROS decision log, entry **2026-10-11 — Arbor Parent: Guy takes the defaults on every GUY row**. It ratifies B-RESID-08 / M1–M5. The older 10 October model-allocation reference still says decisions are open in its header; that header is stale and must not override the later decision.
 
 The ratified target remains: M1 an OpenAI EU project for the bake-off (Guy's provisioning act); M2 voice per tier once the adapter exists; M3 text routing after the per-model evaluations pass; M4 the EU image successor through Kids B-BOOK-64; M5 the Vertex EU Live probe through GA B-GA-06. Approval is not evidence that provisioning, adapters, evaluations or live acceptance are complete. This patch implements the shared read-aloud and TTS accounting slice without prematurely activating other target models.
 

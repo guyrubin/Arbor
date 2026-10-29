@@ -31,10 +31,11 @@ import ShelfPage, { type ShelfDayGroup } from "./ShelfPage";
 import ProView from "./ProView";
 import HearingCheckQuestion from "./HearingCheckQuestion";
 import { hearingCheckOf, hearingQuestionOn } from "../../lib/hearingCheck";
-import { buildIntakePacket, isIntakeProfession, type IntakeProfession } from "../../consult/packet";
+import { buildIntakePacket, intakeLangObs, isIntakeProfession, type IntakeProfession } from "../../consult/packet";
 import { intakeQuestionLines, readIntakeQuestionsText, writeIntakeQuestionsText } from "../../consult/intakeDraft";
 import { programPageModel } from "../../lib/programPage";
 import type { SleepLogEntry } from "../../types";
+import type { LangObservation } from "../../growth/vocabAgg";
 import type { FamilyGoal } from "../../lib/goals";
 import PlansSection from "../plans/PlansSection";
 import { openPrintablePlan } from "../../lib/plans/planPrint";
@@ -200,6 +201,9 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
   const sleepLogs = useChildCollection<SleepLogEntry & { id: string }>(childProfile.id, "sleepLogs");
   // B-PROG-09: the home program's goal words (the pro view renders the home-program line only, never the number)
   const familyGoalsCol = useChildCollection<FamilyGoal>(childProfile.id, "familyGoals");
+  // B-CAREPRO-39 (round 2): the logged words, counted per language by the SLP
+  // intake schema (dark until signed) — the same read Care's packet makes.
+  const langObsCol = useChildCollection<LangObservation>(childProfile.id, "langObs", { orderByField: "timestamp", orderDir: "desc", max: 200 });
   const intakeProgram = useMemo(
     () => (pro ? programPageModel(programRows.items, { childId: childProfile.id, actionLoops: actionLoop, sleepLogs: sleepLogs.items, observations }, now, uiLang === "he" ? "he" : "en", childProfile.gender ?? null) : null),
     [pro, programRows.items, childProfile.id, childProfile.gender, actionLoop, sleepLogs.items, observations, now, uiLang],
@@ -223,8 +227,9 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
       familyGoals: familyGoalsCol.items,
       // B-NEXT-01: the parent's hearing answer, only while the pilot flag is on
       hearing: hearingOn ? hearingCheckOf(childProfile) : null,
+      langObs: intakeLangObs(langObsCol.items),
     }) : null),
-    [pro, profession, childProfile, milestones, behaviorLogs, actionLoop, questions, comparisonMonths, now, uiLang, keepsakes.items, intakeProgram, programRows.items, familyGoalsCol.items, hearingOn],
+    [pro, profession, childProfile, milestones, behaviorLogs, actionLoop, questions, comparisonMonths, now, uiLang, keepsakes.items, intakeProgram, programRows.items, familyGoalsCol.items, hearingOn, langObsCol.items],
   );
   const domainCounts = useMemo(() => proDomainCounts(observations, (s) => shelfDef(s).domain, now), [observations, now]);
 

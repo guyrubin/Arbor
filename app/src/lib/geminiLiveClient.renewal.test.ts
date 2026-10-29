@@ -40,7 +40,7 @@ vi.mock("@google/genai", () => ({
   Modality: { AUDIO: "AUDIO" },
 }));
 
-import { requestLiveMicrophone, startGeminiLive, type LiveHandlers, type LiveSlice } from "./geminiLiveClient";
+import { LIVE_RENEWAL_REFUSED, requestLiveMicrophone, startGeminiLive, type LiveHandlers, type LiveSlice } from "./geminiLiveClient";
 
 const audio = { started: 0, stopped: 0 };
 class FakeAudioContext {
@@ -142,7 +142,7 @@ const firstSlice = (renew: LiveSessionOptionsRenew, log: string[], stream: Media
   token: "tok-1", model: "m", systemInstruction: "pinned-1", stream, usageId: "u1",
   expiresAt: iso(T0 + 60_000), remainingMs: 1_140_000, renew, reportUsage: reporter(log, "s1"),
 });
-type LiveSessionOptionsRenew = (renewOf?: string) => Promise<LiveSlice | null>;
+type LiveSessionOptionsRenew = (renewOf?: string) => Promise<LiveSlice | null | typeof LIVE_RENEWAL_REFUSED>;
 const later = <T,>(ms: number, value: () => T) => new Promise<T>((resolve) => setTimeout(() => resolve(value()), ms));
 
 describe("renewal rule (round 4): 30 s before each slice ends, growing slices, at a quiet moment, seeded", () => {
@@ -366,6 +366,22 @@ describe("the renewal is no single point of failure", () => {
     await startGeminiLive(firstSlice(renew, [], stream), handlers);
     await vi.advanceTimersByTimeAsync(59_000);
     expect(calls).toEqual([30_000, 45_000, 55_000]);
+    expect(seen.talkEnd).toBe(0);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(seen.talkEnd).toBe(1);
+    expect(seen.remoteClose + seen.errors + seen.allowanceEnd).toBe(0);
+    expect(t.stopped).toBe(true);
+  });
+
+  it("wave 4: a renewal the server refuses (live_renewal_invalid) is never retried; the talk ends calmly at the slice's end with the closing line", async () => {
+    const { t, stream } = micStream();
+    const { seen, handlers } = handlersFor();
+    const calls: number[] = [];
+    const renew = vi.fn(async () => { calls.push(Date.now() - T0); return LIVE_RENEWAL_REFUSED; });
+    await startGeminiLive(firstSlice(renew, [], stream), handlers);
+    await vi.advanceTimersByTimeAsync(59_000);
+    // Negative control beside it: a thrown renewal is tried at 30, 45 and 55 s (test above).
+    expect(calls).toEqual([30_000]);
     expect(seen.talkEnd).toBe(0);
     await vi.advanceTimersByTimeAsync(1_000);
     expect(seen.talkEnd).toBe(1);

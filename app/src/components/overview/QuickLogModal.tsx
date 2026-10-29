@@ -491,7 +491,8 @@ export default function QuickLogModal({
   // editable draft: dismissing the alert must not hand back a saveable form
   // holding the crisis text (the contract the Behaviors form kept before it
   // moved to this sheet). Clears only; never fills a field.
-  const dropEscalatedDraft = () => {
+  // B-INF-13: the ONE draft reset — Discard and the escalation branch both run it.
+  const resetDraft = () => {
     setNewLogTrigger(""); setNewLogNotes(""); setNewLogResponse("");
     setKeepDraft(freshCaptureKeep()); setReviewing(false); setSource("text");
   };
@@ -545,7 +546,7 @@ export default function QuickLogModal({
       // (an edit does not retire it), and writes no draft field.
       if (err instanceof EscalationRequiredError) {
         if (!screenCurrent()) return;
-        dropEscalatedDraft();
+        resetDraft();
         const match =
           escalationCategories.find((c) => c.category === err.category) ??
           escalationCategories[0];
@@ -748,11 +749,7 @@ export default function QuickLogModal({
   };
 
   const discard = () => {
-    setNewLogTrigger("");
-    setNewLogResponse("");
-    setNewLogNotes("");
-    setReviewing(false);
-    setSource("text");
+    resetDraft();
     closeSheet();
   };
 

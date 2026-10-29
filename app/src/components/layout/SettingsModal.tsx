@@ -25,6 +25,7 @@ import { isNativePlatform, nativePlatform } from "../../lib/runtime";
 import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: Privacy · Terms · Support in the footer
 import { Skeleton } from "../ui/Skeleton";
 import { PlanBadge } from "../ui/PlanBadge";
+import OfferCodeField from "../referral/OfferCodeField";
 import { useLanguage, type AiLang } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
@@ -69,6 +70,8 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   // B-GA-12: annual is the accepted initial cadence (DEFAULT_CADENCE, shared
   // with PaywallModal); an explicit tap wins thereafter.
   const [cadence, setCadence] = useState<Cadence>(DEFAULT_CADENCE);
+  // B-GROWTH-43: a typed invite code added a month (the answer outlives the field).
+  const [codeGranted, setCodeGranted] = useState(false);
   const nativeOffering = useNativeOffering();
   const [adminOpen, setAdminOpen] = useState(false);
   const planVisibility = usePlanVisibility();
@@ -539,6 +542,21 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             <button onClick={() => void restorePurchases()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-50" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
               {t("set.plan.restore")}
             </button>
+          )}
+
+          {/* B-GROWTH-43: a code given aloud or on paper is typed here, inside the
+              Plan card; one invite per family (server/referral.ts). Not for a
+              paying family: a comp month never overrides a paid record, so a
+              code would spend their one invite on nothing. */}
+          {!isPaid && !entitlementLoading && !entitlementUnverified && !codeGranted && (
+            <OfferCodeField onGranted={() => { setCodeGranted(true); void retryEntitlement(); }} />
+          )}
+          {/* The month was added: the plan reloads (and the field leaves with
+              the free plan), so the answer is held here, not in the field. */}
+          {codeGranted && (
+            <p role="status" className="text-xs mt-3" style={{ color: "var(--arbor-ink)" }} data-testid="offer-code-granted">
+              {t("set.referral.code.granted")}
+            </p>
           )}
         </div>
 

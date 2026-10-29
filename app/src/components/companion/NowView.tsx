@@ -7,6 +7,8 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { useTodaysFocus, type Focus } from "../../hooks/useTodaysFocus";
 import { useLastVisit } from "../../hooks/useLastVisit";
 import { activeProgramWeek } from "../../lib/programs/enrolment";
+import { weekLessonDoor } from "../../lib/programs/weekLesson";
+import { readLearnReadIds } from "../../learn/learnReadState";
 import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 import NowPlanLead from "../plans/NowPlanLead";
 import PlansSection from "../plans/PlansSection";
@@ -106,7 +108,7 @@ const LIFECYCLE_NOTE: Partial<Record<string, string>> = {
 
 function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewProps) {
   const { childProfile, actionLoop, seedCoach, setActiveTab, openCaptureSheet,
-    saveTodayOutcome, saveTodayObservation, requestJournalFocus, pendingCaptureMode, consumeCaptureRequest, addMoment } = useArbor();
+    saveTodayOutcome, saveTodayObservation, requestJournalFocus, pendingCaptureMode, consumeCaptureRequest, addMoment, requestLearnRead } = useArbor();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
   const lang = he ? "he" : "en";
@@ -132,6 +134,8 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const openPlan = () => openPattern(plan?.def.id ?? "");
   // v4: the agenda row says where the family is in it ("Week 2 of 4"), counts only.
   const programWeeks = Array.isArray(program?.program.weeks) ? program.program.weeks.length : 0;
+  // B-PROG-14: the week's one Learn read, until the parent opens it (their own read state, per child).
+  const weekLesson = useMemo(() => (program ? weekLessonDoor(program.content, readLearnReadIds(childProfile.id)) : null), [program, childProfile.id]);
   // B-TODAY-37: "Record a moment" on an older question asks Now for THAT question's form.
   const observeId = useHashQuery().get("observe");
   const action = useMemo(() => requestedObservation(actionLoop, observeId) ?? nextChosenAction(actionLoop, topic?.id), [actionLoop, observeId, topic?.id]);
@@ -416,6 +420,11 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
         {program && lead !== "program" && <button type="button" className="now-weekly-door now-program-line" data-testid="now-program-line" onClick={openProgram}>
           <BrandChip icon="menu_book" tone="green" shape="drop" /><span><b>{copy.programLabel}</b><small dir="auto">{programSkill}</small></span>
           {programWeeks > 0 && <span className="now-agenda-badge" data-testid="now-program-week">{copy.programWeekOf(program.week, Math.max(program.week, programWeeks))}</span>}
+          <Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
+        </button>}
+        {/* B-PROG-14: "This week's idea" — the program week's one Learn read, opened through the Learn deep link, shown until it is read. */}
+        {weekLesson && <button type="button" className="now-weekly-door now-week-lesson" data-testid="now-week-lesson" onClick={() => requestLearnRead({ cardId: weekLesson.id, source: "now-week-lesson" })}>
+          <BrandChip icon="lightbulb" tone="green" shape="leaf" /><span><b>{copy.weekIdea}</b><small dir="auto">{weekLesson.title[lang]}</small></span>
           <Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
         </button>}
         <NowAgendaExtras evening={loop.evening} storyFits={loop.storyFits} todayOffer={todayOffer} suppressVisit={lead === "visit" || !!visit} storyRow={!showPointer} />

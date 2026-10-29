@@ -58,8 +58,8 @@ This file has one line for every place Arbor keeps data about one child. Export 
 | `firestore:keepsakes` | Keepsake notes on a noticed milestone (may hold a photo URL) | Photo bytes in `storage:photos` |
 | `firestore:bookAssets` | Metadata of the child's private book files | The files are `storage:books` |
 | `firestore:sleepLogs` | Sleep diary, one document per night | B-PROG-06 |
-| `firestore:programs` | Program enrolments and the family's baseline | B-PROG-01 |
-| `firestore:familyGoals` | The family's goals in their own words and their scores | B-PROG-07 |
+| `firestore:programs` | Program enrolments and the family's baseline | B-PROG-01. B-PROG-09 (28 Oct): a professional the parent shared the home program with reads its derived lines (week, practice days as counts, each exercise in the family's words with its days) through a live `home-program-adherence` grant only; the server reads this collection only for that grant, never returns the raw rows, and revoke ends the read at once |
+| `firestore:familyGoals` | The family's goals in their own words and their scores | B-PROG-07. B-PROG-09 (28 Oct): the goals a professional proposed reach that professional through the same `home-program-adherence` grant as the family's words and their own last word, never the score number |
 | `firestore:coachSessions` | Guided-tier sessions booked and what was agreed | B-PROG-10 |
 | `firestore:heroSheet` | The hero's pose sheet (generated art from the generated hero, never a photo) | B-GAME-13c |
 | `firestore:studioCreations` | The child's saved studio toys (a corner layout, a short melody) | **Found by this sweep (28 Oct):** it escaped export and erase until registered |

@@ -121,7 +121,41 @@ export function tonightStepForChild(doc: PlanBookDoc, lang: BookLang, gender: He
   if (!book) return null;
   const line = book.steps[0].text;
   const text = (lang === "he" ? line.he[gender] : line.en).replace(STEP_LABEL, "").trim();
-  return text.match(/^[^.!?]*[.!?]/)?.[0] ?? text;
+  return withoutDigits(text.match(/^[^.!?]*[.!?]/)?.[0] ?? text, lang);
+}
+
+/* ── T7 (kid register: no digits) — the Kids home is digit-free. A plan step
+ *    carries its minutes as a numeral in the book (the one digit the book
+ *    register allows); on the home rail and in Sprout's line the child hears
+ *    "five minutes" / "חמש דקות". Pure; covers 1–99. ───────────────────── */
+
+const EN_ONES = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
+const EN_TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+// Feminine forms: דקות is feminine.
+const HE_ONES_F = ["אפס", "אחת", "שתיים", "שלוש", "ארבע", "חמש", "שש", "שבע", "שמונה", "תשע", "עשר", "אחת עשרה", "שתים עשרה", "שלוש עשרה", "ארבע עשרה", "חמש עשרה", "שש עשרה", "שבע עשרה", "שמונה עשרה", "תשע עשרה"];
+const HE_TENS = ["", "", "עשרים", "שלושים", "ארבעים", "חמישים", "שישים", "שבעים", "שמונים", "תשעים"];
+
+/** A whole number 0–99 in words (EN; HE feminine, for דקות). Larger numbers return their digits. */
+export function numberInWords(n: number, lang: BookLang): string {
+  if (!Number.isInteger(n) || n < 0 || n > 99) return String(n);
+  const ones = lang === "he" ? HE_ONES_F : EN_ONES;
+  if (n < 20) return ones[n];
+  const t = Math.floor(n / 10), u = n % 10;
+  const tens = lang === "he" ? HE_TENS[t] : EN_TENS[t];
+  if (!u) return tens;
+  return lang === "he" ? `${tens} ו${ones[u]}` : `${tens}-${ones[u]}`;
+}
+
+/** "about 5 minutes" → "about five minutes"; "בערך 5 דקות" → "בערך חמש דקות"
+ *  (1 → "דקה אחת" / "one minute", 2 → "שתי דקות"); any other numeral → words. */
+export function withoutDigits(text: string, lang: BookLang): string {
+  let out = text;
+  if (lang === "he") {
+    out = out.replace(/(\d+)\s*דקות/g, (_m, d: string) => { const n = Number(d); return n === 1 ? "דקה אחת" : n === 2 ? "שתי דקות" : `${numberInWords(n, "he")} דקות`; });
+  } else {
+    out = out.replace(/(\d+)\s*minutes?\b/g, (_m, d: string) => { const n = Number(d); return n === 1 ? "one minute" : `${numberInWords(n, "en")} minutes`; });
+  }
+  return out.replace(/\d+/g, (d) => numberInWords(Number(d), lang));
 }
 
 /** Tonight's step for the PARENT: step one as the grown-ups do it (the

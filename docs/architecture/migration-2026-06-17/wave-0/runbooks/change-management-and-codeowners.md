@@ -115,7 +115,7 @@ Re-running `eval:safety` on every such PR is automatic — it is already a step 
 ```
 
 **Apply:**
-1. On a branch, create the file at `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/.github/CODEOWNERS` with the content above.
+1. On a branch, create the file at `.github/CODEOWNERS` with the content above.
 2. Open a PR. GitHub validates `CODEOWNERS` syntax in the PR "Code owners" tab — confirm there are **no parse warnings** (a malformed line silently disables that rule).
 3. Merge. From then on, PRs touching the listed paths will auto-request the owner and (after Apply Step B) require their approval.
 

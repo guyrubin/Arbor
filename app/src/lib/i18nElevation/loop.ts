@@ -9,7 +9,7 @@
  * the child writes the verb in the catalogue's slash form ("אמר/ה") and the
  * caller resolves it from the profile gender (lib/hebrewSlashGender).
  * Clinically sensitive lines have a row in
- * execution/2026-10-06--milestone-loop/REVIEW-SHEET.md. */
+ * the milestone-loop REVIEW-SHEET.md (private record). */
 
 export const en: Record<string, string> = {
   // ── B-LOOP-04 · Notice card ─────────────────────────────────────────────

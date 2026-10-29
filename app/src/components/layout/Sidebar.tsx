@@ -67,6 +67,7 @@ export default function Sidebar() {
        acceptance measures, so a validator reads THIS element's computed
        border-inline-end rather than guessing which <aside> it found. */
     <aside
+      data-chrome="sidebar"
       data-testid="app-sidebar"
       data-arbor-seam="inline-end"
       className="hidden lg:flex flex-col gap-5 px-4 py-6 h-full min-h-0 sticky top-0 overflow-y-auto bg-white"

@@ -28,7 +28,7 @@ import {
 } from "./companionOffer";
 import { DEFAULT_PREFS } from "../growth/jitaiPrefs";
 import CompanionOfferSlot from "../components/overview/CompanionOfferSlot";
-import type { Nudge } from "./jitai";
+import type { Nudge } from "./jitai";
 import { todayLiveSource } from "../testTodaySource";
 
 // Build an epoch ms whose LOCAL hour is `h` (same clock as jitai.test.ts).

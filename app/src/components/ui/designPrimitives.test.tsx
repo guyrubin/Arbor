@@ -1,5 +1,5 @@
 import React from "react";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -80,6 +80,31 @@ describe("ShelfGlyph — 44 px duotone, the tint names the shelf", () => {
     const props = /export function ShelfGlyph\(\{([^}]*)\}/.exec(code)![1];
     expect(props.replace(/\s+/g, " ").trim()).toBe("shelf, size = 44, onWash = false");
     expect(code).not.toMatch(HEX);
+  });
+
+  // B-INF-13: one ShelfGlyph. The flat loop/ShelfGlyph chip outlived its last move on
+  // ProgramPage (10 Oct review); a second component with the same name may not return.
+  it("is the only ShelfGlyph in src, and nothing imports another one", () => {
+    const srcRoot = path.join(here, "..", "..");
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) walk(p);
+        else if (/\.(ts|tsx)$/.test(e.name) && !/\.test\./.test(e.name)) files.push(p);
+      }
+    };
+    walk(srcRoot);
+    const rel = (p: string) => path.relative(srcRoot, p).split(path.sep).join("/");
+    const definers = files.filter((p) => /export (?:default )?function ShelfGlyph\b|export const ShelfGlyph\b/.test(readFileSync(p, "utf8"))).map(rel);
+    expect(definers).toEqual(["components/ui/ShelfGlyph.tsx"]);
+    const strays = files.filter((p) => /import \{?\s*ShelfGlyph[^;]*from "[^"]*\/(?!ui\/)[a-z]+\/ShelfGlyph"/.test(readFileSync(p, "utf8"))).map(rel);
+    expect(strays).toEqual([]);
+    // Negative control: the real ProgramPage, put back on the 10 Oct import, is a stray.
+    const program = readFileSync(path.join(srcRoot, "components/program/ProgramPage.tsx"), "utf8");
+    expect(program).toContain('import { ShelfGlyph } from "../ui/ShelfGlyph";');
+    const shipped = program.replace('from "../ui/ShelfGlyph"', 'from "../loop/ShelfGlyph"');
+    expect(/import \{?\s*ShelfGlyph[^;]*from "[^"]*\/(?!ui\/)[a-z]+\/ShelfGlyph"/.test(shipped)).toBe(true);
   });
 });
 

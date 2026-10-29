@@ -551,3 +551,16 @@ const CONTRACT_BY_ROUTE: ReadonlyMap<ActiveTab, SurfaceContract> = new Map(
 export function contractFor(route: ActiveTab): SurfaceContract | undefined {
   return CONTRACT_BY_ROUTE.get(route);
 }
+
+/**
+ * Wave 4: a surface that stays mounted while hidden (a closed conversation
+ * keeps its thread, its draft, the photos in its composer and its voice
+ * proposals) spreads `hiddenStamps(hidden)` AFTER each of its own stamps, so
+ * while it is hidden it carries no `data-module` or `data-primary-move` for the
+ * one-primary-move law or the sweep to count. The attribute names live here,
+ * so the route's own source keeps exactly its one literal stamp of each kind.
+ */
+export const SURFACE_STAMP_ATTRIBUTES = ["data-primary-move", "data-module"] as const;
+export function hiddenStamps(hidden: boolean): Partial<Record<(typeof SURFACE_STAMP_ATTRIBUTES)[number], undefined>> {
+  return hidden ? Object.fromEntries(SURFACE_STAMP_ATTRIBUTES.map((name) => [name, undefined])) : {};
+}

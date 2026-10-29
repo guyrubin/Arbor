@@ -264,7 +264,7 @@ config-driven and prod-locked to Vertex (`env.ts`).
 | Transport | HTTPS (Hosting + Cloud Run managed) | TLS terminated at Google edge |
 | At rest | Firestore/Storage default encryption | No CMEK |
 | CORS | Allowlist from `CORS_ORIGINS` | Rejects unknown origins |
-| Rate / cost | 30/min IP + 80/hr/user AI | **In-memory → not global across instances** |
+| Rate / cost | 300/min per account + per-IP ceilings (600 reads, 120 writes) + 30/min IP per strict group (model, invite, export) + 80/hr/user AI (B-INF-16) | **In-memory → not global across instances** |
 | Secrets | GitHub Actions secrets; prod uses **ADC** (no SA key needed at runtime) | But `GCP_SA_KEY` long-lived JSON used in deploy |
 | Headers | Helmet, **CSP disabled** | Hardening gap |
 | Network | Cloud Run `--allow-unauthenticated` + app-layer auth | Public endpoint by design |

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { SWEEP_LAW_EXIT, sweepLawFailures } from "./capture/sweep-law.mjs";
+import { SWEEP_LAW_EXIT, expectedBaseCells, missingBaseCells, sweepLawFailures } from "./capture/sweep-law.mjs";
 import { releaseMatrix, RELEASE_VIEWPORTS } from "./capture/release-config.mjs";
 
 const scripts = path.dirname(fileURLToPath(import.meta.url));
@@ -42,6 +42,26 @@ describe("sweep law", () => {
       ["c 375x812 en", ["overflow"]],
       ["e 375x812 en open", ["overflow"]],
     ]);
+  });
+
+  it("B-INF-11: fails a missing, unready or shotless base cell; an older sweep without the matrix is judged as before", () => {
+    const vps = [{ w: 375, h: 812, lang: "en" }, { w: 375, h: 812, lang: "he" }];
+    const expected = { cells: expectedBaseCells(["overview", "coach"], vps) };
+    expect(expected.cells).toHaveLength(4);
+    const three = [cell({ shot: "s.png" }), cell({ lang: "he", shot: "s.png" }), cell({ route: "coach", shot: "s.png" })];
+    // The run died (or hit its deadline) before coach HE: that cell is missing, and the law says so.
+    expect(sweepLawFailures({ completed: true, shots: true, expected, cells: three }).map((f) => [f.cell, f.reasons])).toEqual([["coach 375x812 he", ["missing"]]]);
+    expect(missingBaseCells({ expected, cells: three })).toEqual([{ route: "coach", viewport: "375x812", lang: "he" }]);
+    const full = [...three, cell({ route: "coach", lang: "he", shot: "s.png" })];
+    expect(sweepLawFailures({ completed: true, shots: true, expected, cells: full })).toEqual([]);
+    const broken = full.map((c, i) => (i === 0 ? { ...c, readyTimedOut: true } : i === 1 ? { ...c, shot: null } : c));
+    expect(sweepLawFailures({ completed: true, shots: true, expected, cells: broken }).map((f) => [f.cell, f.reasons])).toEqual([
+      ["overview 375x812 en", ["unready"]],
+      ["overview 375x812 he", ["no-shot"]],
+    ]);
+    // --no-shots: no shot is expected; a pre-B-INF-11 sweep.json (no expected, no shots) keeps its verdict.
+    expect(sweepLawFailures({ completed: true, shots: false, expected, cells: full.map((c) => ({ ...c, shot: null })) })).toEqual([]);
+    expect(sweepLawFailures(doc([cell()]))).toEqual([]);
   });
 
   it("exits non-zero on an injected overflow, zero when clean, 1 when incomplete", () => {
