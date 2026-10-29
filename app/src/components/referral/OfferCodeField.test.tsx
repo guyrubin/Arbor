@@ -18,7 +18,7 @@ const posted = vi.hoisted(() => [] as unknown[][]);
 vi.mock("../../lib/api", () => ({ api: { referralActivate: (...args: unknown[]) => { posted.push(args); return Promise.resolve({ ok: true, status: "granted" }); } } }));
 vi.mock("../../lib/loopEvents", () => ({ trackInviteActivated: vi.fn() }));
 
-import OfferCodeField, { offerCodeOutcome } from "./OfferCodeField";
+import OfferCodeField, { offerCodeOutcome, offerCodeRoute } from "./OfferCodeField";
 import { translate } from "../../lib/i18n";
 
 describe("B-GROWTH-43 · the typed code field", () => {
@@ -32,8 +32,22 @@ describe("B-GROWTH-43 · the typed code field", () => {
     expect(offerCodeOutcome(new Error("network"))).toBe("failed");
   });
 
+  it("routes a code: not a code is refused, no plan holds it, a plan redeems it now", () => {
+    expect(offerCodeRoute("hello", true)).toEqual({ route: "refuse", normalized: "HELLO" });
+    expect(offerCodeRoute(" arbor-abcd efgh ", false)).toEqual({ route: "hold", normalized: "ARBOR-ABCDEFGH" });
+    expect(offerCodeRoute("ABCDEFGH", true)).toEqual({ route: "redeem", normalized: "ARBOR-ABCDEFGH" });
+  });
+
+  it("the held receipt says when the code counts, and the button reads the same in HE as the card", () => {
+    expect(translate("en", "set.referral.code.held")).toBe("Code saved. It counts when you start your first plan.");
+    expect(translate("he", "set.referral.code.held")).toContain("התוכנית הראשונה");
+    expect(translate("he", "set.referral.code.apply")).toBe("הפעלת הקוד");
+    expect(translate("he", "set.referral.code.sub")).toContain("חודש פלוס");
+    expect(translate("he", "set.referral.code.granted")).toContain("חודש פלוס");
+  });
+
   it("every line exists in EN and HE, and they differ", () => {
-    for (const key of ["label", "sub", "input", "apply", "applying", "granted", "already", "unknown", "self", "failed", "signin"]) {
+    for (const key of ["label", "sub", "input", "apply", "applying", "granted", "held", "already", "unknown", "self", "failed", "signin"]) {
       const k = `set.referral.code.${key}`;
       expect(translate("en", k), k).not.toBe(k);
       expect(translate("he", k), k).not.toBe(k);
@@ -44,7 +58,7 @@ describe("B-GROWTH-43 · the typed code field", () => {
   it("renders a labelled 44 px input and button, LTR code in both languages, tokens only", () => {
     for (const lang of ["en", "he"] as const) {
       state.lang = lang;
-      const html = renderToStaticMarkup(<OfferCodeField />);
+      const html = renderToStaticMarkup(<OfferCodeField hasPlan={false} />);
       expect(html).toContain(translate(lang, "set.referral.code.label"));
       expect(html).toMatch(/<input[^>]*min-h-11[^>]*dir="ltr"|<input[^>]*dir="ltr"[^>]*min-h-11/);
       expect(html).toMatch(/<button[^>]*type="submit"[^>]*min-h-11/);
@@ -54,10 +68,11 @@ describe("B-GROWTH-43 · the typed code field", () => {
 
   it("is mounted inside the Plan card, posts via typed, and is hidden from paying families", () => {
     const settings = readFileSync(path.resolve(__dirname, "../layout/SettingsModal.tsx"), "utf8");
-    expect(settings).toMatch(/!isPaid && !entitlementLoading && !entitlementUnverified && !codeGranted && \(\s*<OfferCodeField onGranted=\{\(\) => \{ setCodeGranted\(true\); void retryEntitlement\(\); \}\}/);
+    expect(settings).toMatch(/!isPaid && !entitlementLoading && !entitlementUnverified && !codeGranted && \(\s*<OfferCodeField hasPlan=\{\(actionPlans\?\.length \?\? 0\) > 0\} onGranted=\{\(\) => \{ setCodeGranted\(true\); void retryEntitlement\(\); \}\}/);
     expect(settings).toMatch(/codeGranted && \([\s\S]{0,200}t\("set\.referral\.code\.granted"\)/);
     const field = readFileSync(path.resolve(__dirname, "OfferCodeField.tsx"), "utf8");
-    expect(field).toContain('api.referralActivate(normalizeOfferCode(code), "typed")');
+    expect(field).toContain('api.referralActivate(normalized, "typed")');
+    expect(field).toContain('if (route === "hold") { setOutcome(holdTypedReferralCode(normalized) ? "held" : "failed"); return; }');
     const api = readFileSync(path.resolve(__dirname, "../../lib/api.ts"), "utf8");
     expect(api).toContain('via ? { code, via } : { code }');
   });

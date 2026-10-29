@@ -16,6 +16,10 @@ export type Market = "il" | "nl" | "be" | "ie" | "uk" | "intl";
 
 export type Attribution = {
   referralCode?: string;
+  /** B-GROWTH-43: "typed" when the parent typed the code in Settings before
+   *  the family's first plan (holdTypedReferralCode); a ?ref= link leaves it
+   *  unset. Never an analytics prop (attributionProps does not emit it). */
+  referralVia?: "typed";
   source: string; // utm_source | referrer host | "referral" | "direct"
   market: Market;
   utmSource?: string;
@@ -126,6 +130,38 @@ export function loadAttribution(): Attribution | null {
  */
 export function consumeReferralCode(): string | undefined {
   return loadAttribution()?.referralCode || undefined;
+}
+
+/** B-GROWTH-43: how the held code was entered — "typed" (Settings) or the link. */
+export function consumeReferralVia(): "link" | "typed" {
+  return loadAttribution()?.referralVia === "typed" ? "typed" : "link";
+}
+
+/**
+ * B-GROWTH-43: hold a code the parent typed before the family's first plan,
+ * in the SAME first-touch record a `?ref=` link fills, so it redeems at the
+ * first plan through the same path (lib/referralActivation). The acquisition
+ * source, market and UTM stay the first touch; only the code (and how it was
+ * entered) is replaced, the parent's latest explicit choice. False when the
+ * device's storage refuses the write.
+ */
+export function holdTypedReferralCode(code: string): boolean {
+  let current = loadAttribution();
+  if (!current) {
+    // Captured at startup in the app; a record that is missing is made now
+    // (and a context without a URL records the plain direct first touch).
+    try {
+      current = captureAttribution();
+    } catch {
+      current = { source: "direct", market: "intl", landingAt: new Date().toISOString() };
+    }
+  }
+  try {
+    localStorage.setItem(LS_ATTRIBUTION, JSON.stringify({ ...current, referralCode: code, referralVia: "typed" }));
+    return loadAttribution()?.referralCode === code;
+  } catch {
+    return false;
+  }
 }
 
 /**

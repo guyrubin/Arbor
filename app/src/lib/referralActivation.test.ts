@@ -9,15 +9,16 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const h = vi.hoisted(() => ({ code: "ABC2345" as string | undefined, activated: [] as string[] }));
-vi.mock("./attribution", () => ({ consumeReferralCode: () => h.code }));
+const h = vi.hoisted(() => ({ code: "ABC2345" as string | undefined, via: "link" as "link" | "typed", activated: [] as string[] }));
+// B-GROWTH-43: + how the held code was entered (a code typed in Settings before the first plan).
+vi.mock("./attribution", () => ({ consumeReferralCode: () => h.code, consumeReferralVia: () => h.via }));
 vi.mock("./loopEvents", () => ({ trackInviteActivated: (role: string) => { h.activated.push(role); } }));
 
 import { activateCapturedReferral, LS_REFERRAL_ACTIVATED } from "./referralActivation";
 
 const store = new Map<string, string>();
 beforeEach(() => {
-  h.code = "ABC2345"; h.activated = []; store.clear();
+  h.code = "ABC2345"; h.via = "link"; h.activated = []; store.clear();
   vi.stubGlobal("localStorage", { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) });
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -58,6 +59,13 @@ describe("B-RESID-05 · a referred family's first activation", () => {
     const activate = vi.fn();
     await expect(activateCapturedReferral({ activate })).resolves.toBe("no_code");
     expect(activate).not.toHaveBeenCalled();
+  });
+
+  it("B-GROWTH-43: a code typed before the first plan redeems here, marked typed", async () => {
+    h.via = "typed";
+    const activate = vi.fn(async () => ({ ok: true, status: "granted", earnedMonths: 1, periodEnd: "x" }) as const);
+    await expect(activateCapturedReferral({ activate })).resolves.toBe("activated");
+    expect(activate).toHaveBeenCalledExactlyOnceWith("ABC2345", "typed");
   });
 
   it("ArborContext fires it with the first plan, through the real API call, refreshing the entitlement", () => {
