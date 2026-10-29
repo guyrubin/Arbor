@@ -35,19 +35,26 @@
  */
 import { useEffect, useRef } from "react";
 import { useArbor } from "../../context/ArborContext";
+import { useAuth } from "../../context/AuthContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import type { HeroJourneyRun } from "../../types";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { withChildSignals } from "../../lib/i18nElevation/childsignals";
-import { countsSince, kidActivityLedgers, kidExitRecapWithBook, type KidActivityLedgers } from "../../lib/kidExitRecap";
+import { countsSince, kidActivityLedgers, kidExitRecapWithBook, makeKidExitRecapScopeGuard, type KidActivityLedgers } from "../../lib/kidExitRecap";
 import { offerSneakHandBack, reachedTheCatToday } from "./games/sneakFreeze/handBack";
 import { BOOK_READS, lastReadSince, type BookRead } from "../../lib/bookReads";
 import { bookAskAfter } from "../../lib/bookAskAfter";
 
 export default function KidExitRecap() {
   const { childProfile, addMoment } = useArbor();
+  const { user, firebaseEnabled } = useAuth();
+  // Fail closed if this mounted session ever observes another account/child.
+  // A→B→A is still a changed session: do not offer a stale Keep action.
+  const scope = JSON.stringify([firebaseEnabled ? user?.uid ?? "signed-out" : "local-sandbox", childProfile.id]);
+  const recapScopeRef = useRef(makeKidExitRecapScopeGuard(scope));
+  recapScopeRef.current.observe(scope);
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   const practice = usePracticeData(childProfile.id);
@@ -72,6 +79,7 @@ export default function KidExitRecap() {
   ledgersRef.current = kidActivityLedgers(practice, heroRuns.items);
   const speakRef = useRef<() => void>(() => undefined);
   speakRef.current = () => {
+    if (!recapScopeRef.current.mayOffer()) return;
     const counts = countsSince(ledgersRef.current, openedAtRef.current);
     const firstName = (childProfile.name || "").split(" ")[0];
     const lang = uiLang === "he" ? "he" : "en";
