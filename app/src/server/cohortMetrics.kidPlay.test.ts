@@ -93,7 +93,8 @@ describe("buildKidPlayReport — the founder panel's narrow read", () => {
     const r = await buildKidPlayReport(store, { since: at(1), now: new Date(at(28)) });
     expect(Object.keys(r).sort()).toEqual(["generatedAt", "kidPlay", "scanned", "since"]);
     expect(r.kidPlay.games).toEqual([{ week: "2026-W43", game: "puzzle", hidden: false, families: 6, sittings: 6, replays: 0, returned7d: 0 }]);
-    expect(r.scanned.events).toBe(6);
+    // wave-3 carry-over: `events` = scanned (6 kid sittings + 2 internal/demo + 1 session_open), `kept` = counted
+    expect(r.scanned).toEqual({ events: 9, kept: 6, mode: "null" });
     expect(scanForbiddenKeys(r)).toEqual([]);
   });
 });

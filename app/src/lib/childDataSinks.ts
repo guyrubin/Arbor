@@ -185,6 +185,7 @@ export const OTHER_FIRESTORE_COLLECTIONS: Readonly<Record<string, OtherChildSink
   erasedChildren: "account: the family's erase record, keyed by the erased child's id (ids and dates only, no child data) so a retried erase and account deletion can finish it; removed by account deletion and a 30-day TTL (firestore.indexes.json)",
   usageRollup: "aggregate: daily token spend, no uid or child",
   opsLedger: "aggregate: AI Studio prepay reserved milliseconds since a top-up date (server/prepayBalance.ts), no uid or child",
+  studioCostLedger: "aggregate: B-KID-150 production cost per SHARED kid asset (plates, overlays, shared narration, video, music; server/studioCostLedger.ts), no uid, family or child",
 };
 
 /** The registered Storage prefixes (path templates). */
