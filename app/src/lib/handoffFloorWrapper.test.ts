@@ -34,6 +34,23 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     expect(handoffFloor(line, { parentText })).toBe(line);
   });
 
+  /* Round 12 (P1-3): the app's own Hebrew wording ("צרו קשר עם המשפחה",
+     mockProvider and live companion-topics output), "ליצור קשר", "להזעיק",
+     "להפנות", and the English passive and noun forms. Main drops each line. */
+  it.each([
+    ["אם אין סימנים של רגיעה אחרי 20 דקות, צרו קשר עם המשפחה.", "צרו קשר עם המשפחה"],
+    ["אם הוא פוגע בעצמו או שאין סימנים של רגיעה, יש ליצור קשר עם ההורים מיד.", "ליצור קשר עם ההורים"],
+    ["אם אחרי 20 דקות אין סימנים של רגיעה, יש להזעיק את ההורים.", "להזעיק את ההורים"],
+    ["אם אין סימנים לשיפור, מומלץ להפנות להערכה של קלינאית תקשורת.", "להפנות להערכה"],
+    ["If there are no signs of calming, the nurse should be called right away.", "nurse should be called"],
+    ["Should there be no signs of improvement, a referral to a speech therapist is recommended.", "referral to a speech therapist"],
+  ])("restored with its condition: %s", (line, command) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).toBe("");
+    expect(handoffFloor(line, { parentText })).toBe(line);
+    expect(findEscalationCommands(line).some((c) => c.text.includes(command))).toBe(true);
+  });
+
   it("a cut line comes back whole: a condition split off by ';' or a new line, a title's full stop", () => {
     for (const line of [
       "If there are no signs of calming after 20 minutes; call the family.",

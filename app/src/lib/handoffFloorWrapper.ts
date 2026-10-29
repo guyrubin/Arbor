@@ -54,15 +54,17 @@ const RECIPIENT_EN = String.raw`(?:(?:${PRO_EN}|${FAMILY_EN})\b|${NUMBER}\b)`;
 const VERB_EN = String.raw`(?:call|calling|phone|phoning|ring|contact|contacting|text|email|notify|notifying|inform|informing|alert|alerting|tell|telling|reach(?:ing)?\s+out|get(?:ting)?\s+in\s+touch|talk|talking|speak|speaking|chat|chatting|check(?:ing)?\s+in|follow(?:ing)?\s+up|discuss|discussing|consult|consulting|see|seeing|visit|visiting|book|booking|ask|asking|mention|mentioning|raise|raising|bring|bringing|refer|referring|let|show|showing|take|taking|involve|involving|share|sharing|loop\s+in)`;
 /** A command verb, then at most four plain words (no clause punctuation), then a recipient. */
 const COMMAND_EN = new RegExp(String.raw`\b${VERB_EN}\b(?:\s+[\p{L}\d'’.&-]+){0,4}?\s+${RECIPIENT_EN}`, "giu");
+/** Round 12 (P1-3): the passive and the noun forms — "the nurse should be called", "a referral to a speech therapist". */
+const COMMAND_EN_PASSIVE = new RegExp(String.raw`\b(?:(?:the|a|an|his|her|their|your|our)\s+)?(?:[\p{L}'’-]+\s+){0,2}?${RECIPIENT_EN}\s+(?:should|must|can|could|may|might|will|needs?\s+to|ought\s+to|has\s+to|have\s+to|is\s+to|are\s+to)\s+be\s+(?:called|contacted|phoned|rung|notified|informed|alerted|told|consulted|involved|seen|asked|updated)\b|\b(?:referrals?|evaluation|assessment|appointment|consultation|check-?up|visit)\s+(?:to|with|by|from)\s+(?:(?:a|an|the|your|his|her|their)\s+)?(?:[\p{L}'’-]+\s+){0,2}?${RECIPIENT_EN}`, "giu");
 /** Escalations that name no recipient: seek/get help, go to the ER, call 112. */
 const COMMAND_EN_BARE = new RegExp(String.raw`\b(?:seek|seeking|get|getting|ask(?:ing)?\s+for)\s+(?:(?:immediate|urgent|professional|medical|expert|outside|extra|more|further|specialist)\s+)*(?:help|care|advice|support|attention|evaluation|assessment|guidance)\b|\b(?:go|going|head|take\s+\p{L}+)\s+to\s+(?:the\s+)?(?:emergency|A&E|hospital)\b|\b(?:call|dial|phone|ring)\s+(?:the\s+)?(?:${NUMBER}|emergency)\b`, "giu");
 
-const HE_INF = String.raw`להתקשר|לפנות|לדבר|לשוחח|להתייעץ|להיוועץ|ליידע|לעדכן|לספר|להודיע|לקבוע\s+תור|לקבוע\s+פגישה|להגיע|לגשת|להראות|לשתף|להזמין`;
-const HE_IMP = String.raw`התקשרו|התקשר|התקשרי|פנו|פנה|פני|דברו|דבר|דברי|שוחחו|שוחח|שוחחי|התייעצו|התייעץ|התייעצי|יידעו|יידע|עדכנו|עדכן|עדכני|ספרו|ספר|ספרי|הודיעו|הודע|קבעו\s+תור|גשו|הזמינו|שתפו|הראו`;
+const HE_INF = String.raw`ליצור\s+קשר|להזעיק|להפנות|להתקשר|לפנות|לדבר|לשוחח|להתייעץ|להיוועץ|ליידע|לעדכן|לספר|להודיע|לקבוע\s+תור|לקבוע\s+פגישה|להגיע|לגשת|להראות|לשתף|להזמין`;
+const HE_IMP = String.raw`צרו\s+קשר|צור\s+קשר|צרי\s+קשר|הזעיקו|הזעק|הזעיקי|הפנו|התקשרו|התקשר|התקשרי|פנו|פנה|פני|דברו|דבר|דברי|שוחחו|שוחח|שוחחי|התייעצו|התייעץ|התייעצי|יידעו|יידע|עדכנו|עדכן|עדכני|ספרו|ספר|ספרי|הודיעו|הודע|קבעו\s+תור|גשו|הזמינו|שתפו|הראו`;
 const HE_RECIPIENT = String.raw`(?:רופא\p{L}*|איש\s+מקצוע|אשת\s+מקצוע|אנשי\s+מקצוע|גורם\s+מקצועי|גורמי\s+מקצוע|מטפל\p{L}*|פסיכולוג\p{L}*|פסיכיאטר\p{L}*|יועצ\p{L}*|יועץ|אחות|אחיות|קלינאי\p{L}*|מרפא\p{L}*|נוירולוג\p{L}*|הורים|הורה|משפחה|אמא|אבא|מוקד\p{L}*|קו\s+חם|קו\s+סיוע|ער"ן|מד"א|חירום|מיון|טיפת\s+חלב|ד"ר|דוקטור|${NUMBER})`;
 const HE_COMMAND = new RegExp(String.raw`(?<!\p{L})(?<pre>ו|ש)?(?:${HE_INF}|${HE_IMP})(?!\p{L})(?:\s+[^\s,;:.!?—–]+){0,3}?\s+(?:(?:עם|את|אל|אצל)\s+)?(?:ו)?(?:ל|ה|לה|ב|מ)?${HE_RECIPIENT}`, "gu");
 /** A modal plus "call / turn to / consult" with no recipient: "יש להתקשר מיד", "מומלץ להתייעץ". */
-const HE_COMMAND_BARE = /(?<!\p{L})(?<pre>ו)?(?:יש|כדאי|מומלץ|חשוב|צריך|רצוי|נא|אפשר|ניתן)(?:\s+(?:מאוד|מיד|מייד|גם|לכם|לך))?\s+(?:להתקשר|לפנות|להתייעץ|לשוחח|לדבר|לבקש\s+עזרה|לקבל\s+(?:עזרה|ייעוץ|הכוונה|תמיכה))(?!\p{L})|(?<!\p{L})(?:לבקש|לקבל|בקשו|קבלו)\s+(?:עזרה|ייעוץ|הכוונה|תמיכה)\s+(?:מקצועית|מקצועי|רפואית|רפואי)(?!\p{L})/gu;
+const HE_COMMAND_BARE = /(?<!\p{L})(?<pre>ו)?(?:יש|כדאי|מומלץ|חשוב|צריך|רצוי|נא|אפשר|ניתן)(?:\s+(?:מאוד|מיד|מייד|גם|לכם|לך))?\s+(?:להתקשר|לפנות|להתייעץ|לשוחח|לדבר|ליצור\s+קשר|להזעיק\s+עזרה|להפנות|לבקש\s+עזרה|לקבל\s+(?:עזרה|ייעוץ|הכוונה|תמיכה))(?!\p{L})|(?<!\p{L})(?:להפנות|הפנו|להזעיק|הזעיקו)\s+(?:את\s+\S+\s+)?(?:ל)?(?:הערכה|אבחון|בדיקה|ייעוץ|טיפול|עזרה|אמבולנס)(?!\p{L})|(?<!\p{L})(?:לבקש|לקבל|בקשו|קבלו)\s+(?:עזרה|ייעוץ|הכוונה|תמיכה)\s+(?:מקצועית|מקצועי|רפואית|רפואי)(?!\p{L})/gu;
 /** "פנו ההורים לרופאה" / "התקשרו אלינו מהגן": a plural past (verb-first), not a command. */
 const HE_NARRATIVE_AFTER = /^(?:ההורים|הם|הן|היא|הוא|אלינו|אליי|אלי|אליה|אליו|אליהם|מהגן|מהבית|אתמול)(?!\p{L})/u;
 const HE_PAST_TIME = /(?<!\p{L})(?:אתמול|שלשום|שעבר|בעבר)(?!\p{L})/u;
@@ -74,11 +76,11 @@ export type EscalationCommand = { text: string; index: number };
 /** Every escalation command in the text (verb through recipient), in order. */
 export function findEscalationCommands(text: string): EscalationCommand[] {
   const out: EscalationCommand[] = [];
-  for (const re of [COMMAND_EN, COMMAND_EN_BARE, HE_COMMAND, HE_COMMAND_BARE]) {
+  for (const re of [COMMAND_EN, COMMAND_EN_PASSIVE, COMMAND_EN_BARE, HE_COMMAND, HE_COMMAND_BARE]) {
     re.lastIndex = 0;
     for (const m of text.matchAll(re)) {
       const index = m.index ?? 0;
-      if ((re === COMMAND_EN || re === COMMAND_EN_BARE) && EN_NARRATIVE_BEFORE.test(text.slice(Math.max(0, index - 48), index))) continue;
+      if ((re === COMMAND_EN || re === COMMAND_EN_BARE || re === COMMAND_EN_PASSIVE) && EN_NARRATIVE_BEFORE.test(text.slice(Math.max(0, index - 48), index))) continue;
       if (re === HE_COMMAND) {
         const rest = text.slice(index + m[0].split(/\s+/)[0].length).trimStart();
         const lineStart = text.lastIndexOf("\n", index) + 1;
