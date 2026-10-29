@@ -326,14 +326,17 @@ describe("a failed co-parent invite says what failed", () => {
     expect(text(nodes(owner("invite-switch")).find(node => node.props.role === "alert"))).toBe(coParentCopy.he.createSignIn);
   });
 
-  it("signed out shows the sign-in line, never the invite form, EN and HE", async () => {
+  it("signed out shows one sign-in line, never the invite form, EN and HE", async () => {
     for (const lang of ["en", "he"] as const) {
       h.uid = "local-sandbox"; h.lang = lang; unmount();
       owner(`signed-out-${lang}`); await settle();
       const tree = owner(`signed-out-${lang}`);
       expect(inviteForm(tree)).toBeUndefined();
       expect(emailInput(tree)).toBeUndefined();
-      expect(text(nodes(tree).find(node => node.props["data-testid"] === "coparent-invite-signin"))).toBe(coParentCopy[lang].createSignIn);
+      // Round 2: one sign-in sentence on the card (the activity panel's), never a second one.
+      const card = text(tree);
+      expect(card.split(coParentCopy[lang].chooseSignIn).length - 1).toBe(1);
+      expect(card).not.toContain(coParentCopy[lang].createSignIn);
       expect(h.api.invite).not.toHaveBeenCalled();
     }
   });

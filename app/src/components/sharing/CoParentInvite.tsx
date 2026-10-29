@@ -151,7 +151,8 @@ function CoParentInviteSession({ childId, childName, grants, onChanged }: CoPare
       </details>
       {activityError && <div role="alert" className="space-y-2"><p className="text-sm" style={{ color: "var(--arbor-pink-ink)" }}>{activityError}</p><button type="button" disabled={activityBusy || activityLoading} onClick={() => void loadActivities()} className={button} style={{ color: "var(--arbor-clay)" }}>{c.refresh}</button></div>}
     </div>
-    {!signedIn ? <p className="text-sm" data-testid="coparent-invite-signin">{c.createSignIn}</p> : <form onSubmit={(e) => void create(e)} className="space-y-3">
+    {/* B-CAREPRO-53: signed out, no invite form; the card's one sign-in line is the activity panel's (round 2: never two). */}
+    {signedIn && <form onSubmit={(e) => void create(e)} className="space-y-3">
       <label htmlFor="coparent-email" className="block text-sm font-bold">{c.email}</label>
       <div className="flex flex-col sm:flex-row gap-2"><input id="coparent-email" type="email" autoComplete="email" inputMode="email" required maxLength={254} dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} className="min-w-0 w-full min-h-11 rounded-xl px-3 text-sm" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)" }} /><button type="submit" disabled={busy} className={`${button} shrink-0`} style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>{busy ? c.creating : c.invite}</button></div>
       <p className="text-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{c.consent}</p>
