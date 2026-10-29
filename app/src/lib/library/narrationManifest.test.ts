@@ -10,13 +10,13 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import manifestJson from "../../content/narrationManifests.json";
 import { KID_SHELF_STORIES } from "../heroJourneys";
 import { LIBRARY_BOOKS } from "./books";
 import { VOICE_FOLDERS, type VoiceFolder } from "./narrationFiles";
 import { legacyStoryUnits, manifestFindings, missingCounts, shelfNarrationNeeds, type NarrationManifests } from "./narrationManifest";
 
-const MANIFEST = manifestJson as unknown as NarrationManifests;
+// read, not imported: a JSON import makes tsc type the whole manifest (fix round 2, lint at the default heap)
+const MANIFEST = JSON.parse(readFileSync(new URL("../../content/narrationManifests.json", import.meta.url), "utf8")) as NarrationManifests;
 const AUDIO = path.resolve(__dirname, "..", "..", "..", "public", "audio", "books");
 const hashOf = (bookId: string, set: string, folder: VoiceFolder, file: string) => {
   const p = path.join(AUDIO, bookId, set, folder, file);

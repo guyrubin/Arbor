@@ -21,6 +21,7 @@
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 
 const env = vi.hoisted(() => ({
   hook: null as any,
@@ -57,7 +58,6 @@ import { resetPlanPlateSources } from "../../lib/plans/planPlateSource";
 import { allBookPages, bookChoices } from "../../lib/library/bookShape";
 import type { AnyBook, BookReaderChild } from "../../lib/library/types";
 import type { HeroSheet } from "../../lib/library/heroSheet";
-import manifestJson from "../../content/narrationManifests.json";
 import { bookNarrationFiles, isNameBearing, sharedNarrationUrls, SHARED_NARRATION_SETS, type VoiceFolder } from "../../lib/library/narrationFiles";
 import type { NarrationManifests } from "../../lib/library/narrationManifest";
 
@@ -292,7 +292,8 @@ describe("B-BOOK-27: a full read of every book in the registry makes zero model,
 });
 
 // ── B-BOOK-35 / B-BOOK-73 (CI half): the REAL files, as the kid door hands them ──
-const MANIFEST = manifestJson as unknown as NarrationManifests;
+// read, not imported: a JSON import makes tsc type the whole register (fix round 2, lint at the default heap)
+const MANIFEST = JSON.parse(readFileSync(new URL("../../content/narrationManifests.json", import.meta.url), "utf8")) as NarrationManifests;
 /** The book's name-free files at their shared static URLs, the name-bearing ones
  *  as the child's private blob: URLs; every key the reader asks for and does
  *  not find is recorded (a page without its file). */

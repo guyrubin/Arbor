@@ -8,10 +8,12 @@
  */
 import { describe, expect, it } from "vitest";
 import { fileHash, sourceRows, walkAssets } from "../../scripts/asset-provenance.mjs";
-import register from "../content/assetProvenance.json";
+import { readFileSync } from "node:fs";
 import { MODEL_NAME, provenanceFindings, rowFindings, type AssetProvenanceRegister, type AssetProvenanceRow } from "./assetProvenance";
 
-const REG = register as unknown as AssetProvenanceRegister;
+// read, not imported: a JSON import makes tsc type the whole register (fix round 2, lint at the default heap)
+const RAW = readFileSync(new URL("../content/assetProvenance.json", import.meta.url), "utf8");
+const REG = JSON.parse(RAW) as AssetProvenanceRegister;
 /** The baseline at creation (29 Oct 2026): it may only shrink. */
 const BASELINE_CEILING = 198;
 
@@ -37,7 +39,7 @@ describe("B-KID-153 · every final asset resolves to its provenance row", () => 
 
   it("every row is complete and carries the AI-authorship record; no model identifier anywhere in the register", () => {
     for (const row of REG.rows) expect(rowFindings(row), row.asset).toEqual([]);
-    expect(MODEL_NAME.test(JSON.stringify(register))).toBe(false);
+    expect(MODEL_NAME.test(RAW)).toBe(false);
   });
 
   it("the rows still match their records (a changed prompt, reference or source is a changed row)", () => {
