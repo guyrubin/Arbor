@@ -175,6 +175,7 @@ function settings(source = settingsSource) {
     // B-PLAY-21: section 1 opens the ONE tone sheet (B-ASKJB-12's).
     "../coach/ToneSheet": { default: "ToneSheet", toneLabel: () => "", __esModule: true },
     "../referral/InviteCard": { default: "InviteCard", __esModule: true },
+    "../referral/OfferCodeField": { default: "OfferCodeField", __esModule: true }, // B-GROWTH-43
     "../billing/PlanPrices": { PlanPrices: "PlanPrices" }, "../billing/LegalLinks": { LegalLinks: "LegalLinks" },
     // B-GA-12: annual default + the native offering gate (web here: never blocked).
     "../billing/paywallModel": { DEFAULT_CADENCE: "annual", offeringGate: () => ({ blocked: false, notice: null }) },
