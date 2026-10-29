@@ -4,13 +4,13 @@
   "feature": "B-AI-11 bounded offline companion recommendation → explicit accept → parent outcome → continuation, including isolation, retention, crisis and deletion controls.",
   "judgeModel": "gemini-3.8-flash",
   "promptVersions": {
-    "coach_chat": "1.9.0",
+    "coach_chat": "1.10.0",
     "voice_reply": "1.10.6",
     "todays_focus": "1.4.0",
     "non_diagnostic_contract": "1.0.0"
   },
   "promptHashes": {
-    "coach_chat": "13aea4f4a0107b772f41f3ae61b842f18c8ad65bc2bd3697b4b6c40c08a3bc1a",
+    "coach_chat": "41717836e9bd9e8adfe0a53278b81b2f49c1b29d852ee7703e6a1069b747d65d",
     "voice_reply": "a0679af8f576fef6b47d82c3694883cadbd02d1d38af44fd3cfe961e7f474ec6",
     "todays_focus": "4099ba6e47029d42fa766c618a94f0e76b6f628fe5b9cddcef0e61c958a507b4",
     "non_diagnostic_contract": "b9179613d1346f25bfc95c4f10a0bbada56a2c2bae5202bceb5fbb769555763a"
