@@ -54,8 +54,12 @@ describe("B-ASKJB-26 · the nine templates fold into the authored routine boards
     h.lang = lang;
     const html = renderToStaticMarkup(<PlansTab />);
     expect(h.buttons.filter((b) => b["data-plan-template"])).toHaveLength(0);
-    expect(html).not.toContain(translate(lang, "plan.templates"));
-    for (const key of ["siblingConflict", "behaviorReset", "morningDeparture"]) expect(html).not.toContain(translate(lang, `plan.template.${key}`).split(" ").slice(0, 3).join(" "));
+    // Critic r2 (shrink-only): the folded chips' strings are gone, EN and HE.
+    expect(translate(lang, "plan.templates")).toBe("plan.templates");
+    for (const key of ["morningDeparture", "screenShutdown", "siblingConflict", "bedtimeResistance", "foodRefusal", "separationAnxiety", "responsibilityLadder", "schoolAdaptation", "behaviorReset"]) {
+      expect(translate(lang, `plan.template.${key}`)).toBe(`plan.template.${key}`);
+    }
+    expect(html).not.toMatch(lang === "en" ? /Templates:|Sibling sharing|Behavior reset plan/ : /תבניות:|סכסוכי שיתוף/);
     const chips = h.buttons.filter((b) => b["data-routine-template"]);
     const offered = routineTemplatesForAge(ageMonthsFromProfile({ birthDate: "2022-01-01", age: 4 } as never));
     expect(chips.map((b) => b["data-routine-template"])).toEqual(offered.map((r) => r.id));
