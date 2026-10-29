@@ -33,7 +33,7 @@
       { "@type": "Question", "name": "לאילו גילים Arbor מתאימה?", "acceptedAnswer": { "@type": "Answer", "text": "לילדים בגילי 0–12, מהתינוקות ועד בית הספר היסודי. היכולות מתאימות את עצמן לשלב ההתפתחותי של הילד ולמה שתיעדתם בפועל." } },
       { "@type": "Question", "name": "מה קורה עם הפרטיות והנתונים?", "acceptedAnswer": { "@type": "Answer", "text": "הזיכרון פרטי כברירת מחדל. שום דבר לא נשמר לסיפור של הילד בלי אישור הורה, ואפשר לייצא או למחוק הכול בכל רגע. עומד בדרישות GDPR והגנת מידע על קטינים." } },
       { "@type": "Question", "name": "Arbor בעברית?", "acceptedAnswer": { "@type": "Answer", "text": "כן. Arbor פועלת בעברית מלאה, כולל ממשק מימין-לשמאל, ומותאמת להורות בישראל." } },
-      { "@type": "Question", "name": "כמה זה עולה ואפשר לבטל?", "acceptedAnswer": { "@type": "Answer", "text": "יש מסלול חינמי להתחלה, בלי כרטיס אשראי. מסלול פלוס ומשפחתי בתשלום חודשי או שנתי, וניתן לבטל בכל עת. מחירי ההשקה לישראל מוצגים לפני אישור סופי." } }
+      { "@type": "Question", "name": "כמה זה עולה ואפשר לבטל?", "acceptedAnswer": { "@type": "Answer", "text": "מתחילים ב-14 ימים של Arbor פלוס בחינם, בלי כרטיס אשראי. אחר כך מסלול פלוס בתשלום חודשי או שנתי, וניתן לבטל בכל עת. מחירי ההשקה לישראל מוצגים לפני אישור סופי." } }
     ] }
   ]
 }
@@ -577,7 +577,7 @@ table.ctable{border-collapse:collapse;width:100%;min-width:640px;font-size:.94re
 @media(max-width:820px){.community .wrap{grid-template-columns:1fr}}
 
 /* ---------- pricing ---------- */
-.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;align-items:start}
+.tiers{display:grid;grid-template-columns:repeat(2,1fr);gap:1.2rem;align-items:start}
 .tier{background:var(--card);border:1px solid var(--line);border-radius:var(--r-2xl);padding:1.7rem 1.5rem;box-shadow:var(--shadow-sm);position:relative}
 .tier.feat-tier{border-color:var(--green);box-shadow:var(--shadow-lg);transform:translateY(-6px)}
 .tier .ribbon{position:absolute;top:-13px;inset-inline-start:1.5rem;background:linear-gradient(135deg,var(--green),var(--green-deep));
@@ -1252,19 +1252,19 @@ footer{background:linear-gradient(180deg,var(--paper-2),#e3eae5);border-top:1px 
     <div class="sec-head reveal">
       <span class="eyebrow">מסלולים</span>
       <h2 class="h-lg" style="margin-top:.9rem">מתחילים עם הילד שלכם. גדלים למערכת מלאה סביבו.</h2>
-      <p class="lede">אפשר להתחיל מזיכרון ושאלות בסיסיות. משדרגים כשהמשפחה רוצה את כל המערכת: מומחים, קצב יומי, משחק, אקדמיה, תרגול וסיכומים.</p>
+      <p class="lede">מתחילים ב-14 ימים של כל המערכת, בלי כרטיס אשראי. ממשיכים במנוי כשהמשפחה רוצה להמשיך: מומחים, קצב יומי, משחק, אקדמיה, תרגול וסיכומים.</p>
     </div>
     <div class="tiers reveal d1">
       <div class="tier">
-        <div class="tname">התחלה</div>
-        <div class="price"><b>חינם</b></div>
-        <div class="for">פותחים פרופיל ילד ראשון, שואלים שאלות ומתחילים לבנות את הזיכרון ההתפתחותי.</div>
+        <div class="tname">14 ימי ניסיון</div>
+        <div class="price"><b>14 ימים</b><span>/ בלי תשלום</span></div>
+        <div class="for">כל יכולות Arbor פלוס ל-14 ימים, בלי כרטיס אשראי. אחר כך ממשיכים במנוי, ומה ששמרתם נשאר שלכם לקריאה ולייצוא.</div>
         <ul>
-          <li><span class="tk"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>5 שאלות עם הקשר בחודש</li>
-          <li><span class="tk"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>סיפור ילד אחד ואבני דרך בסיסיות</li>
-          <li><span class="tk"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>פרטיות ובטיחות כבר בפנים</li>
+          <li><span class="tk"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>כל יכולות פלוס מהיום הראשון</li>
+          <li><span class="tk"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>בלי כרטיס אשראי</li>
+          <li><span class="tk"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>מה ששמרתם נשאר שלכם גם בלי מנוי</li>
         </ul>
-        <a class="btn btn-ghost" data-cta="app" href="https://arborprd-westeu.web.app/">להתחיל בחינם</a>
+        <a class="btn btn-ghost" data-cta="app" href="https://arborprd-westeu.web.app/">להתחיל ניסיון</a>
       </div>
       <div class="tier feat-tier">
         <span class="ribbon">הכי פופולרי</span>
@@ -1273,21 +1273,10 @@ footer{background:linear-gradient(180deg,var(--paper-2),#e3eae5);border-top:1px 
         <div class="for">למשפחות שרוצות את Arbor כמערכת יומיומית: הכוונה, משחק, אקדמיה, תרגול, תוכניות וסיכומים. <span class="yr">₪449 בשנה</span></div>
         <ul>
           <li><span class="tk"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>הכוונה ממומחים עם ההקשר של הילד</li>
-          <li><span class="tk"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>משחק יומי, תרגול ואקדמיה ללא הגבלה</li>
+          <li><span class="tk"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>משחק יומי, תרגול ואקדמיה בכל יום</li>
           <li><span class="tk"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>תוכניות גדילה וסיכומים לאנשי מקצוע</li>
         </ul>
         <a class="btn btn-primary" data-cta="app" href="https://arborprd-westeu.web.app/">להצטרף לבטא</a>
-      </div>
-      <div class="tier">
-        <div class="tname">Arbor משפחתי</div>
-        <div class="price"><b>₪79</b><span>/ חודש</span></div>
-        <div class="for">למשפחות עם יותר מילד אחד, או יותר ממבוגר אחד, שצריכים תמונה אחת ברורה. <span class="yr">₪749 בשנה</span></div>
-        <ul>
-          <li><span class="tk"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>כל מה שבפלוס, לכל המשפחה</li>
-          <li><span class="tk"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>הקשר משותף בין ההורים</li>
-          <li><span class="tk"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12l4 4 10-10" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>סיפורים נפרדים, מבט משפחתי אחד</li>
-        </ul>
-        <a class="btn btn-ghost" data-cta="app" href="https://arborprd-westeu.web.app/">להצטרף לבטא</a>
       </div>
     </div>
     <p class="price-flag">מחירי ההשקה לישראל מוצגים לפני אישור סופי · ללא כרטיס אשראי בהתחלה · ביטול בכל עת.</p>
@@ -1308,7 +1297,7 @@ footer{background:linear-gradient(180deg,var(--paper-2),#e3eae5);border-top:1px 
       <div class="faq-item"><button class="faq-q" aria-expanded="false">לאילו גילים Arbor מתאימה?<span class="pm"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke-width="2" stroke-linecap="round"/></svg></span></button><div class="faq-a"><p>לילדים בגילי 0–12, מהתינוקות ועד בית הספר היסודי. היכולות מתאימות את עצמן לשלב ההתפתחותי של הילד ולמה שתיעדתם בפועל.</p></div></div>
       <div class="faq-item"><button class="faq-q" aria-expanded="false">מה קורה עם הפרטיות והנתונים?<span class="pm"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke-width="2" stroke-linecap="round"/></svg></span></button><div class="faq-a"><p>הזיכרון פרטי כברירת מחדל. שום דבר לא נשמר לסיפור של הילד בלי אישור הורה, ואפשר לייצא או למחוק הכול בכל רגע. עומד בדרישות GDPR והגנת מידע על קטינים.</p></div></div>
       <div class="faq-item"><button class="faq-q" aria-expanded="false">Arbor בעברית?<span class="pm"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke-width="2" stroke-linecap="round"/></svg></span></button><div class="faq-a"><p>כן. Arbor פועלת בעברית מלאה, כולל ממשק מימין-לשמאל, ומותאמת להורות בישראל.</p></div></div>
-      <div class="faq-item"><button class="faq-q" aria-expanded="false">כמה זה עולה ואפשר לבטל?<span class="pm"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke-width="2" stroke-linecap="round"/></svg></span></button><div class="faq-a"><p>יש מסלול חינמי להתחלה, בלי כרטיס אשראי. מסלול פלוס ומשפחתי בתשלום חודשי או שנתי, וניתן לבטל בכל עת. מחירי ההשקה לישראל מוצגים לפני אישור סופי.</p></div></div>
+      <div class="faq-item"><button class="faq-q" aria-expanded="false">כמה זה עולה ואפשר לבטל?<span class="pm"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke-width="2" stroke-linecap="round"/></svg></span></button><div class="faq-a"><p>מתחילים ב-14 ימים של Arbor פלוס בחינם, בלי כרטיס אשראי. אחר כך מסלול פלוס בתשלום חודשי או שנתי, וניתן לבטל בכל עת. מחירי ההשקה לישראל מוצגים לפני אישור סופי.</p></div></div>
     </div>
   </div>
 </section>

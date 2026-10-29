@@ -10,10 +10,13 @@
  *  3. No string in either language makes a claim BD-13 forbids, except the
  *     shrink-only KNOWN_FALSE_CLAIMS awaiting Guy's copy, each still false.
  */
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { en as baseEn, he as baseHe } from "./i18n";
 import { elevationEn, elevationHe } from "./i18nElevation";
-import { CLAIM_REGISTRY, KNOWN_FALSE_CLAIMS, auditClaimCopy, claimTopicsOf, deniedClaimsIn } from "./claimAudit";
+import { CLAIM_REGISTRY, KNOWN_FALSE_CLAIMS, KNOWN_PRICE_DISCREPANCIES, auditClaimCopy, auditMarketingPage, claimTopicsOf, deniedClaimsIn, marketingPrices } from "./claimAudit";
+import { effectiveMonthly, planPrice } from "./pricing";
 import { OFFERS } from "./offers";
 import { PLAN_LIMITS, TRIAL_DAYS } from "../server/entitlements";
 import { IMAGE_ALLOWANCE } from "../server/imageQuota";
@@ -100,12 +103,30 @@ describe("BD-13 · 2 · each basis is true in the code", () => {
     expect(HE["pw.body.maxChildren"]).toMatch(/ילד אחד[\s\S]*עד שישה/);
   });
 
-  it("unlimitedCoaching: Plus and Family have no daily coach number", () => {
+  it("unlimitedCoaching: Plus and Family have no daily coach number, and the copy never says unlimited", () => {
     expect(PLAN_LIMITS.plus.coachMessagesPerDay).toBeNull();
     expect(PLAN_LIMITS.family.coachMessagesPerDay).toBeNull();
     for (const key of keysOf("unlimitedCoaching")) {
-      const [e] = both(key);
-      expect(e, `${key} may claim coaching, never generation`).not.toMatch(/unlimited (images?|stories|comics?|heroes|adventures?)/i);
+      const [e, h] = both(key);
+      expect(e, `${key} EN`).not.toMatch(/\bunlimited\b/i);
+      expect(h, `${key} HE`).not.toMatch(/ללא הגבלה|בלי הגבלה/);
+      expect(e, `${key} names the daily message limit`).toMatch(/no daily message limit/);
+    }
+    for (const key of ["set.plan.plusDesc", "set.plan.plusPitch", "pw.body", "pw.bodyCoach"]) {
+      expect(EN[key], key).toContain("fair-use hourly limit");
+      expect(HE[key], key).toContain("מגבלת שימוש הוגן לשעה");
+    }
+  });
+
+  it("imageAllowance: Plus draws more than Free each day and each month, and the copy promises no unlimited drawing", () => {
+    expect(IMAGE_ALLOWANCE.plus.perDay).toBeGreaterThan(IMAGE_ALLOWANCE.free.perDay);
+    expect(IMAGE_ALLOWANCE.plus.perMonth).toBeGreaterThan(IMAGE_ALLOWANCE.free.perMonth);
+    expect(IMAGE_ALLOWANCE.plus.heroPer30Days).toBeGreaterThan(IMAGE_ALLOWANCE.free.heroPer30Days);
+    for (const key of keysOf("imageAllowance")) {
+      const [e, h] = both(key);
+      expect(deniedClaimsIn(e, "en"), key).toEqual([]);
+      expect(deniedClaimsIn(h, "he"), key).toEqual([]);
+      expect(e, key).toMatch(/daily allowance of new pictures|more hero drawings each month/);
     }
   });
 
@@ -120,14 +141,8 @@ describe("BD-13 · 3 · the forbidden claims", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("each known-false claim is still shipped, still forbidden and still contradicted by the allowance (shrink-only)", () => {
-    for (const key of Object.keys(KNOWN_FALSE_CLAIMS)) {
-      const row = rows.find((r) => r.key === key);
-      expect(row?.denied, `${key} was fixed — delete its KNOWN_FALSE_CLAIMS line`).toContain("unlimited-generation");
-    }
-    expect(Number.isFinite(IMAGE_ALLOWANCE.plus.perDay)).toBe(true);
-    expect(IMAGE_ALLOWANCE.plus.perDay).toBeGreaterThan(0);
-    expect(Object.keys(KNOWN_FALSE_CLAIMS).length).toBeLessThanOrEqual(3);
+  it("the known-false list is empty and stays empty (shrink-only, round 2 fixed all three)", () => {
+    expect(Object.keys(KNOWN_FALSE_CLAIMS)).toEqual([]);
   });
 
   it("negative controls: each forbidden claim is caught in both languages, and a negation passes", () => {
@@ -144,7 +159,66 @@ describe("BD-13 · 3 · the forbidden claims", () => {
     expect(deniedClaimsIn("ארבור משפר את ההתפתחות", "he")).toContain("outcome-promise");
     expect(deniedClaimsIn("בארבור פלוס אין מכסה יומית", "he")).toContain("unlimited-generation");
     expect(deniedClaimsIn("במקום קלינאי תקשורת", "he")).toContain("professional-equivalence");
+    expect(deniedClaimsIn("Unlimited coaching, professional reports", "en")).toContain("unlimited-coaching");
+    expect(deniedClaimsIn("אימון ללא הגבלה", "he")).toContain("unlimited-coaching");
     expect(claimTopicsOf("Your free trial ends today", "en")).toEqual(expect.arrayContaining(["trial", "free"]));
     expect(claimTopicsOf("שיפור מיומנויות חברתיות", "he")).toEqual([]); // "מנוי" inside a word is not a subscription
+  });
+});
+
+/* ── round 2: the shipped marketing pages ──────────────────────────────── */
+
+const MARKETING = path.resolve(__dirname, "..", "..", "public", "marketing");
+const listPages = (dir: string, prefix = ""): string[] =>
+  readdirSync(dir).flatMap((n) => {
+    const full = path.join(dir, n);
+    const rel = prefix ? `${prefix}/${n}` : n;
+    return statSync(full).isDirectory() ? listPages(full, rel) : /\.(html|md)$/.test(n) ? [rel] : [];
+  });
+const pages = listPages(MARKETING);
+const ALLOWED_PRICES = new Set(
+  (["EUR", "ILS"] as const).flatMap((cur) =>
+    [planPrice("plus", "monthly", cur), planPrice("plus", "annual", cur), effectiveMonthly("plus", cur)]
+      .filter((n): n is number => n !== null)
+      .map((n) => `${cur === "EUR" ? "€" : "₪"}${n.toFixed(2)}`)),
+);
+
+describe("BD-13 · 4 · the shipped marketing pages", () => {
+  it("finds the pages (non-vacuity)", () => {
+    expect(pages).toEqual(expect.arrayContaining(["arbor-il.html", "index.html", "arbor-marketing-landing-page-he.html", "en/ai-parenting-app-with-memory.html"]));
+  });
+
+  it("no page sells a plan that is not sold, a standing free tier, 'unlimited', or a forbidden claim", () => {
+    const offenders = pages.flatMap((rel) => auditMarketingPage(readFileSync(path.join(MARKETING, rel), "utf8")).map((h) => `${rel}: ${h}`));
+    expect(offenders).toEqual([]);
+  });
+
+  it("every price on a page is lib/pricing.ts's, except the pinned discrepancies awaiting Guy", () => {
+    const off: string[] = [];
+    for (const rel of pages) {
+      const pinned = new Set(KNOWN_PRICE_DISCREPANCIES[rel]?.prices ?? []);
+      for (const p of marketingPrices(readFileSync(path.join(MARKETING, rel), "utf8"))) if (!ALLOWED_PRICES.has(p) && !pinned.has(p)) off.push(`${rel}: ${p}`);
+    }
+    expect(off).toEqual([]);
+    expect(ALLOWED_PRICES).toEqual(new Set(["€12.99", "€129.90", "€10.83", "₪69.90", "₪549.00", "₪45.75"]));
+  });
+
+  it("each pinned discrepancy is still on its page (shrink-only) and names Guy", () => {
+    for (const [rel, d] of Object.entries(KNOWN_PRICE_DISCREPANCIES)) {
+      const shown = new Set(marketingPrices(readFileSync(path.join(MARKETING, rel), "utf8")));
+      for (const p of d.prices) expect(shown.has(p), `${rel} no longer shows ${p} — delete it from KNOWN_PRICE_DISCREPANCIES`).toBe(true);
+      expect(d.guy).toMatch(/^Guy: /);
+    }
+    expect(Object.keys(KNOWN_PRICE_DISCREPANCIES).length).toBeLessThanOrEqual(1);
+  });
+
+  it("negative controls: the IL page's old tiers are caught", () => {
+    const old = `<div class="tier"><div class="tname">התחלה</div><div class="price"><b>חינם</b></div></div>
+      <li>משחק יומי, תרגול ואקדמיה ללא הגבלה</li><div class="tname">Arbor משפחתי</div><div class="price"><b>₪79</b></div>
+      <p>יש מסלול חינמי להתחלה, בלי כרטיס אשראי.</p>`;
+    const hits = auditMarketingPage(old).join("\n");
+    for (const id of ["plan-not-sold", "standing-free-tier", "unlimited"]) expect(hits).toContain(id);
+    expect(marketingPrices(old)).toEqual(["₪79.00"]);
+    expect(marketingPrices("12,99 € and € 129,90 and ₪549")).toEqual(["€12.99", "€129.90", "₪549.00"]);
   });
 });
