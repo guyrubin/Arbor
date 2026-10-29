@@ -191,6 +191,8 @@ function settings(source = settingsSource) {
     "../../lib/theme": { ACCENT_THEMES: ["green", "teal", "blue"], getSavedTheme: () => "green", setTheme: vi.fn() },
     // B-KID-70 (R-5): one selectable look → the Kid Mode Look row stays hidden here.
     "../../lib/kidThemeManifest": { selectableThemes: () => ["film3d"], resolveKidTheme: () => "film3d" },
+    // B-BOOK-45: the bedtime row's pure helpers (real module, no I/O).
+    "../../lib/library/readMode": { BEDTIME_TIMES: ["18:30", "19:00", "19:30", "20:00", "20:30"], validBedtime: (v: unknown) => (typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : null) },
     "../../lib/formatDate": { fmtDay: () => "" },
     "../../lib/i18n": { translate: (_lang: string, key: string) => key },
     // MOB-20 / B-INF-05: the About row reads the stamped build identity.

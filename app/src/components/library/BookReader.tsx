@@ -67,6 +67,7 @@ import type { AnyBook, BookLang, BookReaderChild, Page } from "../../lib/library
 import "./bookReader.css";
 import { useBookProgress } from "./useBookProgress";
 import { usePlanPlateSrcs } from "../../lib/plans/planPlateSource";
+import { BEDTIME_PLAYBACK_RATE, BEDTIME_SFX_GAIN, TOGETHER_TYPE_SCALE, togetherPrompt, type ReadMode } from "../../lib/library/readMode";
 import type { BookProgressPosition } from "../../lib/library/bookBookmarks";
 
 export interface BookReaderProps {
@@ -112,6 +113,10 @@ export interface BookReaderProps {
    *  When given, every narration path resolves through it and nothing else
    *  is asked for. */
   assets?: { files: Record<string, string>; cues: Record<string, CueTimes> } | null;
+  /** B-BOOK-45 / B-BOOK-46 (lib/library/readMode): "bedtime" = night stage,
+   *  0.92x narration, half-gain sounds, a Goodnight ending; "together" =
+   *  narration off until turned on, larger type, parent-register prompts. */
+  readMode?: ReadMode;
 }
 
 /** `<root>/<book>/<set>/<folder>/<file>` → the `<folder>/<file>` key. */
@@ -179,6 +184,7 @@ export function BookReader({
   initialChoosing = false,
   voiceSet = null,
   assets = null,
+  readMode = "alone",
 }: BookReaderProps) {
   const plateTable = plates ?? bookPlatesFor(book);
   const choices = bookChoices(book);
@@ -190,7 +196,12 @@ export function BookReader({
   const resolved = useMemo(() => resolveHeroSheet(child, { dev }), [child, dev]);
   const sheet = sheetProp !== undefined ? sheetProp : resolved;
   const anchorOf = useMemo(() => sheetAnchorOf(sheet), [sheet]);
-  const muted = useKidReadAloudMuted(child.id);
+  const childMuted = useKidReadAloudMuted(child.id);
+  // B-BOOK-46: Together starts silent (the grown-up reads); its Sound toy turns
+  // the narration on for this read only, never the child's own setting.
+  const [togetherSound, setTogetherSound] = useState(false);
+  const muted = childMuted || (readMode === "together" && !togetherSound);
+  const sfxGain = readMode === "bedtime" ? BEDTIME_SFX_GAIN : 1;
   const dir = lang === "he" ? "rtl" : "ltr";
 
   // ── the stage box ──────────────────────────────────────────────────────────
@@ -331,7 +342,7 @@ export function BookReader({
     },
     [staged, artStates, state.at],
   );
-  const voice = useNarration(pageSrc, { showKey, muted, enabled: narration !== "off", onClock });
+  const voice = useNarration(pageSrc, { showKey, muted, enabled: narration !== "off", onClock, rate: readMode === "bedtime" ? BEDTIME_PLAYBACK_RATE : 1 });
   // Sound off / no file: the states' silent timings; with audio, timed cues
   const silent = muted || narration === "off" || !pageSrc || (voice.settled && !voice.heard);
   const audioPending = !silent && !voice.settled && !voice.heard;
@@ -390,7 +401,7 @@ export function BookReader({
   // ── page-turn cue ──────────────────────────────────────────────────────────
   const lastAt = useRef(state.at);
   useEffect(() => {
-    if (lastAt.current !== state.at && state.dir !== 0) kidSfx("pageTurn");
+    if (lastAt.current !== state.at && state.dir !== 0) kidSfx("pageTurn", sfxGain);
     lastAt.current = state.at;
   }, [state.at, state.dir]);
 
@@ -413,7 +424,7 @@ export function BookReader({
   }, [choosing]);
   const tapItem = (id: string) => {
     if (done.has(id) || (nextItem && nextItem !== id)) return;
-    kidSfx("tap");
+    kidSfx("tap", sfxGain);
     const item = repair?.items.find((it) => it.id === id);
     voice.playClip(item?.sound ?? via(probe && item?.line ? narrationKey({ ...keyBase, pageId: `${page.id}-${id}` }, root) : null));
     dispatch({ type: "repair", itemId: id });
@@ -456,7 +467,7 @@ export function BookReader({
   const fitKey = `${state.at}|${box.width}x${box.height}|${paras.join("|")}`;
   const [fit, setFit] = useState({ key: fitKey, shrink: 0 });
   const shrink = fit.key === fitKey ? fit.shrink : 0;
-  const typePx = Math.max(16, layout.typePx - shrink);
+  const typePx = Math.max(16, Math.round(layout.typePx * (readMode === "together" ? TOGETHER_TYPE_SCALE : 1)) - shrink);
   useIsoLayoutEffect(() => {
     const el = wordsRef.current;
     if (!el) return;
@@ -588,12 +599,20 @@ export function BookReader({
     </div>
   );
 
+  // B-BOOK-46: the grown-up's prompt for this screen (Together only; parent register).
+  const together = atEnd ? null : togetherPrompt(readMode, book, state);
+  const togetherNote = together ? (
+    <aside className="bk-together" data-book-together-prompt="" role="note">
+      <strong>{bookString("together.label", lang)}</strong> <span>{"key" in together ? bookString(together.key, lang) : labelFor(together.label, lang)}</span>
+    </aside>
+  ) : null;
+
   return (
-    <div className="bk-reader" data-book-reader="" data-mode={layout.mode} data-page-type={atEnd ? "end" : layout.pageType} dir={dir} lang={lang} role="region" aria-label={bookString("reader.aria", lang, { title: book.title[lang] })}>
+    <div className="bk-reader" data-book-reader="" data-read-mode={readMode} data-mode={layout.mode} data-page-type={atEnd ? "end" : layout.pageType} dir={dir} lang={lang} role="region" aria-label={bookString("reader.aria", lang, { title: book.title[lang] })}>
       <header className="bk-bar" style={{ blockSize: px(wide ? BAR_WIDE : BAR_NARROW) }}>
         <KidToy tone="paper" shape="round" size="s" glyph="close" data-book-close="" aria-label={bookString("close", lang)} onClick={onClose} />
         <span className="bk-bar-fill" style={progressNotice ? { minWidth: 0, textAlign: "center" } : undefined}>{progressNotice}</span>
-        <BookSoundToggle childId={child.id} lang={lang} />
+        <BookSoundToggle childId={child.id} lang={lang} {...(readMode === "together" ? { muted, onToggle: () => setTogetherSound((on) => !on) } : {})} />
       </header>
       <div className="bk-stage" ref={stageRef}>
         {(
@@ -631,6 +650,7 @@ export function BookReader({
                   <p className="bk-cover-line" style={{ fontSize: px(layout.typePx) }}>
                     {book.coverLine[lang]}
                   </p>
+                  {togetherNote}
                 </div>
                 {layout.openRect && (
                   <div className="bk-open-row" style={rectStyle(layout.openRect)}>
@@ -649,7 +669,7 @@ export function BookReader({
                 style={textStyle}
               >
                 {atEnd ? (
-                  <BookEnd book={book} lang={lang} gender={gender} name={name} titlePx={layout.titlePx} typePx={typePx} onReadAgain={() => dispatch({ type: "toCover" })} onClose={onClose} />
+                  <BookEnd book={book} lang={lang} gender={gender} name={name} titlePx={layout.titlePx} typePx={typePx} onReadAgain={() => dispatch({ type: "toCover" })} onClose={onClose} goodnight={readMode === "bedtime"} />
                 ) : onCover ? (
                   <div className="bk-cover-words" ref={wordsRef}>
                     <h1 className="bk-title" style={{ fontSize: px(layout.titlePx) }}>
@@ -674,6 +694,7 @@ export function BookReader({
                   </div>
                 ) : null}
                 {cards}
+                {!coverFront && togetherNote}
                 {pending && repair && (
                   <p className="bk-hint" data-book-repair-prompt="">
                     <PointingHand />

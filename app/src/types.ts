@@ -135,6 +135,14 @@ export interface ChildProfile {
    */
   kidTheme?: import('./lib/kidThemeManifest').KidThemeId;
   /**
+   * B-BOOK-45 — the parent's bedtime ("HH:MM", Settings › Kid Mode): from this
+   * time until 06:00 a library book opens as the bedtime read (night stage,
+   * slower narration, a Goodnight ending that opens nothing else). A field ON
+   * the profile document like kidTheme (rides profile sync/export/erase).
+   * Absent = off. Read only through lib/library/readMode.validBedtime.
+   */
+  bedtimeFrom?: string;
+  /**
    * B-SHELL-39 — what the parent wants to work on now, in their own words,
    * kept from "Tell Arbor about {name}" (≤ 3). A parent wish, never an
    * assessment. Fields ON the child doc: they ride the existing profile
