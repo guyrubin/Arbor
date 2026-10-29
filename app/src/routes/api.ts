@@ -126,6 +126,7 @@ import type { AdminMetricsStore } from "../server/adminMetrics.js";
 import type { UsageCounterStore } from "../server/quotaStore.js";
 import { buildWaitlistEntry, isValidEmail, notifyWaitlistSafely, type WaitlistNotifier, type WaitlistStore } from "../server/waitlist.js";
 import { createSharedChildRecordSource, resolveSharedPacket, type SharedChildRecordSource } from "../server/sharedPacket.js";
+import { programWeekScript } from "../lib/programs/weekScript.js";
 import { createCoParentRouter } from "../server/coParent.js";
 
 type ApiDeps = {
@@ -1263,6 +1264,15 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         }
       }
 
+      // B-PROG-04 (dark, config.programScriptInCoach): an on-shelf turn opens
+      // with the active week's coach script, verbatim (authored program
+      // content, never model prose). Seeded, file and escalation turns never
+      // reach it (escalation answered above, byte-identical). The output
+      // screen below covers it like any line.
+      const weekScript = config.programScriptInCoach && !seededEscalation && !attachments.length && !structured.fileDeclined
+        ? programWeekScript(companion.program, message, renderLanguage) : null;
+      if (weekScript) structured.text = `${weekScript}\n\n${structured.text ?? ""}`.trim();
+
       // AI-2: output-side safety screen (lexical floor + optional semantic classifier).
       let renderedText = seededFollowUp ? renderCoachFollowUpResponse(structured, renderLanguage)
         : structured.fileDeclined ? renderFileDeclinedResponse(structured)
@@ -1810,6 +1820,14 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         });
         res.end();
       };
+
+      // B-PROG-04 (dark, config.programScriptInCoach): an on-shelf spoken
+      // answer opens with the active week's coach script, verbatim — its own
+      // first delta, lexically screened like every released sentence.
+      const weekScript = config.programScriptInCoach ? programWeekScript(companionContext.programScripts, message, ttsLang) : null;
+      if (weekScript && !screenModelOutputLexical(weekScript).flagged) {
+        writeSse(res, "delta", { text: `${weekScript} `, tts: { text: weekScript, token: mintTtsToken(weekScript, ttsLang) } });
+      }
 
       if (outputClassifierEnabled()) {
         // Full-buffer path (config-gated): the semantic classifier judges the
