@@ -182,6 +182,30 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     }
   });
 
+  /* Round 17 (P1-B): every item of a negated list is masked before a harm word may qualify the condition
+     (C09, W05-W07, HW06, HW07). */
+  it.each([
+    "If there are no signs of biting or hitting, let the family know.",
+    "When there are no signs of hitting or biting, tell the family.",
+    "When there are no signs of crying or screaming at drop-off, phone the family.",
+    "If there are no signs of hitting, biting or kicking, let the family know.",
+    "אם אין סימנים של בכי או צרחות, עדכנו את ההורים.",
+    "כשאין סימנים שהוא מרביץ או נושך, עדכנו את ההורים.",
+  ])("a harm word inside a negated list does not qualify: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).toBe("");
+    expect(handoffFloor(line, { parentText })).toBe("");
+  });
+  /* Round 17 (P1-B, critic P2): a vital sign's absence is the emergency itself (W20, HW19). */
+  it.each([
+    "When there are no signs of normal breathing, call an ambulance.",
+    "כשאין סימנים לנשימה תקינה, הזמינו אמבולנס.",
+  ])("a vital sign's absence restores: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).not.toBe(line);
+    expect(handoffFloor(line, { parentText })).toBe(line);
+  });
+
   it("a cut line comes back whole: a condition split off by ';' or a new line, a title's full stop", () => {
     for (const line of [
       "If there are no signs of calming after 20 minutes; call the family.",

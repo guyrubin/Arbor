@@ -61,7 +61,7 @@ const COMMAND_EN_BARE = new RegExp(String.raw`\b(?:seek|seeking|get|getting|ask(
 
 const HE_INF = String.raw`ליצור\s+קשר|להזעיק|להפנות|להתקשר|לפנות|לדבר|לשוחח|להתייעץ|להיוועץ|ליידע|לעדכן|לספר|להודיע|לקבוע\s+תור|לקבוע\s+פגישה|להגיע|לגשת|להראות|לשתף|להזמין`;
 const HE_IMP = String.raw`צרו\s+קשר|צור\s+קשר|צרי\s+קשר|הזעיקו|הזעק|הזעיקי|הפנו|התקשרו|התקשר|התקשרי|פנו|פנה|פני|דברו|דבר|דברי|שוחחו|שוחח|שוחחי|התייעצו|התייעץ|התייעצי|יידעו|יידע|עדכנו|עדכן|עדכני|ספרו|ספר|ספרי|הודיעו|הודע|קבעו\s+תור|גשו|הזמינו|שתפו|הראו`;
-const HE_RECIPIENT = String.raw`(?:רופא\p{L}*|איש\s+מקצוע|אשת\s+מקצוע|אנשי\s+מקצוע|גורם\s+מקצועי|גורמי\s+מקצוע|מטפל\p{L}*|פסיכולוג\p{L}*|פסיכיאטר\p{L}*|יועצ\p{L}*|יועץ|אחות|אחיות|קלינאי\p{L}*|מרפא\p{L}*|נוירולוג\p{L}*|הורים|הורה|משפחה|אמא|אבא|מוקד\p{L}*|קו\s+חם|קו\s+סיוע|ער"ן|מד"א|חירום|מיון|טיפת\s+חלב|ד"ר|דוקטור|${NUMBER})`;
+const HE_RECIPIENT = String.raw`(?:רופא\p{L}*|איש\s+מקצוע|אשת\s+מקצוע|אנשי\s+מקצוע|גורם\s+מקצועי|גורמי\s+מקצוע|מטפל\p{L}*|פסיכולוג\p{L}*|פסיכיאטר\p{L}*|יועצ\p{L}*|יועץ|אחות|אחיות|קלינאי\p{L}*|מרפא\p{L}*|נוירולוג\p{L}*|הורים|הורה|משפחה|אמא|אבא|מוקד\p{L}*|קו\s+חם|קו\s+סיוע|ער"ן|מד"א|חירום|מיון|אמבולנס|טיפת\s+חלב|ד"ר|דוקטור|${NUMBER})`;
 const HE_COMMAND = new RegExp(String.raw`(?<!\p{L})(?<pre>ו|ש)?(?:${HE_INF}|${HE_IMP})(?!\p{L})(?:\s+[^\s,;:.!?—–]+){0,3}?\s+(?:(?:עם|את|אל|אצל)\s+)?(?:ו)?(?:ל|ה|לה|ב|מ)?${HE_RECIPIENT}`, "gu");
 /** A modal plus "call / turn to / consult" with no recipient: "יש להתקשר מיד", "מומלץ להתייעץ". */
 const HE_COMMAND_BARE = /(?<!\p{L})(?<pre>ו)?(?:יש|כדאי|מומלץ|חשוב|צריך|רצוי|נא|אפשר|ניתן)(?:\s+(?:מאוד|מיד|מייד|גם|לכם|לך))?\s+(?:להתקשר|לפנות|להתייעץ|לשוחח|לדבר|ליצור\s+קשר|להזעיק\s+עזרה|להפנות|לבקש\s+עזרה|לקבל\s+(?:עזרה|ייעוץ|הכוונה|תמיכה))(?!\p{L})|(?<!\p{L})(?:להפנות|הפנו|להזעיק|הזעיקו)\s+(?:את\s+\S+\s+)?(?:ל)?(?:הערכה|אבחון|בדיקה|ייעוץ|טיפול|עזרה|אמבולנס)(?!\p{L})|(?<!\p{L})(?:לבקש|לקבל|בקשו|קבלו)\s+(?:עזרה|ייעוץ|הכוונה|תמיכה)\s+(?:מקצועית|מקצועי|רפואית|רפואי)(?!\p{L})/gu;
@@ -227,16 +227,44 @@ function governedByCondition(text: string): boolean {
  * condition must name a harm trigger or a hard moment. A condition with no negated finding ("If you are
  * worried", "When he bites") governs as before. */
 const CHANGE_WORD = /\b(?:calm\p{L}*|settl\p{L}*|improv\p{L}*|eas(?:e|es|ed|ing)|better|progress\p{L}*|respon\p{L}*|stop\p{L}*|chang\p{L}*|recover\p{L}*|relief|let\s+up)\b|(?<!\p{L})(?:ו|ל|ש|ה)?(?:רגיעה|הרגעות|שיפור|נרגע\p{L}*|מפסיק\p{L}*|הפסק\p{L}*|התקדמות|הקלה|תגובה|שינוי|החלמה)(?!\p{L})/iu;
-const HARM_WORD = /\b(?:hurt\p{L}*|harm\p{L}*|injur\p{L}*|danger\p{L}*|unsafe|safety|bleed\p{L}*|bit|bite\p{L}*|biting|hit\p{L}*|kick\p{L}*|push\p{L}*|throw\p{L}*|threw|scream\p{L}*|run\p{L}*\s+(?:away|off|out)|ran\s+(?:away|off|out)|cr(?:y|ies|ied|ying)|tantrum\p{L}*|meltdown\p{L}*|self-harm|suicid\p{L}*|choking|breath\p{L}*|fever|seizure\p{L}*|faint\p{L}*|vomit\p{L}*)\b|(?<!\p{L})(?:ו|ש|כש|ה)?(?:פוגע\p{L}*|נפגע\p{L}*|פגיעה|מרביץ\p{L}*|הרביץ\p{L}*|נושך\p{L}*|נשך\p{L}*|בועט\p{L}*|דוחף\p{L}*|זורק\p{L}*|צורח\p{L}*|צרח\p{L}*|בורח\p{L}*|ברח\p{L}*|בוכה|בכי|בכה|סכנה|מסוכן\p{L}*|התקף\p{L}*|חום|נשימה|מקיא\p{L}*|התעלפ\p{L}*)(?!\p{L})/iu;
+const HARM_WORD = /\b(?:hurt\p{L}*|harm\p{L}*|injur\p{L}*|danger\p{L}*|unsafe|safety|bleed\p{L}*|bit|bite\p{L}*|biting|hit\p{L}*|kick\p{L}*|push\p{L}*|throw\p{L}*|threw|scream\p{L}*|run\p{L}*\s+(?:away|off|out)|ran\s+(?:away|off|out)|cr(?:y|ies|ied|ying)|tantrum\p{L}*|meltdown\p{L}*|self-harm|suicid\p{L}*|choking|breath\p{L}*|fever|seizure\p{L}*|faint\p{L}*|vomit\p{L}*)\b|(?<!\p{L})(?:ו|ש|כש|ה)?(?:פוגע\p{L}*|נפגע\p{L}*|פגיעה|מרביץ\p{L}*|הרביץ\p{L}*|נושך\p{L}*|נשך\p{L}*|בועט\p{L}*|דוחף\p{L}*|זורק\p{L}*|צורח\p{L}*|צרח\p{L}*|בורח\p{L}*|ברח\p{L}*|בוכה|בכי|בכה|סכנה|מסוכן\p{L}*|התקף\p{L}*|חום|נשימה|מקיא\p{L}*|התעלפ\p{L}*|להרביץ|לנשוך|לבעוט|לדחוף|לזרוק|לצרוח|לברוח|לבכות|להכות|לפגוע|נשיכ\p{L}*|הרבצ\p{L}*|מכות|בעיט\p{L}*|דחיפ\p{L}*|צרחות)(?!\p{L})/iu;
+/* Round 17 (P1-B): a negated finding's mask runs across its list ("no signs of biting or hitting", "hitting,
+ * biting or kicking", "בכי או צרחות", "שהוא מרביץ או נושך"): every item of a negated list is masked before
+ * HARM_WORD is tested. An item with a subject of its own ("… and he hits", "… והוא מרביץ") is no list item. */
+const LIST_ITEM_JOIN = /^\s*,\s*(?:(?:and|or|nor)\s+|או\s+)?|^\s+(?:(?:and|or|nor|plus)\s+|או\s+|ו(?=\p{L}{2}))/iu;
+/** Where a negated finding's list ends. */
+function negatedListEnd(text: string, from: number): number {
+  let end = from;
+  for (;;) {
+    const rest = text.slice(end);
+    const join = LIST_ITEM_JOIN.exec(rest);
+    if (!join) return end;
+    const item = rest.slice(join[0].length);
+    const next = item.slice(1).search(OBJECT_STOP);
+    const piece = next < 0 ? item : item.slice(0, next + 1);
+    const comma = join[0].trimStart().startsWith(",");
+    if (!piece.trim() || piece.trim().split(/\s+/u).length > 4 || OBJECT_CLAUSE.test(piece) || hasCommand(piece) || GOVERNING_WORD.test(piece)) return end;
+    // a comma item belongs to the list only when it names a harm, a state or a change ("hitting, biting or kicking")
+    if (comma && !(HARM_WORD.test(piece) || STATE_NOUN.test(piece) || CHANGE_WORD.test(piece))) return end;
+    end += join[0].length + piece.replace(/\s+$/u, "").length;
+  }
+}
+/** The condition with every negated finding (and its whole list) blanked: what it asserts. */
+const assertedPart = (condition: string, reassurances = reassurancesIn(condition)) => reassurances.reduce((t, r) => {
+  const end = negatedListEnd(condition, Math.max(r.end, r.objectEnd));
+  return t.slice(0, r.index) + " ".repeat(Math.max(0, end - r.index)) + t.slice(end);
+}, condition);
+/* Round 17 (P1-B, critic P2): a vital function's absence is the emergency itself ("no signs of normal
+ * breathing", "אין סימנים לנשימה תקינה", no response, not conscious), so it qualifies like a negated change. */
+const VITAL_WORD = /\b(?:breath\p{L}*|conscious\p{L}*|responsive\p{L}*|pulse|heartbeat|awake)\b|(?<!\p{L})[ולשהב]?(?:נשימה|נושם|נושמת|הכרה|דופק|מגיב|מגיבה)(?!\p{L})/iu;
 function qualifyingCondition(condition: string): boolean {
   const reassurances = reassurancesIn(condition);
-  // a harm counts where the condition asserts it, never inside a negated finding ("no signs of crying")
-  const asserted = reassurances.reduce((t, r) => {
-    const end = Math.max(r.end, r.objectEnd);
-    return t.slice(0, r.index) + " ".repeat(Math.max(0, end - r.index)) + t.slice(end);
-  }, condition);
-  if (HARM_WORD.test(asserted)) return true;
-  return reassurances.every((r) => CHANGE_WORD.test(r.object) || CHANGE_WORD.test(condition.slice(r.index, r.objectEnd + 1)));
+  // a harm counts where the condition asserts it, never inside a negated finding or its list ("no signs of crying")
+  if (HARM_WORD.test(assertedPart(condition, reassurances))) return true;
+  return reassurances.every((r) => {
+    const object = condition.slice(r.index, Math.max(r.objectEnd + 1, r.end));
+    return CHANGE_WORD.test(r.object) || CHANGE_WORD.test(object) || VITAL_WORD.test(r.object);
+  });
 }
 
 /** A chunk that continues a condition list: "…, or there are no signs…", "…, או שאין…". */
