@@ -187,6 +187,7 @@ export const OTHER_FIRESTORE_COLLECTIONS: Readonly<Record<string, OtherChildSink
   usageRollup: "aggregate: daily token spend, no uid or child",
   opsLedger: "aggregate: AI Studio prepay reserved milliseconds since a top-up date (server/prepayBalance.ts), no uid or child",
   studioCostLedger: "aggregate: B-KID-150 production cost per SHARED kid asset (plates, overlays, shared narration, video, music; server/studioCostLedger.ts), no uid, family or child",
+  offerRedemptions: "account: the family's one offer redemption per uid (B-GROWTH-43: offer id, version, link or typed, date; no child data); removed by account deletion",
 };
 
 /** The registered Storage prefixes (path templates). */

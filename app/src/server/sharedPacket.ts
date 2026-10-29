@@ -26,6 +26,8 @@ import { grantScopes, isShareActive, type ShareRole, type ShareStore } from "../
 import { buildGrantPacket, type RawChildRecord, type ConsultPacket } from "../consult/packet.js";
 import { grantDomainCeiling } from "../lib/shareDomains.js";
 import { ClinicalLanguageError } from "../lib/clinicalScan.js";
+import { HOME_PROGRAM_SCOPE_ID } from "../lib/shareScopes.js";
+import type { FamilyGoal } from "../lib/goals.js";
 
 /** The RAW child record the recipient view is built from. LC-17b: it is the
  *  same raw shape the parent's consent preview hands to `buildPacketInput`, so
@@ -36,7 +38,9 @@ export type SharedChildRecord = RawChildRecord;
 /** Read seam for the owner's child record. Injectable so tests (and the local
  *  adapter) never touch Firestore. Returns null when no record exists. */
 export interface SharedChildRecordSource {
-  load(ownerUid: string, childId: string): Promise<SharedChildRecord | null>;
+  /** B-PROG-09: `homeProgram` — the grant carries `home-program-adherence`;
+   *  ONLY then are the `programs` and `familyGoals` sub-collections read. */
+  load(ownerUid: string, childId: string, opts?: { homeProgram?: boolean }): Promise<SharedChildRecord | null>;
 }
 
 /** What the recipient endpoint returns on success: grant metadata for the
@@ -72,6 +76,11 @@ export async function resolveSharedPacket(opts: {
   shareStore: ShareStore;
   source: SharedChildRecordSource;
   now?: number;
+  /** B-PROG-09: the one scope the recipient's link asks for (`?scope=`). A
+   *  scope the live grant does not resolve answers 403 — the home-program
+   *  link opens the home program and nothing else. Absent = the grant's
+   *  whole (fail-closed) scope set, as before. */
+  requestedScope?: string | null;
 }): Promise<SharedPacketResult> {
   const { grantId, recipientEmail, shareStore, source } = opts;
   const now = opts.now ?? Date.now();
@@ -99,6 +108,18 @@ export async function resolveSharedPacket(opts: {
   if (scopes.length === 0) {
     return { status: 403, error: "This share does not grant any recognized scopes" };
   }
+  // B-PROG-09: the home-program scope is EXCLUSIVE — a grant that carries it
+  // grants the home program and nothing else, whatever else it lists (round
+  // 2: a mixed grant asked for one of its other scopes answered 200 with the
+  // home program; it now answers 403 like any scope the grant does not give).
+  const homeProgram = scopes.includes(HOME_PROGRAM_SCOPE_ID);
+  const granted: string[] = homeProgram ? [HOME_PROGRAM_SCOPE_ID] : scopes;
+  // A link asks for exactly one scope; any scope this grant does not give
+  // answers 403 (an unrecognized one too — fail closed).
+  const requested = (opts.requestedScope ?? "").trim();
+  if (requested && !granted.includes(requested)) {
+    return { status: 403, error: "This share does not grant that view" };
+  }
 
   // B-CAREPRO-41: a domain ceiling that resolves to no known domain unlocks
   // nothing (fail closed) — never the whole record.
@@ -107,13 +128,13 @@ export async function resolveSharedPacket(opts: {
     return { status: 403, error: "This share does not grant any recognized areas" };
   }
 
-  const record = await source.load(grant.ownerUid, grant.childId);
+  const record = await source.load(grant.ownerUid, grant.childId, homeProgram ? { homeProgram } : undefined);
   if (!record) return { status: 404, error: "The shared child record is not available" };
 
   try {
     // The SAME builder the parent's preview calls (consult/packet buildGrantPacket):
     // domain ceiling → shared assembler → scope packet + guards.
-    const packet = buildGrantPacket({ role: grant.role, scopes, domains: grant.domains }, record, now);
+    const packet = buildGrantPacket({ role: grant.role, scopes: granted, domains: grant.domains }, record, now);
     return {
       status: 200,
       view: {
@@ -121,7 +142,7 @@ export async function resolveSharedPacket(opts: {
         ownerEmail: grant.ownerEmail ?? null,
         role: grant.role,
         expiresAt: grant.expiresAt ?? null,
-        scopes,
+        scopes: granted,
         generatedAt: packet.generatedAt,
         sections: packet.sections,
         // B-DIST-01: the recipient's view of the demo family says so.
@@ -152,19 +173,22 @@ export class FirestoreSharedChildSource implements SharedChildRecordSource {
     this.db = getFirestore(config.firestoreDatabaseId);
   }
 
-  async load(ownerUid: string, childId: string): Promise<SharedChildRecord | null> {
+  async load(ownerUid: string, childId: string, opts?: { homeProgram?: boolean }): Promise<SharedChildRecord | null> {
     const childRef = this.db.doc(`users/${ownerUid}/children/${childId}`);
     const childDoc = await childRef.get();
     if (!childDoc.exists) return null;
     const profile = childDoc.data() as RawChildRecord["profile"];
 
-    const [logsSnap, milestonesSnap, plansSnap, booksSnap, memoryEvents] = await Promise.all([
+    const [logsSnap, milestonesSnap, plansSnap, booksSnap, memoryEvents, programsSnap, goalsSnap] = await Promise.all([
       childRef.collection("behaviorLogs").get(),
       childRef.collection("milestones").get(),
       childRef.collection("actionPlans").get(),
       // B-BOOK-79: the Everyday plans (counts only in the packet).
       childRef.collection("books").get(),
       this.memoryStore.listEvents(childId),
+      // B-PROG-09: only a home-program grant reads these two sub-collections.
+      opts?.homeProgram ? childRef.collection("programs").get() : null,
+      opts?.homeProgram ? childRef.collection("familyGoals").get() : null,
     ]);
 
     // LC-17b: the raw documents are handed to the SHARED assembler
@@ -177,6 +201,8 @@ export class FirestoreSharedChildSource implements SharedChildRecordSource {
       milestones: milestonesSnap.docs.map((d) => d.data() as RawChildRecord["milestones"][number]),
       plans: plansSnap.docs.map((d) => ({ ...(d.data() as Omit<RawChildRecord["plans"][number], "id">), id: d.id })),
       books: booksSnap.docs.map((d) => ({ ...d.data(), id: d.id })),
+      ...(programsSnap ? { programs: programsSnap.docs.map((d) => ({ ...d.data(), id: d.id })) } : {}),
+      ...(goalsSnap ? { familyGoals: goalsSnap.docs.map((d) => ({ ...(d.data() as FamilyGoal), id: d.id })) } : {}),
       // SPC2: retention-expired approved facts never reach a share recipient.
       // Pure filter (no store handle here); the owning read paths tombstone.
       memory: foldMemoryEvents(memoryEvents, childId)

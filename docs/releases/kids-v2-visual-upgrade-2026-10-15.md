@@ -6,7 +6,7 @@ The release restores fidelity to the original V2 handoff and makes the approved 
 
 ## Backlog scope
 
-The authoritative separate adoption backlog is ROS PR 16, `PAI/projects/arbor/proposals/kids-studio-v2/BACKLOG.md`. All 37 source dispositions are preserved in `kids-studio-v2-2026-10-13.md`. The three-adventure expansion and eight-game menu are recorded in `kids-three-adventures-2026-10-15.md`; original-world requirements are in `../design/kids-original-worlds-2026-10-15.md`.
+The authoritative separate adoption backlog is ROS PR 16 (the private kids-studio-v2 `BACKLOG.md`). All 37 source dispositions are preserved in `kids-studio-v2-2026-10-13.md`. The three-adventure expansion and eight-game menu are recorded in `kids-three-adventures-2026-10-15.md`; original-world requirements are in `../design/kids-original-worlds-2026-10-15.md`.
 
 | Requirement area | Current implementation |
 | --- | --- |

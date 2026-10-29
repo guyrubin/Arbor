@@ -62,7 +62,7 @@ Current copy partially discloses this restriction, so this is not an undisclosed
 
 ## Semantic zoom: what was discussed versus selected
 
-ROS `PAI/projects/arbor/reference/design-registers-and-ia.md:60` calls the whole-child → domain/sub-area → observable capability → source mockups static concepts and explicitly not approval. Lines 62 and 69–72 enumerate missing mappings/labels/history loading, estimate 8–12 developer-days for the first connected language slice and 20–30 for all-domain depth, and state that the mockup request did not authorize implementation at that point. `REJECTIONS.md:1238–1248` records rejection of PR110 and no selection of the prior diagram alternatives.
+The private ROS reference `design-registers-and-ia.md` (line 60) calls the whole-child → domain/sub-area → observable capability → source mockups static concepts and explicitly not approval. Lines 62 and 69–72 enumerate missing mappings/labels/history loading, estimate 8–12 developer-days for the first connected language slice and 20–30 for all-domain depth, and state that the mockup request did not authorize implementation at that point. `REJECTIONS.md:1238–1248` records rejection of PR110 and no selection of the prior diagram alternatives.
 
 The user later authorized building the broader experience. The implementation-status section at lines 202–204 describes the actual shipped first slice as the eight-domain time/context/domain portrait and explicitly says the broader interpretation graph was not delivered. The active ChildPortrait imports no sub-area or capability model. Therefore:
 

@@ -5,7 +5,7 @@
  * first-touch attribution (market/source/referral_code/utm_*) is attached
  * automatically. Keep event names stable — dashboards depend on them.
  *
- * See PAI/projects/parenting-os-plugin/marketing/arbor-loop-eng-spec.md.
+ * Spec: the Arbor loop engineering spec (private product record).
  */
 import { track } from "./analytics";
 import { trackSessionClose } from "./kpiEvents";
@@ -54,6 +54,18 @@ export function trackAppStart(): void {
 
 export function trackProfileCreated(childCount: number, band?: string): void {
   track(LoopEvent.ProfileCreated, { child_count: childCount, ...(band ? { band } : {}) });
+}
+
+/** B-GROWTH-43: true once this device has seen the family's first generated
+ *  plan — the moment the referral link path redeems (ArborContext fires
+ *  trackFirstPlan and maybeActivateReferral together). A typed code uses the
+ *  same test, so both paths agree on "the family has a plan". */
+export function hasTrackedFirstPlan(): boolean {
+  try {
+    return Boolean(localStorage.getItem(LS_FIRST_PLAN));
+  } catch {
+    return false;
+  }
 }
 
 /** Activation signal — fires only on the family's FIRST generated plan (deduped per device). */

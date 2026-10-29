@@ -31,6 +31,7 @@ Production config is explicit and fail-closed.
 |---|---|
 | `OPS_ALERT_OWNER` | B-AIOPS-03: the named human on every incident (`off` → "unassigned") |
 | `OPS_ALERT_WEBHOOK_URL` | B-AIOPS-03 (secret): https webhook that receives each incident as `{ "text": … }`; `off` → structured log only |
+| `ARBOR_PROGRAM_SCRIPT_IN_COACH` | B-PROG-04: `true` → an on-shelf /chat or /voice answer opens with the active program week's coach script, verbatim; default off (dark until B-GA-02 and the coach-core-v1 / voice-loop-v1 live runs) |
 | `AI_PREPAY_LEDGER` | B-AIOPS-03: JSON `{"credit","currency","since","perLiveMinute"}` for the readable AI Studio balance and its 20 % alarm; `off` → no balance |
 | `LIVE_FREE_MINUTES_PER_DAY` / `LIVE_PAID_MINUTES_PER_DAY` | B-AIOPS-02: family daily voice allowance (defaults 3 / 20) |
 | `LIVE_RESERVATION_MINUTES` | B-AIOPS-02: Live token slice, capped at 5 |
