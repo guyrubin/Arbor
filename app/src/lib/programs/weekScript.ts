@@ -63,11 +63,25 @@ export const OFF_SHELF_HARD_MOMENT = {
   he: ["הרביץ", "הרביצה", "מרביץ", "מרביצה", "מכה", "היכה", "נשך", "נשכה", "נושך", "נושכת", "בעט", "בעטה", "בועט", "בועטת", "דחף", "דחפה", "דוחף", "דוחפת", "זרק", "זרקה", "זורק", "זורקת", "פגע", "פגעה", "פוגע", "פוגעת", "מסוכן", "מסוכנת", "סכנה"],
 } as const;
 
+/**
+ * Round 3 (critic P2): rude or mean words are a behaviour, not the words
+ * shelf ("says mean words to his sister", "uses bad language when she's
+ * angry", "משתמש במילים גסות"). Its own off-shelf class, EN + HE.
+ */
+export const OFF_SHELF_RUDE_LANGUAGE = {
+  en: [
+    "(?:mean|bad|rude|nasty|naughty|potty|swear|curse|dirty|ugly|hurtful) (?:words?|language|talk|names?)", "foul language", "potty mouth",
+    "swear(?:s|ing|ed)?", "swore", "curs(?:e|es|ed|ing)", "insult(?:s|ed|ing)?", "name[- ]calling", "calls? (?:him|her|them|me|us|people|his \\w+|her \\w+) names",
+    "talks? back", "back[- ]?talk", "says? (?:mean|rude|nasty|hurtful) (?:things|stuff)",
+  ],
+  he: ["מילים גסות", "מילה גסה", "מילים מכוערות", "מילים רעות", "שפה גסה", "קללה", "קללות", "מקלל", "מקללת", "מקללים", "קילל", "קיללה", "מעליב", "מעליבה", "העליב", "העליבה", "עלבונות", "חוצפה", "חצוף", "חצופה"],
+} as const;
+
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const enRe = (sources: readonly string[]) => new RegExp(`\\b(?:${sources.join("|")})\\b`, "i");
 const heRe = (words: readonly string[]) => new RegExp(`(?<!\\p{L})(?:ו|ה|ב|ל|ש|כש|מ)?(?:${words.map(escape).join("|")})(?!\\p{L})`, "u");
-const OFF_EN = enRe(OFF_SHELF_HARD_MOMENT.en);
-const OFF_HE = heRe(OFF_SHELF_HARD_MOMENT.he);
+const OFF_EN = enRe([...OFF_SHELF_HARD_MOMENT.en, ...OFF_SHELF_RUDE_LANGUAGE.en]);
+const OFF_HE = heRe([...OFF_SHELF_HARD_MOMENT.he, ...OFF_SHELF_RUDE_LANGUAGE.he]);
 
 /** Does the parent's message name the program's own topic (and no hard moment about something else)? */
 export function onProgramShelf(message: unknown, shelf: string | undefined | null): boolean {

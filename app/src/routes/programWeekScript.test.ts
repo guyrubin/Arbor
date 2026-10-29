@@ -102,6 +102,10 @@ describe("B-PROG-04 · the on-shelf test (deterministic, EN + HE)", () => {
     ["sleep", "She screams when I turn the TV off at night"],
     ["words", "אני רוצה לדבר על ההתקפי זעם שלו"],
     ["words", "He bit his brother because he has no words for it"],
+    // Round 3: rude or mean language is a behaviour, not the words shelf.
+    ["words", "He says mean words to his sister"],
+    ["words", "She uses bad language when she's angry"],
+    ["words", "הוא משתמש במילים גסות"],
   ];
   const ON: [string, string][] = [
     ["words", "He only says three words at 2"],
