@@ -178,10 +178,19 @@ const NEGATED_TIMING = new RegExp(String.raw`\b(?:(?:not|rather\s+than|instead\s
 /** The command patterns without their filters (the filters call back into this check). */
 const RAW_COMMANDS = [COMMAND_EN, COMMAND_EN_PASSIVE, COMMAND_EN_BARE, HE_COMMAND, HE_COMMAND_BARE].map((re) => new RegExp(re.source, re.flags.replace("g", "")));
 const withoutNegatedTiming = (text: string) => text.replace(NEGATED_TIMING, (m) => (carriesTime(m) && !RAW_COMMANDS.some((re) => re.test(m)) ? " ".repeat(m.length) : m));
-/** A visit or appointment WITH a professional is the escalation's own object ("suggest a visit to the
- *  pediatrician", "הציעו ביקור אצל רופאת הילדים"); a meeting with the family, or the next one, is timing. */
+/** A visit or appointment WITH a professional is the escalation's own object only when the command books,
+ *  suggests, refers or schedules it ("suggest a visit to the pediatrician", "הציעו ביקור אצל רופאת הילדים");
+ *  a visit used as the time of the action ("tell the family during their visit with the pediatrician", "ספרו
+ *  להורים בביקור אצל רופאת הילדים") is a deferral (round 18, P1-B). */
+const BOOK_EN = String.raw`(?:book|booking|schedule|scheduling|arrange|arranging|suggest|suggesting|recommend|recommending|refer|referring|make|making|set\s+up|setting\s+up|request|requesting|ask\s+for|asking\s+for|offer|offering|propose|proposing|get|seek)`;
+const BOOK_HE = String.raw`(?:קבעו|קבע|קבעי|לקבוע|הציעו|הציע|הציעי|להציע|הפנו|הפנה|להפנות|המליצו|המליץ|להמליץ|הזמינו|הזמן|להזמין|בקשו|בקש|לבקש|תאמו|תאם|לתאם)`;
+const VISIT_NOUN_EN = String.raw`(?:visits?|appointments?|check-?ups?|consultations?|evaluations?|assessments?)`;
+const VISIT_NOUN_HE = String.raw`(?:ביקור|תור|פגישה|בדיקה|הערכה|אבחון|ייעוץ)`;
+/** A command that is only the visit noun ("visit with the pediatrician"), with no booking verb before it. */
+const VISIT_COMMAND = new RegExp(String.raw`^(?:(?:the|a|an|his|her|their|your|our)\s+)?${VISIT_NOUN_EN}\b`, "iu");
+const BOOKED_BEFORE = new RegExp(String.raw`\b${BOOK_EN}\s+(?:\S+\s+){0,3}$|(?<!\p{L})ו?${BOOK_HE}\s+(?:\S+\s+){0,3}$`, "iu");
 const HE_PRO = String.raw`(?:רופא\p{L}*|איש\s+מקצוע|אשת\s+מקצוע|אנשי\s+מקצוע|גורם\s+מקצועי|גורמי\s+מקצוע|מטפל\p{L}*|פסיכולוג\p{L}*|פסיכיאטר\p{L}*|יועצ\p{L}*|יועץ|אחות|אחיות|קלינאי\p{L}*|מרפא\p{L}*|נוירולוג\p{L}*|טיפת\s+חלב|ד"ר|דוקטור)`;
-const VISIT_WITH_PRO = new RegExp(String.raw`\b(?:visits?|appointments?|check-?ups?|consultations?|evaluations?|assessments?)\s+(?:to|with|at|by)\s+(?:(?:a|an|the|your|his|her|their)\s+)?(?:[\p{L}'’-]+\s+){0,2}?${PRO_EN}\b|(?<!\p{L})[ולב]?(?:ביקור|תור|פגישה|בדיקה|הערכה|אבחון|ייעוץ)\s+(?:(?:אצל|עם|של)\s+)?(?:ה|ל|ב)?${HE_PRO}`, "giu");
+const VISIT_WITH_PRO = new RegExp(String.raw`\b${BOOK_EN}\s+(?:(?:a|an|the|another|their|his|her|your)\s+)?(?:[\p{L}'’-]+\s+){0,2}?${VISIT_NOUN_EN}\s+(?:to|with|at|by)\s+(?:(?:a|an|the|your|his|her|their)\s+)?(?:[\p{L}'’-]+\s+){0,2}?${PRO_EN}\b|(?<!\p{L})ו?${BOOK_HE}\s+(?:\S+\s+){0,2}?[ולב]?${VISIT_NOUN_HE}\s+(?:(?:אצל|עם|של)\s+)?(?:ה|ל|ב)?${HE_PRO}`, "giu");
 const DISCOURAGING_EN = new RegExp(String.raw`\b(?:not|no|never|none|nor|hold\s+off|avoid\p{L}*|premature\p{L}*|unnecessar\p{L}*|needless\p{L}*|pointless\p{L}*|refrain\p{L}*|rather\s+than|instead\s+of|wait\s+(?:before|until|and\s+see)|too\s+early)\b|n['’]t\b`, "iu");
 const DISCOURAGING_HE = new RegExp(String.raw`(?<!\p{L})(?:ו|ש|כש|ה)?(?:אין|לא|אל|מיותר\p{L}*|להימנע|הימנעו|במקום\s+ל\p{L}+|מוקדם\s+מדי|עדיף\s+לחכות|כדאי\s+לחכות|להמתין|רק\s+ב\p{L}+)(?!\p{L})`, "u");
 const ENCOURAGING = /\b(?:(?:do|does|did|should|must|will|would)\s+not|don['’]t|doesn['’]t|shouldn['’]t|never|not)\s+(?:hesitate|wait|delay|put\s+(?:it\s+)?off|hold\s+off)\b|\bwithout\s+(?:delay|waiting|hesitat\p{L}*)\b|\bnot\s+(?:just|only)\b|\bno\s+matter\b|(?<!\p{L})(?:ו?אל\s+(?:תהסס\p{L}*|תחכ\p{L}*|תתמהמה\p{L}*|תדח\p{L}*)|(?:אין|לא)\s+(?:לחכות|להסס|להתמהמה|להתעכב|לדחות)|(?:בלי|ללא)\s+(?:לחכות|להסס|דיחוי|היסוס)|ו?לא\s+רק|לא\s+משנה)(?!\p{L})/giu;
@@ -313,27 +322,29 @@ function defersContact(text: string): boolean {
   const chunks = chunksOf(body);
   const chunkText = (k: number) => body.slice(chunks[k].start, chunks[k].end);
   let masked = body;
+  let deferred = false;
   for (let k = 0; k < chunks.length; k++) {
     const own = chunkText(k);
     const commands = findEscalationCommands(own);
     if (!commands.length) continue;
     const at = chunks[k].start;
     // the command itself ("book an appointment with …", "לקבוע פגישה עם …") is no timing, nor a visit with a professional
-    for (const c of commands) masked = blank(masked, at + c.index, at + c.index + c.text.length);
+    // it books; a bare visit noun ("during their visit with the pediatrician") is the time of the action
+    for (const c of commands) {
+      if (VISIT_COMMAND.test(c.text) && !BOOKED_BEFORE.test(own.slice(0, c.index))) continue;
+      masked = blank(masked, at + c.index, at + c.index + c.text.length);
+    }
     for (const v of own.matchAll(VISIT_WITH_PRO)) masked = blank(masked, at + (v.index ?? 0), at + (v.index ?? 0) + v[0].length);
     const first = commands[0];
     const last = commands[commands.length - 1];
     const head = own.slice(0, first.index);
     if (governs(head, true) && momentCondition(head)) masked = blank(masked, at, at + first.index);
-    // a condition after the command in its chunk, from its condition word on ("… when there are no signs of calming")
-    const tailStart = last.index + last.text.length;
-    const tail = own.slice(tailStart);
-    const word = GOVERNING_WORD.exec(tail);
-    const time = CONDITION_TIME.exec(tail);
-    const starts = [word?.index, time && LINKED_ABSENCE.test(tail.slice(time.index)) ? time.index : undefined].filter((i): i is number => i !== undefined);
-    // a trailing condition runs on through the chunks after it until it names the moment ("Call the family when,
-    // after 20 minutes, there are no signs of calming"); what follows that is read again
-    const trailing = (from: number, first: string, m: number) => {
+    // Round 18 (P1-B): a condition after the command — in its chunk, or a later chunk before the next command —
+    // that is not about the hard moment is the time of the action, whatever its words ("when they pick him up",
+    // "when you see the teacher", "כשהם באים לאסוף אותו", "כשתראו אותם"). One about the moment runs on through the
+    // chunks after it until it names the moment ("Call the family when, after 20 minutes, there are no signs of
+    // calming") and is not timing; a calendar time inside it is still read, a monitoring duration is its own.
+    const trailing = (from: number, first: string, m: number): boolean => {
       let condition = first;
       const firstEnd = chunks[m].end;
       const more: number[] = [];
@@ -342,16 +353,26 @@ function defersContact(text: string): boolean {
         condition += `, ${chunkText(++m)}`;
         more.push(m);
       }
-      if (!momentCondition(condition)) return;
+      if (!momentCondition(condition)) return false;
       masked = blank(masked, from, firstEnd);
-      // a calendar time inside it is still read ("…, at the end of the term"); a monitoring duration is the condition's
       for (const i of more) if (onlyDuration(chunkText(i))) masked = blank(masked, chunks[i].start, chunks[i].end);
+      return true;
     };
-    if (starts.length) {
-      const p = Math.min(...starts);
-      if (governs(tail.slice(p), false)) trailing(at + tailStart + p, tail.slice(p), k);
-    } else if (k + 1 < chunks.length && governs(chunkText(k + 1).trim().split(/\s+/u).slice(0, 4).join(" "), false)) {
-      trailing(chunks[k + 1].start, chunkText(k + 1), k + 1);
+    /** Where a condition opens in the text, past its immediate phrases ("as soon as possible", "any time"), or -1. */
+    const conditionAt = (t: string) => {
+      const plain = t.replace(IMMEDIATE, (x) => " ".repeat(x.length));
+      const word = GOVERNING_WORD.exec(plain);
+      const time = CONDITION_TIME.exec(plain);
+      const starts = [word?.index, time && LINKED_ABSENCE.test(plain.slice(time.index)) ? time.index : undefined].filter((i): i is number => i !== undefined);
+      return starts.length ? Math.min(...starts) : -1;
+    };
+    const tailStart = last.index + last.text.length;
+    const tail = own.slice(tailStart);
+    const p = conditionAt(tail);
+    if (p >= 0 && !trailing(at + tailStart + p, tail.slice(p), k)) deferred = true;
+    for (let m = k + 1; m < chunks.length && !hasCommand(chunkText(m)); m++) {
+      const q = conditionAt(chunkText(m));
+      if (q >= 0 && !trailing(chunks[m].start + q, chunkText(m).slice(q), m)) deferred = true;
     }
     // a leading condition clause, back to the chunk that opens it
     for (let j = k - 1; j >= 0; j--) {
@@ -369,7 +390,7 @@ function defersContact(text: string): boolean {
     }
   }
   masked = withoutNegatedTiming(masked).replace(IMMEDIATE, (m) => " ".repeat(m.length)).replace(ENCOURAGING, (m) => " ".repeat(m.length));
-  return carriesTime(masked);
+  return deferred || carriesTime(masked);
 }
 
 /** A chunk that continues a condition list: "…, or there are no signs…", "…, או שאין…". */

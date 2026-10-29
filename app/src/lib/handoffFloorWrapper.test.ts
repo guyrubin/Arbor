@@ -239,6 +239,33 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     expect(withoutHandoffFindings(line, { parentText })).not.toBe(line);
     expect(handoffFloor(line, { parentText })).toBe(line);
   });
+  /* Round 18 (P1-B): a condition after the command that is not about the hard moment is the time of the
+     action, and a visit is the escalation's object only when the command books it (critic fresh17 P02, HP02,
+     E01, E02, HE01-HE03). */
+  it.each([
+    "When there are no signs of calming, tell the family during their visit with the pediatrician.",
+    "כשאין סימנים של רגיעה, ספרו להורים בביקור אצל רופאת הילדים.",
+    "When there are no signs of calming, tell the family when they pick him up.",
+    "When there are no signs of calming, let the family know when he gets home.",
+    "When there are no signs of calming, tell the family, when you see the teacher.",
+    "כשאין סימנים של רגיעה, ספרו להורים כשהם באים לאסוף אותו.",
+    "כשאין סימנים של רגיעה, עדכנו את ההורים כשהוא חוזר הביתה.",
+    "כשאין סימנים של רגיעה, ספרו להורים כשתראו אותם.",
+  ])("a deferral worded as an event or a visit stays as main leaves it: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).toBe("");
+    expect(handoffFloor(line, { parentText })).toBe("");
+  });
+  it.each([
+    "When there are no signs of calming, suggest the family book a visit with the pediatrician.",
+    "כשאין סימנים של רגיעה, הציעו להורים לקבוע תור אצל רופאת הילדים.",
+    "When there are no signs of calming, let the family know as soon as possible.",
+    "When there are no signs of calming, call the family when he hurts himself.",
+  ])("a booked visit, an immediate time or a moment condition still restores: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).not.toBe(line);
+    expect(handoffFloor(line, { parentText })).toBe(line);
+  });
   /* Round 17 (P1-B): every item of a negated list is masked before a harm word may qualify the condition
      (C09, W05-W07, HW06, HW07). */
   it.each([
