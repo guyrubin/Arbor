@@ -345,6 +345,19 @@ function momentCondition(condition: string): boolean {
 }
 /** A distress state the condition asserts ("when he is upset in the morning", "כשהוא נסער בבוקר"). */
 const DISTRESS_WORD = /\b(?:upset|distress\p{L}*|agitat\p{L}*|dysregulat\p{L}*|overwhelm\p{L}*|panic\p{L}*|scared|frightened|afraid|anxious|terrified|inconsolable|hysteric\p{L}*)\b|(?<!\p{L})(?:ו|ש|כש|ה)?(?:נסער|נסערת|נסערים|מתוסכל\p{L}*|כועס\p{L}*|מפוחד\p{L}*|מבוהל\p{L}*|נבהל\p{L}*|לחוץ|לחוצה|נלחץ\p{L}*|מוצף|מוצפת|חרד|פאניקה|בהלה|היסטרי\p{L}*|מתפרץ\p{L}*)(?!\p{L})/iu;
+/* Round 19 (P1-B): an occasion joined into a hard-moment condition is the time of the action ("When there are no
+ * signs of calming and the family comes for pickup", "When the family arrives at pickup and …", "וההורים מגיעים
+ * לאיסוף", "כשההורים באים לאסוף אותו ו…"). The condition is split at "and" / "while" / a glued ו, and each
+ * conjunct is read with the round-18 trailing rule: one not about the moment that names someone acting (the
+ * family, the parents, you, he …) is timing. A conjunct with no one in it stays with the condition: a monitoring
+ * duration, a calendar phrase on the moment's own window ("When the term ends and …", "כשנגמרים החגים ו…" —
+ * the critic's ruling), or a reassurance the qualifier already reads. */
+const CONJUNCT_SPLIT = /\s+(?:and|while|whilst)\s+|\s+ו(?=\p{L}{2})/iu;
+const OCCASION_PERSON = /\b(?:family|families|parents?|mom|mum|dad|mother|father|teachers?|staff|you|he|she|they|we|i|grand\p{L}+|guardians?|caregivers?|someone|somebody|everyone)\b|(?<!\p{L})(?:ו|ש|כש|ה|כשה|שה|ל|ול|לה|ב|וה|שכ)?(?:הורים|הורה|אמא|אבא|גננת|גננות|מורה|מורות|צוות|משפחה|אתם|אתן|אתה|הוא|היא|הם|הן|אנחנו|אני|אותו|אותה|אותם|אותן|אותנו|להם|לו|לה)(?!\p{L})/iu;
+/** The first conjunct of a hard-moment condition that is an occasion, or null. */
+function occasionIn(condition: string): string | null {
+  return condition.split(CONJUNCT_SPLIT).find((c) => c.trim() && !momentCondition(c) && OCCASION_PERSON.test(c)) ?? null;
+}
 /** True when the restored text defers the contact: a time phrase outside its hard-moment condition that is not
  *  on the immediate allow-list (see IMMEDIATE above). */
 function defersContact(text: string): boolean {
@@ -368,7 +381,10 @@ function defersContact(text: string): boolean {
     const first = commands[0];
     const last = commands[commands.length - 1];
     const head = own.slice(0, first.index);
-    if (governs(head, true) && momentCondition(head)) masked = blank(masked, at, at + first.index);
+    if (governs(head, true) && momentCondition(head)) {
+      masked = blank(masked, at, at + first.index);
+      if (occasionIn(head)) deferred = true;
+    }
     // Round 18 (P1-B): a condition after the command — in its chunk, or a later chunk before the next command —
     // that is not about the hard moment is the time of the action, whatever its words ("when they pick him up",
     // "when you see the teacher", "כשהם באים לאסוף אותו", "כשתראו אותם"). One about the moment runs on through the
@@ -384,6 +400,7 @@ function defersContact(text: string): boolean {
         more.push(m);
       }
       if (!momentCondition(condition)) return false;
+      if (occasionIn(condition)) deferred = true;
       masked = blank(masked, from, firstEnd);
       for (const i of more) if (onlyDuration(chunkText(i))) masked = blank(masked, chunks[i].start, chunks[i].end);
       return true;
@@ -410,7 +427,9 @@ function defersContact(text: string): boolean {
       if (governs(t, true)) {
         // the condition chunks only: what stands before the command in its own chunk ("wait a day before") is read,
         // and so is a calendar time between them ("…, next week, tell …"); a monitoring duration is the condition's
-        if (momentCondition([...Array(k - j).keys()].map((i) => chunkText(j + i)).join(", "))) {
+        const condition = [...Array(k - j).keys()].map((i) => chunkText(j + i)).join(", ");
+        if (momentCondition(condition)) {
+          if (occasionIn(condition)) deferred = true;
           masked = blank(masked, chunks[j].start, chunks[j].end);
           for (let i = j + 1; i < k; i++) if (onlyDuration(chunkText(i))) masked = blank(masked, chunks[i].start, chunks[i].end);
         }

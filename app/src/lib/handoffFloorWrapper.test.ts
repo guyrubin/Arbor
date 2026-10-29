@@ -269,6 +269,30 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     expect(withoutHandoffFindings(line, { parentText })).not.toBe(line);
     expect(handoffFloor(line, { parentText })).toBe(line);
   });
+  /* Round 19 (P1-B): an occasion joined into a hard-moment condition is the time of the action (critic fresh18
+     B01, B02, HB01, HB02); a calendar window on the moment (B03, M06, HM05) and a conjunct with no one in it stay. */
+  it.each([
+    "When there are no signs of calming and the family comes for pickup, let the family know.",
+    "When the family arrives at pickup and there are no signs of calming, tell the family.",
+    "Call the family when there are no signs of calming and they come for pickup.",
+    "כשאין סימנים של רגיעה וההורים מגיעים לאיסוף, ספרו להורים.",
+    "כשההורים באים לאסוף אותו ואין סימנים של רגיעה, עדכנו את ההורים.",
+  ])("an occasion in the condition stays as main leaves it: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).toBe("");
+    expect(handoffFloor(line, { parentText })).toBe("");
+  });
+  it.each([
+    "When there are no signs of calming at the next parent meeting, tell the family.",
+    "When the term ends and there are no signs of calming, tell the family.",
+    "כשנגמרים החגים ואין סימנים של רגיעה, עדכנו את ההורים.",
+    "When there are no signs of anxiety and he hurts himself, call the family.",
+    "When he does not settle and there are no signs of calming, let the family know.",
+  ])("a calendar window, or a conjunct with no one acting, keeps its ruling: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).not.toBe(line);
+    expect(handoffFloor(line, { parentText })).toBe(line);
+  });
   /* Round 18 (P1-A): a negation that governs before / until / earlier (לפני, עד, מוקדם) is a deferral, never
      stripped (critic fresh17 N02, N03, HN02, HN03); "don't wait until pickup" still restores (N04, HN04). */
   it.each([
