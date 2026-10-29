@@ -141,11 +141,17 @@ function wrapRulesFor(source: string, el: El, lang: "en" | "he") {
 }
 
 const roster = /<div className="([^"]*)">\s*<h3 className="([^"]*)"[^>]*>\{g\.recipientEmail\}<\/h3>/.exec(sharing);
+/** The roster row from its flex line to the Revoke button (round 2). */
+const rosterRow = (src: string) => {
+  const start = src.indexOf("<InitialsTile name={g.recipientEmail}");
+  return start < 0 ? "" : src.slice(src.lastIndexOf("<div className=", start), src.indexOf("{t(\"sec.sharing.revoke\")}", start));
+};
 
 describe("B-SHELL-45 · a truncated heading keeps its one line", () => {
-  it("the sharing roster email is a truncated h3 in a shrinkable flex cell (the ellipsis has an edge to cut at)", () => {
+  it("the sharing roster email is a truncated h3 in a flex cell with a definite minimum (the ellipsis has an edge to cut at)", () => {
     expect(roster).toBeTruthy();
-    expect(roster![1].split(/\s+/)).toEqual(expect.arrayContaining(["flex-1", "min-w-0"]));
+    // Round 2: a definite min width (not min-content), so the cell shrinks to it and truncates.
+    expect(roster![1].split(/\s+/)).toEqual(expect.arrayContaining(["flex-1", "min-w-[9rem]"]));
     expect(roster![2].split(/\s+/)).toContain("truncate");
   });
 
@@ -177,5 +183,34 @@ describe("B-SHELL-45 · a truncated heading keeps its one line", () => {
     const oneLine = [...files.flatMap((f) => [...readFileSync(f, "utf8").matchAll(/<(h[1-3])\b[^>]*?className="([^"]*\b(?:truncate|whitespace-nowrap|text-nowrap)\b[^"]*)"/g)].map((m) => ({ file: path.relative(here, f), tag: m[1], className: m[2] })))];
     expect(oneLine.length).toBeGreaterThan(0);
     for (const h of oneLine) for (const lang of ["en", "he"] as const) expect(wrapRulesFor(css, heading(h.tag, h.className), lang), `${h.file} ${h.tag}`).toEqual([]);
+  });
+
+  /* Round 2 (critic, 375): the email had 66 px, "Professional" broke mid-word
+     and in Hebrew the address showed its domain tail. Rendered EN and HE at 375
+     (scratch Chromium, sandbox): email 66 → 195 px on one line with an
+     ellipsis, the role on one line, Revoke on its own line at the end edge; at
+     1280 the row is unchanged (Revoke inline). */
+  describe("round 2 · the roster row has room at 375", () => {
+    const row = rosterRow(sharing);
+    it("the row wraps Revoke to its own line before it squeezes the words (no new object)", () => {
+      expect(row).toBeTruthy();
+      expect(row).toMatch(/^<div className="flex flex-wrap items-center gap-x-3 gap-y-1">/);
+      expect(row).toMatch(/<button onClick=\{\(\) => revoke\(g\)\}[^>]*className="ms-auto /);
+    });
+    it("the email reads from its start in Hebrew too, aligned with the row", () => {
+      expect(row).toMatch(/<h3 className="text-sm font-extrabold truncate" dir="auto" style=\{\{[^}]*textAlign: uiLang === "he" \? "end" : "start" \}\}>\{g\.recipientEmail\}<\/h3>/);
+    });
+    it("the role label never breaks mid-word (inline, so it beats `.arbor-app p { overflow-wrap: anywhere }`)", () => {
+      expect(css).toMatch(/\.arbor-app p \{ overflow-wrap: anywhere; \}/);
+      expect(row).toMatch(/<p className="text-xs" style=\{\{ color: PASTEL\[tone\]\.ink, overflowWrap: "normal" \}\}>\{roleLabel\(g\.role\)\}<\/p>/);
+    });
+    it("negative control: the pre-change row matches none of the three", () => {
+      const before = '<div className="flex items-center gap-3">\n<InitialsTile name={g.recipientEmail} tone={tone} />\n<div className="flex-1 min-w-0">\n<h3 className="text-sm font-extrabold truncate" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{g.recipientEmail}</h3>\n<p className="text-xs" style={{ color: PASTEL[tone].ink }}>{roleLabel(g.role)}</p>\n</div>\n<button onClick={() => revoke(g)} disabled={busy === g.id} className="inline-flex min-h-11">{t("sec.sharing.revoke")}';
+      const old = rosterRow(before);
+      expect(old).toBeTruthy();
+      expect(old).not.toMatch(/flex-wrap/);
+      expect(old).not.toMatch(/dir="auto"/);
+      expect(old).not.toMatch(/overflowWrap: "normal"/);
+    });
   });
 });
