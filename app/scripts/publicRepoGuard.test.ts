@@ -37,17 +37,18 @@ interface ContentRule {
  * (`github.com/guyrubin/ros`). "IDEA/", "macOS/", "AREA/" are words.
  */
 const ROS_TREE_PATH =
-  /(?<![A-Za-z0-9_.-])(?:ROS|PAI|CoS|EA|KK|HV|00_System)(?:[\\/]|%2F)|(?<![A-Za-z0-9_.-])[Pp][Aa][Ii](?:[\\/]|%2[Ff])projects\b|github\.com\/[^/\s)]+\/[Rr][Oo][Ss]\b/;
+  /(?<![A-Za-z0-9_.-])(?:ROS|PAI|CoS|EA|KK|HV|00_System)(?:[\\/]|%2F)|(?<![A-Za-z0-9_.-])[Pp][Aa][Ii](?:[\\/]|%2[Ff])projects\b|[Gg][Ii][Tt][Hh][Uu][Bb]\.[Cc][Oo][Mm]\/[^/\s)]+\/[Rr][Oo][Ss]\b/;
 /**
  * The private tree's own shapes, even with the domain root cut off: a dated
  * execution folder (`execution/2026-10-07--…`), the BD folder (`bd/ARBOR-…`),
- * a project folder (`projects/arbor/…`). A cloud path such as
+ * a project folder (`projects/arbor/…`), in any case (`Execution/…`). A cloud path such as
  * `projects/arbor-prod/traces/…` is not one.
  */
 const ROS_TREE_SHAPE =
-  /(?<![A-Za-z0-9_.-])execution[\\/]20\d\d-\d\d-\d\d--|(?<![A-Za-z0-9_.-])bd[\\/][A-Za-z]|(?<![A-Za-z0-9_.-])projects[\\/]arbor[\\/]/;
-/** A Windows user profile, the WSL mount or share of one, or a ROS checkout under /home (either separator). */
-const WORKSTATION_PATH = /[A-Za-z]:[\\/]{1,2}Users[\\/]{1,2}|[\\/]mnt[\\/]c[\\/]Users[\\/]|\\\\wsl\$|[\\/]home[\\/][^\\/\s]+[\\/]ROS\b/;
+  /(?<![A-Za-z0-9_.-])execution[\\/]20\d\d-\d\d-\d\d--|(?<![A-Za-z0-9_.-])bd[\\/][A-Za-z]|(?<![A-Za-z0-9_.-])projects[\\/]arbor[\\/]/i;
+/** A Windows user profile, the WSL mount or share of one, or a ROS checkout under /home (either separator, or percent-encoded). */
+const WORKSTATION_PATH =
+  /[A-Za-z]:[\\/]{1,2}Users[\\/]{1,2}|[\\/]mnt[\\/]c[\\/]Users[\\/]|\\\\wsl\$|[\\/]home[\\/][^\\/\s]+[\\/]ROS\b|[A-Za-z]%3[Aa](?:%5[Cc]|%2[Ff]){1,2}Users|%2[Ff]mnt%2[Ff]c%2[Ff]Users|%2[Ff]home%2[Ff][^%\s]+%2[Ff]ROS\b/;
 /** BD-45: the BD workspace folder and its two tell-tale data files, as a path or a link. */
 const PRIVATE_BD_PATH = /(?:^|[\s/(`"'\[])business-development\/|outreach-drafts[\w-]*\.md|gtm-data-v\d/;
 
@@ -137,6 +138,12 @@ describe("B-INF-15 — no tracked file points into the private ROS tree", () => 
       "github.com/guyrubin/ros/blob/main/x.md",
       "pai/projects/arbor/x.md",
       "[link](PAI%2Fprojects%2Farbor)",
+      // round 3: case and percent-encoding
+      "Source: Execution/2026-10-07--design-direction/x.html",
+      "see GitHub.com/guyrubin/ROS/blob/main/x.md",
+      "file=%2Fhome%2Fsomeone%2FROS%2FPAI",
+      "path=C%3A%5CUsers%5Csomeone%5CROS",
+      "path=c%3a%2fUsers%2fsomeone",
       "- `docs/business-development/README.md` - strategic GTM and partnerships v2",
       "[Outreach drafts](outreach-drafts-en-he.md)",
       "[Portable workbook model](gtm-data-v2.json)",
