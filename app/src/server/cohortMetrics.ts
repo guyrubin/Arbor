@@ -49,6 +49,7 @@ import { logger } from "./logger.js";
 import { cohortRetention, dayIndex, dayKeyOf, type RetentionReport, type RetentionRollup } from "../lib/retention.js";
 import { FUNNEL_EVENTS, aggregateFunnel, type FunnelEventDoc } from "../lib/attributionFunnel.js";
 import { OFFER_IDS } from "../lib/offers.js";
+import { ACQUISITION_CHANNELS, channelOfSource } from "../lib/acquisitionChannel.js";
 import { GATE_A, MATURITY_DAYS, MEASURE_DEFINITIONS, METRIC_CONTRACT_VERSION, STANDING_MISSING_DATA, VALUE_EVENTS, W4_DAYS } from "../lib/metricContract.js";
 import { recordStillEntitles, type EntitlementRecord } from "./entitlements.js";
 
@@ -498,6 +499,11 @@ export function billingStateOf(record: EntitlementRecord | null | undefined, now
   return { billed, paying: entitles && record.status !== "in_trial", lapsed: !entitles };
 }
 
+/** BD-37: the group a household falls in — its first-touch source, market, or
+ *  acquisition channel (lib/acquisitionChannel.ts). */
+export const householdGroupKey = (r: Pick<StoredRollup, "source" | "market">, groupBy: "source" | "market" | "channel"): string =>
+  groupBy === "channel" ? channelOfSource(r.source) : String(r[groupBy] ?? "unknown");
+
 /** One group of households. Counts of families, never rates. */
 export type HouseholdLine = {
   key: string;
@@ -529,7 +535,7 @@ export function summariseHouseholds(
   events: readonly CohortEventDoc[],
   offers: readonly HouseholdOffer[] | null,
   billing: readonly HouseholdBilling[] | null,
-  groupBy: "source" | "market",
+  groupBy: "source" | "market" | "channel",
   startedSince: string | null = null,
 ): HouseholdReport {
   const activated = new Set(events.filter((e) => e.event === ACTIVATION_EVENT).map((e) => e.uid));
@@ -541,7 +547,7 @@ export function summariseHouseholds(
     if (!r.uid || seen.has(r.uid)) continue;
     if (startedSince && r.firstSeen < startedSince) continue;
     seen.add(r.uid);
-    const key = String(r[groupBy] ?? "unknown");
+    const key = householdGroupKey(r, groupBy);
     const line = groups.get(key) ?? {
       key,
       households: 0,
@@ -589,6 +595,8 @@ export type MetricContractReport = {
   byGroup: ContractRow[];
   /** Per redeemed offer, then `none`: legacy offers stay apart from full price. */
   byOffer: ContractRow[];
+  /** BD-37: per acquisition channel, in lib/acquisitionChannel.ts order, channels with no start left out. */
+  byChannel: ContractRow[];
   gateA: {
     activatedMaturedW4: { n: number; required: number };
     /** Null when billing or offers were not read. */
@@ -625,7 +633,7 @@ export function summariseMetricContract(input: {
   const offerOf = new Map((offers ?? []).map((o) => [o.uid, (OFFER_IDS as string[]).includes(o.offerId) ? o.offerId : "none"]));
   const billingOf = new Map((billing ?? []).map((b) => [b.uid, b]));
 
-  type H = { uid: string; group: string; offer: string; age: number; firstSeen: string };
+  type H = { uid: string; group: string; channel: string; offer: string; age: number; firstSeen: string };
   const households: H[] = [];
   const seen = new Set<string>();
   for (const r of rollups) {
@@ -634,7 +642,7 @@ export function summariseMetricContract(input: {
     const age = dayIndex(r.firstSeen, asOfDay);
     if (age === null) continue;
     seen.add(r.uid);
-    households.push({ uid: r.uid, group: String(r[groupBy] ?? "unknown"), offer: offerOf.get(r.uid) ?? "none", age, firstSeen: r.firstSeen });
+    households.push({ uid: r.uid, group: householdGroupKey(r, groupBy), channel: channelOfSource(r.source), offer: offerOf.get(r.uid) ?? "none", age, firstSeen: r.firstSeen });
   }
 
   const row = (key: string, hs: readonly H[]): ContractRow => {
@@ -685,6 +693,7 @@ export function summariseMetricContract(input: {
     overall: row("all", households),
     byGroup: split((h) => h.group),
     byOffer: split((h) => h.offer, [...OFFER_IDS, "none"]),
+    byChannel: split((h) => h.channel, ACQUISITION_CHANNELS).filter((r) => r.starts > 0),
     gateA: {
       activatedMaturedW4: { n: activatedMaturedW4, required: GATE_A.activatedMaturedW4 },
       fullPricePayers: { n: fullPricePayers, required: GATE_A.fullPricePayers },
@@ -751,7 +760,7 @@ export type CohortReport = {
   loop?: LoopSummary;
   /** B-GAME-18 / B-BOOK-51: weekly Kid Mode play; small cells hidden. */
   kidPlay: KidPlaySummary;
-  /** B-GROWTH-43: source → offer → activation → paying, per household. */
+  /** B-GROWTH-43: source → offer → activation → paying, per household; BD-37: grouped by acquisition channel. */
   households: HouseholdReport;
   /** BD-25: the metric contract (D7, W4, D30 paying, Gate A, missing data). */
   contract: MetricContractReport;
@@ -857,7 +866,7 @@ export async function buildCohortReport(
     funnels,
     ...(loop ? { loop } : {}),
     kidPlay: summariseKidPlay(events),
-    households: summariseHouseholds(rollups, events, offerDocs, billingDocs, groupBy, dayKeyOf(new Date(opts.since)) ?? null),
+    households: summariseHouseholds(rollups, events, offerDocs, billingDocs, "channel", dayKeyOf(new Date(opts.since)) ?? null),
     contract: summariseMetricContract({
       rollups,
       events,

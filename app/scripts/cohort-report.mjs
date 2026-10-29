@@ -321,6 +321,27 @@ export function billingStateOf(record, now = Date.now()) {
   return { billed, paying: entitles && record.status !== "in_trial", lapsed: !entitles };
 }
 
+/* BD-37 — lib/acquisitionChannel.ts restated (the guard runs both on one table). */
+export const ACQUISITION_CHANNELS = ["practitioner", "centre", "presenter", "sponsor", "studio", "founding", "referral", "content", "search", "store", "direct", "other"];
+const SELF_NAMED_CHANNELS = new Set(["practitioner", "centre", "presenter", "sponsor", "studio", "founding", "referral", "direct"]);
+const CONTENT_SOURCES = new Set(["instagram", "tiktok", "youtube", "facebook", "whatsapp", "telegram", "creator", "pr", "newsletter", "landing", "qr"]);
+const CONTENT_HOST = /(^|\.)(instagram\.com|facebook\.com|fb\.com|tiktok\.com|youtube\.com|youtu\.be|whatsapp\.com|wa\.me|t\.me|telegram\.org|linkedin\.com|lnkd\.in|t\.co|x\.com|twitter\.com|reddit\.com|pinterest\.com)$/;
+const SEARCH_HOST = /(^|\.)(google\.[a-z.]+|bing\.com|duckduckgo\.com|search\.yahoo\.com|yahoo\.com|ecosia\.org|yandex\.[a-z.]+|baidu\.com|search\.brave\.com)$/;
+const STORE_SOURCES = new Set(["appstore", "playstore", "apps.apple.com", "play.google.com"]);
+
+export function channelOfSource(source) {
+  const s = String(source ?? "").trim().toLowerCase();
+  if (!s) return "other";
+  if (SELF_NAMED_CHANNELS.has(s)) return s;
+  if (CONTENT_SOURCES.has(s) || CONTENT_HOST.test(s)) return "content";
+  if (STORE_SOURCES.has(s)) return "store";
+  if (SEARCH_HOST.test(s)) return "search";
+  return "other";
+}
+
+/** Mirrors cohortMetrics.householdGroupKey. */
+export const householdGroupKey = (r, groupBy) => (groupBy === "channel" ? channelOfSource(r.source) : String(r[groupBy] ?? "unknown"));
+
 /** Mirrors cohortMetrics.summariseHouseholds. */
 export function summariseHouseholds(rollups, events, offers, billing, groupBy, startedSince = null) {
   const activated = new Set(events.filter((e) => e.event === "activated").map((e) => e.uid));
@@ -332,7 +353,7 @@ export function summariseHouseholds(rollups, events, offers, billing, groupBy, s
     if (!r.uid || seen.has(r.uid)) continue;
     if (startedSince && r.firstSeen < startedSince) continue;
     seen.add(r.uid);
-    const key = String(r[groupBy] ?? "unknown");
+    const key = householdGroupKey(r, groupBy);
     const line = groups.get(key) ?? {
       key,
       households: 0,
@@ -404,7 +425,7 @@ export function summariseMetricContract(input) {
     const age = dayIndex(r.firstSeen, asOfDay);
     if (age === null) continue;
     seen.add(r.uid);
-    households.push({ uid: r.uid, group: String(r[groupBy] ?? "unknown"), offer: offerOf.get(r.uid) ?? "none", age, firstSeen: r.firstSeen });
+    households.push({ uid: r.uid, group: householdGroupKey(r, groupBy), channel: channelOfSource(r.source), offer: offerOf.get(r.uid) ?? "none", age, firstSeen: r.firstSeen });
   }
   const row = (key, hs) => {
     const d7 = { n: 0, of: 0 };
@@ -452,6 +473,7 @@ export function summariseMetricContract(input) {
     overall: row("all", households),
     byGroup: split((h) => h.group),
     byOffer: split((h) => h.offer, [...OFFER_IDS, "none"]),
+    byChannel: split((h) => h.channel, ACQUISITION_CHANNELS).filter((r) => r.starts > 0),
     gateA: {
       activatedMaturedW4: { n: activatedMaturedW4, required: GATE_A.activatedMaturedW4 },
       fullPricePayers: { n: fullPricePayers, required: GATE_A.fullPricePayers },
@@ -597,7 +619,7 @@ function print(report, args) {
 
   if (args.sections.has("households") && report.households) {
     const h = report.households;
-    lines.push(rule("Households — started in the window → offer → activated → paying"));
+    lines.push(rule("Households by acquisition channel — started in the window → offer → activated → paying"));
     if (!h.offersRead) lines.push("  ! offer redemptions not read — the offer columns are unknown, not zero");
     if (!h.billingRead) lines.push("  ! billing records not read — paying and lapsed are unknown, not zero");
     if (h.lines.length === 0) lines.push("  no family started in the window — not answerable yet");
@@ -618,6 +640,8 @@ function print(report, args) {
     for (const r of c.byGroup) printRow(r);
     lines.push("  by offer:");
     for (const r of c.byOffer) printRow(r);
+    lines.push("  by acquisition channel:");
+    for (const r of c.byChannel ?? []) printRow(r);
     const g = c.gateA;
     lines.push(`  Gate A: activated with matured W4 ${g.activatedMaturedW4.n} of ${g.activatedMaturedW4.required} needed  ·  full-price payers ${g.fullPricePayers.n ?? "unknown"} of ${g.fullPricePayers.required} needed  ·  ${g.met === null ? "not answerable yet" : g.met ? "MET" : "not met"}`);
     lines.push("  missing data:");
@@ -664,7 +688,7 @@ export async function buildReport(db, args, now = new Date()) {
     activation: { ...summariseActivation(events, now.getTime(), 7), definition, definitionStatus },
     funnels,
     ...(loop ? { loop } : {}),
-    households: summariseHouseholds(rollups, events, offerDocs, billingDocs, args.groupBy, Number.isFinite(Date.parse(args.since)) ? new Date(args.since).toISOString().slice(0, 10) : null),
+    households: summariseHouseholds(rollups, events, offerDocs, billingDocs, "channel", Number.isFinite(Date.parse(args.since)) ? new Date(args.since).toISOString().slice(0, 10) : null),
     contract: summariseMetricContract({
       rollups,
       events,

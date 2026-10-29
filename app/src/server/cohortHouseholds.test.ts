@@ -108,9 +108,9 @@ describe("B-GROWTH-43 — the household line", () => {
     });
     expect(line("referral")).toMatchObject({ households: 1, activated: 1, paying: 0, lapsed: 0 });
     expect(line("referral")!.offers[0]).toEqual({ offer: "referral_month", households: 1 });
-    // instagram: one refunded payer and one family that never activated or paid — both in the denominator.
-    expect(line("instagram")).toMatchObject({ households: 2, activated: 1, paying: 0, lapsed: 1 });
-    expect(line("instagram")!.offers.find((o) => o.offer === "none")).toEqual({ offer: "none", households: 2 });
+    // content (instagram, BD-37 channel): one refunded payer and one family that never activated or paid — both in the denominator.
+    expect(line("content")).toMatchObject({ households: 2, activated: 1, paying: 0, lapsed: 1 });
+    expect(line("content")!.offers.find((o) => o.offer === "none")).toEqual({ offer: "none", households: 2 });
     // The internal account and the family that started before the window are not in any line.
     expect(line("direct")).toBeUndefined();
     expect(report.households.lines.reduce((n, l) => n + l.households, 0)).toBe(4);
@@ -152,7 +152,7 @@ describe("B-GROWTH-43 — the household line", () => {
 describe("B-GROWTH-43 — the script and the server agree", () => {
   it("on the household line, the billing reduction, the offer ids and the collection", async () => {
     const f = await fixture();
-    for (const groupBy of ["source", "market"] as const) {
+    for (const groupBy of ["source", "market", "channel"] as const) {
       expect(reportScript.summariseHouseholds(f.rollups, f.events, f.offers, f.billing, groupBy, day(14)))
         .toEqual(summariseHouseholds(f.rollups, f.events, f.offers, f.billing, groupBy, day(14)));
     }
