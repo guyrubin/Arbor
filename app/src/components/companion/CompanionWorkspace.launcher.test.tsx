@@ -256,18 +256,17 @@ describe("B-VOICE-08 — Now offers one tap into a spoken conversation", () => {
     expect(render(true)).not.toContain('data-testid="launcher-voice"');
   });
 
-  it("the conversation mounts hidden once the page is idle, so the door can start inside a tap", () => {
-    render();
-    const effect = state.effects.find(effect => String(effect).includes("requestIdleCallback"));
-    expect(effect).toBeDefined();
-    const run = vi.fn((callback: () => void, _options?: { timeout: number }) => { callback(); return 7; });
-    const cancel = vi.fn();
-    vi.stubGlobal("window", { requestIdleCallback: run, cancelIdleCallback: cancel });
-    const cleanup = effect!();
-    expect(run).toHaveBeenCalledOnce();
-    expect(run.mock.calls[0][1]).toEqual({ timeout: 4000 });
-    if (typeof cleanup === "function") cleanup();
-    expect(cancel).toHaveBeenCalledWith(7);
+  it("round 4: nothing of the conversation mounts ahead of a tap (no idle mount, no host-route footprint)", () => {
+    const html = render();
+    expect(html).not.toContain("companion-conversation");
+    expect(html).not.toMatch(/data-module="coach-/);
+    expect(html).not.toContain('data-primary-move="ask"');
+    expect(state.effects.some(effect => /requestIdleCallback|setMounted\(true\)/.test(String(effect)))).toBe(false);
+    const source = readFileSync(new URL("./CompanionWorkspace.tsx", import.meta.url), "utf8");
+    expect(source).not.toContain("requestIdleCallback");
+    // It mounts only through show() (a door, the launcher, a conversation route).
+    expect((source.match(/setMounted\(true\)/g) || []).length).toBe(1);
+    expect(source).toMatch(/const show = [^\n]*\n(?:[^\n]*\n){0,4}\s*setMounted\(true\); setOpen\(true\);/);
   });
 });
 

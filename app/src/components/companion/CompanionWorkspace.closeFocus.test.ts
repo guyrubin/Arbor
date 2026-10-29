@@ -138,6 +138,15 @@ async function mountedCloseProof() {
   gate = false; k.update({ kidLocked: false });
   Object.assign(kidHeld, { settled: k.tab(), launcher: !!k.launcher(), panel: k.panel() });
   k.unmount();
+  // B-VOICE-08 round 4: a host route carries none of the conversation until it
+  // is asked for: no idle mount, however long the page sits.
+  const f = mount("overview");
+  await new Promise(resolve => setTimeout(resolve, 1800));
+  flushSync(() => {}); paint();
+  const footprint: Record<string, unknown> = { beforeAnyTap: f.panel() };
+  f.launch();
+  footprint.afterTheLauncher = f.panel();
+  f.unmount();
   // B-VOICE-08 round 3: an explicit close says "not shown" at once and drops
   // a door tap still queued, before anything repaints.
   const d = mount("milestones"); d.launch();
@@ -152,7 +161,7 @@ async function mountedCloseProof() {
   doorOnClose.shownUnderKidMode = door.read ? door.read() : null;
   d.unmount();
   doorOnClose.readerAfterUnmount = door.read;
-  process.stdout.write(JSON.stringify({ returned, cancelled, noUnrequestedFocus, memory, kidHeld, doorOnClose }));
+  process.stdout.write(JSON.stringify({ returned, cancelled, noUnrequestedFocus, memory, kidHeld, doorOnClose, footprint }));
 }
 
 function proof() {
@@ -175,6 +184,9 @@ describe("CompanionWorkspace explicit close focus after real React commits", () 
   it("FEAT-01: 'What Arbor remembers' closes the panel at every width, opens the memory page and returns focus to the launcher", () => {
     expect(result.memory).toHaveLength(4);
     for (const row of result.memory) expect(row, JSON.stringify(row)).toMatchObject({ target: "memory", launcher: true, beforePaint: false, focused: true, preventScroll: true });
+  });
+  it("B-VOICE-08 round 4: Now carries no conversation (no panel, so no coach module or primary-move stamp) until it is opened", () => {
+    expect(result.footprint).toEqual({ beforeAnyTap: false, afterTheLauncher: true });
   });
   it("B-VOICE-08 round 3: closing reports the conversation hidden inside the close and drops a queued door tap", () => {
     expect(result.doorOnClose).toEqual({ shownWhileOpen: true, shownInsideTheClose: false, droppedInsideTheClose: true, shownAfter: false, shownUnderKidMode: false, readerAfterUnmount: null });
