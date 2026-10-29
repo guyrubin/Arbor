@@ -28,18 +28,39 @@ function serverFiles(dir: string, acc: string[] = []): string[] {
   }
   return acc;
 }
-/** Every code a server route answers with a 409 that carries no crisis category. */
-function server409Codes(sources: string[]): string[] {
-  const codes = new Set<string>();
+/** `NAME.key` → value for every object of string constants in the sources
+ *  (heroSheetContract.ts HERO_POSE_REFUSALS: refuse(409, HERO_POSE_REFUSALS.missing, …)). */
+function constants(sources: string[]): Map<string, string> {
+  const out = new Map<string, string>();
   for (const src of sources) {
-    for (const m of src.matchAll(/\b\w+\(\s*res\s*,\s*409\s*,\s*["']([a-z_]+)["']/g)) codes.add(m[1]);
+    for (const m of src.matchAll(/\bconst (\w+)\s*=\s*\{([^{}]*)\}/g)) {
+      for (const pair of m[2].matchAll(/\b(\w+):\s*["']([a-z_]+)["']/g)) out.set(`${m[1]}.${pair[1]}`, pair[2]);
+    }
+  }
+  return out;
+}
+/** Every code a server route answers with a 409 that carries no crisis category.
+ *  Round 2 (superset): a refuse helper with or without `res`, a code passed as a
+ *  constant (`HERO_POSE_REFUSALS.anchor`), and a status chosen by the code
+ *  (`code === "activity_changed" ? 409`, sent in `error`). A code the scan cannot
+ *  resolve is reported as `unresolved:<expression>`, so it fails the equality. */
+function server409Codes(sources: string[], known = constants(sources)): string[] {
+  const codes = new Set<string>();
+  const resolve = (expression: string) => {
+    const literal = /^["']([a-z_]+)["']$/.exec(expression);
+    return literal ? literal[1] : known.get(expression) ?? `unresolved:${expression}`;
+  };
+  for (const src of sources) {
+    for (const m of src.matchAll(/\b\w+\(\s*(?:res\s*,\s*)?409\s*,\s*([^,]+?)\s*,/g)) codes.add(resolve(m[1]));
     for (const m of src.matchAll(/\.status\(\s*409\s*\)\.json\(\{([^}]*)\}/g)) {
       const code = /\bcode:\s*["']([a-z_]+)["']/.exec(m[1]);
       if (code && !/escalationCategory/.test(m[1])) codes.add(code[1]);
     }
+    for (const m of src.matchAll(/\b\w+\s*===\s*["']([a-z_]+)["']\s*\?\s*409\b/g)) codes.add(m[1]);
   }
   return [...codes].sort();
 }
+const LIB_SOURCES = serverFiles(path.join(SRC, "lib")).map((f) => readFileSync(f, "utf8"));
 const SOURCES = [...serverFiles(path.join(SRC, "server")), ...serverFiles(path.join(SRC, "routes"))].map((f) => readFileSync(f, "utf8"));
 
 function answer(status: number, body: unknown) {
@@ -90,7 +111,8 @@ describe("a non-crisis 409 reaches its caller as its own error", () => {
 
 describe("the set is exactly what the server answers", () => {
   it("every non-crisis 409 code in server/ and routes/ is in NON_CRISIS_409_CODES, and nothing else is", () => {
-    const codes = server409Codes(SOURCES);
+    const codes = server409Codes(SOURCES, constants([...SOURCES, ...LIB_SOURCES]));
+    for (const code of ["hero_anchor_missing", "hero_book_anchor_missing", "activity_changed"]) expect(codes, code).toContain(code);
     expect(codes).toContain("hero_missing");
     expect(codes).toEqual([...NON_CRISIS_409_CODES].sort());
   });
@@ -99,5 +121,23 @@ describe("the set is exactly what the server answers", () => {
     expect(server409Codes(['return refuse(res, 409, "book_new_state", "x");'])).toEqual(["book_new_state"]);
     expect(server409Codes(['res.status(409).json({ available: false, code: "new_state" });'])).toEqual(["new_state"]);
     expect(server409Codes(['res.status(409).json({ error: "Professional support recommended", escalationCategory: m.category });'])).toEqual([]);
+  });
+
+  it("round 2 probes: a constant code, a refuse without res, a status chosen by the code, and an unresolvable code", () => {
+    const consts = 'export const BOOK_REFUSALS = {\n  waiting: "book_waiting",\n  /** a doc comment */\n  gone: "book_gone",\n};';
+    expect(server409Codes([consts, 'if (!x) return refuse(409, BOOK_REFUSALS.gone, "Gone");'])).toEqual(["book_gone"]);
+    expect(server409Codes(['return refuse(409, "plain_state", "x");'])).toEqual(["plain_state"]);
+    expect(server409Codes(['res.status(code === "access_ended" ? 403 : code === "item_changed" ? 409 : 503).json({ error: code });'])).toEqual(["item_changed"]);
+    expect(server409Codes(['return refuse(409, makeCode(x), "x");'])).toEqual(["unresolved:makeCode(x)"]);
+    expect(server409Codes(['return refuse(409, OTHER.unknown, "x");'])).toEqual(["unresolved:OTHER.unknown"]);
+  });
+
+  it("a known code sent in `error` (no `code` field) is its own error too; a crisis `error` still escalates", async () => {
+    answer(409, { error: "activity_changed" });
+    const error = await api.listShares().catch((e) => e);
+    expect(error).not.toBeInstanceOf(EscalationRequiredError);
+    expect(error.message).toBe("activity_changed");
+    answer(409, { error: "Professional support recommended" });
+    expect(await api.listShares().catch((e) => e)).toBeInstanceOf(EscalationRequiredError);
   });
 });

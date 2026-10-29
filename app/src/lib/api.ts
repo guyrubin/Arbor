@@ -136,6 +136,9 @@ export const NON_CRISIS_409_CODES: ReadonlySet<string> = new Set([
   "book_narration_no_name", "book_narration_wrong_voice", "book_narration_no_book",
   "plan_narration_no_plan", "plan_narration_closed", "plan_narration_no_sheet",
   "live_renewal_invalid",
+  // Round 2: the hero-pose route's anchor states (heroSheetContract HERO_POSE_REFUSALS)
+  // and the co-parent activity conflict (server/coParent.ts, sent in `error`).
+  "hero_anchor_missing", "hero_book_anchor_missing", "activity_changed",
 ]);
 /** /live/token's 409 code: the renewal names a session the server will not chain. */
 export const LIVE_RENEWAL_INVALID = "live_renewal_invalid";
@@ -144,8 +147,10 @@ export const isLiveRenewalInvalid = (err: unknown): boolean =>
 /** A 409 body that names one of the non-crisis codes (and no crisis category). */
 export function nonCrisis409Code(body: unknown): string | null {
   if (!body || typeof body !== "object") return null;
-  const { code, escalationCategory } = body as { code?: unknown; escalationCategory?: unknown };
-  return typeof code === "string" && escalationCategory === undefined && NON_CRISIS_409_CODES.has(code) ? code : null;
+  const { code, error, escalationCategory } = body as { code?: unknown; error?: unknown; escalationCategory?: unknown };
+  // The code field, or (co-parent shape) an `error` that is exactly a known code.
+  const named = typeof code === "string" ? code : typeof error === "string" ? error : null;
+  return named !== null && escalationCategory === undefined && NON_CRISIS_409_CODES.has(named) ? named : null;
 }
 
 /** B-KID-05: image endpoints' 429 code — today's drawing quota is spent
