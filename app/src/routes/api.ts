@@ -1272,7 +1272,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // reach it (escalation answered above, byte-identical). The output
       // screen below covers it like any line.
       const weekScript = config.programScriptInCoach && !seededEscalation && !attachments.length && !structured.fileDeclined
-        ? programWeekScript(companion.program, message, renderLanguage) : null;
+        ? programWeekScript(companion.program, message, renderLanguage, childProfile?.gender) : null;
       if (weekScript) structured.text = `${weekScript}\n\n${structured.text ?? ""}`.trim();
 
       // AI-2: output-side safety screen (lexical floor + optional semantic classifier).
@@ -1826,7 +1826,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // B-PROG-04 (dark, config.programScriptInCoach): an on-shelf spoken
       // answer opens with the active week's coach script, verbatim — its own
       // first delta, lexically screened like every released sentence.
-      const weekScript = config.programScriptInCoach ? programWeekScript(companionContext.programScripts, message, ttsLang) : null;
+      const weekScript = config.programScriptInCoach ? programWeekScript(companionContext.programScripts, message, ttsLang, childProfile?.gender) : null;
       if (weekScript && !screenModelOutputLexical(weekScript).flagged) {
         writeSse(res, "delta", { text: `${weekScript} `, tts: { text: weekScript, token: mintTtsToken(weekScript, ttsLang) } });
       }

@@ -24,7 +24,8 @@ import type { CompanionLedgerSource } from "../server/companionContext.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
 import { TALK_TOGETHER } from "../content/programs/talkTogether.js";
 import { enrolInProgram } from "../lib/programs/enrolment.js";
-import { onProgramShelf, programWeekScript } from "../lib/programs/weekScript.js";
+import { genderedScript, onProgramShelf, programWeekScript } from "../lib/programs/weekScript.js";
+import { resolveHebrewSlash } from "../lib/hebrewSlashGender.js";
 
 const UID = "synthetic-parent-prog04";
 const CHILD = "synthetic-child-prog04";
@@ -147,6 +148,36 @@ describe("B-PROG-04 · /chat (flag on)", () => {
     const b = await chat(off, CRISIS);
     expect(a.body).toEqual(b.body);
     expect(a.body.text).not.toContain(WEEK1.en);
+  });
+});
+
+describe("B-PROG-04 round 3 · the Hebrew script names the child in one gender when the profile says which", () => {
+  const chatAs = async (gender: string | undefined) => {
+    const res = await fetch(`${on}/api/chat`, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: ON_SHELF.he, childProfile: { ...PROFILE, ...(gender ? { gender } : {}) }, childId: CHILD, language: "he" }) });
+    return ((await res.json()) as { text: string }).text;
+  };
+  it("girl / boy: no slash form on screen (the gendered-Hebrew helper resolves it)", async () => {
+    expect(WEEK1.he).toMatch(/[א-ת]\/[א-ת]/); // the authored script carries slash forms
+    for (const gender of ["girl", "boy"] as const) {
+      const text = await chatAs(gender);
+      const want = resolveHebrewSlash(WEEK1.he, gender);
+      expect(text.startsWith(`${want}\n\n`), text.slice(0, 80)).toBe(true);
+      expect(text.split("\n\n")[0]).not.toMatch(/[א-ת]\/[א-ת]/);
+    }
+    expect(resolveHebrewSlash(WEEK1.he, "girl")).not.toBe(resolveHebrewSlash(WEEK1.he, "boy"));
+  });
+  it("unknown gender: the authored slash form stays", async () => {
+    expect((await chatAs(undefined)).startsWith(`${WEEK1.he}\n\n`)).toBe(true);
+    expect(genderedScript(WEEK1.he, "he", "other")).toBe(WEEK1.he);
+    expect(genderedScript(WEEK1.en, "en", "girl")).toBe(WEEK1.en);
+  });
+  it("/voice speaks the gendered line too", async () => {
+    const res = await fetch(`${on}/api/voice`, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: ON_SHELF.he, childProfile: { ...PROFILE, gender: "girl" }, contextChildId: CHILD, language: "he" }) });
+    const raw = await res.text();
+    const first = JSON.parse(raw.split("\n\n").find((b) => b.startsWith("event: delta"))!.match(/^data: (.+)$/m)![1]);
+    expect(first.text).toBe(`${resolveHebrewSlash(WEEK1.he, "girl")} `);
   });
 });
 

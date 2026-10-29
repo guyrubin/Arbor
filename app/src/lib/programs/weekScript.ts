@@ -16,6 +16,7 @@
  * questions answer before any of this runs, byte-identical.
  */
 import type { LocalizedText } from "../../content/governance";
+import { resolveHebrewSlash } from "../hebrewSlashGender";
 
 /**
  * Round 2 (critic P1): the cues are the program's own TOPIC — what the child
@@ -92,13 +93,21 @@ export function onProgramShelf(message: unknown, shelf: string | undefined | nul
   return enRe(cues.en).test(message) || heRe(cues.he).test(message) || (phrases.length > 0 && heRe(phrases).test(message));
 }
 
+/** Round 3: a Hebrew script names the child in one gender when the profile
+ *  says which (the gendered-Hebrew helper, lib/hebrewSlashGender); the
+ *  authored slash form ("לו/לה") stays only when the gender is unknown. */
+export function genderedScript(line: string, lang: "en" | "he", gender: unknown): string {
+  return lang === "he" && (gender === "boy" || gender === "girl") ? resolveHebrewSlash(line, gender) : line;
+}
+
 /** The week's opening line for an on-shelf turn, in the answer's language; null otherwise. */
 export function programWeekScript(
   program: { shelf: string; scripts: readonly LocalizedText[] } | null | undefined,
   message: unknown,
   lang: "en" | "he",
+  gender?: unknown,
 ): string | null {
   if (!program || !onProgramShelf(message, program.shelf)) return null;
   const line = program.scripts[0]?.[lang]?.trim();
-  return line ? line : null;
+  return line ? genderedScript(line, lang, gender) : null;
 }

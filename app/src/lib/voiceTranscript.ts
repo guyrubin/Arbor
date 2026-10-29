@@ -1,5 +1,6 @@
 import type { ChatMessage } from "../context/ArborContext";
 import { PROGRAMS } from "../content/programs";
+import { resolveHebrewSlash } from "./hebrewSlashGender";
 
 /**
  * COACH-2 — browser voice loop transcript helpers.
@@ -67,7 +68,8 @@ export const VOICE_NEXT_STEP_MAX = 220;
  *  week's script verbatim, so the model's own reply starts AFTER it — the
  *  step is read from the model's reply, never shifted onto its acknowledgement. */
 const AUTHORED_SCRIPTS: readonly string[] = PROGRAMS
-  .flatMap((p) => p.weeks.flatMap((w) => w.coachScripts.flatMap((s) => [s.text.en.trim(), s.text.he.trim()])))
+  // Hebrew as authored (gender unknown) and resolved for a boy and a girl (the route genders it when it can).
+  .flatMap((p) => p.weeks.flatMap((w) => w.coachScripts.flatMap((s) => [s.text.en.trim(), s.text.he.trim(), resolveHebrewSlash(s.text.he.trim(), "boy"), resolveHebrewSlash(s.text.he.trim(), "girl")])))
   .filter(Boolean)
   .sort((a, b) => b.length - a.length);
 const withoutLeadingScript = (text: string): string => {
