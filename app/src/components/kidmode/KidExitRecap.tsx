@@ -49,10 +49,10 @@ import { bookAskAfter } from "../../lib/bookAskAfter";
 
 export default function KidExitRecap() {
   const { childProfile, addMoment } = useArbor();
-  const { user, firebaseEnabled } = useAuth();
+  const { user, firebaseEnabled, loading } = useAuth();
   // Fail closed if this mounted session ever observes another account/child.
   // A→B→A is still a changed session: do not offer a stale Keep action.
-  const scope = JSON.stringify([firebaseEnabled ? user?.uid ?? "signed-out" : "local-sandbox", childProfile.id]);
+  const scope = firebaseEnabled && loading ? null : JSON.stringify([firebaseEnabled ? user?.uid ?? "signed-out" : "local-sandbox", childProfile.id]);
   const recapScopeRef = useRef(makeKidExitRecapScopeGuard(scope));
   recapScopeRef.current.observe(scope);
   const { toast } = useToast();
@@ -79,7 +79,7 @@ export default function KidExitRecap() {
   ledgersRef.current = kidActivityLedgers(practice, heroRuns.items);
   const speakRef = useRef<() => void>(() => undefined);
   speakRef.current = () => {
-    if (!recapScopeRef.current.mayOffer()) return;
+    if (!recapScopeRef.current.mayOffer() || (firebaseEnabled && !user)) return;
     const counts = countsSince(ledgersRef.current, openedAtRef.current);
     const firstName = (childProfile.name || "").split(" ")[0];
     const lang = uiLang === "he" ? "he" : "en";
