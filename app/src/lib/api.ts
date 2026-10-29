@@ -656,8 +656,8 @@ export const api = {
   // mk-p0-2: the signed-in parent's stable invite code + shareable link + earned months.
   referralCode: () => get<ReferralCodeInfo>("/api/referral/code"),
   // mk-p0-2: redeem a captured referral code on the referred parent's activation.
-  referralActivate: (code: string) =>
-    post<ReferralActivateResult>("/api/referral/activate", { code }),
+  referralActivate: (code: string, via?: "link" | "typed") =>
+    post<ReferralActivateResult>("/api/referral/activate", via ? { code, via } : { code }),
   // Pre-auth access request from LoginScreen. This hits the server-side waitlist
   // pipeline rather than relying on the parent having a local mail client.
   requestAccess: (payload: { email: string; source?: string; market?: string }) =>

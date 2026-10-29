@@ -128,6 +128,9 @@ export const CLAIM_REGISTRY: Readonly<Record<string, ClaimBasis>> = {
   "set.referral.earned.one": { kind: "offer", offer: "referral_month" },
   "set.referral.maxed": { kind: "offer", offer: "referral_month" },
   "set.referral.shareText": { kind: "offer", offer: "referral_month" },
+  // B-GROWTH-43: the typed-code field (components/referral/OfferCodeField)
+  "set.referral.code.sub": { kind: "offer", offer: "referral_month" },
+  "set.referral.code.granted": { kind: "offer", offer: "referral_month" },
   "set.section.billingSub": fact("names the Settings section holding subscription, referral and account access"),
   // the price, which is the store's
   "elev.storeshell.pw.perMonthApprox": { kind: "storePrice" },

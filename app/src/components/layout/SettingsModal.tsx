@@ -25,6 +25,7 @@ import { isNativePlatform, nativePlatform } from "../../lib/runtime";
 import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: Privacy · Terms · Support in the footer
 import { Skeleton } from "../ui/Skeleton";
 import { PlanBadge } from "../ui/PlanBadge";
+import OfferCodeField from "../referral/OfferCodeField";
 import { useLanguage, type AiLang } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
@@ -517,6 +518,12 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               {t("set.plan.restore")}
             </button>
           )}
+
+          {/* B-GROWTH-43: a code given aloud or on paper is typed here, inside the
+              Plan card; one invite per family (server/referral.ts). Not for a
+              paying family: a comp month never overrides a paid record, so a
+              code would spend their one invite on nothing. */}
+          {!isPaid && !entitlementLoading && !entitlementUnverified && <OfferCodeField onGranted={() => void retryEntitlement()} />}
         </div>
 
         {/* mk-p0-2 referral loop → B-SHELL-29: the invite card moved to the
