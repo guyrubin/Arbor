@@ -258,10 +258,10 @@
     "journal|375x812|en|capture-open": {
       "tappableAboveFold": 16,
       "tappable": 22,
-      "textSizes": 5,
-      "under12": 3,
+      "textSizes": 3,
+      "under12": 0,
       "uppercase": 0,
-      "gradients": 1,
+      "gradients": 0,
       "screens": 1.5
     },
     "development|375x812|en": {
@@ -285,10 +285,10 @@
     "journal|375x812|he|capture-open": {
       "tappableAboveFold": 20,
       "tappable": 22,
-      "textSizes": 5,
-      "under12": 3,
+      "textSizes": 3,
+      "under12": 0,
       "uppercase": 0,
-      "gradients": 1,
+      "gradients": 0,
       "screens": 1.2
     },
     "development|375x812|he": {
@@ -312,20 +312,20 @@
     "journal|1280x800|en|capture-open": {
       "tappableAboveFold": 21,
       "tappable": 22,
-      "textSizes": 5,
-      "under12": 3,
+      "textSizes": 3,
+      "under12": 0,
       "uppercase": 0,
-      "gradients": 1,
+      "gradients": 0,
       "screens": 1.2
     },
     "development|1280x800|en": {
       "tappableAboveFold": 8,
-      "tappable": 14,
+      "tappable": 15,
       "textSizes": 8,
       "under12": 0,
       "uppercase": 3,
       "gradients": 0,
-      "screens": 1.6
+      "screens": 1.7
     },
     "practice|1280x800|en": {
       "tappableAboveFold": 14,
@@ -339,20 +339,20 @@
     "journal|1280x800|he|capture-open": {
       "tappableAboveFold": 21,
       "tappable": 22,
-      "textSizes": 5,
-      "under12": 3,
+      "textSizes": 3,
+      "under12": 0,
       "uppercase": 0,
-      "gradients": 1,
+      "gradients": 0,
       "screens": 1.1
     },
     "development|1280x800|he": {
       "tappableAboveFold": 9,
-      "tappable": 14,
+      "tappable": 15,
       "textSizes": 7,
       "under12": 0,
       "uppercase": 3,
       "gradients": 0,
-      "screens": 1.6
+      "screens": 1.7
     },
     "practice|1280x800|he": {
       "tappableAboveFold": 20,
@@ -367,7 +367,7 @@
   "added": [
     {
       "rows": "B-INF-08 (29 Oct): development and practice at 375/1280 EN+HE, and journal capture-open (the capture sheet, weighed in its dialog)",
-      "from": "rendered sweep at 1d763e2 on the demo seed"
+      "from": "rendered sweep on claude/consolidation-2026-10-28 at 44a5a5bc (demo seed applied 2026-10-29T05:10Z, sweep 05:10-05:17Z, release matrix); re-measured in round 2 because the 1d763e2 rows depended on the seed day and clock (development@1280 read tappable 15, screens 1.7 on main)"
     }
   ]
 }
