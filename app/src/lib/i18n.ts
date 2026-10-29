@@ -1312,6 +1312,7 @@ export const en: Dict = {
   // auth / login
   "auth.tagline": "Your child's development, thoughtfully guided.",
   "auth.continueGoogle": "Continue with Google",
+  "auth.continueApple": "Continue with Apple",
   "auth.or": "or",
   "auth.continueEmail": "Continue with email",
   "auth.emailPlaceholder": "you@example.com",
@@ -3902,6 +3903,7 @@ export const he: Dict = {
   "prac.adventures.sub": "סיפורים קטנים עם חשיבה גדולה בתוכם — {name} עוזר לדמויות ומתרגל בחשאי היגיון, רצף וכוח מילים.",
   "auth.tagline": "ההתפתחות של ילדכם, בליווי מתחשב.",
   "auth.continueGoogle": "המשך עם Google",
+  "auth.continueApple": "המשך עם Apple",
   "auth.or": "או",
   "auth.continueEmail": "המשך עם דוא\"ל",
   "auth.emailPlaceholder": "you@example.com",

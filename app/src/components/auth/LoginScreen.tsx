@@ -5,13 +5,16 @@ import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
 import { LegalLinks } from "../billing/LegalLinks";
+import { appleSignInOffered } from "../../lib/nativeSignIn";
 
 function ArborMark() {
   return <ArborMarkIcon size={56} />;
 }
 
 export default function LoginScreen() {
-  const { signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, error } = useAuth();
+  const { signInWithGoogle, signInWithApple, signInWithEmail, signUpWithEmail, resetPassword, error } = useAuth();
+  // B-GA-19: dark until the Apple provider is configured (and, in a native shell, until iOS ships the plugin).
+  const offerApple = appleSignInOffered();
   const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +22,7 @@ export default function LoginScreen() {
   // B-RESID-05: one e-mail form, two modes. A new family creates its account
   // here (Google stays); there is no invite-only gate and no access request.
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [busy, setBusy] = useState<"google" | "email" | null>(null);
+  const [busy, setBusy] = useState<"google" | "apple" | "email" | null>(null);
   const [resetMsg, setResetMsg] = useState("");
 
   const handleReset = async () => {
@@ -39,6 +42,17 @@ export default function LoginScreen() {
     setBusy("google");
     try {
       await signInWithGoogle();
+    } catch {
+      /* surfaced via context error */
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleApple = async () => {
+    setBusy("apple");
+    try {
+      await signInWithApple();
     } catch {
       /* surfaced via context error */
     } finally {
@@ -137,6 +151,26 @@ export default function LoginScreen() {
           )}
           {t("auth.continueGoogle")}
         </button>
+
+        {offerApple && (
+          <button
+            type="button"
+            data-testid="auth-apple"
+            onClick={handleApple}
+            disabled={busy !== null}
+            className="w-full min-h-11 font-bold text-sm px-5 py-3 rounded-2xl transition active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-60"
+            style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-ink)", color: "var(--arbor-ink)" }}
+          >
+            {busy === "apple" ? (
+              <Icon name="refresh" size={16} className="animate-spin" />
+            ) : (
+              <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+                <path d="M16.37 12.5c-.02-2.1 1.72-3.11 1.8-3.16-.98-1.43-2.5-1.63-3.04-1.65-1.29-.13-2.52.76-3.17.76-.66 0-1.67-.74-2.74-.72-1.41.02-2.71.82-3.44 2.08-1.47 2.55-.38 6.32 1.05 8.39.7 1.01 1.53 2.15 2.62 2.11 1.05-.04 1.45-.68 2.72-.68 1.27 0 1.63.68 2.74.66 1.13-.02 1.85-1.03 2.54-2.05.8-1.17 1.13-2.31 1.15-2.37-.03-.01-2.2-.84-2.23-3.37zM14.29 6.33c.58-.7.97-1.68.86-2.65-.83.03-1.84.55-2.44 1.25-.53.62-1 1.61-.88 2.57.93.07 1.88-.47 2.46-1.17z" />
+              </svg>
+            )}
+            {t("auth.continueApple")}
+          </button>
+        )}
 
         <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest" style={{ color: "var(--arbor-muted)" }}>
           <span className="flex-1 h-px" style={{ background: "var(--arbor-rule)" }} />
