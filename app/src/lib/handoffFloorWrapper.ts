@@ -43,6 +43,7 @@ import {
   withoutHandoffFindings,
   type HandoffFloorOptions,
 } from "./clinicalScan";
+import { hasIncidentCue } from "../content/behaviorTaxonomy";
 
 /* ── escalation commands (EN + HE) ──────────────────────────────────────── */
 
@@ -248,8 +249,52 @@ const splitTail = (segment: string) => {
   const cut = segment.length - (m ? m[0].length : 0);
   return { body: segment.slice(0, cut), tail: segment.slice(cut) };
 };
-const BARE_CONJ_BEFORE = /\s(?:and|but|so|yet|while|whereas|though|although|because|since|as)\s+|\s(?=(?:אבל|אך|כי|מאחר|למרות|בעוד|אולם)(?!\p{L}))|\s(?=ו\p{L})/giu;
-const BARE_CONJ_AFTER = /\s(?:and|but|so|yet|while|whereas|though|although|because|since)\s+(?=(?:he|she|they|we|i|it|there|this|his|her|their|the|a|an|my|our|[\p{Lu}]\p{L}*|shows?|showed|has|had|is|was|seems|appears|does|did)\b)|\s(?=(?:אבל|אך|כי|מאחר|למרות|בעוד|אולם)(?!\p{L}))|\s(?=ו(?:הוא|היא|הם|הן|אני|אנחנו)(?!\p{L}))/gu;
+/* Round 12 (P1-1): a reassurance is removed only when its comma chunk holds
+ * nothing else — a lead-in ("Mom reports", "His teacher said there were",
+ * "אמא מספרת ש"), the negated finding, its object and a context frame ("at
+ * drop-off", "since the new routine", "מאז השגרה החדשה"). Another clause in
+ * the chunk (a verb, a subject, or any hard-moment word main's own incident
+ * cues know, content/behaviorTaxonomy hasIncidentCue) keeps main's verdict
+ * for the whole sentence: "Mom reports no signs of tiredness after he bit Noa
+ * at lunch" stays exactly as main keeps it. */
+const LEAD_CONNECTOR_EN = String.raw`(?:and|but|or|though|although|as|since|because|while|whereas|so|yet|plus|also|however|still|with)`;
+const LEAD_ATTRIBUTION_EN = String.raw`(?:according\s+to|per|as\s+(?:reported|noted|described|observed)\s+by)\s+(?:[\p{L}'’.-]+\s+){1,3}?`;
+const LEAD_RELAY_EN = String.raw`(?:please\s+)?(?:tell|let|inform|remind|note|mention\s+to)\s+(?:[\p{L}'’.-]+\s+){0,3}?(?:know\s+)?`;
+const LEAD_SUBJECT_EN = String.raw`(?:[\p{L}'’.-]+\s+){1,3}?`;
+const LEAD_VERB_EN = String.raw`(?:reports?|reported|says?|said|notes?|noted|tells?|told|mentions?|mentioned|shares?|shared|observes?|observed|notices?|noticed|describes?|described|writes?|wrote|explains?|explained|confirms?|confirmed|adds?|added|agrees?|agreed|finds?|found|sees?|saw|thinks?|thought|feels?|felt|believes?|believed)`;
+const SHOW_VERB_EN = String.raw`(?:(?:also|still|clearly|currently|now|really)\s+)?(?:shows?|showed|showing|has|had|have|displays?|displayed|exhibits?|exhibited|presents?|presented|demonstrates?|demonstrated|gives?|gave|is|are|was|were|does|did|do|seems?|seemed|appears?|appeared)(?:\s+(?:to\s+(?:be|have)|showing|having))?`;
+const THERE_EN = String.raw`there\s+(?:is|are|was|were|has\s+been|have\s+been|seems?\s+to\s+be|appears?\s+to\s+be|remains?)\s+(?:(?:still|also|really|clearly)\s+)?`;
+const LEAD_OK_EN = new RegExp(String.raw`^(?:${LEAD_CONNECTOR_EN}\s+)?(?:${LEAD_ATTRIBUTION_EN})?(?:${LEAD_RELAY_EN}(?:that\s+)?)?(?:${LEAD_SUBJECT_EN}${LEAD_VERB_EN}\s+(?:that\s+)?)?(?:${THERE_EN}|${LEAD_SUBJECT_EN}${SHOW_VERB_EN}\s+)?(?:with\s+)?$`, "iu");
+/** Verbs a lead-in may carry; any other -ed / -ing word in it is a clause of its own. */
+const LEAD_VERB_WORDS = new Set(("reported noted observed described explained confirmed mentioned shared noticed added agreed showed showing displayed exhibited "
+  + "presented demonstrated seemed appeared believed having").split(" "));
+const HE_LEAD_VERB = String.raw`(?:מספר|מספרת|מספרים|מספרות|סיפר|סיפרה|סיפרו|אומר|אומרת|אומרים|אומרות|אמר|אמרה|אמרו|מציין|מציינת|מציינים|ציין|ציינה|ציינו|מדווח|מדווחת|מדווחים|דיווח|דיווחה|דיווחו|ראה|ראתה|ראו|רואה|רואים|מצא|מצאה|מצאו|כותב|כותבת|כתב|כתבה|כתבו|חושב|חושבת|חושבים|ספרו|ספר|ספרי|אמרו|ציינו|נראה|ניכר|יש\s+לציין|חשוב\s+לציין)`;
+const LEAD_OK_HE = new RegExp(String.raw`^(?:(?:ו|אבל|אך|או|כי)\s+)?(?:(?:לדברי|לפי)\S*(?:\s+\S+){0,2}\s+)?(?:(?:\S+\s+){0,3}?${HE_LEAD_VERB}(?:\s+(?:ל|ל?ה)\S+){0,2}\s+)?$`, "u");
+/** A subject alone ("הדיבור שלה", "He") is a lead-in only before a verbal head ("לא מראה", "does not show"). */
+const LEAD_SUBJECT_ONLY = /^(?:[\p{L}'’".-]+\s+){1,3}$/u;
+/** After the object: only a context frame — no subject, no verb, no new clause. */
+const TAIL_CLAUSE_EN = /\b(?:he|she|they|we|i|you|it|who|which|that)\b|\b\p{L}{3,}(?:ed|ing)\b|\b(?:is|was|were|are|has|had|did|does|went|came|got|took|made|gave|ran|fell|ate|slept|woke|sat|stood|left|said|told|saw|found|bit|hit|threw|kept|lost|broke)\b/iu;
+const TAIL_CLAUSE_HE = /(?<!\p{L})(?:ו|ש|כש)?(?:הוא|היא|הם|הן|אני|אנחנו|אתה|את|אתם)(?!\p{L})|(?<!\p{L})(?:ש|כש)(?!(?:בוע|בועות|עה|עות|ינה|לו|לה|להם|להן|לנו|תי|ני|לוש|ום|גרה|יחה|מיעה|פה|יפור)(?!\p{L}))\p{L}{2,}/u;
+/** Nouns that only look like verbs in a frame ("this morning", "since the spring"). */
+const TAIL_NOUNS_EN = /\b(?:morning|mornings|evening|evenings|during|nothing|something|anything|everything|setting|settings|building|spring|ceiling|bedtime|weekend|weekends)\b/giu;
+const HE_GLUED_VAV_HEAD = /^ו/u;
+/** True when the chunk is the reassurance and nothing else (see above). */
+function onlyReassurance(chunkText: string, head: number, objectEnd: number): boolean {
+  const pre = chunkText.slice(0, head).trim();
+  const post = chunkText.slice(objectEnd).trim();
+  const headText = chunkText.slice(head);
+  if (hasIncidentCue(pre) || hasIncidentCue(post)) return false;
+  if (post.split(/\s+/u).filter(Boolean).length > 6) return false;
+  if (TAIL_CLAUSE_EN.test(post.replace(TAIL_NOUNS_EN, " ")) || TAIL_CLAUSE_HE.test(post)) return false;
+  if (!pre) return true;
+  if (isHebrew(pre) || isHebrew(headText.slice(0, 8))) {
+    if (LEAD_OK_HE.test(`${pre} `)) return true;
+    // a bare subject before a verbal head, never after a glued "and" (that is a clause of its own)
+    return !HE_GLUED_VAV_HEAD.test(headText) && LEAD_SUBJECT_ONLY.test(`${pre} `) && /^(?:לא|אינו|אינה|אינם)\s/u.test(headText);
+  }
+  if (!LEAD_OK_EN.test(`${pre} `)) return false;
+  return pre.toLocaleLowerCase().split(/\s+/u).every((w) => !/\p{L}{3,}(?:ed|ing)$/u.test(w) || LEAD_VERB_WORDS.has(w));
+}
 /** Text that carries nothing once its reassurance is gone: an attribution, a reporter lead-in, a short frame. */
 const ATTRIBUTION = /^(?:according\s+to|as\s+(?:reported|noted|described|observed)\s+by|per)\s+\S+(?:\s+\S+){0,3}$|^(?:לדברי|לפי)\S*(?:\s+\S+){0,3}$|^כפי\s+ש\S+(?:\s+\S+){0,3}$/iu;
 const LEAD_IN = /^(?:\S+\s+){0,4}?(?:reports?|reported|says?|said|notes?|noted|tells?|told|mentions?|mentioned|shares?|shared|observes?|observed|notices?|noticed|describes?|described|writes?|wrote|explains?|explained|confirms?|confirmed|adds?|added|agrees?|agreed|finds?|found|sees|saw)(?:\s+that)?$|^(?:\S+\s+){0,3}?(?:מספר|מספרת|מספרים|מספרות|סיפר|סיפרה|סיפרו|אומר|אומרת|אומרים|אמר|אמרה|אמרו|מציין|מציינת|מציינים|ציין|ציינה|ציינו|מדווח|מדווחת|מדווחים|דיווח|דיווחה|דיווחו|ראה|ראתה|ראו|מצא|מצאה|מצאו|כותב|כותבת|כתב|כתבה)(?:\s+(?:ש|כי))?$/iu;
@@ -356,7 +401,7 @@ function restoreEscalation(segment: string, opts: HandoffFloorOptions): string |
 
 type KeptPart = { text: string; sep: string; afterRemoved: boolean };
 /** A conjunction that only joined the removed part: "…, and she can call" → "…, she can call". */
-const JOINING = /^(?:and|but|so|though|although|yet|also|plus|as|since|because)\s+|^(?:אבל|אך|כי)\s+|^ו(?=(?:הוא|היא|הם|הן|אני|אנחנו|אפשר|יש|כדאי|מומלץ|חשוב)(?!\p{L}))/iu;
+const JOINING = /^(?:and|but|so|though|although|even\s+though|yet|also|plus|as|since|because|while|whereas)\s+|^(?:אבל|אך|כי|אולם)\s+|^(?:למרות|בעוד|מאחר|אף\s+על\s+פי|אף)\s+ש(?=\p{L})|^ו(?=(?:הוא|היא|הם|הן|אני|אנחנו|אפשר|יש|כדאי|מומלץ|חשוב)(?!\p{L}))/iu;
 const LEADING_OR = /^(?:or|או)\s+/iu;
 /** Join kept chunks; a removed lead gives its capital back, a removed tail its full stop. */
 function assemble(parts: KeptPart[], tail: string, removedLast: boolean): string {
@@ -404,20 +449,18 @@ function removeReassurances(segment: string, opts: HandoffFloorOptions, removed:
     const absent = objectWordsAbsentFromParent(r.object, parent);
     if (!absent.length) continue; // the parent said X: main's verdict stands
     let start = chunk.start;
-    let end = chunk.end;
+    const end = chunk.end;
     if (commandsHere.length) {
       // Never remove a command: cut only the part after it, at a cut word.
       const cutText = truncateAfterCommand(chunkText, escalation, [{ index: rel, end: r.end - chunk.start }]);
       if (cutText === chunkText) continue;
+      const tail = chunkText.slice(cutText.length).replace(/^[\s,;:—–-]+/u, "");
+      const offset = chunkText.length - tail.length;
+      if (!onlyReassurance(tail, rel - offset, r.objectEnd - chunk.start - offset)) return segment;
       start = chunk.start + cutText.length;
-    } else if (!escalation) {
-      // Keep the rest of the sentence: start after the last bare conjunction before
-      // the reassurance, end before the next clause after its object.
-      BARE_CONJ_BEFORE.lastIndex = 0;
-      for (const m of chunkText.matchAll(BARE_CONJ_BEFORE)) if ((m.index ?? 0) < rel) start = chunk.start + (m.index ?? 0);
-      const afterObject = r.objectEnd - chunk.start;
-      BARE_CONJ_AFTER.lastIndex = 0;
-      for (const m of chunkText.slice(afterObject).matchAll(BARE_CONJ_AFTER)) { end = chunk.start + afterObject + (m.index ?? 0); break; }
+    } else if (!onlyReassurance(chunkText, rel, r.objectEnd - chunk.start)) {
+      // Another clause shares the chunk: main's verdict stands for the whole sentence.
+      return segment;
     }
     spans.push({ start, end, object: r.object, absent });
   }

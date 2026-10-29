@@ -149,18 +149,42 @@ describe("rule (b) — a negated-finding reassurance the parent never said is re
     for (const command of findEscalationCommands(out)) expect(handoffFloor(line, { parentText })).toContain(command.text);
   });
 
-  it("a hard moment in the same sentence stays; only the reassurance and its attribution go", () => {
-    const P_EN = "The doctor found no signs of an ear infection. He still cries at drop-off.";
-    const P_HE = "הרופאה אמרה שאין סימנים לדלקת אוזניים. הוא עדיין בוכה בבוקר.";
+  it("a reassurance in its own comma chunk goes; the hard moment beside it stays, without the word that joined them", () => {
     expect(handoffFloor("He bit a friend at preschool, and there are no signs of anxiety at drop-off, according to his teacher.")).toBe("He bit a friend at preschool.");
-    expect(handoffFloor("He bit a friend at preschool and there are no signs of anxiety at drop-off, according to his teacher.")).toBe("He bit a friend at preschool.");
-    expect(handoffFloor("He still cries at drop-off and there are no signs of anxiety.", { parentText: P_EN })).toBe("He still cries at drop-off.");
-    expect(handoffFloor("There are no signs of anxiety but he bit a friend twice.", { parentText: P_EN })).toBe("He bit a friend twice.");
     expect(handoffFloor("הוא נשך חבר, ואין סימנים לחרדה, לדברי הגננת.")).toBe("הוא נשך חבר.");
-    expect(handoffFloor("הוא נשך חבר ואין סימנים לחרדה.", { parentText: P_HE })).toBe("הוא נשך חבר.");
-    expect(handoffFloor("הוא בוכה בבוקר והגננת אומרת שאין סימנים לחרדה.", { parentText: P_HE })).toBe("הוא בוכה בבוקר.");
     expect(handoffFloor("Noa enjoys drawing with a parent. No signs of attention difficulties, according to mom. A short warning before cleanup helps."))
       .toBe("Noa enjoys drawing with a parent. A short warning before cleanup helps.");
+    // round 12 (P2): no "While …" / "למרות ש…" fragment is left behind
+    expect(handoffFloor("The teacher noted no signs of anxiety, although he threw a chair during circle time.", { parentText: "He threw a chair during circle time" }))
+      .toBe("He threw a chair during circle time.");
+    expect(handoffFloor("Mom reports no signs of hunger, while he screamed and hit the teacher.", { parentText: "He screamed and hit the teacher at pickup" }))
+      .toBe("He screamed and hit the teacher.");
+    expect(handoffFloor("הגננת ציינה שאין סימנים לחרדה, למרות שהוא זרק כיסא במפגש.", { parentText: "הוא זרק כיסא במפגש" })).toBe("הוא זרק כיסא במפגש.");
+    expect(handoffFloor("אין עדות לקשיי קשב, אבל הוא הרביץ לילד בתור למגלשה.", { parentText: "הוא הרביץ לילד בתור למגלשה. אין עדות לחום." })).toBe("הוא הרביץ לילד בתור למגלשה.");
+  });
+
+  /* Round 12 (P1-1): the critic's rows where the reassurance shares its
+     chunk with a hard moment or any other clause. Main keeps each sentence;
+     so does the wrapper, whole. */
+  it.each([
+    ["His teacher said there were no signs of separation anxiety before he pushed a boy off the slide.", "He pushed a boy off the slide at recess"],
+    ["Mom reports no signs of tiredness after he bit Noa at lunch.", "He bit Noa at lunch on Tuesday"],
+    ["He kicked a classmate at drop-off with no signs of anger beforehand.", "He kicked a classmate at drop-off. No signs of a fever."],
+    ["Mom reports no signs of hunger while he screamed and hit the teacher.", "He screamed and hit the teacher at pickup"],
+    ["There are no signs of a cold and he kicked a classmate at drop-off.", "He kicked a classmate at drop-off. No signs of a cold this week."],
+    ["He bit a friend at preschool and there are no signs of anxiety at drop-off, according to his teacher.", ""],
+    ["He still cries at drop-off and there are no signs of anxiety.", "The doctor found no signs of an ear infection. He still cries at drop-off."],
+    ["There are no signs of anxiety but he bit a friend twice.", "The doctor found no signs of an ear infection. He still cries at drop-off."],
+    ["He settled quickly and showed no signs of anxiety, according to his teacher.", ""],
+    ["אמא מספרת שאין סימנים לעייפות אחרי שהוא נשך את נועה בארוחת הצהריים.", "הוא נשך את נועה בארוחת הצהריים"],
+    ["אמא מספרת שאין סימנים לרעב בזמן שהוא צרח והרביץ לגננת.", "הוא צרח והרביץ לגננת באיסוף"],
+    ["הגננת אמרה שלא היו סימנים לחרדת פרידה לפני שהוא דחף ילד מהמגלשה.", "הוא דחף ילד מהמגלשה בהפסקה"],
+    ["אין סימנים להצטננות והוא בעט בילד בכניסה לגן.", "הוא בעט בילד בכניסה לגן. אין סימנים להצטננות השבוע."],
+    ["הוא נשך חבר ואין סימנים לחרדה.", "הרופאה אמרה שאין סימנים לדלקת אוזניים. הוא עדיין בוכה בבוקר."],
+    ["הוא בוכה בבוקר והגננת אומרת שאין סימנים לחרדה.", "הרופאה אמרה שאין סימנים לדלקת אוזניים. הוא עדיין בוכה בבוקר."],
+  ])("kept whole, as main keeps it: %s", (line, parentText) => {
+    expect(withoutHandoffFindings(line, { parentText })).toBe(line);
+    expect(handoffFloor(line, { parentText })).toBe(line);
   });
 });
 
