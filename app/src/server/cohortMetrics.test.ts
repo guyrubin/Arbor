@@ -520,8 +520,8 @@ describe("cohort-report.mjs — the flags the measure plan names", () => {
 
   it("with no section flag it prints everything, over every known funnel", () => {
     const args = reportScript.parseArgs([]);
-    // B-GROWTH-43: + the household line (source → offer → activated → paying).
-    expect([...args.sections].sort()).toEqual(["activation", "events", "funnel", "households", "retention"]);
+    // B-GROWTH-43: + the household line (source → offer → activated → paying); BD-25: + the metric contract.
+    expect([...args.sections].sort()).toEqual(["activation", "contract", "events", "funnel", "households", "retention"]);
     expect(args.funnels.sort()).toEqual(Object.keys(FUNNEL_CHAINS).sort());
     expect(Date.parse(args.since)).toBeLessThan(Date.now());
   });

@@ -46,9 +46,10 @@ import { getApps, initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import type { ArborConfig } from "../config/env.js";
 import { logger } from "./logger.js";
-import { cohortRetention, dayKeyOf, type RetentionReport, type RetentionRollup } from "../lib/retention.js";
+import { cohortRetention, dayIndex, dayKeyOf, type RetentionReport, type RetentionRollup } from "../lib/retention.js";
 import { FUNNEL_EVENTS, aggregateFunnel, type FunnelEventDoc } from "../lib/attributionFunnel.js";
 import { OFFER_IDS } from "../lib/offers.js";
+import { GATE_A, MATURITY_DAYS, MEASURE_DEFINITIONS, METRIC_CONTRACT_VERSION, STANDING_MISSING_DATA, VALUE_EVENTS, W4_DAYS } from "../lib/metricContract.js";
 import { recordStillEntitles, type EntitlementRecord } from "./entitlements.js";
 
 /**
@@ -566,6 +567,133 @@ export function summariseHouseholds(
   };
 }
 
+/* ── BD-25: the metric contract (lib/metricContract.ts), per household ────── */
+
+/** A count with the denominator it was taken over. Never a rate. */
+export type Fraction = { n: number; of: number };
+export type ContractRow = {
+  key: string;
+  /** Households that started in the window (every start). */
+  starts: number;
+  d7: Fraction;
+  w4: Fraction;
+  /** Null when the billing records were not read. */
+  d30Paying: Fraction | null;
+};
+export type MetricContractReport = {
+  version: string;
+  asOfDay: string;
+  definitions: Record<string, string>;
+  overall: ContractRow;
+  /** Per first-touch group (the report's groupBy): direct, sponsored and partner sources stay apart. */
+  byGroup: ContractRow[];
+  /** Per redeemed offer, then `none`: legacy offers stay apart from full price. */
+  byOffer: ContractRow[];
+  gateA: {
+    activatedMaturedW4: { n: number; required: number };
+    /** Null when billing or offers were not read. */
+    fullPricePayers: { n: number | null; required: number };
+    /** Null when a half cannot be answered. */
+    met: boolean | null;
+  };
+  /** Everything this readout cannot answer, in words. Always present. */
+  missing: string[];
+};
+
+/**
+ * The contract over the households that started on or after `startedSince`.
+ * Pure; the only arithmetic is counting, by lib/retention.ts day indices.
+ */
+export function summariseMetricContract(input: {
+  rollups: readonly StoredRollup[];
+  events: readonly CohortEventDoc[];
+  offers: readonly HouseholdOffer[] | null;
+  billing: readonly HouseholdBilling[] | null;
+  groupBy: "source" | "market";
+  asOfDay: string;
+  startedSince?: string | null;
+  eventsTruncated?: boolean;
+}): MetricContractReport {
+  const { rollups, events, offers, billing, groupBy, asOfDay } = input;
+  const activated = new Set(events.filter((e) => e.event === ACTIVATION_EVENT).map((e) => e.uid));
+  const valueDays = new Map<string, string[]>();
+  for (const e of events) {
+    if (!(VALUE_EVENTS as readonly string[]).includes(e.event) || !e.at) continue;
+    const d = dayKeyOf(e.at);
+    if (d) valueDays.set(e.uid, [...(valueDays.get(e.uid) ?? []), d]);
+  }
+  const offerOf = new Map((offers ?? []).map((o) => [o.uid, (OFFER_IDS as string[]).includes(o.offerId) ? o.offerId : "none"]));
+  const billingOf = new Map((billing ?? []).map((b) => [b.uid, b]));
+
+  type H = { uid: string; group: string; offer: string; age: number; firstSeen: string };
+  const households: H[] = [];
+  const seen = new Set<string>();
+  for (const r of rollups) {
+    if (!r.uid || seen.has(r.uid)) continue;
+    if (input.startedSince && r.firstSeen < input.startedSince) continue;
+    const age = dayIndex(r.firstSeen, asOfDay);
+    if (age === null) continue;
+    seen.add(r.uid);
+    households.push({ uid: r.uid, group: String(r[groupBy] ?? "unknown"), offer: offerOf.get(r.uid) ?? "none", age, firstSeen: r.firstSeen });
+  }
+
+  const row = (key: string, hs: readonly H[]): ContractRow => {
+    const d7 = { n: 0, of: 0 };
+    const w4 = { n: 0, of: 0 };
+    const d30 = { n: 0, of: 0 };
+    for (const h of hs) {
+      if (h.age >= MATURITY_DAYS.d7) {
+        d7.of += 1;
+        if (activated.has(h.uid)) d7.n += 1;
+      }
+      if (h.age >= MATURITY_DAYS.w4) {
+        w4.of += 1;
+        const inWeek4 = (valueDays.get(h.uid) ?? []).some((d) => {
+          const i = dayIndex(h.firstSeen, d);
+          return i !== null && i >= W4_DAYS.from && i <= W4_DAYS.to;
+        });
+        if (inWeek4) w4.n += 1;
+      }
+      if (h.age >= MATURITY_DAYS.d30) {
+        d30.of += 1;
+        if (billingOf.get(h.uid)?.paying) d30.n += 1;
+      }
+    }
+    return { key, starts: hs.length, d7, w4, d30Paying: billing === null ? null : d30 };
+  };
+  const split = (by: (h: H) => string, order?: readonly string[]): ContractRow[] => {
+    const groups = new Map<string, H[]>();
+    for (const k of order ?? []) groups.set(k, []);
+    for (const h of households) groups.set(by(h), [...(groups.get(by(h)) ?? []), h]);
+    const rows = [...groups.entries()].map(([k, hs]) => row(k, hs));
+    return order ? rows : rows.sort((a, b) => b.starts - a.starts || a.key.localeCompare(b.key));
+  };
+
+  const activatedMaturedW4 = households.filter((h) => h.age >= MATURITY_DAYS.w4 && activated.has(h.uid)).length;
+  const fullPricePayers = billing === null || offers === null
+    ? null
+    : households.filter((h) => h.offer === "none" && billingOf.get(h.uid)?.paying).length;
+  const missing: string[] = [...STANDING_MISSING_DATA];
+  if (offers === null) missing.push("offers: the redemption records were not read; the offer split and full-price payers are unknown");
+  if (billing === null) missing.push("billing: the entitlement records were not read; D30 paying and full-price payers are unknown");
+  if (input.eventsTruncated) missing.push("events: the scan hit its ceiling; activation and W4 counts may be low");
+
+  return {
+    version: METRIC_CONTRACT_VERSION,
+    asOfDay,
+    definitions: { ...MEASURE_DEFINITIONS },
+    overall: row("all", households),
+    byGroup: split((h) => h.group),
+    byOffer: split((h) => h.offer, [...OFFER_IDS, "none"]),
+    gateA: {
+      activatedMaturedW4: { n: activatedMaturedW4, required: GATE_A.activatedMaturedW4 },
+      fullPricePayers: { n: fullPricePayers, required: GATE_A.fullPricePayers },
+      met: fullPricePayers === null ? null : activatedMaturedW4 >= GATE_A.activatedMaturedW4 && fullPricePayers >= GATE_A.fullPricePayers,
+    },
+    missing,
+  };
+}
+
 /* ── the funnel slice: aggregateFunnel, remapped, never reimplemented ─────── */
 
 export type FunnelStageCount = { stage: string; count: number };
@@ -625,6 +753,8 @@ export type CohortReport = {
   kidPlay: KidPlaySummary;
   /** B-GROWTH-43: source → offer → activation → paying, per household. */
   households: HouseholdReport;
+  /** BD-25: the metric contract (D7, W4, D30 paying, Gate A, missing data). */
+  contract: MetricContractReport;
   eventCensus: FunnelStageCount[];
   scanned: { rollups: number; events: number; mode: "firestore" | "null" };
   /** B-MEAS-01: internal families (founder, comped, smoke) left out of every
@@ -728,6 +858,16 @@ export async function buildCohortReport(
     ...(loop ? { loop } : {}),
     kidPlay: summariseKidPlay(events),
     households: summariseHouseholds(rollups, events, offerDocs, billingDocs, groupBy, dayKeyOf(new Date(opts.since)) ?? null),
+    contract: summariseMetricContract({
+      rollups,
+      events,
+      offers: offerDocs,
+      billing: billingDocs,
+      groupBy,
+      asOfDay,
+      startedSince: dayKeyOf(new Date(opts.since)) ?? null,
+      eventsTruncated: allEvents.length >= MAX_EVENTS_SCANNED,
+    }),
     eventCensus: [...census.entries()]
       .map(([stage, count]) => ({ stage, count }))
       .sort((a, b) => b.count - a.count || a.stage.localeCompare(b.stage)),
