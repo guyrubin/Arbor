@@ -28,6 +28,19 @@ describe("B-KID-162: the phone header keeps the keepsakes chip clear of the gree
     expect(rule(".studio-v2__header")).toContain("flex-wrap:wrap");
     expect(rule(".studio-v2__greeting")).toContain("flex:1 1 calc(100% - 78px)");
   });
+  it("round 2: Tab meets the doors in reading order (Hero Stories, Studio, then Playbank, Feelings)", async () => {
+    const { STUDIO_DOOR_ORDER } = await import("./StudioHome");
+    const { STUDIO_V2_WORLDS } = await import("./studioCatalog");
+    expect(STUDIO_DOOR_ORDER).toEqual(["stories", "studio", "playbank", "feelings"]);
+    expect([...STUDIO_DOOR_ORDER].sort()).toEqual([...STUDIO_V2_WORLDS].sort());
+    expect(readFileSync(new URL("./StudioHome.tsx", import.meta.url), "utf8")).toContain("{STUDIO_DOOR_ORDER.map(worldId =>");
+    // the upper doors sit above the lower ones at every width
+    for (const block of [css, phone]) {
+      const top = (w: string) => Number((new RegExp(`studio-v2__door\\[data-world=${w}\\]\\{[^}]*inset-block-start:([\\d.]+)`).exec(block) ?? [])[1]);
+      expect(top("stories")).toBeLessThan(top("playbank"));
+      expect(top("studio")).toBeLessThan(top("feelings"));
+    }
+  });
   it("a long name keeps to two lines", () => {
     const span = rule(".studio-v2__greeting h1>span");
     expect(span).toContain("-webkit-line-clamp:2");
