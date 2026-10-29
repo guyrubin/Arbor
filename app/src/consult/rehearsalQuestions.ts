@@ -46,7 +46,7 @@ const PRONOUN_SUBJECTS = ["it", "he", "she", "they", "we", "there", "i", "you"];
 const WH_SUBJECTS = [...PRONOUN_SUBJECTS, "this", "that", "a", "an", "the", "my", "our", "your", "his", "her", "their"];
 /** "my worry is it…" / "my biggest worry right now is it…": the worry's own
  *  copula (its first is/was), never a question. */
-const WORRY_NOUNS = ["worry", "concern", "problem", "thing", "issue", "fear", "question"];
+const WORRY_NOUN = /^(?:worry|concern|problem|thing|issue|fear|question)$/;
 const COPULAS = ["is", "are", "was", "were"];
 /** HE: a question word opens a new question before a modal ("מה אפשר לנסות");
  *  "מה לעשות" inside a sentence stays where it is. */
@@ -91,7 +91,7 @@ function cutRunOn(chunk: string): string[] {
     // never the worry's own copula ("my worry is it…").
     const worryCopula = curIsWorry && COPULAS.includes(bare) && /^(?:my|our|the|what worries)\b/.test(curText.toLowerCase()) && !cur.some((x) => COPULAS.includes(bareWord(x)));
     const aux = EN_AUX.includes(bare) && PRONOUN_SUBJECTS.includes(next) && cur.length >= MIN_WORDS_BEFORE_CUT + 1
-      && (curIsQuestion || curIsWorry) && !WORRY_NOUNS.includes(prev) && !worryCopula;
+      && (curIsQuestion || curIsWorry) && !WORRY_NOUN.test(prev) && !worryCopula;
     // HE has no auxiliary to read: any question word cuts inside a question;
     // inside a worry (or any line) only "האם", or a question word before a
     // modal ("מה אפשר", "מה כדאי") — "אני דואגת שהוא לא יודע מה לעשות" stays.
