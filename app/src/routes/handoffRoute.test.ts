@@ -300,11 +300,12 @@ describe("B-ASKJB-44 round 11 · /api/generate-handoff keeps every escalation li
     draft = CLEAN_DRAFT;
   });
   it("an escalation line keeps its command and condition; only the finding clause goes", async () => {
-    draft = { ...CLEAN_DRAFT, classroomChallenges: ["Talk with Dr. Levi, who found no signs of delay when she assessed him."],
+    // round 15: a restored command needs the condition that governs it ("When he is upset, …")
+    draft = { ...CLEAN_DRAFT, classroomChallenges: ["When he is upset, talk with Dr. Levi, who found no signs of delay when she assessed him."],
       suggestedTeacherStrategies: ["Call the family if he bites, but there are no signs of a speech delay at home."] };
     const { status, json } = await postBrief([{ behaviorType: "Moment", trigger: "He bit a friend at preschool", response: "", day: day() }]);
     expect(status).toBe(200);
-    expect(json.classroomChallenges).toEqual(["Talk with Dr. Levi."]);
+    expect(json.classroomChallenges).toEqual(["When he is upset, talk with Dr. Levi."]);
     expect(json.suggestedTeacherStrategies).toEqual(["Call the family if he bites."]);
     draft = CLEAN_DRAFT;
   });
