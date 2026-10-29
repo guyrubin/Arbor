@@ -85,6 +85,10 @@ const negatedCommand = (text: string, index: number, length: number) => {
 
 export type EscalationCommand = { text: string; index: number };
 
+/** Relay verbs: they pass something on, so with nothing left to pass on they are not an escalation. */
+const RELAY_COMMAND = /^(?:please\s+)?(?:tell|telling|let|inform|informing|notify|notifying|update|updating|mention|mentioning|share|sharing)\b|^(?:ספרו|ספר|ספרי|לספר|עדכנו|עדכן|עדכני|לעדכן|יידעו|יידע|ליידע|הודיעו|הודע|להודיע|שתפו|לשתף|הראו|להראות)(?!\p{L})/iu;
+const RELAY_TAIL = /^\s*(?:know|about\s+(?:it|this|that))?\s*(?:right\s+away|immediately|today|as\s+well|too)?[\s.!?;,]*$/iu;
+
 /** Every escalation command in the text (verb through recipient), in order. */
 export function findEscalationCommands(text: string): EscalationCommand[] {
   const out: EscalationCommand[] = [];
@@ -444,6 +448,7 @@ function restoreEscalation(segment: string, opts: HandoffFloorOptions): string |
   const keep: KeptPart[] = [];
   let removedLast = false;
   let afterRemoved = false;
+  let messageCut = false; // a command chunk lost what came after its command (the message it would relay)
   for (let k = 0; k < chunks.length; k++) {
     const text = body.slice(chunks[k].start, chunks[k].end);
     const sep = k === 0 ? "" : body.slice(chunks[k - 1].end, chunks[k].start);
@@ -452,6 +457,7 @@ function restoreEscalation(segment: string, opts: HandoffFloorOptions): string |
       const spans: Span[] = [...findingsIn(text).map((f) => ({ index: f.index, end: f.index + f.phrase.length })), ...(sign ? [{ index: sign.index, end: sign.index + sign[0].length }] : [])];
       const own = truncateAfterCommand(text, true, spans);
       keep.push({ text: own, sep, afterRemoved }); removedLast = own !== text; afterRemoved = removedLast;
+      if (own !== text) messageCut = true;
     } else if (flags[k] ? unreportedDiagnosis(text, opts) : statesFinding(text, opts)) {
       removedLast = true; afterRemoved = true;
     } else {
@@ -459,7 +465,17 @@ function restoreEscalation(segment: string, opts: HandoffFloorOptions): string |
     }
   }
   if (!keep.some((p) => hasCommand(p.text))) return null;
-  return assemble(keep, tail, removedLast);
+  const restored = assemble(keep, tail, removedLast);
+  // Round 13 (P2): a relay command whose message was the cut finding ("Please tell the family [that there
+  // are no signs …]", "ספרו להורים [שאין …]") has nothing left to relay and stays dropped, as on main; it
+  // comes back with its condition or with content of its own.
+  const commands = findEscalationCommands(restored);
+  if (messageCut && commands.every((c) => RELAY_COMMAND.test(c.text)) && !isConditionText(restored, true) && !CONDITION_WHEN.test(restored)) {
+    const last = commands[commands.length - 1];
+    const rest = restored.slice(last.index + last.text.length).replace(RELAY_TAIL, "");
+    if (!/\p{L}/u.test(rest)) return null;
+  }
+  return restored;
 }
 
 type KeptPart = { text: string; sep: string; afterRemoved: boolean };

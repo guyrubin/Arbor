@@ -135,6 +135,8 @@ const hasEscalation = (text: string) => RECIPIENT_TEST.test(text) && [...text.ma
   const after = text.slice(at + m[0].length, at + m[0].length + 60);
   return !NEGATION_BEFORE.test(text.slice(Math.max(0, at - 30), at)) && !NEGATION_AFTER.test(after) && !(/called$/iu.test(m[0]) && NAMING_AFTER.test(after));
 });
+const RELAY_START = /^(?:please\s+)?(?:tell|let|inform|notify|update|mention|share)\b|^(?:ספרו|ספר|לספר|עדכנו|עדכן|לעדכן|יידעו|ליידע|הודיעו|להודיע|שתפו|לשתף)(?!\p{L})/iu;
+const BARE_RELAY = /^(?:please\s+)?(?:tell|let|inform|notify|update)\s+(?:\S+\s+){0,3}?(?:family|parents?|mother|father|mom|mum|dad)(?:\s+know)?[.!]?$|^(?:ספרו|עדכנו|יידעו|הודיעו)\s+(?:את\s+)?\S+[.!]?$/iu;
 const CONDITION_FRAGMENT = /^\s*(?:if|when|whenever|where|should|unless|in\s+case)\b|^\s*(?:ו)?(?:אם|כש|כאשר|במידה|במקרה)/iu;
 const referralsIn = (text: string) => [REFERRAL_EN, REFERRAL_HE].flatMap((re) => [...text.matchAll(new RegExp(re.source, `g${re.flags}`))].map((m) => m[0]));
 
@@ -183,13 +185,22 @@ function checkMonotone(corpus: Row[], stats: Stats): string[] {
       }
       // 4. every escalation command, and every referral in a clause main keeps, reaches the output
       const lowerOut = out.toLocaleLowerCase();
-      for (const command of findEscalationCommands(row.note)) if (!lowerOut.includes(command.text.toLocaleLowerCase())) fail(`escalation command lost: ${command.text}`);
+      for (const command of findEscalationCommands(row.note)) {
+        if (lowerOut.includes(command.text.toLocaleLowerCase())) continue;
+        // round 13 (P2): a relay whose only message is the invented finding stays dropped, as on main
+        const clause = trace.clauses.find((c) => c.text.includes(command.text));
+        const message = clause ? clause.text.slice(clause.text.indexOf(command.text) + command.text.length) : "";
+        if (RELAY_START.test(command.text) && clause?.main === "dropped" && NEGATED_FINDING.test(message)) continue;
+        fail(`escalation command lost: ${command.text}`);
+      }
       for (const clause of trace.clauses.filter((c) => c.main === "kept")) {
         for (const referral of referralsIn(clause.text)) if (!lowerOut.includes(referral.toLocaleLowerCase())) fail(`referral main keeps lost: ${referral}`);
       }
       // 7. every restored piece is an escalation: a non-negated command with a recipient (round 13, P1-C)
       for (const clause of trace.clauses.filter((c) => c.restored && c.out.trim())) {
         if (!hasEscalation(clause.out) && !(CONDITION_FRAGMENT.test(clause.out) && hasEscalation(out))) fail(`restored a piece with no escalation command: ${clause.out}`);
+        // round 13 (P2): a bare relay ("Please tell the family.") has nothing to pass on
+        if (BARE_RELAY.test(clause.out.trim())) fail(`restored a relay with nothing to relay: ${clause.out}`);
       }
       // 6. a critic row's required text that main keeps, the wrapper keeps
       if (row.must && main.toLocaleLowerCase().includes(row.must.toLocaleLowerCase()) && !lowerOut.includes(row.must.toLocaleLowerCase())) fail(`required text main keeps is lost: ${row.must}`);

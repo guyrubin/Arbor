@@ -78,6 +78,22 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     expect(findEscalationCommands("His family should be called right away.").length).toBe(1);
   });
 
+  it("round 13 (P2): a relay command with nothing left to relay stays dropped; with its condition or content it comes back", () => {
+    for (const [line, parentText] of [
+      ["Please tell the family that there are no signs of a speech delay.", HARD_MOMENT_EN],
+      ["Let his parents know there is no evidence of attention difficulties at school.", HARD_MOMENT_EN],
+      ["Tell the family there are no signs of anxiety at school.", HARD_MOMENT_EN],
+      ["ספרו להורים שאין סימנים לעיכוב בדיבור.", HARD_MOMENT_HE],
+      ["עדכנו את ההורים שאין עדות לקשיי קשב בגן.", HARD_MOMENT_HE],
+    ]) {
+      expect(withoutHandoffFindings(line, { parentText })).toBe("");
+      expect(handoffFloor(line, { parentText })).toBe("");
+    }
+    const withCondition = "If he shows no signs of calming after 20 minutes, let the family know right away.";
+    expect(handoffFloor(withCondition, { parentText: HARD_MOMENT_EN })).toBe(withCondition);
+    expect(handoffFloor("אם אין סימנים של רגיעה אחרי 20 דקות, יש לעדכן את ההורים.", { parentText: HARD_MOMENT_HE })).toBe("אם אין סימנים של רגיעה אחרי 20 דקות, יש לעדכן את ההורים.");
+  });
+
   it("a cut line comes back whole: a condition split off by ';' or a new line, a title's full stop", () => {
     for (const line of [
       "If there are no signs of calming after 20 minutes; call the family.",
