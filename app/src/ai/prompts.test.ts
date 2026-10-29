@@ -13,6 +13,7 @@ import {
   buildCouncilSynthesisPrompt,
   buildExtractLogPrompt,
   buildGeneratePlanPrompt,
+  PLAN_FIRST_STEP_RULES,
   buildAnalyzeBehaviorPrompt,
   buildTodaysFocusPrompt,
   buildVoiceReplyPrompt,
@@ -424,6 +425,9 @@ Return only JSON matching the schema.`;
  * verbatim from routes/api.ts @ 9fdd258); facts and past steps add one block.
  */
 describe("B-AI-02 — generate_plan byte-parity; analyze_behavior has no trend", () => {
+  // generate_plan 1.4.0 (B-ASKJB-35): the retired inline template plus ONE
+  // change — PLAN_FIRST_STEP_RULES before the return line, which no longer
+  // asks for successIndicators.
   const legacyPlan = (fw: string, profile: unknown, topic: unknown) => `
 ${NON_DIAGNOSTIC_CONTRACT}
 ${fw}
@@ -431,9 +435,20 @@ ${fw}
 Generate a structured, non-diagnostic Arbor action plan.
 Profile: ${JSON.stringify(promptProfile(profile))}
 Focus Challenge: "${topic}"
-Return JSON with title, issue, phases, scripts, and successIndicators.
+${PLAN_FIRST_STEP_RULES}
+Return JSON with title, issue, phases and scripts.
 `;
-  it("no context → the builder bytes equal the retired inline template", () => {
+  it("1.4.0 (B-ASKJB-35): step 1 is an act with its Say-this line; no observe step, no trend or severity word, no successIndicators", () => {
+    const p = buildGeneratePlanPrompt({ developmentalFramework: "FW", childProfile: { id: "c", name: "Noa", age: 4 }, challengeTopic: "mornings" });
+    expect(p).toContain("The first step of the first phase is ONE thing the parent does with the child the next time this moment comes, and the first script's \"say\" is the exact sentence the parent says while doing it.");
+    expect(p).toContain("Watching, observing, noticing, tracking or logging is never a step");
+    expect(p).toMatch(/Never say the behaviour is getting worse or better, never compare one week with another, and never grade it/);
+    expect(p).not.toContain("successIndicators");
+    expect(PROMPT_VERSIONS.generate_plan.version).toBe("1.4.0");
+    // NEGATIVE CONTROL: the 1.2.1 return line asked for the verdict-shaped list.
+    expect("Return JSON with title, issue, phases, scripts, and successIndicators.").toContain("successIndicators");
+  });
+  it("no context → the builder bytes equal the retired inline template (+ the 1.4.0 rules)", () => {
     const p = { id: "c", name: "Noa", age: 4 };
     expect(buildGeneratePlanPrompt({ developmentalFramework: "FW", childProfile: p, challengeTopic: "transitions" })).toBe(legacyPlan("FW", p, "transitions"));
     expect(buildGeneratePlanPrompt({ developmentalFramework: "FW", childProfile: p, challengeTopic: "x", approvedFacts: [], pastSteps: [] })).toBe(legacyPlan("FW", p, "x"));

@@ -105,8 +105,19 @@ describe("B-ASKJB-27 — the plan reads the record", () => {
     expect(seen.plan).toContain("What the parent logged in the last 21 days");
     expect(seen.plan).toContain('- "Transition Refusal": 6');
     expect(seen.plan).toContain('- "Sleep Meltdown": 2');
-    expect(seen.version).toBe("1.2.1");
-    expect(PROMPT_VERSIONS.generate_plan.version).toBe("1.2.1");
+    expect(seen.version).toBe("1.4.0");
+    expect(PROMPT_VERSIONS.generate_plan.version).toBe("1.4.0");
+  });
+
+  it("B-ASKJB-35 (1.4.0): the plan asks for step 1 as an act with its Say-this line, and NO successIndicators reach the parent", async () => {
+    const res = await post({ challengeTopic: "mornings", childProfile: { id: "child-a", age: 4 } });
+    expect(res.status).toBe(200);
+    expect(seen.plan).toContain("The first step of the first phase is ONE thing the parent does with the child");
+    expect(seen.plan).not.toContain("successIndicators");
+    // The stub provider still returns a "signs it's working" line; the route empties it.
+    const body = (await res.json()) as { successIndicators?: unknown; phases?: unknown[] };
+    expect(body.successIndicators).toEqual([]);
+    expect(Array.isArray(body.phases) && body.phases.length).toBeTruthy();
   });
 
   it("counts NEVER include text: free-text types, text fields and non-integers are dropped", async () => {

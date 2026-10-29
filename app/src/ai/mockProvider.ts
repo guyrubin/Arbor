@@ -176,7 +176,9 @@ const CURATED: { id: string; signature: string[]; overlay: Record<Lang, Record<s
   },
   {
     id: "generate_plan",
-    signature: ["title", "issue", "phases", "scripts", "successIndicators"],
+    // generate_plan 1.4.0 (B-ASKJB-35): the plan schema no longer requires
+    // successIndicators — the fixture is keyed on the four keys it still asks for.
+    signature: ["title", "issue", "phases", "scripts"],
     overlay: L(
       {
         title: "Smoother switches",
@@ -186,7 +188,6 @@ const CURATED: { id: string; signature: string[]; overlay: Record<Lang, Record<s
           { name: "Week 2", description: "Offer a choice.", steps: [{ text: "Offer two choices for what comes next.", completed: false }] },
         ],
         scripts: [{ scenario: "End of play", say: "Two more minutes, then we wash hands.", avoid: "Turning the screen off without a warning." }],
-        successIndicators: ["You notice the switch went quicker on some days."],
       },
       {
         title: "מעברים רכים יותר",
@@ -196,7 +197,6 @@ const CURATED: { id: string; signature: string[]; overlay: Record<Lang, Record<s
           { name: "שבוע 2", description: "להציע בחירה.", steps: [{ text: "להציע שתי אפשרויות למה שבא אחר כך.", completed: false }] },
         ],
         scripts: [{ scenario: "סוף משחק", say: "עוד שתי דקות, ואז שוטפים ידיים.", avoid: "לכבות את המסך בלי התראה." }],
-        successIndicators: ["שמתם לב שבחלק מהימים המעבר היה מהיר יותר."],
       },
     ),
   },

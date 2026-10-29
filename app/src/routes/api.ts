@@ -3626,7 +3626,8 @@ RULES:
         promptVersion: PROMPT_VERSIONS.generate_plan.version,
         schema: {
           type: Type.OBJECT,
-          required: ["title", "issue", "phases", "scripts", "successIndicators"],
+          // B-ASKJB-35 (generate_plan 1.3.0): no successIndicators asked for.
+          required: ["title", "issue", "phases", "scripts"],
           properties: {
             title: { type: Type.STRING },
             issue: { type: Type.STRING },
@@ -3663,12 +3664,13 @@ RULES:
                   avoid: { type: Type.STRING }
                 }
               }
-            },
-            successIndicators: { type: Type.ARRAY, items: { type: Type.STRING } }
+            }
           }
         }
       });
-      await sendScreenedJson(res, privacy.restoreDeep(response));
+      // B-ASKJB-35: the "signs it's working" list (child outcomes to watch
+      // for) never reaches the parent — empty whatever the model returns.
+      await sendScreenedJson(res, { ...(privacy.restoreDeep(response) as Record<string, unknown>), successIndicators: [] });
     } catch (error: any) {
       logger.error("Arbor Action Plan Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to generate Arbor action plan", details: error.message });
