@@ -275,11 +275,29 @@ describe("B-KID-143 / B-BOOK-47 · Kid Mode exit recap is account/child scoped",
     expect(guard.mayOffer()).toBe(false);
   });
 
+  it("waits for auth restoration before binding its first owner", () => {
+    const guard = makeKidExitRecapScopeGuard(null);
+    expect(guard.mayOffer()).toBe(false);
+    guard.observe(null);
+    guard.observe(scope("owner-a", "child-a"));
+    expect(guard.mayOffer()).toBe(true);
+    guard.observe(scope("owner-a", "child-a"));
+    expect(guard.mayOffer()).toBe(true);
+    guard.observe(scope("owner-b", "child-a"));
+    expect(guard.mayOffer()).toBe(false);
+  });
+
+  it("never offers a recap if auth remains unknown", () => {
+    const guard = makeKidExitRecapScopeGuard(null);
+    guard.observe(null);
+    expect(guard.mayOffer()).toBe(false);
+  });
+
   it("wires the live owner+child guard before composing a parent recap", () => {
     const component = read("components/kidmode/KidExitRecap.tsx");
-    expect(component).toContain('const { user, firebaseEnabled } = useAuth();');
+    expect(component).toContain('const { user, firebaseEnabled, loading } = useAuth();');
     expect(component).toContain('childProfile.id]);');
     expect(component).toContain('recapScopeRef.current.observe(scope);');
-    expect(component).toMatch(/speakRef\.current = \(\) => \{\s*if \(!recapScopeRef\.current\.mayOffer\(\)\) return;/);
+    expect(component).toMatch(/speakRef\.current = \(\) => \{\s*if \(!recapScopeRef\.current\.mayOffer\(\) \|\| \(firebaseEnabled && !user\)\) return;/);
   });
 });
