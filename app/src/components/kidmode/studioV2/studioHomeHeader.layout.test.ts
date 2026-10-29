@@ -21,12 +21,14 @@ describe("B-KID-162: the phone header keeps the keepsakes chip clear of the gree
     const chip = rule(".studio-v2__header-actions>.studio-v2__glass-button");
     expect(chip).toContain("position:static");
     expect(chip).not.toMatch(/position:absolute|inset-block-start/);
-    expect(chip).toContain("order:3");
+    expect(chip).toContain("order:4");
     expect(rule(".studio-v2__header-actions>:not(.studio-v2__glass-button)")).toContain("order:2");
   });
   it("the header wraps and the greeting holds the first line beside the exit", () => {
     expect(rule(".studio-v2__header")).toContain("flex-wrap:wrap");
-    expect(rule(".studio-v2__greeting")).toContain("flex:1 1 calc(100% - 78px)");
+    // only the chip takes line 2: a zero-height break between the exit (order 2) and the chip (order 4)
+    expect(rule(".studio-v2__header::after")).toMatch(/order:3;flex-basis:100%/);
+    expect(rule(".studio-v2__greeting")).toContain("flex:1 1 0;min-inline-size:0");
   });
   it("round 2: Tab meets the doors in reading order (Hero Stories, Studio, then Playbank, Feelings)", async () => {
     const { STUDIO_DOOR_ORDER } = await import("./StudioHome");
