@@ -9,7 +9,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { countsSince, kidExitRecapLine, totalActivity, KID_ACTIVITY_KINDS, type KidActivityKind, type KidActivityLedgers } from "./kidExitRecap";
+import { countsSince, kidExitRecapLine, makeKidExitRecapScopeGuard, totalActivity, KID_ACTIVITY_KINDS, type KidActivityKind, type KidActivityLedgers } from "./kidExitRecap";
 import type { ChildActivityType } from "./signalTimeline";
 import { withChildSignals } from "./i18nElevation/childsignals";
 import { elevationEn, elevationHe } from "./i18nElevation";
@@ -243,5 +243,43 @@ describe("B-SHELL-04 · the recap names hero stories and stays until kept or dis
     expect(en["elev.learnCare.kidExit.keepFailed"]).toContain("{line}");
     expect(he["elev.learnCare.kidExit.keepFailed"]).toContain("{line}");
     expect(he["elev.learnCare.kidExit.keepFailed"]).not.toBe(en["elev.learnCare.kidExit.keepFailed"]);
+  });
+});
+
+
+describe("B-KID-143 / B-BOOK-47 · Kid Mode exit recap is account/child scoped", () => {
+  const scope = (owner: string, child: string) => JSON.stringify([owner, child]);
+
+  it("offers only for the original account and child", () => {
+    const guard = makeKidExitRecapScopeGuard(scope("owner-a", "child-a"));
+    guard.observe(scope("owner-a", "child-a"));
+    expect(guard.mayOffer()).toBe(true);
+  });
+
+  it("suppresses a sibling switch even if the new child's ledger is active", () => {
+    const guard = makeKidExitRecapScopeGuard(scope("owner-a", "child-a"));
+    guard.observe(scope("owner-a", "child-b"));
+    expect(guard.mayOffer()).toBe(false);
+  });
+
+  it("suppresses an owner switch with a colliding child id", () => {
+    const guard = makeKidExitRecapScopeGuard(scope("owner-a", "same-child-id"));
+    guard.observe(scope("owner-b", "same-child-id"));
+    expect(guard.mayOffer()).toBe(false);
+  });
+
+  it("does not revive an old Keep action after A→B→A or sign-out", () => {
+    const guard = makeKidExitRecapScopeGuard(scope("owner-a", "child-a"));
+    guard.observe(scope("signed-out", "child-a"));
+    guard.observe(scope("owner-a", "child-a"));
+    expect(guard.mayOffer()).toBe(false);
+  });
+
+  it("wires the live owner+child guard before composing a parent recap", () => {
+    const component = read("components/kidmode/KidExitRecap.tsx");
+    expect(component).toContain('const { user, firebaseEnabled } = useAuth();');
+    expect(component).toContain('childProfile.id]);');
+    expect(component).toContain('recapScopeRef.current.observe(scope);');
+    expect(component).toMatch(/speakRef\.current = \(\) => \{\s*if \(!recapScopeRef\.current\.mayOffer\(\)\) return;/);
   });
 });
