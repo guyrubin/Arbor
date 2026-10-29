@@ -23,6 +23,7 @@ import { ErrorBoundary } from "../ErrorBoundary";
 import { ArborMark } from "../ui/ArborMark";
 import { TabSkeleton } from "../ui/Skeleton";
 import SearchModal, { SEARCH_OPEN_EVENT, requestOpenSearch, type SearchOpenSurface } from "../search/SearchModal";
+import { SEARCH_FIELD_FOCUS_EVENT, SEARCH_FIELD_MIN_WIDTH } from "../search/searchSections";
 import { track } from "../../lib/analytics";
 import SettingsModal from "./SettingsModal";
 import PaywallModal from "../billing/PaywallModal";
@@ -293,6 +294,13 @@ export default function Shell() {
         // outside the inert shield, steals focus, and Enter navigates parent
         // tabs — the hotkey is a no-op while Kid Mode is open.
         if (isKidModeActive()) return;
+        // B-SHELL-37: one search surface per width. At lg+ the top-bar field is it, so
+        // the hotkey focuses the field (its own search_open fires there); below lg the
+        // hotkey toggles the modal the strip icon opens.
+        if (window.matchMedia?.(SEARCH_FIELD_MIN_WIDTH).matches && !searchOpenRef.current) {
+          window.dispatchEvent(new Event(SEARCH_FIELD_FOCUS_EVENT));
+          return;
+        }
         if (!searchOpenRef.current) track("search_open", { surface: "desktop" });
         setSearchOpen((s) => !s);
       }
