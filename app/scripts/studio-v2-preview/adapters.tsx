@@ -8,7 +8,9 @@ export function PreviewProvider({ children }: { children: React.ReactNode }) {
   return <Language.Provider value={{uiLang, setUiLang}}>{children}</Language.Provider>;
 }
 export function useLanguage() { const state = useContext(Language); return { ...state, t: (key: string, vars?: Record<string, unknown>) => translate(state.uiLang, key, vars as never) }; }
-const childProfile = { id: 'studio-v2-synthetic-review', name: '', age: 5, ageMonths: 62, ageMonthsAsOf: '2026-10-15', kidTheme: 'film3d', primaryLanguage: 'en', languages: ['en','he'] };
+// B-KID-162 (200% text): `?name=` sets a synthetic name (the long-name cells of scripts/kids-performance-browser.mjs).
+const previewName = typeof location === 'undefined' ? '' : (new URLSearchParams(location.search).get('name') ?? '').slice(0, 60);
+const childProfile = { id: 'studio-v2-synthetic-review', name: previewName, age: 5, ageMonths: 62, ageMonthsAsOf: '2026-10-15', kidTheme: 'film3d', primaryLanguage: 'en', languages: ['en','he'] };
 const arbor = { childProfile, childProfiles: [childProfile], settings: {}, activities: [], updateChildProfile: () => {} };
 export const useArbor = () => arbor;
 export const useArborOptional = useArbor;

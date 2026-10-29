@@ -30,6 +30,49 @@ try {
     ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH } : {}),
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
   });
+  // B-KID-162 (200% text): the Kids home with a long synthetic name at 320 / 375, EN / HE, 100% and 200% text
+  // (every font size inside the home doubled, as phone text scaling does): the doors sit below the header,
+  // the name is never cut, Tab meets the doors in reading order, and nothing overflows sideways.
+  const LONG_NAME = { en: 'Maximiliana-Josephine', he: 'אלכסנדרה-מקסימיליאנה' };
+  for (const width of [320, 375]) for (const lang of ['en', 'he']) for (const text of [1, 2]) {
+    const context = await browser.newContext({ viewport: { width, height: 812 }, reducedMotion: 'reduce' });
+    await context.route('**/*', route => route.request().url().startsWith(base) ? route.continue() : route.abort());
+    const page = await context.newPage(), errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    try {
+      await page.goto(`${base}/?lang=${lang}&name=${encodeURIComponent(LONG_NAME[lang])}`);
+      await page.locator('[data-studio-home]').waitFor();
+      if (text === 2) await page.evaluate(() => {
+        const els = [...document.querySelectorAll('[data-studio-home], [data-studio-home] *')];
+        const sizes = els.map(el => parseFloat(getComputedStyle(el).fontSize));
+        els.forEach((el, i) => { el.style.fontSize = `${sizes[i] * 2}px`; });
+      });
+      await page.waitForTimeout(250);
+      const m = await page.evaluate(() => {
+        const header = document.querySelector('.studio-v2__header').getBoundingClientRect();
+        const doors = [...document.querySelectorAll('button.studio-v2__door')];
+        const name = document.querySelector('.studio-v2__greeting h1>span');
+        return {
+          headerBottom: header.bottom,
+          doorTops: doors.map(d => d.getBoundingClientRect().top),
+          order: doors.map(d => d.getAttribute('data-world')),
+          positiveTabIndex: doors.some(d => d.tabIndex > 0),
+          nameCut: name.scrollHeight > name.clientHeight + 1 || name.scrollWidth > name.clientWidth + 1,
+          nameShown: name.textContent,
+          overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+        };
+      });
+      await page.screenshot({ path: path.join(output, `home-${lang}-${width}-text${text * 100}.png`), fullPage: true });
+      assert.ok(Math.min(...m.doorTops) >= m.headerBottom - 0.5, `Doors below the header: ${JSON.stringify(m)}`);
+      assert.deepEqual(m.order, ['stories', 'studio', 'playbank', 'feelings']);
+      assert.equal(m.positiveTabIndex, false);
+      assert.equal(m.nameCut, false, `The name is not cut: ${m.nameShown}`);
+      assert.ok(m.nameShown.includes(LONG_NAME[lang]));
+      assert.equal(m.overflow, false, 'No horizontal document overflow');
+      assert.deepEqual(errors, []);
+      results.push({ home: true, lang, width, text: `${text * 100}%`, passed: true, headerBottom: Math.round(m.headerBottom), firstDoorTop: Math.round(Math.min(...m.doorTops)) });
+    } finally { await context.close(); }
+  }
   for (const width of [375, 1280]) for (const lang of ['en', 'he']) for (const game of games) {
     const context = await browser.newContext({ viewport: { width, height: width === 375 ? 812 : 800 }, reducedMotion: 'reduce' });
     await context.route('**/*', route => route.request().url().startsWith(base) ? route.continue() : route.abort());

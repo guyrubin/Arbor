@@ -5,6 +5,11 @@
  * stays top-end) and the greeting keeps to two lines, so a long name moves the
  * chip down without reaching the doors. Rendered evidence: 390x844 EN / HE
  * with a long name (the wave-3 kids-p1 shots).
+ *
+ * Wave 4 (200% text): the doors no longer sit at a fixed 166px top; the phone
+ * home is a grid whose header row grows with its text, so the doors flow below
+ * it and a long name wraps in full. The browser half (320 / 375, EN / HE,
+ * 100% and 200% text, a long name) is scripts/kids-performance-browser.mjs.
  */
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -36,16 +41,42 @@ describe("B-KID-162: the phone header keeps the keepsakes chip clear of the gree
     expect(STUDIO_DOOR_ORDER).toEqual(["stories", "studio", "playbank", "feelings"]);
     expect([...STUDIO_DOOR_ORDER].sort()).toEqual([...STUDIO_V2_WORLDS].sort());
     expect(readFileSync(new URL("./StudioHome.tsx", import.meta.url), "utf8")).toContain("{STUDIO_DOOR_ORDER.map(worldId =>");
-    // the upper doors sit above the lower ones at every width
-    for (const block of [css, phone]) {
-      const top = (w: string) => Number((new RegExp(`studio-v2__door\\[data-world=${w}\\]\\{[^}]*inset-block-start:([\\d.]+)`).exec(block) ?? [])[1]);
-      expect(top("stories")).toBeLessThan(top("playbank"));
-      expect(top("studio")).toBeLessThan(top("feelings"));
-    }
+    // the upper doors sit above the lower ones at every width (wide: by their top; phone: by their grid row)
+    const top = (w: string) => Number((new RegExp(`studio-v2__door\\[data-world=${w}\\]\\{[^}]*inset-block-start:([\\d.]+)`).exec(css) ?? [])[1]);
+    expect(top("stories")).toBeLessThan(top("playbank"));
+    expect(top("studio")).toBeLessThan(top("feelings"));
+    const row = (w: string) => Number((/grid-row:(\d+)/.exec(rule(`.studio-v2__door[data-world=${w}]`)) ?? [])[1]);
+    expect(row("stories")).toBe(2);
+    expect(row("studio")).toBe(2);
+    expect(row("playbank")).toBe(3);
+    expect(row("feelings")).toBe(3);
+  }, 30_000); // a cold import of StudioHome takes over 5 s on a loaded box (also before wave 4)
+});
+
+describe("B-KID-162 (200% text): the phone doors flow below the header; a long name is never cut", () => {
+  it("no door has a fixed offset: each is in flow in the home grid, under the header's own row", () => {
+    // each door resets the wide layout's percentage insets (a relative door would still be offset by them)
+    for (const w of ["stories", "studio", "playbank", "feelings"]) expect(rule(`.studio-v2__door[data-world=${w}]`)).toMatch(/^inset:auto;grid-column:\d;grid-row:\d;margin-block-start:\d+px$/);
+    expect(rule(".studio-v2__door")).toContain("position:relative;inset:auto");
+    const home = rule(".studio-v2--home");
+    expect(home).toContain("display:grid");
+    // the header row grows with its text (minmax(…, auto)); the old 574px reservation is gone
+    expect(home).toMatch(/grid-template-rows:minmax\(130px,auto\)/);
+    expect(home).not.toMatch(/padding-block:574px/);
+    const header = rule(".studio-v2__header");
+    expect(header).toContain("position:relative;inset:auto;grid-column:1/-1;grid-row:1");
+    // default text keeps the old door line: 22px + 130px + 14px = 166px
+    expect(home).toContain("padding-block:22px 12px");
+    expect(rule(".studio-v2__door[data-world=stories]")).toContain("margin-block-start:14px");
   });
-  it("a long name keeps to two lines", () => {
+  it("the hero stands in the door rows' grid area (absolute, so it never sizes them); the guide and quest follow in flow", () => {
+    expect(rule(".studio-v2__hero")).toMatch(/grid-column:1\/-1;grid-row:2\/4;.*inset-block-start:auto;inset-block-end:-55px/);
+    expect(rule(".studio-v2__guide")).toMatch(/grid-row:4/);
+    expect(rule(".studio-v2__quest")).toMatch(/grid-row:5/);
+  });
+  it("a long name wraps in full (no line limit cuts it)", () => {
     const span = rule(".studio-v2__greeting h1>span");
-    expect(span).toContain("-webkit-line-clamp:2");
-    expect(span).toContain("overflow:hidden");
+    expect(span).not.toMatch(/line-clamp|overflow:hidden/);
+    expect(span).toContain("overflow-wrap:anywhere");
   });
 });

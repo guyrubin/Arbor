@@ -12,14 +12,15 @@
 @media(min-width:641px) and (max-width:950px){.studio-v2--home{aspect-ratio:820/1180;min-block-size:1000px}.studio-v2__header{inset-inline:4%;inset-block-start:28px}.studio-v2__greeting h1{font-size:42px}.studio-v2__door{inline-size:26%;}.studio-v2__door[data-world=stories]{inset-inline-start:4.8%;inset-block-start:15%}.studio-v2__door[data-world=studio]{inset-inline-end:4.8%;inset-block-start:15%}.studio-v2__door[data-world=playbank]{inset-inline-start:3%;inset-block-start:40%}.studio-v2__door[data-world=feelings]{inset-inline-end:3%;inset-block-start:40%}.studio-v2__hero{inline-size:42%;block-size:34%;inset-block-end:22%}.studio-v2__figure{--studio-hero-scale:.8}.studio-v2__guide{inset-inline-start:2%;inset-block-end:24%;max-inline-size:300px}.studio-v2__bubble{max-inline-size:270px}.studio-v2__quest{grid-template-columns:1fr auto;row-gap:18px;padding:18px 22px}.studio-v2__quest-steps{grid-column:1/-1;grid-row:2}.studio-v2__quest .studio-v2__gold-button{grid-column:2;grid-row:1}.studio-v2--world{padding:28px}.studio-v2__world-layout{grid-template-columns:1fr;gap:28px}.studio-v2__world-window{block-size:400px;margin-block-start:0}.studio-v2__world-list>h2{margin-block-start:0}}
 @media(max-width:640px){
 .studio-v2{border-radius:0;min-block-size:100%;overflow:hidden}
-.studio-v2--home{aspect-ratio:auto;display:flex;flex-direction:column;min-block-size:max(830px,100svh);block-size:auto;padding-block:574px 12px}
-.studio-v2__header{inset-inline:20px;inset-block-start:22px;gap:4px 12px;align-items:flex-start;flex-wrap:wrap}
+/* B-KID-162 (200% text): the home is a grid that flows: the header row grows with its text and pushes the doors down (no fixed offset). Row 1 (22px + 130px + the doors' 14px) keeps the old 166px door line at default text. */
+.studio-v2--home{aspect-ratio:auto;display:grid;grid-template-columns:3.5% 30% minmax(0,1fr) 30% 3.5%;grid-template-rows:minmax(130px,auto) auto auto auto 1fr;align-content:start;min-block-size:max(830px,100svh);block-size:auto;padding-block:22px 12px}
+.studio-v2__header{position:relative;inset:auto;grid-column:1/-1;grid-row:1;align-self:start;margin-inline:20px;gap:4px 12px;align-items:flex-start;flex-wrap:wrap}
 /* B-KID-162: line 1 = the greeting beside the exit; this zero-height break puts only the keepsakes chip on line 2 */
 .studio-v2__header::after{content:"";order:3;flex-basis:100%;block-size:0}
 .studio-v2__greeting{max-inline-size:calc(100% - 78px);flex:1 1 0;min-inline-size:0}
 .studio-v2__greeting h1{font-size:clamp(24px,6.6vw,32px);display:block;line-height:1.1}
-/* B-KID-162: a long name keeps to two lines, so the keepsakes chip below it never meets the doors */
-.studio-v2__greeting h1>span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* B-KID-162 (200% text): the doors flow below the header, so a long name wraps in full (no line limit cuts it) */
+.studio-v2__greeting h1>span{display:block;overflow-wrap:anywhere}
 .studio-v2__greeting h1>svg{display:none}
 .studio-v2__greeting p{font-size:14px;max-inline-size:220px;margin-block-start:6px}
 .studio-v2__header-actions{display:contents}
@@ -27,29 +28,30 @@
 .studio-v2__header-actions>.studio-v2__glass-button{position:static;order:4;padding:8px 12px;min-block-size:44px;font-size:12px;gap:7px}
 .studio-v2__header-actions>:not(.studio-v2__glass-button){order:2}
 .studio-v2__header-actions>.studio-v2__glass-button>svg{inline-size:18px}
-.studio-v2__door{inline-size:30%;padding:7px 7px 9px;border-radius:14px}
-.studio-v2__door[data-world=stories]{inset-inline-start:4%;inset-inline-end:auto;inset-block-start:166px}
-.studio-v2__door[data-world=studio]{inset-inline-end:4%;inset-inline-start:auto;inset-block-start:166px}
-.studio-v2__door[data-world=playbank]{inset-inline-start:3%;inset-inline-end:auto;inset-block-start:350px}
-.studio-v2__door[data-world=feelings]{inset-inline-end:3%;inset-inline-start:auto;inset-block-start:350px}
+.studio-v2__door{position:relative;inset:auto;inline-size:auto;align-self:start;padding:7px 7px 9px;border-radius:14px}
+.studio-v2__door[data-world=stories]{inset:auto;grid-column:2;grid-row:2;margin-block-start:14px}
+.studio-v2__door[data-world=studio]{inset:auto;grid-column:4;grid-row:2;margin-block-start:14px}
+.studio-v2__door[data-world=playbank]{inset:auto;grid-column:2;grid-row:3;margin-block-start:27px}
+.studio-v2__door[data-world=feelings]{inset:auto;grid-column:4;grid-row:3;margin-block-start:27px}
 .studio-v2__door>.studio-v2__portal-art{aspect-ratio:1.16}
 .studio-v2__door-label{padding:8px 2px 0;min-block-size:36px}
 .studio-v2__door-label strong{font-size:16px;line-height:1.15}
 .studio-v2__door-label small{display:none}
 .studio-v2__door-label>svg{inline-size:15px;display:block}
-.studio-v2__hero{inline-size:76%;block-size:320px;inset-block-start:242px;inset-block-end:auto;z-index:2}
+/* The hero stands between the door rows: absolutely placed in their grid area (so it never sizes the rows), its feet 55px under the lower doors as before */
+.studio-v2__hero{grid-column:1/-1;grid-row:2/4;inline-size:76%;block-size:320px;inset-block-start:auto;inset-block-end:-55px;z-index:2}
 /* Center before scaling so RTL and LTR keep the face between the doors. */
 .studio-v2__figure{--studio-hero-scale:.7}
 .studio-v2__hero-empty{padding-block-end:20px;gap:6px}
 .studio-v2__hero-empty>svg{inline-size:150px;block-size:160px}
 /* Let translated guidance and quest copy grow without covering each other. */
-.studio-v2__guide{position:relative;inset:auto;margin:0 3% 12px;max-inline-size:94%;flex-direction:row;align-items:center;gap:0;flex-shrink:0}
+.studio-v2__guide{position:relative;inset:auto;grid-column:1/-1;grid-row:4;margin:67px 3% 12px;max-inline-size:94%;flex-direction:row;align-items:center;gap:0;flex-shrink:0}
 .studio-v2__sprout{order:-1;inline-size:60px;min-inline-size:60px;block-size:72px}
 .studio-v2__sprout svg{inline-size:60px;block-size:72px}
 .studio-v2__bubble{margin:0;padding:8px 10px;max-inline-size:calc(100% - 60px);font-size:12px;gap:8px}
 .studio-v2__bubble>span{max-inline-size:155px}
 .studio-v2__bubble button{font-size:11px;min-block-size:44px}
-.studio-v2__quest{position:relative;inset:auto;margin-inline:12px;margin-block-start:auto;grid-template-columns:1fr auto;gap:12px;padding:14px;min-block-size:140px;flex-shrink:0}
+.studio-v2__quest{position:relative;inset:auto;grid-column:1/-1;grid-row:5;align-self:end;margin-inline:12px;margin-block-start:auto;grid-template-columns:1fr auto;gap:12px;padding:14px;min-block-size:140px;flex-shrink:0}
 .studio-v2__quest h2{font-size:20px}
 .studio-v2__quest-title>p{font-size:11px}
 .studio-v2__quest-title>small{font-size:10px}
