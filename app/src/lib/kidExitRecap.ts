@@ -101,14 +101,21 @@ export function countsSince(ledgers: KidActivityLedgers, sinceMs: number): KidAc
  * Keep action after exit. A switch back does NOT revive the old session.
  * This is ephemeral UI state; it records no child data.
  */
-export function makeKidExitRecapScopeGuard(initialScope: string): {
-  observe(scope: string): void;
+export function makeKidExitRecapScopeGuard(initialScope: string | null): {
+  observe(scope: string | null): void;
   mayOffer(): boolean;
 } {
+  // Firebase restores a persisted user asynchronously. A not-yet-known owner
+  // is NOT an account switch: bind once auth resolves, then never rebind.
+  let expected = initialScope;
   let changed = false;
   return {
-    observe(scope: string) { if (scope !== initialScope) changed = true; },
-    mayOffer() { return !changed; },
+    observe(scope: string | null) {
+      if (scope === null) return;
+      if (expected === null) expected = scope;
+      else if (scope !== expected) changed = true;
+    },
+    mayOffer() { return expected !== null && !changed; },
   };
 }
 
