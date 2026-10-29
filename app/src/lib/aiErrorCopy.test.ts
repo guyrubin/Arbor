@@ -140,4 +140,15 @@ describe("B-ASKJB-49 — a 409 says what it is and sends the parent to Safety", 
     // Never the server's English words.
     expect(JSON.stringify(e)).not.toContain("Professional support recommended");
   });
+
+  it("wave 4: a non-crisis 409 (its own code) is never the crisis copy", () => {
+    for (const code of ["hero_missing", "live_renewal_invalid", "seat_in_use"]) {
+      const e = classifyAiFailure(new ApiError(code, 409), { online: true });
+      expect(e.kind, code).toBe("generic");
+      expect(e.titleKey, code).not.toBe("beh.escalation.title");
+      expect(e.actionRoute, code).toBeUndefined();
+    }
+    // Negative control: the crisis error still is.
+    expect(classifyAiFailure(new EscalationRequiredError("x"), { online: true }).kind).toBe("escalation");
+  });
 });

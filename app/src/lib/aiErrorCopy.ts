@@ -67,7 +67,10 @@ export const QUOTA_STATUS = 429;
 export const CONSENT_STATUS = 451;
 
 const statusOf = (err: unknown): number | null => {
-  if (err instanceof ApiError) return err.status;
+  // Wave 4: only the crisis screen escalates. An ApiError 409 is a state with
+  // its own code (the co-parent seat, a book's missing hero, an invalid Live
+  // renewal: lib/api.ts NON_CRISIS_409_CODES), never the crisis copy.
+  if (err instanceof ApiError) return err.status === ESCALATION_STATUS ? null : err.status;
   if (err instanceof PaywallError) return PAYWALL_STATUS;
   if (err instanceof EscalationRequiredError) return ESCALATION_STATUS;
   // A DOM/network TypeError from fetch carries no status at all.
