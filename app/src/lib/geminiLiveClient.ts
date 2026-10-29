@@ -91,13 +91,18 @@ export type LiveSessionOptions = {
   remainingMs?: number;
   /** B-AIOPS-02: mint the next slice before this one ends. Resolves the next
    *  slice, or null when the family's voice time is spent (the conversation
-   *  then ends calmly at `expiresAt`); a rejection is retried. Absent: no
+   *  then ends calmly at `expiresAt`); a rejection is retried. Wave 4:
+   *  LIVE_RENEWAL_REFUSED when the server will not chain this session
+   *  (`live_renewal_invalid`): no later attempt is made and the talk ends
+   *  calmly at `expiresAt` with the closing line (onTalkEnd). Absent: no
    *  renewal (legacy tokens). */
-  renew?: (renewOf?: string) => Promise<LiveSlice | null>;
+  renew?: (renewOf?: string) => Promise<LiveSlice | null | typeof LIVE_RENEWAL_REFUSED>;
   /** B-AIOPS-02: this first slice's usage-session id (its renewal names it). */
   usageId?: string;
 };
 export type LiveController = { stop: () => void };
+/** Wave 4: what `renew` answers when the server refused to chain the renewal. */
+export const LIVE_RENEWAL_REFUSED = "renewal-refused" as const;
 
 /** F-01: a connect that cannot succeed must fail fast instead of wedging the
  *  chip — the SDK promise races a hard deadline (same race pattern as the
@@ -624,7 +629,7 @@ export async function startGeminiLive(
     if (stopped || forRound !== round || incoming || !renewable() || attemptsMade >= RENEW_ATTEMPT_LEADS_MS.length) return;
     attemptsMade++;
     attemptsPending++;
-    let next: LiveSlice | null = null;
+    let next: LiveSlice | null | typeof LIVE_RENEWAL_REFUSED = null;
     let failed = false;
     try {
       // The server chains a renewal only onto a session it knows opened.
@@ -635,6 +640,18 @@ export async function startGeminiLive(
     }
     attemptsPending--;
     const current = !stopped && forRound === round;
+    if (!failed && next === LIVE_RENEWAL_REFUSED) {
+      // Wave 4: the server will not chain this session: no later attempt can
+      // succeed, so none is made; the talk ends calmly when this slice ends,
+      // through onTalkEnd (the closing line), never a connection failure.
+      if (current && !incoming) {
+        attemptsMade = RENEW_ATTEMPT_LEADS_MS.length;
+        for (const timer of attemptTimers) clearTimeout(timer);
+        attemptTimers.clear();
+        renewalSettled();
+      }
+      return;
+    }
     if (!failed && next === null) {
       // The family's time is spent: the talk ends calmly when this slice ends.
       if (current && !incoming) {
@@ -646,7 +663,7 @@ export async function startGeminiLive(
       }
       return;
     }
-    if (failed || !next) {
+    if (failed || !next || next === LIVE_RENEWAL_REFUSED) {
       if (current) renewalSettled();
       return;
     }

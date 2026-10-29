@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import { apiRateLimit } from "./apiRateLimits.js";
+import { apiAccountRateLimit, apiRateLimit } from "./apiRateLimits.js";
 import type { ArborConfig } from "../config/env.js";
 import { createModelProvider, type GenerateJsonOptions, type ModelProvider } from "../ai/modelRouter.js";
 import { CapabilityRegistry } from "../ai/capabilities/registry.js";
@@ -185,7 +185,9 @@ export const createApp = (config: ArborConfig) => {
   // B-DIST-01: the sandbox's demo-family bundle — null (not mounted) in prod.
   const demoFamilyRouter = createDemoFamilyRouter(config);
   if (demoFamilyRouter) app.use(demoFamilyRouter);
-  // The per-IP limit; the book-asset routes have their own per-account one (K2).
+  // B-INF-16: before auth, per IP — a read and a write ceiling, and the strict
+  // groups (model calls, invites, exports) at 30 a minute each. The book-asset
+  // routes have their own per-account one (K2).
   app.use("/api", apiRateLimit());
   // Vision/document images need a larger body than the default API limit.
   app.use("/api/vision", express.json({ limit: "12mb" }));
@@ -200,6 +202,9 @@ export const createApp = (config: ArborConfig) => {
   );
   app.use(express.json({ limit: "250kb" }));
   app.use("/api", createAuthMiddleware(config));
+  // B-INF-16: after auth, one budget per family member (keyed on the verified uid),
+  // so families behind one address never share it.
+  app.use("/api", apiAccountRateLimit());
   // COST-2: now that auth has resolved, stamp the uid onto the active usage context.
   app.use("/api", bindUidToContext);
   // B-PROG-12: the program pilot's admin read-out (its own router; admin gate inside, counts only).

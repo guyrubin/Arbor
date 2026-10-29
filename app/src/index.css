@@ -330,8 +330,17 @@ body {
   font-optical-sizing: auto;
   letter-spacing: 0;
   line-height: 1.18;
-  text-wrap: balance;
   color: var(--arbor-ink);
+}
+/* B-SHELL-45: balance only the headings that wrap by design. `text-wrap` is a
+   shorthand that also sets text-wrap-mode, and this unlayered rule outranks the
+   layered Tailwind utilities, so on a heading with `truncate` (or a nowrap
+   utility) it turned wrapping back on: the sharing roster email broke into
+   pieces at 375. The :where() keeps the specificity of `.arbor-app h3`. */
+.arbor-app h1:where(:not(.truncate, .whitespace-nowrap, .text-nowrap)),
+.arbor-app h2:where(:not(.truncate, .whitespace-nowrap, .text-nowrap)),
+.arbor-app h3:where(:not(.truncate, .whitespace-nowrap, .text-nowrap)) {
+  text-wrap: balance;
 }
 .arbor-app h4,
 .arbor-app h5,

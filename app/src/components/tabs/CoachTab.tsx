@@ -42,7 +42,7 @@ import { screenForImmediateEscalation } from "../../safety/escalation";
 import type { ComposerAttachment } from "../../lib/companionAttachments";
 import { requestCompanionConsentReview } from "../../lib/companionConsent";
 import { COMPANION_CONVERSATION_EVENT, consumeConversationPanelRequest, consumeConversationVoiceRequest, conversationVoiceRequestPending, type CompanionConversationRequest } from "../../lib/companionConversation";
-import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError, isLiveResting, VoiceNoticeRequiredError } from "../../lib/api";
+import { api, streamVoice, getAiLanguage, ApiError, EscalationRequiredError, PaywallError, isLiveResting, isLiveRenewalInvalid, VoiceNoticeRequiredError } from "../../lib/api";
 import { acknowledgeVoiceNotice, liveNoticeIdFrom, runtimeVoiceNoticeId, voiceNoticeAcknowledged, voiceNoticeShortLine, voiceNoticeTap } from "../../lib/voiceProviderNotice";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { recurringScenario } from "../../lib/patternEcho";
@@ -101,6 +101,7 @@ import { prefetchNaturalAudio, registerTtsToken } from "../../lib/naturalVoice";
 // never resource-less on screen.
 import { escalationMatchForCategory, renderEscalationMarkdown } from "../../safety/escalation";
 import { usePrefersReducedMotion } from "../ui/playkit";
+import { hiddenStamps } from "../../lib/surfaceContract";
 
 // GP-05 / AI-08: the graded Risk type and its two mapping helpers (level →
 // grade, prose-regex → grade) are GONE — TrustSafetyBar is constant-posture now. The only
@@ -809,6 +810,10 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const [startAfterOpening, setStartAfterOpening] = useState(0);
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
+  // Wave 4: closed, the conversation stays mounted (thread, draft, composer
+  // photos, voice proposals) but carries no stamp the one-primary-move law or
+  // the sweep could count on the page beside it.
+  const unstamped = hiddenStamps(embedded && !visible);
   // Every stop (X, the panel hiding, a new thread, unmount) cancels the card's
   // words HERE, synchronously, before the engine is told to stop: a late
   // engine callback then finds nothing to finish, and nothing starts after.
@@ -934,7 +939,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
 
     if (liveAvail) {
       try {
-        const { requestLiveMicrophone, startGeminiLive } = await import("../../lib/geminiLiveClient");
+        const { requestLiveMicrophone, startGeminiLive, LIVE_RENEWAL_REFUSED } = await import("../../lib/geminiLiveClient");
         if (!attempt.isCurrent()) return;
         micStream = await requestLiveMicrophone(attempt.signal);
         if (!attempt.isCurrent()) { releaseMic(); return; }
@@ -970,6 +975,11 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                     expiresAt: next.expiresAt, remainingMs: next.budget?.remainingMs, reportUsage: usageFor(next), usageId: next.usageSessionId };
                 } catch (renewError) {
                   if (isLiveResting(renewError)) return null;
+                  // Wave 4: the server will not chain this session (409
+                  // live_renewal_invalid, never the crisis screen): no retry,
+                  // and the talk ends at this slice with the closing line
+                  // (onTalkEnd → elev.aierrors.voiceTalkEnded).
+                  if (isLiveRenewalInvalid(renewError)) return LIVE_RENEWAL_REFUSED;
                   throw renewError;
                 }
               },
@@ -1412,6 +1422,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const composerSection = (
         <section
           data-primary-move="ask"
+          {...unstamped}
           className={composerDocked ? "py-2.5" : "pt-3 pb-4 sm:pt-4 sm:pb-5"}
           aria-label={t("elev.hero.ask.cta")}
         >
@@ -1481,7 +1492,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           surfaceContract.ts declares for this route. */}
       {/* One coaching workspace: orientation, conversation, composer. */}
       <div className={embedded ? "companion-transcript" : undefined} data-companion-scroll={embedded ? "true" : undefined}>
-      <div data-module="coach-orientation" className="space-y-4">
+      <div data-module="coach-orientation" {...unstamped} className="space-y-4">
         {embedded && !userTurnExists && <div className="companion-welcome"><h3>{inputText(uiLang, "companion.talk.welcome")}</h3><p>{inputText(uiLang, "companion.input.a-little-moment-a-big-question-a-photo-from-today-start-wherever-")}</p></div>}
         {/* Composer-first: the parent's question is the primary job on this page.
             COACH-4: this hero composer is the ONE input on the surface — the
@@ -1554,6 +1565,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       {historyOpen && (
         <section data-module="coach-history"
           ref={historyRef}
+          {...unstamped}
           className="companion-history rounded-2xl border p-2"
           style={{ borderColor: "var(--arbor-rule)", background: "var(--arbor-paper-elevated)" }}
           aria-labelledby="coach-history-title"
@@ -1610,7 +1622,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           with the page (ArborContext auto-scrolls the viewport to the streaming
           answer via chatBottomRef). The min-height keeps the conversation canvas
           from shrinking below the previous min(70dvh,560px) viewport. */}
-      <div data-module="coach-thread" className={`${cardCls} flex min-w-0 flex-col overflow-hidden`}>
+      <div data-module="coach-thread" className={`${cardCls} flex min-w-0 flex-col overflow-hidden`} {...unstamped}>
         {/* F-TALK-1: no thread sub-header. The panel header already says
             "Arbor"; the composer foot carries the AI disclosure and the tone
             chip; "What the coach sees" and its weekly switch live on
