@@ -56,7 +56,7 @@ describe("B-KID-162: the phone header keeps the keepsakes chip clear of the gree
 describe("B-KID-162 (200% text): the phone doors flow below the header; a long name is never cut", () => {
   it("no door has a fixed offset: each is in flow in the home grid, under the header's own row", () => {
     // each door resets the wide layout's percentage insets (a relative door would still be offset by them)
-    for (const w of ["stories", "studio", "playbank", "feelings"]) expect(rule(`.studio-v2__door[data-world=${w}]`)).toMatch(/^inset:auto;grid-column:\d;grid-row:\d;margin-block-start:\d+px$/);
+    for (const w of ["stories", "studio", "playbank", "feelings"]) expect(rule(`.studio-v2__door[data-world=${w}]`)).toMatch(/^inset:auto;grid-column:\d;grid-row:\d;margin-block(-start)?:[\d px]+$/);
     expect(rule(".studio-v2__door")).toContain("position:relative;inset:auto");
     const home = rule(".studio-v2--home");
     expect(home).toContain("display:grid");
@@ -65,14 +65,26 @@ describe("B-KID-162 (200% text): the phone doors flow below the header; a long n
     expect(home).not.toMatch(/padding-block:574px/);
     const header = rule(".studio-v2__header");
     expect(header).toContain("position:relative;inset:auto;grid-column:1/-1;grid-row:1");
-    // default text keeps the old door line: 22px + 130px + 14px = 166px
+    // default text keeps the fixed layout's door lines: 22 + 130 + 14 = 166px, and the lower doors at 22 + 130 + 198 = 350px
     expect(home).toContain("padding-block:22px 12px");
-    expect(rule(".studio-v2__door[data-world=stories]")).toContain("margin-block-start:14px");
+    expect(home).toMatch(/grid-template-rows:minmax\(130px,auto\) minmax\(198px,auto\) auto minmax\(calc\(40px \+ 2\.25em\),auto\) auto 1fr/);
+    expect(rule(".studio-v2__door[data-world=stories]")).toContain("margin-block:14px 27px");
+    expect(rule(".studio-v2__door[data-world=playbank]")).toContain("margin-block-start:0");
   });
-  it("the hero stands in the door rows' grid area (absolute, so it never sizes them); the guide and quest follow in flow", () => {
-    expect(rule(".studio-v2__hero")).toMatch(/grid-column:1\/-1;grid-row:2\/4;.*inset-block-start:auto;inset-block-end:-55px/);
-    expect(rule(".studio-v2__guide")).toMatch(/grid-row:4/);
-    expect(rule(".studio-v2__quest")).toMatch(/grid-row:5/);
+  it("the hero stands in the door rows' grid area down to the foot row (absolute, so it never sizes them); the guide and quest follow in flow", () => {
+    expect(rule(".studio-v2__hero")).toMatch(/grid-column:1\/-1;grid-row:2\/5;.*inset-block-start:90px;inset-block-end:0/);
+    expect(rule(".studio-v2__guide")).toMatch(/grid-row:5;margin:12px/);
+    expect(rule(".studio-v2__quest")).toMatch(/grid-row:6/);
+  });
+  it("fix round 2: with no hero yet, the 'A place for your hero' label flows IN the foot row, under the lower doors (it overlapped them by 4px)", () => {
+    expect(phone).toContain(".studio-v2__hero[data-avatar-source=mascot],.studio-v2__hero[data-avatar-source=mascot]>.studio-v2__hero-empty{display:contents}");
+    expect(rule(".studio-v2__hero[data-avatar-source=mascot]>.studio-v2__hero-empty>p")).toMatch(/grid-row:4;.*margin:17px 0 0/);
+    // the mascot stays between the lower doors without sizing their row
+    expect(rule(".studio-v2__hero[data-avatar-source=mascot]>.studio-v2__hero-empty>svg")).toMatch(/grid-row:3;.*align-self:end;margin-block:-40px -9px/);
+    // the browser half: the Kids home cells assert the label meets no door at 320/375, EN/HE, 100% and 200%
+    const browser = readFileSync(new URL("../../../../scripts/kids-performance-browser.mjs", import.meta.url), "utf8");
+    expect(browser).toContain("assert.deepEqual(m.labelMeetsDoor, [], `The hero label meets no door");
+    expect(browser).toMatch(/for \(const width of \[320, 375\]\) for \(const lang of \['en', 'he'\]\) for \(const text of \[1, 2\]\)/);
   });
   it("a long name wraps in full (no line limit cuts it)", () => {
     const span = rule(".studio-v2__greeting h1>span");

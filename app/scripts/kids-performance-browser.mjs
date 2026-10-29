@@ -30,17 +30,18 @@ try {
     ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH } : {}),
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
   });
-  // B-KID-162 (200% text): the Kids home with a long synthetic name at 320 / 375, EN / HE, 100% and 200% text
-  // (every font size inside the home doubled, as phone text scaling does): the doors sit below the header,
-  // the name is never cut, Tab meets the doors in reading order, and nothing overflows sideways.
+  // B-KID-162 (200% text): the Kids home at 320 / 375, EN / HE, 100% and 200% text (every font size inside the
+  // home doubled, as phone text scaling does), with a long synthetic name and with none: the doors sit below the
+  // header, the no-hero label ("A place for your hero") never meets a door, the name is never cut, Tab meets the
+  // doors in reading order, nothing overflows sideways, and at default text the doors keep the fixed lines (166 / 350).
   const LONG_NAME = { en: 'Maximiliana-Josephine', he: 'אלכסנדרה-מקסימיליאנה' };
-  for (const width of [320, 375]) for (const lang of ['en', 'he']) for (const text of [1, 2]) {
+  for (const width of [320, 375]) for (const lang of ['en', 'he']) for (const text of [1, 2]) for (const named of [true, false]) {
     const context = await browser.newContext({ viewport: { width, height: 812 }, reducedMotion: 'reduce' });
     await context.route('**/*', route => route.request().url().startsWith(base) ? route.continue() : route.abort());
     const page = await context.newPage(), errors = [];
     page.on('pageerror', e => errors.push(e.message));
     try {
-      await page.goto(`${base}/?lang=${lang}&name=${encodeURIComponent(LONG_NAME[lang])}`);
+      await page.goto(`${base}/?lang=${lang}${named ? `&name=${encodeURIComponent(LONG_NAME[lang])}` : ''}`);
       await page.locator('[data-studio-home]').waitFor();
       if (text === 2) await page.evaluate(() => {
         const els = [...document.querySelectorAll('[data-studio-home], [data-studio-home] *')];
@@ -52,25 +53,41 @@ try {
         const header = document.querySelector('.studio-v2__header').getBoundingClientRect();
         const doors = [...document.querySelectorAll('button.studio-v2__door')];
         const name = document.querySelector('.studio-v2__greeting h1>span');
+        const box = el => { const r = el.getBoundingClientRect(); return { t: r.top, b: r.bottom, l: r.left, r: r.right }; };
+        const meets = (a, c) => a.l < c.r - 1 && c.l < a.r - 1 && a.t < c.b - 1 && c.t < a.b - 1;
+        const label = document.querySelector('.studio-v2__hero-empty p');
+        const labelBox = label ? box(label) : null;
         return {
+          heroLabel: labelBox,
+          labelMeetsDoor: labelBox ? doors.filter(d => meets(labelBox, box(d))).map(d => d.getAttribute('data-world')) : [],
+          labelGap: labelBox ? Math.round(labelBox.t - Math.max(...doors.map(d => d.getBoundingClientRect().bottom))) : null,
           headerBottom: header.bottom,
           doorTops: doors.map(d => d.getBoundingClientRect().top),
           order: doors.map(d => d.getAttribute('data-world')),
           positiveTabIndex: doors.some(d => d.tabIndex > 0),
-          nameCut: name.scrollHeight > name.clientHeight + 1 || name.scrollWidth > name.clientWidth + 1,
+          // cut = the span clips (overflow or a line clamp) AND its text overflows (a glyph's ascender past the line box is not a cut)
+          nameCut: (getComputedStyle(name).overflow !== 'visible' || getComputedStyle(name).webkitLineClamp !== 'none') && (name.scrollHeight > name.clientHeight + 1 || name.scrollWidth > name.clientWidth + 1),
           nameShown: name.textContent,
           overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
         };
       });
-      await page.screenshot({ path: path.join(output, `home-${lang}-${width}-text${text * 100}.png`), fullPage: true });
+      await page.screenshot({ path: path.join(output, `home-${lang}-${width}-text${text * 100}-${named ? 'long' : 'none'}.png`), fullPage: true });
       assert.ok(Math.min(...m.doorTops) >= m.headerBottom - 0.5, `Doors below the header: ${JSON.stringify(m)}`);
+      assert.ok(m.heroLabel, 'The no-hero label is shown (no avatar in the preview)');
+      assert.deepEqual(m.labelMeetsDoor, [], `The hero label meets no door: ${JSON.stringify(m)}`);
+      assert.ok(m.labelGap >= 14, `The hero label sits clear below the lower doors: ${m.labelGap}px`);
+      // (a door's 3D tilt moves its box by under a pixel)
+      if (text === 1 && !named) for (const [i, line] of [[0, 166], [1, 166], [2, 350], [3, 350]]) assert.ok(Math.abs(m.doorTops[i] - line) <= 2, `Default text keeps the fixed door lines: ${JSON.stringify(m.doorTops)}`);
       assert.deepEqual(m.order, ['stories', 'studio', 'playbank', 'feelings']);
       assert.equal(m.positiveTabIndex, false);
       assert.equal(m.nameCut, false, `The name is not cut: ${m.nameShown}`);
-      assert.ok(m.nameShown.includes(LONG_NAME[lang]));
+      if (named) assert.ok(m.nameShown.includes(LONG_NAME[lang]));
       assert.equal(m.overflow, false, 'No horizontal document overflow');
       assert.deepEqual(errors, []);
-      results.push({ home: true, lang, width, text: `${text * 100}%`, passed: true, headerBottom: Math.round(m.headerBottom), firstDoorTop: Math.round(Math.min(...m.doorTops)) });
+      results.push({ home: true, lang, width, text: `${text * 100}%`, name: named ? 'long' : 'none', passed: true, headerBottom: Math.round(m.headerBottom), firstDoorTop: Math.round(Math.min(...m.doorTops)), heroLabelGap: m.labelGap });
+    } catch (error) {
+      console.error(JSON.stringify({ home: true, lang, width, text: `${text * 100}%`, name: named ? 'long' : 'none', error: String(error) }));
+      throw error;
     } finally { await context.close(); }
   }
   for (const width of [375, 1280]) for (const lang of ['en', 'he']) for (const game of games) {
