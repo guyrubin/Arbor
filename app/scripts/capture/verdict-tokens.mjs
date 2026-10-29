@@ -21,7 +21,9 @@ export const VERDICT_TEXT_PATTERNS = Object.freeze([
   String.raw`^\s*(?:low|medium|high|urgent|moderate|severe)\s*$`,
   // a graded phrase about the child
   String.raw`(?<![A-Za-z])(?:falling behind|behind (?:schedule|peers|for (?:his|her|their) age)|delayed|at risk|on track|off track|ahead of (?:schedule|peers|age))(?![A-Za-z])`,
-  String.raw`(?:בפיגור|מאחר|בסיכון|רמה נמוכה|רמה גבוהה)`,
+  // Hebrew: "מאחר" alone is also the everyday "since" (מאחר ש…), so only the lagging sense counts —
+  // "מאחר/מאחרת/מאחרים ב…" (behind in …).
+  String.raw`(?:בפיגור|בסיכון|רמה נמוכה|רמה גבוהה|מאחר(?:ת|ים|ות)?\s+ב)`,
 ]);
 
 /** Verdict tokens in a list of visible own-text strings (one hit per string at most). */

@@ -247,6 +247,9 @@ describe("B-INF-08 — the capped routes and the capture sheet (fixtures)", () =
     expect(capViolations({ ...child, weight: { ...w, verdictTokens: counted } })).toEqual(["verdictTokens 1 > 0"]);
     // a count is not a verdict; a coverage denominator is not a verdict (13 Oct ruling)
     expect(verdictTextTokens(["31 seen", "Reviewed 28 of 44 for this age"])).toBe(0);
+    // Hebrew "מאחר ש…" is "since", not a grade; "מאחר בדיבור" (behind in speech) is (round 2)
+    expect(verdictTextTokens(["מאחר שהיה עייף, הלכנו הביתה מוקדם"])).toBe(0);
+    expect(verdictTextTokens(["מאחר בדיבור", "מאחרת בהליכה"])).toBe(2);
   });
 
   it("fails when the capture sheet's save button takes a gradient", () => {
