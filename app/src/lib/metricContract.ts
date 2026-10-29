@@ -11,8 +11,8 @@
  *
  * The rules the contract carries (ROS BD-25, 18 Oct):
  *  - A household is one account (uid): its devices and children collapse into
- *    it. Co-parent accounts in one family are still two households; that is
- *    listed as missing data, not hidden.
+ *    it, and a co-parent who accepted the family's share folds into the owner's
+ *    household (when the share links could not be read, that is listed).
  *  - Denominators are MATURED ALL-START cohorts: every family whose access
  *    began long enough ago for the question to be answerable, including
  *    families that never activated and never paid.
@@ -27,6 +27,13 @@
  */
 
 export const METRIC_CONTRACT_VERSION = "bd25-2026-10-28";
+
+/** The client event that marks a family's first payment (lib/billingTransition.ts → loopEvents trackPaid). */
+export const PAID_EVENT = "paid";
+
+/** The default contract window: households that started in the last 90 days, so
+ *  D7, W4 and D30 all have matured cohorts to answer from. */
+export const CONTRACT_WINDOW_DAYS = 90;
 
 /** Days from access a household must have lived for each measure to be asked. */
 export const MATURITY_DAYS = { d7: 7, w4: 28, d30: 30 } as const;
@@ -59,14 +66,13 @@ export const GATE_A = {
 export const MEASURE_DEFINITIONS = {
   d7: "D7 first value: households activated (lib/activation.ts definition) among households whose access began at least 7 days ago",
   w4: "W4: households with a value action (" + VALUE_EVENTS.join(", ") + ") on day 22 to 28 after access, among households whose access began at least 28 days ago",
-  d30: "D30 paying: households paying from a store record at read time (not a comp, not a store trial) among households whose access began at least 30 days ago",
+  d30: "D30 paid: households with a paid event by day 30 after access, confirmed by a store billing record (not a comp), among households whose access began at least 30 days ago",
   offer: "offer: the one offer a household redeemed (lib/offers.ts); a referral past the referrer's cap still counts, the family got its month",
-  renewal: "renewal: an actual second charge",
+  renewal: "renewal: an actual second charge, including charges outside the D30 window; not restricted to the D30-paid count",
 } as const;
 
 /** What the readout cannot answer from the records it reads; printed every time. */
 export const STANDING_MISSING_DATA = [
   "renewal (second charge): the entitlement record keeps no charge history; needs the billing export",
   "full price: price, discount and refund are not in the entitlement record; full-price payers here are store payers with no offer, to reconcile against receipts",
-  "household: one account per household; co-parent accounts in one family count twice",
 ] as const;

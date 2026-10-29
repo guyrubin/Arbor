@@ -1,7 +1,7 @@
 /**
  * BD-25 — the metric contract, wired through the cohort reader.
  *
- *  · D7, W4 (a value action on day 22–28) and D30 paying, each a numerator
+ *  · D7, W4 (a value action on day 22–28) and D30 paid, each a numerator
  *    over a MATURED all-start denominator that keeps non-activated and unpaid
  *    households in;
  *  · per source and per offer, so direct, partner and legacy-offer families
@@ -16,6 +16,9 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildCohortReport,
+  coParentLinksOf,
+  defaultContractSince,
+  foldCoParents,
   scanForbiddenKeys,
   summariseMetricContract,
   type CohortEventDoc,
@@ -44,8 +47,10 @@ const at = (uid: string, event: string, startedDaysAgo: number, dayAfterStart: n
  *  h10  10 days old, activated: D7 1 of 2 with h12.
  *  h12  12 days old, never activated, never paid (still in the D7 denominator).
  *  h29  29 days old, activated, value action on day 23: W4 yes; D30 not matured.
- *  h31  31 days old (practitioner), value on day 15 and a session on day 25 only: W4 no; pays full price.
- *  h40  40 days old (referral), activated, value on day 28, redeemed the referral month and pays: not full price.
+ *  h31  31 days old (practitioner), value on day 15 and a session on day 25 only: W4 no; paid on day 10,
+ *       full price: D30 paid.
+ *  h40  40 days old (referral), activated, value on day 28, redeemed the referral month and paid on day 33:
+ *       paying, but not by day 30 and not full price.
  */
 const ROLLUPS = [rollup("h5", 5), rollup("h10", 10), rollup("h12", 12), rollup("h29", 29), rollup("h31", 31, "practitioner"), rollup("h40", 40, "referral")];
 const EVENTS = [
@@ -56,6 +61,8 @@ const EVENTS = [
   at("h31", "session_open", 31, 25),
   at("h40", "activated", 40, 4),
   at("h40", "keep_this", 40, 28),
+  at("h31", "paid", 31, 10),
+  at("h40", "paid", 40, 33),
 ];
 const OFFERS: HouseholdOffer[] = [{ uid: "h40", offerId: "referral_month" }];
 const BILLING: HouseholdBilling[] = [
@@ -63,24 +70,24 @@ const BILLING: HouseholdBilling[] = [
   { uid: "h40", billed: true, paying: true, lapsed: false },
 ];
 const input = (over: Partial<Parameters<typeof summariseMetricContract>[0]> = {}) =>
-  ({ rollups: ROLLUPS, events: EVENTS, offers: OFFERS, billing: BILLING, groupBy: "source" as const, asOfDay: AS_OF, ...over });
+  ({ rollups: ROLLUPS, events: EVENTS, offers: OFFERS, billing: BILLING, coParents: [], groupBy: "source" as const, asOfDay: AS_OF, ...over });
 
 describe("BD-25 — matured all-start denominators", () => {
-  it("D7, W4 and D30 paying count households over every start old enough to be asked", () => {
+  it("D7, W4 and D30 paid count households over every start old enough to be asked", () => {
     const c = summariseMetricContract(input());
     expect(c.overall).toEqual({
       key: "all",
       starts: 6,
       d7: { n: 3, of: 5 }, // h10, h29, h40 of h10, h12, h29, h31, h40
       w4: { n: 2, of: 3 }, // h29 (day 23), h40 (day 28) of h29, h31, h40; h31's day 15 and its session do not count
-      d30Paying: { n: 2, of: 2 }, // h31 and h40 of h31, h40
+      d30Paid: { n: 1, of: 2 }, // h31 paid on day 10; h40 paid on day 33, after D30
     });
   });
 
   it("sources and offers stay apart: a referral-month payer is not a full-price payer", () => {
     const c = summariseMetricContract(input());
     expect(c.byGroup.map((r) => r.key)).toEqual(["instagram", "practitioner", "referral"]);
-    expect(c.byGroup.find((r) => r.key === "practitioner")).toMatchObject({ starts: 1, w4: { n: 0, of: 1 }, d30Paying: { n: 1, of: 1 } });
+    expect(c.byGroup.find((r) => r.key === "practitioner")).toMatchObject({ starts: 1, w4: { n: 0, of: 1 }, d30Paid: { n: 1, of: 1 } });
     expect(c.byOffer.map((r) => [r.key, r.starts])).toEqual([["referral_month", 1], ["founding_family", 0], ["none", 5]]);
     expect(c.gateA.fullPricePayers).toEqual({ n: 1, required: 10 });
   });
@@ -100,13 +107,70 @@ describe("BD-25 — matured all-start denominators", () => {
   });
 
   it("what was not read is unknown, never zero, and the standing gaps are always listed", () => {
-    const c = summariseMetricContract(input({ billing: null, offers: null, eventsTruncated: true }));
-    expect(c.overall.d30Paying).toBeNull();
+    const c = summariseMetricContract(input({ billing: null, offers: null, eventsTruncated: true, coParents: null }));
+    expect(c.overall.d30Paid).toBeNull();
     expect(c.gateA.fullPricePayers.n).toBeNull();
     expect(c.gateA.met).toBeNull();
-    expect(c.missing.slice(0, 3)).toEqual([...contract.STANDING_MISSING_DATA]);
-    expect(c.missing.join("\n")).toMatch(/offers: .*not read[\s\S]*billing: .*not read[\s\S]*events: the scan hit its ceiling/);
+    expect(c.coParentsFolded).toBeNull();
+    expect(c.missing.slice(0, 2)).toEqual([...contract.STANDING_MISSING_DATA]);
+    expect(c.missing.join("\n")).toMatch(/offers: .*not read[\s\S]*billing: .*not read[\s\S]*events: the scan hit its ceiling[\s\S]*household: the co-parent shares were not read/);
     expect(summariseMetricContract(input()).missing).toEqual([...contract.STANDING_MISSING_DATA]);
+  });
+
+  it("D30 paid is the paid event by day 30, confirmed by billing — not who pays at read time", () => {
+    // h31 paid on day 10 but has no store record: shown as unconfirmed, not counted.
+    const unconfirmed = summariseMetricContract(input({ billing: [{ uid: "h40", billed: true, paying: true, lapsed: false }] }));
+    expect(unconfirmed.overall.d30Paid).toEqual({ n: 0, of: 2 });
+    expect(unconfirmed.missing.join("\n")).toMatch(/D30 paid: 1 household\(s\) show a paid event with no store billing record/);
+    // A family paying today that never sent a paid event by day 30 is not D30 paid.
+    const lateOnly = summariseMetricContract(input({ events: EVENTS.filter((e) => !(e.uid === "h31" && e.event === "paid")) }));
+    expect(lateOnly.overall.d30Paid).toEqual({ n: 0, of: 2 });
+    expect(contract.MEASURE_DEFINITIONS.d30).toMatch(/paid event by day 30 after access, confirmed by a store billing record/);
+    expect(contract.MEASURE_DEFINITIONS.renewal).toMatch(/outside the D30 window; not restricted to the D30-paid count/);
+  });
+
+  it("a co-parent who accepted the share is one household with the owner", () => {
+    const links = coParentLinksOf([
+      { role: "co_parent", ownerUid: "h12", recipientUid: "cp12", recipientEmail: "x@example.com" },
+      { role: "viewer", ownerUid: "h10", recipientUid: "v10" },
+      { role: "co_parent", ownerUid: "h29" }, // not accepted yet
+    ]);
+    expect(links).toEqual([{ ownerUid: "h12", recipientUid: "cp12" }]);
+    const rollups = [...ROLLUPS, rollup("cp12", 11)];
+    const events = [...EVENTS, at("cp12", "activated", 11, 2)];
+    const twice = summariseMetricContract(input({ rollups, events, coParents: [] }));
+    expect(twice.overall.starts).toBe(7);
+    const once = summariseMetricContract(input({ rollups, events, coParents: links }));
+    expect(once.overall.starts).toBe(6);
+    expect(once.coParentsFolded).toBe(1);
+    expect(once.overall.d7).toEqual({ n: 4, of: 5 }); // h12 is activated through its co-parent
+    const fold = foldCoParents({ rollups, events, offers: [], billing: [{ uid: "cp12", billed: true, paying: true, lapsed: false }, { uid: "h12", billed: false, paying: false, lapsed: false }], coParents: links });
+    expect(fold.billing).toEqual([{ uid: "h12", billed: true, paying: true, lapsed: false }]);
+    expect(reportScript.foldCoParents({ rollups, events, offers: [], billing: [{ uid: "cp12", billed: true, paying: true, lapsed: false }, { uid: "h12", billed: false, paying: false, lapsed: false }], coParents: links })).toEqual(fold);
+    expect(reportScript.coParentLinksOf([{ role: "co_parent", ownerUid: "h12", recipientUid: "cp12" }])).toEqual(links);
+  });
+
+  it("the contract reads matured households by default while the other sections keep their 7-day window", async () => {
+    const store: CohortMetricsStore = {
+      mode: "firestore",
+      listRetentionRollups: async () => ROLLUPS,
+      listEvents: async () => EVENTS,
+      listOfferRedemptions: async () => OFFERS,
+      listBillingStates: async () => BILLING,
+      listCoParentLinks: async () => [],
+    };
+    const report = await buildCohortReport(store, { since: iso(7), now: NOW, contractSince: defaultContractSince(NOW) });
+    expect(report.contract.overall.starts).toBe(6);
+    expect(report.contract.overall.d7).toEqual({ n: 3, of: 5 });
+    expect(report.contract.startedSince).toBe(day(contract.CONTRACT_WINDOW_DAYS));
+    // The census still counts only the last 7 days, not the contract's wider scan.
+    const inWindow = EVENTS.filter((e) => Date.parse(e.at!) >= Date.parse(iso(7))).length;
+    expect(inWindow).toBeLessThan(EVENTS.length);
+    expect(report.eventCensus.reduce((n, r) => n + r.count, 0)).toBe(inWindow);
+    const args = reportScript.parseArgs(["--contract"]);
+    expect(Math.round((Date.now() - Date.parse(args.contractSince)) / 86_400_000)).toBe(contract.CONTRACT_WINDOW_DAYS);
+    const api = readFileSync(path.resolve(__dirname, "..", "routes", "api.ts"), "utf8");
+    expect(api).toContain("contractSince = Number.isFinite(Date.parse(contractParam)) ? contractParam : defaultContractSince()");
   });
 
   it("the cohort route carries the contract, and no key in it is forbidden", async () => {
@@ -134,6 +198,8 @@ describe("BD-25 — one contract, two readers", () => {
     expect(reportScript.GATE_A).toEqual(contract.GATE_A);
     expect(reportScript.MEASURE_DEFINITIONS).toEqual(contract.MEASURE_DEFINITIONS);
     expect(reportScript.STANDING_MISSING_DATA).toEqual([...contract.STANDING_MISSING_DATA]);
+    expect(reportScript.PAID_EVENT).toBe(contract.PAID_EVENT);
+    expect(reportScript.CONTRACT_WINDOW_DAYS).toBe(contract.CONTRACT_WINDOW_DAYS);
   });
 
   it("W4's value actions are lib/activation.ts's loop events, read from its SOURCE", () => {
@@ -145,7 +211,7 @@ describe("BD-25 — one contract, two readers", () => {
 
   it("server and script compute the same contract on one fixture, by source and by market", () => {
     for (const groupBy of ["source", "market"] as const) {
-      for (const over of [{}, { billing: null }, { offers: null, eventsTruncated: true }, { startedSince: day(30) }]) {
+      for (const over of [{}, { billing: null }, { offers: null, eventsTruncated: true }, { startedSince: day(30) }, { coParents: null }, { coParents: [{ ownerUid: "h12", recipientUid: "h10" }] }]) {
         expect(reportScript.summariseMetricContract(input({ groupBy, ...over }))).toEqual(summariseMetricContract(input({ groupBy, ...over })));
       }
     }
@@ -154,14 +220,14 @@ describe("BD-25 — one contract, two readers", () => {
   it("prints numerator of denominator, 'not answerable yet' on an empty one, and every missing line", () => {
     const c = summariseMetricContract(input());
     const printed = reportScript.print({ generatedAt: "x", since: "s", asOfDay: AS_OF, groupBy: "source", scanned: { rollups: 6, events: 7, mode: "m" }, contract: c }, { sections: new Set(["contract"]) });
-    expect(printed).toContain("all              starts    6  ·  D7 3 of 5  ·  60%  ·  W4 2 of 3  ·  66.7%  ·  D30 paying 2 of 2  ·  100%");
+    expect(printed).toContain("all              starts    6  ·  D7 3 of 5  ·  60%  ·  W4 2 of 3  ·  66.7%  ·  D30 paid 1 of 2  ·  50%");
     expect(printed).toContain("founding_family  starts    0  ·  D7 0 of 0  ·  not answerable yet");
     expect(printed).toContain("Gate A: activated with matured W4 2 of 50 needed  ·  full-price payers 1 of 10 needed  ·  not met");
     for (const m of contract.STANDING_MISSING_DATA) expect(printed).toContain(m);
     expect(printed).not.toMatch(/ of 0  ·  \d/); // no percentage on an empty denominator
     expect(printed).toContain("practitioner     starts    1  ·  D7 0 of 1  ·  0%"); // a real zero is a real zero
     const unread = reportScript.print({ generatedAt: "x", since: "s", asOfDay: AS_OF, groupBy: "source", scanned: { rollups: 6, events: 7, mode: "m" }, contract: summariseMetricContract(input({ billing: null })) }, { sections: new Set(["contract"]) });
-    expect(unread).toContain("D30 paying unknown (not read)");
+    expect(unread).toContain("D30 paid unknown (not read)");
     expect(unread).toContain("full-price payers unknown of 10 needed  ·  not answerable yet");
   });
 });

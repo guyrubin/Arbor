@@ -42,6 +42,7 @@ describe("BD-37 — channels carried through trial and payment", () => {
   ];
   const events = [
     ev("h0", "activated", 33),
+    ev("h3", "paid", 30), // the sponsor family paid on day 5
     // the Studio household: only a child's play
     ev("h4", "book_opened", 10, { kid_mode: true, book_id: "b1" }),
     ev("h4", "game_sitting", 9, { kid_mode: true, game: "mimic" }),
@@ -64,14 +65,14 @@ describe("BD-37 — channels carried through trial and payment", () => {
     expect(line("sponsor")).toMatchObject({ households: 1, paying: 1 });
     expect(line("centre")).toMatchObject({ households: 1, paying: 0 });
     expect(report.contract.byChannel.map((r) => r.key)).toEqual([...ACQUISITION_CHANNELS]);
-    expect(report.contract.byChannel.find((r) => r.key === "sponsor")!.d30Paying).toEqual({ n: 1, of: 1 });
+    expect(report.contract.byChannel.find((r) => r.key === "sponsor")!.d30Paid).toEqual({ n: 1, of: 1 });
   });
 
   it("a child's views are not parent demand: the Studio household stays unactivated, without W4, not paying", async () => {
     const report = await buildCohortReport(store, { since: iso(60), now: NOW });
     expect(report.households.lines.find((l) => l.key === "studio")).toMatchObject({ households: 1, activated: 0, paying: 0, lapsed: 1 });
     const studio = report.contract.byChannel.find((r) => r.key === "studio")!;
-    expect(studio).toMatchObject({ starts: 1, d7: { n: 0, of: 1 }, w4: { n: 0, of: 1 }, d30Paying: { n: 0, of: 1 } });
+    expect(studio).toMatchObject({ starts: 1, d7: { n: 0, of: 1 }, w4: { n: 0, of: 1 }, d30Paid: { n: 0, of: 1 } });
     // Studio is its own channel, never folded into content.
     expect(channelOfSource("studio")).toBe("studio");
   });

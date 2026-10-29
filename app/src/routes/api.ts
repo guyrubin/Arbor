@@ -86,6 +86,7 @@ import {
   buildCohortReport,
   buildKidPlayReport,
   createCohortMetricsStore,
+  defaultContractSince,
   type CohortMetricsStore,
 } from "../server/cohortMetrics.js";
 import {
@@ -4324,7 +4325,10 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       // B-MEAS-01: internal (founder / comped / smoke) families are excluded
       // by default; `?includeInternal=1` puts them back. The count is reported.
       const includeInternal = req.query.includeInternal === "1" || req.query.includeInternal === "true";
-      res.json(await buildCohortReport(cohortMetrics, { since, groupBy, funnels: Object.keys(FUNNEL_CHAINS), includeInternal }));
+      // BD-25: the metric contract reads matured households (default: the last 90 days).
+      const contractParam = typeof req.query.contractSince === "string" ? req.query.contractSince : "";
+      const contractSince = Number.isFinite(Date.parse(contractParam)) ? contractParam : defaultContractSince();
+      res.json(await buildCohortReport(cohortMetrics, { since, groupBy, funnels: Object.keys(FUNNEL_CHAINS), includeInternal, contractSince }));
     } catch (error: any) {
       logger.error("Arbor Cohort Report Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to build the cohort report", details: error.message });
