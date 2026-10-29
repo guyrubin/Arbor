@@ -10,7 +10,7 @@
  * sayBack.ts) — so each one exists in EN and HE with the same meaning.
  * Every line here is a deterministic template, never model output; the
  * templates and the "Act now if…" lines are DRAFTS pending the clinical
- * review line (execution/2026-10-06--milestone-loop/REVIEW-SHEET.md). */
+ * review line (the milestone-loop REVIEW-SHEET.md, private record). */
 
 type Dict = Record<string, string>;
 

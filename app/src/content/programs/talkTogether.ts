@@ -16,7 +16,7 @@
  *  - Measures are counts over time against the child's own first week; never
  *    a grade, a percentage, a colour or a comparison.
  *  - `reviewStatus: "draft"`: the clinical reviewer (G-01, E6) signs before any
- *    public use. Review rows: execution/2026-10-06--milestone-loop/REVIEW-SHEET.md
+ *    public use. Review rows: the milestone-loop REVIEW-SHEET.md (private record),
  *    "B-PROG-02 Talk Together v0.1"; Hebrew review pack:
  *    `npx tsx scripts/milestone-he-review.mts --programs export`.
  *

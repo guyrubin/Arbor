@@ -31,12 +31,23 @@ interface ContentRule {
 
 /**
  * ROS domain roots (and ROS itself), as a path segment that is not the tail of
- * a longer word: `PAI/projects/…`, `CoS/decisions/…`, `guyrubin/ROS/blob/…`,
- * `ROS/.claude/…`. "IDEA/", "macOS/", "AREA/" are words, not ROS paths.
+ * a longer word, with either separator or URL-encoded: `PAI/projects/…`,
+ * `CoS/decisions/…`, `ROS\PAI\…`, `PAI%2Fprojects`, `ROS/.claude/…`; any case
+ * of `pai/projects`; a link to the private ROS repo in any case
+ * (`github.com/guyrubin/ros`). "IDEA/", "macOS/", "AREA/" are words.
  */
-const ROS_TREE_PATH = /(?<![A-Za-z0-9_.-])(?:ROS|PAI|CoS|EA|KK|HV|00_System)\//;
-/** A Windows user profile, the WSL mount of one, or a ROS checkout under /home. */
-const WORKSTATION_PATH = /[A-Za-z]:[\\/]{1,2}Users[\\/]{1,2}|\/mnt\/c\/Users\/|\/home\/[^/\s]+\/ROS\b/;
+const ROS_TREE_PATH =
+  /(?<![A-Za-z0-9_.-])(?:ROS|PAI|CoS|EA|KK|HV|00_System)(?:[\\/]|%2F)|(?<![A-Za-z0-9_.-])[Pp][Aa][Ii](?:[\\/]|%2[Ff])projects\b|github\.com\/[^/\s)]+\/[Rr][Oo][Ss]\b/;
+/**
+ * The private tree's own shapes, even with the domain root cut off: a dated
+ * execution folder (`execution/2026-10-07--…`), the BD folder (`bd/ARBOR-…`),
+ * a project folder (`projects/arbor/…`). A cloud path such as
+ * `projects/arbor-prod/traces/…` is not one.
+ */
+const ROS_TREE_SHAPE =
+  /(?<![A-Za-z0-9_.-])execution[\\/]20\d\d-\d\d-\d\d--|(?<![A-Za-z0-9_.-])bd[\\/][A-Za-z]|(?<![A-Za-z0-9_.-])projects[\\/]arbor[\\/]/;
+/** A Windows user profile, the WSL mount or share of one, or a ROS checkout under /home (either separator). */
+const WORKSTATION_PATH = /[A-Za-z]:[\\/]{1,2}Users[\\/]{1,2}|[\\/]mnt[\\/]c[\\/]Users[\\/]|\\\\wsl\$|[\\/]home[\\/][^\\/\s]+[\\/]ROS\b/;
 /** BD-45: the BD workspace folder and its two tell-tale data files, as a path or a link. */
 const PRIVATE_BD_PATH = /(?:^|[\s/(`"'\[])business-development\/|outreach-drafts[\w-]*\.md|gtm-data-v\d/;
 
@@ -45,6 +56,11 @@ export const CONTENT_RULES: ContentRule[] = [
     id: "ros-tree-path",
     re: ROS_TREE_PATH,
     why: "cites a path in the private ROS tree or repo; cite an in-repo path or name the source in words",
+  },
+  {
+    id: "ros-tree-shape",
+    re: ROS_TREE_SHAPE,
+    why: "cites a private ROS folder by its shape (dated execution folder, bd/, projects/arbor/); name the source in words",
   },
   {
     id: "workstation-path",
@@ -111,6 +127,16 @@ describe("B-INF-15 — no tracked file points into the private ROS tree", () => 
       "cd C:\\Users\\someone\\ROS\\.workspace\\app",
       "/mnt/c/Users/someone/ROS",
       "/home/someone/ROS/PAI",
+      // B-INF-15 round 2: the shapes the critic's probe found missing.
+      "Source: execution/2026-10-07--design-direction/option-ab-blend.html",
+      "the headline in bd/ARBOR-GTM-PLAN.md",
+      "projects/arbor/reference/kid-books-standard.md",
+      "arbor/execution/2026-10-01--one-backlog/lane-ASKJB.md",
+      "ROS\\PAI\\projects\\arbor\\STATUS.md",
+      "\\\\wsl$\\Ubuntu\\home\\someone\\ROS",
+      "github.com/guyrubin/ros/blob/main/x.md",
+      "pai/projects/arbor/x.md",
+      "[link](PAI%2Fprojects%2Farbor)",
       "- `docs/business-development/README.md` - strategic GTM and partnerships v2",
       "[Outreach drafts](outreach-drafts-en-he.md)",
       "[Portable workbook model](gtm-data-v2.json)",
@@ -128,6 +154,7 @@ describe("B-INF-15 — no tracked file points into the private ROS tree", () => 
       "the ROS decision of 11 October (private record)",
       "/home/runner/work/arbor/arbor/app",
       "KKEA/ and xHV/ are not domain roots",
+      "projects/arbor-prod/traces/abc and kbd/shortcut and the execution/ folder",
       "business development is Guy's half; see docs/marketing-domain-israel.md",
     ];
     for (const line of clean) {

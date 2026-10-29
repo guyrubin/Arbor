@@ -25,8 +25,8 @@
  * `body` with no sleep/feeding signal (a body-only memory fact, a
  * parent-added `health_sleep_feeding` milestone) files under the second body
  * shelf, id `food`, named "Body, food & growth" / "גוף, אוכל וגדילה" —
- * framer ruling option (d), 6 Oct (execution/2026-10-01--one-backlog/
- * REJECTIONS.md, "W3A-B builder blocks (6 Oct)"): Sleep stays separate,
+ * framer ruling option (d), 6 Oct (the one-backlog REJECTIONS.md, private
+ * record, "W3A-B builder blocks (6 Oct)"): Sleep stays separate,
  * nothing is ever off the shelves, no tenth shelf. Only a record with NO
  * domain at all throws (the read model never produces one).
  * The pack's `sleepLogs` origin and "routines wind-down" do not exist in the

@@ -1,6 +1,6 @@
 /**
  * B-GAME-13b — the pose prompts. The blocks are the ones that produced the
- * eight approved proof poses (execution/2026-10-06--kids-games/art/poses/
+ * eight approved proof poses (the 6 Oct kids-games art pass, private record:
  * build_pose_jobs.py + manifest.jsonl, the picks of pick.json), generalised
  * from one child to any family's hero:
  *  - the reference is the child's STORED generated hero (image 2) and, after
