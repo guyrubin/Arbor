@@ -5,7 +5,8 @@
  * domain ceiling says which AREAS of the child's record may fill them
  * (spine §7b: "the SLP sees domains 1 and 7, not the whole record"). A
  * professional grant defaults to its profession's registry domains plus the
- * family context; any other grant carries no ceiling (legacy behaviour).
+ * family context, and so does one stored before ceilings existed; any other
+ * grant carries no ceiling.
  *
  * FAILS CLOSED: an unknown domain id unlocks nothing; a grant whose stored
  * domains resolve to none unlocks no view at all (never a broader default).
@@ -58,8 +59,12 @@ export function defaultGrantDomains(role: string | undefined, scopes: readonly s
   return professions.length ? professionDomains(professions) : undefined;
 }
 
-/** A stored grant's ceiling: null = none (legacy, unscoped); [] = the grant
- *  named only unknown domains and unlocks NOTHING. */
-export function grantDomainCeiling(grant: { domains?: readonly unknown[] | null }): DomainId[] | null {
-  return Array.isArray(grant.domains) ? normalizeShareDomains(grant.domains) : null;
+/** A stored grant's ceiling: its stored domains when it has them ([] = only
+ *  unknown domains: unlocks NOTHING). A grant stored BEFORE ceilings existed
+ *  (no `domains` field) reads the same default a new grant gets (critic r1):
+ *  a professional report grant its profession's domains + family, never the
+ *  whole record; any other grant has none (null). */
+export function grantDomainCeiling(grant: { role?: string; scopes?: readonly string[] | null; domains?: readonly unknown[] | null }): DomainId[] | null {
+  if (Array.isArray(grant.domains)) return normalizeShareDomains(grant.domains);
+  return defaultGrantDomains(grant.role, grant.scopes ?? []) ?? null;
 }

@@ -62,6 +62,15 @@ describe("B-CAREPRO-41 · the domain ceiling", () => {
     expect(grantDomainCeiling({ domains: ["nonsense"] })).toEqual([]);
   });
 
+  it("critic r1: a professional grant stored before ceilings existed reads its profession's domains + family, not the whole record", () => {
+    expect(grantDomainCeiling({ role: "professional", scopes: ["report_slp"] })).toEqual(["talking", "family"]);
+    expect(grantDomainCeiling({ role: "professional", scopes: ["report_slp"], domains: null })).toEqual(["talking", "family"]);
+    // a stored ceiling still wins, and non-professional grants keep none
+    expect(grantDomainCeiling({ role: "professional", scopes: ["report_slp"], domains: ["moving"] })).toEqual(["moving"]);
+    expect(grantDomainCeiling({ role: "co_parent", scopes: ["story_timeline"] })).toBeNull();
+    expect(grantDomainCeiling({ role: "professional", scopes: ["report_therapist"] })).toBeNull();
+  });
+
   it("buildGrant stores the default ceiling for a professional report grant, the request's ceiling otherwise", () => {
     const base = { ownerUid: "o", ownerEmail: null, childId: "c", recipientEmail: RECIPIENT };
     expect(buildGrant({ ...base, role: "professional", scopes: ["report_slp"] }, NOW).domains).toEqual(["talking", "family"]);
@@ -115,13 +124,22 @@ describe("B-CAREPRO-41 · a speech-therapist grant shows only talking and family
     expect(RECORD.logs).toHaveLength(4); // input untouched
   });
 
-  it("a legacy grant (no stored domains) keeps its whole-scope view", async () => {
+  it("critic r1: a professional grant stored before ceilings (no domains) reads what a new one does — never the whole record", async () => {
     const store = new LocalShareStore();
     const grant = buildGrant({ ownerUid: "owner-1", ownerEmail: null, childId: "child-1", recipientEmail: RECIPIENT, role: "professional", scopes: ["report_slp"] }, NOW);
     const { domains: _d, ...legacy } = grant;
+    const fresh = buildGrant({ ownerUid: "owner-1", ownerEmail: null, childId: "child-1", recipientEmail: RECIPIENT, role: "professional", scopes: ["report_slp"] }, NOW);
     await store.create(legacy);
-    const r = await resolveSharedPacket({ grantId: legacy.id, recipientEmail: RECIPIENT, shareStore: store, source, now: NOW });
-    if (r.status !== 200) throw new Error("unreachable");
-    expect(text(r.view.sections)).toContain("PLAN-MARKER");
+    await store.create(fresh);
+    const old = await resolveSharedPacket({ grantId: legacy.id, recipientEmail: RECIPIENT, shareStore: store, source, now: NOW });
+    const now = await resolveSharedPacket({ grantId: fresh.id, recipientEmail: RECIPIENT, shareStore: store, source, now: NOW });
+    if (old.status !== 200 || now.status !== 200) throw new Error("unreachable");
+    expect(text(old.view.sections)).not.toContain("PLAN-MARKER");
+    expect(text(old.view.sections)).toBe(text(now.view.sections));
+  });
+
+  it("NEGATIVE CONTROL: with no ceiling at all the same legacy grant would read the plan line", () => {
+    // r1's legacy path: no ceiling → the whole record into the professional packet.
+    expect(text(buildSharedScopePacket(["report_slp"], true, buildPacketInput(RECORD, NOW)).sections)).toContain("PLAN-MARKER");
   });
 });
