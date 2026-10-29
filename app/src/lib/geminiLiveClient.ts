@@ -663,7 +663,7 @@ export async function startGeminiLive(
       }
       return;
     }
-    if (failed || !next) {
+    if (failed || !next || next === LIVE_RENEWAL_REFUSED) {
       if (current) renewalSettled();
       return;
     }
