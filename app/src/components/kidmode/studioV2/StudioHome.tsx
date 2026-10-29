@@ -106,8 +106,8 @@ export default function StudioHome({ onWorld, onCollection, onQuest, onExit, onO
       </section>
     ) : (
       <section className="studio-v2__quest" aria-label={questCopy.title}>
-        <div className="studio-v2__quest-title"><small>{copy.quest}</small><h2>{quest.completed ? questCopy.done : questCopy.title}</h2><p>{quest.loaded ? quest.completed ? questCopy.ending : copy.progress(quest.steps.length) : copy.questLoading}</p></div>
-        <ol className="studio-v2__quest-steps">{QUEST_STEPS.map((step, index) => <li key={step} data-done={quest.steps.includes(step)} data-connected={quest.loaded && index < quest.steps.length - 1} aria-current={quest.loaded && !quest.completed && index === quest.steps.length ? "step" : undefined}><span>{quest.steps.includes(step) ? <Check size={22} aria-hidden="true" /> : index + 1}</span><small>{questCopy.steps[index]}</small></li>)}</ol>
+        <div className="studio-v2__quest-title"><small>{copy.quest}</small><h2>{quest.completed ? questCopy.done : questCopy.title}</h2>{/* T7: no count on a kid surface — the steps' own marks show the way */}{(!quest.loaded || quest.completed) && <p>{quest.loaded ? questCopy.ending : copy.questLoading}</p>}</div>
+        <ol className="studio-v2__quest-steps">{QUEST_STEPS.map((step, index) => <li key={step} data-done={quest.steps.includes(step)} data-connected={quest.loaded && index < quest.steps.length - 1} aria-current={quest.loaded && !quest.completed && index === quest.steps.length ? "step" : undefined}><span>{quest.steps.includes(step) ? <Check size={22} aria-hidden="true" /> : <i className="studio-v2__quest-dot" aria-hidden="true" />}</span><small>{questCopy.steps[index]}</small></li>)}</ol>
         <button type="button" className="studio-v2__gold-button" onClick={onQuest}>{quest.completed ? copy.questOpen : copy.questContinue}<ArrowRight size={20} aria-hidden="true" /></button>
       </section>
     )}
