@@ -44,6 +44,10 @@ describe("B-GROWTH-43 · the typed code field", () => {
     expect(translate("en", "set.referral.code.held")).toBe("Code saved. We'll check it when you start your first plan.");
     expect(translate("he", "set.referral.code.held")).toBe("הקוד נשמר. נבדוק אותו כשתתחילו את התוכנית הראשונה שלכם.");
     for (const lang of ["en", "he"] as const) expect(translate(lang, "set.referral.code.held")).not.toMatch(/counts|ייכנס לתוקף/);
+    // Round 5: the saved link code is the inviter's link the parent opened, never "your link".
+    expect(translate("en", "set.referral.code.linkSaved")).toBe("The code from the invite link you opened is already saved. We'll check it when you start your first plan.");
+    expect(translate("he", "set.referral.code.linkSaved")).toBe("הקוד מהקישור שדרכו הגעתם כבר שמור. נבדוק אותו כשתתחילו את התוכנית הראשונה שלכם.");
+    for (const lang of ["en", "he"] as const) expect(translate(lang, "set.referral.code.linkSaved")).not.toMatch(/from your link|מהקישור שלכם/);
     expect(translate("he", "set.referral.code.apply")).toBe("הפעלת הקוד");
     expect(translate("he", "set.referral.code.sub")).toContain("חודש פלוס");
     expect(translate("he", "set.referral.code.granted")).toContain("חודש פלוס");
