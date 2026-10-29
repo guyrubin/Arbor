@@ -7,7 +7,8 @@
  *   node scripts/rendered-sweep.mjs --out <dir> [--base http://localhost:4805] [--routes a,b]
  *        [--diff <prev sweep.json>] [--no-shots] [--no-api-cache] [--runs 1]  (npm run sweep -- …)
  *        [--seed demo|day0] [--states | --no-states]   (v2, below; --routes also takes "shell")
- *        [--matrix release|device] [--viewport <id>[,<id>…]]   (device = the matrix of record, DEVICE_VIEWPORTS)
+ *        [--matrix release|device|design] [--viewport <id>[,<id>…]]   (device = the matrix of record,
+ *        DEVICE_VIEWPORTS; design = B-DESIGN-05's cells, scripts/capture/route-accounting.mjs)
  *        [--deadline <minutes>]   (B-INF-11: the run's bound; default = warm-up + 30 s per cell)
  *        [--report-only]   (AR-REL-1: exit 3 = SWEEP-LAW FAIL — an unmounted, unready, shotless or MISSING
  *        base cell, or any rendered cell with a console error or horizontal overflow;
@@ -94,6 +95,7 @@ import { SWEEP_LAW_EXIT, expectedBaseCells, sweepLawExplained, sweepLawExplained
 import { initializeSyntheticOnline } from "./capture/small-state.mjs";
 import { CELL_BOUND_MS, SETTLE_BUDGET_MS, WARMUP_BOUND_MS, raceBound, settleOverlayGeometry, sweepDeadlineMs } from "./capture/sweep-bound.mjs";
 import { VERDICT_TEXT_PATTERNS } from "./capture/verdict-tokens.mjs";
+import { DESIGN_VIEWPORT_IDS } from "./capture/route-accounting.mjs";
 import { captureFontContextOptions, installOfflineFonts, captureScreenshot } from "./capture/font-runtime.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -139,7 +141,7 @@ function parseArgs(argv) {
     }
     else if (a === "--matrix") {
       out.matrix = next();
-      if (!["release", "device"].includes(out.matrix)) fail(`--matrix must be release or device (got ${out.matrix})`);
+      if (!["release", "device", "design"].includes(out.matrix)) fail(`--matrix must be release, device or design (got ${out.matrix})`);
     }
     else if (a === "--diff") out.diff = next();
     else if (a === "--no-shots") out.shots = false;
@@ -153,7 +155,9 @@ function parseArgs(argv) {
     else if (a === "--no-states") out.states = false;
     else fail(`unknown argument ${a}`);
   }
-  out.viewports = out.viewport ? out.viewport : out.matrix === "device" ? DEVICE_VIEWPORTS : VIEWPORTS;
+  // B-DESIGN-05: `design` = the design acceptance cells (EN/HE at 375 and 1280, plus 1920 EN).
+  const designCells = DESIGN_VIEWPORT_IDS.map((id) => DEVICE_VIEWPORTS.find((vp) => vp.id === id));
+  out.viewports = out.viewport ? out.viewport : out.matrix === "design" ? designCells : out.matrix === "device" ? DEVICE_VIEWPORTS : VIEWPORTS;
   if (out.states === null) out.states = out.seed === "demo";
   if (!out.out) {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
