@@ -308,7 +308,16 @@ export function ScreeningFlow({ onClose, stamped = false }: {
     if (!base) return;
     void col.upsert({ ...base, recheckDueAt: computeRecheckDueAt(base.answeredAt) });
     // B-STATUS-01: the receipt line under the buttons, not a vanishing toast.
-    recheckReceipt.show({ text: t("screen.recheck.toast") });
+    // Critic r1: the reminder is reversible — Undo writes the record back as
+    // it was (with no reminder, or the one it had).
+    recheckReceipt.show({
+      text: t("screen.recheck.toast"),
+      undo: {
+        label: t("elev.loop.notice.undo"),
+        testId: "screen-recheck-undo",
+        onUndo: () => { recheckReceipt.clear(); void col.upsert(base); },
+      },
+    });
   };
 
   const restart = () => {

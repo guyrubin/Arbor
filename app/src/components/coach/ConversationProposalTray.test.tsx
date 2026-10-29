@@ -191,7 +191,13 @@ describe("B-ASKJB-03 — one voice Keep raises exactly one toast", () => {
     const block = src.slice(src.indexOf("<ConversationProposalTray"), src.indexOf("/>", src.indexOf("onConfirm={async (proposal)")));
     const successToasts = [...block.matchAll(/toast\(t\("[^"]+"\), "success"\)/g)].map((m) => m[0]);
     expect(successToasts).toHaveLength(0);
-    expect(block).toContain('if (proposal.target === "milestone") proposalReceipt.show({ text: t("coach.voice.proposalSaved") });');
+    expect(block).toContain('if (proposal.target === "milestone") proposalReceipt.show({');
+    // Critic r1: reversible on the milestone's own surface (BLOCK #1) — the
+    // receipt carries the door there, never an Undo.
+    const receiptCall = block.slice(block.indexOf("proposalReceipt.show({"), block.indexOf("});", block.indexOf("proposalReceipt.show({")));
+    expect(receiptCall).toContain('text: t("coach.voice.proposalSaved")');
+    expect(receiptCall).toContain('link: { where: t("nav.tab.milestones"), href: `#${routeHash("milestones")}`, testId: "voice-proposal-receipt-open" }');
+    expect(receiptCall).not.toContain("undo");
     // The error toast on a failed commit stays.
     expect(block).toContain('toast(t("coach.voice.proposalSaveError"), "error");');
   });

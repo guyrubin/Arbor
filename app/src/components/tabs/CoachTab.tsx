@@ -9,6 +9,7 @@ import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { routeHash } from "../../lib/routes";
 import { useLanguage } from "../../context/LanguageContext";
 import { ArborMark } from "../ui/ArborMark";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
@@ -1951,7 +1952,13 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               // once the audit row lands; this success toast doubled it. Only a
               // milestone confirmation (which the tray deliberately gives no
               // Undo, and so no toast) still confirms here.
-              if (proposal.target === "milestone") proposalReceipt.show({ text: t("coach.voice.proposalSaved") });
+              // Critic r1: a confirmed milestone is reversible, but only on the
+              // milestone's own surface (critic-vision BLOCK #1, lib/captureUndo)
+              // — so its receipt carries the door there, not an Undo.
+              if (proposal.target === "milestone") proposalReceipt.show({
+                text: t("coach.voice.proposalSaved"),
+                link: { where: t("nav.tab.milestones"), href: `#${routeHash("milestones")}`, testId: "voice-proposal-receipt-open" },
+              });
             } catch {
               toast(t("coach.voice.proposalSaveError"), "error");
             } finally { proposalCommitRef.current = false; setProposalBusyId(null); }

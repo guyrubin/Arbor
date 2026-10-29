@@ -209,6 +209,9 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
   const saveHomeProgram = async (w: Extract<EntryWrites, { ok: true }>) => {
     const childId = childProfile.id;
     const record = awaiting ? makeFollowUp(awaiting.id, w.enrolment.home.exercises.map((e) => e.text).join(" · "), Date.now()) : null;
+    // Critic r1: what Undo writes back — the programs this save superseded as
+    // they were, and the booking as it was.
+    const before = { programs: w.superseded.map((old) => programsCol.items.find((p) => p.id === old.id)).filter((p): p is HomeProgramEnrolment => !!p), visit: awaiting, visitWasDone: !awaiting || appointmentStatus(awaiting) === "done" };
     if (programsCol.remote) {
       if (!db || !user) throw new Error("Sign in to save");
       const batch = writeBatch(db);
@@ -228,7 +231,23 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
     }
     if (currentChild.current !== childId) return;
     setHomeOpen(false);
-    receipt.show({ text: t("elev.homeProgram.saved") });
+    receipt.show({
+      text: t("elev.homeProgram.saved"),
+      // Critic r1: the save is reversible — Undo removes what it added and
+      // writes back what it changed.
+      undo: {
+        label: t("elev.loop.notice.undo"),
+        testId: "home-program-receipt-undo",
+        onUndo: () => {
+          receipt.clear();
+          void programsCol.remove(w.enrolment.id);
+          for (const prev of before.programs) void programsCol.upsert(prev);
+          for (const goal of w.goals) void familyGoalsCol.remove(goal.id);
+          if (record) void followUpsCol.remove(record.id);
+          if (before.visit && !before.visitWasDone) void apptsCol.upsert(before.visit);
+        },
+      },
+    });
   };
   const activeHome = activeHomeEnrolments(programsCol.items);
 

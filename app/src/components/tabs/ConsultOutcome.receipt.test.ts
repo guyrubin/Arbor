@@ -61,10 +61,16 @@ const CareVisitHead = () => null;
 const CareAside = () => null;
 const CareShared = () => null;
 const Icon = () => null;
+/** Critic r1: the home-program save's Undo — every collection's writes, by name. */
+let programs: { id: string; supersededAt?: string }[] = [];
+const otherWrites: { name: string; op: "upsert" | "remove"; arg: unknown }[] = [];
+const otherUpsert = (name: string) => vi.fn(async (doc: unknown) => { otherWrites.push({ name, op: "upsert", arg: doc }); });
+const remove = (name: string) => vi.fn(async (id: unknown) => { otherWrites.push({ name, op: "remove", arg: id }); });
 const collection = (name: string) => ({
-  items: name === "appointments" ? [past] : name === "apptFollowUps" ? followUps : [],
+  items: name === "appointments" ? [past] : name === "apptFollowUps" ? followUps : name === "programs" ? programs : [],
   loaded: true, error: false, confirmed: true, isCurrent: () => true, remote,
-  upsert: name === "apptFollowUps" ? followUpUpsert : name === "appointments" ? apptUpsert : vi.fn(async () => undefined),
+  upsert: name === "apptFollowUps" ? followUpUpsert : name === "appointments" ? apptUpsert : otherUpsert(name),
+  remove: remove(name),
 });
 const env = {
   React, AskSpecialist, CareVisitHead, CareAside, CareShared, Icon, HomeProgramDays: () => null, HomeProgramEntry: () => null,
@@ -82,6 +88,7 @@ const env = {
   // the real open-loop rule: a follow-up for the visit closes it
   visitAwaitingOutcome, isIntakeProfession: () => false, consultHeading: () => "generic", activeHomeEnrolments: () => [], guidedTierOn: () => false,
   appointmentRoleLabel: () => "Speech therapist", fmtDay: () => "date", lowerFor: (_lang: string, value: string) => value,
+  homeProfessionForAppointment: () => "slp", nextVisitDayFor: () => null,
 };
 const component = new Function(...Object.keys(env), code)(...Object.values(env));
 
@@ -109,7 +116,7 @@ const later = (fn: () => void) => {
 
 beforeEach(() => {
   cursor = 0; slots = []; tab = "consult"; writes.length = 0;
-  remote = false; cacheApplies = false; followUps = [];
+  remote = false; cacheApplies = false; followUps = []; programs = []; otherWrites.length = 0;
   followUpUpsert.mockClear(); apptUpsert.mockClear(); toast.mockClear(); receiptShow.mockClear();
 });
 
@@ -258,5 +265,39 @@ describe("v3 EXTRA-CARE · only #/consult is the landing", () => {
     expect(inCard.filter((el) => el.type === AskSpecialist)).toHaveLength(1);
     expect(inCard.find((el) => el.type === AskSpecialist)!.props.landing).toBe(true);
     expect(all.filter((el) => el.props["data-module"]).map((el) => el.props["data-module"])).toEqual(["consult-packet"]);
+  });
+});
+
+describe("critic r1 (B-STATUS-01) — the home-program save carries Undo", () => {
+  it("Undo removes the new program, its goals and the follow-up, and writes back the superseded program and the booking", async () => {
+    const oldProgram = { id: "prog-old", profession: "slp" };
+    programs = [oldProgram];
+    const all = render();
+    const open = byId(all, "consult-home-program-choice");
+    expect(open).toBeDefined();
+    open!.props.onClick();
+    const entry = render().find((el) => typeof el.props.onConfirm === "function" && "existingGoals" in el.props)!;
+    const writesIn = {
+      ok: true as const,
+      enrolment: { id: "prog-new", home: { exercises: [{ text: "Name three animals at dinner" }] } },
+      superseded: [{ ...oldProgram, supersededAt: "2026-10-28T10:00:00.000Z" }],
+      goals: [{ id: "goal-1" }],
+    };
+    let done = false;
+    const saving = Promise.resolve(entry.props.onConfirm(writesIn)).then(() => { done = true; });
+    for (let i = 0; i < 10 && !done; i++) { await flush(); writes.forEach((d) => d.resolve()); }
+    await saving;
+    const shown = receiptShow.mock.calls.at(-1)![0] as { text: string; undo?: { testId: string; onUndo: () => void } };
+    expect(shown.text).toBe("elev.homeProgram.saved");
+    expect(shown.undo?.testId).toBe("home-program-receipt-undo");
+    otherWrites.length = 0; apptUpsert.mockClear();
+    const followUpId = (followUpUpsert.mock.calls.at(-1)![0] as FollowUp).id;
+    shown.undo!.onUndo();
+    await flush();
+    expect(otherWrites).toContainEqual({ name: "programs", op: "remove", arg: "prog-new" });
+    expect(otherWrites).toContainEqual({ name: "programs", op: "upsert", arg: oldProgram });
+    expect(otherWrites).toContainEqual({ name: "familyGoals", op: "remove", arg: "goal-1" });
+    expect(otherWrites).toContainEqual({ name: "apptFollowUps", op: "remove", arg: followUpId });
+    expect(apptUpsert).toHaveBeenCalledWith(past);
   });
 });
