@@ -130,7 +130,7 @@ export default function MobileNav() {
 
   return (
     <>
-      <nav aria-label={t("elev.sidebar.nav.aria")}
+      <nav aria-label={t("elev.sidebar.nav.aria")} data-chrome="phone-dock"
         /* B-DESIGN-03 (chrome): the dock is chrome glass (paper 80 % + blur 14 px);
            the content scrolling under it stays opaque. */
         className="arbor-chrome-glass lg:hidden fixed bottom-0 inset-x-0 z-40 flex"

@@ -25,7 +25,7 @@ import {
   hasCelebrated,
   loadCelebratedIds,
   markCelebrated,
-} from "../ui/CelebrationMoment";
+} from "../ui/CelebrationMoment";
 import { todayLiveSource } from "../../testTodaySource";
 
 const SRC_ROOT = path.resolve(__dirname, "../..");

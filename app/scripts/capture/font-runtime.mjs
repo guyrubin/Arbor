@@ -2,17 +2,23 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FONT_CACHE_DIR, FONT_FAMILIES, SOURCE_CSS_URL, assertFontUrl, cssFontResources, sha256 } from './font-cache.mjs';
+import { FONT_CACHE_DIR, FONT_FAMILIES, SOURCE_CSS_URL, assertFontUrl, cssFontResources, sha256, sourceFontsSelfHosted } from './font-cache.mjs';
 
 const sourceFile = fileURLToPath(new URL('../../src/index.css', import.meta.url));
 let cached;
 const evidence = { mode: 'exact', shots: [], served: [], deniedFontRequests: 0 };
 const exact = () => process.env.ARBOR_CAPTURE_FONT_MODE === 'exact';
 const normalize = (value) => value.replace(/[^a-z0-9]/gi, '').toLowerCase();
-export const SOURCE_FONT_NOTE = 'Source Google text fonts are served from a verified disposable cache. Font-accurate status requires each screenshot’s loaded-face and rendered-glyph evidence; see font evidence and public-resource provenance. Synthetic app data remains separate from production.';
+export const SOURCE_FONT_NOTE = 'Text fonts are self-hosted and load from the app origin (an older source read them from a verified disposable cache of the Google stylesheet). Font-accurate status requires each screenshot’s loaded-face and rendered-glyph evidence; see font evidence and public-resource provenance. Synthetic app data remains separate from production.';
 
 export function validateFontCache(root = FONT_CACHE_DIR, source = readFileSync(sourceFile)) {
   const manifest = JSON.parse(readFileSync(path.join(root, 'manifest.json'), 'utf8'));
+  // B-SHELL-24: a self-hosted source has no cache — valid only while the source still self-hosts.
+  if (manifest.mode === 'self-hosted') {
+    if (manifest.schema !== 1 || manifest.sourceCssSha256 !== sha256(source) || !sourceFontsSelfHosted(source) || (manifest.resources ?? []).length) throw new Error('FONT_CACHE_MANIFEST_INVALID');
+    if (!/^Mozilla\/5\.0 .*HeadlessChrome\/\d+\.\d+\.\d+\.\d+ Safari\/537\.36$/.test(manifest.userAgent ?? '')) throw new Error('FONT_CACHE_UA_INVALID');
+    return { manifest, resources: new Map() };
+  }
   if (manifest.schema !== 1 || manifest.mode !== 'exact' || manifest.cssUrl !== SOURCE_CSS_URL || manifest.sourceCssSha256 !== sha256(source) || !Array.isArray(manifest.resources) || !manifest.resources.length || manifest.resources.length > 129) throw new Error('FONT_CACHE_MANIFEST_INVALID');
   const resources = new Map();
   for (const item of manifest.resources) {
@@ -47,6 +53,8 @@ export async function installOfflineFonts(context) {
   if (!exact()) return;
   const { manifest, resources } = cache();
   if (context.browser().version() !== manifest.chromiumVersion) throw new Error('FONT_BROWSER_VERSION_MISMATCH');
+  // Self-hosted faces come from the app origin; any Google font request falls to the capture's deny rule.
+  if (manifest.mode === 'self-hosted') return;
   // Register AFTER other context routes. Serve only the exact observed URL;
   // never rewrite a stylesheet, select another font, fetch or follow redirects.
   await context.route((url) => ['https://fonts.googleapis.com', 'https://fonts.gstatic.com'].includes(url.origin), async (route) => {

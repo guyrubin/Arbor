@@ -53,7 +53,7 @@ export interface ShelfDef {
   /** B-LOOP-15 illustration key (typed WebP set; no runtime image generation). */
   illustrationKey: string;
   /** Framer ruling (6 Oct, P5 critic r1): the shelf's Material Symbols glyph
-   *  (DATA, rendered by components/loop/ShelfGlyph; no image, no emoji). The
+   *  (DATA, rendered by components/ui/ShelfGlyph; no image, no emoji). The
    *  ruling named back_hand / family_restroom; the shipped icon subset has
    *  neither, so hands takes front_hand and family diversity_3 (the subset
    *  grows only through the networked font build). */

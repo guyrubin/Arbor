@@ -4,7 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { asksForHero, childPicture } from "./childPicture";
+import { asksForHero, childPicture } from "./childPicture";
 import { todayLiveSource } from "../testTodaySource";
 
 const read = (p: string) => fs.readFileSync(path.resolve(__dirname, p), "utf8");

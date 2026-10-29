@@ -93,28 +93,44 @@ describe("TODAY-3 — every capture uses the shared review gate", () => {
 });
 
 describe("TODAY-3 — no incident write without explicit confirm", () => {
+  /** The gate as one predicate, so the negative control can run it on mutated real source. */
+  const submitGateHolds = (src: string) => {
+    const submit = /const submit = [\s\S]*?\n  };/.exec(src)?.[0] ?? "";
+    return !!submit && submit.includes("setReviewing(true)") && !/handleAddLog\(|addMoment\(/.test(submit) && count(src, /handleAddLog\(/g) === 1;
+  };
+
   it("submit opens review and never writes; confirm alone reaches handleAddLog", () => {
-    const submit = /const submit = [\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
     const confirm = /const confirm = async[\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
-    expect(submit).toBeTruthy();
+    expect(submitGateHolds(modal)).toBe(true);
     expect(confirm).toBeTruthy();
-    expect(submit).toContain('setReviewing(true)');
-    expect(submit).not.toMatch(/handleAddLog\(|addMoment\(/);
-    expect(count(modal, /handleAddLog\(/g)).toBe(1);
     expect(confirm).toContain('await handleAddLog(e, { callerShowsFailure: true, ...contentProvenance })');
     expect(modal).toContain('onConfirm={confirm}');
-    // Negative control: the retired direct-submit shape violates this gate.
-    expect('const submitLog = (e) => handleAddLog(e);').toMatch(/handleAddLog\(/);
     expect(behaviors).not.toMatch(/handleAddLog\(|addMoment\(|const submitLog/);
   });
 
-  it("discard clears the draft and closes without writing", () => {
+  it("NEGATIVE CONTROL (B-INF-13): the real submit, made to write directly, breaks the gate", () => {
+    const submit = /const submit = [\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
+    expect(submit).toContain("setReviewing(true)");
+    // The retired direct-submit shape, put back into the real QuickLogModal source.
+    const writing = modal.replace(submit, submit.replace("setReviewing(true)", "void handleAddLog(e)"));
+    expect(writing).not.toBe(modal);
+    expect(submitGateHolds(writing)).toBe(false);
+  });
+
+  it("discard clears the draft through the ONE reset, then closes without writing", () => {
     const discard = /const discard = [\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
+    const reset = /const resetDraft = \(\) => \{([\s\S]*?)\n  \};/.exec(modal)?.[1] ?? "";
     expect(discard).toBeTruthy();
+    expect(reset).toBeTruthy();
     expect(discard).not.toMatch(/handleAddLog|addMoment/);
-    for (const field of ["Trigger", "Response", "Notes"]) expect(discard).toContain(`setNewLog${field}("")`);
-    expect(discard).toContain('setReviewing(false)');
-    expect(discard).toContain('closeSheet()');
+    expect(discard).toContain("resetDraft();");
+    expect(discard).toContain("closeSheet()");
+    for (const field of ["Trigger", "Response", "Notes"]) expect(reset).toContain(`setNewLog${field}("")`);
+    expect(reset).toContain("setReviewing(false)");
+    // B-INF-13: one reset for Discard and the escalation branch — no second clear-the-fields copy.
+    expect(count(modal, /const resetDraft = /g)).toBe(1);
+    expect(modal).not.toContain("dropEscalatedDraft");
+    expect(count(modal, /setNewLogResponse\(""\)/g)).toBe(1);
   });
 });
 

@@ -13,7 +13,9 @@ describe("words parents use are readable instructions, not decorative quotations
       const html = renderToStaticMarkup(React.createElement(SayThis, { text, lang, title: "Say this", copyLabel: "Copy", copiedLabel: "Copied" }));
       const paragraph = /<p[^>]*>[^<]*<\/p>/.exec(html)?.[0] ?? "";
       expect(bodyScript(paragraph)).toBe(true);
-      expect(paragraph).toContain(`“${text}”`);
+      // B-INF-13: the locale's one pair (elev.loop.ms.quoted) — ״…״ in Hebrew, never a Latin “…”.
+      expect(paragraph).toContain(lang === "he" ? `\u05F4${text}\u05F4` : `“${text}”`);
+      if (lang === "he") expect(paragraph).not.toMatch(/[\u201C\u201D]/);
       expect(html).toContain("Copy");
       expect(html).toContain('data-testid="say-this"');
       expect(bodyScript(paragraph.replace("var(--font-sans)", "var(--font-editorial)"))).toBe(false);

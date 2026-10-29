@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { FONT_FAMILIES, SOURCE_CSS_URL, assertFontUrl, chromiumUserAgent, cssFontResources, fontMode, readPublicResource, sha256, sourceFontUrl } from './capture/font-cache.mjs';
+import { FONT_FAMILIES, SOURCE_CSS_URL, assertFontUrl, chromiumUserAgent, cssFontResources, fontMode, readPublicResource, sha256, sourceFontUrl, sourceFontsSelfHosted } from './capture/font-cache.mjs';
 import { collectFontSampleCandidates, SOURCE_PICTOGRAPH_RULES, platformPictographEvidence, platformTextFontEvidence, preserveUnacceptedScreenshot, validateFontCache } from './capture/font-runtime.mjs';
 
 const root = path.resolve(__dirname, '../..');
@@ -12,7 +12,10 @@ const css = FONT_FAMILIES.map((family: string) => `@font-face {font-family: '${f
 
 describe('source-font cache contracts, stubbed fetch only', () => {
   it('uses only the existing exact stylesheet and bounded gstatic WOFF2 resources', () => {
-    expect(sourceFontUrl(read('app/src/index.css'))).toBe(SOURCE_CSS_URL);
+    // B-SHELL-24: the app self-hosts its text faces; the cache contract still holds for a source
+    // that imports the exact stylesheet (an older checkout).
+    expect(sourceFontsSelfHosted(read('app/src/index.css'))).toBe(true);
+    expect(sourceFontUrl(`@import url('${SOURCE_CSS_URL}');\n@import "tailwindcss";`)).toBe(SOURCE_CSS_URL);
     expect(() => sourceFontUrl(`@import url('https://example.test/font.css');`)).toThrow('FONT_SOURCE_URL_CHANGED');
     expect(assertFontUrl(url)).toBe(url);
     for (const bad of ['http://fonts.gstatic.com/s/heebo/v1/example.woff2', `${url}?key=secret`, `${url}#x`, url.replace('fonts.gstatic.com', 'fonts.gstatic.com.example.test'), 'https://fonts.gstatic.com/s/heebo/v1/../../private.woff2']) expect(() => assertFontUrl(bad)).toThrow();
@@ -67,6 +70,25 @@ describe('source-font cache contracts, stubbed fetch only', () => {
       writeFileSync(path.join(dir, resources[1].file), 'changed');
       expect(() => validateFontCache(dir, source)).toThrow('FONT_CACHE_HASH_MISMATCH');
     } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+  it('B-SHELL-24: a self-hosted source needs no cache, and the manifest holds only while it self-hosts', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'arbor-font-selfhosted-'));
+    const source = Buffer.from(read('app/src/index.css'));
+    const manifest = { schema: 1, mode: 'self-hosted', sourceCssSha256: sha256(source), resources: [], userAgent: chromiumUserAgent('140.0.0.0') };
+    try {
+      writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(manifest));
+      expect(validateFontCache(dir, source).resources.size).toBe(0);
+      // the Google import put back: the source no longer self-hosts, so the manifest is refused
+      const google = Buffer.from(`@import url('${SOURCE_CSS_URL}');\n${source}`);
+      writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({ ...manifest, sourceCssSha256: sha256(google) }));
+      expect(() => validateFontCache(dir, google)).toThrow('FONT_CACHE_MANIFEST_INVALID');
+      expect(sourceFontsSelfHosted(google.toString())).toBe(false);
+      // a self-hosted manifest that smuggles resources is refused too
+      writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({ ...manifest, resources: [{ kind: 'woff2' }] }));
+      expect(() => validateFontCache(dir, source)).toThrow('FONT_CACHE_MANIFEST_INVALID');
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+    expect(read('app/scripts/capture/prepare-font-cache.mjs')).toContain("if (sourceFontsSelfHosted(source.toString())) {");
+    expect(read('app/scripts/capture/font-runtime.mjs')).toContain("if (manifest.mode === 'self-hosted') return;");
   });
   it('rejects icon-only and fallback glyphs without confusing mixed text/icon parents', () => {
     const icon = { familyName: 'Material Symbols Rounded', isCustomFont: true, glyphCount: 1 };
