@@ -576,7 +576,7 @@ export const en: Dict = {
   "coach.doc.error": "This was not saved. Try again.",
   "coach.doc.saved": "Waiting for your approval",
   "coach.doc.retry": "Try again",
-  "coach.doc.pendingNote": "Saved items wait for your approval in Profile › Child Memory — nothing is used until you approve it.",
+  "coach.doc.pendingNote": "Saved items wait for your approval in My child › About › Everything Arbor remembers — nothing is used until you approve it.",
   "coach.cards.copiedNote": "Copied note",
   // COACH-1 — six-frame routing chip labels (FRAME_LABELS).
   // COACH-1 — prominent escalation panel headline (quiet tier = coach.escalate.title).
@@ -1321,14 +1321,6 @@ export const en: Dict = {
   "auth.resetNeedEmail": "Enter your email above first.",
   "auth.resetSent": "Password reset email sent — check your inbox.",
   "auth.resetFail": "Couldn't send a reset email for that address.",
-  "auth.inviteOnly": "Invite-only for now.",
-  "auth.requestAccess": "Request access",
-  "auth.requestingAccess": "Requesting…",
-  "auth.accessNeedEmail": "Enter your email above and tap Request access again.",
-  "auth.accessInvalidEmail": "Enter a valid email address first.",
-  "auth.accessPrivacy": "We’ll use this email only to manage your Arbor beta access request.",
-  "auth.accessReceived": "Access request received — we’ll follow up by email.",
-  "auth.accessFail": "Couldn’t record the request. Please email hello@arbor.app.",
   // onboarding
   "ob.title": "Tell us about your child",
   "ob.name": "Child's name",
@@ -3194,7 +3186,7 @@ export const he: Dict = {
   "coach.doc.error": "הפריט לא נשמר. אפשר לנסות שוב.",
   "coach.doc.saved": "ממתין לאישור שלכם",
   "coach.doc.retry": "לנסות שוב",
-  "coach.doc.pendingNote": "פריטים שנשמרו ממתינים לאישורכם בפרופיל › זיכרון הילד — שום דבר לא נכנס לשימוש עד שתאשרו.",
+  "coach.doc.pendingNote": "פריטים שנשמרו ממתינים לאישורכם במסך הילד שלי › אודות › כל מה שארבור זוכרת — שום דבר לא נכנס לשימוש עד שתאשרו.",
   "coach.cards.copiedNote": "הפתק הועתק",
   // COACH-1 — six-frame routing chip labels (he).
   // COACH-1 — prominent escalation panel headline (he). Escalation semantics
@@ -3915,14 +3907,6 @@ export const he: Dict = {
   "auth.resetNeedEmail": "הזינו קודם את הדוא\"ל למעלה.",
   "auth.resetSent": "נשלח דוא\"ל לאיפוס סיסמה — בדקו את תיבת הדואר.",
   "auth.resetFail": "לא הצלחנו לשלוח דוא\"ל איפוס לכתובת הזו.",
-  "auth.inviteOnly": "בהזמנה בלבד בשלב זה.",
-  "auth.requestAccess": "בקשת גישה",
-  "auth.requestingAccess": "שולחים…",
-  "auth.accessNeedEmail": "הזינו דוא״ל למעלה ולחצו שוב על בקשת גישה.",
-  "auth.accessInvalidEmail": "הזינו כתובת דוא״ל תקינה תחילה.",
-  "auth.accessPrivacy": "נשתמש בדוא״ל הזה רק לניהול בקשת הגישה לבטא של ארבור.",
-  "auth.accessReceived": "בקשת הגישה התקבלה — נחזור אליכם בדוא״ל.",
-  "auth.accessFail": "לא הצלחנו לשמור את הבקשה. אפשר לכתוב אל hello@arbor.app.",
   "ob.title": "ספרו לנו על ילדכם",
   "ob.name": "שם הילד",
   "ob.namePlaceholder": "למשל מאיה",

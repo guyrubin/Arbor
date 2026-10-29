@@ -96,6 +96,9 @@ export type UsageMeta = {
   resolvedModel?: string;
   /** PROMPT_VERSIONS version of the prompt behind this call. */
   promptVersion?: string;
+  /** B-AIOPS-01: the stream stopped before the provider finished (output
+   *  screen, abort, deadline, closed client). Tokens are what had arrived. */
+  endedEarly?: boolean;
 };
 
 /** B-PROV-04: the call's estimated USD (undefined when unpriced / no usage). */
@@ -132,6 +135,7 @@ export const buildUsageEvent = (
     ...(costOf(meta, usage) !== undefined ? { estimatedCostUsd: costOf(meta, usage) } : {}),
     ...(timing ? { totalMs: timing.totalMs } : {}),
     ...(timing?.firstChunkMs !== undefined ? { firstChunkMs: timing.firstChunkMs } : {}),
+    ...(meta.endedEarly ? { endedEarly: true } : {}),
   };
 };
 

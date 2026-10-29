@@ -31,6 +31,8 @@ import { requestObservability, logger } from "./logger.js";
 import { requestContextMiddleware, bindUidToContext } from "./requestContext.js";
 import { createDemoFamilyRouter } from "./demoFamilyRoute.js";
 import { healthzHandler } from "./healthz.js";
+// B-PROG-12: the program pilot admin read-out router.
+import { createProgramPilotRouter } from "./programPilotRoute.js";
 
 /**
  * SEC-2: tightened Content-Security-Policy (was disabled). Allows exactly what
@@ -195,6 +197,8 @@ export const createApp = (config: ArborConfig) => {
   app.use("/api", createAuthMiddleware(config));
   // COST-2: now that auth has resolved, stamp the uid onto the active usage context.
   app.use("/api", bindUidToContext);
+  // B-PROG-12: the program pilot's admin read-out (its own router; admin gate inside, counts only).
+  app.use("/api", createProgramPilotRouter({ config }));
   // A1/A2 (CIL-bugs-imagegen-quota-missing): per-user hourly cap on EVERY
   // route that calls a paid model or mints a paid token. The original allow-list
   // was missing /voice, /extract-log, /generate-adventure, /generate-hero-journey,

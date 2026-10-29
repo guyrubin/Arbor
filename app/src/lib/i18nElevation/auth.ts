@@ -22,6 +22,14 @@ export const en: Record<string, string> = {
 
   // B-SHELL-07: the first coach seed — model input, built in aiLang.
   "elev.auth.ob.seed": "{domain} is on my mind with {name} ({age}). Where should I start?",
+
+  // B-RESID-05: new families create an account with e-mail (Google stays);
+  // the invite-only line and its access request are gone (Guy, 11 Oct default).
+  "elev.auth.signup.cta": "Create account",
+  "elev.auth.signup.toSignup": "New to Arbor? Create an account",
+  "elev.auth.signup.toSignin": "Already have an account? Sign in",
+  "elev.auth.signup.passwordHint": "At least 6 characters",
+  "elev.auth.signup.verifySent": "Account created. We sent a link to confirm your email.",
 };
 
 export const he: Record<string, string> = {
@@ -34,4 +42,10 @@ export const he: Record<string, string> = {
   // ── Builder F · MOB-21
   "elev.auth.avatar.cta": "ליצור את הגיבור של {name}",
   "elev.auth.ob.seed": "{domain} מעסיק אותי עם {name} ({age}). מאיפה כדאי להתחיל?",
+
+  "elev.auth.signup.cta": "יצירת חשבון",
+  "elev.auth.signup.toSignup": "חדשים בארבור? יצירת חשבון",
+  "elev.auth.signup.toSignin": "כבר יש לכם חשבון? התחברות",
+  "elev.auth.signup.passwordHint": "6 תווים לפחות",
+  "elev.auth.signup.verifySent": "החשבון נוצר. שלחנו קישור לאישור הדוא״ל.",
 };

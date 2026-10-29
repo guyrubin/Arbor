@@ -10,7 +10,7 @@
  * The caption/URL builders are pure and unit-tested in share.test.ts.
  */
 import { renderShareCard, type ShareCardOpts } from "./shareCard";
-import { trackShareInitiated, trackShareCompleted, type LoopArtifact } from "./loopEvents";
+import { trackShareInitiated, trackShareCompleted, trackInviteSent, type LoopArtifact } from "./loopEvents";
 import type { Market } from "./attribution";
 import { PUBLIC_WEB_ORIGIN } from "./publicWebOrigin";
 
@@ -101,6 +101,18 @@ async function shareWebFile(blob: Blob, filename: string, caption: string, mime 
   return true;
 }
 
+/** Best-effort clipboard write (no throw); true when the text was copied. */
+async function copyText(text: string, nav: Pick<Navigator, "clipboard"> | undefined =
+  typeof navigator !== "undefined" ? navigator : undefined): Promise<boolean> {
+  if (!text || !nav?.clipboard) return false;
+  try {
+    await nav.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Download fallback (always works in a browser). */
 function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
@@ -183,6 +195,62 @@ export async function shareCard(args: ShareArgs): Promise<ShareResult> {
   } catch {
     return { ok: false, error: true };
   }
+}
+
+/* ── B-RESID-05 — the invite (components/referral/InviteCard) ─────────────
+   The ONE link that leaves the app (B-SHELL-29) and it carries no child
+   content: the parent's referral link, stamped with the share channel, sent
+   with the caption through the OS sheet; without a sheet the caption and the
+   link go to the clipboard together. Every completed send fires
+   share_completed("invite") (the head of the share → activation chain,
+   server/cohortMetrics FUNNEL_CHAINS.share) and invite_sent. */
+
+/** Pure: the referral link with the share attribution stamped; its ref kept. */
+export function attributeShareLink(link: string, artifact: LoopArtifact): string {
+  try {
+    const url = new URL(link);
+    url.searchParams.set("utm_source", "share");
+    url.searchParams.set("utm_medium", artifact);
+    url.searchParams.set("utm_campaign", "organic_share");
+    return url.toString();
+  } catch {
+    return link;
+  }
+}
+
+/** Pure: the caption, then the link on its own line. */
+export function captionWithLink(caption: string, link: string): string {
+  return [caption.trim(), link.trim()].filter(Boolean).join("\n");
+}
+
+/**
+ * "Share" sends the caption and the attributed link through the OS sheet,
+ * else copies both; "copy" copies the link the card shows. A dismissed sheet
+ * records nothing. Throws nothing.
+ */
+export async function shareInviteLink(
+  args: { link: string; caption: string; surface: string; mode: "share" | "copy" },
+  nav: Pick<Navigator, "share" | "clipboard"> | undefined = typeof navigator !== "undefined" ? navigator : undefined,
+): Promise<WordsShareResult> {
+  if (!args.link || !nav) return "error";
+  trackShareInitiated("invite", args.surface);
+  const url = attributeShareLink(args.link, "invite");
+  if (args.mode === "share" && typeof nav.share === "function") {
+    try {
+      await nav.share({ title: "Arbor", text: args.caption, url });
+      trackShareCompleted("invite", "web_share");
+      trackInviteSent("web_share");
+      return "shared";
+    } catch (err) {
+      if (isAbort(err)) return "cancelled";
+      // fall through to the clipboard
+    }
+  }
+  const copied = await copyText(args.mode === "copy" ? args.link : captionWithLink(args.caption, url), nav);
+  if (!copied) return "error";
+  trackShareCompleted("invite", "clipboard");
+  trackInviteSent("copy");
+  return "copied";
 }
 
 /* ── B-ASKJB-33 — the TEXT-ONLY path ("Send these words to…") ─────────────

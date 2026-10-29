@@ -88,7 +88,18 @@ export const FUNNEL_CHAINS: Record<string, readonly string[]> = {
   // B-MEAS-02: the pilot's primary metric — accept a step, report how it
   // went, and the next focus is built from that report.
   loop: ["today_action_accepted", "today_action_outcome", "loop_continued"],
+  // B-RESID-05: a send of the invite link, then a referred family's first
+  // activation (lib/share shareInviteLink → lib/referralActivation). Names
+  // only; the grouping props are the allow-listed source/market.
+  share: ["share_completed", "invite_activated"],
 };
+
+/** B-RESID-05: chains whose stages are done by DIFFERENT families (one sends,
+ *  another activates). Grouped by each family's own source the one chain
+ *  would split across rows (the sender's source 1 → 0, "share" 0 → 1), so it
+ *  is counted in ONE row, keyed ONE_ROW_KEY. Mirrored in cohort-report.mjs. */
+export const ONE_ROW_CHAINS: readonly string[] = ["share"];
+export const ONE_ROW_KEY = "all";
 
 /* ── the loop metric (B-MEAS-02) ──────────────────────────────────────────── */
 
@@ -847,7 +858,8 @@ export async function buildCohortReport(
   for (const name of opts.funnels ?? []) {
     const chain = FUNNEL_CHAINS[name];
     if (!chain) continue;
-    funnels[name] = countFunnelChain(events, chain, groupBy);
+    const counted = ONE_ROW_CHAINS.includes(name) ? events.map((e) => ({ ...e, props: { ...e.props, [groupBy]: ONE_ROW_KEY } })) : events;
+    funnels[name] = countFunnelChain(counted, chain, groupBy);
   }
 
   const loop = (opts.funnels ?? []).includes("loop") ? summariseLoop(events) : undefined;

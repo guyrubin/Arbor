@@ -24,7 +24,9 @@ export const LoopEvent = {
   PlayCompleted: "play_completed",
 } as const;
 
-export type LoopArtifact = "avatar" | "story" | "answer_card" | "growth_card";
+// B-RESID-05: "invite" is the referral link the weekly invite sends (no child
+// content); it is the artifact of the share → activation chain.
+export type LoopArtifact = "avatar" | "story" | "answer_card" | "growth_card" | "invite";
 
 const LS_INSTALLED = "arbor.installed";
 const LS_FIRST_PLAN = "arbor.firstPlanTracked";

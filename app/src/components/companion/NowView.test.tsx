@@ -45,7 +45,8 @@ vi.mock("./NowTodayLines", () => ({
 }));
 // F-NOW-1: the guide reader is a sheet; its props are what the card hands it.
 vi.mock("./NowGuideReader", () => ({ default: (props: unknown) => { state.readerProps = props; return null; } }));
-vi.mock("../../lib/programs/enrolment", () => ({ activeProgramWeek: () => state.program, dayKey: (d: Date) => d.toISOString().slice(0, 10) }));
+// B-PROG-03: the chooser's program view is exercised in lib/programs/weekSelection.test (real weeks); this stub program has none.
+vi.mock("../../lib/programs/enrolment", () => ({ activeProgramWeek: () => state.program, chooserProgram: () => null, dayKey: (d: Date) => d.toISOString().slice(0, 10) }));
 vi.mock("../../lib/timeOfDay", () => ({ bedtimeDoorOpen: () => state.evening }));
 vi.mock("../../lib/programs/measures", () => ({ programWeekDays: () => ({ from: "2026-10-05", to: "2026-10-11" }) }));
 // A known-age child whose catalogue has nothing for today: the fallbacks lead.
