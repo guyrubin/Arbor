@@ -146,7 +146,16 @@ abstract class BaseReferralStore implements ReferralStore {
     const claimed = await this.claimFamilyRedemption(redeemerUid, { offerId: offer.id, offerVersion: offer.version, via, at });
     if (!claimed) return { ok: true, status: "already_activated" };
 
-    const firstTime = await this.recordActivation(referrerUid, redeemerUid);
+    // A ledger write that fails after the claim releases the claim, like a
+    // failed grant below, so the family's retry can still redeem.
+    let firstTime: boolean;
+    try {
+      firstTime = await this.recordActivation(referrerUid, redeemerUid);
+    } catch (error) {
+      await this.releaseRedemption(referrerUid, redeemerUid).catch((releaseError) =>
+        logger.error("Referral claim release failed", releaseError, { referrerUid, redeemerUid }));
+      throw error;
+    }
     if (!firstTime) return { ok: true, status: "already_activated" };
 
     // The redeemed parent always gets their month. If that grant fails, the

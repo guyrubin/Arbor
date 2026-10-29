@@ -221,6 +221,24 @@ describe("B-GROWTH-43 — families that redeemed before the claim existed, and f
     expect(ent.records.get("uid_B")?.productId).toBe("referral_month");
   });
 
+  it("a ledger write that fails after the claim releases the claim, so the retry succeeds", async () => {
+    const ent = new FakeEntitlementStore();
+    let failLedger = true;
+    class FlakyLedgerStore extends LocalReferralStore {
+      protected async recordActivation(referrerUid: string, redeemerUid: string): Promise<boolean> {
+        if (failLedger) throw new Error("ledger unavailable");
+        return super.recordActivation(referrerUid, redeemerUid);
+      }
+    }
+    const store = new FlakyLedgerStore(SECRET, MAX, ent);
+    const code = await store.codeForUid("uid_A");
+    await expect(store.activateReferral({ code, redeemerUid: "uid_B" })).rejects.toThrow("ledger unavailable");
+    expect(await store.familyRedemption("uid_B")).toBeNull();
+    expect(ent.records.size).toBe(0);
+    failLedger = false;
+    expect(await store.activateReferral({ code, redeemerUid: "uid_B" })).toMatchObject({ ok: true, status: "granted", earnedMonths: 1 });
+  });
+
   it("a failed referrer grant never undoes the family's month", async () => {
     const ent = new FakeEntitlementStore();
     const set = ent.setEntitlement.bind(ent);
