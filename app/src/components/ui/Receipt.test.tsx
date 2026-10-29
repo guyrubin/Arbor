@@ -27,7 +27,7 @@ vi.mock("../../context/LanguageContext", async () => {
   };
 });
 
-import { PENDING_DELAY_MS, PendingLine, Receipt, announcePolite, receiptText, startPendingClock } from "./Receipt";
+import { PENDING_DELAY_MS, PendingLine, RECEIPT_DOCK_CLEARANCE_PX, Receipt, announcePolite, receiptText, revealReceipt, startPendingClock } from "./Receipt";
 import { translate } from "../../lib/i18n";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -183,5 +183,43 @@ describe("PendingLine — one quiet line after 400 ms, never a flash", () => {
     expect(translate("en", "elev.loop.pending.practice")).toBe("Arbor is choosing today's practice…");
     expect(translate("he", "elev.loop.pending.practice")).toContain("ארבור");
     expect(translate("he", "elev.loop.pending.practice")).not.toContain("Arbor");
+  });
+});
+
+describe("critic r1 (B-STATUS-01) — a receipt that lands off-screen is brought into view", () => {
+  const fakeDoc = (top: number, height = 40, viewport = 800, reduce = false) => {
+    const scrollIntoView = vi.fn();
+    const el = { getBoundingClientRect: () => ({ top, bottom: top + height }), scrollIntoView };
+    const doc = {
+      querySelector: (sel: string) => (sel === '[data-testid="appt-receipt"]' ? el : null),
+      defaultView: { innerHeight: viewport, matchMedia: () => ({ matches: reduce }) },
+    } as unknown as Document;
+    return { doc, scrollIntoView };
+  };
+
+  it("below the fold (or under the fixed dock) it scrolls to the middle", () => {
+    const below = fakeDoc(1400);
+    expect(revealReceipt("appt-receipt", below.doc)).toBe(true);
+    expect(below.scrollIntoView).toHaveBeenCalledWith({ block: "center", behavior: "smooth" });
+    const underDock = fakeDoc(800 - RECEIPT_DOCK_CLEARANCE_PX - 20);
+    expect(revealReceipt("appt-receipt", underDock.doc)).toBe(true);
+    const above = fakeDoc(-300);
+    expect(revealReceipt("appt-receipt", above.doc)).toBe(true);
+  });
+
+  it("in view it stays put; reduced motion scrolls without easing; no element, no scroll", () => {
+    const inView = fakeDoc(200);
+    expect(revealReceipt("appt-receipt", inView.doc)).toBe(false);
+    expect(inView.scrollIntoView).not.toHaveBeenCalled();
+    const reduced = fakeDoc(1400, 40, 800, true);
+    revealReceipt("appt-receipt", reduced.doc);
+    expect(reduced.scrollIntoView).toHaveBeenCalledWith({ block: "center", behavior: "auto" });
+    expect(revealReceipt("missing", fakeDoc(1400).doc)).toBe(false);
+    expect(revealReceipt("appt-receipt", undefined)).toBe(false);
+  });
+
+  it("ReceiptNoteLine reveals each new note (keyed on its seq)", () => {
+    const src = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "Receipt.tsx"), "utf8");
+    expect(src).toContain("useEffect(() => { if (seq) revealReceipt(testId); }, [seq, testId]);");
   });
 });

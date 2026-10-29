@@ -88,7 +88,7 @@ function bindExportFocus(tree: any, focused = true) {
 const owner = (user: { uid: string } | null) => { h.currentUser = user; for (const listener of h.authListeners) listener(user); };
 const kid = (active: boolean) => { h.locked = active; for (const listener of h.kidListeners) listener(active); };
 const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
-function body(stage: string, text: string) {
+function body(stage: string, text: string, headers?: Record<string, string>) {
   let cancelled = false;
   return new Response(new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -96,7 +96,7 @@ function body(stage: string, text: string) {
       if (!cancelled) { controller.enqueue(new TextEncoder().encode(text)); controller.close(); }
     },
     cancel() { cancelled = true; },
-  }));
+  }), headers ? { headers } : undefined);
 }
 function pause(stage: string) {
   let enter!: () => void, release!: () => void;
@@ -123,7 +123,8 @@ beforeEach(() => {
       if (h.partial) return new Response("Unavailable", { status: 503 });
       return body("inventory body", JSON.stringify({ version: 1, childId: "child-a", status: "complete", issues: [], files: [{ bookId: "book", path: "manifest.json", bytes: 4 }] }));
     }
-    await h.wait("file response"); return body("file body", "DATA");
+    // B-CAREPRO-50: the server's digest of "DATA" and the served Content-Type.
+    await h.wait("file response"); return body("file body", "DATA", { "content-type": "application/json", "x-arbor-sha256": "c97c29c7a71b392b437ee03fd17f09bb10b75e879466fc0eb757b2c4a78ac938" });
   }));
   vi.stubGlobal("crypto", { subtle: { digest: async (...args: Parameters<typeof webcrypto.subtle.digest>) => {
     await h.wait("digest"); return webcrypto.subtle.digest(...args);

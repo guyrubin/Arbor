@@ -561,7 +561,7 @@ export const api = {
   council: (payload: { topicId?: string; message: string; childProfile: ChildProfile; scholarLens?: string; language?: "en" | "he"; recentTurns?: { role: "parent" | "coach"; text: string }[]; contextChildId?: string }) =>
     post<{ text: string; contract?: CoachContract; council?: CouncilTake[]; memoryReviewItems?: MemoryReviewItem[] }>("/api/council", payload),
   // Co-parent / trusted sharing (server-enforced expiry).
-  createShare: (payload: { childId: string; childName?: string; recipientEmail: string; role?: ShareRole; scopes?: string[]; duration?: string }) =>
+  createShare: (payload: { childId: string; childName?: string; recipientEmail: string; role?: ShareRole; scopes?: string[]; duration?: string; domains?: string[] }) =>
     post<ShareGrant>("/api/shares", payload),
   // CARE-6: `history: true` also returns revoked/expired grants — the owner's
   // grant records are the sharing audit trail rendered as "Sharing history".

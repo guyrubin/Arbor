@@ -50,6 +50,7 @@ import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { normalizeSearchText } from "../../lib/searchNormalize";
 import { COMPANION_DOORS, COMPANION_PLACES, homeForTab } from "../../lib/companionPlaces";
 import { requestCompanionConversation } from "../../lib/companionConversation";
+import { goToRoute } from "../../hooks/useHashQuery";
 import { openFamilyTopicSheet } from "../companion/familyTopicEvents";
 import { INTENT_ICON, chooseFamilyTopic, type FamilyTopic } from "../../lib/familyTopics";
 import type { ActiveTab } from "../../lib/routes";
@@ -106,6 +107,7 @@ export const KIND_TOKEN: Partial<Record<SearchKind, string>> = {
   milestone: "var(--arbor-sky-ink)",
   journey: "var(--arbor-lav-ink)",
   world: "var(--arbor-peach-ink)",
+  page: "var(--arbor-green-ink)",
 };
 
 /** Content kinds only: a route row wears its home's glyph (v3 IA-05). */
@@ -119,6 +121,7 @@ export const KIND_ICON: Partial<Record<SearchKind, string>> = {
   milestone: "check_circle",
   journey: "auto_stories",
   world: "sports_esports",
+  page: "bookmark",
 };
 
 /** The text a log is matched on: its localized labels in BOTH languages plus
@@ -206,6 +209,8 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
       go: () => {
         if (e.lens) setSelectedLens(e.lens);
         if (e.tab === "coach") requestCompanionConversation({ source: "search" });
+        // B-ASKJB-36: a page row opens its mode (a new history entry: Back returns).
+        else if (e.view) { setActiveTab(e.tab); goToRoute(e.tab, { view: e.view }); }
         else setActiveTab(e.tab);
       },
     };

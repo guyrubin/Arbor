@@ -96,6 +96,8 @@ const AdventuresTab = lazy(() => import("../practice/AdventuresTab"));
 // IA v3: consolidation hubs (merge confusable/duplicate leaves).
 const DevelopmentTab = lazy(() => import("../companion/ChildPortrait"));
 const ProgramPage = lazy(() => import("../program/ProgramPage"));
+// B-ASKJB-36: `?view=kept` — My child with the kept reader open (a mode).
+const KeptReaderMode = lazy(() => import("../kept/KeptThingsPage").then((m) => ({ default: m.KeptReaderMode })));
 const FamilyTopicSheet = lazy(() => import("../companion/FamilyTopicSheet"));
 const DailyPlayTab = lazy(() => import("../tabs/DailyPlayTab"));
 // IA fix (AR-IA): the parent #/practice route hosts the PARENT-register
@@ -518,7 +520,9 @@ export default function Shell() {
             >
               {pillRowFor(section, activeTab).map((it) => {
                 // v4: a leaf route lights the reading it belongs to (PILL_LIT).
-                const on = it.tab === pillLitTab(activeTab);
+                // B-ASKJB-36 (critic r1): the Kept reader is a mode of My child,
+                // not its Milestones reading — no pill reads selected there.
+                const on = it.tab === pillLitTab(activeTab) && !(activeTab === "development" && query.get("view") === "kept");
                 return (
                   <button
                     key={it.tab}
@@ -639,7 +643,7 @@ export default function Shell() {
                         so the coach arm renders nothing of its own. */}
                     {activeTab === "coach" || activeTab === "scholar" ? null
                       : activeTab === "overview" ? <OverviewTab topic={activeFamilyTopic} onTopicCreate={createTopic} onTopicOpen={openTopic} onTalkOpen={(prompt) => requestCompanionConversation({ prompt, source: "now" })}/>
-                      : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : <DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) => { if (childId === childProfile.id) requestCompanionConversation({ prompt, source: "child-portrait" }); }}/>)
+                      : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : query.get("view") === "kept" ? <KeptReaderMode/> : <DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) => { if (childId === childProfile.id) requestCompanionConversation({ prompt, source: "child-portrait" }); }}/>)
                       : <ActiveTabComponent/>}
                   </SurfaceFrame>
                 </ErrorBoundary>

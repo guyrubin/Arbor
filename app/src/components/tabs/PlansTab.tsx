@@ -17,7 +17,8 @@ import RoutinesCard from "../plans/RoutinesCard";
 import RoutineTemplates from "../plans/RoutineTemplates";
 // v3 FEAT-07: a routine plan runs again every day, on its own board.
 import RoutineRunBoard from "../plans/RoutineRunBoard";
-import { routineIdOfPlan } from "../../lib/routineTemplates";
+import { nextStartedPlan, routineIdOfPlan } from "../../lib/routineTemplates";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { UrgentSupport } from "../safety/UrgentSupport";
 import { useChildCollection } from "../../hooks/useChildCollection";
 /* B-ASKJB-28: the routines row only counts docs; their shape stays RoutinesCard's. */
@@ -89,6 +90,20 @@ export default function PlansTab() {
   // Create. ONE object now carries both — the stamp and the primary fill — and
   // lands on exactly one control: today's "I'll try it" on the first plan, or
   // Create in the empty state (where creating IS the way to a step).
+  // B-ASKJB-26 (critic r1): a plan that has just started (a ready-made
+  // routine, or a created plan) leads the page above the row the parent
+  // tapped — one receipt line on it, scrolled into view (ReceiptNoteLine).
+  const startedReceipt = useReceiptNote();
+  // Critic r2: null until the first load, which primes it (nextStartedPlan).
+  const seenPlanIds = useRef<Set<string> | null>(null);
+  React.useEffect(() => {
+    if (!plansLoaded) return;
+    const { seen, leadId } = nextStartedPlan(seenPlanIds.current, actionPlans, Date.now());
+    seenPlanIds.current = seen;
+    const lead = leadId ? actionPlans[0] : null;
+    if (lead) startedReceipt.show({ text: `${lead.title} · ${t("elev.plans.startedToday")}` });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plansLoaded, actionPlans]);
   const hasPlan = actionPlans.length > 0;
   const primaryStamp = {
     "data-primary-move": "advance-plan-step",
@@ -98,32 +113,8 @@ export default function PlansTab() {
     <div data-module="plans-create" className={`${cardCls} p-6 space-y-4`}>
       <span className="text-[13px] font-semibold block" style={{ color: "var(--arbor-ink)" }}>{t("plan.create")}</span>
 
-      {/* Templates — start from a common challenge */}
-      <div className="flex flex-wrap gap-1.5">
-        <span className="t-xs font-bold self-center me-1" style={{ color: "var(--arbor-muted)" }}>{t("plan.templates")}</span>
-        {[
-          t("plan.template.morningDeparture"),
-          t("plan.template.screenShutdown"),
-          t("plan.template.siblingConflict"),
-          t("plan.template.bedtimeResistance"),
-          t("plan.template.foodRefusal"),
-          t("plan.template.separationAnxiety"),
-          t("plan.template.responsibilityLadder"),
-          t("plan.template.schoolAdaptation"),
-          t("plan.template.behaviorReset"),
-        ].map((tpl) => (
-          <button
-            key={tpl}
-            type="button"
-            onClick={() => setPlanChallengeTopic(tpl)}
-            className="inline-flex min-h-11 items-center px-3 py-1.5 rounded-lg text-[12px] font-semibold transition"
-            style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
-          >
-            {tpl.split(" ").slice(0, 3).join(" ")}…
-          </button>
-        ))}
-      </div>
-
+      {/* B-ASKJB-26: the nine challenge-named chips folded into these boards
+          (each started one of them) — ONE row starts a board. */}
       {/* B-GROWTH-25: #/routines retired here — the twelve boards are templates
           (age-windowed), one tap starts a plan with no goal. */}
       <RoutineTemplates />
@@ -241,6 +232,7 @@ export default function PlansTab() {
       )}
 
       <div data-module="plans-active" className="space-y-8">
+        <ReceiptNoteLine note={startedReceipt.note} testId="plans-started-receipt" />
         {/* B-ASKJB-35 (c): ONE active plan leads with today's step as the
             single primary move; every other plan sits in one disclosure. */}
         {actionPlans.map((plan, planIdx) => {

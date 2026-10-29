@@ -837,6 +837,7 @@ export default function QuickLogModal({
           {replyCard ? (
             <div data-testid="quicklog-reply-saythis" className="space-y-1.5" lang={replyLocale} dir={replyLocale === "he" ? "rtl" : "ltr"}>
               <SayThis
+                presentation="quote"
                 text={locText(renderSayThis(replyCard, firstName), replyLocale)}
                 title={t("hm.section.sayThis")}
                 lang={replyLocale}
@@ -1074,15 +1075,15 @@ export default function QuickLogModal({
           <input type="checkbox" checked={hardMoment} onChange={(e) => toggleHardMoment(e.target.checked)} className="h-5 w-5" style={{ accentColor: "var(--arbor-clay)" }} />
           <span className="min-w-0">
             <span className="block text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{t("ql.moment.hard")}</span>
-            <span className="block text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t("ql.moment.hardHint")}</span>
+            <span className="block text-xs" style={{ color: "var(--arbor-muted)" }}>{t("ql.moment.hardHint")}</span>
           </span>
         </label>
         {optionalDetails}
         {/* B-STATUS-01: while Arbor drafts from the parent's words, ONE quiet
             line after 400 ms (never a spinner, never a flash). */}
         <PendingLine active={drafting} testId="quicklog-drafting">{t("beh.parsing")}</PendingLine>
-        <p data-testid="quicklog-privacy" className="text-[11.5px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("companion.capture.privacy")}</p>
-        <button type="submit" disabled={saving || drafting || photoPreparing} className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 py-3 font-extrabold text-xs rounded-xl transition active:scale-[0.98]" style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)" }}>
+        <p data-testid="quicklog-privacy" className="text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("companion.capture.privacy")}</p>
+        <button type="submit" disabled={saving || drafting || photoPreparing} className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 py-3 font-extrabold text-xs rounded-xl transition active:scale-[0.98]" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>
           {!saving && !editLogId && <Icon name="bookmark_add" size={18} />}
           {saving ? t("companion.family-topic-sheet.saving") : editLogId ? t("companion.capture.saveChanges") : t("companion.capture.keep")}
         </button>
@@ -1108,7 +1109,7 @@ export default function QuickLogModal({
         <div className="space-y-1">
           <label htmlFor="quick-log-intensity" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ql.intensity")}</label>
           <input id="quick-log-intensity" type="range" min={1} max={5} value={newLogIntensity} aria-valuetext={t(intensityWordKey(newLogIntensity))} onChange={(e) => setNewLogIntensity(parseInt(e.target.value))} className="min-h-11 w-full" style={{ accentColor: "var(--arbor-clay)" }} />
-          <div className="flex justify-between text-[11px]" style={{ color: "var(--arbor-muted)" }} aria-hidden="true"><span>{t(INTENSITY_WORDS[0])}</span><span>{t(INTENSITY_WORDS[4])}</span></div>
+          <div className="flex justify-between text-xs" style={{ color: "var(--arbor-muted)" }} aria-hidden="true"><span>{t(INTENSITY_WORDS[0])}</span><span>{t(INTENSITY_WORDS[4])}</span></div>
         </div>
 
         <div className="space-y-1.5">
@@ -1160,7 +1161,7 @@ export default function QuickLogModal({
         {/* B-STATUS-01: the drafting spinner in the button became the ONE
             pending line — quiet, after 400 ms; the button keeps its label. */}
         <PendingLine active={drafting} testId="quicklog-drafting">{t("beh.parsing")}</PendingLine>
-        <button type="submit" disabled={drafting || saving || photoPreparing} className="min-h-11 w-full py-3 font-extrabold text-xs rounded-xl transition active:scale-[0.98] disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)" }}>
+        <button type="submit" disabled={drafting || saving || photoPreparing} className="min-h-11 w-full py-3 font-extrabold text-xs rounded-xl transition active:scale-[0.98] disabled:opacity-60" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>
           {t("ql.save")}
         </button>
       </form>}

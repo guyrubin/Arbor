@@ -1,11 +1,30 @@
-/** B-BOOK-20: one bounded, portable, private-file export contract. No URLs or tokens. */
+/** B-BOOK-20: one bounded, portable, private-file export contract. No URLs or tokens.
+ *  B-CAREPRO-50: the file cap holds a ten-book library (~100 files a book: sheet,
+ *  choices, prints, three narration voices); the server pages its inventory
+ *  (`inventoryPage` objects a request) so every file is NAMED — included, or
+ *  with the exact reason it is not. `manifestBytes` bounds that inventory. */
 export const BOOK_EXPORT_LIMITS = Object.freeze({
-  files: 256,
+  files: 2000,
+  inventoryPage: 1000,
+  manifestBytes: 512 * 1024,
   fileBytes: 8 * 1024 * 1024,
   totalBytes: 32 * 1024 * 1024,
   requestMs: 20_000,
   totalMs: 120_000,
 });
+
+/** B-CAREPRO-50 (critic r1): export reads one account may have in flight at
+ *  once (the client reads one file at a time; one more covers a retry). */
+export const BOOK_EXPORT_CONCURRENT_READS = 2;
+
+/** B-CAREPRO-50: the server's SHA-256 (hex) of the exact bytes it sends for an
+ *  export read; the client recomputes it and keeps the file only on a match. */
+export const BOOK_EXPORT_DIGEST_HEADER = "x-arbor-sha256";
+
+/** B-CAREPRO-50: the media types a private book file is served as. The
+ *  receipt's `mediaType` is the response's Content-Type, never a path guess;
+ *  any other type is an integrity failure. */
+export const BOOK_EXPORT_MEDIA_TYPES: readonly string[] = ["image/webp", "image/png", "audio/mpeg", "audio/wav", "application/json"];
 
 export interface BookExportFile {
   bookId: string;
