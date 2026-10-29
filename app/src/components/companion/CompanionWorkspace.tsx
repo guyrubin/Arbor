@@ -251,19 +251,11 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
     setOpen(false); setMounted(false); setExpanded(false);
   }, [childProfile.id]);
   useEffect(() => { if (kidLocked) setOpen(false); }, [kidLocked]);
-  // B-VOICE-08: a voice door outside the panel can start Talk only inside its
-  // own tap, so the conversation mounts (hidden, as it stays after any close)
-  // once the page is idle. Nothing opens, sends or listens until a tap.
-  useEffect(() => {
-    if (mounted || kidLocked) return;
-    const idle = window as Window & { requestIdleCallback?: (run: () => void, options?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
-    if (typeof idle.requestIdleCallback === "function") {
-      const id = idle.requestIdleCallback(() => setMounted(true), { timeout: 4000 });
-      return () => idle.cancelIdleCallback?.(id);
-    }
-    const timer = setTimeout(() => setMounted(true), 1500);
-    return () => clearTimeout(timer);
-  }, [mounted, kidLocked]);
+  // B-VOICE-08 round 4: the conversation is NOT mounted ahead of a tap. A page
+  // the parent has not asked to talk on carries none of its DOM (no module or
+  // primary-move stamp, nothing to count or focus): the one-primary-move law.
+  // A voice door tap before it exists is queued (lib/companionConversation)
+  // and runs when the conversation mounts and registers its start.
   // The parent is back: a held conversation route goes quietly to the place
   // (the launcher is there; nothing opens on the child's last screen).
   useLayoutEffect(() => {
