@@ -37,7 +37,7 @@ const captureSourceButton = (type: unknown, props: unknown) => {
   }
 };
 
-const logPlayCompletion = vi.fn((a: { activity?: { id: string }; id?: string }) => ({ id: `${a.activity?.id ?? a.id}.2026-10-08`, created: true }));
+const logPlayCompletion = vi.fn((a: { activity?: { id: string }; id?: string }, ..._rest: unknown[]) => ({ id: `${a.activity?.id ?? a.id}.2026-10-08`, created: true }));
 const undoPlayCompletion = vi.fn();
 const toast = vi.fn();
 /** B-STATUS-01: "saved to the journal" is the ONE receipt line now. */
