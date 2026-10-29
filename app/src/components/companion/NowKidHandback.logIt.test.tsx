@@ -37,6 +37,7 @@ vi.mock("../../hooks/useChildCollection", () => ({
 
 import NowKidHandback from "./NowKidHandback";
 import { NOW_COPY } from "./nowViewCopy";
+import { translate } from "../../lib/i18n";
 
 /** Mount the component with fresh hook slots (a reload) and re-render on state changes. */
 function mount() {
@@ -79,7 +80,7 @@ describe("B-BOOK-66 · Log it keeps the row; Hide removes it", () => {
     find(view.tree, "now-handback-log")!.props.onClick();
     expect(env.openCaptureSheet).toHaveBeenCalledTimes(1);
     const opts = env.openCaptureSheet.mock.calls[0][0];
-    expect(opts).toEqual({ mode: "text", cue: NOW_COPY.en.bookRowAsk("Why did David leave the king's armour in the tent?") });
+    expect(opts).toEqual({ mode: "text", cue: NOW_COPY.en.bookRowAsk(translate("en", "elev.loop.ms.quoted", { text: "Why did David leave the king's armour in the tent?" })) });
     expect(opts).not.toHaveProperty("initialText"); // the question is a cue, never the parent's draft
     // the parent cancels the sheet: nothing was written, the row is still there
     expect(bookRow(view.tree)).toBeTruthy();

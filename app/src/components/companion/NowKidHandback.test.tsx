@@ -46,7 +46,8 @@ describe("B-BOOK-66 + B-GAME-23 · Today's hand-back rows", () => {
     expect(html).toContain(`/visuals/books/${fiveSmoothStones.id}/PL3-cover.webp`);
     expect(html).toContain("Five Smooth Stones · one thing for today");
     expect(html).toContain("Choose one small");
-    expect(html).toContain("Ask: “Why did David leave the king&#x27;s armour in the tent?”");
+    // the question is quoted through the house pair (elev.loop.ms.quoted: EN “…”)
+    expect(html.replace(/[\u2068\u2069]/g, "")).toContain("Ask: \u201CWhy did David leave the king&#x27;s armour in the tent?\u201D");
     expect(html).toContain(">Log it<");
     expect(html).toContain('aria-label="Hide this line"');
     expect(html).toContain('data-testid="today-handback-play"');
@@ -64,7 +65,8 @@ describe("B-BOOK-66 + B-GAME-23 · Today's hand-back rows", () => {
     expect(html).toContain("קטן אחד שהילד יכול לפגוש לבד");
     expect(html).toContain("היא החתולה"); // the girl's form of the off-screen idea
     expect(html).toContain("· דבר אחד להיום");
-    expect(html).toContain("לשאול: „");
+    expect(html.replace(/[\u2068\u2069]/g, "")).toContain("לשאול: \u05F4"); // HE ״…״, never „…”
+    expect(html).not.toMatch(/[\u201C\u201D\u201E]/);
     expect(html).toContain(">לרשום ביומן<");
     expect(html).toContain("משחק בבית · דג מלוח");
     expect(html).toContain("2 ביקורים השבוע · בדרך: תעלול משקפי השמש של החתול, הסיבוב המדומה של החתול");
@@ -79,7 +81,8 @@ describe("B-BOOK-66 + B-GAME-23 · Today's hand-back rows", () => {
 
   it("Log it opens the ONE capture sheet empty, the ask-after as its cue (the parent's own words; only their Save writes a moment)", () => {
     const src = readFileSync(path.join(__dirname, "NowKidHandback.tsx"), "utf8");
-    expect(src).toContain('openCaptureSheet({ mode: "text", cue: copy.bookRowAsk(book.askAfter) })');
+    expect(src).toContain('openCaptureSheet({ mode: "text", cue: ask })');
+    expect(src).toContain('const ask = book ? copy.bookRowAsk(t("elev.loop.ms.quoted", { text: book.askAfter })) : "";');
     expect(src).not.toMatch(/initialText|addMoment|saveMoment|upsert\(|recordFromRecordAnswer/);
     // the sheet shows the cue where it shows a prompt question, and never stores it
     const modal = readFileSync(path.join(__dirname, "..", "overview", "QuickLogModal.tsx"), "utf8");

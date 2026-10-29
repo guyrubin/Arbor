@@ -59,7 +59,7 @@ export function NowKidWorld({ observations, now, name, onAll }: {
     if (item.origin === "practiceEvents") {
       const sourceId = item.id.slice(item.origin.length + 1);
       const feeling = kidFeelingWord(practiceEvents.items.find(row => row.id === sourceId)?.emotion, he);
-      return feeling ? copy.worldFeeling(feeling) : undefined;
+      return feeling ? t("elev.loop.ms.quoted", { text: feeling }) : undefined;
     }
     const activity = item.value.activity;
     const colon = activity.indexOf(":");
@@ -68,7 +68,7 @@ export function NowKidWorld({ observations, now, name, onAll }: {
     const text = key ? t(key) : undefined;
     return text && text !== key ? text : undefined;
   };
-  const note = shown.every(item => item.source === "kid_practice") ? copy.worldNote(name, t("companion.portrait.childPractice")) : copy.worldNoteKept(name);
+  const note = shown.every(item => item.source === "kid_practice") ? copy.worldNote(name, t("elev.loop.ms.quoted", { text: t("companion.portrait.childPractice") })) : copy.worldNoteKept(name);
   return <section className="now-world" aria-labelledby={`${id}-world`} data-testid="now-kid-world">
     <div className="now-world-head">
       <Avatar name={childProfile.name} photoURL={childPicture(childProfile).url} size={40} />

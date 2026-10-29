@@ -30,7 +30,8 @@ export const NOW_COPY = {
     weekIdea: "This week’s idea",
     // B-BOOK-66 + B-GAME-23: Kid Mode's hand-back rows in "Today at a glance" (parent words; counts, never a verdict).
     bookRowTitle: (title: string) => `${title} · one thing for today`,
-    bookRowAsk: (question: string) => `Ask: “${question}”`,
+    // the question arrives quoted through elev.loop.ms.quoted (one quote pair per locale)
+    bookRowAsk: (quoted: string) => `Ask: ${quoted}`,
     logIt: "Log it",
     logItAria: "Write what happened, in your own words",
     hideRow: "Hide this line",
@@ -108,8 +109,8 @@ export const NOW_COPY = {
     noOffer: "A little time together is a place to start",
     noOfferBody: "Explore stories and everyday ideas, then choose what fits your family.",
     // v3 FEAT-04: the kid-world strip's line of names and its note (names only, never a score)
-    worldFeeling: (word: string) => `“${word}”`,
-    worldNote: (name: string, label: string) => `Each item is saved in ${name}’s picture as an “${label}”, with its source. No logging needed.`,
+    // the label arrives quoted through elev.loop.ms.quoted (one quote pair per locale)
+    worldNote: (name: string, quotedLabel: string) => `Each item is saved in ${name}’s picture as an ${quotedLabel}, with its source. No logging needed.`,
     worldNoteKept: (name: string) => `Each item is kept in ${name}’s picture, with its source.`,
     // v3 F-NOW-1: the Now kicker, the plan card's face and body, and the guide reader.
     kicker: "Now · Parenting Companion",
@@ -162,7 +163,7 @@ export const NOW_COPY = {
     programLabel: "התוכנית שבחרתם",
     weekIdea: "הרעיון של השבוע",
     bookRowTitle: (title: string) => `${title} · דבר אחד להיום`,
-    bookRowAsk: (question: string) => `לשאול: „${question}”`,
+    bookRowAsk: (quoted: string) => `לשאול: ${quoted}`,
     logIt: "לרשום ביומן",
     logItAria: "לכתוב מה קרה, במילים שלכם",
     hideRow: "להסתיר את השורה",
@@ -240,8 +241,7 @@ export const NOW_COPY = {
     noOffer: "אפשר להתחיל מרגע קטן ביחד",
     noOfferBody: "מגלים סיפורים ורעיונות ליומיום, ובוחרים מה מתאים למשפחה שלכם.",
     // v3 FEAT-04: the kid-world strip's line of names and its note (names only, never a score)
-    worldFeeling: (word: string) => `„${word}”`,
-    worldNote: (name: string, label: string) => `כל פריט נשמר בתמונה של ${name} כ„${label}”, יחד עם המקור שלו. אין צורך לתעד בעצמכם.`,
+    worldNote: (name: string, quotedLabel: string) => `כל פריט נשמר בתמונה של ${name} כ${quotedLabel}, יחד עם המקור שלו. אין צורך לתעד בעצמכם.`,
     worldNoteKept: (name: string) => `כל פריט נשמר בתמונה של ${name}, יחד עם המקור שלו.`,
     // v3 F-NOW-1: the Now kicker, the plan card's face and body, and the guide reader.
     kicker: "עכשיו · מלווה ההורות",

@@ -48,6 +48,7 @@ export default function NowKidHandback() {
     writeHandbackDismissed(childId, next);
     setState({ childId, value: next });
   };
+  const ask = book ? copy.bookRowAsk(t("elev.loop.ms.quoted", { text: book.askAfter })) : "";
   const met = play ? play.experiences.map((x) => copy.playExperience[x]).join(", ") : "";
   return <>
     {book && <div className="now-handback-row" data-testid="today-handback-book">
@@ -57,10 +58,10 @@ export default function NowKidHandback() {
       <span className="now-handback-copy">
         <b dir="auto">{copy.bookRowTitle(book.title)}</b>
         <small dir="auto">{book.tomorrow}</small>
-        <small dir="auto">{copy.bookRowAsk(book.askAfter)}</small>
+        <small dir="auto">{ask}</small>
       </span>
       <span className="now-handback-actions">
-        <button type="button" className="now-handback-log" aria-label={copy.logItAria} onClick={() => openCaptureSheet({ mode: "text", cue: copy.bookRowAsk(book.askAfter) })}>{copy.logIt}</button>
+        <button type="button" className="now-handback-log" aria-label={copy.logItAria} onClick={() => openCaptureSheet({ mode: "text", cue: ask })}>{copy.logIt}</button>
         <button type="button" className="now-handback-hide" aria-label={copy.hideRow} onClick={() => hide({ book: book.key })}><Icon name="close" size={18} /></button>
       </span>
     </div>}

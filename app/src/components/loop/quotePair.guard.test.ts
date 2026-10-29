@@ -27,6 +27,8 @@ const FILES = [
   ),
   // Parity 9 Oct: Today is NowView and the loop it runs.
   ...["NowView.tsx", "useNowLoop.ts", "NowLoopBlocks.tsx", "NowTodayLines.tsx", "NowRecommendation.tsx"].map((f) => path.join("companion", f)),
+  // Kids fix round 2: Today's hand-back rows and the Now copy they read (the HE ask-after shipped „…”); the kid-world note that quotes.
+  ...["NowKidHandback.tsx", "nowViewCopy.ts", "NowDayPanels.tsx"].map((f) => path.join("companion", f)),
   path.join("tabs", "MilestonesTab.tsx"),
 ];
 const LATIN_QUOTES = /[\u201C\u201D\u201E]/;

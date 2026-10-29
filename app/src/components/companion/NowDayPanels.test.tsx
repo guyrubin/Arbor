@@ -22,6 +22,7 @@ vi.mock("../../context/LanguageContext", async () => {
 });
 vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: (_id: string, name: string) => ({ items: name === "practiceEvents" ? state.events : [], loaded: true }) }));
 import { NowKidWorld } from "./NowDayPanels";
+import { translate as quote } from "../../lib/i18n";
 import { NOW_COPY } from "./nowViewCopy";
 import { KID_FEELING_WORDS, portraitEvidenceLines } from "./portraitEvidence";
 
@@ -61,7 +62,8 @@ describe("NowKidWorld (v3 FEAT-04)", () => {
   it("the note names the child and the portrait's 'Activity record' label, which the same item carries in the portrait", () => {
     const html = render({ practiceEvents: [MOOD] });
     expect(html).toContain('data-testid="now-kid-world-note"');
-    expect(html).toContain(NOW_COPY.en.worldNote("Noa", "Activity record"));
+    // the label is quoted through the house pair (elev.loop.ms.quoted)
+    expect(html).toContain(NOW_COPY.en.worldNote("Noa", quote("en", "elev.loop.ms.quoted", { text: "Activity record" })));
     const [item] = toObservations({ practiceEvents: [MOOD] }, child);
     expect(item.source).toBe("kid_practice");
     expect(portraitEvidenceLines(item, { practiceEvents: [MOOD] }, false)).toContainEqual({ label: "Observation", text: "Happy" });
@@ -116,11 +118,11 @@ describe("NowKidWorld (v3 FEAT-04)", () => {
     const html = render({ practiceEvents: [MOOD], mimicSessions: [MIMIC], adventureResults: [ADVENTURE], missionRecords: [MISSION] }, "נועה");
     expect(html).toContain(NOW_COPY.he.worldTitle("נועה"));
     expect(html).toContain(NOW_COPY.he.worldNoteKept("נועה"));
-    expect(subs(html)).toEqual(["„שמחה”", "בלשי רגשות", "קולות של חיות", "היגיון"]);
+    expect(subs(html)).toEqual(["״שמחה״", "בלשי רגשות", "קולות של חיות", "היגיון"]); // the house pair ״…״ (it shipped „…”)
     expect(html).toContain(timeOf(ADVENTURE.timestamp, true));
     expect(visible(html)).not.toMatch(/[A-Za-z]/);
     const moodOnly = render({ practiceEvents: [MOOD] }, "נועה");
-    expect(moodOnly).toContain(NOW_COPY.he.worldNote("נועה", "תיעוד פעילות"));
+    expect(moodOnly).toContain(NOW_COPY.he.worldNote("נועה", quote("he", "elev.loop.ms.quoted", { text: "תיעוד פעילות" })));
     expect(visible(moodOnly)).not.toMatch(/[A-Za-z]/);
   });
 
