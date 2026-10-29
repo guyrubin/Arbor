@@ -422,8 +422,10 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       homePrograms: programRows.items,
       // B-NEXT-01: the parent's hearing answer, only while the pilot flag is on
       hearing: hearingQuestionOn() ? hearingCheckOf(childProfile) : null,
+      // B-CAREPRO-39: the logged words, counted per language by the SLP intake schema (dark until signed)
+      langObs: langObsCol.items.map((o) => ({ phrase: o.phrase ?? "", language: o.language, at: o.timestamp })),
     }) : null),
-    [intake, childProfile, milestones, behaviorLogs, actionLoop, uiLang, keepsakesCol.items, intakeProgram, familyGoalsCol.items, programRows.items]
+    [intake, childProfile, milestones, behaviorLogs, actionLoop, uiLang, keepsakesCol.items, intakeProgram, familyGoalsCol.items, programRows.items, langObsCol.items]
   );
   const packet = useMemo(() => noticePacket ? presetPacket(audience, { ...noticePacket,
     sections: [...fullPacket.sections.filter(section => section.id === "reason"), ...noticePacket.sections],

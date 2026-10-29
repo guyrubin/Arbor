@@ -67,3 +67,67 @@ export const SPLIT_CLINICIAN_PRESETS: Record<SplitClinicianAudience, SplitClinic
 export function isSplitClinicianAudience(v: unknown): v is SplitClinicianAudience {
   return typeof v === "string" && (SPLIT_CLINICIAN_AUDIENCES as readonly string[]).includes(v);
 }
+
+/* ── B-CAREPRO-39 — the speech-therapist intake schema (DARK until signed) ───
+ *
+ * The questions a speech-language therapist asks at intake, answered in the
+ * SLP packet from what the family already recorded, or "Not recorded yet".
+ * Nothing is scored, compared or graded: an answer is the parent's own
+ * milestone answer (dated), a COUNT of the words they logged per language,
+ * or the parent's hearing answer (B-NEXT-01). No question carries an age, a
+ * number or a cut-off; no answer is turned into a verdict (MDR line).
+ *
+ * DARK: the schema ships unsigned. consult/packet buildIntakePacket renders
+ * the Intake section ONLY for a schema whose `signedBy` and `signedOn` are
+ * both set — the clinical reviewer's sign-off (GA B-GA-01, D3). Until then no
+ * parent-facing surface shows it. Signing = filling those two fields in this
+ * file with the reviewer's sign-off note committed beside it.
+ */
+export type SlpIntakeSource =
+  /** The parent's own answers to these catalogue milestones (lib/milestoneData ids). */
+  | { kind: "milestones"; ids: readonly string[] }
+  /** The words and phrases the parent logged (Language Lab), counted by language. */
+  | { kind: "langObs" }
+  /** The parent's hearing answer (lib/hearingCheck, B-NEXT-01). */
+  | { kind: "hearing" }
+  /** Nothing in the record answers it yet: always "Not recorded yet". */
+  | { kind: "none" };
+
+export interface SlpIntakeQuestion {
+  id: string;
+  /** i18n key (EN + HE, lib/i18nElevation/words.ts), `{name}` = the child's first name. */
+  key: string;
+  source: SlpIntakeSource;
+}
+
+export interface SlpIntakeSchema {
+  version: string;
+  /** The clinical reviewer's name — null while unsigned (the section stays dark). */
+  signedBy: string | null;
+  /** ISO date of the sign-off — null while unsigned. */
+  signedOn: string | null;
+  questions: readonly SlpIntakeQuestion[];
+}
+
+const slpQ = (id: string, source: SlpIntakeSource): SlpIntakeQuestion => ({ id, key: `elev.words.consult.slp.q.${id}`, source });
+
+export const SLP_INTAKE_SCHEMA: SlpIntakeSchema = {
+  version: "0.1.0-draft",
+  signedBy: null,
+  signedOn: null,
+  questions: [
+    slpQ("firstWords", { kind: "milestones", ids: ["cdc-12m-3", "cdc-15m-3"] }),
+    slpQ("wordsNow", { kind: "langObs" }),
+    slpQ("twoWords", { kind: "milestones", ids: ["cdc-24m-3"] }),
+    slpQ("understands", { kind: "milestones", ids: ["cdc-12m-4", "cdc-15m-9", "cdc-18m-5"] }),
+    slpQ("understood", { kind: "milestones", ids: ["asha-comm-24m", "cdc-36m-3", "asha-comm-48m"] }),
+    slpQ("hearing", { kind: "hearing" }),
+    slpQ("feeding", { kind: "milestones", ids: ["asha-feed-9m", "asha-feed-12m", "asha-feed-24m"] }),
+    slpQ("family", { kind: "none" }),
+    slpQ("lostWords", { kind: "none" }),
+  ],
+};
+
+/** Lit only by the reviewer's signature (both fields). */
+export const slpIntakeSigned = (schema: Pick<SlpIntakeSchema, "signedBy" | "signedOn"> = SLP_INTAKE_SCHEMA): boolean =>
+  !!schema.signedBy?.trim() && !!schema.signedOn && Number.isFinite(Date.parse(schema.signedOn));

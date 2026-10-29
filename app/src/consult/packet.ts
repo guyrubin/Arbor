@@ -27,7 +27,7 @@ import { milestoneAgeLine } from "../lib/milestoneAgeLine";
 import { resolveHebrewSlash } from "../lib/hebrewSlashGender";
 import type { BehaviorLog, Milestone } from "../types";
 import type { ActionLoopEntry } from "../actionLoop/model";
-import { SPLIT_CLINICIAN_PRESETS } from "../content/consultPresets";
+import { SLP_INTAKE_SCHEMA, SPLIT_CLINICIAN_PRESETS, slpIntakeSigned, type SlpIntakeSchema } from "../content/consultPresets";
 import { programPacketLine, type ProgramPageModel } from "../lib/programPage";
 import { activeGoals, goalForPacket, goalParentLine, type FamilyGoal } from "../lib/goals";
 import { activeHomeEnrolmentFor, activeHomeEnrolments, homeAdherence, homeProgramGoals, homeProgramProfession, type HomeProfession } from "../content/programs/homeProgram";
@@ -1750,6 +1750,13 @@ export interface IntakePacketInput {
    *  while its pilot flag is on. Printed first in the speech therapist's
    *  packet, as the parent's own dated answer; never a verdict. */
   hearing?: HearingCheck | null;
+  /** B-CAREPRO-39: the words and phrases the parent logged (Language Lab) —
+   *  read ONLY by the signed SLP intake schema, as counts per language. */
+  langObs?: readonly PacketInputLangObs[];
+  /** B-CAREPRO-39: the intake schema to answer (default: the shipped one,
+   *  content/consultPresets SLP_INTAKE_SCHEMA). An UNSIGNED schema renders
+   *  nothing — the section is dark until the reviewer signs. */
+  slpIntakeSchema?: SlpIntakeSchema;
 }
 
 const INTAKE_MOMENTS_CAP = 8;
@@ -1845,6 +1852,63 @@ export function sharedHomeProgramItems(homePrograms: readonly unknown[], familyG
   });
 }
 
+/** B-CAREPRO-39 — one line per schema question: "{question} — {answer}".
+ *  Answers come ONLY from the record: the parent's own milestone answers
+ *  (dated, in their words: yes / not yet / not sure), a COUNT of logged words
+ *  per language, the parent's hearing answer — or "Not recorded yet". No
+ *  score, no threshold, no comparison: nothing here grades the child. */
+export function slpIntakePacketItems(schema: SlpIntakeSchema, input: IntakePacketInput): PacketItem[] {
+  const lang: UiLang = input.lang ?? "en";
+  const t = (k: string, v?: Record<string, string | number>) => translate(lang, k, v);
+  const name = (input.child.name || "").trim().split(/\s+/)[0] || t("learn.yourChild");
+  const gender = input.child.gender ?? undefined;
+  const byId = new Map(input.milestones.map((m) => [m.id, m]));
+  const notRecorded = t("elev.words.consult.slp.a.notRecorded");
+  const answer = (q: SlpIntakeSchema["questions"][number]): string => {
+    const src = q.source;
+    if (src.kind === "milestones") {
+      const parts = src.ids.flatMap((id) => {
+        const m = byId.get(id);
+        if (!m) return [];
+        const status = m.observationStatus ?? (m.checked ? "yes" : undefined);
+        if (!status) return [];
+        const title = milestoneText(m, "title", t, { gender });
+        const date = m.observationUpdatedAt ? intakeDay(m.observationUpdatedAt, lang) : "";
+        if (status === "yes") return [date ? t("elev.words.consult.slp.a.yes", { title, date }) : t("elev.words.consult.slp.a.yesUndated", { title })];
+        if (status === "not_yet") return [date ? t("elev.words.consult.slp.a.notYet", { title, date }) : t("elev.words.consult.slp.a.notYetUndated", { title })];
+        return [t("elev.words.consult.slp.a.notSure", { title })];
+      });
+      return parts.length ? parts.join(LIST_SEPARATOR[lang].semicolon) : notRecorded;
+    }
+    if (src.kind === "langObs") {
+      const counts = new Map<string, number>();
+      for (const o of input.langObs ?? []) {
+        if (!o.phrase?.trim()) continue;
+        const key = (o.language ?? "").trim();
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+      if (!counts.size) return notRecorded;
+      const list = [...counts.entries()].map(([language, n]) => language
+        ? t("elev.words.consult.slp.a.wordsLanguage", { language: languageName(language, t), n })
+        : t("elev.words.consult.slp.a.wordsNoLanguage", { n }));
+      return t("elev.words.consult.slp.a.words", { list: list.join(LIST_SEPARATOR[lang].semicolon) });
+    }
+    if (src.kind === "hearing") {
+      const h = input.hearing;
+      if (!h) return notRecorded;
+      const date = intakeDay(h.answeredAt, lang);
+      return h.answer === "notSure"
+        ? t("elev.hearing.packet.notSure", { date })
+        : t("elev.hearing.packet.line", { answer: t(hearingAnswerKey(h.answer)), date });
+    }
+    return notRecorded;
+  };
+  return schema.questions.map((q) => ({
+    id: `intake-slp-${q.id}`,
+    text: t("elev.words.consult.slp.a.line", { question: t(q.key, { name }), answer: answer(q) }),
+  }));
+}
+
 export function buildIntakePacket(profession: IntakeProfession, input: IntakePacketInput): ConsultPacket {
   const lang: UiLang = input.lang ?? "en";
   const t = (k: string, v?: Record<string, string | number>) => translate(lang, k, v);
@@ -1871,6 +1935,14 @@ export function buildIntakePacket(profession: IntakeProfession, input: IntakePac
       ? t("elev.hearing.packet.notSure", { date: day })
       : t("elev.hearing.packet.line", { answer: t(hearingAnswerKey(input.hearing.answer)), date: day });
     section("intake-hearing", "elev.hearing.packet.title", [{ id: "intake-hearing-last-checked", text }]);
+  }
+
+  // · Intake — B-CAREPRO-39: the speech therapist's intake questions, each
+  //   answered from the record or "Not recorded yet". DARK: only a SIGNED
+  //   schema renders (content/consultPresets slpIntakeSigned).
+  if (profession === "slp") {
+    const schema = input.slpIntakeSchema ?? SLP_INTAKE_SCHEMA;
+    if (slpIntakeSigned(schema)) section("intake-slp-schema", "elev.words.consult.slp.intake.title", slpIntakePacketItems(schema, input), "elev.words.consult.slp.intake.note");
   }
 
   // · Seen — the parent's "yes", dated, oldest first
