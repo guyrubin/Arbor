@@ -3626,7 +3626,7 @@ RULES:
         promptVersion: PROMPT_VERSIONS.generate_plan.version,
         schema: {
           type: Type.OBJECT,
-          // B-ASKJB-35 (generate_plan 1.3.0): no successIndicators asked for.
+          // B-ASKJB-35 (generate_plan 1.4.0): no successIndicators asked for.
           required: ["title", "issue", "phases", "scripts"],
           properties: {
             title: { type: Type.STRING },
