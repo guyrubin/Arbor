@@ -240,14 +240,16 @@ const REPORTER_HE = String.raw`(?:ה|ו)?(?:אמא|אבא|הורה|הורים|ג
 const REPORTING_VERB_HE = String.raw`(?:סיפר|סיפרה|סיפרו|מספר|מספרת|מספרים|מספרות|אמר|אמרה|אמרו|ציין|ציינה|ציינו|מציין|מציינת|דיווח|דיווחה|דיווחו|מדווח|מדווחת|מדווחים|ראה|ראתה|ראו|הבחין|הבחינה|הבחינו|כתב|כתבה|כתבו|קבע|קבעה)`;
 const GOVERNED_HE = new RegExp(String.raw`(?<!\p{L})${REPORTER_HE}\s+${REPORTING_VERB_HE}(?:\s+(?!ו)\p{L}+){0,3}?(?:\s+(?:ש|כי)?)?\s*$|(?<!\p{L})${REPORTER_HE}\s+${REPORTING_VERB_HE}\s+(?:ש|כי\s+)?(?!ו)\p{L}*\s*$`, "u");
 const TRAILING_HE = new RegExp(String.raw`,?\s*(?:לדבר(?:י|יה|יו)|לפי|כפי\s+ש(?:סיפר|סיפרה|אמר|אמרה|ציין|ציינה))(?:\s+${REPORTER_HE})?[\s.!?]*$`, "u");
-/** A condition AND a referral action together: the line is a safety message. */
+/** A condition AND a referral action together: the line is a safety message.
+ *  (The referral matchers are exported for the round-11 wrapper, lib/handoffFloorWrapper.) */
 const CONDITION_EN = /\b(?:if|unless|in\s+case)\b/i;
-const REFERRAL_EN = /\b(?:call|calls|calling|contact|phone|seek\s+(?:help|care|advice|support)|emergency|ambulance|112|911|101|988)\b|\b(?:talk|speak|discuss|consult|tell|refer)\b(?:\s+\w+){0,4}?\s+(?:pediatrician|paediatrician|doctor|GP|professional|clinician|nurse|therapist|specialist|parents?|family)s?\b/i;
+export const REFERRAL_EN = /\b(?:call|calls|calling|contact|phone|seek\s+(?:help|care|advice|support)|emergency|ambulance|112|911|101|988)\b|\b(?:talk|speak|discuss|consult|tell|refer)\b(?:\s+\w+){0,4}?\s+(?:pediatrician|paediatrician|doctor|GP|professional|clinician|nurse|therapist|specialist|parents?|family)s?\b/i;
 const CONDITION_HE = /(?<!\p{L})(?:ו)?(?:אם|במידה|במקרה)(?!\p{L})/u;
-const REFERRAL_HE = /(?<!\p{L})(?:ל|ו)?(?:התקשר\p{L}*|להתקשר|פנו|לפנות|פנה|פני|חירום|112|101)(?!\p{L})|(?<!\p{L})(?:לדבר|לשוחח|להתייעץ|להיוועץ|דברו|שוחחו|התייעצו|ליידע|יידעו)(?:\s+\S+){0,3}?\s+(?:עם\s+|את\s+)?(?:ה)?(?:רופא\p{L}*|איש\s+מקצוע|אשת\s+מקצוע|אנשי\s+מקצוע|מטפל\p{L}*|הורים|משפחה)/u;
+export const REFERRAL_HE = /(?<!\p{L})(?:ל|ו)?(?:התקשר\p{L}*|להתקשר|פנו|לפנות|פנה|פני|חירום|112|101)(?!\p{L})|(?<!\p{L})(?:לדבר|לשוחח|להתייעץ|להיוועץ|דברו|שוחחו|התייעצו|ליידע|יידעו)(?:\s+\S+){0,3}?\s+(?:עם\s+|את\s+)?(?:ה)?(?:רופא\p{L}*|איש\s+מקצוע|אשת\s+מקצוע|אנשי\s+מקצוע|מטפל\p{L}*|הורים|משפחה)/u;
 
-type FindingMatch = { phrase: string; index: number };
-const findingsIn = (text: string): FindingMatch[] => {
+export type FindingMatch = { phrase: string; index: number };
+/** Every finding phrase in the text with its offset (exported for the round-11 wrapper, lib/handoffFloorWrapper). */
+export const findingsIn = (text: string): FindingMatch[] => {
   const out: FindingMatch[] = [];
   for (const re of [...HANDOFF_FINDING_PATTERNS_EN, HANDOFF_FINDING_HE, UNATTRIBUTED_FINDING_HE]) {
     re.lastIndex = 0;
@@ -285,9 +287,14 @@ export function statesUnreportedFinding(clause: string, opts: HandoffFloorOption
   });
 }
 
+/** The floor's clause unit: a sentence or a ";"-clause with its trailing
+ *  punctuation and whitespace. Exported so the round-11 wrapper
+ *  (lib/handoffFloorWrapper) reads main's verdict clause by clause. */
+export const handoffClauses = (text: string): string[] => text.match(/[^.!?;。\n]+[.!?;。]*\s*/g) ?? [text];
+
 /** Drop every clause that states an unreported finding; an untouched note is returned byte-identical. */
 export function withoutHandoffFindings(text: string, opts: HandoffFloorOptions = {}): string {
-  const clauses = text.match(/[^.!?;。\n]+[.!?;。]*\s*/g) ?? [text];
+  const clauses = handoffClauses(text);
   if (!clauses.some((clause) => statesUnreportedFinding(clause, opts))) return text;
   return clauses.filter((clause) => !statesUnreportedFinding(clause, opts)).join("").trim();
 }

@@ -270,3 +270,54 @@ describe("B-ASKJB-44 · /api/generate-handoff invented-finding floor", () => {
     expect(await res.json()).toEqual(CLEAN_DRAFT);
   });
 });
+
+/* B-ASKJB-44 round 11 — the School Brief runs the monotonic wrapper over the
+   floor (lib/handoffFloorWrapper): the live wave-1 regression was an
+   escalation inside a condition clause dropped from the brief, the teacher's
+   only "call the family" line. */
+describe("B-ASKJB-44 round 11 · /api/generate-handoff keeps every escalation line and drops only reassurance the parent never logged", () => {
+  const postBrief = async (logs: Record<string, unknown>[], language = "en") => {
+    const res = await fetch(`${baseUrl}/api/generate-handoff`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ childProfile: { name: "Mia", age: 4 }, logs, milestones: [], language }),
+    });
+    return { status: res.status, json: (await res.json()) as Record<string, any> };
+  };
+  const day = () => new Date().toISOString().slice(0, 10);
+  it("an escalation strategy inside a condition clause reaches the teacher (EN + HE); main dropped it", async () => {
+    for (const [line, language, trigger] of [
+      ["When he shows no signs of calming after 20 minutes, call the family.", "en", "He bit a friend at preschool when they fought over a toy"],
+      ["If there are no signs of improvement in two weeks, see your pediatrician.", "en", "Bedtime takes an hour every night"],
+      ["במידה ואין סימנים לשיפור תוך שבועיים, כדאי להתייעץ עם פסיכולוג גן.", "he", "הוא נשך חבר בגן כשרבו על צעצוע"],
+      ["כשאין סימנים של רגיעה אחרי 20 דקות, יש להתקשר מיד להורים.", "he", "הוא נשך חבר בגן כשרבו על צעצוע"],
+    ]) {
+      draft = { ...CLEAN_DRAFT, suggestedTeacherStrategies: ["Give a two-minute warning", line] };
+      const { status, json } = await postBrief([{ behaviorType: "Moment", trigger, response: "", day: day() }], language);
+      expect(status).toBe(200);
+      expect(json.suggestedTeacherStrategies).toEqual(["Give a two-minute warning", line]);
+    }
+    draft = CLEAN_DRAFT;
+  });
+  it("an escalation line keeps its command and condition; only the finding clause goes", async () => {
+    // round 15: a restored command needs the condition that governs it ("When he is upset, …")
+    draft = { ...CLEAN_DRAFT, classroomChallenges: ["When he is upset, talk with Dr. Levi, who found no signs of delay when she assessed him."],
+      suggestedTeacherStrategies: ["Call the family if he bites, but there are no signs of a speech delay at home."] };
+    const { status, json } = await postBrief([{ behaviorType: "Moment", trigger: "He bit a friend at preschool", response: "", day: day() }]);
+    expect(status).toBe(200);
+    expect(json.classroomChallenges).toEqual(["When he is upset, talk with Dr. Levi."]);
+    expect(json.suggestedTeacherStrategies).toEqual(["Call the family if he bites."]);
+    draft = CLEAN_DRAFT;
+  });
+  it("a reassurance the parent never logged goes even behind an attribution; one the parent logged stays (EN + HE)", async () => {
+    draft = { ...CLEAN_DRAFT,
+      overview: "Mia does best with a warning. There is no evidence of attention difficulties, according to the family.",
+      keyStrengths: ["Curious", "אין עדות לקשיי קשב, לדברי ההורים.", "No signs of anxiety at drop-off, according to the family."] };
+    const { status, json } = await postBrief([{ behaviorType: "Moment", trigger: "No signs of anxiety at drop-off since the picture chart", response: "", day: day() }]);
+    expect(status).toBe(200);
+    expect(json.overview).toBe("Mia does best with a warning.");
+    expect(json.keyStrengths).toEqual(["Curious", "No signs of anxiety at drop-off, according to the family."]);
+    expect(json.crisisEscalationTrigger).toBe(CLEAN_DRAFT.crisisEscalationTrigger);
+    draft = CLEAN_DRAFT;
+  });
+});

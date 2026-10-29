@@ -23,7 +23,7 @@ import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCoun
 // B-ASKJB-44: no invented finding reaches a handoff note or the School Brief
 // (the matching prompt rules are parked on claude/askjb44-prompt-bump-2026-10-28).
 import { scrubHandoffNotes } from "../contracts/coach.js";
-import { scrubHandoffBriefFindings } from "../lib/clinicalScan.js";
+import { scrubHandoffBrief } from "../lib/handoffFloorWrapper.js";
 // Masterplan 1.3 — server-defensive sanitizers for the two OPTIONAL /chat body
 // fields (recentTurns transcript + counts-only weeklyContext). Both degrade to
 // the byte-identical legacy prompt on any malformed/absent input.
@@ -4154,7 +4154,8 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       // screen saw the model's own words, then the brief is sent.
       // The parent's own logged words (trigger, response) may carry a finding they reported.
       const parentText = logs.map((log) => [log.trigger, log.response].filter((v) => typeof v === "string").join(" ")).join("\n");
-      if (brief && typeof brief === "object") scrubHandoffBriefFindings(brf, { parentText });
+      // Round 11: main's floor plus the monotonic wrapper (an escalation line it dropped comes back).
+      if (brief && typeof brief === "object") scrubHandoffBrief(brf, { parentText });
       res.json(brief);
     } catch (error: any) {
       logger.error("Arbor Handoff Brief Error", error, { requestId: requestIdOf(req) });
