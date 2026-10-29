@@ -73,6 +73,53 @@ describe("B-VOICE-03 · a spoken rehearsal becomes numbered questions, in the pa
     expect(rehearsalQuestions("so um what worries me is that he bites at preschool")).toEqual(["what worries me is that he bites at preschool"]);
   });
 
+  // Critic r2 transcripts: a question after a worry merged into the worry's line.
+  it("critic r2 HE: a question after a worry gets its own line (האם, and a question word before a modal)", () => {
+    const said = "האם זה נורמלי שהוא עדיין מתעורר בלילה אנחנו מודאגים מהשינה שלו מה אפשר לנסות לפני השינה";
+    expect(rehearsalQuestions(said)).toEqual([
+      "האם זה נורמלי שהוא עדיין מתעורר בלילה?",
+      "אנחנו מודאגים מהשינה שלו",
+      "מה אפשר לנסות לפני השינה?",
+    ]);
+    expect(rehearsalQuestions("אני לא בטוחה שהוא שומע טוב האם כדאי לבדוק שמיעה")).toEqual([
+      "אני לא בטוחה שהוא שומע טוב",
+      "האם כדאי לבדוק שמיעה?",
+    ]);
+  });
+
+  it("critic r2 EN: an auxiliary before its subject opens a question inside a worry", () => {
+    expect(rehearsalQuestions("I'm not sure if he understands us when we talk to him should we test his hearing")).toEqual([
+      "I'm not sure if he understands us when we talk to him",
+      "should we test his hearing?",
+    ]);
+  });
+
+  it("critic r2 EN: a wh-word with its auxiliary opens a question inside a worry, a/the/my count as subjects", () => {
+    const said = "my biggest worry is his speech how many words should a three year old say is there something we can do at home";
+    expect(rehearsalQuestions(said)).toEqual([
+      "my biggest worry is his speech",
+      "how many words should a three year old say?",
+      "is there something we can do at home?",
+    ]);
+  });
+
+  it("critic r2: no connector dangles where the next line was cut off", () => {
+    expect(rehearsalQuestions("when should we start toilet training and I'm worried he is not ready")).toEqual([
+      "when should we start toilet training?",
+      "I'm worried he is not ready",
+    ]);
+    expect(rehearsalQuestions("מתי כדאי להתחיל גמילה אז אני דואגת שהוא עוד לא מוכן")).toEqual([
+      "מתי כדאי להתחיל גמילה?",
+      "אני דואגת שהוא עוד לא מוכן",
+    ]);
+  });
+
+  it("critic r2: what stays one line — the worry's own copula, a clause after a question word, מה לעשות", () => {
+    expect(rehearsalQuestions("my biggest worry right now is it takes him so long to calm down")).toEqual(["my biggest worry right now is it takes him so long to calm down"]);
+    expect(rehearsalQuestions("I'm worried he doesn't know what to do with other kids")).toEqual(["I'm worried he doesn't know what to do with other kids"]);
+    expect(rehearsalQuestions("אנחנו מודאגים שהוא לא יודע מה לעשות כשהוא כועס")).toEqual(["אנחנו מודאגים שהוא לא יודע מה לעשות כשהוא כועס"]);
+  });
+
   it("numbers them for the review", () => {
     expect(numberedQuestions(["What next?", "How long?"])).toEqual(["1. What next?", "2. How long?"]);
   });

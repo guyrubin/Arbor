@@ -26,7 +26,7 @@ const MIN_WORDS_BEFORE_CUT = 3;
 const EN_OPENERS = ["what", "how", "why", "when", "where", "who", "which", "should", "can", "could", "would", "will", "is", "are", "does", "do", "did", "may", "might"];
 const HE_OPENERS = ["מה", "איך", "למה", "מדוע", "מתי", "איפה", "מי", "האם", "כמה", "אפשר", "כדאי", "צריך", "צריכה", "צריכים"];
 /** Where a voiced worry STARTS (the parent speaking about themselves). */
-const WORRY_START = /^(?:i(?:[’']?m| am) (?:a bit |really |so |very )?(?:worried|concerned|not sure|scared)|i worry|we(?:[’']re| are) (?:a bit |really |so |very )?(?:worried|concerned|not sure)|we worry|it worries (?:me|us)|what worries (?:me|us)|my (?:big |biggest )?(?:worry|concern) is|ו?אני (?:קצת |מאוד |כל כך )?(?:דואג|דואגת|מודאג|מודאגת|חושש|חוששת|לא בטוח|לא בטוחה)|ו?אנחנו (?:דואגים|מודאגים|חוששים|לא בטוחים)|מדאיג אותי|מדאיג אותנו|מה שמדאיג אותי)/i;
+const WORRY_START = /^(?:i(?:[’']?m| am) (?:a bit |really |so |very )?(?:worried|concerned|not sure|scared)|i worry|we(?:[’']re| are) (?:a bit |really |so |very )?(?:worried|concerned|not sure)|we worry|it worries (?:me|us)|what worries (?:me|us)|(?:my|our) (?:big |biggest |main )?(?:worry|concern)(?: right now| now)? is|ו?אני (?:קצת |מאוד |כל כך )?(?:דואג|דואגת|מודאג|מודאגת|חושש|חוששת|לא בטוח|לא בטוחה)|ו?אנחנו (?:דואגים|מודאגים|חוששים|לא בטוחים)|מדאיג אותי|מדאיג אותנו|מה שמדאיג אותי)/i;
 /** A worry the parent voiced (kept verbatim for them to edit into a question). */
 const WORRY = new RegExp(`${WORRY_START.source.slice(0, -1)}|worried (?:about|that))`, "i");
 
@@ -38,26 +38,39 @@ const isQuestion = (s: string) => /[?؟]\s*$/.test(s) || isOpener(firstWord(s));
 const EN_WH = ["what", "how", "why", "when", "where", "who", "which"];
 const HE_WH = ["מה", "איך", "למה", "מדוע", "מתי", "איפה", "מי", "האם", "כמה"];
 const EN_AUX = ["should", "can", "could", "would", "will", "is", "are", "was", "were", "does", "do", "did", "may", "might", "must", "has", "have"];
-/** An auxiliary opens a new question only before a subject ("…take is it normal…"). */
-const SUBJECTS = ["it", "he", "she", "they", "we", "there", "this", "that", "i", "you", "her", "his"];
+/** An auxiliary opens a new question only before a pronoun subject
+ *  ("…take is it normal…", "…understands us should we test…", "is there…"). */
+const PRONOUN_SUBJECTS = ["it", "he", "she", "they", "we", "there", "i", "you"];
+/** After a wh-word AND its auxiliary, a noun phrase is a subject too
+ *  ("how many words should a three year old say"). */
+const WH_SUBJECTS = [...PRONOUN_SUBJECTS, "this", "that", "a", "an", "the", "my", "our", "your", "his", "her", "their"];
+/** "my worry is it…" / "my biggest worry right now is it…": the worry's own
+ *  copula (its first is/was), never a question. */
+const WORRY_NOUNS = ["worry", "concern", "problem", "thing", "issue", "fear", "question"];
+const COPULAS = ["is", "are", "was", "were"];
+/** HE: a question word opens a new question before a modal ("מה אפשר לנסות");
+ *  "מה לעשות" inside a sentence stays where it is. */
+const HE_MODALS = ["אפשר", "כדאי", "צריך", "צריכה", "צריכים", "יכול", "יכולה", "יכולים", "נוכל"];
 const bareWord = (w: string) => w.toLowerCase().replace(/^[^\p{L}]+|[^\p{L}'’]+$/gu, "");
 
 /** EN: a wh-word opens a NEW question only when the question's own auxiliary
- *  follows it ("what should we", "how long does it", "how many words should
- *  he") — a wh-word followed by its subject is a clause of the sentence it is
- *  in ("…doesn't answer when we call his name"), never a question of its own. */
+ *  follows it, then a subject ("what should we", "how long does it", "how many
+ *  words should a three year old") — a wh-word followed by its pronoun subject
+ *  is a clause of the sentence it is in ("…doesn't answer when we call his
+ *  name"), never a question of its own. */
 function enWhOpensQuestion(words: readonly string[], i: number): boolean {
   if (!EN_WH.includes(bareWord(words[i]))) return false;
   for (let j = i + 1; j <= i + 3 && j < words.length; j++) {
     const w = bareWord(words[j]);
-    if (SUBJECTS.includes(w)) return false;
-    if (EN_AUX.includes(w)) return SUBJECTS.includes(bareWord(words[j + 1] ?? ""));
+    if (PRONOUN_SUBJECTS.includes(w)) return false;
+    if (EN_AUX.includes(w)) return WH_SUBJECTS.includes(bareWord(words[j + 1] ?? ""));
   }
   return false;
 }
 
 /** Cut a punctuation-free run-on (a spoken transcript) before each new
- *  question and before each voiced worry. */
+ *  question and before each voiced worry — a question after a worry gets its
+ *  own line too (critic r2). */
 function cutRunOn(chunk: string): string[] {
   const words = chunk.trim().split(/\s+/).filter(Boolean);
   const out: string[][] = [];
@@ -65,16 +78,26 @@ function cutRunOn(chunk: string): string[] {
   words.forEach((w, i) => {
     const bare = bareWord(w);
     const next = bareWord(words[i + 1] ?? "");
+    const prev = bareWord(words[i - 1] ?? "");
     const rest = words.slice(i).join(" ").toLowerCase();
-    const curIsQuestion = isOpener(firstWord(cur.join(" ")));
+    const curText = cur.join(" ");
+    const curIsQuestion = isOpener(firstWord(curText));
+    const curIsWorry = WORRY.test(withoutLeadingFiller(curText).toLowerCase());
     // A worry starts its own line, wherever it falls ("…usually take I'm worried that…").
     const worry = cur.length >= 1 && WORRY_START.test(rest);
+    // EN: a wh-word with its own auxiliary and subject, inside a question or a worry.
     const enWh = cur.length >= MIN_WORDS_BEFORE_CUT && enWhOpensQuestion(words, i);
-    // HE has no auxiliary to read: a question word cuts only inside a question
-    // (never inside a worry: "אני דואגת שהוא לא יודע מה לעשות").
+    // EN: an auxiliary before a pronoun subject, inside a question or a worry —
+    // never the worry's own copula ("my worry is it…").
+    const worryCopula = curIsWorry && COPULAS.includes(bare) && /^(?:my|our|the|what worries)\b/.test(curText.toLowerCase()) && !cur.some((x) => COPULAS.includes(bareWord(x)));
+    const aux = EN_AUX.includes(bare) && PRONOUN_SUBJECTS.includes(next) && cur.length >= MIN_WORDS_BEFORE_CUT + 1
+      && (curIsQuestion || curIsWorry) && !WORRY_NOUNS.includes(prev) && !worryCopula;
+    // HE has no auxiliary to read: any question word cuts inside a question;
+    // inside a worry (or any line) only "האם", or a question word before a
+    // modal ("מה אפשר", "מה כדאי") — "אני דואגת שהוא לא יודע מה לעשות" stays.
     const heWh = HE_WH.includes(bare) && cur.length >= MIN_WORDS_BEFORE_CUT && curIsQuestion;
-    const aux = EN_AUX.includes(bare) && SUBJECTS.includes(next) && cur.length >= MIN_WORDS_BEFORE_CUT + 1 && curIsQuestion;
-    if (worry || enWh || heWh || aux) {
+    const heOpens = cur.length >= 2 && (bare === "האם" || bare === "והאם" || (HE_WH.includes(bare) && HE_MODALS.includes(next)));
+    if (worry || enWh || aux || heWh || heOpens) {
       out.push(cur);
       cur = [];
     }
@@ -105,6 +128,15 @@ function withoutLeadingFiller(s: string): string {
   while (i < words.length - 1 && FILLERS.includes(bareWord(words[i]))) i++;
   return words.slice(i).join(" ");
 }
+/** A connector left dangling where the next line was cut off
+ *  ("when should we start toilet training and | I'm worried…"). */
+const TRAILING = ["and", "so", "but", "or", "also", "um", "uh", "then", "אז", "וגם", "גם", "אה"];
+function withoutTrailingFiller(s: string): string {
+  const words = s.split(/\s+/);
+  let n = words.length;
+  while (n > 1 && TRAILING.includes(bareWord(words[n - 1]))) n--;
+  return words.slice(0, n).join(" ");
+}
 
 /** The parent's spoken rehearsal → their questions (and voiced worries), in order, deduped, capped. */
 export function rehearsalQuestions(transcript: string): string[] {
@@ -119,7 +151,7 @@ export function rehearsalQuestions(transcript: string): string[] {
     // an unclosed run-on is cut.
     const pieces = /[.?!؟]\s*$/.test(raw) ? cutAtWorry(raw) : cutRunOn(raw);
     for (const piece of pieces) {
-      let s = withoutLeadingFiller(piece.trim().replace(/^[,;:\-–—\s]+/, "").replace(/[.\s]+$/, "").trim());
+      let s = withoutTrailingFiller(withoutLeadingFiller(piece.trim().replace(/^[,;:\-–—\s]+/, "").replace(/[.\s]+$/, "").trim()));
       if (!s) continue;
       // A worry is kept as the parent said it — never turned into a question
       // here, even when it opens with "what" ("what worries me is…").
