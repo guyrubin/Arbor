@@ -5,6 +5,11 @@
  * state) logged a console error or overflows its viewport horizontally. 429s are already
  * counted apart (`rateLimited`) by the sweep, so they never reach `consoleErrors`.
  *
+ * B-INF-11: a base cell also fails when its route never became ready (`readyTimedOut`), when
+ * the run asked for shots and the cell has none, and — when the sweep recorded the matrix it
+ * set out to render (`expected`) — when an expected cell is MISSING (the run died, hit its
+ * deadline or skipped it). A sweep.json without `expected`/`shots` (older runs) is judged as before.
+ *
  * Used by `rendered-sweep.mjs` (exit SWEEP_LAW_EXIT unless --report-only), by the release
  * runner (records `sweepLaw` instead of aborting) and by the Arbor capture workflow:
  *
@@ -18,6 +23,19 @@ export const SWEEP_LAW_EXIT = 3;
 
 const isBase = (cell) => (cell.state ?? 'base') === 'base';
 
+/** The base cells a sweep sets out to render: every route × every viewport (B-INF-11). */
+export function expectedBaseCells(routes, viewports) {
+  return routes.flatMap((route) => viewports.map((vp) => ({ route, viewport: `${vp.w}x${vp.h}`, lang: vp.lang })));
+}
+
+/** Expected base cells with no recorded base cell (route + viewport + lang). */
+export function missingBaseCells(doc) {
+  const expected = doc?.expected?.cells;
+  if (!Array.isArray(expected)) return [];
+  const present = new Set((doc.cells ?? []).filter(isBase).map((cell) => `${cell.route} ${cell.viewport} ${cell.lang}`));
+  return expected.filter((cell) => !present.has(`${cell.route} ${cell.viewport} ${cell.lang}`));
+}
+
 /** @param {{ cells?: any[] }} doc */
 export function sweepLawFailures(doc) {
   const failures = [];
@@ -25,11 +43,14 @@ export function sweepLawFailures(doc) {
     if (!isBase(cell) && cell.reached !== true) continue;
     const reasons = [];
     if (isBase(cell) && !cell.mounted) reasons.push('unmounted');
+    if (isBase(cell) && cell.readyTimedOut === true) reasons.push('unready');
+    if (isBase(cell) && doc.shots === true && !cell.shot) reasons.push('no-shot');
     if ((cell.consoleErrors ?? []).length > 0) reasons.push('console-error');
     if (cell.overflow && cell.overflow.scrollWidth > cell.overflow.clientWidth) reasons.push('overflow');
     const detail = reasons.includes('console-error') ? String(cell.consoleErrors[0]).replace(/\s+/g, ' ').slice(0, 240) : undefined;
     if (reasons.length) failures.push({ cell: `${cell.route} ${cell.viewport} ${cell.lang}${isBase(cell) ? '' : ` ${cell.state}`}`, reasons, ...(detail ? { detail } : {}) });
   }
+  for (const cell of missingBaseCells(doc)) failures.push({ cell: `${cell.route} ${cell.viewport} ${cell.lang}`, reasons: ['missing'] });
   return failures;
 }
 

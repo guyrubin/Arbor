@@ -7,9 +7,19 @@
  *   node scripts/rendered-sweep.mjs --out <dir> [--base http://localhost:4805] [--routes a,b]
  *        [--diff <prev sweep.json>] [--no-shots] [--no-api-cache] [--runs 1]  (npm run sweep -- …)
  *        [--seed demo|day0] [--states | --no-states]   (v2, below; --routes also takes "shell")
- *        [--matrix release|device] [--viewport <id>]   (device = the matrix of record, DEVICE_VIEWPORTS)
- *        [--report-only]   (AR-REL-1: exit 3 = SWEEP-LAW FAIL — an unmounted base cell, or any rendered
- *        cell with a console error or horizontal overflow; scripts/capture/sweep-law.mjs; --report-only keeps 0)
+ *        [--matrix release|device] [--viewport <id>[,<id>…]]   (device = the matrix of record, DEVICE_VIEWPORTS)
+ *        [--deadline <minutes>]   (B-INF-11: the run's bound; default = warm-up + 30 s per cell)
+ *        [--report-only]   (AR-REL-1: exit 3 = SWEEP-LAW FAIL — an unmounted, unready, shotless or MISSING
+ *        base cell, or any rendered cell with a console error or horizontal overflow;
+ *        scripts/capture/sweep-law.mjs; --report-only keeps 0)
+ *
+ * B-INF-11 bounds (scripts/capture/sweep-bound.mjs): the server must answer its own origin (a dev
+ * sandbox whose CORS_ORIGINS omits --base answers every module 500 and renders blank: exit 2 with
+ * the fix); the warm-up must reach ready (exit 2 with the cause, never 172 blank cells); every cell
+ * waits for the route, the network AND document.fonts before it is recorded, and for every open
+ * overlay to settle (a Modal opens at scale 0.95: measured on its first frame each 44 px control
+ * read 42 px); one cell never runs past CELL_BOUND_MS; the run stops at its deadline and the cells
+ * it never reached are recorded as missing (sweep.json `expected`, `deadlineExpired`).
  *
  * Routes = every `route:` in SURFACE_CONTRACTS (src/lib/surfaceContract.ts); the run aborts
  * (exit 1) if that set differs from ROUTE_IDS (src/lib/routes.ts). Each route is a FULL LOAD
@@ -80,8 +90,9 @@ import { networkInterfaces } from "node:os";
 import { assertLoopbackOnly, captureRevision } from "./capture/config.mjs";
 import { DEVICE_VIEWPORTS, RELEASE_VIEWPORTS, expectedSeedMarker, requiresConversationReadiness } from "./capture/release-config.mjs";
 import { classifyReleaseConsole, createRuntimeDiagnostics } from "./capture/runtime-diagnostics.mjs";
-import { SWEEP_LAW_EXIT, sweepLawFailures, sweepLawLines } from "./capture/sweep-law.mjs";
+import { SWEEP_LAW_EXIT, expectedBaseCells, sweepLawFailures, sweepLawLines } from "./capture/sweep-law.mjs";
 import { initializeSyntheticOnline } from "./capture/small-state.mjs";
+import { CELL_BOUND_MS, SETTLE_BUDGET_MS, WARMUP_BOUND_MS, raceBound, settleOverlayGeometry, sweepDeadlineMs } from "./capture/sweep-bound.mjs";
 import { captureFontContextOptions, installOfflineFonts, captureScreenshot } from "./capture/font-runtime.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -105,7 +116,7 @@ const SHELL = "shell";
 
 /* ── args ─────────────────────────────────────────────────────────────────── */
 function parseArgs(argv) {
-  const out = { base: "http://localhost:4805", shots: true, apiCache: true, runs: 1, routes: null, diff: null, out: null, seed: "demo", states: null, viewport: null, matrix: "release", reportOnly: false };
+  const out = { base: "http://localhost:4805", shots: true, apiCache: true, runs: 1, routes: null, diff: null, out: null, seed: "demo", states: null, viewport: null, matrix: "release", reportOnly: false, deadline: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => {
@@ -117,9 +128,13 @@ function parseArgs(argv) {
     else if (a === "--base") out.base = next().replace(/\/+$/, "");
     else if (a === "--routes") out.routes = next().split(",").map((s) => s.trim()).filter(Boolean);
     else if (a === "--viewport") {
-      const id = next();
-      out.viewport = DEVICE_VIEWPORTS.find((vp) => vp.id === id);
-      if (!out.viewport) fail("unknown release viewport");
+      // B-INF-11: a comma list cuts a run to named cells (e.g. wide-en,mobile-he).
+      out.viewport = next().split(",").map((part) => part.trim()).filter(Boolean).map((id) => DEVICE_VIEWPORTS.find((vp) => vp.id === id));
+      if (!out.viewport.length || out.viewport.some((vp) => !vp)) fail("unknown release viewport");
+    }
+    else if (a === "--deadline") {
+      out.deadline = Number(next());
+      if (!Number.isFinite(out.deadline) || out.deadline <= 0) fail("--deadline takes minutes > 0");
     }
     else if (a === "--matrix") {
       out.matrix = next();
@@ -137,7 +152,7 @@ function parseArgs(argv) {
     else if (a === "--no-states") out.states = false;
     else fail(`unknown argument ${a}`);
   }
-  out.viewports = out.viewport ? [out.viewport] : out.matrix === "device" ? DEVICE_VIEWPORTS : VIEWPORTS;
+  out.viewports = out.viewport ? out.viewport : out.matrix === "device" ? DEVICE_VIEWPORTS : VIEWPORTS;
   if (out.states === null) out.states = out.seed === "demo";
   if (!out.out) {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -229,9 +244,15 @@ async function waitForServer(base) {
   let last = "no response";
   while (Date.now() < deadline) {
     try {
-      const res = await fetch(`${base}/`, { signal: AbortSignal.timeout(5000) });
+      // B-INF-11: ask as the page will. A module script carries `Origin: <base>`; a sandbox
+      // whose CORS_ORIGINS omits it answers every module 500, so the app renders blank.
+      const res = await fetch(`${base}/`, { signal: AbortSignal.timeout(5000), headers: { Origin: base } });
       if (res.status === 200) return;
       last = `HTTP ${res.status}`;
+      const bare = await fetch(`${base}/`, { signal: AbortSignal.timeout(5000) }).then((r) => r.status, () => 0);
+      if (bare === 200) {
+        fail(`server ${base} refuses its own origin (HTTP ${res.status} with Origin: ${base}, 200 without): every module script will fail and every cell render blank. Start the sandbox with CORS_ORIGINS=${base}`, 2);
+      }
     } catch (err) {
       last = err?.cause?.code ?? err?.message ?? String(err);
     }
@@ -405,7 +426,13 @@ function collect({ lang, allowLatin }) {
   const modules = moduleEls.map((el) => el.getAttribute("data-module"));
   const demotedModules = moduleEls.filter((el) => el.hasAttribute("data-module-demoted")).map((el) => el.getAttribute("data-module"));
 
-  const pmEl = document.querySelector("[data-primary-move]");
+  // B-INF-11: the rendered stamp only — a hidden (display:none, 0×0) stamp is not the screen's
+  // move (Speech HE read a 0×0 stamp when the route rendered none).
+  const pmEl = [...document.querySelectorAll("[data-primary-move]")].find((el) => {
+    if (!visible(el)) return false;
+    const r = rectOf(el);
+    return r.width > 1 && r.height > 1;
+  }) ?? null;
   let primaryMove = null;
   if (pmEl) {
     const r = rectOf(pmEl);
@@ -483,6 +510,10 @@ function collect({ lang, allowLatin }) {
     if (el.closest('[aria-hidden="true"], [inert]')) continue;
     const r = el.getBoundingClientRect();
     if (r.width <= 1 || r.height <= 1) continue; // visually-hidden (sr-only) control
+    // B-INF-11: a clipped sr-only control (the skip link: 1 px + its 1 px border = 2×2) is not a
+    // tap target until focus unclips it — measured as one, it put a "sub-44" in every cell.
+    const clipCs = getComputedStyle(el);
+    if (/^inset\(50%\)$/.test(clipCs.clipPath) || /^rect\(0(px)?,? 0(px)?,? 0(px)?,? 0(px)?\)$/.test(clipCs.clip)) continue;
     if (r.top >= vh || r.bottom <= 0) continue;
     if (r.width >= 44 && r.height >= 44) continue;
     if (!visible(el)) continue;
@@ -576,6 +607,11 @@ let SEED = null; // { seed, body, info } — set once in main()
 
 /** A state whose precondition is absent (no pending fact, visit is past…): recorded, not retried. */
 class Unreached extends Error {}
+/** The first line of a state's thrown message, URL queries cut, at most 240 characters. */
+function stateMessage(err) {
+  const line = String(err?.message ?? "").split("\n").map((l) => l.trim()).find(Boolean) ?? "";
+  return line.replace(/(https?:\/\/[^\s?#]+)[?#][^\s]*/g, "$1").slice(0, 240);
+}
 const skip = (reason) => { throw new Unreached(reason); };
 
 function stateHelpers(page, vp, tr) {
@@ -1534,6 +1570,7 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
 
   const t0 = Date.now();
   let readyTimedOut = false;
+  let fontsReady = false;
   let retried = false;
   let navError = null;
   try {
@@ -1555,6 +1592,11 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
       await page.waitForTimeout(100);
     }
     readyTimedOut = !(present && inflight === 0 && Date.now() - lastNet >= QUIET_MS);
+    // B-INF-11: ready includes the text faces — a shot taken before them is not the screen.
+    fontsReady = await page
+      .evaluate((ms) => Promise.race([document.fonts.ready.then(() => document.fonts.status === "loaded"), new Promise((r) => setTimeout(() => r(false), ms))]), Math.max(1_000, deadline - Date.now()))
+      .catch(() => false);
+    if (!fontsReady) readyTimedOut = true;
   } catch (err) {
     navError = classifyReleaseConsole(err?.message);
     readyTimedOut = true;
@@ -1591,12 +1633,15 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
       while (Date.now() < settle && !(inflight === 0 && Date.now() - lastNet >= QUIET_MS)) await page.waitForTimeout(100);
       stateRec = { state: stateName, reached: true, stateMs: Date.now() - tState, ...(state.now ? { clock: state.now } : {}), ...(state.from ? { opened: `#/${state.from}` } : {}), ...(state.writes ? { writes: state.writes } : {}), ...(out?.via ? { via: out.via } : {}) };
     } catch (err) {
-      // Preserve only known diagnostic categories, never state exception text.
+      // B-INF-11: the category AND the thrown message (first line, bounded): an OTHER_ERROR with
+      // no words sent the release to a Playwright probe to learn why a state failed. The
+      // sweep's own messages name an authored target; page text in them is synthetic seed data.
       const reason = err instanceof Unreached ? "STATE_PRECONDITION_ABSENT" : classifyReleaseConsole(err?.message);
+      const message = stateMessage(err);
       await page.close();
       return {
         route, viewport: `${vp.w}x${vp.h}`, lang: vp.lang, ...seedRec,
-        state: state.name, reached: false, reason, retryable: !(err instanceof Unreached),
+        state: state.name, reached: false, reason, ...(message ? { message } : {}), retryable: !(err instanceof Unreached),
         consoleErrors: [...errors], runtimeDiagnostics: diagnostics.snapshot(), rateLimited, apiRequests: api.sort(), loadMs, shot: null,
       };
     }
@@ -1604,6 +1649,8 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
     stateRec = { state: "base" };
   }
 
+  // B-INF-11: an overlay opens through a 0.95-scale/opacity transition; measure it settled.
+  const geometry = await page.evaluate(settleOverlayGeometry, SETTLE_BUDGET_MS).catch(() => ({ settled: false }));
   let rec;
   try {
     rec = await page.evaluate(collect, { lang: vp.lang, allowLatin });
@@ -1663,6 +1710,8 @@ async function visit(context, base, route, vp, allowLatin, shotPath, run = null)
     apiRequests: api.sort(),
     loadMs,
     readyTimedOut,
+    fontsReady,
+    geometrySettled: geometry.settled === true,
     ...(retried ? { retried } : {}),
     ...(navError ? { navError } : {}),
     shot,
@@ -1735,14 +1784,33 @@ async function warmUp(browser, base) {
   await applySeed(context, SEED);
   await installOfflineFonts(context);
   const page = await context.newPage();
+  // B-INF-11: name why a warm-up never reaches ready instead of sweeping blank pages.
+  const refused = new Map();
+  page.on("response", (res) => {
+    try {
+      if (new URL(res.url()).origin === base && res.status() >= 400) refused.set(res.status(), (refused.get(res.status()) ?? 0) + 1);
+    } catch { /* non-URL */ }
+  });
+  let pageErrors = 0;
+  page.on("pageerror", () => { pageErrors++; });
   const t0 = Date.now();
+  let cause = null;
   try {
-    await page.goto(`${base}/?cb=${++cbCounter}#/overview`, { waitUntil: "domcontentloaded", timeout: 180_000 });
-    await page.waitForSelector(READY_SELECTOR, { timeout: 120_000 });
+    await page.goto(`${base}/?cb=${++cbCounter}#/overview`, { waitUntil: "domcontentloaded", timeout: WARMUP_BOUND_MS });
+    await page.waitForSelector(READY_SELECTOR, { timeout: Math.max(5_000, WARMUP_BOUND_MS - (Date.now() - t0)) });
   } catch (err) {
-    console.error(`sweep: warm-up did not reach ready (${String(err?.message ?? err).split("\n")[0]})`);
+    cause = err?.name === "TimeoutError" ? "READY_TIMEOUT" : classifyReleaseConsole(err?.message);
   }
   await context.close();
+  if (cause) {
+    const statuses = [...refused].map(([status, n]) => `${n}× HTTP ${status}`).join(", ");
+    fail(
+      `warm-up did not reach ready at ${base}/#/overview within ${Math.round((Date.now() - t0) / 1000)} s (${cause}` +
+        `${statuses ? `; same-origin answers: ${statuses}` : ""}${pageErrors ? `; ${pageErrors} page errors` : ""}). ` +
+        "Nothing was swept: every cell would be a blank page. A 500 on the app's own scripts is usually CORS_ORIGINS not listing --base.",
+      2,
+    );
+  }
   return Date.now() - t0;
 }
 
@@ -1799,10 +1867,17 @@ async function sweep(browser, opts, routes, outDir, withShots, allowLatin, tr) {
   mkdirSync(outDir, { recursive: true });
   if (withShots) mkdirSync(path.join(outDir, "shots"), { recursive: true });
   const startedAt = new Date().toISOString();
+  const t0 = Date.now();
   const sha = gitSha(); // the dev server serves the working tree; HEAD can move mid-run
   const cells = [];
   const apiCache = new Map(); // one per run: run 2 re-reads the server
   const pageRoutes = routes.filter((r) => r !== SHELL);
+  // B-INF-11: the matrix this run sets out to render, and the bound it must finish inside.
+  const expected = expectedBaseCells(pageRoutes, opts.viewports);
+  const stateTotal = opts.states ? opts.viewports.reduce((n, vp) => n + routes.reduce((m, r) => m + statesFor(r, vp).length, 0), 0) : 0;
+  const deadlineMs = sweepDeadlineMs({ baseCells: expected.length, stateCells: stateTotal, minutes: opts.deadline });
+  let deadlineExpired = false;
+  const overDeadline = () => (deadlineExpired ||= Date.now() - t0 > deadlineMs);
   const checkpoint = (completed = false) => {
     const isBase = (c) => (c.state ?? "base") === "base";
     const reached = cells.filter((c) => isBase(c) || c.reached);
@@ -1817,6 +1892,10 @@ async function sweep(browser, opts, routes, outDir, withShots, allowLatin, tr) {
       seed: SEED.seed,
       ...(SEED.info ? { seedBundle: SEED.info } : {}),
       states: opts.states,
+      shots: withShots,
+      expected: { routes: pageRoutes, viewports: opts.viewports.map((vp) => vp.id), cells: expected },
+      deadlineMs,
+      ...(deadlineExpired ? { deadlineExpired: true } : {}),
       startedAt,
       completed,
       ...(completed ? { finishedAt: new Date().toISOString() } : {}),
@@ -1844,17 +1923,31 @@ async function sweep(browser, opts, routes, outDir, withShots, allowLatin, tr) {
     return doc;
   };
   checkpoint();
-  for (const vp of opts.viewports) {
-    const context = await newSweepContext(browser, vp, opts, apiCache);
+  // B-INF-11: one cell never holds the run. A cell past CELL_BOUND_MS is recorded unmounted
+  // and unready, its context is closed (that ends the stuck page) and the next cell gets a fresh one.
+  const boundCell = (route, vp, state) => ({
+    route, viewport: `${vp.w}x${vp.h}`, lang: vp.lang, ...(state ? { state: state.name, reached: false, reason: "CELL_BOUND_EXCEEDED", retryable: true } : { state: "base" }),
+    mounted: false, readyTimedOut: true, cellBoundExceeded: true, consoleErrors: [], apiRequests: [], shot: null,
+  });
+  outer: for (const vp of opts.viewports) {
+    let context = await newSweepContext(browser, vp, opts, apiCache);
+    const boundedVisit = async (route, shotPath) => {
+      const result = await raceBound(visit(context, opts.base, route, vp, allowLatin, shotPath), CELL_BOUND_MS);
+      if (!result.timedOut) return result.value;
+      await context.close().catch(() => {});
+      context = await newSweepContext(browser, vp, opts, apiCache);
+      return boundCell(route, vp, null);
+    };
     for (const route of routes) {
       if (route !== SHELL) {
+        if (overDeadline()) break outer;
         const shotPath = withShots ? path.join(outDir, "shots", `${route}.${vp.w}x${vp.h}.${vp.lang}.png`) : null;
-        let cell = await visit(context, opts.base, route, vp, allowLatin, shotPath);
-        if (!cell.mounted || cell.readyTimedOut) {
+        let cell = await boundedVisit(route, shotPath);
+        if ((!cell.mounted || cell.readyTimedOut) && !overDeadline()) {
           // One fresh retry: a dev server under a concurrent builder's edits (or a browser
           // short of memory) can drop one load; a route that is really broken fails twice.
           const first = { mounted: cell.mounted, loadMs: cell.loadMs, readyTimedOut: cell.readyTimedOut, consoleErrors: cell.consoleErrors };
-          cell = { ...(await visit(context, opts.base, route, vp, allowLatin, shotPath)), firstAttempt: first };
+          cell = { ...(await boundedVisit(route, shotPath)), firstAttempt: first };
         }
         cells.push(cell);
         checkpoint();
@@ -1862,14 +1955,21 @@ async function sweep(browser, opts, routes, outDir, withShots, allowLatin, tr) {
       }
       if (!opts.states) continue;
       for (const state of statesFor(route, vp)) {
+        if (overDeadline()) break outer;
         const shotFor = withShots ? (name) => path.join(outDir, "shots", `${route}.${vp.w}x${vp.h}.${vp.lang}.${name}.png`) : null;
-        cells.push(await stateCell(browser, opts, apiCache, route, vp, state, allowLatin, shotFor, tr));
+        const result = await raceBound(stateCell(browser, opts, apiCache, route, vp, state, allowLatin, shotFor, tr), CELL_BOUND_MS * 2);
+        cells.push(result.timedOut ? boundCell(route, vp, state) : result.value);
         checkpoint();
       }
     }
-    await context.close();
+    await context.close().catch(() => {});
   }
-  const doc = checkpoint(true);
+  if (deadlineExpired) {
+    const missing = expected.length - cells.filter((c) => (c.state ?? "base") === "base").length;
+    console.error(`sweep: deadline ${Math.round(deadlineMs / 60_000)} min reached; ${missing} base cells never rendered (recorded as missing)`);
+  }
+  // A run that hit its deadline did not complete: the law fails its missing cells.
+  const doc = checkpoint(!deadlineExpired);
   return doc;
 }
 
