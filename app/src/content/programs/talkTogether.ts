@@ -72,7 +72,7 @@ export const TALK_TOGETHER: Program = {
   weeks: [
     {
       n: 1,
-      lesson: "late-talker-ranges",
+      lesson: "gestures-before-words",
       skill: L(
         "Observe, wait, listen: notice what interests your child, then wait for their turn.",
         "להתבונן, לחכות, להקשיב: לשים לב למה שמעניין את הילד/ה, ולחכות לתור שלו/שלה.",
@@ -87,7 +87,7 @@ export const TALK_TOGETHER: Program = {
     },
     {
       n: 2,
-      lesson: "language-explosion",
+      lesson: "attention-spans",
       skill: L(
         "Follow the lead: play and talk about what your child chooses.",
         "ללכת אחרי הילד/ה: לשחק ולדבר על מה שהוא/היא בוחר/ת.",
@@ -117,7 +117,7 @@ export const TALK_TOGETHER: Program = {
     },
     {
       n: 4,
-      lesson: "bilingual-mixing",
+      lesson: "questions-that-open",
       skill: L(
         "Say it back: repeat their words clearly, as a reply, never a correction.",
         "להחזיר את המילה: לחזור על המילים שלו/שלה בבהירות, כתשובה ולא כתיקון.",
@@ -132,7 +132,7 @@ export const TALK_TOGETHER: Program = {
     },
     {
       n: 5,
-      lesson: "gestures-before-words",
+      lesson: "language-explosion",
       skill: L(
         "Add one word: say their words back with one word more.",
         "להוסיף מילה אחת: לחזור על המילים שלו/שלה עם עוד מילה אחת.",
@@ -163,7 +163,7 @@ export const TALK_TOGETHER: Program = {
     },
     {
       n: 7,
-      lesson: "questions-that-open",
+      lesson: "theory-of-mind",
       skill: L(
         "Book prompts (PEER): prompt, respond, add a word, invite them to say it again.",
         "שאלות על הספר: להזמין, להגיב, להוסיף מילה, ולהזמין לומר שוב.",
@@ -179,7 +179,7 @@ export const TALK_TOGETHER: Program = {
     },
     {
       n: 8,
-      lesson: "phonological-awareness",
+      lesson: "music-and-brain",
       skill: L(
         "Leave a gap: pause in songs, rhymes and routines so they can fill in the word.",
         "להשאיר רווח: לעצור בשירים, בחרוזים ובשגרה כדי שהילד/ה ישלים/תשלים את המילה.",
