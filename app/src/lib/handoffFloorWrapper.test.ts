@@ -204,6 +204,24 @@ describe("rule (b) — a negated-finding reassurance the parent never said is re
     expect(handoffFloor("Mom reports no signs of sleep difficulties since the new routine.", { parentText: ASK_EN })).toBe("");
   });
 
+  it("round 13 (P2): a parent's word counts only about the child, never when it qualifies a thing", () => {
+    // G01 / HG01: "problems with the behaviour chart" says nothing about his behavior; the label leaves, the command stays
+    expect(handoffFloor("After a month with no signs of improvement in his behavior problems, contact the family.", { parentText: "He had no problems with the behaviour chart this week" }))
+      .toBe("Contact the family.");
+    expect(handoffFloor("כעבור חודש ללא סימנים לשיפור בבעיות ההתנהגות שלו, יש לעדכן את ההורים.", { parentText: "לא היו לו בעיות עם לוח ההתנהגות השבוע" }))
+      .toBe("יש לעדכן את ההורים.");
+    // G02: "No problem at all with the new car seat" is about the seat; main keeps the teacher's line, rule (b) removes it
+    const g02 = "His teacher says there are no signs of problems at drop-off.";
+    expect(withoutHandoffFindings(g02, { parentText: "No problem at all with the new car seat" })).toBe(g02);
+    expect(handoffFloor(g02, { parentText: "No problem at all with the new car seat" })).toBe("");
+    // R01 / about the child: kept as main keeps it
+    for (const [line, parentText] of [
+      ["Mom reports no signs of sleep difficulties since the new routine.", "He's been sleeping through, no sleep problems since the new routine"],
+      ["Mom reports no signs of speech problems.", "He had problems with his speech last year"],
+      ["His teacher sees no signs of anxiety at drop-off.", "Met his teacher about the biting, no signs of anxiety at drop-off since the chart."],
+    ]) expect(handoffFloor(line, { parentText })).toBe(line);
+  });
+
   it("a condition is not a reassurance: kept as main keeps it", () => {
     for (const line of [
       "Call the family if he bites, or there are no signs of a speech delay at home.",

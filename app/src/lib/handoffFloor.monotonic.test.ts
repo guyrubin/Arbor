@@ -61,7 +61,16 @@ const JOINERS = new Set(["and", "but", "so", "or", "though", "although", "even",
 const tokens = (text: string) => text.toLocaleLowerCase().split(/[^\p{L}\d'’"-]+/u).map((t) => t.replace(/^['’"-]+|['’"-]+$/gu, "").replace(/^[וש](?=\p{Script=Hebrew}{2})/u, "")).filter((t) => t.length > 1 && !JOINERS.has(t));
 const NEGATED_FINDING = /\b(?:no|not|n['’]t|without|free\s+(?:of|from))\b[^.;]*?\b(?:signs?|evidence|indications?|indicators?|symptoms?|red\s+flags?|traces?|hints?|difficult\p{L}*|delays?|deficits?|impairments?|concerns?|problems?|issues?)\b|(?:אין|ללא|בלי|לא\s+\p{L}+)\s+(?:\p{L}+\s+)?(?:סימנ|סימן|סממנ|עדות|עדויות|הוכח|אינדיקצי|ראי|ממצא|תסמינ|קשי|קושי|עיכוב|בעי|ליקוי|חשש)/iu;
 /** Absent from the parent's text: not even the word's first letters (4 EN, 3 HE after one glued particle) occur in it. */
-const absentFrom = (word: string, parentText: string) => {
+/** Round 13 (P2): or every use of it in the parent's text qualifies a thing ("no problem with the new car seat"). */
+const TEST_THINGS = /^(?:chart|seat|car|board|toy|toys|game|book|app|timer|schedule|sticker|stickers|לוח|ה?כיסא|ה?רכב|ב?רכב|מושב|משחק|צעצוע|ספר|מדבקות)$/u;
+const onlyAboutThings = (word: string, parentText: string) => {
+  const key = word.toLocaleLowerCase().replace(/^[והבכלמש]{1,2}(?=\p{Script=Hebrew}{3})/u, "").slice(0, /\p{Script=Hebrew}/u.test(word) ? 3 : 4);
+  const tokens = parentText.toLocaleLowerCase().split(/[^\p{L}'’-]+/u).filter(Boolean);
+  const uses = tokens.map((t, i) => (t.includes(key) ? i : -1)).filter((i) => i >= 0);
+  return uses.length > 0 && uses.every((i) => TEST_THINGS.test(tokens[i + 1] ?? "") || TEST_THINGS.test(tokens[i - 1] ?? "") || tokens.slice(i + 1, i + 7).some((t) => TEST_THINGS.test(t)));
+};
+const absentFrom = (word: string, parentText: string) => onlyAboutThings(word, parentText) || absentByLetters(word, parentText);
+const absentByLetters = (word: string, parentText: string) => {
   const parent = parentText.toLocaleLowerCase().replace(/[םןץףך]/gu, (c) => ({ ם: "מ", ן: "נ", ץ: "צ", ף: "פ", ך: "כ" })[c] ?? c);
   const w = word.toLocaleLowerCase().replace(/[^\p{L}]/gu, "").replace(/[םןץףך]/gu, (c) => ({ ם: "מ", ן: "נ", ץ: "צ", ף: "פ", ך: "כ" })[c] ?? c);
   if (/\p{Script=Hebrew}/u.test(w)) return [w, w.replace(/^[והבכלמש]/u, "")].every((v) => v.length < 2 || !parent.includes(v.slice(0, 3)));

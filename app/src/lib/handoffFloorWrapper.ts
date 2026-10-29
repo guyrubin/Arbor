@@ -246,11 +246,43 @@ const SYNONYM_CLASSES: readonly (readonly string[])[] = [
   ["difficult", "probl", "issue", "troubl", "struggl"], // stems: a word starting with one belongs to the class
   ["קושי", "קשיי", "קשיים", "קשה", "בעיה", "בעיות", "בעיית"],
 ];
-const synonymInParent = (word: string, parentText: string) =>
-  SYNONYM_CLASSES.some((members) => wordVariants(word).some((v) => members.some((m) => v.startsWith(heNorm(m))))
-    && members.some((m) => heNorm(parentText.toLocaleLowerCase()).includes(heNorm(m))));
+/* Round 13 (P2): a parent's word counts only when it is about the child, never when it qualifies a thing
+ * ("no problems with the behaviour chart", "No problem at all with the new car seat", "בעיות עם לוח
+ * ההתנהגות"). "no sleep problems since the new routine" still says "sleep difficulties". */
+const THING_EN = new Set(("chart charts seat seats car cars carseat board boards app apps toy toys game games book books timer timers schedule "
+  + "calendar sticker stickers cup cups bottle bottles stroller buggy bike scooter screen screens tablet ipad phone tv television bus uniform "
+  + "lunchbox backpack bag shoes shoe jacket coat clothes chair table door window computer video videos song songs music puzzle lego blocks "
+  + "crayons printer wifi internet account payment subscription delivery order").split(" "));
+const THING_HE = new Set(["לוח", "טבלה", "טבלת", "כיסא", "כסא", "מושב", "רכב", "מכונית", "עגלה", "אופניים", "קורקינט", "מסך", "טאבלט", "טלפון",
+  "טלוויזיה", "אוטובוס", "תיק", "נעליים", "נעל", "מעיל", "בגדים", "שולחן", "דלת", "חלון", "מחשב", "משחק", "צעצוע", "צעצועים", "ספר", "ספרים",
+  "שעון", "מדבקות", "מדבקה", "אפליקציה", "כוס", "בקבוק", "פאזל", "לגו", "קוביות", "שיר", "מוזיקה"].map(heNorm));
+const isThing = (token: string) => wordVariants(token).some((v) => (isHebrew(v) ? THING_HE.has(v) : THING_EN.has(v)));
+const ABOUT_PREPOSITION = /^(?:with|about|for|עם|על)$/u;
+const sameWord = (a: string, b: string) => wordVariants(a).some((x) => wordVariants(b).some((y) => {
+  const n = isHebrew(x) ? 3 : 4;
+  return x.length < n || y.length < n ? x === y : x.slice(0, n) === y.slice(0, n);
+}));
+const synonymClassOf = (token: string) => SYNONYM_CLASSES.findIndex((members) => wordVariants(token).some((v) => members.some((m) => v.startsWith(heNorm(m)))));
+/** The parent's text uses this word (or its declared synonym) about the child, not about a thing. */
+function parentSays(word: string, parentText: string): boolean {
+  const wordClass = synonymClassOf(word);
+  for (const clause of parentText.toLocaleLowerCase().split(/[.!?;,\n]+/u)) {
+    const tokens = clause.split(/[^\p{L}\d'’"-]+/u).filter(Boolean);
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      if (!sameWord(word, token) && !(wordClass >= 0 && synonymClassOf(token) === wordClass)) continue;
+      const next = tokens.slice(i + 1, i + 4);
+      // "behaviour chart", "לוח ההתנהגות", or "… (at all) with / about / עם the (new) <thing>"
+      const prep = next.findIndex((t) => ABOUT_PREPOSITION.test(t));
+      const qualifiesThing = (next.length > 0 && isThing(next[0])) || (i > 0 && isHebrew(token) && isThing(tokens[i - 1]))
+        || (prep >= 0 && tokens.slice(i + 2 + prep, i + 5 + prep).some(isThing));
+      if (!qualifiesThing) return true;
+    }
+  }
+  return false;
+}
 export function objectWordsAbsentFromParent(object: string, parentText: string): string[] {
-  return contentWords(object).filter((w) => !wordInParentText(w, parentText) && !synonymInParent(w, parentText));
+  return contentWords(object).filter((w) => !parentSays(w, parentText));
 }
 
 /* ── clause anatomy ─────────────────────────────────────────────────────── */
