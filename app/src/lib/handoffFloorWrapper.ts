@@ -297,6 +297,13 @@ const assertedPart = (condition: string, reassurances = reassurancesIn(condition
 /* Round 17 (P1-B, critic P2): a vital function's absence is the emergency itself ("no signs of normal
  * breathing", "אין סימנים לנשימה תקינה", no response, not conscious), so it qualifies like a negated change. */
 const VITAL_WORD = /\b(?:breath\p{L}*|conscious\p{L}*|responsive\p{L}*|pulse|heartbeat|awake)\b|(?<!\p{L})[ולשהב]?(?:נשימה|נושם|נושמת|הכרה|דופק|מגיב|מגיבה)(?!\p{L})/iu;
+/* Round 19 (P1-D): a vital sign qualifies only as its own absence ("no signs of a pulse", "of normal breathing",
+ * "of being responsive", "לנשימה תקינה", "דופק"), never when the object names a problem with it ("breathing
+ * trouble", "trouble breathing", "shortness of breath", "laboured breathing", "קוצר נשימה", "נשימה מהירה"): those
+ * are findings. An allow-list: the object holds the vital sign and nothing but these plain words. */
+const VITAL_ONLY = /\b(?:a|an|any|the|his|her|their|normal|normally|regular|steady|proper|being|signs?|of)\b|(?<!\p{L})(?:של|תקינה|תקין|סדירה|סדיר|רגילה|רגיל|נורמלית|נורמלי)(?!\p{L})/giu;
+const vitalAbsent = (object: string) => VITAL_WORD.test(object)
+  && object.replace(new RegExp(VITAL_WORD.source, "giu"), " ").replace(VITAL_ONLY, " ").replace(/[^\p{L}]+/gu, "").trim() === "";
 /* Round 18 (P2): "change" counts as a negated change only bare ("no signs of change", "אין סימנים לשינוי") or on
  * the hard moment ("no change in the crying", "שינוי בבכי"); "mood changes", "behavior changes", "a change of
  * clothes", "changing table" are not. */
@@ -314,7 +321,7 @@ function qualifyingCondition(condition: string): boolean {
   if (HARM_WORD.test(assertedPart(condition, reassurances))) return true;
   return reassurances.every((r) => {
     const object = condition.slice(r.index, Math.max(r.objectEnd + 1, r.end));
-    return CHANGE_WORD.test(r.object) || CHANGE_WORD.test(object) || VITAL_WORD.test(r.object) || changeOnMoment(r.object);
+    return CHANGE_WORD.test(r.object) || CHANGE_WORD.test(object) || vitalAbsent(r.object) || changeOnMoment(r.object);
   });
 }
 /** A condition about the hard moment itself — a harm, an incident, a negated change or vital sign — never a

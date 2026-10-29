@@ -217,6 +217,30 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     expect(withoutHandoffFindings(line, { parentText })).toBe("");
     expect(handoffFloor(line, { parentText })).toBe("");
   });
+  /* Round 19 (P1-D): a vital sign qualifies only as its own absence, never a problem with it (critic fresh18
+     F01-F04, HF01, HF03); its own absence still restores (F05, F06, HF04, HF05, W20, HW19). */
+  it.each([
+    "When there are no signs of breathing trouble, tell the family.",
+    "When there are no signs of trouble breathing, let the family know.",
+    "When there are no signs of shortness of breath, call the family.",
+    "When there are no signs of laboured breathing, tell the family.",
+    "כשאין סימנים לקוצר נשימה, עדכנו את ההורים.",
+    "כשאין סימנים לנשימה מהירה, התקשרו להורים.",
+  ])("a problem with a vital sign does not qualify: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).toBe("");
+    expect(handoffFloor(line, { parentText })).toBe("");
+  });
+  it.each([
+    "When there are no signs of a pulse, call an ambulance.",
+    "When he shows no signs of being responsive, call an ambulance.",
+    "When there are no signs of normal breathing, call an ambulance.",
+    "כשאין סימנים לנשימה תקינה, הזמינו אמבולנס.",
+  ])("a vital sign's own absence still restores: %s", (line) => {
+    const parentText = /[א-ת]/.test(line) ? HARD_MOMENT_HE : HARD_MOMENT_EN;
+    expect(withoutHandoffFindings(line, { parentText })).not.toBe(line);
+    expect(handoffFloor(line, { parentText })).toBe(line);
+  });
   /* Round 18 (P1-A): a negation that governs before / until / earlier (לפני, עד, מוקדם) is a deferral, never
      stripped (critic fresh17 N02, N03, HN02, HN03); "don't wait until pickup" still restores (N04, HN04). */
   it.each([
