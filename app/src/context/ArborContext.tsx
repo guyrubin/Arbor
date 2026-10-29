@@ -29,7 +29,7 @@ import {
 } from "../initialData";
 import { useProfile } from "./ProfileContext";
 import { useFamilyWaySync } from "../hooks/useFamilyWaySync";
-import { noteFamilyWayChange } from "../lib/familyWay";
+import { chooseFamilyLens } from "../lib/familyWay";
 import { api, ApiError, authHeaders, getAiLanguage, PaywallError, streamCouncil } from "../lib/api";
 import { useChildCollection, type ChildWriteOptions } from "../hooks/useChildCollection";
 import { useFamilyTopics } from "../hooks/useFamilyTopics";
@@ -984,7 +984,9 @@ function useArborState() {
   // follow the account. The parent's own choice stamps the change (never a
   // load), so the newest device wins; a newer account copy sets the tone here.
   useFamilyWaySync(setSelectedLens);
-  const chooseLens = React.useCallback((lens: string) => { setSelectedLens(lens); noteFamilyWayChange(); }, []);
+  // The tone is written to the device store before the change event fires
+  // (chooseFamilyLens), so the sync uploads the NEW tone with the new stamp.
+  const chooseLens = React.useCallback((lens: string) => { setSelectedLens(lens); chooseFamilyLens(lens); }, []);
 
   // Developmental COUNTS (never a score): windowed to the child's current CDC
   // band + one earlier (Wave T, GP-08) — the same window Growth, Milestones

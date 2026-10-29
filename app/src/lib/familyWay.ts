@@ -102,6 +102,17 @@ export function noteFamilyWayChange(store: Store | null = deviceStore(), now: Da
   try { if (typeof window !== "undefined") window.dispatchEvent(new Event(FAMILY_WAY_EVENT)); } catch { /* no window */ }
 }
 
+/** The parent chose a tone. The tone is stored BEFORE the change event fires:
+ *  the sync's listener reads this device's store at that moment, so a write
+ *  left to a React effect would upload the previous tone under the new stamp
+ *  and the other device would never correct (B-PLAY-21 critic r1). */
+export function chooseFamilyLens(lens: string, store: Store | null = deviceStore(), now: Date = new Date()): void {
+  const next = lensOf(lens);
+  if (next === null) return;
+  try { store?.setItem(LENS_KEY, next); } catch { /* blocked store */ }
+  noteFamilyWayChange(store, now);
+}
+
 export function familyWaySyncOn(store: Pick<Storage, "getItem"> | null = deviceStore()): boolean {
   try { return store?.getItem(FAMILY_WAY_SYNC_FLAG) === "1"; } catch { return false; }
 }

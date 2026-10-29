@@ -9,7 +9,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   FAMILY_WAY_COLLECTION, FAMILY_WAY_STAMP_KEY, FAMILY_WAY_SYNC_FLAG, LENS_KEY,
-  familyWayExport, familyWayPath, familyWaySyncOn, noteFamilyWayChange, normalizeFamilyWay, readLocalFamilyWay, syncFamilyWay,
+  FAMILY_WAY_EVENT, chooseFamilyLens, familyWayExport, familyWayPath, familyWaySyncOn, noteFamilyWayChange, normalizeFamilyWay, readLocalFamilyWay, syncFamilyWay,
   type FamilyWay, type FamilyWayIO,
 } from "./familyWay";
 import { FAMILY_CHARTER_KEY, saveFamilyCharter } from "./familyCharter";
@@ -87,10 +87,66 @@ describe("B-PLAY-21 · the family way follows the account", () => {
 
   it("only the parent's own change stamps it — never a load", () => {
     const ctx = readFileSync(path.join(SRC, "context", "ArborContext.tsx"), "utf8");
-    expect(ctx).toContain("const chooseLens = React.useCallback((lens: string) => { setSelectedLens(lens); noteFamilyWayChange(); }, []);");
+    expect(ctx).toContain("const chooseLens = React.useCallback((lens: string) => { setSelectedLens(lens); chooseFamilyLens(lens); }, []);");
     expect(ctx).toContain("setSelectedLens: chooseLens,");
     expect(ctx).toContain("useFamilyWaySync(setSelectedLens);");
     expect(readFileSync(path.join(SRC, "components", "sections", "FamilyFormation.tsx"), "utf8")).toContain("setSaved(true); noteFamilyWayChange(); };");
+  });
+});
+
+describe("B-PLAY-21 · choosing a tone uploads the NEW tone (critic r1)", () => {
+  /** The sync hook's listener, as in hooks/useFamilyWaySync: on the change
+   *  event it reads this device's store and writes it to the account. */
+  const withWindow = async (run: (uploads: FamilyWay[], dev: ReturnType<typeof store>, acct: ReturnType<typeof account>) => Promise<void> | void) => {
+    const g = globalThis as { window?: unknown };
+    const had = "window" in g; const prev = g.window;
+    const target = new EventTarget();
+    g.window = target;
+    const dev = store(); const acct = account(); const uploads: FamilyWay[] = [];
+    const onChange = () => { const way = readLocalFamilyWay(dev); uploads.push(way); void acct.io.write(way); };
+    target.addEventListener(FAMILY_WAY_EVENT, onChange);
+    try { await run(uploads, dev, acct); } finally { target.removeEventListener(FAMILY_WAY_EVENT, onChange); if (had) g.window = prev; else delete g.window; }
+  };
+
+  it("the tone is in the store when the change event fires, so the account gets the new tone and stamp", async () => {
+    await withWindow(async (uploads, dev, acct) => {
+      dev.setItem(LENS_KEY, "Integrated Balanced");
+      chooseFamilyLens("Gentle Coach", dev, new Date("2026-10-28T10:00:00.000Z"));
+      expect(uploads).toHaveLength(1);
+      expect(uploads[0].lens).toBe("Gentle Coach");
+      expect(uploads[0].updatedAt).toBe("2026-10-28T10:00:00.000Z");
+      // The second device corrects to the new tone.
+      const second = store();
+      second.setItem(LENS_KEY, "Integrated Balanced");
+      second.setItem(FAMILY_WAY_STAMP_KEY, "2026-10-27T10:00:00.000Z");
+      const applied = await syncFamilyWay(acct.io, second);
+      expect(applied?.lens).toBe("Gentle Coach");
+      expect(second.getItem(LENS_KEY)).toBe("Gentle Coach");
+    });
+  });
+
+  it("NEGATIVE CONTROL: stamping before the tone is stored (the old chooseLens order) uploads the previous tone", async () => {
+    await withWindow((uploads, dev) => {
+      dev.setItem(LENS_KEY, "Integrated Balanced");
+      noteFamilyWayChange(dev, new Date("2026-10-28T10:00:00.000Z"));
+      dev.setItem(LENS_KEY, "Gentle Coach"); // the React effect, one render later
+      expect(uploads[0].lens).toBe("Integrated Balanced");
+    });
+  });
+
+  it("an empty tone writes and stamps nothing", async () => {
+    await withWindow((uploads, dev) => {
+      chooseFamilyLens("   ", dev);
+      expect(uploads).toHaveLength(0);
+      expect(dev.getItem(FAMILY_WAY_STAMP_KEY)).toBeNull();
+    });
+  });
+
+  it("ArborContext's chooseLens goes through chooseFamilyLens", () => {
+    const ctx = readFileSync(path.join(SRC, "context", "ArborContext.tsx"), "utf8");
+    const line = ctx.split("\n").find((l) => l.includes("const chooseLens")) ?? "";
+    expect(line).toContain("chooseFamilyLens(lens)");
+    expect(line).not.toContain("noteFamilyWayChange");
   });
 });
 
