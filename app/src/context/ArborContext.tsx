@@ -1709,9 +1709,13 @@ function useArborState() {
       };
       void insightsCol.upsert(record);
     } catch (err: any) {
-      console.error(err);
+      // B-ASKJB-49 r2: a 409 is the crisis screen answering, not an application
+      // error: it renders the crisis card and logs nothing.
       if (err instanceof EscalationRequiredError) setEscalatedSurface("behaviors");
-      else setApiError(err.message || "Failed to generate AI behavior evaluation.");
+      else {
+        console.error(err);
+        setApiError(err.message || "Failed to generate AI behavior evaluation.");
+      }
     } finally {
       setIsAnalyzingBehavior(false);
     }
@@ -1752,10 +1756,13 @@ function useArborState() {
       void maybeActivateReferral(); // mk-p0-2: a referred parent's activation closes the loop
       toast(t("ctx.toast.planWoven", { title: planData.title }), "success");
     } catch (err: any) {
-      console.error(err);
-      if (err instanceof PaywallError) openPaywall(err.feature || "advancedPlans", err.plan);
-      else if (err instanceof EscalationRequiredError) setEscalatedSurface("plans");
-      else setApiError(err.message || "Failed to generate developmental Action Plan.");
+      // B-ASKJB-49 r2: a 409 renders the crisis card and logs nothing.
+      if (err instanceof EscalationRequiredError) setEscalatedSurface("plans");
+      else {
+        console.error(err);
+        if (err instanceof PaywallError) openPaywall(err.feature || "advancedPlans", err.plan);
+        else setApiError(err.message || "Failed to generate developmental Action Plan.");
+      }
     } finally {
       setIsPlanGenerating(false);
     }
