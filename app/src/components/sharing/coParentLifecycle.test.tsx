@@ -281,3 +281,71 @@ describe("co-parent owner activity lifetime", () => {
     expect(text(ownerActivity(owner("signed-in")))).not.toContain(coParentCopy.en.chooseSignIn);
   });
 });
+
+// B-CAREPRO-53: every invite failure used to read "Check the email and try again",
+// and the invite form rendered for a signed-out parent. Each known status now names
+// itself in the parent's language, and signed out shows the sign-in line, not the form.
+describe("a failed co-parent invite says what failed", () => {
+  const emailInput = (tree: React.ReactNode) => nodes(tree).find(node => node.type === "input" && node.props.id === "coparent-email");
+  const inviteForm = (tree: React.ReactNode) => nodes(tree).find(node => node.type === "form" && nodes(node).some(child => child.type === "input" && child.props.id === "coparent-email"));
+  const lines = ["createError", "createSignIn", "createNotAllowed", "createLater"] as const;
+  async function failInvite(key: string, failure: unknown) {
+    h.api.invite.mockRejectedValueOnce(failure);
+    owner(key); await settle();
+    emailInput(owner(key))!.props.onChange({ target: { value: "co-parent@example.test" } });
+    inviteForm(owner(key))!.props.onSubmit({ preventDefault: () => undefined }); await settle();
+    return owner(key);
+  }
+  it.each([
+    [400, "invalid_invitation", "createError"],
+    [401, "sign_in_required", "createSignIn"],
+    [403, "child_unavailable", "createNotAllowed"],
+    [503, "sharing_unavailable", "createLater"],
+    [429, "Rate limit exceeded", "createLater"],
+  ] as const)("a %i %s renders its own line, EN and HE", async (status, code, key) => {
+    for (const lang of ["en", "he"] as const) {
+      unmount(); h.lang = lang;
+      const tree = await failInvite(`invite-${status}-${lang}`, new CoParentError(status, code));
+      const alert = nodes(tree).find(node => node.props.role === "alert");
+      expect(text(alert)).toBe(coParentCopy[lang][key]);
+      for (const other of lines.filter(line => line !== key)) expect(text(tree)).not.toContain(coParentCopy[lang][other]);
+      // The typed address stays for the retry; nothing but the inline alert speaks.
+      expect(emailInput(tree)!.props.value).toBe("co-parent@example.test");
+    }
+  });
+
+  it("a network failure is not blamed on the email", async () => {
+    const tree = await failInvite("invite-offline", new TypeError("Failed to fetch"));
+    expect(text(nodes(tree).find(node => node.props.role === "alert"))).toBe(coParentCopy.en.createLater);
+    expect(text(tree)).not.toContain(coParentCopy.en.createError);
+  });
+
+  it("the failure line follows a language switch", async () => {
+    await failInvite("invite-switch", new CoParentError(401, "sign_in_required"));
+    h.lang = "he";
+    expect(text(nodes(owner("invite-switch")).find(node => node.props.role === "alert"))).toBe(coParentCopy.he.createSignIn);
+  });
+
+  it("signed out shows the sign-in line, never the invite form, EN and HE", async () => {
+    for (const lang of ["en", "he"] as const) {
+      h.uid = "local-sandbox"; h.lang = lang; unmount();
+      owner(`signed-out-${lang}`); await settle();
+      const tree = owner(`signed-out-${lang}`);
+      expect(inviteForm(tree)).toBeUndefined();
+      expect(emailInput(tree)).toBeUndefined();
+      expect(text(nodes(tree).find(node => node.props["data-testid"] === "coparent-invite-signin"))).toBe(coParentCopy[lang].createSignIn);
+      expect(h.api.invite).not.toHaveBeenCalled();
+    }
+  });
+
+  it("negative control: signed in, the form renders and a success clears the field", async () => {
+    h.api.invite.mockResolvedValueOnce({ id: "grant-new", recipientEmail: "co-parent@example.test" });
+    owner("signed-in-invite"); await settle();
+    expect(inviteForm(owner("signed-in-invite"))).toBeDefined();
+    emailInput(owner("signed-in-invite"))!.props.onChange({ target: { value: "co-parent@example.test" } });
+    inviteForm(owner("signed-in-invite"))!.props.onSubmit({ preventDefault: () => undefined }); await settle();
+    const tree = owner("signed-in-invite");
+    expect(nodes(tree).find(node => node.props.role === "alert")).toBeUndefined();
+    expect(text(tree)).toContain(coParentCopy.en.ready);
+  });
+});
