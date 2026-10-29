@@ -79,6 +79,9 @@ describe("B-ASKJB-49: a crisis 409 on the co-regulation script shows the crisis 
       expect(typeof card!.props.onSafety).toBe("function");
       expect(nodes(h.tree).some((node) => node.type === "say-this" || node.type === "explain")).toBe(false);
       expect(text(h.tree)).not.toContain(translate(lang, "beh.discussCoach"));
+      // r2: no "Try different words" (nor any other) door to reword past the pause.
+      expect(nodes(h.tree).filter((node) => node.type === "button")).toHaveLength(0);
+      expect(text(h.tree)).not.toContain(translate(lang, "beh.regenerateScript"));
       // Negative control: an ordinary failure slot still renders the explain block, no card.
       const failed = render(lang, log, { explanation: "Connection Error", tryToday: "" });
       expect(nodes(failed.tree).some((node) => node.type === "urgent-support")).toBe(false);

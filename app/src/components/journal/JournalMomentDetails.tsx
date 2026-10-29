@@ -31,9 +31,11 @@ export default function JournalMomentDetails({ log }: { log: BehaviorLog }) {
         <span className="t-sm font-bold flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}>
           <Icon name="record_voice_over" size={14} fill={1} /> {t("beh.coRegScript")}
         </span>
-        <button type="button" onClick={() => handleGetInlineCoRegulationScript(log)} disabled={isGeneratingInlineScript[log.id]} className="flex min-h-11 max-w-full cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1 text-start t-sm font-bold transition-all" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+        {/* B-ASKJB-49 r2: after a 409 the crisis card is the one thing here; no
+            "try different words" door to reword past the pause. */}
+        {!inlineCoRegulationScripts[log.id]?.escalation && <button type="button" onClick={() => handleGetInlineCoRegulationScript(log)} disabled={isGeneratingInlineScript[log.id]} className="flex min-h-11 max-w-full cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1 text-start t-sm font-bold transition-all" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
           {isGeneratingInlineScript[log.id] ? (<><Icon name="progress_activity" size={13} className="animate-spin" /> {t("beh.analyzing")}</>) : inlineCoRegulationScripts[log.id] ? (<><Icon name="auto_awesome" size={13} fill={1} /> {t("beh.regenerateScript")}</>) : (<><Icon name="auto_awesome" size={13} fill={1} /> {t("beh.generateScript")}</>)}
-        </button>
+        </button>}
       </div>
 
       {/* B-ASKJB-49: the crisis screen answered 409 for this moment: the
