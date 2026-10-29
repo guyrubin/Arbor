@@ -20,12 +20,14 @@ const PROGRAMS = [
  *  one-language family a bilingual read; no week may name them. */
 const OFF_SKILL_READS = [
   "late-talker-ranges", "bilingual-mixing",
-  // Round 3 (critic): an age norm and a when-to-see-a-professional point under "Follow the lead".
-  "attention-spans",
+  // Round 3 (critic): an age norm and a when-to-see-a-professional point under
+  // "Follow the lead"; a school-pickup questions read for an 18-36-month
+  // "say it back" week; an ages 3-6 theory-of-mind read for the book prompts.
+  "attention-spans", "questions-that-open", "theory-of-mind",
 ];
 /** Weeks the catalogue holds no on-skill, age-fitting read for: NO lesson, so
  *  no door (weekLessonDoor fails quiet) rather than an off-skill one. */
-const NO_LESSON_WEEKS: Record<string, readonly number[]> = { "talk-together": [], "steady-nights": [] };
+const NO_LESSON_WEEKS: Record<string, readonly number[]> = { "talk-together": [4, 7], "steady-nights": [] };
 
 describe("B-PROG-14 · every program week names one reviewed Learn read", () => {
   for (const { program, meta } of PROGRAMS) {
@@ -57,10 +59,10 @@ describe("B-PROG-14 · Talk Together: each week's read teaches that week's skill
     1: ["gestures-before-words", /follow every point|name the thing/i],          // observe, wait, listen: answer what they show you
     2: ["process-over-product", /tell me about it/i],                            // follow the lead: talk about what they chose
     3: ["serve-and-return", /return every serve/i],                               // serve and return
-    4: ["questions-that-open", /specific opener|count/i],                         // say it back
+    4: null,                                                                       // say it back: no on-skill read yet
     5: ["language-explosion", /name it, expand it/i],                              // add one word
     6: ["reading-aloud", /fills in the last word|reads' one spread/i],           // share a book (dialogic reading for week 7 too)
-    7: ["theory-of-mind", /During tonight's story, pause and ask/i],              // book prompts
+    7: null,                                                                       // book prompts: week 6's read
     8: ["music-and-brain", /give it a song|same tune/i],                         // leave a gap in songs and routines
   };
   for (const week of TALK_TOGETHER.weeks) {

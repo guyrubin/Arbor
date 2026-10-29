@@ -117,7 +117,7 @@ export const TALK_TOGETHER: Program = {
     },
     {
       n: 4,
-      lesson: "questions-that-open",
+      // B-PROG-14: no Learn read teaches saying the child's words back yet — no door this week (B-GA-02 / content).
       skill: L(
         "Say it back: repeat their words clearly, as a reply, never a correction.",
         "להחזיר את המילה: לחזור על המילים שלו/שלה בבהירות, כתשובה ולא כתיקון.",
@@ -163,7 +163,7 @@ export const TALK_TOGETHER: Program = {
     },
     {
       n: 7,
-      lesson: "theory-of-mind",
+      // B-PROG-14: the book-prompt read is week 6's (reading-aloud covers dialogic reading) — no door this week.
       skill: L(
         "Book prompts (PEER): prompt, respond, add a word, invite them to say it again.",
         "שאלות על הספר: להזמין, להגיב, להוסיף מילה, ולהזמין לומר שוב.",
