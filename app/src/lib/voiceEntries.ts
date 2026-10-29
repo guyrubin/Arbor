@@ -22,11 +22,13 @@
  *    (DescribeReadback).
  *  - draft-field: dictation lands in the composer's draft; the parent sends
  *    it into the conversation or keeps it with the explicit Keep tile.
+ *  - questions-review: the visit rehearsal (B-VOICE-03) — what the parent
+ *    said comes back as numbered questions to edit; nothing is kept before Keep.
  *  - kid-practice: kid mode — the child's own practice try, behind the voice
  *    consent gate; it proposes no record about the child to the parent.
  */
 
-export type VoiceReview = "close-card" | "capture-confirm" | "describe-readback" | "draft-field" | "kid-practice";
+export type VoiceReview = "close-card" | "capture-confirm" | "describe-readback" | "draft-field" | "questions-review" | "kid-practice";
 
 export interface VoiceEntry {
   review: VoiceReview;
@@ -66,6 +68,13 @@ export const VOICE_ENTRIES: Readonly<Record<string, VoiceEntry>> = {
       "components/companion/CompanionComposer.tsx": ["onChange([textRef.current.trim(), text.trim()].filter(Boolean).join(\" \"))"],
     },
     why: "Dictate into Talk's composer: the words are the draft the parent sends or keeps",
+  },
+  "components/sections/Appointments.tsx": {
+    review: "questions-review",
+    evidence: {
+      "components/sections/Appointments.tsx": ["onResult: (text) => { if (turn === scope.current) setDraft(rehearsalQuestions(text)); }", "data-testid=\"appt-rehearse-review\"", "const keep = () => { if (draft)"],
+    },
+    why: "Talk it through before a visit (B-VOICE-03): the parent's words come back as numbered questions to edit; Keep files them",
   },
   "components/practice/SpeechCoachTab.tsx": {
     review: "kid-practice",

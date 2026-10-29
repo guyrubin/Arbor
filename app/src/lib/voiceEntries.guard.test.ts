@@ -26,7 +26,7 @@ const code = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'
 
 /** A microphone opening: dictation, the hands-free loop, Live, or a raw stream with audio. */
 const opensMic = (src: string): boolean =>
-  /\b(?:startDictation|createDictationLoop|startGeminiLive)\(/.test(src)
+  /\b(?:startDictation|createDictationLoop|startGeminiLive|requestLiveMicrophone)\(/.test(src)
   || [...src.matchAll(/getUserMedia\(([^)]*)\)/g)].some((m) => !/audio:\s*false/.test(m[1]));
 
 const FILES = walk(SRC).map((f) => ({ file: rel(f), code: code(readFileSync(f, "utf8").replace(/\r\n/g, "\n")) }));
@@ -48,6 +48,9 @@ describe("B-VOICE-04 · every voice entry is registered with its review", () => 
     expect(opensMic("const stop = startDictation({ onResult: t => save(t) });")).toBe(true);
     expect(opensMic("navigator.mediaDevices.getUserMedia({ audio: true })")).toBe(true);
     expect(opensMic("navigator.mediaDevices.getUserMedia({ video: { facingMode: \"user\" }, audio: false })")).toBe(false);
+    // Round 2 (critic P2): a direct caller of the Live microphone is a voice entry too.
+    expect(opensMic("const stream = await requestLiveMicrophone(controller.signal);")).toBe(true);
+    expect(opensMic("import { requestLiveMicrophone } from \"./geminiLiveClient\";")).toBe(false);
   });
 
   for (const [file, entry] of Object.entries(VOICE_ENTRIES)) {
@@ -90,6 +93,14 @@ describe("B-VOICE-04 · no voice-originated write before the parent's Confirm", 
     const src = code(read("components/companion/CompanionComposer.tsx"));
     const dictate = src.slice(src.indexOf("const dictate = () =>"), src.indexOf("const send = async"));
     expect(dictate).not.toMatch(/keep\(|send\(|onSend\(|\.upsert\(/);
+  });
+
+  it("the visit rehearsal: a dictation result only drafts the questions; Keep is the one write", () => {
+    const src = code(read("components/sections/Appointments.tsx"));
+    const start = src.indexOf("const start = () =>");
+    const body = src.slice(start, src.indexOf("const keep = () =>", start));
+    expect(body).toContain("setDraft(rehearsalQuestions(text))");
+    expect(body).not.toMatch(/onKeep\(|\.upsert\(|addMoment\(|save\w*\(/);
   });
 
   it("Tell Arbor: the mic button writes nothing", () => {
