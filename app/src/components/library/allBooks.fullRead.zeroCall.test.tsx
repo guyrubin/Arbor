@@ -57,6 +57,9 @@ import { resetPlanPlateSources } from "../../lib/plans/planPlateSource";
 import { allBookPages, bookChoices } from "../../lib/library/bookShape";
 import type { AnyBook, BookReaderChild } from "../../lib/library/types";
 import type { HeroSheet } from "../../lib/library/heroSheet";
+import manifestJson from "../../content/narrationManifests.json";
+import { bookNarrationFiles, isNameBearing, sharedNarrationUrls, SHARED_NARRATION_SETS, type VoiceFolder } from "../../lib/library/narrationFiles";
+import type { NarrationManifests } from "../../lib/library/narrationManifest";
 
 // ── the request policy ──────────────────────────────────────────────────────
 const STATIC = /^\/(?:visuals|audio|fonts)\/[A-Za-z0-9_\-/.]+$/;
@@ -210,11 +213,11 @@ const READERS: { lang: "en" | "he"; child: BookReaderChild }[] = [
 ];
 
 /** Read one path to The End through the reader's own controls. Returns the pages seen. */
-async function readToEnd(book: AnyBook, choiceId: string | null, lang: "en" | "he", child: BookReaderChild, files: "every" | "none") {
+async function readToEnd(book: AnyBook, choiceId: string | null, lang: "en" | "he", child: BookReaderChild, files: "every" | "none", assets?: { files: Record<string, string>; cues: Record<string, never> }) {
   const reader = harness(BookReader, {
     book, lang, child, onClose: () => {}, dev: false,
     sheet: files === "every" ? sheetFor(book) : null,
-    assets: files === "every" ? everyFile : noFiles,
+    assets: assets ?? (files === "every" ? everyFile : noFiles),
     initialBox: { width: 390, height: 756 },
   } as Parameters<typeof BookReader>[0]);
   const seen: string[] = [];
@@ -284,6 +287,53 @@ describe("B-BOOK-27: a full read of every book in the registry makes zero model,
       // the files were really asked for (narration played from the child's own blob: URLs)
       expect(env.plays).toBeGreaterThan(0);
       expect(env.requests.some((r) => r.via === "audio" && r.url.startsWith("blob:synthetic/narration/"))).toBe(true);
+    }, 120_000);
+  }
+});
+
+// ── B-BOOK-35 / B-BOOK-73 (CI half): the REAL files, as the kid door hands them ──
+const MANIFEST = manifestJson as unknown as NarrationManifests;
+/** The book's name-free files at their shared static URLs, the name-bearing ones
+ *  as the child's private blob: URLs; every key the reader asks for and does
+ *  not find is recorded (a page without its file). */
+function realFiles(book: AnyBook, folder: VoiceFolder, misses: Set<string>) {
+  const shared = sharedNarrationUrls(book, folder);
+  const map: Record<string, string> = {};
+  for (const f of bookNarrationFiles(book, folder)) {
+    const url = isNameBearing(f) ? `blob:synthetic/name/${folder}/${f.file}` : shared[f.file];
+    if (url) map[`${folder}/${f.file}`] = url;
+  }
+  const files = new Proxy(map, { get: (t, k) => { if (typeof k !== "string") return undefined; if (!(k in t) && /\.mp3$/.test(k)) misses.add(k); return t[k]; } });
+  return { files, cues: {} as Record<string, never> };
+}
+
+describe("B-BOOK-35 / B-BOOK-73: a full read with the real narration files finds every file and never calls /api/tts", () => {
+  const shelf = allBooks().filter((b) => Object.prototype.hasOwnProperty.call(SHARED_NARRATION_SETS, b.id) && MANIFEST.books[b.id]);
+  it("the shelf books with a shared set are read (the proof book at least)", () => {
+    expect(shelf.map((b) => b.id)).toContain("five-smooth-stones");
+  });
+  for (const book of shelf) {
+    it(`${book.id}: every path, EN / HE-m / HE-f, plays only manifest files and the child's name files`, async () => {
+      const paths: (string | null)[] = bookChoices(book).length ? bookChoices(book).map((c) => c.id) : [null];
+      const misses = new Set<string>();
+      for (const choiceId of paths) {
+        for (const { lang, child } of READERS) {
+          const folder: VoiceFolder = lang === "en" ? "en" : child.gender === "girl" ? "he-f" : "he-m";
+          const seen = await readToEnd(book, choiceId, lang, child, "every", realFiles(book, folder, misses));
+          expect(seen[seen.length - 1], `${choiceId} ${folder}`).toBe("end");
+        }
+      }
+      expect(offences()).toEqual([]);
+      expect(env.requests.filter((r) => r.url.includes("/api/tts"))).toEqual([]);
+      expect([...misses].sort(), "a page asked for a file that does not exist").toEqual([]);
+      const shipped = env.requests.filter((r) => r.via === "audio" && r.url.startsWith("/audio/books/"));
+      expect(shipped.length).toBeGreaterThan(0);
+      for (const r of shipped) {
+        const [, , , id, set, folder, file] = r.url.split("/");
+        expect(set, r.url).toBe(SHARED_NARRATION_SETS[id]);
+        expect(MANIFEST.books[id]?.folders[folder as VoiceFolder]?.files[file], `${r.url} is a manifest file with its hash`).toMatch(/^[0-9a-f]{64}$/);
+      }
+      expect(env.requests.some((r) => r.via === "audio" && r.url.startsWith("blob:synthetic/name/"))).toBe(true);
     }, 120_000);
   }
 });
