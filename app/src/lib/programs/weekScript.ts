@@ -17,26 +17,65 @@
  */
 import type { LocalizedText } from "../../content/governance";
 
+/**
+ * Round 2 (critic P1): the cues are the program's own TOPIC — what the child
+ * says or how the child sleeps — never a bare verb a parent uses about
+ * anything ("can we talk about…", "last night he…", "when he wakes up…").
+ * EN entries are regex sources matched as whole words, case-insensitive; HE
+ * entries are whole words that may carry one glued prefix letter.
+ */
 export const PROGRAM_SHELF_CUES: Readonly<Record<string, { en: readonly string[]; he: readonly string[] }>> = {
   words: {
-    en: ["talk", "talks", "talking", "talked", "word", "words", "speak", "speaks", "speaking", "speech", "language", "babble", "babbles", "babbling", "sentence", "sentences"],
-    he: ["מדבר", "מדברת", "מדברים", "לדבר", "דיבור", "מילה", "מילים", "שפה", "משפט", "משפטים", "ממלמל", "ממלמלת"],
+    en: [
+      "words?", "speech", "vocabulary", "language", "babbl(?:e|es|ed|ing)", "sentences?", "pronounc\\w*", "late talker",
+      "(?:barely|hardly|doesn['’]?t|does not|isn['’]?t|is not|not|won['’]?t|never|still not|only just|started|starting|began|begun) (?:talk|talks|talking|speak|speaks|speaking)",
+      "(?:talks?|speaks?|talking|speaking) (?:yet|much|a lot|clearly|well|in sentences)",
+    ],
+    he: ["מילה", "מילים", "דיבור", "שפה", "משפט", "משפטים", "מלמול", "ממלמל", "ממלמלת", "הגייה"],
   },
   sleep: {
-    en: ["sleep", "sleeps", "sleeping", "asleep", "bedtime", "bedtimes", "nap", "naps", "napping", "night", "nights", "nighttime", "wake", "wakes", "waking", "woke"],
-    he: ["שינה", "לישון", "ישן", "ישנה", "נרדם", "נרדמת", "להירדם", "השכבה", "לילה", "לילות", "תנומה", "מתעורר", "מתעוררת", "התעורר", "התעוררה"],
+    en: [
+      "sleep(?:s|ing)?", "asleep", "bedtimes?", "naps?", "napping", "nap time", "night waking", "night wakings",
+      "wakes? up (?:at night|in the night|during the night|every night|early)", "waking (?:at night|in the night|early)",
+      "nightmares?", "night terrors?", "(?:go|goes|going|stay|stays|staying) (?:to|in) bed", "lights out",
+    ],
+    he: ["שינה", "לישון", "נרדם", "נרדמת", "להירדם", "נרדמים", "השכבה", "תנומה", "תנומות", "סיוט", "סיוטים", "התעוררויות"],
   },
 };
 
-const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** Hebrew phrases (whole, in order) that are on the words shelf: the child talking or not yet. */
+const HE_TALK_PHRASES: Record<string, readonly string[]> = {
+  words: ["לא מדבר", "לא מדברת", "כמעט לא מדבר", "כמעט לא מדברת", "עוד לא מדבר", "עוד לא מדברת", "התחיל לדבר", "התחילה לדבר", "מתחיל לדבר", "מתחילה לדבר"],
+  sleep: ["מתעורר בלילה", "מתעוררת בלילה", "קם בלילה", "קמה בלילה"],
+};
 
-/** Does the parent's message name the program's shelf? */
+/**
+ * A hard moment about something else — hurting, danger — is never answered
+ * with the program's script, whatever else the text names ("last night he
+ * bit another kid", "can we talk about his hitting", "בלילה הוא הרביץ לאחותו").
+ * The ordinary answer (and, upstream, escalation) owns those turns.
+ */
+export const OFF_SHELF_HARD_MOMENT = {
+  en: [
+    "hit(?:s|ting)?", "bit (?:him|her|me|them|us|another|his|my|a|the)", "bites?", "biting", "kick(?:s|ed|ing)?", "push(?:es|ed|ing)?", "shov\\w*",
+    "punch\\w*", "slap\\w*", "scratch(?:es|ed|ing)?", "hurt(?:s|ing)?", "threw", "throw(?:s|ing)?", "danger\\w*", "unsafe", "weapon\\w*",
+  ],
+  he: ["הרביץ", "הרביצה", "מרביץ", "מרביצה", "מכה", "היכה", "נשך", "נשכה", "נושך", "נושכת", "בעט", "בעטה", "בועט", "בועטת", "דחף", "דחפה", "דוחף", "דוחפת", "זרק", "זרקה", "זורק", "זורקת", "פגע", "פגעה", "פוגע", "פוגעת", "מסוכן", "מסוכנת", "סכנה"],
+} as const;
+
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const enRe = (sources: readonly string[]) => new RegExp(`\\b(?:${sources.join("|")})\\b`, "i");
+const heRe = (words: readonly string[]) => new RegExp(`(?<!\\p{L})(?:ו|ה|ב|ל|ש|כש|מ)?(?:${words.map(escape).join("|")})(?!\\p{L})`, "u");
+const OFF_EN = enRe(OFF_SHELF_HARD_MOMENT.en);
+const OFF_HE = heRe(OFF_SHELF_HARD_MOMENT.he);
+
+/** Does the parent's message name the program's own topic (and no hard moment about something else)? */
 export function onProgramShelf(message: unknown, shelf: string | undefined | null): boolean {
   const cues = shelf ? PROGRAM_SHELF_CUES[shelf] : undefined;
   if (!cues || typeof message !== "string" || !message.trim()) return false;
-  const en = new RegExp(`\\b(?:${cues.en.map(escape).join("|")})\\b`, "i");
-  const he = new RegExp(`(?<!\\p{L})(?:ו|ה|ב|ל|ש|כש)?(?:${cues.he.map(escape).join("|")})(?!\\p{L})`, "u");
-  return en.test(message) || he.test(message);
+  if (OFF_EN.test(message) || OFF_HE.test(message)) return false;
+  const phrases = HE_TALK_PHRASES[shelf!] ?? [];
+  return enRe(cues.en).test(message) || heRe(cues.he).test(message) || (phrases.length > 0 && heRe(phrases).test(message));
 }
 
 /** The week's opening line for an on-shelf turn, in the answer's language; null otherwise. */

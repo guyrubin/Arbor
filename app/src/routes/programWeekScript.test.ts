@@ -89,10 +89,34 @@ const voice = async (base: string, message: string, language: "en" | "he" = "en"
 };
 
 describe("B-PROG-04 · the on-shelf test (deterministic, EN + HE)", () => {
+  // Round-2 critic P1: a bare talk/speak/night/wake caught hard moments about
+  // something else. The cue is now the program's own topic, and a hard moment
+  // about hurting or danger never takes the script.
+  const OFF: [string, string][] = [
+    ["words", "Can we talk about his hitting at daycare?"],
+    ["sleep", "Last night he bit another kid at the park"],
+    ["sleep", "בלילה הוא הרביץ לאחותו"],
+    ["words", "He hits his sister when I'm talking on the phone"],
+    ["words", "I need to speak to you about tantrums"],
+    ["sleep", "He woke up angry and threw his plate"],
+    ["sleep", "She screams when I turn the TV off at night"],
+    ["words", "אני רוצה לדבר על ההתקפי זעם שלו"],
+    ["words", "He bit his brother because he has no words for it"],
+  ];
+  const ON: [string, string][] = [
+    ["words", "He only says three words at 2"],
+    ["words", "היא כמעט לא מדברת וזה מתסכל אותה"],
+    ["sleep", "He won't fall asleep before 10pm"],
+    ["sleep", "הוא מתעורר בלילה כל שעה"],
+    ["words", "She barely talks and it frustrates her"],
+    ["sleep", "Bedtime takes an hour every night"],
+  ];
+  for (const [shelf, m] of OFF) it(`off: ${m}`, () => expect(onProgramShelf(m, shelf)).toBe(false));
+  for (const [shelf, m] of ON) it(`on (${shelf}): ${m}`, () => expect(onProgramShelf(m, shelf)).toBe(true));
+
   it("names the shelf in plain words; another shelf or no program never matches", () => {
     expect(onProgramShelf(ON_SHELF.en, "words")).toBe(true);
     expect(onProgramShelf(ON_SHELF.he, "words")).toBe(true);
-    expect(onProgramShelf("ובלילה הוא מתעורר", "sleep")).toBe(true);
     expect(onProgramShelf(OFF_SHELF, "words")).toBe(false);
     expect(onProgramShelf(ON_SHELF.en, "sleep")).toBe(false);
     expect(onProgramShelf(ON_SHELF.en, "hands")).toBe(false);

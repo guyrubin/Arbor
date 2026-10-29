@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ChatMessage } from "../context/ArborContext";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn, voiceNextStep } from "./voiceTranscript";
+import { TALK_TOGETHER } from "../content/programs/talkTogether";
 
 /**
  * COACH-2 — the browser voice loop persists both turns through the same
@@ -87,6 +88,12 @@ describe("B-VOICE-04 · voiceNextStep — the one concrete step Arbor said in th
   it("takes sentence 2 of the last settled Arbor turn since the session began", () => {
     const thread = [ai("Old answer. Old step to ignore."), user("Bedtime is hard"), ai("That sounds tiring. Try a two-minute warning before the bath. I can say more.")];
     expect(voiceNextStep(thread, 1)).toBe("Try a two-minute warning before the bath.");
+  });
+
+  it("B-PROG-04 flag on: an opening week script is skipped, so the step is the model's own sentence 2", () => {
+    const script = TALK_TOGETHER.weeks[0].coachScripts[0].text;
+    expect(voiceNextStep([ai(`${script.en} That sounds tiring. Try a two-minute warning before the bath.`)])).toBe("Try a two-minute warning before the bath.");
+    expect(voiceNextStep([ai(`${script.he} זה נשמע מעייף. תנו התראה של שתי דקות לפני האמבטיה.`)])).toBe("תנו התראה של שתי דקות לפני האמבטיה.");
   });
 
   it("Hebrew works the same way", () => {
