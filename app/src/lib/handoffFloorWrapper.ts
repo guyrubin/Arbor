@@ -71,6 +71,18 @@ const HE_PAST_TIME = /(?<!\p{L})(?:אתמול|שלשום|שעבר|בעבר)(?!\p
 /** "he gets to tell his parents", "we call him in", "told us to call": a statement, not a command. */
 const EN_NARRATIVE_BEFORE = /\b(?:gets?|got|getting|likes?|liked|loves?|loved|wants?|wanted|tries|tried|used|goes|went|came|comes|started|starts|begins?|began|had|is\s+able|was\s+able|decided|agreed|refused|refuses|forgot|remembered|asked|told)\s+(?:\p{L}+\s+){0,2}?to\s+$|\b(?:he|she|they|we|i|it|who)\s+(?:also\s+|often\s+|usually\s+|sometimes\s+|always\s+|never\s+|then\s+|just\s+)?$/iu;
 
+/* Round 13 (P1-B): a command under a negation is no escalation ("a referral … is not needed", "no need to
+ * call", "אין צורך להפנות", "אין להזעיק"), and "be called by their first names" names, it does not call. */
+const NEGATED_BEFORE_EN = /\b(?:(?:no\s+need|no\s+reason)\s+(?:to|for)|(?:not|n['’]t)\s+(?:need(?:ed)?|necessary|required)\s+(?:to|for)|(?:do|does|did)\s+not\s+need\s+to|(?:don|doesn|didn)['’]t\s+need\s+to|need\s+not|needn['’]t)\s+(?:[^\s,;:.!?]+\s+)?$|\b(?:not|never|(?:do|does|did)\s+not|(?:don|doesn|didn)['’]t|(?:should|must|can|could|will|would)\s*(?:not|n['’]t))\s+$/iu;
+const NEGATED_AFTER_EN = /^\s*(?:[^\s,;:.!?]+\s+){0,3}?(?:is|are|was|were|will\s+be|would\s+be|seems?)\s+(?:not\s+|n['’]t\s+|un)(?:needed|necessary|required|recommended|indicated|warranted|advised)\b|^\s*(?:[^\s,;:.!?]+\s+){0,3}?(?:is|are|was|were)n['’]t\s+(?:needed|necessary|required|recommended)\b/iu;
+const NEGATED_BEFORE_HE = /(?<!\p{L})(?:ו|ש)?(?:אין\s+צורך|לא\s+צריכ?\p{L}*|אין\s+הכרח|אין\s+סיבה|אין\s+חובה|לא\s+חייב\p{L}*|לא\s+כדאי|לא\s+מומלץ)\s+(?:[^\s,;:.!?]+\s+)?$|(?<!\p{L})(?:ו|ש)?(?:אין|לא|אל)\s+$/u;
+const NAMING_AFTER_EN = /^\s*(?:by\s+(?:(?:their|his|her|its|the|a)\s+)?(?:first\s+|last\s+|full\s+|given\s+|nick)?names?\b|by\s+name\b|as\s+|["“'‘]|\p{Lu})/u;
+const negatedCommand = (text: string, index: number, length: number) => {
+  const before = text.slice(Math.max(0, index - 60), index);
+  const after = text.slice(index + length, index + length + 80);
+  return NEGATED_BEFORE_EN.test(before) || NEGATED_BEFORE_HE.test(before) || NEGATED_AFTER_EN.test(after);
+};
+
 export type EscalationCommand = { text: string; index: number };
 
 /** Every escalation command in the text (verb through recipient), in order. */
@@ -88,6 +100,8 @@ export function findEscalationCommands(text: string): EscalationCommand[] {
       }
       const pre = m.groups?.pre ?? "";
       const found = { text: m[0].slice(pre.length), index: index + pre.length };
+      if (negatedCommand(text, found.index, found.text.length)) continue;
+      if (re === COMMAND_EN_PASSIVE && NAMING_AFTER_EN.test(text.slice(found.index + found.text.length))) continue;
       if (!out.some((c) => c.index === found.index && c.text === found.text)) out.push(found);
     }
   }

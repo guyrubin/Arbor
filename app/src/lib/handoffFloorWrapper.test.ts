@@ -51,6 +51,33 @@ describe("rule (a) — an escalation line main dropped comes back with its condi
     expect(findEscalationCommands(line).some((c) => c.text.includes(command))).toBe(true);
   });
 
+  /* Round 13 (P1-B): a command under a negation, or "called" in the sense of
+     named, is no escalation: nothing is restored, the note stays as main leaves it. */
+  it.each([
+    ["There is no evidence of a speech delay, so a referral to the speech therapist is not needed.", HARD_MOMENT_EN],
+    ["There are no signs of a speech delay, and his family should be called by their first names at pickup.", HARD_MOMENT_EN],
+    ["No signs of delay were found, so the game should be called Sound Orbit.", HARD_MOMENT_EN],
+    ["There are no signs of anxiety, so the nurse does not need to be called.", HARD_MOMENT_EN],
+    ["אין עדות לעיכוב בדיבור, ולכן אין צורך להפנות לקלינאית תקשורת.", HARD_MOMENT_HE],
+    ["אין סימנים לחרדה, ולכן אין צורך להזעיק את האחות.", HARD_MOMENT_HE],
+    ["אין סימנים לעיכוב, ואת המשחק כדאי לקרוא סאונד אורביט.", HARD_MOMENT_HE],
+  ])("not restored: %s", (line, parentText) => {
+    expect(handoffFloor(line, { parentText })).toBe(withoutHandoffFindings(line, { parentText }));
+    expect(handoffFloor(line, { parentText })).toBe("");
+  });
+  it("a negated command is no command; the same command without the negation is one", () => {
+    expect(findEscalationCommands("A referral to the speech therapist is not needed.")).toEqual([]);
+    expect(findEscalationCommands("A referral to the speech therapist is recommended.").length).toBe(1);
+    expect(findEscalationCommands("There is no need to call the family.")).toEqual([]);
+    expect(findEscalationCommands("Do not call the family.")).toEqual([]);
+    expect(findEscalationCommands("If he does not calm, call the family.").map((c) => c.text)).toEqual(["call the family"]);
+    expect(findEscalationCommands("אין צורך להזעיק את האחות.")).toEqual([]);
+    expect(findEscalationCommands("אין להפנות לקלינאית תקשורת.")).toEqual([]);
+    expect(findEscalationCommands("יש להזעיק את האחות.").length).toBeGreaterThan(0);
+    expect(findEscalationCommands("His family should be called by their first names.")).toEqual([]);
+    expect(findEscalationCommands("His family should be called right away.").length).toBe(1);
+  });
+
   it("a cut line comes back whole: a condition split off by ';' or a new line, a title's full stop", () => {
     for (const line of [
       "If there are no signs of calming after 20 minutes; call the family.",
