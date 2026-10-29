@@ -13,6 +13,10 @@ export const BOOK_EXPORT_LIMITS = Object.freeze({
   totalMs: 120_000,
 });
 
+/** B-CAREPRO-50 (critic r1): export reads one account may have in flight at
+ *  once (the client reads one file at a time; one more covers a retry). */
+export const BOOK_EXPORT_CONCURRENT_READS = 2;
+
 /** B-CAREPRO-50: the server's SHA-256 (hex) of the exact bytes it sends for an
  *  export read; the client recomputes it and keeps the file only on a match. */
 export const BOOK_EXPORT_DIGEST_HEADER = "x-arbor-sha256";

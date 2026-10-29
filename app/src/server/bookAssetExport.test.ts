@@ -7,23 +7,27 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { inventoryChildBookAssets } from "./bookAssetExport";
 import { createBookAssetsRouter, eraseChildBookAssets, type BookAssetBucket, type BookAssetFile } from "./bookAssets";
 import { LocalFsBookAssetBucket } from "./localBookAssetBucket";
-import { BOOK_EXPORT_DIGEST_HEADER, BOOK_EXPORT_LIMITS } from "../lib/library/bookAssetExportContract";
+import { BOOK_EXPORT_CONCURRENT_READS, BOOK_EXPORT_DIGEST_HEADER, BOOK_EXPORT_LIMITS } from "../lib/library/bookAssetExportContract";
 import { createHash } from "node:crypto";
 import { bookAssetUrl } from "../lib/library/bookAssetPaths";
 
 vi.mock("./logger.js", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() }, requestIdOf: () => "synthetic" }));
 import { logger } from "./logger.js";
 // Dispatch real router handlers in memory: no listener, socket or external data.
-vi.mock("./apiRateLimits.js", () => ({ bookAssetLimiter: () => (_req: unknown, _res: unknown, next: () => void) => next() }));
+const limiters = vi.hoisted(() => ({ calls: [] as unknown[][] }));
+vi.mock("./apiRateLimits.js", () => ({
+  bookAssetLimiter: (...args: unknown[]) => { limiters.calls.push(args); return (_req: unknown, _res: unknown, next: () => void) => next(); },
+  bookAssetRates: () => ({ reads: 600, writes: 120 }),
+}));
 
 const prefix = "children/synthetic-child/books/";
 const asset = "synthetic-book/hero-sheets/synthetic/stand.png";
-function fakeBucket(objects: Record<string, Buffer>, opts: { unknownSize?: boolean; failStream?: boolean } = {}) {
+function fakeBucket(objects: Record<string, Buffer>, opts: { unknownSize?: boolean; failStream?: boolean; contentType?: string } = {}) {
   const reads: string[] = [];
   const lists: unknown[] = [];
   const deleted: string[] = [];
   const fileOf = (name: string): BookAssetFile => ({
-    name, metadata: opts.unknownSize ? {} : { size: objects[name]?.byteLength },
+    name, metadata: opts.unknownSize ? {} : { size: objects[name]?.byteLength, contentType: opts.contentType ?? "image/png" },
     exists: async () => [name in objects],
     createReadStream: () => {
       reads.push(name);
@@ -188,6 +192,40 @@ describe("authenticated export proxy (in-memory synthetic fixture)", () => {
     expect(bytes.headers.get("content-type")).toBe("image/png");
     expect(bytes.headers.get("content-length")).toBe("4");
     expect(await bytes.text()).toBe("DATA");
+  });
+
+  it("critic r1: an export read is typed by the stored media type, never by its path", async () => {
+    bucket = fakeBucket({ [prefix + asset]: Buffer.from("DATA") }, { contentType: "audio/mpeg; codecs=mp3" }).bucket;
+    expect((await get(url, "owner")).headers.get("content-type")).toBe("audio/mpeg");
+    const untyped = fakeBucket({ [prefix + asset]: Buffer.from("DATA") }, { contentType: "" });
+    bucket = untyped.bucket;
+    expect((await get(url, "owner")).headers.get("content-type")).toBe("application/octet-stream");
+  });
+
+  it("critic r1: export=1 keeps the reader's per-minute rate (its own budget, never a higher one)", () => {
+    limiters.calls.length = 0;
+    createBookAssetsRouter({ getBucket: async () => null, requireOwnership: ownership });
+    expect(limiters.calls).toEqual([["read", undefined], ["read", 600]]);
+    limiters.calls.length = 0;
+    createBookAssetsRouter({ getBucket: async () => null, requireOwnership: ownership, readsPerMin: 1000 });
+    expect(limiters.calls[1]).toEqual(["read", 1000]);
+  });
+
+  it("critic r1: at most BOOK_EXPORT_CONCURRENT_READS export reads per account are in flight; the next is told to retry", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    const objects = { [prefix + asset]: Buffer.from("DATA") };
+    const f = fakeBucket(objects);
+    const slowFile = (name: string): BookAssetFile => ({ ...f.bucket.file(name), exists: async () => { await gate; return [true]; } });
+    bucket = { ...f.bucket, file: slowFile };
+    const held = Array.from({ length: BOOK_EXPORT_CONCURRENT_READS }, () => get(url, "owner"));
+    await new Promise((r) => setImmediate(r));
+    const extra = await get(url, "owner");
+    expect(extra.status).toBe(429);
+    expect(extra.headers.get("retry-after")).toBe("1");
+    release();
+    for (const r of await Promise.all(held)) expect(r.status).toBe(200);
+    expect((await get(url, "owner")).status).toBe(200); // slots come back
   });
 
   it("B-CAREPRO-50: an export read over the per-file cap is refused (413), never streamed", async () => {

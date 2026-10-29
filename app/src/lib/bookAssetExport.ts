@@ -8,6 +8,30 @@ class ExportFailure extends Error {
   constructor(readonly code: BookExportFailure) { super(code); }
 }
 
+/** B-CAREPRO-50 (critic r1): the server's per-account export pace (429 with
+ *  Retry-After). Waited out and the same file read again, within the
+ *  export's deadline; never a failure by itself. */
+class RetryLater extends Error {
+  constructor(readonly seconds: number) { super("retry_later"); }
+}
+export const EXPORT_RETRY_ATTEMPTS = 3;
+const MAX_RETRY_AFTER_S = 60;
+const retryAfterOf = (res: Response): number => {
+  const raw = res.headers.get("retry-after");
+  const s = raw === null ? NaN : Number(raw);
+  return Number.isFinite(s) && s >= 0 ? Math.min(s, MAX_RETRY_AFTER_S) : 5;
+};
+/** Wait `ms`, or fail now when the wait would pass the deadline. */
+export function pauseWithin(ms: number, signal: AbortSignal | undefined, deadline: number): Promise<void> {
+  if (signal?.aborted) return Promise.reject(new ExportFailure("cancelled"));
+  if (Date.now() + ms >= deadline) return Promise.reject(new ExportFailure("timeout"));
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => { signal?.removeEventListener("abort", stop); resolve(); }, ms);
+    const stop = () => { clearTimeout(timer); reject(new ExportFailure("cancelled")); };
+    signal?.addEventListener("abort", stop, { once: true });
+  });
+}
+
 /** Bound token refresh, dispatch and body reads, including a stalled stream. */
 async function boundedRequest<T>(signal: AbortSignal | undefined, deadline: number, work: (signal: AbortSignal) => Promise<T>): Promise<T> {
   if (signal?.aborted) throw new ExportFailure("cancelled");
@@ -35,6 +59,7 @@ async function readBytes(res: Response, max: number, signal: AbortSignal, assert
   if (res.status === 401 || res.status === 403) throw new ExportFailure("unauthorized");
   if (res.status === 404) throw new ExportFailure("missing");
   if (res.status === 413) throw new ExportFailure("byte_limit");
+  if (res.status === 429) throw new RetryLater(retryAfterOf(res));
   if (!res.ok) throw new ExportFailure("unavailable");
   // Fetch decodes HTTP transfer compression; Content-Length then describes
   // compressed transport bytes, while the inventory describes original bytes.
@@ -234,7 +259,16 @@ async function collectPrivateBookAssets(out: PortableBookAssets, childId: string
     reservedBytes += file.bytes!;
     try {
       const served: ServedAs = { digest: null, mediaType: null };
-      const bytes = await boundedRequest(signal, deadline, (signal) => requestBytes(`${bookAssetUrl(childId, file.bookId, file.path)}&export=1`, file.bytes!, signal, assertOwner, file.bytes!, served));
+      let bytes: Uint8Array | undefined;
+      for (let attempt = 0; bytes === undefined; attempt++) {
+        try {
+          bytes = await boundedRequest(signal, deadline, (signal) => requestBytes(`${bookAssetUrl(childId, file.bookId, file.path)}&export=1`, file.bytes!, signal, assertOwner, file.bytes!, served));
+        } catch (e) {
+          if (!(e instanceof RetryLater)) throw e;
+          if (attempt >= EXPORT_RETRY_ATTEMPTS) throw new ExportFailure("unavailable");
+          await pauseWithin(e.seconds * 1000, signal, deadline);
+        }
+      }
       assertOwner();
       const hash = await boundedRequest(signal, deadline, async (signal) => {
         const result = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes as Uint8Array<ArrayBuffer>));

@@ -1,7 +1,7 @@
 import { createHash, webcrypto } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
-import { exportPrivateBookAssets } from "./bookAssetExport";
+import { EXPORT_RETRY_ATTEMPTS, exportPrivateBookAssets, pauseWithin } from "./bookAssetExport";
 import { createChildExportRun } from "./childExportRun";
 import { BOOK_EXPORT_DIGEST_HEADER, BOOK_EXPORT_LIMITS, type BookExportFile, type BookExportInventory } from "./library/bookAssetExportContract";
 import { bookAssetContentType } from "./library/bookAssetPaths";
@@ -290,6 +290,33 @@ describe("B-CAREPRO-50 · the export matches what the server sent", () => {
   it("a file the server refuses as too large is named byte_limit", async () => {
     install([file()], () => new Response(null, { status: 413 }));
     expect((await exportPrivateBookAssets("owner", childId, docs())).files[0].status).toBe("byte_limit");
+  });
+
+  it("critic r1: the server's per-account pace (429 + Retry-After) is waited out and the same file read again", async () => {
+    let refused = 0;
+    const calls = install([file(), file(print)], (url) => {
+      if (pathOf(url) === print && refused < 2) { refused++; return new Response(null, { status: 429, headers: { "retry-after": "0" } }); }
+      return served("DATA", url);
+    });
+    const out = await exportPrivateBookAssets("owner", childId, docs([sprite, print]));
+    expect(out.status).toBe("complete");
+    expect(out.files.map((f) => f.status)).toEqual(["included", "included"]);
+    expect(calls.filter((c) => pathOf(c.url) === print)).toHaveLength(3);
+  });
+
+  it("critic r1: a pace that never lifts ends that file as unavailable after the retries", async () => {
+    const calls = install([file()], () => new Response(null, { status: 429, headers: { "retry-after": "0" } }));
+    expect((await exportPrivateBookAssets("owner", childId, docs())).files[0].status).toBe("unavailable");
+    expect(calls.filter((c) => !c.url.endsWith("export-manifest"))).toHaveLength(EXPORT_RETRY_ATTEMPTS + 1);
+  });
+
+  it("critic r1: a wait that would pass the export's deadline is a timeout at once; cancel ends a wait", async () => {
+    await expect(pauseWithin(60_000, undefined, Date.now() + 1_000)).rejects.toMatchObject({ code: "timeout" });
+    const controller = new AbortController();
+    const waiting = pauseWithin(30_000, controller.signal, Date.now() + 60_000);
+    controller.abort();
+    await expect(waiting).rejects.toMatchObject({ code: "cancelled" });
+    await expect(pauseWithin(0, undefined, Date.now() + 1_000)).resolves.toBeUndefined();
   });
 
   /** A synthetic ten-book library: ~96 files a book (sheet, choices, prints, three narration voices). */
