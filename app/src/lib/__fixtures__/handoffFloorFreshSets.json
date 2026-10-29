@@ -1,5 +1,5 @@
 {
- "about": "B-ASKJB-44 round 11: the critic's fresh sets, copied read-only as a corpus for the monotonicity property test (handoffFloor.monotonic.test.ts). critic-r9 = scratchpad critic-askjb/r9/fresh2.json, critic-r10 = r10/fresh3.json (`critic` is the critic's required verdict under the round-10 contract, kept for reference only); critic-r11 = r11/fresh11.json (62 rows) critic-r12 = r12/fresh12.json (44 rows) critic-r13 = r13/fresh13.json (45 rows), critic-r14 = r14/fresh14.json (36 rows), critic-r15 = r15/fresh15.json + fresh15b.json (46 rows) critic-r16 = r16/fresh16.json + fresh16b.json + fresh16c.json (103 rows; `forbid` is a label the critic flags if restored) and critic-r17 = r17/fresh17.json (75 rows, the critic's 13 failing rows among them); `must` is text the critic requires in the output; floor-probe* = the critic's floor-probe.mts .. floor-probe4.mts cases (parent '' = the probe gave none; floor-probe4's parent is the probe's own). Synthetic text only.",
+ "about": "B-ASKJB-44 round 11: the critic's fresh sets, copied read-only as a corpus for the monotonicity property test (handoffFloor.monotonic.test.ts). critic-r9 = scratchpad critic-askjb/r9/fresh2.json, critic-r10 = r10/fresh3.json (`critic` is the critic's required verdict under the round-10 contract, kept for reference only); critic-r11 = r11/fresh11.json (62 rows) critic-r12 = r12/fresh12.json (44 rows) critic-r13 = r13/fresh13.json (45 rows), critic-r14 = r14/fresh14.json (36 rows), critic-r15 = r15/fresh15.json + fresh15b.json (46 rows) critic-r16 = r16/fresh16.json + fresh16b.json + fresh16c.json (103 rows; `forbid` is a label the critic flags if restored) critic-r17 = r17/fresh17.json (75 rows, the critic's 13 failing rows among them) and critic-r18 = the critic's 21 rows from r18/fresh18.json (A01-A05, HA01-HA04, B01-B03, HB01, HB02, HD02, F01-F04, HF01, HF03); `must` is text the critic requires in the output; floor-probe* = the critic's floor-probe.mts .. floor-probe4.mts cases (parent '' = the probe gave none; floor-probe4's parent is the probe's own). Synthetic text only.",
  "rows": [
   {
    "id": "r9-S01",
@@ -4186,6 +4186,174 @@
    "note": "אבא אומר שאין סימנים לחרדה, אבל הוא נשך שני ילדים בצהריים היום.",
    "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
    "must": "הוא נשך שני ילדים בצהריים היום"
+  },
+  {
+   "id": "r18-A01",
+   "source": "critic-r18",
+   "label": "noRestore (A-negdefer): no required text",
+   "note": "When there are no signs of calming, call the family, but not this week.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r18-A02",
+   "source": "critic-r18",
+   "label": "noRestore (A-negdefer): no required text",
+   "note": "When there are no signs of calming, tell the family, just not tonight.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r18-A03",
+   "source": "critic-r18",
+   "label": "noRestore (A-negdefer): no required text",
+   "note": "When there are no signs of calming, call the family, but not any earlier than next week.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r18-A04",
+   "source": "critic-r18",
+   "label": "noRestore (A-negdefer): no required text",
+   "note": "When there are no signs of calming, call the family, but not prior to the meeting.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r18-A05",
+   "source": "critic-r18",
+   "label": "noRestore (A-negdefer): no required text",
+   "note": "When there are no signs of calming, let the family know, but not during the holidays.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r18-HA01",
+   "source": "critic-r18",
+   "label": "noRestore (A-negdefer): no required text",
+   "note": "כשאין סימנים של רגיעה, עדכנו את ההורים, אבל לא השבוע.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r18-HA02",
+   "source": "critic-r18",
+   "label": "noRestore (A-negdefer): no required text",
+   "note": "כשאין סימנים של רגיעה, התקשרו להורים, רק לא הערב.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r18-HA03",
+   "source": "critic-r18",
+   "label": "noRestore (A-negdefer): no required text",
+   "note": "כשאין סימנים של רגיעה, עדכנו את ההורים, אבל לא קודם לסוף החודש.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r18-HA04",
+   "source": "critic-r18",
+   "label": "noRestore (A-negdefer): no required text",
+   "note": "כשאין סימנים של רגיעה, ספרו להורים, אבל לא בחופש.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r18-B01",
+   "source": "critic-r18",
+   "label": "noRestore (B-occasion): no required text",
+   "note": "When there are no signs of calming and the family comes for pickup, let the family know.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r18-B02",
+   "source": "critic-r18",
+   "label": "noRestore (B-occasion): no required text",
+   "note": "When the family arrives at pickup and there are no signs of calming, tell the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r18-B03",
+   "source": "critic-r18",
+   "label": "rule (B-calendar): no required text",
+   "note": "When there are no signs of calming at the next parent meeting, tell the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r18-HB01",
+   "source": "critic-r18",
+   "label": "noRestore (B-occasion): no required text",
+   "note": "כשאין סימנים של רגיעה וההורים מגיעים לאיסוף, ספרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r18-HB02",
+   "source": "critic-r18",
+   "label": "noRestore (B-occasion): no required text",
+   "note": "כשההורים באים לאסוף אותו ואין סימנים של רגיעה, עדכנו את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r18-HD02",
+   "source": "critic-r18",
+   "label": "noRestore (D-visitdefer): no required text",
+   "note": "כשאין סימנים של רגיעה, עדכנו את ההורים בתור אצל רופאת הילדים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r18-F01",
+   "source": "critic-r18",
+   "label": "noRestore (F-vital): no required text",
+   "note": "When there are no signs of breathing trouble, tell the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r18-F02",
+   "source": "critic-r18",
+   "label": "noRestore (F-vital): no required text",
+   "note": "When there are no signs of trouble breathing, let the family know.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r18-F03",
+   "source": "critic-r18",
+   "label": "noRestore (F-vital): no required text",
+   "note": "When there are no signs of shortness of breath, call the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r18-F04",
+   "source": "critic-r18",
+   "label": "noRestore (F-vital): no required text",
+   "note": "When there are no signs of laboured breathing, tell the family.",
+   "parent": "He bit a friend at preschool when they fought over a toy. We separated them and he calmed after a hug.",
+   "must": ""
+  },
+  {
+   "id": "r18-HF01",
+   "source": "critic-r18",
+   "label": "noRestore (F-vital): no required text",
+   "note": "כשאין סימנים לקוצר נשימה, עדכנו את ההורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
+  },
+  {
+   "id": "r18-HF03",
+   "source": "critic-r18",
+   "label": "noRestore (F-vital): no required text",
+   "note": "כשאין סימנים לנשימה מהירה, התקשרו להורים.",
+   "parent": "הוא נשך חבר בגן כשרבו על צעצוע. הפרדנו ביניהם והוא נרגע אחרי חיבוק.",
+   "must": ""
   }
  ]
 }
