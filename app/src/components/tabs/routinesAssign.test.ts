@@ -79,12 +79,15 @@ describe("GP-29 · the routine itself is untouched", () => {
     expect(TAB).toContain('t("routines.reset")');
   });
 
-  it("the completion receipt still answers the last step — and names no star (B-GROWTH-24)", () => {
-    expect(TAB).toContain("const nowComplete = nextKeys.length === total && total > 0;");
-    // B-STATUS-01: the success toast became the ONE receipt line, with Undo.
+  it("the last step answers with the all-done banner only — no toast, no dead receipt, no star (B-GROWTH-24)", () => {
+    // B-STATUS-01 critic r1: #/routines redirects to Plans, so a receipt line
+    // on this leaf could never be seen; the success toast is gone too.
+    const routes = read("lib/routes.ts");
+    expect(routes).toMatch(/\n\s*routines: "plans",/);
     expect(TAB).not.toContain('toast(t("routines.doneToast"), "success")');
-    expect(TAB).toMatch(/doneReceipt\.show\(\{\s*text: t\("routines\.doneToast"\)/);
-    expect(TAB).toContain('<ReceiptNoteLine note={doneReceipt.note} testId="routines-receipt"');
+    expect(TAB).not.toContain("useReceiptNote");
+    expect(TAB).not.toContain("ReceiptNoteLine");
+    expect(TAB).toContain("{allDone && (");
     expect(TAB).not.toContain("routines.starEarned");
     for (const lang of LANGS) {
       const s = translate(lang, "routines.doneToast");

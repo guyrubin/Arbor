@@ -158,9 +158,10 @@ if (process.env.TOAST_BASELINE_WRITE === "1") {
 
 describe("B-STATUS-01 · toasts are for errors and undo — the rest is a shrink-only ratchet", () => {
   it("the scan reads the real corpus (non-vacuity)", () => {
-    // B-STATUS-01 wave 3 turned 24 success toasts into receipt lines (80 call
-    // sites remain, errors and Undo included); the corpus is still far from empty.
-    expect(SITES.length).toBeGreaterThan(60);
+    // B-STATUS-01 wave 3 turned 24 success toasts into receipt lines; 80 call
+    // sites remain (errors and Undo included). The bar holds at 80 (critic r1:
+    // a non-vacuity floor is never lowered to fit a conversion).
+    expect(SITES.length).toBeGreaterThanOrEqual(80);
     const kinds = new Set(SITES.map((s) => s.kind));
     for (const k of ["error", "action", "success", "info", "dynamic"] as const) expect(kinds.has(k), k).toBe(true);
     // a known file, counted by hand: ArborContext's two success toasts (plan woven, analysis kept)
@@ -214,7 +215,6 @@ describe("B-STATUS-01 · wave 3: the success toasts of these surfaces became rec
     "components/sections/AskSpecialist.tsx",
     "components/sections/Appointments.tsx",
     "components/sections/SchoolBrief.tsx",
-    "components/tabs/RoutinesTab.tsx",
     "components/tabs/ConsultTab.tsx",
     "components/tabs/CoachTab.tsx",
     "components/tabs/BedtimeStoriesTab.tsx",
@@ -229,6 +229,10 @@ describe("B-STATUS-01 · wave 3: the success toasts of these surfaces became rec
       const src = readFileSync(path.join(SRC, f), "utf8");
       expect(src, f).toMatch(/<Receipt\b|<ReceiptNoteLine\b/);
     }
+  });
+  it("RoutinesTab (redirected to Plans, never seen) holds neither a success toast nor a dead receipt (critic r1)", () => {
+    expect(CURRENT["components/tabs/RoutinesTab.tsx"]?.success).toBeUndefined();
+    expect(readFileSync(path.join(SRC, "components/tabs/RoutinesTab.tsx"), "utf8")).not.toMatch(/<Receipt\b|<ReceiptNoteLine\b/);
   });
   it("NEGATIVE CONTROL: the pre-change Consult save is a ratcheted success toast", () => {
     const pre = 'setOutcome("");\n    toast(t("elev.learnCare.appt.followUp.saved"), "success");';
