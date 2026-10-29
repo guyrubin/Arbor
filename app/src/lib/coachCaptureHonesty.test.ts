@@ -126,18 +126,28 @@ describe("COACH-8 — Behaviors capture is an honest launcher (critic r2)", () =
     expect(modal).toMatch(/const changeTrigger = \(text: string\) => \{\s*stopCaptureWork\(\);\s*setNewLogTrigger\(text\);/);
   });
 
+  /** One write seam: submit only opens review, and the sheet calls handleAddLog exactly once. */
+  const oneWriteSeam = (modal: string) => {
+    const submit = /const submit = [\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
+    return !!submit && submit.includes("setReviewing(true)") && !submit.includes("handleAddLog") && count(modal, "handleAddLog(") === 1;
+  };
+
   it("zero duplicate writers — the sheet confirms through the existing one write seam", () => {
     const modal = read("components/overview/QuickLogModal.tsx");
     expect(code).not.toMatch(/handleAddLog\(|addMoment\(/);
     expect(count(modal, "handleAddLog(e, { callerShowsFailure: true, ...contentProvenance })")).toBe(1);
     expect(modal).toContain('onConfirm={confirm}');
+    expect(oneWriteSeam(modal)).toBe(true);
+  });
+
+  it("NEGATIVE CONTROL (B-INF-13 r2): the real submit, turned into a second writer, breaks the seam", () => {
+    const modal = read("components/overview/QuickLogModal.tsx");
     const submit = /const submit = [\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
     expect(submit).toContain("setReviewing(true)");
-    expect(submit).not.toContain("handleAddLog");
-    // NEGATIVE CONTROL (B-INF-13): a second writer added to the real sheet source is counted.
-    const second = modal.replace(submit, `${submit}\n  const submitLog = (e) => handleAddLog(e, { callerShowsFailure: true, ...contentProvenance });`);
-    expect(second).not.toBe(modal);
-    expect(count(second, "handleAddLog(e, { callerShowsFailure: true, ...contentProvenance })")).toBe(2);
+    // The retired direct-submit shape: the real submit body writes instead of opening review.
+    const writing = modal.replace(submit, submit.replace("setReviewing(true)", "void handleAddLog(e)"));
+    expect(writing).not.toBe(modal);
+    expect(oneWriteSeam(writing)).toBe(false);
   });
 });
 
