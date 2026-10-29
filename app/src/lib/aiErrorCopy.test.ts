@@ -124,3 +124,20 @@ describe("retryAfterSeconds", () => {
     expect(retryAfterSeconds(null)).toBeUndefined();
   });
 });
+
+describe("B-ASKJB-49 — a 409 says what it is and sends the parent to Safety", () => {
+  it("the escalation copy is the professional-support title, the danger line and the Safety door, never 'try again'", () => {
+    const e = classifyAiFailure(new EscalationRequiredError("Professional support recommended", { category: "caregiver_distress" }), { online: true });
+    expect(e.kind).toBe("escalation");
+    expect(e.titleKey).toBe("beh.escalation.title");
+    expect(e.bodyKey).toBe("elev.safety.crisis.danger");
+    expect(e.actionKey).toBe("elev.safety.open");
+    expect(e.actionRoute).toBe("safety");
+    expect(e.retryable).toBe(false);
+    // Negative control: the generic copy is what a 409 used to get.
+    expect(classifyAiFailure(new ApiError("boom", 500)).titleKey).toBe("elev.aierrors.generic.title");
+    expect(e.titleKey).not.toBe("elev.aierrors.generic.title");
+    // Never the server's English words.
+    expect(JSON.stringify(e)).not.toContain("Professional support recommended");
+  });
+});

@@ -143,11 +143,17 @@ export function classifyAiFailure(err: unknown, ctx: AiFailureContext = {}): AiF
       };
     case ESCALATION_STATUS:
       // Owned by the escalation screen (DUX-032/VC-8) — resources, not errors.
+      // B-ASKJB-49: a surface that classifies a 409 says what it is (the
+      // professional-support title and the danger line) and sends the parent
+      // to Safety, where the helplines are; never "something went wrong, try
+      // again". The surface's own crisis card (UrgentSupport) carries the tel: lines.
       return {
         kind: "escalation",
-        titleKey: "elev.aierrors.generic.title",
-        bodyKey: "elev.aierrors.generic.body",
+        titleKey: "beh.escalation.title",
+        bodyKey: "elev.safety.crisis.danger",
         bodyParams: {},
+        actionKey: "elev.safety.open",
+        actionRoute: "safety",
         retryable: false,
       };
     default:

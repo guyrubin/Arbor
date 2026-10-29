@@ -154,3 +154,14 @@ describe("the capture sheet writes only on the parent's tap (source pins)", () =
     expect(then).not.toMatch(/setMilestoneObservation|fileMomentOnShelf/);
   });
 });
+
+describe("B-ASKJB-49 — the crisis screen's 409 reaches the capture sheet", () => {
+  it("an EscalationRequiredError is rethrown (the sheet shows the crisis card); any other failure stays no row", async () => {
+    const { EscalationRequiredError } = await import("../api");
+    const child = { id: "k", name: "Noa" } as ChildProfile;
+    const log = { id: "log-2", trigger: "An invented sentence for the screen" };
+    const escalate = async () => { throw new EscalationRequiredError("Professional support recommended", { category: "caregiver_distress" }); };
+    await expect(requestMilestoneProposal({ extract: escalate, log, childProfile: child, language: "en", candidateIds: ["cdc-24m-3"] })).rejects.toBeInstanceOf(EscalationRequiredError);
+    expect(await requestMilestoneProposal({ extract: async () => { throw new Error("network"); }, log, childProfile: child, language: "en", candidateIds: ["cdc-24m-3"] })).toBeNull();
+  });
+});
