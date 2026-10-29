@@ -212,6 +212,29 @@ describe("BD-13 · 4 · the shipped marketing pages", () => {
     expect(Object.keys(KNOWN_PRICE_DISCREPANCIES).length).toBeLessThanOrEqual(1);
   });
 
+  it("structured data offers no 0 price for a trial, and every ILS offer is a price the page shows", () => {
+    for (const rel of pages.filter((r) => r.endsWith(".html"))) {
+      const html = readFileSync(path.join(MARKETING, rel), "utf8");
+      const shown = new Set(marketingPrices(html));
+      for (const m of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+        const offers: { price?: unknown; priceCurrency?: unknown }[] = [];
+        const walk = (v: unknown) => {
+          if (Array.isArray(v)) v.forEach(walk);
+          else if (v && typeof v === "object") {
+            const o = v as Record<string, unknown>;
+            if (o["@type"] === "Offer") offers.push(o);
+            Object.values(o).forEach(walk);
+          }
+        };
+        walk(JSON.parse(m[1]));
+        for (const o of offers) {
+          expect(Number(o.price), `${rel}: a trial is not a 0-price offer`).toBeGreaterThan(0);
+          if (o.priceCurrency === "ILS") expect(shown.has(`₪${Number(o.price).toFixed(2)}`), `${rel}: offer ₪${o.price} is not on the page`).toBe(true);
+        }
+      }
+    }
+  });
+
   it("negative controls: the IL page's old tiers are caught", () => {
     const old = `<div class="tier"><div class="tname">התחלה</div><div class="price"><b>חינם</b></div></div>
       <li>משחק יומי, תרגול ואקדמיה ללא הגבלה</li><div class="tname">Arbor משפחתי</div><div class="price"><b>₪79</b></div>
