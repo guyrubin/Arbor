@@ -116,11 +116,12 @@ export default function SneakHandBackCard() {
       closeLabel={t("aria.close")}
       onKeep={async () => { if (await addMoment(keep)) dismissSneakHandBack(); }}
       onShare={() => {
-        if (!shareAllowed || !picture) return;
-        void releaseChildLikeness({ src: picture, name: card.name }).then((allowed) => {
-          if (!allowed) return;
-          void shareImageFile({ dataUrl: picture, filename: "statue.jpg" });
-        });
+        if (shareAllowed && picture) {
+          void releaseChildLikeness({ src: picture, name: card.name }).then((allowed) => {
+            if (!allowed) return;
+            void shareImageFile({ dataUrl: picture, filename: "statue.jpg" });
+          });
+        }
       }}
       onClose={dismissSneakHandBack}
     />

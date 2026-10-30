@@ -2,11 +2,16 @@
  * Parent register only. The host lives on the shell and portals above the
  * hand-back card. Kid Mode resolves the wait as "keep private" and draws
  * nothing here — the child never sees this choice.
+ *
+ * Dismissal (Escape, backdrop, Keep private) belongs to the shared dialog
+ * owner. The layer sits at 68: above the hand-back card (60) and under the
+ * dialog stack's Kid Mode ceiling (69), so a parent dialog never covers Kid Mode.
  */
 import { useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
+import { useDialog } from "../../hooks/useDialog";
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
 import {
   answerLikenessCeremony,
@@ -17,6 +22,7 @@ import {
 type Translate = (key: string, vars?: Record<string, string | number>) => string;
 
 export function LikenessCeremonyView({
+  open,
   dir,
   src,
   title,
@@ -28,6 +34,7 @@ export function LikenessCeremonyView({
   onUse,
   onKeep,
 }: {
+  open: boolean;
   dir: "ltr" | "rtl";
   src: string;
   title: string;
@@ -39,24 +46,17 @@ export function LikenessCeremonyView({
   onUse: () => void;
   onKeep: () => void;
 }) {
+  const { ref: dialogRef, requestClose, onBackdropClick } = useDialog({ open, onClose: onKeep });
   return (
     <div
-      role="presentation"
+      className="arbor-app fixed inset-0 z-[68] flex items-center justify-center bg-black/60 p-4"
       data-testid="likeness-ceremony-backdrop"
-      onClick={onKeep}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 80,
-        background: "rgba(20, 34, 90, 0.45)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-        paddingBottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
-      }}
+      data-arbor-dialog-layer
+      onClick={onBackdropClick}
+      style={{ zIndex: 68, paddingBottom: "calc(16px + env(safe-area-inset-bottom, 0px))" }}
     >
       <section
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="likeness-ceremony-title"
@@ -105,7 +105,7 @@ export function LikenessCeremonyView({
           <button
             type="button"
             data-testid="likeness-keep"
-            onClick={onKeep}
+            onClick={requestClose}
             className="min-h-11 w-full rounded-xl px-3 text-sm font-bold"
             style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
           >
@@ -138,21 +138,11 @@ export default function LikenessCeremonyHost() {
     if (kidMode && preview) answerLikenessCeremony(false);
   }, [kidMode, preview]);
 
-  useEffect(() => {
-    if (!preview || kidMode) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") answerLikenessCeremony(false);
-    };
-    window.addEventListener("keydown", onKey);
-    const node = document.querySelector("[data-testid=likeness-ceremony]");
-    if (node instanceof HTMLElement) node.focus();
-    return () => window.removeEventListener("keydown", onKey);
-  }, [preview, kidMode]);
-
   if (!preview || kidMode || typeof document === "undefined") return null;
   const copy = likenessCeremonyCopy(t, preview.name);
   return createPortal(
     <LikenessCeremonyView
+      open
       dir={uiLang === "he" ? "rtl" : "ltr"}
       src={preview.src}
       title={copy.title}

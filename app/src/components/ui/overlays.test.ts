@@ -17,6 +17,8 @@ const TARGETS = {
   "coach/VoiceOverlay.tsx": "true",
   "coach/VoiceCloseCard.tsx": "true",
   "tabs/HeroJourneyTab.tsx": "Boolean(kidNav) && immersive && Boolean(activeStory && render)",
+  // Parent likeness ceremony: one choice before a Kids Studio picture leaves.
+  "trust/LikenessCeremony.tsx": "open",
 };
 const read = (file: string) => readFileSync(path.join(root, file), "utf8");
 function contract(source: string) {

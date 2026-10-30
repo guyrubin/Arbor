@@ -126,6 +126,7 @@ describe("the parent gate, both languages", () => {
     const copy = likenessCeremonyCopy(t, name);
     return renderToStaticMarkup(
       <LikenessCeremonyView
+        open
         dir={lang === "he" ? "rtl" : "ltr"}
         src={PICTURE}
         {...copy}
