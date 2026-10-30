@@ -68,3 +68,19 @@ The five-milestone/50-iteration goal remains a delivery and evidence goal, not a
 daily schedule. Earlier implementation is not proof of design acceptance or
 conversion lift. Reopen the affected milestone quality criteria after the user
 review and keep measurement open until real baseline/denominator data exists.
+
+## Playback compatibility repair
+
+Live verification of PR #184 reproduced a media error around 10.23 seconds on
+two fresh public-page loads, although all 336 frames decode locally and Hosting
+serves correct byte ranges. The new hero, all four PDF assets and the full
+positioning were verified live; successful deployment did not establish
+successful full-length playback.
+
+The follow-up uses `arbor-in-action-v2.mp4`: H.264 Constrained Baseline, 720 × 720,
+yuv420p, no B-frames, one reference frame, a keyframe every two seconds and
+fast-start metadata. It retains the same 14-second illustrated content and
+localized controls. A new asset URL avoids cached copies of the previous encode.
+This is a compatibility repair within the fourth iteration, not an additional
+conversion enhancement. Full playback/replay still requires production browser
+verification; local decoder success alone is insufficient.
