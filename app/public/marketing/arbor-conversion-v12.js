@@ -17,50 +17,85 @@ if (typeof document !== 'undefined') {
     link.href = trialHref(link.getAttribute('href'), location.search, he ? 'he' : 'en');
   });
 
-  // A real, locally hosted video. The poster is useful before any media download.
+  // A short, optional product example. The full positioning remains readable
+  // without motion; manual chapters also work when autoplay/media is unavailable.
   const video = document.getElementById('family-film');
   const toggle = document.getElementById('film-toggle');
   if (video && toggle) {
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
     const connection = navigator.connection;
     const constrained = () => connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || '');
-    let manuallyPaused = false;
-    let visible = false;
-    let explicitlyPlaying = false;
-    toggle.hidden = false;
-    const label = () => {
-      toggle.textContent = video.paused
-        ? (he ? 'הפעלת סרטון הרקע' : 'Play background video')
-        : (he ? 'השהיית סרטון הרקע' : 'Pause background video');
+    const chapters = [...document.querySelectorAll('[data-film-step]')];
+    const captions = he ? [
+      ['01 · שאלה מהחיים', '״שעת השינה שוב מתאחרת.״', 'מתחילים במה שקורה במשפחה שלכם, עם ההקשר שחשוב לכם.'],
+      ['02 · רעיון שאפשר לנסות', 'סיפור שבוחרים יחד. ואז חיבוק.', 'מוצאים צעד קטן להערב. בסטודיו הילדים אפשר לגלות סיפורים מקוריים ולפנות מקום לדמיון.'],
+      ['03 · תצפית בשליטתכם', '״בחר סיפור וביקש חיבוק.״', 'בוחרים אם לשמור את התצפית. בהתפתחות, תצפיות ושגרות עוזרות לראות תמונה רחבה יותר.']
+    ] : [
+      ['01 · A REAL-LIFE QUESTION', '“Bedtime keeps getting later.”', 'Start with what is happening in your family, and the context that matters to you.'],
+      ['02 · AN IDEA TO TRY', 'A story they choose. Then a hug.', 'Find a manageable step for tonight. Kids Studio adds original stories and room for their imagination.'],
+      ['03 · AN OBSERVATION YOU CONTROL', '“Chose a story and asked for a hug.”', 'Choose whether to keep it. In Growth, observations and routines help build a fuller picture.']
+    ];
+    const starts = [0, 4.8, 9.3];
+    const targets = ['film-caption-label','film-caption-title','film-caption-body'].map(id => document.getElementById(id));
+    let manuallyPaused = false, visible = false, explicitlyPlaying = false, failed = false, current = -1;
+    const select = index => {
+      if (index === current) return;
+      current = index;
+      targets.forEach((target,i) => { target.textContent = captions[index][i]; });
+      chapters.forEach((chapter,i) => chapter.setAttribute('aria-pressed',String(i===index)));
     };
-    label();
+    const label = () => {
+      toggle.textContent = video.ended ? (he ? 'הפעלה מחדש' : 'Replay walkthrough') : video.paused
+        ? (he ? 'הפעלת ההדגמה' : 'Play walkthrough')
+        : (he ? 'השהיה' : 'Pause walkthrough');
+    };
     const play = () => {
-      if (!video.getAttribute('src')) video.src = video.dataset.src;
+      if (failed) return;
       video.muted = true;
-      video.play().catch(label);
+      video.play().catch(() => { label(); });
     };
     const sync = () => {
-      if (!visible || document.hidden || manuallyPaused || ((reduced.matches || constrained()) && !explicitlyPlaying)) video.pause();
+      if (!visible || document.hidden || manuallyPaused || video.ended || ((reduced.matches || constrained()) && !explicitlyPlaying)) video.pause();
       else play();
     };
-    toggle.addEventListener('click', () => {
-      if (video.paused) { manuallyPaused = false; explicitlyPlaying = true; play(); }
-      else { manuallyPaused = true; explicitlyPlaying = false; video.pause(); }
+    chapters.forEach((chapter,index) => {
+      chapter.disabled = false;
+      chapter.addEventListener('click',() => {
+        manuallyPaused = true; explicitlyPlaying = false; video.pause();
+        if (!failed) video.currentTime = starts[index];
+        select(index); label();
+      });
     });
-    video.addEventListener('play', label);
-    video.addEventListener('pause', label);
-    video.addEventListener('error', () => { video.removeAttribute('src'); toggle.hidden = true; });
-    document.addEventListener('visibilitychange', sync);
-    reduced.addEventListener('change', () => { explicitlyPlaying = false; sync(); });
-    connection?.addEventListener?.('change', () => { explicitlyPlaying = false; sync(); });
-    const start = () => {
-      if ('IntersectionObserver' in window) {
-        new IntersectionObserver(entries => { visible = entries[0].isIntersecting; sync(); }, { threshold: 0.1 }).observe(video);
-      } else { visible = true; sync(); }
+    toggle.hidden = false;
+    video.controls = false;
+    toggle.addEventListener('click',() => {
+      if (video.paused) {
+        manuallyPaused = false; explicitlyPlaying = true;
+        if (video.ended) { video.currentTime=0; select(0); }
+        play();
+      } else { manuallyPaused=true; explicitlyPlaying=false; video.pause(); }
+    });
+    video.addEventListener('timeupdate',() => { if (!failed) select(video.currentTime >= starts[2] ? 2 : video.currentTime >= starts[1] ? 1 : 0); });
+    video.addEventListener('play',label); video.addEventListener('pause',label); video.addEventListener('ended',label);
+    const mediaFailed = () => {
+      failed=true; video.pause(); toggle.hidden=true;
+      document.getElementById('film-error').hidden=false;
     };
-    if (document.readyState === 'complete') start();
-    else window.addEventListener('load', start, { once: true });
+    video.addEventListener('error',mediaFailed);
+    if (video.error) mediaFailed();
+    document.addEventListener('visibilitychange',sync);
+    reduced.addEventListener('change',() => { explicitlyPlaying=false; sync(); });
+    connection?.addEventListener?.('change',() => { explicitlyPlaying=false; sync(); });
+    // Do not wait for window.load: a delayed unrelated asset must not block playback.
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(entries => { visible=entries[0].isIntersecting; sync(); },{threshold:.3}).observe(video);
+    } else { visible=true; sync(); }
+    select(0); label();
   }
+
+  document.querySelectorAll('[data-experience-step]').forEach(link => link.addEventListener('click',() => {
+    document.querySelector(`[data-journey-step="${link.dataset.experienceStep}"]`)?.click();
+  }));
 
   const choices = document.getElementById('share-example');
   const lines = document.getElementById('share-preview-lines');
