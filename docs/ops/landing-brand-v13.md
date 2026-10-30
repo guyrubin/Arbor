@@ -84,3 +84,14 @@ localized controls. A new asset URL avoids cached copies of the previous encode.
 This is a compatibility repair within the fourth iteration, not an additional
 conversion enhancement. Full playback/replay still requires production browser
 verification; local decoder success alone is insufficient.
+
+The Baseline MP4 release (#186) also failed in the production cloud browser,
+at approximately 11.84 seconds. Its source bytes and all eleven public assets
+matched production, and the release timestamp/health were correct. The codec
+change alone did not resolve the observed failure.
+
+A follow-up adds a native VP9 WebM source before the retained MP4 alternative.
+Both contain the same approved 14-second illustrated sequence. The short silent
+clip is preloaded to avoid metadata-only loading while playback begins. This
+uses native video source selection; no player dependency or new tracking is
+added. Full browser playback remains an explicit acceptance check.
