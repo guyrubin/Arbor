@@ -259,6 +259,9 @@ const PRINT_SHELL_ALLOWLIST = new Set([
   // B-ASKJB-36/37: only provenance-filtered parent-kept words/firsts and dates
   // reach this plain month document. No record/plan/report context is accepted.
   "components/kept/KeptMonthPage.tsx",
+  // The year book is the same kept words and firsts, grouped by calendar year.
+  // yearPageDoc takes a YearBook and nothing else.
+  "components/kept/KeptYearBook.tsx",
 ]);
 
 describe("Wave-4 (c) — single-serializer seam (static source scan over src/components)", () => {
@@ -301,6 +304,10 @@ describe("Wave-4 (c) — single-serializer seam (static source scan over src/com
     expect(kept).toMatch(/openPrintableReport\(monthPageDoc\(/);
     expect(kept).toContain('presentation: "kept-month"');
     expect(kept).not.toMatch(/buildReport|ReportContext|behaviorLogs|memoryFacts|diagnosis|effectivenessRating/);
+    const year = COMPONENT_FILES.find((f) => f.rel === "components/kept/KeptYearBook.tsx")!.code;
+    expect(year).toMatch(/openPrintableReport\(yearPageDoc\(/);
+    expect(year).toContain('presentation: "kept-year"');
+    expect(year).not.toMatch(/buildReport|ReportContext|behaviorLogs|memoryFacts|diagnosis|effectivenessRating/);
   });
 
   it("B-CAREPRO-28: AskSpecialist prints ONLY through the seam's useConsultPdf, from ceiling-bound sections — never lib/reportExport directly", () => {
