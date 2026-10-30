@@ -30,7 +30,7 @@ if(current==='handoff')html=`<h3>${t('Bring a clearer picture.','הביאו תמ
 const panel=q('#demo-panel');panel.innerHTML=html;panel.classList.remove('is-changing');void panel.offsetWidth;panel.classList.add('is-changing');
 qa('[data-cap]').forEach(el=>{const selected=el.dataset.cap===current;el.classList.toggle('selected',selected);el.classList.toggle('active',selected);el.setAttribute('aria-pressed',String(selected))});q('#connection-label').textContent=captions[current];q('.demo-step').textContent=`${String(Object.keys(captions).indexOf(current)+1).padStart(2,'0')} / 06`;
 }
-function select(cap,scroll=false){if(!Object.hasOwn(captions,cap))return;current=cap;storyStep=0;render();if(scroll)q('#experience').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'})}
+function select(cap,scroll=false){if(!Object.hasOwn(captions,cap))return;current=cap;storyStep=0;render();if(scroll){const library=q('#feature-library');if(library)q('#feature-details').open=true;(library||q('#experience')).scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'})}}
 function toast(message){clearTimeout(toastTimer);q('#toast').textContent=message;q('#toast').classList.add('visible');toastTimer=setTimeout(()=>q('#toast').classList.remove('visible'),5000)}
 function status(title,message,follow){const panel=q('#demo-panel');panel.replaceChildren();const h=document.createElement('h3');h.textContent=title;const p=document.createElement('p');p.className='demo-status';p.textContent=message;panel.append(h,p);const a=document.createElement('a');a.className='button primary';a.href='/';a.textContent=t('Get started with Arbor','מתחילים עם Arbor');panel.append(a);const back=document.createElement('button');back.className='text-link';back.style.marginTop='18px';back.textContent=follow||t('Back to the example','חזרה לדוגמה');back.addEventListener('click',render);panel.append(back)}
 document.addEventListener('click',e=>{const cap=e.target.closest('[data-cap]');if(cap){select(cap.dataset.cap);return}const a=e.target.closest('[data-demo-action]');if(!a)return;const action=a.dataset.demoAction;if(action==='to-plan')select('plans');else if(action==='to-memory')select('memory');else if(action==='story'){storyStep=1;render()}else if(action==='plan'){const checked=qa('#demo-panel input:checked').length;status(t('Your example plan is ready.','התוכנית לדוגמה מוכנה.'),t('Selected steps: {count}. In Arbor, you can keep a plan and return to it. This demonstration has not saved anything to your account.','צעדים שסומנו: {count}. ב-Arbor אפשר לשמור תוכנית ולחזור אליה. ההדגמה לא שמרה דבר בחשבון שלכם.').replace('{count}',checked))}else if(action==='memory-review'){const note=q('#memory-note').value.trim();if(!note){q('#memory-note').focus();toast(t('Add an observation to review.','הוסיפו תצפית לבדיקה.'));return}const panel=q('#demo-panel');panel.replaceChildren();const h=document.createElement('h3');h.textContent=t('Your words. Your choice.','המילים שלכם. הבחירה שלכם.');const quote=document.createElement('blockquote');quote.textContent=note;panel.append(h,quote);panel.insertAdjacentHTML('beforeend',button(t('Confirm example','אישור הדוגמה'),'memory-confirm','ShieldCheck'));}else if(action==='memory-confirm')status(t('Reviewed by you.','נבדק על ידכם.'),t('That is how parent-approved memory works. This example was not saved or sent anywhere.','כך עובד זיכרון באישור ההורה. הדוגמה לא נשמרה ולא נשלחה לשום מקום.'));else if(action==='handoff'){const checked=qa('#demo-panel input:checked');if(!checked.length){toast(t('Choose at least one item to include.','בחרו לפחות פריט אחד לסיכום.'));return}const selected=checked.map(input=>input.closest('label').innerText.trim()).join('\n\n');status(t('Your selected summary','הסיכום שבחרתם'),selected+'\n\n'+t('Example only. Nothing has been shared.','דוגמה בלבד. דבר לא שותף.'))}});
@@ -78,8 +78,13 @@ icons();render();
       ? (he ? 'צעד קטן להערב' : 'A SMALL STEP FOR TONIGHT')
       : (he ? 'צעד קטן שאפשר לנסות' : 'A SMALL STEP TO TRY');
   };
+  document.addEventListener('arbor:moment', event => {
+    const button = buttons.find(item => item.dataset.moment === event.detail);
+    if (button) select(button);
+  });
   buttons.forEach(button => button.addEventListener('click', () => {
     select(button);
+    document.dispatchEvent(new CustomEvent('arbor:moment', { detail: button.dataset.moment }));
     // Keep the answer visible when the two columns stack on smaller screens.
     if (matchMedia('(max-width: 850px)').matches) {
       host.querySelector('#moment-result').scrollIntoView({
@@ -88,4 +93,89 @@ icons();render();
       });
     }
   }));
+})();
+
+/* One local example connects the landing moment, a real library title and memory review. */
+(() => {
+  const root = document.querySelector('.connected-journey');
+  if (!root) return;
+  const he = document.documentElement.lang === 'he';
+  const t = (en, heb) => he ? heb : en;
+  const stories = {
+    bedtime: {
+      story: t('The Lantern Path', 'שביל הפנסים'),
+      theme: t('An original Arbor story about naming fear and choosing trusted company.', 'סיפור מקורי של Arbor על מתן שם לפחד ובחירה בחברה בטוחה.'),
+      question: t('“Who helps you feel steady?”', '״מי עוזר לך להרגיש יציב?״'),
+      observation: t('“Chose the story and asked for a goodnight hug.”', '״בחר את הסיפור וביקש חיבוק לילה טוב.״')
+    },
+    feelings: {
+      story: t('The Little Bridge Builders', 'בוני הגשר הקטנים'),
+      theme: t('An original Arbor story about rebuilding one useful piece at a time.', 'סיפור מקורי של Arbor על בנייה מחדש, חלק מועיל אחד בכל פעם.'),
+      question: t('“What helped when the job felt too big?”', '״מה עזר כשהעבודה הרגישה גדולה מדי?״'),
+      observation: t('“Asked to rebuild together after the tower fell.”', '״ביקש לבנות יחד מחדש אחרי שהמגדל נפל.״')
+    },
+    play: {
+      story: t('The Cloud Orchestra', 'תזמורת העננים'),
+      theme: t('An original Arbor story about listening, taking turns and making room for each voice.', 'סיפור מקורי של Arbor על הקשבה, תורות ומתן מקום לכל קול.'),
+      question: t('“What happened when everyone played at once?”', '״מה קרה כשכולם ניגנו יחד בבת אחת?״'),
+      observation: t('“Invented a rhythm and invited us to take turns.”', '״המציא קצב והזמין אותנו להצטרף בתורות.״')
+    }
+  };
+  const tabs = [...root.querySelectorAll('[data-journey-step]')];
+  const panels = [...root.querySelectorAll('.journey-panel')];
+  const moment = root.querySelector('#journey-moment');
+  const next = root.querySelector('#journey-next');
+  const back = root.querySelector('#journey-back');
+  const start = root.querySelector('#journey-start');
+  const memoryButtons = [...root.querySelectorAll('[data-journey-memory]')];
+  const memoryStatus = root.querySelector('#journey-memory-status');
+  let step = 0;
+  function show(index, moveFocus = false) {
+    step = Math.max(0, Math.min(panels.length - 1, index));
+    panels.forEach((panel, i) => { panel.hidden = i !== step; });
+    tabs.forEach((tab, i) => tab.setAttribute('aria-pressed', String(i === step)));
+    back.hidden = step === 0;
+    next.hidden = step === 2;
+    next.firstChild.textContent = step === 0 ? t('Find something to share ', 'מוצאים משהו לעשות יחד ') : t('Keep a useful detail ', 'שומרים פרט מועיל ');
+    start.className = step === 2 ? 'button primary' : 'text-link';
+    if (moveFocus) {
+      panels[step].querySelector('h3').focus({ preventScroll: true });
+      root.querySelector('.journey-tabs').scrollIntoView({ block: 'start', behavior: 'instant' });
+    }
+  }
+  function updateMoment(key) {
+    if (!Object.hasOwn(stories, key)) return;
+    moment.value = key;
+    const hero = document.querySelector('.moment-hero');
+    const content = { ...stories[key], situation: hero.querySelector('.moment-prompt').textContent, actionTitle: hero.querySelector('#moment-title').textContent, action: hero.querySelector('#moment-action').textContent };
+    root.querySelectorAll('[data-journey-copy]').forEach(node => { node.textContent = content[node.dataset.journeyCopy]; });
+    memoryButtons.forEach(button => button.setAttribute('aria-pressed', 'false'));
+    memoryStatus.textContent = t('Try the choice. Nothing here is saved to an account.', 'נסו לבחור. שום דבר כאן לא נשמר בחשבון.');
+    show(0);
+  }
+  tabs.forEach((tab, i) => {
+    tab.addEventListener('click', () => show(i, matchMedia('(max-width: 750px)').matches));
+    tab.addEventListener('keydown', event => {
+      let target;
+      if (event.key === 'Home') target = 0;
+      if (event.key === 'End') target = tabs.length - 1;
+      if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') target = (i + ((event.key === 'ArrowRight') !== he ? 1 : -1) + tabs.length) % tabs.length;
+      if (target === undefined) return;
+      event.preventDefault(); tabs[target].focus(); show(target);
+    });
+  });
+  root.querySelectorAll('[data-journey-go]').forEach(button => button.addEventListener('click', () => show(Number(button.dataset.journeyGo), true)));
+  next.addEventListener('click', () => show(step + 1, true));
+  back.addEventListener('click', () => show(step - 1, true));
+  memoryButtons.forEach(button => button.addEventListener('click', () => {
+    memoryButtons.forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+    memoryStatus.textContent = button.dataset.journeyMemory === 'keep'
+      ? t('Kept in this example. In Arbor, you review a memory before it is used. Nothing was saved here.', 'נשמר בדוגמה בלבד. ב-Arbor אתם בודקים זיכרון לפני השימוש בו. דבר לא נשמר כאן.')
+      : t('Left out of this example. You choose which details become part of the picture.', 'נשאר מחוץ לדוגמה. אתם בוחרים אילו פרטים יהיו חלק מהתמונה.');
+  }));
+  moment.addEventListener('change', () => document.dispatchEvent(new CustomEvent('arbor:moment', { detail: moment.value })));
+  // This listener follows the hero's listener, so both sections use the same selected moment.
+  document.addEventListener('arbor:moment', event => updateMoment(event.detail));
+  root.classList.add('is-enhanced');
+  updateMoment(document.querySelector('.moment-choice[aria-pressed="true"]')?.dataset.moment || 'bedtime');
 })();
