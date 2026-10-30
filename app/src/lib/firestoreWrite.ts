@@ -11,6 +11,17 @@
  */
 export const QUEUED_ACK_MS = 4000;
 
+/** A cached Firestore snapshot with no pending writes may be shown for an
+ * already-kept, child-owned offline activity. Unacknowledged local writes always
+ * remain ineligible for a saved/completed receipt. Callers needing a fresh
+ * server read keep the stricter default. */
+export function snapshotWritesConfirmed(
+  metadata: { fromCache: boolean; hasPendingWrites: boolean },
+  acceptCachedNoPendingWrites = false,
+): boolean {
+  return !metadata.hasPendingWrites && (acceptCachedNoPendingWrites || !metadata.fromCache);
+}
+
 /**
  * B-DATA-14: the receipt for a write kept on this phone, chosen by the
  * connection at the moment it is read: offline → "Saved on this phone.
