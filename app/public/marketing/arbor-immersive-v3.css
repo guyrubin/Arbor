@@ -20,3 +20,70 @@ html:is([lang=de],[lang=fr],[lang=nl]) .hero-copy h1{font-size:clamp(44px,4.3vw,
 @media(max-width:520px){.language-name{display:none}.language-code{display:inline}.language-menu summary{padding:10px 5px;font-size:12px}.nav-actions{gap:8px}.nav-actions .compact svg{display:none}.site-header .language-options{display:flex}.site-header .language-options a{display:block}html:is([lang=de],[lang=fr],[lang=nl]) .hero-copy h1{font-size:clamp(36px,10vw,48px)}html:is([lang=de],[lang=fr],[lang=nl]) .hero-app h2{font-size:17px}}
 /* Purchase review: native selection, visible in every language and viewport. */
 .plan-included{margin:18px 0;padding:16px;border:1px solid var(--line);border-radius:16px;text-align:start}.plan-included h3{margin:0 0 6px;font-size:18px}.plan-included p{margin:0}.pricing-options{border:0;padding:0;min-width:0}.pricing-options legend{font-weight:700;margin-bottom:12px}.purchase-option{display:flex;align-items:flex-start;gap:12px;padding:20px;border:2px solid var(--line);border-radius:18px;cursor:pointer;background:var(--paper);text-align:start}.purchase-option:has(input:checked){background:var(--pale);border-color:var(--blue);box-shadow:0 0 0 1px var(--blue)}.purchase-option:focus-within{outline:3px solid var(--blue);outline-offset:3px}.purchase-option input{width:22px;height:22px;accent-color:var(--blue);flex:none;margin-top:2px}.purchase-option span{display:grid;gap:8px}.purchase-option strong{font-size:28px}.purchase-option small{font-size:14px;font-weight:400;color:var(--muted)}.purchase-actions{display:flex;gap:12px;flex-wrap:wrap}
+/* Moment-first entry: app typography and opaque paper surfaces, scoped to EN/HE. */
+@font-face{font-family:ArborDisplay;src:url('/fonts/text/fraunces-normal-latin.woff2') format('woff2');font-weight:100 900;font-display:swap}
+@font-face{font-family:ArborHebrewDisplay;src:url('/fonts/text/frank-ruhl-libre-normal-hebrew.woff2') format('woff2');font-weight:300 900;font-display:swap}
+@font-face{font-family:ArborSans;src:url('/fonts/text/instrument-sans-normal-latin.woff2') format('woff2');font-weight:400 700;font-display:swap}
+@font-face{font-family:ArborHebrew;src:url('/fonts/text/ibm-plex-sans-hebrew-normal-400-hebrew.woff2') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:ArborHebrew;src:url('/fonts/text/ibm-plex-sans-hebrew-normal-700-hebrew.woff2') format('woff2');font-weight:600 800;font-display:swap}
+body.moment-first{--ink:#14225a;--blue:#1558c0;--muted:#475569;--paper:#fbfaf7;font-family:ArborSans,ArborHebrew,Arial,sans-serif;background:var(--paper)}
+.moment-first .site-header{background:#fbfaf7f2;border-bottom-color:#e7e9e8}
+.moment-first .primary:hover{background:#124da8}
+.moment-first .site-header .compact{min-height:44px}
+.moment-hero{padding:56px 0 0;background:var(--paper);overflow:clip}
+.moment-layout{display:grid;grid-template-columns:1.05fr 1fr;gap:64px;align-items:center}
+.moment-intro{padding-block:18px 35px;min-width:0}
+.moment-intro .eyebrow{letter-spacing:.13em;margin-bottom:24px;color:var(--blue)}
+.moment-intro h1{font-family:ArborDisplay,Georgia,serif;font-size:clamp(42px,4.7vw,68px);font-weight:500;line-height:1.06;letter-spacing:-.045em;font-variation-settings:'SOFT' 40}
+.moment-intro h1 em{font-weight:500;font-style:normal;color:var(--blue)}
+.moment-description{max-width:490px;font-size:18px;line-height:1.65;color:var(--muted);margin-top:24px}
+.moment-selector{margin-top:32px}
+.moment-selector h2{font-size:16px;font-weight:650;line-height:1.4;margin:0 0 14px}
+.moment-choices{display:flex;gap:8px;flex-wrap:wrap}
+.moment-choice{border:1px solid #bac4d4;background:white;min-height:46px;border-radius:12px;padding:10px 14px;font-size:14px;line-height:1.3;transition:background .16s,border-color .16s;color:var(--ink)}
+.moment-choice:hover{background:#eef3fb;border-color:var(--blue)}
+.moment-choice.is-selected{background:var(--ink);border-color:var(--ink);color:white}
+.moment-choice:focus-visible{outline:3px solid var(--blue);outline-offset:4px}
+.moment-convert{margin-top:30px}
+.moment-convert .button{min-height:54px;border-radius:14px;font-size:17px;padding:15px 26px;background:var(--blue);box-shadow:0 4px 12px #14225a10}
+.moment-convert>p{font-size:12px;color:var(--muted);line-height:1.5;margin-top:11px}
+.moment-explore{margin-top:15px;font-size:14px;min-height:44px}
+.moment-explore svg{width:17px}
+.moment-preview{border:1px solid #dce2e9;border-radius:24px;background:#fff;box-shadow:0 24px 70px -40px #14225a66;overflow:hidden;min-width:0}
+.moment-photo{height:174px;position:relative;overflow:hidden;background:#ece9e1}
+.moment-photo img{width:100%;height:100%;object-fit:cover;object-position:65% 48%}
+.moment-photo>span{position:absolute;bottom:14px;inset-inline-start:20px;max-width:calc(100% - 40px);padding:7px 12px;background:#fff;color:var(--ink);font-size:12px;border-radius:7px}
+.moment-workspace{padding:24px 28px 18px}
+.moment-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:19px}
+.moment-toolbar>span:last-child{font-size:10px;letter-spacing:.09em;font-weight:650;color:var(--muted)}
+.moment-prompt{font-size:18px;line-height:1.45;color:var(--ink);padding-bottom:18px;border-bottom:1px solid #e5e9ef;min-height:71px}
+.moment-step{padding-top:18px}
+.moment-step-label{font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--blue)}
+.moment-step h3{font-family:ArborDisplay,Georgia,serif;font-weight:500;font-size:25px;letter-spacing:-.025em;line-height:1.22;margin:9px 0}
+.moment-step>p{font-size:14px;line-height:1.6;color:var(--muted);min-height:67px}
+.moment-step blockquote{margin:17px 0 0;padding:12px 16px;border-inline-start:3px solid #1558c0;background:#eef3fb;border-radius:0 10px 10px 0}
+.moment-step blockquote small{font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:5px}
+.moment-step blockquote p{font-size:15px;line-height:1.5;color:var(--ink);min-height:45px}
+.moment-memory{display:flex;align-items:flex-start;gap:12px;margin-top:19px;padding-top:18px;border-top:1px solid #e5e9ef}
+.moment-memory>svg{width:18px;height:18px;color:var(--blue);margin-top:1px}
+.moment-memory h4{font-size:10px;letter-spacing:.06em;margin:0 0 6px;font-weight:700}
+.moment-memory p{font-size:12px;line-height:1.6;color:var(--muted);min-height:39px}
+.moment-disclosure{font-size:10px;line-height:1.5;color:var(--muted);margin-top:17px;text-align:center}
+.moment-foundation{display:flex;align-items:center;justify-content:space-between;gap:22px;border-top:1px solid #dce2e9;margin-top:45px;padding-block:21px;font-size:12px;color:var(--muted);line-height:1.5}
+.moment-foundation>span:last-child{display:flex;align-items:center;gap:7px}
+.moment-foundation svg{width:15px;height:15px}
+.moment-first .explorer{background:#eef3fb}
+.moment-first .section-heading h2,.moment-first .closing h2{font-family:ArborDisplay,Georgia,serif;font-weight:500;letter-spacing:-.035em}
+.moment-first .gallery-section{background:var(--paper)}
+.moment-first[dir=rtl] .moment-intro h1,[dir=rtl] .moment-first .moment-intro h1,[dir=rtl] .moment-step h3,[dir=rtl] .moment-first .section-heading h2,[dir=rtl] .moment-first .closing h2{font-family:ArborHebrewDisplay,Georgia,serif;letter-spacing:-.025em}
+[dir=rtl] .moment-intro .eyebrow,[dir=rtl] .moment-step-label,[dir=rtl] .moment-toolbar>span:last-child,[dir=rtl] .moment-memory h4{letter-spacing:0}
+[dir=rtl] .moment-step blockquote{border-radius:10px 0 0 10px}
+[dir=rtl] .moment-convert svg,[dir=rtl] .moment-explore svg{transform:scaleX(-1)}
+@media(min-width:1500px){.moment-hero{padding-top:70px}.moment-layout{gap:85px}.moment-intro h1{font-size:72px}}
+@media(max-width:1120px){.moment-layout{gap:32px}.moment-intro h1{font-size:52px}.moment-description{font-size:17px}.moment-workspace{padding:22px}.moment-choice{font-size:13px;padding:10px}.moment-photo{height:150px}}
+@media(max-width:850px){.moment-hero{padding-top:35px}.moment-layout{grid-template-columns:1fr;gap:28px;max-width:650px}.moment-intro{padding:0}.moment-intro h1{font-size:55px}.moment-description{max-width:570px}.moment-preview{width:100%}.moment-photo{height:200px}.moment-step>p,.moment-memory p,.moment-step blockquote p,.moment-prompt{min-height:0}.moment-foundation{max-width:650px;flex-direction:column;align-items:flex-start;gap:8px;margin-top:28px}.moment-selector{margin-top:24px}.moment-convert{margin-top:24px}}
+@media(max-width:520px){.moment-hero{padding-top:28px}.moment-intro .eyebrow{font-size:10px;margin-bottom:18px}.moment-intro h1{font-size:clamp(36px,10.1vw,49px);line-height:1.1;letter-spacing:-.04em}.moment-description{font-size:16px;line-height:1.6;margin-top:18px}.moment-selector h2{font-size:15px;margin-bottom:12px}.moment-choices{gap:7px}.moment-choice{flex:1;padding:10px 7px;font-size:12px;min-height:48px}.moment-convert .button{width:100%;font-size:16px}.moment-convert>p{text-align:center;font-size:11px}.moment-explore{width:100%;justify-content:center;margin-top:8px}.moment-layout{gap:21px}.moment-preview{border-radius:18px}.moment-photo{height:145px}.moment-photo>span{font-size:11px;bottom:12px;inset-inline-start:16px}.moment-workspace{padding:20px 18px 16px}.moment-step h3{font-size:25px}.moment-prompt{font-size:17px}.moment-step>p{font-size:14px}.moment-memory p{font-size:12px}.moment-disclosure{font-size:10px}.moment-foundation{font-size:11px}.moment-toolbar>span:last-child{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.moment-choice{transition:none}}
+
+.moment-inline-cta{display:none}#moment-result{scroll-margin-top:90px}
+@media(max-width:850px){.moment-inline-cta{display:flex;margin-top:18px;border-radius:12px;min-height:50px}.moment-inline-cta svg{width:18px}[dir=rtl] .moment-inline-cta svg{transform:scaleX(-1)}}
