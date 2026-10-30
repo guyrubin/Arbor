@@ -18,7 +18,7 @@ export function checkpointSteps(items: readonly unknown[]): QuestStep[] {
 /** Four fixed child-owned docs. No dates, expiry, activity score or second store.
  * Default cached snapshots remain usable offline; error fallback cannot write. */
 export function useStudioQuestProgress(childId: string) {
-  const store = useChildCollection<StudioQuestCheckpoint>(childId, "studioQuestProgress", { trackConfirmation: true });
+  const store = useChildCollection<StudioQuestCheckpoint>(childId, "studioQuestProgress", { trackConfirmation: true, acceptCachedNoPendingWrites: true });
   const steps = checkpointSteps(store.items);
   return {
     steps, choices: Object.fromEntries(QUEST_STEPS.map(step => [step, checkpointChoice(store.items, step)])) as Partial<Record<QuestStep, QuestChoice>>,
