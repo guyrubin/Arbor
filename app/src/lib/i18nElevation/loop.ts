@@ -275,7 +275,7 @@ export const he: Record<string, string> = {
   "elev.loop.tonight.done": "זה הכול להערב. לילה טוב.",
   "elev.loop.tonight.story": "לקרוא את סיפור הערב",
   // ── B-PROG-03 · Tonight's parent proxy on a program day ─────────────────
-  "elev.loop.tonight.proxy.turns.q": "כמה פעמים חיכיתם ו{name} לקח/ה תור?",
+  "elev.loop.tonight.proxy.turns.q": "כמה פעמים חיכיתם ל{name} לקחת תור?",
   "elev.loop.tonight.proxy.turns.max": "{n}+",
   "elev.loop.tonight.proxy.turns.helper": "זו ספירה של ההמתנה שלכם, לא של הילד/ה.",
   "elev.loop.tonight.proxy.routine.q": "איך הלך טקס השינה הערב?",

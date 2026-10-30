@@ -6,6 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { activePlans, closePlan, keepPlan, leadPlan, nightMomentText, nightRecorded, nightsCount, patternsOnShelf, planShelf, recordNight, recordTry, runningPatternIds, tonightStepForChild, tonightStepForParent, triesThisWeek, tryRecorded, unrecordNight, numberInWords, withoutDigits } from "./planWeek";
+import { planString } from "./planStrings";
 import { authoredPatterns } from "../library/plans/planBooks";
 import { readPlanBookDoc, type PlanBookDoc } from "../library/plans/planBookDoc";
 import { libraryBookEntries } from "../bookAssets";
@@ -35,6 +36,16 @@ describe("the active plan", () => {
   it("the newest approval leads", () => {
     const rows = [doc(), doc({ id: "plan-dropoff.c1", bookId: "plan-dropoff.c1", pattern: "plan-dropoff", stepMenuIds: ["goodbye-ritual", "thing-from-home", "door-opens-again"], approvedAt: "2026-10-25T18:00:00.000Z" })];
     expect(leadPlan(rows, now)?.def.id).toBe("plan-dropoff");
+  });
+
+  it("the Hebrew night question is something the parent did, and the receipt cannot be read as 'we will tell'", () => {
+    expect(planString("today.night.q", "en")).toBe("Did the plan happen tonight?");
+    expect(planString("today.night.done", "en")).toBe("Counted for tonight.");
+    expect(planString("today.night.no", "en")).toBe("Not tonight");
+    expect(planString("today.night.q", "he")).toBe("עשיתם את התוכנית הערב?");
+    expect(planString("today.night.done", "he")).toBe("הספירה להערב נשמרה.");
+    expect(planString("today.night.done", "he")).not.toBe("נספר להלילה.");
+    expect(planString("today.night.no", "he")).toBe("לא הערב");
   });
 
   it("tonight's confirmation is a count: once per day, undoable, never a rate", () => {

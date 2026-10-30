@@ -32,7 +32,7 @@ import { useToast } from "../../context/ToastContext";
 import { Receipt, ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { routeHash } from "../../lib/routes";
 import { api, EscalationRequiredError } from "../../lib/api";
-import { isolate } from "../../lib/i18n";
+import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 import { bedtimePrefillLatest } from "../../lib/bedtimeStories";
 import { storyName } from "../../lib/storyName";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -216,7 +216,8 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
   const keepAnswer = async (i: number, question: string) => {
     const answer = (answers[i] ?? "").trim();
     if (!answer || kept[i]) return;
-    const written = await addMoment(t("elev.bedtime.keep.line", { question, name, answer }));
+    const keptLine = t("elev.bedtime.keep.line", { question, name, answer });
+    const written = await addMoment(he ? resolveHebrewSlash(keptLine, childProfile.gender) : keptLine);
     if (written) {
       if (written.id) keptIds.current[i] = written.id;
       setKept((k) => ({ ...k, [i]: true }));
@@ -351,7 +352,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
               {story.title}
             </h1>
           </div>
-          <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-muted)" }}>
+          <p className={he ? "text-[13px] font-bold" : "text-[11px] uppercase tracking-widest font-bold"} style={{ color: "var(--arbor-muted)" }}>
             {t("elev.bedtime.reader.header", { name, n: pageIndex + 1, total: pages.length })}
           </p>
         </div>
@@ -441,10 +442,10 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
             data-testid="bedtime-discussion-questions"
           >
             <p
-              className="text-[11px] uppercase tracking-widest font-bold"
+              className={he ? "text-[13px] font-bold" : "text-[11px] uppercase tracking-widest font-bold"}
               style={{ color: "var(--arbor-muted)" }}
             >
-              {he ? "שאלות לפני שינה" : "Goodnight questions"}
+              {t("elev.bedtime.questions")}
             </p>
             {story.discussionQuestions.map((q, i) => (
               <div key={i} className="space-y-1.5" data-testid="bedtime-question">
@@ -478,7 +479,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
                   <div className="flex items-end gap-2">
                     <label className="flex-1 min-w-0">
                       <span className="block text-[11.5px] font-bold mb-1" style={{ color: "var(--arbor-muted)" }} dir="auto">
-                        {t("elev.bedtime.keep.label", { name })}
+                        {he ? resolveHebrewSlash(t("elev.bedtime.keep.label", { name }), childProfile.gender) : t("elev.bedtime.keep.label", { name })}
                       </span>
                       <input
                         type="text"
@@ -553,12 +554,10 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
           the form and its CTA rise toward the fold. */}
       {!embedded && (
         <PageHeader
-          title={he ? `סיפור הלילה של ${isolate(name)}` : `${isolate(name)}'s Bedtime Story`}
+          title={t("elev.bedtime.title", { name })}
           subtitle={prefillFrom && prefillFrom !== "today"
             ? t("elev.bedtime.subtitle.recent")
-            : he
-            ? "סיפור מותאם אישית שנולד מהיום שלכם — לקריאה משותפת לפני השינה"
-            : "A personalised story born from today — read together at bedtime"}
+            : t("elev.bedtime.subtitle.today")}
         />
       )}
 
@@ -576,7 +575,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
         style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
       >
         <p
-          className="text-[12px] uppercase tracking-widest font-bold"
+          className={he ? "text-[13px] font-bold" : "text-[12px] uppercase tracking-widest font-bold"}
           style={{ color: "var(--arbor-muted)" }}
         >
           {/* W2-SHELLPLAY critic r2: ONE day, stated once. On the yesterday /
@@ -588,7 +587,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
                 ? t("elev.bedtime.eyebrow.yesterday", { name })
                 : t("elev.bedtime.eyebrow.day", { name, day: new Intl.DateTimeFormat(he ? "he-IL" : "en-GB", { weekday: "long" }).format(prefillDay) })}
             </span>
-          ) : he ? `מה קרה היום עם ${isolate(name)}?` : `What happened today with ${isolate(name)}?`}
+          ) : t("elev.bedtime.day.ask", { name })}
         </p>
 
         {/* B-SHELL-NEW-1f: the screen's one warm accent — the newest moment the
@@ -597,7 +596,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
         {quote ? (
           <figure data-testid="bedtime-quote-well" className="mx-0 mt-0 rounded-[14px] p-4" style={{ background: "var(--arbor-peach-soft)", border: "1px solid var(--arbor-rule)" }}>
             <blockquote className="m-0 text-[18px] leading-snug" dir="auto" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>
-              “{quote.text}”
+              {t("elev.loop.ms.quoted", { text: quote.text })}
             </blockquote>
             <figcaption className="mt-1.5 text-[11.5px] font-bold" style={{ color: "var(--arbor-peach-ink)" }}>
               {t(
@@ -689,12 +688,12 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
         {loading ? (
           <>
             <Icon name="autorenew" size={20} className="animate-spin" />
-            {he ? "יוצר סיפור…" : "Creating story…"}
+            {t("elev.bedtime.generating")}
           </>
         ) : (
           <>
             <Icon name="auto_awesome" size={20} />
-            {he ? `צרו את הסיפור של ${isolate(name)}` : `Create ${isolate(name)}'s story`}
+            {t("elev.bedtime.generate", { name })}
           </>
         )}
       </button>
@@ -722,9 +721,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
       >
         <Icon name="menu_book" size={16} className="mt-0.5" style={{ color: "var(--arbor-muted)" }} />
         <p className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }} dir="auto">
-          {he
-            ? "הסיפורים נוצרים ומוצגים בלבד — לא נשמרים ולא משמשים לאימון. היום של ילדכם שייך לכם בלבד."
-            : "Stories are created and shown only — never saved or used for training. Your child's day belongs to you."}
+          {t("elev.bedtime.privacy")}
         </p>
       </div>
     </motion.div>

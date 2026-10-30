@@ -4,6 +4,8 @@ import * as path from "node:path";
 import { SURFACE_CONTRACTS } from "./surfaceContract";
 import { TIMELINE_SOURCE_IDS } from "./signalTimeline";
 import { en, he } from "./i18nElevation/celebrate";
+import { translate } from "./i18n";
+import { resolveHebrewSlash } from "./hebrewSlashGender";
 
 /**
  * KID-10 — the bedtime reader failed its own job sentence.
@@ -206,11 +208,30 @@ describe("B-PLAY-14 · the shared bedtime body", () => {
   it("'Keep what {name} said' writes ONE parent moment per answer through addMoment", () => {
     const keep = src.slice(src.indexOf("const keepAnswer"), src.indexOf("const keepAnswer") + 500);
     expect(keep).toContain("if (!answer || kept[i]) return;");
-    expect(keep).toMatch(/addMoment\(t\("elev\.bedtime\.keep\.line", \{ question, name, answer \}\)\)/);
+    expect(keep).toContain('t("elev.bedtime.keep.line", { question, name, answer })');
+    expect(keep).toContain("resolveHebrewSlash(keptLine, childProfile.gender)");
     expect(src).toContain('t("elev.bedtime.keep.label", { name })');
     expect(src).toContain('data-testid="bedtime-answer-keep"');
     // the input and the Keep button meet the 44 px floor
     expect((src.match(/min-h-11/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("Hebrew bedtime lines take the child's gender and drop the calques; English stays", () => {
+    expect(translate("en", "elev.bedtime.subtitle.today")).toBe("A personalised story born from today — read together at bedtime");
+    expect(translate("en", "elev.bedtime.privacy")).toBe("Stories are created and shown only — never saved or used for training. Your child's day belongs to you.");
+    expect(translate("en", "elev.bedtime.generating")).toBe("Creating story…");
+    expect(translate("he", "elev.bedtime.subtitle.today")).toBe("סיפור מהיום שלכם — לקריאה משותפת לפני השינה.");
+    expect(translate("he", "elev.bedtime.subtitle.recent")).toBe("סיפור מהרגעים האחרונים שלכם — לקריאה משותפת לפני השינה.");
+    expect(translate("en", "elev.bedtime.subtitle.recent")).toBe("A personalised story from your family's last moments — read together at bedtime");
+    expect(translate("he", "elev.bedtime.subtitle.today")).not.toMatch(/נולד|מותאם/);
+    expect(translate("he", "elev.bedtime.subtitle.recent")).not.toMatch(/נולד|מותאם/);
+    expect(translate("he", "elev.bedtime.generating")).toBe("הסיפור נכתב…");
+    const girl = resolveHebrewSlash(translate("he", "elev.bedtime.keep.line", { question: "מה היה כיף?", name: "נועה", answer: "הכדור" }), "girl");
+    const boy = resolveHebrewSlash(translate("he", "elev.bedtime.keep.line", { question: "מה היה כיף?", name: "נועם", answer: "הכדור" }), "boy");
+    expect(girl).toBe("מה היה כיף? נועה אמרה: הכדור");
+    expect(boy).toBe("מה היה כיף? נועם אמר: הכדור");
+    expect(girl).not.toMatch(/[א-ת]\/[א-ת]|תה:/);
+    expect(resolveHebrewSlash(translate("he", "elev.bedtime.keep.label", { name: "נועה" }), "girl")).toBe("לשמור את מה שנועה אמרה");
   });
 
   it("a failed generation is said inline with Retry (useAsyncAction), not a lone toast", () => {
@@ -300,7 +321,8 @@ describe("B-SHELL-NEW-1f · the From-today quote well", () => {
     const well = src.slice(src.indexOf('data-testid="bedtime-quote-well"'), src.indexOf("</figure>", src.indexOf('data-testid="bedtime-quote-well"')));
     expect(well).toContain('fontFamily: "var(--font-editorial)"');
     expect(well).toContain('background: "var(--arbor-peach-soft)"');
-    expect(well).toContain("{quote.text}");
+    expect(well).toContain('t("elev.loop.ms.quoted", { text: quote.text })');
+    expect(well).not.toMatch(/[\u201C\u201D]/);
     expect(src).toContain("const log = behaviorLogs.find((l) => l.id === first.id);");
     // it sits before the editable rows, and no new module or gradient arrives with it
     expect(src.indexOf('data-testid="bedtime-quote-well"')).toBeLessThan(src.indexOf('data-testid="bedtime-events-list"'));

@@ -312,6 +312,9 @@ describe("Now record and visit leads", () => {
     const html = renderToStaticMarkup(<NowView />);
     expect(html).toContain(copy.title("Noa"));
     expect(html).toContain(copy.subtitle);
+    expect(NOW_COPY.en.title("Noa")).toBe("One thing tonight with Noa");
+    expect(NOW_COPY.he.title("נועה")).toBe("הערב, דבר אחד עם נועה");
+    expect(NOW_COPY.he.pickedWhy.tonight).toBe("הערב הוא זמן שקט לחזור על היום");
     const practice = html.indexOf('data-module="today-practice"');
     const more = html.indexOf('data-testid="now-more-tonight"');
     const grid = html.indexOf('class="now-day-grid"');

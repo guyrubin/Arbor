@@ -276,7 +276,7 @@ describe("B-PROG-03 — Tonight asks the program's parent proxy after Did it", (
       expect(taps.map((b) => b.match(/data-value="([^"]+)"/)![1])).toEqual(["0", "1", "2", "3", "4", "5"]);
       const tx = text(html);
       expect(tx).toContain("5+");
-      expect(tx).toContain(lang === "en" ? "How many times did you wait for Noa to take a turn?" : "כמה פעמים חיכיתם וNoa לקחה תור?");
+      expect(tx).toContain(lang === "en" ? "How many times did you wait for Noa to take a turn?" : "כמה פעמים חיכיתם לNoa לקחת תור?");
       expect(tx).toContain(lang === "en" ? "This counts your waiting, not your child." : "זו ספירה של ההמתנה שלכם, לא של הילדה.");
       expect(loopFirewallHits(tx)).toEqual([]);
       // the group sits inside the how-form, after the outcome answers and before the line
