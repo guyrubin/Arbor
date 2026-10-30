@@ -21,15 +21,23 @@ function Quest({ childId }: { childId: string; onHome: () => void }) {
   const art = kidArt(useKidTheme(), worldTileKey("kid-quest"));
   const progress = useStudioQuestProgress(childId);
   const [saving, setSaving] = useState(false), [error, setError] = useState(false);
-  const alive = useRef(true), busy = useRef(false);
+  const alive = useRef(true), busy = useRef(false), attemptedCount = useRef<number | null>(null);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const advance = async (choice: QuestChoice) => {
     if (busy.current || !progress.loaded || !progress.confirmed || progress.completed) return;
-    busy.current = true; setSaving(true); setError(false);
+    busy.current = true; attemptedCount.current = progress.steps.length; setSaving(true); setError(false);
     try { await progress.advance(choice); } catch { if (alive.current) setError(true); }
     finally { busy.current = false; if (alive.current) setSaving(false); }
   };
   const count = progress.steps.length;
+  // A timed-out Firestore write may still be acknowledged after reconnection.
+  // Retire its stale error only when the attempted checkpoint is confirmed.
+  useEffect(() => {
+    if (progress.confirmed && attemptedCount.current !== null && count > attemptedCount.current) {
+      attemptedCount.current = null;
+      setError(false);
+    }
+  }, [progress.confirmed, count]);
   return <section className="studio-v2 studio-keepsakes" dir={uiLang === "he" ? "rtl" : "ltr"} data-studio-quest="">
     <StudioSky />
     <div className="studio-keepsakes__layout">
@@ -43,7 +51,7 @@ function Quest({ childId }: { childId: string; onHome: () => void }) {
           {QUEST_STEPS.filter(step => progress.choices[step]).map(step => { const choice = progress.choices[step]!; const Glyph = icons[choice]; return <li key={step}><Glyph size={24} aria-hidden="true" />{questChoiceText[uiLang][choice]}</li>; })}
         </ul>
         {!progress.loaded ? <p role="status">{copy.loading}</p> : !progress.confirmed ? <p role="status">{copy.pending}</p> : progress.completed ? <KidFinishMoment childId={childId} kind="world" refId={QUEST_SOUVENIR_REF} lang={uiLang} hero={false} /> : <div className="studio-keepsakes__choices" role="group" aria-label={copy.steps[count]}>{QUEST_CHOICES[QUEST_STEPS[count]].map(choice => { const Glyph = icons[choice]; return <button className="studio-v2__glass-button" key={choice} type="button" disabled={saving} onClick={() => void advance(choice)}><Glyph size={28} aria-hidden="true" />{questChoiceText[uiLang][choice]}</button>; })}</div>}
-        {saving && <p role="status">{copy.saving}</p>}{error && <p role="alert">{copy.error}</p>}
+        {saving && <p role="status">{copy.saving}</p>}{error && progress.confirmed && <p role="alert">{copy.error}</p>}
       </div>
     </div>
   </section>;
