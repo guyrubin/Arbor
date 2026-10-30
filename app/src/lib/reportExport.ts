@@ -17,9 +17,10 @@ import { behaviorTypeLabel } from "../content/behaviorTaxonomy";
  *  and no bullet (Consult's "Our question: …" line). */
 export type ReportSection = { heading: string; body: string | string[]; lead?: boolean };
 export type ReportDoc = {
-  /** Plain parent-kept month: name, month, dated words only. */
-  presentation?: "kept-month";
+  /** Plain parent-kept month or year: name, period, dated words only. */
+  presentation?: "kept-month" | "kept-year";
   keptItems?: { text: string; date: string; language: string }[];
+  chapters?: { heading: string; items: { text: string; date: string; language: string }[] }[];
   title: string;
   subtitle?: string;
   sections: ReportSection[];
@@ -304,6 +305,7 @@ export function arborDocumentLine(lang: UiLang): string {
  *  left-to-right with its list bullets on the wrong side. */
 export function renderPrintableHtml(doc: ReportDoc, childName: string, lang: UiLang = "en"): string {
   if (doc.presentation === "kept-month") return renderKeptMonthHtml(doc, lang);
+  if (doc.presentation === "kept-year") return renderKeptYearHtml(doc, lang);
   const sectionsHtml = doc.sections.map((s) => {
     const items = Array.isArray(s.body) ? s.body.filter(Boolean) : [s.body];
     if (s.lead) return items.length ? `<p class="lead" dir="auto">${esc(items.map(String).join(" "))}</p>` : "";
@@ -368,6 +370,30 @@ function renderKeptMonthHtml(doc: ReportDoc, lang: UiLang): string {
     .date { font-family: system-ui, sans-serif; font-size: 12px; color: #69747f; margin-top: 8px; }
     @media print { body { max-width: none; padding: 0; } }
   </style></head><body><h1>${esc(doc.title)}</h1><p class="month">${esc(doc.subtitle ?? "")}</p><ul>${rows}</ul>
+  <script>window.onload=function(){setTimeout(function(){window.print();},250);}</script></body></html>`;
+}
+
+/** The year uses the month shell: chapters of parent words, no branding,
+ * metrics, images, or clinical footer. */
+function renderKeptYearHtml(doc: ReportDoc, lang: UiLang): string {
+  const chapters = (doc.chapters ?? []).map(chapter => {
+    const rows = chapter.items.map(item => `<li><p><bdi dir="auto" lang="${esc(item.language)}">${esc(item.text)}</bdi></p><p class="date">${esc(item.date)}</p></li>`).join("");
+    return `<section><h2>${esc(chapter.heading)}</h2><ul>${rows}</ul></section>`;
+  }).join("");
+  return `<!doctype html><html lang="${lang}" dir="${lang === "he" ? "rtl" : "ltr"}"><head><meta charset="utf-8"><title>${esc(doc.title)} — ${esc(doc.subtitle ?? "")}</title>
+  <style>
+    @page { size: A4; margin: 24mm 18mm; }
+    * { box-sizing: border-box; }
+    body { max-width: 720px; margin: 0 auto; padding: 24px; color: #29333f; font-family: Georgia, "Times New Roman", serif; }
+    h1 { font-size: 28px; font-weight: 400; margin: 0 0 8px; overflow-wrap: anywhere; }
+    .year { font-size: 19px; margin: 0 0 8px; }
+    h2 { font-size: 19px; font-weight: 400; margin: 28px 0 0; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { break-inside: avoid; border-bottom: 1px solid #e8edea; padding: 16px 0; }
+    li p { font-size: 19px; line-height: 1.5; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .date { font-family: system-ui, sans-serif; font-size: 12px; color: #69747f; margin-top: 8px; }
+    @media print { body { max-width: none; padding: 0; } }
+  </style></head><body><h1>${esc(doc.title)}</h1><p class="year">${esc(doc.subtitle ?? "")}</p>${chapters}
   <script>window.onload=function(){setTimeout(function(){window.print();},250);}</script></body></html>`;
 }
 

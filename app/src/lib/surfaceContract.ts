@@ -211,6 +211,7 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     // B-ASKJB-36: `?view=kept` (and `#/development/kept`) is the kept reader
     // (components/kept/KeptThingsPage KeptReaderMode) — a read-and-send mode
     // of this leaf with no stamp of its own, like language's `?view=said`.
+    // `&year=YYYY` on that mode opens the year book of the same kept words.
     threadWrite: "milestones",
   },
   {

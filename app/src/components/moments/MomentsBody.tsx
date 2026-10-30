@@ -535,6 +535,9 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
             doors follow with the journal door left out, it is there exactly
             once. Load more belongs to the months over time. */}
         <div className="moments-foot">
+          <button type="button" className="moments-text-button" data-testid="moments-year-book" onClick={() => goToRoute("development", { view: "kept" })}>
+            <Icon name="menu_book" size={18} />{t("kept.yearBook")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
+          </button>
           <button type="button" className="moments-text-button" data-testid="moments-journal-door" onClick={() => setActiveTab("journal")}>
             <Icon name="auto_stories" size={18} />{t("companion.moments.journal")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
           </button>
