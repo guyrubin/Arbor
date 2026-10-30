@@ -345,6 +345,20 @@ function buildIndex(): readonly SearchEntry[] {
       ),
       view: "kept",
     });
+    entries.push({
+      ...entry(
+        "page:development:year-book",
+        "page",
+        pair(translate("en", "kept.yearBook"), translate("he", "kept.yearBook")),
+        pair(place.en, place.he),
+        {
+          en: ["year book", "yearbook", "this year", "words this year", "firsts this year"],
+          he: ["ספר השנה", "השנה", "מילים השנה", "פעמים ראשונות השנה"],
+        },
+        "development",
+      ),
+      view: "kept",
+    });
   }
 
   return Object.freeze(entries);

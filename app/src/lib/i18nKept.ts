@@ -35,6 +35,12 @@ export const keptEn = {
   "kept.print": "Print month page",
   "kept.notesPending": "Load the remaining history to check all saved notes before sending.",
   "kept.monthPending": "Load all saved things before printing or sending a month page.",
+  "kept.yearBook": "Year book",
+  "kept.year": "{year} with {name}",
+  "kept.yearLine": "Words and firsts you kept.",
+  "kept.yearPrint": "Print year book",
+  "kept.yearPending": "Load all saved things before printing or sending a year book.",
+  "kept.yearEmpty": "Nothing kept in {year} yet.",
 };
 
 export const keptHe: Record<keyof typeof keptEn, string> = {
@@ -73,4 +79,10 @@ export const keptHe: Record<keyof typeof keptEn, string> = {
   "kept.print": "הדפסת דף החודש",
   "kept.notesPending": "יש לטעון את שאר הרשומות כדי לבדוק את כל ההערות השמורות לפני שליחה.",
   "kept.monthPending": "יש לטעון את כל מה ששמרתם לפני הדפסה או שליחה של דף החודש.",
+  "kept.yearBook": "ספר השנה",
+  "kept.year": "{year} עם {name}",
+  "kept.yearLine": "מילים ופעמים ראשונות ששמרתם.",
+  "kept.yearPrint": "הדפסת ספר השנה",
+  "kept.yearPending": "יש לטעון את כל מה ששמרתם לפני הדפסה או שליחה של ספר השנה.",
+  "kept.yearEmpty": "עדיין אין מה ששמרתם ב־{year}.",
 };

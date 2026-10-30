@@ -21,13 +21,14 @@ import { searchnavText } from "../../lib/i18nElevation/searchnav";
 
 const h = vi.hoisted(() => ({
   lang: "en" as "en" | "he",
+  query: "",
   buttons: [] as { children?: unknown; onClick?: () => void; className?: string; "data-testid"?: string }[],
   goToRoute: vi.fn(),
 }));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ childProfile: { id: "child-a", name: "Noa Example", gender: "girl" }, behaviorLogs: [], milestoneHistory: [], setActiveTab: vi.fn() }) }));
 vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ uiLang: h.lang, t: (key: string, vars?: Record<string, string | number>) => translate(h.lang, key, vars) }) }));
 vi.mock("../../hooks/useChildHistory", () => ({ useChildHistory: () => ({ items: [], loading: false, error: false, confirmed: true, more: false, loadMore: vi.fn(), reload: vi.fn(), isCurrent: () => true }) }));
-vi.mock("../../hooks/useHashQuery", () => ({ goToRoute: h.goToRoute }));
+vi.mock("../../hooks/useHashQuery", () => ({ goToRoute: h.goToRoute, useHashQuery: () => new URLSearchParams(h.query) }));
 vi.mock("./KeptItem", () => ({ default: () => null }));
 vi.mock("./KeptMonthPage", () => ({ default: () => null }));
 const capture = vi.hoisted(() => (type: unknown, props: unknown) => { if (type === "button" && props && typeof props === "object") h.buttons.push(props as typeof h.buttons[number]); });
@@ -43,7 +44,7 @@ import { KeptReaderMode } from "./KeptThingsPage";
 
 const SRC = path.resolve(__dirname, "..", "..");
 const code = (rel: string) => readFileSync(path.join(SRC, rel), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-beforeEach(() => { h.buttons = []; h.goToRoute.mockClear(); h.lang = "en"; });
+beforeEach(() => { h.buttons = []; h.goToRoute.mockClear(); h.lang = "en"; h.query = ""; });
 
 describe("B-ASKJB-36 · #/development?view=kept is My child with the kept reader open", () => {
   it("the hash and the sub-route path both resolve to My child with view=kept", () => {
@@ -78,10 +79,22 @@ describe("B-ASKJB-36 · #/development?view=kept is My child with the kept reader
     expect(h.goToRoute).toHaveBeenCalledWith("development");
   });
 
+  it("a year book returns to the kept list, still one heading", () => {
+    h.query = "year=2026";
+    const html = renderToStaticMarkup(<KeptReaderMode />);
+    expect(html.match(/<h1\b/g) ?? []).toHaveLength(1);
+    expect(html).toContain(translate("en", "kept.yearEmpty", { year: "2026" }));
+    const back = h.buttons.find((b) => b["data-testid"] === "kept-back")!;
+    expect(renderToStaticMarkup(<>{back.children}</>)).toContain(translate("en", "kept.view"));
+    back.onClick!();
+    expect(h.goToRoute).toHaveBeenCalledWith("development", { view: "kept" });
+  });
+
   it("the reader inside My child keeps its h2 (only the mode is a page)", () => {
     const reader = code("components/kept/KeptThingsPage.tsx");
-    expect(reader).toContain('{asPage ? <h1 data-testid="kept-reader-title">');
-    expect(reader).toContain(': <h2>{t("kept.title", { name: first })}</h2>}');
+    expect(reader).toContain('asPage ? <h1 data-testid="kept-reader-title">');
+    expect(reader).toContain(': <h2>{t("kept.title", { name: first })}</h2>');
+    expect(reader).toContain("!yearRequest &&");
     expect(reader).toContain("<KeptThingsPage key={childProfile.id} asPage />");
   });
 });
