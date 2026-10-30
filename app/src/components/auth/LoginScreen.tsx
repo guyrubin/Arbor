@@ -6,6 +6,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
 import { LegalLinks } from "../billing/LegalLinks";
 import { appleSignInOffered } from "../../lib/nativeSignIn";
+import { readTrialEntry } from "../../lib/trialEntry";
 
 function ArborMark() {
   return <ArborMarkIcon size={56} />;
@@ -16,12 +17,13 @@ export default function LoginScreen() {
   // B-GA-19: dark until the Apple provider is configured (and, in a native shell, until iOS ships the plugin).
   const offerApple = appleSignInOffered();
   const { t } = useLanguage();
+  const [trialEntry] = useState(() => readTrialEntry());
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showEmail, setShowEmail] = useState(false);
   // B-RESID-05: one e-mail form, two modes. A new family creates its account
   // here (Google stays); there is no invite-only gate and no access request.
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup">(trialEntry ? "signup" : "signin");
   const [busy, setBusy] = useState<"google" | "apple" | "email" | null>(null);
   const [resetMsg, setResetMsg] = useState("");
 
@@ -94,7 +96,7 @@ export default function LoginScreen() {
             className="text-3xl md:text-4xl font-black tracking-tight text-balance"
             style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
           >
-            {t("elev.auth.headline")}
+            {trialEntry ? t("elev.auth.trial.headline") : t("elev.auth.headline")}
           </h2>
           <ul className="space-y-2.5 text-sm font-semibold inline-block text-start" style={{ color: "var(--arbor-muted)" }}>
             {(["elev.auth.p1", "elev.auth.p2", "elev.auth.p3"] as const).map((k) => (
@@ -104,7 +106,11 @@ export default function LoginScreen() {
               </li>
             ))}
           </ul>
-          <p className="text-[11px] font-bold" style={{ color: "var(--arbor-faint)" }}>{t("elev.auth.evidence")}</p>
+          {trialEntry ? <div data-testid="trial-entry-context" className="rounded-2xl p-5 text-start space-y-3" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
+            <p className="text-sm font-semibold">{t("elev.auth.trial.promise")}</p>
+            <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.auth.trial.steps")}</p>
+            <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.auth.trial.existing")}</p>
+          </div> : <p className="text-[11px] font-bold" style={{ color: "var(--arbor-faint)" }}>{t("elev.auth.evidence")}</p>}
         </motion.div>
 
         {/* B-SHELL-15: the card and the legal links under it share one column. */}

@@ -16,6 +16,7 @@ import { setAuthTokenProvider } from "../lib/api";
 import { authErrorKey } from "../lib/i18nElevation/storeShell";
 import { initNaturalVoice, resetNaturalVoice } from "../lib/naturalVoice";
 import { setAnalyticsUser } from "../lib/analytics";
+import { recordLandingEntry } from "../lib/trialEntry";
 import { trackSessionOpen } from "../lib/loopEvents";
 import { recordRetentionSession } from "../lib/retentionRollup";
 import { purgeAllComicPages } from "../lib/comicPageStore";
@@ -233,6 +234,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setAuthTokenProvider(getIdToken);
     setAnalyticsUser(() => user?.uid);
+    if (user?.uid) recordLandingEntry(user.uid);
     // Epic A / AI-V4: activate the neural-voice engine when the server reports
     // /api/tts configured (TTS_PROVIDER — single server env flip, no client
     // build flag). No-op otherwise (browser floor).

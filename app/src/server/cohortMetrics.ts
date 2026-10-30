@@ -53,6 +53,7 @@ import { ACQUISITION_CHANNELS, channelOfSource } from "../lib/acquisitionChannel
 import { CONTRACT_WINDOW_DAYS, GATE_A, MATURITY_DAYS, MEASURE_DEFINITIONS, METRIC_CONTRACT_VERSION, PAID_EVENT, STANDING_MISSING_DATA, VALUE_EVENTS, W4_DAYS } from "../lib/metricContract.js";
 import { recordStillEntitles, type EntitlementRecord } from "./entitlements.js";
 import { legacyRedemptionsFromLedgers } from "./referral.js";
+import { LANDING_STAGES, LANDING_COVERAGE, countLandingFunnel } from "../lib/landingFunnel.mjs";
 
 /**
  * The collection N1-04's client writer owns. Declared here rather than
@@ -84,6 +85,7 @@ export const MAX_EVENTS_SCANNED = 20000;
 /** How a funnel is named on the command line, and the event chain it means.
  *  `acquisition` is lib/attributionFunnel's own chain; `billing` is N1-02's. */
 export const FUNNEL_CHAINS: Record<string, readonly string[]> = {
+  landing: LANDING_STAGES,
   acquisition: FUNNEL_EVENTS,
   billing: ["paywall_view", "checkout_start", "entitlement_active"],
   // B-MEAS-02: the pilot's primary metric — accept a step, report how it
@@ -849,6 +851,7 @@ export function countFunnelChain(
   chain: readonly string[],
   groupBy: "source" | "market",
 ): FunnelGroupRow[] {
+  if (chain.join(",") === LANDING_STAGES.join(",")) return countLandingFunnel(events, groupBy);
   if (chain.length > FUNNEL_EVENTS.length) {
     throw new Error(`funnel chain of ${chain.length} stages cannot be mapped onto ${FUNNEL_EVENTS.length} aggregateFunnel positions`);
   }
@@ -875,6 +878,7 @@ export function countFunnelChain(
 /* ── the report ──────────────────────────────────────────────────────────── */
 
 export type CohortReport = {
+  landingCoverage?: string;
   since: string;
   asOfDay: string;
   groupBy: "source" | "market";
@@ -995,6 +999,7 @@ export async function buildCohortReport(
 
   return {
     since: opts.since,
+    ...((opts.funnels ?? []).includes("landing") ? { landingCoverage: LANDING_COVERAGE } : {}),
     asOfDay,
     groupBy,
     // The arithmetic is lib/retention.ts's. `rate` is null, never 0, on an

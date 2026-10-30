@@ -27,6 +27,8 @@ const APPROVED_MARKETING_FILES = new Set<string>([
   "arbor-imagery-v4.css",
   "arbor-immersive-v3.css",
   "arbor-immersive-v3.js",
+  // Guy requested the cinematic landing release, trust preview and trial handoff (2026-10-30).
+  "arbor-conversion-v12.js",
   "arbor-marketing-landing-page-de.html",
   "arbor-marketing-landing-page-en.html",
   "arbor-marketing-landing-page-fr.html",

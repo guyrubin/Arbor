@@ -19,6 +19,7 @@ import { hardMomentPublication } from "../../content/pilotRelease";
 import { HardMomentGuideContent } from "../behaviors/HardMomentsSection";
 import { trackOnboardingCompleted } from "../../lib/kpiEvents";
 import { LegalLinks } from "../billing/LegalLinks";
+import { readTrialEntry } from "../../lib/trialEntry";
 import { Icon } from "../ui/Icon";
 import { ArborMark } from "../ui/ArborMark";
 import { languageName } from "../../lib/languageName";
@@ -227,6 +228,7 @@ export default function OnboardingFlow() {
       </div>
     </header>
       {verifySent && state.step === 1 && <p role="status" className="first-run-hint first-run-sent" data-testid="onboarding-verify-sent">{t("elev.auth.signup.verifySent")}</p>}
+      {state.step === 1 && readTrialEntry() && <p className="first-run-hint" data-testid="trial-setup-context">{t("elev.auth.trial.setup")}</p>}
       {state.step === 1 && <StepChild state={state} onEdit={edit => controller.edit(edit)} onNext={() => void controller.next()} />}
       {state.step === 2 && <StepDomains state={state} onWorry={worry => controller.worry(worry)} onNext={() => controller.next()} onSkip={() => void controller.skipDescribe()}
         describe={controller.describe} onAnswer={text => controller.describeAnswer(text)} onFinish={() => controller.describeFinish()} />}

@@ -4,6 +4,11 @@
  * Truthful-claims rule: research-anchored only, never professional review. */
 
 export const en: Record<string, string> = {
+  "elev.auth.trial.headline": "Your next useful moment starts here.",
+  "elev.auth.trial.promise": "New to Arbor? Your account starts with 14 days of Plus. No card needed.",
+  "elev.auth.trial.steps": "Create your account. Add your child with your consent. Choose a small step for today.",
+  "elev.auth.trial.existing": "Already have an account? Sign in to continue with your current access.",
+  "elev.auth.trial.setup": "Let’s make Arbor yours. Add your child, then choose one thing on your mind. The examples you explored have not been saved to this profile.",
   // B-SHELL-15: companion-first. The promises lead with what a parent needs
   // on a hard day, then what Arbor keeps and notices, then the stories —
   // each one a thing that ships (Hard moment now, approved memory + "What
@@ -33,6 +38,11 @@ export const en: Record<string, string> = {
 };
 
 export const he: Record<string, string> = {
+  "elev.auth.trial.headline": "הרגע המועיל הבא שלכם מתחיל כאן.",
+  "elev.auth.trial.promise": "חדשים ב-Arbor? החשבון מתחיל עם 14 ימים של Plus. בלי כרטיס אשראי.",
+  "elev.auth.trial.steps": "פותחים חשבון. מוסיפים את הילד בהסכמתכם. בוחרים צעד קטן להיום.",
+  "elev.auth.trial.existing": "כבר יש לכם חשבון? התחברו כדי להמשיך עם הגישה הקיימת שלכם.",
+  "elev.auth.trial.setup": "בואו נתאים את Arbor למשפחה שלכם. מוסיפים את הילד ואז בוחרים דבר אחד שמעסיק אתכם. הדוגמאות שראיתם לא נשמרו בפרופיל הזה.",
   "elev.auth.headline": "מלווה שמכיר את הילד שלכם",
   "elev.auth.p1": "צעד הבא רגוע ברגע קשה",
   "elev.auth.p2": "זוכר את מה שתבחרו, ושם לב למה שמשתנה",

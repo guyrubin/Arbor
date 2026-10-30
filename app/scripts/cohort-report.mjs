@@ -53,6 +53,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { LANDING_STAGES, LANDING_COVERAGE, countLandingFunnel } from "../src/lib/landingFunnel.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const APP_SRC = path.resolve(HERE, "..", "src");
@@ -68,6 +69,7 @@ const DAY_MS = 86_400_000;
  *  FUNNEL_EVENTS (N1-03 added the `activated` stage to it); the guard pins the
  *  two, because a script that prints a stale chain prints a stale funnel. */
 const FUNNEL_CHAINS = {
+  landing: LANDING_STAGES,
   acquisition: ["install", "first_plan", "activated", "paid"],
   billing: ["paywall_view", "checkout_start", "entitlement_active"],
   // B-MEAS-02: the pilot's primary metric (server/cohortMetrics.ts summariseLoop).
@@ -226,6 +228,7 @@ export function cohortRetention(rollups, asOfDay) {
 }
 
 export function countFunnelChain(events, chain, groupBy) {
+  if (chain.join(',') === LANDING_STAGES.join(',')) return countLandingFunnel(events, groupBy);
   const groups = new Map();
   for (const e of events) {
     if (!chain.includes(e.event)) continue;
@@ -661,6 +664,7 @@ function print(report, args) {
   const lines = [];
   lines.push(`Arbor cohort report — generated ${report.generatedAt}`);
   lines.push(`window: since ${report.since}  ·  as of ${report.asOfDay}  ·  grouped by ${report.groupBy}`);
+  if (report.landingCoverage) lines.push(report.landingCoverage);
   lines.push(`scanned: ${report.scanned.rollups} rollups, ${report.scanned.events} events (${report.scanned.mode})`);
   if (report.internal) {
     lines.push(report.internal.included
@@ -786,6 +790,7 @@ export async function buildReport(db, args, now = new Date()) {
     retention: cohortRetention(rollups, asOfDay),
     activation: { ...summariseActivation(events, now.getTime(), 7), definition, definitionStatus },
     funnels,
+    ...(args.funnels.includes('landing') ? { landingCoverage: LANDING_COVERAGE } : {}),
     ...(loop ? { loop } : {}),
     households: summariseHouseholds(householdInputs.rollups, householdInputs.events, householdInputs.offers, householdInputs.billing, "channel", Number.isFinite(Date.parse(args.since)) ? new Date(args.since).toISOString().slice(0, 10) : null),
     contract: summariseMetricContract({

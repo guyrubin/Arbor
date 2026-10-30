@@ -248,6 +248,7 @@ export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.activeTab": "UI state",
   "arbor.aiLang": "language preference",
   "arbor.analytics.optOut": "analytics preference",
+  "arbor.trialEntry": "session-only landing language, timestamp and recorded flag; expires after 30 minutes; no family content",
   "arbor.attribution": "first-touch campaign source",
   "arbor.auth.verifySent": "a one-shot sign-up notice (B-RESID-05; no address)",
   "arbor.bell.read": "notification read marker",

@@ -9,6 +9,7 @@ import {createRoot} from 'react-dom/client';
 import './index.css';
 import {track, setGlobalProps} from './lib/analytics';
 import {captureAttribution, attributionProps} from './lib/attribution';
+import {captureTrialEntry, trialLanguage} from './lib/trialEntry';
 import {trackAppStart} from './lib/loopEvents';
 import {installApiBaseShim} from './lib/runtime';
 import {initNativeShell} from './lib/native';
@@ -31,6 +32,12 @@ void initNativeShell();
 
 // Growth loop: capture first-touch attribution (referral/utm/source/market) and
 // attach it to every analytics event, then emit install/app_open.
+captureTrialEntry(location.search);
+const entryLanguage = trialLanguage(location.search);
+if (entryLanguage) {
+  document.documentElement.lang = entryLanguage;
+  document.documentElement.dir = entryLanguage === 'he' ? 'rtl' : 'ltr';
+}
 const attribution = captureAttribution();
 setGlobalProps(() => attributionProps(attribution));
 trackAppStart();

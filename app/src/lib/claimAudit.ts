@@ -116,6 +116,7 @@ const fact = (note: string): ClaimBasis => ({ kind: "fact", note });
 /** Every registered claim key. A new claim fails the guard until it is added here with its basis. */
 export const CLAIM_REGISTRY: Readonly<Record<string, ClaimBasis>> = {
   // the trial (BD-53)
+  "elev.auth.trial.promise": { kind: "trial" },
   "elev.plan.plusTitleTrial": { kind: "trial" },
   "set.plan.trial": { kind: "trial" },
   "set.plan.trialDesc": { kind: "trial" },
