@@ -78,6 +78,12 @@ describe("auth errors are keys, resolved through t()", () => {
 describe("B-SHELL-15 · the front door promises the companion first", () => {
   const PROMISE_KEYS = ["elev.auth.p1", "elev.auth.p2", "elev.auth.p3"] as const;
 
+  it("a chosen moment is named above the sign-in buttons", () => {
+    const at = login.indexOf("<SignInSituation");
+    expect(at).toBeGreaterThan(-1);
+    expect(at).toBeLessThan(login.indexOf('t("auth.continueGoogle")'));
+  });
+
   it("the promise list renders the three keys in order", () => {
     expect(login).toContain('(["elev.auth.p1", "elev.auth.p2", "elev.auth.p3"] as const)');
     expect(login).toContain('t("elev.auth.headline")');
