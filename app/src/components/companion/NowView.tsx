@@ -33,6 +33,8 @@ import { markPracticeShown } from "../../lib/practice/todayPin";
 import { appointmentRoleLabel } from "../../lib/appointmentLabel";
 import { isKidModeActive } from "../../lib/kidModeGate";
 import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
+import { basedOnLines, FOCUS_MAX_FACTS } from "../../lib/basedOn";
+import BasedOnReceipt from "../trust/BasedOnReceipt";
 import FromRecordCard, { FromRecordReceipt } from "../overview/FromRecordCard";
 import { useNowLoop } from "./useNowLoop";
 import { useLifecycleMoment } from "../overview/useLifecycleMoment";
@@ -107,7 +109,7 @@ const LIFECYCLE_NOTE: Partial<Record<string, string>> = {
 };
 
 function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewProps) {
-  const { childProfile, actionLoop, seedCoach, setActiveTab, openCaptureSheet,
+  const { childProfile, actionLoop, approvedMemoryItems, seedCoach, setActiveTab, openCaptureSheet,
     saveTodayOutcome, saveTodayObservation, requestJournalFocus, pendingCaptureMode, consumeCaptureRequest, addMoment, requestLearnRead } = useArbor();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
@@ -316,6 +318,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
       <div>
         <p className="companion-eyebrow" data-testid="now-kicker">{copy.kicker}</p>
         <h1 className="arbor-type-title">{copy.title(name)}</h1>
+        <p className="now-heading-sub">{copy.subtitle}</p>
       </div>
     </header>
     {(topic || onTopicOpen) && <NowQuestionRow data-module="now-focus" lang={lang} topic={topic} onOpen={onTopicOpen} onCreate={onTopicCreate ? () => onTopicCreate("") : undefined} />}
@@ -364,10 +367,10 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
           </form>)}
           {!observation && !receipt && <div className="now-lead-actions now-followup" role="group" aria-labelledby={`${id}-followup`}>
             <p id={`${id}-followup`} className="now-followup-q"><Icon name="nightlight" size={18} />{copy.outcomes}</p>
-            <PrimaryMove type="button" className="companion-primary" disabled={saving} onClick={() => void saveOutcome("helped")}><Icon name="check" size={19} />{saving ? copy.saving : copy.helped}</PrimaryMove>
-            <button type="button" className="companion-secondary" disabled={saving} onClick={() => void saveOutcome("not_today")}><Icon name="replay" size={18} />{copy.notToday}</button>
-            <button type="button" className="companion-secondary" disabled={saving} aria-pressed={notYetFor === chosen.id} onClick={() => setNotYetFor(chosen.id)}>{copy.notYet}</button>
+            <PrimaryMove type="button" className="companion-primary" disabled={saving} onClick={() => void saveOutcome("helped")}><Icon name="check" size={19} />{saving ? copy.saving : copy.done}</PrimaryMove>
+            <button type="button" className="companion-secondary" disabled={saving} aria-pressed={notYetFor === chosen.id} onClick={() => setNotYetFor(chosen.id)}>{copy.haventTried}</button>
           </div>}
+          {!observation && !receipt && <button type="button" className="companion-text-button" disabled={saving} onClick={() => void saveOutcome("not_today")}>{copy.notToday}</button>}
           {!observation && !receipt && notYetFor === chosen.id && <p role="status" className="now-inline-status">{copy.notYetAck}</p>}
           {!observation && <PrimaryMove primary={!!receipt} type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(chosen.recommendation))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></PrimaryMove>}
           {currentSaveError && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
@@ -389,6 +392,12 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
         </section> : <NowRecommendation name={name} onTalkOpen={talk} journal={loop.journal} />}
         {shownLead !== "recommendation" && shownLead !== "urgent" && <div className="now-plan-foot"><NowPlanBody why={planWhy} time={copy.planTime[shownLead]} size={copy.planSize[shownLead]} question={planQuestion} /></div>}
         </NowPlanFrame>
+        {lead === "practice" && focus && loop.pick?.via === "ai" && <BasedOnReceipt
+          model={{
+            ...basedOnLines({ items: approvedMemoryItems, profile: childProfile, maxFacts: FOCUS_MAX_FACTS, reportedFactCount: focus.inputsUsed?.factCount, now: now.getTime() }),
+          }}
+          onOpenFact={(factId) => goToRoute("memory", { fact: factId })}
+        />}
         {lifecycleNote && lead !== "practice" && <p className="now-lifecycle-note" role="note">{lifecycleNote}</p>}
         {/* S1: the Everyday plans card sits under the lead, where the lifecycle note does; a plan already leading is not
             repeated, and on the urgent day (B-TODAY-38) the help lines stand alone in the column. */}
@@ -404,9 +413,13 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
           : lead !== "urgent" && <NowNoticeExtras keepsakeDocs={loop.keepsakeDocs} now={loop.now} isReturning={isReturning} suppressSayBack={lead === "record"} />}
     </div>
 
-    <NowKidWorld observations={observations} now={now} name={name} onAll={() => setActiveTab("development")} />
-
-    <div className="now-day-grid">
+    <details className="now-tonight-more" data-testid="now-more-tonight">
+      <summary>
+        <b>{copy.moreTonight}</b>
+        <small>{copy.moreTonightSub}</small>
+      </summary>
+      <NowKidWorld observations={observations} now={now} name={name} onAll={() => setActiveTab("development")} />
+      <div className="now-day-grid">
       <NowWeekSoFar observations={observations} now={now} onReport={() => setActiveTab("weekly")}>
         <NowWhatChangedLines previousVisitAt={previousVisitAt} isReturning={isReturning} rhythmDaysNeeded={loop.rhythm.daysNeeded} />
       </NowWeekSoFar>
@@ -430,7 +443,8 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
         <NowAgendaExtras evening={loop.evening} storyFits={loop.storyFits} todayOffer={todayOffer} suppressVisit={lead === "visit" || !!visit} storyRow={!showPointer} />
         <button type="button" className="now-weekly-door now-glance-reminders" onClick={() => setActiveTab("smart-reminders")}><BrandChip icon="notifications" tone="sapphire" shape="arch" /><span><b>{copy.remindersTitle}</b><small>{copy.remindersBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>
       </section>
-    </div>
+      </div>
+    </details>
 
   </div>;
 }

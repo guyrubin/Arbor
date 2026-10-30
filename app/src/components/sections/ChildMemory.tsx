@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -56,9 +56,11 @@ const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : tx
  *  (in its area, or on the card) is not asked twice (`hidePendingIds`).
  *  Approve, correct (Edit), forget, retention, the coach's view, the parent's
  *  own description and the learning trail all stay here. */
-export default function ChildMemory({ hidePendingIds }: {
+export default function ChildMemory({ hidePendingIds, focusFactId }: {
   /** Pending facts the host page already asks about — never asked twice on one page. */
   hidePendingIds?: ReadonlySet<string>;
+  /** `#/memory?fact=` — scroll this row into view once the ledger has painted it. */
+  focusFactId?: string | null;
 } = {}) {
   // B-LOOP-10 — "Things {name} said": the quote keepsakes from Tonight.
   const quoteChild = useArbor().childProfile;
@@ -76,6 +78,12 @@ export default function ChildMemory({ hidePendingIds }: {
     const kept = new Set(scrubMemoryProposals(pendingMemoryItems).map((p) => p.memoryId));
     return pendingMemoryItems.filter((m) => kept.has(m.memoryId) && !hidePendingIds?.has(m.memoryId));
   }, [pendingMemoryItems, hidePendingIds]);
+  useEffect(() => {
+    if (!focusFactId || typeof document === "undefined") return;
+    let row: Element | null = null;
+    try { row = document.querySelector(`[data-memory-id="${CSS.escape(focusFactId)}"]`); } catch { /* bad id */ }
+    row?.scrollIntoView({ block: "start" });
+  }, [focusFactId, approvedMemoryItems]);
   // B-CAREPRO-38: every stamp is demoted (About, the host page, owns its budget).
   const demoted = { "data-module-demoted": "" };
   const pendingGroups = useMemo(() => groupPendingMemory(pendingQueue), [pendingQueue]);
@@ -514,6 +522,7 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, le
   // B-CAREPRO-06: what the parent READS is the plain-words wording; the Edit
   // box (factDraft) still opens on the stored text — the parent's own record.
   const shownFact = toParentWords(m.fact);
+  const showProvenance = !!dated && PARENT_MEMORY_SOURCES.has(m.source) && (!!lead || m.status === "approved");
 
   const openEdit = () => {
     setFactDraft(m.fact ?? "");
@@ -548,7 +557,7 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, le
   };
 
   return (
-    <div className={`${nested ? "" : `${cardCls} p-4`} ${busy ? "opacity-60" : ""}`.trim()} data-testid="memory-row">
+    <div className={`${nested ? "" : `${cardCls} p-4`} ${busy ? "opacity-60" : ""}`.trim()} data-testid="memory-row" data-memory-id={m.memoryId} style={{ scrollMarginBlockStart: "calc(var(--sticky-offset, 0px) + 12px)" }}>
       {editing ? (
         <div className="space-y-2.5">
           <label className="block text-[11px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
@@ -620,7 +629,7 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, le
         <>
           {/* B-CAREPRO-NEW-2l: on the lead row, where the fact came from — the
               parent's own words — when the source is a parent conversation. */}
-          {lead && dated && PARENT_MEMORY_SOURCES.has(m.source) && (
+          {showProvenance && (
             <p data-testid="memory-provenance" className="t-sm mb-1.5 px-3 py-2" style={{ background: "var(--arbor-paper-deep)", borderRadius: "var(--r)", color: "var(--arbor-ink)", fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)" }}>
               {t("elev.childmem.provenance.inference", { date: dated })}
             </p>

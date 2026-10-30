@@ -23,7 +23,10 @@ import { coachContractText } from "../../lib/i18nElevation/coachcontract";
 import { fmtDay } from "../../lib/formatDate";
 import { threadDayLabel, threadDayMarks } from "../../lib/threadDates";
 import { goToRoute } from "../../hooks/useHashQuery";
-import { WEEKLY_CONTEXT_CONSENT_EVENT, buildVoiceContext, dismissWeeklyContextNotice, readWeeklyContextConsent, shouldShowWeeklyContextNotice } from "../../ai/chatContext";
+import { WEEKLY_CONTEXT_CONSENT_EVENT, buildVoiceContext, computeWeeklyContext, dismissWeeklyContextNotice, readWeeklyContextConsent, shouldShowWeeklyContextNotice } from "../../ai/chatContext";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import { basedOnLines, TALK_MAX_FACTS } from "../../lib/basedOn";
+import type { BasedOnModel } from "../trust/BasedOnReceipt";
 import { T } from "../../lib/tokens";
 import CoachAnswerCards from "../coach/CoachAnswerCards";
 import ToneSheet, { toneLabel } from "../coach/ToneSheet";
@@ -154,6 +157,14 @@ const releaseTracks = (stream: MediaStream | null) => {
   }
 };
 
+function previousParentText(messages: readonly { sender: string; text: string }[], idx: number): string {
+  for (let i = idx - 1; i >= 0; i -= 1) {
+    const turn = messages[i];
+    if (turn?.sender === "user" && turn.text.trim()) return turn.text;
+  }
+  return "";
+}
+
 export default function CoachTab({ embedded = false, visible = true }: { embedded?: boolean; visible?: boolean }) {
   const {
     selectedLens,
@@ -191,6 +202,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     approvedMemoryItems,
     milestones,
     behaviorLogs,
+    actionLoop,
     conversationChanges,
     commitConversationProposal,
     openPaywall,
@@ -260,6 +272,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // the "What the coach sees" panel live on #/memory (CoachDataContract); here
   // the flag only decides whether the one-time notice shows.
   const [weeklyOn, setWeeklyOn] = useState(() => readWeeklyContextConsent(childProfile.id));
+  const langObsCol = useChildCollection<{ id: string; timestamp: string }>(childProfile.id, "langObs", {
+    orderByField: "timestamp", orderDir: "desc", max: 200,
+  });
   // B-ASKJB-07 (Guy G1 = ON): the weekly counts + last outcome are on by
   // default; a one-line notice under the composer says so ONCE per child,
   // with "Change" landing on the switch that holds the per-child off.
@@ -1484,6 +1499,33 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
         </section>
   );
 
+  let latestSettledAnswer = -1;
+  for (let i = chatMessages.length - 1; i >= 0; i -= 1) {
+    const turn = chatMessages[i];
+    if (turn?.sender === "ai" && turn.contract && !turn.chatLive && !turn.voiceLive) { latestSettledAnswer = i; break; }
+  }
+  const talkWeek = weeklyOn && latestSettledAnswer >= 0
+    ? (() => {
+        const digest = computeWeeklyContext({
+          behaviorLogs: behaviorLogs ?? [],
+          milestones: milestones ?? [],
+          actionLoop: actionLoop ?? [],
+          langObs: langObsCol.items,
+        });
+        return { moments: digest.momentCount, ...(typeof digest.wordsLoggedCount === "number" ? { words: digest.wordsLoggedCount } : {}) };
+      })()
+    : null;
+  const talkBasedOn = (idx: number): BasedOnModel => ({
+    ...basedOnLines({
+      items: approvedMemoryItems,
+      profile: childProfile,
+      query: previousParentText(chatMessages, idx),
+      maxFacts: TALK_MAX_FACTS,
+      reportedFactCount: chatMessages[idx]?.contract?.approvedMemoryFactsUsed,
+    }),
+    weekly: idx === latestSettledAnswer ? talkWeek : null,
+  });
+
   return (
     <motion.div initial={reducedMotion ? false : { opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`mx-auto w-full min-w-0 max-w-[1040px] space-y-6${embedded ? " companion-coach" : ""}`}>
       {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
@@ -1724,6 +1766,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                       // EXTRA-TALK: one count-free provenance line per SETTLED
                       // answer; "the question you chose" only when that turn
                       // went out with a family question (its stamped topicId).
+                      basedOn={!msg.chatLive && !msg.voiceLive ? talkBasedOn(idx) : undefined}
+                      onOpenFact={(factId) => goToRoute("memory", { fact: factId })}
                       provenance={!msg.chatLive && !msg.voiceLive ? { topic: askedWithTopic(chatMessages, idx) } : undefined}
                     />
                     </>

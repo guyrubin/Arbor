@@ -105,7 +105,8 @@ describe("Now leads with the milestone loop (parity 9 Oct)", () => {
     expect(html).not.toContain('data-module="now-recommendation"');
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
     const did = state.buttons.find((item) => item["data-answer"] === "did");
-    expect(did, "the practice's Did it").toBeDefined();
+    expect(did, "the practice's Done").toBeDefined();
+    expect(React.Children.toArray(did!.children)).toContain(NOW_COPY.en.done);
     did!.onClick?.();
     expect(state.recordPracticeDose).toHaveBeenCalledTimes(1);
     expect(state.recordPracticeDose.mock.calls[0][0]).toMatchObject({ source: "practice", status: "completed" });
@@ -291,7 +292,7 @@ describe("Now record and visit leads", () => {
     state.saveTodayOutcome.mockReturnValueOnce(new Promise<void>(yes => { resolve = yes; }));
     state.actionLoop = [{ id: "chosen", recommendation: "Read one page together.", source: "coach", status: "accepted", acceptedAt: "2026-10-11T20:00:00", capacity: "tiny" }];
     renderToStaticMarkup(<NowView />);
-    button(NOW_COPY.en.helped).onClick?.(); button(NOW_COPY.en.helped).onClick?.();
+    button(NOW_COPY.en.done).onClick?.(); button(NOW_COPY.en.done).onClick?.();
     expect(state.saveTodayOutcome).toHaveBeenCalledTimes(1);
     resolve(); await Promise.resolve();
   });
@@ -304,6 +305,25 @@ describe("Now record and visit leads", () => {
     expect(heading).not.toContain("4 years");
     expect(heading).not.toMatch(/<img|today-identity/);
     expect(state.moreProps.now.getTime()).toBe(Date.now());
+  });
+  it.each(["en", "he"] as const)("%s: tonight is one step, and the week sits behind More for tonight", (lang) => {
+    state.lang = lang;
+    const copy = NOW_COPY[lang];
+    const html = renderToStaticMarkup(<NowView />);
+    expect(html).toContain(copy.title("Noa"));
+    expect(html).toContain(copy.subtitle);
+    const practice = html.indexOf('data-module="today-practice"');
+    const more = html.indexOf('data-testid="now-more-tonight"');
+    const grid = html.indexOf('class="now-day-grid"');
+    expect(practice).toBeGreaterThan(-1);
+    expect(more).toBeGreaterThan(practice);
+    expect(grid).toBeGreaterThan(more);
+    expect(html).toContain('class="now-tonight-more"');
+    const at = html.indexOf('data-testid="now-more-tonight"');
+    const details = html.slice(html.lastIndexOf("<details", at), at + 80);
+    expect(details).not.toMatch(/\sopen(?:=|>|\s)/);
+    expect(html).toContain(copy.moreTonight);
+    expect(html).toContain(copy.moreTonightSub);
   });
 });
 

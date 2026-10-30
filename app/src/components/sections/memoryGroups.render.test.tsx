@@ -122,6 +122,16 @@ describe("B-CAREPRO-NEW-2k/2l · provenance on the lead row, an in-place settle 
     });
   }
 
+  it("an approved chat fact names where it came from; an approved digest does not", () => {
+    harness.locale = "en";
+    const approved = renderToStaticMarkup(<MemoryRow m={{ ...fact(1, "Dylan cries at bedtime"), status: "approved" }} />);
+    expect(approved).toContain('data-testid="memory-provenance"');
+    expect(approved).toContain('data-memory-id="m1"');
+    const digest = renderToStaticMarkup(<MemoryRow m={{ ...fact(2, "Dylan loves dinosaurs"), status: "approved", source: "digest" }} />);
+    expect(digest).not.toContain('data-testid="memory-provenance"');
+    expect(digest).toContain('data-memory-id="m2"');
+  });
+
   it("negative control: a non-parent source (digest) shows no provenance", () => {
     harness.locale = "en";
     const [group] = groupPendingMemory([{ ...fact(1, "Dylan cries at bedtime"), source: "digest" }]);

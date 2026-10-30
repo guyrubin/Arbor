@@ -149,7 +149,7 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
   expect([...html.matchAll(/data-testid="about-aspect-([a-z]+)" data-aspect="\1"/g)].map(m=>m[1])).toEqual(["temper","lang","social","routine","sleep","senses","school","strengths"]);
   expect(html).toMatch(/data-testid="profile-remember-check"[^>]*min-h-11|min-h-11[^>]*data-testid="profile-remember-check"/);
   // v4 re-pin: the memory room is the What Arbor remembers card, before the areas.
-  expect(html).toContain(companionEn["companion.about.memory.title"]);
+  expect(html).toContain(companionEn["companion.about.memory.title"].replaceAll("{name}", "Noa"));
   expect(html.indexOf('data-testid="about-memory"')).toBeLessThan(html.indexOf('data-testid="about-aspects"'));
  });
  it("renders the Details line and the area copy in HE, with the language name through its key (law 8)",()=>{
@@ -401,7 +401,7 @@ describe("v4 · About on a phone: no doors; the memory card is the one door to #
   const html=renderToStaticMarkup(<ChildProfile/>);
   expect(html).not.toContain("child-door");
   expect(html.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
-  expect(html).toContain((locale==="he"?companionHe:companionEn)["companion.about.memory.title"]);
+  expect(html).toContain((locale==="he"?companionHe:companionEn)["companion.about.memory.title"].replaceAll("{name}", "Noa"));
   expect(html.match(/data-module="[^"]+"/g)).toEqual(MODULES);
   expect(html.match(/data-primary-move=/g)).toHaveLength(1);
  });

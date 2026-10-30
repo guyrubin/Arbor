@@ -1,8 +1,12 @@
 /** Surface-owned copy: both parent languages travel with the shared Now view. */
 export const NOW_COPY = {
   en: {
-    title: (name: string) => `What would help with ${name}?`,
-    subtitle: "One useful next step. Space for whatever the day brings.",
+    title: (name: string) => `One thing tonight with ${name}`,
+    subtitle: "One step, and why it fits tonight.",
+    done: "Done",
+    haventTried: "Haven’t tried",
+    moreTonight: "More for tonight",
+    moreTonightSub: "This week, a Learn read, and their world",
     today: "A little help for today",
     chosen: "The step you chose",
     visit: "Your upcoming visit",
@@ -125,8 +129,12 @@ export const NOW_COPY = {
     planSize: { practice: "One small thing to try", step: "One small action", recommendation: "One small action", program: "This week’s practice", plan: "Three small steps", record: "One tap to answer", visit: "One page to look over", tonight: "A few short questions", notice: "Only to notice" },
   },
   he: {
-    title: (name: string) => `מה יעזור לכם עם ${name}?`,
-    subtitle: "צעד אחד שיכול לעזור. מקום לכל מה שהיום יביא.",
+    title: (name: string) => `דבר אחד להערב עם ${name}`,
+    subtitle: "צעד אחד, והסיבה שהוא מתאים להערב.",
+    done: "עשינו",
+    haventTried: "עוד לא ניסינו",
+    moreTonight: "עוד להערב",
+    moreTonightSub: "השבוע, קריאה, והעולם שלהם",
     today: "קצת עזרה להיום",
     chosen: "הצעד שבחרתם",
     visit: "הפגישה הקרובה שלכם",

@@ -463,7 +463,8 @@ export const companionEn = {
   "companion.about.memoryWaiting": "Something Arbor noted is waiting for you to check.",
   // v4 — What Arbor remembers, on About: proposals waiting (not already inside an
   // area) and the newest approved facts. Counts are of facts, never of the child.
-  "companion.about.memory.title": "What Arbor remembers",
+  "companion.about.memory.title": "Arbor’s notebook about {name}",
+  "companion.about.notebook": "Arbor’s notebook",
   "companion.about.memory.sub": "Facts you approved, and proposals waiting for you. In plain words.",
   "companion.about.memory.waitingOne": "1 waiting for you",
   "companion.about.memory.waiting": "{n} waiting for you",
@@ -478,6 +479,10 @@ export const companionEn = {
   "companion.about.memory.note": "Nothing is remembered without your approval. Edit or delete any fact, any time.",
   "companion.about.memory.open": "Everything Arbor remembers",
   "companion.about.memory.loadFailed": "What Arbor remembers didn't load. Open it to try again.",
+  "companion.basedOn.label": "Based on",
+  "companion.basedOn.fields": "From the profile: {fields}",
+  "companion.basedOn.week": "This week: {n} moments kept",
+  "companion.basedOn.weekWords": "This week: {n} moments kept, {words} words you wrote down",
   // B-CAREPRO-37 — the after-visit note on the record: a Journal row and the
   // newest one on About (the parent's words; the profession names the visit).
   "companion.visit.title": "Visit · {profession}",
@@ -1043,7 +1048,8 @@ export const companionHe = {
   // v3 F-CHILD-3 (review r1) — under the memory door when a proposal names no
   // area: no number, no badge.
   "companion.about.memoryWaiting": "משהו שארבור רשמה מחכה לבדיקה שלכם.",
-  "companion.about.memory.title": "מה ארבור זוכרת",
+  "companion.about.memory.title": "המחברת של ארבור על {name}",
+  "companion.about.notebook": "המחברת של ארבור",
   "companion.about.memory.sub": "עובדות שאישרתם, והצעות שמחכות לכם. במילים פשוטות.",
   "companion.about.memory.waitingOne": "אחת מחכה לכם",
   "companion.about.memory.waiting": "{n} מחכות לכם",
@@ -1058,6 +1064,10 @@ export const companionHe = {
   "companion.about.memory.note": "שום דבר לא נזכר בלי האישור שלכם. אפשר לערוך או למחוק כל עובדה, תמיד.",
   "companion.about.memory.open": "כל מה שארבור זוכרת",
   "companion.about.memory.loadFailed": "מה שארבור זוכרת לא נטען. אפשר לפתוח ולנסות שוב.",
+  "companion.basedOn.label": "מבוסס על",
+  "companion.basedOn.fields": "מהפרופיל: {fields}",
+  "companion.basedOn.week": "השבוע: {n} רגעים ששמרתם",
+  "companion.basedOn.weekWords": "השבוע: {n} רגעים ששמרתם, ו־{words} מילים שכתבתם",
   // B-CAREPRO-37 — the after-visit note on the record: a Journal row and the
   // newest one on About (the parent's words; the profession names the visit).
   "companion.visit.title": "ביקור · {profession}",

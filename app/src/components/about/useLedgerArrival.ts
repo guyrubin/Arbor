@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from "react";
 export const LEDGER_ID = "about-memory-ledger";
 
 const scrollToLedger = (): void => {
-  try { document.getElementById(LEDGER_ID)?.scrollIntoView({ block: "start" }); } catch { /* SSR */ }
+  try {
+    const fact = new URLSearchParams((window.location.hash.split("?")[1] ?? "")).get("fact");
+    const row = fact ? document.querySelector(`[data-memory-id="${CSS.escape(fact)}"]`) : null;
+    (row ?? document.getElementById(LEDGER_ID))?.scrollIntoView({ block: "start" });
+  } catch { /* SSR */ }
 };
 
 /**

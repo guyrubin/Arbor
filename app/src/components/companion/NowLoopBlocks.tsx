@@ -34,6 +34,7 @@ export function NowPracticeLead({ loop, name, whyText, headerNote, onAdapt, adap
   const { t, uiLang } = useLanguage();
   if (!loop.pick) return null;
   const pick = loop.pick;
+  const copy = NOW_COPY[uiLang === "he" ? "he" : "en"];
   return <>
     <PracticeCard
       key={loop.adaptationKey}
@@ -43,6 +44,7 @@ export function NowPracticeLead({ loop, name, whyText, headerNote, onAdapt, adap
       childName={name}
       gender={childProfile.gender}
       actionFirstDetailsLabel={NOW_COPY[uiLang === "he" ? "he" : "en"].practiceDetails}
+      answerLabels={{ did: copy.done, notToday: copy.haventTried }}
       answered={loop.doseAnswer}
       onAnswer={loop.answerPractice}
       onUndo={loop.undoPractice}
