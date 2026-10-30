@@ -80,6 +80,8 @@ body.brand-landing{--ink:#191e5c;--blue:#185ac6;--muted:#485365;--paper:#f8f7f2;
 .brand-landing .control-principles h3{font-size:19px}
 .brand-landing .control-copy>p{font-size:18px}
 .brand-landing .trial-section{background:#191e5c;color:#fff}
+.brand-landing .trial-copy h2{color:#fff}
+.brand-landing .trial-steps span{color:#191e5c}
 .brand-landing .trial-section .eyebrow{color:#c1e4d7}
 .brand-landing .trial-copy>p,.brand-landing .trial-steps{color:#e2e8f2}
 .brand-landing .trial-offer{color:var(--ink);background:#fff;border-color:#fff;border-radius:26px}
