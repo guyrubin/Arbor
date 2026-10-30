@@ -49,6 +49,19 @@ if(languageMenu){
 }
 icons();render();
 })();
+/* Carry the selected situation onto trial links. Ids only: bedtime, feelings, play, and kept=1. */
+function arborStampSituation(moment, kept) {
+  if (moment !== 'bedtime' && moment !== 'feelings' && moment !== 'play') return;
+  document.querySelectorAll('a[href*="entry=landing"]').forEach(link => {
+    try {
+      const url = new URL(link.getAttribute('href'), location.origin);
+      url.searchParams.set('moment', moment);
+      if (kept) url.searchParams.set('kept', '1');
+      else url.searchParams.delete('kept');
+      link.setAttribute('href', url.pathname + url.search);
+    } catch { /* the original trial link still works */ }
+  });
+}
 /* Moment-first example. Local choices only: no storage, profiling or AI request. */
 (() => {
   const host = document.querySelector('.moment-hero');
@@ -77,6 +90,7 @@ icons();render();
     host.querySelector('.moment-step-label').textContent = button.dataset.moment === 'bedtime'
       ? (he ? 'צעד קטן להערב' : 'A SMALL STEP FOR TONIGHT')
       : (he ? 'צעד קטן שאפשר לנסות' : 'A SMALL STEP TO TRY');
+    arborStampSituation(button.dataset.moment, false);
   };
   document.addEventListener('arbor:moment', event => {
     const button = buttons.find(item => item.dataset.moment === event.detail);
@@ -93,6 +107,9 @@ icons();render();
       });
     }
   }));
+  const requested = new URLSearchParams(location.search).get('moment');
+  const initial = buttons.find(item => item.dataset.moment === requested) || buttons.find(item => item.getAttribute('aria-pressed') === 'true');
+  if (initial) select(initial);
 })();
 
 /* One local example connects the landing moment, a real library title and memory review. */
@@ -151,6 +168,7 @@ icons();render();
     root.querySelectorAll('[data-journey-copy]').forEach(node => { node.textContent = content[node.dataset.journeyCopy]; });
     memoryButtons.forEach(button => button.setAttribute('aria-pressed', 'false'));
     memoryStatus.textContent = t('Try the choice. Nothing here is saved to an account.', 'נסו לבחור. שום דבר כאן לא נשמר בחשבון.');
+    arborStampSituation(key, false);
     show(0);
   }
   tabs.forEach((tab, i) => {
@@ -169,13 +187,23 @@ icons();render();
   back.addEventListener('click', () => show(step - 1, true));
   memoryButtons.forEach(button => button.addEventListener('click', () => {
     memoryButtons.forEach(item => item.setAttribute('aria-pressed', String(item === button)));
-    memoryStatus.textContent = button.dataset.journeyMemory === 'keep'
+    const keep = button.dataset.journeyMemory === 'keep';
+    memoryStatus.textContent = keep
       ? t('Kept in this example. In Arbor, you review a memory before it is used. Nothing was saved here.', 'נשמר בדוגמה בלבד. ב-Arbor אתם בודקים זיכרון לפני השימוש בו. דבר לא נשמר כאן.')
       : t('Left out of this example. You choose which details become part of the picture.', 'נשאר מחוץ לדוגמה. אתם בוחרים אילו פרטים יהיו חלק מהתמונה.');
+    arborStampSituation(moment.value, keep);
   }));
   moment.addEventListener('change', () => document.dispatchEvent(new CustomEvent('arbor:moment', { detail: moment.value })));
   // This listener follows the hero's listener, so both sections use the same selected moment.
   document.addEventListener('arbor:moment', event => updateMoment(event.detail));
   root.classList.add('is-enhanced');
   updateMoment(document.querySelector('.moment-choice[aria-pressed="true"]')?.dataset.moment || 'bedtime');
+  if (new URLSearchParams(location.search).get('kept') === '1') {
+    const keep = memoryButtons.find(button => button.dataset.journeyMemory === 'keep');
+    if (keep) {
+      memoryButtons.forEach(item => item.setAttribute('aria-pressed', String(item === keep)));
+      memoryStatus.textContent = t('Kept in this example. In Arbor, you review a memory before it is used. Nothing was saved here.', 'נשמר בדוגמה בלבד. ב-Arbor אתם בודקים זיכרון לפני השימוש בו. דבר לא נשמר כאן.');
+      arborStampSituation(moment.value, true);
+    }
+  }
 })();

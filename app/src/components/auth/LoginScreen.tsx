@@ -7,6 +7,7 @@ import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
 import { LegalLinks } from "../billing/LegalLinks";
 import { appleSignInOffered } from "../../lib/nativeSignIn";
 import { readTrialEntry } from "../../lib/trialEntry";
+import { SignInSituation } from "./SituationFirst";
 
 function ArborMark() {
   return <ArborMarkIcon size={56} />;
@@ -129,6 +130,8 @@ export default function LoginScreen() {
             <p className="text-sm mt-1" style={{ color: "var(--arbor-muted)" }}>{t("auth.tagline")}</p>
           </div>
         </div>
+
+        {trialEntry?.moment && <SignInSituation moment={trialEntry.moment} kept={trialEntry.kept} />}
 
         {error && (
           <div role="alert" className="text-xs rounded-xl px-4 py-2.5" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>

@@ -19,7 +19,9 @@ import { hardMomentPublication } from "../../content/pilotRelease";
 import { HardMomentGuideContent } from "../behaviors/HardMomentsSection";
 import { trackOnboardingCompleted } from "../../lib/kpiEvents";
 import { LegalLinks } from "../billing/LegalLinks";
-import { readTrialEntry } from "../../lib/trialEntry";
+import { readTrialEntry, clearSituationKept, type SituationMoment } from "../../lib/trialEntry";
+import { decideLandingExample, proposeLandingExample } from "../../lib/situationExample";
+import { SituationExampleReview, SituationFirst, createSituationShell } from "./SituationFirst";
 import { Icon } from "../ui/Icon";
 import { ArborMark } from "../ui/ArborMark";
 import { languageName } from "../../lib/languageName";
@@ -219,6 +221,31 @@ export default function OnboardingFlow() {
   // the confirmation-link line is said here, on the first step only.
   const verifySent = useSyncExternalStore(subscribeVerifySent, verifySentPending, () => false);
   useEffect(() => { if (state.step > 1) clearVerifySent(); }, [state.step]);
+  const situationRef = useRef<ReturnType<typeof createSituationShell> | null>(null);
+  if (!situationRef.current) situationRef.current = createSituationShell(!readTrialEntry()?.moment || !!controller.snapshot().name.trim());
+  const situation = useSyncExternalStore(situationRef.current.subscribe, situationRef.current.get, situationRef.current.get);
+  const trial = readTrialEntry();
+  const showSituation = state.step === 1 && !situation.pastSituation && !!trial?.moment;
+  const showExample = state.step === 2 && !situation.exampleSettled && !!trial?.kept && !!trial.moment && !!state.childId;
+  useEffect(() => {
+    if (!showExample || !trial?.moment || !state.childId) return;
+    let cancel = false;
+    const moment: SituationMoment = trial.moment;
+    const childId = state.childId;
+    const shell = situationRef.current;
+    shell?.patch({ phase: "loading", memoryId: null, busy: false });
+    void proposeLandingExample(childId, moment, uiLang === "he" ? "he" : "en").then(result => {
+      if (cancel) return;
+      if (result.status === "pending") shell?.patch({ memoryId: result.memoryId, phase: "pending" });
+      else if (result.status === "settled") shell?.patch({ exampleSettled: true });
+      else shell?.patch({ phase: "unavailable" });
+    }).catch(() => { if (!cancel) shell?.patch({ phase: "unavailable" }); });
+    return () => { cancel = true; };
+  }, [showExample, state.childId, trial?.moment, uiLang]);
+  const settleExample = (ok: boolean) => {
+    if (ok) { clearSituationKept(); situationRef.current?.patch({ exampleSettled: true, busy: false }); }
+    else situationRef.current?.patch({ phase: "unavailable", busy: false });
+  };
   const card = state.step === 3 ? firstRunCard(state, uiLang === "he" ? "he" : "en") : null;
   return <main className="arbor-app first-run" dir={uiLang === "he" ? "rtl" : "ltr"}>
     <div className="first-run-shell"><header className="first-run-header">
@@ -228,9 +255,15 @@ export default function OnboardingFlow() {
       </div>
     </header>
       {verifySent && state.step === 1 && <p role="status" className="first-run-hint first-run-sent" data-testid="onboarding-verify-sent">{t("elev.auth.signup.verifySent")}</p>}
-      {state.step === 1 && readTrialEntry() && <p className="first-run-hint" data-testid="trial-setup-context">{t("elev.auth.trial.setup")}</p>}
-      {state.step === 1 && <StepChild state={state} onEdit={edit => controller.edit(edit)} onNext={() => void controller.next()} />}
-      {state.step === 2 && <StepDomains state={state} onWorry={worry => controller.worry(worry)} onNext={() => controller.next()} onSkip={() => void controller.skipDescribe()}
+      {state.step === 1 && !showSituation && trial && !trial.moment && <p className="first-run-hint" data-testid="trial-setup-context">{t("elev.auth.trial.setup")}</p>}
+      {state.step === 1 && !showSituation && trial?.moment && <p className="first-run-hint" data-testid="trial-setup-context">{t(trial.kept ? "elev.situation.setup.kept" : "elev.situation.setup.moment")}</p>}
+      {showSituation && trial?.moment && <SituationFirst moment={trial.moment} kept={!!trial.kept} onContinue={() => situationRef.current?.patch({ pastSituation: true })} />}
+      {state.step === 1 && !showSituation && <StepChild state={state} onEdit={edit => controller.edit(edit)} onNext={() => void controller.next()} />}
+      {showExample && trial?.moment && <SituationExampleReview name={state.name} moment={trial.moment} phase={situation.memoryId ? situation.phase : situation.phase === "pending" ? "loading" : situation.phase} busy={situation.busy}
+        onRemember={() => { if (!situation.memoryId) return; situationRef.current?.patch({ busy: true }); void decideLandingExample(situation.memoryId, "approved").then(settleExample); }}
+        onLeave={() => { if (!situation.memoryId) return; situationRef.current?.patch({ busy: true }); void decideLandingExample(situation.memoryId, "rejected").then(settleExample); }}
+        onContinue={() => { clearSituationKept(); situationRef.current?.patch({ exampleSettled: true }); }} />}
+      {state.step === 2 && !showExample && <StepDomains state={state} onWorry={worry => controller.worry(worry)} onNext={() => controller.next()} onSkip={() => void controller.skipDescribe()}
         describe={controller.describe} onAnswer={text => controller.describeAnswer(text)} onFinish={() => controller.describeFinish()} />}
       {card && <StepReady state={state} card={card} onWorry={worry => controller.worry(worry)} onSubmit={() => void controller.finish(card)} ready={actions.loaded && !actions.error}
         describe={controller.describe} profile={profiles.find(child => child.id === state.childId) ?? null} onDiscard={() => controller.describeDiscard()} />}

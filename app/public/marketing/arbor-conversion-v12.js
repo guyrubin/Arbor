@@ -1,4 +1,6 @@
-/* Navigation carries campaign attribution, never the example a family explored. */
+/* Navigation carries campaign attribution and the chosen situation id.
+   Never example prose, a name, or an open redirect. */
+const SITUATION_MOMENTS = new Set(['bedtime', 'feelings', 'play']);
 export function trialHref(href, search, lang) {
   const target = new URL(href, 'https://arborparentingapp.com');
   const incoming = new URLSearchParams(search);
@@ -6,6 +8,10 @@ export function trialHref(href, search, lang) {
     const value = incoming.get(key);
     if (value && value.length <= 120) target.searchParams.set(key, value);
   }
+  const moment = incoming.get('moment');
+  if (SITUATION_MOMENTS.has(moment)) target.searchParams.set('moment', moment);
+  if (incoming.get('kept') === '1' && SITUATION_MOMENTS.has(target.searchParams.get('moment'))) target.searchParams.set('kept', '1');
+  else if (incoming.has('kept')) target.searchParams.delete('kept');
   if ((incoming.has('ref') || incoming.has('referral')) && !incoming.has('utm_source')) target.searchParams.delete('utm_source');
   target.searchParams.set('lang', lang === 'he' ? 'he' : 'en');
   return target.pathname + target.search;
