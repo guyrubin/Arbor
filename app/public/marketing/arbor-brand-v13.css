@@ -1,0 +1,98 @@
+/* October 26 collaboration brief: sculptural brand objects, large sans type,
+   navy / teal / lavender, and three experiences with distinct parent value. */
+body.brand-landing{--ink:#191e5c;--blue:#185ac6;--muted:#485365;--paper:#f8f7f2;--line:#dedfdc;background:var(--paper)}
+.brand-landing :is(h1,h2,h3,h4){font-family:ArborSans,ArborHebrew,Arial,sans-serif;font-variation-settings:normal;font-weight:700;letter-spacing:-.03em}
+.brand-landing [hidden]{display:none!important}
+.brand-landing .page-width{width:min(1280px,calc(100% - 96px))}
+.brand-landing .site-header{height:82px;background:#f8f7f2f5;backdrop-filter:blur(12px);border-bottom:1px solid #e5e6e1}
+.brand-landing .brand{color:var(--ink)}
+.brand-landing .button.primary{background:#191e5c;color:#fff;border-radius:16px;min-height:54px;box-shadow:none;font-weight:700}
+.brand-landing .button.primary:hover{background:#2c3686}
+.brand-landing .site-header .button{min-height:44px;border-radius:12px}
+.brand-landing .eyebrow{font-size:12px;line-height:1.5;letter-spacing:.13em;color:#166052;font-weight:700}
+.brand-hero{padding:55px 0 0;overflow:clip}
+.brand-hero-grid{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:64px}
+.brand-intro{padding:10px 0 38px;z-index:1}
+.brand-intro h1{font-size:clamp(48px,5.6vw,80px);line-height:1.01;letter-spacing:-.055em;font-weight:700}
+.brand-intro h1 span{color:#175f5c}
+.brand-lead{font-size:19px;line-height:1.65;color:var(--muted);max-width:540px;margin-top:26px}
+.brand-actions{display:flex;align-items:center;gap:26px;flex-wrap:wrap;margin-top:28px}
+.brand-actions .button{padding-inline:25px;gap:25px}
+.brand-assurance{font-size:12px;line-height:1.6;color:var(--muted);margin-top:12px}
+.brand-stage{position:relative;isolation:isolate;padding:0 0 60px 35px;min-width:0}
+.brand-sculpture{width:100%;height:580px;object-fit:cover;object-position:center;border-radius:46% 46% 34px 34px}
+.brand-context{display:flex;align-items:center;position:absolute;inset-inline-start:-22px;bottom:95px;gap:15px;width:290px;padding:14px 18px 14px 8px;background:#fff;border:1px solid #e3e7df;box-shadow:0 18px 60px #1a275417;border-radius:24px}
+.brand-context img{width:98px;height:104px;object-fit:cover;border-radius:14px}
+.brand-context small{display:block;color:#52606c;font-size:9px;letter-spacing:.08em;font-weight:700;line-height:1.5;margin-bottom:5px}
+.brand-context strong{font-size:20px;line-height:1.2;display:block;letter-spacing:-.025em}
+.brand-memory{position:absolute;bottom:20px;inset-inline-end:4px;display:flex;align-items:center;gap:9px;font-size:12px;color:#3c514d}
+.brand-memory>span{background:#d9eee1;border-radius:50%;width:25px;height:25px;display:grid;place-items:center;color:#155c47;font-weight:700}
+.brand-foundation{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:25px 0;border-block:1px solid var(--line);color:#4a555f;font-size:14px}
+.brand-foundation span{display:flex;align-items:center;gap:11px}
+.brand-foundation span:before{content:'';display:block;width:9px;height:9px;border-radius:50%;background:#198a87}
+.brand-foundation span:nth-child(2):before{background:#8670ce}.brand-foundation span:nth-child(3):before{background:#e8a18a}
+.brand-landing .section{padding:94px 0}
+.brand-section-heading{display:grid;grid-template-columns:1.2fr 1fr;gap:12px 70px;align-items:end;margin-bottom:40px}
+.brand-section-heading .eyebrow{grid-column:1/-1;margin:0}
+.brand-section-heading h2,.brand-proof h2{font-size:clamp(36px,4vw,56px);line-height:1.08;letter-spacing:-.03em}
+.brand-section-heading>p:last-child{font-size:18px;line-height:1.7;color:var(--muted);max-width:470px;padding-bottom:4px}
+.brand-experience-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:23px}
+.brand-experience{display:flex;flex-direction:column;overflow:hidden;border:1px solid #e0e3df;border-radius:28px;background:#fff;transition:transform .2s,box-shadow .2s}
+.brand-experience:hover{transform:translateY(-4px);box-shadow:0 16px 35px #19255a12}
+.brand-experience>img{width:100%;height:252px;object-fit:cover;object-position:center 39%}
+.brand-experience>div{padding:25px 28px 26px;display:flex;flex:1;flex-direction:column}
+.brand-experience .eyebrow{letter-spacing:0;text-transform:none;font-size:15px;margin-bottom:10px}
+.brand-experience:nth-child(2) .eyebrow{color:#176a86}.brand-experience:nth-child(3) .eyebrow{color:#7550ae}
+.brand-experience h3{font-size:28px;line-height:1.13;margin-bottom:14px}
+.brand-experience p:not(.eyebrow){font-size:16px;line-height:1.65;color:var(--muted);margin-bottom:24px}
+.brand-experience-action{display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:700;font-size:14px;margin-top:auto;padding-top:18px;border-top:1px solid #e9ece7;min-height:44px}
+.brand-proof{background:#eaf1ef;border-block:1px solid #dce5df}
+.brand-proof-grid{display:grid;grid-template-columns:1fr 1.05fr;gap:80px;align-items:center}
+.brand-proof-copy>p:not(.eyebrow){font-size:18px;line-height:1.7;color:var(--muted);margin-top:24px;max-width:470px}
+.proof-chapters{display:grid;gap:2px;margin-top:28px;max-width:440px}
+.proof-chapters button{display:flex;align-items:center;gap:16px;text-align:start;padding:15px 12px;border-bottom:1px solid #cad8cf;min-height:54px;font-size:16px;border-radius:9px 9px 0 0;color:#4b585b}
+.proof-chapters button>span{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+.proof-chapters button[aria-pressed=true]{background:#fff;border-color:transparent;color:var(--ink);font-weight:700;border-radius:10px}
+.brand-proof .text-link{margin-top:15px;color:#174f52}
+.proof-film{position:relative;isolation:isolate;min-width:0;aspect-ratio:1/1.08;border-radius:32px;overflow:hidden;background:#fafaf7;box-shadow:0 24px 65px #153c3820;border:1px solid #fff}
+.proof-film video{position:absolute;width:100%;height:100%;object-fit:cover;inset:0;object-position:50% 0}
+.proof-film-top{position:absolute;inset:18px 20px auto;display:flex;justify-content:space-between;align-items:center;gap:14px;font-size:10px;letter-spacing:.09em;font-weight:700;color:#344a50}
+#film-toggle{background:#fff;border:1px solid #d2ddd8;padding:9px 13px;border-radius:50px;min-height:44px;color:var(--ink);font-size:11px;letter-spacing:0;box-shadow:0 3px 15px #182b5510}
+.proof-caption{position:absolute;inset:auto 22px 22px;border-radius:22px;background:#fff;padding:23px 26px;box-shadow:0 12px 35px #10265315;border:1px solid #e8ece7}
+.proof-caption .eyebrow{font-size:10px;margin-bottom:11px}
+.proof-caption h3{font-size:27px;line-height:1.16;min-height:64px;letter-spacing:-.025em}
+.proof-caption>p:not(.eyebrow){font-size:14px;line-height:1.6;color:var(--muted);margin-top:12px;min-height:65px}
+.proof-disclosure{display:block;margin-top:15px;font-size:10px;color:#52606c}
+.film-error{position:absolute;inset:70px 25px auto;padding:14px;background:#fff;font-size:13px;line-height:1.5;border-radius:12px}
+.brand-landing .moment-hero{padding-top:90px;padding-bottom:20px}
+.brand-landing .moment-intro h2,.brand-landing .control-copy h2,.brand-landing .trial-copy h2{font-family:ArborSans,ArborHebrew,Arial,sans-serif;font-size:clamp(36px,3.8vw,54px);font-weight:700;line-height:1.08;letter-spacing:-.03em}
+.brand-landing .moment-intro h2 em{font-style:normal;color:#175f5c}
+.brand-landing .moment-workspace{border-radius:24px;border-color:#dce2dd;box-shadow:0 15px 35px #14225a0b}
+.brand-landing .moment-choice{border-radius:12px;background:#fff;border-color:#c9d4cc}
+.brand-landing .moment-choice.is-selected{background:#191e5c;border-color:#191e5c}
+.brand-landing .moment-foundation{display:none}
+.brand-landing .connected-journey{background:#fff;border-top:1px solid var(--line)}
+.brand-landing .journey-heading h2{font-family:ArborSans,ArborHebrew,Arial,sans-serif;font-size:clamp(34px,3.8vw,50px);font-weight:700;line-height:1.1;letter-spacing:-.03em}
+.brand-landing .journey-tab{padding:10px 15px;gap:13px}
+.journey-brand-icon{width:64px;height:60px;object-fit:cover;border-radius:12px}
+.brand-landing .journey-tab[aria-pressed=true]{background:#f0f5f1;color:var(--ink);border-bottom-color:#17685f}
+.brand-landing .control-section{background:#f4f0fa}
+.brand-landing .control-principles h3{font-size:19px}
+.brand-landing .control-copy>p{font-size:18px}
+.brand-landing .trial-section{background:#191e5c;color:#fff}
+.brand-landing .trial-section .eyebrow{color:#c1e4d7}
+.brand-landing .trial-copy>p,.brand-landing .trial-steps{color:#e2e8f2}
+.brand-landing .trial-offer{color:var(--ink);background:#fff;border-color:#fff;border-radius:26px}
+.brand-landing .trial-offer .eyebrow{color:#176052}
+.brand-landing .trial-offer h3{font-family:ArborSans,ArborHebrew,Arial,sans-serif;font-size:32px;font-weight:700;letter-spacing:-.025em}
+.brand-landing .feature-details{background:#fff}
+[dir=rtl] .brand-intro h1{letter-spacing:-.03em;line-height:1.12;font-size:clamp(46px,5.5vw,76px)}
+[dir=rtl] .brand-landing :is(h2,h3,h4){letter-spacing:-.025em}
+[dir=rtl] .brand-context{padding:14px 8px 14px 18px}
+[dir=rtl] .brand-stage{padding:0 35px 60px 0}
+[dir=rtl] .brand-experience-action>span,[dir=rtl] .brand-actions .button>span{transform:scaleX(-1)}
+@media(min-width:1440px){.brand-hero-grid{gap:90px}.brand-sculpture{height:620px}}
+@media(max-width:1000px){.brand-landing .page-width{width:calc(100% - 64px)}.brand-hero-grid{gap:25px}.brand-sculpture{height:540px}.brand-intro h1{font-size:59px}.brand-lead{font-size:17px}.brand-context{inset-inline-start:-7px;width:250px;gap:8px}.brand-context img{width:75px;height:88px}.brand-context strong{font-size:18px}.brand-proof-grid{gap:35px}.brand-experience>div{padding:20px}.brand-experience h3{font-size:24px}.brand-experience>img{height:205px}.proof-caption{inset:auto 15px 15px;padding:18px}.proof-caption h3{font-size:24px}.proof-film{aspect-ratio:1/1.2}}
+@media(max-width:750px){.brand-landing .page-width{width:calc(100% - 40px)}.brand-landing .site-header{height:70px}.brand-hero{padding-top:28px}.brand-hero-grid{grid-template-columns:1fr;gap:8px}.brand-intro{padding-bottom:12px}.brand-intro h1{font-size:clamp(46px,10.8vw,68px);line-height:1.02}.brand-intro h1 br:nth-child(2){display:none}.brand-intro h1 span{display:block}.brand-lead{max-width:590px;margin-top:22px;font-size:17px}.brand-actions{gap:23px;margin-top:23px}.brand-assurance{font-size:11px}.brand-stage{padding:10px 0 44px 35px;max-width:500px;width:100%;margin:auto}.brand-sculpture{height:390px;border-radius:42% 42% 24px 24px;object-position:50% 48%}.brand-context{inset-inline-start:0;bottom:75px;width:246px}.brand-memory{bottom:7px;inset-inline-end:0;font-size:11px}.brand-foundation{flex-wrap:wrap;justify-content:flex-start;font-size:12px;gap:12px 22px;padding:19px 0;margin-top:15px}.brand-landing .section{padding:62px 0}.brand-section-heading{grid-template-columns:1fr;gap:14px;margin-bottom:29px}.brand-section-heading>p:last-child{font-size:17px;max-width:570px}.brand-section-heading h2,.brand-proof h2{font-size:40px;line-height:1.1}.brand-experience-grid{grid-template-columns:1fr;gap:18px}.brand-experience{display:grid;grid-template-columns:.8fr 1.2fr;border-radius:23px}.brand-experience>img{height:100%;min-height:250px;object-fit:cover;object-position:50% 35%}.brand-experience>div{padding:22px 18px}.brand-experience h3{font-size:25px}.brand-experience p:not(.eyebrow){font-size:15px;margin-bottom:15px}.brand-experience .eyebrow{font-size:13px;margin-bottom:8px}.brand-experience-action{font-size:12px;padding-top:12px}.brand-proof-grid{grid-template-columns:1fr;gap:25px}.brand-proof-copy>p:not(.eyebrow){max-width:600px;font-size:17px}.proof-chapters{max-width:none}.proof-film{aspect-ratio:1/1.07;max-width:600px;width:100%;margin:auto}.proof-caption{inset:auto 16px 16px;padding:20px}.proof-caption h3{font-size:26px;min-height:58px}.proof-caption>p:not(.eyebrow){min-height:60px}.brand-landing .moment-hero{padding-top:60px}.brand-landing .moment-intro h2,.brand-landing .control-copy h2,.brand-landing .trial-copy h2{font-size:39px}.brand-landing .journey-tab{padding:10px 8px;gap:7px;flex-direction:column;align-items:flex-start}.journey-brand-icon{width:52px;height:45px}.brand-landing .journey-tab small{font-size:11px}.brand-landing .journey-tab b{font-size:12px}.brand-landing .journey-heading h2{font-size:36px}[dir=rtl] .brand-stage{padding:10px 35px 44px 0}[dir=rtl] .brand-intro h1{font-size:clamp(44px,10.8vw,64px);line-height:1.12}}
+@media(max-width:390px){.brand-experience{grid-template-columns:1fr}.brand-experience>img{min-height:0;height:230px;object-position:center 38%}.brand-experience>div{padding:23px}.brand-experience h3{font-size:28px}.brand-experience-action{font-size:14px}.brand-hero .button{padding-inline:18px;font-size:15px}.proof-film{aspect-ratio:1/1.3}.proof-film video{object-fit:contain;object-position:top}.proof-caption h3{font-size:24px}.brand-context{width:235px}.brand-sculpture{height:350px}}
+@media(prefers-reduced-motion:reduce){.brand-landing *{scroll-behavior:auto!important;animation:none!important;transition:none!important}.brand-experience:hover{transform:none}}
