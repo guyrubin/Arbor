@@ -286,6 +286,7 @@ export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.nudge.shown.": "prefix: a nudge shown on a day",
   "arbor.ownershipProvisioned.": "prefix: session marker per account",
   "arbor.parentPin": "the parent gate PIN",
+  "arbor.pause": "this device's Pause Arbor flag (a stretch and an end instant; no child record)",
   "arbor.pendingErase": "an erase still to finish (lib/pendingErase.ts), per account: the uid that started it, the erased child's id and the receipt so far (counts and per-place ledger); read back only by that uid, kept across its sign-out, cleared when a retry completes",
   "arbor.plan.previewDismissed": "UI marker",
   "arbor.purchaseIntent.v1": "the plan a parent chose before checkout",

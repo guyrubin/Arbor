@@ -14,6 +14,7 @@ import { Sheet, useCompactSurface } from "../ui/Sheet";
 import AdminDashboard from "./AdminDashboard";
 import ParentalGatePanel from "./ParentalGatePanel";
 import { consumeSettingsFocus, SETTINGS_FOCUS_ANCHOR } from "./settingsBus";
+import PauseArborControl from "../trust/PauseArborControl";
 import DeleteAccountModal from "./DeleteAccountModal";
 import YourDataSheet from "./YourDataSheet";
 import { AnalyticsOptOutRow } from "../privacy/AnalyticsOptOutRow";
@@ -337,6 +338,9 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             {t("set.memory.open")}
           </button>
         </Row>
+
+        {/* Pause Arbor: new suggestions and new things to keep wait. The notebook stays. */}
+        <PauseArborControl />
 
         {/* B-PLAY-21: how Arbor talks with you — the same sheet as Ask and Family. */}
         <Row icon={<Icon name="tune" size={18} />} title={t("coach.tone.title")} sub={toneLabel(selectedLens, t)}>

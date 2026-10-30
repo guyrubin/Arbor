@@ -38,6 +38,7 @@ function mountedProductionProof() {
     "../lib/api": { authHeaders: async () => ({}) },
     "../lib/kpiEvents": { trackLoopContinued() {} },
     "../practice/signals": { dayKey: () => DAY }, "../ai/journalContext": { WHY_MAX: 240 },
+    "../lib/pauseArbor": { isArborPaused: () => false, PAUSE_EVENT: "arbor:pause" },
   };
   const compile = source => ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const hookModule = { exports: {} as { useTodaysFocus: (...args: unknown[]) => unknown } };

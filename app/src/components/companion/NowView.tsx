@@ -34,6 +34,8 @@ import { appointmentRoleLabel } from "../../lib/appointmentLabel";
 import { isKidModeActive } from "../../lib/kidModeGate";
 import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
 import { basedOnLines, FOCUS_MAX_FACTS } from "../../lib/basedOn";
+import { useArborPause } from "../../lib/pauseArborStore";
+import { fmtDay } from "../../lib/formatDate";
 import BasedOnReceipt from "../trust/BasedOnReceipt";
 import FromRecordCard, { FromRecordReceipt } from "../overview/FromRecordCard";
 import { useNowLoop } from "./useNowLoop";
@@ -112,6 +114,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const { childProfile, actionLoop, approvedMemoryItems, seedCoach, setActiveTab, openCaptureSheet,
     saveTodayOutcome, saveTodayObservation, requestJournalFocus, pendingCaptureMode, consumeCaptureRequest, addMoment, requestLearnRead } = useArbor();
   const { t, uiLang } = useLanguage();
+  const arborPause = useArborPause();
   const he = uiLang === "he";
   const lang = he ? "he" : "en";
   const copy = NOW_COPY[lang];
@@ -244,6 +247,9 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // ── The milestone loop (parity 9 Oct): practice → Did it → Tonight → notice. ──
   const [focus, setFocus] = useState<Focus | null>(null);
   const [focusPending, setFocusPending] = useState(false);
+  useEffect(() => {
+    if (arborPause.paused) setFocus(null);
+  }, [arborPause.paused]);
   const loop = useNowLoop({
     now,
     aiPracticeId: focus?.practiceVia === "ai" ? focus.practiceId : undefined,
@@ -269,6 +275,10 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     recordPending: record.saving || record.error,
     fallback: plan ? "plan" : loop.pick ? "practice" : loop.slotNotice ? "notice" : program ? "program" : "recommendation",
   });
+  const pausedLead = arborPause.paused && lead === "recommendation";
+  const pauseUntil = arborPause.record?.until
+    ? t("companion.pause.until", { when: fmtDay(arborPause.record.until, uiLang) })
+    : t("companion.pause.untilYou");
   const showNotice = lead !== "notice" && loop.plan.order.includes("notice") && loop.blockNotices.length > 0;
   const showPointer = lead !== "tonight" && loop.tonightHasQuestions && (loop.plan.tonightPointer || (lead === "step" && loop.evening));
   const pickId = loop.pick?.practice.id;
@@ -294,14 +304,15 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const practiceSay = shownLead === "practice" && loop.pick ? practiceText(loop.pick.practice, "say", lang, childProfile.gender) : "";
   // The urgent lead's face carries only the reviewed safety header; no say line,
   // no plan meta, no "picked because" — nothing is invented beside the help lines.
-  const planTag = shownLead === "urgent" ? t("elev.safety.header.title") : copy.planTag[shownLead];
-  const planSay = shownLead === "urgent" ? null : practiceSay ? t("elev.loop.ms.quoted", { text: practiceSay }) : copy.planSay[shownLead];
-  const planMeta = shownLead === "urgent" ? null : shownLead === "step" ? (receipt ? (receiptQueued ? t(savedOnPhoneKey(online)) : copy.saved) : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
+  const planTag = pausedLead ? t("companion.pause.on") : shownLead === "urgent" ? t("elev.safety.header.title") : copy.planTag[shownLead];
+  const planSay = pausedLead ? t("companion.pause.now") : shownLead === "urgent" ? null : practiceSay ? t("elev.loop.ms.quoted", { text: practiceSay }) : copy.planSay[shownLead];
+  const planMeta = pausedLead ? null : shownLead === "urgent" ? null : shownLead === "step" ? (receipt ? (receiptQueued ? t(savedOnPhoneKey(online)) : copy.saved) : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
   const planWeekTitle = shownLead === "plan" && plan ? <h2 id={`${id}-plan`} className="now-plan-title" dir="auto">{plan.def.title[lang]}</h2> : undefined;
   // v3 F-NOW-1 r2: the guide's title on the face is the lead's own h2, moved up
   // from its section (which keeps it as its label). The loop leads' cards carry
   // their own heading, so their face has the say line and meta only.
-  const planTitle = shownLead === "step" && chosen ? <h2 ref={stepTitle} id={`${id}-step`} className="now-plan-title" dir="auto" style={observation ? { whiteSpace: "pre-wrap", scrollMarginBlockStart: "calc(var(--sticky-offset) + 12px)" } : undefined}>{receipt && !observation ? copy.finishedTitle : chosen.recommendation}</h2>
+  const planTitle = pausedLead ? <h2 id={`${id}-pause`} className="now-plan-title" dir="auto">{pauseUntil}</h2>
+    : shownLead === "step" && chosen ? <h2 ref={stepTitle} id={`${id}-step`} className="now-plan-title" dir="auto" style={observation ? { whiteSpace: "pre-wrap", scrollMarginBlockStart: "calc(var(--sticky-offset) + 12px)" } : undefined}>{receipt && !observation ? copy.finishedTitle : chosen.recommendation}</h2>
     : shownLead === "visit" && visit ? <h2 id={`${id}-visit`} className="now-plan-title" dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</h2>
       : shownLead === "program" && program ? <h2 id={`${id}-program`} className="now-plan-title" dir="auto">{programSkill}</h2> : planWeekTitle;
   // The one plan body under every lead: why it was picked, always visible. The
@@ -310,7 +321,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const practiceWhy = shownLead === "practice" && loop.pick
     ? (loop.pick.via === "ai" && focus?.why?.trim()) || t(loop.whyReason && (loop.whyReason !== "since" || loop.whyDate) ? WHY_KEY[loop.whyReason] : "elev.loop.practice.whyShelf", { shelf: shelfLabel(loop.pick.shelf, t), name, date: loop.whyDate ?? "" })
     : "";
-  const planWhy = shownLead === "practice" ? practiceWhy || copy.pickedWhy.practice : shownLead === "tonight" && tonightOpen ? copy.pickedTonightOpen : copy.pickedWhy[shownLead];
+  const planWhy = pausedLead ? t("companion.pause.kept") : shownLead === "practice" ? practiceWhy || copy.pickedWhy.practice : shownLead === "tonight" && tonightOpen ? copy.pickedTonightOpen : copy.pickedWhy[shownLead];
   const planQuestion = shownLead === "step" && chosen && topic && chosen.topicId === topic.id ? topic.title : null;
 
   return <div className="companion-page now-page" dir={he ? "rtl" : "ltr"}>
@@ -326,7 +337,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     <div className="now-main-column">
         {lead === "practice" && <PracticeFocus now={now} journal={loop.journal} onFocus={setFocus} onPending={setFocusPending} />}
         {/* The recommendation frames itself (its screened words face the art panel), so its frame here is bare. */}
-        <NowPlanFrame kind={shownLead} lang={lang} tag={planTag} say={planSay} quoted={!!practiceSay} title={planTitle} meta={planMeta} question={topic?.title} bare={shownLead === "recommendation"}>
+        <NowPlanFrame kind={shownLead} lang={lang} tag={planTag} say={planSay} quoted={!!practiceSay && !pausedLead} title={planTitle} meta={planMeta} question={topic?.title} bare={shownLead === "recommendation" && !pausedLead}>
         {lead === "urgent" ? <section className="now-loop-lead" data-module="now-urgent" aria-label={t("elev.safety.header.title")}>
           <UrgentSupport testId="now-urgent-setup-support" className="now-urgent-lead" />
         </section> : lead === "record" ? <section className="now-loop-lead" data-module="now-record" aria-label={t("today.record.aria")}>
@@ -389,8 +400,13 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
           <p className="now-lead-body">{copy.programWhy(program.week)}</p>
           <div className="now-lead-actions"><PrimaryMove type="button" className="companion-primary" onClick={openProgram}>{copy.continueProgram}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></PrimaryMove></div>
           <button type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(programSkill))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></button>
+        </section> : pausedLead ? <section className="now-lead" data-testid="now-pause" aria-labelledby={`${id}-pause`}>
+          <div className="now-lead-actions">
+            <PrimaryMove type="button" className="companion-primary" onClick={() => arborPause.resume()}>{t("companion.pause.resume")}</PrimaryMove>
+          </div>
+          <button type="button" className="companion-text-button" onClick={() => goToRoute("memory")}>{t("companion.pause.notebook")}</button>
         </section> : <NowRecommendation name={name} onTalkOpen={talk} journal={loop.journal} />}
-        {shownLead !== "recommendation" && shownLead !== "urgent" && <div className="now-plan-foot"><NowPlanBody why={planWhy} time={copy.planTime[shownLead]} size={copy.planSize[shownLead]} question={planQuestion} /></div>}
+        {(pausedLead || (shownLead !== "recommendation" && shownLead !== "urgent")) && <div className="now-plan-foot"><NowPlanBody why={planWhy} time={pausedLead ? null : copy.planTime[shownLead]} size={pausedLead ? null : copy.planSize[shownLead]} question={planQuestion} /></div>}
         </NowPlanFrame>
         {lead === "practice" && focus && loop.pick?.via === "ai" && <BasedOnReceipt
           model={{

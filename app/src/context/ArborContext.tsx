@@ -32,6 +32,7 @@ import { useProfile } from "./ProfileContext";
 import { useFamilyWaySync } from "../hooks/useFamilyWaySync";
 import { chooseFamilyLens } from "../lib/familyWay";
 import { api, ApiError, authHeaders, EscalationRequiredError, getAiLanguage, PaywallError, streamCouncil } from "../lib/api";
+import { isArborPaused } from "../lib/pauseArbor";
 import { useChildCollection, type ChildWriteOptions } from "../hooks/useChildCollection";
 import { useFamilyTopics } from "../hooks/useFamilyTopics";
 import type { ExplainAnswer } from "../lib/explainAnswer";
@@ -1275,6 +1276,7 @@ function useArborState() {
           ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}),
           scholarLens: selectedLens || "Integrated Balanced",
           language: getAiLanguage(),
+          ...(isArborPaused() ? { paused: true } : {}),
           // LL-A9 — Learn Library grounding: attach the catalogue read that
           // matches this question (EN fields; the model localizes per the
           // language directive). Server sanitizes + caps; absent when no match.

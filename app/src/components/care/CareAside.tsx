@@ -4,6 +4,8 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { fmtDay } from "../../lib/formatDate";
+import { requestOpenSettings } from "../layout/settingsBus";
+import { useArborPause } from "../../lib/pauseArborStore";
 import { careSafetyLines, firstDialableContact, readSafetyReviewed } from "../../safety/safetyLines";
 import type { HelplineEntry } from "../../safety/escalation";
 
@@ -53,6 +55,10 @@ export default function CareAside() {
   const contact = firstDialableContact(contactsCol.items);
   const firstName = (childProfile.name || "").trim().split(" ")[0];
   const reviewed = readSafetyReviewed(childProfile.id);
+  const arborPause = useArborPause();
+  const pauseUntil = arborPause.record?.until
+    ? t("companion.pause.until", { when: fmtDay(arborPause.record.until, uiLang) })
+    : t("companion.pause.untilYou");
 
   // v4: a complementary landmark, but not an <aside> element — the shell's
   // global `.arbor-app aside` rules (sidebar paper, an inline-end rule, a
@@ -99,6 +105,21 @@ export default function CareAside() {
           style={secondaryStyle}
         >
           {t(lines.findLine ? "elev.safety.crisis.findLine" : "elev.consult.aside.openSafety")}
+        </button>
+      </section>
+      <section data-testid="care-pause" aria-labelledby="care-pause-title" className={`${cardCls} mt-4`} style={cardStyle}>
+        <h2 id="care-pause-title" className="flex items-center gap-2 t-base font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>
+          <Icon name="schedule" size={18} /> {t(arborPause.paused ? "companion.pause.on" : "companion.pause.care")}
+        </h2>
+        <p className="t-sm" style={{ color: MUTED }}>{arborPause.paused ? pauseUntil : t("companion.pause.sub")}</p>
+        <button
+          type="button"
+          data-testid="care-pause-open"
+          onClick={() => requestOpenSettings({ focus: "pause-arbor" })}
+          className={`${secondaryCls} py-2 text-start`}
+          style={secondaryStyle}
+        >
+          {t("companion.pause.more")}
         </button>
       </section>
     </div>

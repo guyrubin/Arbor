@@ -63,7 +63,7 @@ describe("useTodaysFocus source — language in the key, the record, and the req
   it("cache-load and auto-generate both re-run on a language switch", () => {
     expect(src).toMatch(/\[child\.id, remote, uid, focusLang\]/);
     // B-TODAY-11: the newest capture/outcome is a dependency too (bounded refresh).
-    expect(src).toMatch(/\[focus, signals\.count, signals\.latestAt, loading, focusLang\]/);
+    expect(src).toMatch(/\[focus, signals\.count, signals\.latestAt, loading, focusLang, pauseEpoch\]/);
   });
 
   it("the verdict-strip firewall payload is untouched (CODEX-2 condition)", () => {
@@ -87,6 +87,7 @@ describe("N2-errfocus — focus fetch failure surfaces an inline error + retry",
 
   it("the hook exposes the error flag and the retry alongside the focus", () => {
     expect(hookSrc).toContain("return { focus: liveFocus, loading, error, regenerate: generate }");
+    expect(hookSrc).toContain("return { focus: null, loading: false, error: false, regenerate: generate }");
   });
 
   it("a generation failure SETS the flag; a new attempt clears it first", () => {

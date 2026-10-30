@@ -41,6 +41,7 @@ import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatch
 import { renderConditionQuestionReply, renderSeededConditionReply, screenForConditionQuestion } from "../safety/conditionQuestion.js";
 import { answerUsesApprovedFact, recordMemoryFactUnused, groundTodayPlanOnFact, factStepText } from "../server/memoryFactUse.js";
 import { translate } from "../lib/i18n.js";
+import { pauseRequested } from "../lib/pauseArbor.js";
 import { seededEscalationLine, seededCard, seededFollowUpLine, applyGovernedEscalation, scrubSeededProfessionalHelp, seededScrubCount, seededDeltaAllowed, ensureSeededFollowUpText } from "../safety/seededEscalation.js";
 import { withoutCrisisThresholds, recordRoutineThresholdDrop } from "../safety/routineThresholds.js";
 import { captureLanguage, normalizeCaptureDraft } from "../server/captureDraft.js";
@@ -1327,11 +1328,16 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
           : renderCoachResponse(structured, renderLanguage);
       }
 
+      // Pause Arbor: this device asked new things to keep to wait. The parent
+      // can still Keep a fact themselves. The scrubbed append below stays the
+      // one automatic writer.
+      const arborPaused = pauseRequested(req.body);
+      if (arborPaused) structured.memoryProposals = [];
       // OBJ-JOURNAL-05: the memory queue is a parent surface — a proposal
       // arrives as a fact the parent is asked to approve, so it must be in
       // their words. scrubMemoryProposals rewrites the assessment register and
       // DROPS any fact that cannot be stated plainly (server/parentWordsScrub).
-      const memoryReviewItems = canReadMemory && !attachments.length ? await appendMemoryProposals(memoryStore, childId, scrubMemoryProposals(structured.memoryProposals), {
+      const memoryReviewItems = canReadMemory && !attachments.length && !arborPaused ? await appendMemoryProposals(memoryStore, childId, scrubMemoryProposals(structured.memoryProposals), {
         familyId,
         prompt: message,
         frameRouting: structured.frameRouting,
@@ -2471,6 +2477,12 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     const escalationMatch = screenForImmediateEscalation({ message: transcript });
     if (escalationMatch) {
       res.status(409).json({ error: "Professional support recommended", escalationCategory: escalationMatch.category });
+      return;
+    }
+    // After the crisis check: a paused device gets no new proposals, and a
+    // transcript that needs a person still answers 409.
+    if (pauseRequested(req.body)) {
+      res.json({ proposals: [] });
       return;
     }
     const safeMilestones = Array.isArray(milestones) ? milestones.slice(0, 160).map((item) => ({

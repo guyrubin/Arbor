@@ -1,4 +1,5 @@
 import { toAnalyzeLogInputs } from "./analyzeLogPayload";
+import { isArborPaused } from "./pauseArbor";
 import { toDigestLogInputs, toDigestMilestoneInputs } from "./digestPayload";
 import type { ActionPlan, BedtimeStory, BehaviorAnalysis, SchoolBrief, ChildProfile, BehaviorLog, Milestone, HeroJourneyRender, CoachContract, CouncilTake, MemoryReviewItem, ShareGrant, ShareRole, SharedPacketView, ConsentGrant, ConsentPurpose, DeletionReceipt } from "../types";
 import type { AdventureScenario } from "../practice/content";
@@ -632,7 +633,7 @@ export const api = {
   liveAvailability: () => get<{ available: boolean; exceptionUntil?: string; notice?: { id: string } }>("/api/live/availability"),
   /** Returns ephemeral review proposals only; this endpoint cannot commit records. */
   extractConversationProposals: (payload: { transcript: string; childProfile: ChildProfile; milestones: Pick<Milestone, "id" | "title" | "checked" | "observationStatus">[]; language?: "en" | "he" }) =>
-    post<{ proposals: unknown[] }>("/api/conversation/proposals", payload),
+    post<{ proposals: unknown[] }>("/api/conversation/proposals", { ...payload, ...(isArborPaused() ? { paused: true } : {}) }),
   // AI-V9: the session language selects the server-pinned persona + voice; the
   // pinned systemInstruction/speechConfig are echoed back for the connect call.
   liveToken: (payload: {

@@ -79,6 +79,7 @@ function harness() {
     "../lib/kpiEvents": { trackLoopContinued: vi.fn() },
     "../practice/signals": { dayKey: () => DAY },
     "../ai/journalContext": { WHY_MAX: 240 },
+    "../lib/pauseArbor": { isArborPaused: () => false, PAUSE_EVENT: "arbor:pause" },
   };
   const module = { exports: {} as { useTodaysFocus: typeof useTodaysFocus } };
   new Function("require", "module", "exports", "fetch", compiled)((name: string) => {
