@@ -19,6 +19,7 @@
 .about-cta-primary:hover { background: var(--arbor-clay-deep); }
 .about-cta-secondary { border: 1px solid var(--arbor-rule-strong); background: transparent; color: var(--arbor-ink); }
 .about-cta-secondary:hover { background: var(--arbor-paper-deep); }
+.about-notebook { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; min-block-size: 44px; margin-block-start: 2px; padding: 0; border: 0; background: transparent; color: var(--arbor-clay); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
 
 /* The art panel: soft area blobs and the child's hero render or initial —
    never an uploaded photo. Decorative. */

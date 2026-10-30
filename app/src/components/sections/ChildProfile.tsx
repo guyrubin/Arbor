@@ -86,7 +86,10 @@ export default function ChildProfile() {
   const routeKey = useHashRouteKey();
   const ledgerAsked = activeTab === "memory" || routeKey === "memory" || routeKey === "child-memory";
   // Once per arrival (the query VALUE, never the per-render URLSearchParams); then the toggle owns it.
-  const [ledgerOpen, toggleLedger] = useLedgerArrival(ledgerAsked, hashQuery.get("section"));
+  // A fact link (`?fact=`) is its own arrival so Correct / Forget can open on that row.
+  const factId = hashQuery.get("fact");
+  const ledgerSection = hashQuery.get("section") ?? (factId ? `fact:${factId}` : null);
+  const [ledgerOpen, toggleLedger] = useLedgerArrival(ledgerAsked, ledgerSection);
   const [tap, setTap] = useState<{ from: AspectId | null; open: SheetOpen | null } | null>(null);
   const sheet: SheetOpen | null = tap && tap.from === queryAspect
     ? tap.open
@@ -138,6 +141,9 @@ export default function ChildProfile() {
               <Icon name="edit_note" size={20} />{t("companion.about.write")}
             </button>
           </div>
+          <button type="button" className="about-notebook min-h-11" data-testid="about-notebook" aria-expanded={ledgerOpen} aria-controls={LEDGER_ID} onClick={toggleLedger}>
+            {t("companion.about.notebook")}<Icon name={ledgerOpen ? "expand_less" : "expand_more"} size={18} />
+          </button>
         </div>
         {/* The art panel: area blobs and the hero render or the initial —
             never an uploaded photo here. Decorative. */}
@@ -163,7 +169,7 @@ export default function ChildProfile() {
         {ledgerOpen && (
           <div id={LEDGER_ID} data-testid="about-memory-ledger" className="about-memory-ledger" style={{ scrollMarginBlockStart: "calc(var(--sticky-offset, 0px) + 12px)" }}>
             <React.Suspense fallback={<p role="status" className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("aria.loading")}</p>}>
-              <ChildMemoryLedger hidePendingIds={askedHere} />
+              <ChildMemoryLedger hidePendingIds={askedHere} focusFactId={factId} />
             </React.Suspense>
           </div>
         )}

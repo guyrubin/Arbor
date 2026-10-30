@@ -9,6 +9,7 @@ import { MarkdownBlock } from "../ui/MarkdownBlock";
 import type { KeepableField } from "../../lib/captureProposals";
 import "./coachReport.css";
 import { TrustLink } from "../trust/TrustLink";
+import BasedOnReceipt, { type BasedOnModel } from "../trust/BasedOnReceipt";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { track } from "../../lib/analytics";
 import { toDomains, domainLabel } from "../../lib/domains/registry";
@@ -405,13 +406,16 @@ function ReportDisclosure({ id, title, open, onToggle, children, testId, icon }:
 export default function CoachAnswerCards({
   contract, lens, council, lang = "en", onSaveToPlan, onGoDeeper,
   onAddToHandoff, onManageMemory, reviewUnavailable = false,
-  todayStep, onTryIt, onUndoTryIt, renderKeepAction, onProposeMemory, provenance,
+  todayStep, onTryIt, onUndoTryIt, renderKeepAction, onProposeMemory, provenance, basedOn, onOpenFact,
   onPrepareVisit, goDeeperReads, onRead,
 }: {
   contract: CoachContract;
   /** EXTRA-TALK: opt-in provenance line for a settled Talk answer. Absent →
    *  no line (history renders and the markup snapshots stay byte-identical). */
   provenance?: CoachProvenance;
+  /** Settled-answer receipt: approved fact names, profile field names, weekly counts. Absent → no receipt. */
+  basedOn?: BasedOnModel;
+  onOpenFact?: (memoryId: string) => void;
   /** F-TALK-2: the visit handoff ("Build a summary") left the row under the
    *  Talk thread for the answer's actions, next to Teacher note. */
   onPrepareVisit?: () => void;
@@ -773,6 +777,7 @@ export default function CoachAnswerCards({
       {!door && sourcesPanel}
 
       <footer className="coach-report__footer" data-testid="coach-answer-footer">
+        {basedOn && onOpenFact && !prominentHelp && <BasedOnReceipt model={basedOn} onOpenFact={onOpenFact} />}
         {/* EXTRA-TALK: one muted line, never a verdict, never a number. An
             answer led by the urgent-help panel carries no "you decide" line. */}
         {provenance && !prominentHelp && (

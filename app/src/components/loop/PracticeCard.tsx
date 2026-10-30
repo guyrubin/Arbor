@@ -92,6 +92,8 @@ export interface PracticeCardProps {
   onAdapt?: (key: PracticeAdaptationKey | null) => void;
   /** Now only: keep the action first; words, materials and history stay in a native disclosure. */
   actionFirstDetailsLabel?: string;
+  /** Now's evening pair. Absent → the shared "Did it" / "Not today" labels. */
+  answerLabels?: { did?: string; notToday?: string };
 }
 
 /**
@@ -128,6 +130,7 @@ export default function PracticeCard({
   adaptation,
   onAdapt,
   actionFirstDetailsLabel,
+  answerLabels,
 }: PracticeCardProps) {
   const { t, uiLang } = useLanguage();
   const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
@@ -264,7 +267,7 @@ export default function PracticeCard({
             style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)", boxShadow: "var(--shadow-sm)" }}
           >
             <Icon name="check" size={20} />
-            {t("elev.loop.practice.didIt")}
+            {answerLabels?.did ?? t("elev.loop.practice.didIt")}
           </button>
           <button
             type="button"
@@ -273,7 +276,7 @@ export default function PracticeCard({
             className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full px-5 t-md font-semibold transition active:scale-[0.98]"
             style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
           >
-            {t("elev.loop.practice.notToday")}
+            {answerLabels?.notToday ?? t("elev.loop.practice.notToday")}
           </button>
         </div>
       )}

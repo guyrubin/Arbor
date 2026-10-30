@@ -45,8 +45,9 @@ export default function AboutMemoryCard({ areas, ledgerOpen, onLedger }: {
   /** B-CAREPRO-38: the door opens the ledger in place (#/memory retired into About). */
   onLedger?: () => void;
 }) {
-  const { approvedMemoryItems, pendingMemoryItems, handleMemoryDecision, isMemoryUpdating, memoryReviewError, setActiveTab } = useArbor();
+  const { childProfile, approvedMemoryItems, pendingMemoryItems, handleMemoryDecision, isMemoryUpdating, memoryReviewError, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
+  const first = childProfile.name.split(" ")[0] || childProfile.name;
   const [failed, setFailed] = useState<string | null>(null);
   const pending = useMemo(() => scrubMemoryProposals(pendingMemoryItems), [pendingMemoryItems]);
   const approved = useMemo(
@@ -82,7 +83,7 @@ export default function AboutMemoryCard({ areas, ledgerOpen, onLedger }: {
       <div className="about-memory-head">
         <BrandChip icon="psychology" tone="lav" size={40} />
         <div className="about-memory-titles">
-          <h2 id="about-memory-title">{t("companion.about.memory.title")}</h2>
+          <h2 id="about-memory-title">{t("companion.about.memory.title", { name: first })}</h2>
           <p>{t("companion.about.memory.sub")}</p>
         </div>
         {badge && <span className="about-memory-badge" data-pending={pending.length > 0 ? "" : undefined} data-testid="about-memory-badge">{badge}</span>}
