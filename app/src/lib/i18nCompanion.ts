@@ -503,6 +503,15 @@ export const companionEn = {
   "companion.pause.moreOn": "Arbor is paused",
   "companion.pause.now": "No new step from Arbor until you resume.",
   "companion.pause.care": "Pause Arbor",
+  // Likeness ceremony — one parent look at a Kids Studio picture before it leaves.
+  "companion.likeness.title": "{name}'s picture",
+  "companion.likeness.titleNoName": "This picture",
+  "companion.likeness.body": "This is the picture about to leave Arbor. It stays here unless you send it.",
+  "companion.likeness.use": "Use this likeness",
+  "companion.likeness.keep": "Keep private",
+  "companion.likeness.alt": "{name} in this picture",
+  "companion.likeness.altNoName": "The picture about to leave",
+  "companion.likeness.label": "This picture, before it leaves",
   // B-CAREPRO-37 — the after-visit note on the record: a Journal row and the
   // newest one on About (the parent's words; the profession names the visit).
   "companion.visit.title": "Visit · {profession}",
@@ -1106,6 +1115,14 @@ export const companionHe = {
   "companion.pause.moreOn": "ארבור בהשהיה",
   "companion.pause.now": "אין צעד חדש מארבור עד שתחליטו להמשיך.",
   "companion.pause.care": "להשהות את ארבור",
+  "companion.likeness.title": "התמונה של {name}",
+  "companion.likeness.titleNoName": "התמונה הזו",
+  "companion.likeness.body": "זו התמונה שעומדת לצאת מארבור. היא נשארת כאן, אלא אם תשלחו אותה.",
+  "companion.likeness.use": "להשתמש בדמות הזו",
+  "companion.likeness.keep": "להשאיר פרטי",
+  "companion.likeness.alt": "{name} בתמונה הזו",
+  "companion.likeness.altNoName": "התמונה שעומדת לצאת",
+  "companion.likeness.label": "התמונה, לפני שהיא יוצאת",
   // B-CAREPRO-37 — the after-visit note on the record: a Journal row and the
   // newest one on About (the parent's words; the profession names the visit).
   "companion.visit.title": "ביקור · {profession}",

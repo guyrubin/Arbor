@@ -20,6 +20,7 @@ import { track } from "../../lib/analytics";
 import { KidFinishMoment } from "../kidmode/rewards/KidSouvenir";
 // AP-050: practice_stamp surface — download a branded hero card on pack completion.
 import { downloadPracticeStampCanvas } from "../../lib/heroAvatarCanvas";
+import { releaseChildLikeness } from "../../lib/likenessCeremony";
 
 /**
  * Mimic Studio — Speech Blubs-style imitation play ("can you do what I do?").
@@ -332,15 +333,18 @@ export default function MimicStudioTab() {
                 tone="clay"
                 size="md"
                 onClick={() => {
-                  void downloadPracticeStampCanvas(
-                    {
-                      imageUrl: heroDataUrl,
-                      name: first,
-                      eyebrow: t("elev.mimic.stamp.eyebrow"),
-                      headline: t("elev.mimic.stamp.headline", { pack: wonPack.title }),
-                      sub: t("elev.mimic.stamp.sub", { name: first, count: wonPack.prompts.length }),
-                    },
-                  );
+                  void releaseChildLikeness({ src: heroDataUrl, name: first }).then((allowed) => {
+                    if (!allowed) return;
+                    void downloadPracticeStampCanvas(
+                      {
+                        imageUrl: heroDataUrl,
+                        name: first,
+                        eyebrow: t("elev.mimic.stamp.eyebrow"),
+                        headline: t("elev.mimic.stamp.headline", { pack: wonPack.title }),
+                        sub: t("elev.mimic.stamp.sub", { name: first, count: wonPack.prompts.length }),
+                      },
+                    );
+                  });
                 }}
               >
                 {t("elev.mimic.stamp.save")}

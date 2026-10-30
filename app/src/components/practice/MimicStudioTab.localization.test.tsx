@@ -50,6 +50,7 @@ vi.mock("../kidmode/rewards/KidSouvenir", () => ({ KidFinishMoment: () => null }
 vi.mock("../ui/SpeakButton", () => ({ SpeakButton: ({ text, lang }: any) => <button data-speak={text} lang={lang} /> }));
 vi.mock("./MimicMatch", () => ({ default: () => <section data-face-match="parent" /> }));
 import MimicStudioTab from "./MimicStudioTab";
+import { answerLikenessCeremony, subscribeLikenessCeremony } from "../../lib/likenessCeremony";
 
 function elements(node: unknown): ReactElement<any>[] {
   if (Array.isArray(node)) return node.flatMap(elements);
@@ -96,21 +97,27 @@ describe("Mimic content reaches every display path", () => {
     expect(harness.upsert).not.toHaveBeenCalled();
   });
 
-  it.each(["en", "he"] as const)("uses localized pack titles in completion, the next-pack action and parent stamp in %s", (lang) => {
-    const packs = localizedMimicPacks((key) => translate(lang, key));
-    for (const pack of packs) {
-      const { nodes, html } = view(lang, pack.id, 5, pack.id);
-      const next = packs.find((candidate) => candidate.id !== pack.id)!;
-      expect(html).toContain(escaped(translate(lang, "elev.play.mimic.packComplete.sub", { name: "Noa", pack: pack.title })));
-      expect(html).toContain(escaped(translate(lang, "elev.play.mimic.playPack", { pack: next.title })));
-      const save = nodes.find((node) => node.props.onClick && textOf(node) === escaped(translate(lang, "elev.mimic.stamp.save")))!;
-      save.props.onClick();
-      expect(harness.save).toHaveBeenLastCalledWith({
-        imageUrl: "data:image/png;base64,synthetic", name: "Noa",
-        eyebrow: translate(lang, "elev.mimic.stamp.eyebrow"),
-        headline: translate(lang, "elev.mimic.stamp.headline", { pack: pack.title }),
-        sub: translate(lang, "elev.mimic.stamp.sub", { name: "Noa", count: 6 }),
-      });
+  it.each(["en", "he"] as const)("uses localized pack titles in completion, the next-pack action and parent stamp in %s", async (lang) => {
+    const stop = subscribeLikenessCeremony(() => answerLikenessCeremony(true));
+    try {
+      const packs = localizedMimicPacks((key) => translate(lang, key));
+      for (const pack of packs) {
+        const { nodes, html } = view(lang, pack.id, 5, pack.id);
+        const next = packs.find((candidate) => candidate.id !== pack.id)!;
+        expect(html).toContain(escaped(translate(lang, "elev.play.mimic.packComplete.sub", { name: "Noa", pack: pack.title })));
+        expect(html).toContain(escaped(translate(lang, "elev.play.mimic.playPack", { pack: next.title })));
+        const save = nodes.find((node) => node.props.onClick && textOf(node) === escaped(translate(lang, "elev.mimic.stamp.save")))!;
+        save.props.onClick();
+        await Promise.resolve();
+        expect(harness.save).toHaveBeenLastCalledWith({
+          imageUrl: "data:image/png;base64,synthetic", name: "Noa",
+          eyebrow: translate(lang, "elev.mimic.stamp.eyebrow"),
+          headline: translate(lang, "elev.mimic.stamp.headline", { pack: pack.title }),
+          sub: translate(lang, "elev.mimic.stamp.sub", { name: "Noa", count: 6 }),
+        });
+      }
+    } finally {
+      stop();
     }
   });
 

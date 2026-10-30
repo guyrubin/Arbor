@@ -34,6 +34,7 @@ import { selectionHaptic } from "../../lib/native";
 // AP-048: Kid Mode overlay + context provider
 import { KidModeProvider } from "../kidmode/KidModeContext";
 import KidModeOverlay from "../kidmode/KidModeOverlay";
+import LikenessCeremonyHost from "../trust/LikenessCeremony";
 // KID-LOCK (W0.9): Shell's own hooks run OUTSIDE the KidModeProvider it
 // renders, so the lock state comes from the module gate singleton instead.
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
@@ -696,6 +697,7 @@ export default function Shell() {
       {/* AP-048: Kid Mode full-screen overlay — rendered at z-70, above everything.
           Desktop-only entry point (Topbar button starts at lg). The overlay
           itself is responsive; MobileNav is byte-unchanged. */}
+      <LikenessCeremonyHost />
       <KidModeOverlay />
       {/* E0: full-screen wow-onboarding overlay (z-45 — under the reused
           AvatarCreator it drives, over the app chrome). Renders null unless

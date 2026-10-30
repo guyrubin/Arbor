@@ -6,11 +6,12 @@
  * (games/sneakFreeze/handBack.ts): the latest statue picture kept on the
  * device, ONE count line ("{name} reached the cat 3 times"), ONE line "Play it
  * for real tonight — in the living room, {name} is the cat", Keep (the exit
- * recap's keep action: one parent moment) and Share. Share hands the picture
- * — already rendered on the device — to the OS share sheet (lib/share
+ * recap's keep action: one parent moment) and Share. Share is rendered ONLY
+ * in a development build (production share waits for counsel). When it is
+ * offered, the parent likeness ceremony comes first: the picture leaves only
+ * after "use this likeness". It then goes to the OS share sheet (lib/share
  * shareImageFile: no link, no referral call, no events, no child data in any
- * network request) and is rendered ONLY with the development build only (production
- * share waits for counsel).
+ * network request).
  *
  * FIREWALL: no percentage, no level or band word, no catch or miss count, no
  * coloured verdict chip, no arrow or trend. Calm parent tokens, not kid toys.
@@ -22,6 +23,7 @@ import { statueShareAllowed } from "./games/sneakFreeze/statueShareGate";
 import { dismissSneakHandBack, playRealKey, reachedKey, useSneakHandBack } from "./games/sneakFreeze/handBack";
 import { readStatuePictures } from "./games/sneakFreeze/statueStore";
 import { shareImageFile } from "../../lib/share";
+import { releaseChildLikeness } from "../../lib/likenessCeremony";
 
 export interface SneakHandBackViewProps {
   picture: string | null;
@@ -113,7 +115,13 @@ export default function SneakHandBackCard() {
       shareLabel={shareAllowed ? t("handBack.sneakFreeze.share") : null}
       closeLabel={t("aria.close")}
       onKeep={async () => { if (await addMoment(keep)) dismissSneakHandBack(); }}
-      onShare={() => { if (shareAllowed && picture) void shareImageFile({ dataUrl: picture, filename: "statue.jpg" }); }}
+      onShare={() => {
+        if (!shareAllowed || !picture) return;
+        void releaseChildLikeness({ src: picture, name: card.name }).then((allowed) => {
+          if (!allowed) return;
+          void shareImageFile({ dataUrl: picture, filename: "statue.jpg" });
+        });
+      }}
       onClose={dismissSneakHandBack}
     />
   );

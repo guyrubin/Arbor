@@ -8,6 +8,7 @@ import { PaywallError } from "../../lib/api";
 import type { AvatarStyle } from "../../lib/api";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { downloadHeroAvatarCanvas, renderComicCanvas } from "../../lib/heroAvatarCanvas";
+import { releaseChildLikeness } from "../../lib/likenessCeremony";
 import { getStorySpec } from "../../lib/heroJourneys";
 import { isolate } from "../../lib/i18n";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
@@ -261,17 +262,23 @@ export function ComicReader({
     if (cover) {
       // B-KID-54 (KB-04): Save is ONE download — the branded share card
       // (AP-050 comic template). The raw cover was a second file each time.
-      void downloadHeroAvatarCanvas(
-        "comic",
-        { imageUrl: cover, name: heroName, title: comic.title },
-        `${heroName.toLowerCase()}-${adventure.id}-share-card.png`,
-      );
+      // The file leaves only after the parent likeness ceremony. The shelf
+      // write above stays: keeping it private keeps it in Arbor.
+      void releaseChildLikeness({ src: cover, name: heroName }).then((allowed) => {
+        if (!allowed) return;
+        void downloadHeroAvatarCanvas(
+          "comic",
+          { imageUrl: cover, name: heroName, title: comic.title },
+          `${heroName.toLowerCase()}-${adventure.id}-share-card.png`,
+        );
+      });
     }
   };
 
   const handleShare = async () => {
     const cover = pages[0]?.dataUrl;
     const title = adventureTitle(adventure, lang);
+    if (!(await releaseChildLikeness({ src: cover, name: heroName }))) return;
     trackShareInitiated("story", "comic-reader");
     try {
       // AP-050 (ported from the retired HeroComicsTab grid): share the branded
