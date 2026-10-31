@@ -3,7 +3,7 @@ import { collection, deleteDoc, doc, limit as fbLimit, onSnapshot, orderBy, quer
 import { db, firebaseEnabled } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import { clearSyncError, getSyncSnapshot, reportSyncError, subscribeSyncStatus } from "../lib/syncStore";
-import { settleOrQueue } from "../lib/firestoreWrite";
+import { settleOrQueue, snapshotWritesConfirmed } from "../lib/firestoreWrite";
 import { sameLocalHistoryRows } from "../lib/historyWindow";
 
 type WithId = { id: string };
@@ -67,7 +67,7 @@ export interface ChildCollection<T extends WithId> {
 export function useChildCollection<T extends WithId>(
   childId: string,
   name: string,
-  opts?: { seed?: T[]; sandboxSeed?: T[]; orderByField?: string; orderDir?: "asc" | "desc"; max?: number; trackConfirmation?: boolean }
+  opts?: { seed?: T[]; sandboxSeed?: T[]; orderByField?: string; orderDir?: "asc" | "desc"; max?: number; trackConfirmation?: boolean; acceptCachedNoPendingWrites?: boolean }
 ): ChildCollection<T> {
   const { user } = useAuth();
   const remote = firebaseEnabled && !!user && user.uid !== "local-sandbox" && !!db;
@@ -150,7 +150,7 @@ export function useChildCollection<T extends WithId>(
           batch.commit().catch(() => {});
           return; // snapshot fires again once seeded
         }
-        setConfirmed(!opts?.trackConfirmation || (snap.metadata.fromCache === false && snap.metadata.hasPendingWrites === false));
+        setConfirmed(!opts?.trackConfirmation || snapshotWritesConfirmed(snap.metadata, opts?.acceptCachedNoPendingWrites));
         setLoadedScope(scope);
         setItems(snap.docs.map((d) => ({ ...(d.data() as object), id: d.id })) as T[]);
         setLoaded(true);
