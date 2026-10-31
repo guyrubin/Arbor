@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
-const h = vi.hoisted(() => ({ items: [] as any[] }));
+import { afterEach, describe, expect, it, vi } from "vitest";
+const h = vi.hoisted(() => ({ items: [] as any[], questConfirmed: true }));
 vi.mock("../../../context/ArborContext", () => ({ useArbor: () => ({ childProfile: { id: "kid", age: 6, languages: ["English"] } }) }));
 vi.mock("../../../context/LanguageContext", () => ({ useLanguage: () => ({ uiLang: "en" }) }));
 vi.mock("../rewards/useKidSouvenirs", () => ({ useKidSouvenirs: () => ({ items: h.items, loaded: true, isCurrent: () => true }) }));
@@ -12,7 +12,7 @@ vi.mock("../../../hooks/useKidTheme", () => ({ useKidTheme: () => "film3d" }));
 vi.mock("../useChildLibraryBooks", () => ({ useChildLibraryBooks: () => [] }));
 vi.mock("../LibraryBookCover", () => ({ LibraryBookCover: () => null }));
 vi.mock("../../ui/ArborMascot", () => ({ ArborMascot: () => null }));
-vi.mock("./studioProgress", async original => ({ ...await original<typeof import("./studioProgress")>(), useStudioQuestProgress: () => ({ steps: ["spot", "pillows", "lights", "pause"], choices: {}, completed: true, loaded: true }) }));
+vi.mock("./studioProgress", async original => ({ ...await original<typeof import("./studioProgress")>(), useStudioQuestProgress: () => ({ steps: ["spot", "pillows", "lights", "pause"], choices: {}, completed: h.questConfirmed, confirmed: h.questConfirmed, loaded: true }) }));
 import { StudioQuest } from "./StudioQuest";
 import { StudioWorld } from "./StudioWorld";
 import { souvenirToAward, souvenirStrip, QUEST_SOUVENIR_REF } from "../rewards/kidSouvenirs";
@@ -34,6 +34,14 @@ describe("Sky collection shell", () => {
 
 function nodes(value: any): any[] { return Array.isArray(value) ? value.flatMap(nodes) : value && typeof value === "object" ? [value, ...nodes(value.props?.children)] : []; }
 describe("quest is a distinct completion", () => {
+  afterEach(() => { h.questConfirmed = true; });
+  it("does not award a finish for unconfirmed cached checkpoints", () => {
+    h.questConfirmed = false;
+    const html = renderToStaticMarkup(<StudioQuest onHome={() => {}} />);
+    expect(html).toContain("Checking that your corner was kept.");
+    expect(html).not.toContain('data-finish="kid-quest"');
+    expect(html).not.toContain('data-done="true"');
+  });
   it("awards the quest reference, preserves it in collection, and leaves Calm Builder unearned", () => {
     const quest = souvenirToAward([], "world", QUEST_SOUVENIR_REF, new Date("2026-10-13"))!;
     expect(quest.refId).not.toBe("calm-builder");
