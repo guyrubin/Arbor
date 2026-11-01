@@ -14,10 +14,12 @@
  * on "replacing").
  * The pictures come through the owner-checked proxy (lib/bookAssetStore).
  */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
+import { heroSheetOwnerKey, subscribeHeroSheetOwner } from "../../lib/heroSheetStore";
+import { bookSheetAssetScope, bookSheetOwnerScope, visibleScopedBookValue, type ScopedBookValue } from "./bookSheetRenderScope";
 import { fetchBookAsset } from "../../lib/bookAssetStore";
 import type { BookAssetsDoc } from "../../lib/library/bookAssetPaths";
 import { getLibraryBook } from "../../lib/library/books";
@@ -35,13 +37,25 @@ export type { SheetStripTarget };
 
 export default function BookSheetStrip({ child, avatarHash, target = BOOK_TARGET }: { child: Pick<ChildProfile, "id" | "name" | "gender">; avatarHash: string; target?: SheetStripTarget }) {
   const { t } = useLanguage();
+  const owner = useSyncExternalStore(subscribeHeroSheetOwner, heroSheetOwnerKey, heroSheetOwnerKey);
+  const ownerScope = bookSheetOwnerScope(owner, child.id, target.bookId, avatarHash);
   const col = useChildCollection<BookAssetsDoc>(child.id, "bookAssets", { trackConfirmation: true });
-  const [override, setOverride] = useState<BookAssetsDoc | null>(null);
+  // A redraw may finish after React has switched child or account. Its record
+  // must not become the new child's book even if they share the same hero hash.
+  const [override, setOverride] = useState<ScopedBookValue<BookAssetsDoc> | null>(null);
   const sheetId = bookSheetId(avatarHash);
-  const stored = col.items.find((d) => d?.bookId === target.bookId && d.sheetId === sheetId) ?? null;
-  const doc = override && override.sheetId === sheetId && (!stored || override.createdAt > stored.createdAt) ? override : stored;
+  const stored = owner !== "signed-out"
+    ? col.items.find((d) => d?.bookId === target.bookId && d.sheetId === sheetId) ?? null
+    : null;
+  const currentOverride = visibleScopedBookValue(override, ownerScope);
+  const doc = currentOverride && currentOverride.sheetId === sheetId && (!stored || currentOverride.createdAt > stored.createdAt)
+    ? currentOverride : stored;
   const poses = useMemo(() => (doc ? target.poses.filter((p) => doc.sheetManifest.poses[p]) : []), [target, doc]);
-  const [urls, setUrls] = useState<Record<string, string>>({});
+  const assetScope = doc ? bookSheetAssetScope(ownerScope, doc) : "";
+  const [loadedUrls, setLoadedUrls] = useState<ScopedBookValue<Record<string, string>> | null>(null);
+  // Render-time guard: effect cleanup happens AFTER the first render of a
+  // sibling/account/edition switch, when unscoped object URLs could flash.
+  const urls = visibleScopedBookValue(loadedUrls, assetScope) ?? {};
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [failed, setFailed] = useState<Record<string, boolean>>({});
   // B-BOOK-69: the build runs in module state on this device (buildBookSheet);
@@ -57,7 +71,7 @@ export default function BookSheetStrip({ child, avatarHash, target = BOOK_TARGET
   }, [child.id, target.bookId, doc]);
 
   useEffect(() => {
-    if (!doc) return;
+    if (!doc || owner === "signed-out") return;
     let live = true;
     const made: string[] = [];
     void (async () => {
@@ -69,19 +83,19 @@ export default function BookSheetStrip({ child, avatarHash, target = BOOK_TARGET
         made.push(u);
         next[pose] = u;
       }
-      if (live) setUrls(next);
+      if (live) setLoadedUrls({ scope: assetScope, value: next });
     })();
     return () => {
       live = false;
       made.forEach((u) => URL.revokeObjectURL(u));
     };
-  }, [child.id, doc, poses]);
+  }, [owner, child.id, doc, poses, assetScope]);
 
   const name = { name: child.name };
   if (!doc) {
     // B-BOOK-69: the book of an earlier hero stays readable until this hero's sheet commits; say so,
     // but only from a confirmed read (a cached, pending or failed snapshot is not the stored book).
-    const previous = col.confirmed && !col.error && col.items.some((d) => d?.bookId === target.bookId && !!d.sheetId && d.sheetId !== sheetId);
+    const previous = owner !== "signed-out" && col.confirmed && !col.error && col.items.some((d) => d?.bookId === target.bookId && !!d.sheetId && d.sheetId !== sheetId);
     const state = running ? (previous ? "replacing" : "building") : previous ? "previous" : null;
     return state ? (
       <p data-book-sheet={state} data-sheet={target.bookId} role="status" className="text-xs" style={muted}>
@@ -93,7 +107,7 @@ export default function BookSheetStrip({ child, avatarHash, target = BOOK_TARGET
     setBusy((b) => ({ ...b, [pose]: true }));
     const r = await redrawBookPose({ childId: child.id, avatarHash, pose, bookId: target.bookId, poses: target.poses }, browserBookBuilderDeps(child.id, () => false, target.bookId, target.routePose)).catch(() => ({ ok: false as const, doc: undefined }));
     setBusy((b) => ({ ...b, [pose]: false }));
-    if (r.ok && r.doc) setOverride(r.doc);
+    if (r.ok && r.doc) setOverride({ scope: ownerScope, value: r.doc });
     else setFailed((f) => ({ ...f, [pose]: true }));
   };
 

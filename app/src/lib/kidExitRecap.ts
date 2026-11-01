@@ -94,6 +94,31 @@ export function countsSince(ledgers: KidActivityLedgers, sinceMs: number): KidAc
   return out;
 }
 
+/**
+ * B-KID-143 / B-BOOK-47: a recap belongs to the exact child/account that
+ * entered Kid Mode. If auth or the selected child ever changes mid-session,
+ * suppress the old recap rather than offering a potentially mixed-family
+ * Keep action after exit. A switch back does NOT revive the old session.
+ * This is ephemeral UI state; it records no child data.
+ */
+export function makeKidExitRecapScopeGuard(initialScope: string | null): {
+  observe(scope: string | null): void;
+  mayOffer(): boolean;
+} {
+  // Firebase restores a persisted user asynchronously. A not-yet-known owner
+  // is NOT an account switch: bind once auth resolves, then never rebind.
+  let expected = initialScope;
+  let changed = false;
+  return {
+    observe(scope: string | null) {
+      if (scope === null) return;
+      if (expected === null) expected = scope;
+      else if (scope !== expected) changed = true;
+    },
+    mayOffer() { return expected !== null && !changed; },
+  };
+}
+
 /** Total rows across every kind — the "was anything at all done?" test. */
 export function totalActivity(counts: KidActivityCounts): number {
   return KID_ACTIVITY_KINDS.reduce((sum, kind) => sum + (counts[kind] ?? 0), 0);

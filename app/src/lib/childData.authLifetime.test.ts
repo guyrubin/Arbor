@@ -15,7 +15,7 @@ vi.mock("firebase/firestore", () => ({
   getDocs: async (path: string) => {
     state.paths.push(path);
     await state.getDocsHook?.(path);
-    return { docs: [{ id: "synthetic", data: () => path.endsWith("/bookAssets") ? { bookId: "book", files: ["manifest.json"] } : { synthetic: "prior-owner-record" } }] };
+    return { docs: [{ id: "synthetic", data: () => path.endsWith("/bookAssets") ? { bookId: "book", files: ["manifest.json"] } : path.endsWith("/studioCreations") ? { synthetic: "prior-owner-record", ownerId: "owner", childId: "child" } : { synthetic: "prior-owner-record" } }] };
   },
   doc: vi.fn(), deleteDoc: vi.fn(),
 }));

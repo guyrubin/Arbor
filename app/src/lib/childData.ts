@@ -178,6 +178,21 @@ export async function exportChildData(uid: string | undefined, child: ChildProfi
         }
       }
     }
+    // B-BOOK-20: A stale or corrupt local/server Studio collection can hold
+    // another child's/owner's row under this child's key. Export only rows
+    // actually scoped to the selected owner and child; preserve malformed
+    // in-scope records verbatim for data access, but mark omissions incomplete.
+    if (out.exportReceipt.collections.studioCreations === "included") {
+      const rows = out.collections.studioCreations ?? [];
+      const expectedOwner = uid || "local";
+      const scoped = rows.filter((value) => {
+        if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+        const row = value as { ownerId?: unknown; childId?: unknown };
+        return row.ownerId === expectedOwner && row.childId === child.id;
+      });
+      if (scoped.length !== rows.length) out.exportReceipt.collections.studioCreations = "unavailable";
+      out.collections.studioCreations = scoped;
+    }
     session.assertCurrent();
     out.familyWay = familyWayExport();
     out.privateBookAssets = await session.read(() => exportPrivateBookAssets(uid, child.id, out.collections.bookAssets, {
