@@ -22,3 +22,14 @@ export function bookSheetAssetScope(ownerScope: string, doc: BookAssetsDoc): str
 export function visibleScopedBookValue<T>(stored: ScopedBookValue<T> | null, activeScope: string): T | null {
   return stored && stored.scope === activeScope ? stored.value : null;
 }
+
+/** Never render a private book-sheet document from an unconfirmed snapshot.
+ * A cached/pending Firestore read is not proof that this account may view the
+ * document; the same rule applies after listener failures or sign-out. */
+export function confirmedBookSheetDoc<T extends BookAssetsDoc>(
+  owner: string, confirmed: boolean, error: boolean,
+  rows: readonly T[], bookId: string, sheetId: string,
+): T | null {
+  if (owner === "signed-out" || !confirmed || error) return null;
+  return rows.find((row) => row?.bookId === bookId && row.sheetId === sheetId) ?? null;
+}

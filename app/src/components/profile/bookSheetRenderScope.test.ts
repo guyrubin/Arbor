@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { BookAssetsDoc } from "../../lib/library/bookAssetPaths";
-import { bookSheetAssetScope, bookSheetOwnerScope, visibleScopedBookValue } from "./bookSheetRenderScope";
+import { bookSheetAssetScope, bookSheetOwnerScope, confirmedBookSheetDoc, visibleScopedBookValue } from "./bookSheetRenderScope";
 
 const source = bookSheetOwnerScope("owner-a", "child-a", "storybook", "hero-a");
 const doc = (changes: Record<string, unknown> = {}): BookAssetsDoc => ({
@@ -54,5 +54,21 @@ describe("B-BOOK-31 / B-KID-143: Parent book-sheet render-time private pose isol
     const late = { scope: source, value: doc({ sheetId: "late-result" }) };
     const next = bookSheetOwnerScope("owner-b", "child-a", "storybook", "hero-a");
     expect(visibleScopedBookValue(late, next)).toBeNull();
+  });
+});
+
+
+describe("B-BOOK-69: confirmed Parent book-sheet read boundary", () => {
+  const saved = doc();
+  it("does not render cached, pending, failed or signed-out private artwork", () => {
+    expect(confirmedBookSheetDoc("owner-a", false, false, [saved], "storybook", "sheet-a")).toBeNull();
+    expect(confirmedBookSheetDoc("owner-a", true, true, [saved], "storybook", "sheet-a")).toBeNull();
+    expect(confirmedBookSheetDoc("signed-out", true, false, [saved], "storybook", "sheet-a")).toBeNull();
+  });
+  it("renders only the confirmed book and immutable sheet requested", () => {
+    const unrelated = doc({ bookId: "other" });
+    expect(confirmedBookSheetDoc("owner-a", true, false, [unrelated, saved], "storybook", "sheet-a")).toBe(saved);
+    expect(confirmedBookSheetDoc("owner-a", true, false, [saved], "storybook", "sheet-old")).toBeNull();
+    expect(confirmedBookSheetDoc("owner-a", true, false, [saved], "another-book", "sheet-a")).toBeNull();
   });
 });

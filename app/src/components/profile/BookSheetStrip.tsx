@@ -19,7 +19,7 @@ import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { heroSheetOwnerKey, subscribeHeroSheetOwner } from "../../lib/heroSheetStore";
-import { bookSheetAssetScope, bookSheetOwnerScope, visibleScopedBookValue, type ScopedBookValue } from "./bookSheetRenderScope";
+import { bookSheetAssetScope, bookSheetOwnerScope, confirmedBookSheetDoc, visibleScopedBookValue, type ScopedBookValue } from "./bookSheetRenderScope";
 import { fetchBookAsset } from "../../lib/bookAssetStore";
 import type { BookAssetsDoc } from "../../lib/library/bookAssetPaths";
 import { getLibraryBook } from "../../lib/library/books";
@@ -44,9 +44,7 @@ export default function BookSheetStrip({ child, avatarHash, target = BOOK_TARGET
   // must not become the new child's book even if they share the same hero hash.
   const [override, setOverride] = useState<ScopedBookValue<BookAssetsDoc> | null>(null);
   const sheetId = bookSheetId(avatarHash);
-  const stored = owner !== "signed-out"
-    ? col.items.find((d) => d?.bookId === target.bookId && d.sheetId === sheetId) ?? null
-    : null;
+  const stored = confirmedBookSheetDoc(owner, col.confirmed, col.error, col.items, target.bookId, sheetId);
   const currentOverride = visibleScopedBookValue(override, ownerScope);
   const doc = currentOverride && currentOverride.sheetId === sheetId && (!stored || currentOverride.createdAt > stored.createdAt)
     ? currentOverride : stored;
