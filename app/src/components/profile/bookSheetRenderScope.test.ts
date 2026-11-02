@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { BookAssetsDoc } from "../../lib/library/bookAssetPaths";
-import { bookSheetAssetScope, bookSheetOwnerScope, confirmedBookSheetDoc, visibleScopedBookValue } from "./bookSheetRenderScope";
+import { bookSheetAssetScope, bookSheetOwnerScope, confirmedBookSheetDoc, confirmedScopedBookValue, visibleScopedBookValue } from "./bookSheetRenderScope";
 
 const source = bookSheetOwnerScope("owner-a", "child-a", "storybook", "hero-a");
 const doc = (changes: Record<string, unknown> = {}): BookAssetsDoc => ({
@@ -70,5 +70,22 @@ describe("B-BOOK-69: confirmed Parent book-sheet read boundary", () => {
     expect(confirmedBookSheetDoc("owner-a", true, false, [unrelated, saved], "storybook", "sheet-a")).toBe(saved);
     expect(confirmedBookSheetDoc("owner-a", true, false, [saved], "storybook", "sheet-old")).toBeNull();
     expect(confirmedBookSheetDoc("owner-a", true, false, [saved], "another-book", "sheet-a")).toBeNull();
+  });
+});
+
+
+describe("B-BOOK-69: redraw override requires fresh account confirmation", () => {
+  const original = { scope: source, value: doc() };
+  it("does not revive a previously valid redraw during pending, failure or sign-out", () => {
+    expect(confirmedScopedBookValue("owner-a", false, false, original, source)).toBeNull();
+    expect(confirmedScopedBookValue("owner-a", true, true, original, source)).toBeNull();
+    expect(confirmedScopedBookValue("signed-out", true, false, original, source)).toBeNull();
+  });
+  it("requires both a confirmed read and an exact owner/child/book/hero scope", () => {
+    expect(confirmedScopedBookValue("owner-a", true, false, original, source)).toBe(original.value);
+    expect(confirmedScopedBookValue("owner-a", true, false, original,
+      bookSheetOwnerScope("owner-a", "another-child", "storybook", "hero-a"))).toBeNull();
+    expect(confirmedScopedBookValue("owner-b", true, false, original,
+      bookSheetOwnerScope("owner-b", "child-a", "storybook", "hero-a"))).toBeNull();
   });
 });

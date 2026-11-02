@@ -19,7 +19,7 @@ import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { heroSheetOwnerKey, subscribeHeroSheetOwner } from "../../lib/heroSheetStore";
-import { bookSheetAssetScope, bookSheetOwnerScope, confirmedBookSheetDoc, visibleScopedBookValue, type ScopedBookValue } from "./bookSheetRenderScope";
+import { bookSheetAssetScope, bookSheetOwnerScope, confirmedBookSheetDoc, confirmedScopedBookValue, visibleScopedBookValue, type ScopedBookValue } from "./bookSheetRenderScope";
 import { fetchBookAsset } from "../../lib/bookAssetStore";
 import type { BookAssetsDoc } from "../../lib/library/bookAssetPaths";
 import { getLibraryBook } from "../../lib/library/books";
@@ -45,7 +45,7 @@ export default function BookSheetStrip({ child, avatarHash, target = BOOK_TARGET
   const [override, setOverride] = useState<ScopedBookValue<BookAssetsDoc> | null>(null);
   const sheetId = bookSheetId(avatarHash);
   const stored = confirmedBookSheetDoc(owner, col.confirmed, col.error, col.items, target.bookId, sheetId);
-  const currentOverride = visibleScopedBookValue(override, ownerScope);
+  const currentOverride = confirmedScopedBookValue(owner, col.confirmed, col.error, override, ownerScope);
   const doc = currentOverride && currentOverride.sheetId === sheetId && (!stored || currentOverride.createdAt > stored.createdAt)
     ? currentOverride : stored;
   const poses = useMemo(() => (doc ? target.poses.filter((p) => doc.sheetManifest.poses[p]) : []), [target, doc]);

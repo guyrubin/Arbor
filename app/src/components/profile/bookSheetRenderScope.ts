@@ -33,3 +33,13 @@ export function confirmedBookSheetDoc<T extends BookAssetsDoc>(
   if (owner === "signed-out" || !confirmed || error) return null;
   return rows.find((row) => row?.bookId === bookId && row.sheetId === sheetId) ?? null;
 }
+
+/** A redraw result is also private data: a matching component scope alone does
+ * not validate an account's still-pending or failed collection read. */
+export function confirmedScopedBookValue<T>(
+  owner: string, confirmed: boolean, error: boolean,
+  stored: ScopedBookValue<T> | null, activeScope: string,
+): T | null {
+  if (owner === "signed-out" || !confirmed || error) return null;
+  return visibleScopedBookValue(stored, activeScope);
+}
