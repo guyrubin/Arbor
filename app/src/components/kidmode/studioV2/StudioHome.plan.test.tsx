@@ -21,7 +21,8 @@ const h = vi.hoisted(() => ({
   rows: [] as unknown[],
   books: [] as { book: { id: string; kind?: string; title: { en: string; he: string } }; doc: { sheetId: string } }[],
   evening: false,
-  upsert: vi.fn(async (_doc: unknown) => {}),
+  upsert: vi.fn(async (_doc: unknown, _options?: { merge?: boolean }) => {}),
+  current: true,
   sfx: vi.fn(),
   buttons: [] as Record<string, unknown>[],
 }));
@@ -43,7 +44,7 @@ vi.mock("react/jsx-dev-runtime", async (original) => {
 });
 vi.mock("../../../context/ArborContext", () => ({ useArbor: () => ({ childProfile: { id: "kid", name: "Noa", gender: "girl", age: 3, languages: ["English"] } }) }));
 vi.mock("../../../context/LanguageContext", () => ({ useLanguage: () => ({ uiLang: h.lang }) }));
-vi.mock("../../../hooks/useChildCollection", () => ({ useChildCollection: (_id: string, name: string) => ({ items: name === "books" ? h.rows : [], loaded: true, confirmed: true, error: false, remote: false, isCurrent: () => true, upsert: h.upsert }) }));
+vi.mock("../../../hooks/useChildCollection", () => ({ useChildCollection: (_id: string, name: string) => ({ items: name === "books" ? h.rows : [], loaded: true, confirmed: true, error: false, remote: false, isCurrent: () => h.current, upsert: h.upsert }) }));
 vi.mock("../../../hooks/useKidTheme", () => ({ useKidTheme: () => "film3d" }));
 vi.mock("../../../lib/timeOfDay", () => ({ bedtimeDoorOpen: () => h.evening }));
 vi.mock("../useChildLibraryBooks", () => ({ useChildLibraryBooks: () => h.books }));
@@ -73,7 +74,7 @@ const strip = (s: string) => s.replace(/<[^>]*>/g, " ").replace(/&[a-z#0-9]+;/gi
 const GROWN_UP = /\bparent|\bscore|\bstreak|\bmissed\b|\d+\s?%|\bnight \d|\btries\b|won't sit|wet patches|hard poo/i;
 const home = (over: Partial<React.ComponentProps<typeof StudioHome>> = {}) => renderToStaticMarkup(<StudioHome onWorld={() => {}} onCollection={() => {}} onQuest={() => {}} onExit={() => {}} {...over} />);
 
-beforeEach(() => { h.rows = []; h.books = []; h.evening = false; h.lang = "en"; h.buttons = []; h.upsert.mockClear(); h.sfx.mockClear(); });
+beforeEach(() => { h.rows = []; h.books = []; h.evening = false; h.lang = "en"; h.current = true; h.buttons = []; h.upsert.mockClear(); h.sfx.mockClear(); });
 const button = (attr: string) => h.buttons.find((b) => b[attr] !== undefined) as { onClick: () => void } | undefined;
 
 describe("the kid home with a running plan (S1)", () => {
@@ -124,6 +125,9 @@ describe("the kid home with a running plan (S1)", () => {
     expect(h.sfx).toHaveBeenCalledWith("tap");
     expect(h.upsert).toHaveBeenCalledTimes(1);
     const written = h.upsert.mock.calls[0][0] as PlanBookDoc;
+    expect(h.upsert.mock.calls[0][1]).toEqual({ merge: true });
+    expect(Object.keys(written).sort()).toEqual(["id", "tries", "updatedAt"]);
+    expect(written.id).toBe(plan.id);
     expect(written.tries).toHaveLength(1);
     expect(written.tries![0]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(written.nights).toBeUndefined();
@@ -138,6 +142,14 @@ describe("the kid home with a running plan (S1)", () => {
     home();
     button("data-kid-plan-tried")!.onClick();
     expect(h.upsert).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not write an old child/account's try after the collection loses its live ownership", () => {
+    h.rows = [plan]; h.books = [entry]; h.current = false;
+    home();
+    button("data-kid-plan-tried")!.onClick();
+    expect(h.upsert).not.toHaveBeenCalled();
+    expect(h.sfx).not.toHaveBeenCalled();
   });
 
   it("Open my book deep-links to the plan book; without a printed sheet it opens Hero Stories instead", () => {
