@@ -21,11 +21,23 @@ export async function withLiveUsageDeadline<T>(work: () => Promise<T>): Promise<
   finally { clearTimeout(timer!); }
 }
 
-export type LiveUsageEvent = "opened" | "heartbeat" | "closed";
+/** B-AIOPS-03: "failed" = the audio session never came up after the mint
+ *  (closed before or during setup). It closes the session like "closed". */
+export type LiveUsageEvent = "opened" | "heartbeat" | "closed" | "failed";
 export type LiveUsageSession = {
   uid: string; familyId: string; plan: Plan; model: string;
   createdAt: number; expiresAt: number; openedAt?: number; lastSeenAt?: number;
   observedMs: number; closed: boolean; incomplete: boolean;
+  /** B-AIOPS-02: the family-day reservation this token spends (liveBudget.ts). */
+  budget?: { day: string; reservationId: string };
+};
+/** What a report settles: the client sees observedMs/incomplete only; the
+ *  route forwards the rest to the family budget (never to the client). */
+export type LiveUsageReport = {
+  observedMs: number; incomplete: boolean; closed: boolean;
+  familyId: string; budget?: { day: string; reservationId: string };
+  /** The session reported "opened" at some point (B-AIOPS-03 connect signal). */
+  opened?: boolean;
 };
 const MAX_GAP_MS = 45_000;
 export function advanceLiveUsage(session: LiveUsageSession, event: LiveUsageEvent, now: number) {
@@ -46,7 +58,7 @@ export function advanceLiveUsage(session: LiveUsageSession, event: LiveUsageEven
     next.observedMs += deltaMs;
     next.lastSeenAt = Math.max(next.lastSeenAt, time);
   }
-  if (event === "closed" || now >= next.expiresAt) next.closed = true;
+  if (event === "closed" || event === "failed" || now >= next.expiresAt) next.closed = true;
   return { session: next, deltaMs, opened };
 }
 
@@ -64,7 +76,9 @@ export function splitLiveUsageDays(end: number, remaining: number): Map<string, 
 
 export interface LiveUsageStore {
   create(input: Omit<LiveUsageSession, "createdAt" | "observedMs" | "closed" | "incomplete">): Promise<string>;
-  report(uid: string, id: string, event: LiveUsageEvent): Promise<{ observedMs: number; incomplete: boolean } | null>;
+  report(uid: string, id: string, event: LiveUsageEvent): Promise<LiveUsageReport | null>;
+  /** B-AIOPS-02: the caller's own session (renewals chain onto an opened one). */
+  get(uid: string, id: string): Promise<LiveUsageSession | null>;
 }
 const validId = (id: string) => /^[0-9a-f-]{36}$/.test(id);
 export class MemoryLiveUsageStore implements LiveUsageStore {
@@ -81,7 +95,12 @@ export class MemoryLiveUsageStore implements LiveUsageStore {
     if (!validId(id) || !session || session.uid !== uid) return null;
     const result = advanceLiveUsage(session, event, Date.now());
     this.sessions.set(id, result.session);
-    return { observedMs: result.session.observedMs, incomplete: result.session.incomplete };
+    return { observedMs: result.session.observedMs, incomplete: result.session.incomplete, closed: result.session.closed,
+      familyId: session.familyId, ...(session.budget ? { budget: session.budget } : {}), opened: result.session.openedAt !== undefined };
+  }
+  async get(uid: string, id: string) {
+    const session = this.sessions.get(id);
+    return validId(id) && session && session.uid === uid ? session : null;
   }
 }
 
@@ -92,9 +111,16 @@ export function createLiveUsageStore(config: ArborConfig): LiveUsageStore {
   // Existing aiQuota TTL and account-erasure path apply to these short-lived records.
   const ref = (uid: string, id: string) => db.collection("aiQuota").doc(`live_session_${uid}_${id}`);
   return {
+    async get(uid, id) {
+      if (!validId(id)) return null;
+      const snap = await ref(uid, id).get();
+      const session = snap.exists ? (snap.data() as LiveUsageSession) : null;
+      return session && session.uid === uid ? session : null;
+    },
     async create(input) {
       const id = randomUUID();
-      await ref(input.uid, id).create({ ...input, createdAt: Date.now(), observedMs: 0, closed: false,
+      const { budget, ...rest } = input;
+      await ref(input.uid, id).create({ ...rest, ...(budget ? { budget } : {}), createdAt: Date.now(), observedMs: 0, closed: false,
         incomplete: false, expireAt: new Date(input.expiresAt + 86_400_000) });
       return id;
     },
@@ -122,15 +148,17 @@ export function createLiveUsageStore(config: ArborConfig): LiveUsageStore {
             }, { merge: true });
           }
         }
-        return { observedMs: result.session.observedMs, incomplete: result.session.incomplete,
-          deltaMs: result.deltaMs, familyId: previous.familyId, plan: previous.plan, model: previous.model };
+        return { observedMs: result.session.observedMs, incomplete: result.session.incomplete, closed: result.session.closed,
+          deltaMs: result.deltaMs, familyId: previous.familyId, plan: previous.plan, model: previous.model, budget: previous.budget,
+          opened: result.session.openedAt !== undefined };
       });
       if (committed) {
         logger.info("ai.usage", { route: "realtime_audio", provider: "gemini_live", model: committed.model,
           userUid: uid, familyId: committed.familyId, plan: committed.plan, sessionId: id,
           usageUnit: "observed_connection_ms", observedMs: committed.deltaMs,
           incomplete: committed.incomplete, billingVerified: false });
-        return { observedMs: committed.observedMs, incomplete: committed.incomplete };
+        return { observedMs: committed.observedMs, incomplete: committed.incomplete, closed: committed.closed,
+          familyId: committed.familyId, ...(committed.budget ? { budget: committed.budget } : {}), opened: committed.opened };
       }
       return null;
     },

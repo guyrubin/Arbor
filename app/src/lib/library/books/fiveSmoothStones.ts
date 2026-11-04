@@ -1,7 +1,7 @@
 /**
  * "Five Smooth Stones" (1 Samuel 17) — B-BOOK-06: THE PROOF BOOK (RULINGS
- * BR1), as data. Source of record: MANUSCRIPT v2 = execution/2026-10-06--
- * kids-books/depth-pass-david.md §3 (pages) + §3.2 (parent panel); v1 was
+ * BR1), as data. Source of record: MANUSCRIPT v2 = the 6 Oct kids-books
+ * depth pass on David (private record) §3 (pages) + §3.2 (parent panel); v1 was
  * proof-book-david.md §4. v2 adds p3b (Eliab: "Nobody sent him to the
  * giant"), so the paths are 11 / 12 / 12 screens.
  *

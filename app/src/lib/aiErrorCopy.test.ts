@@ -9,7 +9,7 @@
  * Before this both rendered one sentence with one Retry button.
  */
 import { describe, it, expect } from "vitest";
-import { ApiError, EscalationRequiredError, PaywallError } from "./api";
+import { ApiError, EscalationRequiredError, LIVE_RESTING, PaywallError } from "./api";
 import { CONSENT_STATUS, QUOTA_STATUS, classifyAiFailure, retryAfterSeconds } from "./aiErrorCopy";
 
 const quota = () => new ApiError("You've reached the hourly AI limit (25 requests).", 429, 2_400);
@@ -84,6 +84,21 @@ describe("AI-06 — 429 and 451 never collapse into one message", () => {
   });
 });
 
+describe("B-AIOPS-02 — the family voice allowance is its own failure, not the hourly quota", () => {
+  it("live_resting renders voice-resting copy with no retry and no minutes countdown", () => {
+    const v = classifyAiFailure(new ApiError(LIVE_RESTING, 429), { online: true });
+    expect(v.kind).toBe("voiceResting");
+    expect(v.titleKey).toBe("elev.aierrors.voiceResting.title");
+    expect(v.bodyKey).toBe("elev.aierrors.voiceResting.body");
+    expect(v.retryable).toBe(false);
+    expect(v.actionRoute).toBeUndefined();
+    // Any other 429 keeps the hourly-quota copy.
+    expect(classifyAiFailure(quota(), { online: true }).kind).toBe("quota");
+    // Offline still outranks it.
+    expect(classifyAiFailure(new ApiError(LIVE_RESTING, 429), { online: false }).kind).toBe("offline");
+  });
+});
+
 describe("AI-24 — offline is a state, and it outranks any status", () => {
   it("an offline device is told it is offline, never that its account is rate-limited", () => {
     const off = classifyAiFailure(quota(), { online: false });
@@ -107,5 +122,45 @@ describe("retryAfterSeconds", () => {
     expect(retryAfterSeconds("0")).toBeUndefined();
     expect(retryAfterSeconds("Wed, 21 Oct 2026 07:28:00 GMT")).toBeUndefined();
     expect(retryAfterSeconds(null)).toBeUndefined();
+  });
+});
+
+describe("B-ASKJB-49 — a 409 says what it is and sends the parent to Safety", () => {
+  it("the escalation copy is the professional-support title, the danger line and the Safety door, never 'try again'", () => {
+    const e = classifyAiFailure(new EscalationRequiredError("Professional support recommended", { category: "caregiver_distress" }), { online: true });
+    expect(e.kind).toBe("escalation");
+    expect(e.titleKey).toBe("beh.escalation.title");
+    expect(e.bodyKey).toBe("elev.safety.crisis.danger");
+    expect(e.actionKey).toBe("elev.safety.open");
+    expect(e.actionRoute).toBe("safety");
+    expect(e.retryable).toBe(false);
+    // Negative control: the generic copy is what a 409 used to get.
+    expect(classifyAiFailure(new ApiError("boom", 500)).titleKey).toBe("elev.aierrors.generic.title");
+    expect(e.titleKey).not.toBe("elev.aierrors.generic.title");
+    // Never the server's English words.
+    expect(JSON.stringify(e)).not.toContain("Professional support recommended");
+  });
+
+  it("wave 4: a non-crisis 409 (its own code) is never the crisis copy", () => {
+    for (const code of ["hero_missing", "live_renewal_invalid", "seat_in_use"]) {
+      const e = classifyAiFailure(new ApiError(code, 409), { online: true });
+      expect(e.kind, code).toBe("generic");
+      expect(e.titleKey, code).not.toBe("beh.escalation.title");
+      expect(e.actionRoute, code).toBeUndefined();
+    }
+    // Negative control: the crisis error still is.
+    expect(classifyAiFailure(new EscalationRequiredError("x"), { online: true }).kind).toBe("escalation");
+  });
+
+  it("round 2: fail closed — any other 409 ApiError keeps the crisis copy", () => {
+    // A raw-fetch path (streamVoice, the /chat stream) builds ApiError from the
+    // status and the server's words; that must never read as "try again".
+    for (const message of ["Professional support recommended", "Request failed", "something_new", "HERO_MISSING", ""]) {
+      const e = classifyAiFailure(new ApiError(message, 409), { online: true });
+      expect(e.kind, message).toBe("escalation");
+      expect(e.titleKey, message).toBe("beh.escalation.title");
+      expect(e.actionRoute, message).toBe("safety");
+      expect(e.retryable, message).toBe(false);
+    }
   });
 });

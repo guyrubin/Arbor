@@ -1,8 +1,9 @@
 /**
  * B-PROG-12 — PILOT INSTRUMENTATION for the program kill criteria (thesis
- * §10): five cohort rows on the ADMIN cohort reader only (`GET
- * /api/admin/cohorts` → `programPilot`), counts and shares, NEVER per child,
- * NEVER on a parent surface.
+ * §10): five cohort rows on the ADMIN reader only (`GET
+ * /api/admin/program-pilot`, the /admin/cohorts gate — its own route, so the
+ * cohort report keeps its two-input containment), counts and shares, NEVER per
+ * child, NEVER on a parent surface.
  *
  *   programDose4plus — per program week n: of the families whose week n has
  *                      ended, how many logged ≥ 4 practice days in it
@@ -26,6 +27,18 @@
  *   d30Active        — of the enrolled families old enough to answer, how
  *                      many were active on day 30 (lib/retention's classic
  *                      D-N over the family's retention rollup; thesis > 57 %).
+ *
+ *
+ * B-PROG-12 (28 Oct reconciliation) — the windows stay DISTINCT and every row
+ * says who is not yet eligible: `d7FullLoop` (a practice in enrolment days
+ * 0–6 that the parent answered at night — the Parent support loop, not "first
+ * value"), `programDose4plus.week4` (program week 4 = enrolment days 22–28),
+ * `d30Active` (activity on day 30 from first access) and `paidRenewal`, which
+ * this reader CANNOT see (an actual second charge lives in billing, BD-06 /
+ * BD-37) and therefore reports as not measured — never inferred from use.
+ * `notYetEligible` counts the families whose window has not closed; their
+ * share is never guessed. Engagement and proxy movement are neither diagnosis
+ * nor paid renewal.
  *
  * The family is the unit: one row per family (its FIRST enrolment by start
  * day), so a family with two enrolled children is counted once. Internal and
@@ -71,24 +84,36 @@ export type PilotEnrolmentRecord = {
 
 export type PilotRollup = RetentionRollup & { uid?: string; cohort?: "internal" | "family" | "demo" };
 
-export type PilotCount = { count: number; eligible: number; share: number | null };
+/** `notYetEligible`: families whose window has not closed (immature) — never counted as a miss.
+ *  `missing`: families whose window closed but whose source holds nothing to compare
+ *  (no diary night, no retention rollup) — published, never guessed. */
+export type PilotCount = { count: number; eligible: number; share: number | null; notYetEligible: number; missing: number };
+
+/** The approved metric contract this reader implements (BD-25 consumes it; bump on any definition change). */
+export const PROGRAM_PILOT_METRIC_VERSION = "program-pilot-v1 · 2026-10-28";
 export type PilotWeekRow = PilotCount & { week: number };
 
 export type ProgramPilotSummary = {
   /** Families in the summary (after exclusions), and per program. */
   families: number;
   byProgram: Record<string, number>;
+  metricVersion: string;
+  asOfDay: string;
+  /** D7: a practice in enrolment days 0–6 answered at night (helped / a little) — the full Parent loop. */
+  d7FullLoop: PilotCount;
   programDose4plus: { byWeek: PilotWeekRow[]; week4: PilotCount };
   parentProxyMoved: PilotCount;
   /** = the pack's childProxyMoved (see the module header for the rename). */
   kidProxyMoved: PilotCount;
   bridgePacketSent: PilotCount;
   d30Active: PilotCount;
+  /** An actual second charge is billing's record (BD-06 / BD-37); this reader cannot see it and never infers it. */
+  paidRenewal: { count: null; eligible: null; share: null; status: "not_measured"; source: "billing" };
   excluded: { internal: number; demo: number };
   scanned: { enrolments: number; mode: "firestore" | "null" };
 };
 
-const count = (n: number, of: number): PilotCount => ({ count: n, eligible: of, share: of > 0 ? Math.round((n / of) * 1000) / 1000 : null });
+const count = (n: number, of: number, notYet = 0, missing = 0): PilotCount => ({ count: n, eligible: of, share: of > 0 ? Math.round((n / of) * 1000) / 1000 : null, notYetEligible: notYet, missing });
 
 /** Has program week n ENDED by `asOfDay` (local day key)? */
 const weekEnded = (e: ProgramEnrolment, n: number, asOfDay: string): boolean => daysBetween(e.startedAt, asOfDay) >= 7 * n;
@@ -131,23 +156,29 @@ export function summariseProgramPilot(
   for (let n = 1; n <= maxWeeks; n += 1) {
     let eligible = 0;
     let hit = 0;
+    let notYet = 0;
     for (const f of fams) {
       const program = programById(f.enrolment.programId)!;
-      if (n > program.weeks.length || !weekEnded(f.enrolment, n, opts.asOfDay)) continue;
+      if (n > program.weeks.length) continue;
+      if (!weekEnded(f.enrolment, n, opts.asOfDay)) { notYet += 1; continue; }
       eligible += 1;
       const m = programWeekMeasures(f.enrolment, n, inputsOf(f));
       if ((m?.dose ?? 0) >= 4) hit += 1;
     }
-    if (eligible > 0) byWeek.push({ week: n, ...count(hit, eligible) });
+    if (eligible > 0 || notYet > 0) byWeek.push({ week: n, ...count(hit, eligible, notYet) });
   }
   const week4 = byWeek.find((w) => w.week === 4);
 
   // parentProxyMoved — week 6 (or the last week) vs the family's own week 1.
   let pEligible = 0;
   let pMoved = 0;
+  let pNotYet = 0;
+  let pMissing = 0;
   // kidProxyMoved — week 8 (or the last week) vs the family's own baseline.
   let kEligible = 0;
   let kMoved = 0;
+  let kNotYet = 0;
+  let kMissing = 0;
   for (const f of fams) {
     const program = programById(f.enrolment.programId)!;
     const pWeek = Math.min(6, program.weeks.length);
@@ -157,8 +188,8 @@ export function summariseProgramPilot(
       if (first && later) {
         pEligible += 1;
         if (later.value > first.value) pMoved += 1;
-      }
-    }
+      } else pMissing += 1;
+    } else pNotYet += 1;
     const kWeek = Math.min(8, program.weeks.length);
     if (weekEnded(f.enrolment, kWeek, opts.asOfDay)) {
       const baseline = f.enrolment.baseline?.childProxy ?? programWeekMeasures(f.enrolment, 1, inputsOf(f))?.childProxy?.value ?? null;
@@ -166,8 +197,8 @@ export function summariseProgramPilot(
       if (typeof baseline === "number" && later) {
         kEligible += 1;
         if (later.value > baseline) kMoved += 1;
-      }
-    }
+      } else kMissing += 1;
+    } else kNotYet += 1;
   }
 
   // bridgePacketSent — a professional share on or after the enrolment day.
@@ -176,21 +207,46 @@ export function summariseProgramPilot(
   // d30Active — lib/retention's classic D30 over the family's rollup.
   let dEligible = 0;
   let dActive = 0;
+  let dNotYet = 0;
+  let dMissing = 0;
   for (const f of fams) {
     const rollup = cohortOf.get(f.uid);
-    if (!rollup || !eligibleForDay(rollup, 30, opts.asOfDay)) continue;
+    if (!rollup) { dMissing += 1; continue; }
+    if (!eligibleForDay(rollup, 30, opts.asOfDay)) { dNotYet += 1; continue; }
     dEligible += 1;
     if (returnedOnDay(rollup, 30)) dActive += 1;
   }
 
+  // d7FullLoop — of the families whose enrolment day 7 has come, those with a
+  // practice day in days 0–6 the parent answered at night (helped / a little).
+  let lEligible = 0;
+  let lDone = 0;
+  let lNotYet = 0;
+  for (const f of fams) {
+    if (daysBetween(f.enrolment.startedAt, opts.asOfDay) < 7) { lNotYet += 1; continue; }
+    lEligible += 1;
+    const prefix = `practice.${f.childKey}.`;
+    const answered = f.practiceRows.some((r) => {
+      if (r.source !== "practice" || r.status !== "completed" || !r.id.startsWith(prefix)) return false;
+      if (r.outcome !== "helped" && r.outcome !== "somewhat") return false;
+      const d = daysBetween(f.enrolment.startedAt, r.id.slice(prefix.length));
+      return d >= 0 && d < 7;
+    });
+    if (answered) lDone += 1;
+  }
+
   return {
+    metricVersion: PROGRAM_PILOT_METRIC_VERSION,
+    asOfDay: opts.asOfDay,
     families: fams.length,
     byProgram,
-    programDose4plus: { byWeek, week4: week4 ? { count: week4.count, eligible: week4.eligible, share: week4.share } : count(0, 0) },
-    parentProxyMoved: count(pMoved, pEligible),
-    kidProxyMoved: count(kMoved, kEligible),
+    d7FullLoop: count(lDone, lEligible, lNotYet),
+    programDose4plus: { byWeek, week4: week4 ? { count: week4.count, eligible: week4.eligible, share: week4.share, notYetEligible: week4.notYetEligible, missing: 0 } : count(0, 0, fams.length) },
+    parentProxyMoved: count(pMoved, pEligible, pNotYet, pMissing),
+    kidProxyMoved: count(kMoved, kEligible, kNotYet, kMissing),
     bridgePacketSent: count(bridged, fams.length),
-    d30Active: count(dActive, dEligible),
+    d30Active: count(dActive, dEligible, dNotYet, dMissing),
+    paidRenewal: { count: null, eligible: null, share: null, status: "not_measured", source: "billing" },
     excluded: { internal: excludedUids.internal.size, demo: excludedUids.demo.size },
     scanned: { enrolments: records.length, mode: opts.mode ?? "null" },
   };

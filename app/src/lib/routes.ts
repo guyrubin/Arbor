@@ -170,6 +170,13 @@ export const RETIRED_ROUTES: Readonly<Record<string, ActiveTab>> = {
   // Hebrew page. The id keeps its ROUTE_IDS seat (Shell renders the My child
   // leaf for it); the hash lands on #/development.
   copilot: "development",
+  // B-CAREPRO-38: ONE home for what Arbor remembers. #/memory (and its alias
+  // #/child-memory) lands on My child › About, which opens the full ledger in
+  // place under "What Arbor remembers" — approve, correct (Edit), forget,
+  // retention, the coach's view and the learning trail, on one page. The id
+  // keeps its ROUTE_IDS seat (Shell renders the About leaf for it); ChildMemory
+  // is that page's embedded ledger.
+  memory: "profile",
 };
 
 /**
@@ -212,6 +219,8 @@ export function splitHash(raw: string): { key: string; query: URLSearchParams } 
  */
 export const SUB_ROUTES: Readonly<Record<string, { route: ActiveTab; query: Readonly<Record<string, string>> }>> = {
   "language/said": { route: "language", query: { view: "said" } },
+  // B-ASKJB-36: the kept reader on My child (B-SHELL-30's `#/development/kept`).
+  "development/kept": { route: "development", query: { view: "kept" } },
 };
 
 /** The query of a hash (`#/journal?shelf=sleep` → shelf=sleep); empty when none. */

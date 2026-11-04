@@ -28,7 +28,7 @@ import { PRACTICES } from "../../content/practices";
 import { ALL_MILESTONES } from "../../lib/milestoneData";
 import { scoreGoal, type FamilyGoal } from "../../lib/goals";
 import { loopFirewallHits } from "../../lib/loop/firewall";
-import type { PracticePick } from "../../lib/practice/choosePractice";
+import type { PracticePick } from "../../lib/practice/choosePractice";
 import { todayLiveSource } from "../../testTodaySource";
 
 const here = path.dirname(fileURLToPath(import.meta.url));

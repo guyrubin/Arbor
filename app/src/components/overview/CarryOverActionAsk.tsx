@@ -79,7 +79,7 @@ export default function CarryOverActionAsk({ onSkip }: { onSkip?: () => void } =
           >
             {entry.recommendation}
           </p>
-          <p className="mt-1 text-[11.5px] leading-snug" style={{ color: "var(--arbor-muted)" }}>
+          <p className="mt-1 text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>
             {isObservationAction(entry) ? t("ob.first.observation.purpose") : t("elev.closeloop.carry.ask", { date: when })}
           </p>
         </div>
@@ -122,7 +122,7 @@ export default function CarryOverActionAsk({ onSkip }: { onSkip?: () => void } =
       <button
         type="button"
         onClick={() => { setSkipped(rememberSkippedCarryOver(entry.id)); onSkip?.(); }}
-        className="mt-2 min-h-11 px-1 text-[11.5px] font-bold"
+        className="mt-2 min-h-11 px-1 text-xs font-bold"
         style={{ color: "var(--arbor-muted)" }}
       >
         {t("elev.closeloop.carry.dismiss")}

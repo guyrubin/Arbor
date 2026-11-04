@@ -171,9 +171,12 @@ describe("MOB-20 · Settings says which Arbor this is, and how to reach one", ()
     expect(SETTINGS).not.toContain("metadata.version");
   });
 
-  it("the support link is the address the app already gives, not a new one", () => {
+  it("the support link keeps the one address Settings gives, and no other mailto joins it", () => {
+    // B-RESID-05 retired the sign-in access-request line (auth.accessFail)
+    // that also named this address; Settings is now its one home.
     expect(SETTINGS).toContain('href="mailto:hello@arbor.app"');
-    expect(read("lib/i18n.ts")).toContain("hello@arbor.app");
+    expect(SETTINGS.match(/mailto:/g)).toHaveLength(1);
+    expect(read("lib/i18n.ts")).not.toContain("hello@arbor.app");
     expect(SETTINGS).toContain('data-testid="settings-support-link"');
     expect(SETTINGS).toContain("min-h-11");
   });

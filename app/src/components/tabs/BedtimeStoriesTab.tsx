@@ -29,8 +29,10 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
+import { Receipt, ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { routeHash } from "../../lib/routes";
 import { api, EscalationRequiredError } from "../../lib/api";
-import { isolate } from "../../lib/i18n";
+import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 import { bedtimePrefillLatest } from "../../lib/bedtimeStories";
 import { storyName } from "../../lib/storyName";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -39,6 +41,7 @@ import type { ProgramEnrolment } from "../../lib/programs/enrolment";
 import type { BedtimeStory } from "../../types";
 import { cardCls, PageHeader } from "../ui/kit";
 import { ShareButton } from "../ui/ShareButton";
+import { UrgentSupport } from "../safety/UrgentSupport";
 import { SpeakButton } from "../ui/SpeakButton";
 import type { ShareCardOpts } from "../../lib/shareCard";
 
@@ -69,7 +72,9 @@ export default function BedtimeStoriesTab() {
 }
 
 export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
-  const { childProfile, behaviorLogs, addMoment, openPaywall } = useArbor();
+  const { childProfile, behaviorLogs, addMoment, openPaywall, deleteLog } = useArbor();
+  // B-ASKJB-49: the escalation wall's door to Safety.
+  const { setActiveTab } = useArbor();
   const { aiLang, uiLang, t } = useLanguage();
   const { toast } = useToast();
   // B-PROG-13: the active program frames the request as an optional input
@@ -127,6 +132,10 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
   // answers the parent has already kept (one moment each, never twice).
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [kept, setKept] = useState<Record<number, boolean>>({});
+  // B-STATUS-01: what was kept answers with the ONE receipt line (where it
+  // went: the Journal; Undo removes the moment), never a success toast.
+  const keptIds = useRef<Record<number, string>>({});
+  const nightReceipt = useReceiptNote();
   const [pageIndex, setPageIndex] = useState(0);
 
   // Avatar description from the child's existing generated avatar — reuse, no new capture.
@@ -207,10 +216,11 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
   const keepAnswer = async (i: number, question: string) => {
     const answer = (answers[i] ?? "").trim();
     if (!answer || kept[i]) return;
-    const written = await addMoment(t("elev.bedtime.keep.line", { question, name, answer }));
+    const keptLine = t("elev.bedtime.keep.line", { question, name, answer });
+    const written = await addMoment(he ? resolveHebrewSlash(keptLine, childProfile.gender) : keptLine);
     if (written) {
+      if (written.id) keptIds.current[i] = written.id;
       setKept((k) => ({ ...k, [i]: true }));
-      toast(t("elev.bedtime.goodnight.saved"), "success");
     }
   };
 
@@ -237,7 +247,15 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
       : t("elev.bedtime.goodnight.moment");
     const written = await addMoment(line);
     if (written) {
-      toast(t("elev.bedtime.goodnight.saved"), "success");
+      nightReceipt.show({
+        text: t("elev.bedtime.goodnight.saved"),
+        link: { where: t("nav.tab.journal"), href: `#${routeHash("journal")}`, testId: "bedtime-night-receipt-open" },
+        undo: written.id ? {
+          label: t("elev.loop.notice.undo"),
+          testId: "bedtime-night-receipt-undo",
+          onUndo: () => { nightReceipt.clear(); void deleteLog(written.id); },
+        } : null,
+      });
       reset();
     }
   };
@@ -274,6 +292,10 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
             ? `מה שציינתם היום חורג ממה שסיפור ערב יכול לטפל בו. הסיפור אינו מתאים לעת עתה — אבל אתם לא לבד. פנו לאיש מקצוע שיכול לעזור.`
             : `What you described today goes beyond what a bedtime story can address. The story is paused — but you are not alone. Please reach out to someone who can help.`}
         </p>
+        {/* B-ASKJB-49: the wall carries the shared crisis card: the danger line
+            and the helplines in the story request's language, and the door to Safety. */}
+        <UrgentSupport testId="bedtime-urgent-support" requestLang={aiLang} onSafety={() => setActiveTab("safety")}
+          className="min-w-0 rounded-xl border border-[var(--arbor-rule-strong)] bg-[var(--arbor-paper-deep)] px-3 py-2 text-[14px] leading-relaxed text-[var(--arbor-ink)]" />
         <button
           onClick={reset}
           className="inline-flex items-center gap-2 text-[13px] font-bold rounded-xl px-4 py-2.5 min-h-[44px] transition"
@@ -330,7 +352,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
               {story.title}
             </h1>
           </div>
-          <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-muted)" }}>
+          <p className={he ? "text-[13px] font-bold" : "text-[11px] uppercase tracking-widest font-bold"} style={{ color: "var(--arbor-muted)" }}>
             {t("elev.bedtime.reader.header", { name, n: pageIndex + 1, total: pages.length })}
           </p>
         </div>
@@ -420,10 +442,10 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
             data-testid="bedtime-discussion-questions"
           >
             <p
-              className="text-[11px] uppercase tracking-widest font-bold"
+              className={he ? "text-[13px] font-bold" : "text-[11px] uppercase tracking-widest font-bold"}
               style={{ color: "var(--arbor-muted)" }}
             >
-              {he ? "שאלות לפני שינה" : "Goodnight questions"}
+              {t("elev.bedtime.questions")}
             </p>
             {story.discussionQuestions.map((q, i) => (
               <div key={i} className="space-y-1.5" data-testid="bedtime-question">
@@ -436,14 +458,28 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
                 </p>
                 {/* B-PLAY-14: "Keep what {name} said" — one parent moment per answer. */}
                 {kept[i] ? (
-                  <p className="text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)" }} data-testid="bedtime-answer-kept">
+                  <Receipt
+                    testId="bedtime-answer-kept"
+                    size="sm"
+                    link={{ where: t("nav.tab.journal"), href: `#${routeHash("journal")}`, testId: "bedtime-answer-kept-open" }}
+                    undo={keptIds.current[i] ? {
+                      label: t("elev.loop.notice.undo"),
+                      testId: "bedtime-answer-kept-undo",
+                      onUndo: () => {
+                        const id = keptIds.current[i];
+                        delete keptIds.current[i];
+                        setKept((k) => ({ ...k, [i]: false }));
+                        if (id) void deleteLog(id);
+                      },
+                    } : null}
+                  >
                     {t("elev.bedtime.keep.done")}
-                  </p>
+                  </Receipt>
                 ) : (
                   <div className="flex items-end gap-2">
                     <label className="flex-1 min-w-0">
                       <span className="block text-[11.5px] font-bold mb-1" style={{ color: "var(--arbor-muted)" }} dir="auto">
-                        {t("elev.bedtime.keep.label", { name })}
+                        {he ? resolveHebrewSlash(t("elev.bedtime.keep.label", { name }), childProfile.gender) : t("elev.bedtime.keep.label", { name })}
                       </span>
                       <input
                         type="text"
@@ -518,14 +554,14 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
           the form and its CTA rise toward the fold. */}
       {!embedded && (
         <PageHeader
-          title={he ? `סיפור הלילה של ${isolate(name)}` : `${isolate(name)}'s Bedtime Story`}
+          title={t("elev.bedtime.title", { name })}
           subtitle={prefillFrom && prefillFrom !== "today"
             ? t("elev.bedtime.subtitle.recent")
-            : he
-            ? "סיפור מותאם אישית שנולד מהיום שלכם — לקריאה משותפת לפני השינה"
-            : "A personalised story born from today — read together at bedtime"}
+            : t("elev.bedtime.subtitle.today")}
         />
       )}
+
+      <ReceiptNoteLine note={nightReceipt.note} testId="bedtime-night-receipt" />
 
       {/* item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (counted against the route's
@@ -539,7 +575,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
         style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
       >
         <p
-          className="text-[12px] uppercase tracking-widest font-bold"
+          className={he ? "text-[13px] font-bold" : "text-[12px] uppercase tracking-widest font-bold"}
           style={{ color: "var(--arbor-muted)" }}
         >
           {/* W2-SHELLPLAY critic r2: ONE day, stated once. On the yesterday /
@@ -551,7 +587,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
                 ? t("elev.bedtime.eyebrow.yesterday", { name })
                 : t("elev.bedtime.eyebrow.day", { name, day: new Intl.DateTimeFormat(he ? "he-IL" : "en-GB", { weekday: "long" }).format(prefillDay) })}
             </span>
-          ) : he ? `מה קרה היום עם ${isolate(name)}?` : `What happened today with ${isolate(name)}?`}
+          ) : t("elev.bedtime.day.ask", { name })}
         </p>
 
         {/* B-SHELL-NEW-1f: the screen's one warm accent — the newest moment the
@@ -560,7 +596,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
         {quote ? (
           <figure data-testid="bedtime-quote-well" className="mx-0 mt-0 rounded-[14px] p-4" style={{ background: "var(--arbor-peach-soft)", border: "1px solid var(--arbor-rule)" }}>
             <blockquote className="m-0 text-[18px] leading-snug" dir="auto" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>
-              “{quote.text}”
+              {t("elev.loop.ms.quoted", { text: quote.text })}
             </blockquote>
             <figcaption className="mt-1.5 text-[11.5px] font-bold" style={{ color: "var(--arbor-peach-ink)" }}>
               {t(
@@ -652,12 +688,12 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
         {loading ? (
           <>
             <Icon name="autorenew" size={20} className="animate-spin" />
-            {he ? "יוצר סיפור…" : "Creating story…"}
+            {t("elev.bedtime.generating")}
           </>
         ) : (
           <>
             <Icon name="auto_awesome" size={20} />
-            {he ? `צרו את הסיפור של ${isolate(name)}` : `Create ${isolate(name)}'s story`}
+            {t("elev.bedtime.generate", { name })}
           </>
         )}
       </button>
@@ -685,9 +721,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
       >
         <Icon name="menu_book" size={16} className="mt-0.5" style={{ color: "var(--arbor-muted)" }} />
         <p className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }} dir="auto">
-          {he
-            ? "הסיפורים נוצרים ומוצגים בלבד — לא נשמרים ולא משמשים לאימון. היום של ילדכם שייך לכם בלבד."
-            : "Stories are created and shown only — never saved or used for training. Your child's day belongs to you."}
+          {t("elev.bedtime.privacy")}
         </p>
       </div>
     </motion.div>

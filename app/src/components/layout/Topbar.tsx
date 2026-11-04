@@ -32,6 +32,7 @@ export default function Topbar() {
   const named = lit.kind === "place" ? lit.place : lit.door;
   return (
     <header
+      data-chrome="topbar"
       /* B-DESIGN-03 (chrome): the sticky band takes the chrome glass — paper
          80 % + blur 14 px (index.css .arbor-chrome-glass); content stays opaque. */
       /* The glass establishes a stacking context. Lift that context above the

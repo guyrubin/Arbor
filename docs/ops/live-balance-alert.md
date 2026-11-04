@@ -42,7 +42,7 @@ Cloud Logging cannot see client events, so the alert keys on the server's own lo
 #            notification: Guy's email
 ```
 
-Step 2 needs the server to log the event. That mirror is a follow-up and is not built in B-PROV-06. Until it exists, the alert is the weekly `cohort-report` read in step 1.
+Step 2's server mirror is built (B-AIOPS-03, 28 Oct): when a minted Live session never comes up, the client reports the `failed` usage event and the server logs `message: "live_unavailable"` with `reason: "connect_failed"`, and three in an hour raise the `live_unavailable/connect_failed` incident (`incident-alerts.md`). The same incident sink also watches token mint failures, the residency refusal and the readable prepay balance with its 20 % alarm.
 
 ## When it fires
 

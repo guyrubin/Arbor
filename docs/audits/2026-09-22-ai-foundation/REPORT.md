@@ -2,7 +2,7 @@
 
 ## Scope and product direction
 
-User-authorized review, implementation and production deployment. Parent register; Ask Arbor should carry the selected child's permitted context from typed conversation into voice, handle a failed microphone visibly, and offer one practical next step. The complete capability inventory and next-level product plan is in ROS `PAI/projects/arbor/ARBOR-AI-COMPANION-PLAN-2026-09-22.md`.
+User-authorized review, implementation and production deployment. Parent register; Ask Arbor should carry the selected child's permitted context from typed conversation into voice, handle a failed microphone visibly, and offer one practical next step. The complete capability inventory and next-level product plan is in the private ROS record (`ARBOR-AI-COMPANION-PLAN-2026-09-22.md`).
 
 The app already has coaching/council, spoken coaching, approved memory, conversational capture, photo/document understanding, contextual explanations, daily focus, plans and behavior reflection, digest, stories/adventures, generated artwork, child practice, and professional handoff. This release repairs the shared foundations and validates these routes instead of introducing another disconnected assistant.
 

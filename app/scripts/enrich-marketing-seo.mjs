@@ -132,12 +132,9 @@ function jsonLdFor({ file, html }) {
         "@type": "Audience",
         "audienceType": locale.audience,
       },
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "EUR",
-        "availability": "https://schema.org/PreOrder",
-      },
+      // BD-13: no Offer here. These pages state no price, and a 0-price Offer
+      // told search engines Arbor is free; the trial is not a 0-price offer.
+      // The price lives on the landing page (lib/pricing.ts).
     },
   ];
 

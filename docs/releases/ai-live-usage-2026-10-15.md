@@ -1,6 +1,6 @@
 # B-GA-26 — Live usage observation (15 October 2026)
 
-Approved source: ROS `PAI/projects/arbor/reference/ai-model-allocation-2026-10-10.md`, as ratified by `CoS/decisions/log.md` on 11 October. Execution authorized by Guy's “Go” on 15 October after the read-aloud release.
+Approved source: the private ROS reference `ai-model-allocation-2026-10-10.md`, as ratified by the ROS decision log on 11 October. Execution authorized by Guy's “Go” on 15 October after the read-aloud release.
 
 This is the next accounting slice, not closure of B-GA-26 or the AI allocation roadmap.
 

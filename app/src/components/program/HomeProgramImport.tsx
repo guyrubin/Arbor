@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
-import { api } from "../../lib/api";
+import { api, EscalationRequiredError } from "../../lib/api";
+import { useArborOptional } from "../../context/ArborContext";
+import { UrgentSupport } from "../safety/UrgentSupport";
 import { PROGRAM_DOCUMENT_MAX_BYTES, PROGRAM_IMPORT_VERSION, pastedRecommendations, parseProgramDocument, parseRecommendationDraft, type ProgramImportSource, type RecommendationDraft } from "../../lib/programImport";
 import { useAuth } from "../../context/AuthContext";
 import { useCompanionConsent } from "../companion/useCompanionConsent";
@@ -15,7 +17,8 @@ export default function HomeProgramImport(props: Props) {
   return <HomeProgramImportContent key={`${user?.uid ?? ""}:${props.childId}`} {...props} />;
 }
 function HomeProgramImportContent({ childId, remaining, readOnly, onApply, onReset }: Props) {
-  const { t, uiLang } = useLanguage();
+  const { t, uiLang, aiLang } = useLanguage();
+  const arbor = useArborOptional();
   const consent = useCompanionConsent(childId);
   const reviewButton = useRef<HTMLButtonElement>(null);
   const extracting = useRef(false);
@@ -26,12 +29,14 @@ function HomeProgramImportContent({ childId, remaining, readOnly, onApply, onRes
   const [edits, setEdits] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // B-ASKJB-49: the route's crisis screen answered 409.
+  const [crisis, setCrisis] = useState(false);
   const [applied, setApplied] = useState(false);
   const operation = useRef(0);
   const locked = readOnly || applied;
   useEffect(() => { return () => { operation.current += 1; }; }, []);
   useEffect(() => { return () => { if (document) URL.revokeObjectURL(document.url); }; }, [document]);
-  const reset = () => { operation.current += 1; setBusy(false); setDraft(null); setSelected([]); setEdits([]); setError(""); };
+  const reset = () => { operation.current += 1; setBusy(false); setDraft(null); setSelected([]); setEdits([]); setError(""); setCrisis(false); };
   const fileChosen = async (file: File | undefined) => {
     reset(); setDocument(null); setPaste("");
     if (!file) return;
@@ -52,7 +57,7 @@ function HomeProgramImportContent({ childId, remaining, readOnly, onApply, onRes
     if (extracting.current || busy || locked) return;
     extracting.current = true;
     const request = ++operation.current;
-    setBusy(true); setError(""); setDraft(null); setSelected([]);
+    setBusy(true); setError(""); setCrisis(false); setDraft(null); setSelected([]);
     try {
       if (document && (!await consent.requirePermission() || request !== operation.current)) return;
       const result = document ? parseRecommendationDraft(await api.importHomeRecommendations({ childId, image: { dataUrl: document.dataUrl } })) : pastedRecommendations(paste);
@@ -60,6 +65,7 @@ function HomeProgramImportContent({ childId, remaining, readOnly, onApply, onRes
       setDraft(result); setEdits(result.recommendations);
     } catch (e) {
       if (request !== operation.current) return;
+      if (e instanceof EscalationRequiredError) { setCrisis(true); return; }
       const status = typeof e === "object" && e != null && "status" in e ? e.status : null;
       if (status === 429) { setError(t("elev.pilot.reading.is.temporarily.at.its.limit.try.later.or.paste.the.text.h")); return; }
       if (status === 401 || status === 403) { setError(t("elev.pilot.please.sign.in.with.access.to.this.child.s.record.then.try.again")); return; }
@@ -86,6 +92,8 @@ function HomeProgramImportContent({ childId, remaining, readOnly, onApply, onRes
       <button type="button" disabled={busy || !!consent.busy} onClick={consent.review} className="min-h-11 px-3 text-sm underline">{COMPANION_CONSENT_COPY[uiLang === "he" ? "he" : "en"].control}</button>
     </div>}
     {error && <p role="alert" className="mt-3 text-sm">{error}</p>}
+    {crisis && <UrgentSupport testId="home-program-urgent-support" requestLang={aiLang} lead={t("elev.safety.paused")} onSafety={arbor ? () => arbor.setActiveTab("safety") : undefined}
+      className="mt-3 min-w-0 rounded-xl border border-[var(--arbor-rule-strong)] bg-[var(--arbor-paper-deep)] px-3 py-2 text-sm leading-relaxed text-[var(--arbor-ink)]" />}
     {(document || draft) && <div className="mt-4 grid min-w-0 gap-4 md:grid-cols-2">
       <div className="min-w-0">
         <h4 className="mb-2 font-semibold">{t("elev.pilot.original")}</h4>

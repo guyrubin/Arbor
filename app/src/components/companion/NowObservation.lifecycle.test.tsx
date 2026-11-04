@@ -39,6 +39,8 @@ function setup(lang: "en" | "he" = "en") {
     useRef: (value: any) => slots[at++] ??= { current: value }, useMemo: (run: () => unknown) => run(), useId: () => "now-test",
     useEffect: (run: () => any, deps: unknown[]) => { const index = at++, old = slots[index]; if (old && deps.every((value, n) => Object.is(value, old.deps[n]))) return; const slot = { deps, cleanup: undefined as any }; slots[index] = slot; effects.push(() => { old?.cleanup?.(); slot.cleanup = run(); }); },
     useArbor: () => state, useLanguage: () => ({ uiLang: lang, t: (key: string, vars?: any) => translate(lang, key, vars) }),
+    useArborPause: () => ({ paused: false, record: null, start: () => {}, resume: () => {} }),
+    fmtDay: () => "",
     // B-DATA-14: the kept-on-this-phone line reads the live connection.
     useOnline: () => true, savedOnPhoneKey: (online: boolean) => (online ? "elev.sync.savedOnPhoneSending" : "elev.sync.savedOnPhone"),
     useNowClock: () => new Date("2026-10-10T12:00:00Z"), useNowRecord: () => ({}), useChildCollection: () => ({ items: [] }), activeProgramWeek: () => null, leadPlan: () => null, recordNight: (d: any) => d, unrecordNight: (d: any) => d, nightMomentText: () => "", NowPlanLead: "plan-lead",

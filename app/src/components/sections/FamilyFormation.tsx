@@ -8,6 +8,7 @@ import { PendingLine, Receipt } from "../ui/Receipt";
 import { FAMILY_RITUALS, type FamilyRitual } from "../../lib/familyRituals";
 import RitualTurnCard from "../nextopen/RitualTurnCard";
 import { hasSavedFamilyCharter, initialCharterValues, saveFamilyCharter } from "../../lib/familyCharter";
+import { noteFamilyWayChange } from "../../lib/familyWay";
 // B-PLAY-21: the ONE tone sheet (B-ASKJB-12's) — same component, same store
 // (selectedLens → the prompt's lens). No lens bodies are imported here.
 import ToneSheet, { toneLabel } from "../coach/ToneSheet";
@@ -69,7 +70,8 @@ export default function FamilyFormation() {
   const [wayOpen, setWayOpen] = useState(false);
 
   // Persist on the edit, and render exactly what a reload will show.
-  const commit = (next: string[]) => { setValues(saveFamilyCharter(next)); setSaved(true); };
+  // B-PLAY-21: the parent's edit stamps the family way (it follows the account when sync is on).
+  const commit = (next: string[]) => { setValues(saveFamilyCharter(next)); setSaved(true); noteFamilyWayChange(); };
   const add = () => { const v = input.trim(); if (v && !values.includes(v)) { commit([...values, v]); setInput(""); } };
   const remove = (v: string) => commit(values.filter((x) => x !== v));
 

@@ -34,7 +34,7 @@
 .companion-composer-tools .companion-tray-quiet button{font-size:12px;color:var(--arbor-ink-soft)}
 /* A narrow panel or a phone holds the five tiles in rows of three. */
 @container (max-width:420px){.companion-tray-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
-.companion-composer-foot{margin-block:4px;font-size:11px;line-height:1.5;color:var(--arbor-muted)}
+.companion-composer-foot{margin-block:4px;font-size:12px;line-height:1.5;color:var(--arbor-muted)}
 /* F-TALK-1: the foot carries the honesty line and the tone chip on one row; the chip wraps under the line on a narrow panel. */
 .companion-composer-foot-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0 8px}
 .companion-composer-foot-row>.companion-composer-foot{flex:1 1 200px;min-inline-size:0}

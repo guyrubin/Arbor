@@ -9,10 +9,12 @@ import { latestNotedMoment } from "../../lib/bedtimeStories";
 import { storyBuildsShort } from "../../lib/storyBuildsShort";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
+import { Receipt } from "../ui/Receipt";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { api } from "../../lib/api";
 import { normalizeAvatarStyle } from "../../lib/avatarStyle";
 import { isolate } from "../../lib/i18n";
+import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 import { isolateNameIn, langDir } from "../../lib/bidi";
 import {
   HERO_STORIES,
@@ -358,6 +360,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const { ref: dialogRef, requestClose } = useDialog({ open: Boolean(kidNav) && immersive && Boolean(activeStory && render), onClose: () => setImmersive(false), returnFocusRef: immersiveTriggerRef });
   const [questionsChecked, setQuestionsChecked] = useState<Record<number, boolean>>({});
   const [saved, setSaved] = useState(false);
+  // B-STATUS-01: the parent's "journey complete" is the ONE receipt line where
+  // the finish button was (the comic's shelf named when it landed there).
+  const [savedOnShelf, setSavedOnShelf] = useState(false);
   // B-KID-127: the parent's explicit "Write a new version" (the only way a kept
   // story is written again; never in Kid Mode, never automatic).
   const [rewriting, setRewriting] = useState(false);
@@ -696,14 +701,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       }
       setSaved(true);
       celebrate({ kind: "complete" });
-      if (!kidMode) {
-        toast(
-          shelved
-            ? (aiLang === "he" ? "המסע הושלם — הסיפור נשמר והקומיקס על המדף" : "Journey complete — story saved and the comic is on the shelf")
-            : (aiLang === "he" ? "המסע הושלם — הסיפור נשמר" : "Journey complete — story saved"),
-          "success",
-        );
-      }
+      if (!kidMode) setSavedOnShelf(shelved);
     } finally {
       finishingRef.current = false;
       setFinishing(false);
@@ -877,16 +875,20 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     const tonightStory = pinned ?? tonightPick.story ?? undefined;
     const tonightCover = tonightStory ? storyCover(tonightStory.id) : null;
     const tonightReason = pinned ? null : tonightPick.reason;
+    const unreadReason = t("elev.stories.tonight.reason.unread", { name });
     const tonightReasonLine =
       tonightReason?.kind === "aim" ? t(TONIGHT_AIM_REASON_KEY[tonightReason.metric])
-      : tonightReason?.kind === "unread" ? t("elev.stories.tonight.reason.unread", { name })
+      : tonightReason?.kind === "unread" ? (uiLang === "he" ? resolveHebrewSlash(unreadReason, childProfile.gender) : unreadReason)
       : "";
     // W2-SHELLPLAY critic r1: the cover's "Builds · Ask after" well, in the UI
     // language only — a Hebrew row with no Hebrew text is not drawn.
-    const tonightBuilds = tonightStory ? (uiLang === "he" ? tonightStory.learningObjectiveHe : tonightStory.learningObjective) ?? "" : "";
+    const tonightObjective = tonightStory ? (uiLang === "he" ? tonightStory.learningObjectiveHe : tonightStory.learningObjective) ?? "" : "";
     // W2-SHELLPLAY critic r2: the glanceable phrase (<= 6 words) when the story
     // has one; the full sentence stays on the row's title.
     const tonightBuildsShort = storyBuildsShort(tonightStory?.id, uiLang === "he" ? "he" : "en");
+    // A Hebrew cover with no long objective still shows the short phrase
+    // (already written in Hebrew). It never falls back to the English sentence.
+    const tonightBuilds = tonightObjective || tonightBuildsShort || "";
     // W2-SHELLPLAY critic r2 (B-SHELL-NEW-2d): the parent's own words from today
     // or yesterday, quoted once above the cover; absent when there are none.
     const notedMoment = latestNotedMoment(behaviorLogs ?? [], new Date());
@@ -1052,7 +1054,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                   <span className="t-xs font-bold" style={{ color: "var(--arbor-peach-ink)" }}>
                     {t(notedMoment.from === "today" ? "elev.stories.tonight.noted" : "elev.stories.tonight.noted.yesterday")}
                   </span>{" "}
-                  <bdi dir="auto" style={{ fontFamily: "var(--font-editorial)" }}>“{notedMoment.text}”</bdi>
+                  <bdi dir="auto" style={{ fontFamily: "var(--font-editorial)" }}>{t("elev.loop.ms.quoted", { text: notedMoment.text })}</bdi>
                 </p>
               )}
               <h2 className="text-[1.35rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
@@ -1426,7 +1428,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             <>
               {activeStory.parentInsight && (
                 <div className="rounded-2xl p-4 space-y-1.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-                  <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-muted)" }}>
+                  <p className={uiLang === "he" ? "text-[13px] font-bold" : "text-[10px] uppercase tracking-widest font-bold"} style={{ color: "var(--arbor-muted)" }}>
                     {uiLang === "he" ? "למבוגרים · למה הסיפור הזה" : "For grown-ups · Why this story"}
                   </p>
                   <p dir="auto" className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>
@@ -1436,7 +1438,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                 </div>
               )}
               <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
-                <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>{aiLang === "he" ? "מה תרגלנו היום" : "Today we practiced"}</p>
+                <p className={aiLang === "he" ? "text-[13px] font-bold" : "text-[11px] uppercase tracking-widest font-bold"} style={{ color: "var(--arbor-green-ink)" }}>{aiLang === "he" ? "מה תרגלנו היום" : "Today we practiced"}</p>
                 <div className="flex flex-wrap gap-2">
                   {render.reflection.practiced.map((p, i) => (
                     <span key={i} className="text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}>
@@ -1446,7 +1448,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                 </div>
               </div>
               <div className="space-y-2">
-                <p className="text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>{aiLang === "he" ? "דברו על זה יחד" : "Talk about it together"}</p>
+                <p className={aiLang === "he" ? "text-[13px] font-bold" : "text-[11px] uppercase tracking-widest font-bold"} style={{ color: "var(--arbor-green-ink)" }}>{aiLang === "he" ? "דברו על זה יחד" : "Talk about it together"}</p>
                 {render.reflection.questions.map((q, i) => (
                   <button
                     key={i}
@@ -1488,9 +1490,11 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               </button>
             </div>
           ) : (
-            <div className="text-center text-sm font-bold flex items-center justify-center gap-2" style={{ color: "var(--arbor-green-ink)" }}>
-              <Icon name="check" size={16} /> {aiLang === "he" ? `נשמר לסיפור של ${isolate(childProfile.name)}` : `Saved to ${isolate(childProfile.name)}'s story`}
-            </div>
+            <Receipt testId="journey-saved-receipt" tone="ink" strong className="flex justify-center">
+              {savedOnShelf
+                ? (aiLang === "he" ? "המסע הושלם — הסיפור נשמר והקומיקס על המדף" : "Journey complete — story saved and the comic is on the shelf")
+                : (aiLang === "he" ? `המסע הושלם — נשמר לסיפור של ${isolate(childProfile.name)}` : `Journey complete — saved to ${isolate(childProfile.name)}'s story`)}
+            </Receipt>
           )}
         </div>
       )}

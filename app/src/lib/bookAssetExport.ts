@@ -1,11 +1,35 @@
 import { authHeaders } from "./api";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { BOOK_ASSET_ID, bookAssetContentType, bookAssetUrl, isBookAssetRel } from "./library/bookAssetPaths";
-import { BOOK_EXPORT_LIMITS, type BookExportFailure, type BookExportFile, type BookExportInventory, type PortableBookAssets } from "./library/bookAssetExportContract";
+import { BOOK_ASSET_ID, bookAssetUrl, isBookAssetRel } from "./library/bookAssetPaths";
+import { BOOK_EXPORT_DIGEST_HEADER, BOOK_EXPORT_LIMITS, BOOK_EXPORT_MEDIA_TYPES, type BookExportFailure, type BookExportFile, type BookExportInventory, type PortableBookAssets } from "./library/bookAssetExportContract";
 
 class ExportFailure extends Error {
   constructor(readonly code: BookExportFailure) { super(code); }
+}
+
+/** B-CAREPRO-50 (critic r1): the server's per-account export pace (429 with
+ *  Retry-After). Waited out and the same file read again, within the
+ *  export's deadline; never a failure by itself. */
+class RetryLater extends Error {
+  constructor(readonly seconds: number) { super("retry_later"); }
+}
+export const EXPORT_RETRY_ATTEMPTS = 3;
+const MAX_RETRY_AFTER_S = 60;
+const retryAfterOf = (res: Response): number => {
+  const raw = res.headers.get("retry-after");
+  const s = raw === null ? NaN : Number(raw);
+  return Number.isFinite(s) && s >= 0 ? Math.min(s, MAX_RETRY_AFTER_S) : 5;
+};
+/** Wait `ms`, or fail now when the wait would pass the deadline. */
+export function pauseWithin(ms: number, signal: AbortSignal | undefined, deadline: number): Promise<void> {
+  if (signal?.aborted) return Promise.reject(new ExportFailure("cancelled"));
+  if (Date.now() + ms >= deadline) return Promise.reject(new ExportFailure("timeout"));
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => { signal?.removeEventListener("abort", stop); resolve(); }, ms);
+    const stop = () => { clearTimeout(timer); reject(new ExportFailure("cancelled")); };
+    signal?.addEventListener("abort", stop, { once: true });
+  });
 }
 
 /** Bound token refresh, dispatch and body reads, including a stalled stream. */
@@ -34,6 +58,8 @@ async function boundedRequest<T>(signal: AbortSignal | undefined, deadline: numb
 async function readBytes(res: Response, max: number, signal: AbortSignal, assertOwner: () => void, expected?: number): Promise<Uint8Array> {
   if (res.status === 401 || res.status === 403) throw new ExportFailure("unauthorized");
   if (res.status === 404) throw new ExportFailure("missing");
+  if (res.status === 413) throw new ExportFailure("byte_limit");
+  if (res.status === 429) throw new RetryLater(retryAfterOf(res));
   if (!res.ok) throw new ExportFailure("unavailable");
   // Fetch decodes HTTP transfer compression; Content-Length then describes
   // compressed transport bytes, while the inventory describes original bytes.
@@ -75,7 +101,11 @@ async function readBytes(res: Response, max: number, signal: AbortSignal, assert
   }
 }
 
-async function requestBytes(url: string, max: number, signal: AbortSignal, assertOwner: () => void, expected?: number): Promise<Uint8Array> {
+/** B-CAREPRO-50: what the server said about the bytes it sent — its SHA-256
+ *  and the Content-Type — read before the body; checked after. */
+interface ServedAs { digest: string | null; mediaType: string | null }
+
+async function requestBytes(url: string, max: number, signal: AbortSignal, assertOwner: () => void, expected?: number, served?: ServedAs): Promise<Uint8Array> {
   assertOwner();
   signal.throwIfAborted();
   const headers = await authHeaders();
@@ -86,6 +116,12 @@ async function requestBytes(url: string, max: number, signal: AbortSignal, asser
   // Export revalidates ownership every time; neither IDB nor HTTP caches can
   // authorize a download after sign-out, account change or access revocation.
   const res = await fetch(url, { headers, signal, credentials: "same-origin", cache: "no-store", redirect: "error" });
+  if (served) {
+    const digest = (res.headers.get(BOOK_EXPORT_DIGEST_HEADER) ?? "").trim().toLowerCase();
+    const type = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+    served.digest = /^[0-9a-f]{64}$/.test(digest) ? digest : null;
+    served.mediaType = BOOK_EXPORT_MEDIA_TYPES.includes(type) ? type : null;
+  }
   try {
     assertOwner();
     signal.throwIfAborted();
@@ -184,7 +220,7 @@ async function collectPrivateBookAssets(out: PortableBookAssets, childId: string
   const deadline = Date.now() + BOOK_EXPORT_LIMITS.totalMs;
   let inventory: BookExportInventory;
   try {
-    inventory = await boundedRequest(signal, deadline, async (signal) => parseInventory(await requestBytes(`/api/children/${encodeURIComponent(childId)}/book-assets/export-manifest`, 128 * 1024, signal, assertOwner), childId));
+    inventory = await boundedRequest(signal, deadline, async (signal) => parseInventory(await requestBytes(`/api/children/${encodeURIComponent(childId)}/book-assets/export-manifest`, BOOK_EXPORT_LIMITS.manifestBytes, signal, assertOwner), childId));
   } catch (e) { out.issues.push(failureOf(e)); return; }
   out.inventory = inventory.status;
   out.issues.push(...inventory.issues);
@@ -222,7 +258,17 @@ async function collectPrivateBookAssets(out: PortableBookAssets, childId: string
     // turn a bounded export into an unbounded sequence of discarded bodies.
     reservedBytes += file.bytes!;
     try {
-      const bytes = await boundedRequest(signal, deadline, (signal) => requestBytes(`${bookAssetUrl(childId, file.bookId, file.path)}&export=1`, file.bytes!, signal, assertOwner, file.bytes!));
+      const served: ServedAs = { digest: null, mediaType: null };
+      let bytes: Uint8Array | undefined;
+      for (let attempt = 0; bytes === undefined; attempt++) {
+        try {
+          bytes = await boundedRequest(signal, deadline, (signal) => requestBytes(`${bookAssetUrl(childId, file.bookId, file.path)}&export=1`, file.bytes!, signal, assertOwner, file.bytes!, served));
+        } catch (e) {
+          if (!(e instanceof RetryLater)) throw e;
+          if (attempt >= EXPORT_RETRY_ATTEMPTS) throw new ExportFailure("unavailable");
+          await pauseWithin(e.seconds * 1000, signal, deadline);
+        }
+      }
       assertOwner();
       const hash = await boundedRequest(signal, deadline, async (signal) => {
         const result = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes as Uint8Array<ArrayBuffer>));
@@ -232,7 +278,11 @@ async function collectPrivateBookAssets(out: PortableBookAssets, childId: string
       });
       assertOwner();
       if (signal.aborted) throw new ExportFailure("cancelled");
-      out.files.push({ ...file, status: "included", encoding: "base64", mediaType: bookAssetContentType(file.path), sha256: Array.from(hash, (n) => n.toString(16).padStart(2, "0")).join(""), data: base64(bytes) });
+      const sha256 = Array.from(hash, (n) => n.toString(16).padStart(2, "0")).join("");
+      // B-CAREPRO-50: the device's digest must equal the server's, and the
+      // file is typed by what the server served it as — never by its path.
+      if (!served.digest || served.digest !== sha256 || !served.mediaType) throw new ExportFailure("integrity");
+      out.files.push({ ...file, status: "included", encoding: "base64", mediaType: served.mediaType, sha256, data: base64(bytes) });
       out.includedFiles++;
       out.includedBytes += bytes.length;
     } catch (e) {

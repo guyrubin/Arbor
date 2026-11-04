@@ -16,6 +16,7 @@ import { parentWritten } from "../../lib/kept/parentWritten";
 import { ContentActionBar } from "../ui/ContentActionBar";
 import { fmtDay, fmtDayShort } from "../../lib/formatDate";
 import { patternEchoFor } from "../../lib/patternEcho";
+import { UrgentSupport } from "../safety/UrgentSupport";
 
 const DAY = 86_400_000;
 
@@ -24,9 +25,9 @@ export default function BehaviorsTab() {
     handleAnalyzeBehaviors, isAnalyzingBehavior, behaviorLogs, behaviorAnalysis,
     behaviorAnalysisRecord, keepBehaviorInsight, seedCoach, setActiveTab,
     childProfile, openCaptureSheet, openHardMomentNow, actionLoop,
-    requestJournalFilter, lastSavedBehavior, dismissBehaviorEcho,
+    requestJournalFilter, lastSavedBehavior, dismissBehaviorEcho, escalatedSurface,
   } = useArbor();
-  const { t, uiLang } = useLanguage();
+  const { t, uiLang, aiLang } = useLanguage();
   const behFirst = (childProfile.name || "").split(" ")[0];
   const analysisWhy = t("beh.analysis.why", {
     n: behaviorAnalysisRecord?.inputs?.logCount ?? behaviorLogs.length,
@@ -204,7 +205,13 @@ export default function BehaviorsTab() {
             <button type="button" onClick={handleAnalyzeBehaviors} disabled={isAnalyzingBehavior} data-testid="behaviors-find-pattern" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 t-sm font-bold transition disabled:opacity-60" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)" }}>
               {isAnalyzingBehavior ? (<><Icon name="progress_activity" size={15} className="animate-spin" /> {t("beh.synthesizing")}</>) : (<><Icon name="psychology" size={15} /> {t("beh.analyze")}</>)}
             </button>
-            {behaviorAnalysis && (
+            {/* B-ASKJB-49: the crisis screen answered 409: the shared crisis
+                card (helplines in the request's language) in the result's place. */}
+            {escalatedSurface === "behaviors" && (
+              <UrgentSupport testId="behaviors-urgent-support" requestLang={aiLang} lead={t("elev.safety.paused")} onSafety={() => setActiveTab("safety")}
+                className="min-w-0 rounded-xl border border-[var(--arbor-rule-strong)] bg-[var(--arbor-paper-deep)] px-3 py-2 t-sm leading-relaxed text-[var(--arbor-ink)]" />
+            )}
+            {behaviorAnalysis && escalatedSurface !== "behaviors" && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="p-5 rounded-2xl space-y-4 text-xs" style={{ background: "linear-gradient(120deg,var(--arbor-paper-tinted),var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
                 <h4 className="text-sm font-extrabold flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><Icon name="auto_awesome" size={15} fill={1} /> {t("beh.patternShows")}</h4>
                 {/* W0.4: the "Parent Response Evaluation" (effectivenessRating) card was

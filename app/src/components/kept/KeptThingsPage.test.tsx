@@ -14,6 +14,7 @@ const h = vi.hoisted(() => ({
 vi.mock("react", async original => ({ ...await original<typeof import("react")>(), useState: (initial: unknown) => initial === "all" ? [h.filter, (next: string) => { h.filter = next; }] : [h.changed, (next: boolean) => { h.changed = next; }] }));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ childProfile: { id: h.childId, name: "Noa Example", gender: "girl" }, behaviorLogs: [], milestones: [], setActiveTab: h.setActiveTab }) }));
 vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ uiLang: h.lang, t: (key: string, vars?: Record<string, string | number>) => translate(h.lang, key, vars) }) }));
+vi.mock("../../hooks/useHashQuery", () => ({ useHashQuery: () => new URLSearchParams(), goToRoute: vi.fn() }));
 vi.mock("../../hooks/useChildHistory", () => ({ useChildHistory: (childId: string, name: string) => {
   h.scopes.push(`${childId}:${name}`);
   const items = h.empty || childId !== "child-a" ? [] : name === "langObs" ? [{ id: "word", timestamp: "2026-10-05T12:00:00Z", phrase: "Moon follows us", language: "English" }]

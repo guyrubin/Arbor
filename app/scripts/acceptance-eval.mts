@@ -25,11 +25,14 @@
  *     milestone-loop-v1, 512 judge calls) is OPT-IN in this tier: judged only
  *     with EVAL_LOOP_LIVE=1, otherwise one line says it was skipped and how to
  *     run it (`npm run eval:loop`). Its offline checks above always run.
+ *   - B-AI-11: preflight the whole requested live plan before importing its
+ *     runner. A deterministic-only suite reports live implementation pending
+ *     and stops the aggregate without provider calls or results appends.
  *
  * Exit code: non-zero on ANY error in either tier.
  */
 import * as path from "node:path";
-import { partitionLiveSuites, runOfflineAcceptance, staticSuitesSkippedLine } from "../src/eval/acceptance.js";
+import { liveSuitePreflightErrors, partitionLiveSuites, runOfflineAcceptance, staticSuitesSkippedLine } from "../src/eval/acceptance.js";
 
 const repoRoot = path.resolve(process.cwd(), "..");
 const startedAt = Date.now();
@@ -50,6 +53,7 @@ for (const report of reports) {
   for (const warning of report.warnings) console.warn(`WARN   [${report.suite}] ${warning}`);
   // B-LOOP-14: content changed after the last generation/run of a static suite.
   for (const warning of report.contentWarnings ?? []) console.warn(`WARN   [${report.suite}] ${warning}`);
+  if (report.liveScenarioCount === 0) console.warn(`PENDING [${report.suite}] live implementation: deterministic CI only; faithful live orchestration and a pinned live run remain outstanding.`);
 }
 
 console.log(`check:acceptance offline tier finished in ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);
@@ -64,24 +68,33 @@ if (!liveCredsPresent) {
 } else if (failed) {
   console.error("Live judge tier skipped: offline tier already failed.");
 } else {
-  const { runLiveSuite } = await import("./eval-judge.mts");
   // B-LOOP-14 (guard): static suites only with EVAL_LOOP_LIVE=1.
   const { live, skipped } = partitionLiveSuites(reports, process.env);
   const skippedLine = staticSuitesSkippedLine(skipped);
   if (skippedLine) console.log(skippedLine);
-  for (const report of live) {
-    try {
-      const result = await runLiveSuite(report.suite);
-      if (result.ok) {
-        console.log(`OK     [${report.suite}] live judge passRate=${result.row.passRate.toFixed(2)}`);
-      } else {
+  // Preflight the full requested plan BEFORE importing the live runner or
+  // starting any earlier paid suite. No partial aggregate results are made.
+  const pendingLive = liveSuitePreflightErrors(live);
+  if (pendingLive.length) {
+    failed = true;
+    console.error("Live judge preflight failed: the requested aggregate has pending live implementation; no suites were run.");
+    for (const error of pendingLive) console.error(`PENDING ${error}`);
+  } else {
+    const { runLiveSuite } = await import("./eval-judge.mts");
+    for (const report of live) {
+      try {
+        const result = await runLiveSuite(report.suite);
+        if (result.ok) {
+          console.log(`OK     [${report.suite}] live judge passRate=${result.row.passRate.toFixed(2)}`);
+        } else {
+          failed = true;
+          console.error(`FAIL   [${report.suite}] live judge:`);
+          for (const violation of result.violations) console.error(`       - ${violation}`);
+        }
+      } catch (error: any) {
         failed = true;
-        console.error(`FAIL   [${report.suite}] live judge:`);
-        for (const violation of result.violations) console.error(`       - ${violation}`);
+        console.error(`FAIL   [${report.suite}] live judge errored: ${error?.message ?? error}`);
       }
-    } catch (error: any) {
-      failed = true;
-      console.error(`FAIL   [${report.suite}] live judge errored: ${error?.message ?? error}`);
     }
   }
 }
@@ -90,4 +103,4 @@ if (failed) {
   console.error("check:acceptance FAILED.");
   process.exit(1);
 }
-console.log("check:acceptance passed.");
+console.log(liveCredsPresent ? "check:acceptance passed." : "check:acceptance offline tier passed; live validation not performed.");

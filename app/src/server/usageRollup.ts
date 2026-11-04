@@ -120,3 +120,39 @@ export const recordUsageRollup = (provider: string, usage: RollupUsage, timing?:
     { merge: true },
   ).catch((error) => logger.error("Usage rollup write failed", error, { date }));
 };
+
+/**
+ * B-AIOPS-02/03: the family voice allowance's daily totals, for the cost
+ * reads B-GA-26 and BD-06/52 take (docs/ops/incident-alerts.md "Cost and
+ * budget outputs"). Counts and milliseconds only — no family, uid or content.
+ *   live.reservedMs / live.reservations   Live token slices delivered (the
+ *                                          upper bound of provider-billable time)
+ *   live.fallbackTurnMs / live.fallbackTurns  settled fallback-loop turns
+ *   live.restingRefusals                  mints or turns refused (allowance spent)
+ *   live.byPlan.{plan}.reservedMs / .fallbackTurnMs
+ * Fire-and-forget like recordUsageRollup: never throws, never blocks.
+ */
+export type LiveBudgetRollup =
+  | { kind: "live"; plan: string; reservedMs: number }
+  | { kind: "turn"; plan: string; settledMs: number }
+  | { kind: "resting"; plan: string };
+
+export const liveBudgetRollupFields = (event: LiveBudgetRollup): Record<string, unknown> => {
+  const plan = /^[a-z_]{1,20}$/.test(event.plan) ? event.plan : "unknown";
+  if (event.kind === "live") {
+    const ms = Math.max(0, Math.round(event.reservedMs));
+    return { reservedMs: FieldValue.increment(ms), reservations: FieldValue.increment(1), byPlan: { [plan]: { reservedMs: FieldValue.increment(ms) } } };
+  }
+  if (event.kind === "turn") {
+    const ms = Math.max(0, Math.round(event.settledMs));
+    return { fallbackTurnMs: FieldValue.increment(ms), fallbackTurns: FieldValue.increment(1), byPlan: { [plan]: { fallbackTurnMs: FieldValue.increment(ms) } } };
+  }
+  return { restingRefusals: FieldValue.increment(1), byPlan: { [plan]: { restingRefusals: FieldValue.increment(1) } } };
+};
+
+export const recordLiveBudgetRollup = (event: LiveBudgetRollup): void => {
+  if (!db) return;
+  const date = usageDateKey();
+  db.collection("usageRollup").doc(date).set({ date, live: liveBudgetRollupFields(event), updatedAt: FieldValue.serverTimestamp() }, { merge: true })
+    .catch((error) => logger.error("Live budget rollup write failed", error, { date }));
+};

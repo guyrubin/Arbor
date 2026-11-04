@@ -13,7 +13,7 @@ Capture lives in `app/src/lib/attribution.ts` (`UTM_KEYS`, first-touch persist t
 
 | Param | Allowed values (canonical) | Notes |
 | :-- | :-- | :-- |
-| `utm_source` | `instagram` · `tiktok` · `youtube` · `facebook` · `whatsapp` · `telegram` · `creator` · `pr` · `newsletter` · `appstore` · `playstore` · `qr` · `landing` · `practitioner` | the platform/property; `practitioner` = a link or QR a professional who works with the child handed the family (BD-54) |
+| `utm_source` | `instagram` · `tiktok` · `youtube` · `facebook` · `whatsapp` · `telegram` · `creator` · `pr` · `newsletter` · `appstore` · `playstore` · `qr` · `landing` · `practitioner` · `centre` · `presenter` · `sponsor` · `studio` · `founding` | the platform/property; `practitioner` = a link or QR a professional who works with the child handed the family (BD-54); `centre`, `presenter`, `sponsor` = the other partner kinds; `studio` = the Kids Studio channel; `founding` = a founding-family invitation. Each maps to one acquisition channel (`app/src/lib/acquisitionChannel.ts`, BD-37), kept apart in the cohort report |
 | `utm_medium` | `social` · `paid_social` · `influencer` · `referral` · `email` · `organic` · `press` · `qr` | the channel class |
 | `utm_campaign` | `2am_test` · `avatar_challenge` · `launch_il` · `launch_en` · `evergreen` · `everyday_plans` | matches campaign names in GTM / the 2 AM-test launch doc; `everyday_plans` = the per-pattern intent pages (dark until a pattern is signed) |
 | `utm_content` | freeform slug, snake_case (e.g. `hero_video_a`, `bio_link`) | creative/placement variant for A/B |

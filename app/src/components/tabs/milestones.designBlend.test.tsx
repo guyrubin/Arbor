@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
 /* B-DESIGN-03 — #/milestones takes the P7-DESIGN blend frame
-   (execution/2026-10-07--design-direction/option-ab-blend.html, frame 04;
+   (the 7 Oct design direction's A+B blend, private product tree, frame 04;
    DESIGN-DIRECTION.md §Chosen rows 7, 11, 12; critics c2.r3 P2-12 / P2-13).
 
    1. The header collapses to the H1 on the hero step, ONE warm accent (the

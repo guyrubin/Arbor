@@ -144,6 +144,9 @@ export const en: Record<string, string> = {
   "elev.trust.more.contactSub":
     "The Consult hub is where you prepare questions and reach a professional.",
   "elev.trust.more.contactCta": "Open Consult",
+  // B-CAREPRO-47: the door to the static page a shared document points to.
+  "elev.trust.more.forPros": "What a document from Arbor is",
+  "elev.trust.more.forProsSub": "The page to give a professional who receives one",
 
   // ── TrustLink chip (mounted by other surfaces next to why-lines)
   "elev.trust.link": "How Arbor decides",
@@ -244,6 +247,8 @@ export const he: Record<string, string> = {
   "elev.trust.more.contact": "דברו איתנו",
   "elev.trust.more.contactSub": "מרכז הייעוץ הוא המקום להכין שאלות ולפנות לאיש מקצוע.",
   "elev.trust.more.contactCta": "לפתיחת מרכז הייעוץ",
+  "elev.trust.more.forPros": "מה זה מסמך מארבור",
+  "elev.trust.more.forProsSub": "הדף לאיש מקצוע שמקבל מסמך כזה",
 
   "elev.trust.link": "איך Arbor מחליט",
   "elev.trust.link.aria": "איך Arbor מחליט — לפתיחת מרכז האמון",

@@ -57,6 +57,12 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "erasedChildren",
+      "fieldPath": "expireAt",
+      "ttl": true,
+      "indexes": []
     }
   ]
 }

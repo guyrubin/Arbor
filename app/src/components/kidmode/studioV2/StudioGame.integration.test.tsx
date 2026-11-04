@@ -105,7 +105,8 @@ beforeEach(() => {
 afterEach(() => { for (const key of [...h.stores.keys()]) cleanup(key); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe("V2 entry, identity and persistent result", () => {
-  const ids = ["memory", "feelings", "mimic", "pattern", "beat", "sound-explorer", "calm-builder", "puzzle", "sneak"] as const;
+  // B-GAME-37: + the three full-character adventures, so every tile of the curated eight is here.
+  const ids = ["memory", "feelings", "mimic", "pattern", "beat", "sound-explorer", "calm-builder", "puzzle", "sneak", "river-rescue", "feelings-forest", "rhythm-garden"] as const;
   it.each(ids)("%s starts its real registered mechanic under the canonical EN/HE title", id => {
     for (const lang of ["en", "he"] as const) {
       h.lang = lang;

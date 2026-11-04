@@ -6,6 +6,7 @@
 import { logger } from "../server/logger.js";
 import { currentRequestContext } from "../server/requestContext.js";
 import { recordUsageRollup } from "../server/usageRollup.js";
+import { currentStudioScope, recordStudioUsage, studioAssetKey } from "../server/studioCostLedger.js";
 
 export const TTS_PRICE_AS_OF = "2026-10-14";
 export function estimateTtsCostUsd(voice: string, characters: number): number | undefined {
@@ -29,7 +30,14 @@ export function recordTtsUsage(voice: string, lang: "en" | "he", characters: num
   try {
     const event = buildTtsUsageEvent(voice, lang, characters, totalMs);
     const ctx = currentRequestContext();
-    logger.info("ai.usage", { requestId: ctx?.requestId ?? null, userUid: ctx?.uid ?? null, ...event });
+    const studio = currentStudioScope();
+    logger.info("ai.usage", { requestId: ctx?.requestId ?? null, userUid: ctx?.uid ?? null, ...(studio ? { studioAsset: studioAssetKey(studio.asset) } : {}), ...event });
+    // B-KID-150: a shared narration render is studio spend, never the family meter's.
+    if (studio) {
+      const cost = estimateTtsCostUsd(voice, characters);
+      recordStudioUsage(studio.asset, { modality: "tts", ...(cost === undefined ? {} : { estimatedCostUsd: cost }) });
+      return;
+    }
     recordUsageRollup("google_cloud_tts", { promptTokens: 0, outputTokens: 0, totalTokens: 0 },
       { route: "speech_synthesis", totalMs }, estimateTtsCostUsd(voice, characters));
   } catch { /* accounting must not break playback */ }

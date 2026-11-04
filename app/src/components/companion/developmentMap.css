@@ -150,3 +150,4 @@
 
 .portrait-cards button:focus-visible, .dev-map button:focus-visible, .area-detail button:focus-visible, .area-detail summary:focus-visible, .area-detail input:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .dev-map-row, .dev-map-chevron, .portrait-card-goal, .dev-map-tile { transition: none; } }
+a.portrait-card-tell { text-decoration: none; }

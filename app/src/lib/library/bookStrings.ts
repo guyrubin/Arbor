@@ -38,7 +38,15 @@ export type BookStringKey =
   | "grownUp.sources"
   | "grownUp.firstWeek"
   | "name.fallback.m"
-  | "name.fallback.f";
+  | "name.fallback.f"
+  // B-BOOK-45: the bedtime ending (kid register: no count, no streak)
+  | "goodnight"
+  // B-BOOK-46: reading together — the PARENT register, shown only in Together
+  | "together.label"
+  | "together.cover"
+  | "together.decision"
+  | "together.branch"
+  | "together.rejoin";
 
 const EN: Record<BookStringKey, string> = {
   "reader.aria": "{title}",
@@ -72,6 +80,12 @@ const EN: Record<BookStringKey, string> = {
   "grownUp.firstWeek": "The first week",
   "name.fallback.m": "the hero",
   "name.fallback.f": "the hero",
+  goodnight: "Goodnight",
+  "together.label": "Ask together",
+  "together.cover": "Before you open it: what do you think this story is about?",
+  "together.decision": "Pause here. Which one would you choose, and why?",
+  "together.branch": "What happened because of that choice?",
+  "together.rejoin": "What will they remember from today?",
 };
 
 const HE: Record<BookStringKey, string> = {
@@ -106,6 +120,12 @@ const HE: Record<BookStringKey, string> = {
   "grownUp.firstWeek": "השבוע הראשון",
   "name.fallback.m": "הגיבור",
   "name.fallback.f": "הגיבורה",
+  goodnight: "לילה טוב",
+  "together.label": "לשאול יחד",
+  "together.cover": "לפני שפותחים: על מה הסיפור, לדעתך?",
+  "together.decision": "עוצרים כאן. מה היית עושה, ולמה?",
+  "together.branch": "מה קרה בגלל הבחירה הזאת?",
+  "together.rejoin": "מה יזכרו מהיום הזה?",
 };
 
 export function bookString(key: BookStringKey, lang: "en" | "he", vars: Record<string, string> = {}): string {

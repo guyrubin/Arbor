@@ -50,6 +50,9 @@ const provider = {
 let server: Server;
 let base: string;
 beforeAll(async () => {
+  // B-AIOPS-02: the mints below share one sandbox family-day allowance; this
+  // file tests context pinning, not the budget (routes/liveBudgetRoute.test.ts).
+  process.env.LIVE_PAID_MINUTES_PER_DAY = "1000";
   const config = createTestConfig({ liveEnabled: true });
   const entitlementStore = createEntitlementStore(config);
   const app = express();
@@ -65,7 +68,7 @@ beforeAll(async () => {
   server = await new Promise<Server>((resolve) => { const s = app.listen(0, "127.0.0.1", () => resolve(s)); });
   base = "http://127.0.0.1:" + (server.address() as AddressInfo).port;
 });
-afterAll(async () => { await new Promise<void>((resolve) => server.close(() => resolve())); });
+afterAll(async () => { delete process.env.LIVE_PAID_MINUTES_PER_DAY; await new Promise<void>((resolve) => server.close(() => resolve())); });
 beforeEach(() => { prompt = ""; providerCalls = 0; owns = true; memoryReads = 0; sdk.create.mockClear(); });
 
 const body = {
@@ -76,7 +79,9 @@ const body = {
   language: "en",
 };
 const post = async (route: string, payload: unknown) => {
-  const res = await fetch(base + route, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  // B-PROV-12: a Live mint acknowledges the runtime route's approved notice.
+  const sent = route === "/api/live/token" ? { ...(payload as object), noticeAck: "google-global-realtime-v1" } : payload;
+  const res = await fetch(base + route, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sent) });
   return { status: res.status, raw: await res.text() };
 };
 

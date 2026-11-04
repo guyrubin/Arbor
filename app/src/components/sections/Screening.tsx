@@ -5,6 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { useToast } from "../../context/ToastContext";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { PageHeader, SectionCard, cardCls, TrustSafetyBar } from "../ui/kit";
 import { AGE_BANDS, bandForAgeMonths, scoreScreening, type ScreenAnswer, type ScreeningResult } from "../../lib/screening";
 import { domainLabel } from "../../lib/domains/registry";
@@ -202,7 +203,7 @@ export function ScreeningFlow({ onClose, stamped = false }: {
   stamped?: boolean;
 }) {
   const { childProfile, milestones, setActiveTab, requestConsultPrefill } = useArbor();
-  const { toast } = useToast();
+  const recheckReceipt = useReceiptNote();
   const { t, uiLang } = useLanguage();
   const first = childProfile.name.split(" ")[0];
 
@@ -306,7 +307,17 @@ export function ScreeningFlow({ onClose, stamped = false }: {
     const base = activeSaved ?? (result ? { ...result, id: activeId } : null);
     if (!base) return;
     void col.upsert({ ...base, recheckDueAt: computeRecheckDueAt(base.answeredAt) });
-    toast(t("screen.recheck.toast"), "success");
+    // B-STATUS-01: the receipt line under the buttons, not a vanishing toast.
+    // Critic r1: the reminder is reversible — Undo writes the record back as
+    // it was (with no reminder, or the one it had).
+    recheckReceipt.show({
+      text: t("screen.recheck.toast"),
+      undo: {
+        label: t("elev.loop.notice.undo"),
+        testId: "screen-recheck-undo",
+        onUndo: () => { recheckReceipt.clear(); void col.upsert(base); },
+      },
+    });
   };
 
   const restart = () => {
@@ -614,6 +625,7 @@ export function ScreeningFlow({ onClose, stamped = false }: {
                   {t("screen.next.retake")}
                 </button>
               </div>
+              <ReceiptNoteLine note={recheckReceipt.note} testId="screen-recheck-receipt" className="mt-3" />
               <p className="t-sm mt-3 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
                 {t("screen.safetyNote")}
               </p>

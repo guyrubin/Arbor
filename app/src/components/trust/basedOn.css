@@ -1,0 +1,8 @@
+.based-on { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-block-start: 12px; min-inline-size: 0; }
+.based-on-label { margin: 0; color: var(--arbor-muted); font-size: var(--t-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+[dir=rtl] .based-on-label { letter-spacing: 0; text-transform: none; }
+.based-on-facts { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; inline-size: 100%; }
+.based-on-fact { display: block; inline-size: 100%; min-block-size: 44px; padding: 8px 12px; border: 0; border-inline-start: 2px solid var(--arbor-clay); border-radius: 10px; background: transparent; color: var(--arbor-ink); font: 500 14px/1.4 var(--font-display); text-align: start; cursor: pointer; }
+.based-on-fact:hover { background: var(--arbor-paper-deep); }
+.based-on-fact:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; }
+.based-on-meta { margin: 0; color: var(--arbor-muted); font-size: var(--t-sm); line-height: 1.45; }

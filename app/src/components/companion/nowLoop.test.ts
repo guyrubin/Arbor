@@ -54,6 +54,27 @@ describe("every loop seam has a live caller", () => {
     expect(loop).toContain("selectNoticeWithProgram(");
     expect(loop).toContain("familyGoals.upsert(scoreGoal(goal, value, new Date()))");
   });
+  it("B-PROG-03: the program's week feeds the chooser, the focus candidates and Notice from ONE enrolment read", () => {
+    expect(loop).toContain("const program = useMemo(() => chooserProgram(activeProgram), [activeProgram]);");
+    // the journal's candidates (B-LOOP-13) and today's pick both run the program rule
+    expect(loop).toMatch(/const base = \{[^}]*\bprogram \};/);
+    expect(loop).toMatch(/choosePractice\(\{[\s\S]*?\bprogram,\s*\}\)/);
+    expect(loop.match(/useChildCollection<\{ id: string \}>\(childProfile\.id, "programs"\)/g) ?? []).toHaveLength(1);
+  });
+  it("B-PROG-03: the program line reads the week's skill with the Hebrew slash forms resolved for the child", () => {
+    expect(now).toContain("resolveHebrewSlash(program.content.skill.he, childProfile.gender)");
+    expect(now).not.toContain("program.content.skill[lang]");
+  });
+  it("B-PROG-03: Tonight's parent proxy writes through the dose row (turns) or the night's diary row (routine)", () => {
+    expect(loop).toContain("tonightParentProxyKind(activeProgram.program.measures?.parentProxy?.id)");
+    expect(loop).toContain("pick?.programId && pick.programId === activeProgram.program.id");
+    expect(loop).toContain("const row = tonightSelfCountEntry(dose ?? practiceDoseEntry(pick, \"did\", childProfile.id, sayText), n);");
+    expect(loop).toContain("if (row) recordPracticeDose(row);");
+    expect(loop).toContain("recordRoutineTap(tonightNight, { date: nightKey, answer, now: new Date().toISOString(), programId: activeProgram.program.id })");
+    expect(loop).toContain("void sleepLogs.upsert({ ...entry, id: nightKey });");
+    expect(loop).toContain("    parentProxy,\n");
+    expect(blocks).toContain("<TonightFlow {...loop.tonight} stampMove={MOVE} />");
+  });
   it("the AI picks the practice from the journal (B-LOOP-13)", () => {
     expect(now).toContain("useTodaysFocus(childProfile, signals, journal)");
     expect(now).toContain('aiPracticeId: focus?.practiceVia === "ai" ? focus.practiceId : undefined');

@@ -47,7 +47,7 @@ export type RetentionActivityEvent = (typeof RETENTION_ACTIVITY_EVENTS)[number];
 
 /** The retention day-offsets the product reports on.
  *  `28` is week-4 and it is the load-bearing one: the IL gate in
- *  bd/ARBOR-GTM-PLAN.md §2.1 (week-4 >= 50% on >= 2 cohorts by 30 Nov) and the
+ *  GTM plan §2.1 (private record; week-4 >= 50% on >= 2 cohorts by 30 Nov) and the
  *  kill/pivot trigger (<40%) are BOTH written in week-4. `30` is a calendar
  *  month and answers a different question; it is kept, not substituted. */
 export const RETENTION_DAYS = [1, 7, 28, 30] as const;

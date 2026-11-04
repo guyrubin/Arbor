@@ -46,6 +46,11 @@ export interface KidModeState {
   view?: string;
   /** HeroArcade world pre-selection carried by the arcade view (KID-4). */
   worldId?: string | null;
+  /** B-BOOK-46: a library book the door opens at once (a catalogue id), and
+   *  whether a grown-up reads it WITH the child (Together). One-shot: the
+   *  overlay opens it on arrival; the next write drops it. */
+  book?: string | null;
+  together?: boolean;
 }
 
 /** Structural storage subset (node-testable with a Map-backed fake). */
@@ -148,11 +153,16 @@ export function noteKidActivity(deps: KidSessionDeps = {}): void {
 const CLOSED: KidModeState = { open: false };
 
 /** Serializes a state for storage (pure — round-trips through parseKidModeState). */
+/** A book id the door may carry (a catalogue id: lowercase words and dashes). */
+const KID_BOOK_ID = /^[a-z0-9][a-z0-9-]{0,79}$/;
+
 export function serializeKidModeState(state: KidModeState): string {
   return JSON.stringify({
     open: state.open === true,
     view: typeof state.view === "string" ? state.view : undefined,
     worldId: typeof state.worldId === "string" ? state.worldId : undefined,
+    book: typeof state.book === "string" && KID_BOOK_ID.test(state.book) ? state.book : undefined,
+    together: state.together === true ? true : undefined,
   });
 }
 
@@ -168,6 +178,7 @@ export function parseKidModeState(raw: string | null): KidModeState {
       open: true,
       view: typeof o.view === "string" ? o.view : undefined,
       worldId: typeof o.worldId === "string" ? o.worldId : null,
+      ...(typeof o.book === "string" && KID_BOOK_ID.test(o.book) ? { book: o.book, together: o.together === true } : {}),
     };
   } catch {
     return CLOSED;

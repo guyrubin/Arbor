@@ -20,6 +20,9 @@ import NowPlanBody from "./NowPlanBody";
 import NowGuideReader from "./NowGuideReader";
 import { clearAcceptFailed, markAcceptFailed, useAcceptFailed } from "./nowGuideAccept";
 import { useNowClock } from "./useNowClock";
+import { goToRoute } from "../../hooks/useHashQuery";
+import { basedOnLines, FOCUS_MAX_FACTS } from "../../lib/basedOn";
+import BasedOnReceipt from "../trust/BasedOnReceipt";
 
 /** Mounted only when a chosen step/program does not already lead Now. The
  * parent keys this by child/language, so cached or in-flight AI from another
@@ -39,7 +42,7 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
    *  grounded in (ids and counts only; the same request the practice lead makes). */
   journal?: JournalRequest;
 }) {
-  const { childProfile, behaviorLogs, playLogs, milestones, actionLoop, acceptTodayAction, setActiveTab, activeFamilyTopic } = useArbor();
+  const { childProfile, behaviorLogs, playLogs, milestones, actionLoop, approvedMemoryItems, acceptTodayAction, setActiveTab, activeFamilyTopic } = useArbor();
   const { t, uiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
   const copy = NOW_COPY[lang];
@@ -173,5 +176,17 @@ export default function NowRecommendation({ name, onTalkOpen, journal }: {
       onAdapt={adapt}
     />
   </section>
+  {useAi && <BasedOnReceipt
+    model={{
+      ...basedOnLines({
+        items: approvedMemoryItems ?? [],
+        profile: childProfile,
+        maxFacts: FOCUS_MAX_FACTS,
+        reportedFactCount: focus?.inputsUsed?.factCount,
+        now: now.getTime(),
+      }),
+    }}
+    onOpenFact={(factId) => goToRoute("memory", { fact: factId })}
+  />}
   </NowPlanFrame>;
 }

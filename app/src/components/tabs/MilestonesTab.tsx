@@ -18,6 +18,7 @@ import { explainAnswerText, isEmptyExplainAnswer, type ExplainAnswer } from "../
 // string, no why-line, no provenance, nothing to keep. They now ride the same
 // shared action cluster every other content object uses.
 import { ContentActionBar } from "../ui/ContentActionBar";
+import { UrgentSupport } from "../safety/UrgentSupport";
 import { cardCls, Split } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES, DOMAIN_REFERENCE_LABEL_KEY } from "../../lib/milestoneReferences";
@@ -125,7 +126,7 @@ export default function MilestonesTab() {
     behaviorLogs,
   } = useArbor();
 
-  const { t, uiLang } = useLanguage();
+  const { t, uiLang, aiLang } = useLanguage();
   /* B-GROWTH-26 — the catalogue's domain list and every domain NAME come from
      the one domain registry (lib/domains/registry.ts, EN + HE in
      lib/i18nElevation/domains.ts): the same names Growth and Science print.
@@ -383,6 +384,12 @@ export default function MilestonesTab() {
           language: getAiLanguage(),
         }),
       });
+      // B-ASKJB-49: the route's crisis screen answered 409 (a parent-added
+      // title can carry crisis words): the slot shows the crisis card.
+      if (res.status === 409) {
+        setExplanations((p) => ({ ...p, [item.id]: { explanation: "", tryToday: "", escalation: true } }));
+        return;
+      }
       if (!res.ok) throw new Error("fail");
       const data = await res.json();
       const answer: ExplainAnswer = {
@@ -645,7 +652,9 @@ export default function MilestonesTab() {
                 it in the child's record. Failure is its own honest, translated
                 state — not a markdown heading pretending to be guidance. */}
             <div data-testid={`ms-explain-${item.id}`} className="mt-2 p-3 rounded-xl text-[11px] leading-relaxed select-text" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-              {explainFailed[item.id] ? (
+              {explanations[item.id]?.escalation ? (
+                <UrgentSupport testId="ms-explain-urgent-support" requestLang={aiLang} lead={t("elev.safety.paused")} onSafety={() => setActiveTab("safety")} className="min-w-0 t-sm leading-relaxed text-[var(--arbor-ink)]" />
+              ) : explainFailed[item.id] ? (
                 <div data-testid="ms-explain-error">
                   <p className="text-[12px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.waveR.ms.explain.error.title")}</p>
                   <p className="mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.waveR.ms.explain.error.body")}</p>

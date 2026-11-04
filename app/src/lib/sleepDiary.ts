@@ -1,6 +1,6 @@
 /**
  * B-PROG-06 (Steady Nights v0.1) — the sleep diary seam, PURE (no React, no
- * Firebase). The program document PAI/projects/arbor/PROGRAM-STEADY-NIGHTS-v0.1.md
+ * Firebase). The program document PROGRAM-STEADY-NIGHTS-v0.1.md (private record)
  * §"The three measures" is the definition of record; this file is its code.
  *
  *  - `recordRoutineTap` — the parent proxy: one tap after bedtime, "Done in

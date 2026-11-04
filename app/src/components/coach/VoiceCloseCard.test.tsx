@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import VoiceCloseCard, { voiceReadback } from "./VoiceCloseCard";
+import VoiceCloseCard, { VOICE_CLOSE_COPY, voiceNextStepLine, voiceReadback } from "./VoiceCloseCard";
 import type { ConversationProposal } from "../../lib/conversationProposals";
 
 const draft = (target: ConversationProposal["target"]): ConversationProposal => ({
@@ -33,5 +33,37 @@ describe("closing voice readback", () => {
     expect(render(false, true)).toContain("Some drafts could not be prepared");
     expect(render(false, false)).toContain("There are no new drafts to keep");
     expect(render(false, false, true)).toContain('disabled=""');
+  });
+});
+
+describe("B-VOICE-04 · the session's one next step rides the closing review", () => {
+  it.each(["en", "he"] as const)("%s: shows the step with one keep button; nothing is kept on render", language => {
+    const onKeep = vi.fn();
+    const html = renderToStaticMarkup(<VoiceCloseCard sessionId="s" language={language} proposals={[]} pending={false} failed={false} busy={false}
+      onClose={() => {}} nextStep={{ text: "Give a two-minute warning before the bath.", language: "en" }} onKeepNextStep={onKeep}>{null}</VoiceCloseCard>);
+    expect(html).toContain('data-testid="voice-next-step"');
+    expect(html).toContain(VOICE_CLOSE_COPY[language].next);
+    expect(html).toContain("Give a two-minute warning before the bath.");
+    expect(html).toContain(VOICE_CLOSE_COPY[language].keepNext);
+    expect(html).toMatch(/data-testid="voice-next-step-keep"[^>]*class="min-h-11/);
+    expect(onKeep).not.toHaveBeenCalled();
+  });
+  it("kept → a status line instead of the button; failed → says so and keeps the button", () => {
+    const render = (over: object) => renderToStaticMarkup(<VoiceCloseCard sessionId="s" language="en" proposals={[]} pending={false} failed={false} busy={false}
+      onClose={() => {}} nextStep={{ text: "Sing the song again tonight.", language: "en" }} onKeepNextStep={() => {}} {...over}>{null}</VoiceCloseCard>);
+    const kept = render({ nextStepKept: true });
+    expect(kept).toContain(VOICE_CLOSE_COPY.en.nextKept);
+    expect(kept).not.toContain('data-testid="voice-next-step-keep"');
+    const failed = render({ nextStepFailed: true });
+    expect(failed).toContain(VOICE_CLOSE_COPY.en.nextFailed);
+    expect(failed).toContain('data-testid="voice-next-step-keep"');
+  });
+  it("no step → no block (the review never guesses one)", () => {
+    const html = renderToStaticMarkup(<VoiceCloseCard sessionId="s" language="en" proposals={[]} pending={false} failed={false} busy={false} onClose={() => {}}>{null}</VoiceCloseCard>);
+    expect(html).not.toContain("voice-next-step");
+  });
+  it("the spoken line names it in the language Arbor said it", () => {
+    expect(voiceNextStepLine({ text: "Sing it again.", language: "en" })).toBe("One thing to try: Sing it again.");
+    expect(voiceNextStepLine({ text: "לשיר שוב הערב.", language: "he" })).toBe("דבר אחד לנסות: לשיר שוב הערב.");
   });
 });

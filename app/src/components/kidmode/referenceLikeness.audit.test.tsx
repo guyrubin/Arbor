@@ -79,6 +79,8 @@ describe("the reference likeness is only reachable through the manifest, and the
     const offenders: string[] = [];
     for (const file of sources(SRC)) {
       if (file.endsWith(path.join("lib", "kidThemeManifest.ts"))) continue;
+      // B-GA-09: a guard registry that forbids new likeness files and never renders (test-only import, strings and hashes only: childLikenessFiles.guard.test.ts).
+      if (file.endsWith(path.join("lib", "childLikenessFiles.named.ts"))) continue;
       const text = readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
       if (text.includes(REFERENCE)) offenders.push(`${path.relative(SRC, file)}: ${REFERENCE}`);
       if (text.includes("storyCoverKey(")) offenders.push(`${path.relative(SRC, file)}: storyCoverKey(`);

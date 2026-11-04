@@ -6,6 +6,7 @@ import { readTimeline } from "../lib/timelineFold";
 import { useChildCollection } from "./useChildCollection";
 import type { KeepsakeDoc } from "../lib/firstsKeepsake";
 import type { LangObservation } from "../growth/vocabAgg";
+import type { Appointment, AppointmentFollowUp } from "../lib/careTrack";
 import type {
   AdventureResult,
   HeroJourneyRun,
@@ -77,6 +78,12 @@ export function useTimeline(): TimelineSignal[] {
     orderByField: "timestamp", orderDir: "desc", max: 500,
   });
 
+  // B-CAREPRO-37 — the after-visit notes (registered CHILD_SUBCOLLECTION
+  // "apptFollowUps") and the bookings they belong to ("appointments"): one
+  // dated visit row per note, naming the profession.
+  const appointments = useChildCollection<Appointment>(childId, "appointments");
+  const apptFollowUps = useChildCollection<AppointmentFollowUp>(childId, "apptFollowUps");
+
   return useMemo(
     () => readTimeline({
       behaviorLogs,
@@ -95,11 +102,14 @@ export function useTimeline(): TimelineSignal[] {
       heroRuns: heroRuns.items,
       keepsakes: keepsakes.items,
       langObs: langObs.items,
+      appointments: appointments.items,
+      apptFollowUps: apptFollowUps.items,
     }),
     [
       behaviorLogs, milestones, actionPlans, memoryReviewItems, playLogs, actionLoop, keptInsights,
       practiceEvents.items, speechAttempts.items, mimicSessions.items,
       adventureResults.items, missionRecords.items, heroRuns.items, keepsakes.items, langObs.items,
+      appointments.items, apptFollowUps.items,
     ],
   );
 }

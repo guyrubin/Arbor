@@ -10,12 +10,15 @@
  *    already answered "Not this" for).
  *  · `requestMilestoneProposal` — one extract call with the candidates, the
  *    validated match turned into ONE proposal row (lib/captureProposals).
- *    Any failure — escalation, network, no match — is simply no row.
+ *    Any failure — network, no match — is simply no row. B-ASKJB-49: the
+ *    crisis screen's 409 (EscalationRequiredError) is not a failure; it
+ *    reaches the caller, whose reply shows the crisis card.
  */
 import type { BehaviorLog, ChildProfile, Milestone } from "../../types";
 import { isCatalogueMilestone, selectNextMilestones } from "../milestoneData";
 import { milestoneProposalFrom, type MilestoneCaptureProposal } from "../captureProposals";
 import { isMilestoneProposalDeclined, type LedgerStorage } from "./proposalLedger";
+import { EscalationRequiredError } from "../api";
 
 export const MAX_CANDIDATE_IDS = 24;
 /** Shorter than this, a moment carries too little to map ("ok", "cute"). */
@@ -62,7 +65,8 @@ export async function requestMilestoneProposal(args: {
       milestoneCandidateIds: args.candidateIds,
     });
     return milestoneProposalFrom(res?.milestoneMatch ?? null, args.log.id, new Set(args.candidateIds));
-  } catch {
+  } catch (err) {
+    if (err instanceof EscalationRequiredError) throw err;
     return null;
   }
 }

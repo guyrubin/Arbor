@@ -203,6 +203,8 @@ describe("signal provenance", () => {
       action: "manual",
       // B-AI-04 — keeping a suggestion line is the PARENT's act.
       kept: "manual",
+      // B-CAREPRO-37 — the after-visit note is the parent's own record.
+      visit: "manual",
     });
     expect(isAutoSignal("moment")).toBe(false);
     expect(isAutoSignal("milestone")).toBe(false);

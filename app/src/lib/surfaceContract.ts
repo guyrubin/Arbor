@@ -208,6 +208,10 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     // (hub growth, depth 1, job "See where you are in {program} and what
     // moved.", primaryMove do-this-week, moduleBudget 3) is the residue hunk
     // in REJECTIONS P6-PRACTICE (7 Oct, session A).
+    // B-ASKJB-36: `?view=kept` (and `#/development/kept`) is the kept reader
+    // (components/kept/KeptThingsPage KeptReaderMode) — a read-and-send mode
+    // of this leaf with no stamp of its own, like language's `?view=said`.
+    // `&year=YYYY` on that mode opens the year book of the same kept words.
     threadWrite: "milestones",
   },
   {
@@ -436,9 +440,10 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     route: "appointments", hub: "care", depth: 1,
     job: "Keep every appointment and its follow-ups in one place.",
     primaryMove: "add-appointment", moduleBudget: 2, demotionTarget: "consult",
-    // Chips requested/confirmed/done; no appointment source in buildTimeline —
-    // "none".
-    threadWrite: "none",
+    // B-CAREPRO-37: the after-visit note is a buildTimeline source — one dated
+    // "visit" row per note on the Journal, naming the profession. The booking
+    // chips (requested/confirmed/done) stay the booking's own.
+    threadWrite: "apptFollowUps",
   },
   {
     route: "reports", hub: "care", depth: 1,
@@ -498,10 +503,12 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   },
   {
     route: "memory", hub: "profile", depth: 1,
-    job: "Approve, edit, or forget what Arbor remembers about her.",
-    primaryMove: "approve-memory-fact", moduleBudget: 3, demotionTarget: "profile",
-    // ChildMemory approve/forget over MemoryReviewItem; only approved facts
-    // enter the stream (memory source filters status === "approved").
+    // B-CAREPRO-38: retired to About; the seat renders it (ledger open in place).
+    job: "Who she is — and what Arbor remembers.",
+    primaryMove: "capture-moment", moduleBudget: 3, demotionTarget: "disclosure",
+    // Job, move and budget are the About leaf's own (copilot / strengths
+    // pattern). Approving still writes the memory ledger; only approved facts
+    // enter the stream.
     threadWrite: "memory",
   },
   {
@@ -544,4 +551,17 @@ const CONTRACT_BY_ROUTE: ReadonlyMap<ActiveTab, SurfaceContract> = new Map(
  */
 export function contractFor(route: ActiveTab): SurfaceContract | undefined {
   return CONTRACT_BY_ROUTE.get(route);
+}
+
+/**
+ * Wave 4: a surface that stays mounted while hidden (a closed conversation
+ * keeps its thread, its draft, the photos in its composer and its voice
+ * proposals) spreads `hiddenStamps(hidden)` AFTER each of its own stamps, so
+ * while it is hidden it carries no `data-module` or `data-primary-move` for the
+ * one-primary-move law or the sweep to count. The attribute names live here,
+ * so the route's own source keeps exactly its one literal stamp of each kind.
+ */
+export const SURFACE_STAMP_ATTRIBUTES = ["data-primary-move", "data-module"] as const;
+export function hiddenStamps(hidden: boolean): Partial<Record<(typeof SURFACE_STAMP_ATTRIBUTES)[number], undefined>> {
+  return hidden ? Object.fromEntries(SURFACE_STAMP_ATTRIBUTES.map((name) => [name, undefined])) : {};
 }

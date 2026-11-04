@@ -44,11 +44,13 @@ const KEYS = [
   "elev.wave2Daily.capture.voice.talk",
   "elev.wave2Daily.capture.voice.talkSub",
   "elev.wave2Daily.capture.voice.dataUse",
+  "elev.wave2Daily.capture.voice.dataUseDevice",
 ];
 
-const choice = (lang: UiLang, firstUse: boolean) =>
+// B-PROV-12: the line is the runtime route's notice; the global Live route by default here.
+const choice = (lang: UiLang, firstUse: boolean, noticeId: string | null = "google-global-realtime-v1") =>
   renderToStaticMarkup(
-    <VoiceChoice id="vc" firstUse={firstUse} t={(k, v) => translate(lang, k, v)} onChoose={() => {}} onEscape={() => {}} />,
+    <VoiceChoice id="vc" firstUse={firstUse} noticeId={noticeId} t={(k, v) => translate(lang, k, v)} onChoose={() => {}} onEscape={() => {}} />,
   );
 
 describe("B-VOICE-06 · Ask's Talk control is named for what it does", () => {

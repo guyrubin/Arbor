@@ -1,0 +1,23 @@
+# B-INF-12: every text file checks out with LF on every OS. On a Windows checkout with
+# core.autocrlf=true the working tree used to get CRLF, and the guard tests that read a
+# component's source and split it on "\n" failed locally while CI passed — known-false
+# failures that hid real ones. Guard: app/scripts/lineEndings.test.ts.
+* text=auto eol=lf
+
+# Binary assets are never converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.mp3 binary
+*.m4a binary
+*.wav binary
+*.mp4 binary
+*.pdf binary
+*.jar binary

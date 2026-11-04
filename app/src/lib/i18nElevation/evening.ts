@@ -28,7 +28,7 @@ export const en: Record<string, string> = {
 
 export const he: Record<string, string> = {
   "elev.evening.nudge.headline": "ערב עם {name}",
-  "elev.evening.nudge.body": "ההירגעות קלה יותר כשיש למה להיכנס. הסיפור של הלילה יכול להיות על {name}.",
+  "elev.evening.nudge.body": "קל יותר להירגע כשיש סיפור שמחכה. הסיפור של הערב יכול להיות על {name}.",
   "elev.evening.nudge.cta": "פתחו סיפורי לילה טוב",
 
   "elev.evening.card.eyebrow": "עכשיו",

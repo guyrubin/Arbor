@@ -137,13 +137,19 @@ export function nextRollupDoc(
   const prior = stored && typeof stored === "object" ? (stored as Record<string, unknown>) : null;
   const cohort: RetentionCohort =
     prior?.cohort === "demo" ? "demo" : ctx.cohort ?? (prior?.cohort === "internal" ? "internal" : "family");
+  // BD-37: the HOUSEHOLD keeps its first touch. Attribution is first-touch per
+  // device (localStorage), so a second device or a reinstall would otherwise
+  // overwrite the channel that brought the family in with its own "direct".
+  // A stored source or market wins; a missing one is filled.
+  const source = typeof prior?.source === "string" && prior.source ? prior.source : ctx.source;
+  const market = typeof prior?.market === "string" && prior.market ? prior.market : ctx.market;
   const unchanged =
     prev !== null &&
     merged.firstSeen === prev.firstSeen &&
     merged.activeDays.length === prev.activeDays.length &&
     prior !== null &&
-    prior.source === ctx.source &&
-    prior.market === ctx.market &&
+    prior.source === source &&
+    prior.market === market &&
     prior.tzOffsetMinutes === ctx.tzOffsetMinutes &&
     prior.cohort === cohort;
   if (unchanged) return null;
@@ -151,8 +157,8 @@ export function nextRollupDoc(
   return {
     firstSeen: merged.firstSeen,
     activeDays: merged.activeDays,
-    source: ctx.source,
-    market: ctx.market,
+    source,
+    market,
     tzOffsetMinutes: ctx.tzOffsetMinutes,
     updatedAt: new Date(ctx.at).toISOString(),
     cohort,

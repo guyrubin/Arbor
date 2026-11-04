@@ -1,7 +1,7 @@
 /**
  * B-PROG-06 [content — clinical] — STEADY NIGHTS v0.1 (לילות רגועים): six
  * weeks on the Sleep shelf. The definition of record is the human-readable
- * program document PAI/projects/arbor/PROGRAM-STEADY-NIGHTS-v0.1.md; this file
+ * program document PROGRAM-STEADY-NIGHTS-v0.1.md (private product record); this file
  * transcribes it 1:1 (same order, same ids, same words). Edit the document
  * first, then this file.
  *
@@ -25,7 +25,7 @@
  *    child proxy is the family's own diary (lib/sleepDiary.ts), hours as a
  *    number, never a recommended number of hours.
  *  - `reviewStatus: "draft"`: the clinical reviewer (G-01, E6) signs before any
- *    public use. Review rows: execution/2026-10-06--milestone-loop/REVIEW-SHEET.md
+ *    public use. Review rows: the milestone-loop REVIEW-SHEET.md (private record),
  *    "B-PROG-06 Steady Nights v0.1"; Hebrew review pack:
  *    `npx tsx scripts/milestone-he-review.mts --programs export`.
  *
@@ -71,6 +71,7 @@ export const STEADY_NIGHTS: Program = {
   weeks: [
     {
       n: 1,
+      lesson: "bedtime-routine",
       skill: L(
         "Keep one short, calm bedtime routine: the same steps, in the same order, every night.",
         "לשמור על טקס שינה אחד, קצר ורגוע: אותם שלבים, באותו סדר, בכל ערב.",
@@ -85,6 +86,7 @@ export const STEADY_NIGHTS: Program = {
     },
     {
       n: 2,
+      lesson: "screens-before-bed",
       skill: L(
         "Dim the evening and brighten the morning: low light and screens off before bed, daylight after waking.",
         "ערב חשוך ובוקר מואר: אור נמוך ומסכים כבויים לפני השינה, אור יום אחרי ההשכמה.",
@@ -99,6 +101,7 @@ export const STEADY_NIGHTS: Program = {
     },
     {
       n: 3,
+      lesson: "sleep-needs-by-age",
       skill: L(
         "Start winding down at about the same time each evening, when the first sleepy signs show.",
         "להתחיל להירגע לקראת שינה בערך באותה שעה בכל ערב, כשמופיעים סימני העייפות הראשונים.",
@@ -113,6 +116,7 @@ export const STEADY_NIGHTS: Program = {
     },
     {
       n: 4,
+      lesson: "nap-transitions",
       skill: L(
         "Keep a short sleep diary for a week, then read it together and notice one thing that repeats.",
         "לנהל יומן שינה קצר במשך שבוע, ואז לקרוא אותו יחד ולשים לב לדבר אחד שחוזר.",
@@ -127,6 +131,7 @@ export const STEADY_NIGHTS: Program = {
     },
     {
       n: 5,
+      lesson: "bedtime-stalling",
       skill: L(
         "Choose one small change at sleep time, keep the rest the same, and respond the same calm way each time.",
         "לבחור שינוי קטן אחד בזמן ההירדמות, לשמור על כל השאר, ולהגיב באותה דרך רגועה בכל פעם.",
@@ -141,6 +146,7 @@ export const STEADY_NIGHTS: Program = {
     },
     {
       n: 6,
+      lesson: "sleep-regressions",
       skill: L(
         "Keep the routine through disrupted nights, and come back to it as soon as you can.",
         "לשמור על הטקס גם בלילות לא רגילים, ולחזור אליו ברגע שאפשר.",

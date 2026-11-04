@@ -13,6 +13,7 @@ import { Sheet } from "../ui/Sheet";
 import SafetyRing from "./SafetyRing"; // IA-01: Safety life-ring in the More-sheet header row
 import KidModeButton from "./KidModeButton"; // IA-24: the Kid Mode door, in the sheet that never scrolls away
 import { requestOpenSettings } from "./settingsBus"; // IA-03: Settings moved out of the mobile strip
+import { useArborPause } from "../../lib/pauseArborStore";
 import { PARENT_RECORD_COPY } from "../companion/parentRecordCopy";
 import { badgeText } from "./Sidebar"; // IA-16: ONE badge derivation, shared with the sidebar
 
@@ -72,6 +73,7 @@ export default function MobileNav() {
   const query = useHashQuery();
   const milestonesNoticed = milestones.filter((m) => m.checked).length;
   const [moreOpen, setMoreOpen] = useState(false);
+  const arborPause = useArborPause();
   const moreTriggerRef = useRef<HTMLButtonElement>(null);
 
   const primary = PRIMARY_SECTION_IDS
@@ -130,7 +132,7 @@ export default function MobileNav() {
 
   return (
     <>
-      <nav aria-label={t("elev.sidebar.nav.aria")}
+      <nav aria-label={t("elev.sidebar.nav.aria")} data-chrome="phone-dock"
         /* B-DESIGN-03 (chrome): the dock is chrome glass (paper 80 % + blur 14 px);
            the content scrolling under it stays opaque. */
         className="arbor-chrome-glass lg:hidden fixed bottom-0 inset-x-0 z-40 flex"
@@ -280,6 +282,16 @@ export default function MobileNav() {
         >
           <Icon name="search" size={20} />
           <span>{t("top.search")}</span>
+        </button>
+        <button
+          type="button"
+          data-testid="more-pause"
+          onClick={() => { void selectionHaptic(); setMoreOpen(false); requestOpenSettings({ focus: "pause-arbor" }); }}
+          className="w-full flex items-center gap-2.5 px-3 py-3 mb-2 min-h-[44px] rounded-2xl text-start text-sm font-bold transition"
+          style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
+        >
+          <Icon name="schedule" size={20} />
+          <span>{t(arborPause.paused ? "companion.pause.moreOn" : "companion.pause.more")}</span>
         </button>
         {/* v3 IA-03 (ruling 14): the old records and support groups are gone,
             and so are their pulse sub-lines. One index follows the three places

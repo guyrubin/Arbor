@@ -23,6 +23,7 @@ import { ErrorBoundary } from "../ErrorBoundary";
 import { ArborMark } from "../ui/ArborMark";
 import { TabSkeleton } from "../ui/Skeleton";
 import SearchModal, { SEARCH_OPEN_EVENT, requestOpenSearch, type SearchOpenSurface } from "../search/SearchModal";
+import { SEARCH_FIELD_FOCUS_EVENT, SEARCH_FIELD_MIN_WIDTH } from "../search/searchSections";
 import { track } from "../../lib/analytics";
 import SettingsModal from "./SettingsModal";
 import PaywallModal from "../billing/PaywallModal";
@@ -33,6 +34,7 @@ import { selectionHaptic } from "../../lib/native";
 // AP-048: Kid Mode overlay + context provider
 import { KidModeProvider } from "../kidmode/KidModeContext";
 import KidModeOverlay from "../kidmode/KidModeOverlay";
+import LikenessCeremonyHost from "../trust/LikenessCeremony";
 // KID-LOCK (W0.9): Shell's own hooks run OUTSIDE the KidModeProvider it
 // renders, so the lock state comes from the module gate singleton instead.
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
@@ -71,7 +73,6 @@ const SafetyTab = lazy(() => import("../tabs/SafetyTab"));
 
 // New capability views (IA refactor).
 const ChildProfile = lazy(() => import("../sections/ChildProfile"));
-const ChildMemory = lazy(() => import("../sections/ChildMemory"));
 const Screening = lazy(() => import("../sections/Screening"));
 // One timeline surface, two densities (Feed #/journal · Story #/timeline).
 const TimelineTab = lazy(() => import("../tabs/TimelineTab"));
@@ -96,6 +97,8 @@ const AdventuresTab = lazy(() => import("../practice/AdventuresTab"));
 // IA v3: consolidation hubs (merge confusable/duplicate leaves).
 const DevelopmentTab = lazy(() => import("../companion/ChildPortrait"));
 const ProgramPage = lazy(() => import("../program/ProgramPage"));
+// B-ASKJB-36: `?view=kept` — My child with the kept reader open (a mode).
+const KeptReaderMode = lazy(() => import("../kept/KeptThingsPage").then((m) => ({ default: m.KeptReaderMode })));
 const FamilyTopicSheet = lazy(() => import("../companion/FamilyTopicSheet"));
 const DailyPlayTab = lazy(() => import("../tabs/DailyPlayTab"));
 // IA fix (AR-IA): the parent #/practice route hosts the PARENT-register
@@ -140,7 +143,9 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   handoff: ConsultTab,
   safety: SafetyTab,
   profile: ChildProfile,
-  memory: ChildMemory,
+  // B-CAREPRO-38: retired to About (RETIRED_ROUTES) — the id keeps its seat and
+  // renders the About leaf, which opens the ledger (ChildMemory, embedded) in place.
+  memory: ChildProfile,
   // B-GROWTH-23: retired to Profile (RETIRED_ROUTES) — the id keeps its seat;
   // its content is Profile chapter 4, so the registry seat renders Profile.
   strengths: ChildProfile,
@@ -292,6 +297,13 @@ export default function Shell() {
         // outside the inert shield, steals focus, and Enter navigates parent
         // tabs — the hotkey is a no-op while Kid Mode is open.
         if (isKidModeActive()) return;
+        // B-SHELL-37: one search surface per width. At lg+ the top-bar field is it, so
+        // the hotkey focuses the field (its own search_open fires there); below lg the
+        // hotkey toggles the modal the strip icon opens.
+        if (window.matchMedia?.(SEARCH_FIELD_MIN_WIDTH).matches && !searchOpenRef.current) {
+          window.dispatchEvent(new Event(SEARCH_FIELD_FOCUS_EVENT));
+          return;
+        }
         if (!searchOpenRef.current) track("search_open", { surface: "desktop" });
         setSearchOpen((s) => !s);
       }
@@ -509,7 +521,9 @@ export default function Shell() {
             >
               {pillRowFor(section, activeTab).map((it) => {
                 // v4: a leaf route lights the reading it belongs to (PILL_LIT).
-                const on = it.tab === pillLitTab(activeTab);
+                // B-ASKJB-36 (critic r1): the Kept reader is a mode of My child,
+                // not its Milestones reading — no pill reads selected there.
+                const on = it.tab === pillLitTab(activeTab) && !(activeTab === "development" && query.get("view") === "kept");
                 return (
                   <button
                     key={it.tab}
@@ -630,7 +644,7 @@ export default function Shell() {
                         so the coach arm renders nothing of its own. */}
                     {activeTab === "coach" || activeTab === "scholar" ? null
                       : activeTab === "overview" ? <OverviewTab topic={activeFamilyTopic} onTopicCreate={createTopic} onTopicOpen={openTopic} onTalkOpen={(prompt) => requestCompanionConversation({ prompt, source: "now" })}/>
-                      : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : <DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) => { if (childId === childProfile.id) requestCompanionConversation({ prompt, source: "child-portrait" }); }}/>)
+                      : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : query.get("view") === "kept" ? <KeptReaderMode/> : <DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) => { if (childId === childProfile.id) requestCompanionConversation({ prompt, source: "child-portrait" }); }}/>)
                       : <ActiveTabComponent/>}
                   </SurfaceFrame>
                 </ErrorBoundary>
@@ -683,6 +697,7 @@ export default function Shell() {
       {/* AP-048: Kid Mode full-screen overlay — rendered at z-70, above everything.
           Desktop-only entry point (Topbar button starts at lg). The overlay
           itself is responsive; MobileNav is byte-unchanged. */}
+      <LikenessCeremonyHost />
       <KidModeOverlay />
       {/* E0: full-screen wow-onboarding overlay (z-45 — under the reused
           AvatarCreator it drives, over the app chrome). Renders null unless

@@ -3,7 +3,7 @@ import { collection, deleteDoc, doc, limit as fbLimit, onSnapshot, orderBy, quer
 import { db, firebaseEnabled } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import { clearSyncError, getSyncSnapshot, reportSyncError, subscribeSyncStatus } from "../lib/syncStore";
-import { settleOrQueue } from "../lib/firestoreWrite";
+import { settleOrQueue, snapshotWritesConfirmed } from "../lib/firestoreWrite";
 import { sameLocalHistoryRows } from "../lib/historyWindow";
 
 type WithId = { id: string };
@@ -24,6 +24,12 @@ export interface ChildWriteOptions {
    * the caller take its receipt back and offer its own retry.
    */
   offline?: { onQueued: () => void; onSynced?: () => void; onRejected?: () => void };
+  /**
+   * B-DATA-14 r2: write only the fields given (a Firestore merge write), so a
+   * change another device made to the rest of the document survives. The
+   * sandbox merges into the stored row the same way.
+   */
+  merge?: boolean;
 }
 
 export interface ChildCollection<T extends WithId> {
@@ -61,7 +67,7 @@ export interface ChildCollection<T extends WithId> {
 export function useChildCollection<T extends WithId>(
   childId: string,
   name: string,
-  opts?: { seed?: T[]; sandboxSeed?: T[]; orderByField?: string; orderDir?: "asc" | "desc"; max?: number; trackConfirmation?: boolean }
+  opts?: { seed?: T[]; sandboxSeed?: T[]; orderByField?: string; orderDir?: "asc" | "desc"; max?: number; trackConfirmation?: boolean; acceptCachedNoPendingWrites?: boolean }
 ): ChildCollection<T> {
   const { user } = useAuth();
   const remote = firebaseEnabled && !!user && user.uid !== "local-sandbox" && !!db;
@@ -144,7 +150,7 @@ export function useChildCollection<T extends WithId>(
           batch.commit().catch(() => {});
           return; // snapshot fires again once seeded
         }
-        setConfirmed(!opts?.trackConfirmation || (snap.metadata.fromCache === false && snap.metadata.hasPendingWrites === false));
+        setConfirmed(!opts?.trackConfirmation || snapshotWritesConfirmed(snap.metadata, opts?.acceptCachedNoPendingWrites));
         setLoadedScope(scope);
         setItems(snap.docs.map((d) => ({ ...(d.data() as object), id: d.id })) as T[]);
         setLoaded(true);
@@ -203,7 +209,8 @@ export function useChildCollection<T extends WithId>(
     async (item: T, options?: ChildWriteOptions) => {
       if (scopeRef.current !== scope) throw new Error("The active child changed");
       if (remote && db && uid) {
-        const write = setDoc(doc(db, `users/${uid}/children/${childId}/${name}`, item.id), item as Record<string, unknown>);
+        const ref = doc(db, `users/${uid}/children/${childId}/${name}`, item.id);
+        const write = options?.merge ? setDoc(ref, item as Record<string, unknown>, { merge: true }) : setDoc(ref, item as Record<string, unknown>);
         // Existing callers retain queued-write semantics. A receipt that claims
         // acknowledgement opts in and stays pending while offline — unless it
         // also takes the B-DATA-14 bounded answer (`offline`).
@@ -226,7 +233,7 @@ export function useChildCollection<T extends WithId>(
       } else {
         const previous = itemsRef.current;
         const next = previous.some(value => value.id === item.id)
-          ? previous.map(value => value.id === item.id ? item : value)
+          ? previous.map(value => value.id === item.id ? (options?.merge ? { ...value, ...item } : item) : value)
           : [item, ...previous];
         // Persist before acknowledging the write. Quota/privacy-mode failures
         // reject the promise; the caller can keep its draft and offer retry.

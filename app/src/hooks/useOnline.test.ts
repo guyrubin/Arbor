@@ -49,7 +49,7 @@ describe("B-DATA-14 — useOnline", () => {
 
 describe("B-DATA-14 — the receipts read the live connection", () => {
   it("Now and the record receipt pick the line from useOnline(), never a stale render-time read", () => {
-    for (const file of ["../components/companion/NowView.tsx", "../components/overview/FromRecordCard.tsx"]) {
+    for (const file of ["../components/companion/NowView.tsx", "../components/overview/FromRecordCard.tsx", "../components/overview/TodaySayBackLine.tsx", "../components/plans/RoutineRunBoard.tsx", "../components/plans/RoutinesCard.tsx"]) {
       const src = readFileSync(new URL(file, import.meta.url), "utf8");
       expect(src, file).toContain("const online = useOnline();");
       expect(src, file).toContain("savedOnPhoneKey(online)");

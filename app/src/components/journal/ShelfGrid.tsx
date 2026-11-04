@@ -102,7 +102,7 @@ export function shelfTileStyle(shelf: ShelfId): React.CSSProperties {
 
 /**
  * B-LOOP-11 → B-DESIGN-04 — the journal is nine shelves, not a list. Design of
- * record: execution/2026-10-07--design-direction/option-ab-blend.html (frames
+ * record: the 7 Oct design direction's A+B blend, private product tree (frames
  * 02 and 05). The header (eyebrow, display H1, one honest lede, the family's
  * newest line as the screen's ONE warm accent — editorial --t-say on the 2 px
  * ink rule — and the flip to the professional view as an underlined sapphire

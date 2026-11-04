@@ -5,6 +5,7 @@ import { Sheet, useCompactSurface } from "../ui/Sheet";
 import ConfirmCaptureReview from "./ConfirmCaptureReview";
 import type { CaptureSource } from "./ConfirmCaptureReview";
 import { MarkdownBlock } from "../ui/MarkdownBlock";
+import { UrgentSupport } from "../safety/UrgentSupport";
 import { Icon } from "../ui/Icon";
 import RecordingIndicator from "../ui/RecordingIndicator";
 import { useArbor } from "../../context/ArborContext";
@@ -137,6 +138,7 @@ export default function QuickLogModal({
     milestones,
     setMilestoneObservation,
     fileMomentOnShelf,
+    setActiveTab,
   } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
@@ -197,6 +199,9 @@ export default function QuickLogModal({
   // crisis-resources surface (never a toast) and writes ZERO draft fields —
   // the ApiError must not fall through to sentence-into-trigger.
   const [escalationMarkdown, setEscalationMarkdown] = useState<string | null>(null);
+  // B-ASKJB-49: a kept moment whose words the milestone match's extract
+  // screened as crisis (409): its reply carries the crisis card.
+  const [replyCrisisLogId, setReplyCrisisLogId] = useState<string | null>(null);
   // TJB-08: dictation state, mirroring BehaviorsTab's contract exactly —
   // continuous with generous endpointing (AI-CAP-6), live interim caption
   // (AI-V7), and the parent's UI language (AI-CAP-2), so a Hebrew parent's
@@ -486,7 +491,8 @@ export default function QuickLogModal({
   // editable draft: dismissing the alert must not hand back a saveable form
   // holding the crisis text (the contract the Behaviors form kept before it
   // moved to this sheet). Clears only; never fills a field.
-  const dropEscalatedDraft = () => {
+  // B-INF-13: the ONE draft reset — Discard and the escalation branch both run it.
+  const resetDraft = () => {
     setNewLogTrigger(""); setNewLogNotes(""); setNewLogResponse("");
     setKeepDraft(freshCaptureKeep()); setReviewing(false); setSource("text");
   };
@@ -540,7 +546,7 @@ export default function QuickLogModal({
       // (an edit does not retire it), and writes no draft field.
       if (err instanceof EscalationRequiredError) {
         if (!screenCurrent()) return;
-        dropEscalatedDraft();
+        resetDraft();
         const match =
           escalationCategories.find((c) => c.category === err.category) ??
           escalationCategories[0];
@@ -672,7 +678,11 @@ export default function QuickLogModal({
         const candidateIds = milestoneCandidateIds(milestones, comparisonMonthsOf(childProfile));
         void requestMilestoneProposal({ extract: api.extractLog, log: written, childProfile, language: getAiLanguage(), candidateIds })
           .then((p) => { if (proposalCurrent() && p) setMsProposal(p); })
-          .catch(() => { /* The moment is saved; an optional proposal may be unavailable. */ });
+          .catch((err) => {
+            // The moment is saved; an optional proposal may be unavailable.
+            // B-ASKJB-49: a 409 is the crisis screen on the kept words.
+            if (err instanceof EscalationRequiredError && proposalCurrent()) setReplyCrisisLogId(written.id);
+          });
       }
     } catch {
       if (isCurrent()) setSaveError(t("companion.capture.saveError"));
@@ -739,11 +749,7 @@ export default function QuickLogModal({
   };
 
   const discard = () => {
-    setNewLogTrigger("");
-    setNewLogResponse("");
-    setNewLogNotes("");
-    setReviewing(false);
-    setSource("text");
+    resetDraft();
     closeSheet();
   };
 
@@ -813,6 +819,10 @@ export default function QuickLogModal({
                 })
               : t("elev.capture.reply.kept", { name: firstName })}
           </Receipt>
+          {replyCrisisLogId === reply.log.id && (
+            <UrgentSupport testId="quicklog-reply-urgent-support" requestLang={getAiLanguage()} lead={t("elev.safety.paused")} onSafety={() => { closeSheet(); setActiveTab("safety"); }}
+              className="min-w-0 rounded-xl border border-[var(--arbor-rule-strong)] bg-[var(--arbor-paper-deep)] px-3 py-2 text-sm leading-relaxed text-[var(--arbor-ink)]" />
+          )}
           {msProposal && msProposal.logId === reply.log.id && (
             <MilestoneProposalRow
               proposal={msProposal}
@@ -827,6 +837,7 @@ export default function QuickLogModal({
           {replyCard ? (
             <div data-testid="quicklog-reply-saythis" className="space-y-1.5" lang={replyLocale} dir={replyLocale === "he" ? "rtl" : "ltr"}>
               <SayThis
+                presentation="quote"
                 text={locText(renderSayThis(replyCard, firstName), replyLocale)}
                 title={t("hm.section.sayThis")}
                 lang={replyLocale}
@@ -973,7 +984,18 @@ export default function QuickLogModal({
         )}
       {escalationMarkdown ? (
         <div role="alert" dir="auto" data-testid="quicklog-escalation" className="space-y-3 text-sm">
-          <MarkdownBlock text={escalationMarkdown} className="space-y-2 text-xs leading-relaxed" />
+          {/* B-ASKJB-49: the shared crisis card leads in the page language
+              (the lead, the danger line, the helplines in the request's
+              language, the door to Safety); the full English guidance and
+              every helpline stay one tap away in the fold. */}
+          <p data-testid="quicklog-escalation-lead" style={{ color: "var(--arbor-ink)" }}>{t("elev.safety.paused")}</p>
+          <p style={{ color: "var(--arbor-ink)" }}>{t("elev.safety.crisis.danger")}</p>
+          <UrgentSupport testId="quicklog-urgent-support" requestLang={getAiLanguage()} showInstructions={false} onSafety={() => { closeSheet(); setActiveTab("safety"); }}
+            className="flex min-w-0 flex-wrap items-center gap-x-2 text-sm text-[var(--arbor-ink)]" />
+          <details data-testid="quicklog-escalation-more" className="rounded-xl px-3" style={{ border: "1px solid var(--arbor-rule)" }}>
+            <summary className="flex min-h-11 cursor-pointer items-center text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.safety.paused.more")}</summary>
+            <MarkdownBlock text={escalationMarkdown} className="space-y-2 pb-3 text-xs leading-relaxed" />
+          </details>
           <button
             type="button"
             onClick={() => setEscalationMarkdown(null)}
@@ -1053,15 +1075,15 @@ export default function QuickLogModal({
           <input type="checkbox" checked={hardMoment} onChange={(e) => toggleHardMoment(e.target.checked)} className="h-5 w-5" style={{ accentColor: "var(--arbor-clay)" }} />
           <span className="min-w-0">
             <span className="block text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{t("ql.moment.hard")}</span>
-            <span className="block text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t("ql.moment.hardHint")}</span>
+            <span className="block text-xs" style={{ color: "var(--arbor-muted)" }}>{t("ql.moment.hardHint")}</span>
           </span>
         </label>
         {optionalDetails}
         {/* B-STATUS-01: while Arbor drafts from the parent's words, ONE quiet
             line after 400 ms (never a spinner, never a flash). */}
         <PendingLine active={drafting} testId="quicklog-drafting">{t("beh.parsing")}</PendingLine>
-        <p data-testid="quicklog-privacy" className="text-[11.5px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("companion.capture.privacy")}</p>
-        <button type="submit" disabled={saving || drafting || photoPreparing} className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 py-3 font-extrabold text-xs rounded-xl transition active:scale-[0.98]" style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)" }}>
+        <p data-testid="quicklog-privacy" className="text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("companion.capture.privacy")}</p>
+        <button type="submit" disabled={saving || drafting || photoPreparing} className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 py-3 font-extrabold text-xs rounded-xl transition active:scale-[0.98]" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>
           {!saving && !editLogId && <Icon name="bookmark_add" size={18} />}
           {saving ? t("companion.family-topic-sheet.saving") : editLogId ? t("companion.capture.saveChanges") : t("companion.capture.keep")}
         </button>
@@ -1087,7 +1109,7 @@ export default function QuickLogModal({
         <div className="space-y-1">
           <label htmlFor="quick-log-intensity" className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("ql.intensity")}</label>
           <input id="quick-log-intensity" type="range" min={1} max={5} value={newLogIntensity} aria-valuetext={t(intensityWordKey(newLogIntensity))} onChange={(e) => setNewLogIntensity(parseInt(e.target.value))} className="min-h-11 w-full" style={{ accentColor: "var(--arbor-clay)" }} />
-          <div className="flex justify-between text-[11px]" style={{ color: "var(--arbor-muted)" }} aria-hidden="true"><span>{t(INTENSITY_WORDS[0])}</span><span>{t(INTENSITY_WORDS[4])}</span></div>
+          <div className="flex justify-between text-xs" style={{ color: "var(--arbor-muted)" }} aria-hidden="true"><span>{t(INTENSITY_WORDS[0])}</span><span>{t(INTENSITY_WORDS[4])}</span></div>
         </div>
 
         <div className="space-y-1.5">
@@ -1139,7 +1161,7 @@ export default function QuickLogModal({
         {/* B-STATUS-01: the drafting spinner in the button became the ONE
             pending line — quiet, after 400 ms; the button keeps its label. */}
         <PendingLine active={drafting} testId="quicklog-drafting">{t("beh.parsing")}</PendingLine>
-        <button type="submit" disabled={drafting || saving || photoPreparing} className="min-h-11 w-full py-3 font-extrabold text-xs rounded-xl transition active:scale-[0.98] disabled:opacity-60" style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)" }}>
+        <button type="submit" disabled={drafting || saving || photoPreparing} className="min-h-11 w-full py-3 font-extrabold text-xs rounded-xl transition active:scale-[0.98] disabled:opacity-60" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>
           {t("ql.save")}
         </button>
       </form>}

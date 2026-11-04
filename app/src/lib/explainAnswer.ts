@@ -13,8 +13,10 @@
  * the context layer can hold the shape without importing a component.
  */
 
-/** The two fields POST /api/explain returns. */
-export type ExplainAnswer = { explanation: string; tryToday: string };
+/** The two fields POST /api/explain returns. B-ASKJB-49: `escalation` marks
+ *  the slot of a request the route's crisis screen answered 409; it holds no
+ *  words and the surface renders the crisis card (UrgentSupport) instead. */
+export type ExplainAnswer = { explanation: string; tryToday: string; escalation?: true };
 
 /** True when the route returned nothing usable — never render this as guidance. */
 export const isEmptyExplainAnswer = (answer: ExplainAnswer | null | undefined): boolean =>

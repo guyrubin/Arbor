@@ -12,6 +12,8 @@ import FamilyOfferLines from "../overview/FamilyOfferLines";
 import ArborNoticedCard from "../sections/ArborNoticedCard";
 import { BrandChip } from "../ui/BrandChip";
 import Icon from "../ui/Icon";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import type { LangObservation } from "../../growth/vocabAgg";
 
 /**
  * v4 (blueprint decision 5: "More for today" dissolves) — the lines the old
@@ -42,6 +44,8 @@ export function NowWhatChangedLines({ previousVisitAt, isReturning, rhythmDaysNe
 }) {
   const { childProfile, behaviorLogs, playLogs, milestones, actionLoop, approvedMemoryItems, checkedMilestones, setActiveTab, requestJournalFocus } = useArbor();
   const dayZero = useDayZero(isReturning);
+  // B-GROWTH-15: the words the parent wrote down — the words line counts them by language.
+  const langObs = useChildCollection<LangObservation>(childProfile.id, "langObs");
   const firstsState = useMemo<FirstsState>(() => {
     try {
       const raw = window.localStorage.getItem(firstsStorageKey(childProfile.id));
@@ -62,7 +66,10 @@ export function NowWhatChangedLines({ previousVisitAt, isReturning, rhythmDaysNe
     firstsCounts: { milestoneCount: checkedMilestones },
     // the watch signal is Notice today's own row (never twice)
     includeNoticed: false,
-  }), [isReturning, dayZero, previousVisitAt, behaviorLogs, playLogs, milestones, actionLoop, approvedFactsSince, firstsState, checkedMilestones]);
+    langObs: langObs.items,
+    // B-GROWTH-15 r2: three lines here; the rest is counted into the "+N more" door.
+    maxLines: 3,
+  }), [isReturning, dayZero, previousVisitAt, behaviorLogs, playLogs, milestones, actionLoop, approvedFactsSince, firstsState, checkedMilestones, langObs.items]);
   const weeklyRecap = useWeeklyRecap();
   // The door's own gate, unchanged: a returning parent, past day zero, with something new.
   if (dayZero || !isReturning || changed.lines.length === 0) return null;
@@ -72,7 +79,7 @@ export function NowWhatChangedLines({ previousVisitAt, isReturning, rhythmDaysNe
     requestJournalFocus(line.focusId);
     setActiveTab("journal");
   };
-  return <WhatChanged variant="lines" lines={changed.lines.slice(0, 3)} hiddenCount={0} recap={weeklyRecap} rhythmDaysNeeded={rhythmDaysNeeded} onLineTap={onLineTap} onMore={() => setActiveTab("journal")} />;
+  return <WhatChanged variant="lines" lines={changed.lines.slice(0, 3)} hiddenCount={changed.hiddenCount} recap={weeklyRecap} rhythmDaysNeeded={rhythmDaysNeeded} onLineTap={onLineTap} onMore={() => setActiveTab("journal")} />;
 }
 
 /** The say-back question and the watch signal: Notice today's last rows. */

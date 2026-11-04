@@ -34,7 +34,14 @@ describe("kid type tokens", () => {
     }
   });
   it("the loaded weights: Nunito/Heebo <= 800, Fraunces/Frank Ruhl <= 700 — the kid classes never ask for more", () => {
-    expect(css.slice(0, 400)).toMatch(/Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800/);
+    // B-SHELL-24: the faces are self-hosted — index.css imports src/textFonts.css first, and the
+    // Nunito weights loaded are the faces it declares (was the Google URL's `Nunito:ital,wght@0,400…0,800`).
+    expect(css.slice(0, 400)).toMatch(/@import "\.\/textFonts\.css";/);
+    const faces = read("..", "..", "textFonts.css");
+    const nunitoLatin = [...faces.matchAll(/\/\* latin \*\/\n@font-face \{([^}]*)\}/g)].map((m) => m[1])
+      .filter((b) => b.includes("font-family: 'Nunito';") && b.includes("font-style: normal;"))
+      .map((b) => Number(/font-weight: (\d+);/.exec(b)?.[1]));
+    for (const weight of [400, 500, 600, 700, 800]) expect(nunitoLatin, `Nunito ${weight}`).toContain(weight);
     const kidType = css.slice(css.indexOf("── D-03 · Kid type"), css.indexOf("── D-02 · The toy"));
     expect(kidType).not.toMatch(/font-weight:\s*900|font:\s*900/);
     expect(kidType).toContain(".arbor-play .kid-type-book  { font: 600 var(--kid-t-book)/var(--kid-book-lh) var(--font-display); }");

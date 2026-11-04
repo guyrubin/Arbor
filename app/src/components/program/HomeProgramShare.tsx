@@ -3,6 +3,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { HOME_PROGRAM_SCOPE_ID, HOME_PROGRAM_SCOPE_SERVER_READY, grantsHomeProgram } from "../../lib/shareScopes";
 import { activeHomeEnrolments, type HomeProgramEnrolment } from "../../content/programs/homeProgram";
+import { HOME_PROGRAM_SECTION_ID, itemText, type PacketItem } from "../../consult/packet";
 
 /**
  * B-PROG-09 (read link, client) — the professional's read-only link to the
@@ -18,13 +19,13 @@ import { activeHomeEnrolments, type HomeProgramEnrolment } from "../../content/p
  *    grant (`view.scopes`, grantScopes → fail-closed normalizeScopes) carry
  *    the scope.
  *
- * GATE (never a dead or an open door): the scope is NOT in SHARE_SCOPE_IDS yet,
- * so today's server drops it (normalizeScopes fails closed → a grant with no
- * recognised scope → 403 on the shared view) and never returns it in
- * `view.scopes`, so the page cannot render. The grant card is OFF until
- * `HOME_PROGRAM_SCOPE_SERVER_READY` flips with the server residue (REJECTIONS
- * P6-PRACTICE 8 Oct, "B-PROG-09 — the read link's server side"); after that the
- * device flag below opens it for the pilot. No professional account, no model call.
+ * SERVER (28 Oct, the residue of REJECTIONS P6-PRACTICE 8 Oct): the scope is
+ * in SHARE_SCOPE_IDS; server/sharedPacket loads `programs` + `familyGoals`
+ * ONLY for a grant carrying it, and consult/packet buildSharedScopePacket makes
+ * it EXCLUSIVE (the home program's section and nothing else). A request for
+ * any other scope on the link answers 403; revoke ends it at once (the shared
+ * view re-checks the grant on every open). The grant card stays behind the
+ * pilot device flag below. No professional account, no model call.
  */
 
 export const HOME_PROGRAM_LINK_FLAG_KEY = "arbor.flags.homeProgramLink";
@@ -55,25 +56,31 @@ export function sharedViewMode(view: { scopes: readonly string[] }): "home-progr
   return grantsHomeProgram(view.scopes) ? "home-program" : "packet";
 }
 
-/** The ONE section the home-program page renders (consult/packet buildIntakePacket). */
-export const HOME_PROGRAM_SECTION_ID = "intake-home-program";
+/** The ONE section the home-program page renders (consult/packet homeProgramPacketItems). */
+export { HOME_PROGRAM_SECTION_ID };
 
-interface SharedSection { id: string; title?: string; items: ReadonlyArray<{ id: string; text: string }> }
+interface SharedSection { id: string; title?: string; items: ReadonlyArray<PacketItem> }
 
 /** The read-only adherence page: the home program's section ONLY. */
 export function HomeProgramAdherenceView({ view }: { view: { scopes: readonly string[]; sections: readonly SharedSection[] } }) {
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   if (sharedViewMode(view) !== "home-program") return null;
   const section = view.sections.find((s) => s.id === HOME_PROGRAM_SECTION_ID);
+  // Round 2 (critic P2): each line reads in the READER's direction. dir="auto"
+  // took it from the first strong letter, so a Hebrew goal line that opens on
+  // the family's own (Latin) words turned left-to-right and scrambled.
+  const dir = uiLang === "he" ? "rtl" : "ltr";
   return (
-    <section data-testid="home-program-view" className="flex flex-col gap-2">
+    <section data-testid="home-program-view" className="flex flex-col gap-2" dir={dir}>
       <h3 className="t-base font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.homeProgram.pro.line")}</h3>
       <p className="t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.homeProgram.view.readOnly")}</p>
       {section && section.items.length ? (
         <ul>
           {section.items.map((it) => (
             <li key={it.id} data-testid="home-program-view-line" className="border-t py-2 first:border-t-0 t-sm leading-relaxed" style={{ borderColor: "var(--arbor-rule)", color: "var(--arbor-ink)" }}>
-              <bdi dir="auto">{it.text}</bdi>
+              {/* The server builds the lines in English with their keys; the
+                  professional reads them in their own language (EN + HE). */}
+              <bdi dir={dir}>{itemText(it, uiLang === "he" ? "he" : "en")}</bdi>
             </li>
           ))}
         </ul>

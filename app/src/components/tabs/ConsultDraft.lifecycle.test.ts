@@ -18,7 +18,7 @@ const env = {
   useState: (initial: unknown) => { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], (value: unknown) => { slots[i] = value; }]; },
   useMemo: (calculate: () => unknown) => calculate(),
   useAuth: () => ({ user: null }), useArbor: () => ({ childProfile: { id: child, name: "Synthetic" }, activeTab: "consult", setActiveTab: vi.fn() }),
-  useLanguage: () => ({ uiLang: "en", t: (key: string) => key }), useToast: () => ({ toast: vi.fn() }),
+  useLanguage: () => ({ uiLang: "en", t: (key: string) => key }), useToast: () => ({ toast: vi.fn() }), useReceiptNote: () => ({ note: null, show: vi.fn(), clear: vi.fn() }), ReceiptNoteLine: () => null,
   useChildCollection: (_child: string, name: string) => ({ items: name === "appointments" ? rows : [], ...status }),
   visitAwaitingOutcome: () => null, isIntakeProfession: () => false, consultHeading: () => "visit", activeHomeEnrolments: () => [], guidedTierOn: () => false,
   appointmentRoleLabel: () => "Stored profession", fmtDay: () => "date", lowerFor: (_lang: string, value: string) => value,

@@ -36,7 +36,7 @@ describe("bookAskAfter", () => {
       expect(heLine.question, s.id).not.toMatch(/[A-Za-z]/);
     }
   });
-  it("HE parent copy: no niqqud in the title or the question; the six shelf questions are plural-address and short", () => {
+  it("HE parent copy: no niqqud in the title or the question; the six shelf questions are singular, one per story, and short", () => {
     const niqqud = /[\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7]/;
     expect(niqqud.test(book.title.he)).toBe(true); // the kid book's title carries niqqud…
     const he = bookAskAfter(book.id, "he", "girl", "Noa")!;
@@ -44,14 +44,30 @@ describe("bookAskAfter", () => {
     expect(niqqud.test(he.question)).toBe(false);
     expect(Object.keys(SHELF_ASK_AFTER_HE).sort()).toEqual(KID_SHELF_STORIES.map((x) => x.id).sort());
     for (const [id, q] of Object.entries(SHELF_ASK_AFTER_HE)) {
-      expect(niqqud.test(q), id).toBe(false);
-      expect(q.endsWith("?"), id).toBe(true);
-      expect(q.length, id).toBeLessThanOrEqual(60);
-      // no singular gendered address to the child (אתה / שלך / לך — "את" is also the object marker)
-      expect(q, id).not.toMatch(/(^|\s)(אתה|שלך|לך)(\s|\?|,|$)/);
-      expect(q, id).toMatch(/תם|כם/); // plural address
+      for (const line of [q.m, q.f]) {
+        expect(niqqud.test(line), id).toBe(false);
+        expect(line.endsWith("?"), id).toBe(true);
+        expect(line.length, id).toBeLessThanOrEqual(60);
+        // wave-3 carry-over: ONE child, singular second person — never the plural address
+        expect(line, id).not.toMatch(/(תם|תן|כם|כן)(\s|\?|,|$)/);
+        expect(line, id).toMatch(/(ת|לך)(\s|\?|,|$)/);
+        // one question per story (Moses's two became one)
+        expect(line.match(/\?/g), id).toHaveLength(1);
+      }
+      // one spelling for a boy and a girl, except David's קטן / קטנה
+      if (id === "david-and-goliath") {
+        expect(q.m).toContain("קטן ");
+        expect(q.f).toContain("קטנה ");
+        expect(q.m.replace("קטן ", "קטנה ")).toBe(q.f);
+      } else expect(q.f, id).toBe(q.m);
     }
     expect(withoutNiqqud("חָמֵשׁ אֲבָנִים חֲלָקוֹת")).toBe("חמש אבנים חלקות");
+  });
+  it("the shelf question follows the child's gender only where Hebrew spells it differently (David)", () => {
+    expect(bookAskAfter("david-and-goliath", "he", "boy", "Ari")!.question).toBe("מתי הרגשת קטן היום, כמו דוד?");
+    expect(bookAskAfter("david-and-goliath", "he", "girl", "Noa")!.question).toBe("מתי הרגשת קטנה היום, כמו דוד?");
+    expect(bookAskAfter("david-and-goliath", "he", undefined, "Ari")!.question).toBe("מתי הרגשת קטן היום, כמו דוד?");
+    expect(bookAskAfter("moses-and-pharaoh", "he", "girl", "Noa")!.question).toBe(bookAskAfter("moses-and-pharaoh", "he", "boy", "Ari")!.question);
   });
   it("an unknown id names nothing", () => {
     expect(bookAskAfter("not-a-book", "en", undefined, "Ari")).toBeNull();

@@ -101,10 +101,13 @@ describe("B-ASKJB-25 — /generate-plan answers in the family's language", () =>
     const plan = await res.json();
     expect(seen.plan).toContain(jsonLanguageDirective("he"));
     expect(seen.planVersion).toBe(PROMPT_VERSIONS.generate_plan.version);
-    for (const text of [plan.title, plan.issue, ...plan.phases.map((p: { name: string }) => p.name), ...plan.successIndicators]) {
+    for (const text of [plan.title, plan.issue, ...plan.phases.map((p: { name: string }) => p.name)]) {
       expect(text).toMatch(HEBREW);
       expect(text).not.toMatch(LATIN_WORD);
     }
+    // B-ASKJB-35 (route half): the signs-it's-working list never reaches the
+    // parent, so there is no language to check in it — it is empty.
+    expect(plan.successIndicators).toEqual([]);
   });
 
   it("an EN request carries no directive", async () => {

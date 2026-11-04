@@ -3,8 +3,8 @@
 
    THE DEFECT THIS CLOSES
    ──────────────────────
-   "Activated families" is the 30/90/180-day headline in bd/ARBOR-GTM-PLAN.md
-   §2.1 and nothing in the tree computed it. lib/attributionFunnel.ts stopped at
+   "Activated families" is the 30/90/180-day headline in the GTM plan §2.1
+   (private record) and nothing in the tree computed it. lib/attributionFunnel.ts stopped at
    install → first_plan → paid; `onboardingCompletedAt` was written at the end
    of setup and read by four lifecycle surfaces; `actionLoops` was a registered
    child sub-collection. Both halves of an activation definition existed and had

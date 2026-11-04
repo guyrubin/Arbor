@@ -15,7 +15,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../server/logger.js", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() }, requestIdOf: () => "test" }));
 
-import { apiRateLimit } from "../../server/apiRateLimits";
+import { API_READS_PER_IP_PER_MIN, apiRateLimit } from "../../server/apiRateLimits";
 import { createBookAssetsRouter } from "../../server/bookAssets";
 import { createBookSheetRouter, LocalBookAssetsDocStore } from "../../server/bookSheet";
 import { LocalFsBookAssetBucket } from "../../server/localBookAssetBucket";
@@ -56,7 +56,7 @@ describe("K2 acceptance: a book's first open never meets a 429, and every page h
     const open: RequestHandler = (_req, _res, next) => next();
     const app = express();
     app.use(express.json());
-    app.use("/api", apiRateLimit()); // the real per-IP limit (30 a minute)
+    app.use("/api", apiRateLimit()); // the real per-IP limits (B-INF-16: reads 600 a minute)
     app.get("/api/ping", (_req, res) => { res.json({ ok: true }); });
     app.use("/api", createBookAssetsRouter({ getBucket: async () => bucket, requireOwnership: open, allowLocal: true }));
     app.use("/api", createBookSheetRouter({ getBucket: async () => bucket, requireOwnership: open, heroSource: { strictHash: false, async load() { return null; } }, entitlements: { async getPlan() { return null; }, async getRecord() { return null; } }, docs: new LocalBookAssetsDocStore(), local: true }));
@@ -86,8 +86,8 @@ describe("K2 acceptance: a book's first open never meets a 429, and every page h
 
   it("all private files in one burst, with the app's other calls in the same minute: no 429, every page's hero resolves", async () => {
     expect(doc.files).toHaveLength(20);
-    // the rest of the app is busy on the same IP (the per-IP budget is spent)
-    const pings = await Promise.all(Array.from({ length: 35 }, () => realFetch(`${base}/api/ping`).then((r) => r.status)));
+    // the rest of the app is busy on the same IP (the per-IP read ceiling is spent)
+    const pings = await Promise.all(Array.from({ length: API_READS_PER_IP_PER_MIN + 5 }, () => realFetch(`${base}/api/ping`).then((r) => r.status)));
     expect(pings).toContain(429);
     // the burst: every file at once, then the reader's own resolve
     const burst = await Promise.all(doc.files.map((rel) => fetchBookAssetResult(CHILD, doc, rel, 1)));

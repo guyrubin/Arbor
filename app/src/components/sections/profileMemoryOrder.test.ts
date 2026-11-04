@@ -93,7 +93,7 @@ describe("Profile · one door per room", () => {
   it("R9 — the memory heading is rendered exactly once on the page", () => {
     // v4 re-pin: the one heading is the card's "What Arbor remembers"; the
     // older band title and chapter 6 are gone, so the room is named once.
-    expect(page.match(/t\("companion\.about\.memory\.title"\)/g) ?? []).toHaveLength(1);
+    expect(page.match(/t\("companion\.about\.memory\.title"/g) ?? []).toHaveLength(1);
     expect(page.match(/t\("elev\.profile\.remembers\.title"\)/g) ?? []).toHaveLength(0);
     expect(page.match(/t\("cp\.ch\.memory"\)/g) ?? []).toHaveLength(0);
     // ONE door to #/memory; the old Keep / Not quite pair is not back.

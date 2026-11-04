@@ -40,6 +40,11 @@ plus `REQUIRE_AUTH=true`. On Cloud Run the Admin SDK verifies ID tokens using th
 service account's Application Default Credentials, so no service-account key
 secrets are required.
 
+With `ARBOR_ENV=prod` the API also fails closed without `REQUIRE_AUTH`: every
+`/api` route except the pre-account `/waitlist` answers 401 to a caller with no
+Firebase ID token, so a release that dropped the variable cannot open the API
+(B-RESID-05; `src/server/anonymousApi.guard.test.ts` calls every route).
+
 Production also enforces monetization by default: unknown users resolve to Free,
 and Plus is granted only through `entitlements/{uid}` in Firestore or the
 `ARBOR_PLUS_UIDS` / `ARBOR_PLUS_EMAILS` allowlists. The prod Cloud Build config

@@ -2,7 +2,7 @@
 
 ## Scope and source
 
-Canonical requirement: ROS `PAI/projects/arbor/execution/2026-10-01--one-backlog/lane-ASKJB.md`, lines 541–557; Parent manifest row B-ASKJB-23. Source baseline: `41d532c95501382cf306f442bc7f8c092fd3c4f8`.
+Canonical requirement: the private ROS one-backlog lane file `lane-ASKJB.md`, lines 541–557; Parent manifest row B-ASKJB-23. Source baseline: `41d532c95501382cf306f442bc7f8c092fd3c4f8`.
 
 This removes the duplicate Behaviors form and record grid. It preserves the current action-first capture heading and desktop guide rail, which supersede the older backlog's HubHero wording. There are exactly three modules: capture, guides, patterns.
 

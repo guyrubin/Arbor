@@ -513,7 +513,7 @@ import {
   noteTypedKeepCommitted,
   notePlanCreatedFromAnswer,
   resetPlanFromAnswer,
-} from "./captureProposals";
+} from "./captureProposals";
 import { todayLiveSource } from "../testTodaySource";
 
 /** The shape ArborContext.commitConversationProposal returns, minimally. */

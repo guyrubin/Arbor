@@ -8,6 +8,7 @@ import { exportPrivateBookAssets } from "./bookAssetExport";
 import { withChildExportSession } from "./childExportSession";
 import type { PortableBookAssets } from "./library/bookAssetExportContract";
 import { clearChildLocalState } from "./childLocalState";
+import { familyWayExport } from "./familyWay";
 import { childSinkIds, subcollectionSinkId, type SinkErasure } from "./childDataSinks";
 import { ChildProfile, DeletionReceipt } from "../types";
 
@@ -130,6 +131,8 @@ export async function exportChildData(uid: string | undefined, child: ChildProfi
       collections: Record<string, unknown[]>;
       serverData?: { memoryEvents: unknown[]; shares: unknown[]; consents?: unknown[]; consultRequests?: unknown[] };
       privateBookAssets?: PortableBookAssets;
+      /** B-PLAY-21: the family-level charter and tone (lib/familyWay.ts), never per child. */
+      familyWay?: { charter: string[] | null; lens: string | null };
       exportReceipt: { status: "complete" | "incomplete"; scope: string; serverData: "included" | "unavailable"; collections: Record<string, "included" | "unavailable"> };
     } = {
       exportedAt: new Date().toISOString(),
@@ -175,7 +178,23 @@ export async function exportChildData(uid: string | undefined, child: ChildProfi
         }
       }
     }
+    // B-BOOK-20: A stale or corrupt local/server Studio collection can hold
+    // another child's/owner's row under this child's key. Export only rows
+    // actually scoped to the selected owner and child; preserve malformed
+    // in-scope records verbatim for data access, but mark omissions incomplete.
+    if (out.exportReceipt.collections.studioCreations === "included") {
+      const rows = out.collections.studioCreations ?? [];
+      const expectedOwner = uid || "local";
+      const scoped = rows.filter((value) => {
+        if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+        const row = value as { ownerId?: unknown; childId?: unknown };
+        return row.ownerId === expectedOwner && row.childId === child.id;
+      });
+      if (scoped.length !== rows.length) out.exportReceipt.collections.studioCreations = "unavailable";
+      out.collections.studioCreations = scoped;
+    }
     session.assertCurrent();
+    out.familyWay = familyWayExport();
     out.privateBookAssets = await session.read(() => exportPrivateBookAssets(uid, child.id, out.collections.bookAssets, {
       signal: session.signal, metadataComplete: out.exportReceipt.collections.bookAssets === "included",
     }));

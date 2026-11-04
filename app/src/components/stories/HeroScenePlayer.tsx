@@ -13,6 +13,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { isolate } from "../../lib/i18n";
 import { isolateNameIn, langDir } from "../../lib/bidi";
 import { downloadHeroAvatarCanvas } from "../../lib/heroAvatarCanvas";
+import { releaseChildLikeness } from "../../lib/likenessCeremony";
 import { isKidModeActive } from "../../lib/kidModeGate";
 import type { HeroSceneRender } from "../../types";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
@@ -312,13 +313,16 @@ export function HeroScenePlayer({
         {/* KID-26: file downloads are a parent affordance — never reachable from inside Kid Mode. */}
         {sceneArt && !isKidModeActive() && (
           <button
-            onClick={() =>
-              void downloadHeroAvatarCanvas(
-                "story",
-                { imageUrl: sceneArt, name: heroName, title: scene.title },
-                `${(heroName || "hero").toLowerCase()}-comic-page-${beatNumber}.png`,
-              )
-            } className="touch-target flex items-center gap-1 transition" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.saveComicPage")}>
+            onClick={() => {
+              void releaseChildLikeness({ src: sceneArt, name: heroName }).then((allowed) => {
+                if (!allowed) return;
+                void downloadHeroAvatarCanvas(
+                  "story",
+                  { imageUrl: sceneArt, name: heroName, title: scene.title },
+                  `${(heroName || "hero").toLowerCase()}-comic-page-${beatNumber}.png`,
+                );
+              });
+            }} className="touch-target flex items-center gap-1 transition" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.saveComicPage")}>
             <Icon name="download" size={14} /> {t("learn.save")}
           </button>
         )}

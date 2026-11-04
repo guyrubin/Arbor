@@ -135,11 +135,15 @@ describe("erase: the sweep counts the files, and both erase paths run it", () =>
 
   it("is wired into /privacy/erase (counted into storageFiles), the account deletion, and CHILD_SUBCOLLECTIONS", () => {
     const api = src("routes/api.ts");
+    // B-GA-09 round 7: both erase paths run the one per-child erase (server/childErase).
+    const shared = src("server/childErase.ts");
+    expect(shared).toContain("eraseChildBookAssets(");
+    expect(shared).toMatch(/storageFiles = photoFiles\.length \+ bookFiles/);
     const erase = api.slice(api.indexOf('router.post("/privacy/erase"'), api.indexOf('router.post("/privacy/erase"') + 4000);
-    expect(erase).toContain("eraseChildBookAssets(");
-    expect(erase).toMatch(/storageFiles = photoFiles\.length \+ bookFiles/);
+    expect(erase).toContain("await eraseChildServerData(childEraseStores, uid, childId);");
+    expect(api).toContain("eraseChild: async (ownerUid, childId) => childEraseTotal(await eraseChildServerData(childEraseStores, ownerUid, childId, { dropRecord: true }))");
     expect(api).toContain("createBookAssetsRouter(");
-    expect(src("server/accountDeletion.ts")).toContain("eraseChildBookAssets(");
+    expect(src("server/accountDeletion.ts")).toContain("deleted += await stores.eraseChild(uid, childId);");
     expect(src("lib/childData.ts")).toMatch(/"bookAssets",/);
   });
 });

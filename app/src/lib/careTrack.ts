@@ -411,6 +411,50 @@ export function followUpsFor(all: AppointmentFollowUp[], apptId: string): Appoin
     .sort((a, b) => (Date.parse(a.createdAt) || 0) - (Date.parse(b.createdAt) || 0));
 }
 
+/**
+ * B-CAREPRO-37 — every after-visit note as a dated VISIT RECORD: the parent's
+ * own words, the profession the visit was with, and the day of the visit (its
+ * real date when the booking has one, else the day the note was written).
+ * One record per note, newest first. A note whose booking was removed is
+ * left out — the visit went with its booking. Read-only: nothing here is
+ * interpreted, scored or turned into Arbor's own sentence (a professional's
+ * words reach the parent only as the parent wrote them).
+ */
+export interface VisitRecord {
+  id: string;
+  apptId: string;
+  /** ISO time of the visit (or of the note when the booking has no date). */
+  at: string;
+  profession?: AppointmentProfession;
+  /** The booking's stored role (legacy rows), for the label fallback. */
+  role: string;
+  /** The parent's words, verbatim (trimmed). */
+  note: string;
+}
+
+export function visitRecords(appointments: readonly Appointment[], followUps: readonly AppointmentFollowUp[]): VisitRecord[] {
+  const byId = new Map(appointments.map((a) => [a.id, a]));
+  const out: VisitRecord[] = [];
+  for (const f of followUps) {
+    const appt = byId.get(f.apptId);
+    const note = typeof f.note === "string" ? f.note.trim() : "";
+    if (!appt || !note) continue;
+    const start = appointmentStartMs(appt);
+    const written = Date.parse(f.createdAt);
+    const at = start != null ? new Date(start).toISOString() : Number.isFinite(written) ? new Date(written).toISOString() : null;
+    if (!at) continue;
+    out.push({
+      id: f.id,
+      apptId: appt.id,
+      at,
+      ...(appt.profession && isAppointmentProfession(appt.profession) ? { profession: appt.profession } : {}),
+      role: appt.role ?? "",
+      note,
+    });
+  }
+  return out.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : a.id < b.id ? 1 : -1));
+}
+
 /** Mint a follow-up record. Empty/whitespace notes are refused (null) so a
  *  blank record can never be written into the child's data. */
 export function makeFollowUp(apptId: string, note: string, nowMs: number): AppointmentFollowUp | null {

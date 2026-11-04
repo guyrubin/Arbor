@@ -5,6 +5,7 @@ import {
   BehaviorLog,
   Milestone,
   ActionPlan,
+  RoutineOfflineTick,
   BehaviorAnalysis,
   MemoryReviewItem,
   BehaviorContext,
@@ -28,18 +29,21 @@ import {
   demoSeedFor,
 } from "../initialData";
 import { useProfile } from "./ProfileContext";
-import { api, ApiError, authHeaders, getAiLanguage, PaywallError, streamCouncil } from "../lib/api";
+import { useFamilyWaySync } from "../hooks/useFamilyWaySync";
+import { chooseFamilyLens } from "../lib/familyWay";
+import { api, ApiError, authHeaders, EscalationRequiredError, getAiLanguage, PaywallError, streamCouncil } from "../lib/api";
+import { isArborPaused } from "../lib/pauseArbor";
 import { useChildCollection, type ChildWriteOptions } from "../hooks/useChildCollection";
 import { useFamilyTopics } from "../hooks/useFamilyTopics";
 import type { ExplainAnswer } from "../lib/explainAnswer";
 import { track } from "../lib/analytics";
 import { isKidModeActive } from "../lib/kidModeGate";
 import { runInstrumented } from "../hooks/useAsyncAction";
-import { trackFirstPlan, trackInviteActivated, trackPlayCompleted } from "../lib/loopEvents";
+import { trackFirstPlan, trackPlayCompleted } from "../lib/loopEvents";
 import { trackCaptureStarted, trackCaptureSaved, trackPlanGenerated } from "../lib/kpiEvents";
 import { todayOutcomeProps, type TodayOutcomeVia } from "../lib/loopEvents";
 import { notePlanCreatedFromAnswer } from "../lib/captureProposals";
-import { consumeReferralCode } from "../lib/attribution";
+import { activateCapturedReferral } from "../lib/referralActivation";
 import { refreshEntitlement } from "../hooks/useEntitlement";
 import { takeCoachSeed } from "../lib/onboardingJourney";
 import { matchLearnCards, type SavedLearnItem } from "../learn/learnLibrary";
@@ -54,7 +58,7 @@ import { hydrateMilestones } from "./milestoneHydration";
 import { completeObservation, isObservationAction, isUrgentOnboardingAction, activeActionFor, sortActionLoop, todayActionId, type ChildResponse, type HeldAnswer, type PlanStepRef } from "../actionLoop/model";
 import { planStepStatusAfter } from "../lib/plans";
 import { withFocusGoal } from "../practice/goalBuilder";
-import { routineIdOfPlan } from "../lib/routineTemplates";
+import { foldRoutineOfflineTicks, routineIdOfPlan } from "../lib/routineTemplates";
 import { answeredToday, fromRecordRowId, fromRecordEntry, type FromRecordAnswer, type FromRecordOpener } from "../lib/today/fromRecord";
 import { recentTypeCounts } from "../lib/planRecord";
 import { appendVoiceUser, applyVoiceDelta, settleVoiceTurn } from "../lib/voiceTranscript";
@@ -381,7 +385,9 @@ function useArborState() {
     sandboxSeed: initialMilestones,
     trackConfirmation: true,
   });
-  const plansCol = useChildCollection<ActionPlan>(childProfile.id, "actionPlans", { sandboxSeed: demoSeed.plans });
+  // B-DATA-14 (wave 4): the routine run board folds offline ticks only on a
+  // confirmed server read (plansConfirmed), as RoutinesCard does.
+  const plansCol = useChildCollection<ActionPlan>(childProfile.id, "actionPlans", { sandboxSeed: demoSeed.plans, trackConfirmation: true });
   // B-GROWTH-15: the words the parent wrote down (`langObs`) — only their
   // timestamps reach the coach, as the weekly wordsLoggedCount (never text).
   const langObsCol = useChildCollection<{ id: string; timestamp: string }>(childProfile.id, "langObs", {
@@ -635,6 +641,13 @@ function useArborState() {
     };
     void playLogCol.upsert(rec); // fire-and-forget, optimistic + local-first
     if (!alreadyDone) trackPlayCompleted(activity.domain, reason, source);
+    return { id, created: !alreadyDone };
+  };
+  /** B-STATUS-01 (critic r1): the play receipt's Undo. Removes the day's log
+   *  only when that tap created it — Undo after a repeat tap leaves the
+   *  earlier record alone. */
+  const undoPlayCompletion = (done: { id: string; created: boolean }) => {
+    if (done.created) void playLogCol.remove(done.id);
   };
 
   // Active Interactive / Selection States
@@ -703,6 +716,13 @@ function useArborState() {
   // Form states: Behavior Analysis
   const [behaviorAnalysis, setBehaviorAnalysis] = useState<BehaviorAnalysis | null>(null);
   const [isAnalyzingBehavior, setIsAnalyzingBehavior] = useState<boolean>(false);
+  // B-ASKJB-49: the server's crisis screen answered 409 to "Find a pattern" or
+  // "Create plan". The surface that asked renders the crisis card (helplines in
+  // the request's language); never the English server error as a banner.
+  // Held per child: another child's card never shows on this child's screen.
+  const [escalation, setEscalation] = useState<{ childId: string; surface: "behaviors" | "plans" } | null>(null);
+  const escalatedSurface = escalation?.childId === childProfile.id ? escalation.surface : null;
+  const setEscalatedSurface = (surface: "behaviors" | "plans" | null) => setEscalation(surface ? { childId: childProfile.id, surface } : null);
 
   const [memoryReviewState, setMemoryReviewState] = useState<{ childId: string; items: MemoryReviewItem[] }>({ childId: childProfile.id, items: [] });
   const memoryReviewItems = memoryReviewState.childId === childProfile.id ? memoryReviewState.items : [];
@@ -756,6 +776,11 @@ function useArborState() {
         language: getAiLanguage(),
       }),
     });
+    // B-ASKJB-49: the route's crisis screen answers 409 (lib/api DUX-032 contract).
+    if (res.status === 409) {
+      const body = await res.json().catch(() => null);
+      throw new EscalationRequiredError("Professional support recommended", { category: typeof body?.escalationCategory === "string" ? body.escalationCategory : undefined });
+    }
     if (!res.ok) throw new Error((await res.text().catch(() => "")) || `Request failed (${res.status})`);
     const data = await res.json();
     return {
@@ -768,6 +793,10 @@ function useArborState() {
    *  tappable. It carries no step, so no block invites the parent to act. */
   const explainFailure = (message: string): ExplainAnswer =>
     ({ explanation: renderApiConnectionError(message), tryToday: "" });
+  /** B-ASKJB-49: a 409 is not a failure: the slot holds no words and the
+   *  surface renders the crisis card (UrgentSupport) in their place. */
+  const explainOutcome = (err: unknown): ExplainAnswer =>
+    err instanceof EscalationRequiredError ? { explanation: "", tryToday: "", escalation: true } : explainFailure((err as { message?: string } | null)?.message ?? "");
 
   const handleGetInlineCoRegulationScript = async (log: BehaviorLog) => {
     setIsGeneratingInlineScript((prev) => ({ ...prev, [log.id]: true }));
@@ -780,7 +809,7 @@ function useArborState() {
     } catch (err: any) {
       setInlineCoRegulationScripts((prev) => ({
         ...prev,
-        [log.id]: explainFailure(err?.message),
+        [log.id]: explainOutcome(err),
       }));
     } finally {
       setIsGeneratingInlineScript((prev) => ({ ...prev, [log.id]: false }));
@@ -804,7 +833,7 @@ function useArborState() {
       });
       setMilestoneAnalysisOfGaps(result);
     } catch (err: any) {
-      setMilestoneAnalysisOfGaps(explainFailure(err?.message));
+      setMilestoneAnalysisOfGaps(explainOutcome(err));
     } finally {
       setIsAnalyzingMilestones(false);
     }
@@ -978,6 +1007,13 @@ function useArborState() {
   // per-answer provenance, the Ask lane's item); drop its stored flag once.
   useEffect(() => { try { localStorage.removeItem("arbor.aiRail"); } catch { /* ignore */ } }, []);
   useEffect(() => writeLS("arbor.lens", selectedLens), [selectedLens]);
+  // B-PLAY-21 (dark, arbor.flags.familyWaySync): the tone and the charter
+  // follow the account. The parent's own choice stamps the change (never a
+  // load), so the newest device wins; a newer account copy sets the tone here.
+  useFamilyWaySync(setSelectedLens);
+  // The tone is written to the device store before the change event fires
+  // (chooseFamilyLens), so the sync uploads the NEW tone with the new stamp.
+  const chooseLens = React.useCallback((lens: string) => { setSelectedLens(lens); chooseFamilyLens(lens); }, []);
 
   // Developmental COUNTS (never a score): windowed to the child's current CDC
   // band + one earlier (Wave T, GP-08) — the same window Growth, Milestones
@@ -1240,6 +1276,7 @@ function useArborState() {
           ...(activeFamilyTopic ? { topicId: activeFamilyTopic.id } : {}),
           scholarLens: selectedLens || "Integrated Balanced",
           language: getAiLanguage(),
+          ...(isArborPaused() ? { paused: true } : {}),
           // LL-A9 — Learn Library grounding: attach the catalogue read that
           // matches this question (EN fields; the model localizes per the
           // language directive). Server sanitizes + caps; absent when no match.
@@ -1674,6 +1711,7 @@ function useArborState() {
   const handleAnalyzeBehaviors = async () => {
     setIsAnalyzingBehavior(true);
     setApiError(null);
+    setEscalatedSurface(null);
     try {
       const data = await api.analyzeBehavior({ logs: behaviorLogs, childProfile });
       setBehaviorAnalysis(data);
@@ -1692,8 +1730,13 @@ function useArborState() {
       };
       void insightsCol.upsert(record);
     } catch (err: any) {
-      console.error(err);
-      setApiError(err.message || "Failed to generate AI behavior evaluation.");
+      // B-ASKJB-49 r2: a 409 is the crisis screen answering, not an application
+      // error: it renders the crisis card and logs nothing.
+      if (err instanceof EscalationRequiredError) setEscalatedSurface("behaviors");
+      else {
+        console.error(err);
+        setApiError(err.message || "Failed to generate AI behavior evaluation.");
+      }
     } finally {
       setIsAnalyzingBehavior(false);
     }
@@ -1703,6 +1746,7 @@ function useArborState() {
   const handleGenerateActionPlan = async () => {
     setIsPlanGenerating(true);
     setApiError(null);
+    setEscalatedSurface(null);
     try {
       // M4: wrap with start/success/error analytics ("plan_create_*") without
       // disturbing the context-wide loading/error/paywall handling below.
@@ -1733,9 +1777,13 @@ function useArborState() {
       void maybeActivateReferral(); // mk-p0-2: a referred parent's activation closes the loop
       toast(t("ctx.toast.planWoven", { title: planData.title }), "success");
     } catch (err: any) {
-      console.error(err);
-      if (err instanceof PaywallError) openPaywall(err.feature || "advancedPlans", err.plan);
-      else setApiError(err.message || "Failed to generate developmental Action Plan.");
+      // B-ASKJB-49 r2: a 409 renders the crisis card and logs nothing.
+      if (err instanceof EscalationRequiredError) setEscalatedSurface("plans");
+      else {
+        console.error(err);
+        if (err instanceof PaywallError) openPaywall(err.feature || "advancedPlans", err.plan);
+        else setApiError(err.message || "Failed to generate developmental Action Plan.");
+      }
     } finally {
       setIsPlanGenerating(false);
     }
@@ -1792,7 +1840,15 @@ function useArborState() {
   // FEAT-07: the Together sheet starts a routine plan and runs it day by day.
   // Both wait for the server, so a receipt only ever follows a persisted write.
   const startRoutinePlan = (plan: ActionPlan) => plansCol.upsert(withFocusGoal(plan, childProfile.activeGoals), { awaitServer: true });
-  const setRoutineRun = (plan: ActionPlan) => plansCol.upsert(plan, { awaitServer: true });
+  // B-DATA-14: with `offline`, the tick answers in bounded time: kept on this
+  // phone (onQueued) when offline or unacknowledged, then onSynced / onRejected.
+  const setRoutineRun = (plan: ActionPlan, offline?: ChildWriteOptions["offline"]) => plansCol.upsert(plan, { awaitServer: true, ...(offline ? { offline } : {}) });
+  // B-DATA-14 (wave 4): offline, a routine step writes only itself (a merge write
+  // of routineOfflineTicks[day][idx]); the board folds it in on reconnect. The
+  // sandbox has no second device, so there it is the step laid straight in.
+  const setRoutineRunStep = (plan: ActionPlan, day: string, idx: number, tick: RoutineOfflineTick | null, offline?: ChildWriteOptions["offline"]) => plansCol.remote
+    ? plansCol.upsert({ id: plan.id, routineOfflineTicks: { [day]: { [String(idx)]: tick } } } as unknown as ActionPlan, { merge: true, awaitServer: true, ...(offline ? { offline } : {}) })
+    : plansCol.upsert(foldRoutineOfflineTicks({ ...plan, routineOfflineTicks: { [day]: { [String(idx)]: tick } } }).plan);
   const deleteMilestone = (id: string) => void milestonesCol.remove(id);
 
   // Toggle milestone checking
@@ -1961,10 +2017,12 @@ function useArborState() {
     milestoneHistory: { items: milestones, sourceItems: milestonesCol.items },
     actionPlans,
     plansLoaded: plansCol.loaded,
+    plansConfirmed: plansCol.confirmed,
     // c2 — Daily Play completion moat (single source of truth)
     playLogs,
     donePlayIds,
     logPlayCompletion,
+    undoPlayCompletion,
     actionLoop,
     actionLoopConfirmed: actionLoopCol.confirmed,
     conversationChanges: conversationChangesCol.items,
@@ -1991,7 +2049,7 @@ function useArborState() {
     askHardMomentRef,
     setAskHardMomentRef,
     selectedLens,
-    setSelectedLens,
+    setSelectedLens: chooseLens,
     chatInput,
     setChatInput,
     seedCoach,
@@ -2057,10 +2115,12 @@ function useArborState() {
     startPlanFromTemplate,
     startRoutinePlan,
     setRoutineRun,
+    setRoutineRunStep,
     deleteMilestone,
     planChallengeTopic,
     setPlanChallengeTopic,
     isPlanGenerating,
+    escalatedSurface,
     behaviorAnalysis: behaviorAnalysisView,
     behaviorAnalysisRecord,
     keepBehaviorInsight,
@@ -2111,34 +2171,10 @@ function useArborState() {
   };
 }
 
-const LS_REFERRAL_ACTIVATED = "arbor.referralActivated";
-
-/**
- * mk-p0-2 referral loop (referred side). Fired alongside the family's first
- * generated plan: if a referral code was captured first-touch and we haven't
- * redeemed yet on this device, POST it once. On a real grant we announce the
- * activation event and refresh the entitlement so the Plan badge flips to Plus.
- * Best-effort and fully guarded — never blocks plan creation.
- */
+/** mk-p0-2 referral loop (referred side): lib/referralActivation; a real
+ *  activation refreshes the entitlement so the Plan badge flips to Plus. */
 async function maybeActivateReferral(): Promise<void> {
-  const code = consumeReferralCode();
-  if (!code) return;
-  try {
-    if (localStorage.getItem(LS_REFERRAL_ACTIVATED)) return;
-    localStorage.setItem(LS_REFERRAL_ACTIVATED, new Date().toISOString());
-  } catch {
-    /* storage blocked — proceed (server still dedupes per uid) */
-  }
-  try {
-    const result = await api.referralActivate(code);
-    if (result.ok && result.status === "granted") {
-      trackInviteActivated("referred");
-      void refreshEntitlement();
-    }
-  } catch {
-    // Roll back the device guard so a transient failure can retry next time.
-    try { localStorage.removeItem(LS_REFERRAL_ACTIVATED); } catch { /* ignore */ }
-  }
+  await activateCapturedReferral({ activate: api.referralActivate, onActivated: () => { void refreshEntitlement(); } });
 }
 
 type ArborContextValue = ReturnType<typeof useArborState>;

@@ -40,6 +40,7 @@ export default function ChildContextHeader({
        v3 header sits on the page's own ground) and no glass: the band never
        overlaps content. */
     <header
+      data-chrome="strip"
       className={`flex flex-row items-center justify-between gap-2 min-w-0 flex-none px-4 sm:px-5 md:px-6 pb-2 ${className}`.trim()}
       style={{ paddingBlockStart: "max(8px, env(safe-area-inset-top, 0px))" }}
     >

@@ -1,7 +1,7 @@
 # Arbor — Next-Level Enhancement Instructions
 **For:** Claude Code / LLM coding session  
 **Branch off:** `codex/arbor-v2-architecture-foundation`  
-**Repo:** `C:\Users\dguyr\ROS\.workspace\PPPPtherapy-\app`  
+**Repo:** `app`  
 **Date:** 2026-05-28
 
 ---
@@ -26,7 +26,7 @@ Arbor is a **parent development support app** for caregivers supporting children
 ## 1. Mandatory First Steps
 
 ```bash
-cd C:\Users\dguyr\ROS\.workspace\PPPPtherapy-\app
+cd app
 git checkout -b feat/arbor-next
 npm install
 ```

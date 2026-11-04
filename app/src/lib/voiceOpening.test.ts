@@ -1,0 +1,160 @@
+/**
+ * B-VOICE-02 — the opening controller: the card's words first, the
+ * microphone and the session only after them; a stop starts nothing.
+ */
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { runOpening, startDoor, type OpeningSpeaker } from "./voiceOpening";
+
+const harness = () => {
+  const order: string[] = [];
+  let handlers: { onEnd: () => void; onError: () => void } | null = null;
+  const speak: OpeningSpeaker = vi.fn((text, h) => { order.push(`speak:${text}`); handlers = h; });
+  const stopSpeaking = vi.fn(() => { order.push("stop"); });
+  const onDone = vi.fn(() => { order.push("start"); });
+  return { order, speak, stopSpeaking, onDone, end: () => handlers!.onEnd(), error: () => handlers!.onError() };
+};
+
+describe("B-VOICE-02 · the card's words before the microphone", () => {
+  it("speaks first and starts the talk only when the words have finished", () => {
+    const h = harness();
+    const run = runOpening("I'm here.", h);
+    expect(h.order).toEqual(["speak:I'm here."]);
+    expect(h.onDone).not.toHaveBeenCalled(); // nothing listens while the words play
+    expect(run.state()).toBe("speaking");
+    h.end();
+    expect(h.order).toEqual(["speak:I'm here.", "start"]);
+    expect(run.state()).toBe("done");
+    h.end(); // a late duplicate end starts nothing twice
+    expect(h.onDone).toHaveBeenCalledOnce();
+  });
+
+  it("a tap skips the words: speech stops first, then the talk starts, once", () => {
+    const h = harness();
+    const run = runOpening("Say this.", h);
+    expect(run.skip()).toBe(true);
+    expect(h.order).toEqual(["speak:Say this.", "stop", "start"]);
+    expect(run.skip()).toBe(false);
+    h.end(); // the cut utterance never re-fires the start
+    expect(h.onDone).toHaveBeenCalledOnce();
+  });
+
+  it("a stop (X, the panel hiding, a new thread) cancels: the talk never starts", () => {
+    const h = harness();
+    const run = runOpening("Words.", h);
+    run.cancel();
+    h.end();
+    h.error();
+    expect(run.skip()).toBe(false);
+    expect(h.onDone).not.toHaveBeenCalled();
+    expect(run.state()).toBe("cancelled");
+  });
+
+  it("words that cannot play do not hold the talk back (and still never overlap it)", () => {
+    const h = harness();
+    runOpening("Words.", h);
+    h.error();
+    expect(h.order).toEqual(["speak:Words.", "start"]);
+  });
+
+  it("a speaker that fails synchronously still starts after, never before, the attempt", () => {
+    const order: string[] = [];
+    runOpening("Words.", { speak: (_t, hs) => { order.push("speak"); hs.onError(); }, stopSpeaking: () => order.push("stop"), onDone: () => order.push("start") });
+    expect(order).toEqual(["speak", "start"]);
+  });
+});
+
+/** The door as CoachTab wires it, with the toggle's own outcomes faked:
+ *  "begins" starts a voice attempt; "held" is B-PROV-12's provider notice on
+ *  the ai-ops branch (it returns before begin()); "review" is an open review. */
+function door(toggleOutcome: "begins" | "held", opts: { busy?: boolean; canSpeak?: boolean } = {}) {
+  const log: string[] = [];
+  let attempt: object | null = null;
+  const deps = {
+    busy: () => opts.busy === true,
+    canSpeak: () => opts.canSpeak !== false,
+    playWords: (line: string) => { log.push(`words:${line}`); },
+    toggle: () => { log.push("toggle"); if (toggleOutcome === "begins") attempt = {}; },
+    attempt: () => attempt,
+  };
+  return { log, deps };
+}
+
+describe("B-VOICE-02 / B-PROV-12 · the door (lib/voiceOpening startDoor, as CoachTab runs it)", () => {
+  it("card words: the words start and the toggle is not called in the tap (the opening's end calls it)", () => {
+    const { log, deps } = door("begins");
+    expect(startDoor("  Same bedtime\n as every night. ", deps)).toBe(true);
+    expect(log).toEqual(["words:Same bedtime as every night."]);
+  });
+
+  it("B-PROV-12: a toggle that a provider notice holds back cannot drop the card's words", () => {
+    const { log, deps } = door("held");
+    expect(startDoor("Let's breathe together.", deps)).toBe(true);
+    expect(log).toEqual(["words:Let's breathe together."]);
+    // …and when the words end, the toggle runs and the notice is what the parent sees.
+    deps.toggle();
+    expect(log).toEqual(["words:Let's breathe together.", "toggle"]);
+  });
+
+  it("no words: the ONE toggle in the same call; true only when it began an attempt", () => {
+    const begins = door("begins");
+    expect(startDoor(undefined, begins.deps)).toBe(true);
+    expect(begins.log).toEqual(["toggle"]);
+    const held = door("held");
+    expect(startDoor(undefined, held.deps)).toBe(false);
+    expect(held.log).toEqual(["toggle"]);
+  });
+
+  it("no voice to say the words: straight to the toggle; busy: nothing at all", () => {
+    const mute = door("begins", { canSpeak: false });
+    expect(startDoor("Words", mute.deps)).toBe(true);
+    expect(mute.log).toEqual(["toggle"]);
+    const busy = door("begins", { busy: true });
+    expect(startDoor("Words", busy.deps)).toBe(false);
+    expect(busy.log).toEqual([]);
+  });
+});
+
+/* ── B-VOICE-02 round 3: a stop while the words play, against the REAL voice
+   engine (lib/voice) with an engine that reports its cancel as an async
+   "interrupted" error, as Chrome's does. Nothing may start after it. ── */
+describe("B-VOICE-02 round 3 · closing mid-words never opens the microphone", () => {
+  const engine = () => {
+    const spoken: { onend: null | (() => void); onerror: null | ((e?: unknown) => void); onstart: null | (() => void) }[] = [];
+    vi.stubGlobal("SpeechSynthesisUtterance", class { text: string; lang = ""; rate = 1; pitch = 1; voice = null; onstart = null; onend = null; onerror = null; constructor(t: string) { this.text = t; } });
+    vi.stubGlobal("window", { speechSynthesis: {
+      getVoices: () => [],
+      speak: (u: (typeof spoken)[number]) => { spoken.push(u); },
+      cancel: () => { const u = spoken[spoken.length - 1]; setTimeout(() => u?.onerror?.({ error: "interrupted" }), 0); },
+    } });
+    return spoken;
+  };
+  afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
+
+  it.each(["stop cancels the opening first (CoachTab stopVoice)", "only the engine is stopped (the round-2 order)"] as const)("%s: the late error starts nothing", async (order) => {
+    vi.useFakeTimers();
+    const { speakText, stopVoice } = await import("./voice");
+    engine();
+    const start = vi.fn();
+    const run = runOpening("I can see this is hard right now.", { speak: (text, handlers) => { speakText(text, handlers, "en"); }, stopSpeaking: stopVoice, onDone: start });
+    if (order.startsWith("stop cancels")) run.cancel(); else stopVoice();
+    await vi.runAllTimersAsync();
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it("negative control: the same engine error on the utterance still playing does finish the words (and starts once)", async () => {
+    vi.useFakeTimers();
+    const { speakText } = await import("./voice");
+    const spoken = engine();
+    const start = vi.fn();
+    runOpening("Same bedtime as every night.", { speak: (text, handlers) => { speakText(text, handlers, "en"); }, stopSpeaking: () => undefined, onDone: start });
+    spoken[0].onerror?.({ error: "synthesis-failed" });
+    expect(start).toHaveBeenCalledOnce();
+  });
+
+  it("a hidden conversation refuses the door outright", () => {
+    const log: string[] = [];
+    expect(startDoor("Words", { busy: () => true, canSpeak: () => true, playWords: () => log.push("words"), toggle: () => log.push("toggle"), attempt: () => null })).toBe(false);
+    expect(log).toEqual([]);
+  });
+});
+

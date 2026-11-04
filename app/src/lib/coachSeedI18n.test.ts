@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { en, he } from "./i18n";
+import { en, he } from "./i18n";
 import { todayLiveSource } from "../testTodaySource";
 
 /**

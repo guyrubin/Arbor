@@ -2,7 +2,7 @@
 
 Base: ba8d1543afbf463b0fe26cae755b22e7c5b89ebd. Separate follow-on to PR122.
 
-Canonical source: B-TODAY-28 ([P1-NEXTLEVEL lines 22–42](https://github.com/guyrubin/ROS/blob/main/PAI/projects/arbor/execution/2026-10-01--one-backlog/packs/P1-NEXTLEVEL.md#L22-L42)) and B-TODAY-34 ([P4-PLACES lines 607–658](https://github.com/guyrubin/ROS/blob/main/PAI/projects/arbor/execution/2026-10-01--one-backlog/packs/P4-PLACES.md#L607-L658)). Latest all-Parent/Kids authorization overrides the generic historical freeze, without restoring PR110 or the retired Overview design.
+Canonical source: B-TODAY-28 (P1-NEXTLEVEL pack, lines 22–42, private ROS record) and B-TODAY-34 (P4-PLACES pack, lines 607–658, private ROS record). Latest all-Parent/Kids authorization overrides the generic historical freeze, without restoring PR110 or the retired Overview design.
 
 Current-shell adaptation:
 - Reuse selectFromRecord, FromRecordCard/Receipt, actionLoops writes, useCompanionOffer's existing appointments subscription and offer ledger, and the existing Consult editor.

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
 import { whyLineParts, whyLineFor } from "./todayFocus";
-import { en, he } from "./i18n";
+import { en, he } from "./i18n";
 import { todayLiveSource } from "../testTodaySource";
 
 /**

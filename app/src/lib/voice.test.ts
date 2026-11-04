@@ -251,6 +251,25 @@ describe("voice controller — natural engine + browser-floor fallback", () => {
     expect(isActive(id)).toBe(false);
   });
 
+  it("B-VOICE-02: a stopped utterance's late \"interrupted\" error reaches no caller (it is not the words failing)", () => {
+    const onError = vi.fn();
+    const onEnd = vi.fn();
+    speakText("card words", { onError, onEnd });
+    stopVoice();
+    spoken[0].onerror?.(); // the engine reports the cancel, asynchronously, as an error
+    expect(onError).not.toHaveBeenCalled();
+    expect(onEnd).not.toHaveBeenCalled();
+    // …and a superseded one's neither: only the utterance now playing reports.
+    const first = vi.fn();
+    const second = vi.fn();
+    speakText("first", { onError: first });
+    speakText("second", { onError: second });
+    spoken[1].onerror?.();
+    spoken[2].onerror?.();
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+  });
+
   it("F-03: a natural failure with NO floor available propagates through fallback to the caller's onError", () => {
     const { synth, calls } = makeNatural();
     setNaturalSynth(synth);

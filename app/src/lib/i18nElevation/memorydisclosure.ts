@@ -24,7 +24,7 @@ export const en: Record<string, string> = {
   "elev.memdisc.facts.none": "Memory facts — none yet, so none are sent. Arbor asks before it remembers anything.",
   "elev.memdisc.facts.used": "{count} of them shaped the last answer.",
   "elev.memdisc.facts.usedOne": "1 of them shaped the last answer.",
-  "elev.memdisc.facts.more": "and {n} more, all listed in Profile › Child Memory",
+  "elev.memdisc.facts.more": "and {n} more, all listed in My child › About › Everything Arbor remembers",
   "elev.memdisc.facts.quote": "“{fact}”",
 
   // ── The profile fields, named (values stay off this list on purpose).
@@ -55,7 +55,7 @@ export const he: Record<string, string> = {
   "elev.memdisc.facts.none": "עובדות זיכרון — עדיין אין, אז לא נשלחת אף אחת. ארבור שואל לפני שהוא זוכר משהו.",
   "elev.memdisc.facts.used": "{count} מהן עיצבו את התשובה האחרונה.",
   "elev.memdisc.facts.usedOne": "אחת מהן עיצבה את התשובה האחרונה.",
-  "elev.memdisc.facts.more": "ועוד {n}, כולן מופיעות בפרופיל › זיכרון הילד",
+  "elev.memdisc.facts.more": "ועוד {n}, כולן מופיעות במסך הילד שלי › אודות › כל מה שארבור זוכרת",
   "elev.memdisc.facts.quote": "״{fact}״",
 
   "elev.memdisc.profile.lead": "מהפרופיל של {name}, רק הפרטים האלה: {fields}.",

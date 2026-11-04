@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from "vitest";
-import { LocalReferralStore, codeForUid, isActivePaid } from "./referral.js";
+import { LocalReferralStore, codeForUid, isActivePaid, legacyRedemptionsFromLedgers } from "./referral.js";
 import type { EntitlementRecord, EntitlementStore } from "./entitlements.js";
 
 const SECRET = "test-salt";
@@ -101,15 +101,14 @@ describe("referral activation guards (mk-p0-2)", () => {
     expect(overCap).toMatchObject({ ok: true, status: "maxed", earnedMonths: MAX });
   });
 
-  it("extends (does not stack) an existing comp referral month for the redeemed uid", async () => {
+  it("extends (does not stack) an existing comp referral month for a referrer who earns again", async () => {
     const { store, ent } = ctx;
     const codeA = await store.codeForUid("uid_A");
-    const codeC = await store.codeForUid("uid_C");
     await store.activateReferral({ code: codeA, redeemerUid: "uid_B" });
-    const firstEnd = Date.parse(ent.records.get("uid_B")!.currentPeriodEnd!);
-    // uid_B is later referred by a different parent, uid_C
-    await store.activateReferral({ code: codeC, redeemerUid: "uid_B" });
-    const rec = ent.records.get("uid_B")!;
+    const firstEnd = Date.parse(ent.records.get("uid_A")!.currentPeriodEnd!);
+    // uid_A's code brings a second family, uid_D: uid_A earns a second month
+    await store.activateReferral({ code: codeA, redeemerUid: "uid_D" });
+    const rec = ent.records.get("uid_A")!;
     expect(rec.productId).toBe("referral_month"); // single record, not stacked
     const secondEnd = Date.parse(rec.currentPeriodEnd!);
     const extraDays = (secondEnd - firstEnd) / (24 * 60 * 60 * 1000);
@@ -133,6 +132,125 @@ describe("referral activation guards (mk-p0-2)", () => {
     // uid_B's paid record is untouched; uid_A (free) still gets their comp month.
     expect(ent.records.get("uid_B")).toEqual(paid);
     expect(ent.records.get("uid_A")?.provider).toBe("comp");
+  });
+});
+
+describe("B-GROWTH-43 — one offer redemption per family", () => {
+  let ctx: ReturnType<typeof make>;
+  beforeEach(() => { ctx = make(); });
+
+  it("a family referred by a second parent is refused: no second month, no grant to the second referrer", async () => {
+    const { store, ent } = ctx;
+    const codeA = await store.codeForUid("uid_A");
+    const codeC = await store.codeForUid("uid_C");
+    await store.activateReferral({ code: codeA, redeemerUid: "uid_B" });
+    const firstEnd = ent.records.get("uid_B")!.currentPeriodEnd;
+    const second = await store.activateReferral({ code: codeC, redeemerUid: "uid_B" });
+    expect(second).toEqual({ ok: true, status: "already_activated" });
+    expect(ent.records.get("uid_B")!.currentPeriodEnd).toBe(firstEnd);
+    expect(ent.records.has("uid_C")).toBe(false);
+    expect(await store.earnedMonths("uid_C")).toBe(0);
+  });
+
+  it("two devices racing with two codes grant exactly one month to the family", async () => {
+    const { store, ent } = ctx;
+    const codeA = await store.codeForUid("uid_A");
+    const codeC = await store.codeForUid("uid_C");
+    const results = await Promise.all([
+      store.activateReferral({ code: codeA, redeemerUid: "uid_B" }),
+      store.activateReferral({ code: codeC, redeemerUid: "uid_B" }),
+    ]);
+    expect(results.filter((r) => r.ok && r.status === "granted")).toHaveLength(1);
+    expect(results.filter((r) => r.ok && r.status === "already_activated")).toHaveLength(1);
+    const days = (Date.parse(ent.records.get("uid_B")!.currentPeriodEnd!) - Date.now()) / 86_400_000;
+    expect(days).toBeLessThan(31);
+  });
+
+  it("a typed code in any case or spacing redeems the same offer, and the redemption says how it was entered", async () => {
+    const { store, ent } = ctx;
+    const code = await store.codeForUid("uid_A");
+    const typed = `  ${code.slice("ARBOR-".length, 10).toLowerCase()} ${code.slice(10).toLowerCase()} `;
+    const res = await store.activateReferral({ code: typed, redeemerUid: "uid_B", via: "typed" });
+    expect(res).toMatchObject({ ok: true, status: "granted" });
+    expect(ent.records.get("uid_B")?.productId).toBe("referral_month");
+    expect(await store.familyRedemption("uid_B")).toMatchObject({ offerId: "referral_month", offerVersion: 1, via: "typed" });
+    expect(await store.familyRedemption("uid_A")).toBeNull(); // the referrer redeemed nothing
+  });
+
+  it("an unknown or self code never uses up the family's one redemption", async () => {
+    const { store } = ctx;
+    const own = await store.codeForUid("uid_B");
+    expect(await store.activateReferral({ code: own, redeemerUid: "uid_B" })).toEqual({ ok: false, status: "self_referral" });
+    expect(await store.activateReferral({ code: "ARBOR-22222222", redeemerUid: "uid_B" })).toEqual({ ok: false, status: "unknown_code" });
+    expect(await store.familyRedemption("uid_B")).toBeNull();
+    const codeA = await store.codeForUid("uid_A");
+    expect(await store.activateReferral({ code: codeA, redeemerUid: "uid_B" })).toMatchObject({ status: "granted" });
+  });
+});
+
+describe("B-GROWTH-43 — families that redeemed before the claim existed, and failed grants", () => {
+  it("a family a referrer ledger already credits is refused, and its claim is written as legacy", async () => {
+    const { store, ent } = make();
+    store.seedLegacyLedger("uid_A", ["uid_B"]); // uid_B redeemed uid_A's code before offerRedemptions existed
+    const codeC = await store.codeForUid("uid_C");
+    expect(await store.activateReferral({ code: codeC, redeemerUid: "uid_B", via: "typed" })).toEqual({ ok: true, status: "already_activated" });
+    expect(await store.familyRedemption("uid_B")).toMatchObject({ offerId: "referral_month", legacy: true });
+    expect(ent.records.size).toBe(0);
+    expect(await store.earnedMonths("uid_C")).toBe(0);
+  });
+
+  it("legacyRedemptionsFromLedgers lists every credited family once, ignoring junk", () => {
+    expect(legacyRedemptionsFromLedgers([{ activatedBy: ["a", "b"] }, { activatedBy: ["b", "", 3] }, {}, { activatedBy: "x" }])).toEqual(["a", "b"]);
+  });
+
+  it("a failed family grant releases the claim and the ledger entry, so the retry succeeds", async () => {
+    const ent = new FakeEntitlementStore();
+    let failFor: string | null = "uid_B";
+    const set = ent.setEntitlement.bind(ent);
+    ent.setEntitlement = async (uid: string, record: EntitlementRecord) => {
+      if (uid === failFor) throw new Error("firestore unavailable");
+      return set(uid, record);
+    };
+    const store = new LocalReferralStore(SECRET, MAX, ent);
+    const code = await store.codeForUid("uid_A");
+    await expect(store.activateReferral({ code, redeemerUid: "uid_B" })).rejects.toThrow("firestore unavailable");
+    expect(await store.familyRedemption("uid_B")).toBeNull();
+    expect(await store.earnedMonths("uid_A")).toBe(0);
+    failFor = null;
+    expect(await store.activateReferral({ code, redeemerUid: "uid_B" })).toMatchObject({ ok: true, status: "granted", earnedMonths: 1 });
+    expect(ent.records.get("uid_B")?.productId).toBe("referral_month");
+  });
+
+  it("a ledger write that fails after the claim releases the claim, so the retry succeeds", async () => {
+    const ent = new FakeEntitlementStore();
+    let failLedger = true;
+    class FlakyLedgerStore extends LocalReferralStore {
+      protected async recordActivation(referrerUid: string, redeemerUid: string): Promise<boolean> {
+        if (failLedger) throw new Error("ledger unavailable");
+        return super.recordActivation(referrerUid, redeemerUid);
+      }
+    }
+    const store = new FlakyLedgerStore(SECRET, MAX, ent);
+    const code = await store.codeForUid("uid_A");
+    await expect(store.activateReferral({ code, redeemerUid: "uid_B" })).rejects.toThrow("ledger unavailable");
+    expect(await store.familyRedemption("uid_B")).toBeNull();
+    expect(ent.records.size).toBe(0);
+    failLedger = false;
+    expect(await store.activateReferral({ code, redeemerUid: "uid_B" })).toMatchObject({ ok: true, status: "granted", earnedMonths: 1 });
+  });
+
+  it("a failed referrer grant never undoes the family's month", async () => {
+    const ent = new FakeEntitlementStore();
+    const set = ent.setEntitlement.bind(ent);
+    ent.setEntitlement = async (uid: string, record: EntitlementRecord) => {
+      if (uid === "uid_A") throw new Error("firestore unavailable");
+      return set(uid, record);
+    };
+    const store = new LocalReferralStore(SECRET, MAX, ent);
+    const code = await store.codeForUid("uid_A");
+    expect(await store.activateReferral({ code, redeemerUid: "uid_B" })).toMatchObject({ ok: true, status: "granted" });
+    expect(ent.records.get("uid_B")?.productId).toBe("referral_month");
+    expect(await store.familyRedemption("uid_B")).not.toBeNull();
   });
 });
 

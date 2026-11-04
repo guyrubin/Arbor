@@ -56,21 +56,23 @@ describe("TJB-22 · dates follow the APP's language", () => {
     }
   });
 
+  /** The browser-locale shapes TJB-22 removed; one predicate, so its control runs on real source. */
+  const implicitLocale = (source: string) =>
+    source.includes("toLocaleString()") || source.includes("toLocaleDateString(undefined") || /toLocaleDateString\(uiLang === "he" \? "he-IL" : undefined/.test(source);
+
   it("the record and export keep explicit APP locales after the list moves to Journal", () => {
     const journal = stripComments(read("components/tabs/JournalTab.tsx"));
-    for (const source of [BEH, journal, EXPORT]) {
-      expect(source).not.toContain("toLocaleString()");
-      expect(source).not.toContain("toLocaleDateString(undefined");
-      expect(source).not.toMatch(/toLocaleDateString\(uiLang === "he" \? "he-IL" : undefined/);
-    }
+    for (const source of [BEH, journal, EXPORT]) expect(implicitLocale(source)).toBe(false);
     expect(journal).toContain('const locale = uiLang === "he" ? "he" : "en"');
     expect(journal).toContain('toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })');
     expect(journal).toContain('toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" })');
     expect(journal).toContain('exportBehaviorPdf(rows, { t, lang: uiLang })');
     expect(EXPORT.match(/fmtDayTime\(/g)?.length).toBeGreaterThanOrEqual(2);
     expect(BEH).not.toContain('exportBehaviorPdf');
-    // Negative control: implicit browser locale is still the prohibited shape.
-    expect('date.toLocaleString()').toContain('toLocaleString()');
+    // NEGATIVE CONTROL (B-INF-13): the real Journal row, put back on the browser locale, is caught.
+    const shipped = journal.replace('toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })', "toLocaleString()");
+    expect(shipped).not.toBe(journal);
+    expect(implicitLocale(shipped)).toBe(true);
   });
 });
 

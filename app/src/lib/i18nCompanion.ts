@@ -463,7 +463,8 @@ export const companionEn = {
   "companion.about.memoryWaiting": "Something Arbor noted is waiting for you to check.",
   // v4 — What Arbor remembers, on About: proposals waiting (not already inside an
   // area) and the newest approved facts. Counts are of facts, never of the child.
-  "companion.about.memory.title": "What Arbor remembers",
+  "companion.about.memory.title": "Arbor’s notebook about {name}",
+  "companion.about.notebook": "Arbor’s notebook",
   "companion.about.memory.sub": "Facts you approved, and proposals waiting for you. In plain words.",
   "companion.about.memory.waitingOne": "1 waiting for you",
   "companion.about.memory.waiting": "{n} waiting for you",
@@ -478,6 +479,46 @@ export const companionEn = {
   "companion.about.memory.note": "Nothing is remembered without your approval. Edit or delete any fact, any time.",
   "companion.about.memory.open": "Everything Arbor remembers",
   "companion.about.memory.loadFailed": "What Arbor remembers didn't load. Open it to try again.",
+  "companion.basedOn.label": "Based on",
+  "companion.basedOn.fields": "From the profile: {fields}",
+  "companion.basedOn.week": "This week: {n} moments kept",
+  "companion.basedOn.weekWords": "This week: {n} moments kept, {words} words you wrote down",
+  // Pause Arbor — new suggestions and new things to keep wait. What is already
+  // kept stays readable. Counts of facts never become a verdict about the child.
+  "companion.pause.title": "Pause Arbor",
+  "companion.pause.sub": "New suggestions and new things to keep wait. What you already kept stays here to read.",
+  "companion.pause.weekend": "This weekend",
+  "companion.pause.week": "A week",
+  "companion.pause.untilResume": "Until I resume",
+  "companion.pause.hint.weekend": "Until Monday morning",
+  "companion.pause.hint.week": "Seven days",
+  "companion.pause.hint.open": "Until you resume",
+  "companion.pause.resume": "Resume",
+  "companion.pause.on": "Arbor is paused",
+  "companion.pause.until": "Until {when}",
+  "companion.pause.untilYou": "Until you resume",
+  "companion.pause.kept": "What you already kept is still here.",
+  "companion.pause.notebook": "Open the notebook",
+  "companion.pause.more": "Pause Arbor",
+  "companion.pause.moreOn": "Arbor is paused",
+  "companion.pause.now": "No new step from Arbor until you resume.",
+  "companion.pause.care": "Pause Arbor",
+  // Likeness ceremony — one parent look at a Kids Studio picture before it leaves.
+  "companion.likeness.title": "{name}'s picture",
+  "companion.likeness.titleNoName": "This picture",
+  "companion.likeness.body": "This is the picture about to leave Arbor. It stays here unless you send it.",
+  "companion.likeness.use": "Use this likeness",
+  "companion.likeness.keep": "Keep private",
+  "companion.likeness.alt": "{name} in this picture",
+  "companion.likeness.altNoName": "The picture about to leave",
+  "companion.likeness.label": "This picture, before it leaves",
+  // B-CAREPRO-37 — the after-visit note on the record: a Journal row and the
+  // newest one on About (the parent's words; the profession names the visit).
+  "companion.visit.title": "Visit · {profession}",
+  "companion.visit.kind": "Visit",
+  "companion.visit.filter": "Visits",
+  "companion.about.visit.title": "Last visit · {profession} · {date}",
+  "companion.about.visit.open": "All visits",
   // v3 F-CHILD-4 (MOB-02) — My child on a phone: the area tiles' line and the
   // doors under a pill (each door's title is the place's own name, as the
   // mock's phone grid: icon and title, never a count).
@@ -553,6 +594,8 @@ export const companionEn = {
   // Words only: never a count, dot or badge.
   "companion.input.foot": "Arbor is an AI companion, not a doctor. Files are analysed only when sent.",
   "companion.launcher.label": "Ask Arbor — text, photo or voice",
+  // B-VOICE-08: Now's one-tap voice door (its visible words are companion.input.talk).
+  "companion.launcher.voice-aria": "Talk it through by voice",
   "companion.panel.history": "History",
   "companion.panel.new.sub": "Keeps the question; starts a fresh thread",
   "companion.panel.history.sub": "Earlier conversations",
@@ -1034,7 +1077,8 @@ export const companionHe = {
   // v3 F-CHILD-3 (review r1) — under the memory door when a proposal names no
   // area: no number, no badge.
   "companion.about.memoryWaiting": "משהו שארבור רשמה מחכה לבדיקה שלכם.",
-  "companion.about.memory.title": "מה ארבור זוכרת",
+  "companion.about.memory.title": "המחברת של ארבור על {name}",
+  "companion.about.notebook": "המחברת של ארבור",
   "companion.about.memory.sub": "עובדות שאישרתם, והצעות שמחכות לכם. במילים פשוטות.",
   "companion.about.memory.waitingOne": "אחת מחכה לכם",
   "companion.about.memory.waiting": "{n} מחכות לכם",
@@ -1049,6 +1093,43 @@ export const companionHe = {
   "companion.about.memory.note": "שום דבר לא נזכר בלי האישור שלכם. אפשר לערוך או למחוק כל עובדה, תמיד.",
   "companion.about.memory.open": "כל מה שארבור זוכרת",
   "companion.about.memory.loadFailed": "מה שארבור זוכרת לא נטען. אפשר לפתוח ולנסות שוב.",
+  "companion.basedOn.label": "מבוסס על",
+  "companion.basedOn.fields": "מהפרופיל: {fields}",
+  "companion.basedOn.week": "השבוע: {n} רגעים ששמרתם",
+  "companion.basedOn.weekWords": "השבוע: {n} רגעים ששמרתם, ו־{words} מילים שכתבתם",
+  "companion.pause.title": "להשהות את ארבור",
+  "companion.pause.sub": "הצעות חדשות ודברים חדשים לשמירה ממתינים. מה שכבר שמרתם נשאר כאן לקריאה.",
+  "companion.pause.weekend": "סוף השבוע",
+  "companion.pause.week": "שבוע",
+  "companion.pause.untilResume": "עד שנחזור",
+  "companion.pause.hint.weekend": "עד יום ראשון בבוקר",
+  "companion.pause.hint.week": "שבעה ימים",
+  "companion.pause.hint.open": "עד שתחליטו לחזור",
+  "companion.pause.resume": "להמשיך",
+  "companion.pause.on": "ארבור בהשהיה",
+  "companion.pause.until": "עד {when}",
+  "companion.pause.untilYou": "עד שתחליטו לחזור",
+  "companion.pause.kept": "מה שכבר שמרתם נשאר כאן.",
+  "companion.pause.notebook": "לפתוח את המחברת",
+  "companion.pause.more": "להשהות את ארבור",
+  "companion.pause.moreOn": "ארבור בהשהיה",
+  "companion.pause.now": "אין צעד חדש מארבור עד שתחליטו להמשיך.",
+  "companion.pause.care": "להשהות את ארבור",
+  "companion.likeness.title": "התמונה של {name}",
+  "companion.likeness.titleNoName": "התמונה הזו",
+  "companion.likeness.body": "זו התמונה שעומדת לצאת מארבור. היא נשארת כאן, אלא אם תשלחו אותה.",
+  "companion.likeness.use": "להשתמש בדמות הזו",
+  "companion.likeness.keep": "להשאיר פרטי",
+  "companion.likeness.alt": "{name} בתמונה הזו",
+  "companion.likeness.altNoName": "התמונה שעומדת לצאת",
+  "companion.likeness.label": "התמונה, לפני שהיא יוצאת",
+  // B-CAREPRO-37 — the after-visit note on the record: a Journal row and the
+  // newest one on About (the parent's words; the profession names the visit).
+  "companion.visit.title": "ביקור · {profession}",
+  "companion.visit.kind": "ביקור",
+  "companion.visit.filter": "ביקורים",
+  "companion.about.visit.title": "הביקור האחרון · {profession} · {date}",
+  "companion.about.visit.open": "כל הביקורים",
   // v3 F-CHILD-4 (MOB-02) — My child on a phone: the area tiles' line and the
   // doors under a pill (each door's title is the place's own name, as the
   // mock's phone grid: icon and title, never a count).
@@ -1120,6 +1201,7 @@ export const companionHe = {
   // F-TALK-1: Talk is a panel over the place (see the English block).
   "companion.input.foot": "ארבור הוא מלווה בינה מלאכותית, לא רופא. קבצים מנותחים רק בשליחה.",
   "companion.launcher.label": "שואלים את ארבור — טקסט, תמונה או קול",
+  "companion.launcher.voice-aria": "לדבר על זה בקול",
   "companion.panel.history": "היסטוריה",
   "companion.panel.new.sub": "השאלה נשארת; שיחה חדשה מתחילה",
   "companion.panel.history.sub": "שיחות קודמות",

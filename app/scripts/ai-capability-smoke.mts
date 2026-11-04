@@ -63,7 +63,9 @@ try {
   if (avatar?.dataUrl) await test("vision synthetic illustration", "vision", { childProfile, image: avatar.dataUrl, mode: "observe", note: "This is a synthetic cartoon illustration, not a child photo.", language: "en" }, d => typeof d.offTopic === "boolean");
   await test("scene", "generate-scene", { imagePrompt: "A cheerful child and friendly fox build a block tower in a sunny playroom", style: "storybook" }, d => d.dataUrl?.startsWith("data:image/"));
   await test("comic", "generate-comic", { heroName: "Star", theme: "Helping a friend build a block tower", style: "comichero", sfx: ["Yay!"] }, d => d.dataUrl?.startsWith("data:image/"));
-  const token = await test("Live session token", "live/token", { childProfile, language: "en", contextChildId: childProfile.id, recentTurns: [] }, d => d.available && !!d.token);
+  // B-PROV-12: acknowledge the runtime notice the config-only availability probe names.
+  const liveNotice = ((await (await fetch(`${baseUrl}/api/live/availability`, { signal: AbortSignal.timeout(10000) })).json()) as { notice?: { id?: string } }).notice?.id;
+  const token = await test("Live session token", "live/token", { childProfile, language: "en", contextChildId: childProfile.id, recentTurns: [], noticeAck: liveNotice }, d => d.available && !!d.token);
   if (token?.token) {
     const start = Date.now(); let audioChunks = 0; let transcript = "";
     await new Promise<void>((resolve) => {

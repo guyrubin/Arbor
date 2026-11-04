@@ -1,6 +1,6 @@
 # UC-4 Consolidation Map — Fold ~42 routes into 8 clean hubs
 
-**Branch:** `claude/uc4-consolidate` · **Scope:** `C:\Users\dguyr\arbor-uc1\app` · **Status:** PLANNING ONLY (no app-code change in this doc).
+**Branch:** `claude/uc4-consolidate` · **Scope:** `app/` · **Status:** PLANNING ONLY (no app-code change in this doc).
 
 **Goal:** kill the "messy, old+new duplicated" feel. The current app exposes 45 top-level `ActiveTab` routes and an 18-item Sidebar TOOLS drawer that duplicates the eight categories (e.g. *Behaviors* category = *Behavior Logs* tool = *Log a Moment* tool — all route to `behaviors`). The wireframe (`.design-source/Arbor-Web-App.dc.html`) presents exactly **8 sidebar categories** with capability folded *inside* the hubs, a **short CATFEAT sub-tab row** per hub, and a **9-item TOOLS drawer of genuinely-global quick actions**. This map folds every route into one of the 8 hubs, removes the duplications, and lists the screens that still need reskinning so there is no old/new split.
 

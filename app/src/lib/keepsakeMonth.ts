@@ -14,6 +14,12 @@ export function buildMonthPage({ monthKey, kept }: { monthKey: string; kept: rea
   return items.length ? { monthKey, items } : null;
 }
 
+/** Month name for a kept page. A month in `currentYear` omits the year. */
+export function keptMonthLabel(monthKey: string, lang: "en" | "he", currentYear = new Date().getUTCFullYear()): string {
+  const date = new Date(`${monthKey}-01T12:00:00Z`);
+  return date.toLocaleDateString(lang === "he" ? "he-IL" : "en-GB", { month: "long", ...(date.getUTCFullYear() !== currentYear ? { year: "numeric" as const } : {}), timeZone: "UTC" });
+}
+
 /** UTC month of an instant, retained for existing non-UI date callers. */
 export function monthKeyOf(at: string | number | Date): string | null {
   const ms = at instanceof Date ? at.getTime() : typeof at === "number" ? at : Date.parse(at);

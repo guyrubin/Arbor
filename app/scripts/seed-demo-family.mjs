@@ -10,6 +10,10 @@
  *
  * DRY RUN prints the counts per collection, the memory ledger events and the
  * flag writes, and writes NOTHING (a second dry run prints the same table).
+ * B-PROG-12: it also lists the PROGRAM SEED STATES (src/demo/demoPrograms.ts —
+ * Talk Together week 1 / week 5, Steady Nights, the guided tier) with each
+ * state's enrolment row. They are opt-in states the rendered sweep writes into
+ * its own throwaway context; --apply never writes them into the family.
  *
  * --apply (sandbox, the default target) writes:
  *   - app/.data/demo-family.json — the bundle the sandbox serves at
@@ -118,6 +122,16 @@ export function planDemoWrites(family, { target, uid, allowed = childSubcollecti
   };
 }
 
+/** B-PROG-12: the program seed states as data — each state's collections must be export/erase-covered. */
+export function planProgramStates(states, { allowed = childSubcollectionsFromSource() } = {}) {
+  return states.map((st) => {
+    for (const name of Object.keys(st.collections)) {
+      if (!allowed.includes(name)) throw new Error(`program state "${st.name}" writes "${name}", not in CHILD_SUBCOLLECTIONS — export/erase would miss it`);
+    }
+    return st;
+  });
+}
+
 export function renderPlan(plan, { apply }) {
   const lines = [];
   lines.push(`seed-demo-family · ${apply ? "APPLY" : "DRY RUN — writes nothing"} · target ${plan.target} · parent ${plan.parentUid} · child ${plan.childId}`);
@@ -129,6 +143,10 @@ export function renderPlan(plan, { apply }) {
   }
   for (const f of plan.flags) lines.push(`  flag  ${f.path} ← ${JSON.stringify(f.merge)}`);
   for (const m of plan.memory) lines.push(`  memory ${m.op}: ${m.fact}`);
+  if (plan.programStates?.length) {
+    lines.push("  program states (sweep cells only; never written by --apply):");
+    for (const line of plan.programStateLines ?? []) lines.push(`    ${line}`);
+  }
   return lines.join("\n");
 }
 
@@ -220,6 +238,10 @@ export async function runDemoSeed(args, { log = console.log, apply = { sandbox: 
   const childId = args.target === "firestore" ? `demo-${String(args.uid).slice(0, 8)}` : undefined;
   const family = buildDemoFamily({ now, lang: args.lang, ...(childId ? { childId } : {}) });
   const plan = planDemoWrites(family, args);
+  // B-PROG-12: list the program seed states beside the family (dry run and apply alike).
+  const { buildDemoProgramStates, demoProgramStateLine } = await import("../src/demo/demoPrograms.ts");
+  plan.programStates = planProgramStates(buildDemoProgramStates({ now, lang: args.lang, childId: family.child.id, gender: family.child.gender ?? null }));
+  plan.programStateLines = plan.programStates.map(demoProgramStateLine);
   log(renderPlan(plan, args));
   if (args.json) log(JSON.stringify(family, null, 2));
   if (!args.apply) return { wrote: [], plan, family };

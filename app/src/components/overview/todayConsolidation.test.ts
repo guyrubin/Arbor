@@ -256,7 +256,8 @@ describe("B-TODAY-12 — one step card: the hard-moment offer folds into it as '
 
   it("the SayThis controls reach 44 px (it now sits on Today's step)", () => {
     const ai = stripComments(read("components/ui/AiBlock.tsx"));
-    expect(ai).toContain('className="text-[10px] min-h-11 px-1"');
+    // B-ASKJB-47: the controls' label rose from 10 px to the 12 px floor.
+    expect(ai).toContain('className="text-xs min-h-11 px-1"');
     expect(ai).toContain("inline-flex min-h-11 items-center gap-1 px-1");
   });
 

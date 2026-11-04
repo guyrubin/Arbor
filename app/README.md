@@ -12,7 +12,7 @@ This app is the hardened import of the AI Studio React/Gemini prototype. It live
 - `src/framework.json` as the single source of truth for domains, age bands, and Six Frames prompt construction.
 - Non-diagnostic safety contract on every generation endpoint.
 - Streaming `/api/chat` transport with server-sent events and client-side cancellation for the live parent coach.
-- Express hardening with `helmet`, CORS allow-listing, 250kb JSON bodies, and 30 requests/min/IP rate limiting.
+- Express hardening with `helmet`, CORS allow-listing, 250kb JSON bodies, and rate limits shaped by what they protect (`src/server/apiRateLimits.ts`): 300 requests/min per signed-in account, per-IP ceilings of 600 reads and 120 writes a minute, and 30/min per IP each for model calls, invitations and exports.
 - Arbor design-token skin based on the standalone field-notebook direction.
 
 ## Local Setup

@@ -9,6 +9,7 @@ import type { FocusInputsUsed } from "../lib/todayFocus";
 import { trackLoopContinued } from "../lib/kpiEvents";
 import { dayKey } from "../practice/signals";
 import { WHY_MAX, type JournalRequest } from "../ai/journalContext";
+import { isArborPaused, PAUSE_EVENT } from "../lib/pauseArbor";
 
 export type FocusSignals = {
   count: number;
@@ -141,14 +142,23 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals, journ
   // that the AI focus was ever attempted. The flag lets the surface render an
   // inline error + retry ALONGSIDE the fallback (never instead of it).
   const [storedError, setError] = useState(false);
+  const [pauseEpoch, setPauseEpoch] = useState(0);
   const error = cacheReadyScope === lease && storedError;
   const triedAuto = useRef(false);
   // B-TODAY-11: one content refresh per Today mount (never reset by a re-render).
   const refreshedThisMount = useRef(false);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const bump = () => setPauseEpoch((n) => n + 1);
+    window.addEventListener(PAUSE_EVENT, bump);
+    return () => window.removeEventListener(PAUSE_EVENT, bump);
+  }, []);
+
   const ref = () => (remote && db && uid ? doc(db, `users/${uid}/children/${child.id}/insights/todaysFocus`) : null);
 
   const generate = useCallback(async () => {
+    if (isArborPaused()) return;
     if (cacheReadyScope !== lease || scopeLease.current !== lease || !lease.active || lease.pending) return;
     lease.pending = true;
     const request = ++lease.request;
@@ -219,6 +229,7 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals, journ
               factCount: Number.isFinite(Number(data.inputsUsed.factCount)) ? Math.max(0, Math.floor(Number(data.inputsUsed.factCount))) : undefined,
             }
           : undefined;
+      if (!ownsRequest() || isArborPaused()) return;
       // B-MEAS-02: the server built this focus from an outcome the parent
       // reported — the loop closed. One event per generated focus, {source} only.
       if (inputsUsed?.lastActionOutcome) trackLoopContinued("today-focus");
@@ -300,6 +311,7 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals, journ
   // B-TODAY-11: refresh at most once per mount when a capture or an outcome
   // landed after the focus was generated.
   useEffect(() => {
+    if (isArborPaused()) return;
     if (loading || cacheReadyScope !== lease) return;
     const decision = focusRefreshDecision({
       focus,
@@ -317,7 +329,7 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals, journ
       void generate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focus, signals.count, signals.latestAt, loading, focusLang]);
+  }, [focus, signals.count, signals.latestAt, loading, focusLang, pauseEpoch]);
 
   // OBJ-TODAY-02: `inputsUsed` is a PROVENANCE report, and provenance is only
   // worth printing while it still matches the ledger the parent can see. The
@@ -332,7 +344,8 @@ export function useTodaysFocus(child: ChildProfile, signals: FocusSignals, journ
     ? { ...focus, inputsUsed: liveInputsUsed(focus.inputsUsed, signals.count) }
     : focus, [focus, signals.count]);
 
-  return { focus: liveFocus, loading, error, regenerate: generate };
+  if (!isArborPaused()) return { focus: liveFocus, loading, error, regenerate: generate };
+  return { focus: null, loading: false, error: false, regenerate: generate };
 }
 
 /**

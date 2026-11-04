@@ -233,11 +233,14 @@ function startBrowser(id: number, text: string, handlers: SpeakHandlers, lang: "
     }
   };
   utterance.onerror = () => {
-    if (isActive(id)) {
-      activeId = 0;
-      speaking = false;
-      emit();
-    }
+    // B-VOICE-02: a stopped or superseded utterance's error (engines report the
+    // cancel as an async "interrupted" error) belongs to no one: like onEnd it
+    // reaches the caller only while this utterance is still the active one, so
+    // a stop can never read as "the words finished" and start what follows.
+    if (!isActive(id)) return;
+    activeId = 0;
+    speaking = false;
+    emit();
     handlers.onError?.();
   };
   // Reflect intent immediately (some engines fire `onstart` late or not at all).
@@ -345,8 +348,9 @@ function startNatural(id: number, text: string, handlers: SpeakHandlers, lang: "
 /**
  * Speak `text`. Returns a token identifying THIS utterance (0 if it could not
  * start). Starting a new utterance interrupts any prior one. `onEnd` fires only on
- * natural completion — never when superseded or stopped — so a sentence pump can
- * chain safely without double-firing on interruption.
+ * natural completion, and `onError` only for a failure of the utterance still
+ * playing — neither when superseded or stopped — so a sentence pump can chain
+ * safely without double-firing on interruption.
  *
  * AI-V4: `lang` defaults to the session AI language (getAiLanguage), and is
  * threaded to the browser floor so utterance.lang + the voice pick always

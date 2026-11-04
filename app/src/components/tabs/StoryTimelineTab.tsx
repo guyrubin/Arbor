@@ -36,6 +36,8 @@ const KIND_ICON: Record<SignalKind, string> = {
   action: "task_alt",
   // B-AI-04 — a suggestion line the parent kept.
   kept: "bookmark_added",
+  // B-CAREPRO-37 — the parent's note after a visit.
+  visit: "event_available",
 };
 
 /** JRNL-3: kind + filter labels resolve through i18n (timeline.* keys) at
@@ -50,6 +52,7 @@ const KIND_LABEL_KEY: Record<SignalKind, string> = {
   practice: "elev.childsignals.kind",
   action: "elev.closeloop.thread.kind",
   kept: "elev.kept.thread.kind",
+  visit: "companion.visit.kind",
 };
 
 /* FU#62 (B-GROWTH-15) — the filter chips DERIVE from SignalKind: a Record
@@ -66,6 +69,7 @@ const FILTER_LABEL_KEY: Record<SignalKind, string> = {
   action: "elev.closeloop.thread.filter",
   kept: "elev.kept.thread.filter",
   memory: "timeline.filter.memory",
+  visit: "companion.visit.filter",
 };
 
 const FILTERS: { key: SignalKind | "all"; labelKey: string }[] = [

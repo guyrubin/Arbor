@@ -15,9 +15,8 @@ import React, { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
-import { resolveCaptionKey } from "../../lib/shareCaption";
+import { resolveCaptionKey, type CaptionArtifact } from "../../lib/shareCaption";
 import { textFromCardOpts } from "../../lib/share";
-import type { LoopArtifact } from "../../lib/loopEvents";
 import type { ShareCardOpts } from "../../lib/shareCard";
 import { SendSheet, sendSheetText } from "../share/SendSheet";
 
@@ -49,7 +48,8 @@ export function ShareButton({
   beforeShare,
   disabled = false,
 }: {
-  artifact: LoopArtifact;
+  // Child content only: never the invite (B-RESID-05), which sends a link.
+  artifact: CaptionArtifact;
   surface: string;
   /** Lazily supplies the object's words at tap time. */
   getCardOpts: () => ShareCardOpts;

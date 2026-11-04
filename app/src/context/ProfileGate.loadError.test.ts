@@ -16,9 +16,10 @@ function gateHarness() {
   let retries = 0;
   const state = { loading: true, loadError: true, needsOnboarding: true, retryProfiles: () => { retries++; } };
   const module = { exports: {} as { ProfileGate: (props: { children: React.ReactNode }) => React.ReactElement } };
-  new Function("module", "exports", "React", "useProfile", "useLanguage", "Icon", "OnboardingFlow", "forceOnboardingPreview", code)(
+  // B-GA-09 round 5: onboarding also mounts the pending-erase settler (renders nothing).
+  new Function("module", "exports", "React", "useProfile", "useLanguage", "Icon", "OnboardingFlow", "forceOnboardingPreview", "PendingEraseSettler", code)(
     module, module.exports, React, () => state, () => ({ t: (key: string) => translate("en", key) }),
-    () => React.createElement("span", null, "LOADING ICON"), () => React.createElement("div", null, "ONBOARDING"), false,
+    () => React.createElement("span", null, "LOADING ICON"), () => React.createElement("div", null, "ONBOARDING"), false, () => null,
   );
   return { state, get retries() { return retries; }, render: () => module.exports.ProfileGate({ children: "OWN CONTENT" }) };
 }

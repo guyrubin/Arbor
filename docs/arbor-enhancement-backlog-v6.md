@@ -427,7 +427,7 @@ built and one Google account-grant away.
 
 ## 14. AR-CAP market-derived enhancement delta (2026-07-22)
 
-**Research source:** `PAI/projects/arbor/CAPABILITY-MAP.md` (feature-level official-source refresh).
+**Research source:** the Arbor capability map (`CAPABILITY-MAP.md`, private product record) (feature-level official-source refresh).
 **Rule:** these items extend the shipped system; they do not revive superseded v2–v5 backlogs. AI-platform work stays in the canonical AR-AI ledger. Existing shipped seams must be reused where named.
 
 Prioritization uses **RICE-like relative scoring**: Reach (R), user Impact (I), evidence Confidence (C), Effort (E), each 1–5 except C as 0.5/0.8/1.0. Score = `R × I × C ÷ E`. Scores are sequencing aids, not promises.

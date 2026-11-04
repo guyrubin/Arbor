@@ -25,6 +25,10 @@ export type SpokenContext = {
   familyTopic?: FamilyTopicContext;
   familyTopicStatus?: "unavailable";
   acceptedActions?: CompanionStepLine[];
+  /** B-PROG-04 (dark): the active week's shelf and coach scripts. NEVER
+   *  rendered into a prompt — /voice reads it to open an on-shelf answer
+   *  with the script verbatim (lib/programs/weekScript). */
+  programScripts?: { shelf: string; scripts: Array<{ en: string; he: string }> };
 };
 
 /** JSON keeps parent-written newlines/role labels inside values, not prompt roles. */

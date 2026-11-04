@@ -43,8 +43,11 @@ describe("settleOrQueue — a capture never waits on the network to be kept", ()
   it("remote writes keep queued defaults and require an explicit opt-in for server acknowledgement", () => {
     const hook = readFileSync(fileURLToPath(new URL("../hooks/useChildCollection.ts", import.meta.url)), "utf8");
     const upsert = hook.slice(hook.indexOf("const upsert = useCallback("), hook.indexOf("const remove = useCallback("));
-    expect(upsert).toContain("const write = setDoc(");
-    expect(upsert).toMatch(/if\s*\(options\?\.awaitServer\)\s*await write;\s*else\s*await settleOrQueue\(write, options\);/);
+    // B-DATA-14 (wave 3a): an opt-in merge write keeps the same queued default.
+    expect(upsert).toMatch(/const write = (options\?\.merge \? setDoc\(ref, item as Record<string, unknown>, \{ merge: true \}\) : )?setDoc\(/);
+    expect(upsert).toMatch(/else if\s*\(options\?\.awaitServer\)\s*await write;\s*else\s*await settleOrQueue\(write, options\);/);
+    // The bounded offline answer is reachable only through the explicit opt-in.
+    expect(upsert).toMatch(/if\s*\(options\?\.awaitServer && options\.offline\)/);
     const remove = hook.slice(hook.indexOf("const remove = useCallback("), hook.indexOf("const replaceAll = useCallback("));
     expect(remove).toContain("const write = deleteDoc(");
     expect(remove).toMatch(/if\s*\(options\?\.awaitServer\)\s*await write;\s*else\s*await settleOrQueue\(write, options\);/);

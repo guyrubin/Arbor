@@ -62,13 +62,19 @@ not a visual-quality approval.
 
 ## Exact source fonts (`CAPTURE_FONT_MODE=exact`)
 
-`prepare-font-cache.mjs` runs once per cell in a disposable, network-bridged CI container
-(never inside the offline capture container) and fetches only the one stylesheet named in
-`app/src/index.css` plus the WOFF2 resources that stylesheet declares. Its allow-list is
-the provenance guarantee: the runtime later serves a font only when the browser asks for
-the exact URL the stylesheet named, and `font-provenance.json` (the cache manifest)
-records every URL with the hash of the bytes it resolved to. Nothing is substituted,
-rewritten, redirected or fetched from another origin; a refused shape stops the cell.
+The current app self-hosts its text faces (`src/textFonts.css` → `/fonts/text`, B-SHELL-24).
+`prepare-font-cache.mjs` sees that, writes a `self-hosted` manifest and fetches nothing.
+In that case the runtime does not register a Google route; a Google font request falls
+to the capture deny rule. Nothing is substituted, rewritten, redirected or fetched from
+another origin.
+
+The exact cache remains for a source that still names the one Google stylesheet. In that
+path `prepare-font-cache.mjs` runs once per cell in a disposable, network-bridged CI
+container (never inside the offline capture container) and fetches only that stylesheet
+plus the WOFF2 resources it declares. The allow-list is the provenance guarantee: the
+runtime serves a font only when the browser asks for the exact URL the stylesheet named,
+and `font-provenance.json` (the cache manifest) records every URL with the hash of the
+bytes it resolved to. A refused shape stops the cell. No viewport or sweep-law change.
 
 Google Fonts is observed to serve the same family through two URL shapes, and the choice
 is not deterministic across requests (the Hebrew kits flipped between them on 28 Oct 2026):

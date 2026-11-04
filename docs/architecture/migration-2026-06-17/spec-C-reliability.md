@@ -34,9 +34,9 @@ The plan is deliberately additive and reversible: most missions ride on managed-
   - Restore drill restores to a **scratch database** (e.g. `restore-drill-YYYYMMDD`) so production is untouched, verifies a known child's `memoryEvents` count matches, then deletes the scratch DB. Document RTO actuals.
   - **Single-region risk:** the runbook records that `europe-west4` is single-region by deliberate choice (cost + EU-residency simplicity, satisfies NL/IL residency), the failure mode (regional outage = full Arbor outage), the mitigation (PITR enables cross-region restore to e.g. `europe-west1` within RTO), and a sign-off line.
 - **Files to CREATE:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/docs/ops/dr-runbook.md`
+  - `docs/ops/dr-runbook.md`
 - **Files to MODIFY:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/docs/architecture/well-architected-assessment-2026-06-04.md` — flip REL-1 row status to "mitigated (single-region accepted, sign-off in dr-runbook.md)". *Shared doc, low-traffic — append/edit the REL-1 row only.*
+  - `docs/architecture/well-architected-assessment-2026-06-04.md` — flip REL-1 row status to "mitigated (single-region accepted, sign-off in dr-runbook.md)". *Shared doc, low-traffic — append/edit the REL-1 row only.*
 - **Interfaces/contracts:** No code interfaces. Infra: Firestore PITR flag + backup schedule on `(default)`; IAM role `roles/datastore.owner` (deploy SA already holds it per `arbor-deploy.yml` notes) covers backup/restore. Data classes enumerated above.
 - **Test plan:** No unit/integration code changes, so `tsc`/tests/`vite build` stay green by construction (no code touched). Verify live: run the three `gcloud ... describe/list` checks above; confirm the drill section of the runbook contains real measured numbers and the scratch DB was deleted. Add the verification commands to the runbook as a quarterly checklist.
 - **NL note:** PITR + tested restore is the **Article 32 GDPR "ability to restore availability and access" control** and the resilience evidence a Dutch DPIA / municipality DPA annex expects. The single-region sign-off and RTO/RPO table are standard procurement attachments for JGZ/insurer deals. **B2G-readiness gate: yes.**
@@ -61,16 +61,16 @@ The plan is deliberately additive and reversible: most missions ride on managed-
   - **Graceful degradation.** The providers throw; the catch is in the route handlers in `src/routes/api.ts` (e.g. `/api/chat`, `/api/council`). Add a small `degradedModelResponse()` helper (new `src/ai/degraded.ts`) returning a typed sentinel; in `api.ts` catch a `ModelUnavailableError` (new error class exported from `circuitBreaker.ts`/`modelRetry.ts`) and respond 503 + `Retry-After` + a calm message. **Do not** route a model outage through the safety-escalation path (`src/safety/escalation.ts`) — degradation is an infra event, not a child-safety event.
   - **Metric surface.** Use the existing `logger` (`src/server/logger.ts`, Cloud-Logging-shaped JSON). Emit `logger.info("model_call", { route, provider, outcome: "ok|retry|timeout|circuit_open", attempt, latencyMs })`. REL-5 builds the log-based metric on `outcome`.
 - **Files to CREATE:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/ai/circuitBreaker.ts`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/ai/circuitBreaker.test.ts`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/ai/degraded.ts`
+  - `app/src/ai/circuitBreaker.ts`
+  - `app/src/ai/circuitBreaker.test.ts`
+  - `app/src/ai/degraded.ts`
 - **Files to MODIFY:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/ai/modelRetry.ts` — add `withTimeout`, extend `isTransientModelError` to treat abort as transient, export `ModelUnavailableError`. *Small, low-traffic but imported widely — keep the existing `withModelRetry` signature byte-identical (default arg unchanged) to avoid touching call sites.*
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/ai/modelRouter.ts` — **SHARED/high-traffic.** Wrap each `withModelRetry(() => ...)` call (lines ~179, 199, 223, 240 in `GeminiDevProvider`; ~266, 286, 310, 327 in `VertexGeminiProvider`) with the breaker + timeout. Touch only the bodies passed to `withModelRetry`; do not change `ModelProvider` interface or `routeDecision`. Add the `logger.info("model_call", …)` emit at the `recordUsage(...)` sites.
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/ai/claudeVertexProvider.ts` — thread `signal` into `fetch` (line 70) and wrap the `withModelRetry` body (line 69) with breaker+timeout.
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/config/env.ts` — **SHARED.** Add `modelTimeoutMs`, `breakerFailureThreshold`, `breakerCooldownMs` to `ArborConfig` (after `maxOutputTokens`, line ~32) and to `loadConfig` (after line 117) with safe defaults. Additive only — no prod invariant added.
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/routes/api.ts` — **SHARED/high-traffic.** Add `catch (ModelUnavailableError)` → 503 graceful degradation in the AI route handlers; do not alter SSE streaming framing (`beginSse`/`writeSse`).
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/cloudbuild.prod.yaml` — **SHARED.** Optionally append `@MODEL_TIMEOUT_MS=30000` to the single `^@^…` env line (line 49). Defaults make this optional.
+  - `app/src/ai/modelRetry.ts` — add `withTimeout`, extend `isTransientModelError` to treat abort as transient, export `ModelUnavailableError`. *Small, low-traffic but imported widely — keep the existing `withModelRetry` signature byte-identical (default arg unchanged) to avoid touching call sites.*
+  - `app/src/ai/modelRouter.ts` — **SHARED/high-traffic.** Wrap each `withModelRetry(() => ...)` call (lines ~179, 199, 223, 240 in `GeminiDevProvider`; ~266, 286, 310, 327 in `VertexGeminiProvider`) with the breaker + timeout. Touch only the bodies passed to `withModelRetry`; do not change `ModelProvider` interface or `routeDecision`. Add the `logger.info("model_call", …)` emit at the `recordUsage(...)` sites.
+  - `app/src/ai/claudeVertexProvider.ts` — thread `signal` into `fetch` (line 70) and wrap the `withModelRetry` body (line 69) with breaker+timeout.
+  - `app/src/config/env.ts` — **SHARED.** Add `modelTimeoutMs`, `breakerFailureThreshold`, `breakerCooldownMs` to `ArborConfig` (after `maxOutputTokens`, line ~32) and to `loadConfig` (after line 117) with safe defaults. Additive only — no prod invariant added.
+  - `app/src/routes/api.ts` — **SHARED/high-traffic.** Add `catch (ModelUnavailableError)` → 503 graceful degradation in the AI route handlers; do not alter SSE streaming framing (`beginSse`/`writeSse`).
+  - `cloudbuild.prod.yaml` — **SHARED.** Optionally append `@MODEL_TIMEOUT_MS=30000` to the single `^@^…` env line (line 49). Defaults make this optional.
 - **Interfaces/contracts:** New `withTimeout<T>(fn, ms): Promise<T>`; `CircuitBreaker.run<T>(key, fn): Promise<T>`; `ModelUnavailableError`. Env vars: `MODEL_TIMEOUT_MS` (default 30000), `MODEL_BREAKER_THRESHOLD` (default 5), `MODEL_BREAKER_COOLDOWN_MS` (default 30000). Log event contract: `{ message: "model_call", route, provider, outcome, attempt, latencyMs }`.
 - **Test plan:** `circuitBreaker.test.ts` covers timeout-rejection, open-after-threshold (assert underlying fn not called when open), half-open recovery, fake timers. Extend `modelRouter.test.ts` to assert a timeout maps to a degraded 503 rather than a 500 (mock provider that hangs). `npm test` (vitest), `npm run lint` (tsc) and `npm run build` must stay green; `npm run eval:safety` unaffected (degradation is not a safety path). Live: with breaker threshold low and Vertex creds revoked in a scratch deploy, confirm requests fail fast with 503 + `Retry-After` and `model_call`/`outcome=circuit_open` appears in Cloud Logging.
 - **NL note:** Graceful degradation copy must be available for a future Dutch UI (app is EN/HE today); keep the parent-facing string in the i18n layer, not hardcoded, so NL can be added. The metric feeds the availability SLO that backs the NL DPA uptime expectation.
@@ -92,8 +92,8 @@ The plan is deliberately additive and reversible: most missions ride on managed-
   - Note the **fail-open** behavior is intentional (availability over enforcement) and should be documented in the SLO doc (REL-5) as a known cost-risk under Firestore outage.
 - **Files to CREATE:** none (extend existing test).
 - **Files to MODIFY:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/server/quotaStore.test.ts` — add the cross-instance continuity test.
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/server/createApp.ts` — **SHARED/high-traffic.** Add one `logger.info("quota_store", { impl })` line right after `counters = createCounterStore(config)` (line 70). One line, no behavior change.
+  - `app/src/server/quotaStore.test.ts` — add the cross-instance continuity test.
+  - `app/src/server/createApp.ts` — **SHARED/high-traffic.** Add one `logger.info("quota_store", { impl })` line right after `counters = createCounterStore(config)` (line 70). One line, no behavior change.
 - **Interfaces/contracts:** No interface change. `UsageCounterStore.increment/peek` already the contract. Collection `aiQuota`; TTL field `expireAt` (already written) — see REL-6 note on enabling the TTL policy.
 - **Test plan:** `npm test` covers the new continuity test. `tsc`/`build` green (one log line). Live: hit an AI endpoint repeatedly; assert `X-AI-Quota-Remaining` monotonically decreases and that, after a revision deploy mid-window, the count continues rather than resetting; confirm `quota_store impl=firestore` in prod logs.
 - **NL note:** None market-specific. (Quota persistence is a cost-control + fairness control, not a privacy/B2G gate.)
@@ -117,12 +117,12 @@ The plan is deliberately additive and reversible: most missions ride on managed-
   - Mount in `createApp.ts` **before** the rate-limit/auth lines: `app.use("/api", createHealthRouter(...))` placed right after the observability middleware (after line 80) and before line 99. Because it is mounted on `/api` but before auth, exclude these two paths from the auth/rate-limit/quota chains (they already only match the AI route arrays, and auth is `app.use("/api", ...)` — so guard inside the health router by registering it first; Express runs middleware in order, and the health router will `res.end` before auth sees the request).
   - Wire Cloud Run probes. Cloud Run YAML-style probes are not expressible in the current `gcloud run deploy` flag set in `cloudbuild.prod.yaml`; add `--startup-probe` / `--liveness-probe` via either `gcloud run services update` flags or a committed `service.yaml`. Document in the DR runbook. Startup probe → `/api/readyz` (gates traffic until Vertex/Firestore reachable); liveness probe → `/api/healthz` (restarts only a truly hung process).
 - **Files to CREATE:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/server/health.ts`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/server/health.test.ts`
+  - `app/src/server/health.ts`
+  - `app/src/server/health.test.ts`
 - **Files to MODIFY:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/server/createApp.ts` — **SHARED/high-traffic.** Insert `app.use("/api", createHealthRouter(...))` **between line 80 (`requestContextMiddleware`) and line 82 (`helmet`)** so it runs before CORS/rate-limit/auth. One mount line + import. Must not change the order of the existing helmet→cors→webhook→ratelimit→auth chain.
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/cloudbuild.prod.yaml` — **SHARED.** Add startup/liveness probe config to the `gcloud run deploy` step (or convert that step to a committed `service.yaml`). Touches the deploy step (lines 32–49) only.
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/firebase.json` — verify the Hosting rewrite `/api/**` → `arbor-api` (lines 5–11) forwards `/api/healthz`; it already does (wildcard). No edit expected unless a public unauthenticated `/healthz` outside `/api` is wanted (not recommended — keep under `/api`).
+  - `app/src/server/createApp.ts` — **SHARED/high-traffic.** Insert `app.use("/api", createHealthRouter(...))` **between line 80 (`requestContextMiddleware`) and line 82 (`helmet`)** so it runs before CORS/rate-limit/auth. One mount line + import. Must not change the order of the existing helmet→cors→webhook→ratelimit→auth chain.
+  - `cloudbuild.prod.yaml` — **SHARED.** Add startup/liveness probe config to the `gcloud run deploy` step (or convert that step to a committed `service.yaml`). Touches the deploy step (lines 32–49) only.
+  - `firebase.json` — verify the Hosting rewrite `/api/**` → `arbor-api` (lines 5–11) forwards `/api/healthz`; it already does (wildcard). No edit expected unless a public unauthenticated `/healthz` outside `/api` is wanted (not recommended — keep under `/api`).
 - **Interfaces/contracts:** `createHealthRouter(config, { firestorePing, breaker }) : express.Router`. Responses: `/healthz` → `{status:"ok",env}`; `/readyz` → `{status:"ready"|"degraded", checks:{firestore:"ok"|"fail", vertex:"ok"|"open"}}`. Cloud Run probe config: `startupProbe.httpGet.path=/api/readyz`, `livenessProbe.httpGet.path=/api/healthz`, conservative `failureThreshold`/`periodSeconds`.
 - **Test plan:** `health.test.ts` via `supertest`: `healthz` 200 no-auth; `readyz` 200 deps-ok, 503 firestore-throws (mock), `vertex:"open"` when breaker open. `tsc`/`npm test`/`build` green. Live: `curl https://<host>/api/healthz` → 200; kill Firestore reachability in a scratch env and confirm `readyz` 503 and Cloud Run holds traffic off the instance.
 - **NL note:** Readiness/liveness probes underpin the **availability SLO** an NL municipality/insurer DPA will reference, and are evidence of operational maturity in a DPIA. The Firestore probe must be a **metadata/listing or `.limit(1)` read** — never read child PII — so the probe itself processes no personal data. **B2G-readiness gate: contributes (operational maturity).**
@@ -143,12 +143,12 @@ The plan is deliberately additive and reversible: most missions ride on managed-
   - Declare the metric + alert policies as infra-as-code under `infra/monitoring/` (gcloud `monitoring` commands or a Terraform/`gcloud alpha monitoring policies create` JSON) so they are reviewable and reproducible — avoid console-only setup.
   - **Cost-aware alerting:** use a single low-cost notification channel (email to the founder, or a free Pub/Sub→existing webhook) rather than paid PagerDuty/Opsgenie at beta scale. Document the upgrade path for B2G SLAs.
 - **Files to CREATE:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/docs/ops/slo.md`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/infra/monitoring/ai-success-log-metric.json` (log-based metric definition)
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/infra/monitoring/alert-policies.json` (burn-rate alert policies)
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/infra/monitoring/README.md` (apply commands)
+  - `docs/ops/slo.md`
+  - `infra/monitoring/ai-success-log-metric.json` (log-based metric definition)
+  - `infra/monitoring/alert-policies.json` (burn-rate alert policies)
+  - `infra/monitoring/README.md` (apply commands)
 - **Files to MODIFY:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/docs/architecture/well-architected-assessment-2026-06-04.md` — flip REL-5 + OPS-1 (SLO portion) status. *Shared doc, edit those rows only.*
+  - `docs/architecture/well-architected-assessment-2026-06-04.md` — flip REL-5 + OPS-1 (SLO portion) status. *Shared doc, edit those rows only.*
   - (No application source changes — depends on REL-2's log event, not on new app code.)
 - **Interfaces/contracts:** Log-based metric filter: `jsonPayload.message="model_call"`, label `outcome`. SLO targets (proposed, tune in doc): availability ≥ 99.5%, p95 < 4s for non-SSE AI routes, AI success ≥ 98%. Notification channel id referenced by both alert policies. No env vars, no code interface.
 - **Test plan:** No app code → `tsc`/tests/`build` unaffected. Verify live: force a burst of `model_call outcome=timeout` (point Vertex at a bad endpoint in a scratch env) and confirm the AI-success log-based metric drops and the slow-burn alert fires to the channel; confirm availability/p95 dashboards populate from Cloud Run built-in metrics. Record the manual threshold cross-check in `slo.md`.
@@ -173,9 +173,9 @@ The plan is deliberately additive and reversible: most missions ride on managed-
   - Enable the `aiQuota` TTL policy (gcloud: `gcloud firestore fields ttls update expireAt --collection-group=aiQuota --enable-ttl`). Document in the runbook.
   - Produce `docs/ops/firestore-query-audit.md`: a table of (file:line → collection → predicate → index status).
 - **Files to CREATE:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/docs/ops/firestore-query-audit.md`
+  - `docs/ops/firestore-query-audit.md`
 - **Files to MODIFY:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/firestore.indexes.json` — **SHARED (infra).** Append any pre-emptive composite indexes (e.g. `consultRequests (ownerUid ASC, createdAt DESC)`, `memoryEvents` COLLECTION_GROUP `(childId ASC, createdAt DESC)` if a desc UI sort lands). Append to the `indexes` array; do not reorder/remove the existing `memoryEvents (childId, createdAt ASC)` entry (lines 3–11) — removing it would break the live listing query. Add the `aiQuota.expireAt` TTL via `fieldOverrides` is **not** how TTL is set (TTL is a gcloud field op, not an index doc) — set it via gcloud and note it in the audit doc.
+  - `firestore.indexes.json` — **SHARED (infra).** Append any pre-emptive composite indexes (e.g. `consultRequests (ownerUid ASC, createdAt DESC)`, `memoryEvents` COLLECTION_GROUP `(childId ASC, createdAt DESC)` if a desc UI sort lands). Append to the `indexes` array; do not reorder/remove the existing `memoryEvents (childId, createdAt ASC)` entry (lines 3–11) — removing it would break the live listing query. Add the `aiQuota.expireAt` TTL via `fieldOverrides` is **not** how TTL is set (TTL is a gcloud field op, not an index doc) — set it via gcloud and note it in the audit doc.
 - **Interfaces/contracts:** Firestore composite index definitions (collectionGroup, queryScope, fields[]). TTL policy on `aiQuota.expireAt`. No app code/env change.
 - **Test plan:** Validate `firestore.indexes.json` parses and `firebase deploy --only firestore:indexes` applies cleanly in a scratch project (dry-run in CI if feasible). No app code → `tsc`/tests/`build` unaffected. Live: confirm `gcloud firestore indexes composite list` shows the declared indexes `READY`, and `gcloud firestore fields ttls describe expireAt --collection-group=aiQuota` shows TTL active. The deploy workflow already runs `firebase deploy --only ...,firestore` (`arbor-deploy.yml:111`) so new indexes ship on merge.
 - **NL note:** Indexing/TTL has no direct privacy-law gate, but the **`aiQuota` TTL is a data-minimisation control** (don't retain per-user usage counters longer than needed) — a small GDPR/AVG storage-limitation win worth noting in the DPIA. **B2G gate: minor (data minimisation).**

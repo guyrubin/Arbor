@@ -94,6 +94,37 @@ describe("W0.9 kid-lock guard survives the search wave (source pins)", () => {
   });
 });
 
+/* ── B-SHELL-37: one search surface per width ───────────────────────────── */
+describe("B-SHELL-37 — Ctrl/Cmd-K opens the surface that width shows", () => {
+  it("at lg+ the hotkey focuses the top-bar field (after the kid gate), never a second surface", () => {
+    const comboAt = shell.indexOf('e.key.toLowerCase() === "k"');
+    const guardAt = shell.indexOf("if (isKidModeActive()) return;", comboAt);
+    const fieldAt = shell.indexOf("window.matchMedia?.(SEARCH_FIELD_MIN_WIDTH).matches", comboAt);
+    const focusAt = shell.indexOf("window.dispatchEvent(new Event(SEARCH_FIELD_FOCUS_EVENT));", comboAt);
+    const toggleAt = shell.indexOf("setSearchOpen((s) => !s)", comboAt);
+    expect(guardAt).toBeGreaterThan(comboAt);
+    expect(fieldAt).toBeGreaterThan(guardAt);
+    expect(focusAt).toBeGreaterThan(fieldAt);
+    expect(focusAt).toBeLessThan(toggleAt);
+    // the width is the Topbar's own: it is `hidden lg:flex`, i.e. 1024 px
+    expect(readSrc("components", "search", "searchSections.ts")).toContain('export const SEARCH_FIELD_MIN_WIDTH = "(min-width: 1024px)";');
+    expect(readSrc("components", "layout", "Topbar.tsx")).toContain("hidden lg:flex");
+  });
+
+  it("the top-bar field answers the hotkey: it opens and takes focus", () => {
+    expect(topbarSearch).toMatch(/import \{[^}]*SEARCH_FIELD_FOCUS_EVENT[^}]*\} from "\.\/searchSections";/);
+    expect(topbarSearch).toMatch(/const onFocusRequest = \(\) => \{ setOpen\(true\); inputRef\.current\?\.focus\(\);/);
+    expect(topbarSearch).toContain("window.addEventListener(SEARCH_FIELD_FOCUS_EVENT, onFocusRequest);");
+    expect(topbarSearch).toContain("window.removeEventListener(SEARCH_FIELD_FOCUS_EVENT, onFocusRequest);");
+  });
+
+  it("below lg the strip icon and the hotkey open the ONE modal", () => {
+    expect(shell).toContain('requestOpenSearch("mobile")');
+    expect(shell).toContain("{!kidLocked && <SearchModal");
+    expect(shell.match(/<SearchModal /g) ?? []).toHaveLength(1);
+  });
+});
+
 /* ── 3. Nav weighting: emphasis only, zero regression ────────────────────── */
 describe("W2.7 nav de-overload — emphasis only", () => {
   // Heartwood D5 ratified the W2.7 canon follow-up: the slot ORDER now matches

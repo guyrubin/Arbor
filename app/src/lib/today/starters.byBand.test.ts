@@ -17,7 +17,7 @@ let lang: UiLang = "en";
 vi.mock("../../context/LanguageContext", () => ({
   useLanguage: () => ({ t: (k: string, v?: Record<string, string | number>) => translate(lang, k, v), uiLang: lang }),
 }));
-import TodayStarterCard from "../../components/overview/TodayStarterCard";
+import TodayStarterCard from "../../components/overview/TodayStarterCard";
 import { todayLiveSource } from "../../testTodaySource";
 
 const NOW = new Date(2026, 9, 6, 12);

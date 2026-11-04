@@ -41,7 +41,7 @@ const decode = (html: string) => html.replace(/&quot;/g, '"').replace(/&#x27;/g,
 const text = (html: string) => decode(html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
 const groups: ShelfDayGroup[] = [{ key: "2026-10-05", label: "Yesterday", rows: [{ id: "moment-a", title: "A moment", words: "Said big ball at the park", when: "9:00" }] }];
 
-const render = (opts: { lang?: "en" | "he"; count?: number; withPractice?: boolean; isToday?: boolean; withNotice?: boolean; groups?: ShelfDayGroup[]; leadWords?: { id: string; text: string; day: string } | null } = {}) => {
+const render = (opts: { lang?: "en" | "he"; count?: number; withPractice?: boolean; isToday?: boolean; withNotice?: boolean; groups?: ShelfDayGroup[]; leadWords?: { id: string; text: string; day: string } | null; askHearing?: React.ReactNode } = {}) => {
   state.lang = opts.lang ?? "en";
   return renderToStaticMarkup(
     <ShelfPage
@@ -60,6 +60,7 @@ const render = (opts: { lang?: "en" | "he"; count?: number; withPractice?: boole
       onBack={noop}
       onAdd={noop}
       primaryMoveProps={{ "data-primary-move": "open-shelf" }}
+      askHearing={opts.askHearing}
     />,
   );
 };
@@ -318,4 +319,25 @@ describe("B-DESIGN-04 · the shelf page header and sections", () => {
       expect(html.match(/data-testid="shelf-glyph-duotone"/g)).toHaveLength(1);
     });
   }
+});
+
+describe("B-NEXT-01 · the hearing question folds into the shelf's one card", () => {
+  const hearing = <section data-testid="shelf-hearing-check">When was hearing last checked?</section>;
+  const cards = (html: string) => (html.match(/arbor-depth-card/g) || []).length;
+  it("with a Notice: inside the Notice card, under a hairline, and no card is added", () => {
+    const without = render();
+    const html = render({ askHearing: hearing });
+    expect(cards(html)).toBe(cards(without));
+    const card = html.slice(html.indexOf('data-testid="shelf-notice"'), html.indexOf('data-module="shelf-entries"'));
+    expect(card.indexOf('data-testid="notice-card"')).toBeGreaterThan(-1);
+    expect(card.indexOf('data-testid="shelf-hearing-check"')).toBeGreaterThan(card.indexOf('data-testid="notice-card"'));
+    expect(card).toMatch(/data-testid="shelf-hearing-fold"[^>]*style="border-block-start:1px solid var\(--arbor-rule\)"/);
+  });
+  it("without a Notice: the question alone holds the shelf's one card; with neither, no empty card", () => {
+    const html = render({ withNotice: false, askHearing: hearing });
+    expect(html).not.toContain('data-testid="shelf-notice"');
+    expect(cards(html)).toBe(cards(render({ withNotice: false })) + 1);
+    expect(html).toMatch(/data-testid="shelf-hearing-card" class="arbor-depth-card[^"]*"[\s\S]*data-testid="shelf-hearing-check"/);
+    expect(render({ withNotice: false })).not.toContain("shelf-hearing-card");
+  });
 });

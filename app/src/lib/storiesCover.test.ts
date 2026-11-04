@@ -363,12 +363,18 @@ describe("W2-SHELLPLAY r2 · #/stories — Builds is a glance, and one moment li
     expect(line).toContain('borderInlineStart: "3px solid var(--arbor-peach-ink)"');
     expect(line).toContain("line-clamp-2");
     expect(line).toContain('fontFamily: "var(--font-editorial)"');
-    // the quote glyphs sit INSIDE the bdi (RTL no longer reverses them)
-    expect(line).toContain("“{notedMoment.text}”</bdi>");
+    // the locale's one quote pair, inside the bdi (Hebrew ״…״, never a Latin “…”)
+    expect(line).toContain('{t("elev.loop.ms.quoted", { text: notedMoment.text })}</bdi>');
+    expect(line).not.toMatch(/[\u201C\u201D]/);
     expect(line).not.toMatch(/--gradient-cta|data-primary-move|data-module|<button|onClick/);
     expect(section).toContain('!kidMode && notedMoment && (');
     // NEGATIVE CONTROL: the r3 band's second door is gone
     expect(section).not.toContain("stories-tonight-noted-cta");
+    expect(translate("en", "elev.stories.tonight.builds")).toBe("Builds");
+    expect(translate("en", "elev.stories.tonight.askAfter")).toBe("Ask after");
+    expect(translate("he", "elev.stories.tonight.builds")).toBe("מה מתרגלים");
+    expect(translate("he", "elev.stories.tonight.askAfter")).toBe("שאלה אחרי הקריאה");
+    expect(translate("he", "elev.stories.tonight.h1")).toBe(translate("he", "elev.stories.tonight.mode.label"));
     expect(section).not.toContain("elev.stories.tonight.notedCta");
     for (const k of ["elev.stories.tonight.noted", "elev.stories.tonight.noted.yesterday"]) {
       expect(translate("en", k), k).not.toBe(k);

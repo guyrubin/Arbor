@@ -296,7 +296,8 @@ describe("critic r1 — behaviors capture reads first, one primary fill", async 
     expect(fills).toHaveLength(0);
     expect(BEH).not.toMatch(/<form|<motion\.form/);
     const modal = strip(read("components/overview/QuickLogModal.tsx"));
-    expect(modal).toMatch(/type="submit"[^\n]+--arbor-gradient-primary/);
+    // B-ASKJB-47: the sheet's save is the solid accent fill, no gradient.
+    expect(modal).toMatch(/type="submit"[^\n]+background: "var\(--arbor-clay\)"/);
   });
   it("the hero zero line is muted, regular weight", () => {
     const zero = HERO.slice(HERO.indexOf("{allZero && zeroLine && ("), HERO.indexOf("{zeroLine}"));

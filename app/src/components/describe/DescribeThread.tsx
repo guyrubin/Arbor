@@ -62,9 +62,11 @@ export interface DescribeThreadProps {
   primedVoice?: React.MutableRefObject<QuestionVoice | null>;
   /** v3 F-CHILD-3: the opening as the container asked it (an area's opening). */
   opening?: string;
+  /** B-ASKJB-49: the crisis card's door to Safety, where the host has one. */
+  onSafety?: () => void;
 }
 
-export default function DescribeThread({ name, lang, session, onAnswer, onSkip, onDone, primedVoice, opening }: DescribeThreadProps) {
+export default function DescribeThread({ name, lang, session, onAnswer, onSkip, onDone, primedVoice, opening, onSafety }: DescribeThreadProps) {
   const { t } = useLanguage();
   const state = useSyncExternalStore(session.subscribe, session.snapshot, session.snapshot);
   const voice = useRef<QuestionVoice | null>(null);
@@ -109,6 +111,8 @@ export default function DescribeThread({ name, lang, session, onAnswer, onSkip, 
       onSkip={() => { stopVoice(); void (onSkip ? onSkip() : session.skip()); }}
       onDone={() => { stopVoice(); void (onDone ? onDone() : session.done()); }} />}
     {state.error === "followUp" && <p className="describe-note" role="alert">{t("elev.describe.followUpFailed")}</p>}
-    {state.error === "crisis" && <UrgentSupport testId="describe-thread-urgent-support" />}
+    {/* B-ASKJB-49: the client screen or the route's 409: helplines in the
+        answer's language, and the door to Safety where the app has one. */}
+    {state.error === "crisis" && <UrgentSupport testId="describe-thread-urgent-support" requestLang={lang} lead={t("elev.safety.paused")} onSafety={onSafety} />}
   </section>;
 }

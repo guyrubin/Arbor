@@ -255,7 +255,7 @@ export function startablePrograms(ageMonths: number | null, lang: ProgramLang): 
    (GA B-GA-02 sets it to "approved"); a retired program never shows it.
 
    SHOWN BY DEFAULT. The row's gate is Guy's decided default ("show the
-   pilot line until GA B-GA-02 signs"; CoS/decisions/log.md 11 Oct, "Guy
+   pilot line until GA B-GA-02 signs"; the ROS decision log 11 Oct, "Guy
    takes the defaults on every GUY row", B-PROG-15 under buildable now), so
    PROGRAM_PILOT_LINE_EXPOSED is true. The house device flag
    (lib/entitlementsGuided: `arbor.flags.<name>`) stays as a review switch:

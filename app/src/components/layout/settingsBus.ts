@@ -14,7 +14,7 @@
 export const SETTINGS_OPEN_EVENT = "arbor:open-settings";
 
 /** A Settings row a caller can ask to land on (B-PLAY-06). */
-export type SettingsFocus = "pin" | "data";
+export type SettingsFocus = "pin" | "data" | "pause-arbor";
 
 /** The anchor each focus scrolls into view — a data-testid inside SettingsModal. */
 export const SETTINGS_FOCUS_ANCHOR: Record<SettingsFocus, string> = {
@@ -22,6 +22,8 @@ export const SETTINGS_FOCUS_ANCHOR: Record<SettingsFocus, string> = {
   // B-CAREPRO-24/35: "Export or delete" (The Science, Sharing, the profile
   // drawer) lands on the data row AND opens the Your-data sheet.
   data: "settings-data-row",
+  // Pause Arbor. Hyphenated so the icon-font guard does not read it as a glyph.
+  "pause-arbor": "settings-pause-arbor",
 };
 
 let pendingFocus: SettingsFocus | null = null;

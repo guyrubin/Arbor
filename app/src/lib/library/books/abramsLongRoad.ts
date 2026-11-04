@@ -1,7 +1,7 @@
 /**
  * "Abram's Long Road" — B-BOOK-02: the ENGINE'S TEST FIXTURE (RULINGS BR1:
  * the proof book is David and Goliath, delivered later as its own file;
- * Abram is book 2 and is not polished further here). As data. Source of record: execution/2026-10-06--kids-books/lane-A-story-craft.md
+ * Abram is book 2 and is not polished further here). As data. Source of record: the 6 Oct kids-books lane A story-craft file (private record)
  * §6 (manuscript, slots, plate ledger) and §6.2 (parent panel), with lane A's
  * own C8 fix applied: "Abram is waiting." / "אברם מחכה." is cut from p7b's
  * before-text (it stays in the picture only).

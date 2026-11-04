@@ -31,6 +31,17 @@ describe("B-PROV-06 — the reason classifier", () => {
     expect(liveUnavailableReason(new Error("Gemini Live error"), "socket")).toBeNull();
     expect(liveUnavailableReason("weird", "socket")).toBeNull();
   });
+
+  it("B-AIOPS-02: nothing at the microphone stage (opened before any mint) is an availability signal", () => {
+    // A refused, missing or stuck microphone — even a message that would read
+    // as a Live failure at a later stage — never emits and never reaches the mint.
+    expect(liveUnavailableReason(Object.assign(new Error("denied"), { name: "NotAllowedError" }), "mic")).toBeNull();
+    expect(liveUnavailableReason(new Error("live-mic-timeout"), "mic")).toBeNull();
+    expect(liveUnavailableReason(new Error("live-closed-before-open"), "mic")).toBeNull();
+    expect(liveUnavailableReason(new Error("HTTP 503"), "mic")).toBeNull();
+    // The later stages are unchanged.
+    expect(liveUnavailableReason(new Error("live-mic-timeout"), "mint")).toBe("token_error");
+  });
 });
 
 describe("B-PROV-06 — the event", () => {

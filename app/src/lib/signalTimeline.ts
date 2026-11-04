@@ -1,3 +1,5 @@
+import { visitRecords, type Appointment, type AppointmentFollowUp, type AppointmentProfession } from "./careTrack";
+import { appointmentRoleLabel } from "./appointmentLabel";
 import { isObservationAction, isUrgentOnboardingAction, capacityMinutes, type ActionLoopEntry } from "../actionLoop/model";
 import { behaviorTypeLabel } from "../content/behaviorTaxonomy";
 import type {
@@ -50,7 +52,7 @@ import { shownContentSource } from "./kept/photoOnly";
  * A kind nothing can produce is a dead filter chip and four dead render
  * branches, so it was removed with its source rather than left standing.
  */
-export type SignalKind = "moment" | "milestone" | "plan" | "memory" | "play" | "practice" | "action" | "kept";
+export type SignalKind = "moment" | "milestone" | "plan" | "memory" | "play" | "practice" | "action" | "kept" | "visit";
 export type SignalTone = "mint" | "coral" | "lav" | "yellow" | "pink" | "sky";
 
 /**
@@ -140,6 +142,13 @@ export interface TimelineSignal {
    * folded row carries no count of its own.
    */
   folded?: TimelineSignal[];
+  /**
+   * B-CAREPRO-37 (kind "visit" only) — who the visit was with: the keyed
+   * profession (or a legacy row's typed role). The row's `detail` is the
+   * parent's after-visit note, verbatim; the title names the profession at
+   * render. Never a why-line, never Arbor's own sentence.
+   */
+  visit?: { profession?: AppointmentProfession; role?: string };
 }
 
 /** B-GROWTH-15 — a stored language name in the page language when it is a
@@ -175,6 +184,8 @@ export const SIGNAL_PROVENANCE: Record<SignalKind, SignalProvenance> = {
   // the row reads "You kept" and carries the line verbatim, no claim about
   // the child.
   kept: "manual",
+  // B-CAREPRO-37: the after-visit note is the parent's own record of the visit.
+  visit: "manual",
 };
 
 export const isAutoSignal = (kind: SignalKind): boolean => SIGNAL_PROVENANCE[kind] === "auto";
@@ -235,6 +246,10 @@ export const signalTitle = (s: TimelineSignal, t: TranslateFn): string => {
       return s.actionObservation ? t(`ob.first.observation.history.${s.actionStatus === "done" ? "completed" : "accepted"}`) : t(`elev.closeloop.thread.title.${s.actionStatus ?? "accepted"}`);
     case "kept":
       return t("elev.kept.thread.title");
+    case "visit":
+      // B-CAREPRO-37: "Visit · Speech therapist" — the profession, never the
+      // professional's words as a heading; those are the parent's detail.
+      return t("companion.visit.title", { profession: appointmentRoleLabel({ role: s.visit?.role ?? "", profession: s.visit?.profession }, t) });
   }
 };
 
@@ -279,6 +294,8 @@ export const signalMeta = (s: TimelineSignal, t: TranslateFn): string | undefine
       // (same key the moment rows use), never a score.
       return s.durationMinutes ? t("timeline.meta.minutes", { n: s.durationMinutes }) : undefined;
     case "kept":
+      return undefined;
+    case "visit":
       return undefined;
   }
 };
@@ -347,6 +364,15 @@ export interface TimelineSources {
    * phrases ride in `detail`. The #/language contract's threadWrite.
    */
   langObs?: LangObservation[];
+  /**
+   * B-CAREPRO-37 — the after-visit notes the parent wrote on #/appointments
+   * (`apptFollowUps`, registered in CHILD_SUBCOLLECTIONS): ONE kind "visit"
+   * row per note, dated by the visit, naming its profession (read from
+   * `appointments`, the bookings the notes belong to). The #/appointments
+   * contract's threadWrite.
+   */
+  apptFollowUps?: AppointmentFollowUp[];
+  appointments?: Appointment[];
 }
 
 /**
@@ -376,6 +402,8 @@ const TIMELINE_SOURCE_ID_MAP: { [K in keyof Required<TimelineSources>]: true } =
   missionRecords: true,
   heroRuns: true,
   langObs: true,
+  apptFollowUps: true,
+  appointments: true,
 };
 
 export const TIMELINE_SOURCE_IDS = Object.keys(TIMELINE_SOURCE_ID_MAP) as readonly SignalSource[];
@@ -608,6 +636,21 @@ export const buildTimeline = (sources: TimelineSources): TimelineSignal[] => {
       tone: "lav",
       count: phrases.length,
       wordsLanguage: entry.language,
+    });
+  }
+
+  // B-CAREPRO-37 — the after-visit notes: one dated visit row per note, the
+  // parent's words as the detail (lib/careTrack visitRecords; a note whose
+  // booking was removed went with it).
+  for (const v of visitRecords(sources.appointments ?? [], sources.apptFollowUps ?? [])) {
+    signals.push({
+      id: `visit-${v.id}`,
+      kind: "visit",
+      at: v.at,
+      detail: v.note,
+      // B-DATA-10: one tone per kind — never a verdict colour.
+      tone: "sky",
+      visit: { ...(v.profession ? { profession: v.profession } : {}), role: v.role },
     });
   }
 

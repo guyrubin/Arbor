@@ -26,6 +26,7 @@ export const en: Record<string, string> = {
   "elev.searchnav.kind.milestone": "Milestone",
   "elev.searchnav.kind.journey": "Journey",
   "elev.searchnav.kind.world": "Practice",
+  "elev.searchnav.kind.page": "Page",
   "elev.searchnav.fromLibrary": "From the library",
   "elev.searchnav.loading": "Loading search…",
 };
@@ -41,6 +42,7 @@ export const he: Record<string, string> = {
   "elev.searchnav.kind.milestone": "אבן דרך",
   "elev.searchnav.kind.journey": "מסע",
   "elev.searchnav.kind.world": "תרגול",
+  "elev.searchnav.kind.page": "עמוד",
   "elev.searchnav.fromLibrary": "מהספרייה",
   "elev.searchnav.loading": "החיפוש נטען…",
 };

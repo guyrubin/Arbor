@@ -46,7 +46,9 @@ try {
   check("Live clean turn screening", clean.status === 200 && clean.data.action === "continue", { status: clean.status });
   const crisis = await call("live/turn", { childId, role: "user", language: "en", text: "I might hurt myself." });
   check("Live crisis handling", crisis.status === 200 && crisis.data.action === "stop_crisis" && !!crisis.data.resourcesMarkdown, { status: crisis.status });
-  const live = await call("live/token", { childProfile, contextChildId: childId, language: "en", recentTurns: [] });
+  // B-PROV-12: the synthetic smoke account acknowledges the runtime notice the availability probe names.
+  const liveNotice = (await call("live/availability")).data?.notice?.id;
+  const live = await call("live/token", { childProfile, contextChildId: childId, language: "en", recentTurns: [], noticeAck: liveNotice });
   check("Live constrained token", live.status === 200 && live.data.available && !!live.data.token && live.data.model === "gemini-3.8-live", { status: live.status, model: live.data.model });
   if (rows.at(-1)?.ok) {
     const start = Date.now(); let audioChunks = 0; let transcriptChars = 0;

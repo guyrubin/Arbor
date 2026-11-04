@@ -17,7 +17,8 @@ function render(lang: "en" | "he", log: any, script?: any) {
     react: { __esModule: true, default: { createElement: (type: string, props: any, ...children: any[]) => ({ type, props: { ...props, children } }) } },
     "motion/react": { motion: { div: "div" }, AnimatePresence: "presence" },
     "../../context/ArborContext": { useArbor: () => ({ inlineCoRegulationScripts: script ? { [log.id]: script } : {}, isGeneratingInlineScript: {}, handleGetInlineCoRegulationScript: generate, seedCoach: seed }) },
-    "../../context/LanguageContext": { useLanguage: () => ({ uiLang: lang, t: (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars) }) },
+    "../../context/LanguageContext": { useLanguage: () => ({ uiLang: lang, aiLang: lang, t: (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars) }) },
+    "../safety/UrgentSupport": { UrgentSupport: "urgent-support" },
     "../ui/Icon": { Icon: "icon" }, "../ui/AiBlock": { SayThis: "say-this" }, "../ui/ExplainAnswer": { ExplainAnswerBlock: "explain" },
     "../../lib/explainAnswer": { explainAnswerText }, "../behaviors/contextLabel": { contextLabel }, "../../content/behaviorTaxonomy": { isIncidentType },
   };
@@ -65,4 +66,26 @@ describe("B-ASKJB-23: actual Journal log-detail controls", () => {
     expect(nodes(h.tree).some((node) => node.type === "say-this")).toBe(false);
     expect(nodes(h.tree).find((node) => node.type === "explain")?.props.answer).toBe(answer);
   });
+});
+
+describe("B-ASKJB-49: a crisis 409 on the co-regulation script shows the crisis card, not a script", () => {
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: the shared crisis card in the request's language, with the lead, and no script, step or coach handoff`, () => {
+      const h = render(lang, log, { explanation: "", tryToday: "", escalation: true });
+      const card = nodes(h.tree).find((node) => node.type === "urgent-support");
+      expect(card).toBeDefined();
+      expect(card!.props.requestLang).toBe(lang);
+      expect(card!.props.lead).toBe(translate(lang, "elev.safety.paused"));
+      expect(typeof card!.props.onSafety).toBe("function");
+      expect(nodes(h.tree).some((node) => node.type === "say-this" || node.type === "explain")).toBe(false);
+      expect(text(h.tree)).not.toContain(translate(lang, "beh.discussCoach"));
+      // r2: no "Try different words" (nor any other) door to reword past the pause.
+      expect(nodes(h.tree).filter((node) => node.type === "button")).toHaveLength(0);
+      expect(text(h.tree)).not.toContain(translate(lang, "beh.regenerateScript"));
+      // Negative control: an ordinary failure slot still renders the explain block, no card.
+      const failed = render(lang, log, { explanation: "Connection Error", tryToday: "" });
+      expect(nodes(failed.tree).some((node) => node.type === "urgent-support")).toBe(false);
+      expect(nodes(failed.tree).some((node) => node.type === "explain")).toBe(true);
+    });
+  }
 });

@@ -105,6 +105,8 @@ export const en: Record<string, string> = {
   "elev.closeloop.routines.failed": "The checklist couldn’t be saved.",
   "elev.closeloop.routines.failedLocal": "The checklist couldn’t be saved on this device.",
   "elev.closeloop.routines.retry": "Try again",
+  // Wave 4 (B-DATA-14): an offline tick whose step changed on another device names the step.
+  "elev.closeloop.routines.lostStep": "“{step}” changed on another device, so this phone’s tick wasn’t kept.",
 
   // ── Builder E2 · OBJ-BEH-02: the capture form's validation toast, built from
   //    the labels the form actually renders (beh.capture.happened / .tried) so
@@ -199,6 +201,7 @@ export const he: Record<string, string> = {
   "elev.closeloop.routines.failed": "לא ניתן היה לשמור את הרשימה.",
   "elev.closeloop.routines.failedLocal": "לא ניתן היה לשמור את הרשימה במכשיר הזה.",
   "elev.closeloop.routines.retry": "לנסות שוב",
+  "elev.closeloop.routines.lostStep": "“{step}” השתנה במכשיר אחר, ולכן הסימון מהטלפון הזה לא נשמר.",
 
   // ── Builder E2 · OBJ-BEH-02
   "elev.closeloop.validate.one": "מלאו את “{happened}” כדי לשמור.",

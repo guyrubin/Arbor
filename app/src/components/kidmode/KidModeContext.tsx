@@ -38,6 +38,9 @@ import SneakHandBackCard from "./SneakHandBackCard";
 export interface KidModeTarget {
   view?: string;
   worldId?: string | null;
+  /** B-BOOK-46: open this library book on arrival; `together` = a grown-up reads with the child. */
+  book?: string;
+  together?: boolean;
 }
 
 interface KidModeContextValue {
@@ -60,6 +63,8 @@ export function KidModeProvider({ children }: { children: React.ReactNode }) {
   const openKidMode = (target?: KidModeTarget) => {
     setKidModeActive(true); // gate first — non-React guards see it this tick
     writeKidModeState({ open: true, view: target?.view ?? "home", worldId: target?.worldId ?? null });
+    // B-BOOK-46: a grown-up's door may open straight into a book, read Together.
+    if (target?.book) writeKidModeState({ open: true, view: target.view ?? "home", worldId: target.worldId ?? null, book: target.book, together: target.together === true });
     setIsKidModeOpen(true);
   };
   // Exit makes no Firestore call and mutates no child record.

@@ -59,6 +59,12 @@ export const aiHourlyExempt = (config: { modelProvider: string; arborEnv: string
   config.modelProvider === "mock" && config.arborEnv !== "prod";
 
 export const createAiQuota = (counters: UsageCounterStore, opts: { exempt?: boolean } = {}): RequestHandler => async (req, res, next) => {
+  // B-AIOPS-02: a Live renewal is bounded by the family voice allowance, not
+  // this cap (isLiveRenewalRequest below; the token route verifies it).
+  if (isLiveRenewalRequest(req)) {
+    next();
+    return;
+  }
   if (opts.exempt) {
     next();
     return;
@@ -164,3 +170,18 @@ export const createTtsQuota = (counters: UsageCounterStore): RequestHandler => a
   }
   next();
 };
+
+/**
+ * B-AIOPS-02: a Live RENEWAL (a mint that names the caller's own opened
+ * session in `renewOf`) is already bounded by the family's daily voice
+ * allowance — at most a couple per talk — so it never spends the per-user
+ * hourly AI cap; a long talk must not be cut by its own seams. The token
+ * route verifies `renewOf` before anything is reserved or minted (409
+ * otherwise), so naming it on any other request gains nothing.
+ */
+export function isLiveRenewalRequest(req: { method?: string; originalUrl?: string; body?: unknown }): boolean {
+  return req.method === "POST"
+    && (req.originalUrl ?? "").split("?")[0] === "/api/live/token"
+    && typeof (req.body as { renewOf?: unknown } | undefined)?.renewOf === "string";
+}
+

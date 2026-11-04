@@ -51,6 +51,8 @@ vi.mock("../../lib/describeChildClient", () => ({ describeServices: (deps: any) 
 }) }));
 vi.mock("../behaviors/HardMomentsSection", () => ({ HardMomentGuideContent: () => null }));
 import OnboardingFlow, { StepChild, StepDomains, StepReady } from "./OnboardingFlow";
+import { clearVerifySent, markVerifySent, verifySentPending } from "../../lib/signupNotice";
+import { translate } from "../../lib/i18n";
 
 function unmount() { h.slots.forEach(slot => slot?.cleanup?.()); h.slots = []; h.effects = []; h.at = 0; }
 function nodes(node: React.ReactNode): React.ReactElement<any>[] {
@@ -272,5 +274,23 @@ describe("B-SHELL-39 — 'Tell Arbor about {name}' in step 2", () => {
     const worry = await about(); worry.onWorry({ choice: "nothing", words: "Some nights I want to hurt myself." }); worry.onNext(); await flush();
     expect(h.draft).not.toHaveBeenCalled();
     expect(step(StepReady).card.urgent).toBe(true);
+  });
+});
+
+describe("B-RESID-05 · a new e-mail account is told about its confirmation link where it lands", () => {
+  afterEach(() => clearVerifySent());
+  it.each(["en", "he"] as const)("%s: the line shows on the first step once the link is sent, then goes for good", async lang => {
+    h.lang = lang;
+    const line = () => nodes(render()).find(el => el.props["data-testid"] === "onboarding-verify-sent");
+    expect(line()).toBeUndefined();
+    // AuthContext marks it after sendEmailVerification; onboarding may already be mounted.
+    markVerifySent();
+    const shown = line()!;
+    expect(shown.props.role).toBe("status");
+    expect(shown.props.children).toBe(translate(lang, "elev.auth.signup.verifySent"));
+    await ready();
+    expect(verifySentPending()).toBe(false);
+    unmount();
+    expect(line()).toBeUndefined();
   });
 });

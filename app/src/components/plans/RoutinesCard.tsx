@@ -7,11 +7,39 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { cardCls } from "../ui/kit";
+import { QUEUED_ACK_MS, savedOnPhoneKey } from "../../lib/firestoreWrite";
+import { useOnline } from "../../hooks/useSyncStatus";
 
 type Step = { text: string; done: boolean };
-type Routine = { id: string; name: string; steps: Step[] };
+/** B-DATA-14 r2: a tick made offline, held in the routine's own document. */
+type OfflineTick = { text: string; done: boolean; at: string };
+export type Routine = { id: string; name: string; steps: Step[]; offlineTicks?: Record<string, OfflineTick | null> };
 
-type Attempt = { id: number; from: Routine; target: Routine; complete: boolean; status: "pending" | "acknowledged" | "saved" | "failed" };
+/** queued (B-DATA-14): kept on this phone, not yet acknowledged by the server.
+ *  lost: the words of each offline tick whose step was changed or removed on
+ *  another device (the alert names them). */
+type Attempt = { id: number; from: Routine; target: Routine; complete: boolean; lost: string[]; status: "pending" | "queued" | "acknowledged" | "saved" | "failed" };
+
+/**
+ * B-DATA-14 r2: this phone's offline ticks laid over the routine as the server
+ * holds it, matched by the step's words (its own slot first, then anywhere in
+ * the list). A tick whose step is gone (changed or removed on another device)
+ * is counted as lost, never forced onto a different step. Pure.
+ */
+export function foldOfflineTicks(r: Routine): { routine: Routine; lost: string[] } {
+  const steps = (Array.isArray(r.steps) ? r.steps : []).map((step) => ({ ...step }));
+  const lost: string[] = [];
+  for (const [slot, tick] of Object.entries(r.offlineTicks ?? {})) {
+    // Wave 4: null is a tick this phone took back: the server's value stands.
+    if (!tick) continue;
+    const at = steps[Number(slot)]?.text === tick.text ? Number(slot) : steps.findIndex((step) => step.text === tick.text);
+    if (at < 0) { lost.push(tick.text); continue; }
+    steps[at].done = tick.done;
+  }
+  const { offlineTicks: _held, ...rest } = r;
+  return { routine: { ...rest, steps }, lost };
+}
+const heldTicks = (r: Routine) => Object.keys(r.offlineTicks ?? {}).length;
 type Row = { source: Routine; attempt?: Attempt };
 type Scope = { key: string; rows: Map<string, Row> };
 const sameRoutine = (a: Routine, b: Routine) => sameLocalHistoryRows([a], JSON.stringify([b]));
@@ -22,7 +50,16 @@ export default function RoutinesCard() {
   const { childProfile } = useArbor();
   const { t } = useLanguage();
   const col = useChildCollection<Routine>(childProfile.id, "routines", { trackConfirmation: true });
-  const routines = useMemo(() => [...col.items].sort((a, b) => (a.id < b.id ? -1 : 1)), [col.items]);
+  // B-DATA-14: offline the server cannot confirm a read, so a step ticks from
+  // this phone's copy and says so. Only the tick is written (a merge write of
+  // the routine's offlineTicks field), never the whole cached routine, so what
+  // another device changed meanwhile survives; on reconnect the ticks are
+  // folded into the server's copy. Online the confirmed-read rule is unchanged.
+  const online = useOnline();
+  const offlineRead = col.remote && !online && col.loaded && !col.error;
+  // A routine deleted on another device while this phone held a tick comes
+  // back as a stub (no steps): it is never listed, and is removed on reconnect.
+  const routines = useMemo(() => col.items.filter((r) => Array.isArray(r.steps)).sort((a, b) => (a.id < b.id ? -1 : 1)), [col.items]);
   const [newName, setNewName] = useState("");
   const [stepText, setStepText] = useState<Record<string, string>>({});
 
@@ -51,31 +88,71 @@ export default function RoutinesCard() {
     // arrive in either order. An unrelated source edit retires the attempt.
     const expected = attempt && (sameRoutine(r, attempt.target)
       ? attempt.status !== "failed" || !col.confirmed
-      : (attempt.status === "pending" || attempt.status === "failed") && sameRoutine(r, attempt.from));
+      : (attempt.status === "pending" || attempt.status === "queued" || attempt.status === "failed") && sameRoutine(r, attempt.from));
     if (expected) row.source = r;
     else scope.rows.set(r.id, { source: r });
   }
   const current = (r: Routine, row: Row) => inScope() && scope.rows.get(r.id) === row;
   const actionable = (r: Routine, row: Row) => current(r, row) && col.isCurrent();
   const retire = (r: Routine) => { const row: Row = { source: r }; scope.rows.set(r.id, row); refresh(n => n + 1); return row; };
-  const writeChecklist = async (r: Routine, row: Row, target: Routine) => {
+  const writeChecklist = async (r: Routine, row: Row, target: Routine, lost: string[] = []) => {
     if (!actionable(r, row)) return;
     // Retire old DOM callbacks synchronously, before upsert or React rerenders.
     // A pending remote snapshot is not a current confirmed read: no duplicate
     // write or stale retry can be issued from it.
     const next = retire(r);
-    const attempt: Attempt = { id: ++sequence.current, from: r, target, complete: target.steps.length > 0 && target.steps.every(s => s.done), status: "pending" };
+    const attempt: Attempt = { id: ++sequence.current, from: r, target, complete: target.steps.length > 0 && target.steps.every(s => s.done), lost, status: "pending" };
     next.attempt = attempt;
+    const mine = () => current(r, next) && next.attempt === attempt;
+    // B-DATA-14 r2: bounded. A phone that reads online but cannot reach the
+    // server keeps the write in its local cache: after the queue window the
+    // row says so ("Saved on this phone. Still sending…") instead of an
+    // endless "Saving…"; the acknowledgement or a rejection moves it on.
+    const slow = setTimeout(() => { if (mine() && attempt.status === "pending") { attempt.status = "queued"; refresh(n => n + 1); } }, QUEUED_ACK_MS);
     try {
       await col.upsert(target, { awaitServer: true });
-      if (!current(r, next) || next.attempt !== attempt) return;
+      if (!mine()) return;
       attempt.status = "acknowledged";
     } catch {
       if (!current(r, next) || next.attempt !== attempt) return;
       attempt.status = "failed";
+    } finally {
+      clearTimeout(slow);
     }
     refresh(n => n + 1);
   };
+
+  /** B-DATA-14 r2: a tick made offline writes only itself (see above).
+   *  Wave 4: tapping a step this phone already holds a tick for takes that
+   *  tick back (null) instead of writing the opposite, so on reconnect the
+   *  server's value stands and another phone's tick is never overridden. */
+  const tickOffline = (r: Routine, row: Row, i: number) => {
+    if (!current(r, row) || !offlineRead) return;
+    const step = foldOfflineTicks(r).routine.steps[i];
+    if (!step) return;
+    retire(r);
+    const mine = r.offlineTicks?.[String(i)];
+    const ticks = { ...(r.offlineTicks ?? {}), [String(i)]: mine ? null : { text: step.text, done: !step.done, at: new Date().toISOString() } };
+    void col.upsert({ id: r.id, offlineTicks: ticks } as Routine, { merge: true }).catch(() => { /* the sync banner reports a rejected write */ });
+  };
+
+  // B-DATA-14 r2: back online on a confirmed server read, each routine's held
+  // ticks are folded into the server's copy and written once (the field goes).
+  const folding = useRef(new Set<string>());
+  useEffect(() => {
+    if (!online || !col.remote || !col.confirmed || !col.isCurrent()) return;
+    for (const item of col.items) {
+      if (!heldTicks(item) || folding.current.has(item.id)) continue;
+      folding.current.add(item.id);
+      const done = () => { folding.current.delete(item.id); };
+      if (!Array.isArray(item.steps)) { void col.remove(item.id).catch(() => {}).finally(done); continue; }
+      const row = scope.rows.get(item.id);
+      if (!row) { done(); continue; }
+      const { routine, lost } = foldOfflineTicks(item);
+      void writeChecklist(item, row, routine, lost).finally(done);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online, col.remote, col.confirmed, col.items]);
 
   const addRoutine = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +166,8 @@ export default function RoutinesCard() {
     const t = (stepText[r.id] || "").trim();
     if (!t) return;
     retire(r);
-    void col.upsert({ ...r, steps: [...r.steps, { text: t, done: false }] });
+    const base = foldOfflineTicks(r).routine;
+    void col.upsert({ ...base, steps: [...base.steps, { text: t, done: false }] });
     setStepText((s) => ({ ...s, [r.id]: "" }));
   };
 
@@ -108,21 +186,26 @@ export default function RoutinesCard() {
           const confirmedTarget = attempt && col.confirmed && col.isCurrent() && sameRoutine(r, attempt.target);
           if (attempt?.status === "acknowledged" && confirmedTarget) attempt.status = "saved";
           const pending = !!attempt && (attempt.status === "pending" || (attempt.status === "acknowledged" && !confirmedTarget));
+          // Offline only a step ticks (from this phone's copy); reset, delete
+          // and new steps wait for a confirmed read, as they always have.
           const unavailable = !col.confirmed || pending;
-          const done = r.steps.filter((s) => s.done).length;
+          const stepUnavailable = (!col.confirmed && !offlineRead) || pending;
+          const held = heldTicks(r) > 0;
+          const shown = held ? foldOfflineTicks(r).routine : r;
+          const done = shown.steps.filter((s) => s.done).length;
           return (
             <div key={r.id} data-testid={`routine-row-${r.id}`} className="rounded-xl p-3 space-y-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
               <div className="flex items-center justify-between">
                 <strong className="text-sm" style={{ color: "var(--arbor-ink)" }}>{r.name}</strong>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px]" style={{ color: "var(--arbor-muted)" }} dir="auto">{t("elev.closeloop.routines.stepsDone", { done, total: r.steps.length })}</span>
-                  <button type="button" className="touch-target rounded-lg" data-testid={`routine-reset-${r.id}`} disabled={unavailable} onClick={() => writeChecklist(r, row, { ...r, steps: r.steps.map(s => ({ ...s, done: false })) })} aria-label={t("aria.resetRoutine")} style={{ color: "var(--arbor-muted)" }}><Icon name="restart_alt" size={16} /></button>
+                  <span className="text-[10px]" style={{ color: "var(--arbor-muted)" }} dir="auto">{t("elev.closeloop.routines.stepsDone", { done, total: shown.steps.length })}</span>
+                  <button type="button" className="touch-target rounded-lg" data-testid={`routine-reset-${r.id}`} disabled={unavailable} onClick={() => writeChecklist(r, row, { ...shown, steps: shown.steps.map(s => ({ ...s, done: false })) })} aria-label={t("aria.resetRoutine")} style={{ color: "var(--arbor-muted)" }}><Icon name="restart_alt" size={16} /></button>
                   <button type="button" className="touch-target rounded-lg" data-testid={`routine-delete-${r.id}`} disabled={unavailable} onClick={() => { if (!actionable(r, row)) return; retire(r); void col.remove(r.id); }} aria-label={t("aria.deleteRoutine")} style={{ color: "var(--arbor-muted)" }}><Icon name="delete" size={16} /></button>
                 </div>
               </div>
               <div className="space-y-1">
-                {r.steps.map((s, i) => (
-                  <button key={i} type="button" data-testid={`routine-step-${r.id}-${i}`} aria-pressed={s.done} disabled={unavailable} onClick={() => writeChecklist(r, row, { ...r, steps: r.steps.map((step, index) => index === i ? { ...step, done: !step.done } : step) })} className="min-h-11 w-full flex items-center gap-2 text-start text-[12px]">
+                {shown.steps.map((s, i) => (
+                  <button key={i} type="button" data-testid={`routine-step-${r.id}-${i}`} aria-pressed={s.done} disabled={stepUnavailable} onClick={() => offlineRead ? tickOffline(r, row, i) : writeChecklist(r, row, { ...shown, steps: shown.steps.map((step, index) => index === i ? { ...step, done: !step.done } : step) })} className="min-h-11 w-full flex items-center gap-2 text-start text-[12px]">
                     <span className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style={s.done ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" } : { border: "1px solid var(--arbor-rule-strong)", color: "transparent" }}>
                       <Icon name="check" size={12} />
                     </span>
@@ -131,6 +214,14 @@ export default function RoutinesCard() {
                 ))}
               </div>
               <PendingLine key={attempt ? `${scopeKey}:${r.id}:${attempt.id}` : `${scopeKey}:${r.id}`} active={pending} testId={`routine-pending-${r.id}`}>{t("elev.closeloop.routines.pending")}</PendingLine>
+              {(attempt?.status === "queued" || held) && (
+                <Receipt testId={`routine-queued-${r.id}`} size="sm">{t(savedOnPhoneKey(online))}</Receipt>
+              )}
+              {!!attempt?.lost.length && attempt.status !== "pending" && attempt.status !== "queued" && (
+                <div role="alert" data-testid={`routine-conflict-${r.id}`} className="t-sm" style={{ color: "var(--arbor-ink-soft)" }}>
+                  {attempt.lost.map((step, n) => <p key={n} dir="auto">{t("elev.closeloop.routines.lostStep", { step })}</p>)}
+                </div>
+              )}
               {attempt?.status === "saved" && attempt.complete && confirmedTarget && (
                 <Receipt testId={`routine-receipt-${r.id}`} size="sm">{t(col.remote ? "elev.closeloop.routines.saved" : "elev.closeloop.routines.savedLocal")}</Receipt>
               )}

@@ -1,6 +1,6 @@
 # Arbor IA Redesign + Additions — TASKS
 
-Brief: `PAI/projects/parenting-os-plugin/arbor-ia-redesign-2026-06-14.md` (+ feature defs + redesign definition, same folder).
+Brief: the Arbor IA redesign brief of 14 June 2026 (+ feature defs + redesign definition), kept in the private product record.
 Aesthetic: calm clinical-humanist. Fraunces display + Nunito body, `--arbor-*` tokens, green/clay + semantic ramp, WCAG AA, `prefers-reduced-motion` gated. Identity-preservation wins (committed brand colors).
 Method: brief-to-tasks (vertical slices, each independently buildable + verifiable; ordered foundation → prominence → risk). Status: ✅ done · ◻ staged.
 

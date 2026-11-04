@@ -12,7 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildSinceVisitRows, SINCE_VISIT_MAX_ROWS } from "./sinceVisitEvents";
 import { buildTimeline } from "../../lib/signalTimeline";
-import { elevationEn, elevationHe } from "../../lib/i18nElevation";
+import { elevationEn, elevationHe } from "../../lib/i18nElevation";
 import { todayLiveSource } from "../../testTodaySource";
 
 const PREV = "2026-09-03T20:00:00.000Z";

@@ -182,7 +182,12 @@ export const OTHER_FIRESTORE_COLLECTIONS: Readonly<Record<string, OtherChildSink
   pushTokenIndex: "account: push token index",
   retentionRollups: "account: per-family counts for the cohort report",
   digestOptIn: "account: weekly digest mailing consent",
+  familyWay: "account: the family's charter and the parent's 'How should Arbor talk with you?' choice (B-PLAY-21, lib/familyWay.ts) at users/{uid}/familyWay/current: family-level, never per child, so no child erase touches it; carried in every child's data export (familyWay) and removed by account deletion's recursive delete of users/{uid}",
+  erasedChildren: "account: the family's erase record, keyed by the erased child's id (ids and dates only, no child data) so a retried erase and account deletion can finish it; removed by account deletion and a 30-day TTL (firestore.indexes.json)",
   usageRollup: "aggregate: daily token spend, no uid or child",
+  opsLedger: "aggregate: AI Studio prepay reserved milliseconds since a top-up date (server/prepayBalance.ts), no uid or child",
+  studioCostLedger: "aggregate: B-KID-150 production cost per SHARED kid asset (plates, overlays, shared narration, video, music; server/studioCostLedger.ts), no uid, family or child",
+  offerRedemptions: "account: the family's one offer redemption per uid (B-GROWTH-43: offer id, version, link or typed, date; no child data); removed by account deletion",
 };
 
 /** The registered Storage prefixes (path templates). */
@@ -197,8 +202,8 @@ export const STORAGE_PREFIXES: Readonly<Record<"storage:photos" | "storage:books
 export const STORAGE_MODULES: Readonly<Record<string, readonly ("storage:photos" | "storage:books" | "account" | "init" | "shared")[]>> = {
   "lib/firebase.ts": ["init"],
   "lib/storage.ts": ["storage:photos"],
-  "routes/api.ts": ["storage:photos", "storage:books"],
-  "server/accountDeletion.ts": ["account", "storage:books"],
+  "server/accountDeletion.ts": ["account"],
+  "server/childErase.ts": ["storage:photos", "storage:books"],
   "server/bookAssets.ts": ["storage:books"],
   "server/bookAssetExport.ts": ["storage:books"],
   "server/bookSheet.ts": ["storage:books"],
@@ -224,11 +229,16 @@ export const CACHE_STORAGE_CACHES: Readonly<Record<string, string>> = {
 };
 
 /**
- * Device keys (localStorage / sessionStorage) that do NOT carry a child id,
- * with why none of them holds data about one child. Account deletion removes
- * every `arbor*` key. A key that is about one child must carry the child id as
- * a dot segment instead (lib/childLocalState.childScopedKey), so the child's
- * erase sweeps it; that rule is guarded by childLocalStateSweep.guard.test.ts.
+ * Device keys (localStorage / sessionStorage) that do NOT carry a child id as
+ * a dot segment, with what each holds. Account deletion removes every `arbor*`
+ * key. A key that holds data about one child must carry the child id as a dot
+ * segment instead (lib/childLocalState.childScopedKey), so the child's erase
+ * sweeps it; that rule is guarded by childLocalStateSweep.guard.test.ts.
+ * The one key that names a child is `arbor.pendingErase`, and only a child
+ * whose erase has already run: the id the retry must erase again and the
+ * receipt so far, never the child's name or content. It cannot be
+ * child-scoped (the erase it finishes would sweep it), so it is scoped to the
+ * account instead: only that uid reads it back, across its own sign-outs.
  */
 export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.": "the namespace root the sweep matches on",
@@ -238,7 +248,9 @@ export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.activeTab": "UI state",
   "arbor.aiLang": "language preference",
   "arbor.analytics.optOut": "analytics preference",
+  "arbor.trialEntry": "session-only landing language, timestamp and recorded flag; expires after 30 minutes; no family content",
   "arbor.attribution": "first-touch campaign source",
+  "arbor.auth.verifySent": "a one-shot sign-up notice (B-RESID-05; no address)",
   "arbor.bell.read": "notification read marker",
   "arbor.billingReturn": "checkout return marker",
   "arbor.children": "sandbox profile list: the profile sink; ProfileContext.deleteChild drops the child's row",
@@ -249,11 +261,14 @@ export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.elev.celebrate.shown": "UI marker",
   "arbor.familyCharter": "family-level values, deliberately not per child (lib/familyCharter.ts)",
   "arbor.familyRituals.practised": "family ritual ids and times, not per child",
+  "arbor.familyWay.updatedAt": "when this device last changed the family's charter or tone (B-PLAY-21 sync stamp), not per child",
   "arbor.firstPlanTracked": "an analytics stamp",
   "arbor.firstSteps": "legacy onboarding marker (read once, then removed)",
   "arbor.flags.guidedTier": "feature flag",
+  "arbor.flags.hearingQuestion": "feature flag (B-NEXT-01: the hearing question, dark until clinical review)",
   "arbor.flags.homeProgramLink": "feature flag",
   "arbor.flags.programPilot": "feature flag (B-PROG-15: show the pilot line)",
+  "arbor.flags.familyWaySync": "feature flag (B-PLAY-21: the charter and tone follow the account; off = device only)",
   "arbor.flags.sneakFreeze": "feature flag",
   "arbor.gate.mathExit": "parent gate state",
   "arbor.gate.pinNudgeShown": "parent gate marker",
@@ -271,6 +286,8 @@ export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.nudge.shown.": "prefix: a nudge shown on a day",
   "arbor.ownershipProvisioned.": "prefix: session marker per account",
   "arbor.parentPin": "the parent gate PIN",
+  "arbor.pause": "this device's Pause Arbor flag (a stretch and an end instant; no child record)",
+  "arbor.pendingErase": "an erase still to finish (lib/pendingErase.ts), per account: the uid that started it, the erased child's id and the receipt so far (counts and per-place ledger); read back only by that uid, kept across its sign-out, cleared when a retry completes",
   "arbor.plan.previewDismissed": "UI marker",
   "arbor.purchaseIntent.v1": "the plan a parent chose before checkout",
   "arbor.recap.emailOptIn": "mailing preference",
@@ -285,6 +302,7 @@ export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.trialNotice.dismissed": "UI marker",
   "arbor.uiLang": "language preference",
   "arbor.voiceDoor.dataUseSeen": "UI marker",
+  "arbor.voiceNotice.acknowledged": "the voice-provider notice ids the parent acknowledged on this device (lib/voiceProviderNotice.ts), no child data",
   "arbor.wowPending": "legacy onboarding marker (read once, then removed)",
   "arbor.agefilter.showAll.${surface}": "per-surface filter preference",
   "arbor.syncBanner.dismissed.${kind}": "per-banner dismissal",

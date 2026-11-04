@@ -159,7 +159,7 @@ function audioContext(): AudioContext | null {
   }
 }
 
-function playNote(ac: AudioContext, n: Note): void {
+function playNote(ac: AudioContext, n: Note, scale = 1): void {
   const t0 = ac.currentTime + n.at;
   const osc = ac.createOscillator();
   const gain = ac.createGain();
@@ -167,7 +167,7 @@ function playNote(ac: AudioContext, n: Note): void {
   osc.frequency.setValueAtTime(n.freq, t0);
   // soft attack, exponential decay: no click at either edge
   gain.gain.setValueAtTime(0.0001, t0);
-  gain.gain.exponentialRampToValueAtTime(n.gain, t0 + 0.012);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, n.gain * scale), t0 + 0.012);
   gain.gain.exponentialRampToValueAtTime(0.0001, t0 + n.dur);
   osc.connect(gain);
   gain.connect(ac.destination);
@@ -175,7 +175,7 @@ function playNote(ac: AudioContext, n: Note): void {
   osc.stop(t0 + n.dur + 0.02);
 }
 
-function playSwish(ac: AudioContext): void {
+function playSwish(ac: AudioContext, scale = 1): void {
   const t0 = ac.currentTime;
   const len = Math.max(1, Math.floor(ac.sampleRate * PAGE_TURN_SECONDS));
   const buffer = ac.createBuffer(1, len, ac.sampleRate);
@@ -189,7 +189,7 @@ function playSwish(ac: AudioContext): void {
   filter.frequency.exponentialRampToValueAtTime(700, t0 + PAGE_TURN_SECONDS);
   const gain = ac.createGain();
   gain.gain.setValueAtTime(0.0001, t0);
-  gain.gain.exponentialRampToValueAtTime(0.1, t0 + 0.02);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, 0.1 * scale), t0 + 0.02);
   gain.gain.exponentialRampToValueAtTime(0.0001, t0 + PAGE_TURN_SECONDS);
   src.connect(filter);
   filter.connect(gain);
@@ -213,14 +213,16 @@ export function kidAudioContext(): AudioContext | null {
 
 /** Play one effect for the active Kid Mode child. Silent when Kid Mode is not
  *  open, the child's sound is off, the tab is hidden or audio is unavailable. */
-export function kidSfx(name: KidSfx): void {
+/** `gain` (0..1] scales the sound (B-BOOK-45: the bedtime reader plays at half). */
+export function kidSfx(name: KidSfx, gain = 1): void {
   if (!kidAudioAllowed()) return;
   const ac = audioContext();
   if (!ac) return;
+  const scale = Number.isFinite(gain) ? Math.min(1, Math.max(0.05, gain)) : 1;
   try {
     void ac.resume?.();
-    if (name === "pageTurn") playSwish(ac);
-    else for (const n of KID_SFX_NOTES[name]) playNote(ac, n);
+    if (name === "pageTurn") playSwish(ac, scale);
+    else for (const n of KID_SFX_NOTES[name]) playNote(ac, n, scale);
   } catch { /* fail quiet */ }
 }
 

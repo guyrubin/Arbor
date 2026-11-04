@@ -1,7 +1,7 @@
 /**
  * heroKeyer — B-GAME-13a: the cut-out tool and its quality gate, ported from
- * the offline proof tools (execution/2026-10-06--kids-games/art/key.py and
- * art/poses/normalise.py) to pure functions over RGBA pixels, so the parent's
+ * the offline proof tools of the 6 Oct kids-games art pass (key.py and
+ * poses/normalise.py, private product tree) to pure functions over RGBA pixels, so the parent's
  * device can key a generated pose (Canvas getImageData -> here -> putImageData).
  *
  * No canvas, no DOM, no model: the same input gives the same output (tests run

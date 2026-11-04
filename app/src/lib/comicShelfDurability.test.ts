@@ -208,6 +208,10 @@ describe("AIX-S5 — firewall condition: device-local ONLY (no network reads the
       // Mocks the store to assert deletion actually calls purgeAllComicPages.
       // Verifies the erase path; introduces no network or upload consumer.
       "components/layout/accountDeletionFlow.test.ts",
+      // B-GA-09 round 7: mocks the store to run the REAL signOut and asserts its
+      // purge still runs (and that an unfinished erase record survives); no
+      // network or upload consumer.
+      "context/AuthContext.signOut.test.tsx",
       "components/tabs/ComicsTab.tsx", // doc comment only (consumes via heroComics)
       "components/stories/ComicReader.tsx", // captures a child-lifetime epoch for build/retry cancellation
       // B-BOOK-20: the export → erase walk puts the real store on an in-memory

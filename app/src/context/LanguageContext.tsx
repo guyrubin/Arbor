@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { setAiLanguage } from "../lib/api";
 import { translate, type UiLang } from "../lib/i18n";
+import { readTrialEntry, trialLanguage } from "../lib/trialEntry";
 
 export type AiLang = "en" | "he";
 
@@ -46,6 +47,8 @@ const detectBrowserLang = (): UiLang => {
 
 const readLang = (key: string): UiLang => {
   try {
+    const landingChoice = trialLanguage(typeof location === "undefined" ? "" : location.search) ?? readTrialEntry()?.lang;
+    if (landingChoice) return landingChoice;
     const stored = localStorage.getItem(key) as UiLang | null;
     if (stored && SUPPORTED.includes(stored)) return stored;
     return detectBrowserLang();

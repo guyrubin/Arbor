@@ -108,6 +108,18 @@ describe("N1-04 (a) — the writer: one merge per new day, idempotent within a d
     expect(later?.firstSeen).toBe("2026-09-10");
   });
 
+  it("BD-37: the household keeps its first touch — a second device never overwrites a stored source or market", () => {
+    const stored = { firstSeen: "2026-09-10", activeDays: ["2026-09-10"], source: "practitioner", market: "il", tzOffsetMinutes: 180, updatedAt: "x", cohort: "family" };
+    const tablet = nextRollupDoc(stored, ctx({ at: "2026-09-12T09:00:00Z", source: "direct", market: "intl" }));
+    expect(tablet).toMatchObject({ source: "practitioner", market: "il" });
+    expect(tablet?.activeDays).toEqual(["2026-09-10", "2026-09-12"]);
+    // The same day from the second device writes nothing at all.
+    expect(nextRollupDoc(tablet, ctx({ at: "2026-09-12T10:00:00Z", source: "direct", market: "intl" }))).toBeNull();
+    // A family stored before attribution was known gets its source filled.
+    const unknown = { ...stored, source: null, market: null };
+    expect(nextRollupDoc(unknown, ctx({ at: "2026-09-12T09:00:00Z", source: "studio", market: "il" }))).toMatchObject({ source: "studio", market: "il" });
+  });
+
   it("never throws: absent store, rejecting read, rejecting write, empty uid", async () => {
     expect(await upsertRetentionRollup(null, ctx())).toBe("skipped");
     expect(await upsertRetentionRollup(fakeStore().store, ctx({ uid: "" }))).toBe("skipped");

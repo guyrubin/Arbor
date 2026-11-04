@@ -31,15 +31,15 @@ This domain hardens how Arbor is **observed, released, and recovered**. The good
   - **Metrics + alerts as config (no code):** add `infra/monitoring/` with `log-based-metrics.yaml` and `alert-policies.yaml` plus an apply script (`infra/monitoring/apply.sh` using `gcloud logging metrics create` / `gcloud alpha monitoring policies create`). Metrics derive from existing log lines: 5xx from `httpRequest.status>=500`, latency from `latencyMs`, AI volume from the `ai.usage` `message` + `totalTokens`. This rides entirely on logs Arbor **already emits** — zero new instrumentation.
   - **Error Reporting:** already satisfied by `logger.error` (`logger.ts:32-38`) writing `severity:ERROR` + stack into `message`. Add one regression test asserting the shape; document the verified grouping.
 - **Files to CREATE:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/server/trace.ts`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/server/trace.test.ts`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/server/logger.test.ts` (PII allow-list assertion)
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/infra/monitoring/log-based-metrics.yaml`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/infra/monitoring/alert-policies.yaml`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/infra/monitoring/apply.sh`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/infra/monitoring/README.md`
+  - `app/src/server/trace.ts`
+  - `app/src/server/trace.test.ts`
+  - `app/src/server/logger.test.ts` (PII allow-list assertion)
+  - `infra/monitoring/log-based-metrics.yaml`
+  - `infra/monitoring/alert-policies.yaml`
+  - `infra/monitoring/apply.sh`
+  - `infra/monitoring/README.md`
 - **Files to MODIFY:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/server/logger.ts` — **SHARED/high-traffic** (imported by `createApp.ts`, `usage.ts`, `usageRollup.ts`, `adminMetrics.ts`, `routes/api.ts`). Touch only `requestObservability` (lines 50-76, add trace merge) and the `emit`/field assembly (lines 16-25 / 59-69, allow-list). Do **not** change the `logger` export signature.
+  - `app/src/server/logger.ts` — **SHARED/high-traffic** (imported by `createApp.ts`, `usage.ts`, `usageRollup.ts`, `adminMetrics.ts`, `routes/api.ts`). Touch only `requestObservability` (lines 50-76, add trace merge) and the `emit`/field assembly (lines 16-25 / 59-69, allow-list). Do **not** change the `logger` export signature.
 - **Interfaces/contracts:** new `traceFieldsFromHeaders()`; log keys frozen to `{severity,message,time,requestId,httpRequest,latencyMs,userUid,"logging.googleapis.com/trace","logging.googleapis.com/spanId"}`. Env: reads `GCP_PROJECT_ID` (already set in `cloudbuild.prod.yaml:49`). Alert policy needs one notification channel id (email to founder) — a one-time `gcloud` setup, recorded in `infra/monitoring/README.md`.
 - **Test plan:** unit — `trace.test.ts` (header → trace field mapping for both header formats + malformed input); `logger.test.ts` (capture `console.log`, assert emitted JSON keys ⊆ allow-list, assert no `email`). Integration — `vitest` over a supertest hit to a 500 route asserting `severity:ERROR` + stack present. Live — after deploy, curl a known route, find the `X-Request-Id` in Cloud Logging, confirm the trace link resolves and the `ai.usage` line shares the trace; force a 500 and confirm it groups in Error Reporting; trip the error-rate alert in a staging burst. `tsc` (`npm run lint`) + `npm test` + `vite build` stay green.
 - **NL note:** the PII-scrub guarantee is the GDPR/AVG load-bearing control — logs of a children's product must not contain personal data; the allow-list + test is the auditable evidence for the DPIA. EU residency already met (`europe-west4`); ensure the log sink and any metric scopes stay in-region (no US log routing).
@@ -61,15 +61,15 @@ This domain hardens how Arbor is **observed, released, and recovered**. The good
   - **Smoke test (reuse, don't invent):** `app/scripts/live-smoke.mts`, `council-smoke.mts`, `vision-smoke.mts` already exist for live AI verification. Add a thin `app/scripts/post-deploy-smoke.mts` that takes a `--base-url` and a short-lived Firebase ID token (minted from a stage test-user via a CI secret) and hits `/healthz` then one cheap route (e.g. `POST /api/score-utterance` is a `router.get` no-AI route at `api.ts:698`, or a minimal `/api/chat` with a 1-token cap) — choose a **safe, low-cost** call. Exit non-zero on failure.
   - **Workflow restructure:** split `arbor-deploy.yml` (currently a single `deploy` job) into jobs: `deploy-stage` → `smoke-stage` → `deploy-prod (--no-traffic, tagged)` → `promote-prod`. Use `needs:` so prod is unreachable without green smoke. The existing quality gates (`npm ci/lint/test`, `arbor-deploy.yml:57-62`) move to a `gate` job all others `needs:`.
 - **Files to CREATE:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/scripts/post-deploy-smoke.mts`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/cloudbuild.stage.yaml` (promote orphaned `cloudbuild.yaml` into a named stage deploy, or rename in place)
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/infra/rollback.sh`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/docs/ops/deploy-and-rollback.md`
+  - `app/scripts/post-deploy-smoke.mts`
+  - `cloudbuild.stage.yaml` (promote orphaned `cloudbuild.yaml` into a named stage deploy, or rename in place)
+  - `infra/rollback.sh`
+  - `docs/ops/deploy-and-rollback.md`
 - **Files to MODIFY:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/src/server/createApp.ts` — **SHARED/high-traffic**. Add `app.get("/healthz",…)` and `app.get("/readyz",…)` **between** the `helmet`/`cors` block (lines 82-94) and the billing/`/api` mounts (line 98 onward). Do not touch the existing middleware order for `/api`.
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/cloudbuild.prod.yaml` — **SHARED/high-traffic**. Add `--no-traffic` + `--tag candidate` to the `gcloud run deploy` step (lines 33-49); traffic shift happens in the workflow promote step. Touches only the deploy args block (lines 36-49).
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/.github/workflows/arbor-deploy.yml` — **SHARED (CI)**. Restructure single job into `gate → deploy-stage → smoke-stage → deploy-prod → promote-prod`. Touches the whole `jobs:` block (lines 41-113).
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/package.json` — **SHARED**. Add `"smoke": "tsx scripts/post-deploy-smoke.mts"` to `scripts` (after line 16).
+  - `app/src/server/createApp.ts` — **SHARED/high-traffic**. Add `app.get("/healthz",…)` and `app.get("/readyz",…)` **between** the `helmet`/`cors` block (lines 82-94) and the billing/`/api` mounts (line 98 onward). Do not touch the existing middleware order for `/api`.
+  - `cloudbuild.prod.yaml` — **SHARED/high-traffic**. Add `--no-traffic` + `--tag candidate` to the `gcloud run deploy` step (lines 33-49); traffic shift happens in the workflow promote step. Touches only the deploy args block (lines 36-49).
+  - `.github/workflows/arbor-deploy.yml` — **SHARED (CI)**. Restructure single job into `gate → deploy-stage → smoke-stage → deploy-prod → promote-prod`. Touches the whole `jobs:` block (lines 41-113).
+  - `app/package.json` — **SHARED**. Add `"smoke": "tsx scripts/post-deploy-smoke.mts"` to `scripts` (after line 16).
 - **Interfaces/contracts:** new routes `GET /healthz` (no auth), `GET /readyz` (no auth, Firestore ping). Env: `K_REVISION` (Cloud Run-provided) surfaced in health body; new CI secrets `STAGE_PROJECT_ID` (or reuse prod with a `-stage` service), `SMOKE_FIREBASE_TOKEN` (or a CI-minted custom token + `SMOKE_TEST_UID`). Cloud Run revision tags (`candidate`/`stable`).
 - **Test plan:** unit — supertest assert `/healthz` 200 without a token and `/readyz` shape. Local — `npm run smoke -- --base-url http://localhost:3000` against `npm run dev`. Live — push to a throwaway branch deploying stage only; confirm smoke gates; deliberately break a route and confirm prod promotion is blocked; run `infra/rollback.sh` and confirm traffic returns to the prior revision. `tsc`/tests/`vite build` green.
 - **NL note:** staging must **not** carry real Dutch child data — the smoke test user is synthetic; this keeps GDPR/AVG processing scope clean and is a B2G expectation (separation of test/prod data). Stage stays in `europe-west4`.
@@ -86,13 +86,13 @@ This domain hardens how Arbor is **observed, released, and recovered**. The good
   - **Dashboard as config:** add `infra/monitoring/dora-dashboard.json` (Cloud Monitoring dashboard) with four tiles backed by log-based metrics over `deploy.event` / `deploy.rollback` — same free, log-derived approach as OPS-1. No app code, no DB.
   - **Cheapest viable alt to a custom dashboard:** if a Monitoring dashboard proves fiddly, a fallback `scripts/dora-report.mjs` aggregates the last N `deploy.event` lines via `gcloud logging read --format json` into a printed markdown table for the weekly review — zero standing infra. Document both; ship the log-metrics dashboard first.
 - **Files to CREATE:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/infra/monitoring/dora-dashboard.json`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/infra/monitoring/dora-metrics.yaml` (log-based metrics for `deploy.event`/`deploy.rollback`)
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/scripts/dora-report.mjs` (fallback CLI report)
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/docs/ops/dora-metrics.md`
+  - `infra/monitoring/dora-dashboard.json`
+  - `infra/monitoring/dora-metrics.yaml` (log-based metrics for `deploy.event`/`deploy.rollback`)
+  - `app/scripts/dora-report.mjs` (fallback CLI report)
+  - `docs/ops/dora-metrics.md`
 - **Files to MODIFY:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/.github/workflows/arbor-deploy.yml` — **SHARED (CI)**. Add a `gcloud logging write deploy.event …` step in the prod promote job (depends on OPS-2's restructure).
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/infra/rollback.sh` — (created in OPS-2) emit a `deploy.rollback` event for MTTR.
+  - `.github/workflows/arbor-deploy.yml` — **SHARED (CI)**. Add a `gcloud logging write deploy.event …` step in the prod promote job (depends on OPS-2's restructure).
+  - `infra/rollback.sh` — (created in OPS-2) emit a `deploy.rollback` event for MTTR.
 - **Interfaces/contracts:** log schema `deploy.event` `{sha, deployedAt, commitAt, leadTimeSec, actor, env, result}` and `deploy.rollback` `{sha, fromRevision, toRevision, at}`. No env vars; uses the deploy SA's `logging.logWriter` (already has Cloud Build/Run roles per `arbor-deploy.yml:11-13`, may need `roles/logging.logWriter` added).
 - **Test plan:** unit — `dora-report.mjs` against a fixture array of log lines asserting the four computed keys. Live — after two deploys + one forced rollback, confirm the dashboard tiles populate and `dora-report.mjs` matches. No app `tsc`/test impact (CI-only + mjs script).
 - **NL note:** MTTR and change-failure rate are part of the operational-maturity evidence a JGZ/municipality procurement (B2G) reviews; keep the dashboard and underlying logs in `europe-west4`.
@@ -111,11 +111,11 @@ This domain hardens how Arbor is **observed, released, and recovered**. The good
   - `scripts/vitest.config.mjs` already has a v8 coverage block (lines 7-26) with `thresholds: { statements: 40, branches: 30 }` and `@vitest/coverage-v8` is already a devDependency (`package.json:57`). The work is (a) **broaden `include`** from the 5 named files to the four directory globs the mission names, (b) set thresholds, and (c) **wire CI to actually run it**.
   - Measure first: run `npm run test:coverage` locally to get the real baseline for `safety/contracts/routes/memory`, then set thresholds **at or just below** baseline so the gate is green on day one and is ratcheted in a follow-up (avoid blocking the team on a cliff). `routes/api.ts` is 77 KB and largely integration-shaped — set its floor conservatively or use per-glob `thresholds` with `perFile:false`.
   - In `arbor-ci.yml`, replace `- run: npm test` (line 24) with `- run: npm run test:coverage` and upload the `coverage/` artifact. In `arbor-deploy.yml` keep `npm test` (fast) OR also switch — recommend keeping deploy's gate as `test:coverage` too so prod can't ship under-covered.
-- **Files to CREATE:** none required. *(Optional)* `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/docs/ops/coverage-policy.md` documenting the ratchet plan.
+- **Files to CREATE:** none required. *(Optional)* `docs/ops/coverage-policy.md` documenting the ratchet plan.
 - **Files to MODIFY:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/app/scripts/vitest.config.mjs` — broaden `include` to `["src/safety/**","src/contracts/**","src/routes/**","src/memory/**", …existing]`, adjust `exclude` (keep the Firestore/local store excludes at lines 16-20 to avoid I/O-bound files tanking the number), set thresholds.
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/.github/workflows/arbor-ci.yml` — **SHARED (CI)**. Line 24 `npm test` → `npm run test:coverage`; add coverage artifact upload after line 24.
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/.github/workflows/arbor-deploy.yml` — **SHARED (CI)**. Optionally line 61 `npm test` → `npm run test:coverage`.
+  - `app/scripts/vitest.config.mjs` — broaden `include` to `["src/safety/**","src/contracts/**","src/routes/**","src/memory/**", …existing]`, adjust `exclude` (keep the Firestore/local store excludes at lines 16-20 to avoid I/O-bound files tanking the number), set thresholds.
+  - `.github/workflows/arbor-ci.yml` — **SHARED (CI)**. Line 24 `npm test` → `npm run test:coverage`; add coverage artifact upload after line 24.
+  - `.github/workflows/arbor-deploy.yml` — **SHARED (CI)**. Optionally line 61 `npm test` → `npm run test:coverage`.
 - **Interfaces/contracts:** vitest coverage `include`/`exclude`/`thresholds`. No app runtime change. No env vars.
 - **Test plan:** local — `npm run test:coverage` prints the per-area summary; confirm it passes at the chosen thresholds and fails when a threshold is bumped above baseline (proves the gate bites). CI — open a draft PR, confirm the coverage job runs and the artifact uploads. No runtime/`vite build` impact.
 - **NL note:** enforced coverage on `src/safety/**` (the escalation/output-screen path) is the testability evidence GDPR/AVG + a DPIA expect for an automated children's service — coverage on the safety screen is effectively a B2G gate. No NL-specific code path differs.
@@ -132,11 +132,11 @@ This domain hardens how Arbor is **observed, released, and recovered**. The good
   - Define triggers from the skeleton's four events (unauthorized child-data access, unsafe AI output reaching a parent, mishandled high-risk disclosure, export/delete failure) and map each to a **Sev level** + **owner** + **first action**.
   - Breach clock table: **NL/EU GDPR Art. 33 — 72 hours** to the Autoriteit Persoonsgegevens (and data subjects if high risk, Art. 34); **IL Amendment 13 — breach notification to the Privacy Protection Authority / affected subjects** per the 2025 regime. Cross-link `docs/compliance/dpa-outline.md` and `docs/compliance/data-retention-policy.md` (both exist).
 - **Files to CREATE:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/docs/ops/on-call.md` (escalation path + contact rota)
-  - *(optional)* `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/docs/ops/incident-comms-templates.md`
+  - `docs/ops/on-call.md` (escalation path + contact rota)
+  - *(optional)* `docs/ops/incident-comms-templates.md`
 - **Files to MODIFY:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/docs/compliance/incident-response-plan.md` — replace the 16-line stub with the full runbook (keep the four trigger events, expand around them).
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/README.md` — add a one-line link to the runbook under an "Operations" heading.
+  - `docs/compliance/incident-response-plan.md` — replace the 16-line stub with the full runbook (keep the four trigger events, expand around them).
+  - `README.md` — add a one-line link to the runbook under an "Operations" heading.
 - **Interfaces/contracts:** none (docs). References real assets: `infra/rollback.sh` (OPS-2), `infra/monitoring/alert-policies.yaml` (OPS-1), `createApp.ts` route-disable points, `server/redaction.ts`.
 - **Test plan:** review-only — run a **tabletop** against one scenario (unsafe AI output reaches a parent in Hebrew) and confirm each step maps to a real lever and an owner. Verify every internal link resolves (`docs/compliance/*`, `infra/*`). No code/`tsc` impact.
 - **NL note:** the **72-hour GDPR Art. 33 clock to the AP** is the single most important addition; B2G DPAs with municipalities/insurers will require this runbook to exist and name a contact. Include the Dutch supervisory authority by name (Autoriteit Persoonsgegevens) and the DPIA cross-reference.
@@ -155,10 +155,10 @@ This domain hardens how Arbor is **observed, released, and recovered**. The good
   - Add a `CODEOWNERS` (none exists in-repo) assigning `app/src/framework.json`, `knowledge/framework/**`, `app/src/safety/**`, `app/src/contracts/coach.ts`, and `docs/developmental-ai-operating-model.md` to the safety/clinical owner. Document branch-protection: require PR review + the `app-quality-gates` check (which includes `eval:safety` + `check:framework`) on `main`. Branch protection is a GitHub repo setting (not a file) — capture it in `docs/ops/change-control.md` with the exact toggles since it can't be committed.
   - *(Optional, low-cost):* a `paths`-filtered CI job that re-runs `eval:safety`/`check:framework` and adds a labeled "framework-change: needs safety sign-off" comment so reviewers can't miss it — but the simplest, cheapest formalization is `CODEOWNERS` + required checks, no new workflow.
 - **Files to CREATE:**
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/.github/CODEOWNERS`
-  - `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/docs/ops/change-control.md` (branch-protection settings + the framework-change policy)
+  - `.github/CODEOWNERS`
+  - `docs/ops/change-control.md` (branch-protection settings + the framework-change policy)
 - **Files to MODIFY:**
-  - *(Optional)* `C:/Users/dguyr/ROS/PPPPtherapy-/PPPPtherapy-/.github/workflows/arbor-ci.yml` — **SHARED (CI)**. Only if adding the paths-filtered reminder job; otherwise unchanged (existing lines 25-26 already provide the eval).
+  - *(Optional)* `.github/workflows/arbor-ci.yml` — **SHARED (CI)**. Only if adding the paths-filtered reminder job; otherwise unchanged (existing lines 25-26 already provide the eval).
 - **Interfaces/contracts:** `CODEOWNERS` path rules; GitHub branch-protection required-checks list (`app-quality-gates`). No app code, no env.
 - **Test plan:** open a PR editing `app/src/framework.json` from a non-owner branch and confirm (a) review is required and (b) `eval:safety` + `check:framework` show as required checks. Confirm a trivially-bad edit (insert a forbidden phrase like "clinical counselor", matched by `safety-eval.mjs:20`) **fails CI**. No `tsc`/build impact.
 - **NL note:** change-control over the developmental/safety framework is a DPIA + B2G expectation (demonstrable governance over the automated decision logic affecting children). No NL-specific file differs.

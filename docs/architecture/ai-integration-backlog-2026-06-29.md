@@ -12,7 +12,7 @@ method: 7-lens multi-agent design → adversarial verify → ship-readiness hard
 
 ## Executive frame
 
-> **Current decision update — 2026-07-22:** The provider-specific recommendation in this historical backlog is superseded by the **eval-selected capability fabric** below. Full market and journey rationale: `PAI/projects/arbor/ARBOR-AI-MARKET-AND-ARCHITECTURE-2026-07-22.md`. GPT-Live is a future adapter target until its API ships; GPT-Realtime-2 and Gemini Live are current bake-off candidates. Existing safety, consent, storage, clinical, and production gates remain binding.
+> **Current decision update — 2026-07-22:** The provider-specific recommendation in this historical backlog is superseded by the **eval-selected capability fabric** below. Full market and journey rationale: `ARBOR-AI-MARKET-AND-ARCHITECTURE-2026-07-22.md` (private product record). GPT-Live is a future adapter target until its API ships; GPT-Realtime-2 and Gemini Live are current bake-off candidates. Existing safety, consent, storage, clinical, and production gates remain binding.
 
 ### AR-AI 2026-07-22 execution backlog
 

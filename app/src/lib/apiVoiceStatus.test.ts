@@ -68,3 +68,15 @@ describe("AI-06 — streamVoice preserves the status", () => {
     expect(err).not.toBeInstanceOf(ApiError);
   });
 });
+
+describe("B-AIOPS-02 — the fallback loop's spent family allowance is the resting state, not the hourly quota", () => {
+  it("a 429 live_resting from /api/voice arrives as LIVE_RESTING and classifies as voiceResting (no retry)", async () => {
+    respond(429, { error: "Voice time for today is used up", code: "live_resting", retryable: false });
+    const err = await streamVoice({ message: "hi", childProfile: child }, () => {}).catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).message).toBe("live_resting");
+    const copy = classifyAiFailure(err, { online: true });
+    expect(copy.kind).toBe("voiceResting");
+    expect(copy.retryable).toBe(false);
+  });
+});

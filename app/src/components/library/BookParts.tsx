@@ -16,8 +16,11 @@ import { bookString, type BookStringKey } from "../../lib/library/bookStrings";
 import { heroParts, labelFor, lineFor } from "../../lib/library/bookText";
 import { type AnyBook, type BookLabel, type BookLang, type HeGender, type PlanParentPanel } from "../../lib/library/types";
 
-export function BookSoundToggle({ childId, lang }: { childId: string; lang: BookLang }) {
-  const muted = useKidReadAloudMuted(childId);
+/** `muted` / `onToggle` let a read keep its own sound state (B-BOOK-46:
+ *  reading together starts silent without changing the child's own setting). */
+export function BookSoundToggle({ childId, lang, muted: mutedOverride, onToggle }: { childId: string; lang: BookLang; muted?: boolean; onToggle?: () => void }) {
+  const childMuted = useKidReadAloudMuted(childId);
+  const muted = mutedOverride ?? childMuted;
   return (
     <KidToy
       tone="paper"
@@ -27,7 +30,7 @@ export function BookSoundToggle({ childId, lang }: { childId: string; lang: Book
       data-muted={muted ? "" : undefined}
       aria-pressed={!muted}
       aria-label={bookString(muted ? "sound.off" : "sound.on", lang)}
-      onClick={() => setKidReadAloudMuted(childId, !muted)}
+      onClick={() => (onToggle ? onToggle() : setKidReadAloudMuted(childId, !muted))}
     >
       <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" focusable="false" style={{ display: "block" }}>
         <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor" />
@@ -99,6 +102,7 @@ export function BookEnd({
   onReadAgain,
   onClose,
   initialGrownUp = false,
+  goodnight = false,
 }: {
   book: AnyBook;
   lang: BookLang;
@@ -110,6 +114,9 @@ export function BookEnd({
   onClose: () => void;
   /** Test seam: the grown-up panel starts open. */
   initialGrownUp?: boolean;
+  /** B-BOOK-45: the bedtime ending — "Goodnight", and the only control closes
+   *  the book (no Read again, nothing that opens another book). */
+  goodnight?: boolean;
 }) {
   const [open, setOpen] = useState(initialGrownUp);
   const last = book.pages[book.pages.length - 1];
@@ -139,10 +146,10 @@ export function BookEnd({
     );
   }
   return (
-    <section className="bk-end" data-book-end-screen="">
+    <section className="bk-end" data-book-end-screen="" data-goodnight={goodnight ? "" : undefined}>
       <div className="bk-end-main">
         <h1 className="bk-end-title" style={titlePx ? { fontSize: `${titlePx}px` } : undefined}>
-          {bookString("theEnd", lang)}
+          {bookString(goodnight ? "goodnight" : "theEnd", lang)}
         </h1>
         {last?.closing && (
           <p className="bk-end-frame" data-book-frame="" style={typePx ? { fontSize: `${typePx}px` } : undefined}>
@@ -151,9 +158,11 @@ export function BookEnd({
         )}
       </div>
       <div className="bk-end-toys">
-        <KidToy tone="go" size="l" glyph="replay" data-book-read-again="" onClick={onReadAgain}>
-          {bookString("readAgain", lang)}
-        </KidToy>
+        {!goodnight && (
+          <KidToy tone="go" size="l" glyph="replay" data-book-read-again="" onClick={onReadAgain}>
+            {bookString("readAgain", lang)}
+          </KidToy>
+        )}
         <KidToy tone="paper" size="l" glyph="close" data-book-end-close="" onClick={onClose}>
           {bookString("close", lang)}
         </KidToy>

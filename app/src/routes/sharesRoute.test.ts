@@ -236,3 +236,43 @@ describe("B-CAREPRO-11 · recipient routes require a verified email", () => {
     expect("(req as any).user = { uid: decoded.uid, email: decoded.email ?? null };").not.toContain("emailVerified");
   });
 });
+
+describe("B-PROG-09 · the home-program link through the real route", () => {
+  const PRO = "slp-b09@example.com";
+  let grantId = "";
+
+  beforeAll(async () => {
+    const res = await fetch(`${baseUrl}/api/shares`, {
+      method: "POST",
+      headers: as("owner-b09", "owner-b09@example.com"),
+      body: JSON.stringify({ childId: "child-b09", childName: "Dylan", recipientEmail: PRO, role: "professional", scopes: ["home-program-adherence"], duration: "until_revoked" }),
+    });
+    expect(res.status).toBe(200);
+    grantId = ((await res.json()) as { id: string }).id;
+  });
+
+  const open = async (scope?: string) => {
+    const res = await fetch(`${baseUrl}/api/shared/${grantId}/packet${scope ? `?scope=${encodeURIComponent(scope)}` : ""}`, { headers: as("pro-b09", PRO) });
+    return { status: res.status, json: (await res.json()) as { scopes?: string[]; sections?: unknown[] } };
+  };
+
+  it("the link opens its one scope (it used to resolve to no scope → 403)", async () => {
+    const { status, json } = await open("home-program-adherence");
+    expect(status).toBe(200);
+    expect(json.scopes).toEqual(["home-program-adherence"]);
+  });
+
+  it("any other scope on the link → 403, no child data in the body", async () => {
+    for (const scope of ["report_slp", "story_timeline", "milestones"]) {
+      const { status, json } = await open(scope);
+      expect(status, scope).toBe(403);
+      expect(json.sections).toBeUndefined();
+    }
+  });
+
+  it("revoke kills the link at once", async () => {
+    const del = await fetch(`${baseUrl}/api/shares/${grantId}`, { method: "DELETE", headers: as("owner-b09", "owner-b09@example.com") });
+    expect(del.status).toBe(200);
+    expect((await open("home-program-adherence")).status).toBe(403);
+  });
+});

@@ -6,6 +6,7 @@ import { motion, useReducedMotion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor, type ConsultPrefill } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { useLanguage } from "../../context/LanguageContext";
 import {
   buildConsultPacket,
@@ -21,13 +22,14 @@ import {
   EXPORT_AUDIENCES,
   DEFAULT_EXPORT_AUDIENCE,
   INTAKE_AUDIENCE,
-  buildIntakePacket,
+  buildIntakePacket, intakeLangObs,
   parentGoalPreview,
   type ExportAudience,
   type IntakeProfession,
   type ConsultPacket,
 } from "../../consult/packet";
 import { intakeQuestionLines, readIntakeQuestionsText } from "../../consult/intakeDraft";
+import { hearingCheckOf, hearingQuestionOn } from "../../lib/hearingCheck";
 import { SPLIT_CLINICIAN_AUDIENCES, SPLIT_CLINICIAN_PRESETS, isSplitClinicianAudience, type SplitClinicianAudience } from "../../content/consultPresets";
 import { comparisonMonthsOf } from "../../lib/age/forChild";
 import { ClinicalLanguageError } from "../../lib/clinicalScan";
@@ -129,7 +131,7 @@ type ExportBuild = { text: string; error: null } | { text: null; error: string }
 const BRING_GROUPS: readonly { id: string; icon: string; labelKey: string; sections: readonly string[] }[] = [
   { id: "moments", icon: "edit_note", labelKey: "elev.consult.bring.moments", sections: ["moments", "patterns", "triggers", "intake-moments"] },
   { id: "map", icon: "eco", labelKey: "elev.consult.bring.development", sections: ["development", "dev-noticed", "growth-measurements", "intake-seen", "intake-not-yet"] },
-  { id: "words", icon: "translate", labelKey: "elev.consult.bring.words", sections: ["language-observations"] },
+  { id: "words", icon: "translate", labelKey: "elev.consult.bring.words", sections: ["language-observations", "intake-hearing"] },
   { id: "steps", icon: "flag", labelKey: "elev.consult.bring.steps", sections: ["tried", "adults", "intake-practice", "intake-program", "intake-home-program", "intake-goals"] },
 ];
 
@@ -172,6 +174,8 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
 } = {}) {
   const { childProfile, behaviorLogs, milestones, actionPlans, approvedMemoryItems, actionLoop, setActiveTab, pendingConsultPrefill, consumeConsultPrefill, activeFamilyTopic } = useArbor();
   const { toast } = useToast();
+  // B-STATUS-01: "copied" answers under the export row it came from.
+  const copyReceipt = useReceiptNote();
   const { t, uiLang } = useLanguage();
   const reduceMotion = useReducedMotion();
   const printPdf = useConsultPdf();
@@ -419,8 +423,12 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       familyGoals: familyGoalsCol.items,
       // B-PROG-09: the active home program from this profession (adherence: days + the family's words)
       homePrograms: programRows.items,
+      // B-NEXT-01: the parent's hearing answer, only while the pilot flag is on
+      hearing: hearingQuestionOn() ? hearingCheckOf(childProfile) : null,
+      // B-CAREPRO-39: the logged words, counted per language by the SLP intake schema (dark until signed)
+      langObs: intakeLangObs(langObsCol.items),
     }) : null),
-    [intake, childProfile, milestones, behaviorLogs, actionLoop, uiLang, keepsakesCol.items, intakeProgram, familyGoalsCol.items, programRows.items]
+    [intake, childProfile, milestones, behaviorLogs, actionLoop, uiLang, keepsakesCol.items, intakeProgram, familyGoalsCol.items, programRows.items, langObsCol.items]
   );
   const packet = useMemo(() => noticePacket ? presetPacket(audience, { ...noticePacket,
     sections: [...fullPacket.sections.filter(section => section.id === "reason"), ...noticePacket.sections],
@@ -589,7 +597,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       if (!canExportCurrent()) return;
       trackShareCompleted("story", "clipboard");
       recordExport(childProfile.id, audience);
-      toast(t("elev.packet.copied"), "success");
+      copyReceipt.show({ text: t("elev.packet.copied") });
     }
     catch { if (canExportCurrent()) toast(t("elev.packet.copyFailed"), "error"); }
   };
@@ -1246,6 +1254,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
                 {t("elev.learnCare.trusted.send")}
               </button>
             </div>
+            <ReceiptNoteLine note={copyReceipt.note} testId="consult-copy-receipt" size="sm" />
           </div>
           )}
         </div>

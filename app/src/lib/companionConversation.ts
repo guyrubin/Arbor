@@ -30,6 +30,7 @@ export function requestCompanionConversation(detail: CompanionConversationReques
 export function requestCompanionClose(): void {
   voiceRequestedAt = null;
   panelRequest = null;
+  queuedDoor = null;
   if (typeof window !== "undefined") window.dispatchEvent(new Event(COMPANION_CLOSE_EVENT));
 }
 
@@ -52,4 +53,76 @@ export function consumeConversationPanelRequest(now: number = Date.now()): Compa
   const request = panelRequest;
   panelRequest = null;
   return request && now - request.at >= 0 && now - request.at <= CONVERSATION_VOICE_REQUEST_TTL_MS ? request.panel : null;
+}
+
+/** B-VOICE-08 / B-VOICE-02 — a voice door outside the conversation (Now's
+ *  Talk button, a card's "Talk it through") starts the ONE Talk path inside
+ *  its own tap. The mounted conversation registers its start here once it
+ *  knows which route a tap would take (the Live probe answered). `opening` is
+ *  the card's own words: spoken first by text-to-speech, never sent to the
+ *  model and never written into the thread. The start answers true only when
+ *  a voice session began inside the call. */
+export type ConversationVoiceStart = (opening?: string) => boolean;
+let voiceStarter: ConversationVoiceStart | null = null;
+/** A door tapped before the conversation could start (still loading, or the
+ *  Live probe not answered yet): held, and run once the start registers —
+ *  only while fresh, so a talk never begins long after its tap. */
+let queuedDoor: { opening?: string; at: number } | null = null;
+
+export function registerConversationVoiceStarter(start: ConversationVoiceStart, now: number = Date.now()): () => void {
+  voiceStarter = start;
+  const queued = queuedDoor;
+  queuedDoor = null;
+  if (queued && now - queued.at >= 0 && now - queued.at <= CONVERSATION_VOICE_REQUEST_TTL_MS && conversationShown()) start(queued.opening);
+  return () => { if (voiceStarter === start) voiceStarter = null; };
+}
+
+/** B-VOICE-08 / B-VOICE-02 — whether the conversation is on screen (or opening
+ *  inside this tap). The workspace reports it (CompanionWorkspace); a voice
+ *  start refuses while it is hidden, so closing the conversation always means
+ *  no microphone. With no workspace mounted the conversation is its own page. */
+let shownReader: (() => boolean) | null = null;
+
+export function registerConversationShown(read: () => boolean): () => void {
+  shownReader = read;
+  return () => { if (shownReader === read) shownReader = null; };
+}
+
+export function conversationShown(): boolean {
+  return shownReader ? shownReader() : true;
+}
+
+/** The parent closed the conversation: a door tap still waiting for it (and a
+ *  ready-to-talk request) is dropped, never run later. */
+export function dropQueuedConversationVoice(): void {
+  queuedDoor = null;
+  voiceRequestedAt = null;
+}
+
+/** A door tap is waiting for the conversation (does not consume it). */
+export function conversationDoorQueued(): boolean {
+  return queuedDoor !== null;
+}
+
+/** True while a mounted conversation can start talking inside a tap. */
+export function conversationVoiceReady(): boolean {
+  return voiceStarter !== null;
+}
+
+/** One tap → a spoken conversation. Call it INSIDE the parent's tap: the
+ *  panel opens and Talk starts in the same call stack (the iOS microphone
+ *  rule), through the conversation's own toggle (its notice, review and stop
+ *  rules unchanged). Before the conversation can start (it is still loading,
+ *  or its Live probe has not answered), the panel opens and the tap is queued:
+ *  the start runs once the conversation registers, so one tap is enough.
+ *  Returns true when the voice session began inside this tap. */
+export function startConversationVoice(detail: { source: string; opening?: string }, now: number = Date.now()): boolean {
+  const start = voiceStarter;
+  if (!start) {
+    queuedDoor = { ...(detail.opening ? { opening: detail.opening } : {}), at: now };
+    requestCompanionConversation({ source: detail.source });
+    return false;
+  }
+  requestCompanionConversation({ source: detail.source });
+  return start(detail.opening);
 }

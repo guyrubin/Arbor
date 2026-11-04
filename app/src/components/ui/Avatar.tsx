@@ -59,7 +59,7 @@ export function Avatar({
     <span
       aria-hidden="true"
       className={`rounded-full inline-flex items-center justify-center font-bold flex-shrink-0 ${className}`}
-      style={{ ...dims, ...ringStyle, background: colorFor(name || "·"), color: "var(--arbor-on-accent)", fontSize: Math.round(size * 0.4) }}
+      style={{ ...dims, ...ringStyle, background: colorFor(name || "·"), color: "var(--arbor-on-accent)", fontSize: Math.max(12, Math.round(size * 0.4)) }}
     >
       {initialsOf(name)}
     </span>

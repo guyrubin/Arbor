@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { contractFor } from "../../lib/surfaceContract";
-import type { ActiveTab } from "../../lib/routes";
+import type { ActiveTab } from "../../lib/routes";
 import { todayLiveSource } from "../../testTodaySource";
 
 /* B-LOOP-11 — the wiring, as source facts (no jsdom in this repo): JournalTab

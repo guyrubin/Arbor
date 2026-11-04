@@ -81,6 +81,7 @@ import * as shelfJournal from "./shelfJournal";
 import * as shelves from "./shelves";
 import * as sidebar from "./sidebar";
 import * as sincevisit from "./sincevisit";
+import * as situation from "./situation";
 import * as spine from "./spine";
 import * as states from "./states";
 import * as storeShell from "./storeShell";
@@ -160,6 +161,7 @@ const MODULES: ReadonlyArray<{ en: Record<string, string>; he: Record<string, st
   shelves,
   sidebar,
   sincevisit,
+  situation,
   spine,
   states,
   storeShell,

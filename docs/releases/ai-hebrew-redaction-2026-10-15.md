@@ -6,7 +6,7 @@ Claude's original AI integration backlog is
 `docs/architecture/ai-integration-backlog-2026-06-29.md` (introduced with
 `ef51b7d9371080d038d130b98e7630de2a76dea7`). Its historical implementation
 status is not today's release status. Current work is consolidated in
-`guyrubin/ROS/PAI/projects/arbor/ARBOR-PARENT-BACKLOG.md`, with GA dependencies
+the private ROS `ARBOR-PARENT-BACKLOG.md`, with GA dependencies
 in `ARBOR-GA-BACKLOG.md` and model decisions in
 `reference/ai-model-allocation-2026-10-10.md`.
 

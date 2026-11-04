@@ -102,6 +102,8 @@ const WORLDS: World[] = [
 export const KID_WORLDS: World[] = WORLDS.filter((w) => !w.parentOnly);
 /** Every arcade world incl. the parent-only one (the theme registry's guard reads it). */
 export const ARCADE_WORLDS: readonly World[] = WORLDS;
+/** B-GAME-18: the i18n key of a world tile's tag (kidRegister.ts, EN + HE). */
+export const arcadeTagKey = (worldId: string): string => `elev.play.arcade.tag.${worldId}`;
 
 /** Sessions per level — the level is monotonic; the pips fill toward the next. */
 const SESSIONS_PER_LEVEL = 5;
@@ -284,9 +286,11 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
             const stars = w.count ? Math.min(3, Math.floor(w.count(data) / 3)) : 0;
             const c = COLOR[w.color];
             const name = t(w.nameKey);
+            // B-GAME-18: the tag in the page's language (never the EN table value on a Hebrew page).
+            const tag = t(arcadeTagKey(w.id));
             return (
               <button key={w.id} className="world-tile text-start relative" aria-disabled={!live}
-                aria-label={live ? t("elev.play.arcade.worldAria", { world: name, tag: w.tag }) : t("elev.play.arcade.comingSoonAria", { world: name, tag: w.tag })}
+                aria-label={live ? t("elev.play.arcade.worldAria", { world: name, tag }) : t("elev.play.arcade.comingSoonAria", { world: name, tag })}
                 onClick={() => live && setOpenId(w.id)}>
                 {w.isNew && (
                   <span className="absolute top-0 left-0 z-[2] text-[11px] font-black px-2.5 py-1"
@@ -300,7 +304,7 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
                 <div className="p-3">
                   <p className="font-black text-[20px] leading-snug mb-2" style={{ fontFamily: "var(--font-display)" }}>{name}</p>
                   <span className="inline-block text-[10.5px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full"
-                    style={{ border: "2px solid var(--comic-ink)", color: c.ink }}>{w.tag}</span>
+                    style={{ border: "2px solid var(--comic-ink)", color: c.ink }} data-arcade-tag={w.id}>{tag}</span>
                   {/* OBJ-KID-02: no padlock ever renders inside `.arbor-play`.
                       Every WORLDS entry declares a Comp (kidMode.test.ts pins
                       that for every pre-selectable world), so the old "🔒 Soon"

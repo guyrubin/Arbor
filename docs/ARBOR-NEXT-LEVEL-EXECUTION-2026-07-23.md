@@ -4,7 +4,7 @@ project: Arbor
 date: 2026-07-23
 status: executing
 source: 9-agent category assessment + clinical firewall (zero VETOs) — evidence: slate.json / firewall.json / synthesis.json in this folder
-goal: PAI/projects/arbor/ARBOR-NEXT-LEVEL-GOAL-2026-07-23.md (ROS repo)
+goal: ARBOR-NEXT-LEVEL-GOAL-2026-07-23.md (private product record, not in this repo)
 ---
 
 # Arbor Next-Level execution plan (2026-07-23)

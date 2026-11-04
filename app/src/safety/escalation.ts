@@ -225,22 +225,26 @@ ${renderHelplineLinksMarkdown()}`;
  * real `now`); the unit suite below verifies the mechanism deterministically. */
 
 /** ISO date the crisis numbers above were last verified against live national
- * registries. Update this (and the numbers) on each arbor-safety re-review. */
+ * registries. Update this (and the numbers) on each arbor-safety re-review.
+ * B-GA-04: the dated, sourced record per displayed number lives in
+ * docs/compliance/crisis-helplines.md; helplineRecord.test.ts fails a bump of
+ * this constant that the record does not carry as a complete, Guy-approved run. */
 /* Re-verified 2026-10-01 (B-CAREPRO-07) against the national registries:
  *   il_eran 1201   eran.org.il ("קו חם 1201")
  *   il_mda 101 · il_police 100   Magen David Adom / Israel Police (101 ambulance, 100 police)
  *   eu_112   EU single emergency number
  *   nl_113 0800-0113   113.nl — reachable via 113 and free via 0800-0113, 24/7
  *   be_1813 1813   zelfmoord1813.be ("Bel 1813", 24/7)
- *   be_1712 1712   1712.be (violence/abuse line, Mon–Fri 09:00–18:00)
+ *   be_1712 1712   1712.be (violence/abuse line; opening hours not recorded, see the record)
  *   us_988 988 · us_911 911   988lifeline.org
  * Added 2026-10-06 (B-CAREPRO-45) — child-protection line per supported country:
- *   il_welfare 118   gov.il Ministry of Welfare "מוקד מידע וסיוע 118"
+ *   il_welfare 118   gov.il Ministry of Welfare "מוקד מידע וסיוע 118" (child-protection
+ *                    role to confirm on gov.il at the next run: B-GA-04 record, row il_welfare)
  *                    (gov.il/he/service/contact-the-ministry-of-labor-welfare-and-social-services);
  *                    family-violence calls incl. violence against children, staffed around
  *                    the clock (gov.il/he/pages/molsa-news-violence-and-delinquency-domestic-violence-21112022)
  *   nl_veiligthuis 0800-2000   veiligthuis.nl ("Bel gratis … 0800-2000", "24/7 … bereikbaar")
- *   be_1712 1712     1712.be ("geweld, misbruik en kindermishandeling", Mon–Fri 09:00–18:00)
+ *   be_1712 1712     1712.be ("geweld, misbruik en kindermishandeling"; hours unsourced, not displayed)
  *   us_childhelp 1-800-422-4453   childhelphotline.org (Childhelp National Child Abuse Hotline)
  * Next review due by 2027-03-30 (180 d); the CI currency test warns 14 d before. */
 export const HELPLINES_REVIEWED_ON = "2026-10-01";
@@ -357,11 +361,23 @@ export const HELPLINE_DIRECTORY: readonly HelplineEntry[] = [
   { id: "nl_113",    region: "nl", number: "0800-0113", tel: "08000113" },
   { id: "nl_veiligthuis", region: "nl", number: "0800-2000", tel: "08002000" },
   { id: "be_1813",   region: "be", number: "1813",      tel: "1813" },
+  // B-GA-04: the French-language suicide line the self-harm copy already shows;
+  // after be_1813 so the Belgian talk line that leads (dangerLineFor) is unchanged.
+  { id: "be_cps",    region: "be", number: "0800 32 123", tel: "080032123" },
   { id: "be_1712",   region: "be", number: "1712",      tel: "1712" },
   { id: "us_988",    region: "us", number: "988",       tel: "988" },
   { id: "us_911",    region: "us", number: "911",       tel: "911" },
   { id: "us_childhelp", region: "us", number: "1-800-422-4453", tel: "+18004224453" },
 ];
+
+/** B-GA-04 — numbers the escalation copy shows WITHOUT a tel: link, each with
+ *  its reason. Every other number the copy shows must be a HELPLINE_DIRECTORY
+ *  entry, so it is dialable (helplineRecord.test.ts holds both directions). */
+export const DISPLAY_ONLY_HELPLINE_NUMBERS: Readonly<Record<string, string>> = {
+  "113": "Short form of the Netherlands suicide line; its free 0800-0113 number is the dialable entry (nl_113).",
+  "105": "Israel's online child-protection centre, named beside 118 for online harm; not a crisis talk line.",
+  "070 245 245": "Belgian poison centre in the urgent-medical copy; a medical line, not a crisis helpline.",
+};
 
 /** B-CAREPRO-45 — the child-protection line of each supported country (the
  *  family-violence / child-abuse line a parent calls about a child at risk).

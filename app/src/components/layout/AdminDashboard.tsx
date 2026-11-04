@@ -98,6 +98,11 @@ export function KidPlayPanel({ data }: { data: AdminKidPlay | null | "unavailabl
   const games = data && data !== "unavailable" ? data.games : [];
   const books = data && data !== "unavailable" ? data.books : [];
   const of = (n: number | null, m: number | null) => (n == null || m == null ? "Hidden" : `${n} of ${m}`);
+  // Wave-3 carry-over (B-BOOK-51 / B-GAME-18): at 390 px the right-aligned
+  // headers ran together ("OpenedFinished"); every number column keeps a gap
+  // from its neighbour and a cell never breaks inside "3 of 10".
+  const numHead = "text-end font-normal ps-3";
+  const numCell = "text-end font-mono ps-3 whitespace-nowrap";
   return (
     // The founder dashboard is English-only: the panel is set left to right so
     // "3 of 10" never reorders inside a Hebrew page.
@@ -109,28 +114,28 @@ export function KidPlayPanel({ data }: { data: AdminKidPlay | null | "unavailabl
       {data === null ? <p className="text-xs" style={muted}>Loading…</p> : data === "unavailable" ? <p className="text-xs" style={muted}>Not available</p> : (
         <>
           <table className="w-full text-xs" data-admin-kid-games="">
-            <thead><tr style={muted}><th className="text-start font-normal">Week · game</th><th className="text-end font-normal">Sittings</th><th className="text-end font-normal">Replays</th><th className="text-end font-normal">Back within 7 days</th></tr></thead>
+            <thead><tr style={muted}><th className="text-start font-normal">Week · game</th><th className={numHead}>Sittings</th><th className={numHead}>Replays</th><th className={numHead}>Back within 7 days</th></tr></thead>
             <tbody>
               {games.length === 0 && <tr><td colSpan={4} style={muted}>No sittings yet</td></tr>}
               {games.map((g) => (
                 <tr key={`${g.week}:${g.game}`} data-hidden={g.hidden ? "" : undefined} style={{ color: "var(--arbor-ink)" }}>
                   <td>{g.week} · {g.game}</td>
-                  <td className="text-end font-mono">{g.hidden ? "Hidden" : g.sittings}</td>
-                  <td className="text-end font-mono">{of(g.replays, g.sittings)}</td>
-                  <td className="text-end font-mono">{of(g.returned7d, g.families)}</td>
+                  <td className={numCell}>{g.hidden ? "Hidden" : g.sittings}</td>
+                  <td className={numCell}>{of(g.replays, g.sittings)}</td>
+                  <td className={numCell}>{of(g.returned7d, g.families)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <table className="w-full text-xs mt-3" data-admin-kid-books="">
-            <thead><tr style={muted}><th className="text-start font-normal">Week · book</th><th className="text-end font-normal">Opened</th><th className="text-end font-normal">Finished</th></tr></thead>
+            <thead><tr style={muted}><th className="text-start font-normal">Week · book</th><th className={numHead}>Opened</th><th className={numHead}>Finished</th></tr></thead>
             <tbody>
               {books.length === 0 && <tr><td colSpan={3} style={muted}>No books opened yet</td></tr>}
               {books.map((b) => (
                 <tr key={`${b.week}:${b.book}`} data-hidden={b.hidden ? "" : undefined} style={{ color: "var(--arbor-ink)" }}>
                   <td>{b.week} · {b.book}</td>
-                  <td className="text-end font-mono">{b.hidden ? "Hidden" : b.opened}</td>
-                  <td className="text-end font-mono">{b.hidden ? "Hidden" : b.finished}</td>
+                  <td className={numCell}>{b.hidden ? "Hidden" : b.opened}</td>
+                  <td className={numCell}>{b.hidden ? "Hidden" : b.finished}</td>
                 </tr>
               ))}
             </tbody>

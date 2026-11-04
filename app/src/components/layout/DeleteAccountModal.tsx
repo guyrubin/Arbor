@@ -7,6 +7,7 @@ import { api, type AccountDeletionReceipt } from "../../lib/api";
 import { accountDeletionLeases } from "../../lib/accountDeletionLease";
 import { purgeAllComicPages } from "../../lib/comicPageStore";
 import { purgeAllHeroRenders } from "../../lib/heroRenderStore";
+import { readPendingErases } from "../../lib/pendingErase";
 import { commerceAllowed } from "../kidmode/parentGate";
 
 /**
@@ -108,8 +109,11 @@ export default function DeleteAccountModal({ open, onClose }: { open: boolean; o
       // leave the parent with no way out but a reload. Bound the wait: on
       // timeout we surface the same unknown-result state as any other network
       // failure, the finally releases the lease, and close/retry come back.
+      // B-GA-09 round 7: a child erase this device never finished goes with the
+      // request, so the server finishes it before the wipe below drops the record.
+      const pendingChildIds = readPendingErases(requestUid).map((p) => p.childId);
       const receipt = await Promise.race([
-        api.accountDelete(),
+        api.accountDelete(pendingChildIds),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("account deletion timed out")), DELETION_TIMEOUT_MS)),
       ]);

@@ -45,13 +45,16 @@ export const en: Record<string, string> = {
   "elev.storeshell.wow.sproutStars": "Sprout will star for now — you can create {name}'s hero anytime from the profile.",
 
   // MOB-03 — auth errors as keys (consumed via authErrorKey below)
-  "elev.storeshell.auth.err.invalidCredential": "We couldn't sign you in. Please check your email and password, or request access.",
-  "elev.storeshell.auth.err.userNotFound": "No Arbor account found for this email. Request access if you haven't been invited yet.",
+  "elev.storeshell.auth.err.invalidCredential": "We couldn't sign you in. Please check your email and password, or reset your password.",
+  "elev.storeshell.auth.err.userNotFound": "No Arbor account found for this email. You can create one with it.",
+  // B-RESID-05: the two e-mail sign-up refusals.
+  "elev.storeshell.auth.err.emailInUse": "There's already an Arbor account with this email. Sign in, or reset the password.",
+  "elev.storeshell.auth.err.weakPassword": "Choose a password with at least 6 characters.",
   "elev.storeshell.auth.err.userDisabled": "This account has been disabled. Please contact support.",
   "elev.storeshell.auth.err.tooManyRequests": "Too many attempts. Please wait a moment and try again, or reset your password.",
   "elev.storeshell.auth.err.network": "We couldn't reach Arbor. Check your connection and try again.",
   "elev.storeshell.auth.err.popupBlocked": "Your browser blocked the sign-in window. Taking you to Google sign-in instead…",
-  "elev.storeshell.auth.err.generic": "Something went wrong signing you in. Please try again or request access.",
+  "elev.storeshell.auth.err.generic": "Something went wrong signing you in. Please try again.",
 };
 
 export const he: Record<string, string> = {
@@ -86,13 +89,15 @@ export const he: Record<string, string> = {
 
   "elev.storeshell.wow.sproutStars": "ספראוט יככב בינתיים — אפשר ליצור את הגיבור של {name} בכל עת מהפרופיל.",
 
-  "elev.storeshell.auth.err.invalidCredential": "לא הצלחנו לחבר אתכם. בדקו את הדוא״ל והסיסמה, או בקשו גישה.",
-  "elev.storeshell.auth.err.userNotFound": "לא נמצא חשבון ארבור לדוא״ל הזה. בקשו גישה אם עדיין לא הוזמנתם.",
+  "elev.storeshell.auth.err.invalidCredential": "לא הצלחנו לחבר אתכם. בדקו את הדוא״ל והסיסמה, או אפסו את הסיסמה.",
+  "elev.storeshell.auth.err.userNotFound": "לא נמצא חשבון ארבור לדוא״ל הזה. אפשר ליצור איתו חשבון חדש.",
+  "elev.storeshell.auth.err.emailInUse": "כבר יש חשבון ארבור עם הדוא״ל הזה. התחברו, או אפסו את הסיסמה.",
+  "elev.storeshell.auth.err.weakPassword": "בחרו סיסמה עם 6 תווים לפחות.",
   "elev.storeshell.auth.err.userDisabled": "החשבון הזה הושבת. פנו לתמיכה.",
   "elev.storeshell.auth.err.tooManyRequests": "יותר מדי ניסיונות. המתינו רגע ונסו שוב, או אפסו את הסיסמה.",
   "elev.storeshell.auth.err.network": "לא הצלחנו להגיע לארבור. בדקו את החיבור ונסו שוב.",
   "elev.storeshell.auth.err.popupBlocked": "הדפדפן חסם את חלון ההתחברות. מעבירים אתכם להתחברות עם Google…",
-  "elev.storeshell.auth.err.generic": "משהו השתבש בהתחברות. נסו שוב או בקשו גישה.",
+  "elev.storeshell.auth.err.generic": "משהו השתבש בהתחברות. נסו שוב.",
 };
 
 /** MOB-03 — Firebase auth error code → i18n KEY (never a literal). The login
@@ -113,6 +118,10 @@ export function authErrorKey(code: string | undefined | null): string {
       return "elev.storeshell.auth.err.network";
     case "auth/popup-blocked":
       return "elev.storeshell.auth.err.popupBlocked";
+    case "auth/email-already-in-use":
+      return "elev.storeshell.auth.err.emailInUse";
+    case "auth/weak-password":
+      return "elev.storeshell.auth.err.weakPassword";
     default:
       return "elev.storeshell.auth.err.generic";
   }
@@ -129,4 +138,6 @@ export const AUTH_ERROR_CODES = [
   "auth/too-many-requests",
   "auth/network-request-failed",
   "auth/popup-blocked",
+  "auth/email-already-in-use",
+  "auth/weak-password",
 ] as const;

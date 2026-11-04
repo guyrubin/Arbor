@@ -30,14 +30,14 @@ if(current==='handoff')html=`<h3>${t('Bring a clearer picture.','הביאו תמ
 const panel=q('#demo-panel');panel.innerHTML=html;panel.classList.remove('is-changing');void panel.offsetWidth;panel.classList.add('is-changing');
 qa('[data-cap]').forEach(el=>{const selected=el.dataset.cap===current;el.classList.toggle('selected',selected);el.classList.toggle('active',selected);el.setAttribute('aria-pressed',String(selected))});q('#connection-label').textContent=captions[current];q('.demo-step').textContent=`${String(Object.keys(captions).indexOf(current)+1).padStart(2,'0')} / 06`;
 }
-function select(cap,scroll=false){if(!Object.hasOwn(captions,cap))return;current=cap;storyStep=0;render();if(scroll)q('#experience').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'})}
+function select(cap,scroll=false){if(!Object.hasOwn(captions,cap))return;current=cap;storyStep=0;render();if(scroll){const library=q('#feature-library');if(library)q('#feature-details').open=true;(library||q('#experience')).scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'})}}
 function toast(message){clearTimeout(toastTimer);q('#toast').textContent=message;q('#toast').classList.add('visible');toastTimer=setTimeout(()=>q('#toast').classList.remove('visible'),5000)}
 function status(title,message,follow){const panel=q('#demo-panel');panel.replaceChildren();const h=document.createElement('h3');h.textContent=title;const p=document.createElement('p');p.className='demo-status';p.textContent=message;panel.append(h,p);const a=document.createElement('a');a.className='button primary';a.href='/';a.textContent=t('Get started with Arbor','מתחילים עם Arbor');panel.append(a);const back=document.createElement('button');back.className='text-link';back.style.marginTop='18px';back.textContent=follow||t('Back to the example','חזרה לדוגמה');back.addEventListener('click',render);panel.append(back)}
 document.addEventListener('click',e=>{const cap=e.target.closest('[data-cap]');if(cap){select(cap.dataset.cap);return}const a=e.target.closest('[data-demo-action]');if(!a)return;const action=a.dataset.demoAction;if(action==='to-plan')select('plans');else if(action==='to-memory')select('memory');else if(action==='story'){storyStep=1;render()}else if(action==='plan'){const checked=qa('#demo-panel input:checked').length;status(t('Your example plan is ready.','התוכנית לדוגמה מוכנה.'),t('Selected steps: {count}. In Arbor, you can keep a plan and return to it. This demonstration has not saved anything to your account.','צעדים שסומנו: {count}. ב-Arbor אפשר לשמור תוכנית ולחזור אליה. ההדגמה לא שמרה דבר בחשבון שלכם.').replace('{count}',checked))}else if(action==='memory-review'){const note=q('#memory-note').value.trim();if(!note){q('#memory-note').focus();toast(t('Add an observation to review.','הוסיפו תצפית לבדיקה.'));return}const panel=q('#demo-panel');panel.replaceChildren();const h=document.createElement('h3');h.textContent=t('Your words. Your choice.','המילים שלכם. הבחירה שלכם.');const quote=document.createElement('blockquote');quote.textContent=note;panel.append(h,quote);panel.insertAdjacentHTML('beforeend',button(t('Confirm example','אישור הדוגמה'),'memory-confirm','ShieldCheck'));}else if(action==='memory-confirm')status(t('Reviewed by you.','נבדק על ידכם.'),t('That is how parent-approved memory works. This example was not saved or sent anywhere.','כך עובד זיכרון באישור ההורה. הדוגמה לא נשמרה ולא נשלחה לשום מקום.'));else if(action==='handoff'){const checked=qa('#demo-panel input:checked');if(!checked.length){toast(t('Choose at least one item to include.','בחרו לפחות פריט אחד לסיכום.'));return}const selected=checked.map(input=>input.closest('label').innerText.trim()).join('\n\n');status(t('Your selected summary','הסיכום שבחרתם'),selected+'\n\n'+t('Example only. Nothing has been shared.','דוגמה בלבד. דבר לא שותף.'))}});
 const gallery=[{key:'play',img:'play-together-v6.webp',cat:t('Play & activities','משחק ופעילויות'),title:t('Turn “what now?” into time together.','מ״מה עושים עכשיו?״ לזמן יחד.'),body:t('Arbor suggests a starting point. Your child brings the ideas.','Arbor מציע נקודת התחלה. הילד שלכם מביא את הרעיונות.'),detail:t('Try building a bridge with blocks. Ask: “What could make it stronger?” Let your child test their own idea.','נסו לבנות גשר מקוביות. שאלו: ״מה יכול לחזק אותו?״ תנו לילד לבדוק את הרעיון שלו.'),cap:'stories'}, {key:'story',img:'story-world-v6.webp',cat:t('Stories','סיפורים'),title:t('Make room for their imagination.','נותנים מקום לדמיון שלהם.'),body:t('Start a story with Arbor. Let your child help decide what happens next.','מתחילים סיפור עם Arbor. נותנים לילד לקחת חלק בבחירת ההמשך.'),detail:t('A child and a fox find a lantern on a woodland path. Who might it belong to? Begin with their answer.','ילד ושועל מוצאים פנס בשביל ביער. למי הוא עשוי להשתייך? התחילו מהתשובה שלהם.'),cap:'stories'}, {key:'memory',img:'family-moment-v6.webp',cat:t('Memory','זיכרון'),title:t('Keep the words behind the picture.','שומרים גם את הסיפור שמאחורי הציור.'),body:t('A drawing. Their explanation. A detail you want to bring to the next conversation.','ציור. ההסבר שלהם. פרט שתרצו לקחת לשיחה הבאה.'),detail:t('Their words, a new interest, something you tried. Review the observation and decide whether it belongs in their memory.','המילים שלהם, עניין חדש או משהו שניסיתם. בדקו את התצפית והחליטו אם לשמור אותה בזיכרון.'),cap:'memory'}];
 function openDialog(dialog){lastFocus=document.activeElement;dialog.showModal()}
 function setGallery(index){galleryIndex=(index+gallery.length)%gallery.length;const item=gallery[galleryIndex];q('#gallery-dialog-image').src='/visuals/marketing/'+item.img;q('#gallery-dialog-image').alt=item.title;q('#gallery-dialog-image').style.objectPosition=item.key==='memory'?'75% center':'center';q('#gallery-dialog-category').textContent=item.cat;q('#gallery-dialog-title').textContent=item.title;q('#gallery-dialog-description').textContent=item.body;q('#gallery-dialog-detail').textContent=item.detail;q('#gallery-position').textContent=`${galleryIndex+1} / ${gallery.length}`}
-qa('[data-gallery]').forEach(b=>b.addEventListener('click',()=>{setGallery(gallery.findIndex(x=>x.key===b.dataset.gallery));openDialog(q('#gallery-dialog'))}));q('#gallery-next').addEventListener('click',()=>setGallery(galleryIndex+1));q('#gallery-prev').addEventListener('click',()=>setGallery(galleryIndex-1));q('#gallery-dialog').addEventListener('keydown',e=>{if(e.key==='ArrowRight'){e.preventDefault();setGallery(galleryIndex+(he?-1:1))}if(e.key==='ArrowLeft'){e.preventDefault();setGallery(galleryIndex+(he?1:-1))}});q('#gallery-try').addEventListener('click',()=>{q('#gallery-dialog').close();select(gallery[galleryIndex].cap,true)});qa('[data-plans]').forEach(b=>b.addEventListener('click',()=>openDialog(q('#plans-dialog'))));qa('dialog').forEach(d=>{d.querySelector('.dialog-close').addEventListener('click',()=>d.close());d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()}});d.addEventListener('close',()=>lastFocus?.focus())});q('#hero-review').addEventListener('click',()=>select('memory',true));
+qa('[data-gallery]').forEach(b=>b.addEventListener('click',()=>{setGallery(gallery.findIndex(x=>x.key===b.dataset.gallery));openDialog(q('#gallery-dialog'))}));q('#gallery-next').addEventListener('click',()=>setGallery(galleryIndex+1));q('#gallery-prev').addEventListener('click',()=>setGallery(galleryIndex-1));q('#gallery-dialog').addEventListener('keydown',e=>{if(e.key==='ArrowRight'){e.preventDefault();setGallery(galleryIndex+(he?-1:1))}if(e.key==='ArrowLeft'){e.preventDefault();setGallery(galleryIndex+(he?1:-1))}});q('#gallery-try').addEventListener('click',()=>{q('#gallery-dialog').close();select(gallery[galleryIndex].cap,true)});qa('[data-plans]').forEach(b=>b.addEventListener('click',()=>openDialog(q('#plans-dialog'))));qa('dialog').forEach(d=>{d.querySelector('.dialog-close').addEventListener('click',()=>d.close());d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()}});d.addEventListener('close',()=>lastFocus?.focus())});q('#hero-review')?.addEventListener('click',()=>select('memory',true));
 qa('.cap').forEach((b,i,buttons)=>b.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const next=buttons[(i+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length];next.focus();select(next.dataset.cap)}}));
 let queued=false;addEventListener('scroll',()=>{if(!queued){requestAnimationFrame(()=>{q('.site-header').classList.toggle('scrolled',scrollY>20);queued=false});queued=true}},{passive:true});
 if('IntersectionObserver' in window&&!matchMedia('(prefers-reduced-motion: reduce)').matches){const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('rise');observer.unobserve(entry.target)}}),{threshold:.12});qa('.section-heading,.gallery-card,.knowledge-note').forEach(el=>observer.observe(el))}
@@ -48,4 +48,162 @@ if(languageMenu){
  languageMenu.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();languageMenu.open=false;languageMenu.querySelector('summary').focus()}});
 }
 icons();render();
+})();
+/* Carry the selected situation onto trial links. Ids only: bedtime, feelings, play, and kept=1. */
+function arborStampSituation(moment, kept) {
+  if (moment !== 'bedtime' && moment !== 'feelings' && moment !== 'play') return;
+  document.querySelectorAll('a[href*="entry=landing"]').forEach(link => {
+    try {
+      const url = new URL(link.getAttribute('href'), location.origin);
+      url.searchParams.set('moment', moment);
+      if (kept) url.searchParams.set('kept', '1');
+      else url.searchParams.delete('kept');
+      link.setAttribute('href', url.pathname + url.search);
+    } catch { /* the original trial link still works */ }
+  });
+}
+/* Moment-first example. Local choices only: no storage, profiling or AI request. */
+(() => {
+  const host = document.querySelector('.moment-hero');
+  if (!host) return;
+  const he = document.documentElement.lang === 'he';
+  const examples = he ? {
+    bedtime: ['״עוד סיפור. עוד חיבוק. ושעת השינה שוב מתאחרת.״', 'תנו להם לבחור את הסיפור האחרון.', 'לפני שמתחילים, מסכמים על שני צעדים מוכרים: סיפור, ואז חיבוק לילה טוב. הילד בוחר איזה סיפור לקרוא.', '״איזה סיפור נקרא לפני חיבוק הלילה טוב שלנו?״', 'שימו לב מה היה קל יותר. ב-Arbor אתם בוחרים מה לשמור לשיחה הבאה.'],
+    feelings: ['״המגדל נפל, ועכשיו שום דבר לא מרגיש בסדר.״', 'קודם מקום לרגש. אחר כך לרעיון.', 'אם הילד רוצה, הישארו קרובים ותנו שם למה שקרה, בלי למהר לפתור. כשהוא מוכן, הציעו לבחור אם לבנות שוב או לקחת הפסקה.', '״עבדת על המגדל הזה והוא נפל. אני כאן. נבנה שוב או ננוח קצת?״', 'שימו לב מה עזר לילד ברגע הזה. אפשר לבחור לשמור את התצפית, בלי להגדיר או לתייג אותו.'],
+    play: ['״יש לנו כמה דקות ביחד. מה אפשר לעשות בלי עוד מסך?״', 'תנו לילד להוביל הרפתקה קטנה.', 'בחרו שלושה חפצים בטוחים ומתאימים לגיל. הזמינו את הילד להמציא להם סיפור, ובקשו ממנו לבחור לכם תפקיד.', '״לאן יוצאים להרפתקה, ואת מי אני משחק?״', 'שימו לב מה הצית את הדמיון. תחומי עניין שתבחרו לשמור יכולים לתת כיוון לפעם הבאה.']
+  } : {
+    bedtime: ['“One more story. One more hug. Bedtime keeps getting later.”', 'Let them choose the last chapter.', 'Before you begin, agree on two familiar steps: a story, then a goodnight hug. Let your child choose the story.', '“Which story shall we read before our goodnight hug?”', 'Notice which part felt easier. In Arbor, you decide what to keep for the next conversation.'],
+    feelings: ['“The tower fell down. Now nothing feels okay.”', 'Make room for the feeling first.', 'Stay nearby if your child wants you there. Acknowledge what happened without rushing to fix it. When they are ready, offer a choice: rebuild or take a break.', '“You worked on that tower and it fell. I’m here. Shall we rebuild or take a break?”', 'Notice what helped in this moment. You can choose to keep the observation, without labelling your child.'],
+    play: ['“We have a few minutes together. What can we do without another screen?”', 'Let them lead a little adventure.', 'Choose three safe, age-appropriate objects. Invite your child to invent a story with them, then ask them to give you a part to play.', '“Where are we going on our adventure? Who shall I be?”', 'Notice what sparked their imagination. Interests you choose to keep can be a starting point for next time.']
+  };
+  const targets = ['.moment-prompt', '#moment-title', '#moment-action', '#moment-words', '#moment-memory'].map(selector => host.querySelector(selector));
+  const buttons = [...host.querySelectorAll('[data-moment]')];
+  const select = (button) => {
+    const value = examples[button.dataset.moment];
+    if (!value) return;
+    targets.forEach((target, index) => { target.textContent = value[index]; });
+    buttons.forEach(item => {
+      const selected = item === button;
+      item.setAttribute('aria-pressed', String(selected));
+      item.classList.toggle('is-selected', selected);
+    });
+    host.querySelector('.moment-step-label').textContent = button.dataset.moment === 'bedtime'
+      ? (he ? 'צעד קטן להערב' : 'A SMALL STEP FOR TONIGHT')
+      : (he ? 'צעד קטן שאפשר לנסות' : 'A SMALL STEP TO TRY');
+    arborStampSituation(button.dataset.moment, false);
+  };
+  document.addEventListener('arbor:moment', event => {
+    const button = buttons.find(item => item.dataset.moment === event.detail);
+    if (button) select(button);
+  });
+  buttons.forEach(button => button.addEventListener('click', () => {
+    select(button);
+    document.dispatchEvent(new CustomEvent('arbor:moment', { detail: button.dataset.moment }));
+    // Keep the answer visible when the two columns stack on smaller screens.
+    if (matchMedia('(max-width: 850px)').matches) {
+      host.querySelector('#moment-result').scrollIntoView({
+        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+        block: 'start'
+      });
+    }
+  }));
+  const requested = new URLSearchParams(location.search).get('moment');
+  const initial = buttons.find(item => item.dataset.moment === requested) || buttons.find(item => item.getAttribute('aria-pressed') === 'true');
+  if (initial) select(initial);
+})();
+
+/* One local example connects the landing moment, a real library title and memory review. */
+(() => {
+  const root = document.querySelector('.connected-journey');
+  if (!root) return;
+  const he = document.documentElement.lang === 'he';
+  const t = (en, heb) => he ? heb : en;
+  const stories = {
+    bedtime: {
+      story: t('The Lantern Path', 'שביל הפנסים'),
+      theme: t('An original Arbor story about naming fear and choosing trusted company.', 'סיפור מקורי של Arbor על מתן שם לפחד ובחירה בחברה בטוחה.'),
+      question: t('“Who helps you feel steady?”', '״מי עוזר לך להרגיש יציב?״'),
+      observation: t('“Chose the story and asked for a goodnight hug.”', '״בחר את הסיפור וביקש חיבוק לילה טוב.״')
+    },
+    feelings: {
+      story: t('The Little Bridge Builders', 'בוני הגשר הקטנים'),
+      theme: t('An original Arbor story about rebuilding one useful piece at a time.', 'סיפור מקורי של Arbor על בנייה מחדש, חלק מועיל אחד בכל פעם.'),
+      question: t('“What helped when the job felt too big?”', '״מה עזר כשהעבודה הרגישה גדולה מדי?״'),
+      observation: t('“Asked to rebuild together after the tower fell.”', '״ביקש לבנות יחד מחדש אחרי שהמגדל נפל.״')
+    },
+    play: {
+      story: t('The Cloud Orchestra', 'תזמורת העננים'),
+      theme: t('An original Arbor story about listening, taking turns and making room for each voice.', 'סיפור מקורי של Arbor על הקשבה, תורות ומתן מקום לכל קול.'),
+      question: t('“What happened when everyone played at once?”', '״מה קרה כשכולם ניגנו יחד בבת אחת?״'),
+      observation: t('“Invented a rhythm and invited us to take turns.”', '״המציא קצב והזמין אותנו להצטרף בתורות.״')
+    }
+  };
+  const tabs = [...root.querySelectorAll('[data-journey-step]')];
+  const panels = [...root.querySelectorAll('.journey-panel')];
+  const moment = root.querySelector('#journey-moment');
+  const next = root.querySelector('#journey-next');
+  const back = root.querySelector('#journey-back');
+  const start = root.querySelector('#journey-start');
+  const memoryButtons = [...root.querySelectorAll('[data-journey-memory]')];
+  const memoryStatus = root.querySelector('#journey-memory-status');
+  let step = 0;
+  function show(index, moveFocus = false) {
+    step = Math.max(0, Math.min(panels.length - 1, index));
+    panels.forEach((panel, i) => { panel.hidden = i !== step; });
+    tabs.forEach((tab, i) => tab.setAttribute('aria-pressed', String(i === step)));
+    back.hidden = step === 0;
+    next.hidden = step === 2;
+    next.firstChild.textContent = step === 0 ? t('Find something to share ', 'מוצאים משהו לעשות יחד ') : t('Keep a useful detail ', 'שומרים פרט מועיל ');
+    start.className = step === 2 ? 'button primary' : 'text-link';
+    if (moveFocus) {
+      panels[step].querySelector('h3').focus({ preventScroll: true });
+      root.querySelector('.journey-tabs').scrollIntoView({ block: 'start', behavior: 'instant' });
+    }
+  }
+  function updateMoment(key) {
+    if (!Object.hasOwn(stories, key)) return;
+    moment.value = key;
+    const hero = document.querySelector('.moment-hero');
+    const content = { ...stories[key], situation: hero.querySelector('.moment-prompt').textContent, actionTitle: hero.querySelector('#moment-title').textContent, action: hero.querySelector('#moment-action').textContent };
+    root.querySelectorAll('[data-journey-copy]').forEach(node => { node.textContent = content[node.dataset.journeyCopy]; });
+    memoryButtons.forEach(button => button.setAttribute('aria-pressed', 'false'));
+    memoryStatus.textContent = t('Try the choice. Nothing here is saved to an account.', 'נסו לבחור. שום דבר כאן לא נשמר בחשבון.');
+    arborStampSituation(key, false);
+    show(0);
+  }
+  tabs.forEach((tab, i) => {
+    tab.addEventListener('click', () => show(i, matchMedia('(max-width: 750px)').matches));
+    tab.addEventListener('keydown', event => {
+      let target;
+      if (event.key === 'Home') target = 0;
+      if (event.key === 'End') target = tabs.length - 1;
+      if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') target = (i + ((event.key === 'ArrowRight') !== he ? 1 : -1) + tabs.length) % tabs.length;
+      if (target === undefined) return;
+      event.preventDefault(); tabs[target].focus(); show(target);
+    });
+  });
+  root.querySelectorAll('[data-journey-go]').forEach(button => button.addEventListener('click', () => show(Number(button.dataset.journeyGo), true)));
+  next.addEventListener('click', () => show(step + 1, true));
+  back.addEventListener('click', () => show(step - 1, true));
+  memoryButtons.forEach(button => button.addEventListener('click', () => {
+    memoryButtons.forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+    const keep = button.dataset.journeyMemory === 'keep';
+    memoryStatus.textContent = keep
+      ? t('Kept in this example. In Arbor, you review a memory before it is used. Nothing was saved here.', 'נשמר בדוגמה בלבד. ב-Arbor אתם בודקים זיכרון לפני השימוש בו. דבר לא נשמר כאן.')
+      : t('Left out of this example. You choose which details become part of the picture.', 'נשאר מחוץ לדוגמה. אתם בוחרים אילו פרטים יהיו חלק מהתמונה.');
+    arborStampSituation(moment.value, keep);
+  }));
+  moment.addEventListener('change', () => document.dispatchEvent(new CustomEvent('arbor:moment', { detail: moment.value })));
+  // This listener follows the hero's listener, so both sections use the same selected moment.
+  document.addEventListener('arbor:moment', event => updateMoment(event.detail));
+  root.classList.add('is-enhanced');
+  updateMoment(document.querySelector('.moment-choice[aria-pressed="true"]')?.dataset.moment || 'bedtime');
+  if (new URLSearchParams(location.search).get('kept') === '1') {
+    const keep = memoryButtons.find(button => button.dataset.journeyMemory === 'keep');
+    if (keep) {
+      memoryButtons.forEach(item => item.setAttribute('aria-pressed', String(item === keep)));
+      memoryStatus.textContent = t('Kept in this example. In Arbor, you review a memory before it is used. Nothing was saved here.', 'נשמר בדוגמה בלבד. ב-Arbor אתם בודקים זיכרון לפני השימוש בו. דבר לא נשמר כאן.');
+      arborStampSituation(moment.value, true);
+    }
+  }
 })();

@@ -34,6 +34,8 @@ vi.mock("react/jsx-dev-runtime", async original => {
   return { ...real, jsxDEV: (...args: Parameters<typeof real.jsxDEV>) => { capture(args[0], args[1]); return real.jsxDEV(...args); } };
 });
 import OnboardingFlow, { StepChild, StepDomains, StepReady, ONBOARDING_CHOICES } from "./OnboardingFlow";
+import { SignInSituation, SituationExampleReview } from "./SituationFirst";
+import { captureTrialEntry } from "../../lib/trialEntry";
 import { UrgentSupport } from "../safety/UrgentSupport";
 const NOW = new Date("2026-10-09T12:00:00Z");
 const base = () => ({ ...initialFirstRunState(), name: "Noa", birthMonth: "2022-04", languages: ["English"], consent: true });
@@ -53,6 +55,34 @@ beforeEach(() => { state.lang = "en"; state.buttons = []; state.inputs = []; vi.
 afterEach(() => { expect(globalThis.fetch).not.toHaveBeenCalled(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("three-step authored first run", () => {
+  it("a landing moment opens on that situation, before the child’s name", () => {
+    const data = new Map<string, string>();
+    vi.stubGlobal("sessionStorage", { getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => data.set(k, v) });
+    captureTrialEntry("?entry=landing&start=trial&lang=en&moment=bedtime&kept=1", NOW.getTime());
+    const html = renderToStaticMarkup(<OnboardingFlow />);
+    expect(html).toContain('data-testid="onboarding-situation"');
+    expect(html).toContain("Let them choose the last chapter.");
+    expect(html).toContain("Which story shall we read before our goodnight hug?");
+    expect(html).toContain("An illustration, not something your child did.");
+    expect(html).not.toContain('data-testid="onboarding-about"');
+    expect(html).toContain('aria-valuemax="3"');
+    state.lang = "he";
+    const hebrew = renderToStaticMarkup(<OnboardingFlow />);
+    expect(hebrew).toContain("תנו להם לבחור את הסיפור האחרון.");
+    expect(hebrew).toContain("זו המחשה");
+  });
+  it("sign-in names the chosen moment, and the example review uses the memory register", () => {
+    const signIn = renderToStaticMarkup(<SignInSituation moment="feelings" kept />);
+    expect(signIn).toContain('data-testid="signin-situation"');
+    expect(signIn).toContain("You’re signing in to start with a big feeling.");
+    expect(signIn).toContain("not a record of your child");
+    const review = renderToStaticMarkup(<SituationExampleReview name="Noa" moment="play" phase="pending" busy={false} onRemember={nothing} onLeave={nothing} onContinue={nothing} />);
+    expect(review).toContain('data-testid="onboarding-example-review"');
+    expect(review).toContain("invented a rhythm");
+    expect(review).toContain(">Remember<");
+    expect(review).toContain(">Not this<");
+    expect(review).toContain("Noa");
+  });
   it("a fresh signed-in root starts About, three progress dots, no welcome/tool tour", () => {
     const html = renderToStaticMarkup(<OnboardingFlow />);
     expect(html).toContain('data-testid="onboarding-about"'); expect(html).toContain('aria-valuemax="3"');

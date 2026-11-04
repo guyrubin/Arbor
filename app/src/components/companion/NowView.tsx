@@ -7,6 +7,9 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { useTodaysFocus, type Focus } from "../../hooks/useTodaysFocus";
 import { useLastVisit } from "../../hooks/useLastVisit";
 import { activeProgramWeek } from "../../lib/programs/enrolment";
+import { weekLessonDoor } from "../../lib/programs/weekLesson";
+import { readLearnReadIds } from "../../learn/learnReadState";
+import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 import NowPlanLead from "../plans/NowPlanLead";
 import PlansSection from "../plans/PlansSection";
 import { closePlan, keepPlan, leadPlan, nightMomentText, recordNight, unrecordNight } from "../../lib/plans/planWeek";
@@ -30,6 +33,10 @@ import { markPracticeShown } from "../../lib/practice/todayPin";
 import { appointmentRoleLabel } from "../../lib/appointmentLabel";
 import { isKidModeActive } from "../../lib/kidModeGate";
 import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
+import { basedOnLines, FOCUS_MAX_FACTS } from "../../lib/basedOn";
+import { useArborPause } from "../../lib/pauseArborStore";
+import { fmtDay } from "../../lib/formatDate";
+import BasedOnReceipt from "../trust/BasedOnReceipt";
 import FromRecordCard, { FromRecordReceipt } from "../overview/FromRecordCard";
 import { useNowLoop } from "./useNowLoop";
 import { useLifecycleMoment } from "../overview/useLifecycleMoment";
@@ -104,9 +111,10 @@ const LIFECYCLE_NOTE: Partial<Record<string, string>> = {
 };
 
 function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewProps) {
-  const { childProfile, actionLoop, seedCoach, setActiveTab, openCaptureSheet,
-    saveTodayOutcome, saveTodayObservation, requestJournalFocus, pendingCaptureMode, consumeCaptureRequest, addMoment } = useArbor();
+  const { childProfile, actionLoop, approvedMemoryItems, seedCoach, setActiveTab, openCaptureSheet,
+    saveTodayOutcome, saveTodayObservation, requestJournalFocus, pendingCaptureMode, consumeCaptureRequest, addMoment, requestLearnRead } = useArbor();
   const { t, uiLang } = useLanguage();
+  const arborPause = useArborPause();
   const he = uiLang === "he";
   const lang = he ? "he" : "en";
   const copy = NOW_COPY[lang];
@@ -115,6 +123,9 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const name = childProfile.name?.split(" ")[0] || t("companion.now-view.your-child");
   const programs = useChildCollection<{ id: string }>(childProfile.id, "programs");
   const program = useMemo(() => activeProgramWeek(programs.items, now), [programs.items, now]);
+  // B-PROG-03: the week's skill as the parent reads it — the Hebrew slash
+  // forms ("הילד/ה") resolved for this child, like every practice line.
+  const programSkill = program ? (he ? resolveHebrewSlash(program.content.skill.he, childProfile.gender) : program.content.skill.en) : "";
   // B-BOOK-78: an active Everyday Plan is the parent's week — its steps lead
   // Today ahead of the day's practice, its night question is answered here,
   // and the answer is a COUNT (the `books` row), never a verdict.
@@ -128,6 +139,8 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const openPlan = () => openPattern(plan?.def.id ?? "");
   // v4: the agenda row says where the family is in it ("Week 2 of 4"), counts only.
   const programWeeks = Array.isArray(program?.program.weeks) ? program.program.weeks.length : 0;
+  // B-PROG-14: the week's one Learn read, until the parent opens it (their own read state, per child).
+  const weekLesson = useMemo(() => (program ? weekLessonDoor(program.content, readLearnReadIds(childProfile.id)) : null), [program, childProfile.id]);
   // B-TODAY-37: "Record a moment" on an older question asks Now for THAT question's form.
   const observeId = useHashQuery().get("observe");
   const action = useMemo(() => requestedObservation(actionLoop, observeId) ?? nextChosenAction(actionLoop, topic?.id), [actionLoop, observeId, topic?.id]);
@@ -234,6 +247,9 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // ── The milestone loop (parity 9 Oct): practice → Did it → Tonight → notice. ──
   const [focus, setFocus] = useState<Focus | null>(null);
   const [focusPending, setFocusPending] = useState(false);
+  useEffect(() => {
+    if (arborPause.paused) setFocus(null);
+  }, [arborPause.paused]);
   const loop = useNowLoop({
     now,
     aiPracticeId: focus?.practiceVia === "ai" ? focus.practiceId : undefined,
@@ -259,6 +275,10 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     recordPending: record.saving || record.error,
     fallback: plan ? "plan" : loop.pick ? "practice" : loop.slotNotice ? "notice" : program ? "program" : "recommendation",
   });
+  const pausedLead = arborPause.paused && lead === "recommendation";
+  const pauseUntil = arborPause.record?.until
+    ? t("companion.pause.until", { when: fmtDay(arborPause.record.until, uiLang) })
+    : t("companion.pause.untilYou");
   const showNotice = lead !== "notice" && loop.plan.order.includes("notice") && loop.blockNotices.length > 0;
   const showPointer = lead !== "tonight" && loop.tonightHasQuestions && (loop.plan.tonightPointer || (lead === "step" && loop.evening));
   const pickId = loop.pick?.practice.id;
@@ -284,23 +304,24 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const practiceSay = shownLead === "practice" && loop.pick ? practiceText(loop.pick.practice, "say", lang, childProfile.gender) : "";
   // The urgent lead's face carries only the reviewed safety header; no say line,
   // no plan meta, no "picked because" — nothing is invented beside the help lines.
-  const planTag = shownLead === "urgent" ? t("elev.safety.header.title") : copy.planTag[shownLead];
-  const planSay = shownLead === "urgent" ? null : practiceSay ? t("elev.loop.ms.quoted", { text: practiceSay }) : copy.planSay[shownLead];
-  const planMeta = shownLead === "urgent" ? null : shownLead === "step" ? (receipt ? (receiptQueued ? t(savedOnPhoneKey(online)) : copy.saved) : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
+  const planTag = pausedLead ? t("companion.pause.on") : shownLead === "urgent" ? t("elev.safety.header.title") : copy.planTag[shownLead];
+  const planSay = pausedLead ? t("companion.pause.now") : shownLead === "urgent" ? null : practiceSay ? t("elev.loop.ms.quoted", { text: practiceSay }) : copy.planSay[shownLead];
+  const planMeta = pausedLead ? null : shownLead === "urgent" ? null : shownLead === "step" ? (receipt ? (receiptQueued ? t(savedOnPhoneKey(online)) : copy.saved) : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
   const planWeekTitle = shownLead === "plan" && plan ? <h2 id={`${id}-plan`} className="now-plan-title" dir="auto">{plan.def.title[lang]}</h2> : undefined;
   // v3 F-NOW-1 r2: the guide's title on the face is the lead's own h2, moved up
   // from its section (which keeps it as its label). The loop leads' cards carry
   // their own heading, so their face has the say line and meta only.
-  const planTitle = shownLead === "step" && chosen ? <h2 ref={stepTitle} id={`${id}-step`} className="now-plan-title" dir="auto" style={observation ? { whiteSpace: "pre-wrap", scrollMarginBlockStart: "calc(var(--sticky-offset) + 12px)" } : undefined}>{receipt && !observation ? copy.finishedTitle : chosen.recommendation}</h2>
+  const planTitle = pausedLead ? <h2 id={`${id}-pause`} className="now-plan-title" dir="auto">{pauseUntil}</h2>
+    : shownLead === "step" && chosen ? <h2 ref={stepTitle} id={`${id}-step`} className="now-plan-title" dir="auto" style={observation ? { whiteSpace: "pre-wrap", scrollMarginBlockStart: "calc(var(--sticky-offset) + 12px)" } : undefined}>{receipt && !observation ? copy.finishedTitle : chosen.recommendation}</h2>
     : shownLead === "visit" && visit ? <h2 id={`${id}-visit`} className="now-plan-title" dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</h2>
-      : shownLead === "program" && program ? <h2 id={`${id}-program`} className="now-plan-title" dir="auto">{program.content.skill[lang]}</h2> : planWeekTitle;
+      : shownLead === "program" && program ? <h2 id={`${id}-program`} className="now-plan-title" dir="auto">{programSkill}</h2> : planWeekTitle;
   // The one plan body under every lead: why it was picked, always visible. The
   // practice says its own reason (the AI's sentence beside its own pick); the
   // question is quoted only for a step chosen under it.
   const practiceWhy = shownLead === "practice" && loop.pick
     ? (loop.pick.via === "ai" && focus?.why?.trim()) || t(loop.whyReason && (loop.whyReason !== "since" || loop.whyDate) ? WHY_KEY[loop.whyReason] : "elev.loop.practice.whyShelf", { shelf: shelfLabel(loop.pick.shelf, t), name, date: loop.whyDate ?? "" })
     : "";
-  const planWhy = shownLead === "practice" ? practiceWhy || copy.pickedWhy.practice : shownLead === "tonight" && tonightOpen ? copy.pickedTonightOpen : copy.pickedWhy[shownLead];
+  const planWhy = pausedLead ? t("companion.pause.kept") : shownLead === "practice" ? practiceWhy || copy.pickedWhy.practice : shownLead === "tonight" && tonightOpen ? copy.pickedTonightOpen : copy.pickedWhy[shownLead];
   const planQuestion = shownLead === "step" && chosen && topic && chosen.topicId === topic.id ? topic.title : null;
 
   return <div className="companion-page now-page" dir={he ? "rtl" : "ltr"}>
@@ -308,6 +329,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
       <div>
         <p className="companion-eyebrow" data-testid="now-kicker">{copy.kicker}</p>
         <h1 className="arbor-type-title">{copy.title(name)}</h1>
+        <p className="now-heading-sub">{copy.subtitle}</p>
       </div>
     </header>
     {(topic || onTopicOpen) && <NowQuestionRow data-module="now-focus" lang={lang} topic={topic} onOpen={onTopicOpen} onCreate={onTopicCreate ? () => onTopicCreate("") : undefined} />}
@@ -315,7 +337,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     <div className="now-main-column">
         {lead === "practice" && <PracticeFocus now={now} journal={loop.journal} onFocus={setFocus} onPending={setFocusPending} />}
         {/* The recommendation frames itself (its screened words face the art panel), so its frame here is bare. */}
-        <NowPlanFrame kind={shownLead} lang={lang} tag={planTag} say={planSay} quoted={!!practiceSay} title={planTitle} meta={planMeta} question={topic?.title} bare={shownLead === "recommendation"}>
+        <NowPlanFrame kind={shownLead} lang={lang} tag={planTag} say={planSay} quoted={!!practiceSay && !pausedLead} title={planTitle} meta={planMeta} question={topic?.title} bare={shownLead === "recommendation" && !pausedLead}>
         {lead === "urgent" ? <section className="now-loop-lead" data-module="now-urgent" aria-label={t("elev.safety.header.title")}>
           <UrgentSupport testId="now-urgent-setup-support" className="now-urgent-lead" />
         </section> : lead === "record" ? <section className="now-loop-lead" data-module="now-record" aria-label={t("today.record.aria")}>
@@ -356,10 +378,10 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
           </form>)}
           {!observation && !receipt && <div className="now-lead-actions now-followup" role="group" aria-labelledby={`${id}-followup`}>
             <p id={`${id}-followup`} className="now-followup-q"><Icon name="nightlight" size={18} />{copy.outcomes}</p>
-            <PrimaryMove type="button" className="companion-primary" disabled={saving} onClick={() => void saveOutcome("helped")}><Icon name="check" size={19} />{saving ? copy.saving : copy.helped}</PrimaryMove>
-            <button type="button" className="companion-secondary" disabled={saving} onClick={() => void saveOutcome("not_today")}><Icon name="replay" size={18} />{copy.notToday}</button>
-            <button type="button" className="companion-secondary" disabled={saving} aria-pressed={notYetFor === chosen.id} onClick={() => setNotYetFor(chosen.id)}>{copy.notYet}</button>
+            <PrimaryMove type="button" className="companion-primary" disabled={saving} onClick={() => void saveOutcome("helped")}><Icon name="check" size={19} />{saving ? copy.saving : copy.done}</PrimaryMove>
+            <button type="button" className="companion-secondary" disabled={saving} aria-pressed={notYetFor === chosen.id} onClick={() => setNotYetFor(chosen.id)}>{copy.haventTried}</button>
           </div>}
+          {!observation && !receipt && <button type="button" className="companion-text-button" disabled={saving} onClick={() => void saveOutcome("not_today")}>{copy.notToday}</button>}
           {!observation && !receipt && notYetFor === chosen.id && <p role="status" className="now-inline-status">{copy.notYetAck}</p>}
           {!observation && <PrimaryMove primary={!!receipt} type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(chosen.recommendation))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></PrimaryMove>}
           {currentSaveError && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
@@ -377,10 +399,21 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
           <p className="now-plan-kicker">{copy.programLabel}</p>
           <p className="now-lead-body">{copy.programWhy(program.week)}</p>
           <div className="now-lead-actions"><PrimaryMove type="button" className="companion-primary" onClick={openProgram}>{copy.continueProgram}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></PrimaryMove></div>
-          <button type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(program.content.skill[lang]))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></button>
+          <button type="button" className="companion-text-button" onClick={() => talk(copy.adaptPrompt(programSkill))}>{copy.adapt}<Icon name="chat_bubble" size={18} /></button>
+        </section> : pausedLead ? <section className="now-lead" data-testid="now-pause" aria-labelledby={`${id}-pause`}>
+          <div className="now-lead-actions">
+            <PrimaryMove type="button" className="companion-primary" onClick={() => arborPause.resume()}>{t("companion.pause.resume")}</PrimaryMove>
+          </div>
+          <button type="button" className="companion-text-button" onClick={() => goToRoute("memory")}>{t("companion.pause.notebook")}</button>
         </section> : <NowRecommendation name={name} onTalkOpen={talk} journal={loop.journal} />}
-        {shownLead !== "recommendation" && shownLead !== "urgent" && <div className="now-plan-foot"><NowPlanBody why={planWhy} time={copy.planTime[shownLead]} size={copy.planSize[shownLead]} question={planQuestion} /></div>}
+        {(pausedLead || (shownLead !== "recommendation" && shownLead !== "urgent")) && <div className="now-plan-foot"><NowPlanBody why={planWhy} time={pausedLead ? null : copy.planTime[shownLead]} size={pausedLead ? null : copy.planSize[shownLead]} question={planQuestion} /></div>}
         </NowPlanFrame>
+        {lead === "practice" && focus && loop.pick?.via === "ai" && <BasedOnReceipt
+          model={{
+            ...basedOnLines({ items: approvedMemoryItems, profile: childProfile, maxFacts: FOCUS_MAX_FACTS, reportedFactCount: focus.inputsUsed?.factCount, now: now.getTime() }),
+          }}
+          onOpenFact={(factId) => goToRoute("memory", { fact: factId })}
+        />}
         {lifecycleNote && lead !== "practice" && <p className="now-lifecycle-note" role="note">{lifecycleNote}</p>}
         {/* S1: the Everyday plans card sits under the lead, where the lifecycle note does; a plan already leading is not
             repeated, and on the urgent day (B-TODAY-38) the help lines stand alone in the column. */}
@@ -396,9 +429,13 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
           : lead !== "urgent" && <NowNoticeExtras keepsakeDocs={loop.keepsakeDocs} now={loop.now} isReturning={isReturning} suppressSayBack={lead === "record"} />}
     </div>
 
-    <NowKidWorld observations={observations} now={now} name={name} onAll={() => setActiveTab("development")} />
-
-    <div className="now-day-grid">
+    <details className="now-tonight-more" data-testid="now-more-tonight">
+      <summary>
+        <b>{copy.moreTonight}</b>
+        <small>{copy.moreTonightSub}</small>
+      </summary>
+      <NowKidWorld observations={observations} now={now} name={name} onAll={() => setActiveTab("development")} />
+      <div className="now-day-grid">
       <NowWeekSoFar observations={observations} now={now} onReport={() => setActiveTab("weekly")}>
         <NowWhatChangedLines previousVisitAt={previousVisitAt} isReturning={isReturning} rhythmDaysNeeded={loop.rhythm.daysNeeded} />
       </NowWeekSoFar>
@@ -410,14 +447,20 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
         {showPointer && <NowTonightPointer onOpen={() => { loop.setTonightEarly(true); setTonightOpen(true); }} />}
         {/* B-PROG-03: the program is Today's frame: one line beside the practice, never a second lead. */}
         {program && lead !== "program" && <button type="button" className="now-weekly-door now-program-line" data-testid="now-program-line" onClick={openProgram}>
-          <BrandChip icon="menu_book" tone="green" shape="drop" /><span><b>{copy.programLabel}</b><small dir="auto">{program.content.skill[lang]}</small></span>
+          <BrandChip icon="menu_book" tone="green" shape="drop" /><span><b>{copy.programLabel}</b><small dir="auto">{programSkill}</small></span>
           {programWeeks > 0 && <span className="now-agenda-badge" data-testid="now-program-week">{copy.programWeekOf(program.week, Math.max(program.week, programWeeks))}</span>}
+          <Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
+        </button>}
+        {/* B-PROG-14: "This week's idea" — the program week's one Learn read, opened through the Learn deep link, shown until it is read. */}
+        {weekLesson && <button type="button" className="now-weekly-door now-week-lesson" data-testid="now-week-lesson" onClick={() => requestLearnRead({ cardId: weekLesson.id, source: "now-week-lesson" })}>
+          <BrandChip icon="lightbulb" tone="green" shape="leaf" /><span><b>{copy.weekIdea}</b><small dir="auto">{weekLesson.title[lang]}</small></span>
           <Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
         </button>}
         <NowAgendaExtras evening={loop.evening} storyFits={loop.storyFits} todayOffer={todayOffer} suppressVisit={lead === "visit" || !!visit} storyRow={!showPointer} />
         <button type="button" className="now-weekly-door now-glance-reminders" onClick={() => setActiveTab("smart-reminders")}><BrandChip icon="notifications" tone="sapphire" shape="arch" /><span><b>{copy.remindersTitle}</b><small>{copy.remindersBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>
       </section>
-    </div>
+      </div>
+    </details>
 
   </div>;
 }

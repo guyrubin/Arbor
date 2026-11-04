@@ -122,11 +122,18 @@ beforeAll(async () => {
 });
 
 const priorHourlyLimit = process.env.AI_USER_HOURLY_LIMIT;
+// B-AIOPS-02: every mint here reserves against ONE sandbox family's daily Live
+// allowance (routes/liveBudgetRoute.test.ts pins that cap); keep it out of the
+// way so this file keeps testing the enablement gate, not the budget.
+const priorLivePaid = process.env.LIVE_PAID_MINUTES_PER_DAY;
+process.env.LIVE_PAID_MINUTES_PER_DAY = "1000";
 
 afterAll(async () => {
   // Restore the env the metering test narrowed (worker processes are reused).
   if (priorHourlyLimit === undefined) delete process.env.AI_USER_HOURLY_LIMIT;
   else process.env.AI_USER_HOURLY_LIMIT = priorHourlyLimit;
+  if (priorLivePaid === undefined) delete process.env.LIVE_PAID_MINUTES_PER_DAY;
+  else process.env.LIVE_PAID_MINUTES_PER_DAY = priorLivePaid;
   await Promise.all(
     servers.map((s) => new Promise<void>((resolve, reject) => s.close((e) => (e ? reject(e) : resolve())))),
   );
@@ -142,11 +149,13 @@ const getAvailability = async (base: string) => {
   return { status: res.status, body: (await res.json()) as { available: boolean } };
 };
 
+// B-PROV-12: a mint must acknowledge the runtime route's approved notice.
+const GLOBAL_NOTICE = "google-global-realtime-v1";
 const postToken = async (base: string) => {
   const res = await fetch(`${base}/api/live/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: "{}",
+    body: JSON.stringify({ noticeAck: GLOBAL_NOTICE }),
   });
   return { status: res.status, body: (await res.json()) as Record<string, unknown> };
 };
@@ -165,7 +174,7 @@ describe("GET /api/live/availability (AI-V8) — config-only, never the SDK", ()
 
   it("returns available:true only when BOTH the flag and the key are set", async () => {
     const { body } = await getAvailability(flagOnUrl);
-    expect(body).toEqual({ available: true });
+    expect(body).toEqual({ available: true, notice: { id: GLOBAL_NOTICE } });
   });
 
   it("makes zero SDK constructor / authTokens.create calls and answers <50ms (no network)", async () => {
@@ -231,7 +240,7 @@ describe("POST /api/live/token (VC-7) — gated on liveEnabled && geminiApiKey",
     const res = await fetch(`${flagOnUrl}/api/live/token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ language: "he" }),
+      body: JSON.stringify({ language: "he", noticeAck: GLOBAL_NOTICE }),
     });
     const body = (await res.json()) as Record<string, any>;
     const arg = sdkSpies.create.mock.calls[0][0] as any;

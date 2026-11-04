@@ -14,6 +14,7 @@ import { Sheet, useCompactSurface } from "../ui/Sheet";
 import AdminDashboard from "./AdminDashboard";
 import ParentalGatePanel from "./ParentalGatePanel";
 import { consumeSettingsFocus, SETTINGS_FOCUS_ANCHOR } from "./settingsBus";
+import PauseArborControl from "../trust/PauseArborControl";
 import DeleteAccountModal from "./DeleteAccountModal";
 import YourDataSheet from "./YourDataSheet";
 import { AnalyticsOptOutRow } from "../privacy/AnalyticsOptOutRow";
@@ -25,15 +26,18 @@ import { isNativePlatform, nativePlatform } from "../../lib/runtime";
 import { LegalLinks } from "../billing/LegalLinks"; // MOB-01: Privacy · Terms · Support in the footer
 import { Skeleton } from "../ui/Skeleton";
 import { PlanBadge } from "../ui/PlanBadge";
+import OfferCodeField from "../referral/OfferCodeField";
 import { useLanguage, type AiLang } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { useEntitlement } from "../../hooks/useEntitlement";
 import { useCheckout } from "../../hooks/useCheckout";
 import { T } from "../../lib/tokens";
 import { ACCENT_THEMES, getSavedTheme, setTheme, type AccentTheme } from "../../lib/theme";
 import { resolveKidTheme, selectableThemes } from "../../lib/kidThemeManifest";
+import { BEDTIME_TIMES, validBedtime } from "../../lib/library/readMode";
 import { translate, type UiLang } from "../../lib/i18n";
 import { fmtDay } from "../../lib/formatDate";
 
@@ -52,6 +56,8 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const memoryCount = (pendingMemoryItems?.length ?? 0) + (approvedMemoryItems?.length ?? 0);
   const { user, signOut, firebaseEnabled } = useAuth();
   const { toast } = useToast();
+  // B-STATUS-01: the saved language answers with ONE receipt line in its own row.
+  const langReceipt = useReceiptNote();
   // MOB-08: `loading` → skeleton row (never "Free" while unsure); `isFallback`
   // → "couldn't verify — showing last known · Retry" line.
   const { entitlement, loading: entitlementLoading, isFallback: entitlementUnverified, retry: retryEntitlement } = useEntitlement();
@@ -65,6 +71,8 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   // B-GA-12: annual is the accepted initial cadence (DEFAULT_CADENCE, shared
   // with PaywallModal); an explicit tap wins thereafter.
   const [cadence, setCadence] = useState<Cadence>(DEFAULT_CADENCE);
+  // B-GROWTH-43: a typed invite code added a month (the answer outlives the field).
+  const [codeGranted, setCodeGranted] = useState(false);
   const nativeOffering = useNativeOffering();
   const [adminOpen, setAdminOpen] = useState(false);
   const planVisibility = usePlanVisibility();
@@ -129,7 +137,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
     // the confirmation of a switch to Hebrew arrived in English — the one
     // string in the app whose language IS the thing being confirmed. Translated
     // against the incoming language explicitly.
-    toast(translate(draftUiLang, "set.language.saved"), "success");
+    langReceipt.show({ text: translate(draftUiLang, "set.language.saved") });
   };
 
   const handleCancelLanguage = () => {
@@ -225,6 +233,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               </button>
             </div>
           </div>
+          <ReceiptNoteLine note={langReceipt.note} testId="settings-language-receipt" size="sm" className="mt-2" />
         </Row>
 
         {/* LANG-ADV-OVERRIDE: advanced — let the AI answer in a different language than the UI */}
@@ -330,6 +339,9 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           </button>
         </Row>
 
+        {/* Pause Arbor: new suggestions and new things to keep wait. The notebook stays. */}
+        <PauseArborControl />
+
         {/* B-PLAY-21: how Arbor talks with you — the same sheet as Ask and Family. */}
         <Row icon={<Icon name="tune" size={18} />} title={t("coach.tone.title")} sub={toneLabel(selectedLens, t)}>
           <button
@@ -367,6 +379,24 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               </button>
             ))}
           </div>
+        </Row>
+        </div>
+        )}
+        {/* B-BOOK-45: the parent's bedtime — from this time a book opens as the
+            bedtime read (night stage, slower voice, a Goodnight ending). */}
+        {childProfile && (
+        <div data-testid="settings-bedtime">
+        <Row icon={<Icon name="bedtime" size={18} />} title={t("set.bedtime.title", { name: childProfile.name?.split(" ")[0] ?? "" })} sub={t("set.bedtime.sub")}>
+          <select
+            aria-label={t("set.bedtime.title", { name: childProfile.name?.split(" ")[0] ?? "" })}
+            value={validBedtime(childProfile.bedtimeFrom) ?? ""}
+            onChange={(e) => { const next = validBedtime(e.target.value); if (next !== (validBedtime(childProfile.bedtimeFrom) ?? null)) void updateChild(childProfile.id, { bedtimeFrom: next ?? "" }); }}
+            className="min-h-11 rounded-lg px-2 text-xs font-bold"
+            style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
+          >
+            <option value="">{t("set.bedtime.off")}</option>
+            {BEDTIME_TIMES.map((time) => <option key={time} value={time}>{time}</option>)}
+          </select>
         </Row>
         </div>
         )}
@@ -517,6 +547,21 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               {t("set.plan.restore")}
             </button>
           )}
+
+          {/* B-GROWTH-43: a code given aloud or on paper is typed here, inside the
+              Plan card; one invite per family (server/referral.ts). Not for a
+              paying family: a comp month never overrides a paid record, so a
+              code would spend their one invite on nothing. */}
+          {!isPaid && !entitlementLoading && !entitlementUnverified && !codeGranted && (
+            <OfferCodeField onGranted={() => { setCodeGranted(true); void retryEntitlement(); }} />
+          )}
+          {/* The month was added: the plan reloads (and the field leaves with
+              the free plan), so the answer is held here, not in the field. */}
+          {codeGranted && (
+            <p role="status" className="text-xs mt-3" style={{ color: "var(--arbor-ink)" }} data-testid="offer-code-granted">
+              {t("set.referral.code.granted")}
+            </p>
+          )}
         </div>
 
         {/* mk-p0-2 referral loop → B-SHELL-29: the invite card moved to the
@@ -541,7 +586,10 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         {/* MOB-20: Settings had no version and no way to reach a human — the
             two things a parent needs when something is wrong and they are
             about to write to us. `hello@arbor.app` is the address the app
-            already gives (auth.accessFail, EN+HE). B-INF-05: the build is the
+            gave on its sign-in screen until B-RESID-05 retired that line; this
+            row is now its one home (public/support.html names
+            support@arbor.family; which is canonical is an owner decision).
+            B-INF-05: the build is the
             7-char commit SHA stamped by vite (`lib/buildVersion.ts`), "dev" locally. */}
         <Row icon={<Icon name="info" size={18} />} title={t("elev.accountSettings.about.title")} sub={t("elev.accountSettings.about.sub", { version: APP_BUILD })}>
           <a

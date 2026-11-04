@@ -1,5 +1,6 @@
 import React from "react";
 import { savedOnPhoneKey } from "../../lib/firestoreWrite";
+import { useOnline } from "../../hooks/useSyncStatus";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -87,6 +88,9 @@ export function sayBackDoorLine(input: {
 export default function TodaySayBackLine({ keepsakeDocs, now }: { keepsakeDocs: readonly unknown[]; now: Date }) {
   const { actionLoop, activeTodayAction, childProfile, recordFromRecordAnswer, recordAnswerWrites, recordAnswersConfirmed } = useArbor();
   const { t } = useLanguage();
+  // B-DATA-14: this line subscribes to the connection itself, so its receipt
+  // switches the moment the phone reconnects, whatever its host re-renders.
+  const online = useOnline();
   const write = recordAnswerWrites?.[fromRecordRowId(childProfile.id, now)];
   const line: SayBackDoorLine = (write?.status === "saved" || write?.status === "queued") && write.entry?.sayBack ? { kind: "answered", answer: write.entry.sayBack } : write?.status === "failed" && write.opener.kind === "said" ? { kind: "ask", opener: write.opener } : sayBackDoorLine({
     now,
@@ -99,7 +103,7 @@ export default function TodaySayBackLine({ keepsakeDocs, now }: { keepsakeDocs: 
   });
   // B-DATA-14: offline the ledger cannot be confirmed — the line steps aside
   // (no endless "Checking…", no cached claim) until the network returns.
-  const offline = recordAnswersConfirmed === false && typeof navigator !== "undefined" && navigator.onLine === false;
+  const offline = recordAnswersConfirmed === false && !online;
   const waiting = write?.status === "saving" || (recordAnswersConfirmed === false && !!line && !write && !offline);
   if (activeTodayAction?.status === "accepted") return null;
   if (write && write.opener.kind !== "said") return null;
@@ -110,9 +114,7 @@ export default function TodaySayBackLine({ keepsakeDocs, now }: { keepsakeDocs: 
       <div data-testid="today-door-saidback" data-answered={line.answer} className="flex min-h-11 flex-wrap items-center gap-2 rounded-xl px-3 py-1.5">
         <Icon name="record_voice_over" size={18} style={{ color: "var(--arbor-muted)" }} />
         <span role="status" data-testid="today-door-saidback-receipt" style={{ color: "var(--arbor-muted)", fontSize: "var(--t-sm)" }}>
-          {/* B-DATA-14: read at render; NowView (its host) subscribes to the
-              connection (useOnline), so the line switches when the phone reconnects. */}
-          {t(write?.status === "queued" ? savedOnPhoneKey() : "today.record.receipt")}
+          {t(write?.status === "queued" ? savedOnPhoneKey(online) : "today.record.receipt")}
         </span>
       </div>
     );

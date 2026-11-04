@@ -40,7 +40,6 @@ export const en: Record<string, string> = {
 
 
   "elev.childmem.action.approve": "Approve",
-  "elev.childmem.action.remember": "Remember this",
   // Critic r1 (P0): since 34f4e13 parent-written facts are kept without a
   // queue, so every PENDING fact is a model inference — never "you wrote".
   "elev.childmem.provenance.inference": "Arbor noticed this in your conversation on {date}:",
@@ -52,7 +51,6 @@ export const en: Record<string, string> = {
   // Builder M — R25 — #/memory demotion disclosure and its door to #/profile.
   "elev.childmem.more.title": "Moments and keepsakes",
   "elev.childmem.more.sub": "Firsts, what Arbor knows so far, and the keepsake for the month.",
-  "elev.childmem.more.door": "Open the profile",
 };
 
 export const he: Record<string, string> = {
@@ -77,7 +75,6 @@ export const he: Record<string, string> = {
 
 
   "elev.childmem.action.approve": "אישור",
-  "elev.childmem.action.remember": "לזכור את זה",
   "elev.childmem.provenance.inference": "ארבור שמה לב לזה בשיחה שלכם ב־{date}:",
   "elev.childmem.kept.topic": "נשמר. בפעם הבאה שתשאלו על {topic}, ארבור יתחיל מזה.",
   "elev.childmem.kept.any": "נשמר. ארבור יתחיל מזה בפעם הבאה שתשאלו.",
@@ -87,5 +84,4 @@ export const he: Record<string, string> = {
   // Builder M — R25 — #/memory demotion disclosure and its door to #/profile.
   "elev.childmem.more.title": "רגעים ומזכרות",
   "elev.childmem.more.sub": "פעמים ראשונות, מה ארבור יודע עד כה והמזכרת של החודש.",
-  "elev.childmem.more.door": "פתחו את הפרופיל",
 };

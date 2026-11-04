@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { ActionPlan } from "../types";
 import { routineById } from "./routines";
 import {
+  foldRoutineOfflineTicks,
+  heldRoutineTicks,
   isRoutineRunComplete,
   markRoutineCelebrated,
   resetRoutineToday,
@@ -209,5 +211,37 @@ describe("FEAT-07 · Now: a routine finished for today frees the plan opener", (
   it("negative control: an ordinary plan with every step done is still never the opener", () => {
     const finished: ActionPlan = { ...ordinary, phases: [{ ...ordinary.phases[0], steps: [{ text: "Dim the lights at seven", completed: true }] }] };
     expect(pick([finished])).toBeNull();
+  });
+});
+
+/* B-DATA-14 (wave 4) — ticks held offline fold into the run by the step's words. */
+describe("foldRoutineOfflineTicks", () => {
+  const words = (plan: ActionPlan) => plan.phases.flatMap((ph) => ph.steps.map((s) => s.text));
+  const at = new Date(NOW).toISOString();
+  it("lays each tick over its day's run and drops the field; the server's other ticks stay", () => {
+    const plan = toggleRoutineStep(fresh(), TODAY, 0); // ticked on the other phone
+    const held = { ...plan, routineOfflineTicks: { [TODAY]: { "2": { text: words(plan)[2], done: true, at }, "0": null } } };
+    expect(heldRoutineTicks(held)).toBe(1);
+    const { plan: folded, lost } = foldRoutineOfflineTicks(held);
+    expect(routineRunToday(folded, TODAY)).toEqual([0, 2]);
+    expect(folded.routineOfflineTicks).toBeUndefined();
+    expect(lost).toEqual([]);
+  });
+  it("an untick held offline takes the step out; a moved step is found by its words", () => {
+    const plan = tickAll(fresh(), TODAY);
+    const steps = words(plan);
+    const held = { ...plan, routineOfflineTicks: { [TODAY]: { "4": { text: steps[1], done: false, at } } } };
+    expect(routineRunToday(foldRoutineOfflineTicks(held).plan, TODAY)).toEqual([0, 2, 3, 4]);
+  });
+  it("a tick whose step is gone is lost by name, never forced onto another step", () => {
+    const plan = fresh();
+    const { plan: folded, lost } = foldRoutineOfflineTicks({ ...plan, routineOfflineTicks: { [TODAY]: { "1": { text: "A step changed on the other phone", done: true, at } } } });
+    expect(routineRunToday(folded, TODAY)).toEqual([]);
+    expect(lost).toEqual(["A step changed on the other phone"]);
+  });
+  it("negative control: a plan with no held ticks folds to itself", () => {
+    const plan = toggleRoutineStep(fresh(), TODAY, 3);
+    expect(foldRoutineOfflineTicks(plan)).toEqual({ plan, lost: [] });
+    expect(heldRoutineTicks(plan)).toBe(0);
   });
 });

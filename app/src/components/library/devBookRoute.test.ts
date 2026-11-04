@@ -22,6 +22,13 @@ describe("parseDevBookParams", () => {
     expect(p.narration).toBe("probe");
     expect(p.prints).toBe(true);
     expect(p.costume).toBeNull();
+    expect(p.readMode).toBe("alone");
+  });
+
+  it("B-BOOK-45/46: mode=bedtime | together reviews the read's mode; anything else is the child's own read", () => {
+    expect(parseDevBookParams("?book=&mode=bedtime").readMode).toBe("bedtime");
+    expect(parseDevBookParams("?book=&mode=together").readMode).toBe("together");
+    expect(parseDevBookParams("?book=&mode=night").readMode).toBe("alone");
   });
 
   it("voice=<set> picks the narration folder (default: the hero sheet's); unsafe values fall back", () => {

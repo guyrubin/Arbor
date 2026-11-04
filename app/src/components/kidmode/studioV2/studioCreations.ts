@@ -32,7 +32,10 @@ export function useStudioCreations(childId: string) {
       const clean: StudioCreation = creation.kind === 'melody'
         ? { kind: 'melody', notes: [...creation.notes], tempo: creation.tempo }
         : { kind: 'corner', layout: [...creation.layout], light: creation.light, scene: creation.scene };
-      await store.upsert({ id: clean.kind, ownerId, childId, creation: clean });
+      // A Firestore offline queue or four-second timeout is not a saved receipt.
+      // Keep the deterministic per-kind ID retryable until the server confirms.
+      // Sandbox mode still acknowledges only after localStorage persisted.
+      await store.upsert({ id: clean.kind, ownerId, childId, creation: clean }, { requireAcknowledgement: true });
     },
   };
 }
