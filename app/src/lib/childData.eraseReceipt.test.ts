@@ -25,7 +25,8 @@ const fx = vi.hoisted(() => ({
   failCollection: "",
   serverErase: "ok" as "ok" | "offline",
   erased: { memoryEvents: 0, shares: 0, consents: 0, consultRequests: 0 },
-  storage: { photos: 0, books: 0 },
+  /** Owned Storage objects actually written for the fixture child (and sibling). */
+  objects: new Set<string>(),
   firebaseEnabled: true,
 }));
 
@@ -61,9 +62,17 @@ vi.mock("./api", () => ({
     }),
     privacyErase: async (childId: string) => {
       if (fx.serverErase === "offline") throw new Error("synthetic offline");
+      const photoPrefix = `users/synthetic-owner/children/${childId}/`;
+      const bookPrefix = `children/${childId}/books/`;
+      let photos = 0;
+      let books = 0;
+      for (const name of [...fx.objects]) {
+        if (name.startsWith(photoPrefix)) { fx.objects.delete(name); photos += 1; }
+        else if (name.startsWith(bookPrefix)) { fx.objects.delete(name); books += 1; }
+      }
       return {
-        erased: { ...fx.erased, storageFiles: fx.storage.photos + fx.storage.books },
-        storage: { ...fx.storage },
+        erased: { ...fx.erased, storageFiles: photos + books },
+        storage: { photos, books },
         childId,
         erasedAt: "t",
       };
@@ -71,8 +80,20 @@ vi.mock("./api", () => ({
   },
 }));
 vi.mock("./bookAssetExport", () => ({
-  exportPrivateBookAssets: vi.fn(async (_uid: string, _childId: string, metadata: Array<{ bookId: string; files: string[] }>) => {
-    const files = metadata.flatMap((m) => (m.files ?? []).map((p) => ({ bookId: m.bookId, path: p, bytes: 4, status: "included" })));
+  exportPrivateBookAssets: vi.fn(async (_uid: string, childId: string, metadata: Array<{ bookId: string; files?: string[] }>) => {
+    const prefix = `children/${childId}/books/`;
+    const written = new Set([...fx.objects].filter((name) => name.startsWith(prefix)).map((name) => name.slice(prefix.length)));
+    const files: Array<{ bookId: string; path: string; bytes: number; status: "included" }> = [];
+    const push = (bookId: string, path: string) => {
+      if (!written.has(`${bookId}/${path}`)) return;
+      if (files.some((f) => f.bookId === bookId && f.path === path)) return;
+      files.push({ bookId, path, bytes: 4, status: "included" });
+    };
+    for (const row of metadata ?? []) for (const rel of row.files ?? []) push(row.bookId, rel);
+    for (const key of written) {
+      const slash = key.indexOf("/");
+      if (slash > 0) push(key.slice(0, slash), key.slice(slash + 1));
+    }
     return { format: "arbor-private-book-assets-v1", status: "complete", inventory: "complete", issues: [], includedFiles: files.length, includedBytes: files.length * 4, files };
   }),
 }));
@@ -86,7 +107,11 @@ import { setBookAssetBackend, type BookAssetBackend } from "./bookAssetStore";
 const UID = "synthetic-owner";
 const CHILD = "synthetic-child";
 const SIBLING = "synthetic-sibling";
+const PRINT_REL = "hero-sheets/s/prints/cover.webp";
+const NARRATION_REL = "narration/s/en/p1.mp3";
 const base = (child: string) => `users/${UID}/children/${child}`;
+const photoObject = (child: string) => `${base(child)}/photos/synthetic.jpg`;
+const bookObject = (child: string, rel: string) => `children/${child}/books/synthetic-book/${rel}`;
 
 class MemStore {
   map = new Map<string, string>();
@@ -122,10 +147,14 @@ let session: MemStore;
 let idb: ReturnType<typeof memBackends>;
 
 function seed(child: string) {
-  fx.docs.set(base(child), { id: child, name: "Synthetic" });
+  fx.docs.set(base(child), { id: child, name: "Synthetic", photoUrl: photoObject(child) });
+  fx.objects.add(photoObject(child));
+  fx.objects.add(bookObject(child, PRINT_REL));
+  fx.objects.add(bookObject(child, NARRATION_REL));
   for (const name of CHILD_SUBCOLLECTIONS) {
     fx.docs.set(`${base(child)}/${name}/d1`, name === "bookAssets"
-      ? { bookId: "synthetic-book", files: ["hero-sheets/s/look-up.webp", "narration/s/en/p1.mp3"] }
+      ? { bookId: "synthetic-book", files: [PRINT_REL, NARRATION_REL] }
+      : name === "keepsakes" ? { synthetic: name, photoUrl: photoObject(child) }
       : name === "studioCreations" ? { synthetic: name, ownerId: UID, childId: child } : { synthetic: name });
   }
   local.setItem(`arbor.safetyChecklist.${child}`, "1");
@@ -142,15 +171,16 @@ const childRemains = (child: string) => [
   ...[...idb.comics.values()].filter((r) => r.childId === child).map((r) => `comic:${r.key}`),
   ...[...idb.renders.values()].filter((r) => r.childId === child).map((r) => `render:${r.id}`),
   ...[...idb.books.values()].filter((r) => r.childId === child).map((r) => `book:${r.id}`),
+  ...[...fx.objects].filter((name) => name.startsWith(`${base(child)}/`) || name.startsWith(`children/${child}/books/`)),
 ];
 
 beforeEach(() => {
   fx.docs.clear();
+  fx.objects.clear();
   fx.failCollection = "";
   fx.serverErase = "ok";
   fx.firebaseEnabled = true;
   fx.erased = { memoryEvents: 3, shares: 1, consents: 2, consultRequests: 1 };
-  fx.storage = { photos: 2, books: 5 };
   local = new MemStore();
   session = new MemStore();
   vi.stubGlobal("localStorage", local as unknown as Storage);
@@ -168,18 +198,20 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("B-BOOK-20 · a synthetic child through export, then erase", () => {
   it("export carries every registered sink with a complete receipt", async () => {
-    const out = await exportChildData(UID, { id: CHILD, name: "Synthetic" } as ChildProfile);
+    const out = await exportChildData(UID, { id: CHILD, name: "Synthetic", photoUrl: photoObject(CHILD) } as ChildProfile);
     expect(out.exportReceipt.status).toBe("complete");
     expect(Object.keys(out.collections)).toEqual(CHILD_SUBCOLLECTIONS);
     for (const name of CHILD_SUBCOLLECTIONS) {
       expect(out.collections[name], name).toHaveLength(1);
       expect(out.exportReceipt.collections[name], name).toBe("included");
     }
-    expect(out.profile.id).toBe(CHILD);
+    expect(out.profile.photoUrl).toBe(photoObject(CHILD));
+    expect(out.collections.keepsakes).toEqual([expect.objectContaining({ photoUrl: photoObject(CHILD) })]);
+    expect(fx.objects.has(photoObject(CHILD))).toBe(true);
     expect(Object.keys(out.serverData ?? {}).sort()).toEqual(["consents", "consultRequests", "memoryEvents", "shares"]);
-    // The owned Storage files of this child, with their per-file receipt.
+    // One file per owned prefix: the photo by reference, the print and the narration as bytes.
     expect(out.privateBookAssets).toMatchObject({ status: "complete", includedFiles: 2 });
-    expect(out.privateBookAssets!.files.map((f) => f.path)).toEqual(["hero-sheets/s/look-up.webp", "narration/s/en/p1.mp3"]);
+    expect(out.privateBookAssets!.files.map((f) => f.path).sort()).toEqual([NARRATION_REL, PRINT_REL].sort());
   });
 
   it("erase: the receipt lists every registered sink, counts the Storage files, and nothing of the child remains", async () => {
@@ -197,8 +229,8 @@ describe("B-BOOK-20 · a synthetic child through export, then erase", () => {
       "server:shares": 1,
       "server:consents": 2,
       "server:consultRequests": 1,
-      "storage:photos": 2,
-      "storage:books": 5,
+      "storage:photos": 1,
+      "storage:books": 2,
       "device:webStorage": 3,
       "device:comicPages": "cleared",
       "device:heroRenders": "cleared",
@@ -206,7 +238,7 @@ describe("B-BOOK-20 · a synthetic child through export, then erase", () => {
       "device:firestoreCache": "cleared",
     });
     // What the parent reads on the receipt.
-    expect(receipt.counts.storageFiles).toBe(7);
+    expect(receipt.counts.storageFiles).toBe(3);
     expect(receipt.counts.clientDocs).toBe(3);
     expect(erasedRecordCount(receipt.sinks)).toBe(CHILD_SUBCOLLECTIONS.length + 1); // + the profile
 
@@ -214,6 +246,7 @@ describe("B-BOOK-20 · a synthetic child through export, then erase", () => {
     expect(await getComicPage(CHILD, "scene")).toBeUndefined();
     // The sibling is untouched in every store.
     expect([...fx.docs.keys()].filter((p) => p.startsWith(base(SIBLING)))).toHaveLength(CHILD_SUBCOLLECTIONS.length + 1);
+    expect([...fx.objects].filter((name) => name.includes(`/${SIBLING}/`))).toHaveLength(3);
     expect(idb.comics.has(`${SIBLING}|scene`) && idb.renders.has(`${SIBLING}|story|en`) && idb.books.has(`${SIBLING}-file`)).toBe(true);
     expect(local.getItem(`arbor.safetyChecklist.${SIBLING}`)).toBe("1");
     expect(session.getItem(`arbor.screen.draft.${SIBLING}.band-3`)).toBe("{}");
@@ -235,7 +268,12 @@ describe("B-BOOK-20 · a synthetic child through export, then erase", () => {
     expect(receipt.sinks!["device:firestoreCache"]).toBe("not-reached");
     // Everything else still went.
     expect(receipt.sinks![subcollectionSinkId("behaviorLogs")]).toBe(1);
-    expect(childRemains(CHILD)).toEqual([`${base(CHILD)}/keepsakes/d1`]);
+    expect(childRemains(CHILD)).toEqual([
+      `${base(CHILD)}/keepsakes/d1`,
+      photoObject(CHILD),
+      bookObject(CHILD, PRINT_REL),
+      bookObject(CHILD, NARRATION_REL),
+    ]);
   });
 
   it("sandbox: the same walk on the device, the profile row included", async () => {
@@ -274,7 +312,7 @@ describe("B-BOOK-20 · the receipt the parent reads reconciles with the ledger",
   it("a clean run is finished: every row counts, the title is today's", async () => {
     const v = view(await eraseEverything(UID, CHILD));
     expect(v.finished).toBe(true);
-    expect(v.rows).toMatchObject({ memoryEvents: 3, shares: 1, consents: 2, consultRequests: 1, storageFiles: 7, clientDocs: 3 });
+    expect(v.rows).toMatchObject({ memoryEvents: 3, shares: 1, consents: 2, consultRequests: 1, storageFiles: 3, clientDocs: 3 });
     expect(v.places.records).toEqual({ total: CHILD_SUBCOLLECTIONS.length + 1, unreached: 0 });
     expect(receiptTitleKey(v.finished)).toBe("sec.sharing.receipt.title");
   });
@@ -298,7 +336,7 @@ describe("B-BOOK-20 · the receipt the parent reads reconciles with the ledger",
     expect(v.finished).toBe(false);
     expect(v.rows.records).toBe("not-reached");
     expect(v.places.records).toEqual({ total: CHILD_SUBCOLLECTIONS.length + 1, unreached: 1 });
-    expect(v.rows).toMatchObject({ memoryEvents: 3, storageFiles: 7, consultRequests: 1 });
+    expect(v.rows).toMatchObject({ memoryEvents: 3, storageFiles: 3, consultRequests: 1 });
   });
 
   it("a receipt without a ledger proves nothing and is not finished", () => {

@@ -1,8 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CHILD_SUBCOLLECTIONS, exportChildData, eraseEverything } from "./childData";
+import { STORAGE_PREFIXES } from "./childDataSinks";
+import { childBookAssetPrefix, isBookAssetRel } from "./library/bookAssetPaths";
 import type { ChildProfile } from "../types";
 
 // The export/erase calls below hit the server first; offline here, so the
@@ -258,5 +260,205 @@ describe("B-BOOK-75 — plan books export and erase with the child", () => {
     expect(map.has("arbor.books.c1")).toBe(false);
     expect(map.has("arbor.books.c2")).toBe(true);
     expect(receipt.childId).toBe("c1");
+  });
+});
+
+/* B-BOOK-20 — every child-scoped Firestore subcollection or document, and
+   every owned Storage prefix, found by reading the writers (app source,
+   scripts, and a functions/ package when one exists). A name passed through
+   a constant (bookReads) or a single-quoted call (studioCreations) counts.
+   Narration and prints are files under the one books prefix, not stores of
+   their own. voiceClips and dayBooks are not writers in this tree; the
+   negative control is the proof that either one would fail this guard. */
+const APP_ROOT = join(SRC_ROOT, "..");
+const REPO_ROOT = join(APP_ROOT, "..");
+const SKIP_DIR = new Set(["node_modules", "dist", ".data", "studio-v2-preview"]);
+/** The allow-list loop itself. A `${name}` segment here is not a new sink. */
+const DRIVER_FILES = new Set([
+  "src/lib/childData.ts",
+  "src/hooks/useChildCollection.ts",
+  "src/hooks/useChildHistory.ts",
+]);
+const SEARCH_ROOTS = [SRC_ROOT, join(APP_ROOT, "scripts"), join(REPO_ROOT, "functions"), join(APP_ROOT, "functions")];
+
+interface SourceFile { file: string; code: string }
+interface SinkAudit {
+  collections: Map<string, Set<string>>;
+  prefixes: Map<string, Set<string>>;
+  unresolved: string[];
+}
+
+const stripComments = (text: string) => text.replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
+const normPath = (raw: string) => raw.replace(/\$\{[^}]+\}/g, "{id}").replace(/\{[^}]+\}/g, "{id}");
+const REGISTERED_PREFIXES = Object.values(STORAGE_PREFIXES).map(normPath).sort();
+
+function walkProduction(dir: string, acc: string[] = []): string[] {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (SKIP_DIR.has(entry.name)) continue;
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) walkProduction(full, acc);
+    else if (/\.(tsx?|mjs|js|py)$/.test(entry.name) && !/\.test\./.test(entry.name) && !entry.name.endsWith(".d.ts")) acc.push(full);
+  }
+  return acc;
+}
+
+function loadProductionFiles(): SourceFile[] {
+  const files: SourceFile[] = [];
+  for (const root of SEARCH_ROOTS) {
+    if (!existsSync(root) || !statSync(root).isDirectory()) continue;
+    for (const full of walkProduction(root)) {
+      const file = full.slice(REPO_ROOT.length + 1).split("\\").join("/");
+      files.push({ file, code: stripComments(readFileSync(full, "utf8")) });
+    }
+  }
+  return files;
+}
+
+function auditSinks(files: readonly SourceFile[]): SinkAudit {
+  const values = new Map<string, Set<string>>();
+  const constRe = /(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\s*=\s*["']([A-Za-z][A-Za-z0-9_]*)["']/g;
+  for (const f of files) for (const m of f.code.matchAll(constRe)) {
+    if (!values.has(m[1])) values.set(m[1], new Set());
+    values.get(m[1])!.add(m[2]);
+  }
+  const consts = new Map([...values].filter(([, set]) => set.size === 1).map(([name, set]) => [name, [...set][0]]));
+  const collections = new Map<string, Set<string>>();
+  const prefixes = new Map<string, Set<string>>();
+  const unresolved: string[] = [];
+  const add = (map: Map<string, Set<string>>, key: string, file: string) => {
+    if (!map.has(key)) map.set(key, new Set());
+    map.get(key)!.add(file);
+  };
+  const resolve = (expr: string, file: string): string | null => {
+    const lit = /^["'`]([A-Za-z_][A-Za-z0-9_]*)["'`]$/.exec(expr.trim());
+    if (lit) return lit[1];
+    const id = /^([A-Za-z_][A-Za-z0-9_]*)$/.exec(expr.trim());
+    if (!id) return null;
+    const value = consts.get(id[1]);
+    if (value) return value;
+    unresolved.push(`${file}: ${id[1]}`);
+    return null;
+  };
+  const noteStorage = (raw: string, file: string) => {
+    if (raw.includes("encodeURIComponent") || raw.includes("/api/") || raw.startsWith("/") || raw.includes("http")) return;
+    const n = normPath(raw);
+    const storageLike = /\.[a-z0-9]{2,5}($|[^a-z0-9])/i.test(n) || n.endsWith("/") || n.includes("/photos/");
+    if (!storageLike) return;
+    let prefix: string | null = null;
+    if (n.startsWith("users/{id}/children/{id}/")) prefix = "users/{id}/children/{id}/";
+    else if (n.startsWith("children/{id}/")) {
+      const seg = n.slice("children/{id}/".length).split("/")[0];
+      if (seg && seg !== "{id}") prefix = `children/{id}/${seg}/`;
+    }
+    if (prefix) add(prefixes, prefix, file);
+  };
+  const hookRe = /useChild(?:Collection|History)\s*(?:<[\s\S]*?>)?\s*\(\s*[^,()\n]+,\s*([^,)\n]+)/g;
+  const pathRe = /`users\/\$\{[^}]+\}\/children\/\$\{[^}]+\}\/(\$\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))([^`]*)`/g;
+  const pyPathRe = /f?"users\/\{[^}]+\}\/children\/\{[^}]+\}\/([A-Za-z_][A-Za-z0-9_]*)/g;
+  const colRe = /([A-Za-z_][\w]*)\.collection\(\s*["']([A-Za-z_][A-Za-z0-9_]*)["']\s*\)/g;
+  const unionRe = /type\s+([A-Za-z0-9_]+)\s*=\s*((?:"[A-Za-z0-9_]+"\s*(?:\|\s*"[A-Za-z0-9_]+"\s*)+))/g;
+
+  for (const f of files) {
+    const appRel = f.file.startsWith("app/") ? f.file.slice(4) : f.file;
+    for (const m of f.code.matchAll(hookRe)) {
+      const name = resolve(m[1], f.file);
+      if (name) add(collections, name, f.file);
+    }
+    for (const m of f.code.matchAll(pathRe)) {
+      const tail = m[4] ?? "";
+      if (m[2] === "name") {
+        if (DRIVER_FILES.has(appRel)) continue;
+        const param = /(?:^|[^.\w])name\s*:\s*([A-Za-z0-9_]+)/.exec(f.code)?.[1];
+        const union = [...f.code.matchAll(unionRe)].find((u) => u[1] === param);
+        if (!union) { unresolved.push(`${f.file}: dynamic collection name`); continue; }
+        for (const lit of union[2].matchAll(/"([A-Za-z0-9_]+)"/g)) add(collections, lit[1], f.file);
+        continue;
+      }
+      const name = m[2] ? consts.get(m[2]) : m[3];
+      if (m[2] && !name) unresolved.push(`${f.file}: path ${m[2]}`);
+      if (name === "photos" || /\.[a-z0-9]{2,5}/i.test(tail)) noteStorage(`users/\${uid}/children/\${childId}/${name ?? ""}${tail}`, f.file);
+      else if (name) add(collections, name, f.file);
+    }
+    for (const m of f.code.matchAll(pyPathRe)) add(collections, m[1], f.file);
+    for (const m of f.code.matchAll(/`([^`]*children\/\$\{[^`]+)`/g)) noteStorage(m[1], f.file);
+    for (const m of f.code.matchAll(/f"([^"\n]*children\/\{[^"\n]*)"/g)) noteStorage(m[1], f.file);
+    for (const m of f.code.matchAll(/f'([^'\n]*children\/\{[^'\n]*)'/g)) noteStorage(m[1], f.file);
+    const userChildFile = /users\/(?:\$\{[^}]+\}|\{[^}]+\})\/children/.test(f.code);
+    for (const m of f.code.matchAll(colRe)) {
+      const recv = m[1];
+      const name = m[2];
+      if (recv === "db" || recv === "ro" || recv === "familyRef") continue;
+      const assignedServer = new RegExp(`(?:const|let)\\s+${recv}\\s*=[\\s\\S]{0,180}\\.collection\\(\\s*["']children["']`).test(f.code);
+      // children/{childId}/memoryEvents is the server ledger, erased by memoryStore, not a users/ subcollection.
+      if (assignedServer && (!userChildFile || name === "memoryEvents")) continue;
+      add(collections, name, f.file);
+    }
+  }
+  return { collections, prefixes, unresolved };
+}
+
+function unregistered(audit: SinkAudit): { collections: string[]; prefixes: string[] } {
+  return {
+    collections: [...audit.collections.keys()].filter((name) => !CHILD_SUBCOLLECTIONS.includes(name)).sort(),
+    prefixes: [...audit.prefixes.keys()].filter((prefix) => !REGISTERED_PREFIXES.includes(prefix)).sort(),
+  };
+}
+
+describe("B-BOOK-20 — every child store and owned Storage prefix is registered", () => {
+  const files = loadProductionFiles();
+  const audit = auditSinks(files);
+
+  it("the scan reads app writers, scripts, and a functions package when present", () => {
+    expect(SEARCH_ROOTS.map((root) => root.slice(REPO_ROOT.length + 1) || ".")).toEqual([
+      "app/src", "app/scripts", "functions", "app/functions",
+    ]);
+    expect(files.length).toBeGreaterThan(400);
+    expect(files.some((f) => f.file === "app/src/server/heroPoseRoute.ts")).toBe(true);
+    expect(files.some((f) => f.file === "app/scripts/upload-book-assets.py")).toBe(true);
+    expect(files.some((f) => f.file.endsWith("functions/index.ts")) || !existsSync(join(REPO_ROOT, "functions"))).toBe(true);
+  }, 30_000);
+
+  it("lists every child-scoped Firestore sink, including constant and union writers", () => {
+    expect(audit.unresolved, audit.unresolved.join("; ")).toEqual([]);
+    expect(audit.collections.size).toBeGreaterThan(20);
+    for (const name of ["heroSheet", "bookAssets", "bookReads", "studioQuestProgress", "bookBookmarks", "keepsakes", "studioCreations"]) {
+      expect(audit.collections.has(name), name).toBe(true);
+    }
+    // bookReads is passed as the constant BOOK_READS, not a string literal.
+    expect([...audit.collections.get("bookReads")!].some((f) => f.endsWith("KidBookReaderView.tsx"))).toBe(true);
+    // The notice reader names its collections in a string union, then interpolates ${name}.
+    expect([...audit.collections.get("keepsakes")!].some((f) => f.endsWith("useNoticeSource.ts"))).toBe(true);
+    expect(unregistered(audit).collections, "unregistered child stores").toEqual([]);
+  }, 30_000);
+
+  it("lists every owned Storage prefix; narration and prints ride the books prefix", () => {
+    expect([...audit.prefixes.keys()].sort()).toEqual(REGISTERED_PREFIXES);
+    expect(unregistered(audit).prefixes).toEqual([]);
+    expect(childBookAssetPrefix("synthetic-child")).toBe("children/synthetic-child/books/");
+    expect(isBookAssetRel("narration/set/en/page.mp3")).toBe(true);
+    expect(isBookAssetRel("hero-sheets/sheet/prints/cover.webp")).toBe(true);
+    // These names are not writers today. The next test is what would catch them.
+    expect(audit.collections.has("voiceClips")).toBe(false);
+    expect(audit.prefixes.has("children/{id}/dayBooks/")).toBe(false);
+  });
+
+  it("negative control: a new constant-named store and a new Storage prefix fail this audit", () => {
+    const planted = auditSinks([{
+      file: "functions/voiceClips.ts",
+      code: [
+        'const VOICE_CLIPS = "voiceClips";',
+        "export function write(childId: string) {",
+        "  useChildCollection(childId, VOICE_CLIPS);",
+        "  bucket.file(`children/${childId}/dayBooks/page.pdf`);",
+        "}",
+      ].join("\n"),
+    }]);
+    expect(planted.unresolved).toEqual([]);
+    expect(unregistered(planted)).toEqual({
+      collections: ["voiceClips"],
+      prefixes: ["children/{id}/dayBooks/"],
+    });
+    expect(CHILD_SUBCOLLECTIONS.includes("voiceClips")).toBe(false);
+    expect(REGISTERED_PREFIXES.includes("children/{id}/dayBooks/")).toBe(false);
   });
 });
