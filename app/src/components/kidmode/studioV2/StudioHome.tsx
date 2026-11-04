@@ -76,9 +76,14 @@ export default function StudioHome({ onWorld, onCollection, onQuest, onExit, onO
   const evening = bedtimeDoorOpen(now.getHours());
   const openPlanBook = () => { if (planEntry && onOpenBook) onOpenBook(planEntry.book.id); else onWorld("stories"); };
   const tryTonight = () => {
-    if (!plan || tried) return;
+    // A child-scoped read may become stale between render and the tap.
+    if (!plan || tried || !planRows.isCurrent()) return;
+    const { tries, updatedAt } = recordTry(plan.doc, new Date());
+    // The child's try must not replace the parent's concurrent plan choices,
+    // night confirmations, approval or closure. A sparse merge preserves them.
+    const patch = { id: plan.doc.id, tries, updatedAt } as PlanBookDoc;
     kidSfx("tap");
-    void planRows.upsert(recordTry(plan.doc, new Date()));
+    void planRows.upsert(patch, { merge: true });
   };
   const planLine = plan && step && evening ? copy.plan.bubble(step) : null;
   return <section className="studio-v2 studio-v2--home" dir={lang === "he" ? "rtl" : "ltr"} data-studio-home="">
