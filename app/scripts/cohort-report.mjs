@@ -11,9 +11,9 @@
  *      (N1-04 pins the key set),
  *   2. event NAMES plus three grouping props,
  *   3. B-GROWTH-43 / BD-25: `offerRedemptions` and `referralGrants` (offer ids
- *      and credited uids), `entitlements` (reduced to paid / lapsed booleans)
- *      and co-parent `shares` (the owner and co-parent uids only); no uid is
- *      ever printed.
+ *      and credited uids), `entitlements` (reduced to paid / lapsed / refunded
+ *      booleans and purchased-currency amounts) and co-parent `shares` (the
+ *      owner and co-parent uids only); no uid is ever printed.
  * It never touches `users/{uid}/children/**`. A recursive key scan of the
  * printed object refuses /child|name|note|text|transcript/i outright.
  *
@@ -33,9 +33,9 @@
  *
  * B-GROWTH-43: `--households` prints one line per group — families that
  * started in the window → the offer each redeemed (`offerRedemptions/{uid}`)
- * → activated → paying / lapsed (`entitlements/{uid}`, reduced to booleans
- * on read). Mirrors server/cohortMetrics.ts summariseHouseholds; the guard
- * runs both on one fixture.
+ * → activated → paying / lapsed / refunded, and net paid (`entitlements/{uid}`,
+ * reduced to booleans and purchased-currency amounts on read). Mirrors
+ * server/cohortMetrics.ts summariseHouseholds; the guard runs both on one fixture.
  *
  * BD-25: `--contract` prints the metric contract (lib/metricContract.ts):
  * D7 first value, W4 (a value action on day 22–28), D30 paid, each as
@@ -329,12 +329,79 @@ function recordStillEntitles(record, now) {
   return true;
 }
 
-/** Mirrors cohortMetrics.billingStateOf: a billing record reduced to three booleans. */
+function moneyFromRecord(record) {
+  if (!record || record.billingUnpriced === true) return null;
+  const currency = record.billingCurrency;
+  const exponent = record.billingExponent;
+  const gross = record.grossMinor;
+  const refunded = record.refundedMinor ?? 0;
+  if (typeof currency !== "string" || !/^[A-Z]{3}$/.test(currency)) return null;
+  if (exponent !== 0 && exponent !== 2 && exponent !== 3) return null;
+  if (typeof gross !== "number" || !Number.isInteger(gross) || gross < 0) return null;
+  if (!Number.isInteger(refunded) || refunded < 0) return null;
+  return { currency, exponent, grossMinor: gross, refundedMinor: refunded, netMinor: gross - refunded };
+}
+
+/** Mirrors cohortMetrics.billingStateOf: booleans plus purchased-currency totals. */
 export function billingStateOf(record, now = Date.now()) {
+  const empty = { billed: false, paying: false, lapsed: false, refunded: false, money: null, unpriced: false };
   const billed = !!record?.provider && BILLED_PROVIDERS.has(record.provider);
-  if (!record || !billed) return { billed: false, paying: false, lapsed: false };
+  if (!record || !billed) return empty;
   const entitles = record.plan !== "free" && recordStillEntitles(record, now);
-  return { billed, paying: entitles && record.status !== "in_trial", lapsed: !entitles };
+  const money = moneyFromRecord(record);
+  return { billed, paying: entitles && record.status !== "in_trial", lapsed: !entitles, refunded: record.refunded === true, money, unpriced: money === null };
+}
+
+function billingPart(b) {
+  if (!b) return { refunded: false, billed: false, unpriced: false, money: null };
+  const money = b.money ?? null;
+  const unpriced = !!b.billed && (b.unpriced === true || !money);
+  return { refunded: b.refunded === true, billed: !!b.billed, unpriced, money: unpriced ? null : money };
+}
+
+/** Mirrors cohortMetrics.netPaidOf. */
+function netPaidOf(parts, billingRead) {
+  if (!billingRead) return null;
+  let unpriced = 0;
+  const by = new Map();
+  for (const p of parts) {
+    if (!p.billed) continue;
+    if (p.unpriced || !p.money) { unpriced += 1; continue; }
+    const prev = by.get(p.money.currency);
+    if (prev && prev.exponent !== p.money.exponent) { unpriced += 1; continue; }
+    const next = prev ?? { currency: p.money.currency, exponent: p.money.exponent, grossMinor: 0, refundedMinor: 0, netMinor: 0 };
+    next.grossMinor += p.money.grossMinor;
+    next.refundedMinor += p.money.refundedMinor;
+    next.netMinor += p.money.netMinor;
+    by.set(p.money.currency, next);
+  }
+  if (unpriced > 0) return { gap: "unpriced", households: unpriced };
+  return { gap: null, figures: [...by.values()].sort((a, b) => a.currency.localeCompare(b.currency)) };
+}
+
+/** Mirrors cohortMetrics.mergeHouseholdBilling. */
+function mergeHouseholdBilling(prev, next, uid) {
+  const paying = prev.paying || next.paying;
+  const billed = prev.billed || next.billed;
+  const lapsed = !paying && (prev.lapsed || next.lapsed);
+  const refunded = prev.refunded === true || next.refunded === true;
+  const parts = [prev, next].filter((b) => b.billed).map((b) => billingPart(b));
+  let money = null;
+  let unpriced = false;
+  if (parts.length) {
+    if (parts.some((p) => p.unpriced || !p.money)) unpriced = true;
+    else {
+      const currencies = new Set(parts.map((p) => p.money.currency));
+      const exponents = new Set(parts.map((p) => p.money.exponent));
+      if (currencies.size !== 1 || exponents.size !== 1) unpriced = true;
+      else {
+        const grossMinor = parts.reduce((n, p) => n + p.money.grossMinor, 0);
+        const refundedMinor = parts.reduce((n, p) => n + p.money.refundedMinor, 0);
+        money = { currency: parts[0].money.currency, exponent: parts[0].money.exponent, grossMinor, refundedMinor, netMinor: grossMinor - refundedMinor };
+      }
+    }
+  }
+  return { uid, billed, paying, lapsed, refunded, money, unpriced };
 }
 
 /* BD-37 — lib/acquisitionChannel.ts restated (the guard runs both on one table). */
@@ -373,25 +440,47 @@ export function summariseHouseholds(rollups, events, offers, billing, groupBy, s
     const line = groups.get(key) ?? {
       key,
       households: 0,
-      offers: [...OFFER_IDS, "none"].map((offer) => ({ offer, households: 0 })),
+      offers: [...OFFER_IDS, "none"].map((offer) => ({ offer, households: 0, parts: [] })),
       activated: 0,
       paying: 0,
       lapsed: 0,
+      parts: [],
     };
     line.households += 1;
     const offer = offerOf.get(r.uid);
     const slot = line.offers.find((o) => o.offer === (offer && OFFER_IDS.includes(offer) ? offer : "none"));
-    if (slot) slot.households += 1;
+    const part = billingPart(billingOf.get(r.uid));
+    if (slot) {
+      slot.households += 1;
+      slot.parts.push(part);
+    }
+    line.parts.push(part);
     if (activated.has(r.uid)) line.activated += 1;
     const b = billingOf.get(r.uid);
     if (b?.paying) line.paying += 1;
     if (b?.lapsed) line.lapsed += 1;
     groups.set(key, line);
   }
+  const billingRead = billing !== null;
+  const lines = [...groups.values()].map((line) => ({
+    key: line.key,
+    households: line.households,
+    offers: line.offers.map((o) => ({
+      offer: o.offer,
+      households: o.households,
+      refunded: o.parts.filter((p) => p.refunded).length,
+      netPaid: netPaidOf(o.parts, billingRead),
+    })),
+    activated: line.activated,
+    paying: line.paying,
+    lapsed: line.lapsed,
+    refunded: line.parts.filter((p) => p.refunded).length,
+    netPaid: netPaidOf(line.parts, billingRead),
+  }));
   return {
-    lines: [...groups.values()].sort((a, b) => b.households - a.households || a.key.localeCompare(b.key)),
+    lines: lines.sort((a, b) => b.households - a.households || a.key.localeCompare(b.key)),
     offersRead: offers !== null,
-    billingRead: billing !== null,
+    billingRead,
   };
 }
 
@@ -413,8 +502,8 @@ export const MEASURE_DEFINITIONS = {
   renewal: "renewal: an actual second charge, including charges outside the D30 window; not restricted to the D30-paid count",
 };
 export const STANDING_MISSING_DATA = [
-  "renewal (second charge): the entitlement record keeps no charge history; needs the billing export",
-  "full price: price, discount and refund are not in the entitlement record; full-price payers here are store payers with no offer, to reconcile against receipts",
+  "renewal (second charge): purchased-currency totals accumulate on the entitlement; a separate count of second charges is not kept",
+  "full price: full-price payers here are store payers with no offer; a billed household with no purchased-currency amount is an unpriced gap, never a list-price estimate",
 ];
 
 /** Mirrors cohortMetrics.coParentLinksOf. */
@@ -448,8 +537,7 @@ export function foldCoParents({ rollups, events, offers, billing, coParents }) {
       const uid = canon(b.uid);
       const prev = by.get(uid);
       if (!prev) { by.set(uid, { ...b, uid }); continue; }
-      const paying = prev.paying || b.paying;
-      by.set(uid, { uid, billed: prev.billed || b.billed, paying, lapsed: !paying && (prev.lapsed || b.lapsed) });
+      by.set(uid, mergeHouseholdBilling(prev, b, uid));
     }
     foldedBilling = [...by.values()];
   }
@@ -559,6 +647,37 @@ export function summariseMetricContract(input) {
 
 /** "n of m · x%", and "not answerable yet" on an empty denominator (the second printing law). */
 const fraction = (f) => (f === null ? "unknown (not read)" : `${f.n} of ${f.of}  ·  ${pct(f.n, f.of)}`);
+
+/** Minor units → the currency's own scale. Not a price estimate. */
+function formatMinor(minor, exponent) {
+  const sign = minor < 0 ? "-" : "";
+  const abs = Math.abs(minor);
+  if (!exponent) return `${sign}${abs}`;
+  const scale = 10 ** exponent;
+  const whole = Math.trunc(abs / scale);
+  const frac = String(abs % scale).padStart(exponent, "0");
+  return `${sign}${whole}.${frac}`;
+}
+
+function formatFigure(f) {
+  return `${f.currency} ${formatMinor(f.netMinor, f.exponent)} (gross ${formatMinor(f.grossMinor, f.exponent)}, refunded ${formatMinor(f.refundedMinor, f.exponent)})`;
+}
+
+function formatNetPaid(net) {
+  if (net == null) return "net paid unknown";
+  if (net.gap === "unpriced") return `net paid gap (${net.households} unpriced)`;
+  if (!net.figures.length) return "net paid 0";
+  return `net paid ${net.figures.map(formatFigure).join("; ")}`;
+}
+
+function formatOfferNet(offer) {
+  const net = offer.netPaid;
+  const refunded = offer.refunded ? ` refunded ${offer.refunded}` : "";
+  if (net == null) return `net unknown${refunded}`;
+  if (net.gap === "unpriced") return `net gap${refunded}`;
+  if (!net.figures.length) return `net 0${refunded}`;
+  return `net ${net.figures.map((f) => `${f.currency} ${formatMinor(f.netMinor, f.exponent)}`).join("; ")}${refunded}`;
+}
 
 /** Mirrors cohortMetrics.withLegacyRedemptions + referral.legacyRedemptionsFromLedgers:
  *  a family a referrer ledger credits, with no redemption record, holds the referral month. */
@@ -712,15 +831,15 @@ function print(report, args) {
 
   if (args.sections.has("households") && report.households) {
     const h = report.households;
-    lines.push(rule("Households by acquisition channel — started in the window → offer → activated → paying"));
+    lines.push(rule("Households by acquisition channel — started in the window → offer → activated → paying, refunded and net paid"));
     if (!h.offersRead) lines.push("  ! offer redemptions not read — the offer columns are unknown, not zero");
-    if (!h.billingRead) lines.push("  ! billing records not read — paying and lapsed are unknown, not zero");
+    if (!h.billingRead) lines.push("  ! billing records not read — paying, lapsed, refunded and net paid are unknown, not zero");
     if (h.lines.length === 0) lines.push("  no family started in the window — not answerable yet");
     for (const l of h.lines) {
-      const offers = l.offers.map((o) => `${o.offer} ${o.households}`).join(", ");
-      lines.push(`  ${l.key.padEnd(14)} started ${l.households}  ·  offer [${offers}]  →  activated ${l.activated} of ${l.households}  →  paying ${l.paying} of ${l.households}  ·  lapsed ${l.lapsed}`);
+      const offers = l.offers.map((o) => `${o.offer} ${o.households} ${formatOfferNet(o)}`).join(", ");
+      lines.push(`  ${l.key.padEnd(14)} started ${l.households}  ·  offer [${offers}]  →  activated ${l.activated} of ${l.households}  →  paying ${l.paying} of ${l.households}  ·  lapsed ${l.lapsed}  ·  refunded ${l.refunded}  ·  ${formatNetPaid(l.netPaid)}`);
     }
-    lines.push("  (lapsed = a store record that no longer entitles: expired, refunded, an unpaid store trial or a moved subscription; net paid needs the billing export)");
+    lines.push("  (lapsed = a store record that no longer entitles: expired, an unpaid store trial or a moved subscription. refunded = a store refund that has not been reversed. net paid = gross paid minus refunds in the purchased currency; a billed household with no amount is a gap, never an estimate)");
   }
 
   if (args.sections.has("contract") && report.contract) {
@@ -814,7 +933,7 @@ export async function buildReport(db, args, now = new Date()) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    process.stdout.write(`cohort-report — the founder's cohort read\n\n  --retention --activation --funnel <${Object.keys(FUNNEL_CHAINS).join("|")}> --events --households --contract\n  --since <ISO|YYYY-MM-DD>  --contract-since <ISO|YYYY-MM-DD> (default: 90 days)  --group-by source|market  --json  --include-internal\n\nRuns on ADC. Reads retentionRollups, event names and three grouping props, offerRedemptions and the referral ledgers (offer ids), entitlements (reduced to paid/lapsed booleans) and co-parent shares (the two uids). No uid, name or child record is printed. Internal (founder/comped/smoke) families are excluded unless --include-internal.\n`);
+    process.stdout.write(`cohort-report — the founder's cohort read\n\n  --retention --activation --funnel <${Object.keys(FUNNEL_CHAINS).join("|")}> --events --households --contract\n  --since <ISO|YYYY-MM-DD>  --contract-since <ISO|YYYY-MM-DD> (default: 90 days)  --group-by source|market  --json  --include-internal\n\nRuns on ADC. Reads retentionRollups, event names and three grouping props, offerRedemptions and the referral ledgers (offer ids), entitlements (reduced to paid/lapsed/refunded booleans and purchased-currency amounts) and co-parent shares (the two uids). No uid, name or child record is printed. Internal (founder/comped/smoke) families are excluded unless --include-internal.\n`);
     return;
   }
   let db;

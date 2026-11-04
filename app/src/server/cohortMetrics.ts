@@ -180,7 +180,7 @@ export interface CohortMetricsStore {
    *  projected to the offer id. Optional: a store without it reads as "not read". */
   listOfferRedemptions?(limit?: number): Promise<HouseholdOffer[]>;
   /** B-GROWTH-43: each family's billing state from `entitlements/{uid}`,
-   *  projected to two booleans in the store; no plan, product or date leaves. */
+   *  projected to booleans and purchased-currency amounts; no plan, product or date leaves. */
   listBillingStates?(limit?: number, now?: number): Promise<HouseholdBilling[]>;
   /** BD-25: accepted co-parent shares, projected to the two uids, so a
    *  co-parent folds into the owner's household. */
@@ -525,20 +525,63 @@ export function withLegacyRedemptions(offers: readonly HouseholdOffer[], legacyU
   const seen = new Set(offers.map((o) => o.uid));
   return [...offers, ...legacyUids.filter((uid) => !seen.has(uid)).map((uid) => ({ uid, offerId: "referral_month" }))];
 }
+/** Purchased-currency totals for one household. Minor units, never a list price. */
+export type MoneyFigure = {
+  currency: string;
+  /** ISO minor-unit scale the amounts were stored in: 0, 2 or 3. */
+  exponent: number;
+  grossMinor: number;
+  refundedMinor: number;
+  netMinor: number;
+};
+
 /** `billed`: the record came from a store (App Store, Play, web checkout), not
  *  a comp. `paying`: billed, a paid plan, past any store trial, still entitling.
- *  `lapsed`: billed and no longer entitling: expired, refunded, a store trial
- *  that ended unpaid, or a subscription moved to another account. */
-export type HouseholdBilling = { uid: string; billed: boolean; paying: boolean; lapsed: boolean };
+ *  `lapsed`: billed and no longer entitling: expired, a store trial that ended
+ *  unpaid, or a subscription moved to another account.
+ *  `refunded`: a store refund that has not been reversed. Distinct from lapsed.
+ *  `money`: gross, refunded and net in the purchased currency. Null when the
+ *  household was not billed, or when the amount is a gap (`unpriced`). */
+export type HouseholdBilling = {
+  uid: string;
+  billed: boolean;
+  paying: boolean;
+  lapsed: boolean;
+  refunded?: boolean;
+  money?: MoneyFigure | null;
+  unpriced?: boolean;
+};
 
 const BILLED_PROVIDERS = new Set(["stripe", "app_store", "play_store"]);
 
-/** The two booleans a billing record is reduced to before it leaves the store. */
+const moneyFromRecord = (record: EntitlementRecord): MoneyFigure | null => {
+  if (record.billingUnpriced === true) return null;
+  const currency = record.billingCurrency;
+  const exponent = record.billingExponent;
+  const gross = record.grossMinor;
+  const refunded = record.refundedMinor ?? 0;
+  if (typeof currency !== "string" || !/^[A-Z]{3}$/.test(currency)) return null;
+  if (exponent !== 0 && exponent !== 2 && exponent !== 3) return null;
+  if (typeof gross !== "number" || !Number.isInteger(gross) || gross < 0) return null;
+  if (!Number.isInteger(refunded) || refunded < 0) return null;
+  return { currency, exponent, grossMinor: gross, refundedMinor: refunded, netMinor: gross - refunded };
+};
+
+/** Booleans and amounts a billing record is reduced to before it leaves the store. */
 export function billingStateOf(record: EntitlementRecord | null | undefined, now = Date.now()): Omit<HouseholdBilling, "uid"> {
+  const empty = { billed: false, paying: false, lapsed: false, refunded: false, money: null, unpriced: false };
   const billed = !!record?.provider && BILLED_PROVIDERS.has(record.provider);
-  if (!record || !billed) return { billed: false, paying: false, lapsed: false };
+  if (!record || !billed) return empty;
   const entitles = record.plan !== "free" && recordStillEntitles(record, now);
-  return { billed, paying: entitles && record.status !== "in_trial", lapsed: !entitles };
+  const money = moneyFromRecord(record);
+  return {
+    billed,
+    paying: entitles && record.status !== "in_trial",
+    lapsed: !entitles,
+    refunded: record.refunded === true,
+    money,
+    unpriced: money === null,
+  };
 }
 
 /** BD-37: the group a household falls in — its first-touch source, market, or
@@ -546,17 +589,61 @@ export function billingStateOf(record: EntitlementRecord | null | undefined, now
 export const householdGroupKey = (r: Pick<StoredRollup, "source" | "market">, groupBy: "source" | "market" | "channel"): string =>
   groupBy === "channel" ? channelOfSource(r.source) : String(r[groupBy] ?? "unknown");
 
+/** Net paid for one source or offer row. `gap: null` with figures (possibly
+ *  empty) is a complete total in each purchased currency — nothing is converted.
+ *  `gap: "unpriced"` means at least one billed household has no usable amount;
+ *  the row then has no figure, so a partial sum cannot be read as the total. */
+export type NetPaid =
+  | { gap: null; figures: MoneyFigure[] }
+  | { gap: "unpriced"; households: number };
+
+export type OfferCount = { offer: string; households: number; refunded: number; netPaid: NetPaid | null };
+
 /** One group of households. Counts of families, never rates. */
 export type HouseholdLine = {
   key: string;
   /** Every family that started in the group, activated or not, paying or not. */
   households: number;
   /** Families per redeemed offer, in lib/offers.ts order, then `none`. */
-  offers: { offer: string; households: number }[];
+  offers: OfferCount[];
   activated: number;
   paying: number;
   lapsed: number;
+  /** Households with a store refund that has not been reversed. */
+  refunded: number;
+  /** Gross minus refunds for this row. Null when billing records were not read. */
+  netPaid: NetPaid | null;
 };
+
+type BillingPart = { refunded: boolean; billed: boolean; unpriced: boolean; money: MoneyFigure | null };
+
+const billingPart = (b: HouseholdBilling | undefined): BillingPart => {
+  if (!b) return { refunded: false, billed: false, unpriced: false, money: null };
+  const money = b.money ?? null;
+  const unpriced = b.billed && (b.unpriced === true || !money);
+  return { refunded: b.refunded === true, billed: b.billed, unpriced, money: unpriced ? null : money };
+};
+
+/** Sum purchased-currency totals. A billed household without an amount makes
+ *  the whole row a gap. Currencies are never converted. */
+export function netPaidOf(parts: readonly BillingPart[], billingRead: boolean): NetPaid | null {
+  if (!billingRead) return null;
+  let unpriced = 0;
+  const by = new Map<string, MoneyFigure>();
+  for (const p of parts) {
+    if (!p.billed) continue;
+    if (p.unpriced || !p.money) { unpriced += 1; continue; }
+    const prev = by.get(p.money.currency);
+    if (prev && prev.exponent !== p.money.exponent) { unpriced += 1; continue; }
+    const next = prev ?? { currency: p.money.currency, exponent: p.money.exponent, grossMinor: 0, refundedMinor: 0, netMinor: 0 };
+    next.grossMinor += p.money.grossMinor;
+    next.refundedMinor += p.money.refundedMinor;
+    next.netMinor += p.money.netMinor;
+    by.set(p.money.currency, next);
+  }
+  if (unpriced > 0) return { gap: "unpriced", households: unpriced };
+  return { gap: null, figures: [...by.values()].sort((a, b) => a.currency.localeCompare(b.currency)) };
+}
 export type HouseholdReport = {
   lines: HouseholdLine[];
   /** False when the offer or billing records were not read: those columns are then unknown, not zero. */
@@ -583,7 +670,9 @@ export function summariseHouseholds(
   const activated = new Set(events.filter((e) => e.event === ACTIVATION_EVENT).map((e) => e.uid));
   const offerOf = new Map((offers ?? []).map((o) => [o.uid, o.offerId]));
   const billingOf = new Map((billing ?? []).map((b) => [b.uid, b]));
-  const groups = new Map<string, HouseholdLine>();
+  type WorkingOffer = { offer: string; households: number; parts: BillingPart[] };
+  type WorkingLine = { key: string; households: number; offers: WorkingOffer[]; activated: number; paying: number; lapsed: number; parts: BillingPart[] };
+  const groups = new Map<string, WorkingLine>();
   const seen = new Set<string>();
   for (const r of rollups) {
     if (!r.uid || seen.has(r.uid)) continue;
@@ -593,26 +682,74 @@ export function summariseHouseholds(
     const line = groups.get(key) ?? {
       key,
       households: 0,
-      offers: [...OFFER_IDS, "none"].map((offer) => ({ offer, households: 0 })),
+      offers: [...OFFER_IDS, "none"].map((offer) => ({ offer, households: 0, parts: [] as BillingPart[] })),
       activated: 0,
       paying: 0,
       lapsed: 0,
+      parts: [] as BillingPart[],
     };
     line.households += 1;
     const offer = offerOf.get(r.uid);
     const slot = line.offers.find((o) => o.offer === (offer && (OFFER_IDS as string[]).includes(offer) ? offer : "none"));
-    if (slot) slot.households += 1;
+    const part = billingPart(billingOf.get(r.uid));
+    if (slot) {
+      slot.households += 1;
+      slot.parts.push(part);
+    }
+    line.parts.push(part);
     if (activated.has(r.uid)) line.activated += 1;
     const b = billingOf.get(r.uid);
     if (b?.paying) line.paying += 1;
     if (b?.lapsed) line.lapsed += 1;
     groups.set(key, line);
   }
+  const billingRead = billing !== null;
+  const lines: HouseholdLine[] = [...groups.values()].map((line) => ({
+    key: line.key,
+    households: line.households,
+    offers: line.offers.map((o) => ({
+      offer: o.offer,
+      households: o.households,
+      refunded: o.parts.filter((p) => p.refunded).length,
+      netPaid: netPaidOf(o.parts, billingRead),
+    })),
+    activated: line.activated,
+    paying: line.paying,
+    lapsed: line.lapsed,
+    refunded: line.parts.filter((p) => p.refunded).length,
+    netPaid: netPaidOf(line.parts, billingRead),
+  }));
   return {
-    lines: [...groups.values()].sort((a, b) => b.households - a.households || a.key.localeCompare(b.key)),
+    lines: lines.sort((a, b) => b.households - a.households || a.key.localeCompare(b.key)),
     offersRead: offers !== null,
-    billingRead: billing !== null,
+    billingRead,
   };
+}
+
+/** Co-parent billing: paying if either pays. Money sums in one currency.
+ *  Two currencies, or a billed account with no amount, is a gap — no conversion. */
+export function mergeHouseholdBilling(prev: HouseholdBilling, next: HouseholdBilling, uid: string): HouseholdBilling {
+  const paying = prev.paying || next.paying;
+  const billed = prev.billed || next.billed;
+  const lapsed = !paying && (prev.lapsed || next.lapsed);
+  const refunded = prev.refunded === true || next.refunded === true;
+  const parts = [prev, next].filter((b) => b.billed).map((b) => billingPart(b));
+  let money: MoneyFigure | null = null;
+  let unpriced = false;
+  if (parts.length) {
+    if (parts.some((p) => p.unpriced || !p.money)) unpriced = true;
+    else {
+      const currencies = new Set(parts.map((p) => p.money!.currency));
+      const exponents = new Set(parts.map((p) => p.money!.exponent));
+      if (currencies.size !== 1 || exponents.size !== 1) unpriced = true;
+      else {
+        const grossMinor = parts.reduce((n, p) => n + p.money!.grossMinor, 0);
+        const refundedMinor = parts.reduce((n, p) => n + p.money!.refundedMinor, 0);
+        money = { currency: parts[0].money!.currency, exponent: parts[0].money!.exponent, grossMinor, refundedMinor, netMinor: grossMinor - refundedMinor };
+      }
+    }
+  }
+  return { uid, billed, paying, lapsed, refunded, money, unpriced };
 }
 
 /* ── BD-25: one household per family — co-parents fold into the owner ────── */
@@ -636,9 +773,10 @@ export function coParentLinksOf(shares: ReadonlyArray<Record<string, unknown>>):
 /**
  * A co-parent who accepted the family's share is the same household as the
  * owner: their rollup is dropped and their events, offer and billing are
- * re-keyed to the owner's uid (billing merged: paying if either pays). Only
- * when the owner has a rollup of its own; otherwise the co-parent stays a
- * household. Pure; `folded` is how many accounts were folded.
+ * re-keyed to the owner's uid (billing merged: paying if either pays; a refund
+ * on either account stays in the totals). Only when the owner has a rollup of
+ * its own; otherwise the co-parent stays a household. Pure; `folded` is how
+ * many accounts were folded.
  */
 export function foldCoParents(input: {
   rollups: readonly StoredRollup[];
@@ -667,8 +805,7 @@ export function foldCoParents(input: {
       const uid = canon(b.uid);
       const prev = by.get(uid);
       if (!prev) { by.set(uid, { ...b, uid }); continue; }
-      const paying = prev.paying || b.paying;
-      by.set(uid, { uid, billed: prev.billed || b.billed, paying, lapsed: !paying && (prev.lapsed || b.lapsed) });
+      by.set(uid, mergeHouseholdBilling(prev, b, uid));
     }
     return [...by.values()];
   })();

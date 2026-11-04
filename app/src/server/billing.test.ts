@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planFromRevenueCat, recordFromRevenueCat, billingCheckoutUrl, offeredCurrencies, SOLD_PLANS, webhookSkipReason, createBillingWebhookRouter, transferPartiesFromRevenueCat, transferWritesFromRevenueCat } from "./billing.js";
+import { planFromRevenueCat, recordFromRevenueCat, applyBillingMoney, billingCheckoutUrl, offeredCurrencies, SOLD_PLANS, webhookSkipReason, createBillingWebhookRouter, transferPartiesFromRevenueCat, transferWritesFromRevenueCat } from "./billing.js";
 import type { ArborConfig } from "../config/env.js";
 import { isStaleBillingEvent, recordStillEntitles, type EntitlementRecord } from "./entitlements.js";
 
@@ -594,6 +594,83 @@ describe("B-GA-20 restore across accounts: a TRANSFER moves the entitlement once
       expect(empty.status).toBe(202);
       expect(await empty.json()).toEqual({ ok: true, skipped: "transfer without account ids" });
       expect(calls).toHaveLength(4);
+    } finally {
+      server.close();
+    }
+  });
+});
+
+describe("B-GROWTH-43 refund money follows the B-GA-20 event shapes", () => {
+  const DAY = 86_400_000;
+  const T0 = Date.parse("2026-11-01T10:00:00.000Z");
+  const priced = (type: string, ts: number, over: Record<string, unknown> = {}) => ({
+    id: `evt-${type}-${ts}`,
+    type,
+    app_user_id: "fam-uid",
+    product_id: "arbor_plus_monthly",
+    period_type: "NORMAL",
+    store: "APP_STORE",
+    environment: "PRODUCTION",
+    event_timestamp_ms: ts,
+    expiration_at_ms: T0 + 30 * DAY,
+    currency: "EUR",
+    price_in_purchased_currency: 12.99,
+    ...over,
+  });
+
+  it("moves purchased-currency totals with a transfer and leaves a zero, not a second copy", () => {
+    const source: EntitlementRecord = {
+      plan: "plus", status: "active", provider: "app_store", productId: "arbor_plus_monthly", willRenew: true,
+      currentPeriodEnd: new Date(T0 + 30 * DAY).toISOString(), lastEventTs: T0,
+      billingCurrency: "EUR", billingExponent: 2, grossMinor: 1299, refundedMinor: 0, refunded: false,
+    };
+    const evt = { id: "evt-TRANSFER", type: "TRANSFER", store: "APP_STORE", environment: "PRODUCTION", event_timestamp_ms: T0 + DAY, transferred_from: ["fam-a"], transferred_to: ["fam-b"] };
+    const { grants, removals } = transferWritesFromRevenueCat(evt, { "fam-a": source });
+    expect(grants[0].record).toMatchObject({ plan: "plus", billingCurrency: "EUR", grossMinor: 1299, refundedMinor: 0 });
+    expect(removals[0].record).toMatchObject({ plan: "free", billingCurrency: "EUR", grossMinor: 0, refundedMinor: 0, refunded: false });
+  });
+
+  it("over HTTP: a priced purchase, a duplicate and a refund persist one gross and one refund", async () => {
+    const express = (await import("express")).default;
+    const records = new Map<string, EntitlementRecord>();
+    const store = {
+      getPlan: async () => null,
+      getRecord: async (uid: string) => records.get(uid) ?? null,
+      setEntitlement: async (uid: string, record: EntitlementRecord) => {
+        const current = records.get(uid) ?? null;
+        if (isStaleBillingEvent(current, record)) return;
+        const clean = Object.fromEntries(Object.entries(record).filter(([, v]) => v !== undefined));
+        records.set(uid, { ...(current ?? {}), ...clean } as EntitlementRecord);
+      },
+    };
+    const app = express();
+    app.use("/webhooks/billing", createBillingWebhookRouter(cfg({ revenueCatWebhookAuth: "Bearer s3cret", billingAcceptSandbox: false }), store as never));
+    const server = app.listen(0);
+    try {
+      const { port } = server.address() as { port: number };
+      const post = (event: object) =>
+        fetch(`http://127.0.0.1:${port}/webhooks/billing/revenuecat`, {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: "Bearer s3cret" },
+          body: JSON.stringify({ api_version: "1.0", event }),
+        });
+      const purchase = priced("INITIAL_PURCHASE", T0);
+      expect((await post(purchase)).status).toBe(200);
+      expect((await post(purchase)).status).toBe(200);
+      expect(records.get("fam-uid")).toMatchObject({ plan: "plus", grossMinor: 1299, refundedMinor: 0, billingCurrency: "EUR" });
+      const refund = priced("CANCELLATION", T0 + 5 * DAY, { cancel_reason: "CUSTOMER_SUPPORT", expiration_at_ms: T0 + 5 * DAY, price_in_purchased_currency: -12.99 });
+      expect((await post(refund)).status).toBe(200);
+      expect((await post(refund)).status).toBe(200);
+      expect(records.get("fam-uid")).toMatchObject({ status: "canceled", refunded: true, grossMinor: 1299, refundedMinor: 1299 });
+      const reversal = priced("REFUND_REVERSED", T0 + 6 * DAY, { expiration_at_ms: T0 + 30 * DAY, price_in_purchased_currency: 12.99 });
+      expect((await post(reversal)).status).toBe(200);
+      expect(records.get("fam-uid")).toMatchObject({ refunded: false, grossMinor: 1299, refundedMinor: 0, plan: "plus" });
+      // An amount-free charge is a gap, not €12.99 from the list price.
+      const bare = await post(priced("RENEWAL", T0 + 7 * DAY, { app_user_id: "fam-bare", price_in_purchased_currency: null, currency: null }));
+      expect(bare.status).toBe(200);
+      expect(records.get("fam-bare")?.billingUnpriced).toBe(true);
+      expect(records.get("fam-bare")?.grossMinor).toBeUndefined();
+      expect(applyBillingMoney(null, priced("INITIAL_PURCHASE", T0), recordFromRevenueCat(priced("INITIAL_PURCHASE", T0))!.record).grossMinor).toBe(1299);
     } finally {
       server.close();
     }

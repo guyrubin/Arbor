@@ -73,6 +73,6 @@ export const MEASURE_DEFINITIONS = {
 
 /** What the readout cannot answer from the records it reads; printed every time. */
 export const STANDING_MISSING_DATA = [
-  "renewal (second charge): the entitlement record keeps no charge history; needs the billing export",
-  "full price: price, discount and refund are not in the entitlement record; full-price payers here are store payers with no offer, to reconcile against receipts",
+  "renewal (second charge): purchased-currency totals accumulate on the entitlement; a separate count of second charges is not kept",
+  "full price: full-price payers here are store payers with no offer; a billed household with no purchased-currency amount is an unpriced gap, never a list-price estimate",
 ] as const;

@@ -106,6 +106,26 @@ export type EntitlementRecord = {
   lastEventId?: string;
   lastEventTs?: number;
   updatedAt?: string;
+  /** B-GROWTH-43: content-free purchased-currency totals from store events.
+   *  Minor units of `billingCurrency` (see `billingExponent`). Absent on a
+   *  record written before a priced event was applied — a gap, never a list price. */
+  billingCurrency?: string;
+  /** 0, 2 or 3 — the ISO minor-unit scale the totals were stored in. */
+  billingExponent?: number;
+  /** Sum of charges (initial, renewal, trial conversion). Never a list price. */
+  grossMinor?: number;
+  /** Sum of refunds not reversed. */
+  refundedMinor?: number;
+  /** A store refund is the latest money-reducing event and has not been reversed.
+   *  Distinct from lapsed: an expiry is not a refund. */
+  refunded?: boolean;
+  /** A billed event had no usable purchased-currency amount, or the currency
+   *  changed. Net paid for this account is then a gap. */
+  billingUnpriced?: boolean;
+  /** True once this webhook has folded an event. Distinguishes a legacy billed
+   *  record (no totals, never folded) from a grant or billing issue that was
+   *  not itself a charge. */
+  billingLedger?: boolean;
 };
 
 export type Entitlement = {
@@ -226,6 +246,13 @@ export class FirestoreEntitlementStore implements EntitlementStore {
         // whether it post-dates the transfer (isStaleBillingEvent).
         lastEventId: typeof data.lastEventId === "string" ? data.lastEventId : undefined,
         lastEventTs: typeof data.lastEventTs === "number" ? data.lastEventTs : undefined,
+        billingCurrency: typeof data.billingCurrency === "string" ? data.billingCurrency : undefined,
+        billingExponent: typeof data.billingExponent === "number" ? data.billingExponent : undefined,
+        grossMinor: typeof data.grossMinor === "number" ? data.grossMinor : undefined,
+        refundedMinor: typeof data.refundedMinor === "number" ? data.refundedMinor : undefined,
+        refunded: typeof data.refunded === "boolean" ? data.refunded : undefined,
+        billingUnpriced: data.billingUnpriced === true ? true : undefined,
+        billingLedger: data.billingLedger === true ? true : undefined,
       };
     } catch (error) {
       logger.error("Entitlement store read failed — defaulting", error, { uid });

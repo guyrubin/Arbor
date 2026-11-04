@@ -55,6 +55,15 @@ export type RevenueCatEvent = {
    *  app_user_id, product or expiry of its own. */
   transferred_from?: string[];
   transferred_to?: string[];
+  /** CANCELLATION only. CUSTOMER_SUPPORT is a refund (B-GA-20): the expiry
+   *  is at the refund, so access ends at once. */
+  cancel_reason?: string;
+  /** ISO 4217 of `price_in_purchased_currency`. The USD `price` field is never
+   *  read: converting it would be an estimate. */
+  currency?: string;
+  /** Revenue of this event in `currency`. Null when the store did not send one.
+   *  Negative on a refund. Zero on a free trial. */
+  price_in_purchased_currency?: number | string | null;
 };
 
 // Event types that (re)grant access. TEMPORARY_ENTITLEMENT_GRANT is RevenueCat's
@@ -223,6 +232,152 @@ export type BillingWrite = { uid: string; record: EntitlementRecord };
 /** Providers whose records the RevenueCat webhook writes (a comp is not one). */
 const BILLED = new Set<BillingProvider>(["app_store", "play_store", "stripe"]);
 
+/** Store events that are an actual charge. A product change, an uncancellation
+ *  and a temporary outage grant are not: RevenueCat sends the charge on
+ *  INITIAL_PURCHASE, RENEWAL, NON_RENEWING_PURCHASE or TRIAL_CONVERTED. */
+const CHARGE_TYPES = new Set(["INITIAL_PURCHASE", "RENEWAL", "NON_RENEWING_PURCHASE", "TRIAL_CONVERTED", "TRIAL_STARTED"]);
+const ZERO_DECIMAL = new Set("BIF CLP DJF GNF JPY KMF KRW MGA PYG RWF UGX VND VUV XAF XOF XPF".split(" "));
+const THREE_DECIMAL = new Set("BHD IQD JOD KWD LYD OMR TND".split(" "));
+
+/** ISO minor-unit scale. A 3-letter code we do not list is 2 (EUR, ILS, USD). */
+export const currencyExponent = (currency: string): number | null => {
+  const code = currency.trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(code)) return null;
+  if (ZERO_DECIMAL.has(code)) return 0;
+  if (THREE_DECIMAL.has(code)) return 3;
+  return 2;
+};
+
+/** How a RevenueCat event moves purchased-currency money.
+ *  Refund: type REFUND, or the B-GA-20 shape CANCELLATION + cancel_reason
+ *  CUSTOMER_SUPPORT. Reversal: REFUND_REVERSED. Anything else is not money. */
+export const billingMoneyKind = (event: RevenueCatEvent): "charge" | "refund" | "reversal" | "none" => {
+  const type = String(event.type ?? "").toUpperCase();
+  const reason = String(event.cancel_reason ?? "").toUpperCase();
+  if (type === "REFUND_REVERSED") return "reversal";
+  if (type === "REFUND") return "refund";
+  if (type === "CANCELLATION" && reason === "CUSTOMER_SUPPORT") return "refund";
+  if (CHARGE_TYPES.has(type)) return "charge";
+  return "none";
+};
+
+const purchasedAmount = (event: RevenueCatEvent): { currency: string; exponent: number; minor: number; negative: boolean } | null => {
+  const currency = typeof event.currency === "string" ? event.currency.trim().toUpperCase() : "";
+  const exponent = currency ? currencyExponent(currency) : null;
+  if (!currency || exponent === null) return null;
+  const raw = event.price_in_purchased_currency;
+  if (raw == null || raw === "") return null;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(n)) return null;
+  const minor = Math.round(Math.abs(n) * 10 ** exponent);
+  if (!Number.isSafeInteger(minor)) return null;
+  return { currency, exponent, minor, negative: n < 0 };
+};
+
+const legacyBilledWithoutMoney = (current: EntitlementRecord | null | undefined): boolean =>
+  !!current?.provider && BILLED.has(current.provider) && current.billingLedger !== true && typeof current.grossMinor !== "number" && !current.billingCurrency && current.billingUnpriced !== true;
+
+/**
+ * B-GROWTH-43: fold one store event into the running purchased-currency totals
+ * on the entitlement. Booleans and minor units only. A missing amount, a
+ * currency change, or a legacy billed record (charges that predate these
+ * fields) marks `billingUnpriced` and does not invent a figure from the list
+ * price. A stale event never reaches here: the caller skips it first, so a
+ * resend or an older delivery cannot apply twice.
+ */
+export const applyBillingMoney = (
+  current: EntitlementRecord | null | undefined,
+  event: RevenueCatEvent,
+  record: EntitlementRecord,
+): EntitlementRecord => {
+  const next: EntitlementRecord = { ...record, billingLedger: true };
+  if (typeof current?.billingCurrency === "string") next.billingCurrency = current.billingCurrency;
+  if (typeof current?.billingExponent === "number") next.billingExponent = current.billingExponent;
+  if (typeof current?.grossMinor === "number") next.grossMinor = current.grossMinor;
+  if (typeof current?.refundedMinor === "number") next.refundedMinor = current.refundedMinor;
+  if (typeof current?.refunded === "boolean") next.refunded = current.refunded;
+  if (current?.billingUnpriced === true) next.billingUnpriced = true;
+
+  const kind = billingMoneyKind(event);
+  if (kind === "none") {
+    // A legacy subscription's first folded event is not a charge (a billing
+    // issue, an expiry). Mark the gap now so the next renewal cannot pretend
+    // to be the whole history.
+    if (legacyBilledWithoutMoney(current)) next.billingUnpriced = true;
+    return next;
+  }
+
+  const flag = (refunded: boolean) => {
+    next.refunded = refunded;
+    next.billingUnpriced = true;
+    return next;
+  };
+  if (next.billingUnpriced || legacyBilledWithoutMoney(current)) {
+    if (kind === "refund") return flag(true);
+    if (kind === "reversal") return flag(false);
+    return flag(next.refunded === true);
+  }
+
+  const priced = purchasedAmount(event);
+  if (!priced) {
+    if (kind === "refund") return flag(true);
+    if (kind === "reversal") return flag(false);
+    return flag(next.refunded === true);
+  }
+  if (next.billingCurrency && next.billingCurrency !== priced.currency) {
+    if (kind === "refund") return flag(true);
+    if (kind === "reversal") return flag(false);
+    return flag(next.refunded === true);
+  }
+  if (typeof next.billingExponent === "number" && next.billingExponent !== priced.exponent) {
+    if (kind === "refund") return flag(true);
+    if (kind === "reversal") return flag(false);
+    return flag(next.refunded === true);
+  }
+
+  // A charge is not negative. Taking the absolute value would invent a payment.
+  if (kind === "charge" && priced.negative) return flag(next.refunded === true);
+
+  next.billingCurrency = priced.currency;
+  next.billingExponent = priced.exponent;
+  next.grossMinor = next.grossMinor ?? 0;
+  next.refundedMinor = next.refundedMinor ?? 0;
+  if (kind === "charge") next.grossMinor += priced.minor;
+  if (kind === "refund") {
+    next.refundedMinor += priced.minor;
+    next.refunded = true;
+  }
+  if (kind === "reversal") {
+    // A reversal that names no amount cannot say how much came back.
+    if (priced.minor === 0 && next.refundedMinor > 0) return flag(false);
+    next.refundedMinor = Math.max(0, next.refundedMinor - priced.minor);
+    next.refunded = next.refundedMinor > 0;
+  }
+  return next;
+};
+
+const carriedMoney = (record: EntitlementRecord | null | undefined): Partial<EntitlementRecord> => {
+  if (!record) return {};
+  const out: Partial<EntitlementRecord> = {};
+  if (typeof record.billingCurrency === "string") out.billingCurrency = record.billingCurrency;
+  if (typeof record.billingExponent === "number") out.billingExponent = record.billingExponent;
+  if (typeof record.grossMinor === "number") out.grossMinor = record.grossMinor;
+  if (typeof record.refundedMinor === "number") out.refundedMinor = record.refundedMinor;
+  if (typeof record.refunded === "boolean") out.refunded = record.refunded;
+  if (record.billingUnpriced === true) out.billingUnpriced = true;
+  if (record.billingLedger === true) out.billingLedger = true;
+  return out;
+};
+
+/** The subscription left this account. Zero a known total so a merge cannot
+ *  keep the old gross beside the account it moved to. An unpriced record stays
+ *  unpriced — zero would read as "paid nothing". */
+const clearedMoney = (record: EntitlementRecord | null | undefined): Partial<EntitlementRecord> => {
+  const carried = carriedMoney(record);
+  if (Object.keys(carried).length === 0) return {};
+  return { ...carried, grossMinor: 0, refundedMinor: 0, refunded: false };
+};
+
 /**
  * B-GA-20 — a restore across accounts. RevenueCat sends TRANSFER when a store
  * account's purchases move to another App User ID (a parent restores on a
@@ -286,6 +441,7 @@ export const transferWritesFromRevenueCat = (
         rcOriginalAppUserId: current?.rcOriginalAppUserId ?? uid,
         lastEventId,
         lastEventTs,
+        ...clearedMoney(current),
       },
     });
   }
@@ -309,6 +465,7 @@ export const transferWritesFromRevenueCat = (
           rcOriginalAppUserId: uid,
           lastEventId,
           lastEventTs,
+          ...carriedMoney(moving),
         },
       }))
     : [];
@@ -391,7 +548,15 @@ export const createBillingWebhookRouter = (config: ArborConfig, store: Entitleme
         res.status(202).json({ ok: true, skipped: "missing app_user_id" });
         return;
       }
-      await store.setEntitlement(mapped.uid, mapped.record);
+      // Skip a resend or an older delivery before money is folded in. The
+      // entitlement store repeats the same guard, so a duplicate cannot add twice.
+      const current = store.getRecord ? await store.getRecord(mapped.uid) : null;
+      if (current && isStaleBillingEvent(current, mapped.record)) {
+        res.status(200).json({ ok: true });
+        return;
+      }
+      const record = store.getRecord ? applyBillingMoney(current, event, mapped.record) : mapped.record;
+      await store.setEntitlement(mapped.uid, record);
       logger.info("Billing entitlement updated", {
         uid: mapped.uid,
         plan: mapped.record.plan,

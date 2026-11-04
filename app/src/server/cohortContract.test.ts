@@ -145,7 +145,7 @@ describe("BD-25 — matured all-start denominators", () => {
     expect(once.coParentsFolded).toBe(1);
     expect(once.overall.d7).toEqual({ n: 4, of: 5 }); // h12 is activated through its co-parent
     const fold = foldCoParents({ rollups, events, offers: [], billing: [{ uid: "cp12", billed: true, paying: true, lapsed: false }, { uid: "h12", billed: false, paying: false, lapsed: false }], coParents: links });
-    expect(fold.billing).toEqual([{ uid: "h12", billed: true, paying: true, lapsed: false }]);
+    expect(fold.billing).toEqual([{ uid: "h12", billed: true, paying: true, lapsed: false, refunded: false, money: null, unpriced: true }]);
     expect(reportScript.foldCoParents({ rollups, events, offers: [], billing: [{ uid: "cp12", billed: true, paying: true, lapsed: false }, { uid: "h12", billed: false, paying: false, lapsed: false }], coParents: links })).toEqual(fold);
     expect(reportScript.coParentLinksOf([{ role: "co_parent", ownerUid: "h12", recipientUid: "cp12" }])).toEqual(links);
   });
