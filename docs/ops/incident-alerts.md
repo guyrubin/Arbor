@@ -60,6 +60,8 @@ The AI cost gate (B-GA-26), the trial/paid AI cost measure (BD-06) and the true-
 | `aiQuota/live_family_{familyId}_{day}` `consumedMs` and `reservations` (per family-day; Admin SDK only) | the allowance itself (`server/liveBudget.ts`) | B-AIOPS-02 enforcement; not a reporting source |
 | `studioCostLedger/{kind}:{ref}` `calls.{modality}`, `estimatedCostUsd`, `unpricedCalls`; `billedCostUsd`, `billedSource`, `billedPeriod`, `acceptedSeconds` set by `scripts/studio-ledger-import.mts` (B-KID-150: production of shared kid assets — plan plates painted in product, book plates, shared narration, video, music) | `studioCostReport` (server/studioCostLedger.ts) | Studio production, reported APART from the €2 per active family read (BD-36): a call made as studio production never writes `usageRollup` (`ai/usage.ts`, `ai/ttsUsage.ts`) |
 
+`GET /api/admin/family-cost?date=YYYY-MM-DD` (`server/familyCostReport.ts`) is the per-family daily cost (B-AIOPS-01). It names family ids and lists routes with no price as gaps. It does not match the provider bill (`billMatch: partial`, Guy's export).
+
 ## Proof (28 October 2026)
 
 Dated delivery and recovery tests with a fake sink per signal: `app/src/server/opsAlerts.test.ts` (sink thresholds and recovery, 5xx through Express, all four billing reasons through the real webhook router, webhook payload and config defaults), `app/src/routes/opsAlertsRoute.test.ts` (mint, connect, residency and store failures through the real token and usage routes; the prepay alarm and the founder-only balance) and `app/src/server/prepayBalance.test.ts` (parsing, balance arithmetic, once-per-crossing, recovery after a top-up, no reload). Every incident in those tests is checked for the child's name, ids, uid, email and secrets.

@@ -2,8 +2,8 @@ import { GoogleGenAI, ThinkingLevel, type Schema } from "@google/genai";
 import type { ArborConfig } from "../config/env.js";
 import { withDefaultModelDeadlines } from "./modelDeadlines.js";
 import { ClaudeVertexProvider } from "./claudeVertexProvider.js";
-import { abortableIterate, isAbortError, isTransientModelError, raceWithAbort, withModelRetry, type ModelCallBudget } from "./modelRetry.js";
-import { recordUsage, startCallTimer } from "./usage.js";
+import { abortableIterate, isAbortError, isTransientModelError, newRetryAccounting, raceWithAbort, withModelRetry, type ModelCallBudget } from "./modelRetry.js";
+import { recordChargedFailures, recordUsage, startCallTimer } from "./usage.js";
 import { providerRegion, routePolicyFor, selectProvider, type ProviderCandidate } from "./capabilities/policy.js";
 import type { AiEntitlement, CapabilityRequest } from "./capabilities/contracts.js";
 import { candidatesFor, defaultCandidateFor } from "./capabilities/candidates.js";
@@ -244,23 +244,34 @@ export class GeminiDevProvider implements ModelProvider {
     const model = modelForGeminiRequest(this.config, options.route, options.images);
     const timer = startCallTimer();
     const thinking = thinkingConfigForRoute(options.route, model);
-    const response = await withModelRetry(() =>
-      this.ai.models.generateContent({
-        model,
-        contents: buildGenAiContents(options.prompt, options.images) as any,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: options.schema as Schema,
-          temperature: options.temperature ?? 0.4,
-          maxOutputTokens: this.config.maxOutputTokens,
-          ...(thinking ? { thinkingConfig: thinking } : {}),
-          ...(options.budget?.signal ? { abortSignal: options.budget.signal } : {})
-        }
-      }), 3, options.budget
-    );
-    recordUsage({ route: options.route, provider: "gemini_dev", model, promptVersion: options.promptVersion }, (response as any)?.usageMetadata, timer.finish());
-    const finishReason = (response as any)?.candidates?.[0]?.finishReason;
-    return parseModelJson(response.text, finishReason);
+    const accounting = newRetryAccounting();
+    const meta = { route: options.route, provider: "gemini_dev" as const, model, promptVersion: options.promptVersion };
+    let raw: unknown;
+    try {
+      const response = await withModelRetry(() =>
+        this.ai.models.generateContent({
+          model,
+          contents: buildGenAiContents(options.prompt, options.images) as any,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: options.schema as Schema,
+            temperature: options.temperature ?? 0.4,
+            maxOutputTokens: this.config.maxOutputTokens,
+            ...(thinking ? { thinkingConfig: thinking } : {}),
+            ...(options.budget?.signal ? { abortSignal: options.budget.signal } : {})
+          }
+        }), 3, options.budget, accounting
+      );
+      raw = (response as any)?.usageMetadata;
+      const finishReason = (response as any)?.candidates?.[0]?.finishReason;
+      const parsed = parseModelJson(response.text, finishReason);
+      recordUsage({ ...meta, retries: accounting.retries }, raw, timer.finish(), accounting);
+      return parsed;
+    } catch (err) {
+      recordChargedFailures(meta, timer.finish(), accounting);
+      if (raw !== undefined) recordUsage({ ...meta, chargedFailure: true, retries: accounting.retries }, raw, timer.finish());
+      throw err;
+    }
   }
 
   async *generateJsonStream(options: GenerateJsonOptions) {
@@ -268,35 +279,44 @@ export class GeminiDevProvider implements ModelProvider {
     const model = modelForGeminiRequest(this.config, options.route, options.images);
     const timer = startCallTimer();
     const thinking = thinkingConfigForRoute(options.route, model);
-    const responseStream = await withModelRetry(() =>
-      this.ai.models.generateContentStream({
-        model,
-        contents: buildGenAiContents(options.prompt, options.images) as any,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: options.schema as Schema,
-          temperature: options.temperature ?? 0.4,
-          maxOutputTokens: this.config.maxOutputTokens,
-          ...(thinking ? { thinkingConfig: thinking } : {}),
-          ...(options.budget?.signal ? { abortSignal: options.budget.signal } : {})
-        }
-      }), 3, options.budget
-    );
+    const accounting = newRetryAccounting();
+    const meta = { route: options.route, provider: "gemini_dev" as const, model, promptVersion: options.promptVersion };
+    let responseStream;
+    try {
+      responseStream = await withModelRetry(() =>
+        this.ai.models.generateContentStream({
+          model,
+          contents: buildGenAiContents(options.prompt, options.images) as any,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: options.schema as Schema,
+            temperature: options.temperature ?? 0.4,
+            maxOutputTokens: this.config.maxOutputTokens,
+            ...(thinking ? { thinkingConfig: thinking } : {}),
+            ...(options.budget?.signal ? { abortSignal: options.budget.signal } : {})
+          }
+        }), 3, options.budget, accounting
+      );
+    } catch (err) {
+      recordChargedFailures(meta, timer.finish(), accounting);
+      throw err;
+    }
+    recordChargedFailures(meta, timer.finish(), accounting);
 
     let usage: any;
     let completed = false;
     try {
-      for await (const chunk of abortableIterate(responseStream, options.budget?.signal)) {
-        if ((chunk as any).usageMetadata) usage = (chunk as any).usageMetadata;
+      for await (const chunk of abortableIterate<any>(responseStream, options.budget?.signal)) {
+        if (chunk.usageMetadata) usage = chunk.usageMetadata;
         if (chunk.text) { timer.markFirstChunk(); yield chunk.text; }
       }
       completed = true;
     } finally {
       // B-AIOPS-01: a stream stopped early (output screen, abort, deadline, a
       // closed client) still bills what was generated; it keeps its receipt.
-      if (!completed) recordUsage({ route: options.route, provider: "gemini_dev", model, promptVersion: options.promptVersion, endedEarly: true }, usage, timer.finish());
+      if (!completed) recordUsage({ ...meta, endedEarly: true, retries: accounting.retries }, usage, timer.finish());
     }
-    recordUsage({ route: options.route, provider: "gemini_dev", model, promptVersion: options.promptVersion }, usage, timer.finish());
+    recordUsage({ ...meta, retries: accounting.retries }, usage, timer.finish());
   }
 
   async *streamText(options: StreamTextOptions) {
@@ -304,49 +324,69 @@ export class GeminiDevProvider implements ModelProvider {
     const model = modelForRoute(this.config, options.route);
     const timer = startCallTimer();
     const thinking = thinkingConfigForRoute(options.route, model);
-    const responseStream = await withModelRetry(() =>
-      this.ai.models.generateContentStream({
-        model,
-        contents: options.prompt,
-        config: {
-          temperature: options.temperature ?? 0.5,
-          maxOutputTokens: this.config.maxOutputTokens,
-          ...(thinking ? { thinkingConfig: thinking } : {}),
-          ...(options.budget?.signal ? { abortSignal: options.budget.signal } : {})
-        }
-      }), 3, options.budget
-    );
+    const accounting = newRetryAccounting();
+    const meta = { route: options.route, provider: "gemini_dev" as const, model, promptVersion: options.promptVersion };
+    let responseStream;
+    try {
+      responseStream = await withModelRetry(() =>
+        this.ai.models.generateContentStream({
+          model,
+          contents: options.prompt,
+          config: {
+            temperature: options.temperature ?? 0.5,
+            maxOutputTokens: this.config.maxOutputTokens,
+            ...(thinking ? { thinkingConfig: thinking } : {}),
+            ...(options.budget?.signal ? { abortSignal: options.budget.signal } : {})
+          }
+        }), 3, options.budget, accounting
+      );
+    } catch (err) {
+      recordChargedFailures(meta, timer.finish(), accounting);
+      throw err;
+    }
+    recordChargedFailures(meta, timer.finish(), accounting);
     let usage: any;
     let completed = false;
     try {
-      for await (const chunk of abortableIterate(responseStream, options.budget?.signal)) {
-        if ((chunk as any).usageMetadata) usage = (chunk as any).usageMetadata;
+      for await (const chunk of abortableIterate<any>(responseStream, options.budget?.signal)) {
+        if (chunk.usageMetadata) usage = chunk.usageMetadata;
         if (chunk.text) { timer.markFirstChunk(); yield chunk.text; }
       }
       completed = true;
     } finally {
       // B-AIOPS-01: a stream stopped early (output screen, abort, deadline, a
       // closed client) still bills what was generated; it keeps its receipt.
-      if (!completed) recordUsage({ route: options.route, provider: "gemini_dev", model, promptVersion: options.promptVersion, endedEarly: true }, usage, timer.finish());
+      if (!completed) recordUsage({ ...meta, endedEarly: true, retries: accounting.retries }, usage, timer.finish());
     }
-    recordUsage({ route: options.route, provider: "gemini_dev", model, promptVersion: options.promptVersion }, usage, timer.finish());
+    recordUsage({ ...meta, retries: accounting.retries }, usage, timer.finish());
   }
 
   async generateImage(options: GenerateImageOptions): Promise<GeneratedImage> {
     this.assertApiKey();
     const timer = startCallTimer();
-    const response = await withModelRetry(() =>
-      this.ai.models.generateContent({
-        model: this.config.geminiImageModel,
-        contents: buildGenAiContents(options.prompt, options.images) as any,
-        config: {
-          responseModalities: ["IMAGE"],
-          ...(options.budget?.signal ? { abortSignal: options.budget.signal } : {})
-        } as any
-      }), 3, options.budget
-    );
-    recordUsage({ route: "creative_low_risk", provider: "gemini_dev", model: this.config.geminiImageModel }, (response as any)?.usageMetadata, timer.finish());
-    return extractInlineImage((response as any)?.candidates);
+    const accounting = newRetryAccounting();
+    const meta = { route: "creative_low_risk" as const, provider: "gemini_dev" as const, model: this.config.geminiImageModel };
+    let raw: unknown;
+    try {
+      const response = await withModelRetry(() =>
+        this.ai.models.generateContent({
+          model: this.config.geminiImageModel,
+          contents: buildGenAiContents(options.prompt, options.images) as any,
+          config: {
+            responseModalities: ["IMAGE"],
+            ...(options.budget?.signal ? { abortSignal: options.budget.signal } : {})
+          } as any
+        }), 3, options.budget, accounting
+      );
+      raw = (response as any)?.usageMetadata;
+      const image = extractInlineImage((response as any)?.candidates);
+      recordUsage({ ...meta, retries: accounting.retries, imageCount: 1 }, raw, timer.finish(), accounting);
+      return image;
+    } catch (err) {
+      recordChargedFailures(meta, timer.finish(), accounting);
+      if (raw !== undefined) recordUsage({ ...meta, chargedFailure: true, retries: accounting.retries, imageCount: 0 }, raw, timer.finish());
+      throw err;
+    }
   }
 
   private assertApiKey() {
@@ -394,25 +434,36 @@ export class VertexGeminiProvider {
     const model = await this.getModel(options.route, options.images);
     const timer = startCallTimer();
     const thinking = thinkingConfigForRoute(options.route, modelId);
+    const accounting = newRetryAccounting();
+    const meta = { route: options.route, provider: "vertex_gemini" as const, model: modelId, promptVersion: options.promptVersion };
     // The @google-cloud/vertexai SDK exposes no per-call abort hook, so the
     // call is RACED against the budget signal (frees the request; billing for
     // an already-issued generation is bounded by maxOutputTokens).
-    const result: any = await withModelRetry(() =>
-      raceWithAbort(model.generateContent({
-        contents: [{ role: "user", parts: buildVertexParts(options.prompt, options.images) }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: options.schema,
-          temperature: options.temperature ?? 0.35,
-          maxOutputTokens: this.config.maxOutputTokens,
-          ...(thinking ? { thinkingConfig: thinking } : {})
-        } as any
-      }), options.budget?.signal), 3, options.budget
-    );
-    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId, promptVersion: options.promptVersion }, result.response?.usageMetadata, timer.finish());
-    const candidate = result.response?.candidates?.[0];
-    const text = candidate?.content?.parts?.map((part: any) => part.text || "").join("") || "";
-    return parseModelJson(text, candidate?.finishReason);
+    let raw: unknown;
+    try {
+      const result: any = await withModelRetry(() =>
+        raceWithAbort(model.generateContent({
+          contents: [{ role: "user", parts: buildVertexParts(options.prompt, options.images) }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: options.schema,
+            temperature: options.temperature ?? 0.35,
+            maxOutputTokens: this.config.maxOutputTokens,
+            ...(thinking ? { thinkingConfig: thinking } : {})
+          } as any
+        }), options.budget?.signal), 3, options.budget, accounting
+      );
+      raw = result.response?.usageMetadata;
+      const candidate = result.response?.candidates?.[0];
+      const text = candidate?.content?.parts?.map((part: any) => part.text || "").join("") || "";
+      const parsed = parseModelJson(text, candidate?.finishReason);
+      recordUsage({ ...meta, retries: accounting.retries }, raw, timer.finish(), accounting);
+      return parsed;
+    } catch (err) {
+      recordChargedFailures(meta, timer.finish(), accounting);
+      if (raw !== undefined) recordUsage({ ...meta, chargedFailure: true, retries: accounting.retries }, raw, timer.finish());
+      throw err;
+    }
   }
 
   async *generateJsonStream(options: GenerateJsonOptions) {
@@ -420,18 +471,27 @@ export class VertexGeminiProvider {
     const model = await this.getModel(options.route, options.images);
     const timer = startCallTimer();
     const thinking = thinkingConfigForRoute(options.route, modelId);
-    const result: any = await withModelRetry(() =>
-      raceWithAbort(model.generateContentStream({
-        contents: [{ role: "user", parts: buildVertexParts(options.prompt, options.images) }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: options.schema,
-          temperature: options.temperature ?? 0.35,
-          maxOutputTokens: this.config.maxOutputTokens,
-          ...(thinking ? { thinkingConfig: thinking } : {})
-        } as any
-      }), options.budget?.signal), 3, options.budget
-    );
+    const accounting = newRetryAccounting();
+    const meta = { route: options.route, provider: "vertex_gemini" as const, model: modelId, promptVersion: options.promptVersion };
+    let result: any;
+    try {
+      result = await withModelRetry(() =>
+        raceWithAbort(model.generateContentStream({
+          contents: [{ role: "user", parts: buildVertexParts(options.prompt, options.images) }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: options.schema,
+            temperature: options.temperature ?? 0.35,
+            maxOutputTokens: this.config.maxOutputTokens,
+            ...(thinking ? { thinkingConfig: thinking } : {})
+          } as any
+        }), options.budget?.signal), 3, options.budget, accounting
+      );
+    } catch (err) {
+      recordChargedFailures(meta, timer.finish(), accounting);
+      throw err;
+    }
+    recordChargedFailures(meta, timer.finish(), accounting);
 
     let usage: any;
     let completed = false;
@@ -445,9 +505,9 @@ export class VertexGeminiProvider {
     } finally {
       // B-AIOPS-01: an early stop keeps its receipt (tokens seen so far; the
       // final usage chunk may never arrive, so the cost can stay unpriced).
-      if (!completed) recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId, promptVersion: options.promptVersion, endedEarly: true }, usage, timer.finish());
+      if (!completed) recordUsage({ ...meta, endedEarly: true, retries: accounting.retries }, usage, timer.finish());
     }
-    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId, promptVersion: options.promptVersion }, usage ?? (await result.response)?.usageMetadata, timer.finish());
+    recordUsage({ ...meta, retries: accounting.retries }, usage ?? (await result.response)?.usageMetadata, timer.finish());
   }
 
   async *streamText(options: StreamTextOptions) {
@@ -455,16 +515,25 @@ export class VertexGeminiProvider {
     const model = await this.getModel(options.route);
     const timer = startCallTimer();
     const thinking = thinkingConfigForRoute(options.route, modelId);
-    const result: any = await withModelRetry(() =>
-      raceWithAbort(model.generateContentStream({
-        contents: [{ role: "user", parts: [{ text: options.prompt }] }],
-        generationConfig: {
-          temperature: options.temperature ?? 0.5,
-          maxOutputTokens: this.config.maxOutputTokens,
-          ...(thinking ? { thinkingConfig: thinking } : {})
-        } as any
-      }), options.budget?.signal), 3, options.budget
-    );
+    const accounting = newRetryAccounting();
+    const meta = { route: options.route, provider: "vertex_gemini" as const, model: modelId, promptVersion: options.promptVersion };
+    let result: any;
+    try {
+      result = await withModelRetry(() =>
+        raceWithAbort(model.generateContentStream({
+          contents: [{ role: "user", parts: [{ text: options.prompt }] }],
+          generationConfig: {
+            temperature: options.temperature ?? 0.5,
+            maxOutputTokens: this.config.maxOutputTokens,
+            ...(thinking ? { thinkingConfig: thinking } : {})
+          } as any
+        }), options.budget?.signal), 3, options.budget, accounting
+      );
+    } catch (err) {
+      recordChargedFailures(meta, timer.finish(), accounting);
+      throw err;
+    }
+    recordChargedFailures(meta, timer.finish(), accounting);
     let usage: any;
     let completed = false;
     try {
@@ -477,14 +546,15 @@ export class VertexGeminiProvider {
     } finally {
       // B-AIOPS-01: an early stop keeps its receipt (tokens seen so far; the
       // final usage chunk may never arrive, so the cost can stay unpriced).
-      if (!completed) recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId, promptVersion: options.promptVersion, endedEarly: true }, usage, timer.finish());
+      if (!completed) recordUsage({ ...meta, endedEarly: true, retries: accounting.retries }, usage, timer.finish());
     }
-    recordUsage({ route: options.route, provider: "vertex_gemini", model: modelId, promptVersion: options.promptVersion }, usage ?? (await result.response)?.usageMetadata, timer.finish());
+    recordUsage({ ...meta, retries: accounting.retries }, usage ?? (await result.response)?.usageMetadata, timer.finish());
   }
 
   async generateImage(options: GenerateImageOptions): Promise<GeneratedImage> {
     const regions = this.imageRegions();
     const parts = buildVertexParts(options.prompt, options.images);
+    const accounting = newRetryAccounting();
     let lastErr: unknown;
     for (let index = 0; index < regions.length; index += 1) {
       const location = regions[index];
@@ -492,6 +562,8 @@ export class VertexGeminiProvider {
       if (options.budget?.signal?.aborted) throw lastErr ?? new Error("Image generation aborted");
       const model = await this.getImageModel(location);
       const timer = startCallTimer();
+      const meta = { route: "creative_low_risk" as const, provider: "vertex_gemini" as const, model: this.config.vertexModelImage, fallback: index > 0 };
+      let raw: unknown;
       try {
         // Two in-region attempts before moving on: a saturated region rarely
         // clears within one backoff, and the route deadline (60 s) has to
@@ -500,14 +572,18 @@ export class VertexGeminiProvider {
           raceWithAbort(model.generateContent({
             contents: [{ role: "user", parts }],
             generationConfig: { responseModalities: ["IMAGE"] }
-          }), options.budget?.signal), isLast ? 3 : 2, options.budget
+          }), options.budget?.signal), isLast ? 3 : 2, options.budget, accounting
         );
-        recordUsage({ route: "creative_low_risk", provider: "vertex_gemini", model: this.config.vertexModelImage }, result.response?.usageMetadata, timer.finish());
-        if (index > 0) console.info("Arbor Image Region", { primary: regions[0], used: location, attemptsBefore: index });
+        raw = result.response?.usageMetadata;
         // A blocked/empty candidate is a content verdict for THIS request, not
         // a capacity signal: it must not be retried in another region.
-        return extractInlineImage(result.response?.candidates);
+        const image = extractInlineImage(result.response?.candidates);
+        recordUsage({ ...meta, retries: accounting.retries, imageCount: 1 }, raw, timer.finish(), accounting);
+        if (index > 0) console.info("Arbor Image Region", { primary: regions[0], used: location, attemptsBefore: index });
+        return image;
       } catch (err) {
+        recordChargedFailures(meta, timer.finish(), accounting);
+        if (raw !== undefined) recordUsage({ ...meta, chargedFailure: true, retries: accounting.retries, imageCount: 0 }, raw, timer.finish());
         lastErr = err;
         const capacity = isTransientModelError(err) || isModelUnavailableInRegion(err);
         if (isLast || !capacity || isAbortError(err)) throw err;

@@ -13,11 +13,13 @@
  * re-instrumenting.
  */
 import { logger } from "../server/logger.js";
-import { currentRequestContext } from "../server/requestContext.js";
+import { costId, currentRequestContext } from "../server/requestContext.js";
 import { recordUsageRollup } from "../server/usageRollup.js";
 import { currentStudioScope, recordStudioUsage, studioAssetKey } from "../server/studioCostLedger.js";
 import type { ModelRoute, ProviderId } from "./modelRouter.js";
-import { estimateCostUsd, type PricedTokenUsage } from "./priceTable.js";
+import { estimateCostUsd, PRICE_TABLE_AS_OF, type PricedTokenUsage } from "./priceTable.js";
+import type { RetryAccounting } from "./modelRetry.js";
+import { rememberFamilyCost } from "../server/familyCostWriter.js";
 
 export type TokenUsage = PricedTokenUsage & {
   promptTokens: number;
@@ -100,6 +102,18 @@ export type UsageMeta = {
   /** B-AIOPS-01: the stream stopped before the provider finished (output
    *  screen, abort, deadline, closed client). Tokens are what had arrived. */
   endedEarly?: boolean;
+  /** Failed attempts before the one this record describes. 0 = first try. */
+  retries?: number;
+  /** This call is a fallback (image region, or a later model). */
+  fallback?: boolean;
+  /** The provider billed the call and the product rejected the result. */
+  chargedFailure?: boolean;
+  /** Images returned. 0 on a charged image failure. */
+  imageCount?: number;
+  /** Billed audio seconds, when the provider reported them. */
+  audioSeconds?: number;
+  /** The family's id. Names are dropped. */
+  familyId?: string | null;
 };
 
 /** B-PROV-04: the call's estimated USD (undefined when unpriced / no usage). */
@@ -137,42 +151,86 @@ export const buildUsageEvent = (
     ...(timing ? { totalMs: timing.totalMs } : {}),
     ...(timing?.firstChunkMs !== undefined ? { firstChunkMs: timing.firstChunkMs } : {}),
     ...(meta.endedEarly ? { endedEarly: true } : {}),
+    // B-AIOPS-01: the price version consulted, even when the model has no row.
+    priceTableAsOf: PRICE_TABLE_AS_OF,
+    familyId: costId(meta.familyId),
+    retries: Math.max(0, Math.round(meta.retries ?? 0)),
+    fallback: meta.fallback === true,
+    chargedFailure: meta.chargedFailure === true,
+    ...(typeof meta.imageCount === "number" && Number.isFinite(meta.imageCount) ? { imageCount: Math.max(0, Math.round(meta.imageCount)) } : {}),
+    ...(typeof meta.audioSeconds === "number" && Number.isFinite(meta.audioSeconds) && meta.audioSeconds >= 0 ? { audioSeconds: meta.audioSeconds } : {}),
   };
 };
 
-/** Emit one `ai.usage` line, enriched with the active request's id + uid. Never throws. */
+const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
+
+function remember(event: Record<string, unknown>): void {
+  const route = typeof event.route === "string" ? event.route : "";
+  rememberFamilyCost({
+    familyId: costId(event.familyId),
+    uid: costId(currentRequestContext()?.uid),
+    route,
+    retries: num(event.retries),
+    fallback: event.fallback === true,
+    chargedFailure: event.chargedFailure === true,
+    promptTokens: num(event.promptTokens),
+    outputTokens: num(event.outputTokens),
+    cacheReadTokens: num(event.cacheReadTokens),
+    audioSeconds: num(event.audioSeconds),
+    imageCount: num(event.imageCount),
+    characters: num(event.characters),
+    observedMs: num(event.observedMs),
+    ...(typeof event.estimatedCostUsd === "number" ? { estimatedCostUsd: event.estimatedCostUsd } : {}),
+    priceTableAsOf: typeof event.priceTableAsOf === "string" ? event.priceTableAsOf : PRICE_TABLE_AS_OF,
+  });
+}
+
+function writeUsage(meta: UsageMeta, raw: unknown, timing?: CallTiming): void {
+  const usage = normalizeUsage(raw);
+  const familyId = costId(meta.familyId) ?? costId(currentRequestContext()?.familyId);
+  const event = buildUsageEvent({ ...meta, familyId }, usage, timing);
+  if (!event) return;
+  const ctx = currentRequestContext();
+  const studio = currentStudioScope();
+  logger.info("ai.usage", {
+    requestId: ctx?.requestId ?? null,
+    userUid: ctx?.uid ?? null,
+    ...(studio ? { studioAsset: studioAssetKey(studio.asset) } : {}),
+    ...event,
+  });
+  if (studio) {
+    recordStudioUsage(studio.asset, { modality: studio.modality, ...(typeof event.estimatedCostUsd === "number" ? { estimatedCostUsd: event.estimatedCostUsd } : {}), ...(meta.chargedFailure ? { failed: true } : {}) });
+    return;
+  }
+  remember(event);
+  recordUsageRollup(
+    meta.provider,
+    usage ?? { promptTokens: 0, outputTokens: 0, totalTokens: 0 },
+    timing ? { route: meta.route, totalMs: timing.totalMs, firstChunkMs: timing.firstChunkMs } : undefined,
+    typeof event.estimatedCostUsd === "number" ? event.estimatedCostUsd : undefined,
+  );
+}
+
+/** Billed attempts that threw before the returned one. No content. */
+export function recordChargedFailures(meta: UsageMeta, timing: CallTiming | undefined, accounting?: RetryAccounting): void {
+  if (!accounting?.failedAttempts.length) return;
+  const failed = accounting.failedAttempts.splice(0);
+  for (const attempt of failed) {
+    try { writeUsage({ ...meta, retries: attempt.attempt, chargedFailure: true }, attempt.raw, timing); } catch { /* telemetry */ }
+  }
+}
+
+/** Emit one `ai.usage` line, enriched with the active request's id + uid. Never throws.
+ *  When `accounting` is passed, billed failed attempts are written first. */
 export const recordUsage = (
   meta: UsageMeta,
   raw: any,
   timing?: CallTiming,
+  accounting?: RetryAccounting,
 ): void => {
   try {
-    const usage = normalizeUsage(raw);
-    const event = buildUsageEvent(meta, usage, timing);
-    if (!event) return;
-    const ctx = currentRequestContext();
-    // B-KID-150: a call that produces a shared studio asset is stamped with it.
-    const studio = currentStudioScope();
-    logger.info("ai.usage", {
-      requestId: ctx?.requestId ?? null,
-      userUid: ctx?.uid ?? null,
-      ...(studio ? { studioAsset: studioAssetKey(studio.asset) } : {}),
-      ...event,
-    });
-    // B-KID-150: studio production lands in its asset's ledger row and NEVER
-    // in the daily family rollup (the only source of the B-GA-26 family meter).
-    if (studio) {
-      recordStudioUsage(studio.asset, { modality: studio.modality, ...(typeof event.estimatedCostUsd === "number" ? { estimatedCostUsd: event.estimatedCostUsd } : {}) });
-      return;
-    }
-    // COST-3: aggregate into today's Firestore rollup for the founder dashboard.
-    // EVAL-7: the same write now carries per-route latency for the p50/p95 buckets.
-    recordUsageRollup(
-      meta.provider,
-      usage ?? { promptTokens: 0, outputTokens: 0, totalTokens: 0 },
-      timing ? { route: meta.route, totalMs: timing.totalMs, firstChunkMs: timing.firstChunkMs } : undefined,
-      typeof event.estimatedCostUsd === "number" ? event.estimatedCostUsd : undefined,
-    );
+    recordChargedFailures(meta, timing, accounting);
+    writeUsage({ ...meta, retries: meta.retries ?? accounting?.retries ?? 0 }, raw, timing);
   } catch {
     /* telemetry must never break a request */
   }

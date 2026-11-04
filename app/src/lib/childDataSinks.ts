@@ -185,6 +185,7 @@ export const OTHER_FIRESTORE_COLLECTIONS: Readonly<Record<string, OtherChildSink
   familyWay: "account: the family's charter and the parent's 'How should Arbor talk with you?' choice (B-PLAY-21, lib/familyWay.ts) at users/{uid}/familyWay/current: family-level, never per child, so no child erase touches it; carried in every child's data export (familyWay) and removed by account deletion's recursive delete of users/{uid}",
   erasedChildren: "account: the family's erase record, keyed by the erased child's id (ids and dates only, no child data) so a retried erase and account deletion can finish it; removed by account deletion and a 30-day TTL (firestore.indexes.json)",
   usageRollup: "aggregate: daily token spend, no uid or child",
+  familyCostDaily: "account: per-family daily AI cost (ids, tokens, prices; no child content)",
   opsLedger: "aggregate: AI Studio prepay reserved milliseconds since a top-up date (server/prepayBalance.ts), no uid or child",
   studioCostLedger: "aggregate: B-KID-150 production cost per SHARED kid asset (plates, overlays, shared narration, video, music; server/studioCostLedger.ts), no uid, family or child",
   offerRedemptions: "account: the family's one offer redemption per uid (B-GROWTH-43: offer id, version, link or typed, date; no child data); removed by account deletion",

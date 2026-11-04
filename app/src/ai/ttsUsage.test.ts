@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildTtsUsageEvent, estimateTtsCostUsd, recordTtsUsage } from "./ttsUsage.js";
+import { buildBookNarrationUsageEvent, buildTtsUsageEvent, estimateTtsCostUsd, recordBookNarrationUsage, recordTtsUsage } from "./ttsUsage.js";
 import { recordUsageRollup } from "../server/usageRollup.js";
 import { logger } from "../server/logger.js";
 vi.mock("../server/usageRollup.js", () => ({ recordUsageRollup: vi.fn() }));
@@ -28,6 +28,17 @@ describe("B-GA-26 TTS cost slice", () => {
     const event = buildTtsUsageEvent("he-IL-Chirp3-HD-Sulafat", "he", 4, 10);
     expect(event).not.toHaveProperty("text");
     expect(event).not.toHaveProperty("audio");
+  });
+  it("records book and plan narration as an unpriced gap, with no words", () => {
+    recordBookNarrationUsage("gemini-2.5-pro-tts", 12, 40);
+    expect(recordUsageRollup).toHaveBeenCalledExactlyOnceWith("google_cloud_tts",
+      { promptTokens: 0, outputTokens: 0, totalTokens: 0 },
+      { route: "book_narration", totalMs: 40 });
+    const event = buildBookNarrationUsageEvent("gemini-2.5-pro-tts", 12, 40);
+    expect(event).toMatchObject({ route: "book_narration", characters: 12, retries: 0, fallback: false, chargedFailure: false, familyId: null });
+    expect(event).not.toHaveProperty("estimatedCostUsd");
+    expect(event).not.toHaveProperty("text");
+    expect(JSON.stringify(event)).not.toContain("מאיה");
   });
   it("does not break playback if telemetry is unavailable", () => {
     vi.mocked(logger.info).mockImplementationOnce(() => { throw new Error("log offline"); });

@@ -70,6 +70,28 @@ export async function* abortableIterate<T>(iterable: AsyncIterable<T>, signal?: 
 }
 
 /**
+ * B-AIOPS-01: one call's retry accounting. `retries` is how many attempts
+ * failed before the one that returned (0 = first try). `failedAttempts` holds
+ * provider usage from an attempt that threw — a non-200 usually has none
+ * (Page A: not charged); usage on the error means the provider billed it.
+ */
+export type RetryAccounting = {
+  retries: number;
+  failedAttempts: { raw: unknown; attempt: number }[];
+};
+
+export function newRetryAccounting(): RetryAccounting {
+  return { retries: 0, failedAttempts: [] };
+}
+
+function usageFromError(err: unknown): unknown {
+  if (!err || typeof err !== "object") return null;
+  const e = err as { usageMetadata?: unknown; usage?: unknown; response?: { usageMetadata?: unknown } };
+  const raw = e.usageMetadata ?? e.usage ?? e.response?.usageMetadata;
+  return raw && typeof raw === "object" ? raw : null;
+}
+
+/**
  * Retry an async model call with exponential backoff + jitter on transient failures.
  * AIR-9: aborts are never retried, and once less than 40% of the deadline budget
  * remains the blind backoff is skipped entirely (fail fast toward the calm error
@@ -79,14 +101,18 @@ export const withModelRetry = async <T>(
   fn: () => Promise<T>,
   attempts = 3,
   budget?: ModelCallBudget,
+  accounting?: RetryAccounting,
 ): Promise<T> => {
   let lastErr: unknown;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (accounting) accounting.retries = attempt;
     if (budget?.signal?.aborted) throw newAbortError();
     try {
       return await fn();
     } catch (err) {
       lastErr = err;
+      const billed = usageFromError(err);
+      if (accounting && billed) accounting.failedAttempts.push({ raw: billed, attempt });
       if (attempt === attempts - 1 || !isTransientModelError(err) || isAbortError(err)) throw err;
       if (budget?.deadlineAt && budget?.totalMs) {
         const remaining = budget.deadlineAt - Date.now();

@@ -71,6 +71,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // B-AIOPS-01: per-family daily AI cost (ids, tokens, prices). Server only.
+    match /familyCostDaily/{id} {
+      allow read, write: if false;
+    }
+
     // N1-04 / N1-05: the per-family retention rollup. Written by the family's
     // OWN client (lib/retentionRollup.ts) once per session and read only by the
     // founder-side cohort report through ADC, which bypasses these rules.

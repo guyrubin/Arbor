@@ -45,14 +45,17 @@ const ticked = (cell: string) => [...cell.matchAll(/`([^`]+)`/g)].map((m) => m[1
 function emittedKeys(): Set<string> {
   const cached = Object.keys(PRICE_TABLE).find((k) => PRICE_TABLE[k].cacheWrite5mPerM !== undefined && PRICE_TABLE[k].cacheReadPerM !== undefined)!;
   const audio = Object.keys(PRICE_TABLE).find((k) => PRICE_TABLE[k].audioInputPerM !== undefined)!;
-  const meta = (model: string) => ({ route: "analysis_structured" as const, provider: "vertex_gemini" as const, model, resolvedModel: model, promptVersion: "1.0.0", endedEarly: true });
+  const meta = (model: string) => ({
+    route: "analysis_structured" as const, provider: "vertex_gemini" as const, model, resolvedModel: model,
+    promptVersion: "1.0.0", endedEarly: true, imageCount: 1, audioSeconds: 1.5,
+  });
   const a = buildUsageEvent(meta(cached), { promptTokens: 900, outputTokens: 20, totalTokens: 930, thoughtsTokens: 10, cacheReadTokens: 100, cacheWrite5mTokens: 50, cacheWrite1hTokens: 50 }, { totalMs: 900, firstChunkMs: 120 })!;
   const b = buildUsageEvent(meta(audio), { promptTokens: 900, outputTokens: 20, totalTokens: 920, audioInputTokens: 300 }, { totalMs: 900 })!;
   expect(a.estimatedCostUsd).toBeTypeOf("number");
   return new Set([...Object.keys(a), ...Object.keys(b), "requestId", "userUid"]);
 }
 
-const ID_KEYS = new Set(["route", "provider", "model", "resolvedModel", "promptVersion", "requestId", "userUid", "lang", "usageUnit", "priceTableAsOf"]);
+const ID_KEYS = new Set(["route", "provider", "model", "resolvedModel", "promptVersion", "requestId", "userUid", "lang", "usageUnit", "priceTableAsOf", "familyId"]);
 function contentFreeErrors(event: Record<string, unknown>): string[] {
   return Object.entries(event).flatMap(([k, v]) => {
     if (v === null || typeof v === "number" || typeof v === "boolean") return [];
@@ -79,8 +82,10 @@ describe("B-AIOPS-01 — receipt fields match the audit", () => {
   it("every row the audit marks missing is really missing", () => {
     const keys = emittedKeys();
     const missing = fieldTable(DOC).filter((r) => r.Status === "missing").map((r) => r["Required by the row"].toLowerCase());
-    expect(missing).toEqual(expect.arrayContaining(["capability", "context classes", "citation ids", "action types", "safety result", "attempts and retries", "fallback taken"]));
-    for (const name of ["capability", "contextClasses", "citationIds", "actionTypes", "safetyResult", "attempts", "fallback"]) expect(keys.has(name), name).toBe(false);
+    expect(missing).toEqual(expect.arrayContaining(["capability", "context classes", "citation ids", "action types", "safety result"]));
+    for (const name of ["capability", "contextClasses", "citationIds", "actionTypes", "safetyResult", "attempts"]) expect(keys.has(name), name).toBe(false);
+    expect(keys.has("retries")).toBe(true);
+    expect(keys.has("fallback")).toBe(true);
   });
 
   it("receipts are content-free: ids, enums and numbers only", () => {

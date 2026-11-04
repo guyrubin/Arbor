@@ -23,6 +23,7 @@ import { createReferralStore } from "./referral.js";
 import { createBillingWebhookRouter } from "./billing.js";
 import { apiFailureObserver, createOpsAlertsFromConfig } from "./opsAlerts.js";
 import { createAdminMetricsStore } from "./adminMetrics.js";
+import { initFamilyCost } from "./familyCostWriter.js";
 import { initUsageRollup } from "./usageRollup.js";
 import { initStudioCostLedger } from "./studioCostLedger.js";
 import { withStudioPlanPlates } from "./studioPlanPlates.js";
@@ -146,6 +147,7 @@ export const createApp = (config: ArborConfig) => {
   // ADM-1 / COST-3: founder metrics read-side + the daily token-usage rollup writer.
   const adminMetrics = createAdminMetricsStore(config);
   initUsageRollup(config);
+  initFamilyCost(config);
   // B-KID-150: studio production spend per shared asset, apart from the family meter.
   initStudioCostLedger(config);
 

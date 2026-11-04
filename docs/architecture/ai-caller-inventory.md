@@ -39,8 +39,8 @@ Columns: Capability, Audience and Data classes are what the call really carries 
 | api use createPlanPlatesRouter | image_generation | internal | public | — | none | none: an authored pattern | no | no | imageRegions | no shared decision | IMAGE_GEN_GLOBAL_DAILY_LIMIT | ai.usage |
 | api POST /tts | speech_synthesis | parent | account, child_profile | — | none | none: model output | no | yes | synthesizeSpeech | rejects: data_class | TTS_DISABLED | ai.usage |
 | server/tts.ts | speech_synthesis | parent | account, child_profile | — | none | none: model output | no (POST /tts) | via POST /tts | synthesizeSpeech | rejects: data_class | TTS_DISABLED | ai.usage |
-| server/bookNarration.ts | speech_synthesis | child | child_profile | — | none | none: authored words and the child's name | n/a: authored book words and the child's name | n/a: audio | own selectProvider | eligible | TTS_DISABLED | tts.book log |
-| server/planNarration.ts | speech_synthesis | child | child_profile | — | none | stored parent text | no: the stored plan's words, which can carry the parent's own step from POST /plans/phrase | n/a: audio | own selectProvider | eligible | TTS_DISABLED | tts.book log |
+| server/bookNarration.ts | speech_synthesis | child | child_profile | — | none | none: authored words and the child's name | n/a: authored book words and the child's name | n/a: audio | own selectProvider | eligible | TTS_DISABLED | ai.usage |
+| server/planNarration.ts | speech_synthesis | child | child_profile | — | none | stored parent text | no: the stored plan's words, which can carry the parent's own step from POST /plans/phrase | n/a: audio | own selectProvider | eligible | TTS_DISABLED | ai.usage |
 | api POST /live/token | realtime_audio | parent | account, child_profile | coach_high_stakes | none | none at mint: Live audio is screened turn by turn in POST /live/turn | no | no | liveDecision | eligible | LIVE_ENABLED | live session telemetry |
 | server/createApp.ts | structured_text | internal | public | — | none | none | n/a: no route dispatches through it | n/a: no route dispatches through it | registry adapter | no shared decision | — | ai.usage |
 

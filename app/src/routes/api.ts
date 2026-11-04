@@ -1,3 +1,6 @@
+import { bindFamilyForCost } from "../server/bindFamilyCost.js";
+import { loadFamilyDailyCostReport } from "../server/familyCostReport.js";
+import { bindFamilyId } from "../server/requestContext.js";
 import { liveUsageRateLimit } from "../server/apiRateLimits.js";
 import { createLiveUsageStore, withLiveUsageDeadline, type LiveUsageEvent } from "../server/liveUsage.js";
 import { createLiveBudgetStore, LIVE_RESTING_BODY } from "../server/liveBudget.js";
@@ -455,6 +458,8 @@ export const allowListHandoffInput = (
 
 export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, digestJobSource, jobCallerVerifier, aiCapabilityRegistry, heroPoseSource, liveBudgetStore, opsAlerts, prepayCounter }: ApiDeps) => {
   const router = express.Router();
+  // B-AIOPS-01: paid routes only. A lookup failure still serves the request.
+  router.use(bindFamilyForCost(memoryStore));
   const liveUsage = createLiveUsageStore(config);
   // B-AIOPS-02: the shared-family daily Live allowance (injectable for tests).
   const liveBudget = liveBudgetStore ?? createLiveBudgetStore(config);
@@ -627,7 +632,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
   const resolveFamilyId = async (req: express.Request, childProfile: unknown): Promise<string> => {
     const { uid } = actorOf(req);
     if (memoryStore.ensureFamilyForUser && uid !== "local-sandbox") {
-      return (await memoryStore.ensureFamilyForUser(uid)).familyId;
+      const familyId = (await memoryStore.ensureFamilyForUser(uid)).familyId;
+      bindFamilyId(familyId);
+      return familyId;
     }
     return toFamilyId(childProfile);
   };
@@ -4307,6 +4314,22 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
     } catch (error: any) {
       logger.error("Arbor Referral Activate Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to activate referral", details: error.message });
+    }
+  });
+
+  // B-AIOPS-01: per-family daily cost. Same admin gate as overview, checked
+  // before any read. Counts and ids only; bill match stays partial.
+  router.get("/admin/family-cost", async (req, res) => {
+    if (!isAdmin(actorOf(req))) {
+      res.status(403).json({ error: "Not authorized" });
+      return;
+    }
+    try {
+      const q = typeof req.query.date === "string" ? req.query.date : undefined;
+      res.json(await loadFamilyDailyCostReport(config, cohortMetrics, q));
+    } catch (error: any) {
+      logger.error("Arbor Family Cost Report Error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to load the family cost report", details: error.message });
     }
   });
 

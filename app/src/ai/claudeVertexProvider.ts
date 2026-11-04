@@ -1,8 +1,8 @@
 import { GoogleAuth } from "google-auth-library";
 import type { ArborConfig } from "../config/env.js";
 import { coachResponseZodSchema } from "../contracts/coach.js";
-import { withModelRetry } from "./modelRetry.js";
-import { recordUsage, startCallTimer } from "./usage.js";
+import { newRetryAccounting, withModelRetry } from "./modelRetry.js";
+import { recordChargedFailures, recordUsage, startCallTimer } from "./usage.js";
 import type { GenerateJsonOptions, ModelRoute } from "./modelRouter.js";
 
 const modelForRoute = (config: ArborConfig, route: ModelRoute) => {
@@ -112,17 +112,26 @@ export class ClaudeVertexProvider {
   async *generateJsonStream(options: GenerateJsonOptions) {
     const timer = startCallTimer();
     const { url, headers, body, model } = await this.buildRequest(options, true);
-    const response = await withModelRetry(async () => {
-      // AIR-9: the budget signal cancels the upstream fetch for real (stops billing).
-      const r = await fetch(url, { method: "POST", headers, body: JSON.stringify({ ...body, stream: true }), signal: options.budget?.signal });
-      if (!r.ok) {
-        // Surface the status on the error so withModelRetry can detect 429/503 and back off.
-        const err: any = new Error(`Claude on Vertex stream failed (${r.status}): ${await r.text()}`);
-        err.status = r.status;
-        throw err;
-      }
-      return r;
-    }, 3, options.budget);
+    const accounting = newRetryAccounting();
+    const meta = { route: options.route, provider: "vertex_claude" as const, model, resolvedModel: model, promptVersion: options.promptVersion };
+    let response;
+    try {
+      response = await withModelRetry(async () => {
+        // AIR-9: the budget signal cancels the upstream fetch for real (stops billing).
+        const r = await fetch(url, { method: "POST", headers, body: JSON.stringify({ ...body, stream: true }), signal: options.budget?.signal });
+        if (!r.ok) {
+          // Surface the status on the error so withModelRetry can detect 429/503 and back off.
+          const err: any = new Error(`Claude on Vertex stream failed (${r.status}): ${await r.text()}`);
+          err.status = r.status;
+          throw err;
+        }
+        return r;
+      }, 3, options.budget, accounting);
+    } catch (err) {
+      recordChargedFailures(meta, timer.finish(), accounting);
+      throw err;
+    }
+    recordChargedFailures(meta, timer.finish(), accounting);
     if (!response.body) throw new Error("Claude on Vertex returned no response stream.");
 
     const usage: Record<string, number> = {};
@@ -164,14 +173,14 @@ export class ClaudeVertexProvider {
         // first), written BEFORE the cancel so a cancel that hangs cannot lose it;
         // then the upstream body is cancelled so Vertex stops generating (and
         // billing) instead of streaming into a dropped reader.
-        recordUsage({ route: options.route, provider: "vertex_claude", model, resolvedModel: model, promptVersion: options.promptVersion, endedEarly: true }, Object.keys(usage).length ? usage : undefined, timer.finish());
+        recordUsage({ ...meta, endedEarly: true, retries: accounting.retries }, Object.keys(usage).length ? usage : undefined, timer.finish());
         try { await reader.cancel(); } catch { /* already closed */ }
       }
       try { reader.releaseLock(); } catch { /* stream already closed */ }
     }
     // EVAL-8: `model` here is already the RESOLVED Anthropic-on-Vertex id
     // (toAnthropicVertexModelId) — record it explicitly as resolvedModel.
-    recordUsage({ route: options.route, provider: "vertex_claude", model, resolvedModel: model, promptVersion: options.promptVersion }, Object.keys(usage).length ? usage : undefined, timer.finish());
+    recordUsage({ ...meta, retries: accounting.retries }, Object.keys(usage).length ? usage : undefined, timer.finish());
   }
 
   private async buildRequest(options: GenerateJsonOptions, stream: boolean) {
@@ -206,23 +215,32 @@ export class ClaudeVertexProvider {
   private async callClaude(options: GenerateJsonOptions) {
     const timer = startCallTimer();
     const { url, headers, body, model } = await this.buildRequest(options, false);
-    const payload = await withModelRetry(async () => {
-      // AIR-9: the budget signal cancels the upstream fetch for real (stops billing).
-      const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: options.budget?.signal });
+    const accounting = newRetryAccounting();
+    const meta = { route: options.route, provider: "vertex_claude" as const, model, resolvedModel: model, promptVersion: options.promptVersion };
+    let usage: unknown;
+    try {
+      const payload = await withModelRetry(async () => {
+        // AIR-9: the budget signal cancels the upstream fetch for real (stops billing).
+        const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: options.budget?.signal });
 
-      if (!response.ok) {
-        // Surface the status on the error so withModelRetry can detect 429/503 and back off.
-        const err: any = new Error(`Claude on Vertex failed (${response.status}): ${await response.text()}`);
-        err.status = response.status;
-        throw err;
-      }
-      return response.json();
-    }, 3, options.budget);
-
-    // EVAL-8: resolved id recorded explicitly (see stream path note above).
-    recordUsage({ route: options.route, provider: "vertex_claude", model, resolvedModel: model, promptVersion: options.promptVersion }, payload?.usage, timer.finish());
-    const parsed = extractToolInput(payload);
-    if (options.route === "coach_high_stakes") return coachResponseZodSchema.parse(parsed);
-    return parsed;
+        if (!response.ok) {
+          // Surface the status on the error so withModelRetry can detect 429/503 and back off.
+          const err: any = new Error(`Claude on Vertex failed (${response.status}): ${await response.text()}`);
+          err.status = response.status;
+          throw err;
+        }
+        return response.json();
+      }, 3, options.budget, accounting);
+      usage = payload?.usage;
+      const parsed = extractToolInput(payload);
+      const result = options.route === "coach_high_stakes" ? coachResponseZodSchema.parse(parsed) : parsed;
+      // EVAL-8: resolved id recorded explicitly (see stream path note above).
+      recordUsage({ ...meta, retries: accounting.retries }, usage, timer.finish(), accounting);
+      return result;
+    } catch (err) {
+      recordChargedFailures(meta, timer.finish(), accounting);
+      if (usage !== undefined) recordUsage({ ...meta, chargedFailure: true, retries: accounting.retries }, usage, timer.finish());
+      throw err;
+    }
   }
 }

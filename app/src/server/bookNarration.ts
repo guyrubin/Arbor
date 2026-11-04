@@ -50,6 +50,7 @@ import type { EntitlementStore } from "./entitlements.js";
 import type { UsageCounterStore } from "./quotaStore.js";
 import { HERO_BOOK_POSES_BY_PLAN, imagePlanFor } from "./imageQuota.js";
 import { bookAssetLimiter } from "./apiRateLimits.js";
+import { recordBookNarrationUsage } from "../ai/ttsUsage.js";
 import { logger, requestIdOf } from "./logger.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -136,6 +137,7 @@ export const googleBookTts = (config: ArborConfig): BookTtsProvider => ({
     const t = await client.getAccessToken();
     const token = typeof t === "string" ? t : t?.token;
     if (!token) throw new Error("no ADC token for Cloud Text-to-Speech");
+    const startedAt = Date.now();
     const res = await fetch(`${bookTtsSettings().endpoint}/v1/text:synthesize`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=utf-8", ...(config.gcpProjectId ? { "x-goog-user-project": config.gcpProjectId } : {}) },
@@ -149,8 +151,8 @@ export const googleBookTts = (config: ArborConfig): BookTtsProvider => ({
     if (!res.ok) throw new Error(`Cloud TTS synthesize failed (${res.status})`);
     const json = (await res.json()) as { audioContent?: string };
     if (!json.audioContent) throw new Error("Cloud TTS returned no audioContent");
-    // char-metered usage signal; never the text (it carries the child's name)
-    logger.info("tts.book", { model: req.model, chars: req.text.length + req.prompt.length });
+    // Code points, not the words: the text carries the child's name.
+    recordBookNarrationUsage(req.model, Array.from(req.text).length + Array.from(req.prompt).length, Date.now() - startedAt);
     return { audio: Buffer.from(json.audioContent, "base64"), ext: "mp3" };
   },
 });

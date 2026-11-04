@@ -6,9 +6,12 @@
 import { randomUUID } from "node:crypto";
 import { getApps, initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { PRICE_TABLE_AS_OF } from "../ai/priceTable.js";
 import type { ArborConfig } from "../config/env.js";
 import type { Plan } from "./entitlements.js";
+import { rememberFamilyCost } from "./familyCostWriter.js";
 import { logger } from "./logger.js";
+import { costId } from "./requestContext.js";
 
 /** Accounting may delay token delivery by at most one second. The caller
  * catches rejection and returns the already-minted token without telemetry. */
@@ -40,6 +43,30 @@ export type LiveUsageReport = {
   opened?: boolean;
 };
 const MAX_GAP_MS = 45_000;
+
+/** Observed connection time. Not billed audio: no price, no audio seconds, no transcript. */
+export function recordLiveCost(input: {
+  uid: string; familyId: string; model: string; plan: Plan; deltaMs: number; incomplete: boolean; sessionId: string;
+}): void {
+  if (!(input.deltaMs > 0)) return;
+  try {
+    const familyId = costId(input.familyId);
+    const uid = costId(input.uid);
+    logger.info("ai.usage", {
+      route: "realtime_audio", provider: "gemini_live", model: input.model,
+      userUid: uid, familyId, plan: input.plan, sessionId: input.sessionId,
+      usageUnit: "observed_connection_ms", observedMs: input.deltaMs,
+      incomplete: input.incomplete, billingVerified: false,
+      priceTableAsOf: PRICE_TABLE_AS_OF, retries: 0, fallback: false, chargedFailure: false,
+    });
+    rememberFamilyCost({
+      familyId, uid, route: "realtime_audio",
+      retries: 0, fallback: false, chargedFailure: false,
+      promptTokens: 0, outputTokens: 0, cacheReadTokens: 0, audioSeconds: 0, imageCount: 0,
+      characters: 0, observedMs: input.deltaMs, priceTableAsOf: PRICE_TABLE_AS_OF,
+    });
+  } catch { /* accounting must not break the session */ }
+}
 export function advanceLiveUsage(session: LiveUsageSession, event: LiveUsageEvent, now: number) {
   const next = { ...session };
   if (next.closed) return { session: next, deltaMs: 0, opened: false };
@@ -95,6 +122,10 @@ export class MemoryLiveUsageStore implements LiveUsageStore {
     if (!validId(id) || !session || session.uid !== uid) return null;
     const result = advanceLiveUsage(session, event, Date.now());
     this.sessions.set(id, result.session);
+    if (result.deltaMs > 0) recordLiveCost({
+      uid, familyId: session.familyId, model: session.model, plan: session.plan,
+      deltaMs: result.deltaMs, incomplete: result.session.incomplete, sessionId: id,
+    });
     return { observedMs: result.session.observedMs, incomplete: result.session.incomplete, closed: result.session.closed,
       familyId: session.familyId, ...(session.budget ? { budget: session.budget } : {}), opened: result.session.openedAt !== undefined };
   }
@@ -153,10 +184,10 @@ export function createLiveUsageStore(config: ArborConfig): LiveUsageStore {
           opened: result.session.openedAt !== undefined };
       });
       if (committed) {
-        logger.info("ai.usage", { route: "realtime_audio", provider: "gemini_live", model: committed.model,
-          userUid: uid, familyId: committed.familyId, plan: committed.plan, sessionId: id,
-          usageUnit: "observed_connection_ms", observedMs: committed.deltaMs,
-          incomplete: committed.incomplete, billingVerified: false });
+        if (committed.deltaMs > 0) recordLiveCost({
+          uid, familyId: committed.familyId, model: committed.model, plan: committed.plan,
+          deltaMs: committed.deltaMs, incomplete: committed.incomplete, sessionId: id,
+        });
         return { observedMs: committed.observedMs, incomplete: committed.incomplete, closed: committed.closed,
           familyId: committed.familyId, ...(committed.budget ? { budget: committed.budget } : {}), opened: committed.opened };
       }
