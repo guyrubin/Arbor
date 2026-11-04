@@ -161,6 +161,15 @@ export const en: Record<string, string> = {
   "elev.homeProgram.share.stop": "Stop sharing",
   "elev.homeProgram.view.readOnly": "Read-only. The family shared this and can stop it at any time.",
   "elev.homeProgram.view.empty": "Nothing to show yet.",
+  // B-PROG-16 · next-day handback of the one shared book (cover, tomorrow, ask-after)
+  "elev.program.object.handback": "From yesterday's reading",
+  "elev.program.object.tomorrow": "One thing for tomorrow",
+  "elev.program.object.ask": "A question you can ask",
+  "elev.program.object.dismiss": "Not now",
+  "elev.program.object.save": "Save in the journal",
+  "elev.program.object.words": "Your words",
+  "elev.program.object.placeholder": "What you noticed, in your words",
+  "elev.program.object.saveError": "That didn’t save. Please try again.",
 };
 
 export const he: Record<string, string> = {
@@ -314,4 +323,13 @@ export const he: Record<string, string> = {
   "elev.homeProgram.share.stop": "להפסיק לשתף",
   "elev.homeProgram.view.readOnly": "לקריאה בלבד. המשפחה שיתפה את זה ויכולה להפסיק בכל רגע.",
   "elev.homeProgram.view.empty": "עוד אין מה להציג.",
+  // B-PROG-16 · החזרת הספר המשותף ביום שאחרי (כריכה, מחר, שאלה)
+  "elev.program.object.handback": "מהקריאה של אתמול",
+  "elev.program.object.tomorrow": "דבר אחד למחר",
+  "elev.program.object.ask": "שאלה שאפשר לשאול",
+  "elev.program.object.dismiss": "לא עכשיו",
+  "elev.program.object.save": "לשמור ביומן",
+  "elev.program.object.words": "המילים שלכם",
+  "elev.program.object.placeholder": "מה ששמתם לב אליו, במילים שלכם",
+  "elev.program.object.saveError": "זה לא נשמר. אפשר לנסות שוב.",
 };

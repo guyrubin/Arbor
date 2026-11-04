@@ -269,6 +269,7 @@ export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.flags.hearingQuestion": "feature flag (B-NEXT-01: the hearing question, dark until clinical review)",
   "arbor.flags.homeProgramLink": "feature flag",
   "arbor.flags.programPilot": "feature flag (B-PROG-15: show the pilot line)",
+  "arbor.flags.programSharedObject": "feature flag (B-PROG-16: shared-object handback, dark until a reviewed week map)",
   "arbor.flags.familyWaySync": "feature flag (B-PLAY-21: the charter and tone follow the account; off = device only)",
   "arbor.flags.sneakFreeze": "feature flag",
   "arbor.gate.mathExit": "parent gate state",

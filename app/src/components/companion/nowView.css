@@ -79,6 +79,17 @@
 .now-main-column > .now-notice-extras:has(> :not(:empty)) { margin-block-start: 18px; }
 .now-tonight-pointer { border-block-start: 0; margin-block-start: 6px; }
 .now-program-line { margin-block-start: 18px; }
+/* B-PROG-16: the next-day book handback, one row of the glance. */
+.now-page .now-glance .now-handback { display: grid; gap: 8px; margin: 0; padding: 12px 4px; border-block-end: 1px solid var(--arbor-rule); }
+.now-handback-kicker { color: var(--arbor-muted); font-size: var(--t-xs); font-weight: 700; }
+.now-handback-title { margin: 0; color: var(--arbor-ink); font-weight: 700; }
+.now-handback-line { margin: 0; color: var(--arbor-ink); font-size: var(--t-sm); line-height: 1.45; }
+.now-handback-label { display: grid; gap: 4px; color: var(--arbor-muted); font-size: var(--t-xs); font-weight: 700; }
+.now-handback-words { inline-size: 100%; min-block-size: 4.5rem; padding: 8px 10px; border: 1px solid var(--arbor-rule); border-radius: 12px; background: var(--arbor-paper); color: var(--arbor-ink); font: inherit; font-size: var(--t-sm); resize: vertical; }
+.now-handback-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.now-handback-actions button { padding-inline: 14px; border: 1px solid var(--arbor-rule); border-radius: 12px; background: transparent; color: var(--arbor-ink); font: inherit; font-weight: 700; cursor: pointer; }
+.now-handback-save { background: var(--arbor-green-soft); color: var(--arbor-green-ink); border-color: transparent; }
+.now-handback-error { margin: 0; color: var(--arbor-ink); font-size: var(--t-sm); }
 .now-agenda-badge { flex: none; padding: 3px 8px; border-radius: 10px; background: var(--arbor-green-soft); color: var(--arbor-green-ink); font-size: var(--t-xs); font-weight: 700; white-space: nowrap; }
 .now-glance-extras { display: grid; gap: 6px; min-inline-size: 0; }
 /* Each extra that actually renders is its own agenda row; an empty sibling list (empty:hidden) adds nothing. */

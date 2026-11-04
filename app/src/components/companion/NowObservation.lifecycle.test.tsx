@@ -44,6 +44,8 @@ function setup(lang: "en" | "he" = "en") {
     // B-DATA-14: the kept-on-this-phone line reads the live connection.
     useOnline: () => true, savedOnPhoneKey: (online: boolean) => (online ? "elev.sync.savedOnPhoneSending" : "elev.sync.savedOnPhone"),
     useNowClock: () => new Date("2026-10-10T12:00:00Z"), useNowRecord: () => ({}), useChildCollection: () => ({ items: [] }), activeProgramWeek: () => null, leadPlan: () => null, recordNight: (d: any) => d, unrecordNight: (d: any) => d, nightMomentText: () => "", NowPlanLead: "plan-lead",
+    // B-PROG-16: the handback stays unmounted in this harness (the flag is off).
+    programSharedObjectOn: () => false, ProgramBookHandback: () => null,
     useNowLoop: () => ({ plan: { order: [] }, blockNotices: [], evening: false, rhythm: {} }), useLastVisit: () => ({}), useLifecycleMoment: () => ({}), useCompanionOffer: () => ({}),
     availableHardMomentCards: () => [], ageMonthsFromProfile: () => 48, formatChildAge: () => "", childPicture: () => ({}), trackCompanionPlaceOpen: vi.fn(), markPracticeShown: vi.fn(), trackActionOffered: vi.fn(),
     Avatar: "avatar", Icon: "icon", PrimaryMove: "primary-move", Receipt: "receipt", UrgentSupport: "urgent-support", NowRecommendation: "recommendation", NowAgendaExtras: "agenda-extras", NowNoticeExtras: "notice-extras", NowWhatChangedLines: "what-changed-lines", BrandChip: "brand-chip", NowNoticeBlock: "notice", NowTonightPointer: "tonight-pointer", TOGETHER_ART: {},

@@ -22,6 +22,8 @@ const OWNS_FAILURE = [
   "components/companion/TogetherView.tsx",
   "components/kidmode/KidExitRecap.tsx",
   "components/overview/QuickLogModal.tsx",
+  // B-PROG-16: the handback keeps the draft and shows its own "didn't save" line.
+  "components/program/ProgramBookHandback.tsx",
 ];
 const SEAM_TOASTS = [
   // Tonight's "What happened?" on Now (parity 9 Oct): TonightFlow has no inline error.

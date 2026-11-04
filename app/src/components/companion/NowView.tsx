@@ -8,6 +8,8 @@ import { useTodaysFocus, type Focus } from "../../hooks/useTodaysFocus";
 import { useLastVisit } from "../../hooks/useLastVisit";
 import { activeProgramWeek } from "../../lib/programs/enrolment";
 import { weekLessonDoor } from "../../lib/programs/weekLesson";
+import { programSharedObjectOn } from "../../lib/programs/sharedObject";
+import ProgramBookHandback from "../program/ProgramBookHandback";
 import { readLearnReadIds } from "../../learn/learnReadState";
 import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 import NowPlanLead from "../plans/NowPlanLead";
@@ -458,6 +460,8 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
           {programWeeks > 0 && <span className="now-agenda-badge" data-testid="now-program-week">{copy.programWeekOf(program.week, Math.max(program.week, programWeeks))}</span>}
           <Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
         </button>}
+        {/* B-PROG-16: next-day handback of the week's one shared book. Dark until the pilot flag. */}
+        {programSharedObjectOn() && <ProgramBookHandback />}
         {/* B-PROG-14: "This week's idea" — the program week's one Learn read, opened through the Learn deep link, shown until it is read. */}
         {weekLesson && <button type="button" className="now-weekly-door now-week-lesson" data-testid="now-week-lesson" onClick={() => requestLearnRead({ cardId: weekLesson.id, source: "now-week-lesson" })}>
           <BrandChip icon="lightbulb" tone="green" shape="leaf" /><span><b>{copy.weekIdea}</b><small dir="auto">{weekLesson.title[lang]}</small></span>
