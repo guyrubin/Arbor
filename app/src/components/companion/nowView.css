@@ -291,6 +291,16 @@
 .now-glance { display: flex; flex-direction: column; padding: 6px 16px; }
 .now-glance > .now-kicker { padding: 10px 4px 2px; }
 .now-page .now-glance .now-weekly-door { min-block-size: 60px; margin: 0; padding: 12px 4px; border: 0; border-block-end: 1px solid var(--arbor-rule); border-radius: 0; background: transparent; box-shadow: none; }
+/* B-PROG-14: the week's idea, four lines. One object, one move when a read exists. */
+.now-week-brief { padding: 12px 4px 4px; border-block-end: 1px solid var(--arbor-rule); }
+.now-week-brief-head { display: flex; align-items: center; gap: 12px; min-block-size: 44px; }
+.now-week-brief-head h3 { margin: 0; font-size: var(--t-sm); font-weight: 600; color: var(--arbor-ink); }
+.now-week-brief dl { margin: 4px 0 0; }
+.now-week-brief dl > div { margin-block-start: 10px; }
+.now-week-brief dt { font-size: var(--t-sm); font-weight: 600; color: var(--arbor-muted); }
+.now-week-brief dd { margin: 2px 0 0; font-size: var(--t-base); line-height: 1.45; color: var(--arbor-ink); }
+.now-page .now-glance .now-week-brief .now-weekly-door { border: 0; padding-inline: 0; }
+.now-week-brief-open > span { flex: 1; min-inline-size: 0; }
 .now-page .now-glance > button:last-child { border-block-end: 0; }
 
 @container now (max-width: 860px) {

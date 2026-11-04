@@ -32,6 +32,11 @@ export const NOW_COPY = {
     programLabel: "Your chosen program",
     /** B-PROG-14: the program week's one Learn read (the door's label; the read's title is its line). */
     weekIdea: "This week’s idea",
+    /** B-PROG-14: the four lines of that idea (dark until B-GA-02). Words reuse `say`. */
+    weekExample: "For example",
+    weekWhy: "Why this week",
+    weekFallback: "If that doesn’t fit",
+    weekOpenRead: "Open the longer read",
     curatedWhy: "A library idea for this age. Choose what fits your day.",
     goalsWhy: "Selected for a focus you chose, from the activity library.",
     momentsWhy: "Selected for an area in your recent notes, from the activity library.",
@@ -164,6 +169,10 @@ export const NOW_COPY = {
     programWhy: (week: number) => `שבוע ${week} בתוכנית שבחרתם. הצעד הבא מחכה לזמן שמתאים לכם.`,
     programLabel: "התוכנית שבחרתם",
     weekIdea: "הרעיון של השבוע",
+    weekExample: "למשל",
+    weekWhy: "למה השבוע",
+    weekFallback: "אם זה לא מתאים",
+    weekOpenRead: "לפתוח את הקריאה המלאה",
     curatedWhy: "רעיון מהספרייה שמתאים לגיל. בוחרים מה שמתאים ליום שלכם.",
     goalsWhy: "נבחר מתוך הספרייה לפי תחום שבחרתם להתמקד בו.",
     momentsWhy: "נבחר מתוך הספרייה לפי תחום שעולה ברגעים האחרונים שתיעדתם.",

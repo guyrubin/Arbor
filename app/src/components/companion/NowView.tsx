@@ -7,7 +7,9 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { useTodaysFocus, type Focus } from "../../hooks/useTodaysFocus";
 import { useLastVisit } from "../../hooks/useLastVisit";
 import { activeProgramWeek } from "../../lib/programs/enrolment";
-import { weekLessonDoor } from "../../lib/programs/weekLesson";
+import { programWeekLesson, weekLessonDoor } from "../../lib/programs/weekLesson";
+import { programWeekLessonOn, weekLessonBrief } from "../../lib/programs/weekLessonBrief";
+import WeekLessonCard from "./WeekLessonCard";
 import { programSharedObjectOn } from "../../lib/programs/sharedObject";
 import ProgramBookHandback from "../program/ProgramBookHandback";
 import { readLearnReadIds } from "../../learn/learnReadState";
@@ -143,6 +145,10 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const programWeeks = Array.isArray(program?.program.weeks) ? program.program.weeks.length : 0;
   // B-PROG-14: the week's one Learn read, until the parent opens it (their own read state, per child).
   const weekLesson = useMemo(() => (program ? weekLessonDoor(program.content, readLearnReadIds(childProfile.id)) : null), [program, childProfile.id]);
+  // The four-line face is dark until B-GA-02. A week with no Learn read still shows it; a read week hides once the parent opens the read.
+  const namedLesson = program ? programWeekLesson(program.content) : null;
+  const lessonFace = program && programWeekLessonOn() ? weekLessonBrief(program.program.id, program.content) : null;
+  const showLessonFace = !!lessonFace && (!namedLesson || !!weekLesson);
   // B-TODAY-37: "Record a moment" on an older question asks Now for THAT question's form.
   const observeId = useHashQuery().get("observe");
   const action = useMemo(() => requestedObservation(actionLoop, observeId) ?? nextChosenAction(actionLoop, topic?.id), [actionLoop, observeId, topic?.id]);
@@ -462,8 +468,16 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
         </button>}
         {/* B-PROG-16: next-day handback of the week's one shared book. Dark until the pilot flag. */}
         {programSharedObjectOn() && <ProgramBookHandback />}
-        {/* B-PROG-14: "This week's idea" — the program week's one Learn read, opened through the Learn deep link, shown until it is read. */}
-        {weekLesson && <button type="button" className="now-weekly-door now-week-lesson" data-testid="now-week-lesson" onClick={() => requestLearnRead({ cardId: weekLesson.id, source: "now-week-lesson" })}>
+        {/* B-PROG-14: "This week's idea". Flag off: the title door. Flag on: example, words, reason, fallback, and the longer read when this week has one. */}
+        {showLessonFace && lessonFace ? (
+          <WeekLessonCard
+            face={lessonFace}
+            lang={lang}
+            gender={childProfile.gender}
+            readTitle={weekLesson ? weekLesson.title[lang] : undefined}
+            onOpen={weekLesson ? () => requestLearnRead({ cardId: weekLesson.id, source: "now-week-lesson" }) : undefined}
+          />
+        ) : weekLesson && <button type="button" className="now-weekly-door now-week-lesson" data-testid="now-week-lesson" onClick={() => requestLearnRead({ cardId: weekLesson.id, source: "now-week-lesson" })}>
           <BrandChip icon="lightbulb" tone="green" shape="leaf" /><span><b>{copy.weekIdea}</b><small dir="auto">{weekLesson.title[lang]}</small></span>
           <Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
         </button>}

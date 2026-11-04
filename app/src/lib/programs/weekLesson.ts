@@ -12,6 +12,9 @@
  *
  * Fails quiet: a week with no lesson, or a lesson the catalogue no longer
  * carries (withdrawn, an expired pilot), shows no door — never a dead one.
+ *
+ * The four lines on that door (example, words, reason, fallback) are
+ * weekLessonBrief. That face is dark until B-GA-02 signs the mapping.
  */
 import type { ProgramWeek } from "../../content/programs/types";
 import { learnCardById } from "../../learn/learnCards";

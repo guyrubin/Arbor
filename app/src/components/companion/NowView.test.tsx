@@ -5,6 +5,9 @@ import type { ActionLoopEntry } from "../../actionLoop/model";
 import type { Focus } from "../../hooks/useTodaysFocus";
 import { NOW_COPY } from "./nowViewCopy";
 import { learnCardById } from "../../learn/learnCards";
+import { TALK_TOGETHER } from "../../content/programs/talkTogether";
+import { PROGRAM_WEEK_LESSON_FLAG } from "../../lib/programs/weekLessonBrief";
+import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 
 const KNOWN_AGE = { id: "child-a", name: "Noa", age: 4, interests: [], activeGoals: [] };
 
@@ -17,7 +20,7 @@ const state = vi.hoisted(() => ({
   evening: false, moreProps: null as any, readerProps: null as any,
   activeFamilyTopic: null as null | { id: string; title: string },
   focus: null as Focus | null,
-  program: null as null | { week: number; program: { shelf: string }; enrolment: Record<string, string>; content: { skill: { en: string; he: string }; watchFor: string[]; lesson?: string } },
+  program: null as null | { week: number; program: { id?: string; shelf: string; weeks?: unknown }; enrolment: Record<string, string>; content: { n?: number; skill: { en: string; he: string }; watchFor?: string[]; lesson?: string; practices?: string[]; coachScripts?: { id: string; text: { en: string; he: string } }[] } },
   openCaptureSheet: vi.fn(), seedCoach: vi.fn(), setActiveTab: vi.fn(),
   openHardMomentNow: vi.fn(), saveTodayOutcome: vi.fn(async () => {}),
   acceptTodayAction: vi.fn(async () => {}), focusCalls: vi.fn(), recordPracticeDose: vi.fn(), noPractice: false, noLibrary: false,
@@ -154,6 +157,50 @@ describe("Now leads with the milestone loop (parity 9 Oct)", () => {
     expect(renderToStaticMarkup(<NowView />)).not.toContain('data-testid="now-week-lesson"');
     state.program = null;
     expect(renderToStaticMarkup(<NowView />)).not.toContain('data-testid="now-week-lesson"');
+  });
+  it("B-PROG-14: with the pilot flag, the door shows example, words, reason and fallback, EN + HE, and weeks without a read have no dead link", () => {
+    const store = new Map<string, string>([[PROGRAM_WEEK_LESSON_FLAG, "1"]]);
+    vi.stubGlobal("localStorage", { getItem: (key: string) => store.get(key) ?? null, setItem: () => {} });
+    const sayBack = TALK_TOGETHER.weeks.find((week) => week.n === 4)!;
+    const serve = TALK_TOGETHER.weeks.find((week) => week.n === 3)!;
+    state.program = { week: 4, program: TALK_TOGETHER, enrolment: { programId: "talk-together", startedAt: "2026-10-05T00:00:00Z" }, content: sayBack };
+    for (const lang of ["en", "he"] as const) {
+      state.lang = lang;
+      state.childProfile = { ...KNOWN_AGE, gender: lang === "he" ? "girl" : undefined };
+      const html = renderToStaticMarkup(<NowView />);
+      const copy = NOW_COPY[lang];
+      expect(html).toContain('data-testid="now-week-lesson"');
+      expect(html).not.toContain('data-testid="now-week-lesson-open"');
+      expect(html).toContain(copy.weekIdea);
+      expect(html).toContain(copy.weekExample);
+      expect(html).toContain(copy.say);
+      expect(html).toContain(copy.weekWhy);
+      expect(html).toContain(copy.weekFallback);
+      const face = lang === "he"
+        ? resolveHebrewSlash(sayBack.skill.he, "girl")
+        : "A tat? Yes, a cat!";
+      expect(html).toContain(face);
+      expect(html).not.toContain("הילד/ה");
+      expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+    }
+    state.lang = "en";
+    state.childProfile = { ...KNOWN_AGE };
+    state.program = { week: 3, program: TALK_TOGETHER, enrolment: { programId: "talk-together", startedAt: "2026-10-05T00:00:00Z" }, content: serve };
+    state.buttons = [];
+    const open = renderToStaticMarkup(<NowView />);
+    expect(open).toContain('data-testid="now-week-lesson-open"');
+    expect(open).toContain("Tell me about the cat you saw");
+    expect(open).toContain(learnCardById("serve-and-return")!.title.en);
+    state.buttons.find((item) => item["data-testid"] === "now-week-lesson-open")!.onClick?.();
+    expect(state.requestLearnRead).toHaveBeenCalledWith({ cardId: "serve-and-return", source: "now-week-lesson" });
+    state.readIds = ["serve-and-return"];
+    expect(renderToStaticMarkup(<NowView />)).not.toContain('data-testid="now-week-lesson"');
+    store.delete(PROGRAM_WEEK_LESSON_FLAG);
+    state.readIds = [];
+    const live = renderToStaticMarkup(<NowView />);
+    expect(live).toContain('data-testid="now-week-lesson"');
+    expect(live).not.toContain(NOW_COPY.en.weekExample);
+    expect(live).toContain(learnCardById("serve-and-return")!.title.en);
   });
   it("Tonight's pointer is a line under the morning practice", () => {
     renderToStaticMarkup(<NowView />);
