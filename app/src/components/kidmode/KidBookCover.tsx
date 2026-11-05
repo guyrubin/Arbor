@@ -80,12 +80,19 @@ export function KidBookTitleCard({ title, pack, hero, heroSize = 44, titleSize =
   );
 }
 
+/** Only the actual artwork URL that finished loading may fade in. A recycled
+ * tile for another book or theme must start on its honest title-card fallback. */
+export function isKidCoverLoaded(currentArtSrc: string | null, loadedArtSrc: string | null): boolean {
+  return currentArtSrc !== null && currentArtSrc === loadedArtSrc;
+}
+
 export function KidBookCover({ storyId, title, pack, theme, read, readLabel, onOpen, layout, eager = false, hero }: KidBookCoverProps) {
   const art = storyCoverArt(theme, storyId);
   // B-KID-122: until the picture has loaded the slot shows the book's own
   // title card (pack tint + title, tokens only), and the picture fades in over
   // it (no fade under reduced motion). The slot's 3:4 box never changes size.
-  const [loaded, setLoaded] = useState(false);
+  const [loadedArt, setLoadedArt] = useState<string | null>(null);
+  const loaded = isKidCoverLoaded(art?.src480 ?? null, loadedArt);
   return (
     <button
       type="button"
@@ -122,8 +129,8 @@ export function KidBookCover({ storyId, title, pack, theme, read, readLabel, onO
             loading={eager ? "eager" : "lazy"}
             decoding="async"
             data-kid-book-img={loaded ? "loaded" : "pending"}
-            ref={(el) => { if (el && el.complete && el.naturalWidth > 0 && !loaded) setLoaded(true); }}
-            onLoad={() => setLoaded(true)}
+            ref={(el) => { if (el && el.complete && el.naturalWidth > 0 && !loaded) setLoadedArt(art.src480); }}
+            onLoad={() => setLoadedArt(art.src480)}
             className="absolute inset-0 h-full w-full object-cover transition-opacity duration-300 motion-reduce:transition-none"
             style={{ objectPosition: art.objectPosition, opacity: loaded ? 1 : 0 }}
           />
