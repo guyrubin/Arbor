@@ -21,7 +21,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { statueShareAllowed } from "./games/sneakFreeze/statueShareGate";
-import { dismissSneakHandBack, handBackMatchesScope, playRealKey, reachedKey, useSneakHandBack } from "./games/sneakFreeze/handBack";
+import { dismissSneakHandBack, handBackMatchesScope, latestVisitStatue, playRealKey, reachedKey, useSneakHandBack } from "./games/sneakFreeze/handBack";
 import { readStatuePictures } from "./games/sneakFreeze/statueStore";
 import { shareImageFile } from "../../lib/share";
 import { releaseChildLikeness } from "../../lib/likenessCeremony";
@@ -110,7 +110,7 @@ export default function SneakHandBackCard() {
   // Retire rather than hide a stale card: A→B→A cannot resurrect it.
   useEffect(() => { if (card && !current) dismissSneakHandBack(); }, [card, current]);
   if (!card || !current) return null;
-  const picture = readStatuePictures(card.childId)[0]?.url ?? null;
+  const picture = latestVisitStatue(readStatuePictures(card.childId), card.sessionStartMs, Date.now())?.url ?? null;
   const reachedLine = t(reachedKey(card.name, card.gender, card.reached), { name: card.name, count: card.reached });
   const keep = card.keepLine ?? reachedLine;
   const shareAllowed = statueShareAllowed(import.meta.env.DEV);
