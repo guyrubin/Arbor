@@ -109,3 +109,34 @@ gcloud run services update-traffic arbor-api --to-revisions <PREV_REVISION>=100 
   --region europe-west4 --project <PROD_PROJECT_ID>
 firebase hosting:rollback --project <PROD_PROJECT_ID>
 ```
+
+## 6. Checkout environment and recovery
+
+`BILLING_WEB_PURCHASE_LINK` is bound from Secret Manager
+`arbor-billing-web-purchase-link:latest`. A RevenueCat token is opaque: a link
+without `/sandbox/` can still open a test-only checkout and reject real cards.
+Never derive a production link by editing a sandbox URL.
+
+Copy the **Production** URL from RevenueCat's Purchase Link share dialog for
+Arbor's live billing configuration. If Production is unavailable, the project
+owner must select or connect a Stripe account with live-mode access first.
+Keep the existing Plus packages, prices, currencies, and entitlement mapping.
+Store only the base link, without a customer's uid or email, as a new version
+of the existing secret, then run the normal candidate and promotion workflow.
+Existing Cloud Run instances do not reload environment secrets in place.
+
+The checkout route and `/api/health` inspect RevenueCat's public hosted-client
+configuration, with a bounded cached lookup that sends no customer data. The
+provider's public SDK key identifies the environment; neither the key nor the
+link is returned by health. The hosted-client endpoint is isolated in
+`checkoutConfiguration.ts` because it is not a versioned management API.
+Missing, changed, or unavailable metadata reports `unverified` and refuses a
+new production checkout with HTTP 503; the rest of Arbor remains available.
+Production promotion requires `checkoutMode: "live"`. Legacy Stripe fallback
+links without provider verification also remain `unverified`.
+
+After deployment, open both Plus cadences from a non-comped account and verify
+the intended currency and price and the absence of the sandbox banner. A live
+checkout page is not proof of a completed payment: confirm any owner-authorized
+transaction through the production webhook, entitlement, and unlocked account.
+Sandbox web events must continue to be ignored in production.

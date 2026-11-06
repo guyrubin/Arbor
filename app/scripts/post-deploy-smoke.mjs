@@ -60,11 +60,10 @@ export async function verifyCandidate(host, expectedVersion, fetcher = fetch) {
   if (payload.env === "prod" && payload.checkout !== true) {
     throw new Error("Production candidate has no checkout configured (BILLING_WEB_PURCHASE_LINK)");
   }
-  // A sandbox link takes test cards and declines real ones, and the prod
-  // webhook ignores its purchases, so nobody can pay. Prod read "live" on
-  // 21 Oct 2026 (d9f16944), so a candidate that does not is refused.
-  if (payload.env === "prod" && payload.checkoutMode === "sandbox") {
-    throw new Error("Production candidate's checkout is a sandbox link; real cards are declined (BILLING_WEB_PURCHASE_LINK)");
+  // Only provider-verified live checkout may pass. Missing/unknown metadata
+  // and lookup failures must not repeat the old URL-shape false positive.
+  if (payload.env === "prod" && payload.checkoutMode !== "live") {
+    throw new Error("Production candidate's checkout is not verified live (BILLING_WEB_PURCHASE_LINK)");
   }
   return payload.version;
 }
