@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { translate } from "../../../../lib/i18n";
 import { dataUrlToBlob, shareImageFile } from "../../../../lib/share";
 import { SneakHandBackView } from "../../SneakHandBackCard";
-import { dismissSneakHandBack, handBackMatchesScope, offerSneakHandBack, playRealKey, reachedKey, reachedTheCatToday } from "./handBack";
+import { dismissSneakHandBack, handBackMatchesScope, latestVisitStatue, offerSneakHandBack, playRealKey, reachedKey, reachedTheCatToday } from "./handBack";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (...p: string[]) => readFileSync(path.join(here, ...p), "utf8");
@@ -143,14 +143,14 @@ describe("wiring: offered on exit, shown once Kid Mode is closed, memory only", 
     const cardSrc = read("..", "..", "SneakHandBackCard.tsx");
     expect(cardSrc).toContain("onKeep={async () => { if (await addMoment(keep)) dismissSneakHandBack(); }}");
     expect(cardSrc).not.toMatch(/["']kid\./); // parent register copy only
-    expect(() => offerSneakHandBack({ scope: JSON.stringify(["owner-a", "c1"]), childId: "c1", name: "Dylan", reached: 3, keepLine: null })).not.toThrow();
+    expect(() => offerSneakHandBack({ scope: JSON.stringify(["owner-a", "c1"]), sessionStartMs: NOW.getTime(), childId: "c1", name: "Dylan", reached: 3, keepLine: null })).not.toThrow();
   });
 });
 
 
 describe("P0 account and child isolation — pending hand-back", () => {
   const scope = (owner: string, child: string) => JSON.stringify([owner, child]);
-  const oldCard = { scope: scope("owner-a", "same-child"), childId: "same-child", name: "Ari", reached: 1, keepLine: null };
+  const oldCard = { scope: scope("owner-a", "same-child"), sessionStartMs: NOW.getTime(), childId: "same-child", name: "Ari", reached: 1, keepLine: null };
 
   it("does not show a previous account's card with a colliding child id", () => {
     expect(handBackMatchesScope(oldCard, scope("owner-a", "same-child"))).toBe(true);
@@ -164,12 +164,29 @@ describe("P0 account and child isolation — pending hand-back", () => {
     expect(src).toContain("handBackMatchesScope(card, liveScope)");
     expect(src).toContain("if (!card || !current) return null;");
     expect(src).toContain("if (card && !current) dismissSneakHandBack()");
-    expect(src.indexOf("if (!card || !current) return null;")).toBeLessThan(src.indexOf("const picture = readStatuePictures"));
+    expect(src.indexOf("if (!card || !current) return null;")).toBeLessThan(src.indexOf("const picture = latestVisitStatue"));
+    expect(src).toContain("latestVisitStatue(readStatuePictures(card.childId), card.sessionStartMs, Date.now())");
   });
 
   it("exit records the live scoped account and child, never merely a child id", () => {
     const src = read("..", "..", "KidExitRecap.tsx");
-    expect(src).toContain('offerSneakHandBack({ scope: scope ?? "", childId: childProfile.id');
+    expect(src).toContain('offerSneakHandBack({ scope: scope ?? "", sessionStartMs: openedAtRef.current, childId: childProfile.id');
     expect(src).toContain("recapScopeRef.current.mayOffer()");
+  });
+});
+
+
+describe("P0 stale device-local statue egress", () => {
+  const start = new Date(2026, 9, 6, 17, 50).getTime();
+  const rows = [
+    { at: new Date(2026, 9, 6, 17, 30).toISOString(), url: "old-account-photo" },
+    { at: "invalid", url: "broken" },
+    { at: new Date(2026, 9, 6, 17, 55).toISOString(), url: "new-session-photo" },
+  ];
+  it("will not use an old owner's cached photo as the next session's hand-back", () => {
+    expect(latestVisitStatue(rows, start, NOW.getTime())?.url).toBe("new-session-photo");
+    expect(latestVisitStatue(rows.slice(0, 2), start, NOW.getTime())).toBeNull();
+    expect(latestVisitStatue(rows, Number.NaN, NOW.getTime())).toBeNull();
+    expect(latestVisitStatue([{ at: new Date(2026, 9, 6, 18, 5).toISOString(), url: "future" }], start, NOW.getTime())).toBeNull();
   });
 });
