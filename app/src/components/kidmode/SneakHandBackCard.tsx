@@ -16,11 +16,12 @@
  * FIREWALL: no percentage, no level or band word, no catch or miss count, no
  * coloured verdict chip, no arrow or trend. Calm parent tokens, not kid toys.
  */
-import React from "react";
+import React, { useEffect } from "react";
 import { useArbor } from "../../context/ArborContext";
+import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { statueShareAllowed } from "./games/sneakFreeze/statueShareGate";
-import { dismissSneakHandBack, playRealKey, reachedKey, useSneakHandBack } from "./games/sneakFreeze/handBack";
+import { dismissSneakHandBack, handBackMatchesScope, latestVisitStatue, playRealKey, reachedKey, useSneakHandBack } from "./games/sneakFreeze/handBack";
 import { readStatuePictures } from "./games/sneakFreeze/statueStore";
 import { shareImageFile } from "../../lib/share";
 import { releaseChildLikeness } from "../../lib/likenessCeremony";
@@ -98,9 +99,18 @@ export function SneakHandBackView(p: SneakHandBackViewProps) {
 export default function SneakHandBackCard() {
   const card = useSneakHandBack();
   const { addMoment, childProfile } = useArbor();
+  const { user, firebaseEnabled, loading } = useAuth();
   const { t } = useLanguage();
-  if (!card || card.childId !== childProfile.id) return null;
-  const picture = readStatuePictures(card.childId)[0]?.url ?? null;
+  // Compare during render: an account switch with a colliding child id must
+  // never paint the previous parent's name or device-local statue picture.
+  const liveScope = firebaseEnabled
+    ? (loading || !user ? null : JSON.stringify([user.uid, childProfile.id]))
+    : JSON.stringify(["local-sandbox", childProfile.id]);
+  const current = handBackMatchesScope(card, liveScope) && card?.childId === childProfile.id;
+  // Retire rather than hide a stale card: A→B→A cannot resurrect it.
+  useEffect(() => { if (card && !current) dismissSneakHandBack(); }, [card, current]);
+  if (!card || !current) return null;
+  const picture = latestVisitStatue(readStatuePictures(card.childId), card.sessionStartMs, Date.now())?.url ?? null;
   const reachedLine = t(reachedKey(card.name, card.gender, card.reached), { name: card.name, count: card.reached });
   const keep = card.keepLine ?? reachedLine;
   const shareAllowed = statueShareAllowed(import.meta.env.DEV);
