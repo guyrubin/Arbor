@@ -44,6 +44,8 @@ export function reachedTheCatToday(
 export interface SneakHandBack {
   /** The exact account+child scope at exit; ephemeral, never written or shared. */
   scope: string;
+  /** Current Kid Mode visit only: prevents an old on-device picture resurfacing. */
+  sessionStartMs: number;
   childId: string;
   /** First name ("" when unknown). */
   name: string;
@@ -59,6 +61,19 @@ export interface SneakHandBack {
  *  when two accounts happen to use the same child ID. Unknown auth fails shut. */
 export function handBackMatchesScope(card: SneakHandBack | null, liveScope: string | null): boolean {
   return !!card && !!liveScope && card.scope === liveScope;
+}
+
+/** The card can show only a picture created during its own visit. The
+ *  device-local album is older child-ID-keyed storage, so never pick its first
+ *  row without checking the visit window (owner isolation migration remains
+ *  a separate B-KID-143 acceptance gate). */
+export function latestVisitStatue<T extends { at: string }>(pictures: readonly T[], sinceMs: number, nowMs: number): T | null {
+  if (!Number.isFinite(sinceMs) || !Number.isFinite(nowMs)) return null;
+  for (const p of pictures) {
+    const ms = typeof p?.at === "string" ? Date.parse(p.at) : NaN;
+    if (Number.isFinite(ms) && ms >= sinceMs && ms <= nowMs) return p;
+  }
+  return null;
 }
 
 let pending: SneakHandBack | null = null;
