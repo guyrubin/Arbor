@@ -112,7 +112,7 @@ describe("hosted checkout environment verification", () => {
 
   it("settles after four seconds even when the fetcher never responds", async () => {
     vi.useFakeTimers();
-    const fetcher = vi.fn<typeof fetch>(() => new Promise(() => undefined));
+    const fetcher = vi.fn<typeof fetch>(() => new Promise<Response>(() => undefined));
     const result = verifyCheckoutLink(LINK, fetcher);
     await vi.advanceTimersByTimeAsync(4000);
     expect(await result).toBe("unverified");
@@ -134,7 +134,7 @@ describe("hosted checkout environment verification", () => {
 describe("checkout verification cache", () => {
   it("deduplicates concurrent probes and normalizes harmless base-link variations", async () => {
     let resolve!: (response: Response) => void;
-    const fetcher = vi.fn<typeof fetch>(() => new Promise((done) => { resolve = done; }));
+    const fetcher = vi.fn<typeof fetch>(() => new Promise<Response>((done) => { resolve = done; }));
     const first = verifyCheckoutLink(LINK, fetcher);
     const second = verifyCheckoutLink(`${LINK}/?currency=ILS`, fetcher);
     expect(fetcher).toHaveBeenCalledOnce();
@@ -186,7 +186,7 @@ describe("checkout verification cache", () => {
 
   it("bounds simultaneous probes while retaining deduplication of active requests", async () => {
     vi.useFakeTimers();
-    const fetcher = vi.fn<typeof fetch>(() => new Promise(() => undefined));
+    const fetcher = vi.fn<typeof fetch>(() => new Promise<Response>(() => undefined));
     const requests = Array.from({ length: 32 }, (_, i) => verifyCheckoutLink(`${LINK}${i}`, fetcher));
     expect(await verifyCheckoutLink(`${LINK}overflow`, fetcher)).toBe("unverified");
     const duplicate = verifyCheckoutLink(`${LINK}0`, fetcher);
