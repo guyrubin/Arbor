@@ -116,6 +116,7 @@ import { dispatchSpeechSynthesis, screenAndSynthesizeSpeech, synthesizeSpeech, t
 import { AiProviderError } from "../ai/capabilities/contracts.js";
 import type { CapabilityRegistry } from "../ai/capabilities/registry.js";
 import { SOLD_PLANS, billingCheckoutUrl, offeredCurrencies } from "../server/billing.js";
+import { verifyCheckoutLink } from "../server/checkoutConfiguration.js";
 import { webManagementUrl } from "../server/revenuecatPortal.js";
 import { buildLiveSystemInstruction, liveSpeechConfig, SPOKEN_COACH_PERSONA, spokenLanguageDirective } from "../lib/livePersona.js";
 import { countAnalyzeLogs, toAnalyzeLogInputs } from "../lib/analyzeLogPayload.js";
@@ -4243,6 +4244,20 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
         res.status(503).json({ error: "Checkout not configured", details: `No checkout link set for ${plan} ${cadence}.` });
         return;
       }
+      // A valid-looking RevenueCat token can still open a test-only Stripe
+      // account. Verify the provider configuration before forwarding a parent;
+      // never send their uid or email to the configuration lookup.
+      if (config.arborEnv === "prod") {
+        const base = config.billingWebPurchaseLink || config.billingCheckoutUrls[`${plan}_${cadence}`];
+        const mode = await verifyCheckoutLink(base);
+        if (mode !== "live") {
+          logger.warn("Production checkout unavailable", { mode, plan, cadence });
+          res.set("Cache-Control", "no-store");
+          res.status(503).json({ error: "Checkout unavailable", code: "checkout_unavailable" });
+          return;
+        }
+      }
+      res.set("Cache-Control", "no-store");
       res.json({ url });
     } catch (error: any) {
       logger.error("Arbor Billing Checkout Error", error, { requestId: requestIdOf(req) });

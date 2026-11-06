@@ -40,13 +40,11 @@ describe("candidate exact revision gate", () => {
     ["prod candidate without checkout", () => health({ status: "ok", version: SHA, env: "prod", checkout: false })],
     ["prod candidate that does not report checkout", () => health({ status: "ok", version: SHA, env: "prod" })],
     ["prod candidate whose checkout is a sandbox link", () => health({ status: "ok", version: SHA, env: "prod", checkout: true, checkoutMode: "sandbox" })],
+    ["prod candidate whose checkout mode is missing", () => health({ status: "ok", version: SHA, env: "prod", checkout: true })],
+    ["prod candidate whose provider could not be verified", () => health({ status: "ok", version: SHA, env: "prod", checkout: true, checkoutMode: "unverified" })],
+    ["prod candidate with an invalid checkout URL", () => health({ status: "ok", version: SHA, env: "prod", checkout: true, checkoutMode: "none" })],
   ] as const)("blocks promotion for %s even when the shell is live", async (_label, response) => {
     await expect(verifyCandidate("https://candidate.example", SHA, mockFetch(response()))).rejects.toThrow();
-  });
-
-  it("passes a prod candidate that reports a configured checkout", async () => {
-    const fetcher = mockFetch(health({ status: "ok", version: SHA, env: "prod", checkout: true }));
-    await expect(verifyCandidate("https://candidate.example", SHA, fetcher)).resolves.toBe(SHA);
   });
 
   it("passes a prod candidate on a live checkout, and a sandbox link outside prod", async () => {
