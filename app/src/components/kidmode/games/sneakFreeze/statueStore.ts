@@ -24,7 +24,8 @@ export interface StatuePicture {
 }
 
 /** The older child-only key is intentionally never read: it cannot prove an owner. */
-export const LEGACY_STATUES_PREFIX = "arbor.sneakFreeze.statues.";
+/** A legacy child key has the same sweepable child segment but no owner. */
+const legacyStatuesKey = (childId: string): string => `arbor.sneakFreeze.statues.${childId}`;
 
 export interface StatueScope { ownerId: string; childId: string }
 
@@ -99,7 +100,7 @@ export function purgeAllStatuePictures(storage?: Storage | null): number {
     const keys: string[] = [];
     for (let i = 0; i < store.length; i++) {
       const key = store.key(i);
-      if (key?.startsWith(LEGACY_STATUES_PREFIX)) keys.push(key);
+      if (key?.startsWith(legacyStatuesKey(""))) keys.push(key);
     }
     for (const key of keys) {
       try { store.removeItem(key); removed++; } catch { /* best effort */ }
