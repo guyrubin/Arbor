@@ -13,7 +13,7 @@
  *   grid of content written for someone else.
  * - Zero model calls: covers are static art or token title cards.
  */
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import type { ChildProfile, HeroStorySpec } from "../../types";
 import type { KidThemeId } from "../../lib/kidThemeManifest";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
@@ -21,6 +21,8 @@ import { HeroAvatar, resolveHeroUrl } from "../ui/HeroAvatar";
 import { KID_BOOK_EAGER_COUNT, KidBookCover } from "./KidBookCover";
 import KidComicsShelf from "./KidComicsShelf";
 import { kidIsolate } from "./kidText";
+import { heroSheetOwnerKey, subscribeHeroSheetOwner } from "../../lib/heroSheetStore";
+import { scopedKidLibraryKey } from "./kidLibraryScope";
 import type { KidBook } from "./kidBooks";
 
 export interface KidLibraryProps {
@@ -33,7 +35,18 @@ export interface KidLibraryProps {
   onOpen: (story: HeroStorySpec) => void;
 }
 
-export default function KidLibrary({ books, theme, lang, childProfile, loadingId, onOpen }: KidLibraryProps) {
+export default function KidLibrary(props: KidLibraryProps) {
+  // Remount the reading surface on every owner/child change. Merely keying
+  // the nested shelf is insufficient: its "reading" callback can leave the
+  // outer library grid hidden when a parent switches children or accounts.
+  // A -> B -> A must also start with a closed reader, never reused old state.
+  const owner = useSyncExternalStore(subscribeHeroSheetOwner, heroSheetOwnerKey, heroSheetOwnerKey);
+  const scope = scopedKidLibraryKey(owner, props.childProfile.id);
+  return <ScopedKidLibrary key={scope} {...props} owner={owner} scope={scope} />;
+}
+
+function ScopedKidLibrary({ books, theme, lang, childProfile, loadingId, onOpen, owner, scope }: KidLibraryProps & { owner: string; scope: string }) {
+  // This state belongs to exactly one owner/child lifetime, not just a child id.
   // A saved comic open in the reader takes the whole surface.
   const [readingComic, setReadingComic] = useState(false);
   // B-BOOK-26: the child's own approved portrait on every title-card cover (never a shared likeness).
@@ -66,7 +79,7 @@ export default function KidLibrary({ books, theme, lang, childProfile, loadingId
         </div>
       ))}
       {/* "Made before": the saved comics, after the books, only those that open on this device. */}
-      <KidComicsShelf key={childProfile.id} childProfile={childProfile} variant="madeBefore" onReadingChange={setReadingComic} />
+      {owner !== "signed-out" && <KidComicsShelf key={scope} authKey={owner} childProfile={childProfile} variant="madeBefore" onReadingChange={setReadingComic} />}
     </div>
   );
 }
