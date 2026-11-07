@@ -23,8 +23,20 @@ export interface StatuePicture {
   variant?: number;
 }
 
-export function statuesKey(childId: string): string {
-  return `arbor.sneakFreeze.statues.${childId}`;
+/** The older child-only key is intentionally never read: it cannot prove an owner. */
+/** A legacy child key has the same sweepable child segment but no owner. */
+const legacyStatuesKey = (childId: string): string => `arbor.sneakFreeze.statues.${childId}`;
+
+export interface StatueScope { ownerId: string; childId: string }
+
+/** Owner + child are both required. The child stays the final dot-delimited
+ * segment so existing child-deletion sweeps cover this device copy. */
+export function statuesKey(scope: StatueScope | null | undefined): string | null {
+  if (!scope || typeof scope.ownerId !== "string" || !scope.ownerId.trim()
+    || typeof scope.childId !== "string" || !scope.childId.trim()) return null;
+  // An owner id containing a dot must not blur the namespace boundary.
+  const owner = encodeURIComponent(scope.ownerId).replace(/\./g, "%2E");
+  return `arbor.sneakFreeze.statues.v2.${owner}.${scope.childId}`;
 }
 
 type Store = Pick<Storage, "getItem" | "setItem">;
@@ -38,12 +50,13 @@ function storeOf(storage?: Store | null): Store | null {
   }
 }
 
-export function readStatuePictures(childId: string, storage?: Store | null): StatuePicture[] {
+export function readStatuePictures(scope: StatueScope | null, storage?: Store | null): StatuePicture[] {
   try {
-    const raw = childId ? storeOf(storage)?.getItem(statuesKey(childId)) : null;
+    const key = statuesKey(scope);
+    const raw = key ? storeOf(storage)?.getItem(key) : null;
     const list = raw ? (JSON.parse(raw) as unknown) : [];
     return Array.isArray(list)
-      ? list.filter((p): p is StatuePicture => !!p && typeof p.id === "string" && typeof p.url === "string" && p.url.startsWith("data:image/") && typeof p.at === "string")
+      ? list.filter((p): p is StatuePicture => !!p && typeof p.id === "string" && typeof p.url === "string" && p.url.startsWith("data:image/jpeg;base64,") && typeof p.at === "string")
       : [];
   } catch {
     return [];
@@ -51,19 +64,20 @@ export function readStatuePictures(childId: string, storage?: Store | null): Sta
 }
 
 /** The variant of the newest kept picture (null when none, or older pictures). */
-export function lastStatueVariant(childId: string, storage?: Store | null): number | null {
-  const v = readStatuePictures(childId, storage)[0]?.variant;
+export function lastStatueVariant(scope: StatueScope | null, storage?: Store | null): number | null {
+  const v = readStatuePictures(scope, storage)[0]?.variant;
   return typeof v === "number" && Number.isInteger(v) ? v : null;
 }
 
 /** Keep one more picture (newest first, at most 12). Returns what is kept. */
-export function keepStatuePicture(childId: string, pic: StatuePicture, storage?: Store | null): StatuePicture[] {
+export function keepStatuePicture(scope: StatueScope | null, pic: StatuePicture, storage?: Store | null): StatuePicture[] {
+  const key = statuesKey(scope);
   const store = storeOf(storage);
-  if (!childId || !store) return [];
-  let list = [pic, ...readStatuePictures(childId, store).filter((p) => p.id !== pic.id)].slice(0, STATUE_KEEP);
+  if (!key || !store || !pic.url.startsWith("data:image/jpeg;base64,")) return [];
+  let list = [pic, ...readStatuePictures(scope, store).filter((p) => p.id !== pic.id)].slice(0, STATUE_KEEP);
   while (list.length > 0) {
     try {
-      store.setItem(statuesKey(childId), JSON.stringify(list));
+      store.setItem(key, JSON.stringify(list));
       return list;
     } catch {
       // Storage full: the oldest picture makes room.
@@ -71,4 +85,26 @@ export function keepStatuePicture(childId: string, pic: StatuePicture, storage?:
     }
   }
   return [];
+}
+
+/** Sign-out scrubs current and legacy on-device artwork for every account.
+ * Legacy pictures cannot be attributed to an owner and are never migrated.
+ * Child deletion is separately covered by clearChildLocalState. */
+export function purgeAllStatuePictures(storage?: Storage | null): number {
+  let store: Storage | null = null;
+  try { store = storage === undefined ? (typeof localStorage === "undefined" ? null : localStorage) : storage; }
+  catch { return 0; }
+  if (!store) return 0;
+  let removed = 0;
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < store.length; i++) {
+      const key = store.key(i);
+      if (key?.startsWith(legacyStatuesKey(""))) keys.push(key);
+    }
+    for (const key of keys) {
+      try { store.removeItem(key); removed++; } catch { /* best effort */ }
+    }
+  } catch { /* unavailable storage */ }
+  return removed;
 }

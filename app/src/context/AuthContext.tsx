@@ -22,6 +22,7 @@ import { recordRetentionSession } from "../lib/retentionRollup";
 import { purgeAllComicPages } from "../lib/comicPageStore";
 import { purgeAllHeroRenders } from "../lib/heroRenderStore";
 import { purgeBookAssets } from "../lib/bookAssetStore";
+import { purgeAllStatuePictures } from "../components/kidmode/games/sneakFreeze/statueStore";
 import { clearPrewarmedComic } from "../lib/comicPrewarm";
 import { clearMathExit } from "../components/kidmode/parentGate";
 import { markVerifySent } from "../lib/signupNotice";
@@ -216,6 +217,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // was called here and had no call site anywhere, so on a shared tab the
     // next account's onboarding could take the previous child's comic.
     clearPrewarmedComic();
+    // The Sneak album is device-local child artwork: scrub both legacy
+    // unowned and current owner-scoped keys before account handover.
+    purgeAllStatuePictures();
     // B-GA-09 round 6: arbor.pendingErase is deliberately NOT purged here. Its
     // entries are per uid and nameless (lib/pendingErase), so the next account
     // never sees them, and the same account must find its Finish offer again

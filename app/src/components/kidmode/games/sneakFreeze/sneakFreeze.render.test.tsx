@@ -15,6 +15,10 @@ vi.mock("../../../../context/ArborContext", () => ({
   useArborOptional: () => ({ childProfile: { id: "c1", name: "Dylan", gender: "boy", age: 5 } }),
   useArbor: () => ({ childProfile: { id: "c1", name: "Dylan", gender: "boy", age: 5 } }),
 }));
+// The rendered-stage fixture has no real account; keep its synthetic auth explicit.
+vi.mock("../../../../context/AuthContext", () => ({
+  useAuth: () => ({ user: { uid: "local-sandbox" }, loading: false, firebaseEnabled: false }),
+}));
 vi.mock("../../../../lib/voice", () => ({ speakText: vi.fn(), stopVoice: vi.fn(), voiceSupported: () => true, voiceState: () => ({ speaking: false, engine: "basic" }) }));
 vi.mock("../../../../practice/usePracticeData", () => ({ usePracticeData: () => ({ events: { items: [], upsert: async () => {} } }) }));
 
