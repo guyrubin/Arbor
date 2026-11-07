@@ -175,13 +175,14 @@ describe("Kids experience visual and session contract", () => {
     expect(beat).toContain('title={t("elev.play.beat.title")}');
   });
 
-  it("B-KID-85: the read-only comics shelf lives in the kid library (child-keyed), not behind a home door", () => {
+  it("B-KID-85: the read-only comics shelf lives in the owner/child-scoped kid library, not behind a home door", () => {
     const dashboard = read("KidDashboard.tsx");
     const overlay = read("KidModeOverlay.tsx");
     const library = read("KidLibrary.tsx");
     expect(dashboard).not.toContain('onOpenSurface("comics")');
     expect(dashboard).not.toContain('tile: "hero-comics"');
-    expect(library).toContain('<KidComicsShelf key={childProfile.id} childProfile={childProfile} variant="madeBefore"');
+    expect(library).toContain("<ScopedKidLibrary key={scope}");
+    expect(library).toContain('<KidComicsShelf key={scope} authKey={owner} childProfile={childProfile} variant="madeBefore"');
     // a persisted or parent-door "comics" view still renders the full shelf
     expect(overlay).toContain("<KidComicsShelf key={childProfile.id}");
     expect(overlay).toContain('view === "comics"');
