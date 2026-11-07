@@ -27,6 +27,7 @@
  */
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useArbor } from "../../../../context/ArborContext";
+import { useAuth } from "../../../../context/AuthContext";
 import { useLanguage } from "../../../../context/LanguageContext";
 import { ageYearsFromProfile } from "../../../../lib/childAge";
 import { GameShell } from "../../game/GameShell";
@@ -424,6 +425,8 @@ export default function SneakFreeze() {
 
 function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
   const { childProfile } = useArbor();
+  const { user, loading, firebaseEnabled } = useAuth();
+  const ownerId = firebaseEnabled ? (loading ? null : user?.uid ?? null) : "local-sandbox";
   const { t, uiLang } = useLanguage();
   const lang: "en" | "he" = uiLang === "he" ? "he" : "en";
   const rtl = lang === "he";
@@ -608,11 +611,12 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
     <GameShell worldId={SNEAK_FREEZE_WORLD.worldId} title={title} fullBleed>
       {v.done && stateRef.current ? (
         <Ending
-          key={stateRef.current.seed}
+          key={JSON.stringify([ownerId, childId, stateRef.current.seed])}
           state={stateRef.current}
           art={art}
           sheet={sheet}
           childId={childId}
+          ownerId={ownerId}
           rtl={rtl}
           caption={t(captionKey(firstName, gender), { name: firstName })}
           pictureAlt={t("kid.game.sneak-freeze.pictureAlt", { name: firstName || title })}

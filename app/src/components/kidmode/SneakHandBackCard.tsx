@@ -110,7 +110,8 @@ export default function SneakHandBackCard() {
   // Retire rather than hide a stale card: A→B→A cannot resurrect it.
   useEffect(() => { if (card && !current) dismissSneakHandBack(); }, [card, current]);
   if (!card || !current) return null;
-  const picture = latestVisitStatue(readStatuePictures(card.childId), card.sessionStartMs, Date.now())?.url ?? null;
+  const ownerId = firebaseEnabled ? (loading ? null : user?.uid ?? null) : "local-sandbox";
+  const picture = latestVisitStatue(readStatuePictures(ownerId ? { ownerId, childId: card.childId } : null), card.sessionStartMs, Date.now())?.url ?? null;
   const reachedLine = t(reachedKey(card.name, card.gender, card.reached), { name: card.name, count: card.reached });
   const keep = card.keepLine ?? reachedLine;
   const shareAllowed = statueShareAllowed(import.meta.env.DEV);

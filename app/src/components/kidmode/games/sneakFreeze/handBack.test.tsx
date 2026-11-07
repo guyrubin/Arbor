@@ -165,7 +165,7 @@ describe("P0 account and child isolation — pending hand-back", () => {
     expect(src).toContain("if (!card || !current) return null;");
     expect(src).toContain("if (card && !current) dismissSneakHandBack()");
     expect(src.indexOf("if (!card || !current) return null;")).toBeLessThan(src.indexOf("const picture = latestVisitStatue"));
-    expect(src).toContain("latestVisitStatue(readStatuePictures(card.childId), card.sessionStartMs, Date.now())");
+    expect(src).toContain("latestVisitStatue(readStatuePictures(ownerId ? { ownerId, childId: card.childId } : null), card.sessionStartMs, Date.now())");
   });
 
   it("exit records the live scoped account and child, never merely a child id", () => {

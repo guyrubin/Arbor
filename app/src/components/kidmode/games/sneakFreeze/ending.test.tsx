@@ -11,11 +11,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { startSitting, step, type SneakState } from "./rules";
 import { PICTURE, PICTURE_SIZE, PICTURE_VARIANTS, pickVariant, pictureLayout, statueShot, toPicture } from "./statuePicture";
-import { STATUE_KEEP, keepStatuePicture, lastStatueVariant, readStatuePictures, statuesKey, type StatuePicture } from "./statueStore";
+import { STATUE_KEEP, keepStatuePicture, lastStatueVariant, readStatuePictures, statuesKey, purgeAllStatuePictures, type StatuePicture } from "./statueStore";
 import { Ending, captionKey, isUprightPhone } from "./Ending";
 import { devPlaceholderArt } from "./devPlaceholderArt";
 import { devPlaceholderSheet } from "../../hero/devPlaceholderSheet";
 import { translate } from "../../../../lib/i18n";
+import { isChildScopedKey } from "../../../../lib/childLocalState";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (f: string) => readFileSync(path.join(here, f), "utf8");
@@ -137,7 +138,7 @@ describe("the statue picture — composition", () => {
     const src = read("Ending.tsx");
     // keepStatuePicture is fed the default-shape (4:3) url, never the upright one.
     expect(src).toMatch(/composeStatuePicture\(\{ shot, art, sheet, rtl, variant \}\)/);
-    expect(src).toMatch(/if \(url\) keepStatuePicture\(childId, \{ id: state\.seed, at: new Date\(\)\.toISOString\(\), url,/);
+    expect(src).toMatch(/if \(url\) keepStatuePicture\(scope, \{ id: state\.seed, at: new Date\(\)\.toISOString\(\), url,/);
   });
 
   it("is composed on the device: no fetch, no model, no network in the ending's code", () => {
@@ -150,36 +151,71 @@ describe("the statue picture — composition", () => {
 });
 
 describe("the statue pictures kept on the device", () => {
+  const scope = { ownerId: "owner-a", childId: "kid1" };
   const pic = (i: number): StatuePicture => ({ id: `s${i}`, at: new Date(2026, 9, 6, 10, i).toISOString(), url: `data:image/jpeg;base64,${"A".repeat(10)}${i}`, pose: i % 2 ? "freeze-a" : "freeze-b" });
 
   it("keeps the newest twelve, newest first, under a child-scoped key", () => {
     const store = memoryStore();
-    for (let i = 0; i < 15; i++) keepStatuePicture("kid1", pic(i), store);
-    const kept = readStatuePictures("kid1", store);
+    for (let i = 0; i < 15; i++) keepStatuePicture(scope, pic(i), store);
+    const kept = readStatuePictures(scope, store);
     expect(kept).toHaveLength(STATUE_KEEP);
     expect(kept[0].id).toBe("s14");
     expect(kept[kept.length - 1].id).toBe("s3");
-    expect(statuesKey("kid1")).toBe("arbor.sneakFreeze.statues.kid1");
+    expect(statuesKey(scope)).toBe("arbor.sneakFreeze.statues.v2.owner-a.kid1");
+    expect(isChildScopedKey(statuesKey(scope)!, "kid1")).toBe(true);
   });
 
   it("B-GAME-09c: remembers the newest picture's variant (older pictures have none)", () => {
     const store = memoryStore();
-    expect(lastStatueVariant("kid1", store)).toBeNull();
-    keepStatuePicture("kid1", pic(1), store);
-    expect(lastStatueVariant("kid1", store)).toBeNull();
-    keepStatuePicture("kid1", { ...pic(2), variant: 4 }, store);
-    expect(lastStatueVariant("kid1", store)).toBe(4);
+    expect(lastStatueVariant(scope, store)).toBeNull();
+    keepStatuePicture(scope, pic(1), store);
+    expect(lastStatueVariant(scope, store)).toBeNull();
+    keepStatuePicture(scope, { ...pic(2), variant: 4 }, store);
+    expect(lastStatueVariant(scope, store)).toBe(4);
+  });
+
+  it("isolates identical child ids across owners and never reads unowned legacy copies", () => {
+    const store = memoryStore();
+    const other = { ownerId: "owner-b", childId: "kid1" };
+    store.setItem("arbor.sneakFreeze.statues.kid1", JSON.stringify([pic(99)]));
+    expect(readStatuePictures(scope, store)).toEqual([]);
+    expect(readStatuePictures(other, store)).toEqual([]);
+    keepStatuePicture(scope, pic(1), store);
+    keepStatuePicture(other, pic(2), store);
+    expect(readStatuePictures(scope, store).map((p) => p.id)).toEqual(["s1"]);
+    expect(readStatuePictures(other, store).map((p) => p.id)).toEqual(["s2"]);
+    expect(readStatuePictures(null, store)).toEqual([]);
+    expect(keepStatuePicture(null, pic(3), store)).toEqual([]);
+    expect(statuesKey({ ownerId: "", childId: "kid1" })).toBeNull();
+    expect(statuesKey({ ownerId: "owner-a", childId: "" })).toBeNull();
+    expect(statuesKey({ ownerId: "owner.a", childId: "kid1" })).not.toBe(statuesKey({ ownerId: "owner", childId: "a.kid1" }));
+  });
+
+  it("purges old and owner-scoped pictures at sign-out, not other local state", () => {
+    const m = new Map<string, string>([
+      ["arbor.sneakFreeze.statues.kid1", "old"],
+      [statuesKey(scope)!, "current"],
+      [statuesKey({ ownerId: "owner-b", childId: "kid2" })!, "other"],
+      ["arbor.growth.month.seen.kid1.2026-09", "keep"],
+    ]);
+    const storage = {
+      get length() { return m.size; },
+      key: (i: number) => [...m.keys()][i] ?? null,
+      removeItem: (key: string) => { m.delete(key); },
+    } as unknown as Storage;
+    expect(purgeAllStatuePictures(storage)).toBe(3);
+    expect([...m.keys()]).toEqual(["arbor.growth.month.seen.kid1.2026-09"]);
   });
 
   it("when storage is full the oldest pictures make room; garbage reads as empty", () => {
     const store = memoryStore(400);
-    for (let i = 0; i < 12; i++) keepStatuePicture("kid1", pic(i), store);
-    const kept = readStatuePictures("kid1", store);
+    for (let i = 0; i < 12; i++) keepStatuePicture(scope, pic(i), store);
+    const kept = readStatuePictures(scope, store);
     expect(kept.length).toBeGreaterThan(0);
     expect(kept.length).toBeLessThan(12);
     expect(kept[0].id).toBe("s11");
-    expect(readStatuePictures("kid1", { getItem: () => "{bad", setItem: () => {} })).toEqual([]);
-    expect(readStatuePictures("kid1", { getItem: () => JSON.stringify([{ id: "x", at: "t", url: "javascript:1" }]), setItem: () => {} })).toEqual([]);
+    expect(readStatuePictures(scope, { getItem: () => "{bad", setItem: () => {} })).toEqual([]);
+    expect(readStatuePictures(scope, { getItem: () => JSON.stringify([{ id: "x", at: "t", url: "javascript:1" }]), setItem: () => {} })).toEqual([]);
   });
 });
 
@@ -191,6 +227,7 @@ describe("the ending screen", () => {
       art={devPlaceholderArt()}
       sheet={devPlaceholderSheet()}
       childId="kid1"
+      ownerId="owner-a"
       rtl={false}
       caption={translate("en", captionKey("Dylan", "boy"), { name: "Dylan" })}
       pictureAlt="Dylan as a statue"
@@ -232,7 +269,7 @@ describe("B-GAME-09b — ending polish", () => {
   it("the toys wait for the picture; the cat's 'again?' line plays when it is up (no timer, no auto-advance)", () => {
     const s = startSitting({ seed: "polish", track: "A", level: 1 });
     const html = renderToStaticMarkup(
-      <Ending state={s} art={devPlaceholderArt()} sheet={devPlaceholderSheet()} childId="kid1" rtl={false} caption="x" pictureAlt="x" playAgainLabel="Play again" homeLabel="Home" onPlayAgain={() => {}} onHome={() => {}} />,
+      <Ending state={s} art={devPlaceholderArt()} sheet={devPlaceholderSheet()} childId="kid1" ownerId="owner-a" rtl={false} caption="x" pictureAlt="x" playAgainLabel="Play again" homeLabel="Home" onPlayAgain={() => {}} onHome={() => {}} />,
     );
     expect(html).toContain('data-sneak-ending-toys="waiting"');
     expect(html).toContain("data-kid-finish-again");

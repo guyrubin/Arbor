@@ -37,6 +37,7 @@ export interface EndingProps {
   art: SneakArt;
   sheet: HeroSheet;
   childId: string;
+  ownerId: string | null;
   rtl: boolean;
   /** The caption, already translated (the name isolated by t()). */
   caption: string;
@@ -81,7 +82,7 @@ export function isUprightPhone(w: number, h: number): boolean {
   return w < 600 && h >= w * 1.4;
 }
 
-export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, playAgainLabel, homeLabel, onPlayAgain, onHome, onShown }: EndingProps) {
+export function Ending({ state, art, sheet, childId, ownerId, rtl, caption, pictureAlt, playAgainLabel, homeLabel, onPlayAgain, onHome, onShown }: EndingProps) {
   const [picture, setPicture] = useState<string | null>(null);
   // B-GAME-09b: the picture first, then the cat's "again?" line, then the two
   // toys appear (no auto-advance: nothing happens until the child taps).
@@ -106,9 +107,10 @@ export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, p
       setReady(true);
       onShown?.();
     };
+    const scope = ownerId ? { ownerId, childId } : null;
     const shot = statueShot(state);
-    if (!shot) { shown(); return; }
-    const variant = pickVariant(state.seed, lastStatueVariant(childId) ?? visitVariant);
+    if (!shot || !scope) { shown(); return; }
+    const variant = pickVariant(state.seed, lastStatueVariant(scope) ?? visitVariant);
     visitVariant = variant;
     // The 4:3 picture is the one kept; upright, the 3:4 close shot is the one shown.
     Promise.all([
@@ -117,14 +119,14 @@ export function Ending({ state, art, sheet, childId, rtl, caption, pictureAlt, p
     ])
       .then(([url, tall]) => {
         if (!alive) return;
-        if (url) keepStatuePicture(childId, { id: state.seed, at: new Date().toISOString(), url, pose: shot.pose, variant });
+        if (url) keepStatuePicture(scope, { id: state.seed, at: new Date().toISOString(), url, pose: shot.pose, variant });
         const show = upright ? tall ?? url : url;
         if (show) setPicture(show);
         shown();
       })
       .catch(() => { shown(); /* the ending still stands without its picture */ });
     return () => { alive = false; };
-  }, [state.seed]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state.seed, ownerId, childId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The photo lands: a small drop and settle into its tilt (reduced motion: a fade).
   useLayoutEffect(() => {
