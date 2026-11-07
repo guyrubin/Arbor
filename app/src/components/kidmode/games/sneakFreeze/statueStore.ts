@@ -34,7 +34,7 @@ export function statuesKey(scope: StatueScope | null | undefined): string | null
   if (!scope || typeof scope.ownerId !== "string" || !scope.ownerId.trim()
     || typeof scope.childId !== "string" || !scope.childId.trim()) return null;
   // An owner id containing a dot must not blur the namespace boundary.
-  const owner = encodeURIComponent(scope.ownerId).replace(/\\./g, "%2E");
+  const owner = encodeURIComponent(scope.ownerId).replace(/\./g, "%2E");
   return `arbor.sneakFreeze.statues.v2.${owner}.${scope.childId}`;
 }
 
