@@ -47,13 +47,28 @@ export function finishOnce(): () => boolean {
   };
 }
 
-/** The latest read finished at or after `sinceMs` (the Kid Mode session's start). */
-export function lastReadSince(reads: readonly Pick<BookRead, "bookId" | "finishedAt">[], sinceMs: number): Pick<BookRead, "bookId" | "finishedAt"> | null {
+/**
+ * B-BOOK-47 / B-BOOK-51: select the latest genuine completed read from this
+ * Kid Mode visit. Reject malformed, blank and future-dated rows: device-clock
+ * mistakes or stale imported data must never invent a book-finish hand-back.
+ *
+ * `nowMs` is injectable to make the time boundary deterministic in tests; the
+ * exit path uses the actual current clock. No story branch/choice is read.
+ */
+export function lastReadSince(
+  reads: readonly Pick<BookRead, "bookId" | "finishedAt">[],
+  sinceMs: number,
+  nowMs: number = Date.now(),
+): Pick<BookRead, "bookId" | "finishedAt"> | null {
+  if (!Number.isFinite(sinceMs) || !Number.isFinite(nowMs) || nowMs < sinceMs) return null;
   let best: Pick<BookRead, "bookId" | "finishedAt"> | null = null;
   let bestMs = -Infinity;
   for (const r of reads) {
     const ms = typeof r?.finishedAt === "string" ? Date.parse(r.finishedAt) : NaN;
-    if (!Number.isFinite(ms) || ms < sinceMs || typeof r.bookId !== "string") continue;
+    if (
+      !Number.isFinite(ms) || ms < sinceMs || ms > nowMs ||
+      typeof r?.bookId !== "string" || !r.bookId.trim()
+    ) continue;
     if (ms > bestMs) { best = r; bestMs = ms; }
   }
   return best;
