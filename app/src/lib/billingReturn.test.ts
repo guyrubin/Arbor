@@ -14,17 +14,25 @@
  * named negative control: the pre-fix implementation is reproduced inline and
  * asserted to fail the same assertion.
  */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { startBillingReturnPoll, BILLING_PENDING_KEY, type BillingReturnDeps } from "../hooks/useEntitlement";
+import { startBillingReturnPoll, BILLING_PENDING_KEY, FALLBACK_FREE, type BillingReturnDeps } from "../hooks/useEntitlement";
 import type { EntitlementInfo } from "./api";
 import { translate } from "./i18n";
 
-const FREE = { plan: "free", status: "active", source: "fallback" } as unknown as EntitlementInfo;
-const PLUS = { plan: "plus", status: "active", source: "server" } as unknown as EntitlementInfo;
+const FREE: EntitlementInfo = { ...FALLBACK_FREE, source: "default" };
+const PLUS: EntitlementInfo = {
+  ...FREE,
+  plan: "plus",
+  limits: { coachMessagesPerDay: null, maxChildren: 6, professionalReports: true, advancedPlans: true, coParentSeats: 1 },
+  source: "store",
+  provider: "stripe",
+};
+const APP_TRIAL: EntitlementInfo = { ...PLUS, source: "trial", provider: "none", status: "in_trial", willRenew: false };
 
 const flush = async () => { for (let i = 0; i < 30; i += 1) await Promise.resolve(); };
+afterEach(() => vi.useRealTimers());
 
 /** Runs every scheduled callback immediately, so six tries take no time. */
 function immediate(): Pick<BillingReturnDeps, "schedule" | "cancel"> {
@@ -32,6 +40,23 @@ function immediate(): Pick<BillingReturnDeps, "schedule" | "cancel"> {
 }
 
 describe("1 · the poll gives up out loud", () => {
+  it("a never-resolving refresh still reaches the wall-clock deadline once", async () => {
+    vi.useFakeTimers();
+    let answerLate: (e: EntitlementInfo) => void = () => undefined;
+    const toast = vi.fn();
+    const onTimeout = vi.fn();
+    startBillingReturnPoll({
+      toast, t: (k) => k, onTimeout,
+      refresh: () => new Promise<EntitlementInfo>((resolve) => { answerLate = resolve; }),
+    });
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(toast.mock.calls.map((c) => c[0])).toEqual(["pw.activating", BILLING_PENDING_KEY]);
+    expect(onTimeout).toHaveBeenCalledTimes(1);
+    answerLate(PLUS);
+    await flush();
+    expect(toast.mock.calls.map((c) => c[0])).toEqual(["pw.activating", BILLING_PENDING_KEY]);
+  });
+
   it("refresh rejects on every try → one pending toast, onTimeout once", async () => {
     const toast = vi.fn();
     const onTimeout = vi.fn();
@@ -107,6 +132,72 @@ describe("2 · the winning branch is unchanged", () => {
     resolve(FREE);
     await flush();
     expect(toast.mock.calls.some((c) => c[0] === BILLING_PENDING_KEY)).toBe(false);
+  });
+});
+
+describe("web checkout confirmation requires purchased access", () => {
+  it("keeps polling through app-trial Plus until the paid web entitlement arrives", async () => {
+    const toast = vi.fn();
+    const refresh = vi.fn()
+      .mockResolvedValueOnce(APP_TRIAL)
+      .mockResolvedValueOnce(PLUS);
+    startBillingReturnPoll({ toast, t: (k) => k, refresh, ...immediate() });
+    await flush();
+
+    expect(refresh).toHaveBeenCalledTimes(2);
+    expect(toast.mock.calls.map((c) => c[0])).toEqual(["pw.activating", "pw.activated"]);
+  });
+
+  const unconfirmed: Array<[string, Partial<EntitlementInfo>]> = [
+    ["Arbor no-card trial", APP_TRIAL],
+    ["environment comp", { source: "env", provider: "comp" }],
+    ["stored referral comp", { provider: "comp" }],
+    ["beta access", { source: "beta_unenforced", enforced: false }],
+    ["unenforced store answer", { enforced: false }],
+    ["client fallback", { source: "client_fallback" }],
+    ["unknown source", { source: "unknown" }],
+    ["unbacked store grant", { provider: "none" }],
+    ["missing provider", { provider: null }],
+    ["App Store subscription", { provider: "app_store" }],
+    ["Play Store subscription", { provider: "play_store" }],
+    ["provider trial", { status: "in_trial" }],
+    ["billing grace period", { status: "grace_period" }],
+    ["expired subscription", { status: "expired" }],
+    ["missing subscription status", { status: null }],
+    ["cancellation with no period end", { status: "canceled", currentPeriodEnd: null }],
+    ["cancellation with an invalid period end", { status: "canceled", currentPeriodEnd: "not-a-date" }],
+    ["cancellation after its period end", { status: "canceled", currentPeriodEnd: "2000-01-01T00:00:00.000Z" }],
+  ];
+  it.each(unconfirmed)("does not confirm %s as the web purchase", async (_label, fields) => {
+    const toast = vi.fn();
+    const refresh = vi.fn(async (): Promise<EntitlementInfo> => ({ ...PLUS, ...fields }));
+    startBillingReturnPoll({ toast, t: (k) => k, refresh, maxTries: 2, ...immediate() });
+    await flush();
+
+    expect(refresh).toHaveBeenCalledTimes(2);
+    expect(toast.mock.calls.map((c) => c[0])).toEqual(["pw.activating", BILLING_PENDING_KEY]);
+  });
+
+  it("confirms paid access after renewal was canceled while its paid period remains", async () => {
+    const toast = vi.fn();
+    const paidUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const refresh = vi.fn(async (): Promise<EntitlementInfo> => ({
+      ...PLUS, status: "canceled", willRenew: false, currentPeriodEnd: paidUntil,
+    }));
+    startBillingReturnPoll({ toast, t: (k) => k, refresh, ...immediate() });
+    await flush();
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(toast.mock.calls.map((c) => c[0])).toEqual(["pw.activating", "pw.activated"]);
+  });
+
+  it("retains recognition of an existing paid Family web subscription", async () => {
+    const toast = vi.fn();
+    const refresh = vi.fn(async (): Promise<EntitlementInfo> => ({ ...PLUS, plan: "family" }));
+    startBillingReturnPoll({ toast, t: (k) => k, refresh, ...immediate() });
+    await flush();
+
+    expect(toast.mock.calls.map((c) => c[0])).toEqual(["pw.activating", "pw.activated"]);
   });
 });
 

@@ -13,7 +13,6 @@
       "success": 1
     },
     "components/layout/Shell.tsx": {
-      "dynamic": 1,
       "info": 1
     },
     "components/milestones/FirstKeepsakeSheet.tsx": {

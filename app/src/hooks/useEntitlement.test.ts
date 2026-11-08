@@ -15,7 +15,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", () => ({
   api: { entitlement: vi.fn() },
@@ -26,11 +26,14 @@ import {
   FALLBACK_FREE,
   PAID_PLAN_LIMITS,
   BILLING_RETURN_KEY,
+  ENTITLEMENT_READ_TIMEOUT_MS,
   __resetEntitlementCache,
+  cachedEntitlement,
   childLimitReached,
   isVerifiedEntitlement,
   markBillingReturn,
   refreshEntitlement,
+  setEntitlementOwner,
   startBillingReturnPoll,
   takeBillingReturn,
 } from "./useEntitlement";
@@ -43,10 +46,11 @@ const mockedEntitlement = api.entitlement as unknown as ReturnType<typeof vi.fn>
 const SERVER_PLUS: EntitlementInfo = {
   plan: "plus",
   limits: { coachMessagesPerDay: null, maxChildren: 6, professionalReports: true, advancedPlans: true, coParentSeats: 0 },
-  source: "entitlements_doc",
+  source: "store",
   enforced: true,
   usage: { coachMessagesToday: 0 },
   status: "active",
+  provider: "stripe",
 };
 
 const flush = () => new Promise((r) => setTimeout(r, 5));
@@ -62,6 +66,80 @@ beforeEach(() => {
   __resetEntitlementCache();
   mockedEntitlement.mockReset();
 });
+afterEach(() => { __resetEntitlementCache(); vi.useRealTimers(); });
+
+describe("account ownership and bounded entitlement reads", () => {
+  it("discards A's late paid response after B signs in and fetches B independently", async () => {
+    let answerA: (e: EntitlementInfo) => void = () => undefined;
+    let answerB: (e: EntitlementInfo) => void = () => undefined;
+    mockedEntitlement
+      .mockImplementationOnce(() => new Promise<EntitlementInfo>((resolve) => { answerA = resolve; }))
+      .mockImplementationOnce(() => new Promise<EntitlementInfo>((resolve) => { answerB = resolve; }));
+    setEntitlementOwner("synthetic-parent-a");
+    const first = refreshEntitlement();
+    const firstSignal = mockedEntitlement.mock.calls[0][0] as AbortSignal;
+
+    setEntitlementOwner("synthetic-parent-b");
+    const second = refreshEntitlement();
+    expect(second).not.toBe(first);
+    expect(firstSignal.aborted).toBe(true);
+    expect(mockedEntitlement).toHaveBeenCalledTimes(2);
+    const b = { ...FALLBACK_FREE, source: "default" };
+    answerB(b);
+    expect(await second).toBe(b);
+    answerA(SERVER_PLUS);
+    expect(await first).toBe(FALLBACK_FREE);
+    expect(cachedEntitlement()).toBe(b);
+  });
+
+  it("an old completion cannot clear B's still-pending request or create a duplicate", async () => {
+    let answerA: (e: EntitlementInfo) => void = () => undefined;
+    let answerB: (e: EntitlementInfo) => void = () => undefined;
+    mockedEntitlement
+      .mockImplementationOnce(() => new Promise<EntitlementInfo>((resolve) => { answerA = resolve; }))
+      .mockImplementationOnce(() => new Promise<EntitlementInfo>((resolve) => { answerB = resolve; }));
+    setEntitlementOwner("synthetic-parent-a");
+    const first = refreshEntitlement();
+    setEntitlementOwner("synthetic-parent-b");
+    const second = refreshEntitlement();
+    answerA(SERVER_PLUS);
+    await first;
+    expect(refreshEntitlement()).toBe(second);
+    expect(mockedEntitlement).toHaveBeenCalledTimes(2);
+    answerB({ ...FALLBACK_FREE, source: "default" });
+    await second;
+  });
+
+  it("sign-out clears cached access and makes no anonymous entitlement read", async () => {
+    setEntitlementOwner("synthetic-parent-a");
+    mockedEntitlement.mockResolvedValueOnce(SERVER_PLUS);
+    await refreshEntitlement();
+    expect(cachedEntitlement()).toBe(SERVER_PLUS);
+    setEntitlementOwner(null);
+    expect(cachedEntitlement()).toBeNull();
+    expect(await refreshEntitlement()).toBe(FALLBACK_FREE);
+    expect(mockedEntitlement).toHaveBeenCalledTimes(1);
+  });
+
+  it("a never-resolving read times out, aborts, and releases the next retry", async () => {
+    vi.useFakeTimers();
+    let answerLate: (e: EntitlementInfo) => void = () => undefined;
+    mockedEntitlement.mockImplementationOnce(() => new Promise<EntitlementInfo>((resolve) => { answerLate = resolve; }));
+    const pending = refreshEntitlement();
+    const signal = mockedEntitlement.mock.calls[0][0] as AbortSignal;
+    await vi.advanceTimersByTimeAsync(ENTITLEMENT_READ_TIMEOUT_MS);
+    expect(await pending).toBe(FALLBACK_FREE);
+    expect(signal.aborted).toBe(true);
+
+    const current = { ...FALLBACK_FREE, source: "default" };
+    mockedEntitlement.mockResolvedValueOnce(current);
+    expect(await refreshEntitlement()).toBe(current);
+    answerLate(SERVER_PLUS);
+    await Promise.resolve();
+    expect(cachedEntitlement()).toBe(current);
+    expect(mockedEntitlement).toHaveBeenCalledTimes(2);
+  });
+});
 
 describe("1 · fallback carries source client_fallback", () => {
   it("API failure → FALLBACK_FREE (plan free, source client_fallback, not verified)", async () => {
@@ -75,7 +153,7 @@ describe("1 · fallback carries source client_fallback", () => {
   it("negative control: a server answer keeps its own source and is verified", async () => {
     mockedEntitlement.mockResolvedValueOnce(SERVER_PLUS);
     const e = await refreshEntitlement();
-    expect(e.source).toBe("entitlements_doc");
+    expect(e.source).toBe("store");
     expect(isVerifiedEntitlement(e)).toBe(true);
   });
 });
@@ -164,23 +242,20 @@ describe("5 · App.tsx leaves the flag BEFORE stripping; Shell keys off it (sour
     expect(strip).toBeGreaterThan(mark);
   });
 
-  it("Shell's MON-2 effect takes the flag and runs the shared poll", () => {
+  it("Shell delegates to the account-scoped return lifecycle", () => {
     const shell = readSrc("components/layout/Shell.tsx");
-    expect(shell).toContain("if (!takeBillingReturn() && !fromParam) return;");
-    // CR-09 (Builder G, 224fa3af) wrapped the toast so the "still confirming"
-    // message carries a Retry action; the invariant is unchanged — Shell runs
-    // the SHARED poll from hooks/useEntitlement, keyed off the flag.
-    expect(shell).toMatch(
-      /return startBillingReturnPoll\(\{ toast: withRetry, t, refresh: refreshEntitlement \}\);/,
-    );
-    // The wrapper is a decorator over the same `toast`, not a second toast
-    // channel, and Retry re-reads the entitlement rather than re-polling.
-    expect(shell).toMatch(/const withRetry: typeof toast = \(message, type, action\) =>/);
-    expect(shell).toContain("onClick: () => { void refreshEntitlement(); }");
-    // Negative control: exactly ONE poll start in Shell, and no bare-toast
-    // variant of the call left behind beside the decorated one.
-    expect(shell.match(/startBillingReturnPoll\(/g)).toHaveLength(1);
-    expect(shell).not.toMatch(/startBillingReturnPoll\(\{ toast,/);
+    const lifecycle = readSrc("hooks/useBillingReturn.ts");
+    expect(shell.match(/useBillingReturn\(\)/g)).toHaveLength(1);
+    expect(shell).not.toContain("startBillingReturnPoll(");
+    expect(lifecycle).toContain("if (!takeBillingReturn() && !fromParam) return;");
+    expect(lifecycle).toContain("refresh: refreshEntitlement");
+  });
+
+  it("Firebase changes entitlement ownership before publishing the new auth user", () => {
+    const auth = readSrc("context/AuthContext.tsx");
+    const ownership = auth.indexOf("setEntitlementOwner(u?.uid ?? null);");
+    expect(ownership).toBeGreaterThan(-1);
+    expect(ownership).toBeLessThan(auth.indexOf("setUser(u ? toAuthUser(u) : null);"));
   });
 
   it("Settings shows the skeleton while loading and the unverified + Retry line on fallback", () => {

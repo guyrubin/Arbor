@@ -17,7 +17,7 @@ import { en, he } from "./i18nElevation/storeShell";
 
 const SRC = path.resolve(__dirname, "..");
 const toastSrc = fs.readFileSync(path.join(SRC, "context", "ToastContext.tsx"), "utf8");
-const shellSrc = fs.readFileSync(path.join(SRC, "components", "layout", "Shell.tsx"), "utf8");
+const returnSrc = fs.readFileSync(path.join(SRC, "hooks", "useBillingReturn.ts"), "utf8");
 
 // The pre-fix layer className, verbatim. The two scans below are written
 // against this fixture first so a passing test proves the scan can fail.
@@ -60,10 +60,11 @@ describe("CR-09 · toast action slot", () => {
 });
 
 describe("CR-09 · the billing pending toast uses the slot", () => {
-  it("Shell attaches Retry to the BILLING_PENDING_KEY toast and re-reads the entitlement", () => {
-    expect(shellSrc).toContain("BILLING_PENDING_KEY");
-    expect(shellSrc).toMatch(/label: t\("elev\.storeshell\.plan\.retry"\), onClick: \(\) => \{ void refreshEntitlement\(\); \}/);
-    expect(shellSrc).toContain("startBillingReturnPoll({ toast: withRetry");
+  it("the return lifecycle attaches Retry to the pending message and restarts bounded verification", () => {
+    expect(returnSrc).toContain("BILLING_PENDING_KEY");
+    expect(returnSrc).toContain('label: current.t("elev.storeshell.plan.retry"), onClick: start');
+    expect(returnSrc).toContain("stop = startBillingReturnPoll({");
+    expect(returnSrc).toContain("refresh: refreshEntitlement");
   });
 
   it("the Retry label ships in both locales (law 7)", () => {

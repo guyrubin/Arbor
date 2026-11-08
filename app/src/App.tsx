@@ -126,6 +126,8 @@ function PendingEraseSettler() {
  * upgrades fire correctly too, since they never see the web redirect.
  */
 function BillingReturnWatcher() {
+  const { user } = useAuth();
+  const uid = user?.uid;
   React.useEffect(() => {
     let alive = true;
     const params = new URLSearchParams(window.location.search);
@@ -137,6 +139,7 @@ function BillingReturnWatcher() {
       // flag FIRST; Shell takes (and clears) it and owns the poll + toasts.
       markBillingReturn();
       params.delete("billing");
+      params.delete("app_user_id"); // provider metadata never selects the signed-in account
       const qs = params.toString();
       const clean = window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash;
       try { window.history.replaceState({}, "", clean); } catch { /* ignore */ }
@@ -149,7 +152,7 @@ function BillingReturnWatcher() {
     void refreshEntitlement().then((e) => { if (alive) recordBillingTransition(e); });
 
     return () => { alive = false; };
-  }, []);
+  }, [uid]);
   return null;
 }
 

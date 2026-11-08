@@ -37,19 +37,58 @@ export function childLimitReached(args: { entitlement: EntitlementInfo; loading:
 // EVERY mounted consumer — Settings must not keep showing "Free" after the
 // paywall's purchase resolved.
 let cached: EntitlementInfo | null = null;
-let inflight: Promise<EntitlementInfo> | null = null;
+let inflight: { promise: Promise<EntitlementInfo>; controller: AbortController } | null = null;
+let owner: string | null | undefined;
+let generation = 0;
 const listeners = new Set<(e: EntitlementInfo) => void>();
 
+/** A stalled request must release the shared promise so Retry can try again. */
+export const ENTITLEMENT_READ_TIMEOUT_MS = 4000;
+
 const fetchEntitlement = () => {
+  if (owner === null) return Promise.resolve(FALLBACK_FREE);
   if (!inflight) {
-    inflight = api.entitlement()
-      .then((e) => { cached = e; return e; })
+    const requestGeneration = generation;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    let onAbort: () => void;
+    const canceled = new Promise<EntitlementInfo>((resolve) => {
+      onAbort = () => resolve(FALLBACK_FREE);
+      controller.signal.addEventListener("abort", onAbort, { once: true });
+      timer = setTimeout(() => controller.abort(), ENTITLEMENT_READ_TIMEOUT_MS);
+    });
+    const promise = Promise.race([api.entitlement(controller.signal), canceled])
       .catch(() => FALLBACK_FREE)
-      .then((e) => { listeners.forEach((fn) => fn(e)); return e; })
-      .finally(() => { inflight = null; });
+      .then((e) => {
+        // An old account's response must never reach the new account's UI or
+        // cache, including a response that ignores the canceled fetch signal.
+        if (generation !== requestGeneration) return FALLBACK_FREE;
+        if (e !== FALLBACK_FREE) cached = e;
+        listeners.forEach((fn) => fn(e));
+        return e;
+      })
+      .finally(() => {
+        clearTimeout(timer);
+        controller.signal.removeEventListener("abort", onAbort);
+        if (inflight?.promise === promise) inflight = null;
+      });
+    inflight = { promise, controller };
   }
-  return inflight;
+  return inflight.promise;
 };
+
+/** Called by Firebase's auth observer before publishing the new signed-in
+ *  user. Requests/cache belong to exactly one auth generation, not a tab. */
+export function setEntitlementOwner(uid: string | null): void {
+  if (owner === uid) return;
+  owner = uid;
+  generation += 1;
+  inflight?.controller.abort();
+  inflight = null;
+  cached = null;
+  listeners.forEach((fn) => fn(FALLBACK_FREE));
+  if (uid && listeners.size > 0) void fetchEntitlement();
+}
 
 /** The last server answer, for non-React callers (the checkout names its currency). */
 export const cachedEntitlement = (): EntitlementInfo | null => cached;
@@ -58,7 +97,14 @@ export const cachedEntitlement = (): EntitlementInfo | null => cached;
 export const refreshEntitlement = () => { cached = null; return fetchEntitlement(); };
 
 /** Test-only: forget the shared cache between cases. */
-export const __resetEntitlementCache = () => { cached = null; inflight = null; listeners.clear(); };
+export const __resetEntitlementCache = () => {
+  generation += 1;
+  inflight?.controller.abort();
+  cached = null;
+  inflight = null;
+  owner = undefined;
+  listeners.clear();
+};
 
 export type EntitlementState = {
   entitlement: EntitlementInfo;
@@ -139,6 +185,8 @@ export type BillingReturnDeps = {
   cancel?: (handle: unknown) => void;
   maxTries?: number;
   intervalMs?: number;
+  /** Wall-clock bound, independent of request duration or the retry scheduler. */
+  deadlineMs?: number;
   /** MOB-07: called ONCE when the poll gives up — exhausted or throwing.
    *  Shell uses it to say so; a missing callback still raises the toast. */
   onTimeout?: () => void;
@@ -148,9 +196,28 @@ export type BillingReturnDeps = {
  *  time. Exported so the Shell wiring and the guard test name the same string. */
 export const BILLING_PENDING_KEY = "pw.stillConfirming";
 
+/** The web return confirms a purchased subscription, not access already supplied
+ *  by Arbor's no-card trial, a comp, beta, or a native-store subscription.
+ *  RevenueCat Web Billing is exposed by the API as provider `stripe`.
+ *  Canceling renewal does not undo a purchase: that subscription remains valid
+ *  through its paid period. Missing/expired cancellation dates cannot confirm it. */
+function confirmsWebPurchase(entitlement: EntitlementInfo): boolean {
+  if (
+    (entitlement.plan !== "plus" && entitlement.plan !== "family")
+    || entitlement.source !== "store"
+    || entitlement.enforced !== true
+    || entitlement.provider !== "stripe"
+  ) return false;
+  if (entitlement.status === "active") return true;
+  if (entitlement.status !== "canceled" || !entitlement.currentPeriodEnd) return false;
+  const end = Date.parse(entitlement.currentPeriodEnd);
+  return Number.isFinite(end) && end > Date.now();
+}
+
 /**
  * MON-2 activation sequence: ONE "activating" toast, then poll the
- * entitlement until the plan flips (the RevenueCat webhook writes it async),
+ * entitlement until a web purchase is confirmed (the RevenueCat webhook writes
+ * it async; an app trial can already have the same Plus plan),
  * then ONE "activated" toast. Returns a cancel function for the effect cleanup.
  *
  * MOB-07 / IA-15: the sequence used to have no LOSING branch. `refresh()`
@@ -160,8 +227,8 @@ export const BILLING_PENDING_KEY = "pw.stillConfirming";
  * failed refresh is caught and counted like any other unconfirmed try, and
  * exhausting the tries raises exactly one honest message that points at the
  * place the answer lives (Settings › Plan, where MOB-08's unverified line and
- * its Retry already are). maxTries × intervalMs stays inside the 15 s the item
- * allows before the parent must be told something.
+ * its Retry already are). A separate 15 s deadline covers request time too;
+ * a retry count alone cannot bound a request that never settles.
  */
 export function startBillingReturnPoll(deps: BillingReturnDeps): () => void {
   const schedule = deps.schedule ?? ((fn, ms) => setTimeout(fn, ms));
@@ -170,12 +237,15 @@ export function startBillingReturnPoll(deps: BillingReturnDeps): () => void {
   const intervalMs = deps.intervalMs ?? 2500;
   let tries = 0;
   let handle: unknown;
+  let deadline: ReturnType<typeof setTimeout>;
   let alive = true;
   let settled = false;
   deps.toast(deps.t("pw.activating"), "info");
   const giveUp = () => {
     if (settled || !alive) return;
     settled = true;
+    if (handle !== undefined) cancel(handle);
+    clearTimeout(deadline);
     deps.toast(deps.t(BILLING_PENDING_KEY), "info");
     deps.onTimeout?.();
   };
@@ -184,16 +254,17 @@ export function startBillingReturnPoll(deps: BillingReturnDeps): () => void {
     let confirmed = false;
     try {
       const ent = await deps.refresh();
-      if (!alive) return;
-      confirmed = ent.plan !== "free";
+      if (!alive || settled) return;
+      confirmed = confirmsWebPurchase(ent);
     } catch {
       // A failed read is an unconfirmed try, never a reason to stop silently.
-      if (!alive) return;
+      if (!alive || settled) return;
     }
-    if (confirmed) { settled = true; deps.toast(deps.t("pw.activated"), "success"); return; }
+    if (confirmed) { settled = true; clearTimeout(deadline); deps.toast(deps.t("pw.activated"), "success"); return; }
     if (tries < maxTries) handle = schedule(() => void poll(), intervalMs);
     else giveUp();
   };
+  deadline = setTimeout(giveUp, deps.deadlineMs ?? 15_000);
   void poll();
-  return () => { alive = false; if (handle !== undefined) cancel(handle); };
+  return () => { alive = false; clearTimeout(deadline); if (handle !== undefined) cancel(handle); };
 }

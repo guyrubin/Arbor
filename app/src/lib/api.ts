@@ -661,7 +661,12 @@ export const api = {
   liveTurn: (payload: { role: "user" | "model"; text: string; language?: "en" | "he"; childId?: string }) =>
     post<import("./liveTurnGuard").LiveTurnVerdict>("/api/live/turn", payload),
   // MON-1: plan + limits + usage for the signed-in parent.
-  entitlement: () => get<EntitlementInfo>("/api/entitlement").then((e) => { noteImageAllowance(e.imageAllowance); return e; }),
+  entitlement: (signal?: AbortSignal) => request<EntitlementInfo>("/api/entitlement", "GET", undefined, signal).then((e) => {
+    // An aborted account/deadline read cannot update another account's image
+    // allowance even if its response arrives after cancellation.
+    if (!signal?.aborted) noteImageAllowance(e.imageAllowance);
+    return e;
+  }),
   // MON-2: start a hosted checkout for a plan + cadence; returns the URL to open.
   // BD-53/P2: `currency` is the one the price was shown in (lib/pricing checkoutCurrency).
   billingCheckout: (plan: "plus" | "family", cadence: "monthly" | "annual", currency: "EUR" | "ILS" = "EUR") =>

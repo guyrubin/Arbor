@@ -29,7 +29,7 @@ import SettingsModal from "./SettingsModal";
 import PaywallModal from "../billing/PaywallModal";
 import HardMomentNowSheet from "../behaviors/HardMomentNowSheet";
 import QuickLogModal from "../overview/QuickLogModal";
-import { refreshEntitlement, takeBillingReturn, startBillingReturnPoll, BILLING_PENDING_KEY } from "../../hooks/useEntitlement";
+import { useBillingReturn } from "../../hooks/useBillingReturn";
 import { selectionHaptic } from "../../lib/native";
 // AP-048: Kid Mode overlay + context provider
 import { KidModeProvider } from "../kidmode/KidModeContext";
@@ -351,32 +351,9 @@ export default function Shell() {
     setSettingsOpen(false);
   }, [kidLocked]);
 
-  // MON-2: returning from hosted checkout (success URL carries ?billing=success).
-  // The RevenueCat webhook writes the entitlement async, so poll a few times until
-  // the plan flips, then confirm. Strip the param so a refresh doesn't re-trigger.
-  // MOB-07 / IA-15: App.tsx's BillingReturnWatcher mounts first and strips the
-  // param, leaving the sessionStorage flag; keying off the flag (read-once)
-  // OR the raw param (if this ever mounts first) makes the sequence fire
-  // exactly once. The poll + toasts live in hooks/useEntitlement
-  // (startBillingReturnPoll), guarded by useEntitlement.test.ts.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const fromParam = params.get("billing") === "success";
-    if (fromParam) {
-      params.delete("billing");
-      const clean = window.location.pathname + (params.toString() ? `?${params}` : "") + window.location.hash;
-      try { window.history.replaceState(null, "", clean); } catch { /* noop */ }
-    }
-    if (!takeBillingReturn() && !fromParam) return;
-    // CR-09: the pending ("still confirming") toast is the one dead end in this
-    // sequence — it told the parent to wait with nothing to press. It now carries
-    // the ToastContext action slot so Retry re-reads the entitlement in place.
-    const withRetry: typeof toast = (message, type, action) =>
-      toast(message, type, action ?? (message === t(BILLING_PENDING_KEY)
-        ? { label: t("elev.storeshell.plan.retry"), onClick: () => { void refreshEntitlement(); } }
-        : undefined));
-    return startBillingReturnPoll({ toast: withRetry, t, refresh: refreshEntitlement });
-  }, [toast, t]);
+  // The account-scoped return lifecycle survives locale changes and keeps a
+  // bounded Retry available while the provider's webhook is still pending.
+  useBillingReturn();
 
   return (
     // AP-048: KidModeProvider wraps the shell so Topbar and KidModeOverlay share the same flag.

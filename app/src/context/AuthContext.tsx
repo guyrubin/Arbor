@@ -13,6 +13,7 @@ import {
 } from "firebase/auth";
 import { auth, firebaseEnabled } from "../lib/firebase";
 import { setAuthTokenProvider } from "../lib/api";
+import { setEntitlementOwner } from "../hooks/useEntitlement";
 import { authErrorKey } from "../lib/i18nElevation/storeShell";
 import { initNaturalVoice, resetNaturalVoice } from "../lib/naturalVoice";
 import { setAnalyticsUser } from "../lib/analytics";
@@ -79,8 +80,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!firebaseEnabled || !auth) return;
+    if (!firebaseEnabled || !auth) {
+      setEntitlementOwner(SANDBOX_USER.uid);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setEntitlementOwner(u?.uid ?? null);
       setUser(u ? toAuthUser(u) : null);
       setLoading(false);
       // STORE-2: RevenueCat keys native purchases on its App User ID, and the

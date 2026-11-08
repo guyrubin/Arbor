@@ -140,3 +140,18 @@ the intended currency and price and the absence of the sandbox banner. A live
 checkout page is not proof of a completed payment: confirm any owner-authorized
 transaction through the production webhook, entitlement, and unlocked account.
 Sandbox web events must continue to be ignored in production.
+
+Once the purchase-return code is deployed, set the web Purchase Link's successful
+checkout action to redirect to
+`https://arborparentingapp.com/?billing=success#/overview`. The default provider
+success page does not start Arbor's confirmation poll. Canceled or failed
+checkout must not use the success URL. Native purchases remain in StoreKit or
+Play Billing and do not use this web return path.
+
+The return query only starts verification. Arbor uses the current authenticated
+Firebase account, discards the provider's `app_user_id` query metadata, and waits
+for a store-backed web subscription. App trials, complimentary access, beta,
+native subscriptions, and client fallbacks do not confirm a web purchase. Each
+entitlement read has a four-second bound; the activation poll has a separate
+15-second deadline. An unconfirmed purchase keeps an explicit Retry action,
+which starts another bounded poll without opening a new checkout or charging.
