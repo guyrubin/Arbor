@@ -41,6 +41,6 @@ describe("B-BOOK-47/51 · last finished book offered to the parent", () => {
 
   it("uses the actual clock by default, not an unbounded future timestamp", () => {
     const farFuture = row("future-book", "2099-01-01T00:00:00.000Z");
-    expect(lastReadSince([farFuture], start)).toBeNull();
+    expect(lastReadSince([farFuture], 0)).toBeNull();
   });
 });
