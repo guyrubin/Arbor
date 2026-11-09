@@ -22,6 +22,15 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Verify deliberate Kids entry and narration lifetime (EN/HE)
         run: node scripts/kids-entry-browser.mjs
+      - name: Verify reachable Kids parent exit above every surface (EN/HE)
+        run: node scripts/kids-exit-browser.mjs
+      - name: Retain Kids parent exit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-exit-evidence
+          path: app/output/kids-exit
+          retention-days: 7
       - name: Retain synthetic Kids entry evidence
         if: always()
         uses: actions/upload-artifact@v4

@@ -94,9 +94,11 @@ export default function KidExitRecap() {
     // B-GAME-10: after a finished Sneak & Freeze sitting today, the hand-back
     // CARD carries this moment (statue picture, one count line, Keep) instead
     // of the strip. Memory only: the card's Keep is the same one parent moment.
-    const reached = reachedTheCatToday(practice.events?.items ?? [], new Date());
+    // Only a sitting finished in this Kid Mode visit triggers a hand-back;
+    // an earlier sitting today must not displace this visit's recap.
+    const reached = reachedTheCatToday(practice.events?.items ?? [], new Date(), openedAtRef.current);
     if (reached > 0) {
-      offerSneakHandBack({ childId: childProfile.id, name: (childProfile.name || "").split(" ")[0], gender: childProfile.gender, reached, keepLine: line || null });
+      offerSneakHandBack({ scope: scope ?? "", sessionStartMs: openedAtRef.current, childId: childProfile.id, name: (childProfile.name || "").split(" ")[0], gender: childProfile.gender, reached, keepLine: line || null });
       return;
     }
     // A failed Keep re-offers the line as an error toast that says it was not

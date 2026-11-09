@@ -44,7 +44,7 @@ function elements(node: unknown): ReactElement<TreeProps>[] {
   if (!isValidElement<TreeProps>(node)) return [];
   return [node, ...elements(node.props.children)];
 }
-const trigger = { isConnected: true, focus: vi.fn() };
+const trigger = { isConnected: true, focus: vi.fn(), closest: () => null };
 const render = () => {
   h.cursor = 0; const tree = HoldExitButton({ onExit: h.exit });
   const nodes = elements(tree), triggerRef = nodes.find(node => node.type === "button")?.props.ref;

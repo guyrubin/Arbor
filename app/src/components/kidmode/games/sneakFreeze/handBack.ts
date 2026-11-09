@@ -18,18 +18,34 @@ import { dayKey } from "../../../../practice/signals";
 import { SNEAK_GAME_ID } from "./record";
 
 /** Times the child reached the cat in today's finished sittings (0 = no card).
- *  Reads `game`, `day` and `rounds` — nothing else. */
-export function reachedTheCatToday(events: readonly { game?: string; day?: string; rounds?: number }[], now: Date): number {
+ *  An exit recap also passes its session start: yesterday's or an earlier
+ *  same-day sitting must not trigger a new hand-back after unrelated play.
+ *  An old row without a valid finish timestamp cannot prove this session.
+ *  Reads only game/day/rounds and the finish timestamp, never performance. */
+export function reachedTheCatToday(
+  events: readonly { game?: string; day?: string; rounds?: number; timestamp?: string | null }[],
+  now: Date,
+  sinceMs?: number,
+): number {
   const today = dayKey(now);
+  const nowMs = now.getTime();
   let n = 0;
   for (const e of events) {
     if (e?.game !== SNEAK_GAME_ID || e.day !== today) continue;
+    if (sinceMs !== undefined) {
+      const finishedMs = typeof e.timestamp === "string" ? Date.parse(e.timestamp) : NaN;
+      if (!Number.isFinite(sinceMs) || !Number.isFinite(finishedMs) || finishedMs < sinceMs || finishedMs > nowMs) continue;
+    }
     if (typeof e.rounds === "number" && Number.isFinite(e.rounds) && e.rounds > 0) n += Math.floor(e.rounds);
   }
   return n;
 }
 
 export interface SneakHandBack {
+  /** The exact account+child scope at exit; ephemeral, never written or shared. */
+  scope: string;
+  /** Current Kid Mode visit only: prevents an old on-device picture resurfacing. */
+  sessionStartMs: number;
   childId: string;
   /** First name ("" when unknown). */
   name: string;
@@ -39,6 +55,25 @@ export interface SneakHandBack {
   /** The line Keep writes as a parent moment (the exit recap's own line when
    *  there is one). */
   keepLine: string | null;
+}
+
+/** A previously offered card cannot reappear under another account, even
+ *  when two accounts happen to use the same child ID. Unknown auth fails shut. */
+export function handBackMatchesScope(card: SneakHandBack | null, liveScope: string | null): boolean {
+  return !!card && !!liveScope && card.scope === liveScope;
+}
+
+/** The card can show only a picture created during its own visit. The
+ *  device-local album is older child-ID-keyed storage, so never pick its first
+ *  row without checking the visit window (owner isolation migration remains
+ *  a separate B-KID-143 acceptance gate). */
+export function latestVisitStatue<T extends { at: string }>(pictures: readonly T[], sinceMs: number, nowMs: number): T | null {
+  if (!Number.isFinite(sinceMs) || !Number.isFinite(nowMs)) return null;
+  for (const p of pictures) {
+    const ms = typeof p?.at === "string" ? Date.parse(p.at) : NaN;
+    if (Number.isFinite(ms) && ms >= sinceMs && ms <= nowMs) return p;
+  }
+  return null;
 }
 
 let pending: SneakHandBack | null = null;

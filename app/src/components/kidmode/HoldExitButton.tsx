@@ -271,6 +271,9 @@ export function HoldExitButton({ onExit, idleLabel, ariaIdle }: HoldExitButtonPr
       </span>
       {challengeOpen && (
         <ParentChallenge
+          // Keep the gate inside the locked Kids layer, but outside the
+          // header/content stacking contexts that can cover its controls.
+          portalRoot={buttonRef.current?.closest<HTMLElement>('[data-kid-mode-layer="true"], .arbor-play') ?? undefined}
           onSuccess={() => {
             if (!activeChallenge || challengeRef.current !== activeChallenge) return;
             challengeRef.current = null;

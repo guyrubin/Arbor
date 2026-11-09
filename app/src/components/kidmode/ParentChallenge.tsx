@@ -17,6 +17,7 @@
  * logical properties for RTL; entrance motion gated on prefers-reduced-motion.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import { prefersReducedMotion } from "../../lib/devscore";
@@ -32,6 +33,8 @@ import {
 } from "./parentGate";
 
 interface ParentChallengeProps {
+  /** The active Kids layer; never portal into the unguarded parent shell. */
+  portalRoot?: HTMLElement;
   /** Parent verified — the actual exit action (e.g. closeKidMode). */
   onSuccess: () => void;
   /** Card dismissed — stays safely inside Kid Mode. */
@@ -50,8 +53,8 @@ const fieldStyle: React.CSSProperties = {
   fontVariantNumeric: "tabular-nums",
 };
 
-export function ParentChallenge({ onSuccess, onDismiss }: ParentChallengeProps) {
-  const { t } = useLanguage();
+export function ParentChallenge({ onSuccess, onDismiss, portalRoot }: ParentChallengeProps) {
+  const { t, uiLang } = useLanguage();
   const storedPin = useMemo(() => readParentPin(), []);
   // STORE-3: once a PIN exists, the exit gate is PIN-ONLY — no math fallback
   // (a school-age child can add). With no PIN, the math question remains the
@@ -146,8 +149,10 @@ export function ParentChallenge({ onSuccess, onDismiss }: ParentChallengeProps) 
 
   const isPin = mode === "pin";
 
-  return (
+  const content = (
     <div
+      data-kid-parent-gate=""
+      dir={uiLang === "he" ? "rtl" : "ltr"}
       style={{
         position: "fixed",
         inset: 0,
@@ -156,6 +161,8 @@ export function ParentChallenge({ onSuccess, onDismiss }: ParentChallengeProps) 
         alignItems: "center",
         justifyContent: "center",
         padding: "20px",
+        boxSizing: "border-box",
+        overflowY: "auto",
         background: "rgba(41,51,63,0.45)",
         opacity: entered ? 1 : 0,
         transition: "opacity 0.25s ease",
@@ -171,6 +178,9 @@ export function ParentChallenge({ onSuccess, onDismiss }: ParentChallengeProps) 
           position: "relative",
           width: "100%",
           maxWidth: "340px",
+          maxHeight: "100%",
+          overflowY: "auto",
+          boxSizing: "border-box",
           borderRadius: "22px",
           border: "1px solid var(--arbor-rule)",
           background: "var(--arbor-paper-elevated)",
@@ -307,6 +317,7 @@ export function ParentChallenge({ onSuccess, onDismiss }: ParentChallengeProps) 
       </div>
     </div>
   );
+  return portalRoot ? createPortal(content, portalRoot) : content;
 }
 
 export default ParentChallenge;
