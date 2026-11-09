@@ -17,6 +17,11 @@ const floors = [
   ["vitest", "4.1.11"],
   ["@vitest/mocker", "4.1.11"],
   ["@vitest/coverage-v8", "4.1.11"],
+  // B-GA-33 re-audit, 9 Nov: compressed-body DoS, oversized collection
+  // validation and dev-server deny-list bypass (see dated release note).
+  ["body-parser", "1.20.9"],
+  ["zod", "4.6.6"],
+  ["vite", "6.4.5"],
 ] as const;
 
 /** B-GA-33 retained findings (see docs/releases/dependency-security-2026-10-18.md).
