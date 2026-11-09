@@ -32,13 +32,15 @@ try {
   const context=await browser.newContext({viewport:{width:cell.w,height:cell.h},reducedMotion:'reduce'});
   await context.route('**/*',r=>r.abort());
   const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  // Exercise the real wall-clock timer without sleeping three seconds per cell.
+  await page.clock.install();
   const mount=async({negative=false,home=false,pin=false}={})=>{
    await page.goto('about:blank');await page.setContent('<div id="root"></div>');
    await page.addStyleTag({content:css.replace(/^@import[^;]+;/,'')+'body{margin:0} :root{--arbor-paper:#fff;--arbor-paper-elevated:#fff;--arbor-ink:#14225a;--arbor-muted:#475569;--arbor-clay:#1558c0;--arbor-on-accent:#fff;--arbor-rule:#ddd;--arbor-rule-strong:#ccc;--t-lg:20px;--t-xl:24px;--t-sm:14px;--t-xs:12px;--r:12px}'});
    await page.evaluate(opts=>{const storage=()=>{const m=new Map();return{getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,String(v)),removeItem:k=>m.delete(k)}};Object.defineProperty(window,'localStorage',{value:storage(),configurable:true});Object.defineProperty(window,'sessionStorage',{value:storage(),configurable:true});window.fixture=opts;document.documentElement.dir=opts.lang==='he'?'rtl':'ltr';},{home,pin,lang:cell.lang});
    await page.addScriptTag({content:negative?before:fixed});
   };
-  const hold=async()=>{const b=await page.locator('main header button').first().boundingBox();assert.ok(b);await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.down();await page.waitForTimeout(3100);await page.mouse.up();await page.locator('[role="dialog"]').waitFor();};
+  const hold=async()=>{const b=await page.locator('main header button').first().boundingBox();assert.ok(b);await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.down();await page.clock.fastForward(3100);await page.mouse.up();await page.locator('[role="dialog"]').waitFor();};
   const reachable=()=>page.locator('[role="dialog"] input').evaluate(el=>{const b=el.getBoundingClientRect();return document.elementFromPoint(b.x+b.width/2,b.y+b.height/2)===el;});
   await mount({negative:true});await hold();assert.equal(await reachable(),false,'negative control reproduces content covering the inline gate');
   for(const home of [false,true])for(const pin of [false,true]) {
