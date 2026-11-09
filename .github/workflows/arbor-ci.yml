@@ -24,6 +24,15 @@ jobs:
         run: node scripts/kids-entry-browser.mjs
       - name: Verify reachable Kids parent exit above every surface (EN/HE)
         run: node scripts/kids-exit-browser.mjs
+      - name: Verify Parent handback and private feedback lifetimes (EN/HE)
+        run: node scripts/parent-handback-browser.mjs
+      - name: Retain Parent handback evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parent-handback-evidence
+          path: app/output/parent-handback
+          retention-days: 7
       - name: Retain Kids parent exit evidence
         if: always()
         uses: actions/upload-artifact@v4

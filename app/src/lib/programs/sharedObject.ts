@@ -184,11 +184,13 @@ export function bookHandback(input: {
   };
 }
 
-const dismissKey = (childId: string) => childScopedKey("programHandback", childId);
+const dismissKey = (childId: string, ownerId: string) => childScopedKey(`programHandback.${encodeURIComponent(ownerId)}`, childId);
 
-export function readDismissedHandbacks(storage: StorageLike, childId: string): string[] {
+export function readDismissedHandbacks(storage: StorageLike, childId: string, ownerId = "local-sandbox"): string[] {
+  if (!childId || !ownerId.trim()) return [];
   try {
-    const raw = storage?.getItem(dismissKey(childId));
+    // Legacy owner-less dismissals cannot be attributed to the signed-in family.
+    const raw = storage?.getItem(dismissKey(childId, ownerId));
     const parsed = raw ? JSON.parse(raw) as unknown : [];
     return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string" && x.length > 0 && x.length < 120) : [];
   } catch {
@@ -196,10 +198,11 @@ export function readDismissedHandbacks(storage: StorageLike, childId: string): s
   }
 }
 
-export function dismissHandback(storage: StorageLike, childId: string, key: string): string[] {
-  const next = [...new Set([...readDismissedHandbacks(storage, childId), key])].slice(-40);
+export function dismissHandback(storage: StorageLike, childId: string, key: string, ownerId = "local-sandbox"): string[] {
+  if (!childId || !ownerId.trim()) return [];
+  const next = [...new Set([...readDismissedHandbacks(storage, childId, ownerId), key])].slice(-40);
   try {
-    storage?.setItem?.(dismissKey(childId), JSON.stringify(next));
+    storage?.setItem?.(dismissKey(childId, ownerId), JSON.stringify(next));
   } catch {
     /* a full or private store still hides the card for this render */
   }

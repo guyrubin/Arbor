@@ -4,7 +4,7 @@ import { Icon } from "./components/ui/Icon";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ProfileProvider, useProfile } from "./context/ProfileContext";
 import { ArborProvider } from "./context/ArborContext";
-import { ToastProvider } from "./context/ToastContext";
+import { ToastProvider, ToastScope } from "./context/ToastContext";
 import { LanguageProvider, useLanguage } from "./context/LanguageContext";
 import Shell from "./components/layout/Shell";
 import LoginScreen from "./components/auth/LoginScreen";
@@ -22,6 +22,13 @@ import { finishPendingErases } from "./lib/pendingErase";
  * users only ever see the LoginScreen. In sandbox mode (no Firebase config) the
  * AuthProvider supplies a synthetic local user, so the gate passes through.
  */
+function FamilyToastScope({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const { activeChild, loading, loadError } = useProfile();
+  const scopeKey = JSON.stringify([user?.uid ?? null, activeChild.id, loading, loadError]);
+  return <ToastScope scopeKey={scopeKey}>{children}</ToastScope>;
+}
+
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const { t } = useLanguage();
@@ -173,6 +180,7 @@ export default function App() {
           <AuthGate>
             <BillingReturnWatcher />
             <ProfileProvider>
+              <FamilyToastScope>
               <CoParentGate>
               <ProfileGate>
                 <ArborProvider>
@@ -181,6 +189,7 @@ export default function App() {
                 </ArborProvider>
               </ProfileGate>
               </CoParentGate>
+              </FamilyToastScope>
             </ProfileProvider>
           </AuthGate>
         </AuthProvider>

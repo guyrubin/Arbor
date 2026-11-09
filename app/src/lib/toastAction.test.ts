@@ -39,6 +39,13 @@ describe("CR-09 · toast layer safe area", () => {
 });
 
 describe("CR-09 · toast action slot", () => {
+  it("family feedback has one owner/child boundary outside the family screens", () => {
+    const app = fs.readFileSync(path.join(SRC, "App.tsx"), "utf8");
+    expect(app).toContain('JSON.stringify([user?.uid ?? null, activeChild.id, loading, loadError])');
+    expect(app).toMatch(/<ProfileProvider>\s*<FamilyToastScope>/);
+    expect(app).toMatch(/<\/FamilyToastScope>\s*<\/ProfileProvider>/);
+    expect(toastSrc).toContain('<AnimatePresence key={generation}>');
+  });
   it("ToastContext exposes a {label,onClick} action and threads it through toast()", () => {
     expect(toastSrc).toMatch(/export type ToastAction = \{ label: string; onClick: \(\) => void \}/);
     expect(toastSrc).toMatch(/toast: \(message: string, type\?: ToastType, action\?: ToastAction\) => void/);

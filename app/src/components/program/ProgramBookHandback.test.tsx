@@ -70,7 +70,9 @@ describe("B-PROG-16 · the handback card", () => {
     const now = readFileSync(path.join(here, "../companion/NowView.tsx"), "utf8");
     const view = readFileSync(path.join(here, "ProgramBookHandback.tsx"), "utf8");
     expect(now).toContain("{programSharedObjectOn() && <ProgramBookHandback />}");
-    expect(view).toContain("addMoment(text, { callerShowsFailure: true })");
+    expect(view).toContain("addMoment(text, { callerShowsFailure: true, requireAcknowledgement: true");
+    expect(view).toContain('retryKey: `book-handback:${card.key}`');
+    expect(view).toContain("isCurrent: current");
     expect(view).not.toMatch(/coRegulationScript|score|choice/);
   });
 });

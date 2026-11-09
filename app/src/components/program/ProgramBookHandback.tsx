@@ -6,8 +6,9 @@
  * Dismiss hides it. Save writes the parent's own sentence to the journal,
  * with no prefix and no script. The read ledger has no path to copy.
  */
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
+import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { activeProgramWeek } from "../../lib/programs/enrolment";
@@ -57,14 +58,24 @@ export function ProgramBookHandbackView({
   const [words, setWords] = useState("");
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  const writing = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const text = words.trim();
   const save = async () => {
-    if (!text || saving) return;
+    if (!text || writing.current || !mounted.current) return;
+    writing.current = true;
     setSaving(true);
     setFailed(false);
-    const ok = await onSave(text);
-    setSaving(false);
-    if (!ok) setFailed(true);
+    try {
+      const ok = await onSave(text);
+      if (mounted.current && !ok) setFailed(true);
+    } catch {
+      if (mounted.current) setFailed(true);
+    } finally {
+      writing.current = false;
+      if (mounted.current) setSaving(false);
+    }
   };
   return (
     <section className="now-handback" data-testid="program-book-handback" dir={lang === "he" ? "rtl" : "ltr"} aria-label={labels.handback}>
@@ -75,10 +86,10 @@ export function ProgramBookHandbackView({
       <p className="now-handback-line" dir="auto" data-testid="program-book-ask"><span className="now-handback-kicker">{labels.ask}</span> <bdi>{card.askAfter}</bdi></p>
       <label className="now-handback-label">
         {labels.words}
-        <textarea className="now-handback-words" dir="auto" maxLength={500} value={words} placeholder={labels.placeholder} onChange={(e) => { setWords(e.target.value); setFailed(false); }} />
+        <textarea className="now-handback-words" dir="auto" maxLength={500} value={words} disabled={saving} placeholder={labels.placeholder} onChange={(e) => { setWords(e.target.value); setFailed(false); }} />
       </label>
       <div className="now-handback-actions">
-        <button type="button" className="min-h-11" data-testid="program-book-dismiss" onClick={onDismiss}>{labels.dismiss}</button>
+        <button type="button" className="min-h-11" data-testid="program-book-dismiss" disabled={saving} onClick={() => { if (!writing.current && mounted.current) onDismiss(); }}>{labels.dismiss}</button>
         <button type="button" className="min-h-11 now-handback-save" data-testid="program-book-save" disabled={!text || saving} onClick={() => { void save(); }}>{labels.save}</button>
       </div>
       {failed && <p className="now-handback-error" role="alert">{labels.saveError}</p>}
@@ -88,6 +99,14 @@ export function ProgramBookHandbackView({
 
 /** The Now card. Renders nothing unless yesterday's read is the week's one object. */
 export default function ProgramBookHandback() {
+  const { childProfile } = useArbor();
+  const { user, firebaseEnabled, loading } = useAuth();
+  if (firebaseEnabled && (loading || !user)) return null;
+  const ownerId = firebaseEnabled ? user!.uid : "local-sandbox";
+  return <ScopedProgramBookHandback key={JSON.stringify([ownerId, childProfile.id])} ownerId={ownerId} />;
+}
+
+function ScopedProgramBookHandback({ ownerId }: { ownerId: string }) {
   const { childProfile, addMoment } = useArbor();
   const { t, uiLang } = useLanguage();
   const now = useNowClock();
@@ -95,10 +114,12 @@ export default function ProgramBookHandback() {
   const programs = useChildCollection<{ id: string }>(childProfile.id, "programs");
   const planRows = useChildCollection<PlanBookDoc>(childProfile.id, "books");
   const reads = useChildCollection<BookRead>(childProfile.id, BOOK_READS);
-  const [dismissed, setDismissed] = useState<string[]>(() => readDismissedHandbacks(deviceStore(), childProfile.id));
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const [dismissed, setDismissed] = useState<string[]>(() => readDismissedHandbacks(deviceStore(), childProfile.id, ownerId));
   const card = useMemo(() => {
     const program = activeProgramWeek(programs.items, now);
-    if (!program) return null;
+    if (!program || !programs.loaded || programs.error || !planRows.loaded || planRows.error || !reads.loaded || reads.error) return null;
     const skill = lang === "he" ? resolveHebrewSlash(program.content.skill.he, childProfile.gender) : program.content.skill.en;
     const chosenIds = activePlans(planRows.items, now)
       .filter((p) => planShelf(p.def) === program.program.shelf)
@@ -116,7 +137,9 @@ export default function ProgramBookHandback() {
       weekSkill: skill,
     });
     return "key" in result ? result : null;
-  }, [programs.items, planRows.items, reads.items, now, lang, childProfile.gender, childProfile.name, dismissed]);
+  }, [programs.items, programs.loaded, programs.error, planRows.items, planRows.loaded, planRows.error, reads.items, reads.loaded, reads.error, now, lang, childProfile.gender, childProfile.name, dismissed]);
+  const currentCard = useRef(card?.key);
+  currentCard.current = card?.key;
   if (!card) return null;
   const labels: HandbackLabels = {
     handback: t("elev.program.object.handback"),
@@ -128,7 +151,10 @@ export default function ProgramBookHandback() {
     placeholder: t("elev.program.object.placeholder"),
     saveError: t("elev.program.object.saveError"),
   };
-  const hide = (key: string) => setDismissed(dismissHandback(deviceStore(), childProfile.id, key));
+  const current = () => mounted.current && currentCard.current === card.key;
+  const hide = (key: string) => {
+    if (current()) setDismissed(dismissHandback(deviceStore(), childProfile.id, key, ownerId));
+  };
   return (
     <ProgramBookHandbackView
       key={card.key}
@@ -137,8 +163,9 @@ export default function ProgramBookHandback() {
       labels={labels}
       onDismiss={() => hide(card.key)}
       onSave={async (text) => {
-        const saved = await addMoment(text, { callerShowsFailure: true });
-        if (!saved) return false;
+        if (!current()) return false;
+        const saved = await addMoment(text, { callerShowsFailure: true, requireAcknowledgement: true, retryKey: `book-handback:${card.key}`, isCurrent: current });
+        if (!saved || !current()) return false;
         hide(card.key);
         return true;
       }}

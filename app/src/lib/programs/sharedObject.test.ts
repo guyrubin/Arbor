@@ -137,7 +137,19 @@ describe("B-PROG-16 · the real catalogue, the flag, and dismiss", () => {
     expect(dismissHandback(storage, "child-a", "plan-new-food:2026-10-28")).toEqual(["plan-new-food:2026-10-28"]);
     expect(readDismissedHandbacks(storage, "child-a")).toEqual(["plan-new-food:2026-10-28"]);
     expect(readDismissedHandbacks(storage, "child-b")).toEqual([]);
-    expect([...mem.keys()][0]).toBe(childScopedKey("programHandback", "child-a"));
+    expect([...mem.keys()][0]).toBe(childScopedKey("programHandback.local-sandbox", "child-a"));
+  });
+
+  it("dismissals belong to an owner and child; legacy and unknown-owner state cannot hide another family's card", () => {
+    const mem = new Map([[childScopedKey("programHandback", "same-child"), '["legacy"]']]);
+    const storage = { getItem: (key: string) => mem.get(key) ?? null, setItem: (key: string, value: string) => { mem.set(key, value); } };
+    expect(readDismissedHandbacks(storage, "same-child", "owner-a")).toEqual([]);
+    dismissHandback(storage, "same-child", "book:2026-11-09", "owner-a");
+    expect(readDismissedHandbacks(storage, "same-child", "owner-a")).toEqual(["book:2026-11-09"]);
+    expect(readDismissedHandbacks(storage, "same-child", "owner-b")).toEqual([]);
+    expect(readDismissedHandbacks(storage, "other-child", "owner-a")).toEqual([]);
+    expect(dismissHandback(storage, "same-child", "unknown", "")).toEqual([]);
+    expect(mem.size).toBe(2);
   });
 
   it("the handback chrome exists in EN and HE and carries no verdict", () => {

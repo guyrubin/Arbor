@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Icon } from "../components/ui/Icon";
@@ -20,6 +20,7 @@ type Toast = { id: number; type: ToastType; message: string; action?: ToastActio
 
 type ToastContextValue = {
   toast: (message: string, type?: ToastType, action?: ToastAction) => void;
+  retire: () => void;
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -37,6 +38,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   // A hardcoded +40 would slide it in from the right, across itself.
   const enterX = uiLang === "he" ? -40 : 40;
   const [toasts, setToasts] = useState<Toast[]>([]);
+  // A toast callback belongs to the account/child visit that obtained it.
+  // Retiring a visit clears visible AND queued text and rejects late retries.
+  const lifetime = useRef(0);
+  const [generation, setGeneration] = useState(0);
 
   // KID-LOCK (W0.9, LEAK 4): ToastProvider renders OUTSIDE Shell (App.tsx), so
   // its z-[80] container paints ABOVE the Kid Mode overlay (z-70) with a
@@ -48,10 +53,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const queueRef = useRef<Toast[]>([]);
   useEffect(() => subscribeKidMode(setKidLocked), []);
 
+  const retire = useCallback(() => {
+    const next = ++lifetime.current;
+    queueRef.current = [];
+    setToasts([]);
+    setGeneration(next);
+  }, []);
+
   const remove = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
 
   const toast = useCallback(
     (message: string, type: ToastType = "info", action?: ToastAction) => {
+      if (lifetime.current !== generation) return;
       const id = Date.now() + Math.random();
       if (isKidModeActive()) {
         queueRef.current.push({ id, type, message, action });
@@ -60,20 +73,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       setToasts((t) => [...t, { id, type, message, action }]);
       if (!action) setTimeout(() => remove(id), 4000);
     },
-    [remove]
+    [remove, generation]
   );
 
   // Flush the queued toasts once Kid Mode exits (parent is back in control).
   useEffect(() => {
-    if (kidLocked || queueRef.current.length === 0) return;
+    if (lifetime.current !== generation || kidLocked || queueRef.current.length === 0) return;
     const queued = queueRef.current;
     queueRef.current = [];
     setToasts((t) => [...t, ...queued]);
     for (const q of queued) if (!q.action) setTimeout(() => remove(q.id), 4000);
-  }, [kidLocked, remove]);
+  }, [kidLocked, remove, generation]);
 
   return (
-    <ToastContext.Provider value={{ toast }}>
+    <ToastContext.Provider value={{ toast, retire }}>
       {children}
       {/* Portalled to body and exempted from the dialog shield: rendered inside
           #root it inherits inert/aria-hidden whenever any dialog is open, which
@@ -85,7 +98,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         className="fixed end-4 z-[80] arbor-app flex flex-col gap-2 w-[min(92vw,340px)]"
         // CR-09: `top-4` put the layer under the notch/status bar on a phone.
         style={{ top: "calc(env(safe-area-inset-top) + 1rem)" }}>
-        <AnimatePresence>
+        <AnimatePresence key={generation}>
           {toasts.map((tc) => (
             <motion.div
               key={tc.id}
@@ -104,7 +117,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 <span className="block leading-snug" style={{ color: "var(--arbor-ink)" }}>{tc.message}</span>
                 {tc.action && (
                   <button
-                    onClick={() => { tc.action?.onClick(); remove(tc.id); }}
+                    onClick={() => { if (lifetime.current === generation) tc.action?.onClick(); remove(tc.id); }}
                     className="touch-target inline-flex items-center mt-1 -ms-1 px-1 text-[13px] font-bold underline"
                     style={{ color: "var(--arbor-clay-deep)" }}
                   >
@@ -126,6 +139,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       )}
     </ToastContext.Provider>
   );
+}
+
+const useToastScopeEffect = typeof document === "undefined" ? useEffect : useLayoutEffect;
+
+/** Inside the authenticated ProfileProvider, outside its child screens.
+ * Clear before paint on child/account changes and when authentication unmounts
+ * the family. Remounting AnimatePresence prevents an outgoing private message
+ * from surviving as an exit animation. No application subtree is remounted. */
+export function ToastScope({ scopeKey, children }: { scopeKey: string; children: React.ReactNode }) {
+  const context = useContext(ToastContext);
+  if (!context) throw new Error("ToastScope must be used within a ToastProvider");
+  const { retire } = context;
+  useToastScopeEffect(() => { retire(); return retire; }, [scopeKey, retire]);
+  return <>{children}</>;
 }
 
 export function useToast(): ToastContextValue {
