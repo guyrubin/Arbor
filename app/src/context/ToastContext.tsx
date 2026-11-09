@@ -78,7 +78,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   // Flush the queued toasts once Kid Mode exits (parent is back in control).
   useEffect(() => {
-    if (lifetime.current !== generation || kidLocked || queueRef.current.length === 0) return;
+    if (lifetime.current !== generation) return;
+    if (kidLocked || queueRef.current.length === 0) return;
     const queued = queueRef.current;
     queueRef.current = [];
     setToasts((t) => [...t, ...queued]);
