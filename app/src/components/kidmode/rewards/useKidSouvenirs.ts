@@ -13,7 +13,7 @@ export function useKidSouvenirs(childId: string) {
   // The unauthenticated hosted app is NOT the local sandbox. A sign-out must
   // never expose device-local demo progress or allow a new keepsake write.
   // A configured Firebase client without a usable remote store also fails closed.
-  const canAccess = !firebaseEnabled || (!!user && user.uid !== "local-sandbox" && store.remote);
+  const canAccess = !firebaseEnabled || (typeof user?.uid === "string" && !!user.uid.trim() && user.uid !== "local-sandbox" && store.remote);
   const scopeKey = `${canAccess ? user?.uid ?? "local" : "signed-out"}:${childId}`;
   const lifetime = useRef({ scopeKey, revision: 0 });
   if (lifetime.current.scopeKey !== scopeKey) lifetime.current = { scopeKey, revision: lifetime.current.revision + 1 };
