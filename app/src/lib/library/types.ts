@@ -239,7 +239,15 @@ export interface Choice {
  *  read aloud and never shown to the child. v1 books carry builds + why; the
  *  v2 panel (depth-pass §3.2) carries knows + whyNow + tomorrow (+ together).
  *  The reader shows the sections a book has, in this order. */
+/** B-BOOK-66: reviewed parent-only repeatable acts, never child traits. */
+export interface ParentPractice {
+  id: string;
+  act: BookLabel;
+}
+
 export interface ParentPanel {
+  /** Optional until authored and reviewed in both locales; not rendered in Kids. */
+  practises?: readonly ParentPractice[];
   /** v2: "What the story knows". */
   knows?: BookLabel;
   /** v1: "What it builds". */
