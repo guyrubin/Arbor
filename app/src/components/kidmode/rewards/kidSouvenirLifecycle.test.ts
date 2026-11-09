@@ -6,7 +6,7 @@ vi.mock("react", async original => ({ ...await original<typeof import("react")>(
   useCallback(fn: unknown) { return fn; },
   useEffect(fn: () => void | (() => void), deps: unknown[]) { const i = h.cursor++, old = h.slots[i]; if (old?.deps && deps.every((d,n) => Object.is(d,old.deps[n]))) return; const slot = h.slots[i] = { deps, cleanup: old?.cleanup }; h.effects.push(() => { slot.cleanup?.(); slot.cleanup = fn(); }); },
 }));
-vi.mock("../../../context/AuthContext", () => ({ useAuth: () => ({ user: h.owner ? { uid: h.owner } : null }) }));
+vi.mock("../../../context/AuthContext", () => ({ useAuth: () => ({ user: h.owner === null ? null : { uid: h.owner } }) }));
 vi.mock("../../../lib/firebase", () => ({ firebaseEnabled: true }));
 vi.mock("../../../hooks/useChildCollection", () => ({ useChildCollection: () => ({ items: h.rows, loaded: h.loaded, confirmed: true, remote: h.remote, isCurrent: () => true, upsert: h.upsert }) }));
 vi.mock("../../ui/HeroAvatar", () => ({ HeroAvatar: () => null }));
@@ -51,6 +51,17 @@ describe("souvenir lifetime", () => {
     expect(ledger.items).toEqual([]);
     expect(ledger.loaded).toBe(false);
     expect(await ledger.awardOnce("world","pattern")).toBe(false);
+    expect(h.upsert).not.toHaveBeenCalled();
+  });
+  it("denies malformed or sandbox-only owner identities in hosted mode", async () => {
+    for (const owner of ["", "  ", "local-sandbox"]) {
+      h.owner=owner;
+      h.cursor=0;
+      const ledger=useKidSouvenirs("kid");
+      expect(ledger.loaded).toBe(false);
+      expect(ledger.isCurrent()).toBe(false);
+      expect(await ledger.awardOnce("world","pattern")).toBe(false);
+    }
     expect(h.upsert).not.toHaveBeenCalled();
   });
   it("retires pre-sign-out award closures on an account change", async () => {
