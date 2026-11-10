@@ -10,6 +10,10 @@
  */
 
 export const en: Record<string, string> = {
+  "elev.books.practice.title": "Your books",
+  "elev.books.practice.filter": "A small thing to try",
+  "elev.books.practice.all": "All books",
+  "elev.books.practice.open": "Read together",
   "elev.mimic.mirror.privacyTitle": "Camera privacy",
   "elev.mimic.mirror.privacyBody": "The mirror stays on this device. Camera images are not recorded, stored or uploaded. Saved practice details include the round, time and the rating you choose.",
   // ── B-PROG-05 · the program page ──
@@ -173,6 +177,10 @@ export const en: Record<string, string> = {
 };
 
 export const he: Record<string, string> = {
+  "elev.books.practice.title": "הספרים שלכם",
+  "elev.books.practice.filter": "דבר קטן לנסות",
+  "elev.books.practice.all": "כל הספרים",
+  "elev.books.practice.open": "לקרוא יחד",
   "elev.mimic.mirror.privacyTitle": "פרטיות המצלמה",
   "elev.mimic.mirror.privacyBody": "המראה פועלת רק במכשיר הזה. תמונות המצלמה לא מוקלטות, נשמרות או מועלות. פרטי התרגול שנשמרים כוללים את הסבב, השעה והדירוג שבחרתם.",
   // ── B-PROG-05 · the program page ──

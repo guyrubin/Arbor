@@ -28,6 +28,15 @@ jobs:
         run: node scripts/parent-handback-browser.mjs
       - name: Verify Together save ownership and acknowledgement (EN/HE)
         run: node scripts/together-save-browser.mjs
+      - name: Verify Parent owned-book covers and practice filters (EN/HE)
+        run: node scripts/parent-book-library-browser.mjs
+      - name: Retain Parent book library evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parent-book-library-evidence
+          path: app/output/parent-book-library
+          retention-days: 7
       - name: Retain Together save evidence
         if: always()
         uses: actions/upload-artifact@v4

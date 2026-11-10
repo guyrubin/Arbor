@@ -23,6 +23,8 @@ import { trackCompanionPlaceOpen, trackPracticeStudioOpen, trackPracticeTogether
 import { TOGETHER_ART } from "../../lib/parentArt";
 import { useTogetherNavigation } from "./togetherNavigation";
 import { openFamilyTopicSheet } from "./familyTopicEvents";
+import TogetherBookPractices from "../program/TogetherBookPractices";
+import { programSharedObjectOn } from "../../lib/programs/sharedObject";
 import TogetherRoutines from "./TogetherRoutines";
 import "./companionExperience.css";
 import "./togetherDiscovery.css";
@@ -234,6 +236,7 @@ function ScopedTogetherView() {
       <section hidden={!show("stories")} className="companion-collection" data-module="together-stories" aria-labelledby={`${filterId}-stories`}>
         <div className="companion-section-heading"><div><span className="companion-eyebrow">{t("companion.together-view.read-imagine-talk")}</span><h2 id={`${filterId}-stories`}>{t("companion.together-view.which-story-shall-we-step-into")}</h2></div></div>
         <div className="companion-story-grid">{STORY_DOORS.map((story) => <button key={story.id} type="button" className="companion-story-card" data-together-return={`story-${story.id}`} aria-haspopup="dialog" onClick={() => setPreview({ kind: "story", id: story.id })}><div className="companion-card-art"><img src={story.art} alt="" loading="lazy" width="480" height="320" /><span className="companion-art-label"><Icon name={story.icon} size={16} />{t("companion.together-view.choose-and-preview")}</span></div><div className="companion-card-copy"><h3>{story.title[lang]}</h3><p>{story.detail[lang]}</p><span className="companion-door-link">{t("companion.together-view.explore")}<Icon name="arrow_forward" size={18} className="companion-arrow rtl:-scale-x-100" /></span></div></button>)}</div>
+        {show("stories") && programSharedObjectOn() && <TogetherBookPractices />}
       </section>
 
       {/* FEAT-07 → v3 F-TOG-1: the ready-made routines are a module of their own. */}

@@ -1,0 +1,10 @@
+.parent-book-library { display: grid; gap: 16px; margin-block-start: 24px; padding-block-start: 20px; border-block-start: 1px solid var(--arbor-rule); }
+.parent-book-library h3, .parent-book-library h4, .parent-book-library p { margin: 0; }
+.parent-book-library .companion-filter-row { flex-wrap: wrap; }
+.parent-book-list { display: grid; gap: 16px; }
+.parent-book-card { display: flex; align-items: flex-start; gap: 16px; color: var(--arbor-ink); }
+.parent-book-cover { position: relative; flex: 0 0 90px; aspect-ratio: 3 / 4; overflow: hidden; border: 1px solid var(--arbor-rule); border-radius: 8px; }
+.parent-book-copy { min-inline-size: 0; display: grid; gap: 8px; overflow-wrap: anywhere; }
+.parent-book-copy h4 { font-size: var(--t-base); font-weight: 700; }
+.parent-book-copy p { font-size: var(--t-sm); line-height: 1.5; }
+.parent-book-library button { min-block-size: 44px; white-space: normal; text-align: start; }

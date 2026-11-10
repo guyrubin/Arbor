@@ -20,7 +20,7 @@ function Child(){const {toast}=useToast();window.notify=()=>toast('Synthetic pri
 function App(){const [scope,setScope]=useState('owner-a:child-a'),[family,setFamily]=useState(true);
  window.scope=value=>flushSync(()=>setScope(value));window.family=value=>flushSync(()=>setFamily(value));
  const lang=window.fixture.lang,t=k=>translate(lang,'elev.program.object.'+k);
- return <ToastProvider>{family&&<ToastScope scopeKey={scope}><Child/><ProgramBookHandbackView key={scope} card={{key:'synthetic:yesterday',objectId:'synthetic',title:'Synthetic book',coverLine:'Synthetic cover',tomorrow:'Synthetic tomorrow',askAfter:'Synthetic question'}} lang={lang} labels={{handback:t('handback'),tomorrow:t('tomorrow'),ask:t('ask'),dismiss:t('dismiss'),save:t('save'),words:t('words'),placeholder:t('placeholder'),saveError:t('saveError')}} onDismiss={()=>window.dismissed=true} onSave={text=>{window.writes.push(text);return new Promise((resolve,reject)=>{window.resolveWrite=resolve;window.rejectWrite=()=>reject(new Error('synthetic failure'));});}}/></ToastScope>}</ToastProvider>;}
+ return <ToastProvider>{family&&<ToastScope scopeKey={scope}><Child/><ProgramBookHandbackView key={scope} cover={<span data-owned-cover={scope}/>} card={{key:'synthetic:yesterday',objectId:'synthetic',title:'Synthetic book',coverLine:'Synthetic cover',tomorrow:'Synthetic tomorrow',askAfter:'Synthetic question'}} lang={lang} labels={{handback:t('handback'),tomorrow:t('tomorrow'),ask:t('ask'),dismiss:t('dismiss'),save:t('save'),words:t('words'),placeholder:t('placeholder'),saveError:t('saveError')}} onDismiss={()=>window.dismissed=true} onSave={text=>{window.writes.push(text);return new Promise((resolve,reject)=>{window.resolveWrite=resolve;window.rejectWrite=()=>reject(new Error('synthetic failure'));});}}/></ToastScope>}</ToastProvider>;}
 createRoot(document.getElementById('root')).render(<React.StrictMode><App/></React.StrictMode>);`;
 
 async function bundle(negative) {
@@ -50,7 +50,7 @@ try{
   await mount(true);await page.evaluate(()=>window.notify());await privateMessages().waitFor();await page.evaluate(()=>window.scope('owner-b:child-a'));assert.equal(await privateMessages().count(),1,'negative control retains the other owner’s private toast');
   await mount(false);await page.evaluate(()=>{window.oldNotify=window.notify;window.notify();});await privateMessages().waitFor();
   const staleAction=await page.getByRole('button',{name:'Synthetic action'}).elementHandle();
-  await page.evaluate(()=>window.scope('owner-b:child-a'));assert.equal(await privateMessages().count(),0,'no private exit animation after account change');
+  await page.evaluate(()=>window.scope('owner-b:child-a'));assert.equal(await privateMessages().count(),0,'no private exit animation after account change');assert.equal(await page.locator('[data-owned-cover]').getAttribute('data-owned-cover'),'owner-b:child-a');
   await staleAction.evaluate(el=>el.click());assert.equal(await page.evaluate(()=>window.actions),0,'detached old action cannot write');
   await page.evaluate(()=>window.oldNotify());assert.equal(await privateMessages().count(),0,'late failure from old owner cannot re-offer private text');
   await page.evaluate(()=>window.scope('owner-a:child-a'));await page.evaluate(()=>window.oldNotify());assert.equal(await privateMessages().count(),0,'A→B→A cannot revive old callbacks');

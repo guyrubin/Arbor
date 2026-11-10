@@ -332,3 +332,5 @@
 .now-tonight-more > summary b { font-size: 14px; font-weight: 700; color: var(--arbor-ink); }
 .now-tonight-more > summary small { color: var(--arbor-muted); font-size: var(--t-xs); }
 .now-tonight-more[open] > summary { margin-block-end: 14px; }
+
+.now-handback-art { position: relative; inline-size: 90px; aspect-ratio: 3 / 4; overflow: hidden; border: 1px solid var(--arbor-rule); border-radius: 8px; }

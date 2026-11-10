@@ -35,11 +35,13 @@ const card = (lang: "en" | "he"): BookHandback => ({
 describe("B-PROG-16 · the handback card", () => {
   it("shows cover, tomorrow and the question in English, and the journal door", () => {
     const html = renderToStaticMarkup(
-      <ProgramBookHandbackView card={card("en")} lang="en" labels={labels("en")} onDismiss={() => {}} onSave={async () => true} />,
+      <ProgramBookHandbackView card={card("en")} cover={<span data-owned-cover="synthetic-child" />} lang="en" labels={labels("en")} onDismiss={() => {}} onSave={async () => true} />,
     );
     expect(html).toContain('dir="ltr"');
     expect(html).toContain("From yesterday&#x27;s reading");
     expect(html).toContain("A new food");
+    expect(html).toContain('data-testid="program-book-owned-cover"');
+    expect(html).toContain('data-owned-cover="synthetic-child"');
     expect(html).toContain("Four small steps");
     expect(html).toContain("One thing for tomorrow");
     expect(html).toContain("Tomorrow evening, the same four steps.");

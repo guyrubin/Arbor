@@ -14,7 +14,9 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import { activeProgramWeek } from "../../lib/programs/enrolment";
 import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 import { activePlans, planShelf } from "../../lib/plans/planWeek";
-import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
+import { LibraryBookCover } from "../kidmode/LibraryBookCover";
+import { useParentBookLibrary } from "./useParentBookLibrary";
+import { ownedHandbackBook, reviewedParentBooks } from "../../lib/programs/parentBookLibrary";
 import { BOOK_READS, type BookRead } from "../../lib/bookReads";
 import { useNowClock } from "../companion/useNowClock";
 import {
@@ -47,9 +49,10 @@ export interface HandbackLabels {
 }
 
 export function ProgramBookHandbackView({
-  card, lang, labels, onDismiss, onSave,
+  card, lang, labels, onDismiss, onSave, cover,
 }: {
   card: BookHandback;
+  cover?: React.ReactNode;
   lang: "en" | "he";
   labels: HandbackLabels;
   onDismiss: () => void;
@@ -80,6 +83,7 @@ export function ProgramBookHandbackView({
   return (
     <section className="now-handback" data-testid="program-book-handback" dir={lang === "he" ? "rtl" : "ltr"} aria-label={labels.handback}>
       <p className="now-handback-kicker">{labels.handback}</p>
+      {cover && <div className="now-handback-art" data-testid="program-book-owned-cover">{cover}</div>}
       <p className="now-handback-title" dir="auto"><bdi>{card.title}</bdi></p>
       <p className="now-handback-line" dir="auto" data-testid="program-book-cover"><bdi>{card.coverLine}</bdi></p>
       <p className="now-handback-line" dir="auto" data-testid="program-book-tomorrow"><span className="now-handback-kicker">{labels.tomorrow}</span> <bdi>{card.tomorrow}</bdi></p>
@@ -112,8 +116,9 @@ function ScopedProgramBookHandback({ ownerId }: { ownerId: string }) {
   const now = useNowClock();
   const lang = uiLang === "he" ? "he" : "en";
   const programs = useChildCollection<{ id: string }>(childProfile.id, "programs");
-  const planRows = useChildCollection<PlanBookDoc>(childProfile.id, "books");
   const reads = useChildCollection<BookRead>(childProfile.id, BOOK_READS);
+  const library = useParentBookLibrary(childProfile.id, now);
+  const planRows = library.plans;
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const [dismissed, setDismissed] = useState<string[]>(() => readDismissedHandbacks(deviceStore(), childProfile.id, ownerId));
@@ -127,7 +132,7 @@ function ScopedProgramBookHandback({ ownerId }: { ownerId: string }) {
     const result = bookHandback({
       weekShelf: program.program.shelf,
       chosenIds,
-      objects: catalogueSharedObjects(),
+      objects: [...catalogueSharedObjects(), ...reviewedParentBooks(library.entries).map(row => row.object)],
       reads: reads.items,
       now,
       lang,
@@ -137,7 +142,7 @@ function ScopedProgramBookHandback({ ownerId }: { ownerId: string }) {
       weekSkill: skill,
     });
     return "key" in result ? result : null;
-  }, [programs.items, programs.loaded, programs.error, planRows.items, planRows.loaded, planRows.error, reads.items, reads.loaded, reads.error, now, lang, childProfile.gender, childProfile.name, dismissed]);
+  }, [programs.items, programs.loaded, programs.error, planRows.items, planRows.loaded, planRows.error, reads.items, reads.loaded, reads.error, library.entries, now, lang, childProfile.gender, childProfile.name, dismissed]);
   const currentCard = useRef(card?.key);
   currentCard.current = card?.key;
   if (!card) return null;
@@ -151,7 +156,8 @@ function ScopedProgramBookHandback({ ownerId }: { ownerId: string }) {
     placeholder: t("elev.program.object.placeholder"),
     saveError: t("elev.program.object.saveError"),
   };
-  const current = () => mounted.current && currentCard.current === card.key;
+  const entry = ownedHandbackBook(library.entries, card.objectId);
+  const current = () => mounted.current && currentCard.current === card.key && programs.isCurrent() && planRows.isCurrent() && reads.isCurrent();
   const hide = (key: string) => {
     if (current()) setDismissed(dismissHandback(deviceStore(), childProfile.id, key, ownerId));
   };
@@ -159,6 +165,7 @@ function ScopedProgramBookHandback({ ownerId }: { ownerId: string }) {
     <ProgramBookHandbackView
       key={card.key}
       card={card}
+      cover={entry ? <LibraryBookCover childId={childProfile.id} entry={entry} /> : undefined}
       lang={lang}
       labels={labels}
       onDismiss={() => hide(card.key)}
