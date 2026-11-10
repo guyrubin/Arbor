@@ -1,5 +1,6 @@
-import React, { useEffect, useId, useMemo, useState } from "react";
+import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
+import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { kidModeOpenFor, TOGETHER_CARDS } from "../../lib/age/playGate";
 import { useKidModeEntry } from "../kidmode/useKidModeEntry";
@@ -34,14 +35,35 @@ type StoryDoorId = "story-library" | "story-bedtime" | "story-comics" | "story-f
 /** Parent previews lead to the existing child-mode entry seam. Nothing on this
  * page starts a camera/microphone or writes an activity just because it is seen. */
 export default function TogetherView() {
+  const { childProfile } = useArbor();
+  const { user, firebaseEnabled, loading } = useAuth();
+  if (!childProfile.id || (firebaseEnabled && (loading || !user))) return null;
+  const ownerId = firebaseEnabled ? user!.uid : "local-sandbox";
+  return <ScopedTogetherView key={JSON.stringify([ownerId, childProfile.id])} />;
+}
+
+const useScopeEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+function ScopedTogetherView() {
   const { childProfile, setActiveTab, saveMoment, activeFamilyTopic, openCaptureSheet, behaviorLogs = [], logsLoaded = false } = useArbor();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
   const lang = he ? "he" : "en";
   const name = childProfile.name?.split(" ")[0] || (t("companion.together-view.your-child"));
+  const active = useRef(true);
+  useScopeEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
+  const writing = useRef(false);
+  const keptIds = useRef(new Set<string>());
+  const previewVisit = useRef(0);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const [previewState, setPreviewState] = useState<{ childId: string; value: Preview | null }>({ childId: childProfile.id, value: null });
   const preview = previewState.childId === childProfile.id ? previewState.value : null;
-  const setPreview = (value: Preview | null) => setPreviewState({ childId: childProfile.id, value });
+  const setPreview = (value: Preview | null) => {
+    previewVisit.current += 1;
+    setSaveError(false);
+    setPreviewState({ childId: childProfile.id, value });
+  };
   const [keptState, setKeptState] = useState<{ childId: string; ids: string[] }>({ childId: childProfile.id, ids: [] });
   const kept = keptState.childId === childProfile.id ? keptState.ids : [];
   const { request: requestKidMode, step: heroStep } = useKidModeEntry();
@@ -137,20 +159,28 @@ export default function TogetherView() {
   const previewTitle = preview?.kind === "world" ? t(preview.world.kidNameKey)
     : preview?.kind === "story" ? storyOf(preview.id)?.title[lang] ?? ""
     : preview ? offline(preview.id).title : "";
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(false);
   const keepOffline = async (id: string) => {
-    if (kept.includes(id) || saving) return;
+    if (!active.current || keptIds.current.has(id) || writing.current) return;
+    writing.current = true;
+    const visit = previewVisit.current;
+    const isCurrent = () => active.current;
+    const samePreview = () => isCurrent() && previewVisit.current === visit;
     setSaving(true); setSaveError(false);
     const idea = offline(id);
     const moment = kidAvailable ? (t("companion.together-view.we-tried-together", { value0: idea.title })) : t(`elev.ages.together.${id}.moment`);
     // The inline alert is this failure's one message; the seam stays quiet.
     try {
-      if (await saveMoment(moment, { callerShowsFailure: true })) { setKeptState({ childId: childProfile.id, ids: [...kept, id] }); trackPracticeTogetherDid(id); }
-      else setSaveError(true);
+      const saved = await saveMoment(moment, { callerShowsFailure: true, requireAcknowledgement: true, retryKey: `together-offscreen:${id}`, isCurrent });
+      if (!isCurrent()) return;
+      if (saved) {
+        keptIds.current.add(id);
+        setKeptState({ childId: childProfile.id, ids: [...keptIds.current] });
+        trackPracticeTogetherDid(id);
+      }
+      else if (samePreview()) setSaveError(true);
     }
-    catch { setSaveError(true); }
-    finally { setSaving(false); }
+    catch { if (samePreview()) setSaveError(true); }
+    finally { writing.current = false; if (isCurrent()) setSaving(false); }
   };
 
   return (

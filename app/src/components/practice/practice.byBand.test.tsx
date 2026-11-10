@@ -12,6 +12,8 @@ import { describe, expect, it, vi } from "vitest";
 import { translate, type UiLang } from "../../lib/i18n";
 import type { ChildProfile } from "../../types";
 
+vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ firebaseEnabled: false, loading: false, user: null }) }));
+
 const ISO = new Date().toISOString().slice(0, 10);
 const LENI = { id: "leni", name: "Leni", age: 1, ageMonths: 22, ageMonthsAsOf: ISO, gender: "girl", languages: ["Hebrew"], schoolContext: "", strengths: [], challenges: [] } as unknown as ChildProfile;
 const DYLAN = { id: "dylan", name: "Dylan", age: 5, ageMonths: 62, ageMonthsAsOf: ISO, gender: "boy", languages: ["Hebrew"], schoolContext: "", strengths: [], challenges: [] } as unknown as ChildProfile;

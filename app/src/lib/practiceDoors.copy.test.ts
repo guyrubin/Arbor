@@ -665,8 +665,8 @@ describe("B-SHELL-NEW-1b · the door sentence can be kept as ONE journal moment"
     // Together still saves through saveMoment and owns the failure inline (B-PARITY-06).
     expect(studio).not.toContain('data-testid="together-since-keep"');
     expect(studio).not.toContain("sinceText");
-    expect(studio).toContain("if (await saveMoment(moment, { callerShowsFailure: true })) {");
-    expect(studio).toContain("if (kept.includes(id) || saving) return;");
+    expect(studio).toContain("await saveMoment(moment, { callerShowsFailure: true, requireAcknowledgement: true, retryKey: `together-offscreen:${id}`, isCurrent })");
+    expect(studio).toContain("if (!active.current || keptIds.current.has(id) || writing.current) return;");
     expect(read("components/companion/companionExperience.css")).toContain(".companion-page button, .companion-preview button { min-block-size: var(--touch-min);");
     for (const lang of ["en", "he"] as const) {
       expect(translate(lang, "elev.practice.door.keep")).not.toBe("elev.practice.door.keep");

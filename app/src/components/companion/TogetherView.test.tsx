@@ -16,6 +16,7 @@ vi.mock("react", async (original) => {
   return { ...real, useState: (initial: any) => real.useState(preview() && initial && typeof initial === "object" && "value" in initial ? { ...initial, value: preview() } : initial) };
 });
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({ ...state, activeFamilyTopic: state.topic }) }));
+vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ firebaseEnabled: false, loading: false, user: null }) }));
 vi.mock("./familyTopicEvents", () => ({ openFamilyTopicSheet: (...args: unknown[]) => state.openSheet(...args) }));
 vi.mock("../../context/LanguageContext", async () => {
   const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");

@@ -24,7 +24,7 @@ describe("Together restores, inside its five modules", () => {
     expect((together.match(/\bdata-module=/g) ?? []).length).toBe(5);
   });
   it("keeping an away idea owns its failure message (the seam stays quiet)", () => {
-    expect(together).toContain("saveMoment(moment, { callerShowsFailure: true })");
+    expect(together).toContain("saveMoment(moment, { callerShowsFailure: true, requireAcknowledgement: true, retryKey: `together-offscreen:${id}`, isCurrent })");
     expect(together).toContain("{saveError && <p role=\"alert\"");
   });
   it("per-world counts show in the Games filter only, each in its own unit (B-PLAY-02)", () => {

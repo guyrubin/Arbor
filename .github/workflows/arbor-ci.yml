@@ -26,6 +26,15 @@ jobs:
         run: node scripts/kids-exit-browser.mjs
       - name: Verify Parent handback and private feedback lifetimes (EN/HE)
         run: node scripts/parent-handback-browser.mjs
+      - name: Verify Together save ownership and acknowledgement (EN/HE)
+        run: node scripts/together-save-browser.mjs
+      - name: Retain Together save evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: together-save-evidence
+          path: app/output/together-save
+          retention-days: 7
       - name: Retain Parent handback evidence
         if: always()
         uses: actions/upload-artifact@v4

@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActionPlan } from "../../types";
 
+vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ firebaseEnabled: false, loading: false, user: null }) }));
+
 /* v3 FEAT-07 — Routines on Together (#/practice).
    Part 1 renders the real TogetherView (static markup, the TogetherView.test
    mocks): the pill order, the routines in their own module between the stories

@@ -3,6 +3,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ firebaseEnabled: false, loading: false, user: null }) }));
+
 /* v3 F-TOG-1 — Together's hero, studio doors and question row (#/practice).
    The page renders as static markup under the TogetherView.test mocks; the
    doors' handlers are read from the captured button props. Invented child
