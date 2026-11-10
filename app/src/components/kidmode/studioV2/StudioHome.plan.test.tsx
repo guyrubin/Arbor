@@ -23,6 +23,7 @@ const h = vi.hoisted(() => ({
   evening: false,
   upsert: vi.fn(async (_doc: unknown, _options?: { merge?: boolean }) => {}),
   current: true,
+  confirmed: true,
   sfx: vi.fn(),
   buttons: [] as Record<string, unknown>[],
 }));
@@ -42,9 +43,10 @@ vi.mock("react/jsx-dev-runtime", async (original) => {
   const runtime = await original<typeof import("react/jsx-dev-runtime")>();
   return { ...runtime, jsxDEV: (...args: Parameters<typeof runtime.jsxDEV>) => { capture(args[0], args[1]); return runtime.jsxDEV(...args); } };
 });
+vi.mock("../../../context/AuthContext", () => ({ useAuth: () => ({ user: { uid: "local-sandbox" } }) }));
 vi.mock("../../../context/ArborContext", () => ({ useArbor: () => ({ childProfile: { id: "kid", name: "Noa", gender: "girl", age: 3, languages: ["English"] } }) }));
 vi.mock("../../../context/LanguageContext", () => ({ useLanguage: () => ({ uiLang: h.lang }) }));
-vi.mock("../../../hooks/useChildCollection", () => ({ useChildCollection: (_id: string, name: string) => ({ items: name === "books" ? h.rows : [], loaded: true, confirmed: true, error: false, remote: false, isCurrent: () => h.current, upsert: h.upsert }) }));
+vi.mock("../../../hooks/useChildCollection", () => ({ useChildCollection: (_id: string, name: string) => ({ items: name === "books" ? h.rows : [], loaded: true, confirmed: h.confirmed, error: false, remote: false, isCurrent: () => h.current, upsert: h.upsert }) }));
 vi.mock("../../../hooks/useKidTheme", () => ({ useKidTheme: () => "film3d" }));
 vi.mock("../../../lib/timeOfDay", () => ({ bedtimeDoorOpen: () => h.evening }));
 vi.mock("../useChildLibraryBooks", () => ({ useChildLibraryBooks: () => h.books }));
@@ -74,7 +76,7 @@ const strip = (s: string) => s.replace(/<[^>]*>/g, " ").replace(/&[a-z#0-9]+;/gi
 const GROWN_UP = /\bparent|\bscore|\bstreak|\bmissed\b|\d+\s?%|\bnight \d|\btries\b|won't sit|wet patches|hard poo/i;
 const home = (over: Partial<React.ComponentProps<typeof StudioHome>> = {}) => renderToStaticMarkup(<StudioHome onWorld={() => {}} onCollection={() => {}} onQuest={() => {}} onExit={() => {}} {...over} />);
 
-beforeEach(() => { h.rows = []; h.books = []; h.evening = false; h.lang = "en"; h.current = true; h.buttons = []; h.upsert.mockClear(); h.sfx.mockClear(); });
+beforeEach(() => { h.rows = []; h.books = []; h.evening = false; h.lang = "en"; h.current = true; h.confirmed = true; h.buttons = []; h.upsert.mockReset(); h.upsert.mockImplementation(async () => {}); h.sfx.mockClear(); });
 const button = (attr: string) => h.buttons.find((b) => b[attr] !== undefined) as { onClick: () => void } | undefined;
 
 describe("the kid home with a running plan (S1)", () => {
@@ -116,16 +118,17 @@ describe("the kid home with a running plan (S1)", () => {
     expect(strip(html)).not.toMatch(GROWN_UP);
   });
 
-  it("the child's tap is recorded once as a day key on the plan row — a count, never a streak, never 'missed'", () => {
+  it("the child's tap is recorded once as a day key on the plan row — a count, never a streak, never 'missed'", async () => {
     h.rows = [plan]; h.books = [entry];
     home();
     const tried = button("data-kid-plan-tried");
     expect(tried).toBeDefined();
     tried!.onClick();
+    await Promise.resolve(); await Promise.resolve();
     expect(h.sfx).toHaveBeenCalledWith("tap");
     expect(h.upsert).toHaveBeenCalledTimes(1);
     const written = h.upsert.mock.calls[0][0] as PlanBookDoc;
-    expect(h.upsert.mock.calls[0][1]).toEqual({ merge: true });
+    expect(h.upsert.mock.calls[0][1]).toEqual({ merge: true, requireAcknowledgement: true });
     expect(Object.keys(written).sort()).toEqual(["id", "tries", "updatedAt"]);
     expect(written.id).toBe(plan.id);
     expect(written.tries).toHaveLength(1);
@@ -150,6 +153,58 @@ describe("the kid home with a running plan (S1)", () => {
     button("data-kid-plan-tried")!.onClick();
     expect(h.upsert).not.toHaveBeenCalled();
     expect(h.sfx).not.toHaveBeenCalled();
+  });
+
+
+  it("waits for confirmation and ignores a duplicate pending try", async () => {
+    h.rows = [plan]; h.books = [entry];
+    let ack!: () => void;
+    h.upsert.mockImplementationOnce(() => new Promise<void>(resolve => { ack = resolve; }));
+    home();
+    const onClick = button("data-kid-plan-tried")!.onClick;
+    onClick(); onClick();
+    expect(h.upsert).toHaveBeenCalledTimes(1);
+    expect(h.sfx).not.toHaveBeenCalled();
+    ack();
+    await Promise.resolve(); await Promise.resolve();
+    expect(h.sfx).toHaveBeenCalledTimes(1);
+  });
+
+  it("permits retry after a rejected acknowledgement, without claiming a save on failure", async () => {
+    h.rows = [plan]; h.books = [entry];
+    let reject!: (error: Error) => void;
+    h.upsert.mockImplementationOnce(() => new Promise<void>((_resolve, fail) => { reject = fail; }));
+    home();
+    const onClick = button("data-kid-plan-tried")!.onClick;
+    onClick();
+    reject(new Error("not acknowledged"));
+    await Promise.resolve(); await Promise.resolve();
+    expect(h.sfx).not.toHaveBeenCalled();
+    onClick();
+    await Promise.resolve(); await Promise.resolve();
+    expect(h.upsert).toHaveBeenCalledTimes(2);
+    expect(h.sfx).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores late acknowledgement when child or account ownership changes", async () => {
+    h.rows = [plan]; h.books = [entry];
+    let ack!: () => void;
+    h.upsert.mockImplementationOnce(() => new Promise<void>(resolve => { ack = resolve; }));
+    home();
+    button("data-kid-plan-tried")!.onClick();
+    h.current = false;
+    ack();
+    await Promise.resolve(); await Promise.resolve();
+    expect(h.sfx).not.toHaveBeenCalled();
+  });
+
+  it("does not treat an unconfirmed cached day as a completed try", () => {
+    h.rows = [recordTry(plan, new Date())]; h.books = [entry]; h.confirmed = false;
+    const html = home();
+    expect(html).toContain('aria-pressed="false"');
+    expect(html).toContain('disabled=""');
+    button("data-kid-plan-tried")!.onClick();
+    expect(h.upsert).not.toHaveBeenCalled();
   });
 
   it("Open my book deep-links to the plan book; without a printed sheet it opens Hero Stories instead", () => {

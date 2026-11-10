@@ -10,6 +10,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({ lang: "en" as "en" | "he", quest: [] as unknown[] }));
+vi.mock("../../../context/AuthContext", () => ({ useAuth: () => ({ user: { uid: "local-sandbox" } }) }));
 vi.mock("../../../context/ArborContext", () => ({ useArbor: () => ({ childProfile: { id: "kid", name: "Noa", gender: "girl", age: 5, languages: ["English"] } }) }));
 vi.mock("../../../context/LanguageContext", () => ({ useLanguage: () => ({ uiLang: h.lang }) }));
 vi.mock("../../../hooks/useChildCollection", () => ({ useChildCollection: (_id: string, name: string) => ({ items: name === "studioQuestProgress" ? h.quest : [], loaded: true, confirmed: true, error: false, remote: false, isCurrent: () => true, upsert: vi.fn(async () => {}) }) }));

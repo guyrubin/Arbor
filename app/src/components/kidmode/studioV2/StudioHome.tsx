@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, BookOpen, Check, Sparkles, Sticker } from "lucide-react";
 import { useArbor } from "../../../context/ArborContext";
+import { useAuth } from "../../../context/AuthContext";
+import { useNowClock } from "../../companion/useNowClock";
 import { useLanguage } from "../../../context/LanguageContext";
 import { useKidTheme } from "../../../hooks/useKidTheme";
 import { useChildCollection } from "../../../hooks/useChildCollection";
@@ -9,7 +11,7 @@ import { HERO_NAME_FALLBACK } from "../../../lib/heroNameFallback";
 import { bedtimeDoorOpen } from "../../../lib/timeOfDay";
 import { heGender } from "../../../lib/library/bookText";
 import type { PlanBookDoc } from "../../../lib/library/plans/planBookDoc";
-import { leadPlan, recordTry, tonightStepForChild, tryRecorded } from "../../../lib/plans/planWeek";
+import { dayKey, leadPlan, recordTry, tonightStepForChild, tryRecorded } from "../../../lib/plans/planWeek";
 import { ArborMascot } from "../../ui/ArborMascot";
 import { useStudioHero } from "./useStudioHero";
 import { HoldExitButton } from "../HoldExitButton";
@@ -51,6 +53,7 @@ export interface StudioHomeProps {
 }
 export default function StudioHome({ onWorld, onCollection, onQuest, onExit, onOpenBook }: StudioHomeProps) {
   const { childProfile } = useArbor();
+  const { user } = useAuth();
   useEffect(() => prefetchKidSurfaces(), []);
   const { uiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
@@ -66,24 +69,56 @@ export default function StudioHome({ onWorld, onCollection, onQuest, onExit, onO
   //    and, once the evening door is open, Sprout's line. "I tried!" writes
   //    one LOCAL day key under the plan row's `tries` (a count, never a
   //    streak, never "missed"). No plan → the rail is the cozy corner, unchanged.
-  const planRows = useChildCollection<PlanBookDoc>(childProfile.id, "books");
-  const now = useMemo(() => new Date(), [planRows.items]);
+  const planRows = useChildCollection<PlanBookDoc>(childProfile.id, "books", { trackConfirmation: true, acceptCachedNoPendingWrites: true });
+  const now = useNowClock();
   const plan = useMemo(() => leadPlan(planRows.items, now), [planRows.items, now]);
   const books = useChildLibraryBooks(childProfile.id);
   const planEntry = plan ? books.find((e) => e.book.id === plan.doc.bookId) : undefined;
   const step = plan ? tonightStepForChild(plan.doc, lang, heGender(childProfile.gender)) : null;
-  const tried = !!plan && tryRecorded(plan.doc, now);
+  // A pending Firestore snapshot is not an earned action. Never show
+  // "I tried tonight!" before confirmation or after an owner/child switch.
+  const tryScope = `${user?.uid ?? "signed-out"}:${childProfile.id}:${plan?.doc.id ?? "none"}:${dayKey(now)}`;
+  type TryGuard = { scope: string; busy: boolean; active: boolean };
+  const tryGuard = useRef<TryGuard>({ scope: tryScope, busy: false, active: true });
+  if (tryGuard.current.scope !== tryScope) {
+    tryGuard.current.active = false;
+    tryGuard.current = { scope: tryScope, busy: false, active: true };
+  }
+  const guard = tryGuard.current;
+  const useLifetimeEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+  useLifetimeEffect(() => { guard.active = true; return () => { guard.active = false; }; }, [guard]);
+  const latestRows = useRef(planRows);
+  latestRows.current = planRows;
+  const [trySave, setTrySave] = useState<{ guard: TryGuard; status: "saving" | "error" | "saved" } | null>(null);
+  const tryStatus = trySave?.guard === guard ? trySave.status : null;
+  const currentTry = () => guard.active && tryGuard.current === guard && dayKey(new Date()) === dayKey(now);
+  const tried = !!plan && ((planRows.confirmed && tryRecorded(plan.doc, now)) || tryStatus === "saved");
+  const tryPending = tryGuard.current.busy || tryStatus === "saving";
+  const tryReady = !!user && planRows.loaded && planRows.confirmed && !planRows.error && planRows.isCurrent();
   const evening = bedtimeDoorOpen(now.getHours());
   const openPlanBook = () => { if (planEntry && onOpenBook) onOpenBook(planEntry.book.id); else onWorld("stories"); };
-  const tryTonight = () => {
-    // A child-scoped read may become stale between render and the tap.
-    if (!plan || tried || !planRows.isCurrent()) return;
+  const tryTonight = async () => {
+    if (!currentTry() || !plan || tried || guard.busy || !tryReady || !planRows.isCurrent()) return;
+    guard.busy = true;
+    setTrySave({ guard, status: "saving" });
     const { tries, updatedAt } = recordTry(plan.doc, new Date());
-    // The child's try must not replace the parent's concurrent plan choices,
-    // night confirmations, approval or closure. A sparse merge preserves them.
+    // Sparse merge preserves the parent's concurrent approval, night
+    // confirmations and plan choices. No child score or observation is written.
     const patch = { id: plan.doc.id, tries, updatedAt } as PlanBookDoc;
-    kidSfx("tap");
-    void planRows.upsert(patch, { merge: true });
+    try {
+      await planRows.upsert(patch, { merge: true, requireAcknowledgement: true });
+      if (currentTry()) {
+        // A normal pending/ack snapshot retires the original read receipt.
+        // Settle this operation using the current read, never the captured one.
+        const confirmed = latestRows.current.isCurrent();
+        setTrySave(confirmed ? { guard, status: "saved" } : null);
+        if (confirmed) kidSfx("tap");
+      }
+    } catch {
+      if (currentTry()) setTrySave({ guard, status: "error" });
+    } finally {
+      if (currentTry()) guard.busy = false;
+    }
   };
   const planLine = plan && step && evening ? copy.plan.bubble(step) : null;
   return <section className="studio-v2 studio-v2--home" dir={lang === "he" ? "rtl" : "ltr"} data-studio-home="">
@@ -111,8 +146,10 @@ export default function StudioHome({ onWorld, onCollection, onQuest, onExit, onO
         <div className="studio-v2__quest-title"><small>{copy.plan.kicker}</small><h2 dir="auto">{plan.def.title[lang]}</h2>{step && <p dir="auto" data-kid-plan-step="">{copy.plan.tonight(step)}</p>}</div>
         <div className="studio-v2__plan-actions">
           <button type="button" className="studio-v2__gold-button" data-kid-plan-open="" onClick={openPlanBook}><BookOpen size={20} aria-hidden="true" />{copy.plan.open}<ArrowRight size={20} aria-hidden="true" /></button>
-          <button type="button" className="studio-v2__glass-button" data-kid-plan-tried={tried ? "tonight" : ""} aria-pressed={tried} onClick={tryTonight}>{tried ? <Check size={20} aria-hidden="true" /> : <Sparkles size={20} aria-hidden="true" />}<span>{tried ? copy.plan.triedDone : copy.plan.tried}</span></button>
+          <button type="button" className="studio-v2__glass-button" data-kid-plan-tried={tried ? "tonight" : ""} aria-pressed={tried} aria-busy={tryPending} disabled={tryPending || (!tried && !tryReady)} onClick={() => { void tryTonight(); }}>{tried ? <Check size={20} aria-hidden="true" /> : <Sparkles size={20} aria-hidden="true" />}<span>{tried ? copy.plan.triedDone : tryPending ? copy.plan.triedSaving : tryStatus === "error" ? copy.plan.triedRetry : copy.plan.tried}</span></button>
         </div>
+        {tryStatus === "error" && <p role="alert" className="studio-v2__list-hint">{copy.plan.triedError}</p>}
+        {!tried && !tryReady && planRows.loaded && <p role="status" className="studio-v2__list-hint">{copy.plan.triedUnavailable}</p>}
       </section>
     ) : (
       <section className="studio-v2__quest" aria-label={questCopy.title}>
