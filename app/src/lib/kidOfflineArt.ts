@@ -19,16 +19,32 @@ export const KID_ART_MESSAGE_MAX = 40;
 
 const webp = (u: string | undefined): u is string => !!u && u.startsWith("/visuals/") && u.endsWith(".webp");
 
-/** The last `n` distinct stories the child opened, newest first. */
-export function recentlyOpenedStoryIds(runs: readonly { storyId: string; startedAt?: string; completedAt?: string }[], n = KID_RECENT_BOOKS): string[] {
-  const sorted = [...runs].sort((a, b) => {
-    const ta = a.startedAt ?? a.completedAt ?? "";
-    const tb = b.startedAt ?? b.completedAt ?? "";
-    return ta < tb ? 1 : ta > tb ? -1 : 0;
-  });
+/** Only an actual, non-future event can establish recency. A corrupted or
+ * future clock must not displace the last book we know the child opened.
+ * This is read-only filtering of existing records, not a new child event. */
+function validArtHistoryTime(stamp: string | undefined, nowMs: number): number | null {
+  if (typeof stamp !== "string" || !stamp.trim()) return null;
+  const ms = Date.parse(stamp);
+  return Number.isFinite(ms) && ms <= nowMs ? ms : null;
+}
+
+/** The last `n` distinct stories the child opened, newest first.
+ * Reject malformed/future timestamps; a valid completion time may recover a
+ * legacy row whose start time was not recorded correctly. */
+export function recentlyOpenedStoryIds(
+  runs: readonly { storyId: string; startedAt?: string; completedAt?: string }[],
+  n = KID_RECENT_BOOKS,
+  nowMs = Date.now(),
+): string[] {
+  if (!Number.isFinite(nowMs) || n <= 0) return [];
+  const ranked = runs.flatMap((r) => {
+    const id = typeof r.storyId === "string" ? r.storyId.trim() : "";
+    const when = validArtHistoryTime(r.startedAt, nowMs) ?? validArtHistoryTime(r.completedAt, nowMs);
+    return id && when !== null ? [{ id, when }] : [];
+  }).sort((a, b) => b.when - a.when);
   const out: string[] = [];
-  for (const r of sorted) {
-    if (!out.includes(r.storyId)) out.push(r.storyId);
+  for (const r of ranked) {
+    if (!out.includes(r.id)) out.push(r.id);
     if (out.length >= n) break;
   }
   return out;
@@ -87,12 +103,19 @@ export function offlineLibraryBooks<T extends { book: AnyBook }>(
   entries: readonly T[],
   reads: readonly { bookId: string; finishedAt?: string }[],
   n = KID_RECENT_BOOKS,
+  nowMs = Date.now(),
 ): T[] {
   if (!entries.length) return [];
-  const readId = (e: T) => (isPlanBook(e.book) ? e.book.pattern : e.book.id);
-  const last = new Map<string, string>();
-  for (const r of reads) if (typeof r.bookId === "string" && (r.finishedAt ?? "") > (last.get(r.bookId) ?? "")) last.set(r.bookId, r.finishedAt ?? "");
   const [tonight, ...rest] = entries;
-  const recent = rest.filter((e) => last.has(readId(e))).sort((a, b) => (last.get(readId(b))! > last.get(readId(a))! ? 1 : last.get(readId(b))! < last.get(readId(a))! ? -1 : 0));
+  if (!Number.isFinite(nowMs) || n <= 0) return [tonight];
+  const readId = (e: T) => (isPlanBook(e.book) ? e.book.pattern : e.book.id);
+  const last = new Map<string, number>();
+  for (const r of reads) {
+    const id = typeof r.bookId === "string" ? r.bookId.trim() : "";
+    const when = validArtHistoryTime(r.finishedAt, nowMs);
+    if (id && when !== null && when > (last.get(id) ?? -Infinity)) last.set(id, when);
+  }
+  const recent = rest.filter((e) => last.has(readId(e)))
+    .sort((a, b) => last.get(readId(b))! - last.get(readId(a))!);
   return [tonight, ...recent.slice(0, n)];
 }
