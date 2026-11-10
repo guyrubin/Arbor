@@ -4,7 +4,7 @@ interface WorldCopy { title: string; description: string; headline: string; hint
 /** S1 (surfacing): a running Everyday Plan on the kid home — the bottom rail,
  *  Sprout's evening line and the book's ribbon. Kid register: first person,
  *  counts never, no "missed", no grown-up word. */
-interface PlanCopy { kicker: string; tonight: (step: string) => string; open: string; tried: string; triedDone: string; bubble: (step: string) => string; read: string; ribbon: string }
+interface PlanCopy { kicker: string; tonight: (step: string) => string; open: string; tried: string; triedDone: string; triedSaving: string; triedRetry: string; triedError: string; triedUnavailable: string; bubble: (step: string) => string; read: string; ribbon: string }
 interface StudioCopy {
   hello: string; helloNoName: string; invitation: string; collection: string; hero: string; noHero: string; guide: string; takeMe: string;
   quest: string; questTitle: string; questContinue: string; questOpen: string; questLoading: string;
@@ -15,7 +15,7 @@ interface StudioCopy {
 const en: StudioCopy = {
   hello: "Hi", helloNoName: "Hi there!", invitation: "Pick a world to play in.", collection: "My keepsakes", hero: "Your hero", noHero: "A place for your hero", guide: "Tap Sprout for a hint", takeMe: "Take me",
   quest: "MY COZY CORNER", questTitle: "A cozy corner", questContinue: "Keep going", questOpen: "Visit my corner", questLoading: "Opening your corner…",
-  plan: { kicker: "MY PLAN", tonight: step => `Tonight: ${step}`, open: "Open my book", tried: "I tried!", triedDone: "I tried tonight!", bubble: step => `Tonight: ${step} Want to read our plan?`, read: "Read our plan", ribbon: "My plan" },
+  plan: { kicker: "MY PLAN", tonight: step => `Tonight: ${step}`, open: "Open my book", tried: "I tried!", triedDone: "I tried tonight!", triedSaving: "Keeping my try…", triedRetry: "Try keeping it again", triedError: "That did not save. We can try again.", triedUnavailable: "We can keep this when the book is ready.", bubble: step => `Tonight: ${step} Want to read our plan?`, read: "Read our plan", ribbon: "My plan" },
   books: "My books", allBooks: "Open my bookshelf", booksHint: "Pick a story to read.", play: "Play", kept: "Kept", keepsake: "A keepsake from your play", keepsakeHint: "Things you make and stories you finish stay in your collection.", empty: "More adventures are waiting as you grow.", worldActivities: "Pick something to play",
   worlds: {
     playbank: { title: "Playbank", description: "Find, match and discover", headline: "Back to Playbank!", hint: "Which game would you like to try?" },
@@ -45,7 +45,7 @@ const en: StudioCopy = {
 const he: StudioCopy = {
   hello: "היי", helloNoName: "היי!", invitation: "בוחרים עולם לשחק בו.", collection: "המזכרות שלי", hero: "הגיבור שלך", noHero: "מקום לגיבור שלך", guide: "נוגעים בנבט לקבלת רמז", takeMe: "בואו נלך",
   quest: "הפינה הנעימה שלי", questTitle: "פינה נעימה", questContinue: "ממשיכים", questOpen: "לפינה שלי", questLoading: "פותחים את הפינה…",
-  plan: { kicker: "התוכנית שלי", tonight: step => `הלילה: ${step}`, open: "לפתוח את הספר שלי", tried: "ניסיתי!", triedDone: "ניסיתי הלילה!", bubble: step => `הלילה: ${step} רוצה לקרוא את התוכנית שלנו?`, read: "לקרוא את התוכנית", ribbon: "התוכנית שלי" },
+  plan: { kicker: "התוכנית שלי", tonight: step => `הלילה: ${step}`, open: "לפתוח את הספר שלי", tried: "ניסיתי!", triedDone: "ניסיתי הלילה!", triedSaving: "שומרים את הניסיון שלי…", triedRetry: "לנסות לשמור שוב", triedError: "לא הצלחנו לשמור. אפשר לנסות שוב.", triedUnavailable: "אפשר לשמור כשהספר יהיה מוכן.", bubble: step => `הלילה: ${step} רוצה לקרוא את התוכנית שלנו?`, read: "לקרוא את התוכנית", ribbon: "התוכנית שלי" },
   books: "הספרים שלי", allBooks: "למדף הספרים שלי", booksHint: "בוחרים סיפור לקרוא.", play: "לשחק", kept: "נשמר", keepsake: "מזכרת מהמשחק שלך", keepsakeHint: "דברים שיצרת וסיפורים שסיימת נשארים באוסף שלך.", empty: "עוד הרפתקאות מחכות בהמשך.", worldActivities: "בוחרים במה לשחק",
   worlds: {
     playbank: { title: "עולם המשחקים", description: "מוצאים, מתאימים ומגלים", headline: "חוזרים לעולם המשחקים!", hint: "איזה משחק ננסה?" },
