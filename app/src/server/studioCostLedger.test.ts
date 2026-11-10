@@ -2,7 +2,7 @@
  * B-KID-150 — "a ledger row per asset with actual billed cost; B-GA-26's
  * family meter excludes it by construction (test)". A model or TTS call made
  * as the production of a shared asset lands in that asset's studio ledger row
- * and never in usageRollup/{day} (the only source of costPerActiveFamily);
+ * and never in usageRollup/{day} (the global model-usage total);
  * the same call outside a studio scope is family usage, as before. The
  * actual billed cost arrives only from the bill import and is never inferred.
  */

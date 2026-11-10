@@ -762,7 +762,12 @@ export type AdminCost30d = {
   estimatedCostUsd: number | null;
   pricedCalls: number;
   calls: number;
-  activeFamilies: number;
+  activeFamilies: number | null;
+  dataStatus: "complete" | "unavailable" | "truncated";
+  householdsFolded: number | null;
+  excludedCostUsd: number | null;
+  unattributedUsd: number | null;
+  billMatch: "partial";
   perActiveFamilyUsd: number | null;
   priceTableAsOf: string;
 };

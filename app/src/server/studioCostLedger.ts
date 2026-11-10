@@ -8,7 +8,7 @@
  * call still emits its content-free `ai.usage` line. A call made inside
  * `runAsStudioProduction(asset, …)` is ALSO stamped with its asset key and its
  * cost lands here, in `studioCostLedger/{assetKey}`, and NEVER in
- * `usageRollup/{day}` — the only source of costPerActiveFamily
+ * `usageRollup/{day}` — the global model-usage total
  * (server/adminMetrics.ts). That is the exclusion by construction: a studio
  * call cannot reach the family meter because recordUsage routes it away
  * (ai/usage.ts, tested in studioCostLedger.test.ts).

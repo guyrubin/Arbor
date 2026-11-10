@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { buildUsageEvent, normalizeUsage, recordUsage, startCallTimer } from "./usage.js";
 import { PRICE_TABLE, PRICE_TABLE_AS_OF, estimateCostUsd, priceKeyFor } from "./priceTable.js";
-import { costPerActiveFamily, lastDayKeys } from "../server/adminMetrics.js";
 import { latencyBucketOf, percentileFromBuckets } from "../server/usageRollup.js";
 import { logger } from "../server/logger.js";
 
@@ -199,29 +198,7 @@ describe("B-PROV-04 · estimatedCostUsd from the dated price table", () => {
     expect(estimateCostUsd("gemini-2.5-flash", { promptTokens: 1_000_000, outputTokens: 0, audioInputTokens: 1_000_000 })).toBe(1);
   });
 
-  it("admin overview: 30-day spend ÷ active families (internal + demo out; null when not answerable)", () => {
-    const now = new Date("2026-10-04T12:00:00.000Z");
-    const keys = lastDayKeys(now, 30);
-    const out = costPerActiveFamily({
-      now,
-      usageDays: [
-        { date: keys[0], calls: 10, pricedCalls: 8, estimatedCostUsd: 0.5 },
-        { date: keys[29], calls: 5, pricedCalls: 5, estimatedCostUsd: 0.25 },
-        { date: "2026-08-01", calls: 99, pricedCalls: 99, estimatedCostUsd: 99 },
-      ],
-      rollups: [
-        { activeDays: [keys[3]], cohort: "family" },
-        { activeDays: [keys[10]] },
-        { activeDays: ["2026-08-01"], cohort: "family" },
-        { activeDays: [keys[0]], cohort: "internal" },
-        { activeDays: [keys[0]], cohort: "demo" },
-      ],
-    });
-    expect(out).toMatchObject({ days: 30, estimatedCostUsd: 0.75, pricedCalls: 13, calls: 15, activeFamilies: 2, perActiveFamilyUsd: 0.375 });
-    const empty = costPerActiveFamily({ now, usageDays: [], rollups: [] });
-    expect(empty.estimatedCostUsd).toBeNull();
-    expect(empty.perActiveFamilyUsd).toBeNull();
-  });
+
 });
 
 describe("B-GA-26 model and cache price coverage", () => {

@@ -64,8 +64,8 @@ export default function AdminDashboard({ open, onClose }: { open: boolean; onClo
             <span>Calls</span><span className="text-end font-mono" style={{ color: "var(--arbor-ink)" }}>{data?.usageToday.calls ?? "—"}</span>
             <span>Live session minutes · observed</span><span className="text-end font-mono">{data?.usageToday.live ? (data.usageToday.live.observedSessionMs / 60_000).toFixed(1) : "Not measured"}</span>
             <span>Total tokens</span><span className="text-end font-mono" style={{ color: "var(--arbor-ink)" }}>{data ? data.usageToday.totalTokens.toLocaleString() : "—"}</span>
-            <span>Estimated cost · last 30 days</span><span className="text-end font-mono font-bold" style={{ color: "var(--arbor-ink)" }}>{data?.cost30d?.estimatedCostUsd != null ? `≈ $${data.cost30d.estimatedCostUsd.toFixed(4)} USD` : "Not measured"}</span>
-            <span>Priced calls · last 30 days</span><span className="text-end font-mono">{data?.cost30d ? `${data.cost30d.pricedCalls} / ${data.cost30d.calls}` : "—"}</span>
+            <span>Family estimated cost · last 30 days</span><span className="text-end font-mono font-bold" style={{ color: "var(--arbor-ink)" }}>{data?.cost30d?.estimatedCostUsd != null ? `≈ $${data.cost30d.estimatedCostUsd.toFixed(4)} USD` : "Not measured"}</span>
+            <span>Family priced calls · last 30 days</span><span className="text-end font-mono">{data?.cost30d && (!data.cost30d.dataStatus || data.cost30d.dataStatus === "complete") ? `${data.cost30d.pricedCalls} / ${data.cost30d.calls}` : "Not measured"}</span>
             <span>Per active family · last 30 days</span><span className="text-end font-mono">{data?.cost30d?.perActiveFamilyUsd != null ? `≈ $${data.cost30d.perActiveFamilyUsd.toFixed(4)} USD` : "Not measured"}</span>
           </div>
           <p className="mt-2 text-xs" style={{ color: "var(--arbor-muted)" }}>Live minutes are observed connection time, not billed audio. Live costs and missing session reports are not included in the cost estimate.</p>
@@ -80,7 +80,7 @@ export default function AdminDashboard({ open, onClose }: { open: boolean; onClo
             </div>
           )}
           <p className="text-[11px] mt-3" style={{ color: "var(--arbor-muted)" }}>
-            List-price estimate for priced calls only, not the full bill. Unmetered voice and unknown models are not free. No currency conversion or free allowance is assumed. GCP Billing remains the source of truth for actual spend.
+            Family estimates exclude internal, demo and unattributed spending; co-parents count once. Missing or incomplete family reads show Not measured. List-price estimate for priced calls only, not the full bill. Unmetered voice and unknown models are not free. No currency conversion or free allowance is assumed. GCP Billing remains the source of truth for actual spend.
           </p>
         </div>
 

@@ -2,8 +2,8 @@ import { GoogleGenAI, ThinkingLevel, type Schema } from "@google/genai";
 import type { ArborConfig } from "../config/env.js";
 import { withDefaultModelDeadlines } from "./modelDeadlines.js";
 import { ClaudeVertexProvider } from "./claudeVertexProvider.js";
-import { abortableIterate, isAbortError, isTransientModelError, newRetryAccounting, raceWithAbort, withModelRetry, type ModelCallBudget } from "./modelRetry.js";
-import { recordChargedFailures, recordUsage, startCallTimer } from "./usage.js";
+import { abortableIterate, isAbortError, isTransientModelError, newRetryAccounting, raceWithAbort, usageFromError, withModelRetry, type ModelCallBudget } from "./modelRetry.js";
+import { recordChargedFailures, recordUsage, startCallTimer, type UsageMeta } from "./usage.js";
 import { providerRegion, routePolicyFor, selectProvider, type ProviderCandidate } from "./capabilities/policy.js";
 import type { AiEntitlement, CapabilityRequest } from "./capabilities/contracts.js";
 import { candidatesFor, defaultCandidateFor } from "./capabilities/candidates.js";
@@ -399,6 +399,20 @@ export class GeminiDevProvider implements ModelProvider {
 /** Vertex SDK client factory, injectable so region fallback is testable without the SDK. */
 export type VertexClientFactory = (location: string) => Promise<any>;
 
+/** The SDK cannot cancel unary calls. Keep one receipt if an issued call
+ * settles after the route has ended, without returning its content or retrying.
+ * A server shutdown or a promise that never settles still needs billing reconciliation. */
+function lateUnaryUsage(meta: UsageMeta, timer: ReturnType<typeof startCallTimer>, retries: number, image = false) {
+  const write = (raw: unknown) => recordUsage({
+    ...meta, retries, endedEarly: true, chargedFailure: raw != null,
+    ...(image ? { imageCount: 0 } : {}),
+  }, raw, timer.finish());
+  return {
+    resolved: (result: any) => write(result.response?.usageMetadata),
+    rejected: (error: unknown) => write(usageFromError(error)),
+  };
+}
+
 /** A region is skipped (never thrown from) when the model is absent there. */
 const isModelUnavailableInRegion = (err: any): boolean => {
   const status = err?.status ?? err?.code ?? err?.response?.status;
@@ -451,7 +465,7 @@ export class VertexGeminiProvider {
             maxOutputTokens: this.config.maxOutputTokens,
             ...(thinking ? { thinkingConfig: thinking } : {})
           } as any
-        }), options.budget?.signal), 3, options.budget, accounting
+        }), options.budget?.signal, lateUnaryUsage(meta, timer, accounting.retries)), 3, options.budget, accounting
       );
       raw = result.response?.usageMetadata;
       const candidate = result.response?.candidates?.[0];
@@ -572,7 +586,7 @@ export class VertexGeminiProvider {
           raceWithAbort(model.generateContent({
             contents: [{ role: "user", parts }],
             generationConfig: { responseModalities: ["IMAGE"] }
-          }), options.budget?.signal), isLast ? 3 : 2, options.budget, accounting
+          }), options.budget?.signal, lateUnaryUsage(meta, timer, accounting.retries, true)), isLast ? 3 : 2, options.budget, accounting
         );
         raw = result.response?.usageMetadata;
         // A blocked/empty candidate is a content verdict for THIS request, not

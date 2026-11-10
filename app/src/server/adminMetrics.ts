@@ -10,6 +10,8 @@ import { estimateCostEur, type ProviderTokens } from "./admin.js";
 import { PRICE_TABLE_AS_OF } from "../ai/priceTable.js";
 import { usageDateKey } from "./usageRollup.js";
 import { logger } from "./logger.js";
+import { familyDailyCostReport, readFamilyCostWindow, type FamilyCostDay } from "./familyCostReport.js";
+import type { CoParentLink, StoredRollup } from "./cohortMetrics.js";
 
 export type AdminOverview = {
   users: number;
@@ -40,7 +42,12 @@ export type Cost30d = {
   pricedCalls: number;
   calls: number;
   /** Families with an active day in the window; internal and demo excluded. */
-  activeFamilies: number;
+  activeFamilies: number | null;
+  dataStatus: "complete" | "unavailable" | "truncated";
+  householdsFolded: number | null;
+  excludedCostUsd: number | null;
+  unattributedUsd: number | null;
+  billMatch: "partial";
   perActiveFamilyUsd: number | null;
   priceTableAsOf: string;
 };
@@ -51,36 +58,35 @@ const DAY_MS = 86_400_000;
 export const lastDayKeys = (now: Date, days = 30): string[] =>
   Array.from({ length: days }, (_, i) => new Date(now.getTime() - i * DAY_MS).toISOString().slice(0, 10));
 
-/** Pure fold: usageRollup day docs + retention rollups → €/family's USD source. */
+/** The same attributed cost and household fold as /api/admin/family-cost.
+ * Global usage is deliberately not a substitute for missing family receipts. */
 export function costPerActiveFamily(input: {
-  usageDays: { date?: unknown; calls?: unknown; pricedCalls?: unknown; estimatedCostUsd?: unknown }[];
-  rollups: { activeDays?: unknown; cohort?: unknown }[];
+  familyCosts: readonly FamilyCostDay[];
+  rollups: readonly StoredRollup[];
+  coParents: readonly CoParentLink[] | null;
   now: Date;
   days?: number;
+  dataStatus?: Cost30d["dataStatus"];
 }): Cost30d {
   const days = input.days ?? 30;
-  const keys = new Set(lastDayKeys(input.now, days));
-  let usd = 0;
-  let pricedCalls = 0;
-  let calls = 0;
-  for (const d of input.usageDays) {
-    if (typeof d.date !== "string" || !keys.has(d.date)) continue;
-    calls += Number(d.calls ?? 0) || 0;
-    pricedCalls += Number(d.pricedCalls ?? 0) || 0;
-    usd += Number(d.estimatedCostUsd ?? 0) || 0;
-  }
-  const activeFamilies = input.rollups.filter(
-    (r) => r.cohort !== "internal" && r.cohort !== "demo" && Array.isArray(r.activeDays) && r.activeDays.some((day) => typeof day === "string" && keys.has(day)),
-  ).length;
-  const estimatedCostUsd = pricedCalls > 0 ? Math.round(usd * 1_000_000) / 1_000_000 : null;
+  const keys = lastDayKeys(input.now, days);
+  const status = input.dataStatus ?? (input.coParents === null ? "unavailable" : "complete");
+  if (status !== "complete") return {
+    days, estimatedCostUsd: null, pricedCalls: 0, calls: 0, activeFamilies: null,
+    perActiveFamilyUsd: null, priceTableAsOf: PRICE_TABLE_AS_OF, dataStatus: status,
+    householdsFolded: null, excludedCostUsd: null, unattributedUsd: null, billMatch: "partial",
+  };
+  const report = familyDailyCostReport({
+    date: keys[0], activeDates: keys,
+    costs: input.familyCosts.filter((day) => day.date && keys.includes(day.date)),
+    rollups: input.rollups, coParents: input.coParents,
+  });
   return {
-    days,
-    estimatedCostUsd,
-    pricedCalls,
-    calls,
-    activeFamilies,
-    perActiveFamilyUsd: estimatedCostUsd !== null && activeFamilies > 0 ? Math.round((estimatedCostUsd / activeFamilies) * 10_000) / 10_000 : null,
-    priceTableAsOf: PRICE_TABLE_AS_OF,
+    days, estimatedCostUsd: report.estimatedCostUsd, pricedCalls: report.pricedCalls,
+    calls: report.calls, activeFamilies: report.activeHouseholds,
+    perActiveFamilyUsd: report.perActiveFamilyUsd, priceTableAsOf: PRICE_TABLE_AS_OF,
+    dataStatus: status, householdsFolded: report.householdsFolded,
+    excludedCostUsd: report.excludedCostUsd, unattributedUsd: report.unattributedUsd, billMatch: "partial",
   };
 }
 
@@ -105,7 +111,7 @@ export class NullAdminMetricsStore implements AdminMetricsStore {
       users: 0,
       paying: { plus: 0, family: 0, trialing: 0, total: 0 },
       usageToday: EMPTY_USAGE(date),
-      cost30d: costPerActiveFamily({ usageDays: [], rollups: [], now: new Date() }),
+      cost30d: costPerActiveFamily({ familyCosts: [], rollups: [], coParents: [], now: new Date() }),
       generatedAt: new Date().toISOString(),
     };
   }
@@ -135,19 +141,13 @@ export class FirestoreAdminMetricsStore implements AdminMetricsStore {
     const entitlements = this.db.collection("entitlements");
     const now = new Date();
     const windowKeys = lastDayKeys(now, 30);
-    const [users, plus, family, trialing, usageSnap, usageDays, activeRollups] = await Promise.all([
+    const [users, plus, family, trialing, usageSnap, costWindow] = await Promise.all([
       this.count(this.db.collection("users")),
       this.count(entitlements.where("plan", "==", "plus")),
       this.count(entitlements.where("plan", "==", "family")),
       this.count(entitlements.where("status", "==", "in_trial")),
       this.db.collection("usageRollup").doc(date).get().catch(() => null),
-      // B-PROV-04: the 30-day spend and the families active in the same window.
-      this.db.collection("usageRollup").where("date", ">=", windowKeys[windowKeys.length - 1]).get()
-        .then((snap) => snap.docs.map((d) => d.data()))
-        .catch((error) => { logger.error("Admin cost window read failed", error); return []; }),
-      this.db.collection("retentionRollups").where("activeDays", "array-contains-any", windowKeys).limit(5000).get()
-        .then((snap) => snap.docs.map((d) => d.data()))
-        .catch((error) => { logger.error("Admin active-family read failed", error); return []; }),
+      readFamilyCostWindow(this.db, windowKeys),
     ]);
 
     const data = usageSnap?.data();
@@ -172,7 +172,10 @@ export class FirestoreAdminMetricsStore implements AdminMetricsStore {
       users,
       paying: { plus, family, trialing, total: plus + family },
       usageToday,
-      cost30d: costPerActiveFamily({ usageDays, rollups: activeRollups, now }),
+      cost30d: costPerActiveFamily({
+        familyCosts: costWindow.familyCosts ?? [], rollups: costWindow.rollups ?? [],
+        coParents: costWindow.coParents ?? null, dataStatus: costWindow.status, now,
+      }),
       generatedAt: new Date().toISOString(),
     };
   }

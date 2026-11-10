@@ -9,9 +9,9 @@
  * until Guy can export the bill (B-AIOPS-01).
  */
 import { getApps, initializeApp, applicationDefault } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import type { ArborConfig } from "../config/env.js";
-import { foldCoParents, type CohortMetricsStore, type CoParentLink, type StoredRollup } from "./cohortMetrics.js";
+import { coParentLinksOf, foldCoParents, type CohortMetricsStore, type CoParentLink, type StoredRollup } from "./cohortMetrics.js";
 import { FAMILY_COST_COLLECTION } from "./familyCostWriter.js";
 import { usageDateKey } from "./usageRollup.js";
 import { logger } from "./logger.js";
@@ -34,6 +34,7 @@ export type FamilyRouteTotals = {
 };
 
 export type FamilyCostDay = {
+  date?: string;
   familyId: string | null;
   memberUids: string[];
   routes: Record<string, Partial<FamilyRouteTotals>>;
@@ -91,13 +92,37 @@ export function activeHouseholdsOn(
   rollups: readonly StoredRollup[],
   coParents: readonly CoParentLink[] | null,
   date: string,
+  dates: readonly string[] = [date],
 ): { households: number; folded: number | null } {
-  const folded = foldCoParents({ rollups: [...rollups], events: [], offers: null, billing: null, coParents });
+  const folded = foldCoParents({ rollups: costHouseholdRollups(rollups, coParents), events: [], offers: null, billing: null, coParents });
   const households = folded.rollups.filter((r) =>
     r.cohort !== "internal" && r.cohort !== "demo"
-    && Array.isArray(r.activeDays) && r.activeDays.includes(date),
+    && Array.isArray(r.activeDays) && r.activeDays.some((day) => dates.includes(day)),
   ).length;
   return { households, folded: folded.folded };
+}
+
+/** Keep either parent's activity and the household's exclusion tag before
+ * the shared cohort fold drops the recipient row. No source records change. */
+function costHouseholdRollups(rollups: readonly StoredRollup[], links: readonly CoParentLink[] | null): StoredRollup[] {
+  const byUid = new Map(rollups.filter((r) => r.uid).map((r) => [r.uid!, r]));
+  const ownerOf = new Map<string, string>();
+  for (const link of links ?? []) {
+    if (byUid.has(link.ownerUid) && link.ownerUid !== link.recipientUid && !ownerOf.has(link.recipientUid)) ownerOf.set(link.recipientUid, link.ownerUid);
+  }
+  const groups = new Map<string, StoredRollup[]>();
+  for (const row of rollups) {
+    if (!row.uid) continue;
+    const owner = ownerOf.get(row.uid) ?? row.uid;
+    groups.set(owner, [...(groups.get(owner) ?? []), row]);
+  }
+  return rollups.map((row) => {
+    const group = row.uid ? groups.get(ownerOf.get(row.uid) ?? row.uid) ?? [row] : [row];
+    return { ...row,
+      activeDays: [...new Set(group.flatMap((r) => r.activeDays ?? []))],
+      cohort: group.some((r) => r.cohort === "internal") ? "internal" : group.some((r) => r.cohort === "demo") ? "demo" : "family",
+    };
+  });
 }
 
 function cohortOf(day: FamilyCostDay, byUid: Map<string, StoredRollup["cohort"]>): FamilyCostRow["cohort"] | "unattributed" {
@@ -105,7 +130,7 @@ function cohortOf(day: FamilyCostDay, byUid: Map<string, StoredRollup["cohort"]>
   const tags = day.memberUids.map((uid) => byUid.get(uid));
   if (tags.includes("internal")) return "internal";
   if (tags.includes("demo")) return "demo";
-  return "family";
+  return tags.includes("family") ? "family" : "unattributed";
 }
 
 function dayUsd(day: FamilyCostDay): { usd: number; priced: number; calls: number; unpriced: number } {
@@ -128,9 +153,15 @@ export function familyDailyCostReport(input: {
   costs: readonly FamilyCostDay[];
   rollups: readonly StoredRollup[];
   coParents: readonly CoParentLink[] | null;
+  /** Window consumers count each active household once across these dates. */
+  activeDates?: readonly string[];
 }): FamilyDailyCostReport {
-  const { households, folded } = activeHouseholdsOn(input.rollups, input.coParents, input.date);
-  const byUid = new Map(input.rollups.filter((r) => r.uid).map((r) => [r.uid as string, r.cohort]));
+  const dates = input.activeDates ?? [input.date];
+  const rollups = costHouseholdRollups(input.rollups, input.coParents);
+  const { households, folded } = activeHouseholdsOn(rollups, input.coParents, input.date, dates);
+  const byUid = new Map(rollups.filter((r) => r.uid).map((r) => [r.uid as string,
+    r.cohort === "internal" || r.cohort === "demo" ? r.cohort : r.activeDays.some((day) => dates.includes(day)) ? "family" as const : undefined,
+  ]));
   const gaps = new Map<string, number>();
   const rows: FamilyCostRow[] = [];
   let includedUsd = 0;
@@ -177,7 +208,7 @@ export function familyDailyCostReport(input: {
     activeHouseholds: households,
     householdsFolded: folded,
     estimatedCostUsd,
-    perActiveFamilyUsd: estimatedCostUsd !== null && households > 0 ? round4(includedUsd / households) : null,
+    perActiveFamilyUsd: input.coParents !== null && estimatedCostUsd !== null && households > 0 ? round4(includedUsd / households) : null,
     pricedCalls: includedPriced,
     calls: includedCalls,
     unattributedUsd: unattributedPriced > 0 ? round6(unattributed) : null,
@@ -203,6 +234,44 @@ function routeTotals(raw: unknown): Record<string, Partial<FamilyRouteTotals>> {
   return out;
 }
 
+function costDay(data: Record<string, unknown>): FamilyCostDay {
+  return {
+    date: typeof data.date === "string" ? data.date : undefined,
+    familyId: typeof data.familyId === "string" && data.familyId ? data.familyId : null,
+    memberUids: Array.isArray(data.memberUids) ? data.memberUids.filter((u): u is string => typeof u === "string") : [],
+    routes: routeTotals(data.routes),
+  };
+}
+
+/** Bounded admin read. Failure or a full scan cannot masquerade as a complete
+ * denominator. Read inactive owners too, since only a co-parent may be active. */
+export async function readFamilyCostWindow(db: Firestore, dates: readonly string[]) {
+  const limit = 5000;
+  const keys = [...dates].sort();
+  try {
+    const [costs, rollups, shares] = await Promise.all([
+      db.collection(FAMILY_COST_COLLECTION).where("date", ">=", keys[0]).where("date", "<=", keys[keys.length - 1]).limit(limit + 1).get(),
+      db.collection("retentionRollups").limit(limit + 1).get(),
+      db.collection("shares").where("role", "==", "co_parent").limit(limit + 1).get(),
+    ]);
+    if ([costs, rollups, shares].some((snap) => snap.docs.length > limit)) return { status: "truncated" as const };
+    return {
+      status: "complete" as const,
+      familyCosts: costs.docs.map((d) => costDay(d.data())),
+      rollups: rollups.docs.map((d): StoredRollup => {
+        const data = d.data();
+        return { uid: d.id, firstSeen: typeof data.firstSeen === "string" ? data.firstSeen : keys[0],
+          activeDays: Array.isArray(data.activeDays) ? data.activeDays.filter((day): day is string => typeof day === "string") : [],
+          cohort: data.cohort === "internal" ? "internal" : data.cohort === "demo" ? "demo" : "family", source: null, market: null };
+      }),
+      coParents: coParentLinksOf(shares.docs.map((d) => d.data())),
+    };
+  } catch (error) {
+    logger.error("Admin family cost window read failed", error);
+    return { status: "unavailable" as const };
+  }
+}
+
 /** Admin read. Local/sandbox (no Firestore) returns an empty day; the count is still the cohort fold. */
 export async function loadFamilyDailyCostReport(
   config: ArborConfig,
@@ -223,12 +292,7 @@ async function readFamilyCosts(config: ArborConfig, date: string): Promise<Famil
   try {
     if (!getApps().length) initializeApp({ credential: applicationDefault(), projectId: config.firebaseProjectId });
     const snap = await getFirestore(config.firestoreDatabaseId).collection(FAMILY_COST_COLLECTION).where("date", "==", date).get();
-    return snap.docs.map((doc) => {
-      const data = doc.data() as Record<string, unknown>;
-      const familyId = typeof data.familyId === "string" && data.familyId ? data.familyId : null;
-      const memberUids = Array.isArray(data.memberUids) ? data.memberUids.filter((u): u is string => typeof u === "string") : [];
-      return { familyId, memberUids, routes: routeTotals(data.routes) };
-    });
+    return snap.docs.map((doc) => costDay(doc.data()));
   } catch (error) {
     logger.error("Family cost day read failed", error, { date });
     return [];

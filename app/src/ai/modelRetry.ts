@@ -36,16 +36,30 @@ export const newAbortError = (): Error => {
  * (The upstream work may keep running; the REQUEST is freed — providers that
  * accept an AbortSignal, like fetch, get true cancellation instead.)
  */
-export const raceWithAbort = async <T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> => {
+export const raceWithAbort = async <T>(promise: Promise<T>, signal?: AbortSignal, late?: {
+  resolved(value: T): void;
+  rejected(error: unknown): void;
+}): Promise<T> => {
   if (!signal) return promise;
-  if (signal.aborted) throw newAbortError();
   return await new Promise<T>((resolve, reject) => {
-    const onAbort = () => reject(newAbortError());
+    let aborted = false;
+    const onAbort = () => { aborted = true; reject(newAbortError()); };
     signal.addEventListener("abort", onAbort, { once: true });
     promise.then(
-      (value) => { signal.removeEventListener("abort", onAbort); resolve(value); },
-      (error) => { signal.removeEventListener("abort", onAbort); reject(error); },
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        if (!aborted) resolve(value);
+        else try { late?.resolved(value); } catch { /* accounting must not affect the request */ }
+      },
+      (error) => {
+        signal.removeEventListener("abort", onAbort);
+        if (!aborted) reject(error);
+        else try { late?.rejected(error); } catch { /* accounting */ }
+      },
     );
+    // Attach both handlers even when already aborted: the caller has issued
+    // the promise, so a later rejection must still be consumed/accounted for.
+    if (signal.aborted) { signal.removeEventListener("abort", onAbort); onAbort(); }
   });
 };
 
@@ -84,7 +98,7 @@ export function newRetryAccounting(): RetryAccounting {
   return { retries: 0, failedAttempts: [] };
 }
 
-function usageFromError(err: unknown): unknown {
+export function usageFromError(err: unknown): unknown {
   if (!err || typeof err !== "object") return null;
   const e = err as { usageMetadata?: unknown; usage?: unknown; response?: { usageMetadata?: unknown } };
   const raw = e.usageMetadata ?? e.usage ?? e.response?.usageMetadata;
