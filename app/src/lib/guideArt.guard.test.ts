@@ -5,9 +5,8 @@ import { GUIDE_ART, GUIDE_ART_SHIPPED, GUIDE_ART_WIDTHS, GUIDE_TOPICS, guideArtF
 
 /**
  * VIS-05 — the guide illustrations on disk, their registry and their
- * provenance stay one thing. The art itself is not made yet (Guy's call:
- * image-model spend or a commission), so the file checks run against the
- * shipped topics only, and the WebP reader is proven on built headers.
+ * provenance stay one thing. File checks cover every shipped topic; the
+ * WebP reader is also proven on built headers.
  */
 
 const publicDir = path.resolve(__dirname, "../../public");
