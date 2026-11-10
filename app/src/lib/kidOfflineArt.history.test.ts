@@ -42,7 +42,7 @@ describe("offline shared-art history integrity", () => {
       { bookId: "plan-book", finishedAt: "2026-11-09T10:00:00Z" },
       { bookId: "a", finishedAt: "2026-10-01T00:00:00Z" },
     ];
-    const ids = (rows: typeof shelf) => rows.map((r) => r.book.id);
+    const ids = (rows: typeof shelf) => rows.map((r) => (r.book as { id: string }).id);
     expect(ids(offlineLibraryBooks(shelf, reads, 3, NOW))).toEqual(["tonight", "a", "b", "c"]);
     expect(ids(offlineLibraryBooks(shelf, reads, 4, NOW))).toEqual(["tonight", "a", "b", "c", "plan-edition"]);
     expect(ids(offlineLibraryBooks(shelf, reads, 0, NOW))).toEqual(["tonight"]);
