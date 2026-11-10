@@ -5,7 +5,6 @@ import { useLanguage } from "../../context/LanguageContext";
 import { canonicalBooksPractising } from "../../lib/programs/canonicalBookHandback";
 import { reviewedParentBooks, type ParentPracticeBook } from "../../lib/programs/parentBookLibrary";
 import { LibraryBookCover } from "../kidmode/LibraryBookCover";
-import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 import { kidModeOpenFor } from "../../lib/age/playGate";
 import { useNowClock } from "../companion/useNowClock";
 import { useParentBookLibrary } from "./useParentBookLibrary";
@@ -46,21 +45,17 @@ export function TogetherBookPracticesView({ books, lang, labels, renderCover, on
   </section>;
 }
 
-export default function TogetherBookPractices() {
+export default function TogetherBookPractices({ onOpen }: { onOpen: (bookId: string) => void }) {
   const { childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
   const now = useNowClock();
   const library = useParentBookLibrary(childProfile.id, now);
-  const { request, step } = useKidModeEntry();
   const books = reviewedParentBooks(library.entries);
   if (!books.length) return null;
-  return <>
-    <TogetherBookPracticesView books={books} lang={uiLang === "he" ? "he" : "en"}
+  return <TogetherBookPracticesView books={books} lang={uiLang === "he" ? "he" : "en"}
       labels={{ title: t("elev.books.practice.title"), filter: t("elev.books.practice.filter"), all: t("elev.books.practice.all"), open: t("elev.books.practice.open") }}
       renderCover={({ entry }) => <LibraryBookCover childId={childProfile.id} entry={entry} />}
       onOpen={kidModeOpenFor(childProfile) ? ({ entry }) => {
-        if (library.isCurrent() && books.some(b => b.entry === entry)) request({ view: "library", book: entry.book.id, together: true });
-      } : undefined} />
-    {step}
-  </>;
+        if (library.isCurrent() && books.some(b => b.entry === entry)) onOpen(entry.book.id);
+      } : undefined} />;
 }
