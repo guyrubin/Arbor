@@ -85,7 +85,7 @@ describe("companion events — the call sites are live", () => {
 
   it("Together keeps Practice Studio's two series alive", () => {
     expect(together).toContain('trackPracticeStudioOpen(world.id, direct ? "direct" : "kidmode");');
-    expect(together).toMatch(/setKeptState\(\{ childId: childProfile\.id, ids: \[\.\.\.kept, id\] \}\); trackPracticeTogetherDid\(id\);/);
+    expect(together).toMatch(/if \(!isCurrent\(\)\) return;\s*if \(saved\) \{[^}]+setKeptState\([\s\S]*?trackPracticeTogetherDid\(id\);/);
   });
 
   it("NEGATIVE CONTROL: the companion folder is no longer silent", () => {
