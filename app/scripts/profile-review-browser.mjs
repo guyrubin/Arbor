@@ -18,7 +18,8 @@ window.hash=id=>heroAvatarHash(window.portrait(id));
 window.bookDoc=(extra={})=>({id:window.fixture.book,bookId:window.fixture.book,sheetId:bookSheetId(window.hash(window.fixture.hero)),setId:'synthetic',sets:['synthetic'],createdAt:'2026-11-10T10:00:00Z',files:[],bytes:0,sheetManifest:{poses:{idle:{file:'idle.svg',redrawn:false}}},...extra});
 window.heroDocs=()=>({meta:{avatarHash:window.hash(window.fixture.hero),status:'complete',poses:['idle']},poses:window.fixture.empty?{}:{idle:{id:'idle',pose:'idle',avatarHash:window.hash(window.fixture.stalePose?'a':window.fixture.hero),dataUrl:window.portrait(window.fixture.stalePose?'a':window.fixture.hero)}}});
 window.defer=(kind,input)=>new Promise((resolve,reject)=>window.calls.push({kind,input,resolve,reject}));
-function App(){const[,render]=useState(0);window.change=patch=>{Object.assign(window.fixture,patch);flushSync(()=>{for(const f of [...window.ownerListeners])f();render(n=>n+1);});};const f=window.fixture;
+window.bookRows=window.fixture.kind==='book'?[window.bookDoc()]:[];
+function App(){const[,render]=useState(0);window.change=patch=>{Object.assign(window.fixture,patch);window.bookRows=window.fixture.kind==='book'?[window.bookDoc()]:[];flushSync(()=>{for(const f of [...window.ownerListeners])f();render(n=>n+1);});};const f=window.fixture;
  const child={id:f.child,name:'Synthetic',gender:'girl',comicAvatarUrl:window.portrait(f.hero),avatar:{source:'descriptor',style:'soft3d',createdAt:'2026-11-10'}};
  return f.mounted?(f.kind==='book'?<BookSheetStrip child={child} avatarHash={window.hash(f.hero)} target={{bookId:f.book,poses:['idle'],keyBase:'elev.hero.sheet.book'}}/>:<HeroSheetPanel child={child}/>):null;
 }
@@ -27,7 +28,7 @@ createRoot(document.getElementById('root')).render(<React.StrictMode><App/></Rea
 const modules = {
   LanguageContext: `import {translate} from './src/lib/i18n';export const useLanguage=()=>({uiLang:window.fixture.lang,t:(k,v)=>translate(window.fixture.lang,k,v)});`,
   heroSheetStore: `export const heroSheetOwnerKey=()=>window.fixture.owner;export const subscribeHeroSheetOwner=f=>{window.ownerListeners.add(f);return()=>window.ownerListeners.delete(f)};export const heroSheetStoreFor=child=>({child,owner:window.fixture.owner});`,
-  useChildCollection: `export const useChildCollection=()=>({items:window.fixture.kind==='book'?[window.bookDoc()]:[],confirmed:true,loaded:true,remote:true,error:false});`,
+  useChildCollection: `export const useChildCollection=()=>({items:window.bookRows,confirmed:true,loaded:true,remote:true,error:false});`,
   useHeroSheet: `export const useHeroSheetDocs=()=>window.heroDocs();`,
   bookAssetStore: `export const fetchBookAsset=async()=>null;`,
   buildBookSheet: `export const DEFAULT_SHEET_BOOK='five-smooth-stones';export const bookSheetRunning=()=>false;export const browserBookBuilderDeps=()=>({});export const redrawBookPose=input=>window.defer('book',input);`,
@@ -53,6 +54,7 @@ try {
     const context = await browser.newContext({ viewport: { width: cell.w, height: cell.h }, reducedMotion: 'reduce' });
     await context.route('**/*', r => r.abort());
     const page = await context.newPage(), errors = [];
+    page.setDefaultTimeout(15000);
     page.on('pageerror', e => errors.push(e.message));
     const mount = async (kind, negative = false) => {
       await page.goto('about:blank'); await page.setContent('<div id="root"></div>');
@@ -68,6 +70,7 @@ try {
     const callCount = () => page.evaluate(() => window.calls.length);
 
     // Prior unscoped state remains busy in the next child's book review.
+    console.log(cell.id + ': prior-state negative controls');
     await mount('book', true); await bookButton().click(); await change({ child: 'child-b' });
     assert.equal(await bookButton().count(), 0, 'negative control inherits another child\'s pending state');
     // It can also show an earlier hero's image after a late failure.
@@ -75,6 +78,7 @@ try {
     await heroRow().locator('img').waitFor();
     assert.equal(await heroRow().locator('img').getAttribute('src'), await page.evaluate(() => window.portrait('a')));
 
+    console.log(cell.id + ': fixed book review lifetimes');
     await mount('book');
     await bookButton().evaluate(el => { el.click(); el.click(); }); assert.equal(await callCount(), 1, 'one redraw per pose');
     await change({ child: 'child-b' }); assert.equal(await bookButton().count(), 1);
@@ -92,6 +96,7 @@ try {
     assert.equal(await bookButton().count(), 1);
     const unmountIndex = await callCount(); await bookButton().click(); await change({ mounted: false }); await settle(unmountIndex, true); await change({ mounted: true }); await bookButton().waitFor();
 
+    console.log(cell.id + ': fixed hero review lifetimes');
     await mount('hero');
     await redrawHero().evaluate(el => { el.click(); el.click(); }); assert.equal(await callCount(), 1);
     await change({ hero: 'b', stalePose: true }); await settle(0); assert.equal(await heroRow().count(), 0, 'never show a mismatched hero from stale feedback');
