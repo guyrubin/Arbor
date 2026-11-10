@@ -413,6 +413,59 @@ function lateUnaryUsage(meta: UsageMeta, timer: ReturnType<typeof startCallTimer
   };
 }
 
+/** An abandoned startup can still return an SDK stream and an independently
+ * running aggregate promise. Observe only usage; never pull or return content.
+ * Iterator cleanup is best-effort, not proof of upstream cancellation. */
+function lateStreamUsage(meta: UsageMeta, timer: ReturnType<typeof startCallTimer>, retries: number) {
+  const write = (raw: unknown) => recordUsage({
+    ...meta, retries, endedEarly: true, chargedFailure: raw != null,
+  }, raw, timer.finish());
+  return {
+    resolved: (result: any) => {
+      void Promise.resolve(result.response).then(
+        (response) => write(response?.usageMetadata),
+        (error) => write(usageFromError(error)),
+      );
+      try { void Promise.resolve(result.stream[Symbol.asyncIterator]().return?.()).catch(() => {}); } catch { /* cleanup */ }
+    },
+    rejected: (error: unknown) => write(usageFromError(error)),
+  };
+}
+
+/** Observe the SDK's aggregate rejection immediately, even while a consumer
+ * is paused or has stopped reading. Keep one receipt in finally, including
+ * final-response failures. Final waits share the route budget. Early exits
+ * retain the immediate partial receipt; later totals require reconciliation. */
+async function* vertexStreamText(
+  result: any, timer: ReturnType<typeof startCallTimer>, signal: AbortSignal | undefined,
+  record: (usage: unknown, completed: boolean, chargedFailure: boolean) => void,
+): AsyncIterable<string> {
+  const aggregate = Promise.resolve(result.response).then(
+    (response) => ({ ok: true as const, raw: response?.usageMetadata }),
+    (error: unknown) => ({ ok: false as const, error }),
+  );
+  let usage: unknown;
+  let completed = false;
+  let chargedFailure = false;
+  try {
+    for await (const item of abortableIterate<any>(result.stream, signal)) {
+      if (item.usageMetadata) usage = item.usageMetadata;
+      const text = item.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("") || "";
+      if (text) { timer.markFirstChunk(); yield text; }
+    }
+    const final = await raceWithAbort(aggregate, signal);
+    if (final.ok === false) throw final.error;
+    usage = final.raw ?? usage;
+    completed = true;
+  } catch (error) {
+    const billed = usageFromError(error);
+    if (billed) { usage = billed; chargedFailure = true; }
+    throw error;
+  } finally {
+    record(usage, completed, chargedFailure);
+  }
+}
+
 /** A region is skipped (never thrown from) when the model is absent there. */
 const isModelUnavailableInRegion = (err: any): boolean => {
   const status = err?.status ?? err?.code ?? err?.response?.status;
@@ -499,7 +552,7 @@ export class VertexGeminiProvider {
             maxOutputTokens: this.config.maxOutputTokens,
             ...(thinking ? { thinkingConfig: thinking } : {})
           } as any
-        }), options.budget?.signal), 3, options.budget, accounting
+        }), options.budget?.signal, lateStreamUsage(meta, timer, accounting.retries)), 3, options.budget, accounting
       );
     } catch (err) {
       recordChargedFailures(meta, timer.finish(), accounting);
@@ -507,21 +560,9 @@ export class VertexGeminiProvider {
     }
     recordChargedFailures(meta, timer.finish(), accounting);
 
-    let usage: any;
-    let completed = false;
-    try {
-      for await (const item of abortableIterate<any>(result.stream, options.budget?.signal)) {
-        if (item.usageMetadata) usage = item.usageMetadata;
-        const text = item.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("") || "";
-        if (text) { timer.markFirstChunk(); yield text; }
-      }
-      completed = true;
-    } finally {
-      // B-AIOPS-01: an early stop keeps its receipt (tokens seen so far; the
-      // final usage chunk may never arrive, so the cost can stay unpriced).
-      if (!completed) recordUsage({ ...meta, endedEarly: true, retries: accounting.retries }, usage, timer.finish());
-    }
-    recordUsage({ ...meta, retries: accounting.retries }, usage ?? (await result.response)?.usageMetadata, timer.finish());
+    yield* vertexStreamText(result, timer, options.budget?.signal, (usage, completed, chargedFailure) => {
+      recordUsage({ ...meta, retries: accounting.retries, chargedFailure, ...(!completed ? { endedEarly: true } : {}) }, usage, timer.finish());
+    });
   }
 
   async *streamText(options: StreamTextOptions) {
@@ -541,28 +582,16 @@ export class VertexGeminiProvider {
             maxOutputTokens: this.config.maxOutputTokens,
             ...(thinking ? { thinkingConfig: thinking } : {})
           } as any
-        }), options.budget?.signal), 3, options.budget, accounting
+        }), options.budget?.signal, lateStreamUsage(meta, timer, accounting.retries)), 3, options.budget, accounting
       );
     } catch (err) {
       recordChargedFailures(meta, timer.finish(), accounting);
       throw err;
     }
     recordChargedFailures(meta, timer.finish(), accounting);
-    let usage: any;
-    let completed = false;
-    try {
-      for await (const item of abortableIterate<any>(result.stream, options.budget?.signal)) {
-        if (item.usageMetadata) usage = item.usageMetadata;
-        const text = item.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("") || "";
-        if (text) { timer.markFirstChunk(); yield text; }
-      }
-      completed = true;
-    } finally {
-      // B-AIOPS-01: an early stop keeps its receipt (tokens seen so far; the
-      // final usage chunk may never arrive, so the cost can stay unpriced).
-      if (!completed) recordUsage({ ...meta, endedEarly: true, retries: accounting.retries }, usage, timer.finish());
-    }
-    recordUsage({ ...meta, retries: accounting.retries }, usage ?? (await result.response)?.usageMetadata, timer.finish());
+    yield* vertexStreamText(result, timer, options.budget?.signal, (usage, completed, chargedFailure) => {
+      recordUsage({ ...meta, retries: accounting.retries, chargedFailure, ...(!completed ? { endedEarly: true } : {}) }, usage, timer.finish());
+    });
   }
 
   async generateImage(options: GenerateImageOptions): Promise<GeneratedImage> {
