@@ -27,6 +27,7 @@ import { bookSheetDrawPoses, bookSheetId } from "../../lib/library/bookSheet";
 import { bookSheetRunning, browserBookBuilderDeps, DEFAULT_SHEET_BOOK, redrawBookPose } from "../kidmode/hero/buildBookSheet";
 import { PLAN_SHEET_TARGET, type SheetStripTarget } from "./sheetStripTargets";
 import type { ChildProfile } from "../../types";
+import { useProfileReviewRequests } from "./useProfileReviewRequests";
 
 const muted: React.CSSProperties = { color: "var(--arbor-muted)" };
 const formKey = (base: string, gender?: ChildProfile["gender"]) => (gender === "boy" || gender === "girl" ? `${base}.${gender}` : base);
@@ -35,9 +36,17 @@ const BOOK_TARGET: SheetStripTarget = { bookId: DEFAULT_SHEET_BOOK, poses: bookS
 export { PLAN_SHEET_TARGET };
 export type { SheetStripTarget };
 
-export default function BookSheetStrip({ child, avatarHash, target = BOOK_TARGET }: { child: Pick<ChildProfile, "id" | "name" | "gender">; avatarHash: string; target?: SheetStripTarget }) {
-  const { t } = useLanguage();
+type BookSheetStripProps = { child: Pick<ChildProfile, "id" | "name" | "gender">; avatarHash: string; target?: SheetStripTarget };
+
+export default function BookSheetStrip(props: BookSheetStripProps) {
   const owner = useSyncExternalStore(subscribeHeroSheetOwner, heroSheetOwnerKey, heroSheetOwnerKey);
+  const scope = bookSheetOwnerScope(owner, props.child.id, (props.target ?? BOOK_TARGET).bookId, props.avatarHash);
+  return <BookSheetReview key={scope} {...props} owner={owner} />;
+}
+
+function BookSheetReview({ child, avatarHash, target = BOOK_TARGET, owner }: BookSheetStripProps & { owner: string }) {
+  const { t } = useLanguage();
+  const requests = useProfileReviewRequests();
   const ownerScope = bookSheetOwnerScope(owner, child.id, target.bookId, avatarHash);
   const col = useChildCollection<BookAssetsDoc>(child.id, "bookAssets", { trackConfirmation: true });
   // A redraw may finish after React has switched child or account. Its record
@@ -102,8 +111,14 @@ export default function BookSheetStrip({ child, avatarHash, target = BOOK_TARGET
     ) : null;
   }
   const redraw = async (pose: string) => {
+    if (!requests.begin(pose)) return;
     setBusy((b) => ({ ...b, [pose]: true }));
-    const r = await redrawBookPose({ childId: child.id, avatarHash, pose, bookId: target.bookId, poses: target.poses }, browserBookBuilderDeps(child.id, () => false, target.bookId, target.routePose)).catch(() => ({ ok: false as const, doc: undefined }));
+    setFailed((f) => ({ ...f, [pose]: false }));
+    let r: Awaited<ReturnType<typeof redrawBookPose>>;
+    try {
+      r = await redrawBookPose({ childId: child.id, avatarHash, pose, bookId: target.bookId, poses: target.poses }, browserBookBuilderDeps(child.id, () => false, target.bookId, target.routePose));
+    } catch { r = { ok: false }; }
+    if (!requests.finish(pose)) return;
     setBusy((b) => ({ ...b, [pose]: false }));
     if (r.ok && r.doc) setOverride({ scope: ownerScope, value: r.doc });
     else setFailed((f) => ({ ...f, [pose]: true }));

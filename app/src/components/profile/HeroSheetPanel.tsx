@@ -12,17 +12,18 @@
  *  - K2 4d: below it, the hero's pictures in the BOOK, each with Redraw
  *    (BookSheetStrip).
  */
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useSyncExternalStore } from "react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { HERO_SHEET_POSE_IDS, heroAvatarHash, type HeroSheetPoseId } from "../../lib/heroSheetContract";
 import { browserBuilderDeps, markHeroPoseOk, redrawHeroPose, resumeHeroSheet } from "../kidmode/hero/buildHeroSheet";
-import { heroSheetStoreFor } from "../../lib/heroSheetStore";
+import { heroSheetOwnerKey, heroSheetStoreFor, subscribeHeroSheetOwner } from "../../lib/heroSheetStore";
 import { useHeroSheetDocs } from "../kidmode/hero/useHeroSheet";
 import BookSheetStrip from "./BookSheetStrip";
 import { PLAN_SHEET_TARGET } from "./sheetStripTargets";
 import type { ChildProfile } from "../../types";
 import { resolveHeroUrl } from "../../lib/heroIdentity";
+import { useProfileReviewRequests } from "./useProfileReviewRequests";
 
 /** The parent-register key for this child's grammatical form (HE). */
 export const formKeyFor = (base: string, gender?: ChildProfile["gender"]) =>
@@ -30,12 +31,21 @@ export const formKeyFor = (base: string, gender?: ChildProfile["gender"]) =>
 
 const muted: React.CSSProperties = { color: "var(--arbor-muted)" };
 
-export default function HeroSheetPanel({ child }: { child: Pick<ChildProfile, "id" | "name" | "gender" | "photoUrl" | "avatar"> & { comicAvatarUrl?: string } }) {
+type HeroSheetPanelProps = { child: Pick<ChildProfile, "id" | "name" | "gender" | "photoUrl" | "avatar"> & { comicAvatarUrl?: string } };
+
+export default function HeroSheetPanel({ child }: HeroSheetPanelProps) {
+  const owner = useSyncExternalStore(subscribeHeroSheetOwner, heroSheetOwnerKey, heroSheetOwnerKey);
+  const heroUrl = resolveHeroUrl(child);
+  const hash = heroUrl ? heroAvatarHash(heroUrl) : null;
+  return <HeroSheetReview key={JSON.stringify([owner, child.id, hash])} child={child} heroUrl={heroUrl} hash={hash} />;
+}
+
+function HeroSheetReview({ child, heroUrl, hash }: HeroSheetPanelProps & { heroUrl: string | null; hash: string | null }) {
   const { t } = useLanguage();
+  const requests = useProfileReviewRequests();
   const docs = useHeroSheetDocs(child.id);
   const status = docs?.meta?.status;
   const metaHash = docs?.meta?.avatarHash;
-  const heroUrl = resolveHeroUrl(child);
   const [busy, setBusy] = useState<Partial<Record<HeroSheetPoseId, "redraw">>>({});
   const [failed, setFailed] = useState<Partial<Record<HeroSheetPoseId, boolean>>>({});
   useEffect(() => {
@@ -45,7 +55,6 @@ export default function HeroSheetPanel({ child }: { child: Pick<ChildProfile, "i
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [child.id, heroUrl, status, metaHash, docs === undefined]);
 
-  const hash = heroUrl ? heroAvatarHash(heroUrl) : null;
   const meta = docs?.meta && hash && docs.meta.avatarHash === hash ? docs.meta : null;
   // B-BOOK-69: the book's own old/new line, for the CURRENT hero. It renders
   // nothing unless the book holds an earlier hero or this device draws one, so
@@ -73,10 +82,20 @@ export default function HeroSheetPanel({ child }: { child: Pick<ChildProfile, "i
   const shown = HERO_SHEET_POSE_IDS.filter((p) => docs.poses[p]?.avatarHash === hash || busy[p] || failed[p]);
   if (!shown.length) return bookLines;
 
-  const ok = async (pose: HeroSheetPoseId) => { await markHeroPoseOk(heroSheetStoreFor(child.id), pose).catch(() => false); };
+  const ok = async (pose: HeroSheetPoseId) => {
+    if (!requests.begin(pose)) return;
+    try { await markHeroPoseOk(heroSheetStoreFor(child.id), pose); }
+    catch { /* The confirmed pose record remains the source of its review state. */ }
+    finally { requests.finish(pose); }
+  };
   const redraw = async (pose: HeroSheetPoseId) => {
+    if (!requests.begin(pose)) return;
     setBusy((b) => ({ ...b, [pose]: "redraw" }));
-    const r = await redrawHeroPose({ childId: child.id, avatarHash: hash, pose }, browserBuilderDeps(child.id)).catch(() => ({ ok: false }));
+    setFailed((f) => ({ ...f, [pose]: false }));
+    let r: Awaited<ReturnType<typeof redrawHeroPose>>;
+    try { r = await redrawHeroPose({ childId: child.id, avatarHash: hash, pose }, browserBuilderDeps(child.id)); }
+    catch { r = { ok: false }; }
+    if (!requests.finish(pose)) return;
     setBusy((b) => { const n = { ...b }; delete n[pose]; return n; });
     if (!r.ok) setFailed((f) => ({ ...f, [pose]: true }));
   };
@@ -91,7 +110,7 @@ export default function HeroSheetPanel({ child }: { child: Pick<ChildProfile, "i
       <p className="text-xs font-bold" style={{ color: "var(--arbor-ink)" }}>{t(formKeyFor("elev.hero.sheet.review.title", child.gender), name)}</p>
       <ul className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {shown.map((pose) => {
-          const d = docs.poses[pose];
+          const d = docs.poses[pose]?.avatarHash === hash ? docs.poses[pose] : undefined;
           const label = t(`elev.hero.sheet.pose.${pose}`);
           return (
             <li key={pose} data-hero-pose={pose} className="rounded-xl p-2 flex flex-col items-center gap-1.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
