@@ -18,9 +18,10 @@ import { shelfDef, type ShelfId, type ShelfTint } from "../../lib/shelves/regist
 export type ShelfTone = { jewel: string; soft: string; ink: string; wash: string };
 
 /** Per registry tint: the jewel (fill layer + the 96 px bleed), the -soft chip,
- *  the AA -ink outline, and the fixed-strength wash. "deep" (hands) = the paper
+ *  the AA -ink outline, and the fixed-strength wash. "deep" (body) = the paper
  *  well with ink (option-ab-blend.html `.t-deep`). Tokens only. */
 export const SHELF_TONE: Readonly<Record<ShelfTint, ShelfTone>> = {
+  sapphire: { jewel: "var(--arbor-clay)", soft: "var(--arbor-clay-dim)", ink: "var(--arbor-clay)", wash: "var(--arbor-paper-tinted)" },
   sky: { jewel: "var(--arbor-sky)", soft: "var(--arbor-sky-soft)", ink: "var(--arbor-sky-ink)", wash: "var(--arbor-sky-wash)" },
   yellow: { jewel: "var(--arbor-yellow)", soft: "var(--arbor-yellow-soft)", ink: "var(--arbor-yellow-ink)", wash: "var(--arbor-yellow-wash)" },
   lav: { jewel: "var(--arbor-lav)", soft: "var(--arbor-lav-soft)", ink: "var(--arbor-lav-ink)", wash: "var(--arbor-lav-wash)" },

@@ -1,4 +1,5 @@
 import React from "react";
+import { DOMAIN_TINT, type DomainTint } from "../../lib/domains/visuals";
 import { Icon } from "./Icon";
 import "./brandChip.css";
 
@@ -45,16 +46,13 @@ export const BRAND_CHIP_LIGHT: Readonly<Record<BrandChipTone, string>> = {
 };
 
 /** The eight development areas, each in its registry ink family. */
-export const DOMAIN_CHIP_TONE: Readonly<Record<string, BrandChipTone>> = {
-  talking: "sapphire",
-  moving: "green",
-  hands: "amber",
-  thinking: "sky",
-  playing: "pink",
-  feelings: "lav",
-  body: "navy",
-  family: "peach",
+const CHIP_TONE: Readonly<Record<DomainTint, BrandChipTone>> = {
+  sapphire: "sapphire", sky: "sky", yellow: "amber", lav: "lav",
+  pink: "pink", green: "green", peach: "peach", deep: "navy",
 };
+export const DOMAIN_CHIP_TONE: Readonly<Record<string, BrandChipTone>> = Object.fromEntries(
+  Object.entries(DOMAIN_TINT).map(([domain, tint]) => [domain, CHIP_TONE[tint]]),
+);
 
 const SHAPES: readonly BrandChipShape[] = ["leaf", "arch", "drop"];
 /** A stable silhouette for an index, so neighbouring chips never look stamped. */

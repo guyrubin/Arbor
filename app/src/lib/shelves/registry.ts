@@ -33,6 +33,7 @@
  * read model yet (lib/observations ObservationOrigin); they bind here when a
  * builder adds them.
  */
+import { DOMAIN_TINT, type DomainTint } from "../domains/visuals";
 import type { Milestone } from "../../types";
 import type { Observation } from "../observations";
 import { ALL_MILESTONES } from "../milestoneData";
@@ -62,9 +63,9 @@ export interface ShelfDef {
   tint: ShelfTint;
 }
 
-export type ShelfTint = "sky" | "yellow" | "lav" | "pink" | "green" | "peach" | "deep";
+export type ShelfTint = DomainTint;
 
-const s = (id: ShelfId, domain: DomainId, order: number, glyph: string, tint: ShelfTint, subAreas?: readonly string[]): ShelfDef => ({
+const s = (id: ShelfId, domain: DomainId, order: number, glyph: string, subAreas?: readonly string[]): ShelfDef => ({
   id,
   domain,
   ...(subAreas ? { subAreas } : {}),
@@ -72,20 +73,20 @@ const s = (id: ShelfId, domain: DomainId, order: number, glyph: string, tint: Sh
   order,
   illustrationKey: `shelf.${id}`,
   glyph,
-  tint,
+  tint: DOMAIN_TINT[domain],
 });
 
 /** The nine shelves, in parent display order. */
 export const SHELVES: readonly ShelfDef[] = [
-  s("sleep", "body", 1, "bedtime", "sky", ["sleep"]),
-  s("food", "body", 2, "restaurant", "yellow", ["feeding_nutrition", "eating", "feeding", "growth_measurements"]),
-  s("words", "talking", 3, "chat_bubble", "lav"),
-  s("feelings", "feelings", 4, "favorite", "pink"),
-  s("play", "playing", 5, "group", "green"),
-  s("moving", "moving", 6, "directions_run", "peach"),
-  s("hands", "hands", 7, "front_hand", "deep"),
-  s("school", "thinking", 8, "school", "sky"),
-  s("family", "family", 9, "diversity_3", "lav"),
+  s("sleep", "body", 1, "bedtime", ["sleep"]),
+  s("food", "body", 2, "restaurant", ["feeding_nutrition", "eating", "feeding", "growth_measurements"]),
+  s("words", "talking", 3, "chat_bubble"),
+  s("feelings", "feelings", 4, "favorite"),
+  s("play", "playing", 5, "group"),
+  s("moving", "moving", 6, "directions_run"),
+  s("hands", "hands", 7, "front_hand"),
+  s("school", "thinking", 8, "school"),
+  s("family", "family", 9, "diversity_3"),
 ];
 
 export const SHELF_IDS: readonly ShelfId[] = SHELVES.map((x) => x.id);

@@ -151,3 +151,9 @@
 .portrait-cards button:focus-visible, .dev-map button:focus-visible, .area-detail button:focus-visible, .area-detail summary:focus-visible, .area-detail input:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .dev-map-row, .dev-map-chevron, .portrait-card-goal, .dev-map-tile { transition: none; } }
 a.portrait-card-tell { text-decoration: none; }
+
+/* Living Forms appears once in the expanded area, never on every skill row. */
+.area-detail-intro { display: flex; align-items: center; gap: 16px; }
+.area-detail-intro .area-detail-why { flex: 1; min-inline-size: 0; }
+.area-detail-art { flex: none; inline-size: 112px; block-size: 112px; object-fit: contain; }
+@media (max-width: 540px) { .area-detail-art { inline-size: 88px; block-size: 88px; } }

@@ -508,14 +508,14 @@ describe("v3 F-NOW-1 · the plan card's body and the guide reader", () => {
     expect(card(renderToStaticMarkup(<NowView />))).not.toContain('role="alert"');
   });
 
-  it("the active question gives the card its guide glyph and is never quoted on it", () => {
+  it("the active question gives the card its shipped guide artwork and is never quoted on it", () => {
     state.noPractice = true; state.focus = aiFocus();
     state.activeFamilyTopic = { id: "topic-a", title: "Our mornings" };
     const plan = card(renderToStaticMarkup(<NowView topic={state.activeFamilyTopic} />));
     expect(plan).toContain('data-guide="mornings"');
-    expect(plan).toMatch(/class="now-plan-medallion"[^>]*><span[^>]*>wb_sunny<\/span>/);
+    expect(plan).toContain('src="/visuals/guides/mornings-960.webp"');
     expect(plan).not.toContain("Our mornings");
-    expect(plan).not.toContain("<img");
+    expect(plan).not.toContain("now-plan-medallion");
   });
 
   // Re-pin (F-NOW-1 r2, FEAT-02): the question is quoted where the pick was made

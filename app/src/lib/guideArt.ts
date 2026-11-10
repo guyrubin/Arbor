@@ -6,8 +6,8 @@ import { normalizeSearchText } from "./searchNormalize";
 /**
  * VIS-05 — guide illustrations for the v3 Now guide card (11 Oct 2026).
  *
- * Twelve topics, one wide picture each: a painterly still life of household
- * objects in the together-table style (public/visuals/companion/README.md).
+ * Twelve topics reuse the approved Living Forms masters as wide compositions.
+ * Satin sculpted ribbons share the parent artwork palette.
  * Style brief: public/visuals/guides/README.md. Prompt, model and review per
  * picture: docs/design/guide-art-v1.json at the repo root.
  *
@@ -15,7 +15,7 @@ import { normalizeSearchText } from "./searchNormalize";
  *  - Objects only: never a person, a face, a hand, an animal with a face, a
  *    letter, a number or a logo, so a picture can never read as the family's
  *    own moment or as evidence about a child. Never derived from a family
- *    photo or from the hero avatar; prompts are text-only.
+ *    photo or from the hero avatar; references are approved brand art.
  *  - No text in any picture, so one file serves EN and HE; the alt text
  *    carries the words, in both languages, and names objects only.
  *  - 16:9 at 960x540 and 480x270 WebP, each at most 120 KB. The inline-start
@@ -59,101 +59,99 @@ export const GUIDE_ART: Readonly<Record<GuideTopic, GuideTopicDef>> = {
     domains: ["hands", "family"],
     routineId: "morning",
     alt: {
-      en: "A breakfast table in morning light with a small backpack by the chair",
-      he: "שולחן ארוחת בוקר באור הבוקר, ותיק גב קטן ליד הכיסא",
+      en: "An unfolding ribbon with small coral accents",
+      he: "סרט נפתח עם נגיעות קטנות בגוון אלמוג",
     },
   },
   "drop-off": {
     domains: ["feelings", "family"],
     routineId: "goodbye",
     alt: {
-      en: "Two coats on low hooks beside an open front door",
-      he: "שני מעילים על ווים נמוכים ליד דלת כניסה פתוחה",
+      en: "Two curved forms leaning toward a small coral sphere",
+      he: "שתי צורות מעוגלות נוטות אל כדור קטן בגוון אלמוג",
     },
   },
   "big-feelings": {
     domains: ["feelings"],
     alt: {
-      en: "A soft cushion, a blanket and picture cards on a rug",
-      he: "כרית רכה, שמיכה וכרטיסי תמונות על שטיח",
+      en: "A soft folded ribbon surrounding a coral center",
+      he: "סרט מקופל ורך סביב מרכז בגוון אלמוג",
     },
   },
   sharing: {
     domains: ["playing", "feelings"],
     alt: {
-      en: "Two cups and one bowl of fruit on a low table",
-      he: "שתי כוסות וקערת פירות אחת על שולחן נמוך",
+      en: "Interlocking curved forms with a small coral accent",
+      he: "צורות מעוגלות משתלבות עם נגיעה קטנה בגוון אלמוג",
     },
   },
   bedtime: {
     domains: ["body", "family"],
     routineId: "bedtime",
     alt: {
-      en: "A night light, a picture book and a folded blanket",
-      he: "מנורת לילה, ספר תמונות ושמיכה מקופלת",
+      en: "A curved blue shelter with a pearl inner fold",
+      he: "קשת כחולה מגוננת עם קפל פנימי בגוון פנינה",
     },
   },
   screens: {
     domains: ["family", "thinking"],
     routineId: "screens",
     alt: {
-      en: "A tablet lying screen down beside building blocks",
-      he: "טאבלט מונח עם המסך כלפי מטה, ליד קוביות בנייה",
+      en: "An unfolding ribbon with small coral accents",
+      he: "סרט נפתח עם נגיעות קטנות בגוון אלמוג",
     },
   },
   meals: {
     domains: ["body", "family"],
     routineId: "meal",
     alt: {
-      en: "A family table set with small plates and a jug",
-      he: "שולחן משפחתי ערוך עם צלחות קטנות וקנקן",
+      en: "A rounded folded form with a coral center",
+      he: "צורה מעוגלת ומקופלת עם מרכז בגוון אלמוג",
     },
   },
   "tidy-up": {
     domains: ["hands", "thinking"],
     routineId: "tidy",
     alt: {
-      en: "A toy basket half full beside a few scattered blocks",
-      he: "סל צעצועים מלא עד חציו, ולידו כמה קוביות מפוזרות",
+      en: "Interwoven ribbons in blue and pearl",
+      he: "סרטים שזורים בכחול ובגוון פנינה",
     },
   },
   siblings: {
     domains: ["family", "playing"],
     alt: {
-      en: "Two pairs of shoes, one big and one small, by the door",
-      he: "שני זוגות נעליים, אחד גדול ואחד קטן, ליד הדלת",
+      en: "Two curved forms leaning toward a small coral sphere",
+      he: "שתי צורות מעוגלות נוטות אל כדור קטן בגוון אלמוג",
     },
   },
   "new-words": {
     domains: ["talking"],
     alt: {
-      en: "Open picture cards and a small chalkboard with no writing",
-      he: "כרטיסי תמונות פרושים ולוח גיר קטן בלי כתב",
+      en: "Two open ribbon loops facing a coral accent",
+      he: "שתי לולאות סרט פתוחות מול נגיעה בגוון אלמוג",
     },
   },
   "outdoor-play": {
     domains: ["moving", "playing"],
     alt: {
-      en: "A ball, a bucket and boots on grass",
-      he: "כדור, דלי ומגפיים על הדשא",
+      en: "A rising blue ribbon with a floating coral accent",
+      he: "סרט כחול מתרומם עם נגיעה מרחפת בגוון אלמוג",
     },
   },
   "calm-corner": {
     domains: ["feelings"],
     routineId: "calm",
     alt: {
-      en: "A tent of cloth over cushions with a breathing ribbon",
-      he: "אוהל בד מעל כריות, עם סרט לתרגול נשימה",
+      en: "An open sculpted arch sheltering a coral sphere",
+      he: "קשת פיסולית פתוחה המקיפה כדור בגוון אלמוג",
     },
   },
 };
 
 /**
- * The topics whose two files are on disk. Empty until the art is approved and
- * made (image-model spend or a commission, Guy's call): add a topic here in
- * the same commit as its files and its provenance record.
+ * The topics whose two reviewed exports and provenance records ship together.
  */
-export const GUIDE_ART_SHIPPED: ReadonlySet<GuideTopic> = new Set<GuideTopic>([]);
+export const GUIDE_ART_SHIPPED: ReadonlySet<GuideTopic> = new Set<GuideTopic>(GUIDE_TOPICS);
 
 export const GUIDE_ART_DIR = "/visuals/guides";
 export const GUIDE_ART_WIDTHS = [480, 960] as const;

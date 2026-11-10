@@ -71,8 +71,8 @@ describe("ShelfGlyph — 44 px duotone, the tint names the shelf", () => {
         expect(css).toMatch(new RegExp(`${name}\\s*:`));
       }
     }
-    expect(shelfTone("hands").wash).toBe("var(--arbor-paper-deep)");
-    expect(shelfTone("play").wash).toBe("var(--arbor-green-wash)");
+    expect(shelfTone("hands").wash).toBe("var(--arbor-yellow-wash)");
+    expect(shelfTone("play").wash).toBe("var(--arbor-pink-wash)");
   });
 
   it("carries no count, answer or state input (same chip whatever the record holds) and no raw hex", () => {

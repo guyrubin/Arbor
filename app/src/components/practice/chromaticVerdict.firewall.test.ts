@@ -330,8 +330,8 @@ describe("clinical firewall — #/journal shelf washes are identity, never a sta
   it("the wash tokens are the shelves' fixed tints — never a state/verdict token (danger, success, warning)", () => {
     const glyph = readFileSync(path.join(componentsRoot, "ui", "ShelfGlyph.tsx"), "utf8");
     const washes = [...glyph.matchAll(/wash: "(var\(--arbor-[a-z-]+\))"/g)].map((m) => m[1]);
-    expect(washes).toHaveLength(7);
-    for (const w of washes) expect(w).toMatch(/^var\(--arbor-(?:(?:sky|yellow|lav|pink|green|peach)-wash|paper-deep)\)$/);
+    expect(washes).toHaveLength(8);
+    for (const w of washes) expect(w).toMatch(/^var\(--arbor-(?:(?:sky|yellow|lav|pink|green|peach)-wash|paper-(?:deep|tinted))\)$/);
     for (const rel of ["ShelfGrid.tsx", "ShelfPage.tsx"]) expect(read(rel)).not.toMatch(/--arbor-(?:danger|success|warning|error|amber|red)\b/);
   });
 });

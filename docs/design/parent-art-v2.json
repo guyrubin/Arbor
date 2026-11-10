@@ -1,0 +1,485 @@
+{
+  "created": "2026-11-10",
+  "direction": "Living Forms",
+  "model": "Built-in image generation (model identifier not exposed)",
+  "method": "Generated transparent raster masters; resized and encoded as WebP. Not editable 3D models.",
+  "assets": [
+    {
+      "file": "area-words",
+      "outputs": [
+        "area-words-480.webp",
+        "area-words-960.webp"
+      ],
+      "model": "Built-in image generation (model identifier not exposed)",
+      "date": "2026-11-10",
+      "prompt": "Use case: stylized-concept. Create ONE standalone production-candidate decorative illustration for Arbor, 1024x1024 SQUARE. Input image 1 is the APPROVED category-art sheet; input image 2 is the APPROVED Living Forms style reference. The source sheets are references only. Render a fresh high-resolution individual asset faithfully matching the specified cell, not a crop from the sheet. No sheet, title, label, logo, typography, watermark, border or other objects. Exact approved material language: broad tapered organic leaf ribbons with exquisite folded satin surfaces, controlled edges and thin sculpted thickness, sapphire blue, pale mint, pearl ivory, periwinkle, one restrained coral focal element. Soft studio light from upper left, opaque solid satin surfaces, tiny neutral contact shadow. Clean non-glowing silhouette. Genuinely transparent alpha background through ALL openings and around the object. No white paper rectangle, no black background, no checkerboard texture, no outer glow, no halo or colored haze. Object fully contained and centered with at least 14% safe margin on each side. No people, faces, anatomical parts, toys, props, glass, glossy plastic, stars, badges or progress indicators. This is decorative category identity and never evidence about a child.\nASSET: area-words, Talking and understanding. Faithfully develop the TOP LEFT cell of image 1 labelled Words. Two asymmetric large tapered leaf ribbons face each other across an open central space: tall sapphire outer ribbon on the left with a periwinkle inner fold and a pale mint lower-right ribbon curling upward into a delicate open tip. A single small coral orb floats in the shared central opening, not outside it. Preserve the distinctive dialog/exchange silhouette of the reference, the broad graceful surface, gently pointed terminals and balanced negative space. NO literal speech bubbles, letters or symbols. Ensure the central void is truly transparent. The two opposing forms are distinct, gracefully grounded, and lightly overlap at the bottom without joining into a ring.\n",
+      "promptRecord": "exact",
+      "masterSha256": "900604550b23a0e02d2173a954d6f4d8d1ab05c2c193777869c49e0431fcf016",
+      "exports": [
+        {
+          "path": "public/visuals/parent/v2/area-words-480.webp",
+          "url": "/visuals/parent/v2/area-words-480.webp",
+          "width": 480,
+          "height": 480,
+          "bytes": 20778
+        },
+        {
+          "path": "public/visuals/parent/v2/area-words-960.webp",
+          "url": "/visuals/parent/v2/area-words-960.webp",
+          "width": 960,
+          "height": 960,
+          "bytes": 54944
+        }
+      ]
+    },
+    {
+      "file": "area-moving",
+      "outputs": [
+        "area-moving-480.webp",
+        "area-moving-960.webp"
+      ],
+      "model": "Built-in image generation (model identifier not exposed)",
+      "date": "2026-11-10",
+      "prompt": "Use case: stylized-concept. Create ONE standalone production-candidate decorative illustration for Arbor, 1024x1024 SQUARE. Input image 1 is the APPROVED category-art sheet; input image 2 is the APPROVED Living Forms style reference. The source sheets are references only. Render a fresh high-resolution individual asset faithfully matching the specified cell, not a crop from the sheet. No sheet, title, label, logo, typography, watermark, border or other objects. Exact approved material language: broad tapered organic leaf ribbons with exquisite folded satin surfaces, controlled edges and thin sculpted thickness, sapphire blue, pale mint, pearl ivory, periwinkle, one restrained coral focal element. Soft studio light from upper left, opaque solid satin surfaces, tiny neutral contact shadow. Clean non-glowing silhouette. Genuinely transparent alpha background through ALL openings and around the object. No white paper rectangle, no black background, no checkerboard texture, no outer glow, no halo or colored haze. Object fully contained and centered with at least 14% safe margin on each side. No people, faces, anatomical parts, toys, props, glass, glossy plastic, stars, badges or progress indicators. This is decorative category identity and never evidence about a child.\nASSET: area-moving, Movement. Faithfully recreate the TOP RIGHT cell of image 1 labelled Movement as ONE original standalone sculpture. Long low aerodynamic sapphire ribbon lifts from a grounded lower-left curved foot and sweeps upward toward the right, like a poised wave. Periwinkle return fold at the base, pale mint underside at the raised tip, ONE small coral circular inset seated on that tip. Preserve the reference's distinctive forward-sweeping horizontal silhouette, broad clean surfaces, precise taper and elegant negative space below the rising arc. It is not a closed loop, arrow, shoe, athletic equipment or person. Rounded outer curves with refined pointed leaf ends. Fit this horizontal sculpture INSIDE a SQUARE 1024x1024 transparent canvas; leave generous empty area above and below rather than using a landscape frame. The sculpture occupies the central 70% of canvas width.\n",
+      "promptRecord": "exact",
+      "masterSha256": "a6b29a21db71355701439705bfb686f7ba95ae01581c8fba44c0274b7c5a147a",
+      "exports": [
+        {
+          "path": "public/visuals/parent/v2/area-moving-480.webp",
+          "url": "/visuals/parent/v2/area-moving-480.webp",
+          "width": 480,
+          "height": 480,
+          "bytes": 17072
+        },
+        {
+          "path": "public/visuals/parent/v2/area-moving-960.webp",
+          "url": "/visuals/parent/v2/area-moving-960.webp",
+          "width": 960,
+          "height": 960,
+          "bytes": 49702
+        }
+      ]
+    },
+    {
+      "file": "area-hands",
+      "outputs": [
+        "area-hands-480.webp",
+        "area-hands-960.webp"
+      ],
+      "model": "Built-in image generation (model identifier not exposed)",
+      "date": "2026-11-10",
+      "prompt": "Use case: stylized-concept. Create ONE standalone production-candidate decorative illustration for Arbor, 1024x1024 SQUARE. Input image 1 is the APPROVED category-art sheet; input image 2 is the APPROVED Living Forms style reference. The source sheets are references only. Render a fresh high-resolution individual asset faithfully matching the specified cell, not a crop from the sheet. No sheet, title, label, logo, typography, watermark, border or other objects. Exact approved material language: broad tapered organic leaf ribbons with exquisite folded satin surfaces, controlled edges and thin sculpted thickness, sapphire blue, pale mint, pearl ivory, periwinkle, one restrained coral focal element. Soft studio light from upper left, opaque solid satin surfaces, tiny neutral contact shadow. Clean non-glowing silhouette. Genuinely transparent alpha background through ALL openings and around the object. No white paper rectangle, no black background, no checkerboard texture, no outer glow, no halo or colored haze. Object fully contained and centered with at least 14% safe margin on each side. No people, faces, anatomical parts, toys, props, glass, glossy plastic, stars, badges or progress indicators. This is decorative category identity and never evidence about a child.\nASSET: area-hands, Hands and senses. Faithfully recreate the SECOND ROW LEFT cell of image 1 labelled Hands & senses as ONE original standalone sculpture. Three compact interlocking broad folded leaf-tabs cradle a SINGLE small coral sphere at the middle. A satin sapphire leaf sweeps around the front lower edge, a pale mint leaf curls inward at back right, a pearl ivory leaf folds inward from back left. Preserve the reference's tactile organic bowl-like interlocking geometry with three visible openings, controlled taper and precise edge thickness. It communicates fitting shapes and careful dexterity rather than a hand. No literal hands, fingers, crayons, modeling clay, toys or puzzle pieces. A low broad asymmetric silhouette with the coral orb held just within the nested folds. Render within a SQUARE canvas, 1024x1024, sculpture occupying the central 70% width. Extra transparent area above and below the horizontal object. Genuinely transparent background, no haze, clean edges.\n",
+      "promptRecord": "exact",
+      "masterSha256": "59286bc805f3c95cfa27be0d97caf8e55a5d23bdb3fea3d03281ef354782abee",
+      "exports": [
+        {
+          "path": "public/visuals/parent/v2/area-hands-480.webp",
+          "url": "/visuals/parent/v2/area-hands-480.webp",
+          "width": 480,
+          "height": 480,
+          "bytes": 18322
+        },
+        {
+          "path": "public/visuals/parent/v2/area-hands-960.webp",
+          "url": "/visuals/parent/v2/area-hands-960.webp",
+          "width": 960,
+          "height": 960,
+          "bytes": 50096
+        }
+      ]
+    },
+    {
+      "file": "area-school",
+      "outputs": [
+        "area-school-480.webp",
+        "area-school-960.webp"
+      ],
+      "model": "Built-in image generation (model identifier not exposed)",
+      "date": "2026-11-10",
+      "prompt": "Use case: stylized-concept. Create ONE standalone Arbor Living Forms production illustration, not a sheet, UI, icon grid or a crop from a sheet. Input image 1 is the approved category family; image 2 is the approved original art direction. Precisely match their sophisticated broad tapered leaf-ribbon sculpture, controlled folds, satin sapphire, pearl ivory, pale mint and periwinkle, restrained small coral focal point, delicate edge thickness. Soft upper-left studio lighting and subtle neutral grounding shadow. No glow or haze. Fully opaque sculpture surfaces, genuine transparent background and transparent openings, no black or white rectangle or checkerboard. No text, label, logo, borders or watermark. No inflated blobs, glass, glossy plastic, literal household props, people, faces or medical imagery. Square 1024x1024 composition, entire sculpture centered within 14% safe margins, original detailed rendering with exquisite sculpted definition.\nASSET area-school: faithfully render the \"Thinking\" sculpture in reference 1, second row RIGHT. Three nested open leaf-shaped frames, increasing in height toward the rear left, deep sapphire at the back, periwinkle middle, pearl ivory front. The frames have rounded near-rectangular rising outer sides that bend into elegant tapered top tips, and hollow leaf-shaped openings. A small coral sphere is suspended in the front opening. Structured upright composition, restrained depth offsets, crisp yet softly sculpted surfaces. Focus, curiosity and learning without a literal brain, books or bulb. Preserve the clearly nested silhouette and front-right-facing pose of the approved object. ONLY this object; no caption.\n",
+      "promptRecord": "exact",
+      "masterSha256": "4e73446ac7c825f8589876f9e3fea5578bf157d30c171c8d73c70dfb03510dda",
+      "exports": [
+        {
+          "path": "public/visuals/parent/v2/area-school-480.webp",
+          "url": "/visuals/parent/v2/area-school-480.webp",
+          "width": 480,
+          "height": 480,
+          "bytes": 29830
+        },
+        {
+          "path": "public/visuals/parent/v2/area-school-960.webp",
+          "url": "/visuals/parent/v2/area-school-960.webp",
+          "width": 960,
+          "height": 960,
+          "bytes": 85044
+        }
+      ]
+    },
+    {
+      "file": "area-play",
+      "outputs": [
+        "area-play-480.webp",
+        "area-play-960.webp"
+      ],
+      "model": "Built-in image generation (model identifier not exposed)",
+      "date": "2026-11-10",
+      "prompt": "Use case: stylized-concept. Create ONE standalone Arbor Living Forms production illustration, not a sheet, UI, icon grid or a crop from a sheet. Input image 1 is the approved category family; image 2 is the approved original art direction. Precisely match their sophisticated broad tapered leaf-ribbon sculpture, controlled folds, satin sapphire, pearl ivory, pale mint and periwinkle, restrained small coral focal point, delicate edge thickness. Soft upper-left studio lighting and subtle neutral grounding shadow. No glow or haze. Fully opaque sculpture surfaces, genuine transparent background and transparent openings, no black or white rectangle or checkerboard. No text, label, logo, borders or watermark. No inflated blobs, glass, glossy plastic, literal household props, people, faces or medical imagery. Square 1024x1024 composition, entire sculpture centered within 14% safe margins, original detailed rendering with exquisite sculpted definition.\nASSET area-play: faithfully render the \"Play & friends\" sculpture in reference 1, third row LEFT. Two equal-size softly tapered open leaf ribbon loops interlace side by side as a single sculpture. The left loop rises in sapphire, the right loop rises in pale mint, both descend into a periwinkle lower shared sweep. A small coral sphere rests at the central crossing. Generous open hollows clearly visible. Balanced peer relationship and shared play, horizontal low stable silhouette, elegant engineering of the actual loop crossing, no impossible geometry. Preserve the front three-quarter view and precisely controlled broad ribbon folds. This is not the three-loop Play object of image 2; prioritize the TWO-loop Play & friends object in image 1. ONLY this object, no caption, no symbols.\n",
+      "promptRecord": "exact",
+      "masterSha256": "553c817c83735a747d7642f523aab4023e969d81cf51e52d8df14730e8eafe3f",
+      "exports": [
+        {
+          "path": "public/visuals/parent/v2/area-play-480.webp",
+          "url": "/visuals/parent/v2/area-play-480.webp",
+          "width": 480,
+          "height": 480,
+          "bytes": 22428
+        },
+        {
+          "path": "public/visuals/parent/v2/area-play-960.webp",
+          "url": "/visuals/parent/v2/area-play-960.webp",
+          "width": 960,
+          "height": 960,
+          "bytes": 63152
+        }
+      ],
+      "refinementPrompt": "Edit reference image 1, the two-loop Play & friends sculpture. Keep its exact interlaced loop shape, front three-quarter view, material texture, sapphire left loop, mint right loop, periwinkle lower sweeps and coral central sphere. Change ONLY framing and background cleanup. Output a SQUARE 1024 by 1024 transparent PNG asset. Fit the WHOLE unchanged sculpture within 14% empty safe margins on every side, with more air above and below as needed. Remove ALL colored haze, glow and studio backdrop outside the sculpture AND inside the two open loop holes. Every background/opening pixel is truly transparent alpha. Fully opaque sculpture surfaces and clean finely antialiased edges. Keep only a small faint neutral contact shadow under the actual base. No text or labels, no border, no white rectangle, no checkerboard. Reference image 2 is the approved category sheet for style continuity only.\n"
+    },
+    {
+      "file": "area-feelings",
+      "outputs": [
+        "area-feelings-480.webp",
+        "area-feelings-960.webp"
+      ],
+      "model": "Built-in image generation (model identifier not exposed)",
+      "date": "2026-11-10",
+      "prompt": "Use case: stylized-concept. Create ONE standalone Arbor Living Forms production illustration, not a sheet, UI, icon grid or a crop from a sheet. Input image 1 is the approved category family; image 2 is the approved original art direction. Precisely match their sophisticated broad tapered leaf-ribbon sculpture, controlled folds, satin sapphire, pearl ivory, pale mint and periwinkle, restrained small coral focal point, delicate edge thickness. Soft upper-left studio lighting and subtle neutral grounding shadow. No glow or haze. Fully opaque sculpture surfaces, genuine transparent background and transparent openings, no black or white rectangle or checkerboard. No text, label, logo, borders or watermark. No inflated blobs, glass, glossy plastic, literal household props, people, faces or medical imagery. Square 1024x1024 composition, entire sculpture centered within 14% safe margins, original detailed rendering with exquisite sculpted definition.\nASSET area-feelings: faithfully render the \"Feelings\" sculpture in reference 1, third row RIGHT. One softly curled open leaf fold with an ivory upper/back sweep, a rich sapphire inner surface and periwinkle outer lower fold. The sculpture's left tip sweeps gently upward while the back arcs over a small coral sphere nestled inside. Wide, low, bowl-like protective wave silhouette; ONE principal sculptural fold, not multiple layers, no heart or face. Emotional warmth and reassurance through curved form. Match the approved cell's graceful proportions and gentle front three-quarter view. Only this object, no caption. Output framing is SQUARE, NOT landscape: 1024x1024, object occupies no more than 72% of image width and height. Background entirely transparent; no colored mist around the outline and no white remnants.\n",
+      "promptRecord": "exact",
+      "masterSha256": "1e5f9eeec6106856d6ff5cd4d9f7a318604be33af7e8045bfcc885a14704abbf",
+      "exports": [
+        {
+          "path": "public/visuals/parent/v2/area-feelings-480.webp",
+          "url": "/visuals/parent/v2/area-feelings-480.webp",
+          "width": 480,
+          "height": 480,
+          "bytes": 20354
+        },
+        {
+          "path": "public/visuals/parent/v2/area-feelings-960.webp",
+          "url": "/visuals/parent/v2/area-feelings-960.webp",
+          "width": 960,
+          "height": 960,
+          "bytes": 55804
+        }
+      ]
+    },
+    {
+      "file": "domain-body",
+      "outputs": [
+        "domain-body-480.webp",
+        "domain-body-960.webp"
+      ],
+      "model": "Built-in image generation (model identifier not exposed)",
+      "date": "2026-11-10",
+      "prompt": "Use case: stylized-concept. Create ONE standalone Arbor Living Forms production illustration, 1024x1024 SQUARE, truly transparent background, no text, label, logo, border or watermark.\nReference 1 is the approved TEN-category sheet: reproduce the sculpture in ROW FOUR LEFT, labeled \"Body & wellbeing\", as an original high-resolution standalone render. Reference 2 controls the approved satin material and precise sculptural quality. Do not include the sheets or any other objects.\nSubject: neutral whole-body wellbeing, a balanced upright open ovoid from TWO complementary broad curved tapered leaf blades. Tall pearl-ivory left blade curves inward at its pointed top; pale-mint right blade rises slightly lower with a graceful inner concavity. The two blades share a compact deep-sapphire curved base. One small warm coral sphere is poised in the open middle, visibly separate from both blades. Preserve the asymmetric upright silhouette, generous empty opening, and elegant pointed tips from the reference.\nSatin opaque solids with delicate microtexture, crisp bevel-free natural edges, subtle thickness variation, refined product-design sculpture. Deep sapphire, pearl ivory, pale mint; restrained periwinkle only in edge reflections. Soft large upper-left studio light, faint contact shadow below. Polished and sophisticated, not shiny plastic, glass, or an inflated blob.\nCenter full object with at least 14% safe transparent margin on EVERY side, whole sculpture occupies about 70% height, naturally narrower width. Background AND all openings genuinely transparent alpha. No outer glow, colored haze, black background, checkerboard, ground plane or white rectangle. Solid parts fully opaque. No anatomical person, medical symbol, leaf sprout, plate, toy props, achievement badge or developmental metric.\n",
+      "promptRecord": "exact",
+      "masterSha256": "66594722c2888a66e00d2342c5b53d9a3e2c54e4af4c72d45669b8add0af38ef",
+      "exports": [
+        {
+          "path": "public/visuals/parent/v2/domain-body-480.webp",
+          "url": "/visuals/parent/v2/domain-body-480.webp",
+          "width": 480,
+          "height": 480,
+          "bytes": 26978
+        },
+        {
+          "path": "public/visuals/parent/v2/domain-body-960.webp",
+          "url": "/visuals/parent/v2/domain-body-960.webp",
+          "width": 960,
+          "height": 960,
+          "bytes": 76450
+        }
+      ]
+    },
+    {
+      "file": "area-family",
+      "outputs": [
+        "area-family-480.webp",
+        "area-family-960.webp"
+      ],
+      "model": "Built-in image generation (model identifier not exposed)",
+      "date": "2026-11-10",
+      "prompt": "Use case: stylized-concept. Create ONE standalone Arbor Living Forms production illustration, square 1024x1024, genuine transparent alpha background.\nInput image 1 is the approved category family. Faithfully reproduce ONLY the \"Family\" sculpture in ROW FOUR RIGHT, as an original clean high-resolution isolated object. Input image 2 controls satin materials and refined rendering. No text, label, logo, border, cards or sheet.\nThe wide grounded sculpture consists of one large deep sapphire sweeping leaf-arch sheltering TWO smaller folded leaves, pale mint on the left and pearl ivory on the right. The sapphire canopy rises to a gently flattened asymmetrical arc, its right tip tapers downward. The two inner leaves share a low base and lean slightly toward each other while remaining visibly distinct. One small coral sphere is poised under the blue canopy above the inner leaves. Preserve the beautiful broad clustered silhouette, large arch opening, precise edge curvature and quiet family-belonging metaphor of the reference. No faces, figures or literal house.\nBroad tapered satin solids, opaque sapphire/pearl/mint with a hint of periwinkle in edge reflections, subtle microtexture, controlled natural edge thickness. Soft upper-left studio illumination, soft small neutral grounding shadow. This is polished adult-facing 3D product-design sculpture, not toy plastic or inflated symbols.\nCenter the whole form inside a square with at least 14% completely transparent safe margin on EVERY side. No stage, no background rectangle, no checkerboard or black background. True transparent alpha in all open spaces. Clean antialiased edges without white fringing, colored speckles, noise outside the form or outer glow. No additional objects, plant sprigs, stars, hearts, people, numbers or decorative confetti.\n",
+      "promptRecord": "exact",
+      "masterSha256": "b1ed760ec74f96719f6c192fb702c7a13e49eda1a9bf7958cc987a350be74b48",
+      "exports": [
+        {
+          "path": "public/visuals/parent/v2/area-family-480.webp",
+          "url": "/visuals/parent/v2/area-family-480.webp",
+          "width": 480,
+          "height": 480,
+          "bytes": 28780
+        },
+        {
+          "path": "public/visuals/parent/v2/area-family-960.webp",
+          "url": "/visuals/parent/v2/area-family-960.webp",
+          "width": 960,
+          "height": 960,
+          "bytes": 81950
+        }
+      ]
+    },
+    {
+      "file": "area-sleep",
+      "outputs": [
+        "area-sleep-480.webp",
+        "area-sleep-960.webp"
+      ],
+      "model": "Built-in image generation (model identifier not exposed)",
+      "date": "2026-11-10",
+      "prompt": "Use case: stylized-concept. ONE standalone square Arbor category illustration, 1024x1024 square canvas, transparent background.\nReference 1 shows the approved categories. Reproduce only the \"Sleep\" sculpture in ROW FIVE LEFT, as a high-resolution standalone render, preserving its exact distinctive silhouette. Reference 2 supplies consistent polished satin materials and sculptural style. No sheet, title, text or label.\nA reclined tapered crescent made from one broad deep-sapphire leaf ribbon with a pale-periwinkle inner lining. Its tall slender left tip rises in a gentle curving arc and tapers to a soft point. The inner concave curve sweeps down toward a very low right tip. One small coral sphere rests low within the open hollow near the right, just above the crescent's lower sweep. Sapphire outside, pearl/periwinkle inset surface. Preserve the asymmetrical restful horizontal silhouette from the reference, the slim lifted left tip, and quiet balanced composition. It must read as a beautifully designed leaf fold that suggests sleep, not a crescent moon clip-art or literal bed.\nOpaque satin solids, subtle microtexture, exquisite edge control and varying ribbon thickness, soft upper-left studio light, faint small neutral contact shadow beneath. No glow, haze, glass, plastic or inflated toy appearance.\nEntire sculpture centered with generous completely transparent margin, at least 14% on each side. Alpha transparent through the hollow as well as around the sculpture. Clean antialiasing, no colored edge speckles, no white background, no black rectangle, no checkerboard or stage. No stars, heart, person, face, words, numbers, logo, border or extraneous objects.\n",
+      "promptRecord": "exact",
+      "masterSha256": "ad140b71cd16ca6841d436cd2698f99c7e96faa2ca72855fec4a5b3c0abc5efb",
+      "exports": [
+        {
+          "path": "public/visuals/parent/v2/area-sleep-480.webp",
+          "url": "/visuals/parent/v2/area-sleep-480.webp",
+          "width": 480,
+          "height": 480,
+          "bytes": 15656
+        },
+        {
+          "path": "public/visuals/parent/v2/area-sleep-960.webp",
+          "url": "/visuals/parent/v2/area-sleep-960.webp",
+          "width": 960,
+          "height": 960,
+          "bytes": 45484
+        }
+      ]
+    },
+    {
+      "file": "area-food",
+      "outputs": [
+        "area-food-480.webp",
+        "area-food-960.webp"
+      ],
+      "model": "Built-in image generation (model identifier not exposed)",
+      "date": "2026-11-10",
+      "prompt": "Use case: stylized-concept. Generate ONE standalone Arbor Living Forms category illustration. Square canvas, 1024x1024. Genuinely transparent alpha background.\nReference image 1 is the approved ten-category sheet. Render ONLY the \"Food & growth\" sculpture in ROW FIVE RIGHT, preserving that object's identity and silhouette, at high resolution. Reference image 2 governs consistent sapphire/pearl/mint satin materials and refined leaf-based shapes. No other objects from the sheet, no words, labels, logo, border or watermark.\nSubject: an OPEN shallow pearl-ivory leaf vessel that folds diagonally upward on its left; a sapphire tapered outer fold forms its broad low base and extends slightly to the right. Within the vessel TWO pale mint tapered leaf folds rise outward in a gentle V, one leaning left and one right. One small coral sphere is poised between them, just above their intersection. This is a sculptural abstraction of nourishment and growth, not a literal plant or bowl of food. Match the reference's wide welcoming shallow silhouette and gracefully curved voids. Leaves have natural thickness variation and the exterior curves show real depth.\nOpaque satin solid surfaces with very restrained microtexture, controlled crisp edges, soft broad upper-left studio light, faint neutral contact shadow only. Polished modern adult-facing design object. No shiny plastic, glass, wood, toy props, cartoon outlines, haze, glow or oversized shadow.\nFull object centered with at least 14% transparent safe margin all sides. True alpha through the opening and around the object, clean antialiased edges with no fringe, no colored speckles, no black background, no white rectangle, no checkerboard, no stage. No literal cutlery, fruit, food, seed packet, pot, face, person, stars, badges, metric or extra sprigs.\n",
+      "promptRecord": "exact",
+      "masterSha256": "764b524737344fadefd71976830fb4f92cc8cfa2e984f4807d19f79a96ae886e",
+      "exports": [
+        {
+          "path": "public/visuals/parent/v2/area-food-480.webp",
+          "url": "/visuals/parent/v2/area-food-480.webp",
+          "width": 480,
+          "height": 480,
+          "bytes": 38140
+        },
+        {
+          "path": "public/visuals/parent/v2/area-food-960.webp",
+          "url": "/visuals/parent/v2/area-food-960.webp",
+          "width": 960,
+          "height": 960,
+          "bytes": 122720
+        }
+      ]
+    },
+    {
+      "file": "empty-journal",
+      "outputs": [
+        "empty-journal-480.webp",
+        "empty-journal-960.webp"
+      ],
+      "model": "Built-in image generation (model identifier not exposed)",
+      "date": "2026-11-10",
+      "prompt": "# Previous approved-direction batch\n\nThese are concise provenance summaries, not exact copies of the earlier prompts.\n\n- Together: a large satin sapphire leaf ribbon gently enclosing a smaller mint curl and restrained coral orb; shared ivory base; 3:2 transparent composition.\n- First moment / empty-journal: four ivory, mint, periwinkle and pearl leaf-page layers within a sapphire folded folio, coral circular focal inset; 3:2 transparent composition.\n- Gentle beginning / empty-plans: continuous tilted ribbon loop, sapphire/periwinkle/pearl with a mint inner edge and coral inset; 3:2 transparent composition, no achievement/progress symbols.\n\nAll use the same approved Living Forms sheet as the visual authority. Original generated PNGs are preserved byte-for-byte in `masters/`.\n",
+      "promptRecord": "summary of earlier batch",
+      "masterSha256": "c1b8d5c605e00820f6bfd19302d7f243d473871275a5c233309070fbd0af6bcd",
+      "exports": [
+        {
+          "path": "public/visuals/parent/v2/empty-journal-480.webp",
+          "url": "/visuals/parent/v2/empty-journal-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 15526
+        },
+        {
+          "path": "public/visuals/parent/v2/empty-journal-960.webp",
+          "url": "/visuals/parent/v2/empty-journal-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 38740
+        }
+      ]
+    },
+    {
+      "file": "empty-plans",
+      "outputs": [
+        "empty-plans-480.webp",
+        "empty-plans-960.webp"
+      ],
+      "model": "Built-in image generation (model identifier not exposed)",
+      "date": "2026-11-10",
+      "prompt": "# Previous approved-direction batch\n\nThese are concise provenance summaries, not exact copies of the earlier prompts.\n\n- Together: a large satin sapphire leaf ribbon gently enclosing a smaller mint curl and restrained coral orb; shared ivory base; 3:2 transparent composition.\n- First moment / empty-journal: four ivory, mint, periwinkle and pearl leaf-page layers within a sapphire folded folio, coral circular focal inset; 3:2 transparent composition.\n- Gentle beginning / empty-plans: continuous tilted ribbon loop, sapphire/periwinkle/pearl with a mint inner edge and coral inset; 3:2 transparent composition, no achievement/progress symbols.\n\nAll use the same approved Living Forms sheet as the visual authority. Original generated PNGs are preserved byte-for-byte in `masters/`.\n",
+      "promptRecord": "summary of earlier batch",
+      "masterSha256": "1ea8f1fc976333a1e9a94942dacbbfedbb100242ecbedfff5d1b21496585bbd5",
+      "exports": [
+        {
+          "path": "public/visuals/parent/v2/empty-plans-480.webp",
+          "url": "/visuals/parent/v2/empty-plans-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 15486
+        },
+        {
+          "path": "public/visuals/parent/v2/empty-plans-960.webp",
+          "url": "/visuals/parent/v2/empty-plans-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 37880
+        }
+      ]
+    },
+    {
+      "file": "empty-learn",
+      "outputs": [
+        "empty-learn-480.webp",
+        "empty-learn-960.webp"
+      ],
+      "model": "Built-in image generation (model identifier not exposed)",
+      "date": "2026-11-10",
+      "prompt": "Use case: stylized-concept. Generate ONE standalone Arbor Living Forms production-candidate illustration, not a sheet, icon grid, mockup or diagram.\nInput image 1 is the approved category family for consistent materials; image 2 is the authoritative original approved Living Forms style.\nBroad tapered leaf ribbons, polished satin deep sapphire, pearl ivory, pale mint, periwinkle and one small restrained coral focal element. Exquisite controlled sculptural folds, real subtle edge thickness, opaque satin surfaces and soft upper-left studio lighting. Preserve the refined organic language and precise negative spaces. Genuine transparent alpha background and openings. No glow, haze, black rectangle, checkerboard, stage, pedestal, grain cloud or colored halo. A tiny neutral contact shadow only.\nAll objects fully contained with 14 percent safe margins, designed to remain legible at 300x200 pixels. No text, labels, logos, borders, watermark, people, faces, photography, toys, literal stationery, badges, graphs, progress, scores or medical imagery. One beautifully designed coherent sculpture, not an inflated blob. Output 1536x1024 landscape 3:2. Asset: first-use Learn/Saved Learning empty-state. Create a sculpted learning doorway from THREE pearl and mint leaf-page ribbons that curve upward and inward, with a shallow sapphire folded base. The ribbons open a generous central view and flow together at a single low hinge. A restrained coral lens rests within the opening. It should feel like understanding unfolding into a new perspective. This must be distinct from the Moments fan folio in the reference: NOT a stack of flat fanned pages. Three curved pages form an architectural organic doorway and one graceful wave at their top. No literal books, glasses, pencils, toys or steps. Centered, low horizontal composition, airy and inviting.\n",
+      "promptRecord": "exact",
+      "masterSha256": "5e511fd09e9cec46c46412d1b3ef1ccb24b3b9b31c718817c25b91268b1cc090",
+      "exports": [
+        {
+          "path": "public/visuals/parent/v2/empty-learn-480.webp",
+          "url": "/visuals/parent/v2/empty-learn-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 22440
+        },
+        {
+          "path": "public/visuals/parent/v2/empty-learn-960.webp",
+          "url": "/visuals/parent/v2/empty-learn-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 55938
+        }
+      ]
+    },
+    {
+      "file": "empty-weekly",
+      "outputs": [
+        "empty-weekly-480.webp",
+        "empty-weekly-960.webp"
+      ],
+      "model": "Built-in image generation (model identifier not exposed)",
+      "date": "2026-11-10",
+      "prompt": "Use case: stylized-concept. Generate ONE standalone Arbor Living Forms production-candidate illustration, not a sheet, icon grid, mockup or diagram.\nInput image 1 is the approved category family for consistent materials; image 2 is the authoritative original approved Living Forms style.\nBroad tapered leaf ribbons, polished satin deep sapphire, pearl ivory, pale mint, periwinkle and one small restrained coral focal element. Exquisite controlled sculptural folds, real subtle edge thickness, opaque satin surfaces and soft upper-left studio lighting. Preserve the refined organic language and precise negative spaces. Genuine transparent alpha background and openings. No glow, haze, black rectangle, checkerboard, stage, pedestal, grain cloud or colored halo. A tiny neutral contact shadow only.\nAll objects fully contained with 14 percent safe margins, designed to remain legible at 300x200 pixels. No text, labels, logos, borders, watermark, people, faces, photography, toys, literal stationery, badges, graphs, progress, scores or medical imagery. One beautifully designed coherent sculpture, not an inflated blob. Output 1536x1024 landscape 3:2. Asset: Weekly reflection empty-state before enough family records exist. One LOW, flowing sapphire ribbon gently gathers THREE small pearl, mint and periwinkle folded leaves into a shallow shared sweep, with a small coral lens nestled near its middle. Horizontal, quiet, intimate composition; distinct from a journal, calendar, loop or chart. These folds symbolize recollection and connection, not achievement or an assessment. No count of days, calendar, numerals, bars, ascending steps, growth trend, graph, score, reward or checkmark. Art must not imply child progress. Centered with generous negative space.\n",
+      "promptRecord": "exact",
+      "masterSha256": "44b6e5b1c4ad959cf96cef9422e2157cff73132e6bc2ee0c96b5fc7ee556bd77",
+      "exports": [
+        {
+          "path": "public/visuals/parent/v2/empty-weekly-480.webp",
+          "url": "/visuals/parent/v2/empty-weekly-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 14332
+        },
+        {
+          "path": "public/visuals/parent/v2/empty-weekly-960.webp",
+          "url": "/visuals/parent/v2/empty-weekly-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 35310
+        }
+      ]
+    },
+    {
+      "file": "empty-portrait",
+      "outputs": [
+        "empty-portrait-480.webp",
+        "empty-portrait-960.webp"
+      ],
+      "model": "Built-in image generation (model identifier not exposed)",
+      "date": "2026-11-10",
+      "prompt": "Use case: stylized-concept. Generate ONE standalone Arbor Living Forms production-candidate illustration, not a sheet, icon grid, mockup or diagram.\nInput image 1 is the approved category family for consistent materials; image 2 is the authoritative original approved Living Forms style.\nBroad tapered leaf ribbons, polished satin deep sapphire, pearl ivory, pale mint, periwinkle and one small restrained coral focal element. Exquisite controlled sculptural folds, real subtle edge thickness, opaque satin surfaces and soft upper-left studio lighting. Preserve the refined organic language and precise negative spaces. Genuine transparent alpha background and openings. No glow, haze, black rectangle, checkerboard, stage, pedestal, grain cloud or colored halo. A tiny neutral contact shadow only.\nAll objects fully contained with 14 percent safe margins, designed to remain legible at 300x200 pixels. No text, labels, logos, borders, watermark, people, faces, photography, toys, literal stationery, badges, graphs, progress, scores or medical imagery. One beautifully designed coherent sculpture, not an inflated blob. Output 1536x1024 landscape 3:2. Asset: beginning of a child's record / Child Portrait empty-state. ONE tall unfolding mint and pearl leaf rises inside an open sapphire outer leaf fold, and a small coral focus rests near the inner fold. The outer and inner forms unite at a low base; their tips separate slightly, creating a beautiful open space. Abstract beginning of a child's story, organic and warm. Distinct from family shelter (no multiple little leaves) and Body oval (not a closed egg-shaped outline). No plant pot, literal sapling, family portrait, face, photograph, growth measurement, progress chart, trophy or medical metaphor. Sculpture centered, about 65 percent of canvas height, airy safe margins.\n",
+      "promptRecord": "exact",
+      "masterSha256": "c69cd092ec7ceda6ed5cb92d0ee804a8fcc5e25b9a1536e02b1fe2722221a30d",
+      "exports": [
+        {
+          "path": "public/visuals/parent/v2/empty-portrait-480.webp",
+          "url": "/visuals/parent/v2/empty-portrait-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 15612
+        },
+        {
+          "path": "public/visuals/parent/v2/empty-portrait-960.webp",
+          "url": "/visuals/parent/v2/empty-portrait-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 38792
+        }
+      ]
+    },
+    {
+      "file": "together",
+      "outputs": [
+        "together-480.webp",
+        "together-960.webp"
+      ],
+      "model": "Built-in image generation (model identifier not exposed)",
+      "date": "2026-11-10",
+      "prompt": "# Previous approved-direction batch\n\nThese are concise provenance summaries, not exact copies of the earlier prompts.\n\n- Together: a large satin sapphire leaf ribbon gently enclosing a smaller mint curl and restrained coral orb; shared ivory base; 3:2 transparent composition.\n- First moment / empty-journal: four ivory, mint, periwinkle and pearl leaf-page layers within a sapphire folded folio, coral circular focal inset; 3:2 transparent composition.\n- Gentle beginning / empty-plans: continuous tilted ribbon loop, sapphire/periwinkle/pearl with a mint inner edge and coral inset; 3:2 transparent composition, no achievement/progress symbols.\n\nAll use the same approved Living Forms sheet as the visual authority. Original generated PNGs are preserved byte-for-byte in `masters/`.\n",
+      "promptRecord": "summary of earlier batch",
+      "masterSha256": "230a58c96907971dedbbcf3420544b46aff5665113acd8eab02bbe561cc9f98e",
+      "exports": [
+        {
+          "path": "public/visuals/parent/v2/together-480.webp",
+          "url": "/visuals/parent/v2/together-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 22366
+        },
+        {
+          "path": "public/visuals/parent/v2/together-960.webp",
+          "url": "/visuals/parent/v2/together-960.webp",
+          "width": 960,
+          "height": 640,
+          "bytes": 56982
+        }
+      ]
+    },
+    {
+      "file": "guidance",
+      "outputs": [
+        "guidance-480.webp",
+        "guidance-960.webp"
+      ],
+      "model": "Built-in image generation (model identifier not exposed)",
+      "date": "2026-11-10",
+      "prompt": "Use case: stylized-concept. Generate ONE standalone Arbor Living Forms production-candidate illustration, not a sheet, icon grid, mockup or diagram.\nInput image 1 is the approved category family for consistent materials; image 2 is the authoritative original approved Living Forms style.\nBroad tapered leaf ribbons, polished satin deep sapphire, pearl ivory, pale mint, periwinkle and one small restrained coral focal element. Exquisite controlled sculptural folds, real subtle edge thickness, opaque satin surfaces and soft upper-left studio lighting. Preserve the refined organic language and precise negative spaces. Genuine transparent alpha background and openings. No glow, haze, black rectangle, checkerboard, stage, pedestal, grain cloud or colored halo. A tiny neutral contact shadow only.\nAll objects fully contained with 14 percent safe margins, designed to remain legible at 300x200 pixels. No text, labels, logos, borders, watermark, people, faces, photography, toys, literal stationery, badges, graphs, progress, scores or medical imagery. One beautifully designed coherent sculpture, not an inflated blob. Output 1792x1024 wide, nearly 16:9. Asset: guidance panel hero, with LEFT 45 PERCENT COMPLETELY EMPTY AND TRANSPARENT for live UI advice; sculpture entirely on right within x=53 to 87 percent, y=14 to 86 percent. The original approved sheet's TOP RIGHT Guidance sculpture is the exact subject: a flowing pearl-ivory broad spiral fold, a satin sapphire interior at its lower open curl, and a long pale mint tapered extension rising toward a small coral circular disc at its upper end. Third reference is the previous standalone version; preserve its design but move it into a truly wide composition, give it more safe margin, remove ALL luminous glow/haze. Refined restrained sculpture, no text and no graphic elements on the left. All openings transparent; do not paint a white or black background.\n",
+      "promptRecord": "exact",
+      "masterSha256": "5ceb2631d0c73741e6e38281b818b7e719c5bf3e2a8ca5c8fa9d9c3a8f6e1339",
+      "exports": [
+        {
+          "path": "public/visuals/parent/v2/guidance-480.webp",
+          "url": "/visuals/parent/v2/guidance-480.webp",
+          "width": 480,
+          "height": 270,
+          "bytes": 9304
+        },
+        {
+          "path": "public/visuals/parent/v2/guidance-960.webp",
+          "url": "/visuals/parent/v2/guidance-960.webp",
+          "width": 960,
+          "height": 540,
+          "bytes": 23526
+        }
+      ]
+    }
+  ]
+}

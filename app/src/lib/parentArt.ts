@@ -2,18 +2,11 @@ import type { DomainId } from "./domains/registry";
 import type { ShelfId } from "./shelves/registry";
 
 /**
- * Parent-register illustrations (P7-DESIGN art, 9 Oct 2026): abstract emblems
- * in the visual language of the Arbor mark (`public/brand/arbor-mark-transparent.png`,
- * `ui/ArborMark.tsx`) — only its leaf, arch and circle, its four gradients
- * (mint→teal→sky, lavender→periwinkle, navy→sapphire, peach→coral) and its
- * translucent overlaps, on white. Generated with Google `gemini-3-pro-image`
- * (Guy, 9 Oct: "abstract, colorful, modern"), chosen one by one by eye.
- * Provenance and prompts: `docs/design/parent-art-v1.json`.
- *
- * RULES: decorative only; abstract shapes, never a child, a face or a family's
- * own activity, so a picture can never read as evidence; no text in any image,
- * so one set serves EN and HE. A family's own photo always wins over a picture.
- * Every path is held on disk by `parentArt.guard.test.ts`.
+ * Living Forms v2: satin sculpted leaf ribbons in Arbor's shared palette.
+ * Generated with built-in image generation; provenance and prompts live in
+ * docs/design/parent-art-v2.json and docs/design/living-forms-v2/.
+ * Decorative only: never evidence about a child. Family photos take priority.
+ * Small controls keep readable symbols; these forms belong in visual areas.
  */
 export interface ParentArt {
   src: string;
@@ -22,7 +15,7 @@ export interface ParentArt {
   height: number;
 }
 
-const BASE = "/visuals/parent/v1";
+const BASE = "/visuals/parent/v2";
 
 const square = (name: string): ParentArt => ({
   src: `${BASE}/${name}-480.webp`,
@@ -51,7 +44,7 @@ export const SHELF_ART: Readonly<Record<ShelfId, ParentArt>> = {
   family: square("area-family"),
 };
 
-/** A domain borrows its shelf's picture; `body` (sleep + food) takes food. */
+/** Eight domains; Body has a neutral form distinct from Sleep and Food. */
 export const DOMAIN_ART: Readonly<Record<DomainId, ParentArt>> = {
   talking: SHELF_ART.words,
   moving: SHELF_ART.moving,
@@ -59,7 +52,7 @@ export const DOMAIN_ART: Readonly<Record<DomainId, ParentArt>> = {
   thinking: SHELF_ART.school,
   playing: SHELF_ART.play,
   feelings: SHELF_ART.feelings,
-  body: SHELF_ART.food,
+  body: square("domain-body"),
   family: SHELF_ART.family,
 };
 
@@ -77,11 +70,14 @@ export type EmptyArtId = keyof typeof EMPTY_ART;
 /** A written moment with no area yet (unfiled): the journal emblem. */
 export const MOMENT_ART: ParentArt = EMPTY_ART.journal;
 
-/** Parent and child under one sun: the Now door, the Together hero and the family-ritual door. */
+/** Interlocking forms: the Now door, Together hero and family-ritual door. */
 export const TOGETHER_ART: ParentArt = wide("together");
+
+/** Wide abstract shelter, also reused by the marketing parenting introduction. */
+export const GUIDANCE_ART: ParentArt = { ...wide("guidance"), height: 270 };
 
 /** Every art file the app may request, for the on-disk guard. */
 export function allParentArtFiles(): string[] {
-  const all = [...Object.values(SHELF_ART), ...Object.values(EMPTY_ART), TOGETHER_ART];
+  const all = [...Object.values(SHELF_ART), ...Object.values(DOMAIN_ART), ...Object.values(EMPTY_ART), TOGETHER_ART, GUIDANCE_ART];
   return [...new Set(all.flatMap((a) => a.srcSet.split(",").map((part) => part.trim().split(" ")[0])))];
 }
