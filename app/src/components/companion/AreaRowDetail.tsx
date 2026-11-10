@@ -7,6 +7,7 @@ import { milestoneText } from "../../lib/milestoneData";
 import type { ObserveStatus } from "../../lib/milestones/observe";
 import { groupMilestonesByShelf, shelfBands } from "../../lib/milestones/shelfMap";
 import { shelfLabel, shelvesOfDomain } from "../../lib/shelves/registry";
+import { DOMAIN_ART } from "../../lib/parentArt";
 import { DOMAIN_VARS } from "../../lib/tokens";
 import type { Milestone } from "../../types";
 import { Icon } from "../ui/Icon";
@@ -200,7 +201,10 @@ export default function AreaRowDetail({
           <span dir="auto">{lastMoment.text}</span>
         </p>
       )}
-      <p className="area-detail-why">{t(WHY_KEYS[domain])}</p>
+      <div className="area-detail-intro">
+        <p className="area-detail-why">{t(WHY_KEYS[domain])}</p>
+        <img className="area-detail-art" {...DOMAIN_ART[domain]} sizes="112px" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+      </div>
       {!confirmed && <p role="status" className="notice-object-note">{noticeCopy.unconfirmed}</p>}
       {watched && (
         <ul className="area-detail-skills area-detail-watch" data-testid="area-detail-watch">

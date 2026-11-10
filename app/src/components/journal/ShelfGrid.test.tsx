@@ -82,7 +82,7 @@ describe("ShelfGrid — nine tiles, registry order, counts never verdicts", () =
       tag
         .replace(/data-shelf="[a-z]+"/, "")
         .replace(/ data-primary-move="[a-z-]+"/, "")
-        .replace(/var\(--arbor-(?:sky|yellow|lav|pink|green|peach)-(?:wash|ink)\)|var\(--arbor-paper-deep\)|var\(--arbor-ink\)(?= 9%)/g, "TONE");
+        .replace(/var\(--arbor-(?:sky|yellow|lav|pink|green|peach)-(?:wash|ink)\)|var\(--arbor-paper-(?:deep|tinted)\)|var\(--arbor-(?:ink|clay)\)(?= 9%)/g, "TONE");
     const chrome = (html: string) => tiles(html).map((m) => strip(m[0]));
     expect(chrome(a)).toEqual(chrome(b));
     const nonFamily = tiles(a).filter((m) => m[1] !== "family").map((m) => strip(m[0]));
@@ -475,8 +475,8 @@ describe("B-DESIGN-04 · the shelf tiles", () => {
       const a = html(lang, { sleep: 0, words: 40 });
       const b = html(lang, { sleep: 40, words: 0 });
       for (const id of REGISTRY_ORDER) expect(washOf(a, id), id).toBe(washOf(b, id));
-      expect(washOf(a, "sleep")).toBe("var(--arbor-sky-wash)");
-      expect(washOf(a, "hands")).toBe("var(--arbor-paper-deep)");
+      expect(washOf(a, "sleep")).toBe("var(--arbor-paper-deep)");
+      expect(washOf(a, "hands")).toBe("var(--arbor-yellow-wash)");
     });
     it(`${lang}: the detail line leads with its verb in ink; the localized line renders whole; one line at 375`, () => {
       const h = html(lang, { words: 8, food: 3 });

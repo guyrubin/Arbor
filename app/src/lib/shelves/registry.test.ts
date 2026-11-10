@@ -116,7 +116,7 @@ describe("B-LOOP-03 — the shelf registry shape", () => {
     const pairs = new Set<string>();
     for (const s of SHELVES) {
       expect(subset.has(s.glyph), `${s.id} glyph ${s.glyph}`).toBe(true);
-      expect(["sky", "yellow", "lav", "pink", "green", "peach", "deep"]).toContain(s.tint);
+      expect(["sapphire", "sky", "yellow", "lav", "pink", "green", "peach", "deep"]).toContain(s.tint);
       expect(pairs.has(`${s.glyph}|${s.tint}`), `${s.id} repeats a glyph + tint`).toBe(false);
       pairs.add(`${s.glyph}|${s.tint}`);
     }

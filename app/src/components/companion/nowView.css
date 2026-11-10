@@ -202,7 +202,7 @@
    inline-start side under the words, mirrored once in RTL), a scrim on that
    same side, then the say line, the guide's title and the plan meta. */
 .now-plan-art-picture { background: var(--arbor-paper-deep); }
-.now-plan-img { position: absolute; inset-block-start: 0; inset-inline-start: 0; inline-size: 100%; block-size: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+.now-plan-img { position: absolute; inset-block-start: 0; inset-inline-start: 0; inline-size: 100%; block-size: auto; aspect-ratio: 16 / 9; object-fit: contain; }
 .now-plan-img:dir(rtl) { transform: scaleX(-1); }
 .now-plan-scrim { position: absolute; inset: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--arbor-paper-elevated) 92%, transparent), color-mix(in srgb, var(--arbor-paper-elevated) 55%, transparent) 45%, transparent 70%); }
 .now-plan-scrim:dir(rtl) { background: linear-gradient(270deg, color-mix(in srgb, var(--arbor-paper-elevated) 92%, transparent), color-mix(in srgb, var(--arbor-paper-elevated) 55%, transparent) 45%, transparent 70%); }

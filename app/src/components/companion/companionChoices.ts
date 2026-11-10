@@ -1,4 +1,5 @@
 import { isObservationAction, type ActionLoopEntry } from "../../actionLoop/model";
+import { TOGETHER_ART } from "../../lib/parentArt";
 import type { ActiveTab } from "../../lib/routes";
 import { companionEn, companionHe } from "../../lib/i18nCompanion";
 import { GUIDE_ART, guideTopicFor, type GuideTopic } from "../../lib/guideArt";
@@ -79,7 +80,7 @@ export const STORY_DOORS: readonly { id: string; tab: ActiveTab; icon: string; a
   { id: "bedtime", tab: "bedtime-stories", icon: "bedtime", art: "/visuals/worlds/v2/story-quest-v2-480.webp", title: pair("companion.story.bedtime.title"), detail: pair("companion.story.bedtime.detail") },
   // B-BOOK-31: a hero-free story plate (the David cover paints the reference family's child).
   { id: "comics", tab: "comics", icon: "menu_book", art: "/visuals/stories/v1/little-bridge-builders-v1-480.webp", title: pair("companion.story.comics.title"), detail: pair("companion.story.comics.detail") },
-  { id: "family", tab: "family", icon: "favorite", art: "/visuals/parent/v1/together-480.webp", title: pair("companion.story.family.title"), detail: pair("companion.story.family.detail") },
+  { id: "family", tab: "family", icon: "favorite", art: TOGETHER_ART.src, title: pair("companion.story.family.title"), detail: pair("companion.story.family.detail") },
 ];
 
 export const OFFSCREEN_IDEAS = [

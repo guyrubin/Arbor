@@ -17,7 +17,7 @@ vi.mock("../layout/Breadcrumb", () => ({ SheetBreadcrumb: ({ label }: { label: s
 // The plan card asks for the guide's face; a test can pretend the mornings picture has shipped.
 vi.mock("./nowGuideFace", async (original) => {
   const real = await original<typeof import("./nowGuideFace")>();
-  return { ...real, guideFaceFor: (question: string | null | undefined, lang: "en" | "he") => real.guideFaceFor(question, lang, state.shipped ? new Set<GuideTopic>(["mornings"]) : undefined) };
+  return { ...real, guideFaceFor: (question: string | null | undefined, lang: "en" | "he") => real.guideFaceFor(question, lang, state.shipped ? new Set<GuideTopic>(["mornings"]) : new Set<GuideTopic>()) };
 });
 const capture = vi.hoisted(() => (type: unknown, props: unknown) => {
   if (type === "button" && props && typeof props === "object") state.buttons.push(props as Record<string, any>);

@@ -117,7 +117,7 @@ describe("NoticeCard — firewall and direction", () => {
         expect(html).not.toMatch(/\b(?:ml|mr|pl|pr|left|right)-[\w[]/);
         expect(html).not.toMatch(/\btext-(?:left|right)\b/);
         expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
-        expect(html).toMatch(/<img[^>]*data-testid="notice-area-art"[^>]*src="\/visuals\/parent\/v1\/area-words-480.webp"[^>]*alt=""[^>]*aria-hidden="true"/);
+        expect(html).toMatch(/<img[^>]*data-testid="notice-area-art"[^>]*src="\/visuals\/parent\/v2\/area-words-480.webp"[^>]*alt=""[^>]*aria-hidden="true"/);
       }
     }
   });

@@ -309,12 +309,12 @@ describe("B-DESIGN-04 · the shelf page header and sections", () => {
     expect(SRC).toMatch(/<h3 className="t-sm font-semibold"><span style=\{\{ fontFamily: "var\(--font-sans\)"/);
   });
   for (const lang of ["en", "he"] as const) {
-    it(`${lang}: the wash is the shelf's own token (sleep → sky), the count reads no zero, the bleed glyph is the registry's`, () => {
+    it(`${lang}: the wash is the shelf's own token (sleep → body), the count reads no zero, the bleed glyph is the registry's`, () => {
       state.lang = lang;
       const html = renderToStaticMarkup(
         <ShelfPage shelf="sleep" childName="Dylan" count={0} practice={null} onTryToday={() => undefined} notice={null} noticeHandlers={{ onAnswer: () => undefined }} groups={[]} onOpenEntry={() => undefined} onBack={() => undefined} onAdd={() => undefined} />,
       );
-      expect(html).toMatch(/data-testid="shelf-page-hero"[^>]*style="background:var\(--arbor-sky-wash\)/);
+      expect(html).toMatch(/data-testid="shelf-page-hero"[^>]*style="background:var\(--arbor-paper-deep\)/);
       expect(html).toMatch(/data-testid="shelf-page-bleed"[^>]*>bedtime</);
       expect(html.match(/data-testid="shelf-glyph-duotone"/g)).toHaveLength(1);
     });

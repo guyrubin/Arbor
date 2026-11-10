@@ -18,7 +18,7 @@
 .companion-together .together-door { display: flex; flex-direction: row; align-items: center; gap: 10px; min-inline-size: 0; min-block-size: var(--touch-min); padding-block: 10px; padding-inline: 12px; border: 1px solid var(--arbor-rule); border-radius: var(--r); background: var(--arbor-paper-elevated); color: var(--arbor-ink); font-size: var(--t-sm); font-weight: 700; line-height: 1.25; text-align: start; overflow-wrap: anywhere; transition: border-color 180ms; }
 .companion-together .together-door:hover { border-color: var(--arbor-clay); }
 .companion-together .companion-together-art { order: -1; box-shadow: var(--arbor-shadow-primary); }
-.companion-together .companion-together-art img { block-size: 190px; object-position: 50% 60%; }
+.companion-together .companion-together-art img { block-size: 190px; object-fit: contain; object-position: center; }
 @container together (min-width: 640px) {
   .companion-together .companion-together-hero { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 28px; margin-block-end: 26px; }
   .companion-together .together-hero-solo { grid-template-columns: minmax(0, 1fr); }
