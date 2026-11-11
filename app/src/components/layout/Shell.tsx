@@ -643,7 +643,9 @@ export default function Shell() {
       {/* B-BOOK-75 follow-up: the child's shared plan sheet, ensured from the parent shell (renders nothing). */}
       <PlanSheetEnsurer />
       <MobileNav />
-      {!kidLocked && topicSheet?.childId === childProfile.id && <Suspense fallback={null}><FamilyTopicSheet key={childProfile.id} {...topicSheet} onClose={() => setTopicSheet(null)}/></Suspense>}
+      {/* The question sheet mounts outside main's boundary; its own boundary keeps
+          a failed chunk (a release replaced it) from blanking the whole app. */}
+      {!kidLocked && topicSheet?.childId === childProfile.id && <ErrorBoundary floating onReset={() => setTopicSheet(null)}><Suspense fallback={null}><FamilyTopicSheet key={childProfile.id} {...topicSheet} onClose={() => setTopicSheet(null)}/></Suspense></ErrorBoundary>}
       {/* KID-LOCK (W0.9, LEAK 5): these three portal to document.body — outside
           the inert shield — so they are not MOUNTED while Kid Mode is open.
           PaywallModal's open state lives in ArborContext (openPaywall on 402s

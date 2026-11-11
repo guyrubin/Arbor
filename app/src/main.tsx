@@ -18,6 +18,11 @@ import {firebaseEnabled} from './lib/firebase';
 import {hydrateDemoFamily} from './lib/demoFamilyHydrate';
 import {isPublicGuidePath} from './content/publicHardMoments';
 import {capturePurchaseIntent} from './lib/purchaseIntent';
+import {installStaleBuildRecovery} from './lib/staleBuild';
+
+// Deploy skew: a tab opened before a release asks for chunks that release
+// removed; reload once into the current build instead of a dead screen.
+installStaleBuildRecovery();
 
 // AP-052: restore accent-theme preference before first render so there is no
 // flash-of-wrong-theme on load. Runs synchronously — no await needed.

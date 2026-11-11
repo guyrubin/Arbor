@@ -87,10 +87,17 @@ self.addEventListener("fetch", event => {
     return;
   }
 
+  /* A hashed /assets/ file that a newer release removed comes back from Hosting
+     as the SPA shell (200 text/html). Never keep or serve that page as a script
+     or stylesheet: answer 404 so the import fails fast and the page reloads
+     into the current release (src/lib/staleBuild.ts). */
+  const isShellForAsset = res => url.pathname.startsWith("/assets/")
+    && /^text\/html\b/i.test(res.headers.get("content-type") || "");
   /* Preserve ignoreVary: font preloads carry Origin, install addAll does not.
      Respecting Vary here previously made the cached icon font miss offline. */
   let write = Promise.resolve();
-  const response = caches.match(req, { ignoreVary: true }).then(cached => cached || fetch(req).then(res => {
+  const response = caches.match(req, { ignoreVary: true }).then(cached => cached && !isShellForAsset(cached) ? cached : fetch(req).then(res => {
+    if (isShellForAsset(res)) return new Response("", { status: 404, statusText: "Not Found" });
     if (res.ok) {
       const copy = res.clone();
       write = caches.open(CACHE).then(cache => cache.put(req, copy)).catch(() => undefined);

@@ -300,6 +300,7 @@ export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.sessionOpen": "session marker",
   "arbor.sneakFreeze.art": "which public art set to use",
   "arbor.sneakFreeze.demoSeen": "UI marker",
+  "arbor.staleBuildReloadAt": "when this tab last reloaded into a new release (lib/staleBuild.ts, sessionStorage)",
   "arbor.storyOpen": "a catalogue story id to open once (lib/storyOpenRequest.ts)",
   "arbor.tonightMode": "a one-shot UI request",
   "arbor.trialNotice.dismissed": "UI marker",

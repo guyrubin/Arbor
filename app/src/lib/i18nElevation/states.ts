@@ -36,6 +36,12 @@ export const en: Record<string, string> = {
   "elev.states.retrying": "Trying again…",
   "elev.states.error.today": "Back to Today",
   "elev.states.error.escapeNote": "Returning to Today reloads Arbor. Unsaved changes may be lost.",
+  // Deploy skew (lib/staleBuild): the open page predates a release, so this
+  // section's code is gone; Try again cannot work, a reload does.
+  "elev.states.update.head": "Arbor has a new version",
+  "elev.states.update.body": "Reload to open this with the latest version.",
+  "elev.states.update.reload": "Reload",
+  "elev.states.update.note": "Unsaved changes may be lost.",
 
   // ── Hero Journey: in-card feedback while a chosen story is being prepared
   //    (replaces the hardcoded "Loading…" literal — an i18n violation).
@@ -66,6 +72,10 @@ export const he: Record<string, string> = {
   "elev.states.retrying": "מנסים שוב…",
   "elev.states.error.today": "חזרה להיום",
   "elev.states.error.escapeNote": "החזרה להיום טוענת את ארבור מחדש. שינויים שלא נשמרו עלולים להימחק.",
+  "elev.states.update.head": "יש גרסה חדשה של ארבור",
+  "elev.states.update.body": "טענו מחדש כדי לפתוח את זה בגרסה העדכנית.",
+  "elev.states.update.reload": "טעינה מחדש",
+  "elev.states.update.note": "שינויים שלא נשמרו עלולים להימחק.",
 
   "elev.states.hero.opening": "פותחים את הסיפור…",
 

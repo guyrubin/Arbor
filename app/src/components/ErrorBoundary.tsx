@@ -2,13 +2,26 @@ import React from "react";
 import { Icon } from "./ui/Icon";
 import { track } from "../lib/analytics";
 import { statesText } from "../lib/i18nElevation/states";
+import { isStaleBuildError, reloadIntoCurrentBuild } from "../lib/staleBuild";
 
 /**
  * Catches render errors in the tab subtree below the app providers instead of
  * crashing the whole app. This is not a global boundary for provider failures.
+ * A lazy chunk removed by a newer release (lib/staleBuild) cannot be retried:
+ * React.lazy keeps the rejection, so that case reloads once and otherwise
+ * offers Reload in place of Try again.
  */
-type ErrorBoundaryProps = { children?: React.ReactNode };
-type ErrorBoundaryState = { hasError: boolean };
+type ErrorBoundaryProps = {
+  children?: React.ReactNode;
+  /** Shows the fallback above the page, for a sheet mounted outside `main`. */
+  floating?: boolean;
+  /** Runs after Try again clears the error (a sheet closes; its opener mounts it fresh). */
+  onReset?: () => void;
+};
+type ErrorBoundaryState = { hasError: boolean; staleBuild?: boolean };
+
+const PRIMARY_CLASS = "inline-flex items-center justify-center gap-2 max-w-full min-h-[44px] min-w-[44px] font-extrabold text-sm px-4 py-2.5 rounded-xl transition motion-safe:active:scale-[0.98]";
+const PRIMARY_STYLE: React.CSSProperties = { background: "var(--arbor-clay-deep)", color: "var(--arbor-on-accent)" };
 
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false };
@@ -34,8 +47,8 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     this.languageObserver = undefined;
   }
 
-  static getDerivedStateFromError(_error: unknown): ErrorBoundaryState {
-    return { hasError: true };
+  static getDerivedStateFromError(error: unknown): ErrorBoundaryState {
+    return isStaleBuildError(error) ? { hasError: true, staleBuild: true } : { hasError: true };
   }
 
   componentDidCatch(error: unknown) {
@@ -49,9 +62,17 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     } catch {
       /* never let logging crash the boundary */
     }
+    // Usually vite:preloadError already started this reload; the guard makes
+    // the second call a no-op and stops a loop on a real outage.
+    if (isStaleBuildError(error)) reloadIntoCurrentBuild();
   }
 
-  reset = () => this.setState({ hasError: false });
+  reset = () => {
+    this.setState({ hasError: false, staleBuild: false });
+    this.props.onReset?.();
+  };
+
+  reload = () => window.location.reload();
 
   goToToday = (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
@@ -62,7 +83,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   };
 
   render() {
-    const { hasError } = this.state;
+    const { hasError, staleBuild } = this.state;
 
     if (hasError) {
       // Read the document language set by the language context and bootstrap.
@@ -70,45 +91,54 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       const lang = typeof document === "undefined" ? "en" : document.documentElement.lang;
       const baseLang = lang.toLowerCase().split("-")[0];
       const heMode = baseLang === "he" || baseLang === "iw";
-      return (
+      const card = (
         <div
           role="alert"
           lang={heMode ? "he" : "en"}
           dir={heMode ? "rtl" : "ltr"}
-          className="rounded-3xl p-6 sm:p-8 text-center space-y-4 w-full min-w-0 max-w-md mx-auto mt-10"
+          data-stale-build={staleBuild || undefined}
+          className={`rounded-3xl p-6 sm:p-8 text-center space-y-4 w-full min-w-0 max-w-md mx-auto${this.props.floating ? "" : " mt-10"}`}
           style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-xs)" }}
         >
           <div aria-hidden="true" className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center" style={{ background: "var(--arbor-peach-soft)" }}>
-            <Icon name="warning" size={24} style={{ color: "var(--arbor-peach-ink)" }} />
+            <Icon name={staleBuild ? "restart_alt" : "warning"} size={24} style={{ color: "var(--arbor-peach-ink)" }} />
           </div>
           <h3 dir="auto" className="text-lg font-extrabold [overflow-wrap:anywhere]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            {statesText("elev.states.error.head", heMode)}
+            {statesText(staleBuild ? "elev.states.update.head" : "elev.states.error.head", heMode)}
           </h3>
           <p dir="auto" className="text-sm leading-relaxed [overflow-wrap:anywhere]" style={{ color: "var(--arbor-muted)" }}>
-            {statesText("elev.states.error.body", heMode)}
+            {statesText(staleBuild ? "elev.states.update.body" : "elev.states.error.body", heMode)}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
-            <button
-              type="button"
-              onClick={this.reset}
-              className="inline-flex items-center justify-center gap-2 max-w-full min-h-[44px] min-w-[44px] font-extrabold text-sm px-4 py-2.5 rounded-xl transition motion-safe:active:scale-[0.98]"
-              style={{ background: "var(--arbor-clay-deep)", color: "var(--arbor-on-accent)" }}
-            >
-              <Icon name="restart_alt" size={16} className="shrink-0" />
-              <span dir="auto" className="min-w-0 [overflow-wrap:anywhere]">{statesText("elev.states.retry", heMode)}</span>
-            </button>
-            <a
+            {staleBuild ? (
+              <button type="button" onClick={this.reload} className={PRIMARY_CLASS} style={PRIMARY_STYLE}>
+                <Icon name="restart_alt" size={16} className="shrink-0" />
+                <span dir="auto" className="min-w-0 [overflow-wrap:anywhere]">{statesText("elev.states.update.reload", heMode)}</span>
+              </button>
+            ) : (
+              <button type="button" onClick={this.reset} className={PRIMARY_CLASS} style={PRIMARY_STYLE}>
+                <Icon name="restart_alt" size={16} className="shrink-0" />
+                <span dir="auto" className="min-w-0 [overflow-wrap:anywhere]">{statesText("elev.states.retry", heMode)}</span>
+              </button>
+            )}
+            {!staleBuild && <a
               href="#/overview"
               onClick={this.goToToday}
               className="inline-flex items-center justify-center max-w-full min-h-[44px] min-w-[44px] font-bold text-sm px-4 py-2.5 rounded-xl underline underline-offset-4 [overflow-wrap:anywhere]"
               style={{ color: "var(--arbor-ink)" }}
             >
               {statesText("elev.states.error.today", heMode)}
-            </a>
+            </a>}
           </div>
           <p dir="auto" className="text-sm leading-relaxed [overflow-wrap:anywhere]" style={{ color: "var(--arbor-muted)" }}>
-            {statesText("elev.states.error.escapeNote", heMode)}
+            {statesText(staleBuild ? "elev.states.update.note" : "elev.states.error.escapeNote", heMode)}
           </p>
+        </div>
+      );
+      if (!this.props.floating) return card;
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "color-mix(in srgb, var(--arbor-ink) 28%, transparent)" }}>
+          {card}
         </div>
       );
     }
