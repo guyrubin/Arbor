@@ -76,6 +76,22 @@ describe("production public-guide fallback", () => {
     expect(await (await fetch(`${origin}${pathname}`)).text()).toBe(appShell);
   });
 
+  // B-GA-38: Hosting forwards its /assets/** misses here; the shell in a chunk's place
+  // failed a stale tab's import on its MIME type and was cached immutable.
+  it.each(["/assets/FamilyTopicSheet-OLDHASH.js", "/assets/today/missing.webp", "/assets/"])("answers the missing asset %s with an uncached 404, not the shell", async (pathname) => {
+    const response = await fetch(`${origin}${pathname}`);
+    expect(response.status).toBe(404);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("content-type")).not.toContain("text/html");
+    expect(await response.text()).not.toContain("<html");
+  });
+
+  it("still serves an asset that exists", async () => {
+    const response = await fetch(`${origin}/assets/app.js`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("javascript");
+  });
+
   it("routes Firebase guide fallbacks before the general app fallback", () => {
     const config = JSON.parse(readFileSync(new URL("../../../firebase.json", import.meta.url), "utf8"));
     const rewrites = config.hosting.rewrites as Array<{ source: string; destination?: string }>;

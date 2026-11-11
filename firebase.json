@@ -35,6 +35,13 @@
       { "source": "/guides", "destination": "/guides/index.html" },
       { "source": "/guides/**", "destination": "/guides/index.html" },
       {
+        "source": "/assets/**",
+        "run": {
+          "serviceId": "arbor-api",
+          "region": "europe-west4"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

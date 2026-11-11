@@ -8,6 +8,13 @@ export function mountProductionStatic(app: express.Express, distPath: string) {
   // Existing per-guide previews keep their metadata. Unknown or withdrawn
   // routes need the guide shell's root base so nested URLs load their assets.
   app.use(express.static(distPath));
+  // B-GA-38: a hashed file this release does not have is a 404, never the app shell
+  // (a stale tab's dynamic import then fails cleanly and staleBuild reloads). Hosting
+  // forwards its /assets/** misses here; this response's own no-store wins over
+  // firebase.json's immutable rule for /assets/**, so the 404 is never cached.
+  app.use("/assets", (_req, res) => {
+    res.status(404).set("Cache-Control", "no-store").type("text/plain").send("Not found");
+  });
   app.get("*", (req, res) => {
     const guidePath = req.path === "/guides" || req.path.startsWith("/guides/");
     res.sendFile(path.join(distPath, guidePath ? "guides/index.html" : "index.html"));
