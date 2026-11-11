@@ -24,9 +24,19 @@ export function bindFamilyForCost(memoryStore: FamilyLookup): RequestHandler {
     if (!uid || uid === "local-sandbox" || !costId(uid)) { next(); return; }
     const hit = cache.get(uid);
     if (hit) { bindFamilyId(hit); next(); return; }
-    const ensure = memoryStore.ensureFamilyForUser;
-    if (!ensure) { next(); return; }
-    ensure(uid).then(
+    if (typeof memoryStore.ensureFamilyForUser !== "function") { next(); return; }
+    // Called as a METHOD: the Firestore store reads `this.families`. A detached
+    // call threw synchronously, outside the promise, and every paid route for a
+    // signed-in parent answered 500 (4-11 Nov 2026: Ask, read-aloud, stories).
+    // A synchronous throw is a failed lookup too: best-effort, never the request.
+    let lookup: Promise<{ familyId: string }>;
+    try {
+      lookup = Promise.resolve(memoryStore.ensureFamilyForUser(uid));
+    } catch {
+      next();
+      return;
+    }
+    lookup.then(
       ({ familyId }) => {
         const id = costId(familyId);
         if (id) {

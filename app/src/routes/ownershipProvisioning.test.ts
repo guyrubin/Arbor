@@ -384,3 +384,20 @@ describe("B-DATA-15 — new child ids are issued by the server, already owned", 
     expect((await postJson(attacker, `/api/memory/${body.childId}/propose`, { fact: "Injected" })).status).toBe(403);
   });
 });
+
+// B-AIOPS-01 regression (4-11 Nov 2026): the cost middleware called this
+// class-based store's lookup detached, `this.families` was undefined, and every
+// paid route answered 500 before its own handler ran. The paid routes must
+// reach their handlers with the production-shaped store.
+describe("paid routes reach their handlers with the class-based family store", () => {
+  it("POST /api/chat answers its own validation, not a cost-middleware 500", async () => {
+    const res = await postJson(owner, "/api/chat", { childId: "kid-1", childProfile: { id: "kid-other" }, message: "Hello" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("Child context does not match.");
+  });
+
+  it("POST /api/tts reaches the route (unconfigured here: 503, never 500)", async () => {
+    const res = await postJson(owner, "/api/tts", { text: "Hello", language: "en" });
+    expect(res.status).toBe(503);
+  });
+});
