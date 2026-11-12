@@ -85,6 +85,8 @@ function mountedPortraitProof(duplicateKey: boolean) {
     // v3 F-CHILD-4 RE-PIN (test seam only): the phone stack's doors and width
     // read; this proof runs the wide order, which keeps the modules it pins.
     "./ChildDoors": { default: empty, useChildPhoneLayout: () => false },
+    // v4.1: Then and now (its own render test: nowV41.test) and the page clock.
+    "./ThenAndNow": { default: empty }, "./useNowClock": { useNowClock: () => new Date("2026-10-10T12:00:00Z") },
   }, source => duplicateKey ? source.replace('key={`goal-picker:${childProfile.id}`}', 'key={childProfile.id}') : source).default;
   function Shell() {
     const [route, changeRoute] = React.useState("development"), [, changeVersion] = React.useState(0);
