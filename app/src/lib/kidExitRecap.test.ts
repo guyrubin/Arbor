@@ -220,7 +220,7 @@ describe("B-SHELL-04 · the recap names hero stories and stays until kept or dis
     expect((recap.match(/addMoment\(/g) ?? []).length).toBe(1);
     const toastCtx = read("context/ToastContext.tsx");
     // an action toast is never auto-removed; the kid lock queues it until exit
-    expect(toastCtx).toContain("if (!action) setTimeout(() => remove(id), 4000);");
+    expect(toastCtx).toContain("if (!item.action) setTimeout(() => remove(id), 4000);");
     expect(toastCtx).toMatch(/if \(isKidModeActive\(\)\) \{\s*queueRef\.current\.push/);
   });
 
