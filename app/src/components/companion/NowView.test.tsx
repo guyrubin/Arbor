@@ -308,12 +308,23 @@ describe("Now record and visit leads", () => {
     expect(html).toContain('data-module="now-visit"');
     expect(html).toContain("Speech therapist");
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
-    button("Look over the page").onClick?.();
+    // v4.1: the kept moment drafts the visit summary, and the lead says so.
+    expect(html).toContain('data-drafted="true"');
+    expect(html).toContain("Built from the one moment you kept since you started. Nothing is shared until you send it.");
+    button("Look it over").onClick?.();
     expect(location.hash).toBe("#/consult?appointment=visit-specific");
     expect(history).toEqual(["#/overview", "#/consult?appointment=visit-specific"]);
     expect(state.setActiveTab).not.toHaveBeenCalled();
     expect(state.moreProps.suppressVisit).toBe(true);
     expect(state.focusCalls).not.toHaveBeenCalled();
+  });
+  it("a visit with nothing kept yet keeps the plain line and button", () => {
+    state.appointments = [appointment];
+    const html = renderToStaticMarkup(<NowView />);
+    expect(html).toContain('data-module="now-visit"');
+    expect(html).not.toContain('data-drafted="true"');
+    expect(html).toContain("Look over the page from your record before the visit.");
+    expect(button("Look over the page")).toBeDefined();
   });
   it("the existing evening Tonight flow precedes a record opener", () => {
     state.evening = true; state.noPractice = true; state.behaviorLogs = [note];

@@ -303,6 +303,9 @@ describe("Right now · tonight's answers go through Tonight's own seams", () => 
     expect(view).toContain("onPractice: loop.answerPractice,");
     expect(view).toContain("<NowTonightLead loop={loop} initialStep={tonightStep} />");
     expect(view).toContain('practice: loop.pick && loop.practiceShown && !loop.doseAnswer && lead !== "practice" ? loop.pick.practice : null,');
+    // The visit leading Now says the drafted count too (Right now is not shown beside it).
+    expect(view).toContain('{visitDraft ? draftCopy.sub(visitDraft.moments, visitDraft.anchor) : copy.visitBody}');
+    expect(view).toContain('{visitDraft ? draftCopy.cta : copy.visitOpen}');
     const blocks = readFileSync(path.resolve(__dirname, "NowLoopBlocks.tsx"), "utf8");
     expect(blocks).toContain("const loop = initialStep ? { ...base, tonight: { ...base.tonight, initialStep } } : base;");
   });

@@ -404,9 +404,10 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
           {record.error && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
         </section> : lead === "visit" && visit ? <section className="now-lead arbor-depth-primary" data-module="now-visit" aria-labelledby={`${id}-visit`}>
           <p className="now-plan-kicker">{copy.visit}</p>
-          <p className="now-lead-body">{copy.visitBody}</p>
+          {/* v4.1: when the visit itself leads Now, the drafted summary's count is said here. */}
+          <p className="now-lead-body" dir="auto" data-drafted={visitDraft ? "true" : undefined}>{visitDraft ? draftCopy.sub(visitDraft.moments, visitDraft.anchor) : copy.visitBody}</p>
           <div className="now-lead-actions">
-            <PrimaryMove type="button" className="companion-primary" onClick={openVisit}>{copy.visitOpen}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></PrimaryMove>
+            <PrimaryMove type="button" className="companion-primary" onClick={openVisit}>{visitDraft ? draftCopy.cta : copy.visitOpen}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></PrimaryMove>
             <button type="button" className="companion-secondary" onClick={() => todayOffer.snooze("appointment")}>{copy.visitLater}</button>
           </div>
         </section> : lead === "tonight" ? <section className="now-loop-lead" data-module="today-tonight" aria-label={t("elev.loop.today.tonight")}>
