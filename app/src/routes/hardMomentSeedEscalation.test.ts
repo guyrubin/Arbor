@@ -42,7 +42,7 @@ import { screenForConditionQuestion, SEEDED_CONDITION_SENTENCE } from "../safety
 import { hardMomentEvalSeedMessage } from "../eval/acceptance.js";
 import { COACH_CHAT_GOVERNED_ESCALATION_BLOCK, PROMPT_VERSIONS } from "../ai/prompts.js";
 import { SEEDED_FOLLOW_UP_POINTER } from "../safety/seededEscalation.js";
-import { renderCoachFollowUpResponse, renderCoachResponse, renderEscalationLines, type CoachResponse } from "../contracts/coach.js";
+import { ESCALATE_IF_FALLBACK, renderCoachFollowUpResponse, renderCoachResponse, renderEscalationLines, type CoachResponse } from "../contracts/coach.js";
 
 const SUITE = JSON.parse(
   fs.readFileSync(path.resolve(__dirname, "..", "..", "..", "evals", "coach-hardmoment-seed-v1.eval.json"), "utf8"),
@@ -385,7 +385,7 @@ describe("B-AI-14 (live fix) — the judge's exact payload carries the governed 
     }
   });
 
-  it("seeded turn: a model that returns escalateIf [] is accepted (min 0 on seeded turns only); a non-seeded turn still requires one", async () => {
+  it("seeded turn: a model that returns escalateIf [] is accepted (min 0 on seeded turns only); a non-seeded turn still carries one — the reviewed line (B-AI-19), never a 500", async () => {
     modelJson = JSON.stringify({ ...CONTRACT, escalateIf: [] });
     try {
       const seeded = await judgePost(hardMomentEvalSeedMessage(find("tantrum"), "en", "Noa", "What now?"), "en", false);
@@ -396,7 +396,10 @@ describe("B-AI-14 (live fix) — the judge's exact payload carries the governed 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: "And what about bedtime?", childProfile: JUDGE_PROFILE, language: "en" }),
       });
-      expect(res.status).toBe(500);
+      expect(res.status).toBe(200);
+      const plain = await res.json() as { contract?: { escalateIf?: string[]; governedEscalation?: string } };
+      expect(plain.contract?.escalateIf).toEqual([ESCALATE_IF_FALLBACK.en]);
+      expect(plain.contract?.governedEscalation).toBeUndefined();
     } finally {
       modelJson = JSON.stringify(CONTRACT);
     }

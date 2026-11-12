@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { HYPOTHESIS_UNCERTAINTY, buildSourceCards, coachResponseZodSchema, renderCoachResponse, scrubHandoffNotes, scrubHypothesisConfidence } from "./coach.js";
+import { ESCALATE_IF_FALLBACK, HYPOTHESIS_UNCERTAINTY, buildSourceCards, coachResponseZodSchema, createCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, renderCoachResponse, scrubHandoffNotes, scrubHypothesisConfidence, toFileTurnContract, withEscalateIfFallback } from "./coach.js";
+import { sharedEscalation } from "../content/hardMomentCards.js";
+import { loadFramework } from "../services/framework.js";
 
 const validCoach = {
   riskLevel: "routine",
@@ -189,5 +191,43 @@ describe("B-ASKJB-44 · scrubHandoffNotes", () => {
     const contract = { ...structuredClone(validCoach), handoffNotes: { teacher: "Use the same card.", professional: "" } };
     expect(scrubHandoffNotes(contract as any)).toBe(0);
     expect(contract.handoffNotes).toEqual({ teacher: "Use the same card.", professional: "" });
+  });
+});
+
+describe("B-AI-19 · an Ask answer is never lost to an empty when-to-get-help list", () => {
+  it("the model is asked for at least one line on routine turns; seeded and file turns keep their own rule", () => {
+    const framework = loadFramework();
+    expect(createCoachResponseGeminiSchema(framework).properties.escalateIf).toMatchObject({ minItems: "1" });
+    expect(createSeededCoachResponseGeminiSchema(framework).properties.escalateIf).not.toHaveProperty("minItems");
+    expect(createFileTurnCoachResponseGeminiSchema(framework).properties.escalateIf).not.toHaveProperty("minItems");
+  });
+
+  it("an empty or blank list gets the reviewed line in the answer language; the contract still parses with min 1", () => {
+    for (const [lang, list] of [["en", []], ["he", ["  "]], ["en", undefined]] as const) {
+      const raw = { ...structuredClone(validCoach), escalateIf: list };
+      // [] and a missing list fail the contract; a blank line would render as an empty bullet.
+      if (list?.length !== 1) expect(() => coachResponseZodSchema.parse(raw)).toThrow();
+      const { value, filled } = withEscalateIfFallback(raw, lang);
+      expect(filled).toBe(true);
+      expect(coachResponseZodSchema.parse(value).escalateIf).toEqual([ESCALATE_IF_FALLBACK[lang]]);
+    }
+  });
+
+  it("a model line is never replaced, and a malformed answer is still rejected", () => {
+    expect(withEscalateIfFallback(validCoach, "en")).toEqual({ value: validCoach, filled: false });
+    const broken = withEscalateIfFallback({ ...structuredClone(validCoach), todayPlan: [], escalateIf: [] }, "en");
+    expect(() => coachResponseZodSchema.parse(broken.value)).toThrow();
+    expect(withEscalateIfFallback(null, "en")).toEqual({ value: null, filled: false });
+  });
+
+  it("the line is the reviewed shared escalation's own second sentence, with no danger the parent did not raise", () => {
+    expect(sharedEscalation.en.endsWith(ESCALATE_IF_FALLBACK.en)).toBe(true);
+    expect(sharedEscalation.he.endsWith(ESCALATE_IF_FALLBACK.he)).toBe(true);
+    expect(ESCALATE_IF_FALLBACK.en).not.toMatch(/danger|emergency|harm|abuse|suicid|injur/i);
+  });
+
+  it("a read file with no list gets the line; a declined file stays text-only", () => {
+    expect(toFileTurnContract({ ...structuredClone(validCoach), escalateIf: [] }, "he").escalateIf).toEqual([ESCALATE_IF_FALLBACK.he]);
+    expect(toFileTurnContract({ fileDeclined: true, text: "No." }, "en").escalateIf).toEqual([]);
   });
 });

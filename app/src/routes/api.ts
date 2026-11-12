@@ -21,7 +21,7 @@ import { normalizeAvatarStyle } from "../lib/avatarStyle.js";
 import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider } from "../ai/modelRouter.js";
 import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
-import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, toFileTurnContract, renderFileDeclinedResponse, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence, type CoachResponse } from "../contracts/coach.js";
+import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, toFileTurnContract, renderFileDeclinedResponse, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence, withEscalateIfFallback, type CoachResponse } from "../contracts/coach.js";
 import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildDescribeChildPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE, renderCouncilContinuity } from "../ai/prompts.js";
 // B-ASKJB-44: no invented finding reaches a handoff note or the School Brief
 // (the matching prompt rules are parked on claude/askjb44-prompt-bump-2026-10-28).
@@ -455,6 +455,15 @@ export const allowListHandoffInput = (
     .filter((m) => m.title !== "")
     .slice(0, HANDOFF_MAX_MILESTONES);
   return { logs: safeLogs, milestones: safeMilestones };
+};
+
+/** B-AI-19: the reviewed when-to-get-help line for an answer that came back
+ *  without one (contracts/coach withEscalateIfFallback), logged as a count so
+ *  the model's empty lists stay visible in production. */
+const escalationFallbackLogged = (parsed: unknown, language: "en" | "he", req: Parameters<typeof requestIdOf>[0], route: "chat" | "council"): unknown => {
+  const { value, filled } = withEscalateIfFallback(parsed, language);
+  if (filled) logger.warn("Coach escalateIf empty; reviewed line used", { requestId: requestIdOf(req), route });
+  return value;
 };
 
 export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore, consentStore, framework, entitlementStore, referralStore, counters, consultStore, adminMetrics, waitlistStore, waitlistNotifier, pushTokenStore, sharedChildSource, companionLedgerSource, cohortMetricsStore, digestOptInStore, verifiedEmailResolver, digestEmailSender, digestJobSource, jobCallerVerifier, aiCapabilityRegistry, heroPoseSource, liveBudgetStore, opsAlerts, prepayCounter }: ApiDeps) => {
@@ -1226,7 +1235,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
           // Parity 9 Oct (companion_attachments 1.2.0): a file turn may decline
           // (text only, sections emptied here) or carry the document block.
           : attachments.length ? toFileTurnContract(parsedJson, language === "he" ? "he" : "en")
-          : coachResponseZodSchema.parse(parsedJson),
+          // B-AI-19: an empty when-to-get-help list gets the reviewed line, never a 500.
+          : coachResponseZodSchema.parse(escalationFallbackLogged(parsedJson, language === "he" ? "he" : "en", req, "chat")),
       );
       if (!structured.sourceCardsUsed?.length && knowledgeCards.length > 0) {
         structured.sourceCardsUsed = knowledgeCards.map((card) => card.id);
@@ -1597,7 +1607,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       }
       if (budget.signal.aborted) { if (!budget.timedOut) return; throw newAbortError(); }
 
-      const structured = privacy.restoreDeep(coachResponseZodSchema.parse(parseJson(rawResponse.trim())));
+      const structured = privacy.restoreDeep(coachResponseZodSchema.parse(escalationFallbackLogged(parseJson(rawResponse.trim()), language === "he" ? "he" : "en", req, "council")));
       const restoredTakes = privacy.restoreDeep(takes);
       // Council hypotheses and suggested experiments are not parent reports.
       // Keep them out of both the response contract and the memory review queue.

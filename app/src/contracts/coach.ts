@@ -208,6 +208,34 @@ export const FILE_DECLINED_FALLBACK: Record<CoachRenderLanguage, string> = {
   he: "אני יכול להסתכל רק על תמונות ומסמכים שקשורים לילד ולמשפחה. אפשר לשתף אחד כזה, או לספר לי במילים מה קורה.",
 };
 
+/**
+ * B-AI-19 — the when-to-get-help line a routine answer carries when the model
+ * returned none. The model schema asks for at least one item (minItems) and
+ * the contract requires one (min 1); a model that still returns [] or only
+ * blank strings must not cost the parent the whole answer (it used to 500 at
+ * the parse seam). This is the second sentence of the reviewed shared
+ * escalation (content/hardMomentCards.ts sharedEscalation), byte for byte —
+ * without its "immediate danger" sentence, so a routine answer never raises a
+ * danger the parent did not. Never used on a seeded turn (its governed line
+ * owns that slot) or on a declined file turn (no card at all).
+ */
+export const ESCALATE_IF_FALLBACK: Record<CoachRenderLanguage, string> = {
+  en: "If this keeps happening, gets harder, or worries you, talk with your pediatrician or another qualified professional.",
+  he: "אם זה חוזר, נעשה קשה יותר או מדאיג אתכם, שוחחו עם רופא הילדים או עם איש מקצוע מוסמך אחר.",
+};
+
+/** B-AI-19: fills an empty (or all-blank) escalateIf with the reviewed line
+ *  BEFORE the strict parse. Anything else is returned untouched, so the
+ *  contract still rejects a malformed answer. `filled` feeds the route's log. */
+export const withEscalateIfFallback = (raw: unknown, language: CoachRenderLanguage = "en"): { value: unknown; filled: boolean } => {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { value: raw, filled: false };
+  const value = raw as Record<string, unknown>;
+  const list = value.escalateIf;
+  const empty = list === undefined || (Array.isArray(list) && list.every((item) => typeof item === "string" && !item.trim()));
+  if (!empty) return { value: raw, filled: false };
+  return { value: { ...value, escalateIf: [ESCALATE_IF_FALLBACK[language] ?? ESCALATE_IF_FALLBACK.en] }, filled: true };
+};
+
 /** Parse a FILE turn: a decline becomes the text-only shape; a read file keeps
  *  the full contract (every min(1) holds) plus its optional document block. */
 export const toFileTurnContract = (raw: unknown, language: CoachRenderLanguage = "en"): CoachResponse => {
@@ -233,7 +261,7 @@ export const toFileTurnContract = (raw: unknown, language: CoachRenderLanguage =
       fileDeclined: true,
     };
   }
-  const strict: CoachResponse = coachResponseZodSchema.parse(raw);
+  const strict: CoachResponse = coachResponseZodSchema.parse(withEscalateIfFallback(raw, language).value);
   const document = cleanFileTurnDocument(value.document);
   return document ? { ...strict, document } : strict;
 };
@@ -250,6 +278,9 @@ export const createFileTurnCoachResponseGeminiSchema = (framework: FrameworkDefi
     ...base,
     properties: {
       ...base.properties,
+      // A decline returns every list [] (B-AI-19 keeps minItems off here); a
+      // read file with no list gets the reviewed line at the parse seam.
+      escalateIf: { type: Type.ARRAY, items: { type: Type.STRING } },
       fileDeclined: {
         type: Type.BOOLEAN,
         description: "true ONLY when the FILE SAFETY GATE applies (the file is not about this child or family, or it is explicit, sexual, graphic or violent). Then `text` holds the one or two calm sentences of the decline and every list is [] and every other string is empty. Otherwise false.",
@@ -403,7 +434,9 @@ export const createCoachResponseGeminiSchema = (framework: FrameworkDefinition) 
     parentScript: { type: Type.STRING },
     avoid: { type: Type.ARRAY, items: { type: Type.STRING } },
     observe: { type: Type.ARRAY, items: { type: Type.STRING } },
-    escalateIf: { type: Type.ARRAY, items: { type: Type.STRING } },
+    // B-AI-19: the contract parses escalateIf with min(1); the model is told
+    // the same. The seeded and file-turn schemas override this key.
+    escalateIf: { type: Type.ARRAY, items: { type: Type.STRING }, minItems: "1" },
     frameRouting: {
       type: Type.OBJECT,
       required: ["aim", "twoAxes", "story", "shadow", "marriage", "shepherd"],
