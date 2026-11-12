@@ -4,7 +4,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import PracticeCard, { practiceText } from "../loop/PracticeCard";
 import { startConversationVoice } from "../../lib/companionConversation";
 import NoticeCard from "../loop/NoticeCard";
-import TonightFlow from "../loop/TonightFlow";
+import TonightFlow, { type TonightStep } from "../loop/TonightFlow";
 import { NowNoticeRow } from "./NowNoticeRow";
 import Icon from "../ui/Icon";
 import { BrandChip } from "../ui/BrandChip";
@@ -143,7 +143,10 @@ export function NowNoticeBlock({ loop, name, practiceLeads, extras }: { loop: Lo
 
 /** Tonight's three questions (B-LOOP-10) and, at the week's end, the goal marks
  *  (B-PROG-07). The story is the door's line at night (critic c2 r1), never here. */
-export function NowTonightLead({ loop }: { loop: Loop }) {
+export function NowTonightLead({ loop: base, initialStep }: { loop: Loop; initialStep?: TonightStep }) {
+  // v4.1: Right now's "Write it down" opens the evening at its words step
+  // (TonightFlow reads initialStep once, on mount).
+  const loop = initialStep ? { ...base, tonight: { ...base.tonight, initialStep } } : base;
   return <TonightFlow {...loop.tonight} stampMove={MOVE} />;
 }
 

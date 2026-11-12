@@ -58,7 +58,11 @@ import "./companionExperience.css";
 import "./nowView.css";
 import { useObservations } from "../../hooks/useObservations";
 import NowQuestionRow from "./NowQuestionRow";
-import NowRightNow from "./NowRightNow";
+import NowRightNow, { type RightNowTonight } from "./NowRightNow";
+import type { TonightStep } from "../loop/TonightFlow";
+import { useVisitDraft } from "./visitDraft";
+import { VISIT_DRAFT_COPY } from "./nowV41Copy";
+import { daysUntil, inDaysLabel } from "../care/CareVisitHead";
 import NowLearned from "./NowLearned";
 import { dayPart } from "./rightNowModel";
 import NowPlanFrame, { type NowPlanKind } from "./NowPlanFrame";
@@ -271,11 +275,17 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     questionShelves,
   });
   const [tonightOpen, setTonightOpen] = useState(false);
+  // v4.1: where the opened evening starts (Right now's "Write it down" → its words step).
+  const [tonightStep, setTonightStep] = useState<TonightStep | undefined>(undefined);
+  const openTonight = (step?: TonightStep) => { setTonightStep(step); loop.setTonightEarly(true); setTonightOpen(true); };
   // ── Return hooks (parity 9 Oct): the visit stamp, a lifecycle note, the offer. ──
   const { previousVisitAt, isReturning } = useLastVisit(childProfile);
   const lifecycle = useLifecycleMoment({ previousVisitAt, now: now.getTime() });
   const todayOffer = useCompanionOffer("today", { now, whatChanged: lifecycle.moment ? { id: lifecycle.moment.kind } : null });
   const visit = todayOffer.appointment;
+  // v4.1: the visit summary Care has drafted from the record (null: nothing kept since the anchor).
+  const visitDraft = useVisitDraft(visit, now);
+  const draftCopy = VISIT_DRAFT_COPY[lang];
   const lead = selectNowLead({
     // B-TODAY-38: the day the first run ended on the urgent notice, the help
     // lines are the ONE lead inside the plan card. A profile marker, not a
@@ -346,9 +356,26 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const part = dayPart(now.getHours());
   const visitDate = visit?.whenIso ? new Date(visit.whenIso).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }) : "";
   const rightNowVisit = showRightNow && visit && lead !== "visit"
-    ? { head: copy.visitTitle(appointmentRoleLabel(visit, t), visitDate), sub: copy.visitBody, cta: copy.visitOpen, onOpen: openVisit } : null;
-  const rightNowTonight = showRightNow && lead !== "tonight" && loop.tonightHasQuestions
-    ? () => { loop.setTonightEarly(true); setTonightOpen(true); } : null;
+    ? visitDraft
+      ? { head: draftCopy.head, sub: draftCopy.sub(visitDraft.moments, visitDraft.anchor), cta: draftCopy.cta, onOpen: openVisit, drafted: true }
+      : { head: copy.visitTitle(appointmentRoleLabel(visit, t), visitDate), sub: copy.visitBody, cta: copy.visitOpen, onOpen: openVisit }
+    : null;
+  const visitDays = visit ? daysUntil(visit.whenIso, now.getTime()) : null;
+  const visitWhen = visitDays === null ? null : t(inDaysLabel(visitDays).key, inDaysLabel(visitDays).vars);
+  const visitGlanceLine = visitDraft && visitWhen ? draftCopy.glance(visitWhen) : copy.visitPrep;
+  // Tonight's questions answered in Right now, through Tonight's own seams. A
+  // practice or notice already leading Now is not asked a second time here.
+  const rightNowTonight: RightNowTonight | null = showRightNow && lead !== "tonight" && loop.tonightHasQuestions ? {
+    childName: loop.tonight.childName,
+    gender: loop.tonight.gender,
+    practice: loop.pick && loop.practiceShown && !loop.doseAnswer && lead !== "practice" ? loop.pick.practice : null,
+    notice: loop.tonight.notice && !(lead === "notice" && loop.slotNotice?.milestone.id === loop.tonight.notice.milestone.id) ? loop.tonight.notice.milestone : null,
+    dayQuestion: loop.tonight.dayQuestion,
+    onPractice: loop.answerPractice,
+    onNotice: (status) => loop.tonight.onNotice(status),
+    onWrite: () => openTonight(2),
+    onOpenAll: () => openTonight(),
+  } : null;
   const visitInRightNow = !!rightNowVisit && part === "midday";
   const tonightInRightNow = !!rightNowTonight && part === "evening";
   const planQuestion = shownLead === "step" && chosen && topic && chosen.topicId === topic.id ? topic.title
@@ -363,7 +390,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
       </div>
     </header>
     {(topic || onTopicOpen) && <NowQuestionRow data-module="now-focus" lang={lang} topic={topic} onOpen={onTopicOpen} onCreate={onTopicCreate ? () => onTopicCreate("") : undefined} />}
-    {showRightNow && <NowRightNow now={now} lang={lang} visit={rightNowVisit} onTonight={rightNowTonight} />}
+    {showRightNow && <NowRightNow now={now} lang={lang} visit={rightNowVisit} tonight={rightNowTonight} />}
 
     <div className="now-main-column">
         {lead === "practice" && <PracticeFocus now={now} journal={loop.journal} onFocus={setFocus} onPending={setFocusPending} />}
@@ -383,7 +410,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
             <button type="button" className="companion-secondary" onClick={() => todayOffer.snooze("appointment")}>{copy.visitLater}</button>
           </div>
         </section> : lead === "tonight" ? <section className="now-loop-lead" data-module="today-tonight" aria-label={t("elev.loop.today.tonight")}>
-          <NowTonightLead loop={loop} />
+          <NowTonightLead loop={loop} initialStep={tonightStep} />
         </section> : lead === "step" && chosen ? <section className="now-lead arbor-depth-primary" data-module="now-step" aria-labelledby={`${id}-step`}>
           <p className="now-plan-kicker">{observation ? t("ob.first.observation.chosen") : copy.chosen}</p>
           {receipt && <p className="now-lead-body" dir="auto" style={{ whiteSpace: "pre-wrap" }}>{observation ? chosen.whatHappened : chosen.recommendation}</p>}
@@ -475,7 +502,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
       <section className="now-glance" aria-labelledby={`${id}-glance`}>
         <h2 id={`${id}-glance`} className="now-kicker">{copy.glanceTitle}</h2>
         {visit && lead !== "visit" && !visitInRightNow && <button type="button" className="now-weekly-door now-glance-visit" onClick={openVisit}>
-          <BrandChip icon="event" tone="sky" shape="leaf" /><span><b dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</b><small>{copy.visitPrep}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
+          <BrandChip icon="event" tone="sky" shape="leaf" /><span><b dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</b><small data-testid="now-glance-visit-line">{visitGlanceLine}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
         </button>}
         {showPointer && !tonightInRightNow && <NowTonightPointer onOpen={() => { loop.setTonightEarly(true); setTonightOpen(true); }} />}
         {/* B-PROG-03: the program is Today's frame: one line beside the practice, never a second lead. */}

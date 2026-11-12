@@ -33,10 +33,14 @@ vi.mock("../../context/LanguageContext", () => ({
 vi.mock("../../content/selectCards", () => ({ availableHardMomentCards: () => (harness.hardDoor ? [{ id: "card" }] : []) }));
 vi.mock("../ui/HeroAvatar", () => ({ HeroAvatar: () => <span data-testid="hero" />, default: () => <span data-testid="hero" /> }));
 
-import NowRightNow from "./NowRightNow";
+import NowRightNow, { TonightAsk, type RightNowTonight } from "./NowRightNow";
 import NowLearned, { learnedThisWeek } from "./NowLearned";
 import ThenAndNow, { thenAndNowPairs } from "./ThenAndNow";
-import { LEARNED_COPY, RIGHT_NOW_COPY, THEN_NOW_COPY } from "./nowV41Copy";
+import { LEARNED_COPY, RIGHT_NOW_COPY, THEN_NOW_COPY, VISIT_DRAFT_COPY } from "./nowV41Copy";
+import { PRACTICES } from "../../content/practices";
+import { childScopedKey } from "../../lib/childLocalState";
+import { tonightQueue, type TonightQuestion } from "./rightNowTonight";
+import type { Milestone } from "../../types";
 
 const at = (day: number, hour: number, minute: number) => new Date(2026, 10, day, hour, minute);
 const render = (node: React.ReactElement) => renderToStaticMarkup(node);
@@ -52,7 +56,7 @@ describe("Right now", () => {
   it("offers the started morning routine's next step in the morning", () => {
     reset();
     const routine = startRoutine("morning");
-    const html = render(<NowRightNow now={at(12, 7, 30)} lang="en" visit={null} onTonight={null} />);
+    const html = render(<NowRightNow now={at(12, 7, 30)} lang="en" visit={null} tonight={null} />);
     expect(html).toContain('data-state="routine"');
     expect(html).toContain("Right now · 07:30");
     expect(html).toContain(`Next: ${routine.steps[0].label.en}`);
@@ -62,30 +66,71 @@ describe("Right now", () => {
   it("names the window the parent's own hard moments fell in, before dinner", () => {
     reset();
     harness.behaviorLogs = [at(11, 16, 47), at(10, 17, 2), at(9, 17, 18), at(8, 9, 0)].map((d, i) => ({ id: `b${i}`, timestamp: d.toISOString(), intensity: 4 }));
-    const html = render(<NowRightNow now={at(12, 16, 30)} lang="en" visit={null} onTonight={null} />);
+    const html = render(<NowRightNow now={at(12, 16, 30)} lang="en" visit={null} tonight={null} />);
     expect(html).toContain('data-state="hard"');
     expect(html).toContain("3 of the last 4 hard moments you kept fell between 16:45 and 17:20.");
     expect(html).toContain("Open the words");
     harness.hardDoor = false;
-    expect(render(<NowRightNow now={at(12, 16, 30)} lang="en" visit={null} onTonight={null} />)).toBe("");
+    expect(render(<NowRightNow now={at(12, 16, 30)} lang="en" visit={null} tonight={null} />)).toBe("");
   });
 
-  it("puts the visit at midday and tonight's questions in the evening, in Hebrew too", () => {
+  it("puts the visit at midday, and the drafted summary in the design's words when the record has moments since the anchor", () => {
     reset();
     const visit = { head: "Speech therapist · Friday 14 Nov", sub: "Look over the page.", cta: "Look over the page", onOpen: () => {} };
-    expect(render(<NowRightNow now={at(12, 13, 0)} lang="en" visit={visit} onTonight={null} />)).toContain("Speech therapist · Friday 14 Nov");
+    const plain = render(<NowRightNow now={at(12, 13, 0)} lang="en" visit={visit} tonight={null} />);
+    expect(plain).toContain("Speech therapist · Friday 14 Nov");
+    expect(plain).not.toContain("data-drafted");
+    const drafted = { head: VISIT_DRAFT_COPY.en.head, sub: VISIT_DRAFT_COPY.en.sub(14, "visit"), cta: VISIT_DRAFT_COPY.en.cta, onOpen: () => {}, drafted: true };
+    const html = render(<NowRightNow now={at(12, 13, 0)} lang="en" visit={drafted} tonight={null} />);
+    expect(html).toContain('data-state="visit"');
+    expect(html).toContain('data-drafted="true"');
+    expect(html).toContain("A quiet two minutes: the visit summary is drafted.");
+    expect(html).toContain("Built from the 14 moments you kept since the last visit. Nothing is shared until you send it.");
+    expect(html).toContain("Look it over");
+  });
+
+  it("asks tonight's questions in place in the evening, one at a time, in Hebrew too", () => {
+    reset();
     harness.locale = "he";
-    const html = render(<NowRightNow now={at(12, 20, 30)} lang="he" visit={visit} onTonight={() => {}} />);
+    const html = render(<NowRightNow now={at(12, 20, 30)} lang="he" visit={null} tonight={tonightProps()} />);
     expect(html).toContain('data-state="tonight"');
-    expect(html).toContain(RIGHT_NOW_COPY.he.tonightHead);
     expect(html).toContain("עכשיו · 20:30");
+    expect(html).toContain('data-question="practice"');
+    expect(html).toContain(translate("he", "elev.loop.tonight.practice.q"));
+    expect(html).toContain("הערב · שאלה 1 מתוך 3. מספיקה נגיעה אחת.");
+    expect(html).toContain(translate("he", "elev.loop.practice.didIt"));
+    expect(html).toContain(RIGHT_NOW_COPY.he.tonightAll);
+    // No door to a separate flow: the answers are on the line itself.
+    expect(html).not.toContain('data-testid="now-right-now-cta"');
+  });
+
+  it("does not ask an answered question again after a reload, and ends the evening with what was kept", () => {
+    reset();
+    const store = new Map<string, string>();
+    vi.stubGlobal("localStorage", { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => { store.set(k, v); }, removeItem: (k: string) => { store.delete(k); } });
+    try {
+      store.set(childScopedKey("rightNowTonight", "c1"), JSON.stringify({ day: "2026-11-12", done: ["practice"], kept: 1 }));
+      const second = render(<NowRightNow now={at(12, 20, 30)} lang="en" visit={null} tonight={tonightProps()} />);
+      expect(second).toContain('data-question="notice"');
+      expect(second).toContain("Did you notice this today?");
+      expect(second).toContain("Points to show you something");
+      expect(second).toContain("Tonight · question 2 of 3. One tap is enough.");
+      store.set(childScopedKey("rightNowTonight", "c1"), JSON.stringify({ day: "2026-11-12", done: ["practice", "notice", "words"], kept: 2 }));
+      const done = render(<NowRightNow now={at(12, 20, 30)} lang="en" visit={null} tonight={tonightProps()} />);
+      expect(done).toContain("That&#x27;s the day. Tomorrow&#x27;s step is ready when you are.");
+      expect(done).toContain("Arbor kept your two answers.");
+      // A new day starts empty.
+      expect(render(<NowRightNow now={at(13, 20, 30)} lang="en" visit={null} tonight={tonightProps()} />)).toContain('data-question="practice"');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("draws nothing when the record has nothing for this part of the day", () => {
     reset();
-    expect(render(<NowRightNow now={at(12, 16, 30)} lang="en" visit={null} onTonight={null} />)).toBe("");
+    expect(render(<NowRightNow now={at(12, 16, 30)} lang="en" visit={null} tonight={null} />)).toBe("");
     startRoutine("morning");
-    expect(render(<NowRightNow now={at(12, 20, 30)} lang="en" visit={null} onTonight={null} />)).toBe("");
+    expect(render(<NowRightNow now={at(12, 20, 30)} lang="en" visit={null} tonight={null} />)).toBe("");
   });
 });
 
@@ -190,5 +235,90 @@ describe("v4.1 wiring", () => {
     const src = read("TogetherRoutines.tsx");
     expect(src).toContain('useHashQuery().get("routine")');
     expect(src).toContain('routeHash("practice", { f: "routines" })');
+  });
+});
+
+const NOTICE = { id: "custom-point", title: "Points to show you something", custom: true } as unknown as Milestone;
+function tonightProps(over: Partial<RightNowTonight> = {}): RightNowTonight {
+  return {
+    childName: "Noa", gender: "girl", practice: PRACTICES[0], notice: NOTICE,
+    dayQuestion: { key: "elev.loop.tonight.day.generic", vars: {} },
+    onPractice: vi.fn(), onNotice: vi.fn(async () => {}), onWrite: vi.fn(), onOpenAll: vi.fn(),
+    ...over,
+  };
+}
+
+/* The question body is a plain function of its props: call it, find the
+   buttons, tap them (no DOM in this suite). */
+function ask(tonight: RightNowTonight, done: TonightQuestion[] = [], extra: { failed?: boolean } = {}) {
+  const onDone = vi.fn();
+  const setBusy = vi.fn();
+  const setFailed = vi.fn();
+  const available = { practice: !!tonight.practice, notice: !!tonight.notice, words: !!tonight.dayQuestion };
+  const tree = TonightAsk({
+    tonight, lang: "en", t: (k, v) => translate("en", k, v), queue: tonightQueue(available, { day: "d", done, kept: done.length }),
+    kept: done.length, busy: false, failed: !!extra.failed, copy: RIGHT_NOW_COPY.en, onDone, setBusy, setFailed,
+  });
+  const walk = (node: React.ReactNode): React.ReactElement<any>[] => {
+    if (!React.isValidElement(node)) return Array.isArray(node) ? node.flatMap(walk) : [];
+    const el = node as React.ReactElement<any>;
+    return [el, ...React.Children.toArray(el.props.children).flatMap(walk)];
+  };
+  const byId = (id: string) => walk(tree).find((el) => el.props["data-testid"] === id)?.props;
+  return { tree, byId, onDone, setBusy, setFailed };
+}
+
+describe("Right now · tonight's answers go through Tonight's own seams", () => {
+  it("Did it / Not today record the practice answer and move on", () => {
+    const tonight = tonightProps();
+    const a = ask(tonight);
+    a.byId("now-right-now-yes").onClick();
+    expect(tonight.onPractice).toHaveBeenCalledWith("did");
+    expect(a.onDone).toHaveBeenCalledWith("practice", true);
+    const b = ask(tonight);
+    b.byId("now-right-now-no").onClick();
+    expect(tonight.onPractice).toHaveBeenLastCalledWith("not_today");
+  });
+
+  it("the notice answer moves on only once it is saved; a failed save stays and says so", async () => {
+    const tonight = tonightProps();
+    const a = ask(tonight, ["practice"]);
+    a.byId("now-right-now-yes").onClick();
+    await vi.waitFor(() => expect(a.onDone).toHaveBeenCalledWith("notice", true));
+    expect(tonight.onNotice).toHaveBeenCalledWith("yes");
+    expect(a.setBusy).toHaveBeenLastCalledWith(false);
+    const failing = tonightProps({ onNotice: vi.fn(async () => { throw new Error("offline"); }) });
+    const b = ask(failing, ["practice"]);
+    b.byId("now-right-now-no").onClick();
+    await vi.waitFor(() => expect(b.setFailed).toHaveBeenLastCalledWith(true));
+    expect(failing.onNotice).toHaveBeenCalledWith("not_yet");
+    expect(b.onDone).not.toHaveBeenCalled();
+    expect(ask(failing, ["practice"], { failed: true }).byId("now-right-now-failed")).toBeTruthy();
+  });
+
+  it("Now hands Tonight's own seams to Right now, and Write it down opens the full evening at step 2", () => {
+    const view = readFileSync(path.resolve(__dirname, "NowView.tsx"), "utf8");
+    expect(view).toContain("onWrite: () => openTonight(2),");
+    expect(view).toContain("onNotice: (status) => loop.tonight.onNotice(status),");
+    expect(view).toContain("onPractice: loop.answerPractice,");
+    expect(view).toContain("<NowTonightLead loop={loop} initialStep={tonightStep} />");
+    expect(view).toContain('practice: loop.pick && loop.practiceShown && !loop.doseAnswer && lead !== "practice" ? loop.pick.practice : null,');
+    const blocks = readFileSync(path.resolve(__dirname, "NowLoopBlocks.tsx"), "utf8");
+    expect(blocks).toContain("const loop = initialStep ? { ...base, tonight: { ...base.tonight, initialStep } } : base;");
+  });
+
+  it("Write it down opens the evening at its words step; Nothing today writes nothing", () => {
+    const tonight = tonightProps();
+    const a = ask(tonight, ["practice", "notice"]);
+    expect(a.byId("now-right-now-question")["data-question"]).toBe("words");
+    a.byId("now-right-now-yes").onClick();
+    expect(tonight.onWrite).toHaveBeenCalledTimes(1);
+    expect(a.onDone).toHaveBeenCalledWith("words", false);
+    const b = ask(tonight, ["practice", "notice"]);
+    b.byId("now-right-now-no").onClick();
+    expect(b.onDone).toHaveBeenCalledWith("words", false);
+    expect(tonight.onWrite).toHaveBeenCalledTimes(1);
+    ask(tonight).byId("now-right-now-tonight-all").onClick();
+    expect(tonight.onOpenAll).toHaveBeenCalledTimes(1);
   });
 });

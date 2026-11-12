@@ -56,6 +56,43 @@
   cursor: pointer;
 }
 .now-right-now-cta:focus-visible { outline: 3px solid var(--arbor-sky); outline-offset: 2px; }
+/* Evening: tonight's question answered in place (two answers, a quiet link to the full evening). */
+.now-right-now-detail { margin-block-start: 6px !important; color: var(--arbor-ink); font-family: var(--font-editorial); font-size: var(--t-base); line-height: 1.45; }
+.now-right-now-answers { display: flex; flex-wrap: wrap; gap: 8px; margin-block-start: 12px; }
+.now-right-now-answers .now-right-now-cta { flex: 1 1 auto; }
+.now-right-now-alt {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 44px;
+  padding-inline: 18px;
+  border: 1px solid var(--arbor-rule-strong);
+  border-radius: 14px;
+  background: var(--arbor-paper-deep);
+  color: var(--arbor-ink);
+  font: inherit;
+  font-size: var(--t-sm);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.now-right-now-answers button:disabled { opacity: 0.6; cursor: progress; }
+.now-right-now-alt:focus-visible, .now-right-now-link:focus-visible { outline: 3px solid var(--arbor-sky); outline-offset: 2px; }
+.now-right-now-link {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  margin-block-start: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--arbor-clay);
+  font: inherit;
+  font-size: var(--t-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
 @media (max-width: 520px) {
   .now-right-now { align-items: flex-start; }
   .now-right-now-cta { flex: 1 1 100%; }

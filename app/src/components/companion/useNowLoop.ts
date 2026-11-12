@@ -328,6 +328,8 @@ export function useNowLoop({ aiPracticeId, now, questionShelves }: {
     setAdaptation: (key: PracticeAdaptationKey | null) => setAdaptationPreview({ session: adaptationKey, key }),
     answerPractice, undoPractice: dose ? () => removeTodayAction(dose.id) : undefined,
     quotes, whyReason, whyDate, slotNotice, blockNotices, noticeHandlers, tonight, tonightHasQuestions,
+    // v4.1 Right now asks "Did you try it today?" only about a practice the parent SAW.
+    practiceShown: !!pick && practiceShown,
     storyFits, keepsakeDocs: keepsakes.items,
   };
 }

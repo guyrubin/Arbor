@@ -12,6 +12,8 @@ import { urgentSetupToday } from "../../lib/onboardingFirstRun";
 import { renderToStaticMarkup } from "react-dom/server";
 import { UrgentSupport } from "../safety/UrgentSupport";
 import { dayPart } from "./rightNowModel";
+import { VISIT_DRAFT_COPY } from "./nowV41Copy";
+import { daysUntil, inDaysLabel } from "../care/CareVisitHead";
 // Only the mounted UrgentSupport render below reaches the real LanguageContext;
 // NowContent is compiled with injected hooks and never touches this mock.
 const mockLang = vi.hoisted(() => ({ lang: "en" as "en" | "he" }));
@@ -56,6 +58,8 @@ function setup(lang: "en" | "he" = "en") {
     PlansSection: "plans-section", usePlanVisibility: () => null, openPrintablePlan: vi.fn(), keepPlan: (d: any) => d, closePlan: (d: any) => d,
     // v4.1: Right now and Arbor learned this week (their own render tests: nowV41.test).
     dayPart, NowRightNow: "now-right-now", NowLearned: "now-learned",
+    // v4.1 (12 Nov): the drafted visit summary (its own tests: visitDraft.test, nowV41.test).
+    useVisitDraft: () => null, VISIT_DRAFT_COPY, daysUntil, inDaysLabel,
   };
   const renderContent = new Function(...Object.keys(env), code)(...Object.values(env));
   let tree: React.ReactNode;

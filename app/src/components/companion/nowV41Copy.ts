@@ -22,9 +22,16 @@ export const RIGHT_NOW_COPY = {
       done > 0 ? `${title} · ${done} of ${total} steps done today` : `${title} · ${total} steps, in your order`,
     routineStart: "Start the routine",
     routineContinue: "Continue",
-    tonightHead: "Tonight's three questions are ready.",
-    tonightSub: "About a minute. One tap an answer is enough.",
-    tonightCta: "Answer now",
+    // Evening: tonight's questions, answered here (rightNowTonight.ts).
+    tonightAsk: (n: number, total: number) => `Tonight · question ${n} of ${total}. One tap is enough.`,
+    tonightNoticeQ: "Did you notice this today?",
+    tonightWrite: "Write it down",
+    tonightNothing: "Nothing today",
+    tonightDoneHead: "That's the day. Tomorrow's step is ready when you are.",
+    tonightDoneSub: (kept: number) =>
+      kept === 0 ? "Nothing to keep tonight." : kept === 1 ? "Arbor kept your answer." : `Arbor kept your ${kept === 2 ? "two" : "three"} answers.`,
+    tonightAll: "Open tonight in full",
+    tonightFailed: "That answer didn't save. Try again.",
   },
   he: {
     label: (clock: string) => `עכשיו · ${clock}`,
@@ -43,9 +50,39 @@ export const RIGHT_NOW_COPY = {
       done > 0 ? `${title} · ${done} מתוך ${total} צעדים היום` : `${title} · ${total} צעדים, בסדר שלכם`,
     routineStart: "להתחיל את השגרה",
     routineContinue: "להמשיך",
-    tonightHead: "שלוש השאלות של הערב מוכנות.",
-    tonightSub: "בערך דקה. מספיקה נגיעה אחת לכל תשובה.",
-    tonightCta: "לענות עכשיו",
+    tonightAsk: (n: number, total: number) => `הערב · שאלה ${n} מתוך ${total}. מספיקה נגיעה אחת.`,
+    tonightNoticeQ: "שמתם לב לזה היום?",
+    tonightWrite: "לכתוב את זה",
+    tonightNothing: "שום דבר היום",
+    tonightDoneHead: "זה היום. הצעד של מחר מחכה כשתהיו מוכנים.",
+    tonightDoneSub: (kept: number) =>
+      kept === 0 ? "אין מה לשמור הערב." : kept === 1 ? "התשובה שלכם נשמרה." : kept === 2 ? "שתי התשובות שלכם נשמרו." : "שלוש התשובות שלכם נשמרו.",
+    tonightAll: "לפתוח את כל הערב",
+    tonightFailed: "התשובה לא נשמרה. נסו שוב.",
+  },
+} as const;
+
+/* v4.1 (12 Nov) — the visit summary is drafted. Care assembles the page from
+   the record when it opens; nothing leaves until the parent sends it. The
+   number is Care's own since-anchor count (visitDraft.ts). */
+export const VISIT_DRAFT_COPY = {
+  en: {
+    head: "A quiet two minutes: the visit summary is drafted.",
+    sub: (n: number, anchor: "visit" | "share" | "start") => {
+      const since = anchor === "visit" ? "since the last visit" : anchor === "share" ? "since you last shared with them" : "since you started";
+      return `${n === 1 ? "Built from the one moment" : `Built from the ${n} moments`} you kept ${since}. Nothing is shared until you send it.`;
+    },
+    cta: "Look it over",
+    glance: (when: string) => `${when} · summary drafted, two minutes to check`,
+  },
+  he: {
+    head: "שתי דקות שקטות: טיוטת סיכום הביקור מוכנה.",
+    sub: (n: number, anchor: "visit" | "share" | "start") => {
+      const since = anchor === "visit" ? "מאז הביקור הקודם" : anchor === "share" ? "מאז השיתוף האחרון איתם" : "מאז שהתחלתם";
+      return `${n === 1 ? "נבנתה מהרגע ששמרתם" : `נבנתה מ-${n} הרגעים ששמרתם`} ${since}. שום דבר לא משותף עד שתשלחו.`;
+    },
+    cta: "לעבור עליה",
+    glance: (when: string) => `${when} · הטיוטה מוכנה, שתי דקות לבדוק`,
   },
 } as const;
 
