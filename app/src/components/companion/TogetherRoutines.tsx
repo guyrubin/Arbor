@@ -22,6 +22,9 @@ import { Sheet, useCompactSurface } from "../ui/Sheet";
 import RoutineRunSheet, { type RoutineStart } from "./RoutineRunSheet";
 import { routineChipTone, todaysRhythm, type RhythmSlot } from "./togetherRhythm";
 import "./togetherRhythm.css";
+import { FITS_COPY, RIGHT_NOW_COPY } from "./nowV41Copy";
+import { clockOf, dayPart, routineForPart } from "./rightNowModel";
+import "./nowV41.css";
 
 /* ════════════════════════════════════════════════════════════════════════════
    TogetherRoutines — Together's Routines filter (v4: Today's rhythm).
@@ -44,6 +47,9 @@ import "./togetherRhythm.css";
    plan; while the start is on its way (or failed) its optimistic row is not
    counted, and a retry rewrites the same plan id.
    Counts only — the steps ticked today and the steps there are, never a share.
+   v4.1 Fits right now: above the rhythm, the started routine of this part of
+   the day with a step still open (rightNowModel.routineForPart, the same rule
+   as Now's Right now); Start opens its sheet. Nothing open for this part: no line.
    ════════════════════════════════════════════════════════════════════════════ */
 
 const SLOT_KEYS: Readonly<Record<RhythmSlot, string>> = {
@@ -79,7 +85,9 @@ export default function TogetherRoutines({ headingId }: { headingId?: string }) 
   // v3 F-TOG-3: below lg a sheet rises from the bottom; the Modal stays the wide answer.
   const LibrarySurface = useCompactSurface() ? Sheet : Modal;
 
-  const day = routineDayKey(Date.now());
+  // Read per render (as the day key always was); the filter is not a long-lived clock face.
+  const clockNow = new Date();
+  const day = routineDayKey(clockNow.getTime());
   /** The stored plan started from this routine (newest first), else null. */
   const planFor = (routineId: string): ActionPlan | null => {
     // A start still on its way, or one that failed, is not "in your plan" yet.
@@ -90,6 +98,7 @@ export default function TogetherRoutines({ headingId }: { headingId?: string }) 
   };
   const rhythm = todaysRhythm(templates, planFor, day, lang);
   const finished = rhythm.filter((card) => card.complete).length;
+  const fits = routineForPart(rhythm, dayPart(clockNow.getHours()));
   const opened = openedId ? templates.find((r) => r.id === openedId) ?? null : null;
   const open = (routineId: string) => setOpenedState({ childId: childProfile.id, routineId });
   // v4.1: Now's Right now opens a routine by address (#/practice?f=routines&routine=<id>),
@@ -167,6 +176,17 @@ export default function TogetherRoutines({ headingId }: { headingId?: string }) 
 
       {hasRhythm ? (
         <>
+          {fits && <div className="together-fits arbor-fade" data-testid="together-fits" data-routine={fits.routine.id}>
+            <BrandChip icon={fits.routine.ms} tone={routineChipTone(fits.routine)} shape="leaf" size={36} />
+            <span className="together-fits-text">
+              <span className="together-fits-label">{FITS_COPY[lang].label(clockOf(clockNow.getHours() * 60 + clockNow.getMinutes()))}</span>
+              <span className="together-fits-head" dir="auto">{RIGHT_NOW_COPY[lang].routineHead(fits.nextStep ?? "")}</span>
+              <span className="together-fits-sub" dir="auto">{RIGHT_NOW_COPY[lang].routineSub(localized(fits.routine.title, lang), fits.done.length, fits.total)}</span>
+            </span>
+            <button type="button" className="together-fits-start arbor-press" data-testid="together-fits-start" aria-haspopup="dialog" onClick={() => open(fits.routine.id)}>
+              <Icon name="play_arrow" size={19} />{fits.done.length > 0 ? FITS_COPY[lang].continue : FITS_COPY[lang].start}
+            </button>
+          </div>}
           <ul className="together-rhythm-grid" data-testid="together-rhythm">
             {rhythm.map((card, index) => {
               const { routine } = card;

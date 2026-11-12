@@ -73,6 +73,7 @@ vi.mock("../ui/Sheet", () => ({ Sheet: () => null, useCompactSurface: () => stat
 
 import TogetherView from "./TogetherView";
 import TogetherRoutines from "./TogetherRoutines";
+import { FITS_COPY, RIGHT_NOW_COPY } from "./nowV41Copy";
 import RoutineRunSheet from "./RoutineRunSheet";
 import RoutineRunBoard from "../plans/RoutineRunBoard";
 import { writeTogetherView } from "./togetherNavigation";
@@ -221,6 +222,26 @@ for (const lang of ["en", "he"] as const) describe(`v4 · Together's Routines ·
     expect(block).toContain(tr(lang, "companion.together-view.rhythm-slot-morning"));
     expect(block).toContain(tr(lang, "companion.together-view.rhythm-slot-evening"));
     expect(block).toContain(tr(lang, "companion.together-view.rhythm-slot-night"));
+  });
+
+  it("v4.1 Fits right now: the started routine of this part of the day, with the clock and a Start; none for another part", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date(2026, 10, 12, 7, 30));
+      const morning = routineById("morning");
+      state.actionPlans = [started("morning", lang), started("bedtime", lang)];
+      const block = routinesBlock(page());
+      const fits = block.slice(block.indexOf('data-testid="together-fits"'), block.indexOf('data-testid="together-rhythm"'));
+      expect(fits).toContain('data-routine="morning"');
+      expect(fits).toContain(esc(FITS_COPY[lang].label("07:30")));
+      expect(fits).toContain(esc(RIGHT_NOW_COPY[lang].routineHead(localized(morning.steps[0].label, lang))));
+      expect(fits).toContain(esc(FITS_COPY[lang].start));
+      expect(fits.replace(/<[^>]+>/g, " ")).not.toMatch(BANNED);
+      vi.setSystemTime(new Date(2026, 10, 12, 13, 0));
+      expect(routinesBlock(page())).not.toContain('data-testid="together-fits"');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

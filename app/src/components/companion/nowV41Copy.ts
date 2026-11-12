@@ -86,3 +86,10 @@ export const THEN_NOW_COPY = {
     thisWeek: "השבוע",
   },
 } as const;
+
+/* v4.1 Fits right now — Together's rhythm: the started routine of this part
+   of the day with a step still open (rightNowModel.routineForPart). */
+export const FITS_COPY = {
+  en: { label: (clock: string) => `Fits right now · ${clock}`, start: "Start", continue: "Continue" },
+  he: { label: (clock: string) => `מתאים עכשיו · ${clock}`, start: "להתחיל", continue: "להמשיך" },
+} as const;
