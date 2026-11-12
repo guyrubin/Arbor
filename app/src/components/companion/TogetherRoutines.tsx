@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { track } from "../../lib/analytics";
+import { useHashQuery } from "../../hooks/useHashQuery";
+import { routeHash } from "../../lib/routes";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { localized, type Routine } from "../../lib/routines";
 import {
@@ -90,6 +92,24 @@ export default function TogetherRoutines({ headingId }: { headingId?: string }) 
   const finished = rhythm.filter((card) => card.complete).length;
   const opened = openedId ? templates.find((r) => r.id === openedId) ?? null : null;
   const open = (routineId: string) => setOpenedState({ childId: childProfile.id, routineId });
+  // v4.1: Now's Right now opens a routine by address (#/practice?f=routines&routine=<id>),
+  // once per child and routine; closing the sheet drops the routine from the address,
+  // so Back never reopens it.
+  const requestedRoutine = useHashQuery().get("routine");
+  const handledRoutine = useRef<string | null>(null);
+  useEffect(() => {
+    if (!requestedRoutine || !templates.some((r) => r.id === requestedRoutine)) return;
+    const key = `${childProfile.id}:${requestedRoutine}`;
+    if (handledRoutine.current === key) return;
+    handledRoutine.current = key;
+    setOpenedState({ childId: childProfile.id, routineId: requestedRoutine });
+  }, [requestedRoutine, templates, childProfile.id]);
+  const closeRoutine = () => {
+    setOpenedState({ childId: childProfile.id, routineId: null });
+    if (requestedRoutine && typeof window !== "undefined" && window.location.hash.includes("routine=")) {
+      window.history.replaceState(window.history.state, "", `#${routeHash("practice", { f: "routines" })}`);
+    }
+  };
 
   const startRoutine = (routine: Routine) => {
     if (inFlight.current !== null || start?.status === "pending" || planFor(routine.id)) return;
@@ -254,7 +274,7 @@ export default function TogetherRoutines({ headingId }: { headingId?: string }) 
           start={start && start.routineId === opened.id ? start : null}
           childName={childName}
           onStart={() => startRoutine(opened)}
-          onClose={() => setOpenedState({ childId: childProfile.id, routineId: null })}
+          onClose={closeRoutine}
         />
       )}
     </div>

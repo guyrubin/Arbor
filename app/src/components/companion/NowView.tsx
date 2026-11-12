@@ -58,6 +58,9 @@ import "./companionExperience.css";
 import "./nowView.css";
 import { useObservations } from "../../hooks/useObservations";
 import NowQuestionRow from "./NowQuestionRow";
+import NowRightNow from "./NowRightNow";
+import NowLearned from "./NowLearned";
+import { dayPart } from "./rightNowModel";
 import NowPlanFrame, { type NowPlanKind } from "./NowPlanFrame";
 import NowPlanBody from "./NowPlanBody";
 import NowGuideReader from "./NowGuideReader";
@@ -336,6 +339,18 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const planWhy = pausedLead ? t("companion.pause.kept") : shownLead === "practice" ? practiceWhy || copy.pickedWhy.practice : shownLead === "tonight" && tonightOpen ? copy.pickedTonightOpen : copy.pickedWhy[shownLead];
   // The question is named only where it drove the pick: a step chosen under
   // it, or a practice/notice drawn from its shelves.
+  // v4.1 Right now: the one line that follows the day. Not beside the urgent
+  // help lines or a pause; a state that already leads Now is not offered twice,
+  // and the glance does not repeat what Right now shows.
+  const showRightNow = lead !== "urgent" && !arborPause.paused;
+  const part = dayPart(now.getHours());
+  const visitDate = visit?.whenIso ? new Date(visit.whenIso).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }) : "";
+  const rightNowVisit = showRightNow && visit && lead !== "visit"
+    ? { head: copy.visitTitle(appointmentRoleLabel(visit, t), visitDate), sub: copy.visitBody, cta: copy.visitOpen, onOpen: openVisit } : null;
+  const rightNowTonight = showRightNow && lead !== "tonight" && loop.tonightHasQuestions
+    ? () => { loop.setTonightEarly(true); setTonightOpen(true); } : null;
+  const visitInRightNow = !!rightNowVisit && part === "midday";
+  const tonightInRightNow = !!rightNowTonight && part === "evening";
   const planQuestion = shownLead === "step" && chosen && topic && chosen.topicId === topic.id ? topic.title
     : (shownLead === "practice" || shownLead === "notice") && questionGuided ? topic.title : null;
 
@@ -348,6 +363,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
       </div>
     </header>
     {(topic || onTopicOpen) && <NowQuestionRow data-module="now-focus" lang={lang} topic={topic} onOpen={onTopicOpen} onCreate={onTopicCreate ? () => onTopicCreate("") : undefined} />}
+    {showRightNow && <NowRightNow now={now} lang={lang} visit={rightNowVisit} onTonight={rightNowTonight} />}
 
     <div className="now-main-column">
         {lead === "practice" && <PracticeFocus now={now} journal={loop.journal} onFocus={setFocus} onPending={setFocusPending} />}
@@ -436,6 +452,8 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
           onOpenDoor={openPattern} onOpenPlan={(p) => openPattern(p.def.id)} onChange={(p) => openPattern(p.def.id)}
           onKeep={(p) => void planRows.upsert(keepPlan(p.doc, now))} onClose={(p) => void planRows.upsert(closePlan(p.doc, now))}
           onPrint={(p) => void openPrintablePlan({ doc: p.doc, child: childProfile, lang, now })} />}
+        {/* v4.1: the proposals of this week, asked where the parent already is; About keeps the rest. */}
+        {lead !== "urgent" && <NowLearned now={now} />}
 
         {/* v4: the say-back question and "Arbor noticed" are Notice today's last rows; with no notice rows today they stand
             alone — except beside the urgent help lines, which stand alone in the column (B-TODAY-38). */}
@@ -456,10 +474,10 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
       </NowWeekSoFar>
       <section className="now-glance" aria-labelledby={`${id}-glance`}>
         <h2 id={`${id}-glance`} className="now-kicker">{copy.glanceTitle}</h2>
-        {visit && lead !== "visit" && <button type="button" className="now-weekly-door now-glance-visit" onClick={openVisit}>
+        {visit && lead !== "visit" && !visitInRightNow && <button type="button" className="now-weekly-door now-glance-visit" onClick={openVisit}>
           <BrandChip icon="event" tone="sky" shape="leaf" /><span><b dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</b><small>{copy.visitPrep}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
         </button>}
-        {showPointer && <NowTonightPointer onOpen={() => { loop.setTonightEarly(true); setTonightOpen(true); }} />}
+        {showPointer && !tonightInRightNow && <NowTonightPointer onOpen={() => { loop.setTonightEarly(true); setTonightOpen(true); }} />}
         {/* B-PROG-03: the program is Today's frame: one line beside the practice, never a second lead. */}
         {program && lead !== "program" && <button type="button" className="now-weekly-door now-program-line" data-testid="now-program-line" onClick={openProgram}>
           <BrandChip icon="menu_book" tone="green" shape="drop" /><span><b>{copy.programLabel}</b><small dir="auto">{programSkill}</small></span>

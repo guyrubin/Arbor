@@ -1,0 +1,121 @@
+/* v4.1 Right now (NowRightNow.tsx) and the v4.1 parent motion: a card lifts on
+   hover, a button gives under the finger, a kept chip pops in. Parent register
+   only (.companion-page); every motion stops under prefers-reduced-motion. */
+
+.now-right-now {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin-block: 0 14px;
+  padding: 14px 18px;
+  border-radius: 20px;
+  background: var(--arbor-paper-elevated);
+  box-shadow: 0 0 0 1px var(--arbor-rule), 0 18px 36px -28px rgba(20, 34, 90, 0.42);
+  color: var(--arbor-ink);
+  min-inline-size: 0;
+}
+.now-right-now-face { position: relative; flex: none; display: block; inline-size: 52px; block-size: 52px; }
+.now-right-now-face > :first-child { border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 3px var(--arbor-paper-elevated), 0 10px 20px -10px rgba(20, 34, 90, 0.55); }
+.now-right-now-badge {
+  position: absolute;
+  inset-inline-end: -6px;
+  inset-block-end: -4px;
+  display: grid;
+  place-items: center;
+  inline-size: 26px;
+  block-size: 26px;
+  border-radius: 50%;
+  color: #fff;
+  box-shadow: 0 0 0 2px var(--arbor-paper-elevated);
+}
+.now-right-now-badge[data-part="morning"] { background: linear-gradient(135deg, #fcd98a, #d97706); }
+.now-right-now-badge[data-part="midday"] { background: linear-gradient(135deg, #8fc7f3, #1558c0); }
+.now-right-now-badge[data-part="afternoon"] { background: linear-gradient(135deg, #fbc49b, #c2410c); }
+.now-right-now-badge[data-part="evening"] { background: linear-gradient(135deg, #8fb4ef, #14225a); }
+.now-right-now-text { flex: 1 1 260px; min-inline-size: 0; overflow-wrap: anywhere; }
+.now-right-now-text p { margin: 0; }
+.now-right-now-label { color: var(--arbor-muted); font-size: var(--t-xs); font-weight: 700; font-variant-numeric: tabular-nums; }
+.now-right-now-head { margin-block-start: 3px !important; font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; line-height: 1.25; }
+.now-right-now-sub { margin-block-start: 3px !important; color: var(--arbor-muted); font-size: var(--t-sm); line-height: 1.45; }
+.now-right-now-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-block-size: 44px;
+  padding-inline: 18px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--arbor-ink);
+  color: var(--arbor-paper-elevated);
+  font: inherit;
+  font-size: var(--t-sm);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.now-right-now-cta:focus-visible { outline: 3px solid var(--arbor-sky); outline-offset: 2px; }
+@media (max-width: 520px) {
+  .now-right-now { align-items: flex-start; }
+  .now-right-now-cta { flex: 1 1 100%; }
+}
+
+/* v4.1 motion, parent register. */
+@keyframes arbor-fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes arbor-pop-in { 0% { transform: scale(0.7); opacity: 0; } 60% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(1); } }
+.companion-page .arbor-fade { animation: arbor-fade-in 0.45s ease-out both; }
+.companion-page .arbor-pop { animation: arbor-pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.companion-page .arbor-press { transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.companion-page .arbor-press:active { transform: scale(0.96); }
+@media (hover: hover) {
+  .companion-page .arbor-lift { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+  .companion-page .arbor-lift:hover { transform: translateY(-3px); box-shadow: 0 0 0 1px var(--arbor-rule), 0 34px 56px -30px rgba(21, 88, 192, 0.6); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .companion-page .arbor-fade, .companion-page .arbor-pop { animation: none; }
+  .companion-page .arbor-press, .companion-page .arbor-lift { transition: none; }
+  .companion-page .arbor-press:active, .companion-page .arbor-lift:hover { transform: none; }
+}
+
+/* v4.1 Arbor learned this week (NowLearned.tsx). */
+.now-learned {
+  margin-block: 14px 0;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: var(--arbor-paper-elevated);
+  box-shadow: 0 0 0 1px var(--arbor-rule), 0 18px 36px -28px rgba(20, 34, 90, 0.42);
+  color: var(--arbor-ink);
+  min-inline-size: 0;
+}
+.now-learned-head { display: flex; align-items: center; gap: 10px; }
+.now-learned-titles { min-inline-size: 0; }
+.now-learned-titles h2 { margin: 0; font-family: var(--font-display); font-size: 1.125rem; font-weight: 600; line-height: 1.25; }
+.now-learned-titles p { margin: 2px 0 0; color: var(--arbor-muted); font-size: var(--t-xs); }
+.now-learned-rows { display: grid; gap: 0; margin: 10px 0 0; padding: 0; list-style: none; }
+.now-learned-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; padding-block: 10px; border-block-start: 1px solid var(--arbor-rule); }
+.now-learned-fact { grid-column: 1; margin: 0; font-size: var(--t-base); line-height: 1.4; overflow-wrap: anywhere; }
+.now-learned-src { grid-column: 1; margin: 0; color: var(--arbor-muted); font-size: var(--t-xs); }
+.now-learned-actions, .now-learned-chip { grid-column: 2; grid-row: 1 / span 2; }
+.now-learned-actions { display: flex; gap: 8px; }
+.now-learned-actions button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-block-size: 44px; padding-inline: 14px; border-radius: 14px;
+  font: inherit; font-size: var(--t-sm); font-weight: 700; white-space: nowrap; cursor: pointer;
+}
+.now-learned-yes { border: 0; background: var(--arbor-ink); color: var(--arbor-paper-elevated); }
+.now-learned-no { border: 1px solid var(--arbor-rule-strong); background: transparent; color: var(--arbor-ink); }
+.now-learned-actions button:disabled { opacity: 0.6; cursor: progress; }
+.now-learned-actions button:focus-visible { outline: 3px solid var(--arbor-sky); outline-offset: 2px; }
+.now-learned-chip {
+  display: inline-flex; align-items: center; gap: 6px; min-block-size: 44px; padding-inline: 14px;
+  border-radius: 14px; font-size: var(--t-sm); font-weight: 700;
+}
+.now-learned-chip[data-status="approved"] { background: var(--arbor-green-soft); color: var(--arbor-green-ink); }
+.now-learned-chip[data-status="rejected"] { background: var(--arbor-paper-deep); color: var(--arbor-muted); }
+.now-learned-failed { grid-column: 1 / -1; margin: 4px 0 0; color: var(--arbor-clay-deep); font-size: var(--t-xs); }
+@media (max-width: 520px) {
+  .now-learned-row { grid-template-columns: minmax(0, 1fr); }
+  .now-learned-actions, .now-learned-chip { grid-column: 1; grid-row: auto; margin-block-start: 6px; }
+  .now-learned-actions button { flex: 1; }
+}
