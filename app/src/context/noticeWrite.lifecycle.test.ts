@@ -4,6 +4,7 @@ import ts from "typescript";
 import { buildMomentLog } from "../content/behaviorTaxonomy";
 import { observeMilestoneDoc } from "../lib/milestones/observe";
 import type { BehaviorLog, Milestone } from "../types";
+import { forgetMomentAttempt, readMomentAttempt, rememberMomentAttempt } from "../lib/momentRetryStore";
 
 // Exercise the actual context closures with storage replaced, avoiding a full
 // app mount and all unrelated subscriptions/AI capabilities in this lifecycle test.
@@ -53,13 +54,21 @@ describe("the actual context milestone acknowledgement seam", () => {
   });
 });
 
-function momentHarness() {
+/** The device store a reload keeps (localStorage), shared by harnesses. */
+function deviceStore() {
+  const map = new Map<string, string>();
+  return { map, getItem: (k: string) => map.get(k) ?? null, setItem: (k: string, v: string) => { map.set(k, v); }, removeItem: (k: string) => { map.delete(k); } };
+}
+function momentHarness(storage = deviceStore()) {
   const upsert = vi.fn<(row: BehaviorLog, opts?: unknown) => Promise<void>>().mockResolvedValue();
   const captureScope = { childId: "child-a", writer: upsert, momentRetries: new Map<string, BehaviorLog>(), momentWrites: new Set<string>() };
   const env = {
     childProfile: { id: "child-a" }, buildMomentLog,
     captureScope, captureScopeRef: { current: captureScope }, captureWritesRef: { current: new Set<string>() },
     logsCol: { upsert }, track: vi.fn(), trackCaptureSaved: vi.fn(), toast: vi.fn(), t: (key: string) => key,
+    readMomentAttempt: (childId: string, key: string) => readMomentAttempt(childId, key, { storage }),
+    rememberMomentAttempt: (childId: string, key: string, attempt: { id: string; timestamp: string }) => rememberMomentAttempt(childId, key, attempt, { storage }),
+    forgetMomentAttempt: (childId: string, key: string) => forgetMomentAttempt(childId, key, { storage }),
   };
   return { ...env, call: closure("addMoment", env) as (text: string, opts?: Record<string, unknown>) => Promise<BehaviorLog | null> };
 }
@@ -102,10 +111,30 @@ describe("Tonight's opt-in moment continuation", () => {
     expect(h.logsCol.upsert).toHaveBeenCalledOnce();
   });
   it("preserves ordinary queued-write callers' existing defaults", async () => {
-    const h = momentHarness();
+    const storage = deviceStore();
+    const h = momentHarness(storage);
     const saved = await h.call("A regular moment");
     expect(saved?.trigger).toBe("A regular moment");
     expect(h.logsCol.upsert.mock.calls[0][1]).toBeUndefined();
     expect(h.captureScope.momentRetries.size).toBe(0);
+    // No retry key, no device record (the moment's text never becomes a key).
+    expect(storage.map.size).toBe(0);
+  });
+  it("B-DATA-14: a retry after a reload keeps the first attempt's id, so the queued write is overwritten, not doubled", async () => {
+    const storage = deviceStore();
+    const before = momentHarness(storage), write = deferred(); before.logsCol.upsert.mockReturnValueOnce(write.promise);
+    const pending = before.call("She said bus.", opts);
+    write.reject(Error("not confirmed")); await expect(pending).resolves.toBeNull();
+    const first = before.logsCol.upsert.mock.calls[0][0];
+    // Reload: a new context (empty in-memory retries), the same device store.
+    const after = momentHarness(storage);
+    vi.setSystemTime(new Date("2026-10-18T14:00:00.000Z"));
+    const saved = await after.call("She said bus.", opts);
+    expect(saved).toMatchObject({ id: first.id, timestamp: first.timestamp });
+    expect(after.logsCol.upsert.mock.calls[0][0].id).toBe(first.id);
+    // Acknowledged: the place is free again, and nothing is left on the device.
+    expect(storage.map.size).toBe(0);
+    const next = await after.call("A separate later moment", opts);
+    expect(next!.id).not.toBe(first.id);
   });
 });

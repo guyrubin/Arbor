@@ -186,6 +186,7 @@ export async function pollMemoryReview(deps: {
 import { attachmentMetadata, parseCompanionAttachments, type ComposerAttachment, type AttachmentReceipt, type AttachmentContext } from "../lib/companionAttachments";
 import { requestCompanionConversation } from "../lib/companionConversation";
 import { councilConversation } from "../lib/councilConversation";
+import { forgetMomentAttempt, readMomentAttempt, rememberMomentAttempt } from "../lib/momentRetryStore";
 
 export type ChatMessage = {
   attachments?: AttachmentReceipt[];
@@ -1601,7 +1602,13 @@ function useArborState() {
     const { context: _unchosenContext, ...moment } = built;
     const writeKey = `${childProfile.id}:moment:${text}:${JSON.stringify(writeOpts)}`;
     const attemptKey = retryKey ? `${childProfile.id}:moment:${retryKey}` : writeKey;
-    const previous = requireAcknowledgement ? captureScope.momentRetries.get(attemptKey) : undefined;
+    // B-DATA-14: after a reload the in-memory retry is gone, but the first
+    // attempt may still sit in the persistent Firestore queue; a stable
+    // retry key finds its id on the device so the retry overwrites it.
+    const persistRetry = requireAcknowledgement && !!retryKey;
+    const previous = requireAcknowledgement
+      ? captureScope.momentRetries.get(attemptKey) ?? (persistRetry ? readMomentAttempt(captureScope.childId, attemptKey) : undefined)
+      : undefined;
     const logItem: BehaviorLog = {
       ...moment,
       ...(previous ? { id: previous.id, timestamp: previous.timestamp } : {}),
@@ -1615,8 +1622,10 @@ function useArborState() {
     if (writes.has(inFlightKey) || captureScopeRef.current !== captureScope || isCurrent?.() === false) return null;
     writes.add(inFlightKey);
     if (requireAcknowledgement) captureScope.momentRetries.set(attemptKey, logItem);
+    if (persistRetry) rememberMomentAttempt(captureScope.childId, attemptKey, { id: logItem.id, timestamp: logItem.timestamp });
     try {
       await logsCol.upsert(logItem, requireAcknowledgement ? { requireAcknowledgement: true } : undefined);
+      if (persistRetry) forgetMomentAttempt(captureScope.childId, attemptKey);
       if (captureScopeRef.current !== captureScope || isCurrent?.() === false) return null;
       if (requireAcknowledgement) captureScope.momentRetries.delete(attemptKey);
       track("log_created", { type: logItem.behaviorType, context: logItem.context });
