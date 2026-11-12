@@ -119,3 +119,24 @@
   .now-learned-actions, .now-learned-chip { grid-column: 1; grid-row: auto; margin-block-start: 6px; }
   .now-learned-actions button { flex: 1; }
 }
+
+/* v4.1 Then and now (My child). */
+.then-now { margin-block: 20px; padding: 16px 18px; border-radius: 20px; background: var(--arbor-paper-elevated); box-shadow: var(--arbor-shadow-primary); }
+.then-now-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.then-now-head h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.then-now-head p { margin: 0; font-size: 12.5px; color: var(--arbor-muted); }
+.then-now-pairs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 12px 0 0; padding: 0; list-style: none; }
+.then-now-pair { min-width: 0; padding: 14px 16px; border-radius: 16px; background: var(--arbor-paper-elevated); box-shadow: 0 0 0 1px var(--arbor-rule); }
+.then-now-pair p, .then-now-pair q { margin: 0; }
+.then-now-pair q { display: block; overflow-wrap: anywhere; font-family: var(--font-editorial); }
+.then-now-pair q::before, .then-now-pair q::after { content: none; }
+.then-now-area { font-size: 12px; font-weight: 700; color: var(--then-now-ink, var(--arbor-ink)); }
+.then-now-pair .then-now-when { margin-block-start: 8px; font-size: 11.5px; font-weight: 700; color: var(--arbor-muted); }
+.then-now-pair .then-now-when-now { margin-block-start: 10px; color: var(--arbor-green-ink, var(--arbor-ink)); }
+.then-now-then { font-style: italic; font-size: 17px; line-height: 1.3; color: var(--arbor-muted); }
+.then-now-now { font-size: 20px; line-height: 1.22; color: var(--arbor-ink); }
+@media (max-width: 767px) {
+  .then-now { padding: 14px; }
+  .then-now-pairs { display: flex; overflow-x: auto; scrollbar-width: none; padding-block-end: 2px; }
+  .then-now-pair { flex: none; width: 236px; }
+}

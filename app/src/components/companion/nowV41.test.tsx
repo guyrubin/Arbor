@@ -35,7 +35,8 @@ vi.mock("../ui/HeroAvatar", () => ({ HeroAvatar: () => <span data-testid="hero" 
 
 import NowRightNow from "./NowRightNow";
 import NowLearned, { learnedThisWeek } from "./NowLearned";
-import { LEARNED_COPY, RIGHT_NOW_COPY } from "./nowV41Copy";
+import ThenAndNow, { thenAndNowPairs } from "./ThenAndNow";
+import { LEARNED_COPY, RIGHT_NOW_COPY, THEN_NOW_COPY } from "./nowV41Copy";
 
 const at = (day: number, hour: number, minute: number) => new Date(2026, 10, day, hour, minute);
 const render = (node: React.ReactElement) => renderToStaticMarkup(node);
@@ -122,12 +123,52 @@ describe("Arbor learned this week", () => {
   });
 });
 
+describe("Then and now", () => {
+  const now = at(12, 9, 0);
+  const note = (id: string, shelf: string, when: Date, notes: string) => ({
+    obs: { id: `behaviorLogs:${id}`, origin: "behaviorLogs", shelf, at: when.toISOString() },
+    log: { id, timestamp: when.toISOString(), behaviorType: "Moment", notes },
+  });
+  const rows = [
+    note("w1", "words", new Date(2026, 8, 14, 9), "Me do shoes, she said at the door."),
+    note("w2", "words", at(10, 18, 0), "I can do it by my own self, she said."),
+    note("f1", "feelings", new Date(2026, 9, 2, 9), "Cried and hid when the tower fell."),
+    note("f2", "feelings", at(1, 17, 0), "Said she was frustrated and needed a minute."),
+    note("p1", "play", at(11, 10, 0), "Asked Dana to be the doctor today."), // one note only: no pair
+    note("s1", "sleep", at(9, 20, 0), "Fell asleep after two songs tonight."),
+    note("s2", "sleep", at(6, 20, 0), "Needed three songs and a back rub."), // under a week apart: no then
+  ];
+  const observations = rows.map((r) => r.obs) as never[];
+  const logs = rows.map((r) => r.log) as never[];
+
+  it("pairs only shelves with a note a week older than the newest, newest first", () => {
+    const pairs = thenAndNowPairs(observations, logs);
+    expect(pairs.map((p) => p.shelf)).toEqual(["words", "feelings"]);
+    expect(pairs[0].then.text).toBe("Me do shoes, she said at the door.");
+    expect(pairs[0].now.text).toBe("I can do it by my own self, she said.");
+  });
+
+  it("quotes and dates both sentences, this week's as This week, and draws nothing without a pair", () => {
+    reset();
+    const html = render(<ThenAndNow observations={observations} logs={logs} now={now} />);
+    expect(html.match(/data-testid="then-now-pair"/g)).toHaveLength(2);
+    expect(html).toContain(THEN_NOW_COPY.en.title);
+    expect(html).toContain("This week");
+    expect(html).toContain("Sep 14, 2026");
+    expect(html).not.toMatch(/better|improv|progress|behind|ahead/i);
+    harness.locale = "he";
+    expect(render(<ThenAndNow observations={observations} logs={logs} now={now} />)).toContain(THEN_NOW_COPY.he.thisWeek);
+    expect(render(<ThenAndNow observations={observations.slice(4, 5)} logs={logs} now={now} />)).toBe("");
+  });
+});
+
 describe("v4.1 copy", () => {
   const keys = (o: object) => Object.keys(o).sort();
   it("says the same things in English and Hebrew", () => {
     expect(keys(RIGHT_NOW_COPY.he)).toEqual(keys(RIGHT_NOW_COPY.en));
     expect(keys(RIGHT_NOW_COPY.he.hardHead)).toEqual(["afternoon", "evening", "midday", "morning"]);
     expect(keys(LEARNED_COPY.he)).toEqual(keys(LEARNED_COPY.en));
+    expect(keys(THEN_NOW_COPY.he)).toEqual(keys(THEN_NOW_COPY.en));
     for (const value of [...Object.values(LEARNED_COPY.he), ...Object.values(RIGHT_NOW_COPY.he.hardHead), RIGHT_NOW_COPY.he.hardCta]) {
       expect(value).toMatch(/[֐-׿]/);
     }
@@ -140,6 +181,10 @@ describe("v4.1 wiring", () => {
     const view = read("NowView.tsx");
     expect(view.indexOf("<NowRightNow")).toBeGreaterThan(view.indexOf("<NowQuestionRow"));
     expect(view.indexOf("<NowLearned")).toBeGreaterThan(view.indexOf("<PlansSection"));
+  });
+  it("puts Then and now under the portrait cards on My child", () => {
+    const portrait = read("ChildPortrait.tsx");
+    expect(portrait.indexOf("<ThenAndNow")).toBeGreaterThan(portrait.indexOf("<PortraitCards"));
   });
   it("lets Together open a routine by address and drops it on close", () => {
     const src = read("TogetherRoutines.tsx");

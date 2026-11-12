@@ -70,3 +70,19 @@ export const LEARNED_COPY = {
     removed: "הוסר",
   },
 } as const;
+
+/* v4.1 Then and now — My child. The parent's own words on one shelf, the
+   newest note beside the newest one written at least a week before it.
+   Arbor quotes and dates; it never says which sentence is better. */
+export const THEN_NOW_COPY = {
+  en: {
+    title: "Then and now",
+    sub: "Your own words, then and now, side by side. Never a score.",
+    thisWeek: "This week",
+  },
+  he: {
+    title: "אז ועכשיו",
+    sub: "המילים שלכם, מאז ומעכשיו, זו לצד זו. אף פעם לא ציון.",
+    thisWeek: "השבוע",
+  },
+} as const;

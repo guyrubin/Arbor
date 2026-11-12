@@ -13,6 +13,8 @@ import { trackCompanionPlaceOpen } from "../../lib/kpiEvents";
 import { useChildPhoneLayout } from "./ChildDoors";
 import MilestoneAreas from "./MilestoneAreas";
 import PortraitCards from "./PortraitCards";
+import ThenAndNow from "./ThenAndNow";
+import { useNowClock } from "./useNowClock";
 import "./childPortrait.css";
 
 /**
@@ -23,6 +25,8 @@ import "./childPortrait.css";
  *     the child's details now.
  *  2. Three portrait cards (PortraitCards): a strength, a moment the parent
  *     kept, and what the family is working on (the goal picker opens here).
+ *  2b. v4.1 Then and now (ThenAndNow): the parent's own words on a shelf,
+ *     the newest beside one from at least a week before, dated, at most three.
  *  3. "Milestones across areas" (MilestoneAreas → DevelopmentMap): eight
  *     area rows with Seen-it pips and the newest moment; a row opens inline
  *     (a sheet on a phone) to answer its skills; v4: the 5-minute check is one
@@ -56,6 +60,7 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
   const [goalOwner, setGoalOwner] = useState<string | null>(null);
   useEffect(() => { setGoalOwner(null); }, [childProfile.id]);
   const record = useObservationRecord();
+  const now = useNowClock();
   const observations = useMemo(() => record.observations.filter(o => o.childId === childProfile.id), [record.observations, childProfile.id]);
   const logMap = useMemo(() => new Map((record.sources.behaviorLogs ?? []).map(log => [`behaviorLogs:${log.id}`, log])), [record.sources.behaviorLogs]);
   const name = (childProfile.name || "").split(/\s+/)[0] || childProfile.name;
@@ -93,6 +98,7 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
       </div>
     </header>}
     <PortraitCards sources={record.sources} onEditGoal={() => setGoalOwner(childProfile.id)} />
+    <ThenAndNow observations={observations} logs={record.sources.behaviorLogs ?? []} now={now} />
   </div>;
   const areasModule = <div key="areas" data-module="child-milestones-areas">
     {goalOwner === childProfile.id && <GoalBuilderModal key={`goal-picker:${childProfile.id}`} open childId={childProfile.id} childName={childProfile.name}
