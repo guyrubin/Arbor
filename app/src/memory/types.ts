@@ -49,6 +49,9 @@ export type MemoryStore = {
    *  ownership-bearing writes — client-supplied familyIds are never trusted.
    *  Optional — single-tenant (local) stores omit it. */
   ensureFamilyForUser?(uid: string): Promise<{ familyId: string }>;
+  /** The uid's family when one exists, else null. Read only, so a caller that
+   *  only labels (the cost record) never provisions a family beside onboarding. */
+  findFamilyForUser?(uid: string): Promise<{ familyId: string } | null>;
   ensureFamilyChild?(input: {
     familyId: string;
     childId: string;

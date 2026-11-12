@@ -69,7 +69,7 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
       });
       const childName = input.name;
       await addChild({ ...input, ...(birthDate ? { birthDate } : {}) });
-      toast(t("ac.addedToast", { name: childName }), "success");
+      toast(t("ac.addedToast", { name: childName }), "success", undefined, { outlivesVisit: true });
       close();
     } catch {
       // B-DATA-15: a new child's id comes from the server; offline (or a

@@ -356,7 +356,7 @@ describe("IA-13 · hash resolution has three cases, not two", () => {
     const src = fs.readFileSync(path.resolve(__dirname, "../context/ArborContext.tsx"), "utf8");
     expect(src).toContain("resolveHash(");
     expect(src).toMatch(/window\.history\.replaceState\(null, "", `#\/\$\{FALLBACK_ROUTE\}`\)/);
-    expect(src).toContain('toast(t("elev.nav.linkMoved"), "info")');
+    expect(src).toContain('toast(t("elev.nav.linkMoved"), "info", undefined, { outlivesVisit: true })');
     // The old unconditional fallback is gone.
     expect(src).not.toContain("tabFromHash()");
   });

@@ -33,10 +33,16 @@ const toMillis = (v: unknown): number =>
 export class FamilyService {
   constructor(private readonly db: FirebaseFirestore.Firestore) {}
 
-  async ensureFamilyForUser(uid: string): Promise<{ familyId: string }> {
+  /** The family `uid` is a member of, or null. Read only: it never creates one. */
+  async findFamilyForUser(uid: string): Promise<{ familyId: string } | null> {
     const existing = await this.db.collectionGroup("members").where("userId", "==", uid).limit(1).get();
     const familyId = existing.docs[0]?.ref.parent.parent?.id;
-    if (familyId) return { familyId };
+    return familyId ? { familyId } : null;
+  }
+
+  async ensureFamilyForUser(uid: string): Promise<{ familyId: string }> {
+    const found = await this.findFamilyForUser(uid);
+    if (found) return found;
 
     const nextFamilyId = randomUUID();
     const now = new Date().toISOString();

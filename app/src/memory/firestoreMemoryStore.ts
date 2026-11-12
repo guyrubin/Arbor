@@ -52,6 +52,11 @@ export class FirestoreMemoryStore implements MemoryStore {
     return this.families.ensureFamilyForUser(uid);
   }
 
+  /** The uid's family, or null; never creates one (cost attribution). */
+  findFamilyForUser(uid: string): Promise<{ familyId: string } | null> {
+    return this.families.findFamilyForUser(uid);
+  }
+
   async ensureFamilyChild(input: {
     familyId: string;
     childId: string;

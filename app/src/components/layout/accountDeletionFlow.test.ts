@@ -346,7 +346,7 @@ describe("production account-deletion callbacks", () => {
     f.type("DELETE"); button(f.tree, "set.acctDel.confirm").props.onClick(); f.setOpen(false);
     wait.resolve(receipt(true)); await f.settle();
     expect(f.purgeAllComicPages).toHaveBeenCalledOnce(); expect(f.signOut).toHaveBeenCalledOnce();
-    expect(f.toast).toHaveBeenCalledWith("set.acctDel.done", "success");
+    expect(f.toast).toHaveBeenCalledWith("set.acctDel.done", "success", undefined, { outlivesVisit: true });
   });
   it("identity changes invalidate confirmation and a pending completion cannot clean another account", async () => {
     const f = deletion(), wait = deferred<AccountDeletionReceipt>(); f.api.accountDelete.mockReturnValueOnce(wait.promise);

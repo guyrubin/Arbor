@@ -14,12 +14,16 @@ import { currentRequestContext, requestContextMiddleware } from "./requestContex
 
 class Families {
   calls: string[] = [];
-  async ensureFamilyForUser(uid: string) { this.calls.push(uid); return { familyId: `fam-${uid}` }; }
+  created: string[] = [];
+  constructor(readonly known = new Set<string>()) {}
+  async findFamilyForUser(uid: string) { this.calls.push(uid); return this.known.has(uid) || !this.known.size ? { familyId: `fam-${uid}` } : null; }
+  async ensureFamilyForUser(uid: string) { this.created.push(uid); return { familyId: `fam-${uid}` }; }
 }
 
-/** Shaped like FirestoreMemoryStore: the lookup delegates through `this`. */
+/** Shaped like FirestoreMemoryStore: the lookups delegate through `this`. */
 class ClassStore {
   constructor(readonly families = new Families()) {}
+  findFamilyForUser(uid: string): Promise<{ familyId: string } | null> { return this.families.findFamilyForUser(uid); }
   ensureFamilyForUser(uid: string): Promise<{ familyId: string }> { return this.families.ensureFamilyForUser(uid); }
 }
 
@@ -49,19 +53,19 @@ describe("bindFamilyForCost", () => {
   });
 
   it("serves the request when the lookup throws synchronously", async () => {
-    const store = { ensureFamilyForUser(): Promise<{ familyId: string }> { throw new TypeError("Cannot read properties of undefined (reading 'families')"); } };
+    const store = { findFamilyForUser(): Promise<{ familyId: string } | null> { throw new TypeError("Cannot read properties of undefined (reading 'families')"); } };
     await expect(run(store, "/tts", "uid-sync-throw")).resolves.toEqual({ calls: 1, familyId: null });
   });
 
   it("serves the request when the lookup rejects", async () => {
-    const store = { ensureFamilyForUser: vi.fn(async () => { throw new Error("index missing"); }) };
+    const store = { findFamilyForUser: vi.fn(async (): Promise<{ familyId: string } | null> => { throw new Error("index missing"); }) };
     await expect(run(store, "/todays-focus", "uid-reject")).resolves.toEqual({ calls: 1, familyId: null });
   });
 
   it("leaves unpaid routes and stores without a lookup alone", async () => {
-    const store = { ensureFamilyForUser: vi.fn(async () => ({ familyId: "fam-x" })) };
+    const store = { findFamilyForUser: vi.fn(async () => ({ familyId: "fam-x" })) };
     await expect(run(store, "/entitlement", "uid-unpaid")).resolves.toEqual({ calls: 1, familyId: null });
-    expect(store.ensureFamilyForUser).not.toHaveBeenCalled();
+    expect(store.findFamilyForUser).not.toHaveBeenCalled();
     await expect(run({}, "/chat", "uid-no-lookup")).resolves.toEqual({ calls: 1, familyId: null });
   });
 
@@ -71,5 +75,18 @@ describe("bindFamilyForCost", () => {
     const again = await run(store, "/tts", "uid-cached");
     expect(again).toEqual({ calls: 1, familyId: "fam-uid-cached" });
     expect(store.families.calls).toEqual(["uid-cached"]);
+  });
+
+  it("only reads: a uid without a family is served unlabelled, nothing is created, and it is asked again", async () => {
+    const families = new Families(new Set(["uid-known"]));
+    const store = new ClassStore(families);
+    await expect(run(store, "/chat", "uid-new-parent")).resolves.toEqual({ calls: 1, familyId: null });
+    await expect(run(store, "/tts", "uid-new-parent")).resolves.toEqual({ calls: 1, familyId: null });
+    expect(families.calls).toEqual(["uid-new-parent", "uid-new-parent"]);
+    expect(families.created).toEqual([]);
+    // A store that can only provision is never asked to.
+    const provisionOnly = { ensureFamilyForUser: vi.fn(async () => ({ familyId: "fam-y" })) };
+    await expect(run(provisionOnly as never, "/chat", "uid-provision-only")).resolves.toEqual({ calls: 1, familyId: null });
+    expect(provisionOnly.ensureFamilyForUser).not.toHaveBeenCalled();
   });
 });

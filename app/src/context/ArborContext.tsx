@@ -982,7 +982,9 @@ function useArborState() {
     const landOnFallback = () => {
       setActiveTabState(FALLBACK_ROUTE);
       try { window.history.replaceState(null, "", `#/${FALLBACK_ROUTE}`); } catch { /* noop */ }
-      toast(t("elev.nav.linkMoved"), "info");
+      // The effect keeps its first render's callback; a moved link names nothing
+      // from the visit, so it outlives the scope retirements of the first load.
+      toastCtx?.toast(t("elev.nav.linkMoved"), "info", undefined, { outlivesVisit: true });
     };
     const onHash = () => {
       if (isKidModeActive()) return;

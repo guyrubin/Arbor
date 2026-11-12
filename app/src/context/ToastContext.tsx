@@ -16,10 +16,15 @@ type ToastType = "success" | "error" | "info";
  *  auto-dismissed — a 4 s window is not long enough to read a message and
  *  decide to act on it, so the parent dismisses it themselves. */
 export type ToastAction = { label: string; onClick: () => void };
-type Toast = { id: number; type: ToastType; message: string; action?: ToastAction };
+/** `outlivesVisit`: the message names nothing from the account/child visit a
+ *  ToastScope retires (the account was deleted, a link moved, the child just
+ *  added and now shown), so the retirement keeps it and an old callback may
+ *  still raise it. It never carries an action: an action belongs to a visit. */
+export type ToastOptions = { outlivesVisit?: boolean };
+type Toast = { id: number; type: ToastType; message: string; action?: ToastAction; outlivesVisit?: boolean };
 
 type ToastContextValue = {
-  toast: (message: string, type?: ToastType, action?: ToastAction) => void;
+  toast: (message: string, type?: ToastType, action?: ToastAction, options?: ToastOptions) => void;
   retire: () => void;
 };
 
@@ -55,23 +60,25 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const retire = useCallback(() => {
     const next = ++lifetime.current;
-    queueRef.current = [];
-    setToasts([]);
+    queueRef.current = queueRef.current.filter((q) => q.outlivesVisit);
+    setToasts((t) => t.filter((x) => x.outlivesVisit));
     setGeneration(next);
   }, []);
 
   const remove = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
 
   const toast = useCallback(
-    (message: string, type: ToastType = "info", action?: ToastAction) => {
-      if (lifetime.current !== generation) return;
+    (message: string, type: ToastType = "info", action?: ToastAction, options?: ToastOptions) => {
+      const outlivesVisit = options?.outlivesVisit === true && !action;
+      if (!outlivesVisit && lifetime.current !== generation) return;
       const id = Date.now() + Math.random();
+      const item: Toast = outlivesVisit ? { id, type, message, outlivesVisit } : { id, type, message, action };
       if (isKidModeActive()) {
-        queueRef.current.push({ id, type, message, action });
+        queueRef.current.push(item);
         return;
       }
-      setToasts((t) => [...t, { id, type, message, action }]);
-      if (!action) setTimeout(() => remove(id), 4000);
+      setToasts((t) => [...t, item]);
+      if (!item.action) setTimeout(() => remove(id), 4000);
     },
     [remove, generation]
   );

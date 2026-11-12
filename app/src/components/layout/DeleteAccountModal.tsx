@@ -123,7 +123,7 @@ export default function DeleteAccountModal({ open, onClose }: { open: boolean; o
       if (receipt.complete) {
         await wipeDeviceData(ownsAccount);
         if (!ownsAccount()) return;
-        toast(t("set.acctDel.done"), "success");
+        toast(t("set.acctDel.done"), "success", undefined, { outlivesVisit: true });
         onClose();
         await signOut();
       } else if (isCurrent()) {

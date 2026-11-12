@@ -16,7 +16,7 @@ import {ProgramBookHandbackView} from './src/components/program/ProgramBookHandb
 import {translate} from './src/lib/i18n';
 window.kidLocked=false;window.kidListeners=new Set();window.writes=[];window.actions=0;
 window.lock=value=>{window.kidLocked=value;window.kidListeners.forEach(fn=>fn(value));};
-function Child(){const {toast}=useToast();window.notify=()=>toast('Synthetic private message','info',{label:'Synthetic action',onClick:()=>window.actions++});return null;}
+function Child(){const {toast}=useToast();window.notify=()=>toast('Synthetic private message','info',{label:'Synthetic action',onClick:()=>window.actions++});window.notifyCarried=()=>toast('Synthetic account message','info',undefined,{outlivesVisit:true});return null;}
 function App(){const [scope,setScope]=useState('owner-a:child-a'),[family,setFamily]=useState(true);
  window.scope=value=>flushSync(()=>setScope(value));window.family=value=>flushSync(()=>setFamily(value));
  const lang=window.fixture.lang,t=k=>translate(lang,'elev.program.object.'+k);
@@ -54,6 +54,10 @@ try{
   await staleAction.evaluate(el=>el.click());assert.equal(await page.evaluate(()=>window.actions),0,'detached old action cannot write');
   await page.evaluate(()=>window.oldNotify());assert.equal(await privateMessages().count(),0,'late failure from old owner cannot re-offer private text');
   await page.evaluate(()=>window.scope('owner-a:child-a'));await page.evaluate(()=>window.oldNotify());assert.equal(await privateMessages().count(),0,'A→B→A cannot revive old callbacks');
+  const carried=()=>page.getByText('Synthetic account message',{exact:true});
+  await page.evaluate(()=>{window.oldCarried=window.notifyCarried;window.notifyCarried();});await carried().waitFor();await page.evaluate(()=>window.scope('owner-c:child-a'));assert.equal(await carried().count(),1,'a message that names nothing from the visit outlives its retirement');
+  await page.evaluate(()=>window.family(false));assert.equal(await carried().count(),1,'and the family unmount (account deleted, signed out)');await page.evaluate(()=>window.family(true));await page.locator('textarea').waitFor();
+  await page.evaluate(()=>window.oldCarried());assert.equal(await carried().count(),2,'an old callback may still raise a visit-free message');
   await page.evaluate(()=>{window.lock(true);window.notify();});assert.equal(await privateMessages().count(),0);
   await page.evaluate(()=>window.scope('owner-a:child-b'));await page.evaluate(()=>window.lock(false));assert.equal(await privateMessages().count(),0,'queued old-child toast is discarded');
   await page.evaluate(()=>window.notify());await privateMessages().waitFor();await page.evaluate(()=>window.family(false));assert.equal(await privateMessages().count(),0,'logout removes family feedback');

@@ -122,6 +122,9 @@ class TestOwnershipMemoryStore implements MemoryStore {
   ensureFamilyForUser(uid: string) {
     return this.families.ensureFamilyForUser(uid);
   }
+  findFamilyForUser(uid: string) {
+    return this.families.findFamilyForUser(uid);
+  }
   async ensureFamilyChild(input: { familyId: string; childId: string; userId: string; childProfile?: Record<string, unknown> }) {
     await this.families.ensureFamilyMembership(input.familyId, input.userId);
     await this.families.ensureChild(input.familyId, input.childId, input.childProfile);
