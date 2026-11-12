@@ -152,6 +152,22 @@ describe("B-PROG-16 · the real catalogue, the flag, and dismiss", () => {
     expect(mem.size).toBe(2);
   });
 
+  it("12 Nov: a card dismissed before owner-scoping stays dismissed — the legacy list is claimed once, recent keys only, then deleted", () => {
+    const now = Date.parse("2026-11-12T20:00:00Z");
+    const mem = new Map([[childScopedKey("programHandback", "kid-1"), JSON.stringify(["plan-new-food:2026-11-11", "plan-old:2026-10-01", "no-date"])]]);
+    const storage = { getItem: (key: string) => mem.get(key) ?? null, setItem: (key: string, value: string) => { mem.set(key, value); }, removeItem: (key: string) => { mem.delete(key); } };
+    // The first owner to read claims today's card's key; the stale and malformed ones are dropped.
+    expect(readDismissedHandbacks(storage, "kid-1", "owner-a", now)).toEqual(["plan-new-food:2026-11-11"]);
+    expect(mem.has(childScopedKey("programHandback", "kid-1"))).toBe(false);
+    expect(JSON.parse(mem.get(childScopedKey("programHandback.owner-a", "kid-1"))!)).toEqual(["plan-new-food:2026-11-11"]);
+    // Claimed once: a second owner on the device gets nothing from it.
+    expect(readDismissedHandbacks(storage, "kid-1", "owner-b", now)).toEqual([]);
+    // The claimed card stays hidden on the real render path.
+    expect(readDismissedHandbacks(storage, "kid-1", "owner-a", now)).toEqual(["plan-new-food:2026-11-11"]);
+    // A new dismissal joins the claimed one.
+    expect(dismissHandback(storage, "kid-1", "plan-new-food:2026-11-12", "owner-a")).toEqual(["plan-new-food:2026-11-11", "plan-new-food:2026-11-12"]);
+  });
+
   it("the handback chrome exists in EN and HE and carries no verdict", () => {
     for (const lang of ["en", "he"] as const) {
       const lines = ["elev.program.object.handback", "elev.program.object.tomorrow", "elev.program.object.ask", "elev.program.object.dismiss", "elev.program.object.save", "elev.program.object.words"].map((k) => translate(lang, k));

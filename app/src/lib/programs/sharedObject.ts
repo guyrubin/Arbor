@@ -32,7 +32,7 @@ import type { ShelfId } from "../shelves/registry";
 
 export const PROGRAM_SHARED_OBJECT_FLAG = "arbor.flags.programSharedObject";
 
-type StorageLike = { getItem(key: string): string | null; setItem?(key: string, value: string): void } | null | undefined;
+type StorageLike = { getItem(key: string): string | null; setItem?(key: string, value: string): void; removeItem?(key: string): void } | null | undefined;
 
 const deviceStorage = (): StorageLike => {
   try {
@@ -185,14 +185,52 @@ export function bookHandback(input: {
 }
 
 const dismissKey = (childId: string, ownerId: string) => childScopedKey(`programHandback.${encodeURIComponent(ownerId)}`, childId);
+/** Before 12 Nov (Arbor 8e007864) dismissals were kept per child only. */
+const legacyDismissKey = (childId: string) => childScopedKey("programHandback", childId);
 
-export function readDismissedHandbacks(storage: StorageLike, childId: string, ownerId = "local-sandbox"): string[] {
+const cleanKeys = (parsed: unknown): string[] =>
+  Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string" && x.length > 0 && x.length < 120) : [];
+
+/** A dismissal key ends in the read's day (`<object>:<YYYY-MM-DD>`); only a
+ *  card about the last two days can still be on screen. */
+const recentKey = (key: string, nowMs: number): boolean => {
+  const day = /:(\d{4}-\d{2}-\d{2})$/.exec(key)?.[1];
+  if (!day) return false;
+  const at = Date.parse(`${day}T12:00:00Z`);
+  return Number.isFinite(at) && at >= nowMs - 3 * 86_400_000 && at <= nowMs + 86_400_000;
+};
+
+/**
+ * 12 Nov fix: a card dismissed before dismissals became owner-scoped must
+ * not come back. The legacy per-child list is CLAIMED ONCE by the first
+ * owner who reads it on this device and then deleted, so it can never hide a
+ * card for a second owner; only keys about the last two days move (an older
+ * key can no longer match a card on screen). The cross-owner risk is one book
+ * card hidden for one day, and only where two families share a child id on
+ * one device, which real (random) ids never do.
+ */
+function claimLegacyDismissals(storage: StorageLike, childId: string, nowMs: number): string[] {
+  const raw = storage?.getItem(legacyDismissKey(childId));
+  if (raw == null) return [];
+  let claimed: string[] = [];
+  try { claimed = cleanKeys(JSON.parse(raw) as unknown).filter((key) => recentKey(key, nowMs)); } catch { claimed = []; }
+  try {
+    if (storage?.removeItem) storage.removeItem(legacyDismissKey(childId));
+    else storage?.setItem?.(legacyDismissKey(childId), "[]");
+  } catch { /* a locked store keeps the legacy list; the claim below still holds for this owner */ }
+  return claimed;
+}
+
+export function readDismissedHandbacks(storage: StorageLike, childId: string, ownerId = "local-sandbox", nowMs = Date.now()): string[] {
   if (!childId || !ownerId.trim()) return [];
   try {
-    // Legacy owner-less dismissals cannot be attributed to the signed-in family.
     const raw = storage?.getItem(dismissKey(childId, ownerId));
-    const parsed = raw ? JSON.parse(raw) as unknown : [];
-    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string" && x.length > 0 && x.length < 120) : [];
+    const own = cleanKeys(raw ? JSON.parse(raw) as unknown : []);
+    const legacy = claimLegacyDismissals(storage, childId, nowMs);
+    if (!legacy.length) return own;
+    const merged = [...new Set([...own, ...legacy])].slice(-40);
+    try { storage?.setItem?.(dismissKey(childId, ownerId), JSON.stringify(merged)); } catch { /* still hidden for this render */ }
+    return merged;
   } catch {
     return [];
   }
