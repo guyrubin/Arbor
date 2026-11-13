@@ -60,11 +60,25 @@ export function souvenirArt(s: Pick<KidSouvenir, "kind" | "refId">, theme: KidTh
 }
 
 /** The home strip: every earned souvenir once, newest first (unknown world
- *  ids from an older build are skipped, never shown broken). */
+ *  ids from an older build are skipped, never shown broken).
+ *  Compare real instants, not formatted ISO strings with different offsets.
+ *  An implausible future timestamp must not displace an earned keepsake; the
+ *  underlying child-owned record is retained and can reappear as time catches
+ *  up. Allow a small device-clock skew without creating an expiry/score loop. */
 export function souvenirStrip<T extends KidSouvenir>(items: readonly T[]): T[] {
   const seen = new Set<string>();
   const out: T[] = [];
-  for (const s of items.filter(s => !!s && (s.kind === "world" || s.kind === "book") && typeof s.refId === "string" && !!s.refId && s.id === souvenirId(s.kind, s.refId) && typeof s.earnedAt === "string" && Number.isFinite(Date.parse(s.earnedAt))).sort((a, b) => (a.earnedAt < b.earnedAt ? 1 : a.earnedAt > b.earnedAt ? -1 : 0))) {
+  const latestPlausible = Date.now() + 5 * 60 * 1000;
+  const valid = items.filter(s =>
+    !!s && (s.kind === "world" || s.kind === "book") &&
+    typeof s.refId === "string" && !!s.refId &&
+    s.id === souvenirId(s.kind, s.refId) &&
+    typeof s.earnedAt === "string" &&
+    Number.isFinite(Date.parse(s.earnedAt)) &&
+    Date.parse(s.earnedAt) <= latestPlausible
+  );
+  valid.sort((a, b) => Date.parse(b.earnedAt) - Date.parse(a.earnedAt));
+  for (const s of valid) {
     if (seen.has(s.id)) continue;
     if (s.kind === "world" && s.refId !== QUEST_SOUVENIR_REF && !kidWorldByWorldId(s.refId)) continue;
     seen.add(s.id);
