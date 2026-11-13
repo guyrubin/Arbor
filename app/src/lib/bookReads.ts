@@ -49,8 +49,10 @@ export function finishOnce(): () => boolean {
 
 /**
  * B-BOOK-47 / B-BOOK-51: select the latest genuine completed read from this
- * Kid Mode visit. Reject malformed, blank and future-dated rows: device-clock
- * mistakes or stale imported data must never invent a book-finish hand-back.
+ * Kid Mode visit. Reject malformed, non-catalogue and future-dated rows:
+ * device-clock mistakes or stale imported data must never invent a book-finish
+ * hand-back. Apply the same catalogue-ID allow-list used when rows are written,
+ * so an imported per-child/edition key cannot win the parent recap.
  *
  * `nowMs` is injectable to make the time boundary deterministic in tests; the
  * exit path uses the actual current clock. No story branch/choice is read.
@@ -67,7 +69,7 @@ export function lastReadSince(
     const ms = typeof r?.finishedAt === "string" ? Date.parse(r.finishedAt) : NaN;
     if (
       !Number.isFinite(ms) || ms < sinceMs || ms > nowMs ||
-      typeof r?.bookId !== "string" || !r.bookId.trim()
+      !catalogueId(r?.bookId)
     ) continue;
     if (ms > bestMs) { best = r; bestMs = ms; }
   }
