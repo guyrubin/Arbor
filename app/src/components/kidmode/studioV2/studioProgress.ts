@@ -7,8 +7,14 @@ export const QUEST_CHOICES = { spot: ["left", "middle", "right"], pillows: ["pil
 export type QuestChoice = typeof QUEST_CHOICES[QuestStep][number];
 export interface StudioQuestCheckpoint { id: string; questId: typeof STUDIO_QUEST_ID; step: QuestStep; choice: QuestChoice }
 export function checkpointChoice(items: readonly unknown[], step: QuestStep): QuestChoice | undefined {
-  const row = items.find(item => (item as StudioQuestCheckpoint)?.id === `${STUDIO_QUEST_ID}:${step}`) as StudioQuestCheckpoint | undefined;
-  return row?.questId === STUDIO_QUEST_ID && row.step === step && (QUEST_CHOICES[step] as readonly string[]).includes(row.choice ?? "") ? row.choice : undefined;
+  // A malformed local snapshot may contain two rows for the deterministic id.
+  // Never let array order arbitrarily select a conflicting saved choice.
+  const rows = items.filter(item => item !== null && typeof item === "object"
+    && (item as StudioQuestCheckpoint).id === `${STUDIO_QUEST_ID}:${step}`) as StudioQuestCheckpoint[];
+  if (rows.length !== 1) return undefined;
+  const row = rows[0];
+  return row.questId === STUDIO_QUEST_ID && row.step === step
+    && (QUEST_CHOICES[step] as readonly string[]).includes(row.choice ?? "") ? row.choice : undefined;
 }
 export function checkpointSteps(items: readonly unknown[]): QuestStep[] {
   const out: QuestStep[] = [];
@@ -20,9 +26,13 @@ export function checkpointSteps(items: readonly unknown[]): QuestStep[] {
 export function useStudioQuestProgress(childId: string) {
   const store = useChildCollection<StudioQuestCheckpoint>(childId, "studioQuestProgress", { trackConfirmation: true, acceptCachedNoPendingWrites: true });
   const steps = checkpointSteps(store.items);
+  // A later checkpoint is not a visible choice until all earlier steps exist.
+  // An account/child switch also retires a stale confirmation before reward egress.
+  const choices = Object.fromEntries(steps.map(step => [step, checkpointChoice(store.items, step)])) as Partial<Record<QuestStep, QuestChoice>>;
+  const confirmed = store.confirmed && store.isCurrent();
   return {
-    steps, choices: Object.fromEntries(QUEST_STEPS.map(step => [step, checkpointChoice(store.items, step)])) as Partial<Record<QuestStep, QuestChoice>>,
-    confirmed: store.confirmed, completed: store.confirmed && steps.length === QUEST_STEPS.length, loaded: store.loaded, isCurrent: store.isCurrent,
+    steps, choices,
+    confirmed, completed: confirmed && steps.length === QUEST_STEPS.length, loaded: store.loaded, isCurrent: store.isCurrent,
     async advance(choice?: QuestChoice) {
       if (!store.loaded || !store.confirmed || !store.isCurrent()) throw new Error("Quest scope or confirmation changed");
       const step = QUEST_STEPS[steps.length];
