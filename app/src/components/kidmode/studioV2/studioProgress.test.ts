@@ -21,7 +21,9 @@ describe("finite child-owned quest", () => {
   it("rejects conflicting duplicate checkpoints and does not display later orphaned choices", () => {
     const valid = row("spot", "left");
     const conflict = row("spot", "middle");
+    expect(checkpointChoice([valid, { ...valid }], "spot")).toBe("left");
     expect(checkpointChoice([valid, conflict], "spot")).toBeUndefined();
+    expect(checkpointChoice([valid, { ...valid, questId: "other" }], "spot")).toBeUndefined();
     expect(checkpointSteps([valid, conflict, row("pillows", "pillow")])).toEqual([]);
     const orphan = [valid, row("lights", "lamp"), row("pause", "quiet")];
     expect(checkpointSteps(orphan)).toEqual(["spot"]);
