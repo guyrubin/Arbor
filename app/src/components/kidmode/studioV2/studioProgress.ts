@@ -7,14 +7,16 @@ export const QUEST_CHOICES = { spot: ["left", "middle", "right"], pillows: ["pil
 export type QuestChoice = typeof QUEST_CHOICES[QuestStep][number];
 export interface StudioQuestCheckpoint { id: string; questId: typeof STUDIO_QUEST_ID; step: QuestStep; choice: QuestChoice }
 export function checkpointChoice(items: readonly unknown[], step: QuestStep): QuestChoice | undefined {
-  // A malformed local snapshot may contain two rows for the deterministic id.
-  // Never let array order arbitrarily select a conflicting saved choice.
+  // A malformed local snapshot may contain duplicate deterministic ids.
+  // Harmless identical duplicates may resume; conflicting/invalid rows fail
+  // closed instead of letting array order invent a saved choice.
   const rows = items.filter(item => item !== null && typeof item === "object"
     && (item as StudioQuestCheckpoint).id === `${STUDIO_QUEST_ID}:${step}`) as StudioQuestCheckpoint[];
-  if (rows.length !== 1) return undefined;
-  const row = rows[0];
-  return row.questId === STUDIO_QUEST_ID && row.step === step
-    && (QUEST_CHOICES[step] as readonly string[]).includes(row.choice ?? "") ? row.choice : undefined;
+  const first = rows[0];
+  if (!first || first.questId !== STUDIO_QUEST_ID || first.step !== step
+    || !(QUEST_CHOICES[step] as readonly string[]).includes(first.choice ?? "")) return undefined;
+  return rows.every(row => row.questId === STUDIO_QUEST_ID && row.step === step
+    && row.choice === first.choice) ? first.choice : undefined;
 }
 export function checkpointSteps(items: readonly unknown[]): QuestStep[] {
   const out: QuestStep[] = [];
