@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 type Slot = { value?: any; deps?: readonly unknown[]; cleanup?: () => void };
 const h = vi.hoisted(() => ({ cursor: 0, slots: [] as Slot[], effects: [] as (() => void)[], lang: 'en', muted: false, hush: [] as (() => void)[], kept: [] as unknown[],
   run: null as any, running: false, elapsed: 0, sounding: true,
-  engine: { hit: vi.fn(() => true), start: vi.fn(), stop: vi.fn(), played: vi.fn(), dispose: vi.fn(), elapsed: () => 0, running: () => false, audible: () => true }, say: vi.fn(), sound: vi.fn() }));
+  engine: { hit: vi.fn(() => true), start: vi.fn(), stop: vi.fn(), played: vi.fn(), dispose: vi.fn(), elapsed: (): number => 0, running: (): boolean => false, audible: () => true }, say: vi.fn(), sound: vi.fn() }));
 vi.mock('react', async original => {
   const actual = await original<typeof import('react')>();
   return { ...actual,
