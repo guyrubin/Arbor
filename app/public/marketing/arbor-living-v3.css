@@ -108,17 +108,18 @@ html:not(.js) .fallback-art,.no-webgl .fallback-art{display:block;position:absol
 .chapters{grid-column:1;grid-row:1;display:grid;gap:4px;justify-self:end;width:min(100%,262px);padding:14px 10px 12px;border-radius:24px;background:var(--surface);border:1px solid var(--rule);box-shadow:var(--lift)}
 .film-title{font:600 1.05rem/1.2 var(--display);margin-bottom:6px;padding-inline-start:14px}
 .chapters button{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;width:100%;padding:11px 14px;border-radius:16px;text-align:start;position:relative;transition:background-color .3s,box-shadow .3s}
-.chapters time{font-size:.8rem;font-weight:650;color:var(--muted);font-variant-numeric:tabular-nums;padding-top:2px;min-width:3.4em}
+.chapters time,.chapters small{font-size:.8rem;font-weight:650;color:var(--muted);font-variant-numeric:tabular-nums;padding-top:2px;min-width:3.4em}
 .chapters b{font-weight:650;font-size:.98rem}
 .chapters span{grid-column:2;font-size:.86rem;line-height:1.4;color:var(--muted);display:none}
 .chapters button[aria-current="true"]{background:var(--well)}
 .chapters button[aria-current="true"] span{display:block;min-height:4.2em}
 .filmonly .chapters button[aria-current="true"] span{min-height:7em}
-.chapters button[aria-current="true"] time{color:var(--sapphire-deep)}
+.chapters button[aria-current="true"] time,.chapters button[aria-current="true"] small{color:var(--sapphire-deep)}
 .chapters button::after{content:"";position:absolute;inset:auto 14px 5px;height:2px;border-radius:2px;background:var(--sapphire);transform-origin:left;transform:scaleX(var(--p,0));opacity:0}
 .chapters button[aria-current="true"]::after{opacity:1}
 .film-ctl{display:inline-flex;align-items:center;gap:8px;margin:8px 0 0 14px;font-size:.86rem;font-weight:600;color:var(--muted)}
 .film-ctl .ms{font-size:1.3em}
+.film-ctl .ms.pz{box-sizing:border-box;width:.62em;height:.7em;margin-inline:.19em;border-inline:.21em solid currentColor}
 .chapters .film-ctl{display:inline-flex;width:auto;padding:8px 12px;margin:4px 0 0 2px}.chapters .film-ctl span{display:inline;font-size:inherit;color:inherit}.chapters .film-ctl::after{content:none}.chapters .film-ctl:hover{color:var(--ink)}
 html:not(.js) .film-ctl,.still .film-ctl{display:none}
 .film-cap{display:none}
@@ -398,7 +399,7 @@ footer nav{display:flex;gap:22px}
   .hero-stage{order:1;margin-top:34px}
   .facts{order:2;margin-top:26px}
   .chapters button{grid-template-columns:1fr;padding:8px 4px 12px;text-align:center;border-radius:12px;gap:0}
-  .chapters time{min-width:0;padding:0;font-size:.72rem}
+  .chapters time,.chapters small{min-width:0;padding:0;font-size:.72rem}
   .chapters b{font-size:.78rem;white-space:nowrap}
   .chapters button span,.chapters button[aria-current="true"] span{display:none}
   .chapters button::after{inset:auto 8px 4px}
@@ -440,6 +441,13 @@ footer nav{display:flex;gap:22px}
   .prices{grid-template-columns:1fr}
   .btn{width:100%}
   .cta-bar .btn,.top .btn{width:auto}
+}
+@media (max-width:400px){
+  .chapters{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .chapters b{white-space:normal}
+  .k-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .k-tabs button{grid-template-columns:1fr;justify-items:center;text-align:center;gap:6px;padding:6px 6px 10px}
+  .k-tabs button img{width:100%;height:56px}
 }
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition-duration:.01ms!important}

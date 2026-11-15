@@ -17,7 +17,7 @@ const clamp01 = v => Math.min(1, Math.max(0, v));
 const ease = t => 1 - Math.pow(1 - clamp01(t), 4);
 
 const LENSES = [
-  ['Connection first', '#e8a18a'], ['Next small challenge', '#8670ce'], ['Independence', '#3fb7a4'], ['Stage fit', '#f3c969'],
+  ['Connection first', '#e8a18a'], ['Step by step', '#8670ce'], ['Independence', '#3fb7a4'], ['Explain the why', '#f3c969'],
   ['Their wider world', '#5d8df0'], ['Realistic for you', '#e58fb7'], ['Where they are growing', '#9ad7c4'],
 ];
 /* Example answers. notices: [approach index, what it sees]; sum: the three lines of the example summary. */
@@ -29,7 +29,7 @@ const MOMENTS = {
 let forms = null;
 let moment = 'bedtime';
 /* The trial link carries a moment only when the visitor chose one, here or in the address. */
-let picked = MOMENTS[query.get('moment')] ? query.get('moment') : null;
+let picked = Object.hasOwn(MOMENTS, query.get('moment') ?? '') ? query.get('moment') : null;
 if (picked) moment = picked;
 
 /* ---------- trial links ---------- */
@@ -106,7 +106,7 @@ const setCtl = () => {
   const done = state.plays >= PLAYS, idle = state.paused || done;
   $('span', ctl).textContent = done ? 'Play the film again' : state.paused ? 'Play the film' : 'Pause the film';
   if (forms && forms.setPaused) forms.setPaused(state.paused);
-  $('.ms', ctl).textContent = idle ? 'play_arrow' : 'stop';
+  const ic = $('.ms', ctl); ic.textContent = idle ? 'play_arrow' : ''; ic.classList.toggle('pz', !idle);
 };
 const tick = now => {
   state.raf = 0;
@@ -207,6 +207,7 @@ const paintMoment = animate => {
   $$('#picks button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.moment === moment)));
   $('#t-title').textContent = m.title; $('#t-action').textContent = m.action; $('#t-words').textContent = m.words;
   why.replaceChildren(...m.notices.map(([n]) => { const c = document.createElement('span'); c.className = 'u-chip'; const d = document.createElement('i'); d.style.setProperty('--c', LENSES[n][1]); c.append(d, LENSES[n][0]); return c; }));
+  $('#t-council').textContent = `The council weighed in · ${m.notices.length} voices`;
   paintSheet(); paintLens();
   const run = ++typing;
   if (animate) $('#t-status').textContent = `Example answer for ${m.label}. Try today: ${m.title} Say this: ${m.words}`;
@@ -230,20 +231,15 @@ paintMoment(false);
 
 /* ---------- Kids Studio ---------- */
 const worldBtns = $$('#k-tabs button'), worlds = worldBtns.map(b => $('#kw-' + b.dataset.world));
-let worldTimer = 0, worldAuto = 0;
 const kFrame = $('.k-frame');
 /* the props float for a few seconds each time a world comes in, then rest */
 const stir = () => { kFrame.classList.remove('live'); void kFrame.offsetWidth; kFrame.classList.add('live'); };
-const stopWorlds = () => { clearInterval(worldTimer); worldAuto = 99; };
 const showWorld = tabs($('#k-tabs'), worldBtns, worlds, k => { worlds.forEach((w, n) => { w.classList.toggle('on', n === k); w.inert = n !== k; }); if (!reduced) stir(); });
 worlds.forEach((w, n) => { w.inert = n !== 0; });
-worldBtns.forEach((b, n) => { b.tabIndex = n === 0 ? 0 : -1; b.addEventListener('pointerdown', stopWorlds); b.addEventListener('keydown', stopWorlds); });
-/* resting the pointer on the stage, or moving focus into it, stops the tour of the worlds */
-[kFrame, $('#k-tabs')].forEach(el => { el.addEventListener('pointerenter', stopWorlds); el.addEventListener('focusin', stopWorlds); });
+worldBtns.forEach((b, n) => { b.tabIndex = n === 0 ? 0 : -1; });
 if (!reduced && !filmOnly) new IntersectionObserver((es, io) => es.forEach(e => {
-  if (!e.isIntersecting || worldAuto) return;
-  io.disconnect(); worldAuto = 1; stir();
-  worldTimer = setInterval(() => { if (worldAuto > worlds.length) { clearInterval(worldTimer); return; } showWorld(worldAuto % worlds.length); worldAuto++; }, 4200);
+  if (!e.isIntersecting) return;
+  io.disconnect(); stir();
 }), { threshold: 0.5 }).observe($('#k-stage'));
 
 /* leaving Kids Studio: a three-second hold, then a grown-up check */
