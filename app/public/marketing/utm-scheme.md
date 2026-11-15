@@ -41,6 +41,13 @@ conversion CTA (`a[data-cta="app"]`), but **incoming params always win** — a
 tagged link that lands on the marketing page first has its `utm_*`/`ref`
 forwarded to the app on the hop, preserving first-touch attribution.
 
+The English and Hebrew landing pages tag their trial buttons
+`utm_source=arbor_landing&utm_medium=website` and name the page version in
+`utm_campaign`: `landing_v14` on the English page from 15 Nov 2026 (the living
+landing, one evening as a film and a guide to the six parts), `landing_v13` on
+the Hebrew page and `marketing/index.html`. A visitor who picks an example
+moment on the English page also carries `moment=bedtime|feelings|play`.
+
 ## Practitioner handoff (BD-54)
 
 A professional who works with a child hands the family a link or QR to one of

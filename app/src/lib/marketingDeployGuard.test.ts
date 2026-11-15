@@ -31,6 +31,14 @@ const APPROVED_MARKETING_FILES = new Set<string>([
   "arbor-conversion-v12.js",
   // Requested 3D collaboration-brief design and product-positioning repair (2026-10-30).
   "arbor-brand-v13.css",
+  // Guy: "go live" on the living landing, version 3 (2026-11-15). It is the English landing page
+  // below; these are its stylesheet, scripts and the three.js build the sculpture runs on.
+  "arbor-living-v3.css",
+  "arbor-living-v3.js",
+  "arbor-living-scene-v3.js",
+  "vendor/three-0.170.module.min.js",
+  "vendor/RoomEnvironment.js",
+  "vendor/three-LICENSE.txt",
   "arbor-marketing-landing-page-de.html",
   "arbor-marketing-landing-page-en.html",
   "arbor-marketing-landing-page-fr.html",
@@ -108,7 +116,7 @@ describe("immersive landing release integrity", () => {
   });
 
   it("ships every local image, stylesheet and script referenced by the immersive pages", () => {
-    const files = ["arbor-marketing-landing-page-en.html", "arbor-marketing-landing-page-he.html", "arbor-immersive-v3.css", "arbor-imagery-v4.css"];
+    const files = ["arbor-marketing-landing-page-en.html", "arbor-marketing-landing-page-he.html", "arbor-immersive-v3.css", "arbor-imagery-v4.css", "arbor-living-v3.css", "arbor-living-v3.js"];
     for (const file of files) {
       const text = readFileSync(path.join(marketingDir, file), "utf8");
       const references = [...text.matchAll(/(?:src="|href="|url\(['"]?)(\/[^"'\s)]+)/g)];
