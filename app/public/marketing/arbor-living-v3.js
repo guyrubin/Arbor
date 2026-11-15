@@ -276,7 +276,11 @@ if (!reduced && !filmOnly && 'IntersectionObserver' in window) {
 
 /* ---------- the sculpture, last and on its own ---------- */
 const canvas = $('#forms');
-import('./arbor-living-scene-v3.js').then(({ mountLivingForms }) => {
+/* Data saver, a 2G link or a very small device get the still artwork. Everyone else gets the
+   sculpture once the page is idle, so building it never holds up the first screen. */
+const conn = navigator.connection;
+const lowEnd = !!(conn && (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || ''))) || (navigator.deviceMemory > 0 && navigator.deviceMemory <= 2);
+const mountForms = () => import('./arbor-living-scene-v3.js').then(({ mountLivingForms }) => {
   forms = mountLivingForms(canvas, { reduced, manual: filmOnly });
   if (!forms) return;
   forms.setPaused(state.paused);
@@ -290,6 +294,17 @@ import('./arbor-living-scene-v3.js').then(({ mountLivingForms }) => {
   $$('[data-stage]').forEach(el => io.observe(el));
   paintLens();
 }).catch(() => {}).finally(() => html.classList.add(forms ? 'webgl' : 'no-webgl'));
+if (filmOnly) mountForms();
+else if (lowEnd) html.classList.add('no-webgl');
+else if ('requestIdleCallback' in window) requestIdleCallback(mountForms, { timeout: 1500 });
+else setTimeout(mountForms, 300);
 
 /* ---------- recording hook (?film=1) ---------- */
 if (filmOnly) window.__film = { total, starts, render: t => { firstPass = t < starts[1]; render(t); if (forms && forms.renderAt) forms.renderAt(t); }, ready: () => document.fonts.ready.then(() => !!forms || html.classList.contains('no-webgl')) };
+
+/* ---------- language menu: closes on a click outside it, or on Escape ---------- */
+const langMenu = document.querySelector('.lang-menu');
+if (langMenu) {
+  document.addEventListener('click', e => { if (langMenu.open && !langMenu.contains(e.target)) langMenu.open = false; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && langMenu.open) { langMenu.open = false; langMenu.querySelector('summary').focus(); } });
+}

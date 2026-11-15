@@ -75,6 +75,18 @@ html:not(.js) .fallback-art,.no-webgl .fallback-art{display:block;position:absol
 .top nav a,.lang{text-decoration:none;font-weight:550;font-size:.95rem;color:var(--ink-soft)}
 .top nav a:hover,.lang:hover{color:var(--sapphire-deep)}
 .lang{font-family:ArborHebrew,ArborSans,sans-serif}
+/* language menu: the five landing pages */
+.lang-menu{position:relative}
+.lang-menu summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:.5em;min-height:44px;padding:0 .2em;font-weight:550;font-size:.95rem;color:var(--ink-soft);border-radius:10px}
+.lang-menu summary::-webkit-details-marker{display:none}
+.lang-menu summary::after{content:"";width:.42em;height:.42em;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:translateY(-.18em) rotate(45deg);transition:transform .2s var(--ease)}
+.lang-menu[open] summary::after{transform:translateY(.12em) rotate(-135deg)}
+.lang-menu summary:hover{color:var(--sapphire-deep)}
+.lang-list{position:absolute;inset-inline-end:0;top:calc(100% + 6px);display:grid;min-width:11.5rem;padding:6px;background:var(--surface);border:1px solid var(--rule);border-radius:16px;box-shadow:var(--lift)}
+.lang-list a{display:block;padding:.6em .85em;border-radius:10px;text-decoration:none;font-weight:550;color:var(--ink)}
+.lang-list a[lang=he]{font-family:ArborHebrew,ArborSans,sans-serif;text-align:end}
+.lang-list a:hover{background:var(--well);color:var(--sapphire-deep)}
+.lang-list a[aria-current]{color:var(--sapphire-deep);background:var(--well)}
 
 /* hero */
 .hero{padding-top:clamp(104px,11vw,136px);padding-bottom:clamp(48px,6vw,88px);overflow:clip}
@@ -371,7 +383,7 @@ footer nav{display:flex;gap:22px}
 
 @media (max-width:1020px){
   .wrap{width:min(1180px,100% - 48px)}
-  .top nav{display:none}.lang{margin-inline-start:auto}
+  .top nav{display:none}.lang,.lang-menu{margin-inline-start:auto}
   .hero .wrap,.lens .wrap,.control .wrap,.faq .wrap,.close .wrap,.plan-grid{grid-template-columns:minmax(0,1fr)}
   .hero .lead{max-width:48ch}
   .hero-stage{grid-template-columns:minmax(0,1fr);justify-items:center;min-height:0;gap:18px;margin-top:8px}

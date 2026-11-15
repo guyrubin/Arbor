@@ -1,34 +1,43 @@
-# Living landing page (draft, not deployed)
+# Living landing page (English): notes and sources
 
-Version 3 of the English marketing landing page redesign. It joins the two earlier drafts: the one evening followed through Arbor from version 1 (now a five-scene film inside a phone) and the screen-by-screen account of the product from version 2 (now a guide to the app's six parts). The ground is light throughout, on the tokens of `app/DESIGN.md`; navy is used as ink only.
+The English landing page, `app/public/marketing/arbor-marketing-landing-page-en.html`, carries the living landing, version 3, from 15 Nov 2026 (Guy: "go live"). It joins two earlier drafts: one evening followed through Arbor (a five-scene film inside a phone) and a screen-by-screen account of the product (a guide to the app's six parts). The ground is light throughout, on the tokens of `app/DESIGN.md`; navy is used as ink only.
 
-It lives here, outside `app/public`, so it cannot ship with a hosting deploy. `app/src/lib/marketingDeployGuard.test.ts` allows only approved files in `app/public/marketing`.
+This folder keeps what does not ship: these notes and `arbor-one-evening.mp4`.
 
-## Preview
+## Files that ship
 
-```bash
-node docs/marketing-drafts/living-landing/preview.mjs
-```
+All in `app/public/marketing/`, each on `APPROVED_MARKETING_FILES` in `app/src/lib/marketingDeployGuard.test.ts`:
 
-Open `http://localhost:4812/marketing/arbor-living-en.html`. Add `?motion=off` for the still render, or `?film=1` for the recording stage (the hero film alone, 16:9, driven by `window.__film.render(seconds)`).
+- `arbor-marketing-landing-page-en.html`: the page.
+- `arbor-living-v3.css`, `arbor-living-v3.js`: styles and behaviour. Trial links go through `trialHref` in the shared `arbor-conversion-v12.js`, so incoming `utm_*` and `ref` still win.
+- `arbor-living-scene-v3.js`: the Living Forms sculpture. It loads last, once the page is idle; data saver, a 2G link or a device with 2 GB of memory or less get the still artwork instead, as does a device without WebGL. It moves for a few seconds after the visitor scrolls or moves the pointer, then rests and stops drawing.
+- `vendor/three-0.170.module.min.js`, `vendor/RoomEnvironment.js`, `vendor/three-LICENSE.txt`: three.js, from the import map in the page.
+
+Artwork and fonts already in `app/public` are used in place: `visuals/studio-v2/`, `visuals/parent/v2/`, `visuals/guides/`, `brand/`, `fonts/`.
+
+Trial buttons carry `utm_source=arbor_landing&utm_medium=website&utm_campaign=landing_v14` (see `utm-scheme.md`).
+
+## Preview and the film
+
+Serve `app/public` (for example `python -m http.server 4811` from `app/public`) and open `/marketing/arbor-marketing-landing-page-en.html`. Add `?motion=off` for the still render, or `?film=1` for the recording stage (the hero film alone, 16:9, driven by `window.__film.render(seconds)`). `arbor-one-evening.mp4` (36 seconds, 1280 by 720, no sound) was recorded frame by frame from that stage.
 
 ## What is on the page
 
 | Section | Content |
 |---|---|
-| Hero | Promise, trial button with the price that follows the trial, and "One evening with Arbor": a phone that plays five scenes (Now at 18:40, Talk at 18:42, Together at 19:30, Tonight at 20:15, the week on Sunday). A chapter list beside it jumps to any scene; the film plays twice while it is on screen, then rests, and can be paused |
-| Guide | The app's six parts: three places (Now, My child, Together) and three doors (Talk with Arbor; Care, together; For you, the parent). Each has its screen and a numbered list, and the numbers on the screen match the list. Talk has three example moments to try; the care summary has boxes to tick |
-| Seven approaches | Seven buttons tied to seven pebbles in the sculpture; the ones used in the chosen example are marked. The copy says an answer leads with the approaches that fit, not that all seven are in every answer (`selectCouncil` blends about three) |
+| Hero | Promise, trial button with the price that follows the trial, and "One evening with Arbor": a phone that plays five scenes (Now at 18:40, Talk at 18:42, Together at 19:30, Tonight at 20:15, the week on Sunday). A chapter list jumps to any scene; the film plays twice while on screen, then rests, and can be paused |
+| Guide | The six parts: three places (Now, My child, Together) and three doors (Talk with Arbor; Care, together; For you, the parent). Each has its screen and a numbered list that matches the numbers on the screen. Talk has three example moments to try; the care summary has boxes to tick |
+| Seven approaches | Seven buttons tied to seven pebbles in the sculpture; the ones used in the chosen example are marked. An answer leads with the approaches that fit; it does not use all seven (`selectCouncil` blends about three) |
 | Kids Studio | The four worlds with artwork from the app, the counts, and how a parent opens and leaves it, with a hold-to-leave demonstration |
 | Control | What is remembered and shared, and four privacy facts |
-| Plans | The 14-day trial and Arbor Plus, in the wording and prices of the live page, with a trial button on both cards |
+| Plans | The 14-day trial and Arbor Plus, with a trial button on both cards |
 | Questions, start | Six questions, three steps, the last trial button |
 
-Every app screen on the page is drawn in HTML and CSS on the app's tokens, with a synthetic child ("Noa", age 4). No screen capture and no real family data is used. Labels follow the app's copy where a source is listed below. The example content (the child, the moments, the answers, the story) is written for this page, and the layout of each screen is a drawing, not a copy of the component.
+Every app screen is drawn in HTML and CSS on the app's tokens, with a synthetic child ("Noa", age 4). No screen capture and no real family data. The example content is written for the page; the layout of each screen is a drawing, not a copy of the component.
 
 ## Facts the copy depends on
 
-Each was checked against the repository on 15 Nov 2026. Recheck before go-live.
+Each was checked against the repository on 15 Nov 2026. Recheck when the app changes.
 
 | Claim | Source |
 |---|---|
@@ -46,33 +55,15 @@ Each was checked against the repository on 15 Nov 2026. Recheck before go-live.
 | Leaving Kids Studio: three-second hold, then a two-digit sum or the parent's own PIN | `app/src/components/kidmode/parentGate.ts` (a friction barrier, not a security boundary: never call it a lock) |
 | Care summary for eight kinds of reader, PDF without paying; school brief: free draft from what was recorded, "Draft with Arbor" with Plus | `app/src/lib/i18nElevation/careprofile.ts`, `learnCare.ts` |
 | Trusted sharing: roles Co-parent, Viewer, Professional; scopes; 30 days, 60 days, end of term, until revoked. Co-parent sharing stays free | `app/src/lib/i18n.ts` (`share.*`), `app/src/lib/i18nElevation/coParent.ts` |
+| Prices €12.99 a month, €129.90 a year | `app/src/lib/pricing.ts` (the claim audit test checks every price on the page) |
 | The trial link carries a `moment` only after a pick | `arbor-living-v3.js`; the app reads it in `app/src/lib/trialEntry.ts` |
 
 Not claimed, because the source does not support it today: app-store apps, languages beyond English and Hebrew, finding a professional, expert review of content, games for children over 8, a weekly email, sharing with a teacher or therapist being free.
 
-## Files
+## Open
 
-- `arbor-living-en.html`, `arbor-living-v3.css`, `arbor-living-v3.js`: the page.
-- `arbor-living-scene-v3.js`: the Living Forms sculpture (three.js from the import map in the page). The page loads it last and on its own, so a failed download or a device without WebGL leaves the page whole with still artwork. It follows whichever `[data-stage]` element is most on screen, moves for a few seconds after the visitor scrolls or moves the pointer, then slows to rest and stops drawing.
-- `arbor-one-evening.mp4`: the hero film as a 36-second video (1280 by 720, no sound), recorded frame by frame from `?film=1`. It is for sharing and is not loaded by the page.
-- `vendor/`: three.js 0.170 and its licence.
-- `preview.mjs`: serves this folder as `/marketing/*` over `app/public`.
-
-Artwork and fonts already in `app/public` are used in place: `visuals/studio-v2/`, `visuals/parent/v2/`, `visuals/guides/`, `brand/`, `fonts/`.
-
-## Known limits of this draft
-
-- The screens are drawings, not captures. A pixel comparison with the running app has not been made, and the dock and the count tiles are approximations.
-- The Claude Design kit "Arbor Design System" could not be opened from this session; the page is built on the kit in the repository (`app/DESIGN.md`, `app/src/index.css`).
-- The Bebe and Gob Gob art kit is not used on the page: the two children are likenesses of real children and the names are not cleared.
-- The film has no voice or music. Its screen is hidden from screen readers; the chapter list and the guide carry the same content as text.
-
-## Before go-live
-
-- A decision on the demo child's name shown in the screens.
-- A decision on whether Kids Studio belongs on the public page yet.
-- Clinical and native review of the copy: approach descriptions, the three example answers, the guide texts, the questions.
-- Hebrew version; the language link still points to the current Hebrew page.
-- Register `utm_campaign=landing_living_v3` in `app/public/marketing/utm-scheme.md`, or reuse the live campaign name. The app records `landing_version: "v12"` for every arrival today.
-- A pass on a real phone for the sculpture's frame rate and the film.
-- Remove `noindex`, then move every file except `preview.mjs` and this README into `app/public/marketing` unchanged and add each to `APPROVED_MARKETING_FILES` in the same pull request.
+- The Hebrew landing page still carries the earlier design (`landing_v13`); a Hebrew version of this page is not made.
+- The copy has had no clinical or native-speaker review.
+- The Bebe and Gob Gob art kit is not used: the two children are likenesses of real children and the names are not cleared.
+- The Claude Design kit "Arbor Design System" was not read; the page follows the kit in the repository (`app/DESIGN.md`, `app/src/index.css`).
+- The app still records `landing_version: "v12"` for every arrival (`app/src/lib/trialEntry.ts`); the campaign tag tells the pages apart.
