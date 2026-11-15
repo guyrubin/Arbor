@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   isActive,
   resetVoicePickCacheForTest,
+  setDeviceVoiceAllowed,
   setNaturalSynth,
   setVoiceEngine,
   speakText,
@@ -55,6 +56,7 @@ beforeEach(() => {
 afterEach(() => {
   stopVoice();
   setNaturalSynth(null);
+  setDeviceVoiceAllowed(true);
   setVoiceEngine("basic");
   vi.useRealTimers();
   delete (globalThis as any).window;
@@ -102,6 +104,64 @@ describe("voice controller — natural engine + browser-floor fallback", () => {
     expect(spoken).toHaveLength(1); // browser floor spoke the SAME text
     expect(spoken[0].text).toBe("hi");
     expect(onEnd).not.toHaveBeenCalled();
+  });
+
+  // 15 Nov 2026: with the device voice withheld (production, once the server
+  // has or may have a neural voice) a failed line is silence plus an error.
+  it("device voice withheld: a natural error ends in onError, never the device voice", () => {
+    const { synth, calls } = makeNatural();
+    setNaturalSynth(synth);
+    setVoiceEngine("natural");
+    setDeviceVoiceAllowed(false);
+    const onEnd = vi.fn();
+    const onError = vi.fn();
+    const id = speakText("hi", { onEnd, onError });
+    calls[0].handlers.onError?.();
+    expect(spoken).toHaveLength(0);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onEnd).not.toHaveBeenCalled();
+    expect(isActive(id)).toBe(false);
+    expect(voiceState().speaking).toBe(false);
+  });
+
+  it("device voice withheld: a slow start waits past 1.5 s and never uses the device voice", () => {
+    vi.useFakeTimers();
+    const { synth, calls } = makeNatural();
+    setNaturalSynth(synth);
+    setVoiceEngine("natural");
+    setDeviceVoiceAllowed(false);
+    const onError = vi.fn();
+    speakText("slow one", { onError });
+    vi.advanceTimersByTime(7000);
+    expect(spoken).toHaveLength(0);
+    expect(onError).not.toHaveBeenCalled();
+    calls[0].handlers.onStart?.();
+    expect(voiceState().speaking).toBe(true);
+    vi.advanceTimersByTime(60_000);
+    expect(spoken).toHaveLength(0);
+  });
+
+  it("device voice withheld: no audio in 8 s ends in onError, three misses do not bring the device voice back", () => {
+    vi.useFakeTimers();
+    const { synth } = makeNatural();
+    setNaturalSynth(synth);
+    setVoiceEngine("natural");
+    setDeviceVoiceAllowed(false);
+    const onError = vi.fn();
+    for (let i = 0; i < 4; i++) {
+      speakText(`line ${i}`, { onError });
+      vi.advanceTimersByTime(8100);
+    }
+    expect(onError).toHaveBeenCalledTimes(4);
+    expect(spoken).toHaveLength(0);
+  });
+
+  it("device voice withheld and no neural adapter: speakText fails at once", () => {
+    setDeviceVoiceAllowed(false);
+    const onError = vi.fn();
+    expect(speakText("hi", { onError })).toBe(0);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(spoken).toHaveLength(0);
   });
 
   it("TTFB watchdog falls back to the floor when no audio starts in time", () => {

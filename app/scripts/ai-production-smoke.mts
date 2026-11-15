@@ -2,6 +2,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import { GoogleGenAI, Modality } from "@google/genai";
+import { ARBOR_VOICE_NAME } from "../src/lib/livePersona.js";
 
 const expected = process.argv[2];
 if (!/^[a-f0-9]{40}$/.test(expected || "")) throw new Error("Pass the exact deployed commit SHA.");
@@ -31,6 +32,12 @@ try {
   const account = await signup.json();
   if (!signup.ok || !account.idToken || !account.localId) throw new Error(`Synthetic signup HTTP ${signup.status}`);
   idToken = account.idToken; syntheticUid = account.localId;
+  // 15 Nov 2026: the capability probe the client reads before it speaks. From
+  // 6 to 11 Nov it returned 500 and every line fell to the device voice with no
+  // error anywhere. Asked once before a family exists (the state that threw)
+  // and once after.
+  const probeNew = await call("tts");
+  check("Voice capability probe, new account", probeNew.status === 200 && probeNew.data.configured === true, { status: probeNew.status, configured: probeNew.data?.configured });
   const onboard = await call("onboarding/family-child", { childId, childProfile });
   check("Synthetic family onboarding", onboard.status === 200 && onboard.data.userId === syntheticUid, { status: onboard.status });
   if (!rows.at(-1)?.ok) throw new Error("Synthetic onboarding failed.");
@@ -38,6 +45,8 @@ try {
   check("Parent coaching", coach.status === 200 && !!coach.data.contract && !coach.data.outputBlocked, { status: coach.status, ms: coach.ms });
   const voice = await call("voice", { childProfile, contextChildId: childId, language: "en", message: "What were we going to try?", recentTurns: [{ role: "coach", text: "You could choose tomorrow's shoes together before bedtime." }, { role: "parent", text: "Yes, we'll choose the shoes tonight." }] }, true);
   check("Screened voice continuity", voice.status === 200 && /event: done/.test(voice.data) && /shoes/i.test(voice.data) && !/event: error/.test(voice.data), { status: voice.status, ms: voice.ms });
+  const probe = await call("tts");
+  check("Voice capability probe, family", probe.status === 200 && probe.data.configured === true, { status: probe.status, configured: probe.data?.configured });
   for (const language of ["en", "he"]) {
     const speech = await call("tts", { language, text: language === "he" ? "אפשר לנסות צעד קטן ביחד." : "We can try one small step together." });
     check(`Read aloud ${language}`, speech.status === 200 && !!(speech.data.audio || speech.data.audioContent || speech.data.audioBase64), { status: speech.status, ms: speech.ms });
@@ -49,7 +58,8 @@ try {
   // B-PROV-12: the synthetic smoke account acknowledges the runtime notice the availability probe names.
   const liveNotice = (await call("live/availability")).data?.notice?.id;
   const live = await call("live/token", { childProfile, contextChildId: childId, language: "en", recentTurns: [], noticeAck: liveNotice });
-  check("Live constrained token", live.status === 200 && live.data.available && !!live.data.token && live.data.model === "gemini-3.8-live", { status: live.status, model: live.data.model });
+  const liveVoice = live.data?.speechConfig?.voiceConfig?.prebuiltVoiceConfig?.voiceName;
+  check("Live constrained token", live.status === 200 && live.data.available && !!live.data.token && live.data.model === "gemini-3.8-live" && liveVoice === ARBOR_VOICE_NAME, { status: live.status, model: live.data.model, voice: liveVoice });
   if (rows.at(-1)?.ok) {
     const start = Date.now(); let audioChunks = 0; let transcriptChars = 0;
     await new Promise<void>(resolve => {

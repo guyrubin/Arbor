@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { initNaturalVoice, naturalSynth, prefetchNaturalAudio, primeNaturalAudio, resetNaturalVoice } from "./naturalVoice";
 import { setAuthTokenProvider, setAiLanguage } from "./api";
-import { setNaturalSynth, setVoiceEngine, speakText, stopVoice, voiceState, voiceSupported } from "./voice";
+import { isDeviceVoiceAllowed, setNaturalSynth, setVoiceEngine, speakText, stopVoice, voiceState, voiceSupported } from "./voice";
 import { toggleSpeech } from "../hooks/useArborVoice";
 
 class AudioStub {
@@ -40,7 +40,10 @@ describe("configuration recovery", () => {
   it.each([401, 403, 429, 500, 503])("does not latch HTTP %s as voice disabled", async (status) => {
     fetchMock.mockResolvedValueOnce({ ok: false, status });
     await initNaturalVoice();
-    expect(voiceState().engine).toBe("basic");
+    // 15 Nov 2026: an unanswered probe tries the neural voice and withholds
+    // the device voice; it still is not a final answer, so the next call probes.
+    expect(voiceState().engine).toBe("natural");
+    expect(isDeviceVoiceAllowed()).toBe(false);
     fetchMock.mockResolvedValueOnce(configured());
     await initNaturalVoice();
     expect(voiceState().engine).toBe("natural");
@@ -49,7 +52,8 @@ describe("configuration recovery", () => {
   it.each([{}, { configured: "true" }, null])("rejects malformed probe %j and retries", async (body) => {
     fetchMock.mockResolvedValueOnce({ ok: true, json: async () => body });
     await initNaturalVoice();
-    expect(voiceState().engine).toBe("basic");
+    expect(voiceState().engine).toBe("natural");
+    expect(isDeviceVoiceAllowed()).toBe(false);
     fetchMock.mockResolvedValueOnce(configured());
     await initNaturalVoice();
     expect(voiceState().engine).toBe("natural");
@@ -60,6 +64,7 @@ describe("configuration recovery", () => {
     await initNaturalVoice();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(voiceState().engine).toBe("basic");
+    expect(isDeviceVoiceAllowed()).toBe(true);
   });
   it("releases a hung auth probe after 5s and never dispatches it later", async () => {
     let release!: (token: string) => void;
