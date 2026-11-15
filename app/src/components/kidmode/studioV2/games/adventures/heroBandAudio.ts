@@ -99,7 +99,7 @@ export function createBandEngine(now: () => number = () => performance.now()): B
   /** The band behind the hero: a soft drum on one and five, a tick between. */
   const bed = (ac: AudioContext, step: number, when: number) => {
     if (step % 4 === 0) voice(ac, 'sine', 130, 48, when, 0.2, 0.12);
-    else voice(ac, 'square', 1760, undefined, when, 0.03, 0.012);
+    else voice(ac, 'triangle', 1760, undefined, when, 0.03, 0.02);
   };
   const tick = () => {
     const current = run; if (!current) return;
