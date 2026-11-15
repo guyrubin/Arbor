@@ -93,7 +93,7 @@ function plan(dirs: readonly Heading[], folded: boolean) {
 }
 /** Presses Start and lets the run play out, for as long as the rules say it takes:
  * a rover parked away from its start rolls back first. */
-function send(level: RoverLevel, w: RoverDeliveryWords): { tree: unknown; run: RoverRun } {
+function send(level: RoverLevel, w: RoverDeliveryWords): { tree: ReturnType<typeof render>; run: RoverRun } {
   let tree = render();
   const run = runRover(level, pointing(tree, level), isFolded(tree)), lead = at(tree) === level.start ? 0 : RETURN_MS;
   startButton(tree, w).props.onClick!(); tree = render();
@@ -561,7 +561,7 @@ describe('Rover Delivery words', () => {
     const all: Record<string, string> = {};
     for (const [key, value] of Object.entries(w)) {
       if (typeof value === 'string') all[key] = value;
-      else for (const [inner, line] of Object.entries(value)) all[`${key}.${inner}`] = line;
+      else for (const [inner, line] of Object.entries(value)) all[`${key}.${inner}`] = String(line);
     }
     return all;
   }
