@@ -1,18 +1,30 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { STUDIO_NEXT_FLAG_KEY, STUDIO_NEXT_HOSTS, resetStudioNextFlagForTests, studioNextCover, studioNextFlagOn } from './studioNextFlag';
+import { resetHeroBandFlagForTests } from './heroBandFlag';
+import { studioCopy } from './studioCopy';
+import { HERO_BAND_COPY } from './games/adventures/heroBandCopy';
+import { WOBBLY_DELIVERY_COPY } from './games/adventures/wobblyDeliveryCopy';
+import { FIVE_FRIEND_SUN_COPY } from './games/adventures/fiveFriendSunCopy';
+import { OOPS_BUTTON_COPY } from './games/adventures/oopsButtonCopy';
+import { ROVER_DELIVERY_COPY } from './games/adventures/roverDeliveryCopy';
 
-const PUBLIC = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', 'public');
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const PUBLIC = path.join(HERE, '..', '..', '..', '..', 'public');
+/** Host tile -> the game it opens while the switch is on. */
+const GAMES = { memory: ['WobblyDelivery', WOBBLY_DELIVERY_COPY], pattern: ['FiveFriendSun', FIVE_FRIEND_SUN_COPY], puzzle: ['OopsButton', OOPS_BUTTON_COPY], 'river-rescue': ['RoverDelivery', ROVER_DELIVERY_COPY], 'rhythm-garden': ['HeroBand', HERO_BAND_COPY] } as const;
+type Tile = keyof typeof GAMES;
+const TILES = Object.keys(GAMES) as Tile[];
 let store: Map<string, string>;
-function open(search: string) { vi.stubGlobal('location', { search }); resetStudioNextFlagForTests(); }
+function open(search: string) { vi.stubGlobal('location', { search }); resetStudioNextFlagForTests(); resetHeroBandFlagForTests(); }
 beforeEach(() => {
   store = new Map();
   vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) });
   open('');
 });
-afterEach(() => { vi.unstubAllGlobals(); resetStudioNextFlagForTests(); });
+afterEach(() => { vi.unstubAllGlobals(); resetStudioNextFlagForTests(); resetHeroBandFlagForTests(); });
 
 describe('next Studio games switch', () => {
   it('is off on a device that never opted in, and shows no cover', () => {
@@ -51,5 +63,35 @@ describe('next Studio games switch', () => {
       for (const file of [cover.src, cover.src480]) expect(existsSync(path.join(PUBLIC, file)), `${file} is not shipped`).toBe(true);
     }
     for (const other of ['rhythm-garden', 'feelings-forest', 'calm-builder', 'sneak', 'toString', '__proto__', '']) expect(studioNextCover(other)).toBeNull();
+  });
+  it('names five tiles after the games they open, in both languages, and only while on', () => {
+    const off = { en: studioCopy('en'), he: studioCopy('he') };
+    expect(TILES.map(id => off.en.activities[id].title)).toEqual(['Memory Match', 'Sequence Quest', 'Puzzle Planet', 'Canal Quest', 'Sound Orbit']);
+    open('?studioNext=1');
+    for (const lang of ['en', 'he'] as const) {
+      const on = studioCopy(lang);
+      for (const id of TILES) {
+        const { title, description, instruction } = GAMES[id][1][lang];
+        expect(on.activities[id]).toEqual({ title, description, instruction });
+        for (const line of [title, description, instruction]) expect(line.trim().length).toBeGreaterThan(3);
+        expect(title).not.toBe(off[lang].activities[id].title);
+      }
+      for (const id of Object.keys(off[lang].activities) as (keyof typeof off.en.activities)[]) if (!TILES.includes(id as Tile)) expect(on.activities[id]).toBe(off[lang].activities[id]);
+      expect(on.worlds).toBe(off[lang].worlds);
+    }
+    expect(new Set(TILES.map(id => GAMES[id][1].he.title)).size).toBe(5);
+    for (const id of TILES) expect(GAMES[id][1].he.title).not.toBe(GAMES[id][1].en.title);
+    open('?studioNext=0');
+    expect(studioCopy('en')).toBe(off.en); expect(studioCopy('he')).toBe(off.he);
+  });
+  it('opens each new game from its host tile through the one loader table, keeping the accepted game for everyone else', () => {
+    const loaders = readFileSync(path.join(HERE, '..', 'kidPrefetch.ts'), 'utf8');
+    for (const id of TILES) {
+      const line = loaders.split('\n').find(row => row.trimStart().startsWith(`${id}:`) || row.trimStart().startsWith(`'${id}':`)) ?? '';
+      expect(line, `${id} loader`).toContain(`studioNextFlagOn() ? await import('./studioV2/games/adventures/${GAMES[id][0]}')`);
+      expect(line.match(/await import\(/g), `${id} keeps both games`).toHaveLength(2);
+      expect(existsSync(path.join(HERE, 'games', 'adventures', `${GAMES[id][0]}.tsx`)), `${GAMES[id][0]}.tsx`).toBe(true);
+    }
+    expect(loaders.match(/studioNextFlagOn\(\)/g)).toHaveLength(TILES.length);
   });
 });

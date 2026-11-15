@@ -1,6 +1,11 @@
 import type { StudioActivityId, StudioLanguage, StudioWorldId } from "./studioCatalog";
 import { heroBandFlagOn } from "./heroBandFlag";
 import { HERO_BAND_COPY } from "./games/adventures/heroBandCopy";
+import { studioNextFlagOn } from "./studioNextFlag";
+import { WOBBLY_DELIVERY_COPY } from "./games/adventures/wobblyDeliveryCopy";
+import { FIVE_FRIEND_SUN_COPY } from "./games/adventures/fiveFriendSunCopy";
+import { OOPS_BUTTON_COPY } from "./games/adventures/oopsButtonCopy";
+import { ROVER_DELIVERY_COPY } from "./games/adventures/roverDeliveryCopy";
 interface ActivityCopy { title: string; description: string; instruction: string }
 interface WorldCopy { title: string; description: string; headline: string; hint: string }
 /** S1 (surfacing): a running Everyday Plan on the kid home — the bottom rail,
@@ -79,7 +84,19 @@ function withHeroBand(base: StudioCopy, lang: "en" | "he"): StudioCopy {
   return { ...base, activities: { ...base.activities, "rhythm-garden": { title, description, instruction } } };
 }
 const band = { en: withHeroBand(en, "en"), he: withHeroBand(he, "he") };
+/** Next Studio games (studioNextFlag): each host tile takes the name and the
+ * lines of the game it opens. The tile id, its world and its place stay. */
+const NEXT_GAMES = { memory: WOBBLY_DELIVERY_COPY, pattern: FIVE_FRIEND_SUN_COPY, puzzle: OOPS_BUTTON_COPY, "river-rescue": ROVER_DELIVERY_COPY, "rhythm-garden": HERO_BAND_COPY } as const;
+function withNextGames(base: StudioCopy, lang: "en" | "he"): StudioCopy {
+  const activities = { ...base.activities };
+  for (const id of Object.keys(NEXT_GAMES) as (keyof typeof NEXT_GAMES)[]) {
+    const { title, description, instruction } = NEXT_GAMES[id][lang];
+    activities[id] = { title, description, instruction };
+  }
+  return { ...base, activities };
+}
+const next = { en: withNextGames(en, "en"), he: withNextGames(he, "he") };
 export function studioCopy(lang: StudioLanguage): StudioCopy {
   const key = lang === "he" ? "he" : "en";
-  return heroBandFlagOn() ? band[key] : key === "he" ? he : en;
+  return studioNextFlagOn() ? next[key] : heroBandFlagOn() ? band[key] : key === "he" ? he : en;
 }

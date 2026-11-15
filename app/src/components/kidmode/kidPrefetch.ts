@@ -1,21 +1,24 @@
 import { cachedModule, scheduleModulePreload } from '../../lib/modulePreload';
 import type { StudioActivityId } from './studioV2/studioCatalog';
 import { heroBandFlagOn } from './studioV2/heroBandFlag';
+import { studioNextFlagOn } from './studioV2/studioNextFlag';
 
 /** One loader authority for both lazy rendering and selected-game warm-up.
- * These factories do not fetch or evaluate a game until called. */
+ * These factories do not fetch or evaluate a game until called. On a device
+ * that opted in to the next Studio games (studioNextFlag), five tiles open
+ * the new game in place of the accepted one; nowhere else is anything changed. */
 export const STUDIO_ACTIVITY_LOADERS = {
-  'river-rescue': cachedModule(() => import('./studioV2/games/adventures/RiverRescue')),
+  'river-rescue': cachedModule(async () => studioNextFlagOn() ? await import('./studioV2/games/adventures/RoverDelivery') : await import('./studioV2/games/adventures/RiverRescue')),
   'feelings-forest': cachedModule(() => import('./studioV2/games/adventures/FeelingsForest')),
-  // Hero Band proof: the same tile opens the new game on a device that opted in.
-  'rhythm-garden': cachedModule(async () => heroBandFlagOn() ? await import('./studioV2/games/adventures/HeroBand') : await import('./studioV2/games/adventures/RhythmGarden')),
-  memory: cachedModule(() => import('../practice/MindVaultWorld')),
+  // Hero Band keeps its own switch as well, so a device that opted in before still gets it.
+  'rhythm-garden': cachedModule(async () => heroBandFlagOn() || studioNextFlagOn() ? await import('./studioV2/games/adventures/HeroBand') : await import('./studioV2/games/adventures/RhythmGarden')),
+  memory: cachedModule(async () => studioNextFlagOn() ? await import('./studioV2/games/adventures/WobblyDelivery') : await import('../practice/MindVaultWorld')),
   feelings: cachedModule(() => import('../practice/FeelingsLabTab')),
-  pattern: cachedModule(() => import('../practice/PatternPowerWorld')),
+  pattern: cachedModule(async () => studioNextFlagOn() ? await import('./studioV2/games/adventures/FiveFriendSun') : await import('../practice/PatternPowerWorld')),
   beat: cachedModule(() => import('../practice/BeatKeeperWorld')),
   sneak: cachedModule(() => import('./games/sneakFreeze/SneakFreeze')),
   'calm-builder': cachedModule(() => import('./studioV2/games/CalmBuilder')),
-  puzzle: cachedModule(() => import('./studioV2/games/PuzzlePlanet')),
+  puzzle: cachedModule(async () => studioNextFlagOn() ? await import('./studioV2/games/adventures/OopsButton') : await import('./studioV2/games/PuzzlePlanet')),
   'sound-explorer': cachedModule(() => import('./studioV2/games/SoundExplorer')),
 };
 
