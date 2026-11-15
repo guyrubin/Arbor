@@ -1,0 +1,33 @@
+/* The Bop toy world: pearl-white rooms, graphite type, small teal accents and
+   natural daylight. Shared by the Bop games so they read as one place.
+   Colours come from the kid tokens only; motion is decoration, never a gate. */
+.adventure--bop { --bop-teal: color-mix(in srgb, var(--arbor-sage) 62%, var(--arbor-sky)); --bop-teal-ink: color-mix(in srgb, var(--arbor-green-ink) 70%, var(--arbor-sky-ink)); --bop-pearl: color-mix(in srgb, var(--arbor-on-accent) 94%, var(--studio-deep-ink)); --bop-line: color-mix(in srgb, var(--studio-deep-ink) 16%, transparent); --bop-shade: color-mix(in srgb, var(--studio-deep-ink) 24%, transparent); --bop-amber: var(--studio-action-gold); --studio-edge: var(--bop-line); --studio-glass: var(--arbor-on-accent); border-color: var(--bop-line); background: linear-gradient(160deg, var(--arbor-on-accent), var(--bop-pearl)); }
+.adventure--bop .adventure-challenge button[aria-pressed=true] { background: var(--bop-teal-ink); color: var(--arbor-on-accent); }
+.adventure--bop .adventure-steps span[data-done=true] { background: var(--bop-teal-ink); color: var(--arbor-on-accent); border-color: var(--bop-teal-ink); }
+
+.bop-stage { position: relative; isolation: isolate; overflow: hidden; border-radius: var(--studio-radius-card); border: 1px solid var(--bop-line); background: var(--bop-pearl); box-shadow: 0 10px 30px color-mix(in srgb, var(--studio-deep-ink) 12%, transparent); }
+.bop-scene { position: absolute; inset: 0; z-index: -1; inline-size: 100%; block-size: 100%; object-fit: cover; object-position: center bottom; pointer-events: none; user-select: none; }
+.bop-sprite { display: block; block-size: auto; max-inline-size: none; pointer-events: none; user-select: none; -webkit-user-drag: none; filter: drop-shadow(0 6px 5px var(--bop-shade)); }
+.bop-sprite--flat { filter: drop-shadow(0 2px 2px var(--bop-shade)); }
+
+/* A toy the child can press: at least one full tap target, never colour alone. */
+.bop-piece { position: relative; display: grid; place-items: center; padding: 0; border: 0; background: transparent; border-radius: 50%; color: var(--studio-deep-ink); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; min-inline-size: var(--studio-tap); min-block-size: var(--studio-tap); transition: transform .18s var(--studio-ease-spring); }
+.bop-piece:active:not(:disabled) { transform: scale(.94); }
+.bop-piece:disabled { cursor: default; }
+.adventure--bop .bop-piece:focus-visible { outline: 3px solid var(--bop-teal-ink); outline-offset: 3px; }
+.bop-piece[data-hint=true]::after { content: ''; position: absolute; inset: -5px; border-radius: inherit; border: 3px solid var(--bop-teal-ink); box-shadow: 0 0 0 3px var(--arbor-on-accent); animation: bop-hint 1.1s ease-in-out infinite; pointer-events: none; }
+.bop-piece[data-wobble=true] { animation: bop-wobble .45s ease-in-out; }
+
+/* A number or count shown on a toy. Graphite on pearl, large enough to read. */
+.bop-chip { display: grid; place-items: center; min-inline-size: 30px; block-size: 30px; padding-inline: 6px; border-radius: 999px; border: 1px solid var(--bop-line); background: var(--arbor-on-accent); color: var(--studio-deep-ink); font: 800 17px/1 var(--studio-font); font-variant-numeric: tabular-nums; }
+
+.bop-friend { display: inline-block; transform-origin: 50% 100%; animation: bop-breathe 3.4s ease-in-out infinite; }
+.bop-friend[data-mood=happy] { animation: bop-hop .62s var(--studio-ease-spring) 2; }
+
+/* The line a grown-up and child take away from the screen. */
+.adventure--bop .adventure-transfer { border-color: var(--bop-line); border-inline-start: 4px solid var(--bop-teal-ink); text-align: start; }
+
+@keyframes bop-hint { 0%, 100% { opacity: .45; transform: scale(1); } 50% { opacity: 1; transform: scale(1.07); } }
+@keyframes bop-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.015, .985); } }
+@keyframes bop-hop { 0%, 100% { transform: translateY(0) scale(1, 1); } 40% { transform: translateY(-13%) scale(.97, 1.04); } 80% { transform: translateY(0) scale(1.04, .96); } }
+@keyframes bop-wobble { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-7deg); } 75% { transform: rotate(7deg); } }
