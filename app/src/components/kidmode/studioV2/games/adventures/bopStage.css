@@ -7,7 +7,10 @@
 
 .bop-stage { position: relative; isolation: isolate; overflow: hidden; border-radius: var(--studio-radius-card); border: 1px solid var(--bop-line); background: var(--bop-pearl); box-shadow: 0 10px 30px color-mix(in srgb, var(--studio-deep-ink) 12%, transparent); }
 .bop-scene { position: absolute; inset: 0; z-index: -1; inline-size: 100%; block-size: 100%; object-fit: cover; object-position: center bottom; pointer-events: none; user-select: none; }
-.bop-sprite { display: block; block-size: auto; max-inline-size: none; pointer-events: none; user-select: none; -webkit-user-drag: none; filter: drop-shadow(0 6px 5px var(--bop-shade)); }
+/* The app caps every image at its box's width (.arbor-app img). A sprite is
+   drawn at the size it is given, so the cap is lifted with a stronger selector. */
+.adventure--bop .bop-sprite { max-inline-size: none; }
+.bop-sprite { display: block; block-size: auto; pointer-events: none; user-select: none; -webkit-user-drag: none; filter: drop-shadow(0 6px 5px var(--bop-shade)); }
 .bop-sprite--flat { filter: drop-shadow(0 2px 2px var(--bop-shade)); }
 
 /* A toy the child can press: at least one full tap target, never colour alone. */
