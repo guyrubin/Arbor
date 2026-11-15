@@ -62,6 +62,20 @@ const getAuth = (): GoogleAuth => {
   return auth;
 };
 
+/**
+ * The Cloud TTS host the read-aloud call goes to, and the region it declares.
+ * 15 Nov 2026 (caller-inventory gap 6): with an EU Vertex location the call
+ * goes to the EU regional endpoint, so the words (coach replies and kid
+ * read-aloud can name the child) are processed where the policy says. Both
+ * pinned Chirp 3 HD Sulafat voices (en-US, he-IL) were synthesized on it that
+ * day, at the latency of the global endpoint. Anything else keeps the global
+ * endpoint and declares "global", so the declared region is never a guess.
+ */
+export const ttsEndpointFor = (config: ArborConfig): { host: string; region: string } =>
+  providerRegion(config.vertexLocation) === "eu"
+    ? { host: "https://eu-texttospeech.googleapis.com", region: "eu" }
+    : { host: "https://texttospeech.googleapis.com", region: "global" };
+
 /** Google Cloud Text-to-Speech `text:synthesize` (stable v1). Returns base64 MP3. */
 async function synthesizeGoogle(config: ArborConfig, input: TtsInput): Promise<TtsResult> {
   const client = await getAuth().getClient();
@@ -73,7 +87,7 @@ async function synthesizeGoogle(config: ArborConfig, input: TtsInput): Promise<T
   const voiceName = input.lang === "he" ? config.ttsVoiceHe : config.ttsVoiceEn;
 
   const startedAt = Date.now();
-  const res = await fetch("https://texttospeech.googleapis.com/v1/text:synthesize", {
+  const res = await fetch(`${ttsEndpointFor(config).host}/v1/text:synthesize`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(config.gcpProjectId ? { "x-goog-user-project": config.gcpProjectId } : {}) },
     signal: AbortSignal.timeout(15000),
@@ -104,10 +118,9 @@ async function synthesizeGoogle(config: ArborConfig, input: TtsInput): Promise<T
 }
 
 /** COACH-3: the speech_synthesis provider candidate the current config yields.
- *  Cloud TTS runs on the app's own GCP project, so its declared residency
- *  follows the configured Vertex location. */
+ *  Its declared residency is the region of the endpoint the call really uses. */
 export const ttsCandidateFor = (config: ArborConfig): ProviderCandidate => ({
-  ref: { provider: "google", model: "cloud-tts-v1", region: providerRegion(config.vertexLocation) },
+  ref: { provider: "google", model: "cloud-tts-v1", region: ttsEndpointFor(config).region },
   capabilities: ["speech_synthesis"],
   audiences: ["parent", "child"],
   // TTS input is app-rendered, already-screened output text — never raw child data.

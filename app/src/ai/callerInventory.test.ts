@@ -25,7 +25,7 @@ import { routePolicyFor, selectProvider, type ProviderCandidate, type RoutePolic
 import type { AiAudience, AiCapability, AiDataClass, CapabilityRequest } from "./capabilities/contracts";
 import type { ModelRoute } from "./modelRouter";
 import { liveCandidatesFor, realtimePolicyFor } from "./liveResidency";
-import { ttsCandidateFor } from "../server/tts";
+import { ttsCandidateFor, ttsEndpointFor } from "../server/tts";
 import { bookTtsCandidate } from "../server/bookNarration";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -282,13 +282,15 @@ describe("B-AIOPS-08 — AI caller inventory matches the source and the policy",
     expect(read("server/bookNarration.ts")).toMatch(/audience: "child", locale: [^,]+, dataClasses: \["child_profile"\]/);
   });
 
-  it("the TTS residency gap: the declared region follows VERTEX_LOCATION, the call goes to the global endpoint", () => {
-    // Gap 6 in the inventory. When /tts calls an EU endpoint (or declares the
-    // endpoint's real region), this pin fails and the table moves with it.
+  it("read-aloud calls the endpoint of the region it declares (gap 6, closed 15 Nov 2026)", () => {
     const tts = read("server/tts.ts");
-    expect(tts).toMatch(/region: providerRegion\(config\.vertexLocation\)/);
-    expect(tts).toContain('fetch("https://texttospeech.googleapis.com/v1/text:synthesize"');
+    expect(tts).toMatch(/region: ttsEndpointFor\(config\)\.region/);
+    expect(tts).toContain("fetch(`${ttsEndpointFor(config).host}/v1/text:synthesize`");
+    expect(ttsEndpointFor(PROD)).toEqual({ host: "https://eu-texttospeech.googleapis.com", region: "eu" });
     expect(ttsCandidateFor(PROD).ref.region).toBe("eu");
+    // A non-EU location declares the global endpoint it calls, never "eu".
+    expect(ttsEndpointFor({ ...PROD, vertexLocation: "us-central1" })).toEqual({ host: "https://texttospeech.googleapis.com", region: "global" });
+    expect(ttsCandidateFor({ ...PROD, vertexLocation: "" }).ref.region).toBe("global");
   });
 });
 
