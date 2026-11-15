@@ -1,0 +1,97 @@
+/* Rover Delivery: one square floor seen from above, so a small child plans a
+   whole route, presses start and watches it run without scrolling. The floor
+   is drawn once and scaled as a whole to the stage it is given, so every sign
+   stays a full tap target on the smallest phone. The floor is a map, so it
+   keeps one direction in every language; everything around it follows the
+   reading direction. Motion is decoration: the rover is moved by the
+   component, one cell a step, and simply jumps when motion is off. */
+.rover-stage { container-type: inline-size; display: grid; justify-items: center; align-items: center; padding-block: 8px; inline-size: min(100%, 480px); margin-inline: auto; }
+.rover-board { position: relative; flex: none; display: grid; grid-template-columns: repeat(var(--rover-n, 3), minmax(0, 1fr)); grid-template-rows: repeat(var(--rover-n, 3), minmax(0, 1fr)); inline-size: 330px; block-size: 330px; }
+
+/* One cell of the floor: a warm pearl play-mat tile lying on the room's floor,
+   which shows in the gaps between the tiles. The tiles the rover drove over
+   on its last run stay tinted and outlined, so the way it took is still there
+   after it has parked. */
+.rover-cell { position: relative; isolation: isolate; display: grid; place-items: center; inline-size: 100%; block-size: 100%; min-inline-size: 0; min-block-size: 0; }
+.rover-cell::before { content: ''; position: absolute; inset: 4px; z-index: -1; border-radius: 14px; border: 2px solid var(--bop-line); background: linear-gradient(165deg, var(--arbor-on-accent), color-mix(in srgb, var(--bop-amber) 7%, var(--bop-pearl))); box-shadow: 0 2px 0 var(--bop-line), 0 7px 10px -4px var(--bop-shade), inset 0 2px 0 var(--arbor-on-accent); pointer-events: none; transition: border-color .2s var(--studio-ease-soft), box-shadow .2s var(--studio-ease-soft); }
+.rover-cell[data-trail=true]::before { border-color: color-mix(in srgb, var(--bop-teal-ink) 46%, transparent); background: color-mix(in srgb, var(--bop-teal) 28%, var(--arbor-on-accent)); }
+.rover-cell > .bop-sprite, .rover-spin > .bop-sprite { object-fit: contain; }
+
+/* A guide sign: a whole cell to press, and an arrow that turns a quarter at a
+   time. Anything that turns carries an even shadow, so it never swings round. */
+.rover-spin { display: grid; place-items: center; inline-size: 100%; block-size: 100%; transform: rotate(calc(var(--rover-turn, 0) * 90deg)); transition: transform .22s var(--studio-ease-soft); }
+.rover-sign .bop-sprite { inline-size: 80%; block-size: 80%; filter: drop-shadow(0 0 3px var(--bop-shade)); }
+.rover-sign[data-hint=true]::after, .rover-bloom[data-hint=true]::after { inset: 1px; }
+
+/* The flower on the way: open it fills its cell, folded down it is a small
+   soft button the rover can roll over. */
+.rover-bloom > .bop-sprite { inline-size: 88%; block-size: 88%; filter: drop-shadow(0 3px 3px var(--bop-shade)); }
+.rover-bloom[data-folded=true] > .bop-sprite { inline-size: 50%; block-size: 50%; filter: drop-shadow(0 1px 1px var(--bop-shade)); }
+
+.rover-planter > .bop-sprite { inline-size: 98%; block-size: 98%; filter: drop-shadow(0 3px 3px var(--bop-shade)); }
+.rover-goal > .bop-sprite { inline-size: 92%; block-size: 92%; }
+.rover-mat { inline-size: 68%; block-size: 68%; border-radius: 15px; border: 2px dashed var(--bop-teal-ink); background: color-mix(in srgb, var(--bop-pearl) 72%, transparent); box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--arbor-on-accent) 80%, transparent); }
+
+/* The rover and Pep sit over the cells, one cell in size, moved by the column
+   and the row they are given. The rover rolls in, then turns where a sign says. */
+.rover-car, .rover-pep { position: absolute; inset-block-start: 0; inset-inline-start: 0; display: grid; inline-size: calc(100% / var(--rover-n, 3)); block-size: calc(100% / var(--rover-n, 3)); pointer-events: none; transform: translate(calc(var(--rover-col, 0) * 100%), calc(var(--rover-row, 0) * 100%)); }
+.rover-car { z-index: 3; place-items: center; transition: transform .32s var(--studio-ease-soft); }
+.rover-car > .rover-spin { transition: transform .18s var(--studio-ease-soft) .2s; }
+.rover-car .bop-sprite { inline-size: 62%; block-size: 70%; filter: drop-shadow(0 0 4px var(--bop-shade)); }
+.rover-car[data-parked=true] .bop-sprite { animation: rover-nudge .42s var(--studio-ease-soft); }
+.rover-pep { z-index: 4; justify-items: center; align-items: end; }
+.rover-pep > .bop-friend { margin-block-end: 7px; }
+.rover-pep .bop-sprite { filter: drop-shadow(0 3px 2px var(--bop-shade)); }
+.rover-ahead { position: absolute; inset-block-start: 0; inset-inline-start: 0; inline-size: 1px; block-size: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+.rover-ahead > .bop-sprite { inline-size: 1px; block-size: 1px; }
+
+/* While the rover runs the plan is locked: the signs stay clear to read. */
+.adventure--rover .rover-cell:disabled { opacity: 1; }
+
+/* The hero stands beside one big start button. The prompt and the status
+   line keep their room, so nothing moves under a finger when the words change. */
+.adventure--rover .rover-actions { flex-wrap: nowrap; min-block-size: 84px; }
+.adventure--rover .rover-actions .adventure-go { flex: 1 1 0; min-inline-size: 0; max-inline-size: 250px; min-block-size: 64px; font-size: 19px; }
+.arbor-play .adventure--rover .adventure-heading { display: flex; align-items: center; }
+.adventure--rover .adventure-status, .adventure--rover .adventure-status:empty { display: block; min-block-size: 48px; block-size: auto; margin-block: 6px; color: var(--studio-deep-ink); }
+
+@keyframes rover-nudge { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-9%); } }
+
+/* One drawing, scaled to the stage it is given: small phones first, then
+   wider phones, then the column beside the prompt and the start button. */
+@container (max-width: 345px) { .rover-board { zoom: .93; } }
+@container (max-width: 322px) { .rover-board { zoom: .86; } }
+@container (max-width: 299px) { .rover-board { zoom: .79; } }
+@container (max-width: 276px) { .rover-board { zoom: .72; } }
+@container (max-width: 253px) { .rover-board { zoom: .7; } }
+@container (min-width: 363px) { .rover-board { zoom: 1.05; } }
+@container (min-width: 380px) { .rover-board { zoom: 1.1; } }
+@container (min-width: 412px) { .rover-board { zoom: 1.2; } }
+@container (min-width: 445px) { .rover-board { zoom: 1.3; } }
+@container (min-width: 478px) { .rover-board { zoom: 1.4; } }
+@container (min-width: 511px) { .rover-board { zoom: 1.5; } }
+
+@media (min-width: 800px) {
+  .adventure--rover .rover-stage { grid-column: 1; grid-row: 2 / span 8; margin: 0; align-self: start; justify-self: center; inline-size: min(100%, 520px, max(260px, calc(100vh - 240px))); inline-size: min(100%, 520px, max(260px, calc(100dvh - 240px))); }
+  .arbor-play .adventure--rover .adventure-heading { min-block-size: 112px; }
+  .adventure--rover .adventure-status, .adventure--rover .adventure-status:empty { min-block-size: 72px; margin: 0; }
+  .adventure--rover .rover-actions .adventure-go { font-size: 17px; }
+}
+@media (max-width: 600px) {
+  .adventure--rover .adventure-toolbar { flex-wrap: nowrap; gap: 8px; min-block-size: 58px; margin-block-end: 8px; }
+  .adventure--rover .adventure-challenge { flex: 1; min-inline-size: 0; inline-size: auto; }
+  .adventure--rover .adventure-challenge button { gap: 4px; padding-inline: 5px; font-size: 12px; }
+  .adventure--rover .adventure-steps { flex-shrink: 0; gap: 4px; }
+  .adventure--rover .adventure-prompt { margin-block: 4px 8px; }
+  .arbor-play .adventure--rover .adventure-heading { min-block-size: 70px; padding-block: 10px; padding-inline-start: 12px; font-size: 18px !important; }
+  /* On a short screen the floor gives up room first. */
+  .adventure--rover .rover-stage { inline-size: min(100%, max(248px, calc(100vh - 452px))); inline-size: min(100%, max(248px, calc(100dvh - 452px))); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rover-cell::before, .rover-spin, .rover-car, .rover-car > .rover-spin, .rover-car .bop-sprite { animation: none !important; transition: none !important; }
+}
+@media (forced-colors: active) {
+  .rover-cell::before, .rover-mat { border: 1px solid ButtonText; }
+  .rover-cell[data-trail=true]::before { border: 3px solid ButtonText; }
+  .rover-sign[data-hint=true], .rover-bloom[data-hint=true] { outline: 3px solid Highlight; }
+}
