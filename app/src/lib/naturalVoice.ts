@@ -1,5 +1,5 @@
 import { authHeaders, getAiLanguage } from "./api";
-import { setNaturalSynth, setVoiceEngine, stopVoice, type NaturalSynth, type NaturalSynthHandle, type SpeakHandlers } from "./voice";
+import { setDeviceVoiceAllowed, setNaturalSynth, setVoiceEngine, stopVoice, type NaturalSynth, type NaturalSynthHandle, type SpeakHandlers } from "./voice";
 import { isKidModeActive } from "./kidModeGate";
 import { kidVoiceElement } from "./kidVoicePlayer";
 
@@ -344,35 +344,55 @@ export function resetNaturalVoice(): void {
   kidLineCache.clear();
   setNaturalSynth(null);
   setVoiceEngine("basic");
+  setDeviceVoiceAllowed(true);
 }
 
 export const resetNaturalVoiceForTest = resetNaturalVoice;
 
 /** One cheap capability GET at a time. Only a valid boolean is a final answer;
  *  401/403/429/5xx, timeout and malformed JSON remain retryable, not "off".
- *  This does not create synthesis requests or override a valid server kill switch. */
+ *  This does not create synthesis requests or override a valid server kill switch.
+ *
+ *  15 Nov 2026: a probe that could not answer no longer leaves the device
+ *  voice speaking. The neural voice is tried anyway and the device voice is
+ *  withheld, so a server fault is heard as no voice (and said to the parent),
+ *  never as a robot voice. Only a real `configured: false` keeps the device
+ *  voice (local and mock servers have no neural voice). */
 export function initNaturalVoice(): Promise<void> {
   if (initialized) return Promise.resolve();
   if (probe) return probe;
   const scope = generation;
   const controller = new AbortController();
   probeController = controller;
-  const timer = setTimeout(() => controller.abort(), 5_000);
+  const timer = setTimeout(() => { unanswered(); controller.abort(); }, 5_000);
+  const useNeuralOnly = () => {
+    setNaturalSynth(naturalSynth);
+    setVoiceEngine("natural");
+    setDeviceVoiceAllowed(false);
+  };
+  // No answer (5xx, 401, timeout, offline, malformed): still this sign-in's
+  // scope, so try the neural voice and withhold the device voice.
+  const unanswered = () => { if (generation === scope) useNeuralOnly(); };
   const attempt = (async () => {
     try {
       const headers = await authHeaders();
       if (controller.signal.aborted || generation !== scope) return;
       const res = await fetch("/api/tts", { headers, signal: controller.signal });
-      if (!res.ok) return;
+      if (generation !== scope) return;
+      if (!res.ok) { unanswered(); return; }
       const body: unknown = await res.json();
-      if (controller.signal.aborted || generation !== scope || !body || typeof body !== "object"
-        || !("configured" in body) || typeof body.configured !== "boolean") return;
+      if (generation !== scope) return;
+      if (controller.signal.aborted || !body || typeof body !== "object"
+        || !("configured" in body) || typeof body.configured !== "boolean") { unanswered(); return; }
       initialized = true;
       if (body.configured) {
-        setNaturalSynth(naturalSynth);
-        setVoiceEngine("natural");
+        useNeuralOnly();
+      } else {
+        setNaturalSynth(null);
+        setVoiceEngine("basic");
+        setDeviceVoiceAllowed(true);
       }
-    } catch { /* leave the floor and allow the next user/online retry */ }
+    } catch { unanswered(); /* the next user/online retry probes again */ }
   })();
   // A held token lookup/body cannot keep the single-flight latch forever.
   const aborted = new Promise<void>((resolve) => {

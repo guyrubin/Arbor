@@ -28,6 +28,23 @@ export type SpeakHandlers = { onStart?: () => void; onEnd?: () => void; onError?
  *  never degrades the session, and a degraded session still tries neural. */
 export type SpeakOptions = { neuralOnly?: boolean };
 
+// 15 Nov 2026 (Guy: "very mechanic"; 6 to 11 Nov the /api/tts probe returned
+// 500 and every line was spoken by the device voice): once the server has a
+// neural voice, or has not been able to say, the device voice is never used.
+// Every utterance is then neural-only: it speaks in Arbor's voice or it fails
+// to the caller (the words stay on screen). The device voice remains only
+// where the server answered that no neural voice exists (local, mock).
+let deviceVoiceAllowed = true;
+
+/** Allow or forbid the device (SpeechSynthesis) voice for every utterance. */
+export function setDeviceVoiceAllowed(allowed: boolean): void {
+  deviceVoiceAllowed = allowed;
+}
+
+export function isDeviceVoiceAllowed(): boolean {
+  return deviceVoiceAllowed;
+}
+
 /** Handle returned by a neural synth. `prefetched` = the audio was already
  *  fetched before this utterance started (AI-V5 sentence prefetch), so the
  *  TTFB watchdog — which budgets from FETCH start — has already been paid and
@@ -365,9 +382,9 @@ export function speakText(text: string, handlers: SpeakHandlers = {}, lang: "en"
   if (trimmed && naturalSynth && naturalRetryAt !== null && Date.now() >= naturalRetryAt) {
     setVoiceEngine("natural");
   }
-  const neuralOnly = opts.neuralOnly === true && !!naturalSynth;
+  const neuralOnly = (opts.neuralOnly === true || !deviceVoiceAllowed) && !!naturalSynth;
   const canNatural = !!naturalSynth && (engine === "natural" || neuralOnly);
-  if (!trimmed || (!canNatural && !voiceSupported())) {
+  if (!trimmed || (!canNatural && (!deviceVoiceAllowed || !voiceSupported()))) {
     handlers.onError?.();
     return 0;
   }
