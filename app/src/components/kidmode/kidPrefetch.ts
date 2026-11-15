@@ -1,12 +1,14 @@
 import { cachedModule, scheduleModulePreload } from '../../lib/modulePreload';
 import type { StudioActivityId } from './studioV2/studioCatalog';
+import { heroBandFlagOn } from './studioV2/heroBandFlag';
 
 /** One loader authority for both lazy rendering and selected-game warm-up.
  * These factories do not fetch or evaluate a game until called. */
 export const STUDIO_ACTIVITY_LOADERS = {
   'river-rescue': cachedModule(() => import('./studioV2/games/adventures/RiverRescue')),
   'feelings-forest': cachedModule(() => import('./studioV2/games/adventures/FeelingsForest')),
-  'rhythm-garden': cachedModule(() => import('./studioV2/games/adventures/RhythmGarden')),
+  // Hero Band proof: the same tile opens the new game on a device that opted in.
+  'rhythm-garden': cachedModule(async () => heroBandFlagOn() ? await import('./studioV2/games/adventures/HeroBand') : await import('./studioV2/games/adventures/RhythmGarden')),
   memory: cachedModule(() => import('../practice/MindVaultWorld')),
   feelings: cachedModule(() => import('../practice/FeelingsLabTab')),
   pattern: cachedModule(() => import('../practice/PatternPowerWorld')),

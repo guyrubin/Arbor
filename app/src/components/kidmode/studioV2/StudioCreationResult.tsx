@@ -3,6 +3,10 @@ import { Check, Droplet, Triangle, Star, Flower2, LampFloor, LibraryBig, Moon, M
 import { useLanguage } from '../../../context/LanguageContext';
 import { onKidHush, useKidReadAloudMuted } from '../audio/kidAudio';
 import { createGardenAudio } from './games/adventures/gardenAudio';
+import { createBandEngine } from './games/adventures/heroBandAudio';
+import { BAND_GLYPHS, HERO_BAND_COPY } from './games/adventures/heroBandCopy';
+import { BAND_MOVES, LOOP_STEPS } from './games/adventures/heroBandRules';
+import { StudioPlayHero } from './StudioPlayHero';
 import { useStudioCreations, type StudioCreation } from './studioCreations';
 import type { StudioActivityId } from './studioCatalog';
 import './studioCreations.css';
@@ -10,8 +14,8 @@ import './studioCreations.css';
 export const CORNER_GLYPHS = { cushion: RectangleHorizontal, plant: Sprout, books: LibraryBig, lamp: LampFloor, blanket: RectangleVertical, panda: Panda, flowers: Flower2, basket: ShoppingBasket };
 const NOTE_GLYPHS = [Star, Droplet, Triangle];
 const COPY = {
-  en: { corner: 'Your little world', melody: 'Your own tune', keeping: 'Keeping your creation…', kept: 'In your collection', error: 'Your creation is still here. Saving did not finish.', retry: 'Try saving again', play: 'Play my tune', pause: 'Pause', quiet: 'Follow the shapes with sound off.', show: 'Show someone what you made. Can they play it with you?', remix: 'Open and remix', title: 'Things I made', unavailable: 'The sound could not play. You can follow the shapes.' },
-  he: { corner: 'העולם הקטן שלך', melody: 'המנגינה שלך', keeping: 'שומרים את היצירה…', kept: 'באוסף שלך', error: 'היצירה עדיין כאן. השמירה לא הושלמה.', retry: 'לנסות לשמור שוב', play: 'לנגן את המנגינה שלי', pause: 'לעצור', quiet: 'אפשר לעקוב אחרי הצורות כשהצליל כבוי.', show: 'אפשר להראות למישהו מה יצרת. אולי תנסו יחד?', remix: 'לפתוח וליצור גרסה חדשה', title: 'דברים שיצרתי', unavailable: 'לא הצלחנו להשמיע צליל. אפשר לעקוב אחרי הצורות.' },
+  en: { corner: 'Your little world', melody: 'Your own tune', dance: HERO_BAND_COPY.en.keep, keeping: 'Keeping your creation…', kept: 'In your collection', error: 'Your creation is still here. Saving did not finish.', retry: 'Try saving again', play: 'Play my tune', pause: 'Pause', quiet: 'Follow the shapes with sound off.', show: 'Show someone what you made. Can they play it with you?', remix: 'Open and remix', title: 'Things I made', unavailable: 'The sound could not play. You can follow the shapes.' },
+  he: { corner: 'העולם הקטן שלך', melody: 'המנגינה שלך', dance: HERO_BAND_COPY.he.keep, keeping: 'שומרים את היצירה…', kept: 'באוסף שלך', error: 'היצירה עדיין כאן. השמירה לא הושלמה.', retry: 'לנסות לשמור שוב', play: 'לנגן את המנגינה שלי', pause: 'לעצור', quiet: 'אפשר לעקוב אחרי הצורות כשהצליל כבוי.', show: 'אפשר להראות למישהו מה יצרת. אולי תנסו יחד?', remix: 'לפתוח וליצור גרסה חדשה', title: 'דברים שיצרתי', unavailable: 'לא הצלחנו להשמיע צליל. אפשר לעקוב אחרי הצורות.' },
 };
 export function CreationPreview({ creation, childId }: { creation: StudioCreation; childId: string }) {
   const { uiLang } = useLanguage(); const lang = uiLang === 'he' ? 'he' : 'en'; const w = COPY[lang];
@@ -19,18 +23,26 @@ export function CreationPreview({ creation, childId }: { creation: StudioCreatio
   const [lit, setLit] = useState(-1), [playing, setPlaying] = useState(false), [unavailable, setUnavailable] = useState(false);
   const audio = useRef<ReturnType<typeof createGardenAudio> | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const stop = () => { timers.current.forEach(clearTimeout); timers.current = []; audio.current?.stop(); setLit(-1); setPlaying(false); };
+  const band = useRef<ReturnType<typeof createBandEngine> | null>(null);
+  const stop = () => { timers.current.forEach(clearTimeout); timers.current = []; audio.current?.stop(); band.current?.stop(); setLit(-1); setPlaying(false); };
   const stopRef = useRef(stop); stopRef.current = stop;
   useEffect(() => {
     const instance = createGardenAudio(); audio.current = instance;
+    const engine = createBandEngine(); band.current = engine;
     const unsubscribe = onKidHush(() => stopRef.current());
     const hidden = () => { if (document.visibilityState === 'hidden') stopRef.current(); };
     document.addEventListener('visibilitychange', hidden);
-    return () => { timers.current.forEach(clearTimeout); instance.dispose(); unsubscribe(); document.removeEventListener('visibilitychange', hidden); };
+    return () => { timers.current.forEach(clearTimeout); instance.dispose(); engine.dispose(); band.current = null; unsubscribe(); document.removeEventListener('visibilitychange', hidden); };
   }, []);
   useEffect(() => { if (muted) stopRef.current(); }, [muted]);
   const play = () => {
-    stop(); if (creation.kind !== 'melody') return; setPlaying(true);
+    stop();
+    if (creation.kind === 'dance') {
+      setPlaying(true);
+      const sounding = band.current?.start({ tempo: creation.tempo, loop: () => creation.moves, steps: LOOP_STEPS, onStep: step => setLit(step), onEnd: () => { setLit(-1); setPlaying(false); } }) ?? false;
+      setUnavailable(!muted && !sounding); return;
+    }
+    if (creation.kind !== 'melody') return; setPlaying(true);
     const scheduled = audio.current?.sequence(creation.notes, creation.tempo) ?? false;
     setUnavailable(!muted && !scheduled);
     creation.notes.forEach((note, index) => {
@@ -43,7 +55,12 @@ export function CreationPreview({ creation, childId }: { creation: StudioCreatio
     <h3>{w[creation.kind]}</h3>
     {creation.kind === 'corner' ? <div className="studio-creation-room" data-light={creation.light} data-scene={creation.scene} role="img" aria-label={w.corner}>
       {creation.layout.map((object, index) => { const Glyph = object ? CORNER_GLYPHS[object] : null; return <span key={index} data-object={object ?? 'empty'}>{Glyph && <Glyph aria-hidden="true" strokeWidth={1.5} />}</span>; })}
-    </div> : <>
+    </div> : creation.kind === 'dance' ? <>
+      <StudioPlayHero size={120} pose={lit >= 0 && creation.moves[lit] !== null ? BAND_MOVES[creation.moves[lit]!].pose : 'idle'} kick={lit + 1} />
+      <div className="studio-creation-notes studio-creation-dance" aria-label={w.dance}>{creation.moves.map((move, index) => { const Glyph = move === null ? null : BAND_GLYPHS[move]; return <span key={index} data-move={move ?? 'none'} data-lit={index === lit}>{Glyph && <Glyph aria-hidden="true" />}<span className="sr-only">{move === null ? HERO_BAND_COPY[lang].empty : HERO_BAND_COPY[lang].moves[move]}</span></span>; })}</div>
+      <button type="button" className="studio-game-button-v2" onClick={playing ? stop : play}>{playing ? <Pause size={20} /> : <Play size={20} />}{playing ? HERO_BAND_COPY[lang].stop : HERO_BAND_COPY[lang].play}</button>
+      {(muted || unavailable) && <p role="status">{muted ? HERO_BAND_COPY[lang].quiet : HERO_BAND_COPY[lang].unavailable}</p>}
+    </> : <>
       <div className="studio-creation-notes" aria-label={w.melody}>{creation.notes.map((note, index) => { const Glyph = NOTE_GLYPHS[note]; return <span key={index} data-note={note} data-lit={index === lit}><Glyph aria-hidden="true" /><span className="sr-only">{note + 1}</span></span>; })}</div>
       <button type="button" className="studio-game-button-v2" onClick={playing ? stop : play}>{playing ? <Pause size={20} /> : <Play size={20} />}{playing ? w.pause : w.play}</button>
       {(muted || unavailable) && <p role="status">{muted ? w.quiet : w.unavailable}</p>}
