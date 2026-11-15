@@ -323,7 +323,13 @@ export const PROMPT_VERSIONS: Record<PromptKey, { version: string; sha256: strin
   // child concerns go to child care, parent wellbeing to their own clinician.
   // Crisis routing is unchanged.
   voice_reply: { version: "1.10.6", sha256: "a0679af8f576fef6b47d82c3694883cadbd02d1d38af44fd3cfe961e7f474ec6" },
-  live_session: { version: "1.6.0", sha256: "e548541a970778692712349da73107873b6bf0b58a211bd5111306a37113aacd" },
+  // live_session 1.7.0 (15 Nov 2026): one delivery sentence (livePersona
+  // LIVE_SPOKEN_DELIVERY) on how the Live voice should sound; on
+  // gemini-3.8-live tone is steered by the instruction alone. Content rules
+  // unchanged; /voice does not carry the line. The text judge suites do not
+  // run this instruction: its check is a real Live session (live-smoke) plus
+  // a listening check in English and Hebrew.
+  live_session: { version: "1.7.0", sha256: "21fc8757352ef05756de65d429035ddd209a2ac42edeaaec597d84b08afc9624" },
   // 1.2.0 (B-AI-15, 2026-10-04): one capture = one log (first moment, never
   // merged, never an array), notes copy the parent's own words, no adjective
   // about the parent, Hebrew in → Hebrew out. Deterministic floor under it:
