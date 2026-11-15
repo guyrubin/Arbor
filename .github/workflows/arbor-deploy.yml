@@ -85,6 +85,10 @@ jobs:
         working-directory: app
       - run: npm run eval:safety
         working-directory: app
+      # 15 Nov 2026: the pinned-model, prompt-version and suite contract check
+      # ran in CI only, so a direct push to main could release an unpinned model.
+      - run: npm run check:acceptance
+        working-directory: app
 
       # Keyless auth via Workload Identity Federation (preferred — no stored key).
       - id: auth-wif
@@ -257,3 +261,20 @@ jobs:
         run: |
           API_URL=$(gcloud run services describe arbor-api --region europe-west4 --project "$PROJECT_ID" --format='value(status.url)')
           node app/scripts/verify-live-release.mjs https://arborparentingapp.com "$API_URL" "$GITHUB_SHA" app/dist/sw.js
+
+      # 15 Nov 2026: hear the release before calling it done. A disposable
+      # synthetic account asks production for the voice capability probe, one
+      # English and one Hebrew read-aloud, a constrained Live token and real
+      # Live audio, then erases itself. From 6 to 11 Nov the probe returned 500
+      # and every parent heard the device voice; no check failed. A red step
+      # here is the alert: the release is live, its voice is not.
+      - name: Verify production voice and AI
+        working-directory: app
+        run: |
+          for attempt in 1 2; do
+            if npx tsx scripts/ai-production-smoke.mts "$GITHUB_SHA" "$RUNNER_TEMP/production-smoke.json"; then
+              echo "✓ production voice and AI answered on $GITHUB_SHA"; exit 0
+            fi
+            echo "attempt $attempt failed"; sleep 20
+          done
+          echo "::error::Production voice or AI check failed after release $GITHUB_SHA: see the rows above (probe, read-aloud en/he, Live token, Live audio)"; exit 1
