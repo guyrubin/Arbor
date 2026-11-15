@@ -1,252 +1,574 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#0d1340">
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Arbor: understand your child, know what to do next</title>
-<meta name="description" content="Arbor is an AI parenting companion for parents of children up to 12. Tell it what happened today and get one step to try tonight, with the words to start. 14 days of Arbor Plus free, no card.">
+<meta name="description" content="Arbor is an AI parenting companion. Say what happened today and get one step to try tonight, a clearer picture of your child's development, and stories and play for their world. Free for 14 days, no card.">
 <meta name="robots" content="noindex">
-<meta property="og:title" content="Arbor: your AI parenting companion"><meta property="og:description" content="Tell Arbor what happened today. Get one step to try tonight, a record of your child that you control, and games and stories for them."><meta property="og:image" content="https://arborparentingapp.com/visuals/parent/v2/together-960.webp">
+<meta name="theme-color" content="#fbfaf7">
 <link rel="icon" href="/brand/arbor-mark-128.webp">
 <link rel="preload" href="/fonts/text/instrument-sans-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/text/fraunces-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/marketing/arbor-living-v2.css">
+<link rel="preload" href="/fonts/material-symbols-rounded-subset.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/marketing/arbor-living-v3.css">
 <script type="importmap">{"imports":{"three":"/marketing/vendor/three-0.170.module.min.js"}}</script>
-<script>document.documentElement.classList.add('js')</script>
+<script>document.documentElement.classList.add('js');if(/[?&]film=1/.test(location.search))document.documentElement.classList.add('filmonly','recording')</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <canvas id="forms" aria-hidden="true"></canvas>
 
-<header class="top" data-tone="night"><div class="wrap top-row">
-  <a class="logo" href="#top" aria-label="Arbor home"><img src="/brand/arbor-mark-128.webp" alt="" width="38" height="38"><span>Arbor</span></a>
-  <nav aria-label="Main navigation"><a href="#try">How it answers</a><a href="#inside">What is inside</a><a href="#kids">Kids Studio</a><a href="#control">Privacy</a><a href="#plans">Price</a></nav>
-  <div class="top-actions"><a class="lang" href="/marketing/arbor-marketing-landing-page-he.html" lang="he" hreflang="he">עברית</a><a class="btn small" href="/?entry=landing&amp;start=trial&amp;lang=en&amp;utm_source=arbor_landing&amp;utm_medium=website&amp;utm_campaign=landing_living_v2" data-entry-slot="header">Start free trial</a></div>
+<header class="top" id="top-bar"><div class="wrap">
+  <a class="brand" href="#top" aria-label="Arbor, back to top"><img src="/brand/arbor-mark-128.webp" alt="" width="34" height="34">Arbor</a>
+  <nav aria-label="On this page">
+    <a href="#guide">What it does</a>
+    <a href="#approaches">How it thinks</a>
+    <a href="#kids">Kids Studio</a>
+    <a href="#plans">Plans</a>
+    <a href="#faq">Questions</a>
+  </nav>
+  <a class="lang" href="/marketing/arbor-marketing-landing-page-he.html" lang="he" dir="rtl">עברית</a>
+  <a class="btn small" data-entry-slot="header" href="/?entry=landing&amp;start=trial&amp;lang=en&amp;utm_source=arbor_landing&amp;utm_medium=website&amp;utm_campaign=landing_living_v3">Start my 14 free days</a>
 </div></header>
 
 <main id="main">
 
-<!-- 1. Hero: the promise, and the screen that delivers it -->
-<section class="band night hero" id="top" data-tone="night" aria-labelledby="hero-title"><div class="wrap hero-grid">
+<!-- 1. Hero: the promise, and one evening followed through the app -->
+<section class="hero" id="top" aria-labelledby="hero-title"><div class="wrap">
   <div class="hero-copy">
     <p class="kicker">Your AI parenting companion</p>
-    <h1 id="hero-title"><span class="line"><span>Understand your child.</span></span><span class="line accent"><span>Know what to do next.</span></span></h1>
-    <p class="lead">Tell Arbor what happened today. It draws on seven child-development approaches and gives you one step to try tonight, with the words to start.</p>
-    <div class="actions"><a class="btn" href="/?entry=landing&amp;start=trial&amp;lang=en&amp;utm_source=arbor_landing&amp;utm_medium=website&amp;utm_campaign=landing_living_v2" data-entry-slot="hero">Start my 14 free days</a><a class="link" href="#inside">See what is inside <span aria-hidden="true">↓</span></a></div>
-    <p class="fine">All of Arbor Plus. No card. No automatic charge.</p>
-    <ul class="facts-row" aria-label="At a glance">
-      <li>For parents of children up to 12</li>
-      <li>English and Hebrew</li>
-      <li>In your browser, nothing to install</li>
+    <h1 id="hero-title">Understand your child. <em>Know what to do next.</em></h1>
+    <p class="lead">Tell Arbor what happened today. You get one step to try tonight and the words to start it, drawn from seven child-development approaches.</p>
+    <div class="cta-row">
+      <a class="btn" data-entry-slot="hero" href="/?entry=landing&amp;start=trial&amp;lang=en&amp;utm_source=arbor_landing&amp;utm_medium=website&amp;utm_campaign=landing_living_v3">Start my 14 free days <i class="ms" aria-hidden="true">arrow_forward</i></a>
+      <a class="link" href="#guide">See what it does</a>
+    </div>
+    <p class="fine">All of Arbor Plus for 14 days. No card, no automatic charge. After that, Arbor Plus is €12.99 a month if you choose to continue.</p>
+    <ul class="facts">
+      <li><i class="ms fill" aria-hidden="true">check_circle</i>For parents of children to age 12</li>
+      <li><i class="ms fill" aria-hidden="true">check_circle</i>English and Hebrew</li>
+      <li><i class="ms fill" aria-hidden="true">check_circle</i>In your browser, nothing to install</li>
     </ul>
   </div>
-  <div class="stage hero-stage" data-stage="0">
-    <i class="form-anchor"></i>
-    <img class="fallback-art" src="/visuals/parent/v2/together-960.webp" width="960" height="640" alt="">
-    <div class="phone" id="hero-phone">
-      <img class="on" src="/marketing/shots/talk.webp" width="750" height="1624" fetchpriority="high" alt="Talk with Arbor. It asks: What is on your mind? Below are example moments such as morning refusal and bedtime battle, and a box to type, talk or add a photo.">
-      <img src="/marketing/shots/story.webp" width="750" height="1624" loading="lazy" aria-hidden="true" alt="A bedtime story screen. A moment the parent saved yesterday becomes the start of tonight's story.">
-      <img src="/marketing/shots/weekly.webp" width="750" height="1624" loading="lazy" aria-hidden="true" alt="The weekly report. It lists the week's moments and steps as counts, and what happened each day.">
-      <i class="glare" aria-hidden="true"></i>
-    </div>
-    <p class="callout c-a" id="call-a" aria-hidden="true"><i></i><span>Start from a moment like these</span></p>
-    <p class="callout c-b" id="call-b" aria-hidden="true"><i></i><span>Type, talk or add a photo</span></p>
-    <p class="stage-note">Screens from Arbor, shown with a sample family.</p>
+
+  <div class="hero-stage stage" data-stage="0">
+    <div class="form-anchor"></div>
+
+    <ol class="chapters" id="chapters" aria-label="One evening with Arbor, in five steps">
+      <li class="film-title" aria-hidden="true">One evening with Arbor</li>
+      <li><button type="button" aria-current="true"><time>18:40</time><b>Now</b><span>Arbor opens on the hour you are in, with the words ready.</span></button></li>
+      <li><button type="button"><time>18:42</time><b>Talk</b><span>You say what happened. One step comes back, with the words to start.</span></button></li>
+      <li><button type="button"><time>19:30</time><b>Together</b><span>The routine picks up where you left it, and tonight’s story is written.</span></button></li>
+      <li><button type="button"><time>20:15</time><b>Tonight</b><span>One question about the day. Arbor keeps only what you confirm.</span></button></li>
+      <li><button type="button"><time>Sunday</time><b>The week</b><span>The week at a glance, in counts rather than scores.</span></button></li>
+      <li><button type="button" class="film-ctl" id="film-ctl"><i class="ms" aria-hidden="true">stop</i><span>Pause the film</span></button></li>
+    </ol>
+
+    <figure class="phone film" id="film" aria-label="Illustrative example of the Arbor app with a sample family. No personal data.">
+      <div class="bezel"><div class="screen" aria-hidden="true">
+
+        <!-- 18:40 Now -->
+        <div class="ui scene" data-len="6.2">
+          <div class="u-top"><img src="/brand/arbor-mark-128.webp" alt=""><span class="u-child"><i>N</i>Noa</span><span class="sp"></span><span class="u-ico"><i class="ms" aria-hidden="true">search</i></span><span class="u-ico kid"><i class="ms" aria-hidden="true">sports_esports</i></span></div>
+          <div class="u-body">
+            <div class="u-tabs"><span class="on">Now</span><span>Weekly report</span></div>
+            <div><p class="u-kick">Now · Parenting Companion</p><p class="u-h">One thing tonight with Noa</p></div>
+            <div class="u-card warm" data-at=".5">
+              <p class="u-label"><i class="ms" aria-hidden="true">schedule</i>Right now · 18:40</p>
+              <p class="t">Around now is often a hard part of the evening.</p>
+              <p>4 of the last 6 hard moments you kept fell between 18:00 and 19:30. The words are ready.</p>
+              <div class="u-row" data-at="1.5"><span class="u-btn">Open the words</span></div>
+            </div>
+            <div class="u-card" data-at="2.6">
+              <p class="u-label">One step, and why it fits tonight</p>
+              <p class="t">Let them choose the last chapter.</p>
+              <p>A choice inside the routine gives them a part of bedtime to own.</p>
+              <div class="u-row" data-at="3.4"><span class="u-btn ghost">It helped</span><span class="u-btn ghost">Not this time</span></div>
+            </div>
+            <div class="u-card green" data-at="4.3">
+              <p class="u-label">Next: Pajamas + teeth</p>
+              <p class="t">Calm bedtime · 1 of 4 steps done today</p>
+              <div class="u-steps"><i class="d"></i><i></i><i></i><i></i></div>
+            </div>
+          </div>
+          <div class="u-dock"><span class="on"><i class="ms" aria-hidden="true">home</i>Now</span><span><i class="ms" aria-hidden="true">eco</i>My child</span><span><i class="ms" aria-hidden="true">interests</i>Together</span><span><i class="ms" aria-hidden="true">forum</i>Talk</span><span><i class="ms" aria-hidden="true">more_horiz</i>More</span></div>
+        </div>
+
+        <!-- 18:42 Talk -->
+        <div class="ui scene" data-len="8.2">
+          <div class="u-top"><img src="/brand/arbor-mark-128.webp" alt=""><div><p class="u-h s">Arbor</p><p class="u-sub">Noa</p></div><span class="sp"></span><span class="u-ico"><i class="ms" aria-hidden="true">more_horiz</i></span><span class="u-ico"><i class="ms" aria-hidden="true">close</i></span></div>
+          <div class="u-body">
+            <p class="u-me"><span data-type data-at=".4" data-dur="2.5">One more story. One more hug. Bedtime keeps getting later.</span></p>
+            <div class="u-card" data-at="3.4">
+              <p class="u-label"><i class="ms" aria-hidden="true">auto_awesome</i>Try today</p>
+              <p class="t">Let them choose the last chapter.</p>
+              <p>Before you begin, agree on two familiar steps: a story, then a goodnight hug. Let your child choose the story.</p>
+            </div>
+            <div data-at="4.6"><p class="u-kick">Say this</p><p class="u-words">“Which story shall we read before our goodnight hug?”</p></div>
+            <div data-at="5.7"><p class="u-kick">Aligned with</p><div class="u-row" style="margin-top:.4em"><span class="u-chip"><i style="--c:#e8a18a"></i>Connection first</span><span class="u-chip"><i style="--c:#3fb7a4"></i>Independence</span><span class="u-chip"><i style="--c:#f3c969"></i>Stage fit</span></div></div>
+          </div>
+          <div class="u-compose">Share a moment, a question…<span class="sp"></span><span class="u-ico"><i class="ms" aria-hidden="true">mic</i></span><span class="u-ico"><i class="ms" aria-hidden="true">arrow_forward</i></span></div>
+          <p class="u-note">Arbor is an AI companion, not a doctor.</p>
+        </div>
+
+        <!-- 19:30 Together -->
+        <div class="ui scene" data-len="7.4">
+          <div class="u-top"><img src="/brand/arbor-mark-128.webp" alt=""><span class="u-child"><i>N</i>Noa</span><span class="sp"></span><span class="u-ico"><i class="ms" aria-hidden="true">search</i></span><span class="u-ico kid"><i class="ms" aria-hidden="true">sports_esports</i></span></div>
+          <div class="u-body">
+            <div class="u-row"><span class="u-chip">All together</span><span class="u-chip on">Stories</span><span class="u-chip">Games</span></div>
+            <div class="u-card green" data-at=".4">
+              <p class="u-label"><i class="ms" aria-hidden="true">schedule</i>Fits right now · 19:30</p>
+              <p class="t">Calm bedtime · 2 of 4 steps done today</p>
+              <div class="u-steps"><i class="d"></i><i class="d"></i><i></i><i></i></div>
+              <p>Next: Story in bed</p>
+            </div>
+            <div class="u-card" data-at="1.6">
+              <div class="u-line"><img class="u-thumb" src="/visuals/parent/v2/area-sleep-960.webp" alt=""><div><p class="t">Noa’s Bedtime Story</p><p class="u-sub">From a moment you kept today</p></div></div>
+              <p class="u-story"><span data-type data-at="2.4" data-dur="3.8">The little boat had sailed all day. When the harbour lights came on, Noa chose the last story, and the boat turned for home. “Goodnight, little boat,” said Noa, and the water went quiet.</span></p>
+            </div>
+            <p class="u-sub" data-at="6.3">Stories are created and shown only. Never saved or used for training.</p>
+          </div>
+          <div class="u-dock"><span><i class="ms" aria-hidden="true">home</i>Now</span><span><i class="ms" aria-hidden="true">eco</i>My child</span><span class="on"><i class="ms" aria-hidden="true">interests</i>Together</span><span><i class="ms" aria-hidden="true">forum</i>Talk</span><span><i class="ms" aria-hidden="true">more_horiz</i>More</span></div>
+        </div>
+
+        <!-- 20:15 Tonight -->
+        <div class="ui scene" data-len="8">
+          <div class="u-top"><img src="/brand/arbor-mark-128.webp" alt=""><span class="u-child"><i>N</i>Noa</span><span class="sp"></span><span class="u-ico"><i class="ms" aria-hidden="true">search</i></span><span class="u-ico kid"><i class="ms" aria-hidden="true">sports_esports</i></span></div>
+          <div class="u-body">
+            <div class="u-tabs"><span class="on">Now</span><span>Weekly report</span></div>
+            <div class="u-card tint" data-at=".4">
+              <p class="u-label"><i class="ms" aria-hidden="true">bedtime</i>Tonight · question 1 of 3. One tap is enough.</p>
+              <p class="t">Did you notice this today?</p>
+              <p class="u-quote">Talks about at least one thing that happened during their day.</p>
+              <div class="u-swap">
+                <div class="u-row" data-out="2.4"><span class="u-btn">Write it down</span><span class="u-btn ghost">Nothing today</span></div>
+                <div class="u-row" data-at="2.5"><span class="u-btn done"><i class="ms" aria-hidden="true">check</i>Arbor kept your answer.</span></div>
+              </div>
+            </div>
+            <div class="u-card" data-at="3.4">
+              <p class="t">Arbor learned this week</p>
+              <p class="u-sub">Only what you confirm is kept.</p>
+              <p class="u-quote">Noa likes to choose the story.</p>
+              <div class="u-swap">
+                <div class="u-row" data-out="5.2"><span class="u-btn ghost">That’s right</span><span class="u-btn ghost">Not quite</span></div>
+                <div class="u-row" data-at="5.3"><span class="u-btn done"><i class="ms" aria-hidden="true">check</i>Kept</span></div>
+              </div>
+            </div>
+            <div class="u-card green" data-at="6.2">
+              <p class="u-label">Next: Cuddle + lights out</p>
+              <p class="t">Calm bedtime · 3 of 4 steps done today</p>
+              <div class="u-steps"><i class="d"></i><i class="d"></i><i class="d"></i><i></i></div>
+            </div>
+          </div>
+          <div class="u-dock"><span class="on"><i class="ms" aria-hidden="true">home</i>Now</span><span><i class="ms" aria-hidden="true">eco</i>My child</span><span><i class="ms" aria-hidden="true">interests</i>Together</span><span><i class="ms" aria-hidden="true">forum</i>Talk</span><span><i class="ms" aria-hidden="true">more_horiz</i>More</span></div>
+        </div>
+
+        <!-- Sunday: the week -->
+        <div class="ui scene" data-len="6.4">
+          <div class="u-top"><img src="/brand/arbor-mark-128.webp" alt=""><span class="u-child"><i>N</i>Noa</span><span class="sp"></span><span class="u-ico"><i class="ms" aria-hidden="true">search</i></span><span class="u-ico kid"><i class="ms" aria-hidden="true">sports_esports</i></span></div>
+          <div class="u-body">
+            <div class="u-tabs"><span>Now</span><span class="on">Weekly report</span></div>
+            <div><p class="u-kick">Weekly report</p><p class="u-h">Noa’s week, at a glance.</p></div>
+            <div class="u-tiles">
+              <div class="u-tile" data-at=".5"><span class="u-count" data-count="6">6</span>Moments</div>
+              <div class="u-tile" data-at=".8"><span class="u-count" data-count="4">4</span>Steps</div>
+              <div class="u-tile" data-at="1.1"><span class="u-count" data-count="2">2</span>Milestones</div>
+              <div class="u-tile" data-at="1.4"><span class="u-count" data-count="3">3</span>Kid world</div>
+            </div>
+            <p class="u-sub" data-at="2">Counts, not scores.</p>
+            <div class="u-card green" data-at="2.8">
+              <p class="u-label">For next week:</p>
+              <p class="t">Choosing the story before the goodnight hug.</p>
+            </div>
+            <div class="u-card" data-at="3.8">
+              <p class="u-label">What helped</p>
+              <p class="t">A story, then a familiar goodnight.</p>
+              <p>You marked it “It helped” on three evenings.</p>
+            </div>
+          </div>
+          <div class="u-dock"><span class="on"><i class="ms" aria-hidden="true">home</i>Now</span><span><i class="ms" aria-hidden="true">eco</i>My child</span><span><i class="ms" aria-hidden="true">interests</i>Together</span><span><i class="ms" aria-hidden="true">forum</i>Talk</span><span><i class="ms" aria-hidden="true">more_horiz</i>More</span></div>
+        </div>
+
+      </div></div>
+    </figure>
+    <p class="film-cap" id="film-cap">Arbor opens on the hour you are in, with the words ready.</p>
   </div>
 </div></section>
 
-<!-- 2. Try a moment: the answer Arbor gives -->
-<section class="band day" id="try" data-tone="day" aria-labelledby="try-title"><div class="wrap try-grid">
-  <div class="try-head">
-    <h2 id="try-title">Try it with a moment from your week.</h2>
-    <p class="lead">Pick one. This is the kind of answer Arbor gives: one step, the words to start, and why it fits.</p>
-    <div class="chips" role="group" aria-label="Choose a family moment">
-      <button type="button" data-moment="bedtime" aria-pressed="true">Bedtime feels hard</button>
-      <button type="button" data-moment="feelings" aria-pressed="false">Big feelings</button>
-      <button type="button" data-moment="play" aria-pressed="false">Time together</button>
-    </div>
+<!-- 2. The guide: six parts, what each one does -->
+<section class="sec white" id="guide" aria-labelledby="guide-title"><div class="wrap">
+  <div class="sec-head" data-rise>
+    <h2 id="guide-title">Everything Arbor does, in six parts.</h2>
+    <p class="lead">Choose a part to see its screen and what you can do there. The numbers on the screen match the numbered list.</p>
   </div>
-  <article class="talk" id="talk" aria-label="Example conversation with Arbor">
-    <header><img src="/brand/arbor-mark-128.webp" alt="" width="30" height="30"><b>Arbor</b><span>Example</span></header>
-    <div class="you"><small>An example of what you might type</small><p data-copy="said" id="said">One more story. One more hug. Bedtime keeps getting later.</p></div>
-    <div class="reply" id="reply" aria-live="polite" aria-atomic="true">
-      <p class="tag">A small step for tonight</p>
-      <h3 data-copy="title">Let them choose the last chapter.</h3>
-      <p class="act" data-copy="action">Before you begin, agree on two familiar steps: a story, then a goodnight hug. Let your child choose the story.</p>
-      <div class="words"><small>Words to try</small><p data-copy="words">“Which story shall we read before our goodnight hug?”</p></div>
-      <div class="why"><small>Why this fits</small>
-        <ol>
-          <li><i data-dot="0"></i><b data-copy="n0t">Connection first</b><span data-copy="n0">One more hug may be a way of asking for closeness before the day ends.</span></li>
-          <li><i data-dot="1"></i><b data-copy="n1t">Independence</b><span data-copy="n1">A choice inside the routine gives them a part of bedtime to own.</span></li>
-          <li><i data-dot="2"></i><b data-copy="n2t">Stage fit</b><span data-copy="n2">Two steps they can picture are easier to follow than “it’s late”.</span></li>
-        </ol>
+
+  <div class="places" id="places" aria-label="The six parts of Arbor">
+    <button type="button" aria-selected="true" data-place="now"><i class="ms" aria-hidden="true">home</i>Now</button>
+    <button type="button" aria-selected="false" data-place="talk"><i class="ms" aria-hidden="true">forum</i>Talk with Arbor</button>
+    <button type="button" aria-selected="false" data-place="child"><i class="ms" aria-hidden="true">eco</i>My child</button>
+    <button type="button" aria-selected="false" data-place="together"><i class="ms" aria-hidden="true">interests</i>Together</button>
+    <button type="button" aria-selected="false" data-place="care"><i class="ms" aria-hidden="true">diversity_1</i>Care, together</button>
+    <button type="button" aria-selected="false" data-place="learn"><i class="ms" aria-hidden="true">school</i>For you, the parent</button>
+  </div>
+
+  <!-- Now -->
+  <article class="place" id="place-now" aria-labelledby="pn-now">
+    <div class="place-art"><figure class="phone" aria-label="Illustrative example of the Now screen. No personal data."><div class="bezel"><div class="screen"><div class="ui">
+      <div class="u-top"><img src="/brand/arbor-mark-128.webp" alt=""><span class="u-child"><i>N</i>Noa</span><span class="sp"></span><span class="u-ico"><i class="ms" aria-hidden="true">search</i></span><span class="u-ico kid"><i class="ms" aria-hidden="true">sports_esports</i></span></div>
+      <div class="u-body">
+        <div class="u-tabs"><span class="on">Now</span><span class="pinned" data-pin="4">Weekly report<i class="pin">4</i></span></div>
+        <div><p class="u-kick">Now · Parenting Companion</p><p class="u-h">One thing tonight with Noa</p></div>
+        <div class="u-card warm pinned" data-pin="1"><i class="pin">1</i>
+          <p class="u-label"><i class="ms" aria-hidden="true">schedule</i>Right now · 18:40</p>
+          <p class="t">Around now is often a hard part of the evening.</p>
+          <p>4 of the last 6 hard moments you kept fell between 18:00 and 19:30. The words are ready.</p>
+          <div class="u-row"><span class="u-btn">Open the words</span></div>
+        </div>
+        <div class="u-card pinned" data-pin="2"><i class="pin">2</i>
+          <p class="u-label">One step, and why it fits tonight</p>
+          <p class="t">Let them choose the last chapter.</p>
+          <div class="u-row"><span class="u-btn ghost">It helped</span><span class="u-btn ghost">Not this time</span></div>
+        </div>
+        <div class="u-card tint pinned" data-pin="3"><i class="pin">3</i>
+          <p class="u-label"><i class="ms" aria-hidden="true">bedtime</i>Tonight · question 1 of 3</p>
+          <p class="t">Did you notice this today?</p>
+        </div>
+        <div class="u-card green">
+          <p class="u-label">Next: Pajamas + teeth</p>
+          <p class="t">Calm bedtime · 1 of 4 steps done today</p>
+          <div class="u-steps"><i class="d"></i><i></i><i></i><i></i></div>
+        </div>
       </div>
+      <div class="u-dock"><span class="on"><i class="ms" aria-hidden="true">home</i>Now</span><span><i class="ms" aria-hidden="true">eco</i>My child</span><span><i class="ms" aria-hidden="true">interests</i>Together</span><span><i class="ms" aria-hidden="true">forum</i>Talk</span><span><i class="ms" aria-hidden="true">more_horiz</i>More</span></div>
+    </div></div></div></figure></div>
+    <div class="place-body">
+      <p class="place-name" id="pn-now"><i class="ms" aria-hidden="true">home</i>Now</p>
+      <h3>Clarity for today, in one screen.</h3>
+      <ol class="caps">
+        <li data-pin="1"><span class="n" aria-hidden="true">1</span><h4>Right now</h4><p>Now opens on the hour you are in. When the hard moments you kept gather around the same time of day, Arbor says so and has the words ready.</p></li>
+        <li data-pin="2"><span class="n" aria-hidden="true">2</span><h4>One step for tonight</h4><p>Arbor opens on one question about your child and one small step for today. Tell it whether the step helped, and the next one starts from there.</p><ul class="tags"><li>One step</li><li>Starts from what you noticed</li></ul></li>
+        <li data-pin="3"><span class="n" aria-hidden="true">3</span><h4>One question in the evening</h4><p>Arbor asks whether you noticed one thing today. One tap answers it, or you write a line. What it learns about your child waits for your yes before it is kept.</p></li>
+        <li data-pin="4"><span class="n" aria-hidden="true">4</span><h4>Weekly report</h4><p>What you kept, what helped and what to carry into next week, day by day. You read it in the app when you want it.</p><ul class="tags"><li>Moments, steps and milestones</li><li>Counts only</li></ul></li>
+      </ol>
     </div>
   </article>
-  <div class="try-how">
-    <ol class="how">
-      <li><b>You say what happened.</b><span>Type it, dictate it or talk. Add a photo if it helps.</span></li>
-      <li><b>Arbor looks from several angles.</b><span>Seven approaches, brought into one answer.</span></li>
-      <li><b>You get one step.</b><span>With the words to start, and the reason it fits your child.</span></li>
-    </ol>
-    <div class="actions"><a class="btn" href="/?entry=landing&amp;start=trial&amp;lang=en&amp;utm_source=arbor_landing&amp;utm_medium=website&amp;utm_campaign=landing_living_v2" data-entry-slot="demo">Ask about your own moment</a></div>
-    <p class="fine">An example, not personalised advice. Nothing you pick is saved on this page; if you start the trial from here, only the topic you picked travels with the link. Arbor supports your thinking; it does not assess or diagnose.</p>
-  </div>
-</div></section>
 
-<!-- 3. What is inside: twelve capabilities, real screens -->
-<section class="band day inside" id="inside" data-tone="day" aria-labelledby="inside-title"><div class="wrap">
-  <div class="inside-head">
-    <h2 id="inside-title">What is inside Arbor today.</h2>
-    <p class="lead">Twelve things you can use from the first evening. These are screens from the app, shown with a sample family.</p>
-    <p class="swipe" aria-hidden="true"><span id="feat-count">1 of 12</span> · swipe to see them all</p>
-  </div>
-  <ul class="feats auto" id="feats">
-    <li class="feat-grp"><span>Tonight</span></li>
-    <li class="feat-item on"><button type="button" class="feat" aria-pressed="true"><small class="when">Tonight</small><b>Now</b><span class="line">One step for tonight, and why it fits.</span></button>
-      <figure class="feat-shot" style="--y:82;--sx:8;--sy:180;--sw:300;--sh:96"><div class="win"><img src="/marketing/shots/now.webp" width="750" height="1624" loading="lazy" alt="The Now screen: One thing tonight with Dylan. One step, and why it fits tonight."><i class="spot"></i></div></figure>
-      <div class="feat-more"><h3>One step for tonight</h3><p>Arbor opens on one question about your child and one small step for today. Tell it whether the step helped, and the next one starts from there.</p><ul class="facts"><li>One step, not a list</li><li>Starts from what you noticed</li><li>“It helped” or “Not this time”</li></ul></div></li>
-    <li class="feat-item"><button type="button" class="feat" aria-pressed="false"><small class="when">Tonight</small><b>Talk with Arbor</b><span class="line">Say what happened, your way.</span></button>
-      <figure class="feat-shot" style="--y:88;--sx:8;--sy:178;--sw:300;--sh:106"><div class="win"><img src="/marketing/shots/talk.webp" width="750" height="1624" loading="lazy" alt="The Talk screen: What’s on your mind? Starters include Morning refusal, iPad dispute, Sibling clash and Bedtime battle."><i class="spot"></i></div></figure>
-      <div class="feat-more"><h3>Say what happened, your way</h3><p>Type it, dictate it or talk it through. Add up to three photos or files and choose the tone you want back. Arbor draws on seven approaches and gives one answer.</p><ul class="facts"><li>Text, dictation or voice</li><li>Up to 3 photos or files</li><li>An AI companion, not a doctor</li></ul><p class="plan-note">In the 14-day trial and Arbor Plus</p></div></li>
-    <li class="feat-item"><button type="button" class="feat" aria-pressed="false"><small class="when">Tonight</small><b>A bedtime story of their own</b><span class="line">Written tonight, from a moment you noted.</span></button>
-      <figure class="feat-shot" style="--y:82;--sx:28;--sy:290;--sw:318;--sh:152"><div class="win"><img src="/marketing/shots/story.webp" width="750" height="1624" loading="lazy" alt="The bedtime story screen: a note from yesterday, Sang the whole bath song on his own, becomes tonight’s story."><i class="spot"></i></div></figure>
-      <div class="feat-more"><h3>A story written for tonight</h3><p>Pick a moment from the day and Arbor writes a story around it to read together at bedtime. Stories are created and shown only. They are never saved or used for training.</p><ul class="facts"><li>Starts from your own notes</li><li>Never saved or used for training</li></ul><p class="plan-note">In the 14-day trial and Arbor Plus</p></div></li>
-
-    <li class="feat-grp"><span>This week</span></li>
-    <li class="feat-item"><button type="button" class="feat" aria-pressed="false"><small class="when">This week</small><b>Action plans</b><span class="line">One small step a day.</span></button>
-      <figure class="feat-shot" style="--y:62;--h:396;--sx:12;--sy:188;--sw:352;--sh:244"><div class="win"><img src="/marketing/shots/plans.webp" width="750" height="1624" loading="lazy" alt="The Action Plans screen: today’s step, with three steps done so far and an I’ll try it button."><i class="spot"></i></div></figure>
-      <div class="feat-more"><h3>A plan in small daily steps</h3><p>Start from a ready-made routine or a plan built around what you are working on. Arbor shows today’s step first, and you tick steps off as you go.</p><ul class="facts"><li>Today’s step first</li><li>Ready-made routines</li><li>Steps counted, never graded</li></ul><p class="plan-note">A plan built for you: in the 14-day trial and Arbor Plus</p></div></li>
-    <li class="feat-item"><button type="button" class="feat" aria-pressed="false"><small class="when">This week</small><b>Weekly report</b><span class="line">The week at a glance, in counts rather than scores.</span></button>
-      <figure class="feat-shot" style="--y:82;--h:346;--sx:10;--sy:274;--sw:355;--sh:146"><div class="win"><img src="/marketing/shots/weekly.webp" width="750" height="1624" loading="lazy" alt="The weekly report: Dylan’s week, at a glance. What you kept, what helped, and what to carry into next week."><i class="spot"></i></div></figure>
-      <div class="feat-more"><h3>Your child’s week, at a glance</h3><p>What you kept, what helped and what to carry into next week, day by day. You read it in the app when you want it.</p><ul class="facts"><li>Moments, steps and milestones</li><li>Counts, not scores</li></ul></div></li>
-    <li class="feat-item"><button type="button" class="feat" aria-pressed="false"><small class="when">This week</small><b>Moments</b><span class="line">Keep the small things.</span></button>
-      <figure class="feat-shot" style="--y:82;--sx:12;--sy:268;--sw:176;--sh:50"><div class="win"><img src="/marketing/shots/moments.webp" width="750" height="1624" loading="lazy" alt="The Moments screen: kept moments sorted by area, with a Keep a moment button."><i class="spot"></i></div></figure>
-      <div class="feat-more"><h3>Keep the small things</h3><p>Save a moment in words, by voice or with a photo. Each one lands in the area it belongs to, such as talking, moving or feelings, so you can look across areas or over time.</p><ul class="facts"><li>Words, voice or photo</li><li>Sorted by area</li><li>Yours to export or delete</li></ul></div></li>
-
-    <li class="feat-grp"><span>Over time</span></li>
-    <li class="feat-item"><button type="button" class="feat" aria-pressed="false"><small class="when">Over time</small><b>Milestones</b><span class="line">A map you fill in by marking “Seen it”.</span></button>
-      <figure class="feat-shot" style="--y:82;--sx:22;--sy:280;--sw:330;--sh:134"><div class="win"><img src="/marketing/shots/milestones.webp" width="750" height="1624" loading="lazy" alt="The milestone map: milestones across areas such as talking and understanding, moving, and feelings, with 10 marked Seen it."><i class="spot"></i></div></figure>
-      <div class="feat-more"><h3>A milestone map you fill in</h3><p>130 milestones across eight areas, from 2 months to 5 years. You mark what you have seen and Arbor keeps count. There are no scores and no percentiles.</p><ul class="facts"><li>130 milestones</li><li>8 areas</li><li>2 months to 5 years</li></ul></div></li>
-    <li class="feat-item"><button type="button" class="feat" aria-pressed="false"><small class="when">Over time</small><b>About your child</b><span class="line">What Arbor knows, in your own words.</span></button>
-      <figure class="feat-shot" style="--y:82;--sx:14;--sy:304;--sw:330;--sh:120"><div class="win"><img src="/marketing/shots/about.webp" width="750" height="1624" loading="lazy" alt="The About screen: Tell Arbor about Dylan, in your own words. Everything comes back to you before it is kept."><i class="spot"></i></div></figure>
-      <div class="feat-more"><h3>What Arbor knows, in your words</h3><p>Tell Arbor about your child by voice or text in one guided conversation. Everything comes back to you before it is kept, and you can open Arbor’s notebook at any time.</p><ul class="facts"><li>Voice or text</li><li>Nothing kept until you confirm</li></ul></div></li>
-    <li class="feat-item"><button type="button" class="feat" aria-pressed="false"><small class="when">Over time</small><b>Learn</b><span class="line">Short reads for the minutes you have.</span></button>
-      <figure class="feat-shot" style="--y:82;--cap:590;--sx:16;--sy:404;--sw:345;--sh:238"><div class="win"><img src="/marketing/shots/learn.webp" width="750" height="1624" loading="lazy" alt="The Learn Library: a short read picked for Dylan, Why transitions are hard, and why warnings work."><i class="spot"></i></div></figure>
-      <div class="feat-more"><h3>Short reads and courses</h3><p>Ten parent masterclasses and a library of more than 70 short cards, picked for your child’s age and the moments you have logged.</p><ul class="facts"><li>10 masterclasses</li><li>More than 70 short cards</li><li>Picked for your child</li></ul></div></li>
-
-    <li class="feat-grp"><span>With others</span></li>
-    <li class="feat-item"><button type="button" class="feat" aria-pressed="false"><small class="when">With others</small><b>Care summary</b><span class="line">One page for the person you are about to see.</span></button>
-      <figure class="feat-shot" style="--y:262;--h:380;--sx:12;--sy:304;--sw:340;--sh:200"><div class="win"><img src="/marketing/shots/care-summary.webp" width="750" height="1624" loading="lazy" alt="Build a care summary: choose who it is for, such as a pediatrician, speech therapist or psychologist."><i class="spot"></i></div></figure>
-      <div class="feat-more"><h3>One page for the next appointment</h3><p>Choose who it is for, such as a pediatrician, a speech therapist or a psychologist, and untick anything you would rather keep to yourself. Nothing leaves until you share it.</p><ul class="facts"><li>8 kinds of reader</li><li>Save as PDF, free</li><li>You choose what goes in</li></ul></div></li>
-    <li class="feat-item"><button type="button" class="feat" aria-pressed="false"><small class="when">With others</small><b>School brief</b><span class="line">One page for the teacher, in classroom words.</span></button>
-      <figure class="feat-shot" style="--y:318;--h:360;--fade:14%;--sx:12;--sy:434;--sw:350;--sh:160"><div class="win"><img src="/marketing/shots/school-brief.webp" width="750" height="1624" loading="lazy" alt="The School Brief: one page in classroom words, with Save as PDF and Draft with Arbor."><i class="spot"></i></div></figure>
-      <div class="feat-more"><h3>One page for the teacher</h3><p>What helps and what to try, in classroom words. The free draft starts from your child’s profile; with Plus, Arbor drafts it from the moments you recorded. You review every line and nothing prints until you approve it.</p><ul class="facts"><li>What helps, never a diagnosis</li><li>Save as PDF, free</li><li>AI draft with Plus</li></ul></div></li>
-    <li class="feat-item"><button type="button" class="feat" aria-pressed="false"><small class="when">With others</small><b>Parenting, together</b><span class="line">Invite your co-parent, free on every plan.</span></button>
-      <figure class="feat-shot" style="--y:82;--h:440;--sx:14;--sy:236;--sw:346;--sh:172"><div class="win"><img src="/marketing/shots/together.webp" width="750" height="1624" loading="lazy" alt="Trusted sharing: Parenting, together. One child, one shared record, free on every plan."><i class="spot"></i></div></figure>
-      <div class="feat-more"><h3>One child, one shared record</h3><p>Your co-parent can see the chosen activity and recent moments, add a note and mark an activity done. You choose who sees what and for how long, and you can stop a share at any time.</p><ul class="facts"><li>Free on every plan</li><li>Stop a share at any time</li></ul></div></li>
-  </ul>
-  <div class="inside-cta"><a class="btn" href="/?entry=landing&amp;start=trial&amp;lang=en&amp;utm_source=arbor_landing&amp;utm_medium=website&amp;utm_campaign=landing_living_v2" data-entry-slot="inside">Start my 14 free days</a><p>Everything on this list is open during the trial. No card.</p></div>
-</div></section>
-
-<!-- 4. Seven approaches -->
-<section class="band night approaches" id="approaches" data-tone="night" aria-labelledby="lens-title"><div class="wrap lens-grid">
-  <div class="lens-head">
-    <h2 id="lens-title">Seven ways of seeing the same moment.</h2>
-    <p class="lead">Arbor draws on seven established child-development approaches. Each one notices something different, and Arbor brings them into one answer. Choose one to see what it looks at.</p>
-  </div>
-  <div class="stage lens-stage" data-stage="1">
-    <i class="form-anchor"></i>
-    <img class="fallback-art" src="/visuals/parent/v2/guidance-960.webp" width="960" height="540" loading="lazy" alt="">
-  </div>
-  <div class="lens-ui">
-    <ul class="lenses" aria-label="Seven approaches">
-      <li><button type="button" data-lens="0" style="--c:#e8a18a" aria-pressed="true">Connection first</button><span class="lens-what">What the behaviour may be asking for: closeness, safety, your attention.</span></li>
-      <li><button type="button" data-lens="1" style="--c:#8670ce" aria-pressed="false">Next small challenge</button><span class="lens-what">What your child can almost do, and the bit of help that gets them there.</span></li>
-      <li><button type="button" data-lens="2" style="--c:#3fb7a4" aria-pressed="false">Independence</button><span class="lens-what">Where they can choose, try and do it themselves.</span></li>
-      <li><button type="button" data-lens="3" style="--c:#f3c969" aria-pressed="false">Stage fit</button><span class="lens-what">What children this age can usually manage, so the ask is a fair one.</span></li>
-      <li><button type="button" data-lens="4" style="--c:#5d8df0" aria-pressed="false">Their wider world</button><span class="lens-what">What surrounds the moment: family, school, friends, the day they had.</span></li>
-      <li><button type="button" data-lens="5" style="--c:#e58fb7" aria-pressed="false">Realistic for you</button><span class="lens-what">What a tired parent can do tonight. A good-enough response counts.</span></li>
-      <li><button type="button" data-lens="6" style="--c:#9ad7c4" aria-pressed="false">Where they are growing</button><span class="lens-what">The skill still forming behind the behaviour, such as waiting, finding words or planning.</span></li>
-    </ul>
-    <div class="lens-detail" aria-live="polite">
-      <b id="lens-name">Connection first</b>
-      <p id="lens-what">What the behaviour may be asking for: closeness, safety, your attention.</p>
-      <p class="lens-eg" id="lens-eg"><small>In the bedtime example</small><span>One more hug may be a way of asking for closeness before the day ends.</span></p>
+  <!-- Talk with Arbor -->
+  <article class="place" id="place-talk" aria-labelledby="pn-talk">
+    <div class="place-art"><figure class="phone" aria-label="Illustrative example of a conversation with Arbor. No personal data."><div class="bezel"><div class="screen"><div class="ui">
+      <div class="u-top"><img src="/brand/arbor-mark-128.webp" alt=""><div><p class="u-h s">Arbor</p><p class="u-sub">Noa</p></div><span class="sp"></span><span class="u-ico"><i class="ms" aria-hidden="true">more_horiz</i></span><span class="u-ico"><i class="ms" aria-hidden="true">close</i></span></div>
+      <div class="u-body">
+        <p class="u-me"><span id="t-said">One more story. One more hug. Bedtime keeps getting later.</span></p>
+        <div class="u-card pinned" data-pin="2" data-build><i class="pin">2</i>
+          <p class="u-label"><i class="ms" aria-hidden="true">auto_awesome</i>Try today</p>
+          <p class="t" id="t-title">Let them choose the last chapter.</p>
+          <p id="t-action">Before you begin, agree on two familiar steps: a story, then a goodnight hug. Let your child choose the story.</p>
+          <p class="u-kick" style="margin-top:.7em">Say this</p>
+          <p class="u-words" id="t-words">“Which story shall we read before our goodnight hug?”</p>
+        </div>
+        <div class="pinned" data-pin="3" data-build><i class="pin">3</i><p class="u-kick">Aligned with</p><div class="u-row" id="t-why" style="margin-top:.4em"><span class="u-chip"><i style="--c:#e8a18a"></i>Connection first</span><span class="u-chip"><i style="--c:#3fb7a4"></i>Independence</span><span class="u-chip"><i style="--c:#f3c969"></i>Stage fit</span></div></div>
+        <div class="u-row" data-build><span class="u-btn ghost">Save to Action Plan</span><span class="u-btn ghost">Log this</span><span class="u-btn ghost">Copy</span></div>
+      </div>
+      <div class="u-compose pinned" data-pin="1"><i class="pin">1</i>Share a moment, a question…<span class="sp"></span><span class="u-ico"><i class="ms" aria-hidden="true">mic</i></span><span class="u-ico"><i class="ms" aria-hidden="true">arrow_forward</i></span></div>
+      <p class="u-note">Arbor is an AI companion, not a doctor.</p>
+    </div></div></div></figure></div>
+    <div class="place-body">
+      <p class="place-name" id="pn-talk"><i class="ms" aria-hidden="true">forum</i>Talk with Arbor</p>
+      <h3>Say what happened. Get one step back.</h3>
+      <div>
+        <p class="sample-note" id="picks-label">Try another moment:</p>
+        <p class="sr" id="t-status" role="status"></p>
+        <div class="picks" id="picks" role="group" aria-labelledby="picks-label" style="margin-top:8px">
+          <button type="button" aria-pressed="true" data-moment="bedtime">Bedtime</button>
+          <button type="button" aria-pressed="false" data-moment="feelings">Big feelings</button>
+          <button type="button" aria-pressed="false" data-moment="play">Time together</button>
+        </div>
+      </div>
+      <ol class="caps">
+        <li data-pin="1"><span class="n" aria-hidden="true">1</span><h4>Say it your way</h4><p>Type it, dictate it or talk it through. Add up to three photos or files and choose the tone you want back.</p><ul class="tags"><li>Text, dictation or voice</li><li>Up to 3 photos or files</li></ul></li>
+        <li data-pin="2"><span class="n" aria-hidden="true">2</span><h4>One answer, with the words to start</h4><p>You get one step for tonight and a sentence you can say out loud, rather than a list of tips to sort through.</p><ul class="tags"><li class="plus">In the 14-day trial and Arbor Plus</li></ul></li>
+        <li data-pin="3"><span class="n" aria-hidden="true">3</span><h4>Seven approaches to draw on</h4><p>Arbor leads with the approaches that fit the moment and shows which ones it used. You can also ask for one of them to lead.</p><a class="link" href="#approaches">See the seven approaches</a></li>
+      </ol>
     </div>
-    <p class="fine">Arbor supports your thinking. It does not assess or diagnose.</p>
+  </article>
+
+  <!-- My child -->
+  <article class="place" id="place-child" aria-labelledby="pn-child">
+    <div class="place-art"><figure class="phone" aria-label="Illustrative example of the My child screen. No personal data."><div class="bezel"><div class="screen"><div class="ui">
+      <div class="u-top"><img src="/brand/arbor-mark-128.webp" alt=""><span class="u-child"><i>N</i>Noa</span><span class="sp"></span><span class="u-ico"><i class="ms" aria-hidden="true">search</i></span><span class="u-ico kid"><i class="ms" aria-hidden="true">sports_esports</i></span></div>
+      <div class="u-body">
+        <div class="u-tabs"><span class="on">Milestones</span><span class="pinned" data-pin="2">Moments<i class="pin">2</i></span><span class="pinned" data-pin="4">About Noa<i class="pin">4</i></span></div>
+        <div><p class="u-kick">Milestone map</p><p class="u-h s">Milestones across areas</p></div>
+        <div class="u-tiles pinned" data-pin="1"><i class="pin">1</i>
+          <div class="u-tile" style="--c:#3f8cc9"><i class="ms" aria-hidden="true">chat_bubble</i>Talking &amp; understanding<small><i></i><i></i><i></i><i></i>Seen it: 4</small></div>
+          <div class="u-tile" style="--c:#34b277"><i class="ms" aria-hidden="true">directions_run</i>Moving<small><i></i><i></i><i></i>Seen it: 3</small></div>
+          <div class="u-tile" style="--c:#d9763f"><i class="ms" aria-hidden="true">groups</i>Playing with others<small><i></i><i></i>Seen it: 2</small></div>
+          <div class="u-tile" style="--c:#d65f87"><i class="ms" aria-hidden="true">favorite</i>Feelings &amp; behaviour<small><i></i><i></i><i></i>Seen it: 3</small></div>
+        </div>
+        <div class="u-card pinned" data-pin="3"><i class="pin">3</i>
+          <p class="t">Then and now</p>
+          <p class="u-sub">Your own words, then and now, side by side. Never a score.</p>
+          <p class="u-quote"><span class="u-kick">September</span><br>“Wanted the same book every night.”</p>
+          <p class="u-quote"><span class="u-kick">This week</span><br>“Asked to pick the book herself.”</p>
+        </div>
+      </div>
+      <div class="u-dock"><span><i class="ms" aria-hidden="true">home</i>Now</span><span class="on"><i class="ms" aria-hidden="true">eco</i>My child</span><span><i class="ms" aria-hidden="true">interests</i>Together</span><span><i class="ms" aria-hidden="true">forum</i>Talk</span><span><i class="ms" aria-hidden="true">more_horiz</i>More</span></div>
+    </div></div></div></figure></div>
+    <div class="place-body">
+      <p class="place-name" id="pn-child"><i class="ms" aria-hidden="true">eco</i>My child</p>
+      <h3>The whole picture, over time.</h3>
+      <ol class="caps">
+        <li data-pin="1"><span class="n" aria-hidden="true">1</span><h4>A milestone map you fill in</h4><p>130 milestones, from 2 months to 5 years, on a map of eight areas. You mark what you have seen and Arbor keeps count. There are no scores and no percentiles.</p><ul class="tags"><li>130 milestones</li><li>8 areas</li><li>2 months to 5 years</li></ul></li>
+        <li data-pin="2"><span class="n" aria-hidden="true">2</span><h4>Moments</h4><p>Save a moment in words, by voice or with a photo. Each one lands in the area it belongs to, such as talking, moving or feelings, so you can look across areas or over time.</p><ul class="tags"><li>Words, voice or photo</li><li>Yours to export or delete</li></ul></li>
+        <li data-pin="3"><span class="n" aria-hidden="true">3</span><h4>Then and now</h4><p>Your own words from earlier, next to this week’s. You see the change yourself, without a score.</p></li>
+        <li data-pin="4"><span class="n" aria-hidden="true">4</span><h4>What Arbor knows, in your words</h4><p>Tell Arbor about your child by voice or text in one guided conversation. Everything comes back to you before it is kept, and you can open Arbor’s notebook at any time.</p><ul class="tags"><li>Nothing kept until you confirm</li></ul></li>
+      </ol>
+    </div>
+  </article>
+
+  <!-- Together -->
+  <article class="place" id="place-together" aria-labelledby="pn-together">
+    <div class="place-art"><figure class="phone" aria-label="Illustrative example of the Together screen. No personal data."><div class="bezel"><div class="screen"><div class="ui">
+      <div class="u-top"><img src="/brand/arbor-mark-128.webp" alt=""><span class="u-child"><i>N</i>Noa</span><span class="sp"></span><span class="u-ico"><i class="ms" aria-hidden="true">search</i></span><span class="u-ico kid"><i class="ms" aria-hidden="true">sports_esports</i></span></div>
+      <div class="u-body">
+        <div><p class="u-kick">Together</p><div class="u-row" style="margin-top:.5em"><span class="u-chip on">All together</span><span class="u-chip">Stories</span><span class="u-chip">Games</span></div></div>
+        <div class="u-card green pinned" data-pin="1"><i class="pin">1</i>
+          <p class="u-label"><i class="ms" aria-hidden="true">schedule</i>Fits right now · 19:10</p>
+          <p class="t">Calm bedtime · 2 of 4 steps done today</p>
+          <div class="u-steps"><i class="d"></i><i class="d"></i><i></i><i></i></div>
+          <p>Next: Story in bed</p>
+          <div class="u-row"><span class="u-btn">Continue</span></div>
+        </div>
+        <div class="u-card pinned" data-pin="2"><i class="pin">2</i>
+          <div class="u-line"><img class="u-thumb" src="/visuals/guides/mornings-960.webp" alt="" style="object-position:82% 50%"><div><p class="t">Calm morning</p><p class="u-sub">Today’s step first</p></div></div>
+          <div class="u-line"><img class="u-thumb" src="/visuals/guides/tidy-up-960.webp" alt="" style="object-position:82% 50%"><div><p class="t">Tidy-up time</p><p class="u-sub">A ready-made routine</p></div></div>
+        </div>
+        <div class="u-card pinned" data-pin="3"><i class="pin">3</i>
+          <div class="u-line"><img class="u-thumb" src="/visuals/parent/v2/area-sleep-960.webp" alt=""><div><p class="t">Noa’s Bedtime Story</p><div class="u-row" style="margin-top:.3em"><span class="u-btn ghost">Create a story</span></div></div></div>
+        </div>
+      </div>
+      <div class="u-dock"><span><i class="ms" aria-hidden="true">home</i>Now</span><span><i class="ms" aria-hidden="true">eco</i>My child</span><span class="on"><i class="ms" aria-hidden="true">interests</i>Together</span><span><i class="ms" aria-hidden="true">forum</i>Talk</span><span><i class="ms" aria-hidden="true">more_horiz</i>More</span></div>
+    </div></div></div></figure></div>
+    <div class="place-body">
+      <p class="place-name" id="pn-together"><i class="ms" aria-hidden="true">interests</i>Together</p>
+      <h3>Routines, play and stories to do with your child.</h3>
+      <ol class="caps">
+        <li data-pin="1"><span class="n" aria-hidden="true">1</span><h4>What fits right now</h4><p>Together opens on the routine that fits the hour, with the next step ready. You start it or carry on where you stopped.</p></li>
+        <li data-pin="2"><span class="n" aria-hidden="true">2</span><h4>A plan in small daily steps</h4><p>Start from a ready-made routine or a plan built around what you are working on. Arbor shows today’s step first, and you tick steps off as you go.</p><ul class="tags"><li>Steps counted</li><li class="plus">A plan built for you: trial and Arbor Plus</li></ul></li>
+        <li data-pin="3"><span class="n" aria-hidden="true">3</span><h4>A story written for tonight</h4><p>Pick a moment from the day and Arbor writes a story around it to read together at bedtime. Stories are created and shown only. They are never saved or used for training.</p><ul class="tags"><li class="plus">In the 14-day trial and Arbor Plus</li></ul></li>
+      </ol>
+    </div>
+  </article>
+
+  <!-- Care, together -->
+  <article class="place" id="place-care" aria-labelledby="pn-care">
+    <div class="place-art"><figure class="phone" aria-label="Illustrative example of the care summary screen. No personal data."><div class="bezel"><div class="screen"><div class="ui">
+      <p class="u-back"><i class="ms" aria-hidden="true">arrow_back</i>Care, together</p>
+      <div class="u-body" style="padding-top:.5em">
+        <p class="u-h s">Build a care summary</p>
+        <div class="u-row pinned" data-pin="1"><i class="pin">1</i><span class="u-chip on">Pediatrician</span><span class="u-chip">Speech therapist</span><span class="u-chip">Psychologist</span><span class="u-chip">My own records</span></div>
+        <form class="u-card" id="care-form" aria-label="Choose what goes into the example summary">
+          <p class="u-kick">What goes in</p>
+          <label class="u-check"><input type="checkbox" checked data-line="0"><span><b>What you noticed</b></span></label>
+          <label class="u-check"><input type="checkbox" checked data-line="1"><span><b>What you tried</b></span></label>
+          <label class="u-check"><input type="checkbox" data-line="2"><span><b>What you want to ask</b></span></label>
+        </form>
+        <div class="u-sheet" role="status"><b>One page for the pediatrician</b><ul id="sheet"><li>Chose a story before the goodnight hug.</li><li>A story, then a familiar goodnight.</li></ul></div>
+        <div class="u-row"><span class="u-btn">Build the one-page summary</span></div>
+        <div class="u-card pinned" data-pin="2"><i class="pin">2</i>
+          <p class="t">School brief</p>
+          <div class="u-row"><span class="u-btn ghost">Save as PDF</span><span class="u-btn ghost">Draft with Arbor</span></div>
+        </div>
+        <div class="u-card pinned" data-pin="3"><i class="pin">3</i>
+          <div class="u-line"><i class="ms" aria-hidden="true" style="font-size:1.6em;color:#1558c0">diversity_1</i><div><p class="t">Trusted sharing</p><p class="u-sub">Co-parent, Viewer or Professional</p></div></div>
+          <div class="u-row" style="margin-top:.6em"><span class="u-chip on">Weekly Insight</span><span class="u-chip on">Milestones</span><span class="u-chip">Story timeline</span></div>
+          <p class="u-sub" style="margin-top:.5em">You choose who sees what, and for how long.</p>
+        </div>
+      </div>
+    </div></div></div></figure></div>
+    <div class="place-body">
+      <p class="place-name" id="pn-care"><i class="ms" aria-hidden="true">diversity_1</i>Care, together</p>
+      <h3>One page for the people who help you raise them.</h3>
+      <p class="sample-note">Tick the boxes on the screen to see the page change. The example stays on this page. Nothing is saved or shared.</p>
+      <ol class="caps">
+        <li data-pin="1"><span class="n" aria-hidden="true">1</span><h4>Care summary</h4><p>Choose who it is for, such as a pediatrician, a speech therapist or a psychologist, and untick anything you would rather keep to yourself. Nothing leaves until you share it.</p><ul class="tags"><li>8 kinds of reader</li><li class="free">Save as PDF, free</li></ul></li>
+        <li data-pin="2"><span class="n" aria-hidden="true">2</span><h4>School brief</h4><p>What helps and what to try, in classroom words. The free draft is built from what you have recorded; with Plus, Arbor writes a fuller one. You review every line and nothing prints until you approve it.</p><ul class="tags"><li>In classroom words</li><li class="free">Save as PDF, free</li><li class="plus">AI draft with Plus</li></ul></li>
+        <li data-pin="3"><span class="n" aria-hidden="true">3</span><h4>Trusted sharing</h4><p>Invite a co-parent, a teacher or a therapist. You choose what each one sees and for how long, and you can stop a share at any time. A co-parent can also see the chosen activity and recent moments, add a note and mark an activity done.</p><ul class="tags"><li>30 days, 60 days, end of term or until you stop it</li><li class="free">Co-parent sharing stays free</li></ul></li>
+      </ol>
+    </div>
+  </article>
+
+  <!-- For you, the parent -->
+  <article class="place" id="place-learn" aria-labelledby="pn-learn">
+    <div class="place-art"><figure class="phone" aria-label="Illustrative example of the For you, the parent screen. No personal data."><div class="bezel"><div class="screen"><div class="ui">
+      <p class="u-back"><i class="ms" aria-hidden="true">arrow_back</i>For you, the parent</p>
+      <div class="u-body" style="padding-top:.5em">
+        <div><p class="u-kick">Parent Masterclasses</p><p class="u-h s">Recommended for your family</p></div>
+        <div class="u-card pinned" data-pin="1"><i class="pin">1</i>
+          <div class="u-line"><img class="u-thumb" src="/visuals/parent/v2/area-sleep-960.webp" alt=""><div><p class="t">Bedtime Without a Battle</p><p class="u-sub">Masterclass</p></div></div>
+          <div class="u-line"><img class="u-thumb" src="/visuals/parent/v2/area-feelings-960.webp" alt=""><div><p class="t">Big Feelings, Little Brain</p><p class="u-sub">Masterclass</p></div></div>
+          <div class="u-line"><img class="u-thumb" src="/visuals/parent/v2/area-family-960.webp" alt=""><div><p class="t">How to Repair After Conflict</p><p class="u-sub">Masterclass</p></div></div>
+        </div>
+        <div class="pinned" data-pin="2"><i class="pin">2</i><p class="u-kick">Learn Library</p><p class="u-h s" style="margin:.2em 0 .5em">Picked for Noa</p>
+          <p class="u-search"><i class="ms" aria-hidden="true">search</i>Search topics…</p>
+          <div class="u-card" style="margin-top:.7em">
+            <p class="t">Theory of mind: when children discover other people have thoughts</p><p class="u-sub">4 min read</p>
+          </div>
+          <div class="u-card" style="margin-top:.6em">
+            <p class="t">Executive function: the brain’s air-traffic control</p><p class="u-sub">4 min read</p>
+          </div>
+        </div>
+      </div>
+    </div></div></div></figure></div>
+    <div class="place-body">
+      <p class="place-name" id="pn-learn"><i class="ms" aria-hidden="true">school</i>For you, the parent</p>
+      <h3>Short reads and courses for the minutes you have.</h3>
+      <ol class="caps">
+        <li data-pin="1"><span class="n" aria-hidden="true">1</span><h4>Ten parent masterclasses</h4><p>Short courses on the parts of the day that wear parents down, such as bedtime, big feelings, screens and saying goodbye at the door.</p><ul class="tags"><li>10 masterclasses</li></ul></li>
+        <li data-pin="2"><span class="n" aria-hidden="true">2</span><h4>A library of short cards</h4><p>More than 70 short cards, picked for your child’s age and the moments you have logged.</p><ul class="tags"><li>More than 70 short cards</li><li>Picked for your child</li></ul></li>
+      </ol>
+    </div>
+  </article>
+
+  <div class="after">
+    <a class="btn" data-entry-slot="guide" href="/?entry=landing&amp;start=trial&amp;lang=en&amp;utm_source=arbor_landing&amp;utm_medium=website&amp;utm_campaign=landing_living_v3">Start my 14 free days <i class="ms" aria-hidden="true">arrow_forward</i></a>
+    <p class="sample-note">Every part is open during the trial. No card. The screens are illustrative examples with a sample family.</p>
   </div>
 </div></section>
 
-<!-- 5. Kids Studio -->
-<section class="band kids" id="kids" data-tone="night" aria-labelledby="kids-title"><div class="wrap kids-grid">
-  <div class="deck" aria-hidden="true">
-    <figure class="card c3"><img src="/visuals/studio-v2/adventures/sound-orbit-480.webp" width="480" height="320" loading="lazy" alt=""><figcaption><strong>Sound Orbit</strong></figcaption></figure>
-    <figure class="card c2"><img src="/visuals/studio-v2/adventures/story-theater.webp" width="1536" height="1024" loading="lazy" alt=""><figcaption><strong>Story Theater</strong></figcaption></figure>
-    <figure class="card c1"><img src="/visuals/studio-v2/adventures/canal-world.webp" width="1536" height="1024" loading="lazy" alt=""><figcaption><small>One of eight games</small><strong>Canal Quest</strong></figcaption></figure>
-  </div>
-  <div class="kids-copy">
-    <div class="stage kids-stage" data-stage="2"><i class="form-anchor"></i></div>
-    <p class="kicker">Kids Studio</p>
-    <h2 id="kids-title">Games and stories for them, opened by you.</h2>
-    <p class="lead">Kids Studio is your child’s side of Arbor: four worlds with a guide called Sprout. You open it for them, and leaving takes a three-second hold and a grown-up check: a sum, or your own PIN if you set one.</p>
-    <ul class="kids-facts">
-      <li><b>8 games</b><span>for ages 3 to 8</span></li>
-      <li><b>21 stories</b><span>to read together</span></li>
-      <li><b>4 worlds</b><span>one guide, Sprout</span></li>
+<!-- 3. Seven approaches -->
+<section class="sec lens" id="approaches" aria-labelledby="lens-title"><div class="wrap">
+  <div data-rise>
+    <h2 id="lens-title">Seven ways of seeing the same moment.</h2>
+    <p class="lead" style="margin-top:16px">Arbor draws on seven child-development approaches, and each one notices something different. An answer leads with the ones that fit the moment, and you can ask for one of them to lead. Choose one to see what it looks at.</p>
+    <ul class="lens-list" id="lens-list" aria-label="Seven approaches">
+      <li><button type="button" aria-pressed="true" style="--c:#e8a18a"><i></i>Connection first</button><span>What the behaviour may be asking for: closeness, safety, your attention.</span></li>
+      <li><button type="button" aria-pressed="false" style="--c:#8670ce"><i></i>Next small challenge</button><span>What your child can almost do, and the bit of help that gets them there.</span></li>
+      <li><button type="button" aria-pressed="false" style="--c:#3fb7a4"><i></i>Independence</button><span>Where they can choose, try and do it themselves.</span></li>
+      <li><button type="button" aria-pressed="false" style="--c:#f3c969"><i></i>Stage fit</button><span>What children this age can usually manage, so the ask is a fair one.</span></li>
+      <li><button type="button" aria-pressed="false" style="--c:#5d8df0"><i></i>Their wider world</button><span>What surrounds the moment: family, school, friends, the day they had.</span></li>
+      <li><button type="button" aria-pressed="false" style="--c:#e58fb7"><i></i>Realistic for you</button><span>What a tired parent can do tonight. A good-enough response counts.</span></li>
+      <li><button type="button" aria-pressed="false" style="--c:#9ad7c4"><i></i>Where they are growing</button><span>The skill still forming under the behaviour, such as waiting, finding words or planning.</span></li>
     </ul>
-    <dl class="kids-rows">
-      <div><dt>The worlds</dt><dd><ul class="games worlds"><li>Playbank</li><li>Hero Stories</li><li>Feelings</li><li>Studio</li></ul></dd></div>
-      <div><dt>The games</dt><dd><ul class="games"><li>Canal Quest</li><li>Memory Match</li><li>Sequence Quest</li><li>Puzzle Planet</li><li>Sneak &amp; Freeze</li><li>Story Theater</li><li>Calm Builder</li><li>Sound Orbit</li></ul></dd></div>
-    </dl>
-    <p class="fine">Pictures are artwork from the games. Your child sees the games that fit their age. A bedtime story written for your child is part of the trial and Arbor Plus.</p>
+    <div class="lens-card" aria-live="polite">
+      <b><i id="lens-dot" style="--c:#e8a18a"></i><span id="lens-name">Connection first</span></b>
+      <p id="lens-what">What the behaviour may be asking for: closeness, safety, your attention.</p>
+      <p id="lens-eg"><small id="lens-in">In the bedtime example</small><span>One more hug may be a way of asking for closeness before the day ends.</span></p>
+    </div>
+    <p class="fine" style="margin-top:16px">Arbor supports your thinking. It does not assess or diagnose.</p>
+  </div>
+  <div class="lens-stage stage" data-stage="1">
+    <div class="form-anchor"></div>
+    <img class="fallback-art" src="/visuals/parent/v2/guidance-960.webp" alt="" width="960" height="540" loading="lazy">
   </div>
 </div></section>
 
-<!-- 6. Control and privacy -->
-<section class="band day control" id="control" data-tone="day" aria-labelledby="control-title"><div class="wrap control-grid">
-  <div class="control-copy">
+<!-- 4. Kids Studio -->
+<section class="sec white kids" id="kids" aria-labelledby="kids-title"><div class="wrap">
+  <div class="sec-head" data-rise>
+    <h2 id="kids-title">Kids Studio: games and stories for them, opened by you.</h2>
+    <p class="lead">Your child’s side of Arbor has four worlds and a guide called Sprout. Pick a world to look inside.</p>
+  </div>
+
+  <div class="k-frame" data-rise>
+    <div class="k-stage" id="k-stage">
+      <div class="k-world on" id="kw-playbank">
+        <img src="/visuals/studio-v2/portal-playbank.webp" alt="Artwork from the Playbank world: a game card on a green table under warm lights." width="1536" height="1024">
+        <div class="k-plate"><small>World 1 of 4</small><h3>Playbank</h3><p>Find, match and discover.</p><ul><li>Canal Quest</li><li>Memory Match</li><li>Sequence Quest</li><li>Puzzle Planet</li><li>Sneak &amp; Freeze</li></ul></div>
+      </div>
+      <div class="k-world" id="kw-stories">
+        <img src="/visuals/studio-v2/portal-stories.webp" alt="Artwork from the Hero Stories world: an open book glowing in front of a castle at night." width="1536" height="1024" loading="lazy">
+        <div class="k-plate"><small>World 2 of 4</small><h3>Hero Stories</h3><p>Your stories are waiting.</p><ul><li>21 stories to read together</li></ul></div>
+      </div>
+      <div class="k-world" id="kw-studio">
+        <img src="/visuals/studio-v2/portal-studio.webp" alt="Artwork from the Studio world: a rocket painting on an easel in a warm workshop." width="1536" height="1024" loading="lazy">
+        <div class="k-plate"><small>World 3 of 4</small><h3>Studio</h3><p>Listen, move and make.</p><ul><li>Sound Orbit</li></ul></div>
+      </div>
+      <div class="k-world" id="kw-feelings">
+        <img src="/visuals/studio-v2/portal-feelings.webp" alt="Artwork from the Feelings world: a sunny mountain path with glowing coloured orbs." width="1536" height="1024" loading="lazy">
+        <div class="k-plate"><small>World 4 of 4</small><h3>Feelings</h3><p>Every feeling belongs.</p><ul><li>Story Theater</li><li>Calm Builder</li></ul></div>
+      </div>
+    </div>
+    <i class="k-prop" aria-hidden="true" style="background-image:url(/visuals/studio-v2/adventures/canal-pieces.webp);--cx:0;--cy:0;--s:150px;top:-52px;right:5%;--d:8s"></i>
+    <i class="k-prop" aria-hidden="true" style="background-image:url(/visuals/studio-v2/adventures/orbit-instruments.webp);--cx:0;--cy:1;--s:118px;top:30%;right:-34px;--d:6.4s;--r0:6deg;--r1:-5deg"></i>
+    <i class="k-prop" aria-hidden="true" style="background-image:url(/visuals/studio-v2/adventures/feeling-tokens.webp);--cx:1;--cy:1;--s:104px;top:-40px;left:7%;--d:7.2s;--r0:5deg;--r1:-6deg"></i>
+    <i class="k-prop" aria-hidden="true" style="background-image:url(/visuals/studio-v2/adventures/story-props.webp);--cx:1;--cy:1;--s:128px;bottom:-34px;right:16%;--d:9s"></i>
+  </div>
+
+  <div class="k-tabs" id="k-tabs" aria-label="The four worlds">
+    <button type="button" aria-selected="true" data-world="playbank"><img src="/visuals/studio-v2/portal-playbank-480.webp" alt="" width="480" height="320" loading="lazy"><div><b>Playbank</b><span>Find, match and discover</span></div></button>
+    <button type="button" aria-selected="false" data-world="stories"><img src="/visuals/studio-v2/portal-stories-480.webp" alt="" width="480" height="320" loading="lazy"><div><b>Hero Stories</b><span>Your stories are waiting</span></div></button>
+    <button type="button" aria-selected="false" data-world="studio"><img src="/visuals/studio-v2/portal-studio-480.webp" alt="" width="480" height="320" loading="lazy"><div><b>Studio</b><span>Listen, move and make</span></div></button>
+    <button type="button" aria-selected="false" data-world="feelings"><img src="/visuals/studio-v2/portal-feelings-480.webp" alt="" width="480" height="320" loading="lazy"><div><b>Feelings</b><span>Every feeling belongs</span></div></button>
+  </div>
+
+  <div class="k-facts" data-rise>
+    <div>
+      <h3><i class="ms" aria-hidden="true">sports_esports</i>Eight games, by age</h3>
+      <p>Made for ages 3 to 8. Your child sees the games that fit their age.</p>
+      <ul class="k-games"><li>Canal Quest</li><li>Memory Match</li><li>Sequence Quest</li><li>Puzzle Planet</li><li>Sneak &amp; Freeze</li><li>Story Theater</li><li>Calm Builder</li><li>Sound Orbit</li></ul>
+    </div>
+    <div>
+      <h3><i class="ms" aria-hidden="true">auto_stories</i>21 stories to read together</h3>
+      <p>A bookshelf for the two of you. A bedtime story written for your child is part of the trial and Arbor Plus.</p>
+    </div>
+    <div>
+      <h3><i class="ms" aria-hidden="true">door_open</i>You open it, and you close it</h3>
+      <p>You open Kids Studio for your child. Leaving takes a three-second hold and a grown-up check: a sum, or your own PIN if you set one.</p>
+      <div class="hold">
+        <button type="button" id="hold" aria-label="Hold for three seconds to try the way out" aria-describedby="hold-say"><svg viewBox="0 0 74 74" aria-hidden="true"><circle cx="37" cy="37" r="34"/></svg><i class="ms" aria-hidden="true">door_open</i></button>
+        <p id="hold-say" role="status">Try it: press and hold for three seconds.</p>
+      </div>
+    </div>
+  </div>
+  <div class="after">
+    <a class="btn" data-entry-slot="kids" href="/?entry=landing&amp;start=trial&amp;lang=en&amp;utm_source=arbor_landing&amp;utm_medium=website&amp;utm_campaign=landing_living_v3">Start my 14 free days <i class="ms" aria-hidden="true">arrow_forward</i></a>
+    <p class="sample-note">Pictures are artwork from Kids Studio.</p>
+  </div>
+</div></section>
+
+<!-- 5. Control and privacy -->
+<section class="sec control" id="control" aria-labelledby="control-title"><div class="wrap">
+  <div data-rise>
     <h2 id="control-title">You decide what Arbor remembers and who sees it.</h2>
-    <ul class="pen">
-      <li><b>Review before remembering</b><span>You approve the observations that become part of your child’s record.</span></li>
-      <li><b>Preview before sharing</b><span>You choose the details for a summary and see exactly what is included.</span></li>
-      <li><b>Keep your own record</b><span>You can review, export or delete your child’s information at any time.</span></li>
+    <ul class="ctl-list" style="margin-top:32px">
+      <li><i class="ms" aria-hidden="true">fact_check</i><b>Review before remembering</b><span>You approve the observations that become part of your child’s record.</span></li>
+      <li><i class="ms" aria-hidden="true">visibility</i><b>Preview before sharing</b><span>You choose the details for a summary and see exactly what is included.</span></li>
+      <li><i class="ms" aria-hidden="true">download</i><b>Keep your own record</b><span>You can review, export or delete your child’s information at any time.</span></li>
     </ul>
-    <ul class="privacy" aria-label="Privacy facts">
-      <li>We do not sell your data</li>
-      <li>No third-party ads</li>
-      <li>Your child’s content is not used to train AI models unless you turn that on</li>
-      <li>Stored in the European Union</li>
+  </div>
+  <div class="privacy" data-rise>
+    <h3>Privacy, in four facts</h3>
+    <ul style="display:grid;gap:12px">
+      <li><i class="ms fill" aria-hidden="true">verified_user</i>We do not sell your data</li>
+      <li><i class="ms fill" aria-hidden="true">verified_user</i>No third-party ads</li>
+      <li><i class="ms fill" aria-hidden="true">verified_user</i>Your child’s content is not used to train AI models unless you turn that on</li>
+      <li><i class="ms fill" aria-hidden="true">verified_user</i>Stored in the European Union</li>
     </ul>
     <a class="link" href="/privacy">Read the privacy policy <span aria-hidden="true">↗</span></a>
   </div>
-  <form class="summary" aria-labelledby="summary-title" onsubmit="return false">
-    <p class="tag">Try it: an example summary</p>
-    <h3 id="summary-title">What would you include?</h3>
-    <label><input type="checkbox" checked data-sum="0"><span><b>What you noticed</b><i data-copy="s0">Chose a story before the goodnight hug.</i></span></label>
-    <label><input type="checkbox" data-sum="1"><span><b>What you tried</b><i data-copy="s1">A story, then a familiar goodnight.</i></span></label>
-    <label><input type="checkbox" data-sum="2"><span><b>What you want to ask</b><i data-copy="s2">How can we make this routine easier?</i></span></label>
-    <div class="sheet" role="status"><small>Your example summary</small><ul id="sheet"><li>Chose a story before the goodnight hug.</li></ul></div>
-    <p class="fine">This example stays on this page. Nothing is saved or shared.</p>
-  </form>
 </div></section>
 
-<!-- 7. Price -->
-<section class="band day plans" id="plans" data-tone="day" aria-labelledby="plans-title"><div class="wrap">
-  <h2 id="plans-title">Free for 14 days, then you decide whether to subscribe.</h2>
-  <div class="plan-grid">
+<!-- 6. Plans -->
+<section class="sec white" id="plans" aria-labelledby="plans-title"><div class="wrap">
+  <div class="sec-head" data-rise><h2 id="plans-title">Free for 14 days, then you decide whether to subscribe.</h2></div>
+  <div class="plan-grid" data-rise>
     <article class="plan trial">
       <h3>Your first 14 days are free</h3>
       <p>Every Arbor Plus feature from sign-up, no card needed. After that, everything you saved stays yours to read and export, and co-parent sharing stays free.</p>
-      <a class="btn" href="/?entry=landing&amp;start=trial&amp;lang=en&amp;utm_source=arbor_landing&amp;utm_medium=website&amp;utm_campaign=landing_living_v2" data-entry-slot="offer">Start my 14 free days</a>
+      <a class="btn" data-entry-slot="offer" href="/?entry=landing&amp;start=trial&amp;lang=en&amp;utm_source=arbor_landing&amp;utm_medium=website&amp;utm_campaign=landing_living_v3">Start my 14 free days <i class="ms" aria-hidden="true">arrow_forward</i></a>
       <p class="fine">No card needed. No automatic charge. Starting the trial does not purchase a plan.</p>
-      <div class="keeps">
+      <div class="kept">
         <h4>Yours without paying, after the 14 days</h4>
         <ul>
-          <li>Everything you saved, to read and export</li>
-          <li>Sharing with a co-parent</li>
-          <li>Care summaries and school briefs as PDF</li>
+          <li><i class="ms fill" aria-hidden="true">check_circle</i>Everything you saved, to read and export</li>
+          <li><i class="ms fill" aria-hidden="true">check_circle</i>Sharing with a co-parent</li>
+          <li><i class="ms fill" aria-hidden="true">check_circle</i>Care summaries and school briefs as PDF</li>
         </ul>
       </div>
     </article>
-    <article class="plan plus">
+    <article class="plan">
       <h3>Then, with Arbor Plus</h3>
       <p>Coaching, AI-drafted school notes, advanced growth plans, bedtime stories and up to six children.</p>
       <dl class="prices">
@@ -254,44 +576,45 @@
         <div><dt>Annual</dt><dd><strong>€129.90</strong> per year<small>≈ €10.83 per month, billed yearly</small></dd></div>
       </dl>
       <p class="fine">Both options include the same Plus features. Your subscription renews automatically until you cancel. Review the final price and terms at checkout.</p>
-      <div class="plus-start"><a class="btn ghost" href="/?entry=landing&amp;start=trial&amp;lang=en&amp;utm_source=arbor_landing&amp;utm_medium=website&amp;utm_campaign=landing_living_v2" data-entry-slot="plus">Start my 14 free days</a><a class="link" href="/?plan=plus&amp;cadence=annual">See current plans <span aria-hidden="true">→</span></a></div>
+      <div class="cta-row" style="margin-top:0"><a class="btn quiet" data-entry-slot="plus" href="/?entry=landing&amp;start=trial&amp;lang=en&amp;utm_source=arbor_landing&amp;utm_medium=website&amp;utm_campaign=landing_living_v3">Start my 14 free days</a></div>
       <p class="fine">You choose a plan only after the trial. No card until then.</p>
     </article>
   </div>
 </div></section>
 
-<!-- 8. Questions, then the close -->
-<section class="band day faq" id="faq" data-tone="day" aria-labelledby="faq-title"><div class="wrap faq-grid">
-  <h2 id="faq-title">Questions parents ask first.</h2>
-  <div class="qa">
+<!-- 7. Questions -->
+<section class="sec faq" id="faq" aria-labelledby="faq-title"><div class="wrap">
+  <h2 id="faq-title" data-rise>Questions parents ask first.</h2>
+  <div data-rise>
     <details open><summary>Is Arbor therapy, or a diagnosis?</summary><p>No. Arbor offers parenting support. It does not assess, diagnose or treat, and it is not a substitute for professional care. If you are worried about your child, speak to a professional. A care summary can help you prepare for that conversation.</p></details>
-    <details><summary>What ages is it for?</summary><p>Parents of children up to age 12. The milestone map covers 2 months to 5 years, and the Kids Studio games are made for ages 3 to 8.</p></details>
+    <details><summary>What ages is it for?</summary><p>Parents of children to age 12. The milestone map covers 2 months to 5 years, and the Kids Studio games are made for ages 3 to 8.</p></details>
     <details><summary>What happens after the 14 days?</summary><p>Choose a subscription to continue using AI features. Your saved information remains accessible. There is no card at sign-up and no automatic charge, and starting the trial does not purchase a plan.</p></details>
     <details><summary>Is my child’s information used to train AI?</summary><p>No, unless you explicitly turn that on. We do not sell your data and we do not show third-party ads. Data is stored in the European Union, and you can export or delete it at any time.</p></details>
     <details><summary>Do I need to install anything?</summary><p>No. Arbor runs in your browser, on a phone or a computer, in English and Hebrew.</p></details>
-    <details><summary>Can my partner use it too?</summary><p>Yes. Co-parent sharing is free on every plan. With Arbor Plus you can add up to six children.</p></details>
+    <details><summary>Can my partner use it too?</summary><p>Yes. Co-parent sharing is free, with or without a subscription. With Arbor Plus you can add up to six children.</p></details>
   </div>
 </div></section>
 
-<section class="band night start" id="start" data-tone="night" aria-labelledby="start-title"><div class="wrap start-grid">
-  <div class="start-copy">
+<!-- 8. The close -->
+<section class="sec white close" id="start" aria-labelledby="start-title"><div class="wrap">
+  <div>
     <h2 id="start-title">Start with one child and one thing on your mind.</h2>
     <ol class="steps"><li>Create your account</li><li>Add your child, with your consent</li><li>Choose a small step for today</li></ol>
-    <div class="actions"><a class="btn" href="/?entry=landing&amp;start=trial&amp;lang=en&amp;utm_source=arbor_landing&amp;utm_medium=website&amp;utm_campaign=landing_living_v2" data-entry-slot="final">Start my 14 free days</a></div>
+    <a class="btn" data-entry-slot="final" href="/?entry=landing&amp;start=trial&amp;lang=en&amp;utm_source=arbor_landing&amp;utm_medium=website&amp;utm_campaign=landing_living_v3">Start my 14 free days <i class="ms" aria-hidden="true">arrow_forward</i></a>
     <p class="fine">No card needed. No automatic charge. After your trial, choose a subscription to continue using AI features. Your saved information remains accessible.</p>
     <p class="fine">Arbor offers parenting support, not diagnosis or a substitute for professional care.</p>
   </div>
-  <div class="stage start-stage" data-stage="3">
-    <i class="form-anchor"></i>
-    <img class="fallback-art" src="/visuals/parent/v2/area-family-960.webp" width="960" height="960" loading="lazy" alt="">
+  <div class="close-stage stage" data-stage="3">
+    <div class="form-anchor"></div>
+    <img class="fallback-art" src="/visuals/parent/v2/empty-portrait-960.webp" alt="" width="960" height="640" loading="lazy">
   </div>
-</div>
-<footer class="wrap foot"><span>© 2026 Arbor</span><nav aria-label="Legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/support">Support</a></nav></footer>
-</section>
+</div></section>
 
 </main>
+<footer><div class="wrap"><span>© 2026 Arbor</span><nav aria-label="Legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/support">Support</a></nav></div></footer>
 
-<div class="cta-bar" id="cta-bar"><p><b>14 days free</b> No card</p><a class="btn small" href="/?entry=landing&amp;start=trial&amp;lang=en&amp;utm_source=arbor_landing&amp;utm_medium=website&amp;utm_campaign=landing_living_v2" data-entry-slot="bar">Start free trial</a></div>
+<div class="cta-bar" id="cta-bar"><span>14 days of Arbor Plus.<br>No card.</span><a class="btn" data-entry-slot="bar" href="/?entry=landing&amp;start=trial&amp;lang=en&amp;utm_source=arbor_landing&amp;utm_medium=website&amp;utm_campaign=landing_living_v3">Start my 14 free days</a></div>
 
-<script type="module" src="/marketing/arbor-living-v2.js"></script>
-</body></html>
+<script type="module" src="/marketing/arbor-living-v3.js"></script>
+</body>
+</html>
