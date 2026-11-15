@@ -17,11 +17,10 @@ import React, { useEffect, useRef, useState } from "react";
 import { HeroAvatar } from "../../ui/HeroAvatar";
 import { useKidTheme } from "../../../hooks/useKidTheme";
 import { Sticker } from "lucide-react";
-import { kidArtSrcSet } from "../../../lib/kidThemeManifest";
+import { kidArtSrcSet, studioNextCover } from "../../../lib/kidThemeManifest";
 import { kidsStoriesText } from "../../../lib/i18nElevation/kidsStories";
 import { souvenirArt, souvenirStrip, type KidSouvenir, type SouvenirKind } from "./kidSouvenirs";
 import { useKidSouvenirs } from "./useKidSouvenirs";
-import { studioNextCover } from "../studioV2/studioNextFlag";
 
 export const STICKER_MASK = "radial-gradient(closest-side, var(--arbor-ink) 97%, transparent 100%)";
 

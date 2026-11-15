@@ -18,6 +18,7 @@
 import { HERO_STORIES } from "./heroJourneys";
 import { STUDIO_V2_GAME_WORLDS } from "../components/kidmode/studioGameWorlds";
 import { KID_WORLDS, SNEAK_FREEZE_WORLD, type KidWorldId } from "../components/kidmode/kidWorlds";
+import { studioNextFlagOn, type StudioNextHost } from "../components/kidmode/studioV2/studioNextFlag";
 
 export const KID_THEME_IDS = ["film3d", "storybook"] as const;
 export type KidThemeId = (typeof KID_THEME_IDS)[number];
@@ -140,6 +141,23 @@ const studioPortal = (id: typeof STUDIO_PORTAL_IDS[number]): KidArt => ({
   src: `/visuals/studio-v2/portal-${id}.webp`, src480: `/visuals/studio-v2/portal-${id}-480.webp`, width: 1536,
   objectPosition: "50% 50%", altKey: null, provenanceId: `studio-v2-neutral-portal:${id}:2026-10-13`, hasHero: false,
 });
+/** The Bop games' toy-world art: one shared folder of authored, shipped
+ *  pictures (no likeness, nothing made at runtime). A stem is the full
+ *  hyphenated file name without its extension, e.g. "aya-idle". */
+const STUDIO_BOP_ROOT = "/visuals/studio-v2/bop/";
+export function studioBopArt(stem: string): string { return `${STUDIO_BOP_ROOT}${stem}.webp`; }
+
+/** Host tile → the cover of the game it opens while the Next Studio switch is
+ *  on. Shared pictures only: the child's hero is never part of a cover. */
+const STUDIO_NEXT_COVERS: Record<StudioNextHost, string> = { memory: "card-delivery", pattern: "card-sun", puzzle: "card-oops", "river-rescue": "card-rover" };
+export interface StudioNextCover { src: string; src480: string; srcSet: string }
+export function studioNextCover(id: string): StudioNextCover | null {
+  if (!Object.hasOwn(STUDIO_NEXT_COVERS, id) || !studioNextFlagOn()) return null;
+  const stem = STUDIO_NEXT_COVERS[id as StudioNextHost];
+  const src = studioBopArt(stem), src480 = studioBopArt(`${stem}-480`);
+  return { src, src480, srcSet: `${src480} 480w, ${src} 1024w` };
+}
+
 /** A shared neutral V2 environment set; the profile is the sole child identity. */
 const STUDIO_ART: Record<StudioArtKey, KidArt> = {
   "studio.sky": { src: "/visuals/studio-v2/sky-background.webp", src480: "/visuals/studio-v2/sky-background-480.webp", width: 1536, objectPosition: "50% 50%", altKey: null, provenanceId: "studio-v2-sky:2026-10-13", hasHero: false },

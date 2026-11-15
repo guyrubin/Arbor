@@ -21,14 +21,7 @@ export function studioNextFlagOn(): boolean {
 }
 export function resetStudioNextFlagForTests(): void { cached = null; }
 
-/** Host tile → the cover picture of the game it opens while the switch is on.
- * Shared pictures only: the child's hero is never part of a cover. */
-const COVERS = { memory: 'card-delivery', pattern: 'card-sun', puzzle: 'card-oops', 'river-rescue': 'card-rover' } as const;
-export type StudioNextHost = keyof typeof COVERS;
-export const STUDIO_NEXT_HOSTS = Object.keys(COVERS) as StudioNextHost[];
-export interface StudioNextCover { src: string; src480: string; srcSet: string }
-export function studioNextCover(id: string): StudioNextCover | null {
-  if (!Object.hasOwn(COVERS, id) || !studioNextFlagOn()) return null;
-  const base = `/visuals/studio-v2/bop/${COVERS[id as StudioNextHost]}`;
-  return { src: `${base}.webp`, src480: `${base}-480.webp`, srcSet: `${base}-480.webp 480w, ${base}.webp 1024w` };
-}
+/** The four host tiles that open a Bop game while the switch is on. Their
+ * covers live with the rest of the kid art, in lib/kidThemeManifest. */
+export const STUDIO_NEXT_HOSTS = ['memory', 'pattern', 'puzzle', 'river-rescue'] as const;
+export type StudioNextHost = typeof STUDIO_NEXT_HOSTS[number];

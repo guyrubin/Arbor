@@ -1,15 +1,16 @@
 import type { CSSProperties } from 'react';
+import { studioBopArt } from '../../../../../lib/kidThemeManifest';
 import './bopStage.css';
 
-/** Toy-world art shared by the Bop games: one folder, one naming rule. Every
- * file is an authored, shipped image (no likeness, nothing made at runtime).
- * Names are always full hyphenated file stems, e.g. "aya-idle". */
-const BASE = '/visuals/studio-v2/bop/';
+/** Toy-world art shared by the Bop games: one folder, one naming rule, kept
+ * in the kid art manifest. Every file is an authored, shipped image (no
+ * likeness, nothing made at runtime). Names are always full hyphenated file
+ * stems, e.g. "aya-idle". */
 export type BopSceneId = 'scene-delivery' | 'scene-sun' | 'scene-table' | 'scene-floor';
 export type BopFriendId = 'aya' | 'chock' | 'pep';
 export type BopMood = 'idle' | 'happy';
 
-export function bopArt(name: string): string { return `${BASE}${name}.webp`; }
+export function bopArt(name: string): string { return studioBopArt(name); }
 
 /** One cut-out toy or friend. Decorative: the control that holds it carries the name. */
 export function BopSprite({ name, size, className = '', flat = false, style }: { name: string; size?: number | string; className?: string; flat?: boolean; style?: CSSProperties }) {

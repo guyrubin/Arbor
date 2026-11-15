@@ -1,9 +1,8 @@
 import './studioActivityArt.css';
 import { Icon } from '../../ui/Icon';
 import { useKidTheme } from '../../../hooks/useKidTheme';
-import { kidArt, kidArtSrcSet, type KidArtKey } from '../../../lib/kidThemeManifest';
+import { kidArt, kidArtSrcSet, studioNextCover, type KidArtKey } from '../../../lib/kidThemeManifest';
 import { studioActivity, type StudioActivityId } from './studioCatalog';
-import { studioNextCover } from './studioNextFlag';
 
 const glyphs = { 'river-rescue': 'water', 'feelings-forest': 'mood', 'rhythm-garden': 'graphic_eq', memory: 'psychology', pattern: 'category', puzzle: 'extension', 'calm-builder': 'weekend', sneak: 'route' };
 /** Distinct game landmarks, with profile identity kept out of shared imagery. */
