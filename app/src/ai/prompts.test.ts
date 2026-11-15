@@ -631,7 +631,7 @@ describe("B-PROG-01 — the active-program line", () => {
     expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.4.0");
     expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.9.0");
     expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.10.6");
-    expect(PROMPT_VERSIONS.live_session.version).toBe("1.6.0");
+    expect(PROMPT_VERSIONS.live_session.version).toBe("1.7.0");
   });
 });
 
@@ -719,11 +719,11 @@ describe("B-LOOP-13 — the journal block and today's practice line", () => {
     expect(warm).toContain("(the journal's notes per shelf cover the last 30 days)");
   });
 
-  it("versions: todays_focus 1.4.0 · coach_chat 1.9.0 (B-SHELL-39) · voice_reply 1.10.6 · live_session 1.6.0", () => {
+  it("versions: todays_focus 1.4.0 · coach_chat 1.9.0 (B-SHELL-39) · voice_reply 1.10.6 · live_session 1.7.0", () => {
     expect(PROMPT_VERSIONS.todays_focus.version).toBe("1.4.0");
     expect(PROMPT_VERSIONS.coach_chat.version).toBe("1.9.0");
     expect(PROMPT_VERSIONS.voice_reply.version).toBe("1.10.6");
-    expect(PROMPT_VERSIONS.live_session.version).toBe("1.6.0");
+    expect(PROMPT_VERSIONS.live_session.version).toBe("1.7.0");
   });
 });
 

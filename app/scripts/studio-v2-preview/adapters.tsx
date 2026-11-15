@@ -44,6 +44,8 @@ export function speakText(text: string, handlers: { onEnd?: () => void } = {}, l
 }
 export const setNaturalSynth = () => {};
 export const setVoiceEngine = () => {};
+export const setDeviceVoiceAllowed = () => {};
+export const isDeviceVoiceAllowed = () => true;
 
 export const useKidModeEntry = () => ({ request: () => {}, step: null });
 export const isActive = (id: number) => voiceSupported() && speechSynthesis.speaking && id === utteranceId;

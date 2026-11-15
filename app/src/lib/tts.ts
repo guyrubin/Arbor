@@ -13,7 +13,9 @@ export function ttsSupported(): boolean {
 }
 
 export function speak(text: string, onend?: () => void) {
-  speakText(text, { onEnd: onend });
+  // An utterance that could not be spoken is over too: the sentence pump moves
+  // on (its words are on screen) instead of waiting for an end that never comes.
+  speakText(text, { onEnd: onend, onError: onend });
 }
 
 export function stopSpeaking() {

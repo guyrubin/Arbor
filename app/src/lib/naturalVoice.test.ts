@@ -19,7 +19,7 @@ import {
   registerTtsToken,
   resetNaturalVoiceForTest,
 } from "./naturalVoice";
-import { setNaturalSynth, setVoiceEngine, voiceState } from "./voice";
+import { isDeviceVoiceAllowed, setNaturalSynth, setVoiceEngine, voiceState } from "./voice";
 import { setKidModeActive } from "./kidModeGate";
 import { resetKidVoiceForTest } from "./kidVoicePlayer";
 
@@ -94,10 +94,25 @@ describe("initNaturalVoice — AI-V4 gate collapse", () => {
     expect(voiceState().engine).toBe("basic");
   });
 
-  it("leaves the browser floor when the probe fails", async () => {
+  // 15 Nov 2026: a probe that cannot answer (the 6 to 11 Nov fault) no longer
+  // hands every line to the device voice.
+  it("a failed probe tries the neural voice and withholds the device voice", async () => {
     fetchMock.mockRejectedValueOnce(new Error("offline"));
     await initNaturalVoice();
+    expect(voiceState().engine).toBe("natural");
+    expect(isDeviceVoiceAllowed()).toBe(false);
+  });
+  it("a real configured:false keeps the device voice (local and mock servers)", async () => {
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ configured: false }) });
+    await initNaturalVoice();
     expect(voiceState().engine).toBe("basic");
+    expect(isDeviceVoiceAllowed()).toBe(true);
+  });
+  it("configured:true withholds the device voice", async () => {
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ configured: true }) });
+    await initNaturalVoice();
+    expect(voiceState().engine).toBe("natural");
+    expect(isDeviceVoiceAllowed()).toBe(false);
   });
 });
 

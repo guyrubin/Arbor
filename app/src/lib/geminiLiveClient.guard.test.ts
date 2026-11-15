@@ -22,8 +22,10 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {
+  ARBOR_VOICE_NAME,
   buildLiveSystemInstruction,
   liveSpeechConfig,
+  LIVE_SPOKEN_DELIVERY,
   LIVE_SYSTEM_INSTRUCTION,
   HE_SPOKEN_DIRECTIVE,
   SPOKEN_COACH_PERSONA,
@@ -139,6 +141,26 @@ describe("AI-V9 — one source of truth for the spoken persona", () => {
     expect(liveSpeechConfig("he").languageCode).toBe("he-IL");
     expect(liveSpeechConfig("en").languageCode).toBe("en-US");
     expect(liveSpeechConfig("he").voiceConfig.prebuiltVoiceConfig.voiceName).toBeTruthy();
+  });
+
+  // 15 Nov 2026: one voice on every surface. Live spoke as Aoede while
+  // read-aloud and books spoke as Sulafat; the deploy file is read here so a
+  // voice change in one place fails until the others follow.
+  it("Live, read-aloud and book narration share one voice", () => {
+    for (const lang of ["en", "he"]) {
+      expect(liveSpeechConfig(lang).voiceConfig.prebuiltVoiceConfig.voiceName).toBe(ARBOR_VOICE_NAME);
+    }
+    const deploy = fs.readFileSync(path.join(SRC_ROOT, "..", "..", "cloudbuild.prod.yaml"), "utf8");
+    expect(deploy).toContain(`TTS_VOICE_EN=en-US-Chirp3-HD-${ARBOR_VOICE_NAME}`);
+    expect(deploy).toContain(`TTS_VOICE_HE=he-IL-Chirp3-HD-${ARBOR_VOICE_NAME}`);
+    const books = read("lib/library/narrationTts.ts");
+    expect(books).toContain(`voice: "${ARBOR_VOICE_NAME}"`);
+  });
+
+  it("the Live instruction carries the delivery line; /voice does not restate it", () => {
+    expect(buildLiveSystemInstruction("en")).toContain(LIVE_SPOKEN_DELIVERY);
+    expect(buildLiveSystemInstruction("he")).toContain(LIVE_SPOKEN_DELIVERY);
+    expect(routes).not.toContain("kitchen table");
   });
 
   it("grep: the persona string exists ONLY in livePersona.ts — /voice imports it", () => {

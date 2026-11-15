@@ -23,6 +23,15 @@ export type SpokenLanguage = "en" | "he";
 export const SPOKEN_COACH_PERSONA =
   "You are Arbor, a warm, calm parenting coach speaking OUT LOUD to a parent.";
 
+/**
+ * live_session 1.7.0 (15 Nov 2026): how the Live voice should SOUND. On
+ * gemini-3.8-live the tone is steered only by the system instruction (the
+ * affective-dialog switch is gone), so the delivery is written here. Live
+ * only: /voice replies are text spoken by Chirp and do not carry this line.
+ */
+export const LIVE_SPOKEN_DELIVERY =
+  " Sound like a caring friend talking across the kitchen table: an unhurried, conversational pace, natural pauses, gentle warmth and real feeling in your voice. Let your tone follow the parent's mood. Never sound like an announcement, a script or a list being read out.";
+
 /** aiLang-driven spoken-language directive — byte-shared with /voice. */
 export const HE_SPOKEN_DIRECTIVE = " Reply in warm, natural spoken Hebrew.";
 
@@ -39,10 +48,18 @@ export const toSpokenLanguage = (language: unknown): SpokenLanguage =>
  */
 export const buildLiveSystemInstruction = (language: unknown, context?: SpokenContext): string =>
   `${NON_DIAGNOSTIC_CONTRACT}
-${SPOKEN_COACH_PERSONA} Keep spoken replies short (2 to 4 sentences), kind, and practical: briefly acknowledge, then give one concrete thing to try, or ask one short clarifying question when the needed context is missing. Never invent an earlier discussion. Use plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${spokenLanguageDirective(language)}${renderSpokenContext(context)}`;
+${SPOKEN_COACH_PERSONA}${LIVE_SPOKEN_DELIVERY} Keep spoken replies short (2 to 4 sentences), kind, and practical: briefly acknowledge, then give one concrete thing to try, or ask one short clarifying question when the needed context is missing. Never invent an earlier discussion. Use plain everyday language. No markdown, no headings, no bullet points, no emojis. Observations only — never a diagnosis. If there's a safety concern, gently suggest professional help.${spokenLanguageDirective(language)}${renderSpokenContext(context)}`;
 
 /** The default (EN) instruction — kept as a named constant for the token-pin tests. */
 export const LIVE_SYSTEM_INSTRUCTION = buildLiveSystemInstruction("en");
+
+/**
+ * Arbor's one voice. Talk (Live), read-aloud (Chirp 3 HD, TTS_VOICE_EN/HE in
+ * cloudbuild.prod.yaml) and book narration all speak as Sulafat, so the coach
+ * does not change voice between surfaces. Until 15 Nov 2026 Live spoke as
+ * Aoede. Guard: geminiLiveClient.guard.test.ts reads the deploy file.
+ */
+export const ARBOR_VOICE_NAME = "Sulafat";
 
 /**
  * Per-language Live speechConfig (AI-V9): a voice + languageCode appropriate
@@ -51,5 +68,5 @@ export const LIVE_SYSTEM_INSTRUCTION = buildLiveSystemInstruction("en");
  */
 export const liveSpeechConfig = (language: unknown) => ({
   languageCode: toSpokenLanguage(language) === "he" ? "he-IL" : "en-US",
-  voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
+  voiceConfig: { prebuiltVoiceConfig: { voiceName: ARBOR_VOICE_NAME } },
 });
