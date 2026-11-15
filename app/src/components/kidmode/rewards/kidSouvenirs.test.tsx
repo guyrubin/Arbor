@@ -19,6 +19,7 @@ vi.mock("../../../context/ArborContext", () => ({ useArborOptional: () => ({ chi
 
 import { SOUVENIR_COLLECTION, souvenirArt, souvenirStrip, souvenirToAward } from "./kidSouvenirs";
 import { KidFinishMoment, KidStickerStrip, KidSouvenirSticker } from "./KidSouvenir";
+import { resetStudioNextFlagForTests } from "../studioV2/studioNextFlag";
 import { CHILD_SUBCOLLECTIONS } from "../../../lib/childData";
 import { en, he } from "../../../lib/i18nElevation/kidsStories";
 
@@ -81,6 +82,27 @@ describe("the sticker: existing art, die-cut", () => {
     const book = renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="noahs-ark" />);
     expect(book).not.toContain("story-noahs-ark");
     expect(book).toContain("arbor-academy-play-hero-bg");
+  });
+  it("next Studio games: a host tile's sticker is the cover of the game it opens, only on a device that opted in", () => {
+    const off = { band: renderToStaticMarkup(<KidSouvenirSticker kind="world" refId="rhythm-garden" />), book: renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="noahs-ark" />) };
+    vi.stubGlobal("localStorage", { getItem: (key: string) => key === "arbor.flags.studioNext" ? "1" : null, setItem: () => {}, removeItem: () => {} });
+    resetStudioNextFlagForTests();
+    try {
+      const cover = renderToStaticMarkup(<KidSouvenirSticker kind="world" refId="memory" />);
+      expect(cover).toContain("/visuals/studio-v2/bop/card-delivery-480.webp");
+      expect(cover).not.toContain("data-kid-sticker-icon");
+      expect(cover).toMatch(/mask-image:radial-gradient[(]closest-side/);
+      // A tile with no new cover and a book keep the sticker they had.
+      expect(renderToStaticMarkup(<KidSouvenirSticker kind="world" refId="rhythm-garden" />)).toBe(off.band);
+      expect(renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="noahs-ark" />)).toBe(off.book);
+      expect(renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="memory" />)).not.toContain("/bop/");
+    } finally { vi.unstubAllGlobals(); resetStudioNextFlagForTests(); }
+    expect(renderToStaticMarkup(<KidSouvenirSticker kind="world" refId="memory" />)).not.toContain("/bop/");
+  });
+  it("the plain sticker mark is drawn in the border's ink, so it shows on a dark finish card too", () => {
+    const plain = renderToStaticMarkup(<KidSouvenirSticker kind="world" refId="memory" />);
+    expect(plain).toContain("data-kid-sticker-icon");
+    expect(plain).toContain("color:var(--comic-ink)");
   });
   it("round: a CSS mask on the picture and a token border, decorative", () => {
     const html = renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="noahs-ark" />);

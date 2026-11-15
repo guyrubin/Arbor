@@ -21,6 +21,7 @@ import { kidArtSrcSet } from "../../../lib/kidThemeManifest";
 import { kidsStoriesText } from "../../../lib/i18nElevation/kidsStories";
 import { souvenirArt, souvenirStrip, type KidSouvenir, type SouvenirKind } from "./kidSouvenirs";
 import { useKidSouvenirs } from "./useKidSouvenirs";
+import { studioNextCover } from "../studioV2/studioNextFlag";
 
 export const STICKER_MASK = "radial-gradient(closest-side, var(--arbor-ink) 97%, transparent 100%)";
 
@@ -28,6 +29,11 @@ export function KidSouvenirSticker({ kind, refId, size = 96 }: { kind: SouvenirK
   const theme = useKidTheme();
   const candidate = souvenirArt({ kind, refId }, theme);
   const art = kind === "world" && candidate?.hasHero ? null : candidate;
+  // Next Studio games: a host tile's sticker is the cover of the game it opens.
+  // A cover never shows a person, so it needs no hero check.
+  const cover = kind === "world" ? studioNextCover(refId) : null;
+  const picture = cover ? { src480: cover.src480, srcSet: cover.srcSet, objectPosition: "50% 50%" }
+    : art ? { src480: art.src480, srcSet: kidArtSrcSet(art), objectPosition: art.objectPosition } : null;
   return (
     <span
       aria-hidden="true"
@@ -40,20 +46,22 @@ export function KidSouvenirSticker({ kind, refId, size = 96 }: { kind: SouvenirK
         borderRadius: 999,
         padding: Math.max(3, Math.round(size * 0.05)),
         background: "var(--arbor-paper-elevated)",
+        // The plain sticker mark is drawn in the border's ink, whatever text colour surrounds it.
+        color: "var(--comic-ink)",
         border: "2px solid var(--comic-ink)",
         boxShadow: "var(--comic-pop)",
         flexShrink: 0,
       }}
     >
-      {art ? (
+      {picture ? (
         <img
-          src={art.src480}
-          srcSet={kidArtSrcSet(art)}
+          src={picture.src480}
+          srcSet={picture.srcSet}
           sizes={`${size}px`}
           alt=""
           loading="lazy"
           decoding="async"
-          style={{ inlineSize: "100%", blockSize: "100%", objectFit: "cover", objectPosition: art.objectPosition, borderRadius: 999, maskImage: STICKER_MASK, WebkitMaskImage: STICKER_MASK }}
+          style={{ inlineSize: "100%", blockSize: "100%", objectFit: "cover", objectPosition: picture.objectPosition, borderRadius: 999, maskImage: STICKER_MASK, WebkitMaskImage: STICKER_MASK }}
         />
       ) : (
         <Sticker data-kid-sticker-icon="" size={Math.round(size * 0.58)} aria-hidden="true" />
