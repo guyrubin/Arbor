@@ -288,9 +288,10 @@ describe("B-AIOPS-08 — AI caller inventory matches the source and the policy",
     expect(tts).toContain("fetch(`${ttsEndpointFor(config).host}/v1/text:synthesize`");
     expect(ttsEndpointFor(PROD)).toEqual({ host: "https://eu-texttospeech.googleapis.com", region: "eu" });
     expect(ttsCandidateFor(PROD).ref.region).toBe("eu");
-    // A non-EU location declares the global endpoint it calls, never "eu".
-    expect(ttsEndpointFor({ ...PROD, vertexLocation: "us-central1" })).toEqual({ host: "https://texttospeech.googleapis.com", region: "global" });
-    expect(ttsCandidateFor({ ...PROD, vertexLocation: "" }).ref.region).toBe("global");
+    // No location declares the global endpoint it calls, never "eu"; a US
+    // location keeps "us", which the route policy denies before any call.
+    expect(ttsEndpointFor({ ...PROD, vertexLocation: "" })).toEqual({ host: "https://texttospeech.googleapis.com", region: "global" });
+    expect(ttsCandidateFor({ ...PROD, vertexLocation: "us-central1" }).ref.region).toBe("us");
   });
 });
 

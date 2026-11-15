@@ -68,13 +68,17 @@ const getAuth = (): GoogleAuth => {
  * goes to the EU regional endpoint, so the words (coach replies and kid
  * read-aloud can name the child) are processed where the policy says. Both
  * pinned Chirp 3 HD Sulafat voices (en-US, he-IL) were synthesized on it that
- * day, at the latency of the global endpoint. Anything else keeps the global
- * endpoint and declares "global", so the declared region is never a guess.
+ * day, at the latency of the global endpoint. An unset or "global" location
+ * calls the global endpoint and declares "global". Any other location (us,
+ * other) keeps its own declared region, which the route policy denies before
+ * a call is made (COACH-3, unchanged).
  */
-export const ttsEndpointFor = (config: ArborConfig): { host: string; region: string } =>
-  providerRegion(config.vertexLocation) === "eu"
-    ? { host: "https://eu-texttospeech.googleapis.com", region: "eu" }
-    : { host: "https://texttospeech.googleapis.com", region: "global" };
+export const ttsEndpointFor = (config: ArborConfig): { host: string; region: string } => {
+  const region = providerRegion(config.vertexLocation);
+  return region === "eu"
+    ? { host: "https://eu-texttospeech.googleapis.com", region }
+    : { host: "https://texttospeech.googleapis.com", region };
+};
 
 /** Google Cloud Text-to-Speech `text:synthesize` (stable v1). Returns base64 MP3. */
 async function synthesizeGoogle(config: ArborConfig, input: TtsInput): Promise<TtsResult> {
