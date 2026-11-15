@@ -30,6 +30,34 @@ describe("Sound Explorer lifecycle", () => {
     expect(sources.map(source => source.start.mock.calls[0][0])).toEqual([7, 7.32, 7.64]);
     audio.dispose();
   });
+  it("recovers from an initially unavailable audio context without autoplay", async () => {
+    seam.context = null;
+    const audio = createExplorerAudio();
+    expect(await audio.load()).toBe(false);
+    seam.context = context;
+    expect(await audio.load()).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(sources).toHaveLength(0);
+    expect(audio.play("bell")).toBe(true);
+    audio.dispose();
+  });
+  it("retains decoded clips and retries only the missing file after a transient failure", async () => {
+    let recovered = false;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) =>
+      url.includes("prize.m4a") && !recovered
+        ? { ok: false }
+        : { ok: true, arrayBuffer: async () => new ArrayBuffer(8) }
+    ));
+    const audio = createExplorerAudio();
+    expect(await audio.load()).toBe(false);
+    expect(fetch).toHaveBeenCalledTimes(3);
+    recovered = true;
+    expect(await audio.load()).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(4);
+    expect(sources).toHaveLength(0);
+    expect(audio.play("bell")).toBe(true);
+    audio.dispose();
+  });
   it("stops all scheduled foley on hush, replacement, hidden tab and unmount", async () => {
     const audio = createExplorerAudio(); await audio.load(); audio.play("steps");
     for (const hush of seam.hush) hush();
