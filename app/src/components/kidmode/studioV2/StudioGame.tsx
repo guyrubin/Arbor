@@ -19,6 +19,7 @@ import { GameCompletionProvider } from "../game/GameSessionContext";
 import { KidFinishMoment } from "../rewards/KidSouvenir";
 import { studioActivity, studioActivityFits, type StudioActivityId } from "./studioCatalog";
 import { studioCopy } from "./studioCopy";
+import { studioNextCover } from "./studioNextFlag";
 import "./studioGame.css";
 import { StudioAdventureScene, isStudioAdventure } from './StudioAdventureScene';
 import { StudioPlayHero } from './StudioPlayHero';
@@ -66,6 +67,8 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
   const candidate = activity ? kidArt(theme, ["river-rescue", "feelings-forest", "rhythm-garden"].includes(activityId) ? `world.${activityId}.tile` as Parameters<typeof kidArt>[1] : `studio.portal.${activity.worldId}`) : null;
   // Only neutral environments belong behind the canonical profile portrait.
   const art = candidate && !candidate.hasHero ? candidate : null;
+  // A device that opted in to the next games sees that game's own cover.
+  const cover = studioNextCover(activityId);
   const words = WORDS[lang];
   const [phase, setPhase] = useState<"intro" | "play" | "result">("intro");
   const [round, setRound] = useState(0);
@@ -100,7 +103,7 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
   }, [activityId, eligible, phase]);
 
   const environment = <div className="studio-game-view__environment" aria-hidden="true">
-    {art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
+    {cover ? <img src={cover.src480} srcSet={cover.srcSet} sizes="100vw" alt="" draggable={false} decoding="async" /> : art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
   </div>;
   if (!eligible) return <section className="studio-game-view" data-studio-game-unavailable="" dir={lang === "he" ? "rtl" : "ltr"}>
     {environment}
@@ -126,7 +129,7 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
     {environment}
     <div className={`studio-game-card${phase === "result" ? " studio-game-card--result" : ""}`}>
       <div className="studio-game-card__window" aria-hidden="true">
-        {isStudioAdventure(activityId) ? <StudioAdventureScene activityId={activityId} /> : art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
+        {cover ? <img src={cover.src480} srcSet={cover.srcSet} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" /> : isStudioAdventure(activityId) ? <StudioAdventureScene activityId={activityId} /> : art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
         {activity && <span className="studio-game-card__world">{labels.worlds[activity.worldId].title}</span>}
         <div className="studio-game-card__hero"><StudioPlayHero size={230} celebrate={phase === "result"} /></div>
       </div>
