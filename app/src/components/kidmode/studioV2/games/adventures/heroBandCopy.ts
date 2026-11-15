@@ -1,8 +1,3 @@
-import { ArrowUp, Footprints, RotateCw, Waves, Wind, Zap } from 'lucide-react';
-
-/** One glyph per move, in MoveId order. Colour is never the only cue. */
-export const BAND_GLYPHS = [ArrowUp, Wind, Zap, Waves, Footprints, RotateCw] as const;
-
 /** Hero Band words. Hebrew is gender-free: nouns and plural verbs only. */
 export const HERO_BAND_COPY = {
   en: {

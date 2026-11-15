@@ -14,7 +14,8 @@ import { AdventureHeading, AdventureSteps, ChallengePicker } from './AdventureSh
 import { ADVENTURE_COPY } from './adventureCopy';
 import { defaultChallenge, type Challenge } from './adventureRules';
 import { createBandEngine, type BandEngine } from './heroBandAudio';
-import { BAND_GLYPHS, HERO_BAND_COPY } from './heroBandCopy';
+import { HERO_BAND_COPY } from './heroBandCopy';
+import { BAND_GLYPHS } from './heroBandGlyphs';
 import { BAND_MOVES, DANCE_TEMPOS, LOOP_STEPS, defaultTempo, emptyLoop, filledSteps, movesFor, phraseFor, phraseMatches, placeMove, tapStep, validDance, type BandMotion, type DanceTempo, type MoveId } from './heroBandRules';
 import './heroBand.css';
 
