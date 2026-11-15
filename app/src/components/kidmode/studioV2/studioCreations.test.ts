@@ -4,11 +4,13 @@ vi.mock('../../../context/AuthContext', () => ({ useAuth: () => ({ user: { uid: 
 vi.mock('../../../hooks/useChildCollection', () => ({ useChildCollection: () => ({ items: h.rows, loaded: h.loaded, error: h.error, isCurrent: () => h.current, upsert: h.upsert }) }));
 import { creationForScope, useStudioCreations, validStudioCreation, type StudioCreation } from './studioCreations';
 const melody: StudioCreation = { kind: 'melody', notes: [0, 2, 1], tempo: 760 };
+const dance: StudioCreation = { kind: 'dance', moves: [0, null, 3, null, 5, null, null, 1], tempo: 500 };
 const corner: StudioCreation = { kind: 'corner', layout: ['plant', null, 'books', null, null, null], light: 'night', scene: 'garden' };
 beforeEach(() => { h.uid = 'owner-a'; h.loaded = true; h.error = false; h.current = true; h.rows = []; h.upsert.mockReset(); });
 describe('bounded private creations', () => {
   it('validates actual toy choices and rejects malformed or unbounded payloads', () => {
-    expect(validStudioCreation(melody)).toBe(true); expect(validStudioCreation(corner)).toBe(true);
+    expect(validStudioCreation(melody)).toBe(true); expect(validStudioCreation(corner)).toBe(true); expect(validStudioCreation(dance)).toBe(true);
+    for (const bad of [{ ...dance, moves: Array(8).fill(null) }, { ...dance, moves: [0, 1] }, { ...dance, moves: [9, null, null, null, null, null, null, null] }, { ...dance, tempo: 760 }, { ...dance, moves: 'spin' }]) expect(validStudioCreation(bad)).toBe(false);
     for (const bad of [null, {}, { ...melody, notes: [] }, { ...melody, notes: Array(9).fill(0) }, { ...melody, notes: [99] }, { ...melody, tempo: 0 }, { ...corner, layout: Array(6).fill('plant') }, { ...corner, scene: 'photo' }]) expect(validStudioCreation(bad)).toBe(false);
   });
   it('does not expose another owner or child, even from a local fallback', () => {
@@ -21,6 +23,10 @@ describe('bounded private creations', () => {
   it('saves only the creation contract under the active owner and strips unrelated fields', async () => {
     await useStudioCreations('child-a').save({ ...melody, privatePhoto: 'must-not-persist' } as StudioCreation);
     expect(h.upsert).toHaveBeenCalledWith({ id: 'melody', ownerId: 'owner-a', childId: 'child-a', creation: melody }, { requireAcknowledgement: true });
+  });
+  it('keeps a dance as its eight bounded steps and nothing else', async () => {
+    await useStudioCreations('child-a').save({ ...dance, recording: 'must-not-persist' } as StudioCreation);
+    expect(h.upsert).toHaveBeenCalledWith({ id: 'dance', ownerId: 'owner-a', childId: 'child-a', creation: dance }, { requireAcknowledgement: true });
   });
   it('refuses a write before hydration, after scope retirement, or on a fallback error', async () => {
     h.loaded = false; await expect(useStudioCreations('child-a').save(melody)).rejects.toThrow();

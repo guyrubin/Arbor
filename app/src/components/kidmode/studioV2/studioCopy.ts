@@ -1,4 +1,6 @@
 import type { StudioActivityId, StudioLanguage, StudioWorldId } from "./studioCatalog";
+import { heroBandFlagOn } from "./heroBandFlag";
+import { HERO_BAND_COPY } from "./games/adventures/heroBandCopy";
 interface ActivityCopy { title: string; description: string; instruction: string }
 interface WorldCopy { title: string; description: string; headline: string; hint: string }
 /** S1 (surfacing): a running Everyday Plan on the kid home — the bottom rail,
@@ -72,4 +74,12 @@ const he: StudioCopy = {
     speech: { title: "מעבדת הצלילים", description: "משחקים במילים ובצלילים", instruction: "מקשיבים למילה ומנסים לומר אותה." },
   },
 };
-export function studioCopy(lang: StudioLanguage): StudioCopy { return lang === "he" ? he : en; }
+function withHeroBand(base: StudioCopy, lang: "en" | "he"): StudioCopy {
+  const { title, description, instruction } = HERO_BAND_COPY[lang];
+  return { ...base, activities: { ...base.activities, "rhythm-garden": { title, description, instruction } } };
+}
+const band = { en: withHeroBand(en, "en"), he: withHeroBand(he, "he") };
+export function studioCopy(lang: StudioLanguage): StudioCopy {
+  const key = lang === "he" ? "he" : "en";
+  return heroBandFlagOn() ? band[key] : key === "he" ? he : en;
+}
