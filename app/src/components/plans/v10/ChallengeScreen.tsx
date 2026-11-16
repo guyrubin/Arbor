@@ -179,7 +179,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
 
   const actions = plan && (
     <div className="cp-act" style={{ padding: desk ? "14px 28px 24px" : 0, marginTop: desk ? "auto" : undefined, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-      {desk && parentStep && <span style={{ flexBasis: "100%", fontSize: 14, color: "var(--ink)" }} dir="auto">{s("card.tonight", { step: parentStep })}</span>}
+      {/* Once-only: tonight's step lives in Today (the rail) and the three steps; not here again. */}
       {plan.review && desk && <button type="button" className="btn primary" style={{ minWidth: 160 }} data-plan-keep="" onClick={() => p.onKeep(plan)}>{s("review.keep")}</button>}
       {desk && (
         <button type="button" className={plan.review ? "btn ghost" : "btn primary"} style={plan.review ? { background: "var(--card)" } : { minWidth: 160 }} data-plan-open="" onClick={() => p.onOpenBook(plan)}>

@@ -4,12 +4,11 @@ import { Fig, LivingForm, Scene, StartHere } from "../../../design/primitives";
 import type { Composition } from "../../../design/useComposition";
 import { CoachTryIt, type CoachTodayStep, type TryItButtonProps } from "../../coach/CoachAnswerCards";
 import { translate, type UiLang } from "../../../lib/i18n";
-import { PLAN_CHECK_ANSWERS, offerPlanAdjust, planEchoKey, planEyebrowKey, planStepStatus, weeklyCheckDue, type PlanEcho, type TodaysPlanStep } from "../../../lib/plans";
+import { PLAN_CHECK_ANSWERS, offerPlanAdjust, planEchoKey, planStepStatus, weeklyCheckDue, type PlanEcho, type TodaysPlanStep } from "../../../lib/plans";
 import type { PlanStepRef } from "../../../actionLoop/model";
 import type { ActionPlan, PlanCheckAnswer, StepStatus } from "../../../types";
 import { EMPTY_ART } from "../../../lib/parentArt";
 import { mirrorPoints, Road, wavePoints } from "./Road";
-import { PlanEyebrow } from "../planTrack";
 import { plansCopy } from "./plansCopy";
 
 /**
@@ -124,7 +123,9 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
     : [{ size: 240, left: -150, bottom: -150, opacity: 0.55 }, { size: 220, right: -120, top: -130, opacity: 0.75, b: true }];
   const pad = desk ? "0 28px" : "0 16px";
 
-  const echoLine = echo && echo.kind === "not-yet-twice" ? (
+  // Once-only: a "progress" echo restates the steps-done figure beside it, so the stage keeps only
+  // the echoes that say something new (the last outcome, or "change this step").
+  const echoLine = echo && echo.kind === "progress" ? null : echo && echo.kind === "not-yet-twice" ? (
     <button type="button" data-testid="plan-echo" data-echo={echo.kind} onClick={onAdjust} className="ds-link min-h-11" style={{ paddingInline: 0 }}>
       {t(planEchoKey(echo))}
     </button>
@@ -153,11 +154,9 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
         <div className="stack ds-col" style={{ gap: desk ? 8 : 4 }}>
           {step ? (
             <>
-              {/* "Today's step · {plan}" on day 1, "Day {n} of {plan}" after: the
-                  plan title isolated in <bdi>, never upper-cased (critic r1). */}
-              <p data-testid="plan-today-eyebrow" className="small" style={{ fontWeight: 600, color: "var(--k-plan)" }}>
-                <PlanEyebrow template={t(planEyebrowKey(step.day), { n: step.day, plan: "\u0000" })} title={plan.title} />
-              </p>
+              {/* Once-only (V73/V77): the plan's title lives on its tab and the whole plan's
+                  head; here only the practice day, from Day 2 (critic r1: never "Day 1"). */}
+              {step.day > 1 && <p data-testid="plan-today-eyebrow" className="small" style={{ fontWeight: 600, color: "var(--k-plan-i)" }}>{c.dayN(step.day)}</p>}
               {echoLine}
               <h1 className="hero" dir="auto" style={{ fontSize: desk ? 26 : 22, lineHeight: 1.15 }}>{step.text}</h1>
             </>
