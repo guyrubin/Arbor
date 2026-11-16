@@ -584,7 +584,7 @@ describe("B-SHELL-23 — no English title= literal in the shell chrome or the pr
       .flatMap((f) => stripComments(readSrc(f)).split("\n").filter((l) => TITLE_LITERAL.test(l)).map((l) => `${f}: ${l.trim()}`));
     expect(offenders).toEqual([]);
     expect(readSrc("components/layout/Shell.tsx")).toContain('title={t("top.searchHint")}');
-    expect(readSrc("components/profile/ProfileSwitcher.tsx")).toContain('title={t("aria.editChildProfile")}');
+    expect(readSrc("components/layout/TopbarKidSwitcher.tsx")).toContain('title={t("aria.editChildProfile")}');
   });
 
   it("NEGATIVE CONTROL: the two pre-fix literals are caught by the scan", () => {
