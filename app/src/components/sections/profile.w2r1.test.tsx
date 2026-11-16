@@ -53,11 +53,14 @@ vi.mock("../../context/LanguageContext", () => ({
 vi.mock("../ui/HeroAvatar", () => ({ HeroAvatar: () => null, useHeroAvatar: () => ({ hasHero: true, name: "Noa" }) }));
 vi.mock("../../lib/api", () => ({ api: { listShares: () => Promise.resolve({ shares: [] }) } }));
 vi.mock("../profile/ProfileEditDrawer", () => ({ default: () => null }));
+// v10: this suite reads the desktop composition (the phone's is ChildProfile.layout.test's).
+vi.mock("../../design/useComposition", () => ({ useComposition: () => "desk" }));
 vi.mock("../../hooks/useChildCollection", () => ({
   useChildCollection: () => ({ items: [], loaded: true, upsert: async () => {}, remove: async () => {} }),
 }));
 
 import ChildProfile from "./ChildProfile";
+import { aboutCopy } from "../about/aboutViewCopy";
 import PhysicalGrowthCard from "./PhysicalGrowthCard";
 
 const text = (html: string) =>
@@ -87,11 +90,12 @@ describe("#/profile Hebrew page — no Latin chrome (Law 8)", () => {
     expect(roles).toContain("אנגלית");
     expect(s).not.toMatch(/\bMoment\b/);
   });
-  it("each Details segment is its own bidi island (name · age · birth date)", () => {
+  it("each Details segment is its own bidi island (name · age · birth date · languages)", () => {
     const html = renderToStaticMarkup(<ChildProfile />);
     const line = detailsLine(html);
     expect(line).toContain('<bdi dir="auto">Noa</bdi>');
-    expect(line.match(/<bdi dir="auto">/g)!.length).toBe(3);
+    // v10: the child's tile adds the languages (the board's "Born … · Hebrew and English")
+    expect(line.match(/<bdi dir="auto">/g)!.length).toBe(4);
     expect(text(line)).toContain("2023");
   });
   it("critic r1: the h1 keeps the page direction (no dir); the name is isolated inside the sentence", () => {
@@ -162,7 +166,10 @@ describe("#/profile — the cut chapters, the count line and the dated areas", (
     const lang = text(area(html, "lang")).replace(/\s+/g, " ");
     expect(lang).toContain("Noa answers in Hebrew when tired");
     expect(lang).toContain("Noted · Sep 2, 2026");
-    expect(html.split("Noa answers in Hebrew when tired").length - 1).toBe(1);
+    // once on the page face; "What the coach sees" names the approved facts that
+    // travel with a question verbatim (GP-14), which is a disclosure, not a quote
+    const face = html.replace(/<section[^>]*data-testid="coach-contract-panel"[\s\S]*?<\/section>/, "");
+    expect(face.split("Noa answers in Hebrew when tired").length - 1).toBe(1);
     expect(html).not.toMatch(/\d+ (child|children|family members?|captured moments)/);
   });
   it("nothing approved, nothing pending: the voice door is the stamped zero state; the count line counts told areas only", () => {
@@ -182,32 +189,34 @@ describe("#/profile — the cut chapters, the count line and the dated areas", (
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
     expect(html).toMatch(/data-testid="about-voice" data-primary-move="capture-moment"/);
     expect(html.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
-    expect(html.split("Noa answers in Hebrew when tired").length - 1).toBe(1);
+    const face = html.replace(/<section[^>]*data-testid="coach-contract-panel"[\s\S]*?<\/section>/, "");
+    expect(face.split("Noa answers in Hebrew when tired").length - 1).toBe(1);
   });
-  // v4 re-pin (supersedes review r1's sentence-under-the-door): proposals no
-  // area shows wait IN What Arbor remembers, each with Remember / Not this, the
-  // first three on the page and the rest one tap away on #/memory. The badge
-  // counts facts waiting in the ledger (never anything about the child); the
-  // door stays the ONE door and the page keeps its one primary move.
-  it("v4: proposals no area shows wait in What Arbor remembers (first three), counted as facts waiting; one door, one stamp (EN + HE)", () => {
+  // v4 → v10 re-pin: proposals no area shows wait in Arbor's notebook (the
+  // stage card, then the rail's notes), each with Remember / Not this, the
+  // first three on the page and the rest one tap away in the ledger. The figure
+  // counts notes waiting (never anything about the child), with its unit in
+  // words; the door stays the ONE door and the page keeps its one primary move.
+  it("v10: proposals no area shows wait in the notebook (first three), counted as notes waiting; one door, one stamp (EN + HE)", () => {
     for (const locale of ["en", "he"] as const) {
       h.locale = locale;
       h.pending = [1, 2, 3, 4].map((n) => ({ memoryId: `p${n}`, fact: `fact ${n}`, status: "pending", createdAt: "2026-10-02T10:00:00.000Z", source: "chat", retention: "90d" }));
       const html = renderToStaticMarkup(<ChildProfile />);
       expect(html.match(/data-testid="about-memory-pending"/g)).toHaveLength(3);
-      expect(text(html)).toContain(translate(locale, "companion.about.memory.waiting", { n: 4 }));
-      if (locale === "he") expect(translate("he", "companion.about.memory.waiting", { n: 4 })).not.toMatch(/[A-Za-z]/);
+      const unit = aboutCopy(locale).figWaiting;
+      expect(html).toContain(`<b>4</b><span>${unit}`);
+      if (locale === "he") expect(unit).not.toMatch(/[A-Za-z]/);
       expect(html).not.toContain('data-testid="about-memory-waiting"');
       expect(html.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
       expect(html.match(/data-primary-move=/g)).toHaveLength(1);
     }
   });
-  it("the first fold is the describe card → the eight areas → Details (EN + HE)", () => {
+  it("the route reads top to bottom: the notebook and the tell box → the parent's words and the child's tile → the eight areas (EN + HE)", () => {
     for (const locale of ["en", "he"] as const) {
       h.locale = locale;
       h.pending = [{ memoryId: "p1", fact: "fact 1", status: "pending", createdAt: "2026-10-02T10:00:00.000Z", source: "chat", retention: "90d" }];
       const html = renderToStaticMarkup(<ChildProfile />);
-      const order = ['data-module="about-describe"', 'data-testid="about-told-line"', 'data-testid="about-voice"', 'data-testid="about-write"', 'data-module="about-aspects"', 'data-testid="profile-remember-check"', 'data-module-disclosure="about-details"'].map((m) => html.indexOf(m));
+      const order = ['data-module="about-answer"', 'data-testid="about-voice"', 'data-testid="about-write"', 'data-module="about-told"', 'data-module-disclosure="about-details"', 'data-module="about-aspects"', 'data-testid="about-told-line"', 'data-testid="profile-remember-check"'].map((m) => html.indexOf(m));
       expect(order.every((at) => at > -1)).toBe(true);
       expect([...order].sort((a, b) => a - b)).toEqual(order);
       expect(html).not.toContain(translate(locale, "cp.askAbout", { name: "Noa" }));

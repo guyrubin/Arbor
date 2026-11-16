@@ -68,13 +68,13 @@ describe("words parents use are readable instructions, not decorative quotations
   }
 
   it("kept About and story-memory quotations remain editorial", () => {
-    // v3 F-CHILD-3 re-pin: About (#/profile) quotes the parent's words inside
-    // their area (AspectCard); the editorial face is set in about.css.
+    // v10 re-pin: About (#/profile) quotes the parent's words inside their
+    // area row (AspectCard); the editorial face is set in aboutV10.css.
     const card = read("../about/AspectCard.tsx");
-    const aboutCss = read("../about/about.css");
+    const aboutCss = read("../about/aboutV10.css");
     const stories = read("../tabs/HeroJourneyTab.tsx");
-    expect(card).toContain('className="about-aspect-quote"');
-    expect(aboutCss).toMatch(/\.about-aspect-quote \{[^}]*font-family: var\(--font-editorial\);/);
+    expect(card).toContain('className="a8-quote"');
+    expect(aboutCss).toMatch(/\.a8-quote \{[^}]*font-family: var\(--font-editorial\) !important;/);
     expect(stories).toMatch(/fontFamily: "var\(--font-editorial\)"[^}]*\}\}[^>]*>[\s\S]{0,100}notedMoment/);
   });
 });

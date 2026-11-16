@@ -1,28 +1,47 @@
 /**
- * v3 F-CHILD-3 — one of the eight areas on About {child} (#/profile).
+ * v3 F-CHILD-3, v10.1 — one of the eight areas on My child › About, as a row
+ * of the notebook by area (N-About boards: art, name, what you told, tokens,
+ * one link).
  *
- * The card holds what the parent TOLD Arbor about this area: the newest line
- * in their own words with its source and day, or the question Arbor would ask
- * and "Not told yet". It never grades the area: no share, no fill, no colour
- * for how the child is doing (the tone is the AREA's). A proposal still
- * waiting for the parent sits inside its area in amber, "Proposed, confirm?",
- * and Confirm / No are the same handleMemoryDecision #/memory uses; the
- * receipt shows only after that write resolved, names the proposal it
- * answered, and clears itself (a timeout, or a different proposal arriving).
- * "Tell more" opens the ONE guided conversation on this area.
+ * The row holds what the parent TOLD Arbor about this area: the newest line in
+ * their own words with its day, or the question Arbor would ask. It never
+ * grades the area: no share, no fill, no colour for how the child is doing. An
+ * ink token is something told, dated; a pencil token is a proposal waiting. A
+ * proposal waits inside its area, "Proposed, confirm?", and Confirm / No are
+ * the same handleMemoryDecision the notebook uses; the receipt shows only
+ * after that write resolved, names the proposal it answered, and clears
+ * itself. "Tell more" opens the ONE guided conversation on this area.
  */
 import React, { useEffect, useState } from "react";
-import Icon from "../ui/Icon";
 import { FreeText } from "../ui/FreeText";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { ASPECT_ICONS, ASPECT_TONE, isTold, receiptShows, RECEIPT_MS, type AspectFact, type AspectId, type AspectReceipt, type AspectState } from "../../lib/aboutAspects";
+import { isTold, receiptShows, RECEIPT_MS, type AspectFact, type AspectId, type AspectReceipt, type AspectState } from "../../lib/aboutAspects";
 import { confirmFact, isFactStale, type FactField } from "../../lib/factsAsOf";
 import { fmtDay } from "../../lib/formatDate";
 import { languageName } from "../../lib/languageName";
-import { DOMAIN_VARS } from "../../lib/tokens";
 import { goToRoute } from "../../hooks/useHashQuery";
 import { toParentWords } from "../../server/parentWordsScrub";
+import { LivingForm, Token } from "../../design/primitives";
+import { aboutCopy } from "./aboutViewCopy";
+
+/** Production's Living Forms art per area, cropped as the boards draw it at 48 px. */
+const AREA_ART: Readonly<Record<AspectId, { src: string; h: number; crop: { w: number; h: number; x: number; y: number } }>> = {
+  temper: { src: "/visuals/parent/v2/area-feelings-480.webp", h: 31.5, crop: { w: 58.8, h: 58.8, x: -5.4, y: -14.6 } },
+  lang: { src: "/visuals/parent/v2/area-words-480.webp", h: 33.6, crop: { w: 60.2, h: 60.2, x: -6.1, y: -14.2 } },
+  social: { src: "/visuals/parent/v2/area-play-480.webp", h: 27.3, crop: { w: 54.3, h: 54.3, x: -3.2, y: -13.2 } },
+  routine: { src: "/visuals/guides/screens-480.webp", h: 37.2, crop: { w: 147.7, h: 83.1, x: -86.8, y: -23.7 } },
+  sleep: { src: "/visuals/parent/v2/area-sleep-480.webp", h: 30.9, crop: { w: 60.6, h: 60.6, x: -5.8, y: -15.5 } },
+  senses: { src: "/visuals/parent/v2/area-food-480.webp", h: 26.9, crop: { w: 54.9, h: 54.9, x: -4, y: -16 } },
+  school: { src: "/visuals/parent/v2/area-school-480.webp", h: 36.3, crop: { w: 54.9, h: 54.9, x: -3.9, y: -9.5 } },
+  strengths: { src: "/visuals/parent/v2/area-hands-480.webp", h: 29, crop: { w: 54.9, h: 54.9, x: -3.4, y: -13.5 } },
+};
+
+function AreaArt({ id, size }: { id: AspectId; size: number }) {
+  const art = AREA_ART[id];
+  const k = size / 48;
+  return <LivingForm src={art.src} width={size} height={art.h * k} crop={{ w: art.crop.w * k, h: art.crop.h * k, x: art.crop.x * k, y: art.crop.y * k }} />;
+}
 
 export interface AspectCardProps {
   state: AspectState;
@@ -32,9 +51,11 @@ export interface AspectCardProps {
   onTell: (id: AspectId) => void;
   /** "Still true? Edit" opens the profile drawer. */
   onEditDetails: () => void;
+  /** The art frame: 48 px on desktop, 36 px on a phone (the boards' sizes). */
+  artSize?: number;
 }
 
-export default function AspectCard({ state, name, onTell, onEditDetails }: AspectCardProps) {
+export default function AspectCard({ state, name, onTell, onEditDetails, artSize = 48 }: AspectCardProps) {
   const { childProfile, updateChild, handleMemoryDecision, isMemoryUpdating } = useArbor();
   const { t, uiLang } = useLanguage();
   const [receipt, setReceipt] = useState<AspectReceipt | null>(null);
@@ -53,8 +74,8 @@ export default function AspectCard({ state, name, onTell, onEditDetails }: Aspec
   }, [pendingId, receipt]);
   const shown = receiptShows(receipt, pending) ? receipt : null;
   const told = isTold(state);
-  const tone = DOMAIN_VARS[ASPECT_TONE[id]];
   const titleId = `about-aspect-${id}-title`;
+  const copy = aboutCopy(uiLang);
 
   // The source line: "In your words · 10 Jun 2026" for what the parent said
   // or kept from the conversation, "Noted · …" for a kept memory.
@@ -96,86 +117,64 @@ export default function AspectCard({ state, name, onTell, onEditDetails }: Aspec
     setReceipt({ kind: ok ? (status === "approved" ? "kept" : "leftOut") : "failed", memoryId });
   };
 
-  const languageRow = (role: string, value: string) => (
-    <div>
-      <dt>{role}</dt>
-      <dd><bdi>{languageName(value, t)}</bdi></dd>
-    </div>
-  );
+  const languageSegments = languages ? [
+    languages.home && `${languageName(languages.home, t)} · ${t("elev.growthTruth.lang.role.home")}`,
+    languages.second && `${languageName(languages.second, t)} · ${t("elev.growthTruth.lang.role.second")}`,
+    languages.others.length > 0 && `${t("companion.about.langAlso")}: ${languages.others.map((l) => languageName(l, t)).join(", ")}`,
+  ].filter(Boolean) as string[] : [];
+  // One told token per thing told (both languages are two), one pencil token for a proposal.
+  const toldTokens = languages ? Math.max(1, Math.min(2, languageSegments.length)) : known ? 1 : 0;
 
   return (
-    <article className="about-aspect" data-testid={`about-aspect-${id}`} data-aspect={id} data-told={told ? "" : undefined}
-      aria-labelledby={titleId}
-      style={{ "--aspect-ink": tone.ink, "--aspect-soft": tone.soft } as React.CSSProperties}>
-      <h3 id={titleId} className="about-aspect-head">
-        <span className="about-aspect-glyph" aria-hidden="true"><Icon name={ASPECT_ICONS[id]} size={22} /></span>
-        <span className="min-w-0">{t(`companion.about.aspect.${id}`)}</span>
-      </h3>
-
-      {languages && (
-        <>
-          <dl className="about-aspect-langs" data-testid="about-lang-roles">
-            {languages.home && languageRow(t("elev.growthTruth.lang.role.home"), languages.home)}
-            {languages.second && languageRow(t("elev.growthTruth.lang.role.second"), languages.second)}
-            {languages.others.length > 0 && (
-              <div>
-                <dt>{t("companion.about.langAlso")}</dt>
-                <dd>{languages.others.map((l, i) => <React.Fragment key={`${l}-${i}`}>{i > 0 && " · "}<bdi>{languageName(l, t)}</bdi></React.Fragment>)}</dd>
-              </div>
-            )}
-          </dl>
-          <p className="about-aspect-src" data-testid="about-aspect-src">{srcLine("profile", languages.date)}</p>
-          {stillTrue("languages")}
-        </>
-      )}
-
-      {known && (
-        <>
-          <p className="about-aspect-quote" data-testid="about-aspect-quote"><FreeText text={known.words} /></p>
-          <p className="about-aspect-src" data-testid="about-aspect-src">{srcLine(known.source, known.date)}</p>
-          {stillTrue(known.factField)}
-        </>
-      )}
-
-      {!told && (
-        <>
-          <p className="about-aspect-ask" data-testid="about-aspect-ask">{t(`companion.about.ask.${id}`, { name })}</p>
-          <p className="about-aspect-src">{t("companion.milestones.notTold")}</p>
-        </>
-      )}
-
-      {pending && (
-        <div className="about-aspect-pending" data-testid="about-aspect-pending">
-          <p>
-            <Icon name="help" size={16} />
-            <span className="min-w-0"><strong>{t("companion.about.pending")}</strong><FreeText text={toParentWords(pending.fact)} /></span>
-          </p>
-          <div className="about-aspect-pending-actions">
-            <button type="button" className="touch-target" data-testid="about-pending-confirm" disabled={busy} onClick={() => { void decide("approved"); }}>
-              <Icon name="check" size={16} />{t("companion.about.confirm")}
-            </button>
-            <button type="button" className="touch-target" data-testid="about-pending-dismiss" disabled={busy} onClick={() => { void decide("rejected"); }}>
-              <Icon name="close" size={16} />{t("companion.about.dismiss")}
-            </button>
-          </div>
-        </div>
-      )}
-      {shown && (
-        <p className="about-aspect-receipt" role="status" data-testid="about-aspect-receipt">
-          {t(`companion.about.${shown.kind}`)}
-        </p>
-      )}
-
-      <div className="about-aspect-actions">
-        {id === "lang" && (
-          <button type="button" className="about-link touch-target" data-testid="about-lang-moments"
-            onClick={() => goToRoute("timeline", { view: "areas", area: "talking" })}>
-            {t("companion.about.moments")}<Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
-          </button>
+    <article className="a8" data-testid={`about-aspect-${id}`} data-aspect={id} data-told={told ? "" : undefined} aria-labelledby={titleId}>
+      <span className="a8-art" data-quiet={told ? undefined : ""}><AreaArt id={id} size={artSize} /></span>
+      <div className="nm">
+        <h3 id={titleId} className="a8-name">{t(`companion.about.aspect.${id}`)}</h3>
+        {languages && (
+          <small>
+            <span data-testid="about-lang-roles">{languageSegments.map((seg, i) => <React.Fragment key={i}>{i > 0 && " · "}<bdi>{seg}</bdi></React.Fragment>)}</span>
+            {" · "}<span data-testid="about-aspect-src">{srcLine("profile", languages.date)}</span>
+          </small>
         )}
-        <button type="button" className="about-link touch-target" data-testid={`about-aspect-tell-${id}`} onClick={() => onTell(id)}>
-          <Icon name="add_comment" size={16} />{told ? t("companion.about.tellMore") : t("companion.milestones.tell")}
-        </button>
+        {known && (
+          <small>
+            <span className="a8-quote" data-testid="about-aspect-quote"><FreeText text={known.words} /></span>
+            {" · "}<span data-testid="about-aspect-src">{srcLine(known.source, known.date)}</span>
+          </small>
+        )}
+        {!told && <small className="a8-ask" data-testid="about-aspect-ask" title={t(`companion.about.ask.${id}`, { name })}>{t("companion.milestones.notTold")} · {t(`companion.about.ask.${id}`, { name })}</small>}
+        {languages && stillTrue("languages")}
+        {known && stillTrue(known.factField)}
+        {pending && (
+          <p className="a8-pending" data-testid="about-aspect-pending">
+            <strong>{t("companion.about.pending")}</strong><FreeText text={toParentWords(pending.fact)} />
+          </p>
+        )}
+        {shown && <p className="a8-receipt" role="status" data-testid="about-aspect-receipt">{t(`companion.about.${shown.kind}`)}</p>}
+      </div>
+      <div className="a8-act">
+        {(toldTokens > 0 || pending) && (
+          <span className="pile line">
+            {Array.from({ length: toldTokens }, (_, i) => <Token key={i} kind="neutral" className="told" size="md" label={copy.tokenToldOne} />)}
+            {pending && <Token kind="neutral" state="ai" size="md" label={copy.tokenWaitingOne} />}
+          </span>
+        )}
+        <span className="a8-links">
+          {pending && (
+            <>
+              <button type="button" className="a8-link touch-target" data-testid="about-pending-confirm" disabled={busy} onClick={() => { void decide("approved"); }}>{t("companion.about.confirm")}</button>
+              <button type="button" className="a8-link touch-target" data-testid="about-pending-dismiss" disabled={busy} onClick={() => { void decide("rejected"); }}>{t("companion.about.dismiss")}</button>
+            </>
+          )}
+          {id === "lang" && !pending && (
+            <button type="button" className="a8-link touch-target" data-testid="about-lang-moments" onClick={() => goToRoute("timeline", { view: "areas", area: "talking" })}>
+              {t("companion.about.moments")}
+            </button>
+          )}
+          <button type="button" className="a8-link touch-target" data-testid={`about-aspect-tell-${id}`} onClick={() => onTell(id)}>
+            {told ? t("companion.about.tellMore") : t("companion.milestones.tell")}
+          </button>
+        </span>
       </div>
     </article>
   );

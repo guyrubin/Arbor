@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "../ui/Icon";
-import { cardCls } from "../ui/kit";
 // Masterplan 1.3 — TrustPanel (the one reusable trust pattern) states EXACTLY
 // what each conversation request sends, and hosts the weekly-context consent
 // switch in its footer.
@@ -17,6 +16,7 @@ import { fmtDayLong } from "../../lib/formatDate";
 // travel with a question, not just how many.
 import { coachDisclosure } from "../../lib/coachDisclosure";
 import { readWeeklyContextConsent, writeWeeklyContextConsent } from "../../ai/chatContext";
+import { GlyphChip } from "../../design/primitives";
 
 /**
  * F-TALK-1 — "What the coach sees", in its one home: the "What Arbor
@@ -89,25 +89,22 @@ export default function CoachDataContract({ ledgerUnreadable = false }: { ledger
   }, [arrivedForSwitch]);
 
   return (
+    // v10: a design-system tile in About's section 3 ("What you told me, what
+    // the coach sees"), rendered in every state of the ledger.
     <section
       ref={sectionRef}
       id="coach-data-contract"
       data-testid="coach-contract-panel"
       aria-labelledby="coach-data-contract-title"
-      className={`${cardCls} p-6 scroll-mt-24`}
+      className="vt coach-contract scroll-mt-24"
     >
-      <div className="mb-4 flex items-center gap-2.5">
-        <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
-          <Icon name="shield" size={18} />
-        </span>
-        <span className="min-w-0">
-          <h2 id="coach-data-contract-title" className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-            {tcc("elev.coachcontract.title")}
-          </h2>
-          <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{tcc("elev.coachcontract.titleHint")}</span>
-        </span>
+      <div className="vh">
+        <GlyphChip icon="search" />
+        <h3 id="coach-data-contract-title" className="h3">{tcc("elev.coachcontract.title")}</h3>
       </div>
+      <p className="line1">{tcc("elev.coachcontract.titleHint")}</p>
       <TrustPanel
+        tone="inline"
         uses={[
           tcc("elev.coachcontract.uses.message"),
           // GP-14: the profile line and the memory line NAME what travels —
@@ -152,7 +149,7 @@ export default function CoachDataContract({ ledgerUnreadable = false }: { ledger
           tcc("elev.coachcontract.controls.weekly"),
         ]}
         footer={
-          <div className="pt-2 space-y-1.5" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+          <div className="coach-contract-switch">
             <button
               ref={switchRef}
               type="button"
@@ -164,25 +161,13 @@ export default function CoachDataContract({ ledgerUnreadable = false }: { ledger
                 setWeeklyOn(next);
                 writeWeeklyContextConsent(childProfile.id, next);
               }}
-              className="flex items-center gap-2.5 min-h-[44px] w-full text-start focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
+              className="msw touch-target"
+              data-on={weeklyOn ? "" : undefined}
             >
-              <span
-                aria-hidden
-                className="relative inline-flex flex-shrink-0 rounded-full transition-colors"
-                style={{ width: 34, height: 20, background: weeklyOn ? "var(--arbor-green-ink)" : "var(--arbor-rule-strong)" }}
-              >
-                <span
-                  className="absolute top-[2px] rounded-full transition-all"
-                  style={{ width: 16, height: 16, background: "var(--arbor-on-accent)", insetInlineStart: weeklyOn ? 16 : 2 }}
-                />
-              </span>
-              <span className="text-[12px] font-bold" style={{ color: "var(--arbor-ink)" }}>
-                {tcc("elev.coachcontract.toggle")}
-              </span>
+              <i aria-hidden="true" />
+              <span>{tcc("elev.coachcontract.toggle")}</span>
             </button>
-            <p className="text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>
-              {tcc("elev.coachcontract.toggleHint")}
-            </p>
+            <p className="small">{tcc("elev.coachcontract.toggleHint")}</p>
           </div>
         }
       />

@@ -145,11 +145,11 @@ describe("IA-09 — every non-pill route has a real entry point", () => {
     // Rewrite one real navigation out of a real component and the scanner
     // stops seeing it — so an empty result above means "nothing navigates
     // here", not "the regexes matched nothing at all".
-    // v4 re-pin: About's door to #/memory lives in the What Arbor remembers card.
-    const current = read("components/about/AboutMemoryCard.tsx");
-    expect(navigationTargets(current).has("memory")).toBe(true);
-    const preFix = current.replace(/setActiveTab\("memory"\)/g, 'setActiveTab("profile")');
-    expect(navigationTargets(preFix).has("memory")).toBe(false);
+    // v10 re-pin: About's last-visit line navigates to #/appointments (Visits).
+    const current = read("components/about/AboutLastVisit.tsx");
+    expect(navigationTargets(current).has("appointments")).toBe(true);
+    const preFix = current.replace(/setActiveTab\("appointments"\)/g, 'setActiveTab("profile")');
+    expect(navigationTargets(preFix).has("appointments")).toBe(false);
   });
 
   it("the registry alias detector finds the known retired doors and nothing bogus", () => {

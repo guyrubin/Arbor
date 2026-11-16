@@ -7,12 +7,12 @@
  * the child — the parent's own words, grouped by what they are.
  */
 import React, { useState } from "react";
-import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { PROFILE_KINDS, keptItemsFromProfile, planKeptEdit, planKeptRemove, type DescribePatch, type KeptDescribeItem, type ProfileKind } from "../../lib/describeChild";
 import TellArborMore from "./TellArborMore";
+import { MoreLink, Tile } from "../../design/primitives";
 import "./describe.css";
 
 const KIND_KEY: Record<ProfileKind, string> = {
@@ -27,27 +27,25 @@ function KeptRow({ item, onEdit, onRemove, busy }: { item: KeptDescribeItem; onE
   const { t } = useLanguage();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.words);
-  return <li className="describe-item" data-testid="describe-kept-item" data-kind={item.kind}>
-    {!editing && <p className="describe-words" dir="auto">{item.words}</p>}
-    {editing && <div className="describe-edit">
+  // v10: one hairline row — the words, then Edit / Remove; Edit opens the field in place.
+  if (!editing) return <li className="it" data-testid="describe-kept-item" data-kind={item.kind}>
+    <span dir="auto">{item.words}</span>
+    <button type="button" className="ed touch-target" disabled={busy} onClick={() => { setDraft(item.words); setEditing(true); }}>{t("elev.describe.edit")}</button>
+    <button type="button" className="ed rm touch-target" disabled={busy} onClick={onRemove} data-testid="describe-kept-remove">{t("elev.describe.remove")}</button>
+  </li>;
+  return <li className="it describe-item" data-testid="describe-kept-item" data-kind={item.kind}>
+    <div className="describe-edit">
       <input value={draft} maxLength={120} dir="auto" aria-label={t("elev.describe.edit")} onChange={(event) => setDraft(event.target.value)} autoFocus />
       <div className="describe-actions">
-        <button type="button" className="describe-link" disabled={busy || !draft.trim()} onClick={() => { onEdit(draft.trim()); setEditing(false); }}>{t("elev.describe.save")}</button>
-        <button type="button" className="describe-link" onClick={() => { setDraft(item.words); setEditing(false); }}>{t("elev.describe.cancel")}</button>
+        <button type="button" className="describe-link touch-target" disabled={busy || !draft.trim()} onClick={() => { onEdit(draft.trim()); setEditing(false); }}>{t("elev.describe.save")}</button>
+        <button type="button" className="describe-link touch-target" onClick={() => { setDraft(item.words); setEditing(false); }}>{t("elev.describe.cancel")}</button>
       </div>
-    </div>}
-    {!editing && <div className="describe-actions">
-      <button type="button" className="describe-link" disabled={busy} onClick={() => { setDraft(item.words); setEditing(true); }}>{t("elev.describe.edit")}</button>
-      <button type="button" className="describe-link" disabled={busy} onClick={onRemove} data-testid="describe-kept-remove">{t("elev.describe.remove")}</button>
-    </div>}
+    </div>
   </li>;
 }
 
-export default function KeptDescription({ testId = "describe-kept-list", collapsible = false }: {
-  testId?: string;
-  /** My child: the list folds under one line so the record stays on top. */
-  collapsible?: boolean;
-}) {
+/** "What you told me" as a v10 tile (My child › About, section 3). */
+export default function KeptDescription({ testId = "describe-kept-list" }: { testId?: string }) {
   const { childProfile } = useArbor();
   const { updateChild } = useProfile();
   const { t } = useLanguage();
@@ -79,34 +77,23 @@ export default function KeptDescription({ testId = "describe-kept-list", collaps
     if (await write(removed.previous)) setRemoved(null);
   };
   const receipt = removed?.childId === childProfile.id;
-  const groups = PROFILE_KINDS.map((kind) => {
-    const group = items.filter((item) => item.kind === kind);
-    if (!group.length) return null;
-    return <div className="describe-group" key={kind} data-group={kind}>
-      <h3>{t(KIND_KEY[kind], { name })}</h3>
-      <ul>{group.map((item) => <KeptRow key={item.id} item={item} busy={busy} onEdit={(words) => void edit(item.id, words)} onRemove={() => void remove(item.id)} />)}</ul>
-    </div>;
-  });
-  return <section className="describe-kept-card" data-testid={testId} dir="auto">
-    <div className="describe-kept-head">
-      <div>
-        <h2 className="describe-title">{t("elev.describe.kept.title")}</h2>
-        <p className="describe-sub">{items.length ? t("elev.describe.kept.sub") : t("elev.describe.kept.empty", { name })}</p>
-      </div>
-      <button type="button" className="describe-secondary" onClick={() => setOpen(true)} data-testid="describe-door">
-        <Icon name="edit_note" size={20} /><span>{t("elev.describe.door")}</span>
-      </button>
+  return <Tile icon="edit" title={t("elev.describe.kept.title")} titleId={`${testId}-title`} className="about-told"
+    link={<MoreLink onClick={() => setOpen(true)}><span data-testid="describe-door">{t("elev.describe.door")}</span></MoreLink>}>
+    <div data-testid={testId} className="about-told-body">
+      <p className="line1">{items.length ? t("elev.describe.kept.sub") : t("elev.describe.kept.empty", { name })}</p>
+      {PROFILE_KINDS.map((kind) => {
+        const group = items.filter((item) => item.kind === kind);
+        if (!group.length) return null;
+        return <div className="tl" key={kind} data-group={kind}>
+          <h4 className="sub">{t(KIND_KEY[kind], { name })}</h4>
+          <ul role="list">{group.map((item) => <KeptRow key={item.id} item={item} busy={busy} onEdit={(words) => void edit(item.id, words)} onRemove={() => void remove(item.id)} />)}</ul>
+        </div>;
+      })}
+      {receipt && <p className="describe-kept-line" role="status"><span>{t("elev.describe.kept.removed")}</span>
+        <button type="button" className="describe-link touch-target" disabled={busy} onClick={() => void undo()} data-testid="describe-kept-undo">{t("elev.describe.undo")}</button>
+      </p>}
+      {failed && <p className="describe-note" role="alert">{t("elev.describe.commitFailed")}</p>}
+      {open && <TellArborMore onClose={() => setOpen(false)} />}
     </div>
-    {collapsible && !!items.length
-      ? <details className="describe-kept-fold" data-testid={`${testId}-fold`}>
-          <summary>{t("elev.describe.kept.show")}</summary>
-          {groups}
-        </details>
-      : groups}
-    {receipt && <p className="describe-kept-line" role="status"><span>{t("elev.describe.kept.removed")}</span>
-      <button type="button" className="describe-link" disabled={busy} onClick={() => void undo()} data-testid="describe-kept-undo">{t("elev.describe.undo")}</button>
-    </p>}
-    {failed && <p className="describe-note" role="alert">{t("elev.describe.commitFailed")}</p>}
-    {open && <TellArborMore onClose={() => setOpen(false)} />}
-  </section>;
+  </Tile>;
 }

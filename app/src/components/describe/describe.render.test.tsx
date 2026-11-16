@@ -85,7 +85,7 @@ describe.each(["en", "he"] as const)("describe surface (%s)", (lang) => {
     expect((html.match(/data-testid="describe-answer-box"/g) ?? [])).toHaveLength(1);
     for (const id of ["describe-answer-send", "describe-question-skip", "describe-done"]) expect(html).toContain(`data-testid="${id}"`);
   });
-  it("What you told me lists each kept item with Edit and Remove, and the door; My child folds it", () => {
+  it("What you told me lists each kept item with Edit and Remove, and the door (the v10 tile)", () => {
     h.lang = lang;
     const open = renderToStaticMarkup(<KeptDescription testId="kept" />);
     expect((open.match(/data-testid="describe-kept-item"/g) ?? [])).toHaveLength(3);
@@ -93,8 +93,7 @@ describe.each(["en", "he"] as const)("describe surface (%s)", (lang) => {
     expect(open).toContain('data-testid="describe-door"');
     expect(open).toContain(translate(lang, "elev.describe.door"));
     expect(open).not.toMatch(VERDICT);
-    const folded = renderToStaticMarkup(<KeptDescription testId="kept" collapsible />);
-    expect(folded).toContain('data-testid="kept-fold"');
-    expect(folded).toContain(translate(lang, "elev.describe.kept.show"));
+    expect(open).toContain(translate(lang, "elev.describe.kept.title"));
+    expect(open).toContain(translate(lang, "elev.describe.edit"));
   });
 });
