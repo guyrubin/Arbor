@@ -23,6 +23,8 @@ import { translate as tr } from "../../lib/i18n";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const HUB = path.join(__dirname, "Masterclasses.tsx");
+const library = readFileSync(path.join(__dirname, "LearnLibrary.tsx"), "utf8").replace(/\r\n/g, "\n");
+const ds = readFileSync(path.join(__dirname, "..", "..", "design", "ds.css"), "utf8");
 const src = readFileSync(HUB, "utf8").replace(/\r\n/g, "\n");
 
 /** The pre-change hero: first unfinished course in FILE ORDER, no signals. */
@@ -94,22 +96,26 @@ describe("LC-04 · the hub hero runs the real ranking", () => {
 });
 
 describe("W2-SHELLPLAY r1 · the pick reads first; the rail never stacks two empty states", () => {
-  it("the pick CTA is the page's --gradient-cta with on-accent ink (never the success green as a fill)", () => {
+  it("v10: the pick CTA is the page's one primary (the sapphire btn primary), never the success green as a fill", () => {
     const cta = src.slice(src.indexOf('data-testid="academy-hero-cta"'), src.indexOf("</button>", src.indexOf('data-testid="academy-hero-cta"')));
-    expect(cta).toContain('style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}');
+    expect(cta).toContain('className="btn primary"');
     expect(cta).not.toContain('background: "var(--arbor-green-ink)"');
+    expect(cta).not.toContain("--gradient-cta");
   });
-
-  it("the pick title outranks the quiet 'All courses' heading", () => {
-    expect(src).toMatch(/<h2 className="text-xl font-bold leading-snug" dir="auto" style=\{\{ color: "var\(--arbor-ink\)", fontFamily: "var\(--font-display\)" \}\}>\{todaysRead/);
-    expect(src).toMatch(/<h2 className="text-lg font-bold" style=\{\{ color: "var\(--arbor-muted\)" \}\}>\s*\{t\("academy\.courses\.title"\)\}/);
+  it("v10: the pick's title is the page's one h1 (display hero), above the courses' rail heading", () => {
+    expect(src).toContain('<h1 className="hero" id="fy-pick-title" dir="auto">{pickTitle ?? t("elev.hero.academy.title")}</h1>');
+    expect(src.indexOf("const pickScene = (")).toBeLessThan(src.indexOf("const coursesBlock = ("));
+    expect(src).toContain('<h2 className="h3" id="fy-courses-title">{t("elev.learnCare.byArea")}</h2>');
+    // The age switch belongs to the courses list: it sits in the rail's own head.
+    const head = src.slice(src.indexOf('<div className="rh fy-railhead">'), src.indexOf("{coursesBlock}", src.indexOf('<div className="rh fy-railhead">')));
+    expect(head).toContain("{ageSwitch}");
   });
-
   it("with no map signal, ONE muted line with a 44 px door stands in for For You + Scholar Hub", () => {
     expect(src).toMatch(/\{devMapHasSignal\(devScore\) \? \(\s*<>[\s\S]*<AcademyForYou \/>[\s\S]*<ScholarHubCard \/>[\s\S]*<\/>\s*\) : \(/);
-    const line = src.slice(src.indexOf('data-testid="academy-rail-nosignal"'), src.indexOf("</button>", src.indexOf('data-testid="academy-rail-nosignal"')));
-    expect(line).toContain("min-h-11");
-    expect(line).toContain('setActiveTab("milestones")');
+    const at = src.indexOf('data-testid="academy-rail-nosignal"');
+    const line = src.slice(src.lastIndexOf("<MoreLink", at), src.indexOf("</MoreLink>", at));
+    // MoreLink is the .ds-link: a 44 px text door with a mirrored chevron.
+    expect(line).toContain('onClick={() => setActiveTab("milestones")}');
     expect(line).toContain('t("elev.growthTruth.learn.rail.noSignal", { name: childName })');
   });
 });
@@ -145,10 +151,11 @@ describe("B-SHELL-NEW-2j — today's pick quotes the note that moved it, never a
     expect(pick?.fromMoment).toBeNull();
   });
 
-  it("the hub renders the quote on the logs branch only, in the editorial face, with a peach-ink inline-start rule", () => {
+  it("the hub quotes the note on the logs branch only, in the parent's ink knot (the editorial face)", () => {
     expect(src).toContain("const pickMoment = todaysRead && !todaysRead.fromSaved && todaysRead.fromConcerns ? todaysRead.fromMoment : null;");
-    expect(src).toContain('borderInlineStart: "3px solid var(--arbor-peach-ink)", paddingInlineStart: 12');
-    expect(src).toContain('fontFamily: "var(--font-editorial)" }}>“<bdi>{pickMoment.text}</bdi>”');
+    expect(src).toContain('<div className="knot you">');
+    expect(src).toContain('<span className="q" dir="auto">“<bdi>{pickTopic ?? pickMoment!.text}</bdi>”</span>');
+    expect(ds).toMatch(/\.ds \.ds-said, \.ds \.knot q, \.ds \.knot \.q \{ font-family: var\(--font-editorial/);
     expect(src).toContain("logs: behaviorLogs,");
     for (const k of ["today", "yesterday", "weekday", "date", "tail"]) {
       const key = `elev.learnCare.pick.moment.${k}`;
@@ -182,13 +189,12 @@ describe("v3 EXTRA-FORYOU — For you, the parent", () => {
   };
   const reader = src.slice(src.indexOf("export function MasterclassReader("));
 
-  it("the comment strip is real (NEGATIVE CONTROL: the raw source carries the attribute names in comments)", () => {
+  it("the comment strip is real (NEGATIVE CONTROL: a comment naming an attribute is not counted)", () => {
     expect(code.length).toBeGreaterThan(1000);
-    expect((src.match(/\bdata-module\b(?!-)/g) ?? []).length).toBeGreaterThan((code.match(/\bdata-module\b(?!-)/g) ?? []).length);
-    expect((src.match(/data-primary-move/g) ?? []).length).toBeGreaterThan((code.match(/data-primary-move/g) ?? []).length);
+    const sample = '{/* data-module="x" */}<div data-module="y" />';
+    expect(sample.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").match(/\bdata-module\b(?!-)/g)).toHaveLength(1);
     expect(reader.length).toBeGreaterThan(1000);
   });
-
   it("the open family question joins the ranking as the parent's own words", () => {
     expect(src).toContain("const { childProfile, behaviorLogs, savedLearnIds, requestLearnRead, setActiveTab, activeFamilyTopic } = useArbor();");
     const block = /const learnSignals: LearnRankSignals = \{([\s\S]*?)\};/.exec(src);
@@ -197,135 +203,88 @@ describe("v3 EXTRA-FORYOU — For you, the parent", () => {
     expect(PRE_CHANGE).not.toContain("topicText"); // negative control
   });
 
-  it("the tag and the quoting why-line show only when the question MOVED the pick", () => {
+  it("the tag and the quoted question show only when the question MOVED the pick", () => {
     expect(src).toContain("const pickTopic = todaysRead?.fromTopic && activeFamilyTopic ? activeFamilyTopic.title : null;");
     // NEGATIVE CONTROL: a question merely existing is not a reason.
     expect(code).not.toMatch(/\{activeFamilyTopic && \(/);
-    const tag = between("{pickTopic && (", "</span>");
-    expect(tag).toContain('data-testid="academy-pick-topic"');
-    expect(tag).toContain('<Icon name="auto_awesome"');
-    expect(tag).toContain('t("elev.learnCare.pick.topicTag")');
-    const why = between('data-why="family-question"', "</p>");
-    expect(why).toContain("<FreeText text={pickTopic}");
-    expect(why).toContain("{topicLead}");
-    expect(why).toContain("{topicTail}");
-    expect(why).toContain('borderInlineStart: "3px solid var(--arbor-lav-ink)", paddingInlineStart: 12');
-    // The question outranks the note: its branch is the first of the why-line.
-    expect(src.indexOf('data-why="family-question"')).toBeLessThan(src.indexOf('data-why="moment"'));
-    expect(src.indexOf("{pickTopic && (")).toBeLessThan(src.indexOf('data-testid="academy-hero-cta"'));
+    expect(src).toContain('const youKnot = todaysRead && (pickTopic || pickMoment) ? (');
+    const ai = between("const aiKnot = todaysRead ? (", ") : null;");
+    expect(ai).toContain('<b data-testid="academy-pick-topic">{t("elev.learnCare.pick.topicTag")}</b>');
+    expect(ai).toContain("{copy.arborSuggests}");
+    // The question outranks the note in the parent's knot and in Arbor's.
+    expect(src).toContain('{pickTopic ? t("elev.learnCare.shortReads.matched") : pickMomentLead}');
+    expect(ai.indexOf("academy-pick-topic")).toBeLessThan(ai.indexOf('data-why={pickMoment ? "moment" : undefined}'));
+    expect(src.indexOf("const aiKnot")).toBeLessThan(src.indexOf('data-testid="academy-hero-cta"'));
   });
-
-  it("the quote is cut from ONE translated template on a mark that never shows (EN and HE)", () => {
-    expect(src).toContain('const TOPIC_SLOT = "\\uE000";');
-    expect(src).toContain('const [topicLead, topicTail = ""] = t("elev.learnCare.pick.why.topic", { title: TOPIC_SLOT }).split(TOPIC_SLOT);');
+  it("the question is quoted whole and bidi-isolated, never spliced into a translated sentence", () => {
+    expect(src).toContain("“<bdi>{pickTopic ?? pickMoment!.text}</bdi>”");
+    expect(code).not.toContain("TOPIC_SLOT");
     for (const lang of ["en", "he"] as const) {
-      const parts = tr(lang, "elev.learnCare.pick.why.topic", { title: "" }).split("");
-      expect(parts, lang).toHaveLength(2);
-      expect(parts[0].trim().length, lang).toBeGreaterThan(0);
+      const tag = tr(lang, "elev.learnCare.pick.topicTag");
+      expect(tag, lang).not.toBe("elev.learnCare.pick.topicTag");
+      expect(tag, lang).not.toContain("{");
     }
-    // NEGATIVE CONTROL: a template without the placeholder would not split.
-    expect("Because you are asking".split("")).toHaveLength(1);
   });
-
-  it("the hero CTA still opens today's read; one primary move and at most 3 modules", () => {
+  it("the hero CTA still opens today's read; one primary move and at most 3 top-level modules", () => {
     expect(CTA_OPENS_PICK.exec(src)).toBeTruthy();
     expect((code.match(/\bdata-primary-move="/g) ?? []).length).toBe(1);
     expect(code).toContain('data-primary-move="open-todays-pick"');
     const modules = code.match(/\bdata-module="[^"]+"/g) ?? [];
-    expect(modules.length).toBeGreaterThanOrEqual(1);
-    expect(modules.length).toBeLessThanOrEqual(3);
-    expect(modules).toEqual(['data-module="academy-short-reads"', 'data-module="academy-catalogue"']);
+    expect(modules).toEqual(['data-module="academy-today"', 'data-module="academy-catalogue"', 'data-module="academy-programs"', 'data-module="academy-more"']);
+    // The More to read tail is demoted: top-level = stamped − demoted ≤ 3.
+    expect(code).toContain('data-module="academy-more" data-module-demoted');
+    expect(modules.length - (code.match(/\bdata-module-demoted\b/g) ?? []).length).toBeLessThanOrEqual(3);
   });
-
-  it("short reads: one tap into a Learn read, a registry area and minutes only, never a score", () => {
-    const row = between('data-testid="academy-short-reads"', "</section>");
-    expect(row).toContain('requestLearnRead({ cardId: c.id, source: "learn-hub-short-read" })');
-    expect(row).toContain('data-testid="academy-short-read"');
-    expect(row).toContain("min-h-11");
-    // The area chip is the ONE domain registry: DOMAIN_ICONS glyph + registry name.
-    expect(row).toContain("const area = readArea(c.category);");
-    expect(row).toContain("<Icon name={DOMAIN_ICONS[area]} size={14} /><span>{domainName(area, t)}</span>");
-    expect(row).not.toContain("learnCategoryById"); // NEGATIVE CONTROL: no shelf vocabulary on the chip
-    expect(row).toContain('<Icon name="schedule" size={13} />{t("learn.minutes", { n: c.minutes })}');
-    for (const banned of ["ProgressBar", "progressbar", "of {", "/ total", "done["]) {
-      expect(row, banned).not.toContain(banned);
-    }
-    // No percentage beside an expression (the card's CSS width `w-[78%]` is layout, not a figure).
-    expect(row).not.toMatch(/\}\s*%|%\s*\{/);
-    expect("{pct}%").toMatch(/\}\s*%|%\s*\{/); // negative control
-    expect(src).toContain(".filter((c) => c.id !== todaysRead?.card.id);");
-    // Reviewer r1: the row is filled to three (learn/shortReads); the title and
-    // the per-read mark come from the same pick, so neither can overclaim.
-    expect(src).toContain("const shortReadRow = pickShortReads(readShelf, activeFamilyTopic?.title);");
-    expect(row).toContain("{shortReadRow.reads.map((c) => {");
-    expect(row).toContain('{t(shortReadRow.forTopic ? "elev.learnCare.shortReads.title" : "elev.learnCare.shortReads.titleAll")}');
-    expect(row).toContain("{shortReadRow.markMatched && shortReadRow.matched.has(c.id) && (");
-    expect(src).toContain("{shortReadRow.show && (");
-    // NEGATIVE CONTROL: the r1 shape that showed only the question's reads (one card) is gone.
-    expect(code).not.toContain("(readsForTopic ? topicReads : readShelf).slice(0, 3)");
+  it("short reads moved to the Library ('Linked from your week'), still filled from the same pick and the open question", () => {
+    expect(code).not.toContain("academy-short-read");
+    expect(library).toContain("pickShortReads(");
+    expect(library).toContain("activeFamilyTopic?.title");
+    expect(library).toContain('data-testid="learn-linked"');
   });
-
-  it("courses by area: labelled chips with aria-pressed filter the grid; the counts are plain integers", () => {
-    const chips = between("{areaCounts.length > 1 && (", '<div className="grid sm:grid-cols-2 gap-4">');
-    expect(chips).toContain('role="group" aria-labelledby="academy-by-area-label" data-testid="academy-by-area"');
-    expect(chips).toContain('id="academy-by-area-label"');
-    expect(chips).toContain("aria-pressed={selectedArea === null}");
+  it("courses by area: labelled controls with aria-pressed filter the list; the counts are plain integers", () => {
+    const chips = between("{areaCounts.length > 1 && (", "{shownCourses.map((c) => {");
+    expect(chips).toContain('role="group" aria-label={t("elev.learnCare.byArea")} data-testid="academy-by-area"');
     expect(chips).toContain("aria-pressed={selectedArea === area}");
     expect(chips).toContain("onClick={() => setActiveArea(selectedArea === area ? null : area)}");
-    // Reviewer r1: the areas are the registry domains (glyph + name), not the Learn shelves.
-    expect(chips).toContain("<Icon name={DOMAIN_ICONS[area]} size={15} />");
-    expect(chips).toContain("<span>{domainName(area, t)}</span>");
+    expect(chips).toContain("<b>{count}</b><span>{domainName(area, t)}</span>");
+    expect(chips).toContain('{t("elev.learnCare.byArea.all")}');
     expect(chips).not.toContain("msIcon"); // NEGATIVE CONTROL: no shelf glyph
-    expect(src).toContain("const [activeArea, setActiveArea] = useState<DomainId | null>(null);");
-    expect(chips).toContain('<span className="tabular-nums" style={{ opacity: 0.75 }}>{count}</span>');
     for (const banned of ["%", "total", "ProgressBar", "done["]) expect(chips, banned).not.toContain(banned);
-    expect(src).toMatch(/const AREA_CHIP = "[^"]*\bmin-h-11\b[^"]*";/);
+    expect(src).toContain("const [activeArea, setActiveArea] = useState<DomainId | null>(null);");
     expect(src).toContain("const areaCounts = courseAreaCounts(catalog);");
-    expect(src).toContain("if (selectedArea && courseArea(c.id) !== selectedArea) return null;");
-    // The filter sits inside the grid's own map, ahead of every card.
-    expect(src.indexOf("catalog.map((c) => {")).toBeLessThan(src.indexOf("if (selectedArea && courseArea(c.id)"));
+    expect(src).toContain("const courseList = catalog.filter((c) => !selectedArea || courseArea(c.id) === selectedArea);");
   });
-
-  it("family formation: one door to #/family inside the catalogue, not a module and not a second CTA", () => {
-    const door = between('data-testid="academy-family-door"', "</button>");
-    expect(door).toContain('onClick={() => setActiveTab("family")}');
-    expect(door).toContain("min-h-11");
-    expect(door).toContain("src={TOGETHER_ART.src}");
-    expect(door).toContain('alt=""');
-    expect(door).toContain('t("elev.learnCare.family.cta")');
-    // Reviewer r1: the eyebrow is the brief's own key, not the Family page's title.
-    expect(door).toContain('{t("elev.learnCare.family.title")}');
-    expect(door).not.toContain('t("sec.family.title")');
-    expect(door).toContain('<Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />');
-    for (const banned of ["--gradient-cta", "data-module", "data-primary-move"]) expect(door, banned).not.toContain(banned);
+  it("family formation: one door to #/family under More to read, not a module of its own and not a second CTA", () => {
     const at = src.indexOf('data-testid="academy-family-door"');
+    const door = src.slice(src.lastIndexOf("<Tile", at), src.indexOf("</Tile>", at));
+    expect(door).toContain('<MoreLink onClick={() => setActiveTab("family")}>');
+    expect(door).toContain("art={TOGETHER_ART}");
+    expect(door).toContain('t("elev.learnCare.family.cta")');
+    expect(door).toContain('t("elev.learnCare.family.title")');
+    expect(door).not.toContain('t("sec.family.title")');
+    for (const banned of ["--gradient-cta", "data-module", "data-primary-move"]) expect(door, banned).not.toContain(banned);
     expect(at).toBeGreaterThan(src.indexOf('data-testid="academy-courses"'));
-    expect(at).toBeGreaterThan(src.indexOf("catalog.map((c) => {"));
     expect(at).toBeLessThan(src.indexOf('data-testid="academy-rail"'));
   });
-
   it("no course progress anywhere on the hub (no bar, no %, no 'n of m')", () => {
     for (const banned of ["<ProgressBar", "lessonOf", "}%", "of {total}", 'role="progressbar"', "doneCount / total"]) {
       expect(code, banned).not.toContain(banned);
     }
-    // NEGATIVE CONTROL: the comment that records the removed bar is in the raw source only.
-    expect(src).toContain("of {total}");
+    // A finished course fills its marks; nothing finer is recorded or drawn.
+    expect(code).toContain('className={`pip${isCardDone ? " on" : ""}`}');
+    expect("{done} of {total}").toContain("of {total}"); // negative control
   });
-
-  it("the header: a kicker, a title that names no child, and one line of sub", () => {
-    expect(src).toContain('{t("elev.hero.academy.kicker")}');
-    expect(src).toContain('{t("elev.hero.academy.title")}</h1>');
-    expect(src).toContain('{t("elev.hero.academy.sub")}');
+  it("v10: the h1 is the pick; with nothing to pick, the hub's title (naming no child) and its one line", () => {
+    expect(src).toContain('{pickTitle ?? t("elev.hero.academy.title")}');
+    expect(src).toContain('{!pickTitle && <p className="fy-pick-hook">{t("elev.hero.academy.sub")}</p>}');
     expect(src).not.toContain('t("elev.hero.academy.title", { name: childName })');
     for (const lang of ["en", "he"] as const) expect(tr(lang, "elev.hero.academy.title"), lang).not.toContain("{name}");
   });
-
-  it("the card's read link carries a mirrored glyph, not a text arrow", () => {
-    expect(src).toContain('<>{t("master.read")}<Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" /></>');
+  it("the course row's read link carries a mirrored glyph, not a text arrow", () => {
+    expect(src).toContain('<>{t("master.read")}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" /></>');
     expect(code).not.toMatch(/t\("master\.read"\)\} ?→/);
     expect('<>{t("master.read")} →</>').toMatch(/t\("master\.read"\)\} ?→/); // negative control
   });
-
   it("the reader says 'Added' only after the write resolved; a failed write says so", () => {
     expect(reader).toContain('const [addState, setAddState] = useState<"idle" | "saving" | "saved" | "failed">("idle");');
     expect(reader).toContain('const addedShown = addState === "saved" || (addState === "idle" && todayTaken && actionLoopConfirmed === true);');

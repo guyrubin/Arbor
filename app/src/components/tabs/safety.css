@@ -1,0 +1,8 @@
+/* Safety & urgent help (v10.1, N-Safety-D/M): the lightest touch. The title in
+   the display face at the board's size; production's cards, paths and numbers
+   are unchanged. */
+.ds .safety-head { display: flex; flex-direction: column; gap: 4px; }
+.ds .safety-head .hero { font-size: 46px; line-height: 1.05; margin: 0; }
+.ds-phone .safety-head .hero { font-size: 32px; }
+.ds .safety-sub { margin: 0; font-size: 17px; color: var(--ink-soft); }
+.ds [data-testid="safety-crisis-script"] { font-size: 17px; }
