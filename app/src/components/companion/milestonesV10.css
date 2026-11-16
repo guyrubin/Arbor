@@ -210,9 +210,3 @@
 .ds-desk .ms-list-stage { padding: 0; background: none; box-shadow: none; gap: 8px; }
 .ds .ms-words-lead [data-testid="ms-header-quote"], .ds .ms-words-lead [data-testid="ms-first-line"] { margin-block-start: 0; }
 .ds.ms-list .ms-band.compact { padding-block: 10px; }
-/* A shelf scrolled to (a jump, an opened door) lands below the shell's sticky pill row. */
-.ds.ms-list [data-testid="ms-shelf-band"], .ds.ms-list [data-testid="ms-shelf"], .ds.ms-list [data-primary-move] { scroll-margin-top: 160px; }
-/* While a shelf door is open on the list, what is scrolled to inside the
-   shell's scrolling main lands below its sticky pill row, so the card's
-   answers above the opened bands stay in view. */
-main:has(.ds.ms-list [data-testid="ms-shelf-band"]) { scroll-padding-top: 160px; }
