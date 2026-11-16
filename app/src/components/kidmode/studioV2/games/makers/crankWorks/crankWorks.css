@@ -1,0 +1,149 @@
+/* How Things Move: one workshop stage with the machine on it, the next step
+   above it, the parts and the controls under it (beside it on a wide
+   screen). The machine itself never mirrors in Hebrew: the wheel turns
+   clockwise and the parts keep their places; only the chrome follows the
+   reading direction. Colour: Studio tokens and the makers' palette only. */
+.adventure.ck { display: block; padding: clamp(12px, 2.4vw, 24px); }
+.ck-bench { --ck-ink: var(--studio-deep-ink); --ck-soft: var(--studio-ink-soft); --ck-card: var(--mk-white); --ck-edge: color-mix(in srgb, var(--mk-linen-shade) 70%, transparent); display: flex; flex-direction: column; gap: 10px; color: var(--ck-ink); }
+.ck-bench .adventure-toolbar { margin: 0; }
+.ck-bench .adventure-prompt { margin: 0; }
+.arbor-play .ck-bench .adventure-heading { font-size: 19px !important; line-height: 1.3; padding: 10px 14px; min-block-size: 76px; display: flex; align-items: center; }
+.ck-said { display: block; font-weight: 700; color: var(--ck-soft); }
+.ck-said strong { color: var(--ck-ink); font-weight: 900; }
+
+/* Engine / Bird toy: a two-way switch. */
+.ck-switch { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: color-mix(in srgb, var(--mk-linen) 80%, var(--mk-white)); box-shadow: inset 0 2px 4px color-mix(in srgb, var(--mk-shadow) 12%, transparent); }
+.ck-switch button { display: inline-flex; align-items: center; gap: 6px; min-block-size: 48px; padding: 0 16px; border: 0; border-radius: 999px; background: transparent; color: var(--ck-soft); font: 800 15px/1 var(--studio-font); transition: background-color .2s var(--studio-ease-soft), color .2s var(--studio-ease-soft), box-shadow .2s var(--studio-ease-soft); }
+.ck-switch button[aria-pressed='true'] { background: var(--mk-white); color: var(--ck-ink); box-shadow: 0 2px 6px color-mix(in srgb, var(--mk-shadow) 18%, transparent); }
+.ck-switch button[aria-pressed='true'] > svg { color: var(--mk-teal); }
+.ck-bench[data-machine='toy'] .ck-switch button[aria-pressed='true'] > svg { color: var(--mk-water); }
+
+/* Three medals that light up; no numbers anywhere. */
+.ck-badges { display: flex; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ck-badge { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.ck-badge__medal { display: grid; place-items: center; inline-size: 40px; block-size: 40px; border-radius: 50%; border: 2px dashed color-mix(in srgb, var(--mk-brass) 55%, transparent); color: color-mix(in srgb, var(--mk-brass) 70%, var(--mk-paper)); background: color-mix(in srgb, var(--mk-paper) 70%, transparent); transition: background-color .3s var(--studio-ease-soft), transform .3s var(--studio-ease-spring); }
+.ck-badge[data-lit='true'] .ck-badge__medal { border: 2px solid var(--mk-gold-light); color: var(--mk-umber); background: radial-gradient(circle at 35% 30%, var(--mk-gold-light), var(--mk-gold) 60%, var(--mk-gold-deep)); box-shadow: 0 3px 8px color-mix(in srgb, var(--mk-gold-deep) 40%, transparent); transform: scale(1.06); }
+.ck-badge__name { display: none; font: 800 11px/1.15 var(--studio-font); color: var(--ck-soft); text-align: center; max-inline-size: 76px; }
+
+/* The stage: the drawing fills it, bottom-aligned, and the wall and table
+   run on to its edges. A finger on it turns the wheel, never the page. */
+.ck-stage { position: relative; block-size: clamp(300px, calc(100svh - 456px), 560px); border-radius: 18px; overflow: hidden; background: var(--mk-paper); box-shadow: inset 0 0 0 1px var(--ck-edge), 0 10px 28px color-mix(in srgb, var(--mk-shadow) 14%, transparent); touch-action: none; user-select: none; -webkit-user-select: none; }
+.ck-svg { display: block; inline-size: 100%; block-size: 100%; cursor: grab; -webkit-tap-highlight-color: transparent; }
+.ck-svg:active { cursor: grabbing; }
+.ck-svg text { font-family: var(--studio-font); }
+.ck-grab { fill: transparent; }
+.ck-wheel-focus { outline: none; }
+.ck-focus-ring { fill: none; stroke: var(--mk-gold); stroke-width: 3; stroke-dasharray: 10 7; }
+.ck-part { transition: opacity .25s var(--studio-ease-soft); }
+.ck-bench[data-open='true'] .ck-part { cursor: pointer; }
+.ck-part[data-dim='true'], .ck-pin[data-dim='true'] { opacity: .42; }
+.ck-ring { fill: none; stroke: var(--mk-gold-light); stroke-width: 4; }
+
+/* A part's name on a cream tag, its leader line following the part. */
+.ck-tag__leader { fill: none; stroke: var(--mk-ink-soft); stroke-width: 1.8; stroke-linecap: round; }
+.ck-tag__dot { fill: var(--mk-cream); stroke: var(--mk-gold); stroke-width: 2.5; }
+.ck-tag__shade { fill: color-mix(in srgb, var(--mk-shadow) 16%, transparent); }
+.ck-tag__card { fill: var(--mk-cream); stroke: color-mix(in srgb, var(--mk-gold) 55%, var(--mk-cream)); stroke-width: 1.5; }
+.ck-tag__pin { fill: var(--mk-brass); }
+.ck-tag__text { fill: var(--mk-ink); font-size: 16px; font-weight: 900; }
+
+/* The two motions, faintly: a circle for the crank pin, a line for the piston. */
+.ck-trace__circle { fill: none; stroke: color-mix(in srgb, var(--mk-sun) 85%, transparent); stroke-width: 3; stroke-dasharray: 2 5; stroke-linecap: round; }
+.ck-trace__line { fill: none; stroke: var(--mk-sky); stroke-width: 4; stroke-dasharray: 3 5; stroke-linecap: round; }
+.ck-trace__dot { fill: var(--mk-sun); stroke: var(--mk-white); stroke-width: 1.5; }
+.ck-trace__dot--line { fill: var(--mk-sky); }
+
+/* The parts, as buttons too: the tap and keyboard way to meet them. */
+.ck-parts { min-block-size: 46px; }
+.ck-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.ck-chip { --chip: var(--mk-steel); display: inline-flex; align-items: center; gap: 6px; min-block-size: 44px; padding: 0 12px; border-radius: 999px; border: 1.5px solid var(--ck-edge); background: var(--ck-card); color: var(--ck-ink); font: 800 14px/1 var(--studio-font); }
+.ck-chip > i { inline-size: 14px; block-size: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--chip) 55%, var(--mk-white)), var(--chip) 70%); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mk-shadow) 12%, transparent); }
+.ck-chip[aria-pressed='true'] { border-color: var(--mk-gold); background: color-mix(in srgb, var(--mk-butter) 70%, var(--mk-white)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mk-sun) 45%, transparent); }
+.ck-chip__met { color: var(--mk-leaf-deep); }
+.ck-chip[data-part='engine-wheel'] { --chip: var(--mk-red); }
+.ck-chip[data-part='engine-crank'] { --chip: var(--mk-gold); }
+.ck-chip[data-part='engine-rod'] { --chip: var(--mk-steel); }
+.ck-chip[data-part='engine-piston'] { --chip: var(--mk-clay); }
+.ck-chip[data-part='engine-cylinder'] { --chip: var(--mk-slate); }
+.ck-chip[data-part='toy-handle'] { --chip: var(--mk-wood); }
+.ck-chip[data-part='toy-crank'] { --chip: var(--mk-amber); }
+.ck-chip[data-part='toy-rod'] { --chip: var(--mk-leaf); }
+.ck-chip[data-part='toy-bird'] { --chip: var(--mk-water); }
+.ck-closed { margin: 0; display: grid; place-items: center; min-block-size: 46px; padding: 4px 12px; border-radius: 12px; border: 1.5px dashed var(--ck-edge); font: 700 14px/1.3 var(--studio-font); color: var(--ck-soft); text-align: center; }
+
+/* All done: the three lit medals give way to one gold button. */
+.ck-done { display: inline-flex; align-items: center; gap: 8px; min-block-size: 48px; padding: 0 20px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--mk-gold-light) 80%, transparent); background: var(--studio-action-fill); color: var(--studio-action-ink); font: 900 16px/1 var(--studio-font); box-shadow: 0 6px 18px color-mix(in srgb, var(--studio-action-gold) 35%, transparent); animation: ck-arrive .5s var(--studio-ease-spring); }
+
+/* Turn, Play/Pause, Look inside: three big buttons a thumb can reach. */
+.adventure-actions.ck-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ck-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-block-size: var(--studio-tap); padding: 8px 10px; border-radius: 14px; border: 1.5px solid var(--ck-edge); background: var(--ck-card); color: var(--ck-ink); font: 800 16px/1.15 var(--studio-font); box-shadow: 0 3px 0 color-mix(in srgb, var(--mk-linen-shade) 80%, transparent); }
+.adventure-actions .ck-btn { padding: 8px 10px; font-size: 16px; gap: 8px; }
+.ck-btn[data-crank-turn] > svg { color: var(--mk-teal); }
+.ck-btn[aria-pressed='true'] { background: color-mix(in srgb, var(--mk-teal) 14%, var(--mk-white)); border-color: color-mix(in srgb, var(--mk-teal) 55%, transparent); }
+.ck-btn[data-nudge='true'] { animation: ck-nudge .7s var(--studio-ease-soft) 2; border-color: var(--mk-gold); }
+
+/* The speed lever: a brass slot with three notches and a knob. */
+.ck-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; justify-content: center; }
+.ck-lever { --i: 0; position: relative; flex: 1 1 220px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); max-inline-size: 420px; padding: 4px; border-radius: 999px; background: linear-gradient(var(--mk-wood-light), var(--mk-wood)); box-shadow: inset 0 2px 4px color-mix(in srgb, var(--mk-wood-dark) 45%, transparent); }
+.ck-lever[data-speed='steady'] { --i: 1; }
+.ck-lever[data-speed='quick'] { --i: 2; }
+.ck-lever__slot { position: absolute; inset: 4px; pointer-events: none; }
+.ck-lever__knob { position: absolute; inset-block: 0; inset-inline-start: 0; inline-size: calc(100% / 3); border-radius: 999px; background: radial-gradient(circle at 35% 25%, var(--mk-gold-light), var(--mk-gold) 55%, var(--mk-gold-deep)); box-shadow: 0 2px 4px color-mix(in srgb, var(--mk-shadow) 30%, transparent); transform: translateX(calc(var(--i) * 100%)); transition: transform .3s var(--studio-ease-spring); }
+.ck[dir='rtl'] .ck-lever__knob { transform: translateX(calc(var(--i) * -100%)); }
+.ck-lever button { position: relative; min-block-size: 44px; border: 0; background: transparent; color: var(--mk-white); font: 900 15px/1 var(--studio-font); text-shadow: 0 1px 1px color-mix(in srgb, var(--mk-wood-dark) 80%, transparent); }
+.ck-lever button[aria-pressed='true'] { color: var(--mk-umber); text-shadow: none; }
+.ck-paths { flex: 0 1 auto; min-block-size: 52px; font-size: 15px; }
+.ck-paths > svg { color: var(--mk-gold-deep); }
+
+.ck-bench button:focus-visible { outline: 3px solid var(--mk-ink); outline-offset: 3px; }
+
+@keyframes ck-arrive { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes ck-nudge { 0%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } 60% { transform: translateY(1px); } }
+
+@media (min-width: 800px) {
+  .ck-bench { display: grid; grid-template-columns: minmax(0, 1fr) 304px; grid-template-rows: auto auto auto auto auto 1fr; gap: 12px 22px; align-items: start; }
+  .ck-bench > .ck-bar { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
+  .ck-bench > .adventure-prompt { grid-column: 2; grid-row: 2; }
+  .ck-bench > .ck-stage { grid-column: 1; grid-row: 1 / span 6; block-size: clamp(420px, calc(100svh - 196px), 700px); }
+  .ck-bench > .ck-parts { grid-column: 2; grid-row: 3; }
+  .ck-bench > .ck-controls { grid-column: 2; grid-row: 4; }
+  .ck-bench > .ck-row { grid-column: 2; grid-row: 5; flex-direction: column; }
+  .ck-switch { display: flex; }
+  .ck-switch button { flex: 1; justify-content: center; }
+  .ck-badges { justify-content: space-between; }
+  .ck-done { align-self: stretch; justify-content: center; }
+  .ck-lever { flex: 0 0 auto; max-inline-size: none; }
+  .adventure-actions.ck-controls { grid-template-columns: 1fr; }
+  .adventure-actions.ck-controls .ck-btn { justify-content: flex-start; padding-inline: 16px; }
+  .ck-chips { justify-content: flex-start; }
+  .ck-closed { place-items: center start; text-align: start; }
+  .ck-badge__name { display: block; }
+}
+@media (max-width: 600px) {
+  /* One row of parts that slides sideways, so the stage keeps its size. */
+  .ck-chips { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; margin-inline: -4px; padding: 2px 4px 4px; scroll-snap-type: x proximity; }
+  .ck-chips::-webkit-scrollbar { display: none; }
+  .ck-chip { flex: none; scroll-snap-align: start; padding: 0 11px; }
+  .arbor-play .ck-bench .adventure-heading { min-block-size: 72px; }
+  .ck-switch button { padding: 0 12px; font-size: 14px; }
+  .ck-badges { gap: 6px; }
+  .ck-badge__medal { inline-size: 36px; block-size: 36px; }
+  .arbor-play .ck-bench .adventure-heading { font-size: 16px !important; padding: 8px 12px; }
+  .ck-btn, .adventure-actions .ck-btn { font-size: 15px; gap: 6px; padding-inline: 6px; }
+  .ck-row { flex-wrap: nowrap; }
+  .ck-lever { flex: 1 1 auto; min-inline-size: 0; }
+  .ck-paths { inline-size: 52px; padding: 0; }
+  .ck-paths__label { display: none; }
+}
+@media (max-width: 360px) {
+  .ck-switch button > svg { display: none; }
+  .ck-btn > svg { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ck-switch button, .ck-badge__medal, .ck-part, .ck-lever__knob, .ck-btn, .ck-done { transition: none !important; animation: none !important; }
+  .ck-badge[data-lit='true'] .ck-badge__medal { transform: none; }
+}
+@media (forced-colors: active) {
+  .ck-chip[aria-pressed='true'], .ck-switch button[aria-pressed='true'], .ck-lever button[aria-pressed='true'] { outline: 3px solid Highlight; }
+  .ck-badge[data-lit='true'] .ck-badge__medal { border: 3px solid Highlight; }
+}

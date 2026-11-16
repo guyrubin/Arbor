@@ -1,0 +1,82 @@
+/* Weather Maker: the little world on top, the brass-and-enamel dial under it
+   on a phone, side by side on a wide screen. Every colour is a maker token
+   (makerPalette.css) or a Studio token. The scene and the dial never mirror;
+   only the chrome (the season plate, the control row) follows the reading
+   direction. Motion here is ambient decoration; the game never waits on it. */
+.sd { container-type: inline-size; padding: clamp(12px, 2.6vw, 24px); max-inline-size: 1040px; margin-inline: auto; border-radius: var(--studio-radius-panel); font-family: var(--studio-font); color: var(--studio-deep-ink);
+  background: radial-gradient(120% 90% at 20% 0%, var(--studio-canvas-soft), var(--studio-canvas) 70%, color-mix(in srgb, var(--studio-canvas), var(--mk-paper-shade) 40%));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--mk-white) 80%, transparent), 0 24px 60px color-mix(in srgb, var(--mk-shadow) 45%, transparent); }
+.sd button { font-family: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.sd-layout { display: grid; gap: 14px; align-items: start; }
+@container (min-width: 720px) {
+  .sd-layout { grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 22px; align-items: center; }
+}
+
+/* The scene: a 5:4 window with a deep paper edge. */
+.sd-scene { position: relative; margin: 0; aspect-ratio: 5 / 4; inline-size: 100%; overflow: hidden; border-radius: 22px; isolation: isolate;
+  background: var(--mk-sky-pale);
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--mk-white) 70%, transparent) inset, 0 18px 34px -16px color-mix(in srgb, var(--mk-shadow) 55%, transparent), 0 0 0 5px var(--mk-paper), 0 0 0 6px color-mix(in srgb, var(--mk-paper-shade) 80%, transparent); }
+.sd-scene__art, .sd-scene__weather, .sd-scene__grain { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; display: block; pointer-events: none; }
+.sd-scene__grain { opacity: .07; mix-blend-mode: multiply; }
+.sd-scene__grain rect { fill: var(--mk-ink); }
+
+/* The season's name on a small enamel plate (chrome: it follows the reading direction). */
+.sd-plate { position: absolute; inset-block-start: 12px; inset-inline-start: 12px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--mk-paper) 90%, transparent); color: var(--mk-ink); font: 800 17px/1.2 var(--studio-font);
+  box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--mk-shadow) 45%, transparent), 0 0 0 1.5px color-mix(in srgb, var(--mk-gold) 55%, transparent); }
+.sd[dir=rtl] .sd-plate { padding: 6px 8px 6px 14px; }
+.sd-plate__dot { inline-size: 18px; block-size: 18px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--mk-gold), inset 2px 2px 0 3px color-mix(in srgb, var(--mk-white) 50%, transparent); }
+.sd-ribbon { position: absolute; inset-block-start: 12px; inset-inline-end: 12px; padding: 7px 16px; border-radius: 999px; background: var(--studio-action-fill); color: var(--studio-action-ink);
+  font: 900 17px/1.2 var(--studio-font); box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--mk-gold-deep) 80%, transparent); animation: sd-pop .5s var(--studio-ease-spring) both; }
+
+/* Ambient motion: the crown sways, clouds drift, birds bob. Pause and reduced motion hold it still. */
+.sd-tree { animation: sd-sway 7s ease-in-out infinite alternate; transform-box: view-box; }
+.sd-crown { animation: sd-rustle 4.3s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 85%; }
+.sd-cloud { animation: sd-drift var(--sd-cloud-time, 40s) ease-in-out infinite alternate; }
+.sd-bird { animation: sd-bob 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+.sd[data-paused=true] :is(.sd-tree, .sd-crown, .sd-cloud, .sd-bird) { animation-play-state: paused; }
+
+/* The console: the dial with its four season buttons at the corners, then the small controls. */
+.sd-console { display: grid; justify-items: center; gap: 10px; min-inline-size: 0; }
+.sd-dialbox { --sd-dial: clamp(220px, 68cqi, 272px); position: relative; inline-size: min(100%, calc(var(--sd-dial) + 124px)); block-size: calc(var(--sd-dial) + 18px); display: grid; place-items: center; }
+@container (min-width: 720px) { .sd-dialbox { --sd-dial: clamp(250px, 29cqi, 300px); block-size: calc(var(--sd-dial) + 70px); } }
+.sd-dial { position: relative; z-index: 1; inline-size: var(--sd-dial); block-size: var(--sd-dial); border-radius: 50%; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.sd-dial:active { cursor: grabbing; }
+.sd-dial:focus-visible { outline: 4px solid var(--studio-deep-ink); outline-offset: 4px; }
+.sd-dial__art { display: block; inline-size: 100%; block-size: 100%; overflow: visible; }
+.sd-badge[data-lit=true] .sd-badge__glow { animation: sd-glow 2.4s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
+
+/* The season buttons: enamel pucks in the dial's four corners, by the quarter they turn to. */
+.sd-season { position: absolute; z-index: 2; display: grid; place-items: center; inline-size: 60px; block-size: 60px; padding: 0; border-radius: 50%; border: 0; color: var(--mk-ink);
+  box-shadow: inset 0 0 0 3px var(--mk-gold), inset 3px 4px 0 3px color-mix(in srgb, var(--mk-white) 55%, transparent), 0 5px 0 color-mix(in srgb, var(--mk-gold-deep) 75%, transparent), 0 10px 16px -8px color-mix(in srgb, var(--mk-shadow) 60%, transparent);
+  transition: transform .18s var(--studio-ease-soft), box-shadow .18s var(--studio-ease-soft); }
+.sd-season svg { inline-size: 44px; block-size: 44px; display: block; }
+.sd-season[data-season="0"] { inset-block-start: 0; inset-inline-end: 0; }
+.sd-season[data-season="1"] { inset-block-end: 0; inset-inline-end: 0; }
+.sd-season[data-season="2"] { inset-block-end: 0; inset-inline-start: 0; }
+.sd-season[data-season="3"] { inset-block-start: 0; inset-inline-start: 0; }
+.sd-season[aria-pressed=true] { box-shadow: inset 0 0 0 3px var(--mk-gold-light), inset 3px 4px 0 3px color-mix(in srgb, var(--mk-white) 55%, transparent), 0 0 0 4px color-mix(in srgb, var(--mk-gold-light) 70%, transparent), 0 5px 0 color-mix(in srgb, var(--mk-gold-deep) 75%, transparent), 0 10px 18px -6px color-mix(in srgb, var(--mk-gold) 70%, transparent); }
+.sd-season:active { transform: translateY(3px); }
+.sd-season:focus-visible { outline: 3px solid var(--studio-deep-ink); outline-offset: 3px; }
+
+.sd-controls { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.sd-control { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-inline-size: var(--studio-tap); min-block-size: var(--studio-tap); padding: 0 14px; border-radius: 999px; border: 0;
+  background: var(--mk-paper); color: var(--mk-ink); font: 800 16px/1.2 var(--studio-font);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mk-paper-shade) 90%, var(--mk-gold)), 0 4px 0 var(--mk-paper-shade), 0 8px 14px -8px color-mix(in srgb, var(--mk-shadow) 50%, transparent); }
+.sd-control:active { transform: translateY(2px); }
+.sd-control:focus-visible { outline: 3px solid var(--studio-deep-ink); outline-offset: 3px; }
+.sd-control--pause[aria-pressed=true] { background: color-mix(in srgb, var(--mk-butter) 70%, var(--mk-paper)); }
+.sd-done { margin-block-start: 4px; }
+.sd-done button { animation: sd-pop .5s var(--studio-ease-spring) both; }
+.sd-live { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; }
+
+@keyframes sd-sway { from { transform: rotate(-.45deg); } to { transform: rotate(.5deg); } }
+@keyframes sd-rustle { from { transform: rotate(-.6deg) scale(1); } to { transform: rotate(.5deg) scale(1.006); } }
+@keyframes sd-drift { from { transform: translateX(calc(var(--sd-drift, 12px) * -1)); } to { transform: translateX(var(--sd-drift, 12px)); } }
+@keyframes sd-bob { 0%, 70%, 100% { transform: translateY(0) rotate(0); } 78% { transform: translateY(-1.2px) rotate(-6deg); } 86% { transform: translateY(0) rotate(3deg); } }
+@keyframes sd-glow { from { transform: scale(.9); opacity: .45; } to { transform: scale(1.12); opacity: .85; } }
+@keyframes sd-pop { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sd *, .sd *::before, .sd *::after { animation: none !important; transition: none !important; }
+}

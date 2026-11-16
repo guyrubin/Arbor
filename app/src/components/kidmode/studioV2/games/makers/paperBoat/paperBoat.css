@@ -1,0 +1,123 @@
+/* The Paper Boat: a pop-up book lying open on a table, seen from the front and
+   above. The stage is drawn once at 556 × 332 and scaled whole; the book inside
+   is real CSS 3D (preserve-3d all the way down to each pop-up card). Nothing in
+   the 3D tree may flatten it: no overflow, filter, opacity or blend on an
+   element that holds 3D children. Hebrew mirrors the book (spine order and
+   turn), never the words. Motion is decoration: the game moves play on with
+   its own frame clock, and reduced motion keeps every step playable. */
+.pb {
+  --pb-ink: var(--studio-deep-ink);
+  --pb-table: color-mix(in srgb, var(--mk-wood-light) 34%, var(--studio-canvas));
+  position: relative; display: grid; justify-items: center; gap: 6px;
+  max-inline-size: 1040px; margin-inline: auto; padding: 10px 4px 14px;
+  border-radius: var(--studio-radius-panel);
+  background:
+    radial-gradient(120% 70% at 30% 0%, color-mix(in srgb, var(--studio-canvas-soft) 90%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--studio-canvas) 0%, var(--pb-table) 100%);
+  box-shadow: 0 24px 60px color-mix(in srgb, var(--mk-shadow) 45%, transparent), inset 0 1px 0 color-mix(in srgb, var(--mk-white) 60%, transparent);
+  color: var(--pb-ink); font-family: var(--studio-font);
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+.pb button { font-family: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.pb button:focus-visible, .pb [role=slider]:focus-visible { outline: 3px solid var(--studio-deep-ink); outline-offset: 3px; }
+
+/* The page's words, on a paper label pinned above the book: two short lines. */
+.pb-label { position: relative; z-index: 3; display: grid; justify-items: center; gap: 6px; inline-size: min(100%, 520px); min-block-size: 88px; padding: 12px 18px 10px; border-radius: 6px 6px 14px 14px; background: var(--mk-white); box-shadow: 0 2px 0 var(--mk-paper-shade), 0 10px 22px color-mix(in srgb, var(--mk-shadow) 16%, transparent); rotate: -.6deg; animation: pb-label-in .45s var(--studio-ease-soft); }
+.pb-label::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background-image: var(--pb-grain); opacity: .45; pointer-events: none; }
+.pb-label p { position: relative; margin: 0; display: grid; text-align: center; font: 900 clamp(20px, 5.4vw, 26px)/1.22 var(--studio-font); letter-spacing: -.01em; color: var(--pb-ink); }
+.pb-label p span:last-child { color: color-mix(in srgb, var(--pb-ink) 78%, var(--mk-teal-deep)); }
+.pb-label__pin { position: absolute; inset-block-start: -7px; inset-inline-start: calc(50% - 7px); inline-size: 14px; block-size: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, var(--mk-gold-light), var(--mk-gold) 60%, var(--mk-gold-deep)); box-shadow: 0 2px 3px color-mix(in srgb, var(--mk-shadow) 35%, transparent); }
+.pb-label__pages { position: relative; display: flex; gap: 6px; }
+.pb-label__pages i { display: block; inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--mk-paper-shade); }
+.pb-label__pages i[data-on=true] { inline-size: 18px; border-radius: 4px; background: var(--mk-gold); }
+
+/* The stage: a fixed drawing, scaled. Corners and tabs sit on top in screen px. */
+.pb-stage { position: relative; z-index: 2; inline-size: 100%; touch-action: pan-y; }
+.pb-scaler { position: absolute; top: 0; left: 50%; transform-origin: 50% 0; }
+.pb-table { position: absolute; left: 6%; right: 6%; top: 74%; height: 22%; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-shadow) 38%, transparent), transparent); }
+.pb-persp { position: absolute; perspective-origin: 50% 50%; }
+.pb-book { position: absolute; left: 0; top: 0; transform-style: preserve-3d; transform-origin: 50% 50%; }
+/* the cloth board under the pages, and the page block's front edge */
+.pb-board { position: absolute; inset: -8px -9px -10px; border-radius: 7px; transform: translateZ(-10px); background: linear-gradient(90deg, var(--mk-indigo) 0%, color-mix(in srgb, var(--mk-indigo) 80%, var(--mk-bluebell)) 48%, var(--mk-indigo-deep) 50%, color-mix(in srgb, var(--mk-indigo) 80%, var(--mk-bluebell)) 52%, var(--mk-indigo) 100%); box-shadow: 0 18px 30px color-mix(in srgb, var(--mk-shadow) 50%, transparent); }
+.pb-block { position: absolute; left: 0; right: 0; top: 100%; height: 9px; transform-origin: 50% 0; transform: rotateX(-90deg); background: repeating-linear-gradient(180deg, var(--mk-paper) 0 2px, var(--mk-paper-shade) 2px 3px); }
+.pb-page, .pb-leaf { position: absolute; top: 0; width: 250px; height: 290px; transform-style: preserve-3d; }
+.pb-page--left { left: 0; }
+.pb-page--right { left: 250px; }
+.pb-leaf { left: 250px; transform-origin: 0 50%; }
+.pb-face { position: absolute; inset: 0; transform-style: preserve-3d; }
+.pb-face--front { transform: translateZ(.3px); }
+.pb-face--back { transform: rotateY(180deg) translateZ(.3px); }
+.pb-page__shade { position: absolute; inset: 0; transform: translateZ(.6px); background: linear-gradient(90deg, color-mix(in srgb, var(--mk-shadow) 70%, transparent), color-mix(in srgb, var(--mk-shadow) 25%, transparent)); pointer-events: none; }
+.pb-page--left .pb-page__shade { background: linear-gradient(270deg, color-mix(in srgb, var(--mk-shadow) 60%, transparent), color-mix(in srgb, var(--mk-shadow) 15%, transparent)); }
+
+/* One half of a spread: the printed page, then its pop-up cards. */
+.pb-half { position: absolute; inset: 0; transform-style: preserve-3d; }
+.pb-print { position: absolute; inset: 0; border-radius: 2px; overflow: hidden; background: var(--mk-paper); }
+.pb-half[data-side=left] .pb-print { border-radius: 5px 1px 1px 5px; }
+.pb-half[data-side=right] .pb-print { border-radius: 1px 5px 5px 1px; }
+.pb-print > svg { position: absolute; inset: 0; display: block; }
+.pb-print__live { pointer-events: none; }
+.pb-grain { position: absolute; inset: 0; background-image: var(--pb-grain); background-size: 180px 180px; opacity: .55; pointer-events: none; }
+/* gutter shading at the spine */
+.pb-gutter { position: absolute; top: 0; bottom: 0; width: 46px; pointer-events: none; }
+.pb-half[data-side=left] .pb-gutter { right: 0; background: linear-gradient(270deg, color-mix(in srgb, var(--mk-umber) 30%, transparent), color-mix(in srgb, var(--mk-umber) 8%, transparent) 40%, transparent); }
+.pb-half[data-side=right] .pb-gutter { left: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--mk-umber) 30%, transparent), color-mix(in srgb, var(--mk-umber) 8%, transparent) 40%, transparent); }
+
+.pb-pop { position: absolute; pointer-events: none; }
+.pb-pop > .pb-art { position: absolute; inset: 0; display: block; overflow: visible; }
+.pb-wave > .pb-art { overflow: hidden; }
+/* the shadow a standing card casts back across the page; it grows with the fold */
+.pb-cast { position: absolute; pointer-events: none; transform-origin: 50% 100%; border-radius: 40% 40% 6px 6px; background: linear-gradient(0deg, color-mix(in srgb, var(--mk-shadow) 62%, transparent), color-mix(in srgb, var(--mk-shadow) 22%, transparent) 55%, transparent); }
+
+/* the paper boat. Nothing inside the book animates in CSS: an animated layer
+   is lifted out of the 3D depth order, so every motion there comes from the
+   game's frame clock. */
+.pb-boat-card { pointer-events: none; }
+.pb-boat { position: absolute; inset-inline: 0; bottom: 0; display: grid; justify-items: center; transform-origin: 50% 90%; }
+.pb-boat svg { inline-size: 76px; block-size: 57px; display: block; overflow: visible; }
+.pb-boat-card--launch .pb-boat svg { inline-size: 84px; block-size: 63px; }
+.pb-boat-button { position: absolute; inset: 0; pointer-events: auto; border: 0; border-radius: 24px; background: transparent; touch-action: none; }
+.pb-boat-button:focus-visible { outline: 4px solid var(--mk-gold); outline-offset: -4px; }
+
+.pb-overlay { position: absolute; top: 0; bottom: 0; left: 50%; translate: -50% 0; pointer-events: none; }
+.pb-overlay > * { pointer-events: auto; }
+/* Page corners: the dog-ear that turns the page, and the back corner. */
+.pb-corner { position: absolute; z-index: 3; display: grid; place-items: center; inline-size: 60px; block-size: 60px; padding: 0; border: 0; color: var(--studio-action-ink); background: var(--studio-action-fill); border-radius: 18px 18px 18px 4px; box-shadow: 0 6px 16px color-mix(in srgb, var(--mk-shadow) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--mk-white) 70%, transparent); touch-action: none; animation: pb-corner-in .4s var(--studio-ease-spring); }
+.pb-corner--next { animation: pb-corner-in .4s var(--studio-ease-spring), pb-glow 1.8s 0.4s ease-in-out infinite; }
+.pb-corner--back { color: var(--pb-ink); background: var(--mk-white); border-radius: 18px 18px 4px 18px; inline-size: 56px; block-size: 56px; }
+[dir=rtl] .pb-corner--next { border-radius: 18px 18px 4px 18px; }
+[dir=rtl] .pb-corner--back { border-radius: 18px 18px 18px 4px; }
+.pb-corner--end { display: flex; gap: 8px; inline-size: auto; padding-inline: 14px 18px; font: 900 18px/1 var(--studio-font); white-space: nowrap; border-radius: 18px; animation: pb-corner-in .5s var(--studio-ease-spring), pb-glow 1.8s .5s ease-in-out infinite; }
+.pb-corner:active { scale: .96; }
+
+/* The wheel row: the steer buttons beside the pocketed wheel. */
+.pb-controls { display: grid; justify-items: center; inline-size: 100%; }
+.pb-wheel-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.pb-steer { display: grid; place-items: center; inline-size: 60px; block-size: 60px; border-radius: 50%; border: 0; color: var(--pb-ink); background: var(--mk-white); box-shadow: 0 4px 0 var(--mk-paper-shade), 0 8px 16px color-mix(in srgb, var(--mk-shadow) 16%, transparent); transition: opacity .3s, scale .15s; }
+.pb-steer:active:not(:disabled) { scale: .94; }
+.pb-steer:disabled { opacity: .35; cursor: default; }
+.pb-wheel { position: relative; inline-size: 220px; block-size: 168px; border-radius: 0 0 14px 14px; touch-action: none; cursor: grab; }
+.pb-wheel[aria-disabled=true] { cursor: default; }
+.pb-wheel__svg { display: block; inline-size: 100%; block-size: 100%; overflow: visible; }
+.pb-wheel__cloth { position: absolute; left: 0; right: 0; bottom: 0; height: 22%; opacity: .25; pointer-events: none; border-radius: 0 0 14px 14px; }
+.pb-wheel__tuck { transition: transform .6s var(--studio-ease-spring); }
+.pb-wheel-row[data-tucked=true] .pb-wheel__tuck { transform: translateY(66px); }
+
+.pb-sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; }
+
+@keyframes pb-label-in { from { opacity: 0; translate: 0 -6px; } to { opacity: 1; translate: 0 0; } }
+@keyframes pb-corner-in { from { scale: .6; opacity: 0; } to { scale: 1; opacity: 1; } }
+@keyframes pb-glow { 0%, 100% { box-shadow: 0 6px 16px color-mix(in srgb, var(--mk-shadow) 30%, transparent), 0 0 0 0 color-mix(in srgb, var(--mk-sun) 70%, transparent); } 50% { box-shadow: 0 6px 16px color-mix(in srgb, var(--mk-shadow) 30%, transparent), 0 0 0 10px color-mix(in srgb, var(--mk-sun) 0%, transparent); } }
+
+@media (min-width: 800px) {
+  .pb { padding: 16px 16px 20px; gap: 10px; }
+  .pb-label { min-block-size: 96px; }
+  .pb-wheel { inline-size: 240px; block-size: 183px; }
+  .pb-steer { inline-size: 64px; block-size: 64px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pb *, .pb { animation: none !important; transition: none !important; }
+}
+@media (forced-colors: active) {
+  .pb-corner, .pb-steer { border: 2px solid ButtonText; }
+}

@@ -1,0 +1,146 @@
+/* Tiny Structures: a museum model-maker's bench. The one activity whose
+   stage is the Studio night (a deep slate room); every word sits on cream
+   tags and cards. The scene is drawn once at 400 x 440 and scaled whole; it
+   never mirrors (physics and the model's left and right are the same in both
+   reading directions), only the chrome around it follows the language.
+   Motion is decoration: the component moves play on with timers and frames. */
+.adventure.tiny { --tiny-ink: var(--mk-ink); --tiny-ink-soft: var(--mk-ink-soft); --tiny-card: var(--mk-paper); --tiny-card-edge: var(--mk-paper-shade); --tiny-slate: var(--mk-slate); --tiny-night: var(--mk-night); --tiny-gold: var(--studio-action-gold); }
+.tiny .adventure-prompt { margin-block: 0 14px; }
+.tiny-layout { display: grid; gap: 14px; align-items: start; }
+.tiny-stage-wrap { position: relative; min-inline-size: 0; max-inline-size: min(100%, calc((100dvh - 250px) * 400 / 440)); margin-inline: auto; inline-size: 100%; }
+/* Turning sits on the stage, at its two lower corners: left turns left, in
+   both reading directions (it is the model's own left and right). */
+.tiny-turns { position: absolute; inset-block-end: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; pointer-events: none; }
+.adventure .tiny-turn { pointer-events: auto; display: grid; place-items: center; inline-size: var(--studio-tap, 56px); block-size: var(--studio-tap, 56px); padding: 0; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--tiny-card) 92%, transparent); color: var(--tiny-ink); box-shadow: 0 6px 14px color-mix(in srgb, var(--mk-shadow) 45%, transparent), inset 0 -2px 0 var(--tiny-card-edge); }
+.adventure .tiny-turn:active { transform: scale(.94); }
+.adventure .tiny-turn:focus-visible { outline: 3px solid var(--tiny-gold); outline-offset: 3px; }
+
+/* The stage keeps the drawing's own shape, so a hotspot in drawing units is a
+   plain percentage of the box. */
+.tiny-stage { position: relative; inline-size: 100%; aspect-ratio: 400 / 440; border-radius: var(--studio-radius-window, 22px); overflow: hidden; isolation: isolate; background: var(--tiny-night); box-shadow: 0 1px 0 color-mix(in srgb, var(--mk-white) 22%, transparent) inset, 0 18px 40px color-mix(in srgb, var(--mk-shadow) 34%, transparent); outline: 2px solid color-mix(in srgb, var(--mk-paper-shade) 80%, transparent); outline-offset: -1px; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.tiny-stage[data-phase=explore] { touch-action: pan-y; cursor: grab; }
+.tiny-stage[data-phase=explore]:active { cursor: grabbing; }
+.tiny-stage[data-phase=build] { cursor: pointer; }
+.tiny-stage:focus-visible { outline: 3px solid var(--tiny-gold); outline-offset: 3px; }
+.tiny-scene { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; display: block; }
+
+/* Blueprint outlines, the glowing place for the picked piece, and the ring a
+   piece leaves as it snaps on. */
+.tiny-ghost { fill: color-mix(in srgb, var(--mk-sky) 5%, transparent); stroke: color-mix(in srgb, var(--mk-sky) 58%, transparent); stroke-width: 1.3; stroke-dasharray: 4 3; stroke-linejoin: round; stroke-linecap: round; }
+.tiny-glow { fill: color-mix(in srgb, var(--mk-sun) 16%, transparent); stroke: var(--mk-sun); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--mk-sun) 80%, transparent)); animation: tiny-glow 1.3s ease-in-out infinite; }
+.tiny-hit { cursor: pointer; }
+.tiny-snap { fill: none; stroke: var(--mk-sun); stroke-width: 2.5; transform-box: fill-box; transform-origin: center; animation: tiny-snap .65s var(--studio-ease-soft, ease-out) forwards; }
+.tiny-phage [data-part] { cursor: pointer; }
+
+/* Keyboard and screen-reader targets over the drawing: pointer taps go to
+   the drawing itself (its own hit test), so these never block a finger. */
+.tiny-spot { position: absolute; z-index: 2; inline-size: var(--studio-tap, 56px); block-size: var(--studio-tap, 56px); margin: calc(var(--studio-tap, 56px) / -2) 0 0 calc(var(--studio-tap, 56px) / -2); padding: 0; border: 0; border-radius: 50%; background: transparent; pointer-events: none; }
+.adventure .tiny-spot:focus-visible { outline: 3px solid var(--tiny-gold); outline-offset: 0; box-shadow: 0 0 0 6px color-mix(in srgb, var(--tiny-night) 60%, transparent); }
+
+/* The panel beside (or under) the stage. */
+.tiny-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-inline-size: 0; }
+.tiny .tiny-panel > * { grid-column: 1; margin: 0; }
+.tiny-modes { justify-self: center; }
+.tiny-modes button { min-block-size: 48px; padding-inline: 16px; }
+
+/* The parts tray: a slate tray with each piece in its own well, its name on
+   a cream tag. A placed piece leaves an empty, dashed well behind. */
+.tiny-tray { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 10px; border-radius: 18px; background: linear-gradient(180deg, color-mix(in srgb, var(--tiny-slate) 88%, var(--mk-storm)), color-mix(in srgb, var(--tiny-slate) 70%, var(--tiny-night))); box-shadow: inset 0 2px 0 color-mix(in srgb, var(--mk-white) 14%, transparent), inset 0 -3px 0 color-mix(in srgb, var(--tiny-night) 40%, transparent), 0 8px 18px color-mix(in srgb, var(--mk-shadow) 22%, transparent); }
+.adventure .tiny-piece { position: relative; display: grid; grid-template-rows: 1fr auto; justify-items: center; gap: 5px; min-block-size: 96px; min-inline-size: 0; padding: 6px 4px 7px; border: 0; border-radius: 14px; background: transparent; color: var(--tiny-ink); touch-action: none; transition: transform .18s var(--studio-ease-soft, ease-out); }
+.tiny-piece__well { position: relative; display: block; overflow: hidden; inline-size: 100%; block-size: 62px; border-radius: 12px; background: radial-gradient(ellipse at 40% 30%, color-mix(in srgb, var(--mk-storm) 70%, var(--tiny-slate)), color-mix(in srgb, var(--tiny-night) 55%, var(--tiny-slate))); box-shadow: inset 0 3px 6px color-mix(in srgb, var(--tiny-night) 55%, transparent), 0 1px 0 color-mix(in srgb, var(--mk-white) 12%, transparent); }
+.tiny-piece__art { position: absolute; inset: 5px; inline-size: calc(100% - 10px); block-size: calc(100% - 10px); overflow: visible; filter: drop-shadow(0 3px 2px color-mix(in srgb, var(--tiny-night) 60%, transparent)); }
+.tiny-piece__name { display: block; max-inline-size: 100%; padding: 2px 7px; border-radius: 8px; background: var(--tiny-card); color: var(--tiny-ink); font: 800 13px/1.2 var(--studio-font); text-align: center; overflow-wrap: anywhere; box-shadow: 0 1px 0 var(--tiny-card-edge); }
+.tiny-piece[data-selected=true] .tiny-piece__well { box-shadow: 0 0 0 3px var(--tiny-gold), 0 0 18px color-mix(in srgb, var(--mk-sun) 50%, transparent), inset 0 3px 6px color-mix(in srgb, var(--tiny-night) 55%, transparent); }
+.tiny-piece[data-selected=true] { transform: translateY(-3px); }
+.tiny-piece[data-done=true] { cursor: default; }
+.tiny-piece[data-done=true] .tiny-piece__well { background: transparent; box-shadow: none; outline: 2px dashed color-mix(in srgb, var(--mk-sky) 32%, transparent); outline-offset: -4px; }
+.tiny-piece[data-done=true] .tiny-piece__name { opacity: .55; }
+.tiny-piece[data-lifted] .tiny-piece__art { opacity: .25; }
+.tiny-piece[data-wobble=true] { animation: tiny-wobble .5s ease-in-out; }
+.adventure .tiny-piece:focus-visible { outline: 3px solid var(--tiny-gold); outline-offset: 1px; }
+
+/* The piece in the hand while dragging. It drifts back if it does not fit. */
+.tiny-float { position: fixed; z-index: 60; inset-block-start: 0; left: 0; inline-size: 96px; block-size: 96px; margin: -48px 0 0 -48px; pointer-events: none; filter: drop-shadow(0 10px 8px color-mix(in srgb, var(--mk-shadow) 50%, transparent)); }
+.tiny-float > svg { inline-size: 100%; block-size: 100%; overflow: visible; scale: 1.12; }
+.tiny-float[data-back=true] { transition: transform .34s var(--studio-ease-soft, ease-out), opacity .34s; opacity: .7; }
+
+/* The museum label: name in bold, one or two true sentences, on cream. */
+.tiny-label { position: relative; display: grid; gap: 4px; padding: 14px 18px 12px; border-radius: 16px; background: var(--tiny-card); color: var(--tiny-ink); box-shadow: 0 1px 0 var(--tiny-card-edge), 0 8px 20px color-mix(in srgb, var(--mk-shadow) 12%, transparent); min-block-size: 112px; align-content: start; }
+.tiny-label::before { content: ''; position: absolute; inset-block-start: 0; inset-inline-start: 18px; inline-size: 44px; block-size: 4px; border-radius: 0 0 4px 4px; background: var(--tiny-gold); }
+.tiny-label__name { margin: 4px 0 0; font: 900 20px/1.2 var(--studio-font); letter-spacing: -.01em; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.tiny-label__where { font: 700 14px/1.2 var(--studio-font); color: var(--tiny-ink-soft); }
+.tiny-label__text { margin: 0; font: 700 17px/1.45 var(--studio-font); color: var(--tiny-ink); }
+.tiny-label__text--hint { color: var(--tiny-ink-soft); }
+.tiny-label__note { margin: 4px 0 0; font: 700 14px/1.4 var(--studio-font); color: var(--tiny-ink-soft); }
+.tiny-label[data-open=true] .tiny-label__name, .tiny-label[data-open=true] .tiny-label__text { animation: tiny-rise .3s var(--studio-ease-soft, ease-out); }
+
+/* Small dots: which parts still wait to be named. No numbers. */
+.tiny-dots { display: flex; gap: 7px; margin-block-start: 6px; }
+.tiny-dots > span { inline-size: 11px; block-size: 11px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--tiny-ink-soft) 50%, transparent); background: transparent; transition: background-color .2s, border-color .2s, transform .2s; }
+.tiny-dots > span[data-hidden=true] { border-style: dotted; }
+.tiny-dots > span[data-seen=true] { background: var(--tiny-gold); border-color: color-mix(in srgb, var(--mk-gold-deep) 70%, var(--tiny-gold)); }
+.tiny-dots > span[data-lit=true] { transform: scale(1.3); }
+
+/* Landing progress: four soft steps, lit as they happen (not a timer). */
+.tiny-steps { display: flex; gap: 6px; margin: 6px 0 0; padding: 0; list-style: none; }
+.tiny-steps > li { flex: 1; block-size: 5px; border-radius: 3px; background: color-mix(in srgb, var(--tiny-ink-soft) 20%, transparent); transition: background-color .3s; }
+.tiny-steps > li[data-on=true] { background: var(--tiny-gold); }
+
+.tiny-actions { gap: 8px; }
+.adventure .tiny-actions button { flex: 1 1 auto; }
+.adventure .tiny-actions button[aria-pressed=true] { background: var(--tiny-card); border-color: var(--tiny-gold); box-shadow: inset 0 0 0 2px var(--tiny-gold); }
+.tiny .tiny-status { min-block-size: 27px; margin-block: 10px 0; color: var(--tiny-ink); }
+
+/* The scale picture fades in over the landing. */
+.tiny-scale { position: absolute; inset: 0; z-index: 1; background: var(--tiny-night); animation: tiny-fade .7s var(--studio-ease-soft, ease-out); }
+.tiny-scale > svg { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
+.tiny-scale__ring { transform-box: fill-box; transform-origin: center; animation: tiny-breathe 2.4s ease-in-out infinite; }
+.tiny-tag { position: absolute; display: grid; gap: 0; translate: -50% -100%; padding: 6px 12px 7px; border-radius: 12px; background: var(--tiny-card); color: var(--tiny-ink); font: 700 14px/1.25 var(--studio-font); text-align: center; white-space: nowrap; box-shadow: 0 6px 14px color-mix(in srgb, var(--mk-shadow) 40%, transparent); }
+.tiny-tag > strong { font: 900 17px/1.2 var(--studio-font); }
+
+@keyframes tiny-glow { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+@keyframes tiny-snap { from { opacity: 1; transform: scale(.5); } to { opacity: 0; transform: scale(1.5); } }
+@keyframes tiny-wobble { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px) rotate(-3deg); } 45% { transform: translateX(5px) rotate(2deg); } 70% { transform: translateX(-3px); } }
+@keyframes tiny-rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes tiny-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tiny-breathe { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.12); opacity: .7; } }
+
+@media (max-width: 600px) {
+  .tiny-tray { gap: 6px; padding: 8px; }
+  .adventure .tiny-piece { min-block-size: 88px; }
+  .tiny-piece__well { block-size: 54px; }
+  .tiny-piece__name { font-size: 12px; padding-inline: 5px; }
+  .tiny-label { padding: 12px 14px 10px; min-block-size: 100px; }
+  .tiny-label__text { font-size: 16px; }
+  .tiny-tag { font-size: 12px; padding: 4px 9px 5px; }
+  .tiny-tag > strong { font-size: 15px; }
+  .adventure .tiny-actions button { padding-inline: 10px; font-size: 15px; }
+}
+/* Desktop: the stage on the start side, the words and controls beside it,
+   all in one field of view (the shared adventure grid, laid out for this
+   stage's own shape). */
+@media (min-width: 800px) {
+  .adventure.tiny { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr); grid-template-rows: auto auto minmax(0, 1fr); gap: 16px 26px; align-items: start; }
+  .tiny .tiny-layout { display: contents; }
+  .tiny .adventure-prompt { grid-column: 2; grid-row: 1; margin: 0; }
+  .tiny .tiny-stage-wrap { grid-column: 1; grid-row: 1 / span 3; }
+  .tiny .tiny-panel { grid-column: 2; grid-row: 2; gap: 16px; }
+  .tiny .tiny-status { grid-column: 2; grid-row: 3; margin: 0; text-align: start; }
+  .tiny-modes { justify-self: start; }
+  .tiny-tray { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 12px; }
+  .tiny-tray[data-count='7'] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .adventure .tiny-piece { min-block-size: 112px; }
+  .tiny-piece__well { block-size: 76px; }
+  .tiny-piece__name { font-size: 14px; }
+  .adventure .tiny-actions button { flex: 1 1 40%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tiny-glow, .tiny-snap, .tiny-scale, .tiny-scale__ring, .tiny-piece[data-wobble=true], .tiny-label[data-open=true] .tiny-label__name, .tiny-label[data-open=true] .tiny-label__text { animation: none; }
+  .tiny-piece[data-wobble=true] { outline: 3px dashed var(--tiny-gold); outline-offset: 2px; }
+  .tiny-snap { opacity: 0; }
+  .adventure .tiny-piece, .tiny-float[data-back=true], .tiny-dots > span, .tiny-steps > li { transition: none; }
+}
+@media (forced-colors: active) {
+  .tiny-piece[data-selected=true] .tiny-piece__well { outline: 3px solid Highlight; }
+  .tiny-dots > span[data-seen=true] { background: Highlight; }
+}

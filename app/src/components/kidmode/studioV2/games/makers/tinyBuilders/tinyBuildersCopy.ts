@@ -1,7 +1,103 @@
 /** Tiny Structures words. Hebrew is gender-free: nouns, plural verbs and
  * infinitives only. `title`, `description` and `instruction` are the Studio
- * tile and intro card (studioCopy reads them); the rest is the game's own. */
+ * tile and intro card (studioCopy reads them); the rest is the game's own.
+ * Register: wonder. A phage "lands on", "visits" and "sends its instructions
+ * inside" a bacterium; it never makes people ill and nothing here is medical.
+ * Every part sentence is short and true of the real T4 phage. Blanks `{0}`
+ * are filled by `tinyLine` (in the rules). */
 export const TINY_BUILDERS_COPY = {
-  en: { title: 'Tiny Structures', description: 'Build it. Test it. Build again.', instruction: 'Stack beams and blocks to build a bridge or a tower, then see if it holds.', finish: 'It stands!', transfer: 'Away from the screen: build a tower with cups or books.', done: 'Finished building' },
-  he: { title: 'מבנים קטנים', description: 'בונים. בודקים. בונים שוב.', instruction: 'מערימים קורות וקוביות כדי לבנות גשר או מגדל, ואז בודקים אם הוא מחזיק.', finish: 'זה עומד!', transfer: 'הרחק מהמסך: בונים מגדל מכוסות או מספרים.', done: 'סיימנו לבנות' },
+  en: {
+    title: 'Tiny Structures', description: 'Build a tiny visitor of bacteria.',
+    instruction: 'Build a phage, a tiny visitor that lands only on bacteria. Then turn it, look inside and watch it land.',
+    finish: 'You built a phage!', transfer: 'Away from the screen: make one from a paper cup, a straw and six bendy pipe-cleaner legs.', done: 'Done',
+    // build
+    build: 'Build the phage. Every part has its own place.',
+    buildAssisted: 'Pick a part. Its place on the blueprint glows.',
+    buildFull: 'Pick a part, then drag or tap it into its place.',
+    chosen: '{0}: now tap the blueprint, or drag it there.',
+    chosenFull: '{0}: tap its place on the blueprint, or drag it there.',
+    placed: '{0} is on.', placedLast: 'Click! Every part is on.',
+    tray: 'Parts tray', blueprint: 'Blueprint', placeHere: 'Place here: {0}', placeFilled: '{0}, built',
+    pieceReady: '{0}. Tap to pick it.', pieceChosen: '{0}, picked. Now choose its place.', pieceDone: '{0}, on the model',
+    modes: 'How many pieces', assisted: 'Fewer pieces', full: 'All the pieces',
+    // turning and naming
+    whole: 'It is whole! Turn it, look inside, and tap a part to name it.',
+    turnHint: 'Drag the model sideways to turn it.',
+    nameNext: 'Tap another part to read its name.', nameAll: 'Every part has a name now. Try Land.',
+    lookForDna: 'One part is hidden inside. Try Look inside.',
+    turnLeft: 'Turn left', turnRight: 'Turn right', lookInside: 'Look inside', close: 'Close it up',
+    model: 'The phage model. Arrow keys turn it.', modelTurned: 'Turned {0} degrees',
+    stillToFind: 'Parts still to name: {0}', allNamed: 'Every part is named',
+    land: 'Land',
+    // landing
+    landing: 'Watch it land on a bacterium.',
+    drift: 'The phage drifts down to a bacterium.',
+    touch: 'Its long legs touch first, feel the surface and hold on.',
+    settle: 'The landing pad settles on the cell.',
+    squeeze: 'The sleeve squeezes shorter. The stiff tube inside reaches through the wall.',
+    inside: 'The instructions slide down the tube, into the cell.',
+    // scale
+    scaleTitle: 'How small is it?',
+    scale: 'Phages are viruses that only visit bacteria. A bacterium is far too small to see, and a phage is much smaller still.',
+    cellTag: 'Bacterium', cellNote: 'a living cell', phageTag: 'Phage', phageNote: 'a virus, not a cell',
+    colours: 'Real phages are too small to have colours. These colours are made up.',
+    again: 'Watch again', scaleArt: 'A rod-shaped bacterium, drawn large, with the tiny phage standing on it',
+    landArt: 'The phage landing on the bacterium',
+    pieces: { head: 'Head', collar: 'Collar', tail: 'Tail', tailCollar: 'Tail and collar', baseplate: 'Baseplate', fibres: 'Six tail fibres', fibrePair: 'Two tail fibres' },
+    labels: {
+      head: { name: 'Head', text: 'A shell made of many tiny flat pieces. It keeps the instructions safe inside.' },
+      dna: { name: 'DNA', text: 'A long thread called DNA: the instructions for making more phages.' },
+      collar: { name: 'Collar', text: 'Joins the head to the tail.' },
+      tail: { name: 'Tail', text: 'A hollow tube inside a sleeve. The sleeve can squeeze shorter, like a spring.' },
+      baseplate: { name: 'Baseplate', text: 'The landing pad at the bottom.' },
+      fibres: { name: 'Tail fibres', text: 'Long legs that feel for the right bacterium and hold on.' },
+    },
+    insideHead: 'Inside the head',
+  },
+  he: {
+    title: 'מבנים זעירים', description: 'בונים מבקר זעיר של חיידקים.',
+    instruction: 'בונים פאג׳, מבקר זעיר שנוחת רק על חיידקים. אחר כך מסובבים אותו, מציצים פנימה וצופים בו נוחת.',
+    finish: 'בניתם פאג׳!', transfer: 'הרחק מהמסך: בונים אחד מכוס נייר, קשית ושש רגליים מחוטי ניקוי מתכופפים.', done: 'סיימנו',
+    build: 'בונים את הפאג׳. לכל חלק יש מקום משלו.',
+    buildAssisted: 'בוחרים חלק. המקום שלו בשרטוט זוהר.',
+    buildFull: 'בוחרים חלק, ואז גוררים או מקישים כדי לשים אותו במקום.',
+    chosen: '{0}: עכשיו מקישים על השרטוט, או גוררים אליו.',
+    chosenFull: '{0}: מקישים על המקום שלו בשרטוט, או גוררים אליו.',
+    placed: '{0} במקום.', placedLast: 'קליק! כל החלקים במקום.',
+    tray: 'מגש החלקים', blueprint: 'השרטוט', placeHere: 'לשים כאן: {0}', placeFilled: '{0}, בנוי',
+    pieceReady: '{0}. מקישים כדי לבחור.', pieceChosen: '{0}, נבחר. עכשיו בוחרים מקום.', pieceDone: '{0}, על הדגם',
+    modes: 'כמה חלקים', assisted: 'פחות חלקים', full: 'כל החלקים',
+    whole: 'הפאג׳ שלם! מסובבים, מציצים פנימה ומקישים על חלק כדי לגלות את שמו.',
+    turnHint: 'גוררים את הדגם הצידה כדי לסובב אותו.',
+    nameNext: 'מקישים על עוד חלק כדי לקרוא את שמו.', nameAll: 'לכל החלקים יש שם. אפשר לנסות נחיתה.',
+    lookForDna: 'חלק אחד מוסתר בפנים. אפשר לנסות להציץ פנימה.',
+    turnLeft: 'לסובב שמאלה', turnRight: 'לסובב ימינה', lookInside: 'להציץ פנימה', close: 'לסגור',
+    model: 'דגם הפאג׳. מקשי החצים מסובבים אותו.', modelTurned: 'מסובב {0} מעלות',
+    stillToFind: 'חלקים שעוד מחכים לשם: {0}', allNamed: 'לכל החלקים יש שם',
+    land: 'נחיתה',
+    landing: 'צופים בפאג׳ נוחת על חיידק.',
+    drift: 'הפאג׳ יורד לאט אל חיידק.',
+    touch: 'הרגליים הארוכות נוגעות ראשונות, ממששות את פני החיידק ונאחזות בהם.',
+    settle: 'משטח הנחיתה מתיישב על התא.',
+    squeeze: 'השרוול מתכווץ ומתקצר. הצינור הנוקשה שבתוכו עובר דרך הדופן.',
+    inside: 'ההוראות מחליקות במורד הצינור, אל תוך התא.',
+    scaleTitle: 'כמה הוא קטן?',
+    scale: 'פאגים הם נגיפים שמבקרים רק אצל חיידקים. חיידק קטן מכדי לראות אותו בעיניים, ופאג׳ קטן ממנו עוד הרבה.',
+    cellTag: 'חיידק', cellNote: 'תא חי', phageTag: 'פאג׳', phageNote: 'נגיף, לא תא',
+    colours: 'פאגים אמיתיים קטנים מכדי שיהיו להם צבעים. הצבעים כאן מומצאים.',
+    again: 'לצפות שוב', scaleArt: 'חיידק בצורת מוט, מצויר גדול, ועליו עומד הפאג׳ הזעיר',
+    landArt: 'הפאג׳ נוחת על החיידק',
+    pieces: { head: 'ראש', collar: 'צווארון', tail: 'זנב', tailCollar: 'זנב וצווארון', baseplate: 'לוחית בסיס', fibres: 'שישה סיבי זנב', fibrePair: 'שני סיבי זנב' },
+    labels: {
+      head: { name: 'ראש', text: 'קליפה שבנויה מהרבה חלקים שטוחים וזעירים. היא שומרת על ההוראות שבפנים.' },
+      dna: { name: 'דנ״א', text: 'חוט ארוך שנקרא דנ״א: ההוראות להכנת עוד פאגים.' },
+      collar: { name: 'צווארון', text: 'מחבר את הראש אל הזנב.' },
+      tail: { name: 'זנב', text: 'צינור חלול בתוך שרוול. השרוול יכול להתכווץ ולהתקצר, כמו קפיץ.' },
+      baseplate: { name: 'לוחית בסיס', text: 'משטח הנחיתה שבתחתית.' },
+      fibres: { name: 'סיבי הזנב', text: 'רגליים ארוכות שממששות ומחפשות את החיידק המתאים, ונאחזות בו.' },
+    },
+    insideHead: 'בתוך הראש',
+  },
 } as const;
+export type TinyBuildersWords = typeof TINY_BUILDERS_COPY['en'] | typeof TINY_BUILDERS_COPY['he'];
+

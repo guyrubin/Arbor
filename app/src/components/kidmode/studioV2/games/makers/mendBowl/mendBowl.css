@@ -1,0 +1,112 @@
+/* Mend the Bowl: one stage, drawn once at 440 by 390 stage units and scaled as
+   a whole. Every layer (the cloth, each shard, the mended bowl) is an SVG with
+   that same viewBox filling the stage, so a pointer maps to stage units by one
+   division. The scene never mirrors: the bowl has the same left and right in
+   both languages; only the words and the buttons under it follow the reading
+   direction. Motion is decoration: the component moves the game with timers,
+   and every transition below becomes a cut when motion is reduced. */
+.mb { --mb-ink: var(--studio-deep-ink); }
+.mb-stage { position: relative; isolation: isolate; inline-size: 100%; max-inline-size: 620px; margin-inline: auto; aspect-ratio: 440 / 390; border-radius: var(--studio-radius-window); overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  background: radial-gradient(ellipse 70% 60% at 32% 18%, var(--mk-white), var(--mk-paper) 55%, var(--mk-paper-shade));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mk-umber) 12%, transparent), inset 0 -18px 40px color-mix(in srgb, var(--mk-umber) 10%, transparent); }
+.mb-stage[data-phase=choose] { touch-action: manipulation; cursor: pointer; }
+.mb-stage[data-phase=gold] { cursor: crosshair; }
+.mb-layer { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; overflow: visible; pointer-events: none; }
+.mb-ghost path { fill: color-mix(in srgb, var(--mk-night) 26%, transparent); stroke: var(--mk-linen); stroke-width: 1.6; stroke-dasharray: 6 5; stroke-opacity: .55; }
+.mb-ghost ellipse { fill: none; stroke: var(--mk-linen); stroke-width: 1.2; stroke-dasharray: 6 5; stroke-opacity: .35; }
+
+/* The shards. Each is a real button covering the stage; only its own outline
+   (plus a little halo for small fingers) takes the pointer. */
+.mb .mb-piece { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; padding: 0; margin: 0; border: 0; background: none; pointer-events: none; cursor: grab; -webkit-tap-highlight-color: transparent; }
+.mb .mb-piece:focus-visible { outline: none; }
+.mb .mb-piece:disabled { cursor: default; }
+.mb-piece__hit { fill: none; stroke: none; stroke-width: 18; stroke-linejoin: round; pointer-events: all; cursor: grab; }
+.mb-piece:disabled .mb-piece__hit, .mb-piece[data-placed=true] .mb-piece__hit { pointer-events: none; }
+.mb-piece[data-dragging=true] .mb-piece__hit { cursor: grabbing; }
+.mb-piece__ring { stroke: var(--studio-action-gold); opacity: 0; transition: opacity .18s var(--studio-ease-soft); }
+.mb-piece[data-selected=true] .mb-piece__ring { opacity: .95; }
+.mb-piece:focus-visible .mb-piece__ring { opacity: 1; stroke: var(--mk-white); stroke-width: 4; filter: drop-shadow(0 0 2px var(--mk-ink)); }
+.mb-piece__edge { transition: opacity .35s var(--studio-ease-soft); }
+.mb-piece[data-placed=true] .mb-piece__edge { opacity: 0; }
+.mb-piece__body, .mb-piece__shadow { transform-box: view-box; }
+.mb-piece[data-motion=tip] :is(.mb-piece__body, .mb-piece__shadow) { transition: transform .32s cubic-bezier(.5, 0, .9, .6); }
+.mb-piece[data-motion=scatter] :is(.mb-piece__body, .mb-piece__shadow) { transition: transform .78s cubic-bezier(.15, .85, .25, 1) var(--mb-delay, 0ms); }
+.mb-piece[data-motion=glide] :is(.mb-piece__body, .mb-piece__shadow) { transition: transform .38s var(--studio-ease-soft); }
+.mb-piece[data-motion=snap] .mb-piece__body { transition: transform .28s var(--studio-ease-spring); }
+.mb-piece[data-motion=turn] :is(.mb-piece__body, .mb-piece__shadow) { transition: transform .2s ease-out; }
+/* A piece that does not fit drifts back with a small wobble: no sound, no words. */
+.mb-piece__wobble { transform-box: view-box; }
+.mb-piece__wobble[data-wobble=true] { animation: mb-wobble .6s ease-in-out .3s both; }
+
+/* The two round turn buttons beside the chosen piece, and the places a
+   keyboard can choose (invisible until focused). */
+.mb .mb-turn { position: absolute; z-index: 8; display: grid; place-items: center; inline-size: var(--studio-tap); block-size: var(--studio-tap); padding: 0; translate: -50% -50%; border: 3px solid var(--mk-white); border-radius: 50%; background: var(--studio-action-fill); color: var(--studio-action-ink); box-shadow: 0 4px 0 color-mix(in srgb, var(--mk-gold-deep) 70%, transparent), 0 10px 18px color-mix(in srgb, var(--mk-shadow) 30%, transparent); animation: mb-pop .22s var(--studio-ease-spring) both; }
+.mb .mb-turn:active { transform: translateY(2px); box-shadow: 0 2px 0 color-mix(in srgb, var(--mk-gold-deep) 70%, transparent); }
+.mb .mb-turn:focus-visible { outline: 3px solid var(--mk-ink); outline-offset: 3px; }
+.mb .mb-spot { position: absolute; z-index: 7; inline-size: var(--studio-tap); block-size: var(--studio-tap); padding: 0; translate: -50% -50%; border: 0; border-radius: 50%; background: transparent; opacity: 0; pointer-events: none; }
+.mb .mb-spot:focus-visible { opacity: 1; outline: 3px solid var(--mk-white); outline-offset: 0; box-shadow: 0 0 0 6px var(--mk-ink); background: color-mix(in srgb, var(--studio-action-gold) 45%, transparent); }
+
+/* The mended bowl: dark hairline cracks wait for the gold, which runs along
+   each one through a mask on the very same path. */
+.mb-crack { transition: opacity 1.2s var(--studio-ease-soft) .6s; }
+.mb-mended:not([data-admire=true]) .mb-crack[data-gold=false] { animation: mb-crack-wait 2.6s ease-in-out infinite; }
+.mb-crack[data-gold=true] { opacity: 0; }
+.mb-flow { transition-property: stroke-dashoffset; transition-timing-function: cubic-bezier(.45, .05, .35, 1); }
+.mb-trail { stroke: color-mix(in srgb, var(--mk-gold-light) 75%, transparent); opacity: .55; }
+.mb-mended { animation: mb-fade .45s var(--studio-ease-soft) both; }
+/* The slow turn: the body keeps its round silhouette (a bowl turning on its
+   foot does) and the marks on it squash, swap and come round again. */
+.mb-turn-body, .mb-turn-marks { transform-box: view-box; transform-origin: 220px 0; }
+.mb-mended[data-admire=true] .mb-turn-body { animation: mb-turn-body 2.6s ease-in-out .25s both; }
+.mb-mended[data-admire=true] .mb-turn-marks { animation: mb-turn-marks 2.6s ease-in-out .25s both; }
+.mb-sheen { transform-box: view-box; animation: mb-sheen 1.5s ease-in-out 1.35s both; }
+.mb-glint { fill: var(--mk-white); opacity: 0; transform-box: fill-box; transform-origin: center; animation: mb-glint 1s ease-out both; }
+
+/* Words, glazes and the one action under the stage. */
+.mb .mb-status, .mb .mb-status:empty { display: block; min-block-size: 48px; margin-block: 8px 4px; color: var(--mb-ink); }
+.mb-sr { position: absolute; inline-size: 1px; block-size: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.mb .mb-actions { flex-direction: column; gap: 10px; }
+.mb-glazes { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.mb .mb-actions .mb-swatch { flex-direction: column; gap: 4px; min-inline-size: 72px; min-block-size: var(--studio-tap); padding: 4px 4px 2px; border: 0; background: transparent; box-shadow: none; color: var(--mb-ink); font: 800 13px/1.2 var(--studio-font); }
+.mb-swatch > svg { inline-size: 50px; block-size: 50px; border-radius: 50%; box-shadow: 0 3px 6px color-mix(in srgb, var(--mk-shadow) 22%, transparent); transition: transform .16s var(--studio-ease-spring); }
+.mb-swatch[aria-pressed=true] > svg { transform: scale(1.08); box-shadow: 0 0 0 3px var(--mk-white), 0 0 0 6px var(--studio-action-gold), 0 4px 10px color-mix(in srgb, var(--mk-shadow) 25%, transparent); }
+.mb .mb-actions .mb-swatch:focus-visible { outline: 3px solid var(--mb-ink); outline-offset: 2px; border-radius: 14px; }
+.mb .mb-actions .mb-ready { min-inline-size: 180px; }
+
+@keyframes mb-wobble { 0%, 100% { rotate: 0deg; } 25% { rotate: 5deg; } 55% { rotate: -4deg; } 80% { rotate: 1.5deg; } }
+@keyframes mb-pop { from { scale: .4; opacity: 0; } to { scale: 1; opacity: 1; } }
+@keyframes mb-fade { from { opacity: .4; } to { opacity: 1; } }
+@keyframes mb-crack-wait { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+@keyframes mb-turn-body { 0%, 50%, 100% { scale: 1 1; } 25%, 75% { scale: .95 1; } }
+/* Into each swap fast (ease-in), out of it slow (ease-out): the marks only flash through their narrowest. */
+@keyframes mb-turn-marks {
+  0% { scale: 1 1; animation-timing-function: cubic-bezier(.6, 0, 1, .5); } 24.9% { scale: .16 1; } 25% { scale: -.16 1; animation-timing-function: cubic-bezier(0, .5, .4, 1); }
+  50% { scale: -1 1; animation-timing-function: cubic-bezier(.6, 0, 1, .5); } 74.9% { scale: -.16 1; } 75% { scale: .16 1; animation-timing-function: cubic-bezier(0, .5, .4, 1); } 100% { scale: 1 1; } }
+@keyframes mb-sheen { from { translate: 0 0; } to { translate: 600px 0; } }
+@keyframes mb-glint { 0% { opacity: 0; scale: .2; rotate: 0deg; } 40% { opacity: 1; scale: 1.1; } 100% { opacity: 0; scale: .5; rotate: 60deg; } }
+
+@media (min-width: 800px) {
+  .mb .mb-stage { grid-column: 1; grid-row: 1 / span 8; align-self: start; max-inline-size: 600px; margin: 0 auto; }
+  .mb .adventure-prompt { grid-column: 2; grid-row: 1; }
+  .mb .mb-status { grid-column: 2; grid-row: 2; }
+  .mb .mb-actions { grid-column: 2; grid-row: 3; align-items: stretch; }
+  .mb-glazes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .mb .mb-status { min-block-size: 72px; margin: 0; }
+}
+@media (max-width: 600px) {
+  .arbor-play .mb .adventure-heading { font-size: 18px !important; padding: 10px 12px; min-block-size: 64px; display: flex; align-items: center; }
+  .mb .adventure-prompt { margin-block: 2px 10px; }
+  .mb .mb-status { min-block-size: 44px; margin-block: 6px 2px; font-size: 15px; }
+  .mb .mb-actions .mb-swatch { min-inline-size: 66px; }
+  .mb-swatch > svg { inline-size: 46px; block-size: 46px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mb-piece__body, .mb-piece__shadow, .mb-piece__ring, .mb-piece__edge, .mb-piece__wobble, .mb-crack, .mb-flow, .mb-mended, .mb-turn-body, .mb-turn-marks, .mb-sheen, .mb .mb-turn, .mb-swatch > svg { animation: none !important; transition: none !important; }
+  .mb-glint { animation: none !important; opacity: .9; }
+}
+@media (forced-colors: active) {
+  .mb-piece[data-selected=true] .mb-piece__ring, .mb-piece:focus-visible .mb-piece__ring { stroke: Highlight; opacity: 1; }
+  .mb .mb-turn { border: 2px solid ButtonText; }
+  .mb .mb-spot:focus-visible { outline: 3px solid Highlight; }
+  .mb-swatch[aria-pressed=true] > svg { outline: 3px solid Highlight; }
+}

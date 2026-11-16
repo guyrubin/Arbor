@@ -1,0 +1,88 @@
+/* Wind-up Racer: a cream play panel, the tabletop stage, two big controls.
+   The stage is one SVG drawn by the component frame by frame (camera,
+   parallax, the car); this sheet only lays it out, rings the controls and
+   adds the small decorative motions (flag, chalk, hint ring, track swap).
+   The track always runs left to right: the stage and map are dir="ltr";
+   only the chrome around them follows the reading direction. Nothing here
+   moves the game on: the component's clock does. All colour is palette. */
+
+.adventure.wr { display: flex; flex-direction: column; gap: 8px; max-inline-size: 1040px; margin-inline: auto; padding: 16px 22px 18px; border-radius: 24px; background: linear-gradient(170deg, var(--mk-white), var(--mk-paper)); border-color: color-mix(in srgb, var(--mk-paper-shade) 80%, transparent); color: var(--studio-deep-ink); }
+
+/* Track flags (no numerals) and the track's name. */
+.wr-top { display: flex; align-items: center; gap: 12px; min-block-size: 52px; }
+.wr-flags { display: flex; gap: 4px; margin: 0; padding: 6px 10px; list-style: none; border-radius: 999px; background: color-mix(in srgb, var(--mk-paper-shade) 55%, transparent); }
+.wr-flags__pip { inline-size: 22px; block-size: 26px; }
+.wr-flags__pip svg { display: block; inline-size: 100%; block-size: 100%; }
+.wr-flags__pole { fill: var(--mk-wood); }
+.wr-flags__cloth { fill: color-mix(in srgb, var(--mk-ink-soft) 28%, transparent); transition: fill .3s var(--studio-ease-soft); }
+.wr-flags__pip[data-now=true] .wr-flags__cloth { fill: color-mix(in srgb, var(--mk-poppy) 45%, var(--mk-paper)); }
+.wr-flags__pip[data-done=true] .wr-flags__cloth { fill: var(--mk-poppy); }
+.wr-top__track { display: flex; flex-direction: column; gap: 1px; margin: 0; min-inline-size: 0; font-family: var(--studio-font); line-height: 1.25; }
+.wr-top__track strong { font-size: 17px; font-weight: 900; color: var(--studio-deep-ink); }
+.wr-top__track span { font-size: 14px; font-weight: 700; color: var(--studio-ink-soft); }
+
+/* The next small step, in the toy voice. It keeps two lines of room so the stage never jumps. */
+.arbor-play .wr .wr-cue, .wr .wr-cue { margin: 0; min-block-size: 2.5em; display: flex; align-items: center; font: 900 20px/1.25 var(--studio-font); color: var(--studio-deep-ink); }
+
+/* The stage. */
+.wr-stage { position: relative; block-size: clamp(300px, calc(100svh - 360px), 560px); border-radius: 22px; overflow: hidden; background: var(--mk-paper); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mk-umber) 12%, transparent), 0 10px 28px color-mix(in srgb, var(--mk-shadow) 16%, transparent); isolation: isolate; }
+.wr-scene { position: absolute; inset: 0; }
+.wr-svg { position: absolute; inset: 0; display: block; inline-size: 100%; block-size: 100%; }
+.wr-stage[data-swap=true] .wr-scene { animation: wr-swap .95s var(--studio-ease-soft) both; }
+
+/* The little paper map of the whole track. It is part of the scene, so it reads left to right. */
+.wr-map { position: absolute; z-index: 2; inset-block-start: 10px; inset-inline: 0; margin-inline: auto; inline-size: min(300px, 64%); block-size: auto; padding: 6px 10px; box-sizing: border-box; border-radius: 10px; background: color-mix(in srgb, var(--mk-white) 88%, transparent); box-shadow: 0 3px 10px color-mix(in srgb, var(--mk-shadow) 16%, transparent); pointer-events: none; overflow: visible; }
+.wr-map__line { fill: none; stroke: var(--mk-wood-dark); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.wr-map__flag { fill: none; stroke: var(--mk-poppy); stroke-width: 2.2; stroke-linejoin: round; }
+.wr-map__chalk { fill: color-mix(in srgb, var(--mk-ink-soft) 40%, transparent); }
+.wr-map__chalk[data-fresh=true] { fill: var(--mk-ink-soft); }
+.wr-map__car { fill: var(--mk-red); }
+
+/* The key's touch target: a ring over the brass key, placed by the component
+   (a transform from the stage's top left; the stage is dir=ltr). */
+.wr-key { position: absolute; z-index: 3; inset-block-start: 0; inset-inline-start: 0; display: block; padding: 0; margin: 0; border: 0; border-radius: 50%; background: transparent; cursor: grab; touch-action: none; -webkit-tap-highlight-color: transparent; }
+.wr-key[hidden] { display: none; }
+.wr-key:active { cursor: grabbing; }
+.wr-key::before { content: ''; position: absolute; inset: 4px; border-radius: 50%; border: 3px dashed color-mix(in srgb, var(--mk-gold) 75%, transparent); opacity: 0; transition: opacity .3s var(--studio-ease-soft); pointer-events: none; }
+.wr[data-phase=wind] .wr-key::before { opacity: .9; animation: wr-hint 6s linear infinite; }
+.wr-key:focus-visible { outline: 4px solid var(--studio-action-gold); outline-offset: 2px; }
+
+/* Decorative motion in the scene. */
+.wr-flag__paper { transform-box: fill-box; transform-origin: 0% 50%; }
+.wr-flag[data-flying=true] .wr-flag__paper { animation: wr-flutter .42s ease-in-out infinite alternate; }
+.wr-chalk[data-fresh=true] { animation: wr-chalk .5s var(--studio-ease-soft) both; transform-box: fill-box; transform-origin: 50% 100%; }
+
+/* Controls: Wind and Go while winding; Back to start during a run. */
+.wr-controls { display: flex; justify-content: center; align-items: center; gap: 14px; min-block-size: 68px; }
+.wr-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-block-size: 64px; min-inline-size: 132px; padding: 12px 26px; border: 2px solid color-mix(in srgb, var(--mk-paper-shade) 90%, var(--mk-wood)); border-radius: 20px; background: var(--mk-white); box-shadow: 0 4px 0 color-mix(in srgb, var(--mk-paper-shade) 90%, var(--mk-wood)), 0 8px 18px color-mix(in srgb, var(--mk-shadow) 12%, transparent); color: var(--studio-deep-ink); font: 900 19px/1.2 var(--studio-font); cursor: pointer; touch-action: manipulation; transition: transform .12s ease, box-shadow .12s ease, opacity .2s ease; }
+.wr-button:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 color-mix(in srgb, var(--mk-paper-shade) 90%, var(--mk-wood)); }
+.wr-button:focus-visible { outline: 4px solid var(--mk-water); outline-offset: 3px; }
+.wr-button:disabled { opacity: .45; cursor: default; }
+.wr-button--wind svg { color: var(--mk-gold-deep); }
+.wr-button--wind[data-full=true] { border-color: var(--mk-gold); }
+.wr-button--go { border-color: var(--mk-gold); background: var(--studio-action-fill); box-shadow: 0 4px 0 var(--mk-gold-deep), 0 8px 22px color-mix(in srgb, var(--mk-amber) 35%, transparent); color: var(--studio-action-ink); }
+.wr-button--go:active:not(:disabled) { box-shadow: 0 1px 0 var(--mk-gold-deep); }
+.wr-button--go[data-ready=true] { animation: wr-ready 1.6s ease-in-out infinite; }
+.wr-quiet { margin: 0; text-align: center; }
+.wr-sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; }
+
+@keyframes wr-swap { 0% { transform: none; opacity: 1; } 46% { transform: translateX(-18%); opacity: 0; } 54% { transform: translateX(18%); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes wr-flutter { from { transform: skewY(-5deg) scaleX(.94); } to { transform: skewY(4deg) scaleX(1.02); } }
+@keyframes wr-chalk { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
+@keyframes wr-hint { to { rotate: 360deg; } }
+@keyframes wr-ready { 0%, 100% { box-shadow: 0 4px 0 var(--mk-gold-deep), 0 8px 22px color-mix(in srgb, var(--mk-amber) 35%, transparent); } 50% { box-shadow: 0 4px 0 var(--mk-gold-deep), 0 8px 30px color-mix(in srgb, var(--mk-amber) 70%, transparent); } }
+
+@media (max-width: 560px) {
+  .adventure.wr { gap: 6px; padding: 10px 10px 12px; }
+  .wr-top { gap: 8px; }
+  .wr-top__track span { font-size: 13px; }
+  .arbor-play .wr .wr-cue, .wr .wr-cue { font-size: 18px; }
+  .wr-stage { block-size: clamp(280px, calc(100svh - 340px), 520px); border-radius: 18px; }
+  .wr-controls { gap: 10px; }
+  .wr-button { min-inline-size: 0; flex: 1 1 0; padding-inline: 14px; font-size: 18px; }
+}
+
+/* Reduced motion: the run still plays (it is the content); every decorative motion here stops. */
+@media (prefers-reduced-motion: reduce) {
+  .wr *, .wr *::before { animation: none !important; transition: none !important; }
+}

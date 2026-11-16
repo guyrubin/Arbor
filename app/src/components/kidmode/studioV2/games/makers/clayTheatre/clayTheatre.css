@@ -1,0 +1,101 @@
+/* Clay Theatre: a cardboard stage, a film strip under it, a projectionist's
+   keys. One column on a phone (cause and effect stay together); on a wide
+   screen the stage and strip sit left, the cans and keys right. Colour comes
+   only from the maker palette and Studio tokens. */
+.ct { --ct-ink: var(--studio-deep-ink); --ct-film: color-mix(in srgb, var(--mk-shadow) 78%, var(--mk-umber)); display: grid; gap: 12px; max-inline-size: 1040px; margin-inline: auto; padding: clamp(12px, 2.4vw, 24px); border-radius: var(--studio-radius-panel); color: var(--ct-ink); font-family: var(--studio-font);
+  background: radial-gradient(120% 70% at 50% 0%, var(--studio-canvas-soft), var(--studio-canvas) 70%, color-mix(in srgb, var(--mk-paper-shade) 60%, var(--studio-canvas)));
+  box-shadow: 0 24px 60px color-mix(in srgb, var(--mk-shadow) 40%, transparent), inset 0 1px 0 color-mix(in srgb, var(--mk-white) 50%, transparent); }
+.ct button { font-family: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.ct button:disabled { cursor: default; }
+.ct-col { display: contents; }
+.ct-cans { order: 1; display: flex; justify-content: center; gap: 6px; }
+.ct-stage { order: 2; }
+.ct-caption { order: 3; }
+.ct-pick { order: 4; }
+.ct-strip { order: 5; }
+.ct-transport { order: 6; }
+.ct-note { order: 8; }
+.ct-curtain { order: 9; }
+
+/* The film cans: tin lids with a little frame in a round window. */
+.ct-can { position: relative; flex: 1 1 0; min-inline-size: 0; max-inline-size: 120px; min-block-size: var(--studio-tap); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 2px 6px; border: 0; border-radius: 16px; background: transparent; color: var(--ct-ink); }
+.ct-can__tin { position: relative; display: grid; place-items: center; inline-size: 62px; block-size: 62px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, var(--mk-steel-light), var(--mk-steel) 52%, var(--mk-steel-dark));
+  box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--mk-shadow) 22%, transparent), 0 4px 0 color-mix(in srgb, var(--mk-steel-dark) 80%, var(--mk-shadow)), 0 8px 14px color-mix(in srgb, var(--mk-shadow) 22%, transparent); }
+.ct-can__tin::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; border: 2px dashed color-mix(in srgb, var(--mk-white) 45%, transparent); }
+.ct-can__window { position: relative; inline-size: 40px; block-size: 40px; border-radius: 50%; overflow: hidden; box-shadow: inset 0 2px 3px color-mix(in srgb, var(--mk-shadow) 45%, transparent), 0 0 0 2px var(--mk-graphite); }
+.ct-can__window > svg { inline-size: 100%; block-size: 100%; display: block; }
+.ct-can__star { position: absolute; inset-block-start: -2px; inset-inline-end: -3px; inline-size: 22px; block-size: 22px; background: radial-gradient(circle at 35% 30%, var(--mk-gold-light), var(--mk-sun) 45%, var(--mk-gold)); clip-path: polygon(50% 0, 62% 34%, 98% 36%, 70% 58%, 80% 94%, 50% 74%, 20% 94%, 30% 58%, 2% 36%, 38% 34%); filter: drop-shadow(0 1px 0 var(--mk-gold-deep)); }
+.ct-can__name { font: 800 13px/1.15 var(--studio-font); text-align: center; color: var(--ct-ink); }
+.ct-can[aria-pressed='true'] .ct-can__tin { background: radial-gradient(circle at 34% 28%, var(--mk-gold-light), var(--mk-gold) 55%, var(--mk-gold-deep)); transform: translateY(-2px); box-shadow: 0 0 0 3px var(--mk-white), 0 0 0 6px color-mix(in srgb, var(--studio-action-gold) 70%, transparent), 0 8px 16px color-mix(in srgb, var(--mk-shadow) 24%, transparent); }
+.ct-can[aria-pressed='true'] .ct-can__name { color: var(--mk-gold-deep); }
+
+/* The stage window. */
+.ct-stage { position: relative; isolation: isolate; inline-size: 100%; aspect-ratio: 4 / 3; border-radius: 14px; overflow: hidden; background: var(--mk-wood); box-shadow: 0 14px 28px color-mix(in srgb, var(--mk-shadow) 26%, transparent), 0 2px 0 color-mix(in srgb, var(--mk-wood-dark) 70%, transparent); }
+.ct-stage > .ct-scene { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; display: block; }
+.ct-scene .ct-frac { font: 900 9px/1 var(--studio-font); }
+.ct-grain { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; opacity: .2;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .4 0 0 0 0 .34 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.ct-caption { margin: 0; min-block-size: 26px; text-align: center; font: 800 17px/1.35 var(--studio-font); color: var(--ct-ink); }
+.ct-badge { position: absolute; inset-block-start: 15%; inset-inline-end: 9%; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px 4px 8px; border-radius: 14px; font: 900 13px/1 var(--studio-font); color: var(--mk-indigo-deep); background: color-mix(in srgb, var(--mk-lilac) 88%, var(--mk-white)); box-shadow: 0 2px 0 var(--mk-violet), 0 4px 10px color-mix(in srgb, var(--mk-shadow) 30%, transparent); pointer-events: none; }
+
+/* The film strip: dark film, sprocket holes, real tiny frames, a gold gate. */
+.ct-strip { position: relative; display: flex; flex-direction: column; gap: 3px; padding: 4px 8px; border-radius: 8px; background: var(--ct-film); cursor: ew-resize; touch-action: none; user-select: none; -webkit-user-select: none; box-shadow: 0 6px 14px color-mix(in srgb, var(--mk-shadow) 24%, transparent); }
+.ct-strip:focus-visible { outline: 3px solid var(--studio-action-gold); outline-offset: 3px; }
+.ct-strip__holes { block-size: 7px; background-image: radial-gradient(closest-side, var(--mk-cream) 72%, transparent 82%); background-size: 13px 7px; background-repeat: repeat-x; opacity: .82; }
+.ct-strip__track { position: relative; block-size: 46px; }
+.ct-strip__frames { position: absolute; inset: 0; display: flex; gap: 3px; }
+.ct-strip__cell { flex: 1 1 0; min-inline-size: 0; border-radius: 2px; overflow: hidden; opacity: .78; }
+.ct-strip__cell > svg { inline-size: 100%; block-size: 100%; display: block; }
+.ct-strip__done { position: absolute; inset-block: 0; inset-inline-start: 0; background: color-mix(in srgb, var(--studio-action-gold) 22%, transparent); pointer-events: none; border-radius: 2px; }
+.ct-strip__gate { position: absolute; inset-block: -9px; inline-size: 20px; margin-inline-start: -10px; border-radius: 5px; border: 3px solid var(--studio-action-gold); background: color-mix(in srgb, var(--mk-gold-light) 18%, transparent); box-shadow: 0 0 0 2px var(--ct-film), 0 0 14px color-mix(in srgb, var(--studio-action-gold) 75%, transparent); pointer-events: none; }
+
+/* The projectionist's keys: soft clay buttons, Play the gold one. */
+.ct-transport { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ct-key { display: inline-grid; place-items: center; min-inline-size: var(--studio-tap); min-block-size: var(--studio-tap); padding: 0; border: 0; border-radius: 50%; color: var(--ct-ink);
+  background: radial-gradient(circle at 34% 26%, var(--mk-white), var(--mk-paper) 50%, var(--mk-paper-shade));
+  box-shadow: 0 4px 0 var(--mk-linen-shade), 0 8px 14px color-mix(in srgb, var(--mk-shadow) 16%, transparent); transition: transform .1s, box-shadow .1s; }
+.ct-key:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--mk-linen-shade), 0 3px 6px color-mix(in srgb, var(--mk-shadow) 16%, transparent); }
+.ct-key:disabled { opacity: .4; box-shadow: none; }
+.ct-key--play { min-inline-size: 70px; min-block-size: 70px; color: var(--studio-action-ink); background: radial-gradient(circle at 34% 26%, var(--mk-gold-light), var(--mk-sun) 45%, var(--mk-gold)); box-shadow: 0 5px 0 var(--mk-gold-deep), 0 10px 18px color-mix(in srgb, var(--mk-gold) 35%, transparent); }
+.ct-key--dir[aria-pressed='true'] { background: radial-gradient(circle at 34% 26%, var(--mk-white), var(--mk-lilac) 60%, var(--mk-violet)); color: var(--mk-indigo-deep); box-shadow: 0 4px 0 var(--mk-plum), 0 8px 14px color-mix(in srgb, var(--mk-violet) 30%, transparent); }
+.ct-key:focus-visible, .ct-can:focus-visible, .ct-lump:focus-visible, .ct button:focus-visible { outline: 3px solid var(--ct-ink); outline-offset: 3px; }
+.ct[dir='rtl'] .ct-flip { transform: scaleX(-1); }
+/* The clay button sits with the cans: two lumps on a wooden board. */
+.ct-can__tin--clay { gap: 0; grid-auto-flow: column; background: radial-gradient(circle at 34% 28%, var(--mk-wood-light), var(--mk-wood) 60%, var(--mk-wood-dark)); box-shadow: 0 4px 0 var(--mk-wood-dark), 0 8px 14px color-mix(in srgb, var(--mk-shadow) 22%, transparent); }
+.ct-can__tin--clay::before { border-color: color-mix(in srgb, var(--mk-white) 30%, transparent); }
+.ct-can__tin--clay .ct-lump__art { inline-size: 27px; block-size: 25px; margin-inline: -2px; }
+.ct-can--clay[aria-pressed='true'] .ct-can__tin { box-shadow: 0 0 0 3px var(--mk-white), 0 0 0 6px color-mix(in srgb, var(--studio-action-gold) 70%, transparent); }
+.ct-roll, .ct-curtain { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+/* Choosing the clay. */
+.ct-pick { display: grid; gap: 8px; }
+.ct-pick__row { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px; }
+.ct-pick__title { min-inline-size: 52px; font: 900 15px/1.1 var(--studio-font); color: var(--ct-ink); }
+.ct-pick__lumps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+.ct-lump { display: grid; place-items: center; min-block-size: var(--studio-tap); padding: 0; border: 0; border-radius: 16px; background: transparent; transition: transform .12s; }
+.ct-lump__art { inline-size: 50px; block-size: 46px; }
+.ct-lump[aria-checked='true'] { background: color-mix(in srgb, var(--studio-action-gold) 22%, var(--mk-white)); box-shadow: inset 0 0 0 3px var(--studio-action-gold); transform: translateY(-2px); }
+.ct-roll { margin-block-start: 4px; }
+.ct-note { margin: 0; text-align: center; font: 700 14px/1.4 var(--studio-font); color: var(--studio-ink-soft); }
+.ct-curtain__line { margin: 0; font: 800 15px/1.3 var(--studio-font); color: var(--ct-ink); text-align: center; }
+
+@media (max-width: 600px) {
+  .ct { padding: 10px; gap: 9px; }
+  .ct-can__tin { inline-size: 54px; block-size: 54px; }
+  .ct-can__window { inline-size: 34px; block-size: 34px; }
+  .ct-can__name { font-size: 12px; }
+  .ct-transport { gap: 6px; }
+  .ct-pick__title { min-inline-size: 0; font-size: 14px; }
+  .ct-pick__row { grid-template-columns: 1fr; gap: 2px; }
+}
+@media (min-width: 900px) {
+  .ct { grid-template-columns: minmax(0, 1.65fr) minmax(250px, 1fr); align-items: start; column-gap: 22px; }
+  .ct-col { display: flex; flex-direction: column; gap: 12px; min-inline-size: 0; }
+  .ct-col--side { justify-content: flex-start; padding-block-start: 4px; }
+  .ct-cans { justify-content: space-between; }
+  .ct-pick__row { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ct-key, .ct-lump { transition: none; }
+  .ct-can[aria-pressed='true'] .ct-can__tin, .ct-lump[aria-checked='true'] { transform: none; }
+}

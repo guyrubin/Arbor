@@ -1,0 +1,100 @@
+/* Woolly Mammoth: one stage holds the steppe, the mammoth (a canvas), the five
+   glowing rings and the cream fact card, so cause and effect never scroll
+   apart. The stage is the scene and stays left-to-right in Hebrew; only the
+   chrome around it (the words, the zoom pill, the card's side) mirrors.
+   Every colour is a Studio token or the makers' palette. */
+.iaf { --iaf-gap: 10px; display: flex; flex-direction: column; gap: var(--iaf-gap); block-size: clamp(480px, calc(100dvh - 150px), 900px); min-inline-size: 0; color: var(--studio-text); font-family: var(--studio-font); }
+.iaf button { font-family: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+.iaf-top { display: flex; align-items: center; gap: 12px; min-block-size: 52px; }
+.iaf-cue { flex: 1 1 0; min-inline-size: 0; margin: 0; font-size: 17px; font-weight: 800; line-height: 1.35; color: var(--studio-text); text-wrap: pretty; }
+.iaf-flakes { display: flex; flex: none; gap: 2px; margin: 0; padding: 5px 8px; list-style: none; border-radius: 999px; background: color-mix(in srgb, var(--mk-paper) 94%, transparent); box-shadow: 0 2px 0 var(--mk-paper-shade), 0 8px 18px color-mix(in srgb, var(--mk-shadow) 30%, transparent); }
+.iaf-flakes > li { display: grid; place-items: center; inline-size: 30px; block-size: 30px; }
+.iaf-flake { inline-size: 28px; block-size: 28px; overflow: visible; }
+.iaf-flake__disc { fill: transparent; transition: fill .3s var(--studio-ease-soft); }
+.iaf-flake__shadow { fill: color-mix(in srgb, var(--mk-indigo) 30%, transparent); opacity: 0; }
+.iaf-flake__arms { fill: color-mix(in srgb, var(--mk-snow-shade) 35%, var(--mk-storm)); opacity: .62; transform-origin: center; transition: opacity .3s, fill .3s; }
+.iaf-flake[data-lit=true] .iaf-flake__disc { fill: color-mix(in srgb, var(--mk-sky) 70%, var(--mk-water)); }
+.iaf-flake[data-lit=true] .iaf-flake__shadow { opacity: 1; }
+.iaf-flake[data-lit=true] .iaf-flake__arms { fill: var(--mk-white); opacity: 1; animation: iaf-flake-pop .5s var(--studio-ease-spring); }
+
+.iaf-stage { position: relative; isolation: isolate; flex: 1 1 auto; min-block-size: 260px; overflow: hidden; border-radius: var(--studio-radius-panel); background: var(--mk-sky-pale); box-shadow: 0 0 0 1px color-mix(in srgb, var(--mk-white) 30%, transparent), 0 18px 44px color-mix(in srgb, var(--mk-shadow) 45%, transparent); touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; outline: none; }
+.iaf-stage:focus-visible { box-shadow: 0 0 0 4px var(--studio-action-gold), 0 18px 44px color-mix(in srgb, var(--mk-shadow) 45%, transparent); }
+.iaf-stage[data-zoom=close] { cursor: crosshair; }
+.iaf-backdrop, .iaf-canvas { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; display: block; }
+.iaf-backdrop { z-index: 0; }
+.iaf-canvas { z-index: 1; }
+.iaf-sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* The five glowing rings: 56 px targets, a soft gold pulse round a small bead.
+   Found, the bead turns to snow and the pulse rests. */
+.iaf-ring { position: absolute; z-index: 3; inset-block-start: 0; left: 0; inline-size: var(--studio-tap); block-size: var(--studio-tap); margin: calc(var(--studio-tap) / -2) 0 0 calc(var(--studio-tap) / -2); padding: 0; border: 0; border-radius: 50%; background: transparent; will-change: transform; }
+.iaf-ring:focus-visible { outline: 3px solid var(--mk-white); outline-offset: 0; box-shadow: 0 0 0 6px var(--mk-ink); }
+.iaf-ring__pulse { position: absolute; inset: 9px; border-radius: 50%; border: 3px solid var(--mk-gold-light); box-shadow: 0 0 14px 2px color-mix(in srgb, var(--mk-sun) 60%, transparent), inset 0 0 10px color-mix(in srgb, var(--mk-sun) 45%, transparent); animation: iaf-pulse 1.9s ease-out infinite; }
+.iaf-ring__dot { position: absolute; inset: 19px; border-radius: 50%; border: 2.5px solid var(--mk-white); background: radial-gradient(circle at 35% 30%, var(--mk-butter), var(--mk-amber) 60%, var(--mk-gold)); box-shadow: 0 2px 6px color-mix(in srgb, var(--mk-shadow) 55%, transparent); transition: transform .25s var(--studio-ease-spring), background .3s; }
+.iaf-ring:active .iaf-ring__dot { transform: scale(.88); }
+.iaf-ring[data-found=true] .iaf-ring__pulse { animation: none; opacity: .55; border-width: 2px; border-color: var(--mk-white); box-shadow: 0 0 8px color-mix(in srgb, var(--mk-sky) 70%, transparent); }
+.iaf-ring[data-found=true] .iaf-ring__dot { background: radial-gradient(circle at 35% 30%, var(--mk-white), var(--mk-sky) 75%); border-color: var(--mk-white); }
+.iaf-ring[data-open=true] .iaf-ring__dot { transform: scale(1.25); }
+.iaf[data-stage=call] .iaf-ring { opacity: 0; pointer-events: none; transition: opacity .3s; }
+
+/* Zoom: a paper pill at the stage's end corner, in reach of a thumb. */
+.iaf-zoom { position: absolute; z-index: 4; inset-block-end: 12px; display: flex; flex-direction: column; gap: 2px; padding: 4px; border-radius: 999px; background: color-mix(in srgb, var(--mk-paper) 94%, transparent); box-shadow: 0 2px 0 var(--mk-paper-shade), 0 10px 22px color-mix(in srgb, var(--mk-shadow) 30%, transparent); }
+.iaf-zoom[data-side=right] { right: 12px; }
+.iaf-zoom[data-side=left] { left: 12px; }
+.iaf-round { display: grid; place-items: center; inline-size: var(--studio-tap); block-size: var(--studio-tap); padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--mk-ink); transition: background-color .15s, transform .12s; }
+.iaf-round:active:not(:disabled) { transform: scale(.92); background: color-mix(in srgb, var(--mk-paper-shade) 70%, transparent); }
+.iaf-round:disabled { color: color-mix(in srgb, var(--mk-ink) 30%, transparent); cursor: default; }
+.iaf-round:focus-visible, .iaf-tag__close:focus-visible { outline: 3px solid var(--mk-ink); outline-offset: 1px; }
+
+/* The fact card: cream paper over the bottom of the stage, beside the pill. */
+.iaf-tag { position: absolute; z-index: 5; inset-block-end: 12px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 10px; max-inline-size: min(460px, calc(100% - 24px - var(--studio-tap) - 20px)); padding: 12px 6px 14px 14px; border-radius: 18px; background: linear-gradient(170deg, var(--mk-white), var(--mk-paper) 55%, var(--mk-cream)); color: var(--mk-ink); box-shadow: 0 3px 0 var(--mk-paper-shade), 0 16px 34px color-mix(in srgb, var(--mk-shadow) 38%, transparent); outline: none; animation: iaf-tag-in .32s var(--studio-ease-soft); }
+.iaf-tag[dir=rtl] { padding: 12px 14px 14px 6px; }
+.iaf-tag[data-side=right] { left: 12px; }
+.iaf-tag[data-side=left] { right: 12px; }
+.iaf-tag:focus-visible { box-shadow: 0 0 0 3px var(--mk-ink), 0 16px 34px color-mix(in srgb, var(--mk-shadow) 38%, transparent); }
+.iaf-tag__flake { display: grid; place-items: center; inline-size: 40px; block-size: 40px; margin-block-start: 2px; }
+.iaf-tag__flake .iaf-flake { inline-size: 40px; block-size: 40px; }
+.iaf-tag__flake .iaf-flake__arms { animation: none; }
+.iaf-tag__words { min-inline-size: 0; padding-block-start: 4px; }
+.arbor-play .iaf-tag .iaf-tag__title { margin: 0; font: 900 19px/1.2 var(--studio-font) !important; color: var(--mk-ink) !important; }
+.iaf-tag__text { margin: 6px 0 0; font-size: 16px; font-weight: 700; line-height: 1.42; color: color-mix(in srgb, var(--mk-ink) 88%, var(--mk-ink-soft)); text-wrap: pretty; }
+.iaf-tag__close { display: grid; place-items: center; inline-size: var(--studio-tap); block-size: var(--studio-tap); margin: -6px 0; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--mk-ink-soft); }
+.iaf-tag__close:active { background: color-mix(in srgb, var(--mk-paper-shade) 70%, transparent); }
+.iaf-done { margin-block-start: 12px; }
+
+.iaf-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.iaf-actions .iaf-action { flex: 0 1 auto; padding-inline: 18px; }
+.iaf-actions .iaf-action:disabled { opacity: .45; cursor: default; }
+.iaf-actions .iaf-action--done { order: -1; }
+
+@keyframes iaf-pulse { 0% { transform: scale(.72); opacity: .95; } 70% { opacity: .25; } 100% { transform: scale(1.22); opacity: 0; } }
+@keyframes iaf-flake-pop { 0% { transform: scale(.4) rotate(-40deg); } 70% { transform: scale(1.18) rotate(6deg); } 100% { transform: scale(1) rotate(0); } }
+@keyframes iaf-tag-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 640px) {
+  .iaf { --iaf-gap: 8px; block-size: clamp(460px, calc(100dvh - 128px), 860px); }
+  /* A tall phone gives the stage no more than a little over its width: the whole mammoth stays big. */
+  .iaf-stage { flex: 0 1 auto; block-size: min(134vw, 100%); }
+  .iaf-top { gap: 8px; min-block-size: 48px; }
+  .iaf-cue { font-size: 15px; }
+  .iaf-flakes { padding: 4px 6px; }
+  .iaf-flakes > li { inline-size: 24px; block-size: 26px; }
+  .iaf-flake { inline-size: 24px; block-size: 24px; }
+  .iaf-tag { gap: 8px; padding-inline-start: 10px; }
+  .iaf-tag[dir=rtl] { padding-inline: 10px 6px; }
+  .iaf-tag__flake, .iaf-tag__flake .iaf-flake { inline-size: 30px; block-size: 30px; }
+  .arbor-play .iaf-tag .iaf-tag__title { font-size: 17px !important; }
+  .iaf-tag__text { font-size: 15px; }
+  .iaf-actions .iaf-action { padding-inline: 14px; font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .iaf-ring__pulse, .iaf-flake__arms, .iaf-tag, .iaf-ring__dot, .iaf-round, .iaf-flake__disc { animation: none !important; transition: none !important; }
+  .iaf-ring__pulse { transform: scale(1.05); opacity: .9; }
+  .iaf[data-stage=call] .iaf-ring { transition: none; }
+}
+@media (forced-colors: active) {
+  .iaf-ring__pulse { border-color: Highlight; box-shadow: none; }
+  .iaf-ring__dot { border-color: ButtonText; background: Highlight; }
+  .iaf-tag, .iaf-zoom, .iaf-flakes { border: 2px solid ButtonText; }
+}
