@@ -241,7 +241,7 @@ describe("Companion draft, attachment and speech lifetime", () => {
     expect(session.stop).not.toHaveBeenCalled(); expect(view.stopVoice).not.toHaveBeenCalled();
     session.callbacks.onResult("She tried again"); view.render();
     expect(view.state.chatInput).toBe("A moment from today She tried again");
-    session.callbacks.onEnd(); view.render(); view.click("Send"); await tick();
+    session.callbacks.onEnd(); view.render(); view.click("Ask Arbor"); await tick();
     expect(view.onSend).toHaveBeenCalledWith(undefined, { attachments: [file] });
     expect(view.previews()).toEqual([]);
   });
@@ -274,21 +274,21 @@ describe("Companion draft, attachment and speech lifetime", () => {
     expect(text(view.render())).toContain("Preparing your files");
     view.state.visible = false; view.render(); pending.pending.resolve(photo()); await tick();
     expect(text(view.render())).not.toContain("Preparing your files"); expect(view.previews()).toEqual([photo().name]);
-    view.state.visible = true; expect(button(view.render(), "Send").props.disabled).toBe(false);
-    view.click("Send"); await tick(); expect(view.onSend).toHaveBeenCalledWith(undefined, { attachments: [photo()] });
+    view.state.visible = true; expect(button(view.render(), "Ask Arbor").props.disabled).toBe(false);
+    view.click("Ask Arbor"); await tick(); expect(view.onSend).toHaveBeenCalledWith(undefined, { attachments: [photo()] });
   });
 
   it("a successful send clears attachments even while the panel is hidden", async () => {
     const pending = deferred<boolean>(); const view = harness({ send: () => pending.promise }); await attach(view);
-    view.click("Send"); await tick(); view.state.visible = false; view.render(); pending.resolve(true); await tick();
+    view.click("Ask Arbor"); await tick(); view.state.visible = false; view.render(); pending.resolve(true); await tick();
     expect(view.previews()).toEqual([]); view.state.visible = true; expect(view.previews()).toEqual([]);
   });
 
   it("a failed send retains original bytes and sends the same attachments on retry", async () => {
     let succeed = false; const view = harness({ send: async () => succeed }); const file = await attach(view);
-    view.click("Send"); await tick(); expect(view.previews()).toEqual([file.name]);
+    view.click("Ask Arbor"); await tick(); expect(view.previews()).toEqual([file.name]);
     expect(view.state.chatInput).toBe("A moment from today");
-    succeed = true; view.click("Send"); await tick();
+    succeed = true; view.click("Ask Arbor"); await tick();
     expect(view.onSend).toHaveBeenCalledTimes(2);
     expect(view.onSend.mock.calls.map(call => call[1]?.attachments)).toEqual([[file], [file]]);
     expect(view.previews()).toEqual([]);
@@ -296,7 +296,7 @@ describe("Companion draft, attachment and speech lifetime", () => {
 
   it("a missing file permission preserves draft and originals without sending to AI", async () => {
     const view = harness({ permission: async () => false }); const file = await attach(view);
-    view.click("Send"); await tick();
+    view.click("Ask Arbor"); await tick();
     expect(view.requirePermission).toHaveBeenCalledOnce();
     expect(view.onSend).not.toHaveBeenCalled(); expect(view.previews()).toEqual([file.name]);
     expect(view.state.chatInput).toBe("A moment from today");
@@ -304,22 +304,22 @@ describe("Companion draft, attachment and speech lifetime", () => {
 
   it("immediate-help text reaches the governed server path without waiting on file permission", async () => {
     const view = harness({ text: "My child says he wants to die", permission: async () => false });
-    const file = await attach(view); view.click("Send"); await tick();
+    const file = await attach(view); view.click("Ask Arbor"); await tick();
     expect(view.requirePermission).not.toHaveBeenCalled();
     expect(view.onSend).toHaveBeenCalledWith(undefined, { attachments: [file] });
   });
 
   it("closing while checking file permission does not send a draft after the panel is hidden", async () => {
     const pending = deferred<boolean>(); const view = harness({ permission: () => pending.promise });
-    const file = await attach(view); view.click("Send"); view.state.visible = false; view.render();
+    const file = await attach(view); view.click("Ask Arbor"); view.state.visible = false; view.render();
     pending.resolve(true); await tick();
     expect(view.onSend).not.toHaveBeenCalled(); expect(view.previews()).toEqual([file.name]);
-    view.state.visible = true; expect(button(view.render(), "Send").props.disabled).toBe(false);
+    view.state.visible = true; expect(button(view.render(), "Ask Arbor").props.disabled).toBe(false);
   });
 
   it("late send success cannot remove files attached in the next conversation", async () => {
     const pending = deferred<boolean>(); const view = harness({ send: () => pending.promise }); await attach(view);
-    view.click("Send"); view.newConversation(); const current = await attach(view, photo("current"));
+    view.click("Ask Arbor"); view.newConversation(); const current = await attach(view, photo("current"));
     pending.resolve(true); await tick(); expect(view.previews()).toEqual([current.name]);
   });
 
@@ -391,7 +391,7 @@ describe("Companion secondary tools disclosure", () => {
     expect(toggle.props["aria-expanded"]).toBe(false);
     expect(visible.filter(node => node.type === "textarea")).toHaveLength(1);
     expect(visible.filter(node => node.type === "button")).toHaveLength(3);
-    expect(button(tree, translate(language, "companion.input.send")).props.disabled).toBe(true);
+    expect(button(tree, translate(language, "companion.input.ask-send")).props.disabled).toBe(true);
     expect(button(tree, "Talk with Arbor").props.disabled).toBe(false);
     // F-TALK-1 re-pin: the honesty line is the composer foot ("an AI companion, not a doctor; files only on send").
     expect(visible.some(node => node.type === "p" && text(node) === translate(language, "companion.input.foot"))).toBe(true);
@@ -459,10 +459,10 @@ describe("Companion secondary tools disclosure", () => {
     const session = view.sessions[0]; session.callbacks.onInterim("Words in progress");
     const recording = shownNodes(view.render()).filter(node => node.type === "RecordingIndicator");
     expect(recording).toHaveLength(1); expect(recording[0].props.interim).toBe("Words in progress");
-    expect(button(view.render(), "Send").props.disabled).toBe(true);
+    expect(button(view.render(), "Ask Arbor").props.disabled).toBe(true);
     recording[0].props.onStop(); expect(session.stop).toHaveBeenCalledOnce(); session.callbacks.onEnd();
     expect(shownNodes(view.render()).some(node => node.type === "RecordingIndicator")).toBe(false);
-    expect(button(view.render(), "Send").props.disabled).toBe(false);
+    expect(button(view.render(), "Ask Arbor").props.disabled).toBe(false);
   });
 
   it("leaves live-voice Stop enabled outside the disclosure while busy", () => {
@@ -479,7 +479,7 @@ describe("Companion secondary tools disclosure", () => {
     const alert = shownNodes(view.render()).filter(node => node.props.role === "alert");
     expect(alert).toHaveLength(1); expect(text(alert[0])).toContain(supported ? "not-allowed" : "unsupported");
     expect(button(view.render(), "Add or save").props["aria-expanded"]).toBe(false);
-    expect(view.state.chatInput).toBe("A moment from today"); expect(button(view.render(), "Send").props.disabled).toBe(false);
+    expect(view.state.chatInput).toBe("A moment from today"); expect(button(view.render(), "Ask Arbor").props.disabled).toBe(false);
   });
 
   it("keeps AI disclosure visible during file-permission review and returns to the same draft", async () => {

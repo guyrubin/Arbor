@@ -205,13 +205,13 @@ export default function CompanionComposer({ childId, conversationRevision, langu
         </button>
         <textarea ref={textareaRef} className="field-bare" value={value} onChange={event => onChange(event.target.value)} rows={1} disabled={busy || sending || voiceActive}
           onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(); } }}
-          placeholder={inputText(language, "companion.input.share-a-moment-a-question-a-thought")}
+          placeholder={inputText(language, "companion.input.ask-placeholder")}
           aria-label={inputText(language, "companion.input.what-would-you-like-to-share-with-arbor")} />
         {/* The voice door: an icon at rest (its name is the live label, its
             tooltip "Talk it through"); while live it reads "Stop". */}
         <button type="button" className="companion-live-button" disabled={!voiceActive && (busy || preparing || draftPending)} onClick={onVoice} aria-pressed={voiceActive} aria-label={voiceLabel}
           title={voiceActive ? undefined : inputText(language, "companion.input.talk")}><Icon name={voiceActive ? "stop" : "graphic_eq"} size={22} />{voiceActive ? (inputText(language, "companion.input.stop")) : null}</button>
-        <button type="button" className="companion-send" data-testid="coach-send" onClick={() => void send()} disabled={busy || sending || !!consent.busy || preparing || listening || voiceActive || (!value.trim() && !attachments.length)} aria-label={inputText(language, "companion.input.send")}><Icon name="arrow_forward" size={23} className="rtl:-scale-x-100" /></button>
+        <button type="button" className="companion-send" data-testid="coach-send" onClick={() => void send()} disabled={busy || sending || !!consent.busy || preparing || listening || voiceActive || (!value.trim() && !attachments.length)} aria-label={inputText(language, "companion.input.ask-send")}><Icon name="arrow_forward" size={23} className="rtl:-scale-x-100" /></button>
       </div>
     </div>
     {draftPending && !voiceActive && !voiceResting && <p className="companion-media-note">{inputText(language, "companion.input.send-your-draft-then-continue-the-conversation-by-voice")}</p>}
