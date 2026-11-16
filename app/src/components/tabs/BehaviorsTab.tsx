@@ -345,8 +345,8 @@ export default function BehaviorsTab() {
               <div className="space-y-2">
                 {typeCounts30d.map(({ type, count }) => (
                   <div key={type} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-                    <span className="text-[11px] truncate" style={{ color: "var(--arbor-muted)" }}>{behaviorTypeLabel(type, t)}</span>
-                    <span className="text-[11px] font-bold flex-shrink-0" style={{ color: "var(--arbor-ink)" }}>
+                    <span className="text-[12px] truncate" style={{ color: "var(--arbor-muted)" }}>{behaviorTypeLabel(type, t)}</span>
+                    <span className="text-[12px] font-bold flex-shrink-0" style={{ color: "var(--arbor-ink)" }}>
                       {t("beh.countEntry", { count })}
                     </span>
                   </div>

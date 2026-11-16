@@ -430,7 +430,7 @@ export default function SpeechCoachTab() {
             scoring row sits INSIDE it, directly under Back/Next, so the
             primary move is on the fold; Record and the consent invite follow. */}
         <div className="rounded-[var(--play-radius-lg)] p-5 sm:p-6 text-center mb-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
-          <p className="text-[11px] uppercase font-extrabold tracking-wider mb-3" style={{ color: "var(--arbor-sky-ink)" }}>
+          <p className="text-[12px] uppercase font-extrabold tracking-wider mb-3" style={{ color: "var(--arbor-sky-ink)" }}>
             {level === "story" ? t("prac.speech.target.story") : t("prac.speech.target.together", { current: itemIdx + 1, total: items.length })}
           </p>
           <p className="font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", fontSize: level === "word" ? "3rem" : "1.5rem" }}>
@@ -491,7 +491,7 @@ export default function SpeechCoachTab() {
               </button>
             ))}
             {lastSaved && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-ink-soft)" }}>
+              <span className="inline-flex items-center gap-1 text-[12px] font-bold" style={{ color: "var(--arbor-ink-soft)" }}>
                 <Icon name="check" size={14} /> {t("prac.read.saved")}
               </span>
             )}
@@ -520,7 +520,7 @@ export default function SpeechCoachTab() {
               </button>
             );
           })}
-          <span className="self-center text-[11px] ms-1" style={{ color: "var(--arbor-muted)" }}>{t(LADDER.find((l) => l.level === level)?.hintKey ?? "")}</span>
+          <span className="self-center text-[12px] ms-1" style={{ color: "var(--arbor-muted)" }}>{t(LADDER.find((l) => l.level === level)?.hintKey ?? "")}</span>
         </div>
 
         {/* Record & Compare (feature 2) — a soft secondary, never the loudest. */}
@@ -541,13 +541,13 @@ export default function SpeechCoachTab() {
             </span>
           )}
           {(!recognitionAvailable || !autoVerdictOk) && (
-            <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
+            <span className="text-[12px]" style={{ color: "var(--arbor-muted)" }}>
               <Icon name="mic_off" size={12} className="inline me-1" />
               {!autoVerdictOk ? t("prac.speech.parentJudged") : t("prac.speech.noAutoListen")}
             </span>
           )}
         </div>
-        {micError && <p className="text-[11px] mb-3" style={{ color: "var(--arbor-pink-ink)" }}>{micError}</p>}
+        {micError && <p className="text-[12px] mb-3" style={{ color: "var(--arbor-pink-ink)" }}>{micError}</p>}
 
         {/* STORE-K2 consent invite — parent surface only. W2-SHELLPLAY critic
             r1: a one-line door (closed disclosure) after the scoring row; the
@@ -561,7 +561,7 @@ export default function SpeechCoachTab() {
               <Icon name="expand_more" size={16} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
             </summary>
             <div className="px-3 pb-3 space-y-2.5">
-            <p className="text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>
+            <p className="text-[12px] leading-snug" style={{ color: "var(--arbor-muted)" }}>
               {t("prac.speech.voiceConsent.body", { name: first })}
             </p>
             <TrustPanel
@@ -570,7 +570,7 @@ export default function SpeechCoachTab() {
               stores={[t("prac.speech.voiceConsent.stores")]}
               controls={[t("prac.speech.voiceConsent.controls")]}
             />
-            <label className="flex items-start gap-2 text-[11px] leading-snug cursor-pointer" style={{ color: "var(--arbor-ink)" }}>
+            <label className="flex items-start gap-2 text-[12px] leading-snug cursor-pointer" style={{ color: "var(--arbor-ink)" }}>
               <input type="checkbox" checked={consentChecked} onChange={(e) => setConsentChecked(e.target.checked)} className="mt-0.5" style={{ accentColor: "var(--arbor-clay)" }} />
               <span>{t("prac.speech.voiceConsent.checkbox", { name: first })}</span>
             </label>
@@ -584,7 +584,7 @@ export default function SpeechCoachTab() {
               {t("prac.speech.voiceConsent.cta")}
             </button>
             {consentError && (
-              <p className="text-[11px]" style={{ color: "var(--arbor-pink-ink)" }}>{t("prac.speech.voiceConsent.error")}</p>
+              <p className="text-[12px]" style={{ color: "var(--arbor-pink-ink)" }}>{t("prac.speech.voiceConsent.error")}</p>
             )}
             </div>
           </details>
@@ -616,7 +616,7 @@ export default function SpeechCoachTab() {
           </p>
           <Chip tone="sky">{t("prac.speech.evidence.chip")}</Chip>
         </div>
-        <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
+        <p className="text-[12px]" style={{ color: "var(--arbor-muted)" }}>
           {t("elev.practice.speech.littleOften")}
         </p>
       </div>
@@ -628,7 +628,7 @@ export default function SpeechCoachTab() {
         <div className="space-y-4">
           {bands.map((band) => (
             <div key={band}>
-              <p className="text-[10px] uppercase font-bold tracking-wider mb-2" style={{ color: "var(--arbor-muted)" }}>{BAND_LABEL[band]}</p>
+              <p className="text-[12px] uppercase font-bold tracking-wider mb-2" style={{ color: "var(--arbor-muted)" }}>{BAND_LABEL[band]}</p>
               <div className="flex flex-wrap gap-2">
                 {SOUND_LIBRARY.filter((s) => s.band === band).map((s) => {
                   const on = s.id === soundId;
@@ -647,7 +647,7 @@ export default function SpeechCoachTab() {
                       {s.id.toUpperCase()}
                       {/* KID-03/GP-20: a COUNT of tries, never an accuracy percentage. */}
                       {st && st.attempts > 0 && (
-                        <span className="text-[11px] font-bold" style={{ color: on ? "var(--arbor-on-accent)" : "var(--arbor-clay)" }}>{st.attempts}</span>
+                        <span className="text-[12px] font-bold" style={{ color: on ? "var(--arbor-on-accent)" : "var(--arbor-clay)" }}>{st.attempts}</span>
                       )}
                     </button>
                   );
@@ -697,7 +697,7 @@ export default function SpeechCoachTab() {
                 <button
                   key={set.id}
                   onClick={() => { setVocabSetId(set.id); setVocabIdx(0); }}
-                  className="rounded-full px-3 py-1.5 text-[11px] font-extrabold"
+                  className="rounded-full px-3 py-1.5 text-[12px] font-extrabold"
                   style={set.id === vocabSetId ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
                 >
                   {set.emoji} {set.category}
@@ -707,7 +707,7 @@ export default function SpeechCoachTab() {
             <div className="rounded-2xl p-5 text-center" style={{ background: "var(--arbor-paper-deep)" }}>
               <p className="text-5xl">{vocabItem.emoji}</p>
               <p className="text-xl font-extrabold mt-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{vocabItem.word}</p>
-              <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("prac.lang.naming.ask", { name: first })}</p>
+              <p className="text-[12px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("prac.lang.naming.ask", { name: first })}</p>
             </div>
             <button onClick={markNamed} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-clay)" }}>
               {languageSaved === "vocab-naming" ? <Icon name="check" size={14} /> : <Icon name="auto_awesome" size={14} />}
@@ -754,10 +754,10 @@ export default function SpeechCoachTab() {
             </div>
             {categoryPick !== null && (
               <div className="mt-3 rounded-2xl p-3 flex items-center gap-3" style={{ background: categoryRound.options[categoryPick].correct ? "var(--arbor-green-soft)" : "var(--arbor-yellow-soft)" }}>
-                <p className="text-[11px] flex-1" style={{ color: "var(--arbor-ink)" }}>
+                <p className="text-[12px] flex-1" style={{ color: "var(--arbor-ink)" }}>
                   {categoryRound.options[categoryPick].correct ? t("prac.lang.category.correct") : t("prac.lang.category.wrong")}
                 </p>
-                <button onClick={nextCategory} className="text-[11px] font-extrabold px-3 py-1.5 rounded-xl text-white" style={{ background: "var(--arbor-sky-ink)" }}>
+                <button onClick={nextCategory} className="text-[12px] font-extrabold px-3 py-1.5 rounded-xl text-white" style={{ background: "var(--arbor-sky-ink)" }}>
                   {t("prac.speech.next")}
                 </button>
               </div>
@@ -777,7 +777,7 @@ export default function SpeechCoachTab() {
               <p className="text-base font-extrabold mt-3 leading-snug" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                 {fillChild(expressPrompt.prompt)}
               </p>
-              <p className="text-[11px] mt-3 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>{t("prac.lang.express.tipLabel")}</b> {expressPrompt.parentTip}</p>
+              <p className="text-[12px] mt-3 leading-relaxed" style={{ color: "var(--arbor-muted)" }}><b>{t("prac.lang.express.tipLabel")}</b> {expressPrompt.parentTip}</p>
             </div>
             <button onClick={completeExpress} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 text-xs font-extrabold px-4 py-2.5 rounded-xl text-white" style={{ background: "var(--arbor-peach-ink)" }}>
               {languageSaved === "expressive" ? <Icon name="check" size={14} /> : <Icon name="auto_awesome" size={14} />}
@@ -817,7 +817,7 @@ export default function SpeechCoachTab() {
                         percentage, its fill bar and the up/down trend glyph all
                         graded the child on a parent surface — they are gone, not
                         moved to a tooltip or an aria value. */}
-                    <p className="text-[10px] mt-1" style={{ color: "var(--arbor-muted)" }}>
+                    <p className="text-[12px] mt-1" style={{ color: "var(--arbor-muted)" }}>
                       {t("prac.speech.progress.stat", { tries: s.attempts, level: s.levelReached })}
                     </p>
                   </div>
@@ -826,7 +826,7 @@ export default function SpeechCoachTab() {
             })}
           </div>
         )}
-        <p className="text-[11px] mt-4" style={{ color: "var(--arbor-muted)" }}>
+        <p className="text-[12px] mt-4" style={{ color: "var(--arbor-muted)" }}>
           {t("prac.speech.progress.footer")}
         </p>
       </SectionCard>

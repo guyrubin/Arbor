@@ -39,7 +39,7 @@ export default function RewardsCard({ childId, name }: { childId: string; name: 
 
   return (
     <div className="pt-4 mt-2 space-y-2" style={{ borderTop: "1px solid var(--arbor-rule)" }} data-testid="rewards-card">
-      <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>
+      <span className="text-[12px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>
         {t("profile.rewards.title", { name })}
       </span>
 
@@ -49,7 +49,7 @@ export default function RewardsCard({ childId, name }: { childId: string; name: 
             <span
               key={c.id}
               title={c.requirement}
-              className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-full"
+              className="inline-flex items-center gap-1 text-[12px] font-bold px-2.5 py-1.5 rounded-full"
               style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
             >
               <span aria-hidden="true">{c.emoji}</span> {c.label}
@@ -58,7 +58,7 @@ export default function RewardsCard({ childId, name }: { childId: string; name: 
         </div>
       )}
 
-      <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }} data-testid="rewards-count">
+      <p className="text-[12px]" style={{ color: "var(--arbor-muted)" }} data-testid="rewards-count">
         {rewardsCountLine(t, stats.totalSessions, name)}
       </p>
     </div>

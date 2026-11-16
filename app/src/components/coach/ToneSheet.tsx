@@ -96,7 +96,7 @@ export default function ToneSheet({ open, onClose, selectedLens, onSelect, t }: 
     <Modal open={open} onClose={onClose} title={t("coach.tone.title")} maxWidth="max-w-md">
       <div data-testid="tone-sheet" className="space-y-2" role="radiogroup" aria-label={t("coach.tone.title")} onKeyDown={onKeyDown}>
         {TONE_CHOICES.map((c) => row(c.id, c.lens, t(c.labelKey), t(c.subKey)))}
-        <p className="pt-2 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("coach.tone.more")}</p>
+        <p className="pt-2 text-[12px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("coach.tone.more")}</p>
         {MORE_APPROACHES.map((m) => row(m.slug, m.lens, t(`coach.tone.name.${m.slug}`), t(`coach.tone.more.${m.slug}`)))}
       </div>
     </Modal>

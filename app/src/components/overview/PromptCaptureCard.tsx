@@ -79,7 +79,7 @@ export default function PromptCaptureCard({
           chain, on the same wrapping row, AFTER the why text and visually
           quieter than the gradient capture CTA above. */}
       <div
-        className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] leading-relaxed"
+        className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] leading-relaxed"
         style={{ color: "var(--arbor-faint)" }}
       >
         {whyLine && (

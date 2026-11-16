@@ -199,7 +199,7 @@ export default function MimicStudioTab() {
               style={on ? { border: "1px solid var(--arbor-clay)", background: T.paperDeep } : undefined}>
               <span className="text-2xl">{p.emoji}</span>
               <p className="text-sm font-extrabold mt-1.5" style={{ color: "var(--arbor-ink)" }}>{p.title}</p>
-              <p className="text-[10.5px] mt-0.5 leading-snug" style={{ color: "var(--arbor-muted)" }}>{p.blurb}</p>
+              <p className="text-[12px] mt-0.5 leading-snug" style={{ color: "var(--arbor-muted)" }}>{p.blurb}</p>
               <div className="flex items-center gap-1.5 mt-2">
                 <ProgressPips total={p.prompts.length} current={done - 1} tone="clay" />
                 {done === p.prompts.length && <Icon name="star" size={14} fill={1} className="ms-1" style={{ color: "var(--arbor-yellow)" }} />}
@@ -231,7 +231,7 @@ export default function MimicStudioTab() {
               size="md"
               className="min-w-[44px] min-h-[44px] justify-center mt-2"
             />
-            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold mt-2" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
+            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-extrabold mt-2" style={{ background: "var(--arbor-peach-soft)", color: "var(--arbor-peach-ink)" }}>
               <Icon name="mood" size={12} /> {prompt.focus}
             </span>
             {/* KID-14: ≥ 44 px targets for the prev/next round controls. */}
@@ -245,7 +245,7 @@ export default function MimicStudioTab() {
                 <Icon name="chevron_right" size={20} />
               </button>
             </div>
-            {ratedPromptIds.has(prompt.id) && <p className="text-[10px] font-bold mt-2" style={{ color: "var(--arbor-clay)" }}>✓ {t("elev.play.mimic.alreadyPlayed")}</p>}
+            {ratedPromptIds.has(prompt.id) && <p className="text-[12px] font-bold mt-2" style={{ color: "var(--arbor-clay)" }}>✓ {t("elev.play.mimic.alreadyPlayed")}</p>}
           </div>
 
           {/* Mirror — the child watches themselves try it. B-KID-41 (KC-15): not in
@@ -269,7 +269,7 @@ export default function MimicStudioTab() {
                     <Icon name={mirrorGlyph} size={16} /> {t("elev.play.mimic.mirrorOn")}
                   </PlayButton>
                 )}
-                {camError && <p className="text-[11px] mt-3" style={{ color: "var(--arbor-pink)" }}>{camError}</p>}
+                {camError && <p className="text-[12px] mt-3" style={{ color: "var(--arbor-pink)" }}>{camError}</p>}
               </div>
             )}
             {mirrorOn && (

@@ -198,19 +198,19 @@ export default function FirstKeepsakeSheet({
     <Surface open={open} onClose={onClose} title={t("elev.waveR.keepsake.title")}>
       <div className="space-y-4" data-testid="first-keepsake-sheet">
         <div>
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-lav-ink)" }}>
+          <p className="text-[12px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-lav-ink)" }}>
             {t("elev.waveR.keepsake.eyebrow")}
           </p>
           <p className="mt-1 text-[15px] font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
             {milestoneTitle}
           </p>
-          <p className="mt-1.5 text-[12.5px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+          <p className="mt-1.5 text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
             {t("elev.waveR.keepsake.intro")}
           </p>
         </div>
 
         <label className="block">
-          <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>
+          <span className="text-[12px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>
             {t("elev.waveR.keepsake.noteLabel")}
           </span>
           <textarea
@@ -222,13 +222,13 @@ export default function FirstKeepsakeSheet({
             placeholder={t("elev.waveR.keepsake.notePlaceholder")}
             onChange={(e) => setNote(e.target.value)}
             data-testid="first-keepsake-note"
-            className="mt-1.5 w-full resize-none rounded-xl px-3 py-2 text-[13.5px] leading-relaxed focus:outline-none focus-visible:ring-2"
+            className="mt-1.5 w-full resize-none rounded-xl px-3 py-2 text-[13px] leading-relaxed focus:outline-none focus-visible:ring-2"
             style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
           />
         </label>
 
         <label className="block">
-          <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>
+          <span className="text-[12px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>
             {t("elev.waveR.keepsake.dateLabel")}
           </span>
           <input
@@ -238,14 +238,14 @@ export default function FirstKeepsakeSheet({
             disabled={writing}
             onChange={(e) => setNoticedOn(e.target.value)}
             data-testid="first-keepsake-date"
-            className="mt-1.5 w-full rounded-xl px-3 py-2 text-[13.5px] font-bold focus:outline-none focus-visible:ring-2"
+            className="mt-1.5 w-full rounded-xl px-3 py-2 text-[13px] font-bold focus:outline-none focus-visible:ring-2"
             style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
           />
         </label>
 
         {/* OPTIONAL. Everything above is enough for a complete keepsake. */}
         <div>
-          <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>
+          <span className="text-[12px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>
             {t("elev.waveR.keepsake.photoLabel")}
           </span>
           {photoUrl ? (
@@ -287,7 +287,7 @@ export default function FirstKeepsakeSheet({
               />
             </div>
           )}
-          <p className="mt-1.5 text-[11.5px] leading-snug" style={{ color: "var(--arbor-faint)" }}>
+          <p className="mt-1.5 text-[12px] leading-snug" style={{ color: "var(--arbor-faint)" }}>
             {t("elev.waveR.keepsake.photoNote")}
           </p>
         </div>

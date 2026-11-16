@@ -261,7 +261,7 @@ export function StepChild({
           </label>
 
           <div className="grid grid-cols-2 gap-2">
-            <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+            <label className="flex flex-col gap-1 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
               {t("ob.ageMonths.years")}
               <input
                 type="number"
@@ -275,7 +275,7 @@ export function StepChild({
                 aria-label={t("ob.ageMonths.years")}
               />
             </label>
-            <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: isUnder3 ? "var(--arbor-muted)" : "var(--arbor-faint)" }}>
+            <label className="flex flex-col gap-1 text-[12px] font-bold" style={{ color: isUnder3 ? "var(--arbor-muted)" : "var(--arbor-faint)" }}>
               {t("ob.ageMonths.months")}
               <input
                 type="number"
@@ -295,11 +295,11 @@ export function StepChild({
           {/* Optional, never required: a parent who wants the exact date can
               give it, and nobody is asked for a child's birthday to proceed. */}
           {!showBirthday ? (
-            <button type="button" onClick={() => setShowBirthday(true)} className="text-[11px] font-bold" style={{ color: "var(--arbor-green-ink)", minHeight: 44 }}>
+            <button type="button" onClick={() => setShowBirthday(true)} className="text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)", minHeight: 44 }}>
               {t("elev.ob.birthday.add")}
             </button>
           ) : (
-            <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+            <label className="flex flex-col gap-1 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
               {t("elev.ob.birthday.label")}
               <input
                 type="date"
@@ -335,7 +335,7 @@ export function StepChild({
           boxShadow: missing === "consent" ? "0 0 0 3px rgba(224,122,95,0.18)" : "none",
         }}
       >
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>
+        <span className="inline-flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>
           <Icon name="verified_user" size={14} /> {t("ob.consent.heading")}
         </span>
         <label className="flex items-start gap-2.5 cursor-pointer">
@@ -418,7 +418,7 @@ export function StepDomains({
       <FocusAreaTiles isOn={(id) => selectedDomains.includes(id)} onToggle={toggle} />
 
       {/* Footer reassurance — VERBATIM copy from clearance */}
-      <p className="text-[11px] text-center" style={{ color: "var(--arbor-muted)" }}>
+      <p className="text-[12px] text-center" style={{ color: "var(--arbor-muted)" }}>
         {t("ob.step.domains.footer")}
       </p>
 

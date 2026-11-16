@@ -74,7 +74,7 @@ export default function CarryOverActionAsk({ onSkip }: { onSkip?: () => void } =
           <p
             id="carry-over-action-title"
             dir="auto"
-            className="mt-1 text-[13.5px] font-bold leading-snug"
+            className="mt-1 text-[13px] font-bold leading-snug"
             style={{ color: "var(--arbor-ink)" }}
           >
             {entry.recommendation}
@@ -92,7 +92,7 @@ export default function CarryOverActionAsk({ onSkip }: { onSkip?: () => void } =
       {isObservationAction(entry) ? (observing === entry.id ? null : <a
         href={`#${routeHash("overview", { observe: entry.id })}`}
         data-testid="carry-over-record"
-        className="mt-2 inline-flex min-h-11 items-center gap-1 px-1 text-[12.5px] font-bold"
+        className="mt-2 inline-flex min-h-11 items-center gap-1 px-1 text-[12px] font-bold"
         style={{ color: "var(--arbor-green-ink)" }}
       >
         {t("ob.first.observation.resume")}

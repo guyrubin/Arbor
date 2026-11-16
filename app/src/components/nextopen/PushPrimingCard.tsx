@@ -76,7 +76,7 @@ export default function PushPrimingCard({
               {copy.pointKeys.map((k) => (
                 <li
                   key={k}
-                  className="flex items-start gap-2 text-[12.5px] leading-snug"
+                  className="flex items-start gap-2 text-[12px] leading-snug"
                   style={{ color: "var(--arbor-ink-soft)" }}
                 >
                   <Icon name="check_circle" size={14} className="mt-0.5 flex-shrink-0" />
@@ -88,7 +88,7 @@ export default function PushPrimingCard({
 
           {copy.noteKey !== "" && (
             <p
-              className="mt-3 text-[11.5px] leading-snug"
+              className="mt-3 text-[12px] leading-snug"
               dir="auto"
               style={{ color: "var(--arbor-muted)" }}
               data-testid="push-priming-note"
@@ -109,7 +109,7 @@ export default function PushPrimingCard({
             <p className="text-[13px] font-bold" dir="auto" style={{ color: "var(--arbor-green-ink)" }}>
               {t("elev.rh.push.toggle.label")}
             </p>
-            <p className="mt-0.5 text-[11.5px]" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+            <p className="mt-0.5 text-[12px]" dir="auto" style={{ color: "var(--arbor-muted)" }}>
               {t("elev.rh.push.toggle.sub")}
             </p>
           </div>

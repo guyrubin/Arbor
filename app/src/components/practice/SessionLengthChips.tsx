@@ -60,7 +60,7 @@ export default function SessionLengthChips({
     <div className="mt-4">
       {/* Eyebrow label */}
       <p
-        className="text-[11px] font-extrabold uppercase tracking-wider mb-1.5"
+        className="text-[12px] font-extrabold uppercase tracking-wider mb-1.5"
         style={{ color: "var(--arbor-muted)" }}
       >
         {t("play.session.eyebrow")}
@@ -81,7 +81,7 @@ export default function SessionLengthChips({
               onClick={() => onChange(id)}
               // Item 9: py-3 on 12.5 px type measured 37 px, not 44. The pill
               // keeps its padding; the floor is stated, not inferred.
-              className="rounded-full px-3.5 py-3 min-h-11 text-[12.5px] font-bold whitespace-nowrap transition active:scale-[0.98]"
+              className="rounded-full px-3.5 py-3 min-h-11 text-[12px] font-bold whitespace-nowrap transition active:scale-[0.98]"
               style={
                 active
                   ? {

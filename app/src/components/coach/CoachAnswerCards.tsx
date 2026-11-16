@@ -86,7 +86,7 @@ export function CoachTryIt({ step, today, lang, onTryIt, onUndo, buttonProps }: 
         <Icon name="flag" size={14} /> {state === "replace" ? t("coach.tryIt.replace") : t("coach.tryIt")}
       </button>
       {state === "replace" && today && (
-        <p className="text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("coach.tryIt.replaces", { current: today.recommendation })}</p>
+        <p className="text-[12px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("coach.tryIt.replaces", { current: today.recommendation })}</p>
       )}
     </div>
   );
@@ -346,7 +346,7 @@ function AnswerFeedback({ contract, lens, surface, lang, sources }: {
 
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-1">
-      <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+      <span className="text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
         {vote ? t("elev.coachcontract.feedback.thanks") : t("elev.coachcontract.feedback.prompt")}
       </span>
       <button
@@ -355,7 +355,7 @@ function AnswerFeedback({ contract, lens, surface, lang, sources }: {
         aria-pressed={vote === "up"}
         aria-label={t("elev.coachcontract.feedback.up")}
         title={vote === "up" ? t("elev.coachcontract.feedback.undo") : t("elev.coachcontract.feedback.up")}
-        className="inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1 min-h-11 rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+        className="inline-flex items-center gap-1 text-[12px] font-bold px-3 py-1 min-h-11 rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
         style={buttonStyle(vote === "up")}
       >
         <Icon name="thumb_up" size={13} aria-hidden /> {t("elev.coachcontract.feedback.up")}
@@ -366,14 +366,14 @@ function AnswerFeedback({ contract, lens, surface, lang, sources }: {
         aria-pressed={vote === "down"}
         aria-label={t("elev.coachcontract.feedback.down")}
         title={vote === "down" ? t("elev.coachcontract.feedback.undo") : t("elev.coachcontract.feedback.down")}
-        className="inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1 min-h-11 rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+        className="inline-flex items-center gap-1 text-[12px] font-bold px-3 py-1 min-h-11 rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
         style={buttonStyle(vote === "down")}
       >
         <Icon name="thumb_down" size={13} aria-hidden /> {t("elev.coachcontract.feedback.down")}
       </button>
       {/* States plainly what the control is about, so a thumb is never read as
           a judgement on the child (clinical firewall, stated in the UI). */}
-      <span className="text-[10px] w-full" style={{ color: "var(--arbor-muted)" }}>
+      <span className="text-[12px] w-full" style={{ color: "var(--arbor-muted)" }}>
         {t("elev.coachcontract.feedback.note")}
       </span>
     </div>

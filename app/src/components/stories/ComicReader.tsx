@@ -381,7 +381,7 @@ export function ComicReader({
             className="relative w-full max-w-3xl mx-auto rounded-[20px] overflow-hidden flex flex-col items-center justify-center text-center gap-3 p-6"
             style={{ aspectRatio: "3 / 2", border: "3px solid var(--arbor-ink)", boxShadow: "0 12px 36px rgba(41,51,63,0.22)", background: "var(--arbor-paper-deep)" }}
           >
-            <span className="absolute top-2 left-0 right-0 text-[10px] font-extrabold uppercase tracking-[0.3em]" style={{ color: "var(--arbor-muted)" }}>
+            <span className="absolute top-2 left-0 right-0 text-[12px] font-extrabold uppercase tracking-[0.3em]" style={{ color: "var(--arbor-muted)" }}>
               {kidsStoriesText("comic.brand", lang)}
             </span>
             {current.dataUrl ? (
@@ -389,7 +389,7 @@ export function ComicReader({
             ) : (
               <>
                 <HeroAvatar size={120} mood="cheer" animate={!reduced} />
-                <p className="text-[1.4rem] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+                <p className="text-[22px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                   {adventureTitle(adventure, lang)}
                 </p>
                 <p className="text-[13px] font-bold" style={{ color: "var(--arbor-ink-soft)" }}>{kidsStoriesText("comic.aria", lang, { name: isolate(heroName) })}</p>

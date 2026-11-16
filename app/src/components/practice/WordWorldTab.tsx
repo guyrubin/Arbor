@@ -101,7 +101,7 @@ function ModuleCard({ module, selected, onSelect }: ModuleCardProps) {
       >
         {module.name}
       </p>
-      <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+      <p className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
         {module.mechanism}
       </p>
     </button>
@@ -227,7 +227,7 @@ export default function WordWorldTab() {
         >
           <div className="flex items-center justify-between mb-3">
             <span
-              className="text-[11px] font-extrabold uppercase tracking-wide rounded-full px-3 py-1"
+              className="text-[12px] font-extrabold uppercase tracking-wide rounded-full px-3 py-1"
               style={{ background: PASTEL.sky.soft, color: PASTEL.sky.ink }}
             >
               {currentPrompt.context}

@@ -47,7 +47,7 @@ function AgeChip({ profile }: { profile: ChildProfile }) {
   // GP-01: the months-precise label ("7 months"), never the whole-years "age 0".
   return (
     <span
-      className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold"
+      className="inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-bold"
       style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
     >
       {t("elev.growthTruth.agechip.card", { age: ageLabel(profile, t) })}

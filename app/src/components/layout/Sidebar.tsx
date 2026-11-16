@@ -95,7 +95,7 @@ export default function Sidebar() {
             className="flex items-start gap-3 rounded-2xl px-3 py-3 text-start min-h-11 transition-colors"
             style={{ background: active ? "var(--arbor-clay-dim)" : "transparent", color: active ? "var(--arbor-clay-deep)" : "var(--arbor-ink)" }}>
             <Icon name={place.icon} size={24} chrome active={active} />
-            <span><span className="block text-[15.5px] font-bold">{he ? place.he : place.en}</span>
+            <span><span className="block text-[15px] font-bold">{he ? place.he : place.en}</span>
               <span className="block mt-1 text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{he ? place.detailHe : place.detailEn}</span></span>
           </button>;
         })}

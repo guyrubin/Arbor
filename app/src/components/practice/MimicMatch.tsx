@@ -146,7 +146,7 @@ export default function MimicMatch({ childId, name }: { childId: string; name: s
         </div>
       </div>
 
-      <div className="rounded-2xl p-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] mb-4" style={{ background: "var(--arbor-green-soft)" }}>
+      <div className="rounded-2xl p-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] mb-4" style={{ background: "var(--arbor-green-soft)" }}>
         <span className="font-extrabold inline-flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><Icon name="verified_user" size={14} /> {t("prac.mimic.face.privacyTag")}</span>
         <span style={{ color: "var(--arbor-muted)" }}>{t("prac.mimic.face.privacy")}</span>
       </div>

@@ -79,7 +79,7 @@ export default function AdminDashboard({ open, onClose }: { open: boolean; onClo
               ))}
             </div>
           )}
-          <p className="text-[11px] mt-3" style={{ color: "var(--arbor-muted)" }}>
+          <p className="text-[12px] mt-3" style={{ color: "var(--arbor-muted)" }}>
             Family estimates exclude internal, demo and unattributed spending; co-parents count once. Missing or incomplete family reads show Not measured. List-price estimate for priced calls only, not the full bill. Unmetered voice and unknown models are not free. No currency conversion or free allowance is assumed. GCP Billing remains the source of truth for actual spend.
           </p>
         </div>
@@ -155,7 +155,7 @@ function Stat({ icon, label, value, sub }: { icon: React.ReactNode; label: strin
         <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{label}</p>
       </div>
       <p className="text-2xl font-bold" style={{ color: "var(--arbor-ink)" }}>{value}</p>
-      {sub && <p className="text-[11px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>{sub}</p>}
+      {sub && <p className="text-[12px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>{sub}</p>}
     </div>
   );
 }

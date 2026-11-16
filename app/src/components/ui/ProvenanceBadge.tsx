@@ -29,7 +29,7 @@ export function ProvenanceBadge({
       // The badge opens with an <Icon> ligature (Latin text), so dir="auto"
       // would resolve the Hebrew label LTR; the label's language is `lang`.
       dir={lang === "he" ? "rtl" : "ltr"}
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold ${className}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-bold ${className}`}
       style={{ background: "rgba(15,23,20,0.55)", color: "#fff", backdropFilter: "blur(4px)" }}
     >
       <Icon name="auto_awesome" size={12} />

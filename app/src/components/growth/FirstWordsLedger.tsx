@@ -94,7 +94,7 @@ export default function FirstWordsLedger() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <span
-            className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.16em]"
+            className="inline-flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-[0.16em]"
             style={{ color: "var(--arbor-lav-ink)" }}
           >
             <Icon name="record_voice_over" size={16} />
@@ -148,12 +148,12 @@ export default function FirstWordsLedger() {
               <span className="break-words text-sm font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>
                 “{row.phrase}”
               </span>
-              <span className="text-[11px] font-bold" style={{ color: "var(--arbor-lav-ink)" }}>
+              <span className="text-[12px] font-bold" style={{ color: "var(--arbor-lav-ink)" }}>
                 {/* Law 8 (W2-GROWTH r1): the reader's language, stored value untouched. */}
                 {languageName(row.language, t)}
               </span>
               <span className="flex-1" />
-              <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>
+              <span className="text-[12px]" style={{ color: "var(--arbor-muted)" }}>
                 {t("elev.waveR.words.firstOn", { date: fmtDay(row.firstLoggedAt, uiLang) })}
               </span>
             </li>

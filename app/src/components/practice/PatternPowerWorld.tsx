@@ -140,7 +140,7 @@ export function PatternRoundView({
         {puzzle.shown.map((g, i) => (
           <span key={i} className="pattern-sequence-glyph">{g}</span>
         ))}
-        <span className="pattern-sequence-missing grid place-items-center text-[2rem] font-black rounded-2xl"
+        <span className="pattern-sequence-missing grid place-items-center text-[34px] font-black rounded-2xl"
           style={{ background: "var(--arbor-lav-soft)", border: "3px dashed var(--arbor-lav-ink)", color: "var(--arbor-lav-ink)" }}>
           {picked ?? "?"}
         </span>

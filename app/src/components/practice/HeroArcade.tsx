@@ -293,7 +293,7 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
                 aria-label={live ? t("elev.play.arcade.worldAria", { world: name, tag }) : t("elev.play.arcade.comingSoonAria", { world: name, tag })}
                 onClick={() => live && setOpenId(w.id)}>
                 {w.isNew && (
-                  <span className="absolute top-0 left-0 z-[2] text-[11px] font-black px-2.5 py-1"
+                  <span className="absolute top-0 left-0 z-[2] text-[12px] font-black px-2.5 py-1"
                     style={{ background: "var(--arbor-pink)", color: "var(--arbor-on-accent)", border: "var(--comic-line)", borderTopLeftRadius: "var(--play-radius)", borderBottomRightRadius: "12px" }}>{t("elev.play.arcade.new")}</span>
                 )}
                 <div className="comic-halftone relative overflow-hidden" style={{ height: 120, background: c.bg, borderBottom: "var(--comic-line)" }}>
@@ -303,7 +303,7 @@ export default function HeroArcade({ initialWorldId }: { initialWorldId?: string
                 </div>
                 <div className="p-3">
                   <p className="font-black text-[20px] leading-snug mb-2" style={{ fontFamily: "var(--font-display)" }}>{name}</p>
-                  <span className="inline-block text-[10.5px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full"
+                  <span className="inline-block text-[12px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full"
                     style={{ border: "2px solid var(--comic-ink)", color: c.ink }} data-arcade-tag={w.id}>{tag}</span>
                   {/* OBJ-KID-02: no padlock ever renders inside `.arbor-play`.
                       Every WORLDS entry declares a Comp (kidMode.test.ts pins

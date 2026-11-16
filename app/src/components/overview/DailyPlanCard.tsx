@@ -167,7 +167,7 @@ export default function DailyPlanCard({
             {t("plan.card.eyebrow")}
           </span>
           <h2
-            className="text-[1.1rem] font-extrabold leading-tight"
+            className="text-[17px] font-extrabold leading-tight"
             style={{ fontFamily: "var(--font-display)", color: INK }}
           >
             {t("plan.card.observePrompt")}
@@ -187,7 +187,7 @@ export default function DailyPlanCard({
               }}
             />
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px]" style={{ color: MUTED }}>
+              <span className="text-[12px]" style={{ color: MUTED }}>
                 {observationText.length}/200
               </span>
               <button
@@ -230,7 +230,7 @@ export default function DailyPlanCard({
             {t("plan.card.eyebrow")}
           </span>
           <h2
-            className="text-[1.35rem] font-extrabold leading-tight"
+            className="text-[22px] font-extrabold leading-tight"
             style={{ fontFamily: "var(--font-display)", color: INK }}
           >
             {activity.title}
@@ -281,7 +281,7 @@ export default function DailyPlanCard({
             {t("plan.card.eyebrow")}
           </span>
           <span
-            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold flex-shrink-0"
+            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold flex-shrink-0"
             style={{
               background: "var(--arbor-paper-deep)",
               color: MUTED,
@@ -295,7 +295,7 @@ export default function DailyPlanCard({
 
         {/* Row 2: activity title */}
         <h2
-          className="text-[1.35rem] font-extrabold leading-tight mt-2"
+          className="text-[22px] font-extrabold leading-tight mt-2"
           style={{
             fontFamily: "var(--font-display)",
             color: INK,
@@ -335,7 +335,7 @@ export default function DailyPlanCard({
             type="button"
             onClick={onSetGoal}
             data-testid="plan-set-focus-optional"
-            className="mt-1 inline-flex min-h-11 items-center text-start text-[12.5px] font-bold underline underline-offset-2"
+            className="mt-1 inline-flex min-h-11 items-center text-start text-[12px] font-bold underline underline-offset-2"
             style={{ color: GREEN }}
           >
             {t("elev.growth.play.setFocusOptional")}

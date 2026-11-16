@@ -891,7 +891,7 @@ function LearnReader({
           ref={headingRef}
           tabIndex={-1}
           data-testid="learn-reader-heading"
-          className="text-xl md:text-[1.55rem] leading-tight tracking-tight focus:outline-none"
+          className="text-xl md:text-[26px] leading-tight tracking-tight focus:outline-none"
           dir="auto"
           style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
         >

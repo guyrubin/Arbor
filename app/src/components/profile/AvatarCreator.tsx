@@ -356,7 +356,7 @@ export default function AvatarCreator({
                     className="mt-0.5"
                     style={{ accentColor: "var(--arbor-clay)" }}
                   />
-                  <span className="text-[11px] leading-snug" style={{ color: "var(--arbor-green-ink)" }}>
+                  <span className="text-[12px] leading-snug" style={{ color: "var(--arbor-green-ink)" }}>
                     <Icon name="verified_user" size={14} className="inline me-1" />
                     {t("trust.avatar.consent.pre")} <strong>{t("trust.avatar.consent.claim")}</strong>
                   </span>

@@ -224,13 +224,13 @@ export default function CaptureProposalsTray({ surface, inline }: {
           <Icon name="bookmark_add" size={19} fill={1} />
         </span>
         <div className="min-w-0">
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-green-ink)" }}>
+          <p className="text-[12px] font-extrabold uppercase tracking-[0.16em]" style={{ color: "var(--arbor-green-ink)" }}>
             {t("elev.waveR.capture.eyebrow")}
           </p>
           <h2 className="mt-1 text-[17px] font-extrabold tracking-[-0.01em]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
             {t("elev.waveR.capture.title")}
           </h2>
-          <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+          <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
             {t("elev.waveR.capture.body")}
           </p>
         </div>
@@ -248,7 +248,7 @@ export default function CaptureProposalsTray({ surface, inline }: {
               className="rounded-2xl p-3"
               style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
             >
-              <p className="text-[10px] font-extrabold uppercase tracking-wide" style={{ color: "var(--arbor-lav-ink)" }}>
+              <p className="text-[12px] font-extrabold uppercase tracking-wide" style={{ color: "var(--arbor-lav-ink)" }}>
                 {t(`elev.waveR.capture.field.${entry.field}`)}
               </p>
               <label className="mt-2 block">
@@ -258,15 +258,15 @@ export default function CaptureProposalsTray({ surface, inline }: {
                   rows={2}
                   dir="auto"
                   onChange={(e) => setEdits((prev) => ({ ...prev, [id]: e.target.value.slice(0, 600) }))}
-                  className="w-full resize-none rounded-xl px-3 py-2 text-[13.5px] leading-relaxed focus:outline-none focus-visible:ring-2"
+                  className="w-full resize-none rounded-xl px-3 py-2 text-[13px] leading-relaxed focus:outline-none focus-visible:ring-2"
                   style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
                 />
               </label>
-              <p className="mt-2 text-[11.5px] leading-snug" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+              <p className="mt-2 text-[12px] leading-snug" dir="auto" style={{ color: "var(--arbor-muted)" }}>
                 <strong>{t("elev.waveR.capture.asked")}:</strong> {entry.proposal.sourceExcerpt}
               </p>
               {entry.proposal.conflict && (
-                <p role="alert" className="mt-2 text-[11.5px] font-bold" dir="auto" style={{ color: "var(--arbor-clay-ink)" }}>
+                <p role="alert" className="mt-2 text-[12px] font-bold" dir="auto" style={{ color: "var(--arbor-clay-ink)" }}>
                   {t("elev.waveR.capture.duplicate")}
                 </p>
               )}

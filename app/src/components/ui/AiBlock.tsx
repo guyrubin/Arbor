@@ -59,7 +59,7 @@ export function AiBlock({
   if (tone === "inset") {
     return (
       <div data-testid={testId} className="rounded-xl p-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-        <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider mb-1.5" style={{ color: tint }}>{icon} {title}</span>
+        <span className="inline-flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-wider mb-1.5" style={{ color: tint }}>{icon} {title}</span>
         {children}
       </div>
     );
@@ -75,7 +75,7 @@ export function AiBlock({
   return (
     <div data-testid={testId} className="rounded-xl p-3.5 bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
       <div className="flex items-center justify-between gap-2 mb-2">
-        <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider" style={{ color: tint }}>
+        <span className="inline-flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-wider" style={{ color: tint }}>
           {icon} {title}
         </span>
         {action}
@@ -203,7 +203,7 @@ export function Checklist({ items }: { items: string[] }) {
                 style={{ border: "1px solid var(--arbor-rule-strong)" }}
               />
             )}
-            <span className="text-[12.5px] leading-snug" style={done[i] ? { color: "var(--arbor-muted)", textDecoration: "line-through" } : { color: "var(--arbor-ink)" }}>{step}</span>
+            <span className="text-[12px] leading-snug" style={done[i] ? { color: "var(--arbor-muted)", textDecoration: "line-through" } : { color: "var(--arbor-ink)" }}>{step}</span>
           </button>
         </li>
       ))}
@@ -237,11 +237,11 @@ export function KeepBar({ actions }: { actions: KeepAction[] }) {
     <div className="flex flex-wrap items-center gap-2 pt-1">
       {actions.map((a) =>
         a.tone === "outline" ? (
-          <button key={a.id} onClick={a.onClick} className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
+          <button key={a.id} onClick={a.onClick} className="inline-flex items-center gap-1.5 text-[12px] font-bold px-2.5 py-1.5 rounded-lg transition bg-white" style={{ color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
             {a.content}
           </button>
         ) : (
-          <button key={a.id} onClick={a.onClick} className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+          <button key={a.id} onClick={a.onClick} className="inline-flex items-center gap-1.5 text-[12px] font-bold px-2.5 py-1.5 rounded-lg transition" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
             {a.content}
           </button>
         ),

@@ -50,7 +50,7 @@ export default function CourseCard({
         <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
           <Icon name="route" size={14} /> {t("course.eyebrow")}
         </span>
-        <h2 className="text-[1.35rem] font-extrabold leading-tight mt-1" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
+        <h2 className="text-[22px] font-extrabold leading-tight mt-1" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
           {loc.title}
         </h2>
         <p className="text-[14px] leading-relaxed mt-2" style={{ color: INK, textWrap: "pretty" } as React.CSSProperties}>
@@ -106,7 +106,7 @@ export default function CourseCard({
                       className="w-6 h-6 rounded-full flex items-center justify-center"
                       style={done ? { background: CLAY, color: "#fff" } : { background: "var(--arbor-paper-elevated)", border: `1px solid ${RULE}` }}
                     >
-                      {done ? <Icon name="check" size={14} /> : <span className="text-[11px] font-extrabold" style={{ color: MUTED }}>{i + 1}</span>}
+                      {done ? <Icon name="check" size={14} /> : <span className="text-[12px] font-extrabold" style={{ color: MUTED }}>{i + 1}</span>}
                     </span>
                   </button>
                   <button
@@ -116,7 +116,7 @@ export default function CourseCard({
                   >
                     <span className="flex-1 min-w-0">
                       <span className="block text-[14px] font-bold" style={{ color: INK, textDecoration: done ? "line-through" : "none" }}>{a.title}</span>
-                      {isNext && <span className="text-[11px] font-bold" style={{ color: GREEN }}>{t("course.next")}</span>}
+                      {isNext && <span className="text-[12px] font-bold" style={{ color: GREEN }}>{t("course.next")}</span>}
                     </span>
                     <Icon name="expand_more" size={16} style={{ color: MUTED, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
                   </button>
@@ -133,8 +133,8 @@ export default function CourseCard({
                     </div>
                     <ol className="space-y-2">
                       {a.steps.map((s, si) => (
-                        <li key={si} className="flex gap-2.5 text-[13.5px] leading-relaxed" style={{ color: INK }}>
-                          <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-extrabold" style={{ background: GREEN_SOFT, color: GREEN }}>{si + 1}</span>
+                        <li key={si} className="flex gap-2.5 text-[13px] leading-relaxed" style={{ color: INK }}>
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[12px] font-extrabold" style={{ background: GREEN_SOFT, color: GREEN }}>{si + 1}</span>
                           <span style={{ textWrap: "pretty" } as React.CSSProperties}>{s}</span>
                         </li>
                       ))}

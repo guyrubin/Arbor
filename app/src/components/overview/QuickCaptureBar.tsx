@@ -44,7 +44,7 @@ const TILE_STYLE = (ink: string): React.CSSProperties =>
   ({ minHeight: 48, borderColor: RULE, color: ink, ["--tw-ring-color" as string]: GREEN }) as React.CSSProperties;
 const ICON = "flex h-8 w-8 sm:h-9 sm:w-9 flex-none items-center justify-center rounded-full";
 /** A door label is never truncated (critic r1): it wraps to two centred lines. */
-const LABEL = "max-w-full line-clamp-2 break-words text-center leading-tight text-[11.5px] @2xl:text-[12px] font-bold";
+const LABEL = "max-w-full line-clamp-2 break-words text-center leading-tight text-[12px] @2xl:text-[12px] font-bold";
 /** NEXTLEVEL critic r1 (overview · design · P1): on Today at lg the bar is the
  *  inline-end track of a two-track page — a vertical list (icon beside label,
  *  hairline between rows), read after the record card. Below lg it is the bar. */

@@ -41,7 +41,7 @@ export function PageHeader({ title, subtitle, action, flush }: { eyebrow?: strin
   return (
     <div className={`flex flex-col sm:flex-row sm:items-end justify-between gap-3 ${flush ? "" : "mb-7"}`}>
       <div>
-        <h1 className="text-2xl md:text-[2rem] leading-[1.1]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{title}</h1>
+        <h1 className="text-2xl md:text-[34px] leading-[1.1]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{title}</h1>
         {subtitle && <p className="text-sm mt-2 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>{subtitle}</p>}
       </div>
       {action}

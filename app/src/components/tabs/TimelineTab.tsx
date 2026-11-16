@@ -50,7 +50,7 @@ export default function TimelineTab() {
         rows here is told where they went (nowhere: they are still in Ask).
       */}
       {conversations.length > 0 && (
-        <p className="text-[11.5px] font-semibold px-1" style={{ color: "var(--arbor-muted)" }} dir="auto">
+        <p className="text-[12px] font-semibold px-1" style={{ color: "var(--arbor-muted)" }} dir="auto">
           {t("timeline.privacy.ask")}
         </p>
       )}
