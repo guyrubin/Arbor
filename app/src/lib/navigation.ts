@@ -337,6 +337,8 @@ export const TAB_SECTION_FALLBACK: Partial<Record<ActiveTab, HubId>> = {
   // Today — the Weekly Report is the week's rhythm readout, re-homed from
   // Profile to the Today hub (Heartwood D3).
   weekly: "today",
+  // v10.1: Now › Family plan (its own pill in HOME_PILLS.now).
+  "family-plan": "today",
 
   // Ask Arbor — coach is a first-class section. B-ASKJB-12: #/scholar is
   // retired to coach (RETIRED_ROUTES; its lens choice is Ask's ToneSheet) but
@@ -406,6 +408,7 @@ export const HOME_PILLS: Readonly<Record<PillHome, readonly NavItem[]>> = {
     { tab: "overview", label: "Now", msIcon: "home" },
     { tab: "weekly", label: "Weekly report", msIcon: "bar_chart", labelKey: "nav.pill.weekly" },
     { tab: "plans", label: "Plans", msIcon: "tune", labelKey: "nav.pill.plans" },
+    { tab: "family-plan", label: "Family plan", msIcon: "groups", labelKey: "nav.pill.family-plan" },
   ],
   child: [
     { tab: "development", label: "Milestones", msIcon: "map", labelKey: "nav.pill.development" },

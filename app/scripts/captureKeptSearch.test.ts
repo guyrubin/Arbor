@@ -84,7 +84,7 @@ describe('bounded additive kept capture and search contract, no browser', () => 
       expect(entry.sub[lang]).toBe(placeForTab(route as any)[lang]);
       expect(entry.title[lang]).toBe(translate(lang as any, key));
     }
-    expect(ROUTE_IDS).toHaveLength(43);
+    expect(ROUTE_IDS).toHaveLength(44);
     expect(getSearchIndex().filter(entry => entry.kind === 'route' && entry.tab in RETIRED_ROUTES)).toEqual([]);
   });
   it('reuses isolated exact-font CI and the shared fail-closed aggregate without deployment or font uploads', () => {

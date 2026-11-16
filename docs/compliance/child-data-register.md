@@ -64,6 +64,7 @@ This file has one line for every place Arbor keeps data about one child. Export 
 | `firestore:heroSheet` | The hero's pose sheet (generated art from the generated hero, never a photo) | B-GAME-13c |
 | `firestore:studioCreations` | The child's saved studio toys (a corner layout, a short melody) | **Found by this sweep (28 Oct):** it escaped export and erase until registered |
 | `firestore:bookReads` | The finished-book ledger: catalogue book id, language, time per true ending; never the path or the choice | B-BOOK-51 (X28); export and erase |
+| `firestore:familyPlanDates` | Family plan dates from the child's kindergarten or school: the name the parent kept, the day and time, the one message line each came from (never the whole message), who has it (an adult's uid and sign-in email), requests between the family's adults with the asker's note, prep lines and the date's history | Family plan v1 (16 Nov). A co-parent who joined on a live `family_workspace` grant reads a projection and writes only their answer, through the server (`server/familyPlanCoParent.ts`); revoke ends it at once. Export and erase |
 
 ## Profile, server, Storage and device sinks
 

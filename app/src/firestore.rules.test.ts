@@ -44,6 +44,32 @@ describeRules("Firestore security rules", () => {
     await assertFails(getDoc(doc(db, "children/c1")));
   });
 
+  /* ── Family plan v1: familyPlanDates under the child ─────────────────── */
+
+  it("lets the owner read and write their child's family plan dates", async () => {
+    const db = testEnv.authenticatedContext("u1").firestore();
+    const ref = doc(db, "users/u1/children/c1/familyPlanDates/d1");
+    await assertSucceeds(setDoc(ref, { id: "d1", title: "Synthetic visit", date: "2026-11-19", status: "open" }));
+    await assertSucceeds(getDoc(ref));
+  });
+
+  it("DENIES another account reading or writing the owner's family plan directly (a co-parent answers through the server only)", async () => {
+    const db = testEnv.authenticatedContext("u2").firestore();
+    const ref = doc(db, "users/u1/children/c1/familyPlanDates/d1");
+    await assertFails(getDoc(ref));
+    await assertFails(setDoc(ref, { id: "d1", status: "done" }));
+  });
+
+  it("denies an UNAUTHENTICATED read of family plan dates", async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(doc(db, "users/u1/children/c1/familyPlanDates/d1")));
+  });
+
+  it("the family-scoped child tree: a family member may, a non-member may not", async () => {
+    await assertSucceeds(setDoc(doc(testEnv.authenticatedContext("u1").firestore(), "children/c1/familyPlanDates/d2"), { id: "d2" }));
+    await assertFails(getDoc(doc(testEnv.authenticatedContext("u2").firestore(), "children/c1/familyPlanDates/d2")));
+  });
+
   /* ── N1-05: the cohort read lane's own collections ───────────────────── */
 
   it("allows a user to read and write their OWN retention rollup", async () => {

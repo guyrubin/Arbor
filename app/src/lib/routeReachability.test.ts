@@ -29,7 +29,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ROUTE_IDS, HASH_ALIASES, RETIRED_ROUTES, SUB_ROUTES, hashQuery, resolveRouteId } from "./routes";
-import { SECTIONS, hubTabsForSection } from "./navigation";
+import { HOME_PILLS, SECTIONS, hubTabsForSection } from "./navigation";
 import { UNSEARCHABLE_ROUTES, getSearchIndex } from "./searchIndex";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -128,7 +128,8 @@ function registryAliases(): Set<string> {
 }
 
 describe("IA-09 — every non-pill route has a real entry point", () => {
-  const pills = new Set<string>(SECTIONS.flatMap((s) => hubTabsForSection(s).map((i) => i.tab)));
+  // v10: a home's pill row (HOME_PILLS) is a real door too — Family plan's only door is its Now pill.
+  const pills = new Set<string>([...SECTIONS.flatMap((s) => hubTabsForSection(s).map((i) => i.tab)), ...Object.values(HOME_PILLS).flat().map((i) => i.tab)]);
   const files = [...walk(path.join(SRC, "components")), ...walk(path.join(SRC, "hooks")), ...walk(path.join(SRC, "context"))]
     .filter((f) => !/[\\/]layout[\\/]Shell\.tsx$/.test(f));
   const callSites = new Set<string>();

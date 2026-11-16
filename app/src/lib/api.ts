@@ -140,6 +140,8 @@ export const NON_CRISIS_409_CODES: ReadonlySet<string> = new Set([
   // Round 2: the hero-pose route's anchor states (heroSheetContract HERO_POSE_REFUSALS)
   // and the co-parent activity conflict (server/coParent.ts, sent in `error`).
   "hero_anchor_missing", "hero_book_anchor_missing", "activity_changed",
+  // Family plan v1: the co-parent's answer conflicts (server/familyPlanCoParent.ts, sent in `error`).
+  "date_changed", "not_yours",
 ]);
 /** /live/token's 409 code: the renewal names a session the server will not chain. */
 export const LIVE_RENEWAL_INVALID = "live_renewal_invalid";
@@ -555,6 +557,9 @@ export const api = {
   // commits only what the parent keeps (lib/describeChildClient).
   describeChild: (payload: import("./describeChild").DescribeRequest) =>
     post<import("./describeChild").DescribeDraft>("/api/describe-child", payload),
+  /** Family plan v1: the dated things a pasted school message asks of the family (nothing is stored). */
+  extractFamilyPlan: (payload: { text: string; language: "en" | "he"; today: string; childName?: string }) =>
+    post<import("./familyPlan/draft").FamilyPlanExtractResult>("/api/family-plan/extract", payload),
   // childId is REQUIRED by the server's COPPA gate (requireConsent reads it from
   // the body); without it /api/vision fails closed with 451. The caller passes the
   // active child's id. AIX-S1: `language` (getAiLanguage()) drives the server-side

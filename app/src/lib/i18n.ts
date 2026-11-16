@@ -2685,6 +2685,8 @@ export const en: Dict = {
   "nav.pill.sharing": "Trusted sharing",
   // v10 (design system v10.1): every home has a pill row (lib/navigation HOME_PILLS).
   "nav.pill.plans": "Plans",
+  "nav.pill.family-plan": "Family plan",
+  "nav.tab.family-plan": "Family plan",
   "nav.pill.routines": "Routines",
   "nav.pill.play": "Play",
   "nav.pill.stories": "Stories",
@@ -5227,6 +5229,8 @@ export const he: Dict = {
   "nav.pill.sharing": "שיתוף מהימן",
   // v10: לכל בית יש שורת כפתורים (lib/navigation HOME_PILLS).
   "nav.pill.plans": "תוכניות",
+  "nav.pill.family-plan": "תוכנית משפחתית",
+  "nav.tab.family-plan": "תוכנית משפחתית",
   "nav.pill.routines": "שגרות",
   "nav.pill.play": "משחק",
   "nav.pill.stories": "סיפורים",

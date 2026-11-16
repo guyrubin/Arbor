@@ -37,7 +37,7 @@ describe('final release evidence contracts, no sockets or browser', () => {
     expect(summarizeRelease(diagnostic, identity, 'kid-entry-diagnostic')).toMatchObject({ completed: true, baseCells: 0, interactionCells: 18, expectedShards: 1 });
     expect(summarizeRelease(diagnostic, identity, 'kid-entry-release').completed).toBe(false);
     const combined = records(releaseMatrix('kid-entry-release'));
-    expect(summarizeRelease(combined, identity, 'kid-entry-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 758, screenshots: 930, printPreviews: 4, expectedShards: 20 });
+    expect(summarizeRelease(combined, identity, 'kid-entry-release')).toMatchObject({ completed: true, baseCells: 176, interactionCells: 758, screenshots: 934, printPreviews: 4, expectedShards: 20 });
     combined[0].evidence.cells[0].assertions.pop();
     expect(summarizeRelease(combined, identity, 'kid-entry-release').completed).toBe(false);
   });
@@ -51,10 +51,10 @@ describe('final release evidence contracts, no sockets or browser', () => {
     }
     const combined = records(matrix);
     const count = (groups: string[]) => combined.filter(record => groups.includes(record.capture.cell.group)).reduce((sum, record) => sum + record.evidence.cells.length, 0);
-    expect(count(['base', 'focused', 'record', 'confirmed-actions'])).toBe(858);
+    expect(count(['base', 'focused', 'record', 'confirmed-actions'])).toBe(862);
     expect(count(['kept-search'])).toBe(116);
     expect(count(['kid-entry'])).toBe(72);
-    expect(summarizeRelease(combined, identity, 'parent-kid-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 874, screenshots: 1050, printPreviews: 4, expectedShards: 24, returnedShards: 24 });
+    expect(summarizeRelease(combined, identity, 'parent-kid-release')).toMatchObject({ completed: true, baseCells: 176, interactionCells: 874, screenshots: 1054, printPreviews: 4, expectedShards: 24, returnedShards: 24 });
     for (const priorScope of ['confirmed-actions-release', 'kept-search-release', 'kid-entry-release']) {
       expect(summarizeRelease(records(releaseMatrix(priorScope)), identity, 'parent-kid-release').completed).toBe(false);
     }
@@ -64,7 +64,7 @@ describe('final release evidence contracts, no sockets or browser', () => {
       expect(result.failures.find(failure => failure.id === omitted.capture.cell.id)?.reasons).toContain('SHARD_NOT_RETURNED');
     }
   });
-  it('also requires both mobile base full-page PNGs and their exact-font receipts in the real 1136-PNG shape', () => {
+  it('also requires both mobile base full-page PNGs and their exact-font receipts in the real PNG shape (1142 with Family plan)', () => {
     const combined = records(releaseMatrix('parent-kid-release'));
     const mobileBase = combined.filter(record => record.capture.cell.group === 'base' && record.capture.cell.viewport.w < 1024);
     for (const record of mobileBase) for (const cell of record.evidence.cells as any[]) {
@@ -73,8 +73,8 @@ describe('final release evidence contracts, no sockets or browser', () => {
       record.shotNames.push(name);
       record.fonts.shots.push({ shot: name, passed: true, rendered: [{ custom: true }] });
     }
-    expect(mobileBase.flatMap(record => record.evidence.cells)).toHaveLength(86);
-    expect(summarizeRelease(combined, identity, 'parent-kid-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 874, screenshots: 1136, printPreviews: 4, expectedShards: 24 });
+    expect(mobileBase.flatMap(record => record.evidence.cells)).toHaveLength(88);
+    expect(summarizeRelease(combined, identity, 'parent-kid-release')).toMatchObject({ completed: true, baseCells: 176, interactionCells: 874, screenshots: 1142, printPreviews: 4, expectedShards: 24 });
     for (const record of mobileBase) {
       const name = (record.evidence.cells[0] as any).fullShot.split('/').pop();
       record.shotNames = record.shotNames.filter(shot => shot !== name);
@@ -105,9 +105,9 @@ describe('final release evidence contracts, no sockets or browser', () => {
       expect(summarizeRelease(stale, identity, 'parent-kid-release').completed).toBe(false);
     }
   });
-  it('covers all 43 canonical routes in EN/HE at both widths without duplicates', () => {
-    expect(RELEASE_ROUTE_COUNT).toBe(43);
-    expect(routes).toHaveLength(43);
+  it('covers all 44 canonical routes in EN/HE at both widths without duplicates', () => {
+    expect(RELEASE_ROUTE_COUNT).toBe(44);
+    expect(routes).toHaveLength(44);
     expect(RELEASE_VIEWPORTS.map((vp: any) => vp.id)).toEqual(['mobile-en', 'mobile-he', 'desktop-en', 'desktop-he']);
     expect(RELEASE_MATRIX).toHaveLength(8);
     for (const viewport of RELEASE_VIEWPORTS) {
@@ -115,8 +115,8 @@ describe('final release evidence contracts, no sockets or browser', () => {
       expect(specs).toHaveLength(RELEASE_SHARDS);
       const covered = specs.flatMap((spec: any) => shardRoutes(routes, spec.shard));
       expect(new Set(covered)).toEqual(new Set(routes));
-      expect(covered).toHaveLength(43);
-      expect(specs.every((spec: any) => shardRoutes(routes, spec.shard).length === 43)).toBe(true);
+      expect(covered).toHaveLength(44);
+      expect(specs.every((spec: any) => shardRoutes(routes, spec.shard).length === 44)).toBe(true);
     }
     expect(() => releaseInventory(routes.slice(1), SURFACE_CONTRACTS)).toThrow('RELEASE_ROUTE_INVENTORY_CHANGED');
     expect(() => releaseInventory(routes, [...SURFACE_CONTRACTS.slice(1), SURFACE_CONTRACTS[1]])).toThrow();
@@ -226,7 +226,7 @@ describe('final release evidence contracts, no sockets or browser', () => {
   });
   it('requires the additive record matrix and actual delivered print artifacts without reducing the baseline', () => {
     const extended = records(releaseMatrix('record-release'));
-    expect(summarizeRelease(extended, identity, 'record-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 490, screenshots: 662, printPreviews: 4, expectedShards: 12, returnedShards: 12 });
+    expect(summarizeRelease(extended, identity, 'record-release')).toMatchObject({ completed: true, baseCells: 176, interactionCells: 490, screenshots: 666, printPreviews: 4, expectedShards: 12, returnedShards: 12 });
     expect(summarizeRelease(records(releaseMatrix('record-only')), identity, 'record-only')).toMatchObject({ completed: true, baseCells: 0, interactionCells: 196, printPreviews: 4 });
     extended[0].printHashes = {};
     expect(summarizeRelease(extended, identity, 'record-release').failures[0].reasons).toContain('ACTUAL_PRINT_DELIVERY_EVIDENCE_MISSING');
@@ -238,13 +238,13 @@ describe('final release evidence contracts, no sockets or browser', () => {
     const bounded = records(releaseMatrix('confirmed-actions-only'));
     expect(summarizeRelease(bounded, identity, 'confirmed-actions-only')).toMatchObject({ completed: true, baseCells: 0, interactionCells: 196, screenshots: 196, expectedShards: 4 });
     expect(summarizeRelease(bounded, identity, 'confirmed-actions-release').completed).toBe(false);
-    expect(summarizeRelease(records(releaseMatrix('confirmed-actions-release')), identity, 'confirmed-actions-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 686, screenshots: 858, printPreviews: 4, expectedShards: 16 });
+    expect(summarizeRelease(records(releaseMatrix('confirmed-actions-release')), identity, 'confirmed-actions-release')).toMatchObject({ completed: true, baseCells: 176, interactionCells: 686, screenshots: 862, printPreviews: 4, expectedShards: 16 });
     bounded[0].evidence.cells.pop();
     expect(summarizeRelease(bounded, identity, 'confirmed-actions-only').completed).toBe(false);
   });
   it('adds bounded kept/search evidence without shrinking the previous 858-state release', () => {
     expect(summarizeRelease(records(releaseMatrix('kept-search-only')), identity, 'kept-search-only')).toMatchObject({ completed: true, baseCells: 0, interactionCells: 116, screenshots: 120, expectedShards: 4 });
-    expect(summarizeRelease(records(releaseMatrix('kept-search-release')), identity, 'kept-search-release')).toMatchObject({ completed: true, baseCells: 172, interactionCells: 802, screenshots: 978, printPreviews: 4, expectedShards: 20 });
+    expect(summarizeRelease(records(releaseMatrix('kept-search-release')), identity, 'kept-search-release')).toMatchObject({ completed: true, baseCells: 176, interactionCells: 802, screenshots: 982, printPreviews: 4, expectedShards: 20 });
     expect(summarizeRelease(records(releaseMatrix('kept-search-only')), identity, 'kept-search-release').completed).toBe(false);
   });
   it('requires exactly one canonical Consult scrolled supplement in every variant, preserving 116 cells and 120 PNGs', () => {
@@ -298,7 +298,7 @@ describe('final release evidence contracts, no sockets or browser', () => {
     const full = summarizeRelease(records(), identity);
     expect(summarizeRelease(records(releaseMatrix('ask-diagnostic')), identity, 'ask-diagnostic')).toMatchObject({ completed: true, expectedBaseCells: 0, baseCells: 0, returnedShards: 1, interactionCells: 4 });
     expect(summarizeRelease(records(releaseMatrix('report-close-only')), identity, 'report-close-only')).toMatchObject({ completed: true, expectedBaseCells: 0, baseCells: 0, returnedShards: 4, interactionCells: 8 });
-    expect(full).toMatchObject({ completed: true, baseCells: 172, interactionCells: 294, screenshots: 466, expectedShards: 8, returnedShards: 8 });
+    expect(full).toMatchObject({ completed: true, baseCells: 176, interactionCells: 294, screenshots: 470, expectedShards: 8, returnedShards: 8 });
     for (const viewport of RELEASE_VIEWPORTS) {
       const missingClose = records();
       const focused = missingClose.find(record => record.capture.cell.viewport.id === viewport.id && record.capture.cell.group === 'focused');

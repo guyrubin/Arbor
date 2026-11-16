@@ -118,6 +118,11 @@ export const CHILD_SUBCOLLECTIONS = [
   // B-BOOK-51 (X28): the one finished-book ledger — catalogue book id, language,
   // time per true ending; never the path or choice. Export + erase.
   "bookReads",
+  // Family plan v1: the dated things from the child's kindergarten or school
+  // (a deadline, an event, a time a parent is asked to join), who has each, the
+  // requests between the family's adults and each date's history. The message
+  // lines a date came from are kept; never the whole message. Export + erase.
+  "familyPlanDates",
 ];
 
 const remoteActive = (uid?: string) =>

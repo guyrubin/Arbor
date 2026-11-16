@@ -103,6 +103,14 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     threadWrite: "none",
   },
   {
+    route: "family-plan", hub: "today", depth: 1,
+    job: "See who has each date from the kindergarten this week, and ask an adult to take the ones nobody has.",
+    primaryMove: "family-plan-add-message", moduleBudget: 4, demotionTarget: "overview",
+    // v10.1 Family plan: its own child collection (familyPlanDates), not a
+    // buildTimeline source; nothing it writes reaches the timeline.
+    threadWrite: "none",
+  },
+  {
     route: "weekly", hub: "today", depth: 1,
     job: "Read this week's story and take one thing from it into today.",
     primaryMove: "accept-recap-recommendation", moduleBudget: 4, demotionTarget: "overview",
