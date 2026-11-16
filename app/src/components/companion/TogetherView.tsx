@@ -99,7 +99,7 @@ function ScopedTogetherView() {
   const planFor = (routineId: string) => actionPlans.find((p) => routineIdOfPlan(p) === routineId) ?? null;
   const fits = routineForPart(todaysRhythm(templates, planFor, routineDayKey(now), lang), dayPart(now.getHours()));
   const week = routineStepsThisWeek(actionPlans, now);
-  const dayFmt = new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-US", { weekday: "short", day: "numeric" });
+  const dayFmt = new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-GB", { weekday: "short", day: "numeric" });
   const listFmt = new Intl.ListFormat(lang === "he" ? "he" : "en", { style: "long", type: "conjunction" });
   const weekDays = listFmt.format(week.days.map((d) => dayFmt.format(d)));
   const chain: ChainNode[] = [
@@ -138,6 +138,7 @@ function ScopedTogetherView() {
     icon: BAND_ICON[band],
     name: bandName[band],
     figure: n,
+    meta: band === "anytime" ? copy.anytimeMeta : undefined,
     on: band === nowBand,
     onOpen: () => scrollToSection(`band-${band}`),
     testId: `together-index-${band}`,

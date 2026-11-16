@@ -221,7 +221,10 @@ describe("Together › Routines, the page (v10.1)", () => {
     const at = (mark: string) => html.indexOf(mark);
     expect(at(`<h3 class="h3">${esc(copy.howToRead)}</h3>`)).toBeLessThan(at('data-testid="together-done-week"'));
     expect(at('data-testid="together-done-week"')).toBeLessThan(at('data-module="together-doors"'));
-    expect(line).toContain(`<b class="strong" style="color:var(--ink)">${esc(copy.doneSteps(2))}</b> ${esc(copy.doneDays(new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-US", { weekday: "short", day: "numeric" }).format(new Date())))}`);
+    // V77: dates are the boards' day-first short form ("Sat 14"), so English uses en-GB.
+    expect(line).toContain(`<b class="strong" style="color:var(--ink)">${esc(copy.doneSteps(2))}</b> ${esc(copy.doneDays(new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-GB", { weekday: "short", day: "numeric" }).format(new Date())))}`);
+    // Negative control: never the US day-after-weekday order ("16 Mon").
+    if (lang === "en") expect(line).not.toContain(esc(new Intl.DateTimeFormat("en-US", { weekday: "short", day: "numeric" }).format(new Date())));
     // The days are plan tokens labelled with the day, one per day ticked.
     expect(line.match(/class="tok plan/g)).toHaveLength(1);
     expect(line.replace(/<[^>]+>/g, " ")).not.toMatch(/%|\bof\b|מתוך/);

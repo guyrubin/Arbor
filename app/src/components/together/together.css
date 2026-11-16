@@ -297,3 +297,6 @@
 /* The header band's index tiles are buttons in production (they scroll to a band). */
 .ds .mci .mcs { border: 0; font: inherit; text-align: start; cursor: pointer; }
 .ds .mci .mcs:focus-visible { outline: 2px solid var(--sapphire); outline-offset: 2px; }
+/* V77 index tiles: the board's height (124 desk, 92 phone). */
+.ds.ds-desk .mci .mcs { min-height: 124px; }
+.ds.ds-phone .mci .mcs { min-height: 92px; }
