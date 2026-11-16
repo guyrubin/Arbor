@@ -352,8 +352,10 @@ function ScopedDailyPlayTab() {
         onDid={handlePlanDid}
         onCoach={handlePlanCoach}
         onObservationSubmit={handlePlanObservation}
-        sessionLength={planSessionLength}
-        onSessionLengthChange={handlePlanSessionLength}
+        // v10.1: one "Time I have today" — the plan card's chips choose the length
+        // for today's idea and for the More ideas below it.
+        sessionLength={sessionLength}
+        onSessionLengthChange={(v) => { handleSessionLength(v); handlePlanSessionLength(v); }}
         ageYears={ageYearsOf(childProfile)}
         onSetGoal={() => setGoalModalOwner(childProfile.id)}
       />
@@ -465,11 +467,13 @@ function ScopedDailyPlayTab() {
           <RouteSection id="more-ideas" n={n("more-ideas")} aria-labelledby="play-more-title">
             <div className="tg-stack" style={{ gap: 12 }}>
               <div style={{ paddingInlineStart: phone ? 0 : 8 }}><RouteHead id="play-more-title" title={t("companion.together-view.more-ideas")} sub={copy.moreIdeasSub} /></div>
-              {/* CI-31: one selection controls all the idea cards below. */}
-              <SessionLengthChips value={sessionLength} onChange={handleSessionLength} ageYears={ageYearsOf(childProfile)} tapped={true} />
+              {/* CI-31: one selection controls all the idea cards. With a play idea its card
+                  carries the chips; without one they stand here. */}
+              {!dailyPlan && <SessionLengthChips value={sessionLength} onChange={handleSessionLength} ageYears={ageYearsOf(childProfile)} tapped={true} />}
               <div data-module="play-picks" data-primary-move="log-play" className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
                 <div className="lg:col-span-2"><SourceActivities /></div>
-                {picks.map((p) => (
+                {/* Today's play idea is shown once, in its own card above. */}
+                {picks.filter((p) => p.activity.id !== dailyPlan?.scoredActivity.activity.id).map((p) => (
                   <div key={p.activity.id}>
                     {/* E6: each pick was selected with ageYearsOf(childProfile) — render the fact. */}
                     <div className="mb-1.5"><AgeChip profile={childProfile} /></div>

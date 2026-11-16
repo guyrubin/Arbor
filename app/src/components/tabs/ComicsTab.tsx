@@ -94,6 +94,21 @@ import { comicShelfReadIsCurrent } from "../../lib/comicShelfScope";
 const savedMetaFingerprint = (meta: SavedComicMeta): string =>
   JSON.stringify([meta.id, meta.adventureId, meta.lang, meta.createdAt, meta.pageCount, meta.identityVersion, meta.pageKeys]);
 
+/** Every Hero Comics state in one frame: the page shell on #/comics; inside
+ *  Together › Stories a section heading (h2), so the screen keeps one h1. */
+function ComicsFrame({ embedded, title, subtitle, children }: { embedded: boolean; title: string; subtitle?: string; children: React.ReactNode }) {
+  if (!embedded) return <RegisterShell kidMode={false} title={title} subtitle={subtitle}>{children}</RegisterShell>;
+  return (
+    <div className="space-y-4" data-testid="comics-embedded">
+      <div>
+        <h2 className="h3" style={{ margin: 0 }} dir="auto">{title}</h2>
+        {subtitle && <p className="small" dir="auto">{subtitle}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 /** `embedded`: Hero Comics inside Together › Stories (v10.1) — a section
  *  heading instead of the page header, and no route stamps (Stories owns them). */
 export default function ComicsTab({ embedded = false }: { embedded?: boolean } = {}) {
@@ -413,14 +428,14 @@ export default function ComicsTab({ embedded = false }: { embedded?: boolean } =
   // B-PLAY-12: a text book reread in place — hero or not.
   if (openRun) {
     return (
-      <RegisterShell kidMode={false} title={t("nav.tab.comics")}>
+      <ComicsFrame embedded={embedded} title={t("nav.tab.comics")}>
         <StoryTextReader
           key={`${partitionKey}|${openRun.id}`}
           run={openRun}
           hero={{ name: childProfile.name, nameLatin: childProfile.nameLatin, gender: childProfile.gender }}
           onBack={() => setOpenRunId(null)}
         />
-      </RegisterShell>
+      </ComicsFrame>
     );
   }
 
@@ -429,8 +444,8 @@ export default function ComicsTab({ embedded = false }: { embedded?: boolean } =
   // families must not hit English exactly where register matters most.
   if (!hasHero) {
     return (
-      <RegisterShell
-        kidMode={false}
+      <ComicsFrame
+        embedded={embedded}
         title={t("nav.tab.comics")}
         subtitle={he ? `הפכו את ${name} לכוכב של ספר קומיקס משלו.` : `Turn ${name} into the star of their own comic book.`}
       >
@@ -469,8 +484,9 @@ export default function ComicsTab({ embedded = false }: { embedded?: boolean } =
         )}
         {/* B-KID-87 (KB-29): the hero invitation is ONE card; the library
             below is readable without a hero (nothing is gated). */}
-        <div className="mt-6">{ourBooksSection}</div>
-      </RegisterShell>
+        {/* Embedded in Stories, the books are Stories' own "More stories" shelf (each capability once). */}
+        {!embedded && <div className="mt-6">{ourBooksSection}</div>}
+      </ComicsFrame>
     );
   }
 
@@ -488,7 +504,7 @@ export default function ComicsTab({ embedded = false }: { embedded?: boolean } =
       title: index === 0 ? journeyTitle : `${adventureTitle(openAdventure, journeyMeta.lang)} · ${index}`,
     }));
     return (
-      <RegisterShell kidMode={false} title={journeyTitle}>
+      <ComicsFrame embedded={embedded} title={journeyTitle}>
         <SavedComicReader
           key={`${partitionKey}|${visibleOpenBook.id}|${journeyMeta.createdAt}`}
           title={journeyTitle}
@@ -502,7 +518,7 @@ export default function ComicsTab({ embedded = false }: { embedded?: boolean } =
               : state);
           }}
         />
-      </RegisterShell>
+      </ComicsFrame>
     );
   }
   if (visibleOpenBook && openAdventure) {
@@ -525,7 +541,7 @@ export default function ComicsTab({ embedded = false }: { embedded?: boolean } =
         }
       : undefined;
     return (
-      <RegisterShell kidMode={false} title={adventureTitle(openAdventure, visibleOpenBook.lang)}>
+      <ComicsFrame embedded={embedded} title={adventureTitle(openAdventure, visibleOpenBook.lang)}>
         <ComicReader
           key={`${partitionKey}|${openAdventure.id}|${visibleOpenBook.lang}|${meta?.createdAt ?? "new"}`}
           adventure={openAdventure}
@@ -544,7 +560,7 @@ export default function ComicsTab({ embedded = false }: { embedded?: boolean } =
             openPaywall(err.feature || "heroComic", err.plan);
           }}
         />
-      </RegisterShell>
+      </ComicsFrame>
     );
   }
 
@@ -789,13 +805,5 @@ export default function ComicsTab({ embedded = false }: { embedded?: boolean } =
       </div>
     </>
   );
-  return embedded ? (
-    <div className="space-y-4" data-testid="comics-embedded">
-      <div>
-        <h2 className="h3" style={{ margin: 0 }}>{t("nav.tab.comics")}</h2>
-        <p className="small" dir="auto">{subtitle}</p>
-      </div>
-      {mainBody}
-    </div>
-  ) : <RegisterShell kidMode={false} title={t("nav.tab.comics")} subtitle={subtitle}>{mainBody}</RegisterShell>;
+  return <ComicsFrame embedded={embedded} title={t("nav.tab.comics")} subtitle={subtitle}>{mainBody}</ComicsFrame>;
 }
