@@ -1,180 +1,276 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { Camera, Check, Eye, Focus, Maximize2, Minus, Plus, RotateCw, Ruler, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { ArrowDownToLine, Binoculars, Camera, DoorOpen, Footprints, Hand, Moon, Ruler, Snowflake, Wheat, Wind, type LucideIcon } from 'lucide-react';
 import { selectionHaptic } from '../../../../../../lib/native';
 import { useLanguage } from '../../../../../../context/LanguageContext';
 import { useArborOptional } from '../../../../../../context/ArborContext';
 import { GameFinish, GameShell } from '../../../../game/GameShell';
 import { useKidReadAloudMuted } from '../../../../audio/kidAudio';
 import { ADVENTURE_COPY } from '../../adventures/adventureCopy';
+import {
+  CAMERA_HOME, HudButton, HudCoach, HudDock, HudQuest, HudToast, PlayFx, PlayOpening, PlaySetPiece, PlayStage, createPlaySound, hitPause, prefersReducedMotion, roundSeed, useShake,
+  type CoachMood, type CoachWho, type PlayCamera, type PlayFxHandle, type PlaySound,
+} from '../play';
 import { ICE_AGE_FRIEND_COPY } from './iceAgeFriendCopy';
-import { DISCOVERIES, ZOOM_MAX, ZOOM_MIN, allFound, discover, type DiscoveryId } from './iceAgeFriendRules';
-import { pickDay, type DayId } from './mammothPlayRules';
-import { createMammothEngine, type MammothEngine, type Phase } from './mammothEngine';
+import { DISCOVERIES, discover, type DiscoveryId } from './iceAgeFriendRules';
+import { STEPS, STEP_FACT, chapterOf, endsChapter, finishStep, nextStep, planRound, questFor, type Round, type StepId } from './mammothStory';
+import { createMammothEngine, type Cue, type FxKind, type MammothEngine } from './mammothEngine';
 import { createMammothSound, type MammothSound } from './mammothAudio';
-import { FloorLayer, HallLayer, HintHand, PhotoBadge, SteppeLayer } from './HallArt';
+import { CrewLayer, HallLayer, HintHand, Photo, Print, Watchers } from './HallArt';
 import type { FriendId } from './mammothArt';
 import '../makerPalette.css';
 import './iceAgeFriend.css';
 
-type Stage = 'explore' | 'call' | 'free' | 'leave';
-const fill = (template: string, value: string) => template.replace('{0}', value);
-const reducedNow = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-/** The crew's tool for each discovery, as a small control glyph beside its name. */
-const TOOL_ICON = { coats: Camera, ears: Camera, tusks: Ruler, trunk: Focus, hump: Eye } as const;
-/** The day the hall last showed, kept only while the app is open, so the next visit looks different. Nothing about the child. */
-let lastDay: DayId | null = null;
+type Phase = 'opening' | 'play' | 'setPiece';
+type Note = { who: CoachWho; mood: CoachMood; line: string };
+type CaptionId = 'call' | 'answer' | 'aurora' | 'pictures';
+/** Who speaks for each step: the tool's owner, or the friend whose way of being it is. */
+const STEP_COACH: Readonly<Record<StepId, { who: CoachWho; mood: CoachMood }>> = {
+  frost: { who: 'bebe', mood: 'curious' }, hello: { who: 'gobgob', mood: 'curious' }, trace: { who: 'bebe', mood: 'idle' },
+  brush: { who: 'aya', mood: 'curious' }, feed: { who: 'gobgob', mood: 'idle' }, part: { who: 'bebe', mood: 'curious' },
+  scout: { who: 'pep', mood: 'curious' }, walk: { who: 'chock', mood: 'idle' }, low: { who: 'bebe', mood: 'curious' },
+};
+const STEP_ICON: Readonly<Record<StepId, LucideIcon>> = { frost: Snowflake, hello: Hand, trace: Ruler, brush: Wind, feed: Wheat, part: Camera, scout: Binoculars, walk: Footprints, low: ArrowDownToLine };
+/** What each kind of small thing is made of here: frost, snow, ice and dry grass. */
+const FX_TONES: Readonly<Record<FxKind, readonly string[]>> = {
+  sparkle: ['white', 'butter', 'sky-pale'], dust: ['snow', 'white', 'snow-shade'], drop: ['sky-pale', 'white', 'sky'], glint: ['white', 'butter'], ring: ['white'], petal: ['sand', 'wood-light', 'butter'],
+};
+/** Development only: `?iafStep=scout` starts the visit at that step, for looking at one moment without playing up to it. */
+const DEV_STEP = (() => { try { const value = import.meta.env.DEV ? new URLSearchParams(location.search).get('iafStep') : null; return STEPS.find(step => step === value) ?? null; } catch { return null; } })();
+/** The last visit's weather and stars, kept only while the app is open, so the next visit looks different. Nothing about the child. */
+let lastRound: Round | null = null;
 
-/** Woolly Mammoth: the giant behind the glass. In the great glass hall of
- * Horizon Dome a woolly mammoth stands out on the Ice Age steppe. The child
- * touches the glass to say hello; befriended, it steps into the hall, where
- * its coat can be stroked, the snow brushed off its back, a bunch of grass
- * offered, and five things that kept it warm found with the crew's tools.
- * Finding all five makes it lift its trunk and call, and the herd answers.
- * Nothing about how the child played is kept. */
+/** Woolly Mammoth: the giant behind the glass. In the dim glass hall of
+ * Horizon Dome the child wipes the frost from a great pane and an eye looks
+ * back. They say hello through the glass and measure its tusk; the glass
+ * gives way to the Ice Age steppe, where they brush the snow from its back,
+ * offer it grass and photograph its two coats; then they find its herd, walk
+ * with it there and look up at it from a calf's height. At night the herd
+ * answers its call, the aurora comes, and the child's five pictures hang in
+ * the sky. Nothing about how the child played is kept. */
 export default function IceAgeFriend() {
-  const { uiLang } = useLanguage(); const lang = uiLang === 'he' ? 'he' : 'en';
+  const [visit, setVisit] = useState(0);
+  return <Visit key={visit} onAgain={() => setVisit(n => n + 1)} />;
+}
+
+function Visit({ onAgain }: { onAgain(): void }) {
+  const { uiLang } = useLanguage(); const lang = uiLang === 'he' ? 'he' : 'en', rtl = lang === 'he';
   const w = ICE_AGE_FRIEND_COPY[lang], shared = ADVENTURE_COPY[lang];
   const child = useArborOptional()?.childProfile;
   const muted = useKidReadAloudMuted(child?.id ?? '');
-  const [day] = useState<DayId>(() => { lastDay = pickDay(Math.random, lastDay); return lastDay; });
+  const round = useMemo(() => { lastRound = planRound(roundSeed(), lastRound); return lastRound; }, []);
+  const [phase, setPhase] = useState<Phase>('opening');
+  const [step, setStep] = useState<StepId | null>(null);
+  const [chapterStep, setChapterStep] = useState<StepId>('frost');
+  const [doneSteps, setDoneSteps] = useState<StepId[]>([]);
   const [found, setFound] = useState<DiscoveryId[]>([]);
-  const [tag, setTag] = useState<DiscoveryId | 'final' | null>(null);
-  const [stage, setStage] = useState<Stage>('explore');
-  const [phase, setPhase] = useState<Phase>('meet');
-  const [zoom, setZoom] = useState(1);
-  const [cheer, setCheer] = useState({ key: 0, big: false });
-  const [tall, setTall] = useState(false);
+  const [print, setPrint] = useState<DiscoveryId | null>(null);
+  const [gate, setGate] = useState(false);
+  const [note, setNote] = useState<Note | null>(null);
+  const [lensReady, setLensReady] = useState(false);
+  const [secret, setSecret] = useState(false);
+  const [caption, setCaption] = useState<CaptionId>('call');
+  const [nightReady, setNightReady] = useState(false);
+  const [cheer, setCheer] = useState(0);
+  // The opening shot: the camera begins close on the frosted pane and settles back on the hall.
+  const [stageCam, setStageCam] = useState<PlayCamera>(() => (prefersReducedMotion() ? CAMERA_HOME : { x: 0.5, y: 0.42, zoom: 1.3 }));
+  const [outside, setOutside] = useState(false);
+  const [shake, bump] = useShake();
   const [done, setDone] = useState(false);
-  const stageRef = useRef<HTMLDivElement>(null);
+  const worldRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const layers = useRef<(HTMLDivElement | null)[]>([null, null, null]);
-  const rings = useRef<Partial<Record<DiscoveryId, HTMLButtonElement | null>>>({});
-  const photos = useRef<Partial<Record<DiscoveryId, HTMLCanvasElement | null>>>({});
   const ghostRef = useRef<HTMLSpanElement>(null);
   const rippleRef = useRef<HTMLSpanElement>(null);
-  const basketRef = useRef<HTMLButtonElement>(null);
-  const tagRef = useRef<HTMLDivElement>(null);
+  const fx = useRef<PlayFxHandle>(null);
   const engine = useRef<MammothEngine | null>(null);
   const sound = useRef<MammothSound | null>(null);
-  const foundRef = useRef(found); foundRef.current = found;
-  const stageState = useRef(stage); stageState.current = stage;
+  const play = useRef<PlaySound | null>(null);
+  const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
+  const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const printNow = useRef<DiscoveryId | null>(null);
+  const waiting = useRef<StepId | null>(null);
+  const chain = useRef(0);
+
+  const later = (run: () => void, ms: number) => { const id = setTimeout(() => { timers.current.delete(id); run(); }, ms); timers.current.add(id); };
+  const say = (next: Note, ms = 3600) => {
+    setNote(next);
+    if (noteTimer.current) clearTimeout(noteTimer.current);
+    noteTimer.current = setTimeout(() => setNote(null), ms);
+  };
+  const startStep = (next: StepId) => {
+    setLensReady(false); setStep(next); setChapterStep(next);
+    engine.current?.task(next);
+  };
+  /** A step is over: its pip fills, the crew is glad, and the story moves on. */
+  const advance = (finished: StepId) => {
+    setDoneSteps(list => finishStep(list, finished));
+    setStep(null); setCheer(n => n + 1);
+    play.current?.place(chain.current++);
+    if (!endsChapter(finished)) {
+      if (finished === 'hello') say({ who: 'gobgob', mood: 'happy', line: w.say.helloDone }, 1500);
+      if (finished === 'brush') say({ who: 'aya', mood: 'happy', line: w.say.brushDone }, 1700);
+      const next = nextStep(finished);
+      if (next) later(() => startStep(next), finished === 'frost' ? 900 : 1500);
+      return;
+    }
+    // The end of a chapter: a flourish, and the way on.
+    play.current?.chapter(); fx.current?.burst(0.5, 0.4, 'sparkle', { count: 22, spread: 1.8, tones: FX_TONES.sparkle });
+    const chapter = chapterOf(finished);
+    if (chapter === 'meet') { setGate(true); return; }
+    if (chapter === 'care') { say({ who: 'aya', mood: 'happy', line: w.say.careDone }, 2400); later(() => startStep('scout'), 2400); return; }
+    later(() => {
+      setPhase('setPiece'); setCaption('call'); play.current?.ambience('night'); play.current?.setPiece();
+      engine.current?.task('finale');
+    }, 900);
+  };
+  const handlers = useRef({
+    step: (_finished: StepId) => {}, shot: (_id: DiscoveryId) => {}, eye: () => {}, secret: () => {}, cue: (_cue: Cue, _index?: number) => {},
+  });
+  handlers.current = {
+    step: finished => {
+      // A step that ends in a picture waits for the child to keep the print.
+      if (printNow.current) { waiting.current = finished; return; }
+      advance(finished);
+    },
+    shot: id => {
+      printNow.current = id;
+      setFound(list => discover(list, id)); setPrint(id); setLensReady(false);
+      engine.current?.hold(true);
+      play.current?.pick();
+    },
+    eye: () => {
+      // The moment of awe: everything holds its breath, and the camera leans in.
+      void hitPause(140); bump();
+      say({ who: 'bebe', mood: 'wow', line: w.say.eye }, 3800);
+      if (!prefersReducedMotion()) { setStageCam({ x: 0.5, y: 0.4, zoom: 1.22 }); later(() => setStageCam(CAMERA_HOME), 2100); }
+      play.current?.note(5, { gain: 0.05, length: 1.6, attack: 0.06 }); play.current?.note(8, { gain: 0.035, length: 1.4, attack: 0.06, at: 0.12 });
+    },
+    secret: () => { setSecret(true); say({ who: 'aya', mood: 'wow', line: w.say.secret }, 4200); later(() => setSecret(false), 6500); },
+    cue: (cue, index) => {
+      switch (cue) {
+        case 'thump': bump(); break;
+        case 'waiting': say({ who: 'gobgob', mood: 'idle', line: w.say.waiting }, 5000); break;
+        case 'lensReady': setLensReady(true); say({ who: 'bebe', mood: 'wow', line: w.say.lensReady }, 6000); break;
+        case 'calf': say({ who: 'pep', mood: 'wow', line: w.say.calf }, 3200); break;
+        case 'throughHalf': setStageCam(CAMERA_HOME); setOutside(true); play.current?.ambience('wind'); say({ who: 'aya', mood: 'wow', line: w.say.steppe }, 2600); break;
+        case 'steppe': break;
+        case 'call': bump(); setCaption('call'); break;
+        case 'answer': setCaption('answer'); break;
+        case 'aurora': setCaption('aurora'); break;
+        case 'star': setCaption('pictures'); play.current?.place(index ?? 0); break;
+        case 'finaleReady': setNightReady(true); break;
+      }
+    },
+  };
 
   useEffect(() => {
-    const host = stageRef.current, canvas = canvasRef.current;
+    const host = worldRef.current, canvas = canvasRef.current;
     if (done || !host || !canvas) return;
-    const audio = createMammothSound(); sound.current = audio;
-    const live = createMammothEngine(
-      { stage: host, canvas, layers: layers.current.filter((node): node is HTMLDivElement => !!node), rings: rings.current, ghost: ghostRef.current, basket: basketRef.current, ripple: rippleRef.current },
-      {
-        onZoom: value => setZoom(value), onGesture: () => { audio.start(); }, onPhase: next => setPhase(next),
-        onCheer: big => setCheer(now => ({ key: now.key + 1, big })), onTick: () => { void selectionHaptic(); },
-      },
-      audio, { reduced: reducedNow(), day, faceRight: lang === 'he' },
-    );
+    const audio = createMammothSound(), kit = createPlaySound({ key: 'D' });
+    sound.current = audio; play.current = kit;
+    let started = false;
+    host.style.setProperty('--iaf-light', '0');
+    const live = createMammothEngine({ stage: host, canvas, ghost: ghostRef.current, ripple: rippleRef.current }, {
+      onGesture: () => { if (!started) { started = audio.start(); if (started) kit.ambience(live.scene() === 'hall' ? 'hall' : 'wind'); } },
+      onTick: () => { void selectionHaptic(); },
+      onStep: finished => handlers.current.step(finished),
+      onShot: id => handlers.current.shot(id),
+      onEye: () => handlers.current.eye(),
+      onSecret: () => handlers.current.secret(),
+      onCue: (cue, index) => handlers.current.cue(cue, index),
+      onFx: (kind, x, y, count) => fx.current?.burst(x, y, kind, { count, tones: FX_TONES[kind] }),
+      onLight: level => host.style.setProperty('--iaf-light', level.toFixed(3)),
+    }, audio, { reduced: prefersReducedMotion(), round, faceRight: rtl, rtl });
     engine.current = live;
-    const shape = () => setTall(host.clientHeight > host.clientWidth * 1.1);
-    shape();
-    const watch = typeof ResizeObserver === 'function' ? new ResizeObserver(shape) : null;
-    watch?.observe(host);
-    const query = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    const query = typeof window === 'undefined' ? undefined : window.matchMedia?.('(prefers-reduced-motion: reduce)');
     const onMotion = () => live.setReduced(!!query?.matches);
     query?.addEventListener?.('change', onMotion);
-    return () => { query?.removeEventListener?.('change', onMotion); watch?.disconnect(); live.dispose(); audio.dispose(); engine.current = null; sound.current = null; };
-    // The scene is built once per visit; the language of a visit does not change under it.
-  }, [done, day]);
+    const pending = timers.current;
+    return () => {
+      query?.removeEventListener?.('change', onMotion);
+      for (const id of pending) clearTimeout(id);
+      pending.clear();
+      if (noteTimer.current) clearTimeout(noteTimer.current);
+      live.dispose(); audio.dispose(); kit.dispose(); engine.current = null; sound.current = null; play.current = null;
+    };
+    // The scene is built once for a visit; the language of a visit does not change under it.
+  }, [done, round]);
   useEffect(() => { if (muted) sound.current?.stop(); }, [muted]);
-  // The card takes focus when it opens, so its words are read and Escape or Tab reach Close.
-  useEffect(() => { if (tag) tagRef.current?.focus(); engine.current?.hold(!!tag); }, [tag]);
+  useEffect(() => { const id = setTimeout(() => setStageCam(CAMERA_HOME), 160); return () => clearTimeout(id); }, []);
 
-  const open = (id: DiscoveryId) => {
-    void selectionHaptic();
-    const host = stageRef.current;
-    // The card opens over the floor on a wide stage and over the dome on a tall one; the camera keeps the spot clear of it.
-    const card = host ? Math.min(host.clientHeight * 0.42, 190) * (tall ? -0.8 : 1) : 0;
-    const isNew = !foundRef.current.includes(id);
-    engine.current?.focus(id, card, isNew, photos.current[id] ?? null);
-    setFound(list => discover(list, id));
-    setTag(id);
+  const keepPrint = () => {
+    if (!printNow.current) return;
+    printNow.current = null; setPrint(null);
+    engine.current?.hold(false);
+    play.current?.place(chain.current);
+    const finished = waiting.current; waiting.current = null;
+    if (finished) advance(finished);
   };
-  const closeTag = () => {
-    const was = tag;
-    setTag(null);
-    engine.current?.release();
-    // Back to the whole animal, so the next ring is in sight.
-    if (was && was !== 'final') engine.current?.whole();
-    if (was && was !== 'final' && allFound(foundRef.current) && stageState.current === 'explore') {
-      setStage('call');
-      engine.current?.finale(() => { setStage('free'); setTag('final'); });
-    }
-    if (was && was !== 'final') rings.current[was]?.focus();
-  };
-  const goodbye = () => {
-    if (stageState.current === 'leave') return;
-    setTag(null); setStage('leave');
-    const live = engine.current;
-    if (live) live.farewell(() => setDone(true)); else setDone(true);
+  const goThrough = () => {
+    if (!gate) return;
+    setGate(false); void selectionHaptic(); play.current?.pick();
+    if (!prefersReducedMotion()) setStageCam({ x: 0.5, y: 0.44, zoom: 1.7 });
+    engine.current?.through(() => startStep('brush'));
   };
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     const live = engine.current; if (!live || e.target !== e.currentTarget) return;
-    const step = 60;
     const keys: Record<string, () => void> = {
-      ArrowLeft: () => live.pan(-step, 0), ArrowRight: () => live.pan(step, 0), ArrowUp: () => live.pan(0, -step), ArrowDown: () => live.pan(0, step),
-      '+': () => live.zoomBy(1.5), '=': () => live.zoomBy(1.5), '-': () => live.zoomBy(1 / 1.5), _: () => live.zoomBy(1 / 1.5),
-      '0': () => live.whole(), Home: () => live.whole(), Enter: () => live.comb(), ' ': () => live.comb(),
+      Enter: () => live.step(), ' ': () => live.step(),
+      ArrowLeft: () => live.nudge(-1, 0), ArrowRight: () => live.nudge(1, 0), ArrowUp: () => live.nudge(0, -1), ArrowDown: () => live.nudge(0, 1),
     };
     const run = keys[e.key]; if (!run) return;
     e.preventDefault(); run();
   };
 
-  const exploring = phase === 'explore' && (stage === 'explore' || stage === 'free');
-  const cue = phase === 'meet' ? w.cueMeet : phase === 'enter' ? w.cueEnter : stage === 'leave' ? w.cueLeave : stage === 'call' ? w.cueCall : stage === 'free' ? w.cueFree : found.length ? w.cueMore : w.cueStart;
-  const fact = tag && tag !== 'final' ? w.facts[tag] : null;
-  const ToolIcon = tag && tag !== 'final' ? TOOL_ICON[tag] : Camera;
-  const end = lang === 'he' ? 'left' : 'right';
-  const layer = (index: number) => (node: HTMLDivElement | null) => { layers.current[index] = node; };
+  const quest = questFor(step ?? chapterStep, doneSteps);
+  const base: Note = phase === 'opening' ? { who: 'bebe', mood: 'curious', line: w.say.opening }
+    : print ? { who: STEP_COACH[chapterStep].who, mood: 'happy', line: w.say.print }
+      : gate ? { who: 'aya', mood: 'happy', line: w.say.through }
+        : step ? { ...STEP_COACH[step], line: w.say[step] }
+          : { ...STEP_COACH[chapterStep], mood: 'happy', line: '' };
+  const coach = !print && note ? note : base;
+  const fact = print ? w.facts[print] : null;
+  const side = rtl ? 'right' : 'left';
 
   return <GameShell fullBleed autoNarrate={false} worldId="ice-age-friend" title={w.title} instruction={w.instruction}>
-    <section className="iaf" data-adventure="ice-age-friend" data-stage={stage} data-phase={phase} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-      {done ? <GameFinish title={w.finish} subtitle={w.transfer} onPlayAgain={() => { setFound([]); setTag(null); setStage('explore'); setPhase('meet'); setZoom(1); setDone(false); }} playAgainLabel={shared.again} homeLabel={shared.home} /> : <>
-        <div className="iaf-top">
-          <p className="iaf-cue" role="status">{cue}</p>
-          <ul className="iaf-photos" aria-label={w.photos}>
-            {DISCOVERIES.map(id => <li key={id} data-found={found.includes(id)} aria-label={`${w.facts[id].title}: ${found.includes(id) ? w.found : w.notYet}`}><PhotoBadge lit={found.includes(id)} canvasRef={node => { photos.current[id] = node; }} /></li>)}
-          </ul>
-        </div>
-        <div ref={stageRef} className="iaf-stage" dir="ltr" tabIndex={0} role="group" aria-label={w.stage} aria-describedby="iaf-keys" onKeyDown={onKey} data-day={day} data-zoom={zoom >= 2.5 ? 'close' : zoom > 1.05 ? 'near' : 'whole'}>
-          <SteppeLayer layerRef={layer(0)} />
-          <canvas ref={canvasRef} className="iaf-canvas" aria-hidden="true" />
-          <HallLayer layerRef={layer(1)} />
-          <FloorLayer layerRef={layer(2)} basketRef={basketRef} names={w.friends} grassLabel={w.grass} cheer={cheer} side={lang === 'he' ? 'right' : 'left'}
-            onFriend={(id: FriendId) => { void selectionHaptic(); engine.current?.greet(id); }} onGrass={() => { void selectionHaptic(); engine.current?.feed(); }} />
-          <span id="iaf-keys" className="iaf-sr">{w.keys}</span>
-          {DISCOVERIES.map(id => <button key={id} type="button" ref={node => { rings.current[id] = node; }} className="iaf-ring" data-ring={id} data-found={found.includes(id)} data-open={tag === id} aria-label={fill(w.ring, w.places[id])} hidden={!exploring && tag !== id} onClick={() => open(id)}>
-            <span className="iaf-ring__pulse" aria-hidden="true" /><span className="iaf-ring__dot" aria-hidden="true">{found.includes(id) && <Check size={13} strokeWidth={3.6} />}</span>
-          </button>)}
-          <span ref={rippleRef} className="iaf-ripple" aria-hidden="true" />
-          <HintHand handRef={ghostRef} />
-          {exploring && <div className="iaf-zoom" data-side={end} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-            <button type="button" className="iaf-round" aria-label={w.zoomOut} disabled={zoom <= ZOOM_MIN + 0.01} onClick={() => engine.current?.zoomBy(1 / 1.5)}><Minus size={24} aria-hidden="true" /></button>
-            <button type="button" className="iaf-round" aria-label={w.zoomIn} disabled={zoom >= ZOOM_MAX - 0.01} onClick={() => engine.current?.zoomBy(1.5)}><Plus size={24} aria-hidden="true" /></button>
-            <button type="button" className="iaf-round" aria-label={w.whole} disabled={zoom <= ZOOM_MIN + 0.01} onClick={() => engine.current?.whole()}><Maximize2 size={21} aria-hidden="true" /></button>
-          </div>}
-          {tag && <div ref={tagRef} className="iaf-tag" data-iaf-tag={tag} data-side={end} data-at={tall ? 'top' : 'bottom'} dir={lang === 'he' ? 'rtl' : 'ltr'} role="group" aria-labelledby="iaf-tag-title" tabIndex={-1} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); closeTag(); } }}>
-            <span className="iaf-tag__tool" aria-hidden="true">{tag === 'final' ? <Check size={22} strokeWidth={3} /> : <ToolIcon size={22} />}</span>
-            <div className="iaf-tag__words">
-              <h3 id="iaf-tag-title" className="iaf-tag__title">{fact ? fact.title : w.finalTitle}</h3>
-              <p className="iaf-tag__text">{fact ? fact.text : w.extinct}</p>
-              {tag !== 'final' && <p className="iaf-tag__how">{w.tools[tag]}</p>}
-              {tag === 'final' && <button type="button" className="studio-game-button-v2 studio-game-button-v2--primary iaf-done" onClick={goodbye}>{w.done}<Check size={20} aria-hidden="true" /></button>}
-            </div>
-            <button type="button" className="iaf-tag__close" aria-label={w.close} onClick={closeTag}><X size={22} aria-hidden="true" /></button>
-          </div>}
-        </div>
-        <div className="iaf-actions">
-          <button type="button" className="studio-game-button-v2 iaf-action" disabled={!exploring} onClick={() => { void selectionHaptic(); engine.current?.turn(); }}><RotateCw size={20} aria-hidden="true" />{w.turn}</button>
-          {stage === 'free' && <button type="button" className="studio-game-button-v2 studio-game-button-v2--primary iaf-action iaf-action--done" onClick={goodbye}>{w.done}<Check size={20} aria-hidden="true" /></button>}
-        </div>
-      </>}
+    <section data-adventure="ice-age-friend" data-iaf-phase={phase} data-iaf-step={step ?? ''} dir={rtl ? 'rtl' : 'ltr'}>
+      {done ? <GameFinish title={w.finish} subtitle={w.transfer} onPlayAgain={onAgain} playAgainLabel={shared.again} homeLabel={shared.home} /> : <PlayStage id="ice-age-friend" grade="day" camera={stageCam} shake={shake} parallax
+        world={<>
+          <div ref={worldRef} className="iaf-world" dir="ltr" tabIndex={0} role="group" aria-label={w.stage} aria-describedby="iaf-keys" onKeyDown={onKey} data-outside={outside || undefined}>
+            <canvas ref={canvasRef} className="iaf-canvas" aria-hidden="true" />
+            <HallLayer />
+            <CrewLayer names={w.friends} cheer={cheer} side={side} onFriend={(id: FriendId) => { void selectionHaptic(); engine.current?.greet(id); }} />
+            {phase === 'setPiece' && <Watchers side={rtl ? 'left' : 'right'} />}
+            <span id="iaf-keys" className="iaf-sr">{w.keys}</span>
+            <span ref={rippleRef} className="iaf-ripple" aria-hidden="true" />
+            <HintHand handRef={ghostRef} />
+          </div>
+          <PlayFx ref={fx} layer={6} />
+        </>}>
+        {phase === 'opening' && <PlayOpening title={w.title} place={w.place} onDone={() => {
+          setPhase('play');
+          if (!DEV_STEP) { startStep('frost'); return; }
+          setDoneSteps(STEPS.slice(0, STEPS.indexOf(DEV_STEP))); setFound(DISCOVERIES.filter(id => STEPS.slice(0, STEPS.indexOf(DEV_STEP)).some(step => STEP_FACT[step] === id))); setOutside(STEPS.indexOf(DEV_STEP) >= 3); setStep(DEV_STEP); setChapterStep(DEV_STEP); engine.current?.jump(DEV_STEP);
+        }} />}
+        <HudCoach who={coach.who} mood={coach.mood} line={coach.line} pokeLabel={w.friends[coach.who]} onPoke={() => { void selectionHaptic(); play.current?.tap(); engine.current?.greet(coach.who); setCheer(n => n + 1); }} />
+        <HudQuest label={w.questLabel} current={quest.current} steps={quest.steps.map(item => { const Icon = STEP_ICON[item.id]; return { key: item.id, label: w.steps[item.id], done: item.done, icon: <Icon aria-hidden="true" /> }; })} />
+        {found.length > 0 && !print && phase !== 'setPiece' && <ul className="iaf-album" aria-label={w.album} dir={rtl ? 'rtl' : 'ltr'}>
+          {DISCOVERIES.filter(id => found.includes(id)).map(id => <li key={id} aria-label={w.facts[id].title}><Photo source={engine.current?.photo(id) ?? null} size={96} /></li>)}
+        </ul>}
+        <HudToast show={secret && phase !== 'setPiece' && !print}>{w.secretNote}</HudToast>
+        {print && fact && <button type="button" className="iaf-print-wrap" onClick={keepPrint} aria-label={w.dock.keep}>
+          <Print id={print} source={engine.current?.photo(print) ?? null} title={fact.title} text={fact.text} tool={w.tools[print]} rtl={rtl} />
+        </button>}
+        <HudDock>
+          {print && <HudButton label={w.dock.keep} tone="go" size="l" onClick={keepPrint} data={{ 'data-iaf-keep': '' }} />}
+          {!print && gate && <HudButton label={w.dock.through} tone="go" size="l" cue icon={<DoorOpen aria-hidden="true" />} onClick={goThrough} data={{ 'data-iaf-through': '' }} />}
+          {!print && step === 'part' && lensReady && <HudButton label={w.dock.snap} tone="go" size="l" cue icon={<Camera aria-hidden="true" />} onClick={() => { void selectionHaptic(); engine.current?.snap(); }} data={{ 'data-iaf-snap': '' }} />}
+          {!print && step === 'walk' && <HudButton label={w.dock.walk} tone="paper" icon={<Footprints aria-hidden="true" />} onClick={() => { void selectionHaptic(); engine.current?.step(); }} data={{ 'data-iaf-walk': '' }} />}
+          {!print && step === 'low' && <HudButton label={w.dock.lower} tone="paper" icon={<ArrowDownToLine aria-hidden="true" />} onClick={() => { void selectionHaptic(); engine.current?.step(); }} data={{ 'data-iaf-lower': '' }} />}
+        </HudDock>
+        <PlaySetPiece active={phase === 'setPiece'} caption={w.captions[caption]}>
+          {nightReady && <HudButton label={w.dock.night} tone="go" size="l" icon={<Moon aria-hidden="true" />} onClick={() => { void selectionHaptic(); setDone(true); }} data={{ 'data-iaf-night': '' }} />}
+        </PlaySetPiece>
+      </PlayStage>}
     </section>
   </GameShell>;
 }

@@ -118,7 +118,7 @@ const NEAR = [46, 45, 45, 44, 43, 43, 42, 42, 43, 44, 45, 46, 46, 45, 44, 43, 43
 const STARS: readonly [number, number][] = [[6, 5], [14, 11], [22, 4], [31, 8], [44, 6], [52, 13], [58, 4], [38, 16], [9, 18], [26, 21], [48, 22], [60, 17]];
 const CLOUDS: readonly [number, number, number][] = [[6, 12, 12], [40, 7, 10], [30, 20, 8]];
 /** The chunky valley is this many squares across and down. */
-const VALLEY_W = 72, VALLEY_H = 54;
+const VALLEY_W = 128, VALLEY_H = 96;
 
 /** The desktop wallpaper: Horizon Valley itself, shown in chunky squares (the
  * kit's valley picture drawn once onto a tiny canvas and scaled up crisp).

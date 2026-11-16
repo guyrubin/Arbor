@@ -1,98 +1,59 @@
-/* Woolly Mammoth: the giant behind the glass. One stage holds the kit's glass
-   hall, the Ice Age beyond its windows, the mammoth (a canvas), the crew on the
-   floor, the five rings and the fact card, so cause and effect never scroll
-   apart. The stage is the scene and stays left-to-right in Hebrew; only the
-   chrome around it mirrors (and the crew cross to the other side of the floor).
-   Chrome wears the v30 register: pearl, white and frost surfaces, graphite
-   type, a hairline, teal for found, the signal colour only as a ring that
-   marks the next thing. Colour lives in the pictures and the fur. */
-.iaf { --iaf-gap: 10px; --bop-shade: var(--studio-shade); display: flex; flex-direction: column; gap: var(--iaf-gap); block-size: clamp(480px, calc(100dvh - 150px), 1040px); min-inline-size: 0; color: var(--studio-graphite); font-family: var(--studio-font); }
-.iaf button { font-family: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-
-/* The cue and the five photos share one frosted bar, so no word sits on a picture. */
-.iaf-top { display: flex; align-items: center; gap: 12px; min-block-size: 56px; padding: 6px 8px 6px 16px; border: 1px solid var(--studio-line); border-radius: var(--studio-radius-card); background: var(--studio-frost); box-shadow: 0 4px 14px var(--studio-shade); }
-.iaf[dir=rtl] .iaf-top { padding: 6px 16px 6px 8px; }
-.iaf-cue { flex: 1 1 0; min-inline-size: 0; margin: 0; font-size: 18px; font-weight: 800; line-height: 1.3; color: var(--studio-graphite); text-wrap: balance; }
-.iaf-photos { display: flex; flex: none; gap: 5px; margin: 0; padding: 0; list-style: none; }
-.iaf-photos > li { display: grid; place-items: center; }
-
-/* A ProofLens photo: an empty pearl frame with a lens mark; found, the photo itself in a teal ring with a tick. */
-.iaf-photo { position: relative; display: grid; place-items: center; inline-size: 40px; block-size: 40px; border-radius: 50%; border: 1.5px dashed color-mix(in srgb, var(--studio-graphite) 30%, transparent); background: var(--studio-pearl); color: color-mix(in srgb, var(--studio-graphite-soft) 55%, transparent); }
-.iaf-photo__shot { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; border-radius: 50%; opacity: 0; }
-.iaf-photo__tick { position: absolute; inset-block-end: -3px; inset-inline-end: -3px; display: none; place-items: center; inline-size: 17px; block-size: 17px; border-radius: 50%; border: 1.5px solid var(--studio-surface); background: var(--studio-done); color: var(--studio-done-ink); }
-.iaf-photo[data-lit=true] { border: 2.5px solid var(--studio-teal-ink); background: var(--studio-teal-soft); animation: iaf-photo-in .46s var(--studio-ease-spring); }
-.iaf-photo[data-lit=true] .iaf-photo__shot[data-shot=true] { opacity: 1; transition: opacity .25s var(--studio-ease-soft); }
-.iaf-photo[data-lit=true] .iaf-photo__lens { color: var(--studio-teal-ink); }
-.iaf-photo[data-lit=true] .iaf-photo__shot[data-shot=true] + .iaf-photo__lens { display: none; }
-.iaf-photo[data-lit=true] .iaf-photo__tick { display: grid; }
-
-/* ── the stage: pictures, canvas, pictures ── */
-.iaf-stage { position: relative; isolation: isolate; flex: 1 1 auto; min-block-size: 260px; overflow: hidden; border: 1px solid var(--studio-line); border-radius: var(--studio-radius-panel); background: var(--studio-pearl); box-shadow: var(--studio-lift); touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; outline: none; }
-.iaf-stage:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; }
-.iaf-stage[data-zoom=close] { cursor: crosshair; }
-.iaf[data-phase=meet] .iaf-stage { cursor: pointer; }
-.iaf-layer { position: absolute; inset: 0; transform-origin: 50% 50%; will-change: transform; pointer-events: none; }
-.iaf-layer--steppe { z-index: 0; }
-.iaf-layer--hall { z-index: 2; }
-.iaf-layer--floor { z-index: 4; transition: opacity .3s var(--studio-ease-soft); }
-/* Close to the animal, the camera has walked past the crew and the cushion: they are behind us. */
-.iaf-stage:not([data-zoom=whole]) .iaf-layer--floor { opacity: 0; }
-.iaf-stage:not([data-zoom=whole]) .iaf-layer--floor > * , .iaf-stage:not([data-zoom=whole]) .iaf-friend { pointer-events: none; }
-/* The app caps every image at its box's width; these are placed by the engine, so the cap is lifted. */
-.iaf .iaf-picture { position: absolute; left: var(--iaf-img-x, 0); top: var(--iaf-img-y, 0); inline-size: var(--iaf-img-w, 100%); block-size: var(--iaf-img-h, 100%); max-inline-size: none; display: block; user-select: none; -webkit-user-drag: none; transition: filter .3s var(--studio-ease-soft); }
-/* Looking closely at the fur, the room behind falls out of focus, as it does in a real close-up. */
-.iaf-stage[data-zoom=near] .iaf-picture { filter: blur(1.2px); }
-.iaf-stage[data-zoom=close] .iaf-picture { filter: blur(3px); }
-/* Three days on the steppe. The hall is always in daylight; only the weather beyond the glass changes. */
-.iaf-stage[data-day=snowFlurry] .iaf-picture--steppe { filter: brightness(1.05) contrast(.86) saturate(.6); }
-.iaf-stage[data-day=goldenHour] .iaf-picture--steppe { filter: sepia(.2) saturate(1.2) brightness(1.01); }
+/* Woolly Mammoth: the giant behind the glass. The world is one stage (the
+   makers' play kit sizes it): a canvas on which the game paints the whole Ice
+   Age and the mammoth, and, for chapter one, the kit's glass hall in front of
+   it with the crew small on its floor. The stage is the scene and stays
+   left-to-right in Hebrew; only the HUD mirrors (and the crew cross to the
+   other side of the floor). The HUD is the play kit's; the few pieces of
+   chrome that are this game's own (the album, the print) wear the v30
+   register: frost, white, graphite type, teal for found. Colour lives in the
+   painting. */
+.iaf-world { position: absolute; inset: 0; overflow: hidden; outline: none; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; --iaf-light: 0;
+  background: color-mix(in srgb, var(--mk-indigo-deep) 70%, var(--mk-night)); }
+.iaf-world:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: -4px; }
+.iaf-world button { font-family: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .iaf-canvas { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; display: block; z-index: 1; pointer-events: none; }
-.iaf-stage[data-mammoth=inside] .iaf-canvas { z-index: 3; }
 .iaf-sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-/* ── the crew and the cushion of grass, on the floor of the hall ── */
-.iaf-crew { position: absolute; inset-block-end: 3.5%; display: flex; align-items: flex-end; gap: calc(var(--iaf-tall, 300px) * .012); pointer-events: none; transition: translate .9s var(--studio-ease-soft); }
-/* While the view is close on the wall of glass, the crew and the cushion stand in from the floor's edges to where the view ends. */
-.iaf-stage[data-view=wall] .iaf-layer--floor[data-side=left] .iaf-crew { translate: var(--iaf-wall-left, 0px) calc(-1 * var(--iaf-wall-lift, 0px)); }
-.iaf-stage[data-view=wall] .iaf-layer--floor[data-side=right] .iaf-crew { translate: calc(-1 * var(--iaf-wall-right, 0px)) calc(-1 * var(--iaf-wall-lift, 0px)); }
-.iaf-stage[data-view=wall] .iaf-layer--floor[data-side=left] .iaf-basket { translate: calc(-1 * var(--iaf-wall-right, 0px)) calc(-1 * var(--iaf-wall-lift, 0px)); }
-.iaf-stage[data-view=wall] .iaf-layer--floor[data-side=right] .iaf-basket { translate: var(--iaf-wall-left, 0px) calc(-1 * var(--iaf-wall-lift, 0px)); }
-.iaf-layer--floor[data-side=left] .iaf-crew { left: 4%; }
-.iaf-layer--floor[data-side=right] .iaf-crew { right: 4%; flex-direction: row-reverse; }
-.iaf-friend { position: relative; flex: none; display: block; block-size: max(calc(var(--iaf-tall, 300px) * var(--iaf-friend-tall, .3)), 44px); inline-size: max(calc(var(--iaf-tall, 300px) * var(--iaf-friend-tall, .3) * var(--iaf-friend-aspect, .45)), 30px); min-inline-size: 30px; padding: 0; border: 0; border-radius: 12px; background: transparent; pointer-events: auto; transform-origin: 50% 100%; }
-/* A real tap target round even the smallest friend. */
-.iaf-friend::before { content: ''; position: absolute; inset-block-end: -8px; inset-inline: 50%; inline-size: max(100%, var(--studio-tap)); block-size: max(100%, var(--studio-tap)); translate: -50% 0; }
-.iaf[dir=rtl] .iaf-friend::before { translate: 50% 0; }
-/* A soft contact shadow where each stands. */
-.iaf-friend::after { content: ''; position: absolute; z-index: -1; inset-block-end: -4%; inset-inline: -12%; block-size: 14%; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--studio-graphite) 30%, transparent), transparent); }
-.iaf .iaf-friend__figure { position: absolute; inset-block-end: 0; left: 50%; translate: -50% 0; display: block; block-size: 100%; inline-size: auto; max-inline-size: none; pointer-events: none; user-select: none; -webkit-user-drag: none; transform-origin: 50% 100%; }
-.iaf-friend:focus-visible, .iaf-basket:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; }
-.iaf-friend:active { transform: scale(.95); }
-.iaf-friend[data-wave] .iaf-friend__figure { animation: iaf-hop .5s var(--studio-ease-spring); transform-origin: 50% 100%; }
-.iaf-crew[data-cheer=small][data-beat='0'] .iaf-friend, .iaf-crew[data-cheer=small][data-beat='1'] .iaf-friend { animation-duration: .5s; animation-timing-function: var(--studio-ease-spring); animation-delay: calc(var(--iaf-friend-order, 0) * 60ms); }
-.iaf-crew[data-cheer=big][data-beat='0'] .iaf-friend, .iaf-crew[data-cheer=big][data-beat='1'] .iaf-friend { animation-duration: .62s; animation-timing-function: var(--studio-ease-spring); animation-iteration-count: 2; animation-delay: calc(var(--iaf-friend-order, 0) * 70ms); }
-.iaf-crew[data-cheer][data-beat='0'] .iaf-friend { animation-name: iaf-cheer-a; }
-.iaf-crew[data-cheer][data-beat='1'] .iaf-friend { animation-name: iaf-cheer-b; }
-.iaf-basket { position: absolute; transition: translate .9s var(--studio-ease-soft), transform .16s var(--studio-ease-spring); inset-block-end: calc(4% + var(--studio-tap) + 14px); inline-size: clamp(64px, calc(var(--iaf-tall, 300px) * .26), 112px); aspect-ratio: 252 / 150; padding: 0; border: 0; border-radius: 50%; background: transparent; pointer-events: auto; }
-.iaf-layer--floor[data-side=left] .iaf-basket { right: 12%; }
-.iaf-layer--floor[data-side=right] .iaf-basket { left: 12%; }
-.iaf-basket::before { content: ''; position: absolute; inset: -18px -6px -6px; }
-.iaf .iaf-basket__cushion { display: block; inline-size: 100%; block-size: auto; max-inline-size: none; pointer-events: none; filter: drop-shadow(0 5px 5px var(--studio-shade)); }
-.iaf-basket:active { transform: scale(.93); }
+/* ── the hall: the dim room in front of the Ice Age ── */
+.iaf-hall { position: absolute; inset: 0; z-index: 2; pointer-events: none; transform: scale(1.03); transform-origin: 50% 46%; transition: opacity .9s var(--studio-ease-soft), transform 1.4s var(--studio-ease-soft); }
+/* The app caps every image at its box's width; this one is placed by the engine, so the cap is lifted. */
+.iaf-world .iaf-picture { position: absolute; left: var(--iaf-img-x, 0); top: var(--iaf-img-y, 0); inline-size: var(--iaf-img-w, 100%); block-size: var(--iaf-img-h, 100%); max-inline-size: none; display: block; user-select: none; -webkit-user-drag: none; }
+/* Frosted over, the room is nearly dark; as the glass clears, daylight comes in. A little out of focus: the eye is on the glass. */
+.iaf-hall img.iaf-picture { filter: brightness(calc(.46 + .34 * var(--iaf-light))) contrast(1.1) saturate(calc(.6 + .3 * var(--iaf-light))) blur(.6px); }
+/* The blue of a room lit only by a window, on the room alone: the picture's own shape masks it off the glass. */
+.iaf-hall__dusk { background: linear-gradient(180deg, color-mix(in srgb, var(--mk-indigo-deep) 82%, transparent), color-mix(in srgb, var(--mk-indigo) 62%, transparent) 62%, color-mix(in srgb, var(--mk-plum) 46%, transparent)); mix-blend-mode: multiply; opacity: calc(.9 - .5 * var(--iaf-light));
+  -webkit-mask-image: var(--iaf-hall-url); mask-image: var(--iaf-hall-url); -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+/* The pool of light the window throws on the floor. */
+.iaf-hall__pool { position: absolute; inset-inline: 0; top: calc(var(--iaf-sill, 60%) - 1%); bottom: 0; mix-blend-mode: screen; opacity: calc(.6 + .4 * var(--iaf-light));
+  background: radial-gradient(64% 130% at 50% 0%, color-mix(in srgb, var(--mk-butter) 78%, transparent), color-mix(in srgb, var(--mk-sky-pale) 34%, transparent) 46%, transparent 80%); }
+/* Out on the steppe the hall is behind us. */
+.iaf-world[data-scene=steppe] .iaf-hall { opacity: 0; transform: scale(1.5); }
+.iaf-world[data-scene=steppe] .iaf-floor { opacity: 0; visibility: hidden; }
 
-/* ── the five rings: 56 px targets. The signal colour marks the next thing as a ring; found, it turns teal with a tick. ── */
-.iaf-ring { position: absolute; z-index: 6; inset-block-start: 0; left: 0; inline-size: var(--studio-tap); block-size: var(--studio-tap); margin: calc(var(--studio-tap) / -2) 0 0 calc(var(--studio-tap) / -2); padding: 0; border: 0; border-radius: 50%; background: transparent; will-change: transform; }
-.iaf-ring[hidden] { display: none; }
-.iaf-ring:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: -2px; box-shadow: 0 0 0 3px var(--studio-surface) inset; }
-.iaf-ring::before { content: ''; position: absolute; inset: 12px; border-radius: 50%; border: 3px solid var(--studio-signal); outline: 2px solid var(--studio-surface); }
-.iaf-ring__pulse { position: absolute; inset: 9px; border-radius: 50%; border: 3px solid var(--studio-signal); animation: iaf-pulse 1.9s ease-out infinite; }
-.iaf-ring__dot { position: absolute; inset: 19px; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--studio-graphite); background: var(--studio-surface); color: var(--studio-done-ink); box-shadow: 0 2px 6px var(--studio-shade); transition: transform .25s var(--studio-ease-spring), background-color .3s, border-color .3s; }
-.iaf-ring:active .iaf-ring__dot { transform: scale(.86); }
-.iaf-ring[data-found=true]::before { border-color: var(--studio-teal-ink); border-width: 2.5px; }
-.iaf-ring[data-found=true] .iaf-ring__pulse { animation: none; opacity: 0; }
-.iaf-ring[data-found=true] .iaf-ring__dot { background: var(--studio-done); border-color: var(--studio-surface); }
-.iaf-ring[data-open=true] .iaf-ring__dot { transform: scale(1.2); }
-.iaf[data-stage=call] .iaf-ring, .iaf[data-stage=leave] .iaf-ring { opacity: 0; pointer-events: none; transition: opacity .3s; }
+/* ── the crew on the hall's floor: small, dark against the window, looking up ── */
+.iaf-floor { position: absolute; inset: 0; z-index: 3; pointer-events: none; transition: opacity .5s var(--studio-ease-soft), visibility 0s .5s; }
+.iaf-crew { position: absolute; inset-block-end: max(calc(var(--play-safe-b, 14px) + 78px), 11%); display: flex; align-items: flex-end; gap: calc(var(--iaf-tall, 300px) * .012); pointer-events: none; }
+.iaf-floor[data-side=left] .iaf-crew { left: 5%; }
+.iaf-floor[data-side=right] .iaf-crew { right: 5%; flex-direction: row-reverse; }
+.iaf-friend { position: relative; flex: none; display: block; block-size: max(calc(var(--iaf-tall, 300px) * var(--iaf-friend-tall, .3)), 40px); inline-size: max(calc(var(--iaf-tall, 300px) * var(--iaf-friend-tall, .3) * var(--iaf-friend-aspect, .45)), 26px); padding: 0; border: 0; border-radius: 12px; background: transparent; pointer-events: auto; transform-origin: 50% 100%; }
+/* A real tap target round even the smallest friend. */
+.iaf-friend::before { content: ''; position: absolute; inset-block-end: -8px; left: 50%; inline-size: max(100%, var(--studio-tap)); block-size: max(100%, var(--studio-tap)); translate: -50% 0; }
+/* A soft contact shadow where each stands, falling toward us, away from the window. */
+.iaf-friend::after { content: ''; position: absolute; z-index: -1; inset-block-end: -9%; inset-inline: -18%; block-size: 22%; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-night) 62%, transparent), transparent); }
+.iaf-world .iaf-friend__figure { position: absolute; inset-block-end: 0; left: 50%; translate: -50% 0; display: block; block-size: 100%; inline-size: auto; max-inline-size: none; pointer-events: none; user-select: none; -webkit-user-drag: none; transform-origin: 50% 100%;
+  filter: brightness(calc(.34 + .5 * var(--iaf-light))) saturate(calc(.6 + .4 * var(--iaf-light))) drop-shadow(0 -1px 0 color-mix(in srgb, var(--mk-butter) calc(26% + 20% * var(--iaf-light)), transparent)); animation: iaf-idle 4.8s ease-in-out calc(var(--iaf-friend-order, 0) * -1.1s) infinite; }
+.iaf-friend:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; }
+.iaf-friend:active { transform: scale(.95); }
+.iaf-friend[data-wave] .iaf-friend__figure { animation: iaf-hop .5s var(--studio-ease-spring); }
+.iaf-crew[data-cheer] .iaf-friend { animation-duration: .56s; animation-timing-function: var(--studio-ease-spring); animation-delay: calc(var(--iaf-friend-order, 0) * 70ms); }
+.iaf-crew[data-cheer=a] .iaf-friend { animation-name: iaf-cheer-a; }
+.iaf-crew[data-cheer=b] .iaf-friend { animation-name: iaf-cheer-b; }
+
+/* The crew at the end: dark against the snow under the aurora. */
+.iaf-watchers { position: absolute; z-index: 3; inset-block-end: clamp(18px, 7cqb, 64px); display: flex; align-items: flex-end; gap: 4px; pointer-events: none; animation: iaf-rise 1.6s var(--studio-ease-soft) .6s both; }
+.iaf-watchers[data-side=left] { left: 6%; }
+.iaf-watchers[data-side=right] { right: 6%; flex-direction: row-reverse; }
+.iaf-world .iaf-watcher { display: block; block-size: calc(clamp(84px, 21cqb, 190px) * var(--iaf-friend-tall, .3) / .3); inline-size: auto; max-inline-size: none; filter: brightness(.16) saturate(.4) drop-shadow(0 -1px 0 color-mix(in srgb, var(--mk-celadon) 55%, transparent)); transform-origin: 50% 100%; animation: iaf-idle 5.2s ease-in-out calc(var(--iaf-friend-order, 0) * -1.3s) infinite; }
 
 /* The answer to a touch, and the hint hand. Neither ever takes a touch. */
 .iaf-ripple { position: absolute; z-index: 7; inset-block-start: 0; left: 0; inline-size: 44px; block-size: 44px; margin: -22px 0 0 -22px; border-radius: 50%; border: 3px solid var(--studio-surface); outline: 1.5px solid color-mix(in srgb, var(--studio-graphite) 30%, transparent); opacity: 0; pointer-events: none; }
@@ -102,68 +63,59 @@
 .iaf-ghost__hand { fill: var(--studio-surface); stroke: var(--studio-graphite); stroke-width: 2.4; stroke-linejoin: round; }
 .iaf-ghost__line { fill: none; stroke: color-mix(in srgb, var(--studio-graphite) 45%, transparent); stroke-width: 2; stroke-linecap: round; }
 
-/* Zoom: a frosted pill along the stage's bottom edge, at the end corner, in reach of a thumb. */
-.iaf-zoom { position: absolute; z-index: 8; inset-block-end: 10px; display: flex; gap: 2px; padding: 3px; border: 1px solid var(--studio-line); border-radius: 999px; background: var(--studio-frost); box-shadow: 0 6px 18px var(--studio-shade); }
-.iaf-zoom[data-side=right] { right: 10px; }
-.iaf-zoom[data-side=left] { left: 10px; }
-.iaf-round { display: grid; place-items: center; inline-size: var(--studio-tap); block-size: var(--studio-tap); padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--studio-graphite); transition: background-color .15s, transform .12s; }
-.iaf-round:active:not(:disabled) { transform: scale(.92); background: var(--studio-mist); }
-.iaf-round:disabled { color: color-mix(in srgb, var(--studio-graphite) 28%, transparent); cursor: default; }
-.iaf-round:focus-visible, .iaf-tag__close:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: -3px; }
+/* ── the album: the pictures taken so far, under the quest strip ── */
+.iaf-album { grid-area: free; justify-self: end; align-self: start; display: flex; margin: 0; padding: 4px; list-style: none; border: 1px solid var(--play-glass-edge); border-radius: 999px; background: var(--play-glass); -webkit-backdrop-filter: var(--play-blur); backdrop-filter: var(--play-blur); box-shadow: var(--play-glass-shade); }
+.iaf-album > li { display: block; margin-inline-start: -9px; animation: iaf-photo-in .5s var(--studio-ease-spring) both; }
+.iaf-album > li:first-child { margin-inline-start: 0; }
+.iaf-photo { display: block; border-radius: 50%; background: var(--studio-mist); }
+.iaf-album .iaf-photo { inline-size: 38px; block-size: 38px; border: 2.5px solid var(--studio-surface); box-shadow: 0 2px 6px var(--studio-shade); }
 
-/* The fact card: white, over the floor on a wide stage, over the dome on a tall one, never over the spot it is about. */
-.iaf-tag { position: absolute; z-index: 9; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 10px; max-inline-size: min(470px, calc(100% - 20px)); padding: 12px 6px 14px 14px; border: 1px solid var(--studio-line); border-radius: var(--studio-radius-card); background: var(--studio-surface); color: var(--studio-graphite); box-shadow: var(--studio-lift); outline: none; animation: iaf-tag-in .32s var(--studio-ease-soft); }
-.iaf-tag[dir=rtl] { padding: 12px 14px 14px 6px; }
-.iaf-tag[data-at=bottom] { inset-block-end: 10px; max-inline-size: min(470px, calc(100% - 40px - var(--studio-tap) * 3)); }
-.iaf-tag[data-at=top] { inset-block-start: 10px; }
-.iaf-tag[data-side=right] { left: 10px; }
-.iaf-tag[data-side=left] { right: 10px; }
-.iaf-tag:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 2px; }
-.iaf-tag__tool { display: grid; place-items: center; inline-size: 42px; block-size: 42px; margin-block-start: 2px; border-radius: 50%; background: var(--studio-teal-soft); color: var(--studio-teal-ink); }
-.iaf-tag__words { min-inline-size: 0; padding-block-start: 4px; }
-.arbor-play .iaf-tag .iaf-tag__title { margin: 0; font: 900 19px/1.2 var(--studio-font) !important; color: var(--studio-graphite) !important; }
-.iaf-tag__text { margin: 6px 0 0; font-size: 16px; font-weight: 700; line-height: 1.42; color: var(--studio-graphite); text-wrap: pretty; }
-.iaf-tag__how { margin: 8px 0 0; padding-block-start: 7px; border-block-start: 1px solid var(--studio-line); font-size: 14px; font-weight: 700; line-height: 1.35; color: var(--studio-graphite-soft); }
-.iaf-tag__close { display: grid; place-items: center; inline-size: var(--studio-tap); block-size: var(--studio-tap); margin: -6px 0; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--studio-graphite-soft); }
-.iaf-tag__close:active { background: var(--studio-mist); }
-.iaf-done { margin-block-start: 12px; }
+/* ── the print: the picture just taken, the tool that took it, one true sentence ── */
+.iaf-print-wrap { grid-area: free; justify-self: center; align-self: center; margin: 0; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: start; cursor: pointer; pointer-events: auto; max-inline-size: min(100%, 620px); animation: iaf-print-in .62s var(--studio-ease-spring) both; }
+.iaf-print-wrap:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 6px; border-radius: 32px; }
+.iaf-print { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 18px; padding: 14px 24px 14px 14px; border: 1px solid var(--play-glass-edge); border-radius: 32px; background: color-mix(in srgb, var(--studio-surface) 90%, transparent); -webkit-backdrop-filter: var(--play-blur); backdrop-filter: var(--play-blur); box-shadow: 0 24px 60px color-mix(in srgb, var(--studio-graphite) 34%, transparent), 0 2px 4px color-mix(in srgb, var(--studio-graphite) 16%, transparent); }
+.iaf-print[dir=rtl] { padding: 14px 14px 14px 24px; }
+.iaf-print__picture { position: relative; }
+.iaf-print .iaf-photo { inline-size: clamp(120px, 26cqmin, 190px); block-size: clamp(120px, 26cqmin, 190px); border: 5px solid var(--studio-surface); box-shadow: 0 0 0 2px var(--studio-teal-ink), 0 10px 24px var(--studio-shade); }
+.iaf-print__tool { position: absolute; inset-block-end: -8px; inset-inline-end: -14px; display: grid; place-items: center; inline-size: 62px; block-size: 62px; border-radius: 50%; border: 2px solid var(--studio-surface); background: var(--studio-pearl); box-shadow: 0 6px 14px var(--studio-shade); overflow: hidden; rotate: -8deg; animation: iaf-tool-in .5s var(--studio-ease-spring) .3s both; }
+.arbor-play .iaf-print__tool img, .iaf-print__tool img { display: block; inline-size: 86%; block-size: 86%; max-inline-size: none; object-fit: contain; }
+.iaf-print__words { min-inline-size: 0; }
+.iaf-print__by { margin: 0; color: var(--studio-teal-ink); font: 800 13px/1.2 var(--studio-font); letter-spacing: .06em; text-transform: uppercase; }
+.iaf-print[dir=rtl] .iaf-print__by { letter-spacing: 0; }
+.arbor-play .iaf-print .iaf-print__title, .iaf-print__title { margin: 2px 0 0; color: var(--studio-graphite) !important; font: 900 clamp(22px, 5cqmin, 30px)/1.1 var(--studio-font) !important; text-wrap: balance; }
+.iaf-print__text { margin: 6px 0 0; color: var(--studio-graphite); font: 700 clamp(15px, 3.4cqmin, 18px)/1.38 var(--studio-font); text-wrap: pretty; }
 
-.iaf-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
-.iaf-actions .iaf-action { flex: 0 1 auto; padding-inline: 20px; }
-.iaf-actions .iaf-action:disabled { opacity: .45; cursor: default; }
-.iaf-actions .iaf-action--done { order: -1; }
-
-@keyframes iaf-pulse { 0% { transform: scale(.86); opacity: .9; } 70% { opacity: .25; } 100% { transform: scale(1.42); opacity: 0; } }
-@keyframes iaf-photo-in { 0% { transform: scale(.5) rotate(-18deg); } 70% { transform: scale(1.16) rotate(4deg); } 100% { transform: none; } }
-@keyframes iaf-tag-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes iaf-idle { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.006, 1.014); } }
 @keyframes iaf-hop { 0%, 100% { transform: translateY(0) scale(1, 1); } 40% { transform: translateY(-14%) scale(.97, 1.04); } 78% { transform: translateY(0) scale(1.05, .95); } }
 @keyframes iaf-cheer-a { 0%, 100% { transform: translateY(0) scale(1, 1); } 40% { transform: translateY(-12%) scale(.97, 1.04); } 78% { transform: translateY(0) scale(1.04, .96); } }
 @keyframes iaf-cheer-b { 0%, 100% { transform: translateY(0) scale(1, 1); } 40% { transform: translateY(-12%) scale(.97, 1.04); } 78% { transform: translateY(0) scale(1.04, .96); } }
+@keyframes iaf-rise { from { opacity: 0; translate: 0 30%; } to { opacity: 1; translate: 0 0; } }
+@keyframes iaf-photo-in { 0% { scale: .3; rotate: -24deg; opacity: 0; } 70% { scale: 1.18; rotate: 5deg; opacity: 1; } 100% { scale: 1; rotate: 0deg; } }
+@keyframes iaf-print-in { 0% { opacity: 0; scale: .7; rotate: -5deg; translate: 0 26px; } 60% { opacity: 1; scale: 1.04; rotate: 1.2deg; translate: 0 -4px; } 100% { opacity: 1; scale: 1; rotate: 0deg; translate: 0 0; } }
+@keyframes iaf-tool-in { from { scale: 0; rotate: -60deg; } to { scale: 1; rotate: -8deg; } }
 
-@media (max-width: 640px) {
-  .iaf { --iaf-gap: 8px; block-size: clamp(460px, calc(100dvh - 106px), 860px); }
-  .iaf-top { gap: 8px; min-block-size: 52px; padding-inline-start: 12px; }
-  .iaf-cue { font-size: 16px; }
-  .iaf-photos { gap: 3px; }
-  .iaf-photo { inline-size: 32px; block-size: 32px; }
-  .iaf-photo__tick { inline-size: 14px; block-size: 14px; }
+@container play (max-width: 560px) {
   .iaf-friend[data-wide-only] { display: none; }
-  .iaf-basket { inset-block-end: calc(10px + var(--studio-tap) + 16px); }
-  .iaf-tag { gap: 8px; padding-inline-start: 10px; }
-  .iaf-tag[dir=rtl] { padding-inline: 10px 6px; }
-  .iaf-tag[data-at=bottom] { max-inline-size: calc(100% - 20px); inset-block-end: calc(10px + var(--studio-tap) + 14px); }
-  .iaf-tag__tool { inline-size: 34px; block-size: 34px; }
-  .arbor-play .iaf-tag .iaf-tag__title { font-size: 17px !important; }
-  .iaf-tag__text { font-size: 15px; }
-  .iaf-actions .iaf-action { padding-inline: 16px; font-size: 16px; }
+  .iaf-watchers > :nth-child(n + 4) { display: none; }
+  /* On a phone the caption and the way out take the foot of the frame: the crew stand on the snow above them. */
+  .iaf-watchers { inset-block-end: calc(clamp(18px, 7cqb, 64px) + 132px); }
+  .iaf-album .iaf-photo { inline-size: 32px; block-size: 32px; }
+  .iaf-print { grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 12px; padding: 16px 18px 18px; text-align: center; }
+  .iaf-print[dir=rtl] { padding: 16px 18px 18px; }
+  .iaf-print .iaf-photo { inline-size: clamp(130px, 44cqi, 190px); block-size: clamp(130px, 44cqi, 190px); }
+}
+@container play (max-height: 460px) {
+  .iaf-crew { inset-block-end: max(calc(var(--play-safe-b, 14px) + 8px), 4%); }
+  .iaf-print { padding-block: 10px; gap: 14px; }
+  .iaf-print .iaf-photo { inline-size: clamp(96px, 34cqb, 130px); block-size: clamp(96px, 34cqb, 130px); }
+  .iaf-print__tool { inline-size: 48px; block-size: 48px; }
+  .iaf-print__text { margin-block-start: 3px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .iaf-ring__pulse, .iaf-photo, .iaf-tag, .iaf-ring__dot, .iaf-round, .iaf-friend, .iaf-friend__figure, .iaf-basket, .iaf-crew, .iaf-picture, .iaf-layer--floor { animation: none !important; transition: none !important; }
-  .iaf-ring__pulse { opacity: 0; }
+  .iaf-hall, .iaf-floor, .iaf-friend, .iaf-friend__figure, .iaf-watchers, .iaf-watcher, .iaf-album > li, .iaf-print-wrap, .iaf-print__tool { animation: none !important; transition: none !important; }
+  .iaf-world[data-scene=steppe] .iaf-hall { transform: scale(1.03); }
 }
 @media (forced-colors: active) {
-  .iaf-ring::before { border-color: Highlight; outline: none; }
-  .iaf-ring__dot { border-color: ButtonText; background: Canvas; }
-  .iaf-tag, .iaf-zoom, .iaf-top, .iaf-photo { border: 2px solid ButtonText; }
+  .iaf-print, .iaf-album { border: 2px solid ButtonText; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .iaf-ghost__hand { fill: Canvas; stroke: CanvasText; }
 }

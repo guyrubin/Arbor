@@ -1,50 +1,52 @@
-/** Wind-up Racer words. The racer is Rover, the kit's toy car, on trails
- * across a Wonderworks pavilion floor; Pep scouts alongside. Hebrew is
- * gender-free toward the child: plural verbs and infinitives only. `title`,
- * `description` and `instruction` are the Studio tile and intro card
- * (studioCopy reads them); the rest is the game's own. Cues are eight words
- * or fewer. A short run is never "so close" or "not enough": it ends where
- * it ends. */
+/** Wind-up Racer words. The racer is Rover, the kit's toy car, on a felt track
+ * laid through a Wonderworks pavilion and out onto its terrace; Pep runs with
+ * it. Hebrew is gender-free toward the child: plural verbs and infinitives
+ * only. `title`, `description` and `instruction` are the Studio tile and
+ * intro card (studioCopy reads them); the rest is the game's own. Pep's lines
+ * are eight words or fewer. A run is never "so close" or "not enough": it
+ * ends at a place with a name, and the next wind starts from there. */
 export const WINDUP_RACE_COPY = {
   en: {
     title: 'Wind-up Racer', description: 'Wind Rover up. Let it go.', instruction: 'Turn the key to wind Rover’s spring. More turns, more go.',
-    finish: 'Rover ran every trail!', transfer: 'Away from the screen: wind up a toy, or roll a toy car down a slope, and watch where it stops.',
-    tracks: { shelf: 'The pavilion floor', ramp: 'Ramp and plank', table: 'The long gallery', blockBridge: 'Block bridge', bookSlide: 'The slide', grandTour: 'The grand trail' },
-    trackLines: {
-      shelf: 'A flat run across the Wonderworks floor, to the flower.', ramp: 'Up the ramp, along the top, down the long plank.',
-      table: 'A knit roll, glass petals, the arches, then up to the flower.', blockBridge: 'Up onto the bridge, past the petals, and down again.',
-      bookSlide: 'A high start, a long slide down, then up to the flower.', grandTour: 'Everything at once: the roll, petals, arches, the knit ball and a climb.',
+    finish: 'Rover raced all the way!', transfer: 'Away from the screen: wind up a toy, or roll a toy car down a slope, and watch where it stops.',
+    place: 'Wonderworks · the pavilion floor',
+    chapters: { theStraight: 'The straight', gustAlley: 'Gust alley', longCourse: 'The long course', sunArches: 'The Sun Arches' },
+    hello: 'Wind Rover up!', wind: 'Turn the key round and round.', windMore: 'More turns, more go!', full: 'Wound all the way!', noWind: 'Turn the key first.',
+    go: 'Go, Rover, go!', gustHead: 'Wind in its face. Hold to lean in!', gustTail: 'Wind at its back. Let it sail!', leaning: 'Rover leans in!',
+    ramp: 'Up and over!', air: 'Rover is flying!', rollback: 'A steep one. It wants more wind.',
+    fork: 'Plank or rug road? Tap the arrow.', lineHigh: 'Over the plank!', lineLow: 'Along the rug road!',
+    stopped: 'Rover reached {0}. Wind again!', goal: 'The flower opened for Rover!',
+    intro: { theStraight: 'A straight run to the flower.', gustAlley: 'Out on the terrace the wind blows.', longCourse: 'A long way, and a fork.', sunArches: 'One last run, into the light!' },
+    allTheWay: 'Wind it all the way!', finale: 'Every flower is open!', caption: 'Through the light of the arches', woof: 'Woof!', secret: 'The key sings!',
+    places: {
+      startLine: 'the start line', firstArch: 'the first arch', lightPool: 'the pool of light', fernRow: 'the fern row', flagRow: 'the flags', ramp: 'the ramp',
+      arrowSign: 'the arrow', plank: 'the plank', knitRug: 'the knit rug', woolBall: 'the wool ball', lastArch: 'the last arch', flower: 'the flower',
     },
-    wind: 'Turn the key to wind Rover up.', windMore: 'More turns, more go. Then press Go!', full: 'The spring is wound all the way.',
-    noWind: 'The spring is loose. Turn the key first.',
-    running: 'Off Rover goes!', flag: 'The flower opened for Rover!', nextTrack: 'Pep found the next trail.', party: 'Every flower is open!',
-    stopped: 'Rover stopped here. Chalk marks the spot.', rolledBack: 'Up the ramp, and back down again!', again: 'Back to the start. Wind it again.',
-    windButton: 'Wind', go: 'Go!', reset: 'Back to start', horn: 'Beep!',
+    windButton: 'Wind', goButton: 'Go!', lean: 'Lean in', linePlank: 'Plank', lineRug: 'Rug road',
     key: 'The wind-up key. The spring is {0}.', tension: { loose: 'loose', little: 'wound a little', half: 'half wound', tight: 'wound tight', full: 'wound all the way' },
-    scene: 'Rover, a toy car with a wind-up key, on a trail across the pavilion floor. Pep the dog scouts alongside.', map: 'Trail map', progress: 'Trail {0} of {1}',
-    keys: 'Space winds the key. Enter lets Rover go. The H key sounds the horn.',
-    ring: 'GobGob’s WaitRing is the ring of lights: it fills as the spring winds.', pod: 'When the ring is ready, press Go on the PulsePod.',
-    quiet: 'Sound is off. Watch the key, the spring and the ring of lights.',
+    scene: 'Rover, a toy car with a brass wind-up key, on a felt track across the pavilion floor. Pep the dog runs with it.', quest: 'Rover’s four runs', pep: 'Pep',
+    keys: 'Space winds the key. Enter lets Rover go. In a run, hold Space to lean into the wind. The up and down arrows pick the plank or the rug road. The H key sounds the horn.',
   },
   he: {
     title: 'מכונית קפיץ', description: 'מותחים את הקפיץ של רובר. משחררים.', instruction: 'מסובבים את המפתח ומותחים את הקפיץ של רובר. יותר סיבובים, יותר נסיעה.',
-    finish: 'רובר עבר את כל המסלולים!', transfer: 'הרחק מהמסך: מותחים צעצוע עם קפיץ, או מגלגלים מכונית צעצוע במורד, ורואים איפה היא עוצרת.',
-    tracks: { shelf: 'רצפת הביתן', ramp: 'רמפה וקרש', table: 'הגלריה הארוכה', blockBridge: 'גשר הקוביות', bookSlide: 'המגלשה', grandTour: 'המסלול הגדול' },
-    trackLines: {
-      shelf: 'נסיעה ישרה על רצפת הביתן, עד הפרח.', ramp: 'עולים ברמפה, נוסעים למעלה, יורדים בקרש הארוך.',
-      table: 'גליל סרוג, עלי זכוכית, הקשתות, ואז עלייה אל הפרח.', blockBridge: 'עולים על הגשר, עוברים ליד העלים, ויורדים שוב.',
-      bookSlide: 'התחלה גבוהה, גלישה ארוכה למטה, ואז עלייה אל הפרח.', grandTour: 'הכול ביחד: הגליל, העלים, הקשתות, כדור הצמר ועלייה.',
+    finish: 'רובר דהר עד הסוף!', transfer: 'הרחק מהמסך: מותחים צעצוע עם קפיץ, או מגלגלים מכונית צעצוע במורד, ורואים איפה היא עוצרת.',
+    place: 'וונדרוורקס · רצפת הביתן',
+    chapters: { theStraight: 'הישורת', gustAlley: 'שביל המשבים', longCourse: 'המסלול הארוך', sunArches: 'קשתות השמש' },
+    hello: 'מותחים את רובר!', wind: 'מסובבים את המפתח, שוב ושוב.', windMore: 'יותר סיבובים, יותר נסיעה!', full: 'מתוח עד הסוף!', noWind: 'קודם מסובבים את המפתח.',
+    go: 'קדימה, רובר!', gustHead: 'רוח בפנים. לוחצים ונשענים קדימה!', gustTail: 'רוח בגב. נותנים לה לשאת!', leaning: 'רובר נשען לתוך הרוח!',
+    ramp: 'למעלה ומעבר!', air: 'רובר עף!', rollback: 'עלייה תלולה. צריך עוד מתיחה.',
+    fork: 'קרש או שטיח? נוגעים בחץ.', lineHigh: 'מעל הקרש!', lineLow: 'לאורך השטיח!',
+    stopped: 'רובר הגיע עד {0}. מותחים שוב!', goal: 'הפרח נפתח לכבוד רובר!',
+    intro: { theStraight: 'ישר עד הפרח.', gustAlley: 'במרפסת נושבת רוח.', longCourse: 'דרך ארוכה, ופיצול.', sunArches: 'ריצה אחרונה, אל תוך האור!' },
+    allTheWay: 'מותחים עד הסוף!', finale: 'כל הפרחים פתוחים!', caption: 'דרך האור של הקשתות', woof: 'הב!', secret: 'המפתח מנגן!',
+    places: {
+      startLine: 'קו הזינוק', firstArch: 'הקשת הראשונה', lightPool: 'שלולית האור', fernRow: 'שורת השרכים', flagRow: 'הדגלים', ramp: 'הרמפה',
+      arrowSign: 'החץ', plank: 'הקרש', knitRug: 'השטיח הסרוג', woolBall: 'כדור הצמר', lastArch: 'הקשת האחרונה', flower: 'הפרח',
     },
-    wind: 'מסובבים את המפתח ומותחים את הקפיץ.', windMore: 'יותר סיבובים, יותר נסיעה. ואז לוחצים על יוצאים!', full: 'הקפיץ מתוח עד הסוף.',
-    noWind: 'הקפיץ רפוי. קודם מסובבים את המפתח.',
-    running: 'רובר יוצא לדרך!', flag: 'הפרח נפתח לכבוד רובר!', nextTrack: 'פפ מצא את המסלול הבא.', party: 'כל הפרחים פתוחים!',
-    stopped: 'רובר עצר כאן. סימן הגיר מראה איפה.', rolledBack: 'למעלה ברמפה, ובחזרה למטה!', again: 'חוזרים להתחלה. מותחים שוב.',
-    windButton: 'מותחים', go: 'יוצאים!', reset: 'חזרה להתחלה', horn: 'ביפ!',
+    windButton: 'מותחים', goButton: 'יוצאים!', lean: 'נשענים', linePlank: 'קרש', lineRug: 'שטיח',
     key: 'מפתח הקפיץ. הקפיץ {0}.', tension: { loose: 'רפוי', little: 'מתוח קצת', half: 'מתוח עד חצי', tight: 'מתוח חזק', full: 'מתוח עד הסוף' },
-    scene: 'רובר, מכונית צעצוע עם מפתח קפיץ, על מסלול ברצפת הביתן. הכלב פפ רץ לצידו.', map: 'מפת המסלול', progress: 'מסלול {0} מתוך {1}',
-    keys: 'מקש הרווח מותח את המפתח. מקש אנטר משחרר את רובר. המקש H מפעיל את הצופר.',
-    ring: 'טבעת ההמתנה של גובגוב היא טבעת האורות: היא מתמלאת כשמותחים את הקפיץ.', pod: 'כשהטבעת מוכנה, לוחצים על יוצאים בפולספוד.',
-    quiet: 'הצליל כבוי. מסתכלים על המפתח, על הקפיץ ועל טבעת האורות.',
+    scene: 'רובר, מכונית צעצוע עם מפתח קפיץ מפליז, על מסלול לבד ברצפת הביתן. הכלב פפ רץ איתו.', quest: 'ארבע הריצות של רובר', pep: 'פפ',
+    keys: 'מקש הרווח מותח את המפתח. מקש אנטר משחרר את רובר. בזמן הנסיעה מחזיקים את מקש הרווח ונשענים לתוך הרוח. החצים למעלה ולמטה בוחרים קרש או שטיח. המקש H מפעיל את הצופר.',
   },
 } as const;
 export type WindupRaceWords = typeof WINDUP_RACE_COPY['en'] | typeof WINDUP_RACE_COPY['he'];

@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { MAKER_DESK_COPY } from './makerDeskCopy';
 import {
-  BALL, BALL_SPEED, CREW, FIELD_H, FIELD_W, FILES, FLOAT_S, HIDDEN_FILE, LANTERN_COLS, LANTERN_COUNT, LAYOUTS, MAGIC_WORD, MAX_ANGLE, PADDLE_W, PADDLE_Y, PLANT_FULL, PROGRAMS, QUICK_COMMANDS, ROOM, STEP_S, TERM_SHOWS, THING_FILES, THING_KINDS, TOOLS,
-  advance, allStickers, appendScreen, backTarget, bounceStep, chimeStep, complete, crewAround, fromHebrewKeys, growPlant, lanternRow, layoutLanterns, litCount, movePaddle, newBounce, nextTool, normalizeInput,
-  noteCommand, noteLanterns, noteThings, NO_DISCOVERY, openProgram, paddleBounce, pickLayout, rowLit, run, shelfNews, shelfPlaces, skyPicture, stepBack, stepsToRoom, stickerLit, suggest,
-  switchOn, thingKinds, toolAt, vocabulary, type BounceState, type Level, type TerminalContext, type TermLine,
+  BALL, BALL_SPEED, CHAPTERS, CREW, FIELD_H, FIELD_H_MAX, FIELD_W, FILES, FLOAT_S, HIDDEN_FILE, LANTERN_COLS, LANTERN_COUNT, LAYOUTS, MAGIC_WORD, MAX_ANGLE, NEW_QUEST, PADDLE_W, PADDLE_Y, PLANT_FULL, POWER_UP, POWER_UP_REDUCED, PROGRAMS, QUICK_COMMANDS, ROOM,
+  ROOM_LIGHTS, STEP_S, TERM_SHOWS, THING_FILES, THING_KINDS, TOOLS, TOOLS_TO_WAKE, TOOL_ORDERS, WORDS_TO_ASK,
+  advance, appendScreen, backTarget, benchAwake, benchPower, bounceStep, chainAfter, chainHarmony, chapterDone, chapterNow, chimeStep, complete, crewAround, deskRound, fieldHeight, fromHebrewKeys, growPlant, lanternRow, layoutLanterns, litCount, movePaddle,
+  newBounce, nextTool, normalizeInput, noteCommand, noteLanterns, openProgram, paddleBounce, paddleTop, pickLayout, questDone, rowLit, run, screenGlow, shelfNews, shelfPlaces, skyPicture, stepBack, stepsToRoom, suggest,
+  switchOn, thingKinds, toolAt, toolOrder, vocabulary, wakeTool, type BounceEvent, type BounceState, type Level, type Quest, type TerminalContext, type TermLine,
 } from './makerDeskRules';
 
 /** A seeded random source, so every layout and run repeats exactly. */
@@ -36,7 +37,9 @@ describe('levels: room → desktop → program, one step back at a time', () => 
     expect(openProgram(ROOM, 'bounce')).toEqual(ROOM);
     expect(openProgram({ at: 'desktop' }, 'ask')).toEqual({ at: 'program', program: 'ask' });
     expect(openProgram({ at: 'desktop' }, 'shell')).toEqual({ at: 'desktop' });
-    expect(openProgram({ at: 'program', program: 'things' }, 'bounce')).toEqual({ at: 'program', program: 'things' });
+    expect(openProgram({ at: 'program', program: 'ask' }, 'bounce')).toEqual({ at: 'program', program: 'ask' });
+    // The child's things are on the shelf in the room now, not a program inside the screen.
+    expect(PROGRAMS).toEqual(['bounce', 'ask']); expect(openProgram({ at: 'desktop' }, 'things')).toEqual({ at: 'desktop' });
   });
   it('every level reaches the room in at most two steps, and the tab names where it leads', () => {
     for (const level of every) {
@@ -46,7 +49,7 @@ describe('levels: room → desktop → program, one step back at a time', () => 
     expect(stepBack({ at: 'program', program: 'bounce' })).toEqual({ at: 'desktop' });
     expect(stepBack({ at: 'desktop' })).toEqual(ROOM);
     expect(stepBack(ROOM)).toEqual(ROOM);
-    expect(backTarget({ at: 'program', program: 'things' })).toBe('desktop');
+    expect(backTarget({ at: 'program', program: 'ask' })).toBe('desktop');
     expect(backTarget({ at: 'desktop' })).toBe('study');
     expect(backTarget(ROOM)).toBeNull();
   });
@@ -289,7 +292,8 @@ describe('Bounce: gentle, skilful and impossible to lose', () => {
       expect(cloud).toBe(true); expect(state.done).toBe(false); expect(state.floating).toBe(FLOAT_S);
       state = launched(state); expect(state.ball.vy).toBeLessThan(0);
     }
-    expect(Object.keys(state).sort()).toEqual(['ball', 'done', 'floating', 'lanterns', 'launches', 'lit', 'paddle']);
+    // No lives, no score, no clock: only the field's own height was added to what the game keeps.
+    expect(Object.keys(state).sort()).toEqual(['ball', 'done', 'floating', 'h', 'lanterns', 'launches', 'lit', 'paddle']);
   });
   it('the ball stays inside the field and keeps its speed over a long, untouched run', () => {
     let state = launched(newBounce(seeded(5)));
@@ -334,15 +338,97 @@ describe('Bounce: gentle, skilful and impossible to lose', () => {
   });
 });
 
-describe('desk stickers', () => {
-  it('lights each sticker by its discovery; two different known commands light the third', () => {
-    let d = NO_DISCOVERY;
-    d = noteCommand(d, 'help'); d = noteCommand(d, 'help'); d = noteCommand(d, null);
-    expect(stickerLit(d, 'commands')).toBe(false);
-    d = noteCommand(d, 'ls'); expect(stickerLit(d, 'commands')).toBe(true);
-    d = noteCommand(d, 'clear'); expect(d.commands).toEqual(['help', 'ls']);
-    expect(allStickers(d)).toBe(false);
-    d = noteThings(noteLanterns(d)); expect(allStickers(d)).toBe(true);
-    expect(noteThings(d)).toBe(d);
+describe('Bounce on a tall screen, and chains of light', () => {
+  it('the field grows downward on a phone and stays 120 on a wide screen, and the paddle keeps its place above the cloud', () => {
+    expect(fieldHeight(4 / 3)).toBe(FIELD_H); expect(fieldHeight(2)).toBe(FIELD_H); expect(fieldHeight(NaN)).toBe(FIELD_H); expect(fieldHeight(0)).toBe(FIELD_H);
+    expect(fieldHeight(390 / 572)).toBe(FIELD_H_MAX); expect(fieldHeight(1)).toBe(FIELD_W);
+    expect(paddleTop()).toBe(PADDLE_Y); expect(paddleTop(180)).toBe(180 - (FIELD_H - PADDLE_Y));
+    expect(newBounce(seeded(1), 'grid', 999).h).toBe(FIELD_H_MAX); expect(newBounce(seeded(1), 'grid', 10).h).toBe(FIELD_H); expect(newBounce(seeded(1)).h).toBe(FIELD_H);
+  });
+  it('a tall field is just as unlosable: the ball bounces on the lower paddle, sinks into the lower cloud and comes back', () => {
+    const tall = newBounce(seeded(4), 'grid', 190);
+    expect(tall.ball.y).toBe(190 - BALL);
+    const onPaddle: BounceState = { ...tall, floating: 0, paddle: 80, ball: { x: 80, y: paddleTop(190) - BALL / 2 - 0.2, vx: 0, vy: BALL_SPEED } };
+    const hit = bounceStep(onPaddle, { dir: 0, target: null });
+    expect(hit.events).toContainEqual({ type: 'paddle' }); expect(hit.state.ball.vy).toBeLessThan(0);
+    // The same ball at the short field's paddle height is still falling here: no paddle there.
+    const falling = bounceStep({ ...onPaddle, ball: { ...onPaddle.ball, y: PADDLE_Y - BALL / 2 - 0.2 } }, { dir: 0, target: null });
+    expect(falling.events).toEqual([]);
+    const missed = bounceStep({ ...tall, floating: 0, paddle: 20, ball: { x: 140, y: 190 + BALL, vx: 0, vy: BALL_SPEED } }, { dir: 0, target: null });
+    expect(missed.events).toContainEqual({ type: 'cloud' }); expect(missed.state.floating).toBe(FLOAT_S); expect(missed.state.done).toBe(false);
+    let state = missed.state, lifted = false;
+    for (let i = 0; i < 400 && !lifted; i++) { const out = bounceStep(state, { dir: 0, target: null }); state = out.state; lifted = out.events.some(e => e.type === 'lift'); }
+    expect(lifted).toBe(true); expect(state.ball.y).toBeLessThan(paddleTop(190));
+  });
+  it('a long untouched run in the tall field lights lanterns and never ends the game', () => {
+    let state = newBounce(seeded(9), 'stagger', FIELD_H_MAX), clouds = 0;
+    for (let i = 0; i < 120 * 90; i++) {
+      const out = bounceStep(state, { dir: 0, target: state.ball.x }); state = out.state; clouds += out.events.filter(e => e.type === 'cloud').length;
+      expect(state.ball.x).toBeGreaterThanOrEqual(0); expect(state.ball.x).toBeLessThanOrEqual(FIELD_W); expect(state.ball.y).toBeLessThanOrEqual(FIELD_H_MAX + BALL * 2);
+      if (state.done) break;
+    }
+    expect(litCount(state.lit)).toBeGreaterThan(0);
+  });
+  it('lanterns lit one after another make a chain; the paddle, the cloud and a new launch end it', () => {
+    const lantern: BounceEvent = { type: 'lantern', index: 0 };
+    expect(chainAfter(0, lantern)).toBe(1); expect(chainAfter(2, lantern)).toBe(3);
+    expect(chainAfter(3, { type: 'wall' })).toBe(3); expect(chainAfter(3, { type: 'row', row: 0 })).toBe(3); expect(chainAfter(3, { type: 'allLit' })).toBe(3);
+    expect(chainAfter(3, { type: 'paddle' })).toBe(0); expect(chainAfter(3, { type: 'cloud' })).toBe(0); expect(chainAfter(3, { type: 'lift' })).toBe(0);
+    expect(chainAfter(NaN, lantern)).toBe(1);
+  });
+  it('the screen glows with the lanterns lit and brighter with a chain, from 0 to 1; the harmony climbs with the chain and stays in the scale', () => {
+    expect(screenGlow(0, 0)).toBe(0); expect(screenGlow(LANTERN_COUNT, 0)).toBe(0.5); expect(screenGlow(LANTERN_COUNT, 5)).toBe(1); expect(screenGlow(999, 999)).toBe(1); expect(screenGlow(NaN, NaN)).toBe(0);
+    expect(screenGlow(5, 3)).toBeGreaterThan(screenGlow(5, 1)); expect(screenGlow(5, 1)).toBe(screenGlow(5, 0));
+    expect([0, 1, 2, 3, 4, 9].map(chainHarmony)).toEqual([0, 0, 2, 3, 5, 5]);
+  });
+});
+
+describe('the quest: three chapters, things done, never a measure', () => {
+  it('chapter one: three different tools wake the bench; the same tool twice is play, not progress', () => {
+    let q: Quest = NEW_QUEST;
+    expect(benchAwake(q)).toBe(false); expect(benchPower(q)).toBe(0); expect(chapterNow(q)).toBe(0);
+    q = wakeTool(q, 'proofLens'); expect(wakeTool(q, 'proofLens')).toBe(q); expect(wakeTool(q, 'hammer')).toBe(q); expect(wakeTool(q, null)).toBe(q);
+    q = wakeTool(q, 'leafLab'); expect(benchAwake(q)).toBe(false); expect(benchPower(q)).toBeCloseTo(2 / 3);
+    q = wakeTool(q, 'clearPatch'); expect(benchAwake(q)).toBe(true); expect(benchPower(q)).toBe(1); expect(chapterDone(q, 'wake')).toBe(true); expect(chapterNow(q)).toBe(1);
+    q = wakeTool(wakeTool(q, 'viewCheck'), 'pulsePod'); expect(q.woken).toHaveLength(TOOLS.length); expect(benchPower(q)).toBe(1);
+    expect(TOOLS_TO_WAKE).toBeLessThanOrEqual(TOOLS.length);
+  });
+  it('chapters two and three: every lantern once, then two different known words; unknown words never count', () => {
+    let q: Quest = wakeTool(wakeTool(wakeTool(NEW_QUEST, TOOLS[0]), TOOLS[1]), TOOLS[2]);
+    q = noteCommand(q, 'help'); q = noteCommand(q, 'help'); q = noteCommand(q, null);
+    expect(chapterDone(q, 'ask')).toBe(false); expect(chapterNow(q)).toBe(1);
+    q = noteLanterns(q); expect(noteLanterns(q)).toBe(q); expect(chapterDone(q, 'play')).toBe(true); expect(chapterNow(q)).toBe(2); expect(questDone(q)).toBe(false);
+    q = noteCommand(q, 'ls'); expect(chapterDone(q, 'ask')).toBe(true); expect(questDone(q)).toBe(true); expect(chapterNow(q)).toBe(CHAPTERS.length);
+    q = noteCommand(q, 'clear'); expect(q.commands).toEqual(['help', 'ls']); expect(q.commands).toHaveLength(WORDS_TO_ASK);
+  });
+  it('the chapters may be done in any order, and the quest keeps only fixed names', () => {
+    let q: Quest = noteCommand(noteCommand(NEW_QUEST, 'hello'), 'dance');
+    expect(chapterDone(q, 'ask')).toBe(true); expect(chapterNow(q)).toBe(0); expect(questDone(q)).toBe(false);
+    q = noteLanterns(q); expect(chapterNow(q)).toBe(0);
+    expect(Object.keys(q).sort()).toEqual(['commands', 'lanterns', 'woken']);
+  });
+});
+
+describe('the round: a seed changes the sitting', () => {
+  it('one seed always gives the same round, and every choice is a real one', () => {
+    expect(deskRound(seeded(5))).toEqual(deskRound(seeded(5)));
+    const rounds = Array.from({ length: 60 }, (_, seed) => deskRound(seeded(seed * 7919 + 1)));
+    for (const round of rounds) {
+      expect(LAYOUTS).toContain(round.layout); expect(TOOLS).toContain(round.hint); expect(TOOL_ORDERS).toContain(round.order); expect(ROOM_LIGHTS).toContain(round.light);
+      expect(round.guest).toBeGreaterThanOrEqual(0); expect(round.guest).toBeLessThan(3); expect(round.riddle).toBeGreaterThanOrEqual(0); expect(round.riddle).toBeLessThan(en.riddles.length);
+    }
+    expect(new Set(rounds.map(round => round.layout)).size).toBe(LAYOUTS.length); expect(new Set(rounds.map(round => round.order)).size).toBe(TOOL_ORDERS.length);
+    expect(new Set(rounds.map(round => round.light)).size).toBe(ROOM_LIGHTS.length); expect(new Set(rounds.map(round => round.hint)).size).toBe(TOOLS.length);
+    expect(deskRound(() => NaN).layout).toBe(LAYOUTS[0]); expect(deskRound(() => 1).hint).toBe(TOOLS[TOOLS.length - 1]);
+  });
+  it('the power-up lights all five tools once, in one of three orders, inside ten seconds', () => {
+    for (const order of TOOL_ORDERS) expect([...toolOrder(order)].sort()).toEqual([...TOOLS].sort());
+    expect(toolOrder('leftToRight')).toEqual([...TOOLS]); expect(toolOrder('rightToLeft')[0]).toBe(TOOLS[TOOLS.length - 1]); expect(toolOrder('middleOut')[0]).toBe(TOOLS[2]);
+    for (const plan of [POWER_UP, POWER_UP_REDUCED]) {
+      const lastTool = plan.tools + (TOOLS.length - 1) * plan.toolGap;
+      expect(lastTool).toBeLessThan(plan.screen); expect(plan.screen).toBeLessThan(plan.room); expect(plan.room).toBeLessThan(plan.picture); expect(plan.picture).toBeLessThan(plan.end);
+      expect(plan.end).toBeLessThanOrEqual(10000);
+    }
+    expect(POWER_UP.end).toBeGreaterThanOrEqual(7000); expect(POWER_UP_REDUCED.end).toBeLessThan(POWER_UP.end);
   });
 });

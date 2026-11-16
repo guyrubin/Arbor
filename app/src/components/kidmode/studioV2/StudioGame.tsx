@@ -90,7 +90,9 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
   // A device that opted in to the next games sees that game's own cover.
   const cover = studioNextCover(activityId);
   const words = WORDS[lang];
-  const [phase, setPhase] = useState<"intro" | "play" | "result">("intro");
+  // A maker opens on its own opening shot (title on the picture, the host, a tap to skip),
+  // so it goes straight into play: no second title card in front of it.
+  const [phase, setPhase] = useState<"intro" | "play" | "result">(() => isStudioMakerId(activityId) ? "play" : "intro");
   const [round, setRound] = useState(0);
   const [creation, setCreation] = useState<StudioCreation | undefined>();
   const complete = useRef(false);

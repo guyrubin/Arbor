@@ -3,7 +3,7 @@ import { kidAudioAllowed, kidAudioContext, onKidHush } from '../../../../audio/k
 /** Bottle Lab's sounds, made on the spot on Arbor's one kid audio bus (the
  * child's Sound switch, hidden-tab hush and leaving Kid Mode all silence
  * them). No file, no network, no looping bed. Every pitched sound takes its
- * note from one scale (bottleToys GLASS_SCALE), so overlapping sounds agree;
+ * note from the caller (glassSound hands it steps of D pentatonic), so overlapping sounds agree;
  * each has a soft attack, a few cents of drift so repeats never sound
  * identical, and a small peak (the loudest partial is 0.07 before the 0.8
  * master). Play never waits for a sound. */
