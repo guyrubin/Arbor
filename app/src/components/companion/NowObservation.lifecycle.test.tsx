@@ -15,6 +15,7 @@ import { dayPart } from "./rightNowModel";
 import { VISIT_DRAFT_COPY } from "./nowV41Copy";
 import { daysUntil, inDaysLabel } from "../care/CareVisitHead";
 import { NOW_V10_COPY } from "./now10/nowV10Copy";
+import { planString } from "../../lib/plans/planStrings";
 import { clock24, EVENING_FROM_HOUR, EVENING_TO_HOUR } from "./now10/dayArcModel";
 // Only the mounted UrgentSupport render below reaches the real LanguageContext;
 // NowContent is compiled with injected hooks and never touches this mock.
@@ -61,7 +62,7 @@ function setup(lang: "en" | "he" = "en") {
     // v4.1: Right now (its own render tests: nowV41.test).
     dayPart, NowRightNow: "now-right-now",
     // v10.1 (N-Now): the composition's primitives and objects (their own render tests: now10/now10.test).
-    NOW_V10_COPY, clock24, EVENING_FROM_HOUR, EVENING_TO_HOUR, useComposition: () => "phone",
+    NOW_V10_COPY, planString, clock24, EVENING_FROM_HOUR, EVENING_TO_HOUR, useComposition: () => "phone",
     loadPrefs: () => ({ types: { guidance: true, moments: true }, quietStart: 21, quietEnd: 8, calmWindowOnly: false }), shownNudgesToday: () => [],
     eveningMoments: () => ({ inBand: 0, total: 0 }), useFamilyPlanDatesForNow: () => [], NowStageContext: React.createContext(null),
     DsRoot: "ds-root", Guide: "guide", LivingForm: "living-form", MoreLink: "more-link", Route: "route", RouteSection: "route-section", Row12: "row12", Scene: "scene", StartHere: "start-here", Tile: "tile",

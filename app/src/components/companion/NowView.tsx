@@ -14,10 +14,8 @@ import { programSharedObjectOn } from "../../lib/programs/sharedObject";
 import ProgramBookHandback from "../program/ProgramBookHandback";
 import { readLearnReadIds } from "../../learn/learnReadState";
 import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
-import PlansSection from "../plans/PlansSection";
-import { closePlan, keepPlan, leadPlan, nightMomentText, recordNight, unrecordNight } from "../../lib/plans/planWeek";
-import { usePlanVisibility } from "../../lib/plans/usePlanVisibility";
-import { openPrintablePlan } from "../../lib/plans/planPrint";
+import { planString } from "../../lib/plans/planStrings";
+import { leadPlan, nightMomentText, recordNight, unrecordNight } from "../../lib/plans/planWeek";
 import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import { dayKey } from "../../practice/signals";
 import { isObservationAction, type ActionLoopEntry } from "../../actionLoop/model";
@@ -159,7 +157,6 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // card (the running plan(s), then "Something hard right now?"). v10.1: it
   // opens the plan's one home, Now › Plans (lib/plans/challengeLinks), not a
   // copy of the composer.
-  const planVisibility = usePlanVisibility();
   const openPattern = (pattern: string) => { setActiveTab("plans"); window.location.hash = challengePlanHref(isPatternId(pattern) ? pattern : null); };
   const openPlan = () => openPattern(plan?.def.id ?? "");
   // v4: the agenda row says where the family is in it ("Week 2 of 4"), counts only.
@@ -510,25 +507,22 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const noticeStep = showNotice ? <div data-module="today-notice"><NowNoticeBlock loop={loop} name={name} practiceLeads={lead === "practice"}
     extras={<NowNoticeExtras keepsakeDocs={loop.keepsakeDocs} now={loop.now} isReturning={isReturning} suppressSayBack={lead === "record"} />} /></div>
     : lead !== "urgent" ? <NowNoticeExtras keepsakeDocs={loop.keepsakeDocs} now={loop.now} isReturning={isReturning} suppressSayBack={lead === "record"} /> : null;
-  const plansDoor = lead !== "urgent" ? <PlansSection surface="today" childName={name} planRows={planRows.items} visibility={planVisibility} now={now} excludePlanId={plan ? plan.doc.id : undefined}
-    onOpenDoor={openPattern} onOpenPlan={(p) => openPattern(p.def.id)} onChange={(p) => openPattern(p.def.id)}
-    onKeep={(p) => void planRows.upsert(keepPlan(p.doc, now))} onClose={(p) => void planRows.upsert(closePlan(p.doc, now))}
-    onPrint={(p) => void openPrintablePlan({ doc: p.doc, child: childProfile, lang, now })} /> : null;
+  // With no plan running, Tonight is one door line to Challenge Plans (the chooser and the composer live on Now › Plans).
+  const plansDoor = lead !== "urgent" && !plan ? <NowRow icon="auto_stories" testId="now-challenge-door" className="now-challenge-door"
+    title={planString("section.hard", lang)} sub={planString("section.title", lang)} onOpen={() => openPattern("")} /> : null;
   const waiting: WaitingStep[] = [];
-  if (noticeStep) waiting.push({ key: "now", when: v10.whenNow, sub: showNotice ? copy.planTag.notice : null, current: true, grow: 1, body: noticeStep });
-  if (lead !== "urgent" && plan) waiting.push({ key: "tonight", when: v10.whenTonight, sub: v10.whenTonightSub, current: !showNotice, grow: 2, body: <>
-    <NowChallengePlan plan={plan} lang={lang} childName={name} now={now} evening={loop.evening}
+  if (noticeStep) waiting.push({ key: "now", when: v10.whenNow, sub: showNotice ? v10.oneQuestion(loop.blockNotices.filter(c => !c.milestone.observationStatus).length || loop.blockNotices.length) : null, current: true, grow: 1, body: noticeStep });
+  if (lead !== "urgent" && plan) waiting.push({ key: "tonight", when: v10.whenTonight, sub: v10.whenTonightSub, current: !showNotice, grow: 2, body:
+    <NowChallengePlan plan={plan} lang={lang} childName={name} now={now} evening={loop.evening} copy={v10}
       onNight={(happened) => { if (happened) void planRows.upsert(recordNight(plan.doc, now)); }}
       onUndoNight={() => void planRows.upsert(unrecordNight(plan.doc, now))}
       onJournal={() => void addMoment(nightMomentText(plan.def, lang, name))}
-      onOpen={openPlan} />
-    {plansDoor}
-  </> });
+      onOpen={openPlan} /> });
   else if (plansDoor) waiting.push({ key: "tonight", when: v10.whenTonight, body: plansDoor });
   if (lead !== "urgent" && notesWaiting > 0) waiting.push({ key: "later", when: v10.whenLater, sub: v10.whenLaterSub, body:
     <NowNotebookBadge waiting={notesWaiting} copy={v10} notebook={t("companion.about.notebook")} label={t(notesWaiting === 1 ? "elev.childmem.pending.notes.one" : "elev.childmem.pending.notes", { count: notesWaiting })} onOpen={() => goToRoute("memory")} /> });
-  // What waits, counted as the rail shows it: the notice rows still open, a plan running, notes waiting.
-  const thingsWaiting = (showNotice ? 1 : 0) + (lead !== "urgent" && plan ? 1 : 0) + (lead !== "urgent" && notesWaiting > 0 ? 1 : 0);
+  // "Waiting for you · n things": the blocks the rail shows (a Now step with only its say-back extras is not counted).
+  const thingsWaiting = waiting.filter(w => w.key !== "now" || showNotice).length;
   const waitingTitleId = `${id}-waiting`;
 
   // ── stop 3: this week, compact, with what changed since the last visit. ──
@@ -553,7 +547,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
       badge={programWeeks > 0 ? <span className="now-agenda-badge" data-testid="now-program-week">{copy.programWeekOf(program.week, Math.max(program.week, programWeeks))}</span> : undefined} />}
     {/* B-PROG-14: "This week's idea". Flag off: the title door. Flag on: example, words, reason, fallback, and the longer read when this week has one. */}
     {!(showLessonFace && lessonFace) && weekLesson && <NowRow icon="lightbulb" testId="now-week-lesson" className="now-week-lesson" title={copy.weekIdea} sub={weekLesson.title[lang]} onOpen={() => requestLearnRead({ cardId: weekLesson.id, source: "now-week-lesson" })} />}
-    <NowRow icon="notifications" className="now-glance-reminders" title={copy.remindersTitle} sub={v10.remindersSub(shownNudges)} onOpen={() => setActiveTab("smart-reminders")} />
+    <NowRow icon="notifications" className="now-glance-reminders" title={copy.remindersTitle} sub={v10.remindersShown(shownNudges)} onOpen={() => setActiveTab("smart-reminders")} />
   </>;
   const comingExtras = <>
     {/* B-PROG-16: next-day handback of the week's one shared book. Dark until the pilot flag. */}
