@@ -68,7 +68,7 @@ const ASK = /\b(bring|please|remember|wear|pack)\b|להביא|נא|לזכור|ל
 function titleOf(line: string): string {
   // The line up to where its day or time starts ("…garden is on Thursday at 10:00" → "…garden").
   const cut = line.split(/\s+(?:is|are|will be)?\s*(?:on|at|by|until)\s+|\s+(?:ב?יום|בשעה|עד)\s+/i)[0] || line;
-  const words = cut.replace(/^(?:our|the|please|update:)\s+/i, "").replace(/["“”„«»]/g, "").replace(/\s+/g, " ").trim().split(" ");
+  const words = cut.replace(/^(?:our|the|please|update:)\s+/i, "").replace(/^ב?יום\s+\S+\s+(?:בשעה\s+\S+\s+)?(?:יש\s+)?/, "").replace(/["“”„«»]/g, "").replace(/\s+/g, " ").trim().split(" ");
   const short = words.slice(0, 9).join(" ");
   return (short.length > 80 ? short.slice(0, 80) : short).replace(/[.,:;!?-]+$/, "");
 }
