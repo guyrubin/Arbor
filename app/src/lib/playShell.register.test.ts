@@ -299,7 +299,8 @@ describe("IA-08 / RUN-12 — #/practice loses the drill pill row, keeps every ro
 
   it("the launcher cards STAY: PracticeStudioTab still opens each standalone drill route", () => {
     // B-PLAY-02: the world list lives in components/practice/studioWorlds.ts.
-    const studio = stripComments(read("components/companion/TogetherView.tsx")) + stripComments(read("components/practice/studioWorlds.ts"));
+    // v10.1: the launcher (openWorld) moved from TogetherView to Together › Play.
+    const studio = stripComments(read("components/together/PlayStudio.tsx")) + stripComments(read("components/practice/studioWorlds.ts"));
     for (const route of ["speech", "feelings", "mimic", "adventures"]) {
       expect(studio, `PracticeStudioTab lost its ${route} tile`).toContain(`tab: "${route}"`);
     }

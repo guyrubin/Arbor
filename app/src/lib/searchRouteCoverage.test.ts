@@ -24,7 +24,7 @@ import { getSearchIndex } from "./searchIndex";
  */
 const DELIBERATELY_UNSEARCHABLE: Partial<Record<ActiveTab, string>> = {
   attribution: "Legal/credits surface reached from Settings; not a place a parent navigates to by name.",
-  science: "Evidence/credits surface reached from a trust link in context, not a destination.",
+  // v10: science (How Arbor works) left this list — About and Settings link to it and search finds it.
 };
 
 /** B-SHELL-20 (f): a retired id is covered by its retirement (RETIRED_ROUTES),

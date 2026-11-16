@@ -37,7 +37,9 @@ export function IconBadge({ tone = "mint", children, size = 44 }: { tone?: Paste
 // already shows the active section. Title carries the page on its own.
 // `flush` (W2-CAREPRO r2): inside a `flex gap-*` column the parent's gap owns
 // the rhythm; mb-7 stacked on gap-6 left a ~52 px blank band under the lede.
-export function PageHeader({ title, subtitle, action, flush }: { eyebrow?: string; title: string; subtitle?: string; action?: React.ReactNode; flush?: boolean }) {
+export function PageHeader({ title, subtitle, action, flush, srOnly }: { eyebrow?: string; title: string; subtitle?: string; action?: React.ReactNode; flush?: boolean; srOnly?: boolean }) {
+  // srOnly: the screen's H1 stays for assistive tech while another visible label names the page.
+  if (srOnly) return <h1 className="sr-only">{title}</h1>;
   return (
     <div className={`flex flex-col sm:flex-row sm:items-end justify-between gap-3 ${flush ? "" : "mb-7"}`}>
       <div>

@@ -1,0 +1,250 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Now v10.1 (boards N-Now-D / N-Now-M). The first part is the boards' own
+   <style> block, ported under .ds (scripted: selectors scoped, font weights
+   and families !important against index.css, alpha colours → #rrggbbaa). Production
+   additions follow it: what the static boards draw but a live screen needs
+   (real buttons, the lead's own components inside the stage, both locales).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ds .nw-card{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-radius:18px;background:var(--card);box-shadow:var(--shadow-tile);color:var(--ink);min-width:0}
+.ds .nw-card .nh{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600 !important;line-height:1.2;min-height:28px}
+.ds .nw-lnk{display:inline-flex;align-items:center;gap:4px;font-weight:600 !important;font-size:13.5px;color:var(--sapphire-deep);white-space:nowrap}
+.ds .nw-card .nh .nw-lnk{margin-inline-start:auto}
+.ds .nw-book{position:relative;display:flex;flex-direction:column;justify-content:flex-end;flex:none;width:58px;aspect-ratio:3/4;box-sizing:border-box;padding:6px 6px 7px 12px;border-radius:4px 9px 9px 4px;background:linear-gradient(160deg,#fbf6ec,#f1e7d6);box-shadow:0 0 0 1px #e3d7c2,0 10px 16px -12px #14225a73;overflow:hidden}
+.ds .nw-book::before{content:"";position:absolute;inset-block:0;inset-inline-start:0;width:6px;background:#d9c9ae}
+.ds .nw-book b{font-family:var(--font-display) !important;font-weight:600 !important;font-size:10.5px;line-height:1.12;color:var(--ink)}
+.ds .nw-yn{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ds .nw-yn button{min-height:44px;border:0;border-radius:999px;background:var(--card);color:var(--sapphire-deep);font:600 14px/1.1 var(--font-sans) !important;box-shadow:inset 0 0 0 2px var(--sapphire)}
+.ds .nw-row{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:14px;align-items:center;min-height:64px;padding:8px 0;color:var(--ink);border-top:1px solid var(--rule)}
+.ds .nw-row:first-child{border-top:0}
+.ds .nw-row .t{display:block;font-size:14.5px;font-weight:600 !important;line-height:1.25}
+.ds .nw-row .s{display:block;font-size:13px;line-height:1.3;color:var(--ink-soft)}
+.ds .nw-date{width:52px;height:52px;border-radius:14px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:var(--ink);color:#fff;font:700 10.5px/1 var(--font-sans) !important;letter-spacing:.06em;text-transform:uppercase}
+.ds .nw-date i{font-family:var(--font-display) !important;font-style:normal;font-weight:600 !important;font-size:20px;letter-spacing:0;line-height:1;font-variant-numeric:lining-nums}
+.ds .nw-date.none{background:var(--card);color:var(--ink);border:2px dashed var(--ink-soft)}
+.ds .nw-ico{width:52px;height:52px;border-radius:14px;background:var(--tint-2);color:var(--sapphire-deep);display:flex;align-items:center;justify-content:center}
+.ds .nw-meta{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;font-size:13px;line-height:1.3;color:var(--ink-soft)}
+.ds .nw-meta>span{display:inline-flex;align-items:center;gap:6px}
+.ds .nw-meta b{color:var(--ink);font-weight:600 !important}
+.ds .nw-sw{width:22px;height:10px;border-radius:5px;background:var(--win);flex:none}
+.ds .nw-qh{width:22px;height:10px;border-radius:5px;flex:none;background:repeating-linear-gradient(135deg,#8fa0bd 0 2px,#e7ecf5 2px 5px)}
+.ds .nw-chip{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:0 10px 0 3px;border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--ink);color:var(--ink);font-size:12.5px;font-weight:600 !important;white-space:nowrap}
+.ds .nw-ai{display:inline-flex;align-items:center;gap:5px;min-height:26px;padding:0 10px;border-radius:999px;background:var(--tint-2);border:1.5px dashed var(--pencil);color:var(--sapphire-deep);font-size:12.5px;font-weight:600 !important;white-space:nowrap}
+/* ---- the rail as a sequence: each kind of object has its own anatomy ---- */
+.ds .nw-seq{position:relative;display:flex;flex-direction:column;gap:14px;flex:1;min-height:0;padding-inline-start:22px}
+.ds .nw-seq::before{content:"";position:absolute;inset-inline-start:5px;top:10px;bottom:34px;width:2px;background:repeating-linear-gradient(to bottom,#c3cde0 0 4px,transparent 4px 9px)}
+.ds .nw-step{position:relative;display:flex;flex-direction:column;gap:8px;min-width:0}
+.ds .nw-step.g1{flex:1}
+.ds .nw-step.g2{flex:1.18}
+.ds .nw-when{position:relative;display:flex;align-items:center;gap:6px;min-height:18px;font:600 11.5px/1 var(--font-sans) !important;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft)}
+.ds .nw-when::before{content:"";position:absolute;inset-inline-start:-22px;top:50%;width:12px;height:12px;margin-top:-6px;border-radius:50%;box-sizing:border-box;background:var(--card);box-shadow:inset 0 0 0 2.5px #8fa5cf}
+.ds .nw-step.nw-now .nw-when::before{background:var(--sapphire);box-shadow:0 0 0 4px var(--tint-2)}
+.ds .nw-when b{color:var(--sapphire-deep);font-weight:700 !important}
+.ds .nw-when .d{width:3px;height:3px;border-radius:50%;background:currentColor;opacity:.7;flex:none}
+.ds .nw-ask{position:relative;flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:12px;padding:16px 18px 12px 23px;border-radius:18px;background:var(--tint);box-shadow:inset 0 0 0 1px #dbe6f7;overflow:hidden;color:var(--ink)}
+.ds .nw-ask::before{content:"";position:absolute;inset-block:0;inset-inline-start:0;width:5px;background:var(--sapphire)}
+.ds .nw-ask .kk{display:flex;justify-content:space-between;gap:8px;font-size:13.5px;font-weight:600 !important;color:var(--sapphire-deep)}
+.ds .nw-ask .q{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center}
+.ds .nw-ask .q .sent{display:block;font-family:var(--font-display) !important;font-style:italic;font-size:24px;line-height:1.12}
+.ds .nw-ask .ft{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--ink-soft)}
+.ds .nw-plan{flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:14px;padding:16px 18px;border-radius:18px;background:var(--card);box-shadow:var(--shadow-tile);color:var(--ink)}
+.ds .nw-plan .top{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:start}
+.ds .nw-plan .top b.t{display:block;font:600 16.5px/1.2 var(--font-sans) !important}
+.ds .nw-plan .top .s{display:block;margin-top:4px;font-size:13.5px;line-height:1.4;color:var(--ink-soft)}
+.ds .nw-plan .top .btn{margin-top:10px}
+.ds .nw-plan .ck{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--rule)}
+.ds .nw-plan .ck>span{font-size:13.5px;font-weight:600 !important}
+.ds .nw-badge{display:flex;align-items:center;gap:14px;min-height:72px;padding:10px 16px;border-radius:22px;background:var(--tint-2);border:1.5px dashed var(--pencil);color:var(--ink)}
+.ds .nw-badge .fig{display:flex;align-items:center;gap:10px}
+.ds .nw-badge .fig>b{font:600 40px/.9 var(--font-display) !important;font-variant-numeric:lining-nums}
+.ds .nw-badge .fig>span{font-size:13.5px;font-weight:600 !important;line-height:1.25}
+.ds .nw-badge .fig>span small{display:block;font-weight:400 !important;font-size:12.5px;color:var(--ink-soft)}
+.ds .nw-badge .mini{display:flex;align-items:center;gap:3px;margin-inline-start:auto}
+.ds .nw-badge>svg{color:var(--sapphire-deep);flex:none}
+/* the chosen question lives in the stage as one chip; its menu is drawn open beside it */
+.ds .nw-q{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ds .nw-qc{display:inline-flex;align-items:center;flex-wrap:wrap;gap:0 4px;min-height:44px;padding:0 4px 0 14px;border-radius:22px;background:#ffffffb8;box-shadow:inset 0 0 0 1.5px var(--rule-strong);font-size:13.5px;color:var(--ink-soft)}
+.ds .nw-qc>.l{display:inline-flex;align-items:center;gap:8px;padding-inline-end:10px;min-height:44px}
+.ds .nw-qc>.l b{color:var(--ink);font-weight:600 !important}
+.ds .nw-qc .acts{display:inline-flex;align-items:center}
+.ds .nw-qc .sp{width:1px;height:22px;background:var(--rule-strong);margin-inline-end:2px}
+.ds .nw-qc.m{display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0 6px 0 14px;border-radius:18px}
+.ds .nw-qc.m>.l{min-height:40px;padding-top:4px}
+.ds .nw-qc.m{width:100%;box-sizing:border-box}
+.ds .nw-qc.m .acts{border-top:1px solid var(--rule);margin-inline:-14px -6px;padding-inline-start:8px}
+.ds .nw-qc.m .sp{display:none}
+/* phone: tighter rhythm, badge on two rows */
+.ds .nw-seq.m{gap:10px}
+.ds .nw-seq.m .nw-step{gap:6px}
+.ds .nw-seq.m .nw-ask{padding:14px 14px 10px 19px;gap:10px}
+.ds .nw-seq.m .nw-ask .ft{font-size:12.5px}
+.ds .nw-seq.m .nw-plan{padding:14px;gap:10px}
+.ds .nw-seq.m .nw-plan .top .btn{margin-top:8px}
+.ds .nw-seq.m .nw-plan .ck{padding-top:10px}
+.ds .nw-badge.m{flex-wrap:wrap;gap:6px 12px;padding:10px 14px}
+.ds .nw-badge.m .fig{flex:1;min-width:0}
+.ds .nw-badge.m .fig>span{white-space:nowrap}
+.ds .nw-badge.m .mini{order:3;flex-basis:100%;margin:0}
+.ds .nw-qc button{min-height:44px;padding:0 12px;border:0;border-radius:22px;background:transparent;color:var(--sapphire-deep);font:600 13.5px/1 var(--font-sans) !important;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+
+
+/* ═══ Production additions ═══════════════════════════════════════════════════ */
+
+/* The route's gutter: the numbered stops sit in it. */
+.ds.now-v10 { display: flex; flex-direction: column; gap: 18px; padding-inline-start: 34px; min-width: 0; }
+.ds.now-v10.ds-phone { gap: 12px; padding-inline-start: 24px; }
+.ds.now-v10.ds-phone > .guide.mini { margin-inline-start: -24px; }
+.ds.now-v10 .guide.mini .gstop { min-height: 44px; }
+.ds.now-v10 .guide { flex-wrap: nowrap; min-width: 0; }
+.ds.now-v10.ds-desk .guide .gline { flex: 1; min-width: 12px; height: 2px; background: repeating-linear-gradient(90deg, var(--pencil) 0 4px, transparent 4px 9px); }
+
+/* Stop 1 · the stage */
+.ds .nw-stage { padding: 0; gap: 0; }
+.ds .nw-stage-solo .nw-stage { min-height: 0; }
+.ds .nw-stage-head { padding: 20px 24px 0; gap: 12px; flex-wrap: wrap; position: relative; z-index: 1; }
+.ds-phone .nw-stage-head { padding: 16px 16px 0; }
+.ds .nw-stage-head h1.kicker { margin: 0; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700 !important; color: var(--ink-soft); }
+.ds .nw-stage .now-main-column { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ds .now-plan-v10 { display: flex; flex-direction: column; min-width: 0; }
+.ds .now-plan-v10 > .now-plan-body { display: flex; flex-direction: column; gap: 12px; padding: 14px 24px 0; min-width: 0; }
+.ds-phone .now-plan-v10 > .now-plan-body { padding: 10px 16px 0; }
+.ds .nw-stage .now-main-column > :not(.now-plan-v10) { margin-inline: 24px; }
+.ds-phone .nw-stage .now-main-column > :not(.now-plan-v10) { margin-inline: 16px; }
+.ds .nw-stage > .now-right-now, .ds .nw-stage > .nw-stage-q, .ds .nw-stage > .nw-arc-legend { margin: 12px 24px 0; }
+.ds-phone .nw-stage > .now-right-now, .ds-phone .nw-stage > .nw-stage-q, .ds-phone .nw-stage > .nw-arc-legend { margin: 10px 16px 0; }
+.ds .nw-stage > .nw-arc-legend { margin-bottom: 20px; }
+.ds-phone .nw-stage > .nw-arc-legend { margin-bottom: 16px; gap: 6px 14px; }
+.ds .nw-stage-q { padding-top: 12px; border-top: 1px solid #14225a1a; }
+/* the lead's own cards sit on the scene as white objects */
+.ds .nw-stage .now-plan-body > .now-lead { background: #ffffffd9; border-radius: 18px; padding: 16px 18px; box-shadow: inset 0 0 0 1px #dbe6f7; }
+/* the loop leads (record, practice, notice, Tonight) bring their own card: no second frame around them */
+.ds .nw-stage .now-plan-body > .now-loop-lead { min-width: 0; }
+.ds .nw-stage .now-plan-foot { padding: 0 2px; }
+
+/* the day arc and the lead's face laid over its bowl */
+.ds .nw-arc { margin-top: -6px; padding: 0 12px; }
+.ds-desk .nw-arc { padding: 0 8px; }
+.ds .nw-sky-a { stop-color: #cfe0fa; }
+.ds .nw-sky-b { stop-color: #f7faff; }
+.ds .nw-base { stroke: #b9c6dc; }
+.ds .nw-quiet { fill: none; stroke: #8fa0bd; stroke-linecap: butt; stroke-dasharray: 3 5; }
+.ds .nw-quiet-label { text-anchor: middle; }
+.ds .nw-arc .nowt { z-index: 2; }
+.ds .nw-arc-face { position: relative; z-index: 1; display: flex; justify-content: center; margin-top: -26%; padding: 0 20px; pointer-events: none; }
+.ds-phone .nw-arc-face { margin-top: -27%; padding: 0 8px; }
+.ds .nw-arc-face button, .ds .nw-arc-face a { pointer-events: auto; }
+.ds .nw-face-row { display: flex; align-items: center; gap: 16px; max-width: 520px; min-width: 0; }
+.ds .nw-face-col { display: flex; flex-direction: column; align-items: center; gap: 4px; max-width: 260px; min-width: 0; text-align: center; }
+.ds .nw-face { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ds-phone .nw-face { align-items: center; gap: 6px; }
+.ds .nw-face-tag { display: inline-flex; align-self: flex-start; align-items: center; gap: 5px; min-height: 26px; padding: 0 10px; border-radius: 999px; background: var(--tint-2); border: 1.5px dashed var(--pencil); color: var(--sapphire-deep); font-size: 12.5px; font-weight: 600 !important; white-space: nowrap; }
+.ds-phone .nw-face-tag { align-self: center; }
+.ds .nw-face .now-plan-title { margin: 0; font-family: var(--font-display) !important; font-weight: 500 !important; font-size: 32px; line-height: 1.08; letter-spacing: -.01em; color: var(--ink); text-wrap: balance; overflow-wrap: anywhere; }
+.ds-phone .nw-face .now-plan-title { font-size: 23px; }
+.ds .nw-face .now-plan-say { margin: 0; padding: 0; border: 0; font-family: var(--font-editorial, var(--font-display)) !important; font-style: italic; font-weight: 400 !important; font-size: 17px; line-height: 1.25; color: var(--ink-soft); text-wrap: balance; }
+.ds .nw-face .now-plan-title + .now-plan-say { font-size: 15px; }
+html[lang="he"] .ds .nw-face .now-plan-say { font-style: normal; }
+.ds .nw-face .now-plan-meta { margin: 0; font-size: 13px; color: var(--ink-soft); }
+.ds-phone .nw-face .now-plan-say { font-size: 15.5px; }
+
+/* Stop 2 · the rail and its steps */
+.ds .nw-rail { gap: 12px; }
+.ds .nw-rail .rh .h3 { font-size: 20px; }
+.ds .nw-step > [data-module="today-notice"] { min-width: 0; }
+.ds .nw-plan .nw-book { width: 72px; }
+.ds-phone .nw-plan .nw-book { width: 64px; }
+.ds .nw-plan-text { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+.ds .nw-plan .top .btn { margin-top: 6px; }
+.ds .nw-plan-after { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.ds .nw-plan .ck > span[role="status"] { font-weight: 600 !important; }
+.ds .nw-badge { width: 100%; cursor: pointer; text-align: start; font: inherit; }
+.ds .nw-badge:focus-visible, .ds .nw-row:focus-visible, .ds .nw-know-link:focus-visible { outline: 2px solid var(--sapphire); outline-offset: 2px; }
+.ds .nw-step [data-everyday-plans] { margin-top: 2px; }
+
+/* Stop 3 · this week */
+.ds .nw-week-figs { display: flex; align-items: flex-end; gap: 28px; white-space: nowrap; flex-wrap: wrap; }
+.ds-phone .nw-week-figs { gap: 16px; padding-inline: 4px; }
+.ds .nw-week-empty { font-size: 14px; line-height: 1.4; color: var(--ink-soft); }
+.ds .wd .nw-col { min-height: 126px; }
+.ds-phone .wd .nw-col { min-height: 112px; padding: 6px 2px; border-radius: 14px; }
+.ds-phone .wd .dh b { font-size: 20px; }
+.ds .nw-more { font-size: 12px; font-weight: 700 !important; color: var(--ink-soft); }
+.ds .nw-week-phone { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ds-phone .nw-week { padding: 16px 12px; gap: 12px; }
+.ds .nw-week > :is(section, div):not(.wk7):not(.vh):not(.nw-week-figs) { min-width: 0; }
+
+/* Worth knowing */
+.ds .nw-know { padding: 20px 22px; gap: 8px; justify-content: center; }
+.ds .nw-know .nw-know-art { align-self: flex-start; margin-bottom: 2px; }
+.ds .nw-know .lead { font-size: 18.5px; }
+.ds .nw-know.m { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; align-items: start; }
+.ds .nw-know.m .nw-know-art { grid-column: 2; grid-row: 1 / span 3; }
+.ds .nw-know.m .lead { font-size: 16px; line-height: 1.34; }
+.ds .nw-know-link { display: inline-flex; flex-wrap: wrap; gap: 0 4px; align-items: center; min-height: 44px; padding: 0; border: 0; background: none; color: var(--sapphire-deep); font-weight: 600 !important; font-size: 14px; text-align: start; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+/* Stop 4 · coming up */
+.ds .nw-ahead { gap: 4px; }
+.ds .g12 > .nw-ahead { grid-column: span 8; }
+.ds .g12 > .nw-ahead:only-child { grid-column: span 12; }
+.ds-phone .nw-ahead { padding: 6px 16px; }
+.ds .nw-rows { display: flex; flex-direction: column; }
+.ds .nw-row { width: 100%; border-inline: 0; border-bottom: 0; background: none; text-align: start; font: inherit; cursor: pointer; }
+.ds .nw-row-text { min-width: 0; }
+.ds .nw-row .now-agenda-badge { margin-inline-start: 8px; }
+.ds .nw-trail { gap: 4px; flex-wrap: wrap; }
+.ds .nw-ahead .now-glance-extras:empty { display: none; }
+
+/* The rail stacks its steps from the top; a notice row folds its answers under its name in the narrow column. */
+.ds .nw-rail .nw-seq .nw-step { flex: none; }
+.ds .nw-rail .now-notice-item-main, .ds-phone .now-notice-item-main { flex-wrap: wrap; }
+.ds .nw-rail .now-notice-item-name, .ds-phone .nw-step .now-notice-item-name { flex: 1 1 140px; }
+.ds .nw-rail .now-notice-answers, .ds-phone .nw-step .now-notice-answers { flex: 1 1 100%; justify-content: flex-start; padding-inline-start: 48px; }
+
+/* The question chip: its line wraps; the empty state is a real two-line button. */
+.ds .nw-qc { max-width: 100%; box-sizing: border-box; }
+.ds .nw-qc > .l { min-width: 0; flex-wrap: wrap; }
+.ds .nw-qc-text { min-width: 0; }
+.ds .nw-qc .nw-qc-empty { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 44px; padding: 4px 0; white-space: normal; text-align: start; color: var(--ink); border-radius: 10px; font: inherit; }
+.ds .nw-qc .nw-qc-empty b { font-weight: 600 !important; }
+.ds .nw-qc .nw-qc-empty small { font-size: 12.5px; color: var(--ink-soft); }
+.ds .nw-qc .acts { flex-wrap: wrap; }
+.ds .nw-qc .nw-qc-edit { min-height: 44px; min-width: 44px; padding: 0; justify-content: center; }
+.ds .nw-q-others { display: flex; gap: 8px; margin-top: 8px; }
+.ds .nw-q-others .now-question-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 999px; background: #ffffffb8; box-shadow: inset 0 0 0 1.5px var(--rule-strong); color: var(--ink); font-size: 13.5px; font-weight: 600 !important; }
+/* The stage's line under its h1 (production's subtitle), and a "Now" step with nothing in it today. */
+.ds .nw-stage-sub { flex-basis: 100%; margin: -4px 0 0; font-size: 13.5px; line-height: 1.35; color: var(--ink-soft); }
+.ds .nw-step:has(> .now-notice-extras:empty) { display: none; }
+.ds .nw-plan-steps { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 0; padding: 0; list-style: none; font-size: 13px; line-height: 1.35; color: var(--ink); }
+.ds .nw-plan-steps li { display: flex; gap: 6px; }
+.ds .nw-plan-steps .num { color: var(--ink-soft); font-weight: 600 !important; font-variant-numeric: lining-nums; }
+.ds-phone .nw-stage-head h1.kicker { font-size: 12px; letter-spacing: .06em; }
+.ds .nw-arc-legend > .ds-link { margin-inline-start: auto; }
+/* The fold: the lead's one move stays above the fold at 1280 × 800 and 375 × 812 (rendered-sweep primaryMoveOccluded). The arc keeps its
+   board proportion but caps its size, and the face rides deeper in its bowl. */
+.ds-desk .nw-stage .nw-arc { max-width: 470px; margin-inline: auto; width: 100%; box-sizing: border-box; }
+.ds-desk .nw-stage .nw-arc-face { margin-top: -30%; }
+.ds-desk .nw-stage .nw-face-art { width: 120px !important; height: 92px !important; }
+.ds-desk .nw-stage .nw-face-art img { width: 216px !important; height: 122px !important; margin: -20px 0 0 -98px !important; }
+.ds-desk .nw-stage .nw-face .now-plan-title { font-size: 28px; }
+.ds-phone .nw-stage .nw-arc { max-width: 300px; margin-inline: auto; }
+.ds-phone .nw-stage .nw-arc-face { margin-top: -30%; }
+.ds-phone .nw-stage .nw-face-art { display: none; }
+.ds-phone .nw-stage-head { padding-top: 12px; }
+.ds-phone .nw-stage .nw-arc { max-width: 260px; }
+.ds-phone .nw-stage .nw-face .now-plan-meta { display: none; }
+.ds-phone .nw-stage .nw-arc { margin-top: 12px; }
+.ds-phone .nw-stage .nw-face .now-plan-say { font-size: 14.5px; }
+.ds-phone .nw-quiet-label { display: none; }
+.ds-phone .nw-stage-head { gap: 6px 8px; }
+.ds-phone .nw-stage-head h1.kicker { font-size: 11.5px; letter-spacing: .03em; }
+.ds-phone .nw-stage-head .next1 { padding: 2px 8px; }
+/* The empty question: "Your question", then "No question chosen" and its line, all on the text's one start edge. */
+.ds .nw-qc-text:has(> .nw-qc-empty) { display: flex; flex-direction: column; align-items: flex-start; }
+.ds .nw-qc > .l:has(.nw-qc-empty) { align-items: flex-start; padding-top: 12px; }
+.ds .nw-qc .nw-qc-empty { padding: 2px 0 8px; }
+/* Phone: the lead's face heads the stage (no arc above it); the day arc follows the lead. */
+.ds .nw-face-phone { display: flex; align-items: center; gap: 12px; text-align: start; padding: 10px 16px 0; min-width: 0; }
+.ds-phone .nw-stage .nw-face-phone .nw-face-guide { display: block; border-radius: 12px; }
+.ds-phone .nw-face-phone .nw-face { align-items: flex-start; }
+.ds-phone .nw-face-phone .nw-face-tag { align-self: flex-start; }
+.ds-phone .nw-stage > .nw-arc { margin: 14px auto 0; max-width: 300px; }

@@ -151,7 +151,8 @@ describe("B-TODAY-28 — OverviewTab wiring (source pin)", () => {
     expect(SRC).not.toContain('t("today.header.prompt")');
     // Re-pin (F-NOW-1 now-heading-identity, 12 Oct): the kicker leads Now; the
     // date and the child's name · age line left the heading (no picture either).
-    expect(SRC).toContain('<p className="companion-eyebrow" data-testid="now-kicker">{copy.kicker}</p>');
+    // v10.1 (N-Now): the stage's head line is the screen's h1; the shell's top bar names the place.
+    expect(SRC).toContain('<h1 className="kicker" data-testid="now-kicker">{copy.title(name)}</h1>');
     expect(SRC).not.toContain('data-testid="today-identity"');
     expect(SRC).not.toMatch(/"elev\.loop\.today\.identity"/);
   });

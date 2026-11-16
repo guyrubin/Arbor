@@ -144,6 +144,7 @@ const CHANNELS: Record<string, Channel> = {
   "/live/turn": { kind: "live", body: (t, l) => ({ role: "user", text: t, language: l, ...who }) },
   "/extract-log": { kind: "409", body: (t, l) => ({ message: t, language: l, ...who }) },
   "/describe-child": { kind: "409", body: (t, l) => ({ text: t, language: l, ...who }) },
+  "/family-plan/extract": { kind: "409", body: (t, l) => ({ text: t, language: l, today: "2026-11-16" }) },
   "/conversation/proposals": { kind: "409", body: (t, l) => ({ transcript: t, milestones: [], language: l, ...who }) },
   "/explain": { kind: "409", body: (t, l) => ({ subject: t, details: t, language: l, ...who }) },
   "/vision": { kind: "409", body: (t, l) => ({ image: IMAGE, note: t, language: l, ...who }) },

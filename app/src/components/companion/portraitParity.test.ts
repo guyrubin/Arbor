@@ -16,12 +16,16 @@ describe("the portrait mounts the restored pieces inside its existing modules", 
   // into its area row and the keepsake disclosure leaves the page (the brief's
   // child-watch-row and child-words-keepsakes gaps); both files stay unmounted
   // on disk. Was: watch row + keepsakes in the overview module, 3 modules.
-  it("v3 F-CHILD-1: the portrait cards and the areas table are the page's two modules", () => {
-    const cards = portrait.slice(portrait.indexOf('data-module="child-milestones-portrait"'), portrait.indexOf('data-module="child-milestones-areas"'));
-    const areas = portrait.slice(portrait.indexOf('data-module="child-milestones-areas"'));
-    expect(cards).toContain("<PortraitCards ");
-    expect(areas).toContain("<MilestoneAreas key={childProfile.id}");
-    expect((portrait.match(/\bdata-module=/g) ?? []).length).toBe(2);
+  // v10.1 RE-PIN: three modules in page order — the areas (band and index),
+  // that area (stage and rail), In your words; MilestoneAreas owns them.
+  it("v10.1: the areas, the open area and the portrait cards are the page's three modules", () => {
+    const at = (m: string) => portrait.indexOf(`data-module="${m}"`);
+    expect(at("child-milestones-areas")).toBeGreaterThan(-1);
+    expect(at("child-milestones-area")).toBeGreaterThan(at("child-milestones-areas"));
+    expect(at("child-milestones-portrait")).toBeGreaterThan(at("child-milestones-area"));
+    expect(portrait).toContain("<PortraitCards ");
+    expect(portrait).toContain("<MilestoneAreas key={childProfile.id}");
+    expect((portrait.match(/\bdata-module=/g) ?? []).length).toBe(3);
     expect(portrait).not.toContain("<PortraitWatchRow");
     expect(portrait).not.toContain("<PortraitKeepsakes");
     expect(keepsakes).not.toMatch(/\bdata-module=/);

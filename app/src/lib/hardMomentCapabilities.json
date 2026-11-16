@@ -3,7 +3,7 @@
     "id": "capture",
     "owner": "components/tabs/BehaviorsTab.tsx",
     "markers": [
-      "<QuickCaptureBar",
+      "data-testid=\"behaviors-log-hard\"",
       "openCaptureSheet({ mode: \"text\" })"
     ]
   },

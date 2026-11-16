@@ -2,7 +2,7 @@
 import { BASE, captureRevision } from './config.mjs';
 import { smallCaptureEnvironment } from './small-state.mjs';
 
-export const RELEASE_ROUTE_COUNT = 43;
+export const RELEASE_ROUTE_COUNT = 44;
 export const RELEASE_SHARDS = 1;
 /**
  * The matrix of record (CoS AR-REL-2, 20 Oct 2026): every viewport Arbor is verified on, × EN/HE.

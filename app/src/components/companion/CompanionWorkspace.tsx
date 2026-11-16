@@ -306,13 +306,13 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
       <header className="companion-conversation-heading">
         <ArborMark size={30} />
         <div className="companion-conversation-identity">
-          <h2 id="companion-conversation-title">Arbor</h2>
+          <h2 id="companion-conversation-title">{inputText(uiLang, "companion.door.talk")}</h2>
           {/* FEAT-05 / F-TALK-1: the active question opens the question sheet; text
               only, never a count or dot. Beside a wide page it is the chip alone;
               below 1280 px it is one muted line, "<child> · <question>". Without
               a question the header names the child. */}
           <div className="companion-conversation-context">
-            {!activeFamilyTopic ? <span className="companion-conversation-name"><bdi dir="auto">{childProfile.name}</bdi></span>
+            {!activeFamilyTopic ? <span className="companion-conversation-name">{inputText(uiLang, "companion.conversation.about", { name: (childProfile.name || "").split(" ")[0] || childProfile.name })}</span>
               : wide ? <button type="button" className="companion-topic-chip" data-testid="conversation-topic-chip" aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.topic-chip.open", { value0: topicTitle })} onClick={openQuestion}>
                 <span className="companion-topic-chip-pill"><Icon name="bookmark" size={16} className="companion-topic-chip-icon" /><span className="companion-topic-chip-text" dir="auto">{topicTitle}</span></span>
               </button>
@@ -329,7 +329,9 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
       </Suspense></ErrorBoundary>
     </aside>}
     </div>
-    {!visible && !kidLocked && <div className="arbor-parent companion-launcher-rail" data-testid="companion-launcher-rail"><div ref={launcherRef} className={`arbor-parent companion-launcher${voiceDoor ? " has-voice" : ""}`} data-testid="companion-launcher">
+    {/* v10 (COPY-RULES 8): Safety & urgent help has no dock: under stress the
+        page is the one thing on screen, and its own escalation paths are there. */}
+    {!visible && !kidLocked && activeTab !== "safety" && <div className="arbor-parent companion-launcher-rail" data-testid="companion-launcher-rail"><div ref={launcherRef} className={`arbor-parent companion-launcher${voiceDoor ? " has-voice" : ""}`} data-testid="companion-launcher">
       <button ref={launchRef} type="button" className="companion-launch-main" onClick={() => show("launcher")} aria-haspopup="dialog" aria-label={launchLabel} aria-describedby={launcherTopic ? "companion-launch-topic" : undefined}>
         <span className="companion-launch-mark"><ArborMark size={24} /></span><span className="companion-launch-copy">{launchLabel}{launcherTopic && <span id="companion-launch-topic" className="companion-launch-topic">{topicBefore}<bdi dir="auto" className="companion-launch-topic-text">{launcherTopic}</bdi>{topicAfter || null}</span>}</span><Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
       </button>

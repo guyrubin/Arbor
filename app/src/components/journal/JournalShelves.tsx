@@ -45,6 +45,7 @@ import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import { closePlan, keepPlan, type ActivePlan } from "../../lib/plans/planWeek";
 import { usePlanVisibility } from "../../lib/plans/usePlanVisibility";
 import { isPatternId } from "../../lib/library/plans/planVisibility";
+import { challengePlanHref } from "../../lib/plans/challengeLinks";
 import { composerFromDoc } from "../../lib/plans/composerFromDoc";
 
 /** A query value that names a shelf, or null (an unknown id falls back to the grid). */
@@ -95,7 +96,8 @@ export default function JournalShelves({ shelf, pro = false, intakeFor = null, p
   const planRows = useChildCollection<PlanBookDoc>(childProfile.id, "books");
   const planVisibility = usePlanVisibility();
   const planDef = plan && isPatternId(plan) ? getPattern(plan) : undefined;
-  const openPlanDoor = (pattern: string) => goToRoute("journal", { plan: pattern });
+  // v10.1: a Challenge plan opens its one home, Now › Plans (lib/plans/challengeLinks).
+  const openPlanDoor = (pattern: string) => { try { window.location.hash = challengePlanHref(isPatternId(pattern) ? pattern : null); } catch { /* SSR / tests */ } };
   // B-BOOK-75 follow-up: saving the row is enough — the parent shell's
   // PlanSheetEnsurer (components/layout) reads the `books` rows and starts the
   // child's shared plan sheet for the poses this plan needs (fail soft).

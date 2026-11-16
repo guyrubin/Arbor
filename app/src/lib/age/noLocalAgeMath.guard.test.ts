@@ -58,7 +58,8 @@ export const CHOOSERS = [
   // v3 F-CHILD-1: the areas table picks the current band for the row detail.
   "components/companion/MilestoneAreas.tsx",
   "components/sections/Screening.tsx",
-  "components/sections/DayWindowsPanel.tsx",
+  // v10: the day-windows read moved into Weekly report (Your day at a glance).
+  "components/tabs/WeeklyTab.tsx",
   "components/sections/SmartRemindersPanel.tsx",
   "components/tabs/StoryTimelineTab.tsx",
   "components/practice/AdventuresTab.tsx",

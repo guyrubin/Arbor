@@ -260,7 +260,7 @@ export const SECTIONS: NavSection[] = [
       { tab: "sharing", label: "Trusted Sharing", msIcon: "share" },
       { tab: "appointments", label: "Appointments", msIcon: "calendar_month" },
       { tab: "safety", label: "Safety & Escalation", msIcon: "gpp_maybe" },
-      { tab: "handoff", label: "Care summary", msIcon: "description" },
+      { tab: "handoff", label: "Visit summary", msIcon: "description" },
     ],
     // Hub (Consult) + Safety (the load-bearing escalation surface). School Brief,
     // Trusted Sharing and Appointments are the hub's contextual tools (folded out
@@ -276,7 +276,7 @@ export const SECTIONS: NavSection[] = [
       { tab: "safety", label: "Safety", msIcon: "gpp_maybe", labelKey: "nav.pill.safety" },
     ],
     tools: [
-      { tab: "handoff", label: "Care summary", msIcon: "description" },
+      { tab: "handoff", label: "Visit summary", msIcon: "description" },
       { tab: "school-brief", label: "School brief", msIcon: "backpack", labelKey: "nav.pill.school-brief" },
       { tab: "sharing", label: "Trusted sharing", msIcon: "share", labelKey: "nav.pill.sharing" },
       { tab: "appointments", label: "Appointments", msIcon: "calendar_month" },
@@ -337,6 +337,8 @@ export const TAB_SECTION_FALLBACK: Partial<Record<ActiveTab, HubId>> = {
   // Today — the Weekly Report is the week's rhythm readout, re-homed from
   // Profile to the Today hub (Heartwood D3).
   weekly: "today",
+  // v10.1: Now › Family plan (its own pill in HOME_PILLS.now).
+  "family-plan": "today",
 
   // Ask Arbor — coach is a first-class section. B-ASKJB-12: #/scholar is
   // retired to coach (RETIRED_ROUTES; its lens choice is Ask's ToneSheet) but
@@ -370,61 +372,80 @@ export const TAB_SECTION_FALLBACK: Partial<Record<ActiveTab, HubId>> = {
 };
 
 /**
- * B-CAREPRO-30 — routes that render with NO hub pill row. The admin
- * attribution dashboard keeps its Care highlight (TAB_SECTION_FALLBACK) but is
- * not a Care capability a parent moves between, so it does not wear the Care
- * pills. Shell renders `pillRowFor`, never `hubTabsForSection` directly.
- * v4 (consolidation): #/journal and #/timeline wear My child's row again. The
- * row is now Milestones · Moments · About; Moments' own in-page views (Across
- * areas · Over time · By place) are readings of one record, not a second nav
- * over the same routes, so the duplicate-nav reason for hiding it is gone.
- * v4: Day windows and Reminders are settings (Settings › Reminders & rhythm);
- * opened, they keep Back to Now and wear no row, since neither is a reading.
+ * v10 (design system v10.1, Guy 16 Nov 2026) — routes that render with NO pill
+ * row. Only the admin attribution dashboard: it keeps its Care highlight
+ * (TAB_SECTION_FALLBACK) but is not a capability a parent moves between.
+ * Gentle reminders and Your day at a glance now wear Now's row (they fold into
+ * Now's pills); Safety keeps Care's row.
  */
-export const NO_PILL_ROW_TABS: ReadonlySet<ActiveTab> = new Set<ActiveTab>(["attribution", "day-windows", "smart-reminders"]);
+export const NO_PILL_ROW_TABS: ReadonlySet<ActiveTab> = new Set<ActiveTab>(["attribution"]);
 
 /**
- * v4 (consolidation blueprint: 43 routes become 9 screens) — the pill row of
- * each place a parent stands in, and the ONLY rendered pill order for a route
- * whose home is that place. A pill is a different READING of the same record,
- * never a capability: everything else is an object on one of these views, a
- * state, a filter, a sheet or a setting, and every former route stays a deep
- * link (PILL_LIT says which reading it belongs to).
- *   - Now:      Now · Weekly report. Day windows and Reminders are settings
- *               (Settings › Reminders & rhythm keeps both doors).
- *   - My child: Milestones (#/development, the 8-area map) · Moments
- *               (#/timeline) · About (#/profile).
- *   - Together: no Shell row — its three in-page filters (Routines · Play ·
- *               Stories) are its first level (TogetherView).
- * The doors (For you, the parent; Care, together) are one screen each, so they
- * carry no row either. SECTIONS stays the hub index for More and search.
+ * v10 — the pill row of every home, and the ONLY rendered pill order for a
+ * route whose home it is. Three places and three doors, at most two levels
+ * deep (home, then pill); a view inside a pill (a chip, a filter) changes the
+ * screen in place and is never a pill. 15 pills: 4 · 3 · 3 · 0 · 2 · 3 (Now's
+ * fourth, Family plan, joins with its route). Every folded route stays a deep
+ * link and lights the pill it belongs to (PILL_LIT).
+ *   - Now:      Now · Weekly report · Plans (moved from Together: it had no link
+ *               there) · Family plan.
+ *   - My child: Milestones · Moments · About <name>.
+ *   - Together: Routines · Play · Stories (the old in-page filter row, now the
+ *               shell's row).
+ *   - Talk:     none; a panel over any page.
+ *   - For you, the parent: For you · Library.
+ *   - Care, together: Visits · People · Records; Safety keeps this row.
  * One glyph per destination, checked with SECTIONS by
  * components/ui/iconFamily.guard.test.ts; `history` stays Talk's.
  */
-export type PillPlace = "now" | "child";
-export const PLACE_PILLS: Readonly<Record<PillPlace, readonly NavItem[]>> = {
+export type PillHome = HomeId;
+/** @deprecated v4 name; every home has a row now. */
+export type PillPlace = PillHome;
+export const HOME_PILLS: Readonly<Record<PillHome, readonly NavItem[]>> = {
   now: [
     // The home pill is drawn from lib/companionPlaces (the place's own glyph
     // and name); this glyph only keeps the row's one-glyph check whole.
     { tab: "overview", label: "Now", msIcon: "home" },
     { tab: "weekly", label: "Weekly report", msIcon: "bar_chart", labelKey: "nav.pill.weekly" },
+    { tab: "plans", label: "Plans", msIcon: "tune", labelKey: "nav.pill.plans" },
+    { tab: "family-plan", label: "Family plan", msIcon: "groups", labelKey: "nav.pill.family-plan" },
   ],
   child: [
     { tab: "development", label: "Milestones", msIcon: "map", labelKey: "nav.pill.development" },
     { tab: "timeline", label: "Moments", msIcon: "photo_library", labelKey: "nav.pill.portrait" },
     { tab: "profile", label: "About", msIcon: "person", labelKey: "nav.pill.profile" },
   ],
+  together: [
+    { tab: "practice", label: "Routines", msIcon: "extension", labelKey: "nav.pill.routines" },
+    { tab: "daily-play", label: "Play", msIcon: "playing_cards", labelKey: "nav.pill.play" },
+    { tab: "stories", label: "Stories", msIcon: "auto_stories", labelKey: "nav.pill.stories" },
+  ],
+  talk: [],
+  learn: [
+    { tab: "masterclasses", label: "For you", msIcon: "school", labelKey: "nav.pill.foryou" },
+    { tab: "learn", label: "Library", msIcon: "local_library", labelKey: "nav.pill.library" },
+  ],
+  care: [
+    { tab: "consult", label: "Visits", msIcon: "assessment", labelKey: "nav.pill.visits" },
+    { tab: "sharing", label: "People", msIcon: "share", labelKey: "nav.pill.people" },
+    { tab: "reports", label: "Records", msIcon: "description", labelKey: "nav.pill.records" },
+  ],
 };
+/** @deprecated v4 alias of HOME_PILLS. */
+export const PLACE_PILLS = HOME_PILLS;
 
 /**
- * v4 — which pill a leaf route lights. A former pill or tool keeps its route
- * (a deep link, a search hit, a door inside a view) and, while it is open, the
- * row says which reading it belongs to: the milestone list, the screener and
- * the copilot are Milestones; the journal, the hard moments and the words are
- * Moments; the memory ledger and strengths are About. A route not listed
- * lights its own pill, if it has one, and otherwise none.
+ * v10 — which pill a folded route lights. A former screen keeps its route (a
+ * deep link, a search hit, a door inside a view) and, while it is open, the row
+ * says which pill it belongs to. A route not listed lights its own pill, if it
+ * has one, and otherwise none (Safety, Gentle reminders' Now).
  */
 export const PILL_LIT: Readonly<Partial<Record<ActiveTab, ActiveTab>>> = {
+  // Now
+  "day-windows": "weekly",
+  "smart-reminders": "overview",
+  routines: "plans",
+  // My child
   milestones: "development",
   screening: "development",
   copilot: "development",
@@ -433,32 +454,63 @@ export const PILL_LIT: Readonly<Partial<Record<ActiveTab, ActiveTab>>> = {
   language: "timeline",
   memory: "profile",
   strengths: "profile",
+  science: "profile",
+  // Together
+  journey: "practice",
+  speech: "daily-play",
+  mimic: "daily-play",
+  feelings: "daily-play",
+  adventures: "daily-play",
+  "bedtime-stories": "stories",
+  comics: "stories",
+  family: "stories",
+  // Care, together
+  handoff: "consult",
+  "school-brief": "consult",
+  "find-pro": "consult",
+  appointments: "consult",
+  "care-team": "sharing",
 };
 
-/** The pill `tab` lights in its place's row (itself when it is a pill). */
+/** The pill `tab` lights in its home's row (itself when it is a pill). */
 export function pillLitTab(tab: ActiveTab): ActiveTab {
   return PILL_LIT[tab] ?? tab;
 }
 
-/** v4 — true when `tab` is itself a pill of its place's row (a reading of
- *  the place: Weekly report, Moments, About). Shell gives it no Back. */
-export function isPlaceReading(tab: ActiveTab): boolean {
-  const home = homeIdForTab(tab);
-  return (home === "now" || home === "child") && PLACE_PILLS[home].some((it) => it.tab === tab);
+/** v10 — true when `tab` is itself a pill of its home's row. */
+export function isPillReading(tab: ActiveTab): boolean {
+  return HOME_PILLS[homeIdForTab(tab)].some((it) => it.tab === tab);
+}
+/** @deprecated v4 name of isPillReading. */
+export const isPlaceReading = isPillReading;
+
+/** The pill Shell lights for `tab`: its own or the one it folds into, if that pill is in its home's row. */
+export function litPillFor(tab: ActiveTab): ActiveTab | null {
+  const lit = pillLitTab(tab);
+  return HOME_PILLS[homeIdForTab(tab)].some((it) => it.tab === lit) ? lit : null;
 }
 
-/** The homes that are ONE screen with no Shell row (v4): Together's first
- *  level is its own in-page filter row; the two doors have no tabs at all. */
-const ROWLESS_HOMES: ReadonlySet<HomeId> = new Set<HomeId>(["together", "learn", "care"]);
-
-/** The pill row Shell renders for `tab` inside `section` (empty = none): its
- *  place's row (Now, My child), none in Together or the two single-screen
- *  doors, else the door's hub row (Talk). */
-export function pillRowFor(section: NavSection, tab: ActiveTab): readonly NavItem[] {
-  if (NO_PILL_ROW_TABS.has(tab)) return [];
+/**
+ * v10 — the top bar's breadcrumb after the home's title: place › pill › view,
+ * three levels at most. On the home's first pill the place stands alone ("Now",
+ * not "Now › Now"); a folded route adds its own view name (nav.view.<route>)
+ * after the pill it lights. Talk is a panel and has no crumb.
+ */
+export function shellCrumbFor(tab: ActiveTab): { pill: ActiveTab | null; view: ActiveTab | null } {
   const home = homeIdForTab(tab);
-  if (home === "now" || home === "child") return PLACE_PILLS[home];
-  return ROWLESS_HOMES.has(home) ? [] : hubTabsForSection(section);
+  // Talk is a panel; a rowless admin route keeps its Back link instead.
+  if (home === "talk" || NO_PILL_ROW_TABS.has(tab)) return { pill: null, view: null };
+  const row = HOME_PILLS[home];
+  const lit = litPillFor(tab);
+  const pill = lit && row[0]?.tab !== lit ? lit : null;
+  const view = lit === tab ? null : tab === row[0]?.tab ? null : tab;
+  return { pill, view };
+}
+
+/** The pill row Shell renders for `tab` (empty = none): its home's row. */
+export function pillRowFor(_section: NavSection, tab: ActiveTab): readonly NavItem[] {
+  if (NO_PILL_ROW_TABS.has(tab)) return [];
+  return HOME_PILLS[homeIdForTab(tab)];
 }
 
 export function sectionForTab(tab: ActiveTab): NavSection {
@@ -486,7 +538,16 @@ const SECTION_HOME: Record<HubId, HomeId> = { today: "now", growth: "child", jou
  *  lives in Together. FEAT-07: plans (and the retired routines id, which still
  *  redirects to plans) live in Together too, beside the Together Routines
  *  category that starts and runs a routine plan. */
-const TAB_HOME: Partial<Record<ActiveTab, HomeId>> = { "daily-play": "together", plans: "together", routines: "together" };
+/** v10: Plans (and the retired routines id) move to Now; How Arbor works sits
+ *  under About; Family formation is a Stories ritual; Safety's page sits under
+ *  Care (its own hub already resolves there). */
+const TAB_HOME: Partial<Record<ActiveTab, HomeId>> = {
+  "daily-play": "together",
+  plans: "now",
+  routines: "now",
+  science: "child",
+  family: "together",
+};
 
 export function homeIdForTab(tab: ActiveTab): HomeId {
   return TAB_HOME[tab] ?? SECTION_HOME[sectionForTab(tab).id];

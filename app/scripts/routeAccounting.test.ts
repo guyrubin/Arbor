@@ -14,7 +14,7 @@ const read = (rel: string) => readFileSync(path.join(here, "..", rel), "utf8");
 const account = ROUTE_ACCOUNT as Record<string, string>;
 
 describe("B-DESIGN-05 — every route ID is accounted for", () => {
-  it("the account covers exactly the 43 current IDs, once each", () => {
+  it("the account covers exactly the current IDs (RELEASE_ROUTE_COUNT), once each", () => {
     expect(ROUTE_IDS).toHaveLength(RELEASE_ROUTE_COUNT);
     expect(Object.keys(account).sort()).toEqual([...ROUTE_IDS].sort());
   });

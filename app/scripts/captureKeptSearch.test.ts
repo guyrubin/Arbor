@@ -76,14 +76,15 @@ describe('bounded additive kept capture and search contract, no browser', () => 
     expect(searchLearnCards(LEARN_CARDS, spec.query, lang === 'he').some(card => card.id === 'executive-function' && card.title[lang] === spec.title)).toBe(true);
     const query = lang === 'he' ? 'בִּיקוּרִימ' : 'VÍSIT';
     const prepare = lang === 'he' ? 'מִתְכּוֹנְנִים לַפְּגִישָׁה' : 'PRÉPARE FOR A VISIT';
-    expect(searchCatalog(query)[0].tab).toBe('appointments');
+    // v10: "Visits" is Care's first pill (#/consult); Appointments is a view inside it.
+    expect(searchCatalog(query)[0].tab).toBe('consult');
     expect(searchCatalog(prepare)[0].tab).toBe('consult');
-    for (const route of ['appointments', 'consult']) {
+    for (const [route, key] of [['appointments', 'nav.tab.appointments'], ['consult', 'nav.pill.visits']] as const) {
       const entry = getSearchIndex().find(e => e.id === `route:${route}`)!;
       expect(entry.sub[lang]).toBe(placeForTab(route as any)[lang]);
-      expect(entry.title[lang]).toBe(translate(lang as any, `nav.tab.${route}`));
+      expect(entry.title[lang]).toBe(translate(lang as any, key));
     }
-    expect(ROUTE_IDS).toHaveLength(43);
+    expect(ROUTE_IDS).toHaveLength(44);
     expect(getSearchIndex().filter(entry => entry.kind === 'route' && entry.tab in RETIRED_ROUTES)).toEqual([]);
   });
   it('reuses isolated exact-font CI and the shared fail-closed aggregate without deployment or font uploads', () => {
@@ -180,14 +181,15 @@ describe('bounded additive kept capture and search contract, no browser', () => 
       expect(translate(lang, 'elev.consult.h1.audience', { audience: lang === 'en' ? audience.toLowerCase() : audience })).toBe(lang === 'en' ? 'Prepare for the pediatrician' : 'מתכוננים לפגישה עם רופא/ת ילדים');
     }
   });
-  it('distinguishes desktop empty-input dismissal from the existing modal command catalogue', () => {
+  // v10 re-pin: an empty field is the jump map on both sizes (the topbar keeps
+  // its overlay open; the phone keeps its dialog), and it never lists a record.
+  it('treats a truly empty input as the jump map on both sizes, with no private record', () => {
     const code = read('app/scripts/capture/normalized-search-states.mjs');
-    expect(read('app/src/components/search/TopbarSearch.tsx')).toContain('const showOverlay = open && query.trim().length > 0');
-    expect(code).toContain("'DESKTOP_TRUE_EMPTY_DISMISSES_EXISTING_OVERLAY'");
-    expect(code).toContain("const commands = page.getByRole('dialog')");
-    expect(code).toContain("commands.locator('button.group')");
+    expect(read('app/src/components/search/TopbarSearch.tsx')).toContain('const showOverlay = open;');
+    expect(code).toContain("'DESKTOP_TRUE_EMPTY_SHOWS_JUMP_MAP'");
+    expect(code).toContain("const commands = surface();");
     expect(code).toContain("'TRUE_EMPTY_PUBLIC_COMMANDS_KEEP_THREE_PLACES'");
-    expect(code).toContain("await commands.getByRole('button', { name: he ? 'סגור' : 'Close', exact: true }).click()");
+    expect(code).toContain("fixture.collections.behaviorLogs.every(row => !publicText.includes(row.trigger))");
   });
   it('requires exact Journal fixture, demo plan and approved-memory identities before and after a marks-only query', () => {
     const observe = (normalizedCapture as any).observeKeptJournalInventory;

@@ -62,6 +62,7 @@ import { DOMAIN_IDS } from "../../lib/domains/registry";
 import { translate } from "../../lib/i18n";
 import type { Observation } from "../../lib/observations";
 import WeeklyTab from "./WeeklyTab";
+import { WEEKLY_COPY } from "../weekly/v10/weeklyCopy";
 
 const NOW = new Date(2026, 9, 14, 15, 0);
 const FIRST = new Date(recapWeekStartMs(NOW));
@@ -109,45 +110,59 @@ const read = (html: string) => html
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW); });
 afterEach(() => { vi.useRealTimers(); });
 
-describe("#/weekly — the report is the dashboard (v3 F-NOW-3)", () => {
+describe("#/weekly — the v10 Weekly report (boards N-Week-D/M), the week drawn from the real record", () => {
   for (const lang of ["en", "he"] as const) {
-    it(`${lang}: records, nothing stored → four tiles and every area, then the band; one stamp`, () => {
+    it(`${lang}: records, nothing stored → the week, what helped, the band, your day; one stamp`, () => {
       const html = render(lang, []);
-      expect(topModules(html)).toEqual(["weekly-glance", "weekly-carry"]);
-      expect([...html.matchAll(/data-tile="([a-z]+)"/g)].map((m) => m[1])).toEqual(["moments", "helped", "milestones", "kid"]);
-      expect(html.match(/data-area="/g)).toHaveLength(DOMAIN_IDS.length);
-      expect(html).toMatch(/data-tile="moments"><span class="wk-glance-tile-head">[\s\S]*?<\/span><b>3<\/b>/);
+      expect(topModules(html)).toEqual(["weekly-glance", "weekly-helped", "weekly-carry", "weekly-day"]);
+      // The figures are counts with their unit in words; a zero gets no figure.
+      expect(read(html)).toContain(`3 ${WEEKLY_COPY[lang].momentsKept(3)}`);
+      expect(read(html)).toContain(`1 ${WEEKLY_COPY[lang].stepsHelped(1)}`);
+      // One token per counted moment in the instrument, one step token in the no-time lane.
+      const inst = html.slice(html.indexOf('data-testid="weekly-instrument"'), html.indexOf('data-module="weekly-helped"'));
+      expect(inst.match(new RegExp(`aria-label="${WEEKLY_COPY[lang].tokenMoment}[,"]`, "g"))?.length ?? 0).toBe(3);
+      expect(inst.split(`aria-label="${WEEKLY_COPY[lang].tokenMomentNew},`).length - 1).toBe(1);
+      expect(inst).toContain(`aria-label="${WEEKLY_COPY[lang].tokenHelped}"`);
+      // By area lists only the areas that hold a record, and names the rest once.
+      expect(html.match(/data-area="/g)).toHaveLength(1);
+      expect(html).toContain(WEEKLY_COPY[lang].otherAreas(DOMAIN_IDS.length - 1));
       expect(stamps(html)).toHaveLength(1);
-      // The Milestones tile is the door to the milestones page.
-      expect(html).toContain('data-testid="weekly-tile-milestones"');
+      // The Milestones door to the milestones page, as a button.
+      expect(tagOf(html, "weekly-tile-milestones")[0]).toMatch(/^<button /);
+      // The one legend line, once.
+      expect(html.split(WEEKLY_COPY[lang].legend).length - 1).toBe(1);
     });
 
-    it(`${lang}: nothing to count, nothing stored → the empty card, then the band`, () => {
+    it(`${lang}: nothing to count, nothing stored → the empty card, then the band and your day`, () => {
       const html = render(lang, [], [], []);
-      expect(topModules(html)).toEqual(["weekly-empty", "weekly-carry"]);
+      expect(topModules(html)).toEqual(["weekly-empty", "weekly-carry", "weekly-day"]);
       expect(html).not.toContain('data-module="weekly-glance"');
+      expect(html).not.toContain('data-module="weekly-helped"');
       expect(stamps(html)).toHaveLength(1);
     });
 
-    it(`${lang}: a stored AI digest → the same dashboard, the suggestion in the band; the letter is gone`, () => {
+    it(`${lang}: a stored AI digest → the same report, the suggestion in the band as Arbor's draft; the letter is gone`, () => {
       const html = render(lang, [stored(lang, "ai")]);
-      expect(topModules(html)).toEqual(["weekly-glance", "weekly-carry"]);
+      expect(topModules(html)).toEqual(["weekly-glance", "weekly-helped", "weekly-carry", "weekly-day"]);
       expect(html).not.toMatch(/weekly-recap|recap-next|recap-accept|weekly-insight|weekly-after-story/);
       expect(html).toContain(TRY[lang]);
+      expect(html).toContain(WEEKLY_COPY[lang].arborDraft);
       expect(stamps(html)).toHaveLength(1);
     });
 
-    it(`${lang}: the digest call failed → the same dashboard; no insight card`, () => {
+    it(`${lang}: the digest call failed → the same report; no insight card, no draft label`, () => {
       const html = render(lang, [stored(lang, "failed")]);
-      expect(topModules(html)).toEqual(["weekly-glance", "weekly-carry"]);
+      expect(topModules(html)).toEqual(["weekly-glance", "weekly-helped", "weekly-carry", "weekly-day"]);
       expect(html).not.toContain("weekly-insight");
+      expect(html).not.toContain(WEEKLY_COPY[lang].arborDraft);
       expect(stamps(html)).toHaveLength(1);
     });
 
-    it(`${lang}: a stored week with nothing in it still renders the dashboard, every tile "—"`, () => {
+    it(`${lang}: a stored week with nothing in it still renders the report, with no zero figures`, () => {
       const html = render(lang, [stored(lang, "ai")], [], []);
-      expect(topModules(html)).toEqual(["weekly-glance", "weekly-carry"]);
-      expect([...html.matchAll(/data-tile="[a-z]+"[^>]*>[\s\S]*?<b>([^<]*)<\/b>/g)].map((m) => m[1])).toEqual(["—", "—", "—", "—"]);
+      expect(topModules(html)).toEqual(["weekly-glance", "weekly-helped", "weekly-carry", "weekly-day"]);
+      expect(html).not.toContain('class="wk10-figs"');
+      expect(html).toContain(WEEKLY_COPY[lang].noAreas);
     });
 
     it(`${lang}: the counts line shows at every width; no avatar, no chip strip`, () => {
@@ -157,7 +172,7 @@ describe("#/weekly — the report is the dashboard (v3 F-NOW-3)", () => {
       expect(line?.[2]).toBe(translate(lang, "elev.wk.glance.sub"));
       const empty = render(lang, [], [], []);
       expect(empty).toContain('data-testid="weekly-glance-sub"');
-      expect(html).not.toMatch(/rounded-full whitespace-nowrap|hero-avatar/);
+      expect(html).not.toMatch(/hero-avatar/);
     });
 
     it(`${lang}: Previous week steps to the stored week before; the current week has no Next`, () => {
@@ -165,48 +180,32 @@ describe("#/weekly — the report is the dashboard (v3 F-NOW-3)", () => {
       const prev = tagOf(html, "weekly-prev");
       expect(prev).toHaveLength(1);
       expect(prev[0]).toContain(`aria-label="${translate(lang, "elev.wk.prev.aria", { week: "Week of 3 October" })}"`);
-      expect(prev[0]).toContain("min-height:44px");
+      expect(prev[0]).toContain('class="btn ghost sm');
       expect(html).toContain(translate(lang, "elev.wk.prev"));
       expect(html).not.toContain('data-testid="weekly-next"');
-      // Nothing older stored → no Previous.
-      expect(render(lang, [stored(lang, "ai")])).not.toContain('data-testid="weekly-prev"');
-      // v3 F-NOW-3 review round 2: the header's action row shows on phones only
-      // when it holds a week step; otherwise it is md-up only (it then holds
-      // nothing but the md-up summary door), so no empty row sits on a phone.
-      expect(tagOf(html, "weekly-header-actions")[0]).toMatch(/class="flex flex-wrap /);
-      expect(tagOf(render(lang, [stored(lang, "ai")]), "weekly-header-actions")[0]).toMatch(/class="hidden md:flex flex-wrap /);
-      // The headline is set at weight 500, as the mock draws it.
-      expect(/<h1 data-testid="weekly-title" class="([^"]*)"/.exec(html)?.[1]).toMatch(/\bfont-medium\b/);
+      // Nothing older stored → no Previous, and no empty action row.
+      const single = render(lang, [stored(lang, "ai")]);
+      expect(single).not.toContain('data-testid="weekly-prev"');
+      expect(single).not.toContain('data-testid="weekly-header-actions"');
     });
 
-    /* v3 F-NOW-3 review round 2: each seat has its own test id (the header's
-       weekly-snapshot-door, the phone's weekly-snapshot-door-phone), so a
-       rendered check finds exactly one element per id; one handler, one door. */
-    it(`${lang}: the summary door — header seat from md, end seat on phones; it names the next visit's professional when one is booked`, () => {
-      const html = render(lang, []);
-      const header = tagOf(html, "weekly-snapshot-door");
-      const phone = tagOf(html, "weekly-snapshot-door-phone");
-      expect(header).toHaveLength(1);
-      expect(phone).toHaveLength(1);
-      const doors = [header[0], phone[0]];
-      expect(doors[0]).toContain('data-placement="header"');
-      expect(doors[0]).toMatch(/class="hidden md:inline-flex /);
-      expect(doors[1]).toContain('data-placement="end"');
-      expect(doors[1]).toMatch(/class="inline-flex md:hidden /);
-      for (const door of doors) {
-        expect(door).toContain("min-height:44px");
-        expect(door).not.toContain("gradient");
-        expect(door).not.toContain("data-primary-move");
+    it(`${lang}: one Visit summary door, an outline secondary that opens the summary; never the primary`, () => {
+      for (const html of [render(lang, []), render(lang, [], [], [])]) {
+        const door = tagOf(html, "weekly-snapshot-door");
+        expect(door).toHaveLength(1);
+        expect(door[0]).toContain('class="btn ghost');
+        expect(door[0]).not.toContain("data-primary-move");
+        expect(html.split(WEEKLY_COPY[lang].addToSummary).length - 1).toBe(1);
       }
-      expect(html.split(translate(lang, "wk.brief")).length - 1).toBe(2);
+    });
+
+    it(`${lang}: the next visit in its Prepare window shows its days to go, by profession`, () => {
       const visit = { id: "appt-invented", who: "Invented clinic", role: "", profession: "slp", when: "", mode: "in-person", whenIso: new Date(2026, 9, 17, 10).toISOString(), status: "confirmed" };
       const booked = render(lang, [], RECORDS, STEPS, [visit]);
-      const label = translate(lang, "elev.wk.summary.role", { role: translate(lang, "elev.careNet.appt.profession.slp") });
-      expect(booked.split(label).length - 1).toBe(2);
-      expect(booked).not.toContain(translate(lang, "wk.brief"));
-      // The door sits in the header above the dashboard, and after the band on phones.
-      expect(html.indexOf('data-placement="header"')).toBeLessThan(html.indexOf('data-module="weekly-glance"'));
-      expect(html.indexOf('data-placement="end"')).toBeGreaterThan(html.indexOf('data-module="weekly-carry"'));
+      const block = booked.slice(booked.indexOf('data-testid="weekly-next-visit"'));
+      expect(read(block)).toContain(`3 ${WEEKLY_COPY[lang].daysToVisit(3)}`);
+      expect(block).toContain(translate(lang, "elev.careNet.appt.profession.slp"));
+      expect(render(lang, [])).toContain(WEEKLY_COPY[lang].noVisit);
     });
 
     it(`${lang}: no share, no ratio, no gain sign anywhere on the page`, () => {
@@ -217,15 +216,16 @@ describe("#/weekly — the report is the dashboard (v3 F-NOW-3)", () => {
     });
   }
 
-  it("source: the dashboard is placed by WeeklyTab, stamped by WeekGlance — the tab stamps only the empty card, the band and the demoted invite", () => {
+  it("source: WeeklyTab places and stamps every stop; the invite stays demoted", () => {
     const src = readFileSync(new URL("./WeeklyTab.tsx", import.meta.url), "utf8");
-    expect(src.match(/<WeekGlance\b/g)).toHaveLength(1);
-    expect(src).not.toContain('data-module="weekly-glance"');
-    expect([...src.matchAll(/data-module="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["weekly-empty", "weekly-carry", "weekly-invite"]);
+    expect([...src.matchAll(/data-module="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["weekly-helped", "weekly-carry", "weekly-day", "weekly-invite"]);
+    // The week and the empty card exclude each other and share one stamp.
+    expect(src).toContain('const stage: "weekly-glance" | "weekly-empty" | null = dashboardShown && week ? "weekly-glance" : !selected ? "weekly-empty" : null;');
+    expect(src.match(/\{\.\.\.stageStamp\}/g)).toHaveLength(2);
     expect(src).toContain("const dashboardShown = !!week && (glanceHasCounts(week.glance) || !!selected);");
-    // A past week renders over its own bounds (reportWeekBounds), its strip with no today.
+    // A past week renders over its own bounds (reportWeekBounds), with no today.
     expect(src).toContain("reportWeekBounds(viewId, weekAnchorDate(selected), { weekId: recapWeekId, weekStartMs: recapWeekStartMs })");
-    expect(src).toContain("glance: isCurrent ? counts : { ...counts, today: 7 },");
+    expect(src).toContain("const glance = isCurrent ? counts : { ...counts, today: 7 };");
     expect(src).toMatch(/onClick=\{\(\) => setSelectedId\(id\)\}/);
   });
 });

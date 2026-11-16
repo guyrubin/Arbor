@@ -14,6 +14,9 @@ const env = {
   React, AskSpecialist, visitForConsult, consultAudienceForProfession,
   // v3 EXTRA-CARE → v4: the Care landing's visit head, aside and shared cards (#/consult)
   CareVisitHead: () => null, CareAside: () => null, CareShared: () => null,
+  // design v10.1: the Visits composition, its timeline and the scene's whole-record counts
+  VisitsComposition: () => null, VisitTimeline: () => null, DsRoot: (props: { children?: React.ReactNode }) => props.children, Icon: () => null,
+  useComposition: () => "desk", reportsLeadCounts: () => ({ moments: 0, milestones: 0, sinceMs: 0 }),
   useRef: (initial: unknown) => slots[cursor++] ??= { current: initial },
   useState: (initial: unknown) => { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], (value: unknown) => { slots[i] = value; }]; },
   useMemo: (calculate: () => unknown) => calculate(),

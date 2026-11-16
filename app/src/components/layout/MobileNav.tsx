@@ -2,19 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { SECTIONS, primaryTabOf } from "../../lib/navigation";
-import { COMPANION_PLACES, COMPANION_DOORS, homeForTab, chromeLitHome, type CompanionDoor, type CompanionPlace } from "../../lib/companionPlaces";
+import { COMPANION_PLACES, COMPANION_DOORS, homeForTab, chromeLitHome, type CompanionDoor } from "../../lib/companionPlaces";
 import { requestCompanionConversation } from "../../lib/companionConversation";
-import type { ActiveTab } from "../../lib/routes";
-import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
 import { Icon } from "../ui/Icon";
 import { selectionHaptic } from "../../lib/native";
-import { requestOpenSearch } from "../search/SearchModal";
 import { Sheet } from "../ui/Sheet";
-import SafetyRing from "./SafetyRing"; // IA-01: Safety life-ring in the More-sheet header row
-import KidModeButton from "./KidModeButton"; // IA-24: the Kid Mode door, in the sheet that never scrolls away
 import { requestOpenSettings } from "./settingsBus"; // IA-03: Settings moved out of the mobile strip
 import { useArborPause } from "../../lib/pauseArborStore";
-import { PARENT_RECORD_COPY } from "../companion/parentRecordCopy";
 import { badgeText } from "./Sidebar"; // IA-16: ONE badge derivation, shared with the sidebar
 
 /** v3 IA-03: the dock is the three places, Talk and More. The places come from
@@ -30,47 +24,18 @@ const TALK_DOOR: Extract<CompanionDoor, { id: "talk" }> = COMPANION_DOORS[0];
  *  iconFontSubset.test.ts reads every quoted lowercase word in src/. */
 const DOCK_TALK_SOURCE = "mobile-dock";
 
-/** v3 IA-03 (critic ruling 14): the sheet's index of the three places, under
- *  their v3 pill names. A row opens a route, or Together's home with its
- *  filter (#/practice?f=, the Together lane's contract). Now's and Together's
- *  rows reuse the label key their pill reads, so the two names cannot drift;
- *  My child's rows carry the v3 names of the route map (Milestones, Moments,
- *  About <child>) in companion.more.* until its pill row takes them. No row
- *  carries an old hub name: #/journal and #/behaviors stay on My child's pill
- *  row, the stories live in Together's Stories, and #/memory is one tap from
- *  My child's home and from Settings. */
-type IndexRow = { id: string; label: string; route: ActiveTab; filter?: string; glyph: string };
-function placeIndex(
-  t: (key: string, vars?: Record<string, string | number>) => string,
-  about: string,
-): Record<CompanionPlace["id"], readonly IndexRow[]> {
-  return {
-    now: [
-      { id: "weekly", label: t("nav.pill.weekly"), route: "weekly", glyph: "bar_chart" },
-    ],
-    child: [
-      { id: "milestones", label: t("companion.more.milestones"), route: "development", glyph: "check_circle" },
-      { id: "moments", label: t("companion.more.moments"), route: "timeline", glyph: "photo_album" },
-      { id: "about", label: about, route: "profile", glyph: "person" },
-    ],
-    // v4: Together's three filters, in its own order — Routines · Play ·
-    // Stories. Play (f=games) holds the games and the away-from-the-screen
-    // ideas, so it is a row at every age: without a world that fits (under
-    // three, or none in her language) it opens on the away ideas.
-    together: [
-      { id: "routines", label: t("companion.together-view.routines"), route: "practice", filter: "routines", glyph: "checklist" },
-      { id: "play", label: t("companion.together-view.play"), route: "practice", filter: "games", glyph: "extension" },
-      { id: "stories", label: t("companion.together-view.stories"), route: "practice", filter: "stories", glyph: "auto_stories" },
-    ],
-  };
-}
+/** v10 (design system v10.1): slot five is Menu, four rows instead of the
+ *  fifteen-entry More sheet. The two doors that have no slot in the bar (For
+ *  you, the parent; Care, together) each name their pills under them; then
+ *  Settings and Pause Arbor. Search, Safety and Kid Mode stay in the top strip,
+ *  so the sheet never repeats them; the places' pills are the shell's pill row,
+ *  so the sheet no longer indexes them. */
+const MENU_DOOR_IDS = ["learn", "care"] as const;
 
 export default function MobileNav() {
   const { activeTab, setActiveTab, milestones, actionPlans, pendingReviewCount, childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
-  const copy = PARENT_RECORD_COPY[he ? "he" : "en"];
-  const query = useHashQuery();
   const milestonesNoticed = milestones.filter((m) => m.checked).length;
   const [moreOpen, setMoreOpen] = useState(false);
   const arborPause = useArborPause();
@@ -86,11 +51,6 @@ export default function MobileNav() {
   // parent; Care, together) light More.
   const lit = chromeLitHome(homeForTab(activeTab));
   const overflowActive = moreOpen || lit.kind === "door";
-  const firstName = childProfile?.name?.trim().split(" ")[0] ?? "";
-  const index = placeIndex(
-    t,
-    firstName ? t("companion.more.about", { name: firstName }) : t("companion.more.about-child"),
-  );
 
   // The sheet is hidden at lg; it must not retain focus/scroll ownership there.
   useEffect(() => {
@@ -122,12 +82,6 @@ export default function MobileNav() {
     void selectionHaptic();
     setActiveTab(door.tab);
     setMoreOpen(false);
-  };
-  const openRow = (row: IndexRow) => {
-    void selectionHaptic();
-    setMoreOpen(false);
-    if (row.filter) goToRoute(row.route, { f: row.filter });
-    else setActiveTab(row.route);
   };
 
   return (
@@ -218,8 +172,8 @@ export default function MobileNav() {
           className="min-h-[64px] min-w-0 flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[12px] font-bold transition"
           style={{ color: overflowActive ? "var(--arbor-clay-deep)" : "var(--arbor-muted)" }}
         >
-          <Icon name="more_horiz" size={18} chrome active={overflowActive} />
-          {t("nav.short.more")}
+          <Icon name="menu" size={21} chrome active={overflowActive} />
+          {t("nav.short.menu")}
         </button>
       </nav>
 
@@ -227,107 +181,58 @@ export default function MobileNav() {
         open={moreOpen}
         onClose={() => setMoreOpen(false)}
         returnFocusRef={moreTriggerRef}
-        title={t("nav.popover.more")}
-        headerActions={
-          <>
-            <SafetyRing onNavigate={() => setMoreOpen(false)} />
-            <KidModeButton compact onBeforeOpen={() => setMoreOpen(false)} />
-            <button
-              aria-label={t("aria.settings")}
-              onClick={() => { void selectionHaptic(); setMoreOpen(false); requestOpenSettings(); }}
-              className="w-11 h-11 flex flex-shrink-0 items-center justify-center rounded-xl"
-              style={{ color: "var(--arbor-muted)" }}
-            >
-              <Icon name="settings" size={18} />
-            </button>
-          </>
-        }
+        title={t("nav.popover.menu")}
       >
-        {/* v3 IA-03: the three doors lead the sheet. Talk opens the conversation
-            over the current place; For you, the parent and Care, together open
-            their landings. They carry data-more-door, not data-more-destination:
-            the place index below is the one list of pages. Chevrons point to
-            the inline end and flip once in Hebrew. */}
-        <section data-testid="more-doors-group" aria-labelledby="more-doors-heading" className="mb-3">
-          <h3 id="more-doors-heading" className="px-3 mb-2 text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("companion.more.doors")}</h3>
-          <div className="space-y-1">
-            {COMPANION_DOORS.map((door) => {
+        {/* v10: four rows. Each door names its pills; Settings and Pause Arbor
+            follow. Rows are 64 px with a glyph chip, a title, the line under it
+            and a chevron that points to the inline end (flips in Hebrew). */}
+        <div className="ds" data-testid="menu-rows">
+          <div className="ds-menu" role="list">
+            {MENU_DOOR_IDS.map((id) => {
+              const door = COMPANION_DOORS.find((d) => d.id === id)!;
               const on = lit.kind === "door" && lit.door.id === door.id;
               return (
-                <button
-                  key={door.id}
-                  type="button"
-                  data-more-door={door.id}
-                  aria-haspopup={door.id === TALK_DOOR.id ? "dialog" : undefined}
-                  aria-current={on ? "page" : undefined}
-                  onClick={() => openDoor(door)}
-                  className="flex min-h-11 w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-start text-sm font-semibold transition"
-                  style={on
-                    ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }
-                    : { background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)" }}
-                >
-                  <Icon name={door.icon} size={20} fill={on ? 1 : 0} />
-                  <span className="min-w-0 flex-1 block break-words leading-snug">{he ? door.he : door.en}</span>
-                  <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" style={{ color: "var(--arbor-muted)" }} />
-                </button>
+                <div role="listitem" key={door.id}>
+                  <button
+                    type="button"
+                    data-more-door={door.id}
+                    aria-current={on ? "page" : undefined}
+                    onClick={() => openDoor(door)}
+                    className={on ? "ds-menurow on" : "ds-menurow"}
+                  >
+                    <span className="gi" aria-hidden="true"><Icon name={door.icon} size={18} fill={on ? 1 : 0} /></span>
+                    <span className="ds-menurow-text"><b>{he ? door.he : door.en}</b><span className="small">{t(`nav.menu.${door.id}.sub`)}</span></span>
+                    <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" style={{ color: "var(--arbor-muted)" }} />
+                  </button>
+                </div>
               );
             })}
-          </div>
-        </section>
-        <button
-          data-testid="more-search"
-          onClick={() => { void selectionHaptic(); setMoreOpen(false); requestOpenSearch("more"); }}
-          className="w-full flex items-center gap-2.5 px-3 py-3 mb-2 min-h-[44px] rounded-2xl text-start text-sm font-bold transition"
-          style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
-        >
-          <Icon name="search" size={20} />
-          <span>{t("top.search")}</span>
-        </button>
-        <button
-          type="button"
-          data-testid="more-pause"
-          onClick={() => { void selectionHaptic(); setMoreOpen(false); requestOpenSettings({ focus: "pause-arbor" }); }}
-          className="w-full flex items-center gap-2.5 px-3 py-3 mb-2 min-h-[44px] rounded-2xl text-start text-sm font-bold transition"
-          style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
-        >
-          <Icon name="schedule" size={20} />
-          <span>{t(arborPause.paused ? "companion.pause.moreOn" : "companion.pause.more")}</span>
-        </button>
-        {/* v3 IA-03 (ruling 14): the old records and support groups are gone,
-            and so are their pulse sub-lines. One index follows the three places
-            in COMPANION_PLACES order, each row under its v3 pill name. The
-            heading above it is the pinned Records heading; renaming it is a
-            decision for Guy. */}
-        <section aria-labelledby="more-records-heading" data-testid="more-records-group" className="mt-4 space-y-4">
-          <h3 id="more-records-heading" className="px-3 text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>{copy.records}</h3>
-          {COMPANION_PLACES.map((place) => (
-            <div key={place.id} role="group" aria-labelledby={`more-place-${place.id}-heading`} data-testid={`more-place-${place.id}-group`}>
-              <h4 id={`more-place-${place.id}-heading`} className="px-3 mb-1 text-[13px] font-bold" style={{ color: "var(--arbor-ink-soft)" }}>{he ? place.he : place.en}</h4>
-              <div className="space-y-1">
-                {index[place.id].map((row) => {
-                  const on = activeTab === row.route && (row.filter ? query.get("f") === row.filter : true);
-                  return (
-                    <button
-                      key={row.id}
-                      type="button"
-                      data-more-destination={row.filter ? `${row.route}?f=${row.filter}` : row.route}
-                      aria-current={on ? "page" : undefined}
-                      onClick={() => openRow(row)}
-                      className="flex min-h-11 w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-start text-sm font-semibold transition"
-                      style={on
-                        ? { background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }
-                        : { background: "transparent", color: "var(--arbor-ink-soft)" }}
-                    >
-                      <Icon name={row.glyph} size={20} fill={on ? 1 : 0} />
-                      <span className="min-w-0 flex-1 block break-words leading-snug">{row.label}</span>
-                      <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" style={{ color: "var(--arbor-muted)" }} />
-                    </button>
-                  );
-                })}
-              </div>
+            <div role="listitem">
+              <button
+                type="button"
+                data-testid="menu-settings"
+                onClick={() => { void selectionHaptic(); setMoreOpen(false); requestOpenSettings(); }}
+                className="ds-menurow"
+              >
+                <span className="gi" aria-hidden="true"><Icon name="settings" size={18} /></span>
+                <span className="ds-menurow-text"><b>{t("aria.settings")}</b><span className="small">{t("nav.menu.settings.sub")}</span></span>
+                <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" style={{ color: "var(--arbor-muted)" }} />
+              </button>
             </div>
-          ))}
-        </section>
+            <div role="listitem">
+              <button
+                type="button"
+                data-testid="more-pause"
+                onClick={() => { void selectionHaptic(); setMoreOpen(false); requestOpenSettings({ focus: "pause-arbor" }); }}
+                className="ds-menurow"
+              >
+                <span className="gi" aria-hidden="true"><Icon name="pause" size={18} /></span>
+                <span className="ds-menurow-text"><b>{t(arborPause.paused ? "companion.pause.moreOn" : "companion.pause.more")}</b><span className="small">{t("nav.menu.pause.sub")}</span></span>
+                <span aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        </div>
       </Sheet>
     </>
   );

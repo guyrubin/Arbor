@@ -39,8 +39,8 @@
 .companion-composer-foot-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0 8px}
 .companion-composer-foot-row>.companion-composer-foot{flex:1 1 200px;min-inline-size:0}
 /* F-TALK-2: one foot line. Talk's data-use clause (what Arbor uses, the weekly notice) and its Change ride in the row between the honesty line and the tone chip; no fill, no border. */
-.companion-foot-use{display:flex;flex-wrap:wrap;align-items:center;gap:0 4px;flex:1 1 220px;min-inline-size:0}
-.companion-foot-use>p{flex:1 1 160px;margin-block:4px}
+.companion-foot-use{display:flex;flex-wrap:wrap;align-items:center;gap:0 4px;flex:1 1 100%;min-inline-size:0}
+.companion-foot-use>p{flex:0 1 auto;margin-block:4px}
 .companion-tone-chip{display:inline-flex;align-items:center;justify-content:center;gap:4px;flex:none;min-block-size:44px;min-inline-size:44px;padding-inline:10px;border-radius:999px;font-size:12px;font-weight:600;color:var(--arbor-ink-soft)}
 .companion-tone-chip:hover{background:var(--arbor-paper-deep)}
 .companion-tone-chip:focus-visible{outline:2px solid var(--arbor-clay);outline-offset:2px}

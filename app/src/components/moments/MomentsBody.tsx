@@ -21,12 +21,21 @@ import { PORTRAIT_COPY } from "../companion/portraitCopy";
 import { portraitEvidenceLines, reviewedPortraitDraft } from "../companion/portraitEvidence";
 import { openFamilyTopicSheet } from "../companion/familyTopicEvents";
 import { PLACE_ICONS, PLACE_LABEL_KEYS } from "../overview/CaptureWhereArea";
-import { BrandChip, DOMAIN_CHIP_TONE, brandChipShape } from "../ui/BrandChip";
 import {
-  areaMonthCounts, barHeightPx, filterByAreaMonth, isKind, isMomentRecord, kindCounts, monthBuckets, MOMENTS_KINDS, MOMENTS_RANGES, MOMENTS_VIEWS, parseKind, parseMonth, parseView, placeCards,
+  areaMonthCounts, filterByAreaMonth, isKind, isMomentRecord, kindCounts, monthBuckets, MOMENTS_KINDS, MOMENTS_RANGES, MOMENTS_VIEWS, parseKind, parseMonth, parseView, placeCards, placeOf,
   type MomentsKind, type MomentsRange, type MomentsView, type MonthBucket,
 } from "./momentsModel";
+import { DsRoot, Guide, Route, RouteSection, Scene, Token } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
+import { shelfLabel } from "../../lib/shelves/registry";
+import MomentsAreas from "./v10/MomentsAreas";
+import MomentsNewest, { type NewestLabels } from "./v10/MomentsNewest";
+import { STAGE_ORBS } from "./v10/stageOrbs";
+import { Draw, FrameFigure, FrameHead, IndexRow, ReadGuide, RailTile, RowLink, StageCard, type IndexItem } from "./v10/frame";
+import KeptThingsPage from "../kept/KeptThingsPage";
+import { MOMENTS_V10_COPY } from "./momentsV10Copy";
 import "./moments.css";
+import "./mychild.css";
 
 /**
  * F-CHILD-2 — Moments (#/timeline): the parent's kept record seen three ways —
@@ -48,13 +57,12 @@ import "./moments.css";
 
 type DataAttrs = Record<string, string>;
 const MONTH_CARDS = 6;
-const VIEW_ICONS: Readonly<Record<MomentsView, string>> = { time: "history", places: "home", areas: "grid_view" };
 const VIEW_KEYS: Readonly<Record<MomentsView, string>> = {
   time: "companion.moments.view.time",
   places: "companion.moments.view.places",
   areas: "companion.moments.view.areas",
 };
-const KIND_ICONS: Readonly<Record<MomentsKind, string>> = { all: "photo_album", kept: "bookmark", hard: "volunteer_activism", said: "format_quote" };
+const VIEW_ICON: Readonly<Record<MomentsView, string>> = { areas: "grid_view", time: "calendar_month", places: "place" };
 const KIND_KEYS: Readonly<Record<Exclude<MomentsKind, "said">, string>> = {
   all: "companion.moments.kind.all",
   kept: "companion.moments.kind.kept",
@@ -66,12 +74,14 @@ const RANGE_KEYS: Readonly<Record<MomentsRange, string>> = {
   0: "companion.portrait.entire",
 };
 
-export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModule }: {
+export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModule, sectionModules }: {
   primaryMoveProps: DataAttrs;
   toolbarModule: DataAttrs;
   viewModule: DataAttrs;
+  /** v10: the three sections below the stage (By kind · The newest moment · Shelf by shelf). */
+  sectionModules: { kinds: DataAttrs; newest: DataAttrs; shelves: DataAttrs };
 }) {
-  const { childProfile, milestones, setActiveTab, seedCoach, openCaptureSheet } = useArbor();
+  const { childProfile, milestones, setActiveTab, seedCoach, openCaptureSheet, fileMomentOnShelf } = useArbor();
   const { user } = useAuth();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
@@ -85,6 +95,9 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   // A link that names an area, a month or one observation opens Over time.
   const view = parseView(query.get("view"), !!(area || month || query.get("observation")));
   const kind = parseKind(query.get("kind"));
+  // v10.1: Moments, kind Kept, the reader (the year book): #/timeline?kind=kept&reader=book[&year=YYYY].
+  const reader = kind === "kept" && query.get("reader") === "book";
+  const openReader = (year?: string) => goToRoute("timeline", { kind: "kept", reader: "book", year });
   const firstName = (childProfile.name || "").trim().split(/\s+/)[0] || t("companion.together-view.your-child");
   const [range, setRange] = useState<MomentsRange>(3);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -94,6 +107,9 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   const [reviewSelection, setReviewSelection] = useState<{ childId: string; ids: string[] }>({ childId: childProfile.id, ids: [] });
   const [visible, setVisible] = useState(20);
   const compact = useCompactSurface();
+  const composition = useComposition();
+  const desk = composition === "desk";
+  const v = MOMENTS_V10_COPY[he ? "he" : "en"];
   const Surface = compact ? Sheet : Modal;
   const tabsId = useId();
   const menuId = useId();
@@ -106,6 +122,10 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   // Moments shows the parent's kept record only: a child's own practice, a
   // screening's answers and a measurement never enter a card or a count.
   const observations = useMemo(() => record.observations.filter(o => o.childId === childProfile.id && isMomentRecord(o)), [record.observations, childProfile.id]);
+  // v10: newest first, for The newest moment and Latest, by date.
+  const newestFirst = useMemo(() => [...observations].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)), [observations]);
+  const newest = newestFirst[0] ?? null;
+  const parentInitial = (user?.displayName || "").trim().charAt(0).toUpperCase();
   const sourceScope = `${user?.uid ?? "signed-out"}:${childProfile.id}`;
   const sourceOwnerRef = useRef({ key: sourceScope, active: true });
   if (sourceOwnerRef.current.key !== sourceScope) {
@@ -139,10 +159,6 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
     for (const bucket of rangeBuckets) for (const o of bucket.observations) for (const d of o.domains) if (!latest.has(d)) latest.set(d, o);
     return latest;
   }, [rangeBuckets]);
-  // A month's tone says how recent it is (oldest lightest), never how many: opacity 0.35 → 1.
-  const recency = (i: number) => (areaColumns.length <= 1 ? 1 : Math.round((0.35 + (0.65 * i) / (areaColumns.length - 1)) * 100) / 100);
-  // Every bar prints its count while the months fit; past a year each bar keeps it in its label.
-  const showBarCounts = areaColumns.length <= 12;
 
   // ID-only deep links resolve against the current child's live reader. A
   // removed response cannot linger as an old source copied into route state.
@@ -303,11 +319,6 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
       </button>
     </div>
   ) : null;
-  const keepButton = (
-    <button type="button" {...primaryMoveProps} className="moments-keep" onClick={() => openCaptureSheet()}>
-      <Icon name="add" size={20} />{t("companion.moments.keep")}
-    </button>
-  );
   const emptyRecord = !record.loading && !record.error && record.confirmed && observations.length === 0;
   // v4: the time range (3 months · a year · everything) — a property of what is
   // shown, so it sits with the panel (its head, or the areas legend), never in the toolbar.
@@ -340,214 +351,260 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
     return <div className="moments-band" style={{ background: `var(--arbor-domain-${domain}-soft)`, color: `var(--arbor-domain-${domain}-ink)` }} aria-hidden="true"><Icon name={DOMAIN_ICONS[domain]} size={30} /></div>;
   };
 
-  return (
-    <section className="moments" dir={he ? "rtl" : "ltr"} data-testid="moments-body">
-      <h1 className="sr-only">{t("companion.moments.title")}</h1>
-      <div {...toolbarModule} className="moments-toolbar">
-        <div role="tablist" data-moments-views aria-label={t("companion.moments.tabs")} className="moments-views">
-          {MOMENTS_VIEWS.map((key, index) => (
-            <button key={key} type="button" role="tab" id={`${tabsId}-${key}`} aria-selected={view === key} aria-controls={`${tabsId}-panel`}
-              tabIndex={view === key ? 0 : -1} ref={el => { tabRefs.current[index] = el; }}
-              onClick={() => go({ view: key })} onKeyDown={event => onTabKey(event, index)}
-              className="moments-view-tab min-h-11">
-              <Icon name={VIEW_ICONS[key]} size={18} />{t(VIEW_KEYS[key])}
-            </button>
-          ))}
+  // ── v10 composition ─────────────────────────────────────────────────────────
+  const viewSwitch = (
+    <div {...primaryMoveProps} role="tablist" data-moments-views aria-label={t("companion.moments.tabs")} className="vseg">
+      {MOMENTS_VIEWS.map((key, index) => (
+        <button key={key} type="button" role="tab" id={`${tabsId}-${key}`} aria-selected={view === key} aria-controls={`${tabsId}-panel`}
+          tabIndex={view === key ? 0 : -1} ref={el => { tabRefs.current[index] = el; }}
+          onClick={() => go({ view: key })} onKeyDown={event => onTabKey(event, index)}
+          className={view === key ? "on min-h-11" : "min-h-11"}>
+          {t(VIEW_KEYS[key])}
+        </button>
+      ))}
+    </div>
+  );
+  const panel = (
+    <div {...viewModule} role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={`${tabsId}-${view}`} className="mpanel">
+      {!reader && filterChip}
+      {requestedId && dismissedSource !== requestKey && !requestedObservation && !record.loading && <div className="moments-note" role="status" data-testid="moments-source-unavailable">
+        <span>{record.error || !record.confirmed ? noticeCopy.loadFailed : noticeCopy.missing}</span>
+        {record.more && <button type="button" className="moments-text-button" onClick={record.loadMore}>{t("companion.moments.loadMore")}</button>}
+      </div>}
+      {record.loading && observations.length === 0 && <p className="moments-note" role="status"><Icon name="history" size={18} />{copy.loading}</p>}
+      {record.error && <p className="moments-note" role="status"><Icon name="info" size={18} />{copy.failed}<button type="button" className="moments-text-button" onClick={record.reload}>{copy.retry}</button></p>}
+      {reader ? (
+        <KeptThingsPage key={childProfile.id} onOpenYear={openReader} />
+      ) : emptyRecord ? (
+        <div className="moments-empty">
+          <h2>{t("companion.portrait.emptyAll")}</h2>
+          <p>{t("companion.portrait.emptyAllSub")}</p>
         </div>
-        <div role="group" data-moments-kinds aria-label={t("companion.moments.kinds")} className="moments-kinds">
-          {MOMENTS_KINDS.map(key => (
-            <button key={key} type="button" className="moments-kind" data-moments-kind={key} aria-pressed={kind === key} onClick={() => go({ kind: key })}>
-              <Icon name={KIND_ICONS[key]} size={17} /><span dir="auto">{kindLabel(key)}</span>
-              {counts[key] > 0 && <span className="moments-kind-n arbor-num">{counts[key]}</span>}
-            </button>
-          ))}
-        </div>
-        {keepButton}
-      </div>
-
-      <div {...viewModule} role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={`${tabsId}-${view}`} className="moments-panel">
-        {/* Over time and By place: the panel's head carries the filter and the
-            range. Across areas carries the range in its legend, beside the
-            months it sets, so the cards follow the toolbar directly. */}
-        {view !== "areas" && (
-          <div className="moments-panel-head">
-            {filterChip ?? <span />}
-            {rangeControl}
-          </div>
-        )}
-        {/* v4: a filter of the one record keeps a quiet door to its full page. */}
-        {kind === "hard" && (
-          <button type="button" className="moments-text-button moments-kind-door" data-testid="moments-kind-door-hard" onClick={() => setActiveTab("behaviors")}>
-            <Icon name="volunteer_activism" size={18} />{t("companion.moments.kind.hardDoor")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
-          </button>
-        )}
-        {kind === "said" && (
-          <button type="button" className="moments-text-button moments-kind-door" data-testid="moments-kind-door-said" onClick={() => setActiveTab("language")}>
-            <Icon name="format_quote" size={18} />{t("companion.moments.kind.saidDoor", { name: firstName })}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
-          </button>
-        )}
-        {requestedId && dismissedSource !== requestKey && !requestedObservation && !record.loading && <div className="moments-note" role="status" data-testid="moments-source-unavailable">
-          <span>{record.error || !record.confirmed ? noticeCopy.loadFailed : noticeCopy.missing}</span>
-          {record.more && <button type="button" className="moments-text-button" onClick={record.loadMore}>{t("companion.moments.loadMore")}</button>}
-        </div>}
-        {record.loading && observations.length === 0 && <p className="moments-note" role="status"><Icon name="history" size={18} />{copy.loading}</p>}
-        {record.error && <p className="moments-note" role="status"><Icon name="info" size={18} />{copy.failed}<button type="button" className="moments-text-button" onClick={record.reload}>{copy.retry}</button></p>}
-        {emptyRecord ? (
-          <div className="moments-empty">
-            <h2>{t("companion.portrait.emptyAll")}</h2>
-            <p>{t("companion.portrait.emptyAllSub")}</p>
-          </div>
-        ) : <>
-          {view === "time" && (
-            <div className="moments-months">
-              {shownBuckets.map(bucket => {
-                const open = expanded.includes(bucket.id);
-                const cards = open ? bucket.observations : bucket.observations.slice(0, MONTH_CARDS);
-                return (
-                  <section key={bucket.id} className="moments-month" data-moments-month={bucket.id}>
-                    <header className="moments-month-head">
-                      <h2>{monthLabel(bucket)}</h2>
-                      {bucket.observations.length > 0 && <span>{countLabel(bucket.observations.length)}</span>}
-                    </header>
-                    {bucket.observations.length === 0 && <p className="moments-month-empty">{t("companion.moments.emptyMonth")}</p>}
-                    {cards.map(o => (
-                      <article key={o.id} className="moments-card" data-observation-id={o.id}>
-                        {band(o)}
-                        <div className="moments-card-body">
-                          <div className="moments-src">
-                            <span>{sourceLabel(o)} · {date(o.at)}</span>
-                            <button type="button" className="moments-overflow" aria-label={t("companion.moments.overflow")}
-                              onClick={() => select([o], date(o.at, true), o.domains[0])}>
-                              <Icon name="more_horiz" size={20} />
-                            </button>
-                          </div>
-                          <button type="button" className="moments-card-open" data-testid="moments-card-open" onClick={() => openMomentCard(o)} aria-label={`${noticeCopy.open}: ${title(o)}`}>
-                            <span className="moments-quote" dir="auto">{title(o)}</span>
+      ) : <>
+        {view === "time" && (
+          <div className="moments-months">
+            {shownBuckets.map(bucket => {
+              const open = expanded.includes(bucket.id);
+              const cards = open ? bucket.observations : bucket.observations.slice(0, MONTH_CARDS);
+              return (
+                <section key={bucket.id} className="moments-month" data-moments-month={bucket.id}>
+                  <header className="moments-month-head">
+                    <h2>{monthLabel(bucket)}</h2>
+                    {bucket.observations.length > 0 && <span>{countLabel(bucket.observations.length)}</span>}
+                  </header>
+                  {bucket.observations.length === 0 && <p className="moments-month-empty">{t("companion.moments.emptyMonth")}</p>}
+                  {cards.map(o => (
+                    <article key={o.id} className="moments-card" data-observation-id={o.id}>
+                      {band(o)}
+                      <div className="moments-card-body">
+                        <div className="moments-src">
+                          <span>{sourceLabel(o)} · {date(o.at)}</span>
+                          <button type="button" className="moments-overflow" aria-label={t("companion.moments.overflow")}
+                            onClick={() => select([o], date(o.at, true), o.domains[0])}>
+                            <Icon name="more_horiz" size={20} />
                           </button>
                         </div>
-                      </article>
-                    ))}
-                    {!open && bucket.observations.length > MONTH_CARDS && (
-                      <button type="button" className="moments-text-button" onClick={() => setExpanded(ids => [...ids, bucket.id])}>
-                        {t("companion.moments.showMore")}<Icon name="expand_more" size={18} />
-                      </button>
-                    )}
-                  </section>
+                        <button type="button" className="moments-card-open" data-testid="moments-card-open" onClick={() => openMomentCard(o)} aria-label={`${noticeCopy.open}: ${title(o)}`}>
+                          <span className="moments-quote" dir="auto">{title(o)}</span>
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                  {!open && bucket.observations.length > MONTH_CARDS && (
+                    <button type="button" className="moments-text-button" onClick={() => setExpanded(ids => [...ids, bucket.id])}>
+                      {t("companion.moments.showMore")}<Icon name="expand_more" size={18} />
+                    </button>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        )}
+
+        {view === "places" && <>
+          {places.length === 0 ? <p className="moments-note">{t("companion.moments.placesEmpty")}</p> : (
+            <div className="moments-places">
+              {places.map(place => {
+                const latest = place.observations[0];
+                const label = t(PLACE_LABEL_KEYS[place.context]);
+                return (
+                  <button key={place.context} type="button" className="moments-place" data-moments-place={place.context} onClick={() => select(place.observations, label)}>
+                    <span className="moments-place-head">
+                      <Icon name={PLACE_ICONS[place.context]} size={26} />
+                      <span className="moments-place-label">{label}</span>
+                    </span>
+                    <span className="moments-place-count">{countLabel(place.observations.length)}</span>
+                    <span className="moments-place-quote" dir="auto">{title(latest)}</span>
+                    <span className="moments-place-date">{date(latest.at)}</span>
+                  </button>
                 );
               })}
             </div>
           )}
-
-          {view === "places" && <>
-            {places.length === 0 ? <p className="moments-note">{t("companion.moments.placesEmpty")}</p> : (
-              <div className="moments-places">
-                {places.map(place => {
-                  const latest = place.observations[0];
-                  const label = t(PLACE_LABEL_KEYS[place.context]);
-                  return (
-                    <button key={place.context} type="button" className="moments-place" data-moments-place={place.context} onClick={() => select(place.observations, label)}>
-                      <span className="moments-place-head">
-                        <Icon name={PLACE_ICONS[place.context]} size={26} />
-                        <span className="moments-place-label">{label}</span>
-                      </span>
-                      <span className="moments-place-count">{countLabel(place.observations.length)}</span>
-                      <span className="moments-place-quote" dir="auto">{title(latest)}</span>
-                      <span className="moments-place-date">{date(latest.at)}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            <p className="moments-note"><Icon name="info" size={18} />{t("companion.moments.placeNote")}</p>
-          </>}
-
-          {view === "areas" && <>
-            <h2 className="sr-only">{t("companion.moments.threadTitle")}</h2>
-            {area && (
-              <div className="moments-filter" data-moments-filter>
-                <span dir="auto">{t("companion.moments.filtered", { filter: domainName(area, t) })}</span>
-                <button type="button" className="moments-text-button" onClick={() => go({ area: null, month: null })}>
-                  <Icon name="close" size={18} />{t("companion.moments.clearFilter")}
-                </button>
-              </div>
-            )}
-            {/* v4: one card per area — the area's chip and name, how many moments
-                in the range, its months as plain counts (a fixed scale, the
-                number printed under each bar), and the newest words. The card
-                opens the area Over time; a month opens that month. */}
-            <ul className="moments-area-cards" role="list" aria-label={t("companion.moments.threadTitle")}>
-              {areaRows.map((row, index) => {
-                const name = domainName(row.domain, t);
-                const total = row.counts.reduce((sum, n) => sum + n, 0);
-                const latest = latestByDomain.get(row.domain);
-                const openArea = () => go({ view: "time", area: row.domain, month: null });
-                return (
-                  <li key={row.domain} className="moments-area-card" data-moments-area={row.domain} onClick={event => { if (!(event.target as Element).closest?.("button")) openArea(); }}>
-                    <button type="button" className="moments-area-button" onClick={openArea}>
-                      <BrandChip icon={DOMAIN_ICONS[row.domain]} tone={DOMAIN_CHIP_TONE[row.domain]} shape={brandChipShape(index)} size={34} />
-                      <span className="moments-area-title">
-                        <span className="moments-area-name">{name}</span>
-                        <span className="moments-area-total">{total > 0 ? `${countLabel(total)} · ${t(RANGE_KEYS[range])}` : t("companion.moments.cardNone")}</span>
-                      </span>
-                    </button>
-                    <div className="moments-bars" data-columns={areaColumns.length}>
-                      {row.counts.map((n, i) => (
-                        <span key={areaColumns[i].id} className="moments-cell" style={{ ["--bar-o" as string]: String(recency(i)) } as CSSProperties}>
-                          {n > 0 ? (
-                            <button type="button" className="moments-bar" data-moments-count={n}
-                              aria-label={t("companion.moments.cellAria", { area: name, month: monthLabel(areaColumns[i]), n })}
-                              onClick={() => go({ view: "time", area: row.domain, month: areaColumns[i].id })}>
-                              <span className="moments-bar-fill" style={{ blockSize: `${barHeightPx(n)}px` }} aria-hidden="true" />
-                              {showBarCounts && <span className="moments-bar-n arbor-num" aria-hidden="true">{n}</span>}
-                            </button>
-                          ) : (
-                            <span className="moments-blank"><span className="moments-bar-fill moments-bar-none" aria-hidden="true" />{showBarCounts && <span aria-hidden="true">—</span>}<span className="sr-only">{t("companion.portrait.noRecord")}</span></span>
-                          )}
-                        </span>
-                      ))}
-                    </div>
-                    <p className="moments-area-quote" dir="auto">{latest ? title(latest) : ""}</p>
-                  </li>
-                );
-              })}
-            </ul>
-            <div className="moments-legend">
-              {rangeControl}
-              {areaColumns.length <= 4 ? (
-                <span className="moments-legend-months">
-                  {areaColumns.map((bucket, i) => (
-                    <span key={bucket.id} className="moments-legend-month" style={{ ["--bar-o" as string]: String(recency(i)) } as CSSProperties}>
-                      <span className="moments-legend-swatch" aria-hidden="true" />{columnLabel(bucket)}
-                    </span>
-                  ))}
-                </span>
-              ) : areaColumns.length > 0 && (
-                <span className="moments-legend-months">{t("companion.moments.legendSpan", { from: columnLabel(areaColumns[0]), to: columnLabel(areaColumns[areaColumns.length - 1]) })}</span>
-              )}
-              <p className="moments-note"><Icon name="info" size={18} />{t("companion.moments.areasNote")}</p>
-            </div>
-          </>}
+          <p className="line1">{t("companion.moments.placeNote")}</p>
         </>}
 
-        {/* F-INT-1: Moments' one quiet door to the journal closes every view
-            and every record state (over time, in places, across areas, an
-            empty, loading or failed record), so on a phone, where My child's
-            doors follow with the journal door left out, it is there exactly
-            once. Load more belongs to the months over time. */}
-        <div className="moments-foot">
-          <button type="button" className="moments-text-button" data-testid="moments-year-book" onClick={() => goToRoute("development", { view: "kept" })}>
-            <Icon name="menu_book" size={18} />{t("kept.yearBook")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
-          </button>
-          <button type="button" className="moments-text-button" data-testid="moments-journal-door" onClick={() => setActiveTab("journal")}>
-            <Icon name="auto_stories" size={18} />{t("companion.moments.journal")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
-          </button>
-          {view === "time" && !emptyRecord && record.more && !record.error && (
-            <button type="button" className="moments-text-button" disabled={record.loading} onClick={record.loadMore}>
-              {record.loading ? copy.loading : t("companion.moments.loadMore")}<Icon name="expand_more" size={18} />
-            </button>
+        {view === "areas" && <>
+          {area && (
+            <div className="moments-filter" data-moments-filter>
+              <span dir="auto">{t("companion.moments.filtered", { filter: domainName(area, t) })}</span>
+              <button type="button" className="moments-text-button" onClick={() => go({ area: null, month: null })}>
+                <Icon name="close" size={18} />{t("companion.moments.clearFilter")}
+              </button>
+            </div>
           )}
-        </div>
+          <MomentsAreas composition={composition} rows={areaRows} columns={areaColumns} listLabel={t("companion.moments.threadTitle")}
+            labels={{
+              areaName: domain => domainName(domain, t),
+              total: n => countLabel(n),
+              none: t("companion.moments.cardNone"),
+              noRecord: t("companion.portrait.noRecord"),
+              momentToken: v.tokenMoment,
+              cellAria: (domain, column, n) => t("companion.moments.cellAria", { area: domainName(domain, t), month: monthLabel(column), n }),
+              noRecordAria: (domain, column) => v.noRecordAria(domainName(domain, t), monthLabel(column)),
+              columnLabel,
+              area: v.area,
+              totalHead: v.total,
+            }}
+            onOpenArea={domain => go({ view: "time", area: domain, month: null })}
+            onOpenCell={(domain, column) => go({ view: "time", area: domain, month: column.id })} />
+          {areaColumns.length > 4 && <p className="line1">{t("companion.moments.legendSpan", { from: columnLabel(areaColumns[0]), to: columnLabel(areaColumns[areaColumns.length - 1]) })}</p>}
+        </>}
+      </>}
+    </div>
+  );
+
+  // The band: the page's one h1, the views, Everything by date and one figure.
+  const inRange = rangeBuckets.flatMap(bucket => bucket.observations);
+  const marks = areaRows.reduce((sum, row) => sum + row.counts.reduce((s, n) => s + n, 0), 0);
+  const oldestInRange = inRange.length ? inRange[inRange.length - 1] : null;
+  const figure = !reader && inRange.length > 0 ? (
+    view === "areas" && marks > 0
+      ? <FrameFigure n={marks} unit={v.marksUnit(inRange.length)} sub={oldestInRange ? v.since(date(oldestInRange.at), t(RANGE_KEYS[range])) : undefined} />
+      : <FrameFigure n={inRange.length} unit={v.momentsUnit(inRange.length)} sub={oldestInRange ? v.since(date(oldestInRange.at), t(RANGE_KEYS[range])) : undefined} />
+  ) : null;
+  const everything = (
+    <button type="button" className="btn sm ghost nowrap card-btn" data-testid="moments-everything" onClick={() => goToRoute("journal", { view: "all" })}>{t("elev.shelfJournal.all")}</button>
+  );
+  const hardLogs = record.sources.behaviorLogs ?? [];
+  const hardInRange = inRange.filter(o => isKind(o, "hard"));
+  const settled = hardInRange.filter(o => hardLogs.find(log => `behaviorLogs:${log.id}` === o.id)?.resolved).length;
+  const kindItems: IndexItem[] = [
+    { id: "all", icon: "grid_view", name: v.allMoments, meta: v.kindMeta.all(t(RANGE_KEYS[range])), on: kind === "all", onOpen: () => go({ kind: "all" }), attrs: { "data-moments-kind": "all" } },
+    { id: "kept", icon: "menu_book", name: t("companion.moments.kind.kept"), meta: v.kindMeta.kept, figure: counts.kept || undefined, on: kind === "kept", onOpen: () => go({ kind: "kept" }), attrs: { "data-moments-kind": "kept" } },
+    { id: "hard", icon: "favorite", name: t("companion.moments.kind.hard"), figure: counts.hard || undefined, on: kind === "hard",
+      meta: counts.hard > 0 ? (settled === hardInRange.length && settled > 0 ? v.kindMeta.hardSettled : settled > 0 ? v.kindMeta.hardSome(settled) : t("companion.moments.kind.hardDoor")) : t("companion.moments.kind.hardDoor"),
+      onOpen: () => setActiveTab("behaviors"), testId: "moments-kind-door-hard", attrs: { "data-moments-kind": "hard" } },
+    { id: "said", icon: "format_quote", name: kindLabel("said"), meta: t("companion.moments.kind.saidDoor", { name: firstName }), figure: counts.said || undefined, on: kind === "said", onOpen: () => setActiveTab("language"), testId: "moments-kind-door-said", attrs: { "data-moments-kind": "said" } },
+  ];
+  const header = (
+    <Scene field="now" className="mband" orbs={STAGE_ORBS[composition]}>
+      <div {...toolbarModule} className="mstack mtools">
+        <FrameHead phone={!desk} kicker={v.kicker} startHere={v.startHere}
+          title={reader ? v.headline.reader : v.headline[view]} sub={reader ? v.sub.reader : v.sub[view]}
+          /* The reader is one reading, not a view of the record: no view switch. */
+          switcher={reader ? undefined : viewSwitch} action={desk ? everything : undefined} figure={figure} />
+        <IndexRow phone={!desk} label={t("companion.moments.kinds")} items={kindItems} />
       </div>
+      {!reader && view !== "time" && <div className="mcap"><span>{view === "areas" ? t("companion.moments.areasNote") : t("companion.moments.placeNote")}</span></div>}
+    </Scene>
+  );
+
+  const stageTitle = reader ? t("kept.yearBook") : t(VIEW_KEYS[view]);
+  const stage = (
+    <StageCard icon={reader ? "menu_book" : VIEW_ICON[view]} title={stageTitle} end={reader ? undefined : rangeControl} className="mstage-card">
+      {panel}
+    </StageCard>
+  );
+
+  const readGuide = (
+    <RailTile icon="grid_view" title={v.howToRead} className="mguide">
+      <ReadGuide phone={!desk}
+        steps={[
+          { drawing: Draw.pick(4), label: v.steps.pick },
+          { drawing: Draw.grid(<Token kind="moment" size="sm" className="xs2" label={v.tokenMoment} />), label: v.steps.read },
+          { drawing: Draw.cards(), label: v.steps.newest },
+        ]}
+        keyItems={[
+          { mark: <Token kind="moment" size="sm" className="xs2" label={v.tokenMoment} />, label: v.keyMoment },
+          { mark: <span aria-hidden="true">–</span>, label: v.keyNone },
+        ]} />
+    </RailTile>
+  );
+  const moveLog = newest?.origin === "behaviorLogs" ? (record.sources.behaviorLogs ?? []).find(log => `behaviorLogs:${log.id}` === newest.id) : undefined;
+  const newestLabels: NewestLabels = {
+    title: v.newest,
+    by: o => {
+      const when = date(o.at, true);
+      const place = placeOf(o);
+      const where = place ? ` · ${t(PLACE_LABEL_KEYS[place as keyof typeof PLACE_LABEL_KEYS])}` : "";
+      return o.source === "parent_typed" || o.source === "parent_voice" ? `${v.youWrote(when)}${where}` : `${sourceLabel(o)} · ${when}${where}`;
+    },
+    words: o => t("elev.loop.ms.quoted", { text: title(o) }),
+    shelf: o => (o.shelf ? v.shelfIs(shelfLabel(o.shelf, t)) : null),
+    shelfName: id => shelfLabel(id, t),
+    arborSuggests: v.arborSuggests,
+    canMove: v.canMove,
+    onTheMap: v.onTheMap,
+    areas: o => o.domains.map(d => domainName(d, t)).join(" · "),
+    seeOnMap: v.seeOnMap,
+    more: t("companion.moments.overflow"),
+    moveShelf: v.moveShelf,
+    moved: v.moved,
+    moveFailed: v.moveFailed,
+    nothing: v.nothingNewest,
+  };
+  const newestCard = (
+    <MomentsNewest newest={newest} initial={parentInitial} labels={newestLabels}
+      onMap={() => setActiveTab("development")} onMore={o => select([o], date(o.at, true), o.domains[0])}
+      onMove={moveLog ? (_o, shelf) => fileMomentOnShelf(moveLog.id, shelf, undefined, moveLog) : undefined} />
+  );
+  // One control each (F-INT-1: one opens the journal), on both compositions.
+  const links = (
+    <nav className="vt mlinks" aria-label={v.links}>
+      {!desk && <RowLink icon="calendar_month" label={t("elev.shelfJournal.all")} testId="moments-everything-row" onOpen={() => goToRoute("journal", { view: "all" })} />}
+      {([
+        ["moments-year-book", "menu_book", v.keptTitle, () => openReader()],
+        ["moments-journal-door", "auto_stories", t("companion.moments.journal"), () => setActiveTab("journal")],
+        ["moments-pro-door", "swap_horiz", t("elev.shelfJournal.flip"), () => goToRoute("journal", { view: "pro" })],
+      ] as const).map(([id, icon, label, open]) => <RowLink key={id} icon={icon} label={label} testId={id} onOpen={open} />)}
+      {view === "time" && !emptyRecord && record.more && !record.error && (
+        <button type="button" className="ds-link" disabled={record.loading} onClick={record.loadMore}>
+          {record.loading ? copy.loading : t("companion.moments.loadMore")}<Icon name="expand_more" size={16} />
+        </button>
+      )}
+    </nav>
+  );
+  const guideStops = [
+    { id: "m-kinds", title: desk ? v.guide.kinds : v.guide.kindsShort, sub: v.guide.kindsSub },
+    { id: "m-stage", title: stageTitle, sub: v.guide.stageSub },
+  ];
+
+  return (
+    <DsRoot composition={composition} className="ds-mychild moments-v10" dir={he ? "rtl" : "ltr"} data-testid="moments-body">
+      <Guide stops={guideStops} mini={!desk} label={v.onThisPage} />
+      <Route composition={composition}>
+        <RouteSection id="m-kinds" n={1} on>{header}</RouteSection>
+        <RouteSection id="m-stage" n={2}>
+          {desk ? (
+            <div className="rowa">
+              <div className="stg">{stage}</div>
+              <aside {...sectionModules.kinds} className="rlc">
+                {readGuide}
+                <div {...sectionModules.shelves}>{links}</div>
+                <div {...sectionModules.newest} className="mstack">{newestCard}</div>
+              </aside>
+            </div>
+          ) : (
+            <div className="mstack" style={{ gap: 14 }}>
+              {stage}
+              <div {...sectionModules.kinds}>{readGuide}</div>
+              <div {...sectionModules.newest}>{newestCard}</div>
+              <div {...sectionModules.shelves}>{links}</div>
+            </div>
+          )}
+        </RouteSection>
+      </Route>
 
       <Surface open={!!selected} onClose={() => closeSelection()} scrimBlur title={selected?.title ?? t("companion.portrait.sourceTitle")} maxWidth="max-w-2xl">
         <SheetBreadcrumb label={selected?.title ?? t("companion.portrait.sourceTitle")} close={closeSelection} />
@@ -594,7 +651,6 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
           {reviewedIds.length > 0 && <p className="moments-note">{copy.shortened}</p>}
         </div>
       </Surface>
-
-    </section>
+    </DsRoot>
   );
 }

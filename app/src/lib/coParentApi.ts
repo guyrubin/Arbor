@@ -1,6 +1,7 @@
 import { authHeaders } from "./api";
 import type { ShareGrant } from "../types";
 import type { CoParentWorkspace, CoParentActivitySelection } from "../sharing/coParentTypes";
+import type { CoParentFamilyPlan, CoParentPlanDate } from "./familyPlan/coParentView";
 
 export class CoParentError extends Error {
   constructor(public status: number, public code: string) { super(code); }
@@ -23,5 +24,9 @@ export const coParentApi = {
   workspace: (id: string) => request<CoParentWorkspace>(`${encodeURIComponent(id)}/workspace`),
   note: (id: string, text: string, requestId: string) => request<{ saved: true }>(`${encodeURIComponent(id)}/workspace/moments`, { text, requestId }),
   complete: (id: string, activityId: string) => request<{ saved: true }>(`${encodeURIComponent(id)}/workspace/complete`, { activityId }),
+  /** Family plan v1: the plan's dates on this grant, and the co-parent's answer to a request. */
+  familyPlan: (id: string) => request<CoParentFamilyPlan>(`${encodeURIComponent(id)}/family-plan`),
+  answerFamilyPlan: (id: string, dateId: string, answer: "yes" | "no", version: number) => request<CoParentPlanDate>(`${encodeURIComponent(id)}/family-plan/${encodeURIComponent(dateId)}/answer`, { answer, version }),
+  doneFamilyPlan: (id: string, dateId: string) => request<CoParentPlanDate>(`${encodeURIComponent(id)}/family-plan/${encodeURIComponent(dateId)}/done`, {}),
 };
 export const coParentLink = (id: string) => `${window.location.origin}/?family-invite=${encodeURIComponent(id)}`;

@@ -1,17 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
-import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { useKeepsakeMigration } from "../../hooks/useKeepsakeMigration";
 import { useNoticeActions } from "../../hooks/useNoticeActions";
 import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
 import { ageMonthsOf } from "../../lib/age/forChild";
-import { domainName, type DomainId } from "../../lib/domains/registry";
+import { DOMAIN_IDS, type DomainId } from "../../lib/domains/registry";
 import { readRitualRecord } from "../../lib/familyRitualsCadence";
 import { keepsakeMapFromDocs } from "../../lib/firstsKeepsake";
 import { ADVENTURES, type SavedComicMeta } from "../../lib/heroComics";
 import { bandForAgeMonths, comparisonAgeMonths } from "../../lib/milestoneData";
-import { lastMomentByDomain } from "../../lib/milestones/domainMap";
+import { lastMomentByDomain, noticedByDomain } from "../../lib/milestones/domainMap";
 import type { ObserveStatus } from "../../lib/milestones/observe";
 import type { Observation } from "../../lib/observations";
 import { latestRecheckDueAt } from "../../lib/screeningRecheck";
@@ -19,40 +18,47 @@ import { clearWatchFocus, readWatchFocus, resolveWatchFocus, writeWatchFocus, ty
 import { closeDay, deriveReturnSignals } from "../../lib/tomorrowReason";
 import { closeNoticeDetail, openNoticeDetail, readNoticeTarget } from "../../lib/noticeNavigation";
 import { celebrateFirstOnce } from "../milestones/celebrateFirst";
-import { Sheet, useCompactSurface } from "../ui/Sheet";
+import type { Composition } from "../../design/useComposition";
 import AreaRowDetail from "./AreaRowDetail";
+import DevelopmentCheckCard from "./DevelopmentCheckCard";
 import DevelopmentMap from "./DevelopmentMap";
+import NoticeNext, { NoticePickCard, useNoticePicks } from "./NoticeNext";
 import NoticeObjectDetail from "./NoticeObjectDetail";
 import { CUSTOM_MILESTONE_DOMAIN, areaFromQuery, watchDomain } from "./milestonesModel";
 
 /**
- * v3 F-CHILD-1 — the areas card of the Milestones pill, with its one open row.
+ * v10.1 — the state behind the milestone map, handed to the page as parts.
  *
- * DevelopmentMap draws the eight rows; this owns which one is open and what
- * it does. ?area=<domain> (and the old #/milestones ?shelf=) opens its row; a
- * tap toggles a row; at most one is open. A wide screen opens the row's body
- * inline under it (no dialog); below lg the same AreaRowDetail rides a bottom
- * Sheet (critic ruling 25).
- *
- * v3 F-CHILD-4 (MOB-02): below lg the areas are tiles (DevelopmentMap
- * layout="tiles"), since a tile, not a row, is what opens a sheet; the sheet
- * opens on the area's newest moment, which the tile has no room to quote. The
- * Sheet brings the drag bar, the 44 px close, Escape, the backdrop and focus
- * back to the tile.
+ * This owns which area is open and what an answer does; the page (ChildPortrait)
+ * places the parts in its numbered sections: `map` (DevelopmentMap, the
+ * index of eight areas), `check` (the 5-minute check row), `area` (the open
+ * area's body, AreaRowDetail), `suggest` (Arbor's first pick) and `next`
+ * (What to notice next, the other picks). ?area=<domain> (and the old #/milestones ?shelf=) opens its area; a
+ * tap on a territory opens that area in its section (desk and phone alike,
+ * one tree). With no link and no tap, the chosen watch's area leads, else the
+ * first area with something recorded, else the first area.
  *
  * Absorbed from the old surfaces, so nothing they did is lost:
  *  · MilestonesTab: the answers write through setMilestoneObservation (the one
  *    seam), a fresh Seen it fires the capped celebration once per skill ever
- *    (celebrateFirstOnce) and then offers the note-and-date keepsake
- *    (FirstKeepsakeSheet), whose "Kept" waits for the write; "Add your own"
- *    writes a custom row on the area; the one-time move of a device's legacy
- *    keepsake map into the subcollection runs here too (useKeepsakeMigration).
+ *    (celebrateFirstOnce) and then offers the note-and-date keepsake, whose
+ *    "Kept" waits for the write; "Add your own" writes a custom row on the
+ *    area; the one-time move of a device's legacy keepsake map into the
+ *    subcollection runs here too (useKeepsakeMigration).
  *  · PortraitWatchRow: the skill the parent chose to watch for leads its area,
- *    with the saved re-check date and Stop watching (with Undo); on a wide
- *    screen a newly chosen watch opens its row once. Tonight's return reason
- *    is still written once per child per visit (TJB-28).
+ *    with the saved re-check date and Stop watching (with Undo). Tonight's
+ *    return reason is still written once per child per visit (TJB-28).
  * CLINICAL FIREWALL: Seen-it counts and the parent's own words only.
  */
+export interface MilestoneAreaParts {
+  map: React.ReactNode;
+  check: React.ReactNode;
+  area: React.ReactNode;
+  suggest: React.ReactNode;
+  next: React.ReactNode;
+  openDomain: DomainId;
+}
+
 export interface MilestoneAreasProps {
   /** The child's loaded record, already this child's. */
   observations: readonly Observation[];
@@ -61,25 +67,21 @@ export interface MilestoneAreasProps {
   primaryMoveProps?: Record<string, string>;
   /** Explore this with Arbor: the page opens Talk with the area. */
   onExplore: (domain: DomainId) => void;
+  composition: Composition;
+  /** Called after a territory opens its area (the phone scrolls to it). */
+  onOpened?: (domain: DomainId) => void;
+  children: (parts: MilestoneAreaParts) => React.ReactNode;
 }
 
-const watchOpenedKey = (childId: string) => `arbor.milestones.watchOpened.${childId}`;
-
-export default function MilestoneAreas({ observations, momentText, primaryMoveProps, onExplore }: MilestoneAreasProps) {
+export default function MilestoneAreas({ observations, momentText, primaryMoveProps, onExplore, composition, onOpened, children }: MilestoneAreasProps) {
   const { childProfile, milestones, behaviorLogs, playLogs, addCustomMilestone, setActiveTab } = useArbor();
-  const { t } = useLanguage();
   const notices = useNoticeActions();
-  const compact = useCompactSurface();
   const query = useHashQuery();
   const queryArea = areaFromQuery(query);
   const noticeTarget = readNoticeTarget(query, childProfile.id);
-  // A tap wins until the link's area changes; a new ?area= wins over the tap.
-  const [toggled, setToggled] = useState<{ from: DomainId | null; domain: DomainId | null } | null>(null);
-  const openDomain = toggled && toggled.from === queryArea ? toggled.domain : queryArea;
-  const toggle = (domain: DomainId) => setToggled({ from: queryArea, domain: openDomain === domain ? null : domain });
-  const close = () => setToggled({ from: queryArea, domain: null });
 
-  const currentBandMonths = bandForAgeMonths(comparisonAgeMonths(ageMonthsOf(childProfile), childProfile.preterm?.gestationalWeeks)).months;
+  const comparisonMonths = comparisonAgeMonths(ageMonthsOf(childProfile), childProfile.preterm?.gestationalWeeks);
+  const currentBandMonths = bandForAgeMonths(comparisonMonths).months;
   const gender = childProfile.gender ?? null;
 
   // The watch the parent chose in the Development Check (PortraitWatchRow's reader).
@@ -106,9 +108,22 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
     setWatchTick((n) => n + 1);
   };
 
+  // The open area: a tap wins until the link's area changes; a new ?area= wins over the tap.
+  const last = useMemo(() => lastMomentByDomain(observations, milestones), [observations, milestones]);
+  const leading = useMemo(() => {
+    const seen = noticedByDomain(milestones);
+    return DOMAIN_IDS.find((domain) => seen[domain] > 0 || !!last[domain]) ?? DOMAIN_IDS[0];
+  }, [milestones, last]);
+  const [tapped, setTapped] = useState<{ from: DomainId | null; domain: DomainId } | null>(null);
+  const openDomain: DomainId = (tapped && tapped.from === queryArea ? tapped.domain : null) ?? queryArea ?? chosenDomain ?? clearedDomain ?? leading;
+  const open = (domain: DomainId) => {
+    setTapped({ from: queryArea, domain });
+    onOpened?.(domain);
+  };
+
   const screenings = useChildCollection<{ id: string; answeredAt: string; recheckDueAt?: string }>(childProfile.id, "screenings");
   const recheckDueAt = useMemo(() => latestRecheckDueAt(screenings.items), [screenings.items]);
-  // v4: the check row names the latest saved check (the screener's own newest-first rule).
+  // v4: the check names the latest saved check (the screener's own newest-first rule).
   const lastCheckAt = useMemo(() => screenings.items.reduce<string | null>((latest, s) => (s.answeredAt && (!latest || s.answeredAt > latest) ? s.answeredAt : latest), null), [screenings.items]);
   const savedComics = useChildCollection<SavedComicMeta>(childProfile.id, "savedComics");
   const returnSignals = useMemo(() => deriveReturnSignals({
@@ -120,24 +135,6 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
     // Once per child per visit, exactly as the watch row did.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childProfile.id]);
-
-  // A newly chosen watch opens its row once, on a wide screen, unless a link already opened one.
-  useEffect(() => {
-    if (compact || queryArea || !chosenWatch) return;
-    const focus = readWatchFocus(childProfile.id);
-    if (!focus || focus.milestoneId !== chosenWatch.id) return;
-    const domain = watchDomain(milestones, focus.milestoneId);
-    if (!domain) return;
-    try {
-      const key = watchOpenedKey(childProfile.id);
-      if (window.localStorage.getItem(key) === focus.chosenAt) return;
-      window.localStorage.setItem(key, focus.chosenAt);
-    } catch {
-      return;
-    }
-    setToggled((current) => current ?? { from: null, domain });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chosenWatch?.id, compact]);
 
   // The first's keepsake: the registered `keepsakes` subcollection (doc id = milestone id).
   const keepsakeCol = notices.keepsakes;
@@ -155,62 +152,57 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
     }, () => undefined);
     return write;
   };
+  const toCheck = () => setActiveTab("screening");
 
-  // The sheet's opening line: the same newest moment the wide row quotes.
-  const lastMoments = useMemo(() => (compact ? lastMomentByDomain(observations, milestones) : null), [compact, observations, milestones]);
-  const sheetMoment = (domain: DomainId) => {
-    const moment = lastMoments?.[domain];
-    return moment ? { at: moment.at, text: momentText(moment) } : null;
-  };
-
-  const detail = (domain: DomainId, detailId?: string, lastMoment: { at: string; text: string } | null = null) => (
-    <AreaRowDetail
-      key={`${notices.scopeKey}:${domain}`}
-      id={detailId}
-      lastMoment={lastMoment}
-      domain={domain}
+  const map = (
+    <DevelopmentMap
       milestones={milestones}
-      currentBandMonths={currentBandMonths}
-      confirmed={notices.confirmed}
-      gender={gender}
-      onAnswer={answer}
-      onKeep={(milestoneId) => openNoticeDetail(childProfile.id, milestoneId, { editEvidence: true })}
-      onOpenObservation={(milestoneId) => openNoticeDetail(childProfile.id, milestoneId)}
-      onAddOwn={(words) => addCustomMilestone(words, CUSTOM_MILESTONE_DOMAIN[domain])}
-      watch={chosenWatch && chosenDomain === domain ? { milestoneId: chosenWatch.id, recheckDueAt, onStop: stopWatching } : null}
-      onUndoWatch={clearedDomain === domain ? undoStop : null}
-      onCheck={() => setActiveTab("screening")}
-      onExplore={() => onExplore(domain)}
-      onOpenMoments={() => goToRoute("timeline", { view: "areas", area: domain })}
+      observations={observations}
+      openDomain={openDomain}
+      onToggle={open}
+      composition={composition}
     />
   );
-
-  return (
+  const check = (
+    <DevelopmentCheckCard
+      onCheck={toCheck}
+      primaryMoveProps={primaryMoveProps}
+      recheckDueAt={chosenWatch ? null : recheckDueAt}
+      lastCheckAt={lastCheckAt}
+    />
+  );
+  const moment = last[openDomain];
+  const area = (
     <>
-      <DevelopmentMap
+      <AreaRowDetail
+        key={`${notices.scopeKey}:${openDomain}`}
+        lastMoment={moment ? { at: moment.at, text: momentText(moment) } : null}
+        domain={openDomain}
         milestones={milestones}
-        observations={observations}
-        momentText={momentText}
-        openDomain={openDomain}
-        onToggle={toggle}
-        renderDetail={compact ? undefined : detail}
-        onCheck={() => setActiveTab("screening")}
-        primaryMoveProps={primaryMoveProps}
-        recheckDueAt={chosenWatch ? null : recheckDueAt}
-        lastCheckAt={lastCheckAt}
-        layout={compact ? "tiles" : "rows"}
+        currentBandMonths={currentBandMonths}
+        confirmed={notices.confirmed}
+        gender={gender}
+        onAnswer={answer}
+        onKeep={(milestoneId) => openNoticeDetail(childProfile.id, milestoneId, { editEvidence: true })}
+        onOpenObservation={(milestoneId) => openNoticeDetail(childProfile.id, milestoneId)}
+        onAddOwn={(words) => addCustomMilestone(words, CUSTOM_MILESTONE_DOMAIN[openDomain])}
+        watch={chosenWatch && chosenDomain === openDomain ? { milestoneId: chosenWatch.id, recheckDueAt, onStop: stopWatching } : null}
+        onUndoWatch={clearedDomain === openDomain ? undoStop : null}
+        onCheck={toCheck}
+        onExplore={() => onExplore(openDomain)}
+        onOpenMoments={() => goToRoute("timeline", { view: "areas", area: openDomain })}
       />
-      {compact && openDomain && !noticeTarget && (
-        <Sheet open onClose={close} title={domainName(openDomain, t)}>
-          {detail(openDomain, undefined, sheetMoment(openDomain))}
-        </Sheet>
-      )}
       {noticeTarget && <NoticeObjectDetail
         key={`${notices.scopeKey}:${noticeTarget.milestoneId}`}
         target={noticeTarget} editEvidence={query.get("evidence") === "edit"} observations={observations}
         onClose={() => closeNoticeDetail(query)}
       />}
-
     </>
   );
+  // Arbor's first pick is "Arbor suggests" (the rail); the rest are What to notice next.
+  const notice = useNoticePicks(childProfile.id, milestones, comparisonMonths);
+  const [first, ...rest] = notice.picks;
+  const suggest = first ? <NoticePickCard pick={first} gender={gender} suggested onAnswer={answer} onHold={notice.hold} /> : null;
+  const next = <NoticeNext picks={rest} gender={gender} onAnswer={answer} onHold={notice.hold} />;
+  return <>{children({ map, check, area, suggest, next, openDomain })}</>;
 }

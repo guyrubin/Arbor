@@ -25,6 +25,7 @@
  * stale "Back to Today" key (elev.wk.back) is deleted: the band's
  * elev.wk.carry.back is the page's one back key.
  */
+import { WEEKLY_COPY } from "../weekly/v10/weeklyCopy";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -67,7 +68,7 @@ describe("1 · TJB-10 · back goes to the hub that owns Weekly, at 44 px", () =>
   it("v3 F-NOW-3: the band's way back goes to Today, at 44 px, in both languages", () => {
     const back = tab.slice(tab.indexOf('data-testid="weekly-carry-back"'), tab.indexOf("</button>", tab.indexOf('data-testid="weekly-carry-back"')));
     expect(back).toContain('onClick={() => setActiveTab("overview")}');
-    expect(back).toContain("min-h-[44px]");
+    expect(back).toMatch(/className=\{acceptRendered \? "ds-link" : "btn primary sm"\}/);
     expect(back).toContain('t("elev.wk.carry.back")');
     for (const lang of ["en", "he"] as const) {
       expect(translate(lang, "elev.wk.carry.back")).not.toBe("elev.wk.carry.back");
@@ -116,9 +117,9 @@ describe("3 · TJB-20 · no colour-only verdict on the page", () => {
   it("negative control: the peach token still exists, and is simply not used here", () => {
     // The token is not the defect — using a caution colour as the verdict is.
     expect(tab).not.toContain("--arbor-peach-ink");
-    const glance = fs.readFileSync(path.resolve(__dirname, "../weekly/WeekGlance.tsx"), "utf8");
-    const css = fs.readFileSync(path.resolve(__dirname, "../weekly/weekGlance.css"), "utf8");
-    expect(glance + css).not.toMatch(/peach/);
+    const dir = path.resolve(__dirname, "../weekly/v10");
+    const v10 = fs.readdirSync(dir).filter((f) => !f.includes(".test.")).map((f) => fs.readFileSync(path.join(dir, f), "utf8")).join("\n");
+    expect(v10).not.toMatch(/peach/);
   });
 });
 
@@ -137,26 +138,27 @@ describe("4 · principle 3 · one gradient, and it is the primary move", () => {
     const door = /const summaryDoor = [\s\S]*?<\/button>/.exec(tab)?.[0] ?? "";
     expect(door).not.toBe("");
     expect(door).toContain("onClick={openSummary}");
-    expect(door).not.toContain("gradient");
-    expect(door).toContain("border: \"1px solid var(--arbor-green-ink)\"");
+    expect(door).not.toMatch(/gradient|primary/);
+    expect(door).toContain("btn ghost");
     expect(tab).toContain('const openSummary = () => setActiveTab("handoff");');
     const write = tab.slice(tab.indexOf('data-testid="weekly-generate"'), tab.indexOf("</button>", tab.indexOf('data-testid="weekly-generate"')));
-    expect(write).toContain("underline");
+    expect(write).toContain('className="ds-link"');
     expect(write).not.toMatch(/gradient|ACCEPT_STAMP|data-primary-move/);
     expect(tab).not.toContain("generateIsMove");
   });
 
-  it("the accept CTA carries the gradient", () => {
+  /* v10: the design system's one filled control (`btn primary`) is the
+     primary move; the page carries no gradient. */
+  it("the accept CTA is the filled primary control and carries the stamp", () => {
     const at = tab.indexOf('data-testid="weekly-accept"');
     const accept = tab.slice(tab.lastIndexOf("<button", at), tab.indexOf("</button>", at));
     expect(accept).toContain("{...ACCEPT_STAMP}");
-    expect(accept).toContain("--arbor-gradient-primary");
-    expect(accept).toContain("min-h-[44px]");
+    expect(accept).toContain('className="btn primary sm"');
   });
 
-  it("exactly one gradient reference remains, on the accept", () => {
-    expect(gradients).toBe(1);
-    expect(tab).not.toMatch(/text-white font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-\[0\.98\] flex-shrink-0"\s*\n\s*style=\{\{ background: "var\(--arbor-gradient-primary\)" \}\}/);
+  it("no gradient on the page; the filled primary appears only on the two stamped controls", () => {
+    expect(gradients).toBe(0);
+    expect((tab.match(/btn primary sm/g) ?? []).length).toBe(2);
   });
 
   it("negative control: the shipped file carried three unconditional gradients", () => {
@@ -183,20 +185,22 @@ describe("5 · B-TODAY-22 · one report, one secondary door", () => {
      left the route. The tab stamps the empty card and the carry band; the
      dashboard (weekly-glance) is stamped by WeekGlance and takes the empty
      card's place. The invite is the one demoted module. */
-  it("≤3 non-demoted modules in the source ceiling; the empty card and the dashboard exclude each other", () => {
+  /* v10 re-pin: four numbered stops, each stamped by the tab: the week
+     (weekly-glance) or the empty card, what helped (only beside records), the
+     carry band and your day. The invite stays the one demoted module. */
+  it("the non-demoted modules fit the contract; the empty card and the week exclude each other", () => {
     const top = stamps.filter((s) => !s.demoted).map((s) => s.id).sort();
-    expect(top).toEqual(["weekly-carry", "weekly-empty"]);
+    expect(top).toEqual(["weekly-carry", "weekly-day", "weekly-helped"]);
+    // + the stage's one shared stamp (the week or the empty card).
+    expect(code.match(/\{\.\.\.stageStamp\}/g)).toHaveLength(2);
     expect(top.length + 1).toBeLessThanOrEqual(SURFACE_CONTRACTS.find((c) => c.route === "weekly")!.moduleBudget);
     expect(stamps.filter((s) => s.demoted).map((s) => s.id).sort()).toEqual(["weekly-invite"]);
+    expect(code).toMatch(/\{stage === "weekly-glance" && week \? \(\s*<div \{\.\.\.stageStamp\} data-testid="weekly-glance"[\s\S]*?\) : stage === "weekly-empty" \? \(\s*<div \{\.\.\.stageStamp\}/);
   });
 
-  it("v3 EXTRA-WEEKLY: the glance stamps itself once, carries no move, and never renders beside the empty card", () => {
-    const glance = fs.readFileSync(path.resolve(__dirname, "../weekly/WeekGlance.tsx"), "utf8")
-      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-    expect([...glance.matchAll(/data-module="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["weekly-glance"]);
-    expect(glance).not.toMatch(/data-module-demoted|data-primary-move|data-secondary-move/);
-    expect(code).toMatch(/\{dashboardShown && week \? \(\s*<WeekGlance\b[\s\S]*?\/>\s*\) : !selected \? \(\s*<div data-module="weekly-empty"/);
-    expect(code).not.toContain('data-module="weekly-glance"');
+  it("the week's stage carries no move of its own", () => {
+    const stage = code.slice(code.indexOf('stage === "weekly-glance" && week ? ('), code.indexOf('stage === "weekly-empty" ? ('));
+    expect(stage).not.toMatch(/data-primary-move|ACCEPT_STAMP|data-secondary-move/);
   });
 
   /* v3 F-NOW-3 re-pin: the milestone wins left with the letter (the
@@ -221,13 +225,16 @@ describe("5 · B-TODAY-22 · one report, one secondary door", () => {
      the one door opens the Care summary (#/handoff, FEAT-09), the summary the
      v3 mock's "Add to the summary" names. Still exactly ONE door handler, and
      #/consult is no longer opened from the report at all. */
-  it("ONE outline door, 'Prepare a snapshot for a visit' → #/handoff (EN + HE)", () => {
+  /* v10 re-pin: the door is named "Visit summary" (COPY-RULES) and still
+     opens the summary (#/handoff folds into Care › Visits). The Next visit
+     tile's "Prepare" link is the one way to Care › Visits from the report. */
+  it("ONE outline door, 'Add to the visit summary' → #/handoff (EN + HE); one Prepare link → #/consult", () => {
     expect((code.match(/setActiveTab\("handoff"\)/g) ?? []).length).toBe(1);
-    expect((code.match(/setActiveTab\("consult"\)/g) ?? []).length).toBe(0);
-    expect(translate("en", "wk.brief", { first: "Noa" })).toBe("Prepare a snapshot for a visit");
-    expect(translate("he", "wk.brief", { first: "Noa" })).toBe("להכין תמונת מצב לביקור");
-    // With a visit booked inside its Prepare window, the door names it.
-    expect(code).toContain('t("elev.wk.summary.role", { role: appointmentRoleLabel(visit, t) })');
+    expect((code.match(/setActiveTab\("consult"\)/g) ?? []).length).toBe(1);
+    expect(code).toContain("{copy.addToSummary}");
+    expect(WEEKLY_COPY.en.addToSummary).toBe("Add to the visit summary");
+    expect(WEEKLY_COPY.he.addToSummary).toBe("להוסיף לסיכום לביקור");
+    expect(code).toContain("onPrepare={() => setActiveTab(\"consult\")}");
   });
 
   /* v3 F-NOW-3 re-pin: the email row left #/weekly for #/smart-reminders'
@@ -245,11 +252,13 @@ describe("5 · B-TODAY-22 · one report, one secondary door", () => {
     const delivery = panel.indexOf('data-module="reminders-delivery"');
     expect(delivery).toBeGreaterThan(0);
     expect(panel.indexOf("<WeeklyEmailRow")).toBeGreaterThan(delivery);
-    expect(panel.indexOf("<WeeklyEmailRow")).toBeLessThan(panel.indexOf("<details", delivery));
+    // v10.1 (N-Remind): no disclosure on the page; the row closes the Delivery block.
+    expect(panel).not.toContain("<details");
+    expect(panel.indexOf("<WeeklyEmailRow")).toBeLessThan(panel.indexOf("</div>;", delivery));
   });
 
   it("the empty state is stamped and its ONE move is the explicit secondary capture-moment", () => {
-    expect(code).toContain('data-module="weekly-empty"');
+    expect(code).toContain('!selected ? "weekly-empty" : null');
     expect(code).toMatch(/data-secondary-move="capture-moment"\s*data-testid="weekly-log-a-moment"/);
     const contract = fs.readFileSync(path.resolve(__dirname, "../../lib/surfaceContract.ts"), "utf8");
     expect(contract).toContain('data-secondary-move="capture-moment"');

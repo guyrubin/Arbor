@@ -13,6 +13,7 @@ import type { KeptThing } from "../../lib/kept/keptThings";
 import { parentWritten } from "../../lib/kept/parentWritten";
 import { DOMAIN_IDS, isDomainId, type DomainId } from "../../lib/domains/registry";
 import { groupMilestonesByShelf } from "../../lib/milestones/shelfMap";
+import { noticedByDomain } from "../../lib/milestones/domainMap";
 import { milestonesNoticedSince } from "../../lib/record/counts";
 import { SHELF_IDS, shelfDef, shelvesOfDomain, type ShelfId } from "../../lib/shelves/registry";
 
@@ -114,4 +115,16 @@ export function watchDomain(milestones: readonly Milestone[], milestoneId: strin
   const byShelf = groupMilestonesByShelf(milestones);
   const shelf = SHELF_IDS.find((s) => byShelf[s].some((m) => m.id === milestoneId));
   return shelf ? shelfDef(shelf).domain : null;
+}
+
+/** The Seen-it count across areas and how many areas hold one (the map's only figures). */
+export function seenTotals(milestones: readonly Milestone[]): { seen: number; areas: number } {
+  const byDomain = noticedByDomain(milestones);
+  let seen = 0;
+  let areas = 0;
+  for (const domain of DOMAIN_IDS) {
+    seen += byDomain[domain];
+    if (byDomain[domain] > 0) areas += 1;
+  }
+  return { seen, areas };
 }

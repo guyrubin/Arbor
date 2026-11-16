@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { Skeleton } from "../ui/Skeleton";
+import "./safety.css";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -17,7 +18,11 @@ import {
   type HelplineRegion,
 } from "../../safety/escalation";
 import { loadAttribution } from "../../lib/attribution";
-import { PageHeader, SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
+import { SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
+// v10.1 (N-Safety-D/M): the lightest touch. The design system's root and its
+// display title; the page, its paths and its numbers stay production's own
+// (B-GA-04 is re-verifying the helplines; nothing here adds or changes one).
+import { useComposition } from "../../design/useComposition";
 
 type Contact = { id: string; name: string; role: string; phone: string; notes: string };
 
@@ -42,6 +47,7 @@ const inputStyle: React.CSSProperties = { background: "var(--arbor-paper-deep)",
 export default function SafetyTab() {
   const { childProfile, requestConsultPrefill, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
+  const composition = useComposition();
 
   // LC-14: the family's market decides which helplines come first. The
   // attribution market (il / nl / be) is the strongest signal; otherwise the
@@ -150,11 +156,14 @@ export default function SafetyTab() {
   );
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
-      <PageHeader
-        title={t("elev.safety.header.title")}
-        subtitle={t("elev.safety.header.sub")}
-      />
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="max-w-[1180px]">
+      {/* DsRoot's own markup, spelled as a plain element so the white-label
+          contrast audit can prove the add-contact submit's ancestry. */}
+      <div className={composition === "desk" ? "ds ds-desk space-y-6" : "ds ds-phone space-y-6"} data-composition={composition}>
+      <header className="safety-head">
+        <h1 className="hero">{t("elev.safety.header.title")}</h1>
+        <p className="safety-sub">{t("elev.safety.header.sub")}</p>
+      </header>
 
       {/* LC-14: ONE tap reaches a human — the family-market primary number as a
           full-width call button, above everything else on the screen. */}
@@ -453,6 +462,7 @@ export default function SafetyTab() {
       </div>
         </div>
       </details>
+      </div>
     </motion.div>
   );
 }

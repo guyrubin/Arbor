@@ -6,6 +6,9 @@ import OfflineChip from "../ui/OfflineChip"; // W0.6: renders only while offline
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { homeForTab, chromeLitHome } from "../../lib/companionPlaces";
+import { HOME_PILLS, homeIdForTab, shellCrumbFor } from "../../lib/navigation";
+import type { ActiveTab } from "../../lib/routes";
+import { Icon } from "../ui/Icon";
 
 /**
  * Desktop topbar — the wireframe's lean control band (md+). Hidden on mobile,
@@ -23,9 +26,23 @@ import { homeForTab, chromeLitHome } from "../../lib/companionPlaces";
  * sidebar door and the launcher, never a header button; the language switch
  * lives in Settings only. All tokens are sourced from index.css; no raw hex.
  */
+/** v10 — the crumb's labels: a pill reads as its pill; a view reads its one name. */
+function crumbLabel(tab: ActiveTab, isPill: boolean, t: (k: string, v?: Record<string, string | number>) => string, name: string): string {
+  if (isPill) {
+    const item = HOME_PILLS[homeIdForTab(tab)].find((it) => it.tab === tab);
+    if (tab === "profile" && name) return t("nav.pill.profile.named", { name });
+    return t(item?.labelKey ?? "nav.tab." + tab);
+  }
+  const key = "nav.view." + tab;
+  const view = t(key, { name: name || t("nav.crumb.child") });
+  return view !== key ? view : t("nav.tab." + tab);
+}
+
 export default function Topbar() {
-  const { activeTab } = useArbor();
+  const { activeTab, setActiveTab, childProfile } = useArbor();
   const { t, uiLang } = useLanguage();
+  const childName = childProfile?.name?.trim().split(/\s+/)[0] ?? "";
+  const crumb = shellCrumbFor(activeTab);
   // v3 F-SHELL-2 (critic ruling 6): ONE title on every route, the home's name.
   const home = homeForTab(activeTab);
   const lit = chromeLitHome(home);
@@ -67,13 +84,41 @@ export default function Topbar() {
       >
         {/* v3 F-SHELL-2: display face 20/600, and no second line: the page
             under it owns its own introduction. */}
-        <span
-          data-testid="topbar-home-title"
-          className="text-[20px] font-semibold leading-tight truncate"
-          style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
-        >
-          {uiLang === "he" ? named.he : named.en}
-        </span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span
+            data-testid="topbar-home-title"
+            className="text-[20px] font-semibold leading-tight truncate flex-none"
+            style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
+          >
+            {uiLang === "he" ? named.he : named.en}
+          </span>
+          {/* v10: the breadcrumb continues the title: place › pill › view. The
+              pill is a link back to it; the last level is where you are. */}
+          {(crumb.pill || crumb.view) && (
+            <nav aria-label={t("nav.crumb.aria")} data-testid="topbar-crumb" className="min-w-0">
+              <ol className="flex items-center gap-1 min-w-0 text-[14px] font-semibold" style={{ color: "var(--arbor-ink-soft)" }}>
+                {crumb.pill && (
+                  <li className="flex items-center gap-1 min-w-0">
+                    <Icon name="chevron_right" size={16} className="rtl:-scale-x-100 flex-none" style={{ color: "var(--arbor-muted)" }} />
+                    {crumb.view ? (
+                      <button type="button" onClick={() => setActiveTab(crumb.pill!)} className="min-h-11 min-w-11 px-1 truncate text-center hover:underline underline-offset-2">
+                        {crumbLabel(crumb.pill, true, t, childName)}
+                      </button>
+                    ) : (
+                      <span aria-current="page" className="px-1 truncate" style={{ color: "var(--arbor-ink)" }}>{crumbLabel(crumb.pill, true, t, childName)}</span>
+                    )}
+                  </li>
+                )}
+                {crumb.view && (
+                  <li className="flex items-center gap-1 min-w-0">
+                    <Icon name="chevron_right" size={16} className="rtl:-scale-x-100 flex-none" style={{ color: "var(--arbor-muted)" }} />
+                    <span aria-current="page" className="px-1 truncate" style={{ color: "var(--arbor-ink)" }}>{crumbLabel(crumb.view, false, t, childName)}</span>
+                  </li>
+                )}
+              </ol>
+            </nav>
+          )}
+        </div>
       </div>
 
       {/* Right zone: lean desktop control band (Safety → search → Kid Mode).
@@ -101,7 +146,7 @@ export default function Topbar() {
             clip the search results overlay that hangs below the input. */}
         <div
           className="hidden lg:block"
-          style={{ flex: "0 1 220px", minInlineSize: "2.75rem" }}
+          style={{ flex: "0 1 300px", minInlineSize: "2.75rem" }}
         >
           <TopbarSearch />
         </div>

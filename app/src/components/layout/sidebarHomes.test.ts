@@ -138,8 +138,8 @@ describe("v3 IA-01 · three places and three doors, nothing else", () => {
 });
 
 describe("v3 IA-01 · exactly one current entry on every route, from table A", () => {
-  it.each(["en", "he"] as const)("all 43 routes in %s: one aria-current, and it is the route's home", (lang) => {
-    expect(ROUTE_IDS).toHaveLength(43);
+  it.each(["en", "he"] as const)("all 44 routes in %s: one aria-current, and it is the route's home", (lang) => {
+    expect(ROUTE_IDS).toHaveLength(44);
     for (const tab of ROUTE_IDS) {
       const html = render(tab, lang);
       expect((html.match(/aria-current="page"/g) ?? []).length, tab).toBe(1);
@@ -152,12 +152,14 @@ describe("v3 IA-01 · exactly one current entry on every route, from table A", (
   it("the routes the audit named light the right row and only that row", () => {
     const expected: Partial<Record<ActiveTab, string>> = {
       consult: "care", "school-brief": "care", appointments: "care", sharing: "care", safety: "care", reports: "care", handoff: "care", "care-team": "care",
-      masterclasses: "learn", learn: "learn", family: "learn",
+      masterclasses: "learn", learn: "learn",
+      // v10: Family formation is a Stories ritual (Together › Stories).
+      family: "together",
       // v3 F-SHELL-2 re-pin: Talk is a panel over Now, so its routes light Now.
       coach: "now", scholar: "now",
       behaviors: "child", milestones: "child", development: "child",
-      // FEAT-07 is included: Together's Routines entry now owns Plans.
-      plans: "together",
+      // v10: Plans is Now's third pill.
+      plans: "now",
       stories: "together", practice: "together",
       weekly: "now", overview: "now",
     };
@@ -220,7 +222,7 @@ describe("v3 IA-01 · Back returns to the home", () => {
       expect(target!.id, tab).toBe(homeIdOf(tab));
     }
     expect(backTargetFor("learn")?.tab).toBe("masterclasses");
-    expect(backTargetFor("family")?.tab).toBe("masterclasses");
+    expect(backTargetFor("family")?.tab).toBe("practice");
     expect(backTargetFor("school-brief")?.tab).toBe("consult");
     expect(backTargetFor("appointments")?.tab).toBe("consult");
     expect(backTargetFor("milestones")?.tab).toBe("development");
@@ -235,10 +237,11 @@ describe("v3 IA-01 · Back returns to the home", () => {
     expect(backTargetFor("learn")?.tab).not.toBe(placeForTab("learn").tab);
   });
 
-  it("Shell renders Back only when there is a target, labelled with that home's name", () => {
+  it("Shell renders Back only when there is a target and no pill row, labelled with that home's name", () => {
     const shell = readFileSync(new URL("./Shell.tsx", import.meta.url), "utf8");
-    // v4 re-pin: a pill of the place's own row (Weekly report, Moments, About) is a reading, not a level.
-    expect(shell).toContain("const back = isCompanionHome(activeTab) || isPlaceReading(activeTab) ? null : backTargetFor(activeTab);");
+    // v10 re-pin: every home has a pill row and the top bar shows the
+    // breadcrumb, so Back appears only on a rowless route (attribution).
+    expect(shell).toContain("const back = pillRow.length > 1 || isCompanionHome(activeTab) ? null : backTargetFor(activeTab);");
     expect(shell).toMatch(/\{back && <button data-testid="secondary-place-back" onClick=\{\(\) => setActiveTab\(back\.tab\)\}/);
     expect(shell).toContain('{uiLang === "he" ? back.he : back.en}');
     expect(shell).not.toContain("setActiveTab(placeForTab(activeTab).tab)");

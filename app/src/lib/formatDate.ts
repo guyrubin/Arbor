@@ -81,3 +81,24 @@ export const fmtDayTime = (input: DateInput, lang: UiLang): string => {
  *  (a week header) where the year is carried by the surrounding context. */
 export const fmtDayShort = (input: DateInput, lang: UiLang): string =>
   fmt(input, lang, { day: "numeric", month: "short" });
+
+/**
+ * v10 — the shell's "when" beside the pill row: weekday, day and month, then the
+ * time ("Monday, November 16 · 5:40 PM" / "יום שני, 16 בנובמבר · 17:40"). The
+ * locale decides the order and the clock; the separator is the app's middle dot.
+ */
+export const fmtShellNow = (input: DateInput, lang: UiLang): string => {
+  const d = toDate(input);
+  if (!d) return "";
+  const locale = LOCALES[lang] ?? LOCALES.en;
+  let day: string;
+  let time: string;
+  try {
+    day = d.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" });
+    time = d.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
+  } catch {
+    day = d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+    time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+  return isolate(`${day} · ${time}`);
+};

@@ -1,21 +1,15 @@
-/** v3 IA-05: the word a parent types for routines lands on Plans, where the
- * ready-made routines live since B-GROWTH-25 retired #/routines. One exact
- * intent only: no routines row comes back and every partial query ranks as
+/** v10 (design system v10.1): "Routines" is the name of Together's pill only
+ * (one name per thing), so the word a parent types for routines lands on
+ * Together › Routines (#/practice), where the twelve ready-made routines live;
+ * starting one makes it a plan under Now › Plans. #/plans is named Plans again
+ * (nav.tab.plans), and its old names ("plans", "Growth Plans", "Action Plans")
+ * find it exactly. One exact intent per route: every partial query ranks as
  * before.
  *
- * IA-05r: the Plans route is now named Routines (nav.tab.plans, EN and HE),
- * the name of Together's Routines (FEAT-07), so it reads Together › Routines.
- * The negative control runs the pre-IA-05 index (the old "Growth Plans" name,
- * no intent) as a mutation of the real one.
- *
- * IA-05r round 2: the intent's target is ROUTINES_INTENT_TAB, "plans" while
- * #/plans is a live route. If F-SHELL-1 retires plans into Together, the words
- * follow the retirement (tested below on a mutated route table), so this suite
- * stays green either way. While plans is live, its old names ("Growth Plans",
- * the "Action Plans" heading PlansTab still shows, "plans") find it exactly.
- * Re-pin: "Growth Plans" left the "general ranking unchanged" list; it is now
- * one of those old names. */
-import { describe, expect, it, vi } from "vitest";
+ * History: v3 IA-05 sent the routines words to #/plans and IA-05r renamed that
+ * route Routines; the negative controls below run the pre-intent index as a
+ * mutation of the real one. */
+import { describe, expect, it } from "vitest";
 import { getSearchIndex, normalizeSearchText, searchCatalog, ROUTINES_INTENT_TAB, type SearchEntry } from "./searchIndex";
 import { homeForTab, placeForTab } from "./companionPlaces";
 import { translate } from "./i18n";
@@ -45,9 +39,9 @@ const QUERIES = ["routines", "Routine", "  ROUTINES  ", "שגרות", "שגרה"
 const TARGET_ID = `route:${ROUTINES_INTENT_TAB}`;
 const OLD_PLANS_NAMES = ["plans", "Plan", "Growth Plans", "תוכניות", "תוכנית", "תוכניות התפתחות", translate("en", "plan.title"), translate("he", "plan.title")];
 
-describe("v3 IA-05 · routines lands on Plans", () => {
-  it("the target is Plans while it is a live route, else where its retirement leads; either way, in Together", () => {
-    expect(ROUTINES_INTENT_TAB).toBe(RETIRED_ROUTES.plans ?? "plans");
+describe("v10 · routines lands on Together › Routines; Plans keeps its names", () => {
+  it("the target is Together's Routines pill (#/practice)", () => {
+    expect(ROUTINES_INTENT_TAB).toBe("practice");
     const home = homeForTab(ROUTINES_INTENT_TAB);
     expect(home.kind === "place" ? home.place.id : home.door.id).toBe("together");
   });
@@ -68,9 +62,9 @@ describe("v3 IA-05 · routines lands on Plans", () => {
     expect(searchCatalog(query, 1).map(row => row.id)).toEqual([target.id]);
   });
 
-  it("resolves #/plans to the target and keeps #/routines retired with no row of its own", () => {
-    expect(resolveRouteId("#/plans")).toBe(ROUTINES_INTENT_TAB);
+  it("keeps #/routines retired (it resolves to Plans) with no row of its own", () => {
     expect("routines" in RETIRED_ROUTES).toBe(true);
+    expect(resolveRouteId("#/routines")).toBe("plans");
     expect(getSearchIndex().filter(row => row.id === "route:routines")).toEqual([]);
     for (const query of QUERIES) expect(searchCatalog(query, 1000).some(row => row.id === "route:routines")).toBe(false);
   });
@@ -86,67 +80,36 @@ describe("v3 IA-05 · routines lands on Plans", () => {
     },
   );
 
-  it.each(OLD_PLANS_NAMES)("IA-05r: while #/plans is live, its old name %j still finds it first, and nothing else moves", (query) => {
-    expect(ROUTINES_INTENT_TAB).toBe("plans");
+  it.each(OLD_PLANS_NAMES)("Plans' name or an old one, %j, finds Now › Plans first, and nothing else moves", (query) => {
     const result = searchCatalog(query, 1000).map(row => row.id);
     expect(result[0]).toBe("route:plans");
     expect(result).toEqual(["route:plans", ...priorIds(query).filter(id => id !== "route:plans")]);
-    // NEGATIVE CONTROL: on the renamed title alone, the old name did not lead to Plans.
-    expect(priorIds(query)[0]).not.toBe("route:plans");
   });
 
-  it("IA-05r: the heading PlansTab still shows is one of those old names", () => {
+  it("the heading PlansTab shows is one of those names", () => {
     expect(translate("en", "plan.title")).toBe("Action Plans");
     expect(translate("he", "plan.title")).toBe("תוכניות פעולה");
   });
 
-  it("IA-05r: the Plans route is named Routines in both languages", () => {
-    expect(translate("en", "nav.tab.plans")).toBe("Routines");
-    expect(translate("he", "nav.tab.plans")).toBe("שגרות");
-    expect(translate("en", "nav.tab.plans")).toBe(translate("en", "nav.tab.routines"));
-    expect(translate("he", "nav.tab.plans")).toBe(translate("he", "nav.tab.routines"));
+  it("one name per thing: #/plans is Plans and #/practice is Routines, in both languages", () => {
+    expect(translate("en", "nav.tab.plans")).toBe("Plans");
+    expect(translate("he", "nav.tab.plans")).toBe("תוכניות");
+    expect(translate("en", "nav.tab.practice")).toBe(translate("en", "nav.tab.routines"));
+    expect(translate("he", "nav.tab.practice")).toBe(translate("he", "nav.tab.routines"));
+    expect(translate("en", "nav.tab.plans")).toBe(translate("en", "nav.pill.plans"));
+    expect(translate("en", "nav.tab.practice")).toBe(translate("en", "nav.pill.routines"));
     const plans = getSearchIndex().find(row => row.id === "route:plans")!;
-    expect(plans.title).toEqual({ en: "Routines", he: "שגרות" });
+    expect(plans.title).toEqual({ en: "Plans", he: "תוכניות" });
   });
 
-  it("NEGATIVE CONTROL: before IA-05 (old name, no intent), routines did not open on Plans", () => {
-    // Mutation: the real index with the Plans route given back its old name.
-    const before = getSearchIndex().map(entry => entry.id !== "route:plans" ? entry : {
-      ...entry, normTitles: ["Growth Plans", "תוכניות התפתחות"].map(normalizeSearchText),
+  it("NEGATIVE CONTROL: with #/practice under its old name and no intent, routines did not open Together", () => {
+    const before = getSearchIndex().map(entry => entry.id !== "route:practice" ? entry : {
+      ...entry, normTitles: ["Practice Studio", "סטודיו תרגול"].map(normalizeSearchText),
     });
-    expect(before.some(entry => entry.id === "route:plans")).toBe(true);
+    expect(before.some(entry => entry.id === "route:practice")).toBe(true);
     for (const query of ["routines", "שגרות"]) {
-      expect(priorIds(query, 1000, before)[0], query).not.toBe("route:plans");
-      expect(searchCatalog(query, 1)[0].id, query).toBe("route:plans");
-    }
-  });
-});
-
-describe("v3 IA-05r · if F-SHELL-1 retires #/plans into Together", () => {
-  it("the routines words follow the retirement to Together's route, and the old Plans names stop being exact", async () => {
-    vi.resetModules();
-    vi.doMock("./routes", async (importOriginal) => {
-      const actual = await importOriginal<typeof import("./routes")>();
-      return { ...actual, RETIRED_ROUTES: { ...actual.RETIRED_ROUTES, plans: "practice" } };
-    });
-    try {
-      const retired = await import("./searchIndex");
-      expect(retired.ROUTINES_INTENT_TAB).toBe("practice");
-      const index = retired.getSearchIndex();
-      expect(index.some(row => row.id === "route:plans")).toBe(false);
-      for (const query of ["routines", "שגרות"]) {
-        const result = retired.searchCatalog(query, 1000).map(row => row.id);
-        expect(result[0], query).toBe("route:practice");
-        expect(result, query).toEqual(["route:practice", ...priorIds(query, 1000, index).filter(id => id !== "route:practice")]);
-      }
-      const home = homeForTab("practice");
-      expect(home.kind === "place" ? home.place.id : home.door.id).toBe("together");
-      for (const query of OLD_PLANS_NAMES) {
-        expect(retired.searchCatalog(query, 1000).map(row => row.id), query).toEqual(priorIds(query, 1000, index));
-      }
-    } finally {
-      vi.doUnmock("./routes");
-      vi.resetModules();
+      expect(priorIds(query, 1000, before)[0], query).not.toBe("route:practice");
+      expect(searchCatalog(query, 1)[0].id, query).toBe("route:practice");
     }
   });
 });

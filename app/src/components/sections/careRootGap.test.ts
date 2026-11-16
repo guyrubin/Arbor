@@ -13,10 +13,11 @@ import { readFileSync } from "node:fs";
 import { translate } from "../../lib/i18n";
 
 const read = (f: string) => readFileSync(new URL(f, import.meta.url), "utf8").replace(/\r\n/g, "\n");
-const ROOT = /<motion\.div[^>]*className="([^"]*)"/;
+// design v10.1: a v10 screen's module column is its `care-visits` wrapper.
+const ROOT = /<motion\.div[^>]*className="([^"]*)"|<div className="(care-visits[^"]*)"/;
 
 /** The route root's class list, or "" when not found. */
-const rootClass = (src: string) => ROOT.exec(src)?.[1] ?? "";
+const rootClass = (src: string) => { const m = ROOT.exec(src); return m?.[1] ?? m?.[2] ?? ""; };
 const brokenGap = (src: string) =>
   src.includes('display: "contents"') && /\bspace-y-\d/.test(rootClass(src));
 

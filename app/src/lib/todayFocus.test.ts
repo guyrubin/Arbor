@@ -121,7 +121,8 @@ describe("OverviewTab wiring (TODAY-1 + CODEX-2)", () => {
     // identity line (B-TODAY-28) left it, and the age is said once, on the plan
     // card's Picked line. CODEX-2's local-time rule stands for the loop.
     expect(src).toContain("const now = useNowClock();");
-    expect(todayFile("NowView.tsx")).toContain('<p className="companion-eyebrow" data-testid="now-kicker">{copy.kicker}</p>');
+    // v10.1 (N-Now): the stage's head line is the screen's h1 (the shell's top bar names the place).
+    expect(todayFile("NowView.tsx")).toContain('<h1 className="kicker" data-testid="now-kicker">{copy.title(name)}</h1>');
     expect(src).not.toContain('toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "long" })');
     expect(src).toContain("formatChildAge(childProfile, t, now)");
     // The loop and lifecycle share the clock that refreshes on re-entry.

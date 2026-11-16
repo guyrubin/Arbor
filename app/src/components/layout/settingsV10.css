@@ -1,0 +1,46 @@
+/*
+ * Settings (design v10.1, N-Settings-D/M). Scoped to the sheet's .ds root
+ * (.ds-settings); canvas token names resolve inside .ds (src/design/ds.css).
+ * The rows keep their production controls; this file gives them the board's
+ * shape: white groups, a glyph chip, the name and its state, one outlined
+ * action at the end.
+ */
+.ds-settings { font-size: 14px; }
+.ds-settings .set-lead { margin: -8px 0 16px; font-size: 13.5px; color: var(--ink-soft); }
+.ds-settings .set-cols { display: flex; flex-direction: column; gap: 16px; }
+.ds-settings .set-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.ds-settings.ds-desk .set-cols { display: grid; grid-template-columns: minmax(0, 1.42fr) minmax(0, 1fr); gap: 20px; align-items: stretch; }
+.ds-settings.ds-desk .set-col { gap: 20px; }
+.ds-settings .set-sec { gap: 0; padding: 18px 20px; border-radius: 18px; box-shadow: inset 0 0 0 1px var(--rule); }
+.ds-settings .set-sec-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; padding-bottom: 6px; }
+.ds-settings .set-sec-title { margin: 0; font-family: var(--font-display) !important; font-weight: 600 !important; font-size: 20px; line-height: 1.25; color: var(--ink); }
+.ds-settings .set-sec-sub { margin: 0; font-size: 13px; color: var(--ink-soft); }
+.ds-settings .set-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--rule); }
+.ds-settings .set-sec-head + .set-row, .ds-settings .set-sec-head + * .set-row:first-child { border-top: 0; }
+.ds-settings .set-gi { width: 40px; height: 40px; border-radius: 12px; align-self: start; }
+.ds-settings .set-row-text { min-width: 0; }
+.ds-settings .set-row-title { margin: 0; font-weight: 600 !important; font-size: 15px; line-height: 1.3; color: var(--ink); }
+.ds-settings .set-row-sub { margin: 0; font-size: 13px; line-height: 1.35; color: var(--ink-soft); }
+.ds-settings .set-row-act { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 0; }
+.ds-settings.ds-phone .set-row { grid-template-columns: 36px minmax(0, 1fr); }
+.ds-settings.ds-phone .set-gi { width: 36px; height: 36px; }
+.ds-settings.ds-phone .set-row-act { grid-column: 2; align-items: flex-start; }
+.ds-settings .set-act { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 0 14px; border: 0; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule-strong); font-size: 14px; font-weight: 600 !important; color: var(--sapphire-deep); white-space: nowrap; cursor: pointer; text-decoration: none; }
+.ds-settings .set-act:hover { background: var(--tint-2); }
+.ds-settings .set-act.set-primary { width: 100%; min-height: 48px; background: var(--sapphire); color: #fff; box-shadow: none; font-size: 15px; }
+.ds-settings .set-act:focus-visible, .ds-settings .set-danger:focus-visible { outline: 2px solid var(--sapphire); outline-offset: 2px; }
+.ds-settings .set-danger { display: inline-flex; align-items: center; padding: 0; border: 0; background: none; font-size: 14px; font-weight: 600 !important; color: #b3261e; cursor: pointer; }
+.ds-settings .set-plan { position: relative; overflow: hidden; isolation: isolate; margin-top: 4px; padding: 18px 20px; border-radius: 18px; background: var(--tint-2); box-shadow: inset 0 0 0 1px #dbe6f7; }
+.ds-settings .set-plan::before { content: ""; position: absolute; z-index: -1; width: 260px; height: 260px; inset-inline-end: -110px; top: -150px; border-radius: 50%; background: var(--o-lav, #e4defa); opacity: .7; }
+.ds-settings .set-legal { padding-top: 4px; }
+/* the PIN panel and other production blocks keep their own look inside a group */
+.ds-settings .set-sec > [data-testid="settings-pin-row"] { border-top: 1px solid var(--rule); }
+.ds-settings .set-act { max-width: 100%; }
+.ds-settings.ds-phone .set-act { white-space: normal; text-align: start; padding-block: 6px; }
+/* the board's sheet is 1056 px wide on a desktop: the shared Modal keeps its
+   own default width for every other dialog, so the Settings dialog widens itself */
+[role="dialog"]:has(> .ds-settings.ds-desk) { max-width: 1056px; }
+/* size pass (v10.3): the columns end together — the last group of each column takes the rest */
+.ds-settings.ds-desk .set-col > .set-sec:last-of-type { flex: 1; }
+/* the legal row's short words ("תמיכה") still take a 44 px wide target */
+.ds-settings .set-legal a, .ds-settings .set-legal button { min-width: 44px; justify-content: center; }

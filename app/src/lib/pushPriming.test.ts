@@ -184,14 +184,17 @@ describe("B-TODAY-16 — push opt-in lives where nudges are configured (one moun
     expect((panel.match(/<PushPrimingCard\b/g) || []).length).toBe(1);
   });
 
-  it("it sits in its own Delivery section, above the quiet-hours disclosure, not demoted", () => {
+  it("it sits in its own Delivery section, after the prefs (quiet hours operated in place), not demoted", () => {
     const delivery = panel.indexOf('data-module="reminders-delivery"');
-    const disclosure = panel.indexOf("data-module-disclosure=");
+    const prefs = panel.indexOf('data-module="reminders-prefs"');
+    const quiet = panel.indexOf('data-testid="sr-quiet-summary"');
     const mount = panel.indexOf("<PushPrimingCard");
     expect(delivery).toBeGreaterThan(-1);
-    expect(delivery).toBeLessThan(disclosure);
     expect(mount).toBeGreaterThan(delivery);
-    expect(mount).toBeLessThan(disclosure);
+    // v10.1 (N-Remind): no disclosure; quiet hours are part of the prefs module.
+    expect(panel).not.toContain("data-module-disclosure=");
+    expect(quiet).toBeGreaterThan(prefs);
+    expect(quiet).toBeLessThan(delivery);
     expect(panel).not.toContain('data-module="reminders-push"');
     expect(panel).toContain('t("elev.sr.delivery.heading")');
   });
@@ -201,19 +204,19 @@ describe("B-TODAY-16 — push opt-in lives where nudges are configured (one moun
     const stamps = (code.match(/\bdata-module="/g) || []).length;
     const demoted = (code.match(/\bdata-module-demoted\b/g) || []).length;
     expect(stamps - demoted).toBe(3);
+    expect(demoted).toBe(0);
     expect(panel).not.toContain('data-module="reminders-next"');
     const contract = panel.indexOf('data-module="reminders-contract"');
     const next = panel.indexOf('data-testid="sr-next-nudge"');
     const prefs = panel.indexOf('data-module="reminders-prefs"');
     const delivery = panel.indexOf('data-module="reminders-delivery"');
     expect(contract).toBeGreaterThan(-1);
-    expect(next).toBeGreaterThan(contract);
-    // B-OCCL-01 (6 Oct): the prefs block (the route's move) now comes BEFORE
-    // the contract card, so the next nudge is pinned inside the contract card
-    // by the module that follows it — Delivery.
     expect(prefs).toBeGreaterThan(-1);
-    expect(prefs).toBeLessThan(contract);
-    expect(next).toBeLessThan(delivery);
+    // v10.1: the contract card is today's slot on the arc (the next nudge and
+    // the two slots); the prefs module is the rail; Delivery follows both.
+    expect(next).toBeGreaterThan(contract);
+    expect(next).toBeLessThan(prefs);
+    expect(prefs).toBeLessThan(delivery);
   });
 
   it("EN + HE heading", async () => {

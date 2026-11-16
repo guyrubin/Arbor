@@ -180,7 +180,8 @@ describe("GP-01 — source scan: no parent-facing .tsx renders the whole-years `
       "components/layout/TopbarKidSwitcher.tsx",
       "components/profile/ProfileSwitcher.tsx",
       "components/profile/FamilyGlanceCard.tsx",
-      "components/sections/ChildProfile.tsx",
+      // v10: About's identity line lives in the child's tile.
+      "components/about/AboutChildTile.tsx",
       "components/sections/Screening.tsx",
       "components/tabs/LanguageLabTab.tsx",
       "components/tabs/DailyPlayTab.tsx",

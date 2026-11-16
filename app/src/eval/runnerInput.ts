@@ -9,7 +9,7 @@
 import type { EvalScenario } from "./acceptance.js";
 
 /** Routes the live runner can drive. */
-export const RUNNER_ROUTES = ["/api/chat", "/api/council", "/api/voice", "/api/live/turn", "/api/extract-log", "/api/generate-handoff", "/api/todays-focus", "/api/generate-plan", "/api/vision", "/api/describe-child"] as const;
+export const RUNNER_ROUTES = ["/api/chat", "/api/council", "/api/voice", "/api/live/turn", "/api/extract-log", "/api/generate-handoff", "/api/todays-focus", "/api/generate-plan", "/api/vision", "/api/describe-child", "/api/family-plan/extract"] as const;
 
 const DAY = 86_400_000;
 
@@ -38,6 +38,12 @@ export function runnerInputError(scenario: Pick<EvalScenario, "route" | "input" 
   if (route === "/api/live/turn" || route === "/api/extract-log") return null;
   // B-SHELL-39 (describe-child-v1): the parent's words as-is (empty is a
   // scenario); kept items, when present, are the request's own list.
+  // Family plan v1 (family-plan-extract-v1): the pasted message as-is, and the family's day.
+  if (route === "/api/family-plan/extract") {
+    if (typeof input.text !== "string") return "has no text input for /api/family-plan/extract";
+    if (typeof input.today !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(input.today)) return "has no today (YYYY-MM-DD) input for /api/family-plan/extract";
+    return null;
+  }
   if (route === "/api/describe-child") {
     if (typeof input.text !== "string") return "has no text input for /api/describe-child";
     if (input.keptItems !== undefined && !Array.isArray(input.keptItems)) return "has a non-array keptItems input";

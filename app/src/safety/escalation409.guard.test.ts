@@ -124,6 +124,12 @@ const SCREENED_409: Readonly<Record<string, { calls: readonly string[]; sites: R
         "components/describe/DescribeThread.tsx": 'state.error === "crisis" &&',
       } },
   } },
+  // Family plan v1: the review sheet turns the 409 into Safety's urgent-support card.
+  "/family-plan/extract": { calls: ["api.extractFamilyPlan"], sites: {
+    "components/familyPlan/ReviewSheet.tsx": { handling: "card",
+      branch: { "components/familyPlan/ReviewSheet.tsx": "if (e instanceof EscalationRequiredError) { setPhase({ at: \"error\", message: c.reviewCrisis, crisis: true }); return; }" },
+      render: { "components/familyPlan/ReviewSheet.tsx": "phase.at === \"error\" && phase.crisis &&" } },
+  } },
   "/conversation/proposals": { calls: ["api.extractConversationProposals"], sites: {
     "components/tabs/CoachTab.tsx": { handling: "card",
       branch: { "components/tabs/CoachTab.tsx": "if (error instanceof EscalationRequiredError) setProposalCrisis(true);" },

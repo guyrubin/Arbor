@@ -37,8 +37,9 @@ describe("B-SHELL-27 — every mount reads the one resolver (the same URL everyw
     expect(top).toContain("photoURL={childPicture(activeChild).url}");
     expect(top).toContain("photoURL={childPicture(p).url}");
     expect(top).not.toMatch(/photoURL=\{[a-zA-Z]+\.photoUrl\}/);
-    const profile = read("../components/sections/ChildProfile.tsx");
-    expect(profile).toContain("const hasHero = !asksForHero(childProfile);");
+    // v10: About's face and the Create-hero gate live in the child's tile.
+    const profile = read("../components/about/AboutChildTile.tsx");
+    expect(profile).toContain("{asksForHero(childProfile) && (");
     expect(profile).toContain("<Avatar name={childProfile.name} photoURL={picture.url} size={40} />");
     expect(profile).not.toMatch(/<HeroAvatar size=\{56\}/);
     expect(read("../components/tabs/HeroJourneyTab.tsx")).toContain("{!kidMode && asksForHero(childProfile) && (");

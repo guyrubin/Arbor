@@ -113,7 +113,9 @@ describe("REC-01 · the capture sheet is never silent while the mic is on", () =
 describe("REC-01 · Behaviours delegates recording to the guarded sheet", () => {
   const behaviors = stripComments(read("components/tabs/BehaviorsTab.tsx"));
   it("launches voice through the one capture sheet and cannot open an unindicated microphone", () => {
-    expect(behaviors).toContain("onMode={(mode) => openCaptureSheet({ mode })}");
+    // v10.1: voice moved from the page to the dock — the same one capture sheet.
+    expect(behaviors).not.toContain("onMode=");
+    expect(stripComments(read("components/companion/CompanionWorkspace.tsx"))).toContain("openCaptureSheet({ mode });");
     expect(behaviors).not.toMatch(/startDictation|listening|<RecordingIndicator/);
     const modal = stripComments(read("components/overview/QuickLogModal.tsx"));
     expect(modal).toContain('captionTestId="quicklog-listening-caption"');

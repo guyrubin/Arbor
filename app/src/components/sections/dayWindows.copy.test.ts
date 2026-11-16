@@ -61,14 +61,16 @@ describe("TJB-14/TJB-23 — every new string lands in BOTH locales", () => {
   });
 });
 
-describe("TJB-14 — Day Windows", () => {
-  const src = strip(read("components/sections/DayWindowsPanel.tsx"));
+/* v10: #/day-windows folds into Weekly report; its read is the "Your day at a
+   glance" stop (components/weekly/v10/YourDay.tsx), fed by WeeklyTab. */
+describe("TJB-14 — Day Windows (now Weekly report › Your day at a glance)", () => {
+  const src = strip(read("components/weekly/v10/YourDay.tsx"));
+  const tab = strip(read("components/tabs/WeeklyTab.tsx"));
 
-  it("both bare sentences are keyed", () => {
+  it("the days-logged sentence is keyed; no bare template literal", () => {
     expect(src).not.toMatch(/days logged so far/);
     expect(src).not.toMatch(/Patterns for \$\{/);
     expect(src).toMatch(/t\("elev\.dw\.daysLoggedOf"/);
-    expect(src).toMatch(/t\("elev\.dw\.context"/);
   });
 
   it("the low-data glyph is an hourglass, not an error", () => {
@@ -76,15 +78,20 @@ describe("TJB-14 — Day Windows", () => {
     expect(src).toMatch(/name="hourglass_top"/);
   });
 
-  it("the learning bands render below the usable bar", () => {
-    // Two HourBar mounts: the data-rich branch and the low-data branch
-    // (B-TODAY-06: both read the aggregator's per-hour counts).
-    expect((src.match(/<HourBar counts=\{summary\.hourCounts\} uiLang=\{uiLang\} \/>/g) ?? []).length).toBe(2);
+  it("the hour strip renders in both branches (one strip, before the data-floor branch)", () => {
+    expect((src.match(/data-testid="dw-hour-bar"/g) ?? []).length).toBe(1);
+    expect(src.indexOf('data-testid="dw-hour-bar"')).toBeLessThan(src.indexOf("summary.hasEnoughData ?"));
   });
 
   it("every hour on the route is written in the UI language", () => {
     expect(src).not.toMatch(/\bhourLabel\(/);
     expect(src).toMatch(/formatHour\(\w+(\.\w+)?, uiLang\)/);
+  });
+
+  it("the route lands on the stop: day-windows scrolls Weekly report to Your day", () => {
+    expect(tab).toContain('if (activeTab !== "day-windows") return;');
+    expect(tab).toContain("scrollToSection(STOP.day)");
+    expect(read("components/layout/Shell.tsx")).toContain('const DayWindowsPanel = lazy(() => import("../tabs/WeeklyTab"));');
   });
 
   it("negative control: the shipped literals fail these matchers", () => {
@@ -143,13 +150,11 @@ describe("OBJ-TODAY-06 → B-TODAY-22 — one disclosure, no Scholar copy, no we
     expect((src.match(/<details\b/g) ?? []).length).toBe(1);
   });
 
-  it("the milestones door (the report's Milestones tile) still clears the 44 px floor", () => {
-    expect(src).toContain('onOpenMilestones={() => setActiveTab("milestones")}');
-    const glance = strip(read("components/weekly/WeekGlance.tsx"));
-    const at = glance.indexOf('data-testid="weekly-tile-milestones"');
+  it("the milestones door (the report's Milestones chip) is a button that clears the 44 px floor", () => {
+    const at = src.indexOf('data-testid="weekly-tile-milestones"');
     expect(at).toBeGreaterThan(-1);
-    expect(glance.slice(glance.lastIndexOf("<button", at), at)).toContain("wk-glance-door");
-    expect(read("components/weekly/weekGlance.css")).toMatch(/\.wk-glance-door \{[^}]*min-block-size: 44px;/);
+    expect(src.slice(src.lastIndexOf("<button", at), at + 200)).toContain('onClick={() => setActiveTab("milestones")}');
+    expect(read("components/weekly/v10/weeklyV10.css")).toMatch(/\.ds \.wk-q \{ min-height: 44px;/);
   });
 
   it("negative control: the shipped 17 px link markup has no floor", () => {
@@ -164,22 +169,25 @@ describe("OBJ-TODAY-06 → B-TODAY-22 — one disclosure, no Scholar copy, no we
  * and an am/pm hour baked into the Hebrew sentence.
  */
 describe("B-TODAY-06 — Day Windows: neutral ink, real counts, local hours", () => {
-  const raw = read("components/sections/DayWindowsPanel.tsx");
+  const raw = read("components/weekly/v10/YourDay.tsx");
   const src = strip(raw);
 
-  it("no --arbor-peach-* or --arbor-green-* in DayWindowsPanel.tsx", () => {
+  it("no --arbor-peach-* or --arbor-green-* in YourDay.tsx", () => {
     expect(raw).not.toMatch(/--arbor-peach-|--arbor-green-/);
   });
 
-  it("bars are single-ink with opacity ∝ count and an aria count per hour", () => {
-    expect(src).toMatch(/background: INK,/);
-    expect(src).toMatch(/opacity: max > 0 \? 0\.08 \+ 0\.92 \* \(c\.count \/ max\) : 0\.08/);
+  it("each hour draws one hard-moment token per count (a count, never a tone) and an aria count per hour", () => {
+    expect(src).toMatch(/Array\.from\(\{ length: Math\.min\(c\.count, CELL_MAX\) \}/);
     expect(src).toMatch(/aria-label=\{t\(c\.count === 1 \? "dw\.hour\.aria\.one" : "dw\.hour\.aria"/);
     expect(src).not.toMatch(/tone === "friction"|usually-calmer|dw\.label\.calmer/);
   });
 
   it("the pattern sentence takes the real count and a UI-language hour", () => {
     expect(src).toMatch(/t\("dw\.pattern", \{\s*n: summary\.patternObservation\.hardDays,\s*m: summary\.patternObservation\.daysLogged,\s*hour: formatHour\(summary\.patternObservation\.peakHour, uiLang\),/);
+  });
+
+  it("the guard 'tendencies, not predictions' is said once, on the stop", () => {
+    expect((src.match(/t\("dw\.guard"\)/g) ?? []).length).toBe(1);
   });
 
   it("EN + HE: 'On 3 of the 8 days…' and no am/pm in the Hebrew render", async () => {

@@ -34,29 +34,29 @@ describe("B-PLAY-17 · Learn has a Courses filter that lists the Masterclasses",
     expect(MASTERCLASSES).toHaveLength(10);
   });
 
-  it("Filter includes 'courses' and the pill sits in the filter row", () => {
+  it("Filter includes 'courses' and the view sits in the controls: Reads · Courses (v10 N-Library)", () => {
     expect(learn).toContain('type Filter = "all" | "saved" | "courses" | LearnCategoryId;');
-    const row = between(learn, 'data-module="learn-filters"', "LEARN_CATEGORIES.map");
-    expect(row).toContain('active={filter === "courses"}');
-    // W2-SHELLPLAY r1: the pill carries the Masterclasses tab's own name — one
-    // name for the two doors to the same ten courses.
-    expect(row).toContain('label={t("nav.tab.masterclasses")}');
+    const row = between(learn, 'data-module="learn-filters"', "const pickedStage = (");
+    expect(row).toContain('<div className="segr" role="group" aria-label={copy.libViewLabel}>');
+    expect(row).toContain('aria-pressed={filter === "courses"}');
+    expect(row).toContain('onClick={() => setFilter(filter === "courses" ? "all" : "courses")}>{t("learn.courses")}</button>');
   });
-
   it("the courses shelf rides the same age switch and opens the course reader inline", () => {
     expect(learn).toMatch(/filterByAge\(MASTERCLASSES, \(m\) => windowFromYears\(m\.ageMinYears, m\.ageMaxYears\), childMonths\)/);
     expect(learn).toContain("const courses = showAllAges ? MASTERCLASSES : coursesAgeVisible;");
     const shelf = between(learn, '{filter === "courses" ? (', ") : gridCards.length > 0 ? (");
     expect(shelf).toContain("courses.map((m, i) =>");
     expect(shelf).toContain("onClick={() => setOpenCourseId(m.id)}");
-    expect(shelf).toContain("onClick={toggleShowAllAges}");
-    // It replaces the reads shelf while selected — no second module stamp (learn budget 3 holds).
+    // One age switch drives both views (the controls row), keyed to the view shown.
+    const controls = between(learn, 'data-module="learn-filters"', "const pickedStage = (");
+    expect(controls).toContain("onClick={toggleShowAllAges}");
+    expect(controls).toContain('data-testid={filter === "courses" ? "agefilter-toggle-courses" : "agefilter-toggle-learn"}');
+    // It replaces the reads inside the ONE shelf module — no second stamp.
     expect(shelf).toContain('data-testid="learn-courses"');
     expect(shelf).not.toContain("data-module=");
     expect(learn).toContain("return <MasterclassReader m={openCourse} onBack={() => setOpenCourseId(null)} />;");
     expect(learn).toContain('import { MasterclassReader, loadDone as loadCourseDone } from "./Masterclasses";');
   });
-
   it("the reads list is empty under Courses (no mixed shelf)", () => {
     expect(learn).toContain('else if (filter === "courses") list = [];');
   });
@@ -112,32 +112,29 @@ describe("B-PLAY-17 · the course reader carries the Learn reader's actions", ()
 });
 
 describe("W2-SHELLPLAY r1 · Learn: the move is a card, above the phone fold", () => {
-  it("the stamp is on a card's open control — never the 6,000 px shelf section", () => {
+  it("the stamp is on a card's open control — never the shelf section", () => {
     expect(learn).not.toMatch(/<section[^>]*data-primary-move=/);
     expect(learn).toContain('const LEARN_MOVE_STAMP = { "data-primary-move": "open-learn-card" } as const;');
     expect(learn).toContain("{...(primary ? LEARN_MOVE_STAMP : {})}");
     const code = learn.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
     expect((code.match(/\bdata-primary-move\b(?!-)/g) || []).length).toBe(1);
-    // the first Picked card when the rail renders, else the first shelf card
-    expect(learn).toMatch(/featured\s+primary=\{i === 0\}/);
-    expect(learn).toContain("primary={!(browsing && featured.length > 0) && i === 0}");
+    // the first Picked card when the stage renders, else the first shelf card
+    expect(learn).toContain("card(c, i, i === 0, true)");
+    expect(learn).toContain("card(c, i, !(browsing && featured.length > 0) && i === 0)");
   });
-
   it("the Courses state stamps its first course row", () => {
     const shelf = between(learn, '{filter === "courses" ? (', ") : gridCards.length > 0 ? (");
     expect(shelf).toContain("{...(i === 0 ? LEARN_MOVE_STAMP : {})}");
   });
 
-  it("Picked is the first module under the header; the filters follow as ONE scrolling row below sm", () => {
-    const picked = learn.indexOf('data-module="learn-picked"');
-    const filters = learn.indexOf('data-module="learn-filters"');
-    expect(picked).toBeGreaterThan(-1);
-    expect(picked).toBeLessThan(filters);
-    const row = learn.slice(filters, learn.indexOf(">", filters));
-    expect(row).toContain("flex-nowrap overflow-x-auto");
-    expect(row).toContain("sm:flex-wrap");
-    // NEGATIVE CONTROL: the pre-fix row wrapped at every width
-    expect('<div data-module="learn-filters" className="flex flex-wrap gap-2"').not.toContain("flex-nowrap");
+  it("v10: the controls lead, then Picked for {name}; the controls wrap on a phone and the area tiles scroll sideways", () => {
+    const tree = learn.slice(learn.indexOf('<DsRoot composition={composition} className="stack fy-col lib-page"'));
+    expect(tree.indexOf("{controls}")).toBeGreaterThan(-1);
+    expect(tree.indexOf("{controls}")).toBeLessThan(tree.indexOf("{pickedStage}"));
+    expect(learn).toContain('<div data-module="learn-filters" className="lib-controls">');
+    const css = readFileSync(path.join(here, "..", "foryou", "foryou.css"), "utf8");
+    expect(css).toMatch(/\.ds \.lib-controls \{[^}]*flex-wrap: wrap/);
+    expect(css).toMatch(/\.ds-phone \.lib-areas \{[^}]*overflow-x: auto/);
   });
 });
 
@@ -148,8 +145,8 @@ describe("W2-SHELLPLAY r2 · learn design — one gradient on the reader's own m
     const done = between(master, 'data-testid="course-mark-complete"', "</button>");
     expect(done).not.toContain("--gradient-cta");
     expect(done).toContain('border: "1px solid var(--arbor-rule)"');
-    // exactly one gradient in the course reader file's CTA set: the pick CTA (hub) + Add to today (reader)
-    expect((master.match(/var\(--gradient-cta\)/g) || []).length).toBe(2);
+    // exactly one gradient in the file: Add to today (reader). v10: the hub's pick CTA is the design system's btn primary.
+    expect((master.match(/var\(--gradient-cta\)/g) || []).length).toBe(1);
     // NEGATIVE CONTROL: the pre-fix Mark complete is caught
     expect('<button onClick={onComplete} className="w-full" style={{ background: "var(--gradient-cta)" }}>').toContain("--gradient-cta");
   });

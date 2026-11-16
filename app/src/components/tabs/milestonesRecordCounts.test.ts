@@ -124,7 +124,9 @@ describe("P5-LOOP c2 r1 — no scoreboard at zero, one column at 1280, no watch-
   it("the Split renders only with its rail (under 2); otherwise ONE start-aligned 760 px column shared by the header, the map and the cards", () => {
     expect(MS).toContain("const hasRail = comparisonMonths < 24;");
     expect(MS).toMatch(/\{hasRail \? \(\s*<Split[\s\S]*right=\{shelfMap\}\s*\/>\s*\) : shelfMap\}/);
-    expect(MS).toContain('flex w-full min-w-0 flex-col gap-5 sm:gap-6 ${hasRail ? "mx-auto max-w-[1180px]" : "me-auto max-w-[760px]"}');
+    // v10.1 RE-PIN: the page is the design system's frame (guide, scene, rail); the Split still waits for its rail.
+    expect(MS).toContain('<DsRoot composition={composition} className="ms-v10 ms-list"');
+    expect(MS).toMatch(/\{hasRail \? \(\s*<Split/);
     expect(MS).not.toMatch(/max-w-\[1180px\] space-y-5 sm:space-y-6/);
   });
 
@@ -165,7 +167,7 @@ describe("NEXTLEVEL r1 — a quiet page", () => {
   });
 
   it("no DEVELOPMENT MAP eyebrow and no second disclaimer in the summary card", () => {
-    const card = MS.slice(MS.indexOf('data-testid="ms-map-count"') - 400, MS.indexOf("comparisonMonths < 24 && ("));
+    const card = MS.slice(MS.indexOf('data-testid="ms-map-count"') - 400, MS.indexOf("const desk = composition"));
     expect(card).not.toContain('t("ms.developmentMap")');
     expect(card).not.toContain('t("ms.snapshotNotScore")');
     expect(card).not.toMatch(/\buppercase\b/);
@@ -253,8 +255,8 @@ describe("P5-LOOP c2 r2 (B-LOOP-NEW-2e) — the map opens on the family's own wo
     expect(quote).toContain("<bdi>{shelfLabel(headerQuote.shelf, t)}</bdi>");
     expect(quote).toContain("shelfDayLabel(headerQuote.at, noticeNow");
     expect(quote).not.toMatch(/recordCounts|noticed|count/);
-    // the quote opens the map BEFORE the ONE muted line (latest · count · Change at its end)
-    expect(at).toBeLessThan(MS.indexOf("{latestLine}"));
+    // v10.1: the quote is one const (headerWords), defined before the tools that hold the ONE muted line
+    expect(at).toBeLessThan(MS.indexOf("const tools = ("));
     expect(MS).toMatch(/\{latestNoticed && !changingLatest && \(\s*<>\s*\{" · "\}\s*\{changeButton\}/);
     expect(MS).not.toContain('data-testid="ms-change-row"');
     // the quote's own entry never repeats as its shelf's epigraph

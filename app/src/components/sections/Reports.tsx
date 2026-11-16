@@ -15,6 +15,10 @@ import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
 import { fmtDay } from "../../lib/formatDate";
 import { requestOpenSettings } from "../layout/settingsBus";
 import { parentWords, recordStartIso, reportsLeadCounts } from "../../lib/recordCounts";
+import { DsRoot, Guide, Route, RouteSection, RouteHead, SideRail, Scene, LivingForm, StartHere } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
+import { careCopy } from "../care/v10/careV10Copy";
+import "../care/v10/care.css";
 export { reportsLeadCounts };
 
 /** W2-CAREPRO r2 / B-CAREPRO-NEW-2e — the device-local export-history slot the
@@ -142,6 +146,7 @@ export function useConsultPdf() {
  *  reviewed gate; the same documents are built in Consult behind that gate,
  *  so the page has ONE door there (through the B-CAREPRO-13 prefill seam). */
 export default function Reports() {
+  const composition = useComposition();
   const { childProfile, setActiveTab, requestConsultPrefill, behaviorLogs, milestones } = useArbor();
   const { t, uiLang } = useLanguage();
   const exportReport = useReportExport();
@@ -180,21 +185,54 @@ export default function Reports() {
     setActiveTab("consult");
   };
 
+  const c = careCopy(uiLang).records;
+  const desk = composition === "desk";
+  const stops = [
+    { id: "records-record", title: c.stopRecord, sub: startIso ? c.stopRecordSub(fmtDay(startIso, uiLang)) : undefined },
+    { id: "records-docs", title: c.stopDocs, sub: c.stopDocsSub },
+    { id: "records-kept", title: c.stopKept, sub: c.stopKeptSub },
+  ];
   return (
-    // W2-CAREPRO r2: a ~720 px reading measure at every width (it was a
-    // stretched 935 px phone column at 1280 with ~800 px of eye travel per row).
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[720px]">
-      <PageHeader eyebrow={t("elev.reports.eyebrow")} title={t("sec.reports.title")} subtitle={t("sec.reports.sub", { name: childProfile.name.split(" ")[0] })} />
-
+    /* Design v10.1 (Care › Records): a guide; 1 · the record as a scene (the
+       page's H1, the whole record's counts, the parent's own words and the
+       one Save); 2 · the documents you can save, and the one door to a visit
+       summary; 3 · your data, kept in Settings, and how a report opens. */
+    <DsRoot composition={composition} className="care-v10 care-records">
+      <div className="care-visits">
+      <Guide stops={stops} mini={!desk} label={careCopy(uiLang).onThisPage} className="care-guide" />
+      <Route composition={composition}>
+      <RouteSection id="records-record" n={1} on>
       {/* Item 11 (IA-02): `data-module` marks the top-level sibling module
           (what moduleBudget counts). W2-CAREPRO r1: `data-primary-move` sits
           on the ONE control that performs the move — the lead record's Save
           button — never on a display:contents wrapper around the catalogue. */}
-      {/* W2-CAREPRO r2: no "Exportable reports" card header — the H1 frames the
-          list; one plain surface (one layer of chrome). */}
-      <div data-module="reports-catalogue" className="rounded-[22px] p-5 md:p-6" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
+      <div data-module="reports-catalogue" className={desk ? "g12 care-records-row" : "stack care-records-row"}>
+        <Scene
+          field="care"
+          as="section"
+          aria-labelledby="reports-h1"
+          className={desk ? "x8 care-scene care-records-scene" : "care-scene care-records-scene"}
+          orbs={desk
+            ? [{ size: 420, left: -230, bottom: -280, opacity: 0.8 }, { size: 360, right: -180, top: -240, opacity: 0.6, b: true }]
+            : [{ size: 250, left: -150, bottom: -160, opacity: 0.8 }, { size: 220, right: -130, top: -140, opacity: 0.55, b: true }]}
+        >
+          <div className="line between care-scene-top">
+            <span className="gsec">
+              <span className="kicker">{startIso ? c.since(fmtDay(startIso, uiLang)) : t("elev.reports.eyebrow")}</span>
+              <StartHere>{t("elev.learnCare.brief.startHere")}</StartHere>
+            </span>
+          </div>
+          <div className="line care-scene-main">
+            {desk
+              ? <LivingForm src="/visuals/parent/v2/area-words-960.webp" width={150} height={128} crop={{ w: 200, h: 200, x: -24, y: -40 }} />
+              : <LivingForm src="/visuals/parent/v2/area-words-960.webp" width={72} height={50} crop={{ w: 90, h: 90, x: -9, y: -21 }} />}
+            <div className="stack care-scene-head">
+              <h1 id="reports-h1" className="hero care-h1">{t("sec.reports.title")}</h1>
+              <p className="care-sub">{t("sec.reports.sub", { name: first })}</p>
+            </div>
+          </div>
         {/* The lead record: Weekly Insight, with the page's one gradient. */}
-        <div className="flex flex-col gap-3 pb-4" style={{ borderBlockEnd: "1px solid var(--arbor-rule)" }}>
+        <div className="flex flex-col gap-3 care-records-lead">
           <div className="min-w-0">
             <h2 data-testid="reports-lead-title" className="t-md font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t("elev.reports.record.title", { name: first })}</h2>
             {/* B-CAREPRO-NEW-2e: one counts-only line from the record.
@@ -251,27 +289,12 @@ export default function Reports() {
             <Icon name="download" size={16} /> {t("elev.reports.lead.cta", { name: first })}
           </button>
         </div>
-        {/* B-CAREPRO-23: ONE door for a professional summary — Consult, where
-            the parent redacts, adds the reason and ticks the reviewed gate.
-            W2-CAREPRO r1: a quiet text row directly under the lead (above the
-            fold at 375), outside the stamped move, no card chrome. */}
-        <button
-          type="button"
-          onClick={openConsult}
-          data-testid="reports-consult-door"
-          className="w-full py-3 flex items-center gap-3 min-h-11 text-start transition hover:brightness-95"
-          style={{ borderBlockEnd: "1px solid var(--arbor-rule)" }}
-        >
-          <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="forum" size={18} /></span>
-          <span className="min-w-0 flex-1">
-            <span className="block t-sm font-bold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t("elev.reports.proDoor.title")}</span>
-            <span className="block t-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.proDoor.desc")}</span>
-          </span>
-          <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
-        </button>
+        </Scene>
+        <SideRail id="records-docs" n={2} title={c.stopDocs} titleId="records-docs-title" className={desk ? "x4 care-rail" : "care-rail"}>
+          <div className="rcard fit care-records-docs">
         {/* The other parent-record documents: one layer of chrome — hairline
             rows inside the one SectionCard, never cards inside a card. */}
-        <ul>
+        <ul className="care-records-list">
           {PARENT_RECORD_REPORTS.map((r) => (
             <li key={r.type} className="py-3 flex items-center gap-3" style={{ borderBlockEnd: "1px solid var(--arbor-rule)" }}>
               <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="description" size={18} /></span>
@@ -293,9 +316,36 @@ export default function Reports() {
               </button>
             </li>
           ))}
+            </ul>
+          </div>
+          <div className="rcard fit care-records-door">
+        {/* B-CAREPRO-23: ONE door for a professional summary — Consult, where
+            the parent redacts, adds the reason and ticks the reviewed gate.
+            W2-CAREPRO r1: a quiet text row directly under the lead (above the
+            fold at 375), outside the stamped move, no card chrome. */}
+        <button
+          type="button"
+          onClick={openConsult}
+          data-testid="reports-consult-door"
+          className="w-full py-3 flex items-center gap-3 min-h-11 text-start transition hover:brightness-95"
+          
+        >
+          <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="forum" size={18} /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block t-sm font-bold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t("elev.reports.proDoor.title")}</span>
+            <span className="block t-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.proDoor.desc")}</span>
+          </span>
+          <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
+        </button>
+          </div>
+        </SideRail>
+      </div>
+      </RouteSection>
+      <RouteSection id="records-kept" n={3} aria-labelledby="records-kept-title">
+        <RouteHead id="records-kept-title" title={c.stopKept} sub={c.stopKeptSub} />
           {/* W2-CAREPRO r2: the complete record keeps its ONE home (Settings >
               Your data, B-CAREPRO-35); this page carries the door to it. */}
-          <li>
+          <div className="vt care-records-data">
             <button
               type="button"
               data-testid="reports-your-data"
@@ -307,11 +357,11 @@ export default function Reports() {
               <span className="t-xs font-bold flex-shrink-0" style={{ color: "var(--arbor-clay)" }}>{t("elev.reports.yourData.cta")}</span>
               <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
             </button>
-          </li>
-        </ul>
+          </div>
+        <p className="small care-records-hint">{t("elev.reports.printHint")}</p>
+      </RouteSection>
+      </Route>
       </div>
-
-      <p className="text-xs text-center" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.printHint")}</p>
-    </motion.div>
+    </DsRoot>
   );
 }

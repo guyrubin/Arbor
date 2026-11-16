@@ -1,7 +1,8 @@
 /**
  * F-TALK-1 (review r1) — the weekly-context consent switch is a consent
- * control, so it stays reachable on #/memory while the approved ledger cannot
- * be read. The send path attaches the weekly counts by default (B-ASKJB-07),
+ * control, so it stays reachable on About (#/profile, where #/memory lands)
+ * while the approved ledger cannot be read. v10: the switch lives in About's
+ * section 3, outside the ledger altogether, so it renders in every state. The send path attaches the weekly counts by default (B-ASKJB-07),
  * so hiding the switch behind the ledger gate (a 429 included) would leave the
  * parent no way to turn them off. The weekly notice's "Change" lands on
  * #/memory?section=coach, which must find the switch in every ledger state.
@@ -50,7 +51,11 @@ vi.mock("../../hooks/useChildCollection", () => ({
   useChildCollection: () => ({ items: [], loaded: true, error: false, remote: false, upsert: vi.fn(), remove: vi.fn(), replaceAll: vi.fn() }),
 }));
 // The weekly notice's "Change" arrives with ?section=coach.
-vi.mock("../../hooks/useHashQuery", () => ({ useHashQuery: () => new URLSearchParams("section=coach"), goToRoute: vi.fn() }));
+vi.mock("../../hooks/useHashQuery", () => ({ useHashQuery: () => new URLSearchParams("section=coach"), useHashRouteKey: () => "profile", goToRoute: vi.fn() }));
+vi.mock("../profile/ProfileEditDrawer", () => ({ default: () => null }));
+vi.mock("../describe/TellArborMore", () => ({ default: () => null }));
+vi.mock("../sections/PhysicalGrowthCard", () => ({ default: () => null }));
+vi.mock("../ui/HeroAvatar", () => ({ useHeroAvatar: () => ({ name: "Alex", hasHero: true }) }));
 // Neighbours with their own tests; this file is about the contract's reach.
 vi.mock("../describe/KeptDescription", () => ({ default: () => null }));
 vi.mock("../sections/FirstsMoment", () => ({ default: () => null }));
@@ -58,7 +63,7 @@ vi.mock("../sections/ArborKnowsTile", () => ({ default: () => null }));
 vi.mock("../loop/ThingsSaid", () => ({ default: () => null }));
 vi.mock("../ui/ContentActionBar", () => ({ ContentWhyLine: () => null }));
 
-import ChildMemory from "../sections/ChildMemory";
+import ChildProfile from "../sections/ChildProfile";
 
 const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, "..", "..", rel), "utf8").replace(/\r\n/g, "\n");
 const esc = (s: string) =>
@@ -82,12 +87,12 @@ describe("F-TALK-1 · the weekly switch stays reachable while the ledger is unre
       it(`${lang} · ${kind}: the error card AND the switch render; the facts line says "can't be read", never "none"`, () => {
         h.lang = lang;
         h.errorKind = kind;
-        const html = renderToStaticMarkup(<ChildMemory />);
-        // The honest error card still leads (OWN-1) …
-        expect(html).toContain(esc(translate(lang, "err.memory.title", { name: "Alex" })));
+        const html = renderToStaticMarkup(<ChildProfile />);
+        // The honest error line still leads (OWN-1) …
+        expect(html).toContain(esc(translate(lang, "companion.about.memory.loadFailed")));
         // … the approved list stays suppressed …
-        expect(html).not.toContain(esc(translate(lang, "elev.childmem.approved.title")));
-        expect(html).not.toContain(esc(translate(lang, "elev.childmem.empty.title")));
+        expect(html).not.toContain('data-testid="about-memory-approved"');
+        expect(html).not.toContain(esc(translate(lang, "companion.about.memory.empty")));
         // … and the consent switch is there, a real switch, inside the section
         // ?section=coach scrolls to.
         expect(html).toContain('id="coach-data-contract"');
@@ -105,11 +110,11 @@ describe("F-TALK-1 · the weekly switch stays reachable while the ledger is unre
     }
   }
 
-  it("NEGATIVE CONTROL — a readable, empty ledger says 'none' and shows the list, with the same switch", () => {
+  it("NEGATIVE CONTROL — a readable, empty ledger says 'none' and shows the empty notebook, with the same switch", () => {
     h.error = false;
-    const html = renderToStaticMarkup(<ChildMemory />);
+    const html = renderToStaticMarkup(<ChildProfile />);
     expect(html).toContain(TOGGLE);
-    expect(html).toContain(esc(translate("en", "elev.childmem.approved.title")));
+    expect(html).toContain(esc(translate("en", "companion.about.memory.empty")));
     expect(html).toContain(esc(translate("en", "elev.memdisc.facts.none")));
     expect(html).not.toContain(esc(translate("en", "elev.memdisc.facts.unreadable")));
   });
@@ -135,16 +140,16 @@ describe("F-TALK-1 · ?section=coach focuses the switch, and Change goes there",
     expect(button).toContain("ref={switchRef}");
   });
 
-  it("ChildMemory mounts the contract after the ledger gate closes, inside the approved module", () => {
-    const approvedModule = memory.indexOf('<div data-module="memory-approved"');
-    const gate = memory.indexOf("{!memoryReviewError && (", approvedModule);
-    const mount = memory.indexOf("<CoachDataContract ledgerUnreadable={memoryReviewError} />");
-    expect(approvedModule).toBeGreaterThan(0);
-    expect(gate).toBeGreaterThan(approvedModule);
-    expect(mount).toBeGreaterThan(gate);
-    // The gate's fragment closes before the mount; the module closes after it.
-    expect(memory.lastIndexOf("</>", mount)).toBeGreaterThan(gate);
-    expect(memory.indexOf("</div>", mount)).toBeGreaterThan(mount);
+  it("About mounts the contract once, in the area panel's rail, outside the ledger and its gate", () => {
+    const about = read("components/sections/ChildProfile.tsx");
+    const told = about.indexOf("const rail = (");
+    const mount = about.indexOf("<CoachDataContract ledgerUnreadable={memoryReviewError} />");
+    expect(told).toBeGreaterThan(0);
+    expect(mount).toBeGreaterThan(told);
+    expect(about.match(/<CoachDataContract /g)).toHaveLength(1);
+    // nothing about the ledger read gates it, and the ledger no longer carries a copy
+    expect(about.slice(told - 200, mount)).not.toContain("!memoryReviewError &&");
+    expect(memory).not.toContain("<CoachDataContract");
   });
 
   it("the weekly notice's Change lands on #/memory?section=coach", () => {

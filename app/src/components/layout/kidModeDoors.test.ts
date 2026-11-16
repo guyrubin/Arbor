@@ -22,19 +22,24 @@ const rel = (f: string) => path.relative(src, f).split(path.sep).join("/");
 const using = (pattern: RegExp, list = files) => list.filter((f) => pattern.test(strip(readFileSync(f, "utf8")))).map(rel).sort();
 
 /** Chrome doors: the KidModeButton mounts. */
-export const CHROME_KID_DOORS = ["components/layout/MobileNav.tsx", "components/layout/Shell.tsx", "components/layout/Topbar.tsx"];
-/** Content doors: Together's hand-over and the worlds a parent hands over from inside a tool. */
+/** v10: the phone strip (Shell) and the desktop top bar; the Menu sheet no
+ *  longer repeats Kid Mode (the strip never scrolls away). */
+export const CHROME_KID_DOORS = ["components/layout/Shell.tsx", "components/layout/Topbar.tsx"];
+/** Content doors: Together › Play's hand-over (v10.1: PlayStudio, moved from
+ *  TogetherView), the Challenge plan's book on Stories (StoriesPlanBook, moved
+ *  from TogetherView's Stories filter) and the worlds a parent hands over from inside a tool. */
 export const CONTENT_KID_DOORS = [
-  "components/companion/TogetherView.tsx",
   "components/practice/AdventuresTab.tsx",
   "components/practice/FeelingsLabTab.tsx",
   "components/practice/SpeechCoachTab.tsx",
   "components/program/ProgramKidWorldDoor.tsx",
   "components/sections/AskSpecialist.tsx",
+  "components/together/PlayStudio.tsx",
+  "components/together/StoriesPlanBook.tsx",
 ];
 
 describe("B-SHELL-35 — the Kid Mode doors are a closed inventory", () => {
-  it("KidModeButton mounts only in the strip, the top bar and the More sheet header", () => {
+  it("KidModeButton mounts only in the phone strip and the top bar", () => {
     expect(using(/<KidModeButton\b/)).toEqual(CHROME_KID_DOORS);
   });
 

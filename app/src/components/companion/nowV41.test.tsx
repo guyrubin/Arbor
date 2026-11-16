@@ -34,9 +34,8 @@ vi.mock("../../content/selectCards", () => ({ availableHardMomentCards: () => (h
 vi.mock("../ui/HeroAvatar", () => ({ HeroAvatar: () => <span data-testid="hero" />, default: () => <span data-testid="hero" /> }));
 
 import NowRightNow, { TonightAsk, type RightNowTonight } from "./NowRightNow";
-import NowLearned, { learnedThisWeek } from "./NowLearned";
 import ThenAndNow, { thenAndNowPairs } from "./ThenAndNow";
-import { LEARNED_COPY, RIGHT_NOW_COPY, THEN_NOW_COPY, VISIT_DRAFT_COPY } from "./nowV41Copy";
+import { RIGHT_NOW_COPY, THEN_NOW_COPY, VISIT_DRAFT_COPY } from "./nowV41Copy";
 import { PRACTICES } from "../../content/practices";
 import { childScopedKey } from "../../lib/childLocalState";
 import { tonightQueue, type TonightQuestion } from "./rightNowTonight";
@@ -138,35 +137,17 @@ const proposal = (id: string, createdAt: string, status: "pending" | "approved" 
   memoryId: id, childId: "c1", status, fact: `Fact ${id}`, source: "chat", retention: "90 days", createdAt, latestEventId: `e-${id}`,
 });
 
-describe("Arbor learned this week", () => {
-  const now = at(12, 9, 0);
-
-  it("asks only this week's waiting proposals, newest first, at most two on Now", () => {
-    const items = [
-      proposal("old", at(1, 9, 0).toISOString()),
-      proposal("a", at(10, 9, 0).toISOString()),
-      proposal("b", at(11, 9, 0).toISOString()),
-      proposal("c", at(9, 9, 0).toISOString()),
-      proposal("kept", at(11, 8, 0).toISOString(), "approved"),
-      proposal("later", at(13, 9, 0).toISOString()),
-    ];
-    expect(learnedThisWeek(items, now.getTime()).map((m) => m.memoryId)).toEqual(["b", "a", "c"]);
-    reset();
-    harness.pending = items;
-    const html = render(<NowLearned now={now} />);
-    expect(html.match(/data-testid="now-learned-row"/g)).toHaveLength(2);
-    expect(html).toContain("Fact b");
-    expect(html).not.toContain("Fact old");
-    expect(html).toContain("That&#x27;s right");
-    expect(html).toContain("Not quite");
-  });
-
-  it("has no card when nothing waits this week", () => {
-    reset();
-    harness.pending = [proposal("old", at(1, 9, 0).toISOString())];
-    expect(render(<NowLearned now={now} />)).toBe("");
+describe("Arbor's notebook on Now (v10.1: a count and a link, never inline approval)", () => {
+  const read = (rel: string) => readFileSync(path.resolve(__dirname, rel), "utf8");
+  it("Now shows how many notes wait and links to About; it never decides a note itself", () => {
+    const view = read("NowView.tsx");
+    expect(view).toContain("<NowNotebookBadge");
+    expect(view).toContain('goToRoute("memory")');
+    expect(view).not.toContain("handleMemoryDecision");
+    expect(view).not.toContain("<NowLearned");
   });
 });
+
 
 describe("Then and now", () => {
   const now = at(12, 9, 0);
@@ -212,9 +193,8 @@ describe("v4.1 copy", () => {
   it("says the same things in English and Hebrew", () => {
     expect(keys(RIGHT_NOW_COPY.he)).toEqual(keys(RIGHT_NOW_COPY.en));
     expect(keys(RIGHT_NOW_COPY.he.hardHead)).toEqual(["afternoon", "evening", "midday", "morning"]);
-    expect(keys(LEARNED_COPY.he)).toEqual(keys(LEARNED_COPY.en));
     expect(keys(THEN_NOW_COPY.he)).toEqual(keys(THEN_NOW_COPY.en));
-    for (const value of [...Object.values(LEARNED_COPY.he), ...Object.values(RIGHT_NOW_COPY.he.hardHead), RIGHT_NOW_COPY.he.hardCta]) {
+    for (const value of [...Object.values(RIGHT_NOW_COPY.he.hardHead), RIGHT_NOW_COPY.he.hardCta]) {
       expect(value).toMatch(/[֐-׿]/);
     }
   });
@@ -222,10 +202,11 @@ describe("v4.1 copy", () => {
 
 describe("v4.1 wiring", () => {
   const read = (rel: string) => readFileSync(path.resolve(__dirname, rel), "utf8");
-  it("mounts Right now under the question row and the learned card under the plans", () => {
+  it("mounts Right now in the stage, after the lead and before the question chip (v10.1)", () => {
     const view = read("NowView.tsx");
-    expect(view.indexOf("<NowRightNow")).toBeGreaterThan(view.indexOf("<NowQuestionRow"));
-    expect(view.indexOf("<NowLearned")).toBeGreaterThan(view.indexOf("<PlansSection"));
+    const stage = view.slice(view.indexOf("const stageInner"));
+    expect(stage.indexOf("<NowRightNow")).toBeGreaterThan(stage.indexOf("{leadChain}"));
+    expect(stage.indexOf("<NowRightNow")).toBeLessThan(stage.indexOf("<NowQuestionRow"));
   });
   it("puts Then and now under the portrait cards on My child", () => {
     const portrait = read("ChildPortrait.tsx");
@@ -234,7 +215,12 @@ describe("v4.1 wiring", () => {
   it("lets Together open a routine by address and drops it on close", () => {
     const src = read("TogetherRoutines.tsx");
     expect(src).toContain('useHashQuery().get("routine")');
-    expect(src).toContain('routeHash("practice", { f: "routines" })');
+    // v10.1: the in-page filter is gone (Routines is all of #/practice), so
+    // closing replaces the address with the bare #/practice, never f=routines.
+    expect(src).toContain('window.history.replaceState(window.history.state, "", `#${routeHash("practice")}`)');
+    expect(src).not.toContain('f: "routines"');
+    // Once per child and routine.
+    expect(src).toContain("if (handledRoutine.current === key) return;");
   });
 });
 

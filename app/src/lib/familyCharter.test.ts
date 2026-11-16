@@ -336,9 +336,16 @@ describe("B-PLAY-21 · the tone preference beside the charter", () => {
 
   it("Family sits it inside the charter module (family budget 2 unchanged)", () => {
     // W2-SHELLPLAY r1: the rituals module leads now; the charter is the last module.
-    const charter = family.slice(family.indexOf('data-module="family-charter"'));
+    // v10.1: FamilyFormation also renders embedded in #/stories, where it drops
+    // its module stamps; standalone #/family stamps exactly these two.
+    const charterAt = family.indexOf('data-module={embedded ? undefined : "family-charter"}');
+    const ritualsAt = family.indexOf('data-module={embedded ? undefined : "family-rituals"}');
+    expect(charterAt).toBeGreaterThan(-1);
+    expect(ritualsAt).toBeGreaterThan(charterAt);
+    const charter = family.slice(charterAt, ritualsAt);
     expect(charter).toContain('data-testid="family-tone-row"');
-    expect((family.match(/data-module="/g) ?? []).length).toBe(2);
+    expect((family.match(/data-module=/g) ?? []).length).toBe(2);
+    expect((family.match(/data-module=\{embedded \? undefined : "family-(charter|rituals)"\}/g) ?? []).length).toBe(2);
   });
 
   it("the lens library stays in Ask: Family imports no scholar body content", () => {

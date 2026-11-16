@@ -1,28 +1,28 @@
 /**
- * v3 F-CHILD-3 — one of the eight areas on About {child} (#/profile).
+ * v3 F-CHILD-3 → v10.3 — the selected area on My child › About ("What you told
+ * Arbor" in the area panel; the index above picks the area).
  *
- * The card holds what the parent TOLD Arbor about this area: the newest line
- * in their own words with its source and day, or the question Arbor would ask
- * and "Not told yet". It never grades the area: no share, no fill, no colour
- * for how the child is doing (the tone is the AREA's). A proposal still
- * waiting for the parent sits inside its area in amber, "Proposed, confirm?",
- * and Confirm / No are the same handleMemoryDecision #/memory uses; the
- * receipt shows only after that write resolved, names the proposal it
- * answered, and clears itself (a timeout, or a different proposal arriving).
- * "Tell more" opens the ONE guided conversation on this area.
+ * It holds what the parent TOLD Arbor about this area: the languages (on
+ * Talking & understanding), the newest line in their own words with its day,
+ * the parent's own kept lines for this area (Edit / Remove, passed in as
+ * `kept`), or the question Arbor would ask. It never grades the area: no
+ * share, no fill, no colour for how the child is doing. A proposal placed in
+ * this area waits here, "Proposed, confirm?", and Confirm / No are the same
+ * handleMemoryDecision the notebook uses; the receipt shows only after that
+ * write resolved, names the proposal it answered, and clears itself. "Tell
+ * more" opens the ONE guided conversation on this area.
  */
 import React, { useEffect, useState } from "react";
-import Icon from "../ui/Icon";
 import { FreeText } from "../ui/FreeText";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { ASPECT_ICONS, ASPECT_TONE, isTold, receiptShows, RECEIPT_MS, type AspectFact, type AspectId, type AspectReceipt, type AspectState } from "../../lib/aboutAspects";
+import { isTold, receiptShows, RECEIPT_MS, type AspectFact, type AspectId, type AspectReceipt, type AspectState } from "../../lib/aboutAspects";
 import { confirmFact, isFactStale, type FactField } from "../../lib/factsAsOf";
 import { fmtDay } from "../../lib/formatDate";
 import { languageName } from "../../lib/languageName";
-import { DOMAIN_VARS } from "../../lib/tokens";
 import { goToRoute } from "../../hooks/useHashQuery";
 import { toParentWords } from "../../server/parentWordsScrub";
+import { aboutCopy } from "./aboutViewCopy";
 
 export interface AspectCardProps {
   state: AspectState;
@@ -32,9 +32,13 @@ export interface AspectCardProps {
   onTell: (id: AspectId) => void;
   /** "Still true? Edit" opens the profile drawer. */
   onEditDetails: () => void;
+  /** The parent's own kept lines for this area (KeptDescription rows). */
+  kept?: React.ReactNode;
+  /** Words those kept lines already show: the newest line is not printed twice. */
+  keptWords?: ReadonlySet<string>;
 }
 
-export default function AspectCard({ state, name, onTell, onEditDetails }: AspectCardProps) {
+export default function AspectCard({ state, name, onTell, onEditDetails, kept, keptWords }: AspectCardProps) {
   const { childProfile, updateChild, handleMemoryDecision, isMemoryUpdating } = useArbor();
   const { t, uiLang } = useLanguage();
   const [receipt, setReceipt] = useState<AspectReceipt | null>(null);
@@ -53,8 +57,8 @@ export default function AspectCard({ state, name, onTell, onEditDetails }: Aspec
   }, [pendingId, receipt]);
   const shown = receiptShows(receipt, pending) ? receipt : null;
   const told = isTold(state);
-  const tone = DOMAIN_VARS[ASPECT_TONE[id]];
   const titleId = `about-aspect-${id}-title`;
+  const copy = aboutCopy(uiLang);
 
   // The source line: "In your words · 10 Jun 2026" for what the parent said
   // or kept from the conversation, "Noted · …" for a kept memory.
@@ -70,17 +74,16 @@ export default function AspectCard({ state, name, onTell, onEditDetails }: Aspec
     const asOf = childProfile.factsAsOf?.[field];
     if (!asOf || !isFactStale(asOf, Date.now())) return null;
     return (
-      <p className="about-aspect-still" data-testid={`profile-fact-stale-${field}`}>
+      <span className="cn" role="group" data-testid={`profile-fact-stale-${field}`}>
         <span>{t("elev.profile.fact.stillTrue")}</span>
-        <button type="button" className="touch-target" data-testid={`profile-fact-keep-${field}`}
+        <button type="button" className="y touch-target" data-testid={`profile-fact-keep-${field}`}
           onClick={() => { void updateChild(childProfile.id, { factsAsOf: confirmFact(childProfile.factsAsOf, field, new Date().toISOString()) }); }}>
           {t("elev.profile.fact.keep")}
         </button>
-        <span aria-hidden="true">·</span>
         <button type="button" className="touch-target" data-testid={`profile-fact-edit-${field}`} onClick={onEditDetails}>
           {t("elev.profile.fact.edit")}
         </button>
-      </p>
+      </span>
     );
   };
 
@@ -96,87 +99,59 @@ export default function AspectCard({ state, name, onTell, onEditDetails }: Aspec
     setReceipt({ kind: ok ? (status === "approved" ? "kept" : "leftOut") : "failed", memoryId });
   };
 
-  const languageRow = (role: string, value: string) => (
-    <div>
-      <dt>{role}</dt>
-      <dd><bdi>{languageName(value, t)}</bdi></dd>
-    </div>
-  );
+  const languageSegments = languages ? [
+    languages.home && `${languageName(languages.home, t)} · ${t("elev.growthTruth.lang.role.home")}`,
+    languages.second && `${languageName(languages.second, t)} · ${t("elev.growthTruth.lang.role.second")}`,
+    languages.others.length > 0 && `${t("companion.about.langAlso")}: ${languages.others.map((l) => languageName(l, t)).join(", ")}`,
+  ].filter(Boolean) as string[] : [];
+  // The newest line is printed here unless it is one of the parent's kept lines below (those carry Edit / Remove).
+  const knownHere = known && !keptWords?.has(known.words.trim().toLowerCase()) ? known : null;
 
   return (
-    <article className="about-aspect" data-testid={`about-aspect-${id}`} data-aspect={id} data-told={told ? "" : undefined}
-      aria-labelledby={titleId}
-      style={{ "--aspect-ink": tone.ink, "--aspect-soft": tone.soft } as React.CSSProperties}>
-      <h3 id={titleId} className="about-aspect-head">
-        <span className="about-aspect-glyph" aria-hidden="true"><Icon name={ASPECT_ICONS[id]} size={22} /></span>
-        <span className="min-w-0">{t(`companion.about.aspect.${id}`)}</span>
-      </h3>
-
+    <div className="about-area-told" data-testid={`about-aspect-${id}`} data-aspect={id} data-told={told ? "" : undefined} aria-labelledby={titleId}>
+      <h3 className="lab" id={titleId}>{copy.youToldArbor}</h3>
       {languages && (
-        <>
-          <dl className="about-aspect-langs" data-testid="about-lang-roles">
-            {languages.home && languageRow(t("elev.growthTruth.lang.role.home"), languages.home)}
-            {languages.second && languageRow(t("elev.growthTruth.lang.role.second"), languages.second)}
-            {languages.others.length > 0 && (
-              <div>
-                <dt>{t("companion.about.langAlso")}</dt>
-                <dd>{languages.others.map((l, i) => <React.Fragment key={`${l}-${i}`}>{i > 0 && " · "}<bdi>{languageName(l, t)}</bdi></React.Fragment>)}</dd>
-              </div>
-            )}
-          </dl>
-          <p className="about-aspect-src" data-testid="about-aspect-src">{srcLine("profile", languages.date)}</p>
+        <div className="tn">
+          <span className="t">
+            <span data-testid="about-lang-roles">{languageSegments.map((seg, i) => <React.Fragment key={i}>{i > 0 && " · "}<bdi>{seg}</bdi></React.Fragment>)}</span>
+            <small data-testid="about-aspect-src">{srcLine("profile", languages.date)}</small>
+          </span>
           {stillTrue("languages")}
-        </>
-      )}
-
-      {known && (
-        <>
-          <p className="about-aspect-quote" data-testid="about-aspect-quote"><FreeText text={known.words} /></p>
-          <p className="about-aspect-src" data-testid="about-aspect-src">{srcLine(known.source, known.date)}</p>
-          {stillTrue(known.factField)}
-        </>
-      )}
-
-      {!told && (
-        <>
-          <p className="about-aspect-ask" data-testid="about-aspect-ask">{t(`companion.about.ask.${id}`, { name })}</p>
-          <p className="about-aspect-src">{t("companion.milestones.notTold")}</p>
-        </>
-      )}
-
-      {pending && (
-        <div className="about-aspect-pending" data-testid="about-aspect-pending">
-          <p>
-            <Icon name="help" size={16} />
-            <span className="min-w-0"><strong>{t("companion.about.pending")}</strong><FreeText text={toParentWords(pending.fact)} /></span>
-          </p>
-          <div className="about-aspect-pending-actions">
-            <button type="button" className="touch-target" data-testid="about-pending-confirm" disabled={busy} onClick={() => { void decide("approved"); }}>
-              <Icon name="check" size={16} />{t("companion.about.confirm")}
-            </button>
-            <button type="button" className="touch-target" data-testid="about-pending-dismiss" disabled={busy} onClick={() => { void decide("rejected"); }}>
-              <Icon name="close" size={16} />{t("companion.about.dismiss")}
-            </button>
-          </div>
         </div>
       )}
-      {shown && (
-        <p className="about-aspect-receipt" role="status" data-testid="about-aspect-receipt">
-          {t(`companion.about.${shown.kind}`)}
-        </p>
+      {knownHere && (
+        <div className="tn">
+          <span className="t">
+            <span className="a8-quote" data-testid="about-aspect-quote"><FreeText text={knownHere.words} /></span>
+            <small data-testid="about-aspect-src">{srcLine(knownHere.source, knownHere.date)}</small>
+          </span>
+          {stillTrue(knownHere.factField)}
+        </div>
       )}
-
-      <div className="about-aspect-actions">
+      {kept}
+      {!told && (
+        <p className="about-area-ask" data-testid="about-aspect-ask">{t("companion.milestones.notTold")} · {t(`companion.about.ask.${id}`, { name })}</p>
+      )}
+      {pending && (
+        <div className="tn ai" data-testid="about-aspect-pending">
+          <span className="t"><strong>{t("companion.about.pending")}</strong><FreeText text={toParentWords(pending.fact)} /></span>
+          <span className="cn" role="group">
+            <button type="button" className="y touch-target" data-testid="about-pending-confirm" disabled={busy} onClick={() => { void decide("approved"); }}>{t("companion.about.confirm")}</button>
+            <button type="button" className="touch-target" data-testid="about-pending-dismiss" disabled={busy} onClick={() => { void decide("rejected"); }}>{t("companion.about.dismiss")}</button>
+          </span>
+        </div>
+      )}
+      {shown && <p className="about-area-receipt" role="status" data-testid="about-aspect-receipt">{t(`companion.about.${shown.kind}`)}</p>}
+      <div className="line about-area-acts">
+        <button type="button" className="mbtn t touch-target" data-testid={`about-aspect-tell-${id}`} onClick={() => onTell(id)}>
+          {told ? t("companion.about.tellMore") : t("companion.milestones.tell")}
+        </button>
         {id === "lang" && (
-          <button type="button" className="about-link touch-target" data-testid="about-lang-moments"
-            onClick={() => goToRoute("timeline", { view: "areas", area: "talking" })}>
-            {t("companion.about.moments")}<Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
+          <button type="button" className="mbtn touch-target" data-testid="about-lang-moments" onClick={() => goToRoute("timeline", { view: "areas", area: "talking" })}>
+            {t("companion.about.moments")}
           </button>
         )}
-        <button type="button" className="about-link touch-target" data-testid={`about-aspect-tell-${id}`} onClick={() => onTell(id)}>
-          <Icon name="add_comment" size={16} />{told ? t("companion.about.tellMore") : t("companion.milestones.tell")}
-        </button>
       </div>
-    </article>
+    </div>
   );
 }

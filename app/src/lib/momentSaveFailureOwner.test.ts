@@ -19,17 +19,20 @@ import path from "node:path";
 const SRC = path.resolve(__dirname, "..");
 
 const OWNS_FAILURE = [
-  "components/companion/TogetherView.tsx",
   "components/kidmode/KidExitRecap.tsx",
   "components/overview/QuickLogModal.tsx",
   // B-PROG-16: the handback keeps the draft and shows its own "didn't save" line.
   "components/program/ProgramBookHandback.tsx",
+  // v10.1: Together's "We already tried it" (inline alert) moved from TogetherView to Together › Play.
+  "components/together/PlayStudio.tsx",
 ];
 const SEAM_TOASTS = [
   // Tonight's "What happened?" on Now (parity 9 Oct): TonightFlow has no inline error.
   "components/companion/useNowLoop.ts",
-  // B-BOOK-78: the plan lead's "keep tonight in the journal" tap has no inline error (NowPlanLead only counts nights).
+  // B-BOOK-78: the plan lead's "keep tonight in the journal" tap has no inline error (NowChallengePlan only counts nights).
   "components/companion/NowView.tsx",
+  // v10: the same "keep tonight in the journal" tap on the Challenge plan's page (Now › Plans).
+  "components/tabs/PlansTab.tsx",
   "components/kidmode/SneakHandBackCard.tsx",
   "components/tabs/BedtimeStoriesTab.tsx",
 ];

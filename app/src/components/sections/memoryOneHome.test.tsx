@@ -77,8 +77,9 @@ describe("B-CAREPRO-38 · every door lands on About", () => {
     expect(about).toContain('const [ledgerOpen, toggleLedger] = useLedgerArrival(ledgerAsked, ledgerSection);');
     expect(about).toContain('hashQuery.get("section") ?? (factId ? `fact:${factId}` : null)');
     expect(about).not.toMatch(/\[[^\]]*\bhashQuery\]\)/);
-    expect(about).toContain("<AboutMemoryCard areas={aspects} ledgerOpen={ledgerOpen} onLedger={toggleLedger} />");
-    expect(about).toContain("<ChildMemoryLedger hidePendingIds={askedHere} focusFactId={factId} />");
+    // v10.3: the door is "Everything Arbor remembers" in the child row; the ledger opens under it.
+    expect(about).toContain("onLedger={toggleLedger}");
+    expect(about).toContain("<ChildMemoryLedger hidePendingIds={askedHere} focusFactId={factId} keepsakesOpen={keepsakesOpen} />");
     expect(about).toContain("id={LEDGER_ID}");
   });
 });
@@ -98,8 +99,8 @@ describe("B-CAREPRO-38 · the embedded ledger: approve, correct and forget on Ab
       expect(html).toContain("Loves the moon story");
       expect(html).toContain('data-testid="memory-edit-open"');
       expect(html).toContain(translate(locale, "elev.childmem.action.forget"));
-      // the coach's view (consent switch) stays reachable here
-      expect(html).toContain('data-testid="coach-contract-panel"');
+      // v10: the coach's view (consent switch) is About's own tile now, not the ledger's
+      expect(html).not.toContain('data-testid="coach-contract-panel"');
       // About owns the page: no second header, no second move, no undemoted module
       // (the retired "Child memory" page title — its key sec.mem.title is deleted, so the words are pinned here)
       expect(html).not.toContain(locale === "he" ? "זיכרון הילד" : "Child memory");

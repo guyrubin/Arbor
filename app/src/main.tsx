@@ -7,6 +7,7 @@ import './components/kidmode/proofVisit';
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import './index.css';
+import './design/ds.css';
 import {track, setGlobalProps} from './lib/analytics';
 import {captureAttribution, attributionProps} from './lib/attribution';
 import {captureTrialEntry, trialLanguage} from './lib/trialEntry';

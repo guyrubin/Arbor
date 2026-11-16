@@ -6,7 +6,11 @@ import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { backTargetFor, homeForTab, isCompanionHome, placeForTab } from "../../lib/companionPlaces";
 import { useHashQuery } from "../../hooks/useHashQuery";
-import { sectionForTab, pillRowFor, pillLitTab, isPlaceReading, isCompactHiddenTool } from "../../lib/navigation";
+import { sectionForTab, pillRowFor, litPillFor } from "../../lib/navigation";
+import { useComposition } from "../../design/useComposition";
+import { NewTag } from "../../design/primitives";
+import { useNowClock } from "../companion/useNowClock";
+import { fmtShellNow } from "../../lib/formatDate";
 import { contractFor } from "../../lib/surfaceContract";
 import Sidebar from "./Sidebar";
 import CompanionWorkspace from "../companion/CompanionWorkspace";
@@ -97,8 +101,6 @@ const AdventuresTab = lazy(() => import("../practice/AdventuresTab"));
 // IA v3: consolidation hubs (merge confusable/duplicate leaves).
 const DevelopmentTab = lazy(() => import("../companion/ChildPortrait"));
 const ProgramPage = lazy(() => import("../program/ProgramPage"));
-// B-ASKJB-36: `?view=kept` — My child with the kept reader open (a mode).
-const KeptReaderMode = lazy(() => import("../kept/KeptThingsPage").then((m) => ({ default: m.KeptReaderMode })));
 const FamilyTopicSheet = lazy(() => import("../companion/FamilyTopicSheet"));
 const DailyPlayTab = lazy(() => import("../tabs/DailyPlayTab"));
 // IA fix (AR-IA): the parent #/practice route hosts the PARENT-register
@@ -111,10 +113,11 @@ const ConsultTab = lazy(() => import("../tabs/ConsultTab"));
 const AttributionTab = lazy(() => import("../tabs/AttributionTab"));
 
 // AP-051: Day Windows detail panel — calm/trickier visualization over existing JITAI (read-only).
-const DayWindowsPanel = lazy(() => import("../sections/DayWindowsPanel"));
+const DayWindowsPanel = lazy(() => import("../tabs/WeeklyTab")); // v10: day-windows opens Weekly report at "Your day at a glance"
 
 // AP-058: Smart Reminders settings dashboard — parent preferences over existing JITAI.
 const SmartRemindersPanel = lazy(() => import("../sections/SmartRemindersPanel"));
+const FamilyPlanView = lazy(() => import("../familyPlan/FamilyPlanView"));
 
 // AP-060: The Science — parent-facing trust/source-transparency page (static editorial, no child data).
 const SciencePage = lazy(() => import("../tabs/SciencePage"));
@@ -187,6 +190,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   "school-brief": ConsultTab,
   "bedtime-stories": BedtimeStoriesTab, // AP-057: Bedtime Stories (day-rooted, generate-and-discard, escalation-gated)
   routines: RoutinesTab, // Wireframe: Ready-made Routines library (Growth › Routines)
+  "family-plan": FamilyPlanView, // v10.1: Now › Family plan
 };
 
 /**
@@ -255,7 +259,12 @@ export default function Shell() {
   // (#/learn → For you, the parent). A home's own route has no Back.
   // v4: a pill of the place's own row (Weekly report, Moments, About) is a
   // reading of the place, not a level below it, so it has no Back either.
-  const back = isCompanionHome(activeTab) || isPlaceReading(activeTab) ? null : backTargetFor(activeTab);
+  // v10: every home has a pill row, and the breadcrumb (top bar) names where
+  // you are, so Back appears only where there is no row to move along.
+  const pillRow = pillRowFor(section, activeTab);
+  const back = pillRow.length > 1 || isCompanionHome(activeTab) ? null : backTargetFor(activeTab);
+  const composition = useComposition();
+  const now = useNowClock();
   // v4: the About pill names the child ("About Mia"); without a name it is "About".
   const childFirstName = childProfile.name?.trim().split(/\s+/)[0] ?? "";
 
@@ -269,6 +278,23 @@ export default function Shell() {
   // NOT in ArborContext.setActiveTab (which would also fire for non-visual
   // state churn and would scroll-jump under the still-visible outgoing tab).
   const mainRef = useRef<HTMLElement>(null);
+  // v10: the pill row is sticky at the top of <main>, the scroll container. A
+  // section scrolled into view (a guide stop, a shelf, a jump) would land under
+  // it, so <main> keeps a top scroll padding as tall as the row (measured, so
+  // a wrapped desktop row or the phone row is covered too).
+  const shellRowRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const row = shellRowRef.current;
+    const main = mainRef.current;
+    if (!main) return;
+    if (!row) { main.style.scrollPaddingTop = ""; return; }
+    const sync = () => { main.style.scrollPaddingTop = `${Math.ceil(row.getBoundingClientRect().height) + 8}px`; };
+    sync();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(sync);
+    ro.observe(row);
+    return () => { ro.disconnect(); main.style.scrollPaddingTop = ""; };
+  });
   // Child changes retire the entire route boundary immediately. There is no
   // outgoing-child exit to await, so reset its scroll before the new paint.
   const scrollChildRef = useRef(childProfile.id);
@@ -456,79 +482,49 @@ export default function Shell() {
           {back && <button data-testid="secondary-place-back" onClick={() => setActiveTab(back.tab)} className="min-h-11 inline-flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: "var(--arbor-muted)" }}>
             <Icon name="arrow_back" size={18} className="rtl:-scale-x-100"/>{uiLang === "he" ? back.he : back.en}
           </button>}
-          {/* UC-6 hub contextual pill row — the hub's FULL capability set: its
-              primary/hub view + sub-tabs + its own folded tools (no global TOOLS
-              drawer any more). Navy active fill / white inactive with a hairline
-              border, sticky to the top of the scroll region. The first pill of
-              each section is its Overview/hub. Renders only when there is more
-              than one capability. v3 IA-02: a route whose home is Now or My
-              child wears its place's row (PLACE_PILLS), on the place itself
-              and on every leaf; Together's first level is its in-page filter
-              row, so it has none. Now's first pill is the place, named as such. */}
-          {pillRowFor(section, activeTab).length > 1 && (
-            <div
-              role="tablist"
-              data-testid="secondary-sibling-nav"
-              aria-label={t("nav.pills.aria", { place: pillRowHomeName(activeTab, uiLang) })}
-              className="sticky z-20 flex gap-2 overflow-x-auto mb-4 -mx-[14px] px-[14px] pb-2 no-scrollbar"
-              style={{
-                background: "var(--arbor-paper)",
-                /* IA-07: the row scrolled silently. A pill past either edge
-                   looked like the end of the row, so the fourth Today pill was
-                   invisible in both directions. The mask fades the first and
-                   last 14 px of the band, which is the affordance — no overlay
-                   element, so the sticky box above is untouched, and it is
-                   symmetric, so it reads the same under dir=rtl. Snapping
-                   makes the scroll land ON a pill instead of between two. */
-                maskImage: PILL_EDGE_FADE,
-                WebkitMaskImage: PILL_EDGE_FADE,
-                /* W2-SHELLPLAY r2 (masterclasses design): the fade is 14 px, so the
-                   band carries 14 px of inline padding (pulled back out with the
-                   same negative margin, so pills keep their x) and snaps/scrolls
-                   with a 14 px scroll-padding: at rest NO pill sits under the
-                   fade — the active navy pill's leading edge was washed in every
-                   cell, even at 1280 where the row does not overflow. The fade
-                   now only ever covers a pill that is actually scrolled past. */
-                scrollPaddingInline: "14px",
-                scrollSnapType: "x mandatory",
-                /* Stick to the scrollport edge without pulling the row over
-                   the preceding Back link in normal document flow. */
-                top: 0,
-              }}
-            >
-              {pillRowFor(section, activeTab).map((it) => {
-                // v4: a leaf route lights the reading it belongs to (PILL_LIT).
-                // B-ASKJB-36 (critic r1): the Kept reader is a mode of My child,
-                // not its Milestones reading — no pill reads selected there.
-                const on = it.tab === pillLitTab(activeTab) && !(activeTab === "development" && query.get("view") === "kept");
-                return (
-                  <button
-                    key={it.tab}
-                    role="tab"
-                    aria-selected={on}
-                    ref={on ? activePillRef : undefined}
-                    onClick={() => { void selectionHaptic(); setActiveTab(it.tab); }}
-                    /* v3 F-SHELL-2 (critic ruling 13): label-only pills, 700
-                       weight: 12 px with 13 px inline padding on the phone, 12.5 px
-                       with 16 px from lg. msIcon stays in the data (search and
-                       the More sheet read it); the 44 px floor beats the mock's
-                       shorter pill at every width. */
-                    className={`${!on && isCompactHiddenTool(section, it.tab) ? "hidden md:inline-flex" : "inline-flex"} items-center rounded-full px-[13px] lg:px-4 py-2 min-h-[44px] text-[12px] lg:text-[12.5px] font-bold whitespace-nowrap transition flex-shrink-0`}
-                    style={{
-                      scrollSnapAlign: "start",
-                      ...(on
-                        ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" }
-                        : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }),
-                    }}
-                  >
-                    {it.tab === "overview"
-                      ? (uiLang === "he" ? placeForTab(it.tab).he : placeForTab(it.tab).en)
-                      : it.tab === "profile" && childFirstName
-                        ? t("nav.pill.profile.named", { name: childFirstName })
-                        : t(it.labelKey ?? "nav.tab." + it.tab)}
-                  </button>
-                );
-              })}
+          {/* v10 (design system v10.1): the home's pill row, the same row on
+              every route of that home (lib/navigation HOME_PILLS). A folded
+              route lights the pill it belongs to (litPillFor). Desktop wraps
+              and carries the day and time at its end; the phone row scrolls
+              sideways and keeps the lit pill in view (IA-07). Sticky to the
+              top of the scrollport; the mask only fades a pill that is
+              actually scrolled past (14 px of scroll-padding). */}
+          {pillRow.length > 1 && (
+            <div className="ds ds-shellrow" data-composition={composition} ref={shellRowRef}>
+              <div
+                role="tablist"
+                data-testid="secondary-sibling-nav"
+                aria-label={t("nav.pills.aria", { place: pillRowHomeName(activeTab, uiLang) })}
+                className="pills ds-pillrow no-scrollbar"
+                style={composition === "phone" ? { maskImage: PILL_EDGE_FADE, WebkitMaskImage: PILL_EDGE_FADE } : undefined}
+              >
+                {pillRow.map((it) => {
+                  // B-ASKJB-36 (critic r1): the Kept reader is a mode of My child,
+                  // not its Milestones reading — no pill reads selected there.
+                  const on = it.tab === litPillFor(activeTab);
+                  return (
+                    <button
+                      key={it.tab}
+                      type="button"
+                      role="tab"
+                      aria-selected={on}
+                      ref={on ? activePillRef : undefined}
+                      onClick={() => { void selectionHaptic(); setActiveTab(it.tab); }}
+                      className={on ? "pill on" : "pill"}
+                    >
+                      {it.tab === "overview"
+                        ? (uiLang === "he" ? placeForTab(it.tab).he : placeForTab(it.tab).en)
+                        : it.tab === "profile" && childFirstName
+                          ? t("nav.pill.profile.named", { name: childFirstName })
+                          : t(it.labelKey ?? "nav.tab." + it.tab)}
+                      {(it.tab as string) === "family-plan" && <NewTag>{t("nav.pill.new")}</NewTag>}
+                    </button>
+                  );
+                })}
+              </div>
+              {composition === "desk" && (
+                <span className="small ds-shellrow-when" data-testid="shell-now">{fmtShellNow(now, uiLang)}</span>
+              )}
             </div>
           )}
 
@@ -621,7 +617,7 @@ export default function Shell() {
                         so the coach arm renders nothing of its own. */}
                     {activeTab === "coach" || activeTab === "scholar" ? null
                       : activeTab === "overview" ? <OverviewTab topic={activeFamilyTopic} onTopicCreate={createTopic} onTopicOpen={openTopic} onTalkOpen={(prompt) => requestCompanionConversation({ prompt, source: "now" })}/>
-                      : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : query.get("view") === "kept" ? <KeptReaderMode/> : <DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) => { if (childId === childProfile.id) requestCompanionConversation({ prompt, source: "child-portrait" }); }}/>)
+                      : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : <DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) => { if (childId === childProfile.id) requestCompanionConversation({ prompt, source: "child-portrait" }); }}/>)
                       : <ActiveTabComponent/>}
                   </SurfaceFrame>
                 </ErrorBoundary>
