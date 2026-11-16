@@ -31,7 +31,6 @@ const en = {
   chainLabel: (name: string) => `From your choice to what ${name} did`,
   // Routines
   stopRoutines: "Ready-made routines",
-  routinesTitle: "Ready-made routines, by time of day",
   bandMorning: "Morning",
   bandAfternoon: "Afternoon",
   bandEvening: "Evening",
@@ -110,7 +109,6 @@ const he: typeof en = {
   arborSuggests: "Arbor מציע",
   chainLabel: (_name: string) => "מהבחירה שלכם ועד מה שנעשה ביחד",
   stopRoutines: "שגרות מוכנות",
-  routinesTitle: "שגרות מוכנות, לפי שעות היום",
   bandMorning: "בוקר",
   bandAfternoon: "צהריים",
   bandEvening: "ערב",

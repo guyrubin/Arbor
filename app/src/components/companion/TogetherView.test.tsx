@@ -11,7 +11,10 @@ const state = vi.hoisted(() => ({
   events: [] as Record<string, unknown>[], actionPlans: [] as ActionPlan[], startRoutinePlan: vi.fn(), togetherDid: vi.fn(),
   topic: null as null | { id: string; title: string }, openSheet: vi.fn(), openSettings: vi.fn(),
   compact: false, surfaces: [] as { kind: "modal" | "sheet"; props: Record<string, any> }[],
+  composition: "phone" as "phone" | "desk", scrolled: [] as string[],
 }));
+// The server snapshot is the phone; a test may ask for the desk composition.
+vi.mock("../../design/useComposition", () => ({ useComposition: () => state.composition }));
 vi.mock("react", async (original) => {
   const real = await original<typeof import("react")>();
   // Play's preview state ({ childId, value }) starts on the world or idea a test names.
@@ -75,7 +78,7 @@ import type { Composition } from "../../design/useComposition";
 beforeEach(() => {
   vi.clearAllMocks(); state.childProfile = { id: "child-a", name: "Noa", age: 4, interests: [], activeGoals: [] };
   state.previewWorld = null; state.previewIdea = null; state.lang = "en"; state.loaded = true; state.failed = false; state.pin = null; state.buttons = []; state.topic = null; state.compact = false; state.surfaces = [];
-  state.events = []; state.actionPlans = [];
+  state.events = []; state.actionPlans = []; state.composition = "phone"; state.scrolled = [];
   const data = new Map<string, string>();
   vi.stubGlobal("sessionStorage", { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value) });
 });
@@ -111,11 +114,27 @@ describe("Together › Routines, the page (v10.1)", () => {
     expect(html).toContain(`dir="${lang === "he" ? "rtl" : "ltr"}"`);
     expect(html).toContain('data-testid="together-routines-screen"');
     expect(html).toContain(`<nav class="guide mini ds-guide-scroll" aria-label="${esc(copy.onThisPage)}">`);
-    expect([...html.matchAll(/<a class="gstop[^"]*" href="#([a-z]+)"/g)].map((m) => m[1])).toEqual(["routines", "doors"]);
+    // V77 re-pin: the guide's stops are the two sections, Time of day (#times) and Ready-made routines (#routines).
+    expect([...html.matchAll(/<a class="gstop[^"]*" href="#([a-z]+)"/g)].map((m) => m[1])).toEqual(["times", "routines"]);
+    // The mini (phone) guide names the stops without their subs (the desk guide's subs are pinned below).
+    expect(html).toContain(`<span class="gnum">1</span><span>${esc(copy.stopTimes)}</span>`);
+    expect(html).toContain(`<span class="gnum soft">2</span><span>${esc(translate(lang, "companion.together-view.routines"))}</span>`);
     expect(html).toContain(`aria-label="${esc(copy.chainLabel("Noa"))}" data-testid="together-chain"`);
-    const order = ['class="guide', 'data-testid="together-chain"', 'id="routines" data-module="together-routines"', 'id="doors"', 'data-module="together-doors"'].map((mark) => html.indexOf(mark));
-    expect(order.every((at) => at >= 0)).toBe(true); expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(html).toContain(esc(copy.routinesTitle));
+    // Guide → #times (kicker, the one h1, the figure, the index of the four bands, the chain) → #routines (the module, then the rail: read guide, doors).
+    const order = [
+      'class="guide', '<section class="rsec" id="times"', `<span class="kicker">${esc(copy.routinesKicker)}</span>`, '<h1 class="hero">', '<div class="fig md">',
+      'data-testid="together-index-morning"', 'data-testid="together-chain"', '<section class="rsec" id="routines"', '<div data-module="together-routines">',
+      `<h3 class="h3">${esc(copy.howToRead)}</h3>`, '<section class="vt" id="doors" data-module="together-doors"',
+    ].map((mark) => html.indexOf(mark));
+    expect(order.every((at) => at >= 0), JSON.stringify(order)).toBe(true); expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(html).toContain(`<span class="next1">${esc(copy.startHere)}</span>`);
+    expect(html.match(/<h1\b/g)).toHaveLength(1);
+    expect(html).toContain(`<h1 class="hero"><span id="`);
+    expect(html).toContain(`${esc(translate(lang, "companion.together-view.routines-title"))}</span></h1>`);
+    expect(html).toContain(`<section class="rsec" id="routines" aria-label="${esc(copy.byTimeOfDay)}">`);
+    // NEGATIVE CONTROL: doors are no longer a guide stop, and the v10.1 module section with its id is gone.
+    expect(html).not.toContain('href="#doors"');
+    expect(html).not.toContain('id="routines" data-module="together-routines"');
     expect(html).toContain(`<h2 class="h3" id="`);
     expect(html).toContain(esc(copy.doorsTitle));
     expect(html).toContain(esc(copy.doorsSub("Noa")));
@@ -127,6 +146,32 @@ describe("Together › Routines, the page (v10.1)", () => {
     // stories and away-idea modules; the gate card and the games live on Play.
     for (const gone of ["together-invitation", "together-cta", "choose-together", "companion-filter-row", "together-games", "together-stories", "together-offscreen", "together-gate", "together-start-playing", "together-world-count", "<details"]) expect(html, gone).not.toContain(gone);
     expect(html).not.toContain(esc(translate(lang, "companion.together-view.kicker")));
+  });
+
+  it.each(["phone", "desk"] as const)("the index of the four times of day: counts, the part of the day marked, a tap scrolls to that band and writes nothing (%s)", (composition) => {
+    state.composition = composition;
+    vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date(2026, 10, 12, 19, 0));
+    try {
+      const html = render();
+      const bands = ["morning", "afternoon", "evening", "anytime"] as const;
+      const index = bands.map((band) => button(`together-index-${band}`)!);
+      expect(index.every(Boolean)).toBe(true);
+      expect(html).toContain(`<div class="mci${composition === "phone" ? " m" : ""}" style="--n:4" role="group" aria-label="${esc(TOGETHER_COPY.en.timesOfDay)}">`);
+      // 19:00 is the evening: only that band is pressed.
+      expect(index.map((b) => b["aria-pressed"])).toEqual([false, false, true, false]);
+      // Each tile's count is the number of routine cards drawn in its band (counts, never a share).
+      for (const band of bands) {
+        const section = html.slice(html.indexOf(`id="band-${band}"`), html.indexOf("</section>", html.indexOf(`id="band-${band}"`)));
+        const cards = (section.match(/data-routine-tile="|data-testid="together-fits"/g) ?? []).length;
+        expect(html, band).toMatch(new RegExp(`data-testid="together-index-${band}"[^>]*>[\\s\\S]*?<b class="arbor-num">${cards}</b>`));
+      }
+      vi.stubGlobal("document", { getElementById: (id: string) => ({ scrollIntoView: () => state.scrolled.push(id) }) });
+      for (const b of index) b.onClick();
+      expect(state.scrolled).toEqual(bands.map((band) => `band-${band}`));
+      expect(state.setActiveTab).not.toHaveBeenCalled(); expect(state.startRoutinePlan).not.toHaveBeenCalled(); expect(state.saveMoment).not.toHaveBeenCalled();
+      // The index tiles are not the route's move.
+      expect(index.every((b) => !("data-primary-move" in b))).toBe(true);
+    } finally { vi.useRealTimers(); }
   });
 
   it("old filter addresses land on Play or Stories; Routines (or no filter) stays", () => {
@@ -171,7 +216,14 @@ describe("Together › Routines, the page (v10.1)", () => {
     const html = render();
     const line = html.slice(html.indexOf('data-testid="together-done-week"'), html.indexOf("</button>", html.indexOf('data-testid="together-done-week"')));
     expect(line).toContain(esc(copy.doneTitle));
-    expect(line).toContain(`<b class="strong">${esc(copy.doneSteps(2))}</b> ${esc(copy.doneDays(new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-US", { weekday: "short", day: "numeric" }).format(new Date())))}`);
+    // V77: the tile is .tgdone (.m on a phone), in the rail after the read guide and before the doors.
+    expect(html).toContain('<section class="tgdone m" data-testid="together-done-week">');
+    const at = (mark: string) => html.indexOf(mark);
+    expect(at(`<h3 class="h3">${esc(copy.howToRead)}</h3>`)).toBeLessThan(at('data-testid="together-done-week"'));
+    expect(at('data-testid="together-done-week"')).toBeLessThan(at('data-module="together-doors"'));
+    expect(line).toContain(`<b class="strong" style="color:var(--ink)">${esc(copy.doneSteps(2))}</b> ${esc(copy.doneDays(new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-US", { weekday: "short", day: "numeric" }).format(new Date())))}`);
+    // The days are plan tokens labelled with the day, one per day ticked.
+    expect(line.match(/class="tok plan/g)).toHaveLength(1);
     expect(line.replace(/<[^>]+>/g, " ")).not.toMatch(/%|\bof\b|מתוך/);
     // The line's one link goes to the week (the MoreLink button closes the line's markup).
     expect(line).toMatch(new RegExp(`<button type="button" class="ds-link">${esc(translate(lang, "nav.tab.weekly"))}`));
@@ -231,16 +283,62 @@ describe("FEAT-05 — the question line on Together opens the question sheet", (
 describe("v10.1 — Together › Routines on a phone", () => {
   it("the phone composition: the mini guide, the stacked chain, a one-column map and the doors stacked", () => {
     const html = render();
-    expect(html).toContain('class="ds ds-phone together-v10"');
+    // V77: the Routines root carries the shared frame (.ds-mychild) as well as together-v10.
+    expect(html).toContain('class="ds ds-phone ds-mychild together-v10"');
+    expect(html).toContain('class="guide mini ds-guide-scroll"');
+    expect(html).toContain('<div class="mch m">');
+    expect(html).toContain('<div class="mci m" style="--n:4"');
     expect(html).toContain('class="chn m"');
-    expect(html).toContain('class="dm dm-pm"');
+    expect(html).toContain('class="tg-stack dm-pm"');
+    // The phone stacks: the .mcst card with the routines, then the read guide, then the doors (no desk row or rail).
+    const routines = html.slice(html.indexOf('<section class="rsec" id="routines"'));
+    expect(routines).toMatch(/^<section class="rsec" id="routines"[^>]*><span class="rstop"[^>]*>2<\/span><div class="tg-stack" style="gap:12px"><div class="mcst" style="padding:14px 12px"><div data-module="together-routines">/);
+    expect(routines.indexOf('<div data-module="together-routines">')).toBeLessThan(routines.indexOf('<section class="vt">'));
+    expect(routines.indexOf('<section class="vt">')).toBeLessThan(routines.indexOf('data-module="together-doors"'));
+    for (const desk of ['class="rowa"', 'class="stg"', 'class="rlc"', "together-stage", '<div class="mch">']) expect(html, desk).not.toContain(desk);
+    // NEGATIVE CONTROL: the v10.1 map wrapper and root class are gone.
+    expect(html).not.toContain('class="dm dm-pm"');
+    expect(html).not.toContain('class="ds ds-phone together-v10"');
     const doors = html.slice(html.indexOf('data-module="together-doors"'));
     expect(doors).not.toContain('class="g12"');
     const css = readFileSync(new URL("../together/together.css", import.meta.url), "utf8");
-    expect(css).toMatch(/\.ds \.dm-pm \.dm-g\{grid-template-columns:minmax\(0,1fr\)/);
+    expect(css).toMatch(/\.ds \.dm-pm \.tgg\{grid-template-columns:minmax\(0,1fr\)/);
+    expect(css).toMatch(/\.ds \.dm-pm \.tgg\.two \{ grid-template-columns: minmax\(0, 1fr\); \}/);
+    expect(css).not.toMatch(/\.dm-g\b/);
     expect(css).toMatch(/\.ds \.dm-pm \.dm-door\{[^}]*grid-template-columns:52px minmax\(0,1fr\) auto/);
     // The doors stay real buttons with a visible focus ring.
     expect(css).toMatch(/\.ds button\.dm-door:focus-visible/);
+  });
+
+  it.each(["en", "he"] as const)("the desk composition: the header band, then the stage (every routine, by time of day) beside the rail (guide, this week, doors) (%s)", (lang) => {
+    state.lang = lang; state.composition = "desk";
+    const copy = TOGETHER_COPY[lang];
+    const calm = routineToPlan(routineById("calm"), lang, "Noa", Date.now() - 86_400_000);
+    state.actionPlans = [toggleRoutineStep(calm, routineDayKey(new Date()), 0)];
+    const html = render();
+    expect(html).toContain('class="ds ds-desk ds-mychild together-v10"');
+    expect(html).not.toContain("ds-phone");
+    // The desk guide: Time of day and Ready-made routines, each with its sub.
+    expect(html).toContain(`<nav class="guide" aria-label="${esc(copy.onThisPage)}">`);
+    expect([...html.matchAll(/<a class="gstop[^"]*" href="#([a-z]+)"/g)].map((m) => m[1])).toEqual(["times", "routines"]);
+    for (const text of [copy.stopTimes, copy.stopTimesSub, copy.stopRoutines, copy.stopRoutinesV77Sub]) expect(html, text).toContain(esc(text));
+    expect(html).toContain(`<div class="mch"><div class="mcl"><span class="gsec"><span class="kicker">${esc(copy.routinesKicker)}</span><span class="next1">${esc(copy.startHere)}</span></span><h1 class="hero">`);
+    expect(html).toContain('<div class="mci" style="--n:4"');
+    // The stage: one StageCard titled "By time of day" holding the single routines module (desk map, no phone wrapper).
+    const desk = html.slice(html.indexOf('<div class="rowa">'));
+    expect(desk).toMatch(new RegExp(`^<div class="rowa"><div class="stg"><section class="mcst together-stage"><div class="mcsh"><i class="tg" aria-hidden="true">[\\s\\S]*?</i><h2 class="tt">${esc(copy.byTimeOfDay)}</h2></div><div data-module="together-routines"><div class="tg-stack" style="gap:14px" data-testid="together-routines"`));
+    expect(html.match(/data-module="together-routines"/g)).toHaveLength(1);
+    expect(html).not.toContain("dm-pm");
+    // The rail: the read guide, Done together this week (desk tile, not .m), then the doors.
+    const rail = html.slice(html.indexOf('<div class="rlc"'));
+    const marks = [`<h3 class="h3">${esc(copy.howToRead)}</h3>`, '<section class="tgdone" data-testid="together-done-week">', '<section class="vt" id="doors" data-module="together-doors"'].map((m) => rail.indexOf(m));
+    expect(marks.every((m) => m >= 0), JSON.stringify(marks)).toBe(true); expect([...marks].sort((a, b) => a - b)).toEqual(marks);
+    expect(rail.indexOf('data-module="together-routines"')).toBe(-1);
+    // Two modules, and the move is only on the routine cards.
+    expect(html.match(/data-module=/g)).toHaveLength(2);
+    expect(tiles(html)).toBeGreaterThan(0);
+    expect(html.match(/data-primary-move="start-routine"/g)).toHaveLength(tiles(html));
+    expect(html.match(/data-primary-move=/g)).toHaveLength(tiles(html));
   });
 });
 
