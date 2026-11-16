@@ -6,7 +6,12 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { useToast } from "../../context/ToastContext";
 import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
-import { PageHeader, SectionCard, cardCls, TrustSafetyBar } from "../ui/kit";
+import { SectionCard, cardCls, TrustSafetyBar } from "../ui/kit";
+// v10.1: the Development check page in the design system's frame (the list's third section links here).
+import { DsRoot, Guide, Route, RouteSection, Scene } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
+import { SCREENING_V10_COPY } from "./screeningV10Copy";
+import "../companion/milestonesV10.css";
 import { AGE_BANDS, bandForAgeMonths, scoreScreening, type ScreenAnswer, type ScreeningResult } from "../../lib/screening";
 import { domainLabel } from "../../lib/domains/registry";
 import { comparisonAgeMonths, correctedAge } from "../../lib/milestoneData";
@@ -54,6 +59,7 @@ export default function Screening() {
   const { childProfile, behaviorLogs, milestones } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
+  const composition = useComposition();
   const first = childProfile.name.split(" ")[0];
 
   // Passive developmental-monitoring layer (Mission M8): derived from the child's
@@ -99,35 +105,33 @@ export default function Screening() {
     return parts.join(" ");
   };
 
-  return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[920px]">
-      {/* B-OCCL-03: flush — the page's space-y-6 is the gap; mb-7 stacked on
-          it pushed the check down 28 px at 375. */}
-      <PageHeader
-        flush
-        eyebrow={t("screen.eyebrow")}
-        title={t("sec.screen.title")}
-        subtitle={t("sec.screen.sub", { name: first })}
-      />
-
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
-          marks a top-level sibling module (what moduleBudget counts);
-          `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route — B-OCCL-03: the flow's
-          start / submit button (ScreeningFlow stamped), not this wrapper. */}
-      {/* B-GROWTH-18: the check comes FIRST — "Start the check" was below the
-          fold at 390 px under the monitoring card. The monitoring card is the
-          second module, unchanged. */}
+  const desk = composition === "desk";
+  const copy = SCREENING_V10_COPY[uiLang === "he" ? "he" : "en"];
+  const stops = [
+    { id: "check-run", title: t("sec.screen.title"), sub: copy.checkSub },
+    { id: "check-notes", title: t("monitor.title") },
+  ];
+  // v10.1: the check (scene and flow) is the stage; what the notes are showing
+  // is the rail on a desk and the second section on a phone. One tree.
+  // Item 11 (IA-02): the surface contract reaches the DOM. `data-module` marks
+  // a top-level sibling module (what moduleBudget counts); `data-primary-move`
+  // marks the ONE control that performs the move surfaceContract.ts declares
+  // for this route — B-OCCL-03: the flow's start / submit button (ScreeningFlow
+  // stamped), not this wrapper. B-GROWTH-18: the check comes FIRST; the
+  // monitoring card is the second module.
+  const checkModule = (
+    <div className="ck-flow">
       <div data-module="screening-check" style={{ display: "contents" }}>
         <ScreeningFlow stamped />
       </div>
-
-      {/* B-OCCL-03: the non-diagnostic note sits UNDER the check (it stood
-          between the header and the check, ~150 px at 375, and pushed "Start
-          the check" under the capture dock). The intro still says "no score
-          and no labels" and the basis line still says "Non-diagnostic". */}
+      {/* B-OCCL-03: the non-diagnostic note sits UNDER the check. The intro
+          still says "no score and no labels" and the basis line still says
+          "Non-diagnostic". */}
       <TrustSafetyBar note={t("screen.trustNote")} />
-
+    </div>
+  );
+  const monitoringModule = (
+    <div className="ck-notes" id="check-notes">
       {/* Passive developmental-monitoring layer — surveillance, never a test or diagnosis. */}
       <div data-module="screening-monitoring" style={{ display: "contents" }}>
       <SectionCard
@@ -178,7 +182,33 @@ export default function Screening() {
         )}
       </SectionCard>
       </div>
-    </motion.div>
+    </div>
+  );
+
+  return (
+    <DsRoot composition={composition} className="ms-v10 ck-v10" dir={uiLang === "he" ? "rtl" : "ltr"}>
+      <Guide stops={stops} label={copy.onThisPage} mini={!desk} />
+      <Route composition={composition}>
+        <RouteSection id="check-run" n={1} on aria-labelledby="check-title">
+          <div className="ms-row">
+            <div className="stg">
+              <Scene field="child" orbs={desk ? [{ size: 280, right: -90, top: -120 }] : [{ size: 160, right: -70, top: -80 }]}>
+                <header className="ms-head">
+                  <div className="ms-head-text">
+                    <p className="kicker">{t("screen.eyebrow")}</p>
+                    <h1 className="title" id="check-title">{t("sec.screen.title")}</h1>
+                    <p className="ms-sub">{t("sec.screen.sub", { name: first })}</p>
+                  </div>
+                </header>
+                {checkModule}
+              </Scene>
+            </div>
+            {desk && <div className="rlc">{monitoringModule}</div>}
+          </div>
+        </RouteSection>
+        {!desk && <RouteSection id="check-notes-section" n={2}>{monitoringModule}</RouteSection>}
+      </Route>
+    </DsRoot>
   );
 }
 

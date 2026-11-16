@@ -11,7 +11,6 @@ import { focusGoal, focusNextStep, goalLabel } from "../../practice/goalBuilder"
 import TellArborMore from "../describe/TellArborMore";
 import { Icon } from "../ui/Icon";
 import { latestKeptMoment, latestStrength } from "./milestonesModel";
-import "./developmentMap.css";
 
 /**
  * v3 F-CHILD-1 — the three portrait cards under the Milestones header.
@@ -33,8 +32,9 @@ import "./developmentMap.css";
  * A card with nothing to show says "Not told yet" and offers "Tell Arbor"
  * (the describe conversation for a strength, the capture sheet for a
  * moment). Nothing here is generated: every line is the parent's own words.
- * The first two cards are wide-screen only (CSS); the goal card stays on a
- * phone, because the goal picker has no other door there.
+ * v10.1: the three are object cards (glyph, label, the words, one action),
+ * shown at every width; the page lays them out (a row on a desk, a stack on a
+ * phone) and adds the check beside them.
  */
 export interface PortraitCardsProps {
   /** The record the page already loaded (useObservationRecord), read, never refetched. */
@@ -59,8 +59,8 @@ export default function PortraitCards({ sources, onEditGoal }: PortraitCardsProp
   const next = useMemo(() => focusNextStep(goal, actionPlans ?? []), [goal, actionPlans]);
   const notTold = (testId: string, onTell: () => void) => (
     <>
-      <p className="portrait-card-empty">{t("companion.milestones.notTold")}</p>
-      <button type="button" className="portrait-card-tell" data-testid={testId} onClick={onTell}>
+      <p className="ol ms-obj-empty">{t("companion.milestones.notTold")}</p>
+      <button type="button" className="oa" data-testid={testId} onClick={onTell}>
         <Icon name="add_comment" size={16} />
         <span>{t("companion.milestones.tell")}</span>
       </button>
@@ -68,50 +68,48 @@ export default function PortraitCards({ sources, onEditGoal }: PortraitCardsProp
   );
   return (
     <div className="portrait-cards" data-testid="portrait-cards">
-      <article className="portrait-card portrait-card-wide" data-testid="portrait-card-strength">
-        <p className="portrait-card-label">
-          <Icon name="auto_awesome" size={18} />
-          <span>{t("companion.milestones.card.strength")}</span>
-        </p>
+      <article className="obj" data-testid="portrait-card-strength">
+        <div className="oh">
+          <span className="ogi" aria-hidden="true"><Icon name="auto_awesome" size={17} /></span>
+          <h3 className="ok">{t("companion.milestones.card.strength")}</h3>
+        </div>
         {strength ? (
           <>
-            <p className="portrait-card-words" dir="auto">{strength.text}</p>
-            <p className="portrait-card-src">
+            <p className="ol" dir="auto">{strength.text}</p>
+            <p className="ms-obj-src">
               {strength.at ? t("companion.milestones.srcWords", { date: fmtDay(strength.at, uiLang) }) : t("companion.milestones.srcWordsUndated")}
             </p>
           </>
         ) : notTold("portrait-card-strength-tell", () => setTelling(true))}
       </article>
-      <article className="portrait-card portrait-card-wide" data-testid="portrait-card-kept">
-        <p className="portrait-card-label">
-          <Icon name="edit_note" size={18} />
-          <span>{t("companion.milestones.card.kept")}</span>
-        </p>
+      <article className="obj" data-testid="portrait-card-kept">
+        <div className="oh">
+          <span className="ogi" aria-hidden="true"><Icon name="edit_note" size={17} /></span>
+          <h3 className="ok">{t("companion.milestones.card.kept")}</h3>
+        </div>
         {kept ? (
           <>
-            <p className="portrait-card-words" dir="auto">{kept.text}</p>
-            {kept.at && <p className="portrait-card-src">{t("companion.milestones.srcParent", { date: fmtDay(kept.at, uiLang) })}</p>}
+            <p className="ol" dir="auto">{kept.text}</p>
+            {kept.at && <p className="ms-obj-src">{t("companion.milestones.srcParent", { date: fmtDay(kept.at, uiLang) })}</p>}
             {/* B-ASKJB-36 (critic r1): the card opens the Kept reader, where
                 every kept moment sits by month. */}
-            <a className="portrait-card-tell" data-testid="portrait-card-kept-open" href={`#${routeHash("development", { view: "kept" })}`}>
+            <a className="oa" data-testid="portrait-card-kept-open" href={`#${routeHash("development", { view: "kept" })}`}>
               {t("kept.view")}
-              <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
+              <Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />
             </a>
           </>
         ) : notTold("portrait-card-kept-tell", () => openCaptureSheet())}
       </article>
-      <button type="button" className="portrait-card portrait-card-goal" data-testid="portrait-goals-edit" onClick={onEditGoal}>
-        <span className="portrait-card-label">
-          <Icon name="bookmark" size={18} />
-          <span>{t("elev.goal.profile.title")}</span>
+      {/* The whole goal card is the goal picker's door, as production's was. */}
+      <button type="button" className="obj ms-goal" data-testid="portrait-goals-edit" onClick={onEditGoal}>
+        <span className="oh">
+          <span className="ogi" aria-hidden="true"><Icon name="bookmark" size={17} /></span>
+          <span className="ok">{t("elev.goal.profile.title")}</span>
         </span>
-        <span className="portrait-card-words">{goal ? <bdi>{goalLabel(goal, t)}</bdi> : t("elev.goal.profile.empty")}</span>
-        {next && <span className="portrait-card-next" data-testid="portrait-goal-next">{t("companion.milestones.goalNext", { step: next })}</span>}
-        {goal && (
-          <span className="portrait-card-src" data-testid="portrait-goal-src">
-            {t("companion.milestones.srcGoal")} · <span className="portrait-card-change">{t("elev.goal.profile.edit")}</span>
-          </span>
-        )}
+        <span className="ol">{goal ? <bdi>{goalLabel(goal, t)}</bdi> : t("elev.goal.profile.empty")}</span>
+        {next && <span className="ms-obj-src portrait-card-next" data-testid="portrait-goal-next">{t("companion.milestones.goalNext", { step: next })}</span>}
+        {goal && <span className="ms-obj-src" data-testid="portrait-goal-src">{t("companion.milestones.srcGoal")}</span>}
+        {goal && <span className="oa b">{t("elev.goal.profile.edit")}</span>}
       </button>
       {telling && <TellArborMore onClose={() => setTelling(false)} />}
     </div>

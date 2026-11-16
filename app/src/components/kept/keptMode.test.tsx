@@ -139,7 +139,9 @@ describe("B-ASKJB-36 · critic r1: the way in, the pill row and the filter chips
     expect(cards).toContain('data-testid="portrait-card-kept-open" href={`#${routeHash("development", { view: "kept" })}`}');
     expect(splitHash("#/development?view=kept")).toMatchObject({ key: "development" });
     for (const lang of ["en", "he"] as const) expect(translate(lang, "kept.view")).not.toBe("kept.view");
-    expect(read("components/companion/developmentMap.css")).toMatch(/\.portrait-card-tell \{[^}]*min-block-size: var\(--touch-min\)/);
+    // v10.1: the link is the kept card's object action (.obj .oa), 44 px tall.
+    expect(cards).toContain('<a className="oa" data-testid="portrait-card-kept-open"');
+    expect(read("components/companion/milestonesV10.css")).toMatch(/\.ds \.obj \.oa \{[^}]*min-height: 44px/);
   });
 
   it("no place pill reads selected in the Kept reader", () => {

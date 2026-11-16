@@ -133,10 +133,11 @@ describe("VIS-07 · My child: the first-time Milestones page (v3 F-CHILD-1)", ()
     state.lang = lang;
     const html = renderToStaticMarkup(<ChildPortrait />);
     const cards = branch(html, /<div class="portrait-cards" data-testid="portrait-cards">[\s\S]*?<\/button><\/div>/);
-    const rows = branch(html, /<ul class="dev-map-rows" role="list">[\s\S]*?<\/ul>/);
+    // v10.1: the eight areas are territories on the map (a list), not rows.
+    const rows = branch(html, /<ul class="atlas[^"]*" role="list">[\s\S]*?<\/ul>/);
     expect(occurrences(readText(cards), t("companion.milestones.notTold"))).toBe(2);
     expect(readText(cards)).toContain(t("elev.goal.profile.empty"));
-    expect(occurrences(rows, 'data-testid="dev-map-row"')).toBe(8);
+    expect(occurrences(rows, 'data-testid="dev-map-tile"')).toBe(8);
     expect(occurrences(readText(rows), t("companion.devMap.none"))).toBe(8);
     expect(html).not.toContain('data-testid="dev-map-seen"');
     expect(html).not.toContain('data-testid="dev-map-last"');

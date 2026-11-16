@@ -61,11 +61,16 @@ function mountedPortraitProof(duplicateKey: boolean) {
       saveChildGoal: async (id, goal) => { writes++; child = { ...child, activeGoals: goals.selectFocusGoal(child.activeGoals, goal, "2026-10-10T00:00:00Z") }; refresh(); return "saved"; },
     }) }, "./GoalFocusLine": { goalGlyph: () => "" },
   }).default;
-  const Watch = () => {
+  // v10.1: MilestoneAreas hands the page its parts through a render prop; the
+  // synthetic sibling keeps its identity and still renders what the page builds.
+  const Watch = ({ children }) => {
     const [identity] = React.useState(() => ++watchMounts);
     React.useEffect(() => () => { watchDisposals++; }, []);
-    return React.createElement("button", { "data-testid": "synthetic-watch", "data-identity": identity });
+    return React.createElement(React.Fragment, null,
+      React.createElement("button", { "data-testid": "synthetic-watch", "data-identity": identity }),
+      children({ map: null, check: null, area: null, next: null, openDomain: "talking" }));
   };
+  const pass = ({ children }) => React.createElement("div", null, children);
   const copy = new Proxy({}, { get: (_, key) => String(key) });
   const Portrait = load("src/components/companion/ChildPortrait.tsx", {
     "../practice/GoalBuilderModal": { default: Picker },
@@ -87,6 +92,12 @@ function mountedPortraitProof(duplicateKey: boolean) {
     "./ChildDoors": { default: empty, useChildPhoneLayout: () => false },
     // v4.1: Then and now (its own render test: nowV41.test) and the page clock.
     "./ThenAndNow": { default: empty }, "./useNowClock": { useNowClock: () => new Date("2026-10-10T12:00:00Z") },
+    // v10.1: the design primitives and the composition read (layout only).
+    "../../design/primitives": { DsRoot: pass, Fig: empty, Guide: empty, MoreLink: empty, Route: pass, RouteHead: empty, RouteSection: pass, Scene: pass, StartHere: pass, scrollToSection() {} },
+    "../../design/useComposition": { useComposition: () => "desk" },
+    "../../lib/domains/icons": { DOMAIN_ICONS: {} }, "../../lib/routes": { routeHash: () => "" },
+    "../ui/Icon": { Icon: empty }, "./domainTone": { domainToneStyle: () => ({}), seenTotals: () => ({ seen: 0, areas: 0 }) },
+    "./MilestonesViewSwitch": { default: empty }, "./milestonesV10Copy": { milestonesV10Copy: () => copy }, "./milestonesV10.css": {},
   }, source => duplicateKey ? source.replace('key={`goal-picker:${childProfile.id}`}', 'key={childProfile.id}') : source).default;
   function Shell() {
     const [route, changeRoute] = React.useState("development"), [, changeVersion] = React.useState(0);
