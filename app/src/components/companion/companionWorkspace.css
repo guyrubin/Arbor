@@ -20,7 +20,7 @@
    area around a quiet tinted pill. Text only — never a count, dot or state.
    Shared with TogetherView, which imports this file for it. */
 .companion-topic-chip { display: inline-flex; align-items: center; flex: 0 1 auto; min-inline-size: 44px; max-inline-size: 100%; min-block-size: 44px; padding: 0; border: 0; border-radius: var(--r-lg); background: transparent; color: var(--arbor-clay-deep); font-size: 13px; font-weight: 600; line-height: 1.35; text-align: start; cursor: pointer; }
-.companion-topic-chip-pill { display: inline-flex; align-items: center; gap: 6px; min-inline-size: 0; max-inline-size: 100%; min-block-size: 30px; padding-block: 4px; padding-inline: 9px 12px; border-radius: 15px; background: var(--arbor-clay-dim); transition: background-color 160ms; }
+.companion-topic-chip-pill { display: inline-flex; align-items: center; gap: 6px; min-inline-size: 0; max-inline-size: 100%; min-block-size: 30px; padding-block: 4px; padding-inline: 9px 12px; border-radius: 14px; background: var(--arbor-clay-dim); transition: background-color 160ms; }
 .companion-topic-chip:hover .companion-topic-chip-pill { background: color-mix(in srgb, var(--arbor-clay) 20%, transparent); }
 .companion-topic-chip-icon { color: var(--arbor-clay-deep); }
 .companion-topic-chip-text { min-inline-size: 0; overflow-wrap: anywhere; }
@@ -110,9 +110,16 @@
 @media (min-width: 1024px) {
   .companion-workspace.is-expanded .companion-conversation { inset-inline: max(24px, calc((100vw - 1120px) / 2)); }
   .companion-workspace.is-expanded .coach-thread-col { max-width: 1040px; }
+  /* V77: Talk carries the same header band as Now and My child (the one
+     sapphire scene field, coral orb at the far corner); the conversation sits under it. */
+  .companion-workspace.is-expanded .companion-conversation-heading { position: relative; isolation: isolate; overflow: hidden; margin: 16px 24px 4px; padding: 24px 28px; gap: 16px; border-radius: 22px; border-block-end: 0; background: var(--arbor-k-moment-w); box-shadow: 0 0 0 1px var(--arbor-rule); }
+  .companion-workspace.is-expanded .companion-conversation-heading::after { content: ""; position: absolute; z-index: -1; inset-inline-end: -70px; inset-block-start: -110px; inline-size: 280px; block-size: 280px; border-radius: 50%; background: var(--o-coral, var(--arbor-k-hard-w)); pointer-events: none; }
+  .companion-workspace.is-expanded #companion-conversation-title { font-family: var(--font-display); font-size: 34px; font-weight: 500; line-height: 1.1; }
+  .companion-workspace.is-expanded .companion-conversation-context { font-size: 15px; }
+  .companion-workspace.is-expanded .companion-conversation-heading .companion-chrome-button { background: var(--arbor-paper-elevated); box-shadow: 0 0 0 1px var(--arbor-rule); border-radius: 14px; }
   .companion-workspace.is-expanded .talk-read { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 24px; padding: 10px 14px; border-radius: 18px; background: var(--arbor-paper-elevated); box-shadow: inset 0 0 0 1px var(--arbor-rule); }
   .companion-workspace.is-expanded [data-companion-message="user"] { max-width: 100%; margin-inline: 0; }
-  .companion-workspace.is-expanded [data-companion-message="user"] > div { flex: 1; --talk-you-bg: var(--arbor-paper-elevated); --talk-you-fg: var(--arbor-ink); --talk-you-tail: 18px; box-shadow: inset 0 0 0 2px var(--arbor-ink); font-family: var(--font-editorial, var(--font-display)); font-style: italic; font-size: 16.5px; line-height: 1.3; font-weight: 400; }
+  .companion-workspace.is-expanded [data-companion-message="user"] > div { flex: 1; --talk-you-bg: var(--arbor-paper-elevated); --talk-you-fg: var(--arbor-ink); --talk-you-tail: 18px; box-shadow: inset 0 0 0 2px var(--arbor-ink); font-family: var(--font-editorial, var(--font-display)); font-style: italic; font-size: 17px; line-height: 1.3; font-weight: 400; }
 }
 html[lang="he"] .companion-workspace.is-expanded [data-companion-message="user"] > div { font-style: normal; }
 .talk-read-guide { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin: 0; padding: 0; list-style: none; }
@@ -121,14 +128,14 @@ html[lang="he"] .companion-workspace.is-expanded [data-companion-message="user"]
 .talk-read-guide li small { display: block; font-size: 12px; color: var(--arbor-muted); }
 .talk-read-num { display: inline-grid; place-items: center; inline-size: 24px; block-size: 24px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--arbor-rule-strong); font-family: var(--font-display); font-size: 13px; color: var(--arbor-ink); flex: none; }
 .talk-read-guide li.on .talk-read-num { background: var(--arbor-ink); color: var(--arbor-on-accent); box-shadow: none; }
-.talk-read-key { display: grid; grid-template-columns: repeat(3, auto); gap: 6px 14px; font-size: 12.5px; color: var(--arbor-ink-soft); }
+.talk-read-key { display: grid; grid-template-columns: repeat(3, auto); gap: 6px 14px; font-size: 13px; color: var(--arbor-ink-soft); }
 .talk-read-key span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .talk-sw { inline-size: 22px; block-size: 12px; border-radius: 999px; flex: none; }
 .talk-sw.q { box-shadow: inset 0 0 0 2px var(--arbor-ink); }
 .talk-sw.src { background: var(--arbor-paper-deep); box-shadow: inset 0 0 0 1px var(--arbor-rule-strong); }
-.talk-sw.ai { background: var(--arbor-clay-dim); border: 1.5px dashed var(--arbor-clay); }
-.talk-sw.kept { background: var(--arbor-lav-ink); }
-.talk-sw.sug { border: 1.5px dashed var(--arbor-lav-ink); }
-.talk-sw.plan { background: var(--arbor-green-ink); }
+.talk-sw.ai { background: var(--arbor-k-moment-w); border: 1.5px dashed var(--arbor-k-moment); }
+.talk-sw.kept { background: var(--arbor-k-step); }
+.talk-sw.sug { border: 1.5px dashed var(--arbor-k-moment); }
+.talk-sw.plan { background: var(--arbor-k-plan); }
 /* the answer's bubble is the container the report's wide layout queries */
 [data-companion-message][data-structured-report] > div { container-type: inline-size; }

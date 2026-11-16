@@ -65,7 +65,7 @@ export function CoachTryIt({ step, today, lang, onTryIt, onUndo, buttonProps }: 
   if (state === "accepted" && today) {
     return (
       <div data-testid="coach-try-it" data-state="accepted" role="status" className="mt-2 flex flex-wrap items-center gap-x-2 pt-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-        <span className="inline-flex flex-1 min-w-0 items-center gap-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+        <span className="inline-flex flex-1 min-w-0 items-center gap-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-k-plan-i)" }}>
           <Icon name="check_circle" size={14} /> {t("coach.tryIt.accepted")}
         </span>
         <button type="button" {...hostAttrs} onClick={() => onUndo(today.id)} className="inline-flex min-h-11 items-center px-2 text-[12px] font-bold underline underline-offset-2" style={{ color: "var(--arbor-muted)" }}>
@@ -81,7 +81,7 @@ export function CoachTryIt({ step, today, lang, onTryIt, onUndo, buttonProps }: 
         {...hostAttrs}
         onClick={() => onTryIt(step)}
         className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[13px] font-extrabold"
-        style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule-strong)", ...hostStyle }}
+        style={{ background: "var(--arbor-k-plan-w)", color: "var(--arbor-k-plan-i)", border: "1px solid var(--arbor-rule-strong)", ...hostStyle }}
       >
         <Icon name="flag" size={14} /> {state === "replace" ? t("coach.tryIt.replace") : t("coach.tryIt")}
       </button>
