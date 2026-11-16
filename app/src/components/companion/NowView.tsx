@@ -550,7 +550,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
       badge={programWeeks > 0 ? <span className="now-agenda-badge" data-testid="now-program-week">{copy.programWeekOf(program.week, Math.max(program.week, programWeeks))}</span> : undefined} />}
     {/* B-PROG-14: "This week's idea". Flag off: the title door. Flag on: example, words, reason, fallback, and the longer read when this week has one. */}
     {!(showLessonFace && lessonFace) && weekLesson && <NowRow icon="lightbulb" testId="now-week-lesson" className="now-week-lesson" title={copy.weekIdea} sub={weekLesson.title[lang]} onOpen={() => requestLearnRead({ cardId: weekLesson.id, source: "now-week-lesson" })} />}
-    <NowRow icon="notifications" className="now-glance-reminders" title={copy.remindersTitle} sub={v10.remindersSub(shownNudges, quietFrom)} onOpen={() => setActiveTab("smart-reminders")} />
+    <NowRow icon="notifications" className="now-glance-reminders" title={copy.remindersTitle} sub={v10.remindersSub(shownNudges)} onOpen={() => setActiveTab("smart-reminders")} />
   </>;
   const comingExtras = <>
     {/* B-PROG-16: next-day handback of the week's one shared book. Dark until the pilot flag. */}

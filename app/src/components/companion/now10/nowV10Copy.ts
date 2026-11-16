@@ -34,7 +34,7 @@ export const NOW_V10_COPY = {
     planStepNext: "the next step",
     planStepOpen: "step not done yet",
     worthKnowing: "Worth knowing",
-    remindersSub: (shown: number, quietFrom: string) => (shown === 0 ? `None shown today. Quiet hours from ${quietFrom}.` : shown === 1 ? `1 shown today. Quiet hours from ${quietFrom}.` : `${shown} shown today. Quiet hours from ${quietFrom}.`),
+    remindersSub: (shown: number) => (shown === 0 ? "None shown today." : shown === 1 ? "1 shown today." : `${shown} shown today.`),
     familyPlanNobody: "nobody yet",
     // ── Gentle reminders (N-Remind) ──
     remToday: "Today",
@@ -83,7 +83,7 @@ export const NOW_V10_COPY = {
     planStepNext: "הצעד הבא",
     planStepOpen: "צעד שעוד לא נעשה",
     worthKnowing: "כדאי לדעת",
-    remindersSub: (shown: number, quietFrom: string) => (shown === 0 ? `לא הוצגה אף תזכורת היום. שעות שקטות מ-${quietFrom}.` : shown === 1 ? `תזכורת אחת הוצגה היום. שעות שקטות מ-${quietFrom}.` : `${shown} תזכורות הוצגו היום. שעות שקטות מ-${quietFrom}.`),
+    remindersSub: (shown: number) => (shown === 0 ? "לא הוצגה אף תזכורת היום." : shown === 1 ? "תזכורת אחת הוצגה היום." : `${shown} תזכורות הוצגו היום.`),
     familyPlanNobody: "עוד אין מי",
     remToday: "היום",
     remKicker: "תזכורות עדינות · היום",
