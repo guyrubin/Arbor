@@ -109,7 +109,8 @@ describe("AvatarCreator — the picker's markup contract", () => {
     expect(creator).toContain("min-h-[56px]");
     // The mode + style rows in the same dialog were 32 px tall.
     expect(creator).toContain("py-2.5 min-h-11 rounded-xl text-xs font-bold");
-    expect(creator).toContain("py-2 min-h-11 rounded-xl text-[11px] font-bold");
+    // B-KID-177: the medium row is gone; one house look, shown as a note.
+    expect(creator).toContain("data-hero-house-style={style}");
   });
 
   it("every picker string goes through the i18n registry (no English literals)", () => {

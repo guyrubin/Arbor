@@ -837,7 +837,7 @@ export type VisionDocument = {
 };
 export type VisionResult = VisionObserve | VisionDocument;
 
-export type AvatarStyle = "storybook" | "soft3d" | "watercolor" | "flat" | "comichero";
+export type AvatarStyle = "storybook" | "soft3d" | "watercolor" | "flat" | "comichero" | "studio3d";
 export type AvatarCharacterPreset = "princess" | "superhero" | "explorer" | "custom";
 export type AvatarCharacterIntent = {
   preset: AvatarCharacterPreset;

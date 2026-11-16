@@ -8,9 +8,9 @@ import { resetStudioNextFlagForTests } from "./studioNextFlag";
 const now = new Date("2026-10-13T12:00:00Z");
 const child = (ageMonths: number) => ({ id: "test-child", age: Math.floor(ageMonths / 12), ageMonths, ageMonthsAsOf: "2026-10-13" });
 describe("Studio V2 retains real destinations and eligibility", () => {
-  it('curates eight distinct games while keeping legacy history resolvable', () => {
+  it('curates eight distinct games plus the twelve makers while keeping legacy history resolvable', () => {
     const menu = STUDIO_V2_WORLDS.flatMap(world => studioMenuActivities(world, child(84), 'he', now));
-    expect(menu.map(a => a.id).sort()).toEqual([...STUDIO_GAME_SELECTION].sort());
+    expect(menu.map(a => a.id).sort()).toEqual([...STUDIO_GAME_SELECTION, ...STUDIO_MAKER_IDS].sort());
     for (const id of ['feelings', 'mimic', 'beat', 'sound-explorer', 'reading', 'pose', 'speech', 'adventures']) {
       expect(menu.some(a => a.id === id)).toBe(false); expect(studioActivity(id)).toBeDefined();
     }
@@ -56,7 +56,7 @@ describe("Studio V2 retains real destinations and eligibility", () => {
   });
 });
 
-describe("the makers are new activities, offered only behind the next-games switch", () => {
+describe("the makers are new activities, on for every child", () => {
   const WORLD = { "mend-bowl": "studio", "stitch-garden": "studio", "paper-boat": "stories", "season-dial": "playbank", "crank-works": "playbank", "windup-race": "playbank", "clay-theatre": "stories", "bottle-lab": "studio", "ice-age-friend": "playbank", "tiny-builders": "playbank", "fox-trail": "playbank", "maker-desk": "studio" } as const;
   const optIn = () => { vi.stubGlobal("localStorage", { getItem: (k: string) => k === "arbor.flags.studioNext" ? "1" : null, setItem: () => {}, removeItem: () => {} }); resetStudioNextFlagForTests(); };
   afterEach(() => { vi.unstubAllGlobals(); resetStudioNextFlagForTests(); });
@@ -70,14 +70,8 @@ describe("the makers are new activities, offered only behind the next-games swit
     }
     for (const id of ["memory", "puzzle", "", "toString", "__proto__"]) expect(isStudioMakerId(id)).toBe(false);
   });
-  it("switch off: no menu, no fit, so a direct route is the unavailable card", () => {
-    for (const lang of ["en", "he"] as const) {
-      expect(STUDIO_V2_WORLDS.flatMap(world => studioMenuActivities(world, child(84), lang, now)).map(a => a.id).sort()).toEqual([...STUDIO_GAME_SELECTION].sort());
-      for (const id of STUDIO_MAKER_IDS) expect(studioActivityFits(id, child(60), lang, now)).toBe(false);
-    }
-  });
-  it("switch on: each maker joins its world after the curated tiles, in EN and HE; age rules still hold", () => {
-    optIn();
+  for (const switchOn of [false, true]) it(`device switch ${switchOn ? "on" : "off"}: each maker joins its world after the curated tiles, in EN and HE; age rules still hold`, () => {
+    if (switchOn) optIn();
     for (const lang of ["en", "he"] as const) {
       for (const world of STUDIO_V2_WORLDS) {
         const ids = studioMenuActivities(world, child(60), lang, now).map(a => a.id);
