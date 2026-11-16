@@ -758,7 +758,6 @@ const RGBA_BASELINE: Record<string, number> = {
   "components/auth/LoginScreen.tsx": 1,
   "components/profile/AddChildFields.tsx": 2, // B-SHELL-07: six rgba(52,178,119,…) → green-ink color-mix tokens
   "components/kidmode/ParentChallenge.tsx": 1,
-  "components/layout/SettingsModal.tsx": 1,
   "components/plans/RoutinesCard.tsx": 1,
   "components/practice/EarlyReadingTrack.tsx": 2,
   "components/practice/HeroArcade.tsx": 1,

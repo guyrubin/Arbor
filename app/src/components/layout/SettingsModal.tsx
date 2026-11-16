@@ -40,6 +40,9 @@ import { resolveKidTheme, selectableThemes } from "../../lib/kidThemeManifest";
 import { BEDTIME_TIMES, validBedtime } from "../../lib/library/readMode";
 import { translate, type UiLang } from "../../lib/i18n";
 import { fmtDay } from "../../lib/formatDate";
+import { DsRoot } from "../../design/primitives";
+import { settingsCopy } from "./settingsViewCopy";
+import "./settingsV10.css";
 
 /** Lightweight app settings — wired to real app state (app language, trust panels,
  *  notifications, billing, and account). */
@@ -188,11 +191,18 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   };
 
   const Surface = useCompactSurface() ? Sheet : Modal;
+  const compact = Surface === Sheet;
 
   return (
     <>
-    <Surface open={open && !deleteOpen} onClose={onClose} title={t("set.title")}>
-      <div className="space-y-5 text-sm">
+    <Surface open={open && !deleteOpen} onClose={onClose} title={t("set.title")} maxWidth="max-w-[1056px]">
+      {/* v10.1 (N-Settings boards): two columns on a wide screen — how Arbor
+          works with you and Kid Mode, then the subscription, your data and the
+          account — and one column on a phone in the SAME order. */}
+      <DsRoot composition={compact ? "phone" : "desk"} className="ds-settings">
+      <p className="set-lead">{settingsCopy(uiLang).lead}</p>
+      <div className="set-cols">
+      <div className="set-col">
         {/* B-SHELL-13: section 1 is how Arbor works with you — language, AI
             language, reminders (moved here, not duplicated) and what Arbor
             remembers. Order: companion → Kid Mode & PIN → plan → your data →
@@ -269,6 +279,18 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           </div>
         </Row>
 
+        {/* B-PLAY-21: how Arbor talks with you — the same sheet as Ask and Family. */}
+        <Row icon={<Icon name="tune" size={18} />} title={t("coach.tone.title")} sub={toneLabel(selectedLens, t)}>
+          <button
+            onClick={() => setToneOpen(true)}
+            className="set-act min-h-11"
+            data-testid="settings-tone-row"
+          >
+            {t("coach.tone.change")}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />
+          </button>
+        </Row>
+        <ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />
+
         {/* AP-052: Accent theme picker — rendered ONLY when there is a real
             choice. It shipped offering three options whose palettes were
             byte-identical after the CR-01 retint. Restoring a second theme to
@@ -295,13 +317,12 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         <Row icon={<Icon name="notifications" size={18} />} title={t("sr.title")} sub={t("sr.subtitle")}>
           <button
             onClick={() => { onClose(); setActiveTab("smart-reminders"); }}
-            className="text-xs font-bold rounded-xl px-3 min-h-11"
-            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
+            className="set-act min-h-11"
             data-testid="settings-open-smart-reminders"
           >
             {/* OBJ-SHELL-07: this row reused `set.data.open` — "Open profile" —
                 on the Gentle Reminders row. Its own key, its own sentence. */}
-            {t("elev.sr.open")}
+            {t("elev.sr.open")}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />
           </button>
         </Row>
 
@@ -313,11 +334,10 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         <Row icon={<Icon name="schedule" size={18} />} title={t("dw.title")} sub={t("dw.subtitle")}>
           <button
             onClick={() => { onClose(); setActiveTab("day-windows"); }}
-            className="text-xs font-bold rounded-xl px-3 min-h-11"
-            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
+            className="set-act min-h-11"
             data-testid="settings-open-day-windows"
           >
-            {t("dw.cta")}
+            {t("dw.cta")}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />
           </button>
         </Row>
 
@@ -331,29 +351,16 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         >
           <button
             onClick={() => { onClose(); setActiveTab("memory"); }}
-            className="text-xs font-bold rounded-xl px-3 min-h-11"
-            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
+            className="set-act min-h-11"
             data-testid="settings-open-memory"
           >
-            {t("set.memory.open")}
+            {t("set.memory.open")}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />
           </button>
         </Row>
 
         {/* Pause Arbor: new suggestions and new things to keep wait. The notebook stays. */}
         <PauseArborControl />
 
-        {/* B-PLAY-21: how Arbor talks with you — the same sheet as Ask and Family. */}
-        <Row icon={<Icon name="tune" size={18} />} title={t("coach.tone.title")} sub={toneLabel(selectedLens, t)}>
-          <button
-            onClick={() => setToneOpen(true)}
-            className="text-xs font-bold rounded-xl px-3 min-h-11"
-            style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
-            data-testid="settings-tone-row"
-          >
-            {t("coach.tone.change")}
-          </button>
-        </Row>
-        <ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />
         </Section>
 
         <Section title={t("set.section.kidModePin")} sub={t("set.section.kidModePinSub")}>
@@ -408,11 +415,13 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         </div>
         </Section>
 
+      </div>
+      <div className="set-col">
         <Section title={t("set.section.billing")} sub={t("set.section.billingSub")}>
         {/* Plan — read from the real entitlement endpoint (MON-1 / MON-2 billing) */}
         {/* m3-hex-sweep (resolved): the old green-tinted #eef6f1 wash now has a sapphire
             token — --arbor-paper-tinted — so the insight well sits in the 2035 chrome. */}
-        <div className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-tinted)", border: "1px solid var(--arbor-rule)" }}>
+        <div className="set-plan">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: T.paperElevated, color: "var(--arbor-clay-deep)" }}><Icon name="auto_awesome" size={18} /></span>
@@ -473,7 +482,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                   {t("set.plan.viaStore", { provider: t(`set.plan.store.${entitlement.provider}`) })}
                 </p>
               )}
-              <button onClick={() => void openPortal()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-50" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>
+              <button onClick={() => void openPortal()} disabled={busy} className="set-act set-primary mt-2.5 min-h-11 disabled:opacity-50">
                 {t("set.plan.manage")}
               </button>
             </>
@@ -571,18 +580,30 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
 
         <Section title={t("set.section.childData")} sub={t("set.section.childDataSub")}>
 
+        {/* B-CAREPRO-35: Your data — ONE tap opens the one home for export,
+            child deletion (with its receipt) and account deletion. It used to
+            open #/profile, not the controls. B-CAREPRO-24: the anchor the
+            "Export or delete" links scroll to. */}
+        <div data-testid="settings-data-row">
+        <Row icon={<Icon name="verified_user" size={18} />} title={t("elev.yourData.row.title")} sub={t("elev.yourData.row.sub")}>
+          <button onClick={() => setDataOpen(true)} data-testid="settings-open-your-data" aria-haspopup="dialog" className="set-act min-h-11">
+            {t("elev.yourData.row.open")}
+          </button>
+        </Row>
+        </div>
         {/* AP-060: The Science — source-transparency page (static editorial, no child data) */}
         <Row icon={<Icon name="science" size={18} />} title={t("sci.settings.title")} sub={t("sci.settings.sub")}>
           <button
             onClick={() => { onClose(); setActiveTab("science"); }}
-            className="text-xs font-bold rounded-xl px-3 min-h-11"
-            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
+            className="set-act min-h-11"
             data-testid="settings-open-science"
           >
-            {t("sci.settings.open")}
+            {t("sci.settings.open")}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />
           </button>
         </Row>
 
+        {/* B-DATA-05: the analytics opt-out sits under the child-data row. */}
+        <AnalyticsOptOutRow />
         {/* MOB-20: Settings had no version and no way to reach a human — the
             two things a parent needs when something is wrong and they are
             about to write to us. `hello@arbor.app` is the address the app
@@ -595,26 +616,12 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           <a
             href="mailto:hello@arbor.app"
             data-testid="settings-support-link"
-            className="inline-flex items-center text-xs font-bold rounded-xl px-3 min-h-11"
-            style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}
+            className="set-act min-h-11"
           >
             {t("elev.accountSettings.about.contact")}
           </a>
         </Row>
 
-        {/* B-CAREPRO-35: Your data — ONE tap opens the one home for export,
-            child deletion (with its receipt) and account deletion. It used to
-            open #/profile, not the controls. B-CAREPRO-24: the anchor the
-            "Export or delete" links scroll to. */}
-        <div data-testid="settings-data-row">
-        <Row icon={<Icon name="verified_user" size={18} />} title={t("elev.yourData.row.title")} sub={t("elev.yourData.row.sub")}>
-          <button onClick={() => setDataOpen(true)} data-testid="settings-open-your-data" aria-haspopup="dialog" className="text-xs font-bold rounded-xl px-3 min-h-11" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>
-            {t("elev.yourData.row.open")}
-          </button>
-        </Row>
-        </div>
-        {/* B-DATA-05: the analytics opt-out sits under the child-data row. */}
-        <AnalyticsOptOutRow />
         </Section>
 
         {/* P0.2 (SET-ADMIN): operator-only tools isolated in their own section */}
@@ -651,13 +658,13 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                 <p className="text-sm font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{user.displayName || t("set.signedIn")}</p>
                 {user.email && <p className="text-xs truncate" style={{ color: "var(--arbor-muted)" }}>{user.email}</p>}
               </div>
-              <button onClick={() => void signOut()} className="inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 py-2 min-h-[44px]" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>
+              <button onClick={() => void signOut()} className="set-act min-h-[44px]">
                 <Icon name="logout" size={16} /> {t("set.signOut")}
               </button>
             </div>
             {/* STORE-4: full account deletion (Apple 5.1.1(v) / Play / GDPR
                 Art. 17) — quiet entry, heavy type-to-confirm inside the modal. */}
-            <button type="button" onClick={() => setDeleteOpen(true)} aria-haspopup="dialog" className="inline-flex items-center min-h-[44px] px-3 py-2 rounded-xl text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>
+            <button type="button" onClick={() => setDeleteOpen(true)} aria-haspopup="dialog" className="set-danger min-h-[44px]">
               {t("set.acctDel.open")}
             </button>
           </Section>
@@ -665,10 +672,12 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
 
         {/* MOB-01: Privacy · Terms · Support — reachable in-app (Apple 5.1.1(i),
             Play Data Safety), next to the account controls. */}
-        <div className="pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
+        <div className="set-legal">
           <LegalLinks />
         </div>
       </div>
+      </div>
+      </DsRoot>
     </Surface>
     {entitlement.isAdmin && <AdminDashboard open={adminOpen} onClose={() => setAdminOpen(false)} />}
     <DeleteAccountModal open={open && deleteOpen && firebaseEnabled && Boolean(user)} onClose={() => setDeleteOpen(false)} />
@@ -681,31 +690,29 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   );
 }
 
+/** v10: one group of Settings — a white tile, its name in the display face and one line under it. */
 function Section({ title, sub, children }: { title: string; sub: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl p-3 space-y-3" style={{ background: "rgba(255,255,255,0.62)", border: "1px solid var(--arbor-rule)" }}>
-      <div>
-        {/* GREEN-DRIFT-SETTINGS: neutral eyebrow, not emerald, in the sapphire 2035 chrome */}
-        <h3 className="t-sm font-semibold" style={{ color: "var(--arbor-ink-soft)" }}>{title}</h3>
-        <p className="text-xs mt-0.5" style={{ color: "var(--arbor-faint)" }}>{sub}</p>
+    <section className="vt set-sec">
+      <div className="set-sec-head">
+        <h3 className="set-sec-title">{title}</h3>
+        <p className="set-sec-sub">{sub}</p>
       </div>
       {children}
     </section>
   );
 }
 
+/** v10: one setting — its glyph chip, its name and state, and its control at the end. */
 function Row({ icon, title, sub, children }: { icon: React.ReactNode; title: string; sub: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div className="flex items-start gap-3 min-w-0">
-        {/* GREEN-DRIFT-SETTINGS: sapphire chip (clay-dim/clay-deep, the Sidebar/Topbar idiom) — green stays reserved for semantic success/active state. */}
-        <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-clay-dim)", color: "var(--arbor-clay-deep)" }}>{icon}</span>
-        <div className="min-w-0">
-          <p className="font-bold" style={{ color: "var(--arbor-ink)" }}>{title}</p>
-          <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{sub}</p>
-        </div>
+    <div className="set-row">
+      <span className="gi set-gi" aria-hidden="true">{icon}</span>
+      <div className="set-row-text">
+        <p className="set-row-title">{title}</p>
+        <p className="set-row-sub">{sub}</p>
       </div>
-      <div className="flex-shrink-0">{children}</div>
+      <div className="set-row-act">{children}</div>
     </div>
   );
 }
