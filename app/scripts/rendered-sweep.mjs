@@ -736,7 +736,25 @@ function stateHelpers(page, vp, tr) {
     },
     /** Scroll an element to the top of its scroller, clear of the sticky top bar. */
     async top(el) {
-      await el.evaluate((e) => { e.style.scrollMarginTop = "96px"; e.scrollIntoView({ block: "start" }); });
+      // The target lands below the shell's sticky chrome (top bar, and the v10
+      // pill row that sticks under it): 96 px at least, more when the sticky
+      // band is taller, so neither the target nor what sits just above it is
+      // drawn under a sticky bar.
+      await el.evaluate((e) => {
+        let band = 0;
+        for (const s of document.querySelectorAll("header, nav, [class*=shellrow], [class*=topbar], [class*=sticky]")) {
+          const cs = getComputedStyle(s);
+          if (cs.position !== "sticky" && cs.position !== "fixed") continue;
+          const r = s.getBoundingClientRect();
+          if (r.height > 0 && r.height < 240 && r.width > 200 && r.top < 120) band = Math.max(band, r.bottom);
+        }
+        const margin = Math.max(96, Math.ceil(band) + 16);
+        // Already wholly in view below the sticky band: leave the page where it is.
+        const r = e.getBoundingClientRect();
+        if (r.top >= margin && r.bottom <= window.innerHeight) return;
+        e.style.scrollMarginTop = `${margin}px`;
+        e.scrollIntoView({ block: "start" });
+      });
       await page.waitForTimeout(200);
     },
     skip,

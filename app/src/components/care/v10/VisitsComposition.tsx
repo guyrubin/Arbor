@@ -4,8 +4,6 @@ import type { Composition } from "../../../design/useComposition";
 import { useArbor } from "../../../context/ArborContext";
 import { useLanguage } from "../../../context/LanguageContext";
 import { Icon } from "../../ui/Icon";
-import { appointmentRoleLabel } from "../../../lib/appointmentLabel";
-import { fmtDay } from "../../../lib/formatDate";
 import { sortAppointments, type Appointment } from "../../../lib/careTrack";
 import { useChildCollection } from "../../../hooks/useChildCollection";
 import type { AskSpecialistParts } from "../../sections/AskSpecialist";
@@ -70,6 +68,7 @@ export default function VisitsComposition({ composition, parts, visit, heading, 
 
   /* The scene's foot: the builder's move, or for the Teacher brief a line
      naming the next visit (the brief's own Save as PDF is its move). */
+  const briefWho = <section className="rcard tint fit care-who care-brief-who">{parts.audience}</section>;
   const sceneHeading = (
     <div className="stack care-heading">
       {teacher && <span className="kicker">{copy.brief.kicker}</span>}
@@ -86,8 +85,7 @@ export default function VisitsComposition({ composition, parts, visit, heading, 
       build={parts.build}
       nowMs={nowMs}
       brief={teacher || !landing}
-      aside={teacher ? <section className="rcard tint fit care-who care-brief-who">{parts.audience}</section> : undefined}
-      briefLine={teacher && visit?.whenIso ? copy.brief.nextVisit(appointmentRoleLabel(visit, t), fmtDay(visit.whenIso, uiLang)) : undefined}
+      aside={teacher && desk ? briefWho : undefined}
     />
   );
 
@@ -100,7 +98,11 @@ export default function VisitsComposition({ composition, parts, visit, heading, 
   );
 
   const summary = teacher ? (
-    <div className="vt care-teacher">{parts.teacher}</div>
+    <>
+      <div className="vt care-teacher">{parts.teacher}</div>
+      {/* phone: the brief's own Save as PDF comes first; who it is for and the template follow */}
+      {!desk && briefWho}
+    </>
   ) : (
     <>
       <section className="vt care-bring">

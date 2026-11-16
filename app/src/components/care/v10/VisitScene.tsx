@@ -97,12 +97,16 @@ export default function VisitScene({ composition, visit, heading, packed, build,
       ) : (
         <>
           {heading}
-          <div className="line care-scene-main">
-            {art}
-            {visit && days !== null
-              ? <SceneFigure days={days} label={c.daysToGo(days)} when={when} size="md" badge={badge ? t(badge.key, badge.vars) : ""} />
-              : visit ? <p className="care-scene-when">{`${appointmentRoleLabel(visit, t)} · ${when ?? ""}`}</p> : null}
-          </div>
+          {/* phone: the art rides with the visit's figure; a heading-only
+              scene (Visit summary, Teacher brief) has no art row of its own */}
+          {visit && (
+            <div className="line care-scene-main">
+              {art}
+              {days !== null
+                ? <SceneFigure days={days} label={c.daysToGo(days)} when={when} size="md" badge={badge ? t(badge.key, badge.vars) : ""} />
+                : <p className="care-scene-when">{`${appointmentRoleLabel(visit, t)} · ${when ?? ""}`}</p>}
+            </div>
+          )}
           {aside}
         </>
       )}

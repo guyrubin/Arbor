@@ -326,7 +326,8 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
       {visit && (summary || (!landing && headingKind !== "visit")) && (
         <p data-testid="consult-visit-line" className="care-sub">{t("elev.consult.visitLine", { profession: appointmentRoleLabel(visit, t), date: fmtDay(visit.whenIso!, uiLang) })}</p>
       )}
-      {firstName && <p className="care-sub muted">{t("elev.consult.forName", { name: firstName })}</p>}
+      {/* The Teacher brief's own title names the child; "for {name}" would say it twice. */}
+      {firstName && chosen !== "teacher" && <p className="care-sub muted">{t("elev.consult.forName", { name: firstName })}</p>}
       {/* B-PROG-10 (E3 canon): Care is a warm handoff to the family's own
           professionals and, in the guided pilot only, Arbor's light coach. */}
       {!summary && guidedTierOn() && (
