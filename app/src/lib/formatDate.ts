@@ -102,3 +102,26 @@ export const fmtShellNow = (input: DateInput, lang: UiLang): string => {
   }
   return isolate(`${day} · ${time}`);
 };
+
+/**
+ * V77 (canvas boards) — the boards' day-first short date: "Sat 14 Nov" this
+ * year, "16 Sep 2023" in another year (no weekday then) / "שבת, 14 בנוב׳",
+ * "16 בספט׳ 2023". English is assembled from en-US parts so the month keeps
+ * its three letters ("Sep", never "Sept").
+ */
+export const fmtDayFirst = (input: DateInput, lang: UiLang, now: Date = new Date()): string => {
+  const d = toDate(input);
+  if (!d) return "";
+  const thisYear = d.getFullYear() === now.getFullYear();
+  if (lang === "he") {
+    return fmt(d, lang, thisYear ? { weekday: "short", day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "numeric" });
+  }
+  let parts: Intl.DateTimeFormatPart[];
+  try {
+    parts = new Intl.DateTimeFormat("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" }).formatToParts(d);
+  } catch {
+    return fmtDay(d, lang);
+  }
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? "";
+  return isolate(thisYear ? `${part("weekday")} ${part("day")} ${part("month")}` : `${part("day")} ${part("month")} ${part("year")}`);
+};

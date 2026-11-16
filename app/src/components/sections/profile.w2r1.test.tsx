@@ -124,7 +124,7 @@ describe("#/profile Hebrew page — no Latin chrome (Law 8)", () => {
       h.locale = loc;
       const school = text(area(renderToStaticMarkup(<ChildProfile />), "school")).replace(/\s+/g, " ");
       expect(school).toContain("City kindergarten, first year");
-      expect(school).toMatch(loc === "en" ? /In your words · Sep 1, 2026/ : /מהמילים שלכם · [^·]*2026/);
+      expect(school).toMatch(loc === "en" ? /In your words · (Tue 1 Sep|1 Sep 2026)/ : /מהמילים שלכם · [^·]*1 בספט/);
     }
   });
 });
@@ -176,7 +176,7 @@ describe("#/profile — the cut chapters, the count line and the dated areas", (
     const html = renderToStaticMarkup(<ChildProfile />);
     const lang = text(area(html, "lang")).replace(/\s+/g, " ");
     expect(lang).toContain("Noa answers in Hebrew when tired");
-    expect(lang).toContain("Noted · Sep 2, 2026");
+    expect(lang).toMatch(/Noted · (Wed 2 Sep|2 Sep 2026)/);
     // once on the page face; "What the coach sees" names the approved facts that
     // travel with a question verbatim (GP-14), which is a disclosure, not a quote
     const face = html.replace(/<section[^>]*data-testid="coach-contract-panel"[\s\S]*?<\/section>/, "");
@@ -275,7 +275,7 @@ describe("P1-NEXTLEVEL critic r2 — an identity fact is never undated", () => {
         for (const id of ["school", "lang"]) {
           const src = text(area(html, id)).replace(/\s+/g, " ");
           expect(src, id).toContain(lead.trim());
-          expect(src, id).toMatch(/2026/);
+          expect(src, id).toMatch(/\d{1,2} (\S+)/); // V77 day-first: the day, then the month
         }
         // every told area is dated, so the count line says so
         expect(text(html.replace(/&#x27;/g, "'")).replace(/\s+/g, " ")).toContain(translate(loc, "companion.about.toldMany", { n: 2 }));

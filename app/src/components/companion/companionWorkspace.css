@@ -106,7 +106,7 @@
    the "You asked" card; the reading guide and key show once above the thread;
    a wide answer lays out as the board's grid (coachReport.css). Beside a page
    and on a phone nothing here applies. */
-.talk-read { display: none; }
+.talk-read, .talk-you-asked { display: none; }
 @media (min-width: 1024px) {
   .companion-workspace.is-expanded .companion-conversation { inset-inline: max(24px, calc((100vw - 1120px) / 2)); }
   .companion-workspace.is-expanded .coach-thread-col { max-width: 1040px; }
@@ -119,6 +119,7 @@
   .companion-workspace.is-expanded .companion-conversation-heading .companion-chrome-button { background: var(--arbor-paper-elevated); box-shadow: 0 0 0 1px var(--arbor-rule); border-radius: 14px; }
   .companion-workspace.is-expanded .talk-read { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 24px; padding: 10px 14px; border-radius: 18px; background: var(--arbor-paper-elevated); box-shadow: inset 0 0 0 1px var(--arbor-rule); }
   .companion-workspace.is-expanded [data-companion-message="user"] { max-width: 100%; margin-inline: 0; }
+  .companion-workspace.is-expanded .talk-you-asked { display: block; margin-block-end: 4px; font-family: var(--font-sans); font-style: normal; font-size: 12px; font-weight: 600; color: var(--arbor-ink-soft); }
   .companion-workspace.is-expanded [data-companion-message="user"] > div { flex: 1; --talk-you-bg: var(--arbor-paper-elevated); --talk-you-fg: var(--arbor-ink); --talk-you-tail: 18px; box-shadow: inset 0 0 0 2px var(--arbor-ink); font-family: var(--font-editorial, var(--font-display)); font-style: italic; font-size: 17px; line-height: 1.3; font-weight: 400; }
 }
 html[lang="he"] .companion-workspace.is-expanded [data-companion-message="user"] > div { font-style: normal; }
