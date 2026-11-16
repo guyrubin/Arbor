@@ -179,7 +179,7 @@ const studioFilm = (name: string, objectPosition = "50% 50%", width = 1536): Kid
  *  the game it opens: with the Next Studio switch on, a host tile opens a Bop
  *  game and wears that game's cover. Tiles only: the game screen keeps the
  *  companion cover, because the child's own hero stands in that picture.
- *  Builders: ROS PAI/projects/arbor/_documents/kids-studio/covers-v2. */
+ *  The builder scripts live in the private operations tree, not here. */
 const crew2 = (name: string, objectPosition = "50% 60%") => studioFilm(`cover-${name}-crew2`, objectPosition);
 const STUDIO_CREW_COVERS: Readonly<Record<string, KidArt>> = {
   memory: crew2("memory"),
