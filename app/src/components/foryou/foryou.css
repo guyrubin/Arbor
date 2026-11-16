@@ -1,0 +1,101 @@
+/* For you, the parent and the Library (v10.1). The boards' shared <style> block,
+   ported with scripts in the build brief (scope .ds; rgba as 8-digit hex). */
+
+.ds .ghostb{min-height:40px;padding:0 14px;border:0;border-radius:999px;background:var(--card);color:var(--ink);box-shadow:inset 0 0 0 1px var(--rule-strong);font:600 14px/1 var(--font-sans) !important;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.ds .ghostb.q{color:var(--sapphire-deep)}
+.ds .g-stone{fill:none;stroke:#e3dff6;stroke-linecap:round;stroke-linejoin:round}
+.ds .g-stone.done{stroke:#c9c2ee}
+.ds .pilot{display:inline-flex;align-items:center;gap:6px;min-height:24px;padding:0 9px;border-radius:999px;background:var(--sunk);color:var(--ink-soft);font-size:12px;font-weight:600 !important;white-space:nowrap}
+.ds .rdc{display:flex;flex-direction:column;gap:8px;padding:16px;border-radius:18px;background:var(--card);box-shadow:var(--shadow-tile);min-width:0;color:var(--ink)}
+.ds .rdc .meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;font-weight:600 !important;color:var(--ink-soft)}
+.ds .rdc .ttl{font-family:var(--font-display) !important;font-weight:600 !important;font-size:18.5px;line-height:1.2;text-wrap:balance}
+.ds .rdc .go{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:600 !important;font-size:13.5px;color:var(--sapphire-deep)}
+.ds .from{display:inline-flex;align-items:center;gap:5px;min-height:22px;padding:0 8px;border-radius:999px;background:var(--tint-2);color:var(--sapphire-deep);font-size:11.5px;font-weight:600 !important;white-space:nowrap}
+.ds .topic{border:0;font-family:var(--font-sans) !important;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px 10px;border-radius:16px;background:var(--card);box-shadow:var(--shadow-tile);font-size:12.5px;font-weight:600 !important;line-height:1.2;text-align:center;min-width:0;color:var(--ink)}
+.ds .topic.on{background:var(--tint-2);box-shadow:inset 0 0 0 2px var(--sapphire-deep);color:var(--sapphire-deep)}
+.ds .segr{display:inline-grid;grid-auto-flow:column;gap:4px;padding:4px;background:var(--well);border-radius:999px}
+.ds .segr button{min-height:40px;padding:0 18px;border:0;border-radius:999px;background:transparent;font:600 14px/1 var(--font-sans) !important;color:var(--ink-soft)}
+.ds .segr button.on{background:var(--ink-deep);color:#fff}
+.ds .pip{width:22px;height:8px;border-radius:4px;background:var(--card);box-shadow:inset 0 0 0 1.5px #b9b3ec;flex:none}
+.ds .pip.on{background:#7a6fd6;box-shadow:none}
+.ds .crs{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:12px 14px;border-radius:16px;background:var(--paper);box-shadow:inset 0 0 0 1px var(--rule);min-width:0}
+.ds .crs .nm{font-weight:600 !important;font-size:14.5px;line-height:1.25}
+.ds .crs .nm small{display:block;font-weight:400 !important;font-size:12.5px;color:var(--ink-soft)}
+
+
+/* ── Production composition (below the ported part) ─────────────────────── */
+.ds .fy-scene { padding: 22px 24px; gap: 14px; --f-ground: #f4f3fc; --f-edge: #e2dff4; --f-a: var(--o-lav); --f-b: var(--o-mint); }
+.ds-phone .fy-scene { padding: 16px 16px 18px; gap: 12px; }
+.ds .fy-pick-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 20px; align-items: center; }
+.ds .fy-pick-head .hero { font-size: 38px; line-height: 1.06; }
+.ds-phone .fy-pick-head .hero { font-size: 27px; line-height: 1.08; }
+.ds .fy-pick-hook { font-size: 16px; line-height: 1.35; color: var(--ink-soft); max-width: 450px; margin: 0; }
+.ds .fy-thread { display: grid; gap: 0; align-items: stretch; }
+.ds-phone .fy-thread { grid-template-columns: minmax(0, 1fr) !important; gap: 10px; }
+.ds .fy-thread .thr { display: flex; align-items: center; }
+.ds .fy-thread .thr svg { width: 100%; height: 28px; overflow: visible; }
+.ds-phone .fy-thread .thr { display: none; }
+.ds .fy-try { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center; padding: 12px 16px; border-radius: 16px; background: #ffffffc7; box-shadow: inset 0 0 0 1px var(--rule); }
+.ds-phone .fy-try { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.ds .fy-try .kicker { color: var(--ink); white-space: nowrap; }
+.ds .fy-try p { margin: 0; font-size: 14.5px; line-height: 1.35; }
+.ds .fy-cta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+.ds .fy-cta .btn.primary { border-radius: 999px; min-height: 52px; padding: 0 24px; border: 0; cursor: pointer; font-size: 15px; }
+.ds-phone .fy-cta .btn.primary { flex: 1 1 auto; justify-content: center; }
+.ds .fy-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ds .fy-trust { margin-inline-start: auto; }
+.ds-phone .fy-trust { margin-inline-start: 0; }
+/* Courses by area */
+.ds .fy-areas { background: var(--card); border-radius: 16px; padding: 10px; box-shadow: var(--shadow-tile); }
+.ds .fy-areas > .small { display: block; color: var(--ink-soft); margin: 0 2px 8px; }
+.ds .fy-area-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ds .fy-area-grid .topic { flex-direction: row; align-items: center; gap: 8px; padding: 8px 10px; min-height: 52px; text-align: start; font-size: 12.5px; cursor: pointer; }
+.ds .fy-area-grid .topic b { font-family: var(--font-display) !important; font-weight: 500 !important; font-size: 26px; line-height: 1; font-variant-numeric: lining-nums; }
+.ds .fy-area-grid .topic.all { justify-content: center; }
+.ds-phone .fy-area-grid { display: flex; overflow-x: auto; scrollbar-width: none; margin-inline-end: -14px; padding-inline-end: 14px; }
+.ds-phone .fy-area-grid::-webkit-scrollbar { display: none; }
+.ds-phone .fy-area-grid .topic { flex: 0 0 auto; max-width: 180px; }
+.ds .fy-crs { width: 100%; border: 0; cursor: pointer; text-align: start; color: var(--ink); font: inherit; grid-template-columns: 60px minmax(0, 1fr) auto; }
+.ds .fy-crs .go { font-weight: 600 !important; font-size: 13.5px; color: var(--sapphire-deep); white-space: nowrap; display: inline-flex; align-items: center; gap: 2px; }
+.ds .fy-crs .pips { display: flex; align-items: center; gap: 4px; margin-top: 6px; }
+.ds .fy-crs .pips .small { margin-inline-start: 4px; color: var(--ink-soft); }
+.ds .fy-crs .agechip { display: inline-flex; margin-top: 4px; font-size: 12px; font-weight: 600 !important; color: var(--ink-soft); }
+.ds .fy-switch { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; margin-block: -8px; margin-inline-start: auto; padding: 0; border: 0; background: none; font-weight: 600 !important; font-size: 13.5px; color: var(--sapphire-deep); cursor: pointer; white-space: nowrap; }
+.ds .fy-switch[aria-checked="true"] { color: var(--ink); }
+.ds .fy-rec { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ds .fy-rec .chip { min-height: 44px; cursor: pointer; }
+/* Your programs */
+.ds .fy-prog { gap: 14px; }
+.ds .fy-prog .fig > b { font-size: 64px; }
+.ds-phone .fy-prog .fig > b { font-size: 52px; }
+.ds .fy-prog .gfx { padding-top: 22px; }
+.ds .fy-prog .gfx .tok.at { width: 30px; height: 30px; }
+.ds .fy-prog .skill { margin: 0; font-size: 14px; line-height: 1.4; }
+.ds .fy-prog .skill b { font-weight: 600 !important; }
+.ds .fy-prog-foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.ds .fy-prog-foot .ghostb { min-height: 44px; padding: 0 18px; cursor: pointer; color: var(--sapphire-deep); font-size: 15px !important; }
+.ds-phone .fy-prog-foot .ghostb { width: 100%; justify-content: center; }
+.ds .fy-choice { gap: 10px; }
+.ds .fy-choice p { margin: 0; font-size: 14px; line-height: 1.4; color: var(--ink-soft); }
+/* More to read */
+.ds .fy-door { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px 16px; align-items: center; }
+.ds .fy-door p { margin: 0; font-size: 15px; line-height: 1.4; color: var(--ink-soft); }
+.ds .fy-door b { display: block; font-weight: 600 !important; color: var(--ink); margin-bottom: 2px; }
+.ds .fy-rail-more { border-radius: 18px; background: var(--card); box-shadow: var(--shadow-tile); padding: 4px 18px; }
+.ds .fy-rail-more > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; font-weight: 600 !important; font-size: 14px; color: var(--sapphire-deep); list-style: none; }
+.ds .fy-rail-more > summary::-webkit-details-marker { display: none; }
+.ds .fy-rail-more[open] > summary { border-bottom: 1px solid var(--rule); margin-bottom: 12px; }
+.ds .fy-rail-body { display: flex; flex-direction: column; gap: 16px; padding-bottom: 14px; }
+/* The foundation's .step (a step card) also matches GlyphChip kind="step"; keep the chip 28 px. */
+.ds .gi.step { min-height: 0; padding: 0; flex-direction: row; gap: 0; border-radius: 9px; }
+/* Phone: the route's stops sit in a 20 px gutter inside the page (N-*-M .body.routed). */
+.ds-phone .fy-route { padding-inline-start: 20px; }
+.ds-phone .fy-route::before { inset-inline-start: 20px; }
+.ds-phone .fy-route .rsec:last-child::after { inset-inline-start: -5px; }
+.ds-phone .fy-route .rstop { inset-inline-start: -9px; }
+.ds-phone .fy-meta { gap: 6px; }
+.ds .fy-practice { background: #f0edfb; box-shadow: inset 0 0 0 1px #dcd7f3; }
+.ds .fy-practice .by { color: #5b4fc0; }
+.ds .fy-switchrow { justify-content: flex-end; }
+.ds .fy-switchrow.desk { margin-top: -46px; align-self: flex-end; }
+.ds .fy-col { min-width: 0; }

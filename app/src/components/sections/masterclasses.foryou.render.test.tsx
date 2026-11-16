@@ -1,19 +1,24 @@
 /**
- * v3 EXTRA-FORYOU — the "For you, the parent" hub, rendered (EN + HE).
+ * For you, the parent (v10.1, N-ForYou-D/M) — the hub, rendered in EN and HE
+ * at both compositions, reading the markup a parent's browser would get.
  *
- * The source pins live in masterclassesPick.test.ts; this renders the hub with
- * an open family question and reads the markup a parent's browser would get:
- *  · "Picked for your question" and a why-line that quotes the question inside
- *    a bidi-isolating <bdi>, while the hero CTA still opens today's read;
- *  · one primary move, at most three modules;
- *  · a short-reads row of exactly 3 cards (≥ 44 px, minutes and a registry
- *    area only), filled from the ranking when the question meets fewer reads
- *    (reviewer r1; the fill rule itself is unit-tested in learn/shortReads);
- *  · "Courses by area" chips (registry domains: glyph + name) with exactly one
- *    pressed and plain integer counts that add up to the courses on the page;
- *  · the family-ritual door, under the brief's "Family formation" eyebrow;
+ * Kept from v3 EXTRA-FORYOU (rewritten for the v10 composition, never dropped):
+ *  · "Picked for your question" shows only when the open family question moved
+ *    the pick, and the question is quoted bidi-isolated, in the parent's ink;
+ *  · the hero CTA opens today's read; one primary move; at most three
+ *    top-level modules (the More to read tail is demoted, the rail behind ONE
+ *    disclosure);
+ *  · "Courses by area": registry areas, one control per area with aria-pressed,
+ *    plain integer counts that add up to the courses on the page;
+ *  · the family-ritual door ("Family formation") and the Library door;
  *  · no percentage anywhere in the visible text.
- * Child and question are invented examples.
+ * New in v10:
+ *  · one <h1> (the pick's title); the guide's four stops match the four
+ *    numbered sections, the same names and order on a phone and a desk;
+ *  · Your programs: the running program as stepping stones (one stone per
+ *    week, this week ringed), or the two programs to choose from;
+ *  · no "Worth knowing" note on For you; short reads live in the Library.
+ * Child, question and enrolment are invented examples.
  */
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -21,10 +26,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "../../lib/i18n";
 import { makeFamilyTopic, type FamilyTopic } from "../../lib/familyTopics";
 import { LEARN_CARDS } from "../../learn/learnCards";
-import { LEARN_CATEGORIES, topicBoost } from "../../learn/learnLibrary";
+import { topicBoost } from "../../learn/learnLibrary";
 import { topicWords } from "../../learn/topicMatch";
 import { DOMAIN_IDS, domainName, type DomainId } from "../../lib/domains/registry";
-import { DOMAIN_ICONS } from "../../lib/domains/icons";
+import { FOR_YOU_COPY } from "../foryou/forYouCopy";
+import { TALK_TOGETHER } from "../../content/programs";
 
 const DAY = 86_400_000;
 const CHILD_ID = "child-foryou";
@@ -32,10 +38,11 @@ const harness = vi.hoisted(() => ({
   locale: "en" as "en" | "he",
   topic: null as FamilyTopic | null,
   birthDate: "",
+  composition: "desk" as "desk" | "phone",
+  programs: [] as unknown[],
 }));
 
 vi.mock("../../context/ArborContext", () => ({
-  // v4: the library card's The Science chip (TrustLink) reads the provider tolerantly.
   useArborOptional: () => null,
   useArbor: () => ({
     childProfile: { id: "child-foryou", name: "Mika", birthDate: harness.birthDate },
@@ -54,10 +61,13 @@ vi.mock("../../context/LanguageContext", () => ({
   }),
 }));
 vi.mock("../../hooks/useDevScore", () => ({ useDevScore: () => ({ focusDomain: null, domains: [] }) }));
+vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: () => ({ items: harness.programs, loaded: true, upsert: async () => {}, remove: async () => {} }) }));
+vi.mock("../../design/useComposition", () => ({ useComposition: () => harness.composition }));
 vi.mock("./AcademyForYou", () => ({ default: () => null }));
 vi.mock("./ScholarHubCard", () => ({ default: () => null }));
 vi.mock("../ui/EvidenceChip", () => ({ EvidenceChip: () => null, default: () => null }));
 vi.mock("../ui/SpeakButton", () => ({ SpeakButton: () => null, default: () => null }));
+vi.mock("../trust/TrustLink", () => ({ TrustLink: () => <button type="button" data-testid="trust-link">How Arbor decides</button> }));
 vi.mock("../../lib/celebrate", () => ({ celebrate: () => {} }));
 vi.mock("../../lib/analytics", () => ({ track: () => {} }));
 vi.mock("motion/react", () => ({ AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
@@ -76,10 +86,8 @@ const ask = (title: string) => makeFamilyTopic({ id: "topic-foryou", childId: CH
 const render = () => renderToStaticMarkup(<Masterclasses />);
 const count = (html: string, re: RegExp) => (html.match(re) ?? []).length;
 const visibleText = (html: string) => html.replace(/<[^>]+>/g, " ");
-/** Text as react-dom/server escapes it ("Read today's pick" → "Read today&#x27;s pick"). */
 const esc = (text: string) =>
   text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
-/** The markup of the element that opens at `marker`, up to the first `close` after it. */
 const region = (html: string, marker: string, close: string) => {
   const at = html.indexOf(marker);
   expect(at, `not rendered: ${marker}`).toBeGreaterThan(-1);
@@ -87,189 +95,151 @@ const region = (html: string, marker: string, close: string) => {
   expect(end, `unclosed: ${marker}`).toBeGreaterThan(at);
   return html.slice(html.lastIndexOf("<", at), end);
 };
-/** The short-read cards of a rendered row, each from its button to its close. */
-const readCards = (row: string) => row.split('data-testid="academy-short-read"').slice(1).map((c) => c.slice(0, c.indexOf("</button>")));
-/** Each card carries one registry area chip: its DOMAIN_ICONS glyph and its registry name. */
-const expectAreaChips = (cards: string[], locale: "en" | "he") => {
-  for (const card of cards) {
-    const area = /data-testid="academy-short-read-area" data-area="([a-z]+)"/.exec(card)?.[1] as DomainId | undefined;
-    expect(area, card.slice(0, 200)).toBeTruthy();
-    expect(DOMAIN_IDS).toContain(area);
-    expect(card).toContain(DOMAIN_ICONS[area!]);
-    expect(card).toContain(esc(domainName(area!, (key) => translate(locale, key))));
-  }
-};
+const localDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 beforeEach(() => {
   harness.locale = "en";
   harness.topic = null;
+  harness.composition = "desk";
+  harness.programs = [];
   harness.birthDate = new Date(Date.now() - Math.round(4.5 * 365.25) * DAY).toISOString().slice(0, 10);
   vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {}, removeItem: () => {} });
 });
 afterEach(() => { vi.unstubAllGlobals(); });
 
-describe("v3 EXTRA-FORYOU · with a family question open", () => {
+describe("For you · the pick and the open family question", () => {
   for (const locale of ["en", "he"] as const) {
-    it(`${locale}: the pick says it was picked for the question and quotes it, bidi-isolated; the hero still opens a read`, () => {
+    it(`${locale}: the pick says it was picked for the question and quotes it, bidi-isolated; the hero opens a read`, () => {
       harness.locale = locale;
       harness.topic = ask(QUESTION[locale]);
       const html = render();
-      // The tag holds an Icon <span>, so the region runs to the pick title that follows it.
-      const tag = region(html, 'data-testid="academy-pick-topic"', "<h2");
-      expect(tag).toContain("auto_awesome");
+      const tag = region(html, 'data-testid="academy-pick-topic"', "</b>");
       expect(tag).toContain(esc(translate(locale, "elev.learnCare.pick.topicTag")));
-      const why = region(html, 'data-why="family-question"', "</p>");
-      expect(why).toContain('dir="auto"');
-      expect(why).toMatch(new RegExp(`<bdi dir="auto" data-free-text=""[^>]*>${QUESTION[locale].replace("?", "\\?")}</bdi>`));
-      const [lead] = translate(locale, "elev.learnCare.pick.why.topic", { title: "\uE000" }).split("\uE000");
-      expect(why).toContain(esc(lead.trim()));
+      // The parent's own words, in ink, isolated.
+      const you = region(html, 'class="knot you"', "</div>");
+      expect(you).toContain(`<bdi>${esc(QUESTION[locale])}</bdi>`);
       const cta = region(html, 'data-testid="academy-hero-cta"', "</button>");
+      expect(cta).toContain('data-primary-move="open-todays-pick"');
       expect(cta).toContain(esc(translate(locale, "elev.learnCare.pick.cta")));
     });
 
-    it(`${locale}: one primary move, at most three modules`, () => {
-      harness.locale = locale;
-      harness.topic = ask(QUESTION[locale]);
-      const html = render();
-      expect(count(html, /data-primary-move="/g)).toBe(1);
-      expect(html).toContain('data-primary-move="open-todays-pick"');
-      const modules = count(html, /data-module="/g);
-      expect(modules).toBeGreaterThanOrEqual(1);
-      expect(modules).toBeLessThanOrEqual(3);
-    });
-
-    it(`${locale}: short reads are exactly 3 cards for the question, each a 44 px button with an area and minutes`, () => {
-      harness.locale = locale;
-      harness.topic = ask(QUESTION[locale]);
-      const html = render();
-      const row = region(html, 'data-testid="academy-short-reads"', "</section>");
-      // Re-pinned (reviewer r1): the row is always full when the catalogue allows, never 1 or 2.
-      const cards = row.match(/<button[^>]*data-testid="academy-short-read"[^>]*>/g) ?? [];
-      expect(cards).toHaveLength(3);
-      for (const card of cards) expect(card).toContain("min-h-11");
-      expect(row).toContain(esc(translate(locale, "learn.minutes", { n: "" }).trim()));
-      // The bedtime question meets at least three age-fit reads besides today's
-      // read, in EN and in HE alike, so the row says so and marks no read apart.
-      expect(row).toContain(esc(translate(locale, "elev.learnCare.shortReads.title")));
-      expect(row).not.toContain(esc(translate(locale, "elev.learnCare.shortReads.titleAll")));
-      expect(row).not.toContain('data-testid="academy-short-read-matched"');
-      expectAreaChips(readCards(row), locale);
-      expect(visibleText(row)).not.toMatch(/\d\s*%/);
-      expect(row).not.toContain('role="progressbar"');
-    });
-
-    it(`${locale}: courses by area — one chip pressed, 44 px chips, integer counts that add up to the courses shown`, () => {
-      harness.locale = locale;
-      harness.topic = ask(QUESTION[locale]);
-      const html = render();
-      const group = region(html, 'data-testid="academy-by-area"', "</div>");
-      expect(group).toContain('role="group"');
-      expect(group).toContain('aria-labelledby="academy-by-area-label"');
-      expect(html).toContain('id="academy-by-area-label"');
-      const chips = group.match(/<button[^>]*aria-pressed="(?:true|false)"[^>]*>/g) ?? [];
-      expect(chips.length).toBeGreaterThan(2);
-      expect(count(group, /aria-pressed="true"/g)).toBe(1);
-      expect(chips[0]).toContain('aria-pressed="true"'); // "All" is the default
-      for (const chip of chips) expect(chip).toContain("min-h-11");
-      const counts = [...group.matchAll(/<span class="tabular-nums"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1]);
-      expect(counts.length).toBe(chips.length - 1);
-      for (const n of counts) expect(n).toMatch(/^\d+$/);
-      const courses = count(html, /<h3 /g);
-      expect(courses).toBeGreaterThan(0);
-      expect(counts.reduce((sum, n) => sum + Number(n), 0)).toBe(courses);
-      // Each area chip is a registry domain: its DOMAIN_ICONS glyph and its registry name.
-      const areas = [...group.matchAll(/data-area="([a-z]+)"/g)].map((m) => m[1] as DomainId);
-      expect(areas).toHaveLength(chips.length - 1);
-      for (const area of areas) {
-        expect(DOMAIN_IDS).toContain(area);
-        const chip = region(group, `data-area="${area}"`, "</button>");
-        expect(chip).toContain(DOMAIN_ICONS[area]);
-        expect(chip).toContain(esc(domainName(area, (key) => translate(locale, key))));
-      }
-      // Registry order, each once.
-      const order = areas.map((a) => DOMAIN_IDS.indexOf(a));
-      expect(order).toEqual([...order].sort((a, b) => a - b));
-    });
-
-    it(`${locale}: the family-ritual door is a 44 px button with a mirrored arrow`, () => {
-      harness.locale = locale;
-      harness.topic = ask(QUESTION[locale]);
-      const html = render();
-      const door = region(html, 'data-testid="academy-family-door"', "</button>");
-      expect(door).toMatch(/^<button[^>]*min-h-11/);
-      expect(door).toContain(esc(translate(locale, "elev.learnCare.family.cta")));
-      expect(door).toContain(esc(translate(locale, "elev.learnCare.family.headline")));
-      expect(door).toContain(esc(translate(locale, "elev.learnCare.family.title")));
-      // The eyebrow is the brief's own key. EN shares its words with the Family
-      // page's title; HE does not, so HE shows which key renders.
-      if (locale === "he") {
-        expect(translate("he", "sec.family.title")).not.toBe(translate("he", "elev.learnCare.family.title"));
-        expect(door).not.toContain(esc(translate("he", "sec.family.title")));
-      }
-      expect(door).toContain('alt=""');
-      expect(door).toContain("rtl:-scale-x-100");
-      expect(door).not.toContain("--gradient-cta");
-    });
-
-    // v4 (For you, the parent is one screen, no tabs): with the Library and
-    // Family formation pills gone, the page carries their doors itself.
-    it(`${locale}: v4 — the library's shelves are 44 px doors in the catalogue, with Open the library and The Science`, () => {
-      harness.locale = locale;
-      harness.topic = ask(QUESTION[locale]);
-      const html = render();
-      const card = region(html, 'data-testid="academy-library"', "</section>");
-      expect(card).toContain(esc(translate(locale, "elev.learnCare.library.title")));
-      const shelves = [...card.matchAll(/<button[^>]*data-shelf="([a-z]+)"[^>]*>/g)];
-      expect(shelves.map((m) => m[1])).toEqual(LEARN_CATEGORIES.map((c) => c.id));
-      for (const [chip] of shelves) expect(chip).toContain("min-h-11");
-      for (const shelf of LEARN_CATEGORIES) expect(card).toContain(esc(locale === "he" ? shelf.label.he : shelf.label.en));
-      expect(region(card, 'data-testid="academy-library-open"', "</button>")).toContain(esc(translate(locale, "elev.learnCare.library.open")));
-      expect(card).toContain('data-testid="trust-link"');
-      // inside the catalogue module: the route's budget of three is untouched
-      const catalogue = html.indexOf('data-module="academy-catalogue"');
-      expect(html.indexOf('data-testid="academy-library"')).toBeGreaterThan(catalogue);
-      expect(html.indexOf('data-testid="academy-library"')).toBeGreaterThan(html.indexOf('data-testid="academy-family-door"'));
-      expect(card).toContain("xl:col-span-2");
-    });
-
-    it(`${locale}: no percentage anywhere in the visible text`, () => {
-      harness.locale = locale;
-      harness.topic = ask(QUESTION[locale]);
-      const text = visibleText(render());
-      expect(text.length).toBeGreaterThan(500);
-      expect(text).not.toMatch(/\d\s*%/);
-      // NEGATIVE CONTROL: the same scan catches a percentage.
-      expect(visibleText("<span>72%</span>")).toMatch(/\d\s*%/);
-    });
-  }
-});
-
-describe("v3 EXTRA-FORYOU · the tag needs a question that moved the pick", () => {
-  it("the unrelated control question really shares no word with any read", () => {
-    expect(topicWords(UNRELATED).length).toBeGreaterThan(0);
-    expect(LEARN_CARDS.filter((c) => topicBoost(c, UNRELATED) > 0)).toEqual([]);
-  });
-
-  for (const locale of ["en", "he"] as const) {
-    it(`${locale}: no question, or one that moved nothing → no tag, no quote; the hub still renders its reads`, () => {
+    it(`${locale}: no question, or one that moved nothing → no tag, no quote; an honest why-line instead`, () => {
       harness.locale = locale;
       for (const topic of [null, ask(UNRELATED)]) {
         harness.topic = topic;
         const html = render();
         expect(html).not.toContain('data-testid="academy-pick-topic"');
-        expect(html).not.toContain('data-why="family-question"');
+        expect(html).not.toContain('class="knot you"');
         expect(html).toContain('data-testid="academy-pick-why"');
-        expect(html).toContain('data-testid="academy-by-area"');
-        expect(html).toContain('data-testid="academy-family-door"');
-        expect(count(html, /data-primary-move="/g)).toBe(1);
-        // The row is still full: the next three ranked reads, under the plain title, no read marked.
-        const row = region(html, 'data-testid="academy-short-reads"', "</section>");
-        expect(readCards(row)).toHaveLength(3);
-        expect(row).toContain(esc(translate(locale, "elev.learnCare.shortReads.titleAll")));
-        expect(row).not.toContain(esc(translate(locale, "elev.learnCare.shortReads.title")));
-        expect(row).not.toContain('data-testid="academy-short-read-matched"');
-        expectAreaChips(readCards(row), locale);
       }
+      // The control is real: the unrelated question shares no word with any read.
+      expect(topicWords(UNRELATED).length).toBeGreaterThan(0);
+      expect(LEARN_CARDS.filter((c) => topicBoost(c, UNRELATED) > 0)).toEqual([]);
+    });
+  }
+});
+
+describe("For you · the composition", () => {
+  for (const locale of ["en", "he"] as const) {
+    for (const composition of ["desk", "phone"] as const) {
+      it(`${locale} · ${composition}: one h1, one primary move, at most three top-level modules, the rail behind one disclosure`, () => {
+        harness.locale = locale;
+        harness.composition = composition;
+        const html = render();
+        expect(count(html, /<h1[\s>]/g)).toBe(1);
+        expect(count(html, /data-primary-move="/g)).toBe(1);
+        const stamped = count(html, /\bdata-module="/g);
+        const demoted = count(html, /\bdata-module-demoted/g);
+        expect(stamped - demoted).toBeLessThanOrEqual(3);
+        expect(count(html, /data-module-disclosure="/g)).toBe(1);
+        expect(count(html, /<details/g)).toBe(1);
+        expect(html).toContain(`data-composition="${composition}"`);
+      });
+
+      it(`${locale} · ${composition}: the guide's four stops name the four numbered sections, in the same order`, () => {
+        harness.locale = locale;
+        harness.composition = composition;
+        const html = render();
+        const copy = FOR_YOU_COPY[locale];
+        const ids = ["fy-today", "fy-courses", "fy-programs", "fy-more"];
+        let last = -1;
+        for (const id of ids) {
+          expect(html).toContain(`href="#${id}"`);
+          const at = html.indexOf(`id="${id}"`);
+          expect(at, id).toBeGreaterThan(last);
+          last = at;
+        }
+        for (const name of [copy.guideToday, copy.guideCourses, copy.guidePrograms, copy.guideMore]) expect(html).toContain(esc(name));
+      });
+    }
+
+    it(`${locale}: courses by area — registry areas, aria-pressed, integer counts that add up to the courses shown`, () => {
+      harness.locale = locale;
+      const html = render();
+      const group = region(html, 'data-testid="academy-by-area"', "</div>");
+      const areas = [...group.matchAll(/data-area="([a-z]+)" aria-pressed="(true|false)"[^>]*><b>(\d+)<\/b><span>([^<]+)<\/span>/g)];
+      expect(areas.length).toBeGreaterThan(1);
+      let total = 0;
+      for (const [, area, pressed, n, name] of areas) {
+        expect(DOMAIN_IDS).toContain(area as DomainId);
+        expect(pressed).toBe("false");
+        expect(Number.isInteger(Number(n))).toBe(true);
+        expect(name).toBe(esc(domainName(area as DomainId, (key) => translate(locale, key))));
+        total += Number(n);
+      }
+      const shown = Number(/(\d+)/.exec(visibleText(region(html, 'class="fy-areas"', "</span>")))?.[1]);
+      expect(total).toBe(shown);
+    });
+
+    it(`${locale}: the family-ritual door and the Library door`, () => {
+      harness.locale = locale;
+      const html = render();
+      expect(region(html, 'data-testid="academy-family-door"', "</span>")).toContain(esc(translate(locale, "elev.learnCare.family.cta")));
+      expect(html).toContain(esc(translate(locale, "elev.learnCare.family.title")));
+      expect(region(html, 'data-testid="academy-library-open"', "</span>")).toContain(esc(translate(locale, "elev.learnCare.library.open")));
+      // The doors are buttons with a mirrored chevron (RTL), never a second primary.
+      expect(html).toMatch(/class="ds-link[^"]*"[^>]*><span data-testid="academy-family-door"/);
+      expect(html).toContain("rtl:-scale-x-100");
+    });
+
+    it(`${locale}: no percentage, no Worth knowing note, no short-reads row on For you`, () => {
+      harness.locale = locale;
+      harness.topic = ask(QUESTION[locale]);
+      const html = render();
+      expect(visibleText(html)).not.toMatch(/\d\s*%/);
+      expect(html).not.toContain('class="know');
+      expect(html).not.toContain("academy-short-read");
+    });
+  }
+});
+
+describe("For you · Your programs", () => {
+  it("no program running → the two programs to choose from, each opening the program page", () => {
+    const html = render();
+    expect(count(html, /data-testid="foryou-program-choice"/g)).toBe(2);
+    expect(html).toContain(esc(FOR_YOU_COPY.en.seeProgram));
+    expect(html).not.toContain('data-testid="foryou-program-open"');
+  });
+
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: a running program → its week as stepping stones, this week ringed, one door to the week`, () => {
+      harness.locale = locale;
+      const start = new Date(Date.now() - 15 * DAY);
+      harness.programs = [{
+        id: `talk-together.${localDay(start)}`, programId: "talk-together", startedAt: localDay(start), enrolledAt: start.toISOString(),
+        currentWeek: 3, status: "active", baseline: { childProxy: null, capturedAt: null }, updatedAt: start.toISOString(),
+      }];
+      const html = render();
+      const copy = FOR_YOU_COPY[locale];
+      const weeks = TALK_TOGETHER.weeks.length;
+      expect(count(html, /class="tok plan[^"]*at"/g)).toBe(weeks);
+      expect(html).toContain(`aria-label="${esc(copy.weekNow(3))}"`);
+      expect(count(html, /class="tok plan here at"/g)).toBe(1);
+      expect(count(html, /class="tok plan at"/g)).toBe(2);
+      expect(html).toContain(esc(copy.programWeeks(weeks)));
+      expect(html).toContain('data-testid="foryou-program-open"');
+      // The pick's thread names this week's practice.
+      expect(html).toContain('class="knot sets fy-practice"');
     });
   }
 });

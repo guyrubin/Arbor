@@ -768,7 +768,7 @@ const RGBA_BASELINE: Record<string, number> = {
   "components/profile/AvatarCreator.tsx": 6,
   "components/profile/ProfileEditDrawer.tsx": 1,
   "components/search/TopbarSearch.tsx": 1,
-  "components/sections/Masterclasses.tsx": 3,
+  "components/sections/Masterclasses.tsx": 1,
   "components/sections/Screening.tsx": 2,
   "components/sections/SmartRemindersPanel.tsx": 1,
   "components/stories/ComicReader.tsx": 1,

@@ -148,8 +148,8 @@ describe("W2-SHELLPLAY r2 · learn design — one gradient on the reader's own m
     const done = between(master, 'data-testid="course-mark-complete"', "</button>");
     expect(done).not.toContain("--gradient-cta");
     expect(done).toContain('border: "1px solid var(--arbor-rule)"');
-    // exactly one gradient in the course reader file's CTA set: the pick CTA (hub) + Add to today (reader)
-    expect((master.match(/var\(--gradient-cta\)/g) || []).length).toBe(2);
+    // exactly one gradient in the file: Add to today (reader). v10: the hub's pick CTA is the design system's btn primary.
+    expect((master.match(/var\(--gradient-cta\)/g) || []).length).toBe(1);
     // NEGATIVE CONTROL: the pre-fix Mark complete is caught
     expect('<button onClick={onComplete} className="w-full" style={{ background: "var(--gradient-cta)" }}>').toContain("--gradient-cta");
   });
