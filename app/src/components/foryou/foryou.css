@@ -164,5 +164,3 @@
 .ds-phone .lib-card.featured .lib-hook { display: none; }
 .ds-phone .lib-stage { gap: 10px; }
 .ds-phone .lib-stage .fy-pick-hook { font-size: 14.5px; }
-/* The phone guide's stops are 40 px in the foundation; these screens lift them to the 44 px floor. */
-.ds-phone.fy-page .guide.mini .gstop, .ds-phone.lib-page .guide.mini .gstop { min-height: 44px; }
