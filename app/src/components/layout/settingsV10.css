@@ -42,3 +42,5 @@
 [role="dialog"]:has(> .ds-settings.ds-desk) { max-width: 1056px; }
 /* size pass (v10.3): the columns end together — the last group of each column takes the rest */
 .ds-settings.ds-desk .set-col > .set-sec:last-of-type { flex: 1; }
+/* the legal row's short words ("תמיכה") still take a 44 px wide target */
+.ds-settings .set-legal a, .ds-settings .set-legal button { min-width: 44px; justify-content: center; }
