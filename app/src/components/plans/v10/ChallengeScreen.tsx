@@ -359,7 +359,8 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
 
   const all = listed.length > 0 && (
     <>
-      <RouteHead title={s("section.hard")} sub={desk ? c.allSub(listed.length, childName) : undefined} />
+      {/* With no plan running there is no stage, so the list's title is the screen's one h1. */}
+      <RouteHead level={plan ? 2 : 1} title={s("section.hard")} sub={desk ? c.allSub(listed.length, childName) : undefined} />
       {!plan && <p className="small" style={{ marginBottom: 8 }}>{c.noRunning}</p>}
       {desk ? (
         <div className="g12" data-plans-chooser="">{listed.map(card)}</div>

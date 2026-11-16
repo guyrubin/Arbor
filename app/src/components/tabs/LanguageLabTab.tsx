@@ -111,8 +111,12 @@ export default function LanguageLabTab() {
 
   if (view === "said") return <SaidPage />;
 
+  // No exit of its own: the shell's tab wrapper fades the page out. An inner
+  // exit mounted mid-exit (leaving `?view=said` swaps SaidPage for this
+  // element while the shell's wait-mode exit runs) never completes, and the
+  // next tab never mounts.
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-5 sm:space-y-6">
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-5 sm:space-y-6">
       {/* v10.1: #/language is Moments with the kind Things <name> said selected. */}
       <MomentsKindHeader
         kind="said"

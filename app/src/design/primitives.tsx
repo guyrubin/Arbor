@@ -218,12 +218,17 @@ export function RouteSection({
 }
 
 /** A numbered section heading: the stop, a display title, a count, a link. */
-export function RouteHead({ id, title, sub, link }: { id?: string; title: React.ReactNode; sub?: React.ReactNode; link?: React.ReactNode }) {
+export function RouteHead({ id, title, sub, link, level = 2 }: {
+  id?: string; title: React.ReactNode; sub?: React.ReactNode; link?: React.ReactNode;
+  /** 1 when this section's title is the screen's one h1 (a screen whose stage is absent). */
+  level?: 1 | 2;
+}) {
+  const Heading = level === 1 ? "h1" : "h2";
   return (
     <div className="rhead">
-      <h2 className="h3" id={id}>
+      <Heading className="h3" id={id}>
         {title}
-      </h2>
+      </Heading>
       {sub != null && <span className="small">{sub}</span>}
       {link}
     </div>

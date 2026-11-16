@@ -20,7 +20,7 @@ import { mirrorPoints, wavePoints } from "./Road";
 import { challengePlanHref, readChallengeQuery } from "../../../lib/plans/challengeLinks";
 import { authoredPatterns, getPattern } from "../../../lib/library/plans/planBooks";
 import { activePlans } from "../../../lib/plans/planWeek";
-import { PLAN_STRINGS } from "../../../lib/plans/planStrings";
+import { PLAN_STRINGS, planString } from "../../../lib/plans/planStrings";
 import type { PlanBookDoc } from "../../../lib/library/plans/planBookDoc";
 import type { ActionPlan } from "../../../types";
 
@@ -80,7 +80,9 @@ describe("Challenge Plans page (N-Challenge)", () => {
   it("with nothing running: the list only, every composable pattern offered once (dark patterns are not)", () => {
     const composable = authoredPatterns().filter((d) => d.id !== "plan-new-food");
     const html = screen({ planRows: [], composable });
-    expect(html).not.toContain("<h1");
+    // No stage without a running plan, so the list's title is the screen's one h1.
+    expect(html.match(/<h1\b/g) ?? []).toHaveLength(1);
+    expect(html).toContain(`<h1 class="h3">${planString("section.hard", "en")}</h1>`);
     expect(text(html)).toContain(PLANS_COPY.en.noRunning);
     const doors = [...html.matchAll(/data-plan-door="([a-z-]+)"/g)].map((m) => m[1]);
     expect(doors).toEqual(composable.map((d) => d.id));

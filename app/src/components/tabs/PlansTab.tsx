@@ -152,11 +152,18 @@ export default function PlansTab() {
 
   /* ── Challenge Plans: the composer and the plan's page ─────────────────── */
   const composerDef = target.kind === "pattern" && (target.compose || !runningIds.has(target.pattern)) ? getPattern(target.pattern) : undefined;
+  // One stable wrapper for every view of Plans (see the return below): the
+  // shell's tab exit (AnimatePresence, wait mode) must never see this screen
+  // swap its top-level motion element mid-exit, or the next tab never mounts
+  // (leaving `#/plans?challenge=…` for any other route stranded the old view).
+  const shell = (view: "compose" | "parent-copy" | "challenge" | "home", body: React.ReactNode) => (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="w-full min-w-0" data-plans-view={view}>
+      <DsRoot composition={composition} className="ds-plans">{body}</DsRoot>
+    </motion.div>
+  );
   if (composerDef) {
     const saved = planRows.items.find((r) => r?.id === `${composerDef.id}.${childProfile.id}` && r.status === "active");
-    return (
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="w-full min-w-0" data-plans-view="compose">
-        <DsRoot composition={composition} className="ds-plans">
+    return shell("compose", (
           <PlanComposer
             key={composerDef.id}
             def={composerDef}
@@ -168,25 +175,15 @@ export default function PlansTab() {
             onPrint={printPlan}
             onSafety={() => setActiveTab("safety")}
           />
-        </DsRoot>
-      </motion.div>
-    );
+    ));
   }
   const printing = target.kind === "pattern" && target.print ? running.find((r) => r.def.id === target.pattern) : undefined;
   if (printing) {
-    return (
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="w-full min-w-0" data-plans-view="parent-copy">
-        <DsRoot composition={composition} className="ds-plans">
-          <PrintPreview input={{ doc: printing.doc, child: childProfile, lang, now: nowDate }} childName={first} lang={lang} onPrint={() => printPlan(printing.doc)} />
-        </DsRoot>
-      </motion.div>
-    );
+    return shell("parent-copy", <PrintPreview input={{ doc: printing.doc, child: childProfile, lang, now: nowDate }} childName={first} lang={lang} onPrint={() => printPlan(printing.doc)} />);
   }
   if (target.kind !== "none") {
     const focus = target.kind === "pattern" ? target.pattern : null;
-    return (
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="w-full min-w-0" data-plans-view="challenge">
-        <DsRoot composition={composition} className="ds-plans">
+    return shell("challenge", (
           <ChallengeScreen
             lang={lang}
             composition={composition}
@@ -207,9 +204,7 @@ export default function PlansTab() {
             onUndoNight={(p) => void planRows.upsert(unrecordNight(p.doc, new Date()))}
             onJournal={(p) => void addMoment(nightMomentText(p.def, lang, first))}
           />
-        </DsRoot>
-      </motion.div>
-    );
+    ));
   }
 
   /* ── the Plans home ─────────────────────────────────────────────────────── */
@@ -317,9 +312,8 @@ export default function PlansTab() {
     <PlanScripts plan={plan} lang={lang} composition={composition} n={n("plans-rail")} onRefine={() => seedCoach({ prompt: t("seed.planCoreg", { title: plan.title }), source: "plans-coreg" })} />
   );
 
-  return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full min-w-0" data-plans-view="home">
-      <DsRoot composition={composition} className="ds-plans">
+  return shell("home", (
+      <>
         {stops.length > 1 && <Guide stops={stops} label={c.onThisPage} mini={!desk} />}
         <Route composition={composition} tight={!desk}>
           {(anyPlan || !plansLoaded) && (
@@ -411,7 +405,6 @@ export default function PlansTab() {
             </div>
           </RouteSection>
         </Route>
-      </DsRoot>
-    </motion.div>
-  );
+      </>
+  ));
 }
