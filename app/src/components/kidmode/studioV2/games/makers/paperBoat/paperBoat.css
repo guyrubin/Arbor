@@ -77,7 +77,9 @@
 .pb-print[data-spread="1"] .pb-water { background: linear-gradient(180deg, color-mix(in srgb, var(--mk-sea) 60%, var(--mk-sky-pale)) 0%, color-mix(in srgb, var(--mk-water) 64%, var(--mk-sea)) 34%, color-mix(in srgb, var(--mk-water) 60%, var(--mk-teal-deep)) 100%); }
 .pb-print[data-spread="2"] .pb-water { background: linear-gradient(180deg, color-mix(in srgb, var(--mk-sky-pale) 60%, var(--mk-sea)) 0%, color-mix(in srgb, var(--mk-water) 70%, var(--mk-slate)) 36%, color-mix(in srgb, var(--mk-water) 44%, var(--mk-indigo)) 100%); }
 .pb-print[data-spread="3"] .pb-water { background: linear-gradient(180deg, color-mix(in srgb, var(--mk-amber) 26%, var(--mk-water)) 0%, color-mix(in srgb, var(--mk-water) 58%, var(--mk-indigo)) 34%, color-mix(in srgb, var(--mk-indigo) 74%, var(--mk-teal-deep)) 100%); }
-.pb-reflect { will-change: transform; inset-inline: 0; background-size: 200% 100%; background-repeat: no-repeat; transform: scaleY(-1); opacity: .5; -webkit-mask-image: linear-gradient(0deg, var(--studio-graphite) 0%, transparent 88%); mask-image: linear-gradient(0deg, var(--studio-graphite) 0%, transparent 88%); }
+.pb-reflect { will-change: transform; filter: blur(1.3px); inset-inline: 0; background-size: 200% 100%; background-repeat: no-repeat; transform: scaleY(-1); opacity: .5; -webkit-mask-image: linear-gradient(0deg, var(--studio-graphite) 0%, transparent 88%); mask-image: linear-gradient(0deg, var(--studio-graphite) 0%, transparent 88%); }
+/* the rain's gloom and the quay's dusk on the water */
+.pb-dusk { inset: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--mk-indigo-deep) 60%, var(--mk-storm-grey)), var(--mk-indigo-deep)); pointer-events: none; }
 .pb-ripple { left: 0; bottom: 0; inline-size: calc(100% + 360px); background-size: 360px 150px; will-change: transform; }
 .pb-ripple--light { background-image: var(--pb-ripple-light); opacity: .6; }
 .pb-ripple--deep { background-image: var(--pb-ripple-deep); opacity: .5; }
@@ -99,13 +101,17 @@
 
 .pb-pop { position: absolute; transform-origin: 50% 100%; pointer-events: none; }
 /* the shadow a standing card throws back across the page, and the dark line at its foot */
-.pb-cast { position: absolute; pointer-events: none; transform-origin: 50% 100%; filter: blur(1.6px); background: linear-gradient(0deg, color-mix(in srgb, var(--mk-shadow) 58%, transparent), color-mix(in srgb, var(--mk-shadow) 20%, transparent) 55%, transparent); }
+.pb-cast { position: absolute; pointer-events: none; transform-origin: 50% 100%; background: linear-gradient(0deg, color-mix(in srgb, var(--mk-shadow) 58%, transparent), color-mix(in srgb, var(--mk-shadow) 20%, transparent) 55%, transparent); }
 .pb-foot { position: absolute; height: 10px; transform: translateZ(.5px); background: linear-gradient(180deg, color-mix(in srgb, var(--mk-shadow) 52%, transparent), transparent); pointer-events: none; }
 .pb-slice { position: absolute; inset: 0; display: block; background-size: 200% 100%; background-repeat: no-repeat; }
 /* the outline of the slice in front, thrown on this one by the window's light */
-.pb-shade { position: absolute; inset-inline: 0; bottom: 0; display: block; background: color-mix(in srgb, var(--mk-shadow) 40%, transparent); -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; transform: translate(5px, -3px); filter: blur(3px); pointer-events: none; }
-.pb-meadow { position: absolute; inset: 0; display: block; background-size: 500px 33px; background-repeat: no-repeat; filter: drop-shadow(0 -.6px 0 color-mix(in srgb, var(--mk-white) 70%, transparent)); }
-.pb-rock { position: absolute; inset: 0; display: block; inline-size: 100%; block-size: 100%; filter: brightness(1.12) drop-shadow(0 -1px 0 color-mix(in srgb, var(--mk-white) 86%, transparent)) drop-shadow(0 1px 1.5px color-mix(in srgb, var(--mk-shadow) 40%, transparent)); }
+/* weather and dusk on a standing picture: a tint cut to the picture's own outline */
+.pb-tint { position: absolute; inset: 0; display: block; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; pointer-events: none; }
+.pb-tint[data-tone=rainGloom] { background: color-mix(in srgb, var(--mk-storm-grey) 50%, var(--mk-indigo-deep)); }
+.pb-tint[data-tone=quayDusk] { background: color-mix(in srgb, var(--mk-indigo-deep) 76%, var(--mk-plum)); }
+.pb-shade { position: absolute; inset-inline: 0; bottom: 0; display: block; background: color-mix(in srgb, var(--mk-shadow) 30%, transparent); -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; transform: translate(5px, -3px); pointer-events: none; }
+.pb-meadow { position: absolute; inset: 0; display: block; background-size: 500px 33px; background-repeat: no-repeat; }
+.pb-rock { position: absolute; inset: 0; display: block; inline-size: 100%; block-size: 100%; }
 .pb-fx { position: absolute; display: block; overflow: visible; pointer-events: none; }
 .pb-glow { position: absolute; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-sun) 92%, transparent), color-mix(in srgb, var(--mk-amber) 46%, transparent) 46%, transparent); pointer-events: none; }
 .pb-bow { position: absolute; top: 0; display: block; inline-size: 200px; block-size: 100px; }
@@ -130,7 +136,8 @@
 .pb-view img { position: absolute; left: 0; top: 0; inline-size: 100%; aspect-ratio: 1; border-radius: 50%; border: 4px solid var(--mk-white); box-shadow: 0 2px 5px color-mix(in srgb, var(--mk-shadow) 40%, transparent); object-fit: cover; }
 /* a rain cloud on its stalk, and its rain */
 .pb-cloud { position: absolute; inset: 0; display: block; }
-.pb-cloud img { position: absolute; left: 0; inline-size: 100%; block-size: auto; transform-origin: 50% 80%; }
+.pb-cloud__body { position: absolute; left: 0; inline-size: 100%; display: block; transform-origin: 50% 80%; }
+.pb-cloud__body img { position: absolute; inset: 0; display: block; inline-size: 100%; block-size: 100%; }
 .pb-cloud__stalk { position: absolute; left: calc(50% - 3px); bottom: 0; inline-size: 6px; border-radius: 2px; background: linear-gradient(90deg, var(--mk-white), var(--mk-paper-shade)); }
 .pb-cloud__rain { position: absolute; inline-size: 2.4px; border-radius: 2px; transform: skewX(-16deg); background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--mk-white) 90%, transparent)); }
 /* the lamp's beam */

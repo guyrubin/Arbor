@@ -205,7 +205,7 @@ button.play-coach__portrait:focus-visible, .play-button:focus-visible, .play-chi
 }
 @container play (max-height: 460px) {
   .play-stage__hud { padding-block-start: 8px; row-gap: 6px; }
-  .play-coach__portrait { inline-size: 52px; block-size: 52px; }
+  .play-coach__portrait { inline-size: var(--studio-tap); block-size: var(--studio-tap); }
   .play-coach__bubble { padding-block: 7px; font-size: 15px; }
   .play-button[data-size=l] { min-block-size: var(--studio-tap); font-size: 18px; }
   .play-opening { padding-block-end: calc(var(--play-safe-b) + 18px); }
@@ -234,7 +234,7 @@ button.play-coach__portrait:focus-visible, .play-button:focus-visible, .play-chi
 @keyframes play-wow-b { 0% { transform: translateY(14%) scale(.86); } 55% { transform: translateY(-4%) scale(1.1); } 100% { transform: none; } }
 @keyframes play-happy-a { 0% { transform: translateY(12%) scale(.92); } 40% { transform: translateY(-5%) rotate(-4deg); } 70% { transform: translateY(0) rotate(3deg); } 100% { transform: none; } }
 @keyframes play-happy-b { 0% { transform: translateY(12%) scale(.92); } 40% { transform: translateY(-5%) rotate(-4deg); } 70% { transform: translateY(0) rotate(3deg); } 100% { transform: none; } }
-@keyframes play-line-in { from { opacity: 0; translate: 0 6px; } to { opacity: 1; translate: 0 0; } }
+@keyframes play-line-in { from { opacity: .3; translate: 0 5px; } to { opacity: 1; translate: 0 0; } }
 @keyframes play-pip-now { 0%, 100% { scale: 1; } 50% { scale: 1.08; } }
 @keyframes play-pip-done { 0% { scale: .6; } 60% { scale: 1.22; } 100% { scale: 1; } }
 @keyframes play-rise { from { opacity: 0; translate: 0 14px; } to { opacity: 1; translate: 0 0; } }

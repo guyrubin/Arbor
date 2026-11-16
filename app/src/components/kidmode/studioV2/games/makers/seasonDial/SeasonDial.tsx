@@ -7,7 +7,7 @@ import { GameFinish, GameShell } from '../../../../game/GameShell';
 import { useKidReadAloudMuted } from '../../../../audio/kidAudio';
 import { ADVENTURE_COPY } from '../../adventures/adventureCopy';
 import {
-  CAMERA_HOME, PLAY_AMBIENCE, HudButton, HudChip, HudCoach, HudDock, HudQuest, HudToast, PlayFx, PlayOpening, PlaySetPiece, PlayStage, createPlaySound, roundSeed, useReducedMotion, useShake,
+  CAMERA_HOME, PLAY_AMBIENCE, HudButton, HudChip, HudCoach, HudDock, HudQuest, HudToast, PlayFx, PlayOpening, PlaySetPiece, PlayStage, createPlaySound, hitPause, roundSeed, useReducedMotion, useShake,
   type CoachMood, type FxKind, type PlayCamera, type PlayFxHandle, type PlaySound,
 } from '../play';
 import { SEASON_DIAL_COPY } from './seasonDialCopy';
@@ -112,7 +112,7 @@ export default function SeasonDial() {
   const flash = (text: string, ms = 2400) => { setToast(text); later(() => setToast(t => (t === text ? '' : t)), ms); };
   const cheerNow = () => setCheer(n => n + 1);
   /** Stage px → the particle layer's fractions. */
-  const burst = (x: number, y: number, fxKind: FxKind, tones: string[], count?: number, scale?: number) => { const L = layoutRef.current; fx.current?.burst(x / L.w, y / L.h, fxKind, { tones, count, scale }); };
+  const burst = (x: number, y: number, fxKind: FxKind, tones: string[], count?: number, scale?: number) => { const L = layoutRef.current; fx.current?.burst(x / L.w, y / L.h, fxKind, { tones, count, size: scale, spread: scale }); };
 
   /** Every change of the year goes through here: the world reads it on its
    * next frame, the dial is drawn on the next React frame, the sound follows at once. */
@@ -141,7 +141,7 @@ export default function SeasonDial() {
     const done = conductQuarters(conductProgress(c.from, c.far));
     setQuarters(q => {
       if (done <= q) return q;
-      sound.current?.place(done * 2); cheerNow();
+      sound.current?.place(done * 2); cheerNow(); if (done < 4) say(words.current.conducting, 'happy');
       const at = world.current?.crown(); if (at) burst(at.x, at.y, SEASON_FX[seasonAt(wrapYear(next))].kind, SEASON_FX[seasonAt(wrapYear(next))].tones, 18, 1.2);
       return done;
     });
@@ -244,7 +244,7 @@ export default function SeasonDial() {
 
   /* ── chapter ends ── */
   const flourish = (line: string, next: string, then: () => void) => {
-    sound.current?.chapter(); cheerNow(); bump();
+    sound.current?.chapter(); cheerNow(); bump(); void hitPause(80);
     say(line, 'wow'); flash(next, FLOURISH_MS - 200);
     const L = layoutRef.current, at = world.current?.crown();
     if (at) for (let i = 0; i < 4; i++) later(() => burst(at.x + (i - 1.5) * at.rx * 0.5, at.y - at.ry * 0.2 * (i % 2), 'sparkle', ['gold-light', 'white', 'sun'], 16, 1.3), i * 140);
@@ -463,7 +463,7 @@ export default function SeasonDial() {
     else if (hit === 'sunDisc') shine(x, y);
     else if (hit === 'treeCrown') {
       burst(x, y, SEASON_FX[season].kind, SEASON_FX[season].tones, season === 3 && gave > 1 ? 30 : 16, season === 3 ? 1.5 : 1.15);
-      if (gave >= 3) bump();
+      if (gave >= 3) { bump(); void hitPause(60); }
       audio.current?.toy('appleTree', season, gave >= 4 ? 1 : 0); cheerNow(); remember('tapTree', x, y);
     } else if (hit === 'knotHole') { audio.current?.toy('knotHole', season); burst(x, y, 'glint', ['butter', 'white'], 6); }
     else if (hit === 'snowFriend') { audio.current?.toy('snowFriend', season); burst(x, y - 30, 'dust', ['snow', 'white'], 14); }
@@ -596,7 +596,8 @@ export default function SeasonDial() {
     : chapter === 1 ? w.steps.map((label, i) => ({ key: `step${i}`, label, done: grown > i }))
       : w.quarters.map((label, i) => ({ key: `quarter${i}`, label, done: quarters > i }));
   const current = chapter === 0 ? (isLit(lit, season) ? SEASONS.findIndex(s => !isLit(lit, s)) : season) : chapter === 1 ? grown : quarters;
-  const planterStep = Math.min(2, grown), planter = PLANTER_PICTURES[planterStep];
+  // The seedling: a tight bud, the bud swelling (and swelling again), then the flower with the chapter's last step.
+  const planter = PLANTER_PICTURES[grown >= 3 ? 2 : Math.min(1, grown)], planterTall = layout.spots.planter.h * [0.84, 0.94, 1.04, 1.16][Math.min(3, grown)];
   const sprite = (id: CastId, picture: CastPicture, spot: Spot) => {
     const show = shows[id]; if (show <= 0.02) return null;
     const ratio = picture.width / picture.height, h = spot.h * picture.tall;
@@ -612,7 +613,7 @@ export default function SeasonDial() {
   return <GameShell fullBleed autoNarrate={false} worldId="season-dial" title={w.title} instruction={w.instruction}>
     {phase === 'done'
       ? <GameFinish title={w.finish} subtitle={w.transfer} onPlayAgain={replay} playAgainLabel={shared.again} homeLabel={shared.home} />
-      : <section ref={rootEl} className="sd" data-adventure="season-dial" data-phase={phase} data-chapter={chapter + 1} data-season={season} data-seed={seed} dir={lang === 'he' ? 'rtl' : 'ltr'}
+      : <section ref={rootEl} className="sd sd-root" data-adventure="season-dial" data-phase={phase} data-chapter={chapter + 1} data-season={season} data-seed={seed} dir={lang === 'he' ? 'rtl' : 'ltr'}
         onPointerDownCapture={noteInput} onKeyDownCapture={noteInput}>
         <PlayStage id="season-dial" grade="day" camera={camera} shake={shake} parallax setPiece={filming}
           world={<div className="sd-touch" data-sd-scene="" dir="ltr" role="group" aria-label={`${w.scene}. ${phaseText}`}
@@ -620,7 +621,7 @@ export default function SeasonDial() {
             <SeasonWorld ref={world} layout={layout} live={live} still={reduced} kind={kind} cloudSeed={plan.cloudSeed} drift={plan.drift}>
               {(Object.keys(CAST_PICTURES) as CastId[]).map(id => sprite(id, CAST_PICTURES[id], layout.spots[CAST_SPOT[id]]))}
               {chapter === 1 && <button type="button" className="sd-friend sd-planter" data-sd-planter={grown} aria-label={w.friends.planter} onClick={() => pokeFriend(layout.spots.planter)}
-                style={{ left: layout.spots.planter.x, top: layout.spots.planter.y, inlineSize: layout.spots.planter.h * (planter.width / planter.height), blockSize: layout.spots.planter.h }}>
+                style={{ left: layout.spots.planter.x, top: layout.spots.planter.y, inlineSize: planterTall * (planter.width / planter.height), blockSize: planterTall }}>
                 <span className="sd-friend__shadow" aria-hidden="true" />
                 <span key={`${grown}`} className="sd-friend__body" data-cheer="true" data-full={grown >= 3 || undefined}><img src={planter.src} alt="" draggable={false} decoding="async" /></span>
               </button>}
@@ -635,7 +636,7 @@ export default function SeasonDial() {
             </div>}
           </div>}>
           {phase === 'actOpen' && <PlayOpening title={w.title} place={w.place} onDone={begin} />}
-          <HudCoach who="aya" mood={coach.mood} line={coach.line} onPoke={() => { wake(); sound.current?.tap(); setCoach(c => ({ ...c, mood: c.mood === 'happy' ? 'wow' : 'happy' })); }} pokeLabel={w.lab} />
+          <HudCoach who="aya" mood={coach.mood} line={coach.line} onPoke={() => { wake(); sound.current?.tap(); setCoach(c => ({ ...c, mood: c.mood === 'happy' ? 'wow' : 'happy' })); }} pokeLabel={w.aya} />
           <HudQuest steps={steps} current={current} label={w.chapters[chapter]} />
           <button type="button" className="sd-lab" data-sd-lab="" data-ask={ask?.id} aria-label={ask ? `${w.asks[ask.id as keyof typeof w.asks]} ${labWords}` : labWords}
             onClick={() => { wake(); void selectionHaptic(); audio.current?.lab(lab.moisture, lab.light, lab.warmth); }}>

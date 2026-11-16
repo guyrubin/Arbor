@@ -97,7 +97,6 @@ const step = (value: number, steps: number) => Math.round(value * steps) / steps
 const laneY = (pos: number) => LANE_Y[0] + (LANE_Y[2] - LANE_Y[0]) * (pos / 2);
 const since = (live: Live, id: string) => live.time - (live.pokes[id] ?? -99);
 const met = (live: Live, id: string) => (live.marks[id] === undefined ? -1 : live.time - live.marks[id]);
-const cutEdge = `drop-shadow(0 -1px 0 ${fade('white', 92)}) drop-shadow(0 1.5px 1.5px ${fade('shadow', 34)})`;
 
 /* ── the card machinery ───────────────────────────────────────────────────── */
 function Card({ layer, progress, offset, mirror, rise }: { layer: Layer; progress: number; offset: number; mirror: boolean; rise: { p: number; lean: number } | null }) {
@@ -124,16 +123,17 @@ export function SpreadHalf({ spread, side, progress, settle, live }: { spread: S
   const layers = (spread === 0 ? streamLayers : spread === 1 ? riverLayers : spread === 2 ? stormLayers : harbourLayers)(live);
   const offset = side === 'left' ? 0 : PAGE_W;
   const mine = layers.filter(layer => (layer.x < PAGE_W) === (side === 'left')).sort((a, b) => a.y - b.y);
-  const slices = KIT_SLICES[spread], near = slices[slices.length - 1], look = printLook(spread, live);
+  const slices = KIT_SLICES[spread], near = slices[slices.length - 1], dusk = duskOf(spread, live);
   const flow = live.reduced ? 0 : live.time * (spread === 2 ? 5 + 16 * (1 - live.calm) : 9);
   const line = live.words[spread]?.[side === 'left' ? 0 : 1] ?? '', waterTop = WATER_TOPS[spread];
   return <div className="pb-half" data-spread={spread} data-side={side}>
     <div className="pb-print" aria-hidden="true" data-spread={spread}>
       <span className="pb-farbank" style={{ height: waterTop + 2 }} />
-      <span className="pb-water" style={{ top: waterTop, filter: look }} />
-      <ReflectArt src={near.art.src} side={side} top={waterTop} height={Math.min(150, near.h * 1.1)} look={look} />
+      <span className="pb-water" style={{ top: waterTop }} />
+      <ReflectArt src={near.art.src} side={side} top={waterTop} height={Math.min(150, near.h * 1.1)} />
       <span className="pb-ripple pb-ripple--deep" style={{ top: waterTop, transform: `translateX(${(-((flow * 0.6 + offset) % 360)).toFixed(2)}px)` }} />
       <span className="pb-ripple pb-ripple--light" style={{ top: waterTop, transform: `translateX(${(-((flow + offset + 130) % 360)).toFixed(2)}px)` }} />
+      {dusk > 0.01 && <span className="pb-dusk" style={{ opacity: dusk * 0.8 }} />}
       <svg className="pb-print__live" viewBox={`${offset} 0 ${PAGE_W} ${PAGE_D}`} width={PAGE_W} height={PAGE_D} aria-hidden="true" focusable="false">{livePrint(spread, live)}</svg>
       <span className="pb-bank" style={{ top: BANK_Y - 7 }} />
       <p className="pb-words" lang={live.lang} dir={live.lang === 'he' ? 'rtl' : 'ltr'} data-side={side} style={{ top: BANK_Y + 7, transform: live.mirror ? 'scaleX(-1)' : undefined }}>{line}</p>
@@ -146,23 +146,31 @@ export function SpreadHalf({ spread, side, progress, settle, live }: { spread: S
 }
 
 const half = (side: Side) => (side === 'left' ? '0 0' : '100% 0');
-const SliceArt = memo(function SliceArt({ src, side, look }: { src: string; side: Side; look?: string }) {
-  return <span className="pb-slice" style={{ backgroundImage: `url(${src})`, backgroundPosition: half(side), filter: `${look ? `${look} ` : ''}${cutEdge}` }} />;
+/** No CSS filter on anything that stands in the book's 3D space: a browser may
+ * drop a filtered card whose page is mostly off the screen. A slice's white
+ * cut edge is in its picture; weather and dusk are a tint laid over it,
+ * cut to its own outline (`TintArt`), whose opacity is all that changes. */
+const SliceArt = memo(function SliceArt({ src, side }: { src: string; side: Side }) {
+  return <span className="pb-slice" style={{ backgroundImage: `url(${src})`, backgroundPosition: half(side) }} />;
+});
+const TintArt = memo(function TintArt({ src, at, size, tone, opacity }: { src: string; at: string; size: string; tone: 'rainGloom' | 'quayDusk'; opacity: number }) {
+  const mask = `url(${src})`;
+  return <span className="pb-tint" data-tone={tone} style={{ opacity, WebkitMaskImage: mask, maskImage: mask, WebkitMaskSize: size, maskSize: size, WebkitMaskPosition: at, maskPosition: at }} />;
 });
 /** The nearest slice, mirrored in the water under it. */
-const ReflectArt = memo(function ReflectArt({ src, side, top, height, look }: { src: string; side: Side; top: number; height: number; look?: string }) {
-  return <span className="pb-reflect" style={{ top, height, backgroundImage: `url(${src})`, backgroundPosition: side === 'left' ? '0 100%' : '100% 100%', filter: `${look ? `${look} ` : ''}blur(1.3px)` }} />;
+const ReflectArt = memo(function ReflectArt({ src, side, top, height }: { src: string; side: Side; top: number; height: number }) {
+  return <span className="pb-reflect" style={{ top, height, backgroundImage: `url(${src})`, backgroundPosition: side === 'left' ? '0 100%' : '100% 100%' }} />;
 });
 /** A spread's standing slices, both halves of each. A poked slice wobbles. */
-function sliceLayers(spread: SpreadIndex, live: Live, look?: string, extras?: Readonly<Record<string, ReactNode>>): Layer[] {
-  const slices = KIT_SLICES[spread];
+function sliceLayers(spread: SpreadIndex, live: Live, extras?: Readonly<Record<string, ReactNode>>): Layer[] {
+  const slices = KIT_SLICES[spread], dusk = duskOf(spread, live);
   return slices.flatMap((item, index) => (['left', 'right'] as const).map((side): Layer => {
     const front = slices[index + 1];
     return {
       key: `${item.id}-${side}`, x: side === 'left' ? PAGE_W / 2 : PAGE_W * 1.5, y: item.y, w: PAGE_W, h: item.h, cast: 0.6,
       lean: live.reduced ? 0 : shake(since(live, item.id), 5, 12, 3.2),
-      art: <SliceArt src={item.art.src} side={side} look={look} />,
-      extra: <>{front && <ShadeArt src={front.art.src} side={side} height={Math.min(front.h, item.h)} full={front.h} />}{extras?.[`${item.id}-${side}`]}</>,
+      art: <SliceArt src={item.art.src} side={side} />,
+      extra: <>{dusk > 0.01 && <TintArt src={item.art.src} at={half(side)} size="200% 100%" tone={spread === 2 ? 'rainGloom' : 'quayDusk'} opacity={dusk} />}{front && <ShadeArt src={front.art.src} side={side} height={Math.min(front.h, item.h)} full={front.h} />}{extras?.[`${item.id}-${side}`]}</>,
     };
   }));
 }
@@ -296,7 +304,7 @@ function streamLayers(live: Live): Layer[] {
   const spin = afloat && after >= 0 && after < 1 && !still ? Math.sin(after * Math.PI * 2) * 20 * (1 - after) : 0;
   const bob = still || !(afloat || live.boat0.afloat) ? 0 : Math.sin(t * 2.3) * 0.9;
   return [
-    ...sliceLayers(0, live, undefined, {
+    ...sliceLayers(0, live, {
       'hills-right': <Sparkle x={208} y={14} s={since(live, 'dome')} />,
       'village-right': <Jets x={96} y={106} s={since(live, 'fountain')} />,
     }),
@@ -317,7 +325,7 @@ function riverLayers(live: Live): Layer[] {
   const after = river.bumpLane !== null ? (river.d - (river.bumpUntil - 60)) / 60 : 1;
   const spin = after >= 0 && after < 1 && !still ? Math.sin(after * Math.PI * 2) * 20 * (1 - after) : 0;
   return [
-    ...sliceLayers(1, live, undefined, { 'skybridge-right': <Sparkle x={196} y={62} s={since(live, 'glasshouse')} /> }),
+    ...sliceLayers(1, live, { 'skybridge-right': <Sparkle x={196} y={62} s={since(live, 'glasshouse')} /> }),
     ...figure(live, 'pep', 'pep', 92, 102, 42, { look: 'right', cheerAt: lastRung }),
     ...figure(live, 'bebe', 'bebe', 404, 106, 70, { look: 'left', cheerAt: river.gates >= lanterns.length ? lastRung : null }),
     // What Pep's ScoutCam sees from under the skybridge pops up on a paper arm.
@@ -340,7 +348,10 @@ function CloudArt({ art, w, h, lift, rain, calm, squash, seed, fall }: { art: Ki
   return <span className="pb-cloud">
     <i className="pb-cloud__stalk" style={{ top: top + body * 0.6 }} />
     {Array.from({ length: strips }, (_, i) => { const run = (fall * (0.9 + (i % 3) * 0.2) + i * 0.37) % 1; return <i key={i} className="pb-cloud__rain" style={{ left: 8 + ((i * 41 + seed * 17) % Math.max(1, w - 24)), top: top + body * 0.7 + run * (h - top - body * 0.7 - 24), height: 16 + (i % 2) * 10, opacity: (0.3 + 0.6 * rain) * Math.sin(Math.PI * run) }} />; })}
-    <img src={art.src} alt="" draggable={false} decoding="async" style={{ top, transform: `scale(${(1 + squash * 0.1).toFixed(3)}, ${(1 - squash * 0.14).toFixed(3)})`, filter: `brightness(${(0.5 + 0.5 * calm).toFixed(2)}) saturate(${(0.6 + 0.4 * calm).toFixed(2)})` }} />
+    <span className="pb-cloud__body" style={{ top, height: body, transform: `scale(${(1 + squash * 0.1).toFixed(3)}, ${(1 - squash * 0.14).toFixed(3)})` }}>
+      <img src={art.src} alt="" draggable={false} decoding="async" />
+      <TintArt src={art.src} at="0 0" size="100% 100%" tone="rainGloom" opacity={0.62 * (1 - calm)} />
+    </span>
   </span>;
 }
 /** How the basin's boat lies: where it is, and how far the wind and the waves tip it. */
@@ -356,13 +367,10 @@ function stormLayers(live: Live): Layer[] {
   const lift = 1 - 0.62 * calm, rain = Math.max(0, 1 - calm * 1.15);
   const flash = still ? 0 : hopArc(since(live, 'lamp'), 1.1);
   const sweep = still ? -4 : Math.sin(t * 0.7) * 10 - 4 + flash * 8;
-  // The slices' look moves in steps, so the big pictures are repainted a few times, not every frame.
-  const shown = step(calm, 16);
-  const look = `saturate(${(0.46 + 0.54 * shown).toFixed(2)}) brightness(${(0.6 + 0.4 * shown).toFixed(2)})`;
   const cheerAt = live.calmAt, boat = stormBoat(live);
   const bow = live.rainbowAt === null ? 0 : still ? 1 : Math.min(1, peek(live.time - live.rainbowAt, 999));
   const layers: Layer[] = [
-    ...sliceLayers(2, live, look),
+    ...sliceLayers(2, live),
     { key: 'beam', x: 458 - 207, y: 108, w: 440, h: 150, cast: 0, className: 'pb-beam', art: <span className="pb-beam__ray" style={{ opacity: 0.7 - 0.5 * calm + flash * 0.4, transform: `rotate(${sweep.toFixed(2)}deg)` }} /> },
     ...figure(live, 'gobgob', 'gobgob', 372, 110, 54, { cheerAt }),
     ...figure(live, 'chock', 'chock', 416, 112, 52, { cheerAt }),
@@ -403,15 +411,12 @@ export function harbourBoat(live: Live): { x: number; y: number; drawn: number }
 }
 function harbourLayers(live: Live): Layer[] {
   const harbour = live.harbour, t = live.time, still = live.reduced;
-  const lit = harbour.lamps / HARBOUR_LAMPS, home = live.home >= 0 ? step(Math.min(1, live.home / 0.8), 8) : 0;
-  const warmth = 0.6 * lit + 0.4 * home;
-  const look = `saturate(${(0.74 + 0.34 * warmth).toFixed(2)}) brightness(${(0.6 + 0.3 * warmth).toFixed(2)})`;
   const valley = (i: number) => (live.home < 0 ? 0 : still ? 1 : Math.min(1, Math.max(0, (live.home - i * 0.14) / 0.3)));
   const glows: Record<string, ReactNode> = {
     'hub-left': <>{HUB_LIGHTS.map((lamp, i) => lamp.x < PAGE_W ? <Glow key={i} x={lamp.x} y={lamp.top} r={lamp.r} on={valley(i)} /> : null)}</>,
     'hub-right': <>{HUB_LIGHTS.map((lamp, i) => lamp.x >= PAGE_W ? <Glow key={i} x={lamp.x - PAGE_W} y={lamp.top} r={lamp.r} on={valley(i)} /> : null)}</>,
   };
-  const layers: Layer[] = [...sliceLayers(3, live, look, glows)];
+  const layers: Layer[] = [...sliceLayers(3, live, glows)];
   QUAY_CREW.forEach(([who, x, h], i) => {
     const cheerAt = live.home >= 0 ? t - live.home + 0.2 + i * 0.16 : live.dockAt === null ? null : live.dockAt + 0.3 + i * 0.1;
     layers.push(...figure(live, who, who, x, 98, h, { cheerAt, lift: 24 }));
@@ -428,10 +433,13 @@ function harbourLayers(live: Live): Layer[] {
 }
 
 /* ── the page's own look, and what moves on the printed page ──────────────── */
-function printLook(spread: SpreadIndex, live: Live): string | undefined {
-  if (spread === 2) { const calm = step(live.calm, 16); return `saturate(${(0.5 + 0.5 * calm).toFixed(2)}) brightness(${(0.66 + 0.34 * calm).toFixed(2)})`; }
-  if (spread === 3) { const warmth = 0.6 * (live.harbour.lamps / HARBOUR_LAMPS) + 0.4 * (live.home >= 0 ? step(Math.min(1, live.home / 0.8), 8) : 0); return `saturate(${(0.8 + 0.2 * warmth).toFixed(2)}) brightness(${(0.7 + 0.16 * warmth).toFixed(2)})`; }
-  return undefined;
+/** How far a spread is from full daylight, 0 … 1: the rain's gloom until the
+ * wheel is held steady; dusk at the quay until the lanterns and the valley's
+ * lights are on. It moves in steps, so it is cheap to follow. */
+function duskOf(spread: SpreadIndex, live: Live): number {
+  if (spread === 2) return 0.56 * (1 - step(live.calm, 20));
+  if (spread === 3) { const warmth = 0.6 * (live.harbour.lamps / HARBOUR_LAMPS) + 0.4 * (live.home >= 0 ? step(Math.min(1, live.home / 0.8), 8) : 0); return 0.5 * (1 - 0.72 * warmth); }
+  return 0;
 }
 const pulse = (live: Live) => (live.reduced ? 1 : 1 + 0.08 * Math.sin(live.time * 3.4));
 /** What a floating boat does to the water: a shadowed ring under it, and a wake that fans out behind. */

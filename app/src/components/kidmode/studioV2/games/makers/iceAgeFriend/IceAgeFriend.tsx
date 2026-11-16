@@ -12,7 +12,7 @@ import {
 } from '../play';
 import { ICE_AGE_FRIEND_COPY } from './iceAgeFriendCopy';
 import { DISCOVERIES, discover, type DiscoveryId } from './iceAgeFriendRules';
-import { STEP_FACT, chapterOf, endsChapter, finishStep, nextStep, planRound, questFor, type Round, type StepId } from './mammothStory';
+import { STEPS, chapterOf, endsChapter, finishStep, nextStep, planRound, questFor, type Round, type StepId } from './mammothStory';
 import { createMammothEngine, type Cue, type FxKind, type MammothEngine } from './mammothEngine';
 import { createMammothSound, type MammothSound } from './mammothAudio';
 import { CrewLayer, HallLayer, HintHand, Photo, Print, Watchers } from './HallArt';
@@ -22,7 +22,7 @@ import './iceAgeFriend.css';
 
 type Phase = 'opening' | 'play' | 'setPiece';
 type Note = { who: CoachWho; mood: CoachMood; line: string };
-type CaptionId = 'call' | 'answer' | 'aurora' | 'stars';
+type CaptionId = 'call' | 'answer' | 'aurora' | 'pictures';
 /** Who speaks for each step: the tool's owner, or the friend whose way of being it is. */
 const STEP_COACH: Readonly<Record<StepId, { who: CoachWho; mood: CoachMood }>> = {
   frost: { who: 'bebe', mood: 'curious' }, hello: { who: 'gobgob', mood: 'curious' }, trace: { who: 'bebe', mood: 'idle' },
@@ -34,6 +34,8 @@ const STEP_ICON: Readonly<Record<StepId, LucideIcon>> = { frost: Snowflake, hell
 const FX_TONES: Readonly<Record<FxKind, readonly string[]>> = {
   sparkle: ['white', 'butter', 'sky-pale'], dust: ['snow', 'white', 'snow-shade'], drop: ['sky-pale', 'white', 'sky'], glint: ['white', 'butter'], ring: ['white'], petal: ['sand', 'wood-light', 'butter'],
 };
+/** Development only: `?iafStep=scout` starts the visit at that step, for looking at one moment without playing up to it. */
+const DEV_STEP = (() => { try { const value = import.meta.env.DEV ? new URLSearchParams(location.search).get('iafStep') : null; return STEPS.find(step => step === value) ?? null; } catch { return null; } })();
 /** The last visit's weather and stars, kept only while the app is open, so the next visit looks different. Nothing about the child. */
 let lastRound: Round | null = null;
 
@@ -69,7 +71,8 @@ function Visit({ onAgain }: { onAgain(): void }) {
   const [caption, setCaption] = useState<CaptionId>('call');
   const [nightReady, setNightReady] = useState(false);
   const [cheer, setCheer] = useState(0);
-  const [stageCam, setStageCam] = useState<PlayCamera>(CAMERA_HOME);
+  // The opening shot: the camera begins close on the frosted pane and settles back on the hall.
+  const [stageCam, setStageCam] = useState<PlayCamera>(() => (prefersReducedMotion() ? CAMERA_HOME : { x: 0.5, y: 0.42, zoom: 1.3 }));
   const [outside, setOutside] = useState(false);
   const [shake, bump] = useShake();
   const [done, setDone] = useState(false);
@@ -94,7 +97,7 @@ function Visit({ onAgain }: { onAgain(): void }) {
     noteTimer.current = setTimeout(() => setNote(null), ms);
   };
   const startStep = (next: StepId) => {
-    setNote(null); setLensReady(false); setStep(next); setChapterStep(next);
+    setLensReady(false); setStep(next); setChapterStep(next);
     engine.current?.task(next);
   };
   /** A step is over: its pip fills, the crew is glad, and the story moves on. */
@@ -148,12 +151,12 @@ function Visit({ onAgain }: { onAgain(): void }) {
         case 'waiting': say({ who: 'gobgob', mood: 'idle', line: w.say.waiting }, 5000); break;
         case 'lensReady': setLensReady(true); say({ who: 'bebe', mood: 'wow', line: w.say.lensReady }, 6000); break;
         case 'calf': say({ who: 'pep', mood: 'wow', line: w.say.calf }, 3200); break;
-        case 'throughHalf': setStageCam(CAMERA_HOME); setOutside(true); play.current?.ambience('wind'); break;
-        case 'steppe': say({ who: 'aya', mood: 'wow', line: w.say.steppe }, 2200); break;
+        case 'throughHalf': setStageCam(CAMERA_HOME); setOutside(true); play.current?.ambience('wind'); say({ who: 'aya', mood: 'wow', line: w.say.steppe }, 2600); break;
+        case 'steppe': break;
         case 'call': bump(); setCaption('call'); break;
         case 'answer': setCaption('answer'); break;
         case 'aurora': setCaption('aurora'); break;
-        case 'star': setCaption('stars'); play.current?.place(index ?? 0); break;
+        case 'star': setCaption('pictures'); play.current?.place(index ?? 0); break;
         case 'finaleReady': setNightReady(true); break;
       }
     },
@@ -178,7 +181,7 @@ function Visit({ onAgain }: { onAgain(): void }) {
       onLight: level => host.style.setProperty('--iaf-light', level.toFixed(3)),
     }, audio, { reduced: prefersReducedMotion(), round, faceRight: rtl, rtl });
     engine.current = live;
-    const query = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    const query = typeof window === 'undefined' ? undefined : window.matchMedia?.('(prefers-reduced-motion: reduce)');
     const onMotion = () => live.setReduced(!!query?.matches);
     query?.addEventListener?.('change', onMotion);
     const pending = timers.current;
@@ -192,6 +195,7 @@ function Visit({ onAgain }: { onAgain(): void }) {
     // The scene is built once for a visit; the language of a visit does not change under it.
   }, [done, round]);
   useEffect(() => { if (muted) sound.current?.stop(); }, [muted]);
+  useEffect(() => { const id = setTimeout(() => setStageCam(CAMERA_HOME), 160); return () => clearTimeout(id); }, []);
 
   const keepPrint = () => {
     if (!printNow.current) return;
@@ -242,7 +246,11 @@ function Visit({ onAgain }: { onAgain(): void }) {
           </div>
           <PlayFx ref={fx} layer={6} />
         </>}>
-        {phase === 'opening' && <PlayOpening title={w.title} place={w.place} onDone={() => { setPhase('play'); startStep('frost'); }} />}
+        {phase === 'opening' && <PlayOpening title={w.title} place={w.place} onDone={() => {
+          setPhase('play');
+          if (!DEV_STEP) { startStep('frost'); return; }
+          setDoneSteps(STEPS.slice(0, STEPS.indexOf(DEV_STEP))); setOutside(STEPS.indexOf(DEV_STEP) >= 3); setStep(DEV_STEP); setChapterStep(DEV_STEP); engine.current?.jump(DEV_STEP);
+        }} />}
         <HudCoach who={coach.who} mood={coach.mood} line={coach.line} pokeLabel={w.friends[coach.who]} onPoke={() => { void selectionHaptic(); play.current?.tap(); engine.current?.greet(coach.who); setCheer(n => n + 1); }} />
         <HudQuest label={w.questLabel} current={quest.current} steps={quest.steps.map(item => { const Icon = STEP_ICON[item.id]; return { key: item.id, label: w.steps[item.id], done: item.done, icon: <Icon aria-hidden="true" /> }; })} />
         {found.length > 0 && !print && phase !== 'setPiece' && <ul className="iaf-album" aria-label={w.album} dir={rtl ? 'rtl' : 'ltr'}>

@@ -686,7 +686,7 @@ export function createGlassScene(deps: SceneDeps): GlassScene | null {
     behind.setTransform(bw / b.width, 0, 0, bh / b.height, -b.x * bw / b.width, -b.y * bh / b.height);
     behind.clearRect(b.x, b.y, b.width, b.height);
     drawBack(behind, true);
-    if (!frameData || frameData.axis.length !== bh) frameData = { axis: new Float32Array(bh), radius: new Float32Array(bh), topRow: 0, footRow: 0, waterRow: bh + 9, waterTilt: 0, tintFrom, tintTo, tintFront: 0, frost: 0, heat: 0, glow: 0, rainbow: 0, light: 0, time: 0, sky: C.sky, ember: C.orange, flame: C.butter, veil: C.snow };
+    if (!frameData || frameData.axis.length !== bh) frameData = { axis: new Float32Array(bh), radius: new Float32Array(bh), topRow: 0, footRow: 0, waterRow: bh + 9, waterTilt: 0, tintFrom, tintTo, tintFront: 0, frost: 0, heat: 0, glow: 0, rainbow: 0, light: 0, time: 0, sky: C.sky, ember: mixRgb(C.orange, C.poppy, 0.3), flame: mixRgb(C.sun, C.white, 0.3), veil: C.snow };
     const f = frameData, sy = bh / b.height, sx = bw / b.width, rt = radiusV(0), rb = radiusV(1);
     for (let j = 0; j < bh; j++) {
       const y = b.y + (j + 0.5) / sy; let r = 0, ax = L.base.x;
@@ -817,7 +817,8 @@ export function createGlassScene(deps: SceneDeps): GlassScene | null {
 
   const loop = (now: number) => {
     frame = 0; if (!alive) return;
-    const dt = last ? Math.min(0.05, (now - last) / 1000) : 1 / 60; last = now;
+    // A slow device still tells the story in the same time: up to a tenth of a second a frame.
+    const dt = last ? Math.min(0.1, (now - last) / 1000) : 1 / 60; last = now;
     if (hold > 0) hold -= dt; else step(dt);
     paint();
     if (document.visibilityState !== 'hidden') frame = requestAnimationFrame(loop);

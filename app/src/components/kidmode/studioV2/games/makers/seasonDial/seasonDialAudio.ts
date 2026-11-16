@@ -1,6 +1,5 @@
 import { kidAudioAllowed, kidAudioContext, onKidHush } from '../../../../audio/kidAudio';
 import { gains, wrapYear, type Gains, type Season } from './seasonDialRules';
-import type { Toy } from './seasonDialToys';
 
 /** The Weather Maker's sound: ONE small graph on Arbor's kid audio bus.
  * Five layers (birdsong, summer insects, autumn wind, spring rain, winter
@@ -8,6 +7,9 @@ import type { Toy } from './seasonDialToys';
  * nothing else, so turning back and forth can never stack sounds. Local
  * synthesis only: no files, no network. The child's Sound switch, a hidden
  * tab and leaving Kid Mode all silence it. */
+/** The things on the terrace that answer a touch with a sound of their own. */
+export const TOYS = ['appleTree', 'terraceFloor', 'openSky', 'sunDisc', 'cloudPuff', 'perchBirds', 'valleyFriend', 'snowFriend', 'knotHole', 'wholeYear'] as const;
+export type Toy = typeof TOYS[number];
 export interface SeasonAudio {
   /** Start (inside a gesture) or keep running. False = silent (sound off or unavailable). */
   wake(): boolean;

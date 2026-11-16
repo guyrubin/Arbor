@@ -12,15 +12,15 @@
 .ck-handle:focus-visible { opacity: 1; outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; box-shadow: 0 0 0 6px color-mix(in srgb, var(--studio-surface) 80%, transparent); }
 .ck-handle[data-kind=wheel]:focus-visible { outline: none; box-shadow: none; }
 /* The lens's tag: the name of the part it rests on, on frosted glass. */
-.ck-tag { position: absolute; inset-block-start: 0; inset-inline-start: 0; z-index: 6; display: grid; gap: 2px; inline-size: max-content; max-inline-size: min(78cqi, 300px); margin: 0; padding: 9px 16px 10px; pointer-events: none;
+.ck-tagbox { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+.ck-tag { position: absolute; inset-block-start: 0; inset-inline-start: 0; z-index: 6; inline-size: max-content; max-inline-size: min(78cqi, 300px); margin: 0; padding: 9px 16px 10px; pointer-events: none;
   border: 1px solid color-mix(in srgb, var(--studio-surface) 86%, transparent); border-radius: 18px; background: color-mix(in srgb, var(--studio-surface) 84%, transparent);
   -webkit-backdrop-filter: blur(16px) saturate(1.25); backdrop-filter: blur(16px) saturate(1.25); box-shadow: 0 10px 28px color-mix(in srgb, var(--studio-graphite) 22%, transparent);
   color: var(--studio-graphite); font: 700 14.5px/1.3 var(--studio-font); text-align: center; text-wrap: balance; opacity: 0; transition: opacity .18s var(--studio-ease-soft); }
 .ck-tag[data-show=true] { opacity: 1; }
+.ck-tag p { display: grid; gap: 2px; margin: 0; font: inherit; color: inherit; }
 .ck-tag strong { display: block; color: var(--studio-teal-ink); font: 900 18px/1.15 var(--studio-font); }
 .ck-tag[data-new=true] strong { animation: ck-tag-pop .42s var(--studio-ease-spring) both; }
 @keyframes ck-tag-pop { from { scale: .7; opacity: 0; } to { scale: 1; opacity: 1; } }
-/* The cover is the same painter on a small canvas. */
-.ck-cover { display: block; inline-size: 100%; block-size: 100%; background: var(--studio-mist); }
 @media (prefers-reduced-motion: reduce) { .ck-tag, .ck-tag strong { transition: none; animation: none; } }
 @media (forced-colors: active) { .ck-tag { border: 2px solid CanvasText; background: Canvas; -webkit-backdrop-filter: none; backdrop-filter: none; } }

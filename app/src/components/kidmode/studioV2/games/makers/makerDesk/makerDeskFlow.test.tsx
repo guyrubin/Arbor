@@ -107,7 +107,7 @@ describe('Maker Desk', () => {
   });
   it('the whole scene is the stage, and every thing in it is a real, named button', () => {
     const tree = begin();
-    expect(stage(tree).props.id).toBe('maker-desk'); expect(section(tree).props.children.type).toBe(PlayStage);
+    expect(stage(tree).props.id).toBe('maker-desk'); expect((section(tree).props.children as ReactElement).type).toBe(PlayStage);
     const buttons = nodes(tree).filter(n => n.type === 'button');
     expect(buttons.filter(n => n.props['data-spot']).map(n => n.props['data-spot']).sort()).toEqual(['chock', 'flower', 'lamp', 'pc', 'powerBar', 'shelf', 'tile-0', 'tile-1', 'tile-2', 'window']);
     expect(buttons.filter(n => n.props['data-tool']).map(n => n.props['data-tool'])).toEqual([...TOOLS]);
@@ -205,6 +205,8 @@ describe('Maker Desk', () => {
     expect(has(render(), n => n.type === GameFinish)).toBe(false);
     // The one primary action: Power up. From inside the screen it pulls the camera back out first.
     const power = dock(render(), 'data-maker-desk-power')!; expect(power.props.tone).toBe('go'); expect(power.props.label).toBe(en.powerUp);
+    // It is the only action with a word on it now: the step back keeps its place as an arrow.
+    expect(backButton(render()).props.iconOnly).toBe(true); expect(nodes(render()).filter(n => n.type === HudButton && n.props.tone === 'go')).toHaveLength(1);
     power.props.onClick!(); tree = render();
     expect(section(tree).props['data-level']).toBe('study'); expect(section(tree).props['data-phase']).toBe('powerUp'); expect(find(tree, n => n.type === PlaySetPiece, 'set-piece').props.active).toBe(true);
     expect(room(tree).props['data-beat']).toBe(1); expect(TOOLS.map(id => tool(tree, id).props['data-on'])).toEqual([false, false, false, false, false]); expect(dock(tree, 'data-maker-desk-power')).toBeUndefined();
@@ -335,8 +337,8 @@ describe('Maker Desk', () => {
     }
     // Four pictures are edited for this activity alone; companions, tools and the planter come from the Studio's shared kit library.
     const made = pictures.filter(picture => picture.src.includes('/makers/'));
-    expect(made.filter(picture => !/\/kit-(chock|aya|tool|prop)-[a-z-]+\.webp$/.test(picture.src)).map(picture => path.basename(picture.src)).sort()).toEqual(['maker-desk-bench-hd.webp', 'maker-desk-bench-lights.webp', 'maker-desk-bench.webp', 'maker-desk-room-wide.webp']);
-    expect(made).toHaveLength(17);
+    expect(made.filter(picture => !/\/kit-(aya|tool|prop)-[a-z-]+\.webp$/.test(picture.src)).map(picture => path.basename(picture.src)).sort()).toEqual(['maker-desk-bench-hd.webp', 'maker-desk-bench-lights.webp', 'maker-desk-bench.webp', 'maker-desk-room-wide.webp']);
+    expect(made).toHaveLength(14);
     const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../../../../../public');
     for (const picture of pictures) for (const src of [picture.src, picture.src480]) if (src) expect(readdirSync(path.join(publicDir, path.dirname(src))), src).toContain(path.basename(src));
   });

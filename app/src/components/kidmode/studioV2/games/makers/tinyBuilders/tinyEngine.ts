@@ -46,6 +46,8 @@ export interface TinyEngine {
   dispose(): void;
   begin(): void;
   down(t: Touch): void; move(t: Touch): void; up(t: Touch): void; hover(x: number, y: number): void; wheel(deltaY: number): void;
+  /** A finger on the bench: picks up the part it is on (the nearest one whose shape it touches). True when it took one. */
+  grabAt(t: Touch): boolean;
   grab(id: string, t: Touch): void; tapPart(id: string): void; placeSelected(): void;
   pokeAya(): void; pokeModel(): void; keyTurn(deg: number): void;
   toLens(): void; dive(direction: number): void; record(): void; secret(): void;
@@ -179,12 +181,14 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
   }
 
   function tickBench(dt: number) {
-    intro = Math.max(0, intro - dt / 2.4);
+    const calm = prefersReducedMotion();
+    intro = calm ? 0 : Math.max(0, intro - dt / 2.4);
     ayaUp = Math.min(1, ayaUp + dt / 0.7);
     for (const p of parts) {
       const hot = held?.id === p.id || selected === p.id || p.mode === 'fly';
       p.up = clamp(p.up + (hot ? dt / 0.2 : -dt / 0.3), 0, 1); p.squash = Math.max(0, p.squash - dt * 5);
       if (p.mode === 'fall') {
+        if (calm) { p.mode = 'rest'; p.fallY = 0; p.centre = p.rest.centre; continue; }
         if (time < p.fallAt) continue;
         p.fallV += 70 * dt; p.fallY -= p.fallV * dt;
         if (p.fallY <= 0) {
@@ -203,11 +207,11 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
         if (held.moved && Math.random() < dt * 22) { const s = project(view, p.centre); fx(s.x, s.y, 'glint', { tones: ['white', 'sky-pale'], count: 1 }); }
         if (magnet.lock && held.moved) { held = null; startFly(p); }
       } else if (p.mode === 'fly') {
-        p.t += dt / 0.2;
+        p.t = calm ? 1 : p.t + dt / 0.2;
         p.centre = mixV(p.from, seatOf(p.kind), backOut(p.t));
         if (p.t >= 1) snapDone(p);
       } else if (p.mode === 'back') {
-        p.t += dt / 0.4; const e = ease(p.t);
+        p.t = calm ? 1 : p.t + dt / 0.4; const e = ease(p.t);
         p.centre = mixV(p.from, p.rest.centre, e); p.centre = [p.centre[0], p.centre[1] + Math.sin(e * Math.PI) * 1.4, p.centre[2]];
         if (p.t >= 1) { p.mode = 'rest'; p.lift = 0; p.squash = 0.6; }
       }
@@ -220,6 +224,7 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
     hopVel += (-hop * 190 - hopVel * 13) * dt; hop = Math.max(0, hop + hopVel * dt);
     ayaHopVel += (-ayaHop * 170 - ayaHopVel * 12) * dt; ayaHop = Math.max(0, ayaHop + ayaHopVel * dt);
     ayaLean += (clamp((lastTouchX - 0.3) * 14, -7, 7) - ayaLean) * Math.min(1, dt * 4);
+    if (calm) { stretch = 1; stretchVel = 0; hop = 0; hopVel = 0; ayaHop = 0; ayaHopVel = 0; ayaLean = 0; }
     ring = Math.max(0, ring - dt * 1.5); glowKick = Math.max(0, glowKick - dt * 1.4);
     if (rod < 1) rod = Math.max(0, rod - dt / 0.5);
     for (const s of seams) s.t += dt / 0.5;
@@ -229,7 +234,7 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
       const dance = time < danceUntil ? Math.max(0, Math.sin(time * 13 + i * 1.05)) * 0.9 : 0;
       const idle = whole ? Math.max(0, Math.sin(time * 1.3 - i * 0.5)) ** 6 * 0.3 : 0;
       const fling = Math.min(0.5, Math.abs(spinVel) / SPIN_MAX * 1.2);
-      flex[i] += (Math.max(dance, idle, fling) - flex[i]) * Math.min(1, dt * 14);
+      flex[i] = calm ? 0 : flex[i] + (Math.max(dance, idle, fling) - flex[i]) * Math.min(1, dt * 14);
     }
     // An idle hint, shown in the world: the next part lifts and a line of light runs to its place.
     rock = 0;
@@ -240,7 +245,7 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
       const u = (time - idleAt - 4) % 6; if (u < 1.2) rock = Math.sin(u / 1.2 * Math.PI * 2) * 14;
     }
     if (phase === 'toLens') {
-      lensT = Math.min(1, lensT + dt / 0.95);
+      lensT = calm ? 1 : Math.min(1, lensT + dt / 0.95);
       if (lensT >= 1) iris = Math.min(1, iris + dt / (prefersReducedMotion() ? 0.15 : 0.85));
       if (iris >= 1) { go('dive'); sound.ambience('water'); say('bebe', 'curious', 'diveCue'); idleAt = time; }
     }
@@ -314,7 +319,7 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
     }
     const lensBox = drawSprite(ctx, view, { image: lensImg }, lensAt, 4, { baseline: 0.84, lean: Math.sin(e * Math.PI) * -10 });
     if (phase === 'built' && lensBox) drawCue(ctx, lensBox.x + lensBox.w / 2, lensBox.y + lensBox.h * 0.5, lensBox.w * 0.6, lensBox.h * 0.56, time, pal.tone('studio-signal'));
-    drawMotes(ctx, w, h, time, pal);
+    drawMotes(ctx, w, h, prefersReducedMotion() ? 0 : time, pal);
     view = base;
     return dropAt;
   }
@@ -425,7 +430,7 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
   function tickLand(dt: number) {
     land.cam = Math.min(1, land.cam + dt / 1.1);
     if (land.tumble >= 0) {
-      land.tumble += dt / 1.5; const e = ease(land.tumble);
+      land.tumble = prefersReducedMotion() ? 1 : land.tumble + dt / 1.5; const e = ease(land.tumble);
       land.x = land.from.x + (land.to.x - land.from.x) * e; land.roll = land.from.roll + (land.to.roll - land.from.roll) * e; land.height = 17.9 + Math.sin(e * Math.PI) * 1.2;
       if (land.tumble >= 1) { land.tumble = -1; say('aya', 'idle', 'landCue'); idleAt = time; }
       return;
@@ -602,6 +607,16 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
     }
     if (pull > 0) startFly(p); else sendBack(p);
   }
+  /** Which loose part a point on the screen is on: the one whose middle is nearest, each measured in its own size, so a small part beside a big one is still easy to take. */
+  function partAt(x: number, y: number): PartSim | undefined {
+    let best: PartSim | undefined, least = 1.2;
+    for (const p of parts) {
+      if (p.mode !== 'rest' && p.mode !== 'back') continue;
+      const s = project(view, p.centre), d = Math.hypot((x - s.x) / Math.max(30, EXTENT[p.kind][0] * s.s), (y - s.y) / Math.max(30, EXTENT[p.kind][1] * s.s));
+      if (d < least) { least = d; best = p; }
+    }
+    return best;
+  }
   function placeSelected() { const p = selected ? partOf(selected) : undefined; if (p && p.mode === 'rest' && phase === 'build') { awake(); touched(); if (p.kind === 'fibrePair') p.slot = pairSlot(mode, placed, p.id); startFly(p); } }
 
   return {
@@ -609,6 +624,7 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
     begin() { if (phase !== 'opening') return; go('build'); idleAt = time - 3.4; say('aya', 'idle', 'buildCue'); for (const p of parts) if (p.mode === 'fall') p.fallAt = Math.min(p.fallAt, time + p.index * 0.05); },
     hover(x, y) { if (w && h) { parTX = clamp(x / w * 2 - 1, -1, 1); parTY = clamp(y / h * 2 - 1, -1, 1); } },
     grab, placeSelected,
+    grabAt(t) { const p = phase === 'build' && !held ? partAt(t.x, t.y) : undefined; if (!p) return false; grab(p.id, t); return held?.id === p.id; },
     tapPart(id) {
       const p = partOf(id); if (!p || phase !== 'build' || p.mode !== 'rest') return;
       awake(); touched();
@@ -617,7 +633,7 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
     },
     down(t) {
       awake(); touched(); lastTouchX = t.x / Math.max(1, w); pointers.set(t.id, { x: t.x, y: t.y });
-      if (phase === 'build') { if (selected) placeSelected(); return; }
+      if (phase === 'build') { const p = partAt(t.x, t.y); if (p && !held) grab(p.id, t); else if (selected) placeSelected(); return; }
       if (phase === 'spin' || phase === 'built') { spinDrag = { pointer: t.id, x: t.x, startX: t.x, startY: t.y, lastT: time, moved: false }; spinVel = 0; return; }
       if (phase === 'dive') {
         if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); holdDir = 0; return; }

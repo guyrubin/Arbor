@@ -115,6 +115,8 @@ function TinyGame({ onAgain }: { onAgain: () => void }) {
     else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (squeezing) engine()?.squeeze(); else engine()?.lower(); }
   };
 
+  const turnLeft = <HudButton iconOnly label={w.turnLeft} icon={<RotateCcw aria-hidden="true" />} onClick={() => engine()?.turn(1)} data={{ 'data-tiny-turn': 'left' }} />;
+  const turnRight = <HudButton iconOnly label={w.turnRight} icon={<RotateCw aria-hidden="true" />} onClick={() => engine()?.turn(-1)} data={{ 'data-tiny-turn': 'right' }} />;
   const world = <div className="tiny-world" dir="ltr">
     <canvas ref={canvasRef} className="tiny-world__canvas" role="img" aria-label={w.scene} data-tiny-canvas="" />
     <PlayFx ref={fxRef} layer={3} />
@@ -130,7 +132,7 @@ function TinyGame({ onAgain }: { onAgain: () => void }) {
       const box = p && !placed.includes(p.id) ? layout.parts[p.id] : null; if (!p || !box) return null;
       const picked = selected === p.id;
       return <button key={p.id} type="button" className="tiny-hit tiny-hit--drag" data-tiny-piece={p.id} data-selected={picked || undefined} style={place(box)} aria-pressed={picked}
-        aria-label={tinyLine(picked ? w.pieceChosen : w.pieceReady, w.pieces[p.kind])} {...forward(t => engine()?.grab(p.id, t))} onClick={e => { if (e.detail === 0) engine()?.tapPart(p.id); }} />;
+        aria-label={tinyLine(picked ? w.pieceChosen : w.pieceReady, w.pieces[p.kind])} {...forward(t => { if (!engine()?.grabAt(t)) engine()?.grab(p.id, t); })} onClick={e => { if (e.detail === 0) engine()?.tapPart(p.id); }} />;
     })}
     {phase === 'built' && layout && <button type="button" className="tiny-hit" data-tiny-lens="" style={place(layout.lens)} aria-label={w.lens} onClick={() => engine()?.toLens()} />}
     <button ref={targetRef} type="button" className="tiny-hit tiny-hit--round" data-tiny-target="" hidden aria-label={tinyLine(w.thing, nextThing)} onClick={() => engine()?.record()} />
@@ -156,10 +158,11 @@ function TinyGame({ onAgain }: { onAgain: () => void }) {
                 : <HudButton tone="go" size="l" label={w.diveDown} icon={<ArrowDown aria-hidden="true" />} onClick={() => engine()?.dive(1)} data={{ 'data-tiny-dive': '' }} />}
             </>}
             {phase === 'found' && <HudButton tone="go" size="l" cue label={w.landGo} icon={<ArrowDownToLine aria-hidden="true" />} onClick={() => engine()?.toLand()} data={{ 'data-tiny-land': '' }} />}
+            {/* The two turns stay physically left and right: the scene never mirrors, so in Hebrew they are handed over reversed. */}
             {floating && <>
-              <HudButton iconOnly label={w.turnLeft} icon={<RotateCcw aria-hidden="true" />} onClick={() => engine()?.turn(1)} data={{ 'data-tiny-turn': 'left' }} />
+              {lang === 'he' ? turnRight : turnLeft}
               <HudButton tone="go" label={w.lower} icon={<ArrowDown aria-hidden="true" />} onClick={() => engine()?.lower()} data={{ 'data-tiny-lower': '' }} />
-              <HudButton iconOnly label={w.turnRight} icon={<RotateCw aria-hidden="true" />} onClick={() => engine()?.turn(-1)} data={{ 'data-tiny-turn': 'right' }} />
+              {lang === 'he' ? turnLeft : turnRight}
             </>}
             {squeezing && <HudButton tone="go" size="l" label={w.squeeze} icon={<ChevronsDown aria-hidden="true" />} onClick={() => engine()?.squeeze()} data={{ 'data-tiny-squeeze': '' }} />}
           </HudDock>

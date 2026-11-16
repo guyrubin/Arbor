@@ -328,19 +328,22 @@ export function stageLayout(w: number, h: number): StageLayout {
     const rowY = strip.y + stripH + 6;
     rug = { x: W * 0.04, y: rowY, w: W * 0.92, h: row };
     lens = { x: W / 2 - row * 0.4, y: rowY - row * 0.06, w: row * 0.8, h: row * 1.04 };
-    cans = { x: W * 0.03, y: front + 4, w: W * 0.94, h: Math.min(zone, W * 0.3) };
+    // The cans stand on the dais itself.
+    const canH = Math.min(W * 0.24, H * 0.16);
+    cans = { x: W * 0.02, y: daisY + 8 * unit - canH, w: W * 0.96, h: canH };
     const lampH = Math.min(130, H * 0.17);
     lamp = { x: W - lampH * 0.72 - 2, y: daisY + 16 * unit - lampH, w: lampH * 0.74, h: lampH };
-    gels = { x: W * 0.52, y: rowY + row * 0.08, w: Math.min(W * 0.44, row * 1.8), h: row * 0.86 };
-    tiles = { x: W * 0.22, y: rowY + row * 0.42, w: W * 0.3, h: row * 0.5 };
-    friend = { x: W * 0.04, y: rowY + row * 0.2, w: row * 0.62, h: row * 0.56 };
+    gels = { x: W * 0.6, y: rowY + row * 0.1, w: Math.min(W * 0.38, row * 1.7), h: row * 0.8 };
+    tiles = { x: W * 0.215, y: rowY + row * 0.3, w: W * 0.37, h: row * 0.56 };
+    friend = { x: W * 0.03, y: rowY + row * 0.16, w: Math.min(W * 0.17, row * 0.62), h: Math.min(W * 0.15, row * 0.56) };
   } else {
     // On a wide stage the bench is the floor either side of the dais: clay and camera on the left, the lamp on the right, the dock at the end.
     const col = Math.max(110, side * 1.28), rowH = Math.min(H * 0.34, 230), base = H - Math.min(16, H * 0.04), stripH = Math.min(58, H * 0.15), stripW = Math.min(W * 0.46, 480);
     strip = { x: W / 2 - stripW / 2, y: H - stripH - Math.min(12, H * 0.03), w: stripW, h: stripH };
     rug = { x: 10, y: base - rowH, w: col, h: rowH };
     lens = { x: 14, y: base - rowH * 0.94, w: col * 0.6, h: rowH * 0.94 };
-    cans = { x: W / 2 - Math.min(W * 0.34, 400), y: front - Math.min(H * 0.26, 170), w: Math.min(W * 0.68, 800), h: Math.min(H * 0.26, 170) };
+    const canH = Math.min(H * 0.26, 170);
+    cans = { x: W / 2 - Math.min(W * 0.34, 400), y: daisY + 10 * unit - canH, w: Math.min(W * 0.68, 800), h: canH };
     const lampH = Math.min(150, H * 0.24), clothRight = ox + (cloth.x + cloth.w) * unit;
     lamp = { x: Math.min(W - lampH * 0.78, clothRight + 6), y: daisY + 10 * unit - lampH, w: lampH * 0.74, h: lampH };
     gels = { x: 10, y: base - rowH * 0.5, w: Math.min(col * 0.86, strip.x - 16), h: rowH * 0.5 };
@@ -350,8 +353,8 @@ export function stageLayout(w: number, h: number): StageLayout {
   }
   const screenW = portrait ? W * 0.94 : Math.min(W * 0.56, (H * 0.62) * 1.5), screenH = Math.min(screenW / 1.42, H * (portrait ? 0.44 : 0.62));
   const screen: Box = { x: W / 2 - screenW / 2, y: Math.max(top * 0.5, daisY - screenH - H * 0.03), w: screenW, h: screenH };
-  const crewH = portrait ? H * 0.3 : H * 0.42;
-  return { portrait, w: W, h: H, room, unit, ox, oy, field, cloth, rug, lens, strip, cans, lamp, gels, tiles, friend, screen, beamFrom: [W / 2, H * (portrait ? 0.86 : 0.9)], crewY: H + crewH * 0.34, crewH };
+  const crewH = portrait ? H * 0.36 : H * 0.42;
+  return { portrait, w: W, h: H, room, unit, ox, oy, field, cloth, rug, lens, strip, cans, lamp, gels, tiles, friend, screen, beamFrom: [W / 2, H * (portrait ? 0.86 : 0.9)], crewY: H + crewH * (portrait ? 0.26 : 0.34), crewH };
 }
 /** Clay units ↔ stage pixels. */
 export const toPx = (layout: Pick<StageLayout, 'unit' | 'ox' | 'oy'>, p: Pt): Pt => [layout.ox + p[0] * layout.unit, layout.oy + p[1] * layout.unit];

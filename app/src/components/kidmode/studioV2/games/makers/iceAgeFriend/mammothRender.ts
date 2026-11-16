@@ -17,7 +17,7 @@ const PALETTE_KEYS = [
   'fur-dark', 'fur', 'fur-light', 'fur-tip', 'umber', 'rust', 'shadow', 'cream', 'paper-shade', 'sand', 'white', 'snow', 'snow-shade', 'chalk', 'sky-pale', 'storm-grey',
   'wood', 'wood-light', 'wood-dark', 'rose', 'clay', 'ink-soft', 'moss', 'teal-deep',
   // The Ice Age sky, from a gold afternoon to the aurora.
-  'sky', 'water', 'sea', 'teal', 'celadon', 'spring', 'lilac', 'violet', 'plum', 'bluebell', 'indigo', 'indigo-deep', 'night', 'slate', 'orange', 'amber', 'sun', 'butter', 'blossom', 'rose-deep',
+  'sky', 'water', 'sea', 'teal', 'celadon', 'spring', 'leaf', 'lilac', 'violet', 'plum', 'bluebell', 'indigo', 'indigo-deep', 'night', 'slate', 'orange', 'amber', 'sun', 'butter', 'blossom', 'rose-deep',
 ] as const;
 export type PaletteKey = typeof PALETTE_KEYS[number];
 export type Palette = Record<PaletteKey, RGB>;
@@ -278,6 +278,8 @@ export interface FrameInput {
   animal: AnimalInput; calf: AnimalInput | null;
   time: number; wind: number;
   palette: Palette; inks: Inks; light: Light;
+  /** About how many hairs this frame may paint (seen close, each strand becomes a lock of up to three). */
+  hairBudget: number;
   /** The steppe behind the animals and in front of them. */
   back: (() => void) | null; front: (() => void) | null;
   /** The wall of glass, while the hall is between us and the Ice Age. */
@@ -290,8 +292,6 @@ export interface FrameOutput { frames: PartFrames; trunk: TrunkLine; calfFrames:
 
 const trunkScratch = new WeakMap<Dynamics, TrunkLine>();
 const shownCount = new WeakMap<Dynamics, number>();
-/** About how many hairs one frame may paint. */
-const LOCK_BUDGET = 22000;
 /** From this many device pixels to a world unit, single hairs show: they are painted thicker, with a highlight. */
 const DETAIL_PX = 2.2;
 
@@ -385,7 +385,7 @@ function drawAnimal(input: FrameInput, a: AnimalInput, world: Affine, S: number)
   sx.clearRect(bx, by, bw, bh);
   const set = (m: Affine) => { const t = compose(animal, m); sx.setTransform(t[0], t[1], t[2], t[3], t[4], t[5]); };
   // Seen close, each strand is a lock of two or three hairs: as many as the frame can afford, from how many strands the last frame showed.
-  const shown = shownCount.get(a.dyn) ?? a.strands.count, locks = SA < 0.85 ? 1 : Math.max(1, Math.min(3, Math.floor(LOCK_BUDGET / Math.max(1, shown))));
+  const shown = shownCount.get(a.dyn) ?? a.strands.count, locks = SA < 0.85 ? 1 : Math.max(1, Math.min(3, Math.floor(input.hairBudget / Math.max(1, shown))));
   const hair: HairInput = { ctx: sx, strands: a.strands, dyn: a.dyn, time: input.time, wind: input.wind, inks: input.inks, tier: a.tier, detail: SA * dpr >= DETAIL_PX, mirror: view.mirror, lens: a.lens, locks };
   const byPart = new Map(a.strands.parts.map(part => [part.part, part]));
   const none = { part: 'body' as const, start: 0, end: 0, rows: [] };
@@ -403,7 +403,7 @@ function drawAnimal(input: FrameInput, a: AnimalInput, world: Affine, S: number)
       // The far tusk sits behind the head and trunk but in front of the far legs.
       case 'tuskFar': if (a.tusks) { set(frames.head); drawTusk(sx, st.tuskFar, p, true); } break;
       case 'tail': set(frames.tail); fillShape(sx, st.shapes.tail, view, p, 'tail'); drawStrands(hair, part, view4, SA, false, trunk, st.shapes.tail); break;
-      case 'body': set(frames.body); fillShape(sx, st.shapes.body, view, p, 'body'); drawStrands(hair, part, view4, SA, false, trunk, st.shapes.body); drawSnow(sx, view, st, a.snow, 'body', p); break;
+      case 'body': set(frames.body); fillShape(sx, st.shapes.body, view, p, 'body'); if (a.lens) drawWool(sx, st.shapes.body, a.lens, p); drawStrands(hair, part, view4, SA, false, trunk, st.shapes.body); drawSnow(sx, view, st, a.snow, 'body', p); break;
       case 'head': set(frames.head); fillShape(sx, st.shapes.head, view, p, 'head'); drawStrands(hair, part, view4, SA, false, trunk, st.shapes.head); drawFace(sx, view, p, pose); drawSnow(sx, view, st, a.snow, 'head', p); break;
       case 'ear': set(frames.ear); fillShape(sx, st.shapes.ear, view, p, 'ear'); drawStrands(hair, part, view4, SA, false, trunk, st.shapes.ear); drawEarRim(sx, st.shapes.ear, p); break;
       case 'trunk': set(frames.head); trunkPath = drawTrunkBase(sx, trunk, view, p); drawStrands(hair, part, view4, SA, true, trunk, trunkPath); drawTrunkTip(sx, trunk, view, p); break;
@@ -442,7 +442,8 @@ function outlineEdges(view: MammothView): Edge[] {
   for (const poly of parts) {
     let area = 0;
     for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) area += (poly[j][0] + poly[i][0]) * (poly[j][1] - poly[i][1]);
-    const turn = area > 0 ? 1 : -1;
+    // (With y running down the screen, a positive sum is a polygon drawn anticlockwise as seen: its outside is to the left of each edge.)
+    const turn = area > 0 ? -1 : 1;
     for (let i = 0; i < poly.length; i++) {
       const [ax, ay] = poly[i], [bx, by] = poly[(i + 1) % poly.length], len = Math.hypot(bx - ax, by - ay);
       if (len < 0.01) continue;
@@ -454,36 +455,42 @@ function outlineEdges(view: MammothView): Edge[] {
   edgeCache.set(view, edges);
   return edges;
 }
-const lightPaths = new WeakMap<MammothView, Map<string, { lit: Path2D; dark: Path2D; under: Path2D }>>();
+const lightPaths = new WeakMap<MammothView, Map<string, Path2D>>();
+/** The hour's light on the coat, laid over the hair only. All of it is soft:
+ * broad washes across and down the animal, and a rim of light built from many
+ * faint strokes along the line of the back, where the hair lies close. (The
+ * belly's outline is not where the animal ends: its long skirt hangs far
+ * below it, so nothing is drawn along that edge.) */
 function drawLight(ctx: CanvasRenderingContext2D, view: MammothView, light: Light, p: Palette) {
   const b = view.furBounds, w = b.maxX - b.minX, h = b.maxY - b.minY, [lx, ly] = light.dir;
   const key = `${Math.round(lx * 12)}:${Math.round(ly * 12)}`;
   let map = lightPaths.get(view); if (!map) { map = new Map(); lightPaths.set(view, map); }
-  let paths = map.get(key);
-  if (!paths) {
-    paths = { lit: new Path2D(), dark: new Path2D(), under: new Path2D() };
-    for (const e of outlineEdges(view)) {
-      const facing = e.nx * lx + e.ny * ly;
-      const path = facing > 0.2 ? paths.lit : facing < -0.2 ? paths.dark : null;
-      if (path) { path.moveTo(e.ax, e.ay); path.lineTo(e.bx, e.by); }
-      if (e.ny > 0.55) { paths.under.moveTo(e.ax, e.ay); paths.under.lineTo(e.bx, e.by); }
-    }
-    map.set(key, paths);
+  let rim = map.get(key);
+  if (!rim) {
+    rim = new Path2D();
+    // Every outline edge that faces the light and does not face the ground.
+    for (const e of outlineEdges(view)) if (e.nx * lx + e.ny * ly > 0.25 && e.ny < 0.15) { rim.moveTo(e.ax, e.ay); rim.lineTo(e.bx, e.by); }
+    map.set(key, rim);
   }
   ctx.globalCompositeOperation = 'source-atop'; ctx.globalAlpha = 1; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  const box = () => ctx.fillRect(b.minX - 420, b.minY - 420, w + 840, h + 620);
+  const x0 = b.minX - 420, y0 = b.minY - 420, bw = w + 840, bh = h + 620, box = () => ctx.fillRect(x0, y0, bw, bh);
   // The hour's own colour over the whole animal: nothing at noon, deep blue at night.
   if (light.ambientAmount > 0.005) { ctx.fillStyle = paint(light.ambient, Math.min(0.85, light.ambientAmount)); box(); }
   // Across the animal: the end nearer the light warms, the far end cools.
-  const cx = (b.minX + b.maxX) / 2, cy = (b.minY + b.maxY) / 2, reach = Math.abs(lx) * w * 0.5 + Math.abs(ly) * h * 0.5;
+  const cx = (b.minX + b.maxX) / 2, cy = (b.minY + b.maxY) / 2, reach = Math.abs(lx) * w * 0.55 + Math.abs(ly) * h * 0.55;
   const across = ctx.createLinearGradient(cx + lx * reach, cy + ly * reach, cx - lx * reach, cy - ly * reach);
-  across.addColorStop(0, paint(light.key, Math.min(0.6, light.keyAmount * 1.5))); across.addColorStop(0.45, paint(light.key, 0)); across.addColorStop(0.55, paint(light.shade, 0)); across.addColorStop(1, paint(light.shade, Math.min(0.7, light.shadeAmount * 2.6)));
+  across.addColorStop(0, paint(light.key, Math.min(0.6, light.keyAmount * 2))); across.addColorStop(0.5, paint(light.key, 0));
   ctx.fillStyle = across; box();
-  // The form shadow gathers along every edge that faces away; the light wraps every edge that faces it.
-  for (const [wide, k] of [[150, 0.8], [96, 1], [52, 1.1], [22, 1.2]] as const) { ctx.strokeStyle = paint(light.shade, Math.min(0.5, light.shadeAmount * k)); ctx.lineWidth = wide; ctx.stroke(paths.dark); }
-  for (const [wide, k] of [[104, 0.55], [60, 0.8], [30, 1.1], [12, 1.5]] as const) { ctx.strokeStyle = paint(light.key, Math.min(0.7, light.keyAmount * k)); ctx.lineWidth = wide; ctx.stroke(paths.lit); }
-  // The snow throws a little light back up under the belly and the chin.
-  if (light.bounceAmount > 0.005) for (const [wide, k] of [[34, 1], [14, 1.3]] as const) { ctx.strokeStyle = paint(light.bounce, Math.min(0.5, light.bounceAmount * k)); ctx.lineWidth = wide; ctx.stroke(paths.under); }
+  const away = ctx.createLinearGradient(cx + lx * reach, cy + ly * reach, cx - lx * reach, cy - ly * reach);
+  away.addColorStop(0.42, paint(light.shade, 0)); away.addColorStop(1, paint(light.shade, Math.min(0.7, light.shadeAmount * 3.4)));
+  ctx.fillStyle = away; box();
+  // Down the animal: its own bulk shades the belly and the legs; toward the snow the shade takes a little of the snow's light.
+  const down = ctx.createLinearGradient(0, b.minY + h * 0.45, 0, b.maxY + 30);
+  down.addColorStop(0, paint(light.shade, 0)); down.addColorStop(0.6, paint(light.shade, Math.min(0.6, light.shadeAmount * 3))); down.addColorStop(1, paint(mix(light.shade, light.bounce, 0.35), Math.min(0.5, light.shadeAmount * 2.2 + light.bounceAmount)));
+  ctx.fillStyle = down; ctx.fillRect(x0, b.minY + h * 0.45, bw, h * 0.55 + 200);
+  // The rim: light wraps the line of the back, the crown and the brow, brightest at the very edge.
+  const widths = [150, 116, 86, 60, 40, 24, 12], last = widths.length - 1;
+  widths.forEach((wide, i) => { ctx.strokeStyle = paint(light.key, Math.min(0.5, light.keyAmount * (0.2 + 0.5 * (i / last) * (i / last)))); ctx.lineWidth = wide; ctx.stroke(rim!); });
   ctx.globalCompositeOperation = 'source-over';
 }
 
@@ -518,18 +525,26 @@ function drawVolume(ctx: CanvasRenderingContext2D, view: MammothView, p: Palette
   const before = ctx.globalCompositeOperation, alpha = ctx.globalAlpha;
   ctx.globalCompositeOperation = 'source-atop';
   const under = ctx.createLinearGradient(0, b.minY + h * 0.46, 0, b.maxY);
-  under.addColorStop(0, paint(p.shadow, 0)); under.addColorStop(0.5, paint(p.shadow, 0.2)); under.addColorStop(1, paint(p.shadow, 0.44));
+  under.addColorStop(0, paint(p.shadow, 0)); under.addColorStop(0.5, paint(p.shadow, 0.1)); under.addColorStop(1, paint(p.shadow, 0.26));
   ctx.fillStyle = under; ctx.fillRect(b.minX - 120, b.minY + h * 0.46, w + 240, h * 0.6);
   const sky = ctx.createLinearGradient(0, b.minY - 20, 0, b.minY + h * 0.36);
   sky.addColorStop(0, paint(mix(p['sky-pale'], p.white, 0.4), 0.3)); sky.addColorStop(1, paint(p['sky-pale'], 0));
   ctx.fillStyle = sky; ctx.fillRect(b.minX - 120, b.minY - 40, w + 240, h * 0.36 + 40);
   // The far end of the animal falls a little into the room's shade; the end nearer the light stays warm.
   const along = ctx.createLinearGradient(b.minX, 0, b.maxX, 0);
-  along.addColorStop(0, paint(p['fur-tip'], 0.07)); along.addColorStop(0.5, paint(p.shadow, 0)); along.addColorStop(1, paint(p.shadow, 0.2));
+  along.addColorStop(0, paint(p['fur-tip'], 0.05)); along.addColorStop(0.5, paint(p.shadow, 0)); along.addColorStop(1, paint(p.shadow, 0.06));
   ctx.fillStyle = along; ctx.fillRect(b.minX - 120, b.minY - 40, w + 240, h + 80);
   ctx.globalCompositeOperation = before; ctx.globalAlpha = alpha;
 }
 
+/** Under the ProofLens: the dense, pale wool next to the skin, which shows wherever the long hair above it is parted. */
+function drawWool(ctx: CanvasRenderingContext2D, body: Path2D, lens: { x: number; y: number; r: number }, p: Palette) {
+  ctx.save(); ctx.clip(body);
+  const g = ctx.createRadialGradient(lens.x, lens.y, lens.r * 0.2, lens.x, lens.y, lens.r * 1.15), tone = mix(p['fur-tip'], p.sand, 0.5);
+  g.addColorStop(0, paint(tone, 0.95)); g.addColorStop(0.75, paint(mix(tone, p['fur-light'], 0.4), 0.9)); g.addColorStop(1, paint(p['fur-light'], 0));
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(lens.x, lens.y, lens.r * 1.15, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
 const gradientCache = new WeakMap<CanvasRenderingContext2D, Map<string, CanvasGradient>>();
 function gradient(ctx: CanvasRenderingContext2D, key: string, make: () => CanvasGradient): CanvasGradient {
   let map = gradientCache.get(ctx); if (!map) { map = new Map(); gradientCache.set(ctx, map); }
@@ -929,11 +944,11 @@ function drawSheaf(ctx: CanvasRenderingContext2D, sheaf: Sheaf, p: Palette, time
     const h = b.h * k * (0.42 + 0.58 * sheaf.grown) * (1.25);
     blade(ctx, sheaf.x + b.dx * k * 1.3, sheaf.y, h, b.lean * 0.8, b.w * k, Math.sin(time * 26 + i * 1.7) * 5 * rustle * k + Math.sin(time * 0.9 + i) * 1.2 * k, inks, i % 2 === 1);
   });
-  // Snow banked round its foot.
-  const mound = ctx.createRadialGradient(sheaf.x - 6 * k, sheaf.y - 2 * k, 0, sheaf.x, sheaf.y + 2 * k, 34 * k);
-  mound.addColorStop(0, paint(p.white, 0.95)); mound.addColorStop(0.7, paint(p.snow, 0.9)); mound.addColorStop(1, paint(p['snow-shade'], 0));
-  ctx.save(); ctx.translate(sheaf.x, sheaf.y + 2 * k); ctx.scale(1, 0.3); ctx.translate(-sheaf.x, -(sheaf.y + 2 * k));
-  ctx.fillStyle = mound; ctx.beginPath(); ctx.arc(sheaf.x, sheaf.y + 2 * k, 34 * k, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  // A little snow banked round its foot.
+  const mound = ctx.createRadialGradient(sheaf.x - 5 * k, sheaf.y, 0, sheaf.x, sheaf.y + 2 * k, 26 * k);
+  mound.addColorStop(0, paint(p.white, 0.7)); mound.addColorStop(0.6, paint(p.snow, 0.45)); mound.addColorStop(1, paint(p.snow, 0));
+  ctx.save(); ctx.translate(sheaf.x, sheaf.y + 2 * k); ctx.scale(1, 0.26); ctx.translate(-sheaf.x, -(sheaf.y + 2 * k));
+  ctx.fillStyle = mound; ctx.beginPath(); ctx.arc(sheaf.x, sheaf.y + 2 * k, 26 * k, 0, Math.PI * 2); ctx.fill(); ctx.restore();
 }
 /** A bunch of grass in the air or in the trunk's tip. */
 function drawBundle(ctx: CanvasRenderingContext2D, bundle: Bundle, p: Palette) {

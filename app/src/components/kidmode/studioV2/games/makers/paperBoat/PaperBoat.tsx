@@ -48,11 +48,11 @@ const HOSTS: readonly CoachWho[] = ['aya', 'pep', 'chock', 'gobgob'];
 const GRADES = ['day', 'day', 'cool', 'warm'] as const;
 
 interface TurnAnim { from: number; to: number; start: number; dur: number; settle: SpreadIndex; glide: boolean }
-interface PageDrag { id: number; intent: TurnIntent | null; x: number; y: number; moved: boolean; fraction: number; velocity: number; at: number; onToy: boolean; radius: number; base: number; off0: number; spine: number; pageW: number }
+interface PageDrag { id: number; intent: TurnIntent | null; x: number; y: number; moved: boolean; fraction: number; velocity: number; at: number; onToy: boolean; radius: number; base: number; off0: number }
 interface BoatAnim { fx: number; fy: number; tx: number; ty: number; start: number; dur: number; launch: boolean }
-interface Fit { w: number; h: number; portrait: boolean; short: boolean; wheel: number; base: number; view: ViewFit }
+interface Fit { w: number; h: number; portrait: boolean; short: boolean; wheel: number; base: number; /** On a short, wide screen the wheel sits beside the book: the room it takes at the screen's end. */ side: number; view: ViewFit }
 interface Coach { who: CoachWho; mood: CoachMood; line: string }
-const firstFit = (): Fit => ({ w: 390, h: 700, portrait: true, short: false, wheel: 170, base: 540, view: { tilt: BOOK_TILT, box: stageBox(BOOK_TILT), wide: 0.66, near: 1.2 } });
+const firstFit = (): Fit => ({ w: 390, h: 700, portrait: true, short: false, wheel: 170, base: 540, side: 0, view: { tilt: BOOK_TILT, box: stageBox(BOOK_TILT), wide: 0.66, near: 1.2 } });
 
 export default function PaperBoat() {
   const { uiLang } = useLanguage(); const lang = uiLang === 'he' ? 'he' : 'en';
@@ -132,10 +132,10 @@ export default function PaperBoat() {
   /* ── where things are on the screen ────────────────────────────────────── */
   /** A point of the book, in the world's own px. */
   const project = (x: number, y: number, z = 0) => {
-    const { w: width, base, view } = live.current.fit, mirror = live.current.dir === 'rtl';
+    const { w: width, base, view, side } = live.current.fit, mirror = live.current.dir === 'rtl';
     const p = projectBookPoint(x, y, mirror, z, view.tilt), c = cam.current, s = c.scale || view.wide;
     const pan = (c.cx - SPREAD_W / 2) * (mirror ? -1 : 1);
-    return { left: width / 2 + (p.x - pan) * s, top: base - c.rise - (view.box.h - view.box.cy) * s + p.y * s };
+    return { left: (width + (mirror ? side : -side)) / 2 + (p.x - pan) * s, top: base - c.rise - (view.box.h - view.box.cy) * s + p.y * s };
   };
   /** A burst of particles at a point of the book. */
   const burst = (x: number, y: number, z: number, kind: FxKind, options?: FxOptions) => {
@@ -210,8 +210,9 @@ export default function PaperBoat() {
     if (cover.current.k > 0 || turn.current || pageDrag.current || done || closing.current !== null) return;
     const box = world.current?.getBoundingClientRect(); if (!box) return;
     const zoom = box.width / Math.max(1, world.current?.offsetWidth ?? box.width), side = live.current.dir === 'rtl' ? -1 : 1;
-    const spine = box.left + project(SPREAD_W / 2, PAGE_D / 2).left * zoom, pageW = PAGE_W * cam.current.scale * zoom;
-    const drag: PageDrag = { id: event.pointerId, intent: null, x: event.clientX, y: event.clientY, moved: false, fraction: 0, velocity: 0, at: now(), onToy: !!(event.target as Element).closest?.('[data-pb-toy]'), radius: pageW, base: pageW, off0: (event.clientX - spine) * side, spine, pageW };
+    // Everything is kept in book px, from the spine: the camera may pull back while the page is in the hand.
+    const fromSpine = (clientX: number) => ((clientX - box.left - project(SPREAD_W / 2, PAGE_D / 2).left * zoom) * side) / (cam.current.scale * zoom);
+    const drag: PageDrag = { id: event.pointerId, intent: null, x: event.clientX, y: event.clientY, moved: false, fraction: 0, velocity: 0, at: now(), onToy: !!(event.target as Element).closest?.('[data-pb-toy]'), radius: PAGE_W, base: PAGE_W, off0: fromSpine(event.clientX) };
     pageDrag.current = drag;
     const move = (e: PointerEvent) => {
       if (e.pointerId !== drag.id) return;
@@ -222,13 +223,13 @@ export default function PaperBoat() {
         const wanted = swipeIntent(dx, live.current.dir, 12);
         if (!wanted || !canTurn(book.current, wanted) || (stamps.current.dock !== null && !stamps.current.told)) { stop(); return; }
         drag.intent = wanted; drag.fraction = wanted === 'back' ? 1 : 0;
-        drag.radius = grabRadius(drag.off0, pageW, wanted);
+        drag.radius = grabRadius(drag.off0, PAGE_W, wanted);
         // Grabbed on the turning page, the page starts where the finger is; elsewhere, at its edge.
         const onLeaf = wanted === 'next' ? drag.off0 : -drag.off0;
         drag.base = (wanted === 'next' ? 1 : -1) * (onLeaf > 0 ? Math.min(drag.radius, onLeaf) : drag.radius);
         drag.moved = true; quietClick.current = now(); leave(); audio.current?.swish(); buzz(); frame(false);
       }
-      const fraction = leafFraction(drag.base + (e.clientX - drag.spine) * side - drag.off0, drag.radius), t = now();
+      const fraction = leafFraction(drag.base + fromSpine(e.clientX) - drag.off0, drag.radius), t = now();
       const span = Math.max(0.008, (t - drag.at) / 1000);
       drag.velocity = drag.velocity * 0.6 + ((fraction - drag.fraction) / span) * 0.4;
       drag.fraction = fraction; drag.at = t; quietClick.current = t;
@@ -251,8 +252,8 @@ export default function PaperBoat() {
   };
   const pagePoke = (clientX: number, clientY: number) => {
     const box = world.current?.getBoundingClientRect(); if (!box || book.current.spread !== Math.round(position.current)) return;
-    const { w: width, base, view } = live.current.fit, zoom = box.width / Math.max(1, world.current?.offsetWidth ?? box.width), c = cam.current, mirror = live.current.dir === 'rtl';
-    const sx = ((clientX - box.left) / zoom - width / 2) / c.scale + (c.cx - SPREAD_W / 2) * (mirror ? -1 : 1), sy = ((clientY - box.top) / zoom - (base - (view.box.h - view.box.cy) * c.scale)) / c.scale;
+    const { w: width, base, view, side } = live.current.fit, zoom = box.width / Math.max(1, world.current?.offsetWidth ?? box.width), c = cam.current, mirror = live.current.dir === 'rtl';
+    const sx = ((clientX - box.left) / zoom - (width + (mirror ? side : -side)) / 2) / c.scale + (c.cx - SPREAD_W / 2) * (mirror ? -1 : 1), sy = ((clientY - box.top) / zoom - (base - (view.box.h - view.box.cy) * c.scale)) / c.scale;
     const at = unprojectBookPoint(sx, sy, mirror, view.tilt);
     if (at.x < 4 || at.x > SPREAD_W - 4 || at.y < 4 || at.y > PAGE_D - 4) return;
     ripples.current = [...ripples.current.slice(-3), { x: at.x, y: at.y, at: clock.current }];
@@ -545,7 +546,7 @@ export default function PaperBoat() {
     else if (b.spread === 1) focus = riverBoat(b.river).x + 46;
     else if (b.spread === 2) focus = 112 + 280 * calmShown.current + 30;
     else focus = b.harbour.x + 50;
-    const cx = free ? focus : viewCentre(focus, f.w / scale);
+    const cx = free ? focus : viewCentre(focus, (f.w - f.side) / scale);
     // The closed book lies a little up the table, clear of the title under it.
     const rise = cover.current.k > 0 && cover.current.at === null ? Math.round(f.h * (f.portrait ? 0.1 : 0.17)) : 0;
     const before = c.cx + c.scale * 1000 + c.rise;
@@ -600,8 +601,9 @@ export default function PaperBoat() {
       const portrait = h > width * 1.05, short = h < 440;
       const wheel = Math.round(short ? 126 : portrait ? Math.max(150, Math.min(196, width * 0.44)) : 188), wheelH = (wheel * WHEEL_BOX.h) / WHEEL_BOX.w;
       const top = portrait ? 72 : short ? 4 : 10, bottom = Math.round(short ? 14 : portrait ? wheelH + 30 : wheelH * 0.5 + 16);
-      const view = viewFit(width - 8, h - top - bottom);
-      setFit(old => (old.w === width && old.h === h && old.wheel === wheel && Math.abs(old.view.near - view.near) < 0.002 && old.view.tilt === view.tilt ? old : { w: width, h, portrait, short, wheel, base: h - bottom, view }));
+      const side = short ? wheel + 2 * 56 + 40 : 0;
+      const view = viewFit(width - side - 8, h - top - bottom);
+      setFit(old => (old.w === width && old.h === h && old.wheel === wheel && Math.abs(old.view.near - view.near) < 0.002 && old.view.tilt === view.tilt ? old : { w: width, h, portrait, short, wheel, base: h - bottom, side, view }));
     };
     measure();
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
@@ -703,7 +705,7 @@ export default function PaperBoat() {
 
   const scenery = <div ref={world} className="pb" dir="ltr" data-pb-stage="" data-portrait={fit.portrait} onPointerDown={pageDown} style={vars}>
     <div className="pb-room" aria-hidden="true" data-play-depth="3"><img src={KIT_ROOM.src} alt="" draggable={false} decoding="async" /></div>
-    <div className="pb-scaler" style={{ inlineSize: box.w, blockSize: box.h, bottom: fit.h - fit.base, transform: `translate(-50%, ${(-cam.current.rise).toFixed(1)}px) translateX(${(-pan * scale).toFixed(2)}px) scale(${scale.toFixed(4)})` }}>
+    <div className="pb-scaler" style={{ inlineSize: box.w, blockSize: box.h, bottom: fit.h - fit.base, transform: `translate(-50%, ${(-cam.current.rise).toFixed(1)}px) translateX(${(-pan * scale + (order.mirror ? fit.side : -fit.side) / 2).toFixed(2)}px) scale(${scale.toFixed(4)})` }}>
       <div className="pb-persp" style={{ left: box.cx - SPREAD_W / 2, top: box.cy - PAGE_D / 2, width: SPREAD_W, height: PAGE_D, perspective: BOOK_PERSPECTIVE }}>
         <div ref={bookEl} className="pb-book" data-mirror={order.mirror} data-pb-position={position.current.toFixed(3)} style={{ width: SPREAD_W, height: PAGE_D, transform: `rotateX(${bookTilt.toFixed(3)}deg) rotateY(${bookYaw.toFixed(3)}deg)${order.mirror ? ' scaleX(-1)' : ''}` }}>
           <span className="pb-tabletop" aria-hidden="true" style={{ backgroundImage: `url(${KIT_TABLE.src})` }} />
@@ -753,9 +755,10 @@ export default function PaperBoat() {
           <HudQuest label={w.quest} current={covered ? -1 : spread} steps={w.places.map((label, i) => ({ key: `s${i}`, label, done: spreadDone(b, i as SpreadIndex) && (i < 3 || homeDone), icon: questIcons[i] }))} />
           <HudToast show={toast !== null}>{toast}</HudToast>
           <HudDock align={fit.short ? 'end' : 'center'} label={w.wheel}>
-            {wheelOut && <HudButton label={w.steerLeft} icon={<RotateCcw aria-hidden="true" />} iconOnly disabled={!playable} onClick={() => turnWheel(wheelAngle - 30)} data={{ 'data-pb-steer': 'left' }} />}
+            {/* The wheel is an object: its left button is on its left in both languages (the dock itself follows the page). */}
+            {wheelOut && (dir === 'rtl' ? <HudButton label={w.steerRight} icon={<RotateCw aria-hidden="true" />} iconOnly disabled={!playable} onClick={() => turnWheel(wheelAngle + 30)} data={{ 'data-pb-steer': 'right' }} /> : <HudButton label={w.steerLeft} icon={<RotateCcw aria-hidden="true" />} iconOnly disabled={!playable} onClick={() => turnWheel(wheelAngle - 30)} data={{ 'data-pb-steer': 'left' }} />)}
             {wheelOut && <PaperWheel angle={wheelAngle} nudge={nudge} enabled={playable} tucked={!playable} marks={wheelSpread === 2 ? 'steadyBand' : 'lanes'} steady={steady || (wheelSpread === 2 && b.storm.calmed)} calm={calmShown.current} aim={aim} label={w.wheel} valueText={valueText} onTurn={turnWheel} onHold={value => { held.current = value; touch(); if (value) { gust.current = null; sound.current?.pick(); buzz(); } }} />}
-            {wheelOut && <HudButton label={w.steerRight} icon={<RotateCw aria-hidden="true" />} iconOnly disabled={!playable} onClick={() => turnWheel(wheelAngle + 30)} data={{ 'data-pb-steer': 'right' }} />}
+            {wheelOut && (dir === 'rtl' ? <HudButton label={w.steerLeft} icon={<RotateCcw aria-hidden="true" />} iconOnly disabled={!playable} onClick={() => turnWheel(wheelAngle - 30)} data={{ 'data-pb-steer': 'left' }} /> : <HudButton label={w.steerRight} icon={<RotateCw aria-hidden="true" />} iconOnly disabled={!playable} onClick={() => turnWheel(wheelAngle + 30)} data={{ 'data-pb-steer': 'right' }} />)}
             {showBack && <HudButton label={w.back} icon={<Backward aria-hidden="true" />} iconOnly onClick={() => startTurn('back')} data={{ 'data-pb-turn': 'back' }} />}
             {showNext && <HudButton label={w.next} icon={<Forward aria-hidden="true" />} tone="go" size="l" cue onClick={() => startTurn('next')} data={{ 'data-pb-turn': 'next' }} />}
             {showEnd && <HudButton label={w.end} icon={<BookOpen aria-hidden="true" />} tone="go" size="l" cue onClick={finish} data={{ 'data-pb-turn': 'end' }} />}

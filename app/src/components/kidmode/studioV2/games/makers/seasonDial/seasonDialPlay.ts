@@ -45,8 +45,9 @@ export function stageLayout(w: number, h: number, safeBottom = 14): StageLayout 
   const line = (f: number) => top + f * size;
   const base = { h: H, floorTop: line(VIEW_LINES.floorTop) };
   const at = (xf: number, depth: number, hf: number): Spot => { const p = floorPoint(base, depth); return { x: W * xf, y: p.y, h: hf * p.scale }; };
-  const treeFoot = floorPoint(base, portrait ? 0.2 : 0.24);
-  const treeH = Math.min(portrait ? Math.min(H * 0.6, W * 1.16) : H * 0.78, treeFoot.y - Math.min(64, H * 0.13));
+  // A short landscape stage (a phone on its side) stands the tree nearer the camera, so it stays big.
+  const treeFoot = floorPoint(base, portrait ? 0.2 : H < 430 ? 0.5 : 0.24);
+  const treeH = Math.min(portrait ? Math.min(H * 0.6, W * 1.16) : H * 0.78, treeFoot.y - Math.min(64, H * 0.1));
   const person = treeH * 0.37;
   const r = Math.max(62, Math.min(132, Math.min(W, H) * (portrait ? 0.225 : 0.2)));
   const dial = { cx: W - r - Math.max(14, W * 0.018), cy: H - r - safeBottom - Math.max(6, H * 0.012), r };
@@ -55,8 +56,8 @@ export function stageLayout(w: number, h: number, safeBottom = 14): StageLayout 
     w: W, h: H, portrait, view: { size, left, top }, horizon: line(VIEW_LINES.horizon), wallTop: line(VIEW_LINES.wallTop), floorTop: base.floorTop,
     tree: { x: treeX, y: treeFoot.y, h: treeH }, dial,
     spots: portrait
-      ? { a: at(0.2, 0.66, person * 1.05), b: at(0.76, 0.26, person), c: at(0.86, 0.3, person), planter: at(0.42, 0.9, person * 0.62), snowFriend: at(0.66, 0.12, person * 0.86) }
-      : { a: at(0.56, 0.5, person), b: at(0.7, 0.34, person), c: at(0.14, 0.52, person), planter: at(0.6, 0.86, person * 0.6), snowFriend: at(0.19, 0.3, person * 0.9) },
+      ? { a: at(0.2, 0.66, person * 1.05), b: at(0.76, 0.26, person), c: at(0.86, 0.3, person), planter: at(0.37, 0.6, person * 0.6), snowFriend: at(0.66, 0.12, person * 0.86) }
+      : { a: at(0.56, H < 430 ? 0.72 : 0.5, person), b: at(0.7, H < 430 ? 0.5 : 0.34, person), c: at(0.14, H < 430 ? 0.7 : 0.52, person), planter: at(0.6, 0.86, person * 0.6), snowFriend: at(0.19, H < 430 ? 0.46 : 0.3, person * 0.9) },
     puddles: portrait
       ? [{ x: W * 0.22, y: floorPoint(base, 0.52).y, rx: W * 0.16, ry: W * 0.034 }, { x: W * 0.62, y: floorPoint(base, 0.2).y, rx: W * 0.13, ry: W * 0.022 }, { x: W * 0.4, y: floorPoint(base, 0.88).y, rx: W * 0.2, ry: W * 0.04 }]
       : [{ x: W * 0.17, y: floorPoint(base, 0.6).y, rx: W * 0.085, ry: W * 0.016 }, { x: W * 0.64, y: floorPoint(base, 0.2).y, rx: W * 0.07, ry: W * 0.011 }, { x: W * 0.47, y: floorPoint(base, 0.82).y, rx: W * 0.11, ry: W * 0.02 }],
@@ -102,7 +103,7 @@ export function shadowOf(sun: SunArc, atX: number): { dx: number; dy: number; st
 
 /** What the child has done to the weather on top of the year's own:
  * `clouds` gathered (+) or blown off (−), how `wet` the bed is, and the
- * `mist` left hanging in the air after rain (what a rainbow is made of). */
+ * the fine drops left hanging in the air after rain, which is what a rainbow is made of. */
 export interface SkyState { readonly clouds: number; readonly wet: number; readonly mist: number }
 export const SKY_TAP = 0.3, SKY_BLOW = 0.42, RAIN_FROM = 0.58;
 const CLOUD_EASE_S = 16, WET_RISE_S = 2.6, MIST_FALL_S = 9;

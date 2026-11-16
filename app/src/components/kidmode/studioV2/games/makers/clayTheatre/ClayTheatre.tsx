@@ -11,7 +11,7 @@ import {
 import { CLAY_THEATRE_COPY } from './clayTheatreCopy';
 import {
   CREW, FPS, GEL_IDS, GROUND, SHOTS, STEPS, STORIES, TUNES, TUNE_IDS, TWOS, PULL_ENOUGH,
-  carriedPose, chaptersDone, chooseStory, clayLine, crewMood, directJobs, drawingAt, drawingPose, filmDone, filmFrames, frameOfKey, heroOf, keyNear, knead, lumpPose,
+  carriedPose, chaptersDone, chooseStory, clayLine, crewMood, directJobs, drawingAt, drawingPose, filmDone, filmFrames, frameOfKey, heroOf, keyNear, knead, lumpPose, movedEnough,
   newShow, nextAct, nextKnead, nextPull, placeBuddy, premiereAt, pressPrint, pull, pullAmount, setGel, setTune, shapeDone, shoot, showLook, stageLayout, startPose, storiesFor,
   toAnimate, toDirect, toPremiere, toPx, toSet, unshoot,
   type ClayId, type CrewId, type CrewMood, type GelId, type PremierePhase, type Show, type StageLayout, type StoryId, type TuneId,
@@ -163,20 +163,20 @@ export default function ClayTheatre() {
     const filmDrawing = s.keys.length ? drawingAt(e.film.frame, s.keys.length) : 0, rolling = s.chapter === 'direct' || s.chapter === 'premiere' || (s.chapter === 'animate' && filmDone(s));
     const scene = sceneNow(s, e, palette, e.pose, { ghosts: true, drawing: rolling ? filmDrawing : e.drawing });
     if (!scene) return;
-    // The cloth and the dressing are kept between drawings: only the cast is painted every time.
-    const key = `${s.story}|${look.hour}|${L.w}x${L.h}x${k}|${rolling ? filmDrawing : 0}`;
+    // The cloth and the dressing stand still on the stage and are kept between drawings: only the cast is painted every time.
+    const key = `${s.story}|${look.hour}|${L.w}x${L.h}x${k}`;
     const cache = e.cache;
     if (cache.key !== key && typeof document !== 'undefined') {
       for (const part of ['back', 'front'] as const) {
-        const layer = cache[part] ?? (cache[part] = document.createElement('canvas'));
+        const layer = cache[part] ?? (cache[part] = document.createElement('canvas')), pass = part === 'back' ? 'backPass' : 'frontPass';
         layer.width = canvas.width; layer.height = canvas.height;
         const lc = layer.getContext('2d');
-        if (lc) { lc.setTransform(k, 0, 0, k, 0, 0); lc.clearRect(0, 0, L.w, L.h); paintScene(lc, view, { ...scene, drawing: rolling ? filmDrawing : 0 }, palette, part); }
+        if (lc) { lc.setTransform(k, 0, 0, k, 0, 0); lc.clearRect(0, 0, L.w, L.h); paintScene(lc, view, { ...scene, drawing: 0 }, palette, pass); }
       }
       cache.key = key;
     }
     if (cache.back) ctx.drawImage(cache.back, 0, 0, L.w, L.h);
-    paintScene(ctx, view, scene, palette, 'cast');
+    paintScene(ctx, view, scene, palette, 'castPass');
     if (cache.front) ctx.drawImage(cache.front, 0, 0, L.w, L.h);
     paintGel(ctx, view, s.gel, palette);
   };
@@ -239,7 +239,8 @@ export default function ClayTheatre() {
       const moods = CREW.map((_, i) => crewMood(i, moment, s.keys)), key = `${moment.phase}|${moods.join()}`;
       if (key !== e.premiereKey) { e.premiereKey = key; premiereBeat(moment.phase, e.premiereKey); setPrem({ phase: moment.phase, moods }); }
       const screen = screenRef.current;
-      if (screen) { screen.style.opacity = String(Math.min(1, moment.beam * 1.4)); }
+      // The picture comes up with the beam and stays on the screen while the crew clap.
+      if (screen) screen.style.opacity = moment.phase === 'dim' ? String(Math.min(1, moment.beam * 1.4)) : '1';
       if (moment.phase === 'over') { e.premiere = null; finish(); }
     }
     const shown = Math.floor(e.film.frame);
@@ -529,8 +530,8 @@ export default function ClayTheatre() {
   useEffect(() => {
     // The camera pushes in for the second showing and comes back for the applause.
     if (!prem || !layout || reduced) { if (!prem && phase === 'play') setCamera(CAMERA_HOME); return; }
-    const focus = { x: (layout.screen.x + layout.screen.w / 2) / layout.w, y: (layout.screen.y + layout.screen.h * 0.55) / layout.h };
-    setCamera(prem.phase === 'encore' || prem.phase === 'hold' ? { ...focus, zoom: 1.2 } : prem.phase === 'roll' || prem.phase === 'dim' ? { ...focus, zoom: 1.04 } : CAMERA_HOME);
+    const focus = { x: (layout.screen.x + layout.screen.w / 2) / layout.w, y: (layout.screen.y + layout.screen.h * 0.7) / layout.h };
+    setCamera(prem.phase === 'encore' || prem.phase === 'hold' ? { ...focus, zoom: layout.portrait ? 1.07 : 1.2 } : prem.phase === 'roll' || prem.phase === 'dim' ? { ...focus, zoom: 1.03 } : CAMERA_HOME);
   }, [prem?.phase, layout, reduced, phase]);
 
   // The strip's cells: each frame the child shot, painted once and again whenever the film's look changes.
@@ -545,10 +546,10 @@ export default function ClayTheatre() {
   const filmed = filmDone(show), jobs = directJobs(show);
   const lineKey: keyof typeof w.coach = phase === 'opening' ? 'welcome' : note ? note : chapter === 'cans' ? 'cans'
     : chapter === 'shape' ? (!show.body ? 'body' : !show.trim ? 'trim' : !shapeDone(show) ? 'pull' : 'alive')
-      : chapter === 'animate' ? (filmed ? 'film' : show.keys.length === 0 ? 'first' : show.keys.length >= SHOTS - 2 ? 'nearly' : 'move')
+      : chapter === 'animate' ? (filmed ? 'film' : show.keys.length === 0 ? 'first' : show.keys.length >= SHOTS - 2 ? 'nearly' : 'moveIt')
         : !jobs.friend ? 'friend' : !jobs.light ? 'light' : !jobs.tune ? 'tune' : 'ready';
   const line = chapter === 'cans' && phase === 'play' && peek ? w.stories[peek] : w.coach[lineKey];
-  const grade = chapter === 'direct' && !premiering ? (show.gel === 'blueGel' ? 'cool' : show.gel === 'clearGel' ? 'day' : 'warm') : 'day';
+  const premiereCaption = prem ? (prem.phase === 'dim' ? w.captions.dim : prem.phase === 'roll' ? w.captions.roll : prem.phase === 'hold' || prem.phase === 'encore' ? w.captions.encore : w.captions.applause) : undefined;
   const questIndex = chapter === 'shape' || chapter === 'cans' ? 0 : chapter === 'animate' ? 1 : chapter === 'direct' ? 2 : 3;
   const total = filmFrames(show.keys.length), nowKey = show.keys.length ? keyNear(frame, show.keys.length) : -1;
   const heroBox = layout && story && (chapter === 'shape' ? lumpPose(show) : draft ?? (chapter === 'animate' ? startPose(show) : null));
@@ -558,10 +559,12 @@ export default function ClayTheatre() {
     return { id, at, dir: [tip[0] - at[0], tip[1] - at[1]] as Pt };
   }) : [];
   const cue = nextPull(show);
+  // The next thing to touch is marked: the clay until it has been moved, then the camera.
+  const lastKey = show.keys[show.keys.length - 1], carryCue = chapter === 'animate' && !filmed && !!lastKey && !movedEnough(lastKey, draft ?? lastKey);
 
   return <GameShell fullBleed autoNarrate={false} worldId="clay-theatre" title={w.title} instruction={w.instruction} hearIt={line}>
     <section className="ct" data-adventure="clay-theatre" data-phase={phase} data-chapter={chapter} data-story={show.story ?? ''} data-keys={show.keys.length} data-frame={frame} data-premiere={prem?.phase ?? ''} dir={rtl ? 'rtl' : 'ltr'}>
-      {phase === 'done' ? <GameFinish title={w.finish} subtitle={w.transfer} onPlayAgain={again} playAgainLabel={shared.again} homeLabel={shared.home} /> : <PlayStage id="clay-theatre" grade={grade} camera={camera} shake={shake} parallax
+      {phase === 'done' ? <GameFinish title={w.finish} subtitle={w.transfer} onPlayAgain={again} playAgainLabel={shared.again} homeLabel={shared.home} /> : <PlayStage id="clay-theatre" grade="day" camera={camera} shake={shake} parallax
         world={<div className="ct-world" dir="ltr" ref={worldRef} role="group" aria-label={w.stage} data-orient={layout?.portrait ? 'portrait' : 'landscape'}>
           {layout && <img className="ct-room" src={KIT_ROOM.src} alt="" draggable={false} decoding="async" style={boxStyle(layout.room)} data-play-depth="3" />}
           <span className="ct-shaft" aria-hidden="true" />
@@ -570,7 +573,7 @@ export default function ClayTheatre() {
           {layout && phase === 'play' && chapter === 'cans' && <div className="ct-cans" role="group" aria-label={w.cans} style={boxStyle(layout.cans)}>
             {offered.map((id, i) => <FilmCan key={id} story={id} index={i} label={clayLine(w.can, w.stories[id])} palette={pal.current} seed={seed} onPick={() => pickCan(id)} onPeek={on => setPeek(on ? id : p => (p === id ? null : p))} />)}
           </div>}
-          {layout && story && chapter === 'shape' && <div className="ct-rug" style={boxStyle(layout.rug)} role="group" aria-label={w.lumps} data-away={shapeDone(show) && woke}>
+          {layout && story && chapter === 'shape' && <div className="ct-rug" style={boxStyle(layout.rug)} role="group" aria-label={w.lumps} data-away={shapeDone(show) && woke} data-cue={!show.body || !show.trim}>
             <img className="ct-rug__mat" src={KIT_RUG.src} alt="" draggable={false} decoding="async" />
             <div className="ct-rug__lumps">
               {look.lumps.map((id, i) => <button type="button" key={id} className="ct-lump" data-lump={id} data-used={show.body === id || show.trim === id} aria-label={clayLine(w.lump, w.clays[id])} style={{ '--i': i } as CSSProperties}
@@ -580,7 +583,7 @@ export default function ClayTheatre() {
           {handles.map(h => <button type="button" key={h.id} className="ct-pull" data-pull={h.id} data-cue={cue === h.id && !!show.body} aria-label={w.pulls[h.id]} style={{ left: px(h.at[0]), top: px(h.at[1]), '--dx': px(h.dir[0]), '--dy': px(h.dir[1]) } as CSSProperties}
             onPointerDown={pullDown(h.id, h.dir)}
             onPointerMove={pullMove} onPointerUp={pullUp} onPointerCancel={pullUp} onKeyDown={ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); touch(); finishPull(h.id); } }}><i aria-hidden="true" /></button>)}
-          {layout && heroBox && (chapter === 'shape' || (chapter === 'animate' && !filmed)) && <button type="button" className="ct-hero" data-hero="" aria-label={w.hero} onKeyDown={heroKey} onClick={heroClick}
+          {layout && heroBox && (chapter === 'shape' || (chapter === 'animate' && !filmed)) && <button type="button" className="ct-hero" data-hero="" data-cue={carryCue} aria-label={w.hero} onKeyDown={heroKey} onClick={heroClick}
             style={{ left: px(layout.ox + heroBox.x * layout.unit), top: px(layout.oy + heroBox.y * layout.unit), width: px(150 * layout.unit), height: px(96 * layout.unit) }} />}
           {layout && story && (chapter === 'animate' || chapter === 'direct') && <div className="ct-strip" style={boxStyle(layout.strip)} data-live={filmed}>
             <div className="ct-strip__film" role="slider" tabIndex={filmed ? 0 : -1} aria-label={w.strip} aria-valuemin={1} aria-valuemax={Math.max(1, total)} aria-valuenow={Math.min(Math.max(1, total), frame + 1)}
@@ -596,7 +599,7 @@ export default function ClayTheatre() {
               onPointerDown={ev => { if (!filmed) return; crankMoved.current = false; crank.current = { angle: crankAngle(ev) }; try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch { /* synthetic */ } }}
               onPointerMove={crankMove} onPointerUp={() => { crank.current = null; }} onPointerCancel={() => { crank.current = null; }} onClick={() => { if (!crankMoved.current) playFilm(); crankMoved.current = false; }}><i aria-hidden="true" /></button>
           </div>}
-          {layout && chapter === 'animate' && <button type="button" className="ct-lens" data-lens="" data-nod={nod % 2 ? 'a' : nod ? 'b' : undefined} data-cue={!filmed} aria-label={w.lens} disabled={filmed} style={boxStyle(layout.lens)} onClick={takeShot}>
+          {layout && chapter === 'animate' && <button type="button" className="ct-lens" data-lens="" data-nod={nod % 2 ? 'a' : nod ? 'b' : undefined} data-cue={!filmed && !carryCue} aria-label={w.lens} disabled={filmed} style={boxStyle(layout.lens)} onClick={takeShot}>
             <img src={KIT_LENS.src} alt="" draggable={false} decoding="async" />
             <span className="ct-lens__screen" style={{ left: `${LENS_SCREEN.left * 100}%`, top: `${LENS_SCREEN.top * 100}%`, width: `${LENS_SCREEN.width * 100}%`, height: `${LENS_SCREEN.height * 100}%` }}><canvas ref={viewRef} aria-label={w.lensView} /></span>
             <i className="ct-lens__shutter" aria-hidden="true" />
@@ -633,7 +636,9 @@ export default function ClayTheatre() {
           {phase === 'play' && chapter === 'animate' && filmed && <HudButton label={w.next.direct} tone="go" size="l" cue icon={<Clapperboard aria-hidden="true" />} onClick={beginDirect} data={{ 'data-next': 'direct' }} />}
           {phase === 'play' && chapter === 'direct' && jobs.friend && <HudButton label={w.next.premiere} tone="go" size="l" cue={jobs.light && jobs.tune} icon={<Play aria-hidden="true" />} onClick={beginPremiere} data={{ 'data-next': 'premiere' }} />}
         </HudDock>
-        <PlaySetPiece active={premiering} caption={prem ? (prem.phase === 'dim' ? w.captions.dim : prem.phase === 'roll' ? w.captions.roll : prem.phase === 'hold' || prem.phase === 'encore' ? w.captions.encore : w.captions.applause) : undefined}>
+        <PlaySetPiece active={premiering} caption={layout?.portrait ? undefined : premiereCaption}>
+          {/* On a tall stage the caption sits above the screen, clear of the crew. */}
+          {layout?.portrait && premiereCaption && <p className="play-setpiece__caption ct-caption" aria-live="polite" key={premiereCaption}>{premiereCaption}</p>}
           {prem && prem.phase !== 'applause' && prem.phase !== 'over' && <button type="button" className="ct-skip" aria-label={w.skip} data-skip="" onClick={skipPremiere} />}
         </PlaySetPiece>
       </PlayStage>}
@@ -689,7 +694,7 @@ function FilmCan({ story, index, label, palette, seed, onPick, onPeek }: { story
 function Premiere({ layout, phase, moods, screenRef, words, reduced }: { layout: StageLayout; phase: PremierePhase; moods: readonly CrewMood[]; screenRef: { current: HTMLCanvasElement | null }; words: typeof CLAY_THEATRE_COPY['en'] | typeof CLAY_THEATRE_COPY['he']; reduced: boolean }) {
   const lit = phase === 'applause' || phase === 'over', s = layout.screen, [bx, by] = layout.beamFrom;
   const beam = `${bx - 6},${by} ${s.x + s.w * 0.04},${s.y + s.h} ${s.x + s.w * 0.96},${s.y + s.h} ${bx + 6},${by}`;
-  const order: readonly CrewId[] = ['aya', 'chock', 'bebe', 'gobgob', 'pep'], places = [-2.5, -1.62, -0.72, 0.78, 1.72], slot = Math.min(layout.w / 5.3, layout.crewH * 0.62);
+  const order: readonly CrewId[] = ['aya', 'chock', 'bebe', 'gobgob', 'pep'], places = layout.portrait ? [-2.5, -1.62, -0.72, 0.78, 1.72] : [-2.65, -1.8, -0.95, 1, 1.9], slot = Math.min(layout.w / 5.3, layout.crewH * 0.62);
   return <div className="ct-premiere" data-phase={phase} data-lit={lit} data-reduced={reduced || undefined}>
     <span className="ct-dark" aria-hidden="true" />
     <span className="ct-screen" style={boxStyle(s)} role="img" aria-label={words.screen}><canvas ref={screenRef} /><i aria-hidden="true" /></span>

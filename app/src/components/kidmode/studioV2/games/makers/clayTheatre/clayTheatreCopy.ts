@@ -29,7 +29,7 @@ export const CLAY_THEATRE_COPY = {
     coach: {
       welcome: 'Film night! Let’s make a clay film.', cans: 'Pick a film can.',
       body: 'Knead a colour into the clay.', trim: 'Now a second colour.', pull: 'Pull the clay into shape.', alive: 'It’s awake! Press it. It squishes.',
-      first: 'Press my ProofLens. Click!', move: 'Move the clay a little. Then click.', moveFirst: 'Move it first, then shoot.', nearly: 'Nearly a whole film!',
+      first: 'Press my ProofLens. Click!', moveIt: 'Move the clay a little. Then click.', moveFirst: 'Move it first, then shoot.', nearly: 'Nearly a whole film!',
       film: 'A film! Drag the strip to run it.', friend: 'Bring a friend onto the set.', light: 'Try a colour on the lamp.', tune: 'Pick a tune for the film.', ready: 'Ready? Call the crew in!',
       poke: 'I’m filming. You’re the animator!', pokeLabel: 'Bebe, the camera keeper',
     },
@@ -59,7 +59,7 @@ export const CLAY_THEATRE_COPY = {
     coach: {
       welcome: 'ערב סרטים! עושים סרט מחימר.', cans: 'בוחרים קופסת סרט.',
       body: 'לשים צבע אל תוך החימר.', trim: 'ועכשיו צבע שני.', pull: 'מושכים את החימר לצורה.', alive: 'זה מתעורר! לוחצים, וזה נמעך.',
-      first: 'לוחצים על המצלמה. קליק!', move: 'מזיזים קצת את החימר. ואז קליק.', moveFirst: 'קודם מזיזים, אחר כך מצלמים.', nearly: 'עוד מעט יש סרט שלם!',
+      first: 'לוחצים על המצלמה. קליק!', moveIt: 'מזיזים קצת את החימר. ואז קליק.', moveFirst: 'קודם מזיזים, אחר כך מצלמים.', nearly: 'עוד מעט יש סרט שלם!',
       film: 'יש סרט! גוררים את הפס ומריצים.', friend: 'מביאים חבר אל הבמה.', light: 'מנסים צבע על המנורה.', tune: 'בוחרים מנגינה לסרט.', ready: 'מוכנים? קוראים לחבורה!',
       poke: 'המצלמה אצלי. האנימציה אצלכם!', pokeLabel: 'בבה, שומר המצלמה',
     },

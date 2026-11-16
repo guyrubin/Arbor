@@ -85,10 +85,12 @@ export const SeasonWorld = forwardRef<WorldHandle, SeasonWorldProps>(function Se
         if (fill > 0.15) for (const p of L.puddles) if (((x - p.x) / (p.rx * 1.1)) ** 2 + ((y - p.y) / (p.ry * 1.6 + 8)) ** 2 < 1) return 'floorPuddle';
         return 'terraceFloor';
       }
+      // The far mountain is a cone: its flanks widen below the peak (the low winter sun sits just above it).
+      const peakY = L.horizon - L.view.size * 0.1, peakX = L.view.left + L.view.size * 0.51;
+      if (y > peakY && y < L.horizon + 4 && Math.abs(x - peakX) < (y - peakY) * 1.5 + L.view.size * 0.012) return 'farMountain';
       const sun = sunAtNow();
       if (Math.hypot(x - sun.x, y - sun.y) < Math.max(34, Math.min(L.w, L.h) * 0.075)) return 'sunDisc';
       for (let i = 0; i < s.clouds.length; i++) { const c = cloudAt(i); if (Math.abs(x - c.x) < c.size * 1.25 && Math.abs(y - c.y) < c.size * 0.7) return 'cloudPuff'; }
-      if (y > L.horizon - L.view.size * 0.11 && y < L.horizon + 4 && Math.abs(x - (L.view.left + L.view.size * 0.51)) < L.view.size * 0.13) return 'farMountain';
       return y < L.wallTop ? 'openSky' : 'terraceFloor';
     },
     answer(touch, x, y) {
@@ -208,10 +210,11 @@ export const SeasonWorld = forwardRef<WorldHandle, SeasonWorldProps>(function Se
         s.flock += real / 5.5;
         if (s.flock >= 1) s.flock = -1;
         else {
-          ctx.strokeStyle = tones.css(tones.of('slate')); ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.globalAlpha = 0.75;
+          const k = Math.max(1, L.view.size / 560);
+          ctx.strokeStyle = tones.css(tones.of('slate')); ctx.lineWidth = 2.2 * k; ctx.lineCap = 'round'; ctx.globalAlpha = 0.8;
           for (let i = 0; i < 9; i++) {
-            const bx = L.w * (1.1 - s.flock * 1.3) + (i % 3) * 26 + Math.floor(i / 3) * 14, by = skyH * (0.42 + 0.04 * (i % 3)) + Math.floor(i / 3) * 12 + Math.sin(s.t * 2 + i) * 3, flap = Math.sin(s.t * 9 + i) * 4;
-            ctx.beginPath(); ctx.moveTo(bx - 7, by - flap); ctx.quadraticCurveTo(bx - 3, by - 2, bx, by); ctx.quadraticCurveTo(bx + 3, by - 2, bx + 7, by - flap); ctx.stroke();
+            const bx = L.w * (1.1 - s.flock * 1.35) + ((i % 3) * 34 + Math.floor(i / 3) * 20) * k, by = skyH * (0.4 + 0.05 * (i % 3)) + Math.floor(i / 3) * 16 * k + Math.sin(s.t * 2 + i) * 3, flap = Math.sin(s.t * 9 + i) * 6 * k;
+            ctx.beginPath(); ctx.moveTo(bx - 12 * k, by - flap); ctx.quadraticCurveTo(bx - 5 * k, by - 3 * k, bx, by); ctx.quadraticCurveTo(bx + 5 * k, by - 3 * k, bx + 12 * k, by - flap); ctx.stroke();
           }
           ctx.globalAlpha = 1;
         }
@@ -372,9 +375,9 @@ export const SeasonWorld = forwardRef<WorldHandle, SeasonWorldProps>(function Se
   return <div ref={rootRef} className="sd-world" data-sd-world="">
     <div className="sd-views" data-play-depth="3" aria-hidden="true">
       {SEASON_VIEWS.map(view => <div key={view.id} className="sd-view" data-sd-view={view.id} style={{ inlineSize: size, blockSize: size, left: layout.view.left, top: layout.view.top }}>
-        <img className="sd-view__side" src={view.picture.src} alt="" draggable={false} decoding="async" style={{ left: -size }} />
+        <img className="sd-view__side" src={view.picture.src} alt="" draggable={false} decoding="async" style={{ left: -size + 2 }} />
         <img src={view.picture.src} alt="" draggable={false} decoding="async" />
-        <img className="sd-view__side" src={view.picture.src} alt="" draggable={false} decoding="async" style={{ left: size }} />
+        <img className="sd-view__side" src={view.picture.src} alt="" draggable={false} decoding="async" style={{ left: size - 2 }} />
       </div>)}
     </div>
     <div ref={sunRef} className="sd-sun" aria-hidden="true"><span className="sd-sun__rays" /><span className="sd-sun__disc" /></div>

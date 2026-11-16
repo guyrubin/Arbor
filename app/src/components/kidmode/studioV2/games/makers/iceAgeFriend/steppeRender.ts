@@ -107,7 +107,7 @@ interface Drift { a: number; d: number; w: number; lit: number }
 interface Member { dx: number; dd: number; size: number; turned: boolean; phase: number; young: boolean }
 export interface Steppe {
   ridges: { profile: Float32Array; peaks: number[]; rise: number; drift: number }[];
-  tufts: Tuft[]; drifts: Drift[]; stars: { x: number; y: number; r: number; phase: number }[]; glitter: { a: number; d: number; phase: number }[];
+  tufts: Tuft[]; drifts: Drift[]; clouds: { x: number; y: number; w: number; h: number; drift: number }[]; stars: { x: number; y: number; r: number; phase: number }[]; glitter: { a: number; d: number; phase: number }[];
   herd: Member[];
   aurora: AuroraId;
 }
@@ -137,13 +137,15 @@ export function makeSteppe(round: Round): Steppe {
     return { a: grassRandom(), d, h: 34 + grassRandom() * 44, lean: (grassRandom() - 0.5) * 0.5, tone: grassRandom(), blades: 4 + Math.floor(grassRandom() * 4), phase: grassRandom() * Math.PI * 2 };
   }).sort((p, q) => q.d - p.d);
   const drifts: Drift[] = Array.from({ length: 34 }, () => ({ a: grassRandom(), d: -0.45 + Math.pow(grassRandom(), 1.3) * 5, w: 220 + grassRandom() * 520, lit: grassRandom() }));
+  // Long thin bars of cloud lying low in the sky, where the sun will light them from beneath.
+  const clouds = Array.from({ length: 7 }, () => ({ x: grassRandom(), y: 0.42 + grassRandom() * 0.46, w: 0.22 + grassRandom() * 0.4, h: 0.012 + grassRandom() * 0.02, drift: 0.002 + grassRandom() * 0.004 }));
   const stars = Array.from({ length: 150 }, () => ({ x: grassRandom(), y: Math.pow(grassRandom(), 1.25), r: 0.5 + grassRandom() * grassRandom() * 1.7, phase: grassRandom() * Math.PI * 2 }));
   const glitter = Array.from({ length: 46 }, () => ({ a: grassRandom(), d: -0.5 + grassRandom() * 1.6, phase: grassRandom() * Math.PI * 2 }));
   const herd: Member[] = Array.from({ length: round.herdSize }, (_, i) => {
     const young = i > 1 && herdRandom() < 0.34;
     return { dx: (i - (round.herdSize - 1) / 2) * 470 + (herdRandom() - 0.5) * 220, dd: (herdRandom() - 0.5) * 0.5, size: young ? 0.5 + herdRandom() * 0.14 : 0.82 + herdRandom() * 0.24, turned: herdRandom() < 0.5, phase: herdRandom() * Math.PI * 2, young };
   }).sort((p, q) => q.dd - p.dd);
-  return { ridges, tufts, drifts, stars, glitter, herd, aurora: round.aurora };
+  return { ridges, tufts, drifts, clouds, stars, glitter, herd, aurora: round.aurora };
 }
 
 export interface HerdState {
@@ -171,9 +173,9 @@ export interface SteppeFrame {
 /* ── painting ─────────────────────────────────────────────────────────── */
 
 const AURORA_INKS: Readonly<Record<AuroraId, (p: Palette) => [RGB, RGB, RGB]>> = {
-  greenTeal: p => [mix(p.spring, p.celadon, 0.3), p.sea, mix(p.celadon, p.teal, 0.4)],
-  greenViolet: p => [mix(p.spring, p.celadon, 0.4), p.lilac, mix(p.violet, p.bluebell, 0.5)],
-  tealRose: p => [p.sea, mix(p.rose, p.lilac, 0.4), mix(p.celadon, p.spring, 0.5)],
+  greenTeal: p => [mix(p.spring, p.leaf, 0.4), mix(p.sea, p.teal, 0.3), mix(p.celadon, p.leaf, 0.3)],
+  greenViolet: p => [mix(p.spring, p.leaf, 0.45), mix(p.lilac, p.violet, 0.45), mix(p.celadon, p.teal, 0.3)],
+  tealRose: p => [mix(p.sea, p.teal, 0.4), mix(p.rose, p.violet, 0.35), mix(p.spring, p.leaf, 0.4)],
 };
 
 /** Everything behind the mammoth: sky, sun, stars, aurora, the pictures, ridges, the far herd, the snow and the grass beyond its feet. */
@@ -218,6 +220,20 @@ export function drawSteppeBack(f: SteppeFrame): Tones {
     ctx.restore();
   }
 
+  /* bars of cloud, lit along their under-edge by the low sun; at night they are only a darker blue */
+  const cloudLit = mix(mix(t.low, p.white, 0.45), t.glow, 0.35 * sunShow), cloudDark = mix(t.mid, t.dark, 0.25), cloudShow = (f.sky === 'snowFlurry' ? 0.8 : 0.55) * (1 - 0.6 * t.stars);
+  for (const cloud of steppe.clouds) {
+    const cw = cloud.w * W, ch = Math.max(3, cloud.h * Math.max(hz, 60)), x = (((cloud.x + (f.reduced ? 0 : time * cloud.drift)) % 1.5) - 0.25) * W, y = cloud.y * hz;
+    if (y < -ch || y > hz) continue;
+    ctx.save(); ctx.translate(x, y); ctx.scale(1, ch / cw);
+    for (const [dy, tone, alpha] of [[-0.25, cloudDark, 0.34], [0.2, cloudLit, 0.62]] as const) {
+      const body = ctx.createRadialGradient(0, cw * dy, 0, 0, cw * dy, cw);
+      body.addColorStop(0, paint(tone, alpha * cloudShow)); body.addColorStop(0.5, paint(tone, alpha * cloudShow * 0.5)); body.addColorStop(1, paint(tone, 0));
+      ctx.fillStyle = body; ctx.beginPath(); ctx.arc(0, cw * dy, cw, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
   /* the aurora and the pictures in the sky */
   if (f.show) drawSkyShow(f, t);
 
@@ -235,7 +251,7 @@ export function drawSteppeBack(f: SteppeFrame): Tones {
     ctx.fillStyle = fill; ctx.fill(path);
     // The side of each peak away from the sun falls into shade.
     ctx.save(); ctx.clip(path);
-    ctx.fillStyle = paint(mix(tone, t.dark, 0.5), index === 2 ? 0.14 : 0.26);
+    ctx.fillStyle = paint(mix(tone, t.dark, 0.5), index === 2 ? 0.1 : 0.18);
     ctx.beginPath();
     for (const peak of ridge.peaks) {
       const px = x0 + (peak / (n - 1)) * span, py = base - ridge.profile[peak] * rise, w = rise * (0.5 + ridge.profile[peak] * 0.6);
@@ -244,7 +260,7 @@ export function drawSteppeBack(f: SteppeFrame): Tones {
     ctx.fill();
     // Light catches the sun's side of the far snows.
     if (index < 2) {
-      ctx.fillStyle = paint(mix(t.glow, p.white, 0.45), 0.2 * (1 - smooth(1.4, 2.4, f.hour)) + 0.04);
+      ctx.fillStyle = paint(mix(t.glow, p.white, 0.45), 0.15 * (1 - smooth(1.4, 2.4, f.hour)) + 0.03);
       ctx.beginPath();
       for (const peak of ridge.peaks) {
         const px = x0 + (peak / (n - 1)) * span, py = base - ridge.profile[peak] * rise, w = rise * (0.4 + ridge.profile[peak] * 0.5);
@@ -259,20 +275,23 @@ export function drawSteppeBack(f: SteppeFrame): Tones {
   const snow = ctx.createLinearGradient(0, hz, 0, Math.max(hz + 1, H));
   snow.addColorStop(0, paint(mix(t.snowFar, t.haze, 0.4))); snow.addColorStop(0.16, paint(t.snowFar)); snow.addColorStop(0.6, paint(mix(t.snowFar, t.snow, 0.7))); snow.addColorStop(1, paint(t.snow));
   ctx.fillStyle = snow; ctx.fillRect(0, hz, W, Math.max(0, H - hz) + 2);
-  // The sun's path across the snow.
+  // The sun's light lying on the snow under it: brightest at the horizon, spreading and fading toward us.
   if (sunShow > 0.01 && t.sunUp > -0.03) {
-    const path = ctx.createLinearGradient(0, hz, 0, H);
-    path.addColorStop(0, paint(t.glow, 0.5 * sunShow)); path.addColorStop(1, paint(t.glow, 0));
-    ctx.fillStyle = path; ctx.beginPath(); ctx.moveTo(sunX - sunR * 1.2, hz); ctx.lineTo(sunX + sunR * 1.2, hz); ctx.lineTo(sunX + sunR * 9, H); ctx.lineTo(sunX - sunR * 5, H); ctx.closePath(); ctx.fill();
+    ctx.save(); ctx.translate(sunX, hz); ctx.scale(1, Math.max(0.2, (H - hz) / Math.max(1, W) * 1.5));
+    const pool = ctx.createRadialGradient(0, 0, 0, 0, 0, W * 0.5);
+    pool.addColorStop(0, paint(t.glow, 0.55 * sunShow)); pool.addColorStop(0.4, paint(t.glow, 0.2 * sunShow)); pool.addColorStop(1, paint(t.glow, 0));
+    ctx.fillStyle = pool; ctx.beginPath(); ctx.arc(0, 0, W * 0.5, 0, Math.PI); ctx.fill(); ctx.restore();
   }
-  // Drifts: long low swells, lit on top and blue in their lee.
+  // Drifts: long low swells of snow, each lit on the side the sun is on, with its own soft shade lying beyond it.
   for (const drift of steppe.drifts) {
-    const k = nearness(drift.d), [x, y] = fieldPoint(g, drift.a, drift.d), rx = drift.w * g.unit * k, ry = Math.max(1.5, rx * 0.085 * k);
-    if (x < -rx || x > W + rx || y > H + ry) continue;
-    ctx.save(); ctx.translate(x, y); ctx.scale(1, ry / rx);
-    const swell = ctx.createRadialGradient(-rx * 0.2, -rx * 0.5, 0, 0, 0, rx);
-    swell.addColorStop(0, paint(mix(t.snow, p.white, 0.5), 0.5 * (0.5 + 0.5 * drift.lit))); swell.addColorStop(0.6, paint(t.snow, 0.12)); swell.addColorStop(0.78, paint(t.shade, 0.26)); swell.addColorStop(1, paint(t.shade, 0));
-    ctx.fillStyle = swell; ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    const k = nearness(drift.d), [x, y] = fieldPoint(g, drift.a, drift.d), rx = drift.w * g.unit * k, ry = Math.max(1.5, rx * 0.075 * k);
+    if (x < -rx * 1.4 || x > W + rx * 1.4 || y > H + ry * 2 || y < hz) continue;
+    for (const [dx, dy, tone, alpha] of [[rx * 0.2, ry * 0.75, t.shade, 0.2], [0, 0, mix(t.snow, p.white, 0.55), 0.34 + 0.26 * drift.lit]] as const) {
+      ctx.save(); ctx.translate(x + dx, y + dy); ctx.scale(1, ry / rx);
+      const swell = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+      swell.addColorStop(0, paint(tone, alpha)); swell.addColorStop(0.5, paint(tone, alpha * 0.55)); swell.addColorStop(1, paint(tone, 0));
+      ctx.fillStyle = swell; ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
   }
   // Mist lying along the horizon.
   const mist = ctx.createLinearGradient(0, hz - H * 0.05, 0, hz + H * 0.045);
@@ -385,7 +404,7 @@ function drawHerd(f: SteppeFrame, herd: HerdState, t: Tones) {
     const view = mammothView(member.turned ? 'turned' : 'side'), shapes = herdShapes(view), m = view.mirror ? -1 : 1;
     const cx = (view.furBounds.minX + view.furBounds.maxX) / 2, lift = clamp01(herd.lift[index] ?? 0);
     // Far off the air is between us: the herd takes the colour of the distance.
-    const air = clamp01((d - 1) / 6), body = mix(t.far, t.haze, 0.55 * air), dark = mix(body, t.dark, 0.4), bob = f.reduced ? 0 : Math.sin(time * 0.9 + member.phase) * 2;
+    const air = clamp01((d - 0.6) / 5), body = mix(t.far, t.haze, 0.18 + 0.5 * air), dark = mix(body, t.dark, 0.3), bob = f.reduced ? 0 : Math.sin(time * 0.9 + member.phase) * 2;
     ctx.save(); ctx.globalAlpha = show; ctx.translate(x - cx * unit, y - view.groundY * unit); ctx.scale(unit, unit);
     // Its shadow on the snow.
     ctx.fillStyle = paint(t.shade, 0.5); ctx.beginPath(); ctx.ellipse(cx + 60, view.groundY + 4, 300, 20, 0, 0, Math.PI * 2); ctx.fill();
@@ -394,13 +413,13 @@ function drawHerd(f: SteppeFrame, herd: HerdState, t: Tones) {
     // The far tusk, then the body, then the trunk and the near tusk over it.
     const tusk = (chain: MammothView['tusks']['near'], tone: RGB, shrink: number) => {
       if (member.young) return;
-      ctx.strokeStyle = paint(tone); ctx.lineCap = 'round'; ctx.lineWidth = 15 * shrink; ctx.beginPath();
+      ctx.strokeStyle = paint(tone); ctx.lineCap = 'round'; ctx.lineWidth = 10 * shrink; ctx.beginPath();
       chain.forEach((b, j) => { for (let i = j ? 1 : 0; i <= 10; i++) { const [bx, by] = bezierAt(b, i / 10); if (!j && !i) ctx.moveTo(bx, by); else ctx.lineTo(bx, by); } });
       ctx.stroke();
     };
-    tusk(view.tusks.far, mix(mix(p.sand, p.cream, 0.5), body, 0.45 + 0.3 * air), 0.9);
+    tusk(view.tusks.far, mix(mix(p.sand, p.cream, 0.5), body, 0.62 + 0.25 * air), 0.9);
     const fill = ctx.createLinearGradient(0, view.furBounds.minY, 0, view.groundY);
-    fill.addColorStop(0, paint(mix(body, t.glow, 0.22 * (1 - air)))); fill.addColorStop(0.4, paint(body)); fill.addColorStop(1, paint(dark));
+    fill.addColorStop(0, paint(mix(body, t.glow, 0.34 * (1 - air)))); fill.addColorStop(0.3, paint(mix(body, t.glow, 0.08))); fill.addColorStop(0.55, paint(body)); fill.addColorStop(1, paint(dark));
     ctx.fillStyle = fill; ctx.fill(shapes.near); ctx.fill(shapes.fringe);
     // The trunk: hanging, swinging a little, or lifted to answer the call.
     const swing = f.reduced ? 0 : Math.sin(time * 0.6 + member.phase) * 0.14;
@@ -413,12 +432,7 @@ function drawHerd(f: SteppeFrame, herd: HerdState, t: Tones) {
       ctx.lineWidth = trunkHalfWidth(s) * 2; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(ex, ey); ctx.stroke();
       tx = ex; ty = ey;
     }
-    tusk(view.tusks.near, mix(mix(p.cream, p.white, 0.4), body, 0.25 + 0.4 * air), 1);
-    // The last light, or the aurora, along its back.
-    ctx.save(); ctx.clip(shapes.near);
-    ctx.strokeStyle = paint(mix(t.glow, p.white, 0.3), 0.5 * (1 - 0.6 * air)); ctx.lineWidth = 16; ctx.lineJoin = 'round';
-    ctx.translate(-4 * m, 9); ctx.stroke(shapes.near);
-    ctx.restore();
+    tusk(view.tusks.near, mix(mix(p.cream, p.white, 0.4), body, 0.42 + 0.4 * air), 1);
     ctx.restore();
   });
   ctx.globalAlpha = 1;
@@ -431,8 +445,9 @@ function drawSkyShow(f: SteppeFrame, t: Tones) {
   if (show.aurora > 0.01) {
     const [a, b, c] = AURORA_INKS[steppe.aurora](p), slow = f.reduced ? 0 : time;
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    const strips = 54;
-    [[a, 0.2, 0.5, 0], [b, 0.34, 0.36, 1.9], [c, 0.1, 0.3, 4.1]].forEach(([tone, at, tall, phase], band) => {
+    // Each curtain is many thin rays side by side, wide enough to melt into one another: bright along its lower hem, fading upward.
+    const strips = Math.max(70, Math.min(220, Math.round(W / 6))), wide = (W * 1.1 / strips) * 3;
+    [[a, 0.16, 0.5, 0], [b, 0.32, 0.38, 1.9], [c, 0.06, 0.3, 4.1]].forEach(([tone, at, tallness, phase], band) => {
       // Each curtain unrolls from one side of the sky.
       const reach = clamp01(show.aurora * 1.5 - band * 0.2);
       if (reach <= 0) return;
@@ -440,13 +455,13 @@ function drawSkyShow(f: SteppeFrame, t: Tones) {
         const u = i / (strips - 1), across = band % 2 ? 1 - u : u;
         if (across > reach) continue;
         const fold = Math.sin(u * 5.2 + slow * 0.33 + (phase as number)) * 0.5 + Math.sin(u * 12.7 - slow * 0.21 + (phase as number) * 2) * 0.22;
-        const x = u * W * 1.1 - W * 0.05, top = hz * ((at as number) - 0.06 + fold * 0.07), height = hz * (tall as number) * (0.72 + 0.28 * Math.sin(u * 9 + slow * 0.5 + band));
-        const shimmer = 0.55 + 0.45 * Math.sin(u * 31 + slow * 1.4 + band * 2), edge = Math.min(1, (reach - across) * 6) * Math.sin(Math.PI * Math.min(1, Math.max(0, u * 1.02)));
-        const alpha = 0.17 * shimmer * edge * show.aurora;
-        if (alpha < 0.004) continue;
+        const x = u * W * 1.1 - W * 0.05, top = hz * ((at as number) - 0.06 + fold * 0.075), height = hz * (tallness as number) * (0.72 + 0.28 * Math.sin(u * 9 + slow * 0.5 + band));
+        const shimmer = 0.6 + 0.4 * Math.sin(u * 23 + slow * 1.3 + band * 2) * Math.sin(u * 7.1 - slow * 0.7), edge = Math.min(1, (reach - across) * 6) * Math.sin(Math.PI * Math.min(1, Math.max(0, u * 1.02)));
+        const alpha = 0.1 * shimmer * edge * show.aurora;
+        if (alpha < 0.003) continue;
         const ray = ctx.createLinearGradient(0, top, 0, top + height);
-        ray.addColorStop(0, paint(tone as RGB, 0)); ray.addColorStop(0.72, paint(tone as RGB, alpha * 0.6)); ray.addColorStop(0.93, paint(mix(tone as RGB, p.white, 0.35), alpha)); ray.addColorStop(1, paint(tone as RGB, 0));
-        ctx.fillStyle = ray; ctx.fillRect(x - (W / strips) * 1.1, top, (W / strips) * 2.4, height);
+        ray.addColorStop(0, paint(tone as RGB, 0)); ray.addColorStop(0.6, paint(tone as RGB, alpha * 0.55)); ray.addColorStop(0.9, paint(mix(tone as RGB, p.white, 0.25), alpha)); ray.addColorStop(1, paint(tone as RGB, 0));
+        ctx.fillStyle = ray; ctx.fillRect(x - wide / 2, top, wide, height);
       }
     });
     // Its light on the snow far off.
@@ -489,7 +504,7 @@ function drawSkyShow(f: SteppeFrame, t: Tones) {
     // The picture itself, round, in a ring of light.
     ctx.save(); ctx.globalAlpha = k;
     ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.closePath();
-    ctx.fillStyle = paint(p.white); ctx.fill();
+    ctx.fillStyle = paint(mix(p.white, t.glow, 0.2)); ctx.fill();
     if (pic.image) { ctx.save(); ctx.beginPath(); ctx.arc(x, y, size - 2.2, 0, Math.PI * 2); ctx.clip(); try { ctx.drawImage(pic.image, x - size, y - size, size * 2, size * 2); } catch { /* not ready */ } ctx.restore(); }
     ctx.restore();
   }

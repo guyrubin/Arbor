@@ -546,7 +546,7 @@ export default function MakerDesk() {
           <HudQuest label={w.quest} current={now} steps={CHAPTERS.map(chapter => { const Icon = CHAPTER_ICON[chapter]; return { key: chapter, label: w.chapters[chapter], done: chapterDone(quest, chapter), icon: <Icon aria-hidden="true" /> }; })} />
           <HudToast show={!!toast && phase === 'play'}>{toast}</HudToast>
           <HudDock label={w.title}>
-            {inside && <HudButton label={targetName} icon={<ArrowLeft data-flip="" aria-hidden="true" />} tone="paper" size="l" iconOnly={program === 'bounce'} onClick={back} data={{ 'data-back-to': target ?? 'none' }} />}
+            {inside && <HudButton label={targetName} icon={<ArrowLeft data-flip="" aria-hidden="true" />} tone="paper" size="l" iconOnly={program === 'bounce' || done} onClick={back} data={{ 'data-back-to': target ?? 'none' }} />}
             {/* The paddle's arrows stay physically left and right: in a right-to-left HUD they are handed over in the other order. */}
             {program === 'bounce' && (lang === 'he' ? [1, -1] as const : [-1, 1] as const).map(dir => <button type="button" key={dir} className="play-button md-hold" data-tone="paper" data-size="l" data-icon-only="" data-control={dir < 0 ? 'left' : 'right'}
               aria-label={dir < 0 ? w.left : w.right} {...hold(dir)}>{dir < 0 ? <ChevronLeft size={30} strokeWidth={3} aria-hidden="true" /> : <ChevronRight size={30} strokeWidth={3} aria-hidden="true" />}</button>)}

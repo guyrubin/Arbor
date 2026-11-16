@@ -1,9 +1,11 @@
 /** Bottle Lab's kit pictures: the one place a path, its pixel size and the kit
- * file it comes from are written down. Glass Grove's bottle bench is staged
- * entirely on shipped Horizon Valley art (no picture is made at run time, and
- * none is new): the arched pavilion room, the kit lamp, Aya and her watering
- * can, and sticker prints of the kit's own props and of the companions' faces
- * (the companions come from the shared `kit-*` library).
+ * file it comes from are written down. The glassworks is staged entirely on
+ * Horizon Valley art, cropped or edited from shipped pictures (no picture is
+ * made at run time): the arched pavilion room and the bench top as two
+ * plates, the colour discs (the kit's filter disc, recoloured), Aya and her
+ * watering can, and sticker prints of the kit's own props and of the
+ * companions' faces (characters come from the shared `kit-*` library). The
+ * kit lamp is used only by the still picture of a kept bottle.
  * Strings and numbers only. */
 import { studioBopArt, STUDIO_MAKERS_ROOT } from '../../../../../../lib/kidThemeManifest';
 import type { BottleSticker, BottleTint } from './bottleLabRules';

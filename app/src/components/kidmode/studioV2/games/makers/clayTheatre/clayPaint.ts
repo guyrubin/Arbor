@@ -33,7 +33,7 @@ export function readPalette(el: Element | null): Palette {
   return out;
 }
 export const mixRgb = (a: RGB, b: RGB, k: number): RGB => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
-export const paint = (c: RGB, alpha = 1) => `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${Math.max(0, Math.min(1, alpha)).toFixed(3)})`;
+export const paint = (c: RGB, alpha = 1) => `rgb(${Math.round(c[0])} ${Math.round(c[1])} ${Math.round(c[2])} / ${Math.max(0, Math.min(1, alpha)).toFixed(3)})`;
 /** Plasticine is saturated but chalky. */
 export const chalked = (c: RGB, pal: Palette): RGB => mixRgb(c, pal.chalk, 0.14);
 

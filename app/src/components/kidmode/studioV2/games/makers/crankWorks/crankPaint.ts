@@ -148,7 +148,7 @@ function rivet(c: Ctx, x: number, y: number, r: number, m: Metal) {
 }
 
 /* ------------------------------------------------------------ the scene */
-export interface PaintImages { room: CanvasImageSource | null; bench: CanvasImageSource | null; chock: CanvasImageSource | null; tool: CanvasImageSource | null }
+export interface PaintImages { roomImg: CanvasImageSource | null; bench: CanvasImageSource | null; chock: CanvasImageSource | null; tool: CanvasImageSource | null }
 export interface Scene {
   theta: number; omega: number; time: number; plan: Plan;
   /** Where the pavilion picture lies (world units). */
@@ -189,11 +189,11 @@ function paths() {
 export function paintScene(c: Ctx, P: Palette, img: PaintImages, s: Scene) {
   const M = mats(P);
   // The pavilion, far behind: three arches and the valley, soft with distance.
-  if (img.room) {
-    c.drawImage(img.room, s.room.x, s.room.y, s.room.size, s.room.size);
+  if (img.roomImg) {
+    c.drawImage(img.roomImg, s.room.x, s.room.y, s.room.size, s.room.size);
     // The floor runs on toward the camera: the picture's last rows, drawn out, with the light falling off.
     const foot = s.room.y + s.room.size - 1, more = s.room.size * 1.6;
-    c.drawImage(img.room, 0, 1004, 1024, 18, s.room.x, foot, s.room.size, more);
+    c.drawImage(img.roomImg, 0, 1004, 1024, 18, s.room.x, foot, s.room.size, more);
     c.fillStyle = lin(c, 0, foot, 0, foot + more, [[0, P.white, 0], [0.5, P.white, 0.3], [1, P.white, 0.45]]); c.fillRect(s.room.x, foot, s.room.size, more);
   }
   else { c.fillStyle = col(P.skyPale); c.fillRect(s.room.x, s.room.y, s.room.size, s.room.size); }

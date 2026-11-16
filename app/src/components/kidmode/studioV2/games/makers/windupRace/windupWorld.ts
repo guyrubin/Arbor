@@ -18,10 +18,13 @@ export const TRACK_HALF = 1.3;
 /** The arcade wall: where it stands, how thick and how tall it is, and its arches. */
 export const WALL_Z = 14, WALL_T = 1.8, WALL_H = 30, BAY = 14, ARCH_HALF = 4.7, ARCH_SPRING = 9.5;
 /** The terrace's low wall. */
-export const PARAPET_Z = 21, PARAPET_H = 2.5;
+export const PARAPET_Z = 21, PARAPET_H = 0.8;
 const FLOOR_FAR = 90, FLOOR_NEAR = -26;
 /** How far to the side of the middle Rover runs on a line past the fork. */
 export const LINE_Z = 0.66;
+
+/** How far round the colour wheel a knit flower's petals are turned: coral (as cut), amber, rose, lilac. */
+export const FLOWER_HUES = [0, 0, 30, -24, -112] as const;
 
 export interface Scenery {
   /** Arch centres, along the wall. */
@@ -33,19 +36,18 @@ export interface Scenery {
   reeds: { x: number; z: number; gust: number; seed: number }[];
   /** Kit planters beside the calm stretches. */
   pots: { x: number; z: number; kind: number }[];
-  hedges: { x: number; seed: number }[];
 }
 function hash(n: number): number { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
 
 /** Lay the scenery for a course. Pure: the course (and its seed) decide all of it. */
 export function buildScenery(course: Course): Scenery {
-  const arches: number[] = [], piers: number[] = [], hedges: { x: number; seed: number }[] = [];
+  const arches: number[] = [], piers: number[] = [];
   for (const zone of course.zones) {
     if (zone.kind === 'arcade') {
       const first = Math.ceil((zone.from + ARCH_HALF + 2 - 5) / BAY) * BAY + 5;
       for (let x = first; x <= zone.to - ARCH_HALF - 2; x += BAY) { arches.push(x); piers.push(x - BAY / 2); }
       if (arches.length) piers.push(arches[arches.length - 1] + BAY / 2);
-    } else for (let x = Math.max(zone.from, -30); x < zone.to + 40; x += 3.1) hedges.push({ x, seed: hash(x + course.seed) });
+    }
   }
   const flags: Scenery['flags'] = [], reeds: Scenery['reeds'] = [];
   course.gusts.forEach((gust, index) => {
@@ -57,7 +59,7 @@ export function buildScenery(course: Course): Scenery {
     || course.blooms.some(b => Math.abs(b - x) < 1.9) || Math.abs(x - course.goal) < 4 || x < course.start + 3;
   const pots: Scenery['pots'] = [];
   for (let x = course.start + 5; x < course.length - 4; x += 9.5) { const at = x + hash(x + course.seed) * 3; if (!busy(at)) pots.push({ x: at, z: 4.6 + hash(at) * 1.2, kind: Math.floor(hash(at * 1.7 + course.seed) * 3) }); }
-  return { arches, piers, flags, reeds, pots, hedges };
+  return { arches, piers, flags, reeds, pots };
 }
 
 /** The sun of a play: how far a thing's shadow reaches along x and toward the camera per unit of height. */
@@ -118,19 +120,45 @@ export class Palette {
 export class Pictures {
   private map = new Map<string, HTMLImageElement>();
   private shaded = new Map<string, HTMLCanvasElement>();
+  private variants = new Map<string, HTMLCanvasElement>();
   load(src: string) {
     if (this.map.has(src) || typeof Image === 'undefined') return;
     const img = new Image(); img.decoding = 'async'; img.src = src; this.map.set(src, img);
   }
   get(src: string): HTMLImageElement | null { const img = this.map.get(src); return img && img.complete && img.naturalWidth > 0 ? img : null; }
-  /** The picture with a shade laid over it (drawn once), for a thing standing out of the sun. */
-  shade(src: string, tint: RGB, amount: number): HTMLCanvasElement | null {
-    const hit = this.shaded.get(src); if (hit) return hit;
-    const img = this.get(src); if (!img || typeof document === 'undefined') return null;
-    const canvas = document.createElement('canvas'); canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+  /** The picture with its warm petals turned to another colour of the same knit (drawn once).
+   * Only the coral wool moves round the colour wheel: stems, leaves and the sun's face stay. */
+  variant(src: string, turn: number): HTMLImageElement | HTMLCanvasElement | null {
+    const img = this.get(src); if (!img || !turn || typeof document === 'undefined') return img;
+    const key = `${src}|${turn}`, hit = this.variants.get(key); if (hit) return hit;
+    try {
+      const canvas = document.createElement('canvas'); canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+      const c = canvas.getContext('2d', { willReadFrequently: true }); if (!c) return img;
+      c.drawImage(img, 0, 0);
+      const data = c.getImageData(0, 0, canvas.width, canvas.height), px = data.data;
+      for (let i = 0; i < px.length; i += 4) {
+        const r = px[i], g = px[i + 1], b = px[i + 2];
+        if (px[i + 3] < 8 || r < g + 26 || r < b + 26 || g > b + 86) continue;
+        // Turn the hue, keep the lightness and most of the saturation.
+        const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min || 1;
+        let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+        h = ((h * 60 + turn) % 360 + 360) % 360;
+        const sat = (d / (max || 1)) * (turn < -60 ? 0.72 : 0.92), v = max, cc = v * sat, x = cc * (1 - Math.abs((h / 60) % 2 - 1)), m = v - cc;
+        const [r1, g1, b1] = h < 60 ? [cc, x, 0] : h < 120 ? [x, cc, 0] : h < 180 ? [0, cc, x] : h < 240 ? [0, x, cc] : h < 300 ? [x, 0, cc] : [cc, 0, x];
+        px[i] = r1 + m; px[i + 1] = g1 + m; px[i + 2] = b1 + m;
+      }
+      c.putImageData(data, 0, 0);
+      this.variants.set(key, canvas); return canvas;
+    } catch { return img; }
+  }
+  /** A picture with a shade laid over it (drawn once), for a thing standing out of the sun. */
+  shade(key: string, source: HTMLImageElement | HTMLCanvasElement | null, tint: RGB, amount: number): HTMLCanvasElement | null {
+    const hit = this.shaded.get(key); if (hit) return hit;
+    if (!source || typeof document === 'undefined') return null;
+    const canvas = document.createElement('canvas'); canvas.width = source.width; canvas.height = source.height;
     const c = canvas.getContext('2d'); if (!c) return null;
-    c.drawImage(img, 0, 0); c.globalCompositeOperation = 'source-atop'; c.fillStyle = ink(tint, amount); c.fillRect(0, 0, canvas.width, canvas.height);
-    this.shaded.set(src, canvas); return canvas;
+    c.drawImage(source, 0, 0); c.globalCompositeOperation = 'source-atop'; c.fillStyle = ink(tint, amount); c.fillRect(0, 0, canvas.width, canvas.height);
+    this.shaded.set(key, canvas); return canvas;
   }
   ready(sources: readonly string[]): boolean { return sources.every(src => !!this.get(src)); }
 }
@@ -326,7 +354,7 @@ export class World {
     this.hits.length = 0;
     const hy = horizonY(cam);
     const warm = sun.warm;
-    const shadeTint = mixTone(c(T.indigo), c(T.slate), 0.5);
+    const shadeTint = mixTone(c(T.indigo), c(T.slate), 0.5), spriteShade = mixTone(c(T.slate), c(T.bluebell), 0.35);
 
     /* -- far away: the sky and Horizon Valley -- */
     const sky = ctx.createLinearGradient(0, 0, 0, Math.max(1, hy));
@@ -355,7 +383,7 @@ export class World {
     /* -- the felt track, laid on the floor -- */
     const x0 = -5, x1 = course.length;
     const felt = mixTone(mixTone(c(T.tealDeep), c(T.slate), 0.45), c(T.white), 0.4), feltLight = mixTone(felt, c(T.white), 0.3);
-    fillPoly(ctx, cam, quadXZ(x0 - 0.1, x1 + 0.1, -TRACK_HALF - 0.32, -TRACK_HALF + 0.1), ink(c(T.shadow), 0.13));
+    fillPoly(ctx, cam, quadXZ(x0 - 0.1, x1 + 0.1, -TRACK_HALF - 0.13, -TRACK_HALF + 0.1), ink(c(T.shadow), 0.2));
     fillPoly(ctx, cam, quadXZ(x0, x1, -TRACK_HALF, TRACK_HALF, 0.03), ink(felt));
     fillPoly(ctx, cam, quadXZ(x0, x1, -TRACK_HALF * 0.55, TRACK_HALF * 0.55, 0.03), ink(feltLight, 0.35));
     const stitch = mixTone(c(T.cream), c(T.white), 0.4);
@@ -419,18 +447,6 @@ export class World {
         const from = Math.max(zone.from, cam.ex - 90), to = Math.min(zone.to + 40, cam.ex + 160);
         if (to <= from) continue;
         const base = project(cam, cam.ex + 10, 0, PARAPET_Z), top = project(cam, cam.ex + 10, PARAPET_H, PARAPET_Z);
-        // Planting behind the low wall.
-        for (const hedge of scenery.hedges) {
-          if (hedge.x < from - 4 || hedge.x > to + 4) continue;
-          const p = project(cam, hedge.x, PARAPET_H + 0.4 + hedge.seed * 0.7, PARAPET_Z + 1.5); if (!p || p.x < -80 || p.x > W + 80) continue;
-          const r = p.scale * (2 + hedge.seed * 0.9), tone = mixTone(c(T.leafDeep), c(T.leaf), 0.3 + hedge.seed * 0.5);
-          const g = ctx.createRadialGradient(p.x - r * 0.2, p.y - r * 0.3, r * 0.1, p.x, p.y, r);
-          g.addColorStop(0, ink(mixTone(tone, c(T.spring), 0.45))); g.addColorStop(1, ink(tone));
-          ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(p.x, p.y, r, r * 0.74, 0, 0, Math.PI * 2); ctx.fill();
-          const dots = hedge.seed > 0.5 ? c(T.bluebell) : c(T.blossom);
-          ctx.fillStyle = ink(dots, 0.85);
-          for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(p.x + (hash(hedge.x + i) - 0.5) * r * 1.5, p.y + (hash(hedge.x * 2 + i) - 0.7) * r * 0.9, Math.max(1, r * 0.07), 0, Math.PI * 2); ctx.fill(); }
-        }
         if (base && top) {
           const face = ctx.createLinearGradient(0, top.y, 0, base.y);
           face.addColorStop(0, ink(mixTone(c(T.white), c(T.snowShade), 0.18))); face.addColorStop(1, ink(mixTone(c(T.white), c(T.snowShade), 0.6)));
@@ -482,7 +498,7 @@ export class World {
         ctx.beginPath();
         if (trace(ctx, cam, pts)) {
           const g = ctx.createLinearGradient(top.x, top.y, end ? end.x : top.x, end ? end.y : H);
-          const strength = 0.16 + 0.2 * f.shafts;
+          const strength = 0.14 + 0.34 * f.shafts;
           g.addColorStop(0, ink(mixTone(c(T.white), c(T.butter), 0.3 + warm * 0.4), strength)); g.addColorStop(1, ink(c(T.butter), strength * 0.25));
           ctx.fillStyle = g; ctx.fill();
         }
@@ -494,10 +510,11 @@ export class World {
     type Item = { depth: number; draw: () => void };
     const items: Item[] = [];
     const depth = (x: number, z: number) => (x - cam.ex) * cam.fx + (z - cam.ez) * cam.fz;
-    const shadowAt = (x: number, z: number, y: number, rx: number, rz: number, strength: number) => {
+    const shadowAt = (x: number, z: number, y: number, rx: number, rz: number, strength: number, under = false) => {
       // The shadow falls away from the sun; a thing in the air throws it further and softer.
+      // (`under`: the soft dark straight below a flying thing, which is what tells the eye how high it is.)
       ctx.save();
-      const scale = onFloor(ctx, cam, x + sun.kx * (y + 0.12), z - sun.kz * (y + 0.12) - rz * 0.25);
+      const scale = under ? onFloor(ctx, cam, x, z) : onFloor(ctx, cam, x + sun.kx * (y + 0.12), z - sun.kz * (y + 0.12) - rz * 0.25);
       if (scale) {
         ctx.scale(rx, rz);
         const g = ctx.createRadialGradient(0, 0, 0.1, 0, 0, 1);
@@ -506,8 +523,8 @@ export class World {
       }
       ctx.restore();
     };
-    const stand = (s: KitSprite, x: number, y: number, z: number, o: { flip?: boolean; rot?: number; sx?: number; sy?: number; size?: number; alpha?: number; lit?: number } = {}) => {
-      const img = pics.get(s.src), p = project(cam, x, y, z); if (!img || !p) return null;
+    const stand = (s: KitSprite, x: number, y: number, z: number, o: { flip?: boolean; rot?: number; sx?: number; sy?: number; size?: number; alpha?: number; lit?: number; hue?: number } = {}) => {
+      const img = o.hue ? pics.variant(s.src, o.hue) : pics.get(s.src), p = project(cam, x, y, z); if (!img || !p) return null;
       const widePx = s.wide * p.scale * (o.size ?? 1), k = widePx / s.w;
       if (p.x + widePx < -40 || p.x - widePx > W + 40) return p;
       const lit = o.lit ?? 1;
@@ -516,7 +533,7 @@ export class World {
       ctx.scale((o.flip ? -1 : 1) * (o.sx ?? 1), o.sy ?? 1);
       ctx.globalAlpha = o.alpha ?? 1;
       ctx.drawImage(img, -s.footX * k, -s.footY * k, s.w * k, s.h * k);
-      if (lit < 0.98) { const dark = pics.shade(s.src, shadeTint, 0.3); if (dark) { ctx.globalAlpha = (o.alpha ?? 1) * (1 - lit); ctx.drawImage(dark, -s.footX * k, -s.footY * k, s.w * k, s.h * k); } }
+      if (lit < 0.98) { const dark = pics.shade(`${s.src}|${o.hue ?? 0}`, img, spriteShade, 0.24); if (dark) { ctx.globalAlpha = (o.alpha ?? 1) * (1 - lit); ctx.drawImage(dark, -s.footX * k, -s.footY * k, s.w * k, s.h * k); } }
       ctx.restore();
       return p;
     };
@@ -587,7 +604,7 @@ export class World {
       items.push({ depth: d, draw: () => {
         const open = f.blooms[i] ?? 0, pop = open > 0 && open < 1 ? Math.sin(open * Math.PI) : 0, sway = f.reduced ? 0 : Math.sin(time * 1.6 + x) * 0.025 + breeze(x) * 0.012 * Math.sin(time * 9 + x);
         shadowAt(x, z, 0, 0.5, 0.3, 0.3);
-        const p = stand(open > 0.5 ? FLOWER_OPEN : FLOWER_FOLDED, x, 0, z, { lit: lit(x, z, 1.4), rot: sway, sx: 1 + pop * 0.18, sy: 1 + pop * 0.22 - (open > 0 && open < 0.5 ? 0.12 : 0) });
+        const p = stand(open > 0.5 ? FLOWER_OPEN : FLOWER_FOLDED, x, 0, z, { hue: FLOWER_HUES[Math.floor(hash(x * 2.3 + course.seed * 0.01) * FLOWER_HUES.length)], lit: lit(x, z, 1.4), rot: sway, sx: 1 + pop * 0.18, sy: 1 + pop * 0.22 - (open > 0 && open < 0.5 ? 0.12 : 0) });
         if (p) this.hits.push({ id: `bloom${i}`, x: p.x, y: p.y - p.scale * 1.2, r: Math.max(28, p.scale * 0.8) });
       } });
     });
@@ -656,7 +673,7 @@ export class World {
       if (p) this.hits.push({ id: 'pepDog', x: p.x, y: p.y - p.scale * 1.1, r: Math.max(40, p.scale * 1.1) });
     } });
     // Rover, its shadow, its key.
-    items.push({ depth: depth(f.rover.x, f.rover.z), draw: () => this.drawRover(ctx, f, shadowAt, shadeTint) });
+    items.push({ depth: depth(f.rover.x, f.rover.z), draw: () => this.drawRover(ctx, f, shadowAt) });
     items.sort((a, b) => b.depth - a.depth);
     for (const item of items) item.draw();
 
@@ -677,12 +694,13 @@ export class World {
     if (f.fade > 0) { ctx.fillStyle = ink(mixTone(c(T.white), c(T.chalk), 0.4), Math.min(1, f.fade)); ctx.fillRect(0, 0, W, H); }
   }
 
-  private drawRover(ctx: CanvasRenderingContext2D, f: Frame, shadowAt: (x: number, z: number, y: number, rx: number, rz: number, strength: number) => void, shadeTint: RGB) {
+  private drawRover(ctx: CanvasRenderingContext2D, f: Frame, shadowAt: (x: number, z: number, y: number, rx: number, rz: number, strength: number, under?: boolean) => void) {
     const { cam, rover, time } = f, c = (token: string) => this.c(token);
     const s = rover.rear ? ROVER_REAR : ROVER_FRONT, img = this.pictures.get(s.src);
     const p = project(cam, rover.x, rover.y, rover.z); if (!p) return;
     // On the floor the shadow hugs the wheels; in the air it slides away and thins.
     shadowAt(rover.x, rover.z, rover.y, 0.78, 0.5, 0.5 / (1 + rover.y * 0.9));
+    if (rover.y > 0.08) shadowAt(rover.x, rover.z, 0, 0.7 + rover.y * 0.12, 0.42 + rover.y * 0.08, 0.34 / (1 + rover.y * 0.35), true);
     if (rover.y < 0.05) shadowAt(rover.x - f.sun.kx * 0.1, rover.z + f.sun.kz * 0.1 + 0.12, 0, 0.66, 0.34, 0.62);
     // The secret ribbon trails behind.
     if (f.ribbon && f.ribbon.length > 2) {
@@ -704,7 +722,9 @@ export class World {
     ctx.rotate(-(rover.pitch - rover.lean * 0.14) * (cam.rx >= 0 ? 1 : -1) * Math.max(0.5, Math.abs(cam.rx)));
     ctx.scale(sign * rover.sx, rover.sy);
     ctx.drawImage(img, -s.footX * k, -s.footY * k, s.w * k, s.h * k);
-    if (lit < 0.98) { const dark = this.pictures.shade(s.src, shadeTint, 0.3); if (dark) { ctx.globalAlpha = 1 - lit; ctx.drawImage(dark, -s.footX * k, -s.footY * k, s.w * k, s.h * k); ctx.globalAlpha = 1; } }
+    if (lit < 0.98) { const dark = this.pictures.shade(`${s.src}|0`, img, mixTone(c(T.slate), c(T.bluebell), 0.35), 0.24); if (dark) { ctx.globalAlpha = 1 - lit; ctx.drawImage(dark, -s.footX * k, -s.footY * k, s.w * k, s.h * k); ctx.globalAlpha = 1; } }
+    // In the slow moment the sunbeam catches the whole shell.
+    if (f.shafts > 0.05) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.1 * f.shafts * lit; ctx.drawImage(img, -s.footX * k, -s.footY * k, s.w * k, s.h * k); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }
     // Its lamps glow brighter the tighter the spring.
     if (!rover.rear) {
       ctx.globalCompositeOperation = 'lighter';

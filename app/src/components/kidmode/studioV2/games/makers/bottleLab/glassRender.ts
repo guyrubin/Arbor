@@ -152,7 +152,7 @@ export function createGlass(): Glass | null {
         const pane = bodyV < 0.5 ? Math.min(1, Math.max(0, (bodyV - 0.04) / 0.14)) : Math.max(0.16, 1 - (bodyV - 0.5) / 0.36);
         const shine = inBody ? Math.max(0.2, Math.min(1.35, 0.72 + slope * 1.5)) * pane : 0.4;
         // Hot glass is hottest low down, where it sits on the pad.
-        const rowHeat = heat * (0.5 + 0.5 * Math.max(0, Math.min(1, bodyV)) ** 1.5);
+        const rowHeat = heat * (0.7 + 0.3 * Math.max(0, Math.min(1, bodyV)) ** 1.5);
         const tintMix = Math.max(0, Math.min(1, (j - f.tintFront) / 5 + 0.5));
         for (let i = from; i <= to; i++) {
           const u = (i + 0.5 - ax) / R, au = u < 0 ? -u : u;
@@ -176,7 +176,8 @@ export function createGlass(): Glass | null {
             b = src[p + 2] + (src[p + 6] - src[p + 2]) * fx;
             // Frost: the same place, blurred, where the frost has reached.
             if (soft) {
-              const fr = (frostCut - noise[j * w + i] / 255) * 5, k = fr <= 0 ? 0 : fr >= 1 ? 1 : fr;
+              // Water wets the rough inside of frosted glass, and wet frost lets far more of the picture through.
+              const fr = (frostCut - noise[j * w + i] / 255) * 5, k = (fr <= 0 ? 0 : fr >= 1 ? 1 : fr) * (wet ? 0.42 : 1);
               if (k > 0) {
                 const grain = ((noise[(j * w + i * 7 + 13) % noise.length] & 31) - 15) * 0.5;
                 const v0 = f.veil[0], v1 = f.veil[1], v2 = f.veil[2];
@@ -198,7 +199,7 @@ export function createGlass(): Glass | null {
           r += (255 - r) * add; g += (255 - g) * add; b += (255 - b) * add;
           if (rowHeat > 0) {
             // Hot glass glows from inside: ember at the edge, flame in the thick middle.
-            const core = nz * nz, e = rowHeat * (0.58 + 0.38 * core);
+            const core = nz * nz, e = rowHeat * (0.64 + 0.3 * core);
             const hr = f.ember[0] + (f.flame[0] - f.ember[0]) * core, hg = f.ember[1] + (f.flame[1] - f.ember[1]) * core, hb = f.ember[2] + (f.flame[2] - f.ember[2]) * core;
             r += (hr - r) * e; g += (hg - g) * e; b += (hb - b) * e;
             const hot = rowHeat * rowHeat * core * 0.5; r += (255 - r) * hot; g += (255 - g) * hot * 0.92; b += (255 - b) * hot * 0.55;

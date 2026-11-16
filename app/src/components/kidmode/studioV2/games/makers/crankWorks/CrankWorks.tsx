@@ -43,7 +43,7 @@ export default function CrankWorks() {
     <section data-adventure="crank-works" dir={lang === 'he' ? 'rtl' : 'ltr'} data-done={done}>
       {done
         ? <GameFinish title={w.finish} subtitle={w.transfer} onPlayAgain={() => { setDone(false); setRun(n => n + 1); }} playAgainLabel={shared.again} homeLabel={shared.home} />
-        : <Bench key={run} w={w} seed={seed + run * 7919} onDone={() => setDone(true)} />}
+        : <Bench key={run} w={w} lang={lang} seed={seed + run * 7919} onDone={() => setDone(true)} />}
     </section>
   </GameShell>;
 }
@@ -64,7 +64,7 @@ interface Sim {
   opening: number;
 }
 
-function Bench({ w, seed, onDone }: { w: Words; seed: number; onDone: () => void }) {
+function Bench({ w, lang, seed, onDone }: { w: Words; lang: Lang; seed: number; onDone: () => void }) {
   const reduced = useReducedMotion();
   const [plan] = useState(() => planOf(seed));
   const [flow, setFlow] = useState<Flow>(FLOW_START);
@@ -79,9 +79,9 @@ function Bench({ w, seed, onDone }: { w: Words; seed: number; onDone: () => void
   const [shake, bump] = useShake();
 
   const world = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), fx = useRef<PlayFxHandle>(null);
-  const wheelHandle = useRef<HTMLDivElement>(null), lensHandle = useRef<HTMLButtonElement>(null), partHandle = useRef<HTMLButtonElement>(null), tagEl = useRef<HTMLParagraphElement>(null);
+  const wheelHandle = useRef<HTMLDivElement>(null), lensHandle = useRef<HTMLButtonElement>(null), partHandle = useRef<HTMLButtonElement>(null), tagEl = useRef<HTMLDivElement>(null);
   const glass = useRef<HTMLCanvasElement | null>(null), palette = useRef<Palette | null>(null);
-  const images = useRef<PaintImages>({ room: null, bench: null, chock: null, tool: null });
+  const images = useRef<PaintImages>({ roomImg: null, bench: null, chock: null, tool: null });
   const sim = useRef<Sim>({
     theta: plan.rest, omega: 0, motor: 0, calm: 0, guide: 0, target: 0, loose: false, looseHand: false, hand: 0, turnedEver: false, demo: null, pod: false, idle: 0, time: 0, glint: 2,
     w: 0, h: 0, dpr: 1, view: null, flower: 0, beads: 0, bell: 0, reveal: [0, 0, 0], revealTo: [0, 0, 0], bellSwing: 0, bellVel: 0, beadPop: [0, 0, 0, 0, 0, 0], bloomPop: 0, knobPop: 0,
@@ -239,10 +239,11 @@ function Bench({ w, seed, onDone }: { w: Words; seed: number; onDone: () => void
     S.knobPop = Math.max(0, S.knobPop - dt * 5); S.bloomPop = Math.max(0, S.bloomPop - dt * 3);
     for (let i = 0; i < S.beadPop.length; i++) S.beadPop[i] = Math.max(0, S.beadPop[i] - dt * 3.2);
     if (RM) { S.bellSwing = 0; S.bellVel = 0; } else { S.bellVel += (-S.bellSwing * 90 - S.bellVel * 3.4) * dt; S.bellSwing += S.bellVel * dt; }
-    const C = S.chock;
+    const C = S.chock, L0 = S.lens;
     if (C.y > 0 || C.vy > 0) { C.vy -= 980 * dt; C.y += C.vy * dt; if (C.y <= 0) { C.y = 0; C.vy = 0; C.squash = 0.1; fxAt({ x: 700, y: 262 }, 'dust', { count: 3, size: 0.6 }); } }
     C.squash += (0 - C.squash) * ease(0.12);
-    C.lean += ((S.show?.fast ? -0.05 + Math.sin(S.time * 9) * 0.02 : 0) - C.lean) * ease(0.15);
+    // He leans in toward whatever the child has hold of, and sways along once the whole machine is going.
+    C.lean += ((S.show?.fast ? -0.05 + Math.sin(S.time * 9) * 0.02 : dragging || L0.held || S.carry ? -0.04 : 0) - C.lean) * ease(0.15);
     if (C.enter > 0) { C.enter = RM ? 0 : Math.max(0, C.enter - dt / 1.5); if (!RM && C.hops < 2 && C.enter < 0.72 - C.hops * 0.4) { C.hops++; hop(0.8); } }
 
     // The camera.
@@ -318,7 +319,7 @@ function Bench({ w, seed, onDone }: { w: Words; seed: number; onDone: () => void
       chock: { hop: C.y, squash: C.squash, lean: C.lean, dx: smooth(C.enter) * 230 },
       tool: tool.show > 0.02 ? { x: joint.x - (1 - smooth(tool.show)) * 70, y: joint.y + (1 - smooth(tool.show)) * 60, show: tool.show, clamp: tool.clamp } : null,
       tape: S.tape, held: !!dragging, jointCue: step === 'testJoint' && !S.test ? 1 : 0, puckCue: lookCue ? 1 : 0, lensOut: L.out, podOn: S.pod,
-      wheelCue: !opening && step === 'turnIt' && !dragging && !S.show && Math.abs(S.omega) < 0.6 ? 1 : 0, wheelFocus: document.activeElement === wheelHandle.current,
+      wheelCue: !opening && step === 'turnIt' && !dragging && !S.show && Math.abs(S.omega) < 0.6 ? 1 : 0, wheelFocus: !S.show && document.activeElement === wheelHandle.current,
     };
     const c = node.getContext('2d'); if (!c) return;
     const d = S.dpr;
@@ -341,7 +342,13 @@ function Bench({ w, seed, onDone }: { w: Words; seed: number; onDone: () => void
     put(wheelHandle.current, toScreen(view, WHEEL), WHEEL.r * 2 * view.s);
     put(lensHandle.current, L.out ? { x: L.x, y: L.y } : toScreen(view, PUCK), L.out ? lensR * 2 : 56);
     if (scene.ask) put(partHandle.current, toScreen(view, CRATE_SLOT[scene.ask]), 56);
-    if (tagEl.current && L.out) { const below = L.y + lensR + 14 + tagEl.current.offsetHeight < S.h - 112, x = Math.max(12, Math.min(S.w - tagEl.current.offsetWidth - 12, L.x - tagEl.current.offsetWidth / 2)); tagEl.current.style.translate = `${x.toFixed(1)}px ${(below ? L.y + lensR + 10 : L.y - lensR - 10 - tagEl.current.offsetHeight).toFixed(1)}px`; }
+    if (tagEl.current && L.out) {
+      const el = tagEl.current, tw = el.offsetWidth, th = el.offsetHeight;
+      let x = L.x - tw / 2, y = L.y + lensR + 12;
+      // Under the lens where there is room; on a short stage beside it; otherwise above.
+      if (y + th > S.h - 112) { if (S.h < 430) { x = L.x + lensR + 12 + tw < S.w - 8 ? L.x + lensR + 12 : L.x - lensR - 12 - tw; y = L.y - th / 2; } else y = L.y - lensR - 12 - th; }
+      el.style.translate = `${Math.max(8, Math.min(S.w - tw - 8, x)).toFixed(1)}px ${Math.max(8, Math.min(S.h - th - 8, y)).toFixed(1)}px`;
+    }
     const nowDeg = Math.round(wrapAngle(S.theta) * 180 / Math.PI / 15) * 15 % 360;
     if (nowDeg !== degSeen.current && Math.abs(S.omega) < 0.2) { degSeen.current = nowDeg; setDeg(nowDeg); }
   }, [bump, buzz, dispatch, fxAt, hop, later, moved, placePart, plan, say]);
@@ -362,7 +369,7 @@ function Bench({ w, seed, onDone }: { w: Words; seed: number; onDone: () => void
     const watch = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
     watch?.observe(node); window.addEventListener('resize', measure);
     const load = (key: keyof PaintImages, src: string) => { const im = new Image(); im.decoding = 'async'; im.onload = () => { images.current[key] = im; }; im.src = src; };
-    load('room', KIT_ROOM.src); load('bench', KIT_BENCH.src); load('chock', KIT_CHOCK.src); load('tool', KIT_ANCHORCHECK.src);
+    load('roomImg', KIT_ROOM.src); load('bench', KIT_BENCH.src); load('chock', KIT_CHOCK.src); load('tool', KIT_ANCHORCHECK.src);
     const crankSound = createCrankSound(), playSound = createPlaySound({ key: 'C' }); crank.current = crankSound; play.current = playSound;
     const pending = timers.current;
     const hidden = () => {
@@ -512,7 +519,8 @@ function Bench({ w, seed, onDone }: { w: Words; seed: number; onDone: () => void
     <HudCoach who={KIT_COMPANION} mood={mood} line={line} onPoke={() => { stir(); poke('chockHit'); }} pokeLabel={w.chockLabel} />
     <HudQuest label={w.questLabel} current={CHAPTERS.indexOf(flow.chapter)} steps={CHAPTERS.map(ch => ({ key: ch, label: w.chapters[ch], done: doneMap[ch], icon: icons[ch] }))} />
     <HudToast show={!!toast && !showing}>{toast}</HudToast>
-    <p ref={tagEl} className="ck-tag" data-show={!!tag && !showing} data-new={!!tag?.fresh} aria-live="polite">{partWords && <><strong>{partWords.name}</strong>{partWords.line}</>}</p>
+    {/* The tag follows the lens across the picture, so it is placed in the picture's own (unmirrored) space. */}
+    <div className="ck-tagbox" dir="ltr"><div ref={tagEl} className="ck-tag" data-show={!!tag && !showing} data-new={!!tag?.fresh}><p dir={lang === 'he' ? 'rtl' : 'ltr'} aria-live="polite">{partWords && <><strong>{partWords.name}</strong>{partWords.line}</>}</p></div></div>
     <HudDock label={w.dock}>
       {!opening && (step === 'turnIt' || step === 'lookIn' || step === 'pickUp') && <HudButton label={w.turn} icon={<RotateCw />} tone={step === 'turnIt' ? 'go' : 'paper'} size={step === 'turnIt' ? 'l' : 'm'} cue={nudge && step === 'turnIt'} onClick={turn} data={{ 'data-crank-turn': '' }} />}
       {!opening && step === 'lookIn' && <HudButton label={w.look} icon={<Eye />} tone="go" size="l" cue={nudge} onClick={lookNext} data={{ 'data-crank-look': '' }} />}

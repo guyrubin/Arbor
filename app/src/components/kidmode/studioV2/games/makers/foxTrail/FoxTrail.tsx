@@ -37,7 +37,7 @@ const FIN_MS = { charge: 1300, flash: 2200, sweep: 2600, cut: 7200, end: 10200, 
 const bg = (src: string) => `url(${src})`;
 /** Dust in dusk light: lilac and shaded snow, never a white puff. */
 /** Clouds on the sky plate: left, top, width (percent of the plate) and how many seconds one drift takes. */
-const CLOUDS: readonly (readonly [number, number, number, number])[] = [[30, 60, 22, 90], [52, 67.5, 15, 120], [18, 72, 12, 150], [60, 55, 18, 110], [40, 47, 13, 140]];
+const CLOUDS: readonly (readonly [number, number, number, number])[] = [[30, 84, 20, 90], [56, 81, 14, 120], [16, 86.5, 12, 150], [64, 77.5, 16, 110], [40, 72, 13, 140]];
 const DUST = ['linen-shade', 'sand', 'lilac'] as const;
 
 export default function FoxTrail() {
@@ -285,15 +285,17 @@ function TrailRun({ w, seed, onSay, onDone }: { w: Words; seed: number; onSay: (
         course.stretches.forEach((st, i) => { if (!A.cheered.has(i) && L.front < st.station + 200) { A.cheered.add(i); for (const who of STATION_CREW[i]) cheer(who); } });
       } else L.cam = home;
       const cam = L.cam;
-      const liftGoal = L.sweepAt >= 0 ? 0 : clamp((s.y - 90) * 0.9, 0, 280) * k;
-      A.camY = rm ? liftGoal : A.camY + (liftGoal - A.camY) * Math.min(1, dt * 5);
+      // the camera rises with him only as far as the view needs: a tall phone has sky to spare, a short wide one does not
+      const liftGoal = L.sweepAt >= 0 ? 0 : clamp(s.y + 150 - (gy / k) * 0.64, 0, 300) * k;
+      A.camY = rm ? liftGoal : A.camY + (liftGoal - A.camY) * Math.min(1, dt * 7);
       const camY = A.camY;
       // up on the skybridge the valley sinks away below
       const focus = cam + viewW * lead;
       A.rise = smooth(zones.bridgeFrom - 500, zones.bridgeFrom + 250, focus) * (1 - smooth(zones.bridgeTo - 250, zones.bridgeTo + 500, focus));
       // the mountain drifts slowly across the view over the whole run
       const skyX = W * (SKY.from + (SKY.to - SKY.from) * clamp(cam / course.length, 0, 1)) - G.skyW * SKY.peak;
-      if (skyRef.current) skyRef.current.style.transform = `translate3d(${skyX.toFixed(1)}px,${(G.skyTop + camY * 0.12).toFixed(1)}px,0)`;
+      // whole pixels: a big plate on a fractional offset shows hairlines between its raster tiles
+      if (skyRef.current) skyRef.current.style.transform = `translate3d(${Math.round(skyX)}px,${Math.round(G.skyTop + camY * 0.12)}px,0)`;
       LAYERS.forEach((layer, i) => {
         const el = layerRefs.current[i]; if (!el) return;
         const tile = PLATES[layer.art].dusk.w * layer.k;

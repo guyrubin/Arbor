@@ -164,7 +164,7 @@ function Glassworks({ start, onAgain, onOpen }: { start: BottleCreation | null; 
   const glassLabel = act === 'shape' ? w.reach.glassShape : act === 'dress' ? w.reach.glassTurn : act === 'finale' ? w.reach.glassLight : w.reach.glassRing;
   const canOpen = act === 'shape' && !start && kept?.kind === 'bottle' && validBottle(kept) && saved.isCurrent();
   return <GameShell fullBleed autoNarrate={false} worldId="bottle-lab" title={w.title} instruction={w.instruction} hearIt={`${line} ${w.instruction}`}>
-    <section className="bl" data-adventure="bottle-lab" data-act={act} data-shape={bottle.shape} data-tint={bottle.tint} data-finish={bottle.finish} data-stickers={bottle.stickers.length} data-free={free || undefined} dir={lang === 'he' ? 'rtl' : 'ltr'}>
+    <section className="bl" data-adventure="bottle-lab" data-act={act} data-shape={bottle.shape} data-tint={bottle.tint} data-finish={bottle.finish} data-stickers={bottle.stickers.length} data-free={free || undefined} data-said={said ?? undefined} dir={lang === 'he' ? 'rtl' : 'ltr'}>
       <PlayStage id="bottle-lab" grade="day" camera={CAMERAS[act]} shake={shake}
         world={<>
           {/* The picture never mirrors: light and glass behave the same in both languages. */}
@@ -179,7 +179,7 @@ function Glassworks({ start, onAgain, onOpen }: { start: BottleCreation | null; 
             <button type="button" className="bl-reach__spot" data-bl-aya="" style={box(spots.aya)} aria-label={act === 'colour' ? fillIn(w.reach.rub, w.finishes[bottle.finish]) : w.reach.aya}
               onClick={() => s?.command(act === 'colour' ? { do: 'finish' } : { do: 'aya' })} />
             {act === 'dress' && deal.card.map((art, i) => <button key={art} type="button" className="bl-reach__spot" data-bl-art={art}
-              style={box({ x: layout.card.stickers[i].x - layout.card.size / 2, y: layout.card.stickers[i].y - layout.card.size / 2, width: layout.card.size, height: layout.card.size })} aria-label={fillIn(w.reach.sticker, w.stickers[art])} onClick={() => s?.command({ do: 'stickOn', art })} />)}
+              style={box({ x: layout.card.stickers[i].x - layout.card.size / 2, y: layout.card.stickers[i].y - layout.card.size / 2, width: layout.card.size, height: layout.card.size })} aria-label={fillIn(w.reach.stickOn, w.stickers[art])} onClick={() => s?.command({ do: 'stickOn', art })} />)}
             {act === 'dress' && spots.stickers.map(placed => <button key={placed.slot} type="button" className="bl-reach__spot" data-bl-peel={placed.slot}
               style={box({ x: placed.x - placed.size / 2, y: placed.y - placed.size / 2, width: placed.size, height: placed.size })} aria-label={fillIn(w.reach.peel, w.stickers[placed.art], w.rows[Math.floor(placed.slot / 4)])} onClick={() => s?.command({ do: 'peel', slot: placed.slot })} />)}
             {layout.arches.map((arch, i) => <button key={i} type="button" className="bl-reach__spot" data-bl-arch={i} style={box({ ...arch, height: Math.max(40, arch.height * 0.5) })} aria-label={w.reach.arch[i]} onClick={() => s?.command({ do: 'arch', index: i })} />)}
@@ -189,10 +189,9 @@ function Glassworks({ start, onAgain, onOpen }: { start: BottleCreation | null; 
         <HudQuest steps={steps} current={chapter ? CHAPTERS.indexOf(chapter) : act === 'opening' ? -1 : 3} label={w.questLabel} />
         <HudToast show={toast !== null}>{toast ? w.done[toast] : ''}</HudToast>
         <HudDock>
-          {act === 'dress' && <span className="bl-turn" dir="ltr">
-            <HudButton label={w.reach.turnLeft} icon={<RotateCcw />} iconOnly onClick={() => scene.current?.command({ do: 'turn', by: -TURN_STEP })} data={{ 'data-bl-turn': 'left' }} />
-            <HudButton label={w.reach.turnRight} icon={<RotateCw />} iconOnly onClick={() => scene.current?.command({ do: 'turn', by: TURN_STEP })} data={{ 'data-bl-turn': 'right' }} />
-          </span>}
+          {/* The two turns stay physically left and right in both reading directions: the picture never mirrors. */}
+          {act === 'dress' && (lang === 'he' ? [1, -1] : [-1, 1]).map(way => <HudButton key={way} label={way < 0 ? w.reach.turnLeft : w.reach.turnRight} icon={way < 0 ? <RotateCcw /> : <RotateCw />} iconOnly
+            onClick={() => scene.current?.command({ do: 'turn', by: way * TURN_STEP })} data={{ 'data-bl-turn': way < 0 ? 'left' : 'right' }} />)}
           {chapter && ready && <HudButton tone="go" size={chapter === 'dress' && layout.portrait ? 'm' : 'l'} cue label={w.go[chapter]} icon={chapter === 'dress' ? <Sun /> : <span data-flip=""><ArrowRight /></span>} onClick={advance} data={{ 'data-bl-next': chapter }} />}
           {canOpen && kept?.kind === 'bottle' && <HudChip onClick={() => onOpen({ kind: 'bottle', shape: kept.shape, tint: kept.tint, finish: kept.finish, stickers: kept.stickers.map(({ art, slot }) => ({ art, slot })) })} label={w.open}>{w.open}</HudChip>}
         </HudDock>

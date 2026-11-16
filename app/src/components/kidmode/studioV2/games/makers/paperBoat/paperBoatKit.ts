@@ -45,7 +45,6 @@ export const KIT_PROPS = {
   lamp: bop('item-lamp', 245, 300),
   bloomOpen: bop('rover-bloom-open', 280, 254),
   bloomFolded: bop('rover-bloom-folded', 125, 122),
-  lights: [bop('petal-amber', 180, 300), bop('petal-coral', 179, 300), bop('petal-teal', 181, 300), bop('petal-blue', 181, 300), bop('petal-violet', 181, 300)],
 } as const;
 
 /** The crew, as stand-up figures, from the Studio's shared kit library (one

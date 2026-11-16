@@ -32,7 +32,6 @@ export const PLATES = {
 export const SPRITES = {
   lamp: bop('item-lamp', 245, 300), can: bop('item-can', 278, 205), fern: bop('rover-planter', 320, 278),
   sunLit: bop('sun-lit', 520, 520), sunUnlit: bop('sun-unlit', 520, 520),
-  petal: bop('petal-amber', 180, 300),
   planterBud: made('kit-prop-planter-bud', 258, 400, 'shared kit library'),
   planterBloom: made('kit-prop-planter-bloom', 282, 426, 'shared kit library'),
   trailBench: made('kit-prop-trailbench', 768, 388, 'shared kit library'),

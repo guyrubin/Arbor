@@ -21,7 +21,7 @@ import {
   rumbleFor, seedSnow, snowLeft, type GestureId, type SnowClump,
 } from './mammothPlayRules';
 import {
-  FROST, HERD_FAR, HINT, SET_PIECE, auroraAt, constellation, eyeHeight, fitShot, frostLeft, herdPlace, hintPlan, hourFor, makeFrost, meltFrost, patienceStep, scoutNear, scoutStep, secretStar,
+  FROST, HERD_FAR, HINT, SET_PIECE, STEPS, auroraAt, constellation, eyeHeight, fitShot, frostLeft, herdPlace, hintPlan, hourFor, makeFrost, meltFrost, patienceStep, scoutNear, scoutStep, secretStar,
   starsRisen, traceStep, walkStep, wipeFrost, type FrostGrid, type Round, type StepId,
 } from './mammothStory';
 import { drawSteppeBack, drawSteppeFront, groundPoint, lightAt, makeSteppe, nearness, type Ground, type HerdState, type SkyShow, type SteppeFrame, type Tones } from './steppeRender';
@@ -79,6 +79,8 @@ export interface MammothEngine {
   greet(friend: FriendId): void;
   /** The HUD is busy (a print is up): no hint hand over it. */
   hold(busy: boolean): void;
+  /** Development only: start at a later step. */
+  jump(step: StepId): void;
   photo(id: DiscoveryId): HTMLCanvasElement | null;
   scene(): Scene;
   setReduced(reduced: boolean): void;
@@ -101,7 +103,7 @@ const SHOTS = {
   whole: [30, 96, 940, 664], front: [30, 120, 690, 672], back: [286, 110, 900, 610],
   feedTall: [-150, 150, 560, 716], feedWide: [-230, 80, 940, 716], part: [468, 296, 742, 512],
   scoutTall: [-140, -260, 1120, 716], scoutWide: [-760, -160, 1700, 716], walkTall: [-60, 30, 800, 700], walkWide: [-230, 30, 1130, 700],
-  low: [130, 40, 820, 664], finaleTall: [-90, -700, 1030, 730], finaleWide: [-420, -470, 1380, 724],
+  low: [150, -60, 760, 672], finaleTall: [-60, -560, 1000, 690], finaleWide: [-420, -380, 1380, 690],
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 type ShotId = keyof typeof SHOTS;
 /** The tufts the child can pluck, on the snow in front of the mammoth (side view, world units; y below the feet is nearer to us). */
@@ -142,9 +144,10 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
   let dyn: Dynamics = makeDynamics(strands.count);
   let grid = buildGrid(strands);
   let trunkRange: [number, number] = rangeOf(strands, 'trunk');
-  // The calf: the same animal drawn small, facing its mother, with the lighter coat.
-  const calfViewId: ViewId = viewId === 'side' ? 'turned' : 'side', calfView = mammothView(calfViewId);
-  let calfStrands: StrandSet | null = null, calfDyn: Dynamics | null = null;
+  // The calf: the same animal drawn small, with the lighter coat. It runs in facing its mother, then turns about to stand beside her.
+  const towardId: ViewId = viewId === 'side' ? 'turned' : 'side';
+  const calfViews = { toward: mammothView(towardId), beside: view };
+  let calfCoats: Record<'toward' | 'beside', { strands: StrandSet; dyn: Dynamics }> | null = null;
 
   /* ── layout ── */
   let width = 1, height = 1, dpr = 1, baseScale = 1, tall = false;
@@ -153,6 +156,8 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
   let glide: { from: Camera; to: Camera; start: number; ms: number } | null = null;
   let place: Affine = IDENTITY;                      // the mammoth's place in the world (it steps sideways in the hall)
   let hallShift = 0, hallShiftGoal = 0, tuskShift = 0;
+  /** The part of the glass that matters: round the eye, about as wide as the middle pane (a fraction of the frosted box). Clearing it is clearing the frost. */
+  let face0 = 0.3;
   let panes: Vec[][] = [];
   const glass: Glass = { panes: null, box: { minX: 0, minY: 0, maxX: 1, maxY: 1 }, bloom: 0, frost: null };
   let time = 0, last = 0, frame = 0;
@@ -196,11 +201,11 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
   let mood = 0, strokeHeat = 0, lean: Vec = [0, 0], squeeze = 0, wide = 0;
   let reach: { lift: number; swing: number; until: number } | null = null, reachLift = 0, reachSwing = 0;
   const stomps: { leg: LegId; start: number }[] = [];
-  let gust = 0, stepping = -1;
+  let gust = 0, stepping = -1, rumbleUntil = 0;
   let nextBlink = 2.5, blinkAt = -1, nextFlick = 5, flickAt = -1, nextSwish = 3, swishAt = -1, lastBreath = 0;
   const puffs: Puff[] = [], motes: Mote[] = [], mists: Mist[] = [];
   let flakes: Flake[] = Array.from({ length: round.flakes }, () => ({ x: Math.random(), y: Math.random(), r: 0.9 + Math.random() * Math.random() * 2.6, speed: 0.025 + Math.random() * 0.05, drift: Math.random() * Math.PI * 2 }));
-  let lastAudio = 0, lastTick = 0, flash = 0;
+  let lastAudio = 0, lastTick = 0, flash = 0, frameMs = 16;
   const photos = new Map<DiscoveryId, HTMLCanvasElement>();
   const shots: { id: DiscoveryId; at: number; centre: () => Vec; size: () => number; then?: () => void }[] = [];
 
@@ -213,7 +218,9 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
   const fx = (kind: FxKind, w: Vec, count?: number) => { const [x, y] = fraction(w); hooks.onFx(kind, x, y, count); };
   const safe = () => ({ top: height < 480 ? 62 : 96, bottom: height < 480 ? 64 : 100, side: 12 });
   const shotBox = (id: ShotId): Bounds => { const [x0, y0, x1, y1] = SHOTS[id]; return view.mirror ? { minX: FLIP_X - x1, minY: y0, maxX: FLIP_X - x0, maxY: y1 } : { minX: x0, minY: y0, maxX: x1, maxY: y1 }; };
-  const shot = (id: ShotId): Camera => { const fit = fitShot(shotBox(id), { w: width, h: height }, safe()); return { x: fit.x, y: fit.y, zoom: fit.zoom / baseScale }; };
+  const shot = (id: ShotId, room = safe()): Camera => { const fit = fitShot(shotBox(id), { w: width, h: height }, room); return { x: fit.x, y: fit.y, zoom: fit.zoom / baseScale }; };
+  /** The night's show keeps the snow at the foot of the frame free for the caption, the crew and the way out: the giant stands above them. */
+  const finaleRoom = () => ({ top: Math.max(30, height * 0.1), bottom: Math.max(150, height * (tall ? 0.3 : 0.27)), side: 12 });
   const shotFor = (t: Task): Camera => {
     switch (t) {
       case 'brush': return shot(tall ? 'back' : 'whole');
@@ -222,7 +229,7 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
       case 'scout': return shot(tall ? 'scoutTall' : 'scoutWide');
       case 'walk': return shot(tall ? 'walkTall' : 'walkWide');
       case 'low': return shot(tall ? 'walkTall' : 'walkWide');
-      case 'finale': return shot(tall ? 'finaleTall' : 'finaleWide');
+      case 'finale': return shot(tall ? 'finaleTall' : 'finaleWide', finaleRoom());
       default: return shot(tall ? 'front' : 'whole');
     }
   };
@@ -271,6 +278,7 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
       // For the tusk to be measured it must stand clear in the middle pane.
       const P = HALL.pane, mid = toWorld(hall.offX + ((P.x0 + P.x1) / 2) * hall.k, 0)[0], t = tuskBox();
       tuskShift = mid - (t.minX + t.maxX) / 2;
+      face0 = (0.55 * ((P.x1 - P.x0) * hall.k / S())) / Math.max(1, glass.box.maxX - glass.box.minX);
       if (palette && !frostGone) buildFrost();
     } else {
       const whole = fitShot(shotBox('whole'), { w: width, h: height }, safe());
@@ -304,13 +312,14 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
   /* ── fur: stroking and springs ── */
   const wake = (i: number) => { if (!dyn.active[i]) { dyn.active[i] = 1; dyn.live.push(i); } };
   /** Stroke at a point of the animal's own space. */
-  const strokeAt = (ax: number, ay: number, dx: number, dy: number, pat: boolean, power = 1) => {
-    const R = clamp(34 / (S() * place[0]), 9, 70);
+  const strokeAt = (ax: number, ay: number, dx: number, dy: number, pat: boolean, power = 1, reachR = 0) => {
+    const R = reachR || clamp(34 / (S() * place[0]), 9, 70);
     const visit = (i: number, x: number, y: number) => {
       const d = Math.hypot(x - ax, y - ay), k = strokeWeight(d, R);
       if (!k) return;
       let ox: number, oy: number;
-      if (pat) { const m = d || 1; ox = dyn.ox[i] + ((x - ax) / m) * 7 * k * power; oy = dyn.oy[i] + ((y - ay) / m) * 7 * k * power - 2 * k; }
+      // A pat parts the hair outward from the hand; long hair is thrown further than short.
+      if (pat) { const m = d || 1, push = Math.max(7, strands.len[i] * 0.5) * k * power; ox = dyn.ox[i] + ((x - ax) / m) * push; oy = dyn.oy[i] + ((y - ay) / m) * push - 2 * k; }
       else { ox = dyn.ox[i] + dx * k * 1.9 * power; oy = dyn.oy[i] + dy * k * 1.9 * power; }
       [ox, oy] = capOffset(ox, oy, strands.len[i]);
       dyn.ox[i] = ox; dyn.oy[i] = oy; dyn.vx[i] = 0; dyn.vy[i] = 0; wake(i);
@@ -436,26 +445,27 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
   const glassAspect = () => { const b = glass.box; return (b.maxX - b.minX) / Math.max(1, b.maxY - b.minY); };
   const insidePanes = (w: Vec) => panes.some(pane => pointInPolygon(w[0], w[1], pane));
   const wipe = (w: Vec, big: number, quiet = false) => {
-    const [u, v] = glassUV(w), r = (clamp(40 * big / S(), 10, 400)) / (glass.box.maxX - glass.box.minX);
+    // A hand's width of glass at a time: a little more on a big screen. A helping (a key, the hint) clears a good part of the face.
+    const [u, v] = glassUV(w), r = Math.max(clamp(Math.max(40, width * 0.042) * big / S(), 10, 400) / (glass.box.maxX - glass.box.minX), big > 2 ? face0 * 0.62 : 0);
     const shed = wipeFrost(frost, u, v, r, glassAspect());
     frostLayer?.wipe(u, v, r * 1.12);
     if (shed > 0.02 && !quiet) {
       if (time - wipeSound > 0.09) { wipeSound = time; sound?.rustle(0.55); if (random() < 0.3) sound?.glass(); tick(); }
-      if (random() < 0.35) fx('glint', w, 1);
+      if (random() < 0.35 && Math.hypot(w[0] - eyeWorld()[0], w[1] - eyeWorld()[1]) > 60) fx('glint', w, 1);
       if (random() < 0.12) fx('drop', [w[0], w[1] + 14 / S()], 1);
     }
     return shed;
   };
   const seeEye = () => {
     if (eyeSeen) return;
-    eyeSeen = true; el.stage.dataset.eye = 'seen'; blinkAt = time; wide = 1; flickAt = time; sound?.snort();
+    eyeSeen = true; el.stage.dataset.eye = 'seen'; blinkAt = time; wide = 1; flickAt = time; rumbleUntil = time + 1.8; sound?.snort();
     breathe(1.5); hooks.onEye(); hooks.onTick();
   };
   const stepFrost = (dt: number) => {
     if (frostGone) return;
     const [u, v] = glassUV(eyeWorld());
     if (!eyeSeen && frostLeft(frost, { u, v, r: 0.07, aspect: glassAspect() }) < FROST.eyeAt) seeEye();
-    const left = frostLeft(frost);
+    const left = frostLeft(frost, { u, v: v + 0.06, r: face0, aspect: glassAspect() });
     if (!melting && left < FROST.meltAt) { melting = true; seeEye(); sound?.chime(); }
     if (melting) {
       const after = meltFrost(frost, dt); frostLayer?.melt(Math.min(1, dt / 0.6));
@@ -553,15 +563,17 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
       // It takes the grass with the two tips of its trunk.
       feeding = { start: time, from: carry.at, crunched: 0, shot: false };
       carry = null; ring = 0; fed = true; sound?.found(2); hooks.onTick(); mood = moodLift(mood, 0.2);
-      queueShot('trunk', FEED.fly + 0.14, () => toScreen(tipWorld()), () => 190 * S());
+      queueShot('trunk', FEED.fly + 0.14, () => { const [x, y] = toScreen(tipWorld()); return [x, y - 26 * S()]; }, () => 150 * S());
     }
   };
+  /** How much of the long hair under the lens must be parted before the two coats can be told apart. */
+  const PARTED = 0.26;
   const stepLens = () => {
     if (task !== 'part' || !lens || time - lensCheck < 0.12) return;
     lensCheck = time;
     const share = partedShare();
-    lensReady = lensLatched ? 1 : clamp(share / 0.3, 0, 1);
-    if (!lensLatched && share >= 0.3) { lensLatched = true; lensReady = 1; sound?.chime(); hooks.onCue('lensReady'); hooks.onTick(); }
+    lensReady = lensLatched ? 1 : clamp(share / PARTED, 0, 1);
+    if (!lensLatched && share >= PARTED) { lensLatched = true; lensReady = 1; sound?.chime(); hooks.onCue('lensReady'); hooks.onTick(); }
   };
 
   /* ── chapter three: the herd, the walk, the calf's view ── */
@@ -582,7 +594,8 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
     if (finder.goal !== null) { const d = finder.goal - finder.x; if (Math.abs(d) < 2) finder.goal = null; else finder.x += Math.sign(d) * Math.min(Math.abs(d), width * 1.4 * dt); }
     finder.y = ground().horizonY - finderRadius() * 0.42;
     const hu = herdScreen()[0] / width, fu = finder.x / width;
-    lock = scoutStep(lock, fu, hu, dt);
+    // The lock only closes on a finder someone has moved there, once the camera has settled on the wide view.
+    lock = glide || !learned.scout ? 0 : scoutStep(lock, fu, hu, dt);
     // The nearer the finder, the quicker the ping.
     const nearK = scoutNear(fu, hu), gap = 1.1 - 0.9 * nearK;
     if (time - pingAt > gap && learned.scout) { pingAt = time; sound?.found(Math.round(nearK * 4)); }
@@ -590,7 +603,7 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
       herdFound = true; herdShow = 1; finder.x = hu * width; sound?.hello(true); hooks.onTick();
       fx('ring', toWorld(finder.x, finder.y)); fx('sparkle', toWorld(finder.x, finder.y), 8);
       const at = { x: finder.x, y: finder.y }, r = finderRadius();
-      queueShot('herd', 0.5, () => [at.x, at.y + r * 0.1], () => r * 2.1, () => { finder = null; finish('scout'); });
+      queueShot('herd', 0.5, () => [at.x, at.y + r * 0.2], () => r * 1.5, () => { finder = null; finish('scout'); });
     }
   };
   const stepWalk = (dt: number) => {
@@ -601,23 +614,31 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
       const before = walked;
       walked = walkStep(walked, true, dt); learned.walk = true;
       scroll += -face * 420 * (walked - before) * 6.5;
-      walkPhase += dt * 1.9;
+      // A giant's walk is slow: a footfall about twice a second, and the ground feels every other one.
+      walkPhase += dt * 0.95;
       const beat = Math.floor(walkPhase * 2);
-      if (beat !== lastFoot) { lastFoot = beat; const leg: LegId = beat % 2 ? 'legFront' : 'legHind'; sound?.thump(); hooks.onCue('thump'); scatter(footWorld(leg), 6, 110, 60); fx('dust', footWorld(leg), 4); tick(); }
+      if (beat !== lastFoot) { lastFoot = beat; const leg: LegId = beat % 2 ? 'legFront' : 'legHind'; sound?.thump(); if (beat % 2) hooks.onCue('thump'); scatter(footWorld(leg), 6, 110, 60); fx('dust', footWorld(leg), 4); tick(); }
       hourGoal = hourFor('walk', walked);
       if (walked >= 1) { walkDone = true; calf = { start: time, arrived: false }; hooks.onCue('calf'); sound?.trumpet(true, 0.1); ensureCalf(); }
     }
   };
-  const ensureCalf = () => { if (!calfStrands) { calfStrands = strandsFor(calfViewId, 'light'); calfDyn = makeDynamics(calfStrands.count); } };
-  const CALF = { scale: 0.4, seconds: 2.4 };
-  /** Where the calf is: it runs out from the herd and stops under its mother's tusks, nose to her trunk. */
-  const calfPlace = (): { place: Affine; k: number } | null => {
+  const ensureCalf = () => {
+    if (calfCoats) return;
+    const coat = (id: ViewId) => { const strands = strandsFor(id, 'light'); return { strands, dyn: makeDynamics(strands.count) }; };
+    calfCoats = { toward: coat(towardId), beside: coat(viewId) };
+  };
+  const CALF = { scale: 0.4, seconds: 3.1, run: 0.7 };
+  /** Where the calf is: it runs out from the herd to its mother's trunk, turns about, and tucks in beside her front legs, facing the way she faces. */
+  const calfPlace = (): { place: Affine; k: number; facing: 'toward' | 'beside'; turn: number } | null => {
     if (!calf) return null;
-    const k = reduced ? 1 : clamp((time - calf.start) / CALF.seconds, 0, 1), s = CALF.scale;
-    // Its nose (in its own drawing) meets a point just ahead of the mother's trunk.
-    const nose = calfView.mirror ? calfView.furBounds.maxX - 20 : calfView.furBounds.minX + 20, meet = fromAnimal([flip(232), 0])[0];
-    const rest = meet - s * 0.96 * nose, x = rest + face * 1500 * (1 - ease(k)), hop = k < 1 ? Math.abs(Math.sin(k * Math.PI * 7)) * 20 * (1 - k * 0.5) : 0;
-    return { place: [s * 0.96, 0, 0, s * 1.06, x, view.groundY + 16 - s * 1.06 * calfView.groundY - hop], k };
+    const k = reduced ? 1 : clamp((time - calf.start) / CALF.seconds, 0, 1), sx = CALF.scale * 0.96, sy = CALF.scale * 1.06;
+    const nose = (v: MammothView) => (v.mirror ? v.furBounds.maxX - 20 : v.furBounds.minX + 20), middle = (v: MammothView) => (v.furBounds.minX + v.furBounds.maxX) / 2;
+    // Each resting place as the world x of the calf's middle: nose to the trunk while it faces her, nose under her chin once it stands beside her.
+    const meet = flip(236) - sx * nose(calfViews.toward) + sx * middle(calfViews.toward), tucked = flip(322) - sx * nose(calfViews.beside) + sx * middle(calfViews.beside);
+    const run = ease(Math.min(1, k / CALF.run)), m = clamp((k - CALF.run) / (1 - CALF.run), 0, 1), facing = m < 0.5 ? 'toward' : 'beside';
+    const x = lerp(meet, tucked, ease(m)) + face * 1500 * (1 - run), hop = k < CALF.run ? Math.abs(Math.sin(k * Math.PI * 9)) * 20 * (1 - run * 0.5) : 0;
+    const v = calfViews[facing];
+    return { place: [sx, 0, 0, sy, x - sx * middle(v), view.groundY + 12 + 14 * ease(m) - sy * v.groundY - hop], k, facing, turn: m <= 0 || m >= 1 ? 1 : Math.max(0.08, Math.abs(Math.cos(Math.PI * m))) };
   };
   const stepLow = (dt: number) => {
     if (task !== 'low' || lowDone) return;
@@ -645,9 +666,13 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
   const stepFinale = () => {
     if (!finale) return;
     const t = time - finale.start;
-    if (!finale.called && t > SET_PIECE.call) { finale.called = true; sound?.trumpet(); gust = 1; shakeCoat(0.8); breathe(2); hooks.onCue('call'); hooks.onTick(); }
-    while (finale.answered < SET_PIECE.answers.length && t > SET_PIECE.answers[finale.answered]) { sound?.trumpet(true); hooks.onCue('answer', finale.answered); finale.answered++; }
-    if (!finale.aurora && t > SET_PIECE.aurora) { finale.aurora = true; hooks.onCue('aurora'); }
+    if (!finale.called && t > SET_PIECE.call) { finale.called = true; sound?.trumpet(); rumbleUntil = time + 2.4; gust = 1; shakeCoat(0.8); breathe(2); hooks.onCue('call'); hooks.onTick(); }
+    while (finale.answered < SET_PIECE.answers.length && t > SET_PIECE.answers[finale.answered]) {
+      sound?.trumpet(true); hooks.onCue('answer', finale.answered);
+      const [hx, hy] = herdScreen(); hooks.onFx('ring', clamp((hx + (finale.answered - 1) * width * 0.08) / width, 0.04, 0.96), (hy - 30) / height);
+      finale.answered++;
+    }
+    if (!finale.aurora && t > SET_PIECE.auroraCue) { finale.aurora = true; hooks.onCue('aurora'); }
     const risen = Math.floor(starsRisen(t, secret ? 6 : 5) + 0.02);
     while (finale.stars < risen) { hooks.onCue('star', finale.stars); finale.stars++; }
     if (!finale.ready && t > SET_PIECE.hold) { finale.ready = true; hooks.onCue('finaleReady'); }
@@ -665,7 +690,7 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
       else lens = null;
       if (next !== 'idle') glideTo(next === 'low' ? lowCamera() : shotFor(next), next === 'part' ? 1100 : 1300);
       if (next === 'scout') { const settle = shotFor('scout'), keep = camera; camera = settle; beginScout(); camera = keep; }
-      if (next === 'finale') { finale = { start: time, called: false, answered: 0, aurora: false, stars: 0, ready: false }; herdShow = 1; ensureCalf(); if (!calf) calf = { start: time - CALF.seconds, arrived: true }; walked = 1; }
+      if (next === 'finale') { finale = { start: time, called: false, answered: 0, aurora: false, stars: 0, ready: false }; herdShow = 1; ensureCalf(); if (!calf) calf = { start: time - CALF.seconds - 1, arrived: true }; walked = 1; }
     } else if (next === 'trace') { hallShiftGoal = tuskShift; stepping = 0; }
   };
 
@@ -814,8 +839,8 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
     switch (task) {
       case 'frost': {
         // The first patch is over the eye; the rest work outward from it.
-        const eye = eyeWorld(), b = glass.box, spots: Vec[] = [[0, 0], [-0.16, 0.1], [0.16, -0.06], [0.02, 0.24], [-0.2, -0.16], [0.24, 0.2], [-0.05, 0.44], [0.3, -0.24], [-0.34, 0.3], [0.38, 0.42]];
-        const [ox, oy] = spots[helpIndex++ % spots.length], w: Vec = [clamp(eye[0] + ox * (b.maxX - b.minX), b.minX + 10, b.maxX - 10), clamp(eye[1] + oy * (b.maxY - b.minY), b.minY + 10, b.maxY - 10)];
+        const eye = eyeWorld(), b = glass.box, wide = (b.maxX - b.minX) * face0, spots: Vec[] = [[0, 0], [-0.6, 0.3], [0.6, -0.1], [0.1, 0.8], [-0.5, -0.5], [0.7, 0.7], [-0.2, 1.3], [0.6, -0.7], [-0.8, 1]];
+        const [ox, oy] = spots[helpIndex++ % spots.length], w: Vec = [clamp(eye[0] + ox * wide, b.minX + 10, b.maxX - 10), clamp(eye[1] + oy * wide, b.minY + 10, b.maxY - 10)];
         learned.frost = true; wipe(w, 2.6); ripple(w); break;
       }
       case 'hello': { const tip = tipWorld(); knockGlass([tip[0] + face * 56, tip[1] - 150], true); break; }
@@ -828,7 +853,12 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
         break;
       case 'part':
         if (lensLatched) snapLens();
-        else if (lens) { for (const [ox, oy] of [[0, 0], [-34, 10], [30, -14]] as const) strokeAt(lens.at[0] + ox, lens.at[1] + oy, 0, 0, true, 3.2); learned.part = true; sound?.rustle(0.7); }
+        else if (lens) {
+          // A parting each time, a little further round: two or three of them open the coat.
+          const turn = helpIndex++ * 2.1;
+          for (const [d, a] of [[0, 0], [0.5, turn], [0.5, turn + Math.PI]] as const) strokeAt(lens.at[0] + Math.cos(a) * lens.r * d, lens.at[1] + Math.sin(a) * lens.r * d * 0.8, 0, 0, true, 3.4, lens.r * 0.62);
+          learned.part = true; sound?.rustle(0.7); hooks.onTick();
+        }
         break;
       case 'scout': if (finder && !herdFound) { learned.scout = true; const goal = herdScreen()[0]; finder.goal = finder.x + clamp(goal - finder.x, -width * 0.16, width * 0.16); } break;
       case 'walk': if (!walkDone) walking = Math.max(walking, 1.2); break;
@@ -931,7 +961,7 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
     if (Math.abs(reachLift) + Math.abs(reachSwing) > 0.003) { next.lift = Math.max(next.lift, reachLift); next.swing += reachSwing; }
 
     // Walking, and the sideways steps in the hall: diagonal pairs of feet, the body rocking over them.
-    const stride = task === 'walk' && !walkDone && (holding() || walking > 0) ? walkPhase : stepping >= 0 ? stepping * 1.7 : -1;
+    const stride = task === 'walk' && !walkDone && (holding() || walking > 0) ? walkPhase : stepping >= 0 ? stepping * 1.05 : -1;
     if (stride >= 0 && !reduced) {
       const beat = Math.sin(stride * Math.PI * 2);
       next.step.legFront = next.step.legFarHind = Math.max(0, beat) * 13; next.step.legHind = next.step.legFarFront = Math.max(0, -beat) * 13;
@@ -964,7 +994,7 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
       }
     }
     // The calf is here: the trunk goes down to it.
-    if (calf && !finale?.called) { const c = calfPlace(); if (c && c.k >= 0.8 && task !== 'low') { next.swing += -0.16 * ease((c.k - 0.8) / 0.2); next.nod += 0.02; } }
+    if (calf && !finale?.called) { const c = calfPlace(); if (c && c.k >= 0.5 && task !== 'low') { const k = ease((c.k - 0.5) / 0.3); next.swing += 0.2 * k; next.curl += 0.1 * k; next.nod += 0.03 * k; } }
     if (finale) {
       const lift = finaleLift(time - finale.start - SET_PIECE.call + 0.62, reduced);
       next.lift = Math.max(next.lift, lift); next.swing *= 1 - lift; next.jaw = Math.max(next.jaw, lift * 0.85); next.nod -= 0.05 * lift; next.brow += 0.6 * lift;
@@ -974,13 +1004,14 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
 
     // The calf's own small life: quicker breath, a bobbing head, a trunk that will not keep still.
     if (calf) {
-      const c: Pose = { ...REST_POSE, step: { legFront: 0, legHind: 0, legFarFront: 0, legFarHind: 0 } }, k = clamp((time - calf.start) / CALF.seconds, 0, 1);
+      const c: Pose = { ...REST_POSE, step: { legFront: 0, legHind: 0, legFarFront: 0, legFarHind: 0 } }, at = calfPlace(), k = at?.k ?? 1;
+      c.turn = at?.turn ?? 1;
       c.breath = reduced ? 0.4 : 0.5 + 0.5 * Math.sin(time * 2.2);
       if (!reduced) {
         c.nod = Math.sin(time * 1.3) * 0.03; c.swing = Math.sin(time * 1.9) * 0.3; c.ear = -0.14 * Math.max(0, Math.sin(time * 2.6)); c.tail = Math.sin(time * 3.1) * 0.2;
-        if (k < 1) { const beat = Math.sin(time * 15); c.step.legFront = c.step.legFarHind = Math.max(0, beat) * 22; c.step.legHind = c.step.legFarFront = Math.max(0, -beat) * 22; }
+        if (k < CALF.run) { const beat = Math.sin(time * 15); c.step.legFront = c.step.legFarHind = Math.max(0, beat) * 22; c.step.legHind = c.step.legFarFront = Math.max(0, -beat) * 22; }
       }
-      c.lift = 0.5 * ease((k - 0.7) / 0.3) + (finale ? 0.4 * finaleLift(time - finale.start - SET_PIECE.answers[0] + 0.5, reduced) : 0);
+      c.lift = 0.5 * ease((k - 0.5) / 0.2) * (1 - 0.5 * ease((k - 0.9) / 0.1)) + (finale ? 0.4 * finaleLift(time - finale.start - SET_PIECE.answers[0] + 0.5, reduced) : 0);
       c.lid = blink > 0.5 ? 1 : 0.1; c.brow = 0.6;
       calfPose = c;
       if (!calf.arrived && k >= 1) { calf.arrived = true; sound?.snort(); mood = moodLift(mood, 0.3); fx('sparkle', tipWorld(), 8); hooks.onTick(); if (task === 'walk') finish('walk'); }
@@ -995,7 +1026,7 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
       hallShift += clamp(hallShiftGoal - hallShift, -150 * dt, 150 * dt);
       if (reduced) hallShift = hallShiftGoal;
       stepping = Math.max(0, stepping) + dt;
-      const beat = Math.floor(stepping * 3.4);
+      const beat = Math.floor(stepping * 2.1);
       if (beat !== lastFoot && !reduced) { lastFoot = beat; sound?.thump(); hooks.onCue('thump'); }
       if (Math.abs(hallShiftGoal - hallShift) <= 0.5 && before !== hallShift) { stepping = -1; lastInput = time; }
     } else if (stepping >= 0) stepping = -1;
@@ -1007,7 +1038,8 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
       glass.bloom = !passing.swapped ? ease(k) : Math.max(0, 1 - ease((t - 1.1) / 1.5));
       if (!passing.swapped && k >= 1) {
         passing.swapped = true; scene = 'steppe'; el.stage.dataset.scene = scene; place = IDENTITY; hallShift = 0; hallShiftGoal = 0; stepping = -1;
-        resize(); camera = shotFor('brush'); mists.length = 0; hooks.onCue('throughHalf');
+        // The first sight of the steppe is the whole giant in it; the step that follows moves in.
+        resize(); camera = shot('whole'); mists.length = 0; hooks.onCue('throughHalf');
       }
     }
   };
@@ -1035,6 +1067,7 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
       samples.push(now - last);
       if (samples.length >= 70) { sampling = false; const chosen = chooseTier(samples.slice(10), tier); if (chosen !== tier) switchTier(chosen); }
     }
+    if (last) frameMs += (Math.min(200, now - last) - frameMs) * 0.08;
     last = now; time += dt;
     if (glide) {
       const t = (now - glide.start) / glide.ms;
@@ -1042,6 +1075,8 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
       if (t >= 1) glide = null;
     }
     hour += clamp(hourGoal - hour, -dt * (finale ? 0.55 : 0.4), dt * (finale ? 0.55 : 0.4));
+    // Seen from low down, the giant stands up into the sky: it is drawn taller from its feet, as a low eye sees it.
+    if (scene === 'steppe') { const tower = 0.17 * ease(low), wider = 0.04 * ease(low); place = [1 + wider, 0, 0, 1 + tower, -wider * centreX, -tower * view.groundY]; }
     updatePose(dt);
     if (scene === 'hall') stepHall(dt);
     else {
@@ -1063,7 +1098,7 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
       lastAudio = now;
       sound?.wind(reduced ? 0.2 : Math.min(1, outdoors * (scene === 'hall' ? 0.3 : 0.8) + gust));
       // The rumble: contentment under the hand, and a breath of it with every breath out, felt as much as heard.
-      sound?.rumble(Math.max(rumbleFor(mood, strokeHeat > 0.05), 0.22 * (1 - pose.breath) * (scene === 'hall' ? 1 : 0.6), eyeSeen && time - (blinkAt < 0 ? -9 : blinkAt) < 1 ? 0.5 : 0));
+      sound?.rumble(Math.max(rumbleFor(mood, strokeHeat > 0.05), 0.22 * (1 - pose.breath) * (scene === 'hall' ? 1 : 0.6), time < rumbleUntil ? 0.6 : 0));
     }
     if (!ctx || !palette || !inks) return;
 
@@ -1081,7 +1116,8 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
       if (at?.phase === 'fly') { const [x, y] = arcPoint(feeding.from, tip, ease(at.k), 30); bundle = { x, y, angle: (1 - at.k) * 0.5 * -face, size: 1.1 }; }
       else if (at?.phase === 'curl') bundle = { x: tip[0], y: tip[1], angle: 0.3, size: 1.1 - 0.6 * ease((at.k - 0.7) / 0.3) };
     }
-    const plucks: Sheaf[] = scene === 'steppe' ? tufts.map((tuft, i) => ({ x: tuft.at[0], y: tuft.at[1], size: 1.35, grown: tuft.grown, shaken: tuft.shaken, cue: task === 'feed' && !carry && !feeding && !fed && i === 0 })) : [];
+    // The tufts to pluck stand in the afternoon's light: they belong to chapter two.
+    const plucks: Sheaf[] = scene === 'steppe' && hour < 0.72 ? tufts.map((tuft, i) => ({ x: tuft.at[0], y: tuft.at[1], size: 1.35, grown: tuft.grown, shaken: tuft.shaken, cue: task === 'feed' && !carry && !feeding && !fed && i === 0 })) : [];
     const pending = shots.length && time >= shots[0].at && !glide ? shots[0] : null;
     const marks: ToolMarks = pending ? {} : {
       routeScope: scene === 'hall' && (task === 'trace' || traced > 0) && stepping < 0 ? { k: traced, guide: task === 'trace' && traceDone < 0 } : null,
@@ -1093,9 +1129,11 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
     };
     const c = calfPlace();
     const animal: AnimalInput = { view, strands, dyn, tier, pose, place, snow, tusks: true, lens: lens && task === 'part' ? { x: lens.at[0], y: lens.at[1], r: lens.r } : null, fade: 1 };
-    const small: AnimalInput | null = c && calfStrands && calfDyn ? { view: calfView, strands: calfStrands, dyn: calfDyn, tier: 'light', pose: calfPose, place: c.place, snow: [], tusks: false, lens: null, fade: 1 } : null;
+    const small: AnimalInput | null = c && calfCoats ? { view: calfViews[c.facing], strands: calfCoats[c.facing].strands, dyn: calfCoats[c.facing].dyn, tier: 'light', pose: calfPose, place: c.place, snow: [], tusks: false, lens: null, fade: 1 } : null;
     drawFrame({
       ctx, scratch: scratchCanvas, width, height, dpr, camera, baseScale, anchor: [width / 2, height / 2], animal, calf: small, time, wind, palette, inks, light,
+      // A slow frame paints fewer hairs to a lock; a quick one, more.
+      hairBudget: frameMs < 22 ? 24000 : frameMs < 36 ? 14000 : 7000,
       back: () => { tones = drawSteppeBack(frameOf); }, front: scene === 'steppe' ? () => { if (tones) drawSteppeFront(frameOf, tones); } : null,
       glass: scene === 'hall' ? glass : glass.bloom > 0.01 ? { ...glass, panes: null, frost: null } : null,
       flakes: reduced ? [] : flakes, puffs, mists, motes, bundle, tufts: plucks, marks,
@@ -1106,6 +1144,16 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
     tier = next; strands = strandsFor(viewId, tier); dyn = makeDynamics(strands.count); grid = buildGrid(strands); trunkRange = rangeOf(strands, 'trunk');
     if (tier === 'light') flakes = flakes.slice(0, Math.min(flakes.length, 30));
     const keep = camera; resize(); if (scene === 'steppe') camera = keep;
+  };
+  // In development only: where a finger would go (the hint hand's own path, and a few named places), so the rendered checks can drive real pointers.
+  if (import.meta.env?.DEV) (el.stage as HTMLElement & { iafProbe?: (at: number | string) => Vec | null }).iafProbe = at => {
+    if (typeof at === 'number') return ghostPath(at)?.at ?? null;
+    if (at === 'herd') return scene === 'steppe' ? herdScreen() : null;
+    if (at === 'ear') return toScreen(fromAnimal(view.tickle));
+    if (at === 'eye') return toScreen(eyeWorld());
+    if (at === 'trunk') return toScreen(tipWorld());
+    if (at === 'coat') return toScreen(fromAnimal(view.hotspots.coats));
+    return null;
   };
   const start = () => { if (!frame && !disposed) { last = 0; frame = requestAnimationFrame(loop); } };
   const halt = () => { if (frame) cancelAnimationFrame(frame); frame = 0; };
@@ -1137,6 +1185,19 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
       if (!gesture) play(friend === 'pep' ? 'ears' : 'trunkBoop');
     },
     hold(next) { busy = next; if (busy) { ghostRun = null; showGhost(null, 0, 0); } lastInput = time; },
+    jump(step) {
+      // Development only: start the visit at a later step, with the story so far taken as played.
+      if (!import.meta.env?.DEV) return;
+      const index = STEPS.indexOf(step);
+      if (index >= 1) { frostGone = true; eyeSeen = true; glass.frost = null; frostLayer = null; hooks.onLight(1); }
+      if (index >= 3) { scene = 'steppe'; el.stage.dataset.scene = scene; place = IDENTITY; hallShift = 0; hallShiftGoal = 0; resize(); }
+      if (index >= 4) { for (const clump of snow) clump.amount = 0; snowCleared = true; }
+      if (index >= 5) fed = true;
+      if (index >= 7) { const keep = camera; camera = shotFor('scout'); beginScout(); camera = keep; finder = null; herdFound = true; herdShow = 1; learned.scout = true; }
+      if (index >= 8) { walked = 1; walkDone = true; ensureCalf(); calf = { start: time - CALF.seconds - 1, arrived: true }; }
+      hour = hourGoal = hourFor(step);
+      begin(step);
+    },
     photo: id => photos.get(id) ?? null,
     scene: () => scene,
     setReduced(next) { reduced = next; if (reduced && glide) { camera = { ...glide.to }; glide = null; } },

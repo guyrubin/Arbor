@@ -14,8 +14,10 @@
 .ft-tone { inset: 0; background-repeat: repeat-x; background-size: 100% 100%; }
 .ft-tone--night { opacity: 0; transition: opacity 1.2s ease; }
 [data-lit=true] .ft-tone--night { opacity: 1; }
+/* a repeating plate wraps when it is filtered: without this its bottom row shows as a hairline along its top edge */
+.ft-strip > .ft-tone, .ft-paving > .ft-tone { clip-path: inset(2px 0 0 0); }
 .ft-sky { left: 0; top: 0; will-change: transform; }
-.ft-cloud { block-size: 2.4%; border-radius: 50%; opacity: .7; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-butter) 62%, var(--mk-rose)), color-mix(in srgb, var(--mk-rose) 40%, transparent) 55%, transparent); animation: ft-drift 100s linear infinite alternate; transition: opacity 1.2s ease; }
+.ft-cloud { block-size: 1.5%; border-radius: 50%; opacity: .7; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-butter) 62%, var(--mk-rose)), color-mix(in srgb, var(--mk-rose) 40%, transparent) 55%, transparent); animation: ft-drift 100s linear infinite alternate; transition: opacity 1.2s ease; }
 .ft-sky[data-lit=true] .ft-cloud { opacity: .16; }
 .ft-layer { left: 0; top: 0; inline-size: 0; block-size: 0; transform-origin: 0 0; will-change: transform; }
 /* depth haze gathers at the foot of every far layer */

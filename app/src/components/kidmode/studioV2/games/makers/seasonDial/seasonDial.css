@@ -46,7 +46,7 @@
 /* One light over the whole picture: the sun's bloom, the gold of a low sun, the grey of heavy cloud, the blue of dusk. */
 .sd-light { position: absolute; inset: 0; pointer-events: none; }
 .sd-light--glow { background: radial-gradient(circle at var(--sd-sun-x) var(--sd-sun-y), color-mix(in srgb, var(--mk-butter) 62%, transparent), color-mix(in srgb, var(--mk-sun) 20%, transparent) 16%, transparent 50%); mix-blend-mode: screen; opacity: calc(var(--sd-glow) * .9); }
-.sd-light--gold { background: linear-gradient(to top, color-mix(in srgb, var(--mk-orange) 62%, transparent), color-mix(in srgb, var(--mk-sun) 34%, transparent) 55%, color-mix(in srgb, var(--mk-rose) 30%, transparent)); mix-blend-mode: soft-light; opacity: calc(var(--sd-gold) * 1); }
+.sd-light--gold { background: linear-gradient(to top, color-mix(in srgb, var(--mk-orange) 46%, var(--mk-white)), color-mix(in srgb, var(--mk-sun) 44%, var(--mk-white)) 52%, color-mix(in srgb, var(--mk-rose) 40%, var(--mk-white))); mix-blend-mode: multiply; opacity: calc(var(--sd-gold) * .72); }
 .sd-light--dim { background: linear-gradient(color-mix(in srgb, var(--mk-storm-grey), var(--mk-indigo) 30%), var(--mk-steel)); mix-blend-mode: multiply; opacity: calc(var(--sd-dim) * .4); }
 .sd-light--dusk { background: linear-gradient(var(--mk-indigo-deep), var(--mk-violet) 46%, var(--mk-orange) 74%, var(--mk-indigo)); mix-blend-mode: multiply; opacity: calc((1 - var(--sd-day)) * .78); }
 /* A light that is not shining is not composited at all. */
@@ -80,7 +80,7 @@
 
 /* The brass dial, set into the terrace rail in the foreground corner. */
 .sd-dialbox { position: absolute; pointer-events: none; }
-.sd-rail { position: absolute; inset: 44% -34% -46% -30%; border-radius: 50% 50% 0 0 / 74% 74% 0 0; pointer-events: none;
+.sd-rail { position: absolute; inset: 48% -34% -46% -16%; border-radius: 50% 50% 0 0 / 74% 74% 0 0; pointer-events: none;
   background: linear-gradient(170deg, var(--mk-white), color-mix(in srgb, var(--mk-white), var(--mk-steel-light) 55%) 46%, color-mix(in srgb, var(--mk-steel-light), var(--mk-steel) 40%));
   box-shadow: 0 -14px 34px color-mix(in srgb, var(--mk-shadow) 24%, transparent), inset 0 3px 0 var(--mk-white), inset 0 -30px 40px color-mix(in srgb, var(--mk-steel) 30%, transparent); }
 .sd-rail::after { content: ""; position: absolute; inset: 9% 3% auto 3%; block-size: 60%; border-radius: 50% 50% 0 0 / 80% 80% 0 0; border-block-start: 5px solid color-mix(in srgb, var(--mk-celadon-deep), var(--mk-sea) 35%); opacity: .85; }
@@ -107,6 +107,13 @@
 .sd[data-phase=actOpen] .sd-dial { pointer-events: none; }
 .sd-dialbox, .sd-lab { transition: opacity .5s var(--studio-ease-soft), scale .16s var(--studio-ease-spring); }
 
+@container play (min-width: 900px) {
+  .sd-lab { padding: 10px 12px; }
+  .sd-lab__gauges { gap: 9px; }
+  .sd-lab__gauge > svg { inline-size: 38px; block-size: 38px; }
+  .sd-lab__ladder i { inline-size: 32px; block-size: 11px; border-radius: 6px; }
+  .sd-lab__ladder { gap: 4px; }
+}
 @container play (max-width: 560px) {
   .sd-lab { padding: 6px 8px; border-radius: 16px; }
   .sd-lab__gauge > svg { inline-size: 26px; block-size: 26px; }

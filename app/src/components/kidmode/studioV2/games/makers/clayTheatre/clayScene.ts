@@ -55,10 +55,10 @@ const SKIES: Readonly<Record<SkyId, readonly Sky[]>> = {
 };
 
 /** The set is painted in three passes so the stage can keep the still ones: the cloth and what stands behind the cast, the cast, and what stands in front. */
-export type ScenePart = 'back' | 'cast' | 'front';
+export type ScenePart = 'backPass' | 'castPass' | 'frontPass';
 /** Paints the set for one drawing: all of it, or one pass. */
 export function paintScene(ctx: Ctx, view: View, scene: Scene, pal: Palette, part?: ScenePart): void {
-  const back = !part || part === 'back', cast = !part || part === 'cast', front = !part || part === 'front';
+  const back = !part || part === 'backPass', cast = !part || part === 'castPass', front = !part || part === 'frontPass';
   const story = STORIES[scene.story], P = (p: Pt): Pt => [view.ox + p[0] * view.unit, view.oy + p[1] * view.unit];
   const u = view.unit, d = scene.drawing, detail = view.detail, salt = scene.look.dressing;
   const clay = (points: readonly Pt[], tone: RGB, seed: number, boil = 0, extra: { alpha?: number; gloss?: number } = {}) =>

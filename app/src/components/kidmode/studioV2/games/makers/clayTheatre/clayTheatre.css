@@ -57,6 +57,9 @@
 /* The next pull is marked, and shows which way it goes. */
 .ct-pull[data-cue=true] i { box-shadow: 0 0 0 3px var(--studio-signal), 0 2px 8px color-mix(in srgb, var(--studio-graphite) 40%, transparent); animation: ct-pull-hint 1.7s var(--studio-ease-soft) infinite; }
 .ct-hero { position: absolute; translate: -50% -50%; margin: 0; padding: 0; border: 0; border-radius: 40%; background: none; pointer-events: none; }
+/* "Move me": a ring that slides off to one side and comes back, until the clay has been carried. */
+.ct-hero[data-cue=true]::after { content: ""; position: absolute; inset: 8%; border: 3px dashed var(--studio-signal); border-radius: 44%; animation: ct-carry-hint 1.8s var(--studio-ease-soft) infinite; }
+.ct-rug[data-cue=true] .ct-lump { animation: ct-lump-in .5s var(--studio-ease-spring) both, ct-lump-hop 2.4s ease-in-out infinite; animation-delay: calc(var(--i) * 60ms + .1s), calc(var(--i) * .22s + 1s); }
 
 /* ---------- chapters 2 and 3: the film strip and its crank ---------- */
 .ct-strip { position: absolute; display: flex; align-items: center; gap: 6px; pointer-events: none; animation: ct-rise .5s var(--studio-ease-spring) both; filter: drop-shadow(0 8px 10px color-mix(in srgb, var(--mk-shadow) 40%, transparent)); }
@@ -129,7 +132,7 @@
 .ct-screen::before { content: ""; position: absolute; inset-inline: -3%; inset-block-start: -11px; block-size: 12px; border-radius: 6px; background: linear-gradient(var(--mk-steel-light), var(--mk-steel-dark)); box-shadow: 0 3px 6px color-mix(in srgb, var(--mk-shadow) 60%, transparent); }
 /* Projected light is never even: a soft hot centre and darker corners, flickering a little. */
 .ct-screen i { position: absolute; inset: 0; background: radial-gradient(90% 80% at 50% 45%, transparent 62%, color-mix(in srgb, var(--mk-shadow) 20%, transparent)); animation: ct-flicker .5s steps(3) infinite; }
-.ct-premiere[data-lit=true] .ct-screen { translate: 0 -12%; opacity: 0; }
+.ct-premiere[data-lit=true] .ct-screen { box-shadow: 0 18px 30px -12px color-mix(in srgb, var(--mk-shadow) 50%, transparent); }
 .ct-beam { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; mix-blend-mode: screen; opacity: .8; animation: ct-fade .8s var(--studio-ease-soft) .9s both; transition: opacity .5s var(--studio-ease-soft); }
 .ct-beam polygon { fill: color-mix(in srgb, var(--mk-butter) 34%, transparent); filter: blur(5px); }
 .ct-premiere[data-lit=true] .ct-beam { opacity: 0; }
@@ -147,6 +150,7 @@
 .ct-seat[data-mood=gasping] { animation: ct-seat-in .7s var(--studio-ease-spring) both, ct-gasp .5s var(--studio-ease-spring); }
 .ct-seat[data-mood=turning] { transform: translateY(-1%) rotate(calc((var(--i) - 2) * 1.5deg)); }
 .ct-seat[data-mood=cheering] { animation: ct-seat-in .7s var(--studio-ease-spring) both, ct-cheer .52s ease-in-out infinite; animation-delay: 0s, calc(var(--i) * -110ms); }
+.ct-caption { position: absolute; inset-block-start: calc(clamp(18px, 7cqb, 64px) + 12px); inset-inline: 0; margin-inline: auto; inline-size: fit-content; }
 .ct-skip { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; margin: 0; padding: 0; border: 0; background: none; cursor: pointer; pointer-events: auto; }
 
 /* ---------- motion ---------- */
@@ -156,6 +160,8 @@
 @keyframes ct-can-in { from { opacity: 0; translate: 0 -60%; scale: .7; } 70% { translate: 0 4%; scale: 1.04 .95; } to { opacity: 1; translate: 0 0; scale: 1; } }
 @keyframes ct-can-idle { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-3%) rotate(1.5deg); } }
 @keyframes ct-lump-in { from { opacity: 0; scale: .3; } 70% { scale: 1.12 .9; } to { opacity: 1; scale: 1; } }
+@keyframes ct-carry-hint { 0%, 100% { translate: 0 0; opacity: .9; } 55% { translate: 22% -18%; opacity: .5; } }
+@keyframes ct-lump-hop { 0%, 78%, 100% { transform: translateY(0) scale(1); } 84% { transform: translateY(-16%) scale(.96, 1.06); } 92% { transform: translateY(0) scale(1.05, .94); } }
 @keyframes ct-pull-hint { 0%, 100% { translate: 0 0; opacity: 1; } 60% { translate: calc(var(--dx) * .6) calc(var(--dy) * .6); opacity: .7; } 61% { opacity: 0; } 62% { translate: 0 0; opacity: 0; } }
 @keyframes ct-land { from { translate: 0 -70%; scale: 1.3; opacity: 0; } 60% { translate: 0 6%; scale: 1.06 .9; opacity: 1; } to { translate: 0 0; scale: 1; opacity: 1; } }
 @keyframes ct-blink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
@@ -165,7 +171,7 @@
 @keyframes ct-fly { from { translate: 0 0; scale: 1; } 55% { translate: calc(var(--dx) * .55) calc(var(--dy) * .55 - 46px); scale: 1.12; } to { translate: var(--dx) var(--dy); scale: .5; opacity: .6; } }
 @keyframes ct-fly-frame { from { translate: 0 0; scale: 2; opacity: .2; } 30% { opacity: 1; } to { translate: var(--dx) var(--dy); scale: .7; opacity: .9; } }
 @keyframes ct-tile { 0%, 100% { rotate: -2deg; } 50% { rotate: 2deg; } }
-@keyframes ct-screen { from { scale: 1 0; opacity: 0; } to { scale: 1; opacity: 1; } }
+@keyframes ct-screen { from { scale: 1 0; opacity: 0; } }
 @keyframes ct-flicker { 0% { opacity: .92; } 50% { opacity: 1; } 100% { opacity: .86; } }
 @keyframes ct-seat-in { from { translate: -50% -30%; opacity: 0; } to { translate: -50% -100%; opacity: 1; } }
 @keyframes ct-gasp { 0%, 100% { transform: translateY(0) scale(1); } 40% { transform: translateY(-9%) scale(.97, 1.05); } 70% { transform: translateY(0) scale(1.03, .96); } }
@@ -180,7 +186,7 @@
   .ct-world *, .ct-world *::before, .ct-world *::after { animation-duration: .01s !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: .12s !important; }
   .ct-fly { display: none; }
   .ct-flash { animation-duration: .2s !important; }
-  .ct-pull[data-cue=true] i { animation: none !important; }
+  .ct-pull[data-cue=true] i, .ct-hero[data-cue=true]::after { animation: none !important; }
 }
 @media (forced-colors: active) {
   .ct-pull i, .ct-gate { border: 2px solid ButtonText; }

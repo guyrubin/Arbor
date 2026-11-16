@@ -6,9 +6,14 @@
  * its spread's fold progress (0 flat … 1 fully open), and that progress comes
  * from `u`, so the scenery folds with the page by construction.
  *
- * Nothing here can be failed or counted against the child: a rock nudges the
- * boat back into its channel, a gate waits for the boat, the storm calms when
- * the wheel is held steady, the quay waits until the boat comes alongside. */
+ * Three chapters and a homecoming, each a spread: a stream whose stones the
+ * boat threads; a river whose paper lanterns it rings; a basin where the rain
+ * passes when the wheel is held steady; a quay it finds, where the lanterns
+ * come on one by one. The boat sails across both pages, left edge to right.
+ *
+ * Nothing here can be failed or counted against the child: a stone nudges the
+ * boat round it, a lantern waits for the boat, the rain passes when the wheel
+ * is held steady, the quay waits until the boat comes alongside. */
 
 export type Dir = 'ltr' | 'rtl';
 export type SpreadIndex = 0 | 1 | 2 | 3;

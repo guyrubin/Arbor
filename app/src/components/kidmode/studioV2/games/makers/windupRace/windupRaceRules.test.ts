@@ -124,7 +124,7 @@ describe('the four courses', () => {
   });
   it('the straight asks for most of a wind; a full wind always carries Rover to the flower there', () => {
     for (const seed of SEEDS) {
-      const course = buildCourse('straight', seed), least = minimumClicks(course)!;
+      const course = buildCourse('theStraight', seed), least = minimumClicks(course)!;
       expect(least, `seed ${seed}`).toBeGreaterThanOrEqual(5); expect(least, `seed ${seed}`).toBeLessThanOrEqual(7);
       // Overshoot is fine: the cushion catches it and never throws it back.
       const { run, events } = rollOut(course, course.start, MAX_CLICKS);
@@ -180,7 +180,7 @@ describe('nobody is sent back', () => {
     expect(placeReached(straight, straight.start)).toBe('startLine');
     expect(placeReached(straight, 10)).toBe('firstArch');
     expect(placeReached(straight, straight.goal)).toBe('flower');
-    expect(placeReached(longCourse, 13.2)).toBe('signpost');
+    expect(placeReached(longCourse, 13.2)).toBe('arrowSign');
     for (const course of buildPlay(3)) for (const place of course.places) expect(placeReached(course, place.at)).toBe(place.id);
   });
   it('a run never ends before the start line or past the far end of the floor', () => {

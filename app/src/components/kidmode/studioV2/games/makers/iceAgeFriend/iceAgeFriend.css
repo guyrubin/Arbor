@@ -53,7 +53,7 @@
 .iaf-watchers { position: absolute; z-index: 3; inset-block-end: clamp(18px, 7cqb, 64px); display: flex; align-items: flex-end; gap: 4px; pointer-events: none; animation: iaf-rise 1.6s var(--studio-ease-soft) .6s both; }
 .iaf-watchers[data-side=left] { left: 6%; }
 .iaf-watchers[data-side=right] { right: 6%; flex-direction: row-reverse; }
-.iaf-world .iaf-watcher { display: block; block-size: calc(clamp(110px, 30cqb, 250px) * var(--iaf-friend-tall, .3) / .3); inline-size: auto; max-inline-size: none; filter: brightness(.16) saturate(.4) drop-shadow(0 -1px 0 color-mix(in srgb, var(--mk-celadon) 55%, transparent)); transform-origin: 50% 100%; animation: iaf-idle 5.2s ease-in-out calc(var(--iaf-friend-order, 0) * -1.3s) infinite; }
+.iaf-world .iaf-watcher { display: block; block-size: calc(clamp(84px, 21cqb, 190px) * var(--iaf-friend-tall, .3) / .3); inline-size: auto; max-inline-size: none; filter: brightness(.16) saturate(.4) drop-shadow(0 -1px 0 color-mix(in srgb, var(--mk-celadon) 55%, transparent)); transform-origin: 50% 100%; animation: iaf-idle 5.2s ease-in-out calc(var(--iaf-friend-order, 0) * -1.3s) infinite; }
 
 /* The answer to a touch, and the hint hand. Neither ever takes a touch. */
 .iaf-ripple { position: absolute; z-index: 7; inset-block-start: 0; left: 0; inline-size: 44px; block-size: 44px; margin: -22px 0 0 -22px; border-radius: 50%; border: 3px solid var(--studio-surface); outline: 1.5px solid color-mix(in srgb, var(--studio-graphite) 30%, transparent); opacity: 0; pointer-events: none; }
@@ -97,6 +97,8 @@
 @container play (max-width: 560px) {
   .iaf-friend[data-wide-only] { display: none; }
   .iaf-watchers > :nth-child(n + 4) { display: none; }
+  /* On a phone the caption and the way out take the foot of the frame: the crew stand on the snow above them. */
+  .iaf-watchers { inset-block-end: calc(clamp(18px, 7cqb, 64px) + 132px); }
   .iaf-album .iaf-photo { inline-size: 32px; block-size: 32px; }
   .iaf-print { grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 12px; padding: 16px 18px 18px; text-align: center; }
   .iaf-print[dir=rtl] { padding: 16px 18px 18px; }

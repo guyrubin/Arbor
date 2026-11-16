@@ -9,6 +9,5 @@
 .bl-reach { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
 .bl-reach__spot { position: absolute; margin: 0; padding: 0; border: 0; border-radius: 18px; background: none; pointer-events: none; opacity: 0; }
 .bl-reach__spot:focus-visible { opacity: 1; outline: 3px solid var(--studio-teal-ink); outline-offset: 2px; box-shadow: 0 0 0 6px color-mix(in srgb, var(--studio-surface) 70%, transparent); }
-.bl-turn { display: inline-flex; gap: 10px; pointer-events: none; }
 @media (forced-colors: active) { .bl-reach__spot:focus-visible { outline: 3px solid Highlight; } }
 .bl-finale { justify-self: end; display: grid; justify-items: end; gap: 10px; padding-inline-end: 8px; }

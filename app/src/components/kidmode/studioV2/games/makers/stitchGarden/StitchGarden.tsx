@@ -403,6 +403,9 @@ function StitchGardenRound({ onAgain }: { onAgain: () => void }) {
     // Holding keeps the needle going, one pull after another.
     holdTimer.current = setInterval(() => { if (sewRef.current) pullRef.current(); else stopHold(); }, HOLD_REPEAT_MS);
   };
+  /** The cloth takes the focus when a flower is planted, so a keyboard goes straight on to pulling the thread (never scrolling: the camera is already there). */
+  const sewEl = useRef<HTMLButtonElement | null>(null);
+  const focusSew = (el: HTMLButtonElement | null) => { if (el && sewEl.current !== el) { try { el.focus({ preventScroll: true }); } catch { /* Focus is a nicety. */ } } sewEl.current = el; };
   /** The keyboard's pull (a pointer's is taken on the way down, so it answers at once). */
   const onSewClick = (e: ReactMouseEvent<HTMLButtonElement>) => { if (e.detail === 0) pull(); };
 
@@ -680,7 +683,7 @@ function StitchGardenRound({ onAgain }: { onAgain: () => void }) {
         {PLACES.leafLab && <button type="button" className="sg-toy" data-toy="leafLab" style={over(PLACES.leafLab)} aria-label={w.toys.leafLab} onClick={touchLab} />}
         <button type="button" className="sg-toy" data-toy="pincushion" style={over(PLACES.pincushion)} aria-label={w.toys.pincushion} onClick={touchNeedle} />
       </div>}
-      {act === 'play' && sewing && <button type="button" className="sg-sew" data-sg-sew={sewing.pass} aria-label={sgLine(w.pull, w.flowers[sewing.motif.flower])}
+      {act === 'play' && sewing && <button type="button" className="sg-sew" ref={focusSew} data-sg-sew={sewing.pass} aria-label={sgLine(w.pull, w.flowers[sewing.motif.flower])}
         onPointerDown={onSewDown} onPointerUp={stopHold} onPointerLeave={stopHold} onPointerCancel={stopHold} onClick={onSewClick} />}
     </div>
 

@@ -59,6 +59,8 @@ const BOUGHS = [
 /** The order the boughs take each change in: leaf from the low sunny side
  * up, colour from the top down, fall from the windward side across. */
 const GROW_ORDER = [1, 3, 0, 4, 2], TURN_ORDER = [3, 1, 4, 0, 2], FALL_ORDER = [0, 2, 1, 3, 4];
+/** The same three orders, for the tests: boughs are numbered left to right. */
+export const BOUGH_ORDERS = { grow: GROW_ORDER, turn: TURN_ORDER, fall: FALL_ORDER } as const;
 export function growTree(seed = 1871): WorldTree {
   const rand = seededPlay(seed);
   const segs: TSeg[] = [], twigs: { x: number; y: number; a: number; bough: number }[] = [];

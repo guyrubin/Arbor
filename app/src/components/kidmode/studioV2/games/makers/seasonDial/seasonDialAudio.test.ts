@@ -9,8 +9,7 @@ vi.mock('../../../../audio/kidAudio', () => ({
   kidAudioContext: () => h.ctx,
   onKidHush: (fn: () => void) => { h.hush.push(fn); return () => { h.hush = h.hush.filter(f => f !== fn); }; },
 }));
-import { LAP_TUNES, LAYER_PEAK, ONE_SHOT_PEAK, SCALE_HZ, SEASON_DEGREE, createSeasonAudio, scaleNote } from './seasonDialAudio';
-import { TOYS } from './seasonDialToys';
+import { LAP_TUNES, LAYER_PEAK, ONE_SHOT_PEAK, SCALE_HZ, SEASON_DEGREE, createSeasonAudio, scaleNote, TOYS } from './seasonDialAudio';
 import { gains } from './seasonDialRules';
 
 type Param = { value: number; target: number | null; peak: number; setValueAtTime: (v: number) => void; setTargetAtTime: (v: number) => void; exponentialRampToValueAtTime: (v: number) => void };

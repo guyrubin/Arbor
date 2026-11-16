@@ -81,13 +81,13 @@ export function tension(clicks: number): Tension {
 
 /* ---------- the courses ---------- */
 
-export type ChapterId = 'straight' | 'gustAlley' | 'longCourse' | 'sunArches';
+export type ChapterId = 'theStraight' | 'gustAlley' | 'longCourse' | 'sunArches';
 /** Three chapters that grow, then the set-piece. */
-export const CHAPTERS: readonly ChapterId[] = ['straight', 'gustAlley', 'longCourse', 'sunArches'];
+export const CHAPTERS: readonly ChapterId[] = ['theStraight', 'gustAlley', 'longCourse', 'sunArches'];
 /** Past the fork Rover takes the plank (high) or the knit rug road (low). */
 export type Line = 'high' | 'low';
 export type ZoneKind = 'arcade' | 'terrace';
-export type PlaceId = 'startLine' | 'firstArch' | 'lightPool' | 'fernRow' | 'flagRow' | 'ramp' | 'signpost' | 'plank' | 'knitRug' | 'woolBall' | 'lastArch' | 'flower';
+export type PlaceId = 'startLine' | 'firstArch' | 'lightPool' | 'fernRow' | 'flagRow' | 'ramp' | 'arrowSign' | 'plank' | 'knitRug' | 'woolBall' | 'lastArch' | 'flower';
 
 /** A ramp: the floor rises over `up`, runs level for `flat`, and ends in a lip.
  * Rover leaves the lip climbing at `kick` (rise per unit forward). */
@@ -142,7 +142,7 @@ const spread = (from: number, to: number, gap: number, random: () => number, ski
 export function buildCourse(id: ChapterId, seed: number): Course {
   const random = seeded((Math.floor(Number.isFinite(seed) ? seed : 1) >>> 0) + CHAPTERS.indexOf(id) * 7919 + 1);
   const shift = (range: number) => half((random() - 0.5) * 2 * range);
-  if (id === 'straight') {
+  if (id === 'theStraight') {
     const ballAt = 19 + shift(4);
     return {
       id, seed, start: 2, goal: 33, cushion: 37, length: 46, zones: [{ from: -40, to: 46, kind: 'arcade' }],
@@ -173,7 +173,7 @@ export function buildCourse(id: ChapterId, seed: number): Course {
       id, seed, start: 2, goal: 86, cushion: 90, length: 100, zones: [{ from: -40, to: 44, kind: 'terrace' }, { from: 44, to: 100, kind: 'arcade' }],
       hills: [plank, hill], gusts, rugs: [{ from: 17, to: 24.5, line: 'low' }], balls: [{ at: 27.5 + shift(1), line: 'low' }],
       blooms: spread(5, 82, 5.5, random, [[12, 35], [ramp - 1.5, ramp + 8]]), fork: { at: fork, rejoin: 35 },
-      places: [{ at: 0, id: 'startLine' }, { at: fork, id: 'signpost' }, { at: 15, id: 'plank' }, { at: 35, id: 'fernRow' }, { at: g1, id: 'flagRow' }, { at: ramp, id: 'ramp' }, { at: g3, id: 'lastArch' }, { at: 86, id: 'flower' }],
+      places: [{ at: 0, id: 'startLine' }, { at: fork, id: 'arrowSign' }, { at: 15, id: 'plank' }, { at: 35, id: 'fernRow' }, { at: g1, id: 'flagRow' }, { at: ramp, id: 'ramp' }, { at: g3, id: 'lastArch' }, { at: 86, id: 'flower' }],
     };
   }
   // The Sun Arches: one long gallery, a tailwind, and the big ramp into the light.

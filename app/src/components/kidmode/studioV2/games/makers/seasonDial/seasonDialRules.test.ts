@@ -10,9 +10,13 @@ import {
   weatherAt, window4, wrapYear, yearKind, yearToAngle, type LeafSeed, type Paint,
 } from './seasonDialRules';
 import { SEASON_DIAL_COPY } from './seasonDialCopy';
-import { TREE, seeded } from './seasonDialTree';
+import { BOUGH_ORDERS, growTree } from './seasonWorldArt';
+import { seededPlay as seeded } from './seasonDialPlay';
 import { YEAR_LOOKS, applePaint, leafPaint, paint, paintResolved, shaded, yearLook } from './seasonDialPaint';
 import { SEASON_DIAL_ART, SEASON_DIAL_CHILD_FILES, SEASON_VIEWS } from './seasonDialKit';
+
+/** The tree the game draws: grown once, the same every time. */
+const TREE = growTree();
 
 /* The palette, read from the one token file, so paints can be checked as real colours. */
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -215,7 +219,7 @@ describe('Weather Maker: the scene is one continuous function of the year', () =
   });
   it('turns the tree through the year: buds, blossom, green, turned, bare, snow', () => {
     const on = (y: number) => TREE.leaves.filter(l => leafState(l.seed, y).on > 0.5);
-    expect(TREE.buds.some(b => budState(b.seed, 0.97) > 0.5)).toBe(true);
+    expect(TREE.blossoms.some(b => budState(b.seed, 0.97) > 0.5)).toBe(true);
     expect(TREE.blossoms.filter(b => blossomState(b.seed, SEASON_CENTERS[0]).open > 0.6).length).toBeGreaterThan(TREE.blossoms.length * 0.8);
     expect(TREE.blossoms.every(b => blossomState(b.seed, 0.2).on === 0)).toBe(true);
     const summer = on(SEASON_CENTERS[1]);
@@ -239,11 +243,29 @@ describe('Weather Maker: the scene is one continuous function of the year', () =
     const left = TREE.leaves.filter(l => l.x < TREE.crown.cx).map(l => leafFallAt(l.seed)), right = TREE.leaves.filter(l => l.x >= TREE.crown.cx).map(l => leafFallAt(l.seed));
     expect(mean(left)).toBeLessThan(mean(right));
   });
-  it('grows one fixed tree: ~140+ leaves inside the scene, the same every time', () => {
-    expect(TREE.leaves.length).toBeGreaterThanOrEqual(140);
-    for (const l of TREE.leaves) { expect(l.x).toBeGreaterThan(20); expect(l.x).toBeLessThan(380); expect(l.y).toBeGreaterThan(20); expect(l.y).toBeLessThan(260); }
-    const a = seeded(5), b = seeded(5);
-    expect([a(), a(), a()]).toEqual([b(), b(), b()]);
+  it('grows one fixed tree, a full crown on a short trunk, the same every time', () => {
+    expect(TREE.leaves.length).toBeGreaterThanOrEqual(900); expect(TREE.blossoms.length).toBeGreaterThanOrEqual(100); expect(TREE.apples).toHaveLength(12);
+    for (const l of TREE.leaves) { expect(Math.abs(l.x)).toBeLessThanOrEqual(TREE.reach); expect(l.y).toBeLessThan(-0.12); expect(l.y - l.len).toBeGreaterThanOrEqual(-1.0001); }
+    expect(Math.min(...TREE.leaves.map(l => l.y - l.len))).toBeCloseTo(-1, 6); // the tree's own height is 1
+    expect(TREE.reach).toBeGreaterThan(0.4); expect(TREE.reach).toBeLessThan(0.75); // a wide apple crown, but it fits a phone
+    expect(TREE.segs.filter(s => s.depth === 0).every(s => s.y1 > -0.36 && s.w1 > 0.06)).toBe(true); // a stout trunk
+    const again = growTree();
+    expect(again.leaves.slice(0, 40)).toEqual(TREE.leaves.slice(0, 40)); expect(again.segs.length).toBe(TREE.segs.length);
+    expect(growTree(7).leaves[0]).not.toEqual(TREE.leaves[0]);
+  });
+  it('changes bough by bough: each bough takes its turn to leaf, to colour and to let go', () => {
+    const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    for (const key of ['grow', 'turn', 'fall'] as const) {
+      const byBough = Array.from({ length: TREE.boughs }, (_, b) => mean(TREE.leaves.filter(l => l.bough === b).map(l => l.seed[key])));
+      const order = byBough.map((_, b) => b).sort((p, q) => byBough[p] - byBough[q]);
+      expect(order, key).toEqual([...BOUGH_ORDERS[key]]);
+    }
+    // In mid-fall the first bough is nearly bare while the last still holds most of its leaves.
+    const held = (bough: number, y: number) => { const own = TREE.leaves.filter(l => l.bough === bough); return own.filter(l => leafState(l.seed, y).on > 0.5).length / own.length; };
+    expect(held(BOUGH_ORDERS.fall[0], 0.585)).toBeLessThan(0.35); expect(held(BOUGH_ORDERS.fall[4], 0.585)).toBeGreaterThan(0.75);
+    // And in early spring the first bough is in leaf before the last has begun.
+    const grownOn = (bough: number, y: number) => mean(TREE.leaves.filter(l => l.bough === bough).map(l => leafState(l.seed, y).size));
+    expect(grownOn(BOUGH_ORDERS.grow[0], 0.1)).toBeGreaterThan(grownOn(BOUGH_ORDERS.grow[4], 0.1) + 0.15);
   });
 });
 

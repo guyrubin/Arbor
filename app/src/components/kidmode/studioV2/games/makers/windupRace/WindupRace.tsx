@@ -27,10 +27,13 @@ const CROUCH_S = 0.36, REST_S = 1.9, FLOURISH_S = 2.6, TRAVEL_S = 0.5, SCOUT_S =
 const SLOW_RATE = 0.2, BREATH_RATE = 0.55;
 const TWO_PI = Math.PI * 2;
 /** What this visit has already shown: the hand never returns for a gesture the child has made. */
-const taught = { key: false, lean: false };
+const taught = { key: false };
 /** Plays begun this visit: the daylight moves on with each. */
 const visit = { plays: 0 };
 
+/* DEV-ONLY (remove before hand-off): start at a later chapter with ?wrChapter=N. */
+const DEV_CHAPTER = (() => { try { return import.meta.env.DEV ? Math.max(0, Math.min(3, Number(new URLSearchParams(location.search).get('wrChapter')) || 0)) : 0; } catch { return 0; } })();
+const DEV_LIGHT = (() => { try { const v = import.meta.env.DEV ? new URLSearchParams(location.search).get('wrLight') : null; return v === null ? null : Number(v) || 0; } catch { return null; } })();
 const clamp = (v: number, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, v));
 const ease = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 const fillLine = (template: string, ...values: string[]) => template.replace(/\{(\d)\}/g, (_m, slot: string) => values[Number(slot)] ?? '');
@@ -57,15 +60,15 @@ export default function WindupRace() {
   return <WindupRound key={round} onAgain={() => setRound(n => n + 1)} />;
 }
 
-function WindupRound({ onAgain }: { onAgain: () => void }) {
+export function WindupRound({ onAgain }: { onAgain: () => void }) {
   const { uiLang } = useLanguage(); const lang = uiLang === 'he' ? 'he' : 'en';
   const w = WINDUP_RACE_COPY[lang], shared = ADVENTURE_COPY[lang];
   const reduced = useReducedMotion();
   const [seed] = useState(() => roundSeed());
-  const [light] = useState(() => daylight(visit.plays++));
+  const [light] = useState(() => daylight(DEV_LIGHT ?? visit.plays++));
   const courses = useMemo(() => buildPlay(seed), [seed]);
   const [phase, setPhaseState] = useState<Phase>('openShot');
-  const [chapter, setChapter] = useState(0);
+  const [chapter, setChapter] = useState(DEV_CHAPTER);
   const [clicks, setClicksState] = useState(0);
   const [coach, setCoachState] = useState<{ line: string; mood: CoachMood }>({ line: w.hello, mood: 'happy' });
   const [toast, setToast] = useState<{ text: string; show: boolean }>({ text: '', show: false });
@@ -84,13 +87,13 @@ function WindupRound({ onAgain }: { onAgain: () => void }) {
   const reducedRef = useRef(reduced); reducedRef.current = reduced;
   const wRef = useRef(w); wRef.current = w;
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const frame = useRef(0), lastTime = useRef(0), alive = useRef(true);
+  const frame = useRef(0), lastTime = useRef(0), alive = useRef(true), broken = useRef(false);
 
   const game = useRef<Game | null>(null);
   if (!game.current) {
-    const course = courses[0];
+    const course = courses[DEV_CHAPTER];
     game.current = {
-      phase: 'openShot', phaseT: 0, clock: 0, chapter: 0, course, scenery: buildScenery(course), sun: sunFor(light),
+      phase: 'openShot', phaseT: 0, clock: 0, chapter: DEV_CHAPTER, course, scenery: buildScenery(course), sun: sunFor(light),
       clicks: 0, turn: 0, keyAngle: 0.5, keyVel: 0, backTurns: 0, run: null, restX: course.start, line: 'low', lean: false, leanK: 0, balls: undefined,
       roverZ: 0, sx: 1, sy: 1, svx: 0, svy: 0, tremble: 0, glow: 0.2, pitch: 0, hop: 0, hopV: 0,
       blooms: course.blooms.map(() => 0), goalBloom: 0, chain: 0, cushion: 0, signTurn: -0.6,
@@ -170,7 +173,7 @@ function WindupRound({ onAgain }: { onAgain: () => void }) {
 
   const launch = useCallback(() => {
     G.run = startRun(G.course, G.restX, G.clicks, G.line, G.balls);
-    G.acc = 0; G.rate = 1; G.kick = 1; G.flash = reducedRef.current ? 0 : 0.5; G.shake = 9; G.freeze = reducedRef.current ? 0 : 0.06;
+    G.acc = 0; G.rate = 1; G.kick = 1; G.flash = reducedRef.current ? 0 : 0.35; G.shake = 9; G.freeze = reducedRef.current ? 0 : 0.06;
     G.svx = -2.4; G.svy = 2; G.ribbon = [];
     G.fx.dust(G.restX - 0.5, G.roverZ, 14, 3);
     sound.current?.sproing(); bump(); void selectionHaptic();
@@ -182,8 +185,8 @@ function WindupRound({ onAgain }: { onAgain: () => void }) {
   const setLean = useCallback((on: boolean) => {
     if (G.lean === on) return;
     G.lean = on; setLeanHeld(on);
-    if (on) { taught.lean = true; play.current?.tap(); void selectionHaptic(); }
-  }, [G]);
+    if (on) { play.current?.tap(); void selectionHaptic(); if (G.run && G.run.gust < 0) say(wRef.current.leaning, 'happy'); }
+  }, [G, say]);
   const chooseLine = useCallback((next: Line) => {
     if (!G.course.fork || (G.run && G.run.lineLocked) || (G.restX > G.course.fork.at && G.restX < G.course.fork.rejoin)) { play.current?.back(); return; }
     if (G.line === next) return;
@@ -233,7 +236,7 @@ function WindupRound({ onAgain }: { onAgain: () => void }) {
     sound.current?.quiet();
     G.run = null; setClicks(0); G.turn = 0;
     setLocked(!!G.course.fork && run.x > G.course.fork.at && run.x < G.course.fork.rejoin);
-    G.pep.goal = run.x + (size.current.h > size.current.w ? 0.2 : 1.5) - (run.cushioned ? 1.7 : 0); G.pep.pose = 'side';
+    G.pep.goal = run.goal ? run.x - (run.cushioned ? 1.7 : 0) - 1.8 : run.x + (size.current.h > size.current.w ? 0.2 : 1.5); G.pep.pose = 'side';
     if (run.goal) {
       setPhase('flourish'); play.current?.chapter(); G.bounce = run.cushioned ? run.x : null; if (run.cushioned) sound.current?.boing(3); say(G.chapter === 3 ? W.finale : W.goal, 'wow');
       for (let i = 0; i < G.blooms.length; i++) if (!G.blooms[i]) G.blooms[i] = 0.001 + i * 1e-4;
@@ -278,7 +281,11 @@ function WindupRound({ onAgain }: { onAgain: () => void }) {
         if (n % 4 === 0) G.fx.add(1, run.x + (dir < 0 ? 8 : -5), 0.5 + ((n * 0.47) % 1) * 1.6, 0.5 + ((n * 0.71) % 1) * 3.5, dir * 9, 0.6, 0, 1.4, 0.15, n % 5);
       }
       if (G.rainbow) { G.ribbon.unshift({ x: run.x - 0.45, y: run.y, z: G.roverZ }); if (G.ribbon.length > 36) G.ribbon.pop(); }
-      if (G.rate < 1 && run.air && !still && Math.floor(G.clock * 20) !== Math.floor((G.clock - dt) * 20)) G.fx.glints(run.x, run.y + 0.4, G.roverZ, 1, 0.7);
+      if (G.rate < 1 && run.air && !still && Math.floor(G.clock * 20) !== Math.floor((G.clock - dt) * 20)) {
+        G.fx.glints(run.x, run.y + 0.4, G.roverZ, 1, 0.7);
+        // Dust in the sunbeam.
+        const n = G.fx.list.length; for (let i = 0; i < 2; i++) G.fx.add(4, run.x + ((n * 0.37 + i * 0.5) % 1) * 7 - 2, 0.2 + ((n * 0.61 + i * 0.3) % 1) * 3.4, -1.5 + ((n * 0.83 + i * 0.7) % 1) * 5, 0.15, 0.08, 0, 1.6, 1);
+      }
       if (run.done) endRun();
     }
     const run = G.run;
@@ -299,7 +306,9 @@ function WindupRound({ onAgain }: { onAgain: () => void }) {
     G.hopV -= 16 * dt; G.hop = Math.max(0, G.hop + G.hopV * dt); if (G.hop === 0 && G.hopV < 0) G.hopV = 0;
     G.tremble = still ? 0 : G.phase === 'winding' ? Math.max(0, wound - 0.3) * 1.5 : G.phase === 'crouching' ? 2.2 : 0;
     G.leanK += ((G.lean && G.phase === 'running' ? 1 : 0) - G.leanK) * Math.min(1, dt * 12);
-    G.pitch += ((run ? run.pitch : G.phase === 'crouching' ? -0.05 : 0) - G.pitch) * Math.min(1, dt * 14);
+    // The knit rug is bumpy: Rover wobbles over it.
+    const wobble = run?.onRug && !still ? Math.sin(G.clock * 38) * 0.035 * clamp(rv / 4) : 0;
+    G.pitch += ((run ? run.pitch + wobble : G.phase === 'crouching' ? -0.05 : 0) - G.pitch) * Math.min(1, dt * 14);
     G.glow += ((G.phase === 'winding' || G.phase === 'crouching' ? 0.15 + wound * 0.85 : 0.3) - G.glow) * Math.min(1, dt * 5);
     // The key: it follows the wind, and spins back as the spring lets go.
     if (run) G.keyAngle -= (turnsLeft(run) > 0.05 ? 26 : 2 * speedK) * dt * G.rate;
@@ -314,7 +323,8 @@ function WindupRound({ onAgain }: { onAgain: () => void }) {
 
     // -- Pep --
     const pep = G.pep;
-    if (G.phase === 'running' && run) pep.goal = run.x - 2.2;
+    // He chases; in the slow moment of the big jump he stops and watches.
+    if (G.phase === 'running' && run && !(G.chapter === 3 && run.air)) pep.goal = run.x - (G.chapter === 3 ? 4.5 : 2.2);
     const gap = pep.goal - pep.x;
     if (Math.abs(gap) > 0.25) {
       // He bounds: each hop carries him forward, with a squash where he lands.
@@ -350,7 +360,8 @@ function WindupRound({ onAgain }: { onAgain: () => void }) {
     if (G.phase !== 'travelling' && G.fade > 0) G.fade = Math.max(0, G.fade - dt * 2.4);
     if (G.phase === 'winding') G.quiet += dt;
 
-    // -- the camera --
+    // -- the camera (a new chapter may have just been laid: read the course afresh) --
+    const laid = G.course;
     const windShot: Shot = { bearing: ROVER_BEARING, elevation: 0.27, distance: 4.4 - wound * 0.35, zoom: Z * (1 + wound * 0.08), ax, ay, lead: 0 };
     let target: Shot = windShot, subjectX = rx, cut = false;
     if (G.phase === 'openShot') {
@@ -359,14 +370,14 @@ function WindupRound({ onAgain }: { onAgain: () => void }) {
       cut = true;
     } else if (G.phase === 'scoutPan') {
       const k = still ? 1 : ease(G.phaseT / SCOUT_S);
-      subjectX = lerp(Math.min(course.goal, course.start + 46), course.start, k);
+      subjectX = lerp(Math.min(laid.goal, laid.start + 46), laid.start, k);
       target = { bearing: ROVER_BEARING, elevation: lerp(0.4, 0.27, k), distance: lerp(9, 4.4, k), zoom: Z * lerp(0.52, 1, k), ax, ay, lead: 0 };
       cut = true; G.camX = subjectX;
     } else if (G.phase === 'crouching') target = { ...windShot, distance: 3.9, zoom: Z * 1.14 };
     else if (G.phase === 'running' && run) {
-      if (G.rate <= SLOW_RATE + 0.01 && run.air) target = { bearing: ROVER_BEARING, elevation: 0.06, distance: 4.6, zoom: Z * 0.98, ax: 0.5, ay: 0.5, lead: 0.4 };
-      else if (run.air) target = { bearing: -ROVER_BEARING * 0.85, elevation: 0.12, distance: 5.4, zoom: Z * 0.72, ax: portrait ? 0.34 : 0.34, ay: 0.56, lead: 0.8 };
-      else target = { bearing: -(ROVER_BEARING + (portrait ? 0.26 : 0.1) * speedK), elevation: 0.25 - 0.03 * speedK, distance: 4.6 + 1.7 * speedK, zoom: Z * (0.94 - 0.2 * speedK), ax: portrait ? 0.3 : 0.3, ay: portrait ? 0.62 : 0.68, lead: 0.3 + 1.3 * speedK };
+      if (G.rate <= SLOW_RATE + 0.01 && run.air) target = { bearing: ROVER_BEARING, elevation: 0.11, distance: 4.6, zoom: Z * 0.98, ax: 0.5, ay: 0.52, lead: 0.4 };
+      else if (run.air) target = { bearing: -ROVER_BEARING * 0.85, elevation: 0.12, distance: 5.4, zoom: Z * 0.72, ax: portrait ? 0.4 : 0.34, ay: 0.56, lead: portrait ? 0.3 : 0.8 };
+      else target = { bearing: -(ROVER_BEARING + (portrait ? 0.26 : 0.1) * speedK), elevation: 0.25 - 0.03 * speedK, distance: 4.6 + 1.7 * speedK, zoom: Z * (0.94 - 0.2 * speedK), ax: portrait ? 0.36 : 0.3, ay: portrait ? 0.66 : 0.68, lead: portrait ? 0.15 + 0.35 * speedK : 0.3 + 1.3 * speedK };
     } else if (G.phase === 'resting') target = { ...windShot, distance: 4.9, zoom: Z * 0.92 };
     else if (G.phase === 'flourish' || G.phase === 'travelling') target = { bearing: ROVER_BEARING + 0.1, elevation: 0.3, distance: 6.2, zoom: Z * 0.72, ax: 0.44, ay: 0.64, lead: 0.6 };
     else if (G.phase === 'finale' || G.phase === 'finished') target = { bearing: ROVER_BEARING + (still ? 0.1 : Math.min(0.35, G.phaseT * 0.07)), elevation: 0.3, distance: 7.2, zoom: Z * 0.62, ax: 0.46, ay: 0.64, lead: 0.4 };
@@ -378,7 +389,8 @@ function WindupRound({ onAgain }: { onAgain: () => void }) {
     }
     if (G.phase !== 'scoutPan') G.camX += (subjectX - G.camX) * Math.min(1, dt * (G.phase === 'running' ? 11 : 6));
     if (Math.abs(subjectX - G.camX) > 30) G.camX = subjectX;
-    G.camY += ((0.45 + ry * 0.55) - G.camY) * Math.min(1, dt * 8);
+    const beauty = G.phase === 'running' && !!run?.air && G.rate <= SLOW_RATE + 0.01;
+    G.camY += ((0.45 + ry * (beauty ? 0.72 : 0.55)) - G.camY) * Math.min(1, dt * (beauty ? 14 : 8));
     G.kick = Math.max(0, G.kick - dt * 1.8); G.shake *= Math.exp(-7 * dt); G.flash = Math.max(0, G.flash - dt * 4);
     const shot = { ...G.shot };
     if (!still) {
@@ -399,10 +411,10 @@ function WindupRound({ onAgain }: { onAgain: () => void }) {
     if (canvas && ctx && world.current) {
       ctx.setTransform(s.dpr, 0, 0, s.dpr, 0, 0);
       const f: Frame = {
-        width: s.w, height: s.h, time: G.clock, cam, course, scenery: G.scenery, sun: G.sun, reduced: still,
+        width: s.w, height: s.h, time: G.clock, cam, course: laid, scenery: G.scenery, sun: G.sun, reduced: still,
         rover: { x: rx, y: ry + G.hop, z: G.roverZ, pitch: G.pitch, sx: G.sx, sy: G.sy, rear: view.face === 'rear', flip: view.flip, glow: G.glow, keyAngle: G.keyAngle, keySpin: run && turnsLeft(run) > 0.05 ? 1 : 0, tight: wound, tremble: G.tremble, lean: G.leanK },
         pep: { x: pep.x, y: pep.y, z: pep.z, pose: pep.pose, flip: pep.pose === 'side' ? pep.faceRight === cam.rx > 0 : cam.rx < 0, sx: pep.sx, sy: pep.sy, show: true },
-        blooms: G.blooms, goalBloom: G.goalBloom, balls: (run ? run.balls : G.balls ?? course.balls.map(b => ({ x: b.at, line: b.line }))).map(b => ({ x: b.x, z: b.line === 'low' ? -LINE_Z : b.line === 'high' ? LINE_Z : 0 })),
+        blooms: G.blooms, goalBloom: G.goalBloom, balls: (run ? run.balls : G.balls ?? laid.balls.map(b => ({ x: b.at, line: b.line }))).map(b => ({ x: b.x, z: b.line === 'low' ? -LINE_Z : b.line === 'high' ? LINE_Z : 0 })),
         cushion: G.cushion, signTurn: G.signTurn, line: G.line, speed: G.phase === 'running' ? clamp((rv - 5) / 8) : 0, flash: G.flash, fade: G.fade,
         ribbon: G.rainbow && G.ribbon.length ? G.ribbon : null, shafts: G.shafts, fx: G.fx,
       };
@@ -443,7 +455,8 @@ function WindupRound({ onAgain }: { onAgain: () => void }) {
       frame.current = 0;
       if (!alive.current) return;
       const dt = lastTime.current ? (time - lastTime.current) / 1000 : 1 / 60; lastTime.current = time;
-      tick(dt);
+      // A frame that throws must not stop the game: the next one draws again.
+      try { tick(dt); } catch (error) { if (!broken.current) { broken.current = true; console.error(error); } }
       if (document.visibilityState !== 'hidden') frame.current = requestAnimationFrame(loop);
     };
     const onVisibility = () => {
@@ -565,7 +578,7 @@ function WindupRound({ onAgain }: { onAgain: () => void }) {
 
   const openingDone = useCallback(() => {
     if (G.phase !== 'openShot') return;
-    flashToast(wRef.current.chapters.straight, 2400);
+    flashToast(wRef.current.chapters[CHAPTERS[G.chapter]], 2400);
     beginWinding();
   }, [G, beginWinding, flashToast]);
 
@@ -586,7 +599,7 @@ function WindupRound({ onAgain }: { onAgain: () => void }) {
   const hearIt = `${coach.line} ${w.instruction} ${w.keys}`;
 
   return <GameShell fullBleed autoNarrate={false} worldId="windup-race" title={w.title} instruction={w.instruction} hearIt={hearIt}>
-    <section className="wr" data-adventure="windup-race" data-phase={phase} data-chapter={CHAPTERS[chapter]} data-clicks={clicks} data-line={line} data-light={light} dir={lang === 'he' ? 'rtl' : 'ltr'}>
+    <section className="wr" data-adventure="windup-race" data-phase={phase} data-chapter={CHAPTERS[chapter]} data-clicks={clicks} data-line={line} data-light={light} data-gust={gusty < 0 ? 'head' : gusty > 0 ? 'tail' : undefined} dir={lang === 'he' ? 'rtl' : 'ltr'}>
       <PlayStage id="windup-race" grade={light === 'goldenHour' ? 'warm' : 'day'} shake={shake} setPiece={setPiece}
         world={<div className="play-layer wr-world" dir="ltr" onPointerMove={onStageMove}>
           <canvas ref={canvasRef} className="play-layer wr-canvas" role="img" aria-label={w.scene}

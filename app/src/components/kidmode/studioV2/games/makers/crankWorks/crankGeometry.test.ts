@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CAM, LINKAGE, TAU, WAVE_LINK, WAVE_RODS, camAngle, camLift, pistonLift, waveLift } from './crankWorksRules';
 import {
-  BELL, BENCH, BOARD, CRATE_SLOT, GROUND, HORIZON, PART_KINDS, PUCK, ROD_LENGTH, S1, S2, S3, SHOTS, SOCKET, SOCKET_REACH, UNIT, WHEEL,
+  BELL, BENCH, BOARD, CHOCK, CRATE_SLOT, GROUND, HORIZON, PART_KINDS, POD, PUCK, ROD_LENGTH, S1, S2, S3, SHOTS, SOCKET, SOCKET_REACH, UNIT, WHEEL,
   anchorsAt, beadAt, easeView, frameView, handleAt, hitAt, jointAt, knobAt, pinAt, rodX, roomRect, shotFor, stemTop, toScreen, toWorld, wristAt,
   type Shot, type View,
 } from './crankGeometry';
@@ -136,5 +136,7 @@ describe('what a finger is on', () => {
     expect(hitAt(bloom, 0, none, { flower: true, bell: false })).toBe('bloomHit'); expect(hitAt(bloom, 0, none, { flower: false, bell: false })).toBeNull();
     expect(hitAt({ x: BELL.x, y: BELL.y + 12 }, 0, none, { flower: false, bell: true })).toBe('bellHit');
     expect(hitAt(PUCK, 0, none, { flower: false, bell: false })).toBe('puckHit');
+    expect(hitAt(POD, 0, none, { flower: false, bell: false })).toBe('podHit');
+    expect(hitAt({ x: CHOCK.x + 60, y: CHOCK.y + 60 }, 0, none, { flower: false, bell: false })).toBe('chockHit');
   });
 });

@@ -70,7 +70,7 @@ export function hintPlan(idle: number, shown: number, learned: boolean): 'wait' 
  * The picture of the frost is painted finer than this; the grid is what the
  * game knows: how much is left, and whether the eye can be seen. */
 export interface FrostGrid { cols: number; rows: number; cells: Float32Array }
-export const FROST = { cols: 28, rows: 18, /** The rest melts by itself once this little is left. */ meltAt: 0.42, /** The eye shows once its patch is this clear. */ eyeAt: 0.4 } as const;
+export const FROST = { cols: 28, rows: 18, /** The rest melts by itself once this little is left. */ meltAt: 0.5, /** The eye shows once its patch is this clear. */ eyeAt: 0.4 } as const;
 export function makeFrost(cols: number = FROST.cols, rows: number = FROST.rows): FrostGrid {
   return { cols, rows, cells: new Float32Array(cols * rows).fill(1) };
 }
@@ -221,7 +221,8 @@ export function secretStar(id: ConstellationId): Vec {
   const pts = constellation(id), [ax, ay] = pts[pts.length - 2], [bx, by] = pts[pts.length - 1];
   return [Math.max(0.04, Math.min(0.96, bx + (bx - ax) * 0.45)), Math.max(0.04, Math.min(0.96, by + (by - ay) * 0.45))];
 }
-export const SET_PIECE = { call: 1.2, answers: [2.6, 3.3, 3.9] as readonly number[], aurora: 2.2, stars: 4.6, starGap: 0.62, hold: 9.4 } as const;
+/** The night's show, in seconds: the call, the herd's answers, the aurora (it begins to unroll early; its caption comes once the herd has answered), the pictures rising one by one, and when the way out is offered. */
+export const SET_PIECE = { call: 1.2, answers: [2.6, 3.3, 3.9] as readonly number[], aurora: 2.2, auroraCue: 4.4, stars: 5.4, starGap: 0.62, hold: 10.2 } as const;
 /** How many pictures have risen into the sky at t seconds of the set-piece (a fraction while one is rising). */
 export function starsRisen(t: number, count = 5): number {
   return Math.max(0, Math.min(count, (t - SET_PIECE.stars) / SET_PIECE.starGap));

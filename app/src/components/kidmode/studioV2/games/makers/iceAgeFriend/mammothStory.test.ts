@@ -105,7 +105,7 @@ describe('frost on the glass', () => {
 describe('the RouteScope measures along the curve', () => {
   it('the line follows a finger that stays on the tusk, a little at a time', () => {
     let k = 0;
-    for (let along = 0.05; along <= 1; along += 0.05) k = traceStep(k, along, 10);
+    for (let i = 1; i <= 20; i++) k = traceStep(k, i / 20, 10);
     expect(k).toBeCloseTo(1);
   });
   it('it cannot jump to the tip, cannot go backward, and ignores a finger off the tusk', () => {
@@ -157,7 +157,7 @@ describe('the walk to the herd', () => {
   });
   it('the herd comes nearer all the way, from far off to one side to close by', () => {
     const start = herdPlace(0, 2400, -600), end = herdPlace(1, 2400, -600);
-    expect(start).toEqual({ depth: HERD_FAR, offset: 2400 }); expect(end).toEqual({ depth: HERD_NEAR, offset: -600 });
+    expect(start).toEqual({ depth: HERD_FAR, offset: 2400 }); expect(end.depth).toBeCloseTo(HERD_NEAR); expect(end.offset).toBe(-600);
     let last = start.depth;
     for (let k = 0.05; k <= 1; k += 0.05) { const at = herdPlace(k, 2400, -600); expect(at.depth).toBeLessThanOrEqual(last); last = at.depth; }
     expect(herdPlace(9, 0, 100)).toEqual(herdPlace(1, 0, 100));
@@ -215,6 +215,8 @@ describe('five pictures in the sky', () => {
     expect(SET_PIECE.call).toBeLessThan(SET_PIECE.answers[0]);
     for (let i = 1; i < SET_PIECE.answers.length; i++) expect(SET_PIECE.answers[i]).toBeGreaterThan(SET_PIECE.answers[i - 1]);
     expect(SET_PIECE.aurora).toBeLessThan(SET_PIECE.stars);
+    // The sky is named once the herd has answered, and before the first picture rises.
+    expect(SET_PIECE.auroraCue).toBeGreaterThan(SET_PIECE.answers[SET_PIECE.answers.length - 1]); expect(SET_PIECE.auroraCue).toBeLessThan(SET_PIECE.stars);
     expect(auroraAt(SET_PIECE.aurora)).toBe(0); expect(auroraAt(SET_PIECE.aurora + 4)).toBe(1);
     expect(starsRisen(SET_PIECE.stars)).toBe(0); expect(starsRisen(SET_PIECE.stars + SET_PIECE.starGap * 2.5)).toBeCloseTo(2.5);
     expect(starsRisen(99)).toBe(5); expect(starsRisen(99, 6)).toBe(6);

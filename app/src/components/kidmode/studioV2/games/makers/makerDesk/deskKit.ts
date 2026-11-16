@@ -32,12 +32,9 @@ export const DESK_KIT = {
   bench: { src: `${MADE}maker-desk-bench.webp`, src480: `${MADE}maker-desk-bench-480.webp`, width: 753, height: 537, source: 'kit v30/11-trailbench.png, DEPLOYED hero (x 737, y 33, 753 by 537), cut out with its whole feet and no floor between them (scratchpad v3/md/recut.py)' } as KitPicture,
   /** Chock, whole (the wide room and the cover): shipped. */
   chockIdle: bop('chock-idle', 440, 440), chockHappy: bop('chock-happy', 440, 440),
-  /** Chock and Aya looking over an edge, from the Studio's shared kit library (one copy for every maker). */
-  chockWatch: library('kit-chock-attentive', 506, 512), chockUnsure: library('kit-chock-uncertain', 512, 464), chockGlad: library('kit-chock-relieved', 512, 491),
+  /** Aya looking over the lid, from the Studio's shared kit library (one copy for every maker). Chock's faces are the HUD coach's own. */
   ayaPeek: library('kit-aya-inquisitive', 512, 459), ayaGlad: library('kit-aya-delighted', 512, 449),
   lamp: bop('item-lamp', 245, 300), can: bop('item-can', 278, 205),
-  flowerFolded: bop('flower-folded', 293, 440), flowerOpen: bop('flower-open', 293, 440),
-  rug: bop('rest-rug', 420, 193),
   tileYellow: bop('tile-yellow', 245, 162), tileBlue: bop('tile-blue', 245, 162), tilePink: bop('tile-pink', 245, 162),
   /** Keepsakes on the show steps for the older creation kinds. */
   cushion: bop('item-cushion', 252, 150), band: bop('item-band', 186, 146), journal: bop('item-journal', 269, 196),

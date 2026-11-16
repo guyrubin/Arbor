@@ -45,7 +45,7 @@ export const ICE_AGE_FRIEND_COPY = {
       secret: 'A secret! Small ears keep warmth in.',
     },
     dock: { through: 'Through the glass', keep: 'Keep the picture', snap: 'Take the picture', walk: 'Walk', lower: 'Lower', night: 'Good night, mammoth' },
-    captions: { call: 'Listen… it is calling its family.', answer: 'The herd answers!', aurora: 'The sky wakes up.', stars: 'Your five pictures light the sky.' },
+    captions: { call: 'Listen… it is calling its family.', answer: 'The herd answers!', aurora: 'The sky wakes up.', pictures: 'Your five pictures light the sky.' },
     album: 'Your pictures',
     friends: { bebe: 'Bebe', gobgob: 'GobGob', pep: 'Pep', chock: 'Chock', aya: 'Aya' },
     /** The crew's tool that finds each picture. */
@@ -97,7 +97,7 @@ export const ICE_AGE_FRIEND_COPY = {
       secret: 'סוד! אוזניים קטנות שומרות על החום.',
     },
     dock: { through: 'עוברים את הזכוכית', keep: 'שומרים את התמונה', snap: 'מצלמים', walk: 'צעד', lower: 'למטה', night: 'לילה טוב, ממותה' },
-    captions: { call: 'מקשיבים… היא קוראת למשפחה שלה.', answer: 'העדר עונה!', aurora: 'השמיים מתעוררים.', stars: 'חמש התמונות מאירות בשמיים.' },
+    captions: { call: 'מקשיבים… היא קוראת למשפחה שלה.', answer: 'העדר עונה!', aurora: 'השמיים מתעוררים.', pictures: 'חמש התמונות מאירות בשמיים.' },
     album: 'התמונות שלנו',
     friends: { bebe: 'בבה', gobgob: 'גובגוב', pep: 'פפ', chock: 'צ׳וק', aya: 'איה' },
     tools: { tusks: 'מודד המסלול', trunk: 'טבעת ההמתנה', coats: 'עדשת ההוכחה', herd: 'מצלמת הסיור', hump: 'בודק המבט' },
