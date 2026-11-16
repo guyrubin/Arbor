@@ -94,8 +94,8 @@ export function lightOn(course: Course, scenery: Scenery, sun: Sun, x: number, z
 
 export type RGB = readonly [number, number, number];
 export const mixTone = (a: RGB, b: RGB, t: number): RGB => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-/** A canvas colour from 0..1 channels (the modern colour function, so no literal is written here). */
-export const ink = (c: RGB, alpha = 1) => `color(srgb ${c[0].toFixed(3)} ${c[1].toFixed(3)} ${c[2].toFixed(3)} / ${alpha.toFixed(3)})`;
+/** A canvas colour from 0..1 channels, in the space-separated form every supported browser reads. */
+export const ink = (c: RGB, alpha = 1) => `rgb(${Math.round(c[0] * 255)} ${Math.round(c[1] * 255)} ${Math.round(c[2] * 255)} / ${alpha.toFixed(3)})`;
 /** Reads palette tokens from the page, once each. */
 export class Palette {
   private cache = new Map<string, RGB>();

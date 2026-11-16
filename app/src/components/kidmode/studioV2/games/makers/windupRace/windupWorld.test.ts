@@ -70,7 +70,7 @@ describe('one sun', () => {
 describe('colour and small things', () => {
   it('colours are mixed in code and written without a literal', () => {
     expect(mixTone([0, 0, 0], [1, 0.5, 0], 0.5)).toEqual([0.5, 0.25, 0]);
-    expect(ink([1, 0.5, 0], 0.25)).toBe('color(srgb 1.000 0.500 0.000 / 0.250)');
+    expect(ink([1, 0.5, 0], 0.25)).toBe('rgb(255 128 0 / 0.250)');
     expect(FLOWER_HUES[0]).toBe(0); expect(new Set(FLOWER_HUES).size).toBeGreaterThanOrEqual(4);
   });
   it('the air never holds more than its cap, and everything in it dies', () => {
