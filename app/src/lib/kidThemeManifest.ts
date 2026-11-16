@@ -143,6 +143,8 @@ const adventureScene = (id: 'canal-world' | 'story-theater' | 'sound-orbit'): Ki
  *  doors show the animal companions (Pep, Aya, Chock) or an empty place, never
  *  a child: the profile is the only child identity. */
 const STUDIO_V30 = "/visuals/studio-v2/v30/";
+/** The v30 valley and portal pictures, for kid components that compose their own scene from them. */
+export const STUDIO_V30_ROOT = STUDIO_V30;
 const studioPortal = (id: typeof STUDIO_PORTAL_IDS[number]): KidArt => ({
   src: `${STUDIO_V30}portal-${id}.webp`, src480: `${STUDIO_V30}portal-${id}-480.webp`, width: 1536,
   objectPosition: "50% 55%", altKey: null, provenanceId: `studio-v30-portal:${id}:2026-11-16`, hasHero: false,
@@ -152,7 +154,7 @@ export const STUDIO_VALLEY_TALL = { src: `${STUDIO_V30}valley-tall.webp`, src480
 /** The Bop games' toy-world art: one shared folder of authored, shipped
  *  pictures (no likeness, nothing made at runtime). A stem is the full
  *  hyphenated file name without its extension, e.g. "aya-idle". */
-const STUDIO_BOP_ROOT = "/visuals/studio-v2/bop/";
+export const STUDIO_BOP_ROOT = "/visuals/studio-v2/bop/";
 export function studioBopArt(stem: string): string { return `${STUDIO_BOP_ROOT}${stem}.webp`; }
 
 /** The makers' kit art (B-GAME-40): pictures cropped or cut out from the v30
@@ -161,7 +163,7 @@ export function studioBopArt(stem: string): string { return `${STUDIO_BOP_ROOT}$
  *  file stem, e.g. "kit-aya-front"; each has a `-480` twin. Files that show
  *  Bebe or GobGob carry `bebe`, `gobgob` or `crew` in the stem and are named
  *  in lib/childLikenessFiles.named.ts. */
-const STUDIO_MAKERS_ROOT = "/visuals/studio-v2/makers/";
+export const STUDIO_MAKERS_ROOT = "/visuals/studio-v2/makers/";
 export function studioMakerArt(stem: string): string { return `${STUDIO_MAKERS_ROOT}${stem}.webp`; }
 
 /** Host tile → the cover of the game it opens while the Next Studio switch is
