@@ -191,7 +191,7 @@ export function mixPaint(a: Paint, b: Paint, t: number): Paint {
 const mix = (a: Paint, b: Paint, t: number): Paint => ({ a, b, t });
 export interface Sky { readonly top: Paint; readonly mid: Paint; readonly low: Paint }
 const SKY_TOP: readonly (readonly [number, Paint])[] = [
-  [0.02, mix('sky', 'bluebell', 0.28)], [0.15, mix('storm', 'sky', 0.45)], [0.32, mix('water', 'sky', 0.35)],
+  [0.02, mix('sky', 'bluebell', 0.28)], [0.15, mix('storm-grey', 'sky', 0.45)], [0.32, mix('water', 'sky', 0.35)],
   [0.57, mix('sky', 'bluebell', 0.55)], [0.82, mix('steel', 'lilac', 0.35)],
 ];
 const SKY_MID: readonly (readonly [number, Paint])[] = [
@@ -237,7 +237,7 @@ export function lightAt(year: number): Light {
 export function cloudCover(year: number): number {
   return clamp01(0.25 + 0.6 * bump(year, 0.15, 0.1) - 0.15 * bump(year, 0.34, 0.12) + 0.25 * bump(year, 0.62, 0.12) + 0.5 * bump(year, 0.82, 0.14));
 }
-const CLOUD: readonly (readonly [number, Paint])[] = [[0.02, 'white'], [0.15, mix('steel-light', 'storm', 0.35)], [0.32, 'white'], [0.57, mix('white', 'butter', 0.4)], [0.82, mix('chalk', 'snow-shade', 0.45)]];
+const CLOUD: readonly (readonly [number, Paint])[] = [[0.02, 'white'], [0.15, mix('steel-light', 'storm-grey', 0.35)], [0.32, 'white'], [0.57, mix('white', 'butter', 0.4)], [0.82, mix('chalk', 'snow-shade', 0.45)]];
 export function cloudPaint(year: number): Paint { return cyclicPaint(CLOUD, year); }
 
 /* ── the ground ─────────────────────────────────────────────────────────── */

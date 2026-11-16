@@ -13,7 +13,7 @@
 .iaf-flake { inline-size: 28px; block-size: 28px; overflow: visible; }
 .iaf-flake__disc { fill: transparent; transition: fill .3s var(--studio-ease-soft); }
 .iaf-flake__shadow { fill: color-mix(in srgb, var(--mk-indigo) 30%, transparent); opacity: 0; }
-.iaf-flake__arms { fill: color-mix(in srgb, var(--mk-snow-shade) 35%, var(--mk-storm)); opacity: .62; transform-origin: center; transition: opacity .3s, fill .3s; }
+.iaf-flake__arms { fill: color-mix(in srgb, var(--mk-snow-shade) 35%, var(--mk-storm-grey)); opacity: .62; transform-origin: center; transition: opacity .3s, fill .3s; }
 .iaf-flake[data-lit=true] .iaf-flake__disc { fill: color-mix(in srgb, var(--mk-sky) 70%, var(--mk-water)); }
 .iaf-flake[data-lit=true] .iaf-flake__shadow { opacity: 1; }
 .iaf-flake[data-lit=true] .iaf-flake__arms { fill: var(--mk-white); opacity: 1; animation: iaf-flake-pop .5s var(--studio-ease-spring); }

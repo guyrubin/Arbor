@@ -116,7 +116,7 @@ export default function BottleLab() {
         if (!el) continue;
         if (!p) { el.setAttribute('visibility', 'hidden'); continue; }
         el.setAttribute('visibility', 'visible'); el.setAttribute('cx', p.x.toFixed(1)); el.setAttribute('cy', p.y.toFixed(1));
-        el.setAttribute('r', (2 + p.age * 16).toFixed(2)); el.setAttribute('opacity', Math.max(0, 0.9 - p.age * 2.6).toFixed(2));
+        el.setAttribute('r', (2 + p.age * 16).toFixed(2)); el.style.opacity = Math.max(0, 0.9 - p.age * 2.6).toFixed(2);
       }
     };
     const tick = (now: number) => {

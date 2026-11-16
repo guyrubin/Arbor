@@ -68,11 +68,11 @@ describe('the flow field', () => {
   it('flank hair falls down and back; the skirt hangs; the crown tuft stands up', () => {
     for (const v of [0, 0.5, 1]) { const a = flowAngle('flank', 0.5, v); expect(Math.sin(a)).toBeGreaterThan(0.4); expect(Math.cos(a)).toBeGreaterThan(-0.05); }
     expect(Math.abs(flowAngle('skirt', 0.5, 0.5) - down)).toBeLessThan(0.15);
-    expect(Math.sin(flowAngle('crown', 0.5, 0.5))).toBeLessThan(0);
+    expect(Math.sin(flowAngle('crownTuft', 0.5, 0.5))).toBeLessThan(0);
     expect(Math.cos(flowAngle('ridge', 0.5, 0))).toBeGreaterThan(0.6);
   });
   it('every kind gives a finite angle', () => {
-    for (const kind of ['flank', 'ridge', 'skirt', 'head', 'crown', 'ear', 'leg', 'tail', 'sheath'] as FlowKind[]) expect(Number.isFinite(flowAngle(kind, 0.3, 0.7))).toBe(true);
+    for (const kind of ['flank', 'ridge', 'skirt', 'head', 'crownTuft', 'ear', 'leg', 'tail', 'sheath'] as FlowKind[]) expect(Number.isFinite(flowAngle(kind, 0.3, 0.7))).toBe(true);
   });
 });
 

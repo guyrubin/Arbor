@@ -146,7 +146,7 @@ export function createSeasonAudio(random: () => number = Math.random): SeasonAud
     humFilter.connect(tremolo); tremolo.connect(bus.insects!);
     const cricket = context.createOscillator(); cricket.type = 'sine'; cricket.frequency.value = 4300; sources.push(cricket); nodes.push(cricket);
     const gate = keep(context.createGain()); gate.gain.value = 0.012;
-    const pulse = context.createOscillator(); pulse.type = 'square'; pulse.frequency.value = 15; sources.push(pulse); nodes.push(pulse);
+    const pulse = context.createOscillator(); pulse.type = 'sawtooth'; pulse.frequency.value = 15; sources.push(pulse); nodes.push(pulse);
     const pulseDepth = keep(context.createGain()); pulseDepth.gain.value = 0.012;
     pulse.connect(pulseDepth); pulseDepth.connect(gate.gain);
     cricket.connect(gate); gate.connect(bus.insects!);

@@ -10,7 +10,7 @@ import { COLOUR_BINS, DETAIL_ZOOM, PARTS, TIER_WIDTH, TRUNK_SAMPLES, gustAt, tru
 import { TRUNK_LENGTH, bezierAt, type Bezier, type MammothView } from './mammothShape';
 
 export type RGB = readonly [number, number, number];
-const PALETTE_KEYS = ['fur-dark', 'fur', 'fur-light', 'fur-tip', 'umber', 'rust', 'shadow', 'cream', 'paper-shade', 'sand', 'white', 'snow', 'snow-shade', 'chalk', 'sky-pale', 'storm', 'wood', 'wood-light', 'wood-dark', 'rose', 'clay', 'ink-soft'] as const;
+const PALETTE_KEYS = ['fur-dark', 'fur', 'fur-light', 'fur-tip', 'umber', 'rust', 'shadow', 'cream', 'paper-shade', 'sand', 'white', 'snow', 'snow-shade', 'chalk', 'sky-pale', 'storm-grey', 'wood', 'wood-light', 'wood-dark', 'rose', 'clay', 'ink-soft'] as const;
 export type PaletteKey = typeof PALETTE_KEYS[number];
 export type Palette = Record<PaletteKey, RGB>;
 
@@ -129,7 +129,7 @@ export function makeDynamics(count: number): Dynamics {
 
 /* ── cached static paths per view ─────────────────────────────────────── */
 
-interface Statics { shapes: Record<string, Path2D>; tuskNear: TuskPaths; tuskFar: TuskPaths; grass: { x: number; y: number; blades: { dx: number; h: number; lean: number; w: number }[] }[] }
+interface Statics { shapes: Record<string, Path2D>; tuskNear: TuskPaths; tuskFar: TuskPaths; tufts: { x: number; y: number; blades: { dx: number; h: number; lean: number; w: number }[] }[] }
 interface TuskPaths { outline: Path2D; spine: Vec[]; from: Vec; to: Vec; widths: number[] }
 const staticCache = new WeakMap<MammothView, Statics>();
 function polyPath(poly: readonly Vec[]): Path2D {
@@ -166,8 +166,8 @@ function statics(view: MammothView): Statics {
   const spots: Vec[] = [[150, 646], [910, 634], [590, 676], [-70, 664], [1060, 652], [330, 708], [780, 700]];
   let seed = 7;
   const r = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-  const grass = spots.map(([x, y]) => ({ x, y: y + (view.groundY - 615), blades: Array.from({ length: 6 + Math.floor(r() * 4) }, () => ({ dx: (r() - 0.5) * 34, h: 22 + r() * 30, lean: (r() - 0.5) * 0.7, w: 3 + r() * 2.5 })) }));
-  const result = { shapes, tuskNear: tuskPaths(view.tusks.near, 1), tuskFar: tuskPaths(view.tusks.far, view.view === 'side' ? 0.94 : 0.9), grass };
+  const tufts = spots.map(([x, y]) => ({ x, y: y + (view.groundY - 615), blades: Array.from({ length: 6 + Math.floor(r() * 4) }, () => ({ dx: (r() - 0.5) * 34, h: 22 + r() * 30, lean: (r() - 0.5) * 0.7, w: 3 + r() * 2.5 })) }));
+  const result = { shapes, tuskNear: tuskPaths(view.tusks.near, 1), tuskFar: tuskPaths(view.tusks.far, view.view === 'side' ? 0.94 : 0.9), tufts };
   staticCache.set(view, result);
   return result;
 }
@@ -230,7 +230,7 @@ export function drawFrame(input: FrameInput): FrameOutput {
   }
 
   set(IDENTITY);
-  drawGrass(ctx, st.grass, p, input.time, input.wind);
+  drawGrass(ctx, st.tufts, p, input.time, input.wind);
   drawPuffs(ctx, input.puffs, p, input.time);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawFlakes(ctx, input.flakes, width, height, p);
@@ -252,9 +252,9 @@ function drawGround(ctx: CanvasRenderingContext2D, set: (m: Affine) => void, vie
   const cx = (lo + hi) / 2 + pose.swayX * (view.mirror ? -1 : 1), rx = Math.max(40, (hi - lo) / 2 + 70);
   ctx.save(); ctx.translate(cx, g + 4); ctx.scale(1, 0.09);
   const shade = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
-  shade.addColorStop(0, paint(mix(p.storm, p.shadow, 0.4), 0.42)); shade.addColorStop(0.6, paint(p.storm, 0.18)); shade.addColorStop(1, paint(p.storm, 0));
+  shade.addColorStop(0, paint(mix(p['storm-grey'], p.shadow, 0.4), 0.42)); shade.addColorStop(0.6, paint(p['storm-grey'], 0.18)); shade.addColorStop(1, paint(p['storm-grey'], 0));
   ctx.fillStyle = shade; ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-  ctx.fillStyle = paint(mix(p.storm, p.shadow, 0.5), 0.3);
+  ctx.fillStyle = paint(mix(p['storm-grey'], p.shadow, 0.5), 0.3);
   for (const f of Object.values(view.feet)) { ctx.beginPath(); ctx.ellipse((f.x0 + f.x1) / 2, f.y + 1, (f.x1 - f.x0) / 2 + 10, 7, 0, 0, Math.PI * 2); ctx.fill(); }
 }
 
@@ -424,12 +424,12 @@ function drawTusk(ctx: CanvasRenderingContext2D, tusk: TuskPaths, p: Palette, fa
     ctx.moveTo(x + nx * w, y + ny * w); ctx.lineTo(x - nx * w, y - ny * w);
   }
   ctx.stroke();
-  if (far) { ctx.fillStyle = paint(mix(p.storm, p.shadow, 0.3), 0.3); ctx.fill(tusk.outline); }
+  if (far) { ctx.fillStyle = paint(mix(p['storm-grey'], p.shadow, 0.3), 0.3); ctx.fill(tusk.outline); }
   ctx.restore();
 }
 
 /** Tips of dry grass bend with the same wind that moves the coat. */
-function drawGrass(ctx: CanvasRenderingContext2D, tufts: Statics['grass'], p: Palette, time: number, wind: number) {
+function drawGrass(ctx: CanvasRenderingContext2D, tufts: Statics['tufts'], p: Palette, time: number, wind: number) {
   const back = paint(mix(p.wood, p.umber, 0.25)), front = paint(mix(p['wood-light'], p.sand, 0.5)), tip = paint(mix(p.sand, p.cream, 0.4));
   for (const tuft of tufts) {
     const bend = gustAt(tuft.x, time, wind) * 9;

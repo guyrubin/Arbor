@@ -13,8 +13,8 @@ export interface PaperWheelProps {
   enabled: boolean;
   /** Spread one: the wheel waits tucked in its pocket. */
   tucked: boolean;
-  /** 'storm' shows the steady band at the top; 'lanes' the three channel marks. */
-  marks: 'storm' | 'lanes';
+  /** 'steadyBand' shows the steady band at the top; 'lanes' the three channel marks. */
+  marks: 'steadyBand' | 'lanes';
   steady: boolean;
   label: string;
   valueText: string;
@@ -73,7 +73,7 @@ export function PaperWheel({ angle, enabled, tucked, marks, steady, label, value
     <div className="pb-wheel" role="slider" tabIndex={enabled ? 0 : -1} aria-label={label} aria-valuemin={-WHEEL_LIMIT} aria-valuemax={WHEEL_LIMIT} aria-valuenow={Math.round(angle)} aria-valuetext={valueText} aria-disabled={!enabled} data-pb-wheel="" data-steady={steady} onKeyDown={key}>
       <svg ref={surface} className="pb-wheel__svg" viewBox="0 0 220 168" aria-hidden="true" focusable="false" data-pb-wheel-disc="" onPointerDown={down}>
         {/* the marks printed on the page above the pocket */}
-        {marks === 'storm'
+        {marks === 'steadyBand'
           ? <path d={arc(103, -STORM_BAND, STORM_BAND)} style={{ fill: 'none', stroke: steady ? mk('sun') : fade('gold-light', 80), strokeWidth: 7, strokeLinecap: 'round' }} />
           : [-60, 0, 60].map(a => <path key={a} d={arc(103, a - 3, a + 3)} style={{ fill: 'none', stroke: fade('gold-light', 85), strokeWidth: 6, strokeLinecap: 'round' }} />)}
         <path d={`M${CX - 6} 0 L${CX + 6} 0 L${CX} 7 Z`} style={{ fill: mk('gold') }} />

@@ -64,7 +64,7 @@ export function smoothClosed(points: readonly Vec[], samples = 8): Vec[] {
  * tail end (1) of the region; `v` from its top (0) to its bottom (1). The
  * answer is an angle in radians in screen space for an animal facing LEFT:
  * 0 points to the tail, π/2 points down. */
-export type FlowKind = 'flank' | 'ridge' | 'skirt' | 'head' | 'crown' | 'ear' | 'leg' | 'tail' | 'sheath';
+export type FlowKind = 'flank' | 'ridge' | 'skirt' | 'head' | 'crownTuft' | 'ear' | 'leg' | 'tail' | 'sheath';
 export function flowAngle(kind: FlowKind, u: number, v: number): number {
   const down = Math.PI / 2;
   switch (kind) {
@@ -77,7 +77,7 @@ export function flowAngle(kind: FlowKind, u: number, v: number): number {
     // Short and dense, combed back and down off the face.
     case 'head': return 0.55 + 0.5 * v - 0.2 * (1 - u) * (1 - v);
     // The tuft on top of the domed crown stands up and back.
-    case 'crown': return -0.9 + 0.5 * u;
+    case 'crownTuft': return -0.9 + 0.5 * u;
     case 'ear': return down - 0.35;
     case 'leg': return down + 0.06 * (u - 0.5);
     case 'tail': return down - 0.25;
@@ -309,7 +309,7 @@ export function clampZoom(zoom: number): number {
   return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Number.isFinite(zoom) ? zoom : ZOOM_MIN));
 }
 /** The camera's centre kept so the view never leaves the animal by more than
- * `margin` world units. `half` is the half size of the view at zoom 1 in
+ * margin world units. `half` is the half size of the view at zoom 1 in
  * world units. When the view is wider than the animal and its margin, the
  * animal stays centred on that axis. */
 export function clampCamera(view: { x: number; y: number }, zoom: number, bounds: Bounds, half: { w: number; h: number }, margin: number): { x: number; y: number } {

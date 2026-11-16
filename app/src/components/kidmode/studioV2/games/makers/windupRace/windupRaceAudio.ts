@@ -16,7 +16,7 @@ export interface RacerSound {
   thump(): void;
   /** The tin bell at the flag. */
   bell(): void;
-  /** The gear whirr while the car runs: `speed` and `spring` are 0..1. */
+  /** The gear whirr while the car runs: speed and spring are 0..1. */
   whirr(speed: number, spring: number): void;
   quiet(): void;
   dispose(): void;
@@ -124,7 +124,7 @@ export function createRacerSound(): RacerSound {
         const ac = context(); if (!ac) return;
         if (!motor) {
           const osc = ac.createOscillator(), buzz = ac.createOscillator(), filter = ac.createBiquadFilter(), gain = ac.createGain();
-          osc.type = 'sawtooth'; buzz.type = 'square';
+          osc.type = 'sawtooth'; buzz.type = 'sawtooth';
           filter.type = 'lowpass'; filter.Q.value = 3;
           gain.gain.value = 0.0001;
           osc.connect(filter); buzz.connect(filter); filter.connect(gain); gain.connect(ac.destination);

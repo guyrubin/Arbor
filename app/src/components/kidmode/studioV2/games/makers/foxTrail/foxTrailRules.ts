@@ -37,9 +37,9 @@ export const WAKE_T = 4.4;
 export const MIRROR_H = 150;
 
 export type WorldPhase = 'dusk' | 'waking' | 'night';
-export type SeedId = 'grass' | 'stone' | 'hollow';
+export type SeedId = 'tallGrass' | 'stone' | 'hollow';
 export type SeedStatus = 'hidden' | 'popping' | 'resting' | 'carried';
-export const SEED_IDS: readonly SeedId[] = ['grass', 'stone', 'hollow'];
+export const SEED_IDS: readonly SeedId[] = ['tallGrass', 'stone', 'hollow'];
 export type FoxEvent = 'hop' | 'jump' | 'land' | 'splash' | 'roll' | 'seed' | 'shake' | 'hum' | 'wake' | 'night' | 'blocked';
 
 /* ── the trail ───────────────────────────────────────────────────────────── */
@@ -52,7 +52,7 @@ const GROUND: readonly (readonly [number, number])[] = [
 export const ZONES = [
   { id: 'meadow', from: 0, to: 1100 },
   { id: 'birches', from: 1100, to: 2300 },
-  { id: 'stream', from: 2300, to: 2980 },
+  { id: 'brook', from: 2300, to: 2980 },
   { id: 'oaks', from: 2980, to: 4600 },
   { id: 'clearing', from: 4600, to: WORLD_W },
 ] as const;
@@ -65,7 +65,7 @@ export const TALL_GRASS = { from: 600, to: 960 } as const;
 export const TUNNEL = { from: 3700, to: 3960 } as const;
 export const STONE_X = 5650;
 export const SEEDS: Readonly<Record<SeedId, { x: number; rest: number }>> = {
-  grass: { x: 790, rest: 790 },
+  tallGrass: { x: 790, rest: 790 },
   stone: { x: 2630, rest: 2630 },
   hollow: { x: 3830, rest: 3830 },
 };
@@ -155,8 +155,8 @@ export function initialFoxState(): FoxState {
   return {
     x: START_X, y: surfaceAt(START_X), vx: 0, vy: 0, onGround: true, facing: 1,
     roll: 0, rollDir: 1, rollCool: 0, dist: 0, still: 0, target: null,
-    seeds: { grass: 'hidden', stone: 'resting', hollow: 'resting' },
-    seedX: { grass: SEEDS.grass.x, stone: SEEDS.stone.x, hollow: SEEDS.hollow.x },
+    seeds: { tallGrass: 'hidden', stone: 'resting', hollow: 'resting' },
+    seedX: { tallGrass: SEEDS.tallGrass.x, stone: SEEDS.stone.x, hollow: SEEDS.hollow.x },
     pop: 0, inRange: false, blocked: false, phase: 'dusk', wake: 0, t: 0, events: [],
   };
 }
@@ -269,12 +269,12 @@ export function step(prev: FoxState, input: FoxInput, dt: number = STEP_DT): Fox
   s.still = s.onGround && Math.abs(s.vx) < 4 && s.roll <= 0 ? s.still + dt : 0;
 
   // Lantern-seeds.
-  if (s.seeds.grass === 'hidden' && s.roll > 0 && Math.abs(s.x - SEEDS.grass.x) < 120) {
+  if (s.seeds.tallGrass === 'hidden' && s.roll > 0 && Math.abs(s.x - SEEDS.tallGrass.x) < 120) {
     // A roll shakes the tall grass: the pod pops out and lands where the fox is heading.
     // It lands just ahead of where the tumble will end, so the fox runs straight into it.
-    s.seeds.grass = 'popping'; s.pop = 0; s.seedX.grass = clamp(s.x + s.rollDir * (s.roll * ROLL_SPEED * 0.8 + 60), TALL_GRASS.from - 150, TALL_GRASS.to + 200); ev.push('shake');
+    s.seeds.tallGrass = 'popping'; s.pop = 0; s.seedX.tallGrass = clamp(s.x + s.rollDir * (s.roll * ROLL_SPEED * 0.8 + 60), TALL_GRASS.from - 150, TALL_GRASS.to + 200); ev.push('shake');
   }
-  if (s.seeds.grass === 'popping') { s.pop += dt; if (s.pop >= 0.7) s.seeds.grass = 'resting'; }
+  if (s.seeds.tallGrass === 'popping') { s.pop += dt; if (s.pop >= 0.7) s.seeds.tallGrass = 'resting'; }
   for (const id of SEED_IDS) {
     if (s.seeds[id] !== 'resting') continue;
     const sx = s.seedX[id];

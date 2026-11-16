@@ -89,7 +89,7 @@ const DEFS: RegionDef[] = [
   { id: 'ridge', part: 'body', kind: 'ridge', points: RIDGE, share: 0.07, guard: 0.85, under: [10, 16], long: [40, 64], depth: 0, fringe: 0.12 },
   { id: 'skirt', part: 'body', kind: 'skirt', points: SKIRT, share: 0.13, guard: 0.9, under: [14, 22], long: [54, 92], depth: 0.04, fringe: 0.08 },
   { id: 'head', part: 'head', kind: 'head', points: HEAD, share: 0.17, guard: 0.45, under: [6, 10], long: [12, 22], depth: 0, fringe: 0.26 },
-  { id: 'crown', part: 'head', kind: 'crown', points: CROWN, share: 0.016, guard: 0.95, under: [8, 12], long: [20, 34], depth: 0, fringe: 0.25, samples: 5 },
+  { id: 'crownTuft', part: 'head', kind: 'crownTuft', points: CROWN, share: 0.016, guard: 0.95, under: [8, 12], long: [20, 34], depth: 0, fringe: 0.25, samples: 5 },
   { id: 'ear', part: 'ear', kind: 'ear', points: EAR, share: 0.014, guard: 0.5, under: [5, 8], long: [10, 18], depth: 0, fringe: 0.3, samples: 5 },
   { id: 'trunk', part: 'trunk', kind: 'head', points: [], share: 0.07, guard: 0.3, under: [5, 9], long: [9, 15], depth: 0, fringe: 0 },
   { id: 'sheath', part: 'sheath', kind: 'sheath', points: SHEATH, share: 0.01, guard: 0.6, under: [5, 8], long: [10, 16], depth: 0, fringe: 0.35, samples: 5 },

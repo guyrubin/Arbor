@@ -90,7 +90,7 @@ function Card({ layer, progress, offset, mirror }: { layer: Layer; progress: num
 /** One half of one spread, as it lies on a page or a leaf face. */
 export function SpreadHalf({ spread, side, progress, live, uid }: { spread: SpreadIndex; side: Side; progress: number; live: Live; uid: string }) {
   const id = `${uid}-${spread}-${side}`;
-  const layers = (spread === 0 ? streamLayers : spread === 1 ? riverLayers : spread === 2 ? stormLayers : harbourLayers)(live, side);
+  const layers = (spread === 0 ? streamLayers : spread === 1 ? riverLayers : spread === 2 ? stormLayers : harbourLayers)(live);
   const offset = side === 'left' ? 0 : PAGE_W;
   const mine = layers.filter(layer => layer.kind === 'vfold-l' ? side === 'left' : layer.kind === 'vfold-r' ? side === 'right' : (layer.x < PAGE_W) === (side === 'left')).sort((a, b) => a.y - b.y);
   const Print = PRINTS[spread];
@@ -199,7 +199,7 @@ function streamLayers(live: Live): Layer[] {
     { key: 'willow-r', x: PAGE_W, y: 76, w: 100, h: 160, kind: 'vfold-r', art: <WillowArt side="right" /> },
     { key: 'bridge', x: 112, y: 104, w: 128, h: 66, art: <BridgeArt /> },
     { key: 'tree', x: 444, y: 100, w: 96, h: 150, art: <AppleTreeArt /> },
-    { key: 'fence', x: 352, y: 152, w: 124, h: 36, art: <FenceArt /> },
+    { key: 'gardenFence', x: 352, y: 152, w: 124, h: 36, art: <FenceArt /> },
     { key: 'duck', x: 424, y: 222, w: 40, h: 30, cast: 0.4, lean: still ? 0 : Math.sin(t * 1.6) * 5, art: <DuckArt /> },
     { key: 'reeds-r', x: 304, y: 250, w: 58, h: 74, art: <ReedArt w={58} h={74} blades={7} /> },
     { key: 'reeds-l', x: 34, y: 262, w: 52, h: 66, art: <ReedArt w={52} h={66} blades={6} tone="moss" /> },
@@ -279,7 +279,7 @@ function riverLayers(live: Live): Layer[] {
     if (x < -40 || x > SPREAD_W + 40) continue;
     const p = edgeProgress(x), y = LANE_Y[item.lane];
     if (p <= 0) continue;
-    if (item.kind === 'gate') {
+    if (item.kind === 'reedGate') {
       const passedAt = live.arches[item.id], waiting = live.waiting === item.id;
       const since = passedAt === undefined ? -1 : live.time - passedAt;
       const sway = since < 0 || live.reduced ? 0 : Math.sin(since * 9) * 7 * Math.exp(-since * 2.4);
@@ -304,12 +304,12 @@ function riverLayers(live: Live): Layer[] {
 const StormPrint = memo(function StormPrint({ side, id }: { side: Side; id: string }) {
   return <svg viewBox={halfBox(side, PAGE_W, PAGE_D)} width={PAGE_W} height={PAGE_D} aria-hidden="true" focusable="false">
     <defs>
-      <Grad id={`${id}-sky`} stops={[[0, mk('slate')], [1, mk('storm')]]} />
+      <Grad id={`${id}-sky`} stops={[[0, mk('slate')], [1, mk('storm-grey')]]} />
       <Grad id={`${id}-sea`} stops={[[0, mk('indigo')], [0.5, mix('indigo', 60, 'teal-deep')], [1, mk('teal-deep')]]} />
     </defs>
     <rect width={SPREAD_W} height={PAGE_D} style={{ fill: mk('paper') }} />
     <rect width={SPREAD_W} height="100" fill={`url(#${id}-sky)`} />
-    <Cut d="M0 92 C 120 86 240 96 360 88 C 420 84 460 90 500 88 L500 290 L0 290 Z" fill={`url(#${id}-sea)`} edge={mix('storm', 50, 'chalk')} />
+    <Cut d="M0 92 C 120 86 240 96 360 88 C 420 84 460 90 500 88 L500 290 L0 290 Z" fill={`url(#${id}-sea)`} edge={mix('storm-grey', 50, 'chalk')} />
     {[[40, 130], [150, 118], [260, 136], [370, 124], [460, 140], [90, 176], [330, 170], [200, 250], [420, 236], [40, 236]].map(([x, y], i) => <path key={i} d={`M${x} ${y} q 10 -7 20 0 q 10 7 20 0`} style={{ fill: 'none', stroke: fade('chalk', 30), strokeWidth: 2, strokeLinecap: 'round' }} />)}
   </svg>;
 });
@@ -333,7 +333,7 @@ function BeamArt({ sweep, strength }: { sweep: number; strength: number }) {
 }
 function CloudArt({ w, h, lift, rain, calm, seed }: { w: number; h: number; lift: number; rain: number; calm: number; seed: number }) {
   const stalk = h - 60, top = (1 - lift) * stalk;
-  const dark = mix('slate', 100 - 50 * calm, 'chalk'), mid = mix('storm', 100 - 40 * calm, 'snow'), light = mix('steel', 100 - 40 * calm, 'white');
+  const dark = mix('slate', 100 - 50 * calm, 'chalk'), mid = mix('storm-grey', 100 - 40 * calm, 'snow'), light = mix('steel', 100 - 40 * calm, 'white');
   const strips = Math.round(9 * rain);
   return svgBox(w, h, <g>
     <rect x={w / 2 - 3} y={top + 34} width="6" height={h - top - 34} rx="2" style={{ fill: mix('paper-shade', 80, 'steel') }} />
@@ -370,7 +370,7 @@ function stormLayers(live: Live): Layer[] {
   const lift = 1 - 0.62 * calm, rain = Math.max(0, 1 - calm * 1.15);
   const sweep = still ? -4 : Math.sin(t * 0.7) * 10 - 4;
   const waves: [string, number, number, string, string, number][] = [
-    ['w1', 150, 44, mix('slate', 100 - 45 * calm, 'water'), mix('storm', 70, 'chalk'), 0],
+    ['w1', 150, 44, mix('slate', 100 - 45 * calm, 'water'), mix('storm-grey', 70, 'chalk'), 0],
     ['w2', 206, 40, mix('indigo', 100 - 40 * calm, 'sea'), mix('steel-light', 80, 'white'), 2.1],
     ['w3', 280, 34, mix('teal-deep', 100 - 35 * calm, 'sea'), mk('white'), 4.2],
   ];

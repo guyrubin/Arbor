@@ -92,13 +92,13 @@ describe('the roll and the hollow oak', () => {
 
 describe('lantern-seeds', () => {
   it('the seed in tall grass only comes out for a roll; then it can be picked up', () => {
-    let s = runTo(at(SEEDS.grass.x - 200), SEEDS.grass.x + 220, 5);
-    expect(s.seeds.grass).toBe('hidden');
-    s = run(at(SEEDS.grass.x - 90), { dir: 0, roll: true }, 0.4);
-    expect(['popping', 'resting', 'carried']).toContain(s.seeds.grass);
+    let s = runTo(at(SEEDS.tallGrass.x - 200), SEEDS.tallGrass.x + 220, 5);
+    expect(s.seeds.tallGrass).toBe('hidden');
+    s = run(at(SEEDS.tallGrass.x - 90), { dir: 0, roll: true }, 0.4);
+    expect(['popping', 'resting', 'carried']).toContain(s.seeds.tallGrass);
     s = run(s, { dir: 0 }, 0.8);
-    s = runTo(s, s.seedX.grass + 10, 3);
-    expect(s.seeds.grass).toBe('carried');
+    s = runTo(s, s.seedX.tallGrass + 10, 3);
+    expect(s.seeds.tallGrass).toBe('carried');
   });
   it('the seed on the stepping stone is reached by running across the stream', () => {
     const s = runTo(at(STREAM.from - 120), STONES[2].x + 60, 6);
@@ -108,12 +108,12 @@ describe('lantern-seeds', () => {
 });
 
 describe('the mirror stone', () => {
-  const ready = (x: number) => at(x, { seeds: { grass: 'carried', stone: 'carried', hollow: 'carried' } });
+  const ready = (x: number) => at(x, { seeds: { tallGrass: 'carried', stone: 'carried', hollow: 'carried' } });
   it('activation needs all three seeds and the fox in range', () => {
     expect(canOffer(ready(STONE_X - 40))).toBe(true);
     expect(canOffer(ready(STONE_X - OFFER_RANGE - 60))).toBe(false);
-    expect(canOffer(at(STONE_X - 40, { seeds: { grass: 'carried', stone: 'carried', hollow: 'resting' } }))).toBe(false);
-    const few = step(at(STONE_X - 40, { seeds: { grass: 'carried', stone: 'resting', hollow: 'resting' } }), { dir: 0, offer: true });
+    expect(canOffer(at(STONE_X - 40, { seeds: { tallGrass: 'carried', stone: 'carried', hollow: 'resting' } }))).toBe(false);
+    const few = step(at(STONE_X - 40, { seeds: { tallGrass: 'carried', stone: 'resting', hollow: 'resting' } }), { dir: 0, offer: true });
     expect(few.phase).toBe('dusk');
   });
   it('with fewer seeds the stone hums once as the fox arrives (no words, no failure)', () => {
@@ -135,8 +135,8 @@ describe('the mirror stone', () => {
   });
   it('the whole trail can be played from the start with the real inputs', () => {
     let s = initialFoxState();
-    s = runTo(s, SEEDS.grass.x - 100); s = run(s, { dir: 1, roll: true }, 0.7); s = run(s, { dir: 0 }, 0.6);
-    s = runTo(s, s.seedX.grass + 5); expect(s.seeds.grass).toBe('carried');
+    s = runTo(s, SEEDS.tallGrass.x - 100); s = run(s, { dir: 1, roll: true }, 0.7); s = run(s, { dir: 0 }, 0.6);
+    s = runTo(s, s.seedX.tallGrass + 5); expect(s.seeds.tallGrass).toBe('carried');
     s = runTo(s, TUNNEL.from - 20, 30); expect(s.seeds.stone).toBe('carried'); expect(s.x).toBeLessThan(TUNNEL.from);
     s = run(s, { dir: 1, roll: true }, 1.4); expect(allCarried(s)).toBe(true);
     s = runTo(s, STONE_X - 30, 30); s = run(s, { dir: 0 }, 0.5);
@@ -144,14 +144,14 @@ describe('the mirror stone', () => {
     s = run(s, { dir: 0, offer: true }, WAKE_T + 0.2); expect(s.phase).toBe('night');
   });
   it('replay state equals the initial state', () => {
-    const played = run(at(STONE_X - 30, { seeds: { grass: 'carried', stone: 'carried', hollow: 'carried' } }), { dir: 0, offer: true }, 6);
+    const played = run(at(STONE_X - 30, { seeds: { tallGrass: 'carried', stone: 'carried', hollow: 'carried' } }), { dir: 0, offer: true }, 6);
     expect(resetFoxState(played)).toEqual(initialFoxState());
     expect(initialFoxState().phase).toBe('dusk');
-    expect(initialFoxState().seeds).toEqual({ grass: 'hidden', stone: 'resting', hollow: 'resting' });
+    expect(initialFoxState().seeds).toEqual({ tallGrass: 'hidden', stone: 'resting', hollow: 'resting' });
   });
 });
 
-describe('grass', () => {
+describe('tallGrass', () => {
   const fox = { x: 1000, vx: RUN_MAX, lift: 0, rolling: false };
   it('bends away from the fox, more when close and fast, not at all far away or when it leaps clear', () => {
     expect(bladeBend(1030, fox)).toBeGreaterThan(0);

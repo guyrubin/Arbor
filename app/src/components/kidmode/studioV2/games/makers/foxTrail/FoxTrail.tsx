@@ -158,11 +158,11 @@ function FoxTrailPlay({ w, onHint, onDone }: { w: Words; onHint: (text: string) 
     const handleEvents = (s: FoxState) => {
       for (const ev of s.events) {
         if (ev === 'seed') {
-          const id = SEED_IDS.find(k => s.seeds[k] === 'carried' && state.current.seeds[k] !== 'carried') ?? 'grass';
+          const id = SEED_IDS.find(k => s.seeds[k] === 'carried' && state.current.seeds[k] !== 'carried') ?? 'tallGrass';
           fox.chime(carriedCount(s) - 1);
           burstMotes(grass, s.seedX[id], WORLD_H - surfaceAt(s.seedX[id]) - 18, 1, 16);
           ui.current.seedAt = s.t; void selectionHaptic();
-        } else if (ev === 'shake') { fox.shake(); burstMotes(grass, SEEDS.grass.x, WORLD_H - surfaceAt(SEEDS.grass.x) - 40, 0, 10); }
+        } else if (ev === 'shake') { fox.shake(); burstMotes(grass, SEEDS.tallGrass.x, WORLD_H - surfaceAt(SEEDS.tallGrass.x) - 40, 0, 10); }
         else if (ev === 'hum') { fox.hum(); ui.current.hum = s.t; setPulse(p => p + 1); }
         else if (ev === 'blocked') ui.current.blockedAt = s.t;
         else if (ev === 'wake') { fox.wake(); void selectionHaptic(); }
@@ -174,13 +174,13 @@ function FoxTrailPlay({ w, onHint, onDone }: { w: Words; onHint: (text: string) 
     };
 
     const syncUi = (s: FoxState) => {
-      if (s.seeds.grass !== seedsRef.grass || s.seeds.stone !== seedsRef.stone || s.seeds.hollow !== seedsRef.hollow) { seedsRef = { ...s.seeds }; setSeeds(seedsRef); }
+      if (s.seeds.tallGrass !== seedsRef.tallGrass || s.seeds.stone !== seedsRef.stone || s.seeds.hollow !== seedsRef.hollow) { seedsRef = { ...s.seeds }; setSeeds(seedsRef); }
       if (s.phase !== anim.lastPhase) { anim.lastPhase = s.phase; setPhase(s.phase); if (s.phase === 'night') anim.doneAt = s.t + 1.2; }
       if (anim.doneAt > 0 && s.t >= anim.doneAt) { anim.doneAt = -1; setDoneReady(true); }
       const offer = canOffer(s); if (offer !== anim.lastOffer) { anim.lastOffer = offer; setOfferable(offer); }
       const nearNow = nearStone(s) && s.phase === 'dusk'; if (nearNow !== anim.lastNear) { anim.lastNear = nearNow; setNear(nearNow); }
       const blocked = s.t - ui.current.blockedAt < 4.5;
-      const grassNear = s.seeds.grass === 'hidden' && Math.abs(s.x - SEEDS.grass.x) < 280;
+      const grassNear = s.seeds.tallGrass === 'hidden' && Math.abs(s.x - SEEDS.tallGrass.x) < 280;
       const suggest = s.phase === 'dusk' && (blocked || grassNear);
       if (suggest !== anim.lastSuggest) { anim.lastSuggest = suggest; setSuggestRoll(suggest); }
       let key: HintKey = '';
@@ -256,17 +256,17 @@ function FoxTrailPlay({ w, onHint, onDone }: { w: Words; onHint: (text: string) 
         earFlick: anim.flick, earSide: anim.earSide, blink: anim.blink, squash: anim.squash, tailBase: anim.tailA, tailTip: anim.tailB, reduced: rm,
       });
       applyFoxPose(parts, pose);
-      swooshRef.current?.setAttribute('opacity', (rm ? 0 : anim.tuck * clamp(Math.abs(s.vx) / 400, 0, 1) * 0.85).toFixed(2));
+      if (swooshRef.current) swooshRef.current.style.opacity = (rm ? 0 : anim.tuck * clamp(Math.abs(s.vx) / 400, 0, 1) * 0.85).toFixed(2);
       const fy = WORLD_H - s.y;
       foxRef.current?.setAttribute('transform', `translate(${s.x.toFixed(1)} ${fy.toFixed(1)}) scale(${(anim.facing * FOX_SCALE).toFixed(3)} ${FOX_SCALE})`);
       const ground = surfaceAt(s.x), lift = clamp((s.y - ground) / 160, 0, 1);
       shadowRef.current?.setAttribute('transform', `translate(${s.x.toFixed(1)} ${(WORLD_H - ground + 2).toFixed(1)}) scale(${(1 - lift * 0.6).toFixed(3)} 1)`);
-      shadowRef.current?.setAttribute('opacity', (0.42 * (1 - lift * 0.7)).toFixed(2));
+      if (shadowRef.current) shadowRef.current.style.opacity = (0.42 * (1 - lift * 0.7)).toFixed(2);
       // the grass seed shaken loose: a little arc out of the tall grass
       if (popRef.current) {
-        const p = s.seeds.grass === 'popping' ? clamp(s.pop / 0.7, 0, 1) : s.seeds.grass === 'hidden' ? 0 : 1;
-        const px = SEEDS.grass.x + (s.seedX.grass - SEEDS.grass.x) * p;
-        const py = WORLD_H - surfaceAt(px) - Math.sin(Math.PI * p) * 95 - (s.seeds.grass === 'hidden' ? 4 : 0);
+        const p = s.seeds.tallGrass === 'popping' ? clamp(s.pop / 0.7, 0, 1) : s.seeds.tallGrass === 'hidden' ? 0 : 1;
+        const px = SEEDS.tallGrass.x + (s.seedX.tallGrass - SEEDS.tallGrass.x) * p;
+        const py = WORLD_H - surfaceAt(px) - Math.sin(Math.PI * p) * 95 - (s.seeds.tallGrass === 'hidden' ? 4 : 0);
         popRef.current.setAttribute('transform', `translate(${px.toFixed(1)} ${py.toFixed(1)})`);
       }
 
@@ -393,9 +393,9 @@ function FoxTrailPlay({ w, onHint, onDone }: { w: Words; onHint: (text: string) 
       <div className={`ft-tone ${toneNight} ft-move ft-objects`} ref={reg(1)} style={{ '--lw': WORLD_W } as CSSProperties} aria-hidden="true">
         <svg className="ft-layer-art" viewBox={`0 0 ${WORLD_W} ${WORLD_H}`} preserveAspectRatio="none" focusable="false">
           <MirrorStone awake={awake} near={near} />
-          {SEED_IDS.filter(id => id !== 'grass').map(id => seeds[id] !== 'carried' && <g key={id} transform={`translate(${SEEDS[id].x} ${WORLD_H - surfaceAt(SEEDS[id].x)})`}><g className="ft-seed"><LanternSeed /></g></g>)}
-          <g ref={popRef} transform={`translate(${SEEDS.grass.x} ${WORLD_H - surfaceAt(SEEDS.grass.x)})`}>
-            {seeds.grass !== 'carried' && <g className="ft-seed" data-hidden={seeds.grass === 'hidden'}><LanternSeed hidden={seeds.grass === 'hidden'} /></g>}
+          {SEED_IDS.filter(id => id !== 'tallGrass').map(id => seeds[id] !== 'carried' && <g key={id} transform={`translate(${SEEDS[id].x} ${WORLD_H - surfaceAt(SEEDS[id].x)})`}><g className="ft-seed"><LanternSeed /></g></g>)}
+          <g ref={popRef} transform={`translate(${SEEDS.tallGrass.x} ${WORLD_H - surfaceAt(SEEDS.tallGrass.x)})`}>
+            {seeds.tallGrass !== 'carried' && <g className="ft-seed" data-hidden={seeds.tallGrass === 'hidden'}><LanternSeed hidden={seeds.tallGrass === 'hidden'} /></g>}
           </g>
           <ellipse ref={shadowRef} rx="48" ry="7" className="ft-fox-shadow" />
           <g ref={foxRef} className="ft-fox" transform={`translate(${initialFoxState().x} ${WORLD_H - initialFoxState().y}) scale(${FOX_SCALE})`}>

@@ -1,7 +1,7 @@
 import { kidAudioAllowed, kidAudioContext, onKidHush } from '../../../../audio/kidAudio';
 
 export interface CrankSound {
-  /** A soft mechanical tick at top dead centre; `pace` 0..1 lifts the pitch. */
+  /** A soft mechanical tick at top dead centre; pace (0..1) lifts the pitch. */
   tick(pace: number): boolean;
   /** The toy's little brass bell, struck once by the bird's beak. */
   bell(): boolean;

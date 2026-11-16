@@ -48,12 +48,12 @@ export function SteppeBackdrop({ svgRef, layerRef }: { svgRef: Ref<SVGSVGElement
         <stop offset="1" style={{ stopColor: 'color-mix(in srgb, var(--mk-sun) 0%, transparent)' }} />
       </radialGradient>
       <linearGradient id={`${id}rangeFill`} x1="0" y1="300" x2="0" y2="540" gradientUnits="userSpaceOnUse">
-        <stop offset="0" style={{ stopColor: 'color-mix(in srgb, var(--mk-snow-shade) 58%, var(--mk-storm))' }} />
+        <stop offset="0" style={{ stopColor: 'color-mix(in srgb, var(--mk-snow-shade) 58%, var(--mk-storm-grey))' }} />
         <stop offset="1" style={{ stopColor: 'color-mix(in srgb, var(--mk-sky-pale) 80%, var(--mk-snow-shade))' }} />
       </linearGradient>
       <linearGradient id={`${id}mid`} x1="0" y1="460" x2="0" y2="620" gradientUnits="userSpaceOnUse">
         <stop offset="0" style={{ stopColor: 'var(--mk-snow)' }} />
-        <stop offset="1" style={{ stopColor: 'color-mix(in srgb, var(--mk-snow-shade) 85%, var(--mk-storm))' }} />
+        <stop offset="1" style={{ stopColor: 'color-mix(in srgb, var(--mk-snow-shade) 85%, var(--mk-storm-grey))' }} />
       </linearGradient>
       <linearGradient id={`${id}near`} x1="0" y1="540" x2="0" y2="660" gradientUnits="userSpaceOnUse">
         <stop offset="0" style={{ stopColor: 'var(--mk-white)' }} />
@@ -65,17 +65,17 @@ export function SteppeBackdrop({ svgRef, layerRef }: { svgRef: Ref<SVGSVGElement
       <circle cx="40" cy="150" r="190" fill={`url(#${id}sun)`} />
     </g>
     <g ref={layerRef(0.14)}>
-      <path d={RANGE_PATH} transform="translate(0 7)" style={{ fill: 'var(--mk-storm)', opacity: 0.16 }} />
+      <path d={RANGE_PATH} transform="translate(0 7)" style={{ fill: 'var(--mk-storm-grey)', opacity: 0.16 }} />
       <path d={RANGE_PATH} fill={`url(#${id}rangeFill)`} />
       <path d={CAPS} style={{ fill: 'color-mix(in srgb, var(--mk-white) 85%, var(--mk-sky-pale))', opacity: 0.9 }} />
     </g>
     <g ref={layerRef(0.36)}>
-      <path d={MID} transform="translate(0 8)" style={{ fill: 'var(--mk-storm)', opacity: 0.18 }} />
+      <path d={MID} transform="translate(0 8)" style={{ fill: 'var(--mk-storm-grey)', opacity: 0.18 }} />
       <path d={MID} fill={`url(#${id}mid)`} />
-      {HERD.map((h, i) => <path key={i} d={HERD_ONE} transform={`translate(${h.x} ${h.y}) scale(${h.flip ? -h.k : h.k} ${h.k})`} style={{ fill: 'color-mix(in srgb, var(--mk-storm) 70%, var(--mk-snow-shade))' }} />)}
+      {HERD.map((h, i) => <path key={i} d={HERD_ONE} transform={`translate(${h.x} ${h.y}) scale(${h.flip ? -h.k : h.k} ${h.k})`} style={{ fill: 'color-mix(in srgb, var(--mk-storm-grey) 70%, var(--mk-snow-shade))' }} />)}
     </g>
     <g ref={layerRef(0.7)}>
-      <path d={NEAR} transform="translate(0 9)" style={{ fill: 'var(--mk-storm)', opacity: 0.2 }} />
+      <path d={NEAR} transform="translate(0 9)" style={{ fill: 'var(--mk-storm-grey)', opacity: 0.2 }} />
       <path d={NEAR} fill={`url(#${id}near)`} />
     </g>
   </svg>;

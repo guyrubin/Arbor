@@ -212,8 +212,8 @@ const steps = (dt: number) => Math.min(0.1, Math.max(0, finite(dt)));
 
 /* ── spread 1: the stream ─────────────────────────────────────────────────── */
 /** Where the boat waits on the bank and where it floats once launched (spread x, page y). */
-export const BOAT_BANK = { x: 150, y: 272 } as const;
-export const BOAT_STREAM = { x: 206, y: 233 } as const;
+export const BOAT_BANK: Readonly<{ x: number; y: number }> = { x: 150, y: 272 };
+export const BOAT_STREAM: Readonly<{ x: number; y: number }> = { x: 206, y: 233 };
 /** A drag of the boat at least this far towards the water launches it; a
  * shorter one lets it drift back to the bank. A tap launches it too. */
 export const LAUNCH_DRAG = 26;
@@ -222,7 +222,7 @@ export function launchFromDrag(dx: number, dy: number): boolean {
 }
 
 /* ── spread 2: the wheel and the river ────────────────────────────────────── */
-export type RiverKind = 'gate' | 'rock' | 'pad';
+export type RiverKind = 'reedGate' | 'rock' | 'pad';
 export interface RiverItem { id: string; at: number; lane: Lane; kind: RiverKind }
 /** Where the boat sits on the spread (x); the river flows past it. */
 export const RIVER_BOAT_X = 150;
@@ -234,16 +234,16 @@ export const GATE_HOLD = 34;
  * nudged the right way; a lily pad only floats by. */
 export const RIVER_COURSE: readonly RiverItem[] = [
   { id: 'pad-a', at: 180, lane: 0, kind: 'pad' },
-  { id: 'gate-1', at: 300, lane: 2, kind: 'gate' },
+  { id: 'gate-1', at: 300, lane: 2, kind: 'reedGate' },
   { id: 'pad-b', at: 470, lane: 1, kind: 'pad' },
   { id: 'rock-1', at: 590, lane: 2, kind: 'rock' },
-  { id: 'gate-2', at: 720, lane: 0, kind: 'gate' },
+  { id: 'gate-2', at: 720, lane: 0, kind: 'reedGate' },
   { id: 'pad-c', at: 850, lane: 2, kind: 'pad' },
   { id: 'rock-2', at: 970, lane: 0, kind: 'rock' },
-  { id: 'gate-3', at: 1100, lane: 1, kind: 'gate' },
+  { id: 'gate-3', at: 1100, lane: 1, kind: 'reedGate' },
   { id: 'pad-d', at: 1200, lane: 0, kind: 'pad' },
 ];
-export const RIVER_GATES = RIVER_COURSE.filter(item => item.kind === 'gate');
+export const RIVER_GATES = RIVER_COURSE.filter(item => item.kind === 'reedGate');
 export const RIVER_END = 1240;
 export interface RiverState {
   /** How far the river has flowed past the boat. */
@@ -258,7 +258,7 @@ export interface RiverState {
   /** How many times a rock has nudged the boat (a key for the soft spin; never shown). */
   nudges: number;
 }
-export type RiverEvent = 'gate' | 'bump' | 'held';
+export type RiverEvent = 'reedGate' | 'bump' | 'held';
 export function createRiver(): RiverState {
   return { d: 0, pos: 1, gates: 0, bumpUntil: -1, bumpLane: null, nudges: 0 };
 }
@@ -293,7 +293,7 @@ export function riverStep(river: RiverState, dt: number, target: Lane): { river:
     pos += (bumpLane - pos) * 0.3;
     events.push('bump');
   }
-  if (gate && next >= gate.at && aligned(pos, gate.lane)) { gates += 1; events.push('gate'); }
+  if (gate && next >= gate.at && aligned(pos, gate.lane)) { gates += 1; events.push('reedGate'); }
   d = next;
   return { river: { d, pos, gates, bumpUntil, bumpLane, nudges }, events };
 }

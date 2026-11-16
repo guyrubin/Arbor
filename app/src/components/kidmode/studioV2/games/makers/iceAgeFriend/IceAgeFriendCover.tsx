@@ -94,7 +94,7 @@ export default function IceAgeFriendCover({ size = 'tile' }: { size?: 'tile' | '
       </linearGradient>
     </defs>
     <rect width="400" height="300" fill={`url(#${id}sky)`} />
-    <path d="M-10 236L40 200L80 222L130 188L190 226L250 196L330 230L410 204L410 300L-10 300Z" style={{ fill: 'color-mix(in srgb, var(--mk-snow-shade) 70%, var(--mk-storm))', opacity: 0.55 }} />
+    <path d="M-10 236L40 200L80 222L130 188L190 226L250 196L330 230L410 204L410 300L-10 300Z" style={{ fill: 'color-mix(in srgb, var(--mk-snow-shade) 70%, var(--mk-storm-grey))', opacity: 0.55 }} />
     <rect width="400" height="300" fill={`url(#${id}sun)`} />
     <path d="M-10 268Q120 250 230 266T410 258L410 300L-10 300Z" style={{ fill: 'var(--mk-snow)' }} />
     <path d={path(BODY)} fill={`url(#${id}base)`} />

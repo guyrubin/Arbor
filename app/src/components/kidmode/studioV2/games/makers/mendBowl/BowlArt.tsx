@@ -39,7 +39,7 @@ export const BowlBody = memo(function BowlBody({ glaze, uid, shadow = true }: { 
       <radialGradient id={id('core')} gradientUnits="userSpaceOnUse" cx="170" cy="150" r="200">{stop(0, t.deep, 0)}{stop(0.55, t.deep, 0)}{stop(1, t.deep, 0.75)}</radialGradient>
       <linearGradient id={id('spec')} x1="0" y1="0" x2="0" y2="1">{stop(0, 'var(--mk-white)', 0.7)}{stop(1, 'var(--mk-white)', 0)}</linearGradient>
       <radialGradient id={id('inside')} gradientUnits="userSpaceOnUse" cx="262" cy="112" r="150">{stop(0, t.inLight)}{stop(0.5, t.base)}{stop(1, t.inDeep)}</radialGradient>
-      <radialGradient id={id('pool')} gradientUnits="userSpaceOnUse" cx="226" cy="138" r="64" gradientTransform="translate(226 138) scale(1 .3) translate(-226 -138)">{stop(0, t.inDeep, 0.55)}{stop(1, t.inDeep, 0)}</radialGradient>
+      <radialGradient id={id('innerPool')} gradientUnits="userSpaceOnUse" cx="226" cy="138" r="64" gradientTransform="translate(226 138) scale(1 .3) translate(-226 -138)">{stop(0, t.inDeep, 0.55)}{stop(1, t.inDeep, 0)}</radialGradient>
       <linearGradient id={id('rim')} gradientUnits="userSpaceOnUse" x1="82" y1="80" x2="358" y2="160">{stop(0, t.rim)}{stop(0.6, t.light)}{stop(1, t.base)}</linearGradient>
       <linearGradient id={id('foot')} gradientUnits="userSpaceOnUse" x1="168" y1="256" x2="272" y2="279">{stop(0, 'var(--mk-clay-pale)')}{stop(0.45, 'var(--mk-clay-light)')}{stop(1, 'var(--mk-clay)')}</linearGradient>
       <radialGradient id={id('contact')} gradientUnits="userSpaceOnUse" cx="230" cy="276" r="110" gradientTransform="translate(230 276) scale(1 .2) translate(-230 -276)">{stop(0, 'var(--mk-shadow)', 0.55)}{stop(0.5, 'var(--mk-shadow)', 0.22)}{stop(1, 'var(--mk-shadow)', 0)}</radialGradient>
@@ -62,7 +62,7 @@ export const BowlBody = memo(function BowlBody({ glaze, uid, shadow = true }: { 
     <ellipse cx={RIM.cx} cy={RIM.cy + 1} rx={inner.rx} ry={inner.ry} fill={url('inside')} />
     {/* The rim's own shadow on the inside wall, away from the light. */}
     <g clipPath={url('inner')}><path fillRule="evenodd" d={`M${RIM.cx - inner.rx} ${RIM.cy + 1}a${inner.rx} ${inner.ry} 0 1 0 ${inner.rx * 2} 0a${inner.rx} ${inner.ry} 0 1 0 ${-inner.rx * 2} 0ZM${RIM.cx - inner.rx + 20} ${RIM.cy + 9}a${inner.rx} ${inner.ry} 0 1 0 ${inner.rx * 2} 0a${inner.rx} ${inner.ry} 0 1 0 ${-inner.rx * 2} 0Z`} opacity=".3" style={{ fill: t.inDeep }} /></g>
-    <ellipse cx="226" cy="138" rx="64" ry="18" fill={url('pool')} />
+    <ellipse cx="226" cy="138" rx="64" ry="18" fill={url('innerPool')} />
     {SPECKS.filter((_, i) => i % 3 === 0).map((s, i) => <circle key={i} cx={RIM.cx + (s.x - RIM.cx) * 0.8} cy={RIM.cy + 4 + (s.y - 178) * 0.12} r={s.r * 0.8} opacity=".24" style={{ fill: t.speck }} />)}
     <path d={`M${RIM.cx - RIM.rx + 1} ${RIM.cy}A${RIM.rx - 1} ${RIM.ry - 1} 0 0 0 ${RIM.cx + RIM.rx - 1} ${RIM.cy}`} fill="none" strokeWidth="1.6" opacity=".55" style={{ stroke: t.rim }} />
     <path d={`M${RIM.cx - RIM.rx + 3} ${RIM.cy - 3}A${RIM.rx} ${RIM.ry} 0 0 1 ${RIM.cx - 30} ${RIM.cy - RIM.ry + 0.6}`} fill="none" strokeWidth="1.8" strokeLinecap="round" opacity=".8" style={{ stroke: 'var(--mk-white)' }} />
@@ -117,7 +117,7 @@ export function LinenCloth({ uid, shape = 'stage' }: { uid: string; shape?: 'sta
         <rect y="3" width="5" height="1" opacity=".1" style={{ fill: 'var(--mk-night)' }} />
         <rect x="0.4" width="1" height="5" opacity=".08" style={{ fill: 'var(--mk-night)' }} />
       </pattern>
-      <linearGradient id={id('linen')} x1="0" y1="0" x2=".7" y2="1">{stop(0, mix('--mk-slate', 62, '--mk-storm'))}{stop(0.5, mix('--mk-indigo', 50, '--mk-slate'))}{stop(1, mix('--mk-indigo-deep', 70, '--mk-slate'))}</linearGradient>
+      <linearGradient id={id('linen')} x1="0" y1="0" x2=".7" y2="1">{stop(0, mix('--mk-slate', 62, '--mk-storm-grey'))}{stop(0.5, mix('--mk-indigo', 50, '--mk-slate'))}{stop(1, mix('--mk-indigo-deep', 70, '--mk-slate'))}</linearGradient>
       <linearGradient id={id('drape')} x1="0" y1="0" x2="1" y2=".4">{stop(0, 'var(--mk-sky-pale)', 0)}{stop(0.45, 'var(--mk-sky-pale)', 0.1)}{stop(0.6, 'var(--mk-sky-pale)', 0)}</linearGradient>
     </defs>
     {shape === 'stage' && <path d={d} transform="translate(5 8)" opacity=".2" style={{ fill: 'var(--mk-shadow)' }} />}

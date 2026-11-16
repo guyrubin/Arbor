@@ -1,5 +1,8 @@
 .studio-creation-result { margin-block-start: 24px; }
 .studio-creation h3 { margin: 0 0 14px; font-size: 23px; color: inherit; }
+/* The app-wide heading rule paints h3 in the parent ink and display face; a kept
+   creation's name sits on the dark Studio card, in the kid voice. */
+:is(.studio-game-view, .studio-v2, .adventure) .studio-creation h3 { color: inherit; font-family: var(--studio-font) !important; font-weight: 800 !important; }
 .studio-creation p, .studio-creation-result > p { font-size: 16px; line-height: 1.5; }
 .studio-creation-notes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-block: 18px; direction: ltr; }
 .studio-creation-notes > span { width: 46px; height: 52px; display: grid; place-items: center; background: var(--arbor-peach-soft); color: var(--arbor-clay-deep); border: 3px solid transparent; border-radius: 16px; }

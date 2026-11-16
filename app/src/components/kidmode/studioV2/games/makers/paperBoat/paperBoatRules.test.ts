@@ -161,7 +161,7 @@ describe('spread 2: the river and its three reed arches', () => {
     let river = createRiver(), events: string[] = [];
     for (const gate of RIVER_GATES) { const leg = sail(river, gate.lane, 12); river = leg.river; events.push(...leg.events); }
     expect(river.gates).toBe(3); expect(riverDone(river)).toBe(true);
-    expect(events.filter(e => e === 'gate')).toHaveLength(3);
+    expect(events.filter(e => e === 'reedGate')).toHaveLength(3);
   });
   it('a rock nudges the boat softly back into the channel; it is never a failure', () => {
     // sit in the near channel after the first arch: the rock there nudges the boat towards the middle

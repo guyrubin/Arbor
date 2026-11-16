@@ -50,13 +50,13 @@ export function Stand({ rotation, tilt, tips, opacity = 1, faint = false }: { ro
   return <g className="tiny-stand" opacity={opacity} data-faint={faint || undefined}>
     <defs>
       <linearGradient id={`${id}side`} x1="0" x2="1" y1="0" y2="0">
-        <stop offset="0" style={{ stopColor: mix('var(--mk-slate)', 70, 'var(--mk-storm)') }} />
+        <stop offset="0" style={{ stopColor: mix('var(--mk-slate)', 70, 'var(--mk-storm-grey)') }} />
         <stop offset=".55" style={{ stopColor: 'var(--mk-slate)' }} />
         <stop offset="1" style={{ stopColor: mix('var(--mk-night)', 70, 'var(--mk-slate)') }} />
       </linearGradient>
       <radialGradient id={`${id}top`} cx=".36" cy=".3" r=".85">
-        <stop offset="0" style={{ stopColor: mix('var(--mk-storm)', 70, 'var(--mk-chalk)') }} />
-        <stop offset=".6" style={{ stopColor: mix('var(--mk-storm)', 80, 'var(--mk-slate)') }} />
+        <stop offset="0" style={{ stopColor: mix('var(--mk-storm-grey)', 70, 'var(--mk-chalk)') }} />
+        <stop offset=".6" style={{ stopColor: mix('var(--mk-storm-grey)', 80, 'var(--mk-slate)') }} />
         <stop offset="1" style={{ stopColor: 'var(--mk-slate)' }} />
       </radialGradient>
       <radialGradient id={`${id}ao`} cx=".5" cy=".5" r=".5">

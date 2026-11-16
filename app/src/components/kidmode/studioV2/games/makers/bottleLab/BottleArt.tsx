@@ -47,7 +47,7 @@ export function BottleDefs({ uid, shape, finish, map }: { uid: string; shape: Sh
     <linearGradient id={id('table')} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={stop(mix('--mk-cream', '--mk-white', 60))} /><stop offset=".35" style={stop('var(--mk-cream)')} /><stop offset="1" style={stop(mix('--mk-linen', '--mk-linen-shade', 55))} /></linearGradient>
     <linearGradient id={id('tableSide')} x1="0" y1="0" x2="1" y2="0"><stop offset="0" style={stop('var(--mk-white)', 0.35)} /><stop offset=".5" style={stop('var(--mk-white)', 0)} /><stop offset="1" style={stop('var(--mk-shadow)', 0.08)} /></linearGradient>
     <linearGradient id={id('seam')} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={stop('var(--mk-shadow)', 0)} /><stop offset="1" style={stop('var(--mk-shadow)', 0.16)} /></linearGradient>
-    <filter id={id('grain')} x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="7" stitchTiles="stitch" /><feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.05" /></filter>
+    <filter id={id('paperGrain')} x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="7" stitchTiles="stitch" /><feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.05" /></filter>
     <filter id={id('soft1')} x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.2" /></filter>
     <filter id={id('soft')} x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation={frost ? 2.2 : 0.7} /></filter>
     <filter id={id('backSticker')} x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation={frost ? 3 : 0.9} /></filter>
@@ -66,7 +66,7 @@ export function BottleDefs({ uid, shape, finish, map }: { uid: string; shape: Sh
     <linearGradient id={id('steel')} x1="0" y1="0" x2="1" y2="0"><stop offset="0" style={stop('var(--mk-steel-dark)')} /><stop offset=".22" style={stop('var(--mk-steel)')} /><stop offset=".4" style={stop('var(--mk-steel-light)')} /><stop offset=".58" style={stop('var(--mk-steel)')} /><stop offset=".86" style={stop(mix('--mk-steel-dark', '--mk-steel', 60))} /><stop offset="1" style={stop('var(--mk-graphite)')} /></linearGradient>
     <linearGradient id={id('steelTop')} x1="0" y1="0" x2="1" y2="1"><stop offset="0" style={stop('var(--mk-steel-light)')} /><stop offset="1" style={stop('var(--mk-steel)')} /></linearGradient>
     <radialGradient id={id('caustic')}><stop offset="0" style={stop(mix('--bl-light', '--mk-white', 40))} /><stop offset=".45" style={stop(mix('--bl-glass', '--mk-white', 45), 0.7)} /><stop offset="1" style={stop('var(--bl-glass)', 0)} /></radialGradient>
-    <radialGradient id={id('pool')}><stop offset="0" style={stop('var(--mk-butter)', 0.55)} /><stop offset=".5" style={stop('var(--mk-butter)', 0.18)} /><stop offset="1" style={stop('var(--mk-butter)', 0)} /></radialGradient>
+    <radialGradient id={id('lampPool')}><stop offset="0" style={stop('var(--mk-butter)', 0.55)} /><stop offset=".5" style={stop('var(--mk-butter)', 0.18)} /><stop offset="1" style={stop('var(--mk-butter)', 0)} /></radialGradient>
     <radialGradient id={id('bulb')}><stop offset="0" style={stop('var(--mk-white)')} /><stop offset=".35" style={stop('var(--mk-sun)', 0.9)} /><stop offset="1" style={stop('var(--mk-sun)', 0)} /></radialGradient>
     <linearGradient id={id('beam')} x1="0" y1="0" x2="1" y2="0"><stop offset="0" style={stop('var(--mk-butter)', 0.5)} /><stop offset="1" style={stop('var(--mk-butter)', 0)} /></linearGradient>
     <linearGradient id={id('shade')} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={stop(mix('--mk-indigo', '--mk-bluebell', 70))} /><stop offset="1" style={stop('var(--mk-indigo-deep)')} /></linearGradient>
@@ -116,7 +116,7 @@ export function Backdrop({ uid, grain = true }: { uid: string; grain?: boolean }
     <rect x={L} y={TABLE_Y} width={W} height={B - TABLE_Y} style={{ fill: url('tableSide') }} />
     <rect x={L} y={TABLE_Y - 10} width={W} height="10" style={{ fill: url('seam') }} />
     <rect x={L} y={TABLE_Y} width={W} height="1.6" style={fill('var(--mk-white)', 0.75)} />
-    {grain && <rect x={L} y={T} width={W} height={B - T} filter={url('grain')} style={fill('var(--mk-umber)', 0.09)} />}
+    {grain && <rect x={L} y={T} width={W} height={B - T} filter={url('paperGrain')} style={fill('var(--mk-umber)', 0.09)} />}
   </g>;
 }
 
@@ -127,7 +127,7 @@ export function LampLight({ uid, angle, on }: { uid: string; angle: number; on: 
   if (!on) return <rect x={L} y={T} width={R - L} height={SCENE_H + 180} style={fill(mix('--mk-indigo', '--mk-slate', 50), 0.16)} />;
   const toward = Math.atan2(260 - p.y, 180 - p.x) * 180 / Math.PI;
   return <g style={{ mixBlendMode: 'screen' }}>
-    <ellipse cx={p.x + (180 - p.x) * 0.35} cy={p.y + (250 - p.y) * 0.35} rx="190" ry="170" style={{ fill: url('pool') }} />
+    <ellipse cx={p.x + (180 - p.x) * 0.35} cy={p.y + (250 - p.y) * 0.35} rx="190" ry="170" style={{ fill: url('lampPool') }} />
     <path d="M0 -8L230 -64L230 64L0 8Z" transform={`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) rotate(${toward.toFixed(1)})`} style={{ fill: url('beam'), opacity: 0.32 }} />
   </g>;
 }
@@ -213,7 +213,7 @@ export function GlassInside({ uid, shape, finish }: { uid: string; shape: ShapeI
     </g>
     {finish === 'frost' && <g clipPath={url('outer')}>
       <path d={silhouettePath(shape)} style={{ fill: url('frost') }} />
-      <rect x={AXIS_X - 100} y={topY(shape) - 4} width="200" height={bottomY(shape) - topY(shape) + 8} filter={url('grain')} style={fill('var(--mk-white)', 0.14)} />
+      <rect x={AXIS_X - 100} y={topY(shape) - 4} width="200" height={bottomY(shape) - topY(shape) + 8} filter={url('paperGrain')} style={fill('var(--mk-white)', 0.14)} />
     </g>}
   </g>;
 }

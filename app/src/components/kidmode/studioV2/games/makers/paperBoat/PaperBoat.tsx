@@ -215,7 +215,7 @@ export default function PaperBoat() {
       book.current = { ...b, river: result.river };
       waiting.current = result.events.includes('held') ? RIVER_GATES[result.river.gates]?.id ?? null : null;
       if (result.events.includes('bump')) { audio.current?.bump(); say(words.nudge); }
-      if (result.events.includes('gate')) {
+      if (result.events.includes('reedGate')) {
         const passed = RIVER_GATES[result.river.gates - 1];
         if (passed) arches.current = { ...arches.current, [passed.id]: clock.current };
         audio.current?.chime(result.river.gates - 1);
@@ -387,7 +387,7 @@ export default function PaperBoat() {
           </div>
         </div>
         <div className="pb-controls" data-spread={wheelSpread}>
-          <PaperWheel angle={wheelAngle} enabled={settled && spread > 0 && !(spread === 3 && harbour.docked)} tucked={wheelSpread === 0 || (wheelSpread === 3 && harbour.docked)} marks={wheelSpread === 2 ? 'storm' : 'lanes'} steady={steady || (wheelSpread === 2 && b.storm.calmed)} label={w.wheel} valueText={valueText} leftLabel={w.steerLeft} rightLabel={w.steerRight} onTurn={turnWheel} onHold={value => { held.current = value; if (value) gust.current = null; }} />
+          <PaperWheel angle={wheelAngle} enabled={settled && spread > 0 && !(spread === 3 && harbour.docked)} tucked={wheelSpread === 0 || (wheelSpread === 3 && harbour.docked)} marks={wheelSpread === 2 ? 'steadyBand' : 'lanes'} steady={steady || (wheelSpread === 2 && b.storm.calmed)} label={w.wheel} valueText={valueText} leftLabel={w.steerLeft} rightLabel={w.steerRight} onTurn={turnWheel} onHold={value => { held.current = value; if (value) gust.current = null; }} />
         </div>
         <p className="pb-sr" role="status" aria-live="polite">{status}</p>
       </section>}
