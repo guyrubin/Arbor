@@ -82,10 +82,10 @@ export function DateSheet({ item, onClose, plan, lang, c, onAsk, onCalendar }: {
           <b>{dayNum(item.date)}</b>
           {item.time && <span>{item.time}</span>}
         </div>
-        <div className="stack" style={{ gap: 6, minWidth: 0 }}>
+        <div className="fp-col" style={{ gap: 6, minWidth: 0 }}>
           <span className="small">{c.kinds[item.kind]} · {whenLabel(item, lang)}</span>
           {s === "has" ? (
-            <span className="fp-chip"><span className="av sm" aria-hidden="true">{adultInitial(holder)}</span><bdi>{c.hasIt(holder)}</bdi></span>
+            <span className="fp-chip"><span className="av sm" aria-hidden="true">{adultInitial(holder)}</span><bdi>{item.holder?.uid === plan.me.uid ? c.stateHasYou : c.hasIt(holder)}</bdi></span>
           ) : s === "asked" && item.request ? (
             <span className="small">{c.askedAt(adultLabel({ uid: item.request.toUid, email: item.request.toEmail }, plan.me.uid, c), momentLabel(item.request.askedAt, lang))} {c.noAnswer}</span>
           ) : (
@@ -97,7 +97,7 @@ export function DateSheet({ item, onClose, plan, lang, c, onAsk, onCalendar }: {
       <YesSteps item={item} c={c} lang={lang} meUid={plan.me.uid} />
 
       {editing ? (
-        <div className="stack" style={{ gap: 10 }}>
+        <div className="fp-col" style={{ gap: 10 }}>
           <DateFields row={draft} c={c} onChange={(p) => setDraft((d) => ({ ...d, ...p }))} />
           <div className="fp-actions">
             <button type="button" className="btn primary sm" disabled={plan.busy} onClick={async () => {
@@ -109,7 +109,7 @@ export function DateSheet({ item, onClose, plan, lang, c, onAsk, onCalendar }: {
         </div>
       ) : null}
 
-      <section className="stack" style={{ gap: 8 }} aria-labelledby="fp-prep-h">
+      <section className="fp-col" style={{ gap: 8 }} aria-labelledby="fp-prep-h">
         <h3 className="h3" id="fp-prep-h">{c.prepTitle}</h3>
         {(item.prep ?? []).length ? (
           <div className="fp-prep">
@@ -133,13 +133,13 @@ export function DateSheet({ item, onClose, plan, lang, c, onAsk, onCalendar }: {
       </section>
 
       {item.sourceLine && (
-        <section className="stack" style={{ gap: 8 }} aria-labelledby="fp-src-h">
+        <section className="fp-col" style={{ gap: 8 }} aria-labelledby="fp-src-h">
           <h3 className="h3" id="fp-src-h">{c.fromTheMessage}</h3>
           <ThreadLine line={item.sourceLine} quote={item.sourceLine} />
         </section>
       )}
 
-      <section className="stack" style={{ gap: 8 }} aria-labelledby="fp-hist-h">
+      <section className="fp-col" style={{ gap: 8 }} aria-labelledby="fp-hist-h">
         <h3 className="h3" id="fp-hist-h">{c.historyTitle}</h3>
         <ol className="fp-hist">
           {item.history.map((h, i) => (

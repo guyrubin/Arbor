@@ -140,6 +140,8 @@ export const NON_CRISIS_409_CODES: ReadonlySet<string> = new Set([
   // Round 2: the hero-pose route's anchor states (heroSheetContract HERO_POSE_REFUSALS)
   // and the co-parent activity conflict (server/coParent.ts, sent in `error`).
   "hero_anchor_missing", "hero_book_anchor_missing", "activity_changed",
+  // Family plan v1: the co-parent's answer conflicts (server/familyPlanCoParent.ts, sent in `error`).
+  "date_changed", "not_yours",
 ]);
 /** /live/token's 409 code: the renewal names a session the server will not chain. */
 export const LIVE_RENEWAL_INVALID = "live_renewal_invalid";

@@ -43,7 +43,7 @@ export function AskSheet({ item, onClose, plan, lang, c, onInvite }: { item: Fam
           <b>{dayNum(item.date)}</b>
           {item.time && <span>{item.time}</span>}
         </div>
-        <div className="stack" style={{ gap: 4, minWidth: 0 }}>
+        <div className="fp-col" style={{ gap: 4, minWidth: 0 }}>
           <b dir="auto" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 19, lineHeight: 1.2 }}>{item.title}</b>
           <span className="small">{c.kinds[item.kind]} · {whenLabel(item, lang)}</span>
         </div>

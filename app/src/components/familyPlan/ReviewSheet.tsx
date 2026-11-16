@@ -7,11 +7,12 @@ import type { FamilyPlanExtractItem, ReviewRow } from "../../lib/familyPlan/draf
 import type { FamilyPlanApi } from "../../hooks/useFamilyPlan";
 import { Token, PencilChip } from "../../design/primitives";
 import { Icon } from "../ui/Icon";
+import { UrgentSupport } from "../safety/UrgentSupport";
 import { FpDialog } from "./FpDialog";
 import type { FamilyPlanCopy } from "./familyPlanCopy";
 import { adultLabel, dayNum, whenLabel, type Lang } from "./format";
 
-type Phase = { at: "paste" } | { at: "reading" } | { at: "review"; lineCount: number } | { at: "error"; message: string };
+type Phase = { at: "paste" } | { at: "reading" } | { at: "review"; lineCount: number } | { at: "error"; message: string; crisis?: boolean };
 
 /** The line with the quoted words marked: the parent's words in ink, never the model's. */
 export function ThreadLine({ n, line, quote }: { n?: number; line: string; quote: string }) {
@@ -29,7 +30,7 @@ export function ThreadLine({ n, line, quote }: { n?: number; line: string; quote
 function DateFields({ row, onChange, c, withKind = true }: { row: { title: string; kind: string; date: string; time: string }; onChange: (patch: Partial<{ title: string; kind: FamilyPlanKind; date: string; time: string }>) => void; c: FamilyPlanCopy; withKind?: boolean }) {
   const id = React.useId();
   return (
-    <div className="stack" style={{ gap: 10 }}>
+    <div className="fp-col" style={{ gap: 10 }}>
       <label className="fp-field" htmlFor={`${id}-t`}>
         {c.fieldName}
         <input id={`${id}-t`} dir="auto" value={row.title} maxLength={120} onChange={(e) => onChange({ title: e.target.value })} />
@@ -60,7 +61,7 @@ function DateFields({ row, onChange, c, withKind = true }: { row: { title: strin
 const keepable = (r: ReviewRow) => r.kind !== "note" && isDay(r.date) && (!r.time || isTime(r.time)) && r.title.trim().length > 0;
 
 /** "Add a school message": paste → Arbor's draft → the parent keeps, edits or drops each item. */
-export function ReviewSheet({ open, onClose, plan, childName, lang, c }: { open: boolean; onClose: () => void; plan: FamilyPlanApi; childName?: string; lang: Lang; c: FamilyPlanCopy }) {
+export function ReviewSheet({ open, onClose, plan, childName, lang, c, onSafety }: { open: boolean; onClose: () => void; plan: FamilyPlanApi; childName?: string; lang: Lang; c: FamilyPlanCopy; onSafety: () => void }) {
   const [text, setText] = useState("");
   const [phase, setPhase] = useState<Phase>({ at: "paste" });
   const [rows, setRows] = useState<ReviewRow[]>([]);
@@ -86,8 +87,8 @@ export function ReviewSheet({ open, onClose, plan, childName, lang, c }: { open:
       setPhase({ at: "review", lineCount: result.lineCount });
       track("family_plan_message_read", { found: next.length, dated: next.filter((r) => isDay(r.date)).length, duplicates: next.filter((r) => r.match.kind === "duplicate").length, changes: next.filter((r) => r.match.kind === "change").length });
     } catch (e) {
-      const message = e instanceof EscalationRequiredError ? c.reviewCrisis
-        : e instanceof PaywallError ? c.reviewQuota
+      if (e instanceof EscalationRequiredError) { setPhase({ at: "error", message: c.reviewCrisis, crisis: true }); return; }
+      const message = e instanceof PaywallError ? c.reviewQuota
         : e instanceof ApiError && e.status === 429 ? c.reviewQuota
         : e instanceof ApiError && e.status === 422 ? c.reviewBlocked
         : c.reviewError;
@@ -143,7 +144,8 @@ export function ReviewSheet({ open, onClose, plan, childName, lang, c }: { open:
             <textarea id="fp-message" dir="auto" rows={8} value={text} maxLength={4000} onChange={(e) => setText(e.target.value)} disabled={phase.at === "reading"} aria-describedby="fp-message-hint" />
           </label>
           <span id="fp-message-hint" className="small">{c.reviewPasteHint}</span>
-          {phase.at === "error" && <p role="alert" className="fp-err">{phase.message}</p>}
+          {phase.at === "error" && phase.crisis && <UrgentSupport testId="family-plan-urgent-support" className="fp-col" requestLang={lang} lead={c.reviewCrisis} onSafety={() => { onClose(); onSafety(); }} />}
+          {phase.at === "error" && !phase.crisis && <p role="alert" className="fp-err">{phase.message}</p>}
           <div className="fp-actions">
             <button type="button" className="btn primary" disabled={!text.trim() || phase.at === "reading"} onClick={() => void read()}>
               {phase.at === "reading" ? c.reviewReading : c.reviewRead}
@@ -172,13 +174,13 @@ export function ReviewSheet({ open, onClose, plan, childName, lang, c }: { open:
                   {isDay(r.date)
                     ? <Token kind="date" state="ai" size="lg" label={`${r.title}, ${whenLabel({ date: r.date, time: r.time || undefined }, lang)}`}>{dayNum(r.date)}</Token>
                     : <span className="gi" aria-hidden="true"><Icon name="description" size={18} /></span>}
-                  <div className="stack grow" style={{ gap: 2, minWidth: 0 }}>
+                  <div className="fp-col grow" style={{ gap: 2, minWidth: 0 }}>
                     <b dir="auto" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 19, lineHeight: 1.2 }}>{r.title}</b>
                     <span className="small">{isDay(r.date) ? whenLabel({ date: r.date, time: r.time || undefined }, lang) : c.reviewNoDate}</span>
                   </div>
                 </div>
                 {isChange && r.match.kind === "change" && (
-                  <div className="stack" style={{ gap: 6 }}>
+                  <div className="fp-col" style={{ gap: 6 }}>
                     <span className="nx-chg" aria-label={`${whenLabel(r.match.existing, lang)} → ${whenLabel({ date: r.date, time: r.time || undefined }, lang)}`}>
                       <s>{r.match.existing.time && r.match.existing.date === r.date ? r.match.existing.time : whenLabel(r.match.existing, lang)}</s>
                       <Icon name="arrow_forward" size={22} className="rtl:-scale-x-100" />
@@ -221,7 +223,7 @@ export function ReviewSheet({ open, onClose, plan, childName, lang, c }: { open:
                   </div>
                 )}
                 {r.kind === "note" && (
-                  <div className="stack" style={{ gap: 8 }}>
+                  <div className="fp-col" style={{ gap: 8 }}>
                     {prepTargets.length > 0 && (
                       <label className="fp-field">
                         {c.reviewKeepAsPrep}

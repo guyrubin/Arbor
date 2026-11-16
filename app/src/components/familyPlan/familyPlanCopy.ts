@@ -1,9 +1,8 @@
-/* @icon-font-ignore — copy data, no glyphs: words like "reminder" here are prose. */
 /**
  * Family plan v1 — every parent-facing string on the screen, EN and HE.
  *
  * Words (COPY-RULES): things are "dates"; a date "has an adult" or "nobody
- * yet"; a message to another adult is a "request", to yourself a "reminder";
+ * yet"; a message to another adult is a request, to yourself a reminder;
  * Arbor's reading of a message is "Arbor draft · you decide" until kept.
  * Counts are figures with units, never a verdict, and nothing describes the
  * child. Reminders are in the app only in v1 (no phone alert).
@@ -34,6 +33,8 @@ export interface FamilyPlanCopy {
   legendNone: string;
   tokenLabel: Fn<[string, string]>;
   stateHas: Fn<[string]>;
+  /** The reader has it ("You have it"). */
+  stateHasYou: string;
   stateAsked: Fn<[string]>;
   stateNone: string;
   nextLabel: string;
@@ -218,6 +219,7 @@ const en: FamilyPlanCopy = {
   legendNone: "nobody yet",
   tokenLabel: (title, state) => `${title}, ${state}`,
   stateHas: (who) => `${who} has it`,
+  stateHasYou: "You have it",
   stateAsked: (who) => `asked ${who}, no answer yet`,
   stateNone: "nobody yet",
   nextLabel: "Next",
@@ -417,6 +419,7 @@ const he: FamilyPlanCopy = {
   legendNone: "עוד אף אחד",
   tokenLabel: (title, state) => `${title}, ${state}`,
   stateHas: (who) => `אצל ${who}`,
+  stateHasYou: "אצלך",
   stateAsked: (who) => `נשלחה בקשה ל${who}, עוד אין תשובה`,
   stateNone: "עוד אף אחד",
   nextLabel: "הבא",

@@ -111,3 +111,6 @@
 .ds .nx-arows .ds-link { white-space: normal; text-align: start; }
 .ds .nx-yes.s0::before { background: #d5deee; }
 .ds .nx-yes.s2::before { background: var(--ink); }
+/* The phone route's stops sit in a 34 px gutter (the board's body.routed); the shell gives 16. */
+.ds-phone.fp > .route.m { margin-inline-start: 18px; }
+.ds .fp-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }

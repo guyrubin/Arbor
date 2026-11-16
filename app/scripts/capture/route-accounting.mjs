@@ -23,7 +23,7 @@ export const V3_HUBS = Object.freeze({ now: 'overview', child: 'development', to
  * admin    — admin-only: a parent is denied (the view gates on entitlement.isAdmin; the server 403s)
  */
 export const ROUTE_ACCOUNT = Object.freeze({
-  overview: 'parent', weekly: 'parent', 'day-windows': 'parent', 'smart-reminders': 'parent',
+  overview: 'parent', weekly: 'parent', 'family-plan': 'parent', 'day-windows': 'parent', 'smart-reminders': 'parent',
   coach: 'parent',
   development: 'parent', milestones: 'parent', language: 'parent', screening: 'parent', timeline: 'parent', journal: 'parent', behaviors: 'parent',
   profile: 'parent', science: 'parent',

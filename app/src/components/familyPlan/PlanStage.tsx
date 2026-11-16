@@ -10,7 +10,7 @@ import { adultInitial, adultLabel, dayNum, dayShort, rangeLabel, weekdayShort, w
 const tokState = (s: FamilyPlanState) => (s === "has" ? "solid" : s === "asked" ? "open" : "none") as "solid" | "open" | "none";
 
 function stateWords(item: FamilyPlanDate, s: FamilyPlanState, c: FamilyPlanCopy, meUid: string): string {
-  if (s === "has") return c.stateHas(adultLabel(item.holder, meUid, c));
+  if (s === "has") return item.holder?.uid === meUid ? c.stateHasYou : c.stateHas(adultLabel(item.holder, meUid, c));
   if (s === "asked" && item.request) return c.stateAsked(adultLabel({ uid: item.request.toUid, email: item.request.toEmail }, meUid, c));
   return c.stateNone;
 }
@@ -96,13 +96,13 @@ function Ribbon({ plan, lang, c, onOpen }: Pick<StageProps, "plan" | "lang" | "c
 /** Phone: one row per adult, their dates listed in the lane. */
 function PhoneLanes({ plan, lang, c, onOpen }: Pick<StageProps, "plan" | "lang" | "c" | "onOpen">) {
   return (
-    <div className="stack" style={{ gap: 8, padding: "0 12px" }}>
+    <div className="fp-col" style={{ gap: 8, padding: "0 12px" }}>
       {plan.lanes.filter((l) => l.dates.length || l.adult?.uid === plan.me.uid || !l.adult).map((lane) => {
         const name = laneName(lane, c, plan.me.uid);
         return (
           <div key={lane.key} className={`nx-lane${lane.adult ? "" : " nobody"}`}>
             <span className="nx-who"><LaneAvatar lane={lane} name={name} /><bdi>{name}</bdi></span>
-            <div className="stack" style={{ gap: 4 }}>
+            <div className="fp-col" style={{ gap: 4 }}>
               {lane.dates.length === 0 && <span className="small">{c.laneDates(0)}</span>}
               {lane.dates.map(({ item, state }) => (
                 <button key={item.id} type="button" className="it" onClick={() => onOpen(item.id)}>
@@ -144,7 +144,7 @@ export function PlanStage({ composition, plan, lang, c, onOpen, onAsk, onAddMess
     <>
       <Scene field="plan" orbs={orbs} style={{ padding: 0, gap: 0, flex: 1 }}>
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: desk ? "8px 20px" : "4px 8px", alignItems: "center", padding: desk ? "20px 28px 0" : "16px 16px 0" }}>
-          <div className="stack" style={{ gap: desk ? 8 : 6 }}>
+          <div className="fp-col" style={{ gap: desk ? 8 : 6 }}>
             <span className="gsec" style={{ flexWrap: "wrap", gap: 8 }}>
               <span className="kicker">{desk ? c.kicker(range) : range}</span>
               <NewTag>{c.isNew}</NewTag>

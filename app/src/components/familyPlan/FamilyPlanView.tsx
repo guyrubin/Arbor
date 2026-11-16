@@ -91,7 +91,7 @@ export default function FamilyPlanView() {
       <Guide stops={stops} mini={!desk} label={c.guideLabel} />
       <Route composition={composition} tight={!desk}>
         <RouteSection id="fp-who" n={1} on>
-          <div data-module="family-plan-who" className={desk ? "g12" : "stack"} style={desk ? undefined : { gap: 12 }}>
+          <div data-module="family-plan-who" className={desk ? "g12" : "fp-col"} style={desk ? undefined : { gap: 12 }}>
             <div className={desk ? "x8" : undefined} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <PlanStage composition={composition} plan={plan} lang={lang} c={c} onOpen={openDate} onAsk={ask} onAddMessage={() => setSheet({ at: "message" })} onAddDate={() => setSheet({ at: "manual" })} />
             </div>
@@ -106,7 +106,7 @@ export default function FamilyPlanView() {
         {!desk && (
           <RouteSection id="fp-dates" n={2}>
             <RouteHead id="fp-dates-h" title={c.datesTitle} sub={c.datesSub} />
-            <div className="stack" style={{ gap: 10 }} data-module="family-plan-dates">
+            <div className="fp-col" style={{ gap: 10 }} data-module="family-plan-dates">
               <DateCards {...common} />
             </div>
           </RouteSection>
@@ -122,7 +122,7 @@ export default function FamilyPlanView() {
               {calendar === "unavailable" ? c.calendarUnavailable : calendar === "native_share" ? c.calendarShared : c.calendarSaved}
             </p>
           )}
-          <div className={desk ? "g12" : "stack"} style={desk ? undefined : { gap: 12 }} data-module="family-plan-came-in">
+          <div className={desk ? "g12" : "fp-col"} style={desk ? undefined : { gap: 12 }} data-module="family-plan-came-in">
             <div style={desk ? { gridColumn: hasChange ? "span 4" : "span 6", display: "flex" } : undefined}>
               <MessageTile {...common} onAddMessage={() => setSheet({ at: "message" })} />
             </div>
@@ -135,7 +135,7 @@ export default function FamilyPlanView() {
 
         <RouteSection id="fp-standing" n={4} stopTop={2}>
           <RouteHead title={c.standingTitle} />
-          <div className={desk ? "g12" : "stack"} data-module="family-plan-standing">
+          <div className={desk ? "g12" : "fp-col"} data-module="family-plan-standing">
             <StandingTile {...common} composition={composition} />
           </div>
         </RouteSection>
@@ -148,7 +148,7 @@ export default function FamilyPlanView() {
       )}
       {receipt}
 
-      <ReviewSheet open={sheet?.at === "message"} onClose={close} plan={plan} childName={childProfile.name} lang={lang} c={c} />
+      <ReviewSheet open={sheet?.at === "message"} onClose={close} plan={plan} childName={childProfile.name} lang={lang} c={c} onSafety={() => setActiveTab("safety")} />
       <AddDateSheet open={sheet?.at === "manual"} onClose={close} plan={plan} lang={lang} c={c} />
       <DateSheet item={sheet?.at === "date" ? byId(sheet.id) : null} onClose={close} plan={plan} lang={lang} c={c} onAsk={ask} onCalendar={(items) => void addToCalendar(items)} />
       <AskSheet item={sheet?.at === "ask" ? byId(sheet.id) : null} onClose={close} plan={plan} lang={lang} c={c} onInvite={() => { close(); setActiveTab("sharing"); }} />

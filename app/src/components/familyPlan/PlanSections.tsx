@@ -24,7 +24,7 @@ export function DateCards({ plan, lang, c, onOpen }: Common) {
     <>
       {list.map((d) => {
         const s = stateOf(d);
-        const who = s === "has" ? c.stateHas(adultLabel(d.holder, plan.me.uid, c)) : s === "asked" && d.request ? c.stateAsked(adultLabel({ uid: d.request.toUid, email: d.request.toEmail }, plan.me.uid, c)) : c.stateNone;
+        const who = s === "has" ? (d.holder?.uid === plan.me.uid ? c.stateHasYou : c.stateHas(adultLabel(d.holder, plan.me.uid, c))) : s === "asked" && d.request ? c.stateAsked(adultLabel({ uid: d.request.toUid, email: d.request.toEmail }, plan.me.uid, c)) : c.stateNone;
         const days = daysFrom(plan.window.today, d.date);
         const rel = d.status === "done" ? c.done : days === 0 ? c.today : days === 1 ? c.tomorrow : days > 1 ? c.inDays(days) : "";
         const r = reminderFor.get(d.id);
@@ -86,7 +86,7 @@ export function MessageTile({ plan, lang, c, onOpen, onAddMessage }: Common & { 
           </ol>
         </>
       ) : (
-        <div className="stack" style={{ gap: 10 }}>
+        <div className="fp-col" style={{ gap: 10 }}>
           <p className="small">{c.noMessage}</p>
           <button type="button" className="btn ghost sm" style={{ alignSelf: "flex-start", background: "var(--tint-2)", boxShadow: "none", color: "var(--sapphire-deep)" }} onClick={onAddMessage}>
             <Icon name="description" size={16} />{c.addMessage}
@@ -186,7 +186,7 @@ export function StandingTile({ plan, lang, c, onOpen, composition }: Common & { 
         <div className="stp">
           <span className={`nd${s.accepted.length ? " on" : " off"}`} aria-hidden="true"><Icon name="check" size={22} /></span>
           <b>{c.accepted}</b>
-          {col(s.accepted, c.acceptedNone, (d) => c.stateHas(adultLabel(d.holder, plan.me.uid, c)))}
+          {col(s.accepted, c.acceptedNone, (d) => (d.holder?.uid === plan.me.uid ? c.stateHasYou : c.stateHas(adultLabel(d.holder, plan.me.uid, c))))}
         </div>
         <div className="stp">
           <span className={`nd${s.done.length ? " on" : " off"}`} aria-hidden="true"><Icon name="flag" size={22} /></span>
