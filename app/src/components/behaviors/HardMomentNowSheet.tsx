@@ -286,7 +286,7 @@ export default function HardMomentNowSheet() {
                 the fold holds everything else (it is "Something else"). */}
             {pastFirst && lead.length > 0 && (
               <div className="space-y-2" data-testid="hard-moment-now-matched">
-                <p className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("hm.now.matched")}</p>
+                <p className="text-xs font-bold" style={{ color: "var(--arbor-k-moment-i)" }}>{t("hm.now.matched")}</p>
                 <div className="flex flex-wrap gap-2">{lead.map(chip)}</div>
               </div>
             )}
@@ -297,7 +297,7 @@ export default function HardMomentNowSheet() {
               <details data-testid="hard-moment-now-else" className="group">
                 <summary
                   className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 px-1 text-sm font-bold [&::-webkit-details-marker]:hidden"
-                  style={{ color: "var(--arbor-green-ink)" }}
+                  style={{ color: "var(--arbor-k-moment-i)" }}
                 >
                   {t("hm.now.else")}
                   <Icon name="expand_more" size={16} className="transition group-open:rotate-180" />
@@ -327,7 +327,7 @@ export default function HardMomentNowSheet() {
               type="button"
               onClick={() => setSelectedId(null)}
               className="inline-flex min-h-11 items-center gap-1 px-1 text-sm font-bold"
-              style={{ color: "var(--arbor-green-ink)" }}
+              style={{ color: "var(--arbor-k-moment-i)" }}
             >
               <Icon name="arrow_back" size={16} className="rtl:-scale-x-100" /> {t("hm.now.back")}
             </button>
@@ -335,7 +335,7 @@ export default function HardMomentNowSheet() {
             <HardMomentGuideContent card={card} context={context} childName={childFirst} t={t} />
             <div className="space-y-2">
               {tryState === "accepted" ? (
-                <p role="status" data-testid="hard-moment-now-booked" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+                <p role="status" data-testid="hard-moment-now-booked" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold" style={{ color: "var(--arbor-k-moment-i)" }}>
                   <Icon name="check_circle" size={16} /> {t("coach.tryIt.accepted")}
                 </p>
               ) : tryState !== "hidden" && (
@@ -347,7 +347,7 @@ export default function HardMomentNowSheet() {
                       if (acceptHardMomentStep(card.id, { now: new Date(), ageMonths: context.ageMonths, locale }, "standard", acceptTodayAction)) setBooked(card.id);
                     }}
                     className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition"
-                    style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }}
+                    style={{ background: "var(--arbor-k-step-w)", color: "var(--arbor-k-step-i)", border: "1px solid var(--arbor-k-step-i)" }}
                   >
                     <Icon name="flag" size={16} /> {t("hm.now.tryTonight")}
                   </button>
@@ -388,7 +388,7 @@ export default function HardMomentNowSheet() {
                   startConversationVoice({ source: "hard-moment", opening: locText(renderSayThis(card, childFirst), locale) });
                 }}
                 className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition"
-                style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}
+                style={{ color: "var(--arbor-k-moment-i)", border: "1px solid var(--arbor-k-moment-i)", background: "var(--arbor-paper-elevated)" }}
               >
                 <Icon name="graphic_eq" size={16} /> {t("hm.now.talk")}
               </button>
@@ -401,7 +401,7 @@ export default function HardMomentNowSheet() {
                     type="button"
                     onClick={() => { requestLearnRead({ cardId: read.id, source: "hard-moment-card" }); closeHardMomentNow(); }}
                     className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition"
-                    style={{ color: "var(--arbor-lav-ink)", border: "1px solid var(--arbor-lav-ink)", background: "var(--arbor-lav-soft)" }}
+                    style={{ color: "var(--arbor-k-moment-i)", border: "1px solid var(--arbor-k-moment-i)", background: "var(--arbor-k-moment-w)" }}
                   >
                     <Icon name="local_library" size={16} /> {t("learn.understandWhy")}
                   </button>

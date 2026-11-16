@@ -173,13 +173,14 @@ export default function BehaviorsTab() {
     </Scene>
   );
   const stage = (
-    <StageCard icon="schedule" title={hc.stage} end={selectedLog ? hc.selected(`${dayOf(selectedLog.timestamp)} · ${timeOf(selectedLog.timestamp)}`) : undefined} className="hm-stage">
+    <StageCard icon="schedule" title={hc.stage} end={desk && selectedLog ? hc.selected(`${dayOf(selectedLog.timestamp)} · ${timeOf(selectedLog.timestamp)}`) : undefined} className="hm-stage">
       <div className="hdl">
         <div className="dl">
           {dialMarks.length > 0
-            ? <HourDial marks={dialMarks} selected={selectedLog?.id} center={hc.dialCenter} label={hc.dialLabel(dialMarks.map((m) => `${String(m.hour).padStart(2, "0")}:${String(m.minute).padStart(2, "0")}`).join(", "))} size={desk ? 240 : 220} />
+            ? <HourDial marks={dialMarks} selected={selectedLog?.id} center={hc.dialCenter} label={hc.dialLabel(dialMarks.map((m) => `${String(m.hour).padStart(2, "0")}:${String(m.minute).padStart(2, "0")}`).join(", "))} size={desk ? 240 : 204} />
             : <p className="line1">{hc.noEntries}</p>}
-          {dialMarks.length > 0 && <span className="cap" aria-hidden="true">{hc.dialCaption}</span>}
+          {/* V77 phone: one caption carries the picked hour (the stage head has no room). */}
+          {dialMarks.length > 0 && <span className="cap" aria-hidden={desk ? true : undefined}>{!desk && selectedLog ? `${hc.dialCaption} · ${hc.selected(timeOf(selectedLog.timestamp))}` : hc.dialCaption}</span>}
         </div>
         <div className="mstack hm-right">
           <div className="min-w-0">
@@ -210,19 +211,19 @@ export default function BehaviorsTab() {
           <div
             data-testid="behaviors-pattern-echo"
             className="mt-3 flex flex-col gap-3 rounded-[16px] p-4 sm:flex-row sm:items-center"
-            style={{ background: "var(--arbor-green-soft)" }}
+            style={{ background: "var(--arbor-k-plan-w)" }}
             role="status"
           >
-            <Icon name="loop" size={19} className="flex-none" style={{ color: "var(--arbor-green-ink)" }} />
+            <Icon name="loop" size={19} className="flex-none" style={{ color: "var(--arbor-k-plan-i)" }} />
             <div className="min-w-0 flex-1">
-              <p className="text-[13.5px] font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-green-ink)" }}>
+              <p className="text-[13px] font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-k-plan-i)" }}>
                 {t("elev.closeloop.echo.title", {
                   type: behaviorTypeLabel(patternEcho.type, t),
                   n: patternEcho.count,
                   days: patternEcho.windowDays,
                 })}
               </p>
-              <p className="mt-1 text-[11.5px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+              <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
                 {t("elev.closeloop.echo.body")}
               </p>
             </div>
@@ -230,8 +231,8 @@ export default function BehaviorsTab() {
               <button
                 type="button"
                 onClick={() => { dismissBehaviorEcho(echoLog?.id ?? ""); setActiveTab("plans"); }}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 text-[12.5px] font-extrabold"
-                style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)" }}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 text-[12px] font-extrabold"
+                style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-k-plan-i)" }}
               >
                 {t("elev.closeloop.echo.cta")}
                 <Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
@@ -298,8 +299,8 @@ export default function BehaviorsTab() {
                 className="min-w-0 rounded-xl border border-[var(--arbor-rule-strong)] bg-[var(--arbor-paper-deep)] px-3 py-2 t-sm leading-relaxed text-[var(--arbor-ink)]" />
             )}
             {behaviorAnalysis && escalatedSurface !== "behaviors" && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="p-5 rounded-2xl space-y-4 text-xs" style={{ background: "linear-gradient(120deg,var(--arbor-paper-tinted),var(--arbor-lav-soft))", border: "1px solid var(--arbor-rule)" }}>
-                <h4 className="text-sm font-extrabold flex items-center gap-1.5" style={{ color: "var(--arbor-green-ink)" }}><Icon name="auto_awesome" size={15} fill={1} /> {t("beh.patternShows")}</h4>
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="p-5 rounded-2xl space-y-4 text-xs" style={{ background: "var(--arbor-k-moment-w)", border: "1px solid var(--arbor-rule)" }}>
+                <h4 className="text-sm font-extrabold flex items-center gap-1.5" style={{ color: "var(--arbor-k-plan-i)" }}><Icon name="auto_awesome" size={15} fill={1} /> {t("beh.patternShows")}</h4>
                 {/* W0.4: the "Parent Response Evaluation" (effectivenessRating) card was
                     removed — the app never grades the parent's responses. */}
                 <div className="grid grid-cols-1 gap-4">
@@ -310,7 +311,7 @@ export default function BehaviorsTab() {
                   <div className="space-y-2">
                     {behaviorAnalysis.expertInsights.map((ins, i) => (
                       <div key={i} className="p-2.5 rounded-xl bg-white" style={{ border: "1px solid var(--arbor-rule)" }}>
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider block" style={{ color: "var(--arbor-green-ink)" }}>{ins.scholarLens || t("beh.theoryFallback")}</span>
+                        <span className="text-[12px] font-extrabold uppercase tracking-wider block" style={{ color: "var(--arbor-k-plan-i)" }}>{ins.scholarLens || t("beh.theoryFallback")}</span>
                         <strong className="font-bold block mt-1" style={{ color: "var(--arbor-ink)" }}>{ins.heading}</strong>
                         <p className="mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{ins.text}</p>
                       </div>
@@ -351,7 +352,7 @@ export default function BehaviorsTab() {
           </div>
           {typeCounts30d.length > 0 && (
             <div className={`${cardCls} p-5 space-y-3`}>
-              <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.countLabel")}</span>
+              <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-k-plan-i)" }}>{t("beh.countLabel")}</span>
               <div className="space-y-2">
                 {typeCounts30d.map(({ type, count }) => (
                   <div key={type} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>

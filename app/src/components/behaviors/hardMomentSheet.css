@@ -34,14 +34,14 @@
 .hard-moment-sheet [data-testid="hard-moment-first-say"] blockquote {
   border-inline-start: 0 !important;
   padding-inline-start: 0 !important;
-  font: 400 25px/1.25 var(--font-display);
+  font: 400 26px/1.25 var(--font-display);
 }
 .hard-moment-sheet [data-testid="hard-moment-first-say"] blockquote + div { padding-inline-start: 0 !important; margin-block-start: 12px; }
 .hard-moment-sheet [data-testid="hard-moment-first-say"] blockquote + div > div > button {
   min-block-size: var(--touch-min);
   padding-inline: 14px !important;
   border-radius: 999px;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--arbor-ink) !important;
   box-shadow: inset 0 0 0 1px var(--arbor-rule-strong);

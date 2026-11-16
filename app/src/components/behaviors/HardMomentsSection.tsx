@@ -48,14 +48,14 @@ export function HardMomentGuideContent({ card, context, childName, t }: {
           <p className="px-1 text-xs leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{copy.sayThisNote}</p>
         </div>
       ) : (
-        <AiBlock key={key} tone="guide" title={t(key)} tint="var(--arbor-green-ink)">
+        <AiBlock key={key} tone="guide" title={t(key)} tint="var(--arbor-k-moment-i)">
           <p className="mt-1 break-words text-base leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{text}</p>
         </AiBlock>
       ))}
       <div className="min-w-0 rounded-xl p-4" role="note" data-testid="hard-moment-escalation"
-        style={{ background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-rule-strong)",
-          borderInlineStart: "3px solid var(--arbor-green-ink)" }}>
-        <h4 className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("hm.section.escalation")}</h4>
+        style={{ background: "var(--arbor-k-note-w)", border: "1px solid var(--arbor-rule-strong)",
+          borderInlineStart: "3px solid var(--arbor-k-note-i)" }}>
+        <h4 className="text-xs font-bold" style={{ color: "var(--arbor-k-note-i)" }}>{t("hm.section.escalation")}</h4>
         <p className="mt-1 break-words text-base leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{escalationText(card, locale)}</p>
       </div>
       <details className="min-w-0 text-sm" style={{ color: "var(--arbor-ink-soft)" }}>
@@ -207,7 +207,7 @@ export default function HardMomentsSection() {
             style={value === activeCategory
               // Selected state must not rest on hue alone (1.4.1) or on a
               // 1.01:1 border (1.4.11): green-ink reads 7.19:1 on both fills.
-              ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", fontWeight: 700 }
+              ? { background: "var(--arbor-k-moment-w)", color: "var(--arbor-k-moment-i)", border: "1px solid var(--arbor-k-moment-i)", fontWeight: 700 }
               : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }}>
             {value === "all" ? t("hm.cat.all") : t(`hm.cat.${value}`)}
           </button>
@@ -218,7 +218,7 @@ export default function HardMomentsSection() {
         <HardMomentLastTimeRow card={held.card} at={held.at} basis={held.basis} childName={childFirst} locale={locale} onOpen={() => openHardMomentNow(held.card.id)} />
       )}
       {!expanded && matched.length > 0 && (
-        <p className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.closeloop.hm.matched")}</p>
+        <p className="text-xs font-bold" style={{ color: "var(--arbor-k-moment-i)" }}>{t("elev.closeloop.hm.matched")}</p>
       )}
       <div
         data-testid="hard-moment-tiles"
@@ -233,9 +233,9 @@ export default function HardMomentsSection() {
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
             <span className="min-w-0">
               <span className="block break-words text-base font-bold" style={{ color: "var(--arbor-ink)" }}>{locText(card.title, locale)}</span>
-              <span className="mt-1 block text-xs" style={{ color: "var(--arbor-green-ink)" }}>{t(`hm.cat.${card.category}`)}</span>
+              <span className="mt-1 block text-xs" style={{ color: "var(--arbor-k-moment-i)" }}>{t(`hm.cat.${card.category}`)}</span>
             </span>
-            <Icon name="arrow_forward" size={16} className="flex-shrink-0 rtl:-scale-x-100" style={{ color: "var(--arbor-green-ink)" }} />
+            <Icon name="arrow_forward" size={16} className="flex-shrink-0 rtl:-scale-x-100" style={{ color: "var(--arbor-k-moment-i)" }} />
           </button>
         ))}
         {/* The door. Every guide stays one tap away in BOTH directions — this
@@ -248,7 +248,7 @@ export default function HardMomentsSection() {
             onClick={() => { setExpanded((v) => !v); if (expanded) setCategory("all"); }}
             aria-expanded={expanded}
             className="inline-flex min-h-11 w-[44%] flex-none snap-start items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition sm:w-[30%] lg:w-full"
-            style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}
+            style={{ color: "var(--arbor-k-moment-i)", border: "1px solid var(--arbor-k-moment-i)", background: "var(--arbor-paper-elevated)" }}
           >
             <Icon name="expand_more" size={16} />
             {t("elev.closeloop.hm.allGuides", { n: cards.length })}
@@ -262,7 +262,7 @@ export default function HardMomentsSection() {
           onClick={() => { setExpanded((v) => !v); if (expanded) setCategory("all"); }}
           aria-expanded={expanded}
           className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition"
-          style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}
+          style={{ color: "var(--arbor-k-moment-i)", border: "1px solid var(--arbor-k-moment-i)", background: "var(--arbor-paper-elevated)" }}
         >
           <Icon name="expand_less" size={16} />
           {t("elev.closeloop.hm.fewer")}
@@ -273,7 +273,7 @@ export default function HardMomentsSection() {
         <p data-testid="hard-moments-chosen" dir="auto" className="mt-1 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
           {t("hm.chosenFor", { name: childFirst })}
         </p>
-        {hasPilot && <p className="mt-2 text-xs font-semibold" style={{ color: "var(--arbor-green-ink)" }}>{copy.status}</p>}
+        {hasPilot && <p className="mt-2 text-xs font-semibold" style={{ color: "var(--arbor-k-moment-i)" }}>{copy.status}</p>}
       </div>
     </section>
   );

@@ -242,13 +242,13 @@ export default function LanguageLabTab() {
                     askCoach(t("seed.langWeekPlan", { name, age, target, home: home || t("lang.theHomeLang") }))
                   }
                   className="inline-flex min-h-11 items-center justify-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
-                  style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+                  style={{ background: "var(--arbor-k-plan-w)", color: "var(--arbor-k-plan-i)" }}
                 >
                   <Icon name="auto_awesome" size={14} /> {t("lang.weekPlanCta")}
                 </button>
               }
             >
-              <p className="text-[11px] font-bold uppercase tracking-wider mb-4" style={{ color: "var(--arbor-green-ink)" }}>{t("lang.dailyPractice")}</p>
+              <p className="text-[12px] font-bold uppercase tracking-wider mb-4" style={{ color: "var(--arbor-k-plan-i)" }}>{t("lang.dailyPractice")}</p>
               <div className="grid min-w-0 grid-cols-1 gap-3 text-xs">
                 {activities.map((item) => (
                   <div key={item.title} className={`${cardCls} min-w-0 space-y-2 p-4`}>
@@ -257,14 +257,14 @@ export default function LanguageLabTab() {
                       <Chip tone="yellow">{item.time}</Chip>
                     </div>
                     <p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{item.desc}</p>
-                    <p className="italic rounded-xl p-2 text-[11px]" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
+                    <p className="italic rounded-xl p-2 text-[12px]" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
                       {item.example}
                     </p>
                     <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
                       <button
                         onClick={() => askCoach(t("seed.langActivity", { title: item.title, target, name, age }))}
                         // Item 9: the hit box grows to --touch-min.
-                        className="touch-target gap-1 px-2 text-[10px] font-bold transition"
+                        className="touch-target gap-1 px-2 text-[12px] font-bold transition"
                         style={{ color: "var(--arbor-muted)" }}
                       >
                         <Icon name="chat" size={12} /> {t("lang.coachMe")}

@@ -347,8 +347,10 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
     const photo = logMap.get(o.id)?.photoAttachment ?? keepsake?.photoUrl;
     if (photo) return <div className="moments-band moments-band-photo"><img src={photo} alt={t("companion.portrait.photo")} loading="lazy" /></div>;
     const domain = o.domains[0];
-    if (!domain) return <div className="moments-band" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)" }} aria-hidden="true"><Icon name="auto_stories" size={30} /></div>;
-    return <div className="moments-band" style={{ background: `var(--arbor-domain-${domain}-soft)`, color: `var(--arbor-domain-${domain}-ink)` }} aria-hidden="true"><Icon name={DOMAIN_ICONS[domain]} size={30} /></div>;
+    // V77: one kind palette, no area hues — a moment is sapphire, a hard moment rust.
+    const kindTone = isKind(o, "hard") ? { background: "var(--k-hard-w)", color: "var(--k-hard-i)" } : { background: "var(--k-moment-w)", color: "var(--k-moment-i)" };
+    if (!domain) return <div className="moments-band" style={kindTone} aria-hidden="true"><Icon name="auto_stories" size={28} /></div>;
+    return <div className="moments-band" style={kindTone} aria-hidden="true"><Icon name={DOMAIN_ICONS[domain]} size={28} /></div>;
   };
 
   // ── v10 composition ─────────────────────────────────────────────────────────
