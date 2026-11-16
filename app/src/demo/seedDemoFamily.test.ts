@@ -381,7 +381,7 @@ describe("W2-CAREPRO c2 r1 · the demo memory seed renders a group at volume", (
  * change the family → this fails until the version is bumped and the pin
  * re-recorded (then `npm run seed:demo -- --apply` re-seeds the sandbox). */
 describe("W2-CAREPRO c2 r2 · the demo content is pinned to DEMO_FAMILY_VERSION", () => {
-  const PINNED = { version: "2026-10-08.1", sha256: "6268ca403f259296c66365cbd8c48ce9b901393d523d3a113a054859ab8370c3" };
+  const PINNED = { version: "2026-11-16.1", sha256: "afcdc0e9426ff8c17df38fb2078278b7edd8cc87f0787d41f80b0911aa25ac7d" };
   const contentHash = async () => {
     const { createHash } = await import("node:crypto");
     const body = JSON.stringify([buildDemoFamily({ now: NOW, lang: "en" }), buildDemoFamily({ now: NOW, lang: "he" })]);
@@ -447,9 +447,9 @@ describe("B-LOOP-17 · the loop's seeded record", () => {
   const catalogue = (id: string) => initialMilestones.find((m) => m.id === id)!;
   const practiceRows = (rows: readonly ActionLoopEntry[]) => rows.filter((r) => r.source === "practice");
 
-  it("the version string is bumped to 2026-10-08.1 (B-LOOP-14 r2: CDC rows split, cdc-60m-12 retired; .07.3 = r1 catalogue text; .07.2 = night lines, P5-LOOP c2 r1)", () => {
-    expect(DEMO_FAMILY_VERSION).toBe("2026-10-08.1");
-    expect(buildDemoFamily({ now: NOW }).version).toBe("2026-10-08.1");
+  it("the version string is bumped to 2026-11-16.1 (Family plan v1: three dates; .10-08.1 = B-LOOP-14 r2 CDC rows split, cdc-60m-12 retired; .07.3 = r1 catalogue text; .07.2 = night lines, P5-LOOP c2 r1)", () => {
+    expect(DEMO_FAMILY_VERSION).toBe("2026-11-16.1");
+    expect(buildDemoFamily({ now: NOW }).version).toBe("2026-11-16.1");
   });
 
   it("the dry run prints the new counts per collection, child and sibling, and writes nothing", async () => {
@@ -460,7 +460,7 @@ describe("B-LOOP-17 · the loop's seeded record", () => {
     expect(sandbox).not.toHaveBeenCalled();
     const out = String(log.mock.calls[0][0]);
     const n = initialMilestones.length;
-    const child: Record<string, number> = { behaviorLogs: 17, milestones: n, langObs: 4, actionLoops: 12, practiceEvents: 4, heroRuns: 1, appointments: 2, apptFollowUps: 1, keepsakes: 4 };
+    const child: Record<string, number> = { behaviorLogs: 17, milestones: n, langObs: 4, actionLoops: 12, practiceEvents: 4, heroRuns: 1, appointments: 2, apptFollowUps: 1, keepsakes: 4, familyPlanDates: 3 };
     for (const [name, count] of Object.entries(child)) expect(out, name).toMatch(new RegExp(`\\n  ${name}\\s+${count} docs`));
     expect(out).toMatch(/milestones noticed 10/);
     const sib: Record<string, number> = { behaviorLogs: 4, milestones: n, langObs: 3, actionLoops: 3, keepsakes: 1 };
@@ -568,6 +568,29 @@ describe("B-LOOP-17 · the loop's seeded record", () => {
       for (const r of rows) expect(r.id).toBe(practiceDoseId(DEMO_SIBLING_ID, new Date(r.acceptedAt)));
       expect(rows.filter((r) => r.outcome === "helped" || r.outcome === "somewhat")).toHaveLength(1);
       expect(quotesFromDocs(leni.collections.keepsakes)).toHaveLength(1);
+    });
+  }
+});
+
+/* Family plan v1 (N-Plan-D/M): the demo family's week, so the populated
+ * screen, Now's Coming up and the Weekly report's dated rows can be swept. */
+describe("Family plan v1 · the demo family's dates", () => {
+  for (const lang of ["en", "he"] as const) {
+    it(`${lang}: three dates in the plan window — two with an adult, one asked with no answer and a held 10:00 → 11:30 change`, async () => {
+      const { stateOf } = await import("../lib/familyPlan/model");
+      const { planCounts, planWindow, datesInWindow } = await import("../lib/familyPlan/week");
+      const fam = buildDemoFamily({ now: NOW, lang });
+      const rows = fam.collections.familyPlanDates;
+      expect(rows.map((d) => d.id)).toEqual(["demo-fp-form", "demo-fp-visit", "demo-fp-speech"]);
+      expect(planCounts(datesInWindow(rows, planWindow(new Date(NOW))))).toEqual({ dates: 3, withAdult: 2, nobodyYet: 1 });
+      const visit = rows[1];
+      expect(stateOf(visit)).toBe("asked");
+      expect(visit.time).toBe("10:00");
+      expect(visit.pendingChange).toMatchObject({ date: visit.date, time: "11:30" });
+      expect(visit.prep?.length).toBe(1);
+      // HE never shows a Latin address for the invented co-parent.
+      if (lang === "he") expect(JSON.stringify(rows)).not.toMatch(/@/);
+      expect(rows.every((d) => d.history.length > 0)).toBe(true);
     });
   }
 });
