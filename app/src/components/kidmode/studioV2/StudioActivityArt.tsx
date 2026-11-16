@@ -1,7 +1,7 @@
 import './studioActivityArt.css';
 import { Icon } from '../../ui/Icon';
 import { useKidTheme } from '../../../hooks/useKidTheme';
-import { isStudioCoverId, kidArt, kidArtSrcSet, studioNextCover, type KidArtKey } from '../../../lib/kidThemeManifest';
+import { isStudioCoverId, kidArt, kidArtSrcSet, studioCrewCover, studioNextCover, type KidArtKey } from '../../../lib/kidThemeManifest';
 import { isStudioMakerId, studioActivity, type StudioActivityId } from './studioCatalog';
 import { StudioMakerCover } from './StudioMakerArt';
 
@@ -10,11 +10,11 @@ const glyphs = { 'river-rescue': 'water', 'feelings-forest': 'mood', 'rhythm-gar
 export function StudioActivityArt({ id }: { id: StudioActivityId }) {
   const theme = useKidTheme();
   const activity = studioActivity(id);
-  // Each Playbank game has its own film cover; the rest show their world's room.
+  // Each Playbank game's tile shows Bebe and GobGob in its film; the rest show their world's room.
   const key = isStudioCoverId(id) ? `studio.cover.${id}` : `world.${id}.tile`;
   const candidate = kidArt(theme, key as KidArtKey) ?? (activity ? kidArt(theme, `studio.portal.${activity.worldId}`) : null);
   const fallback = activity ? kidArt(theme, `studio.portal.${activity.worldId}`) : null;
-  const art = candidate && !candidate.hasHero ? candidate : fallback && !fallback.hasHero ? fallback : null;
+  const art = studioCrewCover(id) ?? (candidate && !candidate.hasHero ? candidate : fallback && !fallback.hasHero ? fallback : null);
   // A device that opted in to the next games sees that game's own cover.
   const cover = studioNextCover(id);
   const glyph = cover && id === 'river-rescue' ? 'route' : glyphs[id as keyof typeof glyphs] ?? 'category';

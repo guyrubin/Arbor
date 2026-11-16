@@ -157,14 +157,29 @@ const studioPortal = (id: typeof STUDIO_PORTAL_IDS[number]): KidArt => ({
 });
 /** The Studio's own film (16 Nov 2026): 3:2 crops of the episodes' stills and
  *  empty set plates, the same world, light and companions a child knows from
- *  the show. Chosen frame by frame with no child in them; covers show the
- *  companions (Aya, Chock, Pep), rooms are empty so the child's hero stands in
- *  them. Builder and sources: ROS, Kids backlog B-KID-171. */
+ *  the show. Chosen frame by frame with no child in them (except the `-crew`
+ *  tile covers below); covers show the companions (Aya, Chock, Pep), rooms are
+ *  empty so the child's hero stands in them. Builder and sources: ROS, Kids
+ *  backlog B-KID-171. */
 const STUDIO_FILM = "/visuals/studio-v2/film/";
 const studioFilm = (name: string, objectPosition = "50% 50%", width = 1536): KidArt => ({
   src: `${STUDIO_FILM}${name}.webp`, src480: `${STUDIO_FILM}${name}-480.webp`, width,
   objectPosition, altKey: null, provenanceId: `studio-film:${name}:2026-11-16`, hasHero: false,
 });
+/** The four Playbank tiles' covers with Bebe and GobGob, the show's two
+ *  children (B-KID-171, 16 Nov 2026): the films' own finished frames, cropped
+ *  only, each named in lib/childLikenessFiles.named.ts under Guy's approval
+ *  (BD-32, third permission). Tiles only: the game screen keeps the companion
+ *  cover above, because the child's own hero stands in that picture. */
+const STUDIO_CREW_COVERS: Record<StudioCoverId, KidArt> = {
+  memory: studioFilm("cover-memory-crew", "45% 45%"),
+  pattern: studioFilm("cover-pattern-crew", "50% 40%"),
+  puzzle: studioFilm("cover-puzzle-crew", "60% 45%"),
+  sneak: studioFilm("cover-sneak-crew", "70% 60%"),
+};
+export function studioCrewCover(id: string): KidArt | null {
+  return isStudioCoverId(id) ? STUDIO_CREW_COVERS[id] : null;
+}
 /** The home valley for portrait tablets and phones (the wide one is "studio.sky"). */
 export const STUDIO_VALLEY_TALL = { src: `${STUDIO_V30}valley-tall.webp`, src480: `${STUDIO_V30}valley-tall-480.webp`, width: 1024 } as const;
 /** The Bop games' toy-world art: one shared folder of authored, shipped

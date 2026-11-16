@@ -14,7 +14,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import {
   DEFAULT_KID_THEME, GATING_KID_ART_KEYS, KID_ART_KEYS, KID_THEME_IDS, KID_THEME_MANIFEST,
-  KID_THEME_TILE_SHAPE, STUDIO_COVER_IDS, kidArt, kidArtSrcSet, resolveKidTheme, selectableThemes, storyCoverKey, themeCoverage,
+  KID_THEME_TILE_SHAPE, STUDIO_COVER_IDS, kidArt, kidArtSrcSet, resolveKidTheme, selectableThemes, storyCoverKey, studioCrewCover, themeCoverage,
 } from "./kidThemeManifest";
 import { KID_ART_GAPS } from "./kidArtGaps";
 import { HERO_STORIES } from "./heroJourneys";
@@ -161,5 +161,17 @@ describe("Studio V2 neutral identity boundary", () => {
       expect(art?.hasHero, key).toBe(false);
     }
     expect(kidArt("film3d", "world.kid-quest.tile")?.width).toBe(864);
+  });
+  it("B-KID-171: the four Playbank tiles show Bebe and GobGob in crew-marked film frames; the game screen keeps the companion cover", () => {
+    for (const id of STUDIO_COVER_IDS) {
+      const crew = studioCrewCover(id)!;
+      expect(crew.src, id).toBe(`/visuals/studio-v2/film/cover-${id}-crew.webp`);
+      expect(webpWidth(path.join(PUBLIC, crew.src)), id).toBe(1536);
+      expect(webpWidth(path.join(PUBLIC, crew.src480)), id).toBe(480);
+      expect(crew.hasHero, id).toBe(false);
+      // the child's own hero stands in the game screen's picture, so that one stays crew-free in every theme
+      for (const theme of KID_THEME_IDS) expect(kidArt(theme, `studio.cover.${id}`)?.src, `${theme}:${id}`).not.toMatch(/bebe|gobgob|crew/i);
+    }
+    for (const other of ["river-rescue", "calm-builder", "mend-bowl", "toString", ""]) expect(studioCrewCover(other)).toBeNull();
   });
 });
