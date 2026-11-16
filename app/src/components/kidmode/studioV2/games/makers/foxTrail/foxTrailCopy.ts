@@ -5,7 +5,7 @@
 export const FOX_TRAIL_COPY = {
   en: {
     title: 'Pep’s Trail',
-    description: 'Run the valley at dusk and bring back its lights.',
+    description: 'Run at dusk. Light up the valley.',
     instruction: 'The lights of Horizon Valley have gone out. Run with Pep through the Sky Gardens, over the skybridge and across the basin, and wake every lamp on the way to the Dome.',
     place: 'Horizon Valley · dusk',
     scene: 'Pep’s trail through Horizon Valley at dusk. Tap to jump, hold for a longer jump, swipe down to roll.',
@@ -46,7 +46,7 @@ export const FOX_TRAIL_COPY = {
   },
   he: {
     title: 'השביל של פפ',
-    description: 'רצים בעמק בין ערביים ומחזירים לו את האורות.',
+    description: 'רצים בין ערביים. מדליקים את העמק.',
     instruction: 'האורות של עמק האופק כבו. רצים עם פפ דרך גני השמיים, מעל גשר השמיים ולרוחב האגם, ומעירים כל פנס בדרך אל הכיפה.',
     place: 'עמק האופק · בין ערביים',
     scene: 'השביל של פפ בעמק האופק בשעת בין ערביים. נגיעה לקפיצה, נגיעה ארוכה לקפיצה ארוכה, החלקה למטה לגלגול.',

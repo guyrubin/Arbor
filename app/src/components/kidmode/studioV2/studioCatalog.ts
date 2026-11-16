@@ -1,7 +1,6 @@
 import { offersForChild } from "../../../lib/age/playGate";
 import type { AgedChild } from "../../../lib/age/forChild";
 import { KID_WORLDS, SNEAK_FREEZE_WORLD } from "../kidWorlds";
-import { studioNextFlagOn } from "./studioNextFlag";
 
 export type StudioWorldId = "playbank" | "stories" | "feelings" | "studio";
 /** The makers wave: hand-built activities with their own homes under
@@ -52,7 +51,8 @@ export const STUDIO_GAME_SELECTION: readonly StudioActivityId[] = [
 ];
 export function studioMenuActivities(...args: Parameters<typeof studioActivitiesForChild>): StudioActivity[] {
   const eligible = studioActivitiesForChild(...args);
-  const offered = studioNextFlagOn() ? [...STUDIO_GAME_SELECTION, ...STUDIO_MAKER_IDS] : STUDIO_GAME_SELECTION;
+  // The twelve makers are on for every child (Guy, 16 Nov); the B-GAME-39 games stay behind the device switch.
+  const offered = [...STUDIO_GAME_SELECTION, ...STUDIO_MAKER_IDS];
   return offered.flatMap(id => eligible.filter(activity => activity.id === id));
 }
 export function studioActivity(id: string): StudioActivity | undefined { return STUDIO_V2_ACTIVITIES.find(a => a.id === id); }
@@ -62,7 +62,7 @@ export function studioLegacyRoute(id: StudioActivityId): { surface: "arcade"; wo
   return worldId ? { surface: "arcade", worldId } : null;
 }
 export function studioActivitiesForChild(worldId: StudioWorldId, child: AgedChild | null | undefined, lang: StudioLanguage, now?: Date, options: { sneakEnabled?: boolean } = {}): StudioActivity[] {
-  return offersForChild(STUDIO_V2_ACTIVITIES, child, now).filter(a => a.worldId === worldId && a.languages.includes(lang) && (a.id !== "sneak" || options.sneakEnabled !== false) && (!isStudioMakerId(a.id) || studioNextFlagOn()));
+  return offersForChild(STUDIO_V2_ACTIVITIES, child, now).filter(a => a.worldId === worldId && a.languages.includes(lang) && (a.id !== "sneak" || options.sneakEnabled !== false));
 }
 export function studioActivityFits(id: string, child: AgedChild | null | undefined, lang: StudioLanguage, now?: Date, options: { sneakEnabled?: boolean } = {}): boolean {
   const a = studioActivity(id);

@@ -88,3 +88,7 @@
 .studio-v2__activity-grid>.studio-v2__activity:last-child:nth-child(odd) .studio-v2__activity-art{aspect-ratio:2/1}
 @media(min-width:641px) and (max-width:950px){.studio-v2__activity-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.studio-v2__activity-grid>.studio-v2__activity:last-child:nth-child(odd){grid-column:auto}.studio-v2__activity-grid>.studio-v2__activity:last-child:nth-child(odd) .studio-v2__activity-art{aspect-ratio:3/2}}
 @media(max-width:380px){.studio-v2__activity-grid{gap:12px}.studio-v2__activity-grid>.studio-v2__activity strong{font-size:15px}.studio-v2__activity-grid>.studio-v2__activity small{font-size:12px}}
+
+/* B-GAME-40: the makers' own shelf under the world's games, and the world picture held in view while a long shelf scrolls on a wide screen. */
+.studio-v2__shelf-title{font-size:20px;line-height:1.25;margin-block:22px 2px;color:var(--studio-text)}
+@media(min-width:951px){.studio-v2__world-scene{position:sticky;inset-block-start:24px;align-self:start}}

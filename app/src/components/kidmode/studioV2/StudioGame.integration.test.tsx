@@ -173,11 +173,11 @@ describe("V2 entry, identity and persistent result", () => {
     const keys = [draw()]; h.uid = "owner-b"; keys.push(draw()); h.child.id = "child-b"; keys.push(draw()); keys.push(draw("beat"));
     expect(new Set(keys).size).toBe(4);
   });
-  it("a maker is the unavailable card while the switch is off, and a full intro, play, result and replay loop when on", () => {
+  it("a maker opens for every child, switch on or off: play, result and replay", () => {
     for (const id of ["mend-bowl", "stitch-garden", "paper-boat", "season-dial", "crank-works", "windup-race", "clay-theatre", "bottle-lab", "ice-age-friend", "tiny-builders", "fox-trail", "maker-desk"] as const) {
       resetStudioNextFlagForTests();
       const off = render(`${id}:off`, () => StudioGameSession({ activityId: id, onBack: vi.fn() }));
-      expect(off[0].props["data-studio-game-unavailable"]).toBe(""); expect(off.some(node => node.type === StudioMakerCover)).toBe(false);
+      expect(off[0].props["data-studio-phase"]).toBe("play"); expect(off.some(node => node.type === STUDIO_GAME_COMPONENTS[id])).toBe(true);
       vi.stubGlobal("localStorage", { getItem: (k: string) => k === "arbor.flags.studioNext" ? "1" : null, setItem: () => {}, removeItem: () => {} });
       resetStudioNextFlagForTests();
       try {
