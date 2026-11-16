@@ -59,17 +59,6 @@ function Phase({ plan, phaseIdx, steps, todayStep, lang, onEdit }: { plan: Actio
         <b className="ds-plans-phase" dir="auto">{phaseLabel(c.phaseN(phaseIdx + 1), name)}</b>
         <span className="small" style={{ fontVariantNumeric: "lining-nums" }}>{c.phaseDone(done, steps.length)}</span>
       </div>
-      <div className="nx-road" aria-hidden="true">
-        {steps.map((s, i) => (
-          <React.Fragment key={s.n}>
-            {i > 0 && <span className={steps[i - 1].status === "done" ? "seg done" : "seg"} />}
-            <span className="ds-plans-roadstop">
-              <i className={`tok plan${s.status === "done" ? "" : isToday(s) ? " here" : " open"}`} />
-              <small>{c.stepN(s.n)}</small>
-            </span>
-          </React.Fragment>
-        ))}
-      </div>
       <ol className="nx-steps" aria-label={t("elev.plans.steps.title")}>
         {rows.map((s) => {
           const today = isToday(s);
@@ -81,7 +70,7 @@ function Phase({ plan, phaseIdx, steps, todayStep, lang, onEdit }: { plan: Actio
                 <span className="sx" data-step-chip={today ? "today" : s.status}>{today ? t("elev.plans.today.chip") : t(`elev.plans.col.${s.status}`)}</span>
               </span>
               <button type="button" className="ed" aria-label={t("aria.editStep")} onClick={() => onEdit({ phaseIdx: s.phaseIdx, stepIdx: s.stepIdx, text: s.text })}>
-                <Icon name="edit" size={16} />
+                <Icon name="edit" size={15} />
               </button>
             </li>
           );
@@ -138,7 +127,7 @@ export function PlanWhole({ plan, todayStep, lang, composition }: { plan: Action
   return (
     <div className="stack ds-col" style={{ gap: 10 }} data-testid="plan-header">
       <RouteHead title={c.wholePlan} />
-      <p style={{ fontSize: 13.5, lineHeight: 1.4, margin: 0 }} dir="auto">
+      <p style={{ fontSize: 13, lineHeight: 1.4, margin: 0 }} dir="auto">
         <b style={{ fontWeight: 600 }}>{plan.title}.</b>
         {working && <> {working}</>}
       </p>
@@ -153,7 +142,7 @@ export function PlanWhole({ plan, todayStep, lang, composition }: { plan: Action
       <p className="small" style={{ color: "var(--ink-soft)", margin: 0 }}>{t("elev.plans.hint")}</p>
       <div className="line" style={{ gap: 8 }}>
         <button type="button" className="btn ghost sm grow" style={{ background: "var(--card)" }} onClick={() => setConfirmDelete(true)}>
-          <Icon name="delete" size={16} />
+          <Icon name="delete" size={15} />
           {t("elev.plans.delete.cta")}
         </button>
       </div>

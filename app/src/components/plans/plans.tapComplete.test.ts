@@ -217,18 +217,21 @@ describe("critic r1 — plans track card + step list", async () => {
     expect(src).not.toMatch(/className="[^"]*\btext-(xs|xl)\b[^"]*"[^>]*>\{(plan\.title|t\("elev\.plans)/);
   });
 
-  it("Day n only from Day 2; Day 1 reads Today's step", () => {
+  it("Day n only from Day 2; Day 1 shows no day line (V77 once-only: no title on the stage)", () => {
     expect(planEyebrowKey(1)).toBe("elev.plans.today.first");
     expect(planEyebrowKey(2)).toBe("elev.plans.today.day");
-    expect(card("en", 1)).toContain("Today&#x27;s step");
-    expect(card("en", 1)).not.toMatch(/Day 1 of/);
-    expect(card("en", 3)).toMatch(/Day .*3.* of/);
+    expect(card("en", 1)).not.toContain('data-testid="plan-today-eyebrow"');
+    expect(card("en", 1)).not.toMatch(/Day 1\b/);
+    expect(card("en", 3)).toMatch(/data-testid="plan-today-eyebrow"[^>]*>Day 3</);
+    expect(card("he", 3)).toMatch(/data-testid="plan-today-eyebrow"[^>]*>יום 3</);
   });
 
-  it("the eyebrow isolates the title in <bdi>, never upper-case; step text dir=auto (HE)", () => {
-    const he = card("he");
-    expect(he).toMatch(/<p data-testid="plan-today-eyebrow"[^>]*>[^<]*<bdi dir="auto">Calmer bedtimes<\/bdi>/);
+  it("once-only: the stage never repeats the plan's title (its tab and the whole plan carry it); step text dir=auto (HE)", () => {
+    const he = card("he", 3);
+    expect(he).not.toContain("Calmer bedtimes");
     expect(he).not.toMatch(/plan-today-eyebrow"[^>]*uppercase/);
+    // negative control: the pre-V77 eyebrow carried the title
+    expect('<p data-testid="plan-today-eyebrow"><bdi dir="auto">Calmer bedtimes</bdi></p>').toContain("Calmer bedtimes");
     expect(he).toMatch(/<h1 class="hero" dir="auto"[^>]*>Same three books\.<\/h1>/);
     expect(he).not.toContain("\u0000");
   });
@@ -325,9 +328,11 @@ describe("critic r2 — the echo reads both progress sources", async () => {
         onTryIt: () => {}, onUndo: () => {}, onCheck: () => {}, onAdjust: () => {},
         echo: planEcho(plan.id, [], ref, "2026-10-04", 3), childName: "Dylan",
       }));
-      expect(html).toContain('data-echo="progress"');
+      // never the first-step line; and (V77 once-only) no progress sentence either: the
+      // stage's figure says the steps done once.
       expect(html).not.toMatch(/first step starts today|הצעד הראשון של/);
-      expect(html).toMatch(lang === "en" ? /3 steps done with Dylan so far/ : /כבר 3 צעדים עם ⁨?Dylan/);
+      expect(html).not.toContain('data-echo="progress"');
+      expect(html).toMatch(/<b>\d+<\/b><span>[^<]*(of \d+ steps done|מתוך \d+ צעדים הושלמו)/);
     }
   });
   it("PlansTab passes the plan's done count; no raw bg-white or off-scale text-[10px]", () => {
@@ -357,17 +362,16 @@ describe("plan progress typography roles", async () => {
       && !/font-editorial|arbor-type-say/.test(p);
   };
 
-  it.each(["en", "he"] as const)("renders the singular and plural progress text with existing body tokens (%s)", lang => {
+  it.each(["en", "he"] as const)("V77 once-only: the progress echo is not drawn on the stage (the figure says it), the step headline stays (%s)", lang => {
     for (const done of [1, 3]) {
       const html = card(lang, { kind: "progress", done });
-      expect(isBodyProgress(html)).toBe(true);
-      const expectedText = translate(lang, `elev.plans.echo.progress.${done === 1 ? "one" : "many"}`, { n: done, name: "Dylan" });
-      expect(echoParagraph(html)).toContain(renderToStaticMarkup(React.createElement("span", { className: "min-w-0 line-clamp-2" }, expectedText)));
-      // The next action stays after the progress sentence, with its own type.
-      // v10: today's step is the stage's headline (the screen's one <h1>).
+      expect(echoParagraph(html)).toBe("");
+      expect(isBodyProgress(html)).toBe(false);
       expect(html).toMatch(/<h1 class="hero" dir="auto"[^>]*>Same three books<\/h1>/);
-      expect(html.indexOf('data-testid="plan-echo"')).toBeLessThan(html.indexOf("Same three books"));
     }
+    // negative control: the body-progress rule still recognises a real progress paragraph
+    const real = '<p data-testid="plan-echo" data-echo="progress" dir="auto" class="t-base leading-relaxed" style="font-family:var(--font-sans)"><span>3 steps done</span></p>';
+    expect(isBodyProgress(real)).toBe(true);
   });
 
   it("rejects the actual pre-fix phone typography", () => {

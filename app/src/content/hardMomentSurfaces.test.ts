@@ -219,7 +219,12 @@ describe("CONT-2/CODEX-5 — surfaces consume gated selectors and existing seams
   }
 
   it("BehaviorsTab renders the section; the section selects at call time", () => {
-    expect(stripComments(read("components/tabs/BehaviorsTab.tsx"))).toContain("<HardMomentsSection />");
+    // N-Hard V77: the page renders the shelf's parts (the stage's last-time card, stop 3's guides),
+    // read from the section's own state hook, which selects at call time.
+    const page = stripComments(read("components/tabs/BehaviorsTab.tsx"));
+    expect(page).toContain("<HardMomentLastTimeCard phone={!desk} />");
+    expect(page).toContain("<HardMomentGuides phone={!desk} />");
+    expect(stripComments(read("components/behaviors/HardMomentsV10.tsx"))).toContain("useHardMomentShelf()");
     expect(stripComments(read("components/behaviors/HardMomentsSection.tsx"))).toContain("availableHardMomentCards(context)");
   });
 

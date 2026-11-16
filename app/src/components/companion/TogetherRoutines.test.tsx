@@ -120,7 +120,8 @@ afterEach(() => {
 const at = (hour: number, minute = 0) => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date(2026, 10, 12, hour, minute)); };
 const page = () => renderToStaticMarkup(<TogetherView />);
 const desk = () => renderToStaticMarkup(<TogetherRoutines composition="desk" />);
-const moduleTag = (html: string, name: string) => html.match(new RegExp(`<section[^>]*data-module="${name}"[^>]*>`))![0];
+/** V77 shared frame: a module's wrapper is whatever element carries data-module (the routines' is a bare div). */
+const moduleTag = (html: string, name: string) => html.match(new RegExp(`<[a-z]+[^>]*data-module="${name}"[^>]*>`))![0];
 /** The day map: everything inside the together-routines block. */
 function routinesBlock(html: string): string {
   const start = html.indexOf('data-testid="together-routines"');
@@ -172,10 +173,17 @@ for (const lang of ["en", "he"] as const) describe(`v10.1 · Together's Routines
     expect(block).not.toContain('data-testid="together-fits"');
     // Each card offers the start in words.
     expect(block.split(tr(lang, "companion.together-view.routines-start")).length - 1).toBe(10);
-    // The section is named by its own heading.
-    const labelledBy = moduleTag(html, "together-routines").match(/aria-labelledby="([^"]+)"/)![1];
-    expect(html).toContain(`<h1 class="h3 tg-routines-h1" id="${labelledBy}">${esc(TOGETHER_COPY[lang].routinesTitle)}</h1>`);
-    expect(html).toContain(tr(lang, "companion.together-view.routines-sub"));
+    // V77 re-pin: the module is one bare wrapper (the frame's .mcst card holds it on a phone); the
+    // header band #times is named by the page's one h1 (FrameHead), "Ready-made routines".
+    expect(moduleTag(html, "together-routines")).toBe('<div data-module="together-routines">');
+    expect(html).toContain('<div class="mcst" style="padding:14px 12px"><div data-module="together-routines"><div class="tg-stack dm-pm"');
+    const labelledBy = html.match(/<section class="rsec" id="times" aria-labelledby="([^"]+)">/)![1];
+    expect(html.match(/<h1\b/g)).toHaveLength(1);
+    expect(html).toContain(`<h1 class="hero"><span id="${labelledBy}">${tr(lang, "companion.together-view.routines-title")}</span></h1>`);
+    expect(html).toContain(`<p dir="auto">${tr(lang, "companion.together-view.routines-sub")}</p>`);
+    // NEGATIVE CONTROL: the v10.1 section wrapper and its h3-styled h1 are gone.
+    expect(html).not.toMatch(/<section[^>]*data-module="together-routines"/);
+    expect(html).not.toContain("tg-routines-h1");
     // REMOVED on purpose in v10.1 (the map draws every routine once): Today's rhythm, its tally, Add a routine, the why-note and the library sheet.
     for (const id of ["together-rhythm", "together-rhythm-tally", "together-rhythm-add", "together-rhythm-why", "together-library"]) expect(html, id).not.toContain(`data-testid="${id}"`);
     expect(block.replace(/<[^>]+>/g, " ")).not.toMatch(BANNED);
@@ -185,15 +193,40 @@ for (const lang of ["en", "he"] as const) describe(`v10.1 · Together's Routines
 
   it("the bands read Morning, Afternoon, Evening, When it comes up; each routine sits in its part of the day, counted in words", () => {
     const copy = TOGETHER_COPY[lang];
-    const drawn = bands(routinesBlock(page()));
+    const html = page();
+    const block = routinesBlock(html);
+    const drawn = bands(block);
     expect(drawn.map((b) => b.band)).toEqual(["morning", "afternoon", "evening", "anytime"]);
     const names = [copy.bandMorning, copy.bandAfternoon, copy.bandEvening, copy.bandAnytime];
     drawn.forEach(({ band, body, ids }, i) => {
+      // V77: each band is section.tgb#band-<band> with a .tgbh header (glyph, heading, count in words).
+      expect(block, band).toMatch(new RegExp(`<section class="tgb" id="band-${band}" aria-labelledby="[^"]+-band-${band}" data-band="${band}">`));
+      expect(body, band).toMatch(/^<div class="tgbh"><i class="tg" aria-hidden="true">/);
       expect(body, band).toContain(`role="heading" aria-level="3">${esc(names[i])}</b>`);
-      expect(body, band).toContain(`<span class="n">${esc(copy.bandCount(ids.length))}</span>`);
+      expect(body, band).toContain(`<em>${esc(copy.bandCount(ids.length))}</em>`);
+      // The cards sit in ul.tgg; a band of exactly two is .tgg.two.
+      expect(body, band).toContain(ids.length === 2 ? '<ul class="tgg two">' : '<ul class="tgg">');
+      // NEGATIVE CONTROL: the v10.1 count span is gone.
+      expect(body, band).not.toContain('<span class="n">');
       for (const id of ids) expect(BAND_OF[routineSlot(id)], id).toBe(band);
+      // The header band's index tile counts the same routines, in the same order.
+      const tile = html.match(new RegExp(`<button type="button" data-testid="together-index-${band}" class="mcs( on)?" aria-pressed="(true|false)">([\\s\\S]*?)</button>`))!;
+      expect(tile, band).not.toBeNull();
+      expect(tile[3], band).toContain(`<b class="arbor-num">${ids.length}</b>`);
+      expect(tile[3], band).toContain(esc(names[i]));
+      // 13:00 is the afternoon: only that band is marked.
+      expect(tile[2], band).toBe(band === "afternoon" ? "true" : "false");
+      expect(Boolean(tile[1]), band).toBe(band === "afternoon");
     });
     expect(drawn.flatMap((b) => b.ids)).toHaveLength(10);
+    expect([...html.matchAll(/data-testid="together-index-([a-z]+)"/g)].map((m) => m[1])).toEqual(["morning", "afternoon", "evening", "anytime"]);
+    // The header figure: the number of routines offered, in words (never a share).
+    expect(html).toContain(`<div class="fig md"><b class="arbor-num">10</b><span>${esc(copy.routinesFigure)}<small>${esc(copy.routinesFigureSub)}</small></span></div>`);
+    // At 07:30 the morning band is the one marked.
+    at(7, 30);
+    const morning = page();
+    expect(morning.match(/aria-pressed="true"/g)).toHaveLength(1);
+    expect(morning).toContain('data-testid="together-index-morning" class="mcs on" aria-pressed="true"');
   });
 
   it("a started routine stays one card on the map: In your plan, today's ticks as marks and in words; a plan not started from a routine marks nothing", () => {
@@ -249,6 +282,11 @@ for (const lang of ["en", "he"] as const) describe(`v10.1 · Together's Routines
       expect(fits.match(/data-ticked="false"/g)).toHaveLength(morning.steps.length);
       for (const step of morning.steps) expect(fits).toContain(esc(localized(step.label, lang)));
       expect(fits).toMatch(new RegExp(`<button type="button" class="btn primary nowrap" data-testid="together-fits-start" aria-haspopup="dialog">.*${esc(FITS_COPY[lang].start)}</button>`));
+      // V77: the one move sits in the .dm-act row; the opened card spans the band's row.
+      expect(fits).toContain('<div class="dm-act"><button type="button" class="btn primary nowrap" data-testid="together-fits-start"');
+      expect(html).toContain('<li class="wide"><article class="dm-x" data-testid="together-fits" data-routine="morning">');
+      // NEGATIVE CONTROL: the v10.1 .act row is gone.
+      expect(fits).not.toContain('class="act"');
       expect(fits.replace(/<[^>]+>/g, " ")).not.toMatch(BANNED);
     }
     // A step already ticked reads Continue, and the tick shows.
@@ -297,18 +335,40 @@ describe("FEAT-07 · the age window and the stylesheet", () => {
 
   // v10.1 re-pin: the routine tiles moved from togetherDiscovery.css's 124px
   // grid (and the filter pills) to the day map in together/together.css.
+  // V77 re-pin: the map's grid is now .tgg (was .dm-g) inside the band sections
+  // .tgb, re-ported from the boards; the production additions sit below them.
   it("the day map: three cards a row on the desk, one column on a phone, cards above the 44 px floor, logical sides and nothing clipped", () => {
-    const css = strip(readFileSync(new URL("../together/together.css", import.meta.url), "utf8"));
-    expect(css).toMatch(/\.ds \.dm-g\{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
-    expect(css).toMatch(/\.ds \.dm-pm \.dm-g\{[^}]*grid-template-columns:minmax\(0,1fr\)/);
-    expect(css).toMatch(/\.ds \.dm-c \{ min-height: 88px; \}/);
+    const raw = readFileSync(new URL("../together/together.css", import.meta.url), "utf8");
+    const css = strip(raw);
+    // Three cards a row on the desk (two when a band has exactly two) …
+    expect(css).toMatch(/\.ds \.tgg\{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+    expect(css).toMatch(/\.ds \.tgg\.two \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/);
+    // … one column on a phone, whatever the band's size.
+    expect(css).toMatch(/\.ds \.dm-pm \.tgg\{[^}]*grid-template-columns:minmax\(0,1fr\)/);
+    expect(css).toMatch(/\.ds \.dm-pm \.tgg\.two \{ grid-template-columns: minmax\(0, 1fr\); \}/);
+    // Cards above the 44 px floor in both compositions.
+    const floor = (selector: string) => Number(css.match(new RegExp(`${selector.replace(/[.]/g, "\\.")} \\{ min-height: (\\d+)px; \\}`))?.[1]);
+    expect(floor(".ds .dm-c")).toBe(88);
+    expect(floor(".ds .dm-pm .dm-c")).toBe(56);
+    for (const selector of [".ds .dm-c", ".ds .dm-pm .dm-c"]) expect(floor(selector), selector).toBeGreaterThanOrEqual(44);
     expect(css).toMatch(/\.ds button\.dm-c, \.ds button\.dm-door[^{]*\{[^}]*text-align: start;/);
-    expect(css).toMatch(/\.ds button\.dm-c:focus-visible[^{]*\{ outline: 3px solid var\(--sapphire\)/);
-    const map = css.slice(css.indexOf(".ds .dm{"), css.indexOf(".ds{--pl-idea"));
-    expect(map.length).toBeGreaterThan(1000);
-    expect(map).not.toMatch(/\b(?:margin|padding|border|inset)-(?:left|right)\b|(?:^|[\s;{])(?:left|right)\s*:|text-align:\s*(?:left|right)/);
-    expect(map).not.toMatch(/line-clamp|text-overflow|overflow:\s*hidden/);
-    expect(map).not.toMatch(/progress|meter|width:\s*\d+%/);
+    // V77 states: a 2 px sapphire focus ring at 2 px (the boards' value; v10.1 drew 3 px).
+    expect(css).toMatch(/\.ds button\.dm-c:focus-visible[^{]*\{ outline: 2px solid var\(--sapphire\); outline-offset: 2px; \}/);
+    // NEGATIVE CONTROL: the v10.1 map classes are gone from the stylesheet and the source.
+    expect(css).not.toMatch(/\.dm-g\b|\.ds \.dm\{/);
+    expect(readFileSync(new URL("./TogetherRoutines.tsx", import.meta.url), "utf8")).not.toMatch(/"dm-g"|className="dm"|"dm dm-pm"/);
+    const board = css.slice(css.indexOf(".ds .scene.together{"), css.indexOf(".ds{--pl-idea"));
+    const additions = strip(raw.slice(raw.indexOf("/* ── Production additions")));
+    expect(board.length).toBeGreaterThan(1000);
+    expect(board).toContain(".ds .tgg{");
+    expect(board).toContain(".ds .dm-c{");
+    expect(additions.length).toBeGreaterThan(1000);
+    for (const [name, map] of [["board", board], ["additions", additions]] as const) {
+      expect(map, name).not.toMatch(/\b(?:margin|padding|border|inset)-(?:left|right)\b|(?:^|[\s;{])(?:left|right)\s*:|text-align:\s*(?:left|right)/);
+      expect(map, name).not.toMatch(/line-clamp|text-overflow|overflow:\s*hidden/);
+      // A full-width button reset is not a fill; any other percentage width would be.
+      expect(map, name).not.toMatch(/progress|meter|width:\s*(?!100%)\d+%/);
+    }
   });
 
   it("v4: the routine sheet's stylesheet — tokens and logical sides only, nothing clipped, a mark per step and never a bar or a meter", () => {

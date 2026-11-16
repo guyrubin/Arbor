@@ -18,7 +18,7 @@ export interface MilestonesBandProps {
   titleId: string;
   sub?: React.ReactNode;
   current: "development" | "milestones";
-  totals: { seen: number; areas: number };
+  totals: { seen: number; areas: number; since?: string | null };
   /** The index (DevelopmentMap) and anything under it; the list has none. */
   children?: React.ReactNode;
   /** The list's one-line band (h1, figure, switch): its first Seen it stays above the fold. */
@@ -30,7 +30,7 @@ export default function MilestonesBand({ composition, kicker, title, titleId, su
   const copy = milestonesV10Copy(uiLang);
   const desk = composition === "desk";
   const figure = totals.seen > 0
-    ? <span data-testid="dev-map-seen"><Fig n={totals.seen} unit={copy.hubUnit} sub={totals.areas === 1 ? copy.hubAreasOne : copy.hubAreasMany.replace("{n}", String(totals.areas))} size="md" /></span>
+    ? <span data-testid="dev-map-seen"><Fig n={totals.seen} unit={copy.hubUnit} sub={<>{totals.areas === 1 ? copy.hubAreasOne : copy.hubAreasMany.replace("{n}", String(totals.areas))}{totals.since ? <span data-testid="dev-map-since">{", "}{copy.since.replace("{date}", totals.since)}</span> : null}</>} size="md" /></span>
     : null;
   return (
     <Scene field="now" className={`ms-band${compact ? " compact" : ""}`} orbs={desk ? [{ size: 440, left: -230, bottom: -290, opacity: 0.65 }, { size: 380, right: -190, top: -250, opacity: 0.65, b: true }] : [{ size: 220, right: -110, top: -140, opacity: 0.65, b: true }]}>

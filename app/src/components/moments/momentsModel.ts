@@ -156,6 +156,25 @@ export function areaMonthCounts(buckets: readonly MonthBucket[]): AreaRow[] {
   }));
 }
 
+/**
+ * N-Moments V77 — the band's figure on Across areas: the marks the grid draws
+ * and the moments behind them, read from the SAME set (the grid's columns, and
+ * its one area when filtered). A moment with no area draws no mark and is not
+ * counted; a moment in several areas is one moment with several marks, so the
+ * marks are never fewer than the moments.
+ */
+export function areaFigure(buckets: readonly MonthBucket[], area?: DomainId | null): { marks: number; moments: number } {
+  let marks = 0;
+  let moments = 0;
+  for (const bucket of buckets) {
+    for (const o of bucket.observations) {
+      const n = area ? (o.domains.includes(area) ? 1 : 0) : o.domains.filter(d => (DOMAIN_IDS as readonly string[]).includes(d)).length;
+      if (n > 0) { marks += n; moments += 1; }
+    }
+  }
+  return { marks, moments };
+}
+
 export interface PlaceCard {
   context: BehaviorContext;
   /** Newest first. */

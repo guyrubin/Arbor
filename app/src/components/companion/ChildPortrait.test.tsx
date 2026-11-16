@@ -146,6 +146,7 @@ import { translate } from "../../lib/i18n";
 import { ALL_MILESTONES, bandForAgeMonths } from "../../lib/milestoneData";
 import { noticedByDomain } from "../../lib/milestones/domainMap";
 import { groupMilestonesByShelf } from "../../lib/milestones/shelfMap";
+import { milestonesV10Copy } from "./milestonesV10Copy";
 import { portraitDiscussionPrompt } from "./portraitModel";
 
 const catalogue = (): Milestone[] => ALL_MILESTONES.map(m => ({ ...m }));
@@ -197,7 +198,8 @@ describe("v3 F-CHILD-1 — the Milestones pill, one scroll", () => {
     expect(html).toContain(`data-testid="child-portrait"`);
     expect(html).toContain(`dir="${lang === "he" ? "rtl" : "ltr"}"`);
     // The header names the child through an isolated placeholder, never "{name}'s" in code.
-    expect(html).toContain(esc(translate(lang, "companion.milestones.kicker")));
+    expect(html).toContain(esc(milestonesV10Copy(lang).kicker));
+    expect(html).not.toContain(esc(translate(lang, "companion.milestones.kicker")));
     const [before, after] = translate(lang, "companion.milestones.title").split("{name}");
     expect(html).toContain(`<h1 class="title" id="ms-title">${esc(before)}<bdi dir="auto">Noa</bdi>${esc(after)}</h1>`);
     expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
@@ -207,7 +209,7 @@ describe("v3 F-CHILD-1 — the Milestones pill, one scroll", () => {
     // Order: band (h1, index) → that area → its rail (guide, Arbor suggests, focus + check) → cards.
     expect([...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(MODULES);
     const at = (s: string) => html.indexOf(s);
-    const order = ["<h1", 'data-testid="dev-map"', 'data-testid="area-detail"', 'data-testid="ms-read-guide"', 'data-testid="ms-suggest"', 'data-testid="portrait-goals-edit"', 'data-testid="dev-map-checkrow"', 'data-testid="portrait-cards"', 'id="ms-next"'].map(at);
+    const order = ["<h1", 'data-testid="dev-map"', 'data-testid="area-detail"', 'data-testid="ms-read-guide"', 'data-testid="portrait-goals-edit"', 'data-testid="dev-map-checkrow"', 'data-testid="portrait-cards"', 'id="ms-next"'].map(at);
     expect(order.every(i => i > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     // The Map / List switch: the map is this page; the list is #/milestones.
@@ -341,14 +343,17 @@ describe("v10.1 — one open area", () => {
     expect(openArea(render())).toEqual(["moving"]);
   });
 
-  it("the open area quotes its newest moment in the parent's words", () => {
+  it("V77: the open area no longer repeats its newest moment; its tile still carries the day", () => {
     state.query = "area=moving";
     state.sources = { behaviorLogs: [{ id: "l2", timestamp: "2026-06-12T10:00:00.000Z", behaviorType: "Moment", durationMinutes: 0, trigger: "Climbed the big slide alone" }] };
     state.observations = [{ id: "behaviorLogs:l2", childId: "child-a", at: "2026-06-12T10:00:00.000Z", domains: ["moving"], kind: "moment", origin: "behaviorLogs", source: "parent_typed", value: { type: "moment", behaviorType: "Moment" }, ageAtObservationMonths: null, pretermCorrected: false }];
     const html = render();
-    const area = html.slice(html.indexOf('data-module="child-milestones-area"'));
-    expect(area).toContain('data-testid="area-detail-last"');
-    expect(area).toContain("Climbed the big slide alone");
+    const area = html.slice(html.indexOf('data-module="child-milestones-area"'), html.indexOf('data-module="child-milestones-portrait"'));
+    expect(area.length).toBeGreaterThan(100);
+    expect(area).not.toContain('data-testid="area-detail-last"');
+    expect(area).not.toContain("Climbed the big slide alone");
+    const tile = html.slice(html.indexOf('data-domain="moving"'), html.indexOf('data-domain="moving"') + 1500);
+    expect(tile).toContain('data-testid="dev-map-last"');
   });
 
   it.each([false, true])("a territory tap opens its area and another takes over; never two open, never none (phone %s)", phone => {
@@ -502,21 +507,43 @@ describe("v3 F-CHILD-1 — answers, firsts and the chosen watch", () => {
 // columns of territories, the count in the scene's head), In your words with
 // the check closing it, the open area, then What to notice next.
 describe("v10.1 — What to notice next", () => {
-  it.each(["en", "he"] as const)("Arbor's first pick is Arbor suggests in the rail, once; the other picks are What to notice next (%s)", lang => {
+  // V73/V75 (kept in V77): a skill shows once. Arbor suggests is the open
+  // area's pick unless the open area already lists it to mark; What to notice
+  // next is the OTHER areas only.
+  const suggestId = (html: string) => html.match(/data-testid="ms-suggest" data-milestone="([^"]+)"/)?.[1] ?? null;
+  const nextDomains = (html: string) => [...html.slice(html.indexOf('data-testid="ms-next"')).matchAll(/data-testid="ms-next-card" data-milestone="([^"]+)"/g)].map(m => m[1]);
+  it.each(["en", "he"] as const)("the open area's pick is already a row there: no suggestion, and notice next leaves the open area out (%s)", lang => {
     state.lang = lang;
     const html = render();
+    expect(openArea(html)).toEqual(["talking"]);
+    expect(html).not.toContain('data-testid="ms-suggest"');
+    const talking = new Set(groupMilestonesByShelf(ALL_MILESTONES.map(m => ({ ...m }))).words.map(m => m.id));
+    const ids = nextDomains(html);
+    expect(ids.length).toBeGreaterThan(0);
+    for (const id of ids) {
+      expect(talking.has(id), id).toBe(false);
+      expect(html.match(new RegExp(`data-milestone="${id}"`, "g")), id).toHaveLength(1);
+    }
+  });
+
+  it.each(["en", "he"] as const)("another area open: Arbor suggests in the rail, once, and never again in notice next (%s)", lang => {
+    state.lang = lang;
+    state.query = "area=family";
+    const html = render();
+    expect(openArea(html)).toEqual(["family"]);
     expect(html.match(/data-testid="ms-next-suggests"/g)).toHaveLength(1);
     const suggest = html.slice(html.indexOf('data-testid="ms-suggest"'), html.indexOf('data-testid="portrait-goals-edit"'));
     expect(words(suggest)).toContain(lang === "he" ? "ארבור מציע" : "Arbor suggests");
-    const id = html.match(/data-testid="ms-suggest" data-milestone="([^"]+)"/)![1];
+    const id = suggestId(html)!;
     const next = html.slice(html.indexOf('data-testid="ms-next"'));
     expect(next).not.toContain(`data-milestone="${id}"`);
     expect(next).not.toContain("ms-next-suggests");
   });
 
   it("an answer on Arbor's pick writes through the one seam", () => {
+    state.query = "area=family";
     const html = render();
-    const id = html.match(/data-testid="ms-suggest" data-milestone="([^"]+)"/)![1];
+    const id = suggestId(html)!;
     const suggest = html.slice(html.indexOf('data-testid="ms-suggest"'));
     const title = suggest.match(/<p class="nm" dir="auto">([^<]+)<\/p>/)![1].replace(/&#x27;/g, "'").replace(/&amp;/g, "&");
     const segs = state.segments.filter(sg => sg.ariaLabel === title);

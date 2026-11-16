@@ -67,7 +67,7 @@ export function ReviewSheet({ open, onClose, plan, childName, lang, c, onSafety 
   const [rows, setRows] = useState<ReviewRow[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
   const [prepFor, setPrepFor] = useState<Record<string, string>>({});
-  const [resolved, setResolved] = useState<Record<string, "applied" | "both">>({});
+  const [resolved, setResolved] = useState<Record<string, "applied" | "both" | "held">>({});
 
   useEffect(() => {
     if (!open) { setText(""); setPhase({ at: "paste" }); setRows([]); setEditing(null); setPrepFor({}); setResolved({}); }
@@ -120,9 +120,12 @@ export function ReviewSheet({ open, onClose, plan, childName, lang, c, onSafety 
       date: r.date,
       time: r.time || undefined,
       sourceLine: r.sourceLine,
+      sourceLineNo: r.line,
       prep: notes.filter((n) => prepFor[n.id] === r.id).map((n) => n.title),
     }));
-    const res = await plan.addDates(keep, "message");
+    // A change the parent did not decide here is held on its date ("One change to review").
+    for (const r of rows) if (r.match.kind === "change" && !resolved[r.id] && keepable(r)) await plan.hold(r.match.existing.id, { date: r.date, time: r.time || undefined, sourceLine: r.sourceLine });
+    const res = keep.length ? await plan.addDates(keep, "message") : { added: 0 };
     if (res.added || !keep.length) onClose();
   };
 
@@ -198,6 +201,7 @@ export function ReviewSheet({ open, onClose, plan, childName, lang, c, onSafety 
                 <ThreadLine n={r.line} line={r.sourceLine} quote={r.quote} />
                 {isDup && <p className="small" role="note">{c.reviewDuplicate}</p>}
                 {applied && <p className="small" role="status">{c.receipt.changed(1)}</p>}
+                {resolved[r.id] === "held" && <p className="small" role="status">{c.receipt.held(1)}</p>}
                 {editing === r.id && (
                   <DateFields row={r} c={c} onChange={(p) => patch(r.id, p)} />
                 )}
@@ -211,6 +215,7 @@ export function ReviewSheet({ open, onClose, plan, childName, lang, c, onSafety 
                       })()}
                     </button>
                     <button type="button" className="btn ghost sm" onClick={() => { setResolved((m) => ({ ...m, [r.id]: "both" })); patch(r.id, { keep: true }); }}>{c.reviewKeepBoth}</button>
+                    <button type="button" className="btn ghost sm" disabled={plan.busy || !keepable(r)} onClick={async () => { if (r.match.kind === "change" && await plan.hold(r.match.existing.id, { date: r.date, time: r.time || undefined, sourceLine: r.sourceLine })) setResolved((m) => ({ ...m, [r.id]: "held" })); }}>{c.reviewLater}</button>
                   </div>
                 )}
                 {!isChange && !applied && !isDup && r.kind !== "note" && (
@@ -247,7 +252,7 @@ export function ReviewSheet({ open, onClose, plan, childName, lang, c, onSafety 
           )}
           {plan.error && <p role="alert" className="fp-err">{c.saveError}</p>}
           <div className="fp-actions">
-            <button type="button" className="btn primary grow" disabled={!toAdd.length || plan.busy} onClick={() => void add()}>{c.reviewAddN(toAdd.length)}</button>
+            <button type="button" className="btn primary grow" disabled={(!toAdd.length && !rows.some((r) => r.match.kind === "change" && !resolved[r.id])) || plan.busy} onClick={() => void add()}>{toAdd.length ? c.reviewAddN(toAdd.length) : c.reviewLater}</button>
             <button type="button" className="btn ghost" onClick={onClose}>{c.reviewNotNow}</button>
           </div>
         </>

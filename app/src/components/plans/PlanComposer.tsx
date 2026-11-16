@@ -38,6 +38,7 @@ import { useComposition, type Composition } from "../../design/useComposition";
 import { ChallengeBook } from "./v10/ChallengeBook";
 import { mirrorPoints, Road, zigzagPoints } from "./v10/Road";
 import { plansCopy } from "./v10/plansCopy";
+import { fmtDayV10 } from "../../lib/formatDate";
 import "./v10/plans.css";
 
 /* v10.1 (boards CP-1 Recognise, CP-2 Agree, CP-3 Preview; O-ChallengePlans):
@@ -149,7 +150,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
         {/* S1 4(b): owner only — the shared plates paint themselves in the background; no button. */}
         {ownerPaint && paint.painting && (
           <p role="status" className="line small" style={{ gap: 8 }} data-plan-painting={paint.done}>
-            <Icon name="brush" size={16} />{s("paint.progress", { done: paint.done, total: paint.total })}
+            <Icon name="brush" size={15} />{s("paint.progress", { done: paint.done, total: paint.total })}
           </p>
         )}
 
@@ -201,7 +202,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
               </ul>
             </div>
             <button type="button" className={`${PRIMARY} block`} style={{ minHeight: 52 }} data-plan-redlines-next="" onClick={() => dispatch({ type: "redLinesDone" })}>{state.ticked.length ? s("stage.redLines.next") : s("stage.redLines.none")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" /></button>
-            <p className="cp-lede line" style={{ gap: 8 }}><Icon name="health_and_safety" size={16} />{c.redLinesNote}</p>
+            <p className="cp-lede line" style={{ gap: 8 }}><Icon name="health_and_safety" size={15} />{c.redLinesNote}</p>
           </section>
         )}
 
@@ -234,7 +235,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
                   return (
                     <li key={b.id}>
                       <button type="button" className={on ? "cp-chip on ds-plans-chipbtn" : "cp-chip ds-plans-chipbtn"} aria-pressed={on} data-plan-box={b.id} onClick={() => dispatch({ type: "the-box", itemId: b.id, on: !on })}>
-                        {b.glyph && <Icon name={b.glyph} size={16} />}{b.label[lang]}
+                        {b.glyph && <Icon name={b.glyph} size={15} />}{b.label[lang]}
                       </button>
                     </li>
                   );
@@ -274,7 +275,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
 
         {state.stage === "approved" && (
           <section className="cp-card" data-plan-stage="approved">
-            <span className="cp-st2 ok" style={{ alignSelf: "flex-start" }}><Icon name="check" size={14} />{c.approvedOn(new Date().toLocaleDateString(lang === "he" ? "he-IL" : "en-US", { day: "numeric", month: "short" }))}</span>
+            <span className="cp-st2 ok" style={{ alignSelf: "flex-start" }}><Icon name="check" size={15} />{c.approvedOn(fmtDayV10(new Date(), lang))}</span>
             <h1 className="cp-h">{s("stage.approved.title", { name })}</h1>
             <p className="cp-lede">{s("stage.approved.body", { name, days: state.durationDays })}</p>
             <div className="line" style={{ gap: 8, flexWrap: "wrap" }}>
@@ -344,7 +345,7 @@ function StepsStage({ def, lang, childName, state, dispatch, problems, onSafety,
               {text && <div className="cp-kid" dir="auto" data-plan-step-text=""><small>{c.inTheBook(childName)}</small>{lang === "he" ? text.he[heGender(undefined)] : text.en}</div>}
               {isOwn && state.ownStep && (
                 <div className="cp-own" data-plan-own-pending={state.ownStep.approvedAt ? undefined : ""}>
-                  <span className="by" data-plan-own-origin={state.ownStep.origin ?? "parent"}><Icon name="edit" size={14} /> {state.ownStep.origin === "practitioner" ? s("stage.steps.practitionerLabel", { name: childName }) : s("stage.steps.ownLabel")}</span>
+                  <span className="by" data-plan-own-origin={state.ownStep.origin ?? "parent"}><Icon name="edit" size={15} /> {state.ownStep.origin === "practitioner" ? s("stage.steps.practitionerLabel", { name: childName }) : s("stage.steps.ownLabel")}</span>
                   <div className="line" style={{ gap: 8, flexWrap: "wrap" }}>
                     {!state.ownStep.approvedAt && <button type="button" className="btn ink sm grow" data-plan-own-approve="" onClick={() => dispatch({ type: "ownStepApproved", at: new Date().toISOString() })}><Icon name="check" size={18} />{s("stage.steps.ownApprove")}</button>}
                     <button type="button" className="btn ghost sm" style={{ background: "var(--card)" }} data-plan-own-drop="" onClick={() => dispatch({ type: "ownStepDropped" })}>{s("stage.steps.ownDrop")}</button>
@@ -405,7 +406,7 @@ function StepsStage({ def, lang, childName, state, dispatch, problems, onSafety,
             </div>
           )}
           <div className="line" style={{ gap: 8, flexWrap: "wrap" }}>
-            <span className="ds-plans-draft"><Icon name="edit" size={14} />{plansCopy(lang).draftLabel}</span>
+            <span className="ds-plans-draft"><Icon name="edit" size={15} />{plansCopy(lang).draftLabel}</span>
             <button type="button" className="btn ghost sm" style={{ background: "var(--card)", marginInlineStart: "auto" }} disabled={phrasing || ownText.trim().length < 3} data-plan-own-phrase="" onClick={() => void phrase()}><Icon name="auto_awesome" size={18} />{phrasing ? s("stage.steps.ownPhrasing") : s("stage.steps.ownPhrase")}</button>
           </div>
         </section>

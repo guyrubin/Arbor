@@ -1,57 +1,51 @@
 import React from "react";
-import { Icon } from "../../ui/Icon";
-import { LivingForm } from "../../../design/primitives";
+import { GlyphChip, LivingForm } from "../../../design/primitives";
 import type { Composition } from "../../../design/useComposition";
-import { translate, type UiLang } from "../../../lib/i18n";
+import type { UiLang } from "../../../lib/i18n";
 import { planString } from "../../../lib/plans/planStrings";
-import { tonightStepForParent, type ActivePlan } from "../../../lib/plans/planWeek";
+import type { ActivePlan } from "../../../lib/plans/planWeek";
 import { EMPTY_ART } from "../../../lib/parentArt";
 import type { ActionPlan } from "../../../types";
 import { ChallengeBook } from "./ChallengeBook";
 import { plansCopy } from "./plansCopy";
 
 /**
- * Stop 1's picker: every plan the family runs, one card each with one
- * anatomy — the action plan(s) named by their title, the Challenge plan(s) by
- * their book title. An action plan opens below (this screen); a Challenge plan
- * opens its own page (#/plans?challenge=<id>). Counts only.
+ * Stop 1's picker (V77: "your plans as tabs"): every plan the family runs is
+ * one compact tab — its kind and one line (the action plan's title; the
+ * Challenge plan's night). Each plan is drawn once, at its home: an action plan
+ * opens below (this screen); a Challenge plan opens its own page
+ * (#/plans?challenge=<id>). With no Challenge plan running, one tab opens the
+ * Challenge Plans list, so they stay one tap away. Counts only.
  */
 
-/** A template with one {n} number made big: "Night <b>9</b> of 14". */
-function BigNumber({ template, n }: { template: string; n: number }) {
-  const [before, after = ""] = template.split("\u0000");
-  return <>{before}<b>{n}</b>{after}</>;
-}
-
-export function PlanPicker({ actionPlans, selectedId, todaySteps, challenges, lang, composition, onSelect, onOpenChallenge }: {
+export function PlanPicker({ actionPlans, selectedId, challenges, lang, composition, onSelect, onOpenChallenge, onAllChallenges, challengeCount = 0 }: {
   actionPlans: ActionPlan[];
   selectedId: string | null;
-  /** Today's step text per action plan id (null when the plan is complete). */
-  todaySteps: Record<string, string | null>;
   challenges: ActivePlan[];
   lang: UiLang;
   composition: Composition;
   onSelect: (planId: string) => void;
   onOpenChallenge: (plan: ActivePlan) => void;
+  /** The Challenge Plans list (shown as a tab when none runs). */
+  onAllChallenges?: () => void;
+  /** Patterns this family may start; 0 hides the list tab. */
+  challengeCount?: number;
 }) {
   const l = lang === "he" ? "he" : "en";
   const c = plansCopy(l);
-  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
   const desk = composition === "desk";
-  const cards: React.ReactNode[] = [];
+  const tabs: React.ReactNode[] = [];
+  const line = (text: string) => <span className="ds-plans-tabline" dir="auto">{text}</span>;
   for (const plan of actionPlans) {
     const on = plan.id === selectedId;
-    const step = todaySteps[plan.id];
-    cards.push(
-      <button key={plan.id} type="button" className={`pk${desk ? " x6" : " m"}${on ? " on" : ""}`} aria-pressed={on} onClick={() => onSelect(plan.id)} data-plan-pick={plan.id}>
-        <span className="pf"><LivingForm src={EMPTY_ART.plans.src} srcSet={EMPTY_ART.plans.srcSet} width={desk ? 64 : 44} height={desk ? 46 : 32} /></span>
+    tabs.push(
+      <button key={plan.id} type="button" className={`pk tabk${desk ? "" : " m"}${on ? " on" : ""}`} aria-pressed={on} onClick={() => onSelect(plan.id)} data-plan-pick={plan.id}>
+        <span className="pf"><LivingForm src={EMPTY_ART.plans.src} srcSet={EMPTY_ART.plans.srcSet} width={36} height={26} /></span>
         <span className="pt">
           <small>{c.actionPlan}</small>
-          <b dir="auto">{plan.title}</b>
-          <span dir="auto">{step ?? t("plan.complete")}</span>
+          {line(plan.title)}
         </span>
-        {/* The step count lives once, on the stage (and the guide): the card names the plan and today's step. */}
-        <span className="ps">{on ? c.openBelow : c.open}</span>
+        {desk && <span className="ps">{on ? c.openBelow : c.open}</span>}
       </button>,
     );
   }
@@ -59,35 +53,33 @@ export function PlanPicker({ actionPlans, selectedId, todaySteps, challenges, la
     const title = p.def.title[l];
     const total = p.doc.durationDays;
     const night = Math.min(p.day, total);
-    const step = tonightStepForParent(p.doc, l);
-    const nightLine = planString("card.night", l, { n: night, total });
-    cards.push(
-      <a key={p.doc.id} className={`pk${desk ? " x6" : " m"}`} href={`#/plans?challenge=${p.def.id}`} onClick={(e) => { e.preventDefault(); onOpenChallenge(p); }} data-plan-pick={p.def.id} aria-label={c.openPlan(title)}>
-        <span className="pf"><ChallengeBook title={title} size="sm" width={desk ? 46 : 34} label={c.book(title)} /></span>
+    tabs.push(
+      <a key={p.doc.id} className={`pk tabk${desk ? "" : " m"}`} href={`#/plans?challenge=${p.def.id}`} onClick={(e) => { e.preventDefault(); onOpenChallenge(p); }} data-plan-pick={p.def.id} aria-label={c.openPlan(title)}>
+        <span className="pf"><ChallengeBook title={title} size="sm" width={28} label={c.book(title)} /></span>
         <span className="pt">
           <small>{c.challengePlan}</small>
-          <b dir="auto">{title}</b>
-          <span dir="auto">{desk ? (step ? planString("card.tonight", l, { step }) : p.def.parentWords[l]) : `${nightLine}${step ? ` · ${planString("card.tonight", l, { step })}` : ""}`}</span>
+          {line(planString("card.night", l, { n: night, total }))}
         </span>
-        {desk ? (
-          <span className="pr">
-            <span className="pg"><BigNumber template={planString("card.night", l, { n: "\u0000", total })} n={night} /></span>
-            <span className="ps">{c.open}</span>
-          </span>
-        ) : (
-          <span className="ps"><Icon name="chevron_right" size={18} className="rtl:-scale-x-100" /></span>
-        )}
+        {desk && <span className="ps">{c.open}</span>}
       </a>,
     );
   }
-  if (!cards.length) return null;
-  return desk ? (
-    <div className="g12" style={{ marginBottom: 16 }} role="group" aria-label={c.yourPlans}>
-      {cards}
-    </div>
-  ) : (
-    <div className="stack ds-col" style={{ gap: 8 }} role="group" aria-label={c.yourPlans}>
-      {cards}
+  if (!challenges.length && challengeCount > 0 && onAllChallenges) {
+    tabs.push(
+      <a key="challenge-all" className={`pk tabk${desk ? "" : " m"}`} href="#/plans?challenge=all" onClick={(e) => { e.preventDefault(); onAllChallenges(); }} data-plan-pick="challenge-all">
+        <span className="pf"><GlyphChip icon="auto_stories" kind="plan" /></span>
+        <span className="pt">
+          <small>{planString("section.title", l)}</small>
+          {line(planString("section.hard", l))}
+        </span>
+        {desk && <span className="ps">{c.open}</span>}
+      </a>,
+    );
+  }
+  if (!tabs.length) return null;
+  return (
+    <div className="ds-plans-tabs" role="group" aria-label={c.yourPlans}>
+      {tabs}
     </div>
   );
 }

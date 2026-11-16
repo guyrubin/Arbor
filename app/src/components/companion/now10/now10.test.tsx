@@ -173,7 +173,7 @@ describe("Coming up's Family plan slot (synthetic dates)", () => {
     expect(lines).toHaveLength(NOW_FAMILY_PLAN_ROWS);
     expect(lines.map((l) => l.id)).toEqual(["today", "next", "later"]);
     expect(lines[0]).toMatchObject({ day: 16, nobody: false, title: "Date today", sub: "08:30 · You" });
-    expect(lines[1]).toMatchObject({ day: 18, nobody: false, sub: "dana" });
+    expect(lines[1]).toMatchObject({ day: 18, nobody: false, sub: "Dana" });
     expect(lines[2]).toMatchObject({ day: 20, nobody: true, sub: NOW_V10_COPY.en.familyPlanNobody });
     lines[1].onOpen();
     expect(onOpen).toHaveBeenCalledTimes(1);
@@ -209,5 +209,22 @@ describe("Now v10 copy", () => {
       const text = typeof value === "function" ? (value as (...a: unknown[]) => string)(3, "9:00") : String(value);
       expect(text).not.toMatch(/\?|\bAI\b|score|percent|%/i);
     }
+  });
+});
+
+describe("the record lead on the stage (N-Now V77)", () => {
+  it("is the three worded answers, outlined, in one row, carrying the one primary move; the question and quote ride the arc", async () => {
+    const { default: FromRecordCard } = await import("../../overview/FromRecordCard");
+    const opener = { key: "note:n1", kind: "plan", topic: null, quote: "Put his shoes on by himself", quoteSource: "parent", quoteAt: "2026-11-14T08:00:00" } as unknown as Parameters<typeof FromRecordCard>[0]["opener"];
+    const stage = renderToStaticMarkup(<FromRecordCard stage opener={opener} childName="Noa" stampMove="choose-next-step" onAnswer={() => {}} />);
+    expect(stage).toContain('class="ans3 flat"');
+    expect(stage.match(/<button/g)).toHaveLength(3);
+    expect(stage.match(/data-primary-move="choose-next-step"/g)).toHaveLength(1);
+    expect(stage).not.toContain("today-record-quote");
+    expect(stage).not.toContain("today-record-question");
+    // Negative control: the card form still carries its own quote and question.
+    const card = renderToStaticMarkup(<FromRecordCard opener={opener} childName="Noa" onAnswer={() => {}} />);
+    expect(card).toContain('data-testid="today-record-quote"');
+    expect(card).toContain('data-testid="today-record-question"');
   });
 });

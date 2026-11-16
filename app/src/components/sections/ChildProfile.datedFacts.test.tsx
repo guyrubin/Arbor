@@ -82,7 +82,9 @@ describe("B-GROWTH-35 — a fact with a relative time carries the day it was wri
     const html = renderToStaticMarkup(<ChildProfile />);
     const s = text(area(html, "school")).replace(/\s+/g, " ");
     expect(s).toContain("Entering Bilingual Kindergarten in 3 months");
-    expect(s).toContain("Noted · Jun 10, 2026");
+    // V77: the boards' day-first short date (the year only outside this year)
+    expect(s).toMatch(/Noted · (Wed 10 Jun|10 Jun 2026)/);
+    expect(s).not.toContain("Jun 10, 2026"); // negative control: never month-first
     // one date, not two
     expect(s).not.toContain("kept since");
     expect(html).not.toContain('data-testid="profile-fact-written"');
@@ -94,7 +96,7 @@ describe("B-GROWTH-35 — a fact with a relative time carries the day it was wri
     const html = renderToStaticMarkup(<ChildProfile />);
     const s = text(area(html, "school")).replace(/\s+/g, " ");
     expect(s).toContain("נרשם ·");
-    expect(s).toContain("ביוני 2026");
+    expect(s).toMatch(/10 ביוני/);
     expect(s).toContain("נועה מתחילה גן חדש בעוד חודשיים");
   });
 
@@ -103,7 +105,7 @@ describe("B-GROWTH-35 — a fact with a relative time carries the day it was wri
     const html = renderToStaticMarkup(<ChildProfile />);
     const s = text(area(html, "lang")).replace(/\s+/g, " ");
     expect(s).toContain("Noa answers in Hebrew when tired");
-    expect(s).toContain("Noted · Jun 10, 2026");
+    expect(s).toMatch(/Noted · (Wed 10 Jun|10 Jun 2026)/);
     expect(html).not.toContain('data-testid="profile-fact-written"');
   });
 });

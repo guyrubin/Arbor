@@ -22,13 +22,15 @@ import { portraitEvidenceLines, reviewedPortraitDraft } from "../companion/portr
 import { openFamilyTopicSheet } from "../companion/familyTopicEvents";
 import { PLACE_ICONS, PLACE_LABEL_KEYS } from "../overview/CaptureWhereArea";
 import {
-  areaMonthCounts, filterByAreaMonth, isKind, isMomentRecord, kindCounts, monthBuckets, MOMENTS_KINDS, MOMENTS_RANGES, MOMENTS_VIEWS, parseKind, parseMonth, parseView, placeCards, placeOf,
+  areaFigure, areaMonthCounts, filterByAreaMonth, isKind, isMomentRecord, kindCounts, monthBuckets, MOMENTS_KINDS, MOMENTS_RANGES, MOMENTS_VIEWS, parseKind, parseMonth, parseView, placeCards, placeOf,
   type MomentsKind, type MomentsRange, type MomentsView, type MonthBucket,
 } from "./momentsModel";
 import { DsRoot, Guide, Route, RouteSection, Scene, Token } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
 import { shelfLabel } from "../../lib/shelves/registry";
 import MomentsAreas from "./v10/MomentsAreas";
+import { fmtDayMonth, fmtDayTimeV10, fmtDayV10 } from "../../lib/formatDate";
+import { languageName } from "../../lib/languageName";
 import MomentsNewest, { type NewestLabels } from "./v10/MomentsNewest";
 import { STAGE_ORBS } from "./v10/stageOrbs";
 import { Draw, FrameFigure, FrameHead, IndexRow, ReadGuide, RailTile, RowLink, StageCard, type IndexItem } from "./v10/frame";
@@ -208,7 +210,13 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   };
 
   // A note's YYYY-MM-DD is the day the parent chose, not midnight UTC.
-  const date = (at: string, year = false) => new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", ...(year ? { year: "numeric" as const } : {}) }).format(new Date(/^\d{4}-\d{2}-\d{2}$/.test(at) ? `${at}T12:00:00` : at));
+  // v10.3: the boards' day-first short day ("Sun 15 Nov"); a date-only value reads at noon.
+  const dayOnly = (at: string) => /^\d{4}-\d{2}-\d{2}$/.test(at);
+  // The boards' day (fmtDayV10: "Sun 15 Nov", the year only outside this year); with the clock when the record has one.
+  const date = (at: string, withTime = false) => {
+    const when = dayOnly(at) ? `${at}T12:00:00` : at;
+    return withTime && !dayOnly(at) ? fmtDayTimeV10(when, uiLang) : fmtDayV10(when, uiLang);
+  };
   const monthLabel = (bucket: Pick<MonthBucket, "from">) => new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(bucket.from);
   const multiYear = areaColumns.length > 0 && areaColumns[0].from.getFullYear() !== areaColumns[areaColumns.length - 1].from.getFullYear();
   const columnLabel = (bucket: MonthBucket) => new Intl.DateTimeFormat(locale, { month: "short", ...(multiYear ? { year: "2-digit" as const } : {}) }).format(bucket.from);
@@ -268,7 +276,7 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
       openNoticeDetail(childProfile.id, milestoneId);
       return;
     }
-    select([o], date(o.at, true), o.domains[0]);
+    select([o], date(o.at), o.domains[0]);
   };
   const question = () => {
     const domains = selected?.domain ? [selected.domain] : [...new Set(selectedObservations.flatMap(o => o.domains))];
@@ -326,7 +334,7 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
     <div className="moments-range" ref={rangeRef}>
       <button type="button" ref={rangeChipRef} className="moments-chip" aria-haspopup="menu" aria-expanded={menuOpen} aria-controls={menuId}
         aria-label={t("companion.moments.rangeAria", { range: t(RANGE_KEYS[range]) })} onClick={() => setMenuOpen(open => !open)} onKeyDown={onChipKey}>
-        <Icon name="calendar_month" size={18} />{t(RANGE_KEYS[range])}<Icon name="expand_more" size={18} />
+        <span>{v.timeInView(t("companion.portrait.range"), t(RANGE_KEYS[range]))}</span><Icon name="expand_more" size={18} />
       </button>
       {menuOpen && (
         <div role="menu" id={menuId} className="moments-menu" aria-label={t("companion.portrait.range")} onKeyDown={onMenuKey}>
@@ -347,8 +355,10 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
     const photo = logMap.get(o.id)?.photoAttachment ?? keepsake?.photoUrl;
     if (photo) return <div className="moments-band moments-band-photo"><img src={photo} alt={t("companion.portrait.photo")} loading="lazy" /></div>;
     const domain = o.domains[0];
-    if (!domain) return <div className="moments-band" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)" }} aria-hidden="true"><Icon name="auto_stories" size={30} /></div>;
-    return <div className="moments-band" style={{ background: `var(--arbor-domain-${domain}-soft)`, color: `var(--arbor-domain-${domain}-ink)` }} aria-hidden="true"><Icon name={DOMAIN_ICONS[domain]} size={30} /></div>;
+    // V77: one kind palette, no area hues — a moment is sapphire, a hard moment rust.
+    const kindTone = isKind(o, "hard") ? { background: "var(--k-hard-w)", color: "var(--k-hard-i)" } : { background: "var(--k-moment-w)", color: "var(--k-moment-i)" };
+    if (!domain) return <div className="moments-band" style={kindTone} aria-hidden="true"><Icon name="auto_stories" size={28} /></div>;
+    return <div className="moments-band" style={kindTone} aria-hidden="true"><Icon name={DOMAIN_ICONS[domain]} size={28} /></div>;
   };
 
   // ── v10 composition ─────────────────────────────────────────────────────────
@@ -400,7 +410,7 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
                         <div className="moments-src">
                           <span>{sourceLabel(o)} · {date(o.at)}</span>
                           <button type="button" className="moments-overflow" aria-label={t("companion.moments.overflow")}
-                            onClick={() => select([o], date(o.at, true), o.domains[0])}>
+                            onClick={() => select([o], date(o.at), o.domains[0])}>
                             <Icon name="more_horiz" size={20} />
                           </button>
                         </div>
@@ -476,12 +486,13 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
 
   // The band: the page's one h1, the views, Everything by date and one figure.
   const inRange = rangeBuckets.flatMap(bucket => bucket.observations);
-  const marks = areaRows.reduce((sum, row) => sum + row.counts.reduce((s, n) => s + n, 0), 0);
+  // The marks and the moments behind them, from the grid's own set (never the range's every moment).
+  const { marks, moments: markedMoments } = areaFigure(areaColumns, area);
   const oldestInRange = inRange.length ? inRange[inRange.length - 1] : null;
   const figure = !reader && inRange.length > 0 ? (
     view === "areas" && marks > 0
-      ? <FrameFigure n={marks} unit={v.marksUnit(inRange.length)} sub={oldestInRange ? v.since(date(oldestInRange.at), t(RANGE_KEYS[range])) : undefined} />
-      : <FrameFigure n={inRange.length} unit={v.momentsUnit(inRange.length)} sub={oldestInRange ? v.since(date(oldestInRange.at), t(RANGE_KEYS[range])) : undefined} />
+      ? <FrameFigure n={marks} unit={v.marksUnit(markedMoments)} sub={oldestInRange ? v.since(fmtDayMonth(oldestInRange.at, uiLang), v.rangeLast[range] ?? "") : undefined} />
+      : <FrameFigure n={inRange.length} unit={v.momentsUnit(inRange.length)} sub={oldestInRange ? v.since(fmtDayMonth(oldestInRange.at, uiLang), v.rangeLast[range] ?? "") : undefined} />
   ) : null;
   const everything = (
     <button type="button" className="btn sm ghost nowrap card-btn" data-testid="moments-everything" onClick={() => goToRoute("journal", { view: "all" })}>{t("elev.shelfJournal.all")}</button>
@@ -489,13 +500,14 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   const hardLogs = record.sources.behaviorLogs ?? [];
   const hardInRange = inRange.filter(o => isKind(o, "hard"));
   const settled = hardInRange.filter(o => hardLogs.find(log => `behaviorLogs:${log.id}` === o.id)?.resolved).length;
+  const familyLanguages = (childProfile.languages ?? []).filter(Boolean).map(l => languageName(l, t));
   const kindItems: IndexItem[] = [
-    { id: "all", icon: "grid_view", name: v.allMoments, meta: v.kindMeta.all(t(RANGE_KEYS[range])), on: kind === "all", onOpen: () => go({ kind: "all" }), attrs: { "data-moments-kind": "all" } },
+    { id: "all", icon: "grid_view", name: v.allMoments, meta: v.kindMeta.all(v.rangeLast[range] ?? ""), on: kind === "all", onOpen: () => go({ kind: "all" }), attrs: { "data-moments-kind": "all" } },
     { id: "kept", icon: "menu_book", name: t("companion.moments.kind.kept"), meta: v.kindMeta.kept, figure: counts.kept || undefined, on: kind === "kept", onOpen: () => go({ kind: "kept" }), attrs: { "data-moments-kind": "kept" } },
     { id: "hard", icon: "favorite", name: t("companion.moments.kind.hard"), figure: counts.hard || undefined, on: kind === "hard",
       meta: counts.hard > 0 ? (settled === hardInRange.length && settled > 0 ? v.kindMeta.hardSettled : settled > 0 ? v.kindMeta.hardSome(settled) : t("companion.moments.kind.hardDoor")) : t("companion.moments.kind.hardDoor"),
       onOpen: () => setActiveTab("behaviors"), testId: "moments-kind-door-hard", attrs: { "data-moments-kind": "hard" } },
-    { id: "said", icon: "format_quote", name: kindLabel("said"), meta: t("companion.moments.kind.saidDoor", { name: firstName }), figure: counts.said || undefined, on: kind === "said", onOpen: () => setActiveTab("language"), testId: "moments-kind-door-said", attrs: { "data-moments-kind": "said" } },
+    { id: "said", icon: "format_quote", name: kindLabel("said"), meta: familyLanguages.length ? v.saidMeta(familyLanguages) : t("companion.moments.kind.saidDoor", { name: firstName }), figure: counts.said || undefined, on: kind === "said", onOpen: () => setActiveTab("language"), testId: "moments-kind-door-said", attrs: { "data-moments-kind": "said" } },
   ];
   const header = (
     <Scene field="now" className="mband" orbs={STAGE_ORBS[composition]}>
@@ -506,13 +518,15 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
           switcher={reader ? undefined : viewSwitch} action={desk ? everything : undefined} figure={figure} />
         <IndexRow phone={!desk} label={t("companion.moments.kinds")} items={kindItems} />
       </div>
-      {!reader && view !== "time" && <div className="mcap"><span>{view === "areas" ? t("companion.moments.areasNote") : t("companion.moments.placeNote")}</span></div>}
+      {!reader && view !== "time" && <div className="mcap"><span>{view === "areas" ? v.capAreas : t("companion.moments.placeNote")}</span></div>}
     </Scene>
   );
 
   const stageTitle = reader ? t("kept.yearBook") : t(VIEW_KEYS[view]);
   const stage = (
-    <StageCard icon={reader ? "menu_book" : VIEW_ICON[view]} title={stageTitle} end={reader ? undefined : rangeControl} className="mstage-card">
+    <StageCard icon={reader ? "menu_book" : VIEW_ICON[view]} title={stageTitle} end={reader || !desk ? undefined : rangeControl} className="mstage-card">
+      {/* Phone (N-Moments-M): the range control sits on its own line under the title. */}
+      {!reader && !desk && <div className="mrange-m">{rangeControl}</div>}
       {panel}
     </StageCard>
   );
@@ -556,7 +570,7 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   };
   const newestCard = (
     <MomentsNewest newest={newest} initial={parentInitial} labels={newestLabels}
-      onMap={() => setActiveTab("development")} onMore={o => select([o], date(o.at, true), o.domains[0])}
+      onMap={() => setActiveTab("development")} onMore={o => select([o], date(o.at), o.domains[0])}
       onMove={moveLog ? (_o, shelf) => fileMomentOnShelf(moveLog.id, shelf, undefined, moveLog) : undefined} />
   );
   // One control each (F-INT-1: one opens the journal), on both compositions.
@@ -577,7 +591,7 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   );
   const guideStops = [
     { id: "m-kinds", title: desk ? v.guide.kinds : v.guide.kindsShort, sub: v.guide.kindsSub },
-    { id: "m-stage", title: stageTitle, sub: v.guide.stageSub },
+    { id: "m-stage", title: !reader && view === "areas" ? (desk ? v.guideAreas : v.guideAreasShort) : stageTitle, sub: v.guide.stageSub },
   ];
 
   return (
@@ -619,7 +633,7 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
             const place = o.value.type === "moment" && o.value.context && o.value.context in PLACE_LABEL_KEYS ? t(PLACE_LABEL_KEYS[o.value.context as keyof typeof PLACE_LABEL_KEYS]) : "";
             return (
               <article key={o.id} className="moments-evidence-item" data-observation-id={o.id}>
-                <div className="moments-evidence-meta"><time dateTime={o.at}>{date(o.at, true)}</time><span>{sourceLabel(o)}</span></div>
+                <div className="moments-evidence-meta"><time dateTime={o.at}>{date(o.at)}</time><span>{sourceLabel(o)}</span></div>
                 {photo && <img className="moments-evidence-photo" src={photo} alt={t("companion.portrait.photo")} loading="lazy" />}
                 <h3>{copy.original}</h3>
                 <p className="moments-quote" dir="auto">{title(o)}</p>

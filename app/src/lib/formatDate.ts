@@ -145,6 +145,17 @@ export const fmtDayV10 = (input: DateInput, lang: UiLang, now: Date = new Date()
   return isolate(s);
 };
 
+/** The same day-first short form without the weekday: "8 Oct" / "8 באוק׳". */
+export const fmtDayMonth = (input: DateInput, lang: UiLang): string => {
+  const d = toDate(input);
+  if (!d) return "";
+  try {
+    return isolate(d.toLocaleDateString(lang === "he" ? LOCALES.he : "en-GB", { day: "numeric", month: "short" }));
+  } catch {
+    return isolate(d.toLocaleDateString(undefined, { day: "numeric", month: "short" }));
+  }
+};
+
 /** v10 day and time — "Wed 25 Nov, 10:00" / "יום ד׳, 25 בנוב׳, 10:00" (24-hour clock). */
 export const fmtDayTimeV10 = (input: DateInput, lang: UiLang, now: Date = new Date()): string => {
   const d = toDate(input);
@@ -158,3 +169,4 @@ export const fmtTimeV10 = (input: DateInput, lang: UiLang): string => {
   const d = toDate(input);
   return d ? v10Time(d, lang) : "";
 };
+

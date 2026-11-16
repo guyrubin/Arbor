@@ -16,6 +16,9 @@ import { ageLabel } from "../../lib/childAge";
 import { aggregateLangCounts, type LangObservation } from "../../growth/vocabAgg";
 import LanguageLabVocabView, { PhraseLogForm, WordsList } from "./LanguageLabVocabView";
 import { languageName } from "../../lib/languageName";
+import { fmtDayV10 } from "../../lib/formatDate";
+import { quotesFromDocs } from "../../lib/loop/tonight";
+import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
 import { ageMonthsOf, isUnderThree } from "../../lib/age/forChild";
 import { genderedKey } from "../../lib/today/fromRecord";
 import { actNowKey, sayBackFor } from "../../lib/language/sayBack";
@@ -77,6 +80,14 @@ export default function LanguageLabTab() {
     for (const c of aggregateLangCounts(obsCol.items)) map.set(c.language.toLowerCase(), c.count);
     return map;
   }, [obsCol.items]);
+  // v10.3 (N-SaidHe): under one language's sayings, the words logged in it.
+  const filteredWords = useMemo(
+    () => (langFilter ? obsCol.items.filter((o) => (o.language ?? "").toLowerCase() === langFilter.toLowerCase()) : obsCol.items).slice(0, 12),
+    [obsCol.items, langFilter],
+  );
+  // N-Said: the band's figure counts the sayings kept (the keepsake quotes) and the words beside them.
+  const keepsakes = useChildCollection<KeepsakeDoc>(childProfile.id, "keepsakes");
+  const sayingsKept = useMemo(() => quotesFromDocs(keepsakes.items).length, [keepsakes.items]);
   const countLine = (lang: string): string => {
     const n = countByLang.get(lang.toLowerCase()) ?? 0;
     if (n === 0) return t("elev.growthTruth.lang.count.none");
@@ -147,7 +158,9 @@ export default function LanguageLabTab() {
       <div className="mstack mtools">
         <FrameHead phone={!desk} kicker={v.said.kicker(first)} startHere={v.startHere} title={title} sub={t("lang.subtitle", { first })}
           switcher={<KindSwitch kind="said" />} action={desk ? monthPage : undefined}
-          figure={totalLogged > 0 ? <FrameFigure n={totalLogged} unit={v.said.figureUnit(totalLogged)} /> : undefined} />
+          figure={!underThree && sayingsKept > 0
+            ? <FrameFigure n={sayingsKept} unit={v.said.sayingsUnit(sayingsKept)} sub={obsCol.items.length > 0 ? v.said.andWords(obsCol.items.length) : undefined} />
+            : totalLogged > 0 ? <FrameFigure n={totalLogged} unit={v.said.figureUnit(totalLogged)} /> : undefined} />
         {/* Phone: the index follows the capture (inside the stage), so the
             primary move stays above the dock; desk keeps it in the band. */}
         {desk && langIndex.length > 0 && <IndexRow phone={false} label={v.said.guideLangs} items={langIndex} />}
@@ -165,14 +178,28 @@ export default function LanguageLabTab() {
         {underThree ? (
           <PhraseLogForm childId={childProfile.id} languages={langs} onAdded={(obs) => setKept(obs ? { text: obs.phrase, language: obs.language } : null)} t={t} />
         ) : (
-          <SaidCapture childId={childProfile.id} languages={langs} first={first} gender={gender} onKept={setKept} />
+          <SaidCapture key={langFilter ?? "all"} childId={childProfile.id} languages={langs} first={first} gender={gender} onKept={setKept} defaultLanguage={langFilter} />
         )}
         {sayBack && <SayBackBlock back={sayBack} first={first} gender={gender} />}
       </div>
       {/* B-GROWTH-16 — the words written down, under the form that writes them. */}
       <div data-module="language-words">
         {!desk && langIndex.length > 0 && <IndexRow phone label={v.said.guideLangs} items={langIndex} />}
-        {underThree ? <WordsList /> : <SaidList childId={childProfile.id} first={first} gender={gender} language={langFilter} rows />}
+        {underThree ? <WordsList /> : <SaidList childId={childProfile.id} first={first} gender={gender} language={langFilter} languages={langs} emptyText={langFilter ? v.said.noneIn(ln(langFilter)) : undefined} rows />}
+        {!underThree && filteredWords.length > 0 && (
+          <div className="said-words" data-testid="said-words">
+            <span className="lab">{langFilter ? v.said.wordsIn(ln(langFilter)) : v.said.wordsAll}</span>
+            <ul>
+              {filteredWords.map((w) => (
+                <li key={w.id} className="wchip">
+                  <i className="tg-said" aria-hidden="true">Aa</i>
+                  <span className="w" dir="auto">{w.phrase}</span>
+                  <small>{[ln(w.language), fmtDayV10(w.timestamp, uiLang)].join(" · ")}</small>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {!desk && <div className="mt-2">{monthPage}</div>}
       </div>
     </StageCard>
@@ -195,7 +222,8 @@ export default function LanguageLabTab() {
     /* Language profile — roles in the home + moments logged. One tone, no
        status chip, nothing graded (GP-02). */
     <div data-module="language-profile">
-      <RailTile icon="translate" title={t("lang.profileTitle", { first, age })} className="said-profile">
+      {/* N-Said: the title, then the child and age as the tile's quiet meta. */}
+      <RailTile icon="translate" title={v.said.profile} link={<span className="small nowrap said-profile-meta">{first} · {age}</span>} className="said-profile">
         <ul className="lang-roles" data-testid="lang-role-rows">
           {languageRows.map((row) => (
             <li key={`${row.role}-${row.value}`}>
@@ -242,13 +270,13 @@ export default function LanguageLabTab() {
                     askCoach(t("seed.langWeekPlan", { name, age, target, home: home || t("lang.theHomeLang") }))
                   }
                   className="inline-flex min-h-11 items-center justify-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
-                  style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
+                  style={{ background: "var(--arbor-k-plan-w)", color: "var(--arbor-k-plan-i)" }}
                 >
                   <Icon name="auto_awesome" size={14} /> {t("lang.weekPlanCta")}
                 </button>
               }
             >
-              <p className="text-[11px] font-bold uppercase tracking-wider mb-4" style={{ color: "var(--arbor-green-ink)" }}>{t("lang.dailyPractice")}</p>
+              <p className="text-[12px] font-bold uppercase tracking-wider mb-4" style={{ color: "var(--arbor-k-plan-i)" }}>{t("lang.dailyPractice")}</p>
               <div className="grid min-w-0 grid-cols-1 gap-3 text-xs">
                 {activities.map((item) => (
                   <div key={item.title} className={`${cardCls} min-w-0 space-y-2 p-4`}>
@@ -257,14 +285,14 @@ export default function LanguageLabTab() {
                       <Chip tone="yellow">{item.time}</Chip>
                     </div>
                     <p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{item.desc}</p>
-                    <p className="italic rounded-xl p-2 text-[11px]" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
+                    <p className="italic rounded-xl p-2 text-[12px]" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
                       {item.example}
                     </p>
                     <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
                       <button
                         onClick={() => askCoach(t("seed.langActivity", { title: item.title, target, name, age }))}
                         // Item 9: the hit box grows to --touch-min.
-                        className="touch-target gap-1 px-2 text-[10px] font-bold transition"
+                        className="touch-target gap-1 px-2 text-[12px] font-bold transition"
                         style={{ color: "var(--arbor-muted)" }}
                       >
                         <Icon name="chat" size={12} /> {t("lang.coachMe")}
@@ -291,8 +319,8 @@ export default function LanguageLabTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="w-full min-w-0">
       <DsRoot composition={composition} className="ds-mychild said-v10" dir={uiLang === "he" ? "rtl" : "ltr"} data-testid="said-v10">
         <Guide mini={!desk} label={v.onThisPage} stops={[
-          { id: "s-langs", title: v.said.guideLangs, sub: v.said.guideLangsSub },
-          { id: "s-kept", title: v.said.guideKept, sub: v.said.guideKeptSub },
+          { id: "s-langs", title: desk ? v.said.guideLangs : v.said.guideLangsShort, sub: v.said.guideLangsSub },
+          { id: "s-kept", title: desk ? v.said.guideKept : v.said.guideKeptShort, sub: v.said.guideKeptSub },
         ]} />
         <Route composition={composition}>
           <RouteSection id="s-langs" n={1} on>{band}</RouteSection>

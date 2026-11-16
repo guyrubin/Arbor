@@ -15,6 +15,9 @@ import AdminDashboard from "./AdminDashboard";
 import ParentalGatePanel from "./ParentalGatePanel";
 import { consumeSettingsFocus, SETTINGS_FOCUS_ANCHOR } from "./settingsBus";
 import PauseArborControl from "../trust/PauseArborControl";
+import { loadPrefs, shownNudgesToday } from "../../growth/jitaiPrefs";
+import { NOW_V10_COPY } from "../companion/now10/nowV10Copy";
+import { clock24 } from "../companion/now10/dayArcModel";
 import DeleteAccountModal from "./DeleteAccountModal";
 import YourDataSheet from "./YourDataSheet";
 import { AnalyticsOptOutRow } from "../privacy/AnalyticsOptOutRow";
@@ -48,6 +51,10 @@ import "./settingsV10.css";
  *  notifications, billing, and account). */
 export default function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { uiLang, aiLang, setUiLang, setAiLang, t } = useLanguage();
+  // V73-V77: the Gentle reminders row shows the reminders' state (the same line
+  // Now prints: how many were shown today and when quiet hours start); the
+  // controls live only on the Gentle reminders page.
+  const reminderState = NOW_V10_COPY[uiLang === "he" ? "he" : "en"].remindersSub(shownNudgesToday().length, clock24(loadPrefs().quietStart * 60));
   const { setActiveTab, pendingMemoryItems, approvedMemoryItems, selectedLens, setSelectedLens, childProfile, updateChild } = useArbor();
   // B-KID-70 (R-5): the active child's Kid Mode look; the row exists only when
   // more than one theme covers every slot the app renders (the lib/theme.ts rule).
@@ -315,7 +322,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         )}
 
         {/* AP-058: Smart Reminders — parent nudge preferences over existing JITAI */}
-        <Row icon={<Icon name="notifications" size={18} />} title={t("sr.title")} sub={t("sr.subtitle")}>
+        <Row icon={<Icon name="notifications" size={18} />} title={t("sr.title")} sub={reminderState}>
           <button
             onClick={() => { onClose(); setActiveTab("smart-reminders"); }}
             className="set-act min-h-11"

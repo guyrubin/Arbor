@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActionLoopEntry } from "../../actionLoop/model";
 import type { Focus } from "../../hooks/useTodaysFocus";
 import { NOW_COPY } from "./nowViewCopy";
+import { NOW_V10_COPY } from "./now10/nowV10Copy";
 import { learnCardById } from "../../learn/learnCards";
 import { TALK_TOGETHER } from "../../content/programs/talkTogether";
 import { PROGRAM_WEEK_LESSON_FLAG } from "../../lib/programs/weekLessonBrief";
@@ -686,7 +687,10 @@ describe("v3 F-NOW-1 · the plan card's body and the guide reader", () => {
       expect(foot).toContain('<ul class="now-guide-meta">');
       const line = picked(plan);
       expect(line).toContain(`<b>${copy.pickedBecause}</b>`);
-      if (kind !== "practice") expect(words(line)).toContain(copy.pickedWhy[kind]);
+      // v10.1 (N-Now V77): a record question names the day of the parent's note it starts from.
+      const noteDay = new Date(note.timestamp).toLocaleDateString(lang === "he" ? "he-IL" : "en-GB", { weekday: "short", day: "numeric", month: "short" });
+      if (kind === "record") { expect(words(line)).toContain(NOW_V10_COPY[lang].pickedRecord(noteDay)); expect(words(line)).not.toContain(copy.pickedWhy.record); }
+      else if (kind !== "practice") expect(words(line)).toContain(copy.pickedWhy[kind]);
       expect(line).not.toContain(" dir=");
       expect(page.match(/data-testid="now-picked-because"/g)).toHaveLength(1);
       expect(page.match(/data-primary-move=/g)).toHaveLength(1);
