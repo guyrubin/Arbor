@@ -9,7 +9,6 @@ import { useKidTheme } from "../../../hooks/useKidTheme";
 import { BOP_SCENE_SIZES, isStudioCoverId, kidArt, kidArtSrcSet, studioNextCover, studioNextScene } from "../../../lib/kidThemeManifest";
 import { noteKidActivity } from "../../../lib/kidModeGate";
 import { localizedMimicPacks } from "../../../practice/mimicContent";
-import { ArborMascot } from "../../ui/ArborMascot";
 import { HeroAvatar } from "../../ui/HeroAvatar";
 import { KidStageFallback } from "../KidStageFallback";
 import { sneakFreezeFlagOn } from "../kidWorlds";
@@ -22,6 +21,8 @@ import { isStudioMakerId, studioActivity, studioActivityFits, type StudioActivit
 import { StudioMakerCover } from "./StudioMakerArt";
 import { StudioCrewCheer, StudioWorldPlate } from "./StudioStage";
 import { studioCopy } from "./studioCopy";
+import { studioGameVoice } from "./studioGameVoice";
+import { StudioGameGuide } from "./StudioGameGuide";
 import "./studioGame.css";
 import { StudioAdventureScene, isStudioAdventure } from './StudioAdventureScene';
 import { StudioPlayHero } from './StudioPlayHero';
@@ -64,8 +65,8 @@ export const STUDIO_GAME_COMPONENTS: Partial<Record<StudioActivityId, React.Comp
   "tiny-builders": TinyBuilders, "fox-trail": FoxTrail, "maker-desk": MakerDesk,
 };
 const WORDS = {
-  en: { start: "Let's play", back: "Back to the world", done: "A little adventure, complete", again: "Play again", unavailable: "Let's choose something else together.", tried: "I tried it", skip: "Try another", guide: "Take your time. I’m right here.", mimicDone: "You made those faces your own", mimicPassed: "You can try a face whenever you’re ready" },
-  he: { start: "בואו נשחק", back: "בחזרה לעולם", done: "הרפתקה קטנה שהושלמה", again: "לשחק שוב", unavailable: "אפשר לבחור משהו אחר יחד.", tried: "ניסיתי", skip: "ננסה עוד אחת", guide: "אפשר לקחת את הזמן. אני כאן.", mimicDone: "ניסית את ההבעות בדרך שלך", mimicPassed: "אפשר לנסות הבעה כשמתאים לך" },
+  en: { start: "Let's play", back: "Back to the world", again: "Play again", unavailable: "Let's choose something else together.", tried: "I tried it", skip: "Try another", mimicDone: "You made those faces your own", mimicPassed: "You can try a face whenever you’re ready" },
+  he: { start: "בואו נשחק", back: "בחזרה לעולם", again: "לשחק שוב", unavailable: "אפשר לבחור משהו אחר יחד.", tried: "ניסיתי", skip: "ננסה עוד אחת", mimicDone: "ניסית את ההבעות בדרך שלך", mimicPassed: "אפשר לנסות הבעה כשמתאים לך" },
 };
 /** Owner, child and activity changes retire the old play session immediately. */
 export function StudioGame({ activityId, onBack }: { activityId: StudioActivityId; onBack: () => void }) {
@@ -91,6 +92,7 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
   // A device that opted in to the next games sees that game's own cover.
   const cover = studioNextCover(activityId);
   const words = WORDS[lang];
+  const voice = studioGameVoice(activityId, lang, activity?.worldId);
   // A maker opens on its own opening shot (title on the picture, the host, a tap to skip),
   // so it goes straight into play: no second title card in front of it.
   const [phase, setPhase] = useState<"intro" | "play" | "result">(() => isStudioMakerId(activityId) ? "play" : "intro");
@@ -165,14 +167,17 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
       </div>
       {phase === "intro" ? <div className="studio-game-card__body">
         <h1 className="studio-game-card__title">{copy.title}</h1>
-        <p className="studio-game-card__instruction">{copy.instruction}</p>
+        {voice.beats.length > 0 ? <ol className="studio-game-beats" aria-label={voice.beatsLabel}>{voice.beats.map((beat, index) => <li key={beat} style={{ "--beat": index } as React.CSSProperties}>{beat}</li>)}</ol>
+          : <p className="studio-game-card__instruction">{copy.instruction}</p>}
         <div className="studio-game-card__actions studio-game-card__intro-actions">
-          <div className="studio-game-card__guide"><ArborMascot size={64} mood="wave" animate={false} /><span>{words.guide}</span></div>
+          <StudioGameGuide guide={voice.guide} name={voice.name} line={voice.intro} />
           <button type="button" data-studio-start="" className="studio-game-button-v2 studio-game-button-v2--primary" onClick={() => setPhase("play")}>{words.start}<ArrowRight size={22} aria-hidden="true" /></button>
         </div>
       </div> : <div className="studio-game-card__body">
-        <h2 className="studio-game-card__title">{words.done}</h2>
-        <p className="studio-game-card__instruction">{copy.title}</p>
+        <p className="studio-game-card__kicker">{copy.title}</p>
+        <h2 className="studio-game-card__title">{voice.finish}</h2>
+        <StudioGameGuide guide={voice.guide} name={voice.name} line={voice.finishLine} celebrate />
+        {voice.transfer && <p className="studio-game-card__transfer">{voice.transfer}</p>}
         {creation && <StudioCreationResult childId={childProfile.id} creation={creation} />}
         {/* Remains mounted while the owner-scoped ledger hydrates/queues writes.
             The single canonical portrait is already in the environment window. */}

@@ -82,3 +82,15 @@ export function padCell(position: number): PadCell {
   const at = Number.isFinite(position) ? Math.min(PATH_END, Math.max(0, Math.trunc(position))) : 0;
   return at <= 5 ? { column: at, row: 0 } : { column: PATH_END + 1 - at, row: 1 };
 }
+
+/** Where the spinner wheel stops for a hop of `spin`: at least two full turns
+ * on from where it rests, with the middle of that hop's wedge under the
+ * pointer at the top. Wedges run clockwise from the top, 1 first. The wheel
+ * only ever turns forward, so every spin reads as one. */
+export function wheelTurn(from: number, spin: number, faces: number): number {
+  const wedges = Math.max(1, Math.trunc(faces));
+  const face = Math.min(wedges, Math.max(1, Math.trunc(spin)));
+  const rest = Number.isFinite(from) ? from : 0;
+  const centre = (face - .5) * 360 / wedges;
+  return Math.ceil((rest + 720 + centre) / 360) * 360 - centre;
+}

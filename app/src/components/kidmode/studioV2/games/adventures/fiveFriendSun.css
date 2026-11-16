@@ -148,3 +148,60 @@
   .sun-pad[data-hint=true] .sun-pad__chip, .sun-spinner[data-ready=true] { outline: 3px solid Highlight; }
   .sun-seat[data-seat='3'][data-here=false]::before { border-color: ButtonText; }
 }
+
+/* B-GAME-43: the toy comes alive. All of it is decoration over the same
+   sequence; with motion off every piece still shows its end state. */
+
+/* The spinner is a real wheel: one wedge per hop it can ask for, marked with
+   that many dots, a pointer at the top and a hub that shows the hop once the
+   wheel has stopped. */
+.adventure--sun .adventure-actions .sun-spinner { overflow: visible; background: var(--arbor-on-accent); }
+.adventure--sun .adventure-actions .sun-spinner::before { content: ''; position: absolute; z-index: 3; inset-block-start: -11px; inset-inline-start: 50%; translate: -50% 0; border-inline: 9px solid transparent; border-block-start: 15px solid var(--studio-deep-ink); filter: drop-shadow(0 2px 1px var(--bop-shade)); pointer-events: none; }
+.sun-wheel { position: absolute; inset: 4px; border-radius: 50%; overflow: hidden; rotate: var(--wheel-turn, 0deg); transition: rotate 1.05s cubic-bezier(.16, .84, .22, 1); background: conic-gradient(var(--bop-teal) 0 calc(360deg / var(--faces, 3)), var(--bop-amber) 0 calc(720deg / var(--faces, 3)), color-mix(in srgb, var(--bop-teal) 45%, var(--arbor-on-accent)) 0); box-shadow: inset 0 0 0 3px var(--arbor-on-accent), inset 0 -6px 10px color-mix(in srgb, var(--studio-deep-ink) 18%, transparent); }
+.sun-spinner[data-faces='2'] .sun-wheel { --faces: 2; }
+.sun-spinner[data-faces='3'] .sun-wheel { --faces: 3; }
+/* Each wedge's dots sit out along the middle of the wedge, near the rim. */
+.sun-wheel__wedge { position: absolute; inset: 0; display: flex; justify-content: center; gap: 3px; padding-block-start: 9%; rotate: calc((var(--wedge) + .5) * 360deg / var(--wedges)); }
+.sun-wheel__dot { inline-size: 9px; block-size: 9px; border-radius: 50%; background: var(--arbor-on-accent); box-shadow: 0 1px 1px var(--bop-shade); }
+.sun-spinner__hub { position: relative; z-index: 2; display: grid; place-items: center; inline-size: 40px; block-size: 40px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, var(--arbor-on-accent), var(--bop-pearl)); box-shadow: 0 2px 4px var(--bop-shade); color: var(--bop-teal-ink); }
+.sun-spinner[data-face]:not([data-face='0']) .sun-spinner__hub { animation: sun-hub-in .4s var(--studio-ease-spring) 1s backwards; }
+.adventure--sun .sun-spinner__pips { grid-template: repeat(3, 8px) / repeat(3, 8px); gap: 2px; }
+.adventure--sun .sun-spinner__pips > i { inline-size: 8px; block-size: 8px; }
+@media (min-width: 800px) { .sun-spinner__hub { inline-size: 50px; block-size: 50px; } }
+.adventure--sun .sun-spinner__count { z-index: 4; animation: sun-hub-in .4s var(--studio-ease-spring) 1.05s backwards; }
+
+/* The sun's rays: they turn slowly behind the flower and grow brighter with
+   every friend, and blaze when the circle is whole. */
+.sun-rays { position: absolute; inset: -42%; z-index: -2; border-radius: 50%; background: repeating-conic-gradient(color-mix(in srgb, var(--bop-amber) 70%, transparent) 0 9deg, transparent 9deg 24deg); -webkit-mask-image: radial-gradient(circle, currentColor 18%, transparent 68%); mask-image: radial-gradient(circle, currentColor 18%, transparent 68%); opacity: calc(var(--sun-lit, 0) * .13); scale: calc(.7 + var(--sun-lit, 0) * .08); animation: sun-rays-turn 22s linear infinite; transition: opacity .6s var(--studio-ease-soft), scale .6s var(--studio-ease-soft); pointer-events: none; }
+.sun-flower[data-full] .sun-rays { opacity: 1; scale: 1.5; animation-duration: 7s; }
+.sun-flower[data-full] { animation: sun-flower-blaze 2.4s var(--studio-ease-soft); }
+/* A friend joins: the flower answers with one ring of light. */
+.sun-burst { position: absolute; inset: 0; z-index: -1; border-radius: 50%; border: 4px solid var(--bop-amber); opacity: 0; animation: sun-burst .9s var(--studio-ease-soft); pointer-events: none; }
+
+/* A landing: six sparks fly out from under the hero's feet. */
+.sun-pad__burst { position: relative; z-index: 1; place-self: center; inline-size: 0; block-size: 0; pointer-events: none; }
+.sun-pad__burst > span { position: absolute; inset-inline-start: -4px; inset-block-start: -4px; inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--bop-amber); opacity: 0; rotate: calc(var(--ray) * 60deg); animation: sun-spark .62s var(--studio-ease-soft); }
+.sun-pad__burst > span:nth-child(even) { background: var(--bop-teal); }
+
+/* The whole circle: petals fall over the stage. */
+.sun-confetti { position: absolute; inset: 0; z-index: 6; overflow: hidden; pointer-events: none; }
+.sun-confetti > span { position: absolute; inset-block-start: -8%; inset-inline-start: calc(4% + var(--petal) * 6.8%); inline-size: 12px; block-size: 18px; border-radius: 80% 10% 80% 10%; background: var(--bop-amber); opacity: 0; animation: sun-petal 2.4s cubic-bezier(.3, .4, .5, 1) calc(var(--petal) * 70ms) forwards; }
+.sun-confetti > span:nth-child(3n) { background: var(--bop-teal); }
+.sun-confetti > span:nth-child(3n + 1) { background: color-mix(in srgb, var(--bop-amber) 55%, var(--arbor-on-accent)); }
+
+@keyframes sun-hub-in { from { scale: .2; opacity: 0; } 70% { scale: 1.18; opacity: 1; } to { scale: 1; } }
+@keyframes sun-rays-turn { to { rotate: 1turn; } }
+@keyframes sun-flower-blaze { 0%, 100% { scale: 1; } 30% { scale: 1.22; } 60% { scale: 1.08; } }
+@keyframes sun-burst { 0% { opacity: .9; scale: .8; } 100% { opacity: 0; scale: 2.1; } }
+@keyframes sun-spark { 0% { opacity: 1; translate: 0 0; } 100% { opacity: 0; translate: calc(cos(var(--ray) * 60deg) * 34px) calc(sin(var(--ray) * 60deg) * 22px - 8px); } }
+@keyframes sun-petal { 0% { opacity: 0; translate: 0 0; rotate: 0deg; } 10% { opacity: 1; } 100% { opacity: .9; translate: calc(sin(var(--petal) * 47deg) * 40px) 115cqh; rotate: calc(220deg + var(--petal) * 37deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sun-wheel { transition: none; }
+  .sun-rays, .sun-flower[data-full], .sun-spinner__hub, .sun-spinner__count { animation: none !important; transition: none !important; }
+  .sun-burst, .sun-pad__burst, .sun-confetti { display: none; }
+}
+@media (forced-colors: active) {
+  .sun-wheel { forced-color-adjust: none; border: 2px solid ButtonText; }
+  .sun-rays, .sun-burst, .sun-pad__burst, .sun-confetti { display: none; }
+}
