@@ -96,7 +96,7 @@ export default function RhythmCue({
         <p dir="auto" className="text-[14px] font-extrabold leading-snug" style={{ color: "var(--arbor-ink)" }}>
           {t(visible.headlineKey, visible.vars)}
         </p>
-        <p dir="auto" className="mt-0.5 text-[12.5px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+        <p dir="auto" className="mt-0.5 text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
           {t(visible.bodyKey, visible.vars)}
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -110,7 +110,7 @@ export default function RhythmCue({
               if (visible.tonightMode) requestTonightMode(visible.tonightMode);
               setActiveTab(visible.action);
             }}
-            className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-xl text-[12.5px] font-extrabold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+            className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-xl text-[12px] font-extrabold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
             style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule-strong)", color: tone.ink }}
           >
             {t(visible.ctaKey, visible.vars)}

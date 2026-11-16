@@ -172,7 +172,7 @@ export default function PaywallModal() {
                     <>
                       <span className="block">{row.price}/{t(periodKey(cadence))}</span>
                       {row.perMonth && (
-                        <span className="block text-[11px] font-medium" style={{ color: "var(--arbor-muted)" }}>
+                        <span className="block text-[12px] font-medium" style={{ color: "var(--arbor-muted)" }}>
                           {t("elev.storeshell.pw.perMonthApprox", { price: row.perMonth })}
                         </span>
                       )}
@@ -203,7 +203,7 @@ export default function PaywallModal() {
 
         {/* Apple 3.1.2 / Play: the auto-renewal + cancellation statement, visible
             before purchase, plus the Privacy · Terms · Support links (MOB-01). */}
-        <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{disclosure}</p>
+        <p className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{disclosure}</p>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4">

@@ -287,9 +287,10 @@ describe("B-ASKJB-26 — a plan-sourced step through accept → Today → outcom
         }));
       const html = r(basePlan, NOW);
       // Plans critic r1 (d52e5e7): no "Day 1" beside done steps — the day
-      // count shows from Day 2; Day 1 reads "Today's step".
-      expect(html).toContain(lang === "he" ? "הצעד של היום · " : "Today&#x27;s step · ");
-      expect(html).not.toMatch(/Day 1 of|יום 1 בתוכנית/);
+      // count shows from Day 2.
+      // V77 once-only: no title line on the stage; Day 1 shows no day line at all.
+      expect(html).not.toContain('data-testid="plan-today-eyebrow"');
+      expect(html).not.toMatch(/Day 1\b|יום 1\b/);
       expect(html).toContain("Give a two-minute warning.");
       expect(html).toContain(lang === "he" ? "אנסה את זה" : "I&#x27;ll try it");
       expect(html).toContain('data-testid="plan-weekly-check"');

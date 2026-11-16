@@ -93,7 +93,7 @@ const env = {
   useChildCollection: (_child: string, name: string) => collection(name),
   // the real open-loop rule: a follow-up for the visit closes it
   visitAwaitingOutcome, isIntakeProfession: () => false, consultHeading: () => "generic", activeHomeEnrolments: () => [], guidedTierOn: () => false,
-  appointmentRoleLabel: () => "Speech therapist", fmtDay: () => "date", lowerFor: (_lang: string, value: string) => value,
+  appointmentRoleLabel: () => "Speech therapist", fmtDay: () => "date", fmtDayV10: () => "date", lowerFor: (_lang: string, value: string) => value,
   homeProfessionForAppointment: () => "slp", nextVisitDayFor: () => null,
 };
 const component = new Function(...Object.keys(env), code)(...Object.values(env));

@@ -1,3 +1,4 @@
+import { fmtDayV10 } from "../../lib/formatDate";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
@@ -7,7 +8,6 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { track } from "../../lib/analytics";
-import { fmtDay } from "../../lib/formatDate";
 import {
   FIND_A_HELPLINE_URL,
   HELPLINE_DIRECTORY,
@@ -18,7 +18,7 @@ import {
   type HelplineRegion,
 } from "../../safety/escalation";
 import { loadAttribution } from "../../lib/attribution";
-import { SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
+import { SectionCard, cardCls, PastelKey } from "../ui/kit";
 // v10.1 (N-Safety-D/M): the lightest touch. The design system's root and its
 // display title; the page, its paths and its numbers stay production's own
 // (B-GA-04 is re-verifying the helplines; nothing here adds or changes one).
@@ -41,7 +41,7 @@ const dialable = (phone: string) => phone.replace(/[^\d+]/g, "");
 
 // R13: every contact field measured 308x38 at 390. The floor belongs on the
 // SHARED recipe, not on four call sites, so a fifth field cannot miss it.
-const inputCls = "rounded-lg px-3 py-2 min-h-11 text-sm focus:outline-none";
+const inputCls = "rounded-[10px] px-3 py-2 min-h-11 text-sm focus:outline-none";
 const inputStyle: React.CSSProperties = { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" };
 
 export default function SafetyTab() {
@@ -134,7 +134,7 @@ export default function SafetyTab() {
   /** One helpline group: heading + every directory entry as a tel: link. */
   const renderHelplineGroup = (region: HelplineRegion) => (
     <div key={region}>
-      <h3 className="text-[11px] font-extrabold uppercase tracking-wider mb-2" style={{ color: "var(--arbor-muted)" }}>
+      <h3 className="text-xs font-extrabold uppercase tracking-wider mb-2" style={{ color: "var(--arbor-muted)" }}>
         {t(`elev.safety.helplines.group.${region}`)}
       </h3>
       <div className="space-y-2">
@@ -159,7 +159,7 @@ export default function SafetyTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="max-w-[1180px]">
       {/* DsRoot's own markup, spelled as a plain element so the white-label
           contrast audit can prove the add-contact submit's ancestry. */}
-      <div className={composition === "desk" ? "ds ds-desk space-y-6" : "ds ds-phone space-y-6"} data-composition={composition}>
+      <div className={composition === "desk" ? "ds ds-desk safety-page space-y-6" : "ds ds-phone safety-page space-y-6"} data-composition={composition}>
       <header className="safety-head">
         <h1 className="hero">{t("elev.safety.header.title")}</h1>
         <p className="safety-sub">{t("elev.safety.header.sub")}</p>
@@ -187,7 +187,7 @@ export default function SafetyTab() {
         // truncated (it was cut to "Emergency services (EU-wide; also f…" at
         // 375). The fill is the page's one CTA gradient (pink-ink is a text
         // ink, not a fill); no opacity hierarchy (CR-01).
-        className="w-full flex items-start gap-3 rounded-2xl min-h-[56px] lg:min-h-[120px] px-5 py-3 lg:py-5 text-start transition hover:brightness-105"
+        className="w-full flex items-start gap-3 rounded-[18px] min-h-[56px] lg:min-h-[120px] px-5 py-3 lg:py-5 text-start transition hover:brightness-105"
         style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)", boxShadow: "var(--shadow-md)" }}
       >
         <Icon name="call" size={22} fill={1} className="mt-0.5 flex-shrink-0" />
@@ -201,7 +201,7 @@ export default function SafetyTab() {
           data-testid="safety-first-contact"
           href={`tel:${dialable(contacts[0].phone)}`}
           onClick={() => track("safety_contact_tel_tap")}
-          className="flex items-center gap-2 rounded-xl px-4 min-h-[44px] t-sm font-bold"
+          className="flex items-center gap-2 rounded-[14px] px-4 min-h-[44px] t-sm font-bold"
           style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}
         >
           <Icon name="person" size={16} /> {t("elev.safety.firstContact", { name: crisisFirstName || t("elev.safety.yourChild"), contact: contacts[0].name })}
@@ -212,7 +212,7 @@ export default function SafetyTab() {
       </div>
 
       {/* Pinned crisis-language card */}
-      <div data-module="safety-crisis-language" className="rounded-2xl p-6 space-y-2" style={{ background: "var(--arbor-pink-wash)" }}>
+      <div data-module="safety-crisis-language" className="rounded-[18px] p-6 space-y-2" style={{ background: "var(--arbor-pink-wash)" }}>
         <span className={`text-xs font-extrabold flex items-center gap-1.5 ${uiLang === "he" ? "" : "uppercase tracking-wider"}`} style={{ color: "var(--arbor-pink-ink)" }}>
           <Icon name="warning" size={16} /> <span>{crisisFirstName ? t("elev.safety.crisis.kickerNamed", { name: `⁨${crisisFirstName}⁩` }) : t("elev.safety.crisis.kicker")}</span>
         </span>
@@ -268,7 +268,7 @@ export default function SafetyTab() {
         )}
         {/* B-CAREPRO-NEW-1m: the B-07 review date, visible — trust the parent can see. */}
         <p data-testid="safety-numbers-checked" className="t-xs" style={{ color: "var(--arbor-muted)" }}>
-          {t("elev.safety.numbersChecked", { date: fmtDay(HELPLINES_REVIEWED_ON, uiLang) })}
+          {t("elev.safety.numbersChecked", { date: fmtDayV10(`${HELPLINES_REVIEWED_ON}T12:00:00`, uiLang === "he" ? "he" : "en") })}
         </p>
       </div>
 
@@ -283,7 +283,7 @@ export default function SafetyTab() {
           makes the budget rule countable: top-level = stamps minus demoted. */}
       <details ref={moreRef} id="safety-more" data-module-disclosure="safety-more" className={`${cardCls} p-0 overflow-hidden`}>
         <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
-          <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-pink-wash)", color: "var(--arbor-pink-ink)" }}>
+          <span className="grid place-items-center w-9 h-9 rounded-[18px] flex-shrink-0" style={{ background: "var(--arbor-pink-wash)", color: "var(--arbor-pink-ink)" }}>
             <Icon name="call" size={18} />
           </span>
           <span className="min-w-0">
@@ -365,19 +365,19 @@ export default function SafetyTab() {
               <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
             </button>
           )}
-          <p className="text-[11px] mt-3" style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.checklist.note")}</p>
+          <p className="text-xs mt-3" style={{ color: "var(--arbor-muted)" }}>{t("elev.safety.checklist.note")}</p>
         </SectionCard>
 
         <SectionCard title={t("elev.safety.review.title")} icon={<Icon name="event_available" size={20} />} tone="sky"
           action={
-            <button onClick={markReviewed} className="inline-flex items-center font-extrabold text-[11px] px-3 min-h-11 rounded-lg transition" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>{t("elev.safety.review.mark")}</button>
+            <button onClick={markReviewed} className="inline-flex items-center font-extrabold text-xs px-3 min-h-11 rounded-[10px] transition" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>{t("elev.safety.review.mark")}</button>
           }
         >
           <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>
-            {t("elev.safety.review.last")} <strong>{lastReviewed ? fmtDay(lastReviewed, uiLang) : t("elev.safety.review.notYet")}</strong>
+            {t("elev.safety.review.last")} <strong>{lastReviewed ? fmtDayV10(lastReviewed, uiLang === "he" ? "he" : "en") : t("elev.safety.review.notYet")}</strong>
           </p>
           {reviewStale && (
-            <div className="text-xs rounded-xl px-3 py-2 mt-3" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>
+            <div className="text-xs rounded-[14px] px-3 py-2 mt-3" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>
               {t("elev.safety.review.stale")}
             </div>
           )}
@@ -409,7 +409,7 @@ export default function SafetyTab() {
                       <Icon name="call" size={14} /> <span dir="ltr">{c.phone}</span>
                     </a>
                   )}
-                  {c.notes && <p className="text-[10px] mt-1" style={{ color: "var(--arbor-muted)" }}>{c.notes}</p>}
+                  {c.notes && <p className="text-xs mt-1" style={{ color: "var(--arbor-muted)" }}>{c.notes}</p>}
                 </div>
                 <button onClick={() => void contactsCol.remove(c.id)} className="touch-target flex-shrink-0 transition" style={{ color: "var(--arbor-muted)" }} aria-label={t("aria.removeContact")}>
                   <Icon name="delete" size={14} />
@@ -425,7 +425,7 @@ export default function SafetyTab() {
           <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder={t("elev.safety.contacts.phone")} className={inputCls} style={inputStyle} />
           <div className="flex gap-2">
             <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder={t("elev.safety.contacts.notes")} className={`flex-1 ${inputCls}`} style={inputStyle} />
-            <button type="submit" aria-label={t("aria.addContact")} className="touch-target text-white font-extrabold px-3 rounded-lg" style={{ background: "var(--arbor-clay)" }}><Icon name="add" size={16} /></button>
+            <button type="submit" aria-label={t("aria.addContact")} className="touch-target text-white font-extrabold px-3 rounded-[10px]" style={{ background: "var(--arbor-clay)" }}><Icon name="add" size={16} /></button>
           </div>
         </form>
       </SectionCard>
@@ -454,7 +454,7 @@ export default function SafetyTab() {
           { icon: <Icon name="group" size={20} />, tone: "mint" as PastelKey, key: "handoff" },
         ].map((s) => (
           <div key={s.key} className={`${cardCls} p-5 space-y-3`}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: PASTEL[s.tone].soft, color: PASTEL[s.tone].ink }}>{s.icon}</div>
+            <div className="w-10 h-10 rounded-[14px] flex items-center justify-center" style={{ background: "var(--tint-2)", color: "var(--sapphire-deep)" }}>{s.icon}</div>
             <h3 className="font-extrabold text-sm" style={{ color: "var(--arbor-ink)" }}>{t(`elev.safety.guard.${s.key}.title`)}</h3>
             <p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t(`elev.safety.guard.${s.key}.body`)}</p>
           </div>

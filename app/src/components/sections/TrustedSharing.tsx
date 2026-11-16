@@ -89,6 +89,7 @@ import HomeProgramShareCard, { HomeProgramAdherenceView, homeProgramLinkOn, shar
 import { Guide } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
 import PeopleScene from "../care/v10/PeopleScene";
+import PeopleLanes, { peopleLanes } from "../care/v10/PeopleLanes";
 import { careCopy } from "../care/v10/careV10Copy";
 import "../care/v10/care.css";
 
@@ -477,7 +478,10 @@ export default function TrustedSharing() {
       <div className={composition === "desk" ? "route gut" : "route m"}>
       <section className="rsec" id="people-who">
       <span className="rstop on" style={{ top: 14 }} aria-hidden="true">1</span>
-      <PeopleScene composition={composition} title={t("sec.sharing.title")} sub={t("sec.sharing.sub", { name: first })} liveCount={liveGrants.length} loading={loading} />
+      <PeopleScene composition={composition} title={t("sec.sharing.title")} sub={t("sec.sharing.sub", { name: first })} liveCount={liveGrants.length} loading={loading} childName={first}>
+        {/* Design V77 (N-People): who sees what — you, then every live share. */}
+        <PeopleLanes composition={composition} lanes={peopleLanes(liveGrants, careCopy(uiLang).people, (g) => roleLabel(g.role))} copy={careCopy(uiLang).people} childName={first} />
+      </PeopleScene>
 
       {error && (
         <ErrorState
@@ -648,7 +652,7 @@ export default function TrustedSharing() {
           <button onClick={() => setInvite(null)} aria-label={t("aria.cancel")} className="touch-target flex-shrink-0">
             <Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} />
           </button>
-          <p className="text-[11.5px] leading-relaxed basis-full" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.invite.hint")}</p>
+          <p className="text-[12px] leading-relaxed basis-full" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.invite.hint")}</p>
         </div>
       )}
 
@@ -677,7 +681,7 @@ export default function TrustedSharing() {
                 <button key={r} onClick={() => setDraft({ ...draft, role: r })} aria-pressed={draft.role === r} className="inline-flex items-center rounded-full px-3.5 min-h-11 text-xs font-bold" style={draft.role === r ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{roleLabel(r)}</button>
               ))}
             </div>
-            <p className="text-[11px] mt-2 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.form.nothingDefault")}</p>
+            <p className="text-[12px] mt-2 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.form.nothingDefault")}</p>
           </div>
           <div>
             <p className="text-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.form.what")}</p>
@@ -702,8 +706,8 @@ export default function TrustedSharing() {
           </>}
           {reviewing && <div className="space-y-4" aria-live="polite">
             <div className="rounded-2xl p-4 space-y-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-              <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.review.recipient")}</p><p className="text-sm font-extrabold mt-0.5 break-all" dir="auto" style={{ color: "var(--arbor-ink)" }}>{draft.recipientEmail.trim()}</p></div><Chip tone="mint">{roleLabel(draft.role)}</Chip></div>
-              <div><p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.review.canSee")}</p><div className="flex flex-wrap gap-1.5 mt-1.5">{draft.scopes.map((scope) => <Chip key={scope} tone="sky">{t(shareScopeLabelKey(scope))}</Chip>)}</div></div>
+              <div className="flex items-start justify-between gap-3"><div><p className="text-[12px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.review.recipient")}</p><p className="text-sm font-extrabold mt-0.5 break-all" dir="auto" style={{ color: "var(--arbor-ink)" }}>{draft.recipientEmail.trim()}</p></div><Chip tone="mint">{roleLabel(draft.role)}</Chip></div>
+              <div><p className="text-[12px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.review.canSee")}</p><div className="flex flex-wrap gap-1.5 mt-1.5">{draft.scopes.map((scope) => <Chip key={scope} tone="sky">{t(shareScopeLabelKey(scope))}</Chip>)}</div></div>
 
               {/* LC-17 — THE ACTUAL PREVIEW. A parent consenting to share their
                   child's data has to see what is being shared, not a label for
@@ -711,7 +715,7 @@ export default function TrustedSharing() {
                   server runs for the recipient, with the same fail-closed
                   guards, so this is the recipient's view and not a mock-up. */}
               <div data-testid="share-scope-preview" className="rounded-xl p-3.5 space-y-2.5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
-                <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.learnCare.share.preview.title")}</p>
+                <p className="text-[12px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.learnCare.share.preview.title")}</p>
                 {/* B-DIST-01: what the recipient reads opens with the demo header. */}
                 {childProfile.demo === true && (
                   <p data-demo-header className="t-xs font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{t("elev.demo.header")}</p>
@@ -724,14 +728,14 @@ export default function TrustedSharing() {
                   previewPacket.sections.map((section) => (
                     <div key={section.id}>
                       {/* B-CAREPRO-15: headings in the parent's language (titleKey), never the English fallback. */}
-                      <p className="text-[12.5px] font-extrabold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{sectionTitle(section, uiLang)}</p>
+                      <p className="text-[12px] font-extrabold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{sectionTitle(section, uiLang)}</p>
                       <ul className="list-disc ps-5 mt-1 space-y-0.5">
                         <PreviewItemRows items={section.items} lang={uiLang} className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }} />
                       </ul>
                     </div>
                   ))
                 )}
-                <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-faint)" }}>{t("elev.learnCare.share.preview.hint")}</p>
+                <p className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-faint)" }}>{t("elev.learnCare.share.preview.hint")}</p>
               </div>
               <div className="flex items-center gap-2 text-xs" style={{ color: "var(--arbor-muted)" }}><Icon name="schedule" size={16} /> {t(`share.duration.${draft.duration}`)}</div>
             </div>
@@ -968,7 +972,7 @@ export default function TrustedSharing() {
                 view.sections.map((section) => (
                   <div key={section.id} className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                     <h3 className="text-sm font-extrabold" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{sectionTitle(section, uiLang)}</h3>
-                    {sectionNote(section, uiLang) && <p className="text-[11px]" dir="auto" style={{ color: "var(--arbor-muted)" }}>{sectionNote(section, uiLang)}</p>}
+                    {sectionNote(section, uiLang) && <p className="text-[12px]" dir="auto" style={{ color: "var(--arbor-muted)" }}>{sectionNote(section, uiLang)}</p>}
                     {/* W2-CAREPRO c2 r2: the recipient reads the same isolated
                         rows the sharer previewed (one per moment / milestone). */}
                     <ul dir={uiLang === "he" ? "rtl" : "ltr"} className="list-disc ps-5 space-y-1.5">

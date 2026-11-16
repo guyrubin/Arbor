@@ -474,7 +474,7 @@ export default function MilestonesTab() {
               ) : (
                 <img src={item.exampleMedia.src} alt={item.exampleMedia.alt} loading="lazy" className="w-full max-h-56 object-cover" />
               )}
-              <figcaption className="px-3 py-1.5 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+              <figcaption className="px-3 py-1.5 text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
                 <span className="font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.mediaExample")}</span>
                 {" · "}
                 {t("ms.mediaCredit")} {item.exampleMedia.credit}
@@ -498,26 +498,26 @@ export default function MilestonesTab() {
             ariaLabel={tGCare(uiLang, "elev.gcare.ms.observePrompt")}
             className="mt-2"
           />
-          {item.observationStatus === "not_sure" && <p className="pt-1 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.observeNotSureHint")}</p>}
+          {item.observationStatus === "not_sure" && <p className="pt-1 text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.observeNotSureHint")}</p>}
           <div className="flex items-center gap-2 flex-wrap pt-1">
             {/* GP-10 — `observationUpdatedAt` has been written on every mark since
                 ArborContext setMilestoneObservation, but nothing ever rendered it:
                 a milestone without a date is a checkbox, with one it is a keepsake
                 ("First steps — 14 Aug"). Dates only; the chip never grades. */}
             {item.checked && (
-              <span data-testid="ms-noticed-chip" className="text-[11px] font-extrabold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
+              <span data-testid="ms-noticed-chip" className="text-[12px] font-extrabold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
                 {item.observationUpdatedAt
                   ? tGCare(uiLang, "elev.gcare.ms.noticedOn", { date: fmtDay(item.observationUpdatedAt, uiLang) })
                   : tGCare(uiLang, "elev.gcare.ms.noticedUndated")}
               </span>
             )}
-            {item.custom && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-peach-ink)", background: "var(--arbor-peach-soft)" }}>{t("ms.custom")}</span>}
+            {item.custom && <span className="text-[12px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-peach-ink)", background: "var(--arbor-peach-soft)" }}>{t("ms.custom")}</span>}
             {item.custom && (
               <button
                 type="button"
                 onClick={(e) => { e.preventDefault(); setConfirmDeleteId(null); setRenameDraft(item.title); setRenamingId(item.id); }}
                 aria-label={t("aria.renameCustomMilestone")}
-                className="min-h-11 text-[11px] transition"
+                className="min-h-11 text-[12px] transition"
                 style={{ color: "var(--arbor-muted)" }}
               >
                 <Icon name="edit" size={11} />
@@ -528,14 +528,14 @@ export default function MilestonesTab() {
                 type="button"
                 onClick={(e) => { e.preventDefault(); setRenamingId(null); setConfirmDeleteId(item.id); }}
                 aria-label={t("aria.deleteCustomMilestone")}
-                className="min-h-11 text-[11px] transition"
+                className="min-h-11 text-[12px] transition"
                 style={{ color: "var(--arbor-muted)" }}
               >
                 <Icon name="delete" size={11} />
               </button>
             )}
             {item.references?.map((r, i) => (
-              <a key={i} href={r.url} target="_blank" rel="noreferrer" className="text-[11px] font-bold flex items-center gap-0.5" style={{ color: "var(--arbor-sky-ink)" }}>
+              <a key={i} href={r.url} target="_blank" rel="noreferrer" className="text-[12px] font-bold flex items-center gap-0.5" style={{ color: "var(--arbor-sky-ink)" }}>
                 {r.label} <Icon name="open_in_new" size={11} />
               </a>
             ))}
@@ -545,7 +545,7 @@ export default function MilestonesTab() {
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="text-[11px] font-bold flex items-center gap-0.5"
+                className="text-[12px] font-bold flex items-center gap-0.5"
                 style={{ color: "var(--arbor-sky-ink)" }}
               >
                 {t(DOMAIN_REFERENCE_LABEL_KEY(item.domain))} <Icon name="open_in_new" size={11} />
@@ -555,7 +555,7 @@ export default function MilestonesTab() {
               type="button"
               onClick={(e) => { e.preventDefault(); void explain(item); }}
               disabled={explaining[item.id]}
-              className="min-h-11 text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
+              className="min-h-11 text-[12px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
               style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}
             >
               {explaining[item.id] ? <Icon name="progress_activity" size={11} className="animate-spin" /> : <Icon name="menu_book" size={11} />}
@@ -567,7 +567,7 @@ export default function MilestonesTab() {
               type="button"
               data-testid="ms-ask-arbor"
               onClick={(e) => { e.preventDefault(); askAboutMilestone(item); }}
-              className="min-h-11 text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
+              className="min-h-11 text-[12px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
               style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)" }}
             >
               <Icon name="forum" size={11} />
@@ -581,7 +581,7 @@ export default function MilestonesTab() {
                 <button
                   type="button"
                   onClick={(e) => { e.preventDefault(); requestLearnRead({ cardId: read.id, source: "milestone" }); }}
-                  className="min-h-11 text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
+                  className="min-h-11 text-[12px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
                   style={{ color: "var(--arbor-lav-ink)", background: "var(--arbor-lav-soft)" }}
                 >
                   <Icon name="local_library" size={11} />
@@ -606,7 +606,7 @@ export default function MilestonesTab() {
                   data-testid="ms-keepsake-add"
                   aria-label={t("elev.waveR.keepsake.aria")}
                   onClick={(e) => { e.preventDefault(); setKeepsakeFor(item.id); }}
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-bold"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-bold"
                   style={{ color: "var(--arbor-lav-ink)", background: "var(--arbor-lav-soft)" }}
                 >
                   <Icon name="bookmark_add" size={13} fill={1} /> {t("elev.waveR.keepsake.add")}
@@ -636,7 +636,7 @@ export default function MilestonesTab() {
           {/* UND-8 — inline delete confirm row — no native window.confirm. */}
           {item.custom && confirmDeleteId === item.id && (
             <div className="flex flex-wrap items-center gap-2 pt-2">
-              <span className="text-[11px] font-bold" style={{ color: "var(--arbor-ink)" }}>{t("ms.deleteConfirm")}</span>
+              <span className="text-[12px] font-bold" style={{ color: "var(--arbor-ink)" }}>{t("ms.deleteConfirm")}</span>
               <button type="button" onClick={() => { deleteMilestone(item.id); setConfirmDeleteId(null); }} className="min-h-11 text-xs font-extrabold px-3 py-1.5 rounded-xl text-white" style={{ background: "var(--arbor-clay-deep)" }}>{t("ms.deleteYes")}</button>
               <button type="button" onClick={() => setConfirmDeleteId(null)} className="min-h-11 text-xs px-2" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
             </div>
@@ -661,7 +661,7 @@ export default function MilestonesTab() {
                 written from), a door to the Trust Center, and ONE tap to keep
                 it in the child's record. Failure is its own honest, translated
                 state — not a markdown heading pretending to be guidance. */}
-            <div data-testid={`ms-explain-${item.id}`} className="mt-2 p-3 rounded-xl text-[11px] leading-relaxed select-text" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+            <div data-testid={`ms-explain-${item.id}`} className="mt-2 p-3 rounded-xl text-[12px] leading-relaxed select-text" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
               {explanations[item.id]?.escalation ? (
                 <UrgentSupport testId="ms-explain-urgent-support" requestLang={aiLang} lead={t("elev.safety.paused")} onSafety={() => setActiveTab("safety")} className="min-w-0 t-sm leading-relaxed text-[var(--arbor-ink)]" />
               ) : explainFailed[item.id] ? (
@@ -671,7 +671,7 @@ export default function MilestonesTab() {
                   <button
                     type="button"
                     onClick={(e) => { e.preventDefault(); setExplainFailed((prev) => ({ ...prev, [item.id]: false })); void explain(item); }}
-                    className="mt-2 min-h-11 text-[11px] font-extrabold"
+                    className="mt-2 min-h-11 text-[12px] font-extrabold"
                     style={{ color: "var(--arbor-green-ink)" }}
                   >
                     {t("err.retry")}
@@ -1242,12 +1242,12 @@ export default function MilestonesTab() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ms.bornEarly")}</span>
                       {corrected.applied && (
-                        <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
+                        <span className="text-[12px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
                           {t("ms.correctedBadge")} · {corrected.correctedMonths}m
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.gestationHint")}</p>
+                    <p className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.gestationHint")}</p>
                   </div>
                 </div>
                 {!showGestation && (
@@ -1266,7 +1266,7 @@ export default function MilestonesTab() {
                   onSubmit={(e) => { e.preventDefault(); const n = Number(gestationDraft); saveGestation(Number.isFinite(n) && n > 0 ? n : null); }}
                   className="flex flex-col gap-2 items-stretch mt-3"
                 >
-                  <label className="flex-1 flex items-center gap-2 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                  <label className="flex-1 flex items-center gap-2 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
                     {t("ms.gestationLabel")}
                     <input
                       autoFocus
@@ -1366,10 +1366,10 @@ export default function MilestonesTab() {
                         {comparisonMonths < 24 && (
                           <div className="mt-4 rounded-xl p-3.5" style={{ background: "var(--arbor-green-soft)" }}>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-[11px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
+                              <span className="text-[12px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
                               <span className="text-lg" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>{milestoneBandLabel(currentBand.months, t)}</span>
                               {corrected.applied && (
-                                <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}>
+                                <span className="text-[12px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}>
                                   {t("ms.correctedBadge")} · {corrected.correctedMonths}m
                                 </span>
                               )}

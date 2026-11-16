@@ -93,7 +93,7 @@ export default function ValuePreview({
     setDismissedOn(day);
   };
 
-  const line = "text-[11px] leading-relaxed";
+  const line = "text-[12px] leading-relaxed";
   return (
     <section
       dir="auto"
@@ -119,11 +119,11 @@ export default function ValuePreview({
           on THIS surface and what the paid plan changes about it. */}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-0.5">
-          <p className="text-[11px] font-bold" style={{ color: "var(--arbor-ink)" }}>{pc("freeTitle")}</p>
+          <p className="text-[12px] font-bold" style={{ color: "var(--arbor-ink)" }}>{pc("freeTitle")}</p>
           <p className={line} style={{ color: "var(--arbor-muted)" }}>{pc("free.2")}</p>
         </div>
         <div className="space-y-0.5">
-          <p className="text-[11px] font-bold flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
+          <p className="text-[12px] font-bold flex items-center gap-1.5" style={{ color: "var(--arbor-ink)" }}>
             <PlanBadge plan="plus" />{pc("plusTitle")}
           </p>
           <p className={line} style={{ color: "var(--arbor-muted)" }}>{pc("plus.1")}</p>
@@ -137,7 +137,7 @@ export default function ValuePreview({
           type="button"
           data-testid="coach-value-preview-plans"
           onClick={() => openPaywall(undefined, "plus")}
-          className="inline-flex items-center min-h-[44px] px-3 rounded-xl text-[11px] font-extrabold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+          className="inline-flex items-center min-h-[44px] px-3 rounded-xl text-[12px] font-extrabold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
           style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
         >
           {t("set.plan.upgradePlus")}
@@ -146,7 +146,7 @@ export default function ValuePreview({
           type="button"
           data-testid="coach-value-preview-dismiss"
           onClick={dismiss}
-          className="inline-flex items-center min-h-[44px] text-[11px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
+          className="inline-flex items-center min-h-[44px] text-[12px] font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 rounded-lg"
           style={{ color: "var(--arbor-muted)" }}
         >
           {t("pw.maybeLater")}

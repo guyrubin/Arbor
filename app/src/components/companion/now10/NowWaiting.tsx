@@ -44,8 +44,9 @@ type S = (key: PlanStringKey, vars?: Record<string, string | number>) => string;
  * on the parent's shelf (recordNight), never a rate or a verdict; it writes a
  * journal moment only on the explicit "Keep tonight in the journal".
  */
-export function NowChallengePlan({ plan, lang, childName, now, evening, onNight, onUndoNight, onJournal, onOpen }: {
+export function NowChallengePlan({ plan, lang, childName, now, evening, onNight, onUndoNight, onJournal, onOpen, copy }: {
   plan: ActivePlan;
+  copy: NowV10Copy;
   lang: "en" | "he";
   childName: string;
   now: Date;
@@ -64,13 +65,14 @@ export function NowChallengePlan({ plan, lang, childName, now, evening, onNight,
   const step = tonightStepForParent(plan.doc, lang);
   const title = plan.def.title[lang];
   const book = planBookFromDoc(plan.doc);
-  return <section className="nw-plan" data-module="now-plan" aria-label={s("today.kicker", { name: childName })}>
+  return <section className="nw-plan" data-module="now-plan" aria-label={s("today.kicker", { name: childName })} dir={lang === "he" ? "rtl" : "ltr"}>
     <div className="top">
       <span className="nw-book" role="img" aria-label={title}><b dir="auto">{title}</b></span>
       <span className="nw-plan-text">
-        <b className="t">{s("today.kicker", { name: childName })}</b>
-        <span className="s" dir="auto">{s("card.night", { n: night, total })} · {s("section.nights", { count: nightsCount(plan.doc) })}</span>
+        <b className="t">{copy.readPlanBook}</b>
+        <span className="s" dir="auto">{copy.planBookLine(title, childName, night, total)}</span>
         {step && <span className="s" dir="auto" data-plan-tonight="">{s("card.tonight", { step })}</span>}
+        <span className="s small" data-plan-nights="">{s("section.nights", { count: nightsCount(plan.doc) })}</span>
         {book && <ol className="nw-plan-steps" data-plan-steps="">
           {book.parent.planSteps.map((line, i) => <li key={i} dir="auto"><span className="num">{i + 1}.</span><span>{line[lang]}</span></li>)}
         </ol>}

@@ -112,11 +112,11 @@ function CompanionOfferCard({ offer }: { offer: CompanionOffer }) {
         <Icon name={offer.kind === "appointment" ? "event" : offer.kind === "grounded-step" ? "volunteer_activism" : "fact_check"} size={20} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "var(--arbor-green-ink)" }}>{eyebrow}</p>
+        <p className="text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: "var(--arbor-green-ink)" }}>{eyebrow}</p>
         <button
           type="button"
           onClick={() => setActiveTab(offer.cta.action)}
-          className="mt-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 text-[12.5px] font-extrabold"
+          className="mt-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 text-[12px] font-extrabold"
           style={{ background: "var(--arbor-paper)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-green-ink)" }}
         >
           {ctaLabel}

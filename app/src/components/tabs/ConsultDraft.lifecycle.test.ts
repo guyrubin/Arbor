@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import ts from "typescript";
 import { visitForConsult } from "../../lib/today/dayCard";
 import { consultAudienceForProfession } from "../../lib/careTrack";
+import { careCopy } from "../care/v10/careV10Copy";
 const source = ts.createSourceFile("ConsultTab.tsx", readFileSync("src/components/tabs/ConsultTab.tsx", "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const declaration = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === "ConsultContent")!.getText(source);
 const code = ts.transpileModule(`${declaration}; return ConsultContent;`, { compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React } }).outputText;
@@ -24,7 +25,7 @@ const env = {
   useLanguage: () => ({ uiLang: "en", t: (key: string) => key }), useToast: () => ({ toast: vi.fn() }), useReceiptNote: () => ({ note: null, show: vi.fn(), clear: vi.fn() }), ReceiptNoteLine: () => null,
   useChildCollection: (_child: string, name: string) => ({ items: name === "appointments" ? rows : [], ...status }),
   visitAwaitingOutcome: () => null, isIntakeProfession: () => false, consultHeading: () => "visit", activeHomeEnrolments: () => [], guidedTierOn: () => false,
-  appointmentRoleLabel: () => "Stored profession", fmtDay: () => "date", lowerFor: (_lang: string, value: string) => value,
+  appointmentRoleLabel: () => "Stored profession", fmtDay: () => "date", fmtDayV10: () => "date", careCopy, lowerFor: (_lang: string, value: string) => value,
 };
 const component = new Function(...Object.keys(env), code)(...Object.values(env));
 function render() { cursor = 0; return component({ query, isOwnerCurrent: () => true }); }

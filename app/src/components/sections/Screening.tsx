@@ -170,7 +170,7 @@ export default function Screening() {
                   <Icon name="visibility" size={14} style={{ color: "var(--arbor-muted)" }} />
                   <span className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{domainLabel("screen", d.domain, t)}</span>
                 </div>
-                <p className="text-[12.5px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{watchNote(d)}</p>
+                <p className="text-[12px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{watchNote(d)}</p>
               </div>
             ))}
           </div>
@@ -492,7 +492,7 @@ export function ScreeningFlow({ onClose, stamped = false }: {
           {band.items.map((it, idx) => (
             <div key={it.id} className={`${cardCls} p-4`}>
               <div className="flex items-start gap-3">
-                <span className="text-[11px] font-extrabold mt-0.5" style={{ color: "var(--arbor-muted)" }}>{idx + 1}</span>
+                <span className="text-[12px] font-extrabold mt-0.5" style={{ color: "var(--arbor-muted)" }}>{idx + 1}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold" style={{ color: "var(--arbor-ink)" }}>{t(`screen.item.${it.id}`)}</p>
                   <div className="flex gap-2 mt-2.5">

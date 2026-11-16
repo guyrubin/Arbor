@@ -36,6 +36,9 @@ export const NOTICE_ROW_ANSWER_ICON: Readonly<Record<ObserveStatus, { icon: stri
 export type NowNoticeRowProps = Omit<NoticeCardProps, "variant" | "hideShelf" | "answers" | "stampMove" | "besideWords" | "initialPhase"> & {
   /** Position in Notice today: picks a silhouette so neighbouring chips differ. */
   index: number;
+  /** v10.1 (N-Now): the row being asked now — the milestone in the display face, its area under it, and the three
+   *  worded answers in one segmented tray (44 px). Same writes, same undo. */
+  ask?: boolean;
 };
 
 export function NowNoticeRow(props: NowNoticeRowProps) {
@@ -45,7 +48,7 @@ export function NowNoticeRow(props: NowNoticeRowProps) {
 function NowNoticeRowContent({
   milestone, shelf, gender, childName, onAnswer, onWhen, onKeepQuote, onKeepPhoto, onUndo,
   selected, observedWhen, observedAt, savedWords, savedAt, inlineEvidenceAllowed = true, confirmed = true,
-  onOpen, onDetails, answersAttrs, index,
+  onOpen, onDetails, answersAttrs, index, ask = false,
 }: NowNoticeRowProps) {
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
@@ -169,7 +172,7 @@ function NowNoticeRowContent({
   const undoLabel = canUndo ? t("elev.loop.notice.undo") : copy.change;
 
   return (
-    <article className="now-notice-item" data-testid="notice-card" data-milestone-id={milestone.id} data-shelf={shelf}
+    <article className={ask ? "now-notice-item nw-ask-row" : "now-notice-item"} data-testid="notice-card" data-milestone-id={milestone.id} data-shelf={shelf}
       data-phase={response && !asking ? (response === "yes" ? (kept ? "kept" : "seen") : "thanked") : "ask"}
       aria-label={t("elev.loop.notice.aria")} aria-busy={busy || undefined}>
       <div className="now-notice-item-main">
@@ -181,7 +184,7 @@ function NowNoticeRowContent({
         </button>
         {!response || asking ? (
           <div role="group" aria-label={t("ms.observePrompt")} aria-busy={busy || undefined} data-testid="notice-answers"
-            {...(answersAttrs ?? {})} className="now-notice-answers">
+            {...(answersAttrs ?? {})} className={ask ? "now-notice-answers sg3" : "now-notice-answers"}>
             {NOTICE_ANSWER_ORDER.map((status) => (
               <button key={status} type="button" className="now-notice-answer" data-answer={status} disabled={busy}
                 aria-label={answerLabel(status)} title={answerLabel(status)} {...(response ? { "aria-pressed": response === status } : {})}

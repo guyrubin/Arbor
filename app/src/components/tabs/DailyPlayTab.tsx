@@ -4,7 +4,10 @@ import { useAuth } from "../../context/AuthContext";
 import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { routeHash } from "../../lib/routes";
 import { useHashQuery } from "../../hooks/useHashQuery";
-import { DsRoot, Guide, MoreLink, Route, RouteHead, RouteSection, scrollToSection } from "../../design/primitives";
+import { DsRoot, Guide, MoreLink, Route, RouteHead, RouteSection, scrollToSection, Token } from "../../design/primitives";
+import { Draw, FrameHead, RailTile, ReadGuide } from "../moments/v10/frame";
+import Icon from "../ui/Icon";
+import "../moments/mychild.css";
 import { useComposition } from "../../design/useComposition";
 import { ChainStrip, type ChainNode } from "../together/ChainStrip";
 import { PlayGames, PlayHandOver, PlayPreview, PlayTogetherIdeas, usePlayStudio } from "../together/PlayStudio";
@@ -44,7 +47,7 @@ function AgeChip({ profile }: { profile: ChildProfile }) {
   // GP-01: the months-precise label ("7 months"), never the whole-years "age 0".
   return (
     <span
-      className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold"
+      className="inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-bold"
       style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
     >
       {t("elev.growthTruth.agechip.card", { age: ageLabel(profile, t) })}
@@ -328,6 +331,7 @@ function ScopedDailyPlayTab() {
   ];
   const stops = [
     { id: "idea", title: copy.stopIdea, sub: copy.stopIdeaSub },
+    { id: "handover", title: copy.stopHandOver, sub: copy.stopHandOverSub },
     ...(studio.kidAvailable ? [{ id: "games", title: copy.stopGames, sub: copy.stopGamesSub }] : []),
     { id: "courses", title: copy.stopCourses, sub: copy.stopCoursesSub },
     { id: "more-ideas", title: t("companion.together-view.more-ideas"), sub: undefined },
@@ -335,13 +339,8 @@ function ScopedDailyPlayTab() {
   const n = (id: string) => stops.findIndex((s) => s.id === id) + 1;
 
   const ideaStation = (
-    <section className="tg-stack pl-idea" data-module="play-daily-plan" aria-labelledby="play-title" style={{ gap: 10, minWidth: 0 }}>
-      <div className="line between" style={{ gap: 8, flexWrap: "wrap" }}>
-        <h1 className="pl-t" id="play-title" style={{ margin: 0, fontSize: phone ? 22 : 24 }}>{t("play.libTitle", { name: firstName })}</h1>
-        {dailyPlan && <AgeChip profile={childProfile} />}
-      </div>
-      <p className="pl-p">{t("play.libSubtitle", { name: firstName })}</p>
-      {phone && pickedBecause && <p className="pl-p" dir="auto"><b className="strong">{goal ? t("elev.goal.profile.title") : copy.chainPicked}</b> · {pickedBecause}</p>}
+    <section className="tg-stack pl-idea" data-module="play-daily-plan" aria-label={t("plan.card.eyebrow")} style={{ gap: 10, minWidth: 0 }}>
+      {dailyPlan && <AgeChip profile={childProfile} />}
       {/* The plan card offers "Choose what you're working on" itself when no focus is set; the line shows the focus once one is. */}
       {(goal || !dailyPlan) && <GoalFocusLine goals={activeGoals} testId="daily-play-goals-edit" onClick={() => setGoalModalOwner(childProfile.id)} />}
       {/* CI-30: the goal-linked play idea — post-activity observation writes to goalObservations (COPPA-reviewed path). */}
@@ -363,49 +362,74 @@ function ScopedDailyPlayTab() {
     </section>
   );
   const ideasRail = <PlayTogetherIdeas studio={studio} onMoreIdeas={() => scrollToSection("more-ideas")} />;
-  const colourKey = (
-    <aside className="vt pl-guide" aria-label={copy.colourKey} style={{ padding: "14px 18px", gap: 8, borderRadius: 18 }}>
-      <span className="kicker">{copy.colourKey}</span>
-      <div className="pl-key">
-        <span className="pl-idea"><i aria-hidden="true" />{copy.keyIdea}</span>
-        {studio.kidAvailable && <span className="pl-game"><i aria-hidden="true" />{copy.keyGames}</span>}
-        <span className="pl-gate"><i aria-hidden="true" />{copy.keyGate}</span>
-        <span className="pl-course"><i aria-hidden="true" />{copy.keyCourse}</span>
-      </div>
-    </aside>
+  // V77: the drawn guide replaces the colour key (the same three kinds, one palette).
+  const guideTile = (
+    <RailTile icon="grid_view" title={copy.howToRead}>
+      <ReadGuide
+        phone={phone}
+        steps={[
+          { drawing: Draw.cards(), label: copy.stopIdea },
+          { drawing: <><span className="pl-ico pl-game" style={{ width: 18, height: 18, borderRadius: 6 }} /><Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" /><span className="ds-pencil" style={{ padding: "0 4px" }}><Icon name="lock" size={14} /></span></>, label: copy.handOver },
+          { drawing: Draw.pick(4), label: copy.stopCourses },
+        ]}
+        keyItems={[
+          { mark: <span className="ds-pencil" style={{ padding: "0 6px" }} aria-hidden="true"><Icon name="edit" size={14} /></span>, label: copy.keyIdea },
+          ...(studio.kidAvailable ? [{ mark: <Token kind="kid" size="sm" label="" />, label: copy.keyGames }] : []),
+          { mark: <Token kind="plan" size="sm" label="" />, label: copy.keyCourse },
+        ]}
+      />
+    </RailTile>
+  );
+  const headerBand = (
+    <div className="scene now" style={{ padding: phone ? "16px 14px 14px" : "22px 28px 18px", gap: phone ? 12 : 16 }}>
+      <i className="orb" style={{ width: 360, height: 360, right: -170, top: -230, opacity: 0.55 }} />
+      <FrameHead
+        phone={phone}
+        kicker={copy.playKicker}
+        startHere={copy.startHere}
+        title={<span id="play-title">{t("play.libTitle", { name: firstName })}</span>}
+        sub={t("play.libSubtitle", { name: firstName })}
+      />
+      {/* Size pass: the phone drops the strip; why the idea was picked is one line in the band. */}
+      {phone
+        ? pickedBecause && <p className="pl-p" dir="auto" style={{ position: "relative" }}><b className="strong">{goal ? t("elev.goal.profile.title") : copy.chainPicked}</b> · {pickedBecause}</p>
+        : <ChainStrip nodes={chain} composition={composition} label={copy.chainLabel(firstName)} />}
+    </div>
   );
 
   return (
-    <DsRoot composition={composition} className="play-v10" data-testid="play-screen" dir={uiLang === "he" ? "rtl" : "ltr"}>
+    <DsRoot composition={composition} className="ds-mychild play-v10" data-testid="play-screen" dir={uiLang === "he" ? "rtl" : "ltr"}>
       <div className="tg-stack" style={{ gap: phone ? 12 : 16 }}>
         <Guide label={copy.onThisPage} mini={phone} stops={stops} />
-        {/* Size pass: the phone drops the strip; why the idea was picked is one line in its station. */}
-        {!phone && <ChainStrip nodes={chain} composition={composition} label={copy.chainLabel(firstName)} />}
         <ReceiptNoteLine note={playReceipt.note} testId="play-receipt" />
         <Route composition={composition}>
-          <RouteSection id="idea" n={1} on>
+          {/* 1 · the header band: the page's h1, why today's idea, the chain. */}
+          <RouteSection id="idea" n={1} on aria-labelledby="play-title">
+            {headerBand}
+          </RouteSection>
+
+          {/* 2 · the stage (today's play idea, the hand-over, the gate) and the rail (guide, ideas). */}
+          <RouteSection id="handover" n={2}>
             {phone ? (
               <div className="tg-stack" style={{ gap: 12 }}>
-                <div className="scene together" style={{ padding: 12, gap: 12 }}>
-                  <i className="orb" style={{ width: 260, height: 260, left: -150, bottom: -170, opacity: 0.6 }} />
+                <div className="mcst" style={{ padding: "12px 12px 14px" }}>
                   {ideaStation}
                   <PlayHandOver studio={studio} composition={composition} />
                 </div>
+                {guideTile}
                 {ideasRail}
               </div>
             ) : (
-              <div className="g12">
-                <div style={{ gridColumn: "span 8", minWidth: 0 }}>
-                  <div className="scene together" style={{ padding: "22px 24px 24px", height: "100%", boxSizing: "border-box", gap: 16 }}>
-                    <i className="orb" style={{ width: 420, height: 420, left: -230, bottom: -280, opacity: 0.6 }} />
-                    <i className="orb b" style={{ width: 340, height: 340, right: -150, top: -210, opacity: 0.7 }} />
+              <div className="rowa">
+                <div className="stg">
+                  <div className="mcst" style={{ flex: 1 }}>
                     {ideaStation}
                     <PlayHandOver studio={studio} composition={composition} />
                   </div>
                 </div>
-                <div style={{ gridColumn: "span 4", minWidth: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+                <div className="rlc" style={{ gap: 14 }}>
+                  {guideTile}
                   {ideasRail}
-                  {colourKey}
                 </div>
               </div>
             )}

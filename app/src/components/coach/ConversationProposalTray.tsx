@@ -109,7 +109,7 @@ export default function ConversationProposalTray({
     >
       {!inline && <div className="mb-3">
         <h2 className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{c.title}</h2>
-        <p className="mt-0.5 text-[11px]" style={{ color: "var(--arbor-muted)" }}>{c.none}</p>
+        <p className="mt-0.5 text-[12px]" style={{ color: "var(--arbor-muted)" }}>{c.none}</p>
       </div>}
       <div className="space-y-3">
         {proposals.map((proposal) => {
@@ -117,7 +117,7 @@ export default function ConversationProposalTray({
           const busy = !!busyId;
           return (
             <article key={proposal.id} className="rounded-2xl p-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-              <div className="flex flex-wrap items-center gap-2 text-[10px] font-extrabold uppercase tracking-wide" style={{ color: "var(--arbor-green-ink)" }}>
+              <div className="flex flex-wrap items-center gap-2 text-[12px] font-extrabold uppercase tracking-wide" style={{ color: "var(--arbor-green-ink)" }}>
                 <span>{c[proposal.target]}</span><span aria-hidden>·</span><span>{c[confidence]}</span>
               </div>
               {inline && <p className="mt-1 text-xs" style={{ color: "var(--arbor-muted)" }}>{c.destination}: {proposal.target === "milestone" ? c.milestoneDestination : c.journalDestination}</p>}
@@ -133,10 +133,10 @@ export default function ConversationProposalTray({
                 />
               </label>
               {inline ? <SpeakButton text={proposal.summary} lang={language} className="min-h-11" /> : null}
-              <p className="mt-2 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+              <p className="mt-2 text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
                 <strong>{c.source}:</strong> “{proposal.sourceExcerpt}”
               </p>
-              {proposal.conflict && <p role="alert" className="mt-2 text-[11px] font-bold" style={{ color: "var(--arbor-clay-ink)" }}>{c.conflict}</p>}
+              {proposal.conflict && <p role="alert" className="mt-2 text-[12px] font-bold" style={{ color: "var(--arbor-clay-ink)" }}>{c.conflict}</p>}
               <div className="mt-3 flex justify-end gap-2">
                 <button type="button" disabled={busy} onClick={() => onDiscard(proposal.id)} className="min-h-11 rounded-xl px-3 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{c.discard}</button>
                 <button type="button" disabled={busy || !proposal.summary.trim() || proposal.conflict?.code === "missing_milestone"} onClick={() => void confirmThenOfferUndo(proposal)} className="min-h-11 rounded-xl px-4 text-xs font-extrabold disabled:opacity-50" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>{c.save}</button>

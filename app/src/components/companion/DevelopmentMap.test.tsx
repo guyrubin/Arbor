@@ -33,7 +33,8 @@ vi.mock("react/jsx-dev-runtime", async original => {
 });
 import DevelopmentMap from "./DevelopmentMap";
 import DevelopmentCheckCard from "./DevelopmentCheckCard";
-import AreaTimeline from "./AreaTimeline";
+import { milestonesV10Copy } from "./milestonesV10Copy";
+import AreaTimeline, { daysBetween, timelineCalendar } from "./AreaTimeline";
 import { DOMAIN_IDS, domainName } from "../../lib/domains/registry";
 import { DOMAIN_ICONS } from "../../lib/domains/icons";
 import { translate } from "../../lib/i18n";
@@ -81,8 +82,9 @@ describe("v10.1 — DevelopmentMap, the index of eight areas", () => {
       expect(ter).toContain(esc(domainName(d, (key: string) => translate(lang, key))));
       expect(ter).toContain(esc(translate(lang, "companion.devMap.none")));
     }
-    expect(html).toContain(esc(translate(lang, "companion.devMap.note")));
-    expect(html).toContain(esc(translate(lang, "companion.milestones.areasSubTiles")));
+    // V77: one hint under the tiles, the board's sentence (not production's two lines).
+    expect(html).toContain(esc(milestonesV10Copy(lang).tilesHint));
+    expect(html).not.toContain(esc(translate(lang, "companion.milestones.areasSubTiles")));
     expect(html).not.toContain("data-module");
     expect(html).not.toContain("data-primary-move");
   });
@@ -213,36 +215,74 @@ describe("v10.1 — the index's foot", () => {
   });
 });
 
-describe("v10.1 — AreaTimeline, the open area's dated line", () => {
+describe("v10.1 — AreaTimeline, the open area's dated line (calendar-true)", () => {
   const line = (props: Partial<React.ComponentProps<typeof AreaTimeline>> = {}) =>
     renderToStaticMarkup(<AreaTimeline domain="talking" milestones={[]} composition="desk" nowMs={NOW} {...props} />);
-  it("draws only dated Seen-it skills of this area, oldest first, with today at the end", () => {
+  const cols = (html: string) => [...html.matchAll(/class="ms-tl-leaf" style="grid-column:(\d+) \/ span 1"/g)].map(m => Number(m[1]));
+  const twoSeen = () => {
     const by = groupMilestonesByShelf(catalogue());
-    const ms = catalogue().map(m => (m.id === by.words[0].id ? seen(m, "2026-06-10T10:00:00.000Z")
+    return catalogue().map(m => (m.id === by.words[0].id ? seen(m, "2026-06-10T10:00:00.000Z")
       : m.id === by.words[1].id ? seen(m, "2026-05-02T10:00:00.000Z")
       : m.id === by.words[2].id ? seen(m)
       : m.id === by.words[3].id ? { ...m, observationStatus: "not_yet" as const, observationUpdatedAt: "2026-06-01T10:00:00.000Z" }
       : m.id === by.moving[0].id ? seen(m, "2026-06-01T10:00:00.000Z") : m));
-    const html = line({ milestones: ms });
-    const dates = [...html.matchAll(/data-testid="area-timeline-leaf"[\s\S]*?<time datetime="([^"]+)"/gi)].map(m => m[1]);
+  };
+  it("draws only dated Seen-it skills of this area, oldest first, with today at the end", () => {
+    const html = line({ milestones: twoSeen() });
+    const cards = html.slice(html.indexOf('class="ms-tl-cards"'));
+    const dates = [...cards.matchAll(/<time datetime="([^"]+)"/gi)].map(m => m[1]);
     expect(dates).toEqual(["2026-05-02T10:00:00.000Z", "2026-06-10T10:00:00.000Z"]);
-    expect(html.indexOf("ms-tl-today")).toBeGreaterThan(html.lastIndexOf('data-testid="area-timeline-leaf"'));
+    expect(html.match(/data-testid="area-timeline-leaf"/g)).toHaveLength(2);
+    expect(html).toContain('data-testid="area-timeline-today"');
+    expect(html).toMatch(/data-testid="area-timeline-stats"[\s\S]*?<b class="arbor-num">2<\/b>/);
     expect(words(html)).not.toMatch(/%/);
     expect(html).not.toContain("<svg");
   });
-  it("keeps the newest five; nothing dated draws nothing", () => {
+  it("places each mark on its day: the gap between columns is the days between, written between them", () => {
+    const html = line({ milestones: twoSeen() });
+    const [a, b] = cols(html);
+    expect(b - a).toBe(daysBetween(Date.parse("2026-05-02T10:00:00.000Z"), Date.parse("2026-06-10T10:00:00.000Z")));
+    expect(b - a).toBe(39);
+    expect(html).toMatch(/class="ms-tl-gap"[^>]*>39 days</);
+    expect(html).toMatch(/class="ms-tl-gap"[^>]*>5 days</);
+    // Negative control: equal spacing (columns one apart) would not be calendar-true.
+    expect(b - a).not.toBe(1);
+  });
+  it("the axis is whole weeks from a week start, at least six, to today (Monday in English, Sunday in Hebrew)", () => {
+    const marks = [Date.parse("2026-05-02T10:00:00.000Z"), Date.parse("2026-06-10T10:00:00.000Z")];
+    const en = timelineCalendar(marks, NOW, 1);
+    const he = timelineCalendar(marks, NOW, 0);
+    expect(new Date(en.start).getDay()).toBe(1);
+    expect(new Date(he.start).getDay()).toBe(0);
+    expect(en.days).toBeGreaterThanOrEqual(42);
+    expect(en.marks[1] - en.marks[0]).toBe(39);
+    expect(en.start + en.marks[0] * 86_400_000).toBeLessThanOrEqual(marks[0]);
+    expect(daysBetween(en.start, NOW) + 1).toBe(en.days);
+    expect(timelineCalendar([], NOW, 1).days).toBeGreaterThanOrEqual(42);
+  });
+  it("keeps the newest five; nothing dated draws the empty weeks with No record yet", () => {
     const by = groupMilestonesByShelf(catalogue());
     const six = new Map(by.words.slice(0, 6).map((m, i) => [m.id, `2026-0${i + 1}-02T10:00:00.000Z`]));
     const html = line({ milestones: catalogue().map(m => (six.has(m.id) ? seen(m, six.get(m.id)) : m)) });
     expect(html.match(/data-testid="area-timeline-leaf"/g)).toHaveLength(5);
     expect(html).not.toContain("2026-01-02");
-    expect(line({ milestones: catalogue() })).toBe("");
+    const empty = line({ milestones: catalogue() });
+    expect(empty).toContain('data-testid="area-timeline-none"');
+    expect(empty).not.toContain("area-timeline-leaf");
+    expect(empty).not.toContain("area-timeline-stats");
+    expect(empty).not.toContain("ms-tl-cards");
   });
-  it("on a phone the same leaves are a dated list", () => {
-    const by = groupMilestonesByShelf(catalogue());
-    const html = line({ composition: "phone", milestones: catalogue().map(m => (m.id === by.words[0].id ? seen(m, "2026-06-10T10:00:00.000Z") : m)) });
+  it("dates read day-first, the boards' form (\"Wed 10 Jun\"), never \"Jun 10, 2026\"", () => {
+    const html = line({ milestones: twoSeen() });
+    expect(html.replace(/[\u2068\u2069]/g, "")).toContain("Wed 10 Jun");
+    expect(html).not.toMatch(/Jun 10, 2026/);
+  });
+  it("on a phone the same leaves are a dated list, each with the days since the one before", () => {
+    const html = line({ composition: "phone", milestones: twoSeen() });
     expect(html).toMatch(/<ol class="ms-tl-list" data-testid="area-timeline">/);
-    expect(html.match(/data-testid="area-timeline-leaf"/g)).toHaveLength(1);
+    expect(html.match(/data-testid="area-timeline-leaf"/g)).toHaveLength(2);
+    expect(html).toContain("39 days after");
+    expect(line({ composition: "phone", milestones: catalogue() })).toContain('data-testid="area-timeline-none"');
   });
 });
 

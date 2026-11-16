@@ -57,7 +57,7 @@ export function PlanPrices({ cadence, plans = ["plus"] }: { cadence: "monthly" |
             </p>
           );
         })}
-        <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t("set.plan.cancelAnytime")}</p>
+        <p className="text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("set.plan.cancelAnytime")}</p>
       </div>
     );
   }
@@ -81,7 +81,7 @@ export function PlanPrices({ cadence, plans = ["plus"] }: { cadence: "monthly" |
           </p>
         );
       })}
-      <p className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{t("set.plan.cancelAnytime")}</p>
+      <p className="text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("set.plan.cancelAnytime")}</p>
     </div>
   );
 }

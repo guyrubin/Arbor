@@ -31,6 +31,21 @@ describe("Together restores, across Routines and Play", () => {
     expect(play).toContain('data-testid="together-start-playing"');
     expect((together.match(/\bdata-module=/g) ?? []).length).toBe(2);
   });
+  // V77 re-pin: Routines is built on the shared frame (Now, My child). The routines
+  // module is stamped once and placed in either composition (never both rendered);
+  // the index of the times of day only scrolls to a band.
+  it("V77: Routines sits on the shared frame; one routines module element, placed by composition; the index only scrolls", () => {
+    expect(together).toContain('className="ds-mychild together-v10"');
+    expect(together).toContain('import "../moments/mychild.css";');
+    expect(together.match(/<div data-module="together-routines">/g)).toHaveLength(1);
+    expect(together.match(/\{routinesModule\}/g)).toHaveLength(2);
+    expect(together).toMatch(/\{phone \? \([\s\S]*?\{routinesModule\}[\s\S]*?\) : \([\s\S]*?<StageCard[^>]*>\s*\{routinesModule\}/);
+    expect(together).toContain("onOpen: () => scrollToSection(`band-${band}`),");
+    expect(read("components/companion/TogetherRoutines.tsx")).toContain('<section key={band} className="tgb" id={`band-${band}`}');
+    // NEGATIVE CONTROL: the v10.1 module sections (with their own ids) are gone.
+    expect(together).not.toMatch(/<section[^>]*data-module="together-routines"/);
+    expect(together).not.toContain('id="routines" data-module');
+  });
   it("keeping an away idea owns its failure message (the seam stays quiet)", () => {
     expect(play).toContain("saveMoment(moment, { callerShowsFailure: true, requireAcknowledgement: true, retryKey: `together-offscreen:${id}`, isCurrent })");
     expect(play).toContain("{studio.saveError && <p role=\"alert\"");

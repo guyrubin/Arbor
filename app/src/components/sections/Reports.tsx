@@ -12,10 +12,13 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import type { LangObservation } from "../../growth/vocabAgg";
 import type { BehaviorLog } from "../../types";
 import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDayV10 } from "../../lib/formatDate";
 import { requestOpenSettings } from "../layout/settingsBus";
 import { parentWords, recordStartIso, reportsLeadCounts } from "../../lib/recordCounts";
-import { DsRoot, Guide, Route, RouteSection, RouteHead, SideRail, Scene, LivingForm, StartHere } from "../../design/primitives";
+import { DsRoot, Guide, Route, RouteSection, RouteHead, SideRail } from "../../design/primitives";
+import CareStage from "../care/v10/CareStage";
+import RecordLedger, { recordLedgerRows } from "../care/v10/RecordLedger";
+import type { Appointment } from "../../lib/careTrack";
 import { useComposition } from "../../design/useComposition";
 import { careCopy } from "../care/v10/careV10Copy";
 import "../care/v10/care.css";
@@ -147,7 +150,7 @@ export function useConsultPdf() {
  *  so the page has ONE door there (through the B-CAREPRO-13 prefill seam). */
 export default function Reports() {
   const composition = useComposition();
-  const { childProfile, setActiveTab, requestConsultPrefill, behaviorLogs, milestones } = useArbor();
+  const { childProfile, setActiveTab, requestConsultPrefill, behaviorLogs, milestones, actionPlans, approvedMemoryItems, pendingMemoryItems } = useArbor();
   const { t, uiLang } = useLanguage();
   const exportReport = useReportExport();
   const first = (childProfile.name || "").split(" ")[0];
@@ -156,13 +159,9 @@ export default function Reports() {
   const [lastSaved, setLastSaved] = React.useState<string | null>(() => getLastExportedAt(childProfile.id, REPORTS_WEEKLY_EXPORT_KEY));
   const nowMs = Date.now();
   const counts = reportsLeadCounts({ logs: behaviorLogs ?? [], milestones: milestones ?? [], sinceIso: lastSaved, nowMs });
-  const countText = (n: number, one: string, other: string) => t(n === 1 ? one : other, { n });
-  const kept = keptThisWeek(behaviorLogs ?? [], nowMs);
   // W2-CAREPRO c2 r1: before the first save the lead names the record, not
   // its absence — counts over the whole record since it began.
   const startIso = recordStartIso(behaviorLogs ?? [], milestones ?? []);
-  const recordMoments = (behaviorLogs ?? []).length;
-  const recordNoticed = (milestones ?? []).filter((m) => m.checked).length;
   const saveLead = () => {
     exportReport("record");
     const when = new Date().toISOString();
@@ -187,8 +186,20 @@ export default function Reports() {
 
   const c = careCopy(uiLang).records;
   const desk = composition === "desk";
+  // Design V77 (N-Records): the record by kind, from what production already loads.
+  const apptsCol = useChildCollection<Appointment>(childProfile.id, "appointments");
+  const ledger = recordLedgerRows({
+    logs: behaviorLogs ?? [],
+    milestones: milestones ?? [],
+    plans: actionPlans ?? [],
+    remembered: approvedMemoryItems ?? [],
+    waiting: pendingMemoryItems ?? [],
+    appointments: apptsCol.items ?? [],
+    nowMs,
+    copy: c,
+  }).filter((row) => row.count > 0 || row.marks.length > 0); // a kind with no records yet prints no zero
   const stops = [
-    { id: "records-record", title: c.stopRecord, sub: startIso ? c.stopRecordSub(fmtDay(startIso, uiLang)) : undefined },
+    { id: "records-record", title: c.stopRecord, sub: startIso ? c.stopRecordSub(fmtDayV10(startIso, uiLang)) : undefined },
     { id: "records-docs", title: c.stopDocs, sub: c.stopDocsSub },
     { id: "records-kept", title: c.stopKept, sub: c.stopKeptSub },
   ];
@@ -207,77 +218,32 @@ export default function Reports() {
           on the ONE control that performs the move — the lead record's Save
           button — never on a display:contents wrapper around the catalogue. */}
       <div data-module="reports-catalogue" className={desk ? "g12 care-records-row" : "stack care-records-row"}>
-        <Scene
-          field="care"
-          as="section"
-          aria-labelledby="reports-h1"
-          className={desk ? "x8 care-scene care-records-scene" : "care-scene care-records-scene"}
-          orbs={desk
-            ? [{ size: 420, left: -230, bottom: -280, opacity: 0.8 }, { size: 360, right: -180, top: -240, opacity: 0.6, b: true }]
-            : [{ size: 250, left: -150, bottom: -160, opacity: 0.8 }, { size: 220, right: -130, top: -140, opacity: 0.55, b: true }]}
+        <CareStage
+          composition={composition}
+          labelledBy="reports-h1"
+          className="care-records-scene"
+          kicker={startIso ? c.since(fmtDayV10(startIso, uiLang)) : t("elev.reports.eyebrow")}
+          art="/visuals/parent/v2/area-words-960.webp"
+          artOnPhone
+          heading={<div className="stack care-heading"><h1 id="reports-h1" className="hero care-h1">{t("sec.reports.title")}</h1><p className="care-sub">{t("sec.reports.sub", { name: first })}</p></div>}
         >
-          <div className="line between care-scene-top">
-            <span className="gsec">
-              <span className="kicker">{startIso ? c.since(fmtDay(startIso, uiLang)) : t("elev.reports.eyebrow")}</span>
-              <StartHere>{t("elev.learnCare.brief.startHere")}</StartHere>
-            </span>
-          </div>
-          <div className="line care-scene-main">
-            {desk
-              ? <LivingForm src="/visuals/parent/v2/area-words-960.webp" width={150} height={128} crop={{ w: 200, h: 200, x: -24, y: -40 }} />
-              : <LivingForm src="/visuals/parent/v2/area-words-960.webp" width={72} height={50} crop={{ w: 90, h: 90, x: -9, y: -21 }} />}
-            <div className="stack care-scene-head">
-              <h1 id="reports-h1" className="hero care-h1">{t("sec.reports.title")}</h1>
-              <p className="care-sub">{t("sec.reports.sub", { name: first })}</p>
-            </div>
-          </div>
-        {/* The lead record: Weekly Insight, with the page's one gradient. */}
-        <div className="flex flex-col gap-3 care-records-lead">
+          <div className="flex flex-col gap-3 care-records-lead">
           <div className="min-w-0">
-            <h2 data-testid="reports-lead-title" className="t-md font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t("elev.reports.record.title", { name: first })}</h2>
-            {/* B-CAREPRO-NEW-2e: one counts-only line from the record.
-                W2-CAREPRO c2 r2: the lead is PERMANENT — always the whole
-                record since it began (the H2 above names the child), never
-                replaced after a save. A second fact appears ONLY when new
-                moments exist since the parent last opened the PDF; it never
-                prints a zero. "Opened", not "saved": the print tab can be
-                cancelled and nothing listens for afterprint across windows. */}
-            {startIso ? (
-              <p data-testid="reports-lead-counts" className="t-sm mt-0.5 leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
-                {t("elev.reports.lead.first", {
-                  date: fmtDay(startIso, uiLang),
-                  moments: countText(recordMoments, "elev.reports.line.moments.one", "elev.reports.line.moments.other"),
-                  milestones: countText(recordNoticed, "elev.reports.lead.milestones.one", "elev.reports.lead.milestones.other"),
-                })}
-              </p>
-            ) : null}
-            {lastSaved && counts.moments > 0 ? (
-              <p data-testid="reports-lead-new" className="t-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-                {t(counts.moments === 1 ? "elev.reports.lead.new.one" : "elev.reports.lead.new.other", { n: counts.moments, date: fmtDay(lastSaved, uiLang) })}
-              </p>
-            ) : null}
+            <h2 id="reports-lead-title" data-testid="reports-lead-title" className="care-records-title">{t("elev.reports.record.title", { name: first })}</h2>
+            {startIso ? <p data-testid="reports-lead-since" className="small care-records-since">{c.ledgerSince(fmtDayV10(startIso, uiLang))}</p> : null}
           </div>
-          {/* B-CAREPRO-NEW-2f: the parent's own words, quoted — this week's
-              newest, else the newest in the record. W2-CAREPRO c2 r2: a FLAT
-              --arbor-peach-wash (the CTA is the page's only gradient); the
-              blockquote keeps the UI direction and only the quote is isolated
-              (<bdi>), so a Latin quote never flips a Hebrew card; the date
-              lives in the caption as a no-wrap <bdi>. */}
-          {kept ? (
-            <figure data-testid="reports-kept" className="p-3" style={{ background: "var(--arbor-peach-wash)", borderRadius: "var(--r)" }}>
-              <figcaption className="t-xs" style={{ color: "var(--arbor-muted)" }}>
-                {t("elev.reports.kept.label")} · <bdi data-testid="reports-kept-date" className="whitespace-nowrap">{fmtDay(kept.at, uiLang)}</bdi>
-              </figcaption>
-              <blockquote className="t-base mt-0.5" style={{ color: "var(--arbor-peach-ink)", fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)" }}>
-                <bdi>“{kept.quote}”</bdi>
-              </blockquote>
-              {lastSaved && kept.at <= lastSaved ? (
-                <p data-testid="reports-kept-saved" className="t-xs mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.kept.saved", { name: first })}</p>
-              ) : null}
-            </figure>
-          ) : recordMoments === 0 ? (
-            <p data-testid="reports-kept-empty" className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.kept.empty")}</p>
+          {/* Design V77 (N-Records): the record by kind — each kind's count,
+              its latest date and the way to where it lives. It replaces the
+              counts sentence and the quote card (the quote is offered once,
+              in Visits). B-CAREPRO-NEW-2e: a second fact appears ONLY when new
+              moments exist since the parent last opened the PDF. */}
+          <RecordLedger composition={composition} rows={ledger} copy={c} uiLang={uiLang} labelledBy="reports-lead-title" onOpen={setActiveTab} />
+          {lastSaved && counts.moments > 0 ? (
+            <p data-testid="reports-lead-new" className="t-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+              {t(counts.moments === 1 ? "elev.reports.lead.new.one" : "elev.reports.lead.new.other", { n: counts.moments, date: fmtDayV10(lastSaved, uiLang) })}
+            </p>
           ) : null}
+          <div className={desk ? "line care-records-save" : "stack care-records-save"}>
           <button
             type="button"
             data-primary-move="export-report"
@@ -288,8 +254,10 @@ export default function Reports() {
           >
             <Icon name="download" size={16} /> {t("elev.reports.lead.cta", { name: first })}
           </button>
+          <span className="small care-ledger-note">{c.ledgerMarksNote}</span>
+          </div>
         </div>
-        </Scene>
+        </CareStage>
         <SideRail id="records-docs" n={2} title={c.stopDocs} titleId="records-docs-title" className={desk ? "x4 care-rail" : "care-rail"}>
           <div className="rcard fit care-records-docs">
         {/* The other parent-record documents: one layer of chrome — hairline

@@ -313,7 +313,8 @@ describe("IA-04 / IA-17 — exactly one child switcher at every width", () => {
     // …while the capabilities that were NOT duplicated stay put (law 6): editing,
     // and the family list — now the switcher's own dropdown (B-SHELL-38), so the
     // separate glance card is not mounted.
-    expect(src).toContain("<ProfileEditDrawer");
+    // v10 (canvas V77): editing moved into the switcher's own menu, beside Add child.
+    expect(stripComments(readFileSync(path.join(here, "TopbarKidSwitcher.tsx"), "utf8"))).toContain("<ProfileEditDrawer");
     expect(src).toContain("<TopbarKidSwitcher");
     expect(src).not.toContain("<FamilyGlanceCard />");
     // B-SHELL-18: the glance card is identity only — exactly one control

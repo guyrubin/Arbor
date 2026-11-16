@@ -253,10 +253,10 @@ export default function ChildMemory({ hidePendingIds, focusFactId, keepsakesOpen
                   >
                     <Icon name={cat.msIcon} size={16} />
                   </span>
-                  <span className="flex-1 min-w-0 truncate text-[13.5px] font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+                  <span className="flex-1 min-w-0 truncate text-[13px] font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>
                     {pick(he, card.title)}
                   </span>
-                  <span className="text-[11px] font-bold shrink-0" style={{ color: "var(--arbor-muted)" }}>
+                  <span className="text-[12px] font-bold shrink-0" style={{ color: "var(--arbor-muted)" }}>
                     {t("learn.minutes", { n: card.minutes })}
                   </span>
                   <span className="shrink-0" style={{ color: "var(--arbor-muted)" }}>
@@ -517,7 +517,7 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, le
           Dismiss, never wrapping) — so EN and HE lay out the same way whatever
           the string widths; one row from sm up, the actions at inline end. */}
       <div data-testid="memory-row-controls" className="mt-1.5 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-      <div data-testid="memory-row-meta" className="flex flex-1 min-w-0 flex-wrap items-center justify-between sm:justify-start gap-x-2 gap-y-0.5 text-[11px]" style={{ color: "var(--arbor-muted)" }}>
+      <div data-testid="memory-row-meta" className="flex flex-1 min-w-0 flex-wrap items-center justify-between sm:justify-start gap-x-2 gap-y-0.5 text-[12px]" style={{ color: "var(--arbor-muted)" }}>
         {/* W2-CAREPRO r1: no "source" link icon over raw model text with no
             destination (an unkeepable "Source-linked" claim, English in HE). */}
         {dated && <span className="inline-flex items-center gap-1"><Icon name="schedule" size={12} /> {dated}</span>}
@@ -628,7 +628,7 @@ export function MemoryEditForm({ m, onSaved, onCancel }: {
 
   return (
     <div className="space-y-2.5" data-testid="memory-edit">
-      <label className="block text-[11px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+      <label className="block text-[12px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
         {t("elev.waveR.mem.edit.factLabel")}
         <textarea
           autoFocus
@@ -641,7 +641,7 @@ export function MemoryEditForm({ m, onSaved, onCancel }: {
           style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
         />
       </label>
-      <label className="block text-[11px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+      <label className="block text-[12px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
         {t("elev.waveR.mem.edit.retentionLabel")}
         <select
           value={retentionDraft}
@@ -656,12 +656,12 @@ export function MemoryEditForm({ m, onSaved, onCancel }: {
         </select>
       </label>
       {clinicalTerm && (
-        <p data-testid="memory-edit-clinical-note" dir="auto" className="text-[11px] font-bold leading-snug" style={{ color: "var(--arbor-clay-ink)" }}>
+        <p data-testid="memory-edit-clinical-note" dir="auto" className="text-[12px] font-bold leading-snug" style={{ color: "var(--arbor-clay-ink)" }}>
           {t("elev.waveR.mem.clinicalNote", { term: clinicalTerm })}
         </p>
       )}
       {saveFailed && (
-        <p className="text-[11px] font-bold" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.waveR.mem.saveFailed")}</p>
+        <p className="text-[12px] font-bold" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.waveR.mem.saveFailed")}</p>
       )}
       <div className="flex flex-wrap items-center gap-2">
         <button

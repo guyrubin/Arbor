@@ -133,6 +133,17 @@ describe("#/weekly — the v10 Weekly report (boards N-Week-D/M), the week drawn
       expect(html.split(WEEKLY_COPY[lang].legend).length - 1).toBe(1);
     });
 
+    it(`${lang}: the milestone line counts the week's milestones and names the day, from the same record`, () => {
+      const milestone = { ...moment(on(2, 11), 9), id: "milestones:invented-9", kind: "milestone", origin: "milestones", value: { type: "milestone", milestoneId: "m-invented" } } as unknown as Observation;
+      const html = render(lang, [], [...RECORDS, milestone]);
+      const day = new Date(on(2, 11)).toLocaleDateString(lang === "he" ? "he-IL" : "en-GB", { weekday: "short", day: "numeric" });
+      const chip = read(html.slice(html.indexOf('data-testid="weekly-tile-milestones"'), html.indexOf("</button>", html.indexOf('data-testid="weekly-tile-milestones"'))));
+      // These renders take the phone composition (N-Week-M's short form); the
+      // desktop line adds the day it was marked (weeklyV10.test pins that form).
+      expect(chip).toContain(WEEKLY_COPY[lang].milestonesShort(1));
+      expect(day).not.toBe("");
+    });
+
     it(`${lang}: nothing to count, nothing stored → the empty card, then the band and your day`, () => {
       const html = render(lang, [], [], []);
       expect(topModules(html)).toEqual(["weekly-empty", "weekly-carry", "weekly-day"]);
@@ -203,9 +214,11 @@ describe("#/weekly — the v10 Weekly report (boards N-Week-D/M), the week drawn
       const visit = { id: "appt-invented", who: "Invented clinic", role: "", profession: "slp", when: "", mode: "in-person", whenIso: new Date(2026, 9, 17, 10).toISOString(), status: "confirmed" };
       const booked = render(lang, [], RECORDS, STEPS, [visit]);
       const block = booked.slice(booked.indexOf('data-testid="weekly-next-visit"'));
-      expect(read(block)).toContain(`3 ${WEEKLY_COPY[lang].daysToVisit(3)}`);
+      expect(read(block)).toContain(WEEKLY_COPY[lang].visitCard(3));
+      // The whole card is the door to Care › Visits.
+      expect(tagOf(booked, "weekly-next-visit")[0]).toMatch(/^<button /);
       expect(block).toContain(translate(lang, "elev.careNet.appt.profession.slp"));
-      expect(render(lang, [])).toContain(WEEKLY_COPY[lang].noVisit);
+      expect(render(lang, [])).toContain(WEEKLY_COPY[lang].noVisitSub);
     });
 
     it(`${lang}: no share, no ratio, no gain sign anywhere on the page`, () => {

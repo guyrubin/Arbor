@@ -171,7 +171,7 @@ export function PlayHeader({
       <div className={`flex-1 ${compact ? "min-w-[12rem]" : "min-w-[200px]"}`}>
         {eyebrow ? <p className="play-eyebrow">{eyebrow}</p> : null}
         <h1
-          className={compact ? "text-[1.45rem] md:text-[1.7rem] leading-[1.08]" : "text-[1.9rem] md:text-[2.4rem] leading-[1.05]"}
+          className={compact ? "text-[22px] md:text-[26px] leading-[1.08]" : "text-[34px] md:text-[34px] leading-[1.05]"}
           style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textWrap: "balance" }}
         >
           {title}
@@ -343,7 +343,7 @@ export function ChoiceTile({
         boxShadow: state === "idle" ? "0 4px 14px rgba(41,51,63,0.06)" : undefined,
       }}
     >
-      {emoji != null && <span className="text-[2.6rem] leading-none">{emoji}</span>}
+      {emoji != null && <span className="text-[34px] leading-none">{emoji}</span>}
       <span className="text-[15px] font-extrabold leading-tight" style={{ color: "var(--arbor-ink)" }}>{label}</span>
     </button>
   );
@@ -374,7 +374,7 @@ export function StatBubble({ value, label, tone = "clay" }: { value: React.React
       className="rounded-[var(--play-radius)] px-5 py-4 text-center"
       style={{ background: TONE_SOFT[tone], border: `1.5px solid ${TONE_INK[tone]}22` }}
     >
-      <p className="text-[1.9rem] font-extrabold leading-none" style={{ color: TONE_INK[tone], fontFamily: "var(--font-display)" }}>{value}</p>
+      <p className="text-[34px] font-extrabold leading-none" style={{ color: TONE_INK[tone], fontFamily: "var(--font-display)" }}>{value}</p>
       <p className="text-[12px] font-bold mt-1.5" style={{ color: "var(--arbor-ink-soft)" }}>{label}</p>
     </div>
   );
@@ -402,7 +402,7 @@ export function Celebrate({
     <div className="text-center py-6 play-pop-in">
       {/* The child's own hero takes the bow (Sprout cheers when no hero yet). */}
       <div className="mx-auto w-fit play-cheer"><HeroAvatar size={132} mood="cheer" animate /></div>
-      <h2 className="text-[1.6rem] font-extrabold mt-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textWrap: "balance" }}>
+      <h2 className="text-[26px] font-extrabold mt-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textWrap: "balance" }}>
         {title}
       </h2>
       {typeof stars === "number" && typeof starsTotal === "number" && (

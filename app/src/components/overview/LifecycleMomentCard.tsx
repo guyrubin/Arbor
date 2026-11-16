@@ -252,7 +252,7 @@ export default function LifecycleMomentCard({
           <Icon name={style.icon} size={20} fill={1} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: style.ink }}>
+          <p className="text-[12px] font-extrabold uppercase tracking-[0.12em]" style={{ color: style.ink }}>
             {t(`elev.lifecycle.${k}.eyebrow`)}
           </p>
           <h2
@@ -262,7 +262,7 @@ export default function LifecycleMomentCard({
           >
             {t(`elev.lifecycle.${k}.title`, vars)}
           </h2>
-          <p className="mt-1.5 text-[12.5px] leading-relaxed" style={{ color: "var(--arbor-muted)" }} dir="auto">
+          <p className="mt-1.5 text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }} dir="auto">
             {t(`elev.lifecycle.${k}.body`, vars)}
           </p>
         </div>
@@ -309,14 +309,14 @@ export default function LifecycleMomentCard({
                     <Icon name={done ? "check" : CHAIN_ICON[step]} size={15} />
                   </span>
                   <span
-                    className="min-w-0 flex-1 text-[12.5px] font-bold leading-tight"
+                    className="min-w-0 flex-1 text-[12px] font-bold leading-tight"
                     style={{ color: "var(--arbor-ink)" }}
                     dir="auto"
                   >
                     {label}
                   </span>
                   {done && (
-                    <span className="text-[10.5px] font-bold" style={{ color: "var(--arbor-faint)" }}>
+                    <span className="text-[12px] font-bold" style={{ color: "var(--arbor-faint)" }}>
                       {t("elev.d0.step.done")}
                     </span>
                   )}
@@ -365,7 +365,7 @@ export default function LifecycleMomentCard({
               );
             })}
           </ol>
-          <p className="mt-2.5 px-1 text-[11px] font-bold tabular-nums" style={{ color: "var(--arbor-faint)" }}>
+          <p className="mt-2.5 px-1 text-[12px] font-bold tabular-nums" style={{ color: "var(--arbor-faint)" }}>
             {t("elev.d0.progress", { count: chain.doneCount, total: chain.total })}
           </p>
         </div>
@@ -384,7 +384,7 @@ export default function LifecycleMomentCard({
                   type="button"
                   onClick={() => toggle(label)}
                   aria-pressed={on}
-                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-4 text-[12.5px] font-bold transition active:scale-[0.98]"
+                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-4 text-[12px] font-bold transition active:scale-[0.98]"
                   style={
                     on
                       ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-clay-border)" }
@@ -421,7 +421,7 @@ export default function LifecycleMomentCard({
             <button
               type="button"
               onClick={addTyped}
-              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 text-[12.5px] font-extrabold"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 text-[12px] font-extrabold"
               style={{ color: "var(--arbor-green-ink)" }}
             >
               <Icon name="add" size={16} />
@@ -475,7 +475,7 @@ export default function LifecycleMomentCard({
                 <div className="text-[17px] font-extrabold leading-none" style={{ color: style.ink }}>
                   {s.v}
                 </div>
-                <div className="mt-1.5 text-[9.5px] font-bold" style={{ color: "var(--arbor-faint)" }}>
+                <div className="mt-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-faint)" }}>
                   {s.label}
                 </div>
               </div>
@@ -486,7 +486,7 @@ export default function LifecycleMomentCard({
               type="button"
               onClick={onPrimary}
               data-testid="lifecycle-cta"
-              className="mt-3 inline-flex min-h-[44px] items-center gap-1.5 px-1 text-[12.5px] font-extrabold"
+              className="mt-3 inline-flex min-h-[44px] items-center gap-1.5 px-1 text-[12px] font-extrabold"
               style={{ color: "var(--arbor-clay)" }}
             >
               {t(`elev.lifecycle.${k}.cta`)}

@@ -56,6 +56,15 @@ export interface FamilyPlanPrep {
   done: boolean;
 }
 
+/** A change read from a newer version of the message, waiting for the parent. */
+export interface FamilyPlanPendingChange {
+  date: string;
+  time?: string;
+  /** The new version's line, the parent's own source text. */
+  sourceLine?: string;
+  receivedAt: string;
+}
+
 /** One earlier version of the date's day and time, kept when a change is applied. */
 export interface FamilyPlanVersion {
   version: number;
@@ -105,6 +114,14 @@ export interface FamilyPlanDate {
   time?: string;
   /** The line of the school message this came from (the parent's own source text). */
   sourceLine?: string;
+  /** That line's number in the message (1-based), when it came from a message. */
+  sourceLineNo?: number;
+  /**
+   * A newer version of the message moved this date and the parent has not
+   * decided yet ("One change to review"). Nothing about the date changes
+   * until they apply it (applyChange) or keep both dates.
+   */
+  pendingChange?: FamilyPlanPendingChange | null;
   /** Groups the dates kept from one pasted message. */
   messageId?: string;
   /** "message" when kept from a reviewed school message, "manual" when typed. */
@@ -210,6 +227,7 @@ export interface NewDateInput {
   date: string;
   time?: string;
   sourceLine?: string;
+  sourceLineNo?: number;
   messageId?: string;
   origin: "message" | "manual";
   prep?: string[];
@@ -231,6 +249,7 @@ export function createDate(input: NewDateInput, byUid: string, nowIso: string): 
     date: input.date,
     ...(input.time ? { time: input.time } : {}),
     ...(sourceLine ? { sourceLine } : {}),
+    ...(sourceLine && input.sourceLineNo && input.sourceLineNo > 0 ? { sourceLineNo: Math.trunc(input.sourceLineNo) } : {}),
     ...(input.messageId ? { messageId: input.messageId } : {}),
     origin: input.origin,
     version: 1,
@@ -337,6 +356,7 @@ export function applyChange(
     ...(sourceLine ? { sourceLine } : {}),
     version,
     previous: [...(item.previous ?? []), prior].slice(-10),
+    pendingChange: null,
     // The applier keeps it when it was theirs; anyone else is asked again.
     holder: holder && holder.uid === byUid ? holder : null,
     request: item.request ? { ...item.request, status: "closed", answeredAt: item.request.answeredAt ?? nowIso } : null,
@@ -346,6 +366,19 @@ export function applyChange(
   if (next.time === undefined) delete next.time;
   if (reaskTo) next = askAdult(next, byUid, reaskTo, reaskNote, nowIso);
   return next;
+}
+
+/** Hold a change read from a newer message until the parent decides (nothing else moves). */
+export function holdChange(item: FamilyPlanDate, change: { date: string; time?: string; sourceLine?: string }, nowIso: string): FamilyPlanDate {
+  if (!isDay(change.date)) throw new Error("invalid_date");
+  if (change.time && !isTime(change.time)) throw new Error("invalid_time");
+  const sourceLine = clean(change.sourceLine, SOURCE_LINE_MAX);
+  return { ...item, pendingChange: { date: change.date, ...(change.time ? { time: change.time } : {}), ...(sourceLine ? { sourceLine } : {}), receivedAt: nowIso }, updatedAt: nowIso };
+}
+
+/** The parent keeps the date as it is: the held change is let go. */
+export function dropPendingChange(item: FamilyPlanDate, nowIso: string): FamilyPlanDate {
+  return { ...item, pendingChange: null, updatedAt: nowIso };
 }
 
 export function addPrep(item: FamilyPlanDate, text: string, id: string, byUid: string, nowIso: string): FamilyPlanDate {

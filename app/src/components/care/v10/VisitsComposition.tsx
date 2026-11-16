@@ -71,7 +71,7 @@ export default function VisitsComposition({ composition, parts, visit, heading, 
   const briefWho = <section className="rcard tint fit care-who care-brief-who">{parts.audience}</section>;
   const sceneHeading = (
     <div className="stack care-heading">
-      {teacher && <span className="kicker">{copy.brief.kicker}</span>}
+      {teacher && <span className="kicker">{desk ? copy.brief.kicker : t("elev.consult.template.teacher")}</span>}
       {heading}
       {sublines}
     </div>
@@ -83,16 +83,27 @@ export default function VisitsComposition({ composition, parts, visit, heading, 
       heading={sceneHeading}
       packed={landing && !teacher ? packed : { moments: 0, milestones: 0, words: 0 }}
       build={parts.build}
+      reviewed={parts.reviewed}
       nowMs={nowMs}
       brief={teacher || !landing}
-      aside={teacher && desk ? briefWho : undefined}
+      aside={teacher ? briefWho : undefined}
     />
   );
 
-  const ready = (
+  /* Desktop: who it is for and your one line are two cards in the rail;
+     phone (V77 N-Care-M): one tint card holds both. */
+  const ready = desk ? (
     <>
       <section className="rcard tint fit care-who">{parts.audience}</section>
       {parts.reason && <section className="rcard fit care-reason">{parts.reason}</section>}
+      {parts.visionNote}
+    </>
+  ) : (
+    <>
+      <section className="rcard tint fit care-who care-who-phone">
+        {parts.audience}
+        {parts.reason && <div className="care-reason">{parts.reason}</div>}
+      </section>
       {parts.visionNote}
     </>
   );
@@ -100,23 +111,27 @@ export default function VisitsComposition({ composition, parts, visit, heading, 
   const summary = teacher ? (
     <>
       <div className="vt care-teacher">{parts.teacher}</div>
-      {/* phone: the brief's own Save as PDF comes first; who it is for and the template follow */}
-      {!desk && briefWho}
     </>
   ) : (
     <>
-      <section className="vt care-bring">
+      <section className="vt care-bring" aria-labelledby="care-bring-title">
+        <h3 id="care-bring-title" className="care-cardhead"><span className="care-gi" aria-hidden="true"><Icon name="description" size={22} /></span>{t("elev.consult.step.bring")}</h3>
         {parts.bring}
         {parts.packet}
       </section>
-      {parts.preview && <section className="vt care-preview">{parts.preview}</section>}
+      {parts.preview && (
+        <section className="vt care-preview" aria-labelledby="care-preview-title">
+          <h3 id="care-preview-title" className="care-cardhead"><span className="care-gi" aria-hidden="true"><Icon name="visibility" size={22} /></span>{t("elev.consult.step.preview")}</h3>
+          {parts.preview}
+        </section>
+      )}
       {parts.share && <section className="vt care-share">{parts.share}</section>}
     </>
   );
 
   const addAppointment = (
     <button type="button" className="ds-link care-add" onClick={() => openAddAppointment(setActiveTab)}>
-      <Icon name="add" size={16} /> {t("elev.careNet.appt.add")}
+      <Icon name="add" size={18} /> {t("elev.careNet.appt.add")}
     </button>
   );
 
@@ -126,6 +141,7 @@ export default function VisitsComposition({ composition, parts, visit, heading, 
       <Route composition={composition}>
         <RouteSection id={SECTION.visit} n={1} on>
           {teacher ? (
+            /* phone (V77 N-Brief-M): the link back to Visits sits in the hero, under its heading */
             <div className={desk ? "g12 care-row-a" : "stack care-phone-a"}>{scene}</div>
           ) : desk ? (
             <div className="g12 care-row-a" data-testid={landing ? "consult-visit-card" : undefined}>

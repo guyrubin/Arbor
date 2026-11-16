@@ -38,9 +38,9 @@ import "../together/together.css";
    Now › Plans. Counts only — never a share or a score.
    ════════════════════════════════════════════════════════════════════════════ */
 
-type Band = "morning" | "afternoon" | "evening" | "anytime";
-const BANDS: readonly Band[] = ["morning", "afternoon", "evening", "anytime"];
-const BAND_OF: Readonly<Record<RhythmSlot, Band>> = {
+export type Band = "morning" | "afternoon" | "evening" | "anytime";
+export const BANDS: readonly Band[] = ["morning", "afternoon", "evening", "anytime"];
+export const BAND_OF: Readonly<Record<RhythmSlot, Band>> = {
   morning: "morning",
   midday: "afternoon",
   afternoon: "afternoon",
@@ -48,7 +48,7 @@ const BAND_OF: Readonly<Record<RhythmSlot, Band>> = {
   night: "evening",
   anytime: "anytime",
 };
-const BAND_ICON: Readonly<Record<Band, string>> = { morning: "wb_sunny", afternoon: "light_mode", evening: "dark_mode", anytime: "bolt" };
+export const BAND_ICON: Readonly<Record<Band, string>> = { morning: "wb_sunny", afternoon: "light_mode", evening: "dark_mode", anytime: "bolt" };
 
 export default function TogetherRoutines({ composition, headingId, primaryMoveProps }: {
   composition: Composition;
@@ -210,7 +210,7 @@ export default function TogetherRoutines({ composition, headingId, primaryMovePr
             </li>
           ))}
         </ol>
-        <div className="act">
+        <div className="dm-act">
           <button type="button" className="btn primary nowrap" data-testid="together-fits-start" aria-haspopup="dialog" onClick={() => open(routine.id)}>
             <Icon name="play_arrow" size={18} />{card.done.length > 0 ? FITS_COPY[lang].continue : FITS_COPY[lang].start}
           </button>
@@ -220,7 +220,7 @@ export default function TogetherRoutines({ composition, headingId, primaryMovePr
   };
 
   return (
-    <div className={phone ? "dm dm-pm" : "dm"} data-testid="together-routines" data-mode={rhythm.length > 0 ? "rhythm" : "library"}>
+    <div className={phone ? "tg-stack dm-pm" : "tg-stack"} style={{ gap: 14 }} data-testid="together-routines" data-mode={rhythm.length > 0 ? "rhythm" : "library"}>
       {BANDS.map((band) => {
         // The routine that fits right now opens first in its band; the rest keep the library's order.
         const inBand = templates.filter((routine) => BAND_OF[routineSlot(routine.id)] === band)
@@ -228,13 +228,13 @@ export default function TogetherRoutines({ composition, headingId, primaryMovePr
         if (inBand.length === 0) return null;
         const titleId = `${headingId ?? "routines"}-band-${band}`;
         return (
-          <section key={band} className={`dm-b band-${band}`} id={`band-${band}`} aria-labelledby={titleId} data-band={band}>
-            <div className="dm-h">
-              <span className="dm-i" aria-hidden="true"><Icon name={BAND_ICON[band]} size={20} /></span>
+          <section key={band} className="tgb" id={`band-${band}`} aria-labelledby={titleId} data-band={band}>
+            <div className="tgbh">
+              <i className="tg" aria-hidden="true"><Icon name={BAND_ICON[band]} size={18} /></i>
               <b id={titleId} role="heading" aria-level={3}>{bandName[band]}</b>
-              <span className="n">{copy.bandCount(inBand.length)}</span>
+              <em>{copy.bandCount(inBand.length)}</em>
             </div>
-            <ul className={inBand.length === 2 ? "dm-g two" : "dm-g"}>
+            <ul className={inBand.length === 2 ? "tgg two" : "tgg"}>
               {inBand.map((routine) => (
                 fits && fits.routine.id === routine.id
                   ? <li key={routine.id} className="wide">{fitsCard(fits)}</li>

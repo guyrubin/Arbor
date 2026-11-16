@@ -191,7 +191,7 @@ export function CelebrationMoment({
           >
             {title}
           </p>
-          <p className="text-[12.5px] mt-0.5" style={{ color: p.ink }}>
+          <p className="text-[12px] mt-0.5" style={{ color: p.ink }}>
             {sub}
           </p>
         </div>

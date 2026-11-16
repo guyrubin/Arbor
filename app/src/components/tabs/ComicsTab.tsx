@@ -372,11 +372,11 @@ export default function ComicsTab({ embedded = false }: { embedded?: boolean } =
             <span className="min-w-0 font-black text-[15px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
               {title}
             </span>
-            <span className="ms-auto inline-block text-[10px] font-black px-2 py-0.5 rounded-full" style={{ border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}>
+            <span className="ms-auto inline-block text-[12px] font-black px-2 py-0.5 rounded-full" style={{ border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}>
               {t("elev.comics.storyBook.chip")}
             </span>
           </div>
-          <p className="text-[11px] mt-2" style={{ color: "var(--arbor-muted)" }}>
+          <p className="text-[12px] mt-2" style={{ color: "var(--arbor-muted)" }}>
             {run.completedAt ? fmtDay(run.completedAt, uiLang) : t("elev.comics.storyBook.inProgress")}
           </p>
         </div>
@@ -386,7 +386,7 @@ export default function ComicsTab({ embedded = false }: { embedded?: boolean } =
   const ourBooksSection = (
     <section data-module={embedded ? undefined : "comics-our-books"} data-testid="comics-our-books" className="space-y-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <h2 className="m-0 text-[1.15rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+        <h2 className="m-0 text-[19px] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
           {t("elev.comics.ourBooks.title")}
         </h2>
         {/* W0.7 — "Show all ages": only when the child's-age view hides
@@ -394,7 +394,7 @@ export default function ComicsTab({ embedded = false }: { embedded?: boolean } =
         {(ourBooksHidden > 0 || showAllAges) && (
           <span className="ms-auto inline-flex items-center gap-2">
             {!showAllAges && ourBooksHidden > 0 && (
-              <span className="text-[11.5px] font-bold" style={{ color: "var(--arbor-muted)" }} dir="auto">
+              <span className="text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }} dir="auto">
                 {agefilterText("elev.agefilter.hiddenCount", he, { n: ourBooksHidden })}
               </span>
             )}
@@ -404,7 +404,7 @@ export default function ComicsTab({ embedded = false }: { embedded?: boolean } =
               aria-checked={showAllAges}
               onClick={toggleShowAllAges}
               data-testid="agefilter-toggle-comics"
-              className="inline-flex items-center gap-1 rounded-full px-3 min-h-[44px] text-[11.5px] font-bold"
+              className="inline-flex items-center gap-1 rounded-full px-3 min-h-[44px] text-[12px] font-bold"
               style={{
                 background: showAllAges ? "var(--arbor-yellow-soft)" : "var(--arbor-paper-elevated)",
                 border: "1px solid var(--arbor-rule-strong)",
@@ -450,7 +450,7 @@ export default function ComicsTab({ embedded = false }: { embedded?: boolean } =
         subtitle={he ? `הפכו את ${name} לכוכב של ספר קומיקס משלו.` : `Turn ${name} into the star of their own comic book.`}
       >
         <PlayPanel tone="lav" className="text-center">
-          <p className="text-[1.3rem] font-extrabold mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+          <p className="text-[22px] font-extrabold mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
             {he ? `קודם כול, צרו את הגיבור של ${isolate(name)}` : `First, create ${isolate(name)}'s hero`}
           </p>
           <p className="text-sm mb-5 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }} dir="auto">
@@ -474,10 +474,10 @@ export default function ComicsTab({ embedded = false }: { embedded?: boolean } =
             run the Stories library listed is a text book here (law 6). */}
         {storyBooks.length > 0 && (
           <section data-testid="comics-story-books" aria-labelledby="comics-story-books-title" className="mt-6 space-y-3">
-            <h2 id="comics-story-books-title" className="m-0 text-[1.05rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+            <h2 id="comics-story-books-title" className="m-0 text-[17px] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
               {t("elev.comics.storyBooks.title")}
             </h2>
-            <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
+            <div className="grid gap-4" style={{ gridTemplateColumns: embedded ? "repeat(auto-fill,minmax(220px,1fr))" : "repeat(auto-fit,minmax(240px,1fr))" }}>
               {storyBooks.map(storyBookTile)}
             </div>
           </section>
@@ -602,7 +602,7 @@ export default function ComicsTab({ embedded = false }: { embedded?: boolean } =
 
       {/* The comic books: the ones made before, and the authored adventures a
           parent can still build as a comic. */}
-      <h2 className="m-0 mt-2 text-[1.05rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+      <h2 className="m-0 mt-2 text-[17px] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
         {he ? `מדף הקומיקס של ${isolate(name)}` : `${isolate(name)}'s comic bookshelf`}
       </h2>
 
@@ -752,30 +752,30 @@ export default function ComicsTab({ embedded = false }: { embedded?: boolean } =
                         a parent-built book and a read-along comic reads as two
                         books rather than a duplicate. */}
                     {a.kind === "journey" && (
-                      <span className="inline-block text-[10px] font-black px-2 py-0.5 rounded-full" dir="auto" style={{ border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}>
+                      <span className="inline-block text-[12px] font-black px-2 py-0.5 rounded-full" dir="auto" style={{ border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}>
                         {he ? "מהסיפור" : "From the story"}
                       </span>
                     )}
                     {adventureFit(a.adventureId) === "out" && getStorySpec(a.adventureId) && (
-                      <span className="inline-block text-[10px] font-black px-2 py-0.5 rounded-full" dir="auto" style={{ background: "#fff", border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}>
+                      <span className="inline-block text-[12px] font-black px-2 py-0.5 rounded-full" dir="auto" style={{ background: "#fff", border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}>
                         {agefilterText("elev.agefilter.chip", he, {
                           min: getStorySpec(a.adventureId)!.ageRange[0],
                           max: getStorySpec(a.adventureId)!.ageRange[1],
                         })}
                       </span>
                     )}
-                    <span className="inline-block text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ border: "2px solid var(--comic-ink)", color: w.ink }}>
+                    <span className="inline-block text-[12px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ border: "2px solid var(--comic-ink)", color: w.ink }}>
                       {he ? w.labelHe : w.label}
                     </span>
                   </span>
                 </div>
                 {saved && !offDevice && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-black mt-2" style={{ color: "var(--arbor-green-ink)" }}>
+                  <span className="inline-flex items-center gap-1 text-[12px] font-black mt-2" style={{ color: "var(--arbor-green-ink)" }}>
                     <Icon name="check" size={14} /> {he ? "על המדף" : "On the shelf"}
                   </span>
                 )}
                 {offDevice && (
-                  <p className="text-[11px] mt-2" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+                  <p className="text-[12px] mt-2" dir="auto" style={{ color: "var(--arbor-muted)" }}>
                     {he
                       ? "הדפים של הקומיקס הזה שמורים במכשיר שבו נקרא הסיפור. כדי ליצור קומיקס חדש כאן, קראו את הסיפור שוב במכשיר הזה (סיפורי גיבורים)."
                       : "This comic's pages live on the device the story was read on. To make a new one here, read the story again on this device (Hero Stories)."}

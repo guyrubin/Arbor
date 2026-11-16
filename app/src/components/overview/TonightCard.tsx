@@ -122,7 +122,7 @@ export function DayCloseLine({ momentsToday, onGoodNight }: { momentsToday: numb
       className="flex min-w-0 items-center justify-between gap-3 rounded-2xl px-4 py-2"
       style={{ background: "var(--arbor-paper-deep)" }}
     >
-      <p className="min-w-0 text-[13.5px] font-bold" style={{ color: "var(--arbor-ink)" }}>{kept}</p>
+      <p className="min-w-0 text-[13px] font-bold" style={{ color: "var(--arbor-ink)" }}>{kept}</p>
       <button
         type="button"
         data-testid="today-dayclose-goodnight"

@@ -7,20 +7,20 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .ds .nw-card{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-radius:18px;background:var(--card);box-shadow:var(--shadow-tile);color:var(--ink);min-width:0}
-.ds .nw-card .nh{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600 !important;line-height:1.2;min-height:28px}
-.ds .nw-lnk{display:inline-flex;align-items:center;gap:4px;font-weight:600 !important;font-size:13.5px;color:var(--sapphire-deep);white-space:nowrap}
+.ds .nw-card .nh{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600 !important;line-height:1.2;min-height:28px}
+.ds .nw-lnk{display:inline-flex;align-items:center;gap:4px;font-weight:600 !important;font-size:13px;color:var(--sapphire-deep);white-space:nowrap}
 .ds .nw-card .nh .nw-lnk{margin-inline-start:auto}
-.ds .nw-book{position:relative;display:flex;flex-direction:column;justify-content:flex-end;flex:none;width:58px;aspect-ratio:3/4;box-sizing:border-box;padding:6px 6px 7px 12px;border-radius:4px 9px 9px 4px;background:linear-gradient(160deg,#fbf6ec,#f1e7d6);box-shadow:0 0 0 1px #e3d7c2,0 10px 16px -12px #14225a73;overflow:hidden}
-.ds .nw-book::before{content:"";position:absolute;inset-block:0;inset-inline-start:0;width:6px;background:#d9c9ae}
-.ds .nw-book b{font-family:var(--font-display) !important;font-weight:600 !important;font-size:10.5px;line-height:1.12;color:var(--ink)}
+.ds .nw-book{position:relative;display:flex;flex-direction:column;justify-content:flex-end;flex:none;width:58px;aspect-ratio:3/4;box-sizing:border-box;padding:6px 6px 7px 12px;border-radius:4px 9px 9px 4px;background:var(--k-plan-w);box-shadow:0 0 0 1px color-mix(in srgb, var(--k-plan) 30%, transparent),0 10px 16px -12px #14225a73;overflow:hidden}
+.ds .nw-book::before{content:"";position:absolute;inset-block:0;inset-inline-start:0;width:6px;background:var(--k-plan)}
+.ds .nw-book b{font-family:var(--font-display) !important;font-weight:600 !important;font-size:12px;line-height:1.12;color:var(--ink)}
 .ds .nw-yn{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .ds .nw-yn button{min-height:44px;border:0;border-radius:999px;background:var(--card);color:var(--sapphire-deep);font:600 14px/1.1 var(--font-sans) !important;box-shadow:inset 0 0 0 2px var(--sapphire)}
 .ds .nw-row{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:14px;align-items:center;min-height:64px;padding:8px 0;color:var(--ink);border-top:1px solid var(--rule)}
 .ds .nw-row:first-child{border-top:0}
-.ds .nw-row .t{display:block;font-size:14.5px;font-weight:600 !important;line-height:1.25}
+.ds .nw-row .t{display:block;font-size:14px;font-weight:600 !important;line-height:1.25}
 .ds .nw-row .s{display:block;font-size:13px;line-height:1.3;color:var(--ink-soft)}
-.ds .nw-date{width:52px;height:52px;border-radius:14px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:var(--ink);color:#fff;font:700 10.5px/1 var(--font-sans) !important;letter-spacing:.06em;text-transform:uppercase}
-.ds .nw-date i{font-family:var(--font-display) !important;font-style:normal;font-weight:600 !important;font-size:20px;letter-spacing:0;line-height:1;font-variant-numeric:lining-nums}
+.ds .nw-date{width:52px;height:52px;border-radius:14px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:var(--k-date);color:#fff;font:700 12px/1 var(--font-sans) !important;letter-spacing:.06em;text-transform:uppercase}
+.ds .nw-date i{font-family:var(--font-display) !important;font-style:normal;font-weight:600 !important;font-size:19px;letter-spacing:0;line-height:1;font-variant-numeric:lining-nums}
 .ds .nw-date.none{background:var(--card);color:var(--ink);border:2px dashed var(--ink-soft)}
 .ds .nw-ico{width:52px;height:52px;border-radius:14px;background:var(--tint-2);color:var(--sapphire-deep);display:flex;align-items:center;justify-content:center}
 .ds .nw-meta{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;font-size:13px;line-height:1.3;color:var(--ink-soft)}
@@ -28,42 +28,42 @@
 .ds .nw-meta b{color:var(--ink);font-weight:600 !important}
 .ds .nw-sw{width:22px;height:10px;border-radius:5px;background:var(--win);flex:none}
 .ds .nw-qh{width:22px;height:10px;border-radius:5px;flex:none;background:repeating-linear-gradient(135deg,#8fa0bd 0 2px,#e7ecf5 2px 5px)}
-.ds .nw-chip{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:0 10px 0 3px;border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--ink);color:var(--ink);font-size:12.5px;font-weight:600 !important;white-space:nowrap}
-.ds .nw-ai{display:inline-flex;align-items:center;gap:5px;min-height:26px;padding:0 10px;border-radius:999px;background:var(--tint-2);border:1.5px dashed var(--pencil);color:var(--sapphire-deep);font-size:12.5px;font-weight:600 !important;white-space:nowrap}
+.ds .nw-chip{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:0 10px 0 3px;border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--ink);color:var(--ink);font-size:12px;font-weight:600 !important;white-space:nowrap}
+.ds .nw-ai{display:inline-flex;align-items:center;gap:5px;min-height:26px;padding:0 10px;border-radius:999px;background:var(--tint-2);border:1.5px dashed var(--pencil);color:var(--sapphire-deep);font-size:12px;font-weight:600 !important;white-space:nowrap}
 /* ---- the rail as a sequence: each kind of object has its own anatomy ---- */
 .ds .nw-seq{position:relative;display:flex;flex-direction:column;gap:14px;flex:1;min-height:0;padding-inline-start:22px}
 .ds .nw-seq::before{content:"";position:absolute;inset-inline-start:5px;top:10px;bottom:34px;width:2px;background:repeating-linear-gradient(to bottom,#c3cde0 0 4px,transparent 4px 9px)}
 .ds .nw-step{position:relative;display:flex;flex-direction:column;gap:8px;min-width:0}
 .ds .nw-step.g1{flex:1}
 .ds .nw-step.g2{flex:1.18}
-.ds .nw-when{position:relative;display:flex;align-items:center;gap:6px;min-height:18px;font:600 11.5px/1 var(--font-sans) !important;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft)}
+.ds .nw-when{position:relative;display:flex;align-items:center;gap:6px;min-height:18px;font:600 12px/1 var(--font-sans) !important;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft)}
 .ds .nw-when::before{content:"";position:absolute;inset-inline-start:-22px;top:50%;width:12px;height:12px;margin-top:-6px;border-radius:50%;box-sizing:border-box;background:var(--card);box-shadow:inset 0 0 0 2.5px #8fa5cf}
 .ds .nw-step.nw-now .nw-when::before{background:var(--sapphire);box-shadow:0 0 0 4px var(--tint-2)}
 .ds .nw-when b{color:var(--sapphire-deep);font-weight:700 !important}
 .ds .nw-when .d{width:3px;height:3px;border-radius:50%;background:currentColor;opacity:.7;flex:none}
 .ds .nw-ask{position:relative;flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:12px;padding:16px 18px 12px 23px;border-radius:18px;background:var(--tint);box-shadow:inset 0 0 0 1px #dbe6f7;overflow:hidden;color:var(--ink)}
 .ds .nw-ask::before{content:"";position:absolute;inset-block:0;inset-inline-start:0;width:5px;background:var(--sapphire)}
-.ds .nw-ask .kk{display:flex;justify-content:space-between;gap:8px;font-size:13.5px;font-weight:600 !important;color:var(--sapphire-deep)}
+.ds .nw-ask .kk{display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:600 !important;color:var(--sapphire-deep)}
 .ds .nw-ask .q{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center}
-.ds .nw-ask .q .sent{display:block;font-family:var(--font-display) !important;font-style:italic;font-size:24px;line-height:1.12}
+.ds .nw-ask .q .sent{display:block;font-family:var(--font-display) !important;font-style:italic;font-size:22px;line-height:1.12}
 .ds .nw-ask .ft{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--ink-soft)}
 .ds .nw-plan{flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:14px;padding:16px 18px;border-radius:18px;background:var(--card);box-shadow:var(--shadow-tile);color:var(--ink)}
 .ds .nw-plan .top{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:start}
-.ds .nw-plan .top b.t{display:block;font:600 16.5px/1.2 var(--font-sans) !important}
-.ds .nw-plan .top .s{display:block;margin-top:4px;font-size:13.5px;line-height:1.4;color:var(--ink-soft)}
+.ds .nw-plan .top b.t{display:block;font:600 16px/1.2 var(--font-sans) !important}
+.ds .nw-plan .top .s{display:block;margin-top:4px;font-size:13px;line-height:1.4;color:var(--ink-soft)}
 .ds .nw-plan .top .btn{margin-top:10px}
 .ds .nw-plan .ck{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--rule)}
-.ds .nw-plan .ck>span{font-size:13.5px;font-weight:600 !important}
-.ds .nw-badge{display:flex;align-items:center;gap:14px;min-height:72px;padding:10px 16px;border-radius:22px;background:var(--tint-2);border:1.5px dashed var(--pencil);color:var(--ink)}
+.ds .nw-plan .ck>span{font-size:13px;font-weight:600 !important}
+.ds .nw-badge{display:flex;align-items:center;gap:14px;min-height:72px;padding:10px 16px;border-radius:18px;background:var(--tint-2);border:1.5px dashed var(--pencil);color:var(--ink)}
 .ds .nw-badge .fig{display:flex;align-items:center;gap:10px}
 .ds .nw-badge .fig>b{font:600 40px/.9 var(--font-display) !important;font-variant-numeric:lining-nums}
-.ds .nw-badge .fig>span{font-size:13.5px;font-weight:600 !important;line-height:1.25}
-.ds .nw-badge .fig>span small{display:block;font-weight:400 !important;font-size:12.5px;color:var(--ink-soft)}
+.ds .nw-badge .fig>span{font-size:13px;font-weight:600 !important;line-height:1.25}
+.ds .nw-badge .fig>span small{display:block;font-weight:400 !important;font-size:12px;color:var(--ink-soft)}
 .ds .nw-badge .mini{display:flex;align-items:center;gap:3px;margin-inline-start:auto}
 .ds .nw-badge>svg{color:var(--sapphire-deep);flex:none}
 /* the chosen question lives in the stage as one chip; its menu is drawn open beside it */
 .ds .nw-q{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.ds .nw-qc{display:inline-flex;align-items:center;flex-wrap:wrap;gap:0 4px;min-height:44px;padding:0 4px 0 14px;border-radius:22px;background:#ffffffb8;box-shadow:inset 0 0 0 1.5px var(--rule-strong);font-size:13.5px;color:var(--ink-soft)}
+.ds .nw-qc{display:inline-flex;align-items:center;flex-wrap:wrap;gap:0 4px;min-height:44px;padding:0 4px 0 14px;border-radius:22px;background:#ffffffb8;box-shadow:inset 0 0 0 1.5px var(--rule-strong);font-size:13px;color:var(--ink-soft)}
 .ds .nw-qc>.l{display:inline-flex;align-items:center;gap:8px;padding-inline-end:10px;min-height:44px}
 .ds .nw-qc>.l b{color:var(--ink);font-weight:600 !important}
 .ds .nw-qc .acts{display:inline-flex;align-items:center}
@@ -77,7 +77,7 @@
 .ds .nw-seq.m{gap:10px}
 .ds .nw-seq.m .nw-step{gap:6px}
 .ds .nw-seq.m .nw-ask{padding:14px 14px 10px 19px;gap:10px}
-.ds .nw-seq.m .nw-ask .ft{font-size:12.5px}
+.ds .nw-seq.m .nw-ask .ft{font-size:12px}
 .ds .nw-seq.m .nw-plan{padding:14px;gap:10px}
 .ds .nw-seq.m .nw-plan .top .btn{margin-top:8px}
 .ds .nw-seq.m .nw-plan .ck{padding-top:10px}
@@ -85,7 +85,7 @@
 .ds .nw-badge.m .fig{flex:1;min-width:0}
 .ds .nw-badge.m .fig>span{white-space:nowrap}
 .ds .nw-badge.m .mini{order:3;flex-basis:100%;margin:0}
-.ds .nw-qc button{min-height:44px;padding:0 12px;border:0;border-radius:22px;background:transparent;color:var(--sapphire-deep);font:600 13.5px/1 var(--font-sans) !important;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.ds .nw-qc button{min-height:44px;padding:0 12px;border:0;border-radius:22px;background:transparent;color:var(--sapphire-deep);font:600 13px/1 var(--font-sans) !important;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 
 
 /* ═══ Production additions ═══════════════════════════════════════════════════ */
@@ -103,7 +103,7 @@
 .ds .nw-stage-solo .nw-stage { min-height: 0; }
 .ds .nw-stage-head { padding: 20px 24px 0; gap: 12px; flex-wrap: wrap; position: relative; z-index: 1; }
 .ds-phone .nw-stage-head { padding: 16px 16px 0; }
-.ds .nw-stage-head h1.kicker { margin: 0; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700 !important; color: var(--ink-soft); }
+.ds .nw-stage-head h1.kicker { margin: 0; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700 !important; color: var(--ink-soft); }
 .ds .nw-stage .now-main-column { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .ds .now-plan-v10 { display: flex; flex-direction: column; min-width: 0; }
 .ds .now-plan-v10 > .now-plan-body { display: flex; flex-direction: column; gap: 12px; padding: 14px 24px 0; min-width: 0; }
@@ -137,19 +137,19 @@
 .ds .nw-face-col { display: flex; flex-direction: column; align-items: center; gap: 4px; max-width: 260px; min-width: 0; text-align: center; }
 .ds .nw-face { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .ds-phone .nw-face { align-items: center; gap: 6px; }
-.ds .nw-face-tag { display: inline-flex; align-self: flex-start; align-items: center; gap: 5px; min-height: 26px; padding: 0 10px; border-radius: 999px; background: var(--tint-2); border: 1.5px dashed var(--pencil); color: var(--sapphire-deep); font-size: 12.5px; font-weight: 600 !important; white-space: nowrap; }
+.ds .nw-face-tag { display: inline-flex; align-self: flex-start; align-items: center; gap: 5px; min-height: 26px; padding: 0 10px; border-radius: 999px; background: var(--tint-2); border: 1.5px dashed var(--pencil); color: var(--sapphire-deep); font-size: 12px; font-weight: 600 !important; white-space: nowrap; }
 .ds-phone .nw-face-tag { align-self: center; }
-.ds .nw-face .now-plan-title { margin: 0; font-family: var(--font-display) !important; font-weight: 500 !important; font-size: 32px; line-height: 1.08; letter-spacing: -.01em; color: var(--ink); text-wrap: balance; overflow-wrap: anywhere; }
-.ds-phone .nw-face .now-plan-title { font-size: 23px; }
+.ds .nw-face .now-plan-title { margin: 0; font-family: var(--font-display) !important; font-weight: 500 !important; font-size: 34px; line-height: 1.08; letter-spacing: -.01em; color: var(--ink); text-wrap: balance; overflow-wrap: anywhere; }
+.ds-phone .nw-face .now-plan-title { font-size: 22px; }
 .ds .nw-face .now-plan-say { margin: 0; padding: 0; border: 0; font-family: var(--font-editorial, var(--font-display)) !important; font-style: italic; font-weight: 400 !important; font-size: 17px; line-height: 1.25; color: var(--ink-soft); text-wrap: balance; }
 .ds .nw-face .now-plan-title + .now-plan-say { font-size: 15px; }
 html[lang="he"] .ds .nw-face .now-plan-say { font-style: normal; }
 .ds .nw-face .now-plan-meta { margin: 0; font-size: 13px; color: var(--ink-soft); }
-.ds-phone .nw-face .now-plan-say { font-size: 15.5px; }
+.ds-phone .nw-face .now-plan-say { font-size: 15px; }
 
 /* Stop 2 · the rail and its steps */
 .ds .nw-rail { gap: 12px; }
-.ds .nw-rail .rh .h3 { font-size: 20px; }
+.ds .nw-rail .rh .h3 { font-size: 22px; }
 .ds .nw-step > [data-module="today-notice"] { min-width: 0; }
 .ds .nw-plan .nw-book { width: 72px; }
 .ds-phone .nw-plan .nw-book { width: 64px; }
@@ -167,7 +167,7 @@ html[lang="he"] .ds .nw-face .now-plan-say { font-style: normal; }
 .ds .nw-week-empty { font-size: 14px; line-height: 1.4; color: var(--ink-soft); }
 .ds .wd .nw-col { min-height: 126px; }
 .ds-phone .wd .nw-col { min-height: 112px; padding: 6px 2px; border-radius: 14px; }
-.ds-phone .wd .dh b { font-size: 20px; }
+.ds-phone .wd .dh b { font-size: 19px; }
 .ds .nw-more { font-size: 12px; font-weight: 700 !important; color: var(--ink-soft); }
 .ds .nw-week-phone { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .ds-phone .nw-week { padding: 16px 12px; gap: 12px; }
@@ -176,7 +176,7 @@ html[lang="he"] .ds .nw-face .now-plan-say { font-style: normal; }
 /* Worth knowing */
 .ds .nw-know { padding: 20px 22px; gap: 8px; justify-content: center; }
 .ds .nw-know .nw-know-art { align-self: flex-start; margin-bottom: 2px; }
-.ds .nw-know .lead { font-size: 18.5px; }
+.ds .nw-know .lead { font-size: 19px; }
 .ds .nw-know.m { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; align-items: start; }
 .ds .nw-know.m .nw-know-art { grid-column: 2; grid-row: 1 / span 3; }
 .ds .nw-know.m .lead { font-size: 16px; line-height: 1.34; }
@@ -206,13 +206,13 @@ html[lang="he"] .ds .nw-face .now-plan-say { font-style: normal; }
 .ds .nw-qc-text { min-width: 0; }
 .ds .nw-qc .nw-qc-empty { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 44px; padding: 4px 0; white-space: normal; text-align: start; color: var(--ink); border-radius: 10px; font: inherit; }
 .ds .nw-qc .nw-qc-empty b { font-weight: 600 !important; }
-.ds .nw-qc .nw-qc-empty small { font-size: 12.5px; color: var(--ink-soft); }
+.ds .nw-qc .nw-qc-empty small { font-size: 12px; color: var(--ink-soft); }
 .ds .nw-qc .acts { flex-wrap: wrap; }
 .ds .nw-qc .nw-qc-edit { min-height: 44px; min-width: 44px; padding: 0; justify-content: center; }
 .ds .nw-q-others { display: flex; gap: 8px; margin-top: 8px; }
-.ds .nw-q-others .now-question-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 999px; background: #ffffffb8; box-shadow: inset 0 0 0 1.5px var(--rule-strong); color: var(--ink); font-size: 13.5px; font-weight: 600 !important; }
+.ds .nw-q-others .now-question-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 999px; background: #ffffffb8; box-shadow: inset 0 0 0 1.5px var(--rule-strong); color: var(--ink); font-size: 13px; font-weight: 600 !important; }
 /* The stage's line under its h1 (production's subtitle), and a "Now" step with nothing in it today. */
-.ds .nw-stage-sub { flex-basis: 100%; margin: -4px 0 0; font-size: 13.5px; line-height: 1.35; color: var(--ink-soft); }
+.ds .nw-stage-sub { flex-basis: 100%; margin: -4px 0 0; font-size: 13px; line-height: 1.35; color: var(--ink-soft); }
 .ds .nw-step:has(> .now-notice-extras:empty) { display: none; }
 .ds .nw-plan-steps { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 0; padding: 0; list-style: none; font-size: 13px; line-height: 1.35; color: var(--ink); }
 .ds .nw-plan-steps li { display: flex; gap: 6px; }
@@ -225,7 +225,7 @@ html[lang="he"] .ds .nw-face .now-plan-say { font-style: normal; }
 .ds-desk .nw-stage .nw-arc-face { margin-top: -30%; }
 .ds-desk .nw-stage .nw-face-art { width: 120px !important; height: 92px !important; }
 .ds-desk .nw-stage .nw-face-art img { width: 216px !important; height: 122px !important; margin: -20px 0 0 -98px !important; }
-.ds-desk .nw-stage .nw-face .now-plan-title { font-size: 28px; }
+.ds-desk .nw-stage .nw-face .now-plan-title { font-size: 26px; }
 .ds-phone .nw-stage .nw-arc { max-width: 300px; margin-inline: auto; }
 .ds-phone .nw-stage .nw-arc-face { margin-top: -30%; }
 .ds-phone .nw-stage .nw-face-art { display: none; }
@@ -233,10 +233,10 @@ html[lang="he"] .ds .nw-face .now-plan-say { font-style: normal; }
 .ds-phone .nw-stage .nw-arc { max-width: 260px; }
 .ds-phone .nw-stage .nw-face .now-plan-meta { display: none; }
 .ds-phone .nw-stage .nw-arc { margin-top: 12px; }
-.ds-phone .nw-stage .nw-face .now-plan-say { font-size: 14.5px; }
+.ds-phone .nw-stage .nw-face .now-plan-say { font-size: 14px; }
 .ds-phone .nw-quiet-label { display: none; }
 .ds-phone .nw-stage-head { gap: 6px 8px; }
-.ds-phone .nw-stage-head h1.kicker { font-size: 11.5px; letter-spacing: .03em; }
+.ds-phone .nw-stage-head h1.kicker { font-size: 12px; letter-spacing: .03em; }
 .ds-phone .nw-stage-head .next1 { padding: 2px 8px; }
 /* The empty question: "Your question", then "No question chosen" and its line, all on the text's one start edge. */
 .ds .nw-qc-text:has(> .nw-qc-empty) { display: flex; flex-direction: column; align-items: flex-start; }
@@ -244,7 +244,85 @@ html[lang="he"] .ds .nw-face .now-plan-say { font-style: normal; }
 .ds .nw-qc .nw-qc-empty { padding: 2px 0 8px; }
 /* Phone: the lead's face heads the stage (no arc above it); the day arc follows the lead. */
 .ds .nw-face-phone { display: flex; align-items: center; gap: 12px; text-align: start; padding: 10px 16px 0; min-width: 0; }
-.ds-phone .nw-stage .nw-face-phone .nw-face-guide { display: block; border-radius: 12px; }
+.ds-phone .nw-stage .nw-face-phone .nw-face-guide { display: block; border-radius: 14px; }
 .ds-phone .nw-face-phone .nw-face { align-items: flex-start; }
 .ds-phone .nw-face-phone .nw-face-tag { align-self: flex-start; }
 .ds-phone .nw-stage > .nw-arc { margin: 14px auto 0; max-width: 300px; }
+
+/* ═══ Canvas V77 (v11 now-family): titles 22, controls 44, tiles 44, neutral cards ═══ */
+.ds.now-v10 .rhead .h3, .ds.now-v10 .siderail > .rh .h3 { font-size: 22px; }
+.ds.now-v10 .btn { min-height: 44px; }
+.ds.now-v10 .ans3 button { min-height: 44px; font-size: 14px; }
+.ds.now-v10 .nw-yn button { min-height: 44px; font: 600 14px/1.1 var(--font-sans) !important; }
+.ds.now-v10 .sg3 { border-radius: 14px; }
+.ds.now-v10 .sg3 button { min-height: 44px; border-radius: 10px; font-size: 14px; }
+.ds.now-v10 .nw-ico { width: 44px; height: 44px; }
+.ds.now-v10 .nx-ctl { background: var(--card); box-shadow: var(--shadow-tile); }
+/* V77 states: hover one step deeper, pressed an inset ink ring, focus a 2 px sapphire ring. */
+.ds .nw-row:hover .nw-lnk, .ds .nw-badge:hover { color: var(--sapphire-deep); }
+.ds .nw-badge:hover { background: #dbe8fb; }
+.ds .nw-row:active, .ds .nw-badge:active { box-shadow: inset 0 0 0 2px var(--ink); border-radius: 14px; }
+.ds .nw-yn button:hover { background: var(--tint-2); }
+.ds .nw-yn button:active { box-shadow: inset 0 0 0 2px var(--ink); }
+.ds .nw-yn button:focus-visible, .ds .nw-qc button:focus-visible { outline: 2px solid var(--sapphire); outline-offset: 2px; }
+/* N-Now (V77): the record lead's answers, outlined, in one row; the question and the parent's words ride the arc. */
+.ds .now-record-stage .ans3 { gap: 8px; }
+.ds-phone .now-record-stage .ans3 { gap: 6px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.28fr); }
+.ds-phone .now-record-stage .ans3 button { padding: 0 4px; font-size: 14px !important; }
+.ds .nw-stage .now-plan-body > .now-loop-lead:has(> .now-record-stage) { background: none; box-shadow: none; padding: 0; }
+.ds-phone .nw-stage .nw-arc { margin-top: 12px; }
+.ds-phone .nw-stage .nw-arc-face { margin-top: -27%; }
+.ds-phone .nw-stage .nw-face-col { max-width: 236px; }
+.ds-phone .nw-stage .nw-face .now-plan-title { font-size: 22px; line-height: 1.08; }
+.ds .nw-face .now-plan-say { font-style: italic; }
+/* N-Now-M (V77): the arc spans the scene; the title sits in its bowl, the tag and the parent's words under the baseline. */
+.ds-phone .nw-stage .nw-arc { max-width: none; margin-inline: 0; padding: 0 12px; }
+.ds-phone .nw-stage .nw-arc-face { margin-top: -31%; }
+.ds-phone .nw-stage .nw-face-col { max-width: 250px; }
+.ds-phone .nw-stage .nw-face-art { display: none !important; }
+.ds-phone .nw-stage .nw-face .now-plan-title { order: -1; margin-bottom: 26px; }
+.ds .nw-stage-head h1.kicker { font-family: var(--font-sans) !important; font-weight: 600 !important; letter-spacing: .06em; }
+.ds .now-plan-v10 > .now-plan-body { border: 0; }
+.ds-phone .nw-stage .nw-face blockquote.now-plan-say { font-size: 17px; line-height: 1.25; }
+.ds-desk .nw-stage .nw-face blockquote.now-plan-say { font-size: 15px; }
+/* N-Now-D (V77): the arc spans the stage again (the record answers sit straight under it, clear of the fold). */
+.ds-desk .nw-stage .nw-arc { max-width: 640px; }
+.ds-desk .nw-stage .nw-arc-face { margin-top: -28%; }
+/* The arc's drawing and its face in one grid cell (no negative margins): desktop sets the face on the bowl's floor,
+   the phone hangs the title in the bowl and lets the tag and the quote run under the baseline. */
+.ds .nw-arc { display: grid; }
+.ds .nw-arc > .nw-arc-draw, .ds .nw-arc > .nw-arc-face { grid-area: 1 / 1; min-width: 0; }
+.ds .nw-arc > .nw-arc-draw { align-self: start; }
+.ds .nw-arc > .nw-arc-face, .ds-desk .nw-stage .nw-arc-face, .ds-phone .nw-stage .nw-arc-face, .ds-desk .sr-stage .nw-arc-face, .ds-phone .sr-stage .nw-arc-face { margin-top: 0; }
+.ds-desk .nw-arc > .nw-arc-face { align-self: end; padding-bottom: 7%; }
+.ds-phone .nw-arc > .nw-arc-face { align-self: start; padding-top: 30%; }
+.ds-phone .nw-stage .nw-face .now-plan-title { max-width: 230px; margin-inline: auto; }
+.ds .nw-quiet-hour { text-anchor: start; }
+
+/* ═══ Waiting for you › Now (N-Now V77): one "Did you notice this today?" card ═══ */
+.ds .nw-ask.now-notice { margin: 0; padding: 14px 18px 10px 23px; border-radius: 18px; background: var(--tint); box-shadow: inset 0 0 0 1px #dbe6f7; gap: 10px; }
+.ds .nw-ask .now-notice-heading { margin: 0; }
+.ds .nw-ask .now-notice-head.kk { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; margin-block: -8px -4px; padding: 0; border: 0; background: none; text-align: start; cursor: pointer; font-size: 13px; font-weight: 600 !important; color: var(--sapphire-deep); }
+.ds .nw-ask .now-notice-head.kk > span:first-child { flex: 1; min-width: 0; }
+.ds .nw-ask .now-notice-head.kk .small { font-weight: 400 !important; color: var(--ink-soft); }
+.ds .nw-ask .now-notice-head.kk:focus-visible { outline: 2px solid var(--sapphire); outline-offset: 2px; border-radius: 10px; }
+.ds .nw-ask-body { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ds .nw-ask-body[hidden] { display: none; }
+.ds .nw-ask .now-notice-item { padding-block: 6px; border-block-start: 1px solid #c9d8f0; }
+.ds .nw-ask .now-notice-item:first-child { border-block-start: 0; padding-block-start: 0; }
+/* the row being asked: the milestone in the display face, its area under it, the three worded answers in one tray */
+.ds .nw-ask-row .now-notice-item-main { flex-wrap: wrap; gap: 10px 14px; }
+.ds .nw-ask-row .now-notice-item-name { flex: 1 1 160px; gap: 4px; }
+.ds .nw-ask-row .now-notice-item-title { font-family: var(--font-display) !important; font-style: italic; font-weight: 500 !important; font-size: 22px; line-height: 1.12; color: var(--ink); }
+.ds-phone .nw-ask-row .now-notice-item-title { font-size: 19px; }
+.ds .nw-ask-row .now-notice-item-shelf { font-size: 13px; color: var(--ink-soft); }
+.ds .nw-ask-row .now-notice-answers.sg3 { flex: 1 1 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: var(--card); padding-inline-start: 4px; }
+.ds .nw-ask-row .now-notice-answers.sg3 .now-notice-answer { min-height: 44px; min-width: 0; padding: 0 6px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); font-size: 14px; font-weight: 600 !important; }
+.ds .nw-ask-row .now-notice-answers.sg3 .now-notice-answer:hover { background: var(--tint-2); }
+.ds .nw-ask-row .now-notice-answers.sg3 .now-notice-answer:active { box-shadow: inset 0 0 0 2px var(--ink); }
+.ds .nw-ask-row .now-notice-answers.sg3 .now-notice-answer .msr { display: none; }
+.ds .nw-ask-row .now-notice-answers.sg3 .now-notice-answer-label { display: inline; }
+.ds .nw-ask .ft { justify-content: flex-end; }
+/* Tonight › no plan: one door line */
+.ds .nw-step .now-challenge-door { background: var(--card); border-radius: 18px; padding: 8px 14px; box-shadow: var(--shadow-tile); }
+.ds .nw-ask .now-notice-head.kk, .ds .nw-ask .now-notice-head.kk > span:not(.msr) { font-family: var(--font-sans) !important; }

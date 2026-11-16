@@ -440,7 +440,7 @@ function LegacyWowOnboarding() {
         <div className="w-full max-w-xl">
           <div
             id="wow-onboarding-title"
-            className="text-[11px] font-extrabold uppercase text-center"
+            className="text-[12px] font-extrabold uppercase text-center"
             style={{ color: mint.ink, letterSpacing: "0.14em" }}
           >
             {t("elev.wow.eyebrow")}

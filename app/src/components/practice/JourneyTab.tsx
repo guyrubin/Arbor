@@ -161,19 +161,19 @@ export default function JourneyTab() {
         {/* KID-17: counts, never a 0–100 score that grades the parent. */}
         <div className={`${cardCls} p-5`}>
           <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{missionsDone}</p>
-          <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.missionsDone")}</p>
+          <p className="text-[12px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.missionsDone")}</p>
         </div>
         <div className={`${cardCls} p-5`}>
           <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{data.week.activeDays}</p>
-          <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.activeDays")}</p>
+          <p className="text-[12px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.activeDays")}</p>
         </div>
         <div className={`${cardCls} p-5`}>
           <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{objectivesDone}/{objectives.length}</p>
-          <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.objectivesDone")}</p>
+          <p className="text-[12px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.objectivesDone")}</p>
         </div>
         <div className={`${cardCls} p-5`}>
           <p className="text-2xl font-extrabold" style={{ color: "var(--arbor-ink)" }}>{earnedCount}/{achievements.length}</p>
-          <p className="text-[11px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.badgesLabel")}</p>
+          <p className="text-[12px] mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.badgesLabel")}</p>
         </div>
       </div>
       )}
@@ -199,17 +199,17 @@ export default function JourneyTab() {
                     <p className="text-xs font-extrabold" style={{ color: day.isToday ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{day.weekday}</p>
                     {day.isToday && <Chip tone="mint">{t("elev.practice.journey.week.today")}</Chip>}
                   </div>
-                  <p className="text-[10px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>{day.date.slice(5)}</p>
+                  <p className="text-[12px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>{day.date.slice(5)}</p>
                 </div>
                 <div>
                   <p className="text-xl">{day.mission.emoji}</p>
                   <p className="text-sm font-extrabold leading-snug mt-1" style={{ color: "var(--arbor-ink)" }}>{keyed(MISSION_COPY_KEYS[day.mission.id]?.title, day.mission.title)}</p>
-                  <p className="text-[10.5px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{fillTemplate(keyed(MISSION_COPY_KEYS[day.mission.id]?.step, day.mission.steps[0]), vars)}</p>
+                  <p className="text-[12px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{fillTemplate(keyed(MISSION_COPY_KEYS[day.mission.id]?.step, day.mission.steps[0]), vars)}</p>
                 </div>
                 <button
                   data-primary-move={day.isToday ? "complete-mission" : undefined}
                   onClick={() => toggleMission(day.mission.id, day.mission.domain, day.date)}
-                  className="mt-auto inline-flex min-h-11 items-center justify-center gap-1.5 text-[11px] font-extrabold px-3 py-2 rounded-xl"
+                  className="mt-auto inline-flex min-h-11 items-center justify-center gap-1.5 text-[12px] font-extrabold px-3 py-2 rounded-xl"
                   style={done ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
                 >
                   <Icon name="check_circle" size={14} /> {done ? t("elev.practice.journey.mission.done") : t("elev.practice.journey.mission.markDone")}
@@ -219,9 +219,9 @@ export default function JourneyTab() {
                   className="text-start min-h-11 rounded-xl p-3 transition"
                   style={{ background: DOMAIN_META[day.mission.domain].soft }}
                 >
-                  <span className="block text-[10px] font-extrabold uppercase tracking-wide" style={{ color: DOMAIN_META[day.mission.domain].color }}>{t("elev.practice.journey.extra")}</span>
-                  <span className="block text-[11px] font-extrabold mt-1" style={{ color: "var(--arbor-ink)" }}>{keyed(day.extra.titleKey, day.extra.title)}</span>
-                  <span className="block text-[10px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{keyed(day.extra.detailKey, day.extra.detail)}</span>
+                  <span className="block text-[12px] font-extrabold uppercase tracking-wide" style={{ color: DOMAIN_META[day.mission.domain].color }}>{t("elev.practice.journey.extra")}</span>
+                  <span className="block text-[12px] font-extrabold mt-1" style={{ color: "var(--arbor-ink)" }}>{keyed(day.extra.titleKey, day.extra.title)}</span>
+                  <span className="block text-[12px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{keyed(day.extra.detailKey, day.extra.detail)}</span>
                 </button>
               </div>
             );
@@ -238,7 +238,7 @@ export default function JourneyTab() {
             <Icon name="auto_awesome" size={14} /> {t("elev.practice.journey.objectives.start")}
           </button>
         )}>
-        <p className="text-[11px] mb-4" style={{ color: "var(--arbor-muted)" }}>
+        <p className="text-[12px] mb-4" style={{ color: "var(--arbor-muted)" }}>
           {t("elev.practice.journey.objectives.note")}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -255,7 +255,7 @@ export default function JourneyTab() {
                   </Chip>
                 </span>
                 <span className="block text-sm font-extrabold mt-3" style={{ color: "var(--arbor-ink)" }}>{keyed(OBJECTIVE_TITLE_KEYS[obj.title], obj.title)}</span>
-                <span className="block text-[11px] mt-2" style={{ color: obj.done ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{obj.done ? t("elev.practice.journey.objectives.completed") : t("elev.practice.journey.objectives.tap")}</span>
+                <span className="block text-[12px] mt-2" style={{ color: obj.done ? "var(--arbor-green-ink)" : "var(--arbor-muted)" }}>{obj.done ? t("elev.practice.journey.objectives.completed") : t("elev.practice.journey.objectives.tap")}</span>
               </button>
             );
           })}
@@ -267,7 +267,7 @@ export default function JourneyTab() {
             opacity 0.58 — a greyed silhouette wall with its requirement showing,
             i.e. pressure mechanics on the parent door. Earned badges render at
             full opacity; the rest are a COUNT, not a wall. */}
-        <p className="text-[11px] mb-3" style={{ color: "var(--arbor-muted)" }}>
+        <p className="text-[12px] mb-3" style={{ color: "var(--arbor-muted)" }}>
           {t("elev.practice.journey.badgesEarned", { n: earnedCount, total: achievements.length })}
         </p>
         {earnedAchievements.length > 0 && (
@@ -278,7 +278,7 @@ export default function JourneyTab() {
                   <span className="text-3xl">{a.emoji}</span>
                   <div>
                     <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{a.title}</p>
-                    <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{a.detail}</p>
+                    <p className="text-[12px] mt-1 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{a.detail}</p>
                     <Chip tone="mint">{t("elev.practice.journey.earned")}</Chip>
                   </div>
                 </div>
@@ -299,7 +299,7 @@ export default function JourneyTab() {
               <div key={snap.id} className={`${cardCls} p-4`}>
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <p className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{snap.id}</p>
-                  <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{snap.date}</span>
+                  <span className="text-[12px]" style={{ color: "var(--arbor-muted)" }}>{snap.date}</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
                   {snap.bands.map((b) => {
@@ -313,9 +313,9 @@ export default function JourneyTab() {
                     const reached = Math.min(b.reached ?? windowed?.reached ?? 0, total);
                     return (
                       <div key={b.domain}>
-                        <p className="text-[10px] font-bold mb-1" style={{ color: meta.color }}>{domainLabel("practice", b.domain, t)}</p>
-                        <p className="text-[11px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.practice.journey.history.count", { reached, total })}</p>
-                        <p className="text-[10px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.history.noticed")}</p>
+                        <p className="text-[12px] font-bold mb-1" style={{ color: meta.color }}>{domainLabel("practice", b.domain, t)}</p>
+                        <p className="text-[12px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.practice.journey.history.count", { reached, total })}</p>
+                        <p className="text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.practice.journey.history.noticed")}</p>
                       </div>
                     );
                   })}

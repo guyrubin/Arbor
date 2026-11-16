@@ -135,15 +135,15 @@ function BookSheetReview({ child, avatarHash, target = BOOK_TARGET, owner }: Boo
               {urls[pose] && !busy[pose] ? (
                 <img src={urls[pose]} alt={t(`${target.keyBase}.alt`, name)} className="h-20 w-auto object-contain" draggable={false} />
               ) : (
-                <div className="h-20 flex items-center text-[11px] text-center" style={muted}>
+                <div className="h-20 flex items-center text-[12px] text-center" style={muted}>
                   {busy[pose] ? t("elev.hero.sheet.review.redrawing") : failed[pose] ? t(`${target.keyBase}.failed`) : ""}
                 </div>
               )}
               {entry.redrawn ? (
-                <span className="inline-flex min-h-11 items-center text-[11px]" style={muted}>{t("elev.hero.sheet.review.redrawn")}</span>
+                <span className="inline-flex min-h-11 items-center text-[12px]" style={muted}>{t("elev.hero.sheet.review.redrawn")}</span>
               ) : (
                 !busy[pose] && (
-                  <button type="button" onClick={() => { void redraw(pose); }} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg px-2 text-[11px] font-bold" style={{ background: "var(--arbor-paper)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
+                  <button type="button" onClick={() => { void redraw(pose); }} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg px-2 text-[12px] font-bold" style={{ background: "var(--arbor-paper)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
                     <Icon name="refresh" size={14} /> {t("elev.hero.sheet.review.redraw")}
                   </button>
                 )

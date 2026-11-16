@@ -14,10 +14,8 @@ import { programSharedObjectOn } from "../../lib/programs/sharedObject";
 import ProgramBookHandback from "../program/ProgramBookHandback";
 import { readLearnReadIds } from "../../learn/learnReadState";
 import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
-import PlansSection from "../plans/PlansSection";
-import { closePlan, keepPlan, leadPlan, nightMomentText, recordNight, unrecordNight } from "../../lib/plans/planWeek";
-import { usePlanVisibility } from "../../lib/plans/usePlanVisibility";
-import { openPrintablePlan } from "../../lib/plans/planPrint";
+import { planString } from "../../lib/plans/planStrings";
+import { leadPlan, nightMomentText, recordNight, unrecordNight } from "../../lib/plans/planWeek";
 import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import { dayKey } from "../../practice/signals";
 import { isObservationAction, type ActionLoopEntry } from "../../actionLoop/model";
@@ -41,7 +39,7 @@ import { basedOnLines, FOCUS_MAX_FACTS } from "../../lib/basedOn";
 import { useArborPause } from "../../lib/pauseArborStore";
 import { fmtDay } from "../../lib/formatDate";
 import BasedOnReceipt from "../trust/BasedOnReceipt";
-import FromRecordCard, { FromRecordReceipt } from "../overview/FromRecordCard";
+import FromRecordCard, { FromRecordReceipt, recordMeta, recordQuestion } from "../overview/FromRecordCard";
 import { useNowLoop } from "./useNowLoop";
 import { useLifecycleMoment } from "../overview/useLifecycleMoment";
 import { useCompanionOffer } from "../overview/useCompanionOffer";
@@ -159,7 +157,6 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // card (the running plan(s), then "Something hard right now?"). v10.1: it
   // opens the plan's one home, Now › Plans (lib/plans/challengeLinks), not a
   // copy of the composer.
-  const planVisibility = usePlanVisibility();
   const openPattern = (pattern: string) => { setActiveTab("plans"); window.location.hash = challengePlanHref(isPatternId(pattern) ? pattern : null); };
   const openPlan = () => openPattern(plan?.def.id ?? "");
   // v4: the agenda row says where the family is in it ("Week 2 of 4"), counts only.
@@ -347,12 +344,18 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // The urgent lead's face carries only the reviewed safety header; no say line,
   // no plan meta, no "picked because" — nothing is invented beside the help lines.
   const planTag = pausedLead ? t("companion.pause.on") : shownLead === "urgent" ? t("elev.safety.header.title") : copy.planTag[shownLead];
-  const planSay = pausedLead ? t("companion.pause.now") : shownLead === "urgent" ? null : practiceSay ? t("elev.loop.ms.quoted", { text: practiceSay }) : copy.planSay[shownLead];
-  const planMeta = pausedLead ? null : shownLead === "urgent" ? null : shownLead === "step" ? (receipt ? (receiptQueued ? t(savedOnPhoneKey(online)) : copy.saved) : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
+  // v10.1 (N-Now): the record question rides the arc as the stage's title, the parent's words quoted under it.
+  const recordFace = shownLead === "record" && !pausedLead && record.opener && !record.receipt ? record.opener : null;
+  const recordQuote = recordFace?.quote?.trim() ? t("elev.loop.ms.quoted", { text: recordFace.quote.trim() }) : null;
+  const recordNoteDay = recordFace?.quoteAt && Number.isFinite(Date.parse(recordFace.quoteAt))
+    ? new Date(recordFace.quoteAt).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "short", day: "numeric", month: "short" }) : null;
+  const planSay = recordFace ? recordQuote : pausedLead ? t("companion.pause.now") : shownLead === "urgent" ? null : practiceSay ? t("elev.loop.ms.quoted", { text: practiceSay }) : copy.planSay[shownLead];
+  const planMeta = recordFace ? recordMeta(recordFace, uiLang, t) : pausedLead ? null : shownLead === "urgent" ? null : shownLead === "step" ? (receipt ? (receiptQueued ? t(savedOnPhoneKey(online)) : copy.saved) : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
   // v3 F-NOW-1 r2: the guide's title on the face is the lead's own h2, moved up
   // from its section (which keeps it as its label). The loop leads' cards carry
   // their own heading, so their face has the say line and meta only.
-  const planTitle = pausedLead ? <h2 id={`${id}-pause`} className="now-plan-title" dir="auto">{pauseUntil}</h2>
+  const planTitle = recordFace ? <h2 id={`${id}-record`} data-testid="today-record-question" className="now-plan-title" dir="auto">{recordQuestion(recordFace, name, t)}</h2>
+    : pausedLead ? <h2 id={`${id}-pause`} className="now-plan-title" dir="auto">{pauseUntil}</h2>
     : shownLead === "step" && chosen ? <h2 ref={stepTitle} id={`${id}-step`} className="now-plan-title" dir="auto" style={observation ? { whiteSpace: "pre-wrap", scrollMarginBlockStart: "calc(var(--sticky-offset) + 12px)" } : undefined}>{receipt && !observation ? copy.finishedTitle : chosen.recommendation}</h2>
     : shownLead === "visit" && visit ? <h2 id={`${id}-visit`} className="now-plan-title" dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</h2>
       : shownLead === "program" && program ? <h2 id={`${id}-program`} className="now-plan-title" dir="auto">{programSkill}</h2> : undefined;
@@ -362,7 +365,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const practiceWhy = shownLead === "practice" && loop.pick
     ? (loop.pick.via === "ai" && focus?.why?.trim()) || t(loop.whyReason && (loop.whyReason !== "since" || loop.whyDate) ? WHY_KEY[loop.whyReason] : "elev.loop.practice.whyShelf", { shelf: shelfLabel(loop.pick.shelf, t), name, date: loop.whyDate ?? "" })
     : "";
-  const planWhy = pausedLead ? t("companion.pause.kept") : shownLead === "practice" ? practiceWhy || copy.pickedWhy.practice : shownLead === "tonight" && tonightOpen ? copy.pickedTonightOpen : copy.pickedWhy[shownLead];
+  const planWhy = recordFace && recordNoteDay ? v10.pickedRecord(recordNoteDay) : pausedLead ? t("companion.pause.kept") : shownLead === "practice" ? practiceWhy || copy.pickedWhy.practice : shownLead === "tonight" && tonightOpen ? copy.pickedTonightOpen : copy.pickedWhy[shownLead];
   // The question is named only where it drove the pick: a step chosen under
   // it, or a practice/notice drawn from its shelves.
   // v4.1 Right now: the one line that follows the day. Not beside the urgent
@@ -409,11 +412,8 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const familyDates = useFamilyPlanDatesForNow();
   const notesWaiting = (pendingMemoryItems ?? []).filter(item => item.status === "pending").length;
   const stage: NowStage = {
-    // Phone: the face heads the lead and the arc follows it (stageInner), so the lead's answers clear the capture dock at 375.
-    renderArc: (face, art) => !desk ? <div className="nw-face-phone">
-      {art && <LivingForm src={art.src} srcSet={art.srcSet} width={72} height={56} className="nw-face-art nw-face-guide" />}
-      {face}
-    </div> : <NowDayArc composition={composition} now={now} quietStart={nudgePrefs.quietStart} quietEnd={nudgePrefs.quietEnd} evening={evening.inBand > 0} copy={v10}>
+    // The face (the lead's tag, title, quote) is set inside the arc's bowl, as N-Now draws it on both compositions.
+    renderArc: (face, art) => <NowDayArc composition={composition} now={now} quietStart={nudgePrefs.quietStart} quietEnd={nudgePrefs.quietEnd} evening={evening.inBand > 0} copy={v10}>
       <div className={desk ? "nw-face-row" : "nw-face-col"}>
         <LivingForm src={art?.src ?? "/visuals/parent/v2/guidance-480.webp"} srcSet={art?.srcSet} width={desk ? 150 : 88} height={desk ? 115 : 68}
           crop={art ? undefined : desk ? { w: 270.8, h: 152.3, x: -122, y: -24 } : { w: 158.9, h: 89.4, x: -71.6, y: -14 }} className="nw-face-art" />
@@ -425,11 +425,11 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const leadChain = <div className="now-main-column">
         {lead === "practice" && <PracticeFocus now={now} journal={loop.journal} onFocus={setFocus} onPending={setFocusPending} />}
         {/* The recommendation frames itself (its screened words ride the arc), so its frame here is bare. */}
-        <NowPlanFrame kind={shownLead} lang={lang} tag={planTag} say={planSay} quoted={!!practiceSay && !pausedLead} title={planTitle} meta={planMeta} question={topic?.title} bare={shownLead === "recommendation" && !pausedLead}>
+        <NowPlanFrame kind={shownLead} lang={lang} tag={recordFace ? v10.arborSuggests : planTag} say={planSay} quoted={(!!practiceSay || !!recordQuote) && !pausedLead} title={planTitle} meta={planMeta} question={topic?.title} bare={shownLead === "recommendation" && !pausedLead}>
         {lead === "urgent" ? <section className="now-loop-lead" data-module="now-urgent" aria-label={t("elev.safety.header.title")}>
           <UrgentSupport testId="now-urgent-setup-support" className="now-urgent-lead" />
         </section> : lead === "record" ? <section className="now-loop-lead" data-module="now-record" aria-label={t("today.record.aria")}>
-          {record.receipt ? <FromRecordReceipt queued={record.queued} /> : record.opener && <FromRecordCard opener={record.opener} childName={name} stampMove="choose-next-step" disabled={record.saving} onAnswer={answer => void record.answer(answer)} />}
+          {record.receipt ? <FromRecordReceipt queued={record.queued} /> : record.opener && <FromRecordCard stage opener={record.opener} childName={name} stampMove="choose-next-step" disabled={record.saving} onAnswer={answer => void record.answer(answer)} />}
           {record.saving && <p role="status" className="now-inline-status">{record.confirming ? t("elev.today.record.confirming") : copy.saving}</p>}
           {record.error && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
         </section> : lead === "visit" && visit ? <section className="now-lead arbor-depth-primary" data-module="now-visit" aria-labelledby={`${id}-visit`}>
@@ -507,25 +507,22 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const noticeStep = showNotice ? <div data-module="today-notice"><NowNoticeBlock loop={loop} name={name} practiceLeads={lead === "practice"}
     extras={<NowNoticeExtras keepsakeDocs={loop.keepsakeDocs} now={loop.now} isReturning={isReturning} suppressSayBack={lead === "record"} />} /></div>
     : lead !== "urgent" ? <NowNoticeExtras keepsakeDocs={loop.keepsakeDocs} now={loop.now} isReturning={isReturning} suppressSayBack={lead === "record"} /> : null;
-  const plansDoor = lead !== "urgent" ? <PlansSection surface="today" childName={name} planRows={planRows.items} visibility={planVisibility} now={now} excludePlanId={plan ? plan.doc.id : undefined}
-    onOpenDoor={openPattern} onOpenPlan={(p) => openPattern(p.def.id)} onChange={(p) => openPattern(p.def.id)}
-    onKeep={(p) => void planRows.upsert(keepPlan(p.doc, now))} onClose={(p) => void planRows.upsert(closePlan(p.doc, now))}
-    onPrint={(p) => void openPrintablePlan({ doc: p.doc, child: childProfile, lang, now })} /> : null;
+  // With no plan running, Tonight is one door line to Challenge Plans (the chooser and the composer live on Now › Plans).
+  const plansDoor = lead !== "urgent" && !plan ? <NowRow icon="auto_stories" testId="now-challenge-door" className="now-challenge-door"
+    title={planString("section.hard", lang)} sub={planString("section.title", lang)} onOpen={() => openPattern("")} /> : null;
   const waiting: WaitingStep[] = [];
-  if (noticeStep) waiting.push({ key: "now", when: v10.whenNow, sub: showNotice ? copy.planTag.notice : null, current: true, grow: 1, body: noticeStep });
-  if (lead !== "urgent" && plan) waiting.push({ key: "tonight", when: v10.whenTonight, sub: v10.whenTonightSub, current: !showNotice, grow: 2, body: <>
-    <NowChallengePlan plan={plan} lang={lang} childName={name} now={now} evening={loop.evening}
+  if (noticeStep) waiting.push({ key: "now", when: v10.whenNow, sub: showNotice ? v10.oneQuestion(loop.blockNotices.filter(c => !c.milestone.observationStatus).length || loop.blockNotices.length) : null, current: true, grow: 1, body: noticeStep });
+  if (lead !== "urgent" && plan) waiting.push({ key: "tonight", when: v10.whenTonight, sub: v10.whenTonightSub, current: !showNotice, grow: 2, body:
+    <NowChallengePlan plan={plan} lang={lang} childName={name} now={now} evening={loop.evening} copy={v10}
       onNight={(happened) => { if (happened) void planRows.upsert(recordNight(plan.doc, now)); }}
       onUndoNight={() => void planRows.upsert(unrecordNight(plan.doc, now))}
       onJournal={() => void addMoment(nightMomentText(plan.def, lang, name))}
-      onOpen={openPlan} />
-    {plansDoor}
-  </> });
+      onOpen={openPlan} /> });
   else if (plansDoor) waiting.push({ key: "tonight", when: v10.whenTonight, body: plansDoor });
   if (lead !== "urgent" && notesWaiting > 0) waiting.push({ key: "later", when: v10.whenLater, sub: v10.whenLaterSub, body:
     <NowNotebookBadge waiting={notesWaiting} copy={v10} notebook={t("companion.about.notebook")} label={t(notesWaiting === 1 ? "elev.childmem.pending.notes.one" : "elev.childmem.pending.notes", { count: notesWaiting })} onOpen={() => goToRoute("memory")} /> });
-  // What waits, counted as the rail shows it: the notice rows still open, a plan running, notes waiting.
-  const thingsWaiting = (showNotice ? 1 : 0) + (lead !== "urgent" && plan ? 1 : 0) + (lead !== "urgent" && notesWaiting > 0 ? 1 : 0);
+  // "Waiting for you · n things": the blocks the rail shows (a Now step with only its say-back extras is not counted).
+  const thingsWaiting = waiting.filter(w => w.key !== "now" || showNotice).length;
   const waitingTitleId = `${id}-waiting`;
 
   // ── stop 3: this week, compact, with what changed since the last visit. ──
@@ -550,7 +547,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
       badge={programWeeks > 0 ? <span className="now-agenda-badge" data-testid="now-program-week">{copy.programWeekOf(program.week, Math.max(program.week, programWeeks))}</span> : undefined} />}
     {/* B-PROG-14: "This week's idea". Flag off: the title door. Flag on: example, words, reason, fallback, and the longer read when this week has one. */}
     {!(showLessonFace && lessonFace) && weekLesson && <NowRow icon="lightbulb" testId="now-week-lesson" className="now-week-lesson" title={copy.weekIdea} sub={weekLesson.title[lang]} onOpen={() => requestLearnRead({ cardId: weekLesson.id, source: "now-week-lesson" })} />}
-    <NowRow icon="notifications" className="now-glance-reminders" title={copy.remindersTitle} sub={v10.remindersSub(shownNudges, quietFrom)} onOpen={() => setActiveTab("smart-reminders")} />
+    <NowRow icon="notifications" className="now-glance-reminders" title={copy.remindersTitle} sub={v10.remindersShown(shownNudges)} onOpen={() => setActiveTab("smart-reminders")} />
   </>;
   const comingExtras = <>
     {/* B-PROG-16: next-day handback of the week's one shared book. Dark until the pilot flag. */}
@@ -565,10 +562,11 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const worth = lead !== "urgent" ? <NowWorthKnowing lang={lang} kicker={v10.worthKnowing} readMinutes={copy.readMinutes} topicText={topic?.title} composition={composition} now={now} /> : null;
 
   const stops: GuideStop[] = [
-    { id: "now-tonight", title: v10.stops.tonight, sub: desk ? copy.subtitle : planTag },
-    ...(waiting.length ? [{ id: "now-waiting", title: v10.stops.waiting, sub: thingsWaiting ? v10.things(thingsWaiting) : undefined }] : []),
-    { id: "now-week", title: v10.stops.week },
-    { id: "now-ahead", title: v10.stops.ahead },
+    // The phone guide uses the board's short names for the same four stops.
+    { id: "now-tonight", title: desk ? v10.stops.tonight : v10.stopsShort.tonight, sub: planTag },
+    ...(waiting.length ? [{ id: "now-waiting", title: desk ? v10.stops.waiting : v10.stopsShort.waiting, sub: v10.stopSubs.waiting }] : []),
+    { id: "now-week", title: desk ? v10.stops.week : v10.stopsShort.week, sub: v10.stopSubs.week },
+    { id: "now-ahead", title: desk ? v10.stops.ahead : v10.stopsShort.ahead, sub: v10.stopSubs.ahead },
   ];
   const n = (stopId: string) => stops.findIndex(s => s.id === stopId) + 1;
 
@@ -583,11 +581,11 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
       {!desk && <p className="nw-stage-sub">{copy.subtitle}</p>}
     </div>
     <NowStageContext.Provider value={stage}>{leadChain}</NowStageContext.Provider>
-    {!desk && <NowDayArc composition={composition} now={now} quietStart={nudgePrefs.quietStart} quietEnd={nudgePrefs.quietEnd} evening={evening.inBand > 0} copy={v10} />}
     {showRightNow && <NowRightNow now={now} lang={lang} visit={rightNowVisit} tonight={rightNowTonight} />}
     {(topic || onTopicOpen) && <div className="nw-stage-q"><NowQuestionRow data-module="now-focus" lang={lang} topic={topic} onOpen={onTopicOpen} onCreate={onTopicCreate ? () => onTopicCreate("") : undefined} phone={!desk} /></div>}
     <div className="nw-meta nw-arc-legend">
-      {evening.inBand > 0 && <span data-testid="now-evening-band"><i className="nw-sw" aria-hidden="true" /><span><b>{v10.eveningLabel(clock24(EVENING_FROM_HOUR * 60), clock24(EVENING_TO_HOUR * 60))}</b> {v10.eveningCount(evening.inBand, evening.total)}</span></span>}
+      {/* V77: the phone legend names the band; the desktop says its window and its count. */}
+      {evening.inBand > 0 && <span data-testid="now-evening-band"><i className="nw-sw" aria-hidden="true" />{desk ? <span><b>{v10.eveningLabel(clock24(EVENING_FROM_HOUR * 60), clock24(EVENING_TO_HOUR * 60))}</b> {v10.eveningCount(evening.inBand, evening.total)}</span> : v10.eveningShort}</span>}
       <span><i className="nw-qh" aria-hidden="true" />{v10.quietFrom(quietFrom)}</span>
       {!desk && dayGlance}
     </div>

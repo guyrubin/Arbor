@@ -667,7 +667,8 @@ describe("B-ASKJB-23 — capture, guides and patterns", () => {
   const behaviors = read("src/components/tabs/BehaviorsTab.tsx");
   it("keeps the action-first capture before guides and patterns, with no record grid", () => {
     const modules = [...behaviors.matchAll(/data-module="([^"]+)"/g)].map((m) => m[1]);
-    expect(modules).toEqual(["behaviors-capture", "behaviors-hard-moments", "behaviors-patterns"]);
+    // N-Hard V77: the stage and its rail (patterns), then stop 3, the closest guides.
+    expect(modules).toEqual(["behaviors-capture", "behaviors-patterns", "behaviors-hard-moments"]);
     expect(modules.length).toBeLessThanOrEqual(contractFor("behaviors")!.moduleBudget);
     expect((behaviors.match(/data-primary-move="log-behavior"/g) ?? []).length).toBe(1);
     expect(behaviors).not.toContain('data-module="behaviors-record"');

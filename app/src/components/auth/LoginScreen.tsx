@@ -111,7 +111,7 @@ export default function LoginScreen() {
             <p className="text-sm font-semibold">{t("elev.auth.trial.promise")}</p>
             <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.auth.trial.steps")}</p>
             <p className="text-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.auth.trial.existing")}</p>
-          </div> : <p className="text-[11px] font-bold" style={{ color: "var(--arbor-faint)" }}>{t("elev.auth.evidence")}</p>}
+          </div> : <p className="text-[12px] font-bold" style={{ color: "var(--arbor-faint)" }}>{t("elev.auth.evidence")}</p>}
         </motion.div>
 
         {/* B-SHELL-15: the card and the legal links under it share one column. */}
@@ -181,7 +181,7 @@ export default function LoginScreen() {
           </button>
         )}
 
-        <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest" style={{ color: "var(--arbor-muted)" }}>
+        <div className="flex items-center gap-3 text-[12px] uppercase tracking-widest" style={{ color: "var(--arbor-muted)" }}>
           <span className="flex-1 h-px" style={{ background: "var(--arbor-rule)" }} />
           {t("auth.or")}
           <span className="flex-1 h-px" style={{ background: "var(--arbor-rule)" }} />

@@ -36,12 +36,28 @@ export function recordDate(iso: string | null, lang: string): string {
  * FreeText (B-SHELL-28) so a Hebrew name at the start never flips an English
  * sentence (and the reverse).
  */
+/** The record question in the reader's words (shared by the card and Now's v10 stage, which sets it on the day arc). */
+export function recordQuestion(opener: FromRecordOpener, childName: string | undefined, t: (key: string, vars?: Record<string, string | number>) => string): string {
+  return t(fromRecordQuestionKey(opener), {
+    name: childName || t("today.record.childFallback"),
+    kept: opener.sayBackIn ? languageName(opener.sayBackIn, t) : "",
+  });
+}
+
+/** The date line under the parent's quoted words ("You wrote this · 14 Nov"), or null. */
+export function recordMeta(opener: FromRecordOpener, lang: string, t: (key: string, vars?: Record<string, string | number>) => string): string | null {
+  const metaKey = fromRecordMetaKey(opener);
+  const date = recordDate(opener.quoteAt, lang);
+  return metaKey && date ? t(metaKey, { date }) : null;
+}
+
 export default function FromRecordCard({
   opener,
   onAnswer,
   childName,
   stampMove = false,
   disabled = false,
+  stage = false,
 }: {
   opener: FromRecordOpener;
   onAnswer: (answer: FromRecordAnswer) => void;
@@ -50,13 +66,26 @@ export default function FromRecordCard({
   /** NEXTLEVEL critic r1: the answer chips ARE Today's primary move. */
   stampMove?: boolean | string;
   disabled?: boolean;
+  /** Now v10.1 (N-Now): the question, the quote and its date ride the day arc (the stage's face);
+   *  the card is the three worded answers, outlined, in one row. */
+  stage?: boolean;
 }) {
   const { t, uiLang } = useLanguage();
   // B-GROWTH-36: the say-back opener names the language the family is keeping.
-  const question = t(fromRecordQuestionKey(opener), {
-    name: childName || t("today.record.childFallback"),
-    kept: opener.sayBackIn ? languageName(opener.sayBackIn, t) : "",
-  });
+  const question = recordQuestion(opener, childName, t);
+  if (stage) {
+    return (
+      <section data-testid="today-record-card" data-record-kind={opener.kind} aria-label={t("today.record.aria")} className="now-record-stage">
+        <div role="group" aria-label={question} data-testid="today-record-answers" {...(stampMove ? { "data-primary-move": typeof stampMove === "string" ? stampMove : "do-today-action" } : {})} className="ans3 flat">
+          {answersFor(opener).map((answer) => (
+            <button key={answer} type="button" disabled={disabled} data-answer={answer} onClick={() => onAnswer(answer)}>
+              {t(fromRecordAnswerKey(opener, answer))}
+            </button>
+          ))}
+        </div>
+      </section>
+    );
+  }
   // NEXTLEVEL critic r1: a 2-3 word topic ("Mornings"), never the plan's full title.
   const topicLine = opener.topicKey ? t(`today.record.topic.${opener.topicKey}`) : opener.topic;
   const metaKey = fromRecordMetaKey(opener);

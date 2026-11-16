@@ -90,10 +90,12 @@ describe("AI-17 negative controls — the guide matchers reject a regressed rend
   });
 
   it("the escalation note keeps its own distinct treatment, not the section frame", () => {
-    expect(html).toContain("var(--arbor-green-soft)");
-    expect(html).toContain("border-inline-start:3px solid var(--arbor-green-ink)");
-    const mutant = html.split("border-inline-start:3px solid var(--arbor-green-ink)").join("");
-    expect(mutant).not.toContain("border-inline-start:3px solid var(--arbor-green-ink)");
+    // V77: one kind palette — the escalation note is a note (amber wash and ink).
+    expect(html).toContain("var(--arbor-k-note-w)");
+    expect(html).toContain("border-inline-start:3px solid var(--arbor-k-note-i)");
+    expect(html).not.toContain("var(--arbor-green-soft)");
+    const mutant = html.split("border-inline-start:3px solid var(--arbor-k-note-i)").join("");
+    expect(mutant).not.toContain("border-inline-start:3px solid var(--arbor-k-note-i)");
   });
 
   it("RTL guides carry the direction the section frame must not swallow", () => {

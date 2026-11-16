@@ -18,7 +18,7 @@ export function LegalLinks({ className = "", align = "start" }: { className?: st
   return (
     <nav
       aria-label={t("elev.storeshell.legal.aria")}
-      className={`flex flex-wrap items-center gap-x-1 gap-y-1 text-[11px] font-semibold ${justify} ${className}`}
+      className={`flex flex-wrap items-center gap-x-1 gap-y-1 text-[12px] font-semibold ${justify} ${className}`}
       style={{ color: "var(--arbor-muted)" }}
     >
       {LEGAL_LINK_ORDER.map((key, i) => (

@@ -265,7 +265,7 @@ export default function FamilyFormation({ embedded = false }: { embedded?: boole
                       <Icon name="expand_more" size={16} className={`flex-shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} style={{ color: "var(--arbor-muted)" }} />
                     </h3>
                     <p className="text-xs mt-1 leading-relaxed" dir="auto" style={{ color: "var(--arbor-muted)" }}>{he ? r.purposeHe : r.purpose}</p>
-                    <span className="inline-block text-[10.5px] font-bold mt-2 px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{he ? r.cadenceHe : r.cadence}</span>
+                    <span className="inline-block text-[12px] font-bold mt-2 px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{he ? r.cadenceHe : r.cadence}</span>
                   </div>
                 </button>
 
@@ -274,14 +274,14 @@ export default function FamilyFormation({ embedded = false }: { embedded?: boole
                     <ol className="space-y-2">
                       {(he ? r.stepsHe : r.steps).map((s, i) => (
                         <li key={i} className="flex items-start gap-2.5 text-[13px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
-                          <span className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-extrabold" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>{i + 1}</span>
+                          <span className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[12px] font-extrabold" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>{i + 1}</span>
                           <span>{s}</span>
                         </li>
                       ))}
                     </ol>
                     <div className="rounded-xl p-3" style={{ background: "var(--arbor-green-soft)" }}>
-                      <p className="text-[10.5px] uppercase tracking-widest font-bold mb-1" style={{ color: "var(--arbor-green-ink)" }}>{he ? "למה זה חשוב" : "Why it matters"}</p>
-                      <p className="text-[12.5px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? r.whyHe : r.why}</p>
+                      <p className="text-[12px] uppercase tracking-widest font-bold mb-1" style={{ color: "var(--arbor-green-ink)" }}>{he ? "למה זה חשוב" : "Why it matters"}</p>
+                      <p className="text-[12px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? r.whyHe : r.why}</p>
                     </div>
                     {/* LC-22 — the one move this surface was missing. Capacity
                         "tiny": a first step is meant to be doable tonight. */}

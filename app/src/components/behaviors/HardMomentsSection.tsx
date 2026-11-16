@@ -48,14 +48,14 @@ export function HardMomentGuideContent({ card, context, childName, t }: {
           <p className="px-1 text-xs leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{copy.sayThisNote}</p>
         </div>
       ) : (
-        <AiBlock key={key} tone="guide" title={t(key)} tint="var(--arbor-green-ink)">
+        <AiBlock key={key} tone="guide" title={t(key)} tint="var(--arbor-k-moment-i)">
           <p className="mt-1 break-words text-base leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{text}</p>
         </AiBlock>
       ))}
       <div className="min-w-0 rounded-xl p-4" role="note" data-testid="hard-moment-escalation"
-        style={{ background: "var(--arbor-green-soft)", border: "1px solid var(--arbor-rule-strong)",
-          borderInlineStart: "3px solid var(--arbor-green-ink)" }}>
-        <h4 className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("hm.section.escalation")}</h4>
+        style={{ background: "var(--arbor-k-note-w)", border: "1px solid var(--arbor-rule-strong)",
+          borderInlineStart: "3px solid var(--arbor-k-note-i)" }}>
+        <h4 className="text-xs font-bold" style={{ color: "var(--arbor-k-note-i)" }}>{t("hm.section.escalation")}</h4>
         <p className="mt-1 break-words text-base leading-relaxed" style={{ color: "var(--arbor-ink)" }}>{escalationText(card, locale)}</p>
       </div>
       <details className="min-w-0 text-sm" style={{ color: "var(--arbor-ink-soft)" }}>
@@ -118,8 +118,12 @@ export function restingGuides<T>(available: T[], matched: T[]): T[] {
   return (matched.length ? matched : available).slice(0, RESTING_GUIDES);
 }
 
-/** Contextual catalog: select by ID again when a sheet or action is used. */
-export default function HardMomentsSection() {
+/**
+ * N-Hard (v10.3): the shelf's state, shared by the section and by the page's
+ * own parts (the stage's last-time card, the closest guides) so every reader
+ * picks the same held answer and the same resting three.
+ */
+export function useHardMomentShelf() {
   // B-ASKJB-31: a shelf card opens the ONE "Hard moment now" sheet on that
   // card (openHardMomentNow). The shelf's own modal — and its prompt seed —
   // are gone: "Talk it through" now hands Ask a reference card, never a seed.
@@ -131,7 +135,7 @@ export default function HardMomentsSection() {
   // matched to what this parent actually logged, behind an "All guides" door
   // that restores the filter row and every card (law 6: nothing is dropped).
   const [expanded, setExpanded] = useState(false);
-  const locale = uiLang === "he" ? "he" : "en";
+  const locale: "en" | "he" = uiLang === "he" ? "he" : "en";
   const contextFor = (lang: "en" | "he" = locale): HardMomentContext => {
     const now = new Date();
     // B-ASKJB-38: the child's band months (corrected under 2 if preterm) — lib/age, the one source.
@@ -180,6 +184,14 @@ export default function HardMomentsSection() {
   // fail-closed, so a younger/older child matched nothing and got a blank
   // feature. The notice renders only when guides exist for SOME age (see
   // hardMomentAgeFit): a withdrawn or expired pack still renders nothing.
+  return { childProfile, openHardMomentNow, t, uiLang, locale, category, setCategory, expanded, setExpanded, context, cards, childFirst, copy,
+    categories, activeCategory, all, matched, featured, held, visible };
+}
+
+/** Contextual catalog: select by ID again when a sheet or action is used. */
+export default function HardMomentsSection() {
+  const { openHardMomentNow, t, uiLang, locale, setCategory, expanded, setExpanded, context, cards, childFirst, copy,
+    categories, activeCategory, matched, featured, held, visible } = useHardMomentShelf();
   const ageVerdict = hardMomentAgeFit(context);
   if (cards.length === 0 && explainsEmptyHardMoments(ageVerdict.fit)) {
     return <HardMomentAgeNotice verdict={ageVerdict} uiLang={uiLang} childName={childFirst} />;
@@ -207,7 +219,7 @@ export default function HardMomentsSection() {
             style={value === activeCategory
               // Selected state must not rest on hue alone (1.4.1) or on a
               // 1.01:1 border (1.4.11): green-ink reads 7.19:1 on both fills.
-              ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", fontWeight: 700 }
+              ? { background: "var(--arbor-k-moment-w)", color: "var(--arbor-k-moment-i)", border: "1px solid var(--arbor-k-moment-i)", fontWeight: 700 }
               : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }}>
             {value === "all" ? t("hm.cat.all") : t(`hm.cat.${value}`)}
           </button>
@@ -218,7 +230,7 @@ export default function HardMomentsSection() {
         <HardMomentLastTimeRow card={held.card} at={held.at} basis={held.basis} childName={childFirst} locale={locale} onOpen={() => openHardMomentNow(held.card.id)} />
       )}
       {!expanded && matched.length > 0 && (
-        <p className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.closeloop.hm.matched")}</p>
+        <p className="text-xs font-bold" style={{ color: "var(--arbor-k-moment-i)" }}>{t("elev.closeloop.hm.matched")}</p>
       )}
       <div
         data-testid="hard-moment-tiles"
@@ -233,9 +245,9 @@ export default function HardMomentsSection() {
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
             <span className="min-w-0">
               <span className="block break-words text-base font-bold" style={{ color: "var(--arbor-ink)" }}>{locText(card.title, locale)}</span>
-              <span className="mt-1 block text-xs" style={{ color: "var(--arbor-green-ink)" }}>{t(`hm.cat.${card.category}`)}</span>
+              <span className="mt-1 block text-xs" style={{ color: "var(--arbor-k-moment-i)" }}>{t(`hm.cat.${card.category}`)}</span>
             </span>
-            <Icon name="arrow_forward" size={16} className="flex-shrink-0 rtl:-scale-x-100" style={{ color: "var(--arbor-green-ink)" }} />
+            <Icon name="arrow_forward" size={16} className="flex-shrink-0 rtl:-scale-x-100" style={{ color: "var(--arbor-k-moment-i)" }} />
           </button>
         ))}
         {/* The door. Every guide stays one tap away in BOTH directions — this
@@ -248,7 +260,7 @@ export default function HardMomentsSection() {
             onClick={() => { setExpanded((v) => !v); if (expanded) setCategory("all"); }}
             aria-expanded={expanded}
             className="inline-flex min-h-11 w-[44%] flex-none snap-start items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition sm:w-[30%] lg:w-full"
-            style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}
+            style={{ color: "var(--arbor-k-moment-i)", border: "1px solid var(--arbor-k-moment-i)", background: "var(--arbor-paper-elevated)" }}
           >
             <Icon name="expand_more" size={16} />
             {t("elev.closeloop.hm.allGuides", { n: cards.length })}
@@ -262,7 +274,7 @@ export default function HardMomentsSection() {
           onClick={() => { setExpanded((v) => !v); if (expanded) setCategory("all"); }}
           aria-expanded={expanded}
           className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition"
-          style={{ color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}
+          style={{ color: "var(--arbor-k-moment-i)", border: "1px solid var(--arbor-k-moment-i)", background: "var(--arbor-paper-elevated)" }}
         >
           <Icon name="expand_less" size={16} />
           {t("elev.closeloop.hm.fewer")}
@@ -273,7 +285,7 @@ export default function HardMomentsSection() {
         <p data-testid="hard-moments-chosen" dir="auto" className="mt-1 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
           {t("hm.chosenFor", { name: childFirst })}
         </p>
-        {hasPilot && <p className="mt-2 text-xs font-semibold" style={{ color: "var(--arbor-green-ink)" }}>{copy.status}</p>}
+        {hasPilot && <p className="mt-2 text-xs font-semibold" style={{ color: "var(--arbor-k-moment-i)" }}>{copy.status}</p>}
       </div>
     </section>
   );

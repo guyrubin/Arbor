@@ -49,7 +49,7 @@ function SiblingLine({ childId, name, onOpen }: { childId: string; name: string;
         onClick={onOpen}
         data-testid="family-offer-line"
         data-child-id={childId}
-        className="flex min-h-11 w-full items-center gap-2 rounded-xl px-2 text-start text-[12.5px] leading-snug"
+        className="flex min-h-11 w-full items-center gap-2 rounded-xl px-2 text-start text-[12px] leading-snug"
         style={{ color: "var(--arbor-ink-soft)" }}
       >
         <span className="font-extrabold" style={{ color: "var(--arbor-ink)" }}>{isolate(name, uiLang === "he" ? "he" : "en")}</span>

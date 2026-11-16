@@ -333,7 +333,7 @@ export function WordsList() {
                     </li>
                   ))}
                 </ul>
-                <p className="text-[11px] italic leading-relaxed pt-1" style={{ color: T.muted }} data-testid="vl-interpret-caption">
+                <p className="text-[12px] italic leading-relaxed pt-1" style={{ color: T.muted }} data-testid="vl-interpret-caption">
                   {t("vl.interpretCaption")}
                 </p>
               </div>
@@ -361,7 +361,7 @@ export function WordsList() {
               </AnimatePresence>
             </>
           )}
-          <p className="text-[11px] leading-relaxed" style={{ color: T.faint }} data-testid="vl-provenance">
+          <p className="text-[12px] leading-relaxed" style={{ color: T.faint }} data-testid="vl-provenance">
             {t("vl.provenance")}
           </p>
         </div>
@@ -456,7 +456,7 @@ export default function LanguageLabVocabView() {
 
           {/* Activity sub-line — REQUIRED, verbatim board-cleared */}
           <p
-            className="text-[11px] italic"
+            className="text-[12px] italic"
             style={{ color: T.muted }}
             data-testid="vl-activity-subline"
           >

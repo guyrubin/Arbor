@@ -31,7 +31,7 @@ jobs:
           - name: lite-analysis
             model: gemini-3.5-flash
             location: europe-west3
-            suites: capture-extract-v1 today-focus-v1 plan-v1 school-handoff-v1 describe-child-v1
+            suites: capture-extract-v1 today-focus-v1 plan-v1 school-handoff-v1 describe-child-v1 family-plan-extract-v1
     env:
       ARBOR_ENV: dev
       MODEL_PROVIDER: vertex

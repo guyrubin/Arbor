@@ -76,7 +76,7 @@ export default function ArborKnowsTile() {
           {knows.parts.map((part) => (
             <li
               key={part.id}
-              className="flex items-center justify-between gap-3 text-[12.5px]"
+              className="flex items-center justify-between gap-3 text-[12px]"
               style={{ color: "var(--arbor-ink-soft)" }}
             >
               <span dir="auto">{t(`elev.knows.part.${part.id}`)}</span>

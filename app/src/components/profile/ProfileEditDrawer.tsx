@@ -257,12 +257,12 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                     <Icon name="auto_awesome" size={14} /> {pictureUrl ? "New avatar" : "Create avatar"}
                   </button>
                   <div className="flex items-center gap-3">
-                    <label className="inline-flex min-h-11 items-center gap-1.5 text-[11px] font-bold cursor-pointer" style={{ color: "var(--arbor-muted)" }}>
+                    <label className="inline-flex min-h-11 items-center gap-1.5 text-[12px] font-bold cursor-pointer" style={{ color: "var(--arbor-muted)" }}>
                       <Icon name="photo_camera" size={12} /> {photoBusy ? "Uploading…" : "Upload a photo instead"}
                       <input type="file" accept="image/*" className="hidden" disabled={photoBusy} onChange={(e) => onPickPhoto(e.target.files?.[0])} />
                     </label>
                     {pictureUrl && (
-                      <button type="button" onClick={() => { setPhotoUrl(undefined); setComicAvatarUrl(undefined); setAvatarMeta(undefined); }} className="touch-target px-2 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>Remove</button>
+                      <button type="button" onClick={() => { setPhotoUrl(undefined); setComicAvatarUrl(undefined); setAvatarMeta(undefined); }} className="touch-target px-2 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>Remove</button>
                     )}
                   </div>
                 </div>
@@ -294,7 +294,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                     className="w-full min-h-11 rounded-xl px-4 py-2.5 focus:outline-none"
                     style={inputStyle}
                   />
-                  <p id="profile-name-latin-hint" className="text-[11px]" style={{ color: "var(--arbor-faint)" }}>{t("profile.nameLatin.helper")}</p>
+                  <p id="profile-name-latin-hint" className="text-[12px]" style={{ color: "var(--arbor-faint)" }}>{t("profile.nameLatin.helper")}</p>
                 </div>
               )}
 
@@ -305,7 +305,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                   {t("elev.growthTruth.drawer.age")}: <span data-testid="profile-age-label" style={{ color: "var(--arbor-green-ink)" }}>{ageLabelForMonths(ageMonths, t)}</span>
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                  <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                  <label className="flex flex-col gap-1 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
                     {t("elev.growthTruth.drawer.years")}
                     <input
                       type="number"
@@ -318,7 +318,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                       style={inputStyle}
                     />
                   </label>
-                  <label className="flex flex-col gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                  <label className="flex flex-col gap-1 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
                     {t("elev.growthTruth.drawer.months")}
                     <input
                       type="number"
@@ -332,7 +332,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                     />
                   </label>
                 </div>
-                <p className="text-[11px]" style={{ color: "var(--arbor-faint)" }}>{t("elev.growthTruth.drawer.ageHint")}</p>
+                <p className="text-[12px]" style={{ color: "var(--arbor-faint)" }}>{t("elev.growthTruth.drawer.ageHint")}</p>
               </div>
 
               <div className="space-y-1.5">
@@ -353,7 +353,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                 <p className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>
                   {t("profile.interests.label", { name: name.trim() || activeChild.name })}
                 </p>
-                <p className="text-[11px] mt-0.5" style={{ color: "var(--arbor-faint)" }}>
+                <p className="text-[12px] mt-0.5" style={{ color: "var(--arbor-faint)" }}>
                   {t("profile.interests.helper", { name: name.trim() || activeChild.name })}
                 </p>
                 {/* Suggestion chips */}
@@ -425,7 +425,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
                 </div>
                 {/* Last-updated line (Flow 3: returning parent) */}
                 {activeChild.interestsUpdatedAt && (
-                  <p className="text-[11px] mt-1" style={{ color: "var(--arbor-faint)" }}>
+                  <p className="text-[12px] mt-1" style={{ color: "var(--arbor-faint)" }}>
                     {t("profile.interests.updated", {
                       when: fmtDay(activeChild.interestsUpdatedAt, uiLang),
                     })}
@@ -464,7 +464,7 @@ export default function ProfileEditDrawer({ open, onClose }: { open: boolean; on
 
               {/* B-CAREPRO-35: data rights have ONE home — Settings › Your data. */}
               <div className="pt-4 mt-2 space-y-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-                <span className="text-[10px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("elev.yourData.row.title")}</span>
+                <span className="text-[12px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-muted)" }}>{t("elev.yourData.row.title")}</span>
                 <button type="button" onClick={openYourData} data-testid="profile-your-data-link" className="w-full py-2.5 min-h-11 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)" }}>
                   {t("elev.yourData.link", { name: name || activeChild.name })}
                 </button>

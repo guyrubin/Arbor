@@ -303,7 +303,7 @@ export function HeroScenePlayer({
 
   return (
     <div className="flex flex-col items-center text-center gap-5">
-      <div className="flex items-center gap-3 text-[11px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+      <div className="flex items-center gap-3 text-[12px] uppercase tracking-widest font-bold" style={{ color: "var(--arbor-green-ink)" }}>
         {/* B-KID-53 polish: ONE visible page indicator — the reader's nav row
             ("1 / 8" between Back and Next); here only the accessible sentence
             "Page 1 of 8" (EN + HE). */}

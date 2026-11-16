@@ -2,13 +2,17 @@
  * Family plan v1 — the screen, rendered (node, static markup) with synthetic
  * data and with none, in EN and HE, desk and phone. Pins: one h1; the four
  * sections in the same order on both compositions; figures with units and no
- * zero tiles; lanes per adult with nobody yet; the "Sent is not accepted"
+ * zero tiles; the week as a ribbon (V77: seven day tiles and the later
+ * column, each date on its day; who has it in the dates rail); no "Sent is not accepted"
  * line exactly once; one primary move; nothing graded about the child.
+ * Desk follows N-Plan-D and phone N-Plan-M; a held change ("One change to
+ * review") shows the old time struck through and the new one, and becomes the
+ * stage's primary.
  */
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { askAdult, createDate, takeIt, type FamilyPlanAdult, type FamilyPlanDate } from "../../lib/familyPlan/model";
+import { askAdult, createDate, holdChange, takeIt, type FamilyPlanAdult, type FamilyPlanDate } from "../../lib/familyPlan/model";
 import { datesInWindow, lanes, openRequests, planCounts, planWindow, reminders } from "../../lib/familyPlan/week";
 
 const h = vi.hoisted(() => ({ lang: "en" as "en" | "he", composition: "desk" as "desk" | "phone", rows: [] as unknown[], loaded: true }));
@@ -38,6 +42,7 @@ vi.mock("../../hooks/useFamilyPlan", () => ({
       receipt: null, dismissReceipt: () => {}, busy: false, error: false, clearError: () => {},
       addDates: async () => ({ added: 0, duplicates: 0 }), take: async () => true, ask: async () => true, change: async () => true, edit: async () => true,
       done: async () => true, cancel: async () => true, prep: async () => true, tickPrep: async () => {},
+      hold: async () => true, applyHeld: async () => true, keepBoth: async () => true,
     };
   },
 }));
@@ -58,14 +63,16 @@ const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, 
 beforeEach(() => { h.lang = "en"; h.composition = "desk"; h.rows = seed(); h.loaded = true; });
 
 describe("Family plan screen", () => {
-  it.each(["desk", "phone"] as const)("%s, EN: one h1, the four sections in order, figures with units, lanes, one primary move", (composition) => {
+  it.each(["desk", "phone"] as const)("%s, EN: one h1, the four sections in order, figures with units, the week ribbon, one primary move", (composition) => {
     h.composition = composition;
     const html = render();
     const t = text(html);
     const c = familyPlanCopy.en;
     expect(count(html, "<h1")).toBe(1);
     expect(t).toContain(c.pageTitle);
-    const order = ["fp-who", "fp-dates", "fp-came", "fp-standing"].map((id) => html.indexOf(`id="${id}"`));
+    // Desk follows N-Plan-D; phone follows N-Plan-M (Who has what / Found / Reminders, no dates list).
+    const ids = composition === "desk" ? ["fp-who", "fp-dates", "fp-came", "fp-standing"] : ["fp-who", "fp-found", "fp-alerts"];
+    const order = ids.map((id) => html.indexOf(`id="${id}"`));
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(count(html, "data-primary-move=")).toBe(1);
@@ -77,10 +84,40 @@ describe("Family plan screen", () => {
     expect(html).toMatch(/<b>3<\/b><span>dates/);
     expect(html).toMatch(/<b>2<\/b><span>with an adult/);
     expect(html).toMatch(/<b>1<\/b><span>nobody yet/);
-    expect(t).toContain("parent.two");
-    expect(t).toContain(c.nobodyYet);
+    // V77: the week ribbon replaces the per-adult lanes (negative control: no lane markup).
+    expect(count(html, 'class="rbd')).toBe(8);
+    expect(count(html, 'class="rbd today"')).toBe(1);
+    expect(html).not.toContain("nx-lane");
+    expect(html).not.toContain('class="hasw"');
+    expect(t).toContain(c.legendNone);
+    // Who has each date is named (the dates rail on desk; the reminders on phone).
+    expect(t).toContain("Parent.two");
+    if (composition === "phone") expect(html).not.toContain('id="fp-dates"');
     expect(t).toContain(c.inAppOnly);
     expect(t).toContain("Return the visit form");
+  });
+
+  it.each(["desk", "phone"] as const)("%s: a held change is reviewed, not applied — 10:00 struck through → 11:30", (composition) => {
+    h.composition = composition;
+    const [form, visit, later] = seed();
+    h.rows = [form, holdChange(visit, { date: visit.date, time: "11:30", sourceLine: "We now start at 11:30." }, ISO), later];
+    const html = render();
+    const t = text(html);
+    const c = familyPlanCopy.en;
+    expect(html).toContain('data-testid="family-plan-held-change"');
+    expect(html).toMatch(/<s>10:00<\/s>/);
+    expect(html).toMatch(/<b>11:30<\/b>/);
+    expect(t).toContain(composition === "desk" ? c.changeDraftOne : c.changeDraftFrom(2, "").slice(0, 30));
+    if (composition === "desk") expect(t).toContain("We now start at 11:30.");
+    expect(t).toContain(c.reviewTheChange);
+    expect(t).not.toContain(c.whoTakes);
+    expect(count(html, "data-primary-move=")).toBe(1);
+    if (composition === "phone") {
+      expect(t).toContain(c.changeHead);
+      const order = ["fp-who", "fp-change", "fp-found", "fp-alerts"].map((id) => html.indexOf(`id="${id}"`));
+      expect(order.every((i) => i >= 0)).toBe(true);
+      expect([...order].sort((a, b) => a - b)).toEqual(order);
+    }
   });
 
   it("HE phone: the screen's own words are Hebrew", () => {
@@ -89,8 +126,9 @@ describe("Family plan screen", () => {
     const c = familyPlanCopy.he;
     expect(t).toContain(c.pageTitle);
     expect(t).toContain(c.stops.who);
-    expect(t).toContain(c.standingTile);
-    for (const en of Object.values(familyPlanCopy.en.stops)) expect(t).not.toContain(en);
+    expect(t).toContain(c.stopsPhone.found);
+    expect(t).toContain(c.fromTheMessage);
+    for (const en of [...Object.values(familyPlanCopy.en.stops), ...Object.values(familyPlanCopy.en.stopsPhone)]) expect(t).not.toContain(en);
     expect(t).not.toContain(familyPlanCopy.en.inAppOnly);
   });
 

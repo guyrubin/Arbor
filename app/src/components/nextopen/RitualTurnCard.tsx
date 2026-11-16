@@ -282,7 +282,7 @@ export default function RitualTurnCard({ nowMs, onStart, started, startDisabled,
               style={{ color: "var(--arbor-ink-soft)" }}
             >
               <span
-                className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold"
+                className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[12px] font-extrabold"
                 style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}
               >
                 {i + 1}

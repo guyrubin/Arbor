@@ -128,7 +128,7 @@ export function HubHero({
       <div className="relative max-w-3xl min-w-0" style={{ zIndex: 1 }}>
         {!compact && (
           <div
-            className="text-[11px] font-extrabold uppercase"
+            className="text-[12px] font-extrabold uppercase"
             style={{ color: p.ink, letterSpacing: "0.14em" }}
           >
             {eyebrow}

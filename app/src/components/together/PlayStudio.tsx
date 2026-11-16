@@ -193,8 +193,8 @@ export function PlayHandOver({ studio, composition }: { studio: PlayStudio; comp
       <div className="pl-st pl-gate band" style={{ position: "static", flexDirection: "row", alignItems: "center", gap: 12, padding: "10px 14px" }}>
         <span className="pl-ico r" aria-hidden="true"><Icon name="lock" size={17} /></span>
         <div className="tg-stack" style={{ gap: 2 }}>
-          <span className="pl-t" style={{ fontSize: 16.5 }}>{copy.gateTitle}</span>
-          <span className="pl-p" style={{ fontSize: 12.5, lineHeight: 1.3 }}>{copy.gateSub}</span>
+          <span className="pl-t" style={{ fontSize: 16 }}>{copy.gateTitle}</span>
+          <span className="pl-p" style={{ fontSize: 12, lineHeight: 1.3 }}>{copy.gateSub}</span>
         </div>
       </div>
     </div>
@@ -214,7 +214,7 @@ export function PlayTogetherIdeas({ studio, onMoreIdeas }: { studio: PlayStudio;
             <button key={id} type="button" className="tg-ro" data-testid="together-idea" aria-haspopup="dialog" onClick={() => studio.setPreview({ kind: "offscreen", id })} style={{ gridTemplateColumns: "46px minmax(0, 1fr)", gap: "2px 10px", padding: "7px 12px 7px 7px", alignContent: "center" }}>
               <span className="mini" style={{ width: 46, height: 46, borderRadius: 11 }} aria-hidden="true"><Icon name={idea.icon} size={24} /></span>
               <span className="tg-stack" style={{ gap: 1, minWidth: 0 }}>
-                <span className="ttl2" style={{ fontSize: 13.5 }}>{idea.title}</span>
+                <span className="ttl2" style={{ fontSize: 13 }}>{idea.title}</span>
                 <span className="ds-said" dir="auto" style={{ fontSize: 14, lineHeight: 1.2 }}>“{idea.say}”</span>
                 <span className="small" style={{ fontWeight: 600, color: "var(--sapphire-deep)", display: "inline-flex", alignItems: "center", gap: 2 }}>{t("companion.together-view.how-to-begin")}<Icon name="chevron_right" size={14} className="rtl:-scale-x-100" /></span>
               </span>

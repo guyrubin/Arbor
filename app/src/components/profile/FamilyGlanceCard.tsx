@@ -45,7 +45,7 @@ export default function FamilyGlanceCard() {
         style={{ borderBottom: `1px solid ${RULE}`, background: GREEN_SOFT }}
       >
         <Icon name="group" size={14} className="flex-shrink-0" style={{ color: GREEN }} />
-        <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: GREEN }}>
+        <span className="text-[12px] font-bold uppercase tracking-wide" style={{ color: GREEN }}>
           {t("family.glance.eyebrow")}
         </span>
       </div>
@@ -66,13 +66,13 @@ export default function FamilyGlanceCard() {
                 <span className="text-[13px] font-bold truncate block" dir="auto" style={{ color: INK }}>
                   {row.name}
                 </span>
-                <span className="text-[11px] whitespace-nowrap" dir="auto" style={{ color: MUTED }}>
+                <span className="text-[12px] whitespace-nowrap" dir="auto" style={{ color: MUTED }}>
                   {t("profile.ageLine", { age: ageLine(row.id) })}
                 </span>
               </span>
 
               <span
-                className="flex-shrink-0 rounded-full px-2.5 py-1 text-[10px] font-extrabold"
+                className="flex-shrink-0 rounded-full px-2.5 py-1 text-[12px] font-extrabold"
                 style={
                   row.isActive
                     ? { background: GREEN_SOFT, color: GREEN }

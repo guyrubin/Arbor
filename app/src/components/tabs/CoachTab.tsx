@@ -1453,9 +1453,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
             >
               <div className="min-w-0 flex-1 py-1.5">
-                <p className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("hm.ref.eyebrow")}</p>
+                <p className="text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("hm.ref.eyebrow")}</p>
                 <p className="text-[13px] font-extrabold break-words" style={{ color: "var(--arbor-ink)" }}>{locText(askRefCard.title, uiLang === "he" ? "he" : "en")}</p>
-                <p className="mt-0.5 text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("hm.ref.note")}</p>
+                <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("hm.ref.note")}</p>
               </div>
               <button
                 type="button"
@@ -1640,7 +1640,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                       className="flex min-h-11 min-w-0 flex-1 flex-col justify-center rounded-xl px-2 py-1.5 text-start focus:outline-none focus-visible:ring-2"
                     >
                       <span className="w-full truncate text-[13px] font-bold" dir="auto" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{c.title}</span>
-                      <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{fmtDay(c.updatedAt, uiLang === "he" ? "he" : "en")}</span>
+                      <span className="text-[12px]" style={{ color: "var(--arbor-muted)" }}>{fmtDay(c.updatedAt, uiLang === "he" ? "he" : "en")}</span>
                     </button>
                     <button
                       type="button"
@@ -1707,7 +1707,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                   ? { background: "var(--talk-you-bg, var(--arbor-ink))", color: "var(--talk-you-fg, var(--arbor-on-accent))", borderEndEndRadius: "var(--talk-you-tail, 6px)" }
                   : { background: T.paperElevated, color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)", borderEndStartRadius: 6, boxShadow: "var(--shadow-sm)" }}>
                 {msg.sender === "ai" && !msg.contract && msg.lens && msg.lens !== "Integrated Balanced" && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full mb-3 inline-block" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+                  <span className="text-[12px] font-bold px-2 py-0.5 rounded-full mb-3 inline-block" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
                     {t("coach.alignedWith", { lens: lensDisplay(msg.lens) })}
                   </span>
                 )}
@@ -1787,6 +1787,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                   // navy bubble (MarkdownBlock paints its paragraphs in ink).
                   <>
                     {msg.attachments?.map(file => <div key={file.id} className="companion-file-receipt"><Icon name={file.kind === "photo" ? "photo" : "description"} size={20}/><span>{file.name}<small className="block">{inputText(uiLang, "companion.input.attached-to-this-turn-original-not-saved")}</small></span></div>)}
+                    {/* V77 (N-Talk-D): expanded, the question card leads with "You asked" (shown only there). */}
+                    <span className="talk-you-asked">{t("elev.waveR.capture.asked")}</span>
                     <p className="whitespace-pre-wrap break-words">{msg.displayText || msg.text}</p>
                   </>
                 )}

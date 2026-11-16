@@ -367,10 +367,10 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
       {escalationBlocked && (
         <UrgentSupport testId="school-brief-urgent-support" requestLang={uiLang === "he" ? "he" : "en"} className="min-w-0 rounded-xl border border-[var(--arbor-rule)] px-3 py-2 text-[13px] leading-relaxed text-[var(--arbor-ink)]" />
       )}
-      <p className="text-[11.5px] leading-relaxed" style={{ color: MUTED }}>{t("elev.learnCare.brief.escalation.body")}</p>
+      <p className="text-[12px] leading-relaxed" style={{ color: MUTED }}>{t("elev.learnCare.brief.escalation.body")}</p>
       <button
         onClick={() => setActiveTab("safety")}
-        className="inline-flex items-center gap-2 text-[12.5px] font-bold rounded-xl px-4 min-h-[44px]"
+        className="inline-flex items-center gap-2 text-[12px] font-bold rounded-xl px-4 min-h-[44px]"
         style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: `1px solid ${RULE}` }}
       >
         <Icon name="health_and_safety" size={16} /> {t("elev.learnCare.brief.escalation.cta")}
@@ -402,7 +402,7 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
       {!embedded && (
       <header>
         {/* W2-CAREPRO r1: no page kicker — the hub (Care) already names it. */}
-        <h1 className="text-[1.6rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
+        <h1 className="text-[26px] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
           {t("schoolBrief.title")}
         </h1>
         <p className="text-sm mt-1.5 leading-relaxed" style={{ color: MUTED, textWrap: "pretty" } as React.CSSProperties}>
@@ -447,7 +447,7 @@ export default function SchoolBrief({ embedded = false, teacherNote, primaryMove
               {generating
                 ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("schoolBrief.generating")}</>)
                 : (<><Icon name="auto_awesome" size={16} className="hidden sm:inline-block" /> {t("elev.learnCare.brief.aiDraft")}
-                    <span className="text-[11px] font-extrabold rounded-full px-2 py-0.5" style={{ background: "var(--arbor-lav-wash)", color: "var(--arbor-lav-ink)" }}>{t("elev.learnCare.brief.plus")}</span></>)}
+                    <span className="text-[12px] font-extrabold rounded-full px-2 py-0.5" style={{ background: "var(--arbor-lav-wash)", color: "var(--arbor-lav-ink)" }}>{t("elev.learnCare.brief.plus")}</span></>)}
             </button>
           </div>
           <ReceiptNoteLine note={printReceipt.note} testId="school-brief-receipt" size="sm" />

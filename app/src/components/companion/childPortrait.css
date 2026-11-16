@@ -70,7 +70,7 @@
 .portrait-mark-button:hover { background: var(--arbor-paper-deep); }
 .portrait-mark { width: 13px; height: 13px; flex-shrink: 0; border-radius: 50%; background: var(--arbor-ink-soft); outline: 4px solid var(--arbor-paper); margin-block-end: 5px; }
 .portrait-cell-label { font-size: 12px; line-height: 1.5; width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.portrait-cell-count { color: var(--arbor-muted); font-size: 11px; line-height: 1.5; }
+.portrait-cell-count { color: var(--arbor-muted); font-size: 12px; line-height: 1.5; }
 .portrait-no-mark { width: 100%; display: flex; align-items: flex-start; justify-content: center; position: relative; padding-block-start: 11px; font-size: 20px; color: var(--arbor-muted); }
 .portrait-no-mark > span:first-child { width: 24px; background: var(--arbor-paper); text-align: center; }
 .portrait-map-note { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: var(--arbor-muted); line-height: 1.7; margin-block: 16px 0; }
@@ -149,7 +149,7 @@
   .portrait-environments, .portrait-domain-view { grid-template-columns: 1fr; }
 }
 @media (max-width: 480px) {
-  .portrait-kicker { font-size: 11px; margin-block-end: 10px; }
+  .portrait-kicker { font-size: 12px; margin-block-end: 10px; }
   .portrait-subtitle { font-size: 13px; margin-block-start: 10px; }
   .portrait-identity img, .portrait-identity > span:first-child { width: 42px !important; height: 42px !important; }
   .portrait-interests { display: block; }
@@ -160,13 +160,13 @@
   .portrait-views .msr { font-size: 16px !important; }
   .portrait-period { margin-inline-start: auto; }
   .portrait-chapters { gap: 8px; margin-block-end: 28px; }
-  .portrait-chapter-date { font-size: 11px; min-height: 32px; align-items: flex-start; }
+  .portrait-chapter-date { font-size: 12px; min-height: 32px; align-items: flex-start; }
   .portrait-date-line { display: none; }
   .portrait-memory { height: 232px; padding: 12px; border-radius: var(--r-sm); }
-  .portrait-memory-copy > .portrait-meta { font-size: 11px; line-height: 1.5; }
+  .portrait-memory-copy > .portrait-meta { font-size: 12px; line-height: 1.5; }
   .portrait-memory-copy > p { font-size: 17px; margin-block: 8px 12px; -webkit-line-clamp: 4; }
   .portrait-memory-art .msr { font-size: 29px !important; }
-  .portrait-memory-link { font-size: 11px; gap: 4px; }
+  .portrait-memory-link { font-size: 12px; gap: 4px; }
   .portrait-memory-link .msr { display: none; }
   .portrait-memory-photo { padding: 0; }
   .portrait-memory-photo > img { height: 100px; }
@@ -180,7 +180,7 @@
   .portrait-section-head p { font-size: 12px; }
   .portrait-section-head > .portrait-text-button { flex-shrink: 0; font-size: 12px; gap: 3px; }
   .portrait-thread-head, .portrait-thread { grid-template-columns: minmax(90px, 1.25fr) repeat(3, minmax(0, 1fr)); column-gap: 4px; }
-  .portrait-thread-head { font-size: 11px; line-height: 1.5; }
+  .portrait-thread-head { font-size: 12px; line-height: 1.5; }
   .portrait-thread { min-height: 92px; }
   .portrait-domain-label button { gap: 5px; }
   .portrait-domain-label span:last-child { font-size: 12px; }

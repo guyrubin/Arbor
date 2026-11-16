@@ -55,7 +55,7 @@ export function EmotionAvatar({
           </span>
         )}
       </div>
-      {emotionLabel && <span className="text-[11px] font-extrabold" style={{ color }}>{emotionLabel}</span>}
+      {emotionLabel && <span className="text-[12px] font-extrabold" style={{ color }}>{emotionLabel}</span>}
     </div>
   );
 }

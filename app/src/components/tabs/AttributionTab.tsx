@@ -182,7 +182,7 @@ export default function AttributionTab() {
           body={t("attr.empty.body")}
           action={
             <code
-              className="block text-[11px] leading-relaxed rounded-xl px-3 py-2 break-all max-w-md"
+              className="block text-[12px] leading-relaxed rounded-xl px-3 py-2 break-all max-w-md"
               dir="ltr"
               style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
             >
@@ -234,7 +234,7 @@ export default function AttributionTab() {
         </div>
       )}
 
-      <p className="text-[11px] mt-4" style={{ color: "var(--arbor-muted)" }}>
+      <p className="text-[12px] mt-4" style={{ color: "var(--arbor-muted)" }}>
         {t("attr.footnote")}{" "}
         <span dir="ltr" className="font-mono">{UTM_KEYS.join(", ")}</span>.
         {internalExcluded > 0 && <> {t("attr.internalExcluded", { n: internalExcluded })}</>}

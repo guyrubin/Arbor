@@ -90,7 +90,7 @@ describe("Moments opens the same current observation object", () => {
     expect(html).toContain('data-testid="moment-evidence"');
     expect(html).toContain('data-observation-id="keepsakes:shared-first"');
     expect(html).toContain("Our saved words");
-    if (lang === "en") expect(html).toContain('<time dateTime="2025-01-08">8 Jan 2025</time>');
+    if (lang === "en") expect(html).toContain('<time dateTime="2025-01-08">Wed 8 Jan 2025</time>');
     open(); expect(h.detail).not.toHaveBeenCalled();
     h.after!();
     expect(h.detail).toHaveBeenCalledWith("child-a", "shared-first");

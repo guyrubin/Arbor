@@ -104,7 +104,7 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
             <Icon name="explore" size={20} />
           </span>
           <span
-            className="text-[11px] uppercase tracking-widest font-bold"
+            className="text-[12px] uppercase tracking-widest font-bold"
             style={{ color: "var(--arbor-green-ink)" }}
           >
             {t("foryou.eyebrow")}
@@ -196,7 +196,7 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
                 className="overflow-hidden w-full"
               >
                 <p
-                  className="text-[13.5px] leading-relaxed mt-3 rounded-xl px-4 py-3"
+                  className="text-[13px] leading-relaxed mt-3 rounded-xl px-4 py-3"
                   style={{
                     color: "var(--arbor-ink-soft)",
                     background: "var(--arbor-paper-deep)",
@@ -236,7 +236,7 @@ export default function AcademyForYou({ onNavigateToMasterclasses }: { onNavigat
 
 
       {/* Non-diagnostic provenance note */}
-      <p className="text-[11.5px] px-1" style={{ color: "var(--arbor-faint)" }}>
+      <p className="text-[12px] px-1" style={{ color: "var(--arbor-faint)" }}>
         {t("foryou.provenance")}
       </p>
     </motion.div>

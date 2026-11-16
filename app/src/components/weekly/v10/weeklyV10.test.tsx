@@ -1,6 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { translate } from "../../../lib/i18n";
 import { dayField } from "../../../lib/dayField";
 import type { DayWindowsSummary } from "../../../growth/dayWindowsAgg";
@@ -9,6 +10,7 @@ import type { Observation } from "../../../lib/observations";
 import WeekInstrument from "./WeekInstrument";
 import WhatHelped from "./WhatHelped";
 import YourDay from "./YourDay";
+import WeekReadGuide from "./WeekReadGuide";
 import { WEEKLY_COPY } from "./weeklyCopy";
 
 /* v10 Weekly report components, rendered with and without data, in both
@@ -28,6 +30,12 @@ describe("weeklyCopy", () => {
     }
     const all = JSON.stringify(WEEKLY_COPY) + Object.values(WEEKLY_COPY.en).map((v) => (typeof v === "function" ? (v as (...a: unknown[]) => string)(3, "Evening") : "")).join(" ");
     expect(all).not.toMatch(/\bAI\b|subscription|price/i);
+  });
+
+  it("the milestone line names the count and the day it was marked (V73: agrees with Milestones)", () => {
+    expect(WEEKLY_COPY.en.milestonesChip(1, "Sat 14")).toBe("Milestones · 1 marked this week · Sat 14");
+    expect(WEEKLY_COPY.en.milestonesChip(0, "")).toBe("Milestones · none marked this week");
+    expect(WEEKLY_COPY.he.milestonesChip(2, "שבת 14")).toMatch(/2 .* · שבת 14$/);
   });
 
   it("the one legend line is the canvas sentence", () => {
@@ -65,6 +73,22 @@ describe("WeekInstrument", () => {
   }
 });
 
+describe("WeekInstrument — the dates rail and today's step (N-Week-D/M)", () => {
+  const withDates = weekInstrument({
+    observations: [], actionLoop: [], logs: [], dayStarts, endMs: new Date(2026, 9, 12, 15).getTime(), isCurrent: true,
+    dates: [{ id: "plan:a", startMs: new Date(2026, 9, 14, 0).getTime(), label: "Visit form", sub: "you", nobody: false }, { id: "plan:b", startMs: new Date(2026, 9, 15, 0).getTime(), label: "Group visit", sub: "nobody yet", nobody: true }],
+  });
+  for (const composition of ["desk", "phone"] as const) {
+    it(`${composition}: each date on its day with who has it; nobody yet is dashed; the next item after the week ends the rail; today's step rings today`, () => {
+      const html = renderToStaticMarkup(<WeekInstrument data={withDates} composition={composition} copy={WEEKLY_COPY.en} locale="en-GB" todayStep beyond={{ label: "Speech therapist", sub: "you", ms: new Date(2026, 9, 21, 10).getTime() }} />);
+      for (const text of ["Visit form", "Group visit", "nobody yet", "Speech therapist"]) expect(html).toContain(text);
+      expect(html.match(/class="tok date none/g)?.length ?? 0).toBeGreaterThanOrEqual(1);
+      expect(html).toContain(`aria-label="${WEEKLY_COPY.en.todaysStep}"`);
+      expect(html).toMatch(/class="tok plan here/);
+    });
+  }
+});
+
 const summary = (enough: boolean): DayWindowsSummary => ({
   hasEnoughData: enough, daysLogged: enough ? 9 : 2, daysNeeded: enough ? 0 : 3,
   windows: enough ? [{ label: "often-trickier", startHour: 16, endHour: 18 }] : [],
@@ -84,7 +108,7 @@ describe("YourDay", () => {
       expect(html.split(translate(lang, "dw.guard")).length - 1).toBe(1);
       expect(html.match(/data-testid="dw-hour-bar"/g)).toHaveLength(15);
       // The busiest part, with its unit in words.
-      expect(text(html)).toContain(`2 ${WEEKLY_COPY[lang].inPart(2, WEEKLY_COPY[lang].eveningPart)}`);
+      expect(text(html)).toContain(WEEKLY_COPY[lang].dayHead(WEEKLY_COPY[lang].eveningPart, WEEKLY_COPY[lang].eveningSpan, 2));
     });
 
     it(`${lang}: above the floor → the trickier window and the pattern line; overflow reads "n more", never "+n"`, () => {
@@ -103,25 +127,69 @@ describe("YourDay", () => {
   }
 });
 
-describe("WhatHelped", () => {
-  const hard = { id: "h", ms: new Date(2026, 9, 10, 7).getTime(), words: "Would not leave the park", tried: "Counted down from five together", settled: true };
+describe("WhatHelped (canvas V77)", () => {
   const steps = [{ step: "Name the feeling first", helped: 1, notThisTime: 0, helpedDays: [dayStarts[0]], latest: 1 }, { step: "Offer two choices", helped: 0, notThisTime: 1, helpedDays: [], latest: 0 }];
   for (const lang of LANGS) {
-    it(`${lang}: the thread joins the hard moment, what the parent tried and the words they used; steps follow`, () => {
-      const html = renderToStaticMarkup(<WhatHelped composition="desk" copy={WEEKLY_COPY[lang]} t={t(lang)} locale={lang} childFirst="Noa" hard={hard} steps={steps} heldWords={<p>held</p>} hasHeldWords words={["moon"]} onPlans={() => {}} />);
-      for (const id of ["weekly-thread-hard", "weekly-thread-tried", "weekly-thread-words", "weekly-words"]) expect(html).toContain(`data-testid="${id}"`);
-      expect(html).toContain(hard.words);
-      expect(html).toContain(hard.tried);
-      expect(html).toContain(WEEKLY_COPY[lang].settled);
+    it(`${lang}: the steps as reported; beside them the words used and one card to the week's hard moments`, () => {
+      const html = renderToStaticMarkup(<WhatHelped composition="desk" copy={WEEKLY_COPY[lang]} t={t(lang)} uiLang={lang} locale={lang} childFirst="Noa" hardCount={2} steps={steps} heldWords={<p>held</p>} hasHeldWords words={["moon"]} onPlans={() => {}} onHardMoments={() => {}} />);
+      for (const id of ["weekly-steps", "weekly-thread-words", "weekly-hard-card", "weekly-words"]) expect(html).toContain(`data-testid="${id}"`);
+      expect(tagButton(html, "weekly-hard-card")).toBe(true);
+      // One line and a link: the count lives once, in the instrument's legend.
+      const card = html.slice(html.indexOf('data-testid="weekly-hard-card"'));
+      expect(text(card.slice(0, card.indexOf("</button>")))).toContain(translate(lang, "nav.view.behaviors"));
+      expect(text(card.slice(0, card.indexOf("</button>")))).not.toMatch(/\d/);
       expect(html.match(/data-testid="weekly-step"/g)).toHaveLength(2);
       expect(html).toContain(translate(lang, "elev.wk.helped.not", { n: 1 }));
       expect(text(html)).not.toMatch(FIREWALL);
     });
 
-    it(`${lang}: nothing recorded → production's empty line, no thread`, () => {
-      const html = renderToStaticMarkup(<WhatHelped composition="phone" copy={WEEKLY_COPY[lang]} t={t(lang)} locale={lang} childFirst="Noa" hard={null} steps={[]} heldWords={null} hasHeldWords={false} words={[]} onPlans={() => {}} />);
-      expect(html).not.toContain('data-testid="weekly-thread"');
+    it(`${lang}: no hard moment → no card; nothing recorded → production's empty line`, () => {
+      const html = renderToStaticMarkup(<WhatHelped composition="phone" copy={WEEKLY_COPY[lang]} t={t(lang)} uiLang={lang} locale={lang} childFirst="Noa" hardCount={0} steps={[]} heldWords={null} hasHeldWords={false} words={[]} onPlans={() => {}} onHardMoments={() => {}} />);
+      expect(html).not.toContain('data-testid="weekly-hard-card"');
       expect(html).toContain(translate(lang, "elev.wk.helped.none"));
     });
   }
+});
+
+const tagButton = (html: string, id: string) => new RegExp(`<button [^>]*data-testid="${id}"`).test(html);
+
+describe("WeekReadGuide — How to read this week (N-Week-D/M)", () => {
+  for (const lang of LANGS) {
+    for (const composition of ["desk", "phone"] as const) {
+      it(`${lang} · ${composition}: four stops, each a drawing (decor) and one line; no record, no claim about the child`, () => {
+        const c = WEEKLY_COPY[lang];
+        const html = renderToStaticMarkup(<WeekReadGuide composition={composition} copy={c} />);
+        expect(html).toContain(c.readTitle);
+        for (const line of [c.readWeek, c.readHelped, c.readNext, c.readDay]) expect(text(html)).toContain(line.replace(/[’']/g, (m) => m));
+        expect(html.match(/<svg [^>]*aria-hidden="true"/g)).toHaveLength(4);
+        if (composition === "phone") expect(html).toContain(c.readOf(1, 4));
+        expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+        expect(text(html)).not.toMatch(FIREWALL);
+      });
+    }
+  }
+});
+
+describe("WeekInstrument — the join line (N-Week-D/M)", () => {
+  const hardObs = obs("behaviorLogs:h", new Date(2026, 9, 10, 7).toISOString());
+  const build = (source: string) => weekInstrument({
+    observations: [hardObs], logs: [{ id: "h", intensity: 4 }], dayStarts, endMs: new Date(2026, 9, 12, 15).getTime(), isCurrent: true,
+    actionLoop: [{ id: "s", source: source as "hard-moment", outcome: "helped", outcomeAt: new Date(2026, 9, 10, 9).toISOString() }],
+  });
+  for (const composition of ["desk", "phone"] as const) {
+    it(`${composition}: a paired day draws one decorative line; an unpaired day draws none`, () => {
+      const paired = renderToStaticMarkup(<WeekInstrument data={build("hard-moment")} composition={composition} copy={WEEKLY_COPY.en} locale="en-GB" />);
+      const lines = paired.match(/<i class="wk10-join [hv]" data-testid="weekly-join" aria-hidden="true"/g) ?? [];
+      expect(lines).toHaveLength(1);
+      expect(paired).toContain(composition === "desk" ? 'class="wk10-join v"' : 'class="wk10-join h"');
+      const unpaired = renderToStaticMarkup(<WeekInstrument data={build("digest")} composition={composition} copy={WEEKLY_COPY.en} locale="en-GB" />);
+      expect(unpaired).not.toContain("weekly-join");
+    });
+  }
+  it("the line uses logical sides only, so Hebrew mirrors it (arrow toward the row's end)", () => {
+    const css = readFileSync(new URL("./weeklyV10.css", import.meta.url), "utf8");
+    const rules = css.slice(css.indexOf(".ds .wk10-join {"));
+    expect(rules).toMatch(/inset-inline-end/);
+    expect(rules).not.toMatch(/\b(left|right):/);
+  });
 });

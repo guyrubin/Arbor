@@ -39,7 +39,7 @@ export default function ThingsSaid({ quotes, childName, gender }: { quotes: read
       ) : (
         quotesByMonth(quotes).map((g) => (
           <div key={g.month} className="space-y-2">
-            <p className="text-[12.5px] font-semibold" style={{ color: "var(--arbor-muted)" }}>{monthLabel(g.month, lang)}</p>
+            <p className="text-[12px] font-semibold" style={{ color: "var(--arbor-muted)" }}>{monthLabel(g.month, lang)}</p>
             <ul className="space-y-2">
               {g.quotes.map((q) => (
                 <li key={q.id} data-testid="things-said-quote" className="flex items-start gap-2">

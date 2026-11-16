@@ -96,7 +96,7 @@ export default function TrialNoticeBanner() {
         type="button"
         onClick={seePlans}
         data-testid="trial-notice-cta"
-        className="flex-shrink-0 rounded-xl px-3 py-2 min-h-[44px] text-[11px] font-bold transition"
+        className="flex-shrink-0 rounded-xl px-3 py-2 min-h-[44px] text-[12px] font-bold transition"
         style={{
           background: "var(--arbor-paper)",
           color: "var(--arbor-ink)",

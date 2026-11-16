@@ -281,7 +281,7 @@ describe("v3 EXTRA-FORYOU — For you, the parent", () => {
     for (const lang of ["en", "he"] as const) expect(tr(lang, "elev.hero.academy.title"), lang).not.toContain("{name}");
   });
   it("the course row's read link carries a mirrored glyph, not a text arrow", () => {
-    expect(src).toContain('<>{t("master.read")}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" /></>');
+    expect(src).toContain('<><span className="fy-go-t">{t("master.read")}</span><Icon name="chevron_right" size={16} className="rtl:-scale-x-100" /></>');
     expect(code).not.toMatch(/t\("master\.read"\)\} ?→/);
     expect('<>{t("master.read")} →</>').toMatch(/t\("master\.read"\)\} ?→/); // negative control
   });

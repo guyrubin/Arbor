@@ -111,6 +111,31 @@ export function ParentBreathPacer({ t, showClock = false, label, sub }: {
 
   const close = () => { if (timer.current) window.clearTimeout(timer.current); setOpen(false); setStep(0); setPhaseAt(null); };
 
+  if (!open && showClock) {
+    /* O-HardMoment (V77): the breath has a shape at rest — a ring that will
+       fill as the parent breathes out, its words, Start with the same 0:30,
+       and one dot per breath. Still optional, still never a gate. */
+    return (
+      <div className="bp-rest" data-testid="breath-pacer-rest">
+        <span className="bp-ring" aria-hidden="true"><span>{t("hm.now.breathe.out")}</span></span>
+        <span className="bp-text">
+          <b>{label ?? t("hm.now.breathe.open")}</b>
+          <span className="bp-sub">{sub ?? t("hm.now.breathe.sub")}</span>
+          <span className="bp-go">
+            <button
+              type="button"
+              data-testid="breath-pacer-open"
+              onClick={() => { const at = Date.now(); setStep(0); setPhaseAt(at); setTick(at); setOpen(true); }}
+              className="bp-start min-h-11"
+            >
+              {t("hm.now.breathe.start")}<span aria-hidden="true" className="bp-sep">·</span><BreathClock remainingMs={BREATH_TOTAL_MS} running={false} />
+            </button>
+            <span className="bp-dots" aria-hidden="true">{Array.from({ length: BREATH_CYCLES }, (_, i) => <i key={i} />)}</span>
+          </span>
+        </span>
+      </div>
+    );
+  }
   if (!open) {
     return (
       <button

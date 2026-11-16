@@ -259,7 +259,7 @@ export default function AdventuresTab() {
           <AnimatePresence mode="wait">
             <motion.div key={scene.id} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.2 }}>
               <div className="flex items-start gap-2 mb-5">
-                <p className="text-[1.4rem] font-extrabold leading-snug max-w-2xl" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+                <p className="text-[22px] font-extrabold leading-snug max-w-2xl" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
                   {fillTemplate(scene.prompt, vars)}
                 </p>
                 {/* KID-09: every scenario prompt gets the read-aloud control. */}

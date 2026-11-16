@@ -172,7 +172,7 @@ export default function RoutinesTab() {
                 <div className="text-[14px] font-extrabold leading-tight truncate" style={{ color: "var(--arbor-ink)" }}>
                   {localized(r.title, uiLang)}
                 </div>
-                <div className="mt-1 text-[11px] font-bold truncate" style={{ color: "var(--arbor-muted)" }}>
+                <div className="mt-1 text-[12px] font-bold truncate" style={{ color: "var(--arbor-muted)" }}>
                   {t("routines.stepCount", { count: r.steps.length })} · {localized(r.time, uiLang)}
                 </div>
               </div>
@@ -206,7 +206,7 @@ export default function RoutinesTab() {
                 {localized(selected.title, uiLang)}
               </h2>
               <span
-                className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold"
+                className="inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-bold"
                 style={{ background: PASTEL[selected.tone].soft, color: PASTEL[selected.tone].ink }}
               >
                 {localized(selected.domains, uiLang)}
@@ -221,7 +221,7 @@ export default function RoutinesTab() {
             <div className="text-[18px] font-extrabold leading-none tabular-nums" style={{ color: PASTEL[selected.tone].ink }}>
               {doneCount}/{total}
             </div>
-            <div className="mt-1 text-[9.5px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-faint)" }}>
+            <div className="mt-1 text-[12px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-faint)" }}>
               {t("routines.done")}
             </div>
           </div>
@@ -276,7 +276,7 @@ export default function RoutinesTab() {
               style={{ background: PASTEL[selected.tone].soft }}
             >
               <Icon name="star" size={22} fill={1} style={{ color: PASTEL[selected.tone].ink }} />
-              <span className="text-[13.5px] font-extrabold" style={{ color: PASTEL[selected.tone].ink }}>
+              <span className="text-[13px] font-extrabold" style={{ color: PASTEL[selected.tone].ink }}>
                 {t("routines.doneMsg", { name: firstName })}
               </span>
             </motion.div>

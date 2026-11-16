@@ -12,6 +12,7 @@
  * builder alone. Who sees what lists live grants only; nothing is a
  * directory. Counts only, no verdicts.
  */
+import { careCopy } from "./v10/careV10Copy";
 import React from "react";
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -159,10 +160,12 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       harness.locale = locale;
       harness.appts = [visitIn3()];
       const html = renderToStaticMarkup(<ConsultTab />);
-      expect(textOf(html, "consult-kicker")).toBe(translate(locale, "elev.consult.kicker"));
-      expect(textOf(html, "consult-sub")).toBe(translate(locale, "elev.consult.sub"));
+      // Design V77 (N-Care-M): the phone kicker is "Your next visit"; the H1
+      // names the professional ("Prepare for the speech therapist"), no sub.
+      expect(textOf(html, "consult-kicker")).toBe(translate(locale, "elev.consult.visit.kicker"));
+      expect(html).not.toContain('data-testid="consult-sub"');
       const h1 = decode(/<h1 data-testid="consult-h1"[^>]*>([^<]*)<\/h1>/.exec(html)![1]);
-      expect(h1).toContain(translate(locale, "elev.careNet.appt.profession.slp"));
+      expect(h1).toBe(careCopy(locale).visits.heading(locale === "en" ? translate(locale, "elev.careNet.appt.profession.slp").toLowerCase() : translate(locale, "elev.careNet.appt.profession.slp")));
       expect(html.indexOf('data-testid="consult-kicker"')).toBeLessThan(html.indexOf('data-testid="consult-h1"'));
       // design v10.1: the visit scene (section 1) heads the packet module —
       // the days to the booking as a figure, the production badge as its name
@@ -175,7 +178,7 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       // appointments (4) and the home program follow
       const page = decode(html);
       const at = (id: string) => page.indexOf(`data-testid="${id}"`);
-      const order = ["consult-visit-card", "consult-visit-head", "consult-audience-step", "consult-reason-section", "consult-since-head", "consult-bring-row", "consult-preview", "consult-review-export"];
+      const order = ["consult-visit-card", "consult-visit-head", "consult-audience-step", "consult-reason-section", "consult-bring-row", "consult-preview", "consult-review-export"];
       for (let i = 1; i < order.length; i++) expect(at(order[i]), order[i]).toBeGreaterThan(at(order[i - 1]));
       expect(at("consult-review-export")).toBeLessThan(page.indexOf('data-module="consult-aside"'));
       expect(page.indexOf(translate(locale, "elev.pilot.i.have.recommendations.for.home"))).toBeGreaterThan(at("consult-review-export"));
@@ -303,30 +306,35 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       const booked = renderToStaticMarkup(<ConsultTab />);
       const head = booked.slice(booked.indexOf('data-testid="consult-visit-head"'), booked.indexOf('data-testid="consult-audience-step"'));
       expect(head).toContain('data-visit="booked"');
-      expect(decode(head)).toContain(translate(locale, "elev.consult.visit.appointments"));
-      expect(head).toMatch(/<button[^>]*data-testid="consult-visit-appointments"[^>]*min-h-\[44px\]/);
+      // Design V77: no "All appointments" link in the hero; the guide's stop 4
+      // and the Appointments section below carry them.
+      expect(head).not.toContain('data-testid="consult-visit-appointments"');
+      expect(decode(booked)).toContain(careCopy(locale).visits.stopAppointments);
+      expect(booked).toContain('data-testid="care-appointments');
       harness.appts = [];
       const none = renderToStaticMarkup(<ConsultTab />);
       expect(none).toContain('data-visit="none"');
       expect(textOf(none, "consult-visit-none")).toBe(translate(locale, "elev.consult.visit.none"));
       expect(decode(none)).toContain(translate(locale, "elev.consult.visit.add"));
+      expect(none).toMatch(/<button[^>]*data-testid="consult-visit-appointments"/);
     });
 
-    it(`${locale}: v4 — the builder's template: Visit summary is the clinical audience row (no teacher chip), Teacher brief is the teacher`, () => {
+    it(`${locale}: design V77 — "Who is it for?" carries the Teacher chip (no template row first); the Teacher brief links back to Visits`, () => {
       harness.locale = locale;
       const html = renderToStaticMarkup(<ConsultTab />);
-      const row = /<div[^>]*data-testid="consult-template-row"[^>]*>[\s\S]*?<\/div>/.exec(html)![0];
-      expect([...row.matchAll(/data-template="([^"]+)"/g)].map((m) => m[1])).toEqual(["visit", "teacher"]);
-      expect(row).toMatch(/aria-checked="true"[^>]*data-template="visit"/);
-      expect(textOf(html, "consult-template-note")).toBe(translate(locale, "elev.consult.template.note.visit"));
-      const audiences = /<div[^>]*data-testid="consult-audience-row"[^>]*>[\s\S]*?<\/div>/.exec(html)![0];
-      expect(decode(audiences)).not.toContain(translate(locale, "elev.carehonesty.consult.audience.teacher"));
+      expect(html).not.toContain('data-testid="consult-template-row"');
+      const audiences = html.slice(html.indexOf('data-testid="consult-audience-row"'), html.indexOf('id="consult-reason"'));
+      const templates = [...audiences.matchAll(/data-template="([^"]+)"/g)].map((m) => m[1]);
+      expect(templates).toEqual(["teacher"]);
+      expect(audiences).toMatch(/aria-checked="false"[^>]*data-testid="consult-template" data-template="teacher"/);
       harness.tab = "school-brief";
       const brief = renderToStaticMarkup(<ConsultTab />);
-      expect(brief).toMatch(/aria-checked="true"[^>]*data-template="teacher"/);
-      expect(textOf(brief, "consult-template-note")).toBe(translate(locale, "elev.consult.template.note.teacher"));
-      expect(brief).toContain('data-testid="consult-teacher-branch"');
+      // the brief does not copy the chooser: one link back to the visit summary
       expect(brief).not.toContain('data-testid="consult-audience-row"');
+      expect([...brief.matchAll(/data-template="([^"]+)"/g)].map((m) => m[1])).toEqual(["visit"]);
+      expect(brief).toMatch(/<button[^>]*data-testid="consult-template" data-template="visit"[^>]*class="care-brief-back"/);
+      expect(decode(brief)).toContain(careCopy(locale).brief.backSub);
+      expect(brief).toContain('data-testid="consult-teacher-branch"');
     });
   }
 

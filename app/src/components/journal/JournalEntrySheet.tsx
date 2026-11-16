@@ -121,20 +121,20 @@ export default function JournalEntrySheet({
               </p>
               {/* B-DATA-10: resolved is a glyph + label, never a colour. */}
               {signal.resolved && (
-                <p data-testid="entry-resolved" className="mt-1 inline-flex items-center gap-1 text-[12.5px] font-bold" style={{ color: "var(--arbor-ink-soft)" }}>
+                <p data-testid="entry-resolved" className="mt-1 inline-flex items-center gap-1 text-[12px] font-bold" style={{ color: "var(--arbor-ink-soft)" }}>
                   <Icon name="check" size={14} />
                   {t("beh.resolved")}
                 </p>
               )}
               {detail && !momentLog && !observation && (
-                <p className="mt-1.5 text-[13.5px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
+                <p className="mt-1.5 text-[13px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
                   {detail}
                 </p>
               )}
             </div>
           </div>
 
-          {observation && <dl className="space-y-4 text-[13.5px] leading-relaxed">
+          {observation && <dl className="space-y-4 text-[13px] leading-relaxed">
             <div data-testid="journal-entry-observation-prompt">
               <dt className="font-bold" style={{ color: "var(--arbor-ink)" }}>
                 {t("ob.first.observation.chosen")}

@@ -91,7 +91,7 @@ function TrajectoryChart({
   return (
     <div style={{ marginTop: 12 }}>
       <div
-        className="text-[11px] font-bold uppercase tracking-wide mb-1"
+        className="text-[12px] font-bold uppercase tracking-wide mb-1"
         style={{ color: MUTED }}
       >
         {label}
@@ -388,7 +388,7 @@ function LatestSummary({ entry }: { entry: GrowthEntry }) {
           className="rounded-2xl px-3 py-2 text-center"
           style={{ background: PAPER_SUNK, minWidth: 72 }}
         >
-          <div className="text-[11px]" style={{ color: MUTED }}>
+          <div className="text-[12px]" style={{ color: MUTED }}>
             {item.label}
           </div>
           <div className="text-[15px] font-extrabold" style={{ color: INK }}>
@@ -396,7 +396,7 @@ function LatestSummary({ entry }: { entry: GrowthEntry }) {
           </div>
         </div>
       ))}
-      <div className="self-end text-[11px]" style={{ color: FAINT }}>
+      <div className="self-end text-[12px]" style={{ color: FAINT }}>
         {t("growth.latest.as_of", { date: shortDate(entry.date) })}
       </div>
     </div>
@@ -482,13 +482,13 @@ export default function PhysicalGrowthCard({ embedded = false }: { embedded?: bo
         {isEmpty && !adding && (
           <div className="mt-4 text-center py-4">
             <p
-              className="text-[13.5px] font-bold"
+              className="text-[13px] font-bold"
               style={{ color: INK }}
             >
               {t("growth.empty.title")}
             </p>
             <p
-              className="text-[12.5px] mt-1 leading-relaxed"
+              className="text-[12px] mt-1 leading-relaxed"
               style={{ color: MUTED, textWrap: "pretty" } as React.CSSProperties}
             >
               {t("growth.empty.body", { name: firstName })}
@@ -545,7 +545,7 @@ export default function PhysicalGrowthCard({ embedded = false }: { embedded?: bo
             {/* Single-entry chart nudge */}
             {heightData.length < 2 && weightData.length < 2 && (
               <p
-                className="text-[11.5px] mt-3"
+                className="text-[12px] mt-3"
                 style={{ color: FAINT }}
               >
                 {t("growth.chart.nodata")}
@@ -554,7 +554,7 @@ export default function PhysicalGrowthCard({ embedded = false }: { embedded?: bo
 
             {/* Non-diagnostic framing — always visible once there are entries */}
             <p
-              className="text-[11.5px] mt-3.5"
+              className="text-[12px] mt-3.5"
               style={{ color: FAINT }}
             >
               {t("growth.note")}
@@ -582,7 +582,7 @@ export default function PhysicalGrowthCard({ embedded = false }: { embedded?: bo
                       <span>HC {e.headCircumferenceCm} cm</span>
                     )}
                     {e.note && (
-                      <span className="truncate flex-1 text-[11px]">{e.note}</span>
+                      <span className="truncate flex-1 text-[12px]">{e.note}</span>
                     )}
                     <button
                       className="touch-target ms-auto flex-shrink-0"
