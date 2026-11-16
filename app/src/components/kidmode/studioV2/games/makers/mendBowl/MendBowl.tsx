@@ -621,9 +621,9 @@ export default function MendBowl() {
   const bowlPx = BOWL_R * 2 * scale, room = Math.min(box.w, box.h) || 1;
   const near = Math.min(1.45, Math.max(1, 0.62 * room / (bowlPx || 1)));
   const focus = { x: view.w ? (BOWL_CENTRE.x - view.x) / view.w : 0.5, y: view.h ? (BOWL_CENTRE.y - view.y) / view.h : 0.5 };
-  const zoom = phase === 'open' ? (settled ? 1 : 1.42) : phase === 'slip' ? 1.12 : phase === 'fit' && note === 'whole' ? 1.14 : phase === 'gold' ? near : phase === 'finale' ? (push ? Math.min(1.6, near * 1.12) : 1.02) : 1;
+  const zoom = phase === 'open' ? (settled ? 1 : 1.42) : phase === 'slip' ? 1.12 : phase === 'fit' && note === 'whole' ? 1.14 : phase === 'gold' ? near : phase === 'finale' ? (push ? Math.min(1.6, near * (short ? 1 : 1.12)) : 1.02) : 1;
   // In the set-piece the bowl rides a little high, so the caption sits under it and never on it.
-  const camera = { x: focus.x, y: focus.y + (phase === 'finale' && push ? (short ? 0.09 : 0.05) : 0), zoom };
+  const camera = { x: focus.x, y: focus.y + (phase === 'finale' && push ? (short ? 0.07 : 0.05) : 0), zoom };
   const host = phase === 'gold' ? 'bebe' as const : 'chock' as const;
   const turns = [
     <HudButton key="l" label={w.turnLeft} icon={<RotateCcw aria-hidden="true" />} iconOnly size="l" cue={helps < 0} onClick={() => turn(-ROTATE_STEP)} data={{ 'data-turn': 'left' }} />,

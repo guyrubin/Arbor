@@ -160,7 +160,7 @@ export function herdPlace(progress: number, startOffset: number, endOffset: numb
   const k = smooth(0, 1, clamp01(progress));
   return { depth: HERD_FAR + (HERD_NEAR - HERD_FAR) * k, offset: startOffset + (endOffset - startOffset) * k };
 }
-export const HERD_FAR = 6.2;
+export const HERD_FAR = 3.4;
 export const HERD_NEAR = 1.7;
 /** The sky's hour (0 gold afternoon, 1 sunset, 2 dusk, 3 night) for a step and how far through it the child is. */
 export function hourFor(step: StepId | 'setPiece' | 'end', progress = 0): number {

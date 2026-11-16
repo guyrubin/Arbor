@@ -31,9 +31,6 @@ const taught = { key: false };
 /** Plays begun this visit: the daylight moves on with each. */
 const visit = { plays: 0 };
 
-/* DEV-ONLY (remove before hand-off): start at a later chapter with ?wrChapter=N. */
-const DEV_CHAPTER = (() => { try { return import.meta.env.DEV ? Math.max(0, Math.min(3, Number(new URLSearchParams(location.search).get('wrChapter')) || 0)) : 0; } catch { return 0; } })();
-const DEV_LIGHT = (() => { try { const v = import.meta.env.DEV ? new URLSearchParams(location.search).get('wrLight') : null; return v === null ? null : Number(v) || 0; } catch { return null; } })();
 const clamp = (v: number, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, v));
 const ease = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 const fillLine = (template: string, ...values: string[]) => template.replace(/\{(\d)\}/g, (_m, slot: string) => values[Number(slot)] ?? '');
@@ -65,10 +62,10 @@ export function WindupRound({ onAgain }: { onAgain: () => void }) {
   const w = WINDUP_RACE_COPY[lang], shared = ADVENTURE_COPY[lang];
   const reduced = useReducedMotion();
   const [seed] = useState(() => roundSeed());
-  const [light] = useState(() => daylight(DEV_LIGHT ?? visit.plays++));
+  const [light] = useState(() => daylight(visit.plays++));
   const courses = useMemo(() => buildPlay(seed), [seed]);
   const [phase, setPhaseState] = useState<Phase>('openShot');
-  const [chapter, setChapter] = useState(DEV_CHAPTER);
+  const [chapter, setChapter] = useState(0);
   const [clicks, setClicksState] = useState(0);
   const [coach, setCoachState] = useState<{ line: string; mood: CoachMood }>({ line: w.hello, mood: 'happy' });
   const [toast, setToast] = useState<{ text: string; show: boolean }>({ text: '', show: false });
@@ -91,9 +88,9 @@ export function WindupRound({ onAgain }: { onAgain: () => void }) {
 
   const game = useRef<Game | null>(null);
   if (!game.current) {
-    const course = courses[DEV_CHAPTER];
+    const course = courses[0];
     game.current = {
-      phase: 'openShot', phaseT: 0, clock: 0, chapter: DEV_CHAPTER, course, scenery: buildScenery(course), sun: sunFor(light),
+      phase: 'openShot', phaseT: 0, clock: 0, chapter: 0, course, scenery: buildScenery(course), sun: sunFor(light),
       clicks: 0, turn: 0, keyAngle: 0.5, keyVel: 0, backTurns: 0, run: null, restX: course.start, line: 'low', lean: false, leanK: 0, balls: undefined,
       roverZ: 0, sx: 1, sy: 1, svx: 0, svy: 0, tremble: 0, glow: 0.2, pitch: 0, hop: 0, hopV: 0,
       blooms: course.blooms.map(() => 0), goalBloom: 0, chain: 0, cushion: 0, signTurn: -0.6,
@@ -603,7 +600,7 @@ export function WindupRound({ onAgain }: { onAgain: () => void }) {
 
   return <GameShell fullBleed autoNarrate={false} worldId="windup-race" title={w.title} instruction={w.instruction} hearIt={hearIt}>
     <section className="wr" data-adventure="windup-race" data-phase={phase} data-chapter={CHAPTERS[chapter]} data-clicks={clicks} data-line={line} data-light={light} data-gust={gusty < 0 ? 'head' : gusty > 0 ? 'tail' : undefined} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-      <PlayStage id="windup-race" grade={light === 'goldenHour' ? 'warm' : 'day'} shake={shake} setPiece={framed}
+      <PlayStage id="windup-race" grade="day" shake={shake} setPiece={framed}
         world={<div className="play-layer wr-world" dir="ltr" onPointerMove={onStageMove}>
           <canvas ref={canvasRef} className="play-layer wr-canvas" role="img" aria-label={w.scene}
             onPointerDown={onCanvasDown} onPointerMove={moveDrag} onPointerUp={onCanvasUp} onPointerCancel={onCanvasUp} />

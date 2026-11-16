@@ -21,7 +21,7 @@ import {
   rumbleFor, seedSnow, snowLeft, type GestureId, type SnowClump,
 } from './mammothPlayRules';
 import {
-  FROST, HERD_FAR, HINT, SET_PIECE, STEPS, auroraAt, constellation, eyeHeight, fitShot, frostLeft, herdPlace, hintPlan, hourFor, makeFrost, meltFrost, patienceStep, scoutNear, scoutStep, secretStar,
+  FROST, HERD_FAR, HINT, SET_PIECE, STEPS, STEP_FACT, auroraAt, constellation, eyeHeight, fitShot, frostLeft, herdPlace, hintPlan, hourFor, makeFrost, meltFrost, patienceStep, scoutNear, scoutStep, secretStar,
   starsRisen, traceStep, walkStep, wipeFrost, type FrostGrid, type Round, type StepId,
 } from './mammothStory';
 import { drawSteppeBack, drawSteppeFront, groundPoint, lightAt, makeSteppe, nearness, type Ground, type HerdState, type SkyShow, type SteppeFrame, type Tones } from './steppeRender';
@@ -102,7 +102,7 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const SHOTS = {
   whole: [30, 96, 940, 664], front: [30, 120, 690, 672], back: [286, 110, 900, 610],
   feedTall: [-150, 150, 560, 716], feedWide: [-230, 80, 940, 716], part: [468, 296, 742, 512],
-  scoutTall: [-140, -260, 1120, 716], scoutWide: [-760, -160, 1700, 716], walkTall: [-60, 30, 800, 700], walkWide: [-230, 30, 1130, 700],
+  scoutTall: [-1080, -240, 520, 716], scoutWide: [-1500, -200, 1000, 716], walkTall: [-60, 30, 800, 700], walkWide: [-230, 30, 1130, 700],
   low: [150, -60, 760, 672], finaleTall: [-60, -560, 1000, 690], finaleWide: [-420, -380, 1380, 690],
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 type ShotId = keyof typeof SHOTS;
@@ -207,6 +207,7 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
   let flakes: Flake[] = Array.from({ length: round.flakes }, () => ({ x: Math.random(), y: Math.random(), r: 0.9 + Math.random() * Math.random() * 2.6, speed: 0.025 + Math.random() * 0.05, drift: Math.random() * Math.PI * 2 }));
   let lastAudio = 0, lastTick = 0, flash = 0, frameMs = 16;
   const photos = new Map<DiscoveryId, HTMLCanvasElement>();
+  const standIns: DiscoveryId[] = [];
   const shots: { id: DiscoveryId; at: number; centre: () => Vec; size: () => number; then?: () => void }[] = [];
 
   const S = () => baseScale * camera.zoom;
@@ -216,11 +217,12 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
   const fromAnimal = (a: Vec): Vec => apply(place, a);
   const fraction = (w: Vec): Vec => { const [x, y] = toScreen(w); return [x / width, y / height]; };
   const fx = (kind: FxKind, w: Vec, count?: number) => { const [x, y] = fraction(w); hooks.onFx(kind, x, y, count); };
-  const safe = () => ({ top: height < 480 ? 62 : 96, bottom: height < 480 ? 64 : 100, side: 12 });
+  // A phone on its side has its HUD in the corners: the middle of the picture is free from top to bottom.
+  const safe = () => ({ top: height < 480 ? 30 : 96, bottom: height < 480 ? 22 : 100, side: 12 });
   const shotBox = (id: ShotId): Bounds => { const [x0, y0, x1, y1] = SHOTS[id]; return view.mirror ? { minX: FLIP_X - x1, minY: y0, maxX: FLIP_X - x0, maxY: y1 } : { minX: x0, minY: y0, maxX: x1, maxY: y1 }; };
   const shot = (id: ShotId, room = safe()): Camera => { const fit = fitShot(shotBox(id), { w: width, h: height }, room); return { x: fit.x, y: fit.y, zoom: fit.zoom / baseScale }; };
   /** The night's show keeps the snow at the foot of the frame free for the caption, the crew and the way out: the giant stands above them. */
-  const finaleRoom = () => ({ top: Math.max(30, height * 0.1), bottom: Math.max(150, height * (tall ? 0.3 : 0.27)), side: 12 });
+  const finaleRoom = () => ({ top: Math.max(30, height * 0.1), bottom: height < 480 ? Math.max(64, height * 0.24) : Math.max(150, height * (tall ? 0.3 : 0.27)), side: 12 });
   const shotFor = (t: Task): Camera => {
     switch (t) {
       case 'brush': return shot(tall ? 'back' : 'whole');
@@ -428,7 +430,7 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
 
   /* ── pictures ── */
   /** The ProofLens records the actual view: the picture is cut from what the stage shows at that moment. */
-  const takeShot = (id: DiscoveryId, centre: Vec, size: number) => {
+  const takeShot = (id: DiscoveryId, centre: Vec, size: number, quiet = false) => {
     let target = photos.get(id);
     if (!target) { target = document.createElement('canvas'); target.width = PHOTO; target.height = PHOTO; photos.set(id, target); }
     const g = target.getContext('2d'); if (!g || !palette) return;
@@ -436,7 +438,7 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
     const x0 = clamp(sx - side / 2, 0, width - side), y0 = clamp(sy - side / 2, 0, height - side);
     g.setTransform(1, 0, 0, 1, 0, 0);
     try { g.drawImage(el.canvas, x0 * dpr, y0 * dpr, side * dpr, side * dpr, 0, 0, PHOTO, PHOTO); } catch { /* nothing to copy yet */ }
-    flash = 1; sound?.shutter(); hooks.onTick();
+    if (!quiet) { flash = 1; sound?.shutter(); hooks.onTick(); }
   };
   const queueShot = (id: DiscoveryId, delay: number, centre: () => Vec, size: () => number, then?: () => void) => { shots.push({ id, at: time + (reduced ? 0.05 : delay), centre, size, then }); };
 
@@ -603,7 +605,7 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
       herdFound = true; herdShow = 1; finder.x = hu * width; sound?.hello(true); hooks.onTick();
       fx('ring', toWorld(finder.x, finder.y)); fx('sparkle', toWorld(finder.x, finder.y), 8);
       const at = { x: finder.x, y: finder.y }, r = finderRadius();
-      queueShot('herd', 0.5, () => [at.x, at.y + r * 0.2], () => r * 1.5, () => { finder = null; finish('scout'); });
+      queueShot('herd', 0.5, () => [at.x, at.y + r * 0.3], () => r * 1.25, () => { finder = null; finish('scout'); });
     }
   };
   const stepWalk = (dt: number) => {
@@ -1139,6 +1141,8 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
       flakes: reduced ? [] : flakes, puffs, mists, motes, bundle, tufts: plucks, marks,
     });
     if (pending) { shots.shift(); takeShot(pending.id, pending.centre(), pending.size()); if (pending.id !== 'trunk') hooks.onShot(pending.id); pending.then?.(); }
+    // (Development: a visit started part-way has no pictures yet; it is given stand-ins from what the stage shows.)
+    if (standIns.length && time - taskSince > 1.6 && !glide) { standIns.forEach((id, i) => takeShot(id, [width * (0.3 + 0.1 * i), height * 0.5], Math.min(width, height) * 0.4, true)); standIns.length = 0; }
   };
   const switchTier = (next: Tier) => {
     tier = next; strands = strandsFor(viewId, tier); dyn = makeDynamics(strands.count); grid = buildGrid(strands); trunkRange = rangeOf(strands, 'trunk');
@@ -1196,6 +1200,7 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
       if (index >= 7) { const keep = camera; camera = shotFor('scout'); beginScout(); camera = keep; finder = null; herdFound = true; herdShow = 1; learned.scout = true; }
       if (index >= 8) { walked = 1; walkDone = true; ensureCalf(); calf = { start: time - CALF.seconds - 1, arrived: true }; }
       hour = hourGoal = hourFor(step);
+      for (const before of STEPS.slice(0, index)) { const fact = STEP_FACT[before]; if (fact) standIns.push(fact); }
       begin(step);
     },
     photo: id => photos.get(id) ?? null,

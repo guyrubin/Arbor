@@ -630,7 +630,8 @@ export default function ClayTheatre() {
           { key: 'direct', label: w.quest.direct, done: done.direct, icon: <Clapperboard aria-hidden="true" /> },
         ]} />
         <HudToast show={!!toast}>{toast}</HudToast>
-        <HudDock align={layout && !layout.portrait ? 'end' : 'center'}>
+        {/* On a wide stage the dock keeps to the physical right (the scene does not mirror, and the bench is on the left). */}
+        <HudDock align={layout && !layout.portrait ? (rtl ? 'start' : 'end') : 'center'}>
           {phase === 'play' && chapter === 'shape' && shapeDone(show) && woke && <HudButton label={w.next.animate} tone="go" size="l" cue icon={<Camera aria-hidden="true" />} onClick={beginAnimate} data={{ 'data-next': 'animate' }} />}
           {phase === 'play' && chapter === 'animate' && show.keys.length > 0 && !filmed && <HudButton label={w.undo} iconOnly icon={<Undo2 aria-hidden="true" />} onClick={undoShot} data={{ 'data-undo': '' }} />}
           {phase === 'play' && chapter === 'animate' && filmed && <HudButton label={w.next.direct} tone="go" size="l" cue icon={<Clapperboard aria-hidden="true" />} onClick={beginDirect} data={{ 'data-next': 'direct' }} />}

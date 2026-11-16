@@ -12,7 +12,7 @@ import {
 } from '../play';
 import { ICE_AGE_FRIEND_COPY } from './iceAgeFriendCopy';
 import { DISCOVERIES, discover, type DiscoveryId } from './iceAgeFriendRules';
-import { STEPS, chapterOf, endsChapter, finishStep, nextStep, planRound, questFor, type Round, type StepId } from './mammothStory';
+import { STEPS, STEP_FACT, chapterOf, endsChapter, finishStep, nextStep, planRound, questFor, type Round, type StepId } from './mammothStory';
 import { createMammothEngine, type Cue, type FxKind, type MammothEngine } from './mammothEngine';
 import { createMammothSound, type MammothSound } from './mammothAudio';
 import { CrewLayer, HallLayer, HintHand, Photo, Print, Watchers } from './HallArt';
@@ -239,7 +239,7 @@ function Visit({ onAgain }: { onAgain(): void }) {
             <canvas ref={canvasRef} className="iaf-canvas" aria-hidden="true" />
             <HallLayer />
             <CrewLayer names={w.friends} cheer={cheer} side={side} onFriend={(id: FriendId) => { void selectionHaptic(); engine.current?.greet(id); }} />
-            {phase === 'setPiece' && <Watchers side={side} />}
+            {phase === 'setPiece' && <Watchers side={rtl ? 'left' : 'right'} />}
             <span id="iaf-keys" className="iaf-sr">{w.keys}</span>
             <span ref={rippleRef} className="iaf-ripple" aria-hidden="true" />
             <HintHand handRef={ghostRef} />
@@ -249,7 +249,7 @@ function Visit({ onAgain }: { onAgain(): void }) {
         {phase === 'opening' && <PlayOpening title={w.title} place={w.place} onDone={() => {
           setPhase('play');
           if (!DEV_STEP) { startStep('frost'); return; }
-          setDoneSteps(STEPS.slice(0, STEPS.indexOf(DEV_STEP))); setOutside(STEPS.indexOf(DEV_STEP) >= 3); setStep(DEV_STEP); setChapterStep(DEV_STEP); engine.current?.jump(DEV_STEP);
+          setDoneSteps(STEPS.slice(0, STEPS.indexOf(DEV_STEP))); setFound(DISCOVERIES.filter(id => STEPS.slice(0, STEPS.indexOf(DEV_STEP)).some(step => STEP_FACT[step] === id))); setOutside(STEPS.indexOf(DEV_STEP) >= 3); setStep(DEV_STEP); setChapterStep(DEV_STEP); engine.current?.jump(DEV_STEP);
         }} />}
         <HudCoach who={coach.who} mood={coach.mood} line={coach.line} pokeLabel={w.friends[coach.who]} onPoke={() => { void selectionHaptic(); play.current?.tap(); engine.current?.greet(coach.who); setCheer(n => n + 1); }} />
         <HudQuest label={w.questLabel} current={quest.current} steps={quest.steps.map(item => { const Icon = STEP_ICON[item.id]; return { key: item.id, label: w.steps[item.id], done: item.done, icon: <Icon aria-hidden="true" /> }; })} />

@@ -1049,7 +1049,8 @@ function drawStrands(input: HairInput, part: StrandSet['parts'][number], view4: 
   const { ctx, strands: s, dyn, time, wind, inks, tier, mirror, detail, lens, locks } = input;
   ensureScratch(s.count);
   const { m, q1, q2, p2, off, on } = scratch;
-  const widthK = TIER_WIDTH[tier] * (detail ? 1.18 : 1);
+  // A lock of two or three hairs is painted with finer hairs than a strand that stands alone.
+  const widthK = (TIER_WIDTH[tier] * (detail ? 1.18 : 1)) / (locks > 1 ? (tier === 'light' ? 1.5 : 1.14) : 1);
   // Never thinner than about half a screen pixel, so far-out hair does not vanish.
   const minW = 0.55 / S;
   // Compute every visible strand of the part once.

@@ -65,7 +65,7 @@ export function buildScenery(course: Course): Scenery {
 /** The sun of a play: how far a thing's shadow reaches along x and toward the camera per unit of height. */
 export interface Sun { kx: number; kz: number; warm: number }
 export function sunFor(light: Daylight): Sun {
-  return light === 'morning' ? { kx: 0.55, kz: 1.3, warm: 0.25 } : light === 'goldenHour' ? { kx: -0.5, kz: 1.5, warm: 1 } : { kx: 0.3, kz: 1.12, warm: 0.5 };
+  return light === 'morning' ? { kx: 0.55, kz: 1.3, warm: 0.25 } : light === 'goldenHour' ? { kx: -0.5, kz: 1.5, warm: 0.8 } : { kx: 0.3, kz: 1.12, warm: 0.5 };
 }
 const inArch = (xw: number, h: number, arches: readonly number[]) => {
   for (const c of arches) {
@@ -335,7 +335,8 @@ export class World {
     const lit = mixTone(this.c(T.white), this.c(T.butter), warm * 0.3);
     g.globalCompositeOperation = 'source-over'; g.fillStyle = ink(lit); g.fillRect(0, 0, w, h);
     // A soft edge to every shadow, where the browser can blur a canvas (elsewhere the small map's own softness does).
-    if ('filter' in g) g.filter = 'blur(1.6px)';
+    const canBlur = typeof g.filter === 'string';
+    if (canBlur) g.filter = 'blur(1.6px)';
     const { cam, course, sun } = f;
     for (const zone of course.zones) {
       if (zone.kind === 'arcade') {
@@ -347,7 +348,7 @@ export class World {
       }
     }
     for (const c of f.scenery.arches) if (Math.abs(c - cam.ex) < 120) fillPoly(g, cam, poolPoints(c, sun), ink(lit), k);
-    if ('filter' in g) g.filter = 'none';
+    if (canBlur) g.filter = 'none';
     return map;
   }
 
@@ -361,7 +362,7 @@ export class World {
 
     /* -- far away: the sky and Horizon Valley -- */
     const sky = ctx.createLinearGradient(0, 0, 0, Math.max(1, hy));
-    sky.addColorStop(0, ink(mixTone(c(T.sky), c(T.bluebell), 0.12))); sky.addColorStop(1, ink(mixTone(c(T.skyPale), c(T.butter), warm * 0.4)));
+    sky.addColorStop(0, ink(mixTone(c(T.sky), c(T.bluebell), 0.12))); sky.addColorStop(1, ink(mixTone(c(T.skyPale), c(T.butter), warm * 0.25)));
     ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
     const valley = pics.get(VALLEY.src);
     if (valley) {
@@ -369,7 +370,6 @@ export class World {
       // Far things only turn with the camera: they do not slide as it travels.
       const pan = Math.atan2(cam.fx, cam.fz) * W * 0.3;
       ctx.drawImage(valley, W / 2 - VALLEY.w * s / 2 - pan, hy - VALLEY.horizon * VALLEY.h * s, VALLEY.w * s, VALLEY.h * s);
-      if (warm > 0.6) { ctx.fillStyle = ink(c(T.amber), 0.12); ctx.fillRect(0, 0, W, hy + 2); }
     }
 
     /* -- the floor -- */
@@ -441,7 +441,8 @@ export class World {
     }
     // Haze where the floor meets the far wall.
     const haze = ctx.createLinearGradient(0, hy, 0, hy + (H - hy) * 0.5);
-    haze.addColorStop(0, ink(c(T.white), 0.5)); haze.addColorStop(1, ink(c(T.white), 0));
+    const hazeTone = mixTone(c(T.white), c(T.blossom), warm > 0.6 ? 0.45 : 0);
+    haze.addColorStop(0, ink(hazeTone, 0.5)); haze.addColorStop(1, ink(hazeTone, 0));
     ctx.fillStyle = haze; ctx.fillRect(0, hy, W, (H - hy) * 0.5);
 
     /* -- the far side: the terrace wall, or the arcade -- */

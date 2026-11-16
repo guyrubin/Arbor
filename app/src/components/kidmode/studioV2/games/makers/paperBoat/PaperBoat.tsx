@@ -503,7 +503,7 @@ export default function PaperBoat() {
         burst(QUAY_X, LANE_Y[0], 8, 'ring', { size: 1.4 }); burst(QUAY_X, LANE_Y[0], 8, 'drop', { count: 10, angle: -90, arc: 160 });
         tell('gobgob', 'wow', words.docked);
         const quay = project(QUAY_X - 40, 130, 40), { w: width, h: height } = live.current.fit;
-        setFinale(true); setShot({ x: quay.left / width, y: quay.top / height, zoom: still ? 1 : 1.16 });
+        setFinale(true); if (!live.current.fit.portrait) setShot({ x: quay.left / width, y: quay.top / height, zoom: still ? 1 : 1.16 });
       }
       return true;
     }
@@ -541,7 +541,12 @@ export default function PaperBoat() {
     else if (closing.current !== null) { focus = PAGE_W * 0.5 + PAGE_W * (1 - clamp01(((clock.current - closing.current) * 1000) / CLOSE_MS)) * 0.5; scale = f.view.wide; free = true; }
     else if (cover.current.k > 0.2) scale = f.view.wide;
     else if (cover.current.k > 0) focus = BOAT_BANK.x + 60;
-    else if (!settled || stamps.current.dock !== null) scale = f.view.wide;
+    else if (!settled) scale = f.view.wide;
+    else if (stamps.current.dock !== null) {
+      // The homecoming. On a tall phone the view travels across the water with the lanterns as they come on, then pulls back for the whole quay.
+      if (!stamps.current.told && b.harbour.lamps < HARBOUR_LAMPS && f.view.near > f.view.wide * 1.2) focus = floatSpots(variant.current)[Math.min(HARBOUR_LAMPS - 1, b.harbour.lamps)][0];
+      else scale = f.view.wide;
+    }
     else if (b.spread === 0) focus = (b.launched ? riverBoat(b.stream).x : boatShown.current.x) + 46;
     else if (b.spread === 1) focus = riverBoat(b.river).x + 46;
     else if (b.spread === 2) focus = 112 + 280 * calmShown.current + 30;

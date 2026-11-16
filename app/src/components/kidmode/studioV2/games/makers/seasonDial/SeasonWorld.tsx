@@ -70,13 +70,15 @@ export const SeasonWorld = forwardRef<WorldHandle, SeasonWorldProps>(function Se
     const L = props.current.layout, H = L.tree.h;
     return { L, H, crown: { x: L.tree.x + TREE.crown.cx * H, y: L.tree.y + TREE.crown.cy * H, rx: TREE.crown.rx * H, ry: TREE.crown.ry * H }, knot: { x: L.tree.x + TREE.knot.x * H, y: L.tree.y + TREE.knot.y * H }, skyH: Math.max(40, L.horizon) };
   };
-  const cloudAt = (i: number) => { const { L, skyH } = geo(), c = sim.current.clouds[i]; const span = L.w * 1.3; return { x: ((c.x % 1 + 1) % 1) * span - L.w * 0.15, y: Math.max(18, skyH * (0.1 + c.y * 0.62)), size: Math.max(34, Math.min(L.w, L.h) * 0.11) * c.size }; };
+  const cloudAt = (i: number) => { const { L, skyH } = geo(), c = sim.current.clouds[i]; const span = L.w * 1.3; return { x: ((c.x % 1 + 1) % 1) * span - L.w * 0.15, y: Math.max(18, skyH * (L.portrait ? 0.14 + c.y * 0.36 : 0.1 + c.y * 0.62)), size: Math.max(34, Math.min(L.w, L.h) * 0.11) * c.size }; };
   const sunAtNow = () => { const { L, skyH } = geo(), v = live.current, arc = sunArc(wrapYear(v.year), v.hour ?? hourAt(wrapYear(v.year))); return { arc, x: arc.x * L.w, y: L.horizon - arc.lift * skyH * 0.92 - skyH * 0.04 }; };
 
   useImperativeHandle(ref, () => ({
     touchAt(x, y) {
       const { L, crown, knot } = geo(), s = sim.current, year = wrapYear(live.current.year);
       if (Math.hypot(x - knot.x, y - knot.y) < Math.max(22, L.tree.h * 0.05)) return 'knotHole';
+      // A cloud riding over the top of the crown is the cloud: a finger on it means the sky, not the tree.
+      if (y < crown.y - crown.ry * 0.4) for (let i = 0; i < s.clouds.length; i++) { const c = cloudAt(i); if (Math.abs(x - c.x) < c.size && Math.abs(y - c.y) < c.size * 0.55) return 'cloudPuff'; }
       if (((x - crown.x) / (crown.rx * 1.02)) ** 2 + ((y - crown.y) / (crown.ry * 1.05)) ** 2 < 1) return 'treeCrown';
       if (Math.abs(x - L.tree.x) < L.tree.h * 0.07 && y < L.tree.y && y > crown.y) return 'treeCrown';
       if (lifeAt(year).snowman > 0.4 && Math.abs(x - L.spots.snowFriend.x) < L.spots.snowFriend.h * 0.34 && y < L.spots.snowFriend.y + 6 && y > L.spots.snowFriend.y - L.spots.snowFriend.h) return 'snowFriend';
@@ -100,7 +102,7 @@ export const SeasonWorld = forwardRef<WorldHandle, SeasonWorldProps>(function Se
         let best = 0, near = Infinity;
         s.clouds.forEach((_, i) => { const c = cloudAt(i), d = Math.hypot(x - c.x, y - c.y); if (d < near) { near = d; best = i; } });
         const c = s.clouds[best]; c.pulse = 1;
-        if (touch === 'openSky') { c.x = (x + L.w * 0.15) / (L.w * 1.3); c.y = Math.max(0, Math.min(1, (y / Math.max(40, L.horizon) - 0.1) / 0.62)); }
+        if (touch === 'openSky') { c.x = (x + L.w * 0.15) / (L.w * 1.3); c.y = Math.max(0, Math.min(1, L.portrait ? (y / Math.max(40, L.horizon) - 0.14) / 0.36 : (y / Math.max(40, L.horizon) - 0.1) / 0.62)); }
         return 1;
       }
       if (touch === 'sunDisc') { s.sunPulse = 1; return 1; }

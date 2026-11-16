@@ -488,7 +488,7 @@ function drawSkyShow(f: SteppeFrame, t: Tones) {
   ctx.setLineDash([]);
   for (const pic of show.pictures) {
     if (pic.risen <= 0) continue;
-    const k = smooth(0, 1, pic.risen), size = (pic.small ? 9 : Math.max(19, Math.min(34, W * 0.036))) * (0.4 + 0.6 * k) * (1 + 0.12 * Math.sin(Math.PI * Math.min(1, pic.risen * 1.4))), [x, y] = pic.at;
+    const k = smooth(0, 1, pic.risen), size = (pic.small ? 0.45 : 1) * Math.max(14, Math.min(34, Math.min(W, hz * 2.4) * 0.036)) * (0.4 + 0.6 * k) * (1 + 0.12 * Math.sin(Math.PI * Math.min(1, pic.risen * 1.4))), [x, y] = pic.at;
     const twinkle = f.reduced ? 1 : 0.86 + 0.14 * Math.sin(time * 2.2 + x * 0.05);
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     const halo = ctx.createRadialGradient(x, y, size * 0.5, x, y, size * 3.1);
