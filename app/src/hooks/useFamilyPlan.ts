@@ -19,7 +19,7 @@ import { useAuth } from "../context/AuthContext";
 import { api } from "../lib/api";
 import { track } from "../lib/analytics";
 import {
-  FAMILY_PLAN_COLLECTION, addPrep, applyChange, askAdult, cancelDate, createDate, editDate, markDone, takeIt, togglePrep,
+  FAMILY_PLAN_COLLECTION, addPrep, applyChange, askAdult, cancelDate, createDate, dropPendingChange, editDate, holdChange, markDone, takeIt, togglePrep,
   type FamilyPlanAdult, type FamilyPlanDate, type FamilyPlanKind, type NewDateInput,
 } from "../lib/familyPlan/model";
 import { datesInWindow, lanes, openRequests, planCounts, planWindow, reminders, type PlanCounts, type PlanReminder, type PlanWindow, type Lane } from "../lib/familyPlan/week";
@@ -96,7 +96,7 @@ export function useFamilyAdults(childId: string): FamilyPlanAdults & { me: Famil
 export interface FamilyPlanReceipt {
   id: number;
   /** What happened, as a copy key the screen renders. */
-  kind: "added" | "took" | "asked" | "changed" | "done" | "cancelled" | "prep" | "edited" | "undone" | "kept_note";
+  kind: "added" | "took" | "asked" | "changed" | "held" | "done" | "cancelled" | "prep" | "edited" | "undone" | "kept_note";
   count: number;
   undo?: () => Promise<void>;
 }
@@ -107,6 +107,7 @@ export interface ReviewKeep {
   date: string;
   time?: string;
   sourceLine?: string;
+  sourceLineNo?: number;
   prep?: string[];
 }
 
@@ -169,7 +170,7 @@ export function useFamilyPlan(childId: string) {
     let duplicates = 0;
     for (const r of rows) {
       if (matchDraft(r, [...allRef.current, ...fresh]).kind === "duplicate") { duplicates += 1; continue; }
-      const input: NewDateInput = { id: newId("fp"), kind: r.kind, title: r.title, date: r.date, time: r.time || undefined, sourceLine: r.sourceLine, messageId, origin, prep: r.prep };
+      const input: NewDateInput = { id: newId("fp"), kind: r.kind, title: r.title, date: r.date, time: r.time || undefined, sourceLine: r.sourceLine, sourceLineNo: r.sourceLineNo, messageId, origin, prep: r.prep };
       fresh.push(createDate(input, me.uid, now));
     }
     track("family_plan_dates_added", { count: fresh.length, duplicates_skipped: duplicates, source: origin });
@@ -198,6 +199,35 @@ export function useFamilyPlan(childId: string) {
     const next = applyChange(item, to, me.uid, new Date().toISOString(), reaskNote);
     track("family_plan_change_applied", { asked_again: next.request?.status === "asked", time_changed: (item.time ?? "") !== (to.time ?? ""), day_changed: item.date !== to.date });
     return commit("changed", [next], 1);
+  }, [commit, me.uid]);
+
+  /** A newer message moved a date and the parent has not decided yet: hold it ("One change to review"). */
+  const hold = useCallback(async (id: string, to: { date: string; time?: string; sourceLine?: string }) => {
+    const item = find(id);
+    if (!item) return false;
+    track("family_plan_change_held", {});
+    return commit("held", [holdChange(item, to, new Date().toISOString())], 1);
+  }, [commit]);
+
+  /** Apply the held change: the old version is kept, the old reminder stops, the adult is asked again. */
+  const applyHeld = useCallback(async (id: string, reaskNote: string) => {
+    const item = find(id);
+    if (!item?.pendingChange) return false;
+    const { date, time, sourceLine } = item.pendingChange;
+    const next = applyChange(item, { date, time, sourceLine }, me.uid, new Date().toISOString(), reaskNote);
+    track("family_plan_change_applied", { asked_again: next.request?.status === "asked", time_changed: (item.time ?? "") !== (time ?? ""), day_changed: item.date !== date });
+    return commit("changed", [next], 1);
+  }, [commit, me.uid]);
+
+  /** Keep both dates: the held change becomes a date of its own, the original stays as it is. */
+  const keepBoth = useCallback(async (id: string) => {
+    const item = find(id);
+    if (!item?.pendingChange) return false;
+    const now = new Date().toISOString();
+    const p = item.pendingChange;
+    const twin = createDate({ id: newId("fp"), kind: item.kind, title: item.title, date: p.date, time: p.time, sourceLine: p.sourceLine, messageId: item.messageId, origin: item.origin }, me.uid, now);
+    track("family_plan_dates_added", { count: 1, duplicates_skipped: 0, source: "kept_both" });
+    return commit("added", [dropPendingChange(item, now), twin], 1);
   }, [commit, me.uid]);
 
   const edit = useCallback(async (id: string, patch: { title?: string; kind?: FamilyPlanKind; date?: string; time?: string }, reaskNote: string) => {
@@ -254,6 +284,9 @@ export function useFamilyPlan(childId: string) {
     take,
     ask,
     change,
+    hold,
+    applyHeld,
+    keepBoth,
     edit,
     done,
     cancel,

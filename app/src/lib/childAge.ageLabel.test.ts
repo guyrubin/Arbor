@@ -178,7 +178,7 @@ describe("GP-01 — source scan: no parent-facing .tsx renders the whole-years `
     // (TopbarKidSwitcher ChildIdentity) does, so Shell left this list.
     for (const rel of [
       "components/layout/TopbarKidSwitcher.tsx",
-      "components/profile/ProfileSwitcher.tsx",
+      // v10 (canvas V77): ProfileSwitcher is the switcher alone and prints no age of its own.
       "components/profile/FamilyGlanceCard.tsx",
       // v10: About's identity line lives in the child's tile.
       "components/about/AboutChildTile.tsx",

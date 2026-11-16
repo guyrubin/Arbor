@@ -1787,6 +1787,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                   // navy bubble (MarkdownBlock paints its paragraphs in ink).
                   <>
                     {msg.attachments?.map(file => <div key={file.id} className="companion-file-receipt"><Icon name={file.kind === "photo" ? "photo" : "description"} size={20}/><span>{file.name}<small className="block">{inputText(uiLang, "companion.input.attached-to-this-turn-original-not-saved")}</small></span></div>)}
+                    {/* V77 (N-Talk-D): expanded, the question card leads with "You asked" (shown only there). */}
+                    <span className="talk-you-asked">{t("elev.waveR.capture.asked")}</span>
                     <p className="whitespace-pre-wrap break-words">{msg.displayText || msg.text}</p>
                   </>
                 )}

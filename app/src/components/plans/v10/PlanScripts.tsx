@@ -42,7 +42,7 @@ export function PlanScripts({ plan, lang, composition, n, onRefine }: { plan: Ac
   const cards = plan.scripts.map((sc, i) => <ScriptCard key={i} scenario={sc.scenario} say={sc.say} avoid={sc.avoid} lang={lang} />);
   const refine = (
     <button type="button" className="ds-link min-h-11" onClick={onRefine} style={{ alignSelf: "flex-start" }}>
-      <Icon name="auto_awesome" size={14} />
+      <Icon name="auto_awesome" size={15} />
       {t("plan.refine")}
     </button>
   );

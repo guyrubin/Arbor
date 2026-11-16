@@ -18,7 +18,6 @@ const tokState = (d: FamilyPlanDate) => (stateOf(d) === "has" ? "solid" : stateO
 export function DateCards({ plan, lang, c, onOpen }: Common) {
   const upcoming = plan.dates.filter((d) => d.status === "open" && d.date >= plan.window.today);
   const list = (upcoming.length ? upcoming : plan.dates).slice(0, 6);
-  const reminderFor = new Map(plan.reminders.map((r) => [r.dateId, r] as const));
   if (!list.length) return <p className="small" style={{ padding: "4px 2px" }}>{c.stopSub.dates(0)}</p>;
   return (
     <>
@@ -27,7 +26,6 @@ export function DateCards({ plan, lang, c, onOpen }: Common) {
         const who = s === "has" ? (d.holder?.uid === plan.me.uid ? c.stateHasYou : c.stateHas(adultLabel(d.holder, plan.me.uid, c))) : s === "asked" && d.request ? c.stateAsked(adultLabel({ uid: d.request.toUid, email: d.request.toEmail }, plan.me.uid, c)) : c.stateNone;
         const days = daysFrom(plan.window.today, d.date);
         const rel = d.status === "done" ? c.done : days === 0 ? c.today : days === 1 ? c.tomorrow : days > 1 ? c.inDays(days) : "";
-        const r = reminderFor.get(d.id);
         const last = d.previous?.[d.previous.length - 1];
         return (
           <button key={d.id} type="button" className={`nx-co${s === "asked" ? " pencil" : ""}`} onClick={() => onOpen(d.id)} data-testid="family-plan-date">
@@ -37,10 +35,8 @@ export function DateCards({ plan, lang, c, onOpen }: Common) {
               <span>
                 {d.kind === "deadline" ? c.dueOn(whenLabel(d, lang)) : whenLabel(d, lang)}
                 {last ? ` (${c.wasTime(whenLabel(last, lang))})` : ""}
-                {rel ? `. ${rel}.` : "."}
-                {r && r.status === "queued" ? ` ${c.reminderQueued(momentLabel(r.atMs, lang))}` : ""}
+                {s === "asked" ? `. ${c.askedNoAnswer}` : rel ? `. ${rel}.` : "."}
               </span>
-              {s === "asked" && d.request && <span className="small">{c.askedAt(adultLabel({ uid: d.request.toUid, email: d.request.toEmail }, plan.me.uid, c), momentLabel(d.request.askedAt, lang))} {c.noAnswer}</span>}
             </span>
             <span className="cc" aria-hidden="true"><Icon name="chevron_right" size={18} className="rtl:-scale-x-100" /></span>
           </button>
@@ -99,7 +95,7 @@ export function ChangeTile({ plan, lang, c, onOpen }: Common) {
   const last = changed.previous![changed.previous!.length - 1];
   const sameDay = last.date === changed.date;
   return (
-    <Tile icon="history" kind="date" title={c.reviewChange} titleId="fp-chg-h">
+    <Tile icon="history" kind="date" title={c.whatChanged} titleId="fp-chg-h">
       <div className="draft" style={{ gap: 8 }}>
         <PencilChip>{c.versionLabel(changed.version)}</PencilChip>
         <span className="nx-chg">
@@ -107,7 +103,7 @@ export function ChangeTile({ plan, lang, c, onOpen }: Common) {
           <Icon name="arrow_forward" size={22} className="rtl:-scale-x-100" />
           <b>{sameDay && changed.time ? changed.time : whenLabel(changed, lang)}</b>
         </span>
-        <b dir="auto" style={{ fontSize: 14.5, fontWeight: 600 }}>{changed.title}, {whenLabel(changed, lang)}</b>
+        <b dir="auto" style={{ fontSize: 14, fontWeight: 600 }}>{changed.title}, {whenLabel(changed, lang)}</b>
         {changed.sourceLine && <ThreadLine line={changed.sourceLine} quote={changed.sourceLine} />}
       </div>
       <MoreLink onClick={() => onOpen(changed.id)}>{c.openDate}</MoreLink>
@@ -115,13 +111,13 @@ export function ChangeTile({ plan, lang, c, onOpen }: Common) {
   );
 }
 
-export function RequestsTile({ plan, lang, c, onOpen }: Common) {
+export function RequestsTile({ plan, lang, c, onOpen, figures = true, children }: Common & { figures?: boolean; children?: React.ReactNode }) {
   const requests = plan.openRequests;
   const queued = plan.reminders;
   const forWhom = (uid: string | null) => (uid ? (uid === plan.me.uid ? c.forYou : c.forAdult(adultLabel(plan.roster.adults.find((a) => a.uid === uid) ?? { uid, email: null }, plan.me.uid, c))) : c.forYou);
   return (
     <Tile icon="notifications" kind="date" title={c.requestsReminders} titleId="fp-req-h">
-      {(requests.length > 0 || queued.length > 0) && (
+      {figures && (requests.length > 0 || queued.length > 0) && (
         <div className="line" style={{ gap: 24, alignItems: "flex-end", flexWrap: "wrap" }}>
           {requests.length > 0 && <Fig size="md" n={requests.length} unit={c.figRequests(requests.length)} />}
           {queued.length > 0 && <Fig size="md" n={queued.length} unit={c.figReminders(queued.length)} />}
@@ -130,26 +126,24 @@ export function RequestsTile({ plan, lang, c, onOpen }: Common) {
       {requests.length === 0 && queued.length === 0 ? (
         <p className="small">{c.noReminders}</p>
       ) : (
-        <ul className="nx-arows">
-          {requests.map((d) => (
-            <li key={`r-${d.id}`}>
-              <b>{c.asked}</b>
-              <button type="button" className="ds-link" style={{ justifyContent: "flex-start", minHeight: 44, padding: 0, textAlign: "start" }} onClick={() => onOpen(d.id)}>
-                <bdi>{c.requestSent(adultLabel({ uid: d.request!.toUid, email: d.request!.toEmail }, plan.me.uid, c), momentLabel(d.request!.askedAt, lang))} · {d.title}</bdi>
+        // The board's bell line: requests sent and reminders queued, soonest first (at most four).
+        <ol className="nx-aline" style={{ gridTemplateColumns: `repeat(${Math.min(4, requests.length + queued.length)}, minmax(0, 1fr))` }}>
+          {[
+            ...requests.map((d) => ({ key: `r-${d.id}`, at: Date.parse(d.request!.askedAt), id: d.id, sent: true, line: c.alineRequest(adultLabel({ uid: d.request!.toUid, email: d.request!.toEmail }, plan.me.uid, c)) })),
+            ...queued.map((r) => ({ key: r.id, at: r.atMs, id: r.dateId, sent: false, line: c.alineReminder(r.item.title, forWhom(r.forUid)) })),
+          ].sort((x, y) => x.at - y.at).slice(0, 4).map((it) => (
+            <li key={it.key}>
+              <button type="button" onClick={() => onOpen(it.id)}>
+                <span className={`nx-al${it.sent ? "" : " q"}`} aria-hidden="true"><Icon name="notifications" size={18} /></span>
+                <b>{momentLabel(it.at, lang)}</b>
+                <bdi>{it.line}</bdi>
               </button>
             </li>
           ))}
-          {queued.slice(0, 6).map((r) => (
-            <li key={r.id}>
-              <b>{r.status === "due" ? c.today : momentLabel(r.atMs, lang).split(",")[0]}</b>
-              <button type="button" className="ds-link" style={{ justifyContent: "flex-start", minHeight: 44, padding: 0, textAlign: "start" }} onClick={() => onOpen(r.dateId)}>
-                <bdi>{r.status === "due" ? c.reminderDue(r.item.title) : c.reminderLine(r.item.title, momentLabel(r.atMs, lang))} · {forWhom(r.forUid)}</bdi>
-              </button>
-            </li>
-          ))}
-        </ul>
+        </ol>
       )}
       <p className="small">{c.inAppOnly}</p>
+      {children}
     </Tile>
   );
 }

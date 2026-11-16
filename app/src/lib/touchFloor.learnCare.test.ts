@@ -143,7 +143,7 @@ describe("touch floor · R13 · the Care residues", () => {
 
   it("the floor sits on the shared input recipe, not on the call sites", () => {
     const safety = read(FILES.safety);
-    expect(safety).toContain('const inputCls = "rounded-lg px-3 py-2 min-h-11 text-sm focus:outline-none";');
+    expect(safety).toContain('const inputCls = "rounded-[10px] px-3 py-2 min-h-11 text-sm focus:outline-none";');
     expect(safety).not.toContain('const inputCls = "rounded-lg px-3 py-2 text-sm focus:outline-none";');
   });
 

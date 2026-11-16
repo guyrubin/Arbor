@@ -35,6 +35,28 @@ export interface MilestonesV10Copy {
   arborSuggests: string;
   today: string;
   timelineLabel: string;
+  seenHere: string;
+  first: string;
+  latest: string;
+  daysAgo: string;
+  firstOne: string;
+  daysAfter: string;
+  dayOne: string;
+  daysMany: string;
+  newest: string;
+  kicker: string;
+  since: string;
+  lastShort: string;
+  guideAreasShort: string;
+  guideAreaShort: string;
+  guideWordsShort: string;
+  guideNextShort: string;
+  tilesHint: string;
+  nextToNotice: string;
+  earlierLater: string;
+  earlier: string;
+  later: string;
+  byAge: string;
   listGuideList: string;
   listGuideListSub: string;
   listGuideTools: string;
@@ -75,6 +97,28 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     arborSuggests: "Arbor suggests",
     today: "Today",
     timelineLabel: "What you marked Seen it in this area, by date",
+    seenHere: "seen here",
+    first: "First",
+    latest: "Latest",
+    daysAgo: "{n} ago",
+    firstOne: "first one",
+    daysAfter: "{n} after",
+    dayOne: "1 day",
+    daysMany: "{n} days",
+    newest: "Newest",
+    kicker: "My child · Milestones",
+    since: "since {date}",
+    lastShort: "Last",
+    guideAreasShort: "Areas",
+    guideAreaShort: "Area",
+    guideWordsShort: "Words",
+    guideNextShort: "Next",
+    tilesHint: "Tap an area to open it and mark what you have seen. A blank means no record, not a missing ability.",
+    nextToNotice: "Next to notice",
+    earlierLater: "Earlier and later",
+    earlier: "Earlier",
+    later: "Later",
+    byAge: "by {age}",
     listGuideList: "The list",
     listGuideListSub: "Mark each item",
     listGuideTools: "Latest, and tools",
@@ -113,6 +157,28 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     arborSuggests: "ארבור מציע",
     today: "היום",
     timelineLabel: "מה שסימנתם ״ראיתי״ בתחום הזה, לפי תאריך",
+    seenHere: "ראיתם כאן",
+    first: "ראשון",
+    latest: "אחרון",
+    daysAgo: "לפני {n}",
+    firstOne: "הראשון",
+    daysAfter: "{n} אחרי",
+    dayOne: "יום אחד",
+    daysMany: "{n} ימים",
+    newest: "החדש ביותר",
+    kicker: "הילד שלי · אבני דרך",
+    since: "מאז {date}",
+    lastShort: "אחרון",
+    guideAreasShort: "תחומים",
+    guideAreaShort: "תחום",
+    guideWordsShort: "מילים",
+    guideNextShort: "הבא",
+    tilesHint: "לחיצה על תחום פותחת אותו, ושם מסמנים מה ראיתם. ריק = אין תיעוד, לא יכולת חסרה.",
+    nextToNotice: "הבא לשים לב",
+    earlierLater: "מוקדם יותר ומאוחר יותר",
+    earlier: "מוקדם יותר",
+    later: "מאוחר יותר",
+    byAge: "עד גיל {age}",
     listGuideList: "הרשימה",
     listGuideListSub: "מסמנים כל פריט",
     listGuideTools: "האחרון, וכלים",

@@ -13,6 +13,8 @@ import { Icon } from "../ui/Icon";
 import { familyPlanCopy } from "./familyPlanCopy";
 import { PlanStage } from "./PlanStage";
 import { ChangeTile, DateCards, MessageTile, RequestsTile, StandingTile } from "./PlanSections";
+import { FoundSnap, HeldChangeCard, heldChangeOf } from "./PlanChange";
+import { scrollToSection, Tile } from "../../design/primitives";
 import { AddDateSheet, ReviewSheet } from "./ReviewSheet";
 import { AskSheet } from "./AskSheet";
 import { DateSheet } from "./DateSheet";
@@ -52,19 +54,23 @@ export default function FamilyPlanView() {
     setCalendar(channel);
   };
 
-  const s = plan.counts;
-  const none = c.stopSub.dates(0);
-  const messages = new Set(plan.all.filter((d) => d.messageId).map((d) => d.messageId)).size;
-  const asked = plan.openRequests.length;
-  const accepted = plan.dates.filter((d) => d.holder && d.status === "open").length;
-  const stops = [
-    { id: "fp-who", title: c.stops.who, sub: s.dates ? c.stopSub.who(s.dates, s.nobodyYet) : none },
-    { id: "fp-dates", title: c.stops.dates, sub: c.stopSub.dates(plan.dates.length) },
-    { id: "fp-came", title: c.stops.cameIn, sub: messages ? c.stopSub.cameIn(messages) : none },
-    { id: "fp-standing", title: c.stops.standing, sub: asked || accepted ? c.stopSub.standing(asked, accepted) : none },
-  ];
+  const held = heldChangeOf(plan);
+  // Desk (N-Plan-D) and phone (N-Plan-M) draw different sections; each guide names its own.
+  const stops = desk
+    ? [
+        { id: "fp-who", title: c.stops.who, sub: c.guideSub.who },
+        { id: "fp-dates", title: c.stops.dates, sub: c.guideSub.dates },
+        { id: "fp-came", title: c.stops.cameIn, sub: c.guideSub.cameIn },
+        { id: "fp-standing", title: c.stops.standing, sub: c.guideSub.standing },
+      ]
+    : [
+        { id: "fp-who", title: c.stops.who },
+        ...(held ? [{ id: "fp-change", title: c.stopsPhone.change }] : []),
+        { id: "fp-found", title: c.stopsPhone.found },
+        { id: "fp-alerts", title: c.stopsPhone.alerts },
+      ];
   const common = { plan, lang, c, onOpen: openDate } as const;
-  const hasChange = plan.dates.some((d) => d.previous && d.previous.length);
+  const hasChange = !!held || plan.dates.some((d) => d.previous && d.previous.length);
   const openItems = plan.dates.filter((d) => d.status === "open");
 
   const empty = plan.loaded && plan.dates.length === 0;
@@ -82,13 +88,45 @@ export default function FamilyPlanView() {
       {addDate}
     </div>
   ) : <DateCards {...common} />;
+  const calendarButton = (
+    <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} disabled={!openItems.length} onClick={() => void addToCalendar(openItems)}>
+      <Icon name="download" size={16} />{c.addToCalendar}
+    </button>
+  );
+  const calendarNote = calendar ? (
+    <p role="status" className="small" style={{ fontWeight: 600 }}>
+      {calendar === "unavailable" ? c.calendarUnavailable : calendar === "native_share" ? c.calendarShared : c.calendarSaved}
+    </p>
+  ) : null;
+  // Desk "What came in" and phone "From the kindergarten's message" are one module in two compositions.
+  const cameIn = (
+    <div className={desk ? "g12" : undefined} data-module="family-plan-came-in">
+      {desk ? (
+        <>
+          {!empty && (
+            <div style={{ gridColumn: hasChange ? "span 4" : "span 6", display: "flex" }}>
+              <MessageTile {...common} />
+            </div>
+          )}
+          {hasChange && (
+            <div id="fp-change" style={{ gridColumn: "span 4", display: "flex" }}>
+              {held ? (
+                <Tile icon="history" kind="date" title={c.whatChanged} titleId="fp-chg-h"><HeldChangeCard item={held} plan={plan} lang={lang} c={c} onAsk={ask} desk /></Tile>
+              ) : <ChangeTile {...common} />}
+            </div>
+          )}
+          <div style={{ gridColumn: hasChange ? "span 4" : "span 6", display: "flex" }}>
+            <RequestsTile {...common} />
+          </div>
+        </>
+      ) : <FoundSnap plan={plan} lang={lang} c={c} onOpen={openDate} />}
+    </div>
+  );
   const cameInActions = empty ? null : (
     <span className="line" style={{ gap: 8, marginInlineStart: desk ? "auto" : undefined, flexWrap: "wrap" }}>
       {addMessage}
       {addDate}
-      <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} disabled={!openItems.length} onClick={() => void addToCalendar(openItems)}>
-        <Icon name="download" size={16} />{c.addToCalendar}
-      </button>
+      {calendarButton}
     </span>
   );
 
@@ -110,7 +148,7 @@ export default function FamilyPlanView() {
         <RouteSection id="fp-who" n={1} on>
           <div data-module="family-plan-who" className={desk ? "g12" : "fp-col"} style={desk ? undefined : { gap: 12 }}>
             <div className={desk ? "x8" : undefined} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <PlanStage composition={composition} plan={plan} lang={lang} c={c} onOpen={openDate} onAsk={ask} emptyAction={empty ? addMessage : null} />
+              <PlanStage composition={composition} plan={plan} lang={lang} c={c} onOpen={openDate} onAsk={ask} emptyAction={empty ? addMessage : null} heldId={held?.id ?? null} onReviewChange={() => scrollToSection("fp-change")} />
             </div>
             {desk && (
               <SideRail id="fp-dates" n={2} title={c.datesTitle} sub={empty ? undefined : c.datesSub} titleId="fp-dates-h" className={empty ? "x4 fp-rail-empty" : "x4"}>
@@ -120,44 +158,49 @@ export default function FamilyPlanView() {
           </div>
         </RouteSection>
 
+        {!desk && held && (
+          <RouteSection id="fp-change" n={2}>
+            <RouteHead title={c.changeHead} />
+            <div data-module="family-plan-change"><HeldChangeCard item={held} plan={plan} lang={lang} c={c} onAsk={ask} /></div>
+          </RouteSection>
+        )}
         {!desk && (
-          <RouteSection id="fp-dates" n={2}>
-            <RouteHead id="fp-dates-h" title={c.datesTitle} sub={empty ? undefined : c.datesSub} />
-            <div className="fp-col" style={{ gap: 10 }} data-module="family-plan-dates">
-              {datesBody}
+          <RouteSection id="fp-found" n={held ? 3 : 2}>
+            <RouteHead title={c.fromTheMessage} />
+            {cameIn}
+          </RouteSection>
+        )}
+        {!desk && (
+          <RouteSection id="fp-alerts" n={held ? 4 : 3}>
+            <RouteHead title={c.requestsReminders} />
+            <div className="fp-col" style={{ gap: 12 }}>
+              {/* N-Plan-M: the bell line and the actions in one card, no figures. */}
+              <RequestsTile {...common} figures={false}>
+                {calendarNote}
+                <div className="fp-col" style={{ gap: 8, alignItems: "flex-start" }}>{empty ? addDate : <>{addMessage}{addDate}{calendarButton}</>}</div>
+              </RequestsTile>
             </div>
           </RouteSection>
         )}
-
+        {desk && (
+          <>
         <RouteSection id="fp-came" n={3} stopTop={2}>
-          <div className="rhead" style={{ alignItems: "center", flexWrap: desk ? "nowrap" : "wrap" }}>
+          <div className="rhead" style={{ alignItems: "center", flexWrap: "nowrap" }}>
             <h2 className="h3" style={{ whiteSpace: "nowrap" }}>{c.cameInTitle}</h2>
             {cameInActions}
           </div>
-          {calendar && (
-            <p role="status" className="small" style={{ fontWeight: 600 }}>
-              {calendar === "unavailable" ? c.calendarUnavailable : calendar === "native_share" ? c.calendarShared : c.calendarSaved}
-            </p>
-          )}
-          <div className={desk ? "g12" : "fp-col"} style={desk ? undefined : { gap: 12 }} data-module="family-plan-came-in">
-            {!empty && (
-              <div style={desk ? { gridColumn: hasChange ? "span 4" : "span 6", display: "flex" } : undefined}>
-                <MessageTile {...common} />
-              </div>
-            )}
-            {hasChange && <div style={desk ? { gridColumn: "span 4", display: "flex" } : undefined}><ChangeTile {...common} /></div>}
-            <div style={desk ? { gridColumn: hasChange ? "span 4" : "span 6", display: "flex" } : undefined}>
-              <RequestsTile {...common} />
-            </div>
-          </div>
+          {calendarNote}
+          {cameIn}
         </RouteSection>
 
         <RouteSection id="fp-standing" n={4} stopTop={2}>
           <RouteHead title={c.standingTitle} />
-          <div className={desk ? "g12" : "fp-col"} data-module="family-plan-standing">
+          <div className="g12" data-module="family-plan-standing">
             <StandingTile {...common} composition={composition} />
           </div>
         </RouteSection>
+          </>
+        )}
       </Route>
 
       {plan.error && !sheet && (

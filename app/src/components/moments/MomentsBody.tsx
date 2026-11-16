@@ -22,14 +22,14 @@ import { portraitEvidenceLines, reviewedPortraitDraft } from "../companion/portr
 import { openFamilyTopicSheet } from "../companion/familyTopicEvents";
 import { PLACE_ICONS, PLACE_LABEL_KEYS } from "../overview/CaptureWhereArea";
 import {
-  areaMonthCounts, filterByAreaMonth, isKind, isMomentRecord, kindCounts, monthBuckets, MOMENTS_KINDS, MOMENTS_RANGES, MOMENTS_VIEWS, parseKind, parseMonth, parseView, placeCards, placeOf,
+  areaFigure, areaMonthCounts, filterByAreaMonth, isKind, isMomentRecord, kindCounts, monthBuckets, MOMENTS_KINDS, MOMENTS_RANGES, MOMENTS_VIEWS, parseKind, parseMonth, parseView, placeCards, placeOf,
   type MomentsKind, type MomentsRange, type MomentsView, type MonthBucket,
 } from "./momentsModel";
 import { DsRoot, Guide, Route, RouteSection, Scene, Token } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
 import { shelfLabel } from "../../lib/shelves/registry";
 import MomentsAreas from "./v10/MomentsAreas";
-import { fmtDayMonth, fmtDayWeek } from "../../lib/formatDate";
+import { fmtDayMonth, fmtDayTimeV10, fmtDayV10 } from "../../lib/formatDate";
 import { languageName } from "../../lib/languageName";
 import MomentsNewest, { type NewestLabels } from "./v10/MomentsNewest";
 import { STAGE_ORBS } from "./v10/stageOrbs";
@@ -212,12 +212,10 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   // A note's YYYY-MM-DD is the day the parent chose, not midnight UTC.
   // v10.3: the boards' day-first short day ("Sun 15 Nov"); a date-only value reads at noon.
   const dayOnly = (at: string) => /^\d{4}-\d{2}-\d{2}$/.test(at);
-  // A moment from another year carries its year (an older kept source must not read as this year's).
+  // The boards' day (fmtDayV10: "Sun 15 Nov", the year only outside this year); with the clock when the record has one.
   const date = (at: string, withTime = false) => {
     const when = dayOnly(at) ? `${at}T12:00:00` : at;
-    const day = fmtDayWeek(when, uiLang, withTime && !dayOnly(at));
-    const year = new Date(when).getFullYear();
-    return Number.isNaN(year) || year === new Date().getFullYear() ? day : `${day} ${year}`;
+    return withTime && !dayOnly(at) ? fmtDayTimeV10(when, uiLang) : fmtDayV10(when, uiLang);
   };
   const monthLabel = (bucket: Pick<MonthBucket, "from">) => new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(bucket.from);
   const multiYear = areaColumns.length > 0 && areaColumns[0].from.getFullYear() !== areaColumns[areaColumns.length - 1].from.getFullYear();
@@ -488,11 +486,12 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
 
   // The band: the page's one h1, the views, Everything by date and one figure.
   const inRange = rangeBuckets.flatMap(bucket => bucket.observations);
-  const marks = areaRows.reduce((sum, row) => sum + row.counts.reduce((s, n) => s + n, 0), 0);
+  // The marks and the moments behind them, from the grid's own set (never the range's every moment).
+  const { marks, moments: markedMoments } = areaFigure(areaColumns, area);
   const oldestInRange = inRange.length ? inRange[inRange.length - 1] : null;
   const figure = !reader && inRange.length > 0 ? (
     view === "areas" && marks > 0
-      ? <FrameFigure n={marks} unit={v.marksUnit(inRange.length)} sub={oldestInRange ? v.since(fmtDayMonth(oldestInRange.at, uiLang), v.rangeLast[range] ?? "") : undefined} />
+      ? <FrameFigure n={marks} unit={v.marksUnit(markedMoments)} sub={oldestInRange ? v.since(fmtDayMonth(oldestInRange.at, uiLang), v.rangeLast[range] ?? "") : undefined} />
       : <FrameFigure n={inRange.length} unit={v.momentsUnit(inRange.length)} sub={oldestInRange ? v.since(fmtDayMonth(oldestInRange.at, uiLang), v.rangeLast[range] ?? "") : undefined} />
   ) : null;
   const everything = (

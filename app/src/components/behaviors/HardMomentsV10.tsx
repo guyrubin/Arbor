@@ -6,7 +6,7 @@ import { renderSayThis } from "../../content/hardMomentCards";
 import { locText } from "../../content/hardMomentSurface";
 import { hardMomentPublication } from "../../content/pilotRelease";
 import { startConversationVoice } from "../../lib/companionConversation";
-import { fmtDayWeek } from "../../lib/formatDate";
+import { fmtDayV10 } from "../../lib/formatDate";
 import { MOMENTS_V10_COPY } from "../moments/momentsV10Copy";
 import { SendWordsButton } from "./HardMomentWords";
 import { useHardMomentShelf } from "./HardMomentsSection";
@@ -43,7 +43,7 @@ export function HardMomentLastTimeCard({ phone }: { phone: boolean }) {
       <section data-testid="hm-last-time" data-basis={held.basis} className="hm-last-h">
         <span className="gi hard" aria-hidden="true"><Icon name="favorite" size={16} /></span>
         <h3 className="h3">{held.basis === "used" ? hc.lastUsed : hc.lastTime}</h3>
-        <span className="small nowrap">{fmtDayWeek(held.at, locale)}</span>
+        <span className="small nowrap">{fmtDayV10(held.at, locale)}</span>
       </section>
       <button type="button" data-testid="hm-last-time-open" className="hm-last-q" onClick={() => openHardMomentNow(card.id)}>
         <span data-testid="hm-last-time-words" className="q"><bdi>“{sentence}”</bdi></span>

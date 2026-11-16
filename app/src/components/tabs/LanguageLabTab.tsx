@@ -16,7 +16,7 @@ import { ageLabel } from "../../lib/childAge";
 import { aggregateLangCounts, type LangObservation } from "../../growth/vocabAgg";
 import LanguageLabVocabView, { PhraseLogForm, WordsList } from "./LanguageLabVocabView";
 import { languageName } from "../../lib/languageName";
-import { fmtDayWeek } from "../../lib/formatDate";
+import { fmtDayV10 } from "../../lib/formatDate";
 import { quotesFromDocs } from "../../lib/loop/tonight";
 import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
 import { ageMonthsOf, isUnderThree } from "../../lib/age/forChild";
@@ -194,7 +194,7 @@ export default function LanguageLabTab() {
                 <li key={w.id} className="wchip">
                   <i className="tg-said" aria-hidden="true">Aa</i>
                   <span className="w" dir="auto">{w.phrase}</span>
-                  <small>{[ln(w.language), fmtDayWeek(w.timestamp, uiLang)].join(" · ")}</small>
+                  <small>{[ln(w.language), fmtDayV10(w.timestamp, uiLang)].join(" · ")}</small>
                 </li>
               ))}
             </ul>

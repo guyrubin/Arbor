@@ -110,3 +110,20 @@ describe("family plan model", () => {
     expect(moved.version).toBe(2);
   });
 });
+
+describe("a held change (One change to review)", () => {
+  it("holds the new day/time without moving the date; applying it clears the hold", async () => {
+    const { holdChange, dropPendingChange } = await import("./model");
+    const d = createDate({ id: "v", kind: "join", title: "Group visit", date: "2026-11-19", time: "10:00", origin: "message", sourceLine: "at 10:00", sourceLineNo: 1 }, "o", "2026-11-16T08:00:00.000Z");
+    expect(d.sourceLineNo).toBe(1);
+    const held = holdChange(d, { date: "2026-11-19", time: "11:30", sourceLine: "now at 11:30" }, "2026-11-16T15:10:00.000Z");
+    expect(held.time).toBe("10:00");
+    expect(held.version).toBe(1);
+    expect(held.pendingChange).toEqual({ date: "2026-11-19", time: "11:30", sourceLine: "now at 11:30", receivedAt: "2026-11-16T15:10:00.000Z" });
+    const applied = applyChange(held, held.pendingChange!, "o", "2026-11-16T17:40:00.000Z", "");
+    expect(applied.time).toBe("11:30");
+    expect(applied.pendingChange).toBeNull();
+    expect(dropPendingChange(held, "x").pendingChange).toBeNull();
+    expect(() => holdChange(d, { date: "2026-02-31" }, "x")).toThrow("invalid_date");
+  });
+});

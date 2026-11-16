@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import { ASPECT_ICONS, isTold, type AspectId, type AspectState } from "../../lib/aboutAspects";
 import { Icon } from "../ui/Icon";
@@ -26,8 +26,20 @@ export default function AboutAreaIndex({ aspects, selected, waiting, onSelect, p
 }) {
   const { t, uiLang } = useLanguage();
   const copy = aboutCopy(uiLang);
+  const rowRef = useRef<HTMLDivElement>(null);
+  // V77 (N-About-M): on the phone the selected area is scrolled into the row's view.
+  useEffect(() => {
+    if (!phone) return;
+    const row = rowRef.current;
+    const tile = row?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (!row || !tile || typeof row.scrollBy !== "function") return;
+    const r = row.getBoundingClientRect();
+    const b = tile.getBoundingClientRect();
+    // Scroll the row alone (scrollIntoView would also slide the band's clipped box).
+    if (b.left < r.left || b.right > r.right) row.scrollBy({ left: b.left + b.width / 2 - (r.left + r.width / 2) });
+  }, [phone, selected]);
   return (
-    <div className={`mci${phone ? " m ds-snap-scroll" : ""}`} style={{ "--n": aspects.length } as React.CSSProperties} role="group" aria-label={copy.pickArea} data-testid="about-area-index">
+    <div ref={rowRef} className={`mci${phone ? " m ds-snap-scroll" : ""}`} style={{ "--n": aspects.length } as React.CSSProperties} role="group" aria-label={copy.pickArea} data-testid="about-area-index">
       {aspects.map((state) => {
         const told = isTold(state);
         const remembered = state.known?.source === "memory";

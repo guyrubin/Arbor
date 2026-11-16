@@ -3,6 +3,7 @@ import { Icon } from "../../ui/Icon";
 import { Fig, Guide, Route, RouteHead, RouteSection, Scene, SideRail, Snap, SnapDots, StartHere, Tile, TokenLegend, type GuideStop } from "../../../design/primitives";
 import type { Composition } from "../../../design/useComposition";
 import { planString } from "../../../lib/plans/planStrings";
+import { fmtDayV10 } from "../../../lib/formatDate";
 import { daysBetween, dayKey } from "../../../lib/programs/enrolment";
 import { activePlans, nightRecorded, nightsCount, tonightStepForChild, tonightStepForParent, type ActivePlan } from "../../../lib/plans/planWeek";
 import { planBookFromDoc } from "../../../lib/library/plans/planBookDoc";
@@ -52,7 +53,7 @@ export interface ChallengeScreenProps {
 
 const fmt = (lang: "en" | "he", d: Date, opts: Intl.DateTimeFormatOptions) => {
   try {
-    return new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-US", opts).format(d);
+    return new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-GB", opts).format(d);
   } catch {
     return d.toDateString();
   }
@@ -63,7 +64,7 @@ const dayDate = (key: string) => {
 };
 
 /** "Night 9 of 14" as a figure: the number big, the words around it (one template). */
-function NightFig({ lang, night, total, sub, size }: { lang: "en" | "he"; night: number; total: number; sub: string; size: "md" | "sm" }) {
+function NightFig({ lang, night, total, sub, size }: { lang: "en" | "he"; night: number; total: number; sub?: string; size: "md" | "sm" }) {
   const [before, after = ""] = planString("card.night", lang, { n: "\u0000", total }).split("\u0000");
   return (
     <div className={`fig ${size}`}>
@@ -71,7 +72,7 @@ function NightFig({ lang, night, total, sub, size }: { lang: "en" | "he"; night:
       <b>{night}</b>
       <span>
         {after.trim()}
-        <small>{sub}</small>
+        {sub && <small>{sub}</small>}
       </span>
     </div>
   );
@@ -83,15 +84,14 @@ function Journey({ plan, lang, composition }: { plan: ActivePlan; lang: "en" | "
   const desk = composition === "desk";
   const approved = new Date(plan.doc.approvedAt);
   const reflectFrom = new Date(approved.getTime() + plan.doc.durationDays * 86_400_000);
-  const short = { weekday: "short", day: "numeric", month: "short" } as const;
   const current = plan.review ? 4 : 3;
   const names = desk ? c.stops : c.stopsShort;
   const stops = [
-    { name: names.recognise, sub: fmt(lang, new Date(plan.doc.createdAt || plan.doc.approvedAt), short) },
+    { name: names.recognise, sub: fmtDayV10(plan.doc.createdAt || plan.doc.approvedAt, lang) },
     { name: names.agree, sub: c.threeSteps },
-    { name: names.preview, sub: c.approved(fmt(lang, approved, { day: "numeric", month: "short" })) },
-    { name: names.try, sub: c.nightOf(Math.min(plan.day, plan.doc.durationDays), plan.doc.durationDays) },
-    { name: names.reflect, sub: c.from(fmt(lang, reflectFrom, short)) },
+    { name: names.preview, sub: c.approvedShort },
+    { name: names.try, sub: c.tonightLower },
+    { name: names.reflect, sub: c.from(fmtDayV10(reflectFrom, lang)) },
   ];
   const pts = mirrorPoints(zigzagPoints(5, { low: desk ? 80 : 76, high: desk ? 20 : 24 }), lang === "he");
   return (
@@ -137,7 +137,7 @@ function NightsStrip({ plan, lang, now }: { plan: ActivePlan; lang: "en" | "he";
         const isToday = k === today;
         return (
           <span key={k} className={isToday ? "t" : yes ? "y" : "u"}>
-            {fmt(lang, d, { weekday: "narrow" })}
+            {fmt(lang, d, { weekday: "short" })}
             <b>{d.getDate()}</b>
             <i className={`tok plan md${yes ? "" : isToday ? " here" : " none"}`} aria-hidden="true" />
           </span>
@@ -161,10 +161,10 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
 
   const stops: GuideStop[] = plan
     ? [
-        { id: "cp-stage", title: c.childPlan(childName), sub: s("card.night", { n: Math.min(plan.day, plan.doc.durationDays), total: plan.doc.durationDays }) },
-        { id: "cp-today", title: c.today, sub: c.todaySub },
+        { id: "cp-stage", title: c.childPlan(childName), sub: c.bookReady },
+        { id: "cp-today", title: c.today, sub: c.todayGuideSub },
         { id: "cp-page", title: c.onePageShort, sub: c.onePageSub },
-        { id: "cp-all", title: c.allShort(listed.length), sub: s("section.hard") },
+        { id: "cp-all", title: c.allShort(listed.length), sub: c.pickAnother },
       ]
     : [{ id: "cp-all", title: c.allShort(listed.length), sub: s("section.hard") }];
 
@@ -175,11 +175,11 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
   const childLine = plan ? tonightStepForChild(plan.doc, lang, p.gender) : null;
   const total = plan?.doc.durationDays ?? 0;
   const night = plan ? Math.min(plan.day, total) : 0;
-  const approvedShort = plan ? fmt(lang, new Date(plan.doc.approvedAt), { day: "numeric", month: "short" }) : "";
 
   const actions = plan && (
     <div className="cp-act" style={{ padding: desk ? "14px 28px 24px" : 0, marginTop: desk ? "auto" : undefined, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-      {desk && parentStep && <span style={{ flexBasis: "100%", fontSize: 14, color: "var(--ink)" }} dir="auto">{s("card.tonight", { step: parentStep })}</span>}
+      {/* Once-only: tonight's step lives in Today (the rail) and the three steps; here only the book. */}
+      {desk && <span style={{ flexBasis: "100%", fontSize: 14, color: "var(--ink)" }} dir="auto"><b style={{ fontWeight: 600 }}>{c.tonightAt}</b> {c.tonightRead(childName)}</span>}
       {plan.review && desk && <button type="button" className="btn primary" style={{ minWidth: 160 }} data-plan-keep="" onClick={() => p.onKeep(plan)}>{s("review.keep")}</button>}
       {desk && (
         <button type="button" className={plan.review ? "btn ghost" : "btn primary"} style={plan.review ? { background: "var(--card)" } : { minWidth: 160 }} data-plan-open="" onClick={() => p.onOpenBook(plan)}>
@@ -188,7 +188,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
         </button>
       )}
       <button type="button" className={`btn ghost${desk ? "" : " sm"}`} style={{ background: "var(--card)" }} data-plan-print="" onClick={() => p.onPrint(plan)}>
-        <Icon name="description" size={16} />
+        <Icon name="description" size={15} />
         {s("section.print")}
       </button>
       <button type="button" className={`btn ghost${desk ? "" : " sm"}`} style={{ background: "var(--card)" }} data-plan-change="" onClick={() => p.onChange(plan)}>{s("review.change")}</button>
@@ -200,11 +200,12 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
     <div className="stack ds-col" style={{ gap: 10 }} data-plan-night="">
       {!recorded && !notTonight && (
         <>
-          <b style={{ fontSize: 14.5, fontWeight: 600 }}>{s("today.night.q")}</b>
+          <b style={{ fontSize: 14, fontWeight: 600 }}>{s("today.night.q")}</b>
           <div className="cp-yn" role="group" aria-label={s("today.night.q")}>
             <button type="button" data-plan-night-yes="" onClick={() => p.onNight(plan)}>{s("today.night.yes")}</button>
             <button type="button" data-plan-night-no="" onClick={() => setNotTonight(true)}>{s("today.night.no")}</button>
           </div>
+          <span className="small">{c.oneTap}</span>
         </>
       )}
       {recorded && (
@@ -215,7 +216,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
             <p role="status" className="small">{s("today.night.journaled")}</p>
           ) : (
             <button type="button" className="btn ghost sm" style={{ background: "var(--card)" }} data-plan-night-journal="" onClick={() => { setJournaled(true); p.onJournal(plan); }}>
-              <Icon name="edit_note" size={16} />
+              <Icon name="edit_note" size={15} />
               {s("today.night.journal")}
             </button>
           )}
@@ -237,18 +238,17 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
           <span className="kicker">{c.challengePlan}</span>
           <StartHere>{c.today}</StartHere>
         </span>
-        {desk && <NightFig lang={lang} night={night} total={total} sub={s("section.nights", { count: nightsCount(plan.doc) })} size="md" />}
+        {desk && <NightFig lang={lang} night={night} total={total} size="md" />}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", gap: desk ? 22 : 14, alignItems: "center", padding: desk ? "6px 28px 0" : "10px 16px 0" }}>
         <ChallengeBook title={title} nameLine={plan.def.coverNameLine[lang].replace("{name}", childName)} size={desk ? "lg" : undefined} width={desk ? 132 : 92} label={c.book(title)} />
         <div className="stack ds-col" style={{ gap: desk ? 8 : 6 }}>
-          <span className="small" style={{ fontWeight: 600, color: "var(--ink-soft)" }} dir="auto">{plan.def.parentWords[lang]}</span>
-          <h1 className="hero" dir="auto" style={{ fontSize: desk ? 36 : 24, lineHeight: 1.06 }}>{plan.review ? s("review.title") : title}</h1>
+          <h1 className="hero" dir="auto" style={{ fontSize: desk ? 34 : 22, lineHeight: 1.08 }}>{plan.review ? s("review.title") : title}</h1>
           {plan.review && <p data-plan-review="" className="cp-lede">{s("review.body", { count: nightsCount(plan.doc) })}</p>}
           {plan.review ? null : desk ? (
-            <p style={{ fontSize: 14.5, lineHeight: 1.42, color: "var(--ink-soft)", maxWidth: 470 }} dir="auto">{plan.def.coverLine[lang]}</p>
+            <p style={{ fontSize: 14, lineHeight: 1.42, color: "var(--ink-soft)", maxWidth: 470 }} dir="auto">{c.stageLede(childName, plan.doc.durationDays)}</p>
           ) : (
-            <NightFig lang={lang} night={night} total={total} sub={s("section.nights", { count: nightsCount(plan.doc) })} size="sm" />
+            <NightFig lang={lang} night={night} total={total} size="sm" />
           )}
         </div>
       </div>
@@ -263,12 +263,12 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
     <>
       <div className="nx-co" style={{ gridTemplateColumns: "minmax(0, 1fr)", gap: 10, alignItems: "start", flex: desk ? 1.6 : undefined }}>
         <div className="line between" style={{ gap: 8, flexWrap: "wrap" }}>
-          <b style={{ fontSize: 14.5, fontWeight: 600 }}>{s(`time.${plan.doc.time}` as Parameters<typeof planString>[0])}</b>
-          <span className="cp-st2 ok">{c.approvedOn(approvedShort)}</span>
+          <b style={{ fontSize: 14, fontWeight: 600 }}>{s(`time.${plan.doc.time}` as Parameters<typeof planString>[0])}</b>
+          <span className="cp-st2 ok"><Icon name="check" size={15} />{c.approvedByYou}</span>
         </div>
         {parentStep && (
           <div className="cp-st">
-            <span className="cp-n"><b>1</b><Icon name="group" size={20} /></span>
+            <span className="cp-n"><b>1</b><Icon name="group" size={18} /></span>
             <div className="cp-pl" dir="auto"><small>{c.youDo}</small>{parentStep}</div>
           </div>
         )}
@@ -297,8 +297,8 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
   );
 
   const nightsTile = plan && (
-    <Tile className={desk ? "x4" : undefined} icon="nightlight" kind="plan" title={c.nights} titleId="cp-nights">
-      <Fig n={nightsCount(plan.doc)} unit={c.nightsUnit} sub={c.since(fmt(lang, new Date(plan.doc.approvedAt), { weekday: "short", day: "numeric", month: "short" }))} size="md" />
+    <Tile className={desk ? "x4" : undefined} icon="nightlight" kind="plan" title={c.tried} titleId="cp-nights">
+      <Fig n={nightsCount(plan.doc)} unit={c.nightsUnit} size="md" />
       <NightsStrip plan={plan} lang={lang} now={p.now} />
       <TokenLegend
         items={[
@@ -310,7 +310,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
   );
 
   const sourcesTile = plan && (
-    <Tile className={desk ? "x4" : undefined} icon="menu_book" title={s("print.sources")} titleId="cp-sources">
+    <Tile className={desk ? "x4" : undefined} icon="menu_book" title={c.whereFrom} titleId="cp-sources">
       <ul className="stack ds-col" style={{ gap: 8, margin: 0, paddingInlineStart: 18, fontSize: 13, lineHeight: 1.35 }} data-plan-sources="">
         {plan.def.sources.map((src) => (
           <li key={src.id} dir="auto">
@@ -328,12 +328,12 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
     if (!desk) {
       return (
         <button key={d.id} type="button" className={`cp-row${r ? " run" : ""}`} onClick={onClick} data-plan-door={d.id} aria-current={r && plan?.def.id === d.id ? "true" : undefined}>
-          <i className="ci" aria-hidden="true"><Icon name="auto_stories" size={20} /></i>
+          <i className="ci" aria-hidden="true"><Icon name="auto_stories" size={18} /></i>
           <span>
             <b dir="auto">{bookTitle}</b>
             <small dir="auto">{d.parentWords[lang]}</small>
           </span>
-          <span className="rs">{r ? c.runningNight(Math.min(r.day, r.doc.durationDays), r.doc.durationDays) : s("chooser.age", { age: d.ageText })}</span>
+          <span className="rs">{r ? (plan?.def.id === d.id ? c.runningAbove : c.runningNight(Math.min(r.day, r.doc.durationDays), r.doc.durationDays)) : s("chooser.age", { age: d.ageText })}</span>
         </button>
       );
     }
@@ -348,7 +348,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
             </div>
           </div>
           <div className="cf2" style={{ flexWrap: "nowrap" }}>
-            {r ? <span className="run">{c.runningNight(Math.min(r.day, r.doc.durationDays), r.doc.durationDays)}</span> : <span data-plan-door-age="">{s("chooser.age", { age: d.ageText })}</span>}
+            {r ? <span className="run">{plan?.def.id === d.id ? c.runningOpenAbove : c.runningNight(Math.min(r.day, r.doc.durationDays), r.doc.durationDays)}</span> : <span data-plan-door-age="">{s("chooser.age", { age: d.ageText })}</span>}
             {!r && <span>{c.days(d.defaultDurationDays)}</span>}
             <span style={{ marginInlineStart: "auto", background: "none", padding: 0, color: "var(--sapphire-deep)" }}>{r ? s("card.open") : c.startThis}</span>
           </div>
@@ -378,7 +378,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
           <RouteSection id="cp-stage" n={1} on>
             <div className="g12" data-module="plans-challenge">
               <div className="x8" style={{ display: "flex", flexDirection: "column" }}>{stage}</div>
-              <SideRail id="cp-today" n={2} title={c.today} sub={c.todaySub} titleId="cp-today-title" className="x4">{todayCards}</SideRail>
+              <SideRail id="cp-today" n={2} title={c.today} sub={c.todaySub(childName)} titleId="cp-today-title" className="x4">{todayCards}</SideRail>
             </div>
           </RouteSection>
         )}
@@ -398,7 +398,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
               </div>
             </RouteSection>
             <RouteSection id="cp-today" n={2}>
-              <RouteHead title={c.today} sub={c.todaySub} />
+              <RouteHead title={c.today} sub={c.todaySub(childName)} />
               <div className="stack ds-col" style={{ gap: 10 }}>{todayCards}</div>
             </RouteSection>
           </>

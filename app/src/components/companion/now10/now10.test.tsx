@@ -173,7 +173,7 @@ describe("Coming up's Family plan slot (synthetic dates)", () => {
     expect(lines).toHaveLength(NOW_FAMILY_PLAN_ROWS);
     expect(lines.map((l) => l.id)).toEqual(["today", "next", "later"]);
     expect(lines[0]).toMatchObject({ day: 16, nobody: false, title: "Date today", sub: "08:30 · You" });
-    expect(lines[1]).toMatchObject({ day: 18, nobody: false, sub: "dana" });
+    expect(lines[1]).toMatchObject({ day: 18, nobody: false, sub: "Dana" });
     expect(lines[2]).toMatchObject({ day: 20, nobody: true, sub: NOW_V10_COPY.en.familyPlanNobody });
     lines[1].onOpen();
     expect(onOpen).toHaveBeenCalledTimes(1);

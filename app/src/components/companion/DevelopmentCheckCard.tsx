@@ -22,7 +22,7 @@ export default function DevelopmentCheckCard({ onCheck, primaryMoveProps, rechec
   const { t, uiLang } = useLanguage();
   return (
     <div className="mcrow-btn ms-check" data-testid="dev-map-checkrow">
-      <span className="tg" aria-hidden="true"><Icon name="fact_check" size={16} /></span>
+      <span className="tg" aria-hidden="true"><Icon name="fact_check" size={18} /></span>
       <span className="mcrow-text">
         <h3 className="ok">{t("companion.milestones.checkTitle")}</h3>
         <span className="ms-obj-src" data-testid="dev-map-checkrow-sub">

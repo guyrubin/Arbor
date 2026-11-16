@@ -1,3 +1,4 @@
+import { fmtDayV10 } from "../../lib/formatDate";
 import React, { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { celebrate } from "../../lib/celebrate";
@@ -19,10 +20,10 @@ import { useDevScore } from "../../hooks/useDevScore";
 import { ageYearsFromProfile } from "../../lib/childAge";
 import { concernsForBehaviors } from "../../content/selectCards";
 import { recentBehaviorTypes } from "../../content/hardMomentSurface";
-import { readLearnFeedback } from "../../learn/learnFeedback";
+import { readLearnFeedback, setLearnFeedback, type LearnFeedback } from "../../learn/learnFeedback";
 import { LEARN_CARDS } from "../../learn/learnCards";
 import type { LearnRankSignals } from "../../learn/learnLibrary";
-import { ageVisibleLearnCards, devMapHasSignal, pickDayKey, todaysLearnPick } from "../../learn/todaysPick";
+import { devMapHasSignal, pickDayKey, todaysLearnPick } from "../../learn/todaysPick";
 // v3 EXTRA-FORYOU: courses and reads by area (the ONE domain registry: names,
 // glyphs, order) and the family-ritual door's picture.
 import { courseArea, courseAreaCounts, readArea } from "../../learn/courseAreas";
@@ -96,6 +97,9 @@ export default function Masterclasses() {
   const composition = useComposition();
   const desk = composition === "desk";
   const [openId, setOpenId] = useState<string | null>(null);
+  // V77 "Not this one": the Library's own per-card pulse (-1), which lowers that
+  // read in this device's ranking, so today's pick moves to the next read.
+  const [feedback, setFeedback] = useState<LearnFeedback>(() => readLearnFeedback());
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [reflection, setReflection] = useState<Record<string, string>>({});
   const [allCourses, setAllCourses] = useState(false);
@@ -173,7 +177,7 @@ export default function Masterclasses() {
     ageYears: ageYearsFromProfile(childProfile),
     focusDomain: devScore.focusDomain,
     recentConcerns: concernsForBehaviors(recentBehaviorTypes(behaviorLogs, new Date())),
-    helpfulness: readLearnFeedback(),
+    helpfulness: feedback,
     savedIds: savedLearnIds,
     // v3 EXTRA-FORYOU: the open family question, in the parent's own words.
     topicText: activeFamilyTopic?.title ?? null,
@@ -190,18 +194,10 @@ export default function Masterclasses() {
   // re-derived flag to `todaysLearnPick` (learn/todaysPick.ts).
   // B-SHELL-NEW-2j: the parent's own note only on the logs branch (saved outranks it).
   const pickMoment = todaysRead && !todaysRead.fromSaved && todaysRead.fromConcerns ? todaysRead.fromMoment : null;
-  const pickMomentLead = (() => {
-    if (!pickMoment) return "";
-    const day0 = new Date(); day0.setHours(0, 0, 0, 0);
-    const at0 = new Date(pickMoment.at); at0.setHours(0, 0, 0, 0);
-    const days = Math.round((day0.getTime() - at0.getTime()) / 86_400_000);
-    if (days <= 0) return t("elev.learnCare.pick.moment.today");
-    if (days === 1) return t("elev.learnCare.pick.moment.yesterday");
-    const locale = uiLang === "he" ? "he-IL" : "en-GB";
-    return days <= 6
-      ? t("elev.learnCare.pick.moment.weekday", { day: new Intl.DateTimeFormat(locale, { weekday: "long" }).format(pickMoment.at) })
-      : t("elev.learnCare.pick.moment.date", { day: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(pickMoment.at) });
-  })();
+  // V77: the parent's knot reads "You wrote · Fri 6 Nov" (the boards' day-first short date).
+  const pickMomentLead = pickMoment
+    ? copy.youWrote(fmtDayV10(pickMoment.at, uiLang === "he" ? "he" : "en"))
+    : "";
   const pickWhy = !todaysRead
     ? ""
     : todaysRead.fromSaved
@@ -242,8 +238,8 @@ export default function Masterclasses() {
   ) : null;
   const practiceKnot = practice && program.model ? (
     <div className="knot sets fy-practice">
-      <span className="by"><Icon name="calendar_month" size={14} />{copy.thisWeeksPractice}</span>
-      <b dir="auto">{copy.practiceLine(program.model.name, program.model.week, practice)}</b>
+      <span className="by"><Icon name="calendar_month" size={15} />{copy.yourProgram}</span>
+      <b dir="auto">{copy.practiceLine(program.model.name, program.model.week)}</b>
     </div>
   ) : null;
   const knots = [youKnot, aiKnot, practiceKnot].filter(Boolean) as React.ReactElement[];
@@ -256,7 +252,6 @@ export default function Masterclasses() {
   const selectedArea = activeArea && areaCounts.some((a) => a.area === activeArea) ? activeArea : null;
   const courseList = catalog.filter((c) => !selectedArea || courseArea(c.id) === selectedArea);
   const shownCourses = allCourses ? courseList : courseList.slice(0, RAIL_COURSES);
-  const readsForAge = ageVisibleLearnCards(LEARN_CARDS, learnSignals.ageYears).length;
 
   const goProgram = () => openProgramPage(setActiveTab as never);
   const openLibrary = () => requestLearnRead({ source: "foryou-library" });
@@ -264,12 +259,13 @@ export default function Masterclasses() {
   const pickTitle = todaysRead ? (he ? todaysRead.card.title.he : todaysRead.card.title.en) : nextCourse ? (he ? nextCourse.titleHe : nextCourse.title) : null;
   const pickArt = todaysRead ? DOMAIN_ART[readArea(todaysRead.card.category)] : nextCourse ? DOMAIN_ART[courseArea(nextCourse.id) ?? "family"] : null;
 
-  const stops: GuideStop[] = [
-    { id: "fy-today", title: copy.guideToday, sub: pickMinutes != null ? copy.guideTodaySub(pickMinutes) : copy.guideTodayNone },
-    { id: "fy-courses", title: copy.guideCourses, sub: copy.guideCoursesSub(catalog.length, firstName) },
-    { id: "fy-programs", title: copy.guidePrograms, sub: program.model ? copy.guideProgramsSub : copy.guideProgramsNone },
-    { id: "fy-more", title: copy.guideMore, sub: copy.guideMoreSub },
-  ];
+  // V77: the desk reads pick, courses (the rail), programs, more; the phone
+  // reads pick, programs, courses, more, with the boards' one-word stops.
+  const stopToday: GuideStop = { id: "fy-today", title: desk ? copy.guideToday : copy.stopPick, sub: pickMinutes != null ? copy.guideTodaySub : copy.guideTodayNone };
+  const stopCourses: GuideStop = { id: "fy-courses", title: desk ? copy.guideCourses : copy.stopCourses, sub: copy.guideCoursesSub };
+  const stopPrograms: GuideStop = { id: "fy-programs", title: desk ? copy.guidePrograms : copy.stopPrograms, sub: program.models.length ? copy.guideProgramsSub(program.models.map((m) => m.name).join(", ")) : copy.guideProgramsNone };
+  const stopMore: GuideStop = { id: "fy-more", title: desk ? copy.guideMore : copy.stopMore, sub: copy.guideMoreSub };
+  const stops: GuideStop[] = desk ? [stopToday, stopCourses, stopPrograms, stopMore] : [stopToday, stopPrograms, stopCourses, stopMore];
 
   // ── 1 · For today: the pick, tied to what the parent wrote ──────────────
   const pickScene = (
@@ -285,7 +281,7 @@ export default function Masterclasses() {
       <div className="line between" style={{ flexWrap: "wrap", gap: 8 }}>
         <span className="gsec">
           {pickMinutes != null && (
-            <span className="kicker" data-testid="academy-pick-minutes">{todaysRead ? copy.pickKicker(pickMinutes) : copy.pickKickerCourse(pickMinutes)}</span>
+            <span className="kicker" data-testid="academy-pick-minutes">{todaysRead ? (desk ? copy.pickKicker(pickMinutes) : copy.pickKickerShort(pickMinutes)) : copy.pickKickerCourse(pickMinutes)}</span>
           )}
           <StartHere>{copy.startHere}</StartHere>
         </span>
@@ -294,13 +290,13 @@ export default function Masterclasses() {
           {!desk && <TrustLink surface="foryou-pick" />}
         </span>
       </div>
-      <div className="fy-pick-head" style={pickArt ? undefined : { gridTemplateColumns: "minmax(0, 1fr)" }}>
+      <div className="fy-pick-head" style={pickArt && desk ? undefined : { gridTemplateColumns: "minmax(0, 1fr)" }}>
         <div className="stack fy-col" style={{ gap: 8 }}>
           <h1 className="hero" id="fy-pick-title" dir="auto">{pickTitle ?? t("elev.hero.academy.title")}</h1>
           {desk && todaysRead && <p className="fy-pick-hook" dir="auto">{he ? todaysRead.card.hook.he : todaysRead.card.hook.en}</p>}
           {!pickTitle && <p className="fy-pick-hook">{t("elev.hero.academy.sub")}</p>}
         </div>
-        {pickArt && <AreaForm art={pickArt} width={desk ? 210 : 112} ratio={0.57} zoom={1.13} />}
+        {pickArt && desk && <AreaForm art={pickArt} width={210} ratio={0.57} zoom={1.13} />}
       </div>
       {knots.length > 0 && (
         <div className="thread fy-thread" style={{ gridTemplateColumns: threadCols }}>
@@ -329,6 +325,11 @@ export default function Masterclasses() {
           >
             <Icon name="menu_book" size={18} />{t(todaysRead ? "elev.learnCare.pick.cta" : "elev.hero.academy.cta")}
           </button>
+          {todaysRead && (
+            <button type="button" className="ghostb fy-notthis" data-testid="academy-pick-not-this" onClick={() => setFeedback(setLearnFeedback(todaysRead.card.id, -1))}>
+              {copy.notThisOne}
+            </button>
+          )}
           {desk && <TrustLink surface="foryou-pick" className="fy-trust" />}
         </div>
       )}
@@ -400,11 +401,12 @@ export default function Masterclasses() {
               </span>
             </span>
             <span className="go">
-              {isCardDone ? <><Icon name="check" size={15} />{t("master.done")}</> : <>{t("master.read")}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" /></>}
+              {isCardDone ? <><Icon name="check" size={15} />{t("master.done")}</> : <><span className="fy-go-t">{t("master.read")}</span><Icon name="chevron_right" size={16} className="rtl:-scale-x-100" /></>}
             </span>
           </button>
         );
       })}
+      {!desk && <p className="small fy-legend">{copy.pipsLegend}</p>}
       {courseList.length > RAIL_COURSES && (
         <MoreLink onClick={() => setAllCourses((v) => !v)}>{allCourses ? copy.fewerCourses : copy.allCourses(courseList.length)}</MoreLink>
       )}
@@ -429,7 +431,7 @@ export default function Masterclasses() {
   // title on a desk; on a phone the block brings its numbered heading.
   const coursesBlock = (
     <div data-module="academy-catalogue" data-testid="academy-courses" className="stack fy-col" style={{ gap: 12 }}>
-      {!desk && <RouteHead id="fy-courses-title" title={t("elev.learnCare.byArea")} sub={copy.guideCoursesSub(catalog.length, firstName)} />}
+      {!desk && <RouteHead id="fy-courses-title" title={t("elev.learnCare.byArea")} sub={copy.coursesForAgeShort(catalog.length, firstName)} />}
       {!desk && ageSwitch && <div className="fy-switchrow">{ageSwitch}</div>}
       {coursesBody}
     </div>
@@ -463,7 +465,7 @@ export default function Masterclasses() {
       <Tile className={desk ? "x6" : undefined} icon="local_library" title={copy.libraryTitle} titleId="fy-library-title">
         <div className="fy-door">
           <AreaForm art={EMPTY_ART.learn} width={desk ? 104 : 84} ratio={0.62} zoom={1.05} />
-          <p dir="auto">{copy.librarySub(readsForAge, firstName)}</p>
+          <p dir="auto">{copy.librarySub(firstName)}</p>
         </div>
         <MoreLink onClick={openLibrary} className="fy-library-open">
           <span data-testid="academy-library-open">{t("elev.learnCare.library.open")}</span>
@@ -480,6 +482,16 @@ export default function Masterclasses() {
         </MoreLink>
       </Tile>
     </>
+  );
+
+  // Your programs: section 3 on a desk, section 2 on a phone (the boards' order).
+  const programsSection = (
+    <RouteSection id="fy-programs" n={desk ? 3 : 2} stopTop={desk ? 0 : 4} aria-labelledby="fy-programs-title">
+      <div data-module="academy-programs" className="stack fy-col" style={{ gap: 12 }}>
+        <RouteHead id="fy-programs-title" title={copy.guidePrograms} sub={program.model ? (desk ? copy.programsRunningSub : undefined) : t("elev.program.none.title")} />
+        <ForYouPrograms state={program} copy={copy} composition={composition} onOpen={goProgram} />
+      </div>
+    </RouteSection>
   );
 
   return (
@@ -507,18 +519,13 @@ export default function Masterclasses() {
               <RouteSection id="fy-today" n={1} on>
                 {pickScene}
               </RouteSection>
-              <RouteSection id="fy-courses" n={2} stopTop={4} aria-labelledby="fy-courses-title">
+              {programsSection}
+              <RouteSection id="fy-courses" n={3} stopTop={4} aria-labelledby="fy-courses-title">
                 {coursesBlock}
               </RouteSection>
             </>
           )}
-
-          <RouteSection id="fy-programs" n={3} stopTop={desk ? 0 : 4} aria-labelledby="fy-programs-title">
-            <div data-module="academy-programs" className="stack fy-col" style={{ gap: 12 }}>
-              <RouteHead id="fy-programs-title" title={copy.guidePrograms} sub={program.model ? copy.programsRunningSub : t("elev.program.none.title")} />
-              <ForYouPrograms state={program} copy={copy} composition={composition} onOpen={goProgram} />
-            </div>
-          </RouteSection>
+          {desk && programsSection}
 
           <RouteSection id="fy-more" n={4} stopTop={desk ? 0 : 4} aria-labelledby="fy-more-title">
             <div data-module="academy-more" data-module-demoted className="stack fy-col" style={{ gap: 12 }}>

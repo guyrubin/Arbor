@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDayV10 as fmtDay } from "../../lib/formatDate";
 import { aspectOfWords, type AspectState } from "../../lib/aboutAspects";
 import { forgetsOnIso, isPermanentRetention } from "../../lib/memoryExpiry";
 import { scrubMemoryProposals } from "../../server/parentWordsScrub";
@@ -127,7 +127,7 @@ export function StageCard({ m, stored, index, queueLength, compact, onEdited }: 
             <p className="about-stage-fact"><Quote>{m.fact}</Quote></p>
           )}
           {!editing && (compact ? (
-            <span className="about-stage-why">{source(m)} · {keptWhere}</span>
+            <span className="about-stage-why">{copy.phoneWhy(fromTalk, area ? t(`companion.about.aspect.${area}`) : null)}</span>
           ) : (
             <div className="thread about-thread">
               <div className="knot you">

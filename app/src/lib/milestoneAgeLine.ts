@@ -43,7 +43,7 @@ export function milestoneSource(m: { id: string; custom?: boolean }): MilestoneS
 }
 
 /** A band threshold's label in the page language; null if `months` is not a band. */
-function bandLabel(months: number | undefined, t: MilestoneT): string | null {
+export function bandLabel(months: number | undefined, t: MilestoneT): string | null {
   if (typeof months !== "number" || !BAND_MONTHS.has(months)) return null;
   const label = milestoneBandLabel(months, t);
   return label ? label : null;

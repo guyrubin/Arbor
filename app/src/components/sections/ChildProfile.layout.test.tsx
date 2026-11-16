@@ -215,7 +215,8 @@ describe("v10.1 · About: the notebook, the parent's words, the eight areas",()=
   const html=renderToStaticMarkup(<ChildProfile/>);
   const sleep=areaHtml("sleep");
   expect(sleep).toContain("Falls asleep after two stories");
-  expect(sleep).toContain("Noted · Oct 5, 2026");
+  expect(sleep).toMatch(/Noted · (Mon 5 Oct|5 Oct 2026)/);
+  expect(sleep).not.toContain("Oct 5, 2026");
   expect(sleep).toContain('data-testid="about-aspect-pending"');
   expect(sleep).toContain(companionEn["companion.about.pending"].trim());
   expect(sleep).toContain("Wakes up twice since the move");
