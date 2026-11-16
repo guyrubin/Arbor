@@ -477,7 +477,7 @@ export default function ComicsTab({ embedded = false }: { embedded?: boolean } =
             <h2 id="comics-story-books-title" className="m-0 text-[1.05rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
               {t("elev.comics.storyBooks.title")}
             </h2>
-            <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
+            <div className="grid gap-4" style={{ gridTemplateColumns: embedded ? "repeat(auto-fill,minmax(220px,1fr))" : "repeat(auto-fit,minmax(240px,1fr))" }}>
               {storyBooks.map(storyBookTile)}
             </div>
           </section>

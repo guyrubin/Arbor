@@ -91,7 +91,8 @@ describe("FEAT-01 — the Ask bar carries the active question as one quiet line"
     expect(ask()["aria-describedby"]).toBe("companion-launch-topic");
     // F-TALK-1 re-pin: the bar's name is its visible label, "Ask Arbor - text, photo or voice".
     expect(ask()["aria-label"]).toBe(translate(lang, "companion.launcher.label"));
-    expect(node(n => n.props.className === "companion-launch-copy")!.props.children[0]).toBe(translate(lang, "companion.launcher.label"));
+    // v10 (canvas V77): the bar shows the short "Ask Arbor"; the full label stays its name.
+    expect(node(n => n.props.className === "companion-launch-copy")!.props.children[0]).toBe(translate(lang, "companion.launcher.short"));
     const words = node(n => n.props.className === "companion-launch-topic-text")!;
     expect(words.type).toBe("bdi");
     expect(words.props.dir).toBe("auto");

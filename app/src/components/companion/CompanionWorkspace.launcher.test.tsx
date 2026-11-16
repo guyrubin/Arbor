@@ -69,12 +69,16 @@ describe("the compact, single global Ask and capture entry", () => {
     const copy = NOW_COPY[lang];
     const html = render();
     expect(html).toContain(copy.talk);
-    // F-TALK-1: the bar shows its full label, and that label is its name.
+    // F-TALK-1: the full label is the bar's name. v10 (canvas V77): the bar SHOWS the
+    // boards' short "Ask Arbor", which starts that name, so sight and sound agree.
     const label = translate(lang, "companion.launcher.label");
+    const shown = translate(lang, "companion.launcher.short");
     expect(label.startsWith(copy.talk)).toBe(true);
+    expect(label.startsWith(shown)).toBe(true);
+    expect(shown.length).toBeLessThan(label.length);
     const ask = state.nodes.find(n => n.props.className === "companion-launch-main")!.props;
     expect(ask["aria-label"]).toBe(label);
-    expect(state.nodes.find(n => n.props.className === "companion-launch-copy")!.props.children[0]).toBe(label);
+    expect(state.nodes.find(n => n.props.className === "companion-launch-copy")!.props.children[0]).toBe(shown);
     if (lang === "he") expect(label).not.toMatch(/[A-Za-z]/);
     // The Keep choices name themselves with a visible heading.
     expect(state.nodes.find(n => n.props.className === "companion-capture-options")!.props["aria-labelledby"]).toBe("companion-capture-heading");
@@ -241,20 +245,25 @@ describe("B-VOICE-08 — Now offers one tap into a spoken conversation", () => {
     expect(kids[0]?.props?.className).toBe("companion-launch-mark");
     const workspaceCss = readFileSync(new URL("./companionWorkspace.css", import.meta.url), "utf8");
     expect(workspaceCss).not.toContain("!important");
-    expect(workspaceCss).toMatch(/@media \(max-width: 520px\) \{ \.companion-launcher\.has-voice \.companion-launch-mark \{ display: none; \} \}/);
+    // v10 (canvas V77): with the short label the mark keeps its place on phones.
+    expect(workspaceCss).not.toMatch(/\.companion-launcher\.has-voice \.companion-launch-mark \{ display: none; \}/);
   });
 
-  it("other places keep the bar as it was (no voice door)", () => {
-    for (const tab of ["development", "together", "journal", "milestones"]) {
+  it("v10 (canvas V77): every parent place carries the voice door, with its own source", () => {
+    for (const tab of ["development", "together", "journal", "milestones", "consult"]) {
       state.nodes = [];
       state.activeTab = tab;
       render();
-      expect(door(), tab).toBeUndefined();
+      expect(door(), tab).toBeDefined();
+      door()!.onClick();
+      expect(startConversationVoice).toHaveBeenLastCalledWith({ source: "dock-voice" });
     }
+    // NEGATIVE CONTROL: the open panel still has no launcher, so no door either.
     state.nodes = [];
     state.activeTab = "overview";
     expect(render(true)).not.toContain('data-testid="launcher-voice"');
   });
+
 
   it("round 4: nothing of the conversation mounts ahead of a tap (no idle mount, no host-route footprint)", () => {
     const html = render();

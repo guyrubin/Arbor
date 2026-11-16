@@ -51,7 +51,7 @@ function playerView(src: string): string {
  * (Guide → ChainStrip → Route of three RouteSections); the anchor is the
  * DsRoot open tag that follows the kid branch.
  */
-const PARENT_ARM = '    ) : (\n      <DsRoot composition={composition} className="stories-v10" data-testid="stories-screen"';
+const PARENT_ARM = '    ) : (\n      <DsRoot composition={composition} className="ds-mychild stories-v10" data-testid="stories-screen"';
 
 /** The parent branch of the catalogue view: everything after the kid ternary. */
 function parentBranch(src: string): string {
@@ -109,7 +109,10 @@ describe("§3f row 3 — the parent door leads with tonight's cover", () => {
   });
 
   it("the cover is the FIRST thing under the page header — nothing above it", () => {
-    const header = parent.indexOf("<PageHeader");
+    // V77: the page header is the shared header band's FrameHead (the h1); the
+    // kit PageHeader is gone from the parent branch (negative control).
+    expect(parent).not.toContain("<PageHeader");
+    const header = parent.indexOf("<FrameHead");
     const tonight = parent.indexOf('data-module="stories-tonight"');
     const between = parent.slice(header, parent.indexOf('<section data-module="stories-tonight"'));
     expect(header).toBeGreaterThan(-1);
