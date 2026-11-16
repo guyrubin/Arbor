@@ -55,7 +55,7 @@ function Phase({ plan, phaseIdx, steps, todayStep, lang, onEdit }: { plan: Actio
   const done = steps.filter((s) => s.status === "done").length;
   return (
     <>
-      <div className="stack" style={{ gap: 2 }}>
+      <div className="stack ds-col" style={{ gap: 2 }}>
         <b className="ds-plans-phase" dir="auto">{phaseLabel(c.phaseN(phaseIdx + 1), name)}</b>
         <span className="small" style={{ fontVariantNumeric: "lining-nums" }}>{c.phaseDone(done, steps.length)}</span>
       </div>
@@ -117,7 +117,7 @@ export function PlanWhole({ plan, todayStep, lang, composition }: { plan: Action
         <RouteHead title={<bdi dir="auto">{plan.title}</bdi>} />
         <section className="vt x12" style={{ gap: 12 }} data-testid="plan-header" aria-label={plan.title}>
           <div className="line between" style={{ gap: 20, alignItems: "flex-start" }}>
-            <div className="stack" style={{ gap: 4, maxWidth: 800 }}>
+            <div className="stack ds-col" style={{ gap: 4, maxWidth: 800 }}>
               {working && <p dir="auto" style={{ fontSize: 14, lineHeight: 1.4, color: "var(--ink)" }}>{working}</p>}
               <p className="small" style={{ color: "var(--ink-soft)" }}>{t("elev.plans.hint")}</p>
             </div>
@@ -136,7 +136,7 @@ export function PlanWhole({ plan, todayStep, lang, composition }: { plan: Action
     );
   }
   return (
-    <div className="stack" style={{ gap: 10 }} data-testid="plan-header">
+    <div className="stack ds-col" style={{ gap: 10 }} data-testid="plan-header">
       <RouteHead title={c.wholePlan} />
       <p style={{ fontSize: 13.5, lineHeight: 1.4, margin: 0 }} dir="auto">
         <b style={{ fontWeight: 600 }}>{plan.title}.</b>

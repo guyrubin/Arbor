@@ -4,11 +4,12 @@ import { Fig, LivingForm, Scene, StartHere } from "../../../design/primitives";
 import type { Composition } from "../../../design/useComposition";
 import { CoachTryIt, type CoachTodayStep, type TryItButtonProps } from "../../coach/CoachAnswerCards";
 import { translate, type UiLang } from "../../../lib/i18n";
-import { PLAN_CHECK_ANSWERS, offerPlanAdjust, planEchoKey, planStepStatus, weeklyCheckDue, type PlanEcho, type TodaysPlanStep } from "../../../lib/plans";
+import { PLAN_CHECK_ANSWERS, offerPlanAdjust, planEchoKey, planEyebrowKey, planStepStatus, weeklyCheckDue, type PlanEcho, type TodaysPlanStep } from "../../../lib/plans";
 import type { PlanStepRef } from "../../../actionLoop/model";
 import type { ActionPlan, PlanCheckAnswer, StepStatus } from "../../../types";
 import { EMPTY_ART } from "../../../lib/parentArt";
 import { mirrorPoints, Road, wavePoints } from "./Road";
+import { PlanEyebrow } from "../planTrack";
 import { plansCopy } from "./plansCopy";
 
 /**
@@ -99,7 +100,7 @@ export interface ActionPlanStageProps {
   now: number;
   composition: Composition;
   echo?: PlanEcho;
-  childName: string;
+  childName?: string;
   primary?: TryItButtonProps;
   onTryIt: (text: string, ref: PlanStepRef) => void;
   onUndo: (id: string) => void;
@@ -107,7 +108,7 @@ export interface ActionPlanStageProps {
   onAdjust: () => void;
 }
 
-export function ActionPlanStage({ plan, step, today, lang, now, composition, echo = null, childName, primary, onTryIt, onUndo, onCheck, onAdjust }: ActionPlanStageProps) {
+export function ActionPlanStage({ plan, step, today, lang, now, composition, echo = null, childName = "", primary, onTryIt, onUndo, onCheck, onAdjust }: ActionPlanStageProps) {
   const c = plansCopy(lang === "he" ? "he" : "en");
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
   const desk = composition === "desk";
@@ -124,12 +125,14 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
   const pad = desk ? "0 28px" : "0 16px";
 
   const echoLine = echo && echo.kind === "not-yet-twice" ? (
-    <button type="button" data-testid="plan-echo" data-echo={echo.kind} onClick={onAdjust} className="ds-link" style={{ paddingInline: 0 }}>
+    <button type="button" data-testid="plan-echo" data-echo={echo.kind} onClick={onAdjust} className="ds-link min-h-11" style={{ paddingInline: 0 }}>
       {t(planEchoKey(echo))}
     </button>
   ) : echo ? (
-    <p data-testid="plan-echo" data-echo={echo.kind} dir="auto" className={echo.kind === "progress" ? undefined : "ds-said"} style={{ fontSize: echo.kind === "progress" ? 15 : 16, lineHeight: 1.4, color: "var(--ink-soft)", maxWidth: 520 }}>
-      {t(planEchoKey(echo), { step: "step" in echo ? echo.step : "", n: "done" in echo ? echo.done : 0, name: childName })}
+    <p data-testid="plan-echo" data-echo={echo.kind} dir="auto"
+      className={echo.kind === "progress" ? "t-base leading-relaxed" : "t-sm leading-snug"}
+      style={{ fontFamily: echo.kind === "progress" ? "var(--font-sans)" : "var(--font-editorial)", color: "var(--arbor-ink-soft)" }}>
+      <span className="min-w-0 line-clamp-2">{t(planEchoKey(echo), { step: "step" in echo ? echo.step : "", n: "done" in echo ? echo.done : 0, name: childName })}</span>
     </p>
   ) : null;
 
@@ -137,7 +140,7 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
     <Scene field="plan" orbs={orbs} style={{ padding: 0, gap: 0, flex: desk ? 1 : undefined }} data-testid="plan-track-card">
       <div className="line between" style={{ padding: desk ? "22px 28px 0" : "16px 16px 0", alignItems: "flex-start" }}>
         <span className="gsec">
-          <span className="kicker" data-testid="plan-today-eyebrow">
+          <span className="kicker">
             {todayFlat ? `${c.actionPlan} · ${c.stepOf(todayFlat.n, steps.length)}` : c.actionPlan}
           </span>
           {step && <StartHere>{t("elev.plans.today.chip")}</StartHere>}
@@ -147,9 +150,17 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
 
       <div data-testid={step ? "plan-today-step" : undefined} style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", gap: desk ? 20 : 12, alignItems: "center", padding: desk ? "6px 28px 0" : "10px 16px 0" }}>
         <LivingForm src={EMPTY_ART.plans.src} srcSet={EMPTY_ART.plans.srcSet} width={desk ? 116 : 84} height={desk ? 83 : 60} />
-        <div className="stack" style={{ gap: desk ? 8 : 4 }}>
+        <div className="stack ds-col" style={{ gap: desk ? 8 : 4 }}>
           {step ? (
-            <h1 className="hero" dir="auto" style={{ fontSize: desk ? 30 : 22, lineHeight: 1.12 }}>{step.text}</h1>
+            <>
+              {/* "Today's step · {plan}" on day 1, "Day {n} of {plan}" after: the
+                  plan title isolated in <bdi>, never upper-cased (critic r1). */}
+              <p data-testid="plan-today-eyebrow" className="small" style={{ fontWeight: 600, color: "var(--k-plan)" }}>
+                <PlanEyebrow template={t(planEyebrowKey(step.day), { n: step.day, plan: "\u0000" })} title={plan.title} />
+              </p>
+              {echoLine}
+              <h1 className="hero" dir="auto" style={{ fontSize: desk ? 30 : 22, lineHeight: 1.12 }}>{step.text}</h1>
+            </>
           ) : (
             <>
               <h1 className="hero" dir="auto" style={{ fontSize: desk ? 30 : 22, lineHeight: 1.12 }}>{plan.title}</h1>
@@ -160,7 +171,7 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
               <p className="small">{t("plan.completeHint")}</p>
             </>
           )}
-          {echoLine}
+          {!step && echoLine}
           {!desk && <Fig n={done.length} unit={c.ofSteps(steps.length)} size="sm" />}
         </div>
       </div>
@@ -169,7 +180,7 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
         <PlanTrail plan={plan} todayStep={step} lang={lang} composition={composition} />
       </div>
 
-      <div className="stack" style={{ gap: 10, padding: desk ? "16px 28px 22px" : "10px 16px 16px", marginTop: desk ? "auto" : undefined }}>
+      <div className="stack ds-col" style={{ gap: 10, padding: desk ? "16px 28px 22px" : "10px 16px 16px", marginTop: desk ? "auto" : undefined }}>
         {step && (
           <div className="ds-plans-try">
             <CoachTryIt step={step.text} today={today} lang={lang} onTryIt={(text) => onTryIt(text, ref(step))} onUndo={onUndo} buttonProps={primary} />
@@ -179,19 +190,19 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
           {done.length === steps.length && steps.length > 0 ? c.allDone : done.length > 0 ? c.doneSoFar(done.map((s) => s.n)) : t("plan.stepsCount", { done: 0, total: steps.length })}
         </span>
         {step?.offerNext && step.next && (
-          <div data-testid="plan-offer-next" className="stack" style={{ gap: 4 }}>
+          <div data-testid="plan-offer-next" className="stack ds-col" style={{ gap: 4 }}>
             <p className="small">{t("elev.plans.today.next")}</p>
             <p dir="auto" style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ink)" }}>{step.next.text}</p>
             <CoachTryIt step={step.next.text} today={today} lang={lang} onTryIt={(text) => onTryIt(text, ref(step.next!))} onUndo={onUndo} />
           </div>
         )}
         {due && (
-          <div data-testid="plan-weekly-check" className="stack" style={{ gap: 8, paddingTop: 12, borderTop: "1px solid var(--rule)" }}>
+          <div data-testid="plan-weekly-check" className="stack ds-col" style={{ gap: 8, paddingTop: 12, borderTop: "1px solid var(--rule)" }}>
             <p style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ink)" }}>{t("elev.plans.check.q")}</p>
             <p data-testid="plan-will-ask" className="small">{t("elev.words.plans.willAsk")}</p>
             <div className="line" style={{ gap: 8, flexWrap: "wrap" }} role="group" aria-label={t("elev.plans.check.q")}>
               {PLAN_CHECK_ANSWERS.map((a) => (
-                <button key={a} type="button" data-check-answer={a} onClick={() => onCheck(a)} className="btn ghost sm" style={{ background: "var(--card)" }}>
+                <button key={a} type="button" data-check-answer={a} onClick={() => onCheck(a)} className="btn ghost sm min-h-11" style={{ background: "var(--card)" }}>
                   {t(`elev.plans.check.${a}`)}
                 </button>
               ))}
@@ -200,7 +211,7 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
         )}
         {!due && lastCheck && <p className="small">{t("elev.plans.check.saved")}</p>}
         {adjust && (
-          <button type="button" data-testid="plan-adjust" onClick={onAdjust} className="btn ghost sm" style={{ background: "var(--card)", alignSelf: "flex-start" }}>
+          <button type="button" data-testid="plan-adjust" onClick={onAdjust} className="btn ghost sm min-h-11" style={{ background: "var(--card)", alignSelf: "flex-start" }}>
             <Icon name="auto_awesome" size={14} /> {t("elev.plans.adjust")}
           </button>
         )}

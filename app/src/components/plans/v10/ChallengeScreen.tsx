@@ -198,7 +198,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
   );
 
   const nightQuestion = plan && (
-    <div className="stack" style={{ gap: 10 }} data-plan-night="">
+    <div className="stack ds-col" style={{ gap: 10 }} data-plan-night="">
       {!recorded && !notTonight && (
         <>
           <b style={{ fontSize: 14.5, fontWeight: 600 }}>{s("today.night.q")}</b>
@@ -242,7 +242,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", gap: desk ? 22 : 14, alignItems: "center", padding: desk ? "6px 28px 0" : "10px 16px 0" }}>
         <ChallengeBook title={title} nameLine={plan.def.coverNameLine[lang].replace("{name}", childName)} size={desk ? "lg" : undefined} width={desk ? 132 : 92} label={c.book(title)} />
-        <div className="stack" style={{ gap: desk ? 8 : 6 }}>
+        <div className="stack ds-col" style={{ gap: desk ? 8 : 6 }}>
           <span className="small" style={{ fontWeight: 600, color: "var(--ink-soft)" }} dir="auto">{plan.def.parentWords[lang]}</span>
           <h1 className="hero" dir="auto" style={{ fontSize: desk ? 36 : 24, lineHeight: 1.06 }}>{title}</h1>
           {desk ? (
@@ -282,7 +282,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
 
   const stepsTile = plan && book && (
     <Tile className={desk ? "x4" : undefined} icon="checklist" kind="plan" title={c.theSteps} titleId="cp-steps" link={<button type="button" className="ds-link" onClick={() => p.onChange(plan)}>{s("review.change")}</button>}>
-      <ol className="stack" style={{ gap: 14, margin: 0, padding: 0, listStyle: "none" }} data-plan-steps="">
+      <ol className="stack ds-col" style={{ gap: 14, margin: 0, padding: 0, listStyle: "none" }} data-plan-steps="">
         {book.parent.planSteps.map((line, i) => (
           <li key={i} className="cp-st">
             <span className="cp-n"><b>{i + 1}</b><Icon name="check" size={18} /></span>
@@ -311,7 +311,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
 
   const sourcesTile = plan && (
     <Tile className={desk ? "x4" : undefined} icon="menu_book" title={s("print.sources")} titleId="cp-sources">
-      <ul className="stack" style={{ gap: 8, margin: 0, paddingInlineStart: 18, fontSize: 13, lineHeight: 1.35 }} data-plan-sources="">
+      <ul className="stack ds-col" style={{ gap: 8, margin: 0, paddingInlineStart: 18, fontSize: 13, lineHeight: 1.35 }} data-plan-sources="">
         {plan.def.sources.map((src) => (
           <li key={src.id} dir="auto">
             {src.url ? <a href={src.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ink)", textDecoration: "underline", textUnderlineOffset: 2 }}>{src.label[lang]}</a> : src.label[lang]}
@@ -342,7 +342,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
         <button type="button" style={{ flex: 1 }} className={`cp-cat${r ? " run" : ""}`} onClick={onClick} data-plan-door={d.id} aria-current={r && plan?.def.id === d.id ? "true" : undefined}>
           <div className="cb" style={{ alignItems: "center" }}>
             <ChallengeBook title={bookTitle} size="sm" width={54} label={c.book(bookTitle)} />
-            <div className="stack" style={{ gap: 3 }}>
+            <div className="stack ds-col" style={{ gap: 3 }}>
               <h3 className="ds-plans-cat" dir="auto" data-plan-door-title="">{bookTitle}</h3>
               <p dir="auto">{d.parentWords[lang]}</p>
             </div>
@@ -384,7 +384,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
         {plan && !desk && (
           <>
             <RouteSection id="cp-stage" n={1} on>
-              <div className="stack" style={{ gap: 12 }} data-module="plans-challenge">
+              <div className="stack ds-col" style={{ gap: 12 }} data-module="plans-challenge">
                 {stage}
                 <button type="button" className="btn primary block" style={{ minHeight: 52 }} data-plan-open="" onClick={() => p.onOpenBook(plan)}>
                   <Icon name="menu_book" size={18} />
@@ -395,7 +395,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
             </RouteSection>
             <RouteSection id="cp-today" n={2}>
               <RouteHead title={c.today} sub={c.todaySub} />
-              <div className="stack" style={{ gap: 10 }}>{todayCards}</div>
+              <div className="stack ds-col" style={{ gap: 10 }}>{todayCards}</div>
             </RouteSection>
           </>
         )}
@@ -405,7 +405,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
             {desk ? (
               <div className="g12" data-module="plans-challenge-page">{stepsTile}{nightsTile}{sourcesTile}</div>
             ) : (
-              <div data-module="plans-challenge-page" className="stack" style={{ gap: 10 }}>
+              <div data-module="plans-challenge-page" className="stack ds-col" style={{ gap: 10 }}>
                 <Snap label={c.onePage}>{stepsTile}{nightsTile}{sourcesTile}</Snap>
                 <SnapDots count={3} caption={c.theSteps} />
               </div>
@@ -414,7 +414,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
         )}
         {all && (
           <RouteSection id="cp-all" n={plan ? 4 : 1} on={!plan} stopTop={2}>
-            <div data-module="plans-challenge-all" className="stack" style={{ gap: 12 }}>{all}</div>
+            <div data-module="plans-challenge-all" className="stack ds-col" style={{ gap: 12 }}>{all}</div>
           </RouteSection>
         )}
       </Route>

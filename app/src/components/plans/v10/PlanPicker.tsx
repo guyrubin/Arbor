@@ -96,7 +96,7 @@ export function PlanPicker({ actionPlans, selectedId, todaySteps, challenges, la
       {cards}
     </div>
   ) : (
-    <div className="stack" style={{ gap: 8 }} role="group" aria-label={c.yourPlans}>
+    <div className="stack ds-col" style={{ gap: 8 }} role="group" aria-label={c.yourPlans}>
       {cards}
     </div>
   );

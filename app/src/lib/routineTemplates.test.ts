@@ -66,14 +66,15 @@ describe("B-GROWTH-25 — routines become Plans templates", () => {
 });
 
 describe("B-GROWTH-25 — the templates are startable on Plans in one tap", () => {
-  it("PlansTab mounts RoutineTemplates in the create card; a tap writes one plan through startPlanFromTemplate", async () => {
+  it("PlansTab mounts RoutineTemplates in Start another plan; a tap writes one plan through startPlanFromTemplate", async () => {
     const { readFileSync } = await import("node:fs");
     const path = await import("node:path");
     const src = path.resolve(__dirname, "..");
     const read = (rel: string) => readFileSync(path.join(src, rel), "utf8");
     const plans = read("components/tabs/PlansTab.tsx");
-    const create = plans.slice(plans.indexOf("const createCard = ("), plans.indexOf('data-module="plans-active"'));
-    expect(create).toContain("<RoutineTemplates />");
+    const start = plans.slice(plans.indexOf('data-module="plans-start"'));
+    expect(start).toContain("readyMade={<RoutineTemplates />}");
+    expect(read("components/plans/v10/StartAnother.tsx")).toContain("{p.readyMade}");
     const comp = read("components/plans/RoutineTemplates.tsx");
     expect(comp).toContain("routineTemplatesForAge(months)");
     expect(comp).toContain("await startPlanFromTemplate(routineToPlan(routine, lang, first, Date.now()));");

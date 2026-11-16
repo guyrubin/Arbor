@@ -122,9 +122,9 @@ describe("B-ASKJB-26 · after a start, the page answers where the parent is look
     expect(tab).toContain("nextStartedPlan(seenPlanIds.current, actionPlans, Date.now())");
   });
 
-  it("the receipt sits on the active plans (where the new plan leads) and says Started today in both languages", () => {
+  it("the receipt sits on Your plans (where the new plan leads) and says Started today in both languages", () => {
     const tab = readFileSync(path.resolve(__dirname, "PlansTab.tsx"), "utf8");
-    const active = tab.indexOf('<div data-module="plans-active"');
+    const active = tab.indexOf('<div data-module="plans-yours"');
     expect(active).toBeGreaterThan(-1);
     expect(tab.indexOf('testId="plans-started-receipt"')).toBeGreaterThan(active);
     expect(tab).toContain('startedReceipt.show({ text: `${lead.title} · ${t("elev.plans.startedToday")}` })');

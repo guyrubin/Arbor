@@ -28,7 +28,7 @@ function ScriptCard({ scenario, say, avoid, lang }: { scenario: string; say: str
       {avoid && (
         <div className="sl">
           <b>{t("plan.avoid")}</b>
-          <span className="av1" dir="auto">{avoid}</span>
+          <span className="av1 ds-avoid" dir="auto">{avoid}</span>
         </div>
       )}
     </article>
@@ -41,7 +41,7 @@ export function PlanScripts({ plan, lang, composition, n, onRefine }: { plan: Ac
   const title = t("elev.words.plans.scripts");
   const cards = plan.scripts.map((sc, i) => <ScriptCard key={i} scenario={sc.scenario} say={sc.say} avoid={sc.avoid} lang={lang} />);
   const refine = (
-    <button type="button" className="ds-link" onClick={onRefine} style={{ alignSelf: "flex-start" }}>
+    <button type="button" className="ds-link min-h-11" onClick={onRefine} style={{ alignSelf: "flex-start" }}>
       <Icon name="auto_awesome" size={14} />
       {t("plan.refine")}
     </button>
@@ -49,7 +49,7 @@ export function PlanScripts({ plan, lang, composition, n, onRefine }: { plan: Ac
   if (composition === "desk") {
     return (
       <SideRail id="plans-rail" n={n} title={title} titleId="plans-rail-title" className="x4">
-        <div data-testid="plan-scripts" className="stack" style={{ gap: 12, flex: 1 }}>
+        <div data-testid="plan-scripts" className="stack ds-col" style={{ gap: 12, flex: 1 }}>
           {cards}
           {refine}
         </div>
@@ -57,7 +57,7 @@ export function PlanScripts({ plan, lang, composition, n, onRefine }: { plan: Ac
     );
   }
   return (
-    <div data-testid="plan-scripts" className="stack" style={{ gap: 10 }}>
+    <div data-testid="plan-scripts" className="stack ds-col" style={{ gap: 10 }}>
       <RouteHead title={title} />
       <Snap label={title}>{cards}</Snap>
       {plan.scripts.length > 1 && <SnapDots count={plan.scripts.length} caption={c.momentOf(1, plan.scripts.length)} />}

@@ -49,12 +49,16 @@ const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, "..", rel)
 
 describe("B-ASKJB-35 (c) · the Plans page", () => {
   const tab = read("tabs/PlansTab.tsx");
-  const card = read("plans/PlanTrackCard.tsx");
+  const card = read("plans/v10/ActionPlanStage.tsx");
   const steps = read("plans/PlanSteps.tsx");
-  it("one active plan; the others in ONE disclosure; the scripts collapsed", () => {
-    expect(tab).toContain("if (planIdx > 0) return null;");
-    expect(tab).toContain('data-testid="plans-others"');
-    expect(tab).toContain('data-testid="plan-scripts"');
+  const whole = read("plans/v10/PlanWhole.tsx");
+  const scripts = read("plans/v10/PlanScripts.tsx");
+  // v10: ONE plan is open at a time (the picker names every plan; the others
+  // are one tap away, never a second stack); the scripts are their own section.
+  it("one open plan, the others in the picker; the scripts in their own section", () => {
+    expect(tab).toContain("actionPlans.find((p) => p.id === selectedId) ?? actionPlans[0] ?? null");
+    expect(tab).toContain("<PlanPicker");
+    expect(scripts).toContain('data-testid="plan-scripts"');
     expect(tab.match(/"data-primary-move": "advance-plan-step"/g)).toHaveLength(1);
   });
   it("no signs-it's-working list on the parent surface; one 'Arbor will ask' line", () => {
@@ -65,6 +69,7 @@ describe("B-ASKJB-35 (c) · the Plans page", () => {
   });
   it("the step list renders act-first; no upper-case labels and nothing under 12 px on the page", () => {
     expect(steps).toContain("demoteObservationSteps(items.filter((i) => i.phaseIdx === phaseIdx))");
+    expect(whole).toContain("demoteObservationSteps(steps.map(");
     expect(tab).not.toMatch(/\buppercase\b/);
     expect(tab).not.toMatch(/text-\[(?:10|11)px\]/);
   });

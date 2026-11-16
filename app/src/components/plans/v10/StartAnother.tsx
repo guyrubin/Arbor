@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { Icon } from "../../ui/Icon";
 import { Fig, LivingForm, MoreLink, Tile } from "../../../design/primitives";
 import type { Composition } from "../../../design/useComposition";
@@ -46,7 +46,6 @@ export function StartAnother(p: StartAnotherProps) {
   const l = p.lang === "he" ? "he" : "en";
   const c = plansCopy(l);
   const desk = p.composition === "desk";
-  const [showReadyMade, setShowReadyMade] = useState(false);
   const covers = p.choosable.slice(0, 4);
   const more = p.choosable.length - covers.length;
 
@@ -81,14 +80,16 @@ export function StartAnother(p: StartAnotherProps) {
             <LivingForm src={TOGETHER_ART.src} srcSet={TOGETHER_ART.srcSet} width={72} height={46} />
             <Fig n={p.readyMadeCount} unit={c.readyMade} sub={c.readyMadeSub} size="sm" />
           </div>
-          <button type="button" className="ds-link" aria-expanded={showReadyMade} onClick={() => setShowReadyMade((v) => !v)} style={{ paddingInline: 0, alignSelf: "flex-start" }} data-testid="plans-ready-made-toggle">
-            {showReadyMade ? c.hideReadyMade : c.showReadyMade}
-            <Icon name={showReadyMade ? "expand_less" : "expand_more"} size={16} />
-          </button>
-          {showReadyMade && p.readyMade}
+          <details className="group" data-testid="plans-ready-made">
+            <summary className="ds-link" style={{ paddingInline: 0, listStyle: "none", cursor: "pointer" }}>
+              {c.showReadyMade}
+              <Icon name="expand_more" size={16} className="transition group-open:rotate-180" />
+            </summary>
+            <div style={{ paddingTop: 8 }}>{p.readyMade}</div>
+          </details>
         </>
       )}
-      <div className="stack" style={{ gap: 6, paddingTop: 8, borderTop: "1px solid var(--rule)", marginTop: "auto" }}>{p.routines}</div>
+      <div className="stack ds-col" style={{ gap: 6, paddingTop: 8, borderTop: "1px solid var(--rule)", marginTop: "auto" }}>{p.routines}</div>
     </Tile>
   );
 
@@ -99,7 +100,7 @@ export function StartAnother(p: StartAnotherProps) {
         <Icon name="edit" size={14} />
         {c.draftLabel}
       </span>
-      <div className="stack" style={{ gap: 8, marginTop: "auto" }}>{p.writeOwn}</div>
+      <div className="stack ds-col" style={{ gap: 8, marginTop: "auto" }}>{p.writeOwn}</div>
     </Tile>
   );
 
@@ -110,7 +111,7 @@ export function StartAnother(p: StartAnotherProps) {
       {writeTile}
     </div>
   ) : (
-    <div className="stack" style={{ gap: 12 }}>
+    <div className="stack ds-col" style={{ gap: 12 }}>
       {challengeTile}
       {routineTile}
       {writeTile}

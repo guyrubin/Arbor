@@ -9,7 +9,7 @@ import { statesText } from "../../lib/i18nElevation/states";
 import { track } from "../../lib/analytics";
 import { ContentWhyLine } from "../ui/ContentActionBar";
 import PlanSteps from "../plans/PlanSteps";
-import { planAdjustSeed } from "../plans/PlanTrackCard";
+import { planAdjustSeed } from "../plans/planTrack";
 import RoutinesCard from "../plans/RoutinesCard";
 // B-GROWTH-25: the ready-made routines, as one-tap plan templates.
 import RoutineTemplates from "../plans/RoutineTemplates";
@@ -207,11 +207,11 @@ export default function PlansTab() {
       {/* Data-driven: suggestions from {name}'s recent logged behavior, each
           with its evidence as a visible why-line (a COUNT of the parent's logs). */}
       {suggestions.length > 0 && (
-        <div className="stack" style={{ gap: 8 }}>
+        <div className="stack ds-col" style={{ gap: 8 }}>
           <span className="small" style={{ fontWeight: 700, color: "var(--green-ink)" }}>{t("plan.suggestedFor", { name: first })}</span>
           {suggestions.map((s) => (
-            <div key={s.topic} className="stack" style={{ gap: 4, alignItems: "flex-start" }}>
-              <button type="button" onClick={() => setPlanChallengeTopic(s.topic)} className="ds-pencil ds-plans-suggest">
+            <div key={s.topic} className="stack ds-col" style={{ gap: 4, alignItems: "flex-start" }}>
+              <button type="button" onClick={() => setPlanChallengeTopic(s.topic)} className="ds-pencil ds-plans-suggest min-h-11">
                 <Icon name="auto_awesome" size={12} /> <span dir="auto">{s.topic.split("—")[0].trim()}</span>
               </button>
               <ContentWhyLine why={s.reason} />
@@ -312,7 +312,7 @@ export default function PlansTab() {
         <Route composition={composition} tight={!desk}>
           {(anyPlan || !plansLoaded) && (
             <RouteSection id="plans-stage" n={1} on>
-              <div data-module="plans-yours" className="stack" style={{ gap: desk ? 0 : 12 }}>
+              <div data-module="plans-yours" className="stack ds-col" style={{ gap: desk ? 0 : 12 }}>
                 <ReceiptNoteLine note={startedReceipt.note} testId="plans-started-receipt" />
                 {!plansLoaded && <SectionSkeleton title={false} rows={2} rowClassName="h-48" loaded={plansLoaded} testId="plans-skeleton" />}
                 <PlanPicker
@@ -340,7 +340,7 @@ export default function PlansTab() {
           )}
           {plan && (
             <RouteSection id="plans-whole" n={n("plans-whole")} stopTop={2}>
-              <div data-module="plans-whole" className="stack" style={{ gap: 12 }}>
+              <div data-module="plans-whole" className="stack ds-col" style={{ gap: 12 }}>
                 {routine ? (
                   <>
                     <RouteHead title={c.wholePlan} />
@@ -353,7 +353,7 @@ export default function PlansTab() {
             </RouteSection>
           )}
           <RouteSection id="plans-start" n={n("plans-start")} on={!anyPlan && plansLoaded} stopTop={2}>
-            <div data-module="plans-start" className="stack" style={{ gap: 12 }}>
+            <div data-module="plans-start" className="stack ds-col" style={{ gap: 12 }}>
               <RouteHead title={c.startAnother} />
               {plansLoaded && !anyPlan && (
                 /* Masterplan 4.3 teach-empty: a ghost of a filled plan card and
