@@ -350,11 +350,13 @@ function buildIndex(): readonly SearchEntry[] {
     ));
   }
 
-  // 12. B-ASKJB-36 — the kept reader, a mode of My child: "kept" / "שמרנו"
-  //     land on `#/development?view=kept`. Labels from the reader's own
-  //     dictionary (i18n.ts carries i18nKept); the sub is My child's place.
+  // 12. B-ASKJB-36 / v10.1 — the kept reader (the year book), now Moments,
+  //     kind Kept: "kept" / "שמרנו" open `#/timeline?view=kept`, which
+  //     lib/routes resolves to `#/timeline?kind=kept&reader=book`. Labels from
+  //     the reader's own dictionary (i18n.ts carries i18nKept); the sub is
+  //     My child's place.
   {
-    const place = placeForTab("development");
+    const place = placeForTab("timeline");
     entries.push({
       ...entry(
         "page:development:kept",
@@ -365,7 +367,7 @@ function buildIndex(): readonly SearchEntry[] {
           en: ["kept", "keepsakes", "kept things", "things we kept", "saved words", "firsts", "her words"],
           he: ["שמרנו", "ששמרנו", "שמרתם", "ששמרתם", "שמורים", "מזכרות", "פעמים ראשונות", "מילים ששמרנו"],
         },
-        "development",
+        "timeline",
       ),
       view: "kept",
     });
@@ -379,7 +381,7 @@ function buildIndex(): readonly SearchEntry[] {
           en: ["year book", "yearbook", "this year", "words this year", "firsts this year"],
           he: ["ספר השנה", "השנה", "מילים השנה", "פעמים ראשונות השנה"],
         },
-        "development",
+        "timeline",
       ),
       view: "kept",
     });

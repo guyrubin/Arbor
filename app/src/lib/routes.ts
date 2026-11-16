@@ -198,13 +198,42 @@ export function splitHash(raw: string): { key: string; query: URLSearchParams } 
   const qs = at >= 0 ? bare.slice(at + 1) : "";
   const key = path.replace(/\/+$/, "").trim();
   const query = new URLSearchParams(qs);
+  // v10.1: a path whose mode moved to another route opens it there.
+  const moved = MOVED_PATHS[key.toLowerCase()];
+  if (moved) {
+    for (const [k, v] of Object.entries(moved.query)) query.set(k, v);
+    return { key: moved.route, query };
+  }
   // B-GROWTH-37: a sub-route path is its route plus the mode it names.
   const sub = SUB_ROUTES[key.toLowerCase()];
   if (sub) {
     for (const [k, v] of Object.entries(sub.query)) query.set(k, v);
-    return { key: sub.route, query };
+    return { key: movedMode(sub.route, query), query };
   }
-  return { key, query };
+  return { key: movedMode(key, query), query };
+}
+
+/** v10.1: paths of a mode that moved to another route. B-SHELL-30's
+ *  `#/development/kept` (the kept reader on My child) is now Moments, kind
+ *  Kept. Unlike SUB_ROUTES (the same route plus a mode), these land on a
+ *  different route, so they keep no ROUTE_IDS seat and no contract of their own. */
+export const MOVED_PATHS: Readonly<Record<string, { route: ActiveTab; query: Readonly<Record<string, string>> }>> = {
+  "development/kept": { route: "timeline", query: { kind: "kept", reader: "book" } },
+};
+
+/** v10.1: the kept reader (the year book) moved from My child to Moments,
+ *  kind Kept. Its old addresses, `#/development?view=kept`,
+ *  `#/development/kept` (MOVED_PATHS) and the search rows' `?view=kept`, resolve
+ *  here to `#/timeline?kind=kept&reader=book` (a `year` is kept), so every
+ *  saved link and the search rows open it in Moments. */
+function movedMode(key: string, query: URLSearchParams): string {
+  if ((key === "development" || key === "timeline") && query.get("view") === "kept") {
+    query.delete("view");
+    query.set("kind", "kept");
+    query.set("reader", "book");
+    return "timeline";
+  }
+  return key;
 }
 
 /**
@@ -221,8 +250,6 @@ export function splitHash(raw: string): { key: string; query: URLSearchParams } 
  */
 export const SUB_ROUTES: Readonly<Record<string, { route: ActiveTab; query: Readonly<Record<string, string>> }>> = {
   "language/said": { route: "language", query: { view: "said" } },
-  // B-ASKJB-36: the kept reader on My child (B-SHELL-30's `#/development/kept`).
-  "development/kept": { route: "development", query: { view: "kept" } },
 };
 
 /** The query of a hash (`#/journal?shelf=sleep` → shelf=sleep); empty when none. */

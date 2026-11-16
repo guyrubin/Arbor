@@ -93,7 +93,7 @@ export default function PortraitCards({ sources, onEditGoal }: PortraitCardsProp
             {kept.at && <p className="ms-obj-src">{t("companion.milestones.srcParent", { date: fmtDay(kept.at, uiLang) })}</p>}
             {/* B-ASKJB-36 (critic r1): the card opens the Kept reader, where
                 every kept moment sits by month. */}
-            <a className="oa" data-testid="portrait-card-kept-open" href={`#${routeHash("development", { view: "kept" })}`}>
+            <a className="oa" data-testid="portrait-card-kept-open" href={`#${routeHash("timeline", { kind: "kept", reader: "book" })}`}>
               {t("kept.view")}
               <Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />
             </a>

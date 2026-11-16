@@ -11,19 +11,16 @@ import KeptItem from "./KeptItem";
 import KeptMonthPage from "./KeptMonthPage";
 import { buildMonthPage, keptMonthLabel } from "../../lib/keepsakeMonth";
 import { buildYearBook } from "../../lib/keepsakeYear";
-import { placeForTab } from "../../lib/companionPlaces";
 import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
-import Icon from "../ui/Icon";
 import KeptYearBook from "./KeptYearBook";
 
 export { keptMonthLabel };
 
-/** Current My child disclosure. Reads only the four existing kept sources;
- * older records load explicitly and child changes reset filters and sheets.
- * `asPage`: the reader IS the page (`#/development?view=kept`), so its title
- * is the page's h1. */
-export default function KeptThingsPage({ asPage = false, onOpenYear }: {
-  asPage?: boolean;
+/** The kept reader. Reads only the four existing kept sources; older records
+ * load explicitly and child changes reset filters and sheets. v10.1: it lives
+ * in Moments, kind Kept (`#/timeline?kind=kept&reader=book`), under the
+ * Moments header, which holds the page's one h1. */
+export default function KeptThingsPage({ onOpenYear }: {
   /** v10.1: where a year book opens (Moments' reader passes its own deep link). */
   onOpenYear?: (year: string) => void;
 } = {}) {
@@ -63,7 +60,7 @@ export default function KeptThingsPage({ asPage = false, onOpenYear }: {
 
   const settled = !loading && !error && confirmed;
   return <section className="kept-reader" data-testid="kept-reader" aria-label={t("kept.title", { name: first })}>
-    {!yearRequest && (asPage ? <h1 data-testid="kept-reader-title">{t("kept.title", { name: first })}</h1> : <h2>{t("kept.title", { name: first })}</h2>)}
+    {!yearRequest && <h2 data-testid="kept-reader-title">{t("kept.title", { name: first })}</h2>}
     {!yearRequest && <div className="kept-filters" role="group" aria-label={t("kept.filter")}>
       {filters.map(kind => <button key={kind} type="button" aria-pressed={filter === kind} onClick={() => setFilter(kind)}>{t(`kept.filter.${kind}`)}</button>)}
     </div>}
@@ -75,16 +72,16 @@ export default function KeptThingsPage({ asPage = false, onOpenYear }: {
     {more && <p className="kept-reader-status">{t(yearRequest ? "kept.yearPending" : "kept.monthPending")}</p>}
     {yearRequest ? <>
       {settled && !more && !yearBook && <>
-        {asPage ? <h1 data-testid="kept-year-title">{t("kept.year", { year: yearRequest, name: first })}</h1> : <h2 data-testid="kept-year-title">{t("kept.year", { year: yearRequest, name: first })}</h2>}
+        <h2 data-testid="kept-year-title">{t("kept.year", { year: yearRequest, name: first })}</h2>
         <p className="kept-reader-status">{t("kept.yearEmpty", { year: yearRequest })}</p>
       </>}
-      {yearBook && <KeptYearBook book={yearBook} childName={first} disabled={loading || error || !confirmed || more} beforeExport={beforeExport} asPage={asPage} />}
+      {yearBook && <KeptYearBook book={yearBook} childName={first} disabled={loading || error || !confirmed || more} beforeExport={beforeExport} />}
     </> : months.map(month => {
       const year = month.monthKey.slice(0, 4);
       const openYear = !seenYears.has(year);
       if (openYear) seenYears.add(year);
       return <section key={month.monthKey} className="kept-month" data-testid="kept-month">
-        {openYear && <button type="button" className="kept-text-button kept-year-door" data-testid="kept-year-open" data-year={year} onClick={() => (onOpenYear ? onOpenYear(year) : goToRoute("development", { view: "kept", year }))}>
+        {openYear && <button type="button" className="kept-text-button kept-year-door" data-testid="kept-year-open" data-year={year} onClick={() => (onOpenYear ? onOpenYear(year) : goToRoute("timeline", { kind: "kept", reader: "book", year }))}>
           <span className="kept-year-kicker">{t("kept.yearBook")}</span>
           <span>{t("kept.year", { year, name: first })}</span>
         </button>}
@@ -97,30 +94,3 @@ export default function KeptThingsPage({ asPage = false, onOpenYear }: {
   </section>;
 }
 
-/** B-ASKJB-36 — `#/development?view=kept` (also `#/development/kept`): My
- *  child with the kept reader open, a MODE of the My child route like
- *  `?view=program` (Shell picks it; no route id, no contract of its own).
- *  Back — the browser's or this link — returns to My child. From a year book
- *  it returns to this list. Search reaches it ("kept", "שמרנו", "year book":
- *  lib/searchIndex.ts). The reader is the one that already exists; nothing
- *  new is read or written here. */
-export function KeptReaderMode() {
-  const { childProfile } = useArbor();
-  const { t, uiLang } = useLanguage();
-  const lang = uiLang === "he" ? "he" : "en";
-  const place = placeForTab("development");
-  const year = /^\d{4}$/.test(useHashQuery().get("year") ?? "");
-  return <div data-testid="kept-mode" dir={lang === "he" ? "rtl" : "ltr"} lang={lang} className="mx-auto flex w-full min-w-0 max-w-[720px] flex-col gap-2">
-    <button
-      type="button"
-      data-testid="kept-back"
-      onClick={() => year ? goToRoute("development", { view: "kept" }) : goToRoute("development")}
-      className="-ms-1 inline-flex min-h-11 items-center gap-1 self-start px-1 t-sm font-bold focus:outline-none focus-visible:ring-2"
-      style={{ color: "var(--arbor-muted)" }}
-    >
-      <Icon name="arrow_back" size={18} aria-hidden className="rtl:-scale-x-100" />
-      {year ? t("kept.view") : place[lang]}
-    </button>
-    <KeptThingsPage key={childProfile.id} asPage />
-  </div>;
-}

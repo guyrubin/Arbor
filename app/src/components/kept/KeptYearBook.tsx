@@ -28,17 +28,16 @@ export function yearPageText(book: YearBook, name: string, lang: "en" | "he"): s
 
 /** One calendar year of parent-kept words and firsts, oldest month first.
  * Print and Send review the whole year. An incomplete year cannot leave. */
-export default function KeptYearBook({ book, childName, disabled, beforeExport, asPage = false }: {
-  book: YearBook; childName: string; disabled: boolean; beforeExport: () => boolean; asPage?: boolean;
+export default function KeptYearBook({ book, childName, disabled, beforeExport }: {
+  book: YearBook; childName: string; disabled: boolean; beforeExport: () => boolean;
 }) {
   const { t, uiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
   const [send, setSend] = useState(false);
-  const Heading = asPage ? "h1" : "h2";
   const year = Number(book.yearKey);
   useEffect(() => { if (disabled) setSend(false); }, [disabled]);
   return <article className="kept-year-book" data-testid="kept-year-book">
-    <Heading data-testid="kept-year-title">{t("kept.year", { year: book.yearKey, name: childName })}</Heading>
+    <h2 data-testid="kept-year-title">{t("kept.year", { year: book.yearKey, name: childName })}</h2>
     <p className="kept-year-line">{t("kept.yearLine")}</p>
     <div className="kept-year-actions">
       <button type="button" className="kept-text-button" data-testid="kept-year-print" disabled={disabled} onClick={() => { if (beforeExport()) void openPrintableReport(yearPageDoc(book, childName, lang), childName, lang); }}>{t("kept.yearPrint")}</button>
