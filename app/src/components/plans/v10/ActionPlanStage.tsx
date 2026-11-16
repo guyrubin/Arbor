@@ -159,11 +159,11 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
                 <PlanEyebrow template={t(planEyebrowKey(step.day), { n: step.day, plan: "\u0000" })} title={plan.title} />
               </p>
               {echoLine}
-              <h1 className="hero" dir="auto" style={{ fontSize: desk ? 30 : 22, lineHeight: 1.12 }}>{step.text}</h1>
+              <h1 className="hero" dir="auto" style={{ fontSize: desk ? 26 : 22, lineHeight: 1.15 }}>{step.text}</h1>
             </>
           ) : (
             <>
-              <h1 className="hero" dir="auto" style={{ fontSize: desk ? 30 : 22, lineHeight: 1.12 }}>{plan.title}</h1>
+              <h1 className="hero" dir="auto" style={{ fontSize: desk ? 26 : 22, lineHeight: 1.15 }}>{plan.title}</h1>
               <p className="line" style={{ gap: 8, fontSize: 15, color: "var(--ink)" }}>
                 <Icon name="check_circle" size={18} style={{ color: "var(--k-plan)" }} />
                 {t("plan.complete")}
@@ -182,19 +182,17 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
             <CoachTryIt step={step.text} today={today} lang={lang} onTryIt={(text) => onTryIt(text, ref(step))} onUndo={onUndo} buttonProps={primary} />
           </div>
         )}
-        <span className="small" style={{ color: "var(--ink-soft)" }} data-testid="plan-done-so-far">
-          {done.length === steps.length && steps.length > 0 ? c.allDone : done.length > 0 ? c.doneSoFar(done.map((s) => s.n)) : t("plan.stepsCount", { done: 0, total: steps.length })}
-        </span>
+        {/* V77: "Done so far" left the stage (the trail and the whole plan say it). */}
         {step?.offerNext && step.next && (
           <div data-testid="plan-offer-next" className="stack ds-col" style={{ gap: 4 }}>
             <p className="small">{t("elev.plans.today.next")}</p>
-            <p dir="auto" style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ink)" }}>{step.next.text}</p>
+            <p dir="auto" style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>{step.next.text}</p>
             <CoachTryIt step={step.next.text} today={today} lang={lang} onTryIt={(text) => onTryIt(text, ref(step.next!))} onUndo={onUndo} />
           </div>
         )}
         {due && (
           <div data-testid="plan-weekly-check" className="stack ds-col" style={{ gap: 8, paddingTop: 12, borderTop: "1px solid var(--rule)" }}>
-            <p style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ink)" }}>{t("elev.plans.check.q")}</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>{t("elev.plans.check.q")}</p>
             <p data-testid="plan-will-ask" className="small">{t("elev.words.plans.willAsk")}</p>
             <div className="line" style={{ gap: 8, flexWrap: "wrap" }} role="group" aria-label={t("elev.plans.check.q")}>
               {PLAN_CHECK_ANSWERS.map((a) => (
@@ -208,7 +206,7 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
         {!due && lastCheck && <p className="small">{t("elev.plans.check.saved")}</p>}
         {adjust && (
           <button type="button" data-testid="plan-adjust" onClick={onAdjust} className="btn ghost sm min-h-11" style={{ background: "var(--card)", alignSelf: "flex-start" }}>
-            <Icon name="auto_awesome" size={14} /> {t("elev.plans.adjust")}
+            <Icon name="auto_awesome" size={15} /> {t("elev.plans.adjust")}
           </button>
         )}
       </div>

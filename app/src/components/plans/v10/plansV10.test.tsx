@@ -57,7 +57,9 @@ describe("Challenge Plans page (N-Challenge)", () => {
 
   it("nights are counts of what the parent confirmed; an unanswered night is unknown (dashed), never a miss", () => {
     const html = screen();
-    expect(text(html)).toContain("3 nights confirmed");
+    // V77: the count is the nights tile's figure (said once; the stage no longer repeats it).
+    expect(text(html)).toMatch(/<?\b3\s+nights confirmed/);
+    expect((text(html).match(/nights confirmed/g) ?? []).length).toBe(1);
     expect(html).toContain("tok plan md none");
     expect(text(html)).toContain("No answer");
     expect(text(html.replace(/ style="[^"]*"/g, ""))).not.toMatch(/\d\s*%|missed|score|streak/i);
@@ -106,21 +108,34 @@ describe("Challenge Plans page (N-Challenge)", () => {
   });
 });
 
-describe("the plan picker", () => {
+describe("the plan picker (V77: your plans as tabs)", () => {
   const plan: ActionPlan = {
     id: "p1", title: "Calmer mornings", issue: "Leaving the house", scripts: [],
     phases: [{ name: "One", steps: [{ text: "a", status: "done" }, { text: "b" }] }],
   } as unknown as ActionPlan;
-  it("names the action plan by its title and the Challenge plan by its book title, counts only", () => {
-    const running = activePlans([row()], NOW);
-    const html = renderToStaticMarkup(
-      <PlanPicker actionPlans={[plan]} selectedId="p1" todaySteps={{ p1: "b" }} challenges={running} lang="en" composition="desk" onSelect={noop} onOpenChallenge={noop} />,
-    );
+  const pick = (over: Partial<React.ComponentProps<typeof PlanPicker>> = {}) => renderToStaticMarkup(
+    <PlanPicker actionPlans={[plan]} selectedId="p1" challenges={activePlans([row()], NOW)} lang="en" composition="desk" onSelect={noop} onOpenChallenge={noop} {...over} />,
+  );
+  it("one tab per plan: the action plan by its title, the Challenge plan by its night (book title in its label), counts only", () => {
+    const html = pick();
     expect(html).toContain("Calmer mornings");
-    expect(html).toContain("The door opens again");
+    expect(html).toContain('aria-label="Open The door opens again"');
+    expect(text(html)).toContain("Night 9 of 14");
     expect(html).toContain('aria-pressed="true"');
     expect(html).toContain('href="#/plans?challenge=plan-dropoff"');
     expect(text(html)).not.toMatch(/\d\s*%/);
+  });
+  it("each plan is drawn once: no step count and no step text on the tab (the stage says them)", () => {
+    const html = pick();
+    expect(text(html)).not.toMatch(/steps done|of \d+ steps/);
+    // negative control: the pre-V77 card carried the count beside the title
+    expect("3 of 7 steps done").toMatch(/of \d+ steps/);
+  });
+  it("with no Challenge plan running, one tab opens the Challenge Plans list", () => {
+    const html = pick({ challenges: [], challengeCount: 8, onAllChallenges: noop });
+    expect(html).toContain('data-plan-pick="challenge-all"');
+    expect(html).toContain('href="#/plans?challenge=all"');
+    expect(pick({ challenges: [] })).not.toContain("challenge-all");
   });
 });
 

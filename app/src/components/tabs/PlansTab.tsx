@@ -218,7 +218,7 @@ export default function PlansTab() {
           {suggestions.map((s) => (
             <div key={s.topic} className="stack ds-col" style={{ gap: 4, alignItems: "flex-start" }}>
               <button type="button" onClick={() => setPlanChallengeTopic(s.topic)} className="ds-pencil ds-plans-suggest min-h-11">
-                <Icon name="auto_awesome" size={12} /> <span dir="auto">{s.topic.split("—")[0].trim()}</span>
+                <Icon name="auto_awesome" size={15} /> <span dir="auto">{s.topic.split("—")[0].trim()}</span>
               </button>
               <ContentWhyLine why={s.reason} />
             </div>
@@ -243,7 +243,7 @@ export default function PlansTab() {
         className={hasPlan ? "btn ghost block" : "btn primary block"}
         {...(hasPlan ? { style: { background: "var(--card)" } } : primaryStamp)}
       >
-        {isPlanGenerating ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("plan.creating")}</>) : (<><Icon name="auto_awesome" size={16} /> {t("plan.createBtn")}</>)}
+        {isPlanGenerating ? (<><Icon name="progress_activity" size={15} className="animate-spin" /> {t("plan.creating")}</>) : (<><Icon name="auto_awesome" size={15} /> {t("plan.createBtn")}</>)}
       </button>
       {/* B-ASKJB-49: the crisis screen answered 409 to this challenge: the
           shared crisis card (helplines in the request's language). */}
@@ -260,9 +260,9 @@ export default function PlansTab() {
   const routinesRow = (
     <details data-testid="plans-routines-row" className="group">
       <summary className="ds-link" style={{ paddingInline: 0, listStyle: "none", cursor: "pointer" }}>
-        <Icon name={routineCount > 0 ? "checklist" : "add"} size={16} />
+        <Icon name={routineCount > 0 ? "checklist" : "add"} size={15} />
         <span>{routineCount > 0 ? t("elev.plans.routines.row", { n: routineCount }) : t("elev.plans.routines.add")}</span>
-        <Icon name="expand_more" size={16} className="transition group-open:rotate-180" />
+        <Icon name="expand_more" size={15} className="transition group-open:rotate-180" />
       </summary>
       <div className="mt-3"><RoutinesCard /></div>
     </details>
@@ -271,17 +271,13 @@ export default function PlansTab() {
   const routine = plan ? routineIdOfPlan(plan) !== null : false;
   const step = plan && !routine ? todaysPlanStep(plan, actionLoop, todayKey) : null;
   const showScripts = !!plan && !routine && plan.scripts.length > 0;
-  const steps = plan ? plan.phases.reduce((n, ph) => n + ph.steps.length, 0) : 0;
-  const stepsDone = plan ? planDoneSteps(plan) : 0;
-  const todaySteps: Record<string, string | null> = {};
-  for (const p of actionPlans) todaySteps[p.id] = routineIdOfPlan(p) !== null ? null : todaysPlanStep(p, actionLoop, todayKey)?.text ?? null;
 
   const anyPlan = hasPlan || running.length > 0;
   const stops: GuideStop[] = [
-    ...(anyPlan || !plansLoaded ? [{ id: "plans-stage", title: c.yourPlans, sub: c.yourPlansSub(actionPlans.length, running.length) }] : []),
-    ...(showScripts ? [{ id: "plans-rail", title: c.whatToSay, sub: c.whatToSaySub(plan!.scripts.length) }] : []),
-    ...(plan ? [{ id: "plans-whole", title: c.wholePlan, sub: routine ? undefined : c.stepsDoneSub(stepsDone, steps) }] : []),
-    { id: "plans-start", title: c.startAnother },
+    ...(anyPlan || challengeCount > 0 || !plansLoaded ? [{ id: "plans-stage", title: c.yourPlans, sub: c.yourPlansSub(actionPlans.length > 0, running.length > 0) }] : []),
+    ...(showScripts ? [{ id: "plans-rail", title: c.whatToSay, sub: c.whatToSaySub }] : []),
+    ...(plan ? [{ id: "plans-whole", title: c.wholePlan, sub: c.wholePlanSub }] : []),
+    { id: "plans-start", title: desk ? c.startAnother : c.startAnotherShort, sub: c.startAnotherSub },
   ];
   const n = (id: string) => stops.findIndex((s) => s.id === id) + 1;
 
@@ -312,12 +308,13 @@ export default function PlansTab() {
     <PlanPicker
       actionPlans={actionPlans}
       selectedId={plan?.id ?? null}
-      todaySteps={todaySteps}
       challenges={running}
       lang={lang}
       composition={composition}
       onSelect={setSelectedId}
       onOpenChallenge={(p) => openChallenge(p.def.id)}
+      onAllChallenges={() => openChallenge()}
+      challengeCount={challengeCount}
     />
   );
   const scripts = showScripts && plan && (
@@ -328,12 +325,12 @@ export default function PlansTab() {
       <>
         {stops.length > 1 && <Guide stops={stops} label={c.onThisPage} mini={!desk} />}
         <Route composition={composition} tight={!desk}>
-          {(anyPlan || !plansLoaded) && (
+          {(anyPlan || challengeCount > 0 || !plansLoaded) && (
             <RouteSection id="plans-stage" n={1} on>
               <div data-module="plans-yours" className="stack ds-col" style={{ gap: desk ? 0 : 12 }}>
                 <ReceiptNoteLine note={startedReceipt.note} testId="plans-started-receipt" />
                 {!plansLoaded && <SectionSkeleton title={false} rows={2} rowClassName="h-48" loaded={plansLoaded} testId="plans-skeleton" />}
-                {desk && picker}
+                {picker}
                 {plan && desk && (
                   <div className="g12" data-testid={routine ? undefined : "plan-tracks"}>
                     <div className={showScripts ? "x8" : "x12"} style={{ display: "flex", flexDirection: "column" }}>{stage}</div>
@@ -341,8 +338,6 @@ export default function PlansTab() {
                   </div>
                 )}
                 {plan && !desk && <div data-testid={routine ? undefined : "plan-tracks"}>{stage}</div>}
-                {/* Phone: today's step leads; the plan cards follow it (the move stays above the fold). */}
-                {!desk && picker}
               </div>
             </RouteSection>
           )}
@@ -396,10 +391,6 @@ export default function PlansTab() {
                 lang={lang}
                 composition={composition}
                 childName={first}
-                choosable={choosable}
-                challengeCount={challengeCount}
-                onAllChallenges={() => openChallenge()}
-                onOpenPattern={(d) => openChallenge(d.id)}
                 readyMadeCount={readyMadeCount}
                 readyMade={<RoutineTemplates />}
                 onTogether={() => setActiveTab("practice")}
