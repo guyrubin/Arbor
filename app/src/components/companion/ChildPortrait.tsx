@@ -108,8 +108,8 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
       <MilestoneAreas key={childProfile.id} observations={observations} momentText={title} primaryMoveProps={{ "data-primary-move": "start-development-check" }}
         onExplore={exploreDomain} composition={composition} onOpened={onOpened}>
         {({ map, check, area, next, openDomain }) => {
-          const thenAndNow = <ThenAndNow observations={observations} logs={record.sources.behaviorLogs ?? []} now={now} />;
           const cards = <PortraitCards sources={record.sources} onEditGoal={() => setGoalOwner(childProfile.id)} />;
+          const thenAndNow = <ThenAndNow observations={observations} logs={record.sources.behaviorLogs ?? []} now={now} />;
           const areaCard = (
             <div className="area ar" style={domainToneStyle(openDomain)} data-testid="ms-open-area">
               <div className="ah">

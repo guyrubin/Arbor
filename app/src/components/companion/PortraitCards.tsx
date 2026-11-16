@@ -67,7 +67,7 @@ export default function PortraitCards({ sources, onEditGoal }: PortraitCardsProp
     </>
   );
   return (
-    <>
+    <div className="portrait-cards" data-testid="portrait-cards">
       <article className="obj" data-testid="portrait-card-strength">
         <div className="oh">
           <span className="ogi" aria-hidden="true"><Icon name="auto_awesome" size={17} /></span>
@@ -100,19 +100,18 @@ export default function PortraitCards({ sources, onEditGoal }: PortraitCardsProp
           </>
         ) : notTold("portrait-card-kept-tell", () => openCaptureSheet())}
       </article>
-      <article className="obj" data-testid="portrait-card-goal">
-        <div className="oh">
+      {/* The whole goal card is the goal picker's door, as production's was. */}
+      <button type="button" className="obj ms-goal" data-testid="portrait-goals-edit" onClick={onEditGoal}>
+        <span className="oh">
           <span className="ogi" aria-hidden="true"><Icon name="bookmark" size={17} /></span>
-          <h3 className="ok">{t("elev.goal.profile.title")}</h3>
-        </div>
-        {goal && <p className="ol"><bdi>{goalLabel(goal, t)}</bdi></p>}
-        {next && <p className="ms-obj-src portrait-card-next" data-testid="portrait-goal-next">{t("companion.milestones.goalNext", { step: next })}</p>}
-        {goal && <p className="ms-obj-src" data-testid="portrait-goal-src">{t("companion.milestones.srcGoal")}</p>}
-        <button type="button" className="oa b" data-testid="portrait-goals-edit" onClick={onEditGoal}>
-          {goal ? t("elev.goal.profile.edit") : t("elev.goal.profile.empty")}
-        </button>
-      </article>
+          <span className="ok">{t("elev.goal.profile.title")}</span>
+        </span>
+        <span className="ol">{goal ? <bdi>{goalLabel(goal, t)}</bdi> : t("elev.goal.profile.empty")}</span>
+        {next && <span className="ms-obj-src portrait-card-next" data-testid="portrait-goal-next">{t("companion.milestones.goalNext", { step: next })}</span>}
+        {goal && <span className="ms-obj-src" data-testid="portrait-goal-src">{t("companion.milestones.srcGoal")}</span>}
+        {goal && <span className="oa b">{t("elev.goal.profile.edit")}</span>}
+      </button>
       {telling && <TellArborMore onClose={() => setTelling(false)} />}
-    </>
+    </div>
   );
 }

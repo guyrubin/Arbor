@@ -4,7 +4,7 @@ import { domainName } from "../../lib/domains/registry";
 import { DOMAIN_ICONS } from "../../lib/domains/icons";
 import { milestoneText } from "../../lib/milestoneData";
 import type { ObserveStatus } from "../../lib/milestones/observe";
-import { selectNextMilestonesByShelf, shelfOfMilestone } from "../../lib/milestones/selectByShelf";
+import { nextNoticeIds, shelfOfMilestone } from "../../lib/milestones/selectByShelf";
 import { shelfDef } from "../../lib/shelves/registry";
 import type { Milestone } from "../../types";
 import { Icon } from "../ui/Icon";
@@ -27,17 +27,17 @@ export interface NoticeNextProps {
   comparisonMonths: number;
   gender?: string | null;
   onAnswer: (milestoneId: string, status: ObserveStatus) => Promise<unknown> | undefined;
-  /** How many cards (desk 3, phone 3; the selector may return fewer). */
-  total?: number;
+  /** How many cards at most (the selector may return fewer). */
+  limit?: number;
 }
 
-export default function NoticeNext({ childId, milestones, comparisonMonths, gender = null, onAnswer, total = 3 }: NoticeNextProps) {
+export default function NoticeNext({ childId, milestones, comparisonMonths, gender = null, onAnswer, limit = 3 }: NoticeNextProps) {
   const { t } = useLanguage();
   // The picks are chosen once per child per visit; answers update in place.
   const [held, setHeld] = useState<{ childId: string; ids: string[] } | null>(null);
   const fresh = useMemo(
-    () => selectNextMilestonesByShelf([...milestones], comparisonMonths, { perShelf: 1, total }).map((p) => p.milestone.id),
-    [milestones, comparisonMonths, total],
+    () => nextNoticeIds(milestones, comparisonMonths, limit),
+    [milestones, comparisonMonths, limit],
   );
   const ids = held && held.childId === childId ? held.ids : fresh;
   const picks = ids

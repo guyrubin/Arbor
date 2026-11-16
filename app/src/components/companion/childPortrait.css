@@ -2,11 +2,8 @@
 .child-portrait *, .portrait-evidence * { box-sizing: border-box; }
 .child-portrait button, .child-portrait select, .portrait-evidence button { min-height: var(--touch-min); cursor: pointer; }
 .child-portrait button:focus-visible, .child-portrait select:focus-visible, .portrait-evidence button:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 4px; }
-.portrait-intro { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 8px 24px; }
-.portrait-intro > div { min-width: 0; }
 .portrait-kicker { margin: 0 0 12px; color: var(--arbor-muted); font-size: var(--t-kicker); font-weight: 600; letter-spacing: .07em; }
 [dir=rtl] .portrait-kicker { letter-spacing: 0; }
-.portrait-intro h1 { margin: 0; font-size: var(--t-hero); line-height: 1.12; font-weight: var(--arbor-w-hero); letter-spacing: -.025em; }
 .portrait-subtitle { max-width: 600px; margin: 14px 0 0; color: var(--arbor-muted); line-height: 1.7; font-size: 15px; }
 .portrait-identity { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; text-align: start; padding: 8px; border-radius: var(--r); }
 .portrait-identity > span { display: grid; gap: 3px; }
@@ -131,10 +128,8 @@
 .portrait-interpretation { margin-block: 20px 0; padding: 16px; background: var(--arbor-paper-deep); border-radius: var(--r); }
 .portrait-interpretation p { font-size: 13px; line-height: 1.7; margin: 0; }
 @media (max-width: 760px) {
-  .portrait-intro { align-items: flex-start; gap: 12px; }
   .portrait-identity { padding: 0; }
   .portrait-identity > span { display: none; }
-  .portrait-intro h1 { font-size: 31px; }
   .portrait-toolbar { flex-wrap: wrap; }
   .portrait-views { flex: 1; }
   .portrait-views button { padding-inline: 12px; }
@@ -154,9 +149,7 @@
   .portrait-environments, .portrait-domain-view { grid-template-columns: 1fr; }
 }
 @media (max-width: 480px) {
-  .portrait-intro { padding-block-start: 0; }
   .portrait-kicker { font-size: 11px; margin-block-end: 10px; }
-  .portrait-intro h1 { font-size: 30px; line-height: 1.2; }
   .portrait-subtitle { font-size: 13px; margin-block-start: 10px; }
   .portrait-identity img, .portrait-identity > span:first-child { width: 42px !important; height: 42px !important; }
   .portrait-interests { display: block; }

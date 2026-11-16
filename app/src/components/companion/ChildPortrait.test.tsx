@@ -104,6 +104,8 @@ vi.mock("../ui/Sheet", async original => ({
   },
   useCompactSurface: () => state.compact,
 }));
+// v10.1: the composition seam (desk ≥ 1024 px, else phone).
+vi.mock("../../design/useComposition", () => ({ useComposition: () => (state.phone ? "phone" : "desk") }));
 // v3 F-CHILD-4: the phone stack's width seam (a matchMedia read in the app).
 vi.mock("./ChildDoors", async original => ({
   ...(await original<typeof import("./ChildDoors")>()),
@@ -170,10 +172,11 @@ const render = (props: React.ComponentProps<typeof ChildPortrait> = {}) => {
   return renderToStaticMarkup(<ChildPortrait {...props} />);
 };
 const button = (id: string) => state.buttons.find(b => b["data-testid"] === id);
-const row = (domain: DomainId) => state.buttons.find(b => b["data-testid"] === "dev-map-row" && b["data-domain"] === domain);
-const expanded = (html: string) => [...html.matchAll(/data-testid="dev-map-row" data-domain="([a-z]+)" aria-expanded="true"/g)].map(m => m[1]);
 const tile = (domain: DomainId) => state.buttons.find(b => b["data-testid"] === "dev-map-tile" && b["data-domain"] === domain);
-const openTiles = (html: string) => [...html.matchAll(/data-testid="dev-map-tile" data-domain="([a-z]+)" aria-expanded="true" aria-haspopup="dialog"/g)].map(m => m[1]);
+/** v10.1: the territory a parent opened is pressed; its area fills section 3. */
+const pressed = (html: string) => [...html.matchAll(/data-testid="dev-map-tile" data-domain="([a-z]+)" aria-pressed="true"/g)].map(m => m[1]);
+const openArea = (html: string) => [...html.matchAll(/data-testid="area-detail" data-domain="([a-z]+)"/g)].map(m => m[1]);
+const MODULES = ["child-milestones-areas", "child-milestones-portrait", "child-milestones-area"];
 const t = (lang: "en" | "he") => (key: string) => translate(lang, key);
 
 beforeEach(() => {
@@ -185,7 +188,9 @@ beforeEach(() => {
 });
 
 describe("v3 F-CHILD-1 — the Milestones pill, one scroll", () => {
-  it.each(["en", "he"] as const)("header, three cards, then the eight areas; two modules and one primary move (%s)", lang => {
+  // v10.1 RE-PIN: the guide, then the map (its scene holds the header), In
+  // your words, then the open area; three modules, one primary move.
+  it.each(["en", "he"] as const)("the guide, the map with its header, the three cards, then the open area; three modules and one primary move (%s)", lang => {
     state.lang = lang;
     const html = render();
     expect(html).toContain(`data-testid="child-portrait"`);
@@ -193,19 +198,27 @@ describe("v3 F-CHILD-1 — the Milestones pill, one scroll", () => {
     // The header names the child through an isolated placeholder, never "{name}'s" in code.
     expect(html).toContain(esc(translate(lang, "companion.milestones.kicker")));
     const [before, after] = translate(lang, "companion.milestones.title").split("{name}");
-    expect(html).toContain(`<h1>${esc(before)}<bdi dir="auto">Noa</bdi>${esc(after)}</h1>`);
-    // Order: header → portrait cards → areas.
-    const modules = [...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1]);
-    expect(modules).toEqual(["child-milestones-portrait", "child-milestones-areas"]);
-    const h1 = html.indexOf("<h1>"), cards = html.indexOf('data-testid="portrait-cards"'), map = html.indexOf('data-testid="dev-map"');
-    expect(h1).toBeGreaterThan(-1);
-    expect(cards).toBeGreaterThan(h1);
-    expect(map).toBeGreaterThan(cards);
-    expect(map).toBeGreaterThan(html.indexOf('data-module="child-milestones-areas"'));
+    expect(html).toContain(`<h1 class="title" id="ms-title">${esc(before)}<bdi dir="auto">Noa</bdi>${esc(after)}</h1>`);
+    expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
+    // The guide's four stops point at the four numbered sections, in order.
+    expect([...html.matchAll(/class="gstop[^"]*" href="#([a-z-]+)"/g)].map(m => m[1])).toEqual(["ms-map", "ms-words", "ms-area", "ms-next"]);
+    for (const id of ["ms-map", "ms-words", "ms-area", "ms-next"]) expect(html).toContain(`id="${id}"`);
+    // Order: map (header inside) → portrait cards → open area.
+    expect([...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(MODULES);
+    const h1 = html.indexOf("<h1"), map = html.indexOf('data-testid="dev-map"'), cards = html.indexOf('data-testid="portrait-cards"'), area = html.indexOf('data-testid="area-detail"');
+    expect(map).toBeGreaterThan(h1);
+    expect(cards).toBeGreaterThan(map);
+    expect(area).toBeGreaterThan(cards);
+    // The Map / List switch: the map is this page; the list is #/milestones.
+    expect(html).toContain('href="#/development" aria-current="page" data-testid="ms-view-development"');
+    expect(html).toContain('href="#/milestones" data-testid="ms-view-milestones"');
     // The 5-minute check is the page's one primary move.
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
     expect(html).toMatch(/data-testid="dev-map-check" data-primary-move="start-development-check"/);
-    expect([...html.matchAll(/data-testid="dev-map-row" data-domain="([a-z]+)" aria-expanded="false"/g)].map(m => m[1])).toEqual([...DOMAIN_IDS]);
+    // Eight territories in registry order; with nothing recorded the first area is open.
+    expect([...html.matchAll(/data-testid="dev-map-tile" data-domain="([a-z]+)"/g)].map(m => m[1])).toEqual([...DOMAIN_IDS]);
+    expect(pressed(html)).toEqual(["talking"]);
+    expect(openArea(html)).toEqual(["talking"]);
     // The record tools, the moments views and the identity button left this page.
     for (const gone of ["portrait-toolbar", "portrait-domain-view", "watch-row", "words-strip", "keepsakes-disclosure", "data-history-state", "<svg"]) expect(html, gone).not.toContain(gone);
     const text = words(html);
@@ -231,16 +244,18 @@ describe("v3 F-CHILD-1 — the Milestones pill, one scroll", () => {
     expect(area).toBeDefined();
     state.milestones = ALL_MILESTONES.map(m => (m.id === first.id ? marked : { ...m }));
     const html = render();
-    expect(html.match(/data-testid="count-pips"/g)).toHaveLength(1);
-    expect(html).toContain(`data-testid="count-pips" data-domain="${area}"`);
+    // v10.1: the count sits on its own territory, with its leaves; the other seven say No record yet.
+    expect(html.match(/data-testid="dev-map-seen-area"/g)).toHaveLength(1);
+    const own = html.slice(html.indexOf(`data-testid="dev-map-tile" data-domain="${area}"`));
+    expect(own.slice(0, own.indexOf("</button>"))).toContain('data-testid="dev-map-seen-area"');
     expect(html.match(/data-testid="dev-map-none"/g)).toHaveLength(7);
   });
 
-  it("a row quotes the newest moment in the parent's own words", () => {
+  it("a territory quotes the newest moment in the parent's own words", () => {
     state.sources = { behaviorLogs: [{ id: "l1", timestamp: "2026-06-10T10:00:00.000Z", behaviorType: "Moment", durationMinutes: 0, trigger: "Sang the whole bath song" }] };
     state.observations = [{ id: "behaviorLogs:l1", childId: "child-a", at: "2026-06-10T10:00:00.000Z", domains: ["talking"], kind: "moment", origin: "behaviorLogs", source: "parent_typed", value: { type: "moment", behaviorType: "Moment" }, ageAtObservationMonths: null, pretermCorrected: false }];
     const html = render();
-    const talking = html.slice(html.indexOf('data-domain="talking" aria-expanded'), html.indexOf('data-domain="moving" aria-expanded'));
+    const talking = html.slice(html.indexOf('data-testid="dev-map-tile" data-domain="talking"'), html.indexOf('data-testid="dev-map-tile" data-domain="moving"'));
     expect(talking).toContain('data-testid="dev-map-last"');
     expect(talking).toContain("Sang the whole bath song");
   });
@@ -260,15 +275,15 @@ describe("v3 F-CHILD-1 — the portrait cards", () => {
     expect(kept).toContain(esc(translate(lang, "companion.milestones.card.kept")));
     expect(kept).toContain("Sang the whole bath song");
     expect(kept).toContain(esc(translate(lang, "companion.milestones.srcParent", { date: fmtDay("2026-06-10T10:00:00.000Z", lang) })));
-    const goal = html.slice(html.indexOf('data-testid="portrait-goals-edit"'), html.indexOf('data-testid="dev-map"'));
+    const goal = html.slice(html.indexOf('data-testid="portrait-goals-edit"'), html.indexOf('data-module="child-milestones-area"'));
     expect(goal).toContain(esc(translate(lang, "elev.goal.profile.title")));
     expect(goal).toContain(esc(translate(lang, "elev.goal.profile.empty")));
     // The mock's card icon; the source line shows only once a goal is chosen.
     expect(goal).toMatch(/<span class="msr[^"]*"[^>]*>bookmark<\/span>/);
     expect(goal).not.toContain('data-testid="portrait-goal-src"');
-    // The first two cards are wide-screen only (CSS); the goal card stays on a phone.
-    expect(html.match(/class="portrait-card portrait-card-wide"/g)).toHaveLength(2);
-    expect(html).toContain('class="portrait-card portrait-card-goal"');
+    // v10.1: three object cards at every width (the goal card is the picker's door).
+    expect(html.match(/class="obj[ "]/g)).toHaveLength(4); // the three cards and the check
+    expect(html).toContain('class="obj ms-goal"');
   });
 
   it.each(["en", "he"] as const)("an empty card says Not told yet and offers Tell Arbor (%s)", lang => {
@@ -297,106 +312,56 @@ describe("v3 F-CHILD-1 — the portrait cards", () => {
   });
 });
 
-describe("v3 F-CHILD-1 — one open row", () => {
-  it.each(["en", "he"] as const)("?area= opens its row inline on a wide screen, and nothing else (%s)", lang => {
+// v10.1 RE-PIN: one area is always open, in its own section (desk and phone
+// alike, one tree); a territory tap opens another. No sheet, no closed state.
+describe("v10.1 — one open area", () => {
+  it.each(["en", "he"] as const)("?area= opens its area in section 3, and nothing else (%s)", lang => {
     state.lang = lang;
-    state.query = "area=talking";
+    state.query = "area=moving";
     const html = render();
-    expect(expanded(html)).toEqual(["talking"]);
-    const controls = html.match(/data-domain="talking" aria-expanded="true" aria-controls="([^"]+)"/)?.[1];
-    expect(controls).toBeTruthy();
-    expect(html).toContain(`<div class="area-detail" id="${controls}" data-testid="area-detail" data-domain="talking"`);
-    expect(html.match(/data-testid="area-detail"/g)).toHaveLength(1);
+    expect(pressed(html)).toEqual(["moving"]);
+    expect(openArea(html)).toEqual(["moving"]);
+    expect(html).toContain(`<h3 class="an" id="ms-area-title">${esc(domainName("moving", t(lang)))}</h3>`);
+    expect(html.indexOf('data-testid="area-detail"')).toBeGreaterThan(html.indexOf('id="ms-area"'));
     expect(html).not.toContain('data-surface="sheet"');
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
   });
 
   it("the old ?shelf= link opens the area that shelf sits on", () => {
     state.query = "shelf=food";
-    expect(expanded(render())).toEqual(["body"]);
+    expect(openArea(render())).toEqual(["body"]);
   });
 
-  // v3 F-CHILD-4 (MOB-02) RE-PIN: below lg the areas are tiles, not rows — a
-  // tile is what opens the bottom sheet (critic ruling 25: the same
-  // AreaRowDetail body, inline on a wide screen, in a sheet on a phone).
-  it("below lg the open area is a tile that rides a bottom sheet titled with the area", () => {
-    state.compact = true;
-    state.query = "area=moving";
-    const html = render();
-    expect(html).not.toContain('data-testid="dev-map-row"');
-    expect(openTiles(html)).toEqual(["moving"]);
-    expect(html).not.toContain("aria-controls");
-    expect(html).not.toContain('class="dev-map-detail"');
-    expect(html).toContain(`data-surface="sheet" data-title="${esc(domainName("moving", t("en")))}"`);
-    expect(html).toContain('data-testid="area-detail" data-domain="moving"');
-    expect(html.match(/data-testid="area-detail"/g)).toHaveLength(1);
-    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+  it("with no link, the first area with something recorded leads", () => {
+    const moving = groupMilestonesByShelf(catalogue()).moving[0];
+    state.milestones = catalogue().map(m => (m.id === moving.id ? { ...m, checked: true, observationStatus: "yes" as const } : m));
+    expect(openArea(render())).toEqual(["moving"]);
   });
 
-  it("the sheet opens on the area's newest moment in the parent's words; the tile only names its day", () => {
-    state.compact = true;
+  it("the open area quotes its newest moment in the parent's words", () => {
     state.query = "area=moving";
     state.sources = { behaviorLogs: [{ id: "l2", timestamp: "2026-06-12T10:00:00.000Z", behaviorType: "Moment", durationMinutes: 0, trigger: "Climbed the big slide alone" }] };
     state.observations = [{ id: "behaviorLogs:l2", childId: "child-a", at: "2026-06-12T10:00:00.000Z", domains: ["moving"], kind: "moment", origin: "behaviorLogs", source: "parent_typed", value: { type: "moment", behaviorType: "Moment" }, ageAtObservationMonths: null, pretermCorrected: false }];
-    // The areas module (the kept-moment card above it may quote the same words).
     const html = render();
-    const areas = html.slice(html.indexOf('data-module="child-milestones-areas"'));
-    const sheetAt = areas.indexOf('data-surface="sheet"');
-    expect(sheetAt).toBeGreaterThan(-1);
-    expect(areas.match(/Climbed the big slide alone/g)).toHaveLength(1);
-    expect(areas.indexOf("Climbed the big slide alone")).toBeGreaterThan(sheetAt);
-    expect(areas.indexOf('data-testid="area-detail-last"')).toBeGreaterThan(sheetAt);
-    const movingTile = areas.slice(areas.indexOf('data-testid="dev-map-tile" data-domain="moving"'), areas.indexOf('data-testid="dev-map-tile" data-domain="hands"'));
-    expect(movingTile).toContain('data-testid="dev-map-tile-last"');
-    expect(movingTile).toMatch(/<time datetime="2026-06-12T10:00:00\.000Z">/i);
+    const area = html.slice(html.indexOf('data-module="child-milestones-area"'));
+    expect(area).toContain('data-testid="area-detail-last"');
+    expect(area).toContain("Climbed the big slide alone");
   });
 
-  it("a wide screen keeps the rows and their inline body, with no sheet line", () => {
-    state.query = "area=moving";
-    const html = render();
-    expect(html).not.toContain("dev-map-tiles");
-    expect(html).not.toContain('data-testid="area-detail-last"');
-    expect(expanded(html)).toEqual(["moving"]);
-  });
-
-  it("a tile tap opens its sheet, a second tap closes it, the sheet's close closes it, and another tile takes over", () => {
+  it.each([false, true])("a territory tap opens its area and another takes over; never two open, never none (phone %s)", phone => {
     state.keepState = true;
-    state.compact = true;
-    let html = render();
-    expect(html).not.toContain('data-surface="sheet"');
-    tile("hands")!.onClick!();
-    html = render();
-    expect(openTiles(html)).toEqual(["hands"]);
-    expect(html).toContain(`data-surface="sheet" data-title="${esc(domainName("hands", t("en")))}"`);
-    tile("hands")!.onClick!();
-    html = render();
-    expect(openTiles(html)).toEqual([]);
-    expect(html).not.toContain('data-surface="sheet"');
-    tile("feelings")!.onClick!();
-    html = render();
-    expect(openTiles(html)).toEqual(["feelings"]);
-    // Escape, the backdrop and the 44 px close all call the page's onClose (ui/Sheet).
-    state.sheetClose!();
-    html = render();
-    expect(openTiles(html)).toEqual([]);
-    expect(html).not.toContain('data-testid="area-detail"');
-  });
-
-  it("a tap opens a row, a second tap closes it, and another row takes over; never two open", () => {
-    state.keepState = true;
+    state.phone = phone;
     state.query = "area=talking";
     let html = render();
-    expect(expanded(html)).toEqual(["talking"]);
-    row("feelings")!.onClick!();
+    expect(openArea(html)).toEqual(["talking"]);
+    tile("feelings")!.onClick!();
     html = render();
-    expect(expanded(html)).toEqual(["feelings"]);
-    expect(html.match(/data-testid="area-detail"/g)).toHaveLength(1);
-    row("feelings")!.onClick!();
-    html = render();
-    expect(expanded(html)).toEqual([]);
-    expect(html).not.toContain('data-testid="area-detail"');
-    row("hands")!.onClick!();
-    expect(expanded(render())).toEqual(["hands"]);
+    expect(pressed(html)).toEqual(["feelings"]);
+    expect(openArea(html)).toEqual(["feelings"]);
+    tile("feelings")!.onClick!();
+    expect(openArea(render())).toEqual(["feelings"]);
+    tile("hands")!.onClick!();
+    expect(openArea(render())).toEqual(["hands"]);
   });
 
   it("the card's check and the row's check both open the 5-minute check", () => {
@@ -530,35 +495,33 @@ describe("v3 F-CHILD-1 — answers, firsts and the chosen watch", () => {
   });
 });
 
-describe("v3 F-CHILD-4 (MOB-02) — the Milestones pill on a phone, one stack", () => {
-  const phone = () => { state.phone = true; state.compact = true; };
+// v10.1 RE-PIN: the phone is the same objects in one column: the map (two
+// columns of territories, the count in the scene's head), In your words with
+// the check closing it, the open area, then What to notice next.
+describe("v10.1 — the Milestones pill on a phone, one stack", () => {
+  const phone = () => { state.phone = true; };
 
-  // v4 re-pin: the phone doors are gone — the journal door is Moments', the
-  // memory card is About's, the check is this pill's own row, Care is in More.
-  it.each(["en", "he"] as const)("the areas first (tiles, then the check row), then the goal card; no doors; the h1 is for screen readers; two modules, one primary move (%s)", lang => {
+  it.each(["en", "he"] as const)("the map first, then the cards with the check, the open area and notice next; three modules, one primary move (%s)", lang => {
     state.lang = lang;
     phone();
     const html = render();
     expect(html).toContain(`dir="${lang === "he" ? "rtl" : "ltr"}"`);
-    expect([...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(["child-milestones-areas", "child-milestones-portrait"]);
-    const [before, after] = translate(lang, "companion.milestones.title").split("{name}");
-    expect(html).toContain(`<h1 class="sr-only">${esc(before)}<bdi dir="auto">Noa</bdi>${esc(after)}</h1>`);
+    expect([...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(MODULES);
     expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
-    expect(html).not.toContain('class="portrait-intro"');
-    const h1 = html.indexOf("<h1"), map = html.indexOf('data-testid="dev-map"'), check = html.indexOf('data-testid="dev-map-checkrow"'), goal = html.indexOf('data-testid="portrait-goals-edit"');
-    expect(h1).toBeGreaterThan(-1);
-    expect(map).toBeGreaterThan(h1);
-    expect(check).toBeGreaterThan(html.indexOf('data-testid="dev-map-tiles"'));
-    expect(goal).toBeGreaterThan(check);
-    expect(html).not.toContain("child-door");
+    expect(html).toContain('class="atlas m"');
+    expect(html).not.toContain('data-testid="dev-map-hub"');
+    const map = html.indexOf('data-testid="dev-map"'), goal = html.indexOf('data-testid="portrait-goals-edit"'), check = html.indexOf('data-testid="dev-map-checkrow"'), area = html.indexOf('data-testid="area-detail"'), next = html.indexOf('id="ms-next"');
+    expect(goal).toBeGreaterThan(map);
+    expect(check).toBeGreaterThan(goal);
+    expect(area).toBeGreaterThan(check);
+    expect(next).toBeGreaterThan(area);
     expect(html.match(/data-testid="dev-map-tile"/g)).toHaveLength(8);
-    expect(html).not.toContain('data-testid="dev-map-row"');
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
     expect(html).toMatch(/data-testid="dev-map-check" data-primary-move="start-development-check"/);
     expect(words(html)).not.toMatch(/companion\.|elev\./);
   });
 
-  it.each(["en", "he"] as const)("CLINICAL FIREWALL at phone width: a tile is glyph, name and pips — no share, no denominator, no level word (%s)", lang => {
+  it.each(["en", "he"] as const)("CLINICAL FIREWALL at phone width: a territory is glyph, name and its count — no share, no denominator, no level word (%s)", lang => {
     state.lang = lang;
     phone();
     const by = groupMilestonesByShelf(catalogue());
@@ -570,39 +533,28 @@ describe("v3 F-CHILD-4 (MOB-02) — the Milestones pill on a phone, one stack", 
     expect(text).not.toMatch(/%/);
     expect(text).not.toMatch(/\d+\s*\/\s*\d+/);
     expect(text).not.toMatch(/\bof\s+\d+|\d+\s+of\s+\d+|מתוך\s+\d+/);
-    const start = html.indexOf('data-testid="dev-map-tiles"');
+    const start = html.indexOf('class="atlas m"');
     const tiles = words(html.slice(start, html.indexOf("</ul>", start)));
     expect(tiles).not.toMatch(/\b(low|medium|high|behind|ahead|on track|not yet)\b/i);
-    expect(html.match(/data-testid="count-pips"/g)).toHaveLength(3);
+    expect(html.match(/data-testid="dev-map-seen-area"/g)).toHaveLength(3);
   });
 
   // v4 re-pin: a waiting proposal is no longer named here behind a door; the
   // What Arbor remembers card on About holds it (AboutMemoryCard).
-  it("a waiting proposal adds nothing to this pill: no door, no sentence, the same two modules and one primary move", () => {
+  it("a waiting proposal adds nothing to this pill: no door, no sentence, the same three modules and one primary move", () => {
     phone();
     state.pending = [{ memoryId: "p1", childId: "child-a", status: "pending", fact: "fact 1", source: "chat", retention: "standard", createdAt: "2026-10-06T10:00:00.000Z", latestEventId: "event-p1" }];
     const html = render();
     expect(html).not.toContain("child-door");
     expect(html).not.toContain(esc(translate("en", "companion.about.memoryWaiting")));
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
-    expect([...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(["child-milestones-areas", "child-milestones-portrait"]);
+    expect([...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(MODULES);
   });
 
-  it("a tablet (below lg, above a phone) keeps the header and the cards, with tiles and no doors", () => {
-    state.compact = true;
+  it("a desk has the hub in the middle of the map, no doors and a visible h1", () => {
     const html = render();
-    expect([...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(["child-milestones-portrait", "child-milestones-areas"]);
-    expect(html).toContain('class="portrait-intro"');
-    expect(html).not.toContain('<h1 class="sr-only"');
-    expect(html.match(/data-testid="dev-map-tile"/g)).toHaveLength(8);
+    expect(html).toContain('class="atlas"');
     expect(html).not.toContain('data-testid="child-doors"');
-  });
-
-  it("a wide screen has no tiles, no doors and a visible h1", () => {
-    const html = render();
-    expect(html).not.toContain("dev-map-tiles");
-    expect(html).not.toContain('data-testid="child-doors"');
-    expect(html).not.toContain('<h1 class="sr-only"');
-    expect(html).toContain("<h1>");
+    expect(html).toContain('<h1 class="title"');
   });
 });

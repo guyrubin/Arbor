@@ -174,7 +174,8 @@ describe("re-check reminder source contract", () => {
   // table. The date is still plain text, now under the areas heading (no
   // watch) or inside the watched skill's area row; MilestoneAreas reads it.
   it("B-GROWTH-04: My child states the re-check DATE as text, no chip", () => {
-    const map = readSrc("components/companion/DevelopmentMap.tsx");
+    // v10.1: the check is its own object on the map (DevelopmentCheckCard).
+    const map = readSrc("components/companion/DevelopmentCheckCard.tsx");
     const row = readSrc("components/companion/AreaRowDetail.tsx");
     const areas = readSrc("components/companion/MilestoneAreas.tsx");
     expect(map).toContain('data-testid="dev-map-recheck"');

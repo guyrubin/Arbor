@@ -82,6 +82,8 @@
 .ds .ms-map-growing strong { font-weight: 600 !important; color: var(--ink); }
 
 /* ── object cards: In your words, the check ──────────────────────────────── */
+/* the three portrait cards join the row their page lays out */
+.ds .portrait-cards { display: contents; }
 .ds .ms-objs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .ds-phone .ms-objs { grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .ds .obj { display: flex; flex-direction: column; gap: 6px; padding: 14px 18px 12px; background: var(--card); border-radius: 18px; box-shadow: var(--shadow-tile); min-width: 0; color: var(--ink); }
@@ -96,6 +98,11 @@
 .ds .obj .portrait-card-next { color: var(--ink); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .ds .obj .oa { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0; border: 0; background: none; font: 600 14px/1 var(--font-sans) !important; color: var(--sapphire-deep); margin-top: auto; align-self: flex-start; text-decoration: none; cursor: pointer; }
 .ds .obj .oa.b { padding: 0 14px; border-radius: 12px; background: var(--tint-2); }
+.ds button.obj { border: 0; text-align: start; font: inherit; cursor: pointer; }
+.ds button.obj:focus-visible { outline: 3px solid var(--sapphire); outline-offset: 3px; }
+.ds button.obj > span { display: block; }
+.ds button.obj > .oh { display: flex; }
+.ds button.obj > .oa { display: inline-flex; }
 .ds .ms-check .ms-check-go { align-self: flex-start; margin-top: 4px; min-height: 44px; }
 .ds .ms-check .ol { font-size: 17px; }
 

@@ -23,8 +23,8 @@ import { milestonesV10Copy } from "./milestonesV10Copy";
  * quiet line "No record yet". The territory a parent opened is ringed; the
  * page shows that area in its own section (desk and phone alike).
  *
- * Desk: three columns with the total in the middle (the hub). Phone: two
- * columns; the total moves to the scene's head, so the map holds areas only.
+ * Desk: three columns with the Seen-it count in the middle (the hub). Phone:
+ * two columns; the count moves to the scene's head, so the map holds areas only.
  * Under the map: production's note (a blank is no record) and the areas with
  * a new Seen it in the last 30 days.
  *
@@ -50,6 +50,8 @@ export interface DevelopmentMapProps {
 
 /** The number of leaves a territory draws for its Seen-it count (the figure says the rest). */
 const LEAVES = 4;
+/** The three territory outlines, cycled in registry order (decor, never data). */
+const SHAPES = ["sh0", "sh1", "sh2", "sh0", "sh1", "sh2", "sh0", "sh1"] as const;
 
 export default function DevelopmentMap({ milestones, observations, momentText, openDomain, onToggle, composition, nowMs }: DevelopmentMapProps) {
   const { t, uiLang } = useLanguage();
@@ -71,7 +73,7 @@ export default function DevelopmentMap({ milestones, observations, momentText, o
       <li key={domain} className="ms-ter-item">
         <button
           type="button"
-          className={`ter ar sh${index % 3}${quiet ? " quiet" : ""}${open ? " sel" : ""}${desk ? "" : " m"}`}
+          className={`ter ar ${SHAPES[index]}${quiet ? " quiet" : ""}${open ? " sel" : ""}${desk ? "" : " m"}`}
           style={domainToneStyle(domain)}
           data-testid="dev-map-tile"
           data-domain={domain}

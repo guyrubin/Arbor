@@ -181,10 +181,11 @@ describe("v3 FEAT-08 — where the strip lives", () => {
   // the areas table, and the newest kept word shows on the "A moment you kept"
   // card. The strip component stays on disk, unmounted, with its own tests
   // above. Was: mounted in the overview between the watch row and keepsakes.
-  it("v3 F-CHILD-1: the strip is no longer mounted on My child; the page keeps two modules", () => {
+  // v10.1 RE-PIN: the map, In your words and the open area are the page's three modules.
+  it("v3 F-CHILD-1: the strip is no longer mounted on My child; the page keeps its three modules", () => {
     expect(portrait).not.toContain("<WordsFirstsStrip");
     expect(portrait).not.toMatch(/import[^;]*\bWordsFirstsStrip\b/);
-    expect((portrait.match(/\bdata-module=/g) ?? []).length).toBe(2);
+    expect((portrait.match(/\bdata-module=/g) ?? []).length).toBe(3);
   });
   it("reads only what it is handed: no history listener, fetch or write of its own", () => {
     const source = strip("./WordsFirstsStrip.tsx");
