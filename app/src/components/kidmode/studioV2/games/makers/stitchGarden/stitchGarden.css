@@ -1,0 +1,116 @@
+/* Stitch Garden: an embroidery hoop on the cream work table, with the
+   pattern cards and spools in a tray beneath it (beside it on a wide screen).
+   The cloth and its flowers never mirror; the chrome around them follows the
+   reading direction. Motion is decoration only: the component moves the game
+   on with its own clock, so with motion reduced every state is a cut. */
+.adventure--stitch { --sg-card: var(--mk-paper); --sg-card-edge: color-mix(in srgb, var(--mk-paper-shade) 80%, var(--mk-linen-shade)); --sg-ring: var(--studio-action-gold); }
+
+/* The three cloths: small swatches of the weave with their names. */
+.sg-cloths { display: flex; justify-content: center; gap: 8px; margin-block: 0 10px; }
+.adventure .sg-cloth { display: flex; align-items: center; gap: 8px; min-block-size: var(--studio-tap); padding: 6px 14px 6px 8px; padding-inline: 8px 14px; border: 2px solid var(--sg-card-edge); border-radius: 999px; background: var(--sg-card); color: var(--studio-deep-ink); font: 800 15px/1.1 var(--studio-font); box-shadow: 0 3px 0 var(--sg-card-edge); transition: transform .16s var(--studio-ease-soft), box-shadow .16s var(--studio-ease-soft); }
+.sg-cloth .sg-patch { inline-size: 38px; block-size: 38px; flex: none; filter: drop-shadow(0 1px 1px color-mix(in srgb, var(--mk-shadow) 30%, transparent)); }
+.adventure .sg-cloth[aria-pressed=true] { border-color: var(--sg-ring); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sg-ring) 35%, transparent), 0 3px 0 color-mix(in srgb, var(--sg-ring) 70%, var(--mk-gold-deep)); }
+
+/* The hoop on its table. The drawing is square-ish (440 by 450) and scales as one. */
+.sg-stage { position: relative; inline-size: 100%; max-inline-size: 560px; margin-inline: auto; aspect-ratio: 440 / 450; border-radius: var(--studio-radius-card); background: radial-gradient(ellipse 80% 70% at 32% 22%, var(--mk-white), var(--studio-canvas) 55%, color-mix(in srgb, var(--studio-canvas) 88%, var(--mk-paper-shade))); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mk-paper-shade) 70%, transparent); touch-action: manipulation; }
+.sg-scene { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; display: block; overflow: visible; }
+.sg-stage[data-wobble=true] .sg-scene { animation: sg-wobble .42s var(--studio-ease-soft); }
+
+/* The hoop lifts away; the cloth stays. */
+.sg-hoop, .sg-hoop-shadow { transform-box: view-box; transform-origin: 50% 50%; transition: transform 1s var(--studio-ease-soft), opacity .9s var(--studio-ease-soft); }
+.sg-hoop[data-lifting=true] { transform: translateY(-34px) scale(1.07); opacity: 0; }
+.sg-scene[data-hoop=lifting] .sg-hoop-shadow { transform: translate(14px, 18px) scale(1.12); opacity: 0; }
+.sg-scene[data-hoop=lifting] .sg-vignette { opacity: 0; transition: opacity .9s var(--studio-ease-soft); }
+.sg-stage[data-phase=lifting] .sg-scene { animation: sg-settle 1.2s var(--studio-ease-soft); }
+
+/* The needle glides between its rest and the work; while stitching it follows each stitch exactly. */
+.sg-needle__body { transition: transform .22s var(--studio-ease-soft); }
+.sg-needle[data-working=true] .sg-needle__body { transition: none; }
+
+/* A hem line is sewn in, and an unpicked one fades away. */
+.sg-hem__line { animation: sg-hem-in .6s var(--studio-ease-soft) both; }
+.sg-hem__line[data-leaving=true] { animation: sg-hem-out .7s var(--studio-ease-soft) both; }
+
+/* The chalk crosses and their tap targets: one per free cell. */
+.sg-spots { position: absolute; inset: 0; }
+.adventure .sg-spot { position: absolute; inline-size: max(56px, 15.5%); aspect-ratio: 1; translate: -50% -50%; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+.adventure .sg-spot:hover { background: radial-gradient(circle, color-mix(in srgb, var(--mk-white) 26%, transparent) 0 55%, transparent 70%); }
+.adventure .sg-spot:focus-visible { outline: 3px solid var(--sg-ring); outline-offset: -6px; background: radial-gradient(circle, color-mix(in srgb, var(--mk-white) 30%, transparent) 0 55%, transparent 70%); }
+.adventure .sg-spot[data-aim=true] { background: radial-gradient(circle, color-mix(in srgb, var(--sg-ring) 30%, transparent) 0 55%, transparent 72%); }
+.sg-crosses > g[data-aim=true] { stroke: var(--sg-ring) !important; }
+
+/* The tray: pattern cards for the five flowers, then the five spools. */
+.sg-tray { display: grid; gap: 8px; margin-block-start: 12px; padding: 10px; border-radius: var(--studio-radius-card); background: linear-gradient(color-mix(in srgb, var(--mk-wood-light) 30%, var(--mk-paper)), color-mix(in srgb, var(--mk-wood-light) 45%, var(--mk-paper))); box-shadow: inset 0 1px 0 var(--mk-white), 0 6px 18px color-mix(in srgb, var(--mk-shadow) 10%, transparent); }
+.sg-flowers, .sg-threads { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.adventure .sg-card { display: flex; flex-direction: column; align-items: center; gap: 2px; min-block-size: 84px; min-inline-size: 0; padding: 5px 2px 6px; border: 2px solid var(--sg-card-edge); border-radius: 14px; background: var(--sg-card); color: var(--studio-deep-ink); font: 800 11.5px/1.1 var(--studio-font); letter-spacing: -.01em; box-shadow: 0 3px 0 var(--sg-card-edge); touch-action: none; user-select: none; -webkit-user-select: none; transition: transform .16s var(--studio-ease-soft), box-shadow .16s var(--studio-ease-soft); }
+.sg-card > span { max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sg-card .sg-swatch { inline-size: 54px; block-size: 55px; display: block; pointer-events: none; }
+.adventure .sg-card[aria-pressed=true] { border-color: var(--sg-ring); transform: translateY(-3px); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sg-ring) 35%, transparent), 0 5px 0 color-mix(in srgb, var(--sg-ring) 70%, var(--mk-gold-deep)); }
+.adventure .sg-thread { display: grid; place-items: center; min-block-size: var(--studio-tap); min-inline-size: 0; padding: 2px; border: 2px solid transparent; border-radius: 14px; background: transparent; transition: transform .16s var(--studio-ease-soft); }
+.sg-thread .sg-spool { inline-size: 40px; block-size: 47px; display: block; pointer-events: none; }
+.adventure .sg-thread[aria-pressed=true] { border-color: var(--sg-ring); background: color-mix(in srgb, var(--mk-white) 70%, transparent); transform: translateY(-3px); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sg-ring) 30%, transparent); }
+
+.adventure--stitch .adventure-status, .adventure--stitch .adventure-status:empty { display: block; min-block-size: 27px; margin-block: 8px; color: var(--studio-deep-ink); }
+.adventure--stitch .sg-actions button { color: var(--studio-deep-ink); }
+.adventure--stitch .sg-actions button.adventure-go { color: var(--studio-action-ink); }
+
+/* The poem so far, as a little sampler strip under the work. */
+.sg-story { list-style: none; margin: 14px 0 0; padding: 12px 16px; border-radius: var(--studio-radius-control); background: var(--mk-paper); border: 2px dashed color-mix(in srgb, var(--mk-rust) 40%, var(--mk-paper-shade)); color: var(--studio-ink-soft); font: 700 15px/1.55 var(--studio-font); text-align: start; }
+.sg-story li { padding-inline-start: 18px; position: relative; }
+.sg-story li::before { content: ''; position: absolute; inset-inline-start: 2px; inset-block-start: .72em; inline-size: 9px; block-size: 2px; border-radius: 2px; background: color-mix(in srgb, var(--mk-rust) 70%, transparent); }
+.sg-story li[data-newest=true] { color: var(--studio-deep-ink); font-weight: 900; animation: sg-hem-in .6s var(--studio-ease-soft) both; }
+.sg-story li[data-leaving=true] { animation: sg-hem-out .7s var(--studio-ease-soft) both; }
+
+/* A dragged pattern card, under the finger. */
+/* Placed by viewport coordinates (the pointer's), so physical left/top on purpose. */
+.sg-ghost { position: fixed; top: 0; left: 0; z-index: 2147483000; display: block; inline-size: 76px; block-size: 78px; margin: -46px 0 0 -38px; pointer-events: none; filter: drop-shadow(0 10px 10px color-mix(in srgb, var(--mk-shadow) 30%, transparent)); scale: 1.08; }
+.sg-ghost[data-back=true] { transition: transform .26s ease-out, opacity .26s ease-out; opacity: .4; }
+.sg-ghost .sg-swatch { inline-size: 100%; block-size: 100%; }
+
+@keyframes sg-wobble { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-1.4deg); } 65% { transform: rotate(1deg); } }
+@keyframes sg-settle { 0% { transform: scale(1); } 45% { transform: scale(1.015); } 100% { transform: scale(1); } }
+@keyframes sg-hem-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sg-hem-out { from { opacity: 1; } to { opacity: 0; } }
+
+@media (min-width: 800px) {
+  .adventure.adventure--stitch { grid-template-columns: minmax(0, 1fr) 330px; align-items: start; }
+  .adventure--stitch .adventure-prompt { grid-column: 2; grid-row: 1; }
+  .adventure--stitch .sg-stage { grid-column: 1; grid-row: 1 / span 7; inline-size: min(100%, calc((100vh - 150px) * 440 / 450)); max-inline-size: 640px; margin: 0 auto; }
+  .adventure--stitch .sg-cloths { grid-column: 2; grid-row: 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+  .adventure .adventure--stitch .sg-cloth, .adventure.adventure--stitch .sg-cloth { flex-direction: column; gap: 4px; padding: 6px 4px 8px; border-radius: 14px; font-size: 13px; }
+  .adventure--stitch .sg-tray { grid-column: 2; grid-row: 3; margin: 0; }
+  .adventure--stitch .adventure-status { grid-column: 2; grid-row: 4; margin: 0; text-align: start; }
+  .adventure--stitch .adventure-status:empty { display: block; }
+  .adventure--stitch .sg-actions { grid-column: 2; grid-row: 5; }
+  .adventure--stitch .sg-story { grid-column: 2; grid-row: 6; margin: 0; }
+}
+@media (max-width: 600px) {
+  .adventure--stitch .adventure-prompt { margin-block: 2px 10px; }
+  .arbor-play .adventure--stitch .adventure-heading { font-size: 17px !important; padding: 10px 12px; }
+  .adventure--stitch .sg-cloth { padding-inline: 6px 10px; font-size: 13px; gap: 6px; }
+  .adventure--stitch .sg-cloth .sg-patch { inline-size: 32px; block-size: 32px; }
+  .adventure--stitch .sg-tray { padding: 8px 6px; margin-block-start: 10px; }
+  .adventure--stitch .sg-cloths { margin-block-end: 8px; }
+  .adventure--stitch .sg-tray { gap: 6px; }
+  .adventure--stitch .sg-flowers, .adventure--stitch .sg-threads { gap: 4px; }
+  .adventure--stitch .sg-card { font-size: 11px; letter-spacing: -.01em; min-block-size: 74px; padding-block: 3px 5px; }
+  .adventure--stitch .sg-card .sg-swatch { inline-size: 48px; block-size: 50px; }
+  /* On a phone the hem itself carries the newest line; the status stays for screen readers. */
+  .adventure--stitch .adventure-status.sg-note { position: absolute; inline-size: 1px; block-size: 1px; min-block-size: 0; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .adventure--stitch .sg-actions { margin-block-start: 10px; }
+  .adventure--stitch .sg-actions button { flex: 1 1 0; padding-inline: 12px; }
+}
+@media (max-width: 360px) {
+  .adventure--stitch .sg-cloth > span { display: none; }
+  .adventure--stitch .sg-cloth { padding-inline: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sg-stage .sg-scene, .sg-hoop, .sg-hoop-shadow, .sg-vignette, .sg-needle__body, .sg-hem__line, .sg-story li, .sg-ghost, .adventure .sg-card, .adventure .sg-thread, .adventure .sg-cloth { animation: none !important; transition: none !important; }
+  .adventure .sg-card[aria-pressed=true], .adventure .sg-thread[aria-pressed=true] { transform: none; }
+  .sg-hem__line[data-leaving=true], .sg-story li[data-leaving=true] { display: none; }
+}
+@media (forced-colors: active) {
+  .adventure .sg-card, .adventure .sg-cloth, .adventure .sg-thread { border: 2px solid ButtonText; }
+  .adventure .sg-card[aria-pressed=true], .adventure .sg-cloth[aria-pressed=true], .adventure .sg-thread[aria-pressed=true] { outline: 3px solid Highlight; }
+  .adventure .sg-spot { border: 2px dashed ButtonText; }
+}
