@@ -48,7 +48,9 @@ describe("F-CHILD-2 Moments body", () => {
     expect(toolbar).not.toContain("moments-range");
     expect(toolbar).not.toContain("{rangeControl}");
     expect(body).toContain('<div className="moments-range" ref={rangeRef}>');
-    expect(body).toContain("end={reader ? undefined : rangeControl}");
+    // N-Moments V77: the stage head on desk; its own line under the title on the phone.
+    expect(body).toContain("end={reader || !desk ? undefined : rangeControl}");
+    expect(body).toContain('{!reader && !desk && <div className="mrange-m">{rangeControl}</div>}');
   });
 
   it("the leaf owns the stamps: the body spreads them and never writes its own", () => {
@@ -80,7 +82,8 @@ describe("F-CHILD-2 Moments body", () => {
     expect(areas).toContain("Math.min(n, TOKEN_CAP)");
     expect(areas).toContain('<b className="arbor-num" aria-hidden="true">{n}</b>');
     for (const source of [code, areas]) expect(source).not.toMatch(/Math\.max\(\s*\.\.\.\s*row\.counts|\/\s*max\b|%/);
-    expect(body).toContain('t("companion.moments.areasNote")');
+    // N-Moments V77: the areas caption is the board's line (v10 copy, EN and HE).
+    expect(body).toContain('view === "areas" ? v.capAreas');
     expect(body).toContain('t("companion.moments.placeNote")');
     expect(css).not.toMatch(/%\s*\)|width:\s*\d+%/);
     expect(mychild).not.toMatch(/--arbor-(success|danger|warning|error)/);

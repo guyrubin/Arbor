@@ -2,3 +2,17 @@
 @media (prefers-reduced-motion: reduce) {
   .arbor-breath-circle { transition: none !important; transform: scale(0.8) !important; }
 }
+
+/* O-HardMoment (V77): the resting breath — a ring, its words, Start · 0:30 and one dot per breath. */
+.bp-rest { display: flex; align-items: center; gap: 20px; padding-inline-start: 8px; min-width: 0; }
+.bp-ring { flex: none; width: 88px; height: 88px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: var(--arbor-paper-elevated); box-shadow: 0 0 0 8px var(--arbor-k-hard-w); text-align: center; padding: 10px; }
+.bp-ring > span { font-size: 12px; font-weight: 700; line-height: 1.2; color: var(--arbor-ink); }
+.bp-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.bp-text > b { font-size: 15px; font-weight: 700; color: var(--arbor-ink); }
+.bp-sub { font-size: 13px; line-height: 1.35; color: var(--arbor-ink-soft); }
+.bp-go { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+.bp-start { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 12px; background: var(--arbor-paper-elevated); color: var(--arbor-k-moment-i); font-size: 14px; font-weight: 600; border: 0; cursor: pointer; }
+.bp-start .tabular-nums { font-size: 14px; color: inherit; }
+.bp-dots { display: inline-flex; gap: 6px; }
+.bp-dots > i { width: 10px; height: 10px; border-radius: 999px; box-shadow: inset 0 0 0 2px var(--arbor-k-hard-i); }
+.bp-sep { margin-inline: 4px; }

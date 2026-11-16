@@ -111,7 +111,7 @@ export function hardMomentSheetLead<T extends { id: string }>(matched: readonly 
  */
 export const HARD_MOMENT_FIRST_TITLE_ID = "hard-moment-first-title";
 
-export function HardMomentFirstView({ childName, lang, t, onTalk, onKeep, onSafety, matches = [], onPick }: {
+export function HardMomentFirstView({ childName, lang, t, onTalk, onKeep, onSafety, matches = [], onPick, picker }: {
   childName: string;
   lang: "en" | "he";
   t: (key: string, vars?: Record<string, string | number>) => string;
@@ -122,6 +122,8 @@ export function HardMomentFirstView({ childName, lang, t, onTalk, onKeep, onSafe
    *  match what they have noted (≤ SHEET_LEAD_MAX, production's own labels). */
   matches?: { id: string; label: string }[];
   onPick?: (id: string) => void;
+  /** O-HardMoment (V77): "Something else" — every other situation, folded, right under the matches. */
+  picker?: React.ReactNode;
 }) {
   const action = "inline-flex min-h-11 min-w-11 flex-1 basis-40 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1";
   return (
@@ -130,7 +132,7 @@ export function HardMomentFirstView({ childName, lang, t, onTalk, onKeep, onSafe
         <p data-testid="hard-moment-first-kicker" className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: "var(--arbor-ink-soft)" }}>
           <Icon name="support" size={18} />{t("hm.first.kicker")}
         </p>
-        <h4 id={HARD_MOMENT_FIRST_TITLE_ID} className="break-words text-[1.375rem] font-semibold leading-tight sm:text-2xl" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+        <h4 id={HARD_MOMENT_FIRST_TITLE_ID} className="hm-first-title break-words text-[1.375rem] font-semibold leading-tight sm:text-2xl" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
           {childName ? t("hm.first.title", { name: childName }) : t("hm.first.titleBare")}
         </h4>
       </div>
@@ -152,6 +154,7 @@ export function HardMomentFirstView({ childName, lang, t, onTalk, onKeep, onSafe
           </div>
         </div>
       )}
+      {picker}
       <div className="hm-first-ways flex flex-col gap-2">
         <button
           type="button"
@@ -179,7 +182,7 @@ export function HardMomentFirstView({ childName, lang, t, onTalk, onKeep, onSafe
           type="button"
           data-testid="hard-moment-first-safety"
           onClick={onSafety}
-          className="ms-auto inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
           style={{ color: "var(--arbor-ink)" }}
         >
           <Icon name="gpp_maybe" size={18} />{t("hm.first.safety")}
@@ -256,6 +259,47 @@ export default function HardMomentNowSheet() {
   const lastTime = card ? lastTimeFor(card, actionLoop || [], behaviorLogs || []) : null;
   const parentFirst = (user?.displayName || t("nav.parent")).split(" ")[0];
 
+  // O-HardMoment (V77): one picker, under the matches on the first view, in the body after it.
+  const pickerFold = (
+            <PickerFold folded={!pastFirst} label={!pastFirst && lead.length > 0 ? t("hm.now.else") : t("companion.hard.choose")}>
+    <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("hm.now.pick")}</p>
+    {/* v10.1: on the first view the matches sit in the view itself, so
+        the fold holds everything else (it is "Something else"). */}
+    {pastFirst && lead.length > 0 && (
+      <div className="space-y-2" data-testid="hard-moment-now-matched">
+        <p className="text-xs font-bold" style={{ color: "var(--arbor-k-moment-i)" }}>{t("hm.now.matched")}</p>
+        <div className="flex flex-wrap gap-2">{lead.map(chip)}</div>
+      </div>
+    )}
+    {/* NEXTLEVEL critic r1: one thing in a hard moment — the record's
+        matches lead (≤ 3); the categories wait behind one disclosure.
+        With no match the categories show directly (nothing to lead). */}
+    {pastFirst && lead.length > 0 ? (
+      <details data-testid="hard-moment-now-else" className="group">
+        <summary
+          className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 px-1 text-sm font-bold [&::-webkit-details-marker]:hidden"
+          style={{ color: "var(--arbor-k-moment-i)" }}
+        >
+          {t("hm.now.else")}
+          <Icon name="expand_more" size={16} className="transition group-open:rotate-180" />
+        </summary>
+        <div className="mt-2 space-y-4">
+          {groups.map(([category, cards]) => (
+            <div key={category} className="space-y-2">
+              <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t(`hm.cat.${category}`)}</p>
+              <div className="flex flex-wrap gap-2">{cards.map(chip)}</div>
+            </div>
+          ))}
+        </div>
+      </details>
+    ) : groups.map(([category, cards]) => (
+      <div key={category} className="space-y-2">
+        <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t(`hm.cat.${category}`)}</p>
+        <div className="flex flex-wrap gap-2">{cards.map(chip)}</div>
+      </div>
+    ))}
+    </PickerFold>
+  );
   return (
     <Surface open={open} onClose={closeHardMomentNow} title={t("hm.now.title")}>
       <div data-testid="hard-moment-now-sheet" lang={locale} dir={locale === "he" ? "rtl" : "ltr"} className="hard-moment-sheet min-w-0 space-y-4 text-start">
@@ -276,48 +320,12 @@ export default function HardMomentNowSheet() {
                 onSafety={() => { closeHardMomentNow(); setActiveTab("safety"); }}
                 matches={lead.map((c) => ({ id: c.id, label: locText(c.title, locale) }))}
                 onPick={(id) => setSelectedId(id)}
+                picker={pickerFold}
               />
             )}
             {/* B-ASKJB-40: an optional breath for the parent first — collapsed, skippable, never a gate. */}
             {pastFirst && <ParentBreathPacer t={t} />}
-            <PickerFold folded={!pastFirst} label={t("companion.hard.choose")}>
-            <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("hm.now.pick")}</p>
-            {/* v10.1: on the first view the matches sit in the view itself, so
-                the fold holds everything else (it is "Something else"). */}
-            {pastFirst && lead.length > 0 && (
-              <div className="space-y-2" data-testid="hard-moment-now-matched">
-                <p className="text-xs font-bold" style={{ color: "var(--arbor-k-moment-i)" }}>{t("hm.now.matched")}</p>
-                <div className="flex flex-wrap gap-2">{lead.map(chip)}</div>
-              </div>
-            )}
-            {/* NEXTLEVEL critic r1: one thing in a hard moment — the record's
-                matches lead (≤ 3); the categories wait behind one disclosure.
-                With no match the categories show directly (nothing to lead). */}
-            {pastFirst && lead.length > 0 ? (
-              <details data-testid="hard-moment-now-else" className="group">
-                <summary
-                  className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 px-1 text-sm font-bold [&::-webkit-details-marker]:hidden"
-                  style={{ color: "var(--arbor-k-moment-i)" }}
-                >
-                  {t("hm.now.else")}
-                  <Icon name="expand_more" size={16} className="transition group-open:rotate-180" />
-                </summary>
-                <div className="mt-2 space-y-4">
-                  {groups.map(([category, cards]) => (
-                    <div key={category} className="space-y-2">
-                      <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t(`hm.cat.${category}`)}</p>
-                      <div className="flex flex-wrap gap-2">{cards.map(chip)}</div>
-                    </div>
-                  ))}
-                </div>
-              </details>
-            ) : groups.map(([category, cards]) => (
-              <div key={category} className="space-y-2">
-                <p className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t(`hm.cat.${category}`)}</p>
-                <div className="flex flex-wrap gap-2">{cards.map(chip)}</div>
-              </div>
-            ))}
-            </PickerFold>
+            {pastFirst && pickerFold}
           </>
         ) : (
           <>

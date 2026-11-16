@@ -15,7 +15,13 @@ const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
  *  presents COUNTS only (no per-tile avg-intensity) so it stays clear of the
  *  clinical firewall — these are flat aggregates of parent-noticed moments,
  *  never a verdict on the child. Strings flow through t() for He/En + RTL. */
-export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
+export default function PatternInsights({ logs, compact, actions }: {
+  logs: BehaviorLog[];
+  /** N-Hard (v10.3): the rail's form, the headline and its moves only —
+   *  "tile" is its own rail tile, "inline" sits inside the What helped tile (phone). */
+  compact?: "tile" | "inline";
+  actions?: React.ReactNode;
+}) {
   const { t } = useLanguage();
 
   const insights = useMemo(() => {
@@ -70,6 +76,26 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
       // verdict on the child's week. This states what the PARENT logged.
       ? t("elev.closeloop.pattern.headline", { place: placeLabel, day: dayLabel })
       : t("beh.pattern.empty");
+
+  if (compact) {
+    const body = (
+      <>
+        <p className="hm-pat-h" dir="auto">{headline}</p>
+        {actions}
+      </>
+    );
+    return compact === "inline" ? (
+      <div className="hm-pat inline" data-testid="behaviors-pattern-insights">
+        <span className="hm-pat-k">{t("beh.pattern.title")}</span>
+        {body}
+      </div>
+    ) : (
+      <section className="vt hm-pat" data-testid="behaviors-pattern-insights">
+        <div className="vh"><span className="gi" aria-hidden="true"><Icon name="monitoring" size={16} /></span><h3 className="h3">{t("beh.pattern.title")}</h3></div>
+        {body}
+      </section>
+    );
+  }
 
   const Row = ({
     iconName,

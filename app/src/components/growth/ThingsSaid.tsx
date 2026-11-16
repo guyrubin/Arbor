@@ -4,7 +4,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { translate } from "../../lib/i18n";
 import { languageName } from "../../lib/languageName";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDay, fmtDayWeek } from "../../lib/formatDate";
 import { genderedKey, type ChildGender } from "../../lib/today/fromRecord";
 import { quoteKeepsakeDoc, quotesFromDocs, type KeptQuote } from "../../lib/loop/tonight";
 import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
@@ -216,9 +216,9 @@ export function SaidList({ childId, first, gender, max = 8, language = null, row
               <span className="sqg" aria-hidden="true"><Icon name="format_quote" size={16} /></span>
               <span className="min-w-0">
                 <span className="q" dir="auto">“{q.note}”</span>
-                {lang && !language && <span className="sqlang">{languageName(lang, t)}</span>}
               </span>
-              <span className="sqd">{q.noticedOn ? fmtDay(`${q.noticedOn}T12:00:00`, uiLang) : ""}</span>
+              {/* N-Said: the day, day-first; the language is the index's job (and the words row's). */}
+              <span className="sqd" data-language={lang ?? undefined}>{q.noticedOn ? fmtDayWeek(`${q.noticedOn}T12:00:00`, uiLang) : ""}</span>
             </li>
           );
         })}

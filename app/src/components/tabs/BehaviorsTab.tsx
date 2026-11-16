@@ -5,7 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { cardCls } from "../ui/kit";
 import PatternInsights from "../behaviors/PatternInsights";
-import HardMomentsSection from "../behaviors/HardMomentsSection";
+import { HardMomentGuides, HardMomentLastTimeCard } from "../behaviors/HardMomentsV10";
 import { heldRowsSince, scriptCard } from "../behaviors/hardMomentLastTime";
 import { availableHardMomentCards, matchToRecentBehaviors } from "../../content/selectCards";
 import { locText, recentBehaviorTypes } from "../../content/hardMomentSurface";
@@ -148,17 +148,13 @@ export default function BehaviorsTab() {
   const dialMarks = hardLogs.slice(0, 24).map((l) => { const d = new Date(l.timestamp); return { id: l.id, hour: d.getHours(), minute: d.getMinutes() }; });
   const capture = (
     /* v10.1: the dock owns voice, photo and "A hard moment?" (the same
-       handlers and the same guide gate); the page keeps one way to log. */
+       handlers and the same guide gate, launcher-hard-moment); N-Hard V77:
+       the page keeps one way to log. */
     <section data-module="behaviors-capture" data-primary-move="log-behavior" className="hm-capture" aria-label={t("beh.captureTitle")}>
       <button type="button" data-testid="behaviors-log-hard" onClick={() => openCaptureSheet({ mode: "text" })}
-        className="btn primary sm nowrap">
+        className={desk ? "btn primary sm nowrap" : "btn primary sm nowrap grow"}>
         <Icon name="favorite" size={16} />{v.logHard}
       </button>
-      {guideLead.any && (
-        <button type="button" data-testid="behaviors-hard-now" onClick={() => openHardMomentNow()} className="btn sm ghost nowrap card-btn">
-          <Icon name="volunteer_activism" size={16} />{t("companion.input.hard-moment")}
-        </button>
-      )}
     </section>
   );
   const band = (
@@ -183,6 +179,9 @@ export default function BehaviorsTab() {
           {dialMarks.length > 0 && <span className="cap" aria-hidden={desk ? true : undefined}>{!desk && selectedLog ? `${hc.dialCaption} · ${hc.selected(timeOf(selectedLog.timestamp))}` : hc.dialCaption}</span>}
         </div>
         <div className="mstack hm-right">
+          {/* N-Hard V77: with no hard moment logged the stage asks the question; once there is one, the dial and the last-time card carry it. */}
+          {dialMarks.length === 0 && (
+            <>
           <div className="min-w-0">
             <h2 data-testid="behaviors-capture-label" className="hm-question">
               {t("beh.capture.label", { name: behFirst })}
@@ -207,55 +206,30 @@ export default function BehaviorsTab() {
                 : t("beh.warm.guide", { guide: warmLine.guide, name: behFirst })}
             </p>
           )}
-        {patternEcho && (
-          <div
-            data-testid="behaviors-pattern-echo"
-            className="mt-3 flex flex-col gap-3 rounded-[16px] p-4 sm:flex-row sm:items-center"
-            style={{ background: "var(--arbor-k-plan-w)" }}
-            role="status"
-          >
-            <Icon name="loop" size={19} className="flex-none" style={{ color: "var(--arbor-k-plan-i)" }} />
-            <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-extrabold leading-snug" dir="auto" style={{ color: "var(--arbor-k-plan-i)" }}>
-                {t("elev.closeloop.echo.title", {
-                  type: behaviorTypeLabel(patternEcho.type, t),
-                  n: patternEcho.count,
-                  days: patternEcho.windowDays,
-                })}
-              </p>
-              <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-                {t("elev.closeloop.echo.body")}
-              </p>
-            </div>
-            <div className="flex flex-none items-center gap-2">
-              <button
-                type="button"
-                onClick={() => { dismissBehaviorEcho(echoLog?.id ?? ""); setActiveTab("plans"); }}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 text-[12px] font-extrabold"
-                style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-k-plan-i)" }}
-              >
-                {t("elev.closeloop.echo.cta")}
-                <Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
-              </button>
-              <button
-                type="button"
-                onClick={() => dismissBehaviorEcho(echoLog?.id ?? "")}
-                className="min-h-11 px-2 text-[12px] font-bold"
-                style={{ color: "var(--arbor-muted)" }}
-              >
-                {t("elev.closeloop.echo.dismiss")}
-              </button>
-            </div>
-          </div>
-        )}
-          <div data-module="behaviors-hard-moments" className="min-w-0"><HardMomentsSection /></div>
+            </>
+          )}
+          <HardMomentLastTimeCard phone={!desk} />
         </div>
       </div>
-      <button type="button" data-testid="behaviors-journal-link" onClick={() => { requestJournalFilter("hard"); setActiveTab("journal"); }} className="rowlink hm-journal">
-        <span className="gi" aria-hidden="true"><Icon name="auto_stories" size={16} /></span>
-        <span><b>{t("beh.journal.hardMoments")}</b></span>
-        <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" />
-      </button>
+      {patternEcho && (
+        /* Arbor's draft step (N-Hard "Arbor draft · you decide"): a count of
+           the parent's own logs and one step for the plans page; never a verdict. */
+        <div data-testid="behaviors-pattern-echo" className="mcc ai hm-draft" role="status">
+          <span className="by"><Icon name="edit" size={14} />{t("coach.report.draftLabel")}</span>
+          <b className="hm-draft-t" dir="auto">
+            {t("elev.closeloop.echo.title", { type: behaviorTypeLabel(patternEcho.type, t), n: patternEcho.count, days: patternEcho.windowDays })}
+          </b>
+          <p>{t("elev.closeloop.echo.body")}</p>
+          <div className="line hm-draft-acts">
+            <button type="button" onClick={() => { dismissBehaviorEcho(echoLog?.id ?? ""); setActiveTab("plans"); }} className="btn ink sm grow nowrap">
+              {t("elev.closeloop.echo.cta")}<Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
+            </button>
+            <button type="button" onClick={() => dismissBehaviorEcho(echoLog?.id ?? "")} className="btn sm ghost nowrap card-btn">
+              {t("elev.closeloop.echo.dismiss")}
+            </button>
+          </div>
+        </div>
+      )}
     </StageCard>
   );
   const readGuide = (
@@ -272,6 +246,20 @@ export default function BehaviorsTab() {
         ]} />
     </RailTile>
   );
+  const findPattern = (
+    <div className="line between hm-pat-acts">
+      <button type="button" onClick={handleAnalyzeBehaviors} disabled={isAnalyzingBehavior} data-testid="behaviors-find-pattern" className="btn sm nowrap tint-btn">
+        {isAnalyzingBehavior ? (<><Icon name="progress_activity" size={15} className="animate-spin" /> {t("beh.synthesizing")}</>) : t("beh.analyze")}
+      </button>
+      <button type="button" data-testid="behaviors-day-glance" onClick={() => setActiveTab("day-windows")} className="ds-link nowrap">
+        {hc.dayAtAGlance}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />
+      </button>
+    </div>
+  );
+  // N-Hard V77: the detected patterns read as one line and their two moves.
+  const patternsHead = behaviorLogs.length > 0
+    ? <PatternInsights logs={behaviorLogs} compact={desk ? "tile" : "inline"} actions={findPattern} />
+    : <div className="hm-pat inline">{findPattern}</div>;
   const helped = heldRowsSince(actionLoop ?? [], 0).slice(0, 4);
   const helpedTile = (
     <RailTile icon="flag" title={hc.helped} className="hm-helped">
@@ -283,15 +271,15 @@ export default function BehaviorsTab() {
         </ul>
       ) : <p className="line1">{hc.helpedNone}</p>}
       {helped.length > 0 && <p className="line1">{hc.helpedKey}</p>}
+      {/* N-Hard-M: on the phone the detected patterns sit inside this tile. */}
+      {!desk && patternsHead}
     </RailTile>
   );
   const patterns = (
     <section data-module="behaviors-patterns" className="mstack hm-patterns" aria-label={t("beh.analyze")}>
-          <PatternInsights logs={behaviorLogs} />
-          <div className={`${cardCls} p-5 space-y-4`}>
-            <button type="button" onClick={handleAnalyzeBehaviors} disabled={isAnalyzingBehavior} data-testid="behaviors-find-pattern" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 t-sm font-bold transition disabled:opacity-60" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)" }}>
-              {isAnalyzingBehavior ? (<><Icon name="progress_activity" size={15} className="animate-spin" /> {t("beh.synthesizing")}</>) : (<><Icon name="psychology" size={15} /> {t("beh.analyze")}</>)}
-            </button>
+      {desk && patternsHead}
+      {(escalatedSurface === "behaviors" || behaviorAnalysis) && (
+        <div className={`${cardCls} p-5 space-y-4`}>
             {/* B-ASKJB-49: the crisis screen answered 409: the shared crisis
                 card (helplines in the request's language) in the result's place. */}
             {escalatedSurface === "behaviors" && (
@@ -349,10 +337,11 @@ export default function BehaviorsTab() {
               </motion.div>
             )}
 
-          </div>
+        </div>
+      )}
           {typeCounts30d.length > 0 && (
-            <div className={`${cardCls} p-5 space-y-3`}>
-              <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-k-plan-i)" }}>{t("beh.countLabel")}</span>
+            <details className={`${cardCls} hm-counts`}>
+              <summary className="hm-counts-s">{t("beh.countLabel")}<Icon name="expand_more" size={16} /></summary>
               <div className="space-y-2">
                 {typeCounts30d.map(({ type, count }) => (
                   <div key={type} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
@@ -363,9 +352,9 @@ export default function BehaviorsTab() {
                   </div>
                 ))}
               </div>
-            </div>
+            </details>
           )}
-      <RowLink icon="schedule" label={hc.dayAtAGlance} onOpen={() => setActiveTab("day-windows")} />
+      <RowLink icon="auto_stories" label={t("beh.journal.hardMoments")} testId="behaviors-journal-link" onOpen={() => { requestJournalFilter("hard"); setActiveTab("journal"); }} />
     </section>
   );
 
@@ -373,8 +362,9 @@ export default function BehaviorsTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full min-w-0">
       <DsRoot composition={composition} className="ds-mychild hard-v10" dir={uiLang === "he" ? "rtl" : "ltr"} data-testid="behaviors-v10">
         <Guide mini={!desk} label={v.onThisPage} stops={[
-          { id: "h-entries", title: hc.guideEntries, sub: hc.guideEntriesSub },
-          { id: "h-hour", title: hc.guideHour, sub: hc.guideHourSub },
+          { id: "h-entries", title: desk ? hc.guideEntriesN(entries.length) : hc.guideEntriesShort(entries.length), sub: hc.guideEntriesSub },
+          { id: "h-hour", title: desk ? hc.guideHour : hc.guideHourShort, sub: hc.guideHourSub },
+          { id: "h-guides", title: desk ? hc.guideGuides : hc.guideGuidesShort, sub: hc.guideGuidesSub },
         ]} />
         <Route composition={composition}>
           <RouteSection id="h-entries" n={1} on>{band}</RouteSection>
@@ -387,6 +377,10 @@ export default function BehaviorsTab() {
             ) : (
               <div className="mstack" style={{ gap: 14 }}>{stage}{readGuide}{helpedTile}{patterns}</div>
             )}
+          </RouteSection>
+          {/* N-Hard V77 stop 3: the closest guides, under the stage and the rail. */}
+          <RouteSection id="h-guides" n={3}>
+            <div data-module="behaviors-hard-moments" className="min-w-0"><HardMomentGuides phone={!desk} /></div>
           </RouteSection>
         </Route>
       </DsRoot>

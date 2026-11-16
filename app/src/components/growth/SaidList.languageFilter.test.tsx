@@ -48,9 +48,12 @@ describe("SaidList — one language's sayings", () => {
     expect(render({ language: "English", languages: FAMILY })).not.toContain("moon moon");
   });
 
-  it("drops the per-row language tag under a filter and keeps it on All", () => {
-    expect(render({ language: "Hebrew", languages: FAMILY })).not.toContain("sqlang");
-    expect(render({ languages: FAMILY })).toContain("sqlang");
+  it("dates each row day-first and carries its language as data, not a tag (N-Said)", () => {
+    const all = render({ languages: FAMILY });
+    expect(all).not.toContain("sqlang");
+    expect(all).toContain('data-language="Hebrew"');
+    expect(all).toContain('data-language="English"');
+    expect(all).toContain("Mon 5 Oct");
   });
 
   it("says the picked language is empty in the page's own words", () => {

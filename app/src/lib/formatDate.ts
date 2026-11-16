@@ -102,3 +102,37 @@ export const fmtShellNow = (input: DateInput, lang: UiLang): string => {
   }
   return isolate(`${day} · ${time}`);
 };
+
+/**
+ * v10.3 (the My child boards) — a day-first short day with its weekday:
+ * "Sun 15 Nov" / "יום א׳, 15 בנוב׳", and with the clock when asked
+ * ("Sun 15 Nov, 18:00"). English reads day-first here (en-GB), as the boards
+ * set it; no year (the range around it carries the year).
+ */
+export const fmtDayWeek = (input: DateInput, lang: UiLang, withTime = false): string => {
+  const d = toDate(input);
+  if (!d) return "";
+  const locale = lang === "he" ? LOCALES.he : "en-GB";
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: "short", day: "numeric", month: "short",
+    ...(withTime ? { hour: "2-digit" as const, minute: "2-digit" as const, hourCycle: "h23" as const } : {}),
+  };
+  let s: string;
+  try {
+    s = withTime ? d.toLocaleString(locale, options) : d.toLocaleDateString(locale, options);
+  } catch {
+    s = withTime ? d.toLocaleString(undefined, options) : d.toLocaleDateString(undefined, options);
+  }
+  return isolate(s);
+};
+
+/** The same day-first short form without the weekday: "8 Oct" / "8 באוק׳". */
+export const fmtDayMonth = (input: DateInput, lang: UiLang): string => {
+  const d = toDate(input);
+  if (!d) return "";
+  try {
+    return isolate(d.toLocaleDateString(lang === "he" ? LOCALES.he : "en-GB", { day: "numeric", month: "short" }));
+  } catch {
+    return isolate(d.toLocaleDateString(undefined, { day: "numeric", month: "short" }));
+  }
+};

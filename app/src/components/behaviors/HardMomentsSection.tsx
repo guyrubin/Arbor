@@ -118,8 +118,12 @@ export function restingGuides<T>(available: T[], matched: T[]): T[] {
   return (matched.length ? matched : available).slice(0, RESTING_GUIDES);
 }
 
-/** Contextual catalog: select by ID again when a sheet or action is used. */
-export default function HardMomentsSection() {
+/**
+ * N-Hard (v10.3): the shelf's state, shared by the section and by the page's
+ * own parts (the stage's last-time card, the closest guides) so every reader
+ * picks the same held answer and the same resting three.
+ */
+export function useHardMomentShelf() {
   // B-ASKJB-31: a shelf card opens the ONE "Hard moment now" sheet on that
   // card (openHardMomentNow). The shelf's own modal — and its prompt seed —
   // are gone: "Talk it through" now hands Ask a reference card, never a seed.
@@ -131,7 +135,7 @@ export default function HardMomentsSection() {
   // matched to what this parent actually logged, behind an "All guides" door
   // that restores the filter row and every card (law 6: nothing is dropped).
   const [expanded, setExpanded] = useState(false);
-  const locale = uiLang === "he" ? "he" : "en";
+  const locale: "en" | "he" = uiLang === "he" ? "he" : "en";
   const contextFor = (lang: "en" | "he" = locale): HardMomentContext => {
     const now = new Date();
     // B-ASKJB-38: the child's band months (corrected under 2 if preterm) — lib/age, the one source.
@@ -180,6 +184,14 @@ export default function HardMomentsSection() {
   // fail-closed, so a younger/older child matched nothing and got a blank
   // feature. The notice renders only when guides exist for SOME age (see
   // hardMomentAgeFit): a withdrawn or expired pack still renders nothing.
+  return { childProfile, openHardMomentNow, t, uiLang, locale, category, setCategory, expanded, setExpanded, context, cards, childFirst, copy,
+    categories, activeCategory, all, matched, featured, held, visible };
+}
+
+/** Contextual catalog: select by ID again when a sheet or action is used. */
+export default function HardMomentsSection() {
+  const { openHardMomentNow, t, uiLang, locale, setCategory, expanded, setExpanded, context, cards, childFirst, copy,
+    categories, activeCategory, matched, featured, held, visible } = useHardMomentShelf();
   const ageVerdict = hardMomentAgeFit(context);
   if (cards.length === 0 && explainsEmptyHardMoments(ageVerdict.fit)) {
     return <HardMomentAgeNotice verdict={ageVerdict} uiLang={uiLang} childName={childFirst} />;

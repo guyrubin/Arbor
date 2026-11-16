@@ -277,7 +277,7 @@
 .ds-mychild.ds-phone .mband { padding: 16px 14px 14px; gap: 10px; }
 .ds-mychild .mtools { gap: 14px; }
 .ds-mychild.ds-desk .mch .hero { font-size: 32px; }
-.ds-mychild.ds-phone .mch .hero { font-size: 26px; line-height: 1.1; }
+.ds-mychild.ds-phone .mch .hero { font-size: 24px; line-height: 1.1; }
 .ds-mychild .mch .mcl p { margin: 0; }
 .ds-mychild .mci .mcs { border: 0; text-align: start; cursor: pointer; font: inherit; }
 .ds-mychild .mci.m { overflow-x: auto; scrollbar-width: none; }
@@ -290,11 +290,12 @@
 .ds-mychild .mcst .mcsh .tt { margin: 0; }
 .ds-mychild .mcst .mcsh .mr { text-align: end; }
 .ds-mychild .mcst .moments-range { position: relative; }
-.ds-mychild .mcst .moments-chip { min-height: var(--touch-min, 44px); border-radius: 10px; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule-strong); }
+.ds-mychild .mcst .moments-chip { min-height: var(--touch-min, 44px); gap: 8px; padding: 0 12px; border: 0; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule-strong); font: 600 13px/1 var(--font-sans) !important; color: var(--ink); white-space: nowrap; }
+.ds-mychild .mcst .mrange-m { align-self: flex-start; }
 .ds-mychild .mpanel { display: flex; flex-direction: column; gap: 12px; min-width: 0; flex: 1; }
 .ds-mychild .aopen { display: flex; align-items: center; gap: 10px; min-height: var(--touch-min, 44px); padding: 0; border: 0; background: none; color: inherit; text-align: start; cursor: pointer; font: inherit; }
 .ds-mychild .mmx .an.aopen { font: 600 13px/1.2 var(--font-sans) !important; }
-.ds-mychild .mmx .cl { border: 0; border-inline-start: 1px solid var(--rule); background: none; color: inherit; font: inherit; min-height: var(--touch-min, 44px); display: flex; align-items: center; align-content: center; flex-wrap: wrap; gap: 3px; padding: 6px 10px; min-width: 0; }
+.ds-mychild .mmx .cl { border: 0; border-inline-start: 1px solid var(--rule); background: none; color: inherit; font: inherit; min-height: var(--touch-min, 44px); display: flex; align-items: center; align-content: center; flex-wrap: wrap; gap: 3px; padding: 6px 8px; min-width: 0; }
 .ds-mychild .mmx button.cl { cursor: pointer; }
 .ds-mychild .mmx .cl.has { background: var(--k-moment-w); }
 .ds-mychild .mmx .cl.has:hover, .ds-mychild .mmx .cl.has:focus-visible { background: var(--tint-2); }
@@ -347,7 +348,10 @@
 .ds-mychild .shelf-pick .kchip[aria-pressed="true"] { background: var(--tint-2); color: var(--sapphire-deep); box-shadow: inset 0 0 0 1.5px var(--sapphire); }
 
 /* The phone route's stops sit in a 20 px gutter of their own (the shell's body padding is narrower than the board's). */
-.ds-mychild.ds-phone .route.m { margin-inline-start: 20px; }
+.ds-mychild.ds-phone .route.m { margin-inline-start: 18px; }
+/* N-Moments-M: the stage card's phone padding, and the one-line headline (the shell's gutter is 2 px wider than the board's). */
+.ds-mychild.ds-phone .mcst { padding: 16px 14px 14px; }
+.ds-mychild.ds-phone .mch .hero { letter-spacing: -.015em; }
 /* The folded kinds' header (#/behaviors, #/language) until their own frame lands. */
 .ds-mychild .ksub { margin: 0; font-size: 14px; line-height: 1.4; color: var(--ink-soft); }
 .ds-mychild .mstage { gap: 14px; }
@@ -416,3 +420,63 @@
 .ds-mychild.ds-phone .hm-helped { gap: 6px; padding: 14px 16px 10px; }
 .ds-mychild.ds-phone .hm-helped .hlr { min-height: 40px; padding: 3px 0; }
 .ds-mychild.ds-phone .hm-helped .hlr .t { font-size: 13px; }
+
+/* ---- N-Hard V77 (board pass): the stage's last-time card, Arbor's draft, the rail's patterns, stop 3's guides. ---- */
+.ds-mychild .mcc.ai { background: var(--tint-1, #eaf2ffe6); box-shadow: none; border: 2px dashed var(--pencil); }
+.ds-mychild .mcc .by { display: inline-flex; align-items: center; gap: 6px; font: 600 12px/1.2 var(--font-sans) !important; color: var(--sapphire-deep); }
+.ds-mychild .mcc p { font-size: 13px; line-height: 1.35; color: var(--ink-soft); margin: 0; }
+.ds-mychild .hm-stage .hm-draft { gap: 8px; padding: 14px 16px 12px; }
+.ds-mychild .hm-draft-t { font-family: var(--font-display) !important; font-weight: 600 !important; font-size: 19px; line-height: 1.2; }
+.ds-mychild .hm-draft-acts { gap: 8px; }
+.ds-mychild .hm-draft-acts .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.ds-mychild .hm-last { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ds-mychild .hm-last-h { display: flex; align-items: center; gap: 8px; }
+.ds-mychild .hm-last-h .h3 { font-size: 16px; }
+.ds-mychild .hm-last-h .small { margin-inline-start: auto; }
+.ds-mychild .hm-last-h .gi { width: 26px; height: 26px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.ds-mychild .hm-last-q { display: block; width: 100%; text-align: start; border: 0; cursor: pointer; background: var(--arbor-peach-soft); border-radius: 14px; padding: 12px 16px; color: var(--ink); min-height: var(--touch-min, 44px); }
+.ds-mychild .hm-last-q .q { display: block; font-family: var(--font-display) !important; font-size: 19px; line-height: 1.22; }
+.ds-mychild .hm-last-q .by { display: block; padding-top: 6px; font: 600 12px/1.3 var(--font-sans) !important; color: var(--peach-ink); }
+.ds-mychild .hm-last-w { font-size: 13px; line-height: 1.35; color: var(--ink-soft); margin: 0; }
+.ds-mychild .hm-last-acts { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.ds-mychild .hm-last-acts .tint-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 12px; font-weight: 600 !important; font-size: 14px; }
+.ds-mychild .hm-last-acts [data-testid="hm-send-words"] { min-height: var(--touch-min, 44px); border-radius: 12px; background: var(--card) !important; }
+.ds-mychild .hm-last-acts label { min-height: 44px; font-size: 13px; color: var(--ink-soft); }
+.ds-mychild .hm-pat { display: flex; flex-direction: column; gap: 8px; }
+.ds-mychild .hm-pat-h { margin: 0; font-family: var(--font-display) !important; font-size: 17px; line-height: 1.25; color: var(--ink); }
+.ds-mychild .hm-pat.inline { border-top: 1px solid var(--rule); padding-top: 10px; margin-top: 4px; }
+.ds-mychild .hm-pat-k { font: 700 12px/1.2 var(--font-sans) !important; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.ds-mychild .hm-pat-acts { gap: 8px; align-items: center; }
+.ds-mychild .hm-pat-acts .ds-link { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; font-weight: 600 !important; font-size: 13px; color: var(--sapphire-deep); }
+.ds-mychild .hm-counts { padding: 4px 16px; }
+.ds-mychild .hm-counts-s { display: flex; align-items: center; justify-content: space-between; min-height: 44px; cursor: pointer; list-style: none; font: 700 12px/1.2 var(--font-sans) !important; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.ds-mychild .hm-counts[open] { padding-bottom: 14px; }
+.ds-mychild .hm-guides { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.ds-mychild .hm-guides .rhead { display: flex; align-items: baseline; gap: 10px; min-height: 30px; flex-wrap: wrap; }
+.ds-mychild .hm-guides .rhead .h3 { font-family: var(--font-display) !important; font-weight: 600 !important; font-size: 21px; line-height: 1.2; }
+.ds-mychild.ds-phone .hm-guides .rhead .h3 { font-size: 19px; }
+.ds-mychild .hm-guides .rhead .ds-link { margin-inline-start: auto; }
+.ds-mychild .hm-guides .ds-link { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; font-weight: 600 !important; font-size: 13px; color: var(--sapphire-deep); }
+.ds-mychild .hm-gcards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.ds-mychild .hm-gcards.m { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.ds-mychild .hm-gcards .gcard { border: 0; cursor: pointer; text-align: start; min-height: 64px; background: var(--card); }
+.ds-mychild .hm-gcards .gct { flex: 1; min-width: 0; }
+.ds-mychild .hm-gcards .gct small { display: block; font-size: 12px; color: var(--ink-soft); }
+.ds-mychild .hm-guides-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ds-mychild .hm-cats { display: flex; flex-wrap: wrap; gap: 6px; }
+.ds-mychild .hm-cats .kchip { min-height: 44px; min-width: 44px; justify-content: center; }
+.ds-mychild .hm-cats .kchip[aria-pressed="true"] { background: var(--tint-2); color: var(--sapphire-deep); box-shadow: inset 0 0 0 1.5px var(--sapphire); }
+/* N-Hard / N-Moments: the stage card fills its column to the rail's height. */
+.ds-mychild .stg > .mcst { flex: 1; }
+/* N-Hard-M: the log button is its own full-width line under the figure. */
+.ds-mychild.ds-phone .mch.m .mcf { flex-wrap: wrap; }
+.ds-mychild.ds-phone .mch.m .hm-capture { flex: 1 0 100%; display: flex; }
+.ds-mychild.ds-phone .mch.m .hm-capture .btn { flex: 1; justify-content: center; }
+/* N-Said-M: on the phone the day sits under the saying. */
+.ds-mychild.ds-phone .said-rows .sqr { grid-template-columns: 34px minmax(0, 1fr); row-gap: 2px; }
+.ds-mychild.ds-phone .said-rows .sqd { grid-column: 2; font-size: 12px; color: var(--ink-soft); }
+/* N-Said: the sayings fill the stage (one row per saying, evenly), the profile meta sits at the tile's end. */
+.ds-mychild.ds-desk .said-v10 .mcst > [data-module="language-words"] { flex: 1; display: flex; flex-direction: column; }
+.ds-mychild.ds-desk .said-v10 .said-rows { flex: 1; }
+.ds-mychild.ds-desk .said-v10 .said-rows .sqr { flex: 1; }
+.ds-mychild .said-profile .said-profile-meta { margin-inline-start: auto; }

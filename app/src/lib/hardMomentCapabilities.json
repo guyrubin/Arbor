@@ -83,10 +83,10 @@
   },
   {
     "id": "guide",
-    "owner": "components/tabs/BehaviorsTab.tsx",
+    "owner": "components/behaviors/HardMomentsV10.tsx",
     "markers": [
-      "<HardMomentsSection",
-      "openHardMomentNow()"
+      "data-testid=\"hard-moment-tile\"",
+      "openHardMomentNow(card.id)"
     ]
   },
   {

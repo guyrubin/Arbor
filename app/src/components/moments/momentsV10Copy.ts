@@ -17,6 +17,17 @@ export type MomentsV10Copy = {
   marksUnit: (moments: number) => string;
   momentsUnit: (moments: number) => string;
   since: (date: string, range: string) => string;
+  /** The range as the band says it ("last 3 months"); null for everything. */
+  rangeLast: { 3: string; 12: string; 0: string | null };
+  /** The range control's words: "Time in view: 3 months". */
+  timeInView: (label: string, range: string) => string;
+  /** The areas caption under the index (what a cell and a blank mean). */
+  capAreas: string;
+  /** Stop 2 of the guide on the areas view (desk / phone). */
+  guideAreas: string;
+  guideAreasShort: string;
+  /** The Things said tile: what it holds, in the family's languages. */
+  saidMeta: (languages: string[]) => string;
   kindMeta: { all: (range: string) => string; kept: string; hardSettled: string; hardSome: (n: number) => string };
   allMoments: string;
   howToRead: string;
@@ -58,12 +69,30 @@ export type MomentsV10Copy = {
     wordsIn: (language: string) => string;
     /** The sayings list is empty for the picked language. */
     noneIn: (language: string) => string;
+    /** N-Said: the band's figure — the sayings kept, and the words beside them. */
+    sayingsUnit: (n: number) => string;
+    andWords: (n: number) => string;
+    wordsAll: string;
+    guideLangsShort: string;
+    guideKeptShort: string;
+    profile: string;
   };
   hard: {
     kicker: string;
     title: string;
     sub: string;
     guideEntries: string; guideEntriesSub: string; guideHour: string; guideHourSub: string;
+    /** N-Hard: stop 1 names how many entries the index holds (desk / phone). */
+    guideEntriesN: (n: number) => string;
+    guideEntriesShort: (n: number) => string;
+    guideHourShort: string;
+    guideGuides: string; guideGuidesSub: string; guideGuidesShort: string;
+    /** The stage's last-time card. */
+    lastTime: string;
+    lastUsed: string;
+    wordsKept: string;
+    /** Section 3's line under its heading. */
+    guidesSub: string;
     figureUnit: (n: number) => string;
     allSettled: string;
     someSettled: (n: number) => string;
@@ -108,9 +137,15 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
     guide: { kinds: "The kinds", kindsSub: "Pick one", stage: (view) => view, stageSub: "Then the newest", kindsShort: "Kinds" },
     marksUnit: (moments) => `marks on your ${moments} ${moments === 1 ? "moment" : "moments"}`,
     momentsUnit: (moments) => (moments === 1 ? "moment you kept" : "moments you kept"),
-    since: (date, range) => `since ${date}, ${range.toLowerCase()}`,
+    since: (date, range) => (range ? `since ${date}, ${range}` : `since ${date}`),
+    rangeLast: { 3: "last 3 months", 12: "the last year", 0: null },
+    timeInView: (label, range) => `${label}: ${range}`,
+    capAreas: "Open a cell to see its moments. A blank means no record in that month, not a missing ability.",
+    guideAreas: "Areas by month",
+    guideAreasShort: "Months",
+    saidMeta: (languages) => `Sayings and words, ${languages.length > 1 ? `${languages.slice(0, -1).join(", ")} and ${languages[languages.length - 1]}` : languages[0]}`,
     kindMeta: {
-      all: (range) => `Area by month, ${range.toLowerCase()}`,
+      all: (range) => (range ? `Area by month, ${range}` : "Area by month"),
       kept: "The Year book and your journal",
       hardSettled: "You marked each one settled",
       hardSome: (n) => (n === 1 ? "1 you marked settled" : `${n} you marked settled`),
@@ -153,12 +188,26 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
       keyWord: "A word",
       wordsIn: (language) => `Words in ${language}`,
       noneIn: (language) => `No sayings kept in ${language} yet. Pick All to see every one.`,
+      sayingsUnit: (n) => (n === 1 ? "saying" : "sayings"),
+      andWords: (n) => (n === 1 ? "and 1 word, kept as said" : `and ${n} words, kept as said`),
+      wordsAll: "Words, by language",
+      guideLangsShort: "Languages",
+      guideKeptShort: "Kept",
+      profile: "Language profile",
     },
     hard: {
       kicker: "My child · Hard moments",
       title: "Hard moments, in your words.",
       sub: "What you logged, and what helped.",
-      guideEntries: "The newest", guideEntriesSub: "Pick an entry", guideHour: "Its hour", guideHourSub: "What helped, the guides",
+      guideEntries: "The newest", guideEntriesSub: "Pick an entry", guideHour: "Its hour", guideHourSub: "What helped, a step",
+      guideEntriesN: (n) => (n === 3 ? "The three" : n === 2 ? "The two" : "The newest"),
+      guideEntriesShort: (n) => (n === 3 ? "Three" : n === 2 ? "Two" : "Newest"),
+      guideHourShort: "Hour",
+      guideGuides: "Closest guides", guideGuidesSub: "Short reads", guideGuidesShort: "Guides",
+      lastTime: "Last time, this helped",
+      lastUsed: "Last time you used these words",
+      wordsKept: "The words you used · kept with the moment",
+      guidesSub: "Short guides, a pilot: adapt them to your child.",
       figureUnit: (n) => (n === 1 ? "hard moment" : "hard moments"),
       allSettled: "all settled, you marked each one",
       someSettled: (n) => (n === 1 ? "1 you marked settled" : `${n} you marked settled`),
@@ -201,9 +250,15 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
     guide: { kinds: "הסוגים", kindsSub: "בוחרים אחד", stage: (view) => view, stageSub: "ואז האחרון", kindsShort: "סוגים" },
     marksUnit: (moments) => (moments === 1 ? "סימונים על הרגע ששמרתם" : `סימונים על ${moments} הרגעים ששמרתם`),
     momentsUnit: (moments) => (moments === 1 ? "רגע ששמרתם" : "רגעים ששמרתם"),
-    since: (date, range) => `מאז ${date}, ${range}`,
+    since: (date, range) => (range ? `מאז ${date}, ${range}` : `מאז ${date}`),
+    rangeLast: { 3: "שלושת החודשים האחרונים", 12: "השנה האחרונה", 0: null },
+    timeInView: (label, range) => `${label}: ${range}`,
+    capAreas: "פותחים משבצת כדי לראות את הרגעים שבה. משבצת ריקה פירושה שאין תיעוד באותו חודש, לא יכולת חסרה.",
+    guideAreas: "תחומים לפי חודש",
+    guideAreasShort: "חודשים",
+    saidMeta: (languages) => `משפטים ומילים, ${languages.length > 1 ? `${languages.slice(0, -1).join(", ")} ו${languages[languages.length - 1]}` : languages[0]}`,
     kindMeta: {
-      all: (range) => `תחום לפי חודש, ${range}`,
+      all: (range) => (range ? `תחום לפי חודש, ${range}` : "תחום לפי חודש"),
       kept: "ספר השנה והיומן שלכם",
       hardSettled: "סימנתם שכל אחד נרגע",
       hardSome: (n) => (n === 1 ? "אחד שסימנתם שנרגע" : `${n} שסימנתם שנרגעו`),
@@ -246,12 +301,26 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
       keyWord: "מילה",
       wordsIn: (language) => `מילים ב${language}`,
       noneIn: (language) => `עוד לא נשמרו משפטים ב${language}. בוחרים "הכול" כדי לראות את כולם.`,
+      sayingsUnit: (n) => (n === 1 ? "משפט" : "משפטים"),
+      andWords: (n) => (n === 1 ? "ומילה אחת, כפי שנאמרה" : `ו־${n} מילים, כפי שנאמרו`),
+      wordsAll: "מילים, לפי שפה",
+      guideLangsShort: "שפות",
+      guideKeptShort: "נשמרו",
+      profile: "פרופיל שפה",
     },
     hard: {
       kicker: "הילד שלי · רגעים קשים",
       title: "רגעים קשים, במילים שלכם.",
       sub: "מה שתיעדתם, ומה שעזר.",
-      guideEntries: "האחרונים", guideEntriesSub: "בוחרים רשומה", guideHour: "השעה שלה", guideHourSub: "מה עזר, המדריכים",
+      guideEntries: "האחרונים", guideEntriesSub: "בוחרים רשומה", guideHour: "השעה שלה", guideHourSub: "מה עזר, צעד",
+      guideEntriesN: (n) => (n === 3 ? "שלושת האחרונים" : n === 2 ? "שני האחרונים" : "האחרונים"),
+      guideEntriesShort: (n) => (n === 3 ? "שלושה" : n === 2 ? "שניים" : "אחרונים"),
+      guideHourShort: "שעה",
+      guideGuides: "המדריכים הקרובים", guideGuidesSub: "קריאה קצרה", guideGuidesShort: "מדריכים",
+      lastTime: "בפעם הקודמת, זה עזר",
+      lastUsed: "בפעם הקודמת השתמשתם במילים האלה",
+      wordsKept: "המילים שבהן השתמשתם · נשמרו עם הרגע",
+      guidesSub: "מדריכים קצרים, בפיילוט: התאימו לילד שלכם.",
       figureUnit: (n) => (n === 1 ? "רגע קשה" : "רגעים קשים"),
       allSettled: "כולם נרגעו, סימנתם כל אחד",
       someSettled: (n) => (n === 1 ? "אחד שסימנתם שנרגע" : `${n} שסימנתם שנרגעו`),
