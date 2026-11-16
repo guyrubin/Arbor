@@ -6,7 +6,7 @@
    Chrome wears the v30 register: pearl, white and frost surfaces, graphite
    type, a hairline, teal for found, the signal colour only as a ring that
    marks the next thing. Colour lives in the pictures and the fur. */
-.iaf { --iaf-gap: 10px; --bop-shade: var(--studio-shade); display: flex; flex-direction: column; gap: var(--iaf-gap); block-size: clamp(480px, calc(100dvh - 150px), 900px); min-inline-size: 0; color: var(--studio-graphite); font-family: var(--studio-font); }
+.iaf { --iaf-gap: 10px; --bop-shade: var(--studio-shade); display: flex; flex-direction: column; gap: var(--iaf-gap); block-size: clamp(480px, calc(100dvh - 150px), 1040px); min-inline-size: 0; color: var(--studio-graphite); font-family: var(--studio-font); }
 .iaf button { font-family: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
 /* The cue and the five photos share one frosted bar, so no word sits on a picture. */
