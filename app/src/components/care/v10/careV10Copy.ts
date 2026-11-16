@@ -31,9 +31,7 @@ export type CareV10Copy = {
     packedWords: (n: number) => string;
     packedWordsSub: string;
     lastNote: string;
-    youStarted: string;
     timelineLabel: string;
-    helpHead: string;
   };
   brief: {
     stopBrief: string;
@@ -49,12 +47,6 @@ export type CareV10Copy = {
     stopWho: string;
     stopWhoSub: (n: number) => string;
     stopWhoNone: string;
-    stopInvite: string;
-    stopInviteSub: string;
-    stopShare: string;
-    stopShareSub: string;
-    stopData: string;
-    stopDataSub: string;
     adults: (n: number) => string;
     adultsSub: string;
   };
@@ -103,9 +95,7 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       packedWords: (n) => plural(n, "word or saying", "words and sayings"),
       packedWordsSub: "you wrote down",
       lastNote: "Your note from the last visit",
-      youStarted: "You started",
       timelineLabel: "Your appointments by date",
-      helpHead: "Help and a pause",
     },
     brief: {
       stopBrief: "The brief",
@@ -121,12 +111,6 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       stopWho: "Who sees what",
       stopWhoSub: (n) => (n === 1 ? "1 person you share with" : `${n} people you share with`),
       stopWhoNone: "only you so far",
-      stopInvite: "Parenting, together",
-      stopInviteSub: "a co-parent in the app",
-      stopShare: "A share",
-      stopShareSub: "what it carries, until when",
-      stopData: "Shares and your data",
-      stopDataSub: "who, what, until when",
       adults: (n) => (n === 1 ? "person you share with" : "people you share with"),
       adultsSub: "Every share is one you chose, and you can stop it.",
     },
@@ -171,9 +155,7 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       packedWords: (n) => (n === 1 ? "מילה או משפט" : "מילים ומשפטים"),
       packedWordsSub: "שרשמתם",
       lastNote: "מה רשמתם אחרי הביקור הקודם",
-      youStarted: "התחלתם",
       timelineLabel: "הפגישות שלכם לפי תאריך",
-      helpHead: "עזרה והפסקה",
     },
     brief: {
       stopBrief: "התקציר",
@@ -189,12 +171,6 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       stopWho: "מי רואה מה",
       stopWhoSub: (n) => (n === 1 ? "אדם אחד שאתם משתפים איתו" : `${n} אנשים שאתם משתפים איתם`),
       stopWhoNone: "בינתיים רק אתם",
-      stopInvite: "הורות משותפת",
-      stopInviteSub: "הורה נוסף באפליקציה",
-      stopShare: "שיתוף",
-      stopShareSub: "מה הוא כולל ועד מתי",
-      stopData: "שיתופים והמידע שלכם",
-      stopDataSub: "מי, מה, עד מתי",
       adults: (n) => (n === 1 ? "אדם שאתם משתפים איתו" : "אנשים שאתם משתפים איתם"),
       adultsSub: "כל שיתוף הוא בבחירתכם, ואפשר לעצור אותו.",
     },

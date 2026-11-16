@@ -216,3 +216,4 @@
 .ds.care-records .care-records-door { padding: 4px 18px; }
 .ds.care-records .care-records-data { padding: 6px 18px; }
 .ds.care-records .care-records-hint { color: var(--ink-soft); }
+.ds.care-v10 .guide.mini .gstop { min-height: 44px; }
