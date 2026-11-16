@@ -6,7 +6,7 @@ import { useNowClock } from "../../companion/useNowClock";
 import { useLanguage } from "../../../context/LanguageContext";
 import { useKidTheme } from "../../../hooks/useKidTheme";
 import { useChildCollection } from "../../../hooks/useChildCollection";
-import { kidArt, kidArtSrcSet } from "../../../lib/kidThemeManifest";
+import { kidArt, kidArtSrcSet, STUDIO_VALLEY_TALL } from "../../../lib/kidThemeManifest";
 import { HERO_NAME_FALLBACK } from "../../../lib/heroNameFallback";
 import { bedtimeDoorOpen } from "../../../lib/timeOfDay";
 import { heGender } from "../../../lib/library/bookText";
@@ -39,9 +39,15 @@ export function StudioPortalArt({ worldId }: { worldId: StudioWorldId }) {
   const art = kidArt(theme, `studio.portal.${worldId}`);
   return <span className="studio-v2__portal-art" aria-hidden="true">{art && !art.hasHero && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(max-width: 640px) 36vw, 600px" style={{ objectPosition: art.objectPosition }} alt="" draggable={false} decoding="async" />}</span>;
 }
+/** Horizon Valley (v30): one authored picture is the home atmosphere, a tall
+ *  crop for portrait screens. Empty of people; the profile stands on its terrace. */
 export function StudioSky() {
-  // Authored atmosphere from Kids Studio Sky.dc.html, the V2 source of truth.
-  return <div className="studio-v2__sky" aria-hidden="true"><span className="studio-sky__aurora studio-sky__aurora--stories" /><span className="studio-sky__aurora studio-sky__aurora--calm" /><span className="studio-sky__stars" /><span className="studio-sky__rays" /><span className="studio-sky__horizon" /><span className="studio-sky__ground" /></div>;
+  const theme = useKidTheme();
+  const art = kidArt(theme, "studio.sky");
+  return <div className="studio-v2__sky" aria-hidden="true">{art && <picture>
+    <source media="(max-width: 950px) and (orientation: portrait)" srcSet={`${STUDIO_VALLEY_TALL.src480} 480w, ${STUDIO_VALLEY_TALL.src} ${STUDIO_VALLEY_TALL.width}w`} sizes="100vw" />
+    <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />
+  </picture>}</div>;
 }
 export interface StudioHomeProps {
   onWorld: (worldId: StudioWorldId) => void;
@@ -145,7 +151,7 @@ export default function StudioHome({ onWorld, onCollection, onQuest, onExit, onO
       <section className="studio-v2__quest studio-v2__quest--plan" aria-label={copy.plan.kicker} data-kid-plan-rail={plan.def.id}>
         <div className="studio-v2__quest-title"><small>{copy.plan.kicker}</small><h2 dir="auto">{plan.def.title[lang]}</h2>{step && <p dir="auto" data-kid-plan-step="">{copy.plan.tonight(step)}</p>}</div>
         <div className="studio-v2__plan-actions">
-          <button type="button" className="studio-v2__gold-button" data-kid-plan-open="" onClick={openPlanBook}><BookOpen size={20} aria-hidden="true" />{copy.plan.open}<ArrowRight size={20} aria-hidden="true" /></button>
+          <button type="button" className="studio-v2__action-button" data-kid-plan-open="" onClick={openPlanBook}><BookOpen size={20} aria-hidden="true" />{copy.plan.open}<ArrowRight size={20} aria-hidden="true" /></button>
           <button type="button" className="studio-v2__glass-button" data-kid-plan-tried={tried ? "tonight" : ""} aria-pressed={tried} aria-busy={tryPending} disabled={tryPending || (!tried && !tryReady)} onClick={() => { void tryTonight(); }}>{tried ? <Check size={20} aria-hidden="true" /> : <Sparkles size={20} aria-hidden="true" />}<span>{tried ? copy.plan.triedDone : tryPending ? copy.plan.triedSaving : tryStatus === "error" ? copy.plan.triedRetry : copy.plan.tried}</span></button>
         </div>
         {tryStatus === "error" && <p role="alert" className="studio-v2__list-hint">{copy.plan.triedError}</p>}
@@ -155,7 +161,7 @@ export default function StudioHome({ onWorld, onCollection, onQuest, onExit, onO
       <section className="studio-v2__quest" aria-label={questCopy.title}>
         <div className="studio-v2__quest-title"><small>{copy.quest}</small><h2>{quest.completed ? questCopy.done : questCopy.title}</h2>{/* T7: no count on a kid surface — the steps' own marks show the way */}{(!quest.loaded || quest.completed) && <p>{quest.loaded ? questCopy.ending : copy.questLoading}</p>}</div>
         <ol className="studio-v2__quest-steps">{QUEST_STEPS.map((step, index) => <li key={step} data-done={quest.steps.includes(step)} data-connected={quest.loaded && index < quest.steps.length - 1} aria-current={quest.loaded && !quest.completed && index === quest.steps.length ? "step" : undefined}><span>{quest.steps.includes(step) ? <Check size={22} aria-hidden="true" /> : <i className="studio-v2__quest-dot" aria-hidden="true" />}</span><small>{questCopy.steps[index]}</small></li>)}</ol>
-        <button type="button" className="studio-v2__gold-button" onClick={onQuest}>{quest.completed ? copy.questOpen : copy.questContinue}<ArrowRight size={20} aria-hidden="true" /></button>
+        <button type="button" className="studio-v2__action-button" onClick={onQuest}>{quest.completed ? copy.questOpen : copy.questContinue}<ArrowRight size={20} aria-hidden="true" /></button>
       </section>
     )}
   </section>;

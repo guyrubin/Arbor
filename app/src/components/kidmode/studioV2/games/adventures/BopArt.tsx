@@ -6,7 +6,7 @@ import './bopStage.css';
  * in the kid art manifest. Every file is an authored, shipped image (no
  * likeness, nothing made at runtime). Names are always full hyphenated file
  * stems, e.g. "aya-idle". */
-export type BopSceneId = 'scene-delivery' | 'scene-sun' | 'scene-table' | 'scene-floor';
+export type BopSceneId = 'scene-delivery' | 'scene-sun' | 'scene-table' | 'scene-floor' | 'scene-band';
 export type BopFriendId = 'aya' | 'chock' | 'pep';
 export type BopMood = 'idle' | 'happy';
 

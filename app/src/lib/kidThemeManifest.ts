@@ -19,6 +19,7 @@ import { HERO_STORIES } from "./heroJourneys";
 import { STUDIO_V2_GAME_WORLDS } from "../components/kidmode/studioGameWorlds";
 import { KID_WORLDS, SNEAK_FREEZE_WORLD, type KidWorldId } from "../components/kidmode/kidWorlds";
 import { studioNextFlagOn, type StudioNextHost } from "../components/kidmode/studioV2/studioNextFlag";
+import { heroBandFlagOn } from "../components/kidmode/studioV2/heroBandFlag";
 
 export const KID_THEME_IDS = ["film3d", "storybook"] as const;
 export type KidThemeId = (typeof KID_THEME_IDS)[number];
@@ -137,10 +138,17 @@ const adventureScene = (id: 'canal-world' | 'story-theater' | 'sound-orbit'): Ki
   objectPosition: '50% 50%', altKey: null, provenanceId: `studio-original-world:${id}:2026-10-15`, hasHero: false,
 });
 
+/** v30 shell art (Horizon Valley, the art kit's register v30; generated
+ *  16 Nov 2026). New file names, so no cached night-sky picture survives. The
+ *  doors show the animal companions (Pep, Aya, Chock) or an empty place, never
+ *  a child: the profile is the only child identity. */
+const STUDIO_V30 = "/visuals/studio-v2/v30/";
 const studioPortal = (id: typeof STUDIO_PORTAL_IDS[number]): KidArt => ({
-  src: `/visuals/studio-v2/portal-${id}.webp`, src480: `/visuals/studio-v2/portal-${id}-480.webp`, width: 1536,
-  objectPosition: "50% 50%", altKey: null, provenanceId: `studio-v2-neutral-portal:${id}:2026-10-13`, hasHero: false,
+  src: `${STUDIO_V30}portal-${id}.webp`, src480: `${STUDIO_V30}portal-${id}-480.webp`, width: 1536,
+  objectPosition: "50% 55%", altKey: null, provenanceId: `studio-v30-portal:${id}:2026-11-16`, hasHero: false,
 });
+/** The home valley for portrait tablets and phones (the wide one is "studio.sky"). */
+export const STUDIO_VALLEY_TALL = { src: `${STUDIO_V30}valley-tall.webp`, src480: `${STUDIO_V30}valley-tall-480.webp`, width: 1024 } as const;
 /** The Bop games' toy-world art: one shared folder of authored, shipped
  *  pictures (no likeness, nothing made at runtime). A stem is the full
  *  hyphenated file name without its extension, e.g. "aya-idle". */
@@ -152,15 +160,17 @@ export function studioBopArt(stem: string): string { return `${STUDIO_BOP_ROOT}$
 const STUDIO_NEXT_COVERS: Record<StudioNextHost, string> = { memory: "card-delivery", pattern: "card-sun", puzzle: "card-oops", "river-rescue": "card-rover" };
 export interface StudioNextCover { src: string; src480: string; srcSet: string }
 export function studioNextCover(id: string): StudioNextCover | null {
-  if (!Object.hasOwn(STUDIO_NEXT_COVERS, id) || !studioNextFlagOn()) return null;
-  const stem = STUDIO_NEXT_COVERS[id as StudioNextHost];
+  // Hero Band hosts the rhythm-garden tile under either switch (kidPrefetch).
+  const stem = id === "rhythm-garden" ? (studioNextFlagOn() || heroBandFlagOn() ? "card-band" : null)
+    : Object.hasOwn(STUDIO_NEXT_COVERS, id) && studioNextFlagOn() ? STUDIO_NEXT_COVERS[id as StudioNextHost] : null;
+  if (!stem) return null;
   const src = studioBopArt(stem), src480 = studioBopArt(`${stem}-480`);
   return { src, src480, srcSet: `${src480} 480w, ${src} 1024w` };
 }
 
 /** A shared neutral V2 environment set; the profile is the sole child identity. */
 const STUDIO_ART: Record<StudioArtKey, KidArt> = {
-  "studio.sky": { src: "/visuals/studio-v2/sky-background.webp", src480: "/visuals/studio-v2/sky-background-480.webp", width: 1536, objectPosition: "50% 50%", altKey: null, provenanceId: "studio-v2-sky:2026-10-13", hasHero: false },
+  "studio.sky": { src: `${STUDIO_V30}valley-wide.webp`, src480: `${STUDIO_V30}valley-wide-480.webp`, width: 1536, objectPosition: "50% 60%", altKey: null, provenanceId: "studio-v30-valley:2026-11-16", hasHero: false },
   "studio.portal.playbank": studioPortal("playbank"),
   "studio.portal.stories": studioPortal("stories"),
   "studio.portal.feelings": studioPortal("feelings"),

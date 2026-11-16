@@ -42,20 +42,22 @@ const read = (f: string) => readFileSync(path.join(SRC, f), "utf8");
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "");
 
 const COLOUR = /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g;
-/** FROZEN (28 Oct 2026): raw colour literals per kid stylesheet. May only shrink. */
+/** FROZEN (28 Oct 2026; ratcheted 16 Nov 2026 by the v30 re-token): raw
+ *  colour literals per kid stylesheet. May only shrink. The token file holds
+ *  the register's ten source colours; the rest of the shell holds none. */
 const COLOUR_LITERALS: Readonly<Record<string, number>> = {
-  "components/kidmode/studioV2/games/adventures/adventures.css": 169,
+  "components/kidmode/studioV2/games/adventures/adventures.css": 152,
   // The makers' material palette (16 Nov 2026): the one token file their scene art draws from.
   "components/kidmode/studioV2/games/makers/makerPalette.css": 64,
   "components/kidmode/studioV2/games/studioGames.css": 0,
-  "components/kidmode/studioV2/studioActivityArt.css": 4,
-  "components/kidmode/studioV2/studioAdventureScene.css": 3,
+  "components/kidmode/studioV2/studioActivityArt.css": 0,
+  "components/kidmode/studioV2/studioAdventureScene.css": 0,
   "components/kidmode/studioV2/studioCreations.css": 0,
-  "components/kidmode/studioV2/studioGame.css": 42,
-  "components/kidmode/studioV2/studioKeepsakes.css": 18,
-  "components/kidmode/studioV2/studioSky.css": 81,
-  "components/kidmode/studioV2/studioTokens.css": 15,
-  "components/kidmode/studioV2/studioV2.css": 73,
+  "components/kidmode/studioV2/studioGame.css": 0,
+  "components/kidmode/studioV2/studioKeepsakes.css": 0,
+  "components/kidmode/studioV2/studioSky.css": 0,
+  "components/kidmode/studioV2/studioTokens.css": 10,
+  "components/kidmode/studioV2/studioV2.css": 0,
   "components/library/bookReader.css": 0,
 };
 const KID_FONTS = new Set(["var(--studio-font)", "var(--font-sans)", "var(--font-display)", "inherit", "nunito,heebo,sans-serif"]);
@@ -84,6 +86,32 @@ describe("B-KID-133: kid colour stays on tokens (shrink-only)", () => {
   });
   it("the frozen list names only stylesheets that exist (ratchet down when one goes)", () => {
     for (const f of Object.keys(COLOUR_LITERALS)) expect(css, f).toContain(f);
+  });
+});
+
+/** v30 (the art kit's register v30, 15 Nov 2026; DESIGN.md §Kid register v30):
+ *  pearl surfaces, graphite type, one teal. The pre-v30 gold action and the
+ *  night-sky illustration classes must not come back into the Studio. */
+const PRE_V30 = /--studio-(?:action-gold|action-fill|game-gold|gold)\b|\bstudio-sky__|\bstudio-v2__gold-button\b/;
+export function undefinedStudioTokens(defined: string, used: string): string[] {
+  const have = new Set([...strip(defined).matchAll(/(--studio-[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
+  for (const m of defined.matchAll(/["'](--studio-[a-z0-9-]+)["']\s*:/g)) have.add(m[1]);
+  return [...new Set([...strip(used).matchAll(/var\((--studio-[a-z0-9-]+)/g)].map((m) => m[1]))].filter((t) => !have.has(t));
+}
+describe("v30: the Studio wears one register", () => {
+  const studio = code.filter((f) => f.startsWith("components/kidmode/studioV2/"));
+  it("no pre-v30 gold token or night-sky class in the Studio", () => {
+    expect(studio.filter((f) => PRE_V30.test(strip(read(f))))).toEqual([]);
+  });
+  it("every --studio-* token a kid stylesheet uses is defined (a removed token fails here, not as a blank colour)", () => {
+    const defined = code.map(read).join("\n");
+    expect(undefinedStudioTokens(defined, css.map(read).join("\n"))).toEqual([]);
+  });
+  it("negative controls: the v30 scans bite", () => {
+    expect(PRE_V30.test(".a{background:var(--studio-action-gold)}")).toBe(true);
+    expect(PRE_V30.test('<span className="studio-sky__aurora" />')).toBe(true);
+    expect(PRE_V30.test(".a{background:var(--studio-action)}")).toBe(false);
+    expect(undefinedStudioTokens(".x{--studio-teal:#000}", ".a{color:var(--studio-teal);background:var(--studio-gone)}")).toEqual(["--studio-gone"]);
   });
 });
 

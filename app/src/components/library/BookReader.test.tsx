@@ -422,9 +422,21 @@ describe("fix round 1: bar, accent, choice cards", () => {
 
   it("the child's name in running text wears the cover's accent colour (CSS)", () => {
     const css = readFileSync(path.join(here, "bookReader.css"), "utf8");
-    expect(css).toMatch(/\.bk-words bdi,[\s\S]*?\{ font-weight: 700; color: var\(--arbor-clay\); \}/);
-    // the card lips are solid colours (the -soft tokens are gradients)
-    expect(css).not.toMatch(/--card-lip: var\(--arbor-[a-z]+-soft\)/);
+    expect(css).toMatch(/\.bk-words bdi,[\s\S]*?\{ font-weight: 800; color: var\(--studio-teal-ink\); \}/);
+    expect(css).toMatch(/\.bk-cover-title \.bk-name-line \{ color: var\(--studio-teal-ink\);/);
+  });
+
+  it("B-KID-169: the reader wears the v30 register — tokens resolve on every mount, no navy stage, gold toy or glow", () => {
+    const css = readFileSync(path.join(here, "bookReader.css"), "utf8");
+    const code = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    // the root carries the Studio scope, so --studio-* resolves in Kids Mode, the dev route and the plan preview alike
+    expect(render(run({ type: "open" }))).toMatch(/class="bk-reader"[^>]*data-kid-studio=""/);
+    // the stage is pearl to mist, never the night radial on --arbor-ink
+    expect(code).toMatch(/\.arbor-play \.bk-reader \{[^}]*var\(--studio-pearl\)[^}]*var\(--studio-mist\)/);
+    expect(code).not.toMatch(/var\(--arbor-(?:ink|yellow|sky|lav|peach|paper-elevated|paper-deep|clay)\)/);
+    // the reader's toys: graphite action, no gloss lip
+    expect(code).toMatch(/\.bk-reader \.kid-toy\[data-tone="go"\] \{[^}]*--toy-face: var\(--studio-action\)/);
+    expect(code).toMatch(/\.bk-reader \.kid-toy \{[^}]*margin-block-end: 0;/);
   });
 
   it("decision cards at 1920: the cards state stacks three LARGE cards (pictures >= 300 px wide, 4:3) in the same book", () => {

@@ -5,6 +5,7 @@ import { dedupeScene, getScene } from "../../lib/sceneCache";
 import { worldArtwork } from "./worldArtwork";
 import type { KidThemeId } from "../../lib/kidThemeManifest";
 import { runInstrumented } from "../../hooks/useAsyncAction";
+import { isKidModeActive } from "../../lib/kidModeGate";
 
 /* WorldScene — one visual identity for every child world.
    The generated avatar is the consistency reference: face, hair, age, outfit and
@@ -69,7 +70,10 @@ export default function WorldScene({
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const style = normalizeAvatarStyle(heroStyle);
-  const key = heroUrl ? ["world-v3", worldId, shortHash(heroUrl), style].join("|") : null;
+  // B-KID-138: no generated scene reaches a child until the scene failures are
+  // diagnosed (B-AIOPS-07). In Kid Mode a tile shows its built-in art only, and
+  // no request is made, as journeys and comics already do.
+  const key = heroUrl && !isKidModeActive() ? ["world-v3", worldId, shortHash(heroUrl), style].join("|") : null;
   const [resolved, setResolved] = useState<{ key: string; url: string } | null>(() => {
     const url = key ? getScene(key) : undefined;
     return key && url ? { key, url } : null;

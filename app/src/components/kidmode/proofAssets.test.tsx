@@ -1,9 +1,9 @@
 /**
- * B-GAME-07c — the local-only proof assets: url resolution against the JSON's
- * folder, the proof sheet/art loaders (absent = today's behaviour), per-pose
- * `scale`, the prize in the hero's hands, no text hint on the stage, the kid
- * bar's one-line title, and THE GUARD: nothing under public/_proof is ever
- * tracked by git (the owner's son's likeness).
+ * B-GAME-07c — the proof assets: url resolution against the JSON's folder,
+ * the proof sheet/art loaders (absent = today's behaviour), per-pose `scale`,
+ * the prize in the hero's hands, no text hint on the stage and the kid bar's
+ * one-line title. The proof child's likeness files under public/_proof are
+ * named and hash-pinned by childLikenessFiles.guard.test.ts (B-GAME-35).
  */
 import { describe, expect, it } from "vitest";
 import React from "react";
@@ -155,6 +155,7 @@ describe("B-GAME-06b: the scene without the white slab", () => {
   });
 });
 
-// The git guard that stood here was retired on 6 Oct 2026: Guy ruled (5 Oct) that his son's
-// images stay in the app, and on 6 Oct put the proof in production; public/_proof ships.
+// The git guard that stood here was retired on 6 Oct 2026: the owner ruled (5 Oct) that the
+// proof child's images stay in the app, and on 6 Oct put the proof in production; public/_proof
+// ships, every file named and hash-pinned (childLikenessFiles.guard.test.ts).
 
