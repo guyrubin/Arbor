@@ -7,7 +7,8 @@ import { ARC_DESK, arcFraction, arcPoint, clock24, EVENING_FROM_HOUR, eveningMom
 import { NOW_V10_COPY } from "./nowV10Copy";
 import NowDayArc from "./NowDayArc";
 import NowWaiting, { NowNotebookBadge } from "./NowWaiting";
-import { useFamilyPlanDatesForNow } from "./familyPlanSlot";
+import { familyPlanLinesForNow, NOW_FAMILY_PLAN_ROWS } from "./familyPlanSlot";
+import type { FamilyPlanDate } from "../../../lib/familyPlan/model";
 
 vi.mock("../../../context/ArborContext", () => ({ useArbor: () => ({ actionLoop: [], actionPlans: [] }) }));
 vi.mock("../../../context/LanguageContext", () => ({ useLanguage: () => ({ uiLang: "en", t: (k: string) => k }) }));
@@ -149,9 +150,46 @@ describe("Waiting for you", () => {
   }
 });
 
-describe("Coming up's Family plan slot", () => {
-  it("is empty until the Family plan is wired (no line is drawn)", () => {
-    expect(useFamilyPlanDatesForNow()).toEqual([]);
+describe("Coming up's Family plan slot (synthetic dates)", () => {
+  const date = (id: string, day: string, extra: Partial<FamilyPlanDate> = {}): FamilyPlanDate => ({
+    id, kind: "event", title: `Date ${id}`, date: day, origin: "manual", version: 1, status: "open",
+    history: [], createdBy: "parent-a", createdAt: "2026-11-01T00:00:00Z", updatedAt: "2026-11-01T00:00:00Z", ...extra,
+  } as FamilyPlanDate);
+  const onOpen = vi.fn();
+
+  it("draws no line for a family with no dates", () => {
+    expect(familyPlanLinesForNow([], "2026-11-16", "en", "parent-a", onOpen)).toEqual([]);
+  });
+
+  it("lists open dates from today on, soonest first, at most three, each opening Family plan", () => {
+    const lines = familyPlanLinesForNow([
+      date("late", "2026-11-25"),
+      date("past", "2026-11-12"),
+      date("today", "2026-11-16", { time: "08:30", holder: { uid: "parent-a", role: "owner" } }),
+      date("done", "2026-11-17", { status: "done" }),
+      date("next", "2026-11-18", { holder: { uid: "co-1", role: "co_parent", email: "dana@example.com" } }),
+      date("later", "2026-11-20"),
+    ], "2026-11-16", "en", "parent-a", onOpen);
+    expect(lines).toHaveLength(NOW_FAMILY_PLAN_ROWS);
+    expect(lines.map((l) => l.id)).toEqual(["today", "next", "later"]);
+    expect(lines[0]).toMatchObject({ day: 16, nobody: false, title: "Date today", sub: "08:30 · You" });
+    expect(lines[1]).toMatchObject({ day: 18, nobody: false, sub: "dana" });
+    expect(lines[2]).toMatchObject({ day: 20, nobody: true, sub: NOW_V10_COPY.en.familyPlanNobody });
+    lines[1].onOpen();
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("speaks Hebrew for a Hebrew reader", () => {
+    const [line] = familyPlanLinesForNow([date("x", "2026-11-18")], "2026-11-16", "he", "parent-a", onOpen);
+    expect(line.sub).toBe(NOW_V10_COPY.he.familyPlanNobody);
+    expect(/[\u0590-\u05FF]/.test(line.weekday)).toBe(true);
+  });
+
+  it("NEGATIVE CONTROL: past, done and cancelled dates never reach Now", () => {
+    const lines = familyPlanLinesForNow([
+      date("past", "2026-11-10"), date("done", "2026-11-18", { status: "done" }), date("gone", "2026-11-19", { status: "cancelled" }),
+    ], "2026-11-16", "en", "parent-a", onOpen);
+    expect(lines).toEqual([]);
   });
 });
 

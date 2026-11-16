@@ -197,7 +197,7 @@ export default function TopbarSearch() {
         {/* v10: the one search door says its key. Hidden while typing (the
             clear button takes the slot) and when the field is too narrow. */}
         {!query && !open && (
-          <kbd aria-hidden="true" className="arbor-search-kbd" style={{ alignSelf: "center", flexShrink: 0, fontFamily: "var(--font-sans)", fontSize: "12px", fontWeight: 600, color: "var(--arbor-muted)", background: "var(--arbor-paper-sunk)", borderRadius: "6px", padding: "2px 6px", whiteSpace: "nowrap" }}>
+          <kbd aria-hidden="true" lang="en" dir="ltr" className="arbor-search-kbd" style={{ alignSelf: "center", flexShrink: 0, fontFamily: "var(--font-sans)", fontSize: "12px", fontWeight: 600, color: "var(--arbor-muted)", background: "var(--arbor-paper-sunk)", borderRadius: "6px", padding: "2px 6px", whiteSpace: "nowrap" }}>
             {typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘ K" : "Ctrl K"}
           </kbd>
         )}

@@ -35,6 +35,8 @@ import { markPracticeShown } from "../../lib/practice/todayPin";
 import { appointmentRoleLabel } from "../../lib/appointmentLabel";
 import { isKidModeActive } from "../../lib/kidModeGate";
 import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
+import { challengePlanHref } from "../../lib/plans/challengeLinks";
+import { isPatternId } from "../../lib/library/plans/planVisibility";
 import { basedOnLines, FOCUS_MAX_FACTS } from "../../lib/basedOn";
 import { useArborPause } from "../../lib/pauseArborStore";
 import { fmtDay } from "../../lib/formatDate";
@@ -153,11 +155,12 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // and the answer is a COUNT (the `books` row), never a verdict.
   const planRows = useChildCollection<PlanBookDoc>(childProfile.id, "books");
   const plan = useMemo(() => leadPlan(planRows.items, now), [planRows.items, now]);
-  // S1 (surfacing): the plan's front door on Today — the ONE "Everyday plans"
-  // card under the lead (the running plan(s), then "Something hard right
-  // now?" → the pattern chooser → the existing composer on #/journal?plan=).
+  // S1 (surfacing): the plan's front door on Now — the ONE Challenge Plans
+  // card (the running plan(s), then "Something hard right now?"). v10.1: it
+  // opens the plan's one home, Now › Plans (lib/plans/challengeLinks), not a
+  // copy of the composer.
   const planVisibility = usePlanVisibility();
-  const openPattern = (pattern: string) => { setActiveTab("journal"); window.location.hash = `#/journal?plan=${pattern}`; };
+  const openPattern = (pattern: string) => { setActiveTab("plans"); window.location.hash = challengePlanHref(isPatternId(pattern) ? pattern : null); };
   const openPlan = () => openPattern(plan?.def.id ?? "");
   // v4: the agenda row says where the family is in it ("Week 2 of 4"), counts only.
   const programWeeks = Array.isArray(program?.program.weeks) ? program.program.weeks.length : 0;
