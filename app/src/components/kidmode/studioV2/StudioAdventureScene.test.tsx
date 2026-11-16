@@ -5,10 +5,10 @@ import { readFileSync } from 'node:fs';
 vi.mock('../../../hooks/useKidTheme', () => ({ useKidTheme: () => 'film3d' }));
 import { StudioAdventureScene } from './StudioAdventureScene';
 describe('adventure scenery cannot redraw the child', () => {
- it('renders each original neutral environment', () => {
+ it('renders each neutral environment: the film empty sets (B-KID-171)', () => {
   for (const activityId of ['river-rescue','feelings-forest','rhythm-garden'] as const) {
    const html = renderToStaticMarkup(<StudioAdventureScene activityId={activityId} />);
-   expect(html).toContain('/visuals/studio-v2/adventures/'); expect(html).toContain('alt=""');
+   expect(html).toContain('/visuals/studio-v2/film/room-'); expect(html).not.toContain('/visuals/studio-v2/adventures/'); expect(html).toContain('alt=""');
   }
  });
  it('does not send an approved avatar to scene generation from game or portal artwork', () => {

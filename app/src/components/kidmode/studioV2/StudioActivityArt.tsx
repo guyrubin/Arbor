@@ -1,7 +1,7 @@
 import './studioActivityArt.css';
 import { Icon } from '../../ui/Icon';
 import { useKidTheme } from '../../../hooks/useKidTheme';
-import { kidArt, kidArtSrcSet, studioNextCover, type KidArtKey } from '../../../lib/kidThemeManifest';
+import { isStudioCoverId, kidArt, kidArtSrcSet, studioNextCover, type KidArtKey } from '../../../lib/kidThemeManifest';
 import { studioActivity, type StudioActivityId } from './studioCatalog';
 
 const glyphs = { 'river-rescue': 'water', 'feelings-forest': 'mood', 'rhythm-garden': 'graphic_eq', memory: 'psychology', pattern: 'category', puzzle: 'extension', 'calm-builder': 'weekend', sneak: 'route' };
@@ -9,7 +9,8 @@ const glyphs = { 'river-rescue': 'water', 'feelings-forest': 'mood', 'rhythm-gar
 export function StudioActivityArt({ id }: { id: StudioActivityId }) {
   const theme = useKidTheme();
   const activity = studioActivity(id);
-  const key = id === 'sneak' ? 'studio.portal.playbank' : `world.${id}.tile`;
+  // Each Playbank game has its own film cover; the rest show their world's room.
+  const key = isStudioCoverId(id) ? `studio.cover.${id}` : `world.${id}.tile`;
   const candidate = kidArt(theme, key as KidArtKey) ?? (activity ? kidArt(theme, `studio.portal.${activity.worldId}`) : null);
   const fallback = activity ? kidArt(theme, `studio.portal.${activity.worldId}`) : null;
   const art = candidate && !candidate.hasHero ? candidate : fallback && !fallback.hasHero ? fallback : null;

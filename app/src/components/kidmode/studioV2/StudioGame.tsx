@@ -5,7 +5,7 @@ import { useArbor } from "../../../context/ArborContext";
 import { useAuth } from "../../../context/AuthContext";
 import { useLanguage } from "../../../context/LanguageContext";
 import { useKidTheme } from "../../../hooks/useKidTheme";
-import { kidArt, kidArtSrcSet, studioNextCover } from "../../../lib/kidThemeManifest";
+import { isStudioCoverId, kidArt, kidArtSrcSet, studioNextCover } from "../../../lib/kidThemeManifest";
 import { noteKidActivity } from "../../../lib/kidModeGate";
 import { localizedMimicPacks } from "../../../practice/mimicContent";
 import { ArborMascot } from "../../ui/ArborMascot";
@@ -63,7 +63,10 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
   const copy = labels.activities[activityId];
   const theme = useKidTheme();
   const activity = studioActivity(activityId);
-  const candidate = activity ? kidArt(theme, ["river-rescue", "feelings-forest", "rhythm-garden"].includes(activityId) ? `world.${activityId}.tile` as Parameters<typeof kidArt>[1] : `studio.portal.${activity.worldId}`) : null;
+  // Playbank games open on their own film cover; adventures on their room; the rest on their world's door.
+  const candidate = activity ? kidArt(theme, isStudioCoverId(activityId) ? `studio.cover.${activityId}`
+    : ["river-rescue", "feelings-forest", "rhythm-garden"].includes(activityId) ? `world.${activityId}.tile` as Parameters<typeof kidArt>[1]
+    : `studio.portal.${activity.worldId}`) : null;
   // Only neutral environments belong behind the canonical profile portrait.
   const art = candidate && !candidate.hasHero ? candidate : null;
   // A device that opted in to the next games sees that game's own cover.

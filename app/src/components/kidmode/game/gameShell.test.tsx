@@ -56,7 +56,7 @@ describe("GameShell in Kid Mode", () => {
     // its existing neutral fallback until approved world art is available.
     const { kidStageArt } = await import("../kidStageArt");
     const stage = kidStageArt("film3d", { kind: "world", worldId: "memory" });
-    expect(stage.wide?.src480).toContain("kid-discovery-garden-v2-480.webp");
+    expect(stage.wide?.src480).toContain("film/room-terrace-480.webp");
     expect(stage.wide?.hasHero).toBe(false);
     expect(stage.sharpTop).toBe(false);
     expect(stage.blur).toBe(10);

@@ -22,19 +22,19 @@ const css = readFileSync(path.join(__dirname, "..", "..", "index.css"), "utf8");
 const overlay = readFileSync(path.join(__dirname, "KidModeOverlay.tsx"), "utf8");
 
 describe("which picture is the stage", () => {
-  it("home: the tall reading room on a phone, the garden on a wide screen; legible (blur 4) with a crisp top band", () => {
+  it("home: the film's lantern arch on a phone, its terrace on a wide screen; legible (blur 4) with a crisp top band", () => {
     const s = kidStageArt("film3d", { kind: "home" });
-    expect(s.tall?.src).toContain("arbor-academy-play-hero-bg");
-    expect(s.wide?.src).toContain("kid-discovery-garden-v2");
+    expect(s.tall?.src).toContain("film/room-arch-tall");
+    expect(s.wide?.src).toContain("film/room-terrace");
     expect(s.blur).toBe(4);
     expect(s.sharpTop).toBe(true);
   });
-  it("a game = its world card; a book = its cover; the library = the garden", () => {
-    expect(kidStageArt("film3d", { kind: "world", worldId: "pattern" }).wide?.src).toContain("kid-discovery-garden-v2");
+  it("a game = its world card; a book = its cover; the library = the terrace", () => {
+    expect(kidStageArt("film3d", { kind: "world", worldId: "pattern" }).wide?.src).toContain("film/room-terrace");
     // B-BOOK-31: a story cover that paints the reference family's child is no stage either (like a world card).
-    expect(kidStageArt("film3d", { kind: "story", storyId: "noahs-ark" }).wide?.src).toContain("kid-discovery-garden-v2");
+    expect(kidStageArt("film3d", { kind: "story", storyId: "noahs-ark" }).wide?.src).toContain("film/room-terrace");
     expect(kidStageArt("storybook", { kind: "story", storyId: "the-lantern-path" }).wide?.src).toContain("lantern-path-v1");
-    expect(kidStageArt("film3d", { kind: "library" }).wide?.src).toContain("kid-discovery-garden-v2");
+    expect(kidStageArt("film3d", { kind: "library" }).wide?.src).toContain("film/room-terrace");
     expect([KID_STAGE_BLUR.library, KID_STAGE_BLUR.world, KID_STAGE_BLUR.story]).toEqual([10, 22, 26]);
   });
   it("one theme, never mixed: a theme without the art gets the flat token stage, never another theme's file", () => {
@@ -66,7 +66,7 @@ describe("the stage layer", () => {
     expect(html).toMatch(/^<div aria-hidden="true" class="kid-stage" data-kid-stage="home" data-sharp-top=""/);
     expect(html).toContain("--stage-blur:4px");
     expect(html).toContain('media="(max-width: 767px)"');
-    expect(html).toContain("arbor-academy-play-hero-bg-480.webp");
+    expect(html).toContain("room-arch-tall-480.webp");
     expect(html).toContain('class="kid-stage-soft"');
     expect(html).toContain('class="kid-stage-sharp"');
     expect(html).toContain('class="kid-stage-tint"');

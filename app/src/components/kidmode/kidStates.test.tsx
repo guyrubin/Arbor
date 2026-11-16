@@ -25,12 +25,12 @@ describe("the one kid loading state", () => {
   it("a stock child world card is rejected and the canonical hero is retained", () => {
     const html = renderToStaticMarkup(<KidStageFallback worldId="memory" />);
     expect(html).not.toContain("game-memory");
-    expect(html).toContain("kid-discovery-garden-v2");
+    expect(html).toContain("film/room-terrace");
     expect(html).toContain("data-hero");
   });
   it("any other kid surface shows the theme's home stage with the hero idling in front", () => {
     const html = renderToStaticMarkup(<KidStageFallback />);
-    expect(html).toContain("kid-discovery-garden-v2");
+    expect(html).toContain("film/room-terrace");
     expect(html).toContain("data-kid-idle");
     expect(html).toContain("data-hero");
     expect(html).toContain('aria-hidden="true"');

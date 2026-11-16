@@ -783,7 +783,7 @@ describe("KID-7: kid-dashboard art is unique per visible tile", () => {
   it("the banner retains its distinct story role rather than recycling a game", async () => {
     const { worldArtwork } = await import("../practice/worldArtwork");
     expect(worldArtwork("kid-quest", "storybook")!.provenanceId).toBe("world-art-v2:tonight-story");
-    expect(worldArtwork("kid-quest", "film3d")!.provenanceId).toBe("film3d-card:arbor-academy-play-hero-bg");
+    expect(worldArtwork("kid-quest", "film3d")!.provenanceId).toBe("studio-film:room-arch-tall:2026-11-16");
     // B-KID-42: the banner wears tonight's story cover when the theme has one,
     // else this reviewed kid-quest tile (tonightBanner.test.ts).
     expect(readSelf("KidDashboard.tsx")).toContain('worldId={tonightsArtId}');

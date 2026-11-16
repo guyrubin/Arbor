@@ -14,7 +14,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import {
   DEFAULT_KID_THEME, GATING_KID_ART_KEYS, KID_ART_KEYS, KID_THEME_IDS, KID_THEME_MANIFEST,
-  KID_THEME_TILE_SHAPE, kidArt, kidArtSrcSet, resolveKidTheme, selectableThemes, storyCoverKey, themeCoverage,
+  KID_THEME_TILE_SHAPE, STUDIO_COVER_IDS, kidArt, kidArtSrcSet, resolveKidTheme, selectableThemes, storyCoverKey, themeCoverage,
 } from "./kidThemeManifest";
 import { KID_ART_GAPS } from "./kidArtGaps";
 import { HERO_STORIES } from "./heroJourneys";
@@ -147,5 +147,19 @@ describe("Studio V2 neutral identity boundary", () => {
         expect(kidArt(theme, key)?.hasHero, `${theme}:${key}`).toBe(false);
       }
     }
+  });
+  it("B-KID-171: the default theme's game covers, rooms and stages are the film's own frames, no October art", () => {
+    const filmKeys = [
+      ...STUDIO_COVER_IDS.map((id) => `studio.cover.${id}` as const), "studio.room.calm",
+      "world.calm-builder.tile", "world.river-rescue.tile", "world.feelings-forest.tile", "world.rhythm-garden.tile",
+      "world.puzzle.tile", "world.kid-quest.tile", "home.stage",
+    ] as const;
+    for (const key of filmKeys) {
+      const art = kidArt("film3d", key);
+      expect(art?.provenanceId, key).toMatch(/^studio-film:/);
+      expect(art?.src, key).toMatch(/^\/visuals\/studio-v2\/film\//);
+      expect(art?.hasHero, key).toBe(false);
+    }
+    expect(kidArt("film3d", "world.kid-quest.tile")?.width).toBe(864);
   });
 });
