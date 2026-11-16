@@ -609,7 +609,7 @@ export function BookReader({
   ) : null;
 
   return (
-    <div className="bk-reader" data-book-reader="" data-read-mode={readMode} data-mode={layout.mode} data-page-type={atEnd ? "end" : layout.pageType} dir={dir} lang={lang} role="region" aria-label={bookString("reader.aria", lang, { title: book.title[lang] })}>
+    <div className="bk-reader" data-book-reader="" data-kid-studio="" data-read-mode={readMode} data-mode={layout.mode} data-page-type={atEnd ? "end" : layout.pageType} dir={dir} lang={lang} role="region" aria-label={bookString("reader.aria", lang, { title: book.title[lang] })}>
       <header className="bk-bar" style={{ blockSize: px(wide ? BAR_WIDE : BAR_NARROW) }}>
         <KidToy tone="paper" shape="round" size="s" glyph="close" data-book-close="" aria-label={bookString("close", lang)} onClick={onClose} />
         <span className="bk-bar-fill" style={progressNotice ? { minWidth: 0, textAlign: "center" } : undefined}>{progressNotice}</span>
