@@ -169,6 +169,10 @@
   .bl-swatch, .bl-sticker { min-block-size: 64px; }
 }
 
+/* Four steps across a phone leave about 60 px for a name: the tick sits above it, so "Stickers" reads whole instead of "Sticke…". */
+@media (max-width: 440px) {
+  .bl-tab { flex-direction: column; gap: 3px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .bl *, .bl *::before, .bl *::after { animation: none !important; transition: none !important; }
   .bl-poke { opacity: .7; }

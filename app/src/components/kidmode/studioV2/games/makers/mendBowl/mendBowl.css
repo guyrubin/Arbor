@@ -107,7 +107,8 @@
 /* ---------- things on the table that answer a touch ---------- */
 .mb .mb-toy, .mb .mb-glaze { position: absolute; z-index: 1; aspect-ratio: 1; min-inline-size: 48px; padding: 0; translate: -50% -50%; border: 0; border-radius: 50%; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .mb .mb-toy:focus-visible, .mb .mb-glaze:focus-visible, .mb .mb-chock:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 2px; }
-.mb .mb-toy[data-toy=roller] { aspect-ratio: 2 / 1; border-radius: 28px; }
+/* The roller is drawn wide and low; its target keeps that shape but never drops under the 48 px tap floor (it measured 60x30 on a phone). */
+.mb .mb-toy[data-toy=roller] { aspect-ratio: 2 / 1; min-inline-size: 96px; min-block-size: 48px; border-radius: 28px; }
 .mb-stage:is([data-phase=gold], [data-phase=admire]) .mb-toy[data-toy=roller] { pointer-events: none; }
 /* Chosen glaze: a teal ring and a tick. The dish itself also stands taller. */
 .mb .mb-glaze { min-inline-size: var(--studio-tap); z-index: 3; }
