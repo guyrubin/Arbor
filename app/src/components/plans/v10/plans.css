@@ -344,3 +344,4 @@
 .ds-plans.ds-phone .ds-plans-paper-frame { height: 760px; }
 .ds-plans .siderail .rh { flex-wrap: wrap; row-gap: 2px; }
 .ds-plans .siderail .rh .small { flex-basis: 100%; padding-inline-start: 34px; white-space: normal !important; overflow: visible !important; }
+.ds-plans .ds-plans-topic { display: block; min-height: 64px; padding: 12px 14px; resize: vertical; line-height: 1.4; }

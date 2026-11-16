@@ -113,7 +113,7 @@ export default function PlansTab() {
   const printPlan = (doc: PlanBookDoc) => void openPrintablePlan({ doc, child: childProfile, lang, now: new Date() });
 
   // Masterplan 4.3 teach-empty: the ONE CTA focuses the existing challenge input.
-  const topicInputRef = useRef<HTMLInputElement | null>(null);
+  const topicInputRef = useRef<HTMLTextAreaElement | null>(null);
   const focusTopicInput = () => {
     try { track("empty_cta_tap", { surface: "plans" }); } catch { /* noop */ }
     const el = topicInputRef.current;
@@ -230,14 +230,15 @@ export default function PlansTab() {
           ))}
         </div>
       )}
-      <input
+      {/* A chosen suggestion can be long: the field wraps so the whole topic shows. */}
+      <textarea
         ref={topicInputRef}
-        type="text"
+        rows={planChallengeTopic.length > 40 ? 3 : 2}
         value={planChallengeTopic}
         onChange={(e) => setPlanChallengeTopic(e.target.value)}
         placeholder={t("plan.placeholder")}
         aria-label={t("plan.create")}
-        className="nx-in ds-plans-input"
+        className="nx-in ds-plans-input ds-plans-topic"
         dir="auto"
       />
       <button

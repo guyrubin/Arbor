@@ -8,7 +8,6 @@ import { tonightStepForParent, type ActivePlan } from "../../../lib/plans/planWe
 import { EMPTY_ART } from "../../../lib/parentArt";
 import type { ActionPlan } from "../../../types";
 import { ChallengeBook } from "./ChallengeBook";
-import { flatSteps } from "./ActionPlanStage";
 import { plansCopy } from "./plansCopy";
 
 /**
@@ -41,27 +40,18 @@ export function PlanPicker({ actionPlans, selectedId, todaySteps, challenges, la
   const desk = composition === "desk";
   const cards: React.ReactNode[] = [];
   for (const plan of actionPlans) {
-    const steps = flatSteps(plan);
-    const done = steps.filter((s) => s.status === "done").length;
     const on = plan.id === selectedId;
     const step = todaySteps[plan.id];
-    const progress = t("plan.stepsCount", { done, total: steps.length });
     cards.push(
       <button key={plan.id} type="button" className={`pk${desk ? " x6" : " m"}${on ? " on" : ""}`} aria-pressed={on} onClick={() => onSelect(plan.id)} data-plan-pick={plan.id}>
         <span className="pf"><LivingForm src={EMPTY_ART.plans.src} srcSet={EMPTY_ART.plans.srcSet} width={desk ? 64 : 44} height={desk ? 46 : 32} /></span>
         <span className="pt">
           <small>{c.actionPlan}</small>
           <b dir="auto">{plan.title}</b>
-          <span dir="auto">{desk ? step ?? t("plan.complete") : `${progress} · ${step ?? t("plan.complete")}`}</span>
+          <span dir="auto">{step ?? t("plan.complete")}</span>
         </span>
-        {desk ? (
-          <span className="pr">
-            <span className="pg"><b>{done}</b>{c.ofSteps(steps.length)}</span>
-            <span className="ps">{on ? c.openBelow : c.open}</span>
-          </span>
-        ) : (
-          <span className="ps">{on ? c.openBelow : c.open}</span>
-        )}
+        {/* The step count lives once, on the stage (and the guide): the card names the plan and today's step. */}
+        <span className="ps">{on ? c.openBelow : c.open}</span>
       </button>,
     );
   }
