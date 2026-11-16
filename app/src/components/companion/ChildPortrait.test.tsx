@@ -498,6 +498,17 @@ describe("v3 F-CHILD-1 — answers, firsts and the chosen watch", () => {
 // v10.1 RE-PIN: the phone is the same objects in one column: the map (two
 // columns of territories, the count in the scene's head), In your words with
 // the check closing it, the open area, then What to notice next.
+describe("v10.1 — What to notice next", () => {
+  it.each(["en", "he"] as const)("the first pick carries Arbor suggests, once, and answers through the one seam (%s)", lang => {
+    state.lang = lang;
+    const html = render();
+    const next = html.slice(html.indexOf('data-testid="ms-next"'));
+    expect(next.match(/data-testid="ms-next-suggests"/g)).toHaveLength(1);
+    expect(next.indexOf('data-testid="ms-next-suggests"')).toBeLessThan(next.indexOf('data-testid="ms-next-card"', next.indexOf('data-testid="ms-next-card"') + 1));
+    expect(words(next)).toContain(lang === "he" ? "ארבור מציע" : "Arbor suggests");
+  });
+});
+
 describe("v10.1 — the Milestones pill on a phone, one stack", () => {
   const phone = () => { state.phone = true; };
 

@@ -9,6 +9,8 @@ import { shelfDef } from "../../lib/shelves/registry";
 import type { Milestone } from "../../types";
 import { Icon } from "../ui/Icon";
 import { SegmentedAnswers } from "../ui/SegmentedAnswers";
+import { PencilChip } from "../../design/primitives";
+import { milestonesV10Copy } from "./milestonesV10Copy";
 import { domainToneStyle } from "./domainTone";
 
 /**
@@ -19,6 +21,8 @@ import { domainToneStyle } from "./domainTone";
  * (SegmentedAnswers, resting neutral). A card the parent answers stays in
  * place for the visit with its answer pressed, so nothing jumps under a tap.
  * The answer writes through the page's one seam (the same as an opened area).
+ * The first card carries "Arbor suggests": the selector chose it; nothing is
+ * written by Arbor and no reason is invented.
  */
 export interface NoticeNextProps {
   childId: string;
@@ -32,7 +36,8 @@ export interface NoticeNextProps {
 }
 
 export default function NoticeNext({ childId, milestones, comparisonMonths, gender = null, onAnswer, limit = 3 }: NoticeNextProps) {
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
+  const copy = milestonesV10Copy(uiLang);
   // The picks are chosen once per child per visit; answers update in place.
   const [held, setHeld] = useState<{ childId: string; ids: string[] } | null>(null);
   const fresh = useMemo(
@@ -61,13 +66,15 @@ export default function NoticeNext({ childId, milestones, comparisonMonths, gend
   };
   return (
     <ul className="ms-next" role="list" data-testid="ms-next">
-      {picks.map(({ m, domain }) => {
+      {picks.map(({ m, domain }, index) => {
         const title = milestoneText(m, "title", t, { gender });
         return (
           <li key={m.id} className="nx ar" style={domainToneStyle(domain)} data-testid="ms-next-card" data-milestone={m.id}>
             <div className="nh">
               <span className="tg" aria-hidden="true"><Icon name={DOMAIN_ICONS[domain]} size={15} /></span>
               <span className="nk">{domainName(domain, t)}</span>
+              {/* The first pick is Arbor choosing an existing skill for the parent to watch. */}
+              {index === 0 && <span data-testid="ms-next-suggests"><PencilChip>{copy.arborSuggests}</PencilChip></span>}
             </div>
             <p className="nm" dir="auto">{title}</p>
             <SegmentedAnswers

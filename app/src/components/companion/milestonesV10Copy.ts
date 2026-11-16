@@ -34,6 +34,7 @@ export interface MilestonesV10Copy {
   listGuideToolsSub: string;
   listGuideCheck: string;
   listGuideCheckSub: string;
+  arborSuggests: string;
 }
 
 export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy>> = {
@@ -67,6 +68,7 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     listGuideToolsSub: "Change, add, born early",
     listGuideCheck: "Development check",
     listGuideCheckSub: "Under 4 minutes",
+    arborSuggests: "Arbor suggests",
   },
   he: {
     onThisPage: "בעמוד הזה",
@@ -98,6 +100,7 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     listGuideToolsSub: "שינוי, הוספה, לידה מוקדמת",
     listGuideCheck: "בדיקת התפתחות",
     listGuideCheckSub: "פחות מ־4 דקות",
+    arborSuggests: "ארבור מציע",
   },
 };
 
