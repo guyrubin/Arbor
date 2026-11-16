@@ -20,6 +20,7 @@ import { GameCompletionProvider } from "../game/GameSessionContext";
 import { KidFinishMoment } from "../rewards/KidSouvenir";
 import { isStudioMakerId, studioActivity, studioActivityFits, type StudioActivityId } from "./studioCatalog";
 import { StudioMakerCover } from "./StudioMakerArt";
+import { StudioCrewCheer, StudioWorldPlate } from "./StudioStage";
 import { studioCopy } from "./studioCopy";
 import "./studioGame.css";
 import { StudioAdventureScene, isStudioAdventure } from './StudioAdventureScene';
@@ -129,7 +130,8 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
 
   // A maker draws its own cover; an unavailable one keeps the plain world art.
   const maker = eligible && isStudioMakerId(activityId) ? activityId : null;
-  const environment = <div className="studio-game-view__environment" aria-hidden="true">
+  // Intro and finish stand in the world's own room of the film, sharp (B-KID-177); play keeps the soft cover behind the mechanic.
+  const environment = activity && phase !== "play" ? <div className="studio-game-view__environment studio-stage__game-room" aria-hidden="true"><StudioWorldPlate worldId={activity.worldId} priority /></div> : <div className="studio-game-view__environment" aria-hidden="true">
     {maker ? <StudioMakerCover id={maker} size="card" /> : cover ? <img src={cover.src480} srcSet={cover.srcSet} sizes="100vw" alt="" draggable={false} decoding="async" /> : art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
   </div>;
   if (!eligible) return <section className="studio-game-view" data-studio-game-unavailable="" dir={lang === "he" ? "rtl" : "ltr"}>
@@ -159,6 +161,7 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
         {maker ? <StudioMakerCover id={maker} size="card" /> : cover ? <img src={cover.src480} srcSet={cover.srcSet} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" /> : isStudioAdventure(activityId) ? <StudioAdventureScene activityId={activityId} /> : art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
         {activity && <span className="studio-game-card__world">{labels.worlds[activity.worldId].title}</span>}
         <div className="studio-game-card__hero"><StudioPlayHero size={230} celebrate={phase === "result"} /></div>
+        {phase === "result" && <StudioCrewCheer className="studio-stage__card-cheer" />}
       </div>
       {phase === "intro" ? <div className="studio-game-card__body">
         <h1 className="studio-game-card__title">{copy.title}</h1>

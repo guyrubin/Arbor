@@ -41,6 +41,8 @@ export const en: Record<string, string> = {
   "elev.hero.style.soft3d": "Soft 3D",
   "elev.hero.style.watercolor": "Watercolor",
   "elev.hero.style.flat": "Flat & cute",
+  "elev.hero.style.studio3d": "Studio 3D",
+  "elev.hero.style.studio3d.hint": "Every hero is made in the same Studio look, so it fits every game, book and scene.",
 
   // ── Describe fields ───────────────────────────────────────────────────────
   "elev.hero.field.hair": "Hair",
@@ -158,6 +160,8 @@ export const he: Record<string, string> = {
   "elev.hero.style.soft3d": "תלת-ממד רך",
   "elev.hero.style.watercolor": "צבעי מים",
   "elev.hero.style.flat": "שטוח וחמוד",
+  "elev.hero.style.studio3d": "תלת-ממד של הסטודיו",
+  "elev.hero.style.studio3d.hint": "כל גיבור נוצר באותו מראה של הסטודיו, כדי שיתאים לכל משחק, ספר וסצנה.",
 
   "elev.hero.field.hair": "שיער",
   "elev.hero.field.hair.ph": "למשל תלתלים חומים קצרים",

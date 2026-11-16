@@ -765,7 +765,7 @@ const RGBA_BASELINE: Record<string, number> = {
   "components/practice/MemoryMatch.tsx": 1,
   "components/practice/MimicMatch.tsx": 5,
   "components/practice/MimicStudioTab.tsx": 1,
-  "components/profile/AvatarCreator.tsx": 6,
+  "components/profile/AvatarCreator.tsx": 5,
   "components/profile/ProfileEditDrawer.tsx": 1,
   "components/search/TopbarSearch.tsx": 1,
   "components/sections/Masterclasses.tsx": 3,

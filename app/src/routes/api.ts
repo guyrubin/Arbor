@@ -3191,14 +3191,18 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
     soft3d: "a soft rounded 3D-rendered character, friendly and approachable, soft studio lighting",
     watercolor: "a soft watercolor children's-book character with loose painterly edges",
     flat: "a clean flat vector character illustration with simple rounded shapes and a cheerful palette",
-    comichero: "a bold, modern cel-shaded comic-book character: thick confident ink outlines, saturated playful colors, halftone shading and a dynamic pose; keep the selected character intent, clothing and accessories, with friendly age-appropriate energy"
+    comichero: "a bold, modern cel-shaded comic-book character: thick confident ink outlines, saturated playful colors, halftone shading and a dynamic pose; keep the selected character intent, clothing and accessories, with friendly age-appropriate energy",
+    // B-KID-177 (Guy, 16 Nov: one design language for every child): the house look every new hero is made in,
+    // the same 3D film finish as the Studio kit, so the hero matches every game, book and scene around it.
+    studio3d: "a character from a premium cinematic 3D-animated family feature film, in the Arbor Studio look: a stylised, warm, expressive face with a rounded sweet shape, natural eye size with one soft catch-light, natural brows and a relaxed gentle smile; physically believable hair, skin and fabrics (soft knit, denim, soft-shell); clear natural daylight, soft global illumination and rich natural colour; unless a character intent says otherwise, everyday adventure clothes in navy, graphite and cobalt with small orange and teal accents; never photographic, doll-like, plastic, glossy, chibi, big-headed or with staring eyes; a plain soft pearl-white and pale sky background"
   };
   const SCENE_STYLE_DIRECTIONS: Record<string, string> = {
     storybook: AVATAR_STYLES.storybook,
     soft3d: AVATAR_STYLES.soft3d,
     watercolor: AVATAR_STYLES.watercolor,
     flat: AVATAR_STYLES.flat,
-    comichero: "a bold modern cel-shaded comic-book rendering medium with confident ink outlines, halftone shading and saturated color; preserve the reference character's existing clothing and accessories exactly"
+    comichero: "a bold modern cel-shaded comic-book rendering medium with confident ink outlines, halftone shading and saturated color; preserve the reference character's existing clothing and accessories exactly",
+    studio3d: "a premium cinematic 3D-animated family feature film rendering medium in the Arbor Studio look: clear natural daylight, soft global illumination, rich natural colour, believable fabrics and hair, warm expressive faces with natural eye size; preserve the reference character's existing clothing and accessories exactly"
   };
   router.post("/generate-avatar", requireOwnership, requireConsent(consentStore, "face_processing", (req) => !!req.body?.photo), async (req, res) => {
     const { descriptors, character, photo, style } = req.body ?? {};

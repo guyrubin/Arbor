@@ -65,7 +65,8 @@ import { StudioGame, StudioGameSession, CameraFreeMimic, STUDIO_GAME_COMPONENTS 
 import { studioCopy } from "./studioCopy";
 import * as artManifest from "../../../lib/kidThemeManifest";
 import { StudioPlayHero } from "./StudioPlayHero";
-import { studioLegacyRoute, type StudioActivityId } from "./studioCatalog";
+import { studioActivity, studioLegacyRoute, type StudioActivityId } from "./studioCatalog";
+import { StudioWorldPlate } from "./StudioStage";
 import { KID_WORLDS } from "../kidWorlds";
 import { GameCompletionProvider } from "../game/GameSessionContext";
 import { GameFinish } from "../game/GameShell";
@@ -126,10 +127,11 @@ describe("V2 entry, identity and persistent result", () => {
     const draw = () => render("visual", () => StudioGameSession({ activityId: "memory", onBack: vi.fn() }));
     let tree = draw();
     expect(tree.filter(node => node.type === StudioPlayHero)).toHaveLength(1);
+    // The window shows the game's cover; the room behind it is the world's own film plate (B-KID-177).
     expect(tree.filter(node => node.type === "img").map(node => node.props.src)).toEqual([
       artManifest.kidArt("film3d", "studio.cover.memory")!.src480,
-      artManifest.kidArt("film3d", "studio.cover.memory")!.src480,
     ]);
+    expect(tree.filter(node => node.type === StudioWorldPlate).map(node => node.props.worldId)).toEqual([studioActivity("memory")!.worldId]);
     // The overlay already owns Back; the intro only adds its primary action.
     expect(tree.filter(isButton)).toHaveLength(1);
     const art = artManifest.kidArt("film3d", "studio.cover.memory")!;
