@@ -105,3 +105,4 @@
 /* Phone: the headline gets its own space under a smaller arc; nothing crosses the arc's legs. */
 .ds-phone .sr-stage .nw-arc { max-width: 250px; margin-inline: auto; }
 .ds-phone .sr-stage .nw-arc-face { margin-top: 4px; }
+.ds .sr-stage-head h1.kicker { font-family: var(--font-sans) !important; font-weight: 600 !important; letter-spacing: .06em; }

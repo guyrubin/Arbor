@@ -38,7 +38,10 @@ export default function NowDayArc({ composition, now, quietStart, quietEnd, even
   const labelY = g.cy + (desk ? -8 : 18);
   const quietEndLabel = quiet.find((s) => s.edge === "start");
   const quietAtEnd = quiet.some((s) => s.edge === "end") || quietStart >= ARC_END_HOUR;
-  return <div className="gfx nw-arc">
+  // The drawing (svg, sun, clock label) and the face share one grid cell: the cell is as tall as the taller of the two,
+  // so whatever follows the arc never rises into the drawing, whatever the face's length or language.
+  return <div className="nw-arc">
+    <div className="gfx nw-arc-draw">
     <svg viewBox={`0 0 ${g.w} ${g.h}`} role="img" aria-label={copy.arcAria(clock24(ARC_START_HOUR * 60), clock24(ARC_END_HOUR * 60))}>
       <defs><linearGradient id={`sky${gid}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" className="nw-sky-a" /><stop offset="1" className="nw-sky-b" /></linearGradient></defs>
       <path d={`${rail} Z`} fill={`url(#sky${gid})`} />
@@ -64,6 +67,7 @@ export default function NowDayArc({ composition, now, quietStart, quietEnd, even
     </svg>
     <span className={desk ? "at sun" : "at sun sm"} style={{ left: pct(sun.x, g.w), top: pct(sun.y, g.h) }} aria-hidden="true" />
     <span className="at nowt" style={{ left: pct(sun.x, g.w), top: pct(Math.max(12, sun.y - (desk ? 44 : 34)), g.h) }}>{nowLabel}</span>
+    </div>
     {children && <div className="nw-arc-face">{children}</div>}
   </div>;
 }

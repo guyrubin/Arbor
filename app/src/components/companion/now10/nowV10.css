@@ -265,3 +265,37 @@ html[lang="he"] .ds .nw-face .now-plan-say { font-style: normal; }
 .ds .nw-yn button:hover { background: var(--tint-2); }
 .ds .nw-yn button:active { box-shadow: inset 0 0 0 2px var(--ink); }
 .ds .nw-yn button:focus-visible, .ds .nw-qc button:focus-visible { outline: 2px solid var(--sapphire); outline-offset: 2px; }
+/* N-Now (V77): the record lead's answers, outlined, in one row; the question and the parent's words ride the arc. */
+.ds .now-record-stage .ans3 { gap: 8px; }
+.ds-phone .now-record-stage .ans3 { gap: 6px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.28fr); }
+.ds-phone .now-record-stage .ans3 button { padding: 0 4px; font-size: 14px !important; }
+.ds .nw-stage .now-plan-body > .now-loop-lead:has(> .now-record-stage) { background: none; box-shadow: none; padding: 0; }
+.ds-phone .nw-stage .nw-arc { margin-top: 12px; }
+.ds-phone .nw-stage .nw-arc-face { margin-top: -27%; }
+.ds-phone .nw-stage .nw-face-col { max-width: 236px; }
+.ds-phone .nw-stage .nw-face .now-plan-title { font-size: 22px; line-height: 1.08; }
+.ds .nw-face .now-plan-say { font-style: italic; }
+/* N-Now-M (V77): the arc spans the scene; the title sits in its bowl, the tag and the parent's words under the baseline. */
+.ds-phone .nw-stage .nw-arc { max-width: none; margin-inline: 0; padding: 0 12px; }
+.ds-phone .nw-stage .nw-arc-face { margin-top: -31%; }
+.ds-phone .nw-stage .nw-face-col { max-width: 250px; }
+.ds-phone .nw-stage .nw-face-art { display: none !important; }
+.ds-phone .nw-stage .nw-face .now-plan-title { order: -1; margin-bottom: 26px; }
+.ds .nw-stage-head h1.kicker { font-family: var(--font-sans) !important; font-weight: 600 !important; letter-spacing: .06em; }
+.ds .now-plan-v10 > .now-plan-body { border: 0; }
+.ds-phone .nw-stage .nw-face blockquote.now-plan-say { font-size: 17px; line-height: 1.25; }
+.ds-desk .nw-stage .nw-face blockquote.now-plan-say { font-size: 15px; }
+/* N-Now-D (V77): the arc spans the stage again (the record answers sit straight under it, clear of the fold). */
+.ds-desk .nw-stage .nw-arc { max-width: 640px; }
+.ds-desk .nw-stage .nw-arc-face { margin-top: -28%; }
+/* The arc's drawing and its face in one grid cell (no negative margins): desktop sets the face on the bowl's floor,
+   the phone hangs the title in the bowl and lets the tag and the quote run under the baseline. */
+.ds .nw-arc { display: grid; }
+.ds .nw-arc > .nw-arc-draw, .ds .nw-arc > .nw-arc-face { grid-area: 1 / 1; min-width: 0; }
+.ds .nw-arc > .nw-arc-draw { align-self: start; }
+.ds .nw-arc > .nw-arc-face, .ds-desk .nw-stage .nw-arc-face, .ds-phone .nw-stage .nw-arc-face, .ds-desk .sr-stage .nw-arc-face, .ds-phone .sr-stage .nw-arc-face { margin-top: 0; }
+.ds-desk .nw-arc > .nw-arc-face { align-self: end; padding-bottom: 7%; }
+.ds-phone .nw-arc > .nw-arc-face { align-self: start; padding-top: 30%; }
+.ds-phone .sr-stage .nw-arc > .nw-arc-face { padding-top: 46%; }
+.ds-desk .sr-stage .nw-arc > .nw-arc-face { padding-bottom: 8%; }
+.ds-phone .nw-stage .nw-face .now-plan-title { max-width: 230px; margin-inline: auto; }
