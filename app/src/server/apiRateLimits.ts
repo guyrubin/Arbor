@@ -43,7 +43,7 @@ export const STRICT_PER_IP_PER_MIN = 30;
 export type StrictRouteGroup = "model" | "invite" | "export";
 export const STRICT_ROUTES: Record<StrictRouteGroup, { methods: readonly string[]; path: RegExp }> = {
   // Every route that calls a paid model or mints a paid token (docs/architecture/ai-caller-inventory.md).
-  model: { methods: ["POST"], path: /^\/(?:chat|council|voice|extract-log|vision|generate-[a-z-]+|conversation\/proposals|describe-child|analyze-behavior|digest|todays-focus|explain|tts|hero-pose|plans\/phrase|score-utterance|live\/(?:token|turn))\/?$/ },
+  model: { methods: ["POST"], path: /^\/(?:chat|council|voice|extract-log|vision|generate-[a-z-]+|conversation\/proposals|describe-child|analyze-behavior|digest|todays-focus|explain|tts|hero-pose|plans\/phrase|score-utterance|live\/(?:token|turn)|family-plan\/extract)\/?$/ },
   // Invitations and sends that reach another person or an inbox, and the one anonymous write.
   invite: { methods: ["POST"], path: /^\/(?:shares|co-parent\/invitations|digest\/email-send|waitlist)\/?$/ },
   // The child-data export and the book export manifest (the 3b critic's export-manifest route).

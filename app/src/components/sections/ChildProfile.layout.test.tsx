@@ -3,7 +3,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ChildProfile from "./ChildProfile";
 import AspectCard from "../about/AspectCard";
-import AboutMemoryCard from "../about/AboutMemoryCard";
+import { PendingNote, StageCard } from "../about/AboutAnswer";
+import AboutChildTile from "../about/AboutChildTile";
 import AboutLastVisit from "../about/AboutLastVisit";
 import { en, he } from "../../lib/i18nElevation/wave2Knowledge";
 import { en as goalsEn, he as goalsHe } from "../../lib/i18nElevation/goals";
@@ -16,7 +17,10 @@ const harness=vi.hoisted(() => ({
  setActiveTab:vi.fn(), setState:vi.fn(), decide:vi.fn(async()=>true), tell:[] as Record<string,unknown>[], phone:false,
  // B-CAREPRO-37: the bookings and their after-visit notes the memory card reads.
  appts:[] as unknown[], notes:[] as unknown[],
+ // v10: which composition renders (desktop ≥1024 px, else phone).
+ desk:false,
 }));
+vi.mock("../../design/useComposition",()=>({useComposition:()=>harness.desk?"desk":"phone"}));
 vi.mock("../../hooks/useChildCollection",()=>({useChildCollection:(_id:string,name:string)=>({items:name==="appointments"?harness.appts:name==="apptFollowUps"?harness.notes:[],loaded:true,confirmed:true,error:false,upsert:vi.fn(),remove:vi.fn()})}));
 vi.mock("react", async (original) => {
  const real=await original<typeof import("react")>();
@@ -56,117 +60,140 @@ function elements(node:React.ReactNode):React.ReactElement<Record<string,any>>[]
 }
 const cards=()=>elements(ChildProfile()).filter(el=>el.type===AspectCard);
 const card=(id:string)=>cards().find(el=>(el.props.state as AspectState).id===id)!;
-beforeEach(()=>{vi.clearAllMocks();harness.appts=[];harness.notes=[];harness.callback=false;harness.locale="en";harness.pending=[];harness.approved=[];harness.hasHero=true;harness.goals=[];harness.challenges=[];harness.factsAsOf=undefined;harness.tell=[];harness.phone=false;});
+beforeEach(()=>{vi.clearAllMocks();harness.appts=[];harness.notes=[];harness.callback=false;harness.locale="en";harness.pending=[];harness.approved=[];harness.hasHero=true;harness.goals=[];harness.challenges=[];harness.factsAsOf=undefined;harness.tell=[];harness.phone=false;harness.desk=false;});
 afterEach(()=>{vi.unstubAllGlobals();});
 
-/* v3 F-CHILD-3 re-pin: the W2 identity band, the Who chapter (with the Family
-   Circle) and the remembered list left #/profile for About — the describe
-   card, the eight areas and one Details row. */
-describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()=>{
- it("renders one h1 and no count row; the Family Circle has left About (Care › Trusted sharing owns it)",()=>{
+/* v10.1 re-pin: #/profile is the N-About route — 1 Answer Arbor (the stage:
+   the notebook heading and the next proposal), 2 Waiting, and remembered
+   (Tell Arbor by voice / Write, the next notes, the newest remembered fact),
+   3 What you told Arbor, what the coach sees (+ the child's tile), 4 What Arbor
+   knows (the eight areas). One tree per composition. */
+const both=[false,true] as const;
+const label=(desk:boolean)=>desk?"desktop":"phone";
+describe("v10.1 · About: the notebook, the parent's words, the eight areas",()=>{
+ for(const desk of both){
+  it(`${label(desk)}: one h1 (the notebook's), no count row; the Family Circle has left About`,()=>{
+   harness.desk=desk;
+   const html=renderToStaticMarkup(<ChildProfile/>);
+   expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
+   expect(html).toMatch(new RegExp(`<h1[^>]*>${companionEn["companion.about.memory.title"].replace("{name}","Noa").replace("’","&#x27;|’").replace(/[.]/g,"\\.")}`.replace("&#x27;|’","(?:’|&#x27;)")));
+   expect(html).not.toContain("1 child");expect(html).not.toContain("family member");
+   expect(html).not.toContain("cp.family.title");expect(html).not.toContain("profile-family-title");
+   expect(html).toContain(companionEn["companion.about.title"].replace("{name}","Noa"));
+   expect(html).toContain('data-testid="about-told-line"');
+  });
+  /* Three top-level modules (budget 3); the measurements log is the ONE
+     demotion, inside the route's ONE disclosure (a button-shaped summary in
+     the child's tile). */
+  it(`${label(desk)}: three top-level modules; the measurements log is the ONE demotion, in the ONE disclosure`,()=>{
+   harness.desk=desk;
+   const html=renderToStaticMarkup(<ChildProfile/>);
+   const stamps=html.match(/data-module="[^"]+"/g)!;
+   expect([...stamps].sort()).toEqual(['data-module="about-answer"','data-module="about-aspects"','data-module="about-measurements"','data-module="about-told"']);
+   expect(html.match(/data-module-demoted/g)).toHaveLength(1);
+   expect(html.match(/data-module-disclosure=/g)).toHaveLength(1);
+   expect(html).toMatch(/<details data-testid="profile-measurements" data-module-disclosure="about-details"(?![^>]*\bopen\b)/);
+   const fold=html.slice(html.indexOf('data-module-disclosure="about-details"'));
+   expect(fold.indexOf('data-module="about-measurements" data-module-demoted')).toBeGreaterThan(-1);
+   expect(html).not.toMatch(/data-module="profile-(identity|who|now|remember|milestones|strengths|language|jump-strip)"/);
+  });
+  it(`${label(desk)}: the guide's stops match the numbered sections`,()=>{
+   harness.desk=desk;
+   harness.approved=[{memoryId:"a9",fact:"Hums a quiet tune",createdAt:"2026-10-05T10:00:00.000Z"}];
+   const html=renderToStaticMarkup(<ChildProfile/>);
+   const hrefs=[...html.matchAll(/class="gstop[^"]*" href="#([a-z]+)"/g)].map(m=>m[1]);
+   expect(hrefs).toEqual(desk?["answer","waiting","tell","areas"]:["answer","waiting","areas"]);
+   for(const id of hrefs) expect(html).toContain(`id="${id}"`);
+  });
+ }
+ it("Edit details is ONE tap: a button in the child's tile that opens the drawer, beside the identity line",()=>{
+  harness.desk=true;
   const html=renderToStaticMarkup(<ChildProfile/>);
-  expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
-  expect(html).not.toContain("1 child");expect(html).not.toContain("family member");
-  expect(html).not.toContain("cp.family.title");expect(html).not.toContain("profile-family-title");
-  expect(html).toContain(companionEn["companion.about.title"].replace("{name}","Noa"));
-  expect(html).toContain('data-testid="about-told-line"');
- });
- /* v3 F-CHILD-3 review r1 re-pin: Details is ONE tap (a row that opens the
-    drawer), so it is a visible top-level module; what folds away is the
-    measurements log, demoted inside the route's ONE disclosure. Still three
-    top-level modules (budget 3), one demotion, one disclosure. */
- it("three top-level modules; the measurements log is the ONE demotion, in the ONE disclosure",()=>{
-  const html=renderToStaticMarkup(<ChildProfile/>);
-  expect(html.match(/data-module="[^"]+"/g)).toEqual(['data-module="about-describe"','data-module="about-aspects"','data-module="about-details"','data-module="about-measurements"']);
-  expect(html.match(/data-module-demoted/g)).toHaveLength(1);
-  expect(html.match(/data-module-disclosure=/g)).toHaveLength(1);
-  // the demoted module sits inside the closed disclosure, never on the page face
-  const fold=html.slice(html.indexOf('data-module-disclosure="about-details"'));
-  expect(html).toMatch(/<details data-testid="profile-measurements" data-module-disclosure="about-details"(?![^>]*\bopen\b)/);
-  expect(fold.indexOf('data-module="about-measurements" data-module-demoted')).toBeGreaterThan(-1);
-  expect(html).not.toMatch(/data-module="about-details"[^>]*data-module-demoted/);
-  expect(html).not.toMatch(/data-module="profile-(identity|who|now|remember|milestones|strengths|language|jump-strip)"/);
- });
- it("Details is ONE tap: the row is a button that opens the drawer (no two-tap fold), with the identity line inside",()=>{
-  const html=renderToStaticMarkup(<ChildProfile/>);
-  const row=html.slice(html.indexOf('data-testid="about-details-edit"'),html.indexOf("</button>",html.indexOf('data-testid="about-details-edit"')));
-  expect(html).toMatch(/<button type="button" data-testid="about-details-edit"[^>]*class="about-details-row min-h-11"/);
-  expect(row).toContain('data-testid="profile-identity-line"');
-  expect(row).toContain(companionEn["companion.about.details"]);
-  expect(row).toContain(companionEn["companion.about.detailsEdit"]);
-  expect(html).not.toMatch(/<details[^>]*data-testid="about-details"/);
+  const tile=html.slice(html.indexOf('data-testid="about-details"'));
+  expect(tile).toContain('data-testid="profile-identity-line"');
+  expect(tile).toMatch(/<button type="button" class="btn sm nowrap about-btn-tint touch-target" data-testid="about-details-edit">/);
+  expect(tile).toContain(companionEn["companion.about.detailsEdit"]);
   harness.callback=true;
-  elements(ChildProfile()).find(el=>el.props["data-testid"]==="about-details-edit")!.props.onClick();
+  const mounted=elements(ChildProfile()).find(el=>el.type===AboutChildTile)!;
+  mounted.props.onEditDetails();
   expect(harness.setState).toHaveBeenLastCalledWith(true);
   expect(harness.setActiveTab).not.toHaveBeenCalled();
  });
- /* v4 re-pin: What Arbor remembers is a card on About (AboutMemoryCard). A
-    proposal an area shows is decided THERE (never asked twice on one page);
-    one that names no area waits in the card with Remember / Not this. */
- it("a proposal no area shows waits in What Arbor remembers with Remember / Not this; one an area shows is not asked twice (EN + HE)",()=>{
-  for(const locale of ["en","he"]){
-   harness.locale=locale;
-   const C=locale==="he"?companionHe:companionEn;
-   harness.pending=[];
-   let html=renderToStaticMarkup(<ChildProfile/>);
-   expect(html).toContain('data-testid="about-memory"');
-   expect(html).not.toContain('data-testid="about-memory-pending"');
-   expect(html).toContain('data-testid="about-memory-empty"');
-   // placed in its area: decided there; the card only notes that more sits below
-   harness.pending=[{memoryId:"p1",fact:"Wakes up twice since the move",createdAt:"2026-10-06T10:00:00.000Z"}];
-   html=renderToStaticMarkup(<ChildProfile/>);
-   expect(html).not.toContain('data-testid="about-memory-pending"');
-   expect(html.split("Wakes up twice since the move").length-1).toBe(1);
-   expect(html).toContain('data-testid="about-memory-in-areas"');
-   // names no area: it waits in the card, decided through the #/memory seam
-   harness.pending=[{memoryId:"p2",fact:"fact 1",createdAt:"2026-10-06T10:00:00.000Z"}];
-   html=renderToStaticMarkup(<ChildProfile/>);
-   const card=html.slice(html.indexOf('data-testid="about-memory"'),html.indexOf("</section>",html.indexOf('data-testid="about-memory"')));
-   expect(card).toContain('data-testid="about-memory-pending"');
-   expect(card).toContain("Fact 1");
-   expect(card).toContain(C["companion.about.memory.remember"]);
-   expect(card).toContain(C["companion.about.memory.not"]);
-   expect(card).toContain(C["companion.about.memory.waitingOne"]);
-   expect(html).not.toContain('data-testid="about-aspect-pending"');
-  }
- });
- it("Remember / Not this are the #/memory decision (handleMemoryDecision), one fact at a time",()=>{
+ /* A proposal an area shows is decided THERE (never asked twice on one
+    page); one that names no area waits as the stage card, Remember / Not this. */
+ for(const desk of both){
+  it(`${label(desk)}: a proposal no area shows is the stage card with Remember / Not this / Edit; one an area shows is not asked twice (EN + HE)`,()=>{
+   harness.desk=desk;
+   for(const locale of ["en","he"]){
+    harness.locale=locale;
+    const C=locale==="he"?companionHe:companionEn;
+    harness.pending=[];
+    let html=renderToStaticMarkup(<ChildProfile/>);
+    expect(html).not.toContain('data-testid="about-memory-pending"');
+    expect(html).toContain('data-testid="about-memory-empty"');
+    harness.pending=[{memoryId:"p1",fact:"Wakes up twice since the move",createdAt:"2026-10-06T10:00:00.000Z"}];
+    html=renderToStaticMarkup(<ChildProfile/>);
+    expect(html).not.toContain('data-testid="about-memory-pending"');
+    expect(html.split("Wakes up twice since the move").length-1).toBe(1);
+    expect(html).toContain('data-testid="about-memory-in-areas"');
+    harness.pending=[{memoryId:"p2",fact:"fact 1",createdAt:"2026-10-06T10:00:00.000Z"}];
+    html=renderToStaticMarkup(<ChildProfile/>);
+    const stage=html.slice(html.indexOf('data-stage=""'),html.indexOf('id="waiting"')>0?html.indexOf('id="waiting"'):undefined);
+    expect(stage).toContain("Fact 1");
+    expect(stage).toContain(C["companion.about.memory.remember"]);
+    expect(stage).toContain(C["companion.about.memory.not"]);
+    expect(html).not.toContain('data-testid="about-aspect-pending"');
+    // the figure counts notes waiting, with its unit in words
+    expect(html).toMatch(/<div class="fig[^"]*"><b>1<\/b><span>/);
+   }
+  });
+ }
+ it("Remember / Not this are the ledger's decision (handleMemoryDecision), one fact at a time — on the stage and in the rail",()=>{
   harness.callback=true;
-  harness.pending=[{memoryId:"p2",fact:"fact 1",createdAt:"2026-10-06T10:00:00.000Z"}];
-  const mounted=elements(ChildProfile()).find(el=>el.type===AboutMemoryCard)!;
-  const inner=elements(AboutMemoryCard(mounted.props as React.ComponentProps<typeof AboutMemoryCard>));
-  inner.find(el=>el.props["data-testid"]==="about-memory-remember")!.props.onClick();
-  inner.find(el=>el.props["data-testid"]==="about-memory-not")!.props.onClick();
-  expect(harness.decide.mock.calls).toEqual([["p2","approved"],["p2","rejected"]]);
-  // B-CAREPRO-38: the door opens the ledger in place on this page (never a second page).
-  inner.find(el=>el.props["data-testid"]==="profile-remember-check")!.props.onClick();
-  expect(harness.setActiveTab).not.toHaveBeenCalledWith("memory");
-  expect(harness.setState).toHaveBeenCalled();
+  const m={memoryId:"p2",fact:"Fact 1",createdAt:"2026-10-06T10:00:00.000Z"} as never;
+  const stage=elements(StageCard({m,stored:m,index:0,queueLength:2,onEdited:()=>{}}));
+  stage.find(el=>el.props["data-testid"]==="about-memory-remember")!.props.onClick();
+  stage.find(el=>el.props["data-testid"]==="about-memory-not")!.props.onClick();
+  const rail=elements(PendingNote({m}));
+  rail.find(el=>el.props["data-testid"]==="about-memory-remember")!.props.onClick();
+  expect(harness.decide.mock.calls).toEqual([["p2","approved"],["p2","rejected"],["p2","approved"]]);
+  // Edit opens the ledger's one edit form in place (no route change)
+  stage.find(el=>el.props["data-testid"]==="about-memory-edit")!.props.onClick();
+  expect(harness.setState).toHaveBeenLastCalledWith(true);
+  expect(harness.setActiveTab).not.toHaveBeenCalled();
  });
- it("eight area cards in the brief's order, a 4/2/1 grid, and the memory door",()=>{
+ it("the first three proposals no area shows are asked on the page (stage + rail); the rest wait in the ledger",()=>{
+  harness.desk=true;
+  harness.pending=["fact a","fact b","fact c","fact d"].map((fact,i)=>({memoryId:`q${i}`,fact,createdAt:`2026-10-0${i+1}T10:00:00.000Z`}));
   const html=renderToStaticMarkup(<ChildProfile/>);
-  // the card's own testid is followed by its data-aspect (about-aspect-ask/-src/-quote are its parts)
-  expect([...html.matchAll(/data-testid="about-aspect-([a-z]+)" data-aspect="\1"/g)].map(m=>m[1])).toEqual(["temper","lang","social","routine","sleep","senses","school","strengths"]);
-  expect(html).toMatch(/data-testid="profile-remember-check"[^>]*min-h-11|min-h-11[^>]*data-testid="profile-remember-check"/);
-  // v4 re-pin: the memory room is the What Arbor remembers card, before the areas.
-  expect(html).toContain(companionEn["companion.about.memory.title"].replaceAll("{name}", "Noa"));
-  expect(html.indexOf('data-testid="about-memory"')).toBeLessThan(html.indexOf('data-testid="about-aspects"'));
+  expect(html.match(/data-testid="about-memory-pending"/g)).toHaveLength(3);
+  expect(html).not.toContain("Fact d");
+  expect(html).toContain(">1 of 4<");
  });
- it("renders the Details line and the area copy in HE, with the language name through its key (law 8)",()=>{
-  harness.locale="he";const html=renderToStaticMarkup(<ChildProfile/>);
-  expect(html).toContain(companionHe["companion.about.details"]);
-  expect(html).toContain(companionHe["companion.about.aspectsKicker"]);
+ for(const desk of both){
+  it(`${label(desk)}: eight area rows in the brief's order, and the one door to everything Arbor remembers`,()=>{
+   harness.desk=desk;
+   const html=renderToStaticMarkup(<ChildProfile/>);
+   expect([...html.matchAll(/data-testid="about-aspect-([a-z]+)" data-aspect="\1"/g)].map(m=>m[1])).toEqual(["temper","lang","social","routine","sleep","senses","school","strengths"]);
+   expect(html.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
+   expect(html).toContain(companionEn["companion.about.memory.open"]);
+   expect(html.indexOf('id="answer"')).toBeLessThan(html.indexOf('data-testid="about-aspects"'));
+  });
+ }
+ it("renders the identity and the area copy in HE, with the language name through its key (law 8)",()=>{
+  harness.locale="he";harness.desk=true;const html=renderToStaticMarkup(<ChildProfile/>);
+  expect(html).toContain(companionHe["companion.about.detailsEdit"]);
+  expect(html).toContain(companionHe["companion.about.aspectsTitle"]);
   const line=html.slice(html.indexOf('data-testid="profile-identity-line"'),html.indexOf("</span>",html.indexOf('data-testid="profile-identity-line"')));
   expect(line).toContain("<bdi dir=\"auto\">Noa</bdi>");
-  const roles=html.slice(html.indexOf('data-testid="about-lang-roles"'),html.indexOf("</dl>",html.indexOf('data-testid="about-lang-roles"')));
+  const roles=html.slice(html.indexOf('data-testid="about-lang-roles"'),html.indexOf("</small>",html.indexOf('data-testid="about-lang-roles"')));
   expect(roles).not.toContain("English");expect(roles).toContain("ob.lang.english");
  });
  it("the count line says how many areas were told — never against eight, no share, no bar",()=>{
   for(const locale of ["en","he"]){
    harness.locale=locale;
    const html=renderToStaticMarkup(<ChildProfile/>);
-   const line=html.slice(html.indexOf('data-testid="about-told-line"'),html.indexOf("</p>",html.indexOf('data-testid="about-told-line"'))).replace(/&#x27;/g,"'");
-   // lang (English), school (School) and strengths (Dinosaurs) are told; no as-of stamps, so the line is undated
+   const line=html.slice(html.indexOf('data-testid="about-told-line"'),html.indexOf("</span>",html.indexOf('data-testid="about-told-line"'))).replace(/&#x27;/g,"'");
    expect(line).toContain((locale==="he"?companionHe:companionEn)["companion.about.toldManyUndated"].replace("{n}","3"));
    expect(line).not.toMatch(/%|\bof 8\b|מתוך|\/\s*8/);
    expect(html).not.toMatch(/role="progressbar"|<progress\b|<meter\b/);
@@ -183,46 +210,50 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
   expect(sleep).toContain(companionEn["companion.about.pending"].trim());
   expect(sleep).toContain("Wakes up twice since the move");
   expect(sleep).toContain('data-testid="about-pending-confirm"');expect(sleep).toContain('data-testid="about-pending-dismiss"');
-  // v4: the memory card does not print a fact its area already quotes.
+  // an ink token for the told fact, a pencil token for the proposal
+  expect(sleep).toMatch(/class="tok md told"/);expect(sleep).toMatch(/class="tok ai md"/);
+  // the notebook does not print a fact its area already quotes
   expect(html.split("Falls asleep after two stories").length-1).toBe(1);
-  // no receipt before anything was decided
   expect(html).not.toContain('data-testid="about-aspect-receipt"');
  });
- it("an untold area asks its question and says Not told yet",()=>{
+ it("an untold area asks its question, says Not told yet, and carries no token",()=>{
   const html=renderToStaticMarkup(<ChildProfile/>);
   const temper=html.slice(html.indexOf('data-testid="about-aspect-temper"'),html.indexOf("</article>",html.indexOf('data-testid="about-aspect-temper"'))).replace(/&#x27;/g,"'");
   expect(temper).toContain(companionEn["companion.about.ask.temper"].replace("{name}","Noa"));
   expect(temper).toContain(companionEn["companion.milestones.notTold"]);
   expect(temper).toContain(companionEn["companion.milestones.tell"]);
+  expect(temper).not.toContain('class="tok');
  });
- it("the primary is the ONE 'Tell Arbor by voice' door (capture-moment) in every state; Write opens the same conversation",()=>{
-  harness.callback=true;
-  const stamped=()=>elements(ChildProfile()).filter(el=>el.props["data-primary-move"]);
-  expect(stamped()).toHaveLength(1);
-  expect(stamped()[0].props["data-primary-move"]).toBe("capture-moment");
-  expect(stamped()[0].props["data-testid"]).toBe("about-voice");
-  stamped()[0].props.onClick();expect(harness.setState).toHaveBeenLastCalledWith({from:null,open:{aspect:null,mode:"voice"}});
-  elements(ChildProfile()).find(el=>el.props["data-testid"]==="about-write")!.props.onClick();
-  expect(harness.setState).toHaveBeenLastCalledWith({from:null,open:{aspect:null,mode:"write"}});
-  expect(harness.setActiveTab).not.toHaveBeenCalled();
-  harness.pending=[{memoryId:"p1",fact:"Sleeps late"},{memoryId:"p2",fact:"Loves trains"}];
-  expect(stamped()).toHaveLength(1);
-  expect(elements(ChildProfile()).filter(el=>el.props["data-primary-move"]==="approve-memory")).toHaveLength(0);
- });
- it("Tell more opens the conversation on that area; the memory door opens the ledger in place (B-CAREPRO-38)",()=>{
-  harness.callback=true;
+ for(const desk of both){
+  it(`${label(desk)}: the primary is the ONE 'Tell Arbor by voice' door (capture-moment) in every state; Write opens the same conversation`,()=>{
+   harness.callback=true;harness.desk=desk;
+   const stamped=()=>elements(ChildProfile()).filter(el=>el.props["data-primary-move"]);
+   expect(stamped()).toHaveLength(1);
+   expect(stamped()[0].props["data-primary-move"]).toBe("capture-moment");
+   expect(stamped()[0].props["data-testid"]).toBe("about-voice");
+   stamped()[0].props.onClick();expect(harness.setState).toHaveBeenLastCalledWith({from:null,open:{aspect:null,mode:"voice"}});
+   elements(ChildProfile()).find(el=>el.props["data-testid"]==="about-write")!.props.onClick();
+   expect(harness.setState).toHaveBeenLastCalledWith({from:null,open:{aspect:null,mode:"write"}});
+   expect(harness.setActiveTab).not.toHaveBeenCalled();
+   harness.pending=[{memoryId:"p1",fact:"Sleeps late"},{memoryId:"p2",fact:"Loves trains"}];
+   expect(stamped()).toHaveLength(1);
+   expect(elements(ChildProfile()).filter(el=>el.props["data-primary-move"]==="approve-memory")).toHaveLength(0);
+  });
+ }
+ it("Tell more opens the conversation on that area; the door opens the ledger in place (B-CAREPRO-38); How Arbor works opens the page",()=>{
+  harness.callback=true;harness.desk=true;
   card("sleep").props.onTell("sleep");
   expect(harness.setState).toHaveBeenLastCalledWith({from:null,open:{aspect:"sleep",mode:"write"}});
-  // v4 re-pin: the door is the What Arbor remembers card's own (AboutMemoryCard).
-  const mounted=elements(ChildProfile()).find(el=>el.type===AboutMemoryCard)!;
-  const door=elements(AboutMemoryCard(mounted.props as React.ComponentProps<typeof AboutMemoryCard>)).find(el=>el.props["data-testid"]==="profile-remember-check")!;
+  const tree=elements(ChildProfile());
+  const door=tree.find(el=>el.props["data-testid"]==="profile-remember-check")!;
   expect(door.props["aria-controls"]).toBe("about-memory-ledger");
   expect(door.props["aria-expanded"]).toBe(false);
-  door.props.onClick();
+  tree.find(el=>el.props.className==="about-ledger-door")!.props.onClick();
   expect(harness.setActiveTab).not.toHaveBeenCalled();
-  // the toggle is the ledger's own state: closed → open
   const toggle=harness.setState.mock.calls.at(-1)![0] as (o:boolean)=>boolean;
   expect(toggle(false)).toBe(true);
+  tree.find(el=>typeof el.props.children==="string"&&el.props.children==="nav.view.science"&&el.props.onClick)!.props.onClick();
+  expect(harness.setActiveTab).toHaveBeenCalledWith("science");
  });
  it("?aspect=<id> opens the conversation with that area chosen; an unknown id opens nothing",()=>{
   harness.callback=true;
@@ -235,7 +266,7 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
   vi.stubGlobal("window",{location:{hash:"#/profile"},addEventListener(){},removeEventListener(){}});
   expect(open()).toHaveLength(0);
  });
- it("Confirm / No are the #/memory decision; the receipt shows only after the write resolved",async()=>{
+ it("Confirm / No are the ledger's decision; the receipt shows only after the write resolved",async()=>{
   harness.callback=true;
   harness.pending=[{memoryId:"p1",fact:"Wakes up twice since the move",createdAt:"2026-10-06T10:00:00.000Z"}];
   const out=()=>elements(AspectCard({...card("sleep").props} as React.ComponentProps<typeof AspectCard>));
@@ -245,8 +276,6 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
   expect(harness.decide).toHaveBeenCalledWith("p1","approved");
   expect(harness.setState).not.toHaveBeenCalledWith(expect.objectContaining({kind:"kept"}));
   resolve(true);await new Promise(r=>setTimeout(r,0));
-  // review r1 re-pin: the receipt names the proposal it answered (it clears
-  // when a different one arrives, or after RECEIPT_MS — aboutAspects.test.ts)
   expect(harness.setState).toHaveBeenLastCalledWith({kind:"kept",memoryId:"p1"});
   harness.decide.mockResolvedValueOnce(false);
   out().find(el=>el.props["data-testid"]==="about-pending-dismiss")!.props.onClick();
@@ -254,13 +283,23 @@ describe("v3 F-CHILD-3 · About: the describe card, the eight areas, Details",()
   await new Promise(r=>setTimeout(r,0));
   expect(harness.setState).toHaveBeenLastCalledWith({kind:"failed",memoryId:"p1"});
  });
- it("Create Hero opens the existing edit/creation seam rather than navigating to itself",()=>{
-  harness.callback=true;harness.hasHero=false;
-  const button=elements(ChildProfile()).find(el=>el.type==="button"&&elements(el).some(child=>child.props.children==="cp.hero.create"));
-  // The creation text is a direct child alongside its icon/subline.
-  const create=elements(ChildProfile()).find(el=>el.type==="button"&&React.Children.toArray(el.props.children).includes("cp.hero.create"));
-  expect(create||button).toBeDefined();(create||button)!.props.onClick();
-  expect(harness.setState).toHaveBeenCalledWith(true);expect(harness.setActiveTab).not.toHaveBeenCalled();
+ it("Create hero opens the existing edit/creation seam rather than navigating to itself",()=>{
+  harness.hasHero=false;
+  const html=renderToStaticMarkup(<AboutChildTile onEditDetails={()=>{}} measurements={null} onKeepsakes={()=>{}}/>);
+  // this harness's childProfile has no hero render, so asksForHero is true
+  expect(html).toContain('data-testid="about-hero-create"');
+  harness.callback=true;
+  const onEditDetails=vi.fn();
+  elements(AboutChildTile({onEditDetails,measurements:null,onKeepsakes:()=>{}})).find(el=>el.props["data-testid"]==="about-hero-create")!.props.onClick();
+  expect(onEditDetails).toHaveBeenCalled();expect(harness.setActiveTab).not.toHaveBeenCalled();
+ });
+ it("no score-shaped figure and no tile for a zero: an empty notebook prints no figure",()=>{
+  for(const desk of both){
+   harness.desk=desk;
+   const html=renderToStaticMarkup(<ChildProfile/>);
+   expect(html).not.toMatch(/<div class="fig/);
+   expect(html).not.toMatch(/\b\d+ of \d+ (areas|settled)/);
+  }
  });
 });
 
@@ -394,26 +433,26 @@ describe("B-CAREPRO-33 · the areas date their facts", () => {
 /* v4 re-pin: My child's phone doors are gone. About's one door to #/memory
    is the What Arbor remembers card at every width; the page keeps its three
    modules and its one primary move. */
-describe("v4 · About on a phone: no doors; the memory card is the one door to #/memory",()=>{
- const MODULES=['data-module="about-describe"','data-module="about-aspects"','data-module="about-details"','data-module="about-measurements"'];
- it.each(["en","he"] as const)("no doors grid; the card and its one door are there on a phone too (%s)",locale=>{
+describe("v4 → v10 · About on a phone: no doors; one door to everything Arbor remembers",()=>{
+ it.each(["en","he"] as const)("no doors grid; the notebook and its one door are there on a phone too (%s)",locale=>{
   harness.locale=locale;harness.phone=true;
   const html=renderToStaticMarkup(<ChildProfile/>);
   expect(html).not.toContain("child-door");
   expect(html.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
-  expect(html).toContain((locale==="he"?companionHe:companionEn)["companion.about.memory.title"].replaceAll("{name}", "Noa"));
-  expect(html.match(/data-module="[^"]+"/g)).toEqual(MODULES);
   expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+  expect(html).toContain('data-composition="phone"');
  });
- it("wide: the same: no doors, one door to #/memory, the same modules",()=>{
+ it("desktop: the same objects, the same one door and one move",()=>{
+  harness.desk=true;
   const html=renderToStaticMarkup(<ChildProfile/>);
   expect(html).not.toContain('data-testid="child-doors"');
   expect(html.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
-  expect(html.match(/data-module="[^"]+"/g)).toEqual(MODULES);
+  expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+  expect(html).toContain('data-composition="desk"');
  });
 });
 
-describe("B-CAREPRO-37 · My child › About: the newest after-visit note, its own line under the memory card",()=>{
+describe("B-CAREPRO-37 → v10 · My child › About: the newest visit as ONE line and a link to Care › Visits",()=>{
  const appts=[
   {id:"a1",who:"",role:"Speech therapist",profession:"slp",when:"",whenIso:"2026-10-12T09:00:00.000Z",mode:"In person",status:"done"},
   {id:"a2",who:"",role:"Pediatrician",profession:"pediatrician",when:"",whenIso:"2026-09-01T09:00:00.000Z",mode:"In person",status:"done"},
@@ -423,32 +462,25 @@ describe("B-CAREPRO-37 · My child › About: the newest after-visit note, its o
   {id:"f2",apptId:"a1",note:"She suggested we wait a beat before naming the toy.",createdAt:"2026-10-12T12:00:00.000Z"},
  ];
  for(const locale of ["en","he"] as const){
-  it(`${locale}: one visit line — the profession and the visit day, the parent's words verbatim, a door to every visit`,()=>{
+  it(`${locale}: one visit line — the profession and the visit day; the note stays on Visits`,()=>{
    harness.locale=locale; harness.appts=appts; harness.notes=notes;
    const html=renderToStaticMarkup(<AboutLastVisit/>);
-   expect(html.match(/data-testid="about-visit"/g)).toHaveLength(1);
-   const meta=html.match(/data-testid="about-visit-meta">([^<]*)</)![1];
-   // this harness resolves the companion dictionary (the profession word is the label helper's own key)
-   expect(meta).toMatch(locale==="en"?/^Last visit · .*profession\.slp · .*12/:/^הביקור האחרון · .*profession\.slp · .*12/);
-   expect(html).toContain("She suggested we wait a beat before naming the toy.");
-   expect(html).not.toContain("Keep reading together");
-   expect(html).toContain(locale==="en"?"All visits":"כל הביקורים");
+   const line=html.match(/data-testid="about-visit">([^<]*)</)![1];
+   expect(line).toMatch(locale==="en"?/^Last visit · .*profession\.slp · .*12/:/^הביקור האחרון · .*profession\.slp · .*12/);
+   expect(html).not.toContain("She suggested");
+   expect(html).toMatch(/^<button type="button" class="ds-link"/);
   });
  }
- it("r2: it is NOT a row of the memory card (no Edit/Forget there); About renders it right under the card",()=>{
-  harness.appts=appts; harness.notes=notes;
-  const card=renderToStaticMarkup(<AboutMemoryCard areas={[]}/>);
-  expect(card).not.toContain('data-testid="about-visit"');
-  expect(card).toContain('data-testid="about-memory-empty"');
-  const about=renderToStaticMarkup(<ChildProfile/>);
-  const cardEnd=about.indexOf('data-testid="profile-remember-check"');
-  const visit=about.indexOf('data-testid="about-visit"');
-  expect(visit).toBeGreaterThan(cardEnd);
-  expect(about.indexOf('data-testid="about-aspects"')).toBeGreaterThan(visit);
+ it("it sits in the child's tile, below the notebook and outside its cards",()=>{
+  harness.appts=appts; harness.notes=notes; harness.desk=true;
+  const tile=renderToStaticMarkup(<AboutChildTile onEditDetails={()=>{}} measurements={null} onKeepsakes={()=>{}}/>);
+  expect(tile).toContain('data-testid="about-visit"');
+  expect(renderToStaticMarkup(<ChildProfile/>)).not.toMatch(/data-testid="about-memory-approved"[^]*data-testid="about-visit"[^]*<\/div>\s*<\/div>\s*<\/div>\s*<div class="rhead"/);
  });
- it("the door opens #/appointments; without a note there is no line",()=>{
+ it("the link opens #/appointments (Visits); without a note there is no line",()=>{
   harness.callback=true; harness.appts=appts; harness.notes=notes;
-  elements(AboutLastVisit()).find(el=>el.props["data-testid"]==="about-visit-open")!.props.onClick();
+  const link=AboutLastVisit()!;
+  (link.props as {onClick:()=>void}).onClick();
   expect(harness.setActiveTab).toHaveBeenCalledWith("appointments");
   harness.callback=false; harness.notes=[];
   expect(renderToStaticMarkup(<AboutLastVisit/>)).toBe("");

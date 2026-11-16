@@ -1,224 +1,144 @@
-import React, { useId, useMemo } from "react";
+import React, { useMemo } from "react";
 import { useLanguage } from "../../context/LanguageContext";
+import { Fig, Token } from "../../design/primitives";
+import type { Composition } from "../../design/useComposition";
 import { DOMAIN_IDS, domainName, type DomainId } from "../../lib/domains/registry";
 import { DOMAIN_ICONS } from "../../lib/domains/icons";
-import { fmtDay } from "../../lib/formatDate";
 import { lastMomentByDomain, noticedByDomain } from "../../lib/milestones/domainMap";
 import type { Observation } from "../../lib/observations";
-import { DOMAIN_VARS } from "../../lib/tokens";
+import { DOMAIN_ART } from "../../lib/parentArt";
 import type { Milestone } from "../../types";
-import { CountPips } from "../ui/CountPips";
 import { Icon } from "../ui/Icon";
+import { domainToneStyle, seenTotals } from "./domainTone";
 import { growingDomains } from "./milestonesModel";
-import "./developmentMap.css";
+import { milestonesV10Copy } from "./milestonesV10Copy";
 
 /**
- * v3 F-CHILD-1 — "Milestones across areas" on My child (#/development).
+ * v10.1 — the milestone map on My child › Milestones (#/development).
  *
- * One row per registry domain, walked in registry order (DOMAIN_IDS). A row
- * is a button (aria-expanded) carrying the domain glyph and name, the Seen-it
- * count as CountPips (VIS-02), the newest moment the parent kept in that
- * area, and a chevron. At most one row is open; the page that owns the open
- * row renders its body inline under it (renderDetail) or in a sheet.
+ * Eight areas as territories, walked in registry order (DOMAIN_IDS), never
+ * reordered by what the record holds. Each territory is one button: the area
+ * glyph and name, then either the Seen-it count with one leaf per thing seen
+ * (a shape before a number), or the area's newest kept moment, or the one
+ * quiet line "No record yet". The territory a parent opened is ringed; the
+ * page shows that area in its own section (desk and phone alike).
  *
- * The card's head: one neutral chip with how many things the parent marked
- * "Seen it". v4: the 5-minute check is ONE row under the eight areas (the
- * consolidation blueprint's "Check row"): its name, the date of the latest
- * saved check (or that none is saved yet) and that its answers write into
- * these same areas, the saved re-check date when there is one, and Start (the
- * page's one primary move, stamped by the page through `primaryMoveProps`).
- * Its foot: the areas with a new Seen it in the last 30 days (names only),
- * then the blank-means-no-record note.
+ * Desk: three columns with the Seen-it count in the middle (the hub). Phone:
+ * two columns; the count moves to the scene's head, so the map holds areas only.
+ * Under the map: production's note (a blank is no record) and the areas with
+ * a new Seen it in the last 30 days.
  *
- * Clinical firewall (law 1): the only numbers are Seen-it counts. A domain
- * with no Seen-it skill and no kept moment says "No record yet", never
- * "Not yet". No denominator, no share, no bar, no not-yet or not-sure
- * number, no ordering by count, no verdict colour: a row's colour names its
- * AREA (DOMAIN_VARS), never the child's state. Logical layout only; the
- * chevron turns, it is not a direction, so it never mirrors.
- *
- * v3 F-CHILD-4 (MOB-02) — `layout="tiles"`: where the open area rides a
- * bottom sheet (below lg), the eight areas are tiles instead of rows: two
- * columns on a phone (a last odd tile spans both), four on a tablet. A tile
- * carries the glyph, the name and the same Seen-it pips (or the day of the
- * newest moment, or "No record yet"); it opens the sheet, so it says so
- * (aria-haspopup="dialog") and has no chevron. Same counts-only rules.
+ * Clinical firewall (law 1): the only numbers are Seen-it counts. No
+ * denominator, no share, no bar, no not-yet or not-sure number, no ordering by
+ * count, no verdict colour: a territory's colour names its AREA (production's
+ * domain palette), never the child's state. An area with nothing recorded is
+ * drawn the same size as the rest, in neutral paper, named in one line.
  */
-export type DevelopmentMapLayout = "rows" | "tiles";
-
 export interface DevelopmentMapProps {
   milestones: readonly Milestone[];
   /** The child's loaded record (useObservationRecord), already this child's. */
   observations: readonly Observation[];
-  /** The page's own words for an entry, so a row quotes what the record shows. */
+  /** The page's own words for an entry, so a territory quotes what the record shows. */
   momentText: (observation: Observation) => string;
-  /** The open row; null = every row closed. */
+  /** The open area (ringed). */
   openDomain: DomainId | null;
   onToggle: (domain: DomainId) => void;
-  /** The open row's body, inline under it (wide screens). Absent = shown elsewhere. */
-  renderDetail?: (domain: DomainId, detailId: string) => React.ReactNode;
-  onCheck: () => void;
-  /** The page's primary-move stamp, spread on the check button. */
-  primaryMoveProps?: Record<string, string>;
-  /** The Development Check's saved re-check date, when no watched skill shows it. */
-  recheckDueAt?: string | null;
-  /** v4: when the latest Development Check was saved (null = none yet). */
-  lastCheckAt?: string | null;
+  composition: Composition;
   /** The clock the growing line reads (tests pin it). */
   nowMs?: number;
-  /** Rows (an open row's body inline) or tiles (the body in a sheet). Default rows. */
-  layout?: DevelopmentMapLayout;
 }
 
-export default function DevelopmentMap({
-  milestones, observations, momentText, openDomain, onToggle, renderDetail, onCheck, primaryMoveProps, recheckDueAt = null, lastCheckAt = null, nowMs, layout = "rows",
-}: DevelopmentMapProps) {
+/** The number of leaves a territory draws for its Seen-it count (the figure says the rest). */
+const LEAVES = 4;
+/** The three territory outlines, cycled in registry order (decor, never data). */
+const SHAPES = ["sh0", "sh1", "sh2", "sh0", "sh1", "sh2", "sh0", "sh1"] as const;
+
+export default function DevelopmentMap({ milestones, observations, momentText, openDomain, onToggle, composition, nowMs }: DevelopmentMapProps) {
   const { t, uiLang } = useLanguage();
-  const headingId = useId();
+  const copy = milestonesV10Copy(uiLang);
   const seen = useMemo(() => noticedByDomain(milestones), [milestones]);
-  let seenCount = 0;
-  for (const domain of DOMAIN_IDS) seenCount += seen[domain];
+  const { seen: seenCount, areas: seenAreas } = useMemo(() => seenTotals(milestones), [milestones]);
   // The quote files a noticed skill on the one area its count uses (domainMap).
   const last = useMemo(() => lastMomentByDomain(observations, milestones), [observations, milestones]);
   const growing = useMemo(() => growingDomains(milestones, nowMs ?? Date.now()), [milestones, nowMs]);
   const day = (at: string) => new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" }).format(new Date(at));
-  const tiles = layout === "tiles";
-  return (
-    <section className="dev-map" data-testid="dev-map" aria-labelledby={headingId}>
-      <div className="dev-map-head">
-        <div className="dev-map-heading">
-          <p className="dev-map-kicker">{t("companion.milestones.mapKicker")}</p>
-          <h2 id={headingId}>{t("companion.milestones.areasTitle")}</h2>
-          <p className="dev-map-sub">{t(tiles ? "companion.milestones.areasSubTiles" : "companion.milestones.areasSub")}</p>
-        </div>
-        <div className="dev-map-tools">
-          {seenCount > 0 && (
-            <span className="dev-map-chip" data-testid="dev-map-seen">
-              <span className="dev-map-chip-dot" aria-hidden="true" />
-              <span className="dev-map-chip-n arbor-num">{seenCount}</span>
-              <span className="dev-map-chip-label">{t("companion.milestones.seenHeader")}</span>
+  const desk = composition === "desk";
+
+  const territory = (domain: DomainId, index: number) => {
+    const moment = last[domain];
+    const count = seen[domain];
+    const quiet = count === 0 && !moment;
+    const open = openDomain === domain;
+    return (
+      <li key={domain} className="ms-ter-item">
+        <button
+          type="button"
+          className={`ter ar ${SHAPES[index]}${quiet ? " quiet" : ""}${open ? " sel" : ""}${desk ? "" : " m"}`}
+          style={domainToneStyle(domain)}
+          data-testid="dev-map-tile"
+          data-domain={domain}
+          data-tone={quiet ? "quiet" : "area"}
+          aria-pressed={open}
+          onClick={() => onToggle(domain)}
+        >
+          <span className="th">
+            <span className="tg" aria-hidden="true"><Icon name={DOMAIN_ICONS[domain]} size={15} /></span>
+            <span className="tn">{domainName(domain, t)}</span>
+            {desk && <img className="ter-art" {...DOMAIN_ART[domain]} sizes="48px" alt="" aria-hidden="true" loading="lazy" decoding="async" />}
+          </span>
+          {count > 0 && (
+            <span className="tr" data-testid="dev-map-seen-area">
+              <b className="arbor-num">{count}</b>
+              <span className="tu">{count === 1 ? copy.seenUnitOne : copy.seenUnitMany}</span>
+              <span className="tl" aria-hidden="true">
+                {Array.from({ length: Math.min(count, LEAVES) }, (_, i) => (
+                  <Token key={i} kind="moment" size="sm" label="" />
+                ))}
+              </span>
             </span>
           )}
-        </div>
-      </div>
-      {tiles ? (
-        <ul className="dev-map-tiles" role="list" data-testid="dev-map-tiles">
-          {DOMAIN_IDS.map((domain) => {
-            const tone = DOMAIN_VARS[domain];
-            const moment = last[domain];
-            return (
-              <li key={domain} className="dev-map-tile-item">
-                <button
-                  type="button"
-                  className="dev-map-tile"
-                  data-testid="dev-map-tile"
-                  data-domain={domain}
-                  aria-expanded={openDomain === domain}
-                  aria-haspopup="dialog"
-                  onClick={() => onToggle(domain)}
-                >
-                  <span className="dev-map-glyph" aria-hidden="true" style={{ color: tone.ink, background: tone.soft }}>
-                    <Icon name={DOMAIN_ICONS[domain]} size={22} />
-                  </span>
-                  <span className="dev-map-name">{domainName(domain, t)}</span>
-                  {seen[domain] > 0 ? (
-                    <CountPips seen={seen[domain]} domain={domain} size={7} />
-                  ) : moment ? (
-                    <span className="dev-map-tile-last" data-testid="dev-map-tile-last">
-                      {t("companion.milestones.lastMoment")}
-                      {" · "}
-                      <time dateTime={moment.at}>{day(moment.at)}</time>
-                    </span>
-                  ) : (
-                    <span className="dev-map-none" data-testid="dev-map-none">{t("companion.devMap.none")}</span>
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <>
-          <div className="dev-map-columns" aria-hidden="true">
-            <span />
-            <span>{t("companion.milestones.seenHeader")}</span>
-            <span>{t("companion.milestones.lastMoment")}</span>
-            <span />
-          </div>
-          <ul className="dev-map-rows" role="list">
-            {DOMAIN_IDS.map((domain) => {
-              const tone = DOMAIN_VARS[domain];
-              const moment = last[domain];
-              const open = openDomain === domain;
-              const detailId = `${headingId}-${domain}`;
-              return (
-                <li key={domain} className="dev-map-item" data-open={open ? "true" : undefined}>
-                  <button
-                    type="button"
-                    className="dev-map-row"
-                    data-testid="dev-map-row"
-                    data-domain={domain}
-                    aria-expanded={open}
-                    aria-controls={open && renderDetail ? detailId : undefined}
-                    onClick={() => onToggle(domain)}
-                  >
-                    <span className="dev-map-area">
-                      <span className="dev-map-glyph" aria-hidden="true" style={{ color: tone.ink, background: tone.soft }}>
-                        <Icon name={DOMAIN_ICONS[domain]} size={22} />
-                      </span>
-                      <span className="dev-map-name">{domainName(domain, t)}</span>
-                    </span>
-                    <span className="dev-map-count">
-                      {seen[domain] > 0 ? (
-                        <CountPips seen={seen[domain]} domain={domain} size={7} />
-                      ) : !moment && (
-                        <span className="dev-map-none" data-testid="dev-map-none">{t("companion.devMap.none")}</span>
-                      )}
-                    </span>
-                    <span className="dev-map-quote">
-                      {moment && (
-                        <span className="dev-map-last" data-testid="dev-map-last">
-                          <time dateTime={moment.at}>{day(moment.at)}</time>
-                          {" · "}
-                          <span dir="auto">{momentText(moment)}</span>
-                        </span>
-                      )}
-                    </span>
-                    <Icon name="expand_more" size={22} className="dev-map-chevron" />
-                  </button>
-                  {open && renderDetail && <div className="dev-map-detail">{renderDetail(domain, detailId)}</div>}
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      )}
-      <div className="dev-map-checkrow" data-testid="dev-map-checkrow">
-        <Icon name="fact_check" size={20} className="dev-map-checkrow-glyph" />
-        <div className="dev-map-checkrow-text">
-          <p className="dev-map-checkrow-title">{t("companion.milestones.checkTitle")}</p>
-          <p className="dev-map-checkrow-sub" data-testid="dev-map-checkrow-sub">
-            {lastCheckAt ? t("companion.milestones.checkLast", { date: fmtDay(lastCheckAt, uiLang) }) : t("companion.milestones.checkNever")}
-          </p>
-          {recheckDueAt && <p className="dev-map-recheck" data-testid="dev-map-recheck">{t("elev.growth.recheck.date", { date: fmtDay(recheckDueAt, uiLang) })}</p>}
-        </div>
-        <button type="button" className="dev-map-check" data-testid="dev-map-check" onClick={onCheck} {...(primaryMoveProps ?? {})}>
-          {t(lastCheckAt ? "companion.milestones.checkAgain" : "companion.milestones.checkStart")}
+          {quiet ? (
+            <span className="tq"><b data-testid="dev-map-none">{t("companion.devMap.none")}</b></span>
+          ) : moment ? (
+            <span className="tx" data-testid="dev-map-last">
+              <span>
+                {t("companion.milestones.lastMoment")}
+                {" · "}
+                <time dateTime={moment.at}>{day(moment.at)}</time>
+                {desk && <>{" · "}<span dir="auto">{momentText(moment)}</span></>}
+              </span>
+              <Icon name="chevron_right" size={14} className="rtl:-scale-x-100" />
+            </span>
+          ) : null}
         </button>
-      </div>
-      <div className="dev-map-foot">
+      </li>
+    );
+  };
+
+  const hub = desk ? (
+    <li key="hub" className="hub" data-testid="dev-map-hub" aria-hidden={seenCount === 0 ? true : undefined}>
+      {seenCount > 0 && (
+        <span data-testid="dev-map-seen">
+          <Fig n={seenCount} unit={copy.hubUnit} sub={seenAreas === 1 ? copy.hubAreasOne : copy.hubAreasMany.replace("{n}", String(seenAreas))} />
+        </span>
+      )}
+    </li>
+  ) : null;
+
+  const cells: React.ReactNode[] = DOMAIN_IDS.map(territory);
+  if (hub) cells.splice(4, 0, hub);
+
+  return (
+    <div className="ms-map" data-testid="dev-map">
+      <ul className={`atlas${desk ? "" : " m"}`} role="list">{cells}</ul>
+      <div className="ms-map-foot">
+        <p className="ms-map-note" data-testid="dev-map-note">{t("companion.devMap.note")}</p>
         {growing.length > 0 && (
-          <p className="dev-map-growing" data-testid="dev-map-growing">
-            <Icon name="eco" size={18} />
-            <span><strong>{t("companion.milestones.growing")}</strong> {growing.map((domain) => domainName(domain, t)).join(" · ")}</span>
+          <p className="ms-map-growing" data-testid="dev-map-growing">
+            <strong>{t("companion.milestones.growing")}</strong> {growing.map((domain) => domainName(domain, t)).join(" · ")}
           </p>
         )}
-        <p className="dev-map-note" data-testid="dev-map-note">
-          <Icon name="info" size={16} />
-          <span>{t("companion.devMap.note")}</span>
-        </p>
-        <p className="dev-map-record" data-testid="dev-map-record">{t("elev.loop.ms.footer")}</p>
       </div>
-    </section>
+    </div>
   );
 }

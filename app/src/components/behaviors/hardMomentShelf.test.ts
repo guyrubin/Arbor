@@ -282,8 +282,10 @@ describe("critic r1 — behaviors capture reads first, one primary fill", async 
     // cut; the week's count is one muted line, never a three-column row.
     expect(BEH).not.toMatch(/<HubHero|stats=\{\[/);
     expect(BEH.match(/data-testid="behaviors-capture-label"/g)).toHaveLength(1);
-    expect(BEH).toMatch(/<h1 data-testid="behaviors-capture-label"[^>]*>\s*\{t\("beh\.capture\.label", \{ name: behFirst \}\)\}/);
-    expect(BEH).not.toMatch(/<h2 data-testid="behaviors-capture-label"/);
+    // v10.1: the page's h1 is the Moments frame's ("Hard moments"); the
+    // action-first question leads the capture card as its h2.
+    expect(BEH).toMatch(/<h2 data-testid="behaviors-capture-label"[^>]*>\s*\{t\("beh\.capture\.label", \{ name: behFirst \}\)\}/);
+    expect(BEH).toContain('<MomentsKindHeader kind="hard" title={t("companion.moments.kind.hard")}');
     expect(BEH).toContain('t(heroStats.events === 1 ? "elev.beh.week.one" : "elev.beh.week", { n: heroStats.events })');
     expect(i18n.en["beh.capture.label"]).toContain("{name}");
     expect(i18n.he["beh.capture.label"]).toContain("{name}");

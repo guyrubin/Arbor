@@ -76,14 +76,15 @@ describe('bounded additive kept capture and search contract, no browser', () => 
     expect(searchLearnCards(LEARN_CARDS, spec.query, lang === 'he').some(card => card.id === 'executive-function' && card.title[lang] === spec.title)).toBe(true);
     const query = lang === 'he' ? 'בִּיקוּרִימ' : 'VÍSIT';
     const prepare = lang === 'he' ? 'מִתְכּוֹנְנִים לַפְּגִישָׁה' : 'PRÉPARE FOR A VISIT';
-    expect(searchCatalog(query)[0].tab).toBe('appointments');
+    // v10: "Visits" is Care's first pill (#/consult); Appointments is a view inside it.
+    expect(searchCatalog(query)[0].tab).toBe('consult');
     expect(searchCatalog(prepare)[0].tab).toBe('consult');
-    for (const route of ['appointments', 'consult']) {
+    for (const [route, key] of [['appointments', 'nav.tab.appointments'], ['consult', 'nav.pill.visits']] as const) {
       const entry = getSearchIndex().find(e => e.id === `route:${route}`)!;
       expect(entry.sub[lang]).toBe(placeForTab(route as any)[lang]);
-      expect(entry.title[lang]).toBe(translate(lang as any, `nav.tab.${route}`));
+      expect(entry.title[lang]).toBe(translate(lang as any, key));
     }
-    expect(ROUTE_IDS).toHaveLength(43);
+    expect(ROUTE_IDS).toHaveLength(44);
     expect(getSearchIndex().filter(entry => entry.kind === 'route' && entry.tab in RETIRED_ROUTES)).toEqual([]);
   });
   it('reuses isolated exact-font CI and the shared fail-closed aggregate without deployment or font uploads', () => {

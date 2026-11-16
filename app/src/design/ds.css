@@ -93,8 +93,15 @@
 .ds { box-sizing: border-box; color: var(--ink); font-family: var(--font-sans) !important; font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
 .ds * { box-sizing: border-box; }
 .ds :where(p, h1, h2, h3) { margin: 0; }
-.ds :where(button) { font: inherit !important; color: inherit; cursor: pointer; }
-.ds :where(a) { color: inherit; text-decoration: none; }
+.ds :where(button) { font: inherit !important; cursor: pointer; }
+.ds :where(a) { text-decoration: none; }
+/* The colour reset sits in @layer base (as index.css does for min-width,
+   B-SHELL-25): unlayered, it beat Tailwind's layered utilities, so a
+   production button's `text-white` inside a .ds root rendered navy. Canvas
+   classes (unlayered) and Tailwind utilities both win over it now. */
+@layer base {
+  :where(.ds) :where(button, a) { color: inherit; }
+}
 
 /* ---------- icons: 24 grid, 1.75 rounded stroke (stand-in for Material Symbols Rounded) ---------- */
 .ds .ic { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
@@ -828,6 +835,9 @@
 .ds .ds-guide-scroll { overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
 .ds .ds-guide-scroll::-webkit-scrollbar { display: none; }
 .ds .ds-guide-scroll .gstop { flex: none; scroll-snap-align: start; }
+/* Touch floor: the canvas draws the phone strip's stops at 40 px; production
+   keeps every tappable stop at 44 px (DESIGN.md touch targets). */
+.ds .guide.mini .gstop { min-height: 44px; }
 .ds .ds-snap-scroll { overflow-x: auto; scrollbar-width: none; scroll-snap-type: x mandatory; scroll-padding-inline: 0; }
 .ds .ds-snap-scroll::-webkit-scrollbar { display: none; }
 .ds .ds-snap-scroll > * { scroll-snap-align: start; }

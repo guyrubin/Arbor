@@ -209,7 +209,9 @@ describe("4 · Weekly's empty state offers the move instead of describing it", (
     expect(tab).toContain('t("elev.wk.logMoment")');
     expect(tab).toContain("<QuickLogModal open={logOpen}");
     const btn = /data-testid="weekly-log-a-moment"[\s\S]{0,400}?<\/button>/.exec(tab)?.[0] ?? "";
-    expect(btn).toContain("minHeight: 44");
+    // v10: a design-system button; the empty card's moves hold the 44 px floor in CSS.
+    expect(btn).toContain('className="btn ghost sm"');
+    expect(read("components/weekly/v10/weeklyV10.css")).toMatch(/\.wk10-empty-moves \.btn \{[^}]*min-height: 44px/);
   });
 
   it("negative control: the promise key is gone, and the honest sibling stayed", () => {

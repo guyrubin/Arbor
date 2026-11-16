@@ -54,7 +54,7 @@ import { ROUTINES } from "./routines";
 import { scholarsInfo } from "../initialData";
 import { availableHardMomentCards } from "../content/selectCards";
 import type { HardMomentContext } from "../content/pilotRelease";
-import { SECTIONS } from "./navigation";
+import { HOME_PILLS, SECTIONS } from "./navigation";
 import { placeForTab } from "./companionPlaces";
 import { translate } from "./i18n";
 import type { ActiveTab } from "../context/ArborContext";
@@ -118,8 +118,9 @@ function entry(
   sub: LocalizedPair,
   keywords: { en: string[]; he: string[] },
   tab: ActiveTab,
+  aliases: readonly LocalizedPair[] = [],
 ): SearchEntry {
-  const normTitles = [...new Set([normalizeSearchText(title.en), normalizeSearchText(title.he)])].filter(Boolean);
+  const normTitles = [...new Set([title, ...aliases].flatMap((t) => [normalizeSearchText(t.en), normalizeSearchText(t.he)]))].filter(Boolean);
   const normKeywords = [...new Set([...keywords.en, ...keywords.he, sub.en, sub.he].map(normalizeSearchText))].filter(Boolean);
   // B-SHELL-37: display the destination's current place, while retaining the
   // existing search terms above so a subtitle change cannot alter matching or
@@ -131,7 +132,9 @@ function entry(
 /** Consolidated views reachable only via search (labels: sm.extra.*).
  *  v3 FEAT-09: handoff left this list. It is the Care summary pill now (a
  *  care section item), so the section loop above names it "Care summary". */
-const EXTRA_ROUTE_TABS: readonly ActiveTab[] = ["weekly"];
+// v10: How Arbor works (#/science) is a page a parent looks for by name; About
+// and Settings link to it, and search finds it too.
+const EXTRA_ROUTE_TABS: readonly ActiveTab[] = ["weekly", "science"];
 
 /** IA-20: routes deliberately NOT offered in search, each with the reason it
  *  would be wrong to surface. Absence is a product decision recorded here, not
@@ -139,13 +142,29 @@ const EXTRA_ROUTE_TABS: readonly ActiveTab[] = ["weekly"];
  *  ROUTE_IDS to be findable by name. */
 export const UNSEARCHABLE_ROUTES: Partial<Record<ActiveTab, string>> = {
   attribution: "Legal/credits surface reached from Settings; not somewhere a parent navigates to by name.",
-  science: "Evidence and credits, reached from a trust link in context rather than as a destination.",
 };
 // B-SHELL-20 (f): a RETIRED_ROUTES id is never a search row — one rule for
 // every retirement (strengths, find-pro, scholar, journey, and the ones to
 // come), instead of a per-route UNSEARCHABLE entry. Its row would land on a
 // different hub under the retired name.
 const isRetired = (tab: string): boolean => tab in RETIRED_ROUTES;
+
+/** v10 one name per thing: a route that is a pill is shown by the name the
+ * pill row gives it (Visits, Milestones, Moments…; the home pill by its place's
+ * name, Now). Its older route name (nav.tab.*) stays a title alias, so typing
+ * "consult" or "growth" still finds it exactly as before and ranking is
+ * unchanged. Routes that are not pills keep their nav.tab.* name. */
+function routeNaming(tab: ActiveTab, legacy?: LocalizedPair): { title: LocalizedPair; aliases: LocalizedPair[] } {
+  const routeName = legacy ?? pair(translate("en", "nav.tab." + tab), translate("he", "nav.tab." + tab));
+  for (const pills of Object.values(HOME_PILLS)) {
+    const pill = pills.find((p) => p.tab === tab);
+    if (!pill) continue;
+    const place = placeForTab(tab);
+    const title = pill.labelKey ? pair(translate("en", pill.labelKey), translate("he", pill.labelKey)) : pair(place.en, place.he);
+    return { title, aliases: title.en === routeName.en && title.he === routeName.he ? [] : [routeName] };
+  }
+  return { title: routeName, aliases: [] };
+}
 
 function buildIndex(): readonly SearchEntry[] {
   const entries: SearchEntry[] = [];
@@ -157,27 +176,31 @@ function buildIndex(): readonly SearchEntry[] {
     for (const it of sec.items) {
       if (seenTabs.has(it.tab) || isRetired(it.tab)) continue;
       seenTabs.add(it.tab);
+      const naming = routeNaming(it.tab);
       entries.push(entry(
         `route:${it.tab}`,
         "route",
-        pair(translate("en", "nav.tab." + it.tab), translate("he", "nav.tab." + it.tab)),
+        naming.title,
         // Retain the existing hub search terms; entry() displays its current place.
         pair(translate("en", "nav.cat." + sec.id), translate("he", "nav.cat." + sec.id)),
         { en: [], he: [] },
         it.tab,
+        naming.aliases,
       ));
     }
   }
   for (const tab of EXTRA_ROUTE_TABS) {
     if (seenTabs.has(tab) || isRetired(tab)) continue;
     seenTabs.add(tab);
+    const naming = routeNaming(tab, pair(translate("en", "sm.extra." + tab), translate("he", "sm.extra." + tab)));
     entries.push(entry(
       `route:${tab}`,
       "route",
-      pair(translate("en", "sm.extra." + tab), translate("he", "sm.extra." + tab)),
+      naming.title,
       pair(translate("en", "sm.extra." + tab + "Sub"), translate("he", "sm.extra." + tab + "Sub")),
       { en: [], he: [] },
       tab,
+      naming.aliases,
     ));
   }
 
@@ -197,20 +220,21 @@ function buildIndex(): readonly SearchEntry[] {
   for (const tab of ROUTE_IDS) {
     if (seenTabs.has(tab) || tab in UNSEARCHABLE_ROUTES || isRetired(tab)) continue;
     const en = translate("en", "nav.tab." + tab);
-    const he = translate("he", "nav.tab." + tab);
     // translate() falls back to the KEY when a string is missing, which would
     // print "nav.tab.foo" to a parent. An unlabelled route is left out and the
     // coverage guard fails, which is the right way round: a missing label is a
     // job to do, never something to render.
     if (en === "nav.tab." + tab) continue;
     seenTabs.add(tab);
+    const naming = routeNaming(tab);
     entries.push(entry(
       `route:${tab}`,
       "route",
-      pair(en, he),
+      naming.title,
       pair(translate("en", "nav.short.more"), translate("he", "nav.short.more")),
       { en: [], he: [] },
       tab,
+      naming.aliases,
     ));
   }
 
@@ -326,11 +350,13 @@ function buildIndex(): readonly SearchEntry[] {
     ));
   }
 
-  // 12. B-ASKJB-36 — the kept reader, a mode of My child: "kept" / "שמרנו"
-  //     land on `#/development?view=kept`. Labels from the reader's own
-  //     dictionary (i18n.ts carries i18nKept); the sub is My child's place.
+  // 12. B-ASKJB-36 / v10.1 — the kept reader (the year book), now Moments,
+  //     kind Kept: "kept" / "שמרנו" open `#/timeline?view=kept`, which
+  //     lib/routes resolves to `#/timeline?kind=kept&reader=book`. Labels from
+  //     the reader's own dictionary (i18n.ts carries i18nKept); the sub is
+  //     My child's place.
   {
-    const place = placeForTab("development");
+    const place = placeForTab("timeline");
     entries.push({
       ...entry(
         "page:development:kept",
@@ -341,7 +367,7 @@ function buildIndex(): readonly SearchEntry[] {
           en: ["kept", "keepsakes", "kept things", "things we kept", "saved words", "firsts", "her words"],
           he: ["שמרנו", "ששמרנו", "שמרתם", "ששמרתם", "שמורים", "מזכרות", "פעמים ראשונות", "מילים ששמרנו"],
         },
-        "development",
+        "timeline",
       ),
       view: "kept",
     });
@@ -355,7 +381,7 @@ function buildIndex(): readonly SearchEntry[] {
           en: ["year book", "yearbook", "this year", "words this year", "firsts this year"],
           he: ["ספר השנה", "השנה", "מילים השנה", "פעמים ראשונות השנה"],
         },
-        "development",
+        "timeline",
       ),
       view: "kept",
     });
@@ -398,12 +424,13 @@ const PLANS_OLD_NAMES: readonly string[] = [
 ];
 
 /** B-SHELL-37: the historical Visits intent uses today's existing routes.
- * Appointments owns the visit lifecycle (B-CAREPRO-31/37); Consult owns the
- * preparation flow and supplies its own bilingual heading. Exact aliases
- * only: no new route/label, and partial or unrelated queries rank as before. */
+ * v10 (design system v10.1): "Visits" is the name of Care's first pill
+ * (#/consult), which holds the next visit, its preparation and the
+ * appointments; so the visit words and Consult's own bilingual heading open
+ * it. Appointments is a view inside Visits and keeps its own title. Exact
+ * aliases only: partial or unrelated queries rank as before. */
 const EXACT_ROUTE_QUERIES: Partial<Record<ActiveTab, readonly string[]>> = {
-  appointments: ["visit", "visits", "ביקור", "ביקורים"].map(normalizeSearchText),
-  consult: [translate("en", "elev.consult.h1"), translate("he", "elev.consult.h1")].map(normalizeSearchText),
+  consult: ["visit", "visits", "ביקור", "ביקורים", translate("en", "elev.consult.h1"), translate("he", "elev.consult.h1")].map(normalizeSearchText),
   // v3 IA-05 / v10: the word a parent types for the ready-made routines lands
   // where they live (ROUTINES_INTENT_TAB, Together › Routines). The retired
   // #/routines id stays retired (no row of its own); "rout" and every other

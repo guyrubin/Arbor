@@ -101,8 +101,6 @@ const AdventuresTab = lazy(() => import("../practice/AdventuresTab"));
 // IA v3: consolidation hubs (merge confusable/duplicate leaves).
 const DevelopmentTab = lazy(() => import("../companion/ChildPortrait"));
 const ProgramPage = lazy(() => import("../program/ProgramPage"));
-// B-ASKJB-36: `?view=kept` — My child with the kept reader open (a mode).
-const KeptReaderMode = lazy(() => import("../kept/KeptThingsPage").then((m) => ({ default: m.KeptReaderMode })));
 const FamilyTopicSheet = lazy(() => import("../companion/FamilyTopicSheet"));
 const DailyPlayTab = lazy(() => import("../tabs/DailyPlayTab"));
 // IA fix (AR-IA): the parent #/practice route hosts the PARENT-register
@@ -115,10 +113,11 @@ const ConsultTab = lazy(() => import("../tabs/ConsultTab"));
 const AttributionTab = lazy(() => import("../tabs/AttributionTab"));
 
 // AP-051: Day Windows detail panel — calm/trickier visualization over existing JITAI (read-only).
-const DayWindowsPanel = lazy(() => import("../sections/DayWindowsPanel"));
+const DayWindowsPanel = lazy(() => import("../tabs/WeeklyTab")); // v10: day-windows opens Weekly report at "Your day at a glance"
 
 // AP-058: Smart Reminders settings dashboard — parent preferences over existing JITAI.
 const SmartRemindersPanel = lazy(() => import("../sections/SmartRemindersPanel"));
+const FamilyPlanView = lazy(() => import("../familyPlan/FamilyPlanView"));
 
 // AP-060: The Science — parent-facing trust/source-transparency page (static editorial, no child data).
 const SciencePage = lazy(() => import("../tabs/SciencePage"));
@@ -191,6 +190,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   "school-brief": ConsultTab,
   "bedtime-stories": BedtimeStoriesTab, // AP-057: Bedtime Stories (day-rooted, generate-and-discard, escalation-gated)
   routines: RoutinesTab, // Wireframe: Ready-made Routines library (Growth › Routines)
+  "family-plan": FamilyPlanView, // v10.1: Now › Family plan
 };
 
 /**
@@ -484,7 +484,7 @@ export default function Shell() {
                 {pillRow.map((it) => {
                   // B-ASKJB-36 (critic r1): the Kept reader is a mode of My child,
                   // not its Milestones reading — no pill reads selected there.
-                  const on = it.tab === litPillFor(activeTab) && !(activeTab === "development" && query.get("view") === "kept");
+                  const on = it.tab === litPillFor(activeTab);
                   return (
                     <button
                       key={it.tab}
@@ -600,7 +600,7 @@ export default function Shell() {
                         so the coach arm renders nothing of its own. */}
                     {activeTab === "coach" || activeTab === "scholar" ? null
                       : activeTab === "overview" ? <OverviewTab topic={activeFamilyTopic} onTopicCreate={createTopic} onTopicOpen={openTopic} onTalkOpen={(prompt) => requestCompanionConversation({ prompt, source: "now" })}/>
-                      : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : query.get("view") === "kept" ? <KeptReaderMode/> : <DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) => { if (childId === childProfile.id) requestCompanionConversation({ prompt, source: "child-portrait" }); }}/>)
+                      : activeTab === "development" ? (query.get("view") === "program" ? <ProgramPage/> : <DevelopmentTab key={childProfile.id} onDiscuss={(prompt, childId) => { if (childId === childProfile.id) requestCompanionConversation({ prompt, source: "child-portrait" }); }}/>)
                       : <ActiveTabComponent/>}
                   </SurfaceFrame>
                 </ErrorBoundary>

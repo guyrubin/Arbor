@@ -1,9 +1,9 @@
 /** How the mammoth answers the child. Pure: no DOM, no timers, no randomness
  * inside (a random source is passed in). The animal's mood, the snow that
  * gathers on its back, the offered grass, the authored hint hand, the little
- * gestures that go with each discovery, the finale and the one musical scale
+ * gestures of its toys, the lift of the trunk for the call and the one musical scale
  * every sound is drawn from all live here, so the engine only steps them. */
-import type { DiscoveryId, Vec } from './iceAgeFriendRules';
+import type { Vec } from './iceAgeFriendRules';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 const smooth = (a: number, b: number, x: number) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
@@ -83,10 +83,6 @@ export function seedSnow(spots: number, cover: number, random: () => number): Sn
     amount: random() < 0.18 * (1.2 - c) ? 0 : clamp01(c * (0.55 + random() * 0.45)),
   }));
 }
-/** Snow settles again, slowly, while it is snowing (rate per second at full fall). */
-export function growSnow(amount: number, dt: number, fall: number, rate = 0.022): number {
-  return clamp01(amount + rate * clamp01(fall) * Math.max(0, Math.min(0.1, dt)));
-}
 /** A stroke of weight 0..1 over a clump: what is left, and how much came off. */
 export function brushSnow(amount: number, weight: number): { amount: number; shed: number } {
   const a = clamp01(amount), left = a * (1 - 0.85 * clamp01(weight));
@@ -115,33 +111,13 @@ export function ghostKnockAt(t: number): { press: number; alpha: number; tap: 0 
   const pulse = (at: number) => Math.max(0, 1 - Math.abs(x - at) / 0.09);
   return { press: Math.max(pulse(0.3), pulse(0.58)), alpha, tap: x >= 0.58 ? 2 : x >= 0.3 ? 1 : 0 };
 }
-/** Is a demonstration due? Only until the child has stroked once, and only after a quiet spell. */
-export function ghostDue(idleSeconds: number, shown: number, learned: boolean, busy: boolean): boolean {
-  if (learned || busy) return false;
-  return idleSeconds >= (shown === 0 ? GHOST.first : GHOST.again);
-}
-
 /* ── meeting at the glass ─────────────────────────────────────────────── */
 
-/** What a touch on the glass is worth: two touches, or a second of stroking the glass, and the mammoth is a friend. */
-export const MEET = { tap: 0.5, perSecond: 1.1, patience: 3 } as const;
+/** What a hand on the glass is worth: two touches, or a second of stroking the glass, and the trunk comes to meet it. */
+export const MEET = { tap: 0.5, perSecond: 1.1 } as const;
 export function meetStep(trust: number, tap: boolean, strokeSeconds: number): number {
   return clamp01(trust + (tap ? MEET.tap : 0) + MEET.perSecond * Math.max(0, Math.min(0.1, strokeSeconds)));
 }
-/** After this many unanswered lessons the mammoth comes in anyway: the game never waits on a child who is only watching. */
-export function comesAnyway(lessonsShown: number): boolean {
-  return lessonsShown >= MEET.patience;
-}
-export const ENTER_SECONDS = 1.7;
-/** Stepping through: it comes up to the glass, one great breath whitens the
- * wall (`bloom` 0..1), and when the breath clears it is standing in the hall
- * (`inside`), settling with a heavy step (`settle` 1..0). */
-export function enterAt(t: number): { near: number; bloom: number; inside: boolean; settle: number; done: boolean } {
-  const k = clamp01(t / ENTER_SECONDS), swap = 0.46;
-  const bloom = k < swap ? smooth(0.16, swap, k) : 1 - smooth(swap, 0.86, k);
-  return { near: smooth(0, swap, k), bloom, inside: k >= swap, settle: k >= swap ? 1 - smooth(swap, 0.8, k) : 0, done: k >= 1 };
-}
-
 /* ── a tuft of grass ──────────────────────────────────────────────────── */
 
 export const FEED = { fly: 0.55, curl: 0.8, chew: 1.7, rest: 0.6 } as const;
@@ -170,18 +146,13 @@ export function arcPoint(a: Vec, b: Vec, t: number, height: number): Vec {
   const k = clamp01(t);
   return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k - height * 4 * k * (1 - k)];
 }
-/** A plucked tuft grows back over a few seconds (0 cropped .. 1 full). */
-export function regrow(grown: number, dt: number, seconds = 7): number {
-  return clamp01(grown + Math.max(0, dt) / seconds);
-}
-
 /* ── gestures ─────────────────────────────────────────────────────────── */
 
 export interface PoseDelta { nod: number; ear: number; rise: number; swing: number; curl: number; tail: number; brow: number; squeeze: number; step: number }
 const NO_DELTA: PoseDelta = { nod: 0, ear: 0, rise: 0, swing: 0, curl: 0, tail: 0, brow: 0, squeeze: 0, step: 0 };
-export type GestureId = DiscoveryId | 'tickle' | 'trunkBoop' | 'tuskKnock' | 'tailSwish' | 'sunWarm' | 'farewell';
+export type GestureId = 'ears' | 'tusks' | 'hump' | 'tickle' | 'trunkBoop' | 'tuskKnock' | 'tailSwish';
 export const GESTURE_SECONDS: Readonly<Record<GestureId, number>> = {
-  coats: 1.1, ears: 1.2, tusks: 1.5, trunk: 1.3, hump: 1.4, tickle: 1.1, trunkBoop: 0.7, tuskKnock: 0.45, tailSwish: 0.9, sunWarm: 2.6, farewell: 1.1,
+  ears: 1.2, tusks: 1.5, hump: 1.4, tickle: 1.1, trunkBoop: 0.7, tuskKnock: 0.45, tailSwish: 0.9,
 };
 /** The small authored movement that goes with a discovery or a toy, at t
  * seconds: each shows the thing the words are about. All zero when it is over. */
@@ -190,14 +161,10 @@ export function gestureAt(id: GestureId, t: number): PoseDelta {
   if (!(t >= 0) || t >= total) return NO_DELTA;
   const k = t / total, bell = Math.sin(Math.PI * k), wave = (n: number) => Math.sin(Math.PI * 2 * n * k) * (1 - k);
   switch (id) {
-    // The coat is shaken by the engine (an impulse through the fur); the body bobs with it.
-    case 'coats': return { ...NO_DELTA, rise: 2.5 * wave(3), nod: 0.02 * wave(3) };
     // The small ear flaps twice.
     case 'ears': return { ...NO_DELTA, ear: -0.42 * Math.abs(Math.sin(Math.PI * 2 * k)) * (1 - 0.3 * k), brow: 0.4 * bell };
     // The head dips and sweeps, the way tusks cleared snow off the grass.
     case 'tusks': return { ...NO_DELTA, nod: -0.075 * Math.sin(Math.PI * 2 * 1.5 * k) * bell - 0.03 * bell, swing: 0.1 * bell };
-    // The two "fingers" at the tip reach and pluck.
-    case 'trunk': return { ...NO_DELTA, swing: 0.34 * wave(2), curl: 0.12 * bell };
     // It stands tall, so the hump shows.
     case 'hump': return { ...NO_DELTA, rise: 7 * overshoot(Math.min(1, k * 2.2)) * (1 - smooth(0.6, 1, k)), nod: 0.03 * bell };
     // Tickled behind the ear: the ear flutters, the eye squeezes shut, the head wags.
@@ -205,38 +172,13 @@ export function gestureAt(id: GestureId, t: number): PoseDelta {
     case 'trunkBoop': return { ...NO_DELTA, curl: 0.22 * bell, swing: -0.25 * wave(1.5), brow: 0.8 * (1 - k) };
     case 'tuskKnock': return { ...NO_DELTA, nod: 0.034 * wave(2) };
     case 'tailSwish': return { ...NO_DELTA, tail: 0.5 * wave(2.5) };
-    // Face to the sun, eyes closed.
-    case 'sunWarm': return { ...NO_DELTA, nod: 0.05 * bell, squeeze: smooth(0.1, 0.25, k) * (1 - smooth(0.8, 0.95, k)), rise: 2 * bell };
-    // A wave of the trunk to say goodbye.
-    case 'farewell': return { ...NO_DELTA, swing: 0.5 * wave(2), curl: -0.1 * bell, brow: 0.5 * bell };
   }
-}
-
-/* ── the turn ─────────────────────────────────────────────────────────── */
-
-export const TURN_SECONDS = 0.92;
-/** The mammoth turns about: it sinks (anticipation), swings round with a
- * heavy step (its width closes and opens: `face` 1 → 0 → 1, the view swapping
- * at the middle), lands and settles. `hop` and `squash` are in 0..1. */
-export function turnAt(t: number): { face: number; hop: number; squash: number; swapped: boolean; landed: boolean } {
-  const k = clamp01(t / TURN_SECONDS);
-  const dip = 0.16, land = 0.74;
-  if (k < dip) return { face: 1, hop: 0, squash: Math.sin((k / dip) * Math.PI * 0.5), swapped: false, landed: false };
-  if (k < land) {
-    const m = (k - dip) / (land - dip);
-    return { face: Math.max(0.04, Math.abs(Math.cos(Math.PI * m))), hop: Math.sin(Math.PI * m), squash: 1 - smooth(0, 0.3, m), swapped: m >= 0.5, landed: false };
-  }
-  const s = (k - land) / (1 - land);
-  return { face: 1, hop: 0, squash: Math.sin(Math.PI * s) * (1 - s) * 1.1, swapped: true, landed: true };
 }
 
 /* ── the finale ───────────────────────────────────────────────────────── */
 
 export const FINALE = { rise: 0.9, hold: 1.7, fall: 1.2 } as const;
 export const FINALE_SECONDS = FINALE.rise + FINALE.hold + FINALE.fall;
-/** When the call sounds, and when the far herd answers (seconds into the finale). */
-export const FINALE_CALL = FINALE.rise * 0.7;
-export const FINALE_ANSWERS = [1.5, 2.05] as const;
 /** How high the trunk is lifted (0..1) at t seconds of the finale. Reduced motion: a cut up, a cut down. */
 export function finaleLift(t: number, reduced: boolean): number {
   if (!(t >= 0) || t >= FINALE_SECONDS) return 0;
@@ -244,36 +186,4 @@ export function finaleLift(t: number, reduced: boolean): number {
   if (t < FINALE.rise) return Math.max(0, overshoot(t / FINALE.rise));
   if (t < FINALE.rise + FINALE.hold) return 1;
   return 1 - smooth(0, 1, (t - FINALE.rise - FINALE.hold) / FINALE.fall);
-}
-export const FINALE_FLAKES = 5;
-/** One of the five big paper snowflakes that rise and turn in the finale:
- * its place relative to the mammoth's back, its size, turn and opacity. Null before it starts and after it fades. */
-export function finaleFlake(index: number, t: number): { x: number; y: number; size: number; turn: number; alpha: number } | null {
-  const start = FINALE_CALL + index * 0.14, life = 2.3, age = (t - start) / life;
-  if (!(age >= 0) || age >= 1) return null;
-  const fan = (index - (FINALE_FLAKES - 1) / 2) / ((FINALE_FLAKES - 1) / 2);
-  const out = 1 - Math.pow(1 - age, 2.2);
-  return {
-    x: fan * (120 + 210 * out) + Math.sin(age * 5 + index) * 14,
-    y: -(60 + 250 * out) + 70 * age * age + Math.abs(fan) * 46,
-    size: 30 * Math.max(0, overshoot(Math.min(1, age * 3.2))) * (1 - 0.25 * Math.abs(fan)),
-    turn: (index % 2 ? -1 : 1) * age * 2.4 + index,
-    alpha: Math.min(1, age * 6) * (1 - smooth(0.72, 1, age)),
-  };
-}
-
-/* ── the day ──────────────────────────────────────────────────────────── */
-
-export const DAYS = ['clearMorning', 'snowFlurry', 'goldenHour'] as const;
-export type DayId = typeof DAYS[number];
-/** What each day is like: how many flakes fall, how hard it blows (added to the gusts), how snowy the back begins. */
-export const DAY_WEATHER: Readonly<Record<DayId, { flakes: number; wind: number; cover: number }>> = {
-  clearMorning: { flakes: 40, wind: 0, cover: 0.7 },
-  snowFlurry: { flakes: 60, wind: 0.22, cover: 1 },
-  goldenHour: { flakes: 22, wind: -0.12, cover: 0.5 },
-};
-/** A day for this visit: never the same as the one before, so playing again looks different. */
-export function pickDay(random: () => number, previous?: DayId | null): DayId {
-  const options = DAYS.filter(day => day !== previous);
-  return options[Math.min(options.length - 1, Math.floor(clamp01(random()) * options.length))];
 }

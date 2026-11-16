@@ -63,7 +63,8 @@ describe("B-INF-10 · the switcher prints months under three, years from three",
       "components/profile/ProfileSwitcher.tsx",
       // Re-pin (F-NOW-1): the age left Now's header for the plan card's Picked line.
       "components/companion/NowRecommendation.tsx",
-      "components/sections/ChildProfile.tsx",
+      // v10: About's identity line lives in the child's tile.
+      "components/about/AboutChildTile.tsx",
       "consult/packet.ts",
     ]) {
       const src = readFileSync(path.join(SRC, rel), "utf8");

@@ -116,7 +116,12 @@ describe("TJB-16 — counts, not a completion share", () => {
 describe("TJB-16 — no browser dialogs", () => {
   it("edit and delete are Modals, not window.prompt / window.confirm", () => {
     expect(src).not.toMatch(/window\.(prompt|confirm)/);
-    expect((src.match(/<Modal\b/g) ?? []).length, "one edit Modal and one delete Modal").toBe(2);
+    // The two dialogs are the shared PlanStepModals (one edit Modal, one delete Modal).
+    expect((src.match(/<PlanStepEditModal\b/g) ?? []).length, "one edit Modal").toBe(1);
+    expect((src.match(/<PlanDeleteModal\b/g) ?? []).length, "one delete Modal").toBe(1);
+    const modals = readFileSync(path.join(here, "PlanStepModals.tsx"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    expect(modals).not.toMatch(/window\.(prompt|confirm)/);
+    expect((modals.match(/<Modal\b/g) ?? []).length).toBe(2);
     const html = render("en");
     expect(html).toContain('data-modal="Edit step"');
     expect(html).toContain('data-modal="Delete plan"');
@@ -192,13 +197,14 @@ describe("TJB-16 — tokens only (law 4)", () => {
  *  · "Day n" only from Day 2.
  */
 describe("critic r1 — plans track card + step list", async () => {
-  const { default: PlanTrackCard } = await import("./PlanTrackCard");
+  const { ActionPlanStage: PlanTrackCard } = await import("./v10/ActionPlanStage");
   const { planEyebrowKey } = await import("../../lib/plans");
-  const trackSrc = readFileSync(path.join(here, "PlanTrackCard.tsx"), "utf8");
+  const trackSrc = readFileSync(path.join(here, "v10", "ActionPlanStage.tsx"), "utf8");
   const plansTab = readFileSync(path.join(here, "..", "tabs", "PlansTab.tsx"), "utf8");
   const stamp = { "data-primary-move": "advance-plan-step", style: { background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)" } } as const;
   const today = { planId: plan.id, phaseIdx: 0, stepIdx: 1, text: "Same three books.", day: 1, next: null, offerNext: false };
   const card = (lang: "en" | "he", day = 1) => renderToStaticMarkup(React.createElement(PlanTrackCard, {
+          composition: "desk",
     plan, step: { ...today, day }, today: null, lang, now: 1757000000000, primary: stamp,
     onTryIt: () => {}, onUndo: () => {}, onCheck: () => {}, onAdjust: () => {},
   }));
@@ -223,7 +229,7 @@ describe("critic r1 — plans track card + step list", async () => {
     const he = card("he");
     expect(he).toMatch(/<p data-testid="plan-today-eyebrow"[^>]*>[^<]*<bdi dir="auto">Calmer bedtimes<\/bdi>/);
     expect(he).not.toMatch(/plan-today-eyebrow"[^>]*uppercase/);
-    expect(he).toMatch(/<p dir="auto"[^>]*>Same three books\.<\/p>/);
+    expect(he).toMatch(/<h1 class="hero" dir="auto"[^>]*>Same three books\.<\/h1>/);
     expect(he).not.toContain("\u0000");
   });
 
@@ -236,7 +242,7 @@ describe("critic r1 — plans track card + step list", async () => {
   it("PlansTab: the stamp is one object on a control, not the plans-active wrapper", () => {
     expect(plansTab).not.toMatch(/data-module="plans-active"[^>]*data-primary-move/);
     expect(plansTab).toContain('"data-primary-move": "advance-plan-step"');
-    expect(plansTab).toContain("primary={planIdx === 0 ? primaryStamp : undefined}");
+    expect(plansTab).toContain("primary={primaryStamp}");
     // The gradient is spelled once, inside the stamp object.
     expect((plansTab.match(/--arbor-gradient-primary/g) || []).length).toBe(1);
   });
@@ -255,7 +261,7 @@ describe("critic r1 — plans track card + step list", async () => {
 /** B-ASKJB-NEW-1g/1h — the track card speaks back to the last outcome. */
 describe("B-ASKJB-NEW-1g/1h — plan echo", async () => {
   const { planEcho, planEchoKey } = await import("../../lib/plans");
-  const { default: PlanTrackCard } = await import("./PlanTrackCard");
+  const { ActionPlanStage: PlanTrackCard } = await import("./v10/ActionPlanStage");
   const dict = await import("../../lib/i18nElevation/plans");
   const ref = { planId: plan.id, phaseIdx: 0, stepIdx: 1 };
   const row = (o: "helped" | "somewhat" | "not_today", at: string, step = ref) => ({
@@ -271,6 +277,7 @@ describe("B-ASKJB-NEW-1g/1h — plan echo", async () => {
     const e = planEcho(plan.id, [row("not_today", "2026-10-03T19:00:00Z"), row("not_today", "2026-10-02T19:00:00Z")], ref, "2026-10-04", 0);
     expect(e).toEqual({ kind: "not-yet-twice" });
     const html = renderToStaticMarkup(React.createElement(PlanTrackCard, {
+          composition: "desk",
       plan, step: { ...ref, text: "Same three books", day: 3, next: null, offerNext: false }, today: null, lang: "en", now: 0,
       onTryIt: () => {}, onUndo: () => {}, onCheck: () => {}, onAdjust: () => {}, echo: e, childName: "Noa",
     }));
@@ -284,7 +291,7 @@ describe("B-ASKJB-NEW-1g/1h — plan echo", async () => {
       expect(d[k], k).toBeTruthy();
       expect(d[k]).not.toMatch(/streak|score|%|רצף|ציון/i);
     }
-    const trackSrc = readFileSync(path.join(here, "PlanTrackCard.tsx"), "utf8").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+    const trackSrc = readFileSync(path.join(here, "v10", "ActionPlanStage.tsx"), "utf8").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
     const line = trackSrc.slice(trackSrc.indexOf('data-testid="plan-echo" data-echo={echo.kind} dir="auto"'), trackSrc.indexOf("</p>", trackSrc.indexOf('data-testid="plan-echo" data-echo={echo.kind} dir="auto"')));
     expect(line).not.toMatch(/--arbor-green|--arbor-coral|--arbor-peach/);
   });
@@ -294,7 +301,7 @@ describe("B-ASKJB-NEW-1g/1h — plan echo", async () => {
  *  sat above "3/7 steps done" — planEcho ignored steps done by tap. */
 describe("critic r2 — the echo reads both progress sources", async () => {
   const { planEcho, planEchoKey, planDoneSteps } = await import("../../lib/plans");
-  const { default: PlanTrackCard } = await import("./PlanTrackCard");
+  const { ActionPlanStage: PlanTrackCard } = await import("./v10/ActionPlanStage");
   const ref = { planId: plan.id, phaseIdx: 0, stepIdx: 1 };
   it("done steps + zero loop rows never yields 'first' — the done count instead", () => {
     expect(planEcho(plan.id, [], ref, "2026-10-04", 3)).toEqual({ kind: "progress", done: 3 });
@@ -313,6 +320,7 @@ describe("critic r2 — the echo reads both progress sources", async () => {
   it("rendered EN + HE: 3/7 done with no loop rows → never the first-step line", () => {
     for (const lang of ["en", "he"] as const) {
       const html = renderToStaticMarkup(React.createElement(PlanTrackCard, {
+          composition: "desk",
         plan, step: { ...ref, text: "Same three books", day: 1, next: null, offerNext: false }, today: null, lang, now: 0,
         onTryIt: () => {}, onUndo: () => {}, onCheck: () => {}, onAdjust: () => {},
         echo: planEcho(plan.id, [], ref, "2026-10-04", 3), childName: "Dylan",
@@ -333,10 +341,11 @@ describe("critic r2 — the echo reads both progress sources", async () => {
 /** Font-exact phone QA: the progress count is ordinary body copy. Keep the
  *  existing editorial role for quoted steps and Profile's kept parent words. */
 describe("plan progress typography roles", async () => {
-  const { default: PlanTrackCard } = await import("./PlanTrackCard");
+  const { ActionPlanStage: PlanTrackCard } = await import("./v10/ActionPlanStage");
   const ref = { planId: plan.id, phaseIdx: 0, stepIdx: 1 };
   const card = (lang: "en" | "he", echo: NonNullable<React.ComponentProps<typeof PlanTrackCard>["echo"]>) =>
     renderToStaticMarkup(React.createElement(PlanTrackCard, {
+          composition: "desk",
       plan, step: { ...ref, text: "Same three books", day: 1, next: null, offerNext: false }, today: null, lang, now: 0,
       onTryIt: () => {}, onUndo: () => {}, onCheck: () => {}, onAdjust: () => {}, echo, childName: "Dylan",
     }));
@@ -355,7 +364,8 @@ describe("plan progress typography roles", async () => {
       const expectedText = translate(lang, `elev.plans.echo.progress.${done === 1 ? "one" : "many"}`, { n: done, name: "Dylan" });
       expect(echoParagraph(html)).toContain(renderToStaticMarkup(React.createElement("span", { className: "min-w-0 line-clamp-2" }, expectedText)));
       // The next action stays after the progress sentence, with its own type.
-      expect(html).toMatch(/<p dir="auto" class="t-md font-bold leading-snug"[^>]*>Same three books<\/p>/);
+      // v10: today's step is the stage's headline (the screen's one <h1>).
+      expect(html).toMatch(/<h1 class="hero" dir="auto"[^>]*>Same three books<\/h1>/);
       expect(html.indexOf('data-testid="plan-echo"')).toBeLessThan(html.indexOf("Same three books"));
     }
   });
@@ -379,12 +389,11 @@ describe("plan progress typography roles", async () => {
   });
 
   it("keeps About's parent quote in the editorial role rather than applying a blanket sans rule", () => {
-    // v3 F-CHILD-3 re-pin: the remembered list left #/profile; the parent's
-    // words are quoted inside their area (AspectCard), and about.css sets the
-    // editorial face at weight 400 on that quote.
+    // v10 re-pin: the parent's words are quoted inside their area row
+    // (AspectCard), and aboutV10.css sets the editorial face at weight 400.
     const card = readFileSync(path.join(here, "..", "about", "AspectCard.tsx"), "utf8");
-    const css = readFileSync(path.join(here, "..", "about", "about.css"), "utf8");
-    expect(card).toMatch(/<p className="about-aspect-quote"[^>]*><FreeText text=\{known\.words\} \/><\/p>/);
-    expect(css).toMatch(/\.about-aspect-quote \{[^}]*font-family: var\(--font-editorial\);[^}]*font-weight: 400;/);
+    const css = readFileSync(path.join(here, "..", "about", "aboutV10.css"), "utf8");
+    expect(card).toMatch(/<span className="a8-quote"[^>]*><FreeText text=\{known\.words\} \/><\/span>/);
+    expect(css).toMatch(/\.a8-quote \{[^}]*font-family: var\(--font-editorial\) !important;[^}]*font-weight: 400 !important;/);
   });
 });

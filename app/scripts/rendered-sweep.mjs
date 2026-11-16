@@ -584,7 +584,10 @@ function collect({ lang, allowLatin, verdict = [], region: regionKind = "main" }
       if (verdictPatterns.some((re) => re.test(own))) verdictTokens++;
     }
     for (const el of region.querySelectorAll('[role="progressbar"], progress')) if (visible(el) && hasBox(el)) verdictTokens++;
-    const rowPaint = new Set([...region.querySelectorAll('[data-testid="dev-map-row"], [data-testid="dev-map-tile"]')]
+    // v10.1: a territory's colour names its AREA (production's domain palette),
+    // so only the territories with nothing recorded are compared: they must
+    // share one neutral paint (a second paint there would be a state colour).
+    const rowPaint = new Set([...region.querySelectorAll('[data-testid="dev-map-tile"][data-tone="quiet"]')]
       .filter((el) => visible(el)).map((el) => { const cs = getComputedStyle(el); return `${cs.backgroundColor}|${cs.backgroundImage}`; }));
     if (rowPaint.size > 1) verdictTokens++;
     const height = Math.max(region.scrollHeight || 0, region.getBoundingClientRect().height || 0);
@@ -1234,7 +1237,7 @@ const STATES = {
     {
       name: "active-plan",
       run: async (h) => {
-        const card = await h.first("[data-testid=plan-track-card], [data-module=plans-active]", 5_000);
+        const card = await h.first("[data-testid=plan-track-card], [data-module=plans-yours]", 5_000);
         if (!card) skip("no active plan in the seeded record");
         await h.top(card);
       },

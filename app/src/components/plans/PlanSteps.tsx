@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Icon } from "../ui/Icon";
-import { Modal } from "../ui/Modal";
+import { PlanDeleteModal, PlanStepEditModal } from "./PlanStepModals";
 import { demoteObservationSteps } from "../../lib/plans/stepOrder";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -109,10 +109,8 @@ export default function PlanSteps({ plan, todayStep, now = Date.now(), beside }:
   /** FEAT-07: "board" when a RoutineRunBoard shows this routine plan's counts. */
   beside?: "board";
 }) {
-  const { deletePlan, updatePlanStepText } = useArbor();
   const { t } = useLanguage();
   const [editing, setEditing] = useState<Item | null>(null);
-  const [draft, setDraft] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const items: Item[] = useMemo(() => {
@@ -136,11 +134,7 @@ export default function PlanSteps({ plan, todayStep, now = Date.now(), beside }:
   const ticked = runCounts ? routineRunToday(plan, dayKey).length : 0;
   const runDays = runCounts ? routineDaysComplete(plan, dayKey) : 0;
 
-  const openEdit = (item: Item) => { setEditing(item); setDraft(item.text); };
-  const saveEdit = () => {
-    if (editing && draft.trim()) updatePlanStepText(plan.id, editing.phaseIdx, editing.stepIdx, draft.trim());
-    setEditing(null);
-  };
+  const openEdit = (item: Item) => setEditing(item);
 
   return (
     <div className="rounded-3xl p-6 space-y-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
@@ -232,61 +226,9 @@ export default function PlanSteps({ plan, todayStep, now = Date.now(), beside }:
 
       <p className="t-xs" style={{ color: "var(--arbor-muted)" }}>{routine ? t("elev.plans.routineRun.hint") : t("elev.plans.hint")}</p>
 
-      {/* window.prompt cannot be styled, translated, or mirrored in RTL. */}
-      <Modal open={editing !== null} onClose={() => setEditing(null)} title={t("elev.plans.edit.title")} maxWidth="max-w-md">
-        <label className="block text-xs font-bold mb-2" style={{ color: "var(--arbor-ink)" }} htmlFor="plan-step-text">
-          {t("elev.plans.edit.label")}
-        </label>
-        <textarea
-          id="plan-step-text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          rows={3}
-          className="w-full rounded-xl p-3 text-sm"
-          style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
-        />
-        <div className="flex gap-2 mt-4">
-          <button
-            type="button"
-            onClick={saveEdit}
-            className="touch-target flex-1 rounded-xl t-sm font-bold"
-            style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)", minHeight: "var(--touch-min)" }}
-          >
-            {t("elev.plans.edit.save")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setEditing(null)}
-            className="touch-target rounded-xl px-4 t-sm font-bold"
-            style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)", minHeight: "var(--touch-min)" }}
-          >
-            {t("elev.plans.edit.cancel")}
-          </button>
-        </div>
-      </Modal>
-
-      {/* window.confirm, same problem: an English browser dialog in a Hebrew app. */}
-      <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} title={t("elev.plans.delete.title")} maxWidth="max-w-md">
-        <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>{t("confirm.deletePlan", { title: plan.title })}</p>
-        <div className="flex gap-2 mt-4">
-          <button
-            type="button"
-            onClick={() => { deletePlan(plan.id); setConfirmDelete(false); }}
-            className="touch-target flex-1 rounded-xl t-sm font-bold"
-            style={{ background: "var(--arbor-peach-ink)", color: "var(--arbor-on-accent)", minHeight: "var(--touch-min)" }}
-          >
-            {t("elev.plans.delete.cta")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirmDelete(false)}
-            className="touch-target rounded-xl px-4 t-sm font-bold"
-            style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-muted)", minHeight: "var(--touch-min)" }}
-          >
-            {t("elev.plans.edit.cancel")}
-          </button>
-        </div>
-      </Modal>
+      {/* Edit and delete: the shared keyed Modals (window.prompt / confirm cannot be translated or mirrored). */}
+      <PlanStepEditModal plan={plan} editing={editing} onClose={() => setEditing(null)} />
+      <PlanDeleteModal plan={plan} open={confirmDelete} onClose={() => setConfirmDelete(false)} />
     </div>
   );
 }

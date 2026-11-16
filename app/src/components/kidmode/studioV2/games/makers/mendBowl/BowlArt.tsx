@@ -11,6 +11,7 @@ import { memo } from 'react';
 import { samplePolyline, type BowlGlaze, type BowlPattern, type Point } from './mendBowlRules';
 import { BOWL_CENTRE, BOWL_PATTERNS, BOWL_R, LINEN_R, OUTLINE_D, polyD } from './mendBowlPatterns';
 import { KIT_TABLE } from './mendKit';
+import { useBowlTexture } from './bowlTexture';
 
 const mix = (a: string, pct: number, b: string) => `color-mix(in srgb, var(${a}) ${pct}%, ${b.startsWith('--') ? `var(${b})` : b})`;
 export interface GlazeTone { light: string; base: string; deep: string; inLight: string; inDeep: string; speck: string; rim: string }
@@ -39,6 +40,13 @@ const SPECKS: readonly { x: number; y: number; r: number }[] = Array.from({ leng
 export const BowlBody = memo(function BowlBody({ glaze, uid, shadow = true }: { glaze: BowlGlaze; uid: string; shadow?: boolean }) {
   const t = GLAZE_TONES[glaze], id = (s: string) => `${uid}-${s}`, url = (s: string) => `url(#${id(s)})`;
   const shade = `color-mix(in srgb, ${t.inDeep} 78%, var(--mk-shadow))`;
+  // In play the bowl is the rendered ceramic (bowlRender.ts); this drawing is what stands in until it is painted, and wherever there is no canvas.
+  const texture = useBowlTexture(glaze);
+  if (texture) return <g data-bowl-glaze={glaze} data-bowl-rendered="">
+    {shadow && <><defs><radialGradient id={id('contact')} gradientUnits="userSpaceOnUse" cx={C.x + 9} cy={C.y + 11} r={R + 16}>{stop(0, 'var(--mk-shadow)', 0.5)}{stop(0.8, 'var(--mk-shadow)', 0.44)}{stop(0.92, 'var(--mk-shadow)', 0.17)}{stop(1, 'var(--mk-shadow)', 0)}</radialGradient></defs>
+      <circle cx={C.x + 9} cy={C.y + 11} r={R + 16} fill={url('contact')} /></>}
+    <image href={texture} x={C.x - R} y={C.y - R} width={R * 2} height={R * 2} preserveAspectRatio="none" />
+  </g>;
   return <g data-bowl-glaze={glaze}>
     <defs>
       {/* Inside wall: turned from the window on the near-left side, facing it on the far-right. */}
@@ -92,15 +100,18 @@ export function ribbonD(points: readonly Point[], seed: number): string {
 }
 /** The gold layer of one seam (no mask): lacquer, its shade and its highlight. */
 export function GoldRibbon({ points, seed, uid }: { points: readonly Point[]; seed: number; uid: string }) {
-  const d = polyD(points);
+  const d = polyD(points), ribbon = ribbonD(points, seed);
   return <g>
-    <path d={d} fill="none" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" transform="translate(.9 1.1)" opacity=".4" style={{ stroke: 'var(--mk-gold-deep)' }} />
-    <path d={ribbonD(points, seed)} fill={`url(#${uid}-gold)`} />
-    <path d={d} fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" transform="translate(-.6 -.7)" opacity=".92" style={{ stroke: 'var(--mk-gold-light)' }} />
+    {/* Raised lacquer: its shade falls to the lower right, a dark foot all round, the body, then the light along its upper-left shoulder. */}
+    <path d={d} fill="none" strokeWidth="5.6" strokeLinecap="round" strokeLinejoin="round" transform="translate(1.1 1.4)" opacity=".34" style={{ stroke: 'var(--mk-shadow)' }} />
+    <path d={ribbon} strokeWidth="1.1" strokeLinejoin="round" style={{ fill: 'var(--mk-gold-deep)', stroke: 'var(--mk-gold-deep)' }} />
+    <path d={ribbon} fill={`url(#${uid}-gold)`} />
+    <path d={d} fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" transform="translate(.7 .8)" opacity=".5" style={{ stroke: 'var(--mk-gold-deep)' }} />
+    <path d={d} fill="none" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" transform="translate(-.7 -.8)" opacity=".95" style={{ stroke: 'color-mix(in srgb, var(--mk-gold-light) 55%, var(--mk-white))' }} />
   </g>;
 }
 export function GoldDefs({ uid }: { uid: string }) {
-  return <linearGradient id={`${uid}-gold`} gradientUnits="userSpaceOnUse" x1={C.x - R} y1={C.y - R} x2={C.x + R} y2={C.y + R}>{stop(0, 'var(--mk-gold-light)')}{stop(0.42, 'var(--mk-gold)')}{stop(0.7, mix('--mk-gold', 70, '--mk-gold-light'))}{stop(1, 'var(--mk-gold-deep)')}</linearGradient>;
+  return <linearGradient id={`${uid}-gold`} gradientUnits="userSpaceOnUse" x1={C.x - R} y1={C.y - R} x2={C.x + R} y2={C.y + R}>{stop(0, 'var(--mk-gold-light)')}{stop(0.3, 'var(--mk-gold)')}{stop(0.5, mix('--mk-gold', 60, '--mk-gold-deep'))}{stop(0.68, 'var(--mk-gold)')}{stop(0.82, mix('--mk-gold', 60, '--mk-gold-light'))}{stop(1, 'var(--mk-gold-deep)')}</linearGradient>;
 }
 /** The mended bowl: body and every seam in gold. The Preview and the Cover draw this. */
 export function MendedBowl({ glaze, pattern, uid }: { glaze: BowlGlaze; pattern: BowlPattern; uid: string }) {

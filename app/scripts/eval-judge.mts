@@ -270,6 +270,19 @@ const buildScenarioRunner = (suite: EvalSuite, baseUrl: string) => async (scenar
   // child (two-children scenarios name theirs) or the synthetic one, the
   // language and the kept items. The transcript is the raw status + JSON so
   // the judge sees exactly the readback (or the 409 contract) a parent would.
+  // Family plan v1 (family-plan-extract-v1): what the review sheet posts. The
+  // server reads the message against the family's day only within a day of
+  // its own clock, so live scenarios name weekdays ("Thursday"), never fixed
+  // dates, and hold on any run day.
+  if (route === "/api/family-plan/extract") {
+    const res = await fetch(`${baseUrl}/api/family-plan/extract`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: String(input.text ?? ""), language: locale, today: String(input.today ?? ""), childName: scenarioProfile.name }),
+    });
+    return `HTTP ${res.status}\n${await res.text()}`;
+  }
+
   if (route === "/api/describe-child") {
     const res = await fetch(`${baseUrl}/api/describe-child`, {
       method: "POST",

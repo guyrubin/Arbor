@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ARRIVE, BOOK_TILT_MIN, GRAB_MIN, HINT_PLAY, HINT_REST, HOME_MS, PAGE_W, PEEK_RISE, RIVER_COURSES, SETTLE_SPAN, SETTLE_STAGGER,
-  fitBook, grabRadius, hintPose, hopArc, leafFraction, peek, riverCourse, riverGates, settleRise, settleSeconds, shake, stageBox, stepped, turnRelease, unprojectBookPoint,
-  BOOK_TILT, END_MS, GATE_HOLD, GUST_EVERY, GUST_PUSH, HARBOUR_LAMPS, LANE_Y, LAUNCH_DRAG, PAGE_D, QUAY_HOLD, QUAY_LANE, QUAY_X, RIVER_BOAT_X, RIVER_COURSE, RIVER_END, RIVER_GATES,
+  ARRIVE, BANK_Y, BOOK_TILT_MIN, COURSE_X0, COURSE_X1, GRAB_MIN, HINT_PLAY, HINT_REST, HOME_MS, LAMP_MS, NEAR_W, PAGE_W, PEEK_RISE, RIVER_COURSES, ROPE_MS, SETTLE_SPAN, SETTLE_STAGGER, STREAM_COURSES, VIEW_MARGIN,
+  fitBook, grabRadius, hintPose, hopArc, leafFraction, peek, riverCourse, riverGates, settleRise, settleSeconds, shake, stageBox, stepped, turnRelease, unprojectBookPoint, viewCentre, viewFit,
+  BOOK_TILT, END_MS, GATE_HOLD, GUST_EVERY, GUST_PUSH, HARBOUR_LAMPS, LANE_Y, LAUNCH_DRAG, PAGE_D, QUAY_HOLD, QUAY_LANE, QUAY_X, RIVER_COURSE, RIVER_END, RIVER_GATES,
   SPREAD_W, STAND_MAX, STORM_BAND, STORM_NEED, WHEEL_LIMIT, WHEEL_STEP,
-  angleDelta, angleForLane, bookScene, boatYaw, canFinish, canTurn, clampWheel, createBook, createHarbour, createRiver, createStorm, dragFraction, edgeProgress, foldAngles,
-  harbourStep, keyIntent, lampsLit, laneForAngle, launchFromDrag, layerAngle, pageOrder, pointerAngle, projectBookPoint, riverDone, riverItemX, riverStep, setWheel, spreadDone,
+  angleDelta, angleForLane, bookScene, boatYaw, canFinish, canTurn, clampWheel, courseX, createBook, createHarbour, createRiver, createStorm, dragFraction, foldAngles,
+  harbourStep, keyIntent, lampsLit, laneForAngle, launchFromDrag, layerAngle, pageOrder, pointerAngle, projectBookPoint, riverBoat, riverDone, riverItems, riverLanterns, riverStep, setWheel, spreadDone,
   stormCalm, stormStep, swipeIntent, turned, visibleLeafAngle, wheelDetents, wheelDrag, type BookState, type Lane, type RiverState, type StormState,
 } from './paperBoatRules';
 
@@ -23,7 +23,7 @@ function weather(storm: StormState, seconds: number, angle: (t: number, s: Storm
   }
   return { storm, gusts, wheel };
 }
-const done = (patch: Partial<BookState> = {}): BookState => ({ ...createBook(), launched: true, river: { ...createRiver(), gates: 3 }, storm: { ...createStorm(), calmed: true }, harbour: { ...createHarbour(), docked: true, lamps: HARBOUR_LAMPS }, ...patch });
+const done = (patch: Partial<BookState> = {}): BookState => ({ ...createBook(), launched: true, stream: { ...createBook().stream, d: RIVER_END }, river: { ...createRiver(), gates: 3, d: RIVER_END }, storm: { ...createStorm(), calmed: true }, harbour: { ...createHarbour(), docked: true, lamps: HARBOUR_LAMPS }, ...patch });
 
 describe('fold geometry: every layer angle is a function of one progress number', () => {
   it('flat at 0, standing just short of upright at 1, monotonic between', () => {
@@ -98,10 +98,13 @@ describe('turn permissions and restoring each spread', () => {
     expect(canTurn(book, 'next')).toBe(false); expect(canTurn(book, 'back')).toBe(false);
     expect(turned(book, 'next')).toBe(book);
     const launched = { ...book, launched: true };
-    expect(canTurn(launched, 'next')).toBe(true);
-    const second = turned(launched, 'next');
+    expect(canTurn(launched, 'next')).toBe(false); // afloat, but the stones are still ahead
+    const through = { ...launched, stream: { ...launched.stream, d: RIVER_END } };
+    expect(canTurn(through, 'next')).toBe(true);
+    const second = turned(through, 'next');
     expect(second.spread).toBe(1); expect(canTurn(second, 'back')).toBe(true); expect(canTurn(second, 'next')).toBe(false);
-    expect(canTurn({ ...second, river: { ...second.river, gates: 3 } }, 'next')).toBe(true);
+    expect(canTurn({ ...second, river: { ...second.river, gates: 3 } }, 'next')).toBe(false); // every lantern lit, but not yet at the page's edge
+    expect(canTurn({ ...second, river: { ...second.river, gates: 3, d: RIVER_END } }, 'next')).toBe(true);
     expect(spreadDone({ ...book, storm: { ...createStorm(), calmed: true } }, 2)).toBe(true);
   });
   it('going back and forward keeps what each spread was left with', () => {
@@ -149,24 +152,82 @@ describe('spread 1: launching the boat', () => {
   });
 });
 
-describe('spread 2: the river and its three reed arches', () => {
-  it('lays three arches with lanes that need the wheel turned both ways', () => {
+/** Steers round every stone: always into a channel the next stone is not in. */
+function thread(river: RiverState, seconds: number) {
+  const events: string[] = [];
+  for (let t = 0; t < seconds; t += 0.05) {
+    const ahead = riverItems(river).find(item => item.kind === 'rock' && item.at > river.d);
+    const lane = (ahead ? (ahead.lane === 1 ? 2 : 1) : 1) as Lane;
+    const step = riverStep(river, 0.05, lane); river = step.river; events.push(...step.events);
+  }
+  return { river, events };
+}
+describe('a course is printed across both pages', () => {
+  it('the boat sails from the left page to the right, between the far bank and the near one', () => {
+    expect(courseX(0)).toBe(COURSE_X0); expect(courseX(RIVER_END)).toBe(COURSE_X1); expect(courseX(RIVER_END * 2)).toBe(COURSE_X1); expect(courseX(Number.NaN)).toBe(COURSE_X0);
+    expect(COURSE_X0).toBeLessThan(PAGE_W); expect(COURSE_X1).toBeGreaterThan(PAGE_W); expect(COURSE_X1).toBeLessThan(SPREAD_W);
+    let last = -1; for (let at = 0; at <= RIVER_END; at += 40) { expect(courseX(at)).toBeGreaterThan(last); last = courseX(at); }
+    expect(riverBoat(createRiver())).toEqual({ x: COURSE_X0, y: LANE_Y[1] });
+    expect(riverBoat({ ...createRiver(), d: RIVER_END, pos: 2 })).toEqual({ x: COURSE_X1, y: LANE_Y[2] });
+    expect(LANE_Y).toHaveLength(3); expect(LANE_Y[0]).toBeLessThan(LANE_Y[2]); expect(LANE_Y[2]).toBeLessThan(BANK_Y); expect(BANK_Y).toBeLessThan(PAGE_D);
+  });
+});
+
+describe('spread 1: the stream and its stones', () => {
+  it('every stream has four stones to thread, no two in a row in the same channel, and no lanterns', () => {
+    expect(STREAM_COURSES.length).toBeGreaterThanOrEqual(3);
+    STREAM_COURSES.forEach((_, i) => {
+      const river = createRiver(i, 'stoneRun'), stones = riverItems(river).filter(item => item.kind === 'rock');
+      expect(stones).toHaveLength(4); expect(riverLanterns(river)).toHaveLength(0);
+      stones.forEach((stone, n) => { if (n) expect(stone.lane).not.toBe(stones[n - 1].lane); });
+      expect(stones.some(stone => stone.lane === 1)).toBe(true); // a boat that never steers meets one
+      expect(riverItems(river).every((item, n, all) => n === 0 || item.at > all[n - 1].at)).toBe(true);
+    });
+    expect(new Set(STREAM_COURSES.map((_, i) => riverItems(createRiver(i, 'stoneRun')).filter(item => item.kind === 'rock').map(item => item.lane).join(''))).size).toBe(STREAM_COURSES.length);
+  });
+  it('a boat that never steers is nudged round the stones and still reaches the far edge', () => {
+    STREAM_COURSES.forEach((_, i) => {
+      const { river, events } = sail(createRiver(i, 'stoneRun'), 1, 30);
+      expect(riverDone(river)).toBe(true); expect(river.d).toBe(RIVER_END);
+      expect(events).toContain('bump'); expect(events).not.toContain('held'); expect(river.nudges).toBeGreaterThan(0);
+    });
+  });
+  it('steering round every stone is a clean run: four in a row, and never a nudge', () => {
+    STREAM_COURSES.forEach((_, i) => {
+      const { river, events } = thread(createRiver(i, 'stoneRun'), 30);
+      expect(riverDone(river)).toBe(true); expect(events).not.toContain('bump');
+      expect(events.filter(e => e === 'clear')).toHaveLength(4); expect(river.clears).toBe(4); expect(river.nudges).toBe(0);
+    });
+  });
+  it('a nudge starts the run of clean passes again; it is never counted against the boat', () => {
+    const run = sail({ ...createRiver(0, 'stoneRun'), clears: 3 }, 1, 6).river;
+    expect(run.nudges).toBe(1); expect(run.clears).toBeLessThan(3);
+    expect(spreadDone({ ...createBook(), launched: true, stream: sail(createRiver(0, 'stoneRun'), 1, 30).river }, 0)).toBe(true);
+  });
+});
+
+describe('spread 2: the river and its three paper lanterns', () => {
+  it('hangs three lanterns over channels that need the wheel turned both ways', () => {
     expect(RIVER_GATES.map(g => g.lane)).toEqual([2, 0, 1]);
     expect(RIVER_COURSE.every((item, i, all) => i === 0 || item.at > all[i - 1].at)).toBe(true);
     expect(RIVER_END).toBeGreaterThan(RIVER_GATES[2].at);
+    // on the page the lanterns are a boat's length apart or more
+    expect(courseX(RIVER_GATES[1].at) - courseX(RIVER_GATES[0].at)).toBeGreaterThan(100);
   });
-  it('an arch waits for the boat: without steering the river stops short of it, and nothing is lost', () => {
+  it('a lantern waits for the boat: without steering the boat stops short of it, and nothing is lost', () => {
     const { river, events } = sail(createRiver(), 1, 20);
     expect(river.gates).toBe(0); expect(river.d).toBeCloseTo(RIVER_GATES[0].at - GATE_HOLD); expect(events).toContain('held');
+    expect(riverDone(river)).toBe(false);
   });
-  it('steering into each arch’s channel passes all three, and then the river is done', () => {
+  it('steering under each lantern rings all three, and then the boat runs on to the page’s edge', () => {
     let river = createRiver(), events: string[] = [];
     for (const gate of RIVER_GATES) { const leg = sail(river, gate.lane, 12); river = leg.river; events.push(...leg.events); }
-    expect(river.gates).toBe(3); expect(riverDone(river)).toBe(true);
+    expect(river.gates).toBe(3); expect(river.d).toBe(RIVER_END); expect(riverDone(river)).toBe(true);
     expect(events.filter(e => e === 'reedGate')).toHaveLength(3);
+    expect(riverDone({ ...river, d: RIVER_END - 5 })).toBe(false);
   });
   it('a rock nudges the boat softly back into the channel; it is never a failure', () => {
-    // sit in the near channel after the first arch: the rock there nudges the boat towards the middle
+    // sit in the near channel after the first lantern: the rock there nudges the boat towards the middle
     let river: RiverState = { ...createRiver(), d: 530, pos: 2, gates: 1 };
     const step = sail(river, 2, 1.5); river = step.river;
     expect(step.events).toContain('bump');
@@ -174,11 +235,6 @@ describe('spread 2: the river and its three reed arches', () => {
     expect(river.pos).toBeLessThan(2);
     // once past the rock, the wheel steers again
     river = sail(river, 2, 3).river; expect(river.pos).toBe(2);
-  });
-  it('items rise from the page edge and fold flat as they leave', () => {
-    expect(edgeProgress(SPREAD_W)).toBe(0); expect(edgeProgress(SPREAD_W / 2)).toBe(1); expect(edgeProgress(0)).toBe(0);
-    expect(riverItemX(RIVER_GATES[0], RIVER_GATES[0].at)).toBe(RIVER_BOAT_X);
-    expect(LANE_Y).toHaveLength(3); expect(LANE_Y[0]).toBeLessThan(LANE_Y[2]);
   });
 });
 
@@ -222,8 +278,10 @@ describe('spread 4: the harbour', () => {
     expect(harbourStep(harbour, 0.05, 2).harbour).toBe(harbour);
   });
   it('the lamps come on one by one after the rope drops, then the end', () => {
-    expect(lampsLit(0)).toBe(0); expect(lampsLit(700)).toBe(1); expect(lampsLit(700 + 420)).toBe(2);
+    expect(lampsLit(0)).toBe(0); expect(lampsLit(ROPE_MS)).toBe(1); expect(lampsLit(ROPE_MS + LAMP_MS)).toBe(2);
     expect(lampsLit(END_MS)).toBe(HARBOUR_LAMPS); expect(lampsLit(Number.NaN)).toBe(0);
+    let last = 0; for (let ms = 0; ms <= END_MS; ms += 60) { const lit = lampsLit(ms); expect(lit - last).toBeLessThanOrEqual(1); expect(lit).toBeGreaterThanOrEqual(last); last = lit; }
+    expect(HARBOUR_LAMPS).toBe(7);
   });
 });
 
@@ -254,6 +312,22 @@ describe('the book on the screen', () => {
     expect(phone.box.h * phone.scale).toBeLessThanOrEqual(420); expect(wide.box.w * wide.scale).toBeLessThanOrEqual(900);
     expect(fitBook(Number.NaN, 0).scale).toBeGreaterThan(0);
     expect(BOOK_TILT_MIN).toBeLessThan(BOOK_TILT);
+  });
+  it('the camera: a wide screen shows the whole book; a tall phone comes close, a page and a little more across', () => {
+    const desk = viewFit(1160, 600), phone = viewFit(382, 520);
+    expect(desk.near).toBe(desk.wide); expect(desk.box.w * desk.wide).toBeLessThanOrEqual(1160 + 1e-6); expect(desk.box.h * desk.wide).toBeLessThanOrEqual(600 + 1e-6);
+    expect(phone.near).toBeGreaterThan(phone.wide * 1.4);
+    expect(382 / phone.near).toBeGreaterThanOrEqual(NEAR_W - 1e-6); expect(phone.box.h * phone.near).toBeLessThanOrEqual(520 + 1e-6);
+    expect(phone.box.w * phone.wide).toBeLessThanOrEqual(382 + 1e-6);
+    expect(viewFit(Number.NaN, -3).near).toBeGreaterThan(0);
+  });
+  it('the close view follows the boat and never runs past the book’s edges', () => {
+    const visible = NEAR_W;
+    expect(viewCentre(0, visible)).toBe(visible / 2 - VIEW_MARGIN); expect(viewCentre(SPREAD_W, visible)).toBe(SPREAD_W + VIEW_MARGIN - visible / 2);
+    expect(viewCentre(240, visible)).toBe(240);
+    // a view wider than the book stays on the spine, whatever it is asked to follow
+    expect(viewCentre(40, SPREAD_W + 200)).toBe(SPREAD_W / 2); expect(viewCentre(Number.NaN, visible)).toBe(SPREAD_W / 2);
+    let last = -Infinity; for (let x = COURSE_X0; x <= COURSE_X1; x += 10) { const c = viewCentre(x, visible); expect(c).toBeGreaterThanOrEqual(last); last = c; }
   });
 });
 
@@ -318,7 +392,7 @@ describe('things that answer a poke', () => {
 });
 
 describe('play again is another river', () => {
-  it('every course has three arches that need the wheel turned both ways, in a different order from the first', () => {
+  it('every course has three lanterns that need the wheel turned both ways, in a different order from the first', () => {
     expect(RIVER_COURSES.length).toBeGreaterThanOrEqual(3);
     expect(RIVER_COURSES[0]).toBe(RIVER_COURSE);
     const orders = RIVER_COURSES.map((_, i) => riverGates(i).map(gate => gate.lane).join(''));
@@ -326,7 +400,7 @@ describe('play again is another river', () => {
     for (let i = 0; i < RIVER_COURSES.length; i++) {
       const lanes = riverGates(i).map(gate => gate.lane);
       expect(lanes).toHaveLength(3); expect(lanes).toContain(0); expect(lanes).toContain(2);
-      expect(lanes[0]).not.toBe(1); // the first arch always asks for a turn of the wheel
+      expect(lanes[0]).not.toBe(1); // the first lantern always asks for a turn of the wheel
       expect(riverCourse(i).every((item, n, all) => n === 0 || item.at > all[n - 1].at)).toBe(true);
     }
     expect(riverCourse(RIVER_COURSES.length)).toBe(RIVER_COURSES[0]); expect(riverCourse(-1)).toBe(RIVER_COURSES[RIVER_COURSES.length - 1]);
@@ -336,12 +410,12 @@ describe('play again is another river', () => {
       let river = createRiver(i); const events: string[] = [];
       for (const gate of riverGates(i)) { const leg = sail(river, gate.lane, 12); river = leg.river; events.push(...leg.events); }
       expect(river.gates).toBe(3); expect(river.course).toBe(i); expect(events.filter(e => e === 'reedGate')).toHaveLength(3);
-      // never steering at all: the river waits at the first arch
+      // never steering at all: the boat waits at the first lantern
       const idle = sail(createRiver(i), 1, 20).river;
       expect(idle.gates).toBe(0); expect(idle.d).toBeCloseTo(riverGates(i)[0].at - GATE_HOLD);
     }
   });
-  it('a stone waits in the lane of the arch just passed and nudges the boat on towards the next one', () => {
+  it('a stone waits in the lane of the lantern just passed and nudges the boat on towards the next one', () => {
     for (let i = 0; i < RIVER_COURSES.length; i++) {
       const gates = riverGates(i), stones = riverCourse(i).filter(item => item.kind === 'rock');
       stones.forEach((stone, n) => {
@@ -356,8 +430,13 @@ describe('play again is another river', () => {
     expect(createBook()).toEqual(createBook(0));
     expect(createBook(1).river.course).toBe(1); expect(createBook(1).storm.gustSign).toBe(-1); expect(createBook(2).storm.gustSign).toBe(1);
     expect(createBook(RIVER_COURSES.length).river.course).toBe(0); expect(createBook(Number.NaN).river.course).toBe(0);
+    expect(createBook(1).stream).toMatchObject({ course: 1, kind: 'stoneRun', d: 0 }); expect(createBook(STREAM_COURSES.length).stream.course).toBe(0);
+    expect(riverItems(createBook(1).stream)).not.toEqual(riverItems(createBook(0).stream));
   });
-  it('the homecoming is a celebration of about two seconds before the end is offered', () => {
-    expect(HOME_MS).toBeGreaterThanOrEqual(1500); expect(HOME_MS).toBeLessThanOrEqual(2500);
+  it('the homecoming is the set-piece: rope, seven lanterns one by one, then the whole quay, in under ten seconds', () => {
+    expect(HOME_MS).toBeGreaterThanOrEqual(2500); expect(HOME_MS).toBeLessThanOrEqual(4000);
+    expect(END_MS).toBe(ROPE_MS + LAMP_MS * HARBOUR_LAMPS + 300);
+    const whole = ROPE_MS + LAMP_MS * HARBOUR_LAMPS + HOME_MS;
+    expect(whole).toBeGreaterThanOrEqual(6000); expect(whole).toBeLessThanOrEqual(10000);
   });
 });

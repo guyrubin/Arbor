@@ -3,7 +3,8 @@ import type { TextileCloth, TextileFlower, TextileMotif } from './stitchGardenRu
 import { ART_H, ART_W, CLOTH_R, HOOP_CX, HOOP_CY, cellCentre, motifStitches, stitchesFor, type Stitch, type StitchTone } from './stitchGardenStitches';
 import { PARKED_NEEDLE, type NeedlePose } from './stitchGardenMotion';
 import { critterStitches, type CritterKind } from './stitchGardenCritters';
-import { TABLE, type KitPicture } from './stitchGardenKit';
+import type { KitPicture } from './stitchGardenKit';
+import type { Want } from './stitchGardenPlay';
 import '../makerPalette.css';
 
 /** Stitch Garden's shared drawing. The cloth is the kit's own linen (the round
@@ -49,6 +50,7 @@ export function clothStyle(cloth: TextileCloth): CSSProperties {
 const pathOf = (s: Stitch) => s.cx !== undefined ? `M${s.x1} ${s.y1}Q${s.cx} ${s.cy} ${s.x2} ${s.y2}` : `M${s.x1} ${s.y1}L${s.x2} ${s.y2}`;
 const under = (c: string) => `color-mix(in srgb, ${c} 48%, var(--mk-shadow))`;
 const shine = (c: string) => `color-mix(in srgb, ${c} 42%, var(--mk-white))`;
+const ply = (c: string) => `color-mix(in srgb, color-mix(in srgb, ${c} 66%, var(--mk-shadow)) 38%, transparent)`;
 const veil = (token: string, pct: number) => `color-mix(in srgb, var(${token}) ${pct}%, transparent)`;
 
 /** One length of thread: a shadow below and to the right (the light is top
@@ -64,10 +66,12 @@ function Thread({ s, thread }: { s: Stitch; thread: number }) {
     </g>;
   }
   const d = pathOf(s);
+  // Two plies twisted together: short darker bands along the strand, under a thin line of sheen on its lit side.
   return <g data-part={s.part}>
-    <path d={d} transform="translate(.6 .8)" style={{ stroke: under(colour), strokeWidth: s.w + 0.5 }} />
+    <path d={d} transform="translate(.7 1)" style={{ stroke: under(colour), strokeWidth: s.w + 0.6 }} opacity=".85" />
     <path d={d} style={{ stroke: colour, strokeWidth: s.w }} />
-    <path d={d} transform="translate(-.3 -.4)" style={{ stroke: shine(colour), strokeWidth: Math.max(0.35, s.w * 0.3) }} opacity=".8" />
+    {s.w >= 1.9 && <path className="sg-ply" d={d} strokeLinecap="butt" style={{ stroke: ply(colour), strokeWidth: s.w * 0.86, strokeDasharray: `${(s.w * 0.34).toFixed(2)} ${(s.w * 0.62).toFixed(2)}` }} />}
+    <path d={d} transform="translate(-.3 -.4)" style={{ stroke: shine(colour), strokeWidth: Math.max(0.35, s.w * 0.28) }} opacity=".85" />
   </g>;
 }
 
@@ -99,7 +103,7 @@ export interface NeedleHandle { set(pose: NeedlePose): void }
  * calling `set`; React only draws its parts. Dipped, it shortens towards its
  * point and dimples the cloth; drawn back, it lifts off its shadow and pulls
  * the thread straight from the last stitch to its eye. */
-const Needle = forwardRef<NeedleHandle, { thread: number; gradient: string; away: boolean }>(function Needle({ thread, gradient, away }, ref) {
+const Needle = forwardRef<NeedleHandle, { thread: number; gradient: string; away: boolean; home: NeedlePose; waiting: boolean }>(function Needle({ thread, gradient, away, home, waiting }, ref) {
   const colour = THREAD_COLOURS[thread] ?? THREAD_COLOURS[0];
   const root = useRef<SVGGElement>(null), body = useRef<SVGGElement>(null), shade = useRef<SVGPathElement>(null), dimple = useRef<SVGEllipseElement>(null);
   const lead = useRef<SVGPathElement>(null), leadUnder = useRef<SVGPathElement>(null), loose = useRef<SVGGElement>(null);
@@ -124,12 +128,12 @@ const Needle = forwardRef<NeedleHandle, { thread: number; gradient: string; away
       const k = pose.anchor ? 0.5 : 0.7 + 0.5 * pose.slack;
       loose.current.style.transform = `translate(${ex.toFixed(2)}px, ${ey.toFixed(2)}px) scale(${k.toFixed(3)})`;
     }
-    if (root.current) root.current.dataset.resting = String(pose === PARKED_NEEDLE);
-  }, []);
+    if (root.current) root.current.dataset.resting = String(pose === home);
+  }, [home]);
   useImperativeHandle(ref, () => ({ set: apply }), [apply]);
-  useLayoutEffect(() => { apply(PARKED_NEEDLE); }, [apply]);
+  useLayoutEffect(() => { apply(home); }, [apply, home]);
   const strand = { stroke: colour, strokeWidth: 2 }, strandUnder = { stroke: under(colour), strokeWidth: 2.5 };
-  return <g className="sg-needle" ref={root} data-away={away} data-resting="true" pointerEvents="none">
+  return <g className="sg-needle" ref={root} data-away={away} data-resting="true" data-waiting={waiting} pointerEvents="none">
     <ellipse ref={dimple} className="sg-needle__dimple" rx="4.6" ry="3" style={{ fill: veil('--mk-shadow', 30), opacity: 0 }} />
     <g fill="none" strokeLinecap="round">
       <path ref={leadUnder} transform="translate(.6 1)" style={strandUnder} />
@@ -193,10 +197,6 @@ function HoopWood({ wood, woodIn, brass, brassHead, screw }: { wood: string; woo
 
 /* ── the scene ──────────────────────────────────────────────────────────── */
 
-const TABLE_SCALE = TABLE.ringAt / TABLE.r;
-/** Where the table picture sits in the drawing: its teal ring `ringAt` out from the hoop's centre. */
-const TABLE_BOX = { x: HOOP_CX - TABLE.cx * TABLE_SCALE, y: HOOP_CY - TABLE.cy * TABLE_SCALE, width: TABLE.width * TABLE_SCALE, height: TABLE.height * TABLE_SCALE };
-
 const RIM_R = 170, RIM_SPAN = 50;
 const RIM_PATH = (() => {
   const a = RIM_SPAN * Math.PI / 180;
@@ -224,8 +224,8 @@ export interface SceneFx {
 export interface TextileSceneProps {
   cloth: TextileCloth;
   motifs: readonly SceneMotif[];
-  /** `table`: the hoop lying on Aya's table (the game). `keptHoop`: the hoop by itself (the kept piece, the cover). */
-  view: 'table' | 'keptHoop';
+  /** `table`: the hoop lying on Aya's table, the table drawn with it. `keptHoop`: the hoop by itself (the kept piece, the cover). `play`: the hoop alone, laid on the game's own full-bleed table. */
+  view: 'table' | 'keptHoop' | 'play';
   /** The finish: 0 at work, 1 held up to the light, 2 set down again, finished. */
   held?: 0 | 1 | 2;
   /** The hem lines sewn along the lower rim (the newest, plus one fading out). */
@@ -239,6 +239,16 @@ export interface TextileSceneProps {
   needle?: Ref<NeedleHandle>;
   needleThread?: number;
   needleAway?: boolean;
+  /** Where the needle rests, in the drawing's units (its pincushion). */
+  needleHome?: NeedlePose;
+  /** The needle is held over a half-sewn flower, waiting for the next pull. */
+  needleWaiting?: boolean;
+  /** Chapter two: what the LeafLab reads at each spot of the planted row. `open` while nothing is planted there. */
+  spots?: readonly { cell: number; want: Want; open: boolean; calling?: boolean }[];
+  /** The set-piece: these flowers have bloomed up off the cloth. */
+  lifted?: readonly number[];
+  /** A pull of the thread tugs the cloth towards this point (a new `n` tugs again). */
+  tug?: { x: number; y: number; n: number } | null;
   fx?: SceneFx;
   /** The small picture is enough (tiles, the tray). */
   small?: boolean;
@@ -247,14 +257,16 @@ export interface TextileSceneProps {
   children?: ReactNode;
 }
 
+/** Undyed linen: warm, pale, a little creamier than the mat it lies over. */
+const LINEN = 'color-mix(in srgb, var(--mk-linen) 34%, var(--mk-white))';
 const NO_FX: SceneFx = {};
+const NO_SPOTS: NonNullable<TextileSceneProps['spots']> = [], NO_CELLS: readonly number[] = [];
 
 /** The whole textile: the table, the hoop's shadow, the cloth and its dye, the flowers, the hem, the wood, the needle. */
-export function TextileScene({ cloth, motifs, view, held = 0, story = [], lang, crosses = [], aim = null, press = null, needle, needleThread = 0, needleAway = false, fx = NO_FX, small = false, className, children }: TextileSceneProps) {
+export function TextileScene({ cloth, motifs, view, held = 0, story = [], lang, crosses = [], aim = null, press = null, needle, needleThread = 0, needleAway = false, needleHome = PARKED_NEEDLE, needleWaiting = false, spots = NO_SPOTS, lifted = NO_CELLS, tug = null, fx = NO_FX, className, children }: TextileSceneProps) {
   const raw = useId(), id = raw.replace(/:/g, '');
-  const ids = { vignette: `${id}v`, wood: `${id}d`, woodIn: `${id}i`, brass: `${id}b`, brassHead: `${id}h`, steel: `${id}s`, rim: `${id}r`, clip: `${id}c`, shadow: `${id}o`, beam: `${id}m`, light: `${id}l` };
+  const ids = { sheen: `${id}e`, weave: `${id}w`, sun: `${id}u`, vignette: `${id}v`, wood: `${id}d`, woodIn: `${id}i`, brass: `${id}b`, brassHead: `${id}h`, steel: `${id}s`, rim: `${id}r`, clip: `${id}c`, shadow: `${id}o`, beam: `${id}m`, light: `${id}l` };
   const tones = CLOTH_TONES[cloth];
-  const picture = small && TABLE.src480 ? TABLE.src480 : TABLE.src;
   return <svg className={['sg-scene', className].filter(Boolean).join(' ')} viewBox={`0 0 ${ART_W} ${ART_H}`} data-cloth={cloth} data-view={view} data-held={held} style={clothStyle(cloth)} aria-hidden="true" focusable="false">
     <defs>
       <radialGradient id={ids.vignette} cx=".5" cy=".5" r=".5">
@@ -299,23 +311,39 @@ export function TextileScene({ cloth, motifs, view, held = 0, story = [], lang, 
         <stop offset=".5" style={{ stopColor: 'color-mix(in srgb, var(--mk-butter) 60%, var(--mk-white))', stopOpacity: 0.85 }} />
         <stop offset="1" style={{ stopColor: 'var(--mk-white)', stopOpacity: 0 }} />
       </linearGradient>
+      {/* Plain weave, thread over thread: laid over the photographed linen so the cloth stays woven when the camera comes close. */}
+      <pattern id={ids.weave} width="6" height="6" patternUnits="userSpaceOnUse">
+        <rect x=".3" y=".5" width="2.7" height="2" rx=".9" style={{ fill: veil('--mk-white', 46) }} /><rect x="3.3" y="3.5" width="2.7" height="2" rx=".9" style={{ fill: veil('--mk-white', 46) }} />
+        <rect x="3.5" y=".3" width="2" height="2.7" rx=".9" style={{ fill: veil('--mk-white', 20) }} /><rect x=".5" y="3.3" width="2" height="2.7" rx=".9" style={{ fill: veil('--mk-white', 20) }} />
+        <path d="M0 2.75h6M0 5.75h6M3.1 0v6M.1 0v6" style={{ stroke: veil('--mk-umber', 17), strokeWidth: 0.7 }} />
+      </pattern>
+      <radialGradient id={ids.sheen} cx=".3" cy=".22" r=".95">
+        <stop offset="0" style={{ stopColor: 'var(--mk-white)', stopOpacity: tones.dye ? 0.2 : 0.5 }} />
+        <stop offset=".5" style={{ stopColor: 'var(--mk-white)', stopOpacity: 0 }} />
+        <stop offset="1" style={{ stopColor: 'var(--mk-shadow)', stopOpacity: 0.13 }} />
+      </radialGradient>
+      <radialGradient id={ids.sun} cx=".5" cy=".5" r=".5">
+        <stop offset="0" style={{ stopColor: 'var(--mk-white)', stopOpacity: 0.95 }} />
+        <stop offset=".5" style={{ stopColor: 'var(--mk-butter)', stopOpacity: 0.6 }} />
+        <stop offset="1" style={{ stopColor: 'var(--mk-sun)', stopOpacity: 0 }} />
+      </radialGradient>
       <clipPath id={ids.clip}><circle cx={HOOP_CX} cy={HOOP_CY} r={CLOTH_R + 2} /></clipPath>
       <path id={ids.rim} d={RIM_PATH} />
     </defs>
 
-    {view === 'table' && <image className="sg-table" href={picture} {...TABLE_BOX} preserveAspectRatio="none" />}
-    {/* When the hoop is held up the table falls away beneath it: paler, further off. */}
-    {view === 'table' && <rect className="sg-recede" width={ART_W} height={ART_H} style={{ fill: 'var(--mk-white)' }} />}
     {/* The hoop's shadow on the table falls down and to the right, like the window's. */}
-    <ellipse className="sg-hoop-shadow" cx={HOOP_CX + 5} cy={HOOP_CY + 8} rx="222" ry="220" fill={`url(#${ids.shadow})`} opacity={view === 'table' ? 1 : 0.5} />
+    <ellipse className="sg-hoop-shadow" cx={HOOP_CX + 5} cy={HOOP_CY + 8} rx="222" ry="220" fill={`url(#${ids.shadow})`} opacity={view === 'play' ? 1 : 0.5} />
 
     <g className="sg-work">
+      <g className="sg-tug" data-tug={tug ? tug.n % 2 : undefined} style={tug ? { transformOrigin: `${tug.x}px ${tug.y}px` } : undefined}>
       <g clipPath={`url(#${ids.clip})`}>
-        <image href={picture} {...TABLE_BOX} preserveAspectRatio="none" />
-        {tones.dye && <circle className="sg-dye" cx={HOOP_CX} cy={HOOP_CY} r={CLOTH_R + 3} style={{ fill: tones.dye, mixBlendMode: 'multiply' }} />}
-        {/* Stretched in the hoop the cloth is a touch brighter than the table, and the ring shades its near edge. */}
-        <circle cx={HOOP_CX} cy={HOOP_CY} r={CLOTH_R + 3} style={{ fill: veil('--mk-white', tones.dye ? 5 : 16) }} />
+        {/* The cloth: its own colour, woven thread over thread, lit from the window and shaded by the ring on its near edge. */}
+        <circle className="sg-dye" cx={HOOP_CX} cy={HOOP_CY} r={CLOTH_R + 3} style={{ fill: tones.dye ?? LINEN }} />
+        <circle cx={HOOP_CX} cy={HOOP_CY} r={CLOTH_R + 3} fill={`url(#${ids.sheen})`} />
+        <circle className="sg-weave" cx={HOOP_CX} cy={HOOP_CY} r={CLOTH_R + 3} fill={`url(#${ids.weave})`} />
+        {view === 'play' && <circle key={cloth} className="sg-clothflash" cx={HOOP_CX} cy={HOOP_CY} r={CLOTH_R + 3} style={{ fill: 'var(--mk-white)' }} />}
         <circle cx={HOOP_CX + 3} cy={HOOP_CY + 4} r={CLOTH_R + 2} style={{ fill: 'none', stroke: veil('--mk-shadow', 15), strokeWidth: 9 }} />
+        {spots.map(spot => <SpotPatch key={spot.cell} cell={spot.cell} want={spot.want} open={spot.open} calling={!!spot.calling} sun={ids.sun} />)}
         <circle cx={HOOP_CX} cy={HOOP_CY} r={CLOTH_R + 2} fill={`url(#${ids.vignette})`} />
         <circle className="sg-backlight" cx={HOOP_CX} cy={HOOP_CY} r={CLOTH_R + 2} fill={`url(#${ids.light})`} />
       </g>
@@ -323,6 +351,7 @@ export function TextileScene({ cloth, motifs, view, held = 0, story = [], lang, 
       <g className="sg-crosses" fill="none" strokeLinecap="round">
         {crosses.map(cell => { const c = cellCentre(cell); const y = c.y - 2;
           return <g key={cell} data-cross={cell} data-aim={aim === cell} data-press={press === cell} style={{ stroke: 'var(--sg-chalk)', strokeWidth: 2.6, strokeDasharray: '3 2.4', transformOrigin: `${c.x}px ${y}px` }}>
+            <circle className="sg-crosses__ring" cx={c.x} cy={y} r="15" style={{ strokeWidth: 1.6, strokeDasharray: '2 3.2' }} />
             <path d={`M${c.x - 7} ${y - 7}L${c.x + 7} ${y + 7}M${c.x + 7} ${y - 7}L${c.x - 7} ${y + 7}`} />
             {aim === cell && <circle cx={c.x} cy={y} r="22" style={{ strokeWidth: 2.4, strokeDasharray: '4 3' }} />}
           </g>; })}
@@ -331,8 +360,10 @@ export function TextileScene({ cloth, motifs, view, held = 0, story = [], lang, 
       <g clipPath={`url(#${ids.clip})`}>
         {fx.ghost && <g className="sg-promise"><SceneFlower motif={fx.ghost} /></g>}
         {motifs.map(({ motif, count, leaving }) => { const f = leaving ? undefined : fx.flowers?.[motif.cell], lit = leaving ? undefined : fx.shimmer?.[motif.cell], c = cellCentre(motif.cell);
-          return <g key={`${motif.cell}:${motif.flower}:${motif.thread}${leaving ? ':out' : ''}`} className="sg-flower" data-fx={f ? `${f.kind}-${f.n % 2}` : undefined} style={{ transformOrigin: `${c.x}px ${c.y + 39}px`, animationDelay: f?.delay ? `${f.delay}ms` : undefined }}>
-            <SceneFlower motif={motif} count={count} />
+          const up = lifted.includes(motif.cell);
+          return <g key={`${motif.cell}:${motif.flower}:${motif.thread}${leaving ? ':out' : ''}`} className="sg-flower" data-fx={f ? `${f.kind}-${f.n % 2}` : undefined} data-lifted={up} style={{ transformOrigin: `${c.x}px ${c.y + 39}px`, animationDelay: f?.delay ? `${f.delay}ms` : undefined }}>
+            {up && <g className="sg-flower__cast" style={{ transformOrigin: `${c.x}px ${c.y + 10}px` }}><SceneFlower motif={motif} cast /></g>}
+            <g className="sg-flower__body" style={{ transformOrigin: `${c.x}px ${c.y + 10}px` }}><SceneFlower motif={motif} count={count} /></g>
             {lit && <SceneShimmer key={`lit${lit.n}`} motif={motif} delay={lit.delay} />}
           </g>; })}
         {fx.dew && <g key={`dew${fx.dew.n}`} className="sg-dew" pointerEvents="none">
@@ -343,6 +374,7 @@ export function TextileScene({ cloth, motifs, view, held = 0, story = [], lang, 
           </g>)}
         </g>}
         {!!fx.beam && <rect key={`beam${fx.beam}`} className="sg-beam" x="-210" y="0" width="210" height={ART_H} fill={`url(#${ids.beam})`} />}
+      </g>
       </g>
 
       <g className="sg-hem" style={{ font: `900 ${lang === 'he' ? 18 : 17}px var(--studio-font, Nunito, Heebo, sans-serif)` }}>
@@ -355,18 +387,62 @@ export function TextileScene({ cloth, motifs, view, held = 0, story = [], lang, 
     </g>
 
     {children}
-    {needle && <Needle ref={needle} thread={needleThread} gradient={ids.steel} away={needleAway} />}
+    {needle && <Needle ref={needle} thread={needleThread} gradient={ids.steel} away={needleAway} home={needleHome} waiting={needleWaiting} />}
   </svg>;
 }
 
-function SceneFlower({ motif, count }: { motif: TextileMotif; count?: number }) {
+function SceneFlower({ motif, count, cast = false }: { motif: TextileMotif; count?: number; cast?: boolean }) {
   const stitches = useMemo(() => stitchesFor(motif.flower, motif.cell), [motif.flower, motif.cell]);
+  // The shadow a risen flower throws on the cloth: its own outline, in shade.
+  if (cast) return <g fill="none" strokeLinecap="round" style={{ stroke: 'var(--mk-shadow)' }}>{stitches.filter((_, i) => i % 2 === 0).map((s, i) => s.knot ? <circle key={i} cx={s.x1} cy={s.y1} r={s.w / 2} style={{ fill: 'var(--mk-shadow)', stroke: 'none' }} /> : <path key={i} d={pathOf(s)} style={{ strokeWidth: s.w + 1.4 }} />)}</g>;
   return <MotifThreads stitches={stitches} thread={motif.thread} count={count ?? stitches.length} flower={motif.flower} cell={motif.cell} />;
 }
 function SceneShimmer({ motif, delay }: { motif: TextileMotif; delay: number }) {
   const stitches = useMemo(() => stitchesFor(motif.flower, motif.cell), [motif.flower, motif.cell]);
   return <Shimmer stitches={stitches} delay={delay} />;
 }
+
+/* ── the planted row: light, water and shade on the cloth ───────────────── */
+
+/** The picture for what a spot offers and a flower likes: a sun, a drop, a fern leaf. Centred on 0,0, about 20 units across. The same three are printed on the seed packets. */
+export function WantToken({ want }: { want: Want }) {
+  if (want === 'sunSpot') return <g className="sg-token" data-want={want}>
+    <g style={{ stroke: 'var(--mk-amber)', strokeWidth: 2.2 }} strokeLinecap="round">{[0, 45, 90, 135, 180, 225, 270, 315].map(a => <path key={a} d="M0 -8.4V-10.6" transform={`rotate(${a})`} />)}</g>
+    <circle r="6" style={{ fill: 'var(--mk-sun)', stroke: 'var(--mk-amber)', strokeWidth: 1.4 }} /><circle cx="-1.8" cy="-2" r="1.8" style={{ fill: veil('--mk-white', 80) }} />
+  </g>;
+  if (want === 'dewSpot') return <g className="sg-token" data-want={want}>
+    <path d="M0 -10C4.6 -4.2 7.2 -.6 7.2 3.2A7.2 7.2 0 0 1 -7.2 3.2C-7.2 -.6 -4.6 -4.2 0 -10Z" style={{ fill: 'var(--mk-sea)', stroke: 'var(--mk-water)', strokeWidth: 1.4 }} strokeLinejoin="round" />
+    <path d="M-3.4 3.4a3.6 3.6 0 0 0 2.4 3" style={{ fill: 'none', stroke: veil('--mk-white', 85), strokeWidth: 1.5 }} strokeLinecap="round" />
+  </g>;
+  return <g className="sg-token" data-want={want}>
+    <path d="M-8.6 7.6C-8 -3 -1 -9.4 9 -9C9.6 1 3.4 8.4 -8.6 7.6Z" style={{ fill: 'var(--mk-leaf)', stroke: 'var(--mk-leaf-deep)', strokeWidth: 1.4 }} strokeLinejoin="round" />
+    <path d="M-7.6 6.8C-2.4 2.4 2.6 -2.4 6.6 -6.6M-2.6 2.2l.4 -4.4M1.4 -1.6l3.6 .5" style={{ fill: 'none', stroke: 'var(--mk-leaf-deep)', strokeWidth: 1.1 }} strokeLinecap="round" />
+  </g>;
+}
+
+const FROND: readonly (readonly [number, number, number])[] = [[-16, -7, -38], [-7, -14, -64], [4, -16, -98], [13, -9, -132], [-11, 5, -12], [12, 4, -168]];
+/** What the LeafLab reads at one spot, shown on the cloth itself: a pool of window light, a damp patch with beads of water, or the fern's shadow. */
+const SpotPatch = memo(function SpotPatch({ cell, want, open, calling, sun }: { cell: number; want: Want; open: boolean; calling: boolean; sun: string }) {
+  const c = cellCentre(cell), y = c.y - 2;
+  return <g className="sg-patch-spot" data-want={want} data-open={open} data-calling={calling} style={{ transformOrigin: `${c.x}px ${y}px` }}>
+    {want === 'sunSpot' && <>
+      <circle className="sg-patch-spot__glow" cx={c.x} cy={y} r="31" fill={`url(#${sun})`} style={{ transformOrigin: `${c.x}px ${y}px` }} />
+      <g style={{ stroke: veil('--mk-white', 70), strokeWidth: 4.4 }} strokeLinecap="round" opacity=".5">{[-11, 0, 11].map(dx => <path key={dx} d={`M${c.x + dx - 7} ${y + 18}L${c.x + dx + 7} ${y - 18}`} />)}</g>
+    </>}
+    {want === 'dewSpot' && <>
+      <ellipse cx={c.x} cy={y} rx="28" ry="27" style={{ fill: veil('--mk-water', 16) }} /><ellipse cx={c.x + 2} cy={y + 2} rx="21" ry="20" style={{ fill: veil('--mk-indigo', 9) }} />
+      {[[-15, -10, 2.6], [12, -15, 2.1], [18, 7, 2.9], [-7, 16, 2.3], [-20, 6, 1.8], [4, -20, 1.7]].map(([dx, dy, r], i) => <g key={i} className="sg-patch-spot__bead" style={{ animationDelay: `${i * 260}ms` }}>
+        <ellipse cx={c.x + dx + 0.6} cy={y + dy + 0.9} rx={r} ry={r * 1.12} style={{ fill: veil('--mk-shadow', 26) }} />
+        <ellipse cx={c.x + dx} cy={y + dy} rx={r} ry={r * 1.12} style={{ fill: veil('--mk-sky-pale', 82) }} /><circle cx={c.x + dx - r * 0.3} cy={y + dy - r * 0.4} r={r * 0.36} style={{ fill: 'var(--mk-white)' }} />
+      </g>)}
+    </>}
+    {want === 'fernShade' && <g className="sg-patch-spot__fronds" style={{ transformOrigin: `${c.x + 26}px ${y - 30}px` }}>
+      <ellipse cx={c.x} cy={y} rx="28" ry="26" style={{ fill: veil('--mk-shadow', 9) }} />
+      {FROND.map(([dx, dy, a], i) => <ellipse key={i} cx={c.x + dx} cy={y + dy} rx="11" ry="3.8" transform={`rotate(${a} ${c.x + dx} ${y + dy})`} style={{ fill: veil('--mk-leaf-deep', 30) }} />)}
+    </g>}
+    {open && <g transform={`translate(${c.x + 21} ${y - 21}) scale(.82)`}><circle r="12.5" style={{ fill: veil('--mk-white', 88), stroke: veil('--mk-shadow', 14), strokeWidth: 1 }} /><WantToken want={want} /></g>}
+  </g>;
+});
 
 /* ── things on the table ────────────────────────────────────────────────── */
 
@@ -397,16 +473,22 @@ export const CritterArt = memo(function CritterArt({ kind }: { kind: CritterKind
 
 /* ── the sewing box: pattern cards, threads, cloths ─────────────────────── */
 
-/** A round of the real linen, dyed like the chosen cloth, centred on 0,0. */
+/** A round of cloth in the chosen colour, centred on 0,0. */
 function LinenRound({ id, cloth, r, cy = 0 }: { id: string; cloth: TextileCloth; r: number; cy?: number }) {
-  const dye = CLOTH_TONES[cloth].dye, w = TABLE.width * TABLE_SCALE, h = TABLE.height * TABLE_SCALE;
+  const dye = CLOTH_TONES[cloth].dye;
   return <>
-    <defs><clipPath id={id}><circle cx="0" cy={cy} r={r} /></clipPath></defs>
+    <defs>
+      <clipPath id={id}><circle cx="0" cy={cy} r={r} /></clipPath>
+      <pattern id={`${id}w`} width="4" height="4" patternUnits="userSpaceOnUse">
+        <rect x=".2" y=".3" width="1.8" height="1.4" rx=".6" style={{ fill: veil('--mk-white', 40) }} /><rect x="2.2" y="2.3" width="1.8" height="1.4" rx=".6" style={{ fill: veil('--mk-white', 40) }} />
+        <path d="M0 1.900h4M0 3.900h4M2.100 0v4M.100 0v4" style={{ stroke: veil('--mk-umber', 22), strokeWidth: 0.4 }} />
+      </pattern>
+    </defs>
     <circle cx="1" cy={cy + 1.6} r={r} style={{ fill: veil('--mk-shadow', 16) }} />
     <g clipPath={`url(#${id})`}>
-      <image href={TABLE.src} x={-TABLE.cx * TABLE_SCALE + 70} y={cy - TABLE.cy * TABLE_SCALE + 60} width={w} height={h} preserveAspectRatio="none" />
-      {dye && <circle cx="0" cy={cy} r={r + 1} style={{ fill: dye, mixBlendMode: 'multiply' }} />}
-      <circle cx="0" cy={cy} r={r + 1} style={{ fill: veil('--mk-white', dye ? 6 : 34) }} />
+      <circle cx="0" cy={cy} r={r + 1} style={{ fill: dye ?? LINEN }} />
+      <circle cx="0" cy={cy} r={r + 1} fill={`url(#${id}w)`} opacity=".55" />
+      <circle cx={-r * 0.3} cy={cy - r * 0.35} r={r * 0.9} style={{ fill: veil('--mk-white', dye ? 8 : 26) }} />
     </g>
     <circle cx="0" cy={cy} r={r - 0.5} style={{ fill: 'none', stroke: veil('--mk-shadow', 12), strokeWidth: 1 }} />
   </>;

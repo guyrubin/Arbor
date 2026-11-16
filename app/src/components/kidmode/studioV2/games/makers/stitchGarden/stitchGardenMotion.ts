@@ -20,7 +20,7 @@ export interface NeedlePose {
   slack: number;
 }
 export type NeedleMode = 'stitch' | 'unpick' | 'flick';
-export type NeedlePhase = 'arrive' | 'atWork' | 'tie' | 'home' | 'done';
+export type NeedlePhase = 'arrive' | 'atWork' | 'tie' | 'hold' | 'home' | 'done';
 export interface NeedlePlan {
   mode: NeedleMode;
   stitches: readonly Stitch[];
@@ -28,6 +28,12 @@ export interface NeedlePlan {
   from: NeedlePose;
   /** Stitches already on the cloth when it starts (an unpick counts down from here). */
   startCount: number;
+  /** One pull of the thread: lay only stitches `first` up to (not including) `last`. Left out, the whole flower. */
+  first?: number; last?: number;
+  /** After the last stitch: tie off and go home (the default), or stay over the work with the thread held, waiting for the next pull. */
+  tieOff?: boolean;
+  /** Where the needle rests (its pincushion). Left out, `PARKED_NEEDLE`. */
+  home?: NeedlePose;
 }
 export interface NeedleFrame { pose: NeedlePose; count: number; beat: number; phase: NeedlePhase }
 
@@ -38,6 +44,8 @@ export const HAND_ANGLE = 122;
 /** One dip of the needle for every so many stitches laid. */
 export const BEAT_STITCHES = 6;
 export const ARRIVE_MS = 240, TIE_MS = 380, HOME_MS = 460, FLICK_MS = 620;
+/** One pull of the thread never takes less than this, however few its stitches; then the needle lifts and holds. */
+export const PASS_MIN_MS = 340, HOLD_MS = 170;
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 const smooth = (u: number) => { const t = clamp01(u); return t * t * (3 - 2 * t); };
@@ -47,13 +55,28 @@ const lerp = (a: number, b: number, u: number) => a + (b - a) * u;
 const turn = (a: number, b: number, u: number) => a + ((((b - a) % 360) + 540) % 360 - 180) * u;
 const endOf = (s: Stitch) => (s.knot ? { x: s.x1, y: s.y1 } : { x: s.x2, y: s.y2 });
 
+/** The stitches one plan lays: all of them, or the one pull it was asked for. */
+export function passSpan(plan: NeedlePlan): { lo: number; hi: number; per: number } {
+  const total = plan.stitches.length, whole = plan.first === undefined && plan.last === undefined;
+  const lo = Math.max(0, Math.min(total, Math.floor(plan.first ?? 0))), hi = Math.max(lo, Math.min(total, Math.floor(plan.last ?? total)));
+  const per = total === 0 ? 0 : whole ? STITCH_MS / total : Math.max(STITCH_MS / total, hi > lo ? PASS_MIN_MS / (hi - lo) : 0);
+  return { lo, hi, per };
+}
+const homeOf = (plan: NeedlePlan) => plan.home ?? PARKED_NEEDLE;
+/** Where the needle waits between two pulls: lifted over its last stitch, the thread still held. */
+export function heldPose(plan: NeedlePlan): NeedlePose {
+  const { hi } = passSpan(plan), last = endOf(plan.stitches[Math.max(0, hi - 1)]);
+  return { x: last.x + 6, y: last.y - 9, angle: HAND_ANGLE - 8, z: 0.9, anchor: last, slack: 0.32 };
+}
 export function workMs(plan: NeedlePlan): number {
   if (plan.mode === 'flick' || plan.stitches.length === 0) return 0;
-  return plan.mode === 'stitch' ? STITCH_MS : UNPICK_MS * clamp01(plan.startCount / plan.stitches.length);
+  if (plan.mode === 'stitch') { const { lo, hi, per } = passSpan(plan); return (hi - lo) * per; }
+  return UNPICK_MS * clamp01(plan.startCount / plan.stitches.length);
 }
 /** How long the whole plan takes, from leaving its rest to lying there again. */
 export function planMs(plan: NeedlePlan): number {
   if (plan.mode === 'flick') return FLICK_MS;
+  if (plan.mode === 'stitch' && plan.tieOff === false) return ARRIVE_MS + workMs(plan) + HOLD_MS;
   return ARRIVE_MS + workMs(plan) + (plan.mode === 'stitch' ? TIE_MS : 0) + HOME_MS;
 }
 /** When the flower is whole (or wholly out): the needle still has its tie-off and its way home to go. */
@@ -69,29 +92,31 @@ function between(a: NeedlePose, b: NeedlePose, u: number, hop: number): NeedlePo
 /** The needle at `t` ms into the plan. */
 export function needleAt(plan: NeedlePlan, t: number): NeedleFrame {
   const time = Math.max(0, Number.isFinite(t) ? t : 0);
-  const total = plan.stitches.length;
+  const total = plan.stitches.length, home = homeOf(plan);
   if (plan.mode === 'flick') {
     // A tapped needle hops out of its cushion, turns once in the air and lands where it was.
-    if (time >= FLICK_MS) return { pose: PARKED_NEEDLE, count: plan.startCount, beat: 0, phase: 'done' };
+    if (time >= FLICK_MS) return { pose: home, count: plan.startCount, beat: 0, phase: 'done' };
     const u = time / FLICK_MS;
-    return { pose: { ...PARKED_NEEDLE, y: PARKED_NEEDLE.y - Math.sin(Math.PI * u) * 26, angle: PARKED_NEEDLE.angle + 360 * smooth(u), z: PARKED_NEEDLE.z + Math.sin(Math.PI * u) * 1.5, slack: 1 - Math.sin(Math.PI * u) * 0.5 }, count: plan.startCount, beat: 0, phase: 'home' };
+    return { pose: { ...home, y: home.y - Math.sin(Math.PI * u) * 26, angle: home.angle + 360 * smooth(u), z: home.z + Math.sin(Math.PI * u) * 1.5, slack: 1 - Math.sin(Math.PI * u) * 0.5 }, count: plan.startCount, beat: 0, phase: 'home' };
   }
-  if (total === 0) return { pose: PARKED_NEEDLE, count: 0, beat: 0, phase: 'done' };
+  if (total === 0) return { pose: home, count: 0, beat: 0, phase: 'done' };
   const work = workMs(plan), stitching = plan.mode === 'stitch';
-  const per = stitching ? STITCH_MS / total : UNPICK_MS / total;
-  const startCount = stitching ? 0 : Math.max(0, Math.min(total, plan.startCount));
-  const first = stitching ? { x: plan.stitches[0].x1, y: plan.stitches[0].y1 } : endOf(plan.stitches[Math.max(0, startCount - 1)]);
+  const span = passSpan(plan);
+  if (stitching && span.hi === span.lo) return { pose: plan.from, count: span.lo, beat: -1, phase: 'done' };
+  const per = stitching ? span.per : UNPICK_MS / total;
+  const startCount = stitching ? span.lo : Math.max(0, Math.min(total, plan.startCount));
+  const first = stitching ? (span.lo === 0 ? { x: plan.stitches[0].x1, y: plan.stitches[0].y1 } : endOf(plan.stitches[span.lo - 1])) : endOf(plan.stitches[Math.max(0, startCount - 1)]);
   const hover: NeedlePose = { x: first.x, y: first.y, angle: stitching ? HAND_ANGLE : HAND_ANGLE - 22, z: 1, anchor: null, slack: 0.6 };
 
   if (time < ARRIVE_MS) return { pose: between(plan.from, hover, time / ARRIVE_MS, 0.5), count: startCount, beat: -1, phase: 'arrive' };
 
   const tw = time - ARRIVE_MS;
-  const last = endOf(plan.stitches[total - 1]);
+  const last = endOf(plan.stitches[(stitching ? span.hi : total) - 1]);
   if (tw < work) {
-    const done = Math.min(stitching ? total : startCount, Math.floor(tw / per) + 1);
+    const done = stitching ? Math.min(span.hi, span.lo + Math.floor(tw / per) + 1) : Math.min(startCount, Math.floor(tw / per) + 1);
     if (stitching) {
       const index = done - 1, frac = (tw / per) % 1;
-      const prev = index === 0 ? first : endOf(plan.stitches[index - 1]), here = endOf(plan.stitches[index]);
+      const prev = index === span.lo ? first : endOf(plan.stitches[index - 1]), here = endOf(plan.stitches[index]);
       const e = smooth(frac), turns = tw / per / BEAT_STITCHES, phase = turns % 1;
       const z = Math.cos(2 * Math.PI * phase);
       const lean = Math.max(-9, Math.min(9, (here.x - prev.x) * 0.9));
@@ -108,7 +133,14 @@ export function needleAt(plan: NeedlePlan, t: number): NeedleFrame {
 
   const tied: NeedlePose = { x: last.x + 9, y: last.y - 13, angle: HAND_ANGLE - 14, z: 1.25, anchor: null, slack: 0.5 };
   const lifted: NeedlePose = stitching ? tied : { x: first.x + 5, y: first.y - 6, angle: HAND_ANGLE - 22, z: 0.8, anchor: null, slack: 0.6 };
-  const endCount = stitching ? total : 0;
+  const endCount = stitching ? span.hi : 0;
+  if (stitching && plan.tieOff === false) {
+    // Not the last pull: the needle lifts off its last stitch and waits there, the thread still in its eye.
+    const held = heldPose(plan), u = (tw - work) / HOLD_MS;
+    if (u >= 1) return { pose: held, count: endCount, beat: -1, phase: 'done' };
+    const e = easeOut(u);
+    return { pose: { x: lerp(last.x, held.x, e), y: lerp(last.y, held.y, e), angle: turn(HAND_ANGLE, held.angle, e), z: lerp(0.1, held.z, e), anchor: last, slack: lerp(0.05, held.slack, e) }, count: endCount, beat: -1, phase: 'hold' };
+  }
   if (stitching && tw < work + TIE_MS) {
     // One long pull: the thread goes taut from the last stitch, then is let go.
     const u = (tw - work) / TIE_MS, e = easeOut(u / 0.7);
@@ -116,8 +148,8 @@ export function needleAt(plan: NeedlePlan, t: number): NeedleFrame {
     return { pose: { x: lerp(last.x, tied.x, e), y: lerp(last.y, tied.y, e), angle: turn(HAND_ANGLE, tied.angle, e), z: lerp(0.2, tied.z, e), anchor: cut ? null : last, slack: cut ? 0.5 : 0.25 * (1 - e) }, count: endCount, beat: -1, phase: 'tie' };
   }
   const th = tw - work - (stitching ? TIE_MS : 0);
-  if (th < HOME_MS) return { pose: between(lifted, PARKED_NEEDLE, th / HOME_MS, 0.35), count: endCount, beat: -1, phase: 'home' };
-  return { pose: PARKED_NEEDLE, count: endCount, beat: -1, phase: 'done' };
+  if (th < HOME_MS) return { pose: between(lifted, home, th / HOME_MS, 0.35), count: endCount, beat: -1, phase: 'home' };
+  return { pose: home, count: endCount, beat: -1, phase: 'done' };
 }
 
 /** A point on the hoop's wooden ring, by angle (0° at three o'clock, clockwise as drawn). */

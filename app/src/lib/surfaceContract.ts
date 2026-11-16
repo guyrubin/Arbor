@@ -88,8 +88,11 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "day-windows", hub: "today", depth: 1,
     job: "See when today is likely calm and when it is likely tricky.",
-    primaryMove: "view-day-windows", moduleBudget: 2, demotionTarget: "overview",
+    primaryMove: "accept-recap-recommendation", moduleBudget: 4, demotionTarget: "disclosure",
     // AP-051: read-only over lib/jitai.ts predictRhythm — deliberately no write.
+    // v10: the route folds into Weekly report and renders its leaf
+    // (WeeklyTab), scrolled to "Your day at a glance"; it shares that leaf's
+    // move and budget, and demotes in page (the invite disclosure).
     threadWrite: "none",
   },
   {
@@ -100,9 +103,17 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     threadWrite: "none",
   },
   {
+    route: "family-plan", hub: "today", depth: 1,
+    job: "See who has each date from the kindergarten this week, and ask an adult to take the ones nobody has.",
+    primaryMove: "family-plan-add-message", moduleBudget: 4, demotionTarget: "overview",
+    // v10.1 Family plan: its own child collection (familyPlanDates), not a
+    // buildTimeline source; nothing it writes reaches the timeline.
+    threadWrite: "none",
+  },
+  {
     route: "weekly", hub: "today", depth: 1,
     job: "Read this week's story and take one thing from it into today.",
-    primaryMove: "accept-recap-recommendation", moduleBudget: 3, demotionTarget: "overview",
+    primaryMove: "accept-recap-recommendation", moduleBudget: 4, demotionTarget: "overview",
     // Re-homed Profile → Today (Heartwood D3: the recap is a ritual, not a
     // settings page). Accepting the last card feeds Today, not the timeline —
     // no such source id exists in buildTimeline; "none" is honest.
@@ -116,8 +127,11 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     // carries the stamp while an AI digest's suggestion is not yet today's
     // step; in every other state "Back to Now" carries it, so each state
     // renders exactly one. Top level: the dashboard (`weekly-glance`, stamped
-    // by components/weekly/WeekGlance.tsx) or `weekly-empty`, then the band;
+    // by WeeklyTab) or `weekly-empty`, then the band;
     // the invite is demoted into the page's one collapsed disclosure.
+    // v10 (boards N-Week-D/M): budget 3 → 4, the four numbered stops, each
+    // stamped by WeeklyTab: the week (`weekly-glance`) or `weekly-empty`,
+    // `weekly-helped` (only beside records), `weekly-carry`, `weekly-day`.
     threadWrite: "none",
   },
 
@@ -158,7 +172,9 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "journal", hub: "journal", depth: 0,
     job: "See {name} shelf by shelf, and what to try next.",
-    primaryMove: "open-shelf", moduleBudget: 3, demotionTarget: "timeline",
+    // v10.1: 5 = the leaf TimelineTab is shared with #/timeline, whose five
+    // Moments blocks it stamps; the journal's own page renders three.
+    primaryMove: "open-shelf", moduleBudget: 5, demotionTarget: "timeline",
     // A moment added from a shelf enters the stream from behaviorLogs,
     // filed on that shelf, before any AI runs (plan §4).
     threadWrite: "behaviorLogs",
@@ -166,9 +182,11 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "timeline", hub: "journal", depth: 1,
     job: "See {name}'s moments over time, in different places and across areas.",
-    primaryMove: "capture-moment", moduleBudget: 2, demotionTarget: "journal",
-    // F-CHILD-2: Moments (toolbar · view). "Keep a moment" opens the one
-    // capture sheet, which writes a parent moment to behaviorLogs.
+    primaryMove: "choose-moments-view", moduleBudget: 5, demotionTarget: "journal",
+    // v10.1: Moments (toolbar · view on the stage, then By kind · The newest
+    // moment · Shelf by shelf). Capture moved to the shell's dock (Keep, A hard
+    // moment?, Ask Arbor), which writes a parent moment to behaviorLogs; the
+    // page's own move is choosing how to read the record.
     threadWrite: "behaviorLogs",
   },
 
@@ -208,10 +226,9 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     // (hub growth, depth 1, job "See where you are in {program} and what
     // moved.", primaryMove do-this-week, moduleBudget 3) is the residue hunk
     // in REJECTIONS P6-PRACTICE (7 Oct, session A).
-    // B-ASKJB-36: `?view=kept` (and `#/development/kept`) is the kept reader
-    // (components/kept/KeptThingsPage KeptReaderMode) — a read-and-send mode
-    // of this leaf with no stamp of its own, like language's `?view=said`.
-    // `&year=YYYY` on that mode opens the year book of the same kept words.
+    // B-ASKJB-36 / v10.1: `?view=kept` (and `#/development/kept`) resolve to
+    // Moments' kept reader (`#/timeline?kind=kept&reader=book`, lib/routes
+    // movedMode); `&year=YYYY` there opens the year book of the same words.
     threadWrite: "milestones",
   },
   {
@@ -387,7 +404,8 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "learn", hub: "learn", depth: 1,
     job: "Browse the library of three-minute parent reads.",
-    primaryMove: "open-learn-card", moduleBudget: 3, demotionTarget: "masterclasses",
+    // v10.1 (N-Library): controls, Picked for {name} (with its Linked rail), Choose an area, the shelf.
+    primaryMove: "open-learn-card", moduleBudget: 4, demotionTarget: "masterclasses",
     // Age-band filter defaults ON; provenance chip on every card. No
     // learn-done source in buildTimeline — "none".
     threadWrite: "none",

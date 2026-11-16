@@ -4,7 +4,8 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
+import { SectionCard, cardCls, Chip } from "../ui/kit";
+import MomentsKindHeader from "../moments/v10/MomentsKindHeader";
 import { ageLabel } from "../../lib/childAge";
 import { aggregateLangCounts, type LangObservation } from "../../growth/vocabAgg";
 import LanguageLabVocabView, { PhraseLogForm, WordsList } from "./LanguageLabVocabView";
@@ -112,13 +113,14 @@ export default function LanguageLabTab() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-5 sm:space-y-6">
-      <PageHeader
-        eyebrow={t("lang.eyebrow")}
+      {/* v10.1: #/language is Moments with the kind Things <name> said selected. */}
+      <MomentsKindHeader
+        kind="said"
         title={underThree ? t("lang.title") : t(gk("elev.words.said.title"), { name: first })}
-        subtitle={t("lang.subtitle", { first })}
+        sub={t("lang.subtitle", { first })}
         action={
-          <button onClick={() => setActiveTab("speech")} className="touch-target gap-1.5 px-2 text-xs font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
-            <Icon name="mic" size={14} /> {t("lang.soundPractice")}
+          <button onClick={() => setActiveTab("speech")} className="touch-target ds-link gap-1.5 px-2">
+            <Icon name="mic" size={16} /> {t("lang.soundPractice")}
           </button>
         }
       />

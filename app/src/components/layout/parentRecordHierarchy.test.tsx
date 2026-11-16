@@ -123,7 +123,7 @@ describe("record hierarchy keeps useful controls without repeating navigation or
     expect(shell).not.toContain('t("nav.sub." + hubSubKey');
     const nav = shell.slice(shell.indexOf('data-testid="secondary-sibling-nav"'), shell.indexOf("{/* Secondary pages"));
     expect(nav).not.toContain("marginBlockStart:");
-    for (const [file, key] of [["../tabs/WeeklyTab.tsx", "elev.wk.back"], ["../sections/DayWindowsPanel.tsx", "dw.back"], ["../sections/SmartRemindersPanel.tsx", "elev.sr.back"]]) {
+    for (const [file, key] of [["../tabs/WeeklyTab.tsx", "elev.wk.back"], ["../weekly/v10/YourDay.tsx", "dw.back"], ["../sections/SmartRemindersPanel.tsx", "elev.sr.back"]]) {
       expect(readFileSync(new URL(file, import.meta.url), "utf8")).not.toContain(`t("${key}")`);
     }
     for (const tab of ["weekly", "day-windows", "smart-reminders"] as const) {

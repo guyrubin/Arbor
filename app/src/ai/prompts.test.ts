@@ -35,7 +35,7 @@ describe("EVAL-6 — PROMPT_VERSIONS hash guard", () => {
 
   it("covers the contract and every extracted route prompt", () => {
     expect(KEYS.sort()).toEqual(
-      ["companion_attachments", "coach_chat", "council_synthesis", "extract_log", "non_diagnostic_contract", "voice_reply", "live_session", "todays_focus", "weekly_digest", "generate_plan", "analyze_behavior", "describe_child"].sort(),
+      ["companion_attachments", "coach_chat", "council_synthesis", "extract_log", "non_diagnostic_contract", "voice_reply", "live_session", "todays_focus", "weekly_digest", "generate_plan", "analyze_behavior", "describe_child", "family_plan_extract"].sort(),
     );
   });
 

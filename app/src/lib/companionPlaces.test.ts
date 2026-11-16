@@ -4,7 +4,7 @@ import { COMPANION_DOORS, COMPANION_PLACES, homeForTab, placeForTab } from "./co
 import { homeIdForTab, type HomeId } from "./navigation";
 describe("three places, complete route coverage", () => {
   it("keeps every deep link in a named place", () => {
-    expect(ROUTE_IDS).toHaveLength(43);
+    expect(ROUTE_IDS).toHaveLength(44);
     for (const tab of ROUTE_IDS) expect(COMPANION_PLACES).toContain(placeForTab(tab));
   });
   it("keeps family care with the child and play with Together", () => {
@@ -23,7 +23,7 @@ describe("three places, complete route coverage", () => {
  *  and Family formation is a Stories ritual in Together. */
 const TABLE_A: Record<ActiveTab, HomeId> = {
   // Today → Now
-  overview: "now", "day-windows": "now", "smart-reminders": "now", weekly: "now",
+  overview: "now", "day-windows": "now", "smart-reminders": "now", weekly: "now", "family-plan": "now",
   // Growth → My child
   development: "child", milestones: "child", language: "child", screening: "child", copilot: "child",
   // Journal / Profile → My child (strengths is retired to profile)

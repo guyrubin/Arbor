@@ -104,15 +104,16 @@ describe("COACH-8 — Behaviors capture is an honest launcher (critic r2)", () =
   // honest affordance now is a launcher: Today's QuickCaptureBar, every tile
   // opening the ONE capture sheet in place (its text field is where typing
   // happens and stays). No field on the hub swallows keystrokes.
-  it("the hub's capture is QuickCaptureBar opening the one sheet — no hub field that moves the parent's typing", () => {
-    expect(code).toMatch(/<QuickCaptureBar\s+childName=\{behFirst\}\s+onText=\{\(\) => openCaptureSheet\(\{ mode: "text" \}\)\}\s+onMode=\{\(mode\) => openCaptureSheet\(\{ mode \}\)\}/);
-    expect(code).toContain("onHardMoment={guideLead.any ? () => openHardMomentNow() : undefined}");
+  it("the hub's capture is one button opening the one sheet — no hub field that moves the parent's typing", () => {
+    // v10.1: voice and photo moved to the dock (the same sheet, those modes).
+    expect(code).toContain('data-testid="behaviors-log-hard" onClick={() => openCaptureSheet({ mode: "text" })}');
+    expect(code).toMatch(/\{guideLead\.any && \(\s*<button type="button" data-testid="behaviors-hard-now" onClick=\{\(\) => openHardMomentNow\(\)\}/);
     expect(code).not.toContain('id="behaviors-capture-text"');
     expect(code).not.toMatch(/onChange=\{\(e\) => \{ setBarText\(e\.target\.value\); openFromBar/);
     // NEGATIVE CONTROL (B-INF-13): the shipped r1 trap, put back into the real BehaviorsTab
     // source, is caught by the same check (not a literal tested against itself).
     const r1 = `<input onChange={(e) => { setBarText(e.target.value); openFromBar(e.target.value); }} />`;
-    const trapped = code.replace("<QuickCaptureBar", `${r1}\n          <QuickCaptureBar`);
+    const trapped = code.replace('<button type="button" data-testid="behaviors-log-hard"', `${r1}\n          <button type="button" data-testid="behaviors-log-hard"`);
     expect(trapped).not.toBe(code);
     expect(trapped).toMatch(/onChange=\{\(e\) => \{ setBarText\(e\.target\.value\); openFromBar/);
   });

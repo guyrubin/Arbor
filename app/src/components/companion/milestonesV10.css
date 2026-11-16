@@ -1,0 +1,154 @@
+/* v10.1 — My child › Milestones (the milestone map and the list view).
+   Ported from the My child group's board styles (N-Child-D/M, N-ChildList-D/M),
+   scoped under .ds; canvas token names resolve inside .ds (design/ds.css).
+   Area colours come from production's domain palette through --tw / --ti / --tm
+   (components/companion/domainTone.ts), never from the canvas hues. */
+
+/* ── composition ─────────────────────────────────────────────────────────── */
+.ds.ms-v10 { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.ds.ms-v10 .route { gap: 20px; }
+/* the phone route draws its stops in a 22 px gutter at the inline start */
+.ds-phone.ms-v10 .route.m { margin-inline-start: 22px; }
+.ds-desk .ms-row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 20px; align-items: stretch; }
+.ds-desk .ms-row > .stg { grid-column: span 8; display: flex; flex-direction: column; min-width: 0; }
+.ds-desk .ms-row > .rlc { grid-column: span 4; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ds-phone .ms-row { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.ds .ms-row > .stg > .scene { flex: 1; border-radius: 22px; padding: 24px 28px; }
+.ds-phone .ms-row > .stg > .scene { padding: 16px 14px; }
+.ds .rlc > .rhead { min-height: 26px; align-items: center; flex-wrap: nowrap; }
+.ds .rlc > .rhead .h3 { font-size: 20px; }
+.ds .rhead .ds-link { margin-inline-start: auto; }
+
+/* ── the scene head ──────────────────────────────────────────────────────── */
+.ds .ms-head { position: relative; z-index: 1; display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+.ds .ms-head-text { flex: 1; min-width: 0; }
+.ds .ms-head .kicker { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; }
+.ds .ms-head .title { margin: 6px 0 4px; }
+.ds .ms-sub { margin: 0; font-size: 14px; line-height: 1.4; color: var(--ink-soft); }
+.ds .ms-head-tools { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex: none; }
+.ds-phone .ms-head { flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.ds-phone .ms-head-tools { flex-direction: row; align-items: center; justify-content: space-between; align-self: stretch; }
+
+/* ── Map / List ──────────────────────────────────────────────────────────── */
+.ds .vseg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: #ffffffb3; box-shadow: inset 0 0 0 1px var(--rule-strong); }
+.ds .vseg a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 999px; font-size: 14px; font-weight: 600 !important; color: var(--ink-soft); white-space: nowrap; text-decoration: none; }
+.ds .vseg a.on { background: var(--tint-2); color: var(--sapphire-deep); box-shadow: inset 0 0 0 1.5px var(--sapphire); }
+
+/* ── the atlas: eight territories ────────────────────────────────────────── */
+.ds .ms-map { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 12px; }
+.ds .atlas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.ds .atlas.m { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ds .ms-ter-item { display: flex; min-width: 0; }
+.ds .ter { position: relative; flex: 1; display: flex; flex-direction: column; gap: 3px; min-height: 140px; padding: 12px 14px; border: 0; background: var(--tw); color: var(--ink); text-align: start; min-width: 0; cursor: pointer;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tm) 30%, transparent); font: inherit; }
+.ds .ter.quiet { background: var(--card); box-shadow: inset 0 0 0 1.5px var(--rule-strong); }
+.ds .ter.sel { box-shadow: 0 0 0 2.5px var(--sapphire-deep), 0 14px 26px -16px #14225a80; }
+.ds .ter:focus-visible { outline: 3px solid var(--sapphire); outline-offset: 3px; }
+.ds .ter .th { display: flex; align-items: center; gap: 7px; min-height: 36px; }
+.ds .ter .tg, .ds .nx .tg, .ds .area .ah .tg { width: 26px; height: 26px; flex: none; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; background: #fff; color: var(--ti); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tm) 40%, #fff); }
+.ds .ter.quiet .tg { background: var(--tw); }
+.ds .ter .tn { flex: 1; min-width: 0; font: 600 13.5px/1.18 var(--font-sans) !important; color: var(--ink); text-wrap: balance; }
+.ds .ter .ter-art { flex: none; width: 44px; height: 30px; object-fit: cover; border-radius: 10px; margin-inline-start: auto; }
+.ds .ter .tr { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+.ds .ter .tr b { font-family: var(--font-display) !important; font-weight: 500 !important; font-size: 34px; line-height: .9; letter-spacing: -.03em; font-variant-numeric: lining-nums; }
+.ds .ter .tu { flex: none; max-width: 4.6em; font: 600 12px/1.15 var(--font-sans) !important; color: var(--ti); }
+.ds .ter .tl { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; height: 30px; padding-inline-start: 6px; background: linear-gradient(var(--ti), var(--ti)) center / 100% 3px no-repeat; border-radius: 2px; }
+.ds .ter .tl .tok { --c: var(--tm); }
+.ds .ter .tl .tok + .tok { margin-inline-start: -5px; }
+.ds .ter .tx { display: flex; align-items: center; gap: 6px; font-size: 12.5px; line-height: 1.3; color: var(--ink-soft); margin-top: auto; min-width: 0; }
+.ds .ter .tx > span { flex: 1; min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.ds .ter .tx .ic, .ds .ter .tx svg, .ds .ter .tx > :last-child:not(span) { flex: none; color: var(--ti); }
+.ds .ter .tq { margin-top: auto; font-size: 13px; line-height: 1.3; color: var(--muted); }
+.ds .ter .tq b { display: block; font-weight: 600 !important; color: var(--ink-soft); font-size: 13.5px; }
+.ds .ter.sh0 { border-radius: 44px 12px 44px 12px; }
+.ds .ter.sh1 { border-radius: 44px 44px 12px 12px; }
+.ds .ter.sh2 { border-radius: 12px 44px 44px 44px; }
+[dir="rtl"] .ds .ter.sh0 { border-radius: 12px 44px 12px 44px; }
+[dir="rtl"] .ds .ter.sh2 { border-radius: 44px 12px 44px 44px; }
+.ds .ter.m { min-height: 104px; padding: 8px 10px; gap: 2px; }
+.ds .ter.m .th { min-height: 28px; gap: 6px; align-items: flex-start; }
+.ds .ter.m .tg { width: 24px; height: 24px; border-radius: 8px; }
+.ds .ter.m .tn { font-size: 12.5px !important; line-height: 1.15; padding-top: 3px; }
+.ds .ter.m .tr { min-height: 32px; gap: 6px; }
+.ds .ter.m .tr b { font-size: 30px; }
+.ds .ter.m .tx { font-size: 12px; margin-top: auto; }
+.ds .ter.m.sh0, .ds .ter.m.sh1, .ds .ter.m.sh2 { border-radius: 26px 10px 26px 10px; }
+.ds .hub { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 140px; padding: 12px; text-align: center; background: var(--card); border-radius: 28px; box-shadow: 0 0 0 1px var(--rule), 0 14px 24px -20px #14225a73; }
+.ds .hub .fig { flex-direction: column; align-items: center; gap: 4px; }
+.ds .hub .fig > b { font-size: 64px; }
+.ds .hub .fig > span { padding: 0; text-align: center; }
+.ds .ms-map-foot { display: flex; flex-direction: column; gap: 4px; }
+.ds .ms-map-foot p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--ink-soft); }
+.ds .ms-map-growing strong { font-weight: 600 !important; color: var(--ink); }
+
+/* ── object cards: In your words, the check ──────────────────────────────── */
+/* the three portrait cards join the row their page lays out */
+.ds .portrait-cards { display: contents; }
+.ds .ms-objs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.ds-phone .ms-objs { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.ds .obj { display: flex; flex-direction: column; gap: 6px; padding: 14px 18px 12px; background: var(--card); border-radius: 18px; box-shadow: var(--shadow-tile); min-width: 0; color: var(--ink); }
+.ds .obj .oh { display: flex; align-items: center; gap: 10px; }
+.ds .obj .ogi { width: 30px; height: 30px; flex: none; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--tint-2); color: var(--sapphire-deep); }
+.ds .obj .ok { margin: 0; font: 700 12px/1.2 var(--font-sans) !important; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+[dir="rtl"] .ds .obj .ok { letter-spacing: 0; }
+.ds .obj .ol { margin: 0; font-family: var(--font-display) !important; font-style: italic; font-size: 19px; line-height: 1.22; text-wrap: balance; flex: 1; }
+[dir="rtl"] .ds .obj .ol { font-style: normal; }
+.ds .obj .ms-obj-empty { color: var(--ink-soft); }
+.ds .obj .ms-obj-src, .ds .ms-check-recheck { margin: 0; font-size: 12.5px; line-height: 1.35; color: var(--ink-soft); }
+.ds .obj .portrait-card-next { color: var(--ink); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.ds .obj .oa { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0; border: 0; background: none; font: 600 14px/1 var(--font-sans) !important; color: var(--sapphire-deep); margin-top: auto; align-self: flex-start; text-decoration: none; cursor: pointer; }
+.ds .obj .oa.b { padding: 0 14px; border-radius: 12px; background: var(--tint-2); }
+.ds button.obj { border: 0; text-align: start; font: inherit; cursor: pointer; }
+.ds button.obj:focus-visible { outline: 3px solid var(--sapphire); outline-offset: 3px; }
+.ds button.obj > span { display: block; }
+.ds button.obj > .oh { display: flex; }
+.ds button.obj > .oa { display: inline-flex; }
+.ds .ms-check .ms-check-go { align-self: flex-start; margin-top: 4px; min-height: 44px; }
+.ds .ms-check .ol { font-size: 17px; }
+
+/* ── one area, opened ────────────────────────────────────────────────────── */
+.ds .area { display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; background: var(--card); border-radius: 22px; box-shadow: var(--shadow-tile); min-width: 0; flex: 1; }
+.ds-phone .area { padding: 14px; }
+.ds .area .ah { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin: -4px -6px 0; border-radius: 14px; background: var(--tw); }
+.ds .area .ah .tg { width: 30px; height: 30px; border-radius: 10px; }
+.ds .area .ms-ah-text { flex: 1; min-width: 0; }
+.ds .area .ah .ak { font: 700 11.5px/1.2 var(--font-sans) !important; letter-spacing: .06em; text-transform: uppercase; color: var(--ti); display: block; }
+[dir="rtl"] .ds .area .ah .ak { letter-spacing: 0; }
+.ds .area .ah .an { margin: 0; font: 600 18px/1.2 var(--font-display) !important; color: var(--ink); }
+.ds .area .ah .ds-link { flex: none; }
+/* production's area body (AreaRowDetail) sits on the card as is */
+.ds .area .area-detail { padding: 0; border: 0; background: none; }
+
+/* ── what to notice next ─────────────────────────────────────────────────── */
+.ds .ms-next { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.ds .nx { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 18px; background: var(--tw); min-width: 0; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tm) 22%, transparent); }
+.ds .nx .nh { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ds .nx .nk { font: 700 11.5px/1.2 var(--font-sans) !important; letter-spacing: .06em; text-transform: uppercase; color: var(--ti); flex: 1; min-width: 0; }
+[dir="rtl"] .ds .nx .nk { letter-spacing: 0; }
+.ds .nx .nm { font-family: var(--font-display) !important; font-style: italic; font-size: 18px; line-height: 1.2; margin: 0; }
+[dir="rtl"] .ds .nx .nm { font-style: normal; }
+.ds .nx .ms-next-answers { margin-top: 2px; background: #fff !important; }
+.ds .ms-next-empty { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+
+/* ── the list view: frame around production's shelf map ──────────────────── */
+.ds .ms-list-tools { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ds .ms-list-tools > * { min-width: 0; }
+.ds .ms-check-link { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 16px 20px; border-radius: 18px; background: var(--card); box-shadow: var(--shadow-tile); }
+.ds .ms-check-link p { margin: 0; flex: 1; min-width: 14em; font-size: 14px; line-height: 1.45; color: var(--ink-soft); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ds .ter, .ds .vseg a { transition: none; }
+}
+
+/* ── the Development check page (#/screening) ────────────────────────────── */
+.ds .ck-flow { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 16px; }
+.ds .ck-notes { display: flex; flex-direction: column; min-width: 0; }
+
+/* The list: production's shelf map sits flat on the scene (no card inside a
+   card), and its own heading is for screen readers (the scene's h1 and the
+   guide name it), so the first Seen it stays above the capture dock. */
+.ds.ms-list [data-testid="ms-shelf-map"] { padding: 0; background: none; border: 0; box-shadow: none; }
+.ds.ms-list #ms-map-title { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.ds.ms-list .ms-row > .stg > .scene { padding-block-start: 18px; }
+.ds .ms-head.ms-head-inline { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.ds .ms-head.ms-head-inline .title { margin: 0; }

@@ -229,9 +229,11 @@ describe("private query activation, literal symbols and ownership boundaries", (
     expect(render("private-cap-token").record.map(row => row.id)).toEqual(Array.from({ length: 12 }, (_, i) => `log-${i}`));
   });
 
+  // v10: "Visits" is Care's first pill (#/consult), so the visit words open it.
   it.each([
-    ["visit", "appointments"], ["בִּיקוּר", "appointments"],
+    ["visit", "consult"], ["בִּיקוּר", "consult"],
     ["Prepare for a visit", "consult"], ["מתכוננים לפגישה", "consult"],
+    ["appointments", "appointments"],
   ] as const)("%j navigates to the existing %s destination without changing private matches", (query, tab) => {
     h.records = records(query);
     const result = render(query);

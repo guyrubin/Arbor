@@ -46,8 +46,8 @@ describe("B-GROWTH-40 · My child's focus line says what to do next", () => {
     expect(card.match(/data-testid="portrait-goal-next"/g)).toHaveLength(1);
     expect(card.replace(/[⁦-⁩]/g, "")).toContain(`${prefix}${text}`);
     expect(card).not.toContain("Say whose turn it is");
-    // The line lives inside the one card: the count of portrait cards is unchanged.
-    expect(html.match(/class="portrait-card[ "]/g)).toHaveLength(3);
+    // The line lives inside the one card: the count of portrait cards is unchanged (v10.1 object cards).
+    expect(html.match(/class="obj[ "]/g)).toHaveLength(3);
   });
 
   it("no plan linked to the goal (older plans, no backfill) → no Next line", () => {
@@ -69,8 +69,9 @@ describe("B-GROWTH-40 · My child's focus line says what to do next", () => {
 
 describe("B-GROWTH-40 · the Next line reads whole (critic r1)", () => {
   it("clamps at two lines, never a one-line mid-word ellipsis", () => {
-    const css = readFileSync(path.resolve(__dirname, "developmentMap.css"), "utf8");
-    const rule = css.match(/\.portrait-card-next \{([^}]*)\}/)?.[1] ?? "";
+    // v10.1: the goal card is an object card; its Next line's rule lives in milestonesV10.css.
+    const css = readFileSync(path.resolve(__dirname, "milestonesV10.css"), "utf8");
+    const rule = css.match(/\.ds \.obj \.portrait-card-next \{([^}]*)\}/)?.[1] ?? "";
     expect(rule).toMatch(/-webkit-line-clamp: 2/);
     expect(rule).toMatch(/-webkit-box-orient: vertical/);
     expect(rule).not.toMatch(/white-space: nowrap/);

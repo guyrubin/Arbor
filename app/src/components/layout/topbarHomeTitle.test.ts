@@ -67,8 +67,8 @@ describe("v3 F-SHELL-2 · the header names the route's home, nothing else", () =
     }
   });
 
-  it.each(["en", "he"] as const)("all 43 routes in %s: the title is the lit home's name (chromeLitHome), in the UI language", (lang) => {
-    expect(ROUTE_IDS).toHaveLength(43);
+  it.each(["en", "he"] as const)("all 44 routes in %s: the title is the lit home's name (chromeLitHome), in the UI language", (lang) => {
+    expect(ROUTE_IDS).toHaveLength(44);
     for (const tab of ROUTE_IDS) {
       const home = chromeLitHome(homeForTab(tab));
       const named = home.kind === "place" ? home.place : home.door;

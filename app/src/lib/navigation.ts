@@ -260,7 +260,7 @@ export const SECTIONS: NavSection[] = [
       { tab: "sharing", label: "Trusted Sharing", msIcon: "share" },
       { tab: "appointments", label: "Appointments", msIcon: "calendar_month" },
       { tab: "safety", label: "Safety & Escalation", msIcon: "gpp_maybe" },
-      { tab: "handoff", label: "Care summary", msIcon: "description" },
+      { tab: "handoff", label: "Visit summary", msIcon: "description" },
     ],
     // Hub (Consult) + Safety (the load-bearing escalation surface). School Brief,
     // Trusted Sharing and Appointments are the hub's contextual tools (folded out
@@ -276,7 +276,7 @@ export const SECTIONS: NavSection[] = [
       { tab: "safety", label: "Safety", msIcon: "gpp_maybe", labelKey: "nav.pill.safety" },
     ],
     tools: [
-      { tab: "handoff", label: "Care summary", msIcon: "description" },
+      { tab: "handoff", label: "Visit summary", msIcon: "description" },
       { tab: "school-brief", label: "School brief", msIcon: "backpack", labelKey: "nav.pill.school-brief" },
       { tab: "sharing", label: "Trusted sharing", msIcon: "share", labelKey: "nav.pill.sharing" },
       { tab: "appointments", label: "Appointments", msIcon: "calendar_month" },
@@ -337,6 +337,8 @@ export const TAB_SECTION_FALLBACK: Partial<Record<ActiveTab, HubId>> = {
   // Today — the Weekly Report is the week's rhythm readout, re-homed from
   // Profile to the Today hub (Heartwood D3).
   weekly: "today",
+  // v10.1: Now › Family plan (its own pill in HOME_PILLS.now).
+  "family-plan": "today",
 
   // Ask Arbor — coach is a first-class section. B-ASKJB-12: #/scholar is
   // retired to coach (RETIRED_ROUTES; its lens choice is Ask's ToneSheet) but
@@ -406,6 +408,7 @@ export const HOME_PILLS: Readonly<Record<PillHome, readonly NavItem[]>> = {
     { tab: "overview", label: "Now", msIcon: "home" },
     { tab: "weekly", label: "Weekly report", msIcon: "bar_chart", labelKey: "nav.pill.weekly" },
     { tab: "plans", label: "Plans", msIcon: "tune", labelKey: "nav.pill.plans" },
+    { tab: "family-plan", label: "Family plan", msIcon: "groups", labelKey: "nav.pill.family-plan" },
   ],
   child: [
     { tab: "development", label: "Milestones", msIcon: "map", labelKey: "nav.pill.development" },

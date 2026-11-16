@@ -1,4 +1,5 @@
 import { appointmentRoleLabel, PROFESSION_KEY } from "../../lib/appointmentLabel";
+import { useHashQuery } from "../../hooks/useHashQuery";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import RecordingIndicator from "../ui/RecordingIndicator";
 import { speechSupported, startDictation } from "../../lib/speech";
@@ -123,7 +124,9 @@ export default function Appointments() {
   // note — never AI text), offered as something to bring to the next visit.
   const worthBringing = useMemo(() => latestParentNote(behaviorLogs ?? [], questionsCol.items), [behaviorLogs, questionsCol.items]);
   const addToQuestions = (text: string) => void questionsCol.upsert({ id: `q${Date.now()}`, text });
-  const [adding, setAdding] = useState(false);
+  // Design v10.1: Care › Visits' "Add appointment" lands here with ?add=1 — the form opens.
+  const addQuery = useHashQuery().get("add") === "1";
+  const [adding, setAdding] = useState(addQuery);
   const [form, setForm] = useState<{ who: string; profession: AppointmentProfession | ""; mode: AppointmentMode; when: string }>({ who: "", profession: "", mode: "In person", when: "" });
   const [q, setQ] = useState("");
 

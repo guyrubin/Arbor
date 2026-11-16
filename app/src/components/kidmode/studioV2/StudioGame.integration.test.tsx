@@ -181,10 +181,9 @@ describe("V2 entry, identity and persistent result", () => {
       try {
         const draw = () => render(id, () => StudioGameSession({ activityId: id, onBack: vi.fn() }));
         let tree = draw();
-        expect(tree[0].props["data-studio-phase"]).toBe("intro");
-        expect(tree.filter(node => node.type === StudioMakerCover).map(node => node.props.id)).toEqual([id, id]);
-        expect(tree.filter(node => node.type === "img")).toHaveLength(0);
-        click(tree.find(node => node.props["data-studio-start"] === "")); tree = draw();
+        // A maker opens straight into play: its own opening shot is the title, so no intro card stands in front of it.
+        expect(tree[0].props["data-studio-phase"]).toBe("play");
+        expect(tree.some(node => node.props["data-studio-start"] === "")).toBe(false);
         expect(tree.some(node => node.type === STUDIO_GAME_COMPONENTS[id])).toBe(true);
         const made = id === "mend-bowl" ? { kind: "bowl", glaze: "rose", pattern: 0, seams: [3, 2, 1, 0] } : id === "stitch-garden" ? { kind: "textile", cloth: "sage", motifs: [{ flower: "poppy", cell: 5, thread: 2 }] } : id === "bottle-lab" ? { kind: "bottle", shape: "flask", tint: "amber", finish: "frost", stickers: [] } : undefined;
         (tree.find(node => node.type === GameCompletionProvider)!.props.onComplete as (c?: unknown) => void)(made);

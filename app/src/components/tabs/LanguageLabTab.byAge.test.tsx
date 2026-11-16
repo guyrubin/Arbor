@@ -34,6 +34,8 @@ vi.mock("../../context/LanguageContext", () => ({
     t: (k: string, v?: Record<string, string | number>) => translate(h.locale, k, v),
   }),
 }));
+// v10.1: the Moments frame on top counts the kept record; none here.
+vi.mock("../../hooks/useObservationRecord", () => ({ useObservationRecord: () => ({ observations: [] }) }));
 vi.mock("../../hooks/useChildCollection", () => ({
   useChildCollection: (_id: string, name: string) => ({
     items: name === "keepsakes" ? h.keepsakes : name === "langObs" ? h.obs : [],

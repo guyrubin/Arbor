@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { placeForTab } from "./companionPlaces";
 import { translate } from "./i18n";
-import { SECTIONS } from "./navigation";
+import { HOME_PILLS, SECTIONS } from "./navigation";
 import { HASH_ALIASES, RETIRED_ROUTES, ROUTE_IDS, SUB_ROUTES, resolveRouteId, type ActiveTab } from "./routes";
 import { getSearchIndex, normalizeSearchText, UNSEARCHABLE_ROUTES, type LocalizedPair, type SearchEntry } from "./searchIndex";
 import { LEARN_CARDS } from "../learn/learnCards";
@@ -20,7 +20,6 @@ const pair = (en: string, he?: string): LocalizedPair => ({ en, he: he?.trim() ?
 const label = (key: string): LocalizedPair => pair(translate("en", key), translate("he", key));
 const excluded = {
   attribution: "Legal/credits surface reached from Settings; not somewhere a parent navigates to by name.",
-  science: "Evidence and credits, reached from a trust link in context rather than as a destination.",
 };
 
 /** Pre-change route construction fixture from 0c0f017: the three
@@ -41,12 +40,29 @@ function legacyRouteRows(): SearchEntry[] {
   for (const section of SECTIONS) {
     for (const item of section.items) add(item.tab, label("nav.tab." + item.tab), label("nav.cat." + section.id));
   }
-  for (const tab of ["weekly", "handoff"] as const) add(tab, label("sm.extra." + tab), label("sm.extra." + tab + "Sub"));
+  // v10: How Arbor works (#/science) joined the extra rows.
+  for (const tab of ["weekly", "handoff", "science"] as const) add(tab, label("sm.extra." + tab), label("sm.extra." + tab + "Sub"));
   for (const tab of ROUTE_IDS) {
     if (tab in excluded || translate("en", "nav.tab." + tab) === "nav.tab." + tab) continue;
     add(tab, label("nav.tab." + tab), label("nav.short.more"));
   }
   return rows;
+}
+
+/** v10 one name per thing (design system v10.1): a route that is a pill is
+ * shown by its pill's name (the home pill by its place), and its legacy title
+ * stays a title alias, so every legacy title still matches exactly. */
+function v10PillTitle(tab: ActiveTab): LocalizedPair | null {
+  for (const pills of Object.values(HOME_PILLS)) {
+    const pill = pills.find((p) => p.tab === tab);
+    if (pill) return pill.labelKey ? label(pill.labelKey) : pair(placeForTab(tab).en, placeForTab(tab).he);
+  }
+  return null;
+}
+function withV10Naming(row: SearchEntry): SearchEntry {
+  const title = v10PillTitle(row.tab);
+  if (!title) return row;
+  return { ...row, title, normTitles: [...new Set([title.en, title.he, row.title.en, row.title.he].map(normalizeSearchText))].filter(Boolean) };
 }
 
 const routes = getSearchIndex().filter((row) => row.kind === "route");
@@ -65,9 +81,18 @@ describe("B-SHELL-37 · current-place search subtitles", () => {
     for (const row of routes) expect(row.sub[lang], row.id).toBe(placeForTab(row.tab)[lang]);
   });
 
-  it("keeps every route id, destination, order, title and searchable field unchanged", () => {
-    expect(routes.map(withoutSubtitle)).toEqual(legacy.map(withoutSubtitle));
+  it("keeps every route id, destination, order and searchable field; pill routes show their pill's name", () => {
+    expect(routes.map(withoutSubtitle)).toEqual(legacy.map(withV10Naming).map(withoutSubtitle));
     expect(UNSEARCHABLE_ROUTES).toEqual(excluded);
+    // Every legacy title still matches exactly: matching only gains names.
+    for (const old of legacy) for (const t of old.normTitles) expect(byTab.get(old.tab)!.normTitles, old.id).toContain(t);
+  });
+
+  it("NEGATIVE CONTROL: without the v10 naming the Visits pill would still read Consult", () => {
+    const consult = legacy.find((row) => row.tab === "consult")!;
+    expect(consult.title.en).toBe(translate("en", "nav.tab.consult"));
+    expect(byTab.get("consult")!.title).toEqual(label("nav.pill.visits"));
+    expect(byTab.get("consult")!.title.en).not.toBe(consult.title.en);
   });
 
   const hashGroups: [string, [string, ActiveTab][]][] = [

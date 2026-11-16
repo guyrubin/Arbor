@@ -7,7 +7,6 @@ import { cardCls } from "../ui/kit";
 import PatternInsights from "../behaviors/PatternInsights";
 import HardMomentsSection from "../behaviors/HardMomentsSection";
 import { heldRowsSince, scriptCard } from "../behaviors/hardMomentLastTime";
-import QuickCaptureBar from "../overview/QuickCaptureBar";
 import { availableHardMomentCards, matchToRecentBehaviors } from "../../content/selectCards";
 import { locText, recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { ageMonthsFromProfile } from "../../lib/childAge";
@@ -17,6 +16,8 @@ import { ContentActionBar } from "../ui/ContentActionBar";
 import { fmtDay, fmtDayShort } from "../../lib/formatDate";
 import { patternEchoFor } from "../../lib/patternEcho";
 import { UrgentSupport } from "../safety/UrgentSupport";
+import MomentsKindHeader from "../moments/v10/MomentsKindHeader";
+import { MOMENTS_V10_COPY } from "../moments/momentsV10Copy";
 
 const DAY = 86_400_000;
 
@@ -113,22 +114,23 @@ export default function BehaviorsTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-6">
       {/* B-ASKJB-23: capture, guides and patterns only. Preserve the current
           action-first H1 and desktop rail; Journal owns the complete record. */}
+      {/* v10.1: #/behaviors is Moments with the kind Hard moments selected. */}
+      <MomentsKindHeader kind="hard" title={t("companion.moments.kind.hard")} sub={t("beh.hero.sub")} />
       <div data-testid="behaviors-grid" className="min-w-0 space-y-6 lg:grid lg:grid-cols-12 lg:grid-rows-[auto_1fr] lg:items-start lg:gap-6 lg:space-y-0">
         <section data-module="behaviors-capture" data-primary-move="log-behavior" className="min-w-0 lg:col-span-7 lg:col-start-1 lg:row-start-1" aria-label={t("beh.captureTitle")}>
         <div data-testid="behaviors-capture-card" className="min-w-0 space-y-3 rounded-[var(--r-xl)] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)", boxShadow: "var(--shadow-sm)" }}>
           <div className="min-w-0">
-            <h1 data-testid="behaviors-capture-label" className="t-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+            <h2 data-testid="behaviors-capture-label" className="t-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
               {t("beh.capture.label", { name: behFirst })}
-            </h1>
+            </h2>
+            {hasWeek && (
             <p className="mt-1 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
-              {t("beh.hero.sub")}
-              {hasWeek && (
                 <span data-testid="behaviors-week-line">
-                  {" · "}{t(heroStats.events === 1 ? "elev.beh.week.one" : "elev.beh.week", { n: heroStats.events })}
+                  {t(heroStats.events === 1 ? "elev.beh.week.one" : "elev.beh.week", { n: heroStats.events })}
                   {heroStats.resolved > 0 && <>{" · "}{t("elev.beh.week.settled", { n: heroStats.resolved })}</>}
                 </span>
-              )}
             </p>
+            )}
           </div>
           {warmLine && (
             /* NEXTLEVEL critic r1 (Law 8): the paragraph keeps the PAGE
@@ -141,12 +143,22 @@ export default function BehaviorsTab() {
                 : t("beh.warm.guide", { guide: warmLine.guide, name: behFirst })}
             </p>
           )}
-          <QuickCaptureBar
-            childName={behFirst}
-            onText={() => openCaptureSheet({ mode: "text" })}
-            onMode={(mode) => openCaptureSheet({ mode })}
-            onHardMoment={guideLead.any ? () => openHardMomentNow() : undefined}
-          />
+          {/* v10.1: the dock owns voice, photo and "A hard moment?" (the same
+              handlers and the same guide gate); the page keeps one way to log. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" data-testid="behaviors-log-hard" onClick={() => openCaptureSheet({ mode: "text" })}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 t-sm font-bold"
+              style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>
+              <Icon name="edit_note" size={18} />{MOMENTS_V10_COPY[uiLang === "he" ? "he" : "en"].logHard}
+            </button>
+            {guideLead.any && (
+              <button type="button" data-testid="behaviors-hard-now" onClick={() => openHardMomentNow()}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 t-sm font-bold"
+                style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
+                <Icon name="volunteer_activism" size={18} />{t("companion.input.hard-moment")}
+              </button>
+            )}
+          </div>
         </div>
 
 
