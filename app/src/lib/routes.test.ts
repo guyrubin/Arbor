@@ -120,29 +120,29 @@ describe("hash aliases", () => {
     expect(/^\s*strengths: ChildProfile,$/m.test("  strengths: Strengths,")).toBe(false);
   });
 
-  it("B-CAREPRO-19: #/find-pro lands on Consult; the id keeps its seat (ROUTE_IDS still 43)", () => {
+  it("B-CAREPRO-19: #/find-pro lands on Consult; the id keeps its seat (ROUTE_IDS still 44 with Family plan)", () => {
     expect(RETIRED_ROUTES["find-pro"]).toBe("consult");
     expect(resolveRouteId("#/find-pro")).toBe("consult");
     expect(ROUTE_IDS as readonly string[]).toContain("find-pro");
-    expect(ROUTE_IDS.length).toBe(43);
+    expect(ROUTE_IDS.length).toBe(44);
   });
 
-  it("B-ASKJB-12: #/scholar resolves to #/coach; the id keeps its seat like find-pro (ROUTE_IDS still 43)", () => {
+  it("B-ASKJB-12: #/scholar resolves to #/coach; the id keeps its seat like find-pro (ROUTE_IDS still 44 with Family plan)", () => {
     expect(RETIRED_ROUTES.scholar).toBe("coach");
     expect(resolveRouteId("#/scholar")).toBe("coach");
     expect(resolveRouteId("scholar")).toBe("coach");
     expect(ROUTE_IDS as readonly string[]).toContain("scholar");
-    expect(ROUTE_IDS.length).toBe(43);
+    expect(ROUTE_IDS.length).toBe(44);
   });
 
-  it("B-PLAY-10: #/journey and #/growth-journey land on Practice; the id keeps its seat (ROUTE_IDS still 43)", () => {
+  it("B-PLAY-10: #/journey and #/growth-journey land on Practice; the id keeps its seat (ROUTE_IDS still 44 with Family plan)", () => {
     expect(RETIRED_ROUTES.journey).toBe("practice");
     expect(resolveRouteId("#/journey")).toBe("practice");
     expect(resolveRouteId("journey")).toBe("practice");
     expect(resolveRouteId("#/growth-journey")).toBe("practice");
     expect(HASH_ALIASES["growth-journey"]).toBe("practice");
     expect(ROUTE_IDS as readonly string[]).toContain("journey");
-    expect(ROUTE_IDS.length).toBe(43);
+    expect(ROUTE_IDS.length).toBe(44);
   });
 
   it("v3 IA-04: #/now, #/together and #/talk land on Now, Together and the Talk door; #/my-child stays on profile (GP-19)", () => {

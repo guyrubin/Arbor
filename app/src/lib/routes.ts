@@ -38,6 +38,8 @@ export const ROUTE_IDS = [
   // Standalone parent surfaces
   "day-windows", "smart-reminders", "science", "school-brief", "bedtime-stories",
   "routines",
+  // v10.1: Now › Family plan (who has what this week; new)
+  "family-plan",
 ] as const;
 
 /** The canonical leaf-view identifier. Every hash route is `#/<ActiveTab>`. */

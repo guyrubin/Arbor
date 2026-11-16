@@ -6,7 +6,7 @@
  * a pill. Every folded route stays a deep link and lights the pill it belongs
  * to (PILL_LIT / litPillFor).
  *   - Now:      Now · Weekly report · Plans (Plans moved from Together, where
- *               it had no link) · Family plan (joins with its route)
+ *               it had no link) · Family plan (joined with its route, v10.1)
  *   - My child: Milestones · Moments · About <name>
  *   - Together: Routines · Play · Stories (the old in-page filter row)
  *   - Talk:     none (a panel over any page)
@@ -57,8 +57,8 @@ const homeTab = (home: PillHome) =>
   (COMPANION_PLACES.find((p) => p.id === home) ?? COMPANION_DOORS.find((d) => d.id === home))!.tab;
 
 describe("1 · each home's row, in the target's order", () => {
-  it("Now: Now · Weekly report · Plans", () => {
-    expect(tabsOf(HOME_PILLS.now)).toEqual(["overview", "weekly", "plans"]);
+  it("Now: Now · Weekly report · Plans · Family plan", () => {
+    expect(tabsOf(HOME_PILLS.now)).toEqual(["overview", "weekly", "plans", "family-plan"]);
   });
 
   it("My child: Milestones · Moments · About", () => {
@@ -75,9 +75,9 @@ describe("1 · each home's row, in the target's order", () => {
     expect(HOME_PILLS.talk).toEqual([]);
   });
 
-  it("fourteen pills today (Family plan makes fifteen with its route), at most four a row, none twice", () => {
+  it("fifteen pills (Family plan joined with its route), at most four a row, none twice", () => {
     const all = HOMES.flatMap((h) => tabsOf(HOME_PILLS[h]));
-    expect(all.length).toBe(14);
+    expect(all.length).toBe(15);
     expect(new Set(all).size).toBe(all.length);
     for (const home of HOMES) expect(HOME_PILLS[home].length, home).toBeLessThanOrEqual(4);
   });
@@ -234,7 +234,8 @@ describe("5 · every pill label exists in EN and HE", () => {
   });
 
   it("the rows read as the target table in English and Hebrew; About names the child", () => {
-    expect(HOME_PILLS.now.slice(1).map((it) => label("en", it))).toEqual(["Weekly report", "Plans"]);
+    expect(HOME_PILLS.now.slice(1).map((it) => label("en", it))).toEqual(["Weekly report", "Plans", "Family plan"]);
+    expect(HOME_PILLS.now.slice(1).map((it) => label("he", it))).toEqual([translate("he", "nav.pill.weekly"), "תוכניות", "תוכנית משפחתית"]);
     expect(HOME_PILLS.child.map((it) => label("en", it))).toEqual(["Milestones", "Moments", "About"]);
     expect(HOME_PILLS.together.map((it) => label("en", it))).toEqual(["Routines", "Play", "Stories"]);
     expect(HOME_PILLS.learn.map((it) => label("en", it))).toEqual(["For you", "Library"]);

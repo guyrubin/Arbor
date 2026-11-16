@@ -138,8 +138,8 @@ describe("v3 IA-01 · three places and three doors, nothing else", () => {
 });
 
 describe("v3 IA-01 · exactly one current entry on every route, from table A", () => {
-  it.each(["en", "he"] as const)("all 43 routes in %s: one aria-current, and it is the route's home", (lang) => {
-    expect(ROUTE_IDS).toHaveLength(43);
+  it.each(["en", "he"] as const)("all 44 routes in %s: one aria-current, and it is the route's home", (lang) => {
+    expect(ROUTE_IDS).toHaveLength(44);
     for (const tab of ROUTE_IDS) {
       const html = render(tab, lang);
       expect((html.match(/aria-current="page"/g) ?? []).length, tab).toBe(1);

@@ -119,6 +119,7 @@ const DayWindowsPanel = lazy(() => import("../sections/DayWindowsPanel"));
 
 // AP-058: Smart Reminders settings dashboard — parent preferences over existing JITAI.
 const SmartRemindersPanel = lazy(() => import("../sections/SmartRemindersPanel"));
+const FamilyPlanView = lazy(() => import("../familyPlan/FamilyPlanView"));
 
 // AP-060: The Science — parent-facing trust/source-transparency page (static editorial, no child data).
 const SciencePage = lazy(() => import("../tabs/SciencePage"));
@@ -191,6 +192,7 @@ const tabRegistry: Record<ActiveTab, React.ComponentType> = {
   "school-brief": ConsultTab,
   "bedtime-stories": BedtimeStoriesTab, // AP-057: Bedtime Stories (day-rooted, generate-and-discard, escalation-gated)
   routines: RoutinesTab, // Wireframe: Ready-made Routines library (Growth › Routines)
+  "family-plan": FamilyPlanView, // v10.1: Now › Family plan
 };
 
 /**
