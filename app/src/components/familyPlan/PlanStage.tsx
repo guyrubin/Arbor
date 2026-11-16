@@ -4,7 +4,7 @@ import { Fig, LivingForm, NewTag, Scene, StartHere, Token, TokenLegend } from ".
 import { stateOf, type FamilyPlanDate, type FamilyPlanState } from "../../lib/familyPlan/model";
 import type { FamilyPlanApi } from "../../hooks/useFamilyPlan";
 import type { FamilyPlanCopy } from "./familyPlanCopy";
-import { adultLabel, dayNum, dayShort, rangeLabel, weekdayShort, whenLabel, type Lang } from "./format";
+import { adultLabel, dayNum, dayShort, rangeLabel, spanLabel, weekdayShort, whenLabel, type Lang } from "./format";
 
 const tokState = (s: FamilyPlanState) => (s === "has" ? "solid" : s === "asked" ? "open" : "none") as "solid" | "open" | "none";
 
@@ -73,7 +73,7 @@ function WeekRibbon({ plan, lang, c, onOpen, phone }: Pick<StageProps, "plan" | 
 export function PlanStage({ composition, plan, lang, c, onOpen, onAsk, emptyAction }: StageProps) {
   const desk = composition === "desk";
   const { counts, dates, window: w } = plan;
-  const range = rangeLabel(w.days[0], w.days[w.days.length - 1], lang, c);
+  const range = rangeLabel(w.days[0], w.days[w.days.length - 1], lang, c, desk);
   const nobody = dates.filter((d) => stateOf(d) !== "has" && d.status === "open" && d.date >= w.today);
   const next = nobody[0] ?? null;
   const art = desk
@@ -106,7 +106,7 @@ export function PlanStage({ composition, plan, lang, c, onOpen, onAsk, emptyActi
           {art}
           {!empty && (
             <div style={{ display: "flex", gap: desk ? 28 : 12, alignItems: "flex-end", flexWrap: "nowrap", whiteSpace: desk ? "nowrap" : undefined, gridColumn: desk ? undefined : "1 / -1", padding: desk ? 0 : "8px 0 12px" }}>
-              <Fig size={desk ? "md" : "sm"} n={counts.dates} unit={c.figDates(counts.dates)} sub={desk && dates.length ? c.figRange(dayShort(dates[0].date, lang), dayShort(dates[dates.length - 1].date, lang)) : undefined} />
+              <Fig size={desk ? "md" : "sm"} n={counts.dates} unit={c.figDates(counts.dates)} sub={desk && dates.length ? spanLabel(dates[0].date, dates[dates.length - 1].date, lang, c) : undefined} />
               {counts.withAdult > 0 && <Fig size={desk ? "md" : "sm"} n={counts.withAdult} unit={c.figWithAdult(counts.withAdult)} />}
               {counts.nobodyYet > 0 && <Fig size={desk ? "md" : "sm"} n={counts.nobodyYet} unit={c.figNobody} sub={desk && next ? dayShort(next.date, lang) : undefined} className="fp-fig-none" />}
             </div>

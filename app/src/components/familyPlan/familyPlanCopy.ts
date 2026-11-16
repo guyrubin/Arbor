@@ -45,7 +45,6 @@ export interface FamilyPlanCopy {
   today: string;
   tomorrow: string;
   dueOn: Fn<[string]>;
-  reminderQueued: Fn<[string]>;
   askedAt: Fn<[string, string]>;
   noAnswer: string;
   emptyTitle: string;
@@ -61,10 +60,12 @@ export interface FamilyPlanCopy {
   messagesKept: Fn<[number, number]>;
   noMessage: string;
   requestsReminders: string;
+  /** The bell line (canvas N-Plan): what each dot is. */
+  alineRequest: Fn<[string]>;
+  alineReminder: Fn<[string, string]>;
+  askedNoAnswer: string;
+  whatChanged: string;
   inAppOnly: string;
-  requestSent: Fn<[string, string]>;
-  reminderLine: Fn<[string, string]>;
-  reminderDue: Fn<[string]>;
   noReminders: string;
   forYou: string;
   forAdult: Fn<[string]>;
@@ -216,7 +217,6 @@ const en: FamilyPlanCopy = {
   today: "Today",
   tomorrow: "Tomorrow",
   dueOn: (day) => `Due ${day}`,
-  reminderQueued: (at) => `A reminder is queued for ${at}.`,
   askedAt: (who, at) => `Asked ${who} ${at}.`,
   noAnswer: "No answer yet.",
   emptyTitle: "Nothing in the plan yet",
@@ -232,10 +232,11 @@ const en: FamilyPlanCopy = {
   messagesKept: (dates, msgs) => `${dates} ${dates === 1 ? "date" : "dates"} kept from ${msgs} ${msgs === 1 ? "message" : "messages"}`,
   noMessage: "No message yet. Paste one and Arbor drafts the dates it finds; you decide what joins the plan.",
   requestsReminders: "Requests and reminders",
+  alineRequest: (who) => `request to ${who}, sent in Arbor`,
+  alineReminder: (title, forWho) => `reminder for ${title}, ${forWho}`,
+  askedNoAnswer: "Asked, no answer yet.",
+  whatChanged: "What changed",
   inAppOnly: "Reminders show here in Arbor. No phone alert is sent.",
-  requestSent: (who, at) => `Request to ${who}, sent ${at}`,
-  reminderLine: (title, at) => `${title}, reminder ${at}`,
-  reminderDue: (title) => `${title}, reminder now`,
   noReminders: "No reminders queued.",
   forYou: "for you",
   forAdult: (who) => `for ${who}`,
@@ -402,7 +403,6 @@ const he: FamilyPlanCopy = {
   today: "היום",
   tomorrow: "מחר",
   dueOn: (day) => `עד ${day}`,
-  reminderQueued: (at) => `תזכורת ממתינה ל${at}.`,
   askedAt: (who, at) => `נשלחה בקשה ל${who} ${at}.`,
   noAnswer: "עוד אין תשובה.",
   emptyTitle: "עוד אין כלום בתוכנית",
@@ -418,10 +418,11 @@ const he: FamilyPlanCopy = {
   messagesKept: (dates, msgs) => `${dates === 1 ? "תאריך אחד נשמר" : `${dates} תאריכים נשמרו`} מ${msgs === 1 ? "הודעה אחת" : `${msgs} הודעות`}`,
   noMessage: "עוד אין הודעה. הדביקו אחת ו-Arbor ינסח את התאריכים שהוא מוצא; אתם מחליטים מה נכנס לתוכנית.",
   requestsReminders: "בקשות ותזכורות",
+  alineRequest: (who) => `בקשה ל${who}, נשלחה ב-Arbor`,
+  alineReminder: (title, forWho) => `תזכורת ל${title}, ${forWho}`,
+  askedNoAnswer: "נשלחה בקשה, עוד אין תשובה.",
+  whatChanged: "מה השתנה",
   inAppOnly: "התזכורות מופיעות כאן ב-Arbor. לא נשלחת התראה לטלפון.",
-  requestSent: (who, at) => `בקשה ל${who}, נשלחה ${at}`,
-  reminderLine: (title, at) => `${title}, תזכורת ${at}`,
-  reminderDue: (title) => `${title}, תזכורת עכשיו`,
   noReminders: "אין תזכורות ממתינות.",
   forYou: "בשבילך",
   forAdult: (who) => `בשביל ${who}`,

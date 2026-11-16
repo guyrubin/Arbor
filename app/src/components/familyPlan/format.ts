@@ -22,8 +22,9 @@ export const dayShort = (day: string, lang: Lang) => `${fmt(parseDay(day), lang,
 export const weekdayShort = (day: string, lang: Lang) => fmt(parseDay(day), lang, { weekday: "short" });
 /** "Thursday" / "יום חמישי". */
 export const weekdayLong = (day: string, lang: Lang) => fmt(parseDay(day), lang, { weekday: "long" });
-/** "Nov 19" / "19 בנוב׳". */
-export const dayMonth = (day: string, lang: Lang) => fmt(parseDay(day), lang, { day: "numeric", month: "short" });
+/** Day-first, as the boards write it: "19 Nov" / "19 בנוב׳" (long: "19 November"). */
+export const monthName = (day: string, lang: Lang, long = false) => fmt(parseDay(day), lang, { month: long ? "long" : "short" });
+export const dayMonth = (day: string, lang: Lang, long = false) => (lang === "he" ? fmt(parseDay(day), lang, { day: "numeric", month: long ? "long" : "short" }) : `${parseDay(day).getDate()} ${monthName(day, lang, long)}`);
 /** The day number alone, for a date token. */
 export const dayNum = (day: string) => String(parseDay(day).getDate());
 
@@ -39,9 +40,15 @@ export function momentLabel(ms: number | string, lang: Lang): string {
   return `${fmt(d, lang, { weekday: "short" })} ${d.getDate()}, ${fmt(d, lang, { hour: "2-digit", minute: "2-digit", hour12: false })}`;
 }
 
-/** "Nov 14 to Nov 20" — the ribbon's range. */
-export function rangeLabel(first: string, last: string, lang: Lang, c: FamilyPlanCopy): string {
-  return c.figRange(dayMonth(first, lang), dayMonth(last, lang));
+/** "14 to 20 November" (one month) or "28 Nov to 4 Dec" — the ribbon's range, day first. */
+export function rangeLabel(first: string, last: string, lang: Lang, c: FamilyPlanCopy, long = false): string {
+  const sameMonth = first.slice(0, 7) === last.slice(0, 7);
+  return sameMonth ? c.figRange(String(parseDay(first).getDate()), dayMonth(last, lang, long)) : c.figRange(dayMonth(first, lang), dayMonth(last, lang));
+}
+
+/** "Wed 18 to Wed 25 Nov" — a span of dates, the month once at the end. */
+export function spanLabel(first: string, last: string, lang: Lang, c: FamilyPlanCopy): string {
+  return c.figRange(dayShort(first, lang), `${dayShort(last, lang)} ${monthName(last, lang)}`);
 }
 
 /** Days from today to a date (0 = today). */

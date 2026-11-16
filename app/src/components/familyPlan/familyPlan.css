@@ -134,3 +134,11 @@
 .ds .fp-who button:hover:not(:disabled), .ds .nx-rb button.fp-tok:hover { background: var(--tint-2); }
 .ds.fp button:focus-visible, .ds.fp a:focus-visible, .ds.fp input:focus-visible, .ds.fp select:focus-visible, .ds.fp textarea:focus-visible { outline: 2px solid var(--sapphire); outline-offset: 2px; }
 .ds.fp .btn:disabled, .ds.fp .fp-who button:disabled { opacity: .55; }
+/* The bell line (N-Plan .nx-aline), ported: each dot is a button to its date. */
+.ds .nx-aline { display: grid; position: relative; padding: 6px 0 0; margin: 0; list-style: none; }
+.ds .nx-aline::before { content: ""; position: absolute; inset-inline: 12%; top: 28px; height: 4px; border-radius: 999px; background: #d5deee; }
+.ds .nx-aline > li { position: relative; min-width: 0; }
+.ds .nx-aline button { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; min-height: 44px; padding: 0 2px 4px; background: none; border: 0; border-radius: 14px; font-size: 12px; line-height: 1.2; font-weight: 600 !important; color: var(--ink-soft); text-align: center; cursor: pointer; }
+.ds .nx-aline button:hover { background: var(--tint-2); }
+.ds .nx-aline button > b { color: var(--ink); font-weight: 700 !important; }
+.ds .nx-aline button bdi, .ds .nx-aline button b { font-size: 12px; }
