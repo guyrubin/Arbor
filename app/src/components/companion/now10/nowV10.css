@@ -116,7 +116,9 @@
 .ds-phone .nw-stage > .nw-arc-legend { margin-bottom: 16px; gap: 6px 14px; }
 .ds .nw-stage-q { padding-top: 12px; border-top: 1px solid #14225a1a; }
 /* the lead's own cards sit on the scene as white objects */
-.ds .nw-stage .now-plan-body > .now-lead, .ds .nw-stage .now-plan-body > .now-loop-lead { background: #ffffffd9; border-radius: 18px; padding: 16px 18px; box-shadow: inset 0 0 0 1px #dbe6f7; }
+.ds .nw-stage .now-plan-body > .now-lead { background: #ffffffd9; border-radius: 18px; padding: 16px 18px; box-shadow: inset 0 0 0 1px #dbe6f7; }
+/* the loop leads (record, practice, notice, Tonight) bring their own card: no second frame around them */
+.ds .nw-stage .now-plan-body > .now-loop-lead { min-width: 0; }
 .ds .nw-stage .now-plan-foot { padding: 0 2px; }
 
 /* the day arc and the lead's face laid over its bowl */
@@ -217,3 +219,22 @@ html[lang="he"] .ds .nw-face .now-plan-say { font-style: normal; }
 .ds .nw-plan-steps .num { color: var(--ink-soft); font-weight: 600 !important; font-variant-numeric: lining-nums; }
 .ds-phone .nw-stage-head h1.kicker { font-size: 12px; letter-spacing: .06em; }
 .ds .nw-arc-legend > .ds-link { margin-inline-start: auto; }
+/* The fold: the lead's one move stays above the fold at 1280 × 800 and 375 × 812 (rendered-sweep primaryMoveOccluded). The arc keeps its
+   board proportion but caps its size, and the face rides deeper in its bowl. */
+.ds-desk .nw-stage .nw-arc { max-width: 470px; margin-inline: auto; width: 100%; box-sizing: border-box; }
+.ds-desk .nw-stage .nw-arc-face { margin-top: -30%; }
+.ds-desk .nw-stage .nw-face-art { width: 120px !important; height: 92px !important; }
+.ds-desk .nw-stage .nw-face-art img { width: 216px !important; height: 122px !important; margin: -20px 0 0 -98px !important; }
+.ds-desk .nw-stage .nw-face .now-plan-title { font-size: 28px; }
+.ds-phone .nw-stage .nw-arc { max-width: 300px; margin-inline: auto; }
+.ds-phone .nw-stage .nw-arc-face { margin-top: -30%; }
+.ds-phone .nw-stage .nw-face-art { display: none; }
+.ds-phone .nw-stage-head { padding-top: 12px; }
+.ds-phone .nw-stage .nw-arc { max-width: 260px; }
+.ds-phone .nw-stage .nw-face .now-plan-meta { display: none; }
+.ds-phone .nw-stage .nw-arc { margin-top: 12px; }
+.ds-phone .nw-stage .nw-face .now-plan-say { font-size: 14.5px; }
+.ds-phone .nw-quiet-label { display: none; }
+.ds-phone .nw-stage-head { gap: 6px 8px; }
+.ds-phone .nw-stage-head h1.kicker { font-size: 11.5px; letter-spacing: .03em; }
+.ds-phone .nw-stage-head .next1 { padding: 2px 8px; }

@@ -557,7 +557,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const worth = lead !== "urgent" ? <NowWorthKnowing lang={lang} kicker={v10.worthKnowing} readMinutes={copy.readMinutes} topicText={topic?.title} composition={composition} now={now} /> : null;
 
   const stops: GuideStop[] = [
-    { id: "now-tonight", title: v10.stops.tonight, sub: planTag },
+    { id: "now-tonight", title: v10.stops.tonight, sub: desk ? copy.subtitle : planTag },
     ...(waiting.length ? [{ id: "now-waiting", title: v10.stops.waiting, sub: thingsWaiting ? v10.things(thingsWaiting) : undefined }] : []),
     { id: "now-week", title: v10.stops.week },
     { id: "now-ahead", title: v10.stops.ahead },
@@ -571,7 +571,8 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     <div className="line between nw-stage-head">
       <span className="gsec"><h1 className="kicker" data-testid="now-kicker">{copy.title(name)}</h1><StartHere>{v10.startHere}</StartHere></span>
       {desk && dayGlance}
-      <p className="nw-stage-sub">{copy.subtitle}</p>
+      {/* Production's subtitle: stop 1's line in the desktop guide, under the h1 on the phone. */}
+      {!desk && <p className="nw-stage-sub">{copy.subtitle}</p>}
     </div>
     <NowStageContext.Provider value={stage}>{leadChain}</NowStageContext.Provider>
     {showRightNow && <NowRightNow now={now} lang={lang} visit={rightNowVisit} tonight={rightNowTonight} />}
