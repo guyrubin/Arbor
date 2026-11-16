@@ -12,7 +12,7 @@ import { TINY_BUILDERS_COPY } from './tinyBuildersCopy';
 const gradient = { addColorStop() {} };
 function fakeCanvas(width: number, height: number): HTMLCanvasElement {
   const store: Record<string, unknown> = {};
-  const ctx = new Proxy(store, { get: (target, key: string) => (key in target ? target[key] : () => gradient), set: (target, key: string, value) => { target[key] = value; return true; } });
+  const ctx = new Proxy(store, { get: (target, key) => (String(key) in target ? target[String(key)] : () => gradient), set: (target, key, value) => { target[String(key)] = value; return true; } });
   return { clientWidth: width, clientHeight: height, width: 0, height: 0, getContext: () => ctx } as unknown as HTMLCanvasElement;
 }
 interface Seen { phases: Phase[]; placed: Placed; selected: string | null; found: number; landed: readonly LandStep[]; says: string[]; toasts: string[]; captions: number[]; canRecord: boolean; layout: Layout | null; shakes: number }

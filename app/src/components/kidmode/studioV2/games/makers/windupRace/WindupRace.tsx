@@ -15,7 +15,7 @@ import { ROVER_FRONT, ROVER_MARKS } from './windupKit';
 import { createRacerSound, type RacerSound } from './windupRaceAudio';
 import { WINDUP_RACE_COPY } from './windupRaceCopy';
 import {
-  CHAPTERS, MAX_CLICKS, STEP, buildPlay, daylight, dragKey, placeReached, startRun, stepRun, tension, turnsLeft, wind,
+  CHAPTERS, MAX_CLICKS, STEP, buildPlay, daylight, dragKey, placeReached, startRun, stepRun, tension, turnsLeft, wheelAngle, wind,
   type Course, type Line, type RunEvent, type RunState,
 } from './windupRaceRules';
 import { Fx, LINE_Z, Palette, World, buildScenery, sunFor, type Frame, type PepPose, type Scenery, type Sun } from './windupWorld';
@@ -148,7 +148,7 @@ export function WindupRound({ onAgain }: { onAgain: () => void }) {
   const afterWind = useCallback((made: number, total: number) => {
     if (!made) return;
     taught.key = true; G.quiet = 0;
-    sound.current?.tick(Math.min(12, total + 1)); void selectionHaptic();
+    sound.current?.tick(total); void selectionHaptic();
     setClicks(total);
     G.svx += 0.5; G.svy -= 0.7; G.keyVel += 2.5;
     const at = G.keyAt, s = size.current;
@@ -167,6 +167,8 @@ export function WindupRound({ onAgain }: { onAgain: () => void }) {
   const go = useCallback(() => {
     if (G.phase !== 'winding') return;
     if (G.clicks === 0) { say(wRef.current.noWind, 'curious'); play.current?.back(); G.svx += 0.4; return; }
+    // The set-piece wants the whole spring.
+    if (G.chapter === 3 && G.clicks < MAX_CLICKS) { say(wRef.current.allTheWay, 'curious'); play.current?.back(); G.svx += 0.4; return; }
     setPhase('crouching'); sound.current?.crouch(); void selectionHaptic();
     say(wRef.current.go, 'wow');
   }, [G, say, setPhase]);
@@ -214,7 +216,7 @@ export function WindupRound({ onAgain }: { onAgain: () => void }) {
       else if (event.kind === 'ramp') { say(W.ramp, 'wow'); sound.current?.knock(0.6); }
       else if (event.kind === 'air') {
         say(W.air, 'wow'); play.current?.pick(); G.fx.dust(run.x - 0.4, G.roverZ, 8, 2);
-        if (G.chapter === 3 && !reducedRef.current) { G.rate = SLOW_RATE; G.shafts = 1; play.current?.setPiece(); }
+        if (G.chapter === 3 && !reducedRef.current) { G.rate = SLOW_RATE; G.shafts = 1; if (!G.told.has('swell')) { G.told.add('swell'); play.current?.setPiece(); } }
       } else if (event.kind === 'apex') { if (G.chapter !== 3 && !reducedRef.current) G.rate = BREATH_RATE; G.fx.glints(run.x, run.y + 0.5, G.roverZ, 6, 0.6); }
       else if (event.kind === 'land') {
         G.rate = 1; G.svx = 3.2; G.svy = -4.2 - Math.min(3, event.value); G.shake = 6 + Math.min(8, event.value * 1.6); G.freeze = reducedRef.current ? 0 : 0.05;
@@ -250,7 +252,7 @@ export function WindupRound({ onAgain }: { onAgain: () => void }) {
   /* ---------- one frame ---------- */
   const shots = useCallback(() => {
     const s = size.current, portrait = s.h > s.w * 1.05;
-    const roverPx = clamp(Math.min(s.w * 0.44, s.h * 0.34), 110, 250), Z = roverPx / ROVER_FRONT.wide;
+    const roverPx = clamp(Math.min(s.w * 0.44, s.h * 0.34), 110, 230), Z = roverPx / ROVER_FRONT.wide;
     return { Z, portrait, ax: portrait ? 0.48 : 0.42, ay: portrait ? 0.6 : 0.66 };
   }, []);
 
@@ -345,7 +347,7 @@ export function WindupRound({ onAgain }: { onAgain: () => void }) {
     else if (G.phase === 'crouching' && G.phaseT >= CROUCH_S) launch();
     else if (G.phase === 'resting' && G.phaseT >= REST_S) beginWinding();
     else if (G.phase === 'flourish' && G.phaseT >= FLOURISH_S) {
-      if (G.chapter >= CHAPTERS.length - 1) { setPhase('finale'); play.current?.setPiece(); sound.current?.fanfare(); say(W.finale, 'wow'); G.fx.petals(rx, 3.5, 1.5, 24, 0); }
+      if (G.chapter >= CHAPTERS.length - 1) { setPhase('finale'); if (!G.told.has('swell')) { G.told.add('swell'); play.current?.setPiece(); } sound.current?.fanfare(); say(W.finale, 'wow'); G.fx.petals(rx, 3.5, 1.5, 24, 0); }
       else setPhase('travelling');
     } else if (G.phase === 'travelling') {
       G.fade = clamp(G.phaseT / TRAVEL_S);
@@ -366,7 +368,7 @@ export function WindupRound({ onAgain }: { onAgain: () => void }) {
     let target: Shot = windShot, subjectX = rx, cut = false;
     if (G.phase === 'openShot') {
       const k = still ? 1 : ease(G.phaseT / (OPEN_S - 0.4));
-      target = { bearing: lerp(0.95, ROVER_BEARING, k), elevation: lerp(0.5, 0.27, k), distance: lerp(13, 4.4, k), zoom: Z * lerp(0.36, 1, k), ax: lerp(0.5, ax, k), ay: lerp(0.56, ay, k), lead: lerp(5, 0, k) };
+      target = { bearing: lerp(0.9, ROVER_BEARING, k), elevation: lerp(portrait ? 0.46 : 0.33, 0.27, k), distance: lerp(13, 4.4, k), zoom: Z * lerp(0.4, 1, k), ax: lerp(0.5, ax, k), ay: lerp(portrait ? 0.56 : 0.7, ay, k), lead: lerp(5, 0, k) };
       cut = true;
     } else if (G.phase === 'scoutPan') {
       const k = still ? 1 : ease(G.phaseT / SCOUT_S);
@@ -412,7 +414,7 @@ export function WindupRound({ onAgain }: { onAgain: () => void }) {
       ctx.setTransform(s.dpr, 0, 0, s.dpr, 0, 0);
       const f: Frame = {
         width: s.w, height: s.h, time: G.clock, cam, course: laid, scenery: G.scenery, sun: G.sun, reduced: still,
-        rover: { x: rx, y: ry + G.hop, z: G.roverZ, pitch: G.pitch, sx: G.sx, sy: G.sy, rear: view.face === 'rear', flip: view.flip, glow: G.glow, keyAngle: G.keyAngle, keySpin: run && turnsLeft(run) > 0.05 ? 1 : 0, tight: wound, tremble: G.tremble, lean: G.leanK },
+        rover: { x: rx, y: ry + G.hop, z: G.roverZ, pitch: G.pitch, sx: G.sx, sy: G.sy, rear: view.face === 'rear', flip: view.flip, glow: G.glow, keyAngle: G.keyAngle, keySpin: run && turnsLeft(run) > 0.05 ? 1 : 0, tight: wound, tremble: G.tremble, lean: G.leanK, wheel: wheelAngle(rx), roll: clamp(rv / 7) },
         pep: { x: pep.x, y: pep.y, z: pep.z, pose: pep.pose, flip: pep.pose === 'side' ? pep.faceRight === cam.rx > 0 : cam.rx < 0, sx: pep.sx, sy: pep.sy, show: true },
         blooms: G.blooms, goalBloom: G.goalBloom, balls: (run ? run.balls : G.balls ?? laid.balls.map(b => ({ x: b.at, line: b.line }))).map(b => ({ x: b.x, z: b.line === 'low' ? -LINE_Z : b.line === 'high' ? LINE_Z : 0 })),
         cushion: G.cushion, signTurn: G.signTurn, line: G.line, speed: G.phase === 'running' ? clamp((rv - 5) / 8) : 0, flash: G.flash, fade: G.fade,

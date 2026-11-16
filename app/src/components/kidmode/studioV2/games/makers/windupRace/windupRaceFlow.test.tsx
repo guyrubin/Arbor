@@ -114,7 +114,7 @@ describe('Wind-up Racer, start to finish', () => {
     // Space winds, the key's own button winds, each click ticks one step higher.
     h.keys.keydown({ key: ' ', code: 'Space', target: null, preventDefault() {} }); tree = render();
     tree.find(n => n.props['data-wr-key'] !== undefined)!.props.onKeyDown({ key: 'Enter', preventDefault() {} }); tree = render();
-    expect(at(tree, 'data-clicks')).toBe(2); expect(h.racer.tick.mock.calls.map(call => call[0])).toEqual([2, 3]);
+    expect(at(tree, 'data-clicks')).toBe(2); expect(h.racer.tick.mock.calls.map(call => call[0])).toEqual([1, 2]);
     expect(tree.find(n => n.props['data-wr-key'] !== undefined)!.props['aria-label']).toBe('The wind-up key. The spring is wound a little.');
     expect(button(tree, 'data-wr-go')!.props.tone).toBe('go');
     expect(tree.filter(n => n.type === HudButton && n.props.tone === 'go')).toHaveLength(1);
@@ -149,7 +149,10 @@ describe('Wind-up Racer, start to finish', () => {
       if (phase === 'winding') {
         expect(Object.values(w).flatMap(v => (typeof v === 'string' ? [v] : Object.values(v as object) as string[]))).toContain(coach(tree).line);
         // The set-piece asks for the whole spring: Go only appears when it is wound all the way.
-        if (chapter === 'sunArches') { press(button(tree, 'data-wr-wind')); tree = render(); expect(button(tree, 'data-wr-go')).toBeUndefined(); expect(coach(tree).line).toBe(w.allTheWay); }
+        if (chapter === 'sunArches') {
+          press(button(tree, 'data-wr-wind')); tree = render(); expect(button(tree, 'data-wr-go')).toBeUndefined(); expect(coach(tree).line).toBe(w.allTheWay);
+          h.keys.keydown({ key: 'Enter', target: null, preventDefault() {} }); tree = render(); expect(at(tree, 'data-phase')).toBe('winding');
+        }
         if (chapter === 'longCourse' && button(tree, 'data-wr-line')) { press(button(tree, 'data-wr-line')); tree = render(); expect(at(tree, 'data-line')).toBe('high'); }
         tree = oneGo(lang); goes++;
         if (h.racer.rustle.mock.calls.length) leaned = true;

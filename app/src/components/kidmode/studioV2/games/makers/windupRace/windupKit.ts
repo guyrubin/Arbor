@@ -19,14 +19,14 @@ const sprite = (src: string, w: number, h: number, footX: number, footY: number,
 /** Rover, three-quarter view from the front, nose to the right (board 22, the
  * Rover Delivery strip), re-cut at four times the board's size. `button` is
  * the top of its start button, where the wind-up key stands; `eyes` its two
- * lamps; `wheels` where the two near wheels touch the floor. */
+ * lamps; `wheels` the hub of each near wheel (centre, then half its width and height as drawn). */
 export const ROVER_FRONT = sprite(studioMakerArt('windup-race-rover-front'), 640, 458, 310, 432, 1.27);
 /** The same render seen as Rover's back: the visor is painted over with the
  * shell's own cream and the play mark is taken off the button, nothing else.
  * It lets a chase camera follow Rover from behind. Stored like the front (the
  * tail to the right); the world flips it. */
 export const ROVER_REAR = sprite(studioMakerArt('windup-race-rover-rear'), 640, 458, 310, 432, 1.27);
-export const ROVER_MARKS = { buttonX: 324, buttonY: 60, eyes: [[484, 242, 30], [579, 221, 20]], wheels: [[59, 409], [252, 446]] } as const;
+export const ROVER_MARKS = { buttonX: 324, buttonY: 60, eyes: [[484, 242, 30], [579, 221, 20]], wheels: [[60, 327, 31, 52], [252, 351, 43, 60]] } as const;
 
 export const KIT_SOURCES: readonly { art: string; width: number; height: number; source: string }[] = [
   { art: 'makers/windup-race-rover-front.webp', width: 640, height: 458, source: 'kit/v30/22-bop-props-T05-T07.png (T07 strip, the rover at the left; cut out, callout dot retouched off the button)' },

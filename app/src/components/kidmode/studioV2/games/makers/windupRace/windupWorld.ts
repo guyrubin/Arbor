@@ -209,7 +209,7 @@ export type PepPose = 'sit' | 'bow' | 'side';
 export interface Frame {
   width: number; height: number; time: number;
   cam: Camera; course: Course; scenery: Scenery; sun: Sun; reduced: boolean;
-  rover: { x: number; y: number; z: number; pitch: number; sx: number; sy: number; rear: boolean; flip: boolean; glow: number; keyAngle: number; keySpin: number; tight: number; tremble: number; lean: number };
+  rover: { x: number; y: number; z: number; pitch: number; sx: number; sy: number; rear: boolean; flip: boolean; glow: number; keyAngle: number; keySpin: number; tight: number; tremble: number; lean: number; wheel: number; roll: number };
   pep: { x: number; y: number; z: number; pose: PepPose; flip: boolean; sx: number; sy: number; show: boolean };
   /** How open each trackside flower is (0 folded .. 1 open), and the big one at the goal. */
   blooms: readonly number[]; goalBloom: number;
@@ -327,13 +327,15 @@ export class World {
   /** The floor's light: sun everywhere, the wall's shade laid over it, the arches' pools cut back in. Small and soft. */
   private drawLight(f: Frame): HTMLCanvasElement | null {
     if (typeof document === 'undefined') return null;
-    const k = 1 / 5, w = Math.max(2, Math.ceil(f.width * k)), h = Math.max(2, Math.ceil(f.height * k));
+    const k = 1 / 3, w = Math.max(2, Math.ceil(f.width * k)), h = Math.max(2, Math.ceil(f.height * k));
     const map = this.lightMap ?? (this.lightMap = document.createElement('canvas'));
     if (map.width !== w || map.height !== h) { map.width = w; map.height = h; }
     const g = map.getContext('2d'); if (!g) return null;
     const warm = f.sun.warm, shade = mixTone(mixTone(this.c(T.snowShade), this.c(T.steel), 0.35), this.c(T.lilac), warm * 0.22);
     const lit = mixTone(this.c(T.white), this.c(T.butter), warm * 0.3);
     g.globalCompositeOperation = 'source-over'; g.fillStyle = ink(lit); g.fillRect(0, 0, w, h);
+    // A soft edge to every shadow, where the browser can blur a canvas (elsewhere the small map's own softness does).
+    if ('filter' in g) g.filter = 'blur(1.6px)';
     const { cam, course, sun } = f;
     for (const zone of course.zones) {
       if (zone.kind === 'arcade') {
@@ -345,6 +347,7 @@ export class World {
       }
     }
     for (const c of f.scenery.arches) if (Math.abs(c - cam.ex) < 120) fillPoly(g, cam, poolPoints(c, sun), ink(lit), k);
+    if ('filter' in g) g.filter = 'none';
     return map;
   }
 
@@ -429,7 +432,7 @@ export class World {
 
     /* -- the sun through the arches, on everything that lies on the floor -- */
     const light = this.drawLight(f);
-    if (light) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.imageSmoothingEnabled = true; ctx.drawImage(light, 0, 0, W, H); ctx.restore(); }
+    if (light) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(light, 0, 0, W, H); ctx.restore(); }
     // The polished stone picks up the bright arches.
     for (const a of scenery.arches) {
       const p = project(cam, a, 0, WALL_Z); if (!p || p.x < -W || p.x > 2 * W) continue;
@@ -725,6 +728,13 @@ export class World {
     if (lit < 0.98) { const dark = this.pictures.shade(`${s.src}|0`, img, mixTone(c(T.slate), c(T.bluebell), 0.35), 0.24); if (dark) { ctx.globalAlpha = 1 - lit; ctx.drawImage(dark, -s.footX * k, -s.footY * k, s.w * k, s.h * k); ctx.globalAlpha = 1; } }
     // In the slow moment the sunbeam catches the whole shell.
     if (f.shafts > 0.05) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.1 * f.shafts * lit; ctx.drawImage(img, -s.footX * k, -s.footY * k, s.w * k, s.h * k); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }
+    // The hubs turn: three soft spokes of shade on each wheel face, lost in a blur at speed.
+    if (rover.roll < 0.95) for (const [wx, wy, rx, ry] of ROVER_MARKS.wheels) {
+      ctx.save(); ctx.translate((wx - s.footX) * k, (wy - s.footY) * k); ctx.scale(rx * k, ry * k); ctx.rotate(rover.wheel * (rover.rear ? -1 : 1));
+      ctx.fillStyle = ink(c(T.woodDark), 0.13 * (1 - rover.roll));
+      for (let i = 0; i < 3; i++) { ctx.rotate(Math.PI * 2 / 3); ctx.beginPath(); ctx.moveTo(0.16, -0.07); ctx.lineTo(0.92, -0.2); ctx.arc(0, 0, 0.94, -0.21, 0.21); ctx.lineTo(0.16, 0.07); ctx.closePath(); ctx.fill(); }
+      ctx.restore();
+    }
     // Its lamps glow brighter the tighter the spring.
     if (!rover.rear) {
       ctx.globalCompositeOperation = 'lighter';
