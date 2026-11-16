@@ -10,7 +10,7 @@ import { useAdventureVoice } from './AdventureGuide';
 import { AdventureHeading, AdventureSteps, ChallengePicker } from './AdventureShared';
 import { ADVENTURE_COPY } from './adventureCopy';
 import { defaultChallenge, type Challenge } from './adventureRules';
-import { BopFriend, BopScene, BopSprite } from './BopArt';
+import { BopCheer, BopFriend, BopScene, BopSprite } from './BopArt';
 import { createBopTones, type BopTones } from './bopTones';
 import { ROVER_DELIVERY_COPY, roverLine, type RoverDeliveryWords } from './roverDeliveryCopy';
 import { ARRIVED_MS, HINT_AFTER, OOPS_MS, PRESS_MS, RETURN_MS, ROVER_ROUNDS, STEP_MS, cellColumn, cellRow, faceToward, headingOf, initialTurns, levelFor, roverAtStart, roverHint, roverTone, runRover, type RoverHint, type RoverLevel, type RoverPlace, type RoverRun } from './roverDeliveryRules';
@@ -144,6 +144,7 @@ export default function RoverDelivery() {
         <div className="adventure-toolbar">{phase === 'ready' && <ChallengePicker value={challenge} onChange={reset} words={shared} />}<AdventureSteps done={levelsDone} total={ROVER_ROUNDS} /></div>
         <AdventureHeading focusKey={`${round}:${runs}:${busy ? phase : 'plan'}`} onHear={guide.replay} muted={guide.muted || busy}>{cue}</AdventureHeading>
         <div className="bop-stage rover-stage" data-phase={phase} data-size={level.size}>
+          <BopCheer beat={phase === 'arrived' ? levelsDone : null} big={phase === 'arrived' && levelsDone >= ROVER_ROUNDS} />
           <BopScene scene="scene-floor" />
           {/* The floor is a map: it keeps its own left and right in every language. */}
           <div className="rover-board" dir="ltr" role="group" aria-label={w.board} style={{ '--rover-n': level.size } as CSSProperties}>
