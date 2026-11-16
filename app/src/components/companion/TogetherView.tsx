@@ -17,6 +17,7 @@ import { DsRoot, Guide, MoreLink, Route, scrollToSection, Token } from "../../de
 import { Draw, FrameFigure, FrameHead, IndexRow, RailTile, ReadGuide, StageCard, type IndexItem } from "../moments/v10/frame";
 import "../moments/mychild.css";
 import { useComposition } from "../../design/useComposition";
+import { useShortViewport } from "../together/useShortViewport";
 import { openFamilyTopicSheet } from "./familyTopicEvents";
 import TogetherRoutines, { BAND_ICON, BAND_OF, BANDS } from "./TogetherRoutines";
 import { routineSlot, todaysRhythm, type RhythmSlot } from "./togetherRhythm";
@@ -78,6 +79,8 @@ function ScopedTogetherView() {
   const lang = uiLang === "he" ? "he" : "en";
   const copy = TOGETHER_COPY[lang];
   const composition = useComposition();
+  // Under the boards' height the band goes compact (first action above the Ask bar).
+  const short = useShortViewport();
   const phone = composition === "phone";
   const ids = useId();
   const name = childProfile.name?.split(" ")[0] || t("companion.together-view.your-child");
@@ -149,7 +152,7 @@ function ScopedTogetherView() {
       <TogetherRoutines composition={composition} headingId={routinesId} primaryMoveProps={START_ROUTINE_MOVE} />
     </div>
   );
-  const chainStrip = <ChainStrip nodes={chain} composition={composition} label={copy.chainLabel(name)} />;
+  const chainStrip = <ChainStrip nodes={chain} composition={composition} label={copy.chainLabel(name)} line={short} />;
   const guideTile = (
     <RailTile icon="grid_view" title={copy.howToRead}>
       <ReadGuide
@@ -209,7 +212,7 @@ function ScopedTogetherView() {
           {/* 1 · the header band: the page's h1, the figure, the index of the times of day and the chain. */}
           <section className="rsec" id="times" aria-labelledby={routinesId}>
             <span className="rstop on" style={{ top: 14 }} aria-hidden="true">1</span>
-            <div className="scene now" style={{ padding: phone ? "16px 14px 14px" : "22px 28px 18px", gap: phone ? 12 : 16 }}>
+            <div className={short ? "scene now compact-band" : "scene now"} style={{ padding: phone ? (short ? "12px 12px 10px" : "16px 14px 14px") : (short ? "16px 24px 14px" : "22px 28px 18px"), gap: short ? 10 : phone ? 12 : 16 }}>
               <i className="orb" style={{ width: 360, height: 360, right: -170, top: -230, opacity: 0.55 }} />
               <FrameHead
                 phone={phone}

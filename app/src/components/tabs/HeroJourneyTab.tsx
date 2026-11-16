@@ -82,6 +82,7 @@ import { DsRoot, Guide, Route, RouteSection, Token } from "../../design/primitiv
 import { Draw, FrameFigure, FrameHead, RailTile, ReadGuide } from "../moments/v10/frame";
 import "../moments/mychild.css";
 import { useComposition } from "../../design/useComposition";
+import { useShortViewport } from "../together/useShortViewport";
 import { ChainStrip } from "../together/ChainStrip";
 import { TOGETHER_COPY } from "../together/togetherCopy";
 import StoriesPlanBook from "../together/StoriesPlanBook";
@@ -215,6 +216,8 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const { toast } = useToast();
   // v10.1: Stories' composition and its words.
   const composition = useComposition();
+  // Under the boards' height the band goes compact ("Read it together" above the Ask bar).
+  const shortViewport = useShortViewport();
   const tCopy = TOGETHER_COPY[uiLang === "he" ? "he" : "en"];
   // OBJ-KID-04: ToastContext QUEUES toasts while kid-locked, so a failed start
   // inside Kid Mode was silent — the child tapped Play and nothing moved. Branch
@@ -993,7 +996,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         <Route composition={composition}>
         <RouteSection id="tonight" n={1} on>
         {/* V77: the header band, as on Now and My child — the page's h1, the books figure and (desk) the chain. */}
-        <div className="scene now" style={{ padding: composition === "phone" ? "14px 14px 12px" : "22px 28px 18px", gap: composition === "phone" ? 10 : 16 }}>
+        <div className={shortViewport ? "scene now compact-band" : "scene now"} style={{ padding: composition === "phone" ? (shortViewport ? "10px 12px 8px" : "14px 14px 12px") : (shortViewport ? "16px 24px 14px" : "22px 28px 18px"), gap: shortViewport ? 6 : composition === "phone" ? 10 : 16 }}>
           <i className="orb" style={{ width: 360, height: 360, right: -170, top: -230, opacity: 0.55 }} />
           <FrameHead
             phone={composition === "phone"}
