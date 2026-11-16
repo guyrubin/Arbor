@@ -44,5 +44,5 @@ export const WAITRING: KitPicture & { readonly lights: readonly { x: number; y: 
   ...library('kit-tool-waitring', 638, 354, 'kit/v30/02-gobgob-identity-wardrobes.png'),
   lights: [{ x: 0.138, y: 0.505, w: 0.19, h: 0.215 }, { x: 0.338, y: 0.575, w: 0.154, h: 0.165 }, { x: 0.502, y: 0.572, w: 0.148, h: 0.165 }, { x: 0.657, y: 0.528, w: 0.137, h: 0.19 }],
 };
-/** Aya's LeafLab: the puck that reads water, light and warmth. The library picture holds the whole set; `crop` is the closed puck alone, in its pixels. */
+/** Aya's LeafLab: the puck that reads water, light and warmth. The library picture holds the whole set; the crop box is the closed puck alone, in its pixels. */
 export const LEAFLAB: (KitPicture & { readonly crop: { x: number; y: number; w: number; h: number } }) | null = { ...library('kit-tool-leaflab', 640, 543, 'kit/v30/05-aya.png'), crop: { x: 6, y: 98, w: 326, h: 266 } };
