@@ -128,3 +128,13 @@ export function seenTotals(milestones: readonly Milestone[]): { seen: number; ar
   }
   return { seen, areas };
 }
+
+/** The first day a child's loaded record holds: the earliest dated entry (ms), or null. Pure. */
+export function recordSince(entries: readonly { at: string }[], nowMs: number = Date.now()): number | null {
+  let first: number | null = null;
+  for (const e of entries) {
+    const at = Date.parse(e.at);
+    if (Number.isFinite(at) && at <= nowMs && (first === null || at < first)) first = at;
+  }
+  return first;
+}
