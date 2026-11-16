@@ -91,7 +91,7 @@ export default function CoParentFamilyPlan({ grantId, lang }: { grantId: string;
             <div className="line" style={{ gap: 14, alignItems: "center" }}>
               <div className="fp-big" aria-hidden="true"><small>{weekdayShort(d.date, lang)}</small><b>{dayNum(d.date)}</b>{d.time && <span>{d.time}</span>}</div>
               <div className="fp-col" style={{ gap: 4, minWidth: 0 }}>
-                <b id={`cp-${d.id}`} dir="auto" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 20, lineHeight: 1.2 }}>{d.title}</b>
+                <b id={`cp-${d.id}`} dir="auto" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 19, lineHeight: 1.2 }}>{d.title}</b>
                 <span className="small">{c.kinds[d.kind]} · {whenLabel(d, lang)}</span>
                 {d.previous.length > 0 && <span className="small">{c.wasTime(whenLabel(d.previous[d.previous.length - 1], lang))}</span>}
               </div>

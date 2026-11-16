@@ -107,7 +107,7 @@ export function ChangeTile({ plan, lang, c, onOpen }: Common) {
           <Icon name="arrow_forward" size={22} className="rtl:-scale-x-100" />
           <b>{sameDay && changed.time ? changed.time : whenLabel(changed, lang)}</b>
         </span>
-        <b dir="auto" style={{ fontSize: 14.5, fontWeight: 600 }}>{changed.title}, {whenLabel(changed, lang)}</b>
+        <b dir="auto" style={{ fontSize: 14, fontWeight: 600 }}>{changed.title}, {whenLabel(changed, lang)}</b>
         {changed.sourceLine && <ThreadLine line={changed.sourceLine} quote={changed.sourceLine} />}
       </div>
       <MoreLink onClick={() => onOpen(changed.id)}>{c.openDate}</MoreLink>

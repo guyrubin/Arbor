@@ -53,15 +53,11 @@ export default function FamilyPlanView() {
   };
 
   const s = plan.counts;
-  const none = c.stopSub.dates(0);
-  const messages = new Set(plan.all.filter((d) => d.messageId).map((d) => d.messageId)).size;
-  const asked = plan.openRequests.length;
-  const accepted = plan.dates.filter((d) => d.holder && d.status === "open").length;
   const stops = [
-    { id: "fp-who", title: c.stops.who, sub: s.dates ? c.stopSub.who(s.dates, s.nobodyYet) : none },
-    { id: "fp-dates", title: c.stops.dates, sub: c.stopSub.dates(plan.dates.length) },
-    { id: "fp-came", title: c.stops.cameIn, sub: messages ? c.stopSub.cameIn(messages) : none },
-    { id: "fp-standing", title: c.stops.standing, sub: asked || accepted ? c.stopSub.standing(asked, accepted) : none },
+    { id: "fp-who", title: c.stops.who, sub: c.guideSub.who },
+    { id: "fp-dates", title: c.stops.dates, sub: c.guideSub.dates },
+    { id: "fp-came", title: c.stops.cameIn, sub: c.guideSub.cameIn },
+    { id: "fp-standing", title: c.stops.standing, sub: c.guideSub.standing },
   ];
   const common = { plan, lang, c, onOpen: openDate } as const;
   const hasChange = plan.dates.some((d) => d.previous && d.previous.length);

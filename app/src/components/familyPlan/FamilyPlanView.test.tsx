@@ -2,7 +2,8 @@
  * Family plan v1 — the screen, rendered (node, static markup) with synthetic
  * data and with none, in EN and HE, desk and phone. Pins: one h1; the four
  * sections in the same order on both compositions; figures with units and no
- * zero tiles; lanes per adult with nobody yet; the "Sent is not accepted"
+ * zero tiles; the week as a ribbon (V77: seven day tiles and the later
+ * column, each date on its day; who has it in the dates rail); no "Sent is not accepted"
  * line exactly once; one primary move; nothing graded about the child.
  */
 import React from "react";
@@ -58,7 +59,7 @@ const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, 
 beforeEach(() => { h.lang = "en"; h.composition = "desk"; h.rows = seed(); h.loaded = true; });
 
 describe("Family plan screen", () => {
-  it.each(["desk", "phone"] as const)("%s, EN: one h1, the four sections in order, figures with units, lanes, one primary move", (composition) => {
+  it.each(["desk", "phone"] as const)("%s, EN: one h1, the four sections in order, figures with units, the week ribbon, one primary move", (composition) => {
     h.composition = composition;
     const html = render();
     const t = text(html);
@@ -77,8 +78,14 @@ describe("Family plan screen", () => {
     expect(html).toMatch(/<b>3<\/b><span>dates/);
     expect(html).toMatch(/<b>2<\/b><span>with an adult/);
     expect(html).toMatch(/<b>1<\/b><span>nobody yet/);
+    // V77: the week ribbon replaces the per-adult lanes (negative control: no lane markup).
+    expect(count(html, 'class="rbd')).toBe(8);
+    expect(count(html, 'class="rbd today"')).toBe(1);
+    expect(html).not.toContain("nx-lane");
+    expect(html).not.toContain('class="hasw"');
+    expect(t).toContain(c.legendNone);
+    // Who has each date is named in the dates rail (the co-parent's later date).
     expect(t).toContain("parent.two");
-    expect(t).toContain(c.nobodyYet);
     expect(t).toContain(c.inAppOnly);
     expect(t).toContain("Return the visit form");
   });

@@ -13,7 +13,9 @@ export interface FamilyPlanCopy {
   pageTitle: string;
   guideLabel: string;
   stops: { who: string; dates: string; cameIn: string; standing: string };
-  stopSub: { who: Fn<[number, number]>; dates: Fn<[number]>; cameIn: Fn<[number]>; standing: Fn<[number, number]> };
+  stopSub: { dates: Fn<[number]> };
+  /** The guide's second lines (canvas V77): what each section shows. */
+  guideSub: { who: string; dates: string; cameIn: string; standing: string };
   kicker: Fn<[string]>;
   isNew: string;
   startHere: string;
@@ -26,10 +28,7 @@ export interface FamilyPlanCopy {
   /** "you" inside a sentence ("Added by you"). */
   youMid: string;
   nobodyYet: string;
-  laneDates: Fn<[number]>;
-  laneAsked: string;
   legendHas: string;
-  legendAsked: string;
   legendNone: string;
   tokenLabel: Fn<[string, string]>;
   stateHas: Fn<[string]>;
@@ -37,10 +36,6 @@ export interface FamilyPlanCopy {
   stateHasYou: string;
   stateAsked: Fn<[string]>;
   stateNone: string;
-  nextLabel: string;
-  nextNobody: Fn<[string, string]>;
-  nextAsked: Fn<[string, string]>;
-  nextAllCovered: string;
   whoTakes: string;
   askSomeone: string;
   openDate: string;
@@ -65,7 +60,6 @@ export interface FamilyPlanCopy {
   theMessage: string;
   messagesKept: Fn<[number, number]>;
   noMessage: string;
-  lineOf: Fn<[number]>;
   requestsReminders: string;
   inAppOnly: string;
   requestSent: Fn<[string, string]>;
@@ -104,12 +98,10 @@ export interface FamilyPlanCopy {
   reviewNoDate: string;
   reviewAddADate: string;
   reviewKeepAsPrep: string;
-  reviewPrepFor: Fn<[string]>;
   reviewDuplicate: string;
   reviewChecked: string;
   reviewCheckedNone: string;
   reviewChange: string;
-  reviewFromVersion: string;
   reviewIfApply: Fn<[string]>;
   reviewIfApplyNobody: string;
   reviewApply: string;
@@ -123,7 +115,6 @@ export interface FamilyPlanCopy {
   kinds: Record<"deadline" | "event" | "join" | "note", string>;
   // manual add & edit
   manualTitle: string;
-  editTitle: string;
   fieldName: string;
   fieldKind: string;
   fieldDay: string;
@@ -180,7 +171,6 @@ export interface FamilyPlanCopy {
   coYesMeans: string;
   coYesFor: Fn<[number]>;
   coAddCalendar: string;
-  coAnswered: Fn<[string]>;
   coChanged: string;
   coNoRequests: string;
   coPlanTitle: string;
@@ -196,11 +186,9 @@ const en: FamilyPlanCopy = {
   guideLabel: "On this page",
   stops: { who: "Who has what", dates: "The dates", cameIn: "What came in", standing: "Where each thing stands" },
   stopSub: {
-    who: (n, none) => `${n} ${n === 1 ? "date" : "dates"}${none ? `, ${none} nobody yet` : ""}`,
     dates: (n) => (n ? "soonest first" : "none yet"),
-    cameIn: (n) => `${n} ${n === 1 ? "message" : "messages"}`,
-    standing: (asked, accepted) => `${asked} asked, ${accepted} accepted`,
   },
+  guideSub: { who: "the week, by day", dates: "soonest first", cameIn: "message, change, reminders", standing: "asked, accepted, done" },
   kicker: (range) => `Who has what · ${range}`,
   isNew: "New",
   startHere: "Start here",
@@ -212,20 +200,13 @@ const en: FamilyPlanCopy = {
   you: "You",
   youMid: "you",
   nobodyYet: "Nobody yet",
-  laneDates: (n) => `${n} ${n === 1 ? "date" : "dates"}`,
-  laneAsked: "asked",
-  legendHas: "an adult said yes",
-  legendAsked: "asked, no answer",
+  legendHas: "an adult has it",
   legendNone: "nobody yet",
   tokenLabel: (title, state) => `${title}, ${state}`,
   stateHas: (who) => `${who} has it`,
   stateHasYou: "You have it",
   stateAsked: (who) => `asked ${who}, no answer yet`,
   stateNone: "nobody yet",
-  nextLabel: "Next",
-  nextNobody: (title, when) => `${title}, ${when}: nobody has it yet.`,
-  nextAsked: (title, who) => `${title}: ${who} has not answered yet.`,
-  nextAllCovered: "Every date this week has an adult.",
   whoTakes: "Who takes this?",
   askSomeone: "Ask someone",
   openDate: "Open",
@@ -250,7 +231,6 @@ const en: FamilyPlanCopy = {
   theMessage: "The message",
   messagesKept: (dates, msgs) => `${dates} ${dates === 1 ? "date" : "dates"} kept from ${msgs} ${msgs === 1 ? "message" : "messages"}`,
   noMessage: "No message yet. Paste one and Arbor drafts the dates it finds; you decide what joins the plan.",
-  lineOf: (n) => `line ${n} of the message`,
   requestsReminders: "Requests and reminders",
   inAppOnly: "Reminders show here in Arbor. No phone alert is sent.",
   requestSent: (who, at) => `Request to ${who}, sent ${at}`,
@@ -288,12 +268,10 @@ const en: FamilyPlanCopy = {
   reviewNoDate: "No date in the message. Arbor does not guess one.",
   reviewAddADate: "Add a date",
   reviewKeepAsPrep: "Keep as prep",
-  reviewPrepFor: (title) => `Kept as prep for ${title}`,
   reviewDuplicate: "Already in your plan: it will not be added twice.",
   reviewChecked: "Checked against your plan",
   reviewCheckedNone: "None of these is already in it.",
   reviewChange: "One thing changed",
-  reviewFromVersion: "From a newer message",
   reviewIfApply: (who) => `If you apply it, ${who} is asked again for the new time and the old reminder stops.`,
   reviewIfApplyNobody: "If you apply it, the old reminder stops and a new one waits for the new time.",
   reviewApply: "Apply the change",
@@ -306,7 +284,6 @@ const en: FamilyPlanCopy = {
   reviewOffline: "You are offline. Add the dates yourself, or try again when you are back online.",
   kinds: { deadline: "Deadline", event: "Event", join: "A parent is asked to join", note: "Note" },
   manualTitle: "Add a date",
-  editTitle: "Edit the date",
   fieldName: "What it is",
   fieldKind: "Kind",
   fieldDay: "Day",
@@ -380,7 +357,6 @@ const en: FamilyPlanCopy = {
   coYesMeans: "Your yes is for this version. If the kindergarten changes it, you are asked again.",
   coYesFor: (n) => `Your yes is for version ${n}.`,
   coAddCalendar: "Add it to my calendar when I say yes",
-  coAnswered: (a) => a,
   coChanged: "This date changed since you were asked. Here is the new version.",
   coNoRequests: "No requests for you right now.",
   coPlanTitle: "This week's dates",
@@ -396,11 +372,9 @@ const he: FamilyPlanCopy = {
   guideLabel: "בעמוד הזה",
   stops: { who: "מי לוקח מה", dates: "התאריכים", cameIn: "מה הגיע", standing: "איפה כל דבר עומד" },
   stopSub: {
-    who: (n, none) => `${n === 1 ? "תאריך אחד" : `${n} תאריכים`}${none ? `, ${none} עוד בלי מבוגר` : ""}`,
     dates: (n) => (n ? "הקרוב ביותר קודם" : "עוד אין"),
-    cameIn: (n) => (n === 1 ? "הודעה אחת" : `${n} הודעות`),
-    standing: (asked, accepted) => `${asked} בבקשה, ${accepted} אושרו`,
   },
+  guideSub: { who: "השבוע, לפי יום", dates: "הקרוב ביותר קודם", cameIn: "הודעה, שינוי, תזכורות", standing: "נשלח, אושר, בוצע" },
   kicker: (range) => `מי לוקח מה · ${range}`,
   isNew: "חדש",
   startHere: "מתחילים כאן",
@@ -412,20 +386,13 @@ const he: FamilyPlanCopy = {
   you: "את/ה",
   youMid: "את/ה",
   nobodyYet: "עוד אף אחד",
-  laneDates: (n) => (n === 1 ? "תאריך אחד" : `${n} תאריכים`),
-  laneAsked: "נשלחה בקשה",
-  legendHas: "מבוגר אמר כן",
-  legendAsked: "נשלחה בקשה, אין תשובה",
+  legendHas: "אצל מבוגר",
   legendNone: "עוד אף אחד",
   tokenLabel: (title, state) => `${title}, ${state}`,
   stateHas: (who) => `אצל ${who}`,
   stateHasYou: "אצלך",
   stateAsked: (who) => `נשלחה בקשה ל${who}, עוד אין תשובה`,
   stateNone: "עוד אף אחד",
-  nextLabel: "הבא",
-  nextNobody: (title, when) => `${title}, ${when}: עוד אף אחד לא לקח.`,
-  nextAsked: (title, who) => `${title}: ${who} עוד לא ענה.`,
-  nextAllCovered: "לכל תאריך השבוע יש מבוגר.",
   whoTakes: "מי לוקח את זה?",
   askSomeone: "לבקש ממישהו",
   openDate: "פתיחה",
@@ -450,7 +417,6 @@ const he: FamilyPlanCopy = {
   theMessage: "ההודעה",
   messagesKept: (dates, msgs) => `${dates === 1 ? "תאריך אחד נשמר" : `${dates} תאריכים נשמרו`} מ${msgs === 1 ? "הודעה אחת" : `${msgs} הודעות`}`,
   noMessage: "עוד אין הודעה. הדביקו אחת ו-Arbor ינסח את התאריכים שהוא מוצא; אתם מחליטים מה נכנס לתוכנית.",
-  lineOf: (n) => `שורה ${n} בהודעה`,
   requestsReminders: "בקשות ותזכורות",
   inAppOnly: "התזכורות מופיעות כאן ב-Arbor. לא נשלחת התראה לטלפון.",
   requestSent: (who, at) => `בקשה ל${who}, נשלחה ${at}`,
@@ -488,12 +454,10 @@ const he: FamilyPlanCopy = {
   reviewNoDate: "אין תאריך בהודעה. Arbor לא מנחש.",
   reviewAddADate: "הוספת תאריך",
   reviewKeepAsPrep: "לשמור כהכנה",
-  reviewPrepFor: (title) => `נשמר כהכנה ל${title}`,
   reviewDuplicate: "כבר בתוכנית שלכם: לא יתווסף פעמיים.",
   reviewChecked: "נבדק מול התוכנית שלכם",
   reviewCheckedNone: "אף אחד מאלה עוד לא נמצא בה.",
   reviewChange: "דבר אחד השתנה",
-  reviewFromVersion: "מהודעה חדשה יותר",
   reviewIfApply: (who) => `אם תעדכנו, ${who} יתבקש שוב לשעה החדשה והתזכורת הישנה תיעצר.`,
   reviewIfApplyNobody: "אם תעדכנו, התזכורת הישנה תיעצר ותזכורת חדשה תחכה לשעה החדשה.",
   reviewApply: "עדכון השינוי",
@@ -506,7 +470,6 @@ const he: FamilyPlanCopy = {
   reviewOffline: "אין חיבור. הוסיפו את התאריכים בעצמכם, או נסו שוב כשתחזרו לרשת.",
   kinds: { deadline: "מועד אחרון", event: "אירוע", join: "מבקשים שהורה יצטרף", note: "הערה" },
   manualTitle: "הוספת תאריך",
-  editTitle: "עריכת התאריך",
   fieldName: "מה זה",
   fieldKind: "סוג",
   fieldDay: "יום",
@@ -580,7 +543,6 @@ const he: FamilyPlanCopy = {
   coYesMeans: "ה״כן״ שלך הוא לגרסה הזאת. אם הגן ישנה, תתבקש/י שוב.",
   coYesFor: (n) => `ה״כן״ שלך הוא לגרסה ${n}.`,
   coAddCalendar: "להוסיף ליומן שלי כשאני אומר/ת כן",
-  coAnswered: (a) => a,
   coChanged: "התאריך השתנה מאז שביקשו ממך. זו הגרסה החדשה.",
   coNoRequests: "אין בקשות בשבילך כרגע.",
   coPlanTitle: "התאריכים של השבוע",
