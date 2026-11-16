@@ -273,3 +273,12 @@
 }
 /* Phone: the shell's 16 px gutter is narrower than the route line's stops; give them room. */
 .ds.ds-phone .route.m { margin-inline-start: 16px; }
+/* The chain's arrows follow the reading direction. */
+[dir="rtl"] .ds .chn-a svg, .ds[dir="rtl"] .chn-a svg { transform: scaleX(-1); }
+/* Touch floor: the phone guide's stops and the idea rows are at least 44 px. */
+.ds .guide.mini .gstop { min-height: 44px; }
+.ds button.tg-ro { min-height: 44px; }
+/* Routines is the `together` container the question chip's phone rules query (companionExperience.css). */
+.ds.together-v10 { container-type: inline-size; container-name: together; }
+/* The canvas `stack` (a column), named locally so the icon-subset guard never reads it as a glyph. */
+.ds .tg-stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }

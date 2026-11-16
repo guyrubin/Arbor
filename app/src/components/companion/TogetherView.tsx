@@ -24,6 +24,8 @@ import { ChainStrip, type ChainNode } from "../together/ChainStrip";
 import { TOGETHER_COPY } from "../together/togetherCopy";
 import { routineStepsThisWeek } from "../together/routinesWeek";
 import "../together/together.css";
+// The question chip's phone rules (@container together) live here.
+import "./companionExperience.css";
 // FEAT-05: the shared question-chip rules (44px hit area, pill) live here.
 import "./companionWorkspace.css";
 
@@ -41,6 +43,9 @@ import "./companionWorkspace.css";
    Nothing on this page starts a camera or microphone or writes an activity
    just because it is seen.
    ════════════════════════════════════════════════════════════════════════════ */
+
+/** The route's declared move (surfaceContract "start-routine"): each routine card opens its start. */
+const START_ROUTINE_MOVE = { "data-primary-move": "start-routine" } as const;
 
 /** Where a former in-page filter now lives (null: it stays on Routines). */
 export function togetherFilterRoute(filter: string | null): "daily-play" | "stories" | null {
@@ -93,7 +98,7 @@ function ScopedTogetherView() {
   const listFmt = new Intl.ListFormat(lang === "he" ? "he" : "en", { style: "long", type: "conjunction" });
   const weekDays = listFmt.format(week.days.map((d) => dayFmt.format(d)));
   const chain: ChainNode[] = [
-    ...(goal ? [{ kind: "you" as const, tag: copy.chainFocus, text: goalLabel(goal, t) }] : []),
+    ...(goal ? [{ kind: "you" as const, tag: t("elev.goal.profile.title"), text: goalLabel(goal, t) }] : []),
     ...(fits ? [{ kind: "arbor" as const, tag: FITS_COPY[lang].label(clockOf(now.getHours() * 60 + now.getMinutes())), text: localized(fits.routine.title, lang) }] : []),
     { kind: "you", tag: copy.chainYouStart, text: t("companion.together-view.routines-start"), sub: copy.chainStartSub },
     { kind: "back", tag: copy.chainWeek, text: week.steps > 0 ? copy.doneSteps(week.steps) : copy.chainWeekCounted, sub: week.steps > 0 ? copy.doneDays(weekDays) : undefined },
@@ -104,7 +109,7 @@ function ScopedTogetherView() {
   const door = (testId: string, art: string, title: string, sub: string, onClick: () => void) => (
     <button key={testId} type="button" className="dm-door" data-testid={testId} onClick={onClick}>
       <img src={art} alt="" width={64} height={64} loading="lazy" decoding="async" />
-      <span className="stack" style={{ gap: 3, minWidth: 0 }}>
+      <span className="tg-stack" style={{ gap: 3, minWidth: 0 }}>
         <span className="nm">{title}</span>
         <span className="s">{sub}</span>
       </span>
@@ -121,7 +126,7 @@ function ScopedTogetherView() {
 
   return (
     <DsRoot composition={composition} className="together-v10" data-testid="together-routines-screen" dir={lang === "he" ? "rtl" : "ltr"}>
-      <div className="stack" style={{ gap: phone ? 12 : 16 }}>
+      <div className="tg-stack" style={{ gap: phone ? 12 : 16 }}>
         <Guide
           label={copy.onThisPage}
           mini={phone}
@@ -145,13 +150,13 @@ function ScopedTogetherView() {
               <h1 className="h3 tg-routines-h1" id={routinesId}>{copy.routinesTitle}</h1>
               <span className="small">{t("companion.together-view.routines-sub")}</span>
             </div>
-            <TogetherRoutines composition={composition} headingId={routinesId} />
+            <TogetherRoutines composition={composition} headingId={routinesId} primaryMoveProps={START_ROUTINE_MOVE} />
           </section>
           <RouteSection id="doors" n={2} aria-labelledby={doorsId} className={phone ? "dm-pm" : undefined}>
-            <div data-module="together-doors" className="stack" style={{ gap: 14 }}>
+            <div data-module="together-doors" className="tg-stack" style={{ gap: 14 }}>
               <div style={{ paddingInlineStart: phone ? 0 : 8 }}><RouteHead id={doorsId} title={copy.doorsTitle} sub={copy.doorsSub(name)} /></div>
               {phone
-                ? <div className="stack" style={{ gap: 10 }}>{doors}</div>
+                ? <div className="tg-stack" style={{ gap: 10 }}>{doors}</div>
                 : <div className="g12">{doors.map((d, i) => <div key={i} style={{ gridColumn: "span 4", minWidth: 0, display: "flex", flexDirection: "column" }}>{d}</div>)}</div>}
               {week.steps > 0 && (
                 <div className="dm-door dm-dw" data-testid="together-done-week" style={phone ? undefined : { gridTemplateColumns: "auto minmax(0, 1fr) auto", gap: "4px 16px", padding: "12px 18px", minHeight: 0 }}>

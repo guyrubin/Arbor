@@ -134,7 +134,7 @@ export function PlayGames({ studio, composition }: { studio: PlayStudio; composi
   const name = childProfile.name?.split(" ")[0] || t("companion.together-view.your-child");
   const { worlds, counts, playLoaded } = studio;
   const intro = (
-    <div className="stack" style={{ gap: 6, padding: phone ? "0 2px" : "4px 6px", justifyContent: "center" }}>
+    <div className="tg-stack" style={{ gap: 6, padding: phone ? "0 2px" : "4px 6px", justifyContent: "center" }}>
       <h2 className="pl-k" id="play-games-title" style={{ margin: 0 }}><span className="pl-ico"><Icon name="extension" size={17} /></span>{t("companion.together-view.little-invitations-to-play")}</h2>
       <span className="small" style={{ lineHeight: 1.35 }}>{t("companion.together-view.first-choose-then-play")} {copy.gamesIntro(name)}</span>
     </div>
@@ -192,7 +192,7 @@ export function PlayHandOver({ studio, composition }: { studio: PlayStudio; comp
       </section>
       <div className="pl-st pl-gate band" style={{ position: "static", flexDirection: "row", alignItems: "center", gap: 12, padding: "10px 14px" }}>
         <span className="pl-ico r" aria-hidden="true"><Icon name="lock" size={17} /></span>
-        <div className="stack" style={{ gap: 2 }}>
+        <div className="tg-stack" style={{ gap: 2 }}>
           <span className="pl-t" style={{ fontSize: 16.5 }}>{copy.gateTitle}</span>
           <span className="pl-p" style={{ fontSize: 12.5, lineHeight: 1.3 }}>{copy.gateSub}</span>
         </div>
@@ -207,13 +207,13 @@ export function PlayTogetherIdeas({ studio, onMoreIdeas }: { studio: PlayStudio;
   return (
     <section className="vt pl-idea" data-module="play-together-ideas" aria-labelledby="play-ideas-title" style={{ borderRadius: 18, gap: 8, padding: "14px 16px 16px" }}>
       <h2 className="pl-k" id="play-ideas-title" style={{ margin: 0 }}><span className="pl-ico"><Icon name="favorite" size={17} /></span>{t("companion.together-view.something-small-to-do-together")}</h2>
-      <div className="stack" style={{ gap: 7 }}>
+      <div className="tg-stack" style={{ gap: 7 }}>
         {studio.offlineIds.map((id) => {
           const idea = studio.offline(id);
           return (
-            <button key={id} type="button" className="tg-ro" aria-haspopup="dialog" onClick={() => studio.setPreview({ kind: "offscreen", id })} style={{ gridTemplateColumns: "46px minmax(0, 1fr)", gap: "2px 10px", padding: "7px 12px 7px 7px", alignContent: "center" }}>
+            <button key={id} type="button" className="tg-ro" data-testid="together-idea" aria-haspopup="dialog" onClick={() => studio.setPreview({ kind: "offscreen", id })} style={{ gridTemplateColumns: "46px minmax(0, 1fr)", gap: "2px 10px", padding: "7px 12px 7px 7px", alignContent: "center" }}>
               <span className="mini" style={{ width: 46, height: 46, borderRadius: 11 }} aria-hidden="true"><Icon name={idea.icon} size={24} /></span>
-              <span className="stack" style={{ gap: 1, minWidth: 0 }}>
+              <span className="tg-stack" style={{ gap: 1, minWidth: 0 }}>
                 <span className="ttl2" style={{ fontSize: 13.5 }}>{idea.title}</span>
                 <span className="ds-said" dir="auto" style={{ fontSize: 14, lineHeight: 1.2 }}>“{idea.say}”</span>
                 <span className="small" style={{ fontWeight: 600, color: "var(--sapphire-deep)", display: "inline-flex", alignItems: "center", gap: 2 }}>{t("companion.together-view.how-to-begin")}<Icon name="chevron_right" size={14} className="rtl:-scale-x-100" /></span>

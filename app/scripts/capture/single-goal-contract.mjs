@@ -23,7 +23,7 @@ export const SINGLE_GOAL_LIMITATIONS = Object.freeze([
 // v3 F-CHILD-3: About (#/profile) carries no goal door; the collector asserts
 // none there and frames its h1 instead.
 export const SINGLE_GOAL_DOORS = Object.freeze({ development: 'portrait-goals-edit', 'daily-play': 'daily-play-goals-edit' });
-export const SINGLE_GOAL_SURFACES = Object.freeze({ profile: { primary: 'capture-moment', budget: 3 }, development: { primary: 'start-development-check', budget: 3 }, 'daily-play': { primary: 'log-play', budget: 3 }, plans: { primary: 'advance-plan-step', budget: 3 } });
+export const SINGLE_GOAL_SURFACES = Object.freeze({ profile: { primary: 'capture-moment', budget: 3 }, development: { primary: 'start-development-check', budget: 3 }, 'daily-play': { primary: 'log-play', budget: 5 }, plans: { primary: 'advance-plan-step', budget: 3 } });
 export function singleGoalFixture(bundle, lang) {
   const parsed = JSON.parse(typeof bundle === 'string' ? bundle : JSON.stringify(bundle));
   const body = parsed?.locales?.[lang] ?? parsed;

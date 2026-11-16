@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useArbor } from "../../context/ArborContext";
+import { useAuth } from "../../context/AuthContext";
 import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { routeHash } from "../../lib/routes";
 import { useHashQuery } from "../../hooks/useHashQuery";
@@ -51,7 +52,19 @@ function AgeChip({ profile }: { profile: ChildProfile }) {
   );
 }
 
+/** Together › Play is scoped to one account and one child, as Together was:
+ *  nothing renders while hosted auth is unknown, and a new owner or child
+ *  remounts the page, so a preview, a pending keep or a late save from the
+ *  previous family can never attach to this one. */
 export default function DailyPlayTab() {
+  const { childProfile } = useArbor();
+  const { user, firebaseEnabled, loading } = useAuth();
+  if (!childProfile.id || (firebaseEnabled && (loading || !user))) return null;
+  const ownerId = firebaseEnabled ? user!.uid : "local-sandbox";
+  return <ScopedDailyPlayTab key={JSON.stringify([ownerId, childProfile.id])} />;
+}
+
+function ScopedDailyPlayTab() {
   const { behaviorLogs, childProfile, setActiveTab, logPlayCompletion, undoPlayCompletion, seedCoach, actionLoop } = useArbor();
   // B-STATUS-01: a logged play answers with ONE receipt line under the header
   // (where it went: the Journal), never a vanishing success toast. Critic r1:
@@ -309,7 +322,7 @@ export default function DailyPlayTab() {
     : concernDomains.includes(course.domain) ? copy.chainCameUp(playDomainLabel(course.domain, uiLang), firstName)
     : null;
   const chain: ChainNode[] = [
-    ...(pickedBecause ? [{ kind: "you" as const, tag: goal ? copy.chainFocus : copy.chainPicked, text: pickedBecause }] : []),
+    ...(pickedBecause ? [{ kind: "you" as const, tag: goal ? t("elev.goal.profile.title") : copy.chainPicked, text: pickedBecause }] : []),
     ...(dailyPlan ? [{ kind: "arbor" as const, tag: copy.arborSuggests, text: dailyPlan.scoredActivity.activity.title, sub: copy.chainOneIdea }] : []),
     ...(studio.kidAvailable && studio.worlds.length > 0 ? [{ kind: "kid" as const, tag: copy.chainKid(firstName), text: copy.chainPlays }] : []),
   ];
@@ -322,7 +335,7 @@ export default function DailyPlayTab() {
   const n = (id: string) => stops.findIndex((s) => s.id === id) + 1;
 
   const ideaStation = (
-    <section className="stack pl-idea" data-module="play-daily-plan" aria-labelledby="play-title" style={{ gap: 10, minWidth: 0 }}>
+    <section className="tg-stack pl-idea" data-module="play-daily-plan" aria-labelledby="play-title" style={{ gap: 10, minWidth: 0 }}>
       <div className="line between" style={{ gap: 8, flexWrap: "wrap" }}>
         <h1 className="pl-t" id="play-title" style={{ margin: 0, fontSize: phone ? 22 : 24 }}>{t("play.libTitle", { name: firstName })}</h1>
         {dailyPlan && <AgeChip profile={childProfile} />}
@@ -361,14 +374,14 @@ export default function DailyPlayTab() {
 
   return (
     <DsRoot composition={composition} className="play-v10" data-testid="play-screen" dir={uiLang === "he" ? "rtl" : "ltr"}>
-      <div className="stack" style={{ gap: phone ? 12 : 16 }}>
+      <div className="tg-stack" style={{ gap: phone ? 12 : 16 }}>
         <Guide label={copy.onThisPage} mini={phone} stops={stops} />
         <ChainStrip nodes={chain} composition={composition} label={copy.chainLabel(firstName)} />
         <ReceiptNoteLine note={playReceipt.note} testId="play-receipt" />
         <Route composition={composition}>
           <RouteSection id="idea" n={1} on>
             {phone ? (
-              <div className="stack" style={{ gap: 12 }}>
+              <div className="tg-stack" style={{ gap: 12 }}>
                 <div className="scene together" style={{ padding: 12, gap: 12 }}>
                   <i className="orb" style={{ width: 260, height: 260, left: -150, bottom: -170, opacity: 0.6 }} />
                   {ideaStation}
@@ -401,7 +414,7 @@ export default function DailyPlayTab() {
           )}
 
           <RouteSection id="courses" n={n("courses")}>
-            <div className={phone ? "stack" : "g12"} style={phone ? { gap: 12 } : { alignItems: "start" }}>
+            <div className={phone ? "tg-stack" : "g12"} style={phone ? { gap: 12 } : { alignItems: "start" }}>
               <section className="vt pl-course" aria-label={copy.playCourse} style={{ gridColumn: "span 6", borderRadius: 18, gap: 8, padding: phone ? "12px 12px 14px" : "14px 18px 16px", minWidth: 0 }}>
                 {/* E6: shown only when the course's bands include this child's band. */}
                 {course.bands.includes(childBand) && <AgeChip profile={childProfile} />}
@@ -450,7 +463,7 @@ export default function DailyPlayTab() {
           </RouteSection>
 
           <RouteSection id="more-ideas" n={n("more-ideas")} aria-labelledby="play-more-title">
-            <div className="stack" style={{ gap: 12 }}>
+            <div className="tg-stack" style={{ gap: 12 }}>
               <div style={{ paddingInlineStart: phone ? 0 : 8 }}><RouteHead id="play-more-title" title={t("companion.together-view.more-ideas")} sub={copy.moreIdeasSub} /></div>
               {/* CI-31: one selection controls all the idea cards below. */}
               <SessionLengthChips value={sessionLength} onChange={handleSessionLength} ageYears={ageYearsOf(childProfile)} tapped={true} />

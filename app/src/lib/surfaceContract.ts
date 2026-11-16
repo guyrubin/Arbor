@@ -249,8 +249,11 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "daily-play", hub: "growth", depth: 1,
     job: "Pick one good activity for today and play it together.",
-    primaryMove: "log-play", moduleBudget: 3, demotionTarget: "overview",
+    primaryMove: "log-play", moduleBudget: 5, demotionTarget: "overview",
     // play source → kind "play" with playDomain; hero pick also shows on Today.
+    // v10.1: Together › Play also holds the games, the hand-over and the away
+    // ideas that left #/practice's in-page filter (daily plan, together ideas,
+    // games, readiness, picks).
     threadWrite: "play",
   },
   {
@@ -287,11 +290,11 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   // ── PRACTICE (Heartwood D3: promoted to a depth-0 hub) ─────────────────────
   {
     route: "practice", hub: "practice", depth: 0,
-    job: "Choose a story, a game or a moment to enjoy together.",
-    primaryMove: "choose-together", moduleBudget: 5, demotionTarget: "disclosure",
-    // Editorial invitation, age-appropriate games, stories, ready-made routines
-    // and offscreen ideas (v3 F-TOG-1: routines became a module of their own, as
-    // the v3 mock lays Together out; the gate card is not a module).
+    job: "Start a ready-made routine as a plan, by time of day.",
+    primaryMove: "start-routine", moduleBudget: 2, demotionTarget: "disclosure",
+    // v10.1: Together › Routines — the day map of ready-made routines and the
+    // ways into stories and games. Games, the hand-over and the away ideas
+    // moved to Together › Play (#/daily-play); stories to Together › Stories.
     // Existing game routes retain their parent gates and practice event writes.
     threadWrite: "practiceEvents",
   },

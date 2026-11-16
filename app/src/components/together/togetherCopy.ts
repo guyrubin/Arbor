@@ -32,7 +32,6 @@ const en = {
   doneTitle: "Done together this week",
   doneSteps: (n: number) => (n === 1 ? "1 routine step ticked" : `${n} routine steps ticked`),
   doneDays: (days: string) => `on ${days}`,
-  chainFocus: "Your focus",
   chainYouStart: "You start",
   chainStartSub: "Steps appear under Now › Plans.",
   chainWeek: "In your week",
@@ -72,8 +71,6 @@ const en = {
   stopPicturesSub: "Hero Comics and the books",
   chainNoted: "You noted",
   chainTonight: "Tonight’s story",
-  chainHears: (name: string) => `${name} hears it`,
-  chainHearsTx: "With you, or in Kids Studio",
   chainRead: "Read together",
 };
 
@@ -100,7 +97,6 @@ const he: typeof en = {
   doneTitle: "מה עשינו ביחד השבוע",
   doneSteps: (n: number) => (n === 1 ? "שלב אחד בשגרות סומן" : `${n} שלבים בשגרות סומנו`),
   doneDays: (days: string) => `ב${days}`,
-  chainFocus: "המיקוד שלכם",
   chainYouStart: "אתם מתחילים",
   chainStartSub: "השלבים מופיעים בעכשיו › תוכניות.",
   chainWeek: "בשבוע שלכם",
@@ -138,8 +134,6 @@ const he: typeof en = {
   stopPicturesSub: "קומיקס גיבורים והספרים",
   chainNoted: "רשמתם",
   chainTonight: "הסיפור של הערב",
-  chainHears: (name: string) => `הסיפור של ${name}`,
-  chainHearsTx: "איתכם, או בסטודיו לילדים",
   chainRead: "קראתם ביחד",
 };
 

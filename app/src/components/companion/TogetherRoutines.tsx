@@ -50,7 +50,12 @@ const BAND_OF: Readonly<Record<RhythmSlot, Band>> = {
 };
 const BAND_ICON: Readonly<Record<Band, string>> = { morning: "wb_sunny", afternoon: "light_mode", evening: "dark_mode", anytime: "bolt" };
 
-export default function TogetherRoutines({ composition, headingId }: { composition: Composition; headingId?: string }) {
+export default function TogetherRoutines({ composition, headingId, primaryMoveProps }: {
+  composition: Composition;
+  headingId?: string;
+  /** The route's one move (#/practice "start-routine"), stamped on each routine card by the screen. */
+  primaryMoveProps?: Record<string, string>;
+}) {
   const { childProfile, actionPlans = [], startRoutinePlan } = useArbor();
   const { t, uiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
@@ -160,7 +165,7 @@ export default function TogetherRoutines({ composition, headingId }: { compositi
         data-routine-tile={routine.id}
         data-in-plan={card ? "true" : "false"}
         data-complete={card?.complete ? "true" : "false"}
-        data-primary-move="start-routine"
+        {...primaryMoveProps}
         aria-haspopup="dialog"
         onClick={() => open(routine.id)}
       >
