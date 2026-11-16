@@ -121,11 +121,13 @@ describe("VIS-07 · My child: the first-time Milestones page (v3 F-CHILD-1)", ()
   it.each(LANGS)("%s: the cards say Not told yet, every row says No record yet, nothing in numbers", (lang) => {
     state.lang = lang;
     const html = renderToStaticMarkup(<ChildPortrait />);
-    const cards = branch(html, /<div class="portrait-cards" data-testid="portrait-cards">[\s\S]*?<\/button><\/div>/);
+    const cards = branch(html, /<div class="portrait-cards" data-testid="portrait-cards">[\s\S]*?<\/button><\/article><\/div>/);
     // v10.1: the eight areas are territories on the map (a list), not rows.
-    const rows = branch(html, /<ul class="atlas[^"]*" role="list">[\s\S]*?<\/ul>/);
+    // v10.1: the eight areas are the index's segments (a list).
+    const rows = branch(html, /<ul class="mci[^"]*" role="list"[^>]*>[\s\S]*?<\/ul>/);
     expect(occurrences(readText(cards), t("companion.milestones.notTold"))).toBe(2);
-    expect(readText(cards)).toContain(t("elev.goal.profile.empty"));
+    // v10.1: the goal invitation is the rail's focus row.
+    expect(readText(html.slice(html.indexOf('data-testid="portrait-goals-edit"')))).toContain(t("elev.goal.profile.empty"));
     expect(occurrences(rows, 'data-testid="dev-map-tile"')).toBe(8);
     expect(occurrences(readText(rows), t("companion.devMap.none"))).toBe(8);
     expect(html).not.toContain('data-testid="dev-map-seen"');

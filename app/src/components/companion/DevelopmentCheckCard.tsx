@@ -21,15 +21,15 @@ export interface DevelopmentCheckCardProps {
 export default function DevelopmentCheckCard({ onCheck, primaryMoveProps, recheckDueAt = null, lastCheckAt = null }: DevelopmentCheckCardProps) {
   const { t, uiLang } = useLanguage();
   return (
-    <div className="obj ms-check" data-testid="dev-map-checkrow">
-      <div className="oh">
-        <span className="ogi" aria-hidden="true"><Icon name="fact_check" size={17} /></span>
+    <div className="mcrow-btn ms-check" data-testid="dev-map-checkrow">
+      <span className="tg" aria-hidden="true"><Icon name="fact_check" size={16} /></span>
+      <span className="mcrow-text">
         <h3 className="ok">{t("companion.milestones.checkTitle")}</h3>
-      </div>
-      <p className="ol" data-testid="dev-map-checkrow-sub">
-        {lastCheckAt ? t("companion.milestones.checkLast", { date: fmtDay(lastCheckAt, uiLang) }) : t("companion.milestones.checkNever")}
-      </p>
-      {recheckDueAt && <p className="ms-check-recheck" data-testid="dev-map-recheck">{t("elev.growth.recheck.date", { date: fmtDay(recheckDueAt, uiLang) })}</p>}
+        <span className="ms-obj-src" data-testid="dev-map-checkrow-sub">
+          {lastCheckAt ? t("companion.milestones.checkLast", { date: fmtDay(lastCheckAt, uiLang) }) : t("companion.milestones.checkNever")}
+        </span>
+        {recheckDueAt && <span className="ms-obj-src ms-check-recheck" data-testid="dev-map-recheck">{t("elev.growth.recheck.date", { date: fmtDay(recheckDueAt, uiLang) })}</span>}
+      </span>
       <button type="button" className="btn primary sm ms-check-go" data-testid="dev-map-check" onClick={onCheck} {...(primaryMoveProps ?? {})}>
         {t(lastCheckAt ? "companion.milestones.checkAgain" : "companion.milestones.checkStart")}
       </button>

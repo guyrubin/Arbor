@@ -55,9 +55,9 @@ const decode = (html: string) => html.replace(/&quot;/g, '"').replace(/&#x27;/g,
 
 describe("B-DESIGN-03 · the header: H1 + ONE warm accent + ONE muted line", () => {
   it("the H1 is the hero step; the date is plain text, never a chip", () => {
-    // v10.1 RE-PIN: the h1 is the scene's title (the design system's display step), with the Map / List switch beside it.
-    expect(MS).toContain('<h1 className="title" id="ms-list-title">{t("ms.title")}</h1>');
-    expect(MS).toContain('<MilestonesViewSwitch current="milestones" />');
+    // v10.1 RE-PIN: the h1 is the shared header band's, titled ms.title, with the Map / List switch on the list.
+    expect(MS).toContain('title={t("ms.title")} titleId="ms-list-title"');
+    expect(MS).toContain('current="milestones"');
     const line = between('<p data-testid="ms-latest"', "</p>");
     expect(line).not.toMatch(/green-soft|green-ink|rounded-full|font-editorial/);
     expect(line).toContain('<time data-testid="ms-latest-date"');
@@ -263,9 +263,9 @@ describe("B-DESIGN-03 · the stamp stays above the 375 fold (line model, EN + HE
     expect(MS).toContain('<span data-testid="ms-latest-tail" className={latestNoticed ? "block sm:inline" : undefined}>');
     expect(MS).toContain('<nav data-testid="ms-jump-rail" aria-labelledby="ms-map-title" className="no-scrollbar -mx-4 mt-2 overflow-x-auto px-4 py-1 sm:mx-0 sm:px-0">');
     expect(MS).toContain('<h2 id="ms-map-title" className="arbor-type-title sr-only sm:not-sr-only"');
-    // v10.1: the h1 and the Map / List switch share one line; no avatar beside the h1.
+    // v10.1: the band carries the h1, the index and the switch; no avatar beside the h1.
     expect(MS).not.toContain('<HeroAvatar size={44}');
-    expect(MS).toContain('<header className="ms-head ms-head-inline">');
+    expect(MS).toContain("<MilestonesBand ");
     expect(MS).toContain('className="-my-3 inline-flex min-h-11 items-center align-middle t-sm font-semibold"');
     expect(MS).toContain("const stampShelf = mapShelves.find((id) => noticeFor(id) && !heldNotice[id]);");
     expect(MS).toMatch(/answersAttrs=\{shelf === stampShelf \? \{ "data-primary-move": "notice-milestone" \} : undefined\}/);

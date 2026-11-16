@@ -59,7 +59,7 @@ import { localDay, type ObserveStatus } from "../../lib/milestones/observe";
 import { milestoneAgeLine } from "../../lib/milestoneAgeLine";
 import { selectNextMilestonesByShelf, shelfOfMilestone } from "../../lib/milestones/selectByShelf";
 import { groupMilestonesByShelf, matchesMilestoneQuery, noticedByShelf, shelfBands } from "../../lib/milestones/shelfMap";
-import { SHELF_IDS, shelfLabel, type ShelfId } from "../../lib/shelves/registry";
+import { SHELF_IDS, shelfDef, shelfLabel, shelvesOfDomain, type ShelfId } from "../../lib/shelves/registry";
 import NoticeCard from "../loop/NoticeCard";
 // B-DESIGN-03 (P7-DESIGN blend frame): the route's answers are the ONE segmented
 // control; each shelf row group leads with its duotone glyph and a section head.
@@ -71,9 +71,12 @@ import { PRACTICES } from "../../content/practices";
 // shipped flat chip (components/loop/ShelfGlyph) until B-DESIGN-04 moves them.
 import { ShelfGlyph } from "../ui/ShelfGlyph";
 // v10.1: the list view of My child › Milestones, in the design system's frame.
-import { DsRoot, Guide, Route, RouteHead, RouteSection, Scene } from "../../design/primitives";
+import { DsRoot, Guide, Route, RouteHead, RouteSection } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
-import MilestonesViewSwitch from "../companion/MilestonesViewSwitch";
+import DevelopmentMap from "../companion/DevelopmentMap";
+import MilestonesBand from "../companion/MilestonesBand";
+import MilestonesReadGuide from "../companion/MilestonesReadGuide";
+import { seenTotals } from "../companion/milestonesModel";
 import { milestonesV10Copy } from "../companion/milestonesV10Copy";
 import "../companion/milestonesV10.css";
 
@@ -1175,8 +1178,8 @@ export default function MilestonesTab() {
 
   const desk = composition === "desk";
   const stops = [
+    { id: "ms-areas", title: v10.guideAreas, sub: v10.listGuideAreasSub },
     { id: "ms-list", title: v10.listGuideList, sub: v10.listGuideListSub },
-    { id: "ms-tools", title: v10.listGuideTools, sub: v10.listGuideToolsSub },
     { id: "ms-check", title: v10.listGuideCheck, sub: v10.listGuideCheckSub },
   ];
   // v10.1: the latest line (with Not right? Change), Born early and Add milestone — the list's tools.
@@ -1283,17 +1286,19 @@ export default function MilestonesTab() {
     <DsRoot composition={composition} className="ms-v10 ms-list" dir={uiLang === "he" ? "rtl" : "ltr"}>
       <Guide stops={stops} label={v10.onThisPage} mini={!desk} />
       <Route composition={composition}>
-        <RouteSection id="ms-list" n={1} on aria-labelledby="ms-list-title">
+        <RouteSection id="ms-areas" n={1} on aria-labelledby="ms-list-title">
+          {/* v10.1: the band and index shared with the map; an area jumps to its shelf below. */}
+          <MilestonesBand composition={composition} kicker={t("companion.milestones.kicker")} title={t("ms.title")} titleId="ms-list-title"
+            sub={t("elev.loop.ms.footer")} current="milestones" totals={seenTotals(milestones)}>
+            <DevelopmentMap milestones={milestones} observations={observations} openDomain={jumpedTo ? shelfDef(jumpedTo).domain : null}
+              onToggle={(domain) => jumpTo(shelvesOfDomain(domain)[0])} composition={composition} />
+          </MilestonesBand>
+        </RouteSection>
+        <RouteSection id="ms-list" n={2} aria-labelledby="ms-map-title">
           <div className="ms-row">
             <div className="stg">
-              <Scene field="child" orbs={desk ? [{ size: 300, right: -90, top: -120 }] : [{ size: 180, right: -70, top: -80 }]}>
+              <div className="mcst ms-list-stage">
       <div data-testid="ms-header" className="min-w-0">
-                  {/* v10.1: the scene's head — the page's h1 and the Map / List switch on
-                      one line (the first Seen it has to clear the capture dock). */}
-                  <header className="ms-head ms-head-inline">
-                    <h1 className="title" id="ms-list-title">{t("ms.title")}</h1>
-                    <MilestonesViewSwitch current="milestones" />
-                  </header>
                   {/* The ONE warm accent: the family's newest kept words (last 7 days),
                       editorial face on the 2 px ink rule; the shelf and the day on their
                       own t-sm line beneath (P2-13, no stranded separator). No count, no
@@ -1383,15 +1388,11 @@ export default function MilestonesTab() {
                 />
                 ) : shelfMap}
                 </div>
-              </Scene>
+              </div>
             </div>
-            {desk && <div className="rlc" id="ms-tools">{tools}</div>}
+            <div className="rlc" id="ms-tools"><MilestonesReadGuide steps="list" />{tools}</div>
           </div>
         </RouteSection>
-        {!desk && <RouteSection id="ms-tools" n={2} aria-labelledby="ms-tools-title">
-          <RouteHead id="ms-tools-title" title={v10.listGuideTools} />
-          {tools}
-        </RouteSection>}
         <RouteSection id="ms-check" n={3} aria-labelledby="ms-check-title">
           <RouteHead id="ms-check-title" title={t("sec.screen.title")} />
           {/* The Development check is its own page (#/screening); this is its one door from the list. */}

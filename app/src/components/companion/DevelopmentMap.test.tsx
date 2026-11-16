@@ -33,6 +33,7 @@ vi.mock("react/jsx-dev-runtime", async original => {
 });
 import DevelopmentMap from "./DevelopmentMap";
 import DevelopmentCheckCard from "./DevelopmentCheckCard";
+import AreaTimeline from "./AreaTimeline";
 import { DOMAIN_IDS, domainName } from "../../lib/domains/registry";
 import { DOMAIN_ICONS } from "../../lib/domains/icons";
 import { translate } from "../../lib/i18n";
@@ -61,22 +62,19 @@ const terOf = (html: string, domain: DomainId) => {
 const render = (props: Partial<React.ComponentProps<typeof DevelopmentMap>> = {}) => {
   state.buttons = [];
   return renderToStaticMarkup(
-    <DevelopmentMap milestones={[]} observations={[]} momentText={o => o.id} openDomain={null} onToggle={vi.fn()} composition="desk" nowMs={NOW} {...props} />,
+    <DevelopmentMap milestones={[]} observations={[]} openDomain={null} onToggle={vi.fn()} composition="desk" nowMs={NOW} {...props} />,
   );
 };
-const seenFig = (html: string) => (html.match(/data-testid="dev-map-seen-area"><b class="arbor-num">(\d+)<\/b>/) ?? [])[1];
+const seenFig = (html: string) => (html.match(/<b class="arbor-num" data-testid="dev-map-seen-area">(\d+)<\/b>/) ?? [])[1];
 
 beforeEach(() => { state.lang = "en"; state.buttons = []; });
 
-describe("v10.1 — DevelopmentMap territories", () => {
-  it.each(["en", "he"] as const)("eight territories in registry order, a list, each its glyph and name; the hub sits in the middle on a desk (%s)", lang => {
+describe("v10.1 — DevelopmentMap, the index of eight areas", () => {
+  it.each(["en", "he"] as const)("eight equal segments in registry order, a list, each its glyph and name; nothing recorded says so (%s)", lang => {
     state.lang = lang;
     const html = render();
-    expect(html).toMatch(/<ul class="atlas" role="list">/);
+    expect(html).toMatch(/<ul class="mci" role="list" aria-label="[^"]+">/);
     expect([...html.matchAll(/data-testid="dev-map-tile" data-domain="([a-z]+)" data-tone="quiet" aria-pressed="false"/g)].map(m => m[1])).toEqual([...DOMAIN_IDS]);
-    // The hub is the fifth cell, the middle of the 3 × 3: between thinking and playing.
-    expect(html.indexOf('data-testid="dev-map-hub"')).toBeGreaterThan(html.indexOf('data-domain="thinking"'));
-    expect(html.indexOf('data-testid="dev-map-hub"')).toBeLessThan(html.indexOf('data-domain="playing"'));
     for (const d of DOMAIN_IDS) {
       const ter = terOf(html, d);
       expect(ter).toContain(`>${DOMAIN_ICONS[d]}</span>`);
@@ -84,17 +82,15 @@ describe("v10.1 — DevelopmentMap territories", () => {
       expect(ter).toContain(esc(translate(lang, "companion.devMap.none")));
     }
     expect(html).toContain(esc(translate(lang, "companion.devMap.note")));
+    expect(html).toContain(esc(translate(lang, "companion.milestones.areasSubTiles")));
     expect(html).not.toContain("data-module");
     expect(html).not.toContain("data-primary-move");
   });
 
-  it("on a phone: two columns, no hub, and the moment's words stay for the open area", () => {
-    const html = render({ composition: "phone", observations: [moment("m1", ["moving"], "2026-05-02T10:00:00.000Z")], momentText: o => `words of ${o.id}` });
-    expect(html).toMatch(/<ul class="atlas m" role="list">/);
-    expect(html).not.toContain('data-testid="dev-map-hub"');
+  it("on a phone the same eight scroll sideways in one row", () => {
+    const html = render({ composition: "phone" });
+    expect(html).toMatch(/<ul class="mci m ds-snap-scroll" role="list"/);
     expect(html.match(/data-testid="dev-map-tile"/g)).toHaveLength(8);
-    expect(terOf(html, "moving")).toMatch(/<time datetime="2026-05-02T10:00:00\.000Z">/i);
-    expect(html).not.toContain("words of");
   });
 
   it("the one number is Seen it: Sleep and Food fold into body, Not yet adds nothing anywhere", () => {
@@ -104,35 +100,30 @@ describe("v10.1 — DevelopmentMap territories", () => {
     const html = render({ milestones: ms });
     const body = terOf(html, "body");
     expect(seenFig(body)).toBe("2");
-    expect(body.match(/class="tok moment sm"/g)).toHaveLength(2);
+    expect(words(body)).toContain("things seen");
     expect(body).not.toContain('data-testid="dev-map-none"');
     // Talking carries three Not yet answers and still reads as no record: never a not-yet number.
     expect(terOf(html, "talking")).toContain('data-testid="dev-map-none"');
     expect(terOf(html, "talking")).not.toContain("dev-map-seen-area");
     expect(html.match(/data-testid="dev-map-seen-area"/g)).toHaveLength(1);
     expect(html.match(/data-testid="dev-map-none"/g)).toHaveLength(7);
-    // The hub is the same Seen-it count, with its unit and its areas in words, no total beside it.
-    const hub = html.match(/<li class="hub" data-testid="dev-map-hub">[\s\S]*?<\/li>/)?.[0] ?? "";
-    expect(words(hub).replace(/\s+/g, " ").trim()).toBe("2 things you have seen in one area");
     expect(words(html)).not.toMatch(/%|\//);
   });
 
-  it("leaves are a shape, capped at four; the figure says the count", () => {
+  it("one thing seen reads in the singular", () => {
     const by = groupMilestonesByShelf(catalogue());
-    const marked = new Set(by.words.slice(0, 6).map(m => m.id));
-    const html = render({ milestones: catalogue().map(m => (marked.has(m.id) ? seen(m) : m)) });
-    expect(seenFig(terOf(html, "talking"))).toBe("6");
-    expect(terOf(html, "talking").match(/class="tok moment sm"/g)).toHaveLength(4);
+    const html = render({ milestones: catalogue().map(m => (m.id === by.words[0].id ? seen(m) : m)) });
+    expect(seenFig(terOf(html, "talking"))).toBe("1");
+    expect(words(terOf(html, "talking"))).toContain("thing seen");
   });
 
-  it("with nothing seen there is no figure and no number at all", () => {
+  it("with nothing seen there is no number at all", () => {
     const html = render({ milestones: catalogue() });
-    expect(html).not.toContain('data-testid="dev-map-seen"');
     expect(html).not.toContain("dev-map-seen-area");
     expect(words(html)).not.toMatch(/\d/);
   });
 
-  it.each(["en", "he"] as const)("CLINICAL FIREWALL: no share, no denominator, no 'n of m', no level word anywhere on the map (%s)", lang => {
+  it.each(["en", "he"] as const)("CLINICAL FIREWALL: no share, no denominator, no 'n of m', no level word anywhere in the index (%s)", lang => {
     state.lang = lang;
     const by = groupMilestonesByShelf(catalogue());
     const marked = new Set([...by.words.slice(0, 4), ...by.moving.slice(0, 3), ...by.hands.slice(0, 2)].map(m => m.id));
@@ -144,71 +135,57 @@ describe("v10.1 — DevelopmentMap territories", () => {
     expect(text).not.toMatch(/\b(low|medium|high|behind|ahead|on track|not yet|not sure)\b/i);
   });
 
-  it("each territory quotes the newest moment the parent kept in that area; practice and professional entries stay off the map", () => {
+  it("each segment dates the newest moment the parent kept in that area (the day only); practice and professional entries stay off", () => {
     const observations = [
       moment("old-talk", ["talking"], "2026-03-01T10:00:00.000Z"),
       moment("new-talk", ["talking", "feelings"], "2026-04-02T10:00:00.000Z"),
       moment("kid-move", ["moving"], "2026-05-01T10:00:00.000Z", "kid_practice"),
       moment("pro-hands", ["hands"], "2026-05-01T10:00:00.000Z", "professional_entered"),
     ];
-    const momentText = vi.fn((o: Observation) => `words of ${o.id}`);
-    const html = render({ observations, momentText });
-    expect(terOf(html, "talking")).toContain("words of new-talk");
-    expect(terOf(html, "talking")).not.toContain("words of old-talk");
-    expect(terOf(html, "talking")).toMatch(/<time datetime="2026-04-02T10:00:00\.000Z">/i);
-    expect(terOf(html, "feelings")).toContain("words of new-talk");
+    const html = render({ observations });
+    expect(terOf(html, "talking")).toMatch(/<time datetime="2026-04-02T10:00:00\.000Z"/i);
+    expect(terOf(html, "feelings")).toMatch(/<time datetime="2026-04-02T10:00:00\.000Z"/i);
     for (const d of ["moving", "hands", "thinking"] as const) expect(terOf(html, d)).not.toContain('data-testid="dev-map-last"');
     expect(html.match(/data-testid="dev-map-last"/g)).toHaveLength(2);
-    // A territory that quotes a kept moment never says "No record yet" over it.
+    // A segment that dates a kept moment never says "No record yet" over it.
     for (const d of ["talking", "feelings"] as const) expect(terOf(html, d)).not.toContain('data-testid="dev-map-none"');
     expect(html.match(/data-testid="dev-map-none"/g)).toHaveLength(6);
   });
 
-  it("a Seen-it skill is quoted only on the territory that counts it", () => {
+  it("a Seen-it skill is counted and dated only on the area that counts it", () => {
     // A motor row the record files under Moving AND Hands; the count puts it on the Moving shelf.
     const row = catalogue().find(m => m.domain === "sensory_motor_patterns" && !m.tags?.length)!;
     const marked: Milestone = { ...seen(row), observedAt: "2026-05-01T10:00:00.000Z" };
     const observations = toObservations({ milestones: [marked] }, { id: "child-a" });
-    expect(observations).toHaveLength(1);
-    expect(observations[0].domains).toContain("moving");
-    expect(observations[0].domains).toContain("hands");
-    const html = render({ milestones: [marked], observations, momentText: o => `words of ${o.id}` });
+    const html = render({ milestones: [marked], observations });
     expect(DOMAIN_IDS.filter(d => terOf(html, d).includes('data-testid="dev-map-seen-area"'))).toEqual(["moving"]);
-    expect(terOf(html, "moving")).toContain(`words of milestones:${row.id}`);
+    expect(terOf(html, "moving")).toContain('data-testid="dev-map-last"');
     expect(terOf(html, "hands")).not.toContain('data-testid="dev-map-last"');
     expect(terOf(html, "hands")).toContain('data-testid="dev-map-none"');
-    expect(html.match(/data-testid="dev-map-last"/g)).toHaveLength(1);
-    expect(html.match(/data-testid="dev-map-none"/g)).toHaveLength(7);
   });
 
-  it("the open territory is pressed and ringed, the only one; a tap asks for its own area", () => {
+  it("the picked area is pressed and lit, the only one; a tap asks for its own area", () => {
     const onToggle = vi.fn();
     const html = render({ openDomain: "hands", onToggle });
     expect(html).toContain('data-testid="dev-map-tile" data-domain="hands" data-tone="quiet" aria-pressed="true"');
     expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
-    expect(html).toMatch(/class="ter[^"]*\bsel\b[^"]*"[^>]*data-domain="hands"/);
+    expect(html).toMatch(/class="mcs[^"]*\bon\b[^"]*"[^>]*data-domain="hands"/);
     for (const d of DOMAIN_IDS) state.buttons.find(b => b["data-testid"] === "dev-map-tile" && b["data-domain"] === d)!.onClick!();
     expect(onToggle.mock.calls.map(c => c[0])).toEqual([...DOMAIN_IDS]);
   });
 
-  it("an area with nothing recorded is drawn the same size, never left out", () => {
-    const html = render();
-    expect(html.match(/class="ter quiet"/g)).toHaveLength(8);
-  });
-
-  it("one accent: no area colour, no picture and no inline paint on any territory", () => {
+  it("one accent: no area colour, no picture and no inline paint on any segment", () => {
     const by = groupMilestonesByShelf(catalogue());
     const html = render({ milestones: catalogue().map(m => (m.id === by.words[0].id ? seen(m) : m)), openDomain: "talking" });
     for (const d of DOMAIN_IDS) {
       const ter = terOf(html, d);
       expect(ter, d).not.toMatch(/<img|--arbor-domain/);
-      // The territory itself carries no inline paint (glyph sizes are the icon's own).
       expect(ter.slice(0, ter.indexOf(">")), d).not.toContain("style=");
     }
   });
 });
 
-describe("v10.1 — the map's foot", () => {
+describe("v10.1 — the index's foot", () => {
   it.each(["en", "he"] as const)("names the areas with a new Seen it in the last 30 days, names only (%s)", lang => {
     state.lang = lang;
     const by = groupMilestonesByShelf(catalogue());
@@ -217,14 +194,13 @@ describe("v10.1 — the map's foot", () => {
       : m.id === recentMove ? seen(m, "2026-05-20T10:00:00.000Z")
       : m.id === oldHands ? seen(m, "2026-03-01T10:00:00.000Z") : m));
     const html = render({ milestones: ms });
-    const line = html.match(/<p class="ms-map-growing" data-testid="dev-map-growing">[\s\S]*?<\/p>/)?.[0] ?? "";
+    const line = html.match(/<p data-testid="dev-map-growing">[\s\S]*?<\/p>/)?.[0] ?? "";
     const t = (key: string) => translate(lang, key);
     expect(line).toContain(esc(t("companion.milestones.growing")));
     expect(line).toContain(esc(domainName("talking", t)));
     expect(line).toContain(esc(domainName("moving", t)));
     expect(line).not.toContain(esc(domainName("hands", t)));
     expect(words(line)).not.toMatch(/\d/);
-    // The blank-means-no-record note comes first, then the growing line.
     expect(html.indexOf('data-testid="dev-map-note"')).toBeLessThan(html.indexOf('data-testid="dev-map-growing"'));
   });
 
@@ -234,6 +210,39 @@ describe("v10.1 — the map's foot", () => {
     const html = render({ milestones: ms });
     expect(html).not.toContain('data-testid="dev-map-growing"');
     expect(html).toContain('data-testid="dev-map-note"');
+  });
+});
+
+describe("v10.1 — AreaTimeline, the open area's dated line", () => {
+  const line = (props: Partial<React.ComponentProps<typeof AreaTimeline>> = {}) =>
+    renderToStaticMarkup(<AreaTimeline domain="talking" milestones={[]} composition="desk" nowMs={NOW} {...props} />);
+  it("draws only dated Seen-it skills of this area, oldest first, with today at the end", () => {
+    const by = groupMilestonesByShelf(catalogue());
+    const ms = catalogue().map(m => (m.id === by.words[0].id ? seen(m, "2026-06-10T10:00:00.000Z")
+      : m.id === by.words[1].id ? seen(m, "2026-05-02T10:00:00.000Z")
+      : m.id === by.words[2].id ? seen(m)
+      : m.id === by.words[3].id ? { ...m, observationStatus: "not_yet" as const, observationUpdatedAt: "2026-06-01T10:00:00.000Z" }
+      : m.id === by.moving[0].id ? seen(m, "2026-06-01T10:00:00.000Z") : m));
+    const html = line({ milestones: ms });
+    const dates = [...html.matchAll(/data-testid="area-timeline-leaf"[\s\S]*?<time datetime="([^"]+)"/gi)].map(m => m[1]);
+    expect(dates).toEqual(["2026-05-02T10:00:00.000Z", "2026-06-10T10:00:00.000Z"]);
+    expect(html.indexOf("ms-tl-today")).toBeGreaterThan(html.lastIndexOf('data-testid="area-timeline-leaf"'));
+    expect(words(html)).not.toMatch(/%/);
+    expect(html).not.toContain("<svg");
+  });
+  it("keeps the newest five; nothing dated draws nothing", () => {
+    const by = groupMilestonesByShelf(catalogue());
+    const six = new Map(by.words.slice(0, 6).map((m, i) => [m.id, `2026-0${i + 1}-02T10:00:00.000Z`]));
+    const html = line({ milestones: catalogue().map(m => (six.has(m.id) ? seen(m, six.get(m.id)) : m)) });
+    expect(html.match(/data-testid="area-timeline-leaf"/g)).toHaveLength(5);
+    expect(html).not.toContain("2026-01-02");
+    expect(line({ milestones: catalogue() })).toBe("");
+  });
+  it("on a phone the same leaves are a dated list", () => {
+    const by = groupMilestonesByShelf(catalogue());
+    const html = line({ composition: "phone", milestones: catalogue().map(m => (m.id === by.words[0].id ? seen(m, "2026-06-10T10:00:00.000Z") : m)) });
+    expect(html).toMatch(/<ol class="ms-tl-list" data-testid="area-timeline">/);
+    expect(html.match(/data-testid="area-timeline-leaf"/g)).toHaveLength(1);
   });
 });
 
@@ -255,7 +264,7 @@ describe("v10.1 — DevelopmentCheckCard", () => {
     const html = card({ lastCheckAt: "2026-06-01T10:00:00.000Z", recheckDueAt: "2026-06-22T10:00:00.000Z" });
     expect(html).toContain(esc(translate("en", "companion.milestones.checkLast", { date: fmtDay("2026-06-01T10:00:00.000Z", "en") })));
     expect(html).toContain(translate("en", "companion.milestones.checkAgain"));
-    expect(html).toMatch(/<p class="ms-check-recheck" data-testid="dev-map-recheck">[^<]+<\/p>/);
+    expect(html).toMatch(/<span class="ms-obj-src ms-check-recheck" data-testid="dev-map-recheck">[^<]+<\/span>/);
     expect(html).not.toContain(translate("en", "companion.milestones.checkNever"));
   });
   it("Start opens the check, and the page's primary-move stamp lands on it, once", () => {
@@ -278,9 +287,9 @@ describe("v10.1 — milestonesV10.css and the area body's developmentMap.css", (
       expect(line, line).toMatch(/\.ds/);
     }
   });
-  it("three columns of territories on a desk, two on a phone", () => {
-    expect(rule(v10, ".ds .atlas")).toContain("grid-template-columns: repeat(3, minmax(0, 1fr))");
-    expect(rule(v10, ".ds .atlas.m")).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
+  it("one row of eight equal segments on a desk; a sideways row on a phone", () => {
+    expect(rule(v10, ".ds .mci")).toContain("grid-template-columns: repeat(8, minmax(0, 1fr))");
+    expect(rule(v10, ".ds .mci.m")).toContain("overflow-x: auto");
   });
   it("an open area lays its skills in two columns, one on a phone", () => {
     expect(rule(area, ".area-detail-skills")).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
@@ -294,14 +303,14 @@ describe("v10.1 — milestonesV10.css and the area body's developmentMap.css", (
     expect(rule(v10, ".ds .obj .oa")).toContain("min-height: 44px");
     for (const css of [v10, area]) expect(css).not.toMatch(/(?:^|[\s;{])(?:margin|padding|border)-(?:left|right)\s*:|(?:^|[\s;{])(?:left|right)\s*:|text-align:\s*(?:left|right)|float:\s*(?:left|right)/);
   });
-  it("paints no verdict: area colour comes from production's domain tokens, nothing reads as a bar", () => {
+  it("paints no verdict: no area colour, one accent, nothing reads as a bar", () => {
     for (const css of [v10, area]) {
       expect(css).not.toMatch(/progress|(?:width|inline-size):\s*(?!100%)\d+(?:\.\d+)?%/);
       expect(css).not.toMatch(/--arbor-(?:green|red|amber|yellow|peach|pink)/);
     }
     expect(v10).not.toMatch(/--ar-(?:talking|moving|hands|thinking|playing|feelings|body|family)|--arbor-domain|var\(--t[wim]\)/);
-    // The seen leaf is the record colour, one for every area.
-    expect(v10).toContain(".ds .ter .tl .tok { --c: var(--k-moment); }");
+    // The lit segment is the one accent (sapphire).
+    expect(rule(v10, ".ds .mcs.on")).toContain("var(--sapphire-deep)");
   });
   it("the area's newest-moment line is ruled on the inline start", () => {
     expect(rule(area, ".area-detail-last")).toContain("border-inline-start:");

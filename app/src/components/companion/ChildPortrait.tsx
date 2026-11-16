@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import GoalBuilderModal from "../practice/GoalBuilderModal";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { DsRoot, Fig, Guide, MoreLink, Route, RouteHead, RouteSection, Scene, StartHere, scrollToSection } from "../../design/primitives";
+import { DsRoot, Guide, MoreLink, Route, RouteHead, RouteSection, scrollToSection } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
 import { useObservationRecord } from "../../hooks/useObservationRecord";
 import { domainName, type DomainId } from "../../lib/domains/registry";
@@ -17,33 +17,35 @@ import { trackCompanionPlaceOpen } from "../../lib/kpiEvents";
 import { Icon } from "../ui/Icon";
 import MilestoneAreas from "./MilestoneAreas";
 import { seenTotals } from "./milestonesModel";
-import MilestonesViewSwitch from "./MilestonesViewSwitch";
+import AreaTimeline from "./AreaTimeline";
+import MilestonesBand from "./MilestonesBand";
+import MilestonesReadGuide from "./MilestonesReadGuide";
 import { milestonesV10Copy } from "./milestonesV10Copy";
-import PortraitCards from "./PortraitCards";
+import PortraitCards, { GoalFocus } from "./PortraitCards";
 import ThenAndNow from "./ThenAndNow";
 import { useNowClock } from "./useNowClock";
 import "./childPortrait.css";
 import "./milestonesV10.css";
 
 /**
- * v10.1 — My child › Milestones (#/development), the milestone map: one tree,
- * two compositions (useComposition), four numbered sections under the guide.
+ * v10.1 — My child › Milestones (#/development), the map: one tree, two
+ * compositions (useComposition), four numbered sections under the guide.
  *
- *  1. The map: the scene (kicker, "<name>'s growth, in your words.", the
- *     Map / List switch) holding the eight territories (DevelopmentMap). Desk:
- *     the 5-minute check (the page's one primary move) and Then and now sit
- *     in the rail beside it.
- *  2. In your words: a strength, a moment the parent kept, what the family is
- *     working on (PortraitCards; the goal picker opens here). Phone: the check
- *     closes this row, then Then and now.
- *  3. One area, opened: the open area's head and body (AreaRowDetail: its
- *     skills with Seen it / Not yet / Not sure, Add your own, the three doors).
- *  4. What to notice next: up to three skills, one answer control each
- *     (desk: the rail beside the open area).
+ *  1. The areas: the header band (kicker, "<name>'s growth, in your words.",
+ *     the one figure, Map / List) and the index of eight equal areas, which
+ *     picks the area section 2 opens.
+ *  2. That area: its dated line of Seen it (AreaTimeline) and its skills to
+ *     mark (AreaRowDetail: Seen it / Not yet / Not sure, Add your own, the
+ *     three doors). The rail beside it: how to read the page, Arbor's first
+ *     pick ("Arbor suggests"), and the focus with the 5-minute check (the
+ *     page's one primary move) as one object.
+ *  3. In your words: a strength and a moment the parent kept, then Then and now.
+ *  4. What to notice next: Arbor's other picks, one answer control each.
  *
  * The moments views belong to the Moments pill; the care and record doors to
  * Care. The shell draws the breadcrumb and the pill row, so the page starts at
- * the guide. Three modules, one primary move, at every width.
+ * the guide. Three modules, one primary move, at every width. One accent
+ * (sapphire); areas are told apart by glyph and name.
  * CLINICAL FIREWALL: Seen-it counts and the parent's own words only.
  */
 export interface ChildPortraitProps {
@@ -94,9 +96,9 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
 
   const heading = <>{titleBefore}<bdi dir="auto">{name}</bdi>{titleAfter || null}</>;
   const stops = [
-    { id: "ms-map", title: v10.guideMap, sub: v10.guideMapSub },
+    { id: "ms-areas", title: v10.guideAreas, sub: v10.guideAreasSub },
+    { id: "ms-area", title: v10.guideArea, sub: v10.guideAreaSub },
     { id: "ms-words", title: v10.guideWords, sub: v10.guideWordsSub },
-    { id: "ms-area", title: v10.guideArea },
     { id: "ms-next", title: v10.guideNext, sub: v10.guideNextSub },
   ];
 
@@ -107,71 +109,55 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
         onClose={() => setGoalOwner(null)} />}
       <MilestoneAreas key={childProfile.id} observations={observations} momentText={title} primaryMoveProps={{ "data-primary-move": "start-development-check" }}
         onExplore={exploreDomain} composition={composition} onOpened={onOpened}>
-        {({ map, check, area, next, openDomain }) => {
-          const cards = <PortraitCards sources={record.sources} onEditGoal={() => setGoalOwner(childProfile.id)} />;
-          const thenAndNow = <ThenAndNow observations={observations} logs={record.sources.behaviorLogs ?? []} now={now} />;
-          const areaCard = (
-            <div className="area" data-testid="ms-open-area">
-              <div className="ah">
-                <span className="tg" aria-hidden="true"><Icon name={DOMAIN_ICONS[openDomain]} size={17} /></span>
-                <div className="ms-ah-text">
-                  <span className="ak">{v10.areaKicker}</span>
-                  <h3 className="an" id="ms-area-title">{domainName(openDomain, t)}</h3>
-                </div>
-                <MoreLink onClick={() => scrollToSection("ms-map")}>{v10.allAreas}</MoreLink>
-              </div>
-              {area}
-            </div>
-          );
-          const nextHead = <RouteHead id="ms-next-title" title={v10.nextTitle} link={<MoreLink href={`#${routeHash("milestones")}`}>{v10.allMilestones}</MoreLink>} />;
-          return <>
+        {({ map, check, area, suggest, next, openDomain }) => (
+          <>
             <Guide stops={stops} label={v10.onThisPage} mini={!desk} />
             <Route composition={composition}>
-              <RouteSection id="ms-map" n={1} on aria-labelledby="ms-title">
-                <div className="ms-row" data-module="child-milestones-areas">
-                  <div className="stg">
-                    <Scene field="child" orbs={desk ? [{ size: 300, right: -90, top: -120 }, { size: 220, left: -70, bottom: -110, b: true }] : [{ size: 180, right: -70, top: -80 }]}>
-                      <header className="ms-head">
-                        <div className="ms-head-text">
-                          <p className="kicker">{t("companion.milestones.kicker")} <StartHere>{v10.startHere}</StartHere></p>
-                          <h1 className="title" id="ms-title">{heading}</h1>
-                          <p className="ms-sub">{t("elev.loop.ms.footer")}</p>
-                        </div>
-                        <div className="ms-head-tools">
-                          {!desk && totals.seen > 0 && <Fig n={totals.seen} unit={v10.hubUnit} sub={totals.areas === 1 ? v10.hubAreasOne : v10.hubAreasMany.replace("{n}", String(totals.areas))} size="md" />}
-                          <MilestonesViewSwitch current="development" />
-                        </div>
-                      </header>
-                      {map}
-                    </Scene>
-                  </div>
-                  {desk && <div className="rlc">{check}{thenAndNow}</div>}
+              <RouteSection id="ms-areas" n={1} on aria-labelledby="ms-title">
+                <div data-module="child-milestones-areas">
+                  <MilestonesBand composition={composition} kicker={t("companion.milestones.kicker")} title={heading} titleId="ms-title"
+                    sub={t("elev.loop.ms.footer")} current="development" totals={totals}>
+                    {map}
+                  </MilestonesBand>
                 </div>
               </RouteSection>
-              <RouteSection id="ms-words" n={2} aria-labelledby="ms-words-title">
-                <div data-module="child-milestones-portrait">
-                  <RouteHead id="ms-words-title" title={v10.wordsTitle} sub={v10.wordsSub} />
-                  <div className="ms-objs">{cards}{!desk && check}</div>
-                  {!desk && thenAndNow}
-                </div>
-              </RouteSection>
-              <RouteSection id="ms-area" n={3} aria-labelledby="ms-area-title">
+              <RouteSection id="ms-area" n={2} aria-labelledby="ms-area-title">
                 <div className="ms-row" data-module="child-milestones-area">
-                  <div className="stg">{areaCard}</div>
-                  {desk ? (
-                    <div className="rlc" id="ms-next">{nextHead}{next}</div>
-                  ) : null}
+                  <div className="stg">
+                    <div className="mcst" data-testid="ms-open-area">
+                      <div className="mcsh">
+                        <span className="tg" aria-hidden="true"><Icon name={DOMAIN_ICONS[openDomain]} size={20} /></span>
+                        <h2 className="tt" id="ms-area-title">{domainName(openDomain, t)}</h2>
+                        <MoreLink href={`#${routeHash("milestones")}`}>{v10.everyItem}</MoreLink>
+                      </div>
+                      <AreaTimeline domain={openDomain} milestones={milestones} composition={composition} gender={childProfile.gender ?? null} />
+                      {area}
+                    </div>
+                  </div>
+                  <div className="rlc">
+                    <MilestonesReadGuide />
+                    {suggest}
+                    <div className="mcc ms-focus-check">
+                      <GoalFocus onEditGoal={() => setGoalOwner(childProfile.id)} />
+                      {check}
+                    </div>
+                  </div>
                 </div>
               </RouteSection>
-              {!desk && (
-                <RouteSection id="ms-next" n={4} aria-labelledby="ms-next-title">
-                  {nextHead}
-                  {next}
-                </RouteSection>
-              )}
+              <RouteSection id="ms-words" n={3} aria-labelledby="ms-words-title">
+                <div data-module="child-milestones-portrait">
+                  <RouteHead id="ms-words-title" title={v10.wordsTitle} />
+                  <div className="ms-objs"><PortraitCards sources={record.sources} /></div>
+                  <ThenAndNow observations={observations} logs={record.sources.behaviorLogs ?? []} now={now} />
+                </div>
+              </RouteSection>
+              <RouteSection id="ms-next" n={4} aria-labelledby="ms-next-title">
+                <RouteHead id="ms-next-title" title={v10.nextTitle} link={<MoreLink href={`#${routeHash("milestones")}`}>{v10.allMilestones}</MoreLink>} />
+                {next}
+              </RouteSection>
             </Route>
-          </>;
-        }}
+          </>
+        )}
       </MilestoneAreas>
     </DsRoot>
   );

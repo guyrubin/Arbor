@@ -68,7 +68,7 @@ function mountedPortraitProof(duplicateKey: boolean) {
     React.useEffect(() => () => { watchDisposals++; }, []);
     return React.createElement(React.Fragment, null,
       React.createElement("button", { "data-testid": "synthetic-watch", "data-identity": identity }),
-      children({ map: null, check: null, area: null, next: null, openDomain: "talking" }));
+      children({ map: null, check: null, area: null, suggest: null, next: null, openDomain: "talking" }));
   };
   const pass = ({ children }) => React.createElement("div", null, children);
   const copy = new Proxy({}, { get: (_, key) => String(key) });
@@ -86,18 +86,20 @@ function mountedPortraitProof(duplicateKey: boolean) {
     // (MilestoneAreas key={childProfile.id}); its own suites prove what it draws.
     "./MilestoneAreas": { default: Watch },
     // v3 F-CHILD-1: the goal card (PortraitCards) is the door that opens the picker.
-    "./PortraitCards": { default: ({ onEditGoal }) => React.createElement("button", { onClick: onEditGoal, "data-testid": "portrait-goals-edit" }) },
+    // v10.1: the goal is the rail's focus row (GoalFocus); the portrait cards no longer hold it.
+    "./PortraitCards": { default: empty, GoalFocus: ({ onEditGoal }) => React.createElement("button", { onClick: onEditGoal, "data-testid": "portrait-goals-edit" }) },
+    "./AreaTimeline": { default: empty }, "./MilestonesBand": { default: pass }, "./MilestonesReadGuide": { default: empty },
     // v3 F-CHILD-4 RE-PIN (test seam only): the phone stack's doors and width
     // read; this proof runs the wide order, which keeps the modules it pins.
     "./ChildDoors": { default: empty, useChildPhoneLayout: () => false },
     // v4.1: Then and now (its own render test: nowV41.test) and the page clock.
     "./ThenAndNow": { default: empty }, "./useNowClock": { useNowClock: () => new Date("2026-10-10T12:00:00Z") },
     // v10.1: the design primitives and the composition read (layout only).
-    "../../design/primitives": { DsRoot: pass, Fig: empty, Guide: empty, MoreLink: empty, Route: pass, RouteHead: empty, RouteSection: pass, Scene: pass, StartHere: pass, scrollToSection() {} },
+    "../../design/primitives": { DsRoot: pass, Guide: empty, MoreLink: empty, Route: pass, RouteHead: empty, RouteSection: pass, scrollToSection() {} },
     "../../design/useComposition": { useComposition: () => "desk" },
     "../../lib/domains/icons": { DOMAIN_ICONS: {} }, "../../lib/routes": { routeHash: () => "" },
     "../ui/Icon": { Icon: empty }, "./milestonesModel": { seenTotals: () => ({ seen: 0, areas: 0 }) },
-    "./MilestonesViewSwitch": { default: empty }, "./milestonesV10Copy": { milestonesV10Copy: () => copy }, "./milestonesV10.css": {},
+    "./milestonesV10Copy": { milestonesV10Copy: () => copy }, "./milestonesV10.css": {},
   }, source => duplicateKey ? source.replace('key={`goal-picker:${childProfile.id}`}', 'key={childProfile.id}') : source).default;
   function Shell() {
     const [route, changeRoute] = React.useState("development"), [, changeVersion] = React.useState(0);
