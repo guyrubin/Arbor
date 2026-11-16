@@ -105,18 +105,24 @@ export default function VisitsComposition({ composition, parts, visit, heading, 
     </>
   ) : (
     <>
-      <section className="vt care-bring">
+      <section className="vt care-bring" aria-labelledby="care-bring-title">
+        <h3 id="care-bring-title" className="care-cardhead"><span className="care-gi" aria-hidden="true"><Icon name="description" size={22} /></span>{t("elev.consult.step.bring")}</h3>
         {parts.bring}
         {parts.packet}
       </section>
-      {parts.preview && <section className="vt care-preview">{parts.preview}</section>}
+      {parts.preview && (
+        <section className="vt care-preview" aria-labelledby="care-preview-title">
+          <h3 id="care-preview-title" className="care-cardhead"><span className="care-gi" aria-hidden="true"><Icon name="visibility" size={22} /></span>{t("elev.consult.step.preview")}</h3>
+          {parts.preview}
+        </section>
+      )}
       {parts.share && <section className="vt care-share">{parts.share}</section>}
     </>
   );
 
   const addAppointment = (
     <button type="button" className="ds-link care-add" onClick={() => openAddAppointment(setActiveTab)}>
-      <Icon name="add" size={16} /> {t("elev.careNet.appt.add")}
+      <Icon name="add" size={18} /> {t("elev.careNet.appt.add")}
     </button>
   );
 

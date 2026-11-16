@@ -15,7 +15,8 @@ import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
 import { fmtDay } from "../../lib/formatDate";
 import { requestOpenSettings } from "../layout/settingsBus";
 import { parentWords, recordStartIso, reportsLeadCounts } from "../../lib/recordCounts";
-import { DsRoot, Guide, Route, RouteSection, RouteHead, SideRail, Scene, LivingForm, StartHere } from "../../design/primitives";
+import { DsRoot, Guide, Route, RouteSection, RouteHead, SideRail } from "../../design/primitives";
+import CareStage from "../care/v10/CareStage";
 import { useComposition } from "../../design/useComposition";
 import { careCopy } from "../care/v10/careV10Copy";
 import "../care/v10/care.css";
@@ -207,32 +208,16 @@ export default function Reports() {
           on the ONE control that performs the move — the lead record's Save
           button — never on a display:contents wrapper around the catalogue. */}
       <div data-module="reports-catalogue" className={desk ? "g12 care-records-row" : "stack care-records-row"}>
-        <Scene
-          field="care"
-          as="section"
-          aria-labelledby="reports-h1"
-          className={desk ? "x8 care-scene care-records-scene" : "care-scene care-records-scene"}
-          orbs={desk
-            ? [{ size: 420, left: -230, bottom: -280, opacity: 0.8 }, { size: 360, right: -180, top: -240, opacity: 0.6, b: true }]
-            : [{ size: 250, left: -150, bottom: -160, opacity: 0.8 }, { size: 220, right: -130, top: -140, opacity: 0.55, b: true }]}
+        <CareStage
+          composition={composition}
+          labelledBy="reports-h1"
+          className="care-records-scene"
+          kicker={startIso ? c.since(fmtDay(startIso, uiLang)) : t("elev.reports.eyebrow")}
+          art="/visuals/parent/v2/area-words-960.webp"
+          artOnPhone
+          heading={<div className="stack care-heading"><h1 id="reports-h1" className="hero care-h1">{t("sec.reports.title")}</h1><p className="care-sub">{t("sec.reports.sub", { name: first })}</p></div>}
         >
-          <div className="line between care-scene-top">
-            <span className="gsec">
-              <span className="kicker">{startIso ? c.since(fmtDay(startIso, uiLang)) : t("elev.reports.eyebrow")}</span>
-              <StartHere>{t("elev.learnCare.brief.startHere")}</StartHere>
-            </span>
-          </div>
-          <div className="line care-scene-main">
-            {desk
-              ? <LivingForm src="/visuals/parent/v2/area-words-960.webp" width={150} height={128} crop={{ w: 200, h: 200, x: -24, y: -40 }} />
-              : <LivingForm src="/visuals/parent/v2/area-words-960.webp" width={72} height={50} crop={{ w: 90, h: 90, x: -9, y: -21 }} />}
-            <div className="stack care-scene-head">
-              <h1 id="reports-h1" className="hero care-h1">{t("sec.reports.title")}</h1>
-              <p className="care-sub">{t("sec.reports.sub", { name: first })}</p>
-            </div>
-          </div>
-        {/* The lead record: Weekly Insight, with the page's one gradient. */}
-        <div className="flex flex-col gap-3 care-records-lead">
+          <div className="flex flex-col gap-3 care-records-lead">
           <div className="min-w-0">
             <h2 data-testid="reports-lead-title" className="t-md font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t("elev.reports.record.title", { name: first })}</h2>
             {/* B-CAREPRO-NEW-2e: one counts-only line from the record.
@@ -289,7 +274,7 @@ export default function Reports() {
             <Icon name="download" size={16} /> {t("elev.reports.lead.cta", { name: first })}
           </button>
         </div>
-        </Scene>
+        </CareStage>
         <SideRail id="records-docs" n={2} title={c.stopDocs} titleId="records-docs-title" className={desk ? "x4 care-rail" : "care-rail"}>
           <div className="rcard fit care-records-docs">
         {/* The other parent-record documents: one layer of chrome — hairline

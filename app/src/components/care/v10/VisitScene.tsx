@@ -1,6 +1,7 @@
 import React from "react";
 import { Icon } from "../../ui/Icon";
-import { Scene, LivingForm, Fig, Token, StartHere } from "../../../design/primitives";
+import { Fig, Token } from "../../../design/primitives";
+import CareStage from "./CareStage";
 import type { Composition } from "../../../design/useComposition";
 import { useArbor } from "../../../context/ArborContext";
 import { useLanguage } from "../../../context/LanguageContext";
@@ -58,59 +59,25 @@ export default function VisitScene({ composition, visit, heading, packed, build,
     { n: packed.words, unit: c.packedWords(packed.words), sub: c.packedWordsSub },
   ].filter((x) => x.n > 0);
 
-  const art = desk
-    ? <LivingForm src={ART} width={196} height={136} crop={{ w: 250, h: 250, x: -27, y: -60 }} />
-    : <LivingForm src={ART} width={72} height={50} crop={{ w: 90, h: 90, x: -9, y: -21 }} />;
+  const figure = visit && days !== null
+    ? <SceneFigure days={days} label={c.daysToGo(days)} when={when} size={desk ? "xl" : "md"} badge={badge ? t(badge.key, badge.vars) : ""} />
+    : visit && when ? <p className="care-scene-when">{appointmentRoleLabel(visit, t)} · {when}</p> : null;
 
   return (
-    <Scene
-      field="care"
-      as="section"
-      aria-labelledby="consult-h1"
+    <CareStage
+      composition={composition}
+      labelledBy="consult-h1"
       data-testid={brief ? undefined : "consult-visit-head"}
       data-visit={brief ? undefined : visit ? "booked" : "none"}
-      className={desk ? (aside ? "x12 care-scene" : "x8 care-scene") : "care-scene"}
-      orbs={desk
-        ? [{ size: 420, left: -230, bottom: -280, opacity: 0.8 }, { size: 360, right: -180, top: -240, opacity: 0.6, b: true }]
-        : [{ size: 250, left: -150, bottom: -160, opacity: 0.8 }, { size: 220, right: -130, top: -140, opacity: 0.55, b: true }]}
+      kicker={brief ? undefined : <span data-testid="consult-kicker">{t("elev.consult.kicker")}</span>}
+      startHere={!brief}
+      note={briefLine}
+      art={ART}
+      heading={heading}
+      figure={figure}
+      aside={aside}
+      wide={!!aside}
     >
-      {brief ? (
-        briefLine && <div className="line between care-scene-top"><span /><span className="small">{briefLine}</span></div>
-      ) : (
-        <div className="line between care-scene-top">
-          <span className="gsec">
-            <span className="kicker" data-testid="consult-kicker">{t("elev.consult.kicker")}</span>
-            <StartHere>{t("elev.learnCare.brief.startHere")}</StartHere>
-          </span>
-        </div>
-      )}
-      {desk ? (
-        <div className="line care-scene-main">
-          {art}
-          <div className="stack care-scene-head">
-            {heading}
-            {visit && days !== null && <SceneFigure days={days} label={c.daysToGo(days)} when={when} size="xl" badge={badge ? t(badge.key, badge.vars) : ""} />}
-            {visit && days === null && when && <p className="care-scene-when">{appointmentRoleLabel(visit, t)} · {when}</p>}
-          </div>
-          {aside && <div className="care-scene-aside">{aside}</div>}
-        </div>
-      ) : (
-        <>
-          {heading}
-          {/* phone: the art rides with the visit's figure; a heading-only
-              scene (Visit summary, Teacher brief) has no art row of its own */}
-          {visit && (
-            <div className="line care-scene-main">
-              {art}
-              {days !== null
-                ? <SceneFigure days={days} label={c.daysToGo(days)} when={when} size="md" badge={badge ? t(badge.key, badge.vars) : ""} />
-                : <p className="care-scene-when">{`${appointmentRoleLabel(visit, t)} · ${when ?? ""}`}</p>}
-            </div>
-          )}
-          {aside}
-        </>
-      )}
-
       {visit && days !== null && days > 0 && visitDay && (
         <div className="stack care-runway">
           <div className="runway" role="img" aria-label={c.runwayLabel(days, todayLabel, dateLabel)}>
@@ -147,13 +114,13 @@ export default function VisitScene({ composition, visit, heading, packed, build,
           onClick={() => setActiveTab("appointments")}
           className="ds-link min-h-[44px]"
         >
-          <Icon name={visit ? "calendar_month" : "add"} size={16} />
+          <Icon name={visit ? "calendar_month" : "add"} size={18} />
           {t(visit ? "elev.consult.visit.appointments" : "elev.consult.visit.add")}
-          <Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />
+          <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" />
         </button>}
         {build}
       </div>
-    </Scene>
+    </CareStage>
   );
 }
 

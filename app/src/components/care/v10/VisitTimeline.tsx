@@ -46,7 +46,7 @@ export default function VisitTimeline({ appointments, followUps, nowMs = Date.no
       <div className="vt care-appts" data-testid="care-appointments-empty">
         <p className="care-appts-empty">{t("elev.consult.visit.none")}</p>
         <button type="button" className="ds-link" onClick={() => openAddAppointment(setActiveTab)}>
-          <Icon name="add" size={16} /> {t("elev.careNet.appt.add")}
+          <Icon name="add" size={18} /> {t("elev.careNet.appt.add")}
         </button>
       </div>
     );
@@ -84,8 +84,8 @@ export default function VisitTimeline({ appointments, followUps, nowMs = Date.no
       )}
       <div className="care-appts-foot">
         <button type="button" className="ds-link" data-testid="care-appointments-open" onClick={() => setActiveTab("appointments")}>
-          <Icon name="history" size={16} /> {t("elev.learnCare.appt.more.title")}
-          <Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />
+          <Icon name="history" size={18} /> {t("elev.learnCare.appt.more.title")}
+          <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" />
         </button>
       </div>
     </div>

@@ -1279,8 +1279,10 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
   );
 
   const shareHeading = (
-            <h2 tabIndex={-1} className="flex items-center gap-2 t-lg font-extrabold focus:outline-none" style={{ fontFamily: "var(--font-display)", color: INK }}>
+            <h2 tabIndex={-1} className={`flex items-center gap-2 t-lg font-extrabold focus:outline-none${layout ? " care-cardhead" : ""}`} style={{ fontFamily: "var(--font-display)", color: INK }}>
               {!layout && <span aria-hidden="true" className="inline-flex items-center justify-center w-7 h-7 rounded-full t-sm font-extrabold" style={{ background: "var(--arbor-paper-deep)", color: INK }}>3</span>}
+              {/* design V77: in a screen's layout the Share card's head carries its glyph tile */}
+              {layout && <span aria-hidden="true" className="care-gi"><Icon name="ios_share" size={22} /></span>}
               {landing ? t("elev.consult.step.share") : t("elev.carehonesty.consult.step.leaves")}
             </h2>
   );
