@@ -35,7 +35,7 @@ import { TrustLink } from "../trust/TrustLink";
 // AP-053: Academy "For You" — copilot focus + Learning Map join
 import AcademyForYou from "./AcademyForYou";
 // v10.1 — the design system's For you composition (N-ForYou-D / N-ForYou-M).
-import { DsRoot, Guide, MoreLink, Route, RouteHead, RouteSection, Row12, Scene, SideRail, StartHere, Tile, type GuideStop } from "../../design/primitives";
+import { DsRoot, Guide, MoreLink, Route, RouteHead, RouteSection, Row12, Scene, StartHere, Tile, type GuideStop } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
 import { forYouCopy } from "../foryou/forYouCopy";
 import { AreaForm } from "../foryou/AreaForm";
@@ -430,7 +430,7 @@ export default function Masterclasses() {
   const coursesBlock = (
     <div data-module="academy-catalogue" data-testid="academy-courses" className="stack fy-col" style={{ gap: 12 }}>
       {!desk && <RouteHead id="fy-courses-title" title={t("elev.learnCare.byArea")} sub={copy.guideCoursesSub(catalog.length, firstName)} />}
-      {ageSwitch && <div className={`line fy-switchrow${desk ? " desk" : ""}`}>{ageSwitch}</div>}
+      {!desk && ageSwitch && <div className="fy-switchrow">{ageSwitch}</div>}
       {coursesBody}
     </div>
   );
@@ -491,9 +491,15 @@ export default function Masterclasses() {
             <RouteSection id="fy-today" n={1} on>
               <Row12>
                 {pickScene}
-                <SideRail id="fy-courses" n={2} title={t("elev.learnCare.byArea")} titleId="fy-courses-title" className="x4">
+                {/* The rail (SideRail's markup): its head carries the age switch, which belongs to this list. */}
+                <aside className="siderail cards x4" id="fy-courses" aria-labelledby="fy-courses-title">
+                  <div className="rh fy-railhead">
+                    <span className="rstop inline" aria-hidden="true">2</span>
+                    <h2 className="h3" id="fy-courses-title">{t("elev.learnCare.byArea")}</h2>
+                    {ageSwitch}
+                  </div>
                   {coursesBlock}
-                </SideRail>
+                </aside>
               </Row12>
             </RouteSection>
           ) : (

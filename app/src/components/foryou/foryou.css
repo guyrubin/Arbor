@@ -96,8 +96,9 @@
 .ds-phone .fy-meta { gap: 6px; }
 .ds .fy-practice { background: #f0edfb; box-shadow: inset 0 0 0 1px #dcd7f3; }
 .ds .fy-practice .by { color: #5b4fc0; }
-.ds .fy-switchrow { justify-content: flex-end; }
-.ds .fy-switchrow.desk { margin-top: -6px; }
+.ds .fy-switchrow { display: flex; justify-content: flex-end; min-width: 0; }
+.ds .fy-railhead { flex-wrap: wrap; row-gap: 0; }
+.ds .fy-railhead .fy-switch { margin-block: -8px; }
 .ds .fy-col { min-width: 0; }
 
 /* ── Library (N-Library-D/M) ─────────────────────────────────────────────── */

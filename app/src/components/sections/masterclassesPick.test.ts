@@ -105,7 +105,10 @@ describe("W2-SHELLPLAY r1 · the pick reads first; the rail never stacks two emp
   it("v10: the pick's title is the page's one h1 (display hero), above the courses' rail heading", () => {
     expect(src).toContain('<h1 className="hero" id="fy-pick-title" dir="auto">{pickTitle ?? t("elev.hero.academy.title")}</h1>');
     expect(src.indexOf("const pickScene = (")).toBeLessThan(src.indexOf("const coursesBlock = ("));
-    expect(src).toContain('<SideRail id="fy-courses" n={2} title={t("elev.learnCare.byArea")}');
+    expect(src).toContain('<h2 className="h3" id="fy-courses-title">{t("elev.learnCare.byArea")}</h2>');
+    // The age switch belongs to the courses list: it sits in the rail's own head.
+    const head = src.slice(src.indexOf('<div className="rh fy-railhead">'), src.indexOf("{coursesBlock}", src.indexOf('<div className="rh fy-railhead">')));
+    expect(head).toContain("{ageSwitch}");
   });
   it("with no map signal, ONE muted line with a 44 px door stands in for For You + Scholar Hub", () => {
     expect(src).toMatch(/\{devMapHasSignal\(devScore\) \? \(\s*<>[\s\S]*<AcademyForYou \/>[\s\S]*<ScholarHubCard \/>[\s\S]*<\/>\s*\) : \(/);
