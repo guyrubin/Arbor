@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { studioBopArt } from '../../../../../lib/kidThemeManifest';
+import { BOP_SCENE_SIZES, studioBopArt } from '../../../../../lib/kidThemeManifest';
 import './bopStage.css';
 
 /** Toy-world art shared by the Bop games: one folder, one naming rule, kept
@@ -19,7 +19,7 @@ export function BopSprite({ name, size, className = '', flat = false, style }: {
 
 /** The room behind a game. Sits under everything else in a `.bop-stage`. */
 export function BopScene({ scene }: { scene: BopSceneId }) {
-  return <img className="bop-scene" data-bop-scene={scene} src={bopArt(`${scene}-480`)} srcSet={`${bopArt(`${scene}-480`)} 480w, ${bopArt(scene)} 1024w`} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" />;
+  return <img className="bop-scene" data-bop-scene={scene} src={bopArt(`${scene}-480`)} srcSet={`${bopArt(`${scene}-480`)} 480w, ${bopArt(scene)} 1024w`} sizes={BOP_SCENE_SIZES} alt="" draggable={false} decoding="async" />;
 }
 
 /** An animal friend. Animals show feeling with ears, tail and posture only. */

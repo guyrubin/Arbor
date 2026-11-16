@@ -1,6 +1,6 @@
 /**
  * B-KID-50 (KC-06) — Pattern Power gives a second try before the rebuild.
- * A wrong tap nudges that tile, says "Try another one!" and leaves the other
+ * A wrong tap nudges that tile, says what to look at again and leaves the other
  * tiles live; a second miss reveals the answer as a pulse (no sentence); only
  * the FIRST try is logged (one row per round). Static render + source pins.
  */
@@ -65,7 +65,7 @@ describe("B-KID-50: a wrong tap leaves the round open", () => {
     expect(view({ picked: puzzle.answer })).toContain("YES-LINE");
   });
   it("the nudge line exists in EN and HE", () => {
-    expect(en["elev.kids.pattern.feedback.tryAnother"]).toBe("Try another one!");
+    expect(en["elev.kids.pattern.feedback.tryAnother"]).toBe("Look at the row again: what comes next?"); // B-KID-175: says what to try
     expect(/[א-ת]/.test(he["elev.kids.pattern.feedback.tryAnother"] ?? "")).toBe(true);
   });
 });

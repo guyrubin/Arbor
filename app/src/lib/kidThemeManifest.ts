@@ -234,6 +234,18 @@ export function studioNextCover(id: string): StudioNextCover | null {
   return { src, src480, srcSet: `${src480} 480w, ${src} 1024w` };
 }
 
+/** The room each Next Studio game plays in (BopScene). Its intro fetches it
+ *  while the cover shows, so the stage never paints an empty floor first
+ *  (B-KID-175). Same files and sizes as BopScene, so the browser reuses it. */
+const STUDIO_NEXT_SCENES: Record<StudioNextHost | "rhythm-garden", string> = { memory: "scene-delivery", pattern: "scene-sun", puzzle: "scene-table", "river-rescue": "scene-floor", "rhythm-garden": "scene-band" };
+export const BOP_SCENE_SIZES = "(min-width: 700px) 620px, 100vw";
+export function studioNextScene(id: string): StudioNextCover | null {
+  if (!studioNextCover(id) || !Object.hasOwn(STUDIO_NEXT_SCENES, id)) return null;
+  const stem = STUDIO_NEXT_SCENES[id as keyof typeof STUDIO_NEXT_SCENES];
+  const src = studioBopArt(stem), src480 = studioBopArt(`${stem}-480`);
+  return { src, src480, srcSet: `${src480} 480w, ${src} 1024w` };
+}
+
 /** A shared neutral V2 environment set; the profile is the sole child identity. */
 const STUDIO_ART: Record<StudioArtKey, KidArt> = {
   "studio.sky": { src: `${STUDIO_V30}valley-wide.webp`, src480: `${STUDIO_V30}valley-wide-480.webp`, width: 1536, objectPosition: "50% 60%", altKey: null, provenanceId: "studio-v30-valley:2026-11-16", hasHero: false },

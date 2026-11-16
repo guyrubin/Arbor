@@ -1,11 +1,12 @@
 import { STUDIO_ACTIVITY_LOADERS, preloadStudioActivity } from '../kidPrefetch';
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { preload } from "react-dom";
 import { ArrowRight, RotateCcw, Waves } from "lucide-react";
 import { useArbor } from "../../../context/ArborContext";
 import { useAuth } from "../../../context/AuthContext";
 import { useLanguage } from "../../../context/LanguageContext";
 import { useKidTheme } from "../../../hooks/useKidTheme";
-import { isStudioCoverId, kidArt, kidArtSrcSet, studioNextCover } from "../../../lib/kidThemeManifest";
+import { BOP_SCENE_SIZES, isStudioCoverId, kidArt, kidArtSrcSet, studioNextCover, studioNextScene } from "../../../lib/kidThemeManifest";
 import { noteKidActivity } from "../../../lib/kidModeGate";
 import { localizedMimicPacks } from "../../../practice/mimicContent";
 import { ArborMascot } from "../../ui/ArborMascot";
@@ -119,6 +120,9 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
   useEffect(() => {
     if (!eligible || phase !== 'intro') return;
     void preloadStudioActivity(activityId).catch(() => { /* Play owns retry/fallback. */ });
+    // The game's room loads while its cover shows (B-KID-175).
+    const scene = studioNextScene(activityId);
+    if (scene) preload(scene.src480, { as: "image", imageSrcSet: scene.srcSet, imageSizes: BOP_SCENE_SIZES });
   }, [activityId, eligible, phase]);
 
   // A maker draws its own cover; an unavailable one keeps the plain world art.
