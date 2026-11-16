@@ -11,7 +11,7 @@
  * color-mix(); the tint of the glass travels as --bl-* properties. */
 import type { CSSProperties, ReactNode } from 'react';
 import { AXIS_X, BASE_Y, ELLIPSE, PROFILES, SCENE_H, SCENE_W, WALL, bandPath, baseRadius, bottomY, innerPath, maxRadius, radiusAt, silhouettePath, topY, waterPath, type ShapeId } from './bottleGeometry';
-import { KIT_AYA, KIT_LAMP, KIT_ROOM, STICKER_PRINT } from './bottleKit';
+import { KIT_AYA, KIT_LAMP, KIT_PLATE, STILL_PLACE, STICKER_PRINT } from './bottleKit';
 import { lampEffects, lampPosition, slotView, spawnBubble, type BottleFinish, type BottleSticker, type BottleStickerPlacement, type BottleTint } from './bottleLabRules';
 import type { RefractionMap } from './bottleRefraction';
 import { AYA, stickerShade } from './bottleToys';
@@ -86,11 +86,14 @@ export function BottleDefs({ uid, shape, finish, map, air, wet }: { uid: string;
 
 // ── The room ───────────────────────────────────────────────────────────────
 
-const L = KIT_ROOM.place.x, T = KIT_ROOM.place.y, W = KIT_ROOM.place.width, H = KIT_ROOM.place.height;
+const L = STILL_PLACE.room.x, T = STILL_PLACE.room.y, W = STILL_PLACE.room.width, H = STILL_PLACE.bench.y + STILL_PLACE.bench.height - STILL_PLACE.room.y;
 
-/** The kit's pavilion room. Drawn as the room, and again through the glass. */
+/** The kit's pavilion room and the glassworks bench (the play's own two plates). Drawn as the room, and again through the glass. */
 export function Backdrop({ small = false }: { small?: boolean }) {
-  return <image href={small ? KIT_ROOM.src480 : KIT_ROOM.src} x={L} y={T} width={W} height={H} preserveAspectRatio="none" />;
+  return <>
+    <image href={small ? KIT_PLATE.room.src480 : KIT_PLATE.room.src} {...STILL_PLACE.room} preserveAspectRatio="none" />
+    <image href={small ? KIT_PLATE.bench.src480 : KIT_PLATE.bench.src} {...STILL_PLACE.bench} preserveAspectRatio="none" />
+  </>;
 }
 
 /** Where the lamp's bulb is, for its glow. */

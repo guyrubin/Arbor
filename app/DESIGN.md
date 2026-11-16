@@ -70,6 +70,7 @@ Kids Studio wears the v30 kit register (Horizon Valley: a white and glass garden
 - Meaning, never decoration: the primary action is graphite (`--studio-action`, label `--studio-action-ink`); done or chosen is teal (`--studio-done`, rings `--studio-teal-ink`); the lit or next cue is `--studio-signal`, which marks a thing and never fills a surface. No gold, no yellow wash, no glow
 - Art: daylight valley and door pictures under `public/visuals/studio-v2/v30/`, game covers and scenes under `bop/`; props felt, knit or ceramic; the companions are Aya, Chock and Pep. People never appear in shell art, and no picture carries text
 - Makers (the twelve authored activities under `studioV2/games/makers/`): their chrome follows the rules above; their scene art draws from one material palette, `games/makers/makerPalette.css` (`--mk-*`), the only other kid stylesheet with raw colour. A maker never uses `--mk-*` for chrome
+  - Play (the Game Cut): a maker's scene fills the view under the top bar and its only chrome is the shared play kit, `games/makers/play/` (`PlayStage`, the `Hud*` pieces, `makerPlay.css`): frosted glass on the scene in the tokens above, one graphite primary action at a time, quest pips for things done (never a score), the host as a kit expression head
 - Guard: `kidDesign.audit.test.ts` freezes raw colour per kid stylesheet (shrink-only), fails a pre-v30 gold token or night-sky class in the Studio, and fails a `--studio-*` token used but not defined
 
 ## Motion

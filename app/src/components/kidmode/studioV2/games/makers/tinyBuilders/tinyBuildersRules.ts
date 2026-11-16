@@ -1,241 +1,168 @@
 import type { Challenge } from '../../adventures/adventureRules';
-import { FIBRE_COUNT, PIECE_BOX, SHEATH_MIN, fibreAngle, normDeg, toRad, VIEW_TILT } from './phageGeometry';
+import { FIBRE_COUNT, PHAGE, SHEATH_MIN, type V3 } from './tinyMesh';
 
-/** Tiny Structures rules: build a museum model of a T4-like bacteriophage on
- * Aya's bench, turn it, open it up, name its parts, then follow Aya's lens
- * into a drop of pond water and watch a real one land on a bacterium. Pure:
- * no React, no timers, no randomness. Nothing about how the child played is
- * kept or reported.
+/** Tiny Structures rules: on the TrailBench the child snaps together a
+ * magnetic model of a T4-like bacteriophage; then the ProofLens falls through
+ * a drop of pond water, power of ten by power of ten, to a real one; then the
+ * child helps that one land on a bacterium, legs first. Pure: no React, no
+ * timers, no clock, and randomness only from a seed handed in. Nothing about
+ * how the child played is kept or reported.
  *
  * SIMPLIFICATIONS (what the model leaves out, on purpose):
  * - Real T4 is built from many different kinds of protein (dozens in the
  *   head and tail alone, hundreds counting the machinery that builds it) with
- *   exact symmetries we do not draw: the head is drawn as one 20-faced
- *   elongated icosahedron, the sheath as twelve stacked rings (the real one
- *   has 23 rings of subunits wound in a helix), the baseplate as a plain
- *   hexagon, and the short tail fibres under it are left out.
- * - The six long tail fibres are placed as three pairs (opposite legs) to keep
- *   building playable; in the real particle each is its own part.
+ *   exact symmetries we do not draw: the head is one 20-faced drawn-out
+ *   icosahedron, the sheath twelve stacked ribs (the real one has 23 rings of
+ *   subunits wound in a helix), the baseplate a plain six-sided plate, and the
+ *   short tail fibres under it are left out.
+ * - The six long tail fibres go on as one set (or three pairs of opposite
+ *   legs) to keep building playable; in the real particle each is its own
+ *   part, and the model's clip ring is not a part of a phage.
+ * - A real phage meets a bacterium by chance, tumbling in the water, and
+ *   holds on when a fibre tip finds the right spot on the cell. In the game
+ *   the child turns it and lowers it; the true part is what happens at the
+ *   touch: only the fibre tips can hold, so head first or sideways it drifts
+ *   off again.
  * - Landing is told as four plain steps: fibres touch and hold, the
  *   baseplate settles, the sheath squeezes shorter while the stiff tube inside
  *   reaches through the cell's wall, and the DNA slides down the tube. The
- *   squeeze is a simple shortening and widening; the cell wall is drawn as
- *   three soft layers. Nothing after that is shown.
+ *   squeeze is a simple shortening and widening; the wall is drawn as soft
+ *   layers. Nothing after that is shown.
  * - Colours are invented. A phage is far smaller than a wave of light, so it
- *   has no colour of its own. The bench model is glass, ceramic, metal and
- *   wire in made-up colours (the child can repaint it); the real phage in the
- *   lens view is drawn pale and colourless, with only its DNA thread tinted so
- *   the eye can follow it.
+ *   has no colour of its own. The bench model is resin, metal and wire in
+ *   made-up colours (a new colour each round); the real phage in the lens
+ *   view is drawn pale, with only its DNA thread tinted so the eye can follow.
  * - It is a picture of the structure, not a simulation of real molecules.
- * - Scale (all sizes are round, typical figures; see tinyScale.ts): a drop of
- *   water about 3 millimetres across; a paramecium about 0.2 millimetres long
- *   (real ones run from about 0.05 to 0.3); a rod-shaped bacterium such as
- *   E. coli about 2 micrometres long; a T4 phage about 0.2 micrometres from
- *   head to baseplate. So about fifteen paramecia cross the drop, about a
- *   hundred bacteria are as long as a paramecium, and about ten phages are as
- *   long as a bacterium. Each lens picture draws its two things in that
- *   proportion; the zoom between pictures is a cut through magnifications far
- *   larger than a hand lens gives (a real phage needs an electron
- *   microscope), which the words say. */
+ * - Scale (round, typical figures; see tinyDive.ts): a drop about 5 mm
+ *   across; a water flea about 1 mm; a paramecium about 0.2 mm; a rod-shaped
+ *   bacterium about 2 micrometres; a T4 phage about 0.2 micrometres. Things
+ *   in the lens view are drawn at those sizes on one map. No glass lens shows
+ *   a bacterium this clearly or a phage at all: the last two pictures are
+ *   drawn from what electron microscopes show, and the words say so. */
 
 export type BuildMode = 'assisted' | 'full';
 export const BUILD_MODES: readonly BuildMode[] = ['assisted', 'full'];
-export function validMode(value: unknown): value is BuildMode {
-  return value === 'assisted' || value === 'full';
-}
-/** The younger age bands start with fewer, bigger pieces and a glowing
- * blueprint; everyone can switch. Read from the existing age-band default. */
-export function modeForChallenge(challenge: Challenge): BuildMode {
-  return challenge === 'explore' ? 'full' : 'assisted';
-}
+export function validMode(value: unknown): value is BuildMode { return value === 'assisted' || value === 'full'; }
+/** The younger age bands build with fewer, bigger parts and a stronger
+ * magnet; older children get every part. Read from the existing age default. */
+export function modeForChallenge(challenge: Challenge): BuildMode { return challenge === 'explore' ? 'full' : 'assisted'; }
 
-/** What a tray piece is. A kind fits only sockets of the same kind. */
 export type PieceKind = 'head' | 'collar' | 'tail' | 'tailCollar' | 'baseplate' | 'fibres' | 'fibrePair';
 export interface Piece { id: string; kind: PieceKind }
-export interface Hotspot { x: number; y: number }
-export interface Socket { id: string; kind: PieceKind; /** Where the keyboard / screen-reader target sits. */ at: Hotspot; /** Every point a drop or tap can aim at. */ spots: readonly Hotspot[] }
-
-/** The model's resting turn while it is being built: every fibre pair reads apart. */
-export const BUILD_ROTATION = 15;
-
-/** Hotspots in drawing units, for the model at BUILD_ROTATION and VIEW_TILT. */
-function fibreSpots(index: number): Hotspot[] {
-  const a = toRad(fibreAngle(index, BUILD_ROTATION));
-  const knee = { x: 200 + 84 * Math.cos(a), y: 266 + 84 * Math.sin(a) * VIEW_TILT };
-  const tip = { x: 200 + 112 * Math.cos(a), y: 338 + 112 * Math.sin(a) * VIEW_TILT };
-  return [tip, knee];
-}
-const round = (h: Hotspot): Hotspot => ({ x: Math.round(h.x), y: Math.round(h.y) });
-/** Of a pair (index, index + 3), the leg nearer the eye: its tip is the target. */
-function frontOf(pair: number): number {
-  const a = Math.sin(toRad(fibreAngle(pair, BUILD_ROTATION))), b = Math.sin(toRad(fibreAngle(pair + 3, BUILD_ROTATION)));
-  return a >= b ? pair : pair + 3;
-}
-const HEAD_SOCKET: Socket = { id: 'head', kind: 'head', at: { x: 200, y: 101 }, spots: [{ x: 200, y: 101 }, { x: 200, y: 62 }, { x: 200, y: 140 }] };
-const BASE_SOCKET: Socket = { id: 'baseplate', kind: 'baseplate', at: { x: 200, y: 291 }, spots: [{ x: 200, y: 291 }] };
-
-export const SOCKETS: Readonly<Record<BuildMode, readonly Socket[]>> = {
-  assisted: [
-    HEAD_SOCKET,
-    { id: 'tailCollar', kind: 'tailCollar', at: { x: 200, y: 214 }, spots: [{ x: 200, y: 214 }, { x: 200, y: 172 }, { x: 200, y: 256 }] },
-    BASE_SOCKET,
-    { id: 'fibres', kind: 'fibres', at: { x: 200, y: 352 }, spots: [{ x: 200, y: 352 }, ...Array.from({ length: FIBRE_COUNT }, (_, i) => fibreSpots(i).map(round)).flat()] },
-  ],
-  full: [
-    HEAD_SOCKET,
-    { id: 'collar', kind: 'collar', at: { x: 200, y: 168 }, spots: [{ x: 200, y: 168 }] },
-    { id: 'tail', kind: 'tail', at: { x: 200, y: 230 }, spots: [{ x: 200, y: 230 }, { x: 200, y: 200 }, { x: 200, y: 262 }] },
-    BASE_SOCKET,
-    ...[0, 1, 2].map((pair): Socket => {
-      const spots = [...fibreSpots(pair), ...fibreSpots(pair + 3)].map(round);
-      return { id: `fibres-${pair}`, kind: 'fibrePair', at: round(fibreSpots(frontOf(pair))[0]), spots };
-    }),
-  ],
-};
 export const PIECES: Readonly<Record<BuildMode, readonly Piece[]>> = {
   assisted: [{ id: 'head', kind: 'head' }, { id: 'tailCollar', kind: 'tailCollar' }, { id: 'baseplate', kind: 'baseplate' }, { id: 'fibres', kind: 'fibres' }],
   full: [{ id: 'head', kind: 'head' }, { id: 'collar', kind: 'collar' }, { id: 'tail', kind: 'tail' }, { id: 'baseplate', kind: 'baseplate' }, { id: 'pair-0', kind: 'fibrePair' }, { id: 'pair-1', kind: 'fibrePair' }, { id: 'pair-2', kind: 'fibrePair' }],
 };
-/** How many placements finish the model in each mode. */
-export const placementCount = (mode: BuildMode) => SOCKETS[mode].length;
+export const placementCount = (mode: BuildMode): number => PIECES[mode].length;
+export const pieceOf = (mode: BuildMode, id: string): Piece | undefined => PIECES[mode].find(p => p.id === id);
 
-/** Placed: socket id → the piece id that fills it. */
-export type Placed = Readonly<Record<string, string>>;
-
-export function socketOf(mode: BuildMode, id: string): Socket | undefined {
-  return SOCKETS[mode].find(s => s.id === id);
+/** The parts on the model, in the order they went on. */
+export type Placed = readonly string[];
+export const isPlaced = (placed: Placed, id: string): boolean => placed.includes(id);
+/** A part goes on once; each part has one place (the three pairs are alike:
+ * each takes the next free pair of legs). Null when it cannot go on. */
+export function placeOn(mode: BuildMode, placed: Placed, id: string): Placed | null {
+  if (!pieceOf(mode, id) || isPlaced(placed, id)) return null;
+  return [...placed, id];
 }
-export function pieceOf(mode: BuildMode, id: string): Piece | undefined {
-  return PIECES[mode].find(p => p.id === id);
+export const complete = (mode: BuildMode, placed: Placed): boolean => PIECES[mode].every(p => placed.includes(p.id));
+/** Which pair of opposite legs (0, 1 or 2) a pair piece holds or would take next. */
+export function pairSlot(mode: BuildMode, placed: Placed, id: string): number {
+  const pairs = placed.filter(p => pieceOf(mode, p)?.kind === 'fibrePair'), at = pairs.indexOf(id);
+  return at >= 0 ? at : Math.min(2, pairs.length);
 }
-/** A piece fits a socket only when they are the same kind of part. (The
- * three fibre pairs are identical, so any pair fits any free fibre place.) */
-export function fits(piece: Piece | PieceKind, socket: Socket): boolean {
-  return (typeof piece === 'string' ? piece : piece.kind) === socket.kind;
-}
-export const isPlaced = (placed: Placed, pieceId: string) => Object.values(placed).includes(pieceId);
-
-/** How near a drop or a tap must be to a place it fits. Assisted mode is
- * generous: anywhere on the blueprint goes to the piece's own place. */
-export const SNAP_RADIUS: Readonly<Record<BuildMode, number>> = { assisted: 170, full: 62 };
-
-const dist = (a: Hotspot, b: Hotspot) => Math.hypot(a.x - b.x, a.y - b.y);
-function nearest(socket: Socket, point: Hotspot): number {
-  return Math.min(...socket.spots.map(s => dist(s, point)));
-}
-/** Where a piece lands when it is let go (or the blueprint is tapped) at
- * `point`: the id of a free socket it fits, or null (it drifts back). In full
- * mode the nearest place of any kind must be one it fits, so a head dropped
- * on the tail does not jump up to its own place. */
-export function fitsAt(mode: BuildMode, piece: Piece, point: Hotspot, placed: Placed): string | null {
-  if (isPlaced(placed, piece.id)) return null;
-  const free = SOCKETS[mode].filter(s => !placed[s.id] && fits(piece, s));
-  if (free.length === 0) return null;
-  const radius = SNAP_RADIUS[mode];
-  if (mode === 'assisted') {
-    const best = free.map(s => ({ s, d: nearest(s, point) })).sort((a, b) => a.d - b.d)[0];
-    const anyNear = SOCKETS[mode].some(s => nearest(s, point) <= radius);
-    return anyNear ? best.s.id : null;
-  }
-  const ranked = SOCKETS[mode].map(s => ({ s, d: nearest(s, point) })).filter(e => e.d <= radius).sort((a, b) => a.d - b.d);
-  const first = ranked[0];
-  if (!first || !fits(piece, first.s)) return null;
-  if (!placed[first.s.id]) return first.s.id;
-  // The nearest fibre place is already full: the next free fibre place takes it.
-  const next = ranked.find(e => !placed[e.s.id] && fits(piece, e.s));
-  return next ? next.s.id : null;
-}
-/* ---------- a piece in the hand: the magnet ---------- */
-/** The middle of a piece's own box: where its centre rests once it is on the model. */
-export function pieceHome(kind: PieceKind): Hotspot {
-  const [x, y, w, h] = PIECE_BOX[kind];
-  return { x: x + w / 2, y: y + h / 2 };
-}
-/** A carried piece feels its place from this far (drawing units) and is held
- * fast inside the lock radius: the pull of a magnetic model kit. */
-export const PULL_RADIUS = 84, LOCK_RADIUS = 14;
-export interface Drop { socket: string; home: Hotspot; distance: number; /** 0 no pull to 1 held fast. */ pull: number }
-/** Where a carried piece would go if let go with its centre at `centre`: its
- * own free place when near enough, else null (it drifts back). Assisted mode
- * is generous (anywhere over the model goes home); in full mode the piece's
- * centre must be near its own place, so a head let go on the tail drifts back. */
-export function dropAt(mode: BuildMode, piece: Piece, centre: Hotspot, placed: Placed): Drop | null {
-  const socket = homeFor(mode, piece.id, placed);
-  if (!socket) return null;
-  const home = pieceHome(piece.kind), distance = dist(home, centre);
-  const reach = mode === 'assisted'
-    ? Math.min(...SOCKETS[mode].map(s => dist(pieceHome(s.kind), centre)))
-    : distance;
-  if (reach > SNAP_RADIUS[mode]) return null;
-  const u = clamp01((PULL_RADIUS - distance) / (PULL_RADIUS - LOCK_RADIUS));
-  return { socket, home, distance, pull: u * u * (3 - 2 * u) };
-}
-/** Where the carried piece is drawn: drawn towards its place by the pull. */
-export function pulled(centre: Hotspot, drop: Drop | null): Hotspot {
-  if (!drop) return centre;
-  return { x: centre.x + (drop.home.x - centre.x) * drop.pull, y: centre.y + (drop.home.y - centre.y) * drop.pull };
-}
-
-/** Placing on a socket chosen directly (keyboard, screen reader). */
-export function placeOn(mode: BuildMode, placed: Placed, pieceId: string, socketId: string): Placed | null {
-  const piece = pieceOf(mode, pieceId), socket = socketOf(mode, socketId);
-  if (!piece || !socket || placed[socketId] || isPlaced(placed, pieceId) || !fits(piece, socket)) return null;
-  return { ...placed, [socketId]: pieceId };
-}
-/** The socket a selected piece belongs in (its first free one): the glow. */
-export function homeFor(mode: BuildMode, pieceId: string, placed: Placed): string | null {
-  const piece = pieceOf(mode, pieceId);
-  if (!piece || isPlaced(placed, pieceId)) return null;
-  return SOCKETS[mode].find(s => !placed[s.id] && fits(piece, s))?.id ?? null;
-}
-export function complete(mode: BuildMode, placed: Placed): boolean {
-  return SOCKETS[mode].every(s => !!placed[s.id]);
-}
-
-/** Which drawn parts are on the model. */
 export interface Shown { head: boolean; collar: boolean; tail: boolean; baseplate: boolean; fibres: readonly boolean[] }
-export function shownParts(mode: BuildMode, placed: Placed): Shown {
-  const fibres = Array.from({ length: FIBRE_COUNT }, () => false);
-  if (mode === 'assisted') {
-    if (placed.fibres) fibres.fill(true);
-    return { head: !!placed.head, collar: !!placed.tailCollar, tail: !!placed.tailCollar, baseplate: !!placed.baseplate, fibres };
-  }
-  for (const pair of [0, 1, 2]) if (placed[`fibres-${pair}`]) { fibres[pair] = true; fibres[pair + 3] = true; }
-  return { head: !!placed.head, collar: !!placed.collar, tail: !!placed.tail, baseplate: !!placed.baseplate, fibres };
-}
+export const NONE_SHOWN: Shown = { head: false, collar: false, tail: false, baseplate: false, fibres: [false, false, false, false, false, false] };
 export const ALL_SHOWN: Shown = { head: true, collar: true, tail: true, baseplate: true, fibres: [true, true, true, true, true, true] };
-
-/** Switching modes mid-build keeps what is already true of the model. */
-export function convertPlaced(from: BuildMode, to: BuildMode, placed: Placed): Placed {
-  if (from === to) return { ...placed };
-  const out: Record<string, string> = {};
-  if (placed.head) out.head = 'head';
-  if (placed.baseplate) out.baseplate = 'baseplate';
-  if (to === 'full') {
-    if (placed.tailCollar) { out.collar = 'collar'; out.tail = 'tail'; }
-    if (placed.fibres) [0, 1, 2].forEach(pair => { out[`fibres-${pair}`] = `pair-${pair}`; });
-    return out;
+/** What one piece is, as drawn parts (pair `slot` holds legs slot and slot + 3). */
+export function partsOf(kind: PieceKind, slot = 0): Shown {
+  const fibres = Array.from({ length: FIBRE_COUNT }, (_, i) => kind === 'fibres' || (kind === 'fibrePair' && i % 3 === slot % 3));
+  return { head: kind === 'head', collar: kind === 'collar' || kind === 'tailCollar', tail: kind === 'tail' || kind === 'tailCollar', baseplate: kind === 'baseplate', fibres };
+}
+export function shownParts(mode: BuildMode, placed: Placed): Shown {
+  const out = { head: false, collar: false, tail: false, baseplate: false, fibres: [false, false, false, false, false, false] };
+  for (const id of placed) {
+    const piece = pieceOf(mode, id); if (!piece) continue;
+    const part = partsOf(piece.kind, pairSlot(mode, placed, id));
+    out.head ||= part.head; out.collar ||= part.collar; out.tail ||= part.tail; out.baseplate ||= part.baseplate;
+    part.fibres.forEach((on, i) => { if (on) out.fibres[i] = true; });
   }
-  if (placed.collar && placed.tail) out.tailCollar = 'tailCollar';
-  if ([0, 1, 2].every(pair => placed[`fibres-${pair}`])) out.fibres = 'fibres';
   return out;
 }
 
-/* ---------- turning ---------- */
-/** How a fibre looks at a turn: its angle, sideways reach (cos) and nearness
- * (sin). Front fibres are drawn over the tail, back ones behind it. */
-export function fibreView(index: number, rotation: number): { angle: number; reach: number; near: number; front: boolean } {
-  const angle = fibreAngle(index, rotation), a = toRad(angle);
-  const near = Math.sin(a);
-  return { angle, reach: Math.cos(a), near, front: near >= 0 };
+/* ---------- where a part sits, and the magnet ---------- */
+/** A part's own middle (a model point): what follows the finger and what the magnet measures from. */
+export function partCentre(kind: PieceKind): V3 {
+  const P = PHAGE;
+  if (kind === 'head') return [0, (P.head.y0 + P.head.y1) / 2, 0];
+  if (kind === 'collar') return [0, P.collar.plateY, 0];
+  if (kind === 'tail') return [0, (P.sheath.y0 + P.sheath.y1) / 2, 0];
+  if (kind === 'tailCollar') return [0, (P.sheath.y0 + P.collar.y1) / 2, 0];
+  if (kind === 'baseplate') return [0, (P.base.y0 + P.base.y1) / 2, 0];
+  return [0, 1.6, 0];
 }
-export const TURN_STEP = 30;
-/** Dragging sideways turns the model: the near side follows the finger. */
-export const DRAG_DEG_PER_UNIT = 0.9;
-export function turnBy(rotation: number, deg: number): number {
-  return normDeg(rotation + deg);
+/** Where the click runs when a part goes on: the height of its seam and the ring's radius. */
+export function seamOf(kind: PieceKind): { y: number; r: number } {
+  const P = PHAGE;
+  if (kind === 'head') return { y: P.head.y0, r: 1.25 };
+  if (kind === 'collar') return { y: P.collar.y0, r: 1.1 };
+  if (kind === 'tail' || kind === 'tailCollar') return { y: P.sheath.y0, r: 1.05 };
+  if (kind === 'baseplate') return { y: 0.05, r: 2.2 };
+  return { y: P.hip.y, r: P.hip.r + 0.25 };
 }
+/** A carried part feels its place from the pull radius and is taken from the
+ * finger inside the lock radius (model units, in the picture). The younger
+ * mode's magnet reaches further. */
+export const PULL_RADIUS: Readonly<Record<BuildMode, number>> = { assisted: 9, full: 5.6 };
+export const LOCK_RADIUS: Readonly<Record<BuildMode, number>> = { assisted: 2.3, full: 1.4 };
+export interface Magnet { /** 0 no pull … 1 held fast. */ pull: number; lock: boolean }
+export function magnetAt(mode: BuildMode, distance: number): Magnet {
+  const d = Number.isFinite(distance) ? Math.max(0, distance) : Infinity;
+  const u = Math.max(0, Math.min(1, (PULL_RADIUS[mode] - d) / (PULL_RADIUS[mode] - LOCK_RADIUS[mode])));
+  return { pull: u * u * (3 - 2 * u), lock: d <= LOCK_RADIUS[mode] };
+}
+/** Let go: the part goes on if the magnet has any hold of it; otherwise it drifts back to the bench. */
+export const dropLands = (mode: BuildMode, distance: number): boolean => magnetAt(mode, distance).pull > 0;
 
+/* ---------- the parts on the bench ---------- */
+export type Orient = 'portrait' | 'landscape';
+export interface Spot { x: number; z: number; yaw: number }
+/** How each kind of part rests on the bench: tipped on its side, laid flat, or standing; and how high its middle is. */
+export const REST: Readonly<Record<PieceKind, { tipZ: number; tipX: number; height: number }>> = {
+  head: { tipZ: 90, tipX: 0, height: 1.82 }, tail: { tipZ: 90, tipX: 0, height: 0.64 }, tailCollar: { tipZ: 90, tipX: 0, height: 0.95 },
+  collar: { tipZ: 0, tipX: 0, height: 0.32 }, baseplate: { tipZ: 0, tipX: 0, height: 0.36 }, fibres: { tipZ: 0, tipX: 0, height: 1.6 }, fibrePair: { tipZ: 0, tipX: 90, height: 0.3 },
+};
+const SPOTS: Readonly<Record<Orient, Readonly<Record<BuildMode, readonly (readonly [number, number])[]>>>> = {
+  portrait: {
+    assisted: [[-5.3, 12.2], [4.9, 11], [5.4, 17.6], [-2.6, 20.6]],
+    full: [[-5.3, 12.2], [7, 15.4], [4.9, 10.8], [2.8, 15.8], [-1.2, 18.8], [1.4, 20.9], [-0.4, 23]],
+  },
+  landscape: {
+    assisted: [[-14.5, 2.5], [-10.5, 9.6], [10.6, -1.4], [15.4, 6.6]],
+    full: [[-14.5, 1.5], [-9.4, 8.6], [12.6, -2], [10, 6.4], [16, 3], [-15.6, 8.4], [15.4, 9.4]],
+  },
+};
+function mulberry(seed: number): () => number {
+  let state = (Math.floor(seed) >>> 0) || 1;
+  return () => { state = (state + 0x6d2b79f5) >>> 0; let t = state; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+/** Where the loose parts lie for one round: the same parts, laid out afresh
+ * (mirrored, nudged and turned by the seed), always clear of the turntable. */
+export function benchLayout(mode: BuildMode, orient: Orient, seed: number): Readonly<Record<string, Spot>> {
+  const random = mulberry(seed), mirror = random() < 0.5 ? -1 : 1, out: Record<string, Spot> = {};
+  PIECES[mode].forEach((piece, i) => {
+    const [x, z] = SPOTS[orient][mode][i], lying = REST[piece.kind].tipZ !== 0, flat = REST[piece.kind].tipX !== 0;
+    const yaw = lying ? (mirror < 0 ? 180 : 0) + (random() * 2 - 1) * 24 : flat ? (random() * 2 - 1) * 9 : random() * 360;
+    out[piece.id] = { x: x * mirror + (random() * 2 - 1) * 0.5, z: z + (random() * 2 - 1) * 0.5, yaw };
+  });
+  return out;
+}
+/** The turntable's radius: nothing rests inside it. */
+export const PAD_RADIUS = 7.4;
+
+/* ---------- turning ---------- */
+export const BUILD_YAW = 16;
+export const normDeg = (deg: number): number => ((deg % 360) + 360) % 360;
 /** The turntable has weight: let go, it coasts and slows. `friction` is the
  * share of speed lost per second (as a rate); a coast started at v degrees a
  * second runs v / friction degrees in all. */
@@ -244,106 +171,106 @@ export function coast(velocity: number, dtSeconds: number): { velocity: number; 
   if (!Number.isFinite(velocity) || !Number.isFinite(dtSeconds) || dtSeconds <= 0) return { velocity: 0, turn: 0 };
   const v = Math.max(-SPIN_MAX, Math.min(SPIN_MAX, velocity)), decay = Math.exp(-SPIN_FRICTION * dtSeconds);
   const next = v * decay;
-  return Math.abs(next) < SPIN_REST ? { velocity: 0, turn: v * (1 - decay) / SPIN_FRICTION } : { velocity: next, turn: v * (1 - decay) / SPIN_FRICTION };
+  return { velocity: Math.abs(next) < SPIN_REST ? 0 : next, turn: v * (1 - decay) / SPIN_FRICTION };
 }
 /** The push that coasts about `deg` degrees before the table rests. */
-export const pushFor = (deg: number) => deg * SPIN_FRICTION;
+export const pushFor = (deg: number): number => deg * SPIN_FRICTION;
+/** Dragging sideways turns the model: degrees per pixel of drag, for a model `ppu` pixels per unit. */
+export const dragDegrees = (pixels: number, ppu: number): number => (pixels / Math.max(1, ppu)) * 9;
+/** The chapter asks for one good turn (in all, either way). */
+export const SPIN_GOAL = 150;
+/** A fast whole turn is the bench's secret: the legs dance. */
+export const DANCE_SPEED = 620;
 
-/* ---------- paint: the model's invented colours ---------- */
-/** A phage has no colour, so the model may wear any. The first is the one on the cover. */
+/* ---------- paint ---------- */
+/** A phage has no colour, so the model may wear any: a new one each round. */
 export const PAINTS = ['lagoon', 'bluebell', 'iris', 'coral', 'honey'] as const;
-export type PaintId = typeof PAINTS[number];
-export function nextPaint(paint: PaintId): PaintId {
-  return PAINTS[(PAINTS.indexOf(paint) + 1) % PAINTS.length];
-}
-/** Each new game starts in the next colours and lays the tray out afresh. */
-export function paintForRound(round: number): PaintId {
+export type ModelPaint = typeof PAINTS[number];
+export function paintForRound(round: number): ModelPaint {
   const n = Number.isFinite(round) ? Math.abs(Math.trunc(round)) : 0;
   return PAINTS[n % PAINTS.length];
 }
-export function trayOrder(mode: BuildMode, round: number): readonly Piece[] {
-  const pieces = PIECES[mode], n = Number.isFinite(round) ? Math.abs(Math.trunc(round)) : 0;
-  if (n === 0) return pieces;
-  // A different, fixed shuffle for each round: step through the tray by a stride that shares no factor with its length.
-  const stride = pieces.length === 4 ? [1, 3][n % 2] : [1, 2, 3, 4, 5, 6][n % 6];
-  return pieces.map((_, i) => pieces[(n + i * stride) % pieces.length]);
+
+/* ---------- the three chapters ---------- */
+export type Chapter = 'build' | 'dive' | 'land';
+export const CHAPTERS: readonly Chapter[] = ['build', 'dive', 'land'];
+export const DIVE_QUEST = ['flea', 'cell', 'bacterium', 'phage'] as const;
+export const LAND_QUEST = ['legs', 'pad', 'squeeze', 'thread'] as const;
+export type LandStep = typeof LAND_QUEST[number];
+/** What a chapter asks, as the keys of its quest pips (things to do, never a measure). */
+export function questKeys(chapter: Chapter, mode: BuildMode): readonly string[] {
+  if (chapter === 'build') return [...PIECES[mode].map(p => p.id), 'spin'];
+  return chapter === 'dive' ? DIVE_QUEST : LAND_QUEST;
 }
 
-/* ---------- naming the parts ---------- */
-export type LabelId = 'head' | 'dna' | 'collar' | 'tail' | 'baseplate' | 'fibres';
-export const LABELS: readonly LabelId[] = ['head', 'dna', 'collar', 'tail', 'baseplate', 'fibres'];
-/** DNA can only be named while the model is opened up: it is inside. */
-export function canName(label: LabelId, cutaway: boolean): boolean {
-  return label !== 'dna' || cutaway;
+/* ---------- the landing ---------- */
+/** How the phage meets the cell. Roll is its lean in the picture: 0 is
+ * upright (legs toward the cell), 180 head down. */
+export type Attitude = 'legs' | 'side' | 'head';
+export const LEGS_CONE = 34, HEAD_CONE = 126;
+export const normRoll = (deg: number): number => { const d = ((deg % 360) + 540) % 360 - 180; return d === -180 ? 180 : d; };
+export function attitude(roll: number): Attitude {
+  const a = Math.abs(normRoll(roll));
+  return a <= LEGS_CONE ? 'legs' : a >= HEAD_CONE ? 'head' : 'side';
 }
-export function visit(visited: readonly LabelId[], label: LabelId, cutaway: boolean): readonly LabelId[] {
-  if (!canName(label, cutaway) || visited.includes(label)) return visited;
-  return [...visited, label];
-}
-export function unvisited(visited: readonly LabelId[]): LabelId[] {
-  return LABELS.filter(l => !visited.includes(l));
-}
-
-/* ---------- landing ---------- */
-export const LAND_MS = 9600;
-/** Held still after the DNA is inside, before the scale picture. */
-export const LAND_REST_MS = 900;
-export type LandStage = 'drift' | 'touch' | 'settle' | 'squeeze' | 'inside';
-/** Where the stages begin, as a share of the landing. */
-export const LAND_STAGES: readonly { stage: LandStage; from: number }[] = [
-  { stage: 'drift', from: 0 }, { stage: 'touch', from: 0.29 }, { stage: 'settle', from: 0.37 }, { stage: 'squeeze', from: 0.5 }, { stage: 'inside', from: 0.68 },
+/** The phage is held by its middle (this high above its feet). */
+export const GRIP_Y = 7.5;
+const OUTLINE: readonly (readonly [number, number])[] = [
+  [PHAGE.footR, 0], [-PHAGE.footR, 0], [PHAGE.knee.r, PHAGE.knee.y], [-PHAGE.knee.r, PHAGE.knee.y],
+  [0, PHAGE.head.y1], [PHAGE.head.r, PHAGE.head.y1 - PHAGE.head.cap], [-PHAGE.head.r, PHAGE.head.y1 - PHAGE.head.cap], [PHAGE.head.r, PHAGE.head.y0 + PHAGE.head.cap], [-PHAGE.head.r, PHAGE.head.y0 + PHAGE.head.cap],
 ];
-/** With motion reduced the landing is told in still frames, one per stage. */
-export const LAND_KEYFRAMES: readonly number[] = [0, 0.3, 0.47, 0.66, 1];
-export const LAND_KEYFRAME_MS = 1700;
-export function landKeyframe(elapsedMs: number): number {
-  const i = Math.max(0, Math.min(LAND_KEYFRAMES.length - 1, Math.floor(Math.max(0, elapsedMs) / LAND_KEYFRAME_MS)));
-  return LAND_KEYFRAMES[i];
+/** How high the middle must be for the lowest point of the phage to touch the cell (model units), and which point that is. */
+export function touchHeight(roll: number): { height: number; x: number; foot: boolean } {
+  const a = normRoll(roll) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+  let best = { height: -Infinity, x: 0, foot: false };
+  OUTLINE.forEach(([x, y], i) => {
+    const dy = y - GRIP_Y, down = -(x * s + dy * c);
+    if (down > best.height) best = { height: down, x: x * c - dy * s, foot: i < 2 };
+  });
+  return best;
 }
-export const reducedLandMs = () => LAND_KEYFRAMES.length * LAND_KEYFRAME_MS;
-
-const clamp01 = (v: number) => Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0));
-const span = (t: number, a: number, b: number) => clamp01((t - a) / (b - a));
-const ease = (u: number) => u * u * (3 - 2 * u);
-/** How far the tips fall to meet the surface, and the body then settles. */
-export const DESCENT = 54, SETTLE_DROP = 30, CAMERA_PAN = 70;
-/** The tilt the landing view comes to rest at. */
-export const LAND_TILT = 0.1;
-export interface LandFrame {
-  stage: LandStage;
-  /** The whole phage moves down this far (drawing units). */
-  descent: number;
-  /** The body (all but the fibre tips) sinks this much more as the legs bend. */
-  settle: number;
-  /** Sheath length share: 1 relaxed, SHEATH_MIN squeezed. */
-  sheath: number;
-  /** DNA moved out of the head, 0 to 1. */
-  dna: number;
-  /** View tilt, easing towards a side view (never fully flat: the head keeps its facets and the legs their depth). */
-  tilt: number;
-  /** The view follows the phage down. */
-  camera: number;
-  /** The display stand fades out; the cell's surface fades in. */
-  stand: number;
-  surface: number;
+/** The order the six feet take hold, for a lean: the low side first. */
+export function catchOrder(roll: number): number[] {
+  const lean = Math.sin(normRoll(roll) * Math.PI / 180);
+  const reach = (i: number) => Math.cos((30 + 60 * i) * Math.PI / 180);
+  return [0, 1, 2, 3, 4, 5].sort((a, b) => (lean >= 0 ? reach(a) - reach(b) : reach(b) - reach(a)) || a - b);
 }
-/** The landing at time share `t` (0 to 1). Every quantity moves one way only. */
-export function landFrame(t: number): LandFrame {
-  const u = clamp01(t);
-  let stage: LandStage = 'drift';
-  for (const s of LAND_STAGES) if (u >= s.from) stage = s.stage;
-  return {
-    stage,
-    descent: DESCENT * ease(span(u, 0, 0.3)),
-    settle: SETTLE_DROP * ease(span(u, 0.33, 0.47)),
-    // A spring lets go fast and then slows: an ease-out squeeze.
-    sheath: 1 - (1 - SHEATH_MIN) * (1 - (1 - span(u, 0.5, 0.64)) ** 2),
-    dna: ease(span(u, 0.68, 0.97)),
-    tilt: VIEW_TILT - (VIEW_TILT - LAND_TILT) * ease(span(u, 0, 0.26)),
-    camera: CAMERA_PAN * ease(span(u, 0.04, 0.7)),
-    stand: 1 - span(u, 0, 0.14),
-    surface: span(u, 0.04, 0.26),
-  };
+export const CATCH_GAP_MS = 150;
+/** Near the cell the legs feel for it and the phage rights itself: a little
+ * for older children, a lot for the youngest. Degrees a second at the touch. */
+export const RIGHTING: Readonly<Record<BuildMode, number>> = { assisted: 150, full: 26 };
+export const FEEL_RANGE = 9;
+export function selfRight(roll: number, gap: number, mode: BuildMode, dtSeconds: number): number {
+  const r = normRoll(roll);
+  if (!Number.isFinite(dtSeconds) || dtSeconds <= 0 || !Number.isFinite(gap)) return r;
+  const near = Math.max(0, Math.min(1, 1 - gap / FEEL_RANGE)), step = RIGHTING[mode] * near * near * dtSeconds;
+  return Math.abs(r) <= step ? 0 : r - Math.sign(r) * step;
+}
+/** Where a round's phage starts: off to one side, leaning, well above the cell. */
+export function landStart(seed: number, mode: BuildMode): { x: number; height: number; roll: number } {
+  const random = mulberry(seed ^ 0x51ed), side = random() < 0.5 ? -1 : 1;
+  const lean = mode === 'assisted' ? 50 + random() * 40 : 95 + random() * 70;
+  return { x: side * (2.5 + random() * 3), height: 17 + random() * 2.5, roll: -side * lean };
+}
+/** The body sinks this far onto its planted feet when the baseplate settles. */
+export const SETTLE = 1.25;
+export const SETTLE_MS = 900;
+/** The squeeze: the child presses, the sleeve shortens. 0 relaxed, 1 squeezed home. */
+export function squeezeBy(squeeze: number, delta: number): number {
+  const s = Number.isFinite(squeeze) ? squeeze : 0, d = Number.isFinite(delta) ? delta : 0;
+  return Math.max(0, Math.min(1, s + d));
+}
+/** The sleeve's length for a squeeze (a share of its relaxed length): a spring gives fast, then slow. */
+export function sheathFor(squeeze: number): number {
+  const s = Math.max(0, Math.min(1, Number.isFinite(squeeze) ? squeeze : 0));
+  return 1 - (1 - SHEATH_MIN) * (1 - (1 - s) ** 2);
+}
+/** Let go before it is home and the spring pushes back. */
+export const SQUEEZE_SPRING = 1.6, SQUEEZE_STEP = 0.34;
+export const THREAD_MS = 2800;
+/** The landing as one line of steps: each begins only when the last is done. */
+export function nextLandStep(done: readonly LandStep[]): LandStep | null {
+  return LAND_QUEST.find(step => !done.includes(step)) ?? null;
 }
 
 /** Fills the numbered blanks of a line: `{0}` is the first value. */

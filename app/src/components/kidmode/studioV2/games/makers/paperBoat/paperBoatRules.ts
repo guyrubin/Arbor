@@ -6,9 +6,14 @@
  * its spread's fold progress (0 flat … 1 fully open), and that progress comes
  * from `u`, so the scenery folds with the page by construction.
  *
- * Nothing here can be failed or counted against the child: a rock nudges the
- * boat back into its channel, a gate waits for the boat, the storm calms when
- * the wheel is held steady, the quay waits until the boat comes alongside. */
+ * Three chapters and a homecoming, each a spread: a stream whose stones the
+ * boat threads; a river whose paper lanterns it rings; a basin where the rain
+ * passes when the wheel is held steady; a quay it finds, where the lanterns
+ * come on one by one. The boat sails across both pages, left edge to right.
+ *
+ * Nothing here can be failed or counted against the child: a stone nudges the
+ * boat round it, a lantern waits for the boat, the rain passes when the wheel
+ * is held steady, the quay waits until the boat comes alongside. */
 
 export type Dir = 'ltr' | 'rtl';
 export type SpreadIndex = 0 | 1 | 2 | 3;
@@ -22,13 +27,16 @@ export const LANES: readonly Lane[] = [0, 1, 2];
 /* ── the book object (book-local px; the page lies on the table) ─────────── */
 /** One page: width along the spine's normal, depth from the far edge to the reader. */
 export const PAGE_W = 250;
-export const PAGE_D = 290;
+export const PAGE_D = 320;
 export const SPREAD_W = PAGE_W * 2;
 /** The book lies on the table seen from the front, about 42° above it. */
 export const BOOK_TILT = 48;
 export const BOOK_PERSPECTIVE = 1800;
 /** Depth of the three channels on the pages (far → near). */
-export const LANE_Y: readonly number[] = [128, 176, 224];
+export const LANE_Y: readonly number[] = [150, 192, 234];
+/** Where the water ends and the near bank begins: the bank is a band of paper
+ * along the reader's edge, and the spread's words are printed on it. */
+export const BANK_Y = 264;
 
 export const clamp01 = (value: number) => (Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0);
 const finite = (value: number, fallback = 0) => (Number.isFinite(value) ? value : fallback);
@@ -189,6 +197,31 @@ export function fitBook(width: number, height: number): { scale: number; tilt: n
   return { tilt, box, scale: Math.min(w / box.w, h / box.h) };
 }
 
+/* ── the camera ────────────────────────────────────────────────────────────── */
+/** The least of the spread a close view shows across the screen (book px): a
+ * page and a little more, so on a tall phone the book is as tall as the screen
+ * allows and the view travels with the boat. */
+export const NEAR_W = 300;
+/** How far past the book's side edges a view may look (the board and a little table). */
+export const VIEW_MARGIN = 16;
+export interface ViewFit { tilt: number; box: StageBox; /** Scale at which the whole book fits. */ wide: number; /** Scale of the close view (never less than `wide`). */ near: number }
+/** The book in a room of `width` × `height` screen px. Wide: the whole book
+ * fits. Near: the book grows until its height fills the room, as long as at
+ * least NEAR_W of the spread still shows; on a wide screen the two are the same. */
+export function viewFit(width: number, height: number): ViewFit {
+  const w = Math.max(1, finite(width, 1)), h = Math.max(1, finite(height, 1));
+  const wideFit = fitBook(w, h);
+  const near = Math.max(wideFit.scale, Math.min(w / NEAR_W, h / wideFit.box.h));
+  return { tilt: wideFit.tilt, box: wideFit.box, wide: wideFit.scale, near };
+}
+/** Where a view of `visible` book px across may centre (book x) when it wants
+ * to look at `focus`: it never runs past the book's edges. */
+export function viewCentre(focus: number, visible: number): number {
+  const half = Math.max(1, finite(visible, SPREAD_W)) / 2;
+  const min = half - VIEW_MARGIN, max = SPREAD_W + VIEW_MARGIN - half;
+  return min >= max ? SPREAD_W / 2 : Math.min(max, Math.max(min, finite(focus, SPREAD_W / 2)));
+}
+
 /* ── a finger on the page ─────────────────────────────────────────────────── */
 /** A page is paper: the point that was grabbed stays under the finger. `offset`
  * is the finger's distance from the spine (screen px), positive on the side the
@@ -329,8 +362,8 @@ const steps = (dt: number) => Math.min(0.1, Math.max(0, finite(dt)));
 
 /* ── spread 1: the stream ─────────────────────────────────────────────────── */
 /** Where the boat waits on the bank and where it floats once launched (spread x, page y). */
-export const BOAT_BANK: Readonly<{ x: number; y: number }> = { x: 122, y: 268 };
-export const BOAT_STREAM: Readonly<{ x: number; y: number }> = { x: 296, y: 262 };
+export const BOAT_BANK: Readonly<{ x: number; y: number }> = { x: 40, y: 246 };
+export const BOAT_STREAM: Readonly<{ x: number; y: number }> = { x: 78, y: 192 };
 /** A drag of the boat at least this far towards the water launches it; a
  * shorter one lets it drift back to the bank. A tap launches it too. */
 export const LAUNCH_DRAG = 26;
@@ -338,81 +371,97 @@ export function launchFromDrag(dx: number, dy: number): boolean {
   return Math.hypot(finite(dx), finite(dy)) >= LAUNCH_DRAG && finite(dy) > -LAUNCH_DRAG / 2;
 }
 
-/* ── spread 2: the wheel and the river ────────────────────────────────────── */
+/* ── spreads 1 and 2: a course across the pages ──────────────────────────── */
+/** A course is printed on the page: its stones, flowers and lanterns stand
+ * where they are, and the boat sails across both pages past them, left edge to
+ * right edge. `at` is the distance along the course (0 … RIVER_END). A `rock`
+ * nudges a boat in its channel; a `reedGate` (a paper lantern over one channel)
+ * holds the boat just short of it until the boat lines up, then rings; a `pad`
+ * (a water flower) only floats. */
 export type RiverKind = 'reedGate' | 'rock' | 'pad';
+export type CourseKind = 'stoneRun' | 'lanternRun';
 export interface RiverItem { id: string; at: number; lane: Lane; kind: RiverKind }
-/** Where the boat sits on the spread (x); the river flows past it. */
-export const RIVER_BOAT_X = 150;
-export const RIVER_SPEED = 62;
-/** A gate stops the river this far before the boat until the boat lines up with it. */
-export const GATE_HOLD = 34;
-/** Three reed arches: near, far, then the middle. A rock waits in the lane of the
- * arch just passed, a little before the next one, so a boat that lingers is
- * nudged the right way; a lily pad only floats by. */
-export const RIVER_COURSE: readonly RiverItem[] = [
-  { id: 'pad-a', at: 180, lane: 0, kind: 'pad' },
-  { id: 'gate-1', at: 300, lane: 2, kind: 'reedGate' },
-  { id: 'pad-b', at: 470, lane: 1, kind: 'pad' },
-  { id: 'rock-1', at: 590, lane: 2, kind: 'rock' },
-  { id: 'gate-2', at: 720, lane: 0, kind: 'reedGate' },
-  { id: 'pad-c', at: 850, lane: 2, kind: 'pad' },
-  { id: 'rock-2', at: 970, lane: 0, kind: 'rock' },
-  { id: 'gate-3', at: 1100, lane: 1, kind: 'reedGate' },
-  { id: 'pad-d', at: 1200, lane: 0, kind: 'pad' },
-];
-export const RIVER_GATES = RIVER_COURSE.filter(item => item.kind === 'reedGate');
 export const RIVER_END = 1240;
-/** Play again is another river: the same three arches in a new order. Every
- * course needs the wheel turned both ways, and each stone still waits in the
- * lane of the arch just passed, nudging towards the next one. */
+/** Where the course starts and ends on the spread (x). */
+export const COURSE_X0 = 78;
+export const COURSE_X1 = 448;
+/** The page x of a distance along the course. */
+export function courseX(at: number): number {
+  return COURSE_X0 + (COURSE_X1 - COURSE_X0) * clamp01(finite(at) / RIVER_END);
+}
+export const RIVER_SPEED = 68;
+/** A lantern holds the boat this far short of it until the boat lines up. */
+export const GATE_HOLD = 50;
+/** Three lanterns: near, far, then the middle. A rock waits in the lane of the
+ * lantern just passed, a little before the next one, so a boat that lingers is
+ * nudged the right way; a water flower only floats. */
 const course = (lanes: readonly [Lane, Lane, Lane], pads: readonly [Lane, Lane, Lane, Lane]): readonly RiverItem[] => [
-  { id: 'pad-a', at: 180, lane: pads[0], kind: 'pad' },
+  { id: 'pad-a', at: 150, lane: pads[0], kind: 'pad' },
   { id: 'gate-1', at: 300, lane: lanes[0], kind: 'reedGate' },
   { id: 'pad-b', at: 470, lane: pads[1], kind: 'pad' },
-  { id: 'rock-1', at: 590, lane: lanes[0], kind: 'rock' },
+  { id: 'rock-1', at: 560, lane: lanes[0], kind: 'rock' },
   { id: 'gate-2', at: 720, lane: lanes[1], kind: 'reedGate' },
-  { id: 'pad-c', at: 850, lane: pads[2], kind: 'pad' },
-  { id: 'rock-2', at: 970, lane: lanes[1], kind: 'rock' },
-  { id: 'gate-3', at: 1100, lane: lanes[2], kind: 'reedGate' },
-  { id: 'pad-d', at: 1200, lane: pads[3], kind: 'pad' },
+  { id: 'pad-c', at: 860, lane: pads[2], kind: 'pad' },
+  { id: 'rock-2', at: 960, lane: lanes[1], kind: 'rock' },
+  { id: 'gate-3', at: 1110, lane: lanes[2], kind: 'reedGate' },
+  { id: 'pad-d', at: 1190, lane: pads[3], kind: 'pad' },
 ];
+export const RIVER_COURSE = course([2, 0, 1], [0, 1, 2, 0]);
+/** Play again is another river: the same three lanterns in a new order. Every
+ * course needs the wheel turned both ways, and each stone still waits in the
+ * lane of the lantern just passed, nudging towards the next one. */
 export const RIVER_COURSES: readonly (readonly RiverItem[])[] = [RIVER_COURSE, course([0, 2, 1], [2, 1, 0, 2]), course([0, 1, 2], [2, 0, 0, 1]), course([2, 1, 0], [0, 0, 2, 2])];
-export const riverCourse = (index: number): readonly RiverItem[] => RIVER_COURSES[((Math.trunc(finite(index)) % RIVER_COURSES.length) + RIVER_COURSES.length) % RIVER_COURSES.length];
-export const riverGates = (index: number): readonly RiverItem[] => riverCourse(index).filter(item => item.kind === 'reedGate');
+export const RIVER_GATES = RIVER_COURSE.filter(item => item.kind === 'reedGate');
+/** The first spread's stream has no lanterns: four stones to thread, in
+ * alternating channels, and a boat that never steers is nudged round them. */
+const stream = (rocks: readonly [Lane, Lane, Lane, Lane], pads: readonly [Lane, Lane, Lane]): readonly RiverItem[] => [
+  { id: 'rock-1', at: 250, lane: rocks[0], kind: 'rock' },
+  { id: 'pad-a', at: 390, lane: pads[0], kind: 'pad' },
+  { id: 'rock-2', at: 520, lane: rocks[1], kind: 'rock' },
+  { id: 'pad-b', at: 660, lane: pads[1], kind: 'pad' },
+  { id: 'rock-3', at: 790, lane: rocks[2], kind: 'rock' },
+  { id: 'pad-c', at: 930, lane: pads[2], kind: 'pad' },
+  { id: 'rock-4', at: 1060, lane: rocks[3], kind: 'rock' },
+];
+export const STREAM_COURSES: readonly (readonly RiverItem[])[] = [stream([1, 2, 0, 1], [0, 0, 2]), stream([1, 0, 2, 1], [2, 2, 0]), stream([2, 1, 0, 1], [0, 2, 2]), stream([0, 1, 2, 1], [2, 0, 0])];
+const wrap = (index: number, count: number) => ((Math.trunc(finite(index)) % count) + count) % count;
+export const riverCourse = (index: number, kind: CourseKind = 'lanternRun'): readonly RiverItem[] => (kind === 'stoneRun' ? STREAM_COURSES[wrap(index, STREAM_COURSES.length)] : RIVER_COURSES[wrap(index, RIVER_COURSES.length)]);
+export const riverGates = (index: number, kind: CourseKind = 'lanternRun'): readonly RiverItem[] => riverCourse(index, kind).filter(item => item.kind === 'reedGate');
 export interface RiverState {
-  /** How far the river has flowed past the boat. */
+  /** How far along the course the boat is. */
   d: number;
   /** The boat's channel position (0 far … 2 near), continuous while it moves. */
   pos: number;
-  /** Reed arches passed so far (0 … 3). */
+  /** Lanterns rung so far. */
   gates: number;
-  /** While the river is short of this distance a rock's nudge steers the boat. */
+  /** While the boat is short of this distance a rock's nudge steers it. */
   bumpUntil: number;
   bumpLane: Lane | null;
   /** How many times a rock has nudged the boat (a key for the soft spin; never shown). */
   nudges: number;
-  /** Which of RIVER_COURSES this river runs. */
+  /** Stones slipped past in a row (only the pitch of their chime; never shown). */
+  clears: number;
+  /** Which course this is, of its kind. */
   course: number;
+  kind: CourseKind;
 }
-export type RiverEvent = 'reedGate' | 'bump' | 'held';
-export function createRiver(course = 0): RiverState {
-  return { d: 0, pos: 1, gates: 0, bumpUntil: -1, bumpLane: null, nudges: 0, course: ((Math.trunc(finite(course)) % RIVER_COURSES.length) + RIVER_COURSES.length) % RIVER_COURSES.length };
+export type RiverEvent = 'reedGate' | 'bump' | 'held' | 'clear';
+export function createRiver(course = 0, kind: CourseKind = 'lanternRun'): RiverState {
+  return { d: 0, pos: 1, gates: 0, bumpUntil: -1, bumpLane: null, nudges: 0, clears: 0, course: wrap(course, kind === 'stoneRun' ? STREAM_COURSES.length : RIVER_COURSES.length), kind };
 }
-export const riverDone = (river: RiverState) => river.gates >= RIVER_GATES.length;
-/** Where a river item is on the spread now. */
-export function riverItemX(item: RiverItem, d: number): number {
-  return RIVER_BOAT_X + item.at - finite(d);
-}
-/** Items rise as they slide in from the page edge and fold flat as they leave. */
-export const ITEM_EDGE = 44;
-export function edgeProgress(x: number): number {
-  return clamp01(Math.min((SPREAD_W - x) / ITEM_EDGE, x / ITEM_EDGE));
+export const riverItems = (river: RiverState): readonly RiverItem[] => riverCourse(river.course, river.kind);
+export const riverLanterns = (river: RiverState): readonly RiverItem[] => riverGates(river.course, river.kind);
+/** The course is done when every lantern is rung and the boat is at the far edge. */
+export const riverDone = (river: RiverState) => river.gates >= riverLanterns(river).length && river.d >= RIVER_END - 1e-6;
+/** Where the boat is on the spread now. */
+export function riverBoat(river: RiverState): { x: number; y: number } {
+  return { x: courseX(river.d), y: LANE_Y[0] + (LANE_Y[2] - LANE_Y[0]) * (river.pos / 2) };
 }
 const aligned = (pos: number, lane: Lane) => Math.abs(pos - lane) < 0.2;
 export function riverStep(river: RiverState, dt: number, target: Lane): { river: RiverState; events: RiverEvent[] } {
   const span = steps(dt), events: RiverEvent[] = [];
-  let { d, pos, gates, bumpUntil, bumpLane, nudges } = river;
-  const items = riverCourse(river.course), arches = riverGates(river.course);
+  let { d, pos, gates, bumpUntil, bumpLane, nudges, clears } = river;
+  const items = riverItems(river), arches = riverLanterns(river);
   const steering = bumpLane !== null && d < bumpUntil ? bumpLane : target;
   if (!(d < bumpUntil)) bumpLane = null;
   pos = easeLane(pos, steering, span);
@@ -424,17 +473,17 @@ export function riverStep(river: RiverState, dt: number, target: Lane): { river:
   }
   for (const item of items) {
     if (item.kind !== 'rock' || !(item.at > d && item.at <= next)) continue;
-    if (Math.round(pos) !== item.lane) continue;
-    // A stone always sends the boat on towards the next arch.
+    if (Math.round(pos) !== item.lane) { clears += 1; events.push('clear'); continue; }
+    // A stone always sends the boat on towards the next lantern.
     const toward = gate ? Math.sign(gate.lane - item.lane) : 0;
     bumpLane = (toward !== 0 ? item.lane + toward : item.lane === 1 ? (pos >= 1 ? 2 : 0) : 1) as Lane;
-    bumpUntil = item.at + 60; nudges += 1;
+    bumpUntil = item.at + 60; nudges += 1; clears = 0;
     pos += (bumpLane - pos) * 0.3;
     events.push('bump');
   }
   if (gate && next >= gate.at && aligned(pos, gate.lane)) { gates += 1; events.push('reedGate'); }
   d = next;
-  return { river: { ...river, d, pos, gates, bumpUntil, bumpLane, nudges }, events };
+  return { river: { ...river, d, pos, gates, bumpUntil, bumpLane, nudges, clears }, events };
 }
 
 /* ── spread 3: the storm ──────────────────────────────────────────────────── */
@@ -480,13 +529,13 @@ export function stormStep(storm: StormState, dt: number, angle: number, held: bo
 }
 
 /* ── spread 4: the harbour ────────────────────────────────────────────────── */
-export const HARBOUR_START_X = 70;
+export const HARBOUR_START_X = 78;
 /** The quay runs along the far side of the right page; the boat moors at the bollard. */
 export const QUAY_X = 372;
 export const QUAY_LANE: Lane = 0;
 export const QUAY_HOLD = 56;
 export const HARBOUR_SPEED = 46;
-export const HARBOUR_LAMPS = 5;
+export const HARBOUR_LAMPS = 7;
 export interface HarbourState { x: number; pos: number; docked: boolean; lamps: number }
 export function createHarbour(): HarbourState {
   return { x: HARBOUR_START_X, pos: 1, docked: false, lamps: 0 };
@@ -503,7 +552,7 @@ export function harbourStep(harbour: HarbourState, dt: number, target: Lane): { 
 }
 /** The lamps come on one by one after the rope drops. */
 export const ROPE_MS = 700;
-export const LAMP_MS = 420;
+export const LAMP_MS = 520;
 export function lampsLit(msSinceDock: number): number {
   const t = finite(msSinceDock) - ROPE_MS;
   return t < 0 ? 0 : Math.min(HARBOUR_LAMPS, 1 + Math.floor(t / LAMP_MS));
@@ -512,13 +561,15 @@ export function lampsLit(msSinceDock: number): number {
 export const END_MS = ROPE_MS + LAMP_MS * HARBOUR_LAMPS + 300;
 /** The homecoming: once the last lamp is lit the whole quay answers, and only
  * then is the end tab offered. Then the book closes itself. */
-export const HOME_MS = 2300;
+export const HOME_MS = 3400;
 export const CLOSE_MS = 1100;
 
 /* ── the book's state and turn permissions ────────────────────────────────── */
 export interface BookState {
   spread: SpreadIndex;
   launched: boolean;
+  /** The first spread's stream, once the boat is launched. */
+  stream: RiverState;
   river: RiverState;
   storm: StormState;
   harbour: HarbourState;
@@ -529,11 +580,11 @@ export interface BookState {
  * a second reading is not the first again. */
 export function createBook(variant = 0): BookState {
   const v = Math.max(0, Math.trunc(finite(variant)));
-  return { spread: 0, launched: false, river: createRiver(v), storm: createStorm(v % 2 ? -1 : 1), harbour: createHarbour(), wheel: [0, 0, 0, 0] };
+  return { spread: 0, launched: false, stream: createRiver(v, 'stoneRun'), river: createRiver(v), storm: createStorm(v % 2 ? -1 : 1), harbour: createHarbour(), wheel: [0, 0, 0, 0] };
 }
 /** Each spread's small action. A spread can be turned past only once it is done. */
 export function spreadDone(book: BookState, spread: SpreadIndex): boolean {
-  if (spread === 0) return book.launched;
+  if (spread === 0) return book.launched && riverDone(book.stream);
   if (spread === 1) return riverDone(book.river);
   if (spread === 2) return book.storm.calmed;
   return book.harbour.docked && book.harbour.lamps >= HARBOUR_LAMPS;

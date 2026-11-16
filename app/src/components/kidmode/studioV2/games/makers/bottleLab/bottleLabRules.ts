@@ -1,7 +1,9 @@
 /** Bottle Lab rules. Pure: no React, no timers, no randomness inside.
  * The saved creation is bounded toy choices only: a shape, a tint, a finish
- * and up to six stickers, each on its own slot of twelve. */
-import { BASE_Y, ELLIPSE, PROFILES, WALL, radiusAt, type ShapeId } from './bottleGeometry';
+ * and up to six stickers, each on its own slot of twelve. The play's own
+ * rules (shaping, soaking, the arc) are in glassworks.ts; the lamp and the
+ * bubbles below belong to the still picture of a kept bottle. */
+import { BASE_Y, PROFILES, WALL, radiusAt, type ShapeId } from './bottleGeometry';
 
 export const BOTTLE_SHAPES = ['round', 'tall', 'flask'] as const;
 export type BottleShape = typeof BOTTLE_SHAPES[number];
@@ -68,12 +70,6 @@ export function slotView(slot: number, rotation: number): SlotView {
   return { x: clean(Math.sin(rad)), scaleX: clean(Math.abs(depth)), depth: clean(depth), front: depth > 1e-9, column, row, angle };
 }
 
-/** A slot can take a sticker by tap when it faces the child enough to aim at. */
-export const SLOT_REACH = 0.5;
-export function reachableSlots(rotation: number): number[] {
-  return Array.from({ length: BOTTLE_SLOTS }, (_, slot) => slot).filter(slot => { const v = slotView(slot, rotation); return v.front && v.scaleX >= SLOT_REACH; });
-}
-
 /** Turning by buttons moves an eighth of a turn; a drag settles on the nearest eighth. */
 export const TURN_STEP = 45;
 export const snapRotation = (rotation: number) => Number.isFinite(rotation) ? Math.round(rotation / TURN_STEP) * TURN_STEP : 0;
@@ -114,11 +110,6 @@ export function lampPosition(angle: number) {
   const a = clampLamp(angle);
   return { x: LAMP_TRACK.x + a / LAMP_MAX * LAMP_TRACK.reach, y: LAMP_TRACK.y, face: Math.max(-1, Math.min(1, -a / 4)) };
 }
-/** The angle a pointer at (x, y) asks the lamp for: only how far along the table it is. */
-export function lampAngleAt(x: number, _y = LAMP_TRACK.y): number {
-  return clampLamp((x - LAMP_TRACK.x) / LAMP_TRACK.reach * LAMP_MAX);
-}
-
 /** What the lamp does to the glass and the table, all from its angle:
  * - the shine streak sits where the surface faces halfway between lamp and eye;
  * - a softer rim light lines the far edge;
@@ -152,7 +143,6 @@ export function lampEffects(angle: number, on = true): LampEffects {
 
 // ── Bubbles ────────────────────────────────────────────────────────────────
 
-export const MAX_BUBBLES = 24;
 export interface Bubble { id: number; x: number; y: number; r: number; speed: number; phase: number; drift: number }
 
 /** Inside the water, how far a bubble of radius `r` at height `y` may sit from
@@ -166,12 +156,6 @@ export function bubbleHalfWidth(shape: ShapeId, y: number, r: number, top = PROF
 export const bubbleTop = (shape: ShapeId) => PROFILES[shape].water;
 /** Bubbles start a little above the inside of the base ring. */
 export const bubbleFloor = (shape: ShapeId) => BASE_Y - 6;
-/** True when a bubble lies wholly inside the water of this shape. */
-export function bubbleInside(shape: ShapeId, bubble: Pick<Bubble, 'x' | 'y' | 'r'>, axis = 180, top = bubbleTop(shape)): boolean {
-  const half = bubbleHalfWidth(shape, bubble.y, bubble.r, top);
-  return half > 0 && Math.abs(bubble.x - axis) <= half + 1e-6 && bubble.y - bubble.r >= top - 1e-6;
-}
-
 /** A new bubble from two or more numbers in [0, 1) the caller rolls. */
 export function spawnBubble(shape: ShapeId, id: number, roll: () => number, axis = 180, burst = false, top = bubbleTop(shape)): Bubble {
   const n = () => { const v = roll(); return Number.isFinite(v) ? Math.min(0.999, Math.max(0, v)) : 0.5; };
@@ -182,21 +166,3 @@ export function spawnBubble(shape: ShapeId, id: number, roll: () => number, axis
   const x = axis + (n() * 2 - 1) * half * 0.85;
   return { id, x, y, r, speed: 16 + n() * 22 + r * 3, phase: n() * Math.PI * 2, drift: 2 + n() * 4 };
 }
-
-/** One step of rising: up by its speed, wobbling sideways, held inside the
- * glass. Null when it reaches the water line and pops. `t` is seconds since
- * the start, `dt` this step's seconds. */
-export function riseBubble(shape: ShapeId, bubble: Bubble, t: number, dt: number, axis = 180, top = bubbleTop(shape)): Bubble | null {
-  const step = Number.isFinite(dt) ? Math.min(0.1, Math.max(0, dt)) : 0;
-  const y = bubble.y - bubble.speed * step;
-  if (y - bubble.r <= top + ELLIPSE * 4) return null;
-  const half = bubbleHalfWidth(shape, y, bubble.r, top);
-  if (half <= 0) return null;
-  const wobble = Math.sin(t * 5 + bubble.phase) * bubble.drift * step * 4;
-  const x = Math.min(axis + half, Math.max(axis - half, bubble.x + wobble));
-  return { ...bubble, x, y };
-}
-
-/** A shake lets out a handful, never past the cap. */
-export const BURST = 12;
-export const burstCount = (live: number) => Math.max(0, Math.min(BURST, MAX_BUBBLES - Math.max(0, Math.trunc(live))));

@@ -25,6 +25,8 @@ export const AYA_WATCHING: KitPicture = shipped('aya-idle', 440, 440);
 export const AYA_GLAD: KitPicture = shipped('aya-happy', 440, 440);
 /** Her watering can: the sip of water in the story. */
 export const WATERING_CAN: KitPicture = shipped('item-can', 278, 205);
+/** The fern in its white pot, seen from straight above: it stands at a far corner of the table and leans over the hoop. */
+export const FERN: KitPicture = shipped('rover-planter', 320, 278);
 /** Where the needle rests: a knit round, seen from above. */
 export const PINCUSHION: KitPicture = shipped('rover-bloom-folded', 280, 254);
 

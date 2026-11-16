@@ -1,165 +1,177 @@
 /* The Paper Boat: a pop-up book of Horizon Valley lying open on the round
-   table of the reading room, seen from the front and above. The book is real
-   CSS 3D (preserve-3d all the way down to each standing card), drawn once in
-   book px and scaled whole to the room the screen gives it. Nothing in the 3D
-   tree may flatten it: no overflow, filter, opacity or blend on an element
-   that holds 3D children, and nothing inside the book animates in CSS (an
-   animated layer drops out of the depth order): the game's clock moves it.
-   Chrome wears the v30 register (pearl, graphite, teal, a signal ring); the
-   colour is in the kit pictures the book is printed with. Hebrew mirrors the
-   book (spine order and turn), never the words. Reduced motion keeps every
-   step playable. */
+   table of the reading room, filling the play stage edge to edge. The book is
+   real CSS 3D (preserve-3d all the way down to each standing card and each
+   fold of the paper boat), drawn once in book px and scaled whole by the
+   game's own camera. Nothing in the 3D tree may flatten it: no overflow,
+   filter, opacity or blend on an element that holds 3D children, and nothing
+   inside the book animates in CSS (an animated layer drops out of the depth
+   order): the game's clock moves it. The HUD is the makers' shared play kit;
+   the only chrome here is the wheel's marks and the hint hand (v30 tokens).
+   Colour is in the kit pictures the book is printed with and the makers'
+   palette. Hebrew mirrors the book (spine order and turn), never the words.
+   Reduced motion keeps every step playable. */
+.pb-root { display: block; position: relative; }
 .pb {
-  position: relative; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; justify-items: center; gap: 4px;
-  inline-size: 100%; max-inline-size: 1040px; margin-inline: auto; padding: 10px 0 12px; overflow: hidden; isolation: isolate;
-  border-radius: var(--studio-radius-panel); border: 1px solid var(--studio-surface);
-  background: linear-gradient(180deg, var(--studio-surface) 0%, var(--studio-pearl) 46%, var(--studio-mist) 100%);
-  box-shadow: var(--studio-lift);
+  position: absolute; inset: 0; overflow: hidden; isolation: isolate;
+  background: linear-gradient(180deg, var(--studio-pearl), var(--studio-mist));
   color: var(--studio-graphite); font-family: var(--studio-font);
-  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  touch-action: pan-y; user-select: none; -webkit-user-select: none;
 }
 .pb button { font-family: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-.pb button:focus-visible, .pb [role=slider]:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; }
 
-/* The reading room behind the table: its window and its bench, in soft focus. */
-.pb-room { position: absolute; z-index: -1; inset-block-start: 0; inset-inline: 0; block-size: 56%; pointer-events: none; -webkit-mask-image: linear-gradient(180deg, var(--studio-graphite) 70%, transparent); mask-image: linear-gradient(180deg, var(--studio-graphite) 70%, transparent); }
-.pb-room img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; object-position: 34% 92%; filter: blur(.6px); }
+/* The reading room beyond the table: its window and its bench, in soft focus. */
+.pb-room { position: absolute; z-index: 0; inset-block-start: -2%; inset-inline: -3%; block-size: 66%; pointer-events: none; -webkit-mask-image: linear-gradient(180deg, var(--studio-graphite) 78%, transparent); mask-image: linear-gradient(180deg, var(--studio-graphite) 78%, transparent); }
+.pb-room img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; object-position: 34% 60%; filter: blur(1.2px); }
 
-/* The page's words, on a frosted card, with the CrewLink's five presence dots. */
-.pb-label { position: relative; z-index: 3; display: grid; justify-items: center; gap: 7px; inline-size: min(calc(100% - 20px), 520px); min-block-size: 84px; padding: 11px 16px 10px; border-radius: var(--studio-radius-card); border: 1px solid var(--studio-line); background: var(--studio-frost); box-shadow: 0 6px 18px var(--studio-shade); }
-.pb-label p { margin: 0; display: grid; text-align: center; font: 900 clamp(19px, 5.2vw, 25px)/1.2 var(--studio-font); letter-spacing: -.01em; color: var(--studio-graphite); animation: pb-words-in .4s var(--studio-ease-soft); }
-.pb-label p span:last-child { color: var(--studio-graphite-soft); }
-.pb-link { display: flex; align-items: center; gap: 7px; padding: 4px 9px; border-radius: 999px; background: var(--studio-mist); }
-.pb-link i { display: block; inline-size: 9px; block-size: 9px; border-radius: 50%; background: var(--studio-surface); box-shadow: inset 0 0 0 1.5px var(--studio-graphite-soft); transition: background-color .3s var(--studio-ease-soft), box-shadow .3s var(--studio-ease-soft), scale .3s var(--studio-ease-spring); }
-.pb-link i[data-on=true] { background: var(--studio-done); box-shadow: 0 0 0 2px var(--studio-teal-soft); scale: 1.15; }
-
-/* The stage: the book stands on its near edge at the bottom; the room is above it. */
-.pb-stage { position: relative; z-index: 2; inline-size: 100%; block-size: 100%; min-block-size: 0; touch-action: pan-y; }
-.pb-scaler { position: absolute; left: 50%; transform-origin: 50% 100%; pointer-events: none; }
+/* The book stands on its near edge; the camera scales and slides it. */
+.pb-scaler { position: absolute; z-index: 1; left: 50%; transform-origin: 50% 100%; pointer-events: none; }
 .pb-persp { position: absolute; perspective-origin: 50% 50%; }
 .pb-book { position: absolute; left: 0; top: 0; transform-style: preserve-3d; transform-origin: 50% 50%; pointer-events: auto; }
-/* the round table the book lies on, and the book's shadow on it */
-.pb-tabletop { position: absolute; border-radius: 50%; transform: translateZ(-16px); background-size: 108% 108%; background-position: 50% 50%; box-shadow: 0 40px 70px var(--studio-shade); pointer-events: none; }
-.pb-under { position: absolute; inset: -4px -16px -30px; border-radius: 30px; transform: translateZ(-15px); background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-shadow) 46%, transparent), color-mix(in srgb, var(--mk-shadow) 22%, transparent) 60%, transparent); pointer-events: none; }
-/* the linen boards under the pages, the page block's front edge, the back cover */
-.pb-board { position: absolute; top: -8px; bottom: -10px; transform: translateZ(-10px); background: linear-gradient(180deg, var(--mk-white), var(--mk-linen)); box-shadow: inset 0 0 0 1px var(--mk-linen-shade); }
-.pb-board--left { left: -9px; right: 50%; border-radius: 9px 0 0 9px; }
-.pb-board--right { left: 50%; right: -9px; border-radius: 0 9px 9px 0; }
-.pb-block { position: absolute; left: 0; width: 100%; top: 100%; height: 9px; transform-origin: 50% 0; transform: rotateX(-90deg); background: repeating-linear-gradient(180deg, var(--mk-paper) 0 2px, var(--mk-paper-shade) 2px 3px); }
-.pb-cover { position: absolute; inset: -8px -9px -10px 0; display: grid; place-items: center; border-radius: 0 9px 9px 0; background: linear-gradient(135deg, var(--mk-white), var(--mk-linen)); box-shadow: inset 0 0 0 1px var(--mk-linen-shade), inset 0 0 0 9px var(--mk-white), inset 0 0 0 10.5px var(--mk-sea); }
-.pb-cover__boat { inline-size: 96px; block-size: 72px; transform: scaleX(-1); }
-.pb-page, .pb-leaf { position: absolute; top: 0; width: 250px; height: 290px; transform-style: preserve-3d; }
+/* the round table the book lies on (its floor and window light are in the same picture, on the same plane), and the book's shadow on it */
+.pb-tabletop { position: absolute; left: -330px; top: -400px; width: 1160px; height: 1160px; transform: translateZ(-16px); background-size: 100% 100%; background-position: 50% 50%; pointer-events: none; }
+/* the window's light across the cloth: two warm panes with the glazing bar's shadow between them (the same light lies across the pages) */
+.pb-light { position: absolute; left: -560px; top: -470px; width: 1620px; height: 1260px; transform: translateZ(-15.6px); pointer-events: none; background: linear-gradient(118deg, transparent 40.7%, color-mix(in srgb, var(--mk-butter) 36%, transparent) 41.7% 46.5%, transparent 47.3% 48.1%, color-mix(in srgb, var(--mk-butter) 36%, transparent) 48.9% 53.7%, transparent 54.9%); -webkit-mask-image: radial-gradient(closest-side, var(--studio-graphite) 40%, transparent 96%); mask-image: radial-gradient(closest-side, var(--studio-graphite) 40%, transparent 96%); }
+.pb-under { position: absolute; inset: -6px -22px -34px; border-radius: 34px; transform: translateZ(-15px); background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-shadow) 56%, transparent), color-mix(in srgb, var(--mk-shadow) 26%, transparent) 62%, transparent); pointer-events: none; }
+.pb-under[data-side=right] { left: 236px; }
+.pb-under[data-side=left] { right: 236px; }
+/* the cloth boards under the pages, and the page block's front edge above the board's */
+.pb-board { position: absolute; top: -8px; bottom: -10px; transform: translateZ(-12px); background: linear-gradient(135deg, var(--mk-sea), var(--mk-teal-deep)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mk-teal-deep) 70%, var(--mk-shadow)); }
+.pb-board--left { left: -9px; right: 50%; border-radius: 10px 0 0 10px; }
+.pb-board--right { left: 50%; right: -9px; border-radius: 0 10px 10px 0; }
+.pb-block { position: absolute; top: 100%; height: 11px; transform-origin: 50% 0; transform: rotateX(-90deg); background: repeating-linear-gradient(180deg, var(--mk-paper) 0 1.6px, var(--mk-paper-shade) 1.6px 2.4px); box-shadow: inset 0 -2.4px 0 color-mix(in srgb, var(--mk-teal-deep) 80%, var(--mk-shadow)); }
+.pb-block--left { left: 0; width: 250px; border-radius: 0 0 0 3px; }
+.pb-block--right { left: 250px; width: 250px; border-radius: 0 0 3px 0; }
+/* the cover: teal cloth, a paper plate with the boat and the title */
+.pb-cover { position: absolute; inset: -8px -9px -10px 0; display: grid; place-items: center; border-radius: 2px 10px 10px 2px; background: linear-gradient(135deg, color-mix(in srgb, var(--mk-sea) 86%, var(--mk-white)), var(--mk-teal) 46%, var(--mk-teal-deep)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mk-teal-deep) 70%, var(--mk-shadow)), inset 16px 0 14px -8px color-mix(in srgb, var(--mk-shadow) 46%, transparent), inset 0 0 0 9px color-mix(in srgb, var(--mk-white) 0%, transparent), inset 0 0 0 10px color-mix(in srgb, var(--mk-white) 34%, transparent); }
+.pb-cover::after { content: ''; position: absolute; inset: 0; background-image: var(--pb-grain); background-size: 180px 180px; opacity: .5; border-radius: inherit; }
+.pb-cover__plate { position: relative; z-index: 1; display: grid; justify-items: center; gap: 6px; inline-size: 178px; padding: 16px 14px 18px; border-radius: 12px; background: linear-gradient(160deg, var(--mk-white), var(--mk-paper)); box-shadow: 0 2px 6px color-mix(in srgb, var(--mk-shadow) 44%, transparent), inset 0 0 0 1px var(--mk-white), inset 0 0 0 4px var(--mk-paper), inset 0 0 0 5px color-mix(in srgb, var(--mk-teal) 60%, transparent); }
+.pb-cover[data-front=false] .pb-cover__plate { inline-size: 120px; padding: 14px; }
+.pb-cover__boat { inline-size: 112px; block-size: 84px; }
+.pb-cover[data-front=false] .pb-cover__boat { inline-size: 84px; block-size: 63px; transform: scaleX(-1); }
+.pb-cover__kicker { font-family: var(--font-display); font-weight: 700; font-size: 10.5px; line-height: 1; letter-spacing: .16em; text-transform: uppercase; color: var(--mk-teal-deep); }
+[lang=he].pb-cover__kicker { letter-spacing: .04em; font-size: 12px; }
+.pb-cover__title { font-family: var(--font-display); font-weight: 800; font-size: 25px; line-height: 1.04; letter-spacing: -.01em; text-align: center; color: var(--mk-ink); text-wrap: balance; }
+
+.pb-page, .pb-leaf { position: absolute; top: 0; width: 250px; height: 320px; transform-style: preserve-3d; }
 .pb-page--left { left: 0; }
 .pb-page--right { left: 250px; }
 .pb-leaf { left: 250px; transform-origin: 0 50%; }
 .pb-face { position: absolute; inset: 0; transform-style: preserve-3d; }
 .pb-face--front { transform: translateZ(.3px); }
 .pb-face--back { transform: rotateY(180deg) translateZ(.3px); }
-.pb-page__shade { position: absolute; inset: 0; transform: translateZ(.6px); background: linear-gradient(90deg, color-mix(in srgb, var(--mk-shadow) 70%, transparent), color-mix(in srgb, var(--mk-shadow) 25%, transparent)); pointer-events: none; }
-.pb-page--left .pb-page__shade { background: linear-gradient(270deg, color-mix(in srgb, var(--mk-shadow) 60%, transparent), color-mix(in srgb, var(--mk-shadow) 15%, transparent)); }
-/* the light that slides across a page as it bends over */
+.pb-page__shade { position: absolute; inset: 0; transform: translateZ(.6px); background: linear-gradient(90deg, color-mix(in srgb, var(--mk-shadow) 74%, transparent), color-mix(in srgb, var(--mk-shadow) 26%, transparent)); pointer-events: none; }
+.pb-page--left .pb-page__shade { background: linear-gradient(270deg, color-mix(in srgb, var(--mk-shadow) 64%, transparent), color-mix(in srgb, var(--mk-shadow) 16%, transparent)); }
+/* the light that slides across a page as it comes over */
 .pb-sheen { position: absolute; inset: 0; transform: translateZ(.8px); background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--mk-white) 80%, transparent) 50%, transparent 70%); background-size: 240% 100%; background-repeat: no-repeat; pointer-events: none; }
 
-/* One half of a spread: the printed page, then its standing cards. */
+/* One half of a spread: the printed page (flat), then its standing cards. */
 .pb-half { position: absolute; inset: 0; transform-style: preserve-3d; }
 .pb-print { position: absolute; inset: 0; overflow: hidden; background: var(--mk-paper); }
 .pb-half[data-side=left] .pb-print { border-radius: 5px 1px 1px 5px; }
 .pb-half[data-side=right] .pb-print { border-radius: 1px 5px 5px 1px; }
-.pb-print__art, .pb-slice { position: absolute; inset: 0; display: block; background-size: 200% 100%; background-repeat: no-repeat; }
-.pb-print__live { position: absolute; inset: 0; display: block; pointer-events: none; }
-.pb-grain { position: absolute; inset: 0; background-image: var(--pb-grain); background-size: 180px 180px; opacity: .28; pointer-events: none; }
+.pb-print > * { position: absolute; }
+/* the far bank the slices stand on */
+.pb-farbank { inset-inline: 0; top: 0; background: var(--pb-ripple-deep) 0 0 / 300px 44px, linear-gradient(180deg, color-mix(in srgb, var(--mk-sand) 70%, var(--mk-sage)) 0%, color-mix(in srgb, var(--mk-sage) 60%, var(--mk-spring)) 70%, color-mix(in srgb, var(--mk-moss) 70%, var(--mk-sand)) 100%); }
+/* the water: printed colour, the scenery mirrored in it, and two sheets of ripples drifting with the current */
+.pb-water { inset-inline: 0; bottom: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--mk-sea) 64%, var(--mk-white)) 0%, var(--mk-sea) 26%, color-mix(in srgb, var(--mk-teal) 76%, var(--mk-water)) 100%); }
+.pb-print[data-spread="1"] .pb-water { background: linear-gradient(180deg, color-mix(in srgb, var(--mk-sea) 60%, var(--mk-sky-pale)) 0%, color-mix(in srgb, var(--mk-water) 64%, var(--mk-sea)) 34%, color-mix(in srgb, var(--mk-water) 60%, var(--mk-teal-deep)) 100%); }
+.pb-print[data-spread="2"] .pb-water { background: linear-gradient(180deg, color-mix(in srgb, var(--mk-sky-pale) 60%, var(--mk-sea)) 0%, color-mix(in srgb, var(--mk-water) 70%, var(--mk-slate)) 36%, color-mix(in srgb, var(--mk-water) 44%, var(--mk-indigo)) 100%); }
+.pb-print[data-spread="3"] .pb-water { background: linear-gradient(180deg, color-mix(in srgb, var(--mk-amber) 26%, var(--mk-water)) 0%, color-mix(in srgb, var(--mk-water) 58%, var(--mk-indigo)) 34%, color-mix(in srgb, var(--mk-indigo) 74%, var(--mk-teal-deep)) 100%); }
+.pb-reflect { will-change: transform; filter: blur(1.3px); inset-inline: 0; background-size: 200% 100%; background-repeat: no-repeat; transform: scaleY(-1); opacity: .5; -webkit-mask-image: linear-gradient(0deg, var(--studio-graphite) 0%, transparent 88%); mask-image: linear-gradient(0deg, var(--studio-graphite) 0%, transparent 88%); }
+/* the rain's gloom and the quay's dusk on the water */
+.pb-dusk { inset: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--mk-indigo-deep) 60%, var(--mk-storm-grey)), var(--mk-indigo-deep)); pointer-events: none; }
+.pb-ripple { left: 0; bottom: 0; inline-size: calc(100% + 360px); background-size: 360px 150px; will-change: transform; }
+.pb-ripple--light { background-image: var(--pb-ripple-light); opacity: .6; }
+.pb-ripple--deep { background-image: var(--pb-ripple-deep); opacity: .5; }
+.pb-print__live { inset: 0; display: block; pointer-events: none; will-change: transform; }
+/* the near bank: a band of cream paper with a scalloped, torn-looking edge, and the page's words printed on it */
+.pb-bank { inset-inline: 0; bottom: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--mk-paper) 80%, var(--mk-sand)) 0, var(--mk-paper) 16px, var(--mk-cream) 100%);
+  -webkit-mask-image: radial-gradient(7px 6px at 7px 7px, var(--studio-graphite) 97%, transparent), linear-gradient(var(--studio-graphite), var(--studio-graphite)); -webkit-mask-size: 14px 14px, 100% calc(100% - 7px); -webkit-mask-position: 0 0, 0 7px; -webkit-mask-repeat: repeat-x, no-repeat;
+  mask-image: radial-gradient(7px 6px at 7px 7px, var(--studio-graphite) 97%, transparent), linear-gradient(var(--studio-graphite), var(--studio-graphite)); mask-size: 14px 14px, 100% calc(100% - 7px); mask-position: 0 0, 0 7px; mask-repeat: repeat-x, no-repeat; }
+.pb-words { margin: 0; left: 16px; right: 44px; block-size: 40px; display: grid; place-items: center; text-align: center; font-family: var(--font-display); font-weight: 700; font-size: 15px; line-height: 1.12; letter-spacing: -.005em; color: var(--mk-ink); text-wrap: balance; text-shadow: 0 .6px 0 color-mix(in srgb, var(--mk-white) 80%, transparent); }
+.pb-words[data-side=right] { left: 44px; right: 16px; }
+.pb-words[lang=he] { font-size: 16px; }
+/* the window's light lying across the pages */
+.pb-sun { top: -300px; width: 1100px; height: 920px; pointer-events: none; background: linear-gradient(118deg, transparent 37%, color-mix(in srgb, var(--mk-white) 15%, transparent) 38% 45%, transparent 46% 47.4%, color-mix(in srgb, var(--mk-white) 15%, transparent) 48.4% 55.4%, transparent 56.4%); }
+.pb-grain { inset: 0; background-image: var(--pb-grain); background-size: 180px 180px; opacity: .22; pointer-events: none; }
 /* gutter shading at the spine */
-.pb-gutter { position: absolute; top: 0; bottom: 0; width: 40px; pointer-events: none; }
-.pb-half[data-side=left] .pb-gutter { right: 0; background: linear-gradient(270deg, color-mix(in srgb, var(--mk-shadow) 34%, transparent), color-mix(in srgb, var(--mk-shadow) 8%, transparent) 40%, transparent); }
-.pb-half[data-side=right] .pb-gutter { left: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--mk-shadow) 34%, transparent), color-mix(in srgb, var(--mk-shadow) 8%, transparent) 40%, transparent); }
+.pb-gutter { top: 0; bottom: 0; width: 44px; pointer-events: none; }
+.pb-half[data-side=left] .pb-gutter { right: 0; background: linear-gradient(270deg, color-mix(in srgb, var(--mk-shadow) 42%, transparent), color-mix(in srgb, var(--mk-shadow) 10%, transparent) 40%, transparent); }
+.pb-half[data-side=right] .pb-gutter { left: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--mk-white) 46%, transparent) 0 1.2px, color-mix(in srgb, var(--mk-shadow) 30%, transparent) 2px, color-mix(in srgb, var(--mk-shadow) 8%, transparent) 40%, transparent); }
 
 .pb-pop { position: absolute; transform-origin: 50% 100%; pointer-events: none; }
 /* the shadow a standing card throws back across the page, and the dark line at its foot */
-.pb-cast { position: absolute; pointer-events: none; transform-origin: 50% 100%; background: linear-gradient(0deg, color-mix(in srgb, var(--mk-shadow) 50%, transparent), color-mix(in srgb, var(--mk-shadow) 16%, transparent) 55%, transparent); }
-.pb-foot { position: absolute; height: 9px; transform: translateZ(.5px); background: linear-gradient(180deg, color-mix(in srgb, var(--mk-shadow) 46%, transparent), transparent); pointer-events: none; }
+.pb-cast { position: absolute; pointer-events: none; transform-origin: 50% 100%; background: linear-gradient(0deg, color-mix(in srgb, var(--mk-shadow) 58%, transparent), color-mix(in srgb, var(--mk-shadow) 20%, transparent) 55%, transparent); }
+.pb-foot { position: absolute; height: 10px; transform: translateZ(.5px); background: linear-gradient(180deg, color-mix(in srgb, var(--mk-shadow) 52%, transparent), transparent); pointer-events: none; }
+.pb-slice { position: absolute; inset: 0; display: block; background-size: 200% 100%; background-repeat: no-repeat; }
+/* the outline of the slice in front, thrown on this one by the window's light */
+/* weather and dusk on a standing picture: a tint cut to the picture's own outline */
+.pb-tint { position: absolute; inset: 0; display: block; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; pointer-events: none; }
+.pb-tint[data-tone=rainGloom] { background: color-mix(in srgb, var(--mk-storm-grey) 50%, var(--mk-indigo-deep)); }
+.pb-tint[data-tone=quayDusk] { background: color-mix(in srgb, var(--mk-indigo-deep) 76%, var(--mk-plum)); }
+.pb-shade { position: absolute; inset-inline: 0; bottom: 0; display: block; background: color-mix(in srgb, var(--mk-shadow) 30%, transparent); -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; transform: translate(5px, -3px); pointer-events: none; }
+.pb-meadow { position: absolute; inset: 0; display: block; background-size: 500px 33px; background-repeat: no-repeat; }
+.pb-rock { position: absolute; inset: 0; display: block; inline-size: 100%; block-size: 100%; }
 .pb-fx { position: absolute; display: block; overflow: visible; pointer-events: none; }
 .pb-glow { position: absolute; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-sun) 92%, transparent), color-mix(in srgb, var(--mk-amber) 46%, transparent) 46%, transparent); pointer-events: none; }
+.pb-bow { position: absolute; top: 0; display: block; inline-size: 200px; block-size: 100px; }
 
 /* stand-up figures: the crew and the shipped props */
-.pb-figure { position: absolute; left: 50%; inline-size: auto; max-inline-size: none; transform-origin: 50% 100%; filter: drop-shadow(0 1px 0 var(--mk-white)) drop-shadow(0 2px 2px color-mix(in srgb, var(--mk-shadow) 30%, transparent)); }
-/* the paper boat */
-.pb-boat { position: absolute; inset-inline: 0; bottom: 0; display: grid; justify-items: center; transform-origin: 50% 90%; }
-.pb-boat svg { display: block; overflow: visible; filter: drop-shadow(0 0 1px color-mix(in srgb, var(--mk-shadow) 50%, transparent)) drop-shadow(0 3px 3px color-mix(in srgb, var(--mk-shadow) 42%, transparent)); }
-/* a gate on the river: the kit's knit arch */
-.pb-gate { position: absolute; inset: 0; display: block; inline-size: 100%; block-size: 100%; filter: drop-shadow(0 2px 2px color-mix(in srgb, var(--mk-shadow) 30%, transparent)); }
-.pb-gate[data-lit=true] { filter: brightness(1.1) drop-shadow(0 0 4px color-mix(in srgb, var(--mk-white) 90%, transparent)); }
+.pb-figure { position: absolute; left: 50%; inline-size: auto; max-inline-size: none; transform-origin: 50% 100%; filter: drop-shadow(0 -1px 0 var(--mk-white)) drop-shadow(0 2px 2px color-mix(in srgb, var(--mk-shadow) 34%, transparent)); }
+
+/* The paper boat, folded: two hull sides that meet at the keel, a floor between them, the sail standing in the middle. */
+.pb-b3 { position: absolute; width: 0; height: 0; transform-style: preserve-3d; pointer-events: none; }
+.pb-b3 > i { position: absolute; display: block; }
+.pb-b3__shade { left: -50px; top: -13px; width: 100px; height: 28px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-shadow) 70%, transparent), color-mix(in srgb, var(--mk-shadow) 30%, transparent) 60%, transparent); transform: translate3d(7px, 6px, -1px); }
+.pb-b3__floor { left: -25px; top: -6px; width: 50px; height: 12px; transform: translateZ(1.4px); background: color-mix(in srgb, var(--mk-snow-shade) 76%, var(--mk-sky)); clip-path: polygon(0 50%, 14% 0, 86% 0, 100% 50%, 86% 100%, 14% 100%); }
+.pb-b3__side { left: -39px; top: -27px; width: 78px; height: 27px; transform-origin: 50% 100%; clip-path: polygon(0 0, 22% 18%, 50% 25%, 78% 18%, 100% 0, 81% 100%, 19% 100%); }
+.pb-b3__side--near { background: linear-gradient(180deg, var(--mk-white) 0 40%, var(--pb-stripe, var(--mk-teal)) 40% 53%, color-mix(in srgb, var(--mk-white) 78%, var(--mk-snow-shade)) 53% 72%, color-mix(in srgb, var(--mk-snow-shade) 72%, var(--mk-sky)) 100%), linear-gradient(90deg, transparent, transparent); }
+.pb-b3__side--far { background: linear-gradient(180deg, color-mix(in srgb, var(--mk-snow-shade) 70%, var(--mk-sky)) 0, color-mix(in srgb, var(--mk-snow-shade) 62%, var(--mk-water)) 100%); }
+.pb-b3__sail { left: -19px; top: -48px; width: 38px; height: 48px; transform-origin: 50% 100%; clip-path: polygon(50% 0, 100% 100%, 0 100%); background: linear-gradient(90deg, var(--mk-white) 0 50%, color-mix(in srgb, var(--mk-snow) 50%, var(--mk-snow-shade)) 50% 100%); }
+.pb-b3__sail--cross { left: -7px; width: 14px; background: linear-gradient(90deg, color-mix(in srgb, var(--mk-snow) 50%, var(--mk-snow-shade)) 0 50%, color-mix(in srgb, var(--mk-snow-shade) 76%, var(--mk-sky)) 50% 100%); }
+
 /* what the ScoutCam sees, on its paper arm */
 .pb-view { position: absolute; inset: 0; display: block; }
 .pb-view i { position: absolute; left: calc(50% - 3px); bottom: 0; inline-size: 6px; block-size: 52%; border-radius: 2px; background: linear-gradient(90deg, var(--mk-white), var(--mk-paper-shade)); }
 .pb-view img { position: absolute; left: 0; top: 0; inline-size: 100%; aspect-ratio: 1; border-radius: 50%; border: 4px solid var(--mk-white); box-shadow: 0 2px 5px color-mix(in srgb, var(--mk-shadow) 40%, transparent); object-fit: cover; }
-/* a storm cloud on its stalk, and its rain */
+/* a rain cloud on its stalk, and its rain */
 .pb-cloud { position: absolute; inset: 0; display: block; }
-.pb-cloud img { position: absolute; left: 0; inline-size: 100%; block-size: auto; transform-origin: 50% 80%; }
+.pb-cloud__body { position: absolute; left: 0; inline-size: 100%; display: block; transform-origin: 50% 80%; }
+.pb-cloud__body img { position: absolute; inset: 0; display: block; inline-size: 100%; block-size: 100%; }
 .pb-cloud__stalk { position: absolute; left: calc(50% - 3px); bottom: 0; inline-size: 6px; border-radius: 2px; background: linear-gradient(90deg, var(--mk-white), var(--mk-paper-shade)); }
-.pb-cloud__rain { position: absolute; inline-size: 3px; border-radius: 2px; transform: skewX(-16deg); background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--mk-white) 86%, transparent)); }
+.pb-cloud__rain { position: absolute; inline-size: 2.4px; border-radius: 2px; transform: skewX(-16deg); background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--mk-white) 90%, transparent)); }
 /* the lamp's beam */
 .pb-beam__ray { position: absolute; inset: 0; transform-origin: 96% 22%; background: conic-gradient(from 258deg at 96% 22%, transparent 0deg, color-mix(in srgb, var(--mk-butter) 62%, transparent) 9deg, color-mix(in srgb, var(--mk-sun) 46%, transparent) 14deg, transparent 24deg); -webkit-mask-image: linear-gradient(270deg, var(--studio-graphite) 30%, transparent 96%); mask-image: linear-gradient(270deg, var(--studio-graphite) 30%, transparent 96%); }
 
-/* On top of the book, in screen px: the things that answer a tap, the page corners. */
-.pb-overlay { position: absolute; inset: 0; pointer-events: none; }
+/* On top of the book, in world px: the things that answer a tap. */
+.pb-overlay { position: absolute; z-index: 4; inset: 0; pointer-events: none; }
 .pb-overlay > * { pointer-events: auto; }
-.pb-toy { position: absolute; z-index: 1; inline-size: 52px; block-size: 52px; margin: -26px 0 0 -26px; padding: 0; border: 0; border-radius: 50%; background: transparent; touch-action: pan-y; }
-.pb-toy--boat { z-index: 2; inline-size: 96px; block-size: 76px; margin: -42px 0 0 -48px; border-radius: 26px; touch-action: none; cursor: grab; }
+.pb-toy { position: absolute; z-index: 1; inline-size: var(--studio-tap); block-size: var(--studio-tap); margin: calc(var(--studio-tap) / -2) 0 0 calc(var(--studio-tap) / -2); padding: 0; border: 0; border-radius: 50%; background: transparent; touch-action: pan-y; }
+.pb-toy--boat { z-index: 2; inline-size: 104px; block-size: 84px; margin: -46px 0 0 -52px; border-radius: 26px; touch-action: none; cursor: grab; }
 .pb-toy:active { background: color-mix(in srgb, var(--studio-surface) 34%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--studio-surface) 70%, transparent); }
 .pb-toy:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: -3px; background: color-mix(in srgb, var(--studio-surface) 30%, transparent); }
-/* Page corners: the tab that turns the page (graphite, ringed in the signal colour), and the back corner. */
-.pb-corner { position: absolute; z-index: 3; display: grid; place-items: center; inline-size: 60px; block-size: 60px; padding: 0; border: 0; color: var(--studio-action-ink); background: var(--studio-action); border-radius: 18px 18px 18px 5px; box-shadow: var(--studio-lift); touch-action: none; animation: pb-corner-in .4s var(--studio-ease-spring); transition: scale .12s var(--studio-ease-soft); }
-.pb-corner--next::after, .pb-corner--end::after { content: ''; position: absolute; inset: -6px; border-radius: inherit; border: 3px solid var(--studio-signal); animation: pb-ring 1.8s .4s ease-in-out infinite; pointer-events: none; }
-.pb-corner--back { color: var(--studio-graphite); background: var(--studio-surface); border: 1px solid var(--studio-line); border-radius: 18px 18px 5px 18px; inline-size: 56px; block-size: 56px; box-shadow: 0 6px 16px var(--studio-shade); }
-[dir=rtl] .pb-corner--next { border-radius: 18px 18px 5px 18px; }
-[dir=rtl] .pb-corner--back { border-radius: 18px 18px 18px 5px; }
-.pb-corner--end { display: flex; gap: 8px; inline-size: auto; padding-inline: 14px 18px; font: 900 18px/1 var(--studio-font); white-space: nowrap; border-radius: 18px; animation: pb-corner-in .5s var(--studio-ease-spring); }
-.pb-corner:active { scale: .93; }
 
-/* The wheel: the steer buttons beside it. */
-.pb-controls { position: relative; z-index: 2; display: grid; justify-items: center; inline-size: 100%; }
-.pb-wheel-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
-.pb-steer { display: grid; place-items: center; flex: none; inline-size: 60px; block-size: 60px; border-radius: 50%; border: 1px solid var(--studio-line); color: var(--studio-graphite); background: var(--studio-surface); box-shadow: 0 6px 16px var(--studio-shade); transition: opacity .3s, scale .12s var(--studio-ease-soft); }
-.pb-steer:active:not(:disabled) { scale: .92; }
-.pb-steer:disabled { opacity: .4; cursor: default; }
-.pb-wheel { position: relative; flex: none; inline-size: var(--pb-wheel, 220px); aspect-ratio: 220 / 172; border-radius: 16px; touch-action: none; cursor: grab; }
+/* The wheel, in the dock between its two buttons. */
+.pb-wheel { position: relative; flex: none; inline-size: var(--pb-wheel, 180px); aspect-ratio: 220 / 172; margin-block: -6px -2px; border-radius: 16px; pointer-events: auto; touch-action: none; cursor: grab; filter: drop-shadow(0 12px 14px color-mix(in srgb, var(--studio-graphite) 26%, transparent)); animation: pb-wheel-in .5s var(--studio-ease-spring) both; }
+.pb-wheel:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; }
 .pb-wheel[aria-disabled=true] { cursor: default; }
+.pb-wheel[data-tucked=true] .pb-wheel__svg { opacity: .55; }
+.pb-wheel__svg { transition: opacity .4s var(--studio-ease-soft); }
 .pb-wheel__svg { display: block; inline-size: 100%; block-size: 100%; overflow: visible; }
-.pb-wheel__tuck { transition: transform .6s var(--studio-ease-spring); }
-.pb-wheel-row[data-tucked=true] .pb-wheel__tuck { transform: translateY(58px); }
-.pb-wheel__marks { animation: pb-words-in .3s var(--studio-ease-soft); }
+.pb-wheel__marks { animation: pb-fade-in .3s var(--studio-ease-soft); }
 
 /* The hand that shows the first move. Its fingertip is at the point it is placed on. */
 .pb-hand { position: absolute; z-index: 6; inline-size: 56px; block-size: 70px; margin: -8px 0 0 -16px; pointer-events: none; filter: drop-shadow(0 4px 6px var(--studio-shade)); }
-.pb .pb-hand > svg { display: block; inline-size: 56px; block-size: 70px; min-inline-size: 56px; overflow: visible; }
+.play-stage .pb-hand > svg { display: block; inline-size: 56px; block-size: 70px; min-inline-size: 56px; overflow: visible; }
 
 .pb-sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; }
 
-@keyframes pb-words-in { from { opacity: 0; translate: 0 -5px; } to { opacity: 1; translate: 0 0; } }
-@keyframes pb-corner-in { from { scale: .6; opacity: 0; } to { scale: 1; opacity: 1; } }
-@keyframes pb-ring { 0%, 100% { opacity: 1; scale: 1; } 50% { opacity: .35; scale: 1.08; } }
+@keyframes pb-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pb-wheel-in { from { opacity: 0; translate: 0 40px; } to { opacity: 1; translate: 0 0; } }
 
-/* A wide screen: the book takes the whole height; the words and the wheel sit beside it. */
-.pb[data-layout=book-beside] { grid-template-columns: minmax(0, 1fr) clamp(236px, 27%, 290px); grid-template-rows: auto minmax(0, 1fr); column-gap: 8px; padding: 14px 16px 14px 8px; }
-.pb[data-layout=book-beside] > .pb-stage { grid-column: 1; grid-row: 1 / span 2; }
-.pb[data-layout=book-beside] > .pb-label { grid-column: 2; grid-row: 1; inline-size: 100%; align-self: start; }
-.pb[data-layout=book-beside] > .pb-controls { grid-column: 2; grid-row: 2; align-self: end; }
-.pb[data-layout=book-beside] > .pb-room { inset-inline-end: 22%; block-size: 62%; }
-.pb[data-layout=book-beside] .pb-wheel-row { flex-wrap: wrap; row-gap: 8px; }
-.pb[data-layout=book-beside] .pb-wheel { order: -1; margin-inline: 12px; }
-.pb[data-layout=book-beside] .pb-label p { font-size: clamp(19px, 2vw, 24px); }
-
-@media (max-width: 560px) {
-  /* A phone: the book runs edge to edge. */
-  .pb { inline-size: 100vw; max-inline-size: none; margin-inline: calc(50% - 50vw); border-radius: 0; border-inline: 0; }
-}
-@media (min-width: 800px) {
-  .pb-steer { inline-size: 64px; block-size: 64px; }
-  .pb-label { min-block-size: 92px; }
-}
 @media (prefers-reduced-motion: reduce) {
-  .pb *, .pb { animation: none !important; transition: none !important; }
+  .pb *, .pb, .pb-wheel, .pb-wheel__marks { animation: none !important; transition: none !important; }
 }
 @media (forced-colors: active) {
-  .pb-corner, .pb-steer, .pb-toy:focus-visible { border: 2px solid ButtonText; }
+  .pb-toy:focus-visible { border: 2px solid ButtonText; }
 }

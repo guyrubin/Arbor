@@ -6,7 +6,7 @@
  * of the same drawing with the light still falling from the top left (the
  * strands are seeded and lit again for that side): one fur system, two
  * region sets. Pure data and maths: no DOM. */
-import { polygonBounds, smoothClosed, type Bounds, type DiscoveryId, type FlowKind, type FurRegion, type PartId, type Vec } from './iceAgeFriendRules';
+import { polygonBounds, smoothClosed, type Bounds, type FlowKind, type FurRegion, type PartId, type Vec } from './iceAgeFriendRules';
 
 export type ViewId = 'side' | 'turned';
 
@@ -51,8 +51,9 @@ export const GROUND_Y = 615;
 /** Pivots the idle motion turns about (side view). */
 export const PIVOTS = { neck: [446, 300] as Vec, ear: [400, 268] as Vec, tail: [858, 366] as Vec };
 
-/** Where each discovery's glowing ring sits (side view). The trunk's follows the tip. */
-const HOTSPOTS: Record<Exclude<DiscoveryId, 'trunk'>, Vec> = {
+/** The places on the animal the story looks at (side view): the flank where the fur is parted, the small ear, the tusk's low curve, the hump. */
+export type SpotId = 'coats' | 'ears' | 'tusks' | 'hump';
+const HOTSPOTS: Record<SpotId, Vec> = {
   coats: [604, 404], ears: [396, 296], tusks: [146, 476], hump: [528, 214],
 };
 
@@ -98,7 +99,7 @@ const DEFS: RegionDef[] = [
   { id: 'body', part: 'body', kind: 'flank', points: BODY, share: 0.4, guard: 0.6, under: [9, 15], long: [30, 52], depth: 0, fringe: 0.1 },
   { id: 'ridge', part: 'body', kind: 'ridge', points: RIDGE, share: 0.07, guard: 0.85, under: [10, 16], long: [40, 64], depth: 0, fringe: 0.12 },
   { id: 'skirt', part: 'body', kind: 'skirt', points: SKIRT, share: 0.13, guard: 0.9, under: [14, 22], long: [54, 92], depth: 0.04, fringe: 0.08 },
-  { id: 'head', part: 'head', kind: 'head', points: HEAD, share: 0.17, guard: 0.45, under: [6, 10], long: [12, 22], depth: 0, fringe: 0.26 },
+  { id: 'head', part: 'head', kind: 'head', points: HEAD, share: 0.17, guard: 0.5, under: [8, 13], long: [16, 30], depth: 0, fringe: 0.26 },
   { id: 'crownTuft', part: 'head', kind: 'crownTuft', points: CROWN, share: 0.016, guard: 0.95, under: [8, 12], long: [20, 34], depth: 0, fringe: 0.25, samples: 5 },
   { id: 'ear', part: 'ear', kind: 'ear', points: EAR, share: 0.014, guard: 0.5, under: [5, 8], long: [10, 18], depth: 0, fringe: 0.3, samples: 5 },
   { id: 'trunk', part: 'trunk', kind: 'head', points: [], share: 0.07, guard: 0.3, under: [5, 9], long: [9, 15], depth: 0, fringe: 0 },
@@ -118,7 +119,7 @@ export interface MammothView {
   /** Size of the trunk here relative to the side view. */
   trunkScale: number;
   pivots: { neck: Vec; ear: Vec; tail: Vec };
-  hotspots: Record<Exclude<DiscoveryId, 'trunk'>, Vec>;
+  hotspots: Record<SpotId, Vec>;
   /** Everything the camera may show (the animal, its tusks, its shadow). */
   bounds: Bounds;
   /** Snow spots, the hint hand's stroke, the tickle spot and the mouth, placed for this view. */
