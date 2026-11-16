@@ -2,7 +2,8 @@ import React from "react";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import WorldScene from "./WorldScene";
 import { _resetSceneCache } from "../../lib/sceneCache";
-const h=vi.hoisted(()=>({slots:[] as any[],at:0,effects:[] as (()=>void)[],observers:[] as any[],generate:vi.fn()}));
+const h=vi.hoisted(()=>({slots:[] as any[],at:0,effects:[] as (()=>void)[],observers:[] as any[],generate:vi.fn(),kid:false}));
+vi.mock("../../lib/kidModeGate",()=>({isKidModeActive:()=>h.kid}));
 vi.mock("react",async(original)=>{
  const real=await original<typeof import("react")>();
  return {...real,
@@ -22,7 +23,7 @@ async function settle(){for(let i=0;i<12;i++)await Promise.resolve();}
 function deferred(){let resolve!:(v:{dataUrl:string})=>void;let reject!:(e:Error)=>void;const promise=new Promise<{dataUrl:string}>((a,b)=>{resolve=a;reject=b;});return{promise,resolve,reject};}
 function unmount(){for(const slot of h.slots)slot?.cleanup?.();}
 beforeEach(()=>{
- h.slots=[];h.at=0;h.effects=[];h.observers=[];vi.clearAllMocks();_resetSceneCache();
+ h.slots=[];h.at=0;h.effects=[];h.observers=[];h.kid=false;vi.clearAllMocks();_resetSceneCache();
  vi.stubGlobal("IntersectionObserver",class{callback:any;disconnect=vi.fn();observe=vi.fn();constructor(callback:any,options:any){this.callback=callback;h.observers.push(this);expect(options.rootMargin).toBe("160px");}});
 });
 afterEach(()=>{unmount();vi.unstubAllGlobals();});
@@ -81,6 +82,14 @@ describe("WorldScene current-key lifecycle and decorative fallback",()=>{
  });
  it("cached current key avoids new generation after remount",async()=>{
   h.generate.mockResolvedValue({dataUrl:"data:cached"});render();visible();await settle();unmount();h.slots=[];expect(image(render())!.props.src).toBe("data:cached");expect(h.generate).toHaveBeenCalledTimes(1);
+ });
+ it("B-KID-138: in Kid Mode a tile shows its built-in art, makes no request and never shows a scene generated earlier",async()=>{
+  h.generate.mockResolvedValue({dataUrl:"data:parent-scene"});render();visible();await settle();expect(image(render())!.props.src).toBe("data:parent-scene");
+  unmount();h.slots=[];h.observers=[];h.generate.mockClear();h.kid=true;
+  const img=image(render())!;
+  expect(img.props.src).toContain("mood-mountain-v2-480.webp");
+  expect(h.observers).toHaveLength(0);
+  expect(h.generate).not.toHaveBeenCalled();
  });
 });
 
