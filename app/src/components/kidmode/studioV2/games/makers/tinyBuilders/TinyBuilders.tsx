@@ -63,7 +63,7 @@ function TinyGame({ onAgain }: { onAgain: () => void }) {
     const hooks: TinyHooks = {
       phase: setPhase, placed: setPlaced, selected: setSelected, found: setFound, landed: setLandDone,
       say: (who, mood, key, piece) => setCoach({ who, mood, key, piece }),
-      toast: (key, arg) => setToast(key ? { key, arg } : null),
+      notice: (key, arg) => setToast(key ? { key, arg } : null),
       caption: setCaption, canRecord: setCanRecord, layout: setLayout, shake: bump, haptic: () => { void selectionHaptic(); }, camera: to => setCamera(to ?? undefined),
       burst: (x, y, kind, opts) => fxRef.current?.burst(x, y, kind, opts),
       spot: (role, box) => {

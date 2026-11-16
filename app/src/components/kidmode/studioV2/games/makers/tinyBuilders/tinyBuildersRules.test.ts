@@ -328,7 +328,7 @@ describe('Tiny Structures: the words', () => {
     expect(keys.size).toBeGreaterThan(18);
     for (const key of keys) if (key !== 'picked' && key !== 'clicked') expect(Object.keys(TINY_BUILDERS_COPY.en.say), key).toContain(key);
     for (const thing of DIVE_QUEST) { expect(TINY_BUILDERS_COPY.he.say).toHaveProperty(`spot-${thing}`); expect(TINY_BUILDERS_COPY.he.say).toHaveProperty(`fact-${thing}`); }
-    for (const key of [...engine.matchAll(/hooks\.toast\('(\w+)'/g)].map(m => m[1])) expect(Object.keys(TINY_BUILDERS_COPY.he.toast), key).toContain(key);
+    for (const key of [...engine.matchAll(/hooks\.notice\('(\w+)'/g)].map(m => m[1])) expect(Object.keys(TINY_BUILDERS_COPY.he.toast), key).toContain(key);
     for (const piece of [...PIECES.assisted, ...PIECES.full]) { expect(TINY_BUILDERS_COPY.he.picked[piece.kind]).toBeTruthy(); expect(TINY_BUILDERS_COPY.en.clicked[piece.kind]).toBeTruthy(); expect(TINY_BUILDERS_COPY.he.pieces[piece.kind]).toBeTruthy(); }
     for (const key of [...DIVE_QUEST, ...LAND_QUEST, 'spin'] as const) expect(TINY_BUILDERS_COPY.he.steps[key]).toBeTruthy();
     expect(TINY_BUILDERS_COPY.en.captions).toHaveLength(5); expect(TINY_BUILDERS_COPY.he.captions).toHaveLength(5);

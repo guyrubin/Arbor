@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { planOf } from './crankWorksRules';
 import { S1, roomRect } from './crankGeometry';
-import { paintScene, readPalette, type PaintImages, type Scene } from './crankPaint';
+import { paintScene, readPalette, type PaintImages, type SceneStill } from './crankPaint';
 import { KIT_BENCH, KIT_ROOM } from './crankKit';
 import '../makerPalette.css';
 
@@ -14,7 +14,7 @@ import '../makerPalette.css';
  * wheel sits left of the middle (the Studio stands the player's hero to the
  * right of a card window) and inside the band a wide window keeps. */
 const VIEW_W = 400, VIEW_H = 300, DENSITY = 1.6, ZOOM = 1.1;
-const STILL: Omit<Scene, 'room'> = {
+const STILL: SceneStill = {
   theta: 0.42, omega: 0, time: 0, plan: planOf(3), flower: 1, beads: 1, bell: 0, waiting: [], ask: null, carry: null, reveal: [0, 0, 0],
   bellSwing: 0, beadPop: [0, 0, 0, 0, 0, 0], bloomPop: 0, knobPop: 0, chock: { hop: 0, squash: 0, lean: 0, dx: 0 }, tool: null, tape: 0, held: false,
   jointCue: 0, puckCue: 0, lensOut: false, podOn: false, wheelCue: 0, wheelFocus: false,

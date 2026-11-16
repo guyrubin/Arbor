@@ -29,7 +29,7 @@ export interface TinyHooks {
   found(count: number): void;
   landed(done: readonly LandStep[]): void;
   say(who: 'aya' | 'bebe', mood: CoachMood, key: string, piece?: PieceKind): void;
-  toast(key: string | null, arg?: string): void;
+  notice(key: string | null, arg?: string): void;
   caption(index: number): void;
   canRecord(on: boolean): void;
   layout(layout: Layout): void;
@@ -219,7 +219,7 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
     // The turntable coasts; the model squashes, hops and settles on springs.
     if (!spinDrag) { const c = coast(spinVel, dt); spinVel = c.velocity; yaw += c.turn; if (phase === 'spin') spinTotal += Math.abs(c.turn); }
     if (phase === 'spin' && spinTotal >= SPIN_GOAL) finishBuild();
-    if ((phase === 'spin' || phase === 'built') && !danced && Math.abs(spinVel) > DANCE_SPEED) { danced = true; danceUntil = time + 2; hooks.toast('dance'); [10, 12, 14, 15].forEach((step, i) => sound.note(step, { gain: 0.035, length: 0.3, at: i * 0.09 })); later(2600, () => hooks.toast(null)); }
+    if ((phase === 'spin' || phase === 'built') && !danced && Math.abs(spinVel) > DANCE_SPEED) { danced = true; danceUntil = time + 2; hooks.notice('dance'); [10, 12, 14, 15].forEach((step, i) => sound.note(step, { gain: 0.035, length: 0.3, at: i * 0.09 })); later(2600, () => hooks.notice(null)); }
     stretchVel += (-(stretch - 1) * 300 - stretchVel * 16) * dt; stretch = clamp(stretch + stretchVel * dt, 0.8, 1.2);
     hopVel += (-hop * 190 - hopVel * 13) * dt; hop = Math.max(0, hop + hopVel * dt);
     ayaHopVel += (-ayaHop * 170 - ayaHopVel * 12) * dt; ayaHop = Math.max(0, ayaHop + ayaHopVel * dt);
@@ -349,7 +349,7 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
     fx(s.x, s.y, 'ring', { tones: ['white'] }); fx(s.x, s.y, 'sparkle', { tones: ['white', 'sky-pale', 'gold-light'], count: 16 });
     sound.place(found * 2); sound.breath({ tone: 5200, gain: 0.018, length: 0.1 }); hooks.haptic();
     if (found >= LAST_DEPTH) { go('found'); shimmer = 1; hooks.shake(); if (!prefersReducedMotion()) { hooks.camera({ x: 0.5, y: 0.45, zoom: 1.14 }); later(1600, () => hooks.camera(null)); } later(350, () => sound.chapter()); say('bebe', 'wow', 'fact-phage'); }
-    else { say('bebe', 'happy', `fact-${thing}`); if (thing === 'bacterium') later(3200, () => { if (phase === 'dive') { hooks.toast('beyond'); later(5200, () => hooks.toast(null)); } }); }
+    else { say('bebe', 'happy', `fact-${thing}`); if (thing === 'bacterium') later(3200, () => { if (phase === 'dive') { hooks.notice('beyond'); later(5200, () => hooks.notice(null)); } }); }
     idleAt = time;
   }
   function tickDive(dt: number) {
@@ -358,7 +358,7 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
     else if (holdDir) depth = diveStep(depth, holdDir, dt, limit);
     depth = clampDepth(depth, limit);
     const dec = decade(depth);
-    if (dec > lastDecade && phase === 'dive') { hooks.toast('closer', String(10 ** dec)); sound.note(Math.max(0, 10 - dec * 2), { gain: 0.04, length: 0.7 }); const stamp = time; toastAt = stamp; later(1700, () => { if (toastAt === stamp) hooks.toast(null); }); }
+    if (dec > lastDecade && phase === 'dive') { hooks.notice('closer', String(10 ** dec)); sound.note(Math.max(0, 10 - dec * 2), { gain: 0.04, length: 0.7 }); const stamp = time; toastAt = stamp; later(1700, () => { if (toastAt === stamp) hooks.notice(null); }); }
     lastDecade = dec;
     if (depth > before && Math.floor(depth * 6) !== Math.floor(before * 6)) sound.breath({ tone: 1400 - depth * 220, gain: 0.012, length: 0.3 });
     const can = phase === 'dive' && canRecord(depth, found) && autoTo == null;
@@ -703,7 +703,7 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
       if (phase !== 'found') return; awake(); go('land'); const one = targetOf('phage'), here = lifeAt(one, time), start = landStart(seed, mode);
       land.x = (here.x - phageHome.x) / U; land.roll = normRoll(-here.turn); land.from = { x: land.x, roll: land.roll }; land.to = { x: start.x, roll: start.roll }; land.tumble = 0; land.height = 17.9;
       sound.breath({ tone: 900, gain: 0.03, length: 0.8 }); say('aya', 'curious', 'tumble'); hooks.canRecord(false);
-      later(5200, () => { if (phase === 'land') { hooks.toast('only'); later(5200, () => hooks.toast(null)); } });
+      later(5200, () => { if (phase === 'land') { hooks.notice('only'); later(5200, () => hooks.notice(null)); } });
     },
     phageDown(t) {
       if (phase !== 'land' || land.tumble >= 0) return; awake(); touched(); pointers.set(t.id, { x: t.x, y: t.y });

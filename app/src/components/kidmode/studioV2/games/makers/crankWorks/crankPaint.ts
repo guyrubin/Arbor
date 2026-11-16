@@ -149,10 +149,12 @@ function rivet(c: Ctx, x: number, y: number, r: number, m: Metal) {
 
 /* ------------------------------------------------------------ the scene */
 export interface PaintImages { roomImg: CanvasImageSource | null; bench: CanvasImageSource | null; chock: CanvasImageSource | null; tool: CanvasImageSource | null }
-export interface Scene {
+/** Where the pavilion picture lies (world units). */
+export interface SceneRoom { room: { x: number; y: number; size: number } }
+export type Scene = SceneStill & SceneRoom;
+/** Everything the painter reads except the room rectangle (a still picture fixes that itself). */
+export interface SceneStill {
   theta: number; omega: number; time: number; plan: Plan;
-  /** Where the pavilion picture lies (world units). */
-  room: { x: number; y: number; size: number };
   /** How far each built thing has arrived: 0 not there, 1 home (the belt threads on with it). */
   flower: number; beads: number; bell: number;
   /** What still waits in the crate, and which of them asks to be picked. */

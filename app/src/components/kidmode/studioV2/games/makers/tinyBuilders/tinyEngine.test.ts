@@ -20,7 +20,7 @@ function play(mode: BuildMode, size: readonly [number, number] = [390, 760]) {
   const seen: Seen = { phases: [], placed: [], selected: null, found: 0, landed: [], says: [], toasts: [], captions: [], canRecord: false, layout: null, shakes: 0 };
   const hooks: TinyHooks = {
     phase: p => seen.phases.push(p), placed: p => { seen.placed = p; }, selected: id => { seen.selected = id; }, found: n => { seen.found = n; }, landed: d => { seen.landed = d; },
-    say: (_who, _mood, key, piece) => seen.says.push(piece ? `${key}:${piece}` : key), toast: key => { if (key) seen.toasts.push(key); }, caption: i => seen.captions.push(i),
+    say: (_who, _mood, key, piece) => seen.says.push(piece ? `${key}:${piece}` : key), notice: key => { if (key) seen.toasts.push(key); }, caption: i => seen.captions.push(i),
     canRecord: on => { seen.canRecord = on; }, layout: l => { seen.layout = l; }, shake: () => { seen.shakes += 1; }, haptic: () => {}, camera: () => {}, burst: () => {}, spot: () => {},
   };
   const engine = createTinyEngine(fakeCanvas(size[0], size[1]), { mode, seed: 20261116, round: 0, hooks });
