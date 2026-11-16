@@ -33,7 +33,8 @@ vi.mock("react/jsx-dev-runtime", async original => {
 });
 import DevelopmentMap from "./DevelopmentMap";
 import DevelopmentCheckCard from "./DevelopmentCheckCard";
-import AreaTimeline, { daysBetween, onAreaLine, timelineCalendar } from "./AreaTimeline";
+import { milestonesV10Copy } from "./milestonesV10Copy";
+import AreaTimeline, { daysBetween, timelineCalendar } from "./AreaTimeline";
 import { DOMAIN_IDS, domainName } from "../../lib/domains/registry";
 import { DOMAIN_ICONS } from "../../lib/domains/icons";
 import { translate } from "../../lib/i18n";
@@ -81,8 +82,9 @@ describe("v10.1 — DevelopmentMap, the index of eight areas", () => {
       expect(ter).toContain(esc(domainName(d, (key: string) => translate(lang, key))));
       expect(ter).toContain(esc(translate(lang, "companion.devMap.none")));
     }
-    expect(html).toContain(esc(translate(lang, "companion.devMap.note")));
-    expect(html).toContain(esc(translate(lang, "companion.milestones.areasSubTiles")));
+    // V77: one hint under the tiles, the board's sentence (not production's two lines).
+    expect(html).toContain(esc(milestonesV10Copy(lang).tilesHint));
+    expect(html).not.toContain(esc(translate(lang, "companion.milestones.areasSubTiles")));
     expect(html).not.toContain("data-module");
     expect(html).not.toContain("data-primary-move");
   });
@@ -270,15 +272,10 @@ describe("v10.1 — AreaTimeline, the open area's dated line (calendar-true)", (
     expect(empty).not.toContain("area-timeline-stats");
     expect(empty).not.toContain("ms-tl-cards");
   });
-  it("a bare Seen it already on the line is not quoted again; a keepsake (the parent's words) still is", () => {
-    const ms = twoSeen();
-    const by = groupMilestonesByShelf(catalogue());
-    const entry = (type: "milestone" | "keepsake", id: string) => ({ id: "o1", at: "2026-06-10T10:00:00.000Z", domains: ["talking"], source: "parent_typed",
-      value: type === "milestone" ? { type, milestoneId: id, title: "x" } : { type, milestoneId: id, note: "x" } }) as unknown as Parameters<typeof onAreaLine>[0];
-    expect(onAreaLine(entry("milestone", by.words[0].id), ms, "talking", NOW)).toBe(true);
-    expect(onAreaLine(entry("keepsake", by.words[0].id), ms, "talking", NOW)).toBe(false);
-    // Negative control: a Seen it that is not on this area's line is still quoted.
-    expect(onAreaLine(entry("milestone", by.moving[0].id), ms, "talking", NOW)).toBe(false);
+  it("dates read day-first, the boards' form (\"Wed 10 Jun\"), never \"Jun 10, 2026\"", () => {
+    const html = line({ milestones: twoSeen() });
+    expect(html.replace(/[\u2068\u2069]/g, "")).toContain("Wed 10 Jun");
+    expect(html).not.toMatch(/Jun 10, 2026/);
   });
   it("on a phone the same leaves are a dated list, each with the days since the one before", () => {
     const html = line({ composition: "phone", milestones: twoSeen() });

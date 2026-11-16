@@ -6,6 +6,7 @@ import { tGCare } from "../../lib/growthCareText";
 import { milestoneText } from "../../lib/milestoneData";
 import type { ObserveStatus } from "../../lib/milestones/observe";
 import { groupMilestonesByShelf, shelfBands } from "../../lib/milestones/shelfMap";
+import { shelfOfMilestone } from "../../lib/milestones/selectByShelf";
 import { shelfLabel, shelvesOfDomain } from "../../lib/shelves/registry";
 import type { Milestone } from "../../types";
 import { Icon } from "../ui/Icon";
@@ -13,6 +14,8 @@ import { Receipt } from "../ui/Receipt";
 import { SegmentedAnswers } from "../ui/SegmentedAnswers";
 import { PARENT_RECORD_COPY } from "./parentRecordCopy";
 import { NOTICE_DETAIL_COPY } from "./noticeDetailCopy";
+import { milestonesV10Copy } from "./milestonesV10Copy";
+import { bandLabel, milestoneAgeLine } from "../../lib/milestoneAgeLine";
 import "./developmentMap.css";
 
 /**
@@ -58,6 +61,25 @@ export function areaRowIds(milestones: readonly Milestone[], domain: DomainId, c
     shelfBands(byShelf[shelf], currentBandMonths).filter((b) => b.current || b.months === -1).flatMap((b) => b.items.map((m) => m.id))));
 }
 
+/**
+ * V77 "Earlier and later": the skill just before and just after this one on
+ * its shelf (the nearest lower and higher catalogue band), for reading only.
+ * Pure.
+ */
+export function shelfNeighbours(m: Milestone, shelfItems: readonly Milestone[]): { earlier: Milestone | null; later: Milestone | null } {
+  const age = m.ageMonths;
+  if (typeof age !== "number" || m.custom) return { earlier: null, later: null };
+  const banded = shelfItems.filter((x) => !x.custom && typeof x.ageMonths === "number" && x.id !== m.id);
+  const lower = banded.filter((x) => x.ageMonths! < age);
+  const higher = banded.filter((x) => x.ageMonths! > age);
+  const lowBand = lower.length ? Math.max(...lower.map((x) => x.ageMonths!)) : null;
+  const highBand = higher.length ? Math.min(...higher.map((x) => x.ageMonths!)) : null;
+  return {
+    earlier: lowBand === null ? null : lower.find((x) => x.ageMonths === lowBand) ?? null,
+    later: highBand === null ? null : higher.find((x) => x.ageMonths === highBand) ?? null,
+  };
+}
+
 export interface AreaWatch {
   milestoneId: string;
   /** The saved re-check date from the Development Check, if any. */
@@ -92,15 +114,19 @@ export interface AreaRowDetailProps {
   id?: string;
   /** The area's newest moment (the sheet's opening line); absent inline. */
   lastMoment?: { at: string; text: string } | null;
+  /** V77 board: no area sentence, "Next to notice", each row with its words
+   *  and an Earlier and later disclosure (reading only). */
+  v10?: boolean;
 }
 
 export default function AreaRowDetail({
   domain, milestones, currentBandMonths, confirmed = true, gender = null, onAnswer, onKeep, onOpenObservation, onAddOwn, watch = null, onUndoWatch = null,
-  onCheck, onExplore, onOpenMoments, id, lastMoment = null,
+  onCheck, onExplore, onOpenMoments, id, lastMoment = null, v10 = false,
 }: AreaRowDetailProps) {
   const { t, uiLang } = useLanguage();
   const copy = PARENT_RECORD_COPY[uiLang === "he" ? "he" : "en"];
   const noticeCopy = NOTICE_DETAIL_COPY[uiLang === "he" ? "he" : "en"];
+  const v10Copy = milestonesV10Copy(uiLang);
   const [written, setWritten] = useState<{ id: string; saved: boolean; fresh: boolean; queued?: boolean } | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const lifetime = useRef({ active: true, pending: false });
@@ -161,6 +187,10 @@ export default function AreaRowDetail({
         <span className="area-detail-skill-title" dir="auto">{title(m)}</span>
         <Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
       </button> : <p className="area-detail-skill-title" dir="auto">{title(m)}</p>}
+      {v10 && (() => {
+        const words = milestoneText(m, "desc", t, { gender });
+        return words && words !== title(m) ? <p className="area-detail-skill-words" data-testid="area-detail-skill-words" dir="auto">{words}</p> : null;
+      })()}
       <SegmentedAnswers
         className="mt-2"
         ariaLabel={title(m)}
@@ -168,6 +198,22 @@ export default function AreaRowDetail({
         disabled={pending !== null}
         onAnswer={(status) => answer(m, status)}
       />
+      {v10 && (() => {
+        const shelf = shelfOfMilestone(m);
+        const { earlier, later } = shelfNeighbours(m, shelf ? byShelf[shelf] : []);
+        const age = milestoneAgeLine(m, t);
+        if (!earlier && !later && !age) return null;
+        const col = (label: string, n: Milestone | null) => n ? (
+          <div><dt>{label}</dt><dd><span dir="auto">{title(n)}</span>{bandLabel(n.ageMonths, t) && <span className="area-detail-by">{v10Copy.byAge.replace("{age}", bandLabel(n.ageMonths, t)!)}</span>}</dd></div>
+        ) : null;
+        return (
+          <details className="area-detail-around" data-testid="area-detail-around">
+            <summary><span>{v10Copy.earlierLater}</span><Icon name="expand_more" size={18} /></summary>
+            {age && <p className="area-detail-age">{age}</p>}
+            {(earlier || later) && <dl className="area-detail-cols">{col(v10Copy.earlier, earlier)}{col(v10Copy.later, later)}</dl>}
+          </details>
+        );
+      })()}
       {pending === m.id && <p role="status" className="notice-object-note" data-testid="area-detail-saving">{noticeCopy.saving}</p>}
       {written?.id === m.id && (written.saved
         ? confirmed && <Receipt testId="area-detail-saved" size="sm" className="mt-1">{t("companion.devMap.saved")}</Receipt>
@@ -201,7 +247,7 @@ export default function AreaRowDetail({
   };
   return (
     <div className="area-detail" id={id} data-testid="area-detail" data-domain={domain} dir={uiLang === "he" ? "rtl" : "ltr"}>
-      {lastMoment && (
+      {lastMoment && !v10 && (
         <p className="area-detail-last" data-testid="area-detail-last">
           <span className="area-detail-last-when">
             {t("companion.milestones.lastMoment")}
@@ -211,9 +257,9 @@ export default function AreaRowDetail({
           <span dir="auto">{lastMoment.text}</span>
         </p>
       )}
-      <div className="area-detail-intro">
+      {!v10 && <div className="area-detail-intro">
         <p className="area-detail-why">{t(WHY_KEYS[domain])}</p>
-      </div>
+      </div>}
       {!confirmed && <p role="status" className="notice-object-note">{noticeCopy.unconfirmed}</p>}
       {watched && (
         <ul className="area-detail-skills area-detail-watch" data-testid="area-detail-watch">
@@ -246,7 +292,7 @@ export default function AreaRowDetail({
           {shown.length > 1 && <h3>{shelfLabel(shelf, t)}</h3>}
           {now.length > 0 && (
             <>
-              <p className="area-detail-band">{t("ms.currentBand")}</p>
+              <p className="area-detail-band">{v10 ? v10Copy.nextToNotice : t("ms.currentBand")}</p>
               <ul className="area-detail-skills">{now.map((m) => skill(m))}</ul>
             </>
           )}

@@ -19,8 +19,8 @@ import { milestonesV10Copy } from "./milestonesV10Copy";
  * accent.
  *
  * A segment carries the Seen-it count with its unit, or "No record yet"; and
- * the day of the area's newest kept moment ("Last moment · 12 Nov"). Under the
- * row: production's two lines (tap an area / a blank means no record) and the
+ * the day of the area's newest kept moment ("Last 12 Nov"). Under the
+ * row: one line (tap an area to open it / a blank means no record) and the
  * areas with a new Seen it in the last 30 days.
  *
  * Desk: one row of eight. Phone: the same eight in a sideways-scrolling row.
@@ -83,8 +83,7 @@ export default function DevelopmentMap({ milestones, observations, openDomain, o
                   ) : null}
                   {moment && (
                     <span className="mcl-last" data-testid="dev-map-last">
-                      {t("companion.milestones.lastMoment")}
-                      {" · "}
+                      {copy.lastShort}{" "}
                       <time dateTime={moment.at} className="ms-nowrap">{day(moment.at)}</time>
                     </span>
                   )}
@@ -95,7 +94,7 @@ export default function DevelopmentMap({ milestones, observations, openDomain, o
         })}
       </ul>
       <div className="mcap">
-        <p data-testid="dev-map-note">{t("companion.milestones.areasSubTiles")} {t("companion.devMap.note")}</p>
+        <p data-testid="dev-map-note">{copy.tilesHint}</p>
         {growing.length > 0 && (
           <p data-testid="dev-map-growing">
             <strong>{t("companion.milestones.growing")}</strong> {growing.map((domain) => domainName(domain, t)).join(" · ")}

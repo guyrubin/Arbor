@@ -146,6 +146,7 @@ import { translate } from "../../lib/i18n";
 import { ALL_MILESTONES, bandForAgeMonths } from "../../lib/milestoneData";
 import { noticedByDomain } from "../../lib/milestones/domainMap";
 import { groupMilestonesByShelf } from "../../lib/milestones/shelfMap";
+import { milestonesV10Copy } from "./milestonesV10Copy";
 import { portraitDiscussionPrompt } from "./portraitModel";
 
 const catalogue = (): Milestone[] => ALL_MILESTONES.map(m => ({ ...m }));
@@ -197,7 +198,8 @@ describe("v3 F-CHILD-1 — the Milestones pill, one scroll", () => {
     expect(html).toContain(`data-testid="child-portrait"`);
     expect(html).toContain(`dir="${lang === "he" ? "rtl" : "ltr"}"`);
     // The header names the child through an isolated placeholder, never "{name}'s" in code.
-    expect(html).toContain(esc(translate(lang, "companion.milestones.kicker")));
+    expect(html).toContain(esc(milestonesV10Copy(lang).kicker));
+    expect(html).not.toContain(esc(translate(lang, "companion.milestones.kicker")));
     const [before, after] = translate(lang, "companion.milestones.title").split("{name}");
     expect(html).toContain(`<h1 class="title" id="ms-title">${esc(before)}<bdi dir="auto">Noa</bdi>${esc(after)}</h1>`);
     expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
@@ -341,14 +343,17 @@ describe("v10.1 — one open area", () => {
     expect(openArea(render())).toEqual(["moving"]);
   });
 
-  it("the open area quotes its newest moment in the parent's words", () => {
+  it("V77: the open area no longer repeats its newest moment; its tile still carries the day", () => {
     state.query = "area=moving";
     state.sources = { behaviorLogs: [{ id: "l2", timestamp: "2026-06-12T10:00:00.000Z", behaviorType: "Moment", durationMinutes: 0, trigger: "Climbed the big slide alone" }] };
     state.observations = [{ id: "behaviorLogs:l2", childId: "child-a", at: "2026-06-12T10:00:00.000Z", domains: ["moving"], kind: "moment", origin: "behaviorLogs", source: "parent_typed", value: { type: "moment", behaviorType: "Moment" }, ageAtObservationMonths: null, pretermCorrected: false }];
     const html = render();
-    const area = html.slice(html.indexOf('data-module="child-milestones-area"'));
-    expect(area).toContain('data-testid="area-detail-last"');
-    expect(area).toContain("Climbed the big slide alone");
+    const area = html.slice(html.indexOf('data-module="child-milestones-area"'), html.indexOf('data-module="child-milestones-portrait"'));
+    expect(area.length).toBeGreaterThan(100);
+    expect(area).not.toContain('data-testid="area-detail-last"');
+    expect(area).not.toContain("Climbed the big slide alone");
+    const tile = html.slice(html.indexOf('data-domain="moving"'), html.indexOf('data-domain="moving"') + 1500);
+    expect(tile).toContain('data-testid="dev-map-last"');
   });
 
   it.each([false, true])("a territory tap opens its area and another takes over; never two open, never none (phone %s)", phone => {

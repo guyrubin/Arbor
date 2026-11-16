@@ -231,3 +231,20 @@
 .ds button.mcrow-btn:hover { background: var(--tint-2); }
 .ds .vseg a:hover:not(.on) { background: var(--tint-2); }
 .ds.ms-v10 [data-testid="segmented-answers"] button:focus-visible { outline: 2px solid var(--sapphire); outline-offset: 2px; }
+
+/* V77 boards: Start here is the sentence-case pill (not the kicker's caps); on a phone it sits at the row's end */
+.ds .mch .mcl .kicker .next1 { text-transform: none; letter-spacing: 0; }
+.ds .mch.m .mcl .kicker { justify-content: space-between; }
+/* V77: each row to notice carries its words under the title and an Earlier and later disclosure */
+.ds .mcst .area-detail-skill-words { margin: 2px 0 0; font-size: 14px; line-height: 1.35; color: var(--ink-soft); }
+.ds-desk .mcst .area-detail-skill > p.area-detail-skill-words:not(.x):not(.y) { grid-column: 1; align-self: start; }
+.ds-desk .mcst .area-detail-skill > [data-testid="segmented-answers"] { grid-column: 2; grid-row: 1 / span 2; }
+.ds .mcst .area-detail-around { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--rule); }
+.ds .mcst .area-detail-around > summary { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; cursor: pointer; list-style: none; font-size: 13px; font-weight: 600 !important; color: var(--ink); }
+.ds .mcst .area-detail-around > summary::-webkit-details-marker { display: none; }
+.ds .mcst .area-detail-around[open] > summary .msr { transform: rotate(180deg); }
+.ds .mcst .area-detail-age { margin: 0 0 6px; font-size: 13px; color: var(--ink-soft); }
+.ds .mcst .area-detail-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.ds .mcst .area-detail-cols dt { font-size: 13px; font-weight: 700 !important; color: var(--sapphire-deep); }
+.ds .mcst .area-detail-cols dd { margin: 0; display: flex; flex-direction: column; font-size: 13px; line-height: 1.35; color: var(--ink); }
+.ds .mcst .area-detail-by { color: var(--ink-soft); }

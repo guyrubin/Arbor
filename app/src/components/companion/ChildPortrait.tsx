@@ -10,13 +10,14 @@ import { DOMAIN_ICONS } from "../../lib/domains/icons";
 import type { Observation } from "../../lib/observations";
 import { milestoneText } from "../../lib/milestoneData";
 import { routeHash } from "../../lib/routes";
+import { fmtDayV10 } from "../../lib/formatDate";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { portraitDiscussionPrompt } from "./portraitModel";
 import { PORTRAIT_COPY } from "./portraitCopy";
 import { trackCompanionPlaceOpen } from "../../lib/kpiEvents";
 import { Icon } from "../ui/Icon";
 import MilestoneAreas from "./MilestoneAreas";
-import { seenTotals } from "./milestonesModel";
+import { recordSince, seenTotals } from "./milestonesModel";
 import AreaTimeline from "./AreaTimeline";
 import MilestonesBand from "./MilestonesBand";
 import MilestonesReadGuide from "./MilestonesReadGuide";
@@ -67,6 +68,9 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
   const observations = useMemo(() => record.observations.filter(o => o.childId === childProfile.id), [record.observations, childProfile.id]);
   const logMap = useMemo(() => new Map((record.sources.behaviorLogs ?? []).map(log => [`behaviorLogs:${log.id}`, log])), [record.sources.behaviorLogs]);
   const totals = useMemo(() => seenTotals(milestones), [milestones]);
+  // "since …": the first day this child's record holds (the earliest loaded entry).
+  const firstAt = useMemo(() => recordSince(observations), [observations]);
+  const since = firstAt === null ? null : fmtDayV10(firstAt, uiLang);
   const name = (childProfile.name || "").split(/\s+/)[0] || childProfile.name;
   const [titleBefore, titleAfter = ""] = t("companion.milestones.title").split("{name}");
   // A territory quotes the newest moment in the parent's own words (never the stored type).
@@ -96,10 +100,10 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
 
   const heading = <>{titleBefore}<bdi dir="auto">{name}</bdi>{titleAfter || null}</>;
   const stops = [
-    { id: "ms-areas", title: v10.guideAreas, sub: v10.guideAreasSub },
-    { id: "ms-area", title: v10.guideArea, sub: v10.guideAreaSub },
-    { id: "ms-words", title: v10.guideWords, sub: v10.guideWordsSub },
-    { id: "ms-next", title: v10.guideNext, sub: v10.guideNextSub },
+    { id: "ms-areas", title: desk ? v10.guideAreas : v10.guideAreasShort, sub: v10.guideAreasSub },
+    { id: "ms-area", title: desk ? v10.guideArea : v10.guideAreaShort, sub: v10.guideAreaSub },
+    { id: "ms-words", title: desk ? v10.guideWords : v10.guideWordsShort, sub: v10.guideWordsSub },
+    { id: "ms-next", title: desk ? v10.guideNext : v10.guideNextShort, sub: v10.guideNextSub },
   ];
 
   return (
@@ -115,8 +119,8 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
             <Route composition={composition}>
               <RouteSection id="ms-areas" n={1} on aria-labelledby="ms-title">
                 <div data-module="child-milestones-areas">
-                  <MilestonesBand composition={composition} kicker={t("companion.milestones.kicker")} title={heading} titleId="ms-title"
-                    sub={t("elev.loop.ms.footer")} current="development" totals={totals}>
+                  <MilestonesBand composition={composition} kicker={v10.kicker} title={heading} titleId="ms-title"
+                    sub={t("elev.loop.ms.footer")} current="development" totals={{ ...totals, since }}>
                     {map}
                   </MilestonesBand>
                 </div>

@@ -20,7 +20,6 @@ import { closeNoticeDetail, openNoticeDetail, readNoticeTarget } from "../../lib
 import { celebrateFirstOnce } from "../milestones/celebrateFirst";
 import type { Composition } from "../../design/useComposition";
 import AreaRowDetail, { areaRowIds } from "./AreaRowDetail";
-import { onAreaLine } from "./AreaTimeline";
 import DevelopmentCheckCard from "./DevelopmentCheckCard";
 import DevelopmentMap from "./DevelopmentMap";
 import NoticeNext, { splitPicks, NoticePickCard, useNoticePicks } from "./NoticeNext";
@@ -172,15 +171,11 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
       lastCheckAt={lastCheckAt}
     />
   );
-  // The newest moment is quoted unless it is only a Seen it already drawn on
-  // the area's dated line (the same skill once, not twice).
-  const lastSeen = last[openDomain];
-  const moment = lastSeen && !onAreaLine(lastSeen, milestones, openDomain, Date.now()) ? lastSeen : undefined;
   const area = (
     <>
       <AreaRowDetail
         key={`${notices.scopeKey}:${openDomain}`}
-        lastMoment={moment ? { at: moment.at, text: momentText(moment) } : null}
+        v10
         domain={openDomain}
         milestones={milestones}
         currentBandMonths={currentBandMonths}

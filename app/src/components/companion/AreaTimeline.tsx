@@ -6,10 +6,10 @@ import type { DomainId } from "../../lib/domains/registry";
 import { milestoneText } from "../../lib/milestoneData";
 import { groupMilestonesByShelf } from "../../lib/milestones/shelfMap";
 import { shelvesOfDomain } from "../../lib/shelves/registry";
-import type { Observation } from "../../lib/observations";
 import type { Milestone } from "../../types";
 import { NOTICE_ANSWER_KEYS } from "../loop/NoticeCard";
 import { milestonesV10Copy } from "./milestonesV10Copy";
+import { fmtDayV10 } from "../../lib/formatDate";
 
 /**
  * v10.1 (canvas V76/V77) — the open area's dated line on My child ›
@@ -55,12 +55,6 @@ export function areaLeaves(milestones: readonly Milestone[], domain: DomainId, n
   return seen.slice(-MAX_LEAVES);
 }
 
-/** True when an entry is only a Seen it the area's dated line already draws. Pure. */
-export function onAreaLine(entry: Observation, milestones: readonly Milestone[], domain: DomainId, nowMs: number): boolean {
-  const v = entry.value;
-  return v.type === "milestone" && areaLeaves(milestones, domain, nowMs).some((m) => m.id === v.milestoneId);
-}
-
 /** Local midnight of a moment. */
 const dayStart = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
 /** Whole local days from a to b (DST-safe: rounds the hour drift away). */
@@ -92,7 +86,7 @@ export default function AreaTimeline({ domain, milestones, composition, gender =
     () => areaLeaves(milestones, domain, now).map((m) => ({ id: m.id, title: milestoneText(m, "title", t, { gender }), at: m.observationUpdatedAt!, ms: Date.parse(m.observationUpdatedAt!) })),
     [milestones, domain, now, t, gender],
   );
-  const day = (ms: number) => new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short" }).format(new Date(ms));
+  const day = (ms: number) => fmtDayV10(ms, uiLang === "he" ? "he" : "en", new Date(now));
   const short = (ms: number) => new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(new Date(ms));
   const days = (n: number) => (n === 1 ? copy.dayOne : copy.daysMany.replace("{n}", String(n)));
 
