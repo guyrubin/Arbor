@@ -308,6 +308,18 @@ export default function PlansTab() {
       onAdjust={() => seedCoach({ prompt: planAdjustSeed(lang, plan.title, lastPlanOutcomes(plan.id, actionLoop)), source: "plans-adjust" })}
     />
   ));
+  const picker = (
+    <PlanPicker
+      actionPlans={actionPlans}
+      selectedId={plan?.id ?? null}
+      todaySteps={todaySteps}
+      challenges={running}
+      lang={lang}
+      composition={composition}
+      onSelect={setSelectedId}
+      onOpenChallenge={(p) => openChallenge(p.def.id)}
+    />
+  );
   const scripts = showScripts && plan && (
     <PlanScripts plan={plan} lang={lang} composition={composition} n={n("plans-rail")} onRefine={() => seedCoach({ prompt: t("seed.planCoreg", { title: plan.title }), source: "plans-coreg" })} />
   );
@@ -321,16 +333,7 @@ export default function PlansTab() {
               <div data-module="plans-yours" className="stack ds-col" style={{ gap: desk ? 0 : 12 }}>
                 <ReceiptNoteLine note={startedReceipt.note} testId="plans-started-receipt" />
                 {!plansLoaded && <SectionSkeleton title={false} rows={2} rowClassName="h-48" loaded={plansLoaded} testId="plans-skeleton" />}
-                <PlanPicker
-                  actionPlans={actionPlans}
-                  selectedId={plan?.id ?? null}
-                  todaySteps={todaySteps}
-                  challenges={running}
-                  lang={lang}
-                  composition={composition}
-                  onSelect={setSelectedId}
-                  onOpenChallenge={(p) => openChallenge(p.def.id)}
-                />
+                {desk && picker}
                 {plan && desk && (
                   <div className="g12" data-testid={routine ? undefined : "plan-tracks"}>
                     <div className={showScripts ? "x8" : "x12"} style={{ display: "flex", flexDirection: "column" }}>{stage}</div>
@@ -338,6 +341,8 @@ export default function PlansTab() {
                   </div>
                 )}
                 {plan && !desk && <div data-testid={routine ? undefined : "plan-tracks"}>{stage}</div>}
+                {/* Phone: today's step leads; the plan cards follow it (the move stays above the fold). */}
+                {!desk && picker}
               </div>
             </RouteSection>
           )}
