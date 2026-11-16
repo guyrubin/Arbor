@@ -139,7 +139,7 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
     {environment}
     <div className="studio-game-view__mechanic">
       <GameCompletionProvider onComplete={onComplete}>
-        <Suspense fallback={<KidStageFallback worldId={activityId} />}>
+        <Suspense fallback={<KidStageFallback worldId={activityId} studio />}>
           <Component key={round} {...(activityId === "mimic" ? { onBack } : {})} />
         </Suspense>
       </GameCompletionProvider>

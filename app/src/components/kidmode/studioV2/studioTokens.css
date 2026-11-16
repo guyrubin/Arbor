@@ -22,6 +22,11 @@
   --studio-done: var(--studio-teal-ink);
   --studio-done-ink: var(--studio-surface);
   --studio-lift: 0 10px 30px var(--studio-shade);
+  /* Finish and keepsake stickers (KidSouvenirSticker): a white die-cut edge and a soft shadow, never the comic ink ring. */
+  --kid-sticker-face: var(--studio-frost);
+  --kid-sticker-line: var(--studio-surface);
+  --kid-sticker-ink: var(--studio-teal-ink);
+  --kid-sticker-shadow: 0 6px 18px var(--studio-shade);
   /* Pre-v30 names, kept so every game reads the same register. */
   --studio-sky: var(--studio-pearl);
   --studio-deep-ink: var(--studio-graphite);
