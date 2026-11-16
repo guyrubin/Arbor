@@ -184,6 +184,13 @@ export default function SmartRemindersPanel() {
     { id: "sr-delivery", title: t("elev.sr.delivery.heading"), sub: v10.remDeliveryInApp },
   ];
 
+  /* MAX-2 CONTRACT — always visible (AC-5). The sentence, then today's live count on its own line.
+     On desktop it closes the stage (beside the two slots it describes); on the phone it follows the switches (B-OCCL-01). */
+  const contract = <div className="nx-ex sr-contract" data-testid="sr-max2-contract" role="note" aria-label={t("sr.max2")}>
+    <b>{t("sr.max2")}</b>
+    <span className="sr-contract-count" data-testid="sr-max2-count">{t("sr.max2.count", { n: shown })}</span>
+  </div>;
+
   // ── Stop 1 · today on the arc: the next nudge (or none), the two slots, the contract ──
   const bells = <span className="line nx-bells" aria-hidden="true">
     {Array.from({ length: NUDGE_DAILY_CEILING }, (_, i) => <span key={i} className={i < shown ? "nx-bell lg" : "nx-bell free lg"}><Icon name="notifications" size={24} /></span>)}
@@ -211,7 +218,7 @@ export default function SmartRemindersPanel() {
         </div>
       </div>
     </NowDayArc>
-    {desk && <p className="sr-subtitle">{t("sr.subtitle")}</p>}
+    {desk && <div className="sr-stage-foot"><p className="sr-subtitle">{t("sr.subtitle")}</p>{contract}</div>}
   </Scene>;
 
   // ── Stop 2 · nudge types and when Arbor may reach you (the prefs module, operated in place) ──
@@ -225,10 +232,7 @@ export default function SmartRemindersPanel() {
       </div>;
     })}
     {!desk && <p className="sr-subtitle">{t("sr.subtitle")}</p>}
-    {/* MAX-2 CONTRACT — always visible (AC-5) */}
-    <div className="nx-ex sr-contract" data-testid="sr-max2-contract" role="note" aria-label={t("sr.max2")}>
-      <span><b>{t("sr.max2")}</b> <span data-testid="sr-max2-count">{t("sr.max2.count", { n: shown })}</span></span>
-    </div>
+    {!desk && contract}
     {/* QUIET HOURS (AC-3) and CALM-WINDOW SCHEDULING (AC-4), in place */}
     <div className="nx-ex sr-when">
       <div className="line" style={{ gap: 10 }}>
@@ -281,8 +285,9 @@ export default function SmartRemindersPanel() {
           {kinds}
         </RouteSection>}
         <RouteSection id="sr-delivery" n={3} aria-labelledby="sr-delivery-title" stopTop={desk ? 2 : 14}>
-          <div className="rhead"><h2 className="h3" id="sr-delivery-title">{t("elev.sr.delivery.heading")}</h2><span className="small">{v10.remDeliverySub}</span></div>
-          {desk ? <Row12><Tile icon="link" title={t("elev.sr.delivery.heading")} sub={v10.remDeliverySub} className="x8 sr-delivery-tile" as="div">{delivery}</Tile>{know}</Row12>
+          {/* Delivery is named once: the tile's head on desktop, the section head on the phone. */}
+          {!desk && <div className="rhead"><h2 className="h3" id="sr-delivery-title">{t("elev.sr.delivery.heading")}</h2><span className="small">{v10.remDeliverySub}</span></div>}
+          {desk ? <Row12><Tile icon="link" title={t("elev.sr.delivery.heading")} titleId="sr-delivery-title" sub={v10.remDeliverySub} className="x8 sr-delivery-tile">{delivery}</Tile>{know}</Row12>
             : <><section className="vt sr-delivery-tile" aria-labelledby="sr-delivery-title">{delivery}</section>{know}</>}
         </RouteSection>
       </Route>

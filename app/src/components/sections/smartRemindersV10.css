@@ -45,7 +45,6 @@
 
 /* ═══ Production additions ═══════════════════════════════════════════════════ */
 .ds .sr-stage { padding: 0; gap: 0; }
-.ds .g12 > .sr-stage { align-self: start; }
 .ds .sr-stage-head { padding: 24px 28px 0; align-items: flex-start; gap: 12px; flex-wrap: wrap; position: relative; z-index: 1; }
 .ds-phone .sr-stage-head { padding: 16px 16px 0; }
 .ds .sr-stage-head h1.kicker { margin: 0; font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700 !important; color: var(--ink-soft); }
@@ -64,7 +63,7 @@
 .ds .sr-sub { margin: 0; font-size: 14px; line-height: 1.35; color: var(--ink-soft); }
 .ds .sr-slots { gap: 14px; text-align: start; }
 .ds-phone .sr-slots .nx-bell.lg { width: 40px; height: 40px; }
-.ds .sr-subtitle { margin: 0; padding: 16px 28px 20px; font-size: 14.5px; line-height: 1.4; color: var(--ink-soft); text-align: center; }
+.ds .sr-subtitle { margin: 0; padding: 0; font-size: 14.5px; line-height: 1.4; color: var(--ink-soft); text-align: center; }
 .ds-phone .sr-subtitle { padding: 0 2px; font-size: 13.5px; text-align: start; }
 .ds .sr-rail { gap: 12px; }
 .ds .sr-kinds { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -96,3 +95,12 @@
 .ds .sr-delivery .nx-on { margin-top: 4px; }
 .ds-phone .sr-delivery-tile { padding: 16px; }
 .ds .sr-v10 .rsec > .rhead + .g12 { margin-top: 0; }
+
+/* Desktop: the stage carries today's contract at its foot, so it and the rail end together. */
+.ds .sr-stage-foot { display: flex; flex-direction: column; gap: 14px; margin-top: auto; padding: 18px 28px 24px; }
+.ds .sr-stage-foot .sr-contract { background: #ffffffd9; box-shadow: inset 0 0 0 1px #dbe6f7; }
+.ds .sr-contract { gap: 4px; }
+.ds .sr-contract-count { display: block; font-weight: 600 !important; color: var(--ink-soft); }
+/* Phone: the headline gets its own space under a smaller arc; nothing crosses the arc's legs. */
+.ds-phone .sr-stage .nw-arc { max-width: 250px; margin-inline: auto; }
+.ds-phone .sr-stage .nw-arc-face { margin-top: 4px; }

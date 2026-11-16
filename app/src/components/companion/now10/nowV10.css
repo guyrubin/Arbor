@@ -128,7 +128,7 @@
 .ds .nw-sky-b { stop-color: #f7faff; }
 .ds .nw-base { stroke: #b9c6dc; }
 .ds .nw-quiet { fill: none; stroke: #8fa0bd; stroke-linecap: butt; stroke-dasharray: 3 5; }
-.ds .nw-quiet-label { text-anchor: start; }
+.ds .nw-quiet-label { text-anchor: middle; }
 .ds .nw-arc .nowt { z-index: 2; }
 .ds .nw-arc-face { position: relative; z-index: 1; display: flex; justify-content: center; margin-top: -26%; padding: 0 20px; pointer-events: none; }
 .ds-phone .nw-arc-face { margin-top: -27%; padding: 0 8px; }
@@ -238,3 +238,7 @@ html[lang="he"] .ds .nw-face .now-plan-say { font-style: normal; }
 .ds-phone .nw-stage-head { gap: 6px 8px; }
 .ds-phone .nw-stage-head h1.kicker { font-size: 11.5px; letter-spacing: .03em; }
 .ds-phone .nw-stage-head .next1 { padding: 2px 8px; }
+/* The empty question: "Your question", then "No question chosen" and its line, all on the text's one start edge. */
+.ds .nw-qc-text:has(> .nw-qc-empty) { display: flex; flex-direction: column; align-items: flex-start; }
+.ds .nw-qc > .l:has(.nw-qc-empty) { align-items: flex-start; padding-top: 12px; }
+.ds .nw-qc .nw-qc-empty { padding: 2px 0 8px; }

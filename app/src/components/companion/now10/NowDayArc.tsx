@@ -60,10 +60,7 @@ export default function NowDayArc({ composition, now, quietStart, quietEnd, even
       <text className="g-hr" x={desk ? left.x - 30 : left.x} y={labelY}>{clock24(ARC_START_HOUR * 60)}</text>
       <text className="g-hr" x={desk ? right.x + 32 : right.x} y={labelY}>{clock24(ARC_END_HOUR * 60)}</text>
       {desk && quietAtEnd && <text className="g-hr" x={right.x + 32} y={labelY + 16}>{copy.quietHours}</text>}
-      {quietEndLabel && quietEnd > ARC_START_HOUR && (() => {
-        const p = arcPoint({ ...g, rx: g.rx - (desk ? 18 : 14), ry: g.ry - (desk ? 18 : 14) }, quietEndLabel.to);
-        return <text className="g-hr nw-quiet-label" x={p.x.toFixed(1)} y={(p.y + 4).toFixed(1)}>{desk ? copy.quietUntil(clock24(quietEnd * 60)) : clock24(quietEnd * 60)}</text>;
-      })()}
+      {desk && quietEndLabel && quietEnd > ARC_START_HOUR && <text className="g-hr nw-quiet-label" x={left.x - 30} y={labelY + 16}>{copy.quietUntil(clock24(quietEnd * 60))}</text>}
     </svg>
     <span className={desk ? "at sun" : "at sun sm"} style={{ left: pct(sun.x, g.w), top: pct(sun.y, g.h) }} aria-hidden="true" />
     <span className="at nowt" style={{ left: pct(sun.x, g.w), top: pct(Math.max(12, sun.y - (desk ? 44 : 34)), g.h) }}>{nowLabel}</span>

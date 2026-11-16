@@ -45,11 +45,9 @@ export default function NowQuestionRow({ lang, topic, onOpen, onCreate, phone = 
           {topic ? <span className="nw-qc-active" data-testid="now-question-active">
             {" · "}<b dir="auto">{topic.title}</b>
             {onOpen && <button type="button" className="nw-qc-edit" aria-label={copy.editQuestion} title={copy.editQuestion} onClick={() => { requestFamilyTopicEdit(topic.id); onOpen(); }}><Icon name="edit" size={16} /></button>}
-          </span> : emptyOpen ? <>
-            {" · "}<button type="button" className="nw-qc-empty" data-testid="now-question-empty" onClick={emptyOpen}>
-              <b>{copy.noQuestion}</b><small>{count ? copy.noQuestionBody : copy.firstQuestionBody}</small>
-            </button>
-          </> : null}
+          </span> : emptyOpen ? <button type="button" className="nw-qc-empty" data-testid="now-question-empty" onClick={emptyOpen}>
+            <b>{copy.noQuestion}</b><small>{count ? copy.noQuestionBody : copy.firstQuestionBody}</small>
+          </button> : null}
         </span>
       </span>
       {(onCreate || onOpen) && <span className="acts">
