@@ -89,6 +89,7 @@ import HomeProgramShareCard, { HomeProgramAdherenceView, homeProgramLinkOn, shar
 import { Guide } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
 import PeopleScene from "../care/v10/PeopleScene";
+import PeopleLanes, { peopleLanes } from "../care/v10/PeopleLanes";
 import { careCopy } from "../care/v10/careV10Copy";
 import "../care/v10/care.css";
 
@@ -477,7 +478,10 @@ export default function TrustedSharing() {
       <div className={composition === "desk" ? "route gut" : "route m"}>
       <section className="rsec" id="people-who">
       <span className="rstop on" style={{ top: 14 }} aria-hidden="true">1</span>
-      <PeopleScene composition={composition} title={t("sec.sharing.title")} sub={t("sec.sharing.sub", { name: first })} liveCount={liveGrants.length} loading={loading} />
+      <PeopleScene composition={composition} title={t("sec.sharing.title")} sub={t("sec.sharing.sub", { name: first })} liveCount={liveGrants.length} loading={loading} childName={first}>
+        {/* Design V77 (N-People): who sees what — you, then every live share. */}
+        <PeopleLanes composition={composition} lanes={peopleLanes(liveGrants, careCopy(uiLang).people, (g) => roleLabel(g.role))} copy={careCopy(uiLang).people} childName={first} />
+      </PeopleScene>
 
       {error && (
         <ErrorState
