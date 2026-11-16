@@ -4,8 +4,10 @@
  *    the switcher: the phone strip mounts it (lg:hidden), the desktop sidebar
  *    mounts it (lg-only); the top-right chip and the "All children" glance
  *    card are gone, the strip no longer repeats the age;
- *  · the sidebar caption is "Showing Leni's app · 22 months" (HE "של" forms
- *    by gender), never "content for children 5 years old";
+ *  · v10 (canvas V77): the sidebar card is the switcher alone. The old
+ *    caption ("Showing Leni's app · 22 months") repeated the name and age the
+ *    switcher already shows, so it is gone; never "content for children 5
+ *    years old" either way;
  *  · a child switch crossfades the line (200 ms, keyed on the child) and
  *    re-mounts the hub (the motion key carries the child id) — the one motion.
  * The founder's family: Leni (22 months, girl) and Dylan (5 years, boy).
@@ -55,28 +57,35 @@ describe("B-SHELL-38 · the identity line prints name over her own age", () => {
   }
 });
 
-describe("B-SHELL-38 · the desktop sidebar: the child once, as the switcher, with whose app this is", () => {
-  const cases: Array<[ChildProfile, UiLang, RegExp]> = [
-    [LENI, "en", /Showing Leni's app · 22 months/],
-    [LENI, "he", /מוצגת האפליקציה שלה, של Leni · 22 חודשים/],
-    [DYLAN, "en", /Showing Dylan's app · 5 years/],
-    [DYLAN, "he", /מוצגת האפליקציה שלו, של Dylan · 5 שנים/],
+describe("B-SHELL-38 · the desktop sidebar: the child once, as the switcher (v10: no repeating caption)", () => {
+  const cases: Array<[ChildProfile, UiLang, string, string]> = [
+    [LENI, "en", "22 months", "Showing Leni's app"],
+    [LENI, "he", "22 חודשים", "מוצגת האפליקציה"],
+    [DYLAN, "en", "5 years", "Showing Dylan's app"],
+    [DYLAN, "he", "5 שנים", "מוצגת האפליקציה"],
   ];
-  for (const [child, lang, caption] of cases) {
+  for (const [child, lang, age, oldCaption] of cases) {
     it(`${child.name} · ${lang}`, () => {
       state.lang = lang;
       state.active = child;
       const html = renderToStaticMarkup(React.createElement(ProfileSwitcher));
       const words = text(html);
-      expect(words).toMatch(caption);
-      expect(words).not.toMatch(/content for children|year-olds|\bAge\b/);
-      // the name renders in exactly one identity line (+ once in the caption sentence)
+      // the name and the age render once, in the one identity line that IS the switcher
       expect(html.match(/data-identity-name/g)?.length).toBe(1);
+      expect(words.split(child.name).length - 1).toBe(1);
+      expect(words.split(age).length - 1).toBe(1);
+      expect(words).not.toContain(oldCaption);
+      expect(words).not.toMatch(/content for children|year-olds|\bAge\b/);
       expect(html).not.toMatch(/family\.glance|data-testid="family-glance"/);
       expect(html).toContain('aria-haspopup="listbox"'); // the identity IS the switcher
     });
   }
+
+  it("NEGATIVE CONTROL: the retired caption is still a real string, so the absence check can fail", () => {
+    expect(translate("en", "elev.ages.shell.showing.boy", { name: "Dylan", age: "5 years" })).toContain("Showing Dylan's app");
+  });
 });
+
 
 describe("B-SHELL-38 · one identity per screen (source pins)", () => {
   const shell = code(read("components/layout/Shell.tsx"));
