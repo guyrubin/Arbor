@@ -1,28 +1,38 @@
-import { memo, useId, type CSSProperties, type ReactNode } from 'react';
+import { memo, useId, type CSSProperties } from 'react';
 import {
-  beatBody, bendLeaf, boil, leafPoints, place, placePoint, seeded, smoothPath, type Leaf, type Oval, type PartKey, type Pt, PART_KEYS,
+  BODY_KEYFRAMES, beatBody, bendLeaf, boil, leafPoints, lerp, place, placePoint, seeded, smoothPath, span, type Leaf, type Oval, type PartKey, type Pt, PART_KEYS,
 } from './clayShapes';
 import {
-  FROG_D, FROG_HOPS, FROG_X0, FROG_XF, JUMP_SCALE, SPLASH_X, STARS, bubbles, cameraTop, droplets, foamRings, frogFilm, rocketFilm,
-  ribbonSegments, splashCrown, surfaceAt, TAIL_X, tailWave, timeOf, whaleBody, whalePose, type ReelId,
+  AYA_GROUND, FIRST_SHOW, FRESH_HANDS, FROG_D, FROG_X0, FROG_XF, JUMP_SCALE, PLANTER_X, REACH_TOUCH, SOIL_Y, SPLASH_X, ayaFilm, bubbles, cameraTop, droplets, foamRings,
+  frogFilm, rocketFilm, rocketKey, ribbonSegments, splashCrown, starsOf, surfaceAt, TAIL_X, tailWave, timeOf, whaleBody, whalePose,
+  type AyaFrame, type ClayPrint, type Hands, type ReelId, type ShowLook,
 } from './clayTheatreRules';
+import {
+  BLOOM_Y, CALL_SECONDS, GARDEN_SUN, JUMP_SUN, MOON, PADS, PAD_Y, POND_SUN, arcOf, cloudsOf, cometAt, curtainCall, fishHop, heroPlace, heroPress, moonSpin, popIn, starFlick, wobble,
+  type LiveTouch,
+} from './clayHands';
 import { CLAYS, INK, chalky, fade, mix, type ClayId } from './clayInk';
 
 /** One frame of a clay film, drawn from nothing but the reel, the frame
- * number and the two clay colours: no state, no history. `lite` drops the
- * proscenium and the clay filter for the tiny frames on the film strip. */
-export interface SceneProps { reel: ReelId; frame: number; body: ClayId; trim: ClayId; lite?: boolean; label?: string }
-export function ClayScene({ reel, frame, body, trim, lite = false, label }: SceneProps) {
+ * number, the clay, the child's lasting choices (`hands`), tonight's
+ * dressing (`show`) and the live touches with their ages: no state, no
+ * history. `lite` drops the felt curtain and the clay filter for the tiny
+ * frames on the film strip. */
+export interface SceneProps { reel: ReelId; frame: number; body: ClayId; trim: ClayId; hands?: Hands; show?: ShowLook; touches?: readonly LiveTouch[]; lite?: boolean; label?: string }
+const NO_TOUCH: readonly LiveTouch[] = [];
+export function ClayScene({ reel, frame, body, trim, hands = FRESH_HANDS, show = FIRST_SHOW, touches = NO_TOUCH, lite = false, label }: SceneProps) {
   const uid = `ct${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const t = timeOf(frame);
   const style = { '--ct-body': chalky(CLAYS[body]), '--ct-trim': chalky(CLAYS[trim]) } as CSSProperties;
   const ids = sceneIds(uid, lite);
+  const reelProps: ReelProps = { t, frame, ids, hands, show, touches: lite ? NO_TOUCH : touches };
   return <svg viewBox="0 0 400 300" className="ct-scene" data-reel={reel} data-frame={frame} style={style} role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true} focusable="false" preserveAspectRatio="xMidYMid slice">
     <SceneDefs uid={uid} lite={lite} />
-    {reel === 'rocket' ? <RocketReel t={t} frame={frame} ids={ids} lite={lite} /> : reel === 'jump' ? <JumpReel t={t} frame={frame} ids={ids} lite={lite} /> : <FrogReel t={t} frame={frame} ids={ids} lite={lite} />}
-    {!lite && <Proscenium uid={uid} />}
+    {reel === 'rocket' ? <RocketReel {...reelProps} /> : reel === 'jump' ? <JumpReel {...reelProps} /> : reel === 'ayaSeed' ? <AyaReel {...reelProps} /> : <FrogReel {...reelProps} />}
+    {!lite && <FeltCurtain ids={ids} drapes={0} ripple={touches.reduce((sum, l) => l.toy === 'feltDrape' ? sum + wobble(l.since) : sum, 0)} />}
   </svg>;
 }
+interface ReelProps { t: number; frame: number; ids: Ids; hands: Hands; show: ShowLook; touches: readonly LiveTouch[] }
 
 type Ids = ReturnType<typeof sceneIds>;
 function sceneIds(uid: string, lite: boolean) {
@@ -53,6 +63,11 @@ const SceneDefs = memo(function SceneDefs({ uid, lite }: { uid: string; lite: bo
     <ClayGrad id={id('flame')} c={INK.orange} light={30} dark={80} />
     <ClayGrad id={id('cloud')} c={INK.snow} light={70} dark={88} />
     <ClayGrad id={id('moon')} c={INK.butter} light={60} dark={84} />
+    <ClayGrad id={id('aya')} c={chalky(mix(INK.water, 58, INK.bluebell))} light={46} dark={70} />
+    <ClayGrad id={id('fluff')} c={INK.snow} light={70} dark={86} />
+    <ClayGrad id={id('pot')} c={INK.white} light={80} dark={88} />
+    <linearGradient id={id('felt')} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={{ stopColor: mix(INK.teal, 74, INK.sea) }} /><stop offset="1" style={{ stopColor: mix(INK.tealDeep, 62, INK.teal) }} /></linearGradient>
+    <linearGradient id={id('boards')} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={{ stopColor: mix(INK.woodLight, 62, INK.white) }} /><stop offset="1" style={{ stopColor: mix(INK.woodLight, 86, INK.wood) }} /></linearGradient>
     <radialGradient id={id('glass')} cx=".35" cy=".3" r=".8"><stop offset="0" style={{ stopColor: INK.white }} /><stop offset=".4" style={{ stopColor: INK.skyPale }} /><stop offset="1" style={{ stopColor: INK.sky }} /></radialGradient>
     <linearGradient id={id('night')} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={{ stopColor: mix(INK.night, 82, INK.indigoDeep) }} /><stop offset=".7" style={{ stopColor: mix(INK.indigo, 70, INK.violet) }} /><stop offset="1" style={{ stopColor: mix(INK.violet, 55, INK.rose) }} /></linearGradient>
     <linearGradient id={id('day')} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={{ stopColor: INK.sky }} /><stop offset="1" style={{ stopColor: INK.skyPale }} /></linearGradient>
@@ -78,6 +93,16 @@ const SceneDefs = memo(function SceneDefs({ uid, lite }: { uid: string; lite: bo
         <feMerge><feMergeNode in="SourceGraphic" /><feMergeNode in="shade" /><feMergeNode in="hi" /></feMerge>
       </filter>
       <filter id={id('soft')} x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="3" /></filter>
+      {/* Felt: a soft nap over the cloth, shaded like the clay. */}
+      <filter id={id('nap')} x="-5%" y="-5%" width="110%" height="110%" colorInterpolationFilters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="7" result="n" />
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .34 -.05" result="fuzz" />
+        <feComposite in="fuzz" in2="SourceAlpha" operator="in" result="lint" />
+        <feOffset in="SourceAlpha" dx="-2" dy="-3" result="o" /><feGaussianBlur in="o" stdDeviation="3" result="b" />
+        <feComposite in="SourceAlpha" in2="b" operator="arithmetic" k2="1" k3="-1" result="rim" />
+        <feFlood style={{ floodColor: INK.shadow, floodOpacity: 0.3 }} result="sc" /><feComposite in="sc" in2="rim" operator="in" result="shade" />
+        <feMerge><feMergeNode in="SourceGraphic" /><feMergeNode in="lint" /><feMergeNode in="shade" /></feMerge>
+      </filter>
     </>}
   </defs>;
 });

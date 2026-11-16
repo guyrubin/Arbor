@@ -13,15 +13,27 @@ export const STEP_DT = 1 / 120;
 
 export const RUN_MAX = 330;
 export const TROT_MAX = 235;
-export const ACCEL = 950;
-export const DECEL = 1250;
+/** The push off the mark is strong and eases as the fox nears full speed. */
+export const ACCEL = 1500;
+export const DECEL = 1700;
+/** Turning round at a run: a short skid, then away. */
+export const TURN = 2900;
 export const WATER_SLOW = 0.55;
 export const ROLL_T = 0.6;
 export const ROLL_SPEED = 540;
 export const ROLL_COOLDOWN = 0.18;
 export const GRAVITY = 1900;
+/** Coming down is quicker than going up, and the top of an arc hangs a moment. */
+export const FALL_GRAVITY = 2500;
+export const APEX_BAND = 110;
+export const APEX_HANG = 0.55;
 export const JUMP_V = 640;
 export const HOP_V = 500;
+/** Forgiveness: a jump still works this long after running off an edge … */
+export const COYOTE_T = 0.12;
+/** … and a jump or roll pressed this long before it is possible still happens. */
+export const JUMP_BUFFER = 0.14;
+export const ROLL_BUFFER = 0.16;
 /** Highest rise the fox walks up without hopping. */
 export const STEP_UP = 9;
 /** Highest wall an automatic hop is tried on (taller is a wall: the hollow oak). */
@@ -34,13 +46,15 @@ export const ROLL_RADIUS = 30;
 export const PICK_R = 52;
 export const OFFER_RANGE = 150;
 export const WAKE_T = 4.4;
+/** The first beat of the waking: the three lights fly from the tail into the mirror, one by one. */
+export const OFFER_T = 1.1;
 export const MIRROR_H = 150;
 
 export type WorldPhase = 'dusk' | 'waking' | 'night';
 export type SeedId = 'tallGrass' | 'stone' | 'hollow';
 export type SeedStatus = 'hidden' | 'popping' | 'resting' | 'carried';
 export const SEED_IDS: readonly SeedId[] = ['tallGrass', 'stone', 'hollow'];
-export type FoxEvent = 'hop' | 'jump' | 'land' | 'splash' | 'roll' | 'seed' | 'shake' | 'hum' | 'wake' | 'night' | 'blocked';
+export type FoxEvent = 'hop' | 'jump' | 'land' | 'splash' | 'roll' | 'rollEnd' | 'skid' | 'bounce' | 'dry' | 'seed' | 'shake' | 'hum' | 'wake' | 'night' | 'blocked' | 'moth';
 
 /* ── the trail ───────────────────────────────────────────────────────────── */
 
@@ -64,11 +78,29 @@ export const STONES: readonly { x: number; w: number; top: number }[] = [
 export const TALL_GRASS = { from: 600, to: 960 } as const;
 export const TUNNEL = { from: 3700, to: 3960 } as const;
 export const STONE_X = 5650;
-export const SEEDS: Readonly<Record<SeedId, { x: number; rest: number }>> = {
-  tallGrass: { x: 790, rest: 790 },
-  stone: { x: 2630, rest: 2630 },
-  hollow: { x: 3830, rest: 3830 },
+/** Each seed teaches one move without a word: the grass one comes out for a
+ * roll, the one over the stream hangs just out of reach until a jump, and the
+ * one in the hollow oak is behind a gap too low for anything but a tumble. */
+export const SEEDS: Readonly<Record<SeedId, { x: number; rest: number; lift: number }>> = {
+  tallGrass: { x: 790, rest: 790, lift: 0 },
+  stone: { x: 2630, rest: 2630, lift: 96 },
+  hollow: { x: 3830, rest: 3830, lift: 0 },
 };
+/** How far above its stone the fox's feet must rise to nose the hanging pod: more than a hop, less than a jump. */
+export const POD_REACH = 38;
+/** Springy toadstools: landing on a cap sends the fox up again, higher each time. */
+export const BOUNCERS: readonly { x: number; w: number; top: number }[] = [
+  { x: 2150, w: 58, top: 30 }, { x: 3585, w: 62, top: 34 }, { x: 4330, w: 54, top: 28 },
+];
+/** Run into a cap and it springs the fox up and over; land on one from above and the bounce grows. */
+export const BOUNCE_FIRST = 520;
+export const BOUNCE_MIN = 420;
+export const BOUNCE_MAX = 920;
+/** The hollow oak's mossy top: out of a jump's reach, in a good bounce's. */
+export const ROOF = { from: TUNNEL.from - 30, to: TUNNEL.to + 30, h: 126 } as const;
+/** The hidden nook up there, where a moon-moth sleeps. */
+export const NOOK_X = 3880;
+export const NOOK_R = 46;
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
 export const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -104,16 +136,28 @@ export function surfaceAt(x: number): number {
     const d = Math.abs(x - stone.x), half = stone.w / 2;
     if (d < half) h = Math.max(h, bank() + stone.top - 7 * smooth(clamp((d - half + 14) / 14, 0, 1)));
   }
+  for (const cap of BOUNCERS) {
+    const d = Math.abs(x - cap.x), half = cap.w / 2;
+    if (d < half) h = Math.max(h, groundAt(cap.x) + cap.top - 6 * smooth(clamp((d - half + 12) / 12, 0, 1)));
+  }
   return h;
 }
+/** Which toadstool cap is under x (-1: none). */
+export function bouncerAt(x: number): number { return BOUNCERS.findIndex(cap => Math.abs(x - cap.x) < cap.w / 2); }
+export const roofTop = () => groundAt(TUNNEL.from) + ROOF.h;
+export const overRoof = (x: number) => x > ROOF.from && x < ROOF.to;
+/** True when the fox is up at the oak's top rather than down on the trail. */
+export const upOnRoof = (x: number, y: number) => overRoof(x) && y >= roofTop() - 10;
+/** The floor under the fox: the trail, or the hollow oak's top when it is up there. */
+export function floorUnder(x: number, y: number): number { return upOnRoof(x, y) ? roofTop() : surfaceAt(x); }
 export const inTunnel = (x: number) => x > TUNNEL.from && x < TUNNEL.to;
 export const inWater = (x: number, y: number) => x > STREAM.from + 10 && x < STREAM.to - 10 && y < waterLevel();
 export const inTallGrass = (x: number) => x > TALL_GRASS.from && x < TALL_GRASS.to;
 export function zoneAt(x: number): (typeof ZONES)[number]['id'] {
   return (ZONES.find(zone => x >= zone.from && x < zone.to) ?? ZONES[ZONES.length - 1]).id;
 }
-/** Where a seed rests (its elevation: on the ground, on its stone, inside the oak). */
-export function seedElevation(x: number): number { return surfaceAt(x); }
+/** Where a seed rests (its elevation: on the ground, hanging over its stone, inside the oak). */
+export function seedElevation(x: number, lift = 0): number { return surfaceAt(x) + lift; }
 
 /* ── the state ───────────────────────────────────────────────────────────── */
 
@@ -130,6 +174,8 @@ export interface FoxInput {
 export interface FoxState {
   x: number; y: number; vx: number; vy: number;
   onGround: boolean;
+  /** Seconds a jump is still allowed after running off an edge; presses waiting to happen. */
+  coyote: number; jumpBuf: number; rollBuf: number;
   facing: 1 | -1;
   /** Seconds of roll left (0 = not rolling) and the roll's direction. */
   roll: number; rollDir: 1 | -1; rollCool: number;
@@ -141,6 +187,14 @@ export interface FoxState {
   seeds: Record<SeedId, SeedStatus>;
   seedX: Record<SeedId, number>;
   pop: number;
+  /** Which stepping stone the hanging pod is over this time (play again moves it). */
+  variant: number;
+  /** The last toadstool bounced on (-1: none yet) and how many bounces in a row. */
+  bouncer: number; bounces: number;
+  /** 1 while paddling; a 'dry' shake follows on the bank. */
+  wet: number;
+  /** The secret: the moon-moth in the nook on the hollow oak. */
+  moth: 'asleep' | 'awake';
   inRange: boolean;
   blocked: boolean;
   phase: WorldPhase;
@@ -151,17 +205,21 @@ export interface FoxState {
   events: FoxEvent[];
 }
 
-export function initialFoxState(): FoxState {
+/** `variant` (0, 1, 2 …) moves the hanging pod to another stepping stone, so a second visit is not the first again. */
+export function initialFoxState(variant = 0): FoxState {
+  const v = ((Math.floor(variant) % STONES.length) + STONES.length) % STONES.length;
+  const podStone = STONES[(v + 1) % STONES.length];
   return {
-    x: START_X, y: surfaceAt(START_X), vx: 0, vy: 0, onGround: true, facing: 1,
+    x: START_X, y: surfaceAt(START_X), vx: 0, vy: 0, onGround: true, coyote: 0, jumpBuf: 0, rollBuf: 0, facing: 1,
     roll: 0, rollDir: 1, rollCool: 0, dist: 0, still: 0, target: null,
     seeds: { tallGrass: 'hidden', stone: 'resting', hollow: 'resting' },
-    seedX: { tallGrass: SEEDS.tallGrass.x, stone: SEEDS.stone.x, hollow: SEEDS.hollow.x },
-    pop: 0, inRange: false, blocked: false, phase: 'dusk', wake: 0, t: 0, events: [],
+    seedX: { tallGrass: SEEDS.tallGrass.x, stone: podStone.x, hollow: SEEDS.hollow.x },
+    pop: 0, variant: v, bouncer: -1, bounces: 0, wet: 0, moth: 'asleep',
+    inRange: false, blocked: false, phase: 'dusk', wake: 0, t: 0, events: [],
   };
 }
 /** Play again: the wood is back at dusk and every seed is back where it slept. */
-export function resetFoxState(_previous?: FoxState): FoxState { return initialFoxState(); }
+export function resetFoxState(_previous?: FoxState, variant = 0): FoxState { return initialFoxState(variant); }
 
 export const carriedCount = (s: FoxState) => SEED_IDS.filter(id => s.seeds[id] === 'carried').length;
 export const allCarried = (s: FoxState) => carriedCount(s) === SEED_IDS.length;
@@ -193,16 +251,21 @@ export function step(prev: FoxState, input: FoxInput, dt: number = STEP_DT): Fox
   const wet = inWater(s.x, s.y) && s.onGround;
   if (wet) cap *= WATER_SLOW;
 
-  // Roll: a tucked tumble that goes farther and faster. Inside the hollow oak it keeps going until out.
+  // A press a moment too early still counts (and so does a jump a moment too late: coyote time).
+  s.jumpBuf = input.jump && !busy ? JUMP_BUFFER : Math.max(0, s.jumpBuf - dt);
+  s.rollBuf = input.roll && !busy ? ROLL_BUFFER : Math.max(0, s.rollBuf - dt);
+  if (!s.onGround) s.coyote = Math.max(0, s.coyote - dt);
+
+  // Roll: a tucked tumble that goes farther and faster (a somersault in the air). Inside the hollow oak it keeps going until out.
   s.rollCool = Math.max(0, s.rollCool - dt);
-  if (input.roll && !busy && s.onGround && s.roll <= 0 && s.rollCool <= 0) {
-    s.roll = ROLL_T; s.rollDir = want !== 0 ? (want > 0 ? 1 : -1) : s.facing; s.facing = s.rollDir; s.target = null; ev.push('roll');
+  if (s.rollBuf > 0 && !busy && s.roll <= 0 && s.rollCool <= 0) {
+    s.roll = ROLL_T; s.rollBuf = 0; s.rollDir = want !== 0 ? (want > 0 ? 1 : -1) : s.facing; s.facing = s.rollDir; s.target = null; ev.push('roll');
   }
   const wasRolling = s.roll > 0;
   if (wasRolling) {
     s.roll = Math.max(0, s.roll - dt);
-    if (inTunnel(s.x)) s.roll = Math.max(s.roll, 0.12);
-    if (s.roll <= 0) s.rollCool = ROLL_COOLDOWN;
+    if (inTunnel(s.x) && !upOnRoof(s.x, s.y)) s.roll = Math.max(s.roll, 0.12);
+    if (s.roll <= 0) { s.rollCool = ROLL_COOLDOWN; ev.push('rollEnd'); }
   }
 
   if (s.roll > 0) {
@@ -210,33 +273,45 @@ export function step(prev: FoxState, input: FoxInput, dt: number = STEP_DT): Fox
     const ease = inTunnel(s.x) ? 1 : r < 0.7 ? 1 : 1 - (r - 0.7) / 0.3 * 0.45;
     s.vx = s.rollDir * ROLL_SPEED * (wet ? 0.7 : 1) * ease;
   } else if (want !== 0) {
-    const target = want * cap;
-    const turning = Math.sign(s.vx) !== 0 && Math.sign(s.vx) !== want;
-    s.vx = approach(s.vx, target, (turning ? DECEL : ACCEL) * dt * (s.onGround ? 1 : 0.6));
+    const turning = s.vx !== 0 && Math.sign(s.vx) !== want;
+    if (turning && s.onGround && Math.abs(s.vx) > 190 && prev.facing !== want) ev.push('skid');
+    // A strong push off the mark that eases into full speed; a quick skid to turn round.
+    const rate = turning ? TURN : ACCEL * (1 - 0.55 * clamp(Math.abs(s.vx) / cap, 0, 1));
+    s.vx = approach(s.vx, want * cap, rate * dt * (s.onGround ? 1 : 0.65));
     s.facing = want > 0 ? 1 : -1;
   } else {
-    s.vx = approach(s.vx, 0, DECEL * dt * (s.onGround ? 1 : 0.4));
+    s.vx = approach(s.vx, 0, DECEL * dt * (s.onGround ? 1 : 0.35));
   }
 
   // Jump (a button): not inside the hollow oak.
-  if (input.jump && !busy && s.onGround && s.roll <= 0 && !inTunnel(s.x)) { s.vy = JUMP_V; s.onGround = false; ev.push('jump'); }
+  const inside = inTunnel(s.x) && !upOnRoof(s.x, s.y);
+  if (s.jumpBuf > 0 && !busy && s.roll <= 0 && (s.onGround || s.coyote > 0) && !inside) {
+    s.vy = JUMP_V; s.onGround = false; s.coyote = 0; s.jumpBuf = 0; s.bounces = 0; ev.push('jump');
+  }
 
   // Horizontal move against the trail.
   let nx = clamp(s.x + s.vx * dt, MIN_X, MAX_X);
   if (nx === MIN_X || nx === MAX_X) s.vx = 0;
-  // The hollow oak is too low to walk into: only a roll goes through.
-  if (s.roll <= 0 && !inTunnel(s.x) && inTunnel(nx)) {
+  // The hollow oak is too low to walk into: only a roll goes through (high above, its mossy top is a place to land).
+  if (s.roll <= 0 && s.y < roofTop() - 10 && !inTunnel(s.x) && inTunnel(nx)) {
     nx = s.x < TUNNEL.from ? TUNNEL.from - 0.5 : TUNNEL.to + 0.5;
     s.vx = 0; s.target = null;
   }
-  const rise = surfaceAt(nx) - s.y;
+  const rise = floorUnder(nx, s.y) - s.y;
   if (rise > STEP_UP) {
-    if (s.onGround && rise <= HOP_MAX && Math.abs(s.vx) > 30) {
+    const pushing = Math.abs(s.vx) > 30 || want !== 0;
+    const capI = s.onGround && pushing ? bouncerAt(nx) : -1;
+    if (capI >= 0) {
+      // A toadstool: it springs the fox up and over. No aim needed.
+      s.vy = BOUNCE_FIRST; s.onGround = false; s.coyote = 0; s.bouncer = capI; s.bounces = 1; ev.push('bounce');
+      nx = s.x;
+    } else if (s.onGround && rise <= HOP_MAX && pushing) {
       // A low log or a stone ahead: hop it, no precision needed.
-      s.vy = Math.max(HOP_V, Math.sqrt(2 * GRAVITY * (rise + 22))); s.onGround = false; ev.push('hop');
+      s.vy = Math.max(HOP_V, Math.sqrt(2 * GRAVITY * (rise + 22))); s.onGround = false; s.coyote = 0; ev.push('hop');
+      if (Math.abs(s.vx) < 110) s.vx = (want || Math.sign(s.vx) || s.facing) * 110;
       nx = s.x;
     } else if (!s.onGround && rise <= STEP_UP * 2.5) {
-      s.y = surfaceAt(nx);
+      s.y = floorUnder(nx, s.y);
     } else {
       // A wall: on the ground the fox stops; in the air it keeps its run and rises until it clears.
       nx = s.x; if (s.onGround) s.vx = 0;
@@ -244,32 +319,44 @@ export function step(prev: FoxState, input: FoxInput, dt: number = STEP_DT): Fox
   }
   const moved = nx - s.x;
   s.x = nx;
-  // Pressing against a mouth of the hollow oak (the hint and the Roll button's glow).
-  const pressing = s.roll <= 0 && !busy && ((want > 0 && s.x >= TUNNEL.from - 3 && s.x <= TUNNEL.from) || (want < 0 && s.x <= TUNNEL.to + 3 && s.x >= TUNNEL.to));
+  // Pressing against a mouth of the hollow oak (the hint and the Roll button's ring).
+  const pressing = s.roll <= 0 && !busy && s.y < roofTop() - 10 && ((want > 0 && s.x >= TUNNEL.from - 3 && s.x <= TUNNEL.from) || (want < 0 && s.x <= TUNNEL.to + 3 && s.x >= TUNNEL.to));
   if (pressing && !prev.blocked) ev.push('blocked');
   s.blocked = pressing;
 
-  // Vertical.
-  const floor = surfaceAt(s.x);
+  // Vertical: a floaty top to every arc, a quicker way down.
+  const floor = floorUnder(s.x, s.y);
   if (!s.onGround) {
-    s.vy -= GRAVITY * dt; s.y += s.vy * dt;
+    const g = (s.vy > 0 ? GRAVITY : FALL_GRAVITY) * (Math.abs(s.vy) < APEX_BAND ? APEX_HANG : 1);
+    s.vy -= g * dt; s.y += s.vy * dt;
     if (s.y <= floor) {
-      s.y = floor; s.vy = 0; s.onGround = true;
-      ev.push(inWater(s.x, s.y) ? 'splash' : 'land');
+      const speedIn = -s.vy, capI = floor === surfaceAt(s.x) ? bouncerAt(s.x) : -1;
+      s.y = floor;
+      if (capI >= 0 && speedIn > 60) {
+        // Down onto a cap: up again, a little higher every time.
+        s.vy = clamp(speedIn * 0.9 + 140, BOUNCE_MIN, BOUNCE_MAX); s.bouncer = capI; s.bounces += 1; ev.push('bounce');
+      } else {
+        s.vy = 0; s.onGround = true; s.bounces = 0;
+        ev.push(inWater(s.x, s.y) ? 'splash' : 'land');
+      }
     }
   } else if (floor < s.y - 7) {
-    s.onGround = false; s.vy = 0;
+    s.onGround = false; s.vy = 0; s.coyote = COYOTE_T;
   } else {
     s.y = floor;
     s.dist += Math.abs(moved);
     if (wet && Math.abs(moved) > 0 && Math.floor(s.dist / 60) !== Math.floor((s.dist - Math.abs(moved)) / 60)) ev.push('splash');
   }
 
+  // Out of the stream and onto the bank: a happy shake.
+  if (wet) s.wet = 1;
+  else if (s.wet > 0 && s.onGround && (s.x < STREAM.from - 24 || s.x > STREAM.to + 24)) { s.wet = 0; ev.push('dry'); }
+
   // Standing still long enough: the fox sits.
   s.still = s.onGround && Math.abs(s.vx) < 4 && s.roll <= 0 ? s.still + dt : 0;
 
   // Lantern-seeds.
-  if (s.seeds.tallGrass === 'hidden' && s.roll > 0 && Math.abs(s.x - SEEDS.tallGrass.x) < 120) {
+  if (s.seeds.tallGrass === 'hidden' && s.roll > 0 && Math.abs(s.x - SEEDS.tallGrass.x) < 120 && s.y - groundAt(s.x) < 40) {
     // A roll shakes the tall grass: the pod pops out and lands where the fox is heading.
     // It lands just ahead of where the tumble will end, so the fox runs straight into it.
     s.seeds.tallGrass = 'popping'; s.pop = 0; s.seedX.tallGrass = clamp(s.x + s.rollDir * (s.roll * ROLL_SPEED * 0.8 + 60), TALL_GRASS.from - 150, TALL_GRASS.to + 200); ev.push('shake');
@@ -277,9 +364,14 @@ export function step(prev: FoxState, input: FoxInput, dt: number = STEP_DT): Fox
   if (s.seeds.tallGrass === 'popping') { s.pop += dt; if (s.pop >= 0.7) s.seeds.tallGrass = 'resting'; }
   for (const id of SEED_IDS) {
     if (s.seeds[id] !== 'resting') continue;
-    const sx = s.seedX[id];
-    if (Math.abs(s.x - sx) < PICK_R && Math.abs(s.y - seedElevation(sx)) < 64) { s.seeds[id] = 'carried'; ev.push('seed'); }
+    const sx = s.seedX[id], lift = SEEDS[id].lift, up = s.y - surfaceAt(sx);
+    // A pod on the ground is run into; the hanging one is nosed at the top of a jump.
+    const reached = lift > 0 ? up >= POD_REACH && up < lift + 60 : Math.abs(up) < 64;
+    if (Math.abs(s.x - sx) < PICK_R && reached) { s.seeds[id] = 'carried'; ev.push('seed'); }
   }
+
+  // The secret: up on the hollow oak a moon-moth sleeps until the fox finds it.
+  if (s.moth === 'asleep' && s.onGround && upOnRoof(s.x, s.y) && Math.abs(s.x - NOOK_X) < NOOK_R) { s.moth = 'awake'; ev.push('moth'); }
 
   // The mirror stone.
   const near = nearStone(s);
@@ -309,7 +401,7 @@ export function run(state: FoxState, input: FoxInput, seconds: number): FoxState
 /** How far (world units) the mirror's ring of light has swept back across the wood. */
 export function wakeRadius(phase: WorldPhase, wake: number): number {
   if (phase === 'dusk') return 0;
-  const p = clamp(wake / WAKE_T, 0, 1);
+  const p = clamp((wake - OFFER_T) / (WAKE_T - OFFER_T), 0, 1);
   return Math.pow(p, 1.5) * (STONE_X + 1400);
 }
 /** 0 at dusk, 1 once the ring has passed. */
@@ -357,7 +449,9 @@ export function springBlade(angle: number, velocity: number, target: number, dt:
  * eases after it, and never shows past either end of the trail. */
 export function cameraFollow(cam: number, foxX: number, facing: 1 | -1, viewW: number, dt: number, snap = false): number {
   const max = Math.max(0, WORLD_W - viewW);
-  const goal = clamp(foxX - viewW * (facing > 0 ? 0.38 : 0.62), 0, max);
+  // A narrow window keeps the fox farther back, so there is still trail to see ahead.
+  const lead = viewW < 620 ? 0.3 : 0.38;
+  const goal = clamp(foxX - viewW * (facing > 0 ? lead : 1 - lead), 0, max);
   if (snap) return goal;
   const k = 1 - Math.exp(-dt * 4.2);
   return clamp(cam + (goal - cam) * k, 0, max);

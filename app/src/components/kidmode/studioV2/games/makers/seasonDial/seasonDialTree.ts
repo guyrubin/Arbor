@@ -20,7 +20,10 @@ export function seeded(seed: number): () => number {
 export interface Segment { readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number; readonly w1: number; readonly w2: number; readonly depth: number }
 export interface Leaf { readonly x: number; readonly y: number; readonly angle: number; readonly length: number; readonly shade: number; readonly seed: LeafSeed }
 export interface Spot { readonly x: number; readonly y: number; readonly r: number; readonly seed: number; readonly shade: number }
-export interface Clump { readonly x: number; readonly y: number; readonly r: number; readonly shade: number; readonly seed: LeafSeed }
+/** A spray of leaves at a twig end. `spray` is one path of several leaves
+ * fanned about the twig, in the clump's own units (0,0 at the twig, reaching
+ * about `r`): the crown is made of leaves all the way down, not of blobs. */
+export interface Clump { readonly x: number; readonly y: number; readonly r: number; readonly shade: number; readonly seed: LeafSeed; readonly spray: string }
 export interface Tree {
   readonly segments: readonly Segment[];
   /** The bark, by stroke width (widest first). */
@@ -36,6 +39,13 @@ export interface Tree {
 }
 
 const r1 = (v: number) => Math.round(v * 10) / 10;
+/** One apple leaf as a closed path: from its stalk at (x, y) out along
+ * `angle` (radians), `length` long: broad below the middle, a drawn-out tip. */
+export function leafShape(x: number, y: number, angle: number, length: number, width: number): string {
+  const c = Math.cos(angle), s = Math.sin(angle);
+  const at = (along: number, across: number) => `${r1(x + c * along * length - s * across * width)} ${r1(y + s * along * length + c * across * width)}`;
+  return `M${at(0, 0)}C${at(0.12, 0.62)} ${at(0.62, 0.6)} ${at(1, 0)}C${at(0.6, -0.5)} ${at(0.14, -0.58)} ${at(0, 0)}Z`;
+}
 const LIGHT = { x: -0.7071, y: -0.7071 };
 
 function grow(): Tree {
@@ -175,10 +185,21 @@ function grow(): Tree {
   const ranked: Leaf[] = leaves.map((l, i) => ({ ...l, seed: { ...l.seed, turn: turnRank[i], fall: fallRank[i] } }));
   // Foliage masses behind the leaves, so a summer crown reads full.
   const clumps: Clump[] = [];
+  const fan = seeded(733);
   for (let i = 0; i < twigs.length; i++) {
     const t = twigs[i];
     const x = t.x + (rand() - 0.5) * 8, y = t.y + 3 + (rand() - 0.5) * 8;
-    clumps.push({ x: r1(x), y: r1(y), r: r1(10 + rand() * 6), shade: r1(shadeAt(x, y)), seed: seedAt(x, y) });
+    const r = 10 + rand() * 6;
+    // Six to eight leaves fanned out from the twig's own direction (their own
+    // sequence, so the blossom and the apples stay where they always were).
+    const count = 6 + Math.floor(fan() * 3), turn = (t.angle * Math.PI) / 180 + (fan() - 0.5) * 0.6;
+    let spray = '';
+    for (let k = 0; k < count; k++) {
+      const a = turn + ((k + 0.5) / count - 0.5) * 5.4 + (fan() - 0.5) * 0.5;
+      const reach = r * (0.95 + fan() * 0.5), root = r * 0.12 * fan();
+      spray += leafShape(Math.cos(a) * root, Math.sin(a) * root, a, reach, reach * (0.4 + fan() * 0.12));
+    }
+    clumps.push({ x: r1(x), y: r1(y), r: r1(r), shade: r1(shadeAt(x, y)), seed: seedAt(x, y), spray });
   }
   const spots = (count: number, jitter: number, rMin: number, rMax: number): Spot[] => Array.from({ length: count }, (_, i) => {
     const t = twigs[(i * 7 + 3) % twigs.length];

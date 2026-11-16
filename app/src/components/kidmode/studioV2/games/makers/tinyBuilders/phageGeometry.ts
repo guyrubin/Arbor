@@ -34,6 +34,14 @@ export const FIBRE_OFFSET = 30;
 /** Whiskers on the collar: six short thin fibres. */
 export const WHISKER = { from: { r: 19, y: 168 }, to: { r: 44, y: 194 } } as const;
 
+/** Each tray piece's own box in the drawing (x, y, width, height): the crop its
+ * thumbnail shows, and the box it is carried in, so a piece in the hand is the
+ * same size as its place on the blueprint. A fibre pair uses the whole set's box. */
+export const PIECE_BOX: Readonly<Record<string, readonly [number, number, number, number]>> = {
+  head: [146, 30, 108, 142], collar: [150, 150, 100, 54], tail: [168, 166, 64, 124], tailCollar: [146, 150, 108, 142],
+  baseplate: [160, 268, 80, 40], fibres: [78, 246, 244, 126], fibrePair: [78, 246, 244, 126],
+};
+
 const RAD = Math.PI / 180;
 export const toRad = (deg: number) => deg * RAD;
 export function normDeg(deg: number): number {

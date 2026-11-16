@@ -88,6 +88,11 @@ export function place(points: readonly Pt[], cx: number, cy: number, rotDeg: num
   return points.map(([x, y]) => { const X = x * sx, Y = y * sy; return [cx + X * c - Y * s, cy + X * s + Y * c] as Pt; });
 }
 export function placePoint(p: Pt, cx: number, cy: number, rotDeg: number, sx = 1, sy = sx): Pt { return place([p], cx, cy, rotDeg, sx, sy)[0]; }
+/** The other way: a point on the stage, back in a placed body's own coordinates. */
+export function unplacePoint(p: Pt, cx: number, cy: number, rotDeg: number, sx = 1, sy = sx): Pt {
+  const r = (rotDeg * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r), dx = p[0] - cx, dy = p[1] - cy;
+  return [(dx * c + dy * s) / sx, (-dx * s + dy * c) / sy];
+}
 
 /** A closed, smooth outline through the points (Catmull-Rom as cubic Béziers). */
 export function smoothPath(points: readonly Pt[]): string {

@@ -20,6 +20,26 @@ export function shaded(p: Paint, shade: number): Paint {
   return p;
 }
 
+/** The three years' own small colours (seasonDialRules `yearKind`): how the
+ * apples ripen, the birds' breasts and the snow friend's scarf. */
+export const YEAR_LOOKS = [
+  { ripe: 'red', breast: 'orange', scarf: 'red', scarfEnd: 'poppy' },
+  { ripe: 'amber', breast: 'bluebell', scarf: 'teal', scarfEnd: 'sea' },
+  { ripe: 'rose-deep', breast: 'butter', scarf: 'violet', scarfEnd: 'lilac' },
+] as const;
+export const yearLook = (kind: number) => YEAR_LOOKS[((Math.floor(kind) % YEAR_LOOKS.length) + YEAR_LOOKS.length) % YEAR_LOOKS.length];
+/** An apple's skin as it ripens: green, then gold, then this year's colour. */
+export function applePaint(red: number, kind: number): Paint {
+  const unripe = mixPaint('spring', 'leaf', 0.3);
+  return red < 0.5 ? mixPaint(unripe, 'amber', red * 1.6) : mixPaint(mixPaint(unripe, 'amber', 0.8), yearLook(kind).ripe, (red - 0.5) * 2);
+}
+/** A paint as one colour the canvas can take: the palette's resolved values
+ * through color-mix(), so a canvas shape and its SVG twin are the same colour. */
+export function paintResolved(p: Paint, palette: Palette): string {
+  if (typeof p === 'string') return palette[p] ?? 'currentColor';
+  return `color-mix(in srgb, ${paintResolved(p.a, palette)}, ${paintResolved(p.b, palette)} ${Math.round(p.t * 1000) / 10}%)`;
+}
+
 /** The palette, read once from the page, for the canvas (which cannot use
  * var()). Values come from makerPalette.css; nothing is hard-coded here. */
 export type Palette = Readonly<Record<string, string>>;

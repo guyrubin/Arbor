@@ -99,9 +99,12 @@ describe('the lamp: shine and shadow follow its angle', () => {
     expect(off.streakOpacity).toBeLessThan(lampEffects(40).streakOpacity);
     expect(off.shadowLength).toBeLessThan(lampEffects(0).shadowLength);
   });
-  it('a pointer on the arc gives back the angle the lamp sits at', () => {
+  it('a pointer on the lamp\'s track gives back the angle the lamp sits at', () => {
     for (const angle of [-60, -30, 0, 25, 60]) { const p = lampPosition(angle); expect(lampAngleAt(p.x, p.y)).toBeCloseTo(angle, 6); }
     expect(lampPosition(0).x).toBeCloseTo(180, 6);
+    // The head always leans toward the bottle: right from the left side, left from the right.
+    expect(lampPosition(-40).face).toBe(1); expect(lampPosition(40).face).toBe(-1); expect(lampPosition(0).face).toBeCloseTo(0, 9);
+    expect(lampPosition(-60).x).toBeLessThan(lampPosition(60).x);
   });
 });
 

@@ -26,7 +26,7 @@ export const PAGE_D = 290;
 export const SPREAD_W = PAGE_W * 2;
 /** The book lies on the table seen from the front, about 44° above it. */
 export const BOOK_TILT = 46;
-export const BOOK_PERSPECTIVE = 1500;
+export const BOOK_PERSPECTIVE = 1800;
 /** Depth of the three channels on the pages (far → near). */
 export const LANE_Y: readonly number[] = [128, 176, 224];
 
@@ -145,13 +145,130 @@ export function keyIntent(key: string, dir: Dir): TurnIntent | null {
   if (key === 'ArrowLeft') return dir === 'rtl' ? 'next' : 'back';
   return null;
 }
-/** Screen position of a point on the open book (book-local x, y on the page
- * plane), relative to the book's centre, after the tilt and the perspective. */
-export function projectBookPoint(x: number, y: number, mirror = false): { x: number; y: number } {
+/** Screen position of a point of the open book (book-local x, y on the page
+ * plane, `height` up off the page), relative to the book's centre, after the
+ * tilt and the perspective. */
+export function projectBookPoint(x: number, y: number, mirror = false, height = 0, tilt = BOOK_TILT): { x: number; y: number } {
   const X = (mirror ? SPREAD_W - x : x) - SPREAD_W / 2, Y = y - PAGE_D / 2;
-  const tilt = (BOOK_TILT * Math.PI) / 180;
-  const z = Y * Math.sin(tilt), scale = BOOK_PERSPECTIVE / (BOOK_PERSPECTIVE - z);
-  return { x: X * scale, y: Y * Math.cos(tilt) * scale };
+  const a = (tilt * Math.PI) / 180;
+  const z = Y * Math.sin(a) + height * Math.cos(a), scale = BOOK_PERSPECTIVE / (BOOK_PERSPECTIVE - z);
+  return { x: X * scale, y: (Y * Math.cos(a) - height * Math.sin(a)) * scale };
+}
+/** The point of the page under a screen position (the inverse, on the page plane). */
+export function unprojectBookPoint(sx: number, sy: number, mirror = false, tilt = BOOK_TILT): { x: number; y: number } {
+  const a = (tilt * Math.PI) / 180;
+  const Y = (finite(sy) * BOOK_PERSPECTIVE) / (BOOK_PERSPECTIVE * Math.cos(a) + finite(sy) * Math.sin(a));
+  const X = finite(sx) / (BOOK_PERSPECTIVE / (BOOK_PERSPECTIVE - Y * Math.sin(a))) + SPREAD_W / 2;
+  return { x: mirror ? SPREAD_W - X : X, y: Y + PAGE_D / 2 };
+}
+/** The tallest piece that stands on a page, and how far back the tall ones are hinged. */
+export const POP_TALLEST = 176;
+/** A phone has room above the book, not beside it: there the book is seen from
+ * a little higher, so its pages are deeper. Never lower than this. */
+export const BOOK_TILT_MIN = 38;
+/** The room the book needs at a tilt (unscaled px): its pages, its board, the
+ * pieces standing up off the far edge and the shadow under the near one. */
+export interface StageBox { w: number; h: number; cx: number; cy: number }
+export function stageBox(tilt = BOOK_TILT): StageBox {
+  const front = projectBookPoint(SPREAD_W + 10, PAGE_D + 12, false, 0, tilt);
+  const top = Math.min(projectBookPoint(SPREAD_W / 2, 64, false, POP_TALLEST, tilt).y, projectBookPoint(SPREAD_W, 104, false, POP_TALLEST, tilt).y, projectBookPoint(0, -10, false, 0, tilt).y);
+  const half = front.x + 6;
+  return { w: half * 2, h: front.y + 24 - top + 8, cx: half, cy: 8 - top };
+}
+/** The largest book a room of `width` × `height` holds. Where the width is
+ * what limits it (a tall phone), the book tips towards the reader as far as
+ * the spare height allows, down to BOOK_TILT_MIN. */
+export function fitBook(width: number, height: number): { scale: number; tilt: number; box: StageBox } {
+  const w = Math.max(1, finite(width, 1)), h = Math.max(1, finite(height, 1));
+  let tilt = BOOK_TILT, box = stageBox(tilt);
+  if (w / box.w < h / box.h) for (let t = BOOK_TILT - 1; t >= BOOK_TILT_MIN; t--) {
+    const lower = stageBox(t);
+    if (h / lower.h < w / lower.w) break;
+    tilt = t; box = lower;
+  }
+  return { tilt, box, scale: Math.min(w / box.w, h / box.h) };
+}
+
+/* ── a finger on the page ─────────────────────────────────────────────────── */
+/** A page is paper: the point that was grabbed stays under the finger. `offset`
+ * is the finger's distance from the spine (screen px), positive on the side the
+ * unread pages lie on. A grab near the spine would whip the page over, so the
+ * radius is never less than this share of the page. */
+export const GRAB_MIN = 0.42;
+export function grabRadius(offset: number, pageWidth: number, intent: TurnIntent): number {
+  const page = Math.max(1, finite(pageWidth, 1)), onLeaf = intent === 'next' ? finite(offset) : -finite(offset);
+  return Math.min(page, Math.max(GRAB_MIN * page, onLeaf > 0 ? onLeaf : page));
+}
+/** How far over the leaf is (0 lying unread … 1 lying read) when the grabbed
+ * point, `radius` from the spine, is `offset` from it on the screen. */
+export function leafFraction(offset: number, radius: number): number {
+  const r = Math.max(1, finite(radius, 1));
+  return Math.acos(Math.min(1, Math.max(-1, finite(offset) / r))) / Math.PI;
+}
+/** Letting go: a flick carries the page over (or back); otherwise it falls to the nearer side. */
+export const FLICK = 0.9;
+export function turnRelease(fraction: number, velocity: number): 0 | 1 {
+  const f = clamp01(fraction), v = finite(velocity);
+  if (v > FLICK && f > 0.06) return 1;
+  if (v < -FLICK && f < 0.94) return 0;
+  return f >= 0.5 ? 1 : 0;
+}
+/** Follow-through. While its page is in the air an arriving spread's pieces
+ * stand only this far; when the page lands they rise the rest of the way one
+ * after another, far pieces first, each with a small paper wobble. */
+export const ARRIVE = 0.84;
+export const SETTLE_STAGGER = 0.05;
+export const SETTLE_SPAN = 0.4;
+export function settleRise(seconds: number, order: number): { p: number; lean: number } {
+  const u = (finite(seconds, 99) - 0.05 - Math.max(0, finite(order)) * SETTLE_STAGGER) / SETTLE_SPAN;
+  if (u <= 0) return { p: ARRIVE, lean: 0 };
+  if (u >= 2.4) return { p: 1, lean: 0 };
+  return { p: Math.min(1, ARRIVE + (1 - ARRIVE) * u * 3), lean: 9 * Math.exp(-3 * u) * Math.sin(u * 9) };
+}
+export const settleSeconds = (pieces: number) => 0.05 + Math.max(0, pieces) * SETTLE_STAGGER + SETTLE_SPAN * 2.4;
+
+/* ── things that answer a poke ────────────────────────────────────────────── */
+/** A decaying wobble, `seconds` after a poke (degrees or px). */
+export function shake(seconds: number, amp = 8, freq = 13, decay = 3.6): number {
+  const s = finite(seconds, -1);
+  return s < 0 || s > 2.4 ? 0 : amp * Math.sin(s * freq) * Math.exp(-s * decay);
+}
+/** One hop: 0 → 1 → 0 over `span` seconds. */
+export function hopArc(seconds: number, span = 0.5): number {
+  const s = finite(seconds, -1);
+  return s <= 0 || s >= span ? 0 : Math.sin((Math.PI * s) / span);
+}
+/** A piece that pops up when poked, stays a moment and folds away again: 0
+ * down … 1 up, with a little overshoot on the way up. */
+export const PEEK_RISE = 0.24;
+export const PEEK_FALL = 0.32;
+export function peek(seconds: number, hold = 1.5): number {
+  const s = finite(seconds, -1);
+  if (s <= 0 || s >= PEEK_RISE + hold + PEEK_FALL) return 0;
+  if (s < PEEK_RISE) { const k = s / PEEK_RISE - 1; return 1 + 2.4 * k * k * k + 1.4 * k * k; }
+  if (s <= PEEK_RISE + hold) return 1;
+  const k = (s - PEEK_RISE - hold) / PEEK_FALL;
+  return 1 - k * k;
+}
+/** Things that happen one after another: how many of `count` have happened
+ * `ms` in, the first at `start`, then one every `every`. */
+export function stepped(ms: number, start: number, every: number, count: number): number {
+  const t = finite(ms, -1) - start;
+  return t < 0 ? 0 : Math.min(count, 1 + Math.floor(t / Math.max(1, every)));
+}
+
+/* ── the hand that shows the first move ───────────────────────────────────── */
+/** One showing takes this long; it comes back after this long with no touch. */
+export const HINT_PLAY = 2.4;
+export const HINT_REST = 6;
+/** The hand at `k` (0 … 1) of one showing: it fades in, presses, travels, holds, lets go. */
+export function hintPose(k: number): { show: number; press: number; travel: number } {
+  const t = clamp01(k);
+  return {
+    show: Math.min(clamp01(t / 0.1), clamp01((1 - t) / 0.12)),
+    press: Math.min(clamp01((t - 0.1) / 0.06), clamp01((0.88 - t) / 0.06)),
+    travel: smooth(0.2, 0.66, t),
+  };
 }
 
 /* ── the paper wheel ──────────────────────────────────────────────────────── */
@@ -245,6 +362,23 @@ export const RIVER_COURSE: readonly RiverItem[] = [
 ];
 export const RIVER_GATES = RIVER_COURSE.filter(item => item.kind === 'reedGate');
 export const RIVER_END = 1240;
+/** Play again is another river: the same three arches in a new order. Every
+ * course needs the wheel turned both ways, and each stone still waits in the
+ * lane of the arch just passed, nudging towards the next one. */
+const course = (lanes: readonly [Lane, Lane, Lane], pads: readonly [Lane, Lane, Lane, Lane]): readonly RiverItem[] => [
+  { id: 'pad-a', at: 180, lane: pads[0], kind: 'pad' },
+  { id: 'gate-1', at: 300, lane: lanes[0], kind: 'reedGate' },
+  { id: 'pad-b', at: 470, lane: pads[1], kind: 'pad' },
+  { id: 'rock-1', at: 590, lane: lanes[0], kind: 'rock' },
+  { id: 'gate-2', at: 720, lane: lanes[1], kind: 'reedGate' },
+  { id: 'pad-c', at: 850, lane: pads[2], kind: 'pad' },
+  { id: 'rock-2', at: 970, lane: lanes[1], kind: 'rock' },
+  { id: 'gate-3', at: 1100, lane: lanes[2], kind: 'reedGate' },
+  { id: 'pad-d', at: 1200, lane: pads[3], kind: 'pad' },
+];
+export const RIVER_COURSES: readonly (readonly RiverItem[])[] = [RIVER_COURSE, course([0, 2, 1], [2, 1, 0, 2]), course([0, 1, 2], [2, 0, 0, 1]), course([2, 1, 0], [0, 0, 2, 2])];
+export const riverCourse = (index: number): readonly RiverItem[] => RIVER_COURSES[((Math.trunc(finite(index)) % RIVER_COURSES.length) + RIVER_COURSES.length) % RIVER_COURSES.length];
+export const riverGates = (index: number): readonly RiverItem[] => riverCourse(index).filter(item => item.kind === 'reedGate');
 export interface RiverState {
   /** How far the river has flowed past the boat. */
   d: number;
@@ -257,10 +391,12 @@ export interface RiverState {
   bumpLane: Lane | null;
   /** How many times a rock has nudged the boat (a key for the soft spin; never shown). */
   nudges: number;
+  /** Which of RIVER_COURSES this river runs. */
+  course: number;
 }
 export type RiverEvent = 'reedGate' | 'bump' | 'held';
-export function createRiver(): RiverState {
-  return { d: 0, pos: 1, gates: 0, bumpUntil: -1, bumpLane: null, nudges: 0 };
+export function createRiver(course = 0): RiverState {
+  return { d: 0, pos: 1, gates: 0, bumpUntil: -1, bumpLane: null, nudges: 0, course: ((Math.trunc(finite(course)) % RIVER_COURSES.length) + RIVER_COURSES.length) % RIVER_COURSES.length };
 }
 export const riverDone = (river: RiverState) => river.gates >= RIVER_GATES.length;
 /** Where a river item is on the spread now. */
@@ -276,16 +412,17 @@ const aligned = (pos: number, lane: Lane) => Math.abs(pos - lane) < 0.2;
 export function riverStep(river: RiverState, dt: number, target: Lane): { river: RiverState; events: RiverEvent[] } {
   const span = steps(dt), events: RiverEvent[] = [];
   let { d, pos, gates, bumpUntil, bumpLane, nudges } = river;
+  const items = riverCourse(river.course), arches = riverGates(river.course);
   const steering = bumpLane !== null && d < bumpUntil ? bumpLane : target;
   if (!(d < bumpUntil)) bumpLane = null;
   pos = easeLane(pos, steering, span);
-  const gate = RIVER_GATES[gates];
+  const gate = arches[gates];
   let next = Math.min(RIVER_END, d + RIVER_SPEED * span);
   if (gate && !aligned(pos, gate.lane) && next > gate.at - GATE_HOLD) {
     next = Math.max(d, gate.at - GATE_HOLD);
     if (next >= gate.at - GATE_HOLD - 1e-6) events.push('held');
   }
-  for (const item of RIVER_COURSE) {
+  for (const item of items) {
     if (item.kind !== 'rock' || !(item.at > d && item.at <= next)) continue;
     if (Math.round(pos) !== item.lane) continue;
     bumpLane = item.lane === 1 ? (pos >= 1 ? 2 : 0) : 1;
@@ -295,7 +432,7 @@ export function riverStep(river: RiverState, dt: number, target: Lane): { river:
   }
   if (gate && next >= gate.at && aligned(pos, gate.lane)) { gates += 1; events.push('reedGate'); }
   d = next;
-  return { river: { d, pos, gates, bumpUntil, bumpLane, nudges }, events };
+  return { river: { ...river, d, pos, gates, bumpUntil, bumpLane, nudges }, events };
 }
 
 /* ── spread 3: the storm ──────────────────────────────────────────────────── */
@@ -309,8 +446,8 @@ export const FIRST_GUST = 0.9;
 export const GUST_EVERY = 3.4;
 export const GUST_PUSH = 30;
 export interface StormState { steady: number; calmed: boolean; elapsed: number; nextGust: number; gustSign: 1 | -1 }
-export function createStorm(): StormState {
-  return { steady: 0, calmed: false, elapsed: 0, nextGust: FIRST_GUST, gustSign: 1 };
+export function createStorm(firstGust: 1 | -1 = 1): StormState {
+  return { steady: 0, calmed: false, elapsed: 0, nextGust: FIRST_GUST, gustSign: firstGust };
 }
 /** 0 stormy … 1 calm. */
 export function stormCalm(storm: StormState): number {
@@ -371,6 +508,10 @@ export function lampsLit(msSinceDock: number): number {
 }
 /** "The end" appears once the last lamp is lit. */
 export const END_MS = ROPE_MS + LAMP_MS * HARBOUR_LAMPS + 300;
+/** The homecoming: once the last lamp is lit the whole quay answers, and only
+ * then is the end tab offered. Then the book closes itself. */
+export const HOME_MS = 2300;
+export const CLOSE_MS = 1100;
 
 /* ── the book's state and turn permissions ────────────────────────────────── */
 export interface BookState {
@@ -382,8 +523,11 @@ export interface BookState {
   /** The wheel's angle on each spread, kept as it was left. */
   wheel: readonly [number, number, number, number];
 }
-export function createBook(): BookState {
-  return { spread: 0, launched: false, river: createRiver(), storm: createStorm(), harbour: createHarbour(), wheel: [0, 0, 0, 0] };
+/** `variant` picks the river's course and which way the first gust blows, so
+ * a second reading is not the first again. */
+export function createBook(variant = 0): BookState {
+  const v = Math.max(0, Math.trunc(finite(variant)));
+  return { spread: 0, launched: false, river: createRiver(v), storm: createStorm(v % 2 ? -1 : 1), harbour: createHarbour(), wheel: [0, 0, 0, 0] };
 }
 /** Each spread's small action. A spread can be turned past only once it is done. */
 export function spreadDone(book: BookState, spread: SpreadIndex): boolean {

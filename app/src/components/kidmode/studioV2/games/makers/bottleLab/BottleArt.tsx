@@ -1,20 +1,22 @@
-/** Bottle Lab art: one set of hand-built SVG layers shared by the play view,
- * the kept bottle's preview and the cover. A calm still life: a banded paper
- * wall, a cream table, one lamp. The glass is never outlined; it is made of
- * what glass does to light: the wall seen through it (bent by a real
- * displacement map), a tint that deepens toward the edges, the dark and bright
- * refraction bands along the outline, the lamp's streak and rim, and the
- * shadow with the light the full bottle focuses into it.
+/** Bottle Lab art: the layers shared by the play view, the kept bottle's
+ * preview and the cover. Glass Grove's bottle bench: the kit's arched pavilion
+ * room (a shipped picture), the kit lamp, Aya, and one procedural thing, the
+ * glass bottle. The glass is never outlined; it is made of what glass does to
+ * light: the room seen through it (bent by a real displacement map, so the
+ * arches and the valley flip in the water), a tint that deepens toward the
+ * edges, the dark and bright refraction bands along the outline, the lamp's
+ * streak and rim, and its coloured shadow with the light the water focuses.
  *
  * Every colour is a maker-palette or Studio token through var() and
- * color-mix(); the tint of the glass travels as four --bl-* properties. */
+ * color-mix(); the tint of the glass travels as --bl-* properties. */
 import type { CSSProperties, ReactNode } from 'react';
-import { AXIS_X, BASE_Y, ELLIPSE, PROFILES, SCENE_H, SCENE_W, TABLE_Y, WALL, bandPath, baseRadius, bottomY, innerPath, maxRadius, radiusAt, silhouettePath, topY, waterPath, type ShapeId } from './bottleGeometry';
-import { LAMP_ARC, LAMP_MAX, LAMP_MIN, lampEffects, lampPosition, slotView, spawnBubble, type BottleFinish, type BottleSticker, type BottleStickerPlacement, type BottleTint } from './bottleLabRules';
+import { AXIS_X, BASE_Y, ELLIPSE, PROFILES, SCENE_H, SCENE_W, WALL, bandPath, baseRadius, bottomY, innerPath, maxRadius, radiusAt, silhouettePath, topY, waterPath, type ShapeId } from './bottleGeometry';
+import { KIT_AYA, KIT_LAMP, KIT_ROOM, STICKER_PRINT } from './bottleKit';
+import { lampEffects, lampPosition, slotView, spawnBubble, type BottleFinish, type BottleSticker, type BottleStickerPlacement, type BottleTint } from './bottleLabRules';
 import type { RefractionMap } from './bottleRefraction';
+import { AYA, stickerShade } from './bottleToys';
 
 const mix = (a: string, b: string, p: number) => `color-mix(in srgb, var(${a}) ${p}%, var(${b}))`;
-const alpha = (a: string, p: number) => `color-mix(in srgb, var(${a}) ${p}%, transparent)`;
 const fill = (value: string, opacity?: number): CSSProperties => opacity === undefined ? { fill: value } : { fill: value, opacity };
 const stop = (value: string, opacity = 1): CSSProperties => ({ stopColor: value, stopOpacity: opacity });
 
@@ -35,185 +37,169 @@ export const ids = (uid: string) => {
 
 // ── Defs ───────────────────────────────────────────────────────────────────
 
-/** Shared definitions; put them in the first layer of a drawing. */
-export function BottleDefs({ uid, shape, finish, map }: { uid: string; shape: ShapeId; finish: BottleFinish; map: RefractionMap | null }) {
+/** One refraction filter: the picture behind, resampled through a map. It
+ * works only on the bottle's own patch of the scene (plus the strip either
+ * side that the water lens reaches into). */
+function Refract({ id, map, frost }: { id: string; map: RefractionMap | null | undefined; frost: boolean }) {
+  const box = map ? { x: map.x - map.width * 0.2, y: map.y - 24, width: map.width * 1.4, height: map.height + 48 } : { x: 0, y: 0, width: SCENE_W, height: SCENE_H };
+  return <filter id={id} filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" {...box} colorInterpolationFilters="sRGB">
+    {map && <feImage href={map.href} x={map.x} y={map.y} width={map.width} height={map.height} preserveAspectRatio="none" result="map" />}
+    {map ? <feDisplacementMap in="SourceGraphic" in2="map" scale={map.scale} xChannelSelector="R" yChannelSelector="G" result="bent" /> : <feOffset in="SourceGraphic" result="bent" />}
+    <feGaussianBlur in="bent" stdDeviation={frost ? 5 : 0.35} />
+  </filter>;
+}
+
+/** Shared definitions; put them in the first layer of a drawing. `map` bends
+ * a still picture; play passes `air` and `wet` as well (see bottleRefraction). */
+export function BottleDefs({ uid, shape, finish, map, air, wet }: { uid: string; shape: ShapeId; finish: BottleFinish; map: RefractionMap | null; air?: RefractionMap | null; wet?: RefractionMap | null }) {
   const { id } = ids(uid);
   const frost = finish === 'frost';
   return <defs>
     <clipPath id={id('outer')}><path d={silhouettePath(shape)} /></clipPath>
     <clipPath id={id('inner')}><path d={innerPath(shape)} /></clipPath>
     <clipPath id={id('water')}><path d={waterPath(shape)} /></clipPath>
-    <linearGradient id={id('wall')} x1="0" y1="0" x2="1" y2="1"><stop offset="0" style={stop('var(--mk-white)', 0.5)} /><stop offset=".55" style={stop('var(--mk-white)', 0)} /><stop offset="1" style={stop('var(--mk-shadow)', 0.12)} /></linearGradient>
-    <linearGradient id={id('table')} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={stop(mix('--mk-cream', '--mk-white', 60))} /><stop offset=".35" style={stop('var(--mk-cream)')} /><stop offset="1" style={stop(mix('--mk-linen', '--mk-linen-shade', 55))} /></linearGradient>
-    <linearGradient id={id('tableSide')} x1="0" y1="0" x2="1" y2="0"><stop offset="0" style={stop('var(--mk-white)', 0.35)} /><stop offset=".5" style={stop('var(--mk-white)', 0)} /><stop offset="1" style={stop('var(--mk-shadow)', 0.08)} /></linearGradient>
-    <linearGradient id={id('seam')} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={stop('var(--mk-shadow)', 0)} /><stop offset="1" style={stop('var(--mk-shadow)', 0.16)} /></linearGradient>
-    <filter id={id('paperGrain')} x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="7" stitchTiles="stitch" /><feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.05" /></filter>
+    <filter id={id('grain')} x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="7" stitchTiles="stitch" /><feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.05" /></filter>
     <filter id={id('soft1')} x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.2" /></filter>
+    <filter id={id('soft3')} x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="3.2" /></filter>
     <filter id={id('soft')} x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation={frost ? 2.2 : 0.7} /></filter>
     <filter id={id('backSticker')} x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation={frost ? 3 : 0.9} /></filter>
-    {/* The refraction itself: the backdrop resampled through the map. */}
-    <filter id={id('refract')} filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" x="0" y="0" width={SCENE_W} height={SCENE_H} colorInterpolationFilters="sRGB">
-      {map && <feImage href={map.href} x={map.x} y={map.y} width={map.width} height={map.height} preserveAspectRatio="none" result="map" />}
-      {map ? <feDisplacementMap in="SourceGraphic" in2="map" scale={map.scale} xChannelSelector="R" yChannelSelector="G" result="bent" /> : <feOffset in="SourceGraphic" result="bent" />}
-      <feGaussianBlur in="bent" stdDeviation={frost ? 5 : 0.35} />
-    </filter>
+    <Refract id={id('refract')} map={map} frost={frost} />
+    {air !== undefined && <Refract id={id('refractAir')} map={air} frost={frost} />}
+    {wet !== undefined && <Refract id={id('refractWet')} map={wet} frost={frost} />}
     <linearGradient id={id('water')} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={stop('var(--bl-water)', 0.16)} /><stop offset="1" style={stop('var(--bl-water)', 0.34)} /></linearGradient>
     <linearGradient id={id('body')} gradientUnits="userSpaceOnUse" x1={AXIS_X - maxRadius(shape)} x2={AXIS_X + maxRadius(shape)} y1="0" y2="0">
       <stop offset="0" style={stop('var(--bl-edge)', 0.75)} /><stop offset=".22" style={stop('var(--bl-glass)', 0.55)} /><stop offset=".5" style={stop('var(--bl-glass)', 0.35)} /><stop offset=".78" style={stop('var(--bl-glass)', 0.55)} /><stop offset="1" style={stop('var(--bl-edge)', 0.75)} />
     </linearGradient>
     <linearGradient id={id('streak')} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={stop('var(--mk-white)', 0)} /><stop offset=".12" style={stop('var(--mk-white)', 1)} /><stop offset=".5" style={stop('var(--mk-white)', 0.75)} /><stop offset="1" style={stop('var(--mk-white)', 0)} /></linearGradient>
     <linearGradient id={id('rim')} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={stop('var(--bl-light)', 0)} /><stop offset=".3" style={stop('var(--bl-light)', 1)} /><stop offset="1" style={stop('var(--bl-light)', 0.2)} /></linearGradient>
-    <linearGradient id={id('steel')} x1="0" y1="0" x2="1" y2="0"><stop offset="0" style={stop('var(--mk-steel-dark)')} /><stop offset=".22" style={stop('var(--mk-steel)')} /><stop offset=".4" style={stop('var(--mk-steel-light)')} /><stop offset=".58" style={stop('var(--mk-steel)')} /><stop offset=".86" style={stop(mix('--mk-steel-dark', '--mk-steel', 60))} /><stop offset="1" style={stop('var(--mk-graphite)')} /></linearGradient>
-    <linearGradient id={id('steelTop')} x1="0" y1="0" x2="1" y2="1"><stop offset="0" style={stop('var(--mk-steel-light)')} /><stop offset="1" style={stop('var(--mk-steel)')} /></linearGradient>
+    {/* The cap: pale kit wood with a teal ring and loop. */}
+    <linearGradient id={id('cap')} x1="0" y1="0" x2="1" y2="0"><stop offset="0" style={stop('var(--mk-wood)')} /><stop offset=".2" style={stop('var(--mk-wood-light)')} /><stop offset=".42" style={stop(mix('--mk-wood-light', '--mk-white', 62))} /><stop offset=".62" style={stop('var(--mk-wood-light)')} /><stop offset="1" style={stop(mix('--mk-wood', '--mk-wood-dark', 62))} /></linearGradient>
+    <linearGradient id={id('capTop')} x1="0" y1="0" x2="1" y2="1"><stop offset="0" style={stop(mix('--mk-wood-light', '--mk-white', 50))} /><stop offset="1" style={stop('var(--mk-wood-light)')} /></linearGradient>
+    <linearGradient id={id('loop')} x1="0" y1="0" x2="1" y2="0"><stop offset="0" style={stop('var(--mk-teal-deep)')} /><stop offset=".4" style={stop('var(--mk-sea)')} /><stop offset="1" style={stop('var(--mk-teal)')} /></linearGradient>
     <radialGradient id={id('caustic')}><stop offset="0" style={stop(mix('--bl-light', '--mk-white', 40))} /><stop offset=".45" style={stop(mix('--bl-glass', '--mk-white', 45), 0.7)} /><stop offset="1" style={stop('var(--bl-glass)', 0)} /></radialGradient>
-    <radialGradient id={id('lampPool')}><stop offset="0" style={stop('var(--mk-butter)', 0.55)} /><stop offset=".5" style={stop('var(--mk-butter)', 0.18)} /><stop offset="1" style={stop('var(--mk-butter)', 0)} /></radialGradient>
-    <radialGradient id={id('bulb')}><stop offset="0" style={stop('var(--mk-white)')} /><stop offset=".35" style={stop('var(--mk-sun)', 0.9)} /><stop offset="1" style={stop('var(--mk-sun)', 0)} /></radialGradient>
-    <linearGradient id={id('beam')} x1="0" y1="0" x2="1" y2="0"><stop offset="0" style={stop('var(--mk-butter)', 0.5)} /><stop offset="1" style={stop('var(--mk-butter)', 0)} /></linearGradient>
-    <linearGradient id={id('shade')} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={stop(mix('--mk-indigo', '--mk-bluebell', 70))} /><stop offset="1" style={stop('var(--mk-indigo-deep)')} /></linearGradient>
+    <radialGradient id={id('lampPool')}><stop offset="0" style={stop('var(--mk-butter)', 0.5)} /><stop offset=".55" style={stop('var(--mk-butter)', 0.16)} /><stop offset="1" style={stop('var(--mk-butter)', 0)} /></radialGradient>
+    <radialGradient id={id('bulb')}><stop offset="0" style={stop('var(--mk-white)')} /><stop offset=".35" style={stop('var(--mk-sun)', 0.8)} /><stop offset="1" style={stop('var(--mk-sun)', 0)} /></radialGradient>
     <radialGradient id={id('bubble')} cx=".4" cy=".36" r=".64" fx=".34" fy=".28"><stop offset="0" style={stop('var(--mk-white)', 1)} /><stop offset=".28" style={stop('var(--mk-white)', 0.4)} /><stop offset=".68" style={stop('var(--bl-light)', 0.1)} /><stop offset=".9" style={stop('var(--bl-deep)', 0.42)} /><stop offset="1" style={stop('var(--bl-deep)', 0.6)} /></radialGradient>
     <linearGradient id={id('frost')} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={stop('var(--mk-white)', 0.5)} /><stop offset="1" style={stop('var(--mk-white)', 0.3)} /></linearGradient>
   </defs>;
 }
 
-// ── The still life ─────────────────────────────────────────────────────────
+// ── The room ───────────────────────────────────────────────────────────────
 
-const BAND = 27;
-/** The torn lower edge of a paper strip: a deterministic, gentle wobble. */
-const L = -240, R = SCENE_W + 260, T = -90;
-function stripEdge(y: number, i: number, from = L, to = R): string {
-  const pts: string[] = [];
-  for (let x = to; x >= from; x -= 6) pts.push(`${x} ${(y + 0.9 * Math.sin(x * 0.11 + i * 1.7) + 0.6 * Math.sin(x * 0.27 + i * 3.1)).toFixed(1)}`);
-  return pts.join('L');
-}
-const STRAW = { x0: -26, slope: 0.74, width: 15 } as const;
-const strawX = (y: number) => STRAW.x0 + y * STRAW.slope;
+const L = KIT_ROOM.place.x, T = KIT_ROOM.place.y, W = KIT_ROOM.place.width, H = KIT_ROOM.place.height;
 
-/** The paper wall and the table. Drawn twice: once as the room, once through the glass. */
-export function Backdrop({ uid, grain = true }: { uid: string; grain?: boolean }) {
-  const { url } = ids(uid);
-  const strips: ReactNode[] = [];
-  for (let i = 0, y = -BAND * 4; y < TABLE_Y; i++, y += BAND * 2) {
-    const top = y + BAND, bottom = Math.min(TABLE_Y, top + BAND);
-    const d = `M${L} ${top}L${R} ${top}L${stripEdge(bottom, i)}Z`;
-    strips.push(<g key={i}>
-      <path d={d} transform="translate(0 2.4)" style={fill('var(--mk-shadow)', 0.13)} filter={url('soft1')} />
-      <path d={d} style={fill(mix('--mk-bluebell', '--mk-paper-shade', 36))} />
-      <path d={`M${L} ${top}L${R} ${top}L${R} ${top + 3}L${L} ${top + 3}Z`} style={fill('var(--mk-white)', 0.18)} />
-    </g>);
-  }
-  const ys = [T, TABLE_Y + 2];
-  const straw = `M${strawX(ys[0]) - STRAW.width / 2} ${ys[0]}L${strawX(ys[0]) + STRAW.width / 2} ${ys[0]}L${strawX(ys[1]) + STRAW.width / 2} ${ys[1]}L${strawX(ys[1]) - STRAW.width / 2} ${ys[1]}Z`;
-  const W = R - L, B = SCENE_H + 90;
-  return <g>
-    <rect x={L} y={T} width={W} height={TABLE_Y - T + 2} style={fill('var(--mk-paper)')} />
-    {strips}
-    <path d={straw} transform="translate(2.5 1.5)" style={fill('var(--mk-shadow)', 0.16)} filter={url('soft1')} />
-    <path d={straw} style={fill(mix('--mk-gold', '--mk-rust', 78))} />
-    <path d={`M${strawX(T) - 2} ${T}L${strawX(T) + 2} ${T}L${strawX(TABLE_Y) + 2} ${TABLE_Y}L${strawX(TABLE_Y) - 2} ${TABLE_Y}Z`} style={fill('var(--mk-gold-light)', 0.65)} />
-    <rect x={L} y={T} width={W} height={TABLE_Y - T + 2} style={{ fill: url('wall') }} />
-    {/* The table: a cream top, lit from the back left, with a soft seam at the wall. */}
-    <rect x={L} y={TABLE_Y} width={W} height={B - TABLE_Y} style={{ fill: url('table') }} />
-    <rect x={L} y={TABLE_Y} width={W} height={B - TABLE_Y} style={{ fill: url('tableSide') }} />
-    <rect x={L} y={TABLE_Y - 10} width={W} height="10" style={{ fill: url('seam') }} />
-    <rect x={L} y={TABLE_Y} width={W} height="1.6" style={fill('var(--mk-white)', 0.75)} />
-    {grain && <rect x={L} y={T} width={W} height={B - T} filter={url('paperGrain')} style={fill('var(--mk-umber)', 0.09)} />}
-  </g>;
+/** The kit's pavilion room. Drawn as the room, and again through the glass. */
+export function Backdrop({ small = false }: { small?: boolean }) {
+  return <image href={small ? KIT_ROOM.src480 : KIT_ROOM.src} x={L} y={T} width={W} height={H} preserveAspectRatio="none" />;
 }
 
-/** The lamp's warm pool on the wall and its faint beam, or the room's even light. */
+/** Where the lamp's bulb is, for its glow. */
+const lampHead = (angle: number) => { const p = lampPosition(angle); return { x: p.x + p.face * 36, y: p.y - 76 }; };
+
+/** The lamp's warm pool on the floor and wall, or the room's dimmer light with the lamp off. */
 export function LampLight({ uid, angle, on }: { uid: string; angle: number; on: boolean }) {
   const { url } = ids(uid);
-  const p = lampPosition(angle);
-  if (!on) return <rect x={L} y={T} width={R - L} height={SCENE_H + 180} style={fill(mix('--mk-indigo', '--mk-slate', 50), 0.16)} />;
-  const toward = Math.atan2(260 - p.y, 180 - p.x) * 180 / Math.PI;
-  return <g style={{ mixBlendMode: 'screen' }}>
-    <ellipse cx={p.x + (180 - p.x) * 0.35} cy={p.y + (250 - p.y) * 0.35} rx="190" ry="170" style={{ fill: url('lampPool') }} />
-    <path d="M0 -8L230 -64L230 64L0 8Z" transform={`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) rotate(${toward.toFixed(1)})`} style={{ fill: url('beam'), opacity: 0.32 }} />
+  if (!on) return <rect x={L} y={T} width={W} height={H} style={fill(mix('--mk-indigo', '--mk-slate', 50), 0.2)} />;
+  const h = lampHead(angle), toward = h.x + (AXIS_X - h.x) * 0.5;
+  return <g>
+    <ellipse cx={toward} cy={BASE_Y - 4} rx="150" ry="50" style={{ fill: url('lampPool'), opacity: 0.9 }} />
+    <ellipse cx={toward} cy={h.y + 30} rx="130" ry="110" style={{ fill: url('lampPool'), opacity: 0.5 }} />
   </g>;
 }
 
-/** The shadow is the bottle's own shape laid on the table away from the lamp
- * (neck at the far end), tinted by the glass, with the bright caustic inside. */
-export function TableShadow({ uid, shape, angle, on }: { uid: string; shape: ShapeId; angle: number; on: boolean }) {
-  const { id, url } = ids(uid);
+/** The bottle's own shadow laid on the floor away from the lamp (neck at the
+ * far end): not grey but the colour of its glass, with the bright patch the
+ * water focuses inside it and a small dark shape for every sticker. */
+export function TableShadow({ uid, shape, angle, on, stickers = [], rotation = 0 }: { uid: string; shape: ShapeId; angle: number; on: boolean; stickers?: readonly BottleStickerPlacement[]; rotation?: number }) {
+  const { url } = ids(uid);
   const fx = lampEffects(angle, on);
   const a = fx.shadowAngle * Math.PI / 180, dir = { x: Math.cos(a), y: Math.sin(a) };
-  // Across the shadow, depth on the table is squashed by the view from above.
-  const nx = -dir.y, ny = dir.x * ELLIPSE * 2.2, nl = Math.hypot(nx, ny) || 1;
-  const n = { x: nx / nl * Math.max(0.36, Math.hypot(nx, ny)), y: ny / nl * Math.max(0.36, Math.hypot(nx, ny)) };
-  const top = topY(shape), height = BASE_Y - top, base = { x: AXIS_X, y: BASE_Y };
-  const left: string[] = [], right: string[] = [];
-  for (let t = 0; t <= 1.0001; t += 0.05) {
-    const y = BASE_Y - t * height, r = Math.max(radiusAt(shape, y), t > 0.98 ? radiusAt(shape, top) : 0);
-    const c = { x: base.x + dir.x * fx.shadowLength * t, y: base.y + dir.y * fx.shadowLength * t };
-    left.push(`${(c.x + n.x * r).toFixed(1)} ${(c.y + n.y * r).toFixed(1)}`);
-    right.unshift(`${(c.x - n.x * r).toFixed(1)} ${(c.y - n.y * r).toFixed(1)}`);
-  }
+  // Across the shadow, depth on the floor is squashed by the view from above.
+  const nx = -dir.y, ny = dir.x * ELLIPSE * 2.2, nl = Math.hypot(nx, ny) || 1, wide = Math.max(0.36, nl);
+  const n = { x: nx / nl * wide, y: ny / nl * wide };
+  const top = topY(shape), height = BASE_Y - top;
+  const at = (t: number, u: number, r: number) => ({ x: AXIS_X + dir.x * fx.shadowLength * t + n.x * r * u, y: BASE_Y + dir.y * fx.shadowLength * t + n.y * r * u });
+  const outline = (k: number) => {
+    const left: string[] = [], right: string[] = [];
+    for (let t = 0; t <= 1.0001; t += 0.05) {
+      const r = Math.max(radiusAt(shape, BASE_Y - t * height), t > 0.98 ? radiusAt(shape, top) : 0) * k, p = at(t, 1, r), q = at(t, -1, r);
+      left.push(`${p.x.toFixed(1)} ${p.y.toFixed(1)}`); right.unshift(`${q.x.toFixed(1)} ${q.y.toFixed(1)}`);
+    }
+    return `M${left.join('L')}L${right.join('L')}Z`;
+  };
   const rb = baseRadius(shape);
-  const ct = fx.causticAt, cy = BASE_Y - ct * height, cr = radiusAt(shape, cy) || maxRadius(shape);
-  const cc = { x: base.x + dir.x * fx.shadowLength * ct, y: base.y + dir.y * fx.shadowLength * ct };
-  const along = Math.max(10, fx.shadowLength * 0.22 * fx.causticSize), across = cr * fx.causticSize * Math.hypot(n.x, n.y);
+  const ct = fx.causticAt, cr = radiusAt(shape, BASE_Y - ct * height) || maxRadius(shape), cc = at(ct, 0, 0);
+  const along = Math.max(10, fx.shadowLength * 0.22 * fx.causticSize), across = cr * fx.causticSize * wide;
+  const turn = `rotate(${fx.shadowAngle.toFixed(1)})`;
   return <g>
-    <filter id={id('shadow')} x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation={fx.shadowSoftness.toFixed(1)} /></filter>
-    <g filter={url('shadow')}>
-      <path d={`M${left.join('L')}L${right.join('L')}Z`} style={fill(mix('--bl-deep', '--mk-shadow', 35), fx.shadowOpacity)} />
+    <g filter={url('soft3')}>
+      <path d={outline(1)} style={fill(mix('--bl-deep', '--mk-shadow', 55), fx.shadowOpacity)} />
+      {on && <path d={outline(0.72)} style={fill(mix('--bl-glass', '--bl-light', 70), 0.42)} />}
     </g>
-    {/* Contact shadow: where the glass touches the table it is always darkest. */}
-    <ellipse cx={AXIS_X} cy={BASE_Y + 1.5} rx={rb * 1.04} ry={rb * ELLIPSE * 1.15} filter={url('soft1')} style={fill('var(--mk-shadow)', on ? 0.42 : 0.3)} />
-    {fx.causticOpacity > 0 && <ellipse cx={cc.x} cy={cc.y} rx={along} ry={Math.max(4, across * 0.55)} transform={`rotate(${fx.shadowAngle.toFixed(1)} ${cc.x.toFixed(1)} ${cc.y.toFixed(1)})`} style={{ fill: url('caustic'), opacity: fx.causticOpacity, mixBlendMode: 'screen' }} />}
+    {on && <g filter={url('soft1')}>{stickers.map(s => {
+      const v = stickerShade(shape, s, rotation, angle), p = at(v.t, v.u * 0.82, v.radius), half = PROFILES[shape].sticker / 2;
+      return <ellipse key={s.slot} data-bl-shade={s.slot} rx={Math.max(3, fx.shadowLength * half / height)} ry={Math.max(2, half * v.wide * wide)} transform={`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) ${turn}`} style={fill('var(--mk-shadow)', 0.3)} />;
+    })}</g>}
+    {/* Contact shadow: where the glass touches the floor it is always darkest. */}
+    <ellipse cx={AXIS_X} cy={BASE_Y + 1.5} rx={rb * 1.04} ry={rb * ELLIPSE * 1.15} filter={url('soft1')} style={fill('var(--mk-shadow)', on ? 0.36 : 0.26)} />
+    {fx.causticOpacity > 0 && <ellipse rx={along} ry={Math.max(4, across * 0.55)} transform={`translate(${cc.x.toFixed(1)} ${cc.y.toFixed(1)}) ${turn}`} style={{ fill: url('caustic'), opacity: fx.causticOpacity }} />}
   </g>;
 }
 
-/** The arc rail and the lamp on it, aimed at the bottle. */
-export function Lamp({ uid, angle, on }: { uid: string; angle: number; on: boolean }) {
+/** The kit's desk lamp, standing just behind the bottle's line. Its head
+ * always leans toward the glass; it swivels as it passes behind the bottle. */
+export const LAMP_SIZE = { width: 84, height: 103, foot: 27 } as const;
+export function Lamp({ uid, angle, on, shadow = true }: { uid: string; angle: number; on: boolean; shadow?: boolean }) {
   const { url } = ids(uid);
-  const p = lampPosition(angle);
-  const arc: string[] = [];
-  // The rail runs a little past both stops, so the lamp never sits on its very end.
-  for (let a = LAMP_MIN - 5; a <= LAMP_MAX + 5; a += 2.5) { const t = a * 1.3 * Math.PI / 180; arc.push(`${(LAMP_ARC.cx + LAMP_ARC.rx * Math.sin(t)).toFixed(1)} ${(LAMP_ARC.cy - LAMP_ARC.ry * Math.cos(t)).toFixed(1)}`); }
-  const rail = `M${arc.join('L')}`;
-  return <g>
-    <path d={rail} transform="translate(1.5 2.5)" style={{ fill: 'none', stroke: 'var(--mk-shadow)', strokeOpacity: 0.14, strokeWidth: 5, strokeLinecap: 'round' }} filter={url('soft1')} />
-    <path d={rail} style={{ fill: 'none', stroke: 'var(--mk-brass)', strokeWidth: 3.6, strokeLinecap: 'round' }} />
-    <path d={rail} style={{ fill: 'none', stroke: 'var(--mk-gold-light)', strokeOpacity: 0.7, strokeWidth: 1.1, strokeLinecap: 'round' }} transform="translate(-0.4 -0.7)" />
-    <g transform={`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})`}>
-      {on && <circle r="34" style={{ fill: url('bulb'), opacity: 0.55 }} transform={`rotate(${p.aim.toFixed(1)}) translate(16 0)`} />}
-      <g transform={`rotate(${p.aim.toFixed(1)})`}>
-        {/* clip and knuckle on the rail */}
-        <circle cx="-13" r="6.5" style={fill('var(--mk-brass)')} /><circle cx="-14.2" cy="-1.4" r="2.6" style={fill('var(--mk-gold-light)', 0.8)} />
-        <path d="M-10 -9.5C-10 -13 -6 -15 -1 -15L9 -17.5L11 -17.5L11 17.5L9 17.5L-1 15C-6 15 -10 13 -10 9.5Z" transform="translate(1.5 2.5)" style={fill('var(--mk-shadow)', 0.2)} />
-        <path d="M-10 -9.5C-10 -13 -6 -15 -1 -15L9 -17.5L11 -17.5L11 17.5L9 17.5L-1 15C-6 15 -10 13 -10 9.5Z" style={{ fill: url('shade') }} />
-        <path d="M-8 -9C-6 -12 -2 -13 2 -13.5L8 -15" style={{ fill: 'none', stroke: 'var(--mk-white)', strokeOpacity: 0.35, strokeWidth: 1.6, strokeLinecap: 'round' }} />
-        <ellipse cx="11" rx="3.4" ry="17.5" style={fill(on ? 'var(--mk-sun)' : mix('--mk-indigo-deep', '--mk-shadow', 60))} />
-        <ellipse cx="11.5" rx="2.2" ry="11" style={fill(on ? 'var(--mk-white)' : 'var(--mk-steel-dark)', on ? 0.95 : 0.6)} />
-      </g>
+  const p = lampPosition(angle), face = Math.abs(p.face) < 0.06 ? 0.06 : p.face;
+  return <g transform={`translate(${p.x.toFixed(1)} ${p.y})`} data-bl-lamp-art="">
+    {shadow && <ellipse cy="-1" rx="27" ry="5" filter={url('soft1')} style={fill('var(--mk-shadow)', 0.26)} />}
+    <g transform={`scale(${face.toFixed(3)} 1)`}>
+      <image href={KIT_LAMP.src} x={-LAMP_SIZE.foot} y={3 - LAMP_SIZE.height} width={LAMP_SIZE.width} height={LAMP_SIZE.height} preserveAspectRatio="none" style={on ? undefined : { filter: 'saturate(.45) brightness(.86)' }} />
+      {on && <circle cx="36" cy="-74" r="26" style={{ fill: url('bulb'), opacity: 0.6 }} />}
     </g>
+  </g>;
+}
+
+/** Aya, feet at (x, y). Every pose is one square canvas with the feet on its bottom edge. */
+const AYA_BOX = AYA.height / 415 * 440;
+export function AyaArt({ uid, mood = 'idle', x, y, shadow = true }: { uid: string; mood?: 'idle' | 'happy'; x: number; y: number; shadow?: boolean }) {
+  const { url } = ids(uid);
+  return <g transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`}>
+    {shadow && <ellipse cy="-2" rx="20" ry="4.5" filter={url('soft1')} style={fill('var(--mk-shadow)', 0.3)} />}
+    <image href={KIT_AYA[mood].src} x={-AYA_BOX / 2} y={-AYA_BOX * 427 / 440} width={AYA_BOX} height={AYA_BOX} preserveAspectRatio="none" />
   </g>;
 }
 
 // ── The glass ──────────────────────────────────────────────────────────────
 
-/** What is seen through the glass: the wall again, bent by the map, then the
- * far wall's tint and the water. Changes only with shape, tint and finish. */
-export function GlassInside({ uid, shape, finish }: { uid: string; shape: ShapeId; finish: BottleFinish }) {
+/** What is seen through the glass. `still` is the whole of it for a picture
+ * that does not move: the room bent by the map, the far wall's tint, the
+ * water. Play draws it in two parts so the water line can move for nothing:
+ * `air` (the whole inside as it looks with no water) and, above it and cut
+ * off at the water line by the stage, `wet` (the whole inside as it looks
+ * full of water). `children` stand behind the bottle and are bent with the room. */
+export function GlassInside({ uid, shape, finish, part = 'still', small = false, children }: { uid: string; shape: ShapeId; finish: BottleFinish; part?: 'still' | 'air' | 'wet'; small?: boolean; children?: ReactNode }) {
   const { url } = ids(uid);
   const level = PROFILES[shape].water, rw = radiusAt(shape, level) * (1 - WALL), rb = baseRadius(shape);
+  const bent = part === 'air' ? 'refractAir' : part === 'wet' ? 'refractWet' : 'refract';
   return <g>
-    <g clipPath={url('outer')}>
-      <g filter={url('refract')}><Backdrop uid={uid} grain={false} /></g>
+    <g clipPath={url(part === 'wet' ? 'inner' : 'outer')}>
+      <g filter={url(bent)}><Backdrop small={small} />{children}</g>
       {/* the far wall of the glass: tinted, a little darker at the sides */}
       <path d={silhouettePath(shape)} style={{ fill: url('body'), opacity: 'var(--bl-body)' } as CSSProperties} />
     </g>
     <g clipPath={url('inner')}>
-      <path d={waterPath(shape)} style={{ fill: url('water') }} />
+      {part === 'still' && <path d={waterPath(shape)} style={{ fill: url('water') }} />}
+      {part === 'wet' && <path d={innerPath(shape)} style={{ fill: url('water') }} />}
       {/* the underside of the far water line catches the light */}
-      <ellipse cx={AXIS_X} cy={level} rx={rw} ry={rw * ELLIPSE} style={fill(mix('--bl-light', '--mk-white', 50), 0.32)} />
+      {part === 'still' && <ellipse cx={AXIS_X} cy={level} rx={rw} ry={rw * ELLIPSE} style={fill(mix('--bl-light', '--mk-white', 50), 0.32)} />}
       {/* the thick glass of the base */}
       <ellipse cx={AXIS_X} cy={BASE_Y - 5} rx={rb * 0.9} ry={rb * ELLIPSE * 0.9} style={fill('var(--bl-deep)', 0.2)} />
     </g>
-    {finish === 'frost' && <g clipPath={url('outer')}>
+    {finish === 'frost' && <g clipPath={url(part === 'wet' ? 'inner' : 'outer')}>
       <path d={silhouettePath(shape)} style={{ fill: url('frost') }} />
-      <rect x={AXIS_X - 100} y={topY(shape) - 4} width="200" height={bottomY(shape) - topY(shape) + 8} filter={url('paperGrain')} style={fill('var(--mk-white)', 0.14)} />
+      {part !== 'wet' && <rect x={AXIS_X - 100} y={topY(shape) - 4} width="200" height={bottomY(shape) - topY(shape) + 8} filter={url('grain')} style={fill('var(--mk-white)', 0.14)} />}
     </g>}
   </g>;
 }
@@ -234,6 +220,16 @@ export function GlassFront({ uid, shape, finish }: { uid: string; shape: ShapeId
     </g>
     {/* The thick base: a dark lens with a bright near edge. */}
     <BaseGlass uid={uid} shape={shape} frost={frost} />
+    <Lip shape={shape} frost={frost} />
+  </g>;
+}
+
+/** The open mouth of the bottle: a thick glass lip. The cap sits over it when it is on. */
+function Lip({ shape, frost }: { shape: ShapeId; frost: boolean }) {
+  const top = topY(shape), r = radiusAt(shape, top), ry = r * ELLIPSE;
+  return <g>
+    <ellipse cx={AXIS_X} cy={top} rx={r * 0.78} ry={ry * 0.78} style={fill('var(--bl-deep)', frost ? 0.2 : 0.34)} />
+    <ellipse cx={AXIS_X} cy={top} rx={r * 0.92} ry={ry * 0.92} style={{ fill: 'none', stroke: 'var(--bl-light)', strokeOpacity: frost ? 0.5 : 0.95, strokeWidth: 1.8 }} />
   </g>;
 }
 
@@ -282,73 +278,53 @@ export function GlassLight({ uid, shape, finish, angle, on }: { uid: string; sha
   </g>;
 }
 
-/** The brushed steel cap and its carry loop. The loop turns with the bottle. */
+/** The pale-wood cap with its teal ring and carry loop. The loop turns with the bottle. */
 export function Cap({ uid, shape, rotation, angle, on }: { uid: string; shape: ShapeId; rotation: number; angle: number; on: boolean }) {
   const { url } = ids(uid);
   const top = topY(shape), r = radiusAt(shape, top) + 4.5, h = 30, y0 = top - h + 8, ry = r * ELLIPSE;
   const fx = lampEffects(angle, on);
   const turn = Math.cos(rotation * Math.PI / 180), loopW = Math.max(1.2, 11 * Math.abs(turn));
-  const lines = [6, 10, 14, 18, 22];
+  const band = (dy: number) => `M${AXIS_X - r} ${y0 + dy}A${r} ${ry} 0 0 0 ${AXIS_X + r} ${y0 + dy}`;
   return <g>
     <ellipse cx={AXIS_X} cy={y0 + h + 0.5} rx={r + 1} ry={ry + 1} filter={url('soft1')} style={fill('var(--mk-shadow)', 0.3)} />
     {/* the loop behind the cap top */}
-    <ellipse cx={AXIS_X} cy={y0 - 10} rx={loopW} ry="13" style={{ fill: 'none', stroke: 'var(--mk-steel-dark)', strokeWidth: 5.5 }} />
-    <ellipse cx={AXIS_X} cy={y0 - 10} rx={loopW} ry="13" style={{ fill: 'none', stroke: url('steel'), strokeWidth: 3.6 }} />
-    <path d={`M${AXIS_X - loopW} ${y0 - 10}A${loopW} 13 0 0 1 ${AXIS_X - loopW * 0.2} ${y0 - 22.6}`} style={{ fill: 'none', stroke: 'var(--mk-white)', strokeOpacity: 0.7, strokeWidth: 1.1 }} />
-    <rect x={AXIS_X - 5} y={y0 - 4} width="10" height="6" rx="2" style={fill('var(--mk-steel-dark)')} />
-    <path d={`M${AXIS_X - r} ${y0}L${AXIS_X - r} ${y0 + h}A${r} ${ry} 0 0 0 ${AXIS_X + r} ${y0 + h}L${AXIS_X + r} ${y0}Z`} style={{ fill: url('steel') }} />
-    {lines.map(dy => <path key={dy} d={`M${AXIS_X - r} ${y0 + dy}A${r} ${ry} 0 0 0 ${AXIS_X + r} ${y0 + dy}`} style={{ fill: 'none', stroke: dy % 8 ? 'var(--mk-white)' : 'var(--mk-graphite)', strokeOpacity: dy % 8 ? 0.22 : 0.12, strokeWidth: 0.6 }} />)}
-    <path d={`M${AXIS_X - r} ${y0 + h - 4}A${r} ${ry} 0 0 0 ${AXIS_X + r} ${y0 + h - 4}L${AXIS_X + r} ${y0 + h}A${r} ${ry} 0 0 1 ${AXIS_X - r} ${y0 + h}Z`} style={fill('var(--mk-graphite)', 0.35)} />
-    <rect x={AXIS_X + fx.streakU * r * 0.9 - 2} y={y0 + 2} width="4" height={h - 6} rx="2" style={fill('var(--mk-white)', on ? 0.75 : 0.35)} />
-    <ellipse cx={AXIS_X} cy={y0} rx={r} ry={ry} style={{ fill: url('steelTop') }} />
-    <ellipse cx={AXIS_X} cy={y0} rx={r} ry={ry} style={{ fill: 'none', stroke: 'var(--mk-white)', strokeOpacity: 0.55, strokeWidth: 0.8 }} />
+    <ellipse cx={AXIS_X} cy={y0 - 10} rx={loopW} ry="13" style={{ fill: 'none', stroke: 'var(--mk-teal-deep)', strokeWidth: 5.5 }} />
+    <ellipse cx={AXIS_X} cy={y0 - 10} rx={loopW} ry="13" style={{ fill: 'none', stroke: url('loop'), strokeWidth: 3.6 }} />
+    <path d={`M${AXIS_X - loopW} ${y0 - 10}A${loopW} 13 0 0 1 ${AXIS_X - loopW * 0.2} ${y0 - 22.6}`} style={{ fill: 'none', stroke: 'var(--mk-white)', strokeOpacity: 0.6, strokeWidth: 1.1 }} />
+    <rect x={AXIS_X - 5} y={y0 - 4} width="10" height="6" rx="2" style={fill('var(--mk-teal-deep)')} />
+    <path d={`M${AXIS_X - r} ${y0}L${AXIS_X - r} ${y0 + h}A${r} ${ry} 0 0 0 ${AXIS_X + r} ${y0 + h}L${AXIS_X + r} ${y0}Z`} style={{ fill: url('cap') }} />
+    {[7, 13, 18].map(dy => <path key={dy} d={band(dy)} style={{ fill: 'none', stroke: 'var(--mk-wood-dark)', strokeOpacity: 0.16, strokeWidth: 0.7 }} />)}
+    {/* the teal ring where the cap meets the glass */}
+    <path d={`${band(h - 6)}L${AXIS_X + r} ${y0 + h}A${r} ${ry} 0 0 1 ${AXIS_X - r} ${y0 + h}Z`} style={fill('var(--mk-teal)')} />
+    <path d={band(h - 6)} style={{ fill: 'none', stroke: 'var(--mk-sky-pale)', strokeOpacity: 0.7, strokeWidth: 0.8 }} />
+    <rect x={AXIS_X + fx.streakU * r * 0.9 - 2} y={y0 + 2} width="4" height={h - 10} rx="2" style={fill('var(--mk-white)', on ? 0.5 : 0.25)} />
+    <ellipse cx={AXIS_X} cy={y0} rx={r} ry={ry} style={{ fill: url('capTop') }} />
+    <ellipse cx={AXIS_X} cy={y0} rx={r} ry={ry} style={{ fill: 'none', stroke: 'var(--mk-white)', strokeOpacity: 0.6, strokeWidth: 0.8 }} />
   </g>;
 }
+/** Where the cap's hinge is: it flips open about this point of the picture. */
+export const capHinge = (shape: ShapeId) => ({ x: AXIS_X - radiusAt(shape, topY(shape)) - 4.5, y: topY(shape) + 8 });
 
 // ── Stickers ───────────────────────────────────────────────────────────────
 
-const STICKER_PAINT: Readonly<Record<BottleSticker, { a: string; b: string; ink: string }>> = {
-  star: { a: 'var(--mk-sun)', b: 'var(--mk-amber)', ink: 'var(--mk-gold-deep)' },
-  leaf: { a: 'var(--mk-spring)', b: 'var(--mk-leaf)', ink: 'var(--mk-leaf-deep)' },
-  wave: { a: 'var(--mk-sky)', b: 'var(--mk-water)', ink: 'var(--mk-indigo)' },
-  sun: { a: 'var(--mk-butter)', b: 'var(--mk-orange)', ink: 'var(--mk-rust)' },
-  moon: { a: 'var(--mk-lilac)', b: 'var(--mk-violet)', ink: 'var(--mk-indigo-deep)' },
-  heart: { a: 'var(--mk-blossom)', b: 'var(--mk-rose-deep)', ink: 'var(--mk-plum)' },
+const STICKER_RING: Readonly<Record<BottleSticker, string>> = {
+  star: '--mk-orange', leaf: '--mk-leaf', wave: '--mk-water', sun: '--mk-amber', moon: '--mk-bluebell', heart: '--mk-rose',
 };
-/** Each sticker in a 40 by 40 box about its centre. */
-const STICKER_SHAPE: Readonly<Record<BottleSticker, string>> = {
-  star: 'M0 -17.5C1.4 -17.5 2.2 -16.6 2.9 -15.1L6.4 -8.1L14 -7C15.8 -6.7 16.6 -5.9 16.9 -4.9C17.2 -3.7 16.7 -2.7 15.5 -1.6L10 3.8L11.3 11.4C11.6 13.2 11.2 14.3 10.3 14.9C9.3 15.6 8.1 15.4 6.6 14.6L0 11.1L-6.6 14.6C-8.1 15.4 -9.3 15.6 -10.3 14.9C-11.2 14.3 -11.6 13.2 -11.3 11.4L-10 3.8L-15.5 -1.6C-16.7 -2.7 -17.2 -3.7 -16.9 -4.9C-16.6 -5.9 -15.8 -6.7 -14 -7L-6.4 -8.1L-2.9 -15.1C-2.2 -16.6 -1.4 -17.5 0 -17.5Z',
-  leaf: 'M-14 15C-17 6 -14 -6 -5 -12C2 -16.5 10 -17 16 -16.5C16.8 -9 15.5 1 9 8C3 14.5 -6 17 -14 15Z',
-  wave: 'M-17 13C-17 2 -11 -9 0 -12.5C8 -15 15.5 -12 17 -6C11.5 -9 5 -7.5 3 -2.5C1.5 1.5 4.5 5.5 9.5 5.5C12.5 5.5 15 4.5 17 3L17 13Z',
-  sun: 'M0 -18L3.2 -11.4L10.6 -14.6L9.3 -7.4L16.8 -5.2L11 0L16.8 5.2L9.3 7.4L10.6 14.6L3.2 11.4L0 18L-3.2 11.4L-10.6 14.6L-9.3 7.4L-16.8 5.2L-11 0L-16.8 -5.2L-9.3 -7.4L-10.6 -14.6L-3.2 -11.4Z',
-  moon: 'M3 -16.5C-6.5 -15.5 -14 -7.5 -14 1.5C-14 10.5 -6.5 17.5 2.5 17.5C8.5 17.5 13.5 14.5 16 9.5C13.5 11 10.5 11.8 7.5 11.8C-1 11.8 -7 5.5 -7 -2.5C-7 -8.5 -3.5 -13.8 3 -16.5Z',
-  heart: 'M0 16C-3 13.4 -15.5 5.8 -15.5 -4C-15.5 -10.5 -10.8 -14.5 -6.2 -14.5C-3.2 -14.5 -1.2 -12.8 0 -10.6C1.2 -12.8 3.2 -14.5 6.2 -14.5C10.8 -14.5 15.5 -10.5 15.5 -4C15.5 5.8 3 13.4 0 16Z',
-};
-
-/** One vinyl sticker: a thin white die-cut edge, a soft two-tone print, a
- * small printed detail and a gloss. */
-export function StickerArt({ uid, art, lift = false }: { uid: string; art: BottleSticker; lift?: boolean }) {
-  const { id, url } = ids(uid);
-  const paint = STICKER_PAINT[art], d = STICKER_SHAPE[art];
+const DISC = 18;
+/** One vinyl sticker: a round white die-cut disc printed with a kit motif
+ * (a companion's face, Aya's leaf, the petal sun, the knit flower), a thin
+ * ring of its own colour and a gloss. Drawn about its centre in a 40 box. */
+export function StickerArt({ art, lift = false }: { uid?: string; art: BottleSticker; lift?: boolean }) {
+  const print = STICKER_PRINT[art], ring = STICKER_RING[art], size = DISC * 2 * print.fit;
+  const [cx, cy, crop] = print.crop;
   return <g>
-    <defs><linearGradient id={id(`st-${art}`)} x1="0" y1="0" x2=".6" y2="1"><stop offset="0" style={stop(paint.a)} /><stop offset="1" style={stop(paint.b)} /></linearGradient></defs>
-    <path d={d} transform={lift ? 'translate(1.5 3)' : 'translate(0.6 1.2)'} style={{ fill: 'var(--mk-shadow)', opacity: lift ? 0.25 : 0.22, stroke: 'var(--mk-shadow)', strokeWidth: 4.5, strokeLinejoin: 'round' }} />
-    <path d={d} style={{ fill: 'var(--mk-white)', stroke: 'var(--mk-white)', strokeWidth: 4.5, strokeLinejoin: 'round' }} />
-    <path d={d} style={{ fill: url(`st-${art}`) }} />
-    <StickerDetail art={art} ink={paint.ink} />
-    <path d="M-11 -9C-7 -13 -1 -14 3 -13" style={{ fill: 'none', stroke: 'var(--mk-white)', strokeOpacity: 0.55, strokeWidth: 2.2, strokeLinecap: 'round' }} />
+    <circle r={DISC + 1} transform={lift ? 'translate(1.6 3.2)' : 'translate(0.6 1.3)'} style={fill('var(--mk-shadow)', lift ? 0.22 : 0.26)} />
+    <circle r={DISC + 1} style={fill('var(--mk-white)')} />
+    <circle r={DISC - 1.4} style={fill(mix(ring, '--mk-white', 16))} />
+    <circle r={DISC - 1.4} style={{ fill: 'none', stroke: `var(${ring})`, strokeOpacity: 0.55, strokeWidth: 1.3 }} />
+    <svg x={-size / 2} y={-size / 2} width={size} height={size} viewBox={`${cx} ${cy} ${crop} ${crop}`} overflow="hidden"><image href={print.picture.src} width={print.picture.width} height={print.picture.height} /></svg>
+    <path d="M-12.5 -8C-9 -13 -3.5 -15.5 2 -15.5" style={{ fill: 'none', stroke: 'var(--mk-white)', strokeOpacity: 0.7, strokeWidth: 2, strokeLinecap: 'round' }} />
   </g>;
-}
-function StickerDetail({ art, ink }: { art: BottleSticker; ink: string }) {
-  const line = (d: string, w = 1.8, o = 0.55) => <path d={d} style={{ fill: 'none', stroke: ink, strokeOpacity: o, strokeWidth: w, strokeLinecap: 'round', strokeLinejoin: 'round' }} />;
-  switch (art) {
-    case 'star': return <path d="M0 -7L2 -2.6L6.6 -2.2L3.1 1L4.1 5.6L0 3.2L-4.1 5.6L-3.1 1L-6.6 -2.2L-2 -2.6Z" style={{ fill: 'var(--mk-white)', opacity: 0.45 }} />;
-    case 'leaf': return <>{line('M-11 12C-4 4 4 -4 13 -13', 1.6, 0.6)}{line('M-3 4.5L-4 -3M3 -2L1.5 -9M3 -2L10 -3.5M-3 4.5L5 3', 1.2, 0.45)}</>;
-    case 'wave': return <>{line('M-13 9C-11 2 -6 -4 1 -6.5', 1.5, 0.35)}<circle cx="11" cy="-1" r="1.6" style={{ fill: 'var(--mk-white)', opacity: 0.8 }} /><circle cx="14" cy="-4.5" r="1" style={{ fill: 'var(--mk-white)', opacity: 0.7 }} /></>;
-    case 'sun': return <><circle r="8.6" style={{ fill: 'var(--mk-sun)' }} /><circle r="8.6" style={{ fill: 'none', stroke: ink, strokeOpacity: 0.3, strokeWidth: 1.2 }} />{line('M-3.5 1.8C-1.8 3.8 1.8 3.8 3.5 1.8', 1.4, 0.6)}<circle cx="-3" cy="-2" r="1.1" style={{ fill: ink, opacity: 0.6 }} /><circle cx="3" cy="-2" r="1.1" style={{ fill: ink, opacity: 0.6 }} /></>;
-    case 'moon': return <><path d="M10.5 -11L11.6 -8.4L14.3 -8.1L12.3 -6.3L12.9 -3.6L10.5 -5L8.1 -3.6L8.7 -6.3L6.7 -8.1L9.4 -8.4Z" style={{ fill: 'var(--mk-butter)' }} /><circle cx="-6" cy="5" r="1.8" style={{ fill: ink, opacity: 0.25 }} /><circle cx="-2" cy="11" r="1.2" style={{ fill: ink, opacity: 0.25 }} /></>;
-    case 'heart': return <path d="M-9 -6C-9 -9 -6.5 -10.5 -4.5 -10" style={{ fill: 'none', stroke: 'var(--mk-white)', strokeOpacity: 0.6, strokeWidth: 2.4, strokeLinecap: 'round' }} />;
-  }
 }
 
 /** Where a slot is drawn: its centre, size and foreshortening at a turn. */
@@ -358,18 +334,24 @@ export function slotPlace(shape: ShapeId, slot: number, rotation: number) {
 }
 
 /** The stickers on one half of the bottle. The far half is seen through the
- * glass: its stickers mirrored, faint and softened. */
-export function StickerLayer({ uid, shape, stickers, rotation, side, peeling }: { uid: string; shape: ShapeId; stickers: readonly BottleStickerPlacement[]; rotation: number; side: 'back' | 'front'; peeling?: number | null }) {
+ * glass: its stickers mirrored, faint and softened. `fresh` is the slot just
+ * pressed on (it gets the press and the smoothed-out air bubble); `ghost` is
+ * a sticker being peeled off. */
+export function StickerLayer({ uid, shape, stickers, rotation, side, fresh = null, ghost = null }: { uid: string; shape: ShapeId; stickers: readonly BottleStickerPlacement[]; rotation: number; side: 'back' | 'front'; fresh?: number | null; ghost?: BottleStickerPlacement | null }) {
   const { url } = ids(uid);
-  const shown = stickers.map(s => ({ s, p: slotPlace(shape, s.slot, rotation) })).filter(({ p }) => side === 'front' ? p.front : !p.front)
+  const all = ghost && side === 'front' ? [...stickers, ghost] : stickers;
+  const shown = all.map(s => ({ s, p: slotPlace(shape, s.slot, rotation) })).filter(({ p }) => side === 'front' ? p.front : !p.front)
     // Far to near, so a nearer sticker covers a farther one.
     .sort((a, b) => a.p.depth - b.p.depth);
   if (!shown.length) return null;
   return <g clipPath={url('outer')} filter={side === 'back' ? url('backSticker') : undefined} style={side === 'back' ? { opacity: 0.5 } : undefined}>
     {shown.map(({ s, p }) => {
-      const k = p.size / 40, sx = (side === 'back' ? p.depth : Math.max(0.02, p.scaleX)) * k;
-      return <g key={s.slot} data-bl-sticker={s.art} data-slot={s.slot} transform={`translate(${p.cx.toFixed(2)} ${p.cy.toFixed(2)}) scale(${sx.toFixed(3)} ${k.toFixed(3)})`} style={peeling === s.slot ? { opacity: 0.4 } : undefined}>
-        <StickerArt uid={uid} art={s.art} />
+      const k = p.size / 40, sx = (side === 'back' ? p.depth : Math.max(0.02, p.scaleX)) * k, peeling = s === ghost;
+      return <g key={peeling ? 'ghost' : s.slot} data-bl-sticker={peeling ? undefined : s.art} data-slot={s.slot} transform={`translate(${p.cx.toFixed(2)} ${p.cy.toFixed(2)}) scale(${sx.toFixed(3)} ${k.toFixed(3)})`}>
+        <g className={peeling ? 'bl-vinyl bl-vinyl--peel' : fresh === s.slot ? 'bl-vinyl bl-vinyl--press' : 'bl-vinyl'}>
+          <StickerArt art={s.art} />
+          {fresh === s.slot && !peeling && <ellipse className="bl-vinyl__air" cx="3" cy="2" rx="6.5" ry="5" style={fill('var(--mk-white)', 0.75)} />}
+        </g>
       </g>;
     })}
   </g>;
@@ -382,8 +364,9 @@ export function SlotRings({ uid, shape, slots, rotation, hot }: { uid: string; s
     {slots.map(slot => {
       const p = slotPlace(shape, slot, rotation), r = p.size * 0.52;
       return <g key={slot} transform={`translate(${p.cx.toFixed(2)} ${p.cy.toFixed(2)}) scale(${p.scaleX.toFixed(3)} 1)`} data-hot={hot === slot}>
-        <circle r={r} style={{ fill: 'var(--mk-white)', opacity: hot === slot ? 0.55 : 0.28 }} />
-        <circle r={r} className="bl-ring" style={{ fill: 'none', stroke: hot === slot ? 'var(--studio-action-gold)' : 'var(--mk-white)', strokeWidth: hot === slot ? 3.2 : 2.2, strokeDasharray: '5 4' }} />
+        <circle r={r} style={{ fill: 'var(--mk-white)', opacity: hot === slot ? 0.6 : 0.3 }} />
+        <circle r={r} className="bl-ring" style={{ fill: 'none', stroke: hot === slot ? 'var(--studio-signal)' : 'var(--mk-white)', strokeWidth: hot === slot ? 3.4 : 2.4, strokeDasharray: '5 4' }} />
+        <circle r={r + 1.6} style={{ fill: 'none', stroke: 'var(--studio-graphite)', strokeOpacity: 0.28, strokeWidth: 0.8 }} />
       </g>;
     })}
   </g>;
@@ -402,17 +385,18 @@ export function StillBubbles({ uid, shape, count = 9 }: { uid: string; shape: Sh
 
 export interface StillContentProps {
   uid: string; shape: ShapeId; finish: BottleFinish; stickers: readonly BottleStickerPlacement[];
-  rotation: number; lamp: number; map: RefractionMap | null; showLamp?: boolean;
+  rotation: number; lamp: number; map: RefractionMap | null; showLamp?: boolean; friend?: boolean; small?: boolean;
 }
 /** Every layer, back to front, for a picture that does not move. */
-export function StillContent({ uid, shape, finish, stickers, rotation, lamp, map, showLamp = true }: StillContentProps) {
+export function StillContent({ uid, shape, finish, stickers, rotation, lamp, map, showLamp = true, friend = false, small = false }: StillContentProps) {
   return <>
     <BottleDefs uid={uid} shape={shape} finish={finish} map={map} />
-    <Backdrop uid={uid} />
+    <Backdrop small={small} />
     <LampLight uid={uid} angle={lamp} on />
-    <TableShadow uid={uid} shape={shape} angle={lamp} on />
+    <TableShadow uid={uid} shape={shape} angle={lamp} on stickers={stickers} rotation={rotation} />
     {showLamp && <Lamp uid={uid} angle={lamp} on />}
-    <GlassInside uid={uid} shape={shape} finish={finish} />
+    {friend && <AyaArt uid={uid} x={AXIS_X + AYA.reach} y={AYA.feet} />}
+    <GlassInside uid={uid} shape={shape} finish={finish} small={small} />
     <StillBubbles uid={uid} shape={shape} />
     <StickerLayer uid={uid} shape={shape} stickers={stickers} rotation={rotation} side="back" />
     <GlassFront uid={uid} shape={shape} finish={finish} />

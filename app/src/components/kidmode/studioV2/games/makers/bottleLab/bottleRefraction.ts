@@ -14,7 +14,12 @@ import { AXIS_X, BASE_Y, ELLIPSE, PROFILES, WALL, baseRadius, radiusAt, topY, ty
 export interface RefractionMap { href: string; x: number; y: number; width: number; height: number; scale: number }
 
 /** The ray's landing point on the wall for a point of the picture inside the glass. */
-export function refractedPoint(shape: ShapeId, x: number, y: number, frost = false): { x: number; y: number } | null {
+/** `still` is the bottle at rest with its water at the profile's level. Play
+ * draws two pictures instead and lets the moving water line choose between
+ * them: `air` (walls only, everywhere) and `wet` (the water lens, everywhere). */
+export type RefractionMode = 'still' | 'air' | 'wet';
+
+export function refractedPoint(shape: ShapeId, x: number, y: number, frost = false, mode: RefractionMode = 'still'): { x: number; y: number } | null {
   const top = topY(shape);
   const rb = baseRadius(shape);
   let r = radiusAt(shape, y);
@@ -30,7 +35,7 @@ export function refractedPoint(shape: ShapeId, x: number, y: number, frost = fal
   const level = PROFILES[shape].water, rw = radiusAt(shape, level) * (1 - WALL);
   const uw = (x - AXIS_X) / Math.max(1, rw);
   const surfaceBack = Math.abs(uw) < 1 ? level - rw * ELLIPSE * Math.sqrt(1 - uw * uw) : level;
-  const wet = y >= surfaceBack && Math.abs(u) < 1 - WALL * 0.6;
+  const wet = mode !== 'air' && (mode === 'wet' || y >= surfaceBack) && Math.abs(u) < 1 - WALL * 0.6;
   const k = frost ? 0.72 : 1;
   if (wet) {
     // Flip and magnify the middle (slope -0.48 at the axis), squeeze the edges (|g(1)| = 1.22).
@@ -49,11 +54,11 @@ const cache = new Map<string, RefractionMap | null>();
 
 /** The map for a shape and finish, or null where there is no canvas (tests,
  * very old browsers): the bottle then shows the wall unbent but still tinted. */
-export function refractionMap(shape: ShapeId, frost = false): RefractionMap | null {
-  const key = `${shape}:${frost ? 'frost' : 'gloss'}`;
+export function refractionMap(shape: ShapeId, frost = false, mode: RefractionMode = 'still'): RefractionMap | null {
+  const key = `${shape}:${frost ? 'frost' : 'gloss'}:${mode}`;
   if (cache.has(key)) return cache.get(key) ?? null;
   let map: RefractionMap | null = null;
-  try { map = drawMap(shape, frost); } catch { map = null; }
+  try { map = drawMap(shape, frost, mode); } catch { map = null; }
   cache.set(key, map);
   return map;
 }
@@ -61,7 +66,7 @@ export function refractionMap(shape: ShapeId, frost = false): RefractionMap | nu
 /** Map pixels per scene unit: the filter scales the map up smoothly. */
 const DENSITY = 1;
 
-function drawMap(shape: ShapeId, frost: boolean): RefractionMap | null {
+function drawMap(shape: ShapeId, frost: boolean, mode: RefractionMode): RefractionMap | null {
   if (typeof document === 'undefined' || typeof navigator === 'undefined' || /jsdom/i.test(navigator.userAgent)) return null;
   const top = Math.floor(topY(shape) - 2), bottom = Math.ceil(BASE_Y + baseRadius(shape) * ELLIPSE + 2);
   const half = Math.ceil(Math.max(...PROFILES[shape].knots.map(([, r]) => r)) + 2);
@@ -73,7 +78,7 @@ function drawMap(shape: ShapeId, frost: boolean): RefractionMap | null {
     const y = top + (j + 0.5) / DENSITY;
     for (let i = 0; i < w; i++) {
       const x = x0 + (i + 0.5) / DENSITY;
-      const p = refractedPoint(shape, x, y, frost);
+      const p = refractedPoint(shape, x, y, frost, mode);
       if (!p) continue;
       const n = j * w + i;
       dx[n] = p.x - x; dy[n] = p.y - y;

@@ -95,27 +95,28 @@ export function bestViewRotation(stickers: readonly BottleStickerPlacement[]): n
 
 // ── The lamp ───────────────────────────────────────────────────────────────
 
-/** The lamp's angle from straight above the bottle, in degrees (negative is
- * the left). The arc stops before the lamp would dip behind the bottle. */
+/** The lamp's angle round the bottle, in degrees: negative is the left, 0 is
+ * straight behind it, positive the right. */
 export const LAMP_MIN = -60;
 export const LAMP_MAX = 60;
 export const LAMP_STEP = 10;
 export const LAMP_START = -35;
 export const clampLamp = (angle: number) => Number.isFinite(angle) ? Math.min(LAMP_MAX, Math.max(LAMP_MIN, angle)) : LAMP_START;
 
-/** The lamp's place on its arc, in scene units, and the way it points. */
-export const LAMP_ARC = { cx: 180, cy: 214, rx: 150, ry: 168 } as const;
+/** The lamp is the kit's desk lamp: it stands on the table just behind the
+ * bottle's line and slides along it, from the far left (its angle -60) past
+ * the back of the bottle (0) to the far right (60). */
+export const LAMP_TRACK = { x: 180, reach: 138, y: 374 } as const;
+/** The lamp's place on its track, in scene units. `face` is the way its head
+ * points: 1 to the right (lamp on the left), -1 to the left, turning through
+ * 0 while it passes behind the bottle, so it always leans toward the glass. */
 export function lampPosition(angle: number) {
-  const a = clampLamp(angle) * 1.3 * Math.PI / 180;
-  const x = LAMP_ARC.cx + LAMP_ARC.rx * Math.sin(a), y = LAMP_ARC.cy - LAMP_ARC.ry * Math.cos(a);
-  /** The shade aims at the middle of the bottle. */
-  const aim = Math.atan2(260 - y, 180 - x) * 180 / Math.PI;
-  return { x, y, aim };
+  const a = clampLamp(angle);
+  return { x: LAMP_TRACK.x + a / LAMP_MAX * LAMP_TRACK.reach, y: LAMP_TRACK.y, face: Math.max(-1, Math.min(1, -a / 9)) };
 }
-/** The angle a pointer at (x, y) asks the lamp for. */
-export function lampAngleAt(x: number, y: number): number {
-  const a = Math.atan2((x - LAMP_ARC.cx) / LAMP_ARC.rx, (LAMP_ARC.cy - y) / LAMP_ARC.ry);
-  return clampLamp(a * 180 / Math.PI / 1.3);
+/** The angle a pointer at (x, y) asks the lamp for: only how far along the table it is. */
+export function lampAngleAt(x: number, _y = LAMP_TRACK.y): number {
+  return clampLamp((x - LAMP_TRACK.x) / LAMP_TRACK.reach * LAMP_MAX);
 }
 
 /** What the lamp does to the glass and the table, all from its angle:

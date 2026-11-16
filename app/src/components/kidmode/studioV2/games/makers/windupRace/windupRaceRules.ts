@@ -38,7 +38,7 @@ export const SAMPLE_RATE = 60;
 const SAMPLE_EVERY = Math.round(1 / (STEP * SAMPLE_RATE));
 export const MAX_RUN_SECONDS = 18;
 
-export type TrackId = 'shelf' | 'ramp' | 'table';
+export type TrackId = 'shelf' | 'ramp' | 'table' | 'blockBridge' | 'bookSlide' | 'grandTour';
 export interface Track {
   id: TrackId;
   /** The rolling surface, left to right: [x, y] with y up from the table. */
@@ -65,7 +65,9 @@ const flat = (from: number, to: number, y = 0): [number, number][] => [[from, y]
 /** A pencil lying across the table: a low six-sided hump. */
 const pencil = (x: number): [number, number][] => [[x - 16, 0], [x - 8, 7], [x + 8, 7], [x + 16, 0]];
 
-/** The three tracks, in the order they are played. */
+/** Every track. The first three are the first play, in order; the next three
+ * are the second set. Each is authored and tuned on its own (see the tests:
+ * more wind always goes further, and each asks for its own amount of wind). */
 export const TRACKS: readonly Track[] = [
   {
     // Bookshelf run: flat and short, along a shelf of cloth-bound books.
@@ -82,8 +84,45 @@ export const TRACKS: readonly Track[] = [
     id: 'table', points: [...flat(0, 360), ...pencil(380), ...flat(396, 1180), [1380, 30], [1760, 30]], start: 70, flag: 1400, cushion: 1600,
     bumps: [{ at: 382, cost: 6000 }], dominoes: [560, 588, 616, 644, 672, 700], dominoKeep: .93, ball: null, tunnel: [820, 1040],
   },
+  {
+    // Block bridge: up a wooden wedge, over a plank with dominoes standing on it, down the far wedge.
+    id: 'blockBridge', points: [[0, 0], [300, 0], [430, 26], [760, 26], [890, 0], [1400, 0]], start: 70, flag: 940, cushion: 1130,
+    bumps: [], dominoes: [500, 528, 556, 584, 612], dominoKeep: .93, ball: null, tunnel: null,
+  },
+  {
+    // Book slide: it starts high on a pile of books, runs down a ruler (the slope
+    // adds speed), nudges the wool ball, then climbs a leaning book to the flag.
+    id: 'bookSlide', points: [[0, 80], [230, 80], [490, 0], [900, 0], [1090, 60], [1600, 60]], start: 70, flag: 1180, cushion: 1360,
+    bumps: [], dominoes: [], dominoKeep: 1, ball: 640, tunnel: null,
+  },
+  {
+    // The grand table: pencil, dominoes, the paper tunnel, the wool ball, then the rise.
+    id: 'grandTour', points: [...flat(0, 344), ...pencil(360), ...flat(376, 1100), [1280, 30], [1800, 30]], start: 70, flag: 1310, cushion: 1500,
+    bumps: [{ at: 362, cost: 6000 }], dominoes: [470, 498, 526, 554, 582, 610], dominoKeep: .93, ball: 1000, tunnel: [680, 880],
+  },
 ];
-export const TRACK_COUNT = TRACKS.length;
+/** One play is three tracks. */
+export const PLAY_LENGTH = 3;
+/** The sets, by play: the first play is always the first set; Play again moves
+ * on to the next, so a second go is new tracks, and later goes mix the two. */
+export const TRACK_SETS: readonly (readonly TrackId[])[] = [
+  ['shelf', 'ramp', 'table'],
+  ['blockBridge', 'bookSlide', 'grandTour'],
+  ['shelf', 'bookSlide', 'table'],
+  ['blockBridge', 'ramp', 'grandTour'],
+];
+/** The three tracks of play number `round` (0 = the first play). */
+export function trackSet(round: number): readonly Track[] {
+  const r = Number.isFinite(round) ? Math.max(0, Math.trunc(round)) : 0;
+  return TRACK_SETS[r % TRACK_SETS.length].map(id => TRACKS.find(track => track.id === id)!);
+}
+/** The room's light changes from play to play (scenery only; the physics never does). */
+export const ROOM_LIGHTS = ['afternoon', 'morning', 'sundown'] as const;
+export type RoomLight = typeof ROOM_LIGHTS[number];
+export function roomLight(round: number): RoomLight {
+  const r = Number.isFinite(round) ? Math.max(0, Math.trunc(round)) : 0;
+  return ROOM_LIGHTS[r % ROOM_LIGHTS.length];
+}
 
 /* ---------- track geometry ---------- */
 
@@ -287,10 +326,27 @@ export function sampleAt(run: RunResult, t: number): RunSample {
 /** Wheel turn (radians) for a distance rolled. */
 export function wheelAngle(s: number): number { return s / WHEEL_R; }
 
-/** The next track after a finish, or null after the last one. */
+/** The next place in the play after a finish (0, 1, 2), or null after the last one. */
 export function nextTrack(index: number): number | null {
   const i = Number.isFinite(index) ? Math.trunc(index) : 0;
-  return i + 1 < TRACK_COUNT ? Math.max(0, i + 1) : null;
+  return i + 1 < PLAY_LENGTH ? Math.max(0, i + 1) : null;
+}
+
+/** A run that ends within this much table of the flag pole, either side, is a
+ * close one: the playback slows to watch it (nothing is judged or said). */
+export const CLOSE_CALL = 70;
+/** The playback slows from the moment the nose is this far short of the flag. */
+export const CLOSE_LEAD = 110;
+/** When to begin slowing a close run (seconds into the run), or null when the
+ * run is not a close one. Pure: read from the precomputed samples. */
+export function closeCallAt(track: Track, run: RunResult): number | null {
+  const nose = run.finished ? run.stop + CAR_HALF : run.reach;
+  if (Math.abs(nose - track.flag) > CLOSE_CALL) return null;
+  // A car that rolled a long way back did not end near the flag.
+  if (!run.finished && run.reach - (run.stop + CAR_HALF) > CLOSE_CALL) return null;
+  const from = track.flag - CLOSE_LEAD;
+  for (const sample of run.samples) if (sample.s + CAR_HALF >= from) return sample.t;
+  return null;
 }
 
 /** Up to three chalk marks per track (furthest reach of the last runs), newest last. */

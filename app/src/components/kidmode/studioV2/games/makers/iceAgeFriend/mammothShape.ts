@@ -2,9 +2,10 @@
  * y 615). The side view faces left: a high domed crown, a dip at the neck, the
  * shoulder hump as the top of the back, the back sloping down to low hips,
  * small ears, a long trunk and long tusks that sweep forward, down and up.
- * The turned three-quarter view is the same regions warped (nearer parts
- * larger, the far end smaller and higher) and mirrored to face right: one fur
- * system, two region sets. Pure data and maths: no DOM. */
+ * Turned about, the mammoth faces right: its other flank, an honest mirror
+ * of the same drawing with the light still falling from the top left (the
+ * strands are seeded and lit again for that side): one fur system, two
+ * region sets. Pure data and maths: no DOM. */
 import { polygonBounds, smoothClosed, type Bounds, type DiscoveryId, type FlowKind, type FurRegion, type PartId, type Vec } from './iceAgeFriendRules';
 
 export type ViewId = 'side' | 'turned';
@@ -40,7 +41,9 @@ const TUSK_NEAR: readonly Bezier[] = [
 ];
 const TUSK_FAR_SHIFT: Vec = [22, -6];
 
-export const EYE: Vec = [318, 258];
+export const EYE: Vec = [322, 256];
+/** The corner of the mouth, under the cheek and behind the tusk. */
+export const MOUTH: Vec = [362, 371];
 export const TRUNK_BASE: Vec = [300, 294];
 export const TRUNK_LENGTH = 300;
 export const GROUND_Y = 615;
@@ -53,28 +56,35 @@ const HOTSPOTS: Record<Exclude<DiscoveryId, 'trunk'>, Vec> = {
   coats: [604, 404], ears: [396, 296], tusks: [146, 476], hump: [528, 214],
 };
 
-/* ── the turned view ──────────────────────────────────────────────────── */
+/* ── the other side ───────────────────────────────────────────────────── */
 
-const DEPTH_FROM = 300, DEPTH_SPAN = 560, ANCHOR: Vec = [300, 380];
-/** How far back along the animal a point is (0 at the face, 1 at the rump). */
-export const depthAt = (x: number) => Math.max(-0.45, Math.min(1.1, (x - DEPTH_FROM) / DEPTH_SPAN));
-/** Size at depth: the face comes nearer, the rump goes further away. */
-export const scaleAt = (x: number) => 1.1 - 0.36 * depthAt(x);
-/** Warps a side-view point into the turned view (mirrored to face right). */
+/** The mirror line: the middle of the animal from tusk tip to tail, so both sides fill the same frame. */
+export const FLIP_X = 980;
+/** A side-view point on the animal's other side (facing right). */
 export function turnPoint([x, y]: Vec): Vec {
-  const k = scaleAt(x);
-  return [900 - (ANCHOR[0] + (x - ANCHOR[0]) * k), ANCHOR[1] + (y - ANCHOR[1]) * k];
+  return [FLIP_X - x, y];
 }
-/** The inverse of `turnPoint` (the warp only ever grows toward the face, so bisection finds it). */
+/** The inverse of `turnPoint`. */
 export function unturnPoint([x, y]: Vec): Vec {
-  let lo = -600, hi = 1400;
-  for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (turnPoint([mid, 0])[0] > x) lo = mid; else hi = mid; }
-  const sx = (lo + hi) / 2, k = scaleAt(sx);
-  return [sx, ANCHOR[1] + (y - ANCHOR[1]) / k];
+  return [FLIP_X - x, y];
 }
 export function placePoint(view: ViewId, p: Vec): Vec {
   return view === 'side' ? p : turnPoint(p);
 }
+
+/* ── things the child plays with (side view) ──────────────────────────── */
+
+/** Where snow gathers: along the crown, the hump and the sloping back. */
+export const SNOW_SPOTS: readonly { at: Vec; part: 'head' | 'body'; r: number }[] = [
+  { at: [338, 178], part: 'head', r: 17 }, { at: [372, 170], part: 'head', r: 20 }, { at: [404, 186], part: 'head', r: 15 },
+  { at: [474, 216], part: 'body', r: 18 }, { at: [506, 200], part: 'body', r: 22 }, { at: [542, 196], part: 'body', r: 24 }, { at: [580, 203], part: 'body', r: 22 },
+  { at: [618, 218], part: 'body', r: 21 }, { at: [656, 238], part: 'body', r: 20 }, { at: [694, 258], part: 'body', r: 21 }, { at: [732, 281], part: 'body', r: 19 },
+  { at: [768, 304], part: 'body', r: 18 }, { at: [802, 330], part: 'body', r: 16 },
+];
+/** The stroke the hint hand shows (and a key press makes): along the back, from the hump toward the tail. */
+const STROKE: readonly Vec[] = [[486, 236], [530, 222], [580, 226], [630, 246], [684, 276], [736, 306], [784, 340]];
+/** Behind the small ear: the tickle spot. */
+const TICKLE: Vec = [412, 296];
 
 /* ── regions ──────────────────────────────────────────────────────────── */
 
@@ -111,6 +121,11 @@ export interface MammothView {
   hotspots: Record<Exclude<DiscoveryId, 'trunk'>, Vec>;
   /** Everything the camera may show (the animal, its tusks, its shadow). */
   bounds: Bounds;
+  /** Snow spots, the hint hand's stroke, the tickle spot and the mouth, placed for this view. */
+  snow: { at: Vec; part: 'head' | 'body'; r: number }[];
+  stroke: Vec[];
+  tickle: Vec;
+  mouth: Vec;
   /** Light and fur colours are computed against the animal's own box. */
   furBounds: Bounds;
   groundY: number;
@@ -136,8 +151,7 @@ export function mammothView(view: ViewId): MammothView {
   const foot = (id: keyof typeof LEGS) => { const l = LEGS[id]; const a = place([l.x0, l.foot]), b = place([l.x1, l.foot]); return { x0: Math.min(a[0], b[0]), x1: Math.max(a[0], b[0]), y: a[1] }; };
   const all = [...shapes.body, ...shapes.head, ...shapes.tail, ...shapes.legFront, ...shapes.legHind, ...shapes.legFarFront, ...shapes.legFarHind];
   const tuskNear = TUSK_NEAR.map(b => bez(b));
-  // Turned toward us, the far tusk swings out to the far side and shows more.
-  const tuskFar = TUSK_NEAR.map(b => bez(b, view === 'side' ? TUSK_FAR_SHIFT : [56, -26], view === 'side' ? 0.96 : 0.9));
+  const tuskFar = TUSK_NEAR.map(b => bez(b, TUSK_FAR_SHIFT, 0.96));
   const tuskPoints = tuskNear.flat().concat(tuskFar.flat());
   const body = polygonBounds(all), tusk = polygonBounds(tuskPoints);
   const furBounds = body;
@@ -146,10 +160,12 @@ export function mammothView(view: ViewId): MammothView {
   const result: MammothView = {
     view, mirror: view !== 'side', regions, shapes,
     feet: { legFarHind: foot('legFarHind'), legFarFront: foot('legFarFront'), legHind: foot('legHind'), legFront: foot('legFront') },
-    tusks: { near: tuskNear, far: tuskFar }, eye: place(EYE), trunkBase: place(TRUNK_BASE), trunkScale: view === 'side' ? 1 : scaleAt(TRUNK_BASE[0]),
+    tusks: { near: tuskNear, far: tuskFar }, eye: place(EYE), trunkBase: place(TRUNK_BASE), trunkScale: 1,
     pivots: { neck: place(PIVOTS.neck), ear: place(PIVOTS.ear), tail: place(PIVOTS.tail) },
     hotspots: { coats: place(HOTSPOTS.coats), ears: place(HOTSPOTS.ears), tusks: place(HOTSPOTS.tusks), hump: place(HOTSPOTS.hump) },
     bounds, furBounds, groundY,
+    snow: SNOW_SPOTS.map(spot => ({ at: place(spot.at), part: spot.part, r: spot.r })),
+    stroke: STROKE.map(place), tickle: place(TICKLE), mouth: place(MOUTH),
   };
   memo.set(view, result);
   return result;
@@ -159,6 +175,27 @@ export function mammothView(view: ViewId): MammothView {
 export function onCoat(view: MammothView, x: number, y: number, inside: (x: number, y: number, poly: readonly Vec[]) => boolean): boolean {
   const s = view.shapes;
   return [s.body, s.head, s.ear, s.tail, s.legFront, s.legHind, s.legFarFront, s.legFarHind].some(poly => inside(x, y, poly));
+}
+
+/** A point along the back stroke at u (0 by the hump .. 1 by the tail). */
+export function strokePoint(view: MammothView, u: number): Vec {
+  const path = view.stroke, f = Math.max(0, Math.min(1, u)) * (path.length - 1), i = Math.min(path.length - 2, Math.floor(f)), k = f - i;
+  return [path[i][0] + (path[i + 1][0] - path[i][0]) * k, path[i][1] + (path[i + 1][1] - path[i][1]) * k];
+}
+
+/** The harmless toys on and around the animal. A tap is tried against them in
+ * this order, nearest the viewer first; `coat` is everything else that is fur. */
+export type ToyId = 'trunkTip' | 'tuskNear' | 'earSpot' | 'tailTip' | 'footNear' | 'coat';
+export function toyAt(view: MammothView, x: number, y: number, trunkTip: Vec, inside: (x: number, y: number, poly: readonly Vec[]) => boolean): { toy: ToyId; leg?: 'legFront' | 'legHind' | 'legFarFront' | 'legFarHind' } | null {
+  if (Math.hypot(x - trunkTip[0], y - trunkTip[1]) < 34) return { toy: 'trunkTip' };
+  for (const b of view.tusks.near) for (let i = 0; i <= 12; i++) { const [tx, ty] = bezierAt(b, i / 12); if (Math.hypot(x - tx, y - ty) < 20) return { toy: 'tuskNear' }; }
+  if (inside(x, y, view.shapes.ear) || Math.hypot(x - view.tickle[0], y - view.tickle[1]) < 30) return { toy: 'earSpot' };
+  if (inside(x, y, view.shapes.tail)) return { toy: 'tailTip' };
+  for (const leg of ['legFront', 'legHind', 'legFarFront', 'legFarHind'] as const) {
+    const f = view.feet[leg];
+    if (x > f.x0 - 12 && x < f.x1 + 12 && y > f.y - 70 && y < f.y + 16) return { toy: 'footNear', leg };
+  }
+  return onCoat(view, x, y, inside) ? { toy: 'coat' } : null;
 }
 
 /** Samples a Bézier at t. */

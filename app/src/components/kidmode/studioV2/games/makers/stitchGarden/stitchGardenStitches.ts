@@ -185,21 +185,32 @@ function poppy(n: Needle) {
   for (let i = 0; i < 4; i++) n.knot(polar(head, turn + i * 90 + 45, 6.2), 1.9, 'ink');
 }
 
+/** A bluebell: an upright stem that bends over at the top like a shepherd's
+ * crook, with three bells hanging from it on the side it leans to, each one
+ * clear of the others. A bell is five curved satin strokes (the outer two in
+ * shade, so it reads round), two curled tips at its lip and a pale clapper. */
 function bluebell(n: Needle) {
-  const s = n.j(1) < 0 ? -1 : 1, shift = -s * 7;
-  const a = { x: shift, y: 30 }, c = { x: shift + s * 2, y: -42 }, b = { x: shift + s * 17, y: -20 };
-  n.satin({ x: shift, y: 30 }, { x: shift - s * 12, y: 4 }, 4, 3, 1.5, 'leaf', 'leaf', s * 1.5);
-  n.satin({ x: shift + s * 0.5, y: 30 }, { x: shift + s * 9, y: 10 }, 3.6, 3, 1.5, 'leafDeep', 'leaf', -s);
-  n.stem(a, c, b, 10, 1.5, 'leafDeep');
-  ([[0.52, 1], [0.7, 0.9], [0.87, 0.78]] as const).forEach(([t, size]) => {
-    const at = quad(a, c, b, t);
-    const top = { x: at.x + s * 1.4, y: at.y + 4.6 };
-    n.run(at, top, 1.1, 'leafDeep', 'stem');
-    for (const x of [-3.7, -1.25, 1.25, 3.7]) n.run({ x: top.x + x * 0.42 * size, y: top.y }, { x: top.x + x * size, y: top.y + 8.6 * size }, 2.4 * size, 'thread', 'petal');
-    n.run({ x: top.x - 3.9 * size, y: top.y + 8.4 * size }, { x: top.x - 5.8 * size, y: top.y + 10.2 * size }, 1.4, 'thread', 'petal');
-    n.run({ x: top.x + 3.9 * size, y: top.y + 8.4 * size }, { x: top.x + 5.8 * size, y: top.y + 10.2 * size }, 1.4, 'thread', 'petal');
-  });
-  n.knot({ x: b.x + s * 0.8, y: b.y + 2.4 }, 2.8, 'threadDeep');
+  const s = n.j(1) < 0 ? -1 : 1;
+  const at = (x: number, y: number): Pt => ({ x: s * (x - 8), y });
+  n.satin(at(-1, 30), at(-12, 3), 4.6, 4, 1.6, 'leaf', 'leaf', s * 2);
+  n.satin(at(1, 30), at(10, 15), 4, 3, 1.6, 'leafDeep', 'leaf', -s * 1.5);
+  const foot = at(0, 30), neck = at(1.5, -15), crown = at(5, -38), tip = at(21, -23.5);
+  n.stem(foot, at(-2.5, 8), neck, 6, 1.7, 'leafDeep');
+  n.stem(neck, crown, tip, 5, 1.45, 'leafDeep');
+  const bell = (from: Pt, top: Pt, size: number) => {
+    n.run(from, top, 1.1, 'leafDeep', 'stem');
+    const high = 12.5 * size;
+    for (const u of [-1, 1, -0.5, 0.5, 0]) {
+      const edge = Math.abs(u) === 1;
+      n.run({ x: top.x + u * 1.7 * size, y: top.y + Math.abs(u) * 1.3 * size }, { x: top.x + u * 4.5 * size, y: top.y + high - Math.abs(u) * 0.6 }, 2.7 * size, edge ? 'threadDeep' : 'thread', 'petal',
+        { x: top.x + u * 5.6 * size, y: top.y + high * 0.42 });
+    }
+    for (const u of [-1, 1]) n.run({ x: top.x + u * 4.4 * size, y: top.y + high - 0.4 }, { x: top.x + u * 7.3 * size, y: top.y + high - 2.6 * size }, 1.5 * size, 'thread', 'petal', { x: top.x + u * 6.6 * size, y: top.y + high + 0.9 * size });
+    n.knot({ x: top.x, y: top.y + high + 1.1 * size }, 2.3 * size, 'sun');
+  };
+  bell(quad(foot, at(-2.5, 8), neck, 0.86), at(8, -6.5), 1.08);
+  bell(quad(neck, crown, tip, 0.46), at(10.4, -23), 0.92);
+  bell(tip, at(23.4, -18.6), 0.74);
 }
 
 function sunflower(n: Needle) {

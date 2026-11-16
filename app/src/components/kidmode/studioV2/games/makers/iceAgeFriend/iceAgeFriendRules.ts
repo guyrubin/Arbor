@@ -375,14 +375,18 @@ export const TRUNK_SAMPLES = 28;
 const smooth = (a: number, b: number, x: number) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 /** The trunk's direction at s (0 base, 1 tip), facing left. At rest it hangs
  * with the tip curling forward; lifted, it sweeps forward and curls up. A slow
- * swing bends it a little more toward the tip. */
-export function trunkAngle(s: number, lift: number, swing: number): number {
+ * swing bends it a little more toward the tip. Curled (0..1), the lower part
+ * rolls back under and up, carrying what the tip holds to the mouth. */
+export function trunkAngle(s: number, lift: number, swing: number, curl = 0): number {
   const rest = 1.72 - 0.12 * s + 0.95 * smooth(0.66, 1, s);
   const raised = 2.45 + 2.0 * Math.pow(s, 1.15);
   const k = Math.max(0, Math.min(1, lift));
-  return rest + (raised - rest) * k + swing * s;
+  const c = Math.max(-0.4, Math.min(1, curl));
+  const rolled = 1.72 - 0.32 * s - 4.5 * Math.pow(Math.max(0, (s - 0.16) / 0.84), 1.5);
+  const base = rest + (raised - rest) * k;
+  return base + (rolled - base) * c + swing * s;
 }
-/** Half width of the trunk at s, in world units. */
+/** Half width of the trunk at s, in world units: broad where it leaves the face, slim at the tip. */
 export function trunkHalfWidth(s: number): number {
-  return 31 - 18 * Math.pow(s, 0.85);
+  return 33 - 22.5 * Math.pow(Math.max(0, Math.min(1, s)), 0.72);
 }

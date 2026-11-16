@@ -28,8 +28,11 @@ export const YEAR_STEP = 1 / 24;
 export const REST_MS = 1500;
 /** A season button turns the year the short way round in this long. */
 export const TURN_MS = 1200;
-/** The "full year" lap the pointer takes by itself. */
-export const LAP_MS = 9000;
+/** The "full year" lap the pointer takes by itself: the showpiece. */
+export const LAP_MS = 8000;
+/** The beat before the lap (the four badges ring in turn) and the finale after it. */
+export const LAP_LEAD_MS = 900;
+export const FINALE_MS = 2200;
 /** With reduced motion the lap is four cuts, one per season, this long each. */
 export const LAP_CUT_MS = 1100;
 /** Half the width of a detent's pull, in years. */
@@ -124,10 +127,105 @@ export function easeInOut(t: number): number {
   const x = clamp01(t);
   return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 }
+/** A weighted swing onto a mark: the step response of a damped spring,
+ * 0 at t = 0, exactly 1 at t = 1, passing the mark by a hair on the way
+ * (damping `zeta` under 1: the lower, the bigger the overshoot). */
+export function springTo(t: number, zeta = 0.78): number {
+  const x = clamp01(t);
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  const z = Math.min(0.95, Math.max(0.3, finite(zeta, 0.78)));
+  // Settled to a thousandth by t = 1.
+  const omega = 6.9 / z, damped = omega * Math.sqrt(1 - z * z);
+  const at = (u: number) => 1 - Math.exp(-z * omega * u) * (Math.cos(damped * u) + ((z * omega) / damped) * Math.sin(damped * u));
+  return at(x) + (1 - at(1)) * x;
+}
 /** A season button's turn: where the year is `t` of the way along the short
- * way from `from` to `to`. Unwrapped, so the rim turns the short way too. */
+ * way from `from` to `to`. The pointer has weight: it swings, passes the heart
+ * by a hair and settles. Unwrapped, so the rim turns the short way too. */
 export function turnAt(fromTurns: number, toYear: number, t: number): number {
-  return finite(fromTurns) + shortestTurn(wrapYear(fromTurns), toYear) * easeInOut(t);
+  return finite(fromTurns) + shortestTurn(wrapYear(fromTurns), toYear) * springTo(t);
+}
+
+/* ── the dial in the hand: weight, ticks, a flick that coasts ───────────── */
+
+/** A let-go dial coasts on its own weight; its speed (turns a second) dies
+ * away with this time constant. */
+export const COAST_TAU_MS = 360;
+/** The fastest a flick can send it, and the speed under which it stops. */
+export const COAST_MAX = 2.4;
+export const COAST_STOP = 0.06;
+/** One frame of coasting: the new speed and how far the dial turned. */
+export function coastStep(speed: number, dtMs: number): { speed: number; advance: number } {
+  const v = Math.min(COAST_MAX, Math.max(-COAST_MAX, finite(speed))), dt = Math.max(0, finite(dtMs));
+  const k = Math.exp(-dt / COAST_TAU_MS);
+  return { speed: v * k, advance: (v * COAST_TAU_MS * (1 - k)) / 1000 };
+}
+/** How far a flick at `speed` coasts before it stops, in turns. */
+export function coastReach(speed: number): number {
+  const v = Math.min(COAST_MAX, Math.max(-COAST_MAX, finite(speed)));
+  return Math.abs(v) <= COAST_STOP ? 0 : (Math.sign(v) * (Math.abs(v) - COAST_STOP) * COAST_TAU_MS) / 1000;
+}
+/** A coasting dial that comes to rest this near a season's heart drops into it. */
+export const CATCH_WIDTH = 0.034;
+/** Where a dial left at `year` comes to rest: the heart, if one is near. */
+export function restingYear(year: number): number {
+  const y = wrapYear(year);
+  for (const c of SEASON_CENTERS) if (yearDistance(y, c) <= CATCH_WIDTH) return c;
+  return y;
+}
+/** The engraved marks the pointer passes: one every 15 degrees. */
+export const TICKS_PER_TURN = 24;
+export function tickIndex(turns: number): number {
+  return Math.floor(turnsToAngle(turns) / (360 / TICKS_PER_TURN) + 1e-9);
+}
+/** The marks crossed going from one position to another: how many plain
+ * ticks, and which season hearts (in the order passed). */
+export function marksCrossed(fromTurns: number, toTurns: number): { ticks: number; seasons: Season[] } {
+  const a = tickIndex(fromTurns), b = tickIndex(toTurns);
+  const seasons: Season[] = [];
+  let ticks = 0;
+  if (a === b || !Number.isFinite(a) || !Number.isFinite(b) || Math.abs(b - a) > TICKS_PER_TURN * 4) return { ticks, seasons };
+  const dir = b > a ? 1 : -1;
+  // Going up the pointer passes marks a+1 … b; going down, marks a … b+1.
+  for (let m = dir > 0 ? a + 1 : a; dir > 0 ? m <= b : m > b; m += dir) {
+    const quarter = ((m % 6) + 6) % 6;
+    if (quarter === 3) seasons.push((((((m - 3) / 6) % 4) + 4) % 4) as Season);
+    else ticks++;
+  }
+  return { ticks, seasons };
+}
+
+/* ── the full-year lap ──────────────────────────────────────────────────── */
+
+/** The lap winds back a little first (the wind-up), then goes once round and
+ * lands exactly where it began. `t` 0..1 of LAP_MS; returns unwrapped turns. */
+export const LAP_WIND = 0.022;
+export function lapTurns(fromTurns: number, t: number): number {
+  const x = clamp01(t), from = finite(fromTurns);
+  const windUp = 0.07;
+  if (x < windUp) return from - LAP_WIND * Math.sin((Math.PI * x) / windUp) ** 2;
+  return from + easeInOut((x - windUp) / (1 - windUp));
+}
+/** The lap's music box: sixteen steps round the year. */
+export const LAP_STEPS = 16;
+export function lapStep(fromTurns: number, turns: number): number {
+  return Math.min(LAP_STEPS - 1, Math.max(-1, Math.floor((finite(turns) - finite(fromTurns)) * LAP_STEPS + 1e-9)));
+}
+
+/* ── a different year each time ─────────────────────────────────────────── */
+
+/** Three years to play, each with its own small things (the apples' colour,
+ * the birds, the scarf, the tune). The tree and the rules never change. */
+export const YEAR_KINDS = 3;
+export function yearKind(dayNumber: number, round: number): number {
+  const n = Math.floor(finite(dayNumber)) + Math.floor(finite(round));
+  return ((n % YEAR_KINDS) + YEAR_KINDS) % YEAR_KINDS;
+}
+/** Each new round opens one season further on (the first is always spring). */
+export function startYear(round: number): number {
+  const r = Math.floor(finite(round));
+  return SEASON_CENTERS[((r % 4) + 4) % 4];
 }
 
 /* ── visiting: a season the dial has rested in lights its badge ─────────── */
@@ -242,29 +340,6 @@ export function cloudPaint(year: number): Paint { return cyclicPaint(CLOUD, year
 
 /* ── the ground ─────────────────────────────────────────────────────────── */
 
-export interface Ground { readonly near: Paint; readonly nearShade: Paint; readonly far: Paint; readonly treeline: Paint; readonly grass: number }
-const NEAR: readonly (readonly [number, Paint])[] = [
-  [0.02, mix('spring', 'sage', 0.35)], [0.14, 'spring'], [0.32, mix('leaf', 'spring', 0.25)], [0.5, mix('moss', 'sand', 0.35)],
-  [0.62, mix('sand', 'wood', 0.35)], [0.78, mix('sage', 'steel', 0.45)], [0.92, mix('moss', 'umber', 0.25)],
-];
-const NEAR_SHADE: readonly (readonly [number, Paint])[] = [
-  [0.02, mix('leaf', 'sage', 0.4)], [0.14, mix('leaf', 'spring', 0.3)], [0.32, 'leaf-deep'], [0.5, mix('moss', 'umber', 0.25)],
-  [0.62, mix('wood', 'umber', 0.4)], [0.78, mix('slate', 'sage', 0.4)], [0.92, mix('moss', 'umber', 0.45)],
-];
-const FAR: readonly (readonly [number, Paint])[] = [
-  [0.02, mix('sage', 'sky', 0.25)], [0.14, mix('spring', 'sky', 0.3)], [0.32, mix('leaf', 'sky', 0.35)], [0.57, mix('amber', 'sky-pale', 0.35)],
-  [0.82, mix('snow-shade', 'lilac', 0.3)],
-];
-const TREELINE: readonly (readonly [number, Paint])[] = [
-  [0.02, mix('celadon-deep', 'sky', 0.3)], [0.14, mix('leaf', 'sky', 0.35)], [0.32, mix('leaf-deep', 'sky', 0.3)], [0.57, mix('rust', 'lilac', 0.35)],
-  [0.82, mix('slate', 'lilac', 0.45)],
-];
-export function groundAt(year: number): Ground {
-  return {
-    near: cyclicPaint(NEAR, year), nearShade: cyclicPaint(NEAR_SHADE, year), far: cyclicPaint(FAR, year), treeline: cyclicPaint(TREELINE, year),
-    grass: window4(year, 0.98, 0.12, 0.42, 0.56),
-  };
-}
 /** Snow on the ground: none until early winter, thickens, holds, then melts
  * into spring puddles. 0 none, 1 full cover. */
 export function snowDepth(year: number): number {
@@ -284,11 +359,14 @@ export function fallenLeaves(year: number): number {
   return window4(year, 0.5, 0.68, 0.72, 0.8);
 }
 
-/** Wild flowers in the meadow: spring into early summer. */
-export function meadowFlowers(year: number): number {
-  return window4(year, 0.02, 0.12, 0.3, 0.42);
+/** A rainbow as the spring rain clears. */
+export function rainbow(year: number): number {
+  return bump(year, 0.222, 0.036);
 }
-
+/** Frost flowers in the corners of the window in deep winter. */
+export function frost(year: number): number {
+  return window4(year, 0.75, 0.81, 0.87, 0.925);
+}
 /* ── the tree ───────────────────────────────────────────────────────────── */
 
 /** Each leaf's own thresholds, all in [0, 1). The tree generator correlates
@@ -369,30 +447,42 @@ export function particleCounts(w: Weather): { rain: number; petals: number; leav
   return { rain: Math.floor(want.rain * k), petals: Math.floor(want.petals * k), leaves: Math.floor(want.leaves * k), snow: Math.floor(want.snow * k) };
 }
 /** The small life of the scene, each fading in and out with the year. */
-export function lifeAt(year: number): { birds: number; squirrel: number; snowman: number } {
-  return { birds: window4(year, 0.0, 0.05, 0.36, 0.44), squirrel: window4(year, 0.47, 0.52, 0.64, 0.69), snowman: window4(year, 0.76, 0.8, 0.88, 0.93) };
+export function lifeAt(year: number): { birds: number; snowman: number } {
+  return { birds: window4(year, 0.0, 0.05, 0.36, 0.44), snowman: window4(year, 0.76, 0.8, 0.88, 0.93) };
 }
-export interface Gains { readonly birds: number; readonly insects: number; readonly wind: number; readonly rain: number; readonly chimes: number }
-/** Sound levels, 0..1: one audio graph whose layers are set from `year`, so
- * turning back and forth can never stack sounds. */
-export function gains(year: number): Gains {
+/** Who keeps the terrace: Aya tends the tree through the snow and the
+ * blossom, Chock sits in its summer shade, Pep chases the autumn leaves.
+ * Each is there for its part of the year and steps in as the last steps out. */
+export const FRIENDS = ['ayaWinter', 'ayaSpring', 'chockSummer', 'pepAutumn'] as const;
+export type Friend = typeof FRIENDS[number];
+export function friendsAt(year: number): Readonly<Record<Friend, number>> {
   return {
-    birds: window4(year, 0.96, 0.03, 0.3, 0.44), insects: bump(year, 0.36, 0.12), wind: Math.max(bump(year, 0.6, 0.12), 0.35 * bump(year, 0.8, 0.1)),
-    rain: bump(year, 0.16, 0.075), chimes: bump(year, 0.82, 0.11),
+    ayaWinter: window4(year, 0.7, 0.745, 0.905, 0.945), ayaSpring: window4(year, 0.935, 0.975, 0.165, 0.205),
+    chockSummer: window4(year, 0.195, 0.235, 0.435, 0.475), pepAutumn: window4(year, 0.465, 0.505, 0.67, 0.71),
   };
 }
-
-/** Which of the eight described moments of the year (the copy's `phases`):
- * late-winter buds, blossom, spring rain, summer, late summer, autumn
- * colour, falling leaves, winter snow. */
-export const PHASE_STARTS: readonly number[] = [0.92, 0.03, 0.12, 0.22, 0.38, 0.5, 0.6, 0.72];
-export function phaseAt(year: number): number {
-  const y = wrapYear(year);
-  if (y >= PHASE_STARTS[0] || y < PHASE_STARTS[1]) return 0;
-  for (let i = PHASE_STARTS.length - 1; i >= 1; i--) if (y >= PHASE_STARTS[i]) return i;
-  return 0;
+/** The friend who is most there at this point of the year. */
+export function friendAt(year: number): Friend {
+  const all = friendsAt(year);
+  let best: Friend = FRIENDS[0];
+  for (const f of FRIENDS) if (all[f] > all[best]) best = f;
+  return best;
 }
-/** Fills the numbered blanks of a line: `{0}` is the first value. */
-export function seasonLine(template: string, ...values: (string | number)[]): string {
-  return template.replace(/\{(\d)\}/g, (_match, slot: string) => String(values[Number(slot)] ?? ''));
+
+/* ── the view: the same terrace at its moments of the year ──────────────── */
+
+/** Which two of `count` views (given the point of the year each is true for,
+ * ascending) show at `year`, and how far the second has faded in over the
+ * first. The first is drawn whole and the second over it, so the mix is
+ * never see-through. */
+export function viewMix(stops: readonly number[], year: number): { from: number; to: number; t: number } {
+  const n = stops.length;
+  if (n < 2) return { from: 0, to: 0, t: 0 };
+  let y = wrapYear(year);
+  if (y < stops[0]) y += 1;
+  for (let i = 0; i < n; i++) {
+    const p0 = stops[i], p1 = i + 1 < n ? stops[i + 1] : stops[0] + 1;
+    if (y >= p0 && y < p1) return { from: i, to: (i + 1) % n, t: smoothstep(p0, p1, y) };
+  }
+  return { from: 0, to: 1 % n, t: 0 };
 }

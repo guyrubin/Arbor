@@ -1,42 +1,27 @@
-/** Mend the Bowl geometry: the bowl's outline in 3/4 view and the three
- * authored break patterns. Each pattern is only a list of cracks; the pieces
- * are the faces those cracks cut out of the outline, found by walking the
- * same edges, so a seam is by construction the exact shared edge of the two
- * pieces it joins. Deterministic: no randomness, the jag of a crack comes
- * from a fixed hash. Stage units throughout (STAGE.w by STAGE.h). */
+/** Mend the Bowl geometry: the bowl seen from directly above (it sits on the
+ * kit's round table, which is seen from above too) and the three authored
+ * break patterns. Each pattern is only a list of cracks; the pieces are the
+ * faces those cracks cut out of the outline, found by walking the same edges,
+ * so a seam is by construction the exact shared edge of the two pieces it
+ * joins. Deterministic: no randomness, the jag of a crack comes from a fixed
+ * hash. Stage units throughout: the table's centre is the stage's centre. */
 import { polylineLength, type BowlPatternData, type BowlPiece, type BowlSeam, type Point, type Pose } from './mendBowlRules';
 
-export const STAGE = { w: 440, h: 390 } as const;
-/** The rim ellipse (a 3/4 view from slightly above). */
-export const RIM = { cx: 220, cy: 118, rx: 138, ry: 40 } as const;
-/** The foot ring: its top (where the glaze stops) and its bottom ellipse. */
-export const FOOT = { cx: 220, topY: 256, topRx: 50, topRy: 8, y: 268, rx: 52, ry: 11 } as const;
-/** The centre the pieces fly out from, and the point the bowl tips over. */
-export const BOWL_CENTRE: Point = { x: 220, y: 178 };
-export const TIP_PIVOT: Point = { x: 272, y: 268 };
+export const STAGE = { w: 440, h: 440 } as const;
+/** The bowl's centre (the centre of the table) and the radius of its rim. */
+export const BOWL_CENTRE: Point = { x: 220, y: 220 };
+export const BOWL_R = 100;
+/** The table's linen top, in stage units: everything in play stays on it. */
+export const LINEN_R = 205;
 
-const BODY_R = [{ x: 358, y: 118 }, { x: 358, y: 196 }, { x: 318, y: 246 }, { x: 270, y: 256 }] as const;
-const BODY_L = [{ x: 170, y: 256 }, { x: 122, y: 246 }, { x: 82, y: 196 }, { x: 82, y: 118 }] as const;
-/** The bowl's silhouette, exactly as the art draws it. */
-export const OUTLINE_D = `M82 118A138 40 0 0 1 358 118C358 196 318 246 270 256L272 268A52 11 0 0 1 168 268L170 256C122 246 82 196 82 118Z`;
-export const RIM_D = `M82 118A138 40 0 0 1 358 118A138 40 0 0 1 82 118Z`;
+/** The bowl's silhouette from above: its round rim. */
+export const OUTLINE_D = `M${BOWL_CENTRE.x - BOWL_R} ${BOWL_CENTRE.y}A${BOWL_R} ${BOWL_R} 0 0 1 ${BOWL_CENTRE.x + BOWL_R} ${BOWL_CENTRE.y}A${BOWL_R} ${BOWL_R} 0 0 1 ${BOWL_CENTRE.x - BOWL_R} ${BOWL_CENTRE.y}Z`;
 
-function cubic(p: readonly Point[], u: number): Point {
-  const v = 1 - u;
-  return { x: v * v * v * p[0].x + 3 * v * v * u * p[1].x + 3 * v * u * u * p[2].x + u * u * u * p[3].x, y: v * v * v * p[0].y + 3 * v * v * u * p[1].y + 3 * v * u * u * p[2].y + u * u * u * p[3].y };
-}
-/** A point of the silhouette at boundary parameter t in [0, 4): 0–1 the back
- * of the rim (left end over the top to the right end), 1–2 the right side of
- * the body, 2–3 the foot, 3–4 the left side back up. Clockwise on screen. */
+/** A point of the rim at boundary parameter t in [0, 4): 0 the left, 1 the
+ * top (far side), 2 the right, 3 the bottom (near side). Clockwise on screen. */
 export function outlineAt(t: number): Point {
-  const w = ((t % 4) + 4) % 4, k = Math.floor(w), u = w - k;
-  if (k === 0) { const a = Math.PI + u * Math.PI; return { x: RIM.cx + RIM.rx * Math.cos(a), y: RIM.cy + RIM.ry * Math.sin(a) }; }
-  if (k === 1) return cubic(BODY_R, u);
-  if (k === 3) return cubic(BODY_L, u);
-  if (u <= 0.1) { const s = u / 0.1; return { x: 270 + 2 * s, y: 256 + 12 * s }; }
-  if (u >= 0.9) { const s = (u - 0.9) / 0.1; return { x: 168 + 2 * s, y: 268 - 12 * s }; }
-  const a = (u - 0.1) / 0.8 * Math.PI;
-  return { x: FOOT.cx + FOOT.rx * Math.cos(a), y: FOOT.y + FOOT.ry * Math.sin(a) };
+  const a = Math.PI + (((t % 4) + 4) % 4) * Math.PI / 2;
+  return { x: BOWL_CENTRE.x + BOWL_R * Math.cos(a), y: BOWL_CENTRE.y + BOWL_R * Math.sin(a) };
 }
 const GRID = 40;
 /** The outline from t0 to t1 (forward, wrapping), ends included. */
@@ -86,17 +71,20 @@ function centroidOf(poly: readonly Point[]): Point {
 }
 export const OUTLINE_AREA = Math.abs(area(OUTLINE_POINTS));
 
+/** The cracks are authored on a rim of radius 92 about the centre; this carries a point to the real rim. */
+const authored = (x: number, y: number): Point => ({ x: BOWL_CENTRE.x + (x - BOWL_CENTRE.x) * BOWL_R / 92, y: BOWL_CENTRE.y + (y - BOWL_CENTRE.y) * BOWL_R / 92 });
+
 interface Half { from: string; to: string; points: Point[]; seam: number; twin: number }
 /** Walks the planar graph (outline arcs + cracks) and returns its inner faces. */
 function buildPattern(spec: PatternSpec): BowlPatternData {
   const key = (e: End) => e === 'j' ? 'j' : `b${e.t}`;
-  const at = (e: End) => e === 'j' ? spec.junction : outlineAt(e.t);
+  const at = (e: End) => e === 'j' ? authored(spec.junction.x, spec.junction.y) : outlineAt(e.t);
   const halves: Half[] = [];
   const add = (from: string, to: string, points: Point[], seam: number) => {
     const i = halves.length;
     halves.push({ from, to, points, seam, twin: i + 1 }, { from: to, to: from, points: [...points].reverse(), seam, twin: i });
   };
-  const seamPoints = spec.cracks.map((c, i) => jagged([at(c.from), ...c.via.map(([x, y]) => ({ x, y })), at(c.to)], i + 1));
+  const seamPoints = spec.cracks.map((c, i) => jagged([at(c.from), ...c.via.map(([x, y]) => authored(x, y)), at(c.to)], i + 1));
   spec.cracks.forEach((c, i) => add(key(c.from), key(c.to), seamPoints[i], i));
   const ts = [...new Set(spec.cracks.flatMap(c => [c.from, c.to]).filter((e): e is { t: number } => e !== 'j').map(e => e.t))].sort((a, b) => a - b);
   ts.forEach((t, i) => { const next = ts[(i + 1) % ts.length]; add(`b${t}`, `b${next}`, outlineArc(t, next), -1); });
@@ -126,8 +114,7 @@ function buildPattern(spec: PatternSpec): BowlPatternData {
   const pieces: BowlPiece[] = inner.map((f, i) => {
     const poly = area(f.poly) < 0 ? [...f.poly].reverse() : f.poly;
     const s = spec.scatter[i], dx = f.c.x - BOWL_CENTRE.x, dy = f.c.y - BOWL_CENTRE.y, len = Math.hypot(dx, dy) || 1;
-    // Upward moves are shorter: the stage has less room above the rim than below the foot.
-    const start: Pose = { x: Math.round(dx / len * s.d + (s.dx ?? 0)), y: Math.round(dy / len * s.d * (dy < 0 ? 0.7 : 1) + (s.dy ?? 0)), r: s.r };
+    const start: Pose = { x: Math.round(dx / len * s.d + (s.dx ?? 0)), y: Math.round(dy / len * s.d + (s.dy ?? 0)), r: s.r };
     return { polygon: poly, centroid: f.c, radius: Math.max(...poly.map(p => Math.hypot(p.x - f.c.x, p.y - f.c.y))), start, seams: [...new Set(f.seams)].sort((a, b) => a - b) };
   });
   const seams: BowlSeam[] = seamPoints.map((points, s) => {
@@ -137,41 +124,41 @@ function buildPattern(spec: PatternSpec): BowlPatternData {
   return { pieces, seams };
 }
 
-/** Pattern 0: four pieces — a three-way break under the front rim and a chip off the left rim. */
+/** Pattern 0: four pieces — a three-way break off-centre and a chip off the far-left rim. */
 const P0: PatternSpec = {
-  junction: { x: 210, y: 186 },
+  junction: { x: 232, y: 236 },
   cracks: [
-    { from: 'j', to: { t: 0.47 }, via: [[208, 160], [207, 132], [205, 104]] },
-    { from: 'j', to: { t: 1.42 }, via: [[242, 194], [276, 186], [308, 196]] },
-    { from: 'j', to: { t: 2.75 }, via: [[200, 212], [192, 238], [182, 258]] },
-    { from: { t: 3.55 }, to: { t: 0.2 }, via: [[124, 186], [141, 160], [137, 131], [122, 111]] },
+    { from: 'j', to: { t: 0.92 }, via: [[230, 204], [220, 168]] },
+    { from: 'j', to: { t: 2.2 }, via: [[260, 236], [286, 246]] },
+    { from: 'j', to: { t: 3.4 }, via: [[212, 256], [190, 276]] },
+    { from: { t: 3.98 }, to: { t: 0.78 }, via: [[156, 210], [178, 186], [186, 158]] },
   ],
-  scatter: [{ d: 50, r: 45 }, { d: 50, r: -30 }, { d: 50, r: 30 }, { d: 50, r: -45 }],
+  scatter: [{ d: 52, r: 45, dx: 6, dy: 22 }, { d: 64, r: -30, dx: -2, dy: -22 }, { d: 56, r: 30 }, { d: 56, r: -45 }],
 };
-/** Pattern 1: five pieces — a four-way break inside the bowl and a chip off the right rim. */
+/** Pattern 1: five pieces — a four-way break near the middle and a chip off the near-right rim. */
 const P1: PatternSpec = {
-  junction: { x: 226, y: 148 },
+  junction: { x: 206, y: 214 },
   cracks: [
-    { from: 'j', to: { t: 0.3 }, via: [[204, 132], [180, 116], [158, 101]] },
-    { from: 'j', to: { t: 0.66 }, via: [[242, 128], [256, 110], [268, 94]] },
-    { from: 'j', to: { t: 1.7 }, via: [[250, 178], [266, 206], [284, 230]] },
-    { from: 'j', to: { t: 3.3 }, via: [[200, 172], [166, 188], [130, 196]] },
-    { from: { t: 0.84 }, to: { t: 1.4 }, via: [[300, 124], [292, 152], [312, 180]] },
+    { from: 'j', to: { t: 0.45 }, via: [[188, 198], [168, 178]] },
+    { from: 'j', to: { t: 1.25 }, via: [[218, 186], [238, 160]] },
+    { from: 'j', to: { t: 2.02 }, via: [[240, 214], [276, 222]] },
+    { from: 'j', to: { t: 3.08 }, via: [[206, 246], [212, 280]] },
+    { from: { t: 2.18 }, to: { t: 2.92 }, via: [[274, 246], [254, 262], [236, 286]] },
   ],
-  scatter: [{ d: 50, r: -30 }, { d: 50, r: 45, dy: 8 }, { d: 50, r: -45, dx: -4, dy: -12 }, { d: 54, r: 30, dx: 4, dy: 18 }, { d: 50, r: -30 }],
+  scatter: [{ d: 56, r: -30 }, { d: 56, r: 45 }, { d: 70, r: -45, dx: 26, dy: -30 }, { d: 56, r: 30, dx: -40, dy: 18 }, { d: 56, r: -30, dx: -8, dy: -10 }],
 };
-/** Pattern 2: six pieces — a five-way break low on the body and a long shard off the right side. */
+/** Pattern 2: six pieces — a five-way break below the middle and a chip off the far-left rim. */
 const P2: PatternSpec = {
-  junction: { x: 212, y: 196 },
+  junction: { x: 226, y: 230 },
   cracks: [
-    { from: 'j', to: { t: 0.24 }, via: [[192, 172], [164, 140], [130, 108]] },
-    { from: 'j', to: { t: 0.62 }, via: [[226, 168], [240, 134], [252, 104]] },
-    { from: 'j', to: { t: 1.54 }, via: [[244, 204], [280, 208], [312, 218]] },
-    { from: 'j', to: { t: 2.45 }, via: [[218, 220], [222, 244], [226, 262]] },
-    { from: 'j', to: { t: 3.42 }, via: [[184, 206], [150, 212], [120, 210]] },
-    { from: { t: 0.8 }, to: { t: 1.34 }, via: [[300, 118], [292, 148], [318, 184]] },
+    { from: 'j', to: { t: 0.14 }, via: [[196, 222], [162, 212]] },
+    { from: 'j', to: { t: 1.04 }, via: [[226, 198], [220, 162]] },
+    { from: 'j', to: { t: 1.78 }, via: [[252, 216], [280, 200]] },
+    { from: 'j', to: { t: 2.62 }, via: [[242, 252], [260, 276]] },
+    { from: 'j', to: { t: 3.38 }, via: [[212, 254], [192, 280]] },
+    { from: { t: 0.24 }, to: { t: 0.94 }, via: [[164, 196], [186, 182], [206, 158]] },
   ],
-  scatter: [{ d: 50, r: -45 }, { d: 50, r: 30 }, { d: 50, r: 30 }, { d: 50, r: -30 }, { d: 50, r: 45 }, { d: 50, r: -30 }],
+  scatter: [{ d: 70, r: -45, dx: -30, dy: 14 }, { d: 56, r: 30, dx: 34, dy: -26 }, { d: 60, r: 30, dx: 30, dy: 14 }, { d: 56, r: -30, dx: 0, dy: 26 }, { d: 56, r: 45 }, { d: 56, r: -30 }],
 };
 export const BOWL_PATTERNS: readonly [BowlPatternData, BowlPatternData, BowlPatternData] = [buildPattern(P0), buildPattern(P1), buildPattern(P2)];
 /** SVG path data of a polyline / closed polygon. */

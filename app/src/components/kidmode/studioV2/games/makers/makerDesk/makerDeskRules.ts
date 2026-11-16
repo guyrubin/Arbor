@@ -70,6 +70,28 @@ export function shelfPlaces(kinds: readonly unknown[]): (ThingKind | null)[] {
   const have = thingKinds(kinds);
   return Array.from({ length: SHELF_PLACES }, (_, index) => have[index] ?? null);
 }
+/** What is new on the shelf since the desk was last open in this sitting: a
+ * kind that was not there, or one that was made again. `before` is null the
+ * first time (nothing is called new then). The marks are compared, never read. */
+export function shelfNews(before: Readonly<Partial<Record<ThingKind, string>>> | null, now: Readonly<Partial<Record<ThingKind, string>>>): ThingKind[] {
+  if (!before) return [];
+  return THING_KINDS.filter(kind => typeof now[kind] === 'string' && now[kind] !== before[kind]);
+}
+/** The knit flower on the shelf top: each watering lifts it a little, and the
+ * third opens it. It stays open after that. */
+export const PLANT_FULL = 3;
+export function growPlant(stage: number): number {
+  const now = Number.isFinite(stage) ? Math.max(0, Math.trunc(stage)) : 0;
+  return Math.min(PLANT_FULL, now + 1);
+}
+/** The keyboard in the room has three rows of ten keys. Each tap presses
+ * three of them, a different three each time. */
+export const KEY_COUNT = 30;
+export function keysFor(tap: number): number[] {
+  const n = Number.isFinite(tap) ? Math.abs(Math.trunc(tap)) : 0;
+  const first = (n * 7 + 3) % KEY_COUNT;
+  return [first, (first + 4 + (n % 5)) % KEY_COUNT, (first + 13 + (n % 3) * 2) % KEY_COUNT];
+}
 /** The desktop clock is a picture, not numerals: sun from six to six. */
 export function skyPicture(hour: number): 'day' | 'night' {
   const h = Number.isFinite(hour) ? ((Math.trunc(hour) % 24) + 24) % 24 : 12;
@@ -87,7 +109,11 @@ export type TermLine =
   | { kind: 'cmd'; text: string }
   | { kind: 'out'; text: string; code?: string; codeLast?: boolean; tone?: 'title' | 'soft' | 'joke' }
   | { kind: 'listing'; names: readonly string[] }
-  | { kind: 'hello'; before: string; name: string | null; after: string };
+  | { kind: 'hello'; before: string; name: string | null; after: string }
+  /** A small authored picture the screen plays (never built from input). */
+  | { kind: 'show'; show: TermShow };
+export const TERM_SHOWS = ['wiggle', 'rainbow', 'stars'] as const;
+export type TermShow = typeof TERM_SHOWS[number];
 
 export interface TerminalContext {
   lang: Lang;
@@ -98,7 +124,9 @@ export interface TerminalContext {
   /** Which riddle `cat secret.txt` shows this time. */
   riddle: number;
 }
-export type Sound = 'beep' | 'answer' | 'unknown' | null;
+export type Sound = 'beep' | 'answer' | 'unknown' | 'tune' | 'magic' | null;
+/** What a command does outside the screen: `lamp` clicks the desk lamp. */
+export type TermEffect = 'lamp' | null;
 export interface RunResult {
   /** The lines to add (after the echoed command line). */
   lines: TermLine[];
@@ -107,6 +135,7 @@ export interface RunResult {
   /** The canonical command run (for the sticker), or null when unknown. */
   command: string | null;
   sound: Sound;
+  effect: TermEffect;
   /** What was read when the keyboard typed Hebrew letters (else null). */
   readAs: string | null;
 }
@@ -117,10 +146,15 @@ export const INPUT_MAX = 40;
 export const SCREEN_MAX = 60;
 
 /** The big buttons under the screen: the whole vocabulary a young child needs. */
-export const QUICK_COMMANDS: readonly string[] = ['help', 'ls', 'cat about.txt', 'hello', 'clear'];
+export const QUICK_COMMANDS: readonly string[] = ['help', 'ls', 'cat about.txt', 'hello', 'dance', 'sing', 'clear'];
 
 /** The fixed command words, before any file names. */
-const BASE_VOCABULARY: readonly string[] = ['help', 'ls', 'ls things', 'cat about.txt', 'cat secret.txt', 'hello', 'beep', 'clear'];
+const BASE_VOCABULARY: readonly string[] = ['help', 'ls', 'ls things', 'cat about.txt', 'cat secret.txt', 'hello', 'dance', 'sing', 'lamp', 'rainbow', 'whoami', 'beep', 'clear'];
+/** The fixed virtual files. The dot file is hidden: only `ls -a` lists it, and
+ * the trail to it starts in a riddle. Hidden words are never suggested. */
+export const FILES: readonly string[] = ['about.txt', 'secret.txt', 'things/'];
+export const HIDDEN_FILE = '.magic';
+export const MAGIC_WORD = 'abracadabra';
 
 /** Every whole command the toy understands for this child (for autocomplete). */
 export function vocabulary(things: readonly ThingKind[]): string[] {
@@ -157,16 +191,26 @@ export function normalizeInput(input: unknown): string {
 function answer(command: string, ctx: TerminalContext): Omit<RunResult, 'readAs'> | null {
   const w = MAKER_DESK_COPY[ctx.lang];
   const things = thingKinds(ctx.things);
-  const done = (lines: TermLine[], sound: Sound = 'answer', clear = false, counts = true): Omit<RunResult, 'readAs'> => ({ lines, clear, command: counts ? command : null, sound });
+  const done = (lines: TermLine[], sound: Sound = 'answer', clear = false, counts = true, effect: TermEffect = null): Omit<RunResult, 'readAs'> => ({ lines, clear, command: counts ? command : null, sound, effect });
   switch (command) {
     case 'help': return done([
       { kind: 'out', text: w.helpTitle, tone: 'title' },
       { kind: 'out', code: 'help', text: w.help.help }, { kind: 'out', code: 'ls', text: w.help.ls },
       { kind: 'out', code: 'cat about.txt', text: w.help.about }, { kind: 'out', code: 'cat secret.txt', text: w.help.secret },
       { kind: 'out', code: 'ls things', text: w.help.things }, { kind: 'out', code: 'hello', text: w.help.hello },
+      { kind: 'out', code: 'dance', text: w.help.dance }, { kind: 'out', code: 'sing', text: w.help.sing },
+      { kind: 'out', code: 'lamp', text: w.help.lamp }, { kind: 'out', code: 'rainbow', text: w.help.rainbow },
       { kind: 'out', code: 'beep', text: w.help.beep }, { kind: 'out', code: 'clear', text: w.help.clear },
     ]);
-    case 'ls': return done([{ kind: 'listing', names: ['about.txt', 'secret.txt', 'things/'] }]);
+    case 'ls': return done([{ kind: 'listing', names: FILES }]);
+    case 'ls -a': return done([{ kind: 'listing', names: [HIDDEN_FILE, ...FILES] }]);
+    case `cat ${HIDDEN_FILE}`: return done([{ kind: 'out', text: w.magicFile, code: MAGIC_WORD, codeLast: true, tone: 'joke' }]);
+    case MAGIC_WORD: return done([{ kind: 'show', show: 'stars' }, { kind: 'out', text: w.magic, tone: 'title' }], 'magic');
+    case 'dance': return done([{ kind: 'out', text: w.dance }, { kind: 'show', show: 'wiggle' }]);
+    case 'sing': return done([{ kind: 'out', text: w.sing, tone: 'joke' }], 'tune');
+    case 'lamp': return done([{ kind: 'out', text: w.lampClick }], 'answer', false, true, 'lamp');
+    case 'rainbow': return done([{ kind: 'show', show: 'rainbow' }, { kind: 'out', text: w.rainbow, tone: 'soft' }]);
+    case 'whoami': return done([{ kind: 'out', text: w.whoami, tone: 'title' }]);
     case 'ls things': return done(things.length ? [{ kind: 'listing', names: things.map(kind => THING_FILES[kind]) }] : [{ kind: 'out', text: w.thingsEmptyTerm, tone: 'soft' }]);
     case 'cat about.txt': return done(w.about.map((text): TermLine => ({ kind: 'out', text })));
     case 'cat secret.txt': {
@@ -189,7 +233,7 @@ function answer(command: string, ctx: TerminalContext): Omit<RunResult, 'readAs'
 }
 
 /** Fixed spellings that mean the same command. */
-const ALIASES: Readonly<Record<string, string>> = { hi: 'hello', 'ls things/': 'ls things', 'ls ./things': 'ls things', 'help me': 'help', '?': 'help', cls: 'clear' };
+const ALIASES: Readonly<Record<string, string>> = { hi: 'hello', 'ls things/': 'ls things', 'ls ./things': 'ls things', 'help me': 'help', '?': 'help', cls: 'clear', 'who am i': 'whoami', 'la la la': 'sing', joke: 'cat secret.txt' };
 
 /** Runs one line of input against the fixed table. Unknown input of any
  * shape (a path, a script, a URL, a very long string) gets one fixed reply.
@@ -210,8 +254,8 @@ export function run(input: unknown, ctx: TerminalContext): RunResult {
     const lines = readAs ? [{ kind: 'out', text: w.keyboard, code: readAs, codeLast: true, tone: 'soft' } as TermLine, ...result.lines] : result.lines;
     return { ...result, lines, readAs };
   }
-  if (/^(cat|ls|cd|open|read|more|less|type) /.test(typed)) return { lines: [{ kind: 'out', text: w.noFile, tone: 'soft' }], clear: false, command: null, sound: 'unknown', readAs: null };
-  return { lines: typed ? [{ kind: 'out', text: w.unknown, tone: 'soft' }] : [], clear: false, command: null, sound: typed ? 'unknown' : null, readAs: null };
+  if (/^(cat|ls|cd|open|read|more|less|type) /.test(typed)) return { lines: [{ kind: 'out', text: w.noFile, tone: 'soft' }], clear: false, command: null, sound: 'unknown', effect: null, readAs: null };
+  return { lines: typed ? [{ kind: 'out', text: w.unknown, tone: 'soft' }] : [], clear: false, command: null, sound: typed ? 'unknown' : null, effect: null, readAs: null };
 }
 
 /** Commands from the table that start with what is typed so far (at most four). */
@@ -272,15 +316,27 @@ export interface BounceState {
   launches: number;
   done: boolean;
 }
-export type BounceEvent = { type: 'wall' } | { type: 'paddle' } | { type: 'lantern'; index: number } | { type: 'cloud' } | { type: 'lift' } | { type: 'allLit' };
+export type BounceEvent = { type: 'wall' } | { type: 'paddle' } | { type: 'lantern'; index: number } | { type: 'row'; row: number } | { type: 'cloud' } | { type: 'lift' } | { type: 'allLit' };
 export interface PaddleInput { dir: -1 | 0 | 1; target: number | null }
 
-export const LAYOUTS = ['grid', 'stagger', 'arch', 'vee'] as const;
+export const LAYOUTS = ['grid', 'stagger', 'arch', 'vee', 'stairs', 'zigzag'] as const;
 export type LanternLayout = typeof LAYOUTS[number];
+/** Which row of the wall a lantern hangs in (rows are five across). */
+export const lanternRow = (index: number) => Math.floor(index / LANTERN_COLS);
+export function rowLit(lit: readonly boolean[], row: number): boolean {
+  for (let col = 0; col < LANTERN_COLS; col++) if (!lit[row * LANTERN_COLS + col]) return false;
+  return row >= 0 && row < LANTERN_ROWS;
+}
 
 const roll = (random: () => number) => { const value = random(); return Number.isFinite(value) ? Math.min(0.999999, Math.max(0, value)) : 0; };
 
-/** Fifteen lanterns in one of four arrangements, their colours shuffled. They
+/** The arrangement for a new round: never the one just played. */
+export function pickLayout(random: () => number, not?: LanternLayout): LanternLayout {
+  const choices = LAYOUTS.filter(layout => layout !== not);
+  return choices[Math.floor(roll(random) * choices.length)];
+}
+
+/** Fifteen lanterns in one of six arrangements, their colours shuffled. They
  * never overlap and always sit above the paddle with room for the ball. */
 export function layoutLanterns(random: () => number, layout?: LanternLayout): Lantern[] {
   const shape = layout ?? LAYOUTS[Math.floor(roll(random) * LAYOUTS.length)];
@@ -295,7 +351,7 @@ export function layoutLanterns(random: () => number, layout?: LanternLayout): La
     for (let col = 0; col < LANTERN_COLS; col++) {
       const centre = Math.abs(col - (LANTERN_COLS - 1) / 2);
       const shift = shape === 'stagger' ? (row % 2 === 0 ? -7 : 7) : 0;
-      const lift = shape === 'arch' ? -centre * 5 + 10 : shape === 'vee' ? centre * 5 : 0;
+      const lift = shape === 'arch' ? -centre * 5 + 10 : shape === 'vee' ? centre * 5 : shape === 'stairs' ? col * 4 : shape === 'zigzag' ? (col % 2 ? 9 : 0) : 0;
       out.push({ x: Math.round(left + col * (w + gap) + shift), y: Math.round(top + row * rowGap + lift), w, h, hue: hues[(col + row) % hues.length] });
     }
   }
@@ -376,6 +432,7 @@ export function bounceStep(state: BounceState, input: PaddleInput, dt = STEP_S):
     else { vy = y < l.y + l.h / 2 ? -Math.abs(vy) : Math.abs(vy); y += y < l.y + l.h / 2 ? -oy : oy; }
     lit = lit.map((on, i) => on || i === index);
     events.push({ type: 'lantern', index });
+    if (rowLit(lit, lanternRow(index))) events.push({ type: 'row', row: lanternRow(index) });
     break;
   }
   ({ vx, vy } = steady(vx, vy));

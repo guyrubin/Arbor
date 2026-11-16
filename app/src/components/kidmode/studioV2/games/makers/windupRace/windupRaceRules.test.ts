@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { CAR_HALF, CHALK_KEEP, MAX_CLICKS, TRACKS, addChalk, dragKey, keyGain, leanAt, minimumClicks, nextTrack, pointAt, sampleAt, simulate, springEnergy, tension, wheelAngle, wind } from './windupRaceRules';
+import { CAR_HALF, CHALK_KEEP, CLOSE_CALL, CLOSE_LEAD, MAX_CLICKS, PLAY_LENGTH, ROOM_LIGHTS, TRACKS, TRACK_SETS, addChalk, closeCallAt, dragKey, keyGain, leanAt, minimumClicks, nextTrack, pointAt, roomLight, sampleAt, simulate, slopeAt, springEnergy, tension, trackSet, wheelAngle, wind } from './windupRaceRules';
 
-const [shelf, ramp, table] = TRACKS;
+const [shelf, ramp, table, blockBridge, bookSlide, grandTour] = TRACKS;
 const ALL = Array.from({ length: MAX_CLICKS + 1 }, (_, clicks) => clicks);
 
 describe('the spring', () => {
@@ -45,6 +45,25 @@ describe('the run', () => {
     expect(minimumClicks(shelf)).toBe(4);
     expect(minimumClicks(ramp)).toBe(7);
     expect(minimumClicks(table)).toBe(10);
+  });
+  it('the second set asks for 5, 8 and 11 clicks, and every track can be finished with the key full', () => {
+    expect(minimumClicks(blockBridge)).toBe(5);
+    expect(minimumClicks(bookSlide)).toBe(8);
+    expect(minimumClicks(grandTour)).toBe(11);
+    for (const track of TRACKS) expect(minimumClicks(track), track.id).toBeLessThanOrEqual(MAX_CLICKS - 1);
+  });
+  it('every track is well formed: start, flag and cushion in order on the rolling line', () => {
+    expect(new Set(TRACKS.map(track => track.id)).size).toBe(TRACKS.length);
+    for (const track of TRACKS) {
+      expect(track.start).toBeGreaterThanOrEqual(CAR_HALF);
+      expect(track.flag).toBeGreaterThan(track.start + 400);
+      expect(track.cushion).toBeGreaterThan(track.flag + 100);
+      expect(track.points[track.points.length - 1][0]).toBeGreaterThan(track.cushion + 80);
+      for (let i = 1; i < track.points.length; i++) expect(track.points[i][0]).toBeGreaterThanOrEqual(track.points[i - 1][0]);
+      // The car waits on level ground, and nothing stands where it waits.
+      expect(slopeAt(track, track.start)).toBe(0);
+      for (const at of [...track.dominoes, ...(track.ball === null ? [] : [track.ball]), ...track.bumps.map(bump => bump.at)]) expect(at).toBeGreaterThan(track.start + CAR_HALF + 60);
+    }
   });
   it('finish means the nose passed the flag', () => {
     for (const track of TRACKS) for (const c of ALL) {
@@ -90,6 +109,24 @@ describe('the run', () => {
     const bare = { ...ramp, ball: null };
     expect(simulate(bare, 6).reach).toBeGreaterThan(simulate(ramp, 6).reach);
   });
+  it('block bridge: the dominoes stand on the plank and fall when the car climbs to them', () => {
+    expect(pointAt(blockBridge, blockBridge.dominoes[0]).y).toBeCloseTo(26);
+    expect(simulate(blockBridge, 2).dominoesAt).toBeNull();
+    expect(simulate(blockBridge, 5).dominoesAt).not.toBeNull();
+  });
+  it('book slide: the ruler down adds speed, and too little wind rolls back off the far book', () => {
+    const run = simulate(bookSlide, 3);
+    const top = run.samples.find(sample => sample.s >= 240)!, bottom = run.samples.find(sample => sample.s >= 480)!;
+    expect(bottom.v).toBeGreaterThan(top.v);
+    const back = simulate(bookSlide, 5);
+    expect(back.events.map(event => event.kind)).toContain('turnback');
+    expect(back.stop).toBeGreaterThan(490); // it settles in the dip, never back up the ruler
+    expect(back.finished).toBe(false);
+  });
+  it('the grand table: pencil, dominoes, tunnel and wool ball in that order, then the flag', () => {
+    const kinds = simulate(grandTour, 11).events.map(event => event.kind);
+    expect(kinds.filter(kind => kind !== 'stop' && kind !== 'cushion')).toEqual(['bump', 'dominoes', 'tunnel', 'ball', 'flag']);
+  });
   it('the spring unwinds as the car goes and is empty at rest', () => {
     const run = simulate(shelf, 6);
     expect(run.samples[0].turns).toBe(6);
@@ -119,9 +156,51 @@ describe('playback and reset', () => {
     expect(leanAt(shelf, 400)).toBeCloseTo(0);
     expect(wheelAngle(26)).toBeCloseTo(2);
   });
-  it('tracks run in order and end after the third', () => {
-    expect(TRACKS.map(track => track.id)).toEqual(['shelf', 'ramp', 'table']);
+  it('a play is three tracks in order and ends after the third', () => {
+    expect(PLAY_LENGTH).toBe(3);
+    expect(trackSet(0).map(track => track.id)).toEqual(['shelf', 'ramp', 'table']);
     expect(nextTrack(0)).toBe(1); expect(nextTrack(1)).toBe(2); expect(nextTrack(2)).toBeNull();
+  });
+  it('play again is not the same again: the next play is a different set, and every set climbs', () => {
+    for (const [index, ids] of TRACK_SETS.entries()) {
+      expect(ids).toHaveLength(PLAY_LENGTH);
+      const set = trackSet(index);
+      expect(set.map(track => track.id)).toEqual(ids);
+      const needs = set.map(track => minimumClicks(track)!);
+      for (let i = 1; i < needs.length; i++) expect(needs[i], ids.join()).toBeGreaterThan(needs[i - 1]);
+      const next = TRACK_SETS[(index + 1) % TRACK_SETS.length];
+      expect(next.join()).not.toBe(ids.join());
+    }
+    // The second play shares no track with the first.
+    expect(trackSet(1).some(track => trackSet(0).includes(track))).toBe(false);
+    expect(trackSet(TRACK_SETS.length)).toEqual(trackSet(0));
+    expect(trackSet(Number.NaN)).toEqual(trackSet(0)); expect(trackSet(-3)).toEqual(trackSet(0));
+    // Every authored track is played in some set.
+    for (const track of TRACKS) expect(TRACK_SETS.some(ids => ids.includes(track.id)), track.id).toBe(true);
+  });
+  it('the room light changes from play to play and never touches the run', () => {
+    expect(roomLight(0)).toBe('afternoon');
+    expect(ROOM_LIGHTS.map((_, i) => roomLight(i))).toEqual([...ROOM_LIGHTS]);
+    expect(roomLight(ROOM_LIGHTS.length)).toBe(roomLight(0)); expect(roomLight(Number.NaN)).toBe('afternoon');
+  });
+  it('a close run is one that ends near the flag, either side; the playback slows from just before it', () => {
+    // Seven clicks on the book slide stop a hair short of the flag.
+    const near = simulate(bookSlide, 7);
+    expect(near.finished).toBe(false);
+    expect(bookSlide.flag - near.reach).toBeLessThan(CLOSE_CALL);
+    const at = closeCallAt(bookSlide, near)!;
+    expect(at).toBeGreaterThan(0); expect(at).toBeLessThan(near.duration);
+    expect(sampleAt(near, at).s + CAR_HALF).toBeGreaterThanOrEqual(bookSlide.flag - CLOSE_LEAD - 1);
+    // Just past it counts too; a run into the cushion, a short one and a roll-back do not.
+    for (const track of TRACKS) for (const c of ALL) {
+      const run = simulate(track, c), when = closeCallAt(track, run);
+      const nose = run.finished ? run.stop + CAR_HALF : run.reach;
+      if (when !== null) { expect(Math.abs(nose - track.flag)).toBeLessThanOrEqual(CLOSE_CALL); expect(when).toBeLessThanOrEqual(run.duration); }
+      if (Math.abs(nose - track.flag) > CLOSE_CALL) expect(when).toBeNull();
+    }
+    expect(closeCallAt(shelf, simulate(shelf, MAX_CLICKS))).toBeNull();
+    expect(closeCallAt(shelf, simulate(shelf, 1))).toBeNull();
+    expect(closeCallAt(ramp, simulate(ramp, 3))).toBeNull();
   });
   it('chalk marks keep the last few reaches', () => {
     let marks: number[] = [];

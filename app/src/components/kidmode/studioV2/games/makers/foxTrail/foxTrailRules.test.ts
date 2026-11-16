@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  LOGS, MAX_X, MIN_X, OFFER_RANGE, RUN_MAX, SEEDS, STONES, STONE_X, STREAM, TUNNEL, WAKE_T, WORLD_W,
-  allCarried, bladeBend, bladeFlatten, cameraFollow, canOffer, carriedCount, groundAt, inTunnel, initialFoxState, nightness,
-  resetFoxState, run, springBlade, step, surfaceAt, wakeRadius, waterLevel, type FoxState,
+  BOUNCERS, COYOTE_T, JUMP_BUFFER, LOGS, MAX_X, MIN_X, NOOK_X, OFFER_RANGE, OFFER_T, POD_REACH, ROOF, RUN_MAX, SEEDS, STEP_DT, STONES, STONE_X, STREAM, TUNNEL, WAKE_T, WORLD_W,
+  allCarried, bladeBend, bladeFlatten, bouncerAt, cameraFollow, canOffer, carriedCount, groundAt, inTunnel, initialFoxState, nightness,
+  resetFoxState, roofTop, run, springBlade, step, surfaceAt, upOnRoof, wakeRadius, waterLevel, type FoxInput, type FoxState,
 } from './foxTrailRules';
 
 const at = (x: number, extra: Partial<FoxState> = {}): FoxState => ({ ...initialFoxState(), x, y: surfaceAt(x), ...extra });
@@ -15,7 +15,7 @@ function runTo(s: FoxState, x: number, limit = 40): FoxState {
 
 describe('the trail', () => {
   it('is continuous, with logs and stones as heights along it and a shallow stream', () => {
-    const nearLog = (x: number) => LOGS.some(log => Math.abs(x - log.x) < log.r + 6);
+    const nearLog = (x: number) => LOGS.some(log => Math.abs(x - log.x) < log.r + 6) || BOUNCERS.some(cap => Math.abs(x - cap.x) < cap.w / 2 + 6);
     for (let x = 0; x < WORLD_W; x += 5) if (!nearLog(x)) expect(Math.abs(surfaceAt(x + 5) - surfaceAt(x)), `x=${x}`).toBeLessThan(30);
     for (const log of LOGS) expect(surfaceAt(log.x) - groundAt(log.x)).toBeCloseTo(log.r * 2, 0);
     expect(groundAt((STREAM.from + STREAM.to) / 2)).toBeLessThan(groundAt(STREAM.from) - 10);
@@ -65,6 +65,99 @@ describe('movement', () => {
   });
 });
 
+describe('forgiveness', () => {
+  const steps = (s: FoxState, input: FoxInput, n: number) => { for (let i = 0; i < n; i++) s = step(s, i === 0 ? input : { dir: input.dir }); return s; };
+  it('coyote time: a jump still works a moment after running off an edge', () => {
+    // run right off the last stepping stone
+    let s = at(STONES[2].x, { vx: RUN_MAX });
+    while (s.onGround) s = step(s, { dir: 1 });
+    expect(s.coyote).toBeCloseTo(COYOTE_T, 5);
+    const late = steps(s, { dir: 1, jump: true }, 1);
+    expect(late.events).toContain('jump'); expect(late.vy).toBeGreaterThan(0);
+    // … but not long after
+    let gone = s; for (let i = 0; i < Math.ceil((COYOTE_T + 0.05) / STEP_DT); i++) gone = step(gone, { dir: 1 });
+    if (!gone.onGround) expect(step(gone, { dir: 1, jump: true }).events).not.toContain('jump');
+  });
+  it('a jump pressed just before landing happens on landing', () => {
+    let s = step(at(1500), { dir: 0, jump: true });
+    while (!(s.vy < 0 && s.y - surfaceAt(s.x) < 8)) s = step(s, { dir: 0 });
+    expect(s.onGround).toBe(false);
+    s = step(s, { dir: 0, jump: true }); expect(s.events).not.toContain('jump');
+    let jumped = false;
+    for (let i = 0; i < Math.ceil(JUMP_BUFFER / STEP_DT) && !jumped; i++) { s = step(s, { dir: 0 }); jumped = s.events.includes('jump'); }
+    expect(jumped).toBe(true);
+  });
+  it('the top of a jump hangs a moment and the way down is quicker than the way up', () => {
+    let s = step(at(1500), { dir: 0, jump: true }), up = 1, down = 0, top = 0;
+    while (!s.onGround) { s = step(s, { dir: 0 }); top = Math.max(top, s.y - surfaceAt(1500)); if (s.vy > 0) up++; else down++; }
+    expect(top).toBeGreaterThan(100); expect(top).toBeLessThan(ROOF.h - 10);
+    expect(down).toBeLessThan(up);
+  });
+  it('a fox standing right against a log still gets over it', () => {
+    const log = LOGS[0];
+    const s = run(at(log.x - log.r - 1), { dir: 1 }, 1.2);
+    expect(s.x).toBeGreaterThan(log.x + log.r);
+  });
+  it('turning round at a run skids once, and a roll works in the air (a somersault)', () => {
+    let s = run(at(1500), { dir: 1 }, 1);
+    s = run(s, { dir: -1 }, 0.6);
+    expect(s.events.filter(e => e === 'skid')).toHaveLength(1); expect(s.vx).toBeLessThan(0);
+    let air = step(at(1500), { dir: 0, jump: true }); air = run(air, { dir: 0 }, 0.1);
+    air = step(air, { dir: 0, roll: true });
+    expect(air.onGround).toBe(false); expect(air.roll).toBeGreaterThan(0); expect(air.events).toContain('roll');
+  });
+  it('leaving the stream wet ends in one happy shake on the bank', () => {
+    const s = run(at(STREAM.from - 100), { dir: 1 }, 5);
+    expect(s.x).toBeGreaterThan(STREAM.to + 24);
+    expect(s.events.filter(e => e === 'dry')).toHaveLength(1); expect(s.wet).toBe(0);
+  });
+});
+
+describe('toadstools and the hidden nook', () => {
+  const cap = BOUNCERS[1];
+  it('running into a toadstool springs the fox up and over, no aim needed', () => {
+    const first = BOUNCERS[0];
+    const s = run(at(first.x - 200), { dir: 1 }, 1.6);
+    expect(s.events).toContain('bounce'); expect(s.x).toBeGreaterThan(first.x + first.w / 2);
+    expect(bouncerAt(first.x)).toBe(0); expect(bouncerAt(first.x + 200)).toBe(-1);
+  });
+  it('landing on a cap bounces higher each time, up to a limit, for as long as nothing is pressed', () => {
+    let s = step(at(cap.x - cap.w / 2 - 20), { dir: 0, target: cap.x });
+    const tops: number[] = []; let top = 0;
+    for (let i = 0; i < 120 * 9; i++) {
+      s = step(s, { dir: 0 });
+      top = Math.max(top, s.y - groundAt(cap.x));
+      if (s.events.includes('bounce')) { if (top > 0) tops.push(top); top = 0; }
+    }
+    expect(tops.length).toBeGreaterThan(5);
+    expect(tops[2]).toBeGreaterThan(tops[1] + 10); expect(tops[3]).toBeGreaterThan(tops[2] + 10);
+    expect(Math.max(...tops)).toBeLessThan(300);
+    expect(Math.abs(tops[tops.length - 1] - tops[tops.length - 2])).toBeLessThan(4);
+    expect(s.onGround).toBe(false);
+  });
+  it('the oak\'s top is out of reach of a jump and of simply running into the toadstool', () => {
+    let s = run(at(TUNNEL.from - 0.5), { dir: 1, jump: true }, 1.2);
+    expect(upOnRoof(s.x, s.y)).toBe(false); expect(s.x).toBeLessThan(TUNNEL.from);
+    s = run(at(cap.x - 400), { dir: 1 }, 3);
+    expect(s.x).toBeLessThan(TUNNEL.from); expect(s.blocked).toBe(true); expect(s.moth).toBe('asleep');
+  });
+  it('a jump onto the cap bounces the fox up onto the oak, where a moon-moth wakes; the seed inside still needs a roll', () => {
+    // a running jump that comes down on the cap
+    let s = at(cap.x - 150, { vx: RUN_MAX });
+    s = step(s, { dir: 1, jump: true });
+    let bounced = false;
+    for (let i = 0; i < 120 * 4 && !(s.onGround && upOnRoof(s.x, s.y)); i++) { s = step(s, { dir: s.x < cap.x - 6 || bounced ? 1 : 0 }); bounced = bounced || s.events.includes('bounce'); }
+    expect(bounced).toBe(true);
+    expect(upOnRoof(s.x, s.y)).toBe(true); expect(s.y).toBeCloseTo(roofTop(), 5);
+    s = runTo(s, NOOK_X, 4);
+    expect(s.moth).toBe('awake');
+    s = run(s, { dir: 1 }, 3);
+    expect(s.x).toBeGreaterThan(TUNNEL.to); expect(s.onGround).toBe(true);
+    expect(s.seeds.hollow).toBe('resting');
+    expect(resetFoxState(s).moth).toBe('asleep');
+  });
+});
+
 describe('the roll and the hollow oak', () => {
   it('a roll lasts about 0.6 s and travels farther and faster than running', () => {
     const start = at(1500);
@@ -100,10 +193,26 @@ describe('lantern-seeds', () => {
     s = runTo(s, s.seedX.tallGrass + 10, 3);
     expect(s.seeds.tallGrass).toBe('carried');
   });
-  it('the seed on the stepping stone is reached by running across the stream', () => {
-    const s = runTo(at(STREAM.from - 120), STONES[2].x + 60, 6);
+  it('the pod over the stepping stone hangs out of a hop\'s reach: running across leaves it, a jump takes it', () => {
+    const across = runTo(at(STREAM.from - 120), STONES[2].x + 60, 6);
+    expect(across.seeds.stone).toBe('resting');
+    let s = runTo(at(STREAM.from - 120), SEEDS.stone.x - 6, 6);
+    s = run(s, { dir: 0 }, 0.6); expect(s.seeds.stone).toBe('resting');
+    s = run(s, { dir: 0, jump: true }, 0.5);
+    expect(s.seeds.stone).toBe('carried'); expect(carriedCount(s)).toBe(1);
+    // … and from the water beside the stone too: no aim needed.
+    let wading = at(SEEDS.stone.x + 44); wading = run(wading, { dir: 0, jump: true }, 0.5);
+    expect(wading.seeds.stone).toBe('carried');
+    expect(POD_REACH).toBeLessThan(SEEDS.stone.lift);
+  });
+  it('play again hangs the pod over another stone, and everything else is the same', () => {
+    const xs = [0, 1, 2].map(v => initialFoxState(v).seedX.stone);
+    expect(new Set(xs).size).toBe(3);
+    for (const x of xs) expect(STONES.some(stone => stone.x === x)).toBe(true);
+    expect(initialFoxState(3)).toEqual(initialFoxState(0));
+    let s = runTo(initialFoxState(2), initialFoxState(2).seedX.stone - 4, 20);
+    s = run(s, { dir: 0, jump: true }, 0.6);
     expect(s.seeds.stone).toBe('carried');
-    expect(carriedCount(s)).toBe(1);
   });
 });
 
@@ -126,6 +235,8 @@ describe('the mirror stone', () => {
     let s = step(ready(STONE_X - 40), { dir: 0, offer: true });
     expect(s.phase).toBe('waking'); expect(s.events).toContain('wake');
     expect(nightness(s.phase, 0.5, 3000)).toBe(0);
+    // the lights fly to the mirror first; only then does the ring start out
+    expect(wakeRadius('waking', OFFER_T)).toBe(0); expect(wakeRadius('waking', OFFER_T + 0.5)).toBeGreaterThan(0);
     s = run(s, { dir: 1 }, WAKE_T / 2); expect(s.phase).toBe('waking'); expect(Math.abs(s.vx)).toBeLessThan(5);
     s = run(s, { dir: 0 }, WAKE_T / 2 + 0.1); expect(s.phase).toBe('night'); expect(s.events).toContain('night');
     s = run(s, { dir: -1 }, 3); expect(s.phase).toBe('night'); expect(s.x).toBeLessThan(STONE_X - 500);
@@ -137,7 +248,8 @@ describe('the mirror stone', () => {
     let s = initialFoxState();
     s = runTo(s, SEEDS.tallGrass.x - 100); s = run(s, { dir: 1, roll: true }, 0.7); s = run(s, { dir: 0 }, 0.6);
     s = runTo(s, s.seedX.tallGrass + 5); expect(s.seeds.tallGrass).toBe('carried');
-    s = runTo(s, TUNNEL.from - 20, 30); expect(s.seeds.stone).toBe('carried'); expect(s.x).toBeLessThan(TUNNEL.from);
+    s = runTo(s, SEEDS.stone.x - 4, 30); s = run(s, { dir: 0, jump: true }, 0.6); expect(s.seeds.stone).toBe('carried');
+    s = runTo(s, TUNNEL.from - 20, 30); expect(s.x).toBeLessThan(TUNNEL.from);
     s = run(s, { dir: 1, roll: true }, 1.4); expect(allCarried(s)).toBe(true);
     s = runTo(s, STONE_X - 30, 30); s = run(s, { dir: 0 }, 0.5);
     expect(canOffer(s)).toBe(true);

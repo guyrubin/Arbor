@@ -1,5 +1,7 @@
-/** Paints the woolly mammoth on a 2D canvas: the snow it stands on, its base
- * shapes, then thousands of strands part by part, back to front. Each strand
+/** Paints the woolly mammoth on a 2D canvas, over the rendered hall and
+ * steppe pictures: its shadow, its base shapes, then thousands of strands
+ * part by part, back to front, with the snow on its back, the light on the
+ * glass and the loose things in the air. Each strand
  * is a quadratic curve split in two: a darker, wider root half and a lighter,
  * thinner tip half, so every hair runs dark at the skin to sun-bleached at the
  * end. Rows paint bottom first, so each higher row of hair lies over the one
@@ -8,9 +10,10 @@
  * once from CSS and mixed here; there are no colour literals in this file. */
 import { COLOUR_BINS, DETAIL_ZOOM, PARTS, TIER_WIDTH, TRUNK_SAMPLES, gustAt, trunkAngle, trunkHalfWidth, type Camera, type StrandSet, type Tier, type Vec } from './iceAgeFriendRules';
 import { TRUNK_LENGTH, bezierAt, type Bezier, type MammothView } from './mammothShape';
+import type { SnowClump } from './mammothPlayRules';
 
 export type RGB = readonly [number, number, number];
-const PALETTE_KEYS = ['fur-dark', 'fur', 'fur-light', 'fur-tip', 'umber', 'rust', 'shadow', 'cream', 'paper-shade', 'sand', 'white', 'snow', 'snow-shade', 'chalk', 'sky-pale', 'storm-grey', 'wood', 'wood-light', 'wood-dark', 'rose', 'clay', 'ink-soft'] as const;
+const PALETTE_KEYS = ['fur-dark', 'fur', 'fur-light', 'fur-tip', 'umber', 'rust', 'shadow', 'cream', 'paper-shade', 'sand', 'white', 'snow', 'snow-shade', 'chalk', 'sky-pale', 'storm-grey', 'wood', 'wood-light', 'wood-dark', 'rose', 'clay', 'ink-soft', 'moss'] as const;
 export type PaletteKey = typeof PALETTE_KEYS[number];
 export type Palette = Record<PaletteKey, RGB>;
 
@@ -78,19 +81,41 @@ export function rotateAbout(p: Vec, angle: number): Affine {
 export function scaleAboutX(x: number, k: number): Affine { return [k, 0, 0, 1, x - k * x, 0]; }
 export function apply(m: Affine, p: Vec): Vec { return [m[0] * p[0] + m[2] * p[1] + m[4], m[1] * p[0] + m[3] * p[1] + m[5]]; }
 
-/** Idle and finale motion, all small: weight shift, nod, ear flick, tail swish, trunk swing and lift, blink. */
-export interface Pose { swayX: number; swayY: number; nod: number; ear: number; tail: number; swing: number; lift: number; blink: number; turn: number }
-export const REST_POSE: Pose = { swayX: 0, swayY: 0, nod: 0, ear: 0, tail: 0, swing: 0, lift: 0, blink: 0, turn: 1 };
+/** Idle life, mood and gestures, all small: weight shift and lean, nod, ear
+ * flick, tail swish, trunk swing, lift and curl, the eyelid, the brow and the
+ * jaw, a lifted foot, and the heavy step of the turn (hop, squash, face). */
+export type LegId = 'legFront' | 'legHind' | 'legFarFront' | 'legFarHind';
+export interface Pose {
+  swayX: number; swayY: number; nod: number; ear: number; tail: number; swing: number; lift: number; curl: number;
+  /** Eyelid 0 wide open .. 1 shut. */
+  lid: number;
+  /** Brow -1 soft .. 1 raised. */
+  brow: number;
+  /** Jaw 0 closed .. 1 open. */
+  jaw: number;
+  /** Width of the animal while it turns about (1 = side on). */
+  turn: number;
+  hop: number; squash: number;
+  /** How far each foot is off the snow, in world units. */
+  step: Record<LegId, number>;
+}
+export const REST_POSE: Pose = { swayX: 0, swayY: 0, nod: 0, ear: 0, tail: 0, swing: 0, lift: 0, curl: 0, lid: 0.2, brow: 0, jaw: 0, turn: 1, hop: 0, squash: 0, step: { legFront: 0, legHind: 0, legFarFront: 0, legFarHind: 0 } };
 
-export interface PartFrames { body: Affine; head: Affine; ear: Affine; tail: Affine; legs: Affine }
-/** The parts' transforms for a pose; in the turned view every turn is mirrored. */
+export interface PartFrames { body: Affine; head: Affine; ear: Affine; tail: Affine; legs: Record<LegId, Affine> }
+/** The parts' transforms for a pose; facing right, every turn is mirrored. */
 export function partFrames(view: MammothView, pose: Pose): PartFrames {
   const m = view.mirror ? -1 : 1;
-  const cx = (view.furBounds.minX + view.furBounds.maxX) / 2;
-  const turn = scaleAboutX(cx, pose.turn);
-  const body = compose(turn, translate(pose.swayX * m, pose.swayY));
+  const cx = (view.furBounds.minX + view.furBounds.maxX) / 2, gy = view.groundY;
+  // The whole animal: lifted by the hop, pressed toward the snow by the squash, closed by the turn.
+  const ky = 1 - 0.06 * pose.squash;
+  const base: Affine = [pose.turn, 0, 0, ky, cx - pose.turn * cx, gy - ky * gy - pose.hop];
+  const body = compose(base, translate(pose.swayX * m, pose.swayY));
   const head = compose(body, rotateAbout(view.pivots.neck, pose.nod * m));
-  return { body, head, ear: compose(head, rotateAbout(view.pivots.ear, pose.ear * m)), tail: compose(body, rotateAbout(view.pivots.tail, pose.tail * m)), legs: turn };
+  const leg = (id: LegId) => (pose.step[id] ? compose(base, translate(0, -pose.step[id])) : base);
+  return {
+    body, head, ear: compose(head, rotateAbout(view.pivots.ear, pose.ear * m)), tail: compose(body, rotateAbout(view.pivots.tail, pose.tail * m)),
+    legs: { legFront: leg('legFront'), legHind: leg('legHind'), legFarFront: leg('legFarFront'), legFarHind: leg('legFarHind') },
+  };
 }
 
 /** The trunk's centre line for a pose, in head space: points, directions and half widths. */
@@ -102,11 +127,12 @@ export function trunkLine(view: MammothView, pose: Pose, out?: TrunkLine): Trunk
   let x = view.trunkBase[0], y = view.trunkBase[1];
   for (let i = 0; i < n; i++) {
     const s = i / (n - 1);
-    const raw = trunkAngle(s, pose.lift, pose.swing);
+    const raw = trunkAngle(s, pose.lift, pose.swing, pose.curl);
     const a = view.mirror ? Math.PI - raw : raw;
     line.x[i] = x; line.y[i] = y; line.a[i] = a; line.hw[i] = trunkHalfWidth(s) * k;
     // The next point steps along the mean direction of this segment.
-    const next = view.mirror ? Math.PI - trunkAngle(Math.min(1, s + 1 / (n - 1)), pose.lift, pose.swing) : trunkAngle(Math.min(1, s + 1 / (n - 1)), pose.lift, pose.swing);
+    const ahead = trunkAngle(Math.min(1, s + 1 / (n - 1)), pose.lift, pose.swing, pose.curl);
+    const next = view.mirror ? Math.PI - ahead : ahead;
     const mid = a + (next - a) / 2;
     x += Math.cos(mid) * step; y += Math.sin(mid) * step;
   }
@@ -129,7 +155,7 @@ export function makeDynamics(count: number): Dynamics {
 
 /* ── cached static paths per view ─────────────────────────────────────── */
 
-interface Statics { shapes: Record<string, Path2D>; tuskNear: TuskPaths; tuskFar: TuskPaths; tufts: { x: number; y: number; blades: { dx: number; h: number; lean: number; w: number }[] }[] }
+interface Statics { shapes: Record<string, Path2D>; tuskNear: TuskPaths; tuskFar: TuskPaths; snowTilt: number[] }
 interface TuskPaths { outline: Path2D; spine: Vec[]; from: Vec; to: Vec; widths: number[] }
 const staticCache = new WeakMap<MammothView, Statics>();
 function polyPath(poly: readonly Vec[]): Path2D {
@@ -162,12 +188,13 @@ function statics(view: MammothView): Statics {
   const cached = staticCache.get(view); if (cached) return cached;
   const shapes: Record<string, Path2D> = {};
   for (const [key, poly] of Object.entries(view.shapes)) shapes[key] = polyPath(poly);
-  // Dry steppe grass poking through the snow, a few tufts in front and behind.
-  const spots: Vec[] = [[150, 646], [910, 634], [590, 676], [-70, 664], [1060, 652], [330, 708], [780, 700]];
-  let seed = 7;
-  const r = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-  const tufts = spots.map(([x, y]) => ({ x, y: y + (view.groundY - 615), blades: Array.from({ length: 6 + Math.floor(r() * 4) }, () => ({ dx: (r() - 0.5) * 34, h: 22 + r() * 30, lean: (r() - 0.5) * 0.7, w: 3 + r() * 2.5 })) }));
-  const result = { shapes, tuskNear: tuskPaths(view.tusks.near, 1), tuskFar: tuskPaths(view.tusks.far, view.view === 'side' ? 0.94 : 0.9), tufts };
+  // The lie of the snow at each spot: it follows the slope of the back.
+  const snowTilt = view.snow.map((spot, i) => {
+    const a = view.snow[i - 1]?.part === spot.part ? view.snow[i - 1].at : spot.at, b = view.snow[i + 1]?.part === spot.part ? view.snow[i + 1].at : spot.at;
+    const tilt = Math.atan2(b[1] - a[1], b[0] - a[0]);
+    return tilt > Math.PI / 2 ? tilt - Math.PI : tilt < -Math.PI / 2 ? tilt + Math.PI : tilt;
+  });
+  const result = { shapes, tuskNear: tuskPaths(view.tusks.near, 1), tuskFar: tuskPaths(view.tusks.far, 0.94), snowTilt };
   staticCache.set(view, result);
   return result;
 }
@@ -176,86 +203,147 @@ function statics(view: MammothView): Statics {
 
 export interface Flake { x: number; y: number; r: number; speed: number; drift: number }
 export interface Puff { x: number; y: number; born: number }
+/** Loose snow in the air: brushed off the back, shaken out of the coat, knocked off by a heavy step. World units. */
+export interface Mote { x: number; y: number; vx: number; vy: number; r: number; born: number; life: number; floor: number }
+/** The quick ring that answers a touch where it lands. */
+export interface Ripple { x: number; y: number; born: number }
+export const RIPPLE_SECONDS = 0.4;
+/** A patch of breath on the glass, where the trunk tip or a finger met it. World units. */
+export interface Mist { x: number; y: number; r: number; born: number }
+export const MIST_SECONDS = 3.2;
+/** A plucked bunch of grass, flying to the trunk or held in its tip. World units. */
+export interface Bundle { x: number; y: number; angle: number; size: number }
+/** The grass standing in its basket: where its roots are (world units), how much has grown back, when it was last rustled. */
+export interface Sheaf { x: number; y: number; size: number; grown: number; shaken: number }
+/** The wall of glass, in world units. */
+export interface Glass {
+  panes: Path2D | null;
+  /** The whole wall's box, for the light that lies across it. */
+  box: { minX: number; minY: number; maxX: number; maxY: number };
+  /** True while the mammoth is still out on the steppe: it shows only through the panes, behind the snow and the sheen. */
+  behind: boolean;
+  /** One great breath that whitens everything for a moment (0..1): the mammoth steps through under it. */
+  bloom: number;
+}
 export interface FrameInput {
   ctx: CanvasRenderingContext2D;
   width: number; height: number; dpr: number;
   camera: Camera; baseScale: number;
+  /** Where the camera's centre sits on the stage, in CSS pixels. */
+  anchor: Vec;
+  /** The animal's place in the world: identity in the hall; smaller and further off beyond the glass. */
+  place: Affine;
   view: MammothView; strands: StrandSet; dyn: Dynamics; tier: Tier;
   time: number; wind: number; pose: Pose;
   palette: Palette; inks: Inks;
-  flakes: readonly Flake[]; puffs: readonly Puff[];
+  glass: Glass;
+  flakes: readonly Flake[]; puffs: readonly Puff[]; mists: readonly Mist[];
+  snow: readonly SnowClump[]; motes: readonly Mote[]; ripples: readonly Ripple[];
+  bundle: Bundle | null; sheaf: Sheaf | null;
 }
 export interface FrameOutput { frames: PartFrames; trunk: TrunkLine }
 
 const trunkScratch = new WeakMap<MammothView, TrunkLine>();
 
 export function drawFrame(input: FrameInput): FrameOutput {
-  const { ctx, width, height, dpr, camera, baseScale, view, palette: p, pose } = input;
+  const { ctx, width, height, dpr, camera, baseScale, view, palette: p, pose, anchor, place, glass } = input;
   const S = baseScale * camera.zoom;
-  const world: Affine = [dpr * S, 0, 0, dpr * S, dpr * (width / 2 - camera.x * S), dpr * (height / 2 - camera.y * S)];
-  const set = (m: Affine) => { const t = compose(world, m); ctx.setTransform(t[0], t[1], t[2], t[3], t[4], t[5]); };
+  const world: Affine = [dpr * S, 0, 0, dpr * S, dpr * (anchor[0] - camera.x * S), dpr * (anchor[1] - camera.y * S)];
+  const animal = compose(world, place);
+  const set = (m: Affine) => { const t = compose(animal, m); ctx.setTransform(t[0], t[1], t[2], t[3], t[4], t[5]); };
+  const toWorld = () => ctx.setTransform(world[0], world[1], world[2], world[3], world[4], world[5]);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, width * dpr, height * dpr);
-  // The visible world, for skipping strands that are off screen.
-  const view4 = { minX: camera.x - width / 2 / S - 140, maxX: camera.x + width / 2 / S + 140, minY: camera.y - height / 2 / S - 140, maxY: camera.y + height / 2 / S + 140 };
+  // The visible part of the animal's own space, for skipping strands that are off screen.
+  const SA = S * place[0];
+  const left = camera.x - anchor[0] / S, right = camera.x + (width - anchor[0]) / S, top = camera.y - anchor[1] / S, bottom = camera.y + (height - anchor[1]) / S;
+  const view4 = { minX: (left - place[4]) / place[0] - 140, maxX: (right - place[4]) / place[0] + 140, minY: (top - place[5]) / place[3] - 140, maxY: (bottom - place[5]) / place[3] + 140 };
   const st = statics(view);
   const frames = partFrames(view, pose);
   const trunk = trunkLine(view, pose, trunkScratch.get(view));
   trunkScratch.set(view, trunk);
 
-  drawGround(ctx, set, view, p, pose);
+  // What lies on the glass itself: the snow falling beyond it, the daylight across it, breath on it.
+  const onGlass = () => {
+    if (!glass.panes) return;
+    ctx.save(); toWorld(); ctx.clip(glass.panes);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawFlakes(ctx, input.flakes, width, height, p);
+    toWorld();
+    drawSheen(ctx, glass, p);
+    drawMists(ctx, input.mists, p, input.time);
+    ctx.restore();
+  };
+  if (!glass.behind) onGlass();
 
+  ctx.save();
+  if (glass.behind && glass.panes) { toWorld(); ctx.clip(glass.panes); }
+  set(IDENTITY);
+  drawShadow(ctx, view, p, pose, glass.behind);
   const byPart = new Map(input.strands.parts.map(part => [part.part, part]));
   const none = { part: 'body' as const, start: 0, end: 0, rows: [] };
   for (const id of PARTS) {
     const part = byPart.get(id) ?? { ...none, part: id };
     switch (id) {
       case 'legFarHind': case 'legFarFront': case 'legHind': case 'legFront': {
-        set(frames.legs);
+        set(frames.legs[id]);
         drawLegBase(ctx, st.shapes[id], view, id, p);
-        drawStrands(input, part, view4, S, false, trunk, st.shapes[id]);
+        drawStrands(input, part, view4, SA, false, trunk, st.shapes[id]);
         drawToes(ctx, view, id, p);
         break;
       }
       // The far tusk sits behind the head and trunk but in front of the far legs.
       case 'tuskFar': set(frames.head); drawTusk(ctx, st.tuskFar, p, true); break;
-      case 'tail': set(frames.tail); fillShape(ctx, st.shapes.tail, view, p, 'tail'); drawStrands(input, part, view4, S, false, trunk, st.shapes.tail); break;
-      case 'body': set(frames.body); fillShape(ctx, st.shapes.body, view, p, 'body'); drawStrands(input, part, view4, S, false, trunk, st.shapes.body); break;
-      case 'head': set(frames.head); fillShape(ctx, st.shapes.head, view, p, 'head'); drawStrands(input, part, view4, S, false, trunk, st.shapes.head); drawFace(ctx, view, p, pose); break;
-      case 'ear': set(frames.ear); fillShape(ctx, st.shapes.ear, view, p, 'ear'); drawStrands(input, part, view4, S, false, trunk, st.shapes.ear); drawEarRim(ctx, st.shapes.ear, p); break;
-      case 'trunk': set(frames.head); drawStrands(input, part, view4, S, true, trunk, drawTrunkBase(ctx, trunk, view, p)); drawTrunkTip(ctx, trunk, view, p); break;
+      case 'tail': set(frames.tail); fillShape(ctx, st.shapes.tail, view, p, 'tail'); drawStrands(input, part, view4, SA, false, trunk, st.shapes.tail); break;
+      case 'body': set(frames.body); fillShape(ctx, st.shapes.body, view, p, 'body'); drawStrands(input, part, view4, SA, false, trunk, st.shapes.body); drawSnow(ctx, view, st, input.snow, 'body', p); break;
+      case 'head': set(frames.head); fillShape(ctx, st.shapes.head, view, p, 'head'); drawStrands(input, part, view4, SA, false, trunk, st.shapes.head); drawFace(ctx, view, p, pose); drawSnow(ctx, view, st, input.snow, 'head', p); break;
+      case 'ear': set(frames.ear); fillShape(ctx, st.shapes.ear, view, p, 'ear'); drawStrands(input, part, view4, SA, false, trunk, st.shapes.ear); drawEarRim(ctx, st.shapes.ear, p); break;
+      case 'trunk': set(frames.head); drawStrands(input, part, view4, SA, true, trunk, drawTrunkBase(ctx, trunk, view, p)); drawTrunkTip(ctx, trunk, view, p); break;
       case 'tuskNear': set(frames.head); drawTusk(ctx, st.tuskNear, p, false); break;
-      case 'sheath': set(frames.head); fillShape(ctx, st.shapes.sheath, view, p, 'sheath'); drawStrands(input, part, view4, S, false, trunk, st.shapes.sheath); break;
+      case 'sheath': set(frames.head); fillShape(ctx, st.shapes.sheath, view, p, 'sheath'); drawStrands(input, part, view4, SA, false, trunk, st.shapes.sheath); break;
     }
   }
+  ctx.restore();
+  if (glass.behind) onGlass();
 
-  set(IDENTITY);
-  drawGrass(ctx, st.tufts, p, input.time, input.wind);
+  toWorld();
+  if (input.sheaf) drawSheaf(ctx, input.sheaf, p, input.time);
+  if (input.bundle) drawBundle(ctx, input.bundle, p);
   drawPuffs(ctx, input.puffs, p, input.time);
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  drawFlakes(ctx, input.flakes, width, height, p);
+  drawMotes(ctx, input.motes, p, input.time);
+  drawRipples(ctx, input.ripples, p, input.time, S);
+  if (glass.bloom > 0.01) {
+    // One great breath on the glass: a soft white cloud from the middle of the wall outward.
+    const cx = (glass.box.minX + glass.box.maxX) / 2, cy = glass.box.minY + (glass.box.maxY - glass.box.minY) * 0.6, r = Math.max(glass.box.maxX - glass.box.minX, (bottom - top)) * (0.5 + 0.5 * glass.bloom);
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    g.addColorStop(0, paint(p.white, Math.min(1, glass.bloom * 1.25))); g.addColorStop(0.55, paint(p.snow, glass.bloom)); g.addColorStop(1, paint(p.snow, 0));
+    ctx.fillStyle = g; ctx.fillRect(left, top, right - left, bottom - top);
+  }
   return { frames, trunk };
 }
 
-function drawGround(ctx: CanvasRenderingContext2D, set: (m: Affine) => void, view: MammothView, p: Palette, pose: Pose) {
-  set(IDENTITY);
+/** The soft shadow under the animal: on the stage in the hall, on the snow beyond the glass. Darker under each foot. */
+function drawShadow(ctx: CanvasRenderingContext2D, view: MammothView, p: Palette, pose: Pose, far: boolean) {
   const g = view.groundY;
-  const ground = new Path2D();
-  ground.moveTo(-3000, g - 30);
-  for (let x = -3000; x <= 4000; x += 250) ground.quadraticCurveTo(x + 125, g - 34 + Math.sin(x * 0.013) * 9, x + 250, g - 26 + Math.sin((x + 250) * 0.008) * 6);
-  ground.lineTo(4000, g + 4000); ground.lineTo(-3000, g + 4000); ground.closePath();
-  const fill = ctx.createLinearGradient(0, g - 40, 0, g + 260);
-  fill.addColorStop(0, paint(p.white)); fill.addColorStop(0.18, paint(p.snow)); fill.addColorStop(1, paint(mix(p['snow-shade'], p.chalk, 0.4)));
-  ctx.fillStyle = fill; ctx.fill(ground);
-  // A soft blue-grey shadow under the whole animal, darker under each foot.
   const feet = Object.values(view.feet), lo = Math.min(...feet.map(f => f.x0)), hi = Math.max(...feet.map(f => f.x1));
-  const cx = (lo + hi) / 2 + pose.swayX * (view.mirror ? -1 : 1), rx = Math.max(40, (hi - lo) / 2 + 70);
-  ctx.save(); ctx.translate(cx, g + 4); ctx.scale(1, 0.09);
+  const cx = (lo + hi) / 2 + pose.swayX * (view.mirror ? -1 : 1), rx = Math.max(40, (hi - lo) / 2 + 90);
+  // In the air for the turn, the shadow thins and narrows.
+  const air = Math.max(0, Math.min(1, pose.hop / 16)), wide = 0.35 + 0.65 * pose.turn, k = (far ? 0.7 : 1) * (1 - 0.4 * air);
+  const tone = mix(p['storm-grey'], p['ink-soft'], 0.45);
+  ctx.save(); ctx.translate(cx, g + 2); ctx.scale(wide, 0.085);
   const shade = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
-  shade.addColorStop(0, paint(mix(p['storm-grey'], p.shadow, 0.4), 0.42)); shade.addColorStop(0.6, paint(p['storm-grey'], 0.18)); shade.addColorStop(1, paint(p['storm-grey'], 0));
+  shade.addColorStop(0, paint(tone, 0.5 * k)); shade.addColorStop(0.55, paint(tone, 0.26 * k)); shade.addColorStop(1, paint(tone, 0));
   ctx.fillStyle = shade; ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-  ctx.fillStyle = paint(mix(p['storm-grey'], p.shadow, 0.5), 0.3);
-  for (const f of Object.values(view.feet)) { ctx.beginPath(); ctx.ellipse((f.x0 + f.x1) / 2, f.y + 1, (f.x1 - f.x0) / 2 + 10, 7, 0, 0, Math.PI * 2); ctx.fill(); }
+  const mid = (view.furBounds.minX + view.furBounds.maxX) / 2;
+  for (const [id, f] of Object.entries(view.feet) as [LegId, { x0: number; x1: number; y: number }][]) {
+    // A lifted foot's shadow shrinks under it.
+    const up = Math.max(0, Math.min(1, (pose.step[id] + pose.hop) / 18)), s = (1 - 0.45 * up) * wide, rw = ((f.x1 - f.x0) / 2 + 12) * s;
+    const x = mid + ((f.x0 + f.x1) / 2 - mid) * pose.turn;
+    ctx.save(); ctx.translate(x, f.y + 1); ctx.scale(1, 0.2);
+    const foot = ctx.createRadialGradient(0, 0, 0, 0, 0, rw);
+    foot.addColorStop(0, paint(mix(tone, p.shadow, 0.5), 0.55 * k)); foot.addColorStop(0.7, paint(tone, 0.22 * k)); foot.addColorStop(1, paint(tone, 0));
+    ctx.fillStyle = foot; ctx.beginPath(); ctx.arc(0, 0, rw, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
 }
 
 const gradientCache = new WeakMap<CanvasRenderingContext2D, Map<string, CanvasGradient>>();
@@ -282,7 +370,7 @@ function fillShape(ctx: CanvasRenderingContext2D, path: Path2D, view: MammothVie
     ctx.restore();
   }
 }
-function drawLegBase(ctx: CanvasRenderingContext2D, path: Path2D, view: MammothView, leg: 'legFarHind' | 'legFarFront' | 'legHind' | 'legFront', p: Palette) {
+function drawLegBase(ctx: CanvasRenderingContext2D, path: Path2D, view: MammothView, leg: LegId, p: Palette) {
   const far = leg === 'legFarHind' || leg === 'legFarFront';
   const f = view.feet[leg];
   const fill = gradient(ctx, `${view.view}:${leg}`, () => {
@@ -294,7 +382,7 @@ function drawLegBase(ctx: CanvasRenderingContext2D, path: Path2D, view: MammothV
   ctx.fillStyle = fill; ctx.fill(path);
 }
 /** Broad round feet with a dusty sole and small pale toenails along the front. */
-function drawToes(ctx: CanvasRenderingContext2D, view: MammothView, leg: 'legFarHind' | 'legFarFront' | 'legHind' | 'legFront', p: Palette) {
+function drawToes(ctx: CanvasRenderingContext2D, view: MammothView, leg: LegId, p: Palette) {
   const far = leg === 'legFarHind' || leg === 'legFarFront';
   const f = view.feet[leg], w = f.x1 - f.x0;
   ctx.fillStyle = paint(mix(mix(p.umber, p['paper-shade'], 0.3), p.shadow, far ? 0.4 : 0.1));
@@ -316,28 +404,85 @@ function drawEarRim(ctx: CanvasRenderingContext2D, ear: Path2D, p: Palette) {
   ctx.restore();
 }
 
-/** The eye (with its blink), a soft brow and the lower lip under the trunk. */
+/** The face: a dark, kind eye under a heavy lid that closes as the mammoth
+ * settles, a soft brow that lifts when it is surprised, and the small pointed
+ * lower lip behind the tusk, with a mouth line that turns up at its corner.
+ * Drawn facing left in its own frame and flipped for the other side; only the
+ * catchlight stays on the side the light comes from. */
 function drawFace(ctx: CanvasRenderingContext2D, view: MammothView, p: Palette, pose: Pose) {
-  const [ex, ey] = view.eye, m = view.mirror ? -1 : 1, k = view.trunkScale;
-  ctx.fillStyle = paint(p.shadow, 0.38);
-  ctx.beginPath(); ctx.ellipse(ex, ey + 1, 12 * k, 9 * k, -0.15 * m, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = paint(mix(p.umber, p.shadow, 0.65));
-  ctx.beginPath(); ctx.ellipse(ex, ey, 6.4 * k, 5.2 * k, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = paint(mix(p.rust, p.umber, 0.5), 0.9);
-  ctx.beginPath(); ctx.ellipse(ex + 0.6 * m, ey + 0.8, 3.6 * k, 3.2 * k, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = paint(p.white, 0.9);
-  ctx.beginPath(); ctx.arc(ex - 2.2 * m * k, ey - 2 * k, 1.7 * k, 0, Math.PI * 2); ctx.fill();
-  if (pose.blink > 0) {
-    ctx.fillStyle = paint(mix(p['fur-dark'], p.fur, 0.35));
-    ctx.beginPath(); ctx.ellipse(ex, ey - 6 * k + 6 * k * pose.blink, 8 * k, 7 * k * pose.blink, 0, 0, Math.PI * 2); ctx.fill();
+  const m = view.mirror ? -1 : 1;
+  const lid = Math.max(0, Math.min(1, pose.lid)), brow = Math.max(-1, Math.min(1, pose.brow));
+  const skin = mix(mix(p['fur-dark'], p.umber, 0.55), p.clay, 0.16), deep = mix(p.umber, p.shadow, 0.7);
+
+  /* the mouth */
+  ctx.save(); ctx.translate(view.mouth[0], view.mouth[1]); ctx.scale(m, 1);
+  const jaw = Math.max(0, Math.min(1, pose.jaw));
+  // Inside, seen only while it chews or calls.
+  if (jaw > 0.02) {
+    ctx.fillStyle = paint(mix(deep, p.rose, 0.18));
+    ctx.beginPath(); ctx.moveTo(-46, -3); ctx.quadraticCurveTo(-22, 7, 2, 0); ctx.lineTo(-4, 6 + 16 * jaw); ctx.quadraticCurveTo(-26, 14 + 20 * jaw, -44, 6 + 14 * jaw); ctx.closePath(); ctx.fill();
   }
-  // Lashes and a lit brow ridge above the eye.
-  ctx.strokeStyle = paint(p.shadow, 0.75); ctx.lineWidth = 1.1; ctx.lineCap = 'round';
+  // The lower lip: a small pointed lip that hangs from the corner of the mouth.
+  ctx.save(); ctx.rotate(-0.34 * jaw);
+  const lipFill = ctx.createLinearGradient(-30, 0, -22, 24);
+  lipFill.addColorStop(0, paint(mix(skin, p.clay, 0.18))); lipFill.addColorStop(1, paint(mix(skin, p.shadow, 0.45)));
+  ctx.fillStyle = lipFill;
+  ctx.beginPath(); ctx.moveTo(2, 0); ctx.quadraticCurveTo(-22, 8, -47, -2); ctx.quadraticCurveTo(-50, 12, -38, 19); ctx.quadraticCurveTo(-18, 25, -2, 14); ctx.quadraticCurveTo(4, 8, 2, 0); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = paint(p['fur-tip'], 0.3); ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-42, 3); ctx.quadraticCurveTo(-24, 11, -6, 6); ctx.stroke();
+  ctx.restore();
+  // The mouth line, turning up at the corner under the cheek.
+  ctx.strokeStyle = paint(deep, 0.9); ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-47, -3); ctx.quadraticCurveTo(-22, 7, 1, 0); ctx.quadraticCurveTo(7, -2.5, 9, -7.5); ctx.stroke();
+  ctx.restore();
+
+  /* the eye */
+  const [ex, ey] = view.eye;
+  ctx.save(); ctx.translate(ex, ey); ctx.scale(m, 1);
+  // The socket: bare, creased skin round the eye, darker than the fur.
+  const socket = ctx.createRadialGradient(0, 0, 4, 0, 0, 21);
+  socket.addColorStop(0, paint(mix(skin, p.shadow, 0.5), 0.95)); socket.addColorStop(0.62, paint(mix(skin, p.shadow, 0.4), 0.7)); socket.addColorStop(1, paint(skin, 0));
+  ctx.fillStyle = socket; ctx.beginPath(); ctx.ellipse(0.5, 0.5, 21, 15, -0.12, 0, Math.PI * 2); ctx.fill();
+  // The eye's opening, an almond: inner corner toward the trunk, outer toward the ear.
+  const almond = new Path2D();
+  almond.moveTo(-11.5, 1.6); almond.bezierCurveTo(-7, -6.8, 5, -8.4, 11.5, -1); almond.bezierCurveTo(6, 6.4, -6, 7, -11.5, 1.6); almond.closePath();
+  ctx.save(); ctx.clip(almond);
+  ctx.fillStyle = paint(mix(p.umber, p.shadow, 0.55)); ctx.fillRect(-13, -10, 26, 20);
+  // A warm brown iris with a dark pupil.
+  const iris = ctx.createRadialGradient(-0.6, -0.4, 1.2, -0.3, -0.2, 7.4);
+  iris.addColorStop(0, paint(deep)); iris.addColorStop(0.42, paint(deep)); iris.addColorStop(0.5, paint(mix(p.rust, p.umber, 0.35))); iris.addColorStop(0.86, paint(mix(p.wood, p.umber, 0.5))); iris.addColorStop(1, paint(mix(p.umber, p.shadow, 0.6)));
+  ctx.fillStyle = iris; ctx.beginPath(); ctx.arc(-0.3, -0.2, 7.4, 0, Math.PI * 2); ctx.fill();
+  // Light from the top left of the scene, whichever way the animal faces.
+  ctx.fillStyle = paint(p.white, 0.95); ctx.beginPath(); ctx.arc(-2.7 * m, -3.1, 2.1, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = paint(p.white, 0.4); ctx.beginPath(); ctx.arc(2.4 * m, 2.4, 1.1, 0, Math.PI * 2); ctx.fill();
+  // The upper lid comes down over it: heavy at rest, shut when it settles or blinks.
+  const drop = -9 + 17.5 * lid;
+  ctx.fillStyle = paint(mix(skin, p.shadow, 0.22));
+  ctx.beginPath(); ctx.moveTo(-14, -12); ctx.lineTo(14, -12); ctx.lineTo(14, -1 + 2 * lid); ctx.quadraticCurveTo(0, drop + 3.4 * (1 - lid) + 6 * lid, -14, 1.6); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  // The lid's edge and three lashes at the outer corner.
+  ctx.strokeStyle = paint(deep, 0.95); ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+  const edgeY = (t: number) => { const a = -11.5 + 23 * t, open = -8.2 * Math.sin(Math.PI * t) + 1.6 - 2.6 * t, shut = 6.6 * Math.sin(Math.PI * t) * 0.92 + 1.6 - 2.6 * t; return [a, open + (shut - open) * Math.min(1, lid * 1.02)] as const; };
   ctx.beginPath();
-  for (let i = 0; i < 4; i++) { const x = ex + (-5 + i * 3.4) * m * k; ctx.moveTo(x, ey - 4.5 * k); ctx.lineTo(x - 2.5 * m, ey - 9 * k); }
+  for (let i = 0; i <= 10; i++) { const [x, y] = edgeY(i / 10); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
   ctx.stroke();
-  ctx.strokeStyle = paint(p['fur-tip'], 0.35); ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.arc(ex + 2 * m, ey + 6 * k, 15 * k, Math.PI * 1.15, Math.PI * 1.75); ctx.stroke();
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (const t of [0.6, 0.76, 0.9]) { const [x, y] = edgeY(t); ctx.moveTo(x, y); ctx.lineTo(x + 3.2, y + (lid > 0.7 ? 3.6 : -3.6)); }
+  ctx.stroke();
+  // A pale lower lid, and the crease that folds above the eye.
+  ctx.strokeStyle = paint(p['fur-tip'], 0.34); ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(-9.5, 5.6); ctx.quadraticCurveTo(0, 9.8, 10, 2.6); ctx.stroke();
+  ctx.strokeStyle = paint(deep, 0.5); ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.moveTo(-12, -6.6); ctx.quadraticCurveTo(0, -13.4, 13, -5.4); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(12.6, 1); ctx.lineTo(17.4, 2.4); ctx.moveTo(12.2, 3.6); ctx.lineTo(16, 6.4); ctx.stroke();
+  // The brow: a soft, sunlit ridge that lifts with surprise and eases when content.
+  ctx.rotate(-0.1 - 0.1 * brow);
+  ctx.strokeStyle = paint(p['fur-tip'], 0.5); ctx.lineWidth = 4.2;
+  ctx.beginPath(); ctx.moveTo(-14, -14.5 - 3.4 * brow); ctx.quadraticCurveTo(-1, -22 - 4.6 * brow, 15, -15.5 - 2.4 * brow); ctx.stroke();
+  ctx.strokeStyle = paint(mix(p['fur-dark'], p.shadow, 0.5), 0.55); ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(-13, -11.6 - 3 * brow); ctx.quadraticCurveTo(-1, -18.4 - 4.2 * brow, 14.4, -12.4 - 2 * brow); ctx.stroke();
+  ctx.restore();
 }
 
 function drawTrunkBase(ctx: CanvasRenderingContext2D, line: TrunkLine, view: MammothView, p: Palette): Path2D {
@@ -359,38 +504,49 @@ function drawTrunkBase(ctx: CanvasRenderingContext2D, line: TrunkLine, view: Mam
   const g = ctx.createLinearGradient(line.x[0], line.y[0], line.x[n - 1], line.y[n - 1]);
   g.addColorStop(0, paint(mix(p['fur-dark'], p.fur, 0.25))); g.addColorStop(0.7, paint(mix(p['fur-dark'], p.umber, 0.5))); g.addColorStop(1, paint(mix(p.umber, p['paper-shade'], 0.18)));
   ctx.fillStyle = g; ctx.fill(path);
-  // Soft folds across the skin, seen when close.
+  // Soft folds across the skin, closer together toward the tip, seen when close.
   ctx.save(); ctx.clip(path);
   ctx.strokeStyle = paint(mix(p['fur-dark'], p.shadow, 0.5), 0.45); ctx.lineWidth = 1.3; ctx.lineCap = 'round';
   ctx.beginPath();
-  for (let i = 3; i < n - 1; i += 2) {
+  for (let i = 3; i < n - 1; i += i > n * 0.6 ? 1 : 2) {
     const [ax, ay] = edge(i, 1), [bx, by] = edge(i, -1);
     const bow = 4 * view.trunkScale;
     ctx.moveTo(ax, ay); ctx.quadraticCurveTo(line.x[i] + Math.cos(line.a[i]) * bow, line.y[i] + Math.sin(line.a[i]) * bow, bx, by);
   }
   ctx.stroke();
-  // Light catches the dorsal (front) edge.
-  ctx.strokeStyle = paint(p['fur-light'], 0.22); ctx.lineWidth = 5;
+  // Light catches the dorsal (front) edge; the underside falls into shade.
+  ctx.strokeStyle = paint(p['fur-light'], 0.24); ctx.lineWidth = 5;
   ctx.beginPath();
   for (let i = 0; i < n; i++) { const [x, y] = edge(i, 0.72); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+  ctx.stroke();
+  ctx.strokeStyle = paint(p.shadow, 0.2); ctx.lineWidth = 7;
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) { const [x, y] = edge(i, -0.8); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
   ctx.stroke();
   ctx.restore();
   return path;
 }
-/** The trunk tip: a long finger on top and a broad lobe below. */
+/** The trunk tip: a long finger on top and a broad lobe below, with the nostrils' shadow between them. */
 function drawTrunkTip(ctx: CanvasRenderingContext2D, line: TrunkLine, view: MammothView, p: Palette) {
-  const n = TRUNK_SAMPLES, a = line.a[n - 1], hw = line.hw[n - 1], sign = view.mirror ? -1 : 1;
-  const tx = Math.cos(a), ty = Math.sin(a), nx = -Math.sin(a) * sign, ny = Math.cos(a) * sign;
-  const x = line.x[n - 1], y = line.y[n - 1];
-  const skin = paint(mix(mix(p['fur-dark'], p.umber, 0.6), p.clay, 0.12)), dark = paint(mix(p.umber, p.shadow, 0.6));
-  // Upper finger: long and narrow, on the dorsal side.
-  ctx.fillStyle = skin;
-  ctx.beginPath(); ctx.ellipse(x + tx * hw * 0.85 + nx * hw * 0.42, y + ty * hw * 0.85 + ny * hw * 0.42, hw * 0.62, hw * 0.3, a, 0, Math.PI * 2); ctx.fill();
-  // Lower lobe: short and wide.
-  ctx.beginPath(); ctx.ellipse(x + tx * hw * 0.55 - nx * hw * 0.36, y + ty * hw * 0.55 - ny * hw * 0.36, hw * 0.42, hw * 0.5, a, 0, Math.PI * 2); ctx.fill();
-  // The nostrils' shadow between them.
-  ctx.fillStyle = dark;
-  ctx.beginPath(); ctx.ellipse(x + tx * hw * 0.85, y + ty * hw * 0.85, hw * 0.22, hw * 0.18, a, 0, Math.PI * 2); ctx.fill();
+  const n = TRUNK_SAMPLES, a = line.a[n - 1], h = line.hw[n - 1], sign = view.mirror ? -1 : 1;
+  const skin = mix(mix(p['fur-dark'], p.umber, 0.6), p.clay, 0.16);
+  ctx.save(); ctx.translate(line.x[n - 1], line.y[n - 1]); ctx.rotate(a); ctx.scale(1, sign);
+  // Here +x runs on past the end of the trunk and +y is its front (dorsal) side.
+  const fill = ctx.createLinearGradient(0, h, 0, -h);
+  fill.addColorStop(0, paint(mix(skin, p['fur-light'], 0.2))); fill.addColorStop(1, paint(mix(skin, p.shadow, 0.35)));
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.moveTo(-h * 0.5, h);
+  ctx.bezierCurveTo(h * 0.7, h * 1.08, h * 1.9, h * 0.86, h * 2.05, h * 0.5);
+  ctx.bezierCurveTo(h * 2.0, h * 0.22, h * 1.2, h * 0.14, h * 0.78, 0);
+  ctx.bezierCurveTo(h * 1.14, -h * 0.16, h * 1.2, -h * 0.74, h * 0.84, -h * 0.94);
+  ctx.bezierCurveTo(h * 0.5, -h * 1.08, h * 0.1, -h, -h * 0.5, -h);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = paint(mix(p.umber, p.shadow, 0.65));
+  ctx.beginPath(); ctx.ellipse(h * 0.8, -h * 0.02, h * 0.3, h * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = paint(p['fur-tip'], 0.3); ctx.lineWidth = 1.4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(h * 0.3, h * 0.82); ctx.quadraticCurveTo(h * 1.3, h * 0.84, h * 1.86, h * 0.56); ctx.stroke();
+  ctx.restore();
 }
 
 function drawTusk(ctx: CanvasRenderingContext2D, tusk: TuskPaths, p: Palette, far: boolean) {
@@ -428,23 +584,57 @@ function drawTusk(ctx: CanvasRenderingContext2D, tusk: TuskPaths, p: Palette, fa
   ctx.restore();
 }
 
-/** Tips of dry grass bend with the same wind that moves the coat. */
-function drawGrass(ctx: CanvasRenderingContext2D, tufts: Statics['tufts'], p: Palette, time: number, wind: number) {
-  const back = paint(mix(p.wood, p.umber, 0.25)), front = paint(mix(p['wood-light'], p.sand, 0.5)), tip = paint(mix(p.sand, p.cream, 0.4));
-  for (const tuft of tufts) {
-    const bend = gustAt(tuft.x, time, wind) * 9;
-    tuft.blades.forEach((b, i) => {
-      const x = tuft.x + b.dx, y = tuft.y;
-      const tx = x + Math.sin(b.lean) * b.h + bend, ty = y - Math.cos(b.lean) * b.h;
-      const g = ctx.createLinearGradient(x, y, tx, ty);
-      g.addColorStop(0, back); g.addColorStop(0.55, i % 2 ? front : back); g.addColorStop(1, tip);
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.moveTo(x - b.w, y + 2);
-      ctx.quadraticCurveTo(x - b.w * 0.3 + bend * 0.3, y - b.h * 0.55, tx, ty);
-      ctx.quadraticCurveTo(x + b.w * 0.5 + bend * 0.3, y - b.h * 0.5, x + b.w, y + 2);
-      ctx.closePath(); ctx.fill();
-    });
+/** Snow lying on the crown, the hump and the back: soft heaps that follow the slope, lit from the top left, blue in their own shade. */
+function drawSnow(ctx: CanvasRenderingContext2D, view: MammothView, st: Statics, snow: readonly SnowClump[], part: 'head' | 'body', p: Palette) {
+  for (const clump of snow) {
+    const spot = view.snow[clump.spot];
+    if (!spot || spot.part !== part || clump.amount <= 0) continue;
+    const r = spot.r * clump.size * (0.5 + 0.5 * clump.amount), [x, y] = spot.at;
+    ctx.save(); ctx.translate(x, y - r * 0.12); ctx.rotate(st.snowTilt[clump.spot] + clump.tilt * 0.3);
+    const lump = (cx: number, cy: number, rx: number, ry: number) => {
+      const g = ctx.createRadialGradient(cx - rx * 0.3, cy - ry * 0.5, ry * 0.1, cx, cy, rx);
+      g.addColorStop(0, paint(p.white, 0.98)); g.addColorStop(0.55, paint(p.snow, 0.96)); g.addColorStop(0.88, paint(mix(p['snow-shade'], p.snow, 0.35), 0.9)); g.addColorStop(1, paint(p['snow-shade'], 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+    };
+    // A shade under the heap where it presses the hair down.
+    ctx.fillStyle = paint(mix(p['fur-dark'], p.shadow, 0.5), 0.3 * clump.amount);
+    ctx.beginPath(); ctx.ellipse(1.5, r * 0.36, r * 1.02, r * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    lump(-r * 0.5, r * 0.1, r * 0.62, r * 0.34);
+    lump(r * 0.52, r * 0.12, r * 0.58, r * 0.3);
+    lump(0, -r * 0.04, r * 0.86, r * 0.46);
+    ctx.restore();
   }
+}
+
+const BLADES: readonly { dx: number; h: number; lean: number; w: number }[] = [
+  { dx: -15, h: 30, lean: -0.5, w: 3.4 }, { dx: -9, h: 44, lean: -0.24, w: 3.8 }, { dx: -3, h: 52, lean: -0.06, w: 4.2 }, { dx: 2, h: 40, lean: 0.1, w: 3.6 },
+  { dx: 7, h: 49, lean: 0.24, w: 4 }, { dx: 12, h: 34, lean: 0.46, w: 3.4 }, { dx: -6, h: 26, lean: 0.34, w: 3 }, { dx: 5, h: 28, lean: -0.36, w: 3 }, { dx: 16, h: 24, lean: 0.62, w: 3 },
+];
+function blade(ctx: CanvasRenderingContext2D, x: number, y: number, h: number, lean: number, w: number, bend: number, inks: readonly [string, string, string], alt: boolean) {
+  const tx = x + Math.sin(lean) * h + bend, ty = y - Math.cos(lean) * h;
+  const g = ctx.createLinearGradient(x, y, tx, ty);
+  g.addColorStop(0, inks[0]); g.addColorStop(0.55, alt ? inks[1] : inks[0]); g.addColorStop(1, inks[2]);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(x - w, y + 2);
+  ctx.quadraticCurveTo(x - w * 0.3 + bend * 0.3, y - h * 0.55, tx, ty);
+  ctx.quadraticCurveTo(x + w * 0.5 + bend * 0.3, y - h * 0.5, x + w, y + 2);
+  ctx.closePath(); ctx.fill();
+}
+const grassInks = (p: Palette): readonly [string, string, string] => [paint(mix(p.wood, p.moss, 0.3)), paint(mix(p['wood-light'], p.sand, 0.5)), paint(mix(p.sand, p.cream, 0.4))];
+/** The dry steppe grass standing in its basket: cropped where a bunch was taken, growing back, rustling when touched. */
+function drawSheaf(ctx: CanvasRenderingContext2D, sheaf: Sheaf, p: Palette, time: number) {
+  const inks = grassInks(p), rustle = Math.max(0, 1 - (time - sheaf.shaken) / 0.6), k = sheaf.size;
+  BLADES.forEach((b, i) => {
+    const h = b.h * k * (0.42 + 0.58 * sheaf.grown) * (1.25);
+    blade(ctx, sheaf.x + b.dx * k * 1.3, sheaf.y, h, b.lean * 0.8, b.w * k, Math.sin(time * 26 + i * 1.7) * 5 * rustle * k + Math.sin(time * 0.9 + i) * 1.2 * k, inks, i % 2 === 1);
+  });
+}
+/** A bunch of grass in the air or in the trunk's tip. */
+function drawBundle(ctx: CanvasRenderingContext2D, bundle: Bundle, p: Palette) {
+  const inks = grassInks(p);
+  ctx.save(); ctx.translate(bundle.x, bundle.y); ctx.rotate(bundle.angle); ctx.scale(bundle.size, bundle.size);
+  BLADES.slice(0, 6).forEach((b, i) => blade(ctx, b.dx * 0.5, 14, b.h * 0.9, b.lean * 0.7, b.w, 0, inks, i % 2 === 1));
+  ctx.restore();
 }
 export const PUFF_SECONDS = 2.2;
 function drawPuffs(ctx: CanvasRenderingContext2D, puffs: readonly Puff[], p: Palette, time: number) {
@@ -458,6 +648,59 @@ function drawPuffs(ctx: CanvasRenderingContext2D, puffs: readonly Puff[], p: Pal
       g.addColorStop(0, paint(p.white, alpha)); g.addColorStop(1, paint(p.white, 0));
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     }
+  }
+}
+function drawMotes(ctx: CanvasRenderingContext2D, motes: readonly Mote[], p: Palette, time: number) {
+  if (!motes.length) return;
+  // Loose snow: a soft blue edge so it shows against the pearl floor as well as the fur.
+  for (const pass of [0, 1]) {
+    for (const band of [0.35, 0.7, 1]) {
+      ctx.fillStyle = pass ? paint(p.white, band) : paint(mix(p['snow-shade'], p['storm-grey'], 0.25), band * 0.55);
+      ctx.beginPath();
+      for (const mote of motes) {
+        const age = (time - mote.born) / mote.life;
+        if (age < 0 || age >= 1) continue;
+        const a = age < 0.7 ? 1 : (1 - age) / 0.3;
+        if (Math.abs(a - band) > 0.34 && !(band === 1 && a > 0.84) && !(band === 0.35 && a < 0.35)) continue;
+        const r = mote.r + (pass ? 0 : 0.9);
+        ctx.moveTo(mote.x + r, mote.y + (pass ? 0 : 0.7)); ctx.arc(mote.x, mote.y + (pass ? 0 : 0.7), r, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
+  }
+}
+function drawRipples(ctx: CanvasRenderingContext2D, ripples: readonly Ripple[], p: Palette, time: number, S: number) {
+  for (const ripple of ripples) {
+    const age = (time - ripple.born) / RIPPLE_SECONDS;
+    if (age < 0 || age >= 1) continue;
+    const r = (9 + 22 * (1 - Math.pow(1 - age, 2))) / S, alpha = 1 - age;
+    ctx.lineWidth = 4.2 / S; ctx.strokeStyle = paint(p['ink-soft'], 0.22 * alpha);
+    ctx.beginPath(); ctx.arc(ripple.x, ripple.y, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 2.4 / S; ctx.strokeStyle = paint(p.white, 0.95 * alpha);
+    ctx.beginPath(); ctx.arc(ripple.x, ripple.y, r, 0, Math.PI * 2); ctx.stroke();
+  }
+}
+/** Daylight lying across the glass: two soft slanting bands, so the wall reads as glass and what is beyond it as beyond. */
+function drawSheen(ctx: CanvasRenderingContext2D, glass: Glass, p: Palette) {
+  const { minX, minY, maxX, maxY } = glass.box, w = maxX - minX, h = maxY - minY;
+  if (glass.behind) { ctx.fillStyle = paint(p['sky-pale'], 0.1); ctx.fillRect(minX, minY, w, h); }
+  for (const [at, wide, alpha] of [[0.2, 0.09, 0.2], [0.36, 0.035, 0.14], [0.74, 0.06, 0.16]] as const) {
+    const x = minX + w * at, bw = w * wide, slant = h * 0.42;
+    const g = ctx.createLinearGradient(x, 0, x + bw, 0);
+    g.addColorStop(0, paint(p.white, 0)); g.addColorStop(0.5, paint(p.white, alpha * (glass.behind ? 1 : 0.7))); g.addColorStop(1, paint(p.white, 0));
+    ctx.save(); ctx.transform(1, 0, -slant / h, 1, slant * (maxY / h), 0);
+    ctx.fillStyle = g; ctx.fillRect(x - w, minY, bw + 2 * w, h);
+    ctx.restore();
+  }
+}
+function drawMists(ctx: CanvasRenderingContext2D, mists: readonly Mist[], p: Palette, time: number) {
+  for (const mist of mists) {
+    const age = (time - mist.born) / MIST_SECONDS;
+    if (age < 0 || age >= 1) continue;
+    const r = mist.r * (0.7 + 0.5 * Math.min(1, age * 5)), alpha = 0.78 * Math.min(1, age * 9) * Math.pow(1 - age, 1.4);
+    const g = ctx.createRadialGradient(mist.x, mist.y, 0, mist.x, mist.y, r);
+    g.addColorStop(0, paint(p.white, alpha)); g.addColorStop(0.6, paint(p.snow, alpha * 0.7)); g.addColorStop(1, paint(p.snow, 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(mist.x, mist.y, r, 0, Math.PI * 2); ctx.fill();
   }
 }
 function drawFlakes(ctx: CanvasRenderingContext2D, flakes: readonly Flake[], width: number, height: number, p: Palette) {

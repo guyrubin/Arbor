@@ -1,9 +1,11 @@
 import type { Challenge } from '../../adventures/adventureRules';
-import { FIBRE_COUNT, SHEATH_MIN, fibreAngle, normDeg, toRad, VIEW_TILT } from './phageGeometry';
+import { FIBRE_COUNT, PIECE_BOX, SHEATH_MIN, fibreAngle, normDeg, toRad, VIEW_TILT } from './phageGeometry';
 
-/** Tiny Structures rules: build a T4-like bacteriophage, turn it, open it up,
- * name its parts and watch it land on a bacterium. Pure: no React, no timers,
- * no randomness. Nothing about how the child played is kept or reported.
+/** Tiny Structures rules: build a museum model of a T4-like bacteriophage on
+ * Aya's bench, turn it, open it up, name its parts, then follow Aya's lens
+ * into a drop of pond water and watch a real one land on a bacterium. Pure:
+ * no React, no timers, no randomness. Nothing about how the child played is
+ * kept or reported.
  *
  * SIMPLIFICATIONS (what the model leaves out, on purpose):
  * - Real T4 is built from many different kinds of protein (dozens in the
@@ -20,11 +22,21 @@ import { FIBRE_COUNT, SHEATH_MIN, fibreAngle, normDeg, toRad, VIEW_TILT } from '
  *   squeeze is a simple shortening and widening; the cell wall is drawn as
  *   three soft layers. Nothing after that is shown.
  * - Colours are invented. A phage is far smaller than a wave of light, so it
- *   has no colour of its own.
+ *   has no colour of its own. The bench model is glass, ceramic, metal and
+ *   wire in made-up colours (the child can repaint it); the real phage in the
+ *   lens view is drawn pale and colourless, with only its DNA thread tinted so
+ *   the eye can follow it.
  * - It is a picture of the structure, not a simulation of real molecules.
- * - Scale: a T4 phage is about 0.2 micrometres from head to baseplate and a
- *   rod-shaped bacterium such as E. coli about 2 micrometres long, so the
- *   scale picture draws the phage about one tenth of the cell's length. */
+ * - Scale (all sizes are round, typical figures; see tinyScale.ts): a drop of
+ *   water about 3 millimetres across; a paramecium about 0.2 millimetres long
+ *   (real ones run from about 0.05 to 0.3); a rod-shaped bacterium such as
+ *   E. coli about 2 micrometres long; a T4 phage about 0.2 micrometres from
+ *   head to baseplate. So about fifteen paramecia cross the drop, about a
+ *   hundred bacteria are as long as a paramecium, and about ten phages are as
+ *   long as a bacterium. Each lens picture draws its two things in that
+ *   proportion; the zoom between pictures is a cut through magnifications far
+ *   larger than a hand lens gives (a real phage needs an electron
+ *   microscope), which the words say. */
 
 export type BuildMode = 'assisted' | 'full';
 export const BUILD_MODES: readonly BuildMode[] = ['assisted', 'full'];
@@ -133,6 +145,37 @@ export function fitsAt(mode: BuildMode, piece: Piece, point: Hotspot, placed: Pl
   const next = ranked.find(e => !placed[e.s.id] && fits(piece, e.s));
   return next ? next.s.id : null;
 }
+/* ---------- a piece in the hand: the magnet ---------- */
+/** The middle of a piece's own box: where its centre rests once it is on the model. */
+export function pieceHome(kind: PieceKind): Hotspot {
+  const [x, y, w, h] = PIECE_BOX[kind];
+  return { x: x + w / 2, y: y + h / 2 };
+}
+/** A carried piece feels its place from this far (drawing units) and is held
+ * fast inside the lock radius: the pull of a magnetic model kit. */
+export const PULL_RADIUS = 84, LOCK_RADIUS = 14;
+export interface Drop { socket: string; home: Hotspot; distance: number; /** 0 no pull to 1 held fast. */ pull: number }
+/** Where a carried piece would go if let go with its centre at `centre`: its
+ * own free place when near enough, else null (it drifts back). Assisted mode
+ * is generous (anywhere over the model goes home); in full mode the piece's
+ * centre must be near its own place, so a head let go on the tail drifts back. */
+export function dropAt(mode: BuildMode, piece: Piece, centre: Hotspot, placed: Placed): Drop | null {
+  const socket = homeFor(mode, piece.id, placed);
+  if (!socket) return null;
+  const home = pieceHome(piece.kind), distance = dist(home, centre);
+  const reach = mode === 'assisted'
+    ? Math.min(...SOCKETS[mode].map(s => dist(pieceHome(s.kind), centre)))
+    : distance;
+  if (reach > SNAP_RADIUS[mode]) return null;
+  const u = clamp01((PULL_RADIUS - distance) / (PULL_RADIUS - LOCK_RADIUS));
+  return { socket, home, distance, pull: u * u * (3 - 2 * u) };
+}
+/** Where the carried piece is drawn: drawn towards its place by the pull. */
+export function pulled(centre: Hotspot, drop: Drop | null): Hotspot {
+  if (!drop) return centre;
+  return { x: centre.x + (drop.home.x - centre.x) * drop.pull, y: centre.y + (drop.home.y - centre.y) * drop.pull };
+}
+
 /** Placing on a socket chosen directly (keyboard, screen reader). */
 export function placeOn(mode: BuildMode, placed: Placed, pieceId: string, socketId: string): Placed | null {
   const piece = pieceOf(mode, pieceId), socket = socketOf(mode, socketId);
@@ -193,6 +236,39 @@ export function turnBy(rotation: number, deg: number): number {
   return normDeg(rotation + deg);
 }
 
+/** The turntable has weight: let go, it coasts and slows. `friction` is the
+ * share of speed lost per second (as a rate); a coast started at v degrees a
+ * second runs v / friction degrees in all. */
+export const SPIN_FRICTION = 2.6, SPIN_REST = 5, SPIN_MAX = 900;
+export function coast(velocity: number, dtSeconds: number): { velocity: number; turn: number } {
+  if (!Number.isFinite(velocity) || !Number.isFinite(dtSeconds) || dtSeconds <= 0) return { velocity: 0, turn: 0 };
+  const v = Math.max(-SPIN_MAX, Math.min(SPIN_MAX, velocity)), decay = Math.exp(-SPIN_FRICTION * dtSeconds);
+  const next = v * decay;
+  return Math.abs(next) < SPIN_REST ? { velocity: 0, turn: v * (1 - decay) / SPIN_FRICTION } : { velocity: next, turn: v * (1 - decay) / SPIN_FRICTION };
+}
+/** The push that coasts about `deg` degrees before the table rests. */
+export const pushFor = (deg: number) => deg * SPIN_FRICTION;
+
+/* ---------- paint: the model's invented colours ---------- */
+/** A phage has no colour, so the model may wear any. The first is the one on the cover. */
+export const PAINTS = ['lagoon', 'bluebell', 'iris', 'coral', 'honey'] as const;
+export type PaintId = typeof PAINTS[number];
+export function nextPaint(paint: PaintId): PaintId {
+  return PAINTS[(PAINTS.indexOf(paint) + 1) % PAINTS.length];
+}
+/** Each new game starts in the next colours and lays the tray out afresh. */
+export function paintForRound(round: number): PaintId {
+  const n = Number.isFinite(round) ? Math.abs(Math.trunc(round)) : 0;
+  return PAINTS[n % PAINTS.length];
+}
+export function trayOrder(mode: BuildMode, round: number): readonly Piece[] {
+  const pieces = PIECES[mode], n = Number.isFinite(round) ? Math.abs(Math.trunc(round)) : 0;
+  if (n === 0) return pieces;
+  // A different, fixed shuffle for each round: step through the tray by a stride that shares no factor with its length.
+  const stride = pieces.length === 4 ? [1, 3][n % 2] : [1, 2, 3, 4, 5, 6][n % 6];
+  return pieces.map((_, i) => pieces[(n + i * stride) % pieces.length]);
+}
+
 /* ---------- naming the parts ---------- */
 export type LabelId = 'head' | 'dna' | 'collar' | 'tail' | 'baseplate' | 'fibres';
 export const LABELS: readonly LabelId[] = ['head', 'dna', 'collar', 'tail', 'baseplate', 'fibres'];
@@ -231,6 +307,8 @@ const span = (t: number, a: number, b: number) => clamp01((t - a) / (b - a));
 const ease = (u: number) => u * u * (3 - 2 * u);
 /** How far the tips fall to meet the surface, and the body then settles. */
 export const DESCENT = 54, SETTLE_DROP = 30, CAMERA_PAN = 70;
+/** The tilt the landing view comes to rest at. */
+export const LAND_TILT = 0.1;
 export interface LandFrame {
   stage: LandStage;
   /** The whole phage moves down this far (drawing units). */
@@ -241,7 +319,7 @@ export interface LandFrame {
   sheath: number;
   /** DNA moved out of the head, 0 to 1. */
   dna: number;
-  /** View tilt, easing to a side view. */
+  /** View tilt, easing towards a side view (never fully flat: the head keeps its facets and the legs their depth). */
   tilt: number;
   /** The view follows the phage down. */
   camera: number;
@@ -261,7 +339,7 @@ export function landFrame(t: number): LandFrame {
     // A spring lets go fast and then slows: an ease-out squeeze.
     sheath: 1 - (1 - SHEATH_MIN) * (1 - (1 - span(u, 0.5, 0.64)) ** 2),
     dna: ease(span(u, 0.68, 0.97)),
-    tilt: VIEW_TILT * (1 - ease(span(u, 0, 0.26))),
+    tilt: VIEW_TILT - (VIEW_TILT - LAND_TILT) * ease(span(u, 0, 0.26)),
     camera: CAMERA_PAN * ease(span(u, 0.04, 0.7)),
     stand: 1 - span(u, 0, 0.14),
     surface: span(u, 0.04, 0.26),
