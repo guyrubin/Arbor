@@ -136,11 +136,11 @@ describe("item 9 · the primary-move controls state a 44 px hit box", () => {
     // scans ChildProfile and AspectCard).
     expect(src).not.toContain("function JumpLink");
     expect(src).not.toContain("<JumpLink ");
-    // v10 re-pin: the door to the ledger is a MoreLink (.ds-link: a 44 px
-    // text link, src/design/ds.css) beside the areas.
-    expect(src).toContain('<MoreLink onClick={toggleLedger} className="about-ledger-door">');
-    expect(readFileSync(path.join(SRC, "design/ds.css"), "utf8")).toMatch(/\.ds \.ds-link \{[^}]*min-height: 44px/);
-    expect(src).toMatch(/className="[^"]*touch-target[^"]*" data-testid="about-voice"/);
+    // v10.3 re-pin: the door to the ledger is one of the child row's three
+    // ways on (a 52 px .mbtn that states the floor with touch-target).
+    expect(src).toContain("onLedger={toggleLedger}");
+    expect(readFileSync(path.join(SRC, "components/about/AboutChildTile.tsx"), "utf8")).toContain('className: "mbtn about-go about-ledger-door touch-target"');
+    expect(src).toMatch(/className=\{`[^`]*touch-target[^`]*`\} data-testid="about-voice"/);
     expect(src).toMatch(/className=\{`[^`]*touch-target[^`]*`\} data-testid="about-write"/);
   });
 

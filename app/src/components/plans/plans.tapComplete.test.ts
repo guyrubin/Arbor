@@ -393,7 +393,7 @@ describe("plan progress typography roles", async () => {
     // (AspectCard), and aboutV10.css sets the editorial face at weight 400.
     const card = readFileSync(path.join(here, "..", "about", "AspectCard.tsx"), "utf8");
     const css = readFileSync(path.join(here, "..", "about", "aboutV10.css"), "utf8");
-    expect(card).toMatch(/<span className="a8-quote"[^>]*><FreeText text=\{known\.words\} \/><\/span>/);
+    expect(card).toMatch(/<span className="a8-quote"[^>]*><FreeText text=\{knownHere\.words\} \/><\/span>/);
     expect(css).toMatch(/\.a8-quote \{[^}]*font-family: var\(--font-editorial\) !important;[^}]*font-weight: 400 !important;/);
   });
 });
