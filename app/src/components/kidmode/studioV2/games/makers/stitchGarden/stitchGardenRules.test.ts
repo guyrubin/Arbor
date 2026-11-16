@@ -5,7 +5,7 @@ import { ART_H, ART_W, CLOTH_R, HOOP_CX, HOOP_CY, STITCH_MS, UNPICK_MS, cellCent
 import { ARRIVE_MS, BEAT_STITCHES, HOME_MS, PARKED_NEEDLE, TIE_MS, landsAt, needleAt, planMs, walkTo, type NeedlePlan } from './stitchGardenMotion';
 import { SCALE, degree, stitchNote, threadRoot } from './stitchGardenAudio';
 import { critterStitches } from './stitchGardenCritters';
-import { BUD, GOBGOB_GLAD, GOBGOB_WAITING, TABLE } from './stitchGardenKit';
+import { BUD, GOBGOB_GLAD, GOBGOB_WAITING, LEAFLAB, TABLE, WAITRING } from './stitchGardenKit';
 import { TEXTILE_CLOTHS, TEXTILE_THREADS } from './stitchGardenRules';
 
 const fill = (n: number) => { let m: TextileMotif[] = []; for (let i = 0; i < n; i++) m = plant(m, TEXTILE_FLOWERS[i % 5], i, i % 5)!; return m; };
@@ -296,7 +296,11 @@ describe('the table', () => {
     expect(TABLE.src).toMatch(/^\/visuals\/studio-v2\/bop\/scene-table\.webp$/);
     expect(TABLE.ringAt).toBeGreaterThan(CLOTH_R + 20);
     expect(BUD).toHaveLength(3);
-    for (const picture of BUD) { expect(picture.src).toMatch(/^\/visuals\/studio-v2\/makers\/stitch-garden-bud-[123]\.webp$/); expect(picture.from).toMatch(/^kit\//); expect(picture.width).toBe(BUD[0].width); expect(picture.height).toBe(BUD[0].height); }
+    for (const picture of BUD) { expect(picture.src).toMatch(/^\/visuals\/studio-v2\/makers\/kit-prop-planter-(bud|budding|bloom)\.webp$/); expect(picture.from).toMatch(/^kit\//); }
+    expect(WAITRING.lights).toHaveLength(4);
+    for (const l of WAITRING.lights) { expect(l.x + l.w).toBeLessThanOrEqual(1); expect(l.y + l.h).toBeLessThanOrEqual(1); }
+    // No picture that shows a child goes without his name in its file name.
+    for (const picture of [TABLE, ...BUD, WAITRING, LEAFLAB]) if (picture) expect(picture.src).not.toMatch(/face|front|side|back/);
     for (const picture of [GOBGOB_WAITING, GOBGOB_GLAD]) if (picture) { expect(picture.src).toMatch(/\/kit-gobgob-/); expect(picture.from).toMatch(/gobgob/); }
   });
 });

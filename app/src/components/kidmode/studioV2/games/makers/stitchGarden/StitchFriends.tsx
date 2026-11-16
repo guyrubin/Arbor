@@ -1,7 +1,7 @@
 import { memo, type CSSProperties } from 'react';
 import { CLOTH_R, HOOP_CX, HOOP_CY } from './stitchGardenStitches';
 import type { VisitorKind } from './stitchGardenCritters';
-import { AYA_GLAD, AYA_WATCHING, BUD, GOBGOB_CURIOUS, GOBGOB_GLAD, GOBGOB_WAITING, LEAFLAB, PINCUSHION, WATERING_CAN, type KitPicture } from './stitchGardenKit';
+import { AYA_GLAD, AYA_WATCHING, BUD, GOBGOB_CURIOUS, GOBGOB_GLAD, GOBGOB_WAITING, LEAFLAB, PINCUSHION, WAITRING, WATERING_CAN, type KitPicture } from './stitchGardenKit';
 import { CritterArt, KitProp } from './StitchArt';
 
 /** Who and what is on Aya's table around the hoop. All of it is kit art (Aya,
@@ -14,9 +14,9 @@ const boxOf = (picture: KitPicture, x: number, y: number, w: number) => ({ x, y,
 export const PLACES = {
   aya: boxOf(AYA_WATCHING, -20, 334, 118),
   wateringCan: boxOf(WATERING_CAN, -3, 3, 80),
-  bud: boxOf(BUD[0], 387, -8, 51),
+  bud: boxOf(BUD[0], 392, 2, 44),
   pincushion: boxOf(PINCUSHION, 366, 380, 62),
-  leafLab: LEAFLAB ? boxOf(LEAFLAB, 56, 414, 36) : null,
+  leafLab: LEAFLAB ? { x: 60, y: 404, w: 44, h: 44 * LEAFLAB.crop.h / LEAFLAB.crop.w } : null,
   screw: { x: HOOP_CX + 15, y: -4, w: 36, h: 36 },
 } as const;
 /** Aya's own outline inside her square picture: the part a finger aims for. */
@@ -59,7 +59,8 @@ export const Bud = memo(function Bud({ stage, nudge }: { stage: 0 | 1 | 2; nudge
   const b = PLACES.bud;
   return <g className="sg-bud" data-stage={stage} data-nudge={nudge ? nudge % 2 : undefined} style={{ transformOrigin: `${b.x + b.w / 2}px ${b.y + b.h}px` }} pointerEvents="none">
     <ellipse cx={b.x + b.w / 2 + 3} cy={b.y + b.h - 2} rx={b.w * 0.42} ry="4" style={{ fill: shade(24) }} />
-    {BUD.map((picture, i) => <image key={i} className="sg-bud__day" data-on={i === stage} href={picture.src} x={b.x} y={b.y} width={b.w} height={b.h} />)}
+    {BUD.map((picture, i) => { const k = b.w / BUD[0].width, w = picture.width * k, h = picture.height * k;
+      return <image key={i} className="sg-bud__day" data-on={i === stage} href={picture.src} x={b.x + b.w / 2 - w / 2} y={b.y + b.h - h} width={w} height={h} />; })}
   </g>;
 });
 
@@ -73,7 +74,10 @@ export const Pincushion = memo(function Pincushion() {
 export const LeafLab = memo(function LeafLab({ ping }: { ping: number }) {
   const b = PLACES.leafLab;
   if (!b || !LEAFLAB) return null;
-  return <g className="sg-lab" data-ping={ping ? ping % 2 : undefined} style={{ transformOrigin: `${b.x + b.w / 2}px ${b.y + b.h}px` }}><KitProp picture={LEAFLAB} x={b.x} y={b.y} width={b.w} /></g>;
+  const c = LEAFLAB.crop;
+  return <g className="sg-lab" data-ping={ping ? ping % 2 : undefined} style={{ transformOrigin: `${b.x + b.w / 2}px ${b.y + b.h}px` }} pointerEvents="none">
+    <svg x={b.x} y={b.y} width={b.w} height={b.h} viewBox={`${c.x} ${c.y} ${c.w} ${c.h}`}><image href={LEAFLAB.src} width={LEAFLAB.width} height={LEAFLAB.height} /></svg>
+  </g>;
 });
 
 export interface VisitorPose { x: number; y: number; face: 1 | -1; ms: number; loop: number; away: boolean }
@@ -113,8 +117,9 @@ export function HintHand({ step, from, to }: { step: 0 | 1 | 2 | 3 | 4; from: { 
   </span>;
 }
 
-/** GobGob waits with the bud. His WaitRing fills while the needle works, one
- * light at a time, the first amber and the rest cyan as on the band itself;
+/** GobGob waits with the bud. His WaitRing (the kit's own picture of it, with
+ * a shade over each light that is not on yet) fills while the needle works, one
+ * light at a time;
  * when the flower is whole he is glad. Shown once the shared library has his
  * two faces. */
 export const GOBGOB_HERE = !!GOBGOB_WAITING && !!GOBGOB_GLAD;
@@ -124,6 +129,9 @@ export function GobGobWaiting({ mood, lights, nudge }: { mood: 'waiting' | 'glad
   const shown = mood === 'curious' && !GOBGOB_CURIOUS ? 'waiting' : mood;
   return <span className="sg-gob" data-mood={shown} data-nudge={nudge ? nudge % 2 : undefined} aria-hidden="true">
     <span className="sg-gob__face">{faces.map(([name, picture]) => picture && <img key={name} data-on={name === shown} src={picture.src480 ?? picture.src} alt="" draggable={false} />)}</span>
-    <span className="sg-waitring" data-lights={lights}>{[0, 1, 2, 3].map(i => <i key={i} data-lit={i < lights} />)}</span>
+    <span className="sg-waitring" data-lights={lights}>
+      <img src={WAITRING.src480 ?? WAITRING.src} alt="" draggable={false} />
+      {WAITRING.lights.map((l, i) => <i key={i} data-lit={i < lights} style={{ left: `${l.x * 100}%`, top: `${l.y * 100}%`, width: `${l.w * 100}%`, height: `${l.h * 100}%` }} />)}
+    </span>
   </span>;
 }

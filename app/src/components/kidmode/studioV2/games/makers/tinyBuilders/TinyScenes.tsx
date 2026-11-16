@@ -180,7 +180,7 @@ export const LeafScene = memo(function LeafScene({ dropName, dropNote }: { dropN
       </radialGradient>
     </defs>
     <image href={ART_FERN.src} x={-90} y={-40} width={580} height={520} preserveAspectRatio="xMidYMid slice" />
-    <svg x={at.x - 104} y={at.y - 98} width={208} height={190} viewBox={LEAFLAB_CLOSED.join(' ')}><image href={ART_LEAFLAB.src} width={ART_LEAFLAB.width} height={ART_LEAFLAB.height} /></svg>
+    <svg x={at.x - 88} y={at.y - 83} width={176} height={160} viewBox={LEAFLAB_CLOSED.join(' ')}><image href={ART_LEAFLAB.src} width={ART_LEAFLAB.width} height={ART_LEAFLAB.height} /></svg>
     <ellipse cx={at.x + 2.5} cy={at.y + r * 0.8} rx={r * 1.05} ry={r * 0.42} style={fill(clear('var(--mk-shadow)', 36))} />
     <circle cx={at.x} cy={at.y} r={r} style={fill(`url(#${id}drop)`)} />
     <circle cx={at.x} cy={at.y} r={r} fill="none" strokeWidth={1.1} style={stroke(clear('var(--mk-white)', 85))} />

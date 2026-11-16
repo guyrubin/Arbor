@@ -12,20 +12,20 @@
 .sg-top { display: flex; align-items: stretch; gap: 10px; margin-block: 6px 12px; }
 .sg-top > .adventure-prompt { flex: 1; margin: 0; }
 .arbor-play .adventure.adventure--stitch .adventure-heading { border: 1px solid var(--studio-line); box-shadow: 0 6px 18px var(--studio-shade); display: flex; align-items: center; min-block-size: 58px; padding-inline-end: 18px; }
-.adventure .sg-gob-button { position: relative; flex: none; align-self: flex-end; inline-size: 78px; margin-block-start: -24px; padding: 0; border: 0; background: transparent; border-radius: 16px; }
+.adventure .sg-gob-button { position: relative; flex: none; align-self: flex-end; inline-size: 84px; margin-block-start: -26px; padding: 0; border: 0; background: transparent; border-radius: 16px; }
 .adventure .sg-gob-button:active { transform: scale(.96); }
 .sg-gob { display: grid; justify-items: center; }
-.sg-gob__face { position: relative; display: block; inline-size: 78px; block-size: 70px; transform-origin: 50% 100%; }
+.sg-gob__face { position: relative; display: block; inline-size: 74px; block-size: 66px; transform-origin: 50% 100%; }
 .adventure--stitch .sg-gob__face > img { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; max-inline-size: none; object-fit: contain; object-position: center bottom; opacity: 0; pointer-events: none; }
 .adventure--stitch .sg-gob__face > img[data-on=true] { opacity: 1; }
 .sg-gob[data-mood=glad] .sg-gob__face { animation: sg-nod .6s var(--studio-ease-spring); }
 .sg-gob[data-nudge="0"] .sg-gob__face { animation: sg-wiggle-a .5s var(--studio-ease-soft); }
 .sg-gob[data-nudge="1"] .sg-gob__face { animation: sg-wiggle-b .5s var(--studio-ease-soft); }
-/* His WaitRing: a dark band with four small lights, the first amber, the rest cyan. */
-.sg-waitring { position: relative; display: flex; gap: 3px; margin-block-start: -7px; padding: 4px 7px; border-radius: 999px; background: linear-gradient(var(--mk-graphite), var(--mk-shadow)); box-shadow: 0 2px 4px var(--studio-shade); direction: ltr; }
-.sg-waitring > i { inline-size: 10px; block-size: 7px; border-radius: 3px; background: color-mix(in srgb, var(--mk-steel-dark) 55%, var(--mk-shadow)); transition: background-color .18s var(--studio-ease-soft); }
-.sg-waitring > i[data-lit=true] { background: color-mix(in srgb, var(--mk-sea) 70%, var(--mk-sky)); }
-.sg-waitring > i[data-lit=true]:first-child { background: var(--mk-amber); }
+/* His WaitRing: the kit's picture of the band. A light that is not on yet is under a small dark shade (placed by measured fractions of the picture, so physical left and top on purpose). */
+.sg-waitring { position: relative; display: block; inline-size: 82px; aspect-ratio: 638 / 354; margin-block-start: -9px; direction: ltr; }
+.adventure--stitch .sg-waitring > img { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; max-inline-size: none; pointer-events: none; }
+.sg-waitring > i { position: absolute; border-radius: 28%; background: color-mix(in srgb, var(--mk-graphite) 55%, var(--mk-shadow)); opacity: .9; transition: opacity .2s var(--studio-ease-soft); }
+.sg-waitring > i[data-lit=true] { opacity: 0; }
 
 /* The three cloths: a round of each, with its name. */
 .sg-cloths { display: flex; justify-content: center; gap: 8px; margin-block: 0 10px; }
