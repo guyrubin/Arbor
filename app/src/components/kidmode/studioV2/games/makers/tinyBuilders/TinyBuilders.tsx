@@ -6,7 +6,7 @@ import { useArborOptional } from '../../../../../../context/ArborContext';
 import { GameFinish, GameShell } from '../../../../game/GameShell';
 import { ADVENTURE_COPY } from '../../adventures/adventureCopy';
 import { defaultChallenge } from '../../adventures/adventureRules';
-import { HudButton, HudCoach, HudDock, HudQuest, HudToast, PlayFx, PlayOpening, PlaySetPiece, PlayStage, roundSeed, useShake, type CoachMood, type HudQuestStep, type PlayFxHandle } from '../play';
+import { HudButton, HudCoach, HudDock, HudQuest, HudToast, PlayFx, PlayOpening, PlaySetPiece, PlayStage, roundSeed, useShake, type CoachMood, type HudQuestStep, type PlayCamera, type PlayFxHandle } from '../play';
 import { TINY_BUILDERS_COPY } from './tinyBuildersCopy';
 import { DIVE_QUEST, LAND_QUEST, PIECES, modeForChallenge, tinyLine, type LandStep, type PieceKind, type Placed } from './tinyBuildersRules';
 import { createTinyEngine, type Layout, type Phase, type TinyEngine, type TinyHooks, type Touch } from './tinyEngine';
@@ -53,6 +53,7 @@ function TinyGame({ onAgain }: { onAgain: () => void }) {
   const [canRecord, setCanRecord] = useState(false);
   const [layout, setLayout] = useState<Layout | null>(null);
   const [shake, bump] = useShake();
+  const [camera, setCamera] = useState<PlayCamera | undefined>(undefined);
   const canvasRef = useRef<HTMLCanvasElement | null>(null), engineRef = useRef<TinyEngine | null>(null), fxRef = useRef<PlayFxHandle | null>(null);
   const targetRef = useRef<HTMLButtonElement | null>(null), secretRef = useRef<HTMLButtonElement | null>(null), phageRef = useRef<HTMLButtonElement | null>(null);
 
@@ -63,7 +64,7 @@ function TinyGame({ onAgain }: { onAgain: () => void }) {
       phase: setPhase, placed: setPlaced, selected: setSelected, found: setFound, landed: setLandDone,
       say: (who, mood, key, piece) => setCoach({ who, mood, key, piece }),
       toast: (key, arg) => setToast(key ? { key, arg } : null),
-      caption: setCaption, canRecord: setCanRecord, layout: setLayout, shake: bump, haptic: () => { void selectionHaptic(); },
+      caption: setCaption, canRecord: setCanRecord, layout: setLayout, shake: bump, haptic: () => { void selectionHaptic(); }, camera: to => setCamera(to ?? undefined),
       burst: (x, y, kind, opts) => fxRef.current?.burst(x, y, kind, opts),
       spot: (role, box) => {
         const el = spots[role].current; if (!el) return;
@@ -141,7 +142,7 @@ function TinyGame({ onAgain }: { onAgain: () => void }) {
     <div className="tiny-builders" data-adventure="tiny-builders" data-phase={phase} data-chapter={chapter} data-mode={mode}>
       {phase === 'done'
         ? <GameFinish title={w.finish} subtitle={w.transfer} onPlayAgain={onAgain} playAgainLabel={shared.again} homeLabel={shared.home} />
-        : <PlayStage id="tiny-builders" className="tiny-stage" shake={shake} setPiece={phase === 'setPiece'} world={world}>
+        : <PlayStage id="tiny-builders" className="tiny-stage" shake={shake} camera={camera} setPiece={phase === 'setPiece'} world={world}>
           <HudCoach who={coach.who} mood={coach.mood} line={line} quiet={phase === 'setPiece'} onPoke={bench && phase !== 'opening' ? () => engine()?.pokeAya() : undefined} pokeLabel={w.aya} />
           <HudQuest steps={steps} current={current} label={w.quest[chapter]} />
           <HudToast show={!!toast && phase !== 'setPiece'}>{toastText}</HudToast>

@@ -209,8 +209,7 @@ const rod: Draw = (ctx, p, time, px, mood) => {
   if (px < 12) return;
   ctx.strokeStyle = ink(p.tone('leaf-deep'), 0.7); line(ctx, px, big ? 0.006 : 0.016); ctx.stroke();
   if (px > 60) {
-    capsule(-0.022); ctx.strokeStyle = ink(WHITE, 0.4); line(ctx, px, big ? 0.004 : 0.008); ctx.stroke();
-    if (big) { capsule(-0.04); ctx.strokeStyle = ink(p.tone('leaf-deep'), 0.35); line(ctx, px, 0.004); ctx.stroke(); }
+    if (!big) { capsule(-0.022); ctx.strokeStyle = ink(WHITE, 0.4); line(ctx, px, 0.008); ctx.stroke(); }
     // Its own DNA: a loose tangle in the middle, not in a shell.
     ctx.strokeStyle = ink(p.tone('leaf-deep'), 0.38); line(ctx, px, 0.014); ctx.lineCap = 'round'; ctx.beginPath();
     for (let i = 0; i <= 60; i++) { const u = i / 60, x = -0.2 + 0.4 * u + 0.05 * Math.sin(u * 23 + time * 0.3), y = Math.sin(u * 17) * half * 0.42 + Math.cos(u * 31 + time * 0.2) * half * 0.14; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
@@ -218,6 +217,24 @@ const rod: Draw = (ctx, p, time, px, mood) => {
     for (let i = 0; i < 26; i++) { const x = -0.42 + hash(i, 3, 1) * 0.84, y = (hash(i, 7, 2) - 0.5) * half * 1.5; ctx.fillStyle = ink(p.tone('leaf-deep'), 0.3); ctx.beginPath(); ctx.arc(x, y, 0.006, 0, Math.PI * 2); ctx.fill(); }
   }
   if (big) {
+    // Close up, the cell's coat is three thin layers over a crowded inside (drawn only where the lens is looking).
+    const top = -half, coat = blend(p.tone('spring'), WHITE, 0.5);
+    ctx.save(); capsule(0); ctx.clip();
+    const cg = ctx.createLinearGradient(0, top, 0, top + 0.1);
+    cg.addColorStop(0, ink(coat)); cg.addColorStop(0.06, ink(p.tone('spring'))); cg.addColorStop(0.085, ink(p.tone('celadon-deep'))); cg.addColorStop(0.15, ink(blend(p.tone('celadon'), p.tone('spring'), 0.35)));
+    cg.addColorStop(0.2, ink(p.tone('celadon-deep'))); cg.addColorStop(0.24, ink(blend(p.tone('celadon'), WHITE, 0.25))); cg.addColorStop(0.3, ink(blend(p.tone('celadon'), p.tone('celadon-deep'), 0.5))); cg.addColorStop(1, ink(blend(p.tone('celadon-deep'), p.tone('teal-deep'), 0.55)));
+    ctx.fillStyle = cg; ctx.fillRect(-0.5, top, 1, 0.1);
+    const step = 0.0075;
+    for (let gx = Math.floor(-0.2 / step); gx <= Math.ceil(0.4 / step); gx++) for (let gy = 4; gy <= 12; gy++) {
+      const r1 = hash(gx, gy, 5), r2 = hash(gy, gx, 8); if (r1 < 0.3) continue;
+      const x = (gx + r2) * step, y = top + (gy + r1) * step + 0.0015 * Math.sin(time * 1.1 + r1 * 30);
+      ctx.fillStyle = ink(blend(p.tone('spring'), WHITE, r2 * 0.6), 0.16 + 0.3 * r1 * (1 - (gy - 4) / 10)); ctx.beginPath(); ctx.arc(x, y, 0.0012 + 0.0016 * r2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+    // Its faint halo in the water.
+    const halo = ctx.createLinearGradient(0, top - 0.03, 0, top);
+    halo.addColorStop(0, ink(p.tone('spring'), 0)); halo.addColorStop(1, ink(p.tone('spring'), 0.22));
+    ctx.fillStyle = halo; ctx.fillRect(-0.5 + half, top - 0.03, 1 - 2 * half, 0.03);
     // The skin's knobs, along the upper side: where the fibre tips can take hold.
     for (let i = 0; i < 90; i++) {
       const x = -0.5 + half + (i + 0.5) / 90 * (1 - 2 * half), lit = 0.5 + 0.5 * Math.sin(time * 1.2 + i * 0.6);

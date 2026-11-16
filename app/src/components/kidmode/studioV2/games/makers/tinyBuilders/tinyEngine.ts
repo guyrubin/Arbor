@@ -35,6 +35,8 @@ export interface TinyHooks {
   layout(layout: Layout): void;
   shake(): void;
   haptic(): void;
+  /** A camera push on a big moment (stage fractions and zoom); null goes home. */
+  camera(to: { x: number; y: number; zoom: number } | null): void;
   burst(x: number, y: number, kind: FxKind, opts?: FxOptions): void;
   /** Places the transparent button over a thing in the lens view (null hides it). */
   spot(role: 'target' | 'secret' | 'phage', box: Box | null): void;
@@ -162,6 +164,7 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
     const at = project(view, [0, PAD_TOP + 7, 0]);
     fx(at.x, at.y, 'sparkle', { tones: ['white', 'gold-light', 'sky-pale'], count: 26 }); fx(at.x, project(view, [0, PAD_TOP, 0]).y, 'ring', { tones: ['sea'] });
     sound.chapter(); say('aya', 'wow', 'standing'); idleAt = time; publish();
+    if (!prefersReducedMotion()) { hooks.camera({ x: 0.5, y: 0.4, zoom: 1.16 }); later(1500, () => hooks.camera(null)); }
   }
   function startFly(p: PartSim) { p.mode = 'fly'; p.t = 0; p.from = p.centre; }
   function sendBack(p: PartSim, quiet = false) { p.mode = 'back'; p.t = 0; p.from = p.centre; if (!quiet) { sound.back(); say('aya', 'idle', 'closer'); } }
@@ -323,7 +326,7 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
   const surfaceY = DIVE_STOPS[3].at.y - ROD.width / 2, phageHome = DIVE_STOPS[4].at;
   const gripFrame = (roll: number, turn: number): Frame => { const m = matMul(rotZ(roll), rotY(turn)); return { m, at: sub([0, GRIP_Y, 0], apply(m, [0, GRIP_Y, 0])), scale: 1 }; };
   const lensView = (x: number, y: number, px: number): View => ({ cx: x, cy: y, ppu: px / PHAGE.height, dist: 600, elev: 6, target: [0, GRIP_Y, 0] });
-  const landField = () => (orient === 'portrait' ? 0.31 : 0.5);
+  const landField = () => (orient === 'portrait' ? 0.31 : 0.43);
   function landCamera(): DiveCamera {
     const field = landField(), span = field * h / Math.min(w, h);
     return { x: phageHome.x, y: surfaceY - span * 0.24, field };
@@ -340,7 +343,7 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
     const s = toScreen(diveCamera(depth), lifeAt(target, time), Math.min(w, h), w / 2, h / 2);
     fx(s.x, s.y, 'ring', { tones: ['white'] }); fx(s.x, s.y, 'sparkle', { tones: ['white', 'sky-pale', 'gold-light'], count: 16 });
     sound.place(found * 2); sound.breath({ tone: 5200, gain: 0.018, length: 0.1 }); hooks.haptic();
-    if (found >= LAST_DEPTH) { go('found'); shimmer = 1; hooks.shake(); later(350, () => sound.chapter()); say('bebe', 'wow', 'fact-phage'); }
+    if (found >= LAST_DEPTH) { go('found'); shimmer = 1; hooks.shake(); if (!prefersReducedMotion()) { hooks.camera({ x: 0.5, y: 0.45, zoom: 1.14 }); later(1600, () => hooks.camera(null)); } later(350, () => sound.chapter()); say('bebe', 'wow', 'fact-phage'); }
     else { say('bebe', 'happy', `fact-${thing}`); if (thing === 'bacterium') later(3200, () => { if (phase === 'dive') { hooks.toast('beyond'); later(5200, () => hooks.toast(null)); } }); }
     idleAt = time;
   }
@@ -540,8 +543,8 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
     const u = ease((t - 8.9) / 2.2);
     drawValley(reduced ? 1 : 2.6 - 1.6 * u, 1);
     if (u < 1) {
-      const s = reduced ? 1 : 1 - 0.55 * u;
-      ctx.save(); ctx.globalAlpha = 1 - ease(u * 1.25); ctx.translate(w / 2, h * 0.5); ctx.scale(s, s); ctx.translate(-w / 2, -h * 0.5); drawBench(); ctx.restore();
+      // The room dissolves into the valley it stands in while the camera keeps rising.
+      ctx.save(); ctx.globalAlpha = 1 - ease(u * 1.7); drawBench(); ctx.restore();
     }
   }
   function lensRim(x: number, y: number, r: number) {
