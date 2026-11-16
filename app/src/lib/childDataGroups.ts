@@ -61,7 +61,7 @@ export const CHILD_DATA_ROWS: readonly ChildDataRow[] = [
   // B-BOOK-75: `books` = the composed Everyday Plan books (the parent's choices).
   // B-BOOK-51: `bookReads` = the one finished-book ledger.
   { id: "books", icon: "auto_stories", collections: ["bookAssets", "bookBookmarks", "books", "bookReads"] },
-  { id: "plans", icon: "checklist", collections: ["actionPlans", "actionLoops", "routines", "goals", "goalObservations", "savedLearn", "weeklyReports", "programs", "familyGoals", "coachSessions"] },
+  { id: "plans", icon: "checklist", collections: ["actionPlans", "actionLoops", "routines", "goals", "goalObservations", "savedLearn", "weeklyReports", "programs", "familyGoals", "coachSessions", "familyPlanDates"] },
   { id: "screening", icon: "fact_check", collections: ["screenings", "devScoreSnapshots", "bandSnapshots"] },
   { id: "coach", icon: "forum", collections: ["conversations", "conversationChanges", "familyTopics"] },
   { id: "memory", icon: "bookmark", collections: [], elsewhere: ["server-memory"] },
