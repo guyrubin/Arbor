@@ -63,7 +63,9 @@ describe("B-TODAY-13 — the rhythm line is the Day Windows door on Today", () =
     // N-Now draws the link beside the stage's head line (the fold target, Weekly
     // report's "Your day at a glance"); it is the only one on Now, and no drawer row returns.
     expect(OVERVIEW.match(/setActiveTab\("day-windows"\)/g)).toHaveLength(1);
-    expect(OVERVIEW).toContain('<MoreLink onClick={() => setActiveTab("day-windows")} className="nw-lnk">{t("nav.view.day-windows")}</MoreLink>');
+    expect(OVERVIEW).toContain('const dayGlance = <MoreLink onClick={() => setActiveTab("day-windows")} className="nw-lnk">{t("nav.view.day-windows")}</MoreLink>;');
+    expect(OVERVIEW).toContain("{desk && dayGlance}");
+    expect(OVERVIEW).toContain("{!desk && dayGlance}");
     expect(OVERVIEW).not.toContain("today-open-day-windows");
   });
 });
