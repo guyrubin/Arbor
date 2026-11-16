@@ -84,23 +84,21 @@ export const fmtDayShort = (input: DateInput, lang: UiLang): string =>
 
 /**
  * v10 — the shell's "when" beside the pill row: weekday, day and month, then the
- * time ("Monday, November 16 · 5:40 PM" / "יום שני, 16 בנובמבר · 17:40"). The
- * locale decides the order and the clock; the separator is the app's middle dot.
+ * time, as every v10 board draws it ("Monday 16 November · 17:40" /
+ * "יום שני, 16 בנובמבר · 17:40"): day-first and a 24-hour clock in both
+ * languages (canvas V77). The separator is the app's middle dot.
  */
 export const fmtShellNow = (input: DateInput, lang: UiLang): string => {
   const d = toDate(input);
   if (!d) return "";
-  const locale = LOCALES[lang] ?? LOCALES.en;
+  const locale = lang === "he" ? "he-IL" : "en-GB";
   let day: string;
-  let time: string;
   try {
     day = d.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" });
-    time = d.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
   } catch {
     day = d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
-    time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   }
-  return isolate(`${day} · ${time}`);
+  return isolate(`${day} · ${fmtTimeV10(d, lang)}`);
 };
 
 /* ── v10 / canvas V77: the day as the boards draw it ───────────────────────

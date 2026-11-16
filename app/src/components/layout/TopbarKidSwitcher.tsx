@@ -6,6 +6,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 import { Avatar } from "../ui/Avatar";
 import AddChildModal from "../profile/AddChildModal";
+import ProfileEditDrawer from "../profile/ProfileEditDrawer";
 // B-INF-10: the ONE child-age formatter (months under 3, years from 3).
 import { formatChildAge } from "../../lib/age/format";
 import { childPicture } from "../../lib/childPicture";
@@ -198,6 +199,9 @@ export default function TopbarKidSwitcher({ maxWidth = "180px", fullWidth = fals
   })();
   const [open, setOpen] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  // v10 (canvas V77): the sidebar card is the switcher alone; editing the child's
+  // profile moved from a separate pencil into this menu (desktop and phone alike).
+  const [showEdit, setShowEdit] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Close the popover on outside click / focus-out.
@@ -308,6 +312,50 @@ export default function TopbarKidSwitcher({ maxWidth = "180px", fullWidth = fals
               />
             ))}
 
+            {/* Edit the active child's profile — the drawer the sidebar pencil used to open. */}
+            <button
+              onClick={() => {
+                setOpen(false);
+                setShowEdit(true);
+              }}
+              title={t("aria.editChildProfile")}
+              data-testid="switcher-edit-profile"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: "10px",
+                textAlign: "start",
+                background: "transparent",
+                border: "none",
+                borderTop: "1px solid var(--arbor-rule)",
+                marginBlockStart: "4px",
+                cursor: "pointer",
+                color: "var(--arbor-ink)",
+                minHeight: "44px",
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "10px",
+                  background: "var(--arbor-paper-deep)",
+                  color: "var(--arbor-ink-soft)",
+                  flexShrink: 0,
+                }}
+              >
+                <Icon name="edit" size={15} />
+              </span>
+              <span style={{ fontSize: "var(--t-sm)", fontWeight: 600 }}>{t("aria.editChildProfile")}</span>
+            </button>
+
             {/* Add child — opens the existing AddChildModal (uses ProfileContext.addChild internally) */}
             <button
               onClick={() => {
@@ -354,6 +402,7 @@ export default function TopbarKidSwitcher({ maxWidth = "180px", fullWidth = fals
 
       {/* Existing AddChildModal — no logic change, just wired to local open state */}
       <AddChildModal open={showAdd} onClose={() => setShowAdd(false)} />
+      <ProfileEditDrawer open={showEdit} onClose={() => setShowEdit(false)} />
     </div>
   );
 }
