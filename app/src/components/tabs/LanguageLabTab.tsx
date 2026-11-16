@@ -148,9 +148,11 @@ export default function LanguageLabTab() {
         <FrameHead phone={!desk} kicker={v.said.kicker(first)} startHere={v.startHere} title={title} sub={t("lang.subtitle", { first })}
           switcher={<KindSwitch kind="said" />} action={desk ? monthPage : undefined}
           figure={totalLogged > 0 ? <FrameFigure n={totalLogged} unit={v.said.figureUnit(totalLogged)} /> : undefined} />
-        {langIndex.length > 0 && <IndexRow phone={!desk} label={v.said.guideLangs} items={langIndex} />}
+        {/* Phone: the index follows the capture (inside the stage), so the
+            primary move stays above the dock; desk keeps it in the band. */}
+        {desk && langIndex.length > 0 && <IndexRow phone={false} label={v.said.guideLangs} items={langIndex} />}
       </div>
-      {langIndex.length > 0 && <div className="mcap"><span>{v.said.cap}</span></div>}
+      {desk && langIndex.length > 0 && <div className="mcap"><span>{v.said.cap}</span></div>}
     </Scene>
   );
   const stage = (
@@ -169,6 +171,7 @@ export default function LanguageLabTab() {
       </div>
       {/* B-GROWTH-16 — the words written down, under the form that writes them. */}
       <div data-module="language-words">
+        {!desk && langIndex.length > 0 && <IndexRow phone label={v.said.guideLangs} items={langIndex} />}
         {underThree ? <WordsList /> : <SaidList childId={childProfile.id} first={first} gender={gender} language={langFilter} rows />}
         {!desk && <div className="mt-2">{monthPage}</div>}
       </div>

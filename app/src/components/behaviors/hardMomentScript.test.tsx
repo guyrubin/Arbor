@@ -183,7 +183,8 @@ describe("B-DATA-16 — the guide card stays calm: the two word actions share on
       expect(row).toContain('data-testid="hard-moment-now-used"');
       expect(row).toContain('data-testid="hm-send-words"');
       for (const b of row.match(/<button[^>]*>/g) ?? []) expect(b).toMatch(/min-h-11/);
-      expect(html).toMatch(/<label class="[^"]*col-span-2[^"]*"[^>]*><input type="checkbox" data-testid="hm-send-name"/);
+      // v10.3 (sweep sub44): the checkbox sits in its own 44 px hit area inside the spanning label.
+      expect(html).toMatch(/<label class="[^"]*col-span-2[^"]*"[^>]*><span class="relative inline-flex h-11 w-11[^"]*"><input type="checkbox" data-testid="hm-send-name"[^>]*class="[^"]*h-11 w-11/);
     }
   });
 });
