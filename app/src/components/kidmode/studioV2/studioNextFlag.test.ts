@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { STUDIO_NEXT_FLAG_KEY, STUDIO_NEXT_HOSTS, resetStudioNextFlagForTests, studioNextFlagOn } from './studioNextFlag';
-import { studioNextCover } from '../../../lib/kidThemeManifest';
+import { studioCrewCover, studioNextCover } from '../../../lib/kidThemeManifest';
 import { resetHeroBandFlagForTests } from './heroBandFlag';
 import { studioCopy } from './studioCopy';
 import { HERO_BAND_COPY } from './games/adventures/heroBandCopy';
@@ -65,6 +65,21 @@ describe('next Studio games switch', () => {
       for (const file of [cover.src, cover.src480]) expect(existsSync(path.join(PUBLIC, file)), `${file} is not shipped`).toBe(true);
     }
     for (const other of ['feelings-forest', 'calm-builder', 'sneak', 'toString', '__proto__', '']) expect(studioNextCover(other)).toBeNull();
+  });
+  it("B-KID-171: switched on, each Bop host tile wears Bebe and GobGob in its own game's film frame; off, it keeps its old game's frame", () => {
+    const off = Object.fromEntries(STUDIO_NEXT_HOSTS.map(host => [host, studioCrewCover(host)?.src ?? null]));
+    expect(off['river-rescue']).toBeNull();
+    store.set(STUDIO_NEXT_FLAG_KEY, '1'); open('');
+    const on = STUDIO_NEXT_HOSTS.map(host => studioCrewCover(host)!);
+    expect(on.map(cover => cover.src.replace('/visuals/studio-v2/film/', ''))).toEqual(['cover-delivery-crew.webp', 'cover-sun-crew.webp', 'cover-oops-crew.webp', 'cover-rover-crew.webp']);
+    for (const [i, host] of STUDIO_NEXT_HOSTS.entries()) {
+      expect(on[i].src, host).not.toBe(off[host]);
+      for (const file of [on[i].src, on[i].src480]) expect(existsSync(path.join(PUBLIC, file)), `${file} is not shipped`).toBe(true);
+    }
+    // Sound Orbit and Hero Band share the beat-court frame on their tile; Sneak keeps its own.
+    expect(studioCrewCover('rhythm-garden')?.src).toBe('/visuals/studio-v2/film/cover-rhythm-crew.webp');
+    expect(studioCrewCover('sneak')?.src).toBe('/visuals/studio-v2/film/cover-sneak-crew.webp');
+    for (const maker of STUDIO_MAKERS) expect(studioCrewCover(maker.id), maker.id).toBeNull();
   });
   it("Hero Band's own switch shows its cover (v30 pavilion) and no other", () => {
     open('?heroBand=1');

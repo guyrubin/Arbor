@@ -65,16 +65,24 @@
 @media(prefers-reduced-motion:reduce){.studio-v2 *{animation:none!important;transition:none!important;scroll-behavior:auto!important}.studio-v2 button:active:not(:disabled){scale:1}.studio-v2__door:hover{translate:none}}
 @media(forced-colors:active){.studio-v2 button,.studio-v2__quest,.studio-v2__keepsake-note{border:2px solid ButtonText}.studio-v2__quest-steps li>span{border-color:ButtonText}.studio-v2__action-button{color:ButtonText!important}}
 
-/* The existing overlay still owns all navigation and the parent gate. */
-.arbor-play>.studio-v2-bar{background:var(--studio-pearl)!important;color:var(--studio-text);border-bottom:1px solid var(--studio-line)!important;box-shadow:none!important;padding-inline:max(16px,calc((100vw - 1108px)/2))!important;min-block-size:76px;padding-block:0!important}
-.arbor-play>.studio-v2-bar>button{background:var(--studio-surface)!important;color:var(--studio-text)!important;border-color:var(--studio-line)!important;border-radius:12px!important}
-.arbor-play>.studio-v2-bar>[data-kid-bar-title]{color:var(--studio-text)!important;font-family:Nunito,Heebo,sans-serif!important;font-size:22px!important}
-.arbor-play>.studio-v2-bar button:focus-visible{outline:3px solid var(--studio-teal-ink);outline-offset:3px}
-.arbor-play>.studio-v2-bar[data-kid-bar-float]{background:transparent!important;border-bottom:0!important}
-/* 25 Oct input, v30: over a scene the floating toys keep a frosted pearl face with graphite ink, so they read on light and dark art alike. */
-.arbor-play>.studio-v2-bar[data-kid-bar-float]>button{background:var(--studio-frost)!important;border-color:var(--studio-surface)!important;box-shadow:0 4px 14px var(--studio-shade)!important}.arbor-play>.studio-v2-bar[data-kid-bar-float]>div>span{background:var(--studio-frost);color:var(--studio-text)}
-@media(max-width:640px){.arbor-play>.studio-v2-bar{min-block-size:76px;padding-inline:10px!important}.arbor-play>.studio-v2-bar>[data-kid-bar-title]{font-size:18px!important}}
 /* Child headings must win over the parent shell's important serif/weight rules. */
 .arbor-play .studio-v2 :is(h1,h2,h3){font-family:Nunito,Heebo,sans-serif!important;font-weight:800!important;color:var(--studio-text)!important}
 /* T7 (wave-3 kids round 2): a step not yet taken is a dot, never a numeral */
 .studio-v2__quest-dot{display:block;inline-size:10px;block-size:10px;border-radius:50%;background:currentColor;opacity:.75}
+/* B-KID-171 (16 Nov): the world's game shelf. Picture first — each game is its film cover, full width of its card, two across on a phone, three on a tablet; the title under it and a frosted play / kept badge on the picture. The skill glyph stays on the game card, not over the art. */
+.studio-v2__activity-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.studio-v2__activity-grid>.studio-v2__activity{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:0;min-block-size:0;padding:0;overflow:hidden;border:1px solid var(--studio-surface);border-radius:var(--studio-radius-card);background:var(--studio-surface);box-shadow:0 6px 18px var(--studio-shade);transition:transform .25s var(--studio-ease-soft),box-shadow .25s var(--studio-ease-soft)}
+.studio-v2__activity-grid .studio-v2__activity-art{inline-size:100%;block-size:auto;aspect-ratio:3/2;border-radius:0}
+.studio-v2__activity-grid .studio-activity-picture>img{transition:transform .5s var(--studio-ease-soft)}
+.studio-v2__activity-grid .studio-activity-picture__symbol{display:none}
+.studio-v2__activity-grid .studio-v2__activity-copy{padding:10px 12px 14px}
+.studio-v2__activity-grid>.studio-v2__activity strong{font-size:17px;line-height:1.2}
+.studio-v2__activity-grid>.studio-v2__activity small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;margin-block-start:4px}
+.studio-v2__activity-grid .studio-v2__activity-state{position:absolute;inset-block-start:10px;inset-inline-end:10px;inline-size:44px;block-size:44px;background:var(--studio-frost);color:var(--studio-text);box-shadow:0 4px 12px var(--studio-shade)}
+.studio-v2__activity-grid .studio-v2__activity-state[data-kept=true]{background:var(--studio-done);color:var(--studio-done-ink)}
+@media(hover:hover) and (pointer:fine){.studio-v2__activity-grid>.studio-v2__activity:hover,.studio-v2[dir=rtl] .studio-v2__activity-grid>.studio-v2__activity:hover{transform:translateY(-4px);background:var(--studio-surface);box-shadow:var(--studio-lift)}.studio-v2__activity-grid>.studio-v2__activity:hover .studio-activity-picture>img{transform:scale(1.05)}}
+/* an odd last game takes the whole row, as a wide feature tile, so the shelf never ends on a hole */
+.studio-v2__activity-grid>.studio-v2__activity:last-child:nth-child(odd){grid-column:1/-1}
+.studio-v2__activity-grid>.studio-v2__activity:last-child:nth-child(odd) .studio-v2__activity-art{aspect-ratio:2/1}
+@media(min-width:641px) and (max-width:950px){.studio-v2__activity-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.studio-v2__activity-grid>.studio-v2__activity:last-child:nth-child(odd){grid-column:auto}.studio-v2__activity-grid>.studio-v2__activity:last-child:nth-child(odd) .studio-v2__activity-art{aspect-ratio:3/2}}
+@media(max-width:380px){.studio-v2__activity-grid{gap:12px}.studio-v2__activity-grid>.studio-v2__activity strong{font-size:15px}.studio-v2__activity-grid>.studio-v2__activity small{font-size:12px}}

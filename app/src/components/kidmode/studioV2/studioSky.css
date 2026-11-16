@@ -18,7 +18,7 @@
 .studio-v2__greeting h1 { letter-spacing: -.02em; }
 .studio-v2__greeting h1 > svg { color: var(--studio-teal); }
 .studio-v2__greeting p { font-size: 17px; font-weight: 600; color: var(--studio-text-soft); }
-.studio-v2__header-actions [data-kid-exit-caption], .studio-v2-bar [data-kid-exit-caption] { color: var(--studio-text) !important; }
+.studio-v2__header-actions [data-kid-exit-caption] { color: var(--studio-text) !important; }
 .studio-v2__door { transition: translate .3s var(--studio-ease), box-shadow .3s var(--studio-ease); }
 .studio-v2__door > .studio-v2__portal-art { aspect-ratio: 194 / 164; }
 .studio-v2__door-label { min-block-size: 48px; padding: 10px 2px 0; }
@@ -80,4 +80,3 @@
 .studio-v2__portal-art > div { position: absolute; inset: 0; }
 @media(max-width:950px) { .studio-v2__world-list { min-block-size: auto; } .studio-v2__keepsake-note { margin-block-start: 12px; } }
 
-.studio-v2-bar [data-kid-exit-caption] { font-size:10px!important; line-height:1.2!important; }

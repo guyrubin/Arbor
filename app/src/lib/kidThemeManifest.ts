@@ -166,19 +166,33 @@ const studioFilm = (name: string, objectPosition = "50% 50%", width = 1536): Kid
   src: `${STUDIO_FILM}${name}.webp`, src480: `${STUDIO_FILM}${name}-480.webp`, width,
   objectPosition, altKey: null, provenanceId: `studio-film:${name}:2026-11-16`, hasHero: false,
 });
-/** The four Playbank tiles' covers with Bebe and GobGob, the show's two
- *  children (B-KID-171, 16 Nov 2026): the films' own finished frames, cropped
- *  only, each named in lib/childLikenessFiles.named.ts under Guy's approval
- *  (BD-32, third permission). Tiles only: the game screen keeps the companion
- *  cover above, because the child's own hero stands in that picture. */
-const STUDIO_CREW_COVERS: Record<StudioCoverId, KidArt> = {
+/** Studio game tiles with Bebe and GobGob, the show's two children
+ *  (B-KID-171, 16 Nov 2026): the films' own finished frames, cropped only,
+ *  each named in lib/childLikenessFiles.named.ts under Guy's approval (BD-32,
+ *  third permission, extended the same day to the covers). A tile shows the
+ *  cover of the game it opens: with the Next Studio switch on, a host tile
+ *  opens a Bop game and wears that game's frame. Tiles only: the game screen
+ *  keeps the companion cover, because the child's own hero stands in that
+ *  picture. Canal Quest has no mastered film, so it keeps its canal plate. */
+const STUDIO_CREW_COVERS: Readonly<Record<string, KidArt>> = {
   memory: studioFilm("cover-memory-crew", "45% 45%"),
   pattern: studioFilm("cover-pattern-crew", "50% 40%"),
   puzzle: studioFilm("cover-puzzle-crew", "60% 45%"),
   sneak: studioFilm("cover-sneak-crew", "70% 60%"),
+  "feelings-forest": studioFilm("cover-feelings-crew", "45% 50%"),
+  "calm-builder": studioFilm("cover-calm-crew", "35% 55%"),
+  // Sound Orbit, and Hero Band when either switch hosts it on this tile.
+  "rhythm-garden": studioFilm("cover-rhythm-crew", "50% 55%"),
+};
+const STUDIO_NEXT_CREW_COVERS: Readonly<Record<StudioNextHost, KidArt>> = {
+  memory: studioFilm("cover-delivery-crew", "35% 55%"),
+  pattern: studioFilm("cover-sun-crew", "50% 50%"),
+  puzzle: studioFilm("cover-oops-crew", "45% 40%"),
+  "river-rescue": studioFilm("cover-rover-crew", "50% 50%"),
 };
 export function studioCrewCover(id: string): KidArt | null {
-  return isStudioCoverId(id) ? STUDIO_CREW_COVERS[id] : null;
+  if (Object.hasOwn(STUDIO_NEXT_CREW_COVERS, id) && studioNextFlagOn()) return STUDIO_NEXT_CREW_COVERS[id as StudioNextHost];
+  return Object.hasOwn(STUDIO_CREW_COVERS, id) ? STUDIO_CREW_COVERS[id] : null;
 }
 /** The home valley for portrait tablets and phones (the wide one is "studio.sky"). */
 export const STUDIO_VALLEY_TALL = { src: `${STUDIO_V30}valley-tall.webp`, src480: `${STUDIO_V30}valley-tall-480.webp`, width: 1024 } as const;
