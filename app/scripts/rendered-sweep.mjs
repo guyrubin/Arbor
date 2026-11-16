@@ -759,11 +759,24 @@ function stateHelpers(page, vp, tr) {
           const r = s.getBoundingClientRect();
           if (r.height > 0 && r.height < 240 && r.width > 200 && r.top < 120) band = Math.max(band, r.bottom);
         }
-        const margin = Math.max(96, Math.ceil(band) + 16);
+        // Where the target's top should land, in viewport pixels.
+        const want = Math.max(96, Math.ceil(band) + 16);
         // Already wholly in view below the sticky band: leave the page where it is.
         const r = e.getBoundingClientRect();
-        if (r.top >= margin && r.bottom <= window.innerHeight) return;
-        e.style.scrollMarginTop = `${margin}px`;
+        if (r.top >= want && r.bottom <= window.innerHeight) return;
+        // scrollIntoView lands the target at the scroller's top plus its own
+        // scroll-padding (v10: <main> pads by the sticky pill row) plus this
+        // margin, so only the remainder is set here; adding the whole band
+        // again would count the pill row twice and push the target down.
+        let scroller = e.parentElement;
+        while (scroller && scroller !== document.body) {
+          const oy = getComputedStyle(scroller).overflowY;
+          if ((oy === "auto" || oy === "scroll") && scroller.scrollHeight > scroller.clientHeight) break;
+          scroller = scroller.parentElement;
+        }
+        const top = scroller && scroller !== document.body ? scroller.getBoundingClientRect().top : 0;
+        const pad = scroller && scroller !== document.body ? parseFloat(getComputedStyle(scroller).scrollPaddingTop) || 0 : 0;
+        e.style.scrollMarginTop = `${Math.max(0, Math.ceil(want - top - pad))}px`;
         e.scrollIntoView({ block: "start" });
       });
       await page.waitForTimeout(200);
