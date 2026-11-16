@@ -4,12 +4,11 @@ import { Fig, LivingForm, Scene, StartHere } from "../../../design/primitives";
 import type { Composition } from "../../../design/useComposition";
 import { CoachTryIt, type CoachTodayStep, type TryItButtonProps } from "../../coach/CoachAnswerCards";
 import { translate, type UiLang } from "../../../lib/i18n";
-import { PLAN_CHECK_ANSWERS, offerPlanAdjust, planEchoKey, planEyebrowKey, planStepStatus, weeklyCheckDue, type PlanEcho, type TodaysPlanStep } from "../../../lib/plans";
+import { PLAN_CHECK_ANSWERS, offerPlanAdjust, planEchoKey, planStepStatus, weeklyCheckDue, type PlanEcho, type TodaysPlanStep } from "../../../lib/plans";
 import type { PlanStepRef } from "../../../actionLoop/model";
 import type { ActionPlan, PlanCheckAnswer, StepStatus } from "../../../types";
 import { EMPTY_ART } from "../../../lib/parentArt";
 import { mirrorPoints, Road, wavePoints } from "./Road";
-import { PlanEyebrow } from "../planTrack";
 import { plansCopy } from "./plansCopy";
 
 /**
@@ -124,7 +123,9 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
     : [{ size: 240, left: -150, bottom: -150, opacity: 0.55 }, { size: 220, right: -120, top: -130, opacity: 0.75, b: true }];
   const pad = desk ? "0 28px" : "0 16px";
 
-  const echoLine = echo && echo.kind === "not-yet-twice" ? (
+  // Once-only: a "progress" echo restates the steps-done figure beside it, so the stage keeps only
+  // the echoes that say something new (the last outcome, or "change this step").
+  const echoLine = echo && echo.kind === "progress" ? null : echo && echo.kind === "not-yet-twice" ? (
     <button type="button" data-testid="plan-echo" data-echo={echo.kind} onClick={onAdjust} className="ds-link min-h-11" style={{ paddingInline: 0 }}>
       {t(planEchoKey(echo))}
     </button>
@@ -136,65 +137,26 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
     </p>
   ) : null;
 
-  return (
-    <Scene field="plan" orbs={orbs} style={{ padding: 0, gap: 0, flex: desk ? 1 : undefined }} data-testid="plan-track-card">
-      <div className="line between" style={{ padding: desk ? "22px 28px 0" : "16px 16px 0", alignItems: "flex-start" }}>
-        <span className="gsec">
-          <span className="kicker">
-            {todayFlat ? `${c.actionPlan} · ${c.stepOf(todayFlat.n, steps.length)}` : c.actionPlan}
-          </span>
-          {step && <StartHere>{t("elev.plans.today.chip")}</StartHere>}
-        </span>
-        {desk && <Fig n={done.length} unit={c.ofSteps(steps.length)} sub={plan.phases.length > 1 ? c.inPhases(plan.phases.length) : undefined} size="md" />}
-      </div>
-
-      <div data-testid={step ? "plan-today-step" : undefined} style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", gap: desk ? 20 : 12, alignItems: "center", padding: desk ? "6px 28px 0" : "10px 16px 0" }}>
-        <LivingForm src={EMPTY_ART.plans.src} srcSet={EMPTY_ART.plans.srcSet} width={desk ? 116 : 84} height={desk ? 83 : 60} />
-        <div className="stack ds-col" style={{ gap: desk ? 8 : 4 }}>
-          {step ? (
-            <>
-              {/* "Today's step · {plan}" on day 1, "Day {n} of {plan}" after: the
-                  plan title isolated in <bdi>, never upper-cased (critic r1). */}
-              <p data-testid="plan-today-eyebrow" className="small" style={{ fontWeight: 600, color: "var(--k-plan)" }}>
-                <PlanEyebrow template={t(planEyebrowKey(step.day), { n: step.day, plan: "\u0000" })} title={plan.title} />
-              </p>
-              {echoLine}
-              <h1 className="hero" dir="auto" style={{ fontSize: desk ? 30 : 22, lineHeight: 1.12 }}>{step.text}</h1>
-            </>
-          ) : (
-            <>
-              <h1 className="hero" dir="auto" style={{ fontSize: desk ? 30 : 22, lineHeight: 1.12 }}>{plan.title}</h1>
-              <p className="line" style={{ gap: 8, fontSize: 15, color: "var(--ink)" }}>
-                <Icon name="check_circle" size={18} style={{ color: "var(--k-plan)" }} />
-                {t("plan.complete")}
-              </p>
-              <p className="small">{t("plan.completeHint")}</p>
-            </>
-          )}
-          {!step && echoLine}
-          {!desk && <Fig n={done.length} unit={c.ofSteps(steps.length)} size="sm" />}
-        </div>
-      </div>
-
-      <div className="stack ds-col" style={{ gap: 10, padding: desk ? "14px 28px 0" : "12px 16px 0" }}>
+  /* Today's move. Desktop: under the step, inside the card (above the fold at 1280). Phone (N-Plans-M):
+     a full-width button below the card. */
+  const actions = (
+      <div className="stack ds-col" style={{ gap: 10, padding: desk ? "14px 28px 0" : 0 }}>
         {step && (
           <div className="ds-plans-try">
             <CoachTryIt step={step.text} today={today} lang={lang} onTryIt={(text) => onTryIt(text, ref(step))} onUndo={onUndo} buttonProps={primary} />
           </div>
         )}
-        <span className="small" style={{ color: "var(--ink-soft)" }} data-testid="plan-done-so-far">
-          {done.length === steps.length && steps.length > 0 ? c.allDone : done.length > 0 ? c.doneSoFar(done.map((s) => s.n)) : t("plan.stepsCount", { done: 0, total: steps.length })}
-        </span>
+        {/* V77: "Done so far" left the stage (the trail and the whole plan say it). */}
         {step?.offerNext && step.next && (
           <div data-testid="plan-offer-next" className="stack ds-col" style={{ gap: 4 }}>
             <p className="small">{t("elev.plans.today.next")}</p>
-            <p dir="auto" style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ink)" }}>{step.next.text}</p>
+            <p dir="auto" style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>{step.next.text}</p>
             <CoachTryIt step={step.next.text} today={today} lang={lang} onTryIt={(text) => onTryIt(text, ref(step.next!))} onUndo={onUndo} />
           </div>
         )}
         {due && (
           <div data-testid="plan-weekly-check" className="stack ds-col" style={{ gap: 8, paddingTop: 12, borderTop: "1px solid var(--rule)" }}>
-            <p style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ink)" }}>{t("elev.plans.check.q")}</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>{t("elev.plans.check.q")}</p>
             <p data-testid="plan-will-ask" className="small">{t("elev.words.plans.willAsk")}</p>
             <div className="line" style={{ gap: 8, flexWrap: "wrap" }} role="group" aria-label={t("elev.plans.check.q")}>
               {PLAN_CHECK_ANSWERS.map((a) => (
@@ -208,14 +170,57 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
         {!due && lastCheck && <p className="small">{t("elev.plans.check.saved")}</p>}
         {adjust && (
           <button type="button" data-testid="plan-adjust" onClick={onAdjust} className="btn ghost sm min-h-11" style={{ background: "var(--card)", alignSelf: "flex-start" }}>
-            <Icon name="auto_awesome" size={14} /> {t("elev.plans.adjust")}
+            <Icon name="auto_awesome" size={15} /> {t("elev.plans.adjust")}
           </button>
         )}
       </div>
+  );
+
+  return (
+    <>
+    <Scene field="plan" orbs={orbs} style={{ padding: 0, gap: 0, flex: desk ? 1 : undefined }} data-testid="plan-track-card">
+      <div className="line between" style={{ padding: desk ? "22px 28px 0" : "16px 16px 0", alignItems: "flex-start" }}>
+        <span className="gsec">
+          <span className="kicker">
+            {todayFlat ? `${c.actionPlan} · ${c.stepOf(todayFlat.n, steps.length)}` : c.actionPlan}
+          </span>
+          {step && <StartHere>{c.startHere}</StartHere>}
+        </span>
+        {desk && <Fig n={done.length} unit={c.ofSteps(steps.length)} sub={plan.phases.length > 1 ? c.inPhases(plan.phases.length) : undefined} size="md" />}
+      </div>
+
+      <div data-testid={step ? "plan-today-step" : undefined} style={{ display: "grid", gridTemplateColumns: desk ? "auto minmax(0, 1fr)" : "0 minmax(0, 1fr)", gap: desk ? 20 : 0, alignItems: "center", padding: desk ? "6px 28px 0" : "10px 16px 0" }}>
+        {desk ? <LivingForm src={EMPTY_ART.plans.src} srcSet={EMPTY_ART.plans.srcSet} width={116} height={83} /> : <span aria-hidden="true" />}
+        <div className="stack ds-col" style={{ gap: desk ? 8 : 4 }}>
+          {step ? (
+            <>
+              {/* Once-only (V73/V77): the plan's title lives on its tab and the whole plan's
+                  head; here only the practice day, from Day 2 (critic r1: never "Day 1"). */}
+              {step.day > 1 && <p data-testid="plan-today-eyebrow" className="small" style={{ fontWeight: 600, color: "var(--k-plan-i)" }}>{c.dayN(step.day)}</p>}
+              {echoLine}
+              <h1 className="hero" dir="auto" style={{ fontSize: desk ? 26 : 22, lineHeight: 1.15 }}>{step.text}</h1>
+            </>
+          ) : (
+            <>
+              <h1 className="hero" dir="auto" style={{ fontSize: desk ? 26 : 22, lineHeight: 1.15 }}>{plan.title}</h1>
+              <p className="line" style={{ gap: 8, fontSize: 15, color: "var(--ink)" }}>
+                <Icon name="check_circle" size={18} style={{ color: "var(--k-plan)" }} />
+                {t("plan.complete")}
+              </p>
+              <p className="small">{t("plan.completeHint")}</p>
+            </>
+          )}
+          {!step && echoLine}
+        </div>
+      </div>
+
+      {desk && actions}
       {/* The trail follows today's move (the move stays above the fold; the sweep's bar). */}
       <div style={{ padding: desk ? "40px 28px 22px" : "36px 12px 16px", marginTop: desk ? "auto" : undefined }}>
         <PlanTrail plan={plan} todayStep={step} lang={lang} composition={composition} />
       </div>
     </Scene>
+    {!desk && actions}
+    </>
   );
 }
