@@ -158,7 +158,9 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "journal", hub: "journal", depth: 0,
     job: "See {name} shelf by shelf, and what to try next.",
-    primaryMove: "open-shelf", moduleBudget: 3, demotionTarget: "timeline",
+    // v10.1: 5 = the leaf TimelineTab is shared with #/timeline, whose five
+    // Moments blocks it stamps; the journal's own page renders three.
+    primaryMove: "open-shelf", moduleBudget: 5, demotionTarget: "timeline",
     // A moment added from a shelf enters the stream from behaviorLogs,
     // filed on that shelf, before any AI runs (plan §4).
     threadWrite: "behaviorLogs",
@@ -166,9 +168,11 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "timeline", hub: "journal", depth: 1,
     job: "See {name}'s moments over time, in different places and across areas.",
-    primaryMove: "capture-moment", moduleBudget: 2, demotionTarget: "journal",
-    // F-CHILD-2: Moments (toolbar · view). "Keep a moment" opens the one
-    // capture sheet, which writes a parent moment to behaviorLogs.
+    primaryMove: "choose-moments-view", moduleBudget: 5, demotionTarget: "journal",
+    // v10.1: Moments (toolbar · view on the stage, then By kind · The newest
+    // moment · Shelf by shelf). Capture moved to the shell's dock (Keep, A hard
+    // moment?, Ask Arbor), which writes a parent moment to behaviorLogs; the
+    // page's own move is choosing how to read the record.
     threadWrite: "behaviorLogs",
   },
 

@@ -28,6 +28,8 @@ vi.mock("../../context/LanguageContext", async () => {
   const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
   return { useLanguage: () => ({ uiLang: h.lang, t: (key: string, vars?: Record<string, string | number>) => translate(h.lang, key, vars) }) };
 });
+// v10: Shelf by shelf reads the journal's own read model; none here.
+vi.mock("../../hooks/useObservations", () => ({ useObservations: () => [] }));
 vi.mock("../../hooks/useObservationRecord", () => ({ useObservationRecord: () => h.record }));
 vi.mock("../../hooks/useHashQuery", () => ({ useHashQuery: () => new URLSearchParams(h.query), goToRoute: vi.fn() }));
 vi.mock("../../hooks/useSheetHistory", () => ({ useSheetHistory: () => (after?: () => void) => { h.after = after ?? null; } }));
@@ -55,7 +57,7 @@ const moment = (): Observation => ({
 });
 const render = () => {
   h.cursor = 0; h.buttons = [];
-  return renderToStaticMarkup(<MomentsBody primaryMoveProps={{}} toolbarModule={{}} viewModule={{}} />);
+  return renderToStaticMarkup(<MomentsBody primaryMoveProps={{}} toolbarModule={{}} viewModule={{}} sectionModules={{ kinds: {}, newest: {}, shelves: {} }} />);
 };
 const open = () => h.buttons.find((button) => button["data-testid"] === "moments-open-source")!.onClick!();
 beforeEach(() => {

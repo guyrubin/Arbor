@@ -16,9 +16,10 @@ import MomentsBody from "../moments/MomentsBody";
  * Item 11 (IA-02): the surface contract reaches the DOM from this one file.
  * The move stamp is built once and handed to whichever body is live, so the
  * page renders exactly one: on #/timeline it sits on "Keep a moment"
- * (capture-moment), on #/journal on the shelf grid (open-shelf). The two
- * Moments blocks (toolbar · view) are #/timeline's whole budget of two;
- * on #/journal JournalTab stamps its own header · compose · thread.
+ * (v10.1: the views' tablist, choose-moments-view; capture is the dock's), on
+ * #/journal on the shelf grid (open-shelf). Moments' five blocks (toolbar ·
+ * view on the stage, By kind · The newest moment · Shelf by shelf) are
+ * #/timeline's budget; on #/journal JournalTab stamps its own blocks.
  */
 export default function TimelineTab() {
   // `conversations` is read here for a COUNT ONLY — to decide whether the
@@ -29,9 +30,17 @@ export default function TimelineTab() {
   const moments = activeTab === "timeline";
   // v4: My child's phone doors are gone (each has a visible home now); Moments
   // keeps its own one journal door in every view and record state (F-INT-1).
-  const primaryMove = { "data-primary-move": moments ? "capture-moment" : "open-shelf" };
+  // v10.1: capture lives in the shell's dock only, so Moments' move is choosing
+  // how to read the record (the views' tablist); #/journal keeps open-shelf.
+  const primaryMove = { "data-primary-move": moments ? "choose-moments-view" : "open-shelf" };
   const toolbarModule = { "data-module": "moments-toolbar" };
   const viewModule = { "data-module": "moments-view" };
+  // v10.1: the three sections below Moments' stage.
+  const sectionModules = {
+    kinds: { "data-module": "moments-kinds" },
+    newest: { "data-module": "moments-newest" },
+    shelves: { "data-module": "moments-shelves" },
+  };
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
@@ -46,7 +55,7 @@ export default function TimelineTab() {
         </p>
       )}
       {moments ? (
-        <MomentsBody primaryMoveProps={primaryMove} toolbarModule={toolbarModule} viewModule={viewModule} />
+        <MomentsBody primaryMoveProps={primaryMove} toolbarModule={toolbarModule} viewModule={viewModule} sectionModules={sectionModules} />
       ) : (
         <JournalTab primaryMoveProps={primaryMove} />
       )}

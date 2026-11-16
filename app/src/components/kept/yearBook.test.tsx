@@ -85,7 +85,8 @@ describe("the year book", () => {
 
   it("is a parent door on Moments, and search can name it", () => {
     const moments = readFileSync(new URL("../moments/MomentsBody.tsx", import.meta.url), "utf8");
-    expect(moments).toContain('data-testid="moments-year-book"');
+    // v10: the doors row is built from one list ([testid, label, open]).
+    expect(moments).toContain('["moments-year-book", t("kept.yearBook"), () => goToRoute("development", { view: "kept" })]');
     expect(moments).toContain('goToRoute("development", { view: "kept" })');
     expect(searchCatalog("year book").some(row => row.id === "page:development:year-book" && row.view === "kept")).toBe(true);
     expect(searchCatalog("ספר השנה").some(row => row.id === "page:development:year-book")).toBe(true);
