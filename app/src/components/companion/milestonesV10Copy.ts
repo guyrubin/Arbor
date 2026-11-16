@@ -35,7 +35,6 @@ export interface MilestonesV10Copy {
   arborSuggests: string;
   today: string;
   timelineLabel: string;
-  listGuideAreasSub: string;
   listGuideList: string;
   listGuideListSub: string;
   listGuideTools: string;
@@ -76,7 +75,6 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     arborSuggests: "Arbor suggests",
     today: "Today",
     timelineLabel: "What you marked Seen it in this area, by date",
-    listGuideAreasSub: "Pick one",
     listGuideList: "The list",
     listGuideListSub: "Mark each item",
     listGuideTools: "Latest, and tools",
@@ -115,7 +113,6 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     arborSuggests: "ארבור מציע",
     today: "היום",
     timelineLabel: "מה שסימנתם ״ראיתי״ בתחום הזה, לפי תאריך",
-    listGuideAreasSub: "בוחרים אחד",
     listGuideList: "הרשימה",
     listGuideListSub: "מסמנים כל פריט",
     listGuideTools: "האחרון, וכלים",

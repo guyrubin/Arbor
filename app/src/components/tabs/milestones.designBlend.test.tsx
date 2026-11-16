@@ -68,18 +68,20 @@ describe("B-DESIGN-03 · the header: H1 + ONE warm accent + ONE muted line", () 
   });
 
   it("ONE warm accent: the kept words on the ink rule, shelf + day on their own line; the first-open sentence only when there is no latest", () => {
-    const head = between('data-testid="ms-header"', "{jumpRail}");
+    // v10.1: the warm accent is one const (headerWords): over the list on a phone, leading the rail on a desk.
+    const head = between("const headerWords = ", "const tools = (");
     expect(head).toContain('data-testid="ms-header-quote" className="arbor-accent-rule mt-3 min-w-0"');
     // P7-DESIGN fix r1 (milestones design P1-3): the kept words are at the kit's say step (.arbor-type-say: editorial,
     // --t-say 24 / HE 22, the size-adjust) — never an inline --t-lg; the first-open line keeps its editorial sentence.
     expect(head).toContain('<blockquote dir="auto" className="arbor-type-say" style={{ color: "var(--arbor-ink)" }}>');
     expect(head).not.toMatch(/<blockquote[^>]*--t-lg/);
     expect(head.match(/var\(--font-editorial\)/g)).toHaveLength(1); // the first-open line
-    expect(head).toMatch(/\{headerQuote \? \(\s*<figure[\s\S]*\) : !latestNoticed \? \(/);
+    expect(head).toMatch(/headerQuote \? \(\s*<figure[\s\S]*\) : !latestNoticed \? \(/);
     // the order: H1 → accent → jump rail. v10.1 RE-PIN: the muted latest line
     // (with Change) is the first of the list's tools (the rail on a desk).
-    const at = (s: string) => head.indexOf(s);
-    expect(at("<h1")).toBeLessThan(at('data-testid="ms-header-quote"'));
+    // The h1 is the band's (above both); the accent is placed once per composition.
+    expect(MS).toContain("{!desk && headerWords}");
+    expect(MS).toContain('{desk && headerWords && <div className="obj ms-words-lead" data-testid="ms-words-lead">{headerWords}</div>}');
     expect(head).not.toContain("{latestLine}");
     expect(MS.indexOf('<div className="ms-list-tools">')).toBeLessThan(MS.indexOf("{latestLine}"));
     expect(MS.indexOf("{latestLine}")).toBeLessThan(MS.indexOf('<BornEarlyFrame'));

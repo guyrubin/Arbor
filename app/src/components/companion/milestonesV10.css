@@ -193,3 +193,22 @@
 
 /* The list's stage: production's shelf map on the stage card (no card inside a card). */
 .ds .ms-list-stage [data-testid="ms-shelf-map"] { padding: 0; background: none; border: 0; box-shadow: none; }
+
+/* The list's band is one line (h1, figure, Map / List) and its sections sit
+   closer, so the first Seen it stays above the fold on a desk. */
+.ds .ms-band.compact { padding: 14px 24px; gap: 0; }
+.ds .ms-band.compact .mch { align-items: center; }
+.ds .ms-band.compact .mch .mcl .title { font-size: 28px; }
+.ds-desk .ms-band.compact .mcr { flex-direction: row-reverse; align-items: center; gap: 20px; }
+.ds-phone .ms-band.compact { padding: 12px 14px; }
+.ds.ms-list .route { gap: 14px; }
+.ds.ms-list .rsec { gap: 12px; }
+.ds .ms-list-stage { padding-block-start: 12px; }
+.ds .ms-list-stage [data-testid="ms-header-quote"] { margin-block-start: 0; }
+/* production's hearing-check Change keeps the 44 px floor in both directions */
+.ds.ms-list [data-testid$="-change"] { min-width: 44px; justify-content: center; }
+.ds-desk .ms-list-stage { padding: 0; background: none; box-shadow: none; gap: 8px; }
+.ds .ms-words-lead [data-testid="ms-header-quote"], .ds .ms-words-lead [data-testid="ms-first-line"] { margin-block-start: 0; }
+.ds.ms-list .ms-band.compact { padding-block: 10px; }
+/* A shelf scrolled to (a jump, an opened door) lands below the shell's sticky pill row. */
+.ds.ms-list [data-testid="ms-shelf-band"], .ds.ms-list [data-testid="ms-shelf"], .ds.ms-list [data-primary-move] { scroll-margin-top: 160px; }

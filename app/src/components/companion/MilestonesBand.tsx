@@ -19,11 +19,13 @@ export interface MilestonesBandProps {
   sub?: React.ReactNode;
   current: "development" | "milestones";
   totals: { seen: number; areas: number };
-  /** The index (DevelopmentMap) and anything under it. */
-  children: React.ReactNode;
+  /** The index (DevelopmentMap) and anything under it; the list has none. */
+  children?: React.ReactNode;
+  /** The list's one-line band (h1, figure, switch): its first Seen it stays above the fold. */
+  compact?: boolean;
 }
 
-export default function MilestonesBand({ composition, kicker, title, titleId, sub, current, totals, children }: MilestonesBandProps) {
+export default function MilestonesBand({ composition, kicker, title, titleId, sub, current, totals, children, compact = false }: MilestonesBandProps) {
   const { uiLang } = useLanguage();
   const copy = milestonesV10Copy(uiLang);
   const desk = composition === "desk";
@@ -31,10 +33,10 @@ export default function MilestonesBand({ composition, kicker, title, titleId, su
     ? <span data-testid="dev-map-seen"><Fig n={totals.seen} unit={copy.hubUnit} sub={totals.areas === 1 ? copy.hubAreasOne : copy.hubAreasMany.replace("{n}", String(totals.areas))} size="md" /></span>
     : null;
   return (
-    <Scene field="now" className="ms-band" orbs={desk ? [{ size: 440, left: -230, bottom: -290, opacity: 0.65 }, { size: 380, right: -190, top: -250, opacity: 0.65, b: true }] : [{ size: 220, right: -110, top: -140, opacity: 0.65, b: true }]}>
+    <Scene field="now" className={`ms-band${compact ? " compact" : ""}`} orbs={desk ? [{ size: 440, left: -230, bottom: -290, opacity: 0.65 }, { size: 380, right: -190, top: -250, opacity: 0.65, b: true }] : [{ size: 220, right: -110, top: -140, opacity: 0.65, b: true }]}>
       <header className={`mch${desk ? "" : " m"}`}>
         <div className="mcl">
-          <p className="kicker">{kicker} <StartHere>{copy.startHere}</StartHere></p>
+          {!compact && <p className="kicker">{kicker} <StartHere>{copy.startHere}</StartHere></p>}
           <h1 className="title" id={titleId}>{title}</h1>
           {sub && <p className="ms-sub">{sub}</p>}
         </div>
