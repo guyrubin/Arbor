@@ -1,5 +1,6 @@
 import { translate as inputText } from "../../lib/i18n";
 import React, { useRef, useState, useEffect, useMemo } from "react";
+import TalkReadingKey from "../companion/TalkReadingKey";
 import { motion } from "motion/react";
 // Directional glyphs are RTL-aware: the caller already picks the start/end
 // variant by uiLang (he ⇒ left, otherwise right), so the Material Symbols
@@ -1670,7 +1671,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             chip; "What the coach sees" and its weekly switch live on
             #/memory; the loading state is the streaming row below. */}
         <div data-companion-messages className={hasThreadContent ? "flex-1 p-4 md:p-6" : "p-0"}>
-         <div className="max-w-[760px] mx-auto space-y-3.5">
+         <div className="max-w-[760px] mx-auto space-y-3.5 coach-thread-col">
+          {/* v10.3: the reading guide and key, once above the thread (shown only when expanded). */}
+          {chatMessages.some((m) => m.sender === "ai" && m.contract) && <TalkReadingKey lang={uiLang === "he" ? "he" : "en"} />}
           {/* Empty state — orient a first-run parent on what Ask Arbor does.
               COACH-4: the title line lives ONCE, on the hero composer above;
               the thread empty state keeps only the mascot + body copy.
@@ -1701,7 +1704,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                   soft shadow to lift the conversation off the canvas. */}
               <div dir="auto" className={`min-w-0 p-4 rounded-[18px] text-sm font-medium leading-[1.55]${msg.sender === "ai" ? " flex-1" : ""}`}
                 style={msg.sender === "user"
-                  ? { background: "var(--arbor-ink)", color: "var(--arbor-on-accent)", borderEndEndRadius: 6 }
+                  ? { background: "var(--talk-you-bg, var(--arbor-ink))", color: "var(--talk-you-fg, var(--arbor-on-accent))", borderEndEndRadius: "var(--talk-you-tail, 6px)" }
                   : { background: T.paperElevated, color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)", borderEndStartRadius: 6, boxShadow: "var(--shadow-sm)" }}>
                 {msg.sender === "ai" && !msg.contract && msg.lens && msg.lens !== "Integrated Balanced" && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full mb-3 inline-block" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
