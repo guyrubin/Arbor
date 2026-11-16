@@ -102,3 +102,61 @@ export const fmtShellNow = (input: DateInput, lang: UiLang): string => {
   }
   return isolate(`${day} · ${time}`);
 };
+
+/* ── v10 / canvas V77: the day as the boards draw it ───────────────────────
+   Every v10 board writes a day as weekday, day, short month ("Sat 14 Nov",
+   "Wed 25 Nov, 10:00") with a 24-hour clock, and a time alone as "10:00".
+   English uses en-GB for that day-first order; Hebrew keeps he-IL. The year
+   appears only when the date is not in the current year, so an old date can
+   never pass as this year's. Same seam rules as above: explicit month names,
+   isolate() for Hebrew, display-time only. Legacy screens keep fmtDay. */
+const V10_LOCALES: Record<UiLang, string> = { en: "en-GB", he: "he-IL" };
+
+const v10DayOptions = (d: Date, now: Date): Intl.DateTimeFormatOptions => ({
+  weekday: "short", day: "numeric", month: "short",
+  ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" as const } : {}),
+});
+
+const v10Time = (d: Date, lang: UiLang): string => {
+  const options: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit", hourCycle: "h23" };
+  try {
+    return d.toLocaleTimeString(V10_LOCALES[lang] ?? V10_LOCALES.en, options);
+  } catch {
+    return d.toLocaleTimeString(undefined, options);
+  }
+};
+
+/** v10 day — "Sat 14 Nov" / "שבת, 14 בנוב׳" (year added outside the current year). */
+export const fmtDayV10 = (input: DateInput, lang: UiLang, now: Date = new Date()): string => {
+  const d = toDate(input);
+  if (!d) return "";
+  const options = v10DayOptions(d, now);
+  let s: string;
+  try {
+    if (lang === "he") {
+      s = d.toLocaleDateString(V10_LOCALES.he, options);
+    } else {
+      // The boards' English form has no punctuation: "Sat 14 Nov", "Fri 14 Nov 2025".
+      const parts = new Intl.DateTimeFormat(V10_LOCALES.en, options).formatToParts(d);
+      const pick = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value;
+      s = [pick("weekday"), pick("day"), pick("month"), pick("year")].filter(Boolean).join(" ");
+    }
+  } catch {
+    s = d.toLocaleDateString(undefined, options);
+  }
+  return isolate(s);
+};
+
+/** v10 day and time — "Wed 25 Nov, 10:00" / "יום ד׳, 25 בנוב׳, 10:00" (24-hour clock). */
+export const fmtDayTimeV10 = (input: DateInput, lang: UiLang, now: Date = new Date()): string => {
+  const d = toDate(input);
+  if (!d) return "";
+  const day = fmtDayV10(d, lang, now).replace(/[⁨⁩]/g, "");
+  return isolate(`${day}, ${v10Time(d, lang)}`);
+};
+
+/** v10 time alone — "10:00" / "17:40" (24-hour clock, both languages). */
+export const fmtTimeV10 = (input: DateInput, lang: UiLang): string => {
+  const d = toDate(input);
+  return d ? v10Time(d, lang) : "";
+};
