@@ -70,6 +70,12 @@ import { PRACTICES } from "../../content/practices";
 // B-DESIGN-03: the 44 px duotone glyph (components/ui). Today / Journal keep the
 // shipped flat chip (components/loop/ShelfGlyph) until B-DESIGN-04 moves them.
 import { ShelfGlyph } from "../ui/ShelfGlyph";
+// v10.1: the list view of My child › Milestones, in the design system's frame.
+import { DsRoot, Guide, Route, RouteHead, RouteSection, Scene, StartHere } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
+import MilestonesViewSwitch from "../companion/MilestonesViewSwitch";
+import { milestonesV10Copy } from "../companion/milestonesV10Copy";
+import "../companion/milestonesV10.css";
 
 /** NEXTLEVEL critic r1: "Born early?" leads the rail only while correction
  *  applies (under ~24 months, or a gestation is set); otherwise the same
@@ -127,6 +133,8 @@ export default function MilestonesTab() {
   } = useArbor();
 
   const { t, uiLang, aiLang } = useLanguage();
+  const composition = useComposition();
+  const v10 = milestonesV10Copy(uiLang);
   /* B-GROWTH-26 — the catalogue's domain list and every domain NAME come from
      the one domain registry (lib/domains/registry.ts, EN + HE in
      lib/i18nElevation/domains.ts): the same names Growth and Science print.
@@ -1165,119 +1173,31 @@ export default function MilestonesTab() {
     </p>
   ) : null;
 
-  return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`flex w-full min-w-0 flex-col gap-5 sm:gap-6 ${hasRail ? "mx-auto max-w-[1180px]" : "me-auto max-w-[760px]"}`}>
-      {/* B-DESIGN-03 (P7-DESIGN blend frame; critics c2.r3 P2-12 / P2-13): the
-          header collapses to the H1 (hero step), the ONE warm accent and ONE
-          muted line, then the jump rail. */}
-      <div data-testid="ms-header" className="min-w-0">
-        <div className="flex min-w-0 items-center gap-3.5">
-          {/* The child's memory portrait — modest, no comic frame in the parent register. */}
-          <HeroAvatar size={44} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
-          <h1 className="arbor-type-hero min-w-0" style={{ color: "var(--arbor-ink)" }}>{t("ms.title")}</h1>
-        </div>
-        {/* The ONE warm accent: the family's newest kept words (last 7 days),
-            editorial face on the 2 px ink rule; the shelf and the day on their
-            own t-sm line beneath (P2-13, no stranded separator). No count, no
-            date pressure. */}
-        {headerQuote ? (
-          <figure data-testid="ms-header-quote" className="arbor-accent-rule mt-3 min-w-0">
-            <blockquote dir="auto" className="arbor-type-say" style={{ color: "var(--arbor-ink)" }}>
-              {quoted(headerQuote.text)}
-            </blockquote>
-            <figcaption className="mt-1 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
-              <bdi>{shelfLabel(headerQuote.shelf, t)}</bdi> · <bdi>{shelfDayLabel(headerQuote.at, noticeNow, uiLang === "he" ? "he" : "en")}</bdi>
-            </figcaption>
-          </figure>
-        ) : !latestNoticed ? (
-          <>
-            {/* P5-LOOP c2 r1 (B-LOOP-NEW-1f) → c2 r2 (B-LOOP-NEW-2e): first
-                open is ONE editorial sentence — it names the child and the
-                first card, with no second instruction; no number, no chip. */}
-            <p data-testid="ms-first-line" dir="auto" className="mt-3 leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
-              {firstCard
-                ? t("elev.loop.ms.firstCard", { name: firstName || t("ms.watch.childFallback"), title: quoted(milestoneText(firstCard, "title", t, msGender)) })
-                : t("elev.loop.ms.firstLine", { name: firstName || t("ms.watch.childFallback") })}
-            </p>
-            {!firstCard && (
-              <p data-testid="ms-lede" className="t-sm mt-1 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>
-                {t("elev.loop.ms.lede")}
-              </p>
-            )}
-          </>
-        ) : null}
-        {latestLine}
-        {/* Critic r3 (P1): correctable where it is read — "Not right?
-            Change" opens the ONE answer group for the latest milestone. */}
-        {latestNoticed && changingLatest ? (
-          <div data-testid="ms-latest-change-answers">
-            <SegmentedAnswers
-              onAnswer={(status) => { observeMilestone(latestNoticed.milestone, status); setChangingLatest(false); }}
-              ariaLabel={t("ms.observePrompt")}
-              className="mt-2"
-            />
-          </div>
-        ) : null}
-        {jumpRail}
-      </div>
-
-      {/* W5 mount — the R3 threshold-crossing pride moment. Designed for Today,
-          but Rule A caps Today's module budget, so it lives here: the Map is
-          where crossings are born. Renders nothing when there is no new
-          crossing; ≤1/session via the shared CelebrationMoment guard. */}
-      <PrideMomentCard />
-
-      {/* Master/detail spine: left rail = the persistent Development Map summary
-          (firewall-safe COUNT headline — never a 0–100 gauge or trend delta);
-          right pane = the seven-domain master list, or a single-domain drill-in. */}
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
-          marks a top-level sibling module (what moduleBudget counts);
-          `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route. */}
-      {/* P5-LOOP c2 r1 (milestones P1 ×2): the Split renders only when its
-          rail has content (the under-2 lead); otherwise the map is ONE
-          start-aligned column with the header and the cards below it (the
-          root narrows to 760 px). The spine is a real box, so the root's gap
-          lands between it and Born early (it was a display:contents wrapper —
-          the space-y margin was dropped and the two touched at 0 px). */}
-      <div data-module="milestones-spine" className="min-w-0">
-      {hasRail ? (
-      <Split
-        ratio="minmax(300px,1fr) minmax(0,1.4fr)"
-        className="md:[&>div]:!contents xl:[&>div]:!grid"
-        left={
-          <div className="min-w-0 space-y-4 xl:sticky xl:top-4 xl:space-y-5">
-            {/* P5 critic r2 (P1-2 / P2-1): the summary card is gone — "Not
-                right? Change" and "{n} noticed" sit under the lede in the
-                header; the rail keeps only the under-2 lead. */}
-            {comparisonMonths < 24 && (
-            <div className={`${cardCls} min-w-0 p-4 sm:p-6`}>
-              {/* B1 — under-2 reassurance lead: name the current stage, no checklist framing. */}
-              {comparisonMonths < 24 && (
-                <div className="mt-4 rounded-xl p-3.5" style={{ background: "var(--arbor-green-soft)" }}>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[11px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
-                    <span className="text-lg" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>{milestoneBandLabel(currentBand.months, t)}</span>
-                    {corrected.applied && (
-                      <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}>
-                        {t("ms.correctedBadge")} · {corrected.correctedMonths}m
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[12px] leading-relaxed mt-1.5" style={{ color: "var(--arbor-ink)" }}>{t("ms.rightNowBody")}</p>
-                </div>
-              )}
+  const desk = composition === "desk";
+  const stops = [
+    { id: "ms-list", title: v10.listGuideList, sub: v10.listGuideListSub },
+    { id: "ms-tools", title: v10.listGuideTools, sub: v10.listGuideToolsSub },
+    { id: "ms-check", title: v10.listGuideCheck, sub: v10.listGuideCheckSub },
+  ];
+  // v10.1: the latest line (with Not right? Change), Born early and Add milestone — the list's tools.
+  const tools = (
+    <div className="ms-list-tools">
+      {(latestLine || (latestNoticed && changingLatest)) && (
+        <div className="obj ms-latest">
+          {latestLine}
+          {/* Critic r3 (P1): correctable where it is read — "Not right?
+              Change" opens the ONE answer group for the latest milestone. */}
+          {latestNoticed && changingLatest ? (
+            <div data-testid="ms-latest-change-answers">
+              <SegmentedAnswers
+                onAnswer={(status) => { observeMilestone(latestNoticed.milestone, status); setChangingLatest(false); }}
+                ariaLabel={t("ms.observePrompt")}
+                className="mt-2"
+              />
             </div>
-            )}
-
-
-          </div>
-        }
-        right={shelfMap}
-      />
-      ) : shelfMap}
-      </div>
-
+          ) : null}
+        </div>
+      )}
       {/* P5 critic r1 (P1-1): Born early sits AFTER the shelf map at every
           width (the contract's disclosure), never ahead of the one move. */}
             <BornEarlyFrame inline={comparisonMonths < 24 || !!gestationalWeeks} summary={t("ms.bornEarly")}>
@@ -1356,18 +1276,136 @@ export default function MilestonesTab() {
         )}
       </div>
 
-      {/* B-GROWTH-12: the "What to nurture next" analyzer (a second AI door
-          with a fixed "Vygotsky's Scaffolding" lens) is gone — each milestone
-          row and the Map's area pane carry the ONE door, "Ask Arbor about this". */}
+    </div>
+  );
 
-      {/* P5-LOOP c2 r1 (milestones product P1): the "Gentle watch points"
-          panel is gone from the map — it counted not-yet answers by domain in
-          a second vocabulary, reassured where the card's A4 close says
-          "worth mentioning", and pointed to a pediatrician (out of the lane).
-          The not-yet answer's only close is the card's A4 line; the derived
-          watch signal still lives in Screening (useMonitoring) and in Today's
-          door (ArborNoticedCard). The corrected-age note is one line in the
-          map foot. */}
+  return (
+    <DsRoot composition={composition} className="ms-v10 ms-list" dir={uiLang === "he" ? "rtl" : "ltr"}>
+      <Guide stops={stops} label={v10.onThisPage} mini={!desk} />
+      <Route composition={composition}>
+        <RouteSection id="ms-list" n={1} on aria-labelledby="ms-list-title">
+          <div className="ms-row">
+            <div className="stg">
+              <Scene field="child" orbs={desk ? [{ size: 300, right: -90, top: -120 }] : [{ size: 180, right: -70, top: -80 }]}>
+      <div data-testid="ms-header" className="min-w-0">
+                  {/* v10.1: the scene's head — kicker, the page's h1, the Map / List switch. */}
+                  <header className="ms-head">
+                    <div className="ms-head-text">
+                      <p className="kicker">{v10.listMapKicker} <StartHere>{v10.startHere}</StartHere></p>
+                      <h1 className="title" id="ms-list-title">{t("ms.title")}</h1>
+                    </div>
+                    <div className="ms-head-tools"><MilestonesViewSwitch current="milestones" /></div>
+                  </header>
+                  {/* The ONE warm accent: the family's newest kept words (last 7 days),
+                      editorial face on the 2 px ink rule; the shelf and the day on their
+                      own t-sm line beneath (P2-13, no stranded separator). No count, no
+                      date pressure. */}
+                  {headerQuote ? (
+                    <figure data-testid="ms-header-quote" className="arbor-accent-rule mt-3 min-w-0">
+                      <blockquote dir="auto" className="arbor-type-say" style={{ color: "var(--arbor-ink)" }}>
+                        {quoted(headerQuote.text)}
+                      </blockquote>
+                      <figcaption className="mt-1 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
+                        <bdi>{shelfLabel(headerQuote.shelf, t)}</bdi> · <bdi>{shelfDayLabel(headerQuote.at, noticeNow, uiLang === "he" ? "he" : "en")}</bdi>
+                      </figcaption>
+                    </figure>
+                  ) : !latestNoticed ? (
+                    <>
+                      {/* P5-LOOP c2 r1 (B-LOOP-NEW-1f) → c2 r2 (B-LOOP-NEW-2e): first
+                          open is ONE editorial sentence — it names the child and the
+                          first card, with no second instruction; no number, no chip. */}
+                      <p data-testid="ms-first-line" dir="auto" className="mt-3 leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
+                        {firstCard
+                          ? t("elev.loop.ms.firstCard", { name: firstName || t("ms.watch.childFallback"), title: quoted(milestoneText(firstCard, "title", t, msGender)) })
+                          : t("elev.loop.ms.firstLine", { name: firstName || t("ms.watch.childFallback") })}
+                      </p>
+                      {!firstCard && (
+                        <p data-testid="ms-lede" className="t-sm mt-1 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>
+                          {t("elev.loop.ms.lede")}
+                        </p>
+                      )}
+                    </>
+                  ) : null}
+                  {jumpRail}
+                </div>
+
+      {/* W5 mount — the R3 threshold-crossing pride moment. Designed for Today,
+                    but Rule A caps Today's module budget, so it lives here: the Map is
+                    where crossings are born. Renders nothing when there is no new
+                    crossing; ≤1/session via the shared CelebrationMoment guard. */}
+                <PrideMomentCard />
+          
+                {/* Master/detail spine: left rail = the persistent Development Map summary
+                    (firewall-safe COUNT headline — never a 0–100 gauge or trend delta);
+                    right pane = the seven-domain master list, or a single-domain drill-in. */}
+                {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+                    marks a top-level sibling module (what moduleBudget counts);
+                    `data-primary-move` marks the ONE control that performs the move
+                    surfaceContract.ts declares for this route. */}
+                {/* P5-LOOP c2 r1 (milestones P1 ×2): the Split renders only when its
+                    rail has content (the under-2 lead); otherwise the map is ONE
+                    start-aligned column with the header and the cards below it (the
+                    root narrows to 760 px). The spine is a real box, so the root's gap
+                    lands between it and Born early (it was a display:contents wrapper —
+                    the space-y margin was dropped and the two touched at 0 px). */}
+                <div data-module="milestones-spine" className="min-w-0">
+                {hasRail ? (
+                <Split
+                  ratio="minmax(300px,1fr) minmax(0,1.4fr)"
+                  className="md:[&>div]:!contents xl:[&>div]:!grid"
+                  left={
+                    <div className="min-w-0 space-y-4 xl:sticky xl:top-4 xl:space-y-5">
+                      {/* P5 critic r2 (P1-2 / P2-1): the summary card is gone — "Not
+                          right? Change" and "{n} noticed" sit under the lede in the
+                          header; the rail keeps only the under-2 lead. */}
+                      {comparisonMonths < 24 && (
+                      <div className={`${cardCls} min-w-0 p-4 sm:p-6`}>
+                        {/* B1 — under-2 reassurance lead: name the current stage, no checklist framing. */}
+                        {comparisonMonths < 24 && (
+                          <div className="mt-4 rounded-xl p-3.5" style={{ background: "var(--arbor-green-soft)" }}>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[11px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
+                              <span className="text-lg" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>{milestoneBandLabel(currentBand.months, t)}</span>
+                              {corrected.applied && (
+                                <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}>
+                                  {t("ms.correctedBadge")} · {corrected.correctedMonths}m
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[12px] leading-relaxed mt-1.5" style={{ color: "var(--arbor-ink)" }}>{t("ms.rightNowBody")}</p>
+                          </div>
+                        )}
+                      </div>
+                      )}
+          
+          
+                    </div>
+                  }
+                  right={shelfMap}
+                />
+                ) : shelfMap}
+                </div>
+              </Scene>
+            </div>
+            {desk && <div className="rlc" id="ms-tools">{tools}</div>}
+          </div>
+        </RouteSection>
+        {!desk && <RouteSection id="ms-tools" n={2} aria-labelledby="ms-tools-title">
+          <RouteHead id="ms-tools-title" title={v10.listGuideTools} />
+          {tools}
+        </RouteSection>}
+        <RouteSection id="ms-check" n={3} aria-labelledby="ms-check-title">
+          <RouteHead id="ms-check-title" title={t("sec.screen.title")} />
+          {/* The Development check is its own page (#/screening); this is its one door from the list. */}
+          <div className="ms-check-link" data-testid="ms-check-link">
+            <p>{t("sec.screen.sub", { name: firstName || t("ms.watch.childFallback") })}</p>
+            <button type="button" className="btn primary min-h-11" data-testid="ms-check-start" onClick={() => setActiveTab("screening")}>
+              <Icon name="fact_check" size={18} />
+              {t("screen.start")}
+            </button>
+          </div>
+        </RouteSection>
+      </Route>
 
       {/* GP-31 — the keepsake editor. One sheet for the whole list; a null
           milestone keeps it closed. Save/remove write through the pure
@@ -1387,7 +1425,6 @@ export default function MilestonesTab() {
         onRemove={() => (openKeepsake ? dropKeepsake(openKeepsake.id) : Promise.resolve())}
         onClose={() => setKeepsakeFor(null)}
       />
-
-    </motion.div>
+    </DsRoot>
   );
 }

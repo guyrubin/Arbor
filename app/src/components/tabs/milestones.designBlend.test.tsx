@@ -55,7 +55,9 @@ const decode = (html: string) => html.replace(/&quot;/g, '"').replace(/&#x27;/g,
 
 describe("B-DESIGN-03 · the header: H1 + ONE warm accent + ONE muted line", () => {
   it("the H1 is the hero step; the date is plain text, never a chip", () => {
-    expect(MS).toContain('<h1 className="arbor-type-hero min-w-0" style={{ color: "var(--arbor-ink)" }}>{t("ms.title")}</h1>');
+    // v10.1 RE-PIN: the h1 is the scene's title (the design system's display step), with the Map / List switch beside it.
+    expect(MS).toContain('<h1 className="title" id="ms-list-title">{t("ms.title")}</h1>');
+    expect(MS).toContain('<MilestonesViewSwitch current="milestones" />');
     const line = between('<p data-testid="ms-latest"', "</p>");
     expect(line).not.toMatch(/green-soft|green-ink|rounded-full|font-editorial/);
     expect(line).toContain('<time data-testid="ms-latest-date"');
@@ -74,11 +76,13 @@ describe("B-DESIGN-03 · the header: H1 + ONE warm accent + ONE muted line", () 
     expect(head).not.toMatch(/<blockquote[^>]*--t-lg/);
     expect(head.match(/var\(--font-editorial\)/g)).toHaveLength(1); // the first-open line
     expect(head).toMatch(/\{headerQuote \? \(\s*<figure[\s\S]*\) : !latestNoticed \? \(/);
-    // the order: H1 → accent → muted line → (Change answers) → jump rail
+    // the order: H1 → accent → jump rail. v10.1 RE-PIN: the muted latest line
+    // (with Change) is the first of the list's tools (the rail on a desk).
     const at = (s: string) => head.indexOf(s);
     expect(at("<h1")).toBeLessThan(at('data-testid="ms-header-quote"'));
-    expect(at('data-testid="ms-header-quote"')).toBeLessThan(at("{latestLine}"));
-    expect(at("{latestLine}")).toBeLessThan(MS.indexOf("{jumpRail}") - MS.indexOf('data-testid="ms-header"'));
+    expect(head).not.toContain("{latestLine}");
+    expect(MS.indexOf('<div className="ms-list-tools">')).toBeLessThan(MS.indexOf("{latestLine}"));
+    expect(MS.indexOf("{latestLine}")).toBeLessThan(MS.indexOf('<BornEarlyFrame'));
   });
 
   it("one quote pair per locale (״…״ in HE), from i18n", () => {
@@ -259,7 +263,9 @@ describe("B-DESIGN-03 · the stamp stays above the 375 fold (line model, EN + HE
     expect(MS).toContain('<span data-testid="ms-latest-tail" className={latestNoticed ? "block sm:inline" : undefined}>');
     expect(MS).toContain('<nav data-testid="ms-jump-rail" aria-labelledby="ms-map-title" className="no-scrollbar -mx-4 mt-2 overflow-x-auto px-4 py-1 sm:mx-0 sm:px-0">');
     expect(MS).toContain('<h2 id="ms-map-title" className="arbor-type-title sr-only sm:not-sr-only"');
-    expect(MS).toContain('<HeroAvatar size={44}');
+    // v10.1: the header carries the kicker and Start here; no avatar beside the h1.
+    expect(MS).not.toContain('<HeroAvatar size={44}');
+    expect(MS).toContain("<StartHere>{v10.startHere}</StartHere>");
     expect(MS).toContain('className="-my-3 inline-flex min-h-11 items-center align-middle t-sm font-semibold"');
     expect(MS).toContain("const stampShelf = mapShelves.find((id) => noticeFor(id) && !heldNotice[id]);");
     expect(MS).toMatch(/answersAttrs=\{shelf === stampShelf \? \{ "data-primary-move": "notice-milestone" \} : undefined\}/);
