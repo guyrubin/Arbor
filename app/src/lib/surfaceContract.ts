@@ -88,8 +88,11 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "day-windows", hub: "today", depth: 1,
     job: "See when today is likely calm and when it is likely tricky.",
-    primaryMove: "view-day-windows", moduleBudget: 2, demotionTarget: "overview",
+    primaryMove: "accept-recap-recommendation", moduleBudget: 4, demotionTarget: "disclosure",
     // AP-051: read-only over lib/jitai.ts predictRhythm — deliberately no write.
+    // v10: the route folds into Weekly report and renders its leaf
+    // (WeeklyTab), scrolled to "Your day at a glance"; it shares that leaf's
+    // move and budget, and demotes in page (the invite disclosure).
     threadWrite: "none",
   },
   {
@@ -102,7 +105,7 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "weekly", hub: "today", depth: 1,
     job: "Read this week's story and take one thing from it into today.",
-    primaryMove: "accept-recap-recommendation", moduleBudget: 3, demotionTarget: "overview",
+    primaryMove: "accept-recap-recommendation", moduleBudget: 4, demotionTarget: "overview",
     // Re-homed Profile → Today (Heartwood D3: the recap is a ritual, not a
     // settings page). Accepting the last card feeds Today, not the timeline —
     // no such source id exists in buildTimeline; "none" is honest.
@@ -116,8 +119,11 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
     // carries the stamp while an AI digest's suggestion is not yet today's
     // step; in every other state "Back to Now" carries it, so each state
     // renders exactly one. Top level: the dashboard (`weekly-glance`, stamped
-    // by components/weekly/WeekGlance.tsx) or `weekly-empty`, then the band;
+    // by WeeklyTab) or `weekly-empty`, then the band;
     // the invite is demoted into the page's one collapsed disclosure.
+    // v10 (boards N-Week-D/M): budget 3 → 4, the four numbered stops, each
+    // stamped by WeeklyTab: the week (`weekly-glance`) or `weekly-empty`,
+    // `weekly-helped` (only beside records), `weekly-carry`, `weekly-day`.
     threadWrite: "none",
   },
 

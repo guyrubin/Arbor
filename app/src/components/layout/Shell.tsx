@@ -115,7 +115,7 @@ const ConsultTab = lazy(() => import("../tabs/ConsultTab"));
 const AttributionTab = lazy(() => import("../tabs/AttributionTab"));
 
 // AP-051: Day Windows detail panel — calm/trickier visualization over existing JITAI (read-only).
-const DayWindowsPanel = lazy(() => import("../sections/DayWindowsPanel"));
+const DayWindowsPanel = lazy(() => import("../tabs/WeeklyTab")); // v10: day-windows opens Weekly report at "Your day at a glance"
 
 // AP-058: Smart Reminders settings dashboard — parent preferences over existing JITAI.
 const SmartRemindersPanel = lazy(() => import("../sections/SmartRemindersPanel"));
