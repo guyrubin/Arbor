@@ -1,0 +1,14 @@
+@import "./studioTokens.css";
+
+/* The overlay's header bar on every Studio screen. The overlay still owns all navigation and the parent gate.
+   This file loads with the overlay itself, so a game opened straight from a link, or a screen still loading,
+   wears the same pearl and graphite bar as the worlds (B-KID-171 audit, 16 Nov 2026). */
+.arbor-play>.studio-v2-bar{background:var(--studio-pearl)!important;color:var(--studio-text);border-bottom:1px solid var(--studio-line)!important;box-shadow:none!important;padding-inline:max(16px,calc((100vw - 1108px)/2))!important;min-block-size:76px;padding-block:0!important}
+.arbor-play>.studio-v2-bar>button{background:var(--studio-surface)!important;color:var(--studio-text)!important;border-color:var(--studio-line)!important;border-radius:12px!important}
+.arbor-play>.studio-v2-bar>[data-kid-bar-title]{color:var(--studio-text)!important;font-family:Nunito,Heebo,sans-serif!important;font-size:22px!important}
+.arbor-play>.studio-v2-bar button:focus-visible{outline:3px solid var(--studio-teal-ink);outline-offset:3px}
+.arbor-play>.studio-v2-bar[data-kid-bar-float]{background:transparent!important;border-bottom:0!important}
+/* 25 Oct input, v30: over a scene the floating toys keep a frosted pearl face with graphite ink, so they read on light and dark art alike. */
+.arbor-play>.studio-v2-bar[data-kid-bar-float]>button{background:var(--studio-frost)!important;border-color:var(--studio-surface)!important;box-shadow:0 4px 14px var(--studio-shade)!important}.arbor-play>.studio-v2-bar[data-kid-bar-float]>div>span{background:var(--studio-frost);color:var(--studio-text)}
+@media(max-width:640px){.arbor-play>.studio-v2-bar{min-block-size:76px;padding-inline:10px!important}.arbor-play>.studio-v2-bar>[data-kid-bar-title]{font-size:18px!important}}
+.studio-v2-bar [data-kid-exit-caption] { color: var(--studio-text) !important; font-size:10px!important; line-height:1.2!important; }

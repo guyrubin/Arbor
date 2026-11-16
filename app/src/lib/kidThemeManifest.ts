@@ -46,7 +46,11 @@ export type KidWorldTileId = KidWorldId | (typeof KID_HOME_TILE_IDS)[number] | t
 export const KID_WORLD_TILE_IDS: readonly KidWorldTileId[] = [...KID_WORLDS.map((w) => w.worldId), ...KID_HOME_TILE_IDS];
 
 export const STUDIO_PORTAL_IDS = ["playbank", "stories", "feelings", "studio"] as const;
-export type StudioArtKey = "studio.sky" | `studio.portal.${typeof STUDIO_PORTAL_IDS[number]}`;
+/** Playbank tiles that get their own film cover instead of sharing the Playbank door. */
+export const STUDIO_COVER_IDS = ["memory", "pattern", "puzzle", "sneak"] as const;
+export type StudioCoverId = typeof STUDIO_COVER_IDS[number];
+export function isStudioCoverId(id: string): id is StudioCoverId { return (STUDIO_COVER_IDS as readonly string[]).includes(id); }
+export type StudioArtKey = "studio.sky" | `studio.portal.${typeof STUDIO_PORTAL_IDS[number]}` | `studio.cover.${StudioCoverId}` | "studio.room.calm";
 export type KidArtKey = StudioArtKey | `world.${KidWorldTileId}.tile` | `story.${string}.cover` | "home.stage" | "hero.portrait";
 export const worldTileKey = (id: KidWorldTileId): KidArtKey => `world.${id}.tile`;
 export const storyCoverKey = (storyId: string): KidArtKey => `story.${storyId}.cover`;
@@ -55,6 +59,8 @@ export const storyCoverKey = (storyId: string): KidArtKey => `story.${storyId}.c
 export const KID_ART_KEYS: readonly KidArtKey[] = [
   "studio.sky",
   ...STUDIO_PORTAL_IDS.map(id => `studio.portal.${id}` as const),
+  ...STUDIO_COVER_IDS.map(id => `studio.cover.${id}` as const),
+  "studio.room.calm",
   ...KID_WORLD_TILE_IDS.map(worldTileKey),
   ...STUDIO_V2_GAME_WORLDS.map(w => worldTileKey(w.worldId)),
   worldTileKey(SNEAK_FREEZE_WORLD.worldId), // B-GAME-15a: the Sneak & Freeze tile (not a gating slot)
@@ -149,6 +155,45 @@ const studioPortal = (id: typeof STUDIO_PORTAL_IDS[number]): KidArt => ({
   src: `${STUDIO_V30}portal-${id}.webp`, src480: `${STUDIO_V30}portal-${id}-480.webp`, width: 1536,
   objectPosition: "50% 55%", altKey: null, provenanceId: `studio-v30-portal:${id}:2026-11-16`, hasHero: false,
 });
+/** The Studio's own film (16 Nov 2026): 3:2 crops of the episodes' stills and
+ *  empty set plates, the same world, light and companions a child knows from
+ *  the show. Chosen frame by frame with no child in them (except the `-crew`
+ *  tile covers below); covers show the companions (Aya, Chock, Pep), rooms are
+ *  empty so the child's hero stands in them. Builder and sources: ROS, Kids
+ *  backlog B-KID-171. */
+const STUDIO_FILM = "/visuals/studio-v2/film/";
+const studioFilm = (name: string, objectPosition = "50% 50%", width = 1536): KidArt => ({
+  src: `${STUDIO_FILM}${name}.webp`, src480: `${STUDIO_FILM}${name}-480.webp`, width,
+  objectPosition, altKey: null, provenanceId: `studio-film:${name}:2026-11-16`, hasHero: false,
+});
+/** Studio game tiles with Bebe and GobGob, the show's two children
+ *  (B-KID-171, 16 Nov 2026): the films' own finished frames, cropped only,
+ *  each named in lib/childLikenessFiles.named.ts under Guy's approval (BD-32,
+ *  third permission, extended the same day to the covers). A tile shows the
+ *  cover of the game it opens: with the Next Studio switch on, a host tile
+ *  opens a Bop game and wears that game's frame. Tiles only: the game screen
+ *  keeps the companion cover, because the child's own hero stands in that
+ *  picture. Canal Quest has no mastered film, so it keeps its canal plate. */
+const STUDIO_CREW_COVERS: Readonly<Record<string, KidArt>> = {
+  memory: studioFilm("cover-memory-crew", "45% 45%"),
+  pattern: studioFilm("cover-pattern-crew", "50% 40%"),
+  puzzle: studioFilm("cover-puzzle-crew", "60% 45%"),
+  sneak: studioFilm("cover-sneak-crew", "70% 60%"),
+  "feelings-forest": studioFilm("cover-feelings-crew", "45% 50%"),
+  "calm-builder": studioFilm("cover-calm-crew", "35% 55%"),
+  // Sound Orbit, and Hero Band when either switch hosts it on this tile.
+  "rhythm-garden": studioFilm("cover-rhythm-crew", "50% 55%"),
+};
+const STUDIO_NEXT_CREW_COVERS: Readonly<Record<StudioNextHost, KidArt>> = {
+  memory: studioFilm("cover-delivery-crew", "35% 55%"),
+  pattern: studioFilm("cover-sun-crew", "50% 50%"),
+  puzzle: studioFilm("cover-oops-crew", "45% 40%"),
+  "river-rescue": studioFilm("cover-rover-crew", "50% 50%"),
+};
+export function studioCrewCover(id: string): KidArt | null {
+  if (Object.hasOwn(STUDIO_NEXT_CREW_COVERS, id) && studioNextFlagOn()) return STUDIO_NEXT_CREW_COVERS[id as StudioNextHost];
+  return Object.hasOwn(STUDIO_CREW_COVERS, id) ? STUDIO_CREW_COVERS[id] : null;
+}
 /** The home valley for portrait tablets and phones (the wide one is "studio.sky"). */
 export const STUDIO_VALLEY_TALL = { src: `${STUDIO_V30}valley-tall.webp`, src480: `${STUDIO_V30}valley-tall-480.webp`, width: 1024 } as const;
 /** The Bop games' toy-world art: one shared folder of authored, shipped
@@ -186,16 +231,24 @@ const STUDIO_ART: Record<StudioArtKey, KidArt> = {
   "studio.portal.stories": studioPortal("stories"),
   "studio.portal.feelings": studioPortal("feelings"),
   "studio.portal.studio": studioPortal("studio"),
+  "studio.cover.memory": studioFilm("cover-memory", "50% 60%"),
+  "studio.cover.pattern": studioFilm("cover-pattern", "50% 40%"),
+  "studio.cover.puzzle": studioFilm("cover-puzzle", "40% 55%"),
+  "studio.cover.sneak": studioFilm("cover-sneak", "50% 55%"),
+  "studio.room.calm": studioFilm("room-calm", "50% 60%"),
 };
 export const KID_THEME_MANIFEST: Record<KidThemeId, Partial<Record<KidArtKey, KidArt>>> = {
   film3d: {
     ...STUDIO_ART,
     "world.sound-explorer.tile": STUDIO_ART["studio.portal.studio"],
-    "world.calm-builder.tile": STUDIO_ART["studio.portal.feelings"],
-    "world.river-rescue.tile": adventureScene("canal-world"),
-    "world.feelings-forest.tile": adventureScene("story-theater"),
-    "world.rhythm-garden.tile": adventureScene("sound-orbit"),
-    "world.puzzle.tile": STUDIO_ART["studio.portal.playbank"],
+    // Calm Builder's tile is the glass room the child furnishes.
+    "world.calm-builder.tile": STUDIO_ART["studio.room.calm"],
+    // The October adventure worlds' rooms are now the film's empty sets: a canal
+    // channel, the reflection terrace, the music-tile garden trail.
+    "world.river-rescue.tile": studioFilm("room-canal", "50% 70%"),
+    "world.feelings-forest.tile": studioFilm("room-reflection", "50% 65%"),
+    "world.rhythm-garden.tile": studioFilm("room-music", "50% 70%"),
+    "world.puzzle.tile": STUDIO_ART["studio.cover.puzzle"],
     "world.speech.tile": film("game-speech", "50% 22%", 1023),
     "world.feelings.tile": film("game-feelings"),
     "world.memory.tile": film("game-memory"),
@@ -213,10 +266,12 @@ export const KID_THEME_MANIFEST: Record<KidThemeId, Partial<Record<KidArtKey, Ki
     // bedtime reading nook).
     "world.kid-playbank.tile": film("game-truth-compass", "50% 30%"),
     "world.kid-hero.tile": film("game-aim-map", "50% 30%"),
-    "world.kid-quest.tile": film("arbor-academy-play-hero-bg", "50% 62%", 941, false),
+    // The quest tile (9:16, also the phone home stage) and the wide stage behind
+    // loading, reading and the arcade: the film's lantern arch and terrace.
+    "world.kid-quest.tile": studioFilm("room-arch-tall", "50% 55%", 864),
     ...Object.fromEntries(FILM3D_STORY_COVERS.map((id) => [storyCoverKey(id), film(`story-${id}`, "50% 30%")])),
     ...Object.fromEntries(FILM3D_STORY_COVERS_2X3.map((id) => [storyCoverKey(id), film(`story-${id}`, "50% 30%", 832)])),
-    "home.stage": film("kid-discovery-garden-v2", "50% 50%", 1024, false),
+    "home.stage": studioFilm("room-terrace", "60% 55%"),
   },
   storybook: {
     ...STUDIO_ART,

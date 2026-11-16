@@ -127,12 +127,12 @@ describe("V2 entry, identity and persistent result", () => {
     let tree = draw();
     expect(tree.filter(node => node.type === StudioPlayHero)).toHaveLength(1);
     expect(tree.filter(node => node.type === "img").map(node => node.props.src)).toEqual([
-      artManifest.kidArt("film3d", "studio.portal.playbank")!.src480,
-      artManifest.kidArt("film3d", "studio.portal.playbank")!.src480,
+      artManifest.kidArt("film3d", "studio.cover.memory")!.src480,
+      artManifest.kidArt("film3d", "studio.cover.memory")!.src480,
     ]);
     // The overlay already owns Back; the intro only adds its primary action.
     expect(tree.filter(isButton)).toHaveLength(1);
-    const art = artManifest.kidArt("film3d", "studio.portal.playbank")!;
+    const art = artManifest.kidArt("film3d", "studio.cover.memory")!;
     const spy = vi.spyOn(artManifest, "kidArt").mockReturnValue({ ...art, hasHero: true });
     try {
       tree = draw();

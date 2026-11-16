@@ -54,6 +54,7 @@ const COLOUR_LITERALS: Readonly<Record<string, number>> = {
   "components/kidmode/studioV2/games/studioGames.css": 0,
   "components/kidmode/studioV2/studioActivityArt.css": 0,
   "components/kidmode/studioV2/studioAdventureScene.css": 0,
+  "components/kidmode/studioV2/studioBar.css": 0,
   "components/kidmode/studioV2/studioCreations.css": 0,
   "components/kidmode/studioV2/studioGame.css": 0,
   "components/kidmode/studioV2/studioKeepsakes.css": 0,

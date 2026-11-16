@@ -77,8 +77,8 @@ describe("the sticker: existing art, die-cut", () => {
   it("a world's sticker is its card; a book's is its cover (or the Tonight card) — never another theme", () => {
     expect(souvenirArt({ kind: "world", refId: "memory" }, "film3d")!.src480).toContain("game-memory");
     // B-BOOK-31 re-pin: the film3d story covers paint the reference family's child,
-    // so a film3d book's sticker is the hero-free Tonight card; a hero-free cover still is the sticker.
-    expect(souvenirArt({ kind: "book", refId: "noahs-ark" }, "film3d")!.provenanceId).toBe("film3d-card:arbor-academy-play-hero-bg");
+    // so a film3d book's sticker is the hero-free Tonight card (the film's lantern arch); a hero-free cover still is the sticker.
+    expect(souvenirArt({ kind: "book", refId: "noahs-ark" }, "film3d")!.provenanceId).toBe("studio-film:room-arch-tall:2026-11-16");
     expect(souvenirArt({ kind: "book", refId: "the-lantern-path" }, "film3d")!.hasHero).toBe(false);
     expect(souvenirArt({ kind: "book", refId: "the-lantern-path" }, "storybook")!.provenanceId).toBe("story-art-v1:lantern-path");
     expect(souvenirArt({ kind: "book", refId: "noahs-ark" }, "storybook")!.provenanceId).toBe("world-art-v2:tonight-story");
@@ -90,7 +90,7 @@ describe("the sticker: existing art, die-cut", () => {
     expect(world).not.toContain("<img");
     const book = renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="noahs-ark" />);
     expect(book).not.toContain("story-noahs-ark");
-    expect(book).toContain("arbor-academy-play-hero-bg");
+    expect(book).toContain("film/room-arch-tall");
   });
   it("next Studio games: a host tile's sticker is the cover of the game it opens, only on a device that opted in", () => {
     const off = { forest: renderToStaticMarkup(<KidSouvenirSticker kind="world" refId="feelings-forest" />), book: renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="noahs-ark" />) };

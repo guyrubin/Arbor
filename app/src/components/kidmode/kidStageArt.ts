@@ -5,9 +5,9 @@
  * book on its own cover, the library in the castle garden.
  *
  * Reads EXISTING manifest keys only (kidThemeManifest is not edited here):
- * - home, phone portrait = the tall reading-room card, which the manifest
- *   already carries as the `kid-quest` tile (arbor-academy-play-hero-bg, 9:16);
- * - home, >= 768 px and the library = `home.stage` (the garden + castle library);
+ * - home, phone portrait = the tall card the manifest carries as the
+ *   `kid-quest` tile (9:16; the film's lantern arch since 16 Nov 2026);
+ * - home, >= 768 px and the library = `home.stage` (the film's terrace);
  * - a game = `world.<id>.tile`; a book = `story.<id>.cover`.
  * One theme, never mixed: a slot the theme lacks falls back to the theme's
  * own home art, else to the flat token stage (never an empty dark box).

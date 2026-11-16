@@ -14,7 +14,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import {
   DEFAULT_KID_THEME, GATING_KID_ART_KEYS, KID_ART_KEYS, KID_THEME_IDS, KID_THEME_MANIFEST,
-  KID_THEME_TILE_SHAPE, kidArt, kidArtSrcSet, resolveKidTheme, selectableThemes, storyCoverKey, themeCoverage,
+  KID_THEME_TILE_SHAPE, STUDIO_COVER_IDS, kidArt, kidArtSrcSet, resolveKidTheme, selectableThemes, storyCoverKey, studioCrewCover, themeCoverage,
 } from "./kidThemeManifest";
 import { KID_ART_GAPS } from "./kidArtGaps";
 import { HERO_STORIES } from "./heroJourneys";
@@ -147,5 +147,40 @@ describe("Studio V2 neutral identity boundary", () => {
         expect(kidArt(theme, key)?.hasHero, `${theme}:${key}`).toBe(false);
       }
     }
+  });
+  it("B-KID-171: the default theme's game covers, rooms and stages are the film's own frames, no October art", () => {
+    const filmKeys = [
+      ...STUDIO_COVER_IDS.map((id) => `studio.cover.${id}` as const), "studio.room.calm",
+      "world.calm-builder.tile", "world.river-rescue.tile", "world.feelings-forest.tile", "world.rhythm-garden.tile",
+      "world.puzzle.tile", "world.kid-quest.tile", "home.stage",
+    ] as const;
+    for (const key of filmKeys) {
+      const art = kidArt("film3d", key);
+      expect(art?.provenanceId, key).toMatch(/^studio-film:/);
+      expect(art?.src, key).toMatch(/^\/visuals\/studio-v2\/film\//);
+      expect(art?.hasHero, key).toBe(false);
+    }
+    expect(kidArt("film3d", "world.kid-quest.tile")?.width).toBe(864);
+  });
+  it("B-KID-171: every Studio game tile shows Bebe and GobGob in a crew-marked film frame; the game screen keeps the companion cover", () => {
+    // Switch off (this file never opts in): the eight default tiles, Canal Quest excepted (no mastered film).
+    const crewTiles = [...STUDIO_COVER_IDS, "feelings-forest", "calm-builder", "rhythm-garden"];
+    const files = new Set<string>();
+    for (const id of crewTiles) {
+      const crew = studioCrewCover(id)!;
+      expect(crew.src, id).toMatch(/^\/visuals\/studio-v2\/film\/cover-[a-z]+-crew\.webp$/);
+      expect(crew.src480, id).toBe(crew.src.replace(".webp", "-480.webp"));
+      expect(webpWidth(path.join(PUBLIC, crew.src)), id).toBe(1536);
+      expect(webpWidth(path.join(PUBLIC, crew.src480)), id).toBe(480);
+      expect(crew.hasHero, id).toBe(false);
+      files.add(crew.src);
+    }
+    expect(files.size, "one frame per tile").toBe(crewTiles.length);
+    for (const id of STUDIO_COVER_IDS) {
+      expect(studioCrewCover(id)!.src, id).toBe(`/visuals/studio-v2/film/cover-${id}-crew.webp`);
+      // the child's own hero stands in the game screen's picture, so that one stays crew-free in every theme
+      for (const theme of KID_THEME_IDS) expect(kidArt(theme, `studio.cover.${id}`)?.src, `${theme}:${id}`).not.toMatch(/bebe|gobgob|crew/i);
+    }
+    for (const other of ["river-rescue", "mend-bowl", "sound-explorer", "toString", ""]) expect(studioCrewCover(other), other).toBeNull();
   });
 });

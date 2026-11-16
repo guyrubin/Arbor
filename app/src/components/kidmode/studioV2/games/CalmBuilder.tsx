@@ -26,8 +26,8 @@ function BuilderPlay() {
   const nextWords = NEXT_GAME_COPY[uiLang === "he" ? "he" : "en"];
   const copy = GAME_COPY[uiLang === "he" ? "he" : "en"];
   const theme = useKidTheme();
-  // Both assets inspected: cozy room / empty treehouse, never another child.
-  const candidate = kidArt(theme, scene === "garden" ? "studio.portal.feelings" : scene === "sky" ? "studio.sky" : theme === "film3d" ? "world.kid-quest.tile" : "world.memory.tile");
+  // Every room is empty of children: the film's glass room, the garden door, the valley sky.
+  const candidate = kidArt(theme, scene === "garden" ? "studio.portal.feelings" : scene === "sky" ? "studio.sky" : theme === "film3d" ? "studio.room.calm" : "world.memory.tile");
   const art = candidate && !candidate.hasHero ? candidate : null;
   const [layout, setLayout] = useState<CornerLayout>(emptyCorner);
   const [history, setHistory] = useState<CornerLayout[]>([]);
