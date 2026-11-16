@@ -1492,7 +1492,10 @@ const STATES = {
         // Upcoming rows render inside [data-module=appt-upcoming]; an empty Upcoming shows the
         // profession chips instead. The demo family's one visit is in the past → past-visit.
         if (!(await h.has("[data-testid=appt-empty-professions]", 2_000))) {
-          await h.top(await h.need("[data-module=appt-upcoming] > *", "the Upcoming section with its visit row"));
+          // V77 shell: lead with the section's Add appointment (the stamp, in
+          // the head just above the rows) so the sticky pill row never hides it.
+          await h.need("[data-module=appt-upcoming] > *", "the Upcoming section with its visit row");
+          await h.top(await h.need("[data-primary-move=add-appointment]", "Add appointment"));
           return { name: "upcoming-row" };
         }
         await h.click("[data-module-disclosure=appointments-more] > summary", [h.tr("elev.learnCare.appt.more.title")], "Past visits and what to ask");
@@ -1581,7 +1584,10 @@ const STATES = {
   "school-brief": [
     {
       name: "draft",
-      run: async (h) => { await h.top(await h.need("[data-module=brief-draft]", "the brief draft")); },
+      // V77 shell: the sticky pill row would hide the brief's Save as PDF (the
+      // stamp, in the row just above the draft) if the draft itself were
+      // scrolled to the top; the stamp's row leads and the draft follows it.
+      run: async (h) => { await h.need("[data-module=brief-draft]", "the brief draft"); await h.top(await h.need("[data-testid=school-brief-actions]", "the brief's actions row")); },
     },
   ],
   [SHELL]: [

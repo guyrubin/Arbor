@@ -19,6 +19,7 @@ import ts from "typescript";
 import { visitForConsult } from "../../lib/today/dayCard";
 import { consultAudienceForProfession } from "../../lib/careTrack";
 import { translate } from "../../lib/i18n";
+import { careCopy } from "../care/v10/careV10Copy";
 
 const source = ts.createSourceFile("ConsultTab.tsx", readFileSync("src/components/tabs/ConsultTab.tsx", "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const declaration = source.statements.find((node) => ts.isFunctionDeclaration(node) && node.name?.text === "ConsultContent")!.getText(source);
@@ -55,7 +56,7 @@ const env = {
   consultHeading: () => "visit",
   activeHomeEnrolments: () => [{ id: "home-1" }],
   guidedTierOn: () => true,
-  appointmentRoleLabel: () => "Speech therapist", fmtDay: () => "date", lowerFor: (_lang: string, value: string) => value,
+  appointmentRoleLabel: () => "Speech therapist", fmtDay: () => "date", fmtDayV10: () => "date", careCopy, lowerFor: (_lang: string, value: string) => value,
 };
 const component = new Function(...Object.keys(env), code)(...Object.values(env));
 
