@@ -329,7 +329,9 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
       </Suspense></ErrorBoundary>
     </aside>}
     </div>
-    {!visible && !kidLocked && <div className="arbor-parent companion-launcher-rail" data-testid="companion-launcher-rail"><div ref={launcherRef} className={`arbor-parent companion-launcher${voiceDoor ? " has-voice" : ""}`} data-testid="companion-launcher">
+    {/* v10 (COPY-RULES 8): Safety & urgent help has no dock: under stress the
+        page is the one thing on screen, and its own escalation paths are there. */}
+    {!visible && !kidLocked && activeTab !== "safety" && <div className="arbor-parent companion-launcher-rail" data-testid="companion-launcher-rail"><div ref={launcherRef} className={`arbor-parent companion-launcher${voiceDoor ? " has-voice" : ""}`} data-testid="companion-launcher">
       <button ref={launchRef} type="button" className="companion-launch-main" onClick={() => show("launcher")} aria-haspopup="dialog" aria-label={launchLabel} aria-describedby={launcherTopic ? "companion-launch-topic" : undefined}>
         <span className="companion-launch-mark"><ArborMark size={24} /></span><span className="companion-launch-copy">{launchLabel}{launcherTopic && <span id="companion-launch-topic" className="companion-launch-topic">{topicBefore}<bdi dir="auto" className="companion-launch-topic-text">{launcherTopic}</bdi>{topicAfter || null}</span>}</span><Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
       </button>

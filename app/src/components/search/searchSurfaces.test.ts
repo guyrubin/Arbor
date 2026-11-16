@@ -262,8 +262,10 @@ describe("B-SHELL-14 · both surfaces render ONE hook", () => {
   });
 
   it("a log row reads in place on #/journal, focused — no Behaviors switch, no capture sheet", () => {
-    const log = hook.slice(hook.indexOf("for (const l of behaviorLogs)"), hook.indexOf("for (const c of conversations)"));
+    // v10: the log row is built once (logRow) and used by the record search.
+    const log = hook.slice(hook.indexOf("const logRow = "), hook.indexOf("const term = q.trim();"));
     expect(log).toContain('requestJournalFocus("moment-" + l.id); setActiveTab("journal");');
+    expect(hook.slice(hook.indexOf("for (const l of behaviorLogs)"), hook.indexOf("for (const c of conversations)"))).toContain("out.push(logRow(l));");
     expect(log).not.toMatch(/setActiveTab\("behaviors"\)|openCaptureSheet/);
   });
 
@@ -277,7 +279,9 @@ describe("B-SHELL-14 · both surfaces render ONE hook", () => {
     expect(hook).toContain('go: () => { seedCoach({ prompt: term, source: "search" }); },');
     expect(hook).not.toContain('setActiveTab("coach")');
     expect(readSrc("context", "ArborContext.tsx")).toMatch(/const seedCoach = [\s\S]*?requestCompanionConversation\(\{ source: opts\.source \}\);/);
-    expect(hook).toMatch(/ask && askFirst\(term\) \? \[ask, \.\.\.catalog, \.\.\.record\] : \[\.\.\.catalog, \.\.\.record, \.\.\.\(ask \? \[ask\] : \[\]\)\]/);
+    // v10 re-pin: an exactly named destination leads, then the parent's records,
+    // then the catalogue, then Keep and Ask (Ask first on "?").
+    expect(hook).toContain("? (ask && askFirst(term) ? [ask, ...lead, ...record, ...rest, ...(keep ? [keep] : [])] : [...lead, ...record, ...rest, ...(keep ? [keep] : []), ...(ask ? [ask] : [])])");
   });
 
   it("analytics carry the kind only — never the query", () => {

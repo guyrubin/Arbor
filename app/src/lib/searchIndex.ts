@@ -412,6 +412,19 @@ const EXACT_ROUTE_QUERIES: Partial<Record<ActiveTab, readonly string[]>> = {
   plans: PLANS_OLD_NAMES.map(normalizeSearchText),
 };
 
+/** v10: the route a query names exactly (an exact intent alias, or a route's
+ *  own title in either language), so search can lead with it ahead of the
+ *  parent's records. Null when no route is named exactly. */
+export function exactRouteFor(query: string): ActiveTab | null {
+  const q = normalizeSearchText(query);
+  if (!q) return null;
+  for (const [tab, words] of Object.entries(EXACT_ROUTE_QUERIES) as [ActiveTab, readonly string[]][]) {
+    if (words.includes(q)) return tab;
+  }
+  const route = getSearchIndex().find((entry) => entry.kind === "route" && entry.normTitles.includes(q));
+  return route ? route.tab : null;
+}
+
 /**
  * Score one entry against a normalized query. Both languages are always
  * searched regardless of UI language. Simple startsWith/substring ranking —
