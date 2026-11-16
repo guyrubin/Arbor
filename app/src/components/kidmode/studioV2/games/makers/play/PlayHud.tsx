@@ -35,12 +35,15 @@ export interface HudCoachProps {
 }
 export function HudCoach({ who, mood, line, side = 'start', onPoke, pokeLabel, quiet = false }: HudCoachProps) {
   const stem = coachHead(who, mood);
-  // The bubble re-animates when the line changes: the key restarts its CSS entrance.
-  const [beat, setBeat] = useState(0);
-  const lastLine = useRef(line);
+  // Every head this host can show is in the portrait from the start, so a change of mood is instant (never an empty disc while a picture loads).
+  const stems = [...new Set(Object.values(COACH_HEADS[who] ?? COACH_HEADS.aya))];
+  // The bubble re-animates when the line changes, the head when the expression does: the alternating attribute restarts the CSS animation.
+  const [beat, setBeat] = useState(0), [pop, setPop] = useState(0);
+  const lastLine = useRef(line), lastStem = useRef(stem);
   useEffect(() => { if (lastLine.current !== line) { lastLine.current = line; setBeat(n => n + 1); } }, [line]);
-  const head = <span className="play-coach__head" data-mood={mood} key={stem}>
-    <img src={studioMakerArt(`${stem}-480`)} alt="" draggable={false} decoding="async" />
+  useEffect(() => { if (lastStem.current !== stem) { lastStem.current = stem; setPop(n => n + 1); } }, [stem]);
+  const head = <span className="play-coach__head" data-mood={mood} data-pop={pop % 2 ? 'b' : 'a'}>
+    {stems.map(s => <img key={s} src={studioMakerArt(`${s}-480`)} alt="" draggable={false} decoding="async" data-on={s === stem} />)}
   </span>;
   return <div className="play-coach" data-play-coach={who} data-mood={mood} data-side={side} data-quiet={quiet || undefined}>
     {onPoke

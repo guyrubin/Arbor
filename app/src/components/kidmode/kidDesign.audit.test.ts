@@ -49,6 +49,8 @@ const COLOUR_LITERALS: Readonly<Record<string, number>> = {
   "components/kidmode/studioV2/games/adventures/adventures.css": 152,
   // The makers' material palette (16 Nov 2026): the one token file their scene art draws from.
   "components/kidmode/studioV2/games/makers/makerPalette.css": 64,
+  // The makers' shared play kit (the Game Cut): one stage and one HUD for all twelve, on tokens only.
+  "components/kidmode/studioV2/games/makers/play/makerPlay.css": 0,
   "components/kidmode/studioV2/games/studioGames.css": 0,
   "components/kidmode/studioV2/studioActivityArt.css": 0,
   "components/kidmode/studioV2/studioAdventureScene.css": 0,

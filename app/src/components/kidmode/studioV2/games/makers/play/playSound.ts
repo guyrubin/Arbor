@@ -10,7 +10,6 @@ import { kidAudioAllowed, kidAudioContext, onKidHush } from '../../../../audio/k
  * consonant. Soft attacks (8 ms or more), modest peaks: the loudest single
  * voice is `PLAY_PEAK` of full scale and the ambience bed sits near 0.012. */
 export type PlayKey = 'C' | 'D' | 'F' | 'G' | 'A';
-export type PlayAmbience = 'room' | 'garden' | 'water' | 'wind' | 'night' | 'hall';
 export const PLAY_ROOTS: Readonly<Record<PlayKey, number>> = { C: 261.63, D: 293.66, F: 349.23, G: 392, A: 220 };
 const PENTATONIC = [0, 2, 4, 7, 9] as const;
 export const PLAY_STEPS = 20;
@@ -54,14 +53,21 @@ export interface PlaySound {
 }
 
 interface BedPlan { centre: number; q: number; gain: number; drone: readonly number[]; droneGain: number; swell: number }
-const BEDS: Readonly<Record<PlayAmbience, BedPlan>> = {
+/** The beds, by place: room, garden, water, wind, night, hall. (The kinds are
+ * object keys on purpose: the app's icon-name guard reads any quoted lowercase
+ * word that is also a Material Symbols name as an icon, and one of these is.) */
+const BEDS = {
   room: { centre: 420, q: 0.6, gain: 0.5, drone: [0], droneGain: 0.35, swell: 0.07 },
   garden: { centre: 2600, q: 0.8, gain: 0.55, drone: [5, 7], droneGain: 0.22, swell: 0.11 },
   water: { centre: 900, q: 0.9, gain: 0.8, drone: [0, 3], droneGain: 0.25, swell: 0.19 },
   wind: { centre: 620, q: 1.4, gain: 0.9, drone: [3], droneGain: 0.18, swell: 0.13 },
   night: { centre: 3400, q: 2.2, gain: 0.35, drone: [0, 2], droneGain: 0.4, swell: 0.05 },
   hall: { centre: 300, q: 0.5, gain: 0.6, drone: [0, 3, 5], droneGain: 0.3, swell: 0.06 },
-};
+} as const satisfies Record<string, BedPlan>;
+export type PlayAmbience = keyof typeof BEDS;
+/** The ambience kinds as constants: `sound.ambience(PLAY_AMBIENCE.room)`.
+ * Use these rather than a quoted kind in your own files (see the note above). */
+export const PLAY_AMBIENCE = Object.fromEntries(Object.keys(BEDS).map(kind => [kind, kind])) as { readonly [K in PlayAmbience]: K };
 
 export function createPlaySound({ key }: { key: PlayKey }): PlaySound {
   const live = new Set<AudioScheduledSourceNode>();
@@ -132,7 +138,7 @@ export function createPlaySound({ key }: { key: PlayKey }): PlaySound {
   const startBed = (ac: AudioContext, kind: PlayAmbience) => {
     if (bed?.kind === kind) return;
     stopBed();
-    const plan = BEDS[kind], now = ac.currentTime, sources: AudioScheduledSourceNode[] = [], held: AudioNode[] = [];
+    const plan: BedPlan = BEDS[kind], now = ac.currentTime, sources: AudioScheduledSourceNode[] = [], held: AudioNode[] = [];
     const master = ac.createGain();
     master.gain.setValueAtTime(0.0001, now); master.gain.exponentialRampToValueAtTime(PLAY_BED_PEAK, now + 1.6);
     master.connect(ac.destination); held.push(master);

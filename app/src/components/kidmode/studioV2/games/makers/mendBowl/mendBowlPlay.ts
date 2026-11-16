@@ -7,25 +7,38 @@
 import { ROTATE_STEP, SEAM_COVER, SNAP_DEG, normalizeDeg, type BowlPatternData, type Point, type Pose } from './mendBowlRules';
 
 /* ---------- the table, framed for the screen ---------- */
-/** The part of the table the stage shows, in stage units. The bowl sits at the
- * table's centre (220, 220). A wide stage shows more table to each side; a tall
- * stage shows more above and below, and once the top of the picture is reached
- * it shows the floor in front of the table instead. */
+/** The part of the workshop the stage shows, in stage units. The world is the
+ * screen, so the view always has exactly the stage's own shape: nothing is
+ * letterboxed and nothing is stretched. The play field (the table's linen and
+ * the things on it, FIELD units across, centred on the bowl at 220, 220) is
+ * fitted into the room the HUD leaves:
+ *   - a tall stage keeps a band clear above (the coach) and below (the dock)
+ *     and shows the workshop floor past the table's far and near edges;
+ *   - a wide stage keeps only the top band (its dock sits in a corner, over
+ *     the floor) and shows the floor to each side;
+ *   - a short wide stage (a phone on its side) gives the table the whole
+ *     height: the HUD lives in the corners, over the floor. */
 export interface StageView { x: number; y: number; w: number; h: number }
 export const VIEW_CENTRE: Point = { x: 220, y: 220 };
-export const VIEW_BASE = { w: 440, h: 470 } as const;
-/** The table picture's reach in stage units: the view never leaves it. */
-export const VIEW_TOP = -50;
-export const VIEW_MAX = { w: 540, h: 680 } as const;
-
+export const FIELD = 440;
+/** On a wide stage with height to spare the whole round table is in the picture, with floor all round it. */
+export const FIELD_WIDE = 508;
+/** Kept as the view when nothing has been measured yet. */
+export const VIEW_BASE = { w: FIELD, h: FIELD } as const;
+/** A stage shorter than this (px) is a phone on its side. */
+export const SHORT_STAGE = 520;
+/** The HUD bands the field keeps clear of, in screen pixels. */
+export function hudBands(boxW: number, boxH: number): { top: number; bottom: number } {
+  if (boxH >= boxW) return { top: 84, bottom: 92 };
+  return boxH < SHORT_STAGE ? { top: 0, bottom: 0 } : { top: 60, bottom: 10 };
+}
 export function stageView(boxW: number, boxH: number): StageView {
-  let w: number = VIEW_BASE.w, h: number = VIEW_BASE.h;
-  if (boxW > 0 && boxH > 0) {
-    const ratio = boxH / boxW;
-    if (ratio >= VIEW_BASE.h / VIEW_BASE.w) h = Math.round(Math.min(VIEW_MAX.h, VIEW_BASE.w * ratio));
-    else w = Math.round(Math.min(VIEW_MAX.w, VIEW_BASE.h / ratio));
-  }
-  return { x: VIEW_CENTRE.x - w / 2, y: Math.max(VIEW_TOP, VIEW_CENTRE.y - h / 2), w, h };
+  if (!(boxW > 0) || !(boxH > 0)) return { x: VIEW_CENTRE.x - FIELD / 2, y: VIEW_CENTRE.y - FIELD / 2, w: FIELD, h: FIELD };
+  const { top, bottom } = hudBands(boxW, boxH), room = Math.max(120, boxH - top - bottom);
+  const field = boxW > boxH && boxH >= SHORT_STAGE ? FIELD_WIDE : FIELD;
+  const scale = Math.min(boxW / field, room / field), w = boxW / scale, h = boxH / scale;
+  // The bowl sits in the middle of the room the HUD leaves, not of the stage.
+  return { x: VIEW_CENTRE.x - w / 2, y: VIEW_CENTRE.y - (top + room / 2) / scale, w, h };
 }
 /** A pointer position inside the stage box, in stage units (the drawing is
  * scaled evenly and centred, exactly as the SVG layers are). */
@@ -41,29 +54,27 @@ export function unitsPerPixel(view: StageView, boxW: number, boxH: number): numb
 
 /** Where the things on the table stand (centre and width, stage units). They
  * keep to the rim of the linen and the wood beyond it, clear of the pieces,
- * and all of them are inside the smallest view. Left and right are the
- * table's own: nothing here mirrors with the reading direction. */
+ * and all of them are inside the play field. Left and right are the table's
+ * own: nothing here mirrors with the reading direction. */
 export interface TableSpot { x: number; y: number; size: number }
-export const TABLE_SPOTS = {
-  lamp: { x: 62, y: 54, size: 78 },
-  fern: { x: 380, y: 50, size: 88 },
-  bloom: { x: 408, y: 150, size: 48 },
-  gold: { x: 72, y: 384, size: 70 },
-  roller: { x: 140, y: 410, size: 86 },
-} as const satisfies Record<string, TableSpot>;
-/** Where a standing friend goes: on the floor in front of the table when the
- * stage is tall, beside the table when it is wide. `x` is the figure's left
- * edge, `feet` its base line, `tall` its height (stage units). When the stage
- * shows neither floor nor room at the side, there is no place for one. */
-export interface StandingSpot { x: number; feet: number; tall: number }
-export const FRIEND_TALL = 176;
-export function standingSpot(view: StageView): StandingSpot | null {
-  const floor = view.y + view.h - (VIEW_CENTRE.y + 235), side = -view.x;
-  // On the floor, the figure's head stays just under the tools at the table's near-left edge.
-  if (floor >= 110) return { x: view.x + 10, feet: view.y + view.h - 6, tall: Math.min(FRIEND_TALL, floor + 26) };
-  if (side >= 30) return { x: view.x + 4, feet: view.y + view.h - 6, tall: FRIEND_TALL };
-  return null;
-}
+export type TableThing = 'lamp' | 'fern' | 'bloom' | 'gold' | 'roller';
+export type TableLayout = Readonly<Record<TableThing, TableSpot>>;
+/** Three ways the table is laid: a new sitting finds the things moved round. */
+export const TABLE_LAYOUTS: readonly TableLayout[] = [
+  { lamp: { x: 62, y: 54, size: 78 }, fern: { x: 380, y: 50, size: 88 }, bloom: { x: 408, y: 150, size: 48 }, gold: { x: 72, y: 384, size: 70 }, roller: { x: 140, y: 396, size: 86 } },
+  { lamp: { x: 378, y: 54, size: 78 }, fern: { x: 60, y: 50, size: 88 }, bloom: { x: 32, y: 150, size: 48 }, gold: { x: 72, y: 384, size: 70 }, roller: { x: 140, y: 396, size: 86 } },
+  { lamp: { x: 62, y: 54, size: 78 }, fern: { x: 386, y: 62, size: 80 }, bloom: { x: 28, y: 176, size: 48 }, gold: { x: 368, y: 384, size: 70 }, roller: { x: 304, y: 396, size: 86 } },
+];
+export const TABLE_SPOTS: TableLayout = TABLE_LAYOUTS[0];
+export function tableLayout(variant: number): TableLayout { return TABLE_LAYOUTS[((Math.floor(variant) % TABLE_LAYOUTS.length) + TABLE_LAYOUTS.length) % TABLE_LAYOUTS.length]; }
+/** The tea poured at the end: a new sitting, a new pot. Palette token names. */
+export const TEAS = [
+  { key: 'amber', light: 'orange', deep: 'wood-dark' },
+  { key: 'sencha', light: 'spring', deep: 'moss' },
+  { key: 'rosehip', light: 'rose', deep: 'red' },
+] as const;
+/** The workshop's light for a sitting: the stage's grade. */
+export const LIGHTS = ['day', 'warm', 'cool'] as const;
 /** The four glaze dishes, in an arc in front of the bowl (left to right). */
 export const GLAZE_SPOTS: readonly TableSpot[] = [150, 122, 94, 66].map(deg => ({
   x: Math.round(VIEW_CENTRE.x + 152 * Math.cos(deg * Math.PI / 180)), y: Math.round(VIEW_CENTRE.y + 152 * Math.sin(deg * Math.PI / 180)), size: 66,

@@ -11,14 +11,19 @@ import { MAKER_DESK_COPY } from './makerDeskCopy';
  *     words are never put into an answer.
  *  3. Bounce: a fixed-timestep ball, a paddle whose hit point sets the angle,
  *     and fifteen lanterns that light (never break). The ball cannot be lost.
- *  4. Desk stickers: three discoveries, then the activity may finish. */
+ *  4. The quest: three chapters (wake the bench, play inside the screen, talk
+ *     to the machine), then the whole bench powers up. Things done, never a
+ *     measure of the child.
+ *  5. The round: what a seed changes, so playing again is not the same again. */
 
 export type Lang = 'en' | 'he';
 
 /* ───────────────────────── 1. Levels ───────────────────────── */
 
-export type Program = 'bounce' | 'things' | 'ask';
-export const PROGRAMS: readonly Program[] = ['bounce', 'things', 'ask'];
+/** Two programs live inside the screen. The child's own things are not a
+ * program any more: they stand on the lit shelf in the room. */
+export type Program = 'bounce' | 'ask';
+export const PROGRAMS: readonly Program[] = ['bounce', 'ask'];
 export type Level = { at: 'study' } | { at: 'desktop' } | { at: 'program'; program: Program };
 export const ROOM: Level = { at: 'study' };
 
@@ -304,6 +309,15 @@ export function appendScreen(screen: readonly TermLine[], lines: readonly TermLi
 /** The field is drawn on a small grid and scaled up with crisp squares. */
 export const FIELD_W = 160;
 export const FIELD_H = 120;
+/** On a tall screen the field grows downward (more sky to cross), up to this. */
+export const FIELD_H_MAX = 200;
+/** The field height for a view of this shape (width over height): 120 on wide screens, taller on a phone. */
+export function fieldHeight(aspect: number): number {
+  if (!Number.isFinite(aspect) || aspect <= 0) return FIELD_H;
+  return Math.max(FIELD_H, Math.min(FIELD_H_MAX, Math.round(FIELD_W / aspect)));
+}
+/** Where the paddle's top sits in a field of this height. */
+export function paddleTop(height: number = FIELD_H): number { return height - (FIELD_H - PADDLE_Y); }
 export const BALL = 4;
 export const BALL_SPEED = 60;
 export const PADDLE_W = 30;
@@ -335,6 +349,8 @@ export interface BounceState {
   /** Counts relaunches, so each one leans the other way. */
   launches: number;
   done: boolean;
+  /** The field's height (default 120); the lanterns keep their place at the top. */
+  h?: number;
 }
 export type BounceEvent = { type: 'wall' } | { type: 'paddle' } | { type: 'lantern'; index: number } | { type: 'row'; row: number } | { type: 'cloud' } | { type: 'lift' } | { type: 'allLit' };
 export interface PaddleInput { dir: -1 | 0 | 1; target: number | null }
@@ -379,8 +395,9 @@ export function layoutLanterns(random: () => number, layout?: LanternLayout): La
 }
 
 /** A new round: lanterns placed, none lit, the ball resting on its cloud. */
-export function newBounce(random: () => number, layout?: LanternLayout): BounceState {
-  return { lanterns: layoutLanterns(random, layout), lit: Array.from({ length: LANTERN_COUNT }, () => false), ball: { x: FIELD_W / 2, y: FIELD_H - BALL, vx: 0, vy: 0 }, paddle: FIELD_W / 2, floating: FLOAT_S, launches: 0, done: false };
+export function newBounce(random: () => number, layout?: LanternLayout, height: number = FIELD_H): BounceState {
+  const h = Math.max(FIELD_H, Math.min(FIELD_H_MAX, Number.isFinite(height) ? Math.round(height) : FIELD_H));
+  return { lanterns: layoutLanterns(random, layout), lit: Array.from({ length: LANTERN_COUNT }, () => false), ball: { x: FIELD_W / 2, y: h - BALL, vx: 0, vy: 0 }, paddle: FIELD_W / 2, floating: FLOAT_S, launches: 0, done: false, h };
 }
 
 /** Speed stays the same and the ball never travels too flat, so it always
@@ -417,10 +434,11 @@ export function bounceStep(state: BounceState, input: PaddleInput, dt = STEP_S):
   const events: BounceEvent[] = [];
   const paddle = movePaddle(state.paddle, input, dt);
   const r = BALL / 2;
+  const fieldH = state.h ?? FIELD_H, paddleY = paddleTop(fieldH);
   if (state.floating > 0) {
     // On the cloud: the ball rises gently from the bottom to just above the paddle.
     const floating = Math.max(0, state.floating - dt);
-    const from = FIELD_H - BALL, to = PADDLE_Y - 12;
+    const from = fieldH - BALL, to = paddleY - 12;
     const ball = { ...state.ball, y: from + (to - from) * (1 - floating / FLOAT_S), vx: 0, vy: 0 };
     if (floating > 0) return { state: { ...state, paddle, floating, ball }, events };
     const lean = state.launches % 2 === 0 ? 1 : -1;
@@ -435,8 +453,8 @@ export function bounceStep(state: BounceState, input: PaddleInput, dt = STEP_S):
   if (x + r > FIELD_W) { x = FIELD_W - r; vx = -Math.abs(vx); events.push({ type: 'wall' }); }
   if (y - r < 0) { y = r; vy = Math.abs(vy); events.push({ type: 'wall' }); }
   // The paddle: only a ball coming down onto its top bounces.
-  if (vy > 0 && py + r <= PADDLE_Y + 1 && y + r >= PADDLE_Y && Math.abs(x - paddle) <= PADDLE_W / 2 + r) {
-    y = PADDLE_Y - r; ({ vx, vy } = paddleBounce(x, paddle)); events.push({ type: 'paddle' });
+  if (vy > 0 && py + r <= paddleY + 1 && y + r >= paddleY && Math.abs(x - paddle) <= PADDLE_W / 2 + r) {
+    y = paddleY - r; ({ vx, vy } = paddleBounce(x, paddle)); events.push({ type: 'paddle' });
   }
   // Lanterns: a dark lantern turns the ball and lights up. A glowing one is
   // light, and the ball sails through it, so every lantern can always be
@@ -457,9 +475,9 @@ export function bounceStep(state: BounceState, input: PaddleInput, dt = STEP_S):
   }
   ({ vx, vy } = steady(vx, vy));
   // Missed: the ball sinks into the cloud at the bottom and comes back. No lives, no ending.
-  if (y - r > FIELD_H) {
+  if (y - r > fieldH) {
     events.push({ type: 'cloud' });
-    return { state: { ...state, paddle, lit, floating: FLOAT_S, ball: { x: Math.max(8, Math.min(FIELD_W - 8, x)), y: FIELD_H - BALL, vx: 0, vy: 0 } }, events };
+    return { state: { ...state, paddle, lit, floating: FLOAT_S, ball: { x: Math.max(8, Math.min(FIELD_W - 8, x)), y: fieldH - BALL, vx: 0, vy: 0 } }, events };
   }
   const done = lit.every(Boolean);
   if (done && !state.done) events.push({ type: 'allLit' });
@@ -480,25 +498,95 @@ export function chimeStep(litSoFar: number): number {
   return Math.max(0, Math.min(LANTERN_COUNT - 1, Math.trunc(Number.isFinite(litSoFar) ? litSoFar : 0) - 1));
 }
 
-/* ───────────────────────── 5. Desk stickers ───────────────────────── */
+/* ───────────────────────── 5. The quest ───────────────────────── */
 
-export type Sticker = 'lanterns' | 'things' | 'commands';
-export const STICKERS: readonly Sticker[] = ['lanterns', 'things', 'commands'];
-/** What the child has found this sitting. Only fixed command words are kept,
- * never free text, and nothing here is saved or reported. */
-export interface Discovery { lanterns: boolean; things: boolean; commands: readonly string[] }
-export const NO_DISCOVERY: Discovery = { lanterns: false, things: false, commands: [] };
-export const COMMANDS_FOR_STICKER = 2;
-export function noteLanterns(d: Discovery): Discovery { return d.lanterns ? d : { ...d, lanterns: true }; }
-export function noteThings(d: Discovery): Discovery { return d.things ? d : { ...d, things: true }; }
+/** A chain of lanterns lit without the paddle or the cloud in between. Each
+ * link sounds a step higher and brightens the whole screen a little more. */
+export function chainAfter(chain: number, event: BounceEvent): number {
+  const now = Number.isFinite(chain) ? Math.max(0, Math.trunc(chain)) : 0;
+  if (event.type === 'lantern') return now + 1;
+  if (event.type === 'paddle' || event.type === 'cloud' || event.type === 'lift') return 0;
+  return now;
+}
+/** How bright the screen glows, 0 to 1: the lanterns lit so far, lifted by the chain. */
+export function screenGlow(lit: number, chain: number): number {
+  const share = Math.max(0, Math.min(LANTERN_COUNT, Number.isFinite(lit) ? lit : 0)) / LANTERN_COUNT;
+  const links = Math.max(0, Math.min(4, (Number.isFinite(chain) ? chain : 0) - 1)) / 4;
+  return Math.min(1, share * 0.5 + links * 0.5);
+}
+/** The harmony over a chained chime: none for a single hit, then a third, a fifth, an octave. */
+export function chainHarmony(chain: number): number {
+  const links = Number.isFinite(chain) ? Math.trunc(chain) : 0;
+  return links < 2 ? 0 : links === 2 ? 2 : links === 3 ? 3 : 5;
+}
+
+export const CHAPTERS = ['wake', 'play', 'ask'] as const;
+export type Chapter = typeof CHAPTERS[number];
+/** The bench wakes when this many different tools have been touched. */
+export const TOOLS_TO_WAKE = 3;
+/** The machine has been talked to after this many different known words. */
+export const WORDS_TO_ASK = 2;
+/** What the child has done this sitting. Only fixed tool names and fixed
+ * command words are kept, never free text, and nothing here is saved or reported. */
+export interface Quest { woken: readonly ToolId[]; lanterns: boolean; commands: readonly string[] }
+export const NEW_QUEST: Quest = { woken: [], lanterns: false, commands: [] };
+/** A tool wakes once; a second touch is play, not progress. */
+export function wakeTool(q: Quest, tool: unknown): Quest {
+  if (!(TOOLS as readonly unknown[]).includes(tool) || q.woken.includes(tool as ToolId)) return q;
+  return { ...q, woken: [...q.woken, tool as ToolId] };
+}
+export function benchAwake(q: Quest): boolean { return q.woken.length >= TOOLS_TO_WAKE; }
+/** The bench's power, 0 to 1, as its tools wake. */
+export function benchPower(q: Quest): number { return Math.min(1, q.woken.length / TOOLS_TO_WAKE); }
+export function noteLanterns(q: Quest): Quest { return q.lanterns ? q : { ...q, lanterns: true }; }
 /** A known command counts once; unknown input (null) never counts. */
-export function noteCommand(d: Discovery, command: string | null): Discovery {
-  if (!command || d.commands.includes(command) || d.commands.length >= COMMANDS_FOR_STICKER) return d;
-  return { ...d, commands: [...d.commands, command] };
+export function noteCommand(q: Quest, command: string | null): Quest {
+  if (!command || q.commands.includes(command) || q.commands.length >= WORDS_TO_ASK) return q;
+  return { ...q, commands: [...q.commands, command] };
 }
-export function stickerLit(d: Discovery, sticker: Sticker): boolean {
-  return sticker === 'lanterns' ? d.lanterns : sticker === 'things' ? d.things : d.commands.length >= COMMANDS_FOR_STICKER;
+export function chapterDone(q: Quest, chapter: Chapter): boolean {
+  return chapter === 'wake' ? benchAwake(q) : chapter === 'play' ? q.lanterns : q.commands.length >= WORDS_TO_ASK;
 }
-export function allStickers(d: Discovery): boolean {
-  return STICKERS.every(sticker => stickerLit(d, sticker));
+/** The chapter in play: the first one not done (CHAPTERS.length when all are). */
+export function chapterNow(q: Quest): number {
+  const at = CHAPTERS.findIndex(chapter => !chapterDone(q, chapter));
+  return at < 0 ? CHAPTERS.length : at;
+}
+export function questDone(q: Quest): boolean { return CHAPTERS.every(chapter => chapterDone(q, chapter)); }
+
+/* ───────────────────────── 6. The round ───────────────────────── */
+
+/** The set-piece, in milliseconds from its start: a hush, the five tools one
+ * after another, the screen, the whole room, the picture, the end. Plain
+ * timers run it; nothing waits on an animation. */
+export const POWER_UP = { tools: 800, toolGap: 320, screen: 2700, room: 3900, picture: 6100, end: 8200 } as const;
+export const POWER_UP_REDUCED = { tools: 200, toolGap: 120, screen: 900, room: 1300, picture: 2000, end: 3000 } as const;
+export const TOOL_ORDERS = ['leftToRight', 'rightToLeft', 'middleOut'] as const;
+export type ToolOrder = typeof TOOL_ORDERS[number];
+/** The order the tools light in when the bench powers up. */
+export function toolOrder(order: ToolOrder): ToolId[] {
+  if (order === 'rightToLeft') return [...TOOLS].reverse();
+  if (order === 'middleOut') return [TOOLS[2], TOOLS[1], TOOLS[3], TOOLS[0], TOOLS[4]];
+  return [...TOOLS];
+}
+export const ROOM_LIGHTS = ['day', 'warm', 'cool'] as const;
+export type RoomLight = typeof ROOM_LIGHTS[number];
+/** What one seed decides for a sitting. */
+export interface DeskRound {
+  /** The first arrangement of lanterns. */
+  layout: LanternLayout;
+  /** Which friend dropped by (CrewLink). */
+  guest: number;
+  /** The tool the ghost hand shows first. */
+  hint: ToolId;
+  /** Which riddle the secret file opens with. */
+  riddle: number;
+  /** The order the tools light in at the power-up. */
+  order: ToolOrder;
+  /** The daylight in the room. */
+  light: RoomLight;
+}
+export function deskRound(random: () => number): DeskRound {
+  const at = (count: number) => Math.floor(roll(random) * count);
+  return { layout: LAYOUTS[at(LAYOUTS.length)], guest: at(3), hint: TOOLS[at(TOOLS.length)], riddle: at(5), order: TOOL_ORDERS[at(TOOL_ORDERS.length)], light: ROOM_LIGHTS[at(ROOM_LIGHTS.length)] };
 }

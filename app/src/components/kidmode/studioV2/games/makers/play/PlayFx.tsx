@@ -20,7 +20,7 @@ function resolveTone(el: Element, name: string, cache: Map<string, string>): str
   const hit = cache.get(name); if (hit) return hit;
   const style = getComputedStyle(el);
   const token = name.startsWith('--') ? name : name.startsWith('studio-') ? `--${name}` : `--mk-${name}`;
-  const value = style.getPropertyValue(token).trim() || style.getPropertyValue(TONE_FALLBACK).trim() || 'white';
+  const value = style.getPropertyValue(token).trim() || style.getPropertyValue(TONE_FALLBACK).trim() || style.color;
   cache.set(name, value); return value;
 }
 
@@ -89,6 +89,7 @@ export const PlayFx = forwardRef<PlayFxHandle, PlayFxProps>(function PlayFx({ cl
   return <canvas ref={canvasRef} className={`play-fx${className ? ` ${className}` : ''}`} style={layer == null ? undefined : { zIndex: layer }} aria-hidden="true" data-play-fx="" />;
 });
 
+const SOFT_RINGS: readonly (readonly [number, number])[] = [[1, 0.1], [0.82, 0.14], [0.64, 0.2], [0.46, 0.28], [0.28, 0.36]];
 /** One particle. Position is in stage fractions; size is a fraction of the
  * shorter side, so a burst looks the same on a phone and a desktop. */
 function paint(ctx: CanvasRenderingContext2D, p: FxParticle, w: number, h: number, colour: string) {
@@ -109,9 +110,9 @@ function paint(ctx: CanvasRenderingContext2D, p: FxParticle, w: number, h: numbe
     }
     ctx.restore();
   } else if (p.shape === 'soft') {
-    const glow = ctx.createRadialGradient(x, y, 0, x, y, size);
-    glow.addColorStop(0, colour); glow.addColorStop(1, 'transparent');
-    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.fill();
+    // A soft puff: stacked discs of the one colour (a gradient to transparent would pass through grey).
+    const base = ctx.globalAlpha;
+    for (const [share, alpha] of SOFT_RINGS) { ctx.globalAlpha = base * alpha; ctx.beginPath(); ctx.arc(x, y, size * share, 0, Math.PI * 2); ctx.fill(); }
   } else if (p.shape === 'petal') {
     ctx.save(); ctx.translate(x, y); ctx.rotate(p.rot); ctx.scale(1, 0.55 + 0.45 * Math.cos(p.age * 5 + p.spin));
     ctx.beginPath(); ctx.moveTo(0, -size); ctx.quadraticCurveTo(size * 0.9, -size * 0.2, 0, size); ctx.quadraticCurveTo(-size * 0.9, -size * 0.2, 0, -size); ctx.fill();

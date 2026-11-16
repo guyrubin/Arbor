@@ -1,26 +1,45 @@
-import { useId } from 'react';
-import { CrankDefs, EngineArt, STAGE_BOX, poseOf } from './crankArt';
-import { KIT_COMPANION, KIT_STAGE } from './crankKit';
+import { useEffect, useRef } from 'react';
+import { planOf } from './crankWorksRules';
+import { S1, roomRect } from './crankGeometry';
+import { paintScene, readPalette, type PaintImages, type Scene } from './crankPaint';
+import { KIT_BENCH, KIT_ROOM } from './crankKit';
 import '../makerPalette.css';
+import './crankWorks.css';
 
-/** How Things Move cover: the glass piston on the TrailBench in the Wonderworks
- * pavilion, close up: the big wheel, the glass half cleared with the crank and
- * rod showing, and the bench's companion looking on. A kit picture with the
- * activity's own machine on it. The wheel sits left of the middle (the Studio stands
- * the player's hero to the right of a card window), so the picture reads as a
- * square tile, a tall book row and a wide card window alike. */
-const POSE = poseOf(5.2, 'engine');
-const S = 0.9, DX = 150 - POSE.sx * S, DY = 158 - POSE.sy * S;
+/** How Things Move cover: the brass machine on the TrailBench in the
+ * Wonderworks pavilion, close up, its housing half cleared so the crank and
+ * rod show. It is the game's own painter on a small canvas (one still frame,
+ * no loop), so the tile, the book row, the card window and the sticker all
+ * show the machine the child will meet. The wheel sits left of the middle
+ * (the Studio stands the player's hero to the right of a card window). */
+const STILL: Scene = {
+  theta: 5.25, omega: 0, time: 0, plan: planOf(3), room: { x: -180, y: -580, size: 1150 }, flower: 1, beads: 1, bell: 0, waiting: [], ask: null, carry: null, reveal: [0.62, 0, 0],
+  bellSwing: 0, beadPop: [0, 0, 0, 0, 0, 0], bloomPop: 0, knobPop: 0, chock: { hop: 0, squash: 0, lean: 0, dx: 0 }, tool: null, tape: 0, held: false,
+  jointCue: 0, puckCue: 0, lensOut: false, podOn: false, wheelCue: 0, wheelFocus: false,
+};
 export default function CrankWorksCover({ size = 'tile' }: { size?: 'tile' | 'card' }) {
-  const id = useId().replace(/:/g, '');
-  const { watch, faces } = KIT_COMPANION, friend = 100, fx = 270, fh = friend * watch.height / watch.width, fy = 456 - fh;
-  return <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" style={{ width: '100%', height: '100%', display: 'block' }} data-size={size} aria-hidden="true" focusable="false">
-    <CrankDefs id={id} />
-    <g transform={`translate(${DX} ${DY}) scale(${S})`}>
-      <image href={KIT_STAGE.src} x={STAGE_BOX.x} y={STAGE_BOX.y} width={STAGE_BOX.w} height={STAGE_BOX.h} preserveAspectRatio="none" />
-      <EngineArt id={id} pose={POSE} open={0.5} />
-      {/* The companion looks across at the machine: the kit picture, turned to face it. */}
-      <image href={watch.src} x={fx} y={fy} width={friend} height={fh} transform={faces === 'right' ? `translate(${2 * fx + friend} 0) scale(-1 1)` : undefined} />
-    </g>
-  </svg>;
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const node = ref.current; if (!node) return;
+    const images: PaintImages = { room: null, bench: null, chock: null, tool: null };
+    let alive = true;
+    const draw = () => {
+      const w = node.clientWidth, h = node.clientHeight, c = node.getContext('2d');
+      if (!alive || !w || !h || !c) return;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      node.width = Math.round(w * dpr); node.height = Math.round(h * dpr);
+      // Fill the window with the piston and the flower beside it, whatever its shape.
+      const s = Math.max(w / 250, h / 250), cx = S1.x + (w > h * 1.3 ? 62 : 34);
+      const view = { s, ox: w / 2 - cx * s, oy: h / 2 - 104 * s };
+      c.setTransform(dpr * s, 0, 0, dpr * s, dpr * view.ox, dpr * view.oy);
+      paintScene(c, readPalette(node), images, { ...STILL, room: roomRect(view, w, h) });
+    };
+    const load = (key: 'room' | 'bench', src: string) => { const im = new Image(); im.decoding = 'async'; im.onload = () => { images[key] = im; draw(); }; im.src = src; };
+    load('room', KIT_ROOM.src); load('bench', KIT_BENCH.src);
+    draw();
+    const watch = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(draw);
+    watch?.observe(node);
+    return () => { alive = false; watch?.disconnect(); };
+  }, []);
+  return <canvas ref={ref} className="ck-cover" data-size={size} aria-hidden="true" />;
 }

@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { AXIS_X, BASE_Y, PROFILES, bandPath, radiusAt, silhouettePath, surfacePoint, topY, waterPath } from './bottleGeometry';
 import {
-  BOTTLE_MAX_STICKERS, BOTTLE_SHAPES, BOTTLE_SLOTS, LAMP_MAX, LAMP_MIN, MAX_BUBBLES, bestViewRotation, bubbleHalfWidth, bubbleInside, burstCount,
-  clampLamp, dragTurn, freshBottle, lampAngleAt, lampEffects, lampPosition, peelSticker, placeSticker, reachableSlots, riseBubble, slotView,
-  snapRotation, spawnBubble, validBottle, type BottleStickerPlacement,
+  BOTTLE_MAX_STICKERS, BOTTLE_SHAPES, BOTTLE_SLOTS, LAMP_MAX, LAMP_MIN, bestViewRotation, bubbleHalfWidth, bubbleTop, clampLamp, dragTurn, freshBottle, lampEffects, lampPosition, peelSticker,
+  placeSticker, slotView, snapRotation, spawnBubble, validBottle, type BottleStickerPlacement,
 } from './bottleLabRules';
 
 /** A small seeded roll, so every bubble test is repeatable. */
@@ -57,11 +56,6 @@ describe('turning: stickers follow the surface and pass behind', () => {
     expect(seen).toEqual([true, false, false, false, false, false, true]);
     expect(slotView(5, 360)).toEqual(slotView(5, 0));
   });
-  it('the reachable slots are the near ones, a row of three or two columns of three', () => {
-    expect(reachableSlots(0)).toEqual([0, 4, 8]);
-    expect(reachableSlots(45)).toEqual([0, 3, 4, 7, 8, 11]);
-    expect(reachableSlots(-90)).toEqual([1, 5, 9]);
-  });
   it('drags settle on the nearest eighth turn; a drag across one width is half a turn', () => {
     expect(snapRotation(20)).toBe(0); expect(snapRotation(23)).toBe(45); expect(snapRotation(-100)).toBe(-90); expect(snapRotation(NaN)).toBe(0);
     expect(dragTurn(120, 120)).toBe(180); expect(dragTurn(10, 0)).toBe(0);
@@ -99,8 +93,7 @@ describe('the lamp: shine and shadow follow its angle', () => {
     expect(off.streakOpacity).toBeLessThan(lampEffects(40).streakOpacity);
     expect(off.shadowLength).toBeLessThan(lampEffects(0).shadowLength);
   });
-  it('a pointer on the lamp\'s track gives back the angle the lamp sits at', () => {
-    for (const angle of [-60, -30, 0, 25, 60]) { const p = lampPosition(angle); expect(lampAngleAt(p.x, p.y)).toBeCloseTo(angle, 6); }
+  it('the lamp stands on its track and always leans toward the bottle', () => {
     expect(lampPosition(0).x).toBeCloseTo(180, 6);
     // The head always leans toward the bottle: right from the left side, left from the right.
     expect(lampPosition(-40).face).toBe(1); expect(lampPosition(40).face).toBe(-1); expect(lampPosition(0).face).toBeCloseTo(0, 9);
@@ -108,28 +101,18 @@ describe('the lamp: shine and shadow follow its angle', () => {
   });
 });
 
-describe('bubbles stay in the water', () => {
-  it.each(BOTTLE_SHAPES)('%s: born inside, rise inside and pop at the water line', (shape) => {
-    const roll = seeded(shape.length * 31);
-    let alive = Array.from({ length: MAX_BUBBLES }, (_, id) => spawnBubble(shape, id, roll, AXIS_X, id % 2 === 0));
-    for (const b of alive) expect(bubbleInside(shape, b)).toBe(true);
-    let t = 0, popped = 0;
-    for (let step = 0; step < 900 && alive.length; step++) {
-      t += 1 / 60;
-      const next = alive.map(b => riseBubble(shape, b, t, 1 / 60));
-      popped += next.filter(b => b === null).length;
-      alive = next.filter((b): b is NonNullable<typeof b> => b !== null);
-      for (const b of alive) expect(bubbleInside(shape, b), `${shape} ${JSON.stringify(b)}`).toBe(true);
+describe('bubbles in the still picture', () => {
+  it.each(BOTTLE_SHAPES)('%s: every bubble is born inside the water', (shape) => {
+    const roll = seeded(shape.length * 31), top = bubbleTop(shape);
+    for (let id = 0; id < 24; id++) {
+      const b = spawnBubble(shape, id, roll, AXIS_X, id % 2 === 0);
+      expect(Math.abs(b.x - AXIS_X)).toBeLessThanOrEqual(bubbleHalfWidth(shape, b.y, b.r) + 1e-6);
+      expect(b.y - b.r).toBeGreaterThanOrEqual(top - 1e-6); expect(b.y).toBeLessThanOrEqual(BASE_Y);
     }
-    expect(alive).toHaveLength(0);
-    expect(popped).toBe(MAX_BUBBLES);
   });
   it('no room above the water or below the base', () => {
     expect(bubbleHalfWidth('round', PROFILES.round.water - 1, 2)).toBe(0);
     expect(bubbleHalfWidth('tall', BASE_Y + 1, 2)).toBe(0);
-  });
-  it('a shake never takes the count past the cap', () => {
-    expect(burstCount(0)).toBe(12); expect(burstCount(20)).toBe(4); expect(burstCount(30)).toBe(0);
   });
 });
 

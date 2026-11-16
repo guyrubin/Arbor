@@ -1,423 +1,361 @@
-/** Clay Theatre rules. Pure: no React, no timers, no randomness (every
- * "random" spread is seeded by an index), no history. Every film is a
- * closed-form function of its time `t` (seconds), so a frame reached by
- * playing, by scrubbing or by running backwards is the same frame. */
-import {
-  BODY_KEYFRAMES, PART_KEYS, beatBody, bendBody, clamp01, easeIn, easeInOut, easeOut, lerp, lerpParts, lerpShape, placePoint, seeded, span,
-  type PartKey, type Pt,
-} from './clayShapes';
+/** Clay Theatre rules. Pure: no React, no timers, no canvas; every "random"
+ * choice comes from the round's seed, so a round can be pinned in a test.
+ *
+ * The child is the animator. A film can chooses the story; then three
+ * chapters make the film (shape and colour the hero, shoot six poses with the
+ * ProofLens, direct the scene with a friend, a light and a tune) and the
+ * premiere projects it. Nothing here measures the child: no score, no timer,
+ * no wrong. A shot the camera cannot use (nothing moved) is simply not taken. */
+import { clamp01, lerp, seeded, type Pt } from './clayShapes';
+import { BUDDY_ACTS, FULL_PULLS, HEROES, NO_PULLS, PULL_IDS, heroDrop, type BuddyAct, type BuddyId, type HeroId, type Pose, type PullId, type Pulls } from './clayBody';
 
-/** Stop-motion: time is cut into 12 frames a second. */
-export const FPS = 12;
-export type ReelId = 'rocket' | 'jump' | 'ayaSeed' | 'frog';
-export const REELS: readonly ReelId[] = ['rocket', 'jump', 'ayaSeed', 'frog'];
-export const REEL_SECONDS: Readonly<Record<ReelId, number>> = { rocket: 8, jump: 9, ayaSeed: 9, frog: 11 };
-export const lastFrame = (reel: ReelId) => Math.round(REEL_SECONDS[reel] * FPS);
-/** The frame shown at time `t`: floor(t·12), held inside the reel. */
-export function frameAt(t: number, reel?: ReelId): number {
-  const frame = Math.floor(t * FPS + 1e-6);
-  return Math.max(0, reel ? Math.min(lastFrame(reel), frame) : frame);
-}
-export const timeOf = (frame: number) => frame / FPS;
+/* ── stop-motion time ───────────────────────────────────────────────────── */
 
-/** The reels a child is offered: the halving puzzle is for school-age children. */
-export function reelsFor(stage: 'baby' | 'toddler' | 'preschool' | 'school'): readonly ReelId[] {
-  return stage === 'school' ? REELS : REELS.filter(reel => reel !== 'frog');
-}
+/** The projector runs at 12 frames a second and every drawing is held for two of them ("on twos"). */
+export const FPS = 12, TWOS = 2;
+/** Six poses make a film. */
+export const SHOTS = 6;
+/** The drawings the projector lays between two of the child's poses (the pose itself, then three in-betweens). */
+export const STEPS = 4;
+export const filmDrawings = (keys: number) => (keys < 2 ? Math.max(0, keys) : (keys - 1) * STEPS + 1);
+export const filmFrames = (keys: number) => filmDrawings(keys) * TWOS;
+export const drawingAt = (frame: number, keys: number) => Math.max(0, Math.min(filmDrawings(keys) - 1, Math.floor(frame / TWOS)));
+/** The frame on which the child's own pose `key` is on screen. */
+export const frameOfKey = (key: number) => key * STEPS * TWOS;
+/** The pose nearest a frame (the strip lights that cell). */
+export const keyNear = (frame: number, keys: number) => Math.max(0, Math.min(keys - 1, Math.round(frame / (STEPS * TWOS))));
 
-/* ── sound cues ─────────────────────────────────────────────────────────── */
+/* ── the set ────────────────────────────────────────────────────────────── */
 
-export type CueKind = 'bloop' | 'puff' | 'whoosh' | 'splash' | 'plop' | 'boing' | 'stretch' | 'chime';
-/** `step` counts repeats of one kind (hop 1, hop 2 …) so the sound can climb its scale. */
-export interface Cue { at: number; kind: CueKind; step?: number }
-export const FROG_HOPS = 7;
-/** Frame-aligned (multiples of 1/12 s), so a hop step lands exactly on a frame. */
-const HOP_START = 0.75, HOP_LEN = 1, TAKEOFF = 0.25, AIR = 0.5;
-export const hopStart = (hop: number) => HOP_START + (hop - 1) * HOP_LEN;
-export const hopTakeoff = (hop: number) => hopStart(hop) + TAKEOFF;
-export const hopLanding = (hop: number) => hopTakeoff(hop) + AIR;
-export const REACH_START = HOP_START + FROG_HOPS * HOP_LEN + 0.75, REACH_TOUCH = REACH_START + 1.25;
-export const CUES: Readonly<Record<ReelId, readonly Cue[]>> = {
-  rocket: [{ at: 2.45, kind: 'bloop' }, { at: 5, kind: 'puff', step: 0 }, { at: 5.4, kind: 'puff', step: 1 }, { at: 5.8, kind: 'puff', step: 2 }, { at: 6.2, kind: 'whoosh' }],
-  jump: [{ at: 3.2, kind: 'plop' }, { at: 4.6, kind: 'splash' }, { at: 7.95, kind: 'plop' }],
-  ayaSeed: [
-    ...[0, 1, 2].map(i => ({ at: 0.25 + i * 0.6 + 0.12, kind: 'boing' as const, step: i })), { at: 2.6, kind: 'plop' },
-    ...[0, 1, 2].map(i => ({ at: 3.62 + i * 0.22, kind: 'puff' as const, step: i })), { at: 4.4, kind: 'stretch' }, { at: 7.25, kind: 'chime' },
-    { at: 7.72, kind: 'boing', step: 4 }, { at: 8.3, kind: 'boing', step: 5 },
-  ],
-  frog: [...Array.from({ length: FROG_HOPS }, (_, i) => ({ at: hopTakeoff(i + 1), kind: 'boing' as const, step: i })), { at: REACH_START, kind: 'stretch' }, { at: REACH_TOUCH, kind: 'chime' }],
+/** The set is measured in clay units: 400 across its middle, the stage floor at y = 250. */
+export const SET_W = 400, GROUND = 250;
+export type ClayId = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple';
+export const CLAY_IDS: readonly ClayId[] = ['red', 'orange', 'yellow', 'green', 'blue', 'purple'];
+export type GelId = 'clearGel' | 'roseGel' | 'blueGel' | 'goldGel';
+export const GEL_IDS: readonly GelId[] = ['roseGel', 'blueGel', 'goldGel'];
+export type TuneId = 'tuneA' | 'tuneB' | 'tuneC';
+export const TUNE_IDS: readonly TuneId[] = ['tuneA', 'tuneB', 'tuneC'];
+/** Each tune is eight steps of the activity's pentatonic scale; the premiere plays it under the film. */
+export const TUNES: Readonly<Record<TuneId, readonly number[]>> = {
+  tuneA: [5, 7, 9, 10, 9, 7, 8, 10],
+  tuneB: [10, 9, 7, 5, 7, 9, 12, 10],
+  tuneC: [5, 5, 8, 7, 10, 9, 12, 13],
 };
-/** The cues passed while the film PLAYS from `prev` to `next`, in playback
- * order. Edge-triggered: a cue sounds once when its time is crossed, forward
- * or backward. Scrubbing (not playing) and big jumps are silent, so a cue can
- * never machine-gun. */
-export function cuesPassed(cues: readonly Cue[], prev: number, next: number, playing: boolean): Cue[] {
-  if (!playing || prev === next || Math.abs(next - prev) > 0.5) return [];
-  if (next > prev) return cues.filter(c => c.at > prev && c.at <= next).sort((a, b) => a.at - b.at);
-  return cues.filter(c => c.at >= next && c.at < prev).sort((a, b) => b.at - a.at);
-}
-export const cuesCrossed = (cues: readonly Cue[], prev: number, next: number, playing: boolean): CueKind[] => cuesPassed(cues, prev, next, playing).map(c => c.kind);
 
-/* ── the projector ─────────────────────────────────────────────────────── */
-
-export interface Transport { reel: ReelId; t: number; playing: boolean; backwards: boolean; watched: readonly ReelId[] }
-export const startTransport = (reel: ReelId, watched: readonly ReelId[] = []): Transport => ({ reel, t: 0, playing: false, backwards: false, watched });
-/** A reel counts as watched once its last frame has been on screen, however it got there. */
-function seen(s: Transport, t: number): readonly ReelId[] {
-  return frameAt(t, s.reel) === lastFrame(s.reel) && !s.watched.includes(s.reel) ? [...s.watched, s.reel] : s.watched;
+export type StoryId = 'whaleJump' | 'moonRocket' | 'frogPond' | 'snailGarden';
+export const STORY_IDS: readonly StoryId[] = ['whaleJump', 'moonRocket', 'frogPond', 'snailGarden'];
+export type SkyId = 'seaDay' | 'deepNight' | 'pondDawn' | 'gardenNoon';
+export interface Story {
+  id: StoryId; hero: HeroId; buddy: BuddyId; sky: SkyId;
+  /** The clay a first-time animator finds already in mind: body, trim. */
+  clay: readonly [ClayId, ClayId];
+  /** Where the friend waits if the child drops it nowhere in particular. */
+  buddyHome: Pt;
 }
-const clampT = (reel: ReelId, t: number) => Math.min(REEL_SECONDS[reel], Math.max(0, t));
-/** One step of playback. The film stops by itself at either end. */
-export function tick(s: Transport, dt: number): Transport {
-  if (!s.playing || dt <= 0) return s;
-  const raw = s.t + (s.backwards ? -dt : dt), t = clampT(s.reel, raw);
-  const ended = s.backwards ? t <= 0 : t >= REEL_SECONDS[s.reel];
-  return { ...s, t, playing: !ended, watched: seen(s, t) };
-}
-/** Play from where the film is; from an end it starts over in its direction. */
-export function play(s: Transport): Transport {
-  const end = REEL_SECONDS[s.reel];
-  const t = !s.backwards && s.t >= end ? 0 : s.backwards && s.t <= 0 ? end : s.t;
-  return { ...s, t, playing: true, watched: seen(s, t) };
-}
-/** Pause freezes the frame on screen (time snaps to it). */
-export const pause = (s: Transport): Transport => s.playing ? { ...s, playing: false, t: timeOf(frameAt(s.t, s.reel)) } : s;
-export function seek(s: Transport, t: number): Transport {
-  const at = timeOf(frameAt(clampT(s.reel, t), s.reel));
-  return { ...s, t: at, playing: false, watched: seen(s, at) };
-}
-export const seekFrame = (s: Transport, frame: number) => seek(s, timeOf(Math.max(0, Math.min(lastFrame(s.reel), frame))));
-export const stepFrame = (s: Transport, by: number) => seekFrame(s, frameAt(s.t, s.reel) + by);
-export const toStart = (s: Transport) => seek(s, 0);
-export const setDirection = (s: Transport, backwards: boolean): Transport => ({ ...s, backwards });
-export const chooseReel = (s: Transport, reel: ReelId): Transport => startTransport(reel, s.watched);
-export const allWatched = (s: Transport, offered: readonly ReelId[]) => offered.every(reel => s.watched.includes(reel));
-
-/** The frog film steps one hop at a time: the moments after each landing. */
-export const HOP_STOPS: readonly number[] = [0, ...Array.from({ length: FROG_HOPS }, (_, i) => hopStart(i + 1) + HOP_LEN), REACH_TOUCH, REEL_SECONDS.frog];
-export function stepHop(s: Transport, by: 1 | -1): Transport {
-  const now = s.t, eps = 1 / (FPS * 2);
-  const target = by > 0 ? HOP_STOPS.find(stop => stop > now + eps) ?? REEL_SECONDS.frog : [...HOP_STOPS].reverse().find(stop => stop < now - eps) ?? 0;
-  return seek(s, target);
+export const STORIES: Readonly<Record<StoryId, Story>> = {
+  whaleJump: { id: 'whaleJump', hero: 'whale', buddy: 'seaBird', sky: 'seaDay', clay: ['blue', 'yellow'], buddyHome: [316, 96] },
+  moonRocket: { id: 'moonRocket', hero: 'rocket', buddy: 'starlet', sky: 'deepNight', clay: ['red', 'yellow'], buddyHome: [92, 92] },
+  frogPond: { id: 'frogPond', hero: 'frog', buddy: 'dragonfly', sky: 'pondDawn', clay: ['green', 'yellow'], buddyHome: [306, 120] },
+  snailGarden: { id: 'snailGarden', hero: 'snail', buddy: 'ladybird', sky: 'gardenNoon', clay: ['orange', 'purple'], buddyHome: [310, 214] },
+};
+/** The films a child is offered. All four; the order is the round's. */
+export function storiesFor(seed: number): StoryId[] {
+  const start = Math.floor(seeded(seed, 11) * STORY_IDS.length);
+  return STORY_IDS.map((_, i) => STORY_IDS[(i + start) % STORY_IDS.length]);
 }
 
-/** Words for the strip slider: "moment 3 of 8" (one moment a second), or the hop for the frog. */
-export type Moment = { kind: 'moment'; index: number; total: number } | { kind: 'hop'; index: number; total: number } | { kind: 'start' } | { kind: 'reach' };
-export function momentOf(reel: ReelId, t: number): Moment {
-  if (reel === 'frog') {
-    if (t >= REACH_START) return { kind: 'reach' };
-    const hops = hopsLanded(t);
-    return hops === 0 ? { kind: 'start' } : { kind: 'hop', index: hops, total: FROG_HOPS };
+/** Tonight's dressing: every replay hangs the set a little differently. */
+export interface ShowLook {
+  /** Which way the hero starts: at the left facing right, or the other way. */
+  side: 1 | -1;
+  /** A seed for clouds, stars, flowers and pads. */
+  dressing: number;
+  /** The order the six lumps lie on the rug. */
+  lumps: readonly ClayId[];
+  /** 0…2: the hour on the cloth (a different sky each time). */
+  hour: number;
+}
+export function showLook(seed: number): ShowLook {
+  const order = CLAY_IDS.map((id, i) => ({ id, k: seeded(seed, i, 3) })).sort((a, b) => a.k - b.k).map(o => o.id);
+  return { side: seeded(seed, 5) < 0.5 ? 1 : -1, dressing: Math.floor(seeded(seed, 7) * 9973) + 1, lumps: order, hour: Math.floor(seeded(seed, 9) * 3) % 3 };
+}
+
+/* ── the show: one sitting from film can to premiere ────────────────────── */
+
+export type Chapter = 'cans' | 'shape' | 'animate' | 'direct' | 'premiere';
+export const CHAPTERS: readonly Chapter[] = ['shape', 'animate', 'direct'];
+export interface Print { x: number; y: number; rot: number }
+export const MAX_PRINTS = 4;
+export interface Buddy { at: Pt; act: BuddyAct }
+export interface Show {
+  seed: number; chapter: Chapter; story: StoryId | null;
+  body: ClayId | null; trim: ClayId | null; kneads: number; pulls: Pulls; prints: readonly Print[];
+  keys: readonly Pose[];
+  buddy: Buddy | null; gel: GelId; tune: TuneId | null;
+}
+export const newShow = (seed: number): Show => ({ seed, chapter: 'cans', story: null, body: null, trim: null, kneads: 0, pulls: NO_PULLS, prints: [], keys: [], buddy: null, gel: 'clearGel', tune: null });
+export const storyOf = (show: Show): Story | null => (show.story ? STORIES[show.story] : null);
+export const heroOf = (show: Show): HeroId => (show.story ? STORIES[show.story].hero : 'whale');
+export function chooseStory(show: Show, story: StoryId): Show {
+  return show.chapter === 'cans' ? { ...show, story, chapter: 'shape' } : show;
+}
+
+/* chapter 1: shape and colour */
+
+/** A lump kneaded in. The first is the body, the second the trim; after that
+ * each new lump changes them in turn. The same clay twice is not kneaded
+ * (there would be nothing to see): the show comes back unchanged. */
+export function knead(show: Show, clay: ClayId): Show {
+  if (show.chapter !== 'shape') return show;
+  if (!show.body) return { ...show, body: clay, kneads: show.kneads + 1 };
+  if (!show.trim) return clay === show.body ? show : { ...show, trim: clay, kneads: show.kneads + 1 };
+  const part = show.kneads % 2 === 0 ? 'body' : 'trim', other = part === 'body' ? show.trim : show.body;
+  if (clay === other || clay === show[part]) return show;
+  return { ...show, [part]: clay, kneads: show.kneads + 1 };
+}
+/** Which part the next lump will colour. */
+export const nextKnead = (show: Show): 'body' | 'trim' => (!show.body ? 'body' : !show.trim ? 'trim' : show.kneads % 2 === 0 ? 'body' : 'trim');
+export const coloured = (show: Show) => !!show.body && !!show.trim;
+/** A pull finished: that share of the lump is out. */
+export function pull(show: Show, id: PullId): Show {
+  if (show.chapter !== 'shape' || show.pulls[id] >= 1) return show;
+  return { ...show, pulls: { ...show.pulls, [id]: 1 } };
+}
+/** How far a drag has pulled a handle out: 0…1.15 (the clay stretches a little past, then settles). */
+export const PULL_REACH = 70, PULL_ENOUGH = 0.55;
+export function pullAmount(dir: Pt, drag: Pt): number {
+  const len = Math.hypot(dir[0], dir[1]) || 1;
+  return Math.max(0, Math.min(1.15, (drag[0] * dir[0] + drag[1] * dir[1]) / len / PULL_REACH));
+}
+export const pullsDone = (show: Show) => PULL_IDS.filter(id => show.pulls[id] >= 1).length;
+export const nextPull = (show: Show): PullId | null => PULL_IDS.find(id => show.pulls[id] < 1) ?? null;
+export const shapeDone = (show: Show) => coloured(show) && pullsDone(show) === PULL_IDS.length;
+/** A thumb pressed into the hero, kept in the clay's own coordinates so it travels with it. */
+export function pressPrint(show: Show, local: Pt): Show {
+  const x = Math.round(Math.max(-70, Math.min(70, local[0]))), y = Math.round(Math.max(-34, Math.min(34, local[1])));
+  const print: Print = { x, y, rot: Math.round(seeded(x, y, 5) * 140 - 70) };
+  return { ...show, prints: [...show.prints.filter(p => Math.hypot(p.x - x, p.y - y) > 12), print].slice(-MAX_PRINTS) };
+}
+
+/* chapter 2: animate */
+
+/** Where the finished hero stands when the camera first looks at it. */
+export function startPose(show: Show): Pose {
+  const hero = heroOf(show), look = showLook(show.seed), flips = HEROES[hero].flips;
+  const x = hero === 'rocket' ? SET_W / 2 - look.side * 70 : SET_W / 2 - look.side * 96;
+  const rest: Pose = { x, y: 0, rot: 0, sx: 1, sy: 1, flip: flips ? look.side : 1 };
+  return { ...rest, y: GROUND - heroDrop(hero, FULL_PULLS, rest) };
+}
+/** Where the lump sits while it is being shaped. */
+export function lumpPose(show: Show): Pose {
+  const hero = heroOf(show), rest: Pose = { x: SET_W / 2, y: 0, rot: 0, sx: 1, sy: 1, flip: 1 };
+  return { ...rest, y: GROUND - heroDrop(hero, show.pulls, rest) };
+}
+export function toAnimate(show: Show): Show { return show.chapter === 'shape' && shapeDone(show) ? { ...show, chapter: 'animate', keys: [] } : show; }
+export interface Field { x0: number; x1: number; y0: number; y1: number }
+/** The pose a hero takes when the child carries it to (x, y): it turns to the
+ * way it travels, leans into a climb, and stretches with a long step. The
+ * child chooses where; the clay answers how. */
+export function carriedPose(hero: HeroId, from: Pose | null, x: number, y: number, field: Field, pressed = false): Pose {
+  const spec = HEROES[hero];
+  const base: Pose = from ?? { x, y, rot: 0, sx: 1, sy: 1, flip: 1 };
+  const px = Math.max(field.x0, Math.min(field.x1, x)), floor = GROUND - heroDrop(hero, FULL_PULLS, { ...base, rot: 0, sx: 1, sy: 1 }), py = Math.max(field.y0, Math.min(floor, y));
+  if (!from) return { x: px, y: py, rot: 0, sx: 1, sy: 1, flip: 1 };
+  const dx = px - from.x, dy = py - from.y, dist = Math.hypot(dx, dy);
+  const flip = spec.flips && Math.abs(dx) > 6 ? (dx > 0 ? 1 : -1) : from.flip;
+  let rot = 0;
+  if (dist > 5) {
+    if (hero === 'rocket') rot = ((((Math.atan2(dy, dx) * 180) / Math.PI + 90) % 360) + 540) % 360 - 180;
+    else if (hero === 'frog') rot = Math.max(-16, Math.min(16, dx * 0.15));
+    else rot = Math.max(-70, Math.min(70, ((Math.atan2(dy, Math.abs(dx)) * 180) / Math.PI) * spec.follow));
   }
-  const total = REEL_SECONDS[reel];
-  return { kind: 'moment', index: Math.min(total, Math.floor(t) + 1), total };
+  const air = clamp01((floor - py) / 50), stretch = Math.min(0.16, dist / 700);
+  let sx = 1 + stretch, sy = 1 - stretch * 0.6;
+  if (hero === 'frog') { sx = lerp(1.06, 0.92, air); sy = lerp(0.94, 1.14, air); }
+  if (pressed) { sx *= 1.14; sy *= 0.8; }
+  return { x: px, y: py, rot, sx, sy, flip };
 }
+/** The camera needs something to have changed since the last frame. */
+export const MOVE_ENOUGH = 9;
+export function movedEnough(a: Pose, b: Pose): boolean {
+  return Math.hypot(a.x - b.x, a.y - b.y) >= MOVE_ENOUGH || Math.abs(a.rot - b.rot) >= 14 || Math.abs(a.sy - b.sy) >= 0.1;
+}
+/** The shutter. The first frame is always taken; after that, only a changed pose is. */
+export function shoot(show: Show, pose: Pose): Show {
+  if (show.chapter !== 'animate' || show.keys.length >= SHOTS) return show;
+  const last = show.keys[show.keys.length - 1];
+  if (last && !movedEnough(last, pose)) return show;
+  return { ...show, keys: [...show.keys, pose] };
+}
+/** The last frame taken back off the strip. */
+export function unshoot(show: Show): Show {
+  return show.chapter === 'animate' && show.keys.length > 0 ? { ...show, keys: show.keys.slice(0, -1) } : show;
+}
+export const filmDone = (show: Show) => show.keys.length >= SHOTS;
+export function toDirect(show: Show): Show { return show.chapter === 'animate' && filmDone(show) ? { ...show, chapter: 'direct' } : show; }
 
-/** What the caption under the stage says at `t`. */
-export type Caption = 'swim' | 'squash' | 'stretch' | 'count' | 'lift' | 'deep' | 'rise' | 'fly' | 'splash' | 'wave' | 'want' | 'half' | 'closer' | 'reach' | 'hopIn' | 'plant' | 'wait' | 'grow' | 'bloomed';
-export function captionAt(reel: ReelId, t: number): Caption {
-  if (reel === 'rocket') return t < 2 ? 'swim' : t < 3.4 ? 'squash' : t < 5 ? 'stretch' : t < 6.2 ? 'count' : 'lift';
-  if (reel === 'jump') return t < 2.2 ? 'deep' : t < 3.2 ? 'rise' : t < 4.6 ? 'fly' : t < 7.3 ? 'splash' : 'wave';
-  if (reel === 'ayaSeed') return t < 2 ? 'hopIn' : t < 2.9 ? 'plant' : t < 4.4 ? 'wait' : t < 7.2 ? 'grow' : 'bloomed';
-  return t < hopStart(2) ? 'want' : t < hopStart(5) ? 'half' : t < REACH_START ? 'closer' : 'reach';
-}
-
-/* ── the child's hands and tonight's show: bounded choices the films read ── */
-
-/** Where the rocket's porthole can be pressed in (rocket-local x): near the nose, in the middle, low. */
-export const PORTHOLE_SLOTS: readonly number[] = [40, 3, -34];
-/** A thumbprint the child left in the clay, in the body's own coordinates, so it travels with the clay. */
-export interface ClayPrint { x: number; y: number; rot: number }
-export const MAX_PRINTS = 3;
-/** Everything the child's hands have decided. A frame is a pure function of (reel, t, hands, show). */
-export interface Hands { porthole: number; prints: readonly ClayPrint[] }
-export const FRESH_HANDS: Hands = { porthole: 0, prints: [] };
-export const portholeSlotAt = (localX: number) => PORTHOLE_SLOTS.reduce((best, x, i) => Math.abs(x - localX) < Math.abs(PORTHOLE_SLOTS[best] - localX) ? i : best, 0);
-export function setPorthole(h: Hands, slot: number): Hands {
-  const porthole = Math.max(0, Math.min(PORTHOLE_SLOTS.length - 1, Math.round(slot)));
-  return porthole === h.porthole ? h : { ...h, porthole };
-}
-/** Presses a thumbprint into the clay: held inside the body, the three newest kept. */
-export function pressPrint(h: Hands, local: Pt): Hands {
-  const x = Math.round(Math.max(-62, Math.min(62, local[0]))), y = Math.round(Math.max(-26, Math.min(26, local[1])));
-  const print: ClayPrint = { x, y, rot: Math.round(seeded(x, y, 5) * 140 - 70) };
-  return { ...h, prints: [...h.prints.filter(p => Math.hypot(p.x - x, p.y - y) > 9), print].slice(-MAX_PRINTS) };
-}
-/** Tonight's dressing of the three sets. Each replay is a different show; the first is always show 0. */
-export interface ShowLook { stars: number; moon: number; bloom: number; sky: number }
-export const SHOW_KINDS = 3;
-export const FIRST_SHOW: ShowLook = { stars: 0, moon: 0, bloom: 0, sky: 0 };
-export function showFor(round: number): ShowLook {
-  const n = Math.max(0, Math.floor(round)) % SHOW_KINDS;
-  return { stars: n, moon: n, bloom: n, sky: n };
-}
-
-/* ── film 1: Whale into Rocket ─────────────────────────────────────────── */
-
-export const ROCKET_SCALE = 0.8;
-export interface Puff { id: number; x: number; y: number; r: number; o: number }
-export interface RocketFrame {
-  /** The body outline in local space (morphed, tail beat applied); `place` it with the transform. */
-  body: Pt[]; parts: PartKey;
-  cx: number; cy: number; rot: number; sx: number; sy: number;
-  /** 0 (whale) → 1 (lump) → 2 (rocket): which shape the clay is nearest. */
-  morph: number;
-  flame: number; tailLift: number; puffs: Puff[]; stars: number[]; shadow: number;
-}
-/** Where the whale's head sits in the sea, the lump settles, and the rocket stands. */
-const SEA_WHALE_Y = 190, SEA_LUMP_Y = 196, SEA_ROCKET_Y = 150;
-function rocketCore(t: number) {
-  const s1 = span(t, 2, 3), s2 = span(t, 3.4, 5);
-  const swim = 1 - span(t, 1.9, 2.7);
-  const tailLift = 9 * swim * Math.sin(2 * Math.PI * 1.1 * t);
-  const rot = -90 * span(t, 3.5, 4.9) + (t > 6.2 ? 2.2 * Math.sin(2 * Math.PI * 2.6 * t) * (1 - span(t, 6.4, 7.6)) : 0);
-  let cy = lerp(lerp(SEA_WHALE_Y, SEA_LUMP_Y, s1), SEA_ROCKET_Y, s2) + 2.5 * Math.sin(2 * Math.PI * 0.55 * t) * swim;
-  if (t > 6.2) cy -= 150 * Math.pow(t - 6.2, 2);
-  return { s1, s2, swim, tailLift, rot, cy };
-}
-/** The rocket's parts with the porthole pressed in where the child chose. */
-export function rocketKey(hands: Hands = FRESH_HANDS): PartKey {
-  return { ...PART_KEYS.rocket, eye: { ...PART_KEYS.rocket.eye, x: PORTHOLE_SLOTS[hands.porthole] ?? PORTHOLE_SLOTS[0] } };
-}
-export function rocketFilm(t: number, hands: Hands = FRESH_HANDS, show: ShowLook = FIRST_SHOW): RocketFrame {
-  const frame = frameAt(t);
-  const { s1, s2, tailLift, rot, cy } = rocketCore(t);
-  const shape = s2 > 0 ? lerpShape(BODY_KEYFRAMES.lump, BODY_KEYFRAMES.rocket, s2) : lerpShape(BODY_KEYFRAMES.whale, BODY_KEYFRAMES.lump, s1);
-  const parts = s2 > 0 ? lerpParts(PART_KEYS.lump, rocketKey(hands), s2) : lerpParts(PART_KEYS.whale, PART_KEYS.lump, s1);
-  // The squash: the clay flattens and spreads as it is pressed, then settles with a small wobble.
-  const q = Math.sin(Math.PI * s1);
-  const settle = t > 3 && t < 3.5 ? 0.05 * Math.sin((t - 3) * Math.PI * 6) * (1 - (t - 3) / 0.5) : 0;
-  const sx = ROCKET_SCALE * (1 + 0.15 * q - settle), sy = ROCKET_SCALE * (1 - 0.17 * q + settle);
-  const shudder = t >= 5 && t < 6.2 ? (seeded(frame, 91) - 0.5) * 2.6 * span(t, 5, 6.2, v => v) : 0;
-  const flicker = 0.85 + 0.3 * seeded(frame, 17);
-  const flame = t < 5 ? 0 : t < 6.2 ? 0.32 * flicker : Math.min(1.25, (0.85 + 0.4 * span(t, 6.2, 6.6)) * flicker);
+const turn = (a: number, b: number, k: number) => { const d = ((((b - a) % 360) + 540) % 360) - 180; return a + d * k; };
+/** The pose on drawing `d` of the film: the child's own poses on every fourth
+ * drawing, and between them a smooth path through them (Catmull-Rom), with a
+ * little stretch in the middle of a long step. */
+export function drawingPose(keys: readonly Pose[], d: number): Pose | null {
+  if (keys.length === 0) return null;
+  if (keys.length === 1) return keys[0];
+  const last = filmDrawings(keys.length) - 1, at = Math.max(0, Math.min(last, d));
+  if (at % STEPS === 0) return keys[at / STEPS];
+  const seg = Math.min(keys.length - 2, Math.floor(at / STEPS)), raw = (at - seg * STEPS) / STEPS;
+  const k = lerp(raw, raw * raw * (3 - 2 * raw), 0.5);
+  const p0 = keys[Math.max(0, seg - 1)], p1 = keys[seg], p2 = keys[seg + 1], p3 = keys[Math.min(keys.length - 1, seg + 2)];
+  const cr = (a: number, b: number, c: number, e: number) => 0.5 * (2 * b + (c - a) * k + (2 * a - 5 * b + 4 * c - e) * k * k + (3 * b - a - 3 * c + e) * k * k * k);
+  const step = Math.hypot(p2.x - p1.x, p2.y - p1.y), mid = Math.sin(Math.PI * k) * Math.min(0.12, step / 900);
   return {
-    body: beatBody(shape, tailLift), parts, cx: 200 + shudder, cy, rot, sx, sy,
-    morph: s2 > 0 ? 1 + s2 : s1, flame, tailLift, puffs: rocketPuffs(t), stars: starSwing(t, show.stars),
-    shadow: t < 6.2 ? 1 : 1 - span(t, 6.2, 6.9),
+    x: cr(p0.x, p1.x, p2.x, p3.x), y: Math.min(Math.max(p1.y, p2.y), cr(p0.y, p1.y, p2.y, p3.y)), rot: turn(p1.rot, p2.rot, k),
+    sx: lerp(p1.sx, p2.sx, k) + mid, sy: lerp(p1.sy, p2.sy, k) - mid * 0.6, flip: k < 0.5 ? p1.flip : p2.flip,
   };
 }
-/** The countdown puffs, then the trail. A puff exists only for its own lifetime. */
-const PUFF_LIFE = 1.3;
-const PUFF_BIRTHS: readonly number[] = [5, 5.4, 5.8, ...Array.from({ length: 10 }, (_, i) => 6.25 + i * 0.12)];
-export function rocketPuffs(t: number): Puff[] {
-  const out: Puff[] = [];
-  PUFF_BIRTHS.forEach((born, id) => {
-    const age = t - born;
-    if (age < 0 || age >= PUFF_LIFE) return;
-    const e = age / PUFF_LIFE, side = seeded(id, 3) < 0.5 ? -1 : 1;
-    const core = rocketCore(born);
-    const base = placePoint([-78, 0], 200, core.cy, core.rot, ROCKET_SCALE);
-    out.push({ id, x: base[0] + side * (12 + 24 * easeOut(e)) + (seeded(id, 5) - 0.5) * 10, y: Math.min(base[1], 226) + 4 - 10 * easeOut(e), r: 9 + 17 * easeOut(e) + seeded(id, 7) * 4, o: Math.pow(1 - e, 1.4) });
+/** The moments an audience answers: the drawing where the hero is highest, and the one after its longest step. */
+export function filmBeats(keys: readonly Pose[]): { apex: number; leap: number } {
+  let apex = 0, top = Infinity, leap = 0, far = -1;
+  keys.forEach((key, i) => {
+    if (key.y < top) { top = key.y; apex = i; }
+    if (i > 0) { const d = Math.hypot(key.x - keys[i - 1].x, key.y - keys[i - 1].y); if (d > far) { far = d; leap = i; } }
   });
-  return out;
-}
-/** Five clay stars on wires; they sway, and shake at lift-off. Degrees. */
-export interface WireStar { x: number; len: number; r: number }
-/** Three hangings of the five stars: one for each show. */
-export const STAR_SETS: readonly (readonly WireStar[])[] = [
-  [{ x: 58, len: 46, r: 11 }, { x: 118, len: 80, r: 8 }, { x: 262, len: 64, r: 10 }, { x: 318, len: 36, r: 8 }, { x: 352, len: 92, r: 12 }],
-  [{ x: 50, len: 84, r: 10 }, { x: 104, len: 40, r: 12 }, { x: 168, len: 58, r: 8 }, { x: 250, len: 34, r: 9 }, { x: 346, len: 70, r: 11 }],
-  [{ x: 64, len: 60, r: 9 }, { x: 132, len: 34, r: 11 }, { x: 236, len: 44, r: 8 }, { x: 290, len: 88, r: 12 }, { x: 350, len: 52, r: 9 }],
-];
-export const STARS: readonly WireStar[] = STAR_SETS[0];
-export const starsOf = (set: number) => STAR_SETS[((set % STAR_SETS.length) + STAR_SETS.length) % STAR_SETS.length];
-export function starSwing(t: number, set = 0): number[] {
-  const shake = span(t, 6.2, 6.6) * (1 - span(t, 7, 8));
-  return starsOf(set).map((_, i) => 5 * Math.sin(2 * Math.PI * 0.42 * t + i * 1.7) + 9 * shake * Math.sin(2 * Math.PI * 3.1 * t + i * 2.3));
+  return { apex: apex * STEPS, leap: Math.max(0, leap * STEPS - 2) };
 }
 
-/* ── film 2: The Whale's Jump ──────────────────────────────────────────── */
+/* chapter 3: direct */
 
-/** The water's surface is world y = 0; down is positive. */
-export const JUMP_SCALE = 0.58;
-export const SPLASH_T = 4.6, SPLASH_X = 284, TAIL_X = 270;
-const G = 600, ARC_G = 449, ARC_V = 314, ARC_VX = 76, BREACH_T = 3.2, BREACH_X = 178;
-export interface WhalePose { x: number; y: number; rot: number; bend: number; lift: number }
-/** The whale's position, rotation, body bend and tail beat at `t`. */
-export function whalePose(t: number): WhalePose {
-  if (t < 2.2) {
-    const k = clamp01(t / 2.2);
-    return { x: lerp(100, 152, k), y: lerp(150, 72, easeInOut(k)), rot: lerp(-8, -32, easeInOut(k)), bend: 0, lift: 10 * Math.sin(2 * Math.PI * 1.5 * t) };
-  }
-  if (t < BREACH_T) {
-    const u = (t - 2.2) / 1;
-    return { x: lerp(152, BREACH_X, u), y: lerp(72, 0, easeIn(u)), rot: lerp(-32, -75, easeIn(u)), bend: -0.2 * u, lift: 10 * (1 - u) * Math.sin(2 * Math.PI * 2 * t) };
-  }
-  if (t < SPLASH_T) {
-    const tau = t - BREACH_T, vy = -ARC_V + ARC_G * tau;
-    return { x: BREACH_X + ARC_VX * tau, y: -ARC_V * tau + 0.5 * ARC_G * tau * tau, rot: (Math.atan2(vy, ARC_VX) * 180) / Math.PI, bend: 0.55 * Math.sin((Math.PI * tau) / (SPLASH_T - BREACH_T)), lift: 0 };
-  }
-  const tau = t - SPLASH_T, end = (Math.atan2(-ARC_V + ARC_G * (SPLASH_T - BREACH_T), ARC_VX) * 180) / Math.PI;
-  return { x: SPLASH_X + 50 * tau, y: 150 * tau - 22 * tau * tau, rot: lerp(end, 30, span(tau, 0, 1.6)), bend: 0, lift: 8 * span(tau, 0.3, 1) * Math.sin(2 * Math.PI * 1.4 * t) };
+export function placeBuddy(show: Show, at: Pt, field: Field): Show {
+  if (show.chapter !== 'direct') return show;
+  const spot: Pt = [Math.round(Math.max(field.x0 + 20, Math.min(field.x1 - 20, at[0]))), Math.round(Math.max(field.y0 + 20, Math.min(GROUND - 18, at[1])))];
+  return { ...show, buddy: { at: spot, act: show.buddy?.act ?? 'hopAct' } };
 }
-export function whaleBody(pose: WhalePose): Pt[] {
-  return bendBody(beatBody(BODY_KEYFRAMES.whale, pose.lift), pose.bend);
+/** A tap on the friend gives it its next act. */
+export function nextAct(show: Show): Show {
+  if (show.chapter !== 'direct' || !show.buddy) return show;
+  return { ...show, buddy: { ...show.buddy, act: BUDDY_ACTS[(BUDDY_ACTS.indexOf(show.buddy.act) + 1) % BUDDY_ACTS.length] } };
 }
-/** The camera starts under the water and rises with the whale. World y at the stage's top. */
-export const cameraTop = (t: number) => lerp(-64, -206, span(t, 1.7, 3.3));
-
-export interface Droplet { id: number; x: number; y: number; r: number }
-interface Ballistic { id: number; born: number; x0: number; y0: number; vx: number; vy: number; r: number }
-/** Water sheeting off the whale while it flies, born along its body. */
-const SHEET: readonly Ballistic[] = Array.from({ length: 18 }, (_, i) => {
-  const born = 3.24 + i * 0.044, pose = whalePose(born), next = whalePose(born + 0.01);
-  const along = lerp(46, -92, seeded(i, 1)), across = lerp(-26, 30, seeded(i, 2));
-  const [x0, y0] = placePoint([along, across], pose.x, pose.y, pose.rot, JUMP_SCALE);
-  const wvx = (next.x - pose.x) / 0.01, wvy = (next.y - pose.y) / 0.01;
-  return { id: i, born, x0, y0, vx: wvx * 0.32 + (seeded(i, 3) - 0.5) * 60, vy: wvy * 0.22 + 30 + seeded(i, 4) * 40, r: 2 + 2.6 * seeded(i, 5) };
-}).filter(d => d.y0 < -3);
-/** The splash: a crown of droplets thrown out where the whale comes down. */
-const SPLASH: readonly Ballistic[] = Array.from({ length: 26 }, (_, i) => ({
-  id: 100 + i, born: SPLASH_T + 0.006 * i, x0: SPLASH_X + (seeded(i, 11) - 0.5) * 52, y0: -2,
-  vx: (seeded(i, 12) - 0.5) * 300, vy: -(170 + 220 * seeded(i, 13)), r: 3 + 3.6 * seeded(i, 14),
-}));
-export const DROPLETS: readonly Ballistic[] = [...SHEET, ...SPLASH];
-/** Seconds from birth until a droplet falls back to the surface (y = 0). */
-export function landsAfter(d: Pick<Ballistic, 'y0' | 'vy'>): number {
-  return (-d.vy + Math.sqrt(d.vy * d.vy - 2 * G * d.y0)) / G;
+/** A gel in front of the lamp; the same gel again takes it out. */
+export function setGel(show: Show, gel: GelId): Show {
+  return show.chapter === 'direct' ? { ...show, gel: show.gel === gel ? 'clearGel' : gel } : show;
 }
-/** Every droplet in the air at `t`: each one exists only between its birth and
- * its landing, on its own arc, so the same `t` always gives the same droplets. */
-export function droplets(t: number): Droplet[] {
-  const out: Droplet[] = [];
-  for (const d of DROPLETS) {
-    const tau = t - d.born;
-    if (tau < 0 || tau >= landsAfter(d)) continue;
-    out.push({ id: d.id, x: d.x0 + d.vx * tau, y: d.y0 + d.vy * tau + 0.5 * G * tau * tau, r: d.r });
-  }
-  return out;
-}
-export interface Ring { id: number; x: number; rx: number; ry: number; o: number }
-const RINGS: readonly { born: number; x: number; life: number; size: number }[] = [
-  { born: 4.62, x: SPLASH_X, life: 2.8, size: 96 }, { born: 4.9, x: SPLASH_X, life: 2.6, size: 80 }, { born: 5.25, x: SPLASH_X, life: 2.4, size: 66 },
-  { born: 3.22, x: BREACH_X, life: 1.6, size: 44 }, { born: 7.95, x: TAIL_X, life: 1.05, size: 40 },
-];
-/** Foam rings spread across the surface and fade. */
-export function foamRings(t: number): Ring[] {
-  return RINGS.flatMap((ring, id) => {
-    const tau = t - ring.born;
-    if (tau < 0 || tau >= ring.life) return [];
-    const rx = 12 + ring.size * (1 - Math.exp(-1.6 * tau));
-    return [{ id, x: ring.x, rx, ry: rx * 0.2, o: Math.pow(1 - tau / ring.life, 1.3) }];
-  });
-}
-/** The crown of clay water thrown up by the splash: 0 → 1 → 0. */
-export const splashCrown = (t: number) => t < SPLASH_T ? 0 : t < SPLASH_T + 0.22 ? easeOut((t - SPLASH_T) / 0.22) : 1 - easeIn((t - SPLASH_T - 0.22) / 0.55);
-export interface Bubble { id: number; x: number; y: number; r: number }
-interface Riser { id: number; born: number; x0: number; y0: number; speed: number; r: number }
-const RISERS: readonly Riser[] = [
-  ...Array.from({ length: 10 }, (_, i) => { const born = 0.15 + 0.21 * i, pose = whalePose(born), [x0, y0] = placePoint([34, -44], pose.x, pose.y, pose.rot, JUMP_SCALE); return { id: i, born, x0, y0, speed: 36 + 22 * seeded(i, 21), r: 2.4 + 3 * seeded(i, 22) }; }),
-  ...Array.from({ length: 12 }, (_, i) => { const born = 4.76 + 0.15 * i, pose = whalePose(born); return { id: 20 + i, born, x0: pose.x + (seeded(i, 23) - 0.5) * 30, y0: pose.y + (seeded(i, 24) - 0.5) * 20, speed: 46 + 26 * seeded(i, 25), r: 2 + 3.4 * seeded(i, 26) }; }),
-].filter(b => b.y0 > 8);
-/** Bubbles rise from the whale and pop at the surface. */
-export function bubbles(t: number): Bubble[] {
-  return RISERS.flatMap(b => {
-    const tau = t - b.born, y = b.y0 - b.speed * tau;
-    if (tau < 0 || y <= 4) return [];
-    return [{ id: b.id, x: b.x0 + 4 * Math.sin(4 * tau + b.id), y, r: b.r }];
-  });
-}
-/** The tail wave at the end: up out of the water, a wave, back down. */
-export function tailWave(t: number): { rise: number; rot: number } {
-  return { rise: span(t, 7.3, 7.9) - span(t, 8.55, 9), rot: 22 * Math.sin(2 * Math.PI * 1.5 * (t - 7.9)) * (t > 7.9 && t < 8.7 ? 1 : 0) };
-}
-/** The surface wave height at x (world), with the splash's ripple travelling out. */
-export function surfaceAt(x: number, t: number): number {
-  let y = 2.2 * Math.sin(x / 26 + 2.1 * t) + 1.3 * Math.sin(x / 11 - 3.3 * t);
-  if (t > SPLASH_T) { const tau = t - SPLASH_T, d = Math.abs(x - SPLASH_X); y += 6 * Math.exp(-1.2 * tau) * Math.exp(-d / 120) * Math.sin(d / 10 - 9 * tau); }
-  return y;
+export function setTune(show: Show, tune: TuneId): Show { return show.chapter === 'direct' ? { ...show, tune } : show; }
+/** The director's three jobs, as things done (never a measure). */
+export const directJobs = (show: Show) => ({ friend: !!show.buddy, light: show.gel !== 'clearGel', tune: !!show.tune });
+export const directDone = (show: Show) => !!show.buddy;
+export function toPremiere(show: Show): Show { return show.chapter === 'direct' && directDone(show) ? { ...show, chapter: 'premiere' } : show; }
+/** Chapters finished so far (the quest strip's pips). */
+export function chaptersDone(show: Show): Readonly<Record<'shape' | 'animate' | 'direct', boolean>> {
+  const at = ['cans', 'shape', 'animate', 'direct', 'premiere'].indexOf(show.chapter);
+  return { shape: at > 1, animate: at > 2, direct: at > 3 };
 }
 
-/* ── film 3: Aya's Flower ──────────────────────────────────────────────── */
+/* ── the premiere ───────────────────────────────────────────────────────── */
 
-/** A clay Aya hops into the Sky Gardens, presses one seed into the planter,
- * waits while a small cloud waters it, and the flower comes up in the
- * child's own clay. Every part is a closed-form function of `t`. */
-export const AYA_HOPS = 3, AYA_X0 = 44, AYA_X1 = 192, PLANTER_X = 252, SOIL_Y = 214, AYA_GROUND = 236;
-const AYA_HOP_AT = 0.25, AYA_HOP_EVERY = 0.6, AYA_HOP_AIR = 0.36;
-export const SEED_T = 2.6, RAIN_FROM = 3.6, SPROUT_T = 4.4, BLOOM_T = 6.2, BLOOMED_T = 7.25;
-export interface RainDrop { id: number; x: number; y: number }
-export interface AyaFrame {
-  x: number; lift: number; sx: number; sy: number;
-  /** 0 = ears up, 1 = ears drooped (waiting is hard). */
-  droop: number;
-  /** 0…1: the paw reaching to the soil with the seed. */
-  arm: number; seed: { x: number; y: number; o: number };
-  cloud: { x: number; o: number }; drops: RainDrop[];
-  /** 0…1 each: the stem's height, the two leaves, the five petals, the flower's middle. */
-  stem: number; leaves: number; petals: number[]; middle: number; sway: number; glad: boolean;
+export const PREMIERE = { dim: 1.6, hold: 0.7, lights: 0.7, applause: 3 } as const;
+export type PremierePhase = 'dim' | 'roll' | 'hold' | 'encore' | 'lights' | 'applause' | 'over';
+export interface PremiereMoment { phase: PremierePhase; frame: number; dark: number; push: number; beam: number }
+export function premiereSeconds(keys: number): number { return PREMIERE.dim + (filmFrames(keys) / FPS) * 2 + PREMIERE.hold + PREMIERE.lights + PREMIERE.applause; }
+/** What the rotunda is doing `t` seconds into the premiere. */
+export function premiereAt(t: number, keys: number): PremiereMoment {
+  const frames = filmFrames(keys), len = frames / FPS, last = Math.max(0, frames - 1);
+  const a = PREMIERE.dim, b = a + len, c = b + PREMIERE.hold, e = c + len, f = e + PREMIERE.lights, g = f + PREMIERE.applause;
+  if (t < a) return { phase: 'dim', frame: 0, dark: clamp01(t / (a * 0.6)), push: 0, beam: clamp01((t - a * 0.5) / (a * 0.4)) };
+  if (t < b) return { phase: 'roll', frame: Math.min(last, Math.floor((t - a) * FPS)), dark: 1, push: 0, beam: 1 };
+  if (t < c) return { phase: 'hold', frame: last, dark: 1, push: clamp01((t - b) / PREMIERE.hold), beam: 1 };
+  if (t < e) return { phase: 'encore', frame: Math.min(last, Math.floor((t - c) * FPS)), dark: 1, push: 1, beam: 1 };
+  if (t < f) return { phase: 'lights', frame: last, dark: 1 - clamp01((t - e) / PREMIERE.lights), push: 1 - clamp01((t - e) / PREMIERE.lights), beam: 1 - clamp01((t - e) / (PREMIERE.lights * 0.6)) };
+  if (t < g) return { phase: 'applause', frame: last, dark: 0, push: 0, beam: 0 };
+  return { phase: 'over', frame: last, dark: 0, push: 0, beam: 0 };
 }
-const RAIN: readonly { id: number; born: number; dx: number }[] = Array.from({ length: 9 }, (_, i) => ({ id: i, born: RAIN_FROM + 0.075 * i, dx: (seeded(i, 71) - 0.5) * 34 }));
-const RAIN_FALL = 0.34, CLOUD_Y = 96;
-export function ayaFilm(t: number): AyaFrame {
-  let x = AYA_X0, lift = 0, sx = 1, sy = 1;
-  for (let k = 0; k < AYA_HOPS; k++) {
-    const start = AYA_HOP_AT + k * AYA_HOP_EVERY, off = start + 0.12, land = off + AYA_HOP_AIR, from = lerp(AYA_X0, AYA_X1, k / AYA_HOPS), to = lerp(AYA_X0, AYA_X1, (k + 1) / AYA_HOPS);
-    if (t >= land) x = to;
-    if (t < start || t >= start + AYA_HOP_EVERY) continue;
-    if (t < off) { const c = Math.sin((Math.PI * (t - start)) / 0.24); sy = 1 - 0.16 * c; sx = 1 + 0.1 * c; x = from; }
-    else if (t < land) { const u = (t - off) / AYA_HOP_AIR; x = lerp(from, to, u); lift = 34 * 4 * u * (1 - u); sy = 1.1; sx = 0.93; }
-    else { const u = (t - land) / (AYA_HOP_EVERY - 0.12 - AYA_HOP_AIR), c = Math.sin(Math.PI * Math.min(1, u * 1.5)); sy = 1 - 0.13 * c; sx = 1 + 0.08 * c; }
-  }
-  // Two glad hops on the spot once the flower is open.
-  for (const at of [7.6, 8.18]) {
-    if (t < at || t >= at + 0.5) continue;
-    const u = (t - at) / 0.5;
-    if (u < 0.24) { const c = Math.sin((Math.PI * u) / 0.48); sy = 1 - 0.14 * c; sx = 1 + 0.09 * c; }
-    else if (u < 0.86) { const v = (u - 0.24) / 0.62; lift = 22 * 4 * v * (1 - v); sy = 1.08; sx = 0.94; }
-    else { const c = Math.sin((Math.PI * (u - 0.86)) / 0.14); sy = 1 - 0.1 * c; sx = 1 + 0.06 * c; }
-  }
-  const arm = span(t, 2.05, SEED_T) * (1 - span(t, SEED_T + 0.05, 2.95));
-  const seedK = span(t, 2.05, SEED_T, easeIn);
-  const seed = { x: lerp(AYA_X1 + 25, PLANTER_X - 2, seedK), y: lerp(AYA_GROUND - 28, SOIL_Y - 1, seedK) - 16 * Math.sin(Math.PI * seedK), o: t < 1.95 ? 0 : 1 - span(t, SEED_T, SEED_T + 0.25) };
-  const cloud = { x: lerp(420, PLANTER_X, span(t, 2.9, 3.55, easeOut)) - 260 * span(t, 4.5, 5.4, easeIn), o: t < 2.9 || t >= 5.4 ? 0 : 1 };
-  const drops: RainDrop[] = [];
-  for (const d of RAIN) {
-    const u = (t - d.born) / RAIN_FALL;
-    if (u < 0 || u >= 1) continue;
-    drops.push({ id: d.id, x: PLANTER_X + d.dx, y: lerp(CLOUD_Y + 12, SOIL_Y - 2, u * u) });
-  }
-  const droop = span(t, 2.95, 3.5) * (1 - span(t, BLOOMED_T - 0.1, BLOOMED_T + 0.18, easeOut));
-  const petals = [0, 1, 2, 3, 4].map(i => span(t, BLOOM_T + 0.34 + i * 0.12, BLOOM_T + 0.74 + i * 0.12, easeOut));
-  return {
-    x, lift, sx, sy, droop, arm, seed, cloud, drops,
-    stem: span(t, SPROUT_T, BLOOM_T - 0.2, easeOut), leaves: span(t, SPROUT_T + 0.7, BLOOM_T), petals, middle: span(t, BLOOM_T, BLOOM_T + 0.45, easeOut),
-    sway: t > BLOOMED_T ? 4 * Math.sin(2 * Math.PI * 0.8 * (t - BLOOMED_T)) * Math.exp(-0.5 * (t - BLOOMED_T)) + 1.2 * Math.sin(2 * Math.PI * 0.4 * t) : 0, glad: t >= BLOOMED_T,
-  };
+export type CrewId = 'bebe' | 'gobgob' | 'chock' | 'aya' | 'pep';
+export const CREW: readonly CrewId[] = ['bebe', 'gobgob', 'chock', 'aya', 'pep'];
+export type CrewMood = 'watching' | 'leaning' | 'gasping' | 'turning' | 'cheering';
+/** What one of the crew is doing at a premiere moment: they watch, lean in on
+ * the longest step, start at the highest point, turn to each other between
+ * the two showings, and cheer when the lights come up. */
+export function crewMood(index: number, moment: PremiereMoment, keys: readonly Pose[]): CrewMood {
+  if (moment.phase === 'applause' || moment.phase === 'over') return 'cheering';
+  if (moment.phase === 'hold') return 'turning';
+  if (moment.phase === 'lights') return index % 2 === 0 ? 'turning' : 'cheering';
+  if (moment.phase !== 'roll' && moment.phase !== 'encore') return 'watching';
+  const beats = filmBeats(keys), d = Math.floor(moment.frame / TWOS), late = index % 3;
+  if (d >= beats.apex + late && d <= beats.apex + late + 3) return 'gasping';
+  if (d >= beats.leap + late && d <= beats.leap + late + 2) return 'leaning';
+  return 'watching';
 }
 
-/* ── film 4: Halfway Frog ──────────────────────────────────────────────── */
+/* ── the stage: where everything sits for a room of a given size ─────────── */
 
-/** After `hop` hops the frog has covered 1 − (½)^hop of the way: each hop is half of what was left. */
-export const frogPosition = (hop: number) => 1 - Math.pow(0.5, hop);
-/** The measuring ribbon: hop k's stretch is exactly (½)^k of the way; what is left after them all is (½)^7. */
-export function ribbonSegments(hops = FROG_HOPS): { hop: number; from: number; to: number; length: number }[] {
-  return Array.from({ length: hops }, (_, i) => ({ hop: i + 1, from: frogPosition(i), to: frogPosition(i + 1), length: Math.pow(0.5, i + 1) }));
+/** The tall rotunda picture, and where its round stage is in it (fractions of the picture). */
+export const ROOM = { w: 1024, h: 983, daisX: 0.502, daisY: 0.563, daisW: 0.52, daisFront: 0.625, daisBack: 0.503 } as const;
+export interface Box { x: number; y: number; w: number; h: number }
+export interface StageLayout {
+  portrait: boolean; w: number; h: number;
+  /** Where the room picture is laid (it covers the stage). */
+  room: Box;
+  /** Pixels per clay unit, and the pixel that is the set's (0, 0). */
+  unit: number; ox: number; oy: number;
+  /** The clay units the hero may be carried through. */
+  field: Field;
+  /** The felt cloth behind the hero, in clay units. */
+  cloth: Box;
+  /** Bench things, in pixels: the rug of lumps, the camera, the film strip, the cans' row, the lamp and gels, the tune tiles. */
+  rug: Box; lens: Box; strip: Box; cans: Box; lamp: Box; gels: Box; tiles: Box; friend: Box;
+  /** The premiere's screen, and the lens the beam leaves from, in pixels. */
+  screen: Box; beamFrom: Pt;
+  /** The row the crew stand in for the premiere: baseline y and the height of the tallest. */
+  crewY: number; crewH: number;
 }
-export const hopsLanded = (t: number) => Array.from({ length: FROG_HOPS }, (_, i) => i + 1).filter(hop => t >= hopLanding(hop)).length;
-/** Nose start, flower stem and the stretch between them (stage units). */
-export const FROG_X0 = 104, FROG_XF = 332, FROG_D = FROG_XF - FROG_X0;
-export interface FrogFrame { progress: number; nose: number; lift: number; sx: number; sy: number; hop: number; arm: number; touched: boolean; bob: number; look: number; loupe: number; gap: number }
-export function frogFilm(t: number): FrogFrame {
-  let progress = frogPosition(hopsLanded(t)), lift = 0, sx = 1, sy = 1, hop = 0;
-  for (let k = 1; k <= FROG_HOPS; k++) {
-    const start = hopStart(k), off = hopTakeoff(k), land = hopLanding(k);
-    if (t < start || t >= start + HOP_LEN) continue;
-    hop = k;
-    const len = Math.pow(0.5, k), height = Math.min(62, Math.max(5, len * FROG_D * 0.5));
-    if (t < off) { const c = Math.sin((Math.PI * (t - start)) / TAKEOFF / 2); sy = 1 - 0.14 * c; sx = 1 + 0.08 * c; }
-    else if (t < land) { const u = (t - off) / AIR; progress = lerp(frogPosition(k - 1), frogPosition(k), u); lift = height * 4 * u * (1 - u); sy = 1.08; sx = 0.94; }
-    else { const u = (t - land) / (HOP_LEN - TAKEOFF - AIR), c = Math.sin(Math.PI * Math.min(1, u * 1.6)); sy = 1 - 0.12 * c; sx = 1 + 0.07 * c; }
+const HUD_TOP = 84, DOCK = 82;
+export function stageLayout(w: number, h: number): StageLayout {
+  const W = Math.max(240, w), H = Math.max(220, h), portrait = H >= W;
+  const daisY = Math.round(H * (portrait ? 0.6 : H < 420 ? 0.7 : 0.72));
+  const scale = Math.max(daisY / (ROOM.daisY * ROOM.h), (H - daisY) / ((1 - ROOM.daisY) * ROOM.h), W / (2 * Math.min(ROOM.daisX, 1 - ROOM.daisX) * ROOM.w)) * 1.002;
+  const room: Box = { x: W / 2 - ROOM.daisX * ROOM.w * scale, y: daisY - ROOM.daisY * ROOM.h * scale, w: ROOM.w * scale, h: ROOM.h * scale };
+  const daisW = ROOM.daisW * ROOM.w * scale, top = Math.min(HUD_TOP, H * 0.2);
+  const unit = Math.max(0.36, Math.min((daisW * 0.9) / SET_W, (daisY - top) / 214, (W * (portrait ? 1 : 0.62)) / SET_W));
+  const ox = W / 2 - (SET_W / 2) * unit, oy = daisY - GROUND * unit;
+  const side = portrait ? 6 : Math.max(120, W * 0.17);
+  const field: Field = { x0: Math.max(-170, (side - ox) / unit + (portrait ? 34 : 50)), x1: Math.min(SET_W + 170, (W - side - ox) / unit - (portrait ? 34 : 50)), y0: (top + 6 - oy) / unit + 30, y1: GROUND };
+  const clothTop = Math.max(-120, (top + 2 - oy) / unit), clothHalf = Math.min(portrait ? W / unit / 2 - 6 : 300, (W * 0.5 - side * 0.72) / unit);
+  const cloth: Box = { x: SET_W / 2 - clothHalf, y: clothTop, w: clothHalf * 2, h: GROUND - 16 - clothTop };
+  const front = daisY + (ROOM.daisFront - ROOM.daisY) * ROOM.h * scale, bottom = H - Math.min(DOCK, H * 0.2);
+  let rug: Box, lens: Box, strip: Box, cans: Box, lamp: Box, gels: Box, tiles: Box, friend: Box;
+  if (portrait) {
+    const zone = Math.max(96, bottom - front - 8), stripH = Math.min(58, zone * 0.34), row = zone - stripH - 8;
+    strip = { x: 10, y: front + 6, w: W - 20, h: stripH };
+    const rowY = strip.y + stripH + 6;
+    rug = { x: W * 0.04, y: rowY, w: W * 0.92, h: row };
+    lens = { x: W / 2 - row * 0.4, y: rowY - row * 0.06, w: row * 0.8, h: row * 1.04 };
+    cans = { x: W * 0.03, y: front + 4, w: W * 0.94, h: Math.min(zone, W * 0.3) };
+    const lampH = Math.min(130, H * 0.17);
+    lamp = { x: W - lampH * 0.72 - 2, y: daisY + 16 * unit - lampH, w: lampH * 0.74, h: lampH };
+    gels = { x: W * 0.52, y: rowY + row * 0.08, w: Math.min(W * 0.44, row * 1.8), h: row * 0.86 };
+    tiles = { x: W * 0.22, y: rowY + row * 0.42, w: W * 0.3, h: row * 0.5 };
+    friend = { x: W * 0.04, y: rowY + row * 0.2, w: row * 0.62, h: row * 0.56 };
+  } else {
+    // On a wide stage the bench is the floor either side of the dais: clay and camera on the left, the lamp on the right, the dock at the end.
+    const col = Math.max(110, side * 1.28), rowH = Math.min(H * 0.34, 230), base = H - Math.min(16, H * 0.04), stripH = Math.min(58, H * 0.15), stripW = Math.min(W * 0.46, 480);
+    strip = { x: W / 2 - stripW / 2, y: H - stripH - Math.min(12, H * 0.03), w: stripW, h: stripH };
+    rug = { x: 10, y: base - rowH, w: col, h: rowH };
+    lens = { x: 14, y: base - rowH * 0.94, w: col * 0.6, h: rowH * 0.94 };
+    cans = { x: W / 2 - Math.min(W * 0.34, 400), y: front - Math.min(H * 0.26, 170), w: Math.min(W * 0.68, 800), h: Math.min(H * 0.26, 170) };
+    const lampH = Math.min(150, H * 0.24), clothRight = ox + (cloth.x + cloth.w) * unit;
+    lamp = { x: Math.min(W - lampH * 0.78, clothRight + 6), y: daisY + 10 * unit - lampH, w: lampH * 0.74, h: lampH };
+    gels = { x: 10, y: base - rowH * 0.5, w: Math.min(col * 0.86, strip.x - 16), h: rowH * 0.5 };
+    tiles = { x: 12, y: base - rowH * 0.9, w: Math.min(col * 0.86, strip.x - 18), h: rowH * 0.34 };
+    const lumpSize = Math.max(48, Math.min(84, 56 * unit));
+    friend = { x: Math.max(col * 0.9, ox + cloth.x * unit - lumpSize * 0.9), y: daisY + 14 * unit - lumpSize * 0.5, w: lumpSize, h: lumpSize * 0.86 };
   }
-  const arm = span(t, REACH_START, REACH_TOUCH), touched = t >= REACH_TOUCH;
-  const bob = touched ? 5 * Math.exp(-2.2 * (t - REACH_TOUCH)) * Math.sin(12 * (t - REACH_TOUCH)) : 0;
-  const gap = FROG_D * (1 - progress);
-  return {
-    progress, nose: FROG_X0 + FROG_D * progress, lift, sx, sy, hop, arm, touched, bob,
-    look: span(t, REACH_START - 0.8, REACH_START - 0.3), loupe: hopsLanded(t) >= 5 ? 1 - span(t, REACH_START, REACH_START + 0.4) : 0, gap,
-  };
+  const screenW = portrait ? W * 0.94 : Math.min(W * 0.56, (H * 0.62) * 1.5), screenH = Math.min(screenW / 1.42, H * (portrait ? 0.44 : 0.62));
+  const screen: Box = { x: W / 2 - screenW / 2, y: Math.max(top * 0.5, daisY - screenH - H * 0.03), w: screenW, h: screenH };
+  const crewH = portrait ? H * 0.3 : H * 0.42;
+  return { portrait, w: W, h: H, room, unit, ox, oy, field, cloth, rug, lens, strip, cans, lamp, gels, tiles, friend, screen, beamFrom: [W / 2, H * (portrait ? 0.86 : 0.9)], crewY: H + crewH * 0.34, crewH };
 }
+/** Clay units ↔ stage pixels. */
+export const toPx = (layout: Pick<StageLayout, 'unit' | 'ox' | 'oy'>, p: Pt): Pt => [layout.ox + p[0] * layout.unit, layout.oy + p[1] * layout.unit];
+export const toSet = (layout: Pick<StageLayout, 'unit' | 'ox' | 'oy'>, p: Pt): Pt => [(p[0] - layout.ox) / layout.unit, (p[1] - layout.oy) / layout.unit];
 
 /** Fills the numbered blanks of a line: `{0}` is the first value, `{1}` the next. */
 export function clayLine(template: string, ...values: (string | number)[]): string {

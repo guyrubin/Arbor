@@ -57,7 +57,7 @@ export function cameraTransform(camera: PlayCamera | undefined): { x: number; y:
   const room = (zoom - 1) / 2; // how far the scaled world may slide, as a fraction of the stage
   const x = clamp((0.5 - clamp(camera?.x ?? 0.5, 0, 1)) * zoom, -room, room);
   const y = clamp((0.5 - clamp(camera?.y ?? 0.5, 0, 1)) * zoom, -room, room);
-  return { x: x * 100, y: y * 100, scale: zoom };
+  return { x: x * 100 + 0, y: y * 100 + 0, scale: zoom };
 }
 
 /** `const [shake, bump] = useShake()`: pass `shake` to `<PlayStage shake>`,

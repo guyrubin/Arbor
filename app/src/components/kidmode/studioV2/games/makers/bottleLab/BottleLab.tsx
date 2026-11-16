@@ -1,5 +1,5 @@
-import { useEffect, useId, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import { Check, RotateCcw, RotateCw, ScanEye } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { ArrowRight, Droplets, Flame, Heart, RotateCcw, RotateCw, Sticker, Sun } from 'lucide-react';
 import { useLanguage } from '../../../../../../context/LanguageContext';
 import { useArborOptional } from '../../../../../../context/ArborContext';
 import { selectionHaptic } from '../../../../../../lib/native';
@@ -7,251 +7,201 @@ import { GameFinish, GameShell } from '../../../../game/GameShell';
 import { useStudioCreations } from '../../../studioCreations';
 import { ADVENTURE_COPY } from '../../adventures/adventureCopy';
 import '../makerPalette.css';
-import './bottleLab.css';
-import { createBottleAudio, type BottleAudio } from './bottleAudio';
-import { StickerArt, TINT_STYLE } from './BottleArt';
-import { BottleStage, type StageHandle, type StageProps } from './BottleStage';
-import { AXIS_X, BASE_Y, radiusAt, silhouettePath, topY, type ShapeId } from './bottleGeometry';
-import { BOTTLE_LAB_COPY } from './bottleLabCopy';
 import {
-  BOTTLE_FINISHES, BOTTLE_SHAPES, BOTTLE_STICKERS, BOTTLE_TINTS, TURN_STEP, freshBottle, peelSticker, placeSticker, slotTaken, stickersFull, validBottle,
-  type BottleCreation, type BottleSticker, type BottleStickerPlacement,
-} from './bottleLabRules';
-import { scaleNote } from './bottleToys';
+  HudButton, HudChip, HudCoach, HudDock, HudQuest, HudToast, PlayFx, PlayOpening, PlaySetPiece, PlayStage, roundSeed, useReducedMotion, useShake,
+  type CoachMood, type PlayCamera, type PlayFxHandle,
+} from '../play';
+import './bottleLab.css';
+import { BOTTLE_LAB_COPY } from './bottleLabCopy';
+import { TURN_STEP, freshBottle, stickersFull, validBottle, type BottleCreation } from './bottleLabRules';
+import { createGlassScene, type GlassScene, type SayId, type SceneEvent, type SceneSpots } from './glassScene';
+import { createGlassSound, type GlassSound } from './glassSound';
+import { CHAPTERS, CHAPTER_WAIT_MS, chapterReady, dealSitting, nextAct, noDeeds, stageLayout, type Act, type Chapter, type Deeds, type StageLayout } from './glassworks';
 
-type Step = 'shape' | 'tint' | 'finish' | 'stickers';
-const STEPS: readonly Step[] = ['shape', 'tint', 'finish', 'stickers'];
-type Phase = 'make' | 'keeping' | 'done';
 const fillIn = (template: string, ...values: string[]) => template.replace(/\{(\d)\}/g, (_m, i: string) => values[Number(i)] ?? '');
-
-/** Each sitting starts a little differently: the glassblower hands over a new
- * blank, the lamp stands somewhere else, the sticker sheet is dealt in a new
- * order. Counted in memory only; nothing about play is stored. */
+/** Counted in memory only, so each sitting is dealt differently; nothing about play is stored. */
 let sittings = 0;
-const BLANKS: readonly Pick<BottleCreation, 'shape' | 'tint'>[] = [{ shape: 'round', tint: 'clear' }, { shape: 'tall', tint: 'sea' }, { shape: 'flask', tint: 'rose' }, { shape: 'round', tint: 'amber' }, { shape: 'tall', tint: 'clear' }, { shape: 'flask', tint: 'sea' }];
-const LAMP_STARTS = [-48, 50, -58, 42] as const;
-const sitting = (n: number) => ({ bottle: { ...freshBottle(), ...BLANKS[n % BLANKS.length] }, lamp: LAMP_STARTS[n % LAMP_STARTS.length], sheet: BOTTLE_STICKERS.map((_, i) => BOTTLE_STICKERS[(i + n * 2) % BOTTLE_STICKERS.length]) });
 
-/** A drag of a sticker from the sheet: where the pointer is and which ring it is over. */
-interface Carry { art: BottleSticker; x: number; y: number; hot: number | null; home?: { x: number; y: number } }
+const MOODS: Readonly<Record<SayId, CoachMood>> = {
+  pulled: 'curious', tall: 'happy', round: 'happy', flask: 'happy', tinted: 'wow', frosted: 'happy', polished: 'happy', stuck: 'happy', full: 'wow', peeled: 'curious',
+  turned: 'happy', rang: 'happy', aya: 'happy', arch: 'curious', secret: 'wow', behind: 'wow', light: 'happy',
+};
+const SAY_MS = 2600;
+const CAMERAS: Readonly<Record<Act, PlayCamera>> = {
+  opening: { x: 0.5, y: 0.56, zoom: 1.22 }, shape: { x: 0.5, y: 0.56, zoom: 1.07 }, colour: { x: 0.5, y: 0.5, zoom: 1 }, dress: { x: 0.5, y: 0.5, zoom: 1 }, finale: { x: 0.5, y: 0.5, zoom: 1 }, done: { x: 0.5, y: 0.5, zoom: 1 },
+};
+const box = (b: { x: number; y: number; width: number; height: number }): CSSProperties => ({ left: b.x, top: b.y, width: Math.max(1, b.width), height: Math.max(1, b.height) });
 
 export default function BottleLab() {
+  const [sitting, setSitting] = useState(0);
+  const [reopen, setReopen] = useState<BottleCreation | null>(null);
+  return <Glassworks key={sitting} start={reopen} onAgain={() => { setReopen(null); setSitting(n => n + 1); }} onOpen={kept => { setReopen(kept); setSitting(n => n + 1); }} />;
+}
+
+function Glassworks({ start, onAgain, onOpen }: { start: BottleCreation | null; onAgain: () => void; onOpen: (kept: BottleCreation) => void }) {
   const { uiLang } = useLanguage(); const lang = uiLang === 'he' ? 'he' : 'en';
   const w = BOTTLE_LAB_COPY[lang], shared = ADVENTURE_COPY[lang];
   const child = useArborOptional()?.childProfile;
   const saved = useStudioCreations(child?.id ?? '');
   const kept = saved.items.find(item => item.creation.kind === 'bottle')?.creation;
-  const uid = `g${useId()}`;
+  const reduced = useReducedMotion();
+  const [deal] = useState(() => dealSitting(roundSeed(), sittings++));
 
-  const [deal] = useState(() => sitting(sittings++));
-  const [bottle, setBottle] = useState<BottleCreation>(deal.bottle);
-  const [step, setStep] = useState<Step>('shape');
-  const [seen, setSeen] = useState<readonly Step[]>([]);
-  const [phase, setPhase] = useState<Phase>('make');
-  const [picked, setPicked] = useState<BottleSticker | null>(null);
-  const [carry, setCarry] = useState<Carry | null>(null);
-  const [nudge, setNudge] = useState<'placed' | 'full' | null>(null);
-  const [fresh, setFresh] = useState<number | null>(null);
-  const [ghost, setGhost] = useState<BottleStickerPlacement | null>(null);
-  const [rang, setRang] = useState(false);
-  const [note, setNote] = useState<'behind' | 'dark' | null>(null);
-  const [low, setLow] = useState(false);
+  const [act, setAct] = useState<Act>('opening');
+  const [bottle, setBottle] = useState<BottleCreation>(() => start ?? freshBottle());
+  const [deeds, setDeeds] = useState<Deeds>(noDeeds);
+  const [waited, setWaited] = useState(false);
+  const [said, setSaid] = useState<SayId | null>(null);
+  const [free, setFree] = useState(false);
+  const [toast, setToast] = useState<Chapter | null>(null);
+  const [layout, setLayout] = useState<StageLayout>(() => stageLayout(390, 700, deal.ayaLeft));
+  const [spots, setSpots] = useState<SceneSpots | null>(null);
+  const [shake, bump] = useShake();
 
-  const stage = useRef<StageHandle>(null);
-  const audio = useRef<BottleAudio | null>(null);
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const scene = useRef<GlassScene | null>(null);
+  const fx = useRef<PlayFxHandle>(null);
+  const sound = useRef<GlassSound | null>(null);
+  const reducedRef = useRef(reduced); reducedRef.current = reduced;
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const gesture = useRef<{ id: number; x: number; y: number; moved: boolean; art: BottleSticker } | null>(null);
-  const dragged = useRef(false);
-  const later = (ms: number, run: () => void) => { const id = setTimeout(() => { timers.current = timers.current.filter(t => t !== id); run(); }, ms); timers.current.push(id); };
-  useEffect(() => {
-    const sound = createBottleAudio(); audio.current = sound;
-    return () => { for (const id of timers.current) clearTimeout(id); timers.current = []; sound.dispose(); audio.current = null; };
-  }, []);
-  const live = phase === 'make';
+  const later = useCallback((ms: number, run: () => void) => { const id = setTimeout(() => { timers.current = timers.current.filter(t => t !== id); run(); }, ms); timers.current.push(id); return id; }, []);
+  const sayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Choices ────────────────────────────────────────────────────────────
-  /** The first choice in each part is a small occasion: Aya hops for it. */
-  const visit = (part: Step) => { setStep(part); if (!seen.includes(part)) { setSeen(list => list.includes(part) ? list : [...list, part]); return true; } return false; };
-  const choose = <K extends 'shape' | 'tint' | 'finish'>(key: K, value: BottleCreation[K], index: number) => {
-    if (!live) return;
-    void selectionHaptic(); setPicked(null); setNudge(null);
-    const first = visit(key);
-    if (bottle[key] === value) { audio.current?.play('tick', scaleNote(5 + index)); return; }
-    audio.current?.play(key === 'finish' ? 'chime' : 'ring', scaleNote((key === 'shape' ? 6 : key === 'tint' ? 5 : 7) + index), 0.7);
-    if (first) later(120, () => audio.current?.play('chime', scaleNote(10), 0.7));
-    stage.current?.cheer(first);
-    setBottle(b => ({ ...b, [key]: value }));
-  };
-  const place = (slot: number, art: BottleSticker | null = picked) => {
-    if (!art || !live) return;
-    const next = placeSticker(bottle.stickers, art, slot);
-    if (next === bottle.stickers) { setNudge(stickersFull(bottle.stickers) ? 'full' : null); return; }
-    void selectionHaptic(); audio.current?.play('thup');
-    // Real vinyl: pressed down, then the air bubble under it is smoothed out to the edge.
-    later(220, () => audio.current?.play('smooth'));
-    const first = visit('stickers') || bottle.stickers.length === 0;
-    stage.current?.cheer(first);
-    setBottle(b => ({ ...b, stickers: [...next] })); setNudge('placed'); setFresh(slot);
-    later(760, () => setFresh(current => current === slot ? null : current));
-    if (stickersFull(next)) setPicked(null);
-  };
-  const peel = (slot: number) => {
-    const off = bottle.stickers.find(s => s.slot === slot);
-    if (!live || !off) return;
-    void selectionHaptic(); audio.current?.play('peel');
-    setGhost(off); later(270, () => setGhost(current => current === off ? null : current));
-    setBottle(b => ({ ...b, stickers: [...peelSticker(b.stickers, slot)] })); setNudge(null); setFresh(null);
-  };
-  const pick = (art: BottleSticker) => {
-    if (dragged.current) { dragged.current = false; return; }
-    if (!live) return;
-    void selectionHaptic(); setStep('stickers');
-    if (stickersFull(bottle.stickers)) { setNudge('full'); setPicked(null); audio.current?.play('tick', scaleNote(3)); return; }
-    audio.current?.play('tick', scaleNote(7 + BOTTLE_STICKERS.indexOf(art)));
-    setPicked(current => current === art ? null : art); setNudge(null);
-  };
-  const go = (next: Step) => { if (!live) return; void selectionHaptic(); audio.current?.play('tick', scaleNote(5 + STEPS.indexOf(next))); setStep(next); setPicked(null); setCarry(null); setNudge(null); };
-  const keep = () => {
-    if (!live) return;
-    void selectionHaptic(); setPicked(null); setCarry(null); setPhase('keeping');
-    setLow(false); stage.current?.keep(() => setPhase('done'));
-  };
-  const openKept = () => {
-    if (!live || !kept || kept.kind !== 'bottle' || !validBottle(kept) || !saved.isCurrent()) return;
-    void selectionHaptic(); audio.current?.play('ring', scaleNote(8), 0.7);
-    setBottle({ kind: 'bottle', shape: kept.shape, tint: kept.tint, finish: kept.finish, stickers: kept.stickers.map(({ art, slot }) => ({ art, slot })) });
-    setSeen(STEPS); setStep('stickers'); stage.current?.cheer(true);
-  };
-  const onPlay: StageProps['onPlay'] = (what) => {
-    if (what === 'ring') setRang(true);
-    else if (what === 'behind') setNote('behind');
-    else if (what === 'lampOff') setNote('dark');
-    else if (what === 'home' || what === 'lampOn') setNote(current => (what === 'home' ? current === 'behind' : current === 'dark') ? null : current);
-    else if (what === 'turn' && nudge === 'placed') setNudge(null);
-  };
-
-  // ── Carrying a sticker from the sheet to a ring ────────────────────────
-  const onTrayDown = (e: ReactPointerEvent<HTMLButtonElement>, art: BottleSticker) => {
-    if (!live || e.button > 0) return;
-    gesture.current = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false, art };
-    dragged.current = false;
-  };
-  const onTrayMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    const g = gesture.current;
-    if (!g || g.id !== e.pointerId) return;
-    if (!g.moved && Math.hypot(e.clientX - g.x, e.clientY - g.y) > 9) {
-      if (stickersFull(bottle.stickers)) { setNudge('full'); setStep('stickers'); gesture.current = null; return; }
-      g.moved = true; e.currentTarget.setPointerCapture?.(e.pointerId); setPicked(g.art); setNudge(null); setStep('stickers');
-      void selectionHaptic(); audio.current?.play('peel', 880, 0.6);
-      // Peeled off its backing where it lies, so it can drift back there.
-      setCarry({ art: g.art, x: e.clientX, y: e.clientY, hot: null, home: { x: g.x, y: g.y } });
+  const onEvent = useRef<(event: SceneEvent) => void>(() => undefined);
+  onEvent.current = event => {
+    if (event.type === 'bottle') setBottle(event.bottle);
+    else if (event.type === 'deed') setDeeds(d => ({ ...d, [event.deed]: d[event.deed] + 1 }));
+    else if (event.type === 'spots') { const s = scene.current; if (s) setSpots(s.spots()); }
+    else if (event.type === 'free') setFree(true);
+    else if (event.type === 'beat') bump();
+    else if (event.type === 'say') {
+      setSaid(event.say);
+      if (sayTimer.current) clearTimeout(sayTimer.current);
+      sayTimer.current = setTimeout(() => { sayTimer.current = null; setSaid(null); }, SAY_MS);
     }
-    if (g.moved) { const over = stage.current?.hotSlot(e.clientX, e.clientY) ?? null; setCarry(c => c && { ...c, x: e.clientX, y: e.clientY, hot: over }); }
-  };
-  const onTrayUp = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    const g = gesture.current;
-    if (!g || g.id !== e.pointerId) return;
-    gesture.current = null;
-    if (!g.moved) return;
-    dragged.current = true;
-    const over = stage.current?.hotSlot(e.clientX, e.clientY) ?? null;
-    if (over !== null) { place(over, g.art); setCarry(null); return; }
-    // Not on a ring: the sticker drifts home, no words.
-    setCarry(c => c && c.home ? { ...c, x: c.home.x, y: c.home.y, hot: null } : null);
-    later(280, () => setCarry(null));
   };
 
-  // ── Words ──────────────────────────────────────────────────────────────
-  const full = stickersFull(bottle.stickers);
-  const cue = phase !== 'make' ? w.cue.keeping : low ? w.cue.low : !rang ? w.cue.start : note === 'behind' ? w.cue.behind : note === 'dark' ? w.cue.dark
-    : step === 'stickers' ? (nudge === 'full' || (full && !picked) ? w.cue.full : picked ? w.cue.aim : nudge === 'placed' ? w.cue.placed : w.cue.pick) : w.cue[step];
-  const hear = `${cue} ${w.say[step]} ${w.say.play}`;
+  useEffect(() => {
+    const el = canvas.current; if (!el) return;
+    const voice = createGlassSound(); sound.current = voice;
+    const made = createGlassScene({ canvas: el, fx: () => fx.current, sound: voice, emit: event => onEvent.current(event), sitting: deal, reduced: () => reducedRef.current, start });
+    scene.current = made;
+    const measure = () => { const width = el.clientWidth, height = el.clientHeight; if (width > 0 && height > 0 && made) { made.resize(width, height); setLayout(made.layout()); } };
+    measure();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    observer?.observe(el);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer?.disconnect(); window.removeEventListener('resize', measure);
+      for (const id of timers.current) clearTimeout(id); timers.current = [];
+      if (sayTimer.current) clearTimeout(sayTimer.current);
+      made?.dispose(); scene.current = null; voice.dispose(); sound.current = null;
+    };
+  }, [deal, start]);
 
-  if (phase === 'done') {
+  /** One act ends and the next begins: a flourish, a quest pip, the camera moves. */
+  const enter = useCallback((next: Act) => {
+    setAct(next); setWaited(false); setSaid(null);
+    scene.current?.setAct(next);
+  }, []);
+  const advance = () => {
+    if (act === 'opening' || act === 'done') return;
+    void selectionHaptic();
+    if (act === 'finale') { enter('done'); return; }
+    const chapter = act, next = nextAct(act);
+    sound.current?.chapter(); bump();
+    const base = layout.base;
+    fx.current?.burst(base.x / layout.width, (base.y - 120 * layout.unit) / layout.height, 'sparkle', { tones: ['white', 'sun', 'sky-pale'], count: 22, spread: 1.6 });
+    fx.current?.burst(base.x / layout.width, base.y / layout.height, 'ring', { tones: ['white'], size: 2.4 });
+    setToast(chapter); later(1900, () => setToast(current => current === chapter ? null : current));
+    enter(next);
+  };
+  // A chapter's action also shows after a patient wait, so nobody is ever held at a gate.
+  useEffect(() => {
+    if (act !== 'shape' && act !== 'colour' && act !== 'dress') return;
+    const id = setTimeout(() => setWaited(true), CHAPTER_WAIT_MS);
+    return () => clearTimeout(id);
+  }, [act]);
+
+  // ── Touch: the canvas is the world; every pointer goes to the scene ──────
+  const onDown = (e: ReactPointerEvent<HTMLCanvasElement>) => { if (e.button > 0) return; try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* A synthetic pointer. */ } scene.current?.down(e.clientX, e.clientY, e.pointerId); };
+  const onMove = (e: ReactPointerEvent<HTMLCanvasElement>) => scene.current?.move(e.clientX, e.clientY, e.pointerId);
+  const onUp = (e: ReactPointerEvent<HTMLCanvasElement>) => scene.current?.up(e.clientX, e.clientY, e.pointerId);
+  const glassKey = (e: KeyboardEvent<HTMLButtonElement>) => {
+    const s = scene.current; if (!s) return;
+    const side = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
+    if (act === 'shape') {
+      if (e.key === 'ArrowUp') s.command({ do: 'shape', dir: 'up' }); else if (e.key === 'ArrowDown') s.command({ do: 'shape', dir: 'down' }); else if (side) s.command({ do: 'shape', dir: 'side' }); else return;
+    } else if (act === 'dress' && side) s.command({ do: 'turn', by: side * TURN_STEP });
+    else if (act === 'finale' && side) s.command({ do: 'light', by: side * 0.25 });
+    else return;
+    e.preventDefault();
+  };
+
+  // ── Words ────────────────────────────────────────────────────────────────
+  const chapter = act === 'shape' || act === 'colour' || act === 'dress' ? act : null;
+  const ready = chapter ? chapterReady(chapter, deeds, waited ? CHAPTER_WAIT_MS : 0) : false;
+  const standing = act === 'opening' ? w.line.opening
+    : act === 'shape' ? (deeds.shaped ? w.line.shapeReady : w.line.shapeStart)
+    : act === 'colour' ? (!deeds.coloured ? w.line.colourStart : !deeds.rubbed ? w.line.rubNext : w.line.colourReady)
+    : act === 'dress' ? (!deeds.stuck ? w.line.dressStart : stickersFull(bottle.stickers) ? w.line.full : !deeds.turned ? w.line.turnNext : w.line.dressReady)
+    : free ? w.line.finaleFree : w.line.finaleStart;
+  const line = said ? w.line[said] : standing;
+  const mood: CoachMood = said ? MOODS[said] : act === 'opening' ? 'happy' : act === 'finale' ? 'wow' : ready ? 'happy' : 'idle';
+  const steps = useMemo(() => CHAPTERS.map(key => ({ key, label: w.quest[key], done: CHAPTERS.indexOf(key) < (act === 'opening' ? 0 : act === 'finale' || act === 'done' ? 3 : CHAPTERS.indexOf(act as Chapter)), icon: key === 'shape' ? <Flame /> : key === 'colour' ? <Droplets /> : <Sticker /> })), [act, w]);
+
+  if (act === 'done') {
     return <GameShell fullBleed autoNarrate={false} worldId="bottle-lab" title={w.title} instruction={w.instruction}>
       <section className="bl" data-adventure="bottle-lab" dir={lang === 'he' ? 'rtl' : 'ltr'}>
-        <GameFinish creation={{ kind: 'bottle', shape: bottle.shape, tint: bottle.tint, finish: bottle.finish, stickers: bottle.stickers.map(({ art, slot }) => ({ art, slot })) }} title={w.finish} subtitle={w.transfer} onPlayAgain={() => { const next = sitting(sittings++); setBottle(next.bottle); setStep('shape'); setSeen([]); setRang(false); setNote(null); setPhase('make'); }} playAgainLabel={shared.again} homeLabel={shared.home} />
+        <GameFinish creation={{ kind: 'bottle', shape: bottle.shape, tint: bottle.tint, finish: bottle.finish, stickers: bottle.stickers.map(({ art, slot }) => ({ art, slot })) }} title={w.finish} subtitle={w.transfer} onPlayAgain={onAgain} playAgainLabel={shared.again} homeLabel={shared.home} />
       </section>
     </GameShell>;
   }
 
-  const nextStep = STEPS.find(s => !seen.includes(s) && s !== step);
-  const options: Record<Step, ReactNode> = {
-    shape: BOTTLE_SHAPES.map((s, i) => <button key={s} type="button" className="bl-swatch" data-bl-shape={s} aria-pressed={bottle.shape === s} disabled={!live} onClick={() => choose('shape', s, i)}>
-      <ShapeIcon shape={s} /><span>{w.shapes[s]}</span><Tick /></button>),
-    tint: BOTTLE_TINTS.map((t, i) => <button key={t} type="button" className="bl-swatch" data-bl-tint={t} aria-pressed={bottle.tint === t} disabled={!live} onClick={() => choose('tint', t, i)} style={TINT_STYLE[t]}>
-      <TintIcon /><span>{w.tints[t]}</span><Tick /></button>),
-    finish: BOTTLE_FINISHES.map((f, i) => <button key={f} type="button" className="bl-swatch" data-bl-finish={f} aria-pressed={bottle.finish === f} disabled={!live} onClick={() => choose('finish', f, i)}>
-      <FinishIcon frost={f === 'frost'} /><span>{w.finishes[f]}</span><Tick /></button>),
-    stickers: deal.sheet.map(a => <button key={a} type="button" className="bl-sticker" data-bl-art={a} aria-pressed={picked === a} aria-label={fillIn(w.stickerPick, w.stickers[a])} disabled={!live} data-carried={carry?.art === a}
-      onClick={() => pick(a)} onPointerDown={e => onTrayDown(e, a)} onPointerMove={onTrayMove} onPointerUp={onTrayUp} onPointerCancel={() => { gesture.current = null; setCarry(null); }}>
-      <svg viewBox="-24 -24 48 48" aria-hidden="true" focusable="false"><StickerArt uid={`${uid}t${a}`} art={a} /></svg></button>),
-  };
-  return <GameShell fullBleed autoNarrate={false} worldId="bottle-lab" title={w.title} instruction={w.instruction} hearIt={hear}>
-    <section className="bl" data-adventure="bottle-lab" data-step={step} data-phase={phase} dir={lang === 'he' ? 'rtl' : 'ltr'} style={TINT_STYLE[bottle.tint]}>
-      <div className="bl-bench">
-        {/* The still life never mirrors: light and glass behave the same in both languages. */}
-        <div className="bl-window">
-          <BottleStage ref={stage} uid={uid} w={w} bottle={bottle} live={live} audio={audio} picked={picked} hot={carry?.hot ?? null} aiming={live && (picked !== null || carry !== null)} fresh={fresh} ghost={ghost}
-            start={{ lamp: deal.lamp, rotation: -20 }} onPlace={slot => place(slot)} onPeel={peel} onPlay={onPlay} />
-          {/* ViewCheck, the kit's tool for the view from a lower height: the bottle from Aya's eye level. */}
-          <button type="button" className="bl-view" data-bl-view="" aria-label={w.viewCheck} aria-pressed={low} disabled={!live} onClick={() => { void selectionHaptic(); setLow(stage.current?.viewCheck() ?? false); }}><ScanEye size={26} aria-hidden="true" /></button>
-        </div>
-
-        <div className="bl-side">
-          <p className="bl-cue" role="status" key={cue}>{cue}</p>
-          <div className="bl-tabs" role="group" aria-label={w.stepsLabel}>
-            {STEPS.map(s => <button key={s} type="button" className="bl-tab" data-bl-step={s} aria-current={s === step ? 'step' : undefined} data-done={seen.includes(s)} data-next={s === nextStep} disabled={!live} onClick={() => go(s)}>
-              <span className="bl-tab__mark" aria-hidden="true">{seen.includes(s) ? <Check size={12} strokeWidth={3.5} /> : null}</span><span className="bl-tab__name">{w.steps[s]}</span>
-            </button>)}
-          </div>
-          <div className="bl-groups">
-            {STEPS.map(s => <div key={s} className="bl-group" role="group" aria-label={w.steps[s]} data-group={s} data-active={s === step}>
-              <span className="bl-group__name" aria-hidden="true">{w.steps[s]}{seen.includes(s) && <Check size={13} strokeWidth={3.5} />}</span>
-              <div className="bl-options" data-for={s}>{options[s]}</div>
-            </div>)}
-          </div>
-          <div className="bl-actions" dir="ltr">
-            {/* The turn buttons follow the picture, which never mirrors. */}
-            <button type="button" className="bl-round" data-bl-rotate="prev" aria-label={w.turnLeft} disabled={!live} onClick={() => stage.current?.turnBy(-TURN_STEP)}><RotateCcw size={24} aria-hidden="true" /></button>
-            <button type="button" className="bl-keep" data-bl-keep="" disabled={!live} onClick={keep}><Check size={22} aria-hidden="true" /><span dir="auto">{w.done}</span></button>
-            <button type="button" className="bl-round" data-bl-rotate="next" aria-label={w.turnRight} disabled={!live} onClick={() => stage.current?.turnBy(TURN_STEP)}><RotateCw size={24} aria-hidden="true" /></button>
-            {kept?.kind === 'bottle' && validBottle(kept) && <button type="button" className="bl-open" data-bl-open="" disabled={!live} onClick={openKept}><span dir="auto">{w.open}</span></button>}
-          </div>
-        </div>
-      </div>
-      {carry && <span className="bl-carry" aria-hidden="true" data-home={!!carry.home && carry.x === carry.home.x && carry.y === carry.home.y} style={{ '--x': `${carry.x}px`, '--y': `${carry.y}px` } as CSSProperties}>
-        <svg viewBox="-24 -24 48 48" focusable="false"><StickerArt uid={`${uid}c`} art={carry.art} lift /></svg></span>}
+  const s = scene.current, live = act !== 'opening';
+  const finaleLine = said === 'behind' || said === 'secret' || said === 'rang' || said === 'light' ? w.line[said] : free ? w.line.finaleFree : w.caption;
+  const keep = <HudButton tone="go" size="l" cue label={w.go.finale} icon={<Heart />} onClick={advance} data={{ 'data-bl-keep': '' }} />;
+  const glassLabel = act === 'shape' ? w.reach.glassShape : act === 'dress' ? w.reach.glassTurn : act === 'finale' ? w.reach.glassLight : w.reach.glassRing;
+  const canOpen = act === 'shape' && !start && kept?.kind === 'bottle' && validBottle(kept) && saved.isCurrent();
+  return <GameShell fullBleed autoNarrate={false} worldId="bottle-lab" title={w.title} instruction={w.instruction} hearIt={`${line} ${w.instruction}`}>
+    <section className="bl" data-adventure="bottle-lab" data-act={act} data-shape={bottle.shape} data-tint={bottle.tint} data-finish={bottle.finish} data-stickers={bottle.stickers.length} data-free={free || undefined} dir={lang === 'he' ? 'rtl' : 'ltr'}>
+      <PlayStage id="bottle-lab" grade="day" camera={CAMERAS[act]} shake={shake}
+        world={<>
+          {/* The picture never mirrors: light and glass behave the same in both languages. */}
+          <canvas ref={canvas} className="bl-world" data-bl-canvas="" dir="ltr" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => scene.current?.cancel()} />
+          <PlayFx ref={fx} layer={3} />
+          {/* The same things as real buttons, for a keyboard, a switch or a screen reader. Touch goes to the picture itself. */}
+          {live && spots && <div className="bl-reach" dir="ltr" role="group" aria-label={w.reach.things}>
+            <button type="button" className="bl-reach__spot" data-bl-glass="" style={box(spots.bottle)} aria-label={glassLabel} onKeyDown={glassKey}
+              onClick={() => s?.command(act === 'shape' ? { do: 'shape' } : { do: 'ring' })} />
+            {act === 'colour' && deal.discs.map((tint, i) => <button key={tint} type="button" className="bl-reach__spot" data-bl-disc={tint} aria-pressed={bottle.tint === tint}
+              style={box({ x: layout.discs[i].x - layout.discWidth / 2, y: layout.discs[i].y - 28, width: layout.discWidth, height: 56 })} aria-label={fillIn(w.reach.disc, w.tints[tint])} onClick={() => s?.command({ do: 'disc', tint })} />)}
+            <button type="button" className="bl-reach__spot" data-bl-aya="" style={box(spots.aya)} aria-label={act === 'colour' ? fillIn(w.reach.rub, w.finishes[bottle.finish]) : w.reach.aya}
+              onClick={() => s?.command(act === 'colour' ? { do: 'finish' } : { do: 'aya' })} />
+            {act === 'dress' && deal.card.map((art, i) => <button key={art} type="button" className="bl-reach__spot" data-bl-art={art}
+              style={box({ x: layout.card.stickers[i].x - layout.card.size / 2, y: layout.card.stickers[i].y - layout.card.size / 2, width: layout.card.size, height: layout.card.size })} aria-label={fillIn(w.reach.sticker, w.stickers[art])} onClick={() => s?.command({ do: 'stickOn', art })} />)}
+            {act === 'dress' && spots.stickers.map(placed => <button key={placed.slot} type="button" className="bl-reach__spot" data-bl-peel={placed.slot}
+              style={box({ x: placed.x - placed.size / 2, y: placed.y - placed.size / 2, width: placed.size, height: placed.size })} aria-label={fillIn(w.reach.peel, w.stickers[placed.art], w.rows[Math.floor(placed.slot / 4)])} onClick={() => s?.command({ do: 'peel', slot: placed.slot })} />)}
+            {layout.arches.map((arch, i) => <button key={i} type="button" className="bl-reach__spot" data-bl-arch={i} style={box({ ...arch, height: Math.max(40, arch.height * 0.5) })} aria-label={w.reach.arch[i]} onClick={() => s?.command({ do: 'arch', index: i })} />)}
+          </div>}
+        </>}>
+        <HudCoach who="aya" mood={mood} line={line} onPoke={live ? () => scene.current?.command({ do: 'aya' }) : undefined} pokeLabel={w.reach.aya} quiet={act === 'finale' && !free && !said} />
+        <HudQuest steps={steps} current={chapter ? CHAPTERS.indexOf(chapter) : act === 'opening' ? -1 : 3} label={w.questLabel} />
+        <HudToast show={toast !== null}>{toast ? w.done[toast] : ''}</HudToast>
+        <HudDock>
+          {act === 'dress' && <span className="bl-turn" dir="ltr">
+            <HudButton label={w.reach.turnLeft} icon={<RotateCcw />} iconOnly onClick={() => scene.current?.command({ do: 'turn', by: -TURN_STEP })} data={{ 'data-bl-turn': 'left' }} />
+            <HudButton label={w.reach.turnRight} icon={<RotateCw />} iconOnly onClick={() => scene.current?.command({ do: 'turn', by: TURN_STEP })} data={{ 'data-bl-turn': 'right' }} />
+          </span>}
+          {chapter && ready && <HudButton tone="go" size={chapter === 'dress' && layout.portrait ? 'm' : 'l'} cue label={w.go[chapter]} icon={chapter === 'dress' ? <Sun /> : <span data-flip=""><ArrowRight /></span>} onClick={advance} data={{ 'data-bl-next': chapter }} />}
+          {canOpen && kept?.kind === 'bottle' && <HudChip onClick={() => onOpen({ kind: 'bottle', shape: kept.shape, tint: kept.tint, finish: kept.finish, stickers: kept.stickers.map(({ art, slot }) => ({ art, slot })) })} label={w.open}>{w.open}</HudChip>}
+        </HudDock>
+        {act === 'opening' && <PlayOpening title={w.title} place={w.place} onDone={() => enter(start ? 'dress' : 'shape')} />}
+        {/* The finale's words and its one action sit clear of the bottle: under it on a tall stage, beside it on a wide one. */}
+        <PlaySetPiece active={act === 'finale'} caption={layout.portrait ? finaleLine : undefined}>
+          {layout.portrait ? free && keep : <div className="bl-finale"><HudChip>{finaleLine}</HudChip>{free && keep}</div>}
+        </PlaySetPiece>
+      </PlayStage>
     </section>
   </GameShell>;
-}
-
-// ── Swatch art: what the choice looks like, in the glass's own colours ─────
-
-const Tick = () => <span className="bl-tick" aria-hidden="true"><Check size={12} strokeWidth={3.5} /></span>;
-function ShapeIcon({ shape }: { shape: ShapeId }) {
-  const top = topY(shape) - 26;
-  return <svg className="bl-swatch__art" viewBox={`${AXIS_X - 100} ${top} 200 ${BASE_Y + 22 - top}`} aria-hidden="true" focusable="false">
-    <path d={silhouettePath(shape)} style={{ fill: 'color-mix(in srgb, var(--bl-glass) 55%, var(--mk-white))' }} />
-    <path d={silhouettePath(shape, 0.72)} style={{ fill: 'var(--mk-white)', opacity: 0.45 }} />
-    <path d={silhouettePath(shape)} style={{ fill: 'none', stroke: 'var(--bl-edge)', strokeOpacity: 0.55, strokeWidth: 6 }} />
-    <rect x={AXIS_X - radiusAt(shape, topY(shape)) - 5} y={topY(shape) - 22} width={(radiusAt(shape, topY(shape)) + 5) * 2} height="28" rx="6" style={{ fill: 'var(--mk-wood-light)' }} />
-    <rect x={AXIS_X - radiusAt(shape, topY(shape)) - 5} y={topY(shape) - 1} width={(radiusAt(shape, topY(shape)) + 5) * 2} height="7" rx="2" style={{ fill: 'var(--mk-teal)' }} />
-  </svg>;
-}
-function TintIcon() {
-  return <svg className="bl-swatch__art" viewBox="-30 -30 60 60" aria-hidden="true" focusable="false">
-    <circle r="26" style={{ fill: 'var(--bl-glass)', opacity: 0.55 }} />
-    <circle r="26" style={{ fill: 'none', stroke: 'var(--bl-edge)', strokeWidth: 7, opacity: 0.8 }} />
-    <circle r="22.5" style={{ fill: 'none', stroke: 'var(--bl-light)', strokeWidth: 1.6, opacity: 0.9 }} />
-    <path d="M-15 -8C-12 -15 -6 -18 0 -19" style={{ fill: 'none', stroke: 'var(--mk-white)', strokeWidth: 4, strokeLinecap: 'round' }} />
-  </svg>;
-}
-function FinishIcon({ frost }: { frost: boolean }) {
-  return <svg className="bl-swatch__art" viewBox="-30 -30 60 60" aria-hidden="true" focusable="false">
-    <circle r="26" style={{ fill: frost ? 'color-mix(in srgb, var(--bl-glass) 40%, var(--mk-snow))' : 'color-mix(in srgb, var(--bl-glass) 60%, transparent)' }} />
-    {[-14, -5, 4, 13].map(y => <rect key={y} x="-26" y={y - 2.5} width="52" height="5" style={{ fill: 'var(--mk-ink-soft)', opacity: frost ? 0.18 : 0.42, filter: frost ? 'blur(1.6px)' : undefined }} />)}
-    <circle r="26" style={{ fill: 'none', stroke: 'var(--bl-edge)', strokeWidth: 4, opacity: 0.6 }} />
-    {frost ? <circle r="17" cx="-6" cy="-7" style={{ fill: 'var(--mk-white)', opacity: 0.35, filter: 'blur(4px)' }} /> : <path d="M-14 -10C-11 -16 -6 -19 1 -20" style={{ fill: 'none', stroke: 'var(--mk-white)', strokeWidth: 4.5, strokeLinecap: 'round' }} />}
-  </svg>;
 }

@@ -12,6 +12,8 @@ export interface SeasonAudio {
   /** Start (inside a gesture) or keep running. False = silent (sound off or unavailable). */
   wake(): boolean;
   setYear(year: number): void;
+  /** The weather the child has made on top of the year's own: each layer sounds at the louder of the two (0..1 each). */
+  setMix(mix: Partial<Gains>): void;
   /** The heavy click of a season's detent, with that season's own note under it. */
   click(season?: Season): void;
   /** The fine tick of an engraved mark going under the pointer. */
@@ -60,6 +62,7 @@ export function createSeasonAudio(random: () => number = Math.random): SeasonAud
   let master: GainNode | null = null;
   let bus: Partial<Record<Layer, GainNode>> = {};
   let level: Gains = gains(0);
+  let made: Partial<Gains> = {};
   let year = 0;
   let sources: AudioScheduledSourceNode[] = [];
   let nodes: AudioNode[] = [];
@@ -88,7 +91,8 @@ export function createSeasonAudio(random: () => number = Math.random): SeasonAud
 
   const apply = () => {
     if (!ac) return;
-    level = gains(year);
+    const own = gains(year);
+    level = { birds: Math.max(own.birds, made.birds ?? 0), insects: Math.max(own.insects, made.insects ?? 0), wind: Math.max(own.wind, made.wind ?? 0), rain: Math.max(own.rain, made.rain ?? 0), chimes: Math.max(own.chimes, made.chimes ?? 0) };
     const now = ac.currentTime;
     for (const layer of LAYERS) bus[layer]?.gain.setTargetAtTime(level[layer] * LAYER_PEAK[layer], now, 0.25);
   };
@@ -242,6 +246,10 @@ export function createSeasonAudio(random: () => number = Math.random): SeasonAud
     },
     setYear(next) {
       year = wrapYear(next);
+      try { apply(); } catch { stop(); }
+    },
+    setMix(mix) {
+      made = mix;
       try { apply(); } catch { stop(); }
     },
     click(season) {

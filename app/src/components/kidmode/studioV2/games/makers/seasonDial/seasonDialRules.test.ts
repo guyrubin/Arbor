@@ -346,8 +346,11 @@ describe('Weather Maker: paint, words and the eight described moments', () => {
     const { en, he } = SEASON_DIAL_COPY;
     expect(Object.keys(he).sort()).toEqual(Object.keys(en).sort());
     expect(he.seasons).toHaveLength(4); expect(he.phases).toHaveLength(8);
-    for (const [k, v] of Object.entries(he)) for (const line of [v].flat()) { expect(line, k).toMatch(/[א-ת]/); expect(line, k).not.toMatch(/[A-Za-z]/); }
-    expect(seasonLine(en.goTo, en.seasons[2])).toBe('Turn to Autumn');
-    expect(seasonLine(he.lit, he.seasons[3])).toBe('חורף מאיר על החוגה.');
+    const lines = (v: unknown): string[] => (typeof v === 'string' ? [v] : Object.values(v as object).flatMap(lines));
+    for (const [k, v] of Object.entries(he)) for (const line of lines(v)) { expect(line, k).toMatch(/[א-ת]/); expect(line, k).not.toMatch(/[A-Za-z]/); }
+    for (const k of Object.keys(en) as (keyof typeof en)[]) expect(lines(he[k]).length, k).toBe(lines(en[k]).length);
+    for (const k of ['asks', 'nudges', 'friends'] as const) expect(Object.keys(he[k]).sort()).toEqual(Object.keys(en[k]).sort());
+    expect(seasonLine(en.filmEnd, en.seasons[2])).toBe('Autumn at golden hour');
+    expect(seasonLine(he.lit, he.seasons[3])).toBe('חורף על החוגה.');
   });
 });

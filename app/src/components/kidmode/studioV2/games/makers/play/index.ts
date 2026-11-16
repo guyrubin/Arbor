@@ -15,5 +15,5 @@ export {
   cameraTransform, CAMERA_HOME, clamp, lerp, seededRandom, roundSeed, pick, shuffled,
 } from './playJuice';
 export type { PlayCamera, SpringName, ParallaxOptions } from './playJuice';
-export { createPlaySound, playNote, chainStep, PLAY_ROOTS, PLAY_PEAK, PLAY_BED_PEAK, PLAY_STEPS } from './playSound';
+export { createPlaySound, playNote, chainStep, PLAY_AMBIENCE, PLAY_ROOTS, PLAY_PEAK, PLAY_BED_PEAK, PLAY_STEPS } from './playSound';
 export type { PlaySound, PlayKey, PlayAmbience } from './playSound';

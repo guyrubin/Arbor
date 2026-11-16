@@ -300,51 +300,6 @@ export function capOffset(ox: number, oy: number, len: number): [number, number]
 
 /* ── camera ───────────────────────────────────────────────────────────── */
 
-export const ZOOM_MIN = 1;
-export const ZOOM_MAX = 4;
-/** From here on, strands draw thicker with a highlight so single hairs show. */
-export const DETAIL_ZOOM = 2.5;
-export const FOCUS_ZOOM = 2.2;
-export function clampZoom(zoom: number): number {
-  return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Number.isFinite(zoom) ? zoom : ZOOM_MIN));
-}
-/** The camera's centre kept so the view never leaves the animal by more than
- * margin world units. `half` is the half size of the view at zoom 1 in
- * world units. When the view is wider than the animal and its margin, the
- * animal stays centred on that axis. */
-export function clampCamera(view: { x: number; y: number }, zoom: number, bounds: Bounds, half: { w: number; h: number }, margin: number): { x: number; y: number } {
-  const z = clampZoom(zoom);
-  const hw = half.w / z, hh = half.h / z;
-  const axis = (value: number, min: number, max: number, h: number) => {
-    const lo = min - margin + h, hi = max + margin - h;
-    if (lo > hi) return (min + max) / 2;
-    return Math.max(lo, Math.min(hi, Number.isFinite(value) ? value : (min + max) / 2));
-  };
-  return { x: axis(view.x, bounds.minX, bounds.maxX, hw), y: axis(view.y, bounds.minY, bounds.maxY, hh) };
-}
-/** The camera on the hall's stage. Seen whole (zoom 1) the view is the
- * composed picture, `home`, and does not move; as the child zooms in, the
- * camera comes free to look around the animal, held by `clampCamera`. */
-export function stageCamera(view: { x: number; y: number }, zoom: number, home: { x: number; y: number }, bounds: Bounds, half: { w: number; h: number }, margin: number): { x: number; y: number } {
-  const z = clampZoom(zoom), held = clampCamera(view, z, bounds, half, margin);
-  const t = Math.max(0, Math.min(1, (z - ZOOM_MIN) / 0.6)), k = t * t * (3 - 2 * t);
-  return { x: home.x + (held.x - home.x) * k, y: home.y + (held.y - home.y) * k };
-}
-/** Zooms by `factor` keeping the world point `focus` under the same spot on screen. */
-export function zoomAbout(camera: Camera, factor: number, focus: { x: number; y: number }): Camera {
-  const zoom = clampZoom(camera.zoom * factor), k = camera.zoom / zoom;
-  return { zoom, x: focus.x + (camera.x - focus.x) * k, y: focus.y + (camera.y - focus.y) * k };
-}
-export function wholeView(bounds: Bounds): Camera {
-  return { x: (bounds.minX + bounds.maxX) / 2, y: (bounds.minY + bounds.maxY) / 2, zoom: ZOOM_MIN };
-}
-/** How close each discovery is looked at: the trunk tip very close (the scout camera's view), the hump from low down and further back. */
-export const FOCUS_ZOOMS: Readonly<Record<string, number>> = { coats: 2.4, ears: 2.4, tusks: 1.7, trunk: 3, hump: 1.5 };
-/** Where the camera glides to show one discovery: centred on it, close up, within bounds. */
-export function focusTarget(point: { x: number; y: number }, bounds: Bounds, half: { w: number; h: number }, margin: number, zoom = FOCUS_ZOOM): Camera {
-  const z = clampZoom(zoom);
-  return { ...clampCamera(point, z, bounds, half, margin), zoom: z };
-}
 /** Eases between two cameras (t 0..1), zooming in log space so it feels even. */
 export function mixCamera(a: Camera, b: Camera, t: number): Camera {
   const k = t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
@@ -365,7 +320,11 @@ export function chooseTier(frameMs: readonly number[], current: Tier = 'full'): 
 
 /* ── the five discoveries ─────────────────────────────────────────────── */
 
-export const DISCOVERIES = ['coats', 'ears', 'tusks', 'trunk', 'hump'] as const;
+/** The five pictures, in the order the story finds them: the tusk measured
+ * through the glass, the trunk that takes the grass, the two coats, the herd
+ * on the horizon, the hump seen from a calf's height. (The small ears are the
+ * visit's secret, not one of the five.) */
+export const DISCOVERIES = ['tusks', 'trunk', 'coats', 'herd', 'hump'] as const;
 export type DiscoveryId = typeof DISCOVERIES[number];
 export function isDiscovery(id: string): id is DiscoveryId {
   return (DISCOVERIES as readonly string[]).includes(id);

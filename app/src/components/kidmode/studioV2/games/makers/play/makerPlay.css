@@ -11,10 +11,11 @@
 /* ---------- the play view gives its whole box to a stage ---------- */
 /* A maker that renders a stage owns the view from the Studio top bar down:
    no padding, no centred column, no blurred backdrop behind it. */
-.studio-game-view--play:has(.play-stage) { display: block; padding: 0; min-block-size: 0; block-size: calc(100dvh - var(--play-bar, 76px)); overflow: hidden; background: var(--studio-mist); }
-.studio-game-view--play:has(.play-stage) > .studio-game-view__mechanic { inline-size: 100%; max-inline-size: none; block-size: 100%; min-block-size: 0; }
+.studio-game-view--play:has(.play-stage) { display: block; padding: 0; min-block-size: 0; overflow: hidden; background: var(--studio-mist); }
+.studio-game-view--play:has(.play-stage) > .studio-game-view__mechanic { inline-size: 100%; max-inline-size: none; min-block-size: 0; }
 .studio-game-view--play:has(.play-stage) > .studio-game-view__environment { display: none; }
-.studio-game-view--play:has(.play-stage) [data-game-shell], .studio-game-view--play:has(.play-stage) [data-adventure] { block-size: 100%; inline-size: 100%; min-block-size: 0; }
+/* The game's own root wraps the stage and adds nothing: no padding, no column. */
+[data-adventure]:has(> .play-stage) { display: block; inline-size: 100%; max-inline-size: none; min-block-size: 0; margin: 0; padding: 0; border: 0; }
 
 .play-stage {
   --play-safe-b: max(14px, env(safe-area-inset-bottom, 0px));
@@ -25,7 +26,8 @@
   --play-glass-shade: 0 10px 28px color-mix(in srgb, var(--studio-graphite) 20%, transparent), 0 1px 2px color-mix(in srgb, var(--studio-graphite) 14%, transparent);
   --play-blur: blur(16px) saturate(1.25);
   position: relative; isolation: isolate; container: play / size;
-  inline-size: 100%; block-size: 100%; min-block-size: 0; overflow: hidden;
+  /* PlayStage measures the real room under the top bar; this is the Studio's own bar until it has. */
+  inline-size: 100%; block-size: calc(100dvh - 76px); min-block-size: 0; overflow: hidden;
   background: var(--studio-mist); color: var(--studio-graphite); font-family: var(--studio-font);
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
 }
@@ -63,15 +65,19 @@
 /* coach: a kit head in a pearl disc, and one line on glass */
 .play-coach { grid-area: coach; justify-self: start; align-self: start; display: flex; align-items: center; min-inline-size: 0; max-inline-size: min(100%, 560px); }
 .play-coach[data-side=end] { flex-direction: row-reverse; justify-self: end; }
-.play-coach__portrait { position: relative; z-index: 1; flex: none; display: grid; place-items: end center; inline-size: 68px; block-size: 68px; padding: 0; margin: 0; overflow: hidden;
+.play-coach__portrait { position: relative; z-index: 1; flex: none; display: grid; place-items: end center; inline-size: 72px; block-size: 72px; padding: 4px 3px 0; margin: 0; overflow: hidden;
   border: 3px solid var(--studio-surface); border-radius: 50%; background: linear-gradient(180deg, var(--studio-mist), var(--studio-pearl)); box-shadow: var(--play-glass-shade); pointer-events: auto; font: inherit; color: inherit; }
 button.play-coach__portrait { cursor: pointer; touch-action: manipulation; transition: scale .16s var(--studio-ease-spring); }
 button.play-coach__portrait:active { scale: .92; }
 button.play-coach__portrait:focus-visible, .play-button:focus-visible, .play-chip:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; }
-.play-coach__head { display: block; inline-size: 100%; block-size: 100%; animation: play-head-in .42s var(--studio-ease-spring) both, play-breathe 4.6s ease-in-out .5s infinite; transform-origin: 50% 100%; }
-.play-coach__head img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; object-position: 50% 12%; pointer-events: none; }
-.play-coach__head[data-mood=wow] { animation: play-head-wow .6s var(--studio-ease-spring) both, play-breathe 4.6s ease-in-out .7s infinite; }
-.play-coach__head[data-mood=happy] { animation: play-head-happy .7s var(--studio-ease-spring) both, play-breathe 4.6s ease-in-out .8s infinite; }
+.play-coach__head { position: relative; display: block; inline-size: 100%; block-size: 100%; transform-origin: 50% 100%; animation: play-head-a .42s var(--studio-ease-spring) both, play-breathe 4.6s ease-in-out .6s infinite; }
+.play-coach__head[data-pop=b] { animation: play-head-b .42s var(--studio-ease-spring) both, play-breathe 4.6s ease-in-out .6s infinite; }
+.play-coach__head[data-mood=wow][data-pop=a] { animation: play-wow-a .6s var(--studio-ease-spring) both, play-breathe 4.6s ease-in-out .7s infinite; }
+.play-coach__head[data-mood=wow][data-pop=b] { animation: play-wow-b .6s var(--studio-ease-spring) both, play-breathe 4.6s ease-in-out .7s infinite; }
+.play-coach__head[data-mood=happy][data-pop=a] { animation: play-happy-a .7s var(--studio-ease-spring) both, play-breathe 4.6s ease-in-out .8s infinite; }
+.play-coach__head[data-mood=happy][data-pop=b] { animation: play-happy-b .7s var(--studio-ease-spring) both, play-breathe 4.6s ease-in-out .8s infinite; }
+.play-coach__head img { position: absolute; inset: 0; display: block; inline-size: 100%; block-size: 100%; object-fit: contain; object-position: 50% 100%; scale: 1.06; transform-origin: 50% 100%; pointer-events: none; opacity: 0; transition: opacity .12s linear; }
+.play-coach__head img[data-on=true] { opacity: 1; }
 .play-coach__bubble { position: relative; margin: 0; margin-inline-start: -14px; min-inline-size: 0; padding: 10px 16px; padding-inline-start: 26px;
   border: 1px solid var(--play-glass-edge); border-radius: 22px; border-start-start-radius: 8px; border-end-start-radius: 22px;
   background: var(--play-glass); -webkit-backdrop-filter: var(--play-blur); backdrop-filter: var(--play-blur); box-shadow: var(--play-glass-shade);
@@ -110,6 +116,7 @@ button.play-coach__portrait:focus-visible, .play-button:focus-visible, .play-chi
 .play-button[data-tone=go] { border-color: var(--studio-action); background: var(--studio-action); color: var(--studio-action-ink); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 12px 30px color-mix(in srgb, var(--studio-graphite) 34%, transparent); }
 .play-button[data-tone=chosen] { border-color: var(--studio-teal-ink); background: var(--studio-teal-soft); color: var(--studio-teal-ink); box-shadow: 0 0 0 1.5px var(--studio-teal-ink), var(--play-glass-shade); }
 .play-button[data-icon-only] { padding: 10px; border-radius: 50%; }
+.play-button[data-icon-only][data-size=l] { min-inline-size: 64px; padding: 12px; }
 .play-button[data-cue]::after { content: ""; position: absolute; inset: -5px; border: 2.5px solid var(--studio-signal); border-radius: inherit; pointer-events: none; animation: play-cue 1.8s ease-in-out infinite; }
 .play-button:active:not(:disabled) { scale: .94; }
 .play-button:disabled { opacity: .46; cursor: default; }
@@ -154,7 +161,7 @@ button.play-coach__portrait:focus-visible, .play-button:focus-visible, .play-chi
 
 /* ---------- the set-piece ---------- */
 .play-stage__bars { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
-.play-stage__bars::before, .play-stage__bars::after { content: ""; position: absolute; inset-inline: 0; block-size: clamp(18px, 7cqb, 64px); background: var(--studio-graphite); transition: translate .7s var(--studio-ease-soft); }
+.play-stage__bars::before, .play-stage__bars::after { content: ""; position: absolute; inset-inline: 0; block-size: clamp(14px, 5.5cqb, 56px); background: var(--studio-graphite); transition: translate .7s var(--studio-ease-soft); }
 .play-stage__bars::before { inset-block-start: 0; translate: 0 -101%; }
 .play-stage__bars::after { inset-block-end: 0; translate: 0 101%; }
 .play-stage[data-set-piece] .play-stage__bars::before, .play-stage[data-set-piece] .play-stage__bars::after { translate: 0 0; }
@@ -166,6 +173,24 @@ button.play-coach__portrait:focus-visible, .play-button:focus-visible, .play-chi
   color: var(--studio-graphite); font: 800 18px/1.25 var(--studio-font); text-align: center; text-wrap: balance; animation: play-rise .6s var(--studio-ease-soft) .5s both; }
 
 /* ---------- sizes ---------- */
+/* A desk or a tablet on its side: the HUD grows with the room. */
+@container play (min-width: 900px) and (min-height: 560px) {
+  .play-stage__hud { padding-block-start: 18px; column-gap: 16px; --play-safe-s: max(18px, env(safe-area-inset-left, 0px)); --play-safe-e: max(18px, env(safe-area-inset-right, 0px)); --play-safe-b: max(18px, env(safe-area-inset-bottom, 0px)); }
+  .play-coach__portrait { inline-size: 88px; block-size: 88px; border-width: 4px; }
+  .play-coach__bubble { margin-inline-start: -16px; padding: 14px 22px; padding-inline-start: 32px; font-size: 20px; border-radius: 26px; border-start-start-radius: 10px; }
+  .play-coach[data-side=end] .play-coach__bubble { margin-inline: 0 -16px; padding-inline: 22px 32px; }
+  .play-quest { gap: 8px; padding: 8px 10px; }
+  .play-quest__pip { inline-size: 36px; block-size: 36px; }
+  .play-quest__pip > svg:not(.play-quest__tick) { inline-size: 20px; block-size: 20px; }
+  .play-quest__label { font-size: 16px; padding-inline-end: 10px; }
+  .play-button { font-size: 19px; }
+  .arbor-play .play-button { font-size: 19px; }
+  .play-button[data-size=l] { min-block-size: 72px; padding: 14px 36px; font-size: 22px; border-radius: 26px; }
+  .arbor-play .play-button[data-size=l] { font-size: 22px; }
+  .play-button[data-icon-only][data-size=l] { min-inline-size: 72px; padding: 14px; }
+  .play-button__icon > svg { inline-size: 28px; block-size: 28px; }
+  .play-toast__body, .play-setpiece__caption { font-size: 20px; padding: 12px 26px; }
+}
 @container play (max-width: 560px) {
   .play-stage__hud { column-gap: 8px; row-gap: 8px; padding-block-start: 10px; }
   .play-coach__portrait { inline-size: 58px; block-size: 58px; }
@@ -185,15 +210,30 @@ button.play-coach__portrait:focus-visible, .play-button:focus-visible, .play-chi
   .play-button[data-size=l] { min-block-size: var(--studio-tap); font-size: 18px; }
   .play-opening { padding-block-end: calc(var(--play-safe-b) + 18px); }
   .arbor-play .play-opening .play-opening__title, .play-opening__title { font-size: clamp(34px, 15cqb, 60px) !important; }
+  .play-setpiece { padding-block-end: clamp(20px, 9cqb, 40px); }
+  .play-setpiece__caption { padding: 7px 18px; font-size: 15.5px; }
+}
+/* A phone on its side: the title stands at the start edge, clear of the middle of the picture, and the dock keeps to the end corner. */
+@container play (max-height: 460px) and (min-aspect-ratio: 8/5) {
+  .play-opening { justify-items: start; padding-inline: calc(var(--play-safe-s) + 8px);
+    background: linear-gradient(to top, color-mix(in srgb, var(--studio-pearl) 70%, transparent), transparent 60%); }
+  .play-opening__lockup { justify-items: start; max-inline-size: 42cqi; text-align: start; }
+  .arbor-play .play-opening .play-opening__title, .play-opening__title { font-size: clamp(28px, 13cqb, 46px) !important; }
+  .play-opening__hint { margin-block-start: 4px; }
+  .play-dock { justify-self: end; }
+  .play-coach { max-inline-size: min(100%, 300px); }
 }
 
 /* ---------- motion ---------- */
 @keyframes play-shake-a { 0% { translate: 0 0; } 18% { translate: -5px 3px; } 36% { translate: 4px -3px; } 54% { translate: -3px -2px; } 72% { translate: 2px 2px; } 100% { translate: 0 0; } }
 @keyframes play-shake-b { 0% { translate: 0 0; } 18% { translate: 5px 3px; } 36% { translate: -4px -3px; } 54% { translate: 3px -2px; } 72% { translate: -2px 2px; } 100% { translate: 0 0; } }
 @keyframes play-breathe { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-1.5%) scale(1.02); } }
-@keyframes play-head-in { from { transform: translateY(18%) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes play-head-wow { 0% { transform: translateY(14%) scale(.86); opacity: 0; } 55% { transform: translateY(-4%) scale(1.1); opacity: 1; } 100% { transform: none; opacity: 1; } }
-@keyframes play-head-happy { 0% { transform: translateY(12%) scale(.9); opacity: 0; } 40% { transform: translateY(-5%) rotate(-4deg); opacity: 1; } 70% { transform: translateY(0) rotate(3deg); } 100% { transform: none; opacity: 1; } }
+@keyframes play-head-a { from { transform: translateY(16%) scale(.9); } to { transform: none; } }
+@keyframes play-head-b { from { transform: translateY(16%) scale(.9); } to { transform: none; } }
+@keyframes play-wow-a { 0% { transform: translateY(14%) scale(.86); } 55% { transform: translateY(-4%) scale(1.1); } 100% { transform: none; } }
+@keyframes play-wow-b { 0% { transform: translateY(14%) scale(.86); } 55% { transform: translateY(-4%) scale(1.1); } 100% { transform: none; } }
+@keyframes play-happy-a { 0% { transform: translateY(12%) scale(.92); } 40% { transform: translateY(-5%) rotate(-4deg); } 70% { transform: translateY(0) rotate(3deg); } 100% { transform: none; } }
+@keyframes play-happy-b { 0% { transform: translateY(12%) scale(.92); } 40% { transform: translateY(-5%) rotate(-4deg); } 70% { transform: translateY(0) rotate(3deg); } 100% { transform: none; } }
 @keyframes play-line-in { from { opacity: 0; translate: 0 6px; } to { opacity: 1; translate: 0 0; } }
 @keyframes play-pip-now { 0%, 100% { scale: 1; } 50% { scale: 1.08; } }
 @keyframes play-pip-done { 0% { scale: .6; } 60% { scale: 1.22; } 100% { scale: 1; } }
