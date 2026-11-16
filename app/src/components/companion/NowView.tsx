@@ -565,10 +565,10 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const worth = lead !== "urgent" ? <NowWorthKnowing lang={lang} kicker={v10.worthKnowing} readMinutes={copy.readMinutes} topicText={topic?.title} composition={composition} now={now} /> : null;
 
   const stops: GuideStop[] = [
-    { id: "now-tonight", title: v10.stops.tonight, sub: desk ? copy.subtitle : planTag },
-    ...(waiting.length ? [{ id: "now-waiting", title: v10.stops.waiting, sub: thingsWaiting ? v10.things(thingsWaiting) : undefined }] : []),
-    { id: "now-week", title: v10.stops.week },
-    { id: "now-ahead", title: v10.stops.ahead },
+    { id: "now-tonight", title: v10.stops.tonight, sub: planTag },
+    ...(waiting.length ? [{ id: "now-waiting", title: v10.stops.waiting, sub: v10.stopSubs.waiting }] : []),
+    { id: "now-week", title: v10.stops.week, sub: v10.stopSubs.week },
+    { id: "now-ahead", title: v10.stops.ahead, sub: v10.stopSubs.ahead },
   ];
   const n = (stopId: string) => stops.findIndex(s => s.id === stopId) + 1;
 
@@ -587,7 +587,8 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     {showRightNow && <NowRightNow now={now} lang={lang} visit={rightNowVisit} tonight={rightNowTonight} />}
     {(topic || onTopicOpen) && <div className="nw-stage-q"><NowQuestionRow data-module="now-focus" lang={lang} topic={topic} onOpen={onTopicOpen} onCreate={onTopicCreate ? () => onTopicCreate("") : undefined} phone={!desk} /></div>}
     <div className="nw-meta nw-arc-legend">
-      {evening.inBand > 0 && <span data-testid="now-evening-band"><i className="nw-sw" aria-hidden="true" /><span><b>{v10.eveningLabel(clock24(EVENING_FROM_HOUR * 60), clock24(EVENING_TO_HOUR * 60))}</b> {v10.eveningCount(evening.inBand, evening.total)}</span></span>}
+      {/* V77: the phone legend names the band; the desktop says its window and its count. */}
+      {evening.inBand > 0 && <span data-testid="now-evening-band"><i className="nw-sw" aria-hidden="true" />{desk ? <span><b>{v10.eveningLabel(clock24(EVENING_FROM_HOUR * 60), clock24(EVENING_TO_HOUR * 60))}</b> {v10.eveningCount(evening.inBand, evening.total)}</span> : v10.eveningShort}</span>}
       <span><i className="nw-qh" aria-hidden="true" />{v10.quietFrom(quietFrom)}</span>
       {!desk && dayGlance}
     </div>

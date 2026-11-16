@@ -178,10 +178,11 @@ export default function SmartRemindersPanel() {
   const setQuietEnd = (h: number) => persist({ ...prefs, quietEnd: h });
   const toggleCalmWindow = () => persist({ ...prefs, calmWindowOnly: !prefs.calmWindowOnly });
 
+  const switchWords = { on: v10.remOn, off: v10.remOff };
   const stops: GuideStop[] = [
-    { id: "sr-today", title: v10.remToday, sub: t("sr.max2.count", { n: shown }) },
+    { id: "sr-today", title: v10.remToday, sub: v10.remTodaySub },
     { id: "sr-kinds", title: t("sr.types.heading"), sub: v10.remKindsSub },
-    { id: "sr-delivery", title: t("elev.sr.delivery.heading"), sub: v10.remDeliveryInApp },
+    { id: "sr-delivery", title: t("elev.sr.delivery.heading"), sub: v10.remDeliveryStopSub },
   ];
 
   /* MAX-2 CONTRACT — always visible (AC-5). The sentence, then today's live count on its own line.
@@ -199,7 +200,6 @@ export default function SmartRemindersPanel() {
     orbs={desk ? [{ size: 420, left: -240, bottom: -280, opacity: 0.6 }, { size: 360, right: -170, top: -230, opacity: 0.7, b: true }] : [{ size: 240, left: -160, bottom: -150, opacity: 0.55 }, { size: 220, right: -120, top: -130, opacity: 0.65, b: true }]}>
     <div className="line between sr-stage-head">
       <span className="gsec"><h1 className="kicker">{t("sr.title")}</h1><StartHere>{v10.startHere}</StartHere></span>
-      <span className="small" data-testid="sr-quiet-summary-head">{v10.remQuietLine(formatHour(prefs.quietStart, uiLang), formatHour(prefs.quietEnd, uiLang))}</span>
     </div>
     <NowDayArc composition={composition} now={now} quietStart={prefs.quietStart} quietEnd={prefs.quietEnd} evening={false} copy={v10}>
       <div className="sr-face" data-module="reminders-contract">
@@ -228,7 +228,7 @@ export default function SmartRemindersPanel() {
       const on = prefs.types[key];
       return <div key={key} className={on ? "nx-ctl" : "nx-ctl off"} data-testid={`sr-toggle-${key}`}>
         <span><b>{t(labelKey)}</b><span className="d">{t(descKey)}</span></span>
-        <Toggle on={on} onToggle={() => toggleType(key)} label={t(labelKey)} stamped={i === 0} />
+        <Toggle on={on} onToggle={() => toggleType(key)} label={t(labelKey)} words={switchWords} stamped={i === 0} />
       </div>;
     })}
     {!desk && <p className="sr-subtitle">{t("sr.subtitle")}</p>}
@@ -249,7 +249,7 @@ export default function SmartRemindersPanel() {
       </p>
       <div className={prefs.calmWindowOnly ? "nx-ctl sr-calm" : "nx-ctl sr-calm off"} data-testid="sr-calm-window-row">
         <span><b>{t("sr.calm.label")}</b><span className="d">{t("sr.calm.desc")}</span></span>
-        <Toggle on={prefs.calmWindowOnly} onToggle={toggleCalmWindow} label={t("sr.calm.label")} />
+        <Toggle on={prefs.calmWindowOnly} onToggle={toggleCalmWindow} label={t("sr.calm.label")} words={switchWords} />
       </div>
     </div>
     {savedFlash && <p className="sr-saved" role="status" aria-live="polite" data-testid="sr-saved-flash"><Icon name="check_circle" size={16} />{t("sr.saved")}</p>}
@@ -309,16 +309,19 @@ function HourSelect({ id, label, value, uiLang, onChange }: { id: string; label:
 }
 
 // ── Toggle switch ─────────────────────────────────────────────────────────────
-function Toggle({ on, onToggle, label, stamped = false }: {
+function Toggle({ on, onToggle, label, words, stamped = false }: {
   on: boolean;
   onToggle: () => void;
   label: string;
+  /** The state in words beside the track (V77: a switch says On or Off). */
+  words: { on: string; off: string };
   /** B-OCCL-01: the route's primary-move stamp goes on the FIRST switch. */
   stamped?: boolean;
 }) {
   return (
-    <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={onToggle} {...(stamped ? PREFS_STAMP : undefined)} className={on ? "nx-sw" : "nx-sw off"}>
-      <span className="sr-only">{label}</span>
+    <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={onToggle} {...(stamped ? PREFS_STAMP : undefined)} className="sr-switch">
+      <span className={on ? "nx-sw" : "nx-sw off"} aria-hidden="true" />
+      <span className="sr-switch-word" aria-hidden="true">{on ? words.on : words.off}</span>
     </button>
   );
 }
