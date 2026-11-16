@@ -16,6 +16,22 @@ if (reduced) html.classList.add('still');
 const clamp01 = v => Math.min(1, Math.max(0, v));
 const ease = t => 1 - Math.pow(1 - clamp01(t), 4);
 
+const HE = html.lang === 'he';
+/* Words the script writes. The Hebrew page sets lang="he" and gets its own. */
+const T = HE ? {
+  again: 'לצפות שוב בסרטון', play: 'להפעיל את הסרטון', pause: 'לעצור את הסרטון', none: 'עדיין לא נבחר דבר.',
+  inEg: l => `בדוגמה של ${l}`, council: n => `המועצה התייעצה · ${n} קולות`,
+  status: (l, t, w) => `תשובה לדוגמה על ${l}. לנסות היום: ${t} אפשר להגיד: ${w}`,
+  keep: 'ממשיכים להחזיק…', check: 'ואז שאלה למבוגרים: <b>כמה זה 27 ועוד 15?</b> או קוד אישי, אם הגדרתם.',
+  retry: 'נסו: לחצו והחזיקו שלוש שניות.', soon: 'עזבתם מוקדם מדי. נגיעה מהירה של ילד לא פותחת את היציאה.',
+} : {
+  again: 'Play the film again', play: 'Play the film', pause: 'Pause the film', none: 'Nothing chosen yet.',
+  inEg: l => `In the ${l} example`, council: n => `The council weighed in · ${n} voices`,
+  status: (l, t, w) => `Example answer for ${l}. Try today: ${t} Say this: ${w}`,
+  keep: 'Keep holding…', check: 'Then a grown-up check: <b>what is 27 + 15?</b> Or your own PIN, if you set one.',
+  retry: 'Try it: press and hold for three seconds.', soon: 'Let go too soon. A child’s quick tap does not open it.',
+};
+const LENSES_HE = ['קודם כול הקשר', 'צעד אחר צעד', 'עצמאות', 'להסביר את הלמה', 'העולם שסביבם', 'מה שמציאותי בשבילכם', 'איפה הם צומחים'];
 const LENSES = [
   ['Connection first', '#e8a18a'], ['Step by step', '#8670ce'], ['Independence', '#3fb7a4'], ['Explain the why', '#f3c969'],
   ['Their wider world', '#5d8df0'], ['Realistic for you', '#e58fb7'], ['Where they are growing', '#9ad7c4'],
@@ -26,6 +42,12 @@ const MOMENTS = {
   feelings: { label: 'big feelings', said: 'The tower fell down. Now nothing feels okay.', title: 'Make room for the feeling first.', action: 'Stay nearby if your child wants you there. Acknowledge what happened without rushing to fix it. When they are ready, offer a choice: rebuild or take a break.', words: '“You worked on that tower and it fell. I’m here. Shall we rebuild or take a break?”', notices: [[0, 'The upset may need company before it needs a solution.'], [1, 'Rebuilding one piece together may be within reach when the whole tower is not.'], [5, 'You do not have to fix it. Staying near is already a response.']], sum: ['Asked to rebuild together after the tower fell.', 'Stayed near, then offered a choice.', 'What helps when frustration builds?'] },
   play: { label: 'time together', said: 'We have a few minutes together. What can we do without another screen?', title: 'Let them lead a little adventure.', action: 'Choose three safe, age-appropriate objects. Invite your child to invent a story with them, then ask them to give you a part to play.', words: '“Where are we going on our adventure? Who shall I be?”', notices: [[2, 'Leading the game lets them practise deciding.'], [3, 'Real objects in their hands invite the kind of pretend play that suits their age.'], [4, 'A few unhurried minutes fit into the day you already have.']], sum: ['Invented a story and gave us each a part.', 'Three objects and a story they led.', 'How can we build on what they enjoy?'] },
 };
+if (HE) {
+  LENSES.forEach((l, k) => { l[0] = LENSES_HE[k]; });
+  Object.assign(MOMENTS.bedtime, { label: 'שעת השינה', said: 'עוד סיפור. עוד חיבוק. ושעת השינה שוב מתאחרת.', title: 'תנו להם לבחור את הסיפור האחרון.', action: 'לפני שמתחילים, מסכמים על שני צעדים מוכרים: סיפור, ואז חיבוק לילה טוב. הילד בוחר איזה סיפור לקרוא.', words: '״איזה סיפור נקרא לפני חיבוק הלילה טוב שלנו?״', notices: [[0, 'עוד חיבוק יכול להיות דרך לבקש קרבה לפני שהיום נגמר.'], [2, 'בחירה בתוך השגרה נותנת להם חלק משעת השינה שהוא שלהם.'], [3, 'שני צעדים שאפשר לדמיין קלים יותר לביצוע מאשר ״כבר מאוחר״.']], sum: ['בחרה סיפור לפני חיבוק הלילה טוב.', 'סיפור, ואז לילה טוב מוכר.', 'איך אפשר להקל על השגרה הזאת?'] });
+  Object.assign(MOMENTS.feelings, { label: 'רגשות גדולים', said: 'המגדל נפל, ועכשיו שום דבר לא מרגיש בסדר.', title: 'קודם מקום לרגש.', action: 'אם הילד רוצה, הישארו קרובים ותנו שם למה שקרה, בלי למהר לפתור. כשהוא מוכן, הציעו לבחור אם לבנות שוב או לקחת הפסקה.', words: '״עבדת על המגדל הזה והוא נפל. אני כאן. נבנה שוב או ננוח קצת?״', notices: [[0, 'ייתכן שהרגש צריך קודם חברה, ורק אחר כך פתרון.'], [1, 'לבנות מחדש חלק אחד ביחד יכול להיות בהישג יד, גם כשהמגדל כולו לא.'], [5, 'לא חייבים לתקן. להישאר קרוב זו כבר תגובה.']], sum: ['ביקשה לבנות שוב ביחד אחרי שהמגדל נפל.', 'נשארנו קרובים, ואז הצענו בחירה.', 'מה עוזר כשהתסכול מצטבר?'] });
+  Object.assign(MOMENTS.play, { label: 'זמן ביחד', said: 'יש לנו כמה דקות ביחד. מה אפשר לעשות בלי עוד מסך?', title: 'תנו לילד להוביל הרפתקה קטנה.', action: 'בחרו שלושה חפצים בטוחים ומתאימים לגיל. הזמינו את הילד להמציא איתם סיפור, ובקשו ממנו לתת לכם תפקיד.', words: '״לאן יוצאים להרפתקה, ואת מי אני משחק?״', notices: [[2, 'כשהם מובילים את המשחק, הם מתרגלים להחליט.'], [3, 'חפצים אמיתיים בידיים מזמינים משחק דמיון שמתאים לגיל.'], [4, 'כמה דקות בלי לחץ נכנסות ביום שכבר יש לכם.']], sum: ['המציאה סיפור ונתנה לכל אחד תפקיד.', 'שלושה חפצים וסיפור שהיא הובילה.', 'איך ממשיכים ממה שהיא אוהבת?'] });
+}
 let forms = null;
 let moment = 'bedtime';
 /* The trial link carries a moment only when the visitor chose one, here or in the address. */
@@ -38,7 +60,7 @@ const stamp = () => {
   $$('a[href*="start=trial"]').forEach(a => { const u = new URL(a.href, location.href); u.searchParams.set('moment', picked); a.href = u.pathname + u.search; });
 };
 import('./arbor-conversion-v12.js').then(({ trialHref }) => {
-  $$('a[href*="entry=landing"]').forEach(a => { a.href = trialHref(a.getAttribute('href'), location.search, 'en'); });
+  $$('a[href*="entry=landing"]').forEach(a => { a.href = trialHref(a.getAttribute('href'), location.search, HE ? 'he' : 'en'); });
   stamp();
 }).catch(() => {});
 stamp();
@@ -58,7 +80,9 @@ const captions = chapterBtns.map(b => $('span', b).textContent);
 const cap = $('#film-cap'), ctl = $('#film-ctl');
 const scenes = $$('.scene', film).map(el => ({
   el, len: +el.dataset.len,
-  ins: $$('[data-at]', el).map(n => ({ n, at: +n.dataset.at, text: n.hasAttribute('data-type') ? n.textContent : null, dur: +(n.dataset.dur || 1) })),
+  ins: $$('[data-at]', el).map(n => ({ n, at: +n.dataset.at, text: n.hasAttribute('data-type') ? n.textContent : null, dur: +(n.dataset.dur || 1), clear: n.dataset.clear ? +n.dataset.clear : Infinity })),
+  taps: $$('[data-tap]', el).map(n => ({ n, at: +n.dataset.tap })),
+  grows: $$('[data-grow]', el).map(n => ({ n, at: +n.dataset.grow })),
   outs: $$('[data-out]', el).map(n => ({ n, at: +n.dataset.out })),
   counts: $$('[data-count]', el).map(n => ({ n, to: +n.dataset.count, at: +(n.closest('[data-at]')?.dataset.at || 0) })),
 }));
@@ -81,8 +105,9 @@ const render = T => {
   for (const a of s.ins) {
     if (a.text != null) {
       const p = clamp01((local - a.at) / a.dur);
-      a.n.textContent = a.text.slice(0, Math.round(a.text.length * p));
-      a.n.classList.toggle('cursor', p > 0 && p < 1);
+      const gone = local >= a.clear;
+      a.n.textContent = gone ? '' : a.text.slice(0, Math.round(a.text.length * p));
+      a.n.classList.toggle('cursor', !gone && p > 0 && p < 1);
     } else {
       const p = ease((local - a.at) / 0.55);
       a.n.style.opacity = p; a.n.style.transform = p < 1 ? `translateY(${(1 - p) * 0.8}em)` : '';
@@ -90,6 +115,14 @@ const render = T => {
   }
   for (const b of s.outs) { const p = clamp01((local - b.at) / 0.2); b.n.style.opacity = 1 - p; b.n.style.visibility = p >= 1 ? 'hidden' : 'visible'; }
   for (const c of s.counts) c.n.textContent = Math.round(c.to * ease((local - c.at) / 0.9));
+  /* a tap: the button gives a little, and a ring opens out from it */
+  for (const k of s.taps) {
+    const p = (local - k.at) / 0.5, on = p >= 0 && p <= 1;
+    k.n.style.opacity = on ? ((1 - p) * 0.9).toFixed(3) : 0;
+    k.n.style.transform = on ? `scale(${(0.3 + 1.1 * p).toFixed(3)})` : '';
+    k.n.parentElement.style.scale = p >= 0 && p < 0.35 ? '.94' : '';
+  }
+  for (const g of s.grows) g.n.style.setProperty('--g', ease((local - g.at) / 0.7).toFixed(3));
   if (i !== shown) {
     shown = i;
     chapterBtns.forEach((b, k) => { b.setAttribute('aria-current', String(k === i)); if (k !== i) b.style.setProperty('--p', 0); });
@@ -104,7 +137,7 @@ const state = { t: 0, playing: false, paused: false, plays: 0, onScreen: false, 
 const setCtl = () => {
   if (!ctl) return;
   const done = state.plays >= PLAYS, idle = state.paused || done;
-  $('span', ctl).textContent = done ? 'Play the film again' : state.paused ? 'Play the film' : 'Pause the film';
+  $('span', ctl).textContent = done ? T.again : state.paused ? T.play : T.pause;
   if (forms && forms.setPaused) forms.setPaused(state.paused);
   const ic = $('.ms', ctl); ic.textContent = idle ? 'play_arrow' : ''; ic.classList.toggle('pz', !idle);
 };
@@ -154,7 +187,8 @@ const tabs = (list, btns, panels, onShow) => {
   btns.forEach((b, k) => {
     b.addEventListener('click', () => show(k));
     b.addEventListener('keydown', e => {
-      const d = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
+      const fwd = HE ? 'ArrowLeft' : 'ArrowRight', back = HE ? 'ArrowRight' : 'ArrowLeft';
+      const d = e.key === fwd || e.key === 'ArrowDown' ? 1 : e.key === back || e.key === 'ArrowUp' ? -1 : 0;
       if (d) { e.preventDefault(); show((k + d + btns.length) % btns.length, true); }
     });
   });
@@ -183,7 +217,19 @@ places.forEach(place => {
     el.addEventListener('focusin', () => link(el, true));
     el.addEventListener('focusout', () => link(el, false));
   });
+  /* on a touch screen a tap on a row lights its part of the screen */
+  $$('.caps > li[data-pin]', place).forEach(li => li.addEventListener('click', () => { $$('.hot', place).forEach(n => n.classList.remove('hot')); link(li, true); }));
 });
+/* while reading, the row at the middle of the window lights its part of the screen */
+if ('IntersectionObserver' in window) {
+  const reading = new IntersectionObserver(es => es.forEach(e => {
+    const place = e.target.closest('.place'), pin = e.target.dataset.pin;
+    if (!e.isIntersecting || place.matches(':hover')) return;
+    $$('.hot', place).forEach(n => n.classList.remove('hot'));
+    $$(`[data-pin="${pin}"]`, place).forEach(n => n.classList.add('hot'));
+  }), { rootMargin: '-45% 0px -50% 0px' });
+  $$('.caps > li[data-pin]').forEach(li => reading.observe(li));
+}
 
 /* ---------- Talk: a tryable answer ---------- */
 const said = $('#t-said'), why = $('#t-why'), sheet = $('#sheet'), careForm = $('#care-form');
@@ -191,15 +237,17 @@ const lensBtns = $$('#lens-list button');
 let lens = 0, typing = 0;
 const paintSheet = () => {
   const lines = $$('input', careForm).filter(i => i.checked).map(i => MOMENTS[moment].sum[+i.dataset.line]);
-  sheet.replaceChildren(...(lines.length ? lines : ['Nothing chosen yet.']).map(t => Object.assign(document.createElement('li'), { textContent: t })));
+  sheet.replaceChildren(...(lines.length ? lines : [T.none]).map(t => Object.assign(document.createElement('li'), { textContent: t })));
 };
-const paintLens = () => {
+const lensCard = $('.lens-card');
+const paintLens = fade => {
+  if (fade && !reduced && lensCard) lensCard.animate([{ opacity: 0.35, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 380, easing: 'cubic-bezier(.16,1,.3,1)' });
   const [name, color] = LENSES[lens], m = MOMENTS[moment], hit = m.notices.find(n => n[0] === lens);
   lensBtns.forEach((b, n) => b.setAttribute('aria-pressed', String(n === lens)));
   $('#lens-name').textContent = name; $('#lens-dot').style.setProperty('--c', color);
   $('#lens-what').textContent = lensBtns[lens].nextElementSibling.textContent;
   $('#lens-eg').hidden = !hit;
-  if (hit) { $('#lens-in').textContent = `In the ${m.label} example`; $('#lens-eg span').textContent = hit[1]; }
+  if (hit) { $('#lens-in').textContent = T.inEg(m.label); $('#lens-eg span').textContent = hit[1]; }
   if (forms) { forms.setLens(lens); forms.setLit(m.notices.map(n => n[0])); }
 };
 const paintMoment = animate => {
@@ -207,10 +255,10 @@ const paintMoment = animate => {
   $$('#picks button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.moment === moment)));
   $('#t-title').textContent = m.title; $('#t-action').textContent = m.action; $('#t-words').textContent = m.words;
   why.replaceChildren(...m.notices.map(([n]) => { const c = document.createElement('span'); c.className = 'u-chip'; const d = document.createElement('i'); d.style.setProperty('--c', LENSES[n][1]); c.append(d, LENSES[n][0]); return c; }));
-  $('#t-council').textContent = `The council weighed in · ${m.notices.length} voices`;
+  $('#t-council').textContent = T.council(m.notices.length);
   paintSheet(); paintLens();
   const run = ++typing;
-  if (animate) $('#t-status').textContent = `Example answer for ${m.label}. Try today: ${m.title} Say this: ${m.words}`;
+  if (animate) $('#t-status').textContent = T.status(m.label, m.title, m.words);
   if (!animate || reduced) { said.textContent = m.said; said.classList.remove('cursor'); return; }
   const blocks = $$('#place-talk [data-build]'), t0 = performance.now(), dur = 1100;
   blocks.forEach((b, k) => b.animate([{ opacity: 0, transform: 'translateY(.8em)' }, { opacity: 0, transform: 'translateY(.8em)', offset: 0.6 + k * 0.1 }, { opacity: 1, transform: 'none' }], { duration: 2000 + k * 300, easing: 'cubic-bezier(.16,1,.3,1)' }));
@@ -226,7 +274,7 @@ const paintMoment = animate => {
 $$('#picks button').forEach(b => b.addEventListener('click', () => { moment = picked = b.dataset.moment; stamp(); paintMoment(true); }));
 careForm.addEventListener('change', paintSheet);
 careForm.addEventListener('submit', e => e.preventDefault());
-lensBtns.forEach((b, n) => b.addEventListener('click', () => { lens = n; paintLens(); }));
+lensBtns.forEach((b, n) => b.addEventListener('click', () => { lens = n; paintLens(true); }));
 paintMoment(false);
 
 /* ---------- Kids Studio ---------- */
@@ -248,14 +296,14 @@ if (hold) {
   let timer = 0, reset = 0;
   const start = () => {
     if (timer || hold.classList.contains('passed')) return;
-    hold.classList.add('holding'); holdSay.textContent = 'Keep holding…';
+    hold.classList.add('holding'); holdSay.textContent = T.keep;
     timer = setTimeout(() => {
       timer = 0; hold.classList.replace('holding', 'passed'); $('.ms', hold).textContent = 'check';
-      holdSay.innerHTML = 'Then a grown-up check: <b>what is 27 + 15?</b> Or your own PIN, if you set one.';
-      reset = setTimeout(() => { hold.classList.remove('passed'); $('.ms', hold).textContent = 'door_open'; holdSay.textContent = 'Try it: press and hold for three seconds.'; }, 9000);
+      holdSay.innerHTML = T.check;
+      reset = setTimeout(() => { hold.classList.remove('passed'); $('.ms', hold).textContent = 'door_open'; holdSay.textContent = T.retry; }, 9000);
     }, 3000);
   };
-  const stop = () => { if (!timer) return; clearTimeout(timer); timer = 0; hold.classList.remove('holding'); holdSay.textContent = 'Let go too soon. A child’s quick tap does not open it.'; };
+  const stop = () => { if (!timer) return; clearTimeout(timer); timer = 0; hold.classList.remove('holding'); holdSay.textContent = T.soon; };
   hold.addEventListener('pointerdown', e => { hold.setPointerCapture?.(e.pointerId); start(); });
   ['pointerup', 'pointercancel', 'blur'].forEach(t => hold.addEventListener(t, stop));
   hold.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); start(); } });
@@ -267,7 +315,11 @@ if (hold) {
 /* ---------- entrances: only blocks still below the fold opt in ---------- */
 if (!reduced && !filmOnly && 'IntersectionObserver' in window) {
   const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
-  $$('[data-rise]').forEach(el => { if (el.getBoundingClientRect().top > innerHeight * 0.92) { el.classList.add('rise'); io.observe(el); } });
+  $$('[data-rise]').forEach(el => {
+    if (el.getBoundingClientRect().top <= innerHeight * 0.92) return;
+    if (el.dataset.rise === 'stagger') { el.classList.add('stagger'); [...el.children].forEach((c, k) => c.style.setProperty('--i', Math.min(k, 8))); }
+    el.classList.add('rise'); io.observe(el);
+  });
 }
 
 /* ---------- the sculpture, last and on its own ---------- */
