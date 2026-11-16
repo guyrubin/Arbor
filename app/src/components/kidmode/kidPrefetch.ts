@@ -6,7 +6,9 @@ import { studioNextFlagOn } from './studioV2/studioNextFlag';
 /** One loader authority for both lazy rendering and selected-game warm-up.
  * These factories do not fetch or evaluate a game until called. On a device
  * that opted in to the next Studio games (studioNextFlag), five tiles open
- * the new game in place of the accepted one; nowhere else is anything changed. */
+ * the new game in place of the accepted one; nowhere else is anything changed.
+ * The makers are their own activities (the catalogue offers them only on
+ * that device), so their loaders are plain: one chunk each, never on Home. */
 export const STUDIO_ACTIVITY_LOADERS = {
   'river-rescue': cachedModule(async () => studioNextFlagOn() ? await import('./studioV2/games/adventures/RoverDelivery') : await import('./studioV2/games/adventures/RiverRescue')),
   'feelings-forest': cachedModule(() => import('./studioV2/games/adventures/FeelingsForest')),
@@ -20,6 +22,18 @@ export const STUDIO_ACTIVITY_LOADERS = {
   'calm-builder': cachedModule(() => import('./studioV2/games/CalmBuilder')),
   puzzle: cachedModule(async () => studioNextFlagOn() ? await import('./studioV2/games/adventures/OopsButton') : await import('./studioV2/games/PuzzlePlanet')),
   'sound-explorer': cachedModule(() => import('./studioV2/games/SoundExplorer')),
+  'mend-bowl': cachedModule(() => import('./studioV2/games/makers/mendBowl/MendBowl')),
+  'stitch-garden': cachedModule(() => import('./studioV2/games/makers/stitchGarden/StitchGarden')),
+  'paper-boat': cachedModule(() => import('./studioV2/games/makers/paperBoat/PaperBoat')),
+  'season-dial': cachedModule(() => import('./studioV2/games/makers/seasonDial/SeasonDial')),
+  'crank-works': cachedModule(() => import('./studioV2/games/makers/crankWorks/CrankWorks')),
+  'windup-race': cachedModule(() => import('./studioV2/games/makers/windupRace/WindupRace')),
+  'clay-theatre': cachedModule(() => import('./studioV2/games/makers/clayTheatre/ClayTheatre')),
+  'bottle-lab': cachedModule(() => import('./studioV2/games/makers/bottleLab/BottleLab')),
+  'ice-age-friend': cachedModule(() => import('./studioV2/games/makers/iceAgeFriend/IceAgeFriend')),
+  'tiny-builders': cachedModule(() => import('./studioV2/games/makers/tinyBuilders/TinyBuilders')),
+  'fox-trail': cachedModule(() => import('./studioV2/games/makers/foxTrail/FoxTrail')),
+  'maker-desk': cachedModule(() => import('./studioV2/games/makers/makerDesk/MakerDesk')),
 };
 
 /** Home prepares only navigation shells, not eighteen unrelated activities. */

@@ -6,6 +6,10 @@ describe("V2 routes preserve real destinations", () => {
     expect(studioActivityView(id)).toBe("studio-game");
     expect(restoredKidView("studio-game", id)).toBe("studio-game");
   });
+  it.each(["mend-bowl", "stitch-garden", "paper-boat", "season-dial", "crank-works", "windup-race", "clay-theatre", "bottle-lab", "ice-age-friend", "tiny-builders", "fox-trail", "maker-desk"])("routes maker %s to StudioGame, which decides availability", id => {
+    expect(studioActivityView(id)).toBe("studio-game");
+    expect(restoredKidView("studio-game", id)).toBe("studio-game");
+  });
   it.each(["reading", "adventures", "pose", "speech"])("preserves the existing %s destination, including restored state", id => {
     expect(studioActivityView(id)).toBe("arcade");
     expect(restoredKidView("studio-game", id)).toBe("arcade");

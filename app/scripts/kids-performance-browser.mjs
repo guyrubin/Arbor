@@ -24,6 +24,7 @@ const games = [
   { id: 'feelings-forest', world: 'feelings', chunk: 'FeelingsForest', en: 'Story Theater', he: 'תיאטרון הסיפורים' },
   { id: 'rhythm-garden', world: 'studio', chunk: 'RhythmGarden', en: 'Sound Orbit', he: 'מסלול הצלילים' },
 ];
+const MAKER_CHUNKS = /\/assets\/(?:MendBowl|StitchGarden|PaperBoat|SeasonDial|CrankWorks|WindupRace|ClayTheatre|BottleLab|IceAgeFriend|TinyBuilders|FoxTrail|MakerDesk)\w*-/;
 let browser; const results = [];
 try {
   browser = await chromium.launch({ headless: true,
@@ -58,10 +59,18 @@ try {
       if (url.includes('/visuals/') && res.status() >= 400) brokenArt.push(url);
     });
     try {
+      // The makers (and their covers and previews) never load on Home, also with the next-games switch on.
+      if (game === games[0]) {
+        await page.goto(`${base}/?lang=${lang}&studioNext=1`);
+        await page.locator('[data-studio-home]').waitFor();
+        await page.waitForTimeout(450);
+        assert.ok(![...chunks].some(url => MAKER_CHUNKS.test(url)), 'Home does not fetch maker modules');
+        await page.goto(`${base}/?lang=${lang}&studioNext=0`);
+      }
       await page.goto(`${base}/?lang=${lang}`);
       await page.locator('[data-studio-home]').waitFor();
       await page.waitForTimeout(450);
-      assert.ok(![...chunks].some(url => /RiverRescue-|RhythmGarden-|FeelingsForest-|SneakFreeze-/.test(url)), 'Home does not fetch unrelated game modules');
+      assert.ok(![...chunks].some(url => /RiverRescue-|RhythmGarden-|FeelingsForest-|SneakFreeze-/.test(url) || MAKER_CHUNKS.test(url)), 'Home does not fetch unrelated game modules');
       await page.locator(`button.studio-v2__door[data-world="${game.world}"]`).click();
       await page.locator('button.studio-v2__activity').filter({ hasText: game[lang] }).click();
       await page.locator('[data-studio-phase="intro"]').waitFor();

@@ -108,7 +108,8 @@ export const CHILD_SUBCOLLECTIONS = [
   // B-GAME-13c: the hero's pose sheet — one doc per pose (generated art drawn
   // from the stored generated hero, never a photo) + `_meta`. Export + erase.
   "heroSheet",
-  // B-GA-09: the child's saved studio toys (a corner layout or a short melody;
+  // B-GA-09: the child's saved studio toys (a corner layout, a melody, a dance,
+  // a mended bowl, a stitched cloth or a bottle; one doc per kind;
   // kidmode/studioV2/studioCreations.ts). The sink was written with a
   // single-quoted name, which the old guard regex could not see, so it escaped
   // export and erase. Registered here; childDataSinks.guard.test.ts now reads

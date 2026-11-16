@@ -3,11 +3,17 @@ import { useChildCollection } from '../../../hooks/useChildCollection';
 import { CORNER_OBJECTS, type CornerLayout } from './games/gameRules';
 import type { NoteId } from './games/adventures/adventureRules';
 import { validDance, type MoveId } from './games/adventures/heroBandRules';
+import { validBowl, type BowlCreation } from './games/makers/mendBowl/mendBowlRules';
+import { validTextile, type TextileCreation } from './games/makers/stitchGarden/stitchGardenRules';
+import { validBottle, type BottleCreation } from './games/makers/bottleLab/bottleLabRules';
 
 export type StudioCreation =
   | { kind: 'corner'; layout: CornerLayout; light: 'day' | 'evening' | 'night'; scene: 'treehouse' | 'garden' | 'sky' }
   | { kind: 'melody'; notes: NoteId[]; tempo: number }
-  | { kind: 'dance'; moves: (MoveId | null)[]; tempo: number };
+  | { kind: 'dance'; moves: (MoveId | null)[]; tempo: number }
+  | BowlCreation
+  | TextileCreation
+  | BottleCreation;
 export interface SavedStudioCreation { id: string; ownerId: string; childId: string; creation: StudioCreation }
 /** Only bounded toy choices are saved. No portrait, photo, feeling, recording,
  * free text, ability score or interaction history is part of this contract. */
@@ -15,6 +21,9 @@ export function validStudioCreation(value: unknown): value is StudioCreation {
   if (!value || typeof value !== 'object') return false;
   const v = value as StudioCreation;
   if (v.kind === 'dance') return validDance(v.moves, v.tempo);
+  if (v.kind === 'bowl') return validBowl(v);
+  if (v.kind === 'textile') return validTextile(v);
+  if (v.kind === 'bottle') return validBottle(v);
   if (v.kind === 'melody') return Array.isArray(v.notes) && v.notes.length > 0 && v.notes.length <= 8 && v.notes.every(n => [0, 1, 2].includes(n)) && [500, 760, 1000].includes(v.tempo);
   if (v.kind !== 'corner' || !['day', 'evening', 'night'].includes(v.light) || !['treehouse', 'garden', 'sky'].includes(v.scene) || !Array.isArray(v.layout) || v.layout.length !== 6) return false;
   const objects = v.layout.filter(v => v !== null);
@@ -34,6 +43,9 @@ export function useStudioCreations(childId: string) {
       if (!validStudioCreation(creation) || !store.loaded || store.error || !store.isCurrent()) throw new Error('Creation is not ready to save');
       const clean: StudioCreation = creation.kind === 'dance' ? { kind: 'dance', moves: [...creation.moves], tempo: creation.tempo } : creation.kind === 'melody'
         ? { kind: 'melody', notes: [...creation.notes], tempo: creation.tempo }
+        : creation.kind === 'bowl' ? { kind: 'bowl', glaze: creation.glaze, pattern: creation.pattern, seams: [...creation.seams] }
+        : creation.kind === 'textile' ? { kind: 'textile', cloth: creation.cloth, motifs: creation.motifs.map(({ flower, cell, thread }) => ({ flower, cell, thread })) }
+        : creation.kind === 'bottle' ? { kind: 'bottle', shape: creation.shape, tint: creation.tint, finish: creation.finish, stickers: creation.stickers.map(({ art, slot }) => ({ art, slot })) }
         : { kind: 'corner', layout: [...creation.layout], light: creation.light, scene: creation.scene };
       // A Firestore offline queue or four-second timeout is not a saved receipt.
       // Keep the deterministic per-kind ID retryable until the server confirms.

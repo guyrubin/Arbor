@@ -3,7 +3,8 @@
  * are accepted. A device opts in with localStorage["arbor.flags.studioNext"]
  * = "1", or by opening the app once with ?studioNext=1 (and out again with
  * ?studioNext=0). On, four tiles open the Bop games (Wobbly Delivery,
- * Five-Friend Sun, Oops Button, Rover Delivery) and Sound Orbit opens Hero Band. */
+ * Five-Friend Sun, Oops Button, Rover Delivery) and Sound Orbit opens Hero Band,
+ * and the makers (studioCatalog STUDIO_MAKER_IDS) join their worlds. */
 export const STUDIO_NEXT_FLAG_KEY = 'arbor.flags.studioNext';
 let cached: boolean | null = null;
 export function studioNextFlagOn(): boolean {

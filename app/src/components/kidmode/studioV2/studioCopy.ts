@@ -6,6 +6,18 @@ import { WOBBLY_DELIVERY_COPY } from "./games/adventures/wobblyDeliveryCopy";
 import { FIVE_FRIEND_SUN_COPY } from "./games/adventures/fiveFriendSunCopy";
 import { OOPS_BUTTON_COPY } from "./games/adventures/oopsButtonCopy";
 import { ROVER_DELIVERY_COPY } from "./games/adventures/roverDeliveryCopy";
+import { MEND_BOWL_COPY } from "./games/makers/mendBowl/mendBowlCopy";
+import { STITCH_GARDEN_COPY } from "./games/makers/stitchGarden/stitchGardenCopy";
+import { PAPER_BOAT_COPY } from "./games/makers/paperBoat/paperBoatCopy";
+import { SEASON_DIAL_COPY } from "./games/makers/seasonDial/seasonDialCopy";
+import { CRANK_WORKS_COPY } from "./games/makers/crankWorks/crankWorksCopy";
+import { WINDUP_RACE_COPY } from "./games/makers/windupRace/windupRaceCopy";
+import { CLAY_THEATRE_COPY } from "./games/makers/clayTheatre/clayTheatreCopy";
+import { BOTTLE_LAB_COPY } from "./games/makers/bottleLab/bottleLabCopy";
+import { ICE_AGE_FRIEND_COPY } from "./games/makers/iceAgeFriend/iceAgeFriendCopy";
+import { TINY_BUILDERS_COPY } from "./games/makers/tinyBuilders/tinyBuildersCopy";
+import { FOX_TRAIL_COPY } from "./games/makers/foxTrail/foxTrailCopy";
+import { MAKER_DESK_COPY } from "./games/makers/makerDesk/makerDeskCopy";
 interface ActivityCopy { title: string; description: string; instruction: string }
 interface WorldCopy { title: string; description: string; headline: string; hint: string }
 /** S1 (surfacing): a running Everyday Plan on the kid home — the bottom rail,
@@ -18,6 +30,14 @@ interface StudioCopy {
   books: string; allBooks: string; booksHint: string; activities: Record<StudioActivityId, ActivityCopy>; worlds: Record<StudioWorldId, WorldCopy>;
   play: string; kept: string; keepsake: string; keepsakeHint: string; empty: string; worldActivities: string;
   plan: PlanCopy;
+}
+/** The makers' tile lines live with each maker (its *Copy.ts). They are part
+ * of the base copy: a maker is a new activity, not a renamed tile, and the
+ * catalogue alone decides whether a child is offered it. */
+const MAKER_COPY = { "mend-bowl": MEND_BOWL_COPY, "stitch-garden": STITCH_GARDEN_COPY, "paper-boat": PAPER_BOAT_COPY, "season-dial": SEASON_DIAL_COPY, "crank-works": CRANK_WORKS_COPY, "windup-race": WINDUP_RACE_COPY, "clay-theatre": CLAY_THEATRE_COPY, "bottle-lab": BOTTLE_LAB_COPY, "ice-age-friend": ICE_AGE_FRIEND_COPY, "tiny-builders": TINY_BUILDERS_COPY, "fox-trail": FOX_TRAIL_COPY, "maker-desk": MAKER_DESK_COPY } as const;
+type MakerId = keyof typeof MAKER_COPY;
+function makerLines(lang: "en" | "he"): Record<MakerId, ActivityCopy> {
+  return Object.fromEntries((Object.keys(MAKER_COPY) as MakerId[]).map(id => { const { title, description, instruction } = MAKER_COPY[id][lang]; return [id, { title, description, instruction }]; })) as Record<MakerId, ActivityCopy>;
 }
 const en: StudioCopy = {
   hello: "Hi", helloNoName: "Hi there!", invitation: "Pick a world to play in.", collection: "My keepsakes", hero: "Your hero", noHero: "A place for your hero", guide: "Tap Sprout for a hint", takeMe: "Take me",
@@ -47,6 +67,7 @@ const en: StudioCopy = {
     adventures: { title: "Story Quest", description: "Choose your adventure", instruction: "Listen to the story and choose what happens next." },
     pose: { title: "Hero Pose", description: "Move like your hero", instruction: "Look at the pose, then try it in your own way." },
     speech: { title: "Sound Lab", description: "Play with words and sounds", instruction: "Listen to the word and try saying it." },
+    ...makerLines("en"),
   },
 };
 const he: StudioCopy = {
@@ -77,6 +98,7 @@ const he: StudioCopy = {
     adventures: { title: "מסע הסיפורים", description: "בוחרים הרפתקה", instruction: "מקשיבים לסיפור ובוחרים מה יקרה בהמשך." },
     pose: { title: "תנוחת גיבור", description: "זזים כמו הגיבור שלך", instruction: "מביטים בתנוחה ומנסים אותה בדרך שלך." },
     speech: { title: "מעבדת הצלילים", description: "משחקים במילים ובצלילים", instruction: "מקשיבים למילה ומנסים לומר אותה." },
+    ...makerLines("he"),
   },
 };
 function withHeroBand(base: StudioCopy, lang: "en" | "he"): StudioCopy {

@@ -45,6 +45,8 @@ const COLOUR = /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g;
 /** FROZEN (28 Oct 2026): raw colour literals per kid stylesheet. May only shrink. */
 const COLOUR_LITERALS: Readonly<Record<string, number>> = {
   "components/kidmode/studioV2/games/adventures/adventures.css": 169,
+  // The makers' material palette (16 Nov 2026): the one token file their scene art draws from.
+  "components/kidmode/studioV2/games/makers/makerPalette.css": 64,
   "components/kidmode/studioV2/games/studioGames.css": 0,
   "components/kidmode/studioV2/studioActivityArt.css": 4,
   "components/kidmode/studioV2/studioAdventureScene.css": 3,

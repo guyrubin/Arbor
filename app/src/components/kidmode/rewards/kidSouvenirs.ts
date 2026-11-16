@@ -16,6 +16,7 @@
  */
 import { kidArt, sharedKidArt, storyCoverArt, worldTileKey, type KidArt, type KidThemeId, type KidWorldTileId } from "../../../lib/kidThemeManifest";
 import { kidWorldByWorldId } from "../kidWorlds";
+import { isStudioMakerId } from "../studioV2/studioCatalog";
 
 export const QUEST_SOUVENIR_REF = "kid-quest";
 
@@ -33,13 +34,17 @@ export interface KidSouvenir {
   earnedAt: string;
 }
 
+/** A world souvenir names a kid world, the quest, or a Studio maker (whose
+ *  sticker is its own drawn cover, KidSouvenirSticker). */
+const keepsakeWorld = (refId: string): boolean => refId === QUEST_SOUVENIR_REF || !!kidWorldByWorldId(refId) || isStudioMakerId(refId);
+
 export const souvenirId = (kind: SouvenirKind, refId: string): string => `${kind}:${refId}`;
 
 /** The souvenir to store for this ending, or null when the child already has
  *  it (earned once; the ledger only ever grows). */
 export function souvenirToAward(owned: readonly Pick<KidSouvenir, "id">[], kind: SouvenirKind, refId: string, now: Date): KidSouvenir | null {
   if (!refId) return null;
-  if (kind === "world" && refId !== QUEST_SOUVENIR_REF && !kidWorldByWorldId(refId)) return null;
+  if (kind === "world" && !keepsakeWorld(refId)) return null;
   const id = souvenirId(kind, refId);
   if (owned.some((s) => s?.id === id)) return null;
   return { id, kind, refId, earnedAt: now.toISOString() };
@@ -66,7 +71,7 @@ export function souvenirStrip<T extends KidSouvenir>(items: readonly T[]): T[] {
   const out: T[] = [];
   for (const s of items.filter(s => !!s && (s.kind === "world" || s.kind === "book") && typeof s.refId === "string" && !!s.refId && s.id === souvenirId(s.kind, s.refId) && typeof s.earnedAt === "string" && Number.isFinite(Date.parse(s.earnedAt))).sort((a, b) => (a.earnedAt < b.earnedAt ? 1 : a.earnedAt > b.earnedAt ? -1 : 0))) {
     if (seen.has(s.id)) continue;
-    if (s.kind === "world" && s.refId !== QUEST_SOUVENIR_REF && !kidWorldByWorldId(s.refId)) continue;
+    if (s.kind === "world" && !keepsakeWorld(s.refId)) continue;
     seen.add(s.id);
     out.push(s);
   }

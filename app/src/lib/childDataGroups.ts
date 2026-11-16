@@ -51,7 +51,7 @@ export const CHILD_DATA_ROWS: readonly ChildDataRow[] = [
     collections: [
       "playLogs", "practiceEvents", "speechAttempts", "mimicSessions", "missionRecords",
       "heroRuns", "heroRenders", "heroSheet", "journeyObjectives", "adventureResults", "savedStories", "savedComics", "kidSouvenirs", "studioQuestProgress",
-      // B-GA-09: the child's saved studio toys (a corner layout, a melody).
+      // B-GA-09: the child's saved studio toys (corner, melody, dance, bowl, cloth, bottle).
       "studioCreations",
     ],
   },

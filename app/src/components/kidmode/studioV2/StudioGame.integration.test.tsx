@@ -70,6 +70,9 @@ import { KID_WORLDS } from "../kidWorlds";
 import { GameCompletionProvider } from "../game/GameSessionContext";
 import { GameFinish } from "../game/GameShell";
 import { KidFinishMoment } from "../rewards/KidSouvenir";
+import { resetStudioNextFlagForTests } from "./studioNextFlag";
+import { StudioCreationResult } from "./StudioCreationResult";
+import { StudioMakerCover } from "./StudioMakerArt";
 import MemoryMatch from "../../practice/MemoryMatch";
 import FeelingsLabTab, { MOOD_CLIMB } from "../../practice/FeelingsLabTab";
 import PatternPowerWorld, { PatternDoneView, PatternRoundView } from "../../practice/PatternPowerWorld";
@@ -167,6 +170,30 @@ describe("V2 entry, identity and persistent result", () => {
     const draw = (activityId: StudioActivityId = "memory") => render("outer", () => StudioGame({ activityId, onBack: vi.fn() }))[0].key;
     const keys = [draw()]; h.uid = "owner-b"; keys.push(draw()); h.child.id = "child-b"; keys.push(draw()); keys.push(draw("beat"));
     expect(new Set(keys).size).toBe(4);
+  });
+  it("a maker is the unavailable card while the switch is off, and a full intro, play, result and replay loop when on", () => {
+    for (const id of ["mend-bowl", "stitch-garden", "paper-boat", "season-dial", "crank-works", "windup-race", "clay-theatre", "bottle-lab", "ice-age-friend", "tiny-builders", "fox-trail", "maker-desk"] as const) {
+      resetStudioNextFlagForTests();
+      const off = render(`${id}:off`, () => StudioGameSession({ activityId: id, onBack: vi.fn() }));
+      expect(off[0].props["data-studio-game-unavailable"]).toBe(""); expect(off.some(node => node.type === StudioMakerCover)).toBe(false);
+      vi.stubGlobal("localStorage", { getItem: (k: string) => k === "arbor.flags.studioNext" ? "1" : null, setItem: () => {}, removeItem: () => {} });
+      resetStudioNextFlagForTests();
+      try {
+        const draw = () => render(id, () => StudioGameSession({ activityId: id, onBack: vi.fn() }));
+        let tree = draw();
+        expect(tree[0].props["data-studio-phase"]).toBe("intro");
+        expect(tree.filter(node => node.type === StudioMakerCover).map(node => node.props.id)).toEqual([id, id]);
+        expect(tree.filter(node => node.type === "img")).toHaveLength(0);
+        click(tree.find(node => node.props["data-studio-start"] === "")); tree = draw();
+        expect(tree.some(node => node.type === STUDIO_GAME_COMPONENTS[id])).toBe(true);
+        const made = id === "mend-bowl" ? { kind: "bowl", glaze: "rose", pattern: 0, seams: [3, 2, 1, 0] } : id === "stitch-garden" ? { kind: "textile", cloth: "sage", motifs: [{ flower: "poppy", cell: 5, thread: 2 }] } : id === "bottle-lab" ? { kind: "bottle", shape: "flask", tint: "amber", finish: "frost", stickers: [] } : undefined;
+        (tree.find(node => node.type === GameCompletionProvider)!.props.onComplete as (c?: unknown) => void)(made);
+        tree = draw(); expect(tree[0].props["data-studio-phase"]).toBe("result");
+        expect(tree.find(node => node.type === KidFinishMoment)?.props).toMatchObject({ kind: "world", refId: id });
+        expect(tree.find(node => node.type === StudioCreationResult)?.props.creation).toEqual(made);
+        click(tree.find(node => node.props["data-studio-replay"] === "")); expect(draw()[0].props["data-studio-phase"]).toBe("play");
+      } finally { vi.unstubAllGlobals(); vi.stubGlobal("window", { setTimeout, clearTimeout, setInterval, clearInterval }); resetStudioNextFlagForTests(); }
+    }
   });
   it("age-ineligible and preserved legacy entries never mount the wrong game", () => {
     h.child.age = 2; h.child.ageMonths = 24;
