@@ -24,7 +24,10 @@ const ART = "/visuals/parent/v2/area-words-960.webp";
 
 export type PackedCounts = { moments: number; milestones: number; words: number };
 
-export default function VisitScene({ composition, visit, heading, packed, build, brief = false, briefLine, nowMs = Date.now() }: {
+export default function VisitScene({ composition, visit, heading, packed, build, brief = false, briefLine, aside, nowMs = Date.now() }: {
+  /** The Teacher brief: who it is for and the template, as a card inside the
+   *  full-width scene (design v10.1 size pass: no rail on the brief). */
+  aside?: React.ReactNode;
   /** Heading only (the Visit summary and Teacher brief routes): no visit head,
    *  runway or counts — production keeps those on the landing. */
   brief?: boolean;
@@ -66,7 +69,7 @@ export default function VisitScene({ composition, visit, heading, packed, build,
       aria-labelledby="consult-h1"
       data-testid={brief ? undefined : "consult-visit-head"}
       data-visit={brief ? undefined : visit ? "booked" : "none"}
-      className={desk ? "x8 care-scene" : "care-scene"}
+      className={desk ? (aside ? "x12 care-scene" : "x8 care-scene") : "care-scene"}
       orbs={desk
         ? [{ size: 420, left: -230, bottom: -280, opacity: 0.8 }, { size: 360, right: -180, top: -240, opacity: 0.6, b: true }]
         : [{ size: 250, left: -150, bottom: -160, opacity: 0.8 }, { size: 220, right: -130, top: -140, opacity: 0.55, b: true }]}
@@ -85,21 +88,26 @@ export default function VisitScene({ composition, visit, heading, packed, build,
         <div className="line care-scene-main">
           {art}
           <div className="stack care-scene-head">
-            {visit && <span className="care-scene-over">{t("elev.consult.visit.kicker")}</span>}
             {heading}
             {visit && days !== null && <SceneFigure days={days} label={c.daysToGo(days)} when={when} size="xl" badge={badge ? t(badge.key, badge.vars) : ""} />}
             {visit && days === null && when && <p className="care-scene-when">{appointmentRoleLabel(visit, t)} · {when}</p>}
           </div>
+          {aside && <div className="care-scene-aside">{aside}</div>}
         </div>
       ) : (
         <>
           {heading}
-          <div className="line care-scene-main">
-            {art}
-            {visit && days !== null
-              ? <SceneFigure days={days} label={c.daysToGo(days)} when={when} size="md" badge={badge ? t(badge.key, badge.vars) : ""} />
-              : visit ? <p className="care-scene-when">{`${appointmentRoleLabel(visit, t)} · ${when ?? ""}`}</p> : null}
-          </div>
+          {/* phone: the art rides with the visit's figure; a heading-only
+              scene (Visit summary, Teacher brief) has no art row of its own */}
+          {visit && (
+            <div className="line care-scene-main">
+              {art}
+              {days !== null
+                ? <SceneFigure days={days} label={c.daysToGo(days)} when={when} size="md" badge={badge ? t(badge.key, badge.vars) : ""} />
+                : <p className="care-scene-when">{`${appointmentRoleLabel(visit, t)} · ${when ?? ""}`}</p>}
+            </div>
+          )}
+          {aside}
         </>
       )}
 
@@ -118,21 +126,19 @@ export default function VisitScene({ composition, visit, heading, packed, build,
         <p data-testid="consult-visit-none" className="care-scene-none">{t("elev.consult.visit.none")}</p>
       )}
 
-      {tiles.length > 0 && (desk ? (
+      {tiles.length > 0 && desk && (
         <div className="stack care-packed">
           <span className="kicker">{c.packed}</span>
           <div className="packed" role="group" aria-label={c.packed} style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}>
             {tiles.map((x) => (
               <span key={x.sub} className="pk">
-                <Token kind="moment" label={x.unit} />
+                <Token kind="moment" size="sm" label={x.unit} />
                 <span><b>{x.n}</b> {x.unit}<small>{x.sub}</small></span>
               </span>
             ))}
           </div>
         </div>
-      ) : (
-        <p className="care-packed-line"><b>{c.packed}:</b> {tiles.map((x) => `${x.n} ${x.unit}`).join(" · ")}</p>
-      ))}
+      )}
 
       <div className={desk ? "line care-scene-foot" : "stack care-scene-foot"}>
         {!brief && <button

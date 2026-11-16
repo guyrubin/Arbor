@@ -15,7 +15,7 @@ import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
 import { fmtDay } from "../../lib/formatDate";
 import { requestOpenSettings } from "../layout/settingsBus";
 import { parentWords, recordStartIso, reportsLeadCounts } from "../../lib/recordCounts";
-import { DsRoot, Guide, Route, RouteSection, RouteHead, SideRail, Scene, LivingForm, Fig, StartHere } from "../../design/primitives";
+import { DsRoot, Guide, Route, RouteSection, RouteHead, SideRail, Scene, LivingForm, StartHere } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
 import { careCopy } from "../care/v10/careV10Copy";
 import "../care/v10/care.css";
@@ -188,7 +188,7 @@ export default function Reports() {
   const c = careCopy(uiLang).records;
   const desk = composition === "desk";
   const stops = [
-    { id: "records-record", title: c.stopRecord, sub: recordMoments + recordNoticed > 0 ? c.stopRecordSub(recordMoments, recordNoticed) : undefined },
+    { id: "records-record", title: c.stopRecord, sub: startIso ? c.stopRecordSub(fmtDay(startIso, uiLang)) : undefined },
     { id: "records-docs", title: c.stopDocs, sub: c.stopDocsSub },
     { id: "records-kept", title: c.stopKept, sub: c.stopKeptSub },
   ];
@@ -230,9 +230,7 @@ export default function Reports() {
               <h1 id="reports-h1" className="hero care-h1">{t("sec.reports.title")}</h1>
               <p className="care-sub">{t("sec.reports.sub", { name: first })}</p>
             </div>
-            {desk && recordMoments > 0 && <Fig n={recordMoments} size="xl" unit={c.moments(recordMoments)} sub={recordNoticed > 0 ? c.milestonesSub(recordNoticed) : undefined} className="care-records-fig" />}
           </div>
-          {!desk && recordMoments > 0 && <Fig n={recordMoments} size="md" unit={c.moments(recordMoments)} sub={recordNoticed > 0 ? c.milestonesSub(recordNoticed) : undefined} />}
         {/* The lead record: Weekly Insight, with the page's one gradient. */}
         <div className="flex flex-col gap-3 care-records-lead">
           <div className="min-w-0">

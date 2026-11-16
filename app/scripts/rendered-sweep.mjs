@@ -747,7 +747,25 @@ function stateHelpers(page, vp, tr) {
     },
     /** Scroll an element to the top of its scroller, clear of the sticky top bar. */
     async top(el) {
-      await el.evaluate((e) => { e.style.scrollMarginTop = "96px"; e.scrollIntoView({ block: "start" }); });
+      // The target lands below the shell's sticky chrome (top bar, and the v10
+      // pill row that sticks under it): 96 px at least, more when the sticky
+      // band is taller, so neither the target nor what sits just above it is
+      // drawn under a sticky bar.
+      await el.evaluate((e) => {
+        let band = 0;
+        for (const s of document.querySelectorAll("header, nav, [class*=shellrow], [class*=topbar], [class*=sticky]")) {
+          const cs = getComputedStyle(s);
+          if (cs.position !== "sticky" && cs.position !== "fixed") continue;
+          const r = s.getBoundingClientRect();
+          if (r.height > 0 && r.height < 240 && r.width > 200 && r.top < 120) band = Math.max(band, r.bottom);
+        }
+        const margin = Math.max(96, Math.ceil(band) + 16);
+        // Already wholly in view below the sticky band: leave the page where it is.
+        const r = e.getBoundingClientRect();
+        if (r.top >= margin && r.bottom <= window.innerHeight) return;
+        e.style.scrollMarginTop = `${margin}px`;
+        e.scrollIntoView({ block: "start" });
+      });
       await page.waitForTimeout(200);
     },
     skip,
@@ -1406,7 +1424,8 @@ const STATES = {
       name: "step2",
       run: async (h) => {
         await consultPediatrician(h);
-        const step2 = await h.need("[data-module=consult-packet] h2:has-text('2')", "step 2 (What changed)");
+        // design v10.1: step 2 (What changed) is the reason section in Getting ready
+        const step2 = await h.need("[data-module=consult-packet] [data-testid=consult-reason-section] #consult-reason", "step 2 (What changed)");
         await h.top(step2);
       },
     },
@@ -1415,8 +1434,9 @@ const STATES = {
       run: async (h) => {
         await consultPediatrician(h);
         await h.click("[data-testid=consult-build]", [], "Build the one-page summary");
-        await h.need("[data-module=consult-packet] h2:has-text('3')", "step 3 (What leaves)");
-        await h.top(await h.need("[data-module=consult-packet] h2:has-text('3')", "step 3"));
+        // design v10.1: step 3 (What leaves) is the Share card of the visit summary
+        await h.need("[data-module=consult-packet] #consult-review-export h2", "step 3 (What leaves)");
+        await h.top(await h.need("[data-module=consult-packet] #consult-review-export h2", "step 3"));
       },
     },
     {
@@ -1536,8 +1556,12 @@ const STATES = {
       name: "preview",
       writes: "types a placeholder address into the week card (no request; the grant button is never tapped)",
       run: async (h) => {
-        await (await h.need("[data-testid=share-week-email]", "the week card's email field")).fill(SHARE_EMAIL);
-        await h.top(await h.need("[data-testid=share-week-preview]", "the recipient week preview"));
+        const email = await h.need("[data-testid=share-week-email]", "the week card's email field");
+        await email.fill(SHARE_EMAIL);
+        await h.need("[data-testid=share-week-preview]", "the recipient week preview");
+        // design v10.1: the shot opens on the field the parent just typed in —
+        // the one tap below it and the recipient preview under that.
+        await h.top(email);
       },
     },
   ],

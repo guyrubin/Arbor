@@ -49,7 +49,7 @@ export default function PeopleScene({ composition, title, sub, liveCount, loadin
       </div>
       {!loading && (liveCount > 0
         ? <Fig n={liveCount} size={desk ? "md" : "sm"} unit={c.adults(liveCount)} sub={c.adultsSub} />
-        : <p className="care-scene-when">{c.stopWhoNone}</p>)}
+        : desk ? <p className="care-scene-when">{c.stopWhoNone}</p> : null)}
     </Scene>
   );
 }
