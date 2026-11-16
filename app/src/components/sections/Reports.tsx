@@ -12,7 +12,7 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import type { LangObservation } from "../../growth/vocabAgg";
 import type { BehaviorLog } from "../../types";
 import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDay, fmtDayV10 } from "../../lib/formatDate";
 import { requestOpenSettings } from "../layout/settingsBus";
 import { parentWords, recordStartIso, reportsLeadCounts } from "../../lib/recordCounts";
 import { DsRoot, Guide, Route, RouteSection, RouteHead, SideRail } from "../../design/primitives";
@@ -189,7 +189,7 @@ export default function Reports() {
   const c = careCopy(uiLang).records;
   const desk = composition === "desk";
   const stops = [
-    { id: "records-record", title: c.stopRecord, sub: startIso ? c.stopRecordSub(fmtDay(startIso, uiLang)) : undefined },
+    { id: "records-record", title: c.stopRecord, sub: startIso ? c.stopRecordSub(fmtDayV10(startIso, uiLang)) : undefined },
     { id: "records-docs", title: c.stopDocs, sub: c.stopDocsSub },
     { id: "records-kept", title: c.stopKept, sub: c.stopKeptSub },
   ];
@@ -212,7 +212,7 @@ export default function Reports() {
           composition={composition}
           labelledBy="reports-h1"
           className="care-records-scene"
-          kicker={startIso ? c.since(fmtDay(startIso, uiLang)) : t("elev.reports.eyebrow")}
+          kicker={startIso ? c.since(fmtDayV10(startIso, uiLang)) : t("elev.reports.eyebrow")}
           art="/visuals/parent/v2/area-words-960.webp"
           artOnPhone
           heading={<div className="stack care-heading"><h1 id="reports-h1" className="hero care-h1">{t("sec.reports.title")}</h1><p className="care-sub">{t("sec.reports.sub", { name: first })}</p></div>}

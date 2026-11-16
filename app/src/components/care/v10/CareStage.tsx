@@ -26,8 +26,8 @@ export type CareStageProps = {
   startHere?: boolean;
   /** Plain text at the header row's end. */
   note?: React.ReactNode;
-  /** A Living Form from public/visuals (decorative, never evidence). */
-  art: string;
+  /** A Living Form from public/visuals (decorative, never evidence); none when absent. */
+  art?: string;
   /** Phone: with no figure, set the art beside the heading (else no art). */
   artOnPhone?: boolean;
   heading: React.ReactNode;
@@ -44,7 +44,7 @@ export type CareStageProps = {
 export default function CareStage({ composition, labelledBy, kicker, startHere = true, note, art, artOnPhone = false, heading, figure, aside, wide = false, className, children, ...rest }: CareStageProps) {
   const { t } = useLanguage();
   const desk = composition === "desk";
-  const form = desk
+  const form = !art ? null : desk
     ? <LivingForm src={art} width={196} height={136} crop={{ w: 250, h: 250, x: -27, y: -60 }} />
     : <LivingForm src={art} width={72} height={50} crop={{ w: 90, h: 90, x: -9, y: -21 }} />;
   const head = (kicker || startHere || note) ? (

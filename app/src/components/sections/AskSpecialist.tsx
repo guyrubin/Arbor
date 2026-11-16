@@ -43,6 +43,7 @@ import type { Appointment, AppointmentFollowUp } from "../../lib/careTrack";
 import { exportPlainLines } from "../../consult/plainText";
 // B-CAREPRO-36: the teacher preset shows the School Brief editor inline.
 import SchoolBrief from "./SchoolBrief";
+import { careCopy } from "../care/v10/careV10Copy";
 import { homePracticeWorlds, openHomePracticeWorld } from "../../consult/homePractice";
 import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 // LC-20 + LC-12: the reason for the visit, the questions prepared in
@@ -196,6 +197,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     setExcluded(new Set(noticePacket?.sections.flatMap(section => section.items.map(item => item.id)) ?? []));
   }
   const [previewAll, setPreviewAll] = useState(false);
+  const [audienceMoreOpen, setAudienceMoreOpen] = useState(false);
 
   // Step 1: the audience (= the preset); remembered per device.
   const allowed = (a: ExportAudience) => !((excludeTeacher || noticePacket) && a === "teacher");
@@ -701,6 +703,12 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
      landing with a visit (v3 EXTRA-CARE), sits in the visit card's head under
      the visit, aligned with its title. */
   const sinceInHead = !!head && !isTeacher;
+  const visitNoteFigure = anchor.kind === "visit" && anchor.note ? (
+    <figure data-testid="consult-visit-note" data-anchor="visit" className="mt-2">
+      <figcaption className="t-xs" style={{ color: MUTED }}>{t("elev.carehonesty.consult.since.visitNote")}</figcaption>
+      <blockquote dir="auto" className="t-sm mt-0.5" style={{ color: INK }}>“{anchor.note}”</blockquote>
+    </figure>
+  ) : null;
   const sinceHead = sinceSentence ? (
     <div
       data-testid="consult-since-head"
@@ -711,12 +719,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
       <p data-testid="consult-since-counts" className={sinceInHead ? "t-sm" : "t-sm font-bold"} style={{ color: sinceInHead ? "var(--arbor-ink-soft)" : INK }}>{sinceSentence}</p>
       {/* W2-CAREPRO c2 r1: what the professional said, in the parent's own
           after-visit note (Appointments' follow-up), under the anchor. */}
-      {anchor.kind === "visit" && anchor.note && (
-        <figure data-testid="consult-visit-note" className="mt-2">
-          <figcaption className="t-xs" style={{ color: MUTED }}>{t("elev.carehonesty.consult.since.visitNote")}</figcaption>
-          <blockquote dir="auto" className="t-sm mt-0.5" style={{ color: INK }}>“{anchor.note}”</blockquote>
-        </figure>
-      )}
+      {visitNoteFigure}
     </div>
   ) : null;
 
@@ -777,11 +780,29 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     </div>
   ) : null;
 
+  /* Design V77: on a phone composition "Who is it for?" shows the chosen
+     chip and Teacher, then "N more" (every chip one tap away). */
+  const collapsed = !!layout && layout.props.composition === "phone" && !audienceMoreOpen;
+  const hiddenAudienceCount = EXPORT_AUDIENCES.filter((a) => allowed(a) && a !== "teacher" && !(a === audience && !split)).length
+    + SPLIT_CLINICIAN_AUDIENCES.filter((p) => split !== p).length;
+  /* Design V77: the Teacher brief links back to Visits' chooser (the visit
+     summary template) instead of repeating it. */
+  const briefBack = (
+    <button type="button" data-testid="consult-template" data-template="visit" onClick={() => chooseTemplate("visit")} className="care-brief-back">
+      <span className="care-gi" aria-hidden="true"><Icon name="backpack" size={18} /></span>
+      <span className="care-brief-back-text">
+        <b>{t("elev.consult.template.teacher")}</b>
+        <span className="small">{careCopy(uiLang).brief.backSub}</span>
+      </span>
+      <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" />
+    </button>
+  );
+
   /* Step 1 · Who is it for? — the audience IS the preset (B-CAREPRO-28).
      LC-28 / OBJ-CARE-02: the hub CTA scrolls to and focuses this row. */
   const audienceStep = (
       <section id="consult-audience-step" tabIndex={-1} data-testid="consult-audience-step" className="flex flex-col gap-2 focus:outline-none" style={{ scrollMarginBlockStart: "0.75rem" }}>
-        {showTemplate && (
+        {showTemplate && !layout && (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mb-1">
             <span className="t-xs font-bold" style={{ color: MUTED }}>{t("elev.consult.template.label")}</span>
             <div role="radiogroup" aria-label={t("elev.consult.template.aria")} data-testid="consult-template-row" className="flex flex-wrap items-center gap-1.5">
@@ -812,7 +833,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
             </span>
           </div>
         )}
-        {showTemplate && isTeacher ? null : landing && !isTeacher && !layout ? (
+        {showTemplate && isTeacher ? (layout ? briefBack : null) : landing && !isTeacher && !layout ? (
           <>
             {stepHeading(1, t("elev.consult.step.bring"), "consult-bring-heading")}
             <p id="consult-audience-label" className="t-sm font-bold" style={{ color: INK }}>{t("elev.carehonesty.consult.audience.label")}</p>
@@ -828,7 +849,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
           className="flex flex-wrap items-center gap-1.5 focus:outline-none"
           style={{ scrollMarginBlockStart: "0.75rem" }}
         >
-          {EXPORT_AUDIENCES.filter((a) => allowed(a) && !(showTemplate && a === "teacher")).map((a) => {
+          {EXPORT_AUDIENCES.filter((a) => allowed(a) && !(showTemplate && a === "teacher" && !layout)).filter((a) => !collapsed || a === "teacher" || (a === audience && !split)).map((a) => {
             const on = a === audience && !split;
             return (
               <button
@@ -836,6 +857,8 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
                 type="button"
                 role="radio"
                 aria-checked={on}
+                // Design V77: the Teacher chip opens the Teacher brief (the template).
+                {...(layout && a === "teacher" ? { "data-testid": "consult-template", "data-template": "teacher" } : {})}
                 onClick={() => setAudience(a)}
                 className="inline-flex items-center gap-1.5 t-sm font-bold rounded-xl px-3.5 py-2 min-h-[44px] transition"
                 // W2-CAREPRO r1: the selected chip is the navy sub-tab pill —
@@ -849,7 +872,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
               </button>
             );
           })}
-          {SPLIT_CLINICIAN_AUDIENCES.map((p) => {
+          {SPLIT_CLINICIAN_AUDIENCES.filter((p) => !collapsed || split === p).map((p) => {
             const on = split === p;
             return (
               <button
@@ -869,6 +892,12 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
               </button>
             );
           })}
+          {collapsed && (
+            <button type="button" data-testid="consult-audience-more" aria-expanded={false} onClick={() => setAudienceMoreOpen(true)} className="inline-flex items-center gap-1.5 t-sm font-bold rounded-xl px-3.5 py-2 min-h-[44px]" style={{ background: "var(--arbor-paper-sunk)", color: INK, border: `1px solid ${RULE}` }}>
+              {careCopy(uiLang).visits.moreChips(hiddenAudienceCount)}
+              <Icon name="expand_more" size={18} />
+            </button>
+          )}
         </div>
         {split && (
           <div data-testid="consult-split-intake" className="flex flex-col gap-1">
@@ -898,12 +927,15 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
            editor's own export path (per-export approval, CURATED_FIELDS,
            ClinicalLanguageError fail-closed scan) is unchanged. A hairline
            section, not a card: the brief's own card sits inside it. */
-        <section data-testid="consult-teacher-branch" className="flex flex-col gap-4 border-t pt-5" style={{ borderColor: RULE }}>
-          <div>
-            <h2 className="t-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>
-              {t("elev.carehonesty.consult.teacher.title", { name: firstName })}
-            </h2>
-            <p className="t-sm leading-relaxed mt-1.5" style={{ color: MUTED }}>{t("elev.carehonesty.consult.teacher.body")}</p>
+        <section data-testid="consult-teacher-branch" className={layout ? "flex flex-col gap-4" : "flex flex-col gap-4 border-t pt-5"} style={{ borderColor: RULE }}>
+          <div className={layout && visionNote.trim() === "" ? "hidden" : undefined}>
+            {/* Design V77 (N-Brief): in the composition the hero carries the brief's description; the branch opens on the document. */}
+            {!layout && (
+              <h2 className="t-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: INK }}>
+                {t("elev.carehonesty.consult.teacher.title", { name: firstName })}
+              </h2>
+            )}
+            {!layout && <p className="t-sm leading-relaxed mt-1.5" style={{ color: MUTED }}>{t("elev.carehonesty.consult.teacher.body")}</p>}
             {visionNote.trim() !== "" && (
               <p data-testid="consult-teacher-note-carried" className="text-xs mt-2 inline-flex items-center gap-1.5" style={{ color: GREEN }}>
                 <Icon name="check_circle" size={14} fill={1} /> {t("elev.carehonesty.consult.teacher.noteCarried")}
@@ -914,16 +946,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
         </section>
   );
 
-  /* Step 2 · What changed — purpose first; the same builder carries it into every clinician packet. */
-  const reasonSection = (
-      <section data-testid="consult-reason-section" className="border-t pt-5" style={{ borderColor: RULE }}>
-        {!layout && stepHeading(2, landing ? t("elev.consult.step.preview") : t("elev.carehonesty.consult.step.changed"))}
-        {/* The since counts head step 2 unless the visit card's head holds them. */}
-        {!sinceInHead && sinceHead}
-        {/* B-CAREPRO-NEW-2b: the moment that says the most — the parent's own
-            latest words since the anchor (the one warm accent). Nothing renders
-            when there is none. */}
-        {sinceMoment && (
+  const sinceMomentFigure = sinceMoment ? (
           <figure data-testid="consult-since-moment" className="mt-3 p-5" style={{ background: "var(--arbor-peach-wash)", borderRadius: "var(--r-lg)", border: `1px solid ${RULE}` }}>
             <figcaption className="t-xs" style={{ color: "var(--arbor-peach-ink)" }}>{t("elev.carehonesty.consult.sinceMoment.label")}</figcaption>
             <blockquote dir="auto" className="t-lg mt-1.5" style={{ color: INK, fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)" }}>“{sinceMoment.quote}”</blockquote>
@@ -940,7 +963,29 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
               </button>
             )}
           </figure>
-        )}
+  ) : null;
+  /* Design V77 (V73): the parent's latest words are offered once, as the
+     "Start my note from this" act under the field; the quote is read with
+     the button, not printed beside it again. */
+  const sinceMomentSeed = sinceMoment && reason.trim() === "" ? (
+    <figure data-testid="consult-since-moment" className="mt-2">
+      <figcaption className="sr-only">{t("elev.carehonesty.consult.sinceMoment.label")} “{sinceMoment.quote}”</figcaption>
+      <button type="button" data-testid="consult-since-moment-seed" onClick={() => setReason(sinceMoment.quote)} className="mbtn care-seed">
+        <Icon name="edit_note" size={18} /> {t("elev.carehonesty.consult.sinceMoment.seed")}
+      </button>
+    </figure>
+  ) : null;
+
+  /* Step 2 · What changed — purpose first; the same builder carries it into every clinician packet. */
+  const reasonSection = (
+      <section data-testid="consult-reason-section" className="border-t pt-5" style={{ borderColor: RULE }}>
+        {!layout && stepHeading(2, landing ? t("elev.consult.step.preview") : t("elev.carehonesty.consult.step.changed"))}
+        {/* The since counts head step 2 unless the visit card's head holds them. */}
+        {!sinceInHead && !layout && sinceHead}
+        {/* B-CAREPRO-NEW-2b: the moment that says the most — the parent's own
+            latest words since the anchor (the one warm accent). Nothing renders
+            when there is none. */}
+        {!layout && sinceMomentFigure}
         <label htmlFor="consult-reason" className="inline-flex items-center gap-2 t-sm font-bold mt-3" style={{ color: INK }}>
           <Icon name="help" size={16} /> {t("elev.learnCare.reason.label")}
         </label>
@@ -959,6 +1004,11 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
         {reason.trim() === "" && (
           <p className="text-xs mt-1.5" style={{ color: MUTED }}>{t("elev.learnCare.reason.missing")}</p>
         )}
+        {/* Design V77: the counts sentence is gone from the composition (the
+            scene's figures carry the record); what the professional said at
+            the anchoring visit stays, under the parent's own line. */}
+        {layout && visitNoteFigure}
+        {layout && sinceMomentSeed}
         {!noticePacket && preparedQuestions.length > 0 && (
           <p className="text-xs mt-2 inline-flex items-center gap-1.5" style={{ color: GREEN }}>
             <Icon name="check_circle" size={14} fill={1} /> {t("elev.learnCare.appt.questions.toPacket")}
@@ -1292,6 +1342,7 @@ export default function AskSpecialist({ primaryMoveStamp, anchorAudience, intake
     return <Layout {...layout.props} parts={{
       isTeacher,
       isEmpty,
+      reviewed: reviewed && approval.current === exportReceipt,
       head: headBlock,
       audience: audienceStep,
       build: buildButton,
@@ -1356,6 +1407,8 @@ export type AskSpecialistLayout = { component: React.ComponentType<any>; props: 
 
 export type AskSpecialistParts = {
   isTeacher: boolean;
+  /** The parent ticked "I reviewed" for the exact outgoing text. */
+  reviewed: boolean;
   isEmpty: boolean;
   head: React.ReactNode;
   audience: React.ReactNode;

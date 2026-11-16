@@ -332,11 +332,47 @@
 .ds.care-v10 button:disabled { opacity: .55; cursor: not-allowed; }
 /* V77: no warm-paper tints — the parent's own words sit on the sapphire wash
    with an ink rule (the moment kind), in Visits and in Records */
-.ds.care-v10 [data-testid="consult-since-moment"],
 .ds.care-v10 [data-testid="reports-kept"] { background: var(--tint-2) !important; border: 0 !important; border-inline-start: 2px solid var(--ink) !important; border-radius: 14px !important; }
-.ds.care-v10 [data-testid="consult-since-moment"] figcaption,
-.ds.care-v10 [data-testid="consult-since-moment"] p,
 .ds.care-v10 [data-testid="reports-kept"] figcaption,
 .ds.care-v10 [data-testid="reports-kept"] blockquote { color: var(--ink) !important; }
-.ds.care-v10 [data-testid="consult-since-moment"] figcaption,
 .ds.care-v10 [data-testid="reports-kept"] figcaption { color: var(--ink-soft) !important; }
+
+/* V77 board, Visits: the stepper under the runway (Booked, Choose, Review, Share) */
+.ds.care-v10 .care-steps { display: flex; align-items: center; gap: 6px; list-style: none; margin: 0; padding: 0; font-size: 12px; font-weight: 600 !important; color: var(--ink); }
+.ds.care-v10 .care-steps-st { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ds.care-v10 .care-steps-ln { flex: 1; min-width: 8px; height: 3px; border-radius: 2px; background: var(--rule-strong); }
+.ds.care-v10 .care-steps-ln.on { background: var(--k-plan); }
+.ds.care-v10 .care-scene-over { font-size: 13px; font-weight: 600 !important; color: var(--ink-soft); }
+/* the Teacher brief's way back to Visits' chooser */
+.ds.care-v10 .care-brief-back { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 12px 18px; border: 0; border-radius: 18px; background: var(--tint); box-shadow: inset 0 0 0 1px var(--rule-strong); text-align: start; color: var(--ink); }
+.ds.care-v10 .care-brief-back:hover { background: var(--tint-2); }
+.ds.care-v10 .care-brief-back .care-gi { flex: none; width: 32px; height: 32px; border-radius: 10px; background: var(--sapphire-deep); color: #fff; display: inline-flex; align-items: center; justify-content: center; }
+.ds.care-v10 .care-brief-back-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ds.care-v10 .care-brief-back-text b { font-size: 15px; font-weight: 600 !important; }
+.ds.care-v10 .care-brief-back-text .small { color: var(--ink-soft); }
+.ds.care-v10 .rcard.care-who.care-brief-who { padding: 0; background: transparent; box-shadow: none; }
+.ds.care-v10 .care-seed { min-height: 44px; }
+/* V77 N-Care-M: one tint card for who and your one line; the stepper fits 390 */
+.ds-phone.care-v10 .care-who-phone .care-reason { border-top: 1px solid var(--rule); padding-top: 10px; margin-top: 4px; }
+.ds-phone.care-v10 .care-who-phone .care-reason > section { padding-top: 0 !important; border: 0 !important; }
+.ds-phone.care-v10 .care-who-phone #consult-audience-step > p:last-child,
+.ds-phone.care-v10 .care-who-phone #consult-reason ~ p,
+.ds-phone.care-v10 .care-who-phone label[for="consult-reason"] + p { display: none; }
+.ds-phone.care-v10 .care-steps { gap: 4px; }
+.ds-phone.care-v10 .care-steps-st { gap: 4px; }
+.ds-phone.care-v10 .care-steps-ln { min-width: 4px; }
+/* "What to bring" is the card's own title: the row keeps it as its name only */
+.ds.care-v10 #consult-bring-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ds.care-v10 [data-testid="consult-audience-more"] { border-radius: 999px !important; border: 0 !important; background: var(--card) !important; box-shadow: inset 0 0 0 1px var(--rule-strong); }
+/* the one-line field is a white card, as drawn */
+.ds.care-v10 #consult-reason { background: var(--card) !important; border: 0 !important; box-shadow: inset 0 0 0 1px var(--rule-strong); border-radius: 14px !important; }
+.ds.care-v10 .care-seed { color: var(--sapphire-deep); }
+.ds-desk.care-v10 .care-scene-foot .care-steps { flex: 1; min-width: 0; }
+.ds-desk.care-v10 .care-scene-foot { flex-wrap: nowrap; gap: 20px; }
+
+/* Design V77 (N-Brief-D): the brief reads as one wide page, its sections in
+   three columns under the card's caption row (desktop only). */
+.ds-desk.care-v10 .care-teacher .max-w-\[760px\] { max-width: none; }
+.ds-desk.care-v10 .care-teacher [data-module="brief-draft"] { columns: 3; column-gap: 32px; }
+.ds-desk.care-v10 .care-teacher [data-module="brief-draft"] > * { break-inside: avoid; }
+.ds-desk.care-v10 .care-teacher [data-module="brief-draft"] > [data-testid="school-brief-card-header"] { column-span: all; }

@@ -3,7 +3,7 @@ import { Icon } from "../../ui/Icon";
 import { useArbor } from "../../../context/ArborContext";
 import { useLanguage } from "../../../context/LanguageContext";
 import { appointmentRoleLabel } from "../../../lib/appointmentLabel";
-import { fmtDay, fmtDayTime } from "../../../lib/formatDate";
+import { fmtDayV10, fmtDayTimeV10 } from "../../../lib/formatDate";
 import { appointmentStatus, sortAppointments, visitRecords, type Appointment, type AppointmentFollowUp } from "../../../lib/careTrack";
 import { careCopy } from "./careV10Copy";
 
@@ -36,7 +36,7 @@ export default function VisitTimeline({ appointments, followUps, nowMs = Date.no
   const marks: Mark[] = [
     ...[...past].filter(dated).reverse().map((a) => ({ a, past: true })),
     ...upcoming.filter(dated).map((a) => ({ a, past: false })),
-  ].slice(-SHOWN_ON_LINE).map(({ a, past: p }) => ({ id: a.id, label: String(new Date(a.whenIso!).getDate()), date: fmtDay(a.whenIso!, uiLang), who: appointmentRoleLabel(a, t), past: p }));
+  ].slice(-SHOWN_ON_LINE).map(({ a, past: p }) => ({ id: a.id, label: String(new Date(a.whenIso!).getDate()), date: fmtDayV10(a.whenIso!, uiLang), who: appointmentRoleLabel(a, t), past: p }));
   const firstAhead = marks.findIndex((m) => !m.past);
   const next = upcoming[0] ?? null;
   const last = past[0] ?? null;
@@ -59,7 +59,7 @@ export default function VisitTimeline({ appointments, followUps, nowMs = Date.no
           {marks.map((m, i) => (
             <React.Fragment key={m.id}>
               {i === firstAhead && (
-                <li className="care-line-today" aria-label={c.today(fmtDay(new Date(nowMs).toISOString(), uiLang))}>
+                <li className="care-line-today" aria-label={c.today(fmtDayV10(new Date(nowMs).toISOString(), uiLang))}>
                   <i className="tok here sm" aria-hidden="true" />
                 </li>
               )}
@@ -78,7 +78,7 @@ export default function VisitTimeline({ appointments, followUps, nowMs = Date.no
       </div>
       {lastNote && (
         <figure className="care-lastnote" data-testid="care-last-visit-note">
-          <figcaption className="kicker">{c.lastNote} · {fmtDay(lastNote.at, uiLang)}</figcaption>
+          <figcaption className="kicker">{c.lastNote} · {fmtDayV10(lastNote.at, uiLang)}</figcaption>
           <blockquote dir="auto" className="ds-said">{lastNote.note}</blockquote>
         </figure>
       )}
@@ -93,7 +93,7 @@ export default function VisitTimeline({ appointments, followUps, nowMs = Date.no
 }
 
 /** Appointments' own reading of a stored mode (provider text passes through). */
-function modeLabel(mode: string, t: (k: string) => string): string {
+export function modeLabel(mode: string, t: (k: string) => string): string {
   return /^in.?person$/i.test(mode) ? t("elev.careNet.mode.inPerson")
     : /^(online|remote|video)$/i.test(mode) ? t("elev.careNet.mode.online")
     : mode;
@@ -102,7 +102,7 @@ function modeLabel(mode: string, t: (k: string) => string): string {
 function VisitCard({ appt, next = false }: { appt: Appointment; next?: boolean }) {
   const { t, uiLang } = useLanguage();
   const status = appointmentStatus(appt);
-  const when = appt.whenIso ? fmtDayTime(appt.whenIso, uiLang) : appt.when;
+  const when = appt.whenIso ? fmtDayTimeV10(appt.whenIso, uiLang) : appt.when;
   return (
     <section className={next ? "vcard next care-vcard" : "vcard care-vcard"} aria-label={appointmentRoleLabel(appt, t)}>
       <div className="care-vcard-head">

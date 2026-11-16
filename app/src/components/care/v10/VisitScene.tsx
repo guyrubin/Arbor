@@ -6,8 +6,9 @@ import type { Composition } from "../../../design/useComposition";
 import { useArbor } from "../../../context/ArborContext";
 import { useLanguage } from "../../../context/LanguageContext";
 import { appointmentRoleLabel } from "../../../lib/appointmentLabel";
-import { fmtDay, fmtDayTime } from "../../../lib/formatDate";
-import type { Appointment } from "../../../lib/careTrack";
+import { fmtDayV10, fmtDayTimeV10 } from "../../../lib/formatDate";
+import { appointmentStatus, type Appointment } from "../../../lib/careTrack";
+import { modeLabel } from "./VisitTimeline";
 import { daysUntil, inDaysLabel } from "../CareVisitHead";
 import { careCopy } from "./careV10Copy";
 
@@ -25,7 +26,9 @@ const ART = "/visuals/parent/v2/area-words-960.webp";
 
 export type PackedCounts = { moments: number; milestones: number; words: number };
 
-export default function VisitScene({ composition, visit, heading, packed, build, brief = false, briefLine, aside, nowMs = Date.now() }: {
+export default function VisitScene({ composition, visit, heading, packed, build, brief = false, briefLine, aside, reviewed = false, nowMs = Date.now() }: {
+  /** The parent ticked "I reviewed" (the stepper's Review step). */
+  reviewed?: boolean;
   /** The Teacher brief: who it is for and the template, as a card inside the
    *  full-width scene (design v10.1 size pass: no rail on the brief). */
   aside?: React.ReactNode;
@@ -49,10 +52,13 @@ export default function VisitScene({ composition, visit, heading, packed, build,
   const desk = composition === "desk";
   const days = visit ? daysUntil(visit.whenIso, nowMs) : null;
   const badge = days === null ? null : inDaysLabel(days);
-  const when = visit ? (visit.whenIso ? fmtDayTime(visit.whenIso, uiLang) : visit.when) : null;
+  const when = visit ? (visit.whenIso ? fmtDayTimeV10(visit.whenIso, uiLang) : visit.when) : null;
+  // "confirmed, in person": the booking's own status and mode, in the reader's words.
+  const statusLine = visit ? [t(`elev.learnCare.appt.status.${appointmentStatus(visit)}`), visit.mode ? modeLabel(visit.mode, t) : ""]
+    .filter(Boolean).map((x) => (uiLang === "en" ? x.toLowerCase() : x)).join(", ") : "";
   const visitDay = visit?.whenIso ? new Date(visit.whenIso) : null;
-  const todayLabel = fmtDay(new Date(nowMs).toISOString(), uiLang);
-  const dateLabel = visit?.whenIso ? fmtDay(visit.whenIso, uiLang) : "";
+  const todayLabel = fmtDayV10(new Date(nowMs).toISOString(), uiLang);
+  const dateLabel = visit?.whenIso ? fmtDayV10(visit.whenIso, uiLang) : "";
   const tiles = [
     { n: packed.moments, unit: c.packedMoments(packed.moments), sub: c.packedMomentsSub },
     { n: packed.milestones, unit: c.packedMilestones(packed.milestones), sub: c.packedMilestonesSub },
@@ -60,7 +66,7 @@ export default function VisitScene({ composition, visit, heading, packed, build,
   ].filter((x) => x.n > 0);
 
   const figure = visit && days !== null
-    ? <SceneFigure days={days} label={c.daysToGo(days)} when={when} size={desk ? "xl" : "md"} badge={badge ? t(badge.key, badge.vars) : ""} />
+    ? <SceneFigure days={days} label={c.daysToGo(days)} when={when} status={desk ? "" : statusLine} size={desk ? "md" : "sm"} badge={badge ? t(badge.key, badge.vars) : ""} />
     : visit && when ? <p className="care-scene-when">{appointmentRoleLabel(visit, t)} · {when}</p> : null;
 
   return (
@@ -69,11 +75,11 @@ export default function VisitScene({ composition, visit, heading, packed, build,
       labelledBy="consult-h1"
       data-testid={brief ? undefined : "consult-visit-head"}
       data-visit={brief ? undefined : visit ? "booked" : "none"}
-      kicker={brief ? undefined : <span data-testid="consult-kicker">{t("elev.consult.kicker")}</span>}
+      kicker={brief ? undefined : <span data-testid="consult-kicker">{t(desk ? "elev.consult.kicker" : "elev.consult.visit.kicker")}</span>}
       startHere={!brief}
-      note={briefLine}
-      art={ART}
-      heading={heading}
+      note={briefLine ?? (desk && !brief ? t("elev.consult.template.note.visit") : undefined)}
+      art={desk ? ART : undefined}
+      heading={desk && visit && !brief ? <><span className="care-scene-over">{[t("elev.consult.visit.kicker"), statusLine].filter(Boolean).join(" · ")}</span>{heading}</> : heading}
       figure={figure}
       aside={aside}
       wide={!!aside}
@@ -88,6 +94,7 @@ export default function VisitScene({ composition, visit, heading, packed, build,
           {desk && <div className="rwl"><span>{c.today(todayLabel)}</span><span>{dateLabel}</span></div>}
         </div>
       )}
+
 
       {!visit && !brief && (
         <p data-testid="consult-visit-none" className="care-scene-none">{t("elev.consult.visit.none")}</p>
@@ -108,7 +115,9 @@ export default function VisitScene({ composition, visit, heading, packed, build,
       )}
 
       <div className={desk ? "line care-scene-foot" : "stack care-scene-foot"}>
-        {!brief && <button
+        {/* Design V77: the hero has no appointments link; with nothing booked
+            it offers to add one (Appointments lives in section 4). */}
+        {!brief && !visit && <button
           type="button"
           data-testid="consult-visit-appointments"
           onClick={() => setActiveTab("appointments")}
@@ -118,13 +127,32 @@ export default function VisitScene({ composition, visit, heading, packed, build,
           {t(visit ? "elev.consult.visit.appointments" : "elev.consult.visit.add")}
           <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" />
         </button>}
+        {/* V77: the stepper shares the foot with the one move */}
+        {visit && !brief && (
+          <ol className="care-steps" aria-label={c.stepsLabel}>
+          {([
+            [c.stepBooked, "solid"],
+            [c.stepChoose, reviewed ? "solid" : "here"],
+            [c.stepReview, reviewed ? "solid" : "open"],
+            [c.stepShare, reviewed ? "here" : "open"],
+          ] as const).map(([label, state], i) => (
+            <React.Fragment key={label}>
+              {i > 0 && <li aria-hidden="true" className={state === "open" ? "care-steps-ln" : "care-steps-ln on"} />}
+              <li className="care-steps-st" aria-current={state === "here" ? "step" : undefined}>
+                <Token kind="plan" state={state} size="sm" label={label} />
+                <span>{label}</span>
+              </li>
+            </React.Fragment>
+          ))}
+        </ol>
+      )}
         {build}
       </div>
     </CareStage>
   );
 }
 
-function SceneFigure({ days, label, when, size, badge }: { days: number; label: string; when: string | null; size: "xl" | "md"; badge: string }) {
+function SceneFigure({ days, label, when, status, size, badge }: { days: number; label: string; when: string | null; status: string; size: "xl" | "md" | "sm"; badge: string }) {
   if (days === 0) {
     return <p className="care-scene-when"><span data-testid="consult-visit-in" className="care-scene-today">{badge}</span>{when ? ` · ${when}` : ""}</p>;
   }
@@ -133,7 +161,7 @@ function SceneFigure({ days, label, when, size, badge }: { days: number; label: 
       n={days}
       size={size}
       unit={<span data-testid="consult-visit-in" aria-label={badge}>{label}</span>}
-      sub={when ?? undefined}
+      sub={when ? <>{when}{status && <><br />{status}</>}</> : undefined}
     />
   );
 }

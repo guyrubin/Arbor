@@ -15,6 +15,13 @@ export type CareV10Copy = {
     stopAppointments: string;
     stopAppointmentsSub: string;
     readyHead: string;
+    moreChips: (n: number) => string;
+    stepBooked: string;
+    stepChoose: string;
+    stepReview: string;
+    stepShare: string;
+    stepsLabel: string;
+    heading: (profession: string) => string;
     readySub: string;
     summaryHead: string;
     summarySub: string;
@@ -38,6 +45,7 @@ export type CareV10Copy = {
     stopShare: string;
     stopShareSub: string;
     kicker: string;
+    backSub: string;
     nextVisit: (who: string, date: string) => string;
   };
   people: {
@@ -77,6 +85,13 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       stopAppointments: "Appointments",
       stopAppointmentsSub: "add, remove, past",
       readyHead: "Getting ready",
+      moreChips: (n) => `${n} more`,
+      stepBooked: "Booked",
+      stepChoose: "Choose",
+      stepReview: "Review",
+      stepShare: "Share",
+      stepsLabel: "Where the visit summary is",
+      heading: (profession) => `Prepare for the ${profession}`,
       readySub: "who it is for, and your one line",
       summaryHead: "The visit summary",
       summarySub: "you review every line",
@@ -100,6 +115,7 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       stopShare: "Share and draft",
       stopShareSub: "save, copy, ask Arbor",
       kicker: "Teacher brief · one page, classroom words",
+      backSub: "Change who it is for, or the template, in Visits",
       nextVisit: (who, date) => `Next visit: ${who}, ${date}`,
     },
     people: {
@@ -135,6 +151,13 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       stopAppointments: "פגישות",
       stopAppointmentsSub: "הוספה, הסרה, מה שעבר",
       readyHead: "מתכוננים",
+      moreChips: (n) => `עוד ${n}`,
+      stepBooked: "נקבע",
+      stepChoose: "בוחרים",
+      stepReview: "בודקים",
+      stepShare: "משתפים",
+      stepsLabel: "איפה סיכום הביקור עומד",
+      heading: (profession) => `מתכוננים לפגישה עם ${profession}`,
       readySub: "למי זה, ומשפט אחד שלכם",
       summaryHead: "סיכום הביקור",
       summarySub: "אתם עוברים על כל שורה",
@@ -158,6 +181,7 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       stopShare: "שיתוף וטיוטה",
       stopShareSub: "שמירה, העתקה, בקשה מ-Arbor",
       kicker: "תקציר לגן · עמוד אחד, בשפת הגן",
+      backSub: "משנים למי זה, או את התבנית, בביקורים",
       nextVisit: (who, date) => `הביקור הבא: ${who}, ${date}`,
     },
     people: {

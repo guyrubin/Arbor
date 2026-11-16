@@ -13,13 +13,14 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
 import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDayV10 } from "../../lib/formatDate";
 import { Icon } from "../ui/Icon";
 import { guidedTierOn } from "../../lib/entitlementsGuided";
 import HomeProgramEntry, { HomeProgramDays, homeProfessionForAppointment, nextVisitDayFor, type EntryWrites } from "../program/HomeProgramEntry";
 import CareAside from "../care/CareAside";
 import CareShared from "../care/CareShared";
 import VisitTimeline from "../care/v10/VisitTimeline";
+import { careCopy } from "../care/v10/careV10Copy";
 import VisitsComposition from "../care/v10/VisitsComposition";
 import type { PackedCounts } from "../care/v10/VisitScene";
 import { DsRoot } from "../../design/primitives";
@@ -310,7 +311,10 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
       {summary
         ? t("elev.consult.h1.summary")
         : headingKind === "visit" && visit
-        ? t("elev.consult.h1.visit", { profession: appointmentRoleLabel(visit, t), date: fmtDay(visit.whenIso!, uiLang) })
+        // Design V77: on the landing the scene carries the day, so the H1 names who only.
+        ? landing
+          ? careCopy(uiLang).visits.heading(lowerFor(uiLang, appointmentRoleLabel(visit, t)))
+          : t("elev.consult.h1.visit", { profession: appointmentRoleLabel(visit, t), date: fmtDayV10(visit.whenIso!, uiLang) })
         : headingKind === "audience" && chosen
         ? t("elev.consult.h1.audience", { audience: lowerFor(uiLang, t(`elev.carehonesty.consult.audience.${chosen}`)) })
         : t("elev.consult.h1")}
@@ -322,12 +326,16 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
   const sublines = (
     <>
       {summary && <p data-testid="consult-summary-lede" className="care-sub">{t("elev.consult.summary.lede")}</p>}
-      {landing && <p data-testid="consult-sub" className="care-sub">{t("elev.consult.sub")}</p>}
-      {visit && (summary || (!landing && headingKind !== "visit")) && (
-        <p data-testid="consult-visit-line" className="care-sub">{t("elev.consult.visitLine", { profession: appointmentRoleLabel(visit, t), date: fmtDay(visit.whenIso!, uiLang) })}</p>
+      {/* Design V77: with a visit booked the scene speaks for itself (no sub-line, no "for {name}"). */}
+      {landing && !visit && <p data-testid="consult-sub" className="care-sub">{t("elev.consult.sub")}</p>}
+      {/* Design V77 (N-Brief): the brief's description is the hero's line. */}
+      {!landing && chosen === "teacher" && <p data-testid="consult-teacher-lede" className="care-sub">{t("elev.carehonesty.consult.teacher.body")}</p>}
+      {/* V77 N-Brief-M: the phone brief's hero carries no visit line (the dock keeps its Save as PDF in view). */}
+      {visit && (summary || (!landing && headingKind !== "visit")) && !(chosen === "teacher" && composition !== "desk") && (
+        <p data-testid="consult-visit-line" className="care-sub">{t("elev.consult.visitLine", { profession: appointmentRoleLabel(visit, t), date: fmtDayV10(visit.whenIso!, uiLang) })}</p>
       )}
       {/* The Teacher brief's own title names the child; "for {name}" would say it twice. */}
-      {firstName && chosen !== "teacher" && <p className="care-sub muted">{t("elev.consult.forName", { name: firstName })}</p>}
+      {firstName && chosen !== "teacher" && !(landing && visit) && <p className="care-sub muted">{t("elev.consult.forName", { name: firstName })}</p>}
       {/* B-PROG-10 (E3 canon): Care is a warm handoff to the family's own
           professionals and, in the guided pilot only, Arbor's light coach. */}
       {!summary && guidedTierOn() && (
@@ -345,7 +353,7 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
       {awaiting && (
         <section data-testid="consult-visit-outcome" className="rcard care-outcome">
           <label htmlFor="consult-visit-outcome-input" className="rt">
-            {t("elev.consult.visitOutcome.q", { profession: appointmentRoleLabel(awaiting, t), date: fmtDay(awaiting.whenIso!, uiLang) })}
+            {t("elev.consult.visitOutcome.q", { profession: appointmentRoleLabel(awaiting, t), date: fmtDayV10(awaiting.whenIso!, uiLang) })}
           </label>
           <div className="care-outcome-row">
             <input
