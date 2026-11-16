@@ -1,8 +1,8 @@
 /**
  * v10.1 — the words the Milestones screens add around production's own.
  * Production strings stay where they are (lib/i18nCompanion, lib/i18n); this
- * holds only the guide, the section names and the figure units the new
- * composition needs, in English and Hebrew.
+ * holds only the guide, the section names, the reading key and the figure
+ * units the new composition needs, in English and Hebrew.
  */
 export interface MilestonesV10Copy {
   onThisPage: string;
@@ -10,17 +10,17 @@ export interface MilestonesV10Copy {
   viewLabel: string;
   map: string;
   list: string;
-  guideMap: string;
-  guideMapSub: string;
+  indexLabel: string;
+  guideAreas: string;
+  guideAreasSub: string;
+  guideArea: string;
+  guideAreaSub: string;
   guideWords: string;
   guideWordsSub: string;
-  guideArea: string;
   guideNext: string;
   guideNextSub: string;
   wordsTitle: string;
-  wordsSub: string;
-  areaKicker: string;
-  allAreas: string;
+  everyItem: string;
   nextTitle: string;
   allMilestones: string;
   seenUnitOne: string;
@@ -28,13 +28,19 @@ export interface MilestonesV10Copy {
   hubUnit: string;
   hubAreasOne: string;
   hubAreasMany: string;
+  readTitle: string;
+  readPick: string;
+  readDates: string;
+  readMark: string;
+  arborSuggests: string;
+  today: string;
+  timelineLabel: string;
   listGuideList: string;
   listGuideListSub: string;
   listGuideTools: string;
   listGuideToolsSub: string;
   listGuideCheck: string;
   listGuideCheckSub: string;
-  arborSuggests: string;
 }
 
 export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy>> = {
@@ -44,17 +50,17 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     viewLabel: "Milestones view",
     map: "Map",
     list: "List",
-    guideMap: "The map",
-    guideMapSub: "Eight areas",
+    indexLabel: "Pick an area",
+    guideAreas: "The areas",
+    guideAreasSub: "Pick one",
+    guideArea: "That area",
+    guideAreaSub: "Its dates, what is next",
     guideWords: "In your words",
-    guideWordsSub: "A strength, a moment, your focus",
-    guideArea: "One area, opened",
+    guideWordsSub: "Strength, moment",
     guideNext: "Notice next",
-    guideNextSub: "One tap each",
+    guideNextSub: "The other areas",
     wordsTitle: "In your words",
-    wordsSub: "A strength, a moment you kept, what you are working on.",
-    areaKicker: "One area, opened",
-    allAreas: "All eight areas",
+    everyItem: "Every item",
     nextTitle: "What to notice next",
     allMilestones: "All milestones",
     seenUnitOne: "thing seen",
@@ -62,13 +68,19 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     hubUnit: "things you have seen",
     hubAreasOne: "in one area",
     hubAreasMany: "in {n} areas",
+    readTitle: "How to read this page",
+    readPick: "Pick an area",
+    readDates: "Read its dates",
+    readMark: "Mark the next",
+    arborSuggests: "Arbor suggests",
+    today: "Today",
+    timelineLabel: "What you marked Seen it in this area, by date",
     listGuideList: "The list",
-    listGuideListSub: "Every area, shelf by shelf",
+    listGuideListSub: "Mark each item",
     listGuideTools: "Latest, and tools",
     listGuideToolsSub: "Change, add, born early",
     listGuideCheck: "Development check",
     listGuideCheckSub: "Under 4 minutes",
-    arborSuggests: "Arbor suggests",
   },
   he: {
     onThisPage: "בעמוד הזה",
@@ -76,17 +88,17 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     viewLabel: "תצוגת אבני הדרך",
     map: "מפה",
     list: "רשימה",
-    guideMap: "המפה",
-    guideMapSub: "שמונה תחומים",
+    indexLabel: "בחירת תחום",
+    guideAreas: "התחומים",
+    guideAreasSub: "בוחרים אחד",
+    guideArea: "התחום הזה",
+    guideAreaSub: "התאריכים שלו, ומה הלאה",
     guideWords: "במילים שלכם",
-    guideWordsSub: "חוזקה, רגע, המיקוד שלכם",
-    guideArea: "תחום אחד, פתוח",
+    guideWordsSub: "חוזקה, רגע",
     guideNext: "מה לשים לב אליו",
-    guideNextSub: "נגיעה אחת לכל אחד",
+    guideNextSub: "שאר התחומים",
     wordsTitle: "במילים שלכם",
-    wordsSub: "חוזקה, רגע ששמרתם, ומה שאתם עובדים עליו.",
-    areaKicker: "תחום אחד, פתוח",
-    allAreas: "כל שמונת התחומים",
+    everyItem: "כל הפריטים",
     nextTitle: "מה לשים לב אליו עכשיו",
     allMilestones: "כל אבני הדרך",
     seenUnitOne: "דבר שראיתם",
@@ -94,13 +106,19 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     hubUnit: "דברים שראיתם",
     hubAreasOne: "בתחום אחד",
     hubAreasMany: "ב־{n} תחומים",
+    readTitle: "איך לקרוא את העמוד",
+    readPick: "בוחרים תחום",
+    readDates: "קוראים את התאריכים",
+    readMark: "מסמנים את הבא",
+    arborSuggests: "ארבור מציע",
+    today: "היום",
+    timelineLabel: "מה שסימנתם ״ראיתי״ בתחום הזה, לפי תאריך",
     listGuideList: "הרשימה",
-    listGuideListSub: "כל תחום, מדף אחר מדף",
+    listGuideListSub: "מסמנים כל פריט",
     listGuideTools: "האחרון, וכלים",
     listGuideToolsSub: "שינוי, הוספה, לידה מוקדמת",
     listGuideCheck: "בדיקת התפתחות",
     listGuideCheckSub: "פחות מ־4 דקות",
-    arborSuggests: "ארבור מציע",
   },
 };
 

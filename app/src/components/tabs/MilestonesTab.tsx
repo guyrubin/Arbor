@@ -71,9 +71,11 @@ import { PRACTICES } from "../../content/practices";
 // shipped flat chip (components/loop/ShelfGlyph) until B-DESIGN-04 moves them.
 import { ShelfGlyph } from "../ui/ShelfGlyph";
 // v10.1: the list view of My child › Milestones, in the design system's frame.
-import { DsRoot, Guide, Route, RouteHead, RouteSection, Scene } from "../../design/primitives";
+import { DsRoot, Guide, Route, RouteHead, RouteSection } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
-import MilestonesViewSwitch from "../companion/MilestonesViewSwitch";
+import MilestonesBand from "../companion/MilestonesBand";
+import MilestonesReadGuide from "../companion/MilestonesReadGuide";
+import { seenTotals } from "../companion/milestonesModel";
 import { milestonesV10Copy } from "../companion/milestonesV10Copy";
 import "../companion/milestonesV10.css";
 
@@ -1180,6 +1182,38 @@ export default function MilestonesTab() {
     { id: "ms-check", title: v10.listGuideCheck, sub: v10.listGuideCheckSub },
   ];
   // v10.1: the latest line (with Not right? Change), Born early and Add milestone — the list's tools.
+  // The ONE warm accent (the newest kept words, or the first-open sentence).
+  // v10.1: on a desk it leads the list's rail, so the first Seen it stays above the fold.
+  /* The ONE warm accent: the family's newest kept words (last 7 days),
+        editorial face on the 2 px ink rule; the shelf and the day on their
+        own t-sm line beneath (P2-13, no stranded separator). No count, no
+        date pressure. */
+  const headerWords = headerQuote ? (
+      <figure data-testid="ms-header-quote" className="arbor-accent-rule mt-3 min-w-0">
+        <blockquote dir="auto" className="arbor-type-say" style={{ color: "var(--arbor-ink)" }}>
+          {quoted(headerQuote.text)}
+        </blockquote>
+        <figcaption className="mt-1 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
+          <bdi>{shelfLabel(headerQuote.shelf, t)}</bdi> · <bdi>{shelfDayLabel(headerQuote.at, noticeNow, uiLang === "he" ? "he" : "en")}</bdi>
+        </figcaption>
+      </figure>
+    ) : !latestNoticed ? (
+      <>
+        {/* P5-LOOP c2 r1 (B-LOOP-NEW-1f) → c2 r2 (B-LOOP-NEW-2e): first
+            open is ONE editorial sentence — it names the child and the
+            first card, with no second instruction; no number, no chip. */}
+        <p data-testid="ms-first-line" dir="auto" className="mt-3 leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
+          {firstCard
+            ? t("elev.loop.ms.firstCard", { name: firstName || t("ms.watch.childFallback"), title: quoted(milestoneText(firstCard, "title", t, msGender)) })
+            : t("elev.loop.ms.firstLine", { name: firstName || t("ms.watch.childFallback") })}
+        </p>
+        {!firstCard && (
+          <p data-testid="ms-lede" className="t-sm mt-1 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>
+            {t("elev.loop.ms.lede")}
+          </p>
+        )}
+      </>
+    ) : null;
   const tools = (
     <div className="ms-list-tools">
       {(latestLine || (latestNoticed && changingLatest)) && (
@@ -1284,46 +1318,16 @@ export default function MilestonesTab() {
       <Guide stops={stops} label={v10.onThisPage} mini={!desk} />
       <Route composition={composition}>
         <RouteSection id="ms-list" n={1} on aria-labelledby="ms-list-title">
+          {/* v10.1: the band shared with the map (header, figure, Map / List). The
+              list's own jump rail is its index of areas, so the band carries no
+              second one and the first Seen it stays above the fold on a desk. */}
+          <MilestonesBand composition={composition} kicker={t("companion.milestones.kicker")} title={t("ms.title")} titleId="ms-list-title"
+            current="milestones" totals={seenTotals(milestones)} compact />
           <div className="ms-row">
             <div className="stg">
-              <Scene field="child" orbs={desk ? [{ size: 300, right: -90, top: -120 }] : [{ size: 180, right: -70, top: -80 }]}>
+              <div className="mcst ms-list-stage">
       <div data-testid="ms-header" className="min-w-0">
-                  {/* v10.1: the scene's head — the page's h1 and the Map / List switch on
-                      one line (the first Seen it has to clear the capture dock). */}
-                  <header className="ms-head ms-head-inline">
-                    <h1 className="title" id="ms-list-title">{t("ms.title")}</h1>
-                    <MilestonesViewSwitch current="milestones" />
-                  </header>
-                  {/* The ONE warm accent: the family's newest kept words (last 7 days),
-                      editorial face on the 2 px ink rule; the shelf and the day on their
-                      own t-sm line beneath (P2-13, no stranded separator). No count, no
-                      date pressure. */}
-                  {headerQuote ? (
-                    <figure data-testid="ms-header-quote" className="arbor-accent-rule mt-3 min-w-0">
-                      <blockquote dir="auto" className="arbor-type-say" style={{ color: "var(--arbor-ink)" }}>
-                        {quoted(headerQuote.text)}
-                      </blockquote>
-                      <figcaption className="mt-1 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
-                        <bdi>{shelfLabel(headerQuote.shelf, t)}</bdi> · <bdi>{shelfDayLabel(headerQuote.at, noticeNow, uiLang === "he" ? "he" : "en")}</bdi>
-                      </figcaption>
-                    </figure>
-                  ) : !latestNoticed ? (
-                    <>
-                      {/* P5-LOOP c2 r1 (B-LOOP-NEW-1f) → c2 r2 (B-LOOP-NEW-2e): first
-                          open is ONE editorial sentence — it names the child and the
-                          first card, with no second instruction; no number, no chip. */}
-                      <p data-testid="ms-first-line" dir="auto" className="mt-3 leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
-                        {firstCard
-                          ? t("elev.loop.ms.firstCard", { name: firstName || t("ms.watch.childFallback"), title: quoted(milestoneText(firstCard, "title", t, msGender)) })
-                          : t("elev.loop.ms.firstLine", { name: firstName || t("ms.watch.childFallback") })}
-                      </p>
-                      {!firstCard && (
-                        <p data-testid="ms-lede" className="t-sm mt-1 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>
-                          {t("elev.loop.ms.lede")}
-                        </p>
-                      )}
-                    </>
-                  ) : null}
+                  {!desk && headerWords}
                   {jumpRail}
                 </div>
 
@@ -1383,15 +1387,15 @@ export default function MilestonesTab() {
                 />
                 ) : shelfMap}
                 </div>
-              </Scene>
+              </div>
             </div>
-            {desk && <div className="rlc" id="ms-tools">{tools}</div>}
+            <div className="rlc" id="ms-tools">
+              {desk && headerWords && <div className="obj ms-words-lead" data-testid="ms-words-lead">{headerWords}</div>}
+              <MilestonesReadGuide steps="list" />
+              {tools}
+            </div>
           </div>
         </RouteSection>
-        {!desk && <RouteSection id="ms-tools" n={2} aria-labelledby="ms-tools-title">
-          <RouteHead id="ms-tools-title" title={v10.listGuideTools} />
-          {tools}
-        </RouteSection>}
         <RouteSection id="ms-check" n={3} aria-labelledby="ms-check-title">
           <RouteHead id="ms-check-title" title={t("sec.screen.title")} />
           {/* The Development check is its own page (#/screening); this is its one door from the list. */}

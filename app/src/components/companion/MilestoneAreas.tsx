@@ -22,7 +22,7 @@ import type { Composition } from "../../design/useComposition";
 import AreaRowDetail from "./AreaRowDetail";
 import DevelopmentCheckCard from "./DevelopmentCheckCard";
 import DevelopmentMap from "./DevelopmentMap";
-import NoticeNext from "./NoticeNext";
+import NoticeNext, { NoticePickCard, useNoticePicks } from "./NoticeNext";
 import NoticeObjectDetail from "./NoticeObjectDetail";
 import { CUSTOM_MILESTONE_DOMAIN, areaFromQuery, watchDomain } from "./milestonesModel";
 
@@ -30,10 +30,10 @@ import { CUSTOM_MILESTONE_DOMAIN, areaFromQuery, watchDomain } from "./milestone
  * v10.1 — the state behind the milestone map, handed to the page as parts.
  *
  * This owns which area is open and what an answer does; the page (ChildPortrait)
- * places the parts in its numbered sections: `map` (DevelopmentMap, the eight
- * territories), `check` (the 5-minute check object), `area` (the open area's
- * body, AreaRowDetail, under its tinted head) and `next` (What to notice
- * next). ?area=<domain> (and the old #/milestones ?shelf=) opens its area; a
+ * places the parts in its numbered sections: `map` (DevelopmentMap, the
+ * index of eight areas), `check` (the 5-minute check row), `area` (the open
+ * area's body, AreaRowDetail), `suggest` (Arbor's first pick) and `next`
+ * (What to notice next, the other picks). ?area=<domain> (and the old #/milestones ?shelf=) opens its area; a
  * tap on a territory opens that area in its section (desk and phone alike,
  * one tree). With no link and no tap, the chosen watch's area leads, else the
  * first area with something recorded, else the first area.
@@ -54,6 +54,7 @@ export interface MilestoneAreaParts {
   map: React.ReactNode;
   check: React.ReactNode;
   area: React.ReactNode;
+  suggest: React.ReactNode;
   next: React.ReactNode;
   openDomain: DomainId;
 }
@@ -157,7 +158,6 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
     <DevelopmentMap
       milestones={milestones}
       observations={observations}
-      momentText={momentText}
       openDomain={openDomain}
       onToggle={open}
       composition={composition}
@@ -199,14 +199,10 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
       />}
     </>
   );
-  const next = (
-    <NoticeNext
-      childId={childProfile.id}
-      milestones={milestones}
-      comparisonMonths={comparisonMonths}
-      gender={gender}
-      onAnswer={answer}
-    />
-  );
-  return <>{children({ map, check, area, next, openDomain })}</>;
+  // Arbor's first pick is "Arbor suggests" (the rail); the rest are What to notice next.
+  const notice = useNoticePicks(childProfile.id, milestones, comparisonMonths);
+  const [first, ...rest] = notice.picks;
+  const suggest = first ? <NoticePickCard pick={first} gender={gender} suggested onAnswer={answer} onHold={notice.hold} /> : null;
+  const next = <NoticeNext picks={rest} gender={gender} onAnswer={answer} onHold={notice.hold} />;
+  return <>{children({ map, check, area, suggest, next, openDomain })}</>;
 }

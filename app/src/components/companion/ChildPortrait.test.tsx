@@ -176,7 +176,7 @@ const tile = (domain: DomainId) => state.buttons.find(b => b["data-testid"] === 
 /** v10.1: the territory a parent opened is pressed; its area fills section 3. */
 const pressed = (html: string) => [...html.matchAll(/data-testid="dev-map-tile" data-domain="([a-z]+)" data-tone="[a-z]+" aria-pressed="true"/g)].map(m => m[1]);
 const openArea = (html: string) => [...html.matchAll(/data-testid="area-detail" data-domain="([a-z]+)"/g)].map(m => m[1]);
-const MODULES = ["child-milestones-areas", "child-milestones-portrait", "child-milestones-area"];
+const MODULES = ["child-milestones-areas", "child-milestones-area", "child-milestones-portrait"];
 const t = (lang: "en" | "he") => (key: string) => translate(lang, key);
 
 beforeEach(() => {
@@ -188,9 +188,10 @@ beforeEach(() => {
 });
 
 describe("v3 F-CHILD-1 — the Milestones pill, one scroll", () => {
-  // v10.1 RE-PIN: the guide, then the map (its scene holds the header), In
-  // your words, then the open area; three modules, one primary move.
-  it.each(["en", "he"] as const)("the guide, the map with its header, the three cards, then the open area; three modules and one primary move (%s)", lang => {
+  // v10.1 RE-PIN: the guide, then the areas (the band holds the header and
+  // the index), that area (stage and rail), In your words, notice next;
+  // three modules, one primary move.
+  it.each(["en", "he"] as const)("the guide, the band with the index, the open area with its rail, then the cards; three modules and one primary move (%s)", lang => {
     state.lang = lang;
     const html = render();
     expect(html).toContain(`data-testid="child-portrait"`);
@@ -201,14 +202,14 @@ describe("v3 F-CHILD-1 — the Milestones pill, one scroll", () => {
     expect(html).toContain(`<h1 class="title" id="ms-title">${esc(before)}<bdi dir="auto">Noa</bdi>${esc(after)}</h1>`);
     expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
     // The guide's four stops point at the four numbered sections, in order.
-    expect([...html.matchAll(/class="gstop[^"]*" href="#([a-z-]+)"/g)].map(m => m[1])).toEqual(["ms-map", "ms-words", "ms-area", "ms-next"]);
-    for (const id of ["ms-map", "ms-words", "ms-area", "ms-next"]) expect(html).toContain(`id="${id}"`);
-    // Order: map (header inside) → portrait cards → open area.
+    expect([...html.matchAll(/class="gstop[^"]*" href="#([a-z-]+)"/g)].map(m => m[1])).toEqual(["ms-areas", "ms-area", "ms-words", "ms-next"]);
+    for (const id of ["ms-areas", "ms-area", "ms-words", "ms-next"]) expect(html).toContain(`id="${id}"`);
+    // Order: band (h1, index) → that area → its rail (guide, Arbor suggests, focus + check) → cards.
     expect([...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(MODULES);
-    const h1 = html.indexOf("<h1"), map = html.indexOf('data-testid="dev-map"'), cards = html.indexOf('data-testid="portrait-cards"'), area = html.indexOf('data-testid="area-detail"');
-    expect(map).toBeGreaterThan(h1);
-    expect(cards).toBeGreaterThan(map);
-    expect(area).toBeGreaterThan(cards);
+    const at = (s: string) => html.indexOf(s);
+    const order = ["<h1", 'data-testid="dev-map"', 'data-testid="area-detail"', 'data-testid="ms-read-guide"', 'data-testid="ms-suggest"', 'data-testid="portrait-goals-edit"', 'data-testid="dev-map-checkrow"', 'data-testid="portrait-cards"', 'id="ms-next"'].map(at);
+    expect(order.every(i => i > -1)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
     // The Map / List switch: the map is this page; the list is #/milestones.
     expect(html).toContain('href="#/development" aria-current="page" data-testid="ms-view-development"');
     expect(html).toContain('href="#/milestones" data-testid="ms-view-milestones"');
@@ -251,13 +252,15 @@ describe("v3 F-CHILD-1 — the Milestones pill, one scroll", () => {
     expect(html.match(/data-testid="dev-map-none"/g)).toHaveLength(7);
   });
 
-  it("a territory quotes the newest moment in the parent's own words", () => {
+  it("a segment dates the newest moment; the open area quotes it in the parent's own words", () => {
     state.sources = { behaviorLogs: [{ id: "l1", timestamp: "2026-06-10T10:00:00.000Z", behaviorType: "Moment", durationMinutes: 0, trigger: "Sang the whole bath song" }] };
     state.observations = [{ id: "behaviorLogs:l1", childId: "child-a", at: "2026-06-10T10:00:00.000Z", domains: ["talking"], kind: "moment", origin: "behaviorLogs", source: "parent_typed", value: { type: "moment", behaviorType: "Moment" }, ageAtObservationMonths: null, pretermCorrected: false }];
     const html = render();
     const talking = html.slice(html.indexOf('data-testid="dev-map-tile" data-domain="talking"'), html.indexOf('data-testid="dev-map-tile" data-domain="moving"'));
     expect(talking).toContain('data-testid="dev-map-last"');
-    expect(talking).toContain("Sang the whole bath song");
+    expect(talking).not.toContain("Sang the whole bath song");
+    const area = html.slice(html.indexOf('data-testid="area-detail"'));
+    expect(area.slice(0, area.indexOf('class="area-detail-why"'))).toContain("Sang the whole bath song");
   });
 });
 
@@ -271,19 +274,19 @@ describe("v3 F-CHILD-1 — the portrait cards", () => {
     expect(strength).toContain("Curiosity");
     // A line with no record of its own is shown undated, never given an invented day.
     expect(strength).toContain(esc(translate(lang, "companion.milestones.srcWordsUndated")));
-    const kept = html.slice(html.indexOf('data-testid="portrait-card-kept"'), html.indexOf('data-testid="portrait-goals-edit"'));
+    const kept = html.slice(html.indexOf('data-testid="portrait-card-kept"'), html.indexOf('id="ms-next"'));
     expect(kept).toContain(esc(translate(lang, "companion.milestones.card.kept")));
     expect(kept).toContain("Sang the whole bath song");
     expect(kept).toContain(esc(translate(lang, "companion.milestones.srcParent", { date: fmtDay("2026-06-10T10:00:00.000Z", lang) })));
-    const goal = html.slice(html.indexOf('data-testid="portrait-goals-edit"'), html.indexOf('data-module="child-milestones-area"'));
+    const goal = html.slice(html.indexOf('data-testid="portrait-goals-edit"'), html.indexOf('data-testid="dev-map-checkrow"'));
     expect(goal).toContain(esc(translate(lang, "elev.goal.profile.title")));
     expect(goal).toContain(esc(translate(lang, "elev.goal.profile.empty")));
     // The mock's card icon; the source line shows only once a goal is chosen.
-    expect(goal).toMatch(/<span class="msr[^"]*"[^>]*>bookmark<\/span>/);
+    expect(goal).toMatch(/<span class="msr[^"]*"[^>]*>flag<\/span>/);
     expect(goal).not.toContain('data-testid="portrait-goal-src"');
-    // v10.1: three object cards at every width (the goal card is the picker's door).
-    expect(html.match(/class="obj[ "]/g)).toHaveLength(4); // the three cards and the check
-    expect(html).toContain('class="obj ms-goal"');
+    // v10.1: two object cards; the goal is the rail's focus row (the picker's door).
+    expect(html.match(/class="obj[ "]/g)).toHaveLength(2);
+    expect(html).toContain('class="mcrow-btn ms-goal"');
   });
 
   it.each(["en", "he"] as const)("an empty card says Not told yet and offers Tell Arbor (%s)", lang => {
@@ -321,7 +324,7 @@ describe("v10.1 — one open area", () => {
     const html = render();
     expect(pressed(html)).toEqual(["moving"]);
     expect(openArea(html)).toEqual(["moving"]);
-    expect(html).toContain(`<h3 class="an" id="ms-area-title">${esc(domainName("moving", t(lang)))}</h3>`);
+    expect(html).toContain(`<h2 class="tt" id="ms-area-title">${esc(domainName("moving", t(lang)))}</h2>`);
     expect(html.indexOf('data-testid="area-detail"')).toBeGreaterThan(html.indexOf('id="ms-area"'));
     expect(html).not.toContain('data-surface="sheet"');
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
@@ -499,33 +502,47 @@ describe("v3 F-CHILD-1 — answers, firsts and the chosen watch", () => {
 // columns of territories, the count in the scene's head), In your words with
 // the check closing it, the open area, then What to notice next.
 describe("v10.1 — What to notice next", () => {
-  it.each(["en", "he"] as const)("the first pick carries Arbor suggests, once, and answers through the one seam (%s)", lang => {
+  it.each(["en", "he"] as const)("Arbor's first pick is Arbor suggests in the rail, once; the other picks are What to notice next (%s)", lang => {
     state.lang = lang;
     const html = render();
+    expect(html.match(/data-testid="ms-next-suggests"/g)).toHaveLength(1);
+    const suggest = html.slice(html.indexOf('data-testid="ms-suggest"'), html.indexOf('data-testid="portrait-goals-edit"'));
+    expect(words(suggest)).toContain(lang === "he" ? "ארבור מציע" : "Arbor suggests");
+    const id = html.match(/data-testid="ms-suggest" data-milestone="([^"]+)"/)![1];
     const next = html.slice(html.indexOf('data-testid="ms-next"'));
-    expect(next.match(/data-testid="ms-next-suggests"/g)).toHaveLength(1);
-    expect(next.indexOf('data-testid="ms-next-suggests"')).toBeLessThan(next.indexOf('data-testid="ms-next-card"', next.indexOf('data-testid="ms-next-card"') + 1));
-    expect(words(next)).toContain(lang === "he" ? "ארבור מציע" : "Arbor suggests");
+    expect(next).not.toContain(`data-milestone="${id}"`);
+    expect(next).not.toContain("ms-next-suggests");
+  });
+
+  it("an answer on Arbor's pick writes through the one seam", () => {
+    const html = render();
+    const id = html.match(/data-testid="ms-suggest" data-milestone="([^"]+)"/)![1];
+    const suggest = html.slice(html.indexOf('data-testid="ms-suggest"'));
+    const title = suggest.match(/<p class="nm" dir="auto">([^<]+)<\/p>/)![1].replace(/&#x27;/g, "'").replace(/&amp;/g, "&");
+    const segs = state.segments.filter(sg => sg.ariaLabel === title);
+    expect(segs.length).toBeGreaterThan(0);
+    segs[segs.length - 1].onAnswer("not_sure");
+    expect(state.setMilestoneObservation).toHaveBeenCalledWith(id, "not_sure", {}, { requireAcknowledgement: true });
   });
 });
 
 describe("v10.1 — the Milestones pill on a phone, one stack", () => {
   const phone = () => { state.phone = true; };
 
-  it.each(["en", "he"] as const)("the map first, then the cards with the check, the open area and notice next; three modules, one primary move (%s)", lang => {
+  it.each(["en", "he"] as const)("the band first, then the open area, its rail, the cards and notice next; three modules, one primary move (%s)", lang => {
     state.lang = lang;
     phone();
     const html = render();
     expect(html).toContain(`dir="${lang === "he" ? "rtl" : "ltr"}"`);
     expect([...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(MODULES);
     expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
-    expect(html).toContain('class="atlas m"');
-    expect(html).not.toContain('data-testid="dev-map-hub"');
-    const map = html.indexOf('data-testid="dev-map"'), goal = html.indexOf('data-testid="portrait-goals-edit"'), check = html.indexOf('data-testid="dev-map-checkrow"'), area = html.indexOf('data-testid="area-detail"'), next = html.indexOf('id="ms-next"');
-    expect(goal).toBeGreaterThan(map);
+    expect(html).toContain('class="mci m ds-snap-scroll"');
+    const map = html.indexOf('data-testid="dev-map"'), goal = html.indexOf('data-testid="portrait-goals-edit"'), check = html.indexOf('data-testid="dev-map-checkrow"'), area = html.indexOf('data-testid="area-detail"'), cards = html.indexOf('data-testid="portrait-cards"'), next = html.indexOf('id="ms-next"');
+    expect(area).toBeGreaterThan(map);
+    expect(goal).toBeGreaterThan(area);
     expect(check).toBeGreaterThan(goal);
-    expect(area).toBeGreaterThan(check);
-    expect(next).toBeGreaterThan(area);
+    expect(cards).toBeGreaterThan(check);
+    expect(next).toBeGreaterThan(cards);
     expect(html.match(/data-testid="dev-map-tile"/g)).toHaveLength(8);
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
     expect(html).toMatch(/data-testid="dev-map-check" data-primary-move="start-development-check"/);
@@ -544,7 +561,7 @@ describe("v10.1 — the Milestones pill on a phone, one stack", () => {
     expect(text).not.toMatch(/%/);
     expect(text).not.toMatch(/\d+\s*\/\s*\d+/);
     expect(text).not.toMatch(/\bof\s+\d+|\d+\s+of\s+\d+|מתוך\s+\d+/);
-    const start = html.indexOf('class="atlas m"');
+    const start = html.indexOf('class="mci m ds-snap-scroll"');
     const tiles = words(html.slice(start, html.indexOf("</ul>", start)));
     expect(tiles).not.toMatch(/\b(low|medium|high|behind|ahead|on track|not yet)\b/i);
     expect(html.match(/data-testid="dev-map-seen-area"/g)).toHaveLength(3);
@@ -562,9 +579,9 @@ describe("v10.1 — the Milestones pill on a phone, one stack", () => {
     expect([...html.matchAll(/data-module="([^"]+)"/g)].map(m => m[1])).toEqual(MODULES);
   });
 
-  it("a desk has the hub in the middle of the map, no doors and a visible h1", () => {
+  it("a desk has the index in one row, no doors and a visible h1", () => {
     const html = render();
-    expect(html).toContain('class="atlas"');
+    expect(html).toContain('class="mci"');
     expect(html).not.toContain('data-testid="child-doors"');
     expect(html).toContain('<h1 class="title"');
   });

@@ -255,8 +255,8 @@ describe("P5-LOOP c2 r2 (B-LOOP-NEW-2e) — the map opens on the family's own wo
     expect(quote).toContain("<bdi>{shelfLabel(headerQuote.shelf, t)}</bdi>");
     expect(quote).toContain("shelfDayLabel(headerQuote.at, noticeNow");
     expect(quote).not.toMatch(/recordCounts|noticed|count/);
-    // the quote opens the map; v10.1: the ONE muted line (latest · count · Change) is the first tool beside it
-    expect(MS.indexOf('data-testid="ms-header"')).toBeLessThan(at);
+    // v10.1: the quote is one const (headerWords), defined before the tools that hold the ONE muted line
+    expect(at).toBeLessThan(MS.indexOf("const tools = ("));
     expect(MS).toMatch(/\{latestNoticed && !changingLatest && \(\s*<>\s*\{" · "\}\s*\{changeButton\}/);
     expect(MS).not.toContain('data-testid="ms-change-row"');
     // the quote's own entry never repeats as its shelf's epigraph

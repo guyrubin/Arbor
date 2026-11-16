@@ -22,7 +22,7 @@ vi.mock("../../context/LanguageContext", async () => {
 });
 vi.mock("../describe/TellArborMore", () => ({ default: () => null }));
 
-import PortraitCards from "./PortraitCards";
+import { GoalFocus } from "./PortraitCards";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -30,7 +30,8 @@ const GOAL = { goalId: "taking-turns", label: "Taking turns", domainId: "social"
 const plan = (id: string, focusGoalId: string | undefined, steps: { text: string; completed: boolean }[]): ActionPlan => ({
   id, title: id, issue: "", scripts: [], successIndicators: [], phases: [{ name: "One", description: "", steps }], ...(focusGoalId ? { focusGoalId } : {}),
 });
-const render = () => renderToStaticMarkup(<PortraitCards sources={{ behaviorLogs: [] } as never} onEditGoal={() => undefined} />);
+// v10.1: the goal is the focus row of the rail (GoalFocus), beside the Development check.
+const render = () => renderToStaticMarkup(<GoalFocus onEditGoal={() => undefined} />);
 const goalCard = (html: string) => html.slice(html.indexOf('data-testid="portrait-goals-edit"'));
 
 describe("B-GROWTH-40 · My child's focus line says what to do next", () => {
@@ -46,8 +47,8 @@ describe("B-GROWTH-40 · My child's focus line says what to do next", () => {
     expect(card.match(/data-testid="portrait-goal-next"/g)).toHaveLength(1);
     expect(card.replace(/[⁦-⁩]/g, "")).toContain(`${prefix}${text}`);
     expect(card).not.toContain("Say whose turn it is");
-    // The line lives inside the one card: the count of portrait cards is unchanged (v10.1 object cards).
-    expect(html.match(/class="obj[ "]/g)).toHaveLength(3);
+    // The line lives inside the one focus row (one button, the goal picker's door).
+    expect(html.match(/data-testid="portrait-goals-edit"/g)).toHaveLength(1);
   });
 
   it("no plan linked to the goal (older plans, no backfill) → no Next line", () => {
@@ -71,7 +72,7 @@ describe("B-GROWTH-40 · the Next line reads whole (critic r1)", () => {
   it("clamps at two lines, never a one-line mid-word ellipsis", () => {
     // v10.1: the goal card is an object card; its Next line's rule lives in milestonesV10.css.
     const css = readFileSync(path.resolve(__dirname, "milestonesV10.css"), "utf8");
-    const rule = css.match(/\.ds \.obj \.portrait-card-next \{([^}]*)\}/)?.[1] ?? "";
+    const rule = css.match(/\.ds \.obj \.portrait-card-next, \.ds \.mcrow-text \.portrait-card-next \{([^}]*)\}/)?.[1] ?? "";
     expect(rule).toMatch(/-webkit-line-clamp: 2/);
     expect(rule).toMatch(/-webkit-box-orient: vertical/);
     expect(rule).not.toMatch(/white-space: nowrap/);

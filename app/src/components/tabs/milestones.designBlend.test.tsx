@@ -55,9 +55,9 @@ const decode = (html: string) => html.replace(/&quot;/g, '"').replace(/&#x27;/g,
 
 describe("B-DESIGN-03 · the header: H1 + ONE warm accent + ONE muted line", () => {
   it("the H1 is the hero step; the date is plain text, never a chip", () => {
-    // v10.1 RE-PIN: the h1 is the scene's title (the design system's display step), with the Map / List switch beside it.
-    expect(MS).toContain('<h1 className="title" id="ms-list-title">{t("ms.title")}</h1>');
-    expect(MS).toContain('<MilestonesViewSwitch current="milestones" />');
+    // v10.1 RE-PIN: the h1 is the shared header band's, titled ms.title, with the Map / List switch on the list.
+    expect(MS).toContain('title={t("ms.title")} titleId="ms-list-title"');
+    expect(MS).toContain('current="milestones"');
     const line = between('<p data-testid="ms-latest"', "</p>");
     expect(line).not.toMatch(/green-soft|green-ink|rounded-full|font-editorial/);
     expect(line).toContain('<time data-testid="ms-latest-date"');
@@ -68,18 +68,20 @@ describe("B-DESIGN-03 · the header: H1 + ONE warm accent + ONE muted line", () 
   });
 
   it("ONE warm accent: the kept words on the ink rule, shelf + day on their own line; the first-open sentence only when there is no latest", () => {
-    const head = between('data-testid="ms-header"', "{jumpRail}");
+    // v10.1: the warm accent is one const (headerWords): over the list on a phone, leading the rail on a desk.
+    const head = between("const headerWords = ", "const tools = (");
     expect(head).toContain('data-testid="ms-header-quote" className="arbor-accent-rule mt-3 min-w-0"');
     // P7-DESIGN fix r1 (milestones design P1-3): the kept words are at the kit's say step (.arbor-type-say: editorial,
     // --t-say 24 / HE 22, the size-adjust) — never an inline --t-lg; the first-open line keeps its editorial sentence.
     expect(head).toContain('<blockquote dir="auto" className="arbor-type-say" style={{ color: "var(--arbor-ink)" }}>');
     expect(head).not.toMatch(/<blockquote[^>]*--t-lg/);
     expect(head.match(/var\(--font-editorial\)/g)).toHaveLength(1); // the first-open line
-    expect(head).toMatch(/\{headerQuote \? \(\s*<figure[\s\S]*\) : !latestNoticed \? \(/);
+    expect(head).toMatch(/headerQuote \? \(\s*<figure[\s\S]*\) : !latestNoticed \? \(/);
     // the order: H1 → accent → jump rail. v10.1 RE-PIN: the muted latest line
     // (with Change) is the first of the list's tools (the rail on a desk).
-    const at = (s: string) => head.indexOf(s);
-    expect(at("<h1")).toBeLessThan(at('data-testid="ms-header-quote"'));
+    // The h1 is the band's (above both); the accent is placed once per composition.
+    expect(MS).toContain("{!desk && headerWords}");
+    expect(MS).toContain('{desk && headerWords && <div className="obj ms-words-lead" data-testid="ms-words-lead">{headerWords}</div>}');
     expect(head).not.toContain("{latestLine}");
     expect(MS.indexOf('<div className="ms-list-tools">')).toBeLessThan(MS.indexOf("{latestLine}"));
     expect(MS.indexOf("{latestLine}")).toBeLessThan(MS.indexOf('<BornEarlyFrame'));
@@ -263,9 +265,9 @@ describe("B-DESIGN-03 · the stamp stays above the 375 fold (line model, EN + HE
     expect(MS).toContain('<span data-testid="ms-latest-tail" className={latestNoticed ? "block sm:inline" : undefined}>');
     expect(MS).toContain('<nav data-testid="ms-jump-rail" aria-labelledby="ms-map-title" className="no-scrollbar -mx-4 mt-2 overflow-x-auto px-4 py-1 sm:mx-0 sm:px-0">');
     expect(MS).toContain('<h2 id="ms-map-title" className="arbor-type-title sr-only sm:not-sr-only"');
-    // v10.1: the h1 and the Map / List switch share one line; no avatar beside the h1.
+    // v10.1: the band carries the h1, the index and the switch; no avatar beside the h1.
     expect(MS).not.toContain('<HeroAvatar size={44}');
-    expect(MS).toContain('<header className="ms-head ms-head-inline">');
+    expect(MS).toContain("<MilestonesBand ");
     expect(MS).toContain('className="-my-3 inline-flex min-h-11 items-center align-middle t-sm font-semibold"');
     expect(MS).toContain("const stampShelf = mapShelves.find((id) => noticeFor(id) && !heldNotice[id]);");
     expect(MS).toMatch(/answersAttrs=\{shelf === stampShelf \? \{ "data-primary-move": "notice-milestone" \} : undefined\}/);
