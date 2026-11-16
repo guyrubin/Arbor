@@ -5,7 +5,7 @@
 export const WINDUP_RACE_COPY = {
   en: {
     title: 'Wind-up Racer', description: 'Wind it up. Let it go.', instruction: 'Turn the key to wind the spring. More turns, more go.',
-    finish: 'Off it went!', transfer: 'Away from the screen: wind up a toy, or roll a toy car down a slope, and watch where it stops.', done: 'Park the racer',
+    finish: 'Off it went!', transfer: 'Away from the screen: wind up a toy, or roll a toy car down a slope, and watch where it stops.',
     tracks: ['Bookshelf run', 'Ramp and ruler', 'The long table'],
     trackLines: ['A flat run past the books, to the flag.', 'Up a book, along the top, down the ruler.', 'A pencil, dominoes, a paper tunnel, then up to the flag.'],
     wind: 'Turn the key to wind the spring.', windMore: 'More turns, more go. Then press Go!', full: 'The spring is wound all the way.',
@@ -20,7 +20,7 @@ export const WINDUP_RACE_COPY = {
   },
   he: {
     title: 'מכונית קפיץ', description: 'מותחים את הקפיץ. משחררים.', instruction: 'מסובבים את המפתח ומותחים את הקפיץ. יותר סיבובים, יותר נסיעה.',
-    finish: 'היא נסעה!', transfer: 'הרחק מהמסך: מותחים צעצוע עם קפיץ, או מגלגלים מכונית צעצוע במורד, ורואים איפה היא עוצרת.', done: 'מחנים את המכונית',
+    finish: 'היא נסעה!', transfer: 'הרחק מהמסך: מותחים צעצוע עם קפיץ, או מגלגלים מכונית צעצוע במורד, ורואים איפה היא עוצרת.',
     tracks: ['מסלול מדף הספרים', 'ספר וסרגל', 'השולחן הארוך'],
     trackLines: ['נסיעה ישרה ליד הספרים, עד הדגל.', 'עולים על ספר, נוסעים למעלה, יורדים בסרגל.', 'עיפרון, אבני דומינו, מנהרת נייר, ואז עלייה אל הדגל.'],
     wind: 'מסובבים את המפתח ומותחים את הקפיץ.', windMore: 'יותר סיבובים, יותר נסיעה. ואז לוחצים על יוצאים!', full: 'הקפיץ מתוח עד הסוף.',
