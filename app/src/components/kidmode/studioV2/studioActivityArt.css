@@ -7,6 +7,7 @@
 .studio-maker-cover { display: block; position: relative; inline-size: 100%; block-size: 100%; overflow: hidden; background: var(--studio-canvas); }
 .studio-maker-cover > svg { display: block; inline-size: 100%; block-size: 100%; }
 .studio-game-card__window > .studio-maker-cover, .studio-game-view__environment > .studio-maker-cover { position: absolute; inset: 0; }
-.studio-game-view__environment > .studio-maker-cover { filter: blur(18px) brightness(.48); transform: scale(1.08); }
+/* Behind the card a maker's cover is a soft daylight wash, like every game's art (v30). */
+.studio-game-view__environment > .studio-maker-cover { filter: blur(18px) saturate(.95); transform: scale(1.08); }
 .studio-maker-preview-wait { display: block; inline-size: min(100%, 240px); aspect-ratio: 4 / 3; margin-inline: auto; }
 .studio-v2__book-cover .studio-activity-picture__symbol { display: none; }
