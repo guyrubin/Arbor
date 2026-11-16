@@ -9,7 +9,7 @@ import PhysicalGrowthCard from "./PhysicalGrowthCard";
 import { scrubMemoryProposals, toParentWords } from "../../server/parentWordsScrub";
 import { useHashQuery, useHashRouteKey } from "../../hooks/useHashQuery";
 // v3 F-CHILD-3 — the eight areas and the ONE guided conversation.
-import { ASPECT_ICONS, asAspectId, aspectOfKept, buildAspects, isTold, toldSummary, type AspectId } from "../../lib/aboutAspects";
+import { ASPECT_ICONS, asAspectId, aspectOfKept, aspectOfWords, buildAspects, isTold, toldSummary, type AspectId } from "../../lib/aboutAspects";
 import { keptItemsFromProfile } from "../../lib/describeChild";
 import AspectCard from "../about/AspectCard";
 import { PendingNote, RememberedNote, SHOWN_PENDING, StageCard, aboutAskedPendingIds, useAboutNotebook } from "../about/AboutAnswer";
@@ -161,8 +161,12 @@ export default function ChildProfile() {
     </div>
   );
   // A count of notes in the notebook, with its unit in words; no figure for zero.
+  // V77: one remembered fact names the real area it is kept under.
+  const rememberedArea = nb.approved.length === 1 ? (aspects.find((a) => a.known?.memoryId === nb.approved[0].memoryId)?.id ?? aspectOfWords(nb.approved[0].fact)) : null;
+  const rememberedSub = nb.approved.length === 0 ? undefined
+    : rememberedArea ? copy.figRememberedUnder(nb.approved.length, t(`companion.about.aspect.${rememberedArea}`)) : copy.figRemembered(nb.approved.length);
   const fig = nb.pending.length > 0
-    ? <Fig size="md" n={nb.pending.length} unit={copy.figWaiting} sub={nb.approved.length > 0 ? copy.figRemembered(nb.approved.length) : undefined} />
+    ? <Fig size="md" n={nb.pending.length} unit={copy.figWaiting} sub={rememberedSub} />
     : nb.approved.length > 0 ? <Fig size="md" n={nb.approved.length} unit={copy.figRemembered(nb.approved.length)} /> : null;
 
   const band = (
@@ -188,10 +192,11 @@ export default function ChildProfile() {
         </div>
         <AboutAreaIndex aspects={aspects} selected={selectedId} waiting={waitingAreas} onSelect={setPicked} phone={!desk} />
         <div className="mcap">
-          <TokenLegend items={[
+          {/* N-About-M draws no legend on the phone. */}
+          {desk && <TokenLegend items={[
             { token: <Token kind="neutral" className="told" size="sm" label={copy.tokenToldOne} />, label: copy.tokenTold },
             { token: <Token kind="neutral" state="ai" size="sm" label={copy.tokenWaitingOne} />, label: copy.tokenWaiting },
-          ]} />
+          ]} />}
           {desk && <span data-testid="about-told-line">{toldLine}</span>}
         </div>
       </Scene>

@@ -127,7 +127,7 @@ export function StageCard({ m, stored, index, queueLength, compact, onEdited }: 
             <p className="about-stage-fact"><Quote>{m.fact}</Quote></p>
           )}
           {!editing && (compact ? (
-            <span className="about-stage-why">{source(m)} · {keptWhere}</span>
+            <span className="about-stage-why">{copy.phoneWhy(fromTalk, area ? t(`companion.about.aspect.${area}`) : null)}</span>
           ) : (
             <div className="thread about-thread">
               <div className="knot you">
