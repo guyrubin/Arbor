@@ -181,3 +181,14 @@
 .ds-phone .lib-card.featured .meta { column-gap: 6px; row-gap: 0; padding-inline-end: 40px; }
 .ds-phone .lib-card.featured .lib-rdc { gap: 6px; }
 .ds-phone .lib-stage.fy-scene { padding-bottom: 14px; }
+.ds-phone .snap > .fy-prog { flex: 0 0 300px; }
+.ds .fy-notthis { min-height: 44px; padding: 0 20px; font-size: 15px !important; cursor: pointer; }
+.ds-phone .fy-cta { flex-wrap: nowrap; }
+.ds-phone .fy-cta .btn.primary { flex: 1 1 auto; min-width: 0; padding: 0 16px; }
+/* V77: "How Arbor decides" is a plain sapphire link on the pick (the shared TrustLink keeps its pill elsewhere). */
+.ds .fy-meta [data-testid="trust-link"], .ds .fy-cta [data-testid="trust-link"] { background: none !important; border: 0 !important; box-shadow: none !important; color: var(--sapphire-deep) !important; padding-inline: 4px !important; font-size: 13px !important; font-weight: 600 !important; }
+.ds-phone .fy-cta .btn.primary { white-space: nowrap; gap: 8px; }
+.ds-phone .fy-notthis { padding: 0 14px; flex: none; }
+.ds-phone .fy-meta { flex: 1 1 100%; } .ds-phone .fy-meta [data-testid="trust-link"] { padding-inline: 0 !important; }
+.ds-phone .fy-meta > :first-child { gap: 4px !important; } .ds-phone .fy-meta [data-testid="trust-link"] { font-size: 12px !important; gap: 2px !important; } .ds-phone .fy-scene { padding-inline: 14px; }
+.ds-phone .fy-meta [data-testid="evidence-chip"] { padding-inline: 6px !important; }

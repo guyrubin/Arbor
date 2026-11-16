@@ -1,3 +1,4 @@
+import { fmtDayV10 } from "../../lib/formatDate";
 import React, { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { celebrate } from "../../lib/celebrate";
@@ -19,7 +20,7 @@ import { useDevScore } from "../../hooks/useDevScore";
 import { ageYearsFromProfile } from "../../lib/childAge";
 import { concernsForBehaviors } from "../../content/selectCards";
 import { recentBehaviorTypes } from "../../content/hardMomentSurface";
-import { readLearnFeedback } from "../../learn/learnFeedback";
+import { readLearnFeedback, setLearnFeedback, type LearnFeedback } from "../../learn/learnFeedback";
 import { LEARN_CARDS } from "../../learn/learnCards";
 import type { LearnRankSignals } from "../../learn/learnLibrary";
 import { devMapHasSignal, pickDayKey, todaysLearnPick } from "../../learn/todaysPick";
@@ -96,6 +97,9 @@ export default function Masterclasses() {
   const composition = useComposition();
   const desk = composition === "desk";
   const [openId, setOpenId] = useState<string | null>(null);
+  // V77 "Not this one": the Library's own per-card pulse (-1), which lowers that
+  // read in this device's ranking, so today's pick moves to the next read.
+  const [feedback, setFeedback] = useState<LearnFeedback>(() => readLearnFeedback());
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [reflection, setReflection] = useState<Record<string, string>>({});
   const [allCourses, setAllCourses] = useState(false);
@@ -173,7 +177,7 @@ export default function Masterclasses() {
     ageYears: ageYearsFromProfile(childProfile),
     focusDomain: devScore.focusDomain,
     recentConcerns: concernsForBehaviors(recentBehaviorTypes(behaviorLogs, new Date())),
-    helpfulness: readLearnFeedback(),
+    helpfulness: feedback,
     savedIds: savedLearnIds,
     // v3 EXTRA-FORYOU: the open family question, in the parent's own words.
     topicText: activeFamilyTopic?.title ?? null,
@@ -192,7 +196,7 @@ export default function Masterclasses() {
   const pickMoment = todaysRead && !todaysRead.fromSaved && todaysRead.fromConcerns ? todaysRead.fromMoment : null;
   // V77: the parent's knot reads "You wrote · Fri 6 Nov" (the boards' day-first short date).
   const pickMomentLead = pickMoment
-    ? copy.youWrote(new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-GB", { weekday: "short", day: "numeric", month: "short" }).format(pickMoment.at))
+    ? copy.youWrote(fmtDayV10(pickMoment.at, uiLang === "he" ? "he" : "en"))
     : "";
   const pickWhy = !todaysRead
     ? ""
@@ -259,7 +263,7 @@ export default function Masterclasses() {
   // reads pick, programs, courses, more, with the boards' one-word stops.
   const stopToday: GuideStop = { id: "fy-today", title: desk ? copy.guideToday : copy.stopPick, sub: pickMinutes != null ? copy.guideTodaySub : copy.guideTodayNone };
   const stopCourses: GuideStop = { id: "fy-courses", title: desk ? copy.guideCourses : copy.stopCourses, sub: copy.guideCoursesSub };
-  const stopPrograms: GuideStop = { id: "fy-programs", title: desk ? copy.guidePrograms : copy.stopPrograms, sub: program.model ? copy.guideProgramsSub(program.model.name) : copy.guideProgramsNone };
+  const stopPrograms: GuideStop = { id: "fy-programs", title: desk ? copy.guidePrograms : copy.stopPrograms, sub: program.models.length ? copy.guideProgramsSub(program.models.map((m) => m.name).join(", ")) : copy.guideProgramsNone };
   const stopMore: GuideStop = { id: "fy-more", title: desk ? copy.guideMore : copy.stopMore, sub: copy.guideMoreSub };
   const stops: GuideStop[] = desk ? [stopToday, stopCourses, stopPrograms, stopMore] : [stopToday, stopPrograms, stopCourses, stopMore];
 
@@ -286,13 +290,13 @@ export default function Masterclasses() {
           {!desk && <TrustLink surface="foryou-pick" />}
         </span>
       </div>
-      <div className="fy-pick-head" style={pickArt ? undefined : { gridTemplateColumns: "minmax(0, 1fr)" }}>
+      <div className="fy-pick-head" style={pickArt && desk ? undefined : { gridTemplateColumns: "minmax(0, 1fr)" }}>
         <div className="stack fy-col" style={{ gap: 8 }}>
           <h1 className="hero" id="fy-pick-title" dir="auto">{pickTitle ?? t("elev.hero.academy.title")}</h1>
           {desk && todaysRead && <p className="fy-pick-hook" dir="auto">{he ? todaysRead.card.hook.he : todaysRead.card.hook.en}</p>}
           {!pickTitle && <p className="fy-pick-hook">{t("elev.hero.academy.sub")}</p>}
         </div>
-        {pickArt && <AreaForm art={pickArt} width={desk ? 210 : 116} ratio={0.57} zoom={1.13} />}
+        {pickArt && desk && <AreaForm art={pickArt} width={210} ratio={0.57} zoom={1.13} />}
       </div>
       {knots.length > 0 && (
         <div className="thread fy-thread" style={{ gridTemplateColumns: threadCols }}>
@@ -321,6 +325,11 @@ export default function Masterclasses() {
           >
             <Icon name="menu_book" size={18} />{t(todaysRead ? "elev.learnCare.pick.cta" : "elev.hero.academy.cta")}
           </button>
+          {todaysRead && (
+            <button type="button" className="ghostb fy-notthis" data-testid="academy-pick-not-this" onClick={() => setFeedback(setLearnFeedback(todaysRead.card.id, -1))}>
+              {copy.notThisOne}
+            </button>
+          )}
           {desk && <TrustLink surface="foryou-pick" className="fy-trust" />}
         </div>
       )}

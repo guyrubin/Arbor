@@ -13,6 +13,7 @@
  * Static catalogue, no AI call at browse time, no child-data write beyond
  * the bookmark (card id only). TOKEN-DRIVEN styling; HE/RTL via logical CSS.
  */
+import { fmtDayV10 } from "../../lib/formatDate";
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
@@ -452,7 +453,7 @@ export default function LearnLibrary() {
           </span>
           <span className="ttl" dir="auto">{pick(he, linkedRead.title)}</span>
           {linkedNote ? (
-            <span className="from" dir="auto">{copy.libFromNote(new Intl.DateTimeFormat(he ? "he-IL" : "en-GB", { weekday: "short", day: "numeric", month: "short" }).format(linkedNote.at))}</span>
+            <span className="from" dir="auto">{copy.libFromNote(fmtDayV10(linkedNote.at, he ? "he" : "en"))}</span>
           ) : !forYouPick && linked.matched.has(linkedRead.id) ? (
             <span className="from">{t("elev.learnCare.shortReads.matched")}</span>
           ) : null}

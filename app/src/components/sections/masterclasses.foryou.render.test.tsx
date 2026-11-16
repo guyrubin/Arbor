@@ -250,4 +250,26 @@ describe("For you · Your programs", () => {
       expect(html).toContain('class="knot sets fy-practice"');
     });
   }
+
+  for (const composition of ["desk", "phone"] as const) {
+    it(`V77 ${composition}: two programs running → one card each (phone: one swipe row with its dots), each with its own door`, () => {
+      harness.composition = composition;
+      const tt = new Date(Date.now() - 2 * DAY);
+      const sn = new Date(Date.now() - 9 * DAY);
+      harness.programs = [
+        { id: `talk-together.${localDay(tt)}`, programId: "talk-together", startedAt: localDay(tt), enrolledAt: tt.toISOString(), currentWeek: 1, status: "active", baseline: { childProxy: null, capturedAt: null }, updatedAt: tt.toISOString() },
+        { id: `steady-nights.${localDay(sn)}`, programId: "steady-nights", startedAt: localDay(sn), enrolledAt: sn.toISOString(), currentWeek: 2, status: "active", baseline: { childProxy: null, capturedAt: null }, updatedAt: sn.toISOString() },
+      ];
+      const html = render();
+      expect(count(html, /data-testid="foryou-program-open"/g)).toBe(2);
+      expect(count(html, /data-testid="foryou-program-choice"/g)).toBe(0);
+      expect(html).toContain("Talk Together");
+      expect(html).toContain("Steady Nights");
+      expect(count(html, /class="tok plan here at"/g)).toBe(2);
+      if (composition === "phone") expect(html).toMatch(/class="snap ds-snap-scroll"[^>]*aria-label="Your programs"/);
+      else expect(count(html, /class="vt fy-prog x6"|fy-prog x6/g)).toBeGreaterThanOrEqual(2);
+      // NEGATIVE CONTROL: the v10.1 single-card shape would show one door.
+      expect(count('<button data-testid="foryou-program-open">', /data-testid="foryou-program-open"/g)).toBe(1);
+    });
+  }
 });
