@@ -17,7 +17,7 @@ export type MomentsV10Copy = {
   marksUnit: (moments: number) => string;
   momentsUnit: (moments: number) => string;
   since: (date: string, range: string) => string;
-  kindMeta: { all: (range: string) => string; kept: string; hardSettled: string; hardSome: (n: number) => string; said: (name: string) => string };
+  kindMeta: { all: (range: string) => string; kept: string; hardSettled: string; hardSome: (n: number) => string };
   allMoments: string;
   howToRead: string;
   steps: { pick: string; read: string; newest: string };
@@ -43,6 +43,45 @@ export type MomentsV10Copy = {
   total: string;
   noRecordAria: (area: string, month: string) => string;
   logHard: string;
+  said: {
+    kicker: (name: string) => string;
+    guideLangs: string; guideLangsSub: string; guideKept: string; guideKeptSub: string;
+    figureUnit: (n: number) => string;
+    allMeta: string;
+    langMeta: (role: string) => string;
+    cap: string;
+    stage: string;
+    steps: { pick: string; read: string; practise: string };
+    keySaying: string;
+    keyWord: string;
+  };
+  hard: {
+    kicker: string;
+    title: string;
+    sub: string;
+    guideEntries: string; guideEntriesSub: string; guideHour: string; guideHourSub: string;
+    figureUnit: (n: number) => string;
+    allSettled: string;
+    someSettled: (n: number) => string;
+    settled: string;
+    entriesLabel: string;
+    cap: string;
+    capFew: string;
+    stage: string;
+    selected: (when: string) => string;
+    dialCenter: string;
+    dialCaption: string;
+    dialLabel: (hours: string) => string;
+    noEntries: string;
+    steps: { pick: string; read: string; use: string };
+    keyHard: string;
+    keyHelped: string;
+    helped: string;
+    helpedNone: string;
+    helpedKey: string;
+    dayAtAGlance: string;
+    tokenHelped: string;
+  };
 };
 
 export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
@@ -71,7 +110,6 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
       kept: "The Year book and your journal",
       hardSettled: "You marked each one settled",
       hardSome: (n) => (n === 1 ? "1 you marked settled" : `${n} you marked settled`),
-      said: (name) => `All of ${name}'s words`,
     },
     allMoments: "All moments",
     howToRead: "How to read this page",
@@ -98,6 +136,45 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
     total: "Total",
     noRecordAria: (area, month) => `${area}, ${month}: no record`,
     logHard: "Log a hard moment",
+    said: {
+      kicker: (name) => `My child · Things ${name} said`,
+      guideLangs: "The languages", guideLangsSub: "Pick one", guideKept: "What you kept", guideKeptSub: "Sayings, words, profile",
+      figureUnit: (n) => (n === 1 ? "moment logged, by language" : "moments logged, by language"),
+      allMeta: "Sayings and words together",
+      langMeta: (role) => `${role} · moments logged`,
+      cap: "Pick a language to see only its sayings. Each one is something you kept, in the words you wrote.",
+      stage: "What you kept",
+      steps: { pick: "Pick a language", read: "Read what you kept", practise: "Practise a little" },
+      keySaying: "A saying",
+      keyWord: "A word",
+    },
+    hard: {
+      kicker: "My child · Hard moments",
+      title: "Hard moments, in your words.",
+      sub: "What you logged, and what helped.",
+      guideEntries: "The newest", guideEntriesSub: "Pick an entry", guideHour: "Its hour", guideHourSub: "What helped, the guides",
+      figureUnit: (n) => (n === 1 ? "hard moment" : "hard moments"),
+      allSettled: "all settled, you marked each one",
+      someSettled: (n) => (n === 1 ? "1 you marked settled" : `${n} you marked settled`),
+      settled: "settled",
+      entriesLabel: "Pick a hard moment",
+      cap: "Pick an entry to see its hour.",
+      capFew: "Pick an entry to see its hour. A few entries are very few: a rhythm needs more.",
+      stage: "When they happened",
+      selected: (when) => `${when} selected`,
+      dialCenter: "hour of the day",
+      dialCaption: "Hour of the day",
+      dialLabel: (hours) => `Hour of the day of each hard moment you logged: ${hours}`,
+      noEntries: "Nothing logged yet. When you log a hard moment, its hour shows here.",
+      steps: { pick: "Pick an entry", read: "Read its hour", use: "Use what helped" },
+      keyHard: "A hard moment you logged",
+      keyHelped: "A time it helped",
+      helped: "What helped, in your own log",
+      helpedNone: "When you mark that a step helped, it shows here.",
+      helpedKey: "One mark is one time you marked it helped.",
+      dayAtAGlance: "Your day at a glance",
+      tokenHelped: "step you marked helped",
+    },
   },
   he: {
     onThisPage: "בעמוד הזה",
@@ -124,7 +201,6 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
       kept: "ספר השנה והיומן שלכם",
       hardSettled: "סימנתם שכל אחד נרגע",
       hardSome: (n) => (n === 1 ? "אחד שסימנתם שנרגע" : `${n} שסימנתם שנרגעו`),
-      said: (name) => `כל המילים של ${name}`,
     },
     allMoments: "כל הרגעים",
     howToRead: "איך לקרוא את העמוד",
@@ -151,5 +227,44 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
     total: "סך הכול",
     noRecordAria: (area, month) => `${area}, ${month}: אין תיעוד`,
     logHard: "לתעד רגע קשה",
+    said: {
+      kicker: (name) => `הילד שלי · המילים של ${name}`,
+      guideLangs: "השפות", guideLangsSub: "בוחרים אחת", guideKept: "מה ששמרתם", guideKeptSub: "משפטים, מילים, פרופיל",
+      figureUnit: (n) => (n === 1 ? "רגע שתועד, לפי שפה" : "רגעים שתועדו, לפי שפה"),
+      allMeta: "משפטים ומילים יחד",
+      langMeta: (role) => `${role} · רגעים שתועדו`,
+      cap: "בוחרים שפה כדי לראות רק את המשפטים בה. כל אחד הוא משהו ששמרתם, במילים שכתבתם.",
+      stage: "מה ששמרתם",
+      steps: { pick: "בוחרים שפה", read: "קוראים מה ששמרתם", practise: "מתרגלים קצת" },
+      keySaying: "משפט",
+      keyWord: "מילה",
+    },
+    hard: {
+      kicker: "הילד שלי · רגעים קשים",
+      title: "רגעים קשים, במילים שלכם.",
+      sub: "מה שתיעדתם, ומה שעזר.",
+      guideEntries: "האחרונים", guideEntriesSub: "בוחרים רשומה", guideHour: "השעה שלה", guideHourSub: "מה עזר, המדריכים",
+      figureUnit: (n) => (n === 1 ? "רגע קשה" : "רגעים קשים"),
+      allSettled: "כולם נרגעו, סימנתם כל אחד",
+      someSettled: (n) => (n === 1 ? "אחד שסימנתם שנרגע" : `${n} שסימנתם שנרגעו`),
+      settled: "נרגע",
+      entriesLabel: "בוחרים רגע קשה",
+      cap: "בוחרים רשומה כדי לראות את השעה שלה.",
+      capFew: "בוחרים רשומה כדי לראות את השעה שלה. כמה רשומות הן מעט מאוד: קצב צריך יותר.",
+      stage: "מתי זה קרה",
+      selected: (when) => `${when} נבחר`,
+      dialCenter: "שעה ביום",
+      dialCaption: "שעה ביום",
+      dialLabel: (hours) => `השעה ביום של כל רגע קשה שתיעדתם: ${hours}`,
+      noEntries: "עדיין לא תועד כלום. כשמתעדים רגע קשה, השעה שלו מופיעה כאן.",
+      steps: { pick: "בוחרים רשומה", read: "קוראים את השעה", use: "משתמשים במה שעזר" },
+      keyHard: "רגע קשה שתיעדתם",
+      keyHelped: "פעם שזה עזר",
+      helped: "מה עזר, ביומן שלכם",
+      helpedNone: "כשמסמנים שצעד עזר, הוא מופיע כאן.",
+      helpedKey: "כל סימן הוא פעם אחת שסימנתם שזה עזר.",
+      dayAtAGlance: "היום שלכם במבט אחד",
+      tokenHelped: "צעד שסימנתם שעזר",
+    },
   },
 };

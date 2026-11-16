@@ -354,3 +354,48 @@
 .ds-mychild.ds-desk .mstage .hero { font-size: 32px; }
 .ds-mychild.ds-phone .mstage .hero { font-size: 25px; line-height: 1.1; }
 .ds-mychild .mtop { gap: 16px; }
+
+/* Things <name> said */
+.ds-mychild .said-stage .space-y-4 > * + * { margin-block-start: 16px; }
+.ds-mychild .said-rows { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.ds-mychild .said-rows .sqr { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 60px; padding: 6px 0; border-top: 1px solid var(--rule); }
+.ds-mychild .said-rows .sqr:first-child { border-top: 0; }
+.ds-mychild .said-rows .sqg { width: 28px; height: 28px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; background: var(--sapphire-deep); color: #fff; }
+.ds-mychild .said-rows .q { display: block; font-family: var(--font-display) !important; font-style: italic; font-size: 20px; line-height: 1.2; }
+.ds-mychild .said-rows .sqlang { display: block; font-size: 12px; color: var(--ink-soft); }
+.ds-mychild .said-rows .sqd { font-size: 12.5px; font-weight: 600 !important; color: var(--ink-soft); white-space: nowrap; }
+.ds-mychild .tg-said { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 5px; background: var(--sapphire-deep); color: #fff; font: 700 9px/1 var(--font-sans) !important; font-style: normal; }
+.ds-mychild .lang-roles { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.ds-mychild .lang-roles li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 10px 0; border-top: 1px solid var(--rule); }
+.ds-mychild .lang-roles li:first-child { border-top: 0; padding-top: 2px; }
+.ds-mychild .lang-roles .lr-role { grid-column: 1; font: 700 11.5px/1.2 var(--font-sans) !important; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.ds-mychild .lang-roles .lr-name { grid-column: 1; font-family: var(--font-display) !important; font-weight: 600 !important; font-size: 22px; line-height: 1.1; }
+.ds-mychild .lang-roles .lr-note { grid-column: 1; margin: 0; font-size: 13px; line-height: 1.35; color: var(--ink-soft); }
+.ds-mychild .lang-roles .lr-count { grid-column: 2; grid-row: 1 / span 2; align-self: start; font-size: 12px; font-weight: 600 !important; color: var(--ink-soft); white-space: nowrap; }
+.ds-mychild .said-more { gap: 4px; padding: 10px 16px; }
+.ds-mychild .said-more-sum { display: flex; align-items: center; gap: 10px; min-height: var(--touch-min, 44px); cursor: pointer; list-style: none; }
+.ds-mychild .said-more-sum::-webkit-details-marker { display: none; }
+.ds-mychild .said-more-sum b { display: block; font-size: 14px; font-weight: 600 !important; }
+.ds-mychild .said-more-sum small { display: block; font-size: 12.5px; color: var(--ink-soft); }
+.ds-mychild .said-more .rowlink { border-top: 1px solid var(--rule); }
+.ds-mychild .said-nolangs { gap: 12px; }
+.ds-mychild .card-btn { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Hard moments */
+.ds-mychild .hm-capture { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ds-mychild .hm-capture .btn { min-height: var(--touch-min, 44px); display: inline-flex; align-items: center; gap: 6px; }
+.ds-mychild .hm-stage .hdl { align-items: start; }
+.ds-mychild.ds-phone .hm-stage .hdl { grid-template-columns: minmax(0, 1fr); }
+.ds-mychild .hm-right { gap: 12px; }
+.ds-mychild .hm-question { margin: 0; font-family: var(--font-display) !important; font-weight: 600 !important; font-size: 19px; line-height: 1.2; color: var(--ink); }
+.ds-mychild .hm-right [data-testid="hard-moments-section"] { box-shadow: none; border: 0; padding: 0; background: none; }
+.ds-mychild .hm-journal { border-top: 1px solid var(--rule); }
+.ds-mychild .hdial-n { font: 600 12px/1 var(--font-sans); fill: var(--ink-soft); }
+.ds-mychild .hdial-c { font: 500 12px/1 var(--font-sans); fill: var(--ink-soft); }
+.ds-mychild .mcg .ddial { width: 34px; height: 34px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 3px var(--rule-strong); position: relative; }
+.ds-mychild .mcg .ddial::after { content: ""; position: absolute; width: 10px; height: 10px; border-radius: 50%; background: var(--k-hard); inset-block-start: 4px; inset-inline-end: 0; }
+.ds-mychild .hlist { margin: 0; padding: 0; list-style: none; }
+.ds-mychild .hlist .hlr:first-child { border-top: 0; }
+.ds-mychild .hlr .t { font-size: 13.5px; font-weight: 600 !important; line-height: 1.3; }
+.ds-mychild .hm-patterns { gap: 12px; }
+.ds-mychild .hm-patterns .rowlink { background: var(--card); border-radius: 16px; padding: 4px 14px; border: 0; box-shadow: inset 0 0 0 1px var(--rule-strong); }

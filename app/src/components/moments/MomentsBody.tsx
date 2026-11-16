@@ -495,7 +495,7 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
     { id: "hard", icon: "favorite", name: t("companion.moments.kind.hard"), figure: counts.hard || undefined, on: kind === "hard",
       meta: counts.hard > 0 ? (settled === hardInRange.length && settled > 0 ? v.kindMeta.hardSettled : settled > 0 ? v.kindMeta.hardSome(settled) : t("companion.moments.kind.hardDoor")) : t("companion.moments.kind.hardDoor"),
       onOpen: () => setActiveTab("behaviors"), testId: "moments-kind-door-hard", attrs: { "data-moments-kind": "hard" } },
-    { id: "said", icon: "format_quote", name: kindLabel("said"), meta: v.kindMeta.said(firstName), figure: counts.said || undefined, on: kind === "said", onOpen: () => setActiveTab("language"), testId: "moments-kind-door-said", attrs: { "data-moments-kind": "said" } },
+    { id: "said", icon: "format_quote", name: kindLabel("said"), meta: t("companion.moments.kind.saidDoor", { name: firstName }), figure: counts.said || undefined, on: kind === "said", onOpen: () => setActiveTab("language"), testId: "moments-kind-door-said", attrs: { "data-moments-kind": "said" } },
   ];
   const header = (
     <Scene field="now" className="mband" orbs={STAGE_ORBS[composition]}>
@@ -506,7 +506,7 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
           switcher={reader ? undefined : viewSwitch} action={desk ? everything : undefined} figure={figure} />
         <IndexRow phone={!desk} label={t("companion.moments.kinds")} items={kindItems} />
       </div>
-      <div className="mcap"><span>{view === "areas" && !reader ? t("companion.moments.areasNote") : view === "places" ? t("companion.moments.placeNote") : v.sub.time}</span></div>
+      {!reader && view !== "time" && <div className="mcap"><span>{view === "areas" ? t("companion.moments.areasNote") : t("companion.moments.placeNote")}</span></div>}
     </Scene>
   );
 

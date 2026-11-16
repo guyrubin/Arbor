@@ -285,7 +285,7 @@ describe("critic r1 — behaviors capture reads first, one primary fill", async 
     // v10.1: the page's h1 is the Moments frame's ("Hard moments"); the
     // action-first question leads the capture card as its h2.
     expect(BEH).toMatch(/<h2 data-testid="behaviors-capture-label"[^>]*>\s*\{t\("beh\.capture\.label", \{ name: behFirst \}\)\}/);
-    expect(BEH).toContain('<MomentsKindHeader kind="hard" title={t("companion.moments.kind.hard")}');
+    expect(BEH).toContain("<FrameHead phone={!desk} kicker={hc.kicker} startHere={v.startHere} title={hc.title}");
     expect(BEH).toContain('t(heroStats.events === 1 ? "elev.beh.week.one" : "elev.beh.week", { n: heroStats.events })');
     expect(i18n.en["beh.capture.label"]).toContain("{name}");
     expect(i18n.he["beh.capture.label"]).toContain("{name}");
@@ -346,25 +346,22 @@ describe("critic r2 — behaviors: guides under the capture, one warm line, no s
     expect(row).toContain('t("elev.closeloop.hm.allGuides", { n: cards.length })');
     expect(SHELF).toMatch(/<h3 id="hard-moments-title" className="t-md"/);
   });
-  it("at lg: a 7/5 grid — capture in the start column, the shelf as the end rail", () => {
-    expect(BEH).toContain("lg:grid lg:grid-cols-12");
-    expect(BEH).toMatch(/<section data-module="behaviors-capture"[^\n]*lg:col-span-7 lg:col-start-1 lg:row-start-1/);
-    expect(BEH).toContain('<div data-module="behaviors-hard-moments" className="min-w-0 lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1"><HardMomentsSection /></div>');
-  });
-  it("B-ASKJB-23 — patterns follow capture in row 2; the shelf rail spans both rows", () => {
-    expect(BEH).toContain('data-module="behaviors-patterns" className="min-w-0 space-y-6 lg:col-span-7 lg:col-start-1 lg:row-start-2"');
+  it("v10.3: the My child frame — capture in the band, the guides on the stage, the patterns in the rail", () => {
+    // The band carries the one way to log (the primary move); the stage holds
+    // the hour, the capture question, the echo and the guides; the rail the patterns.
+    expect(BEH).toContain('<section data-module="behaviors-capture" data-primary-move="log-behavior" className="hm-capture" aria-label={t("beh.captureTitle")}>');
+    expect(BEH).toContain("switcher={<KindSwitch kind=\"hard\" />} action={capture}");
+    expect(BEH).toContain('<div data-module="behaviors-hard-moments" className="min-w-0"><HardMomentsSection /></div>');
+    expect(BEH).toContain('<section data-module="behaviors-patterns" className="mstack hm-patterns" aria-label={t("beh.analyze")}>');
+    expect(BEH).toContain('<aside className="rlc">{readGuide}{helpedTile}{patterns}</aside>');
     expect(BEH).not.toContain('data-module="behaviors-record"');
-    // DOM order unchanged: capture → shelf → record (below lg the shelf sits under capture).
+    // DOM order: capture → shelf → patterns (the phone stacks them the same way).
     const cap = BEH.indexOf('data-module="behaviors-capture"');
     const shelf = BEH.indexOf('data-module="behaviors-hard-moments"');
     const record = BEH.indexOf('data-module="behaviors-patterns"');
     expect(cap).toBeLessThan(shelf);
     expect(shelf).toBeLessThan(record);
-    // The old full-width second row with its own 1.5fr split is gone.
-    expect(BEH).not.toContain("lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]");
-  });
-  it("P1-NEXTLEVEL critic r2 — the lg grid rows are [auto 1fr]: a tall opened shelf spills into row 2, never pushes the record down", () => {
-    expect(BEH).toContain('<div data-testid="behaviors-grid" className="min-w-0 space-y-6 lg:grid lg:grid-cols-12 lg:grid-rows-[auto_1fr] lg:items-start lg:gap-6 lg:space-y-0">');
+    expect(BEH).toContain("<div className=\"mstack\" style={{ gap: 14 }}>{stage}{readGuide}{helpedTile}{patterns}</div>");
   });
   it("P1-NEXTLEVEL critic r2 — one warm moment: while the held 'Last time' row shows, the capture warm line is quiet sans muted text", () => {
     const at = BEH.indexOf('data-testid="behaviors-warm-line"');

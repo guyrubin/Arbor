@@ -10,13 +10,20 @@ import { heldRowsSince, scriptCard } from "../behaviors/hardMomentLastTime";
 import { availableHardMomentCards, matchToRecentBehaviors } from "../../content/selectCards";
 import { locText, recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { ageMonthsFromProfile } from "../../lib/childAge";
-import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { parentWritten } from "../../lib/kept/parentWritten";
 import { ContentActionBar } from "../ui/ContentActionBar";
 import { fmtDay, fmtDayShort } from "../../lib/formatDate";
 import { patternEchoFor } from "../../lib/patternEcho";
 import { UrgentSupport } from "../safety/UrgentSupport";
-import MomentsKindHeader from "../moments/v10/MomentsKindHeader";
+import KindSwitch from "../moments/v10/KindSwitch";
+import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
+import HourDial from "../moments/v10/HourDial";
+import { Draw, FrameFigure, FrameHead, IndexRow, RailTile, ReadGuide, RowLink, StageCard, type IndexItem } from "../moments/v10/frame";
+import { STAGE_ORBS } from "../moments/v10/stageOrbs";
+import { DsRoot, Guide, Route, RouteSection, Scene, Token } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
+import { behaviorTypeLabel, isIncidentType } from "../../content/behaviorTaxonomy";
+import "../moments/mychild.css";
 import { MOMENTS_V10_COPY } from "../moments/momentsV10Copy";
 
 const DAY = 86_400_000;
@@ -29,6 +36,15 @@ export default function BehaviorsTab() {
     requestJournalFilter, lastSavedBehavior, dismissBehaviorEcho, escalatedSurface,
   } = useArbor();
   const { t, uiLang, aiLang } = useLanguage();
+  const composition = useComposition();
+  const desk = composition === "desk";
+  const v = MOMENTS_V10_COPY[uiLang === "he" ? "he" : "en"];
+  const locale = uiLang === "he" ? "he-IL" : "en-GB";
+  // The picked entry lives in the address (`?entry=`), so Back returns to it.
+  const selectedId = useHashQuery().get("entry");
+  // v10.3: the hard moments the parent logged (an incident type, never the neutral "Moment"), newest first.
+  const hardLogs = useMemo(() => [...behaviorLogs].filter((l) => isIncidentType(l.behaviorType))
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()), [behaviorLogs]);
   const behFirst = (childProfile.name || "").split(" ")[0];
   const analysisWhy = t("beh.analysis.why", {
     n: behaviorAnalysisRecord?.inputs?.logCount ?? behaviorLogs.length,
@@ -110,17 +126,64 @@ export default function BehaviorsTab() {
     }));
   }, [behaviorLogs, types]);
 
-  return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-6">
-      {/* B-ASKJB-23: capture, guides and patterns only. Preserve the current
-          action-first H1 and desktop rail; Journal owns the complete record. */}
-      {/* v10.1: #/behaviors is Moments with the kind Hard moments selected. */}
-      <MomentsKindHeader kind="hard" title={t("companion.moments.kind.hard")} sub={t("beh.hero.sub")} />
-      <div data-testid="behaviors-grid" className="min-w-0 space-y-6 lg:grid lg:grid-cols-12 lg:grid-rows-[auto_1fr] lg:items-start lg:gap-6 lg:space-y-0">
-        <section data-module="behaviors-capture" data-primary-move="log-behavior" className="min-w-0 lg:col-span-7 lg:col-start-1 lg:row-start-1" aria-label={t("beh.captureTitle")}>
-        <div data-testid="behaviors-capture-card" className="min-w-0 space-y-3 rounded-[var(--r-xl)] p-4 sm:p-5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)", boxShadow: "var(--shadow-sm)" }}>
+  // v10.3 (the My child frame): #/behaviors is Moments with the kind Hard
+  // moments selected — the band (kinds switch, the one way to log, one
+  // figure), the newest entries as the index, the stage (when they happened,
+  // the last time something helped, the guides) and the rail (how to read,
+  // what helped in your own log, the patterns). B-ASKJB-23: capture, guides
+  // and patterns only; Journal owns the complete record.
+  const hc = v.hard;
+  const settledAll = hardLogs.length > 0 && hardLogs.every((l) => l.resolved);
+  const settledCount = hardLogs.filter((l) => l.resolved).length;
+  const timeOf = (iso: string) => new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
+  const dayOf = (iso: string) => new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short" }).format(new Date(iso));
+  const entries = hardLogs.slice(0, 3);
+  const selectedLog = entries.find((l) => l.id === selectedId) ?? entries[0] ?? null;
+  const entryName = (l: (typeof hardLogs)[number]) => (parentWritten(l) && (l.trigger || "").trim()) || behaviorTypeLabel(l.behaviorType, t);
+  const entryIndex: IndexItem[] = entries.map((l) => ({
+    id: l.id, icon: "favorite", figure: timeOf(l.timestamp), name: entryName(l),
+    meta: l.resolved ? `${dayOf(l.timestamp)} · ${hc.settled}` : dayOf(l.timestamp),
+    on: selectedLog?.id === l.id, onOpen: () => goToRoute("behaviors", { entry: l.id }),
+  }));
+  const dialMarks = hardLogs.slice(0, 24).map((l) => { const d = new Date(l.timestamp); return { id: l.id, hour: d.getHours(), minute: d.getMinutes() }; });
+  const capture = (
+    /* v10.1: the dock owns voice, photo and "A hard moment?" (the same
+       handlers and the same guide gate); the page keeps one way to log. */
+    <section data-module="behaviors-capture" data-primary-move="log-behavior" className="hm-capture" aria-label={t("beh.captureTitle")}>
+      <button type="button" data-testid="behaviors-log-hard" onClick={() => openCaptureSheet({ mode: "text" })}
+        className="btn primary sm nowrap">
+        <Icon name="favorite" size={16} />{v.logHard}
+      </button>
+      {guideLead.any && (
+        <button type="button" data-testid="behaviors-hard-now" onClick={() => openHardMomentNow()} className="btn sm ghost nowrap card-btn">
+          <Icon name="volunteer_activism" size={16} />{t("companion.input.hard-moment")}
+        </button>
+      )}
+    </section>
+  );
+  const band = (
+    <Scene field="now" className="mband" orbs={STAGE_ORBS[composition]}>
+      <div className="mstack mtools">
+        <FrameHead phone={!desk} kicker={hc.kicker} startHere={v.startHere} title={hc.title} sub={hc.sub}
+          switcher={<KindSwitch kind="hard" />} action={capture}
+          figure={hardLogs.length > 0 ? <FrameFigure n={hardLogs.length} unit={hc.figureUnit(hardLogs.length)} sub={settledAll ? hc.allSettled : settledCount > 0 ? hc.someSettled(settledCount) : undefined} /> : undefined} />
+        {entryIndex.length > 0 && <IndexRow phone={!desk} label={hc.entriesLabel} items={entryIndex} figureClass="tm" />}
+      </div>
+      {entryIndex.length > 0 && <div className="mcap"><span>{hardLogs.length < 5 ? hc.capFew : hc.cap}</span></div>}
+    </Scene>
+  );
+  const stage = (
+    <StageCard icon="schedule" title={hc.stage} end={selectedLog ? hc.selected(`${dayOf(selectedLog.timestamp)} · ${timeOf(selectedLog.timestamp)}`) : undefined} className="hm-stage">
+      <div className="hdl">
+        <div className="dl">
+          {dialMarks.length > 0
+            ? <HourDial marks={dialMarks} selected={selectedLog?.id} center={hc.dialCenter} label={hc.dialLabel(dialMarks.map((m) => `${String(m.hour).padStart(2, "0")}:${String(m.minute).padStart(2, "0")}`).join(", "))} size={desk ? 240 : 220} />
+            : <p className="line1">{hc.noEntries}</p>}
+          {dialMarks.length > 0 && <span className="cap" aria-hidden="true">{hc.dialCaption}</span>}
+        </div>
+        <div className="mstack hm-right">
           <div className="min-w-0">
-            <h2 data-testid="behaviors-capture-label" className="t-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+            <h2 data-testid="behaviors-capture-label" className="hm-question">
               {t("beh.capture.label", { name: behFirst })}
             </h2>
             {hasWeek && (
@@ -143,29 +206,6 @@ export default function BehaviorsTab() {
                 : t("beh.warm.guide", { guide: warmLine.guide, name: behFirst })}
             </p>
           )}
-          {/* v10.1: the dock owns voice, photo and "A hard moment?" (the same
-              handlers and the same guide gate); the page keeps one way to log. */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button type="button" data-testid="behaviors-log-hard" onClick={() => openCaptureSheet({ mode: "text" })}
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 t-sm font-bold"
-              style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>
-              <Icon name="edit_note" size={18} />{MOMENTS_V10_COPY[uiLang === "he" ? "he" : "en"].logHard}
-            </button>
-            {guideLead.any && (
-              <button type="button" data-testid="behaviors-hard-now" onClick={() => openHardMomentNow()}
-                className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 t-sm font-bold"
-                style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}>
-                <Icon name="volunteer_activism" size={18} />{t("companion.input.hard-moment")}
-              </button>
-            )}
-          </div>
-        </div>
-
-
-          <button type="button" data-testid="behaviors-journal-link" onClick={() => { requestJournalFilter("hard"); setActiveTab("journal"); }} className="mt-3 flex min-h-11 w-full items-center justify-between gap-3 px-1 text-start t-sm font-semibold" style={{ color: "var(--arbor-ink-soft)" }}>
-            {t("beh.journal.hardMoments")}
-            <Icon name="arrow_forward" size={18} className="flex-none rtl:-scale-x-100" />
-          </button>
         {patternEcho && (
           <div
             data-testid="behaviors-pattern-echo"
@@ -207,11 +247,45 @@ export default function BehaviorsTab() {
             </div>
           </div>
         )}
-      </section>
-
-
-        <div data-module="behaviors-hard-moments" className="min-w-0 lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1"><HardMomentsSection /></div>
-        <section data-module="behaviors-patterns" className="min-w-0 space-y-6 lg:col-span-7 lg:col-start-1 lg:row-start-2" aria-label={t("beh.analyze")}>
+          <div data-module="behaviors-hard-moments" className="min-w-0"><HardMomentsSection /></div>
+        </div>
+      </div>
+      <button type="button" data-testid="behaviors-journal-link" onClick={() => { requestJournalFilter("hard"); setActiveTab("journal"); }} className="rowlink hm-journal">
+        <span className="gi" aria-hidden="true"><Icon name="auto_stories" size={16} /></span>
+        <span><b>{t("beh.journal.hardMoments")}</b></span>
+        <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" />
+      </button>
+    </StageCard>
+  );
+  const readGuide = (
+    <RailTile icon="grid_view" title={v.howToRead} className="mguide">
+      <ReadGuide phone={!desk}
+        steps={[
+          { drawing: Draw.pick(3), label: hc.steps.pick },
+          { drawing: <span className="ddial" />, label: hc.steps.read },
+          { drawing: Draw.cards(), label: hc.steps.use },
+        ]}
+        keyItems={[
+          { mark: <Token kind="hard" size="sm" label={hc.keyHard} />, label: hc.keyHard },
+          { mark: <Token kind="stp" size="sm" label={hc.keyHelped} />, label: hc.keyHelped },
+        ]} />
+    </RailTile>
+  );
+  const helped = heldRowsSince(actionLoop ?? [], 0).slice(0, 4);
+  const helpedTile = (
+    <RailTile icon="flag" title={hc.helped} className="hm-helped">
+      {helped.length > 0 ? (
+        <ul className="hlist">
+          {helped.map((r) => (
+            <li key={r.id} className="hlr"><Token kind="stp" size="md" label={hc.tokenHelped} /><span className="t" dir="auto">{r.recommendation}</span></li>
+          ))}
+        </ul>
+      ) : <p className="line1">{hc.helpedNone}</p>}
+      {helped.length > 0 && <p className="line1">{hc.helpedKey}</p>}
+    </RailTile>
+  );
+  const patterns = (
+    <section data-module="behaviors-patterns" className="mstack hm-patterns" aria-label={t("beh.analyze")}>
           <PatternInsights logs={behaviorLogs} />
           <div className={`${cardCls} p-5 space-y-4`}>
             <button type="button" onClick={handleAnalyzeBehaviors} disabled={isAnalyzingBehavior} data-testid="behaviors-find-pattern" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 t-sm font-bold transition disabled:opacity-60" style={{ border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)" }}>
@@ -290,8 +364,31 @@ export default function BehaviorsTab() {
               </div>
             </div>
           )}
-        </section>
-      </div>
+      <RowLink icon="schedule" label={hc.dayAtAGlance} onOpen={() => setActiveTab("day-windows")} />
+    </section>
+  );
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full min-w-0">
+      <DsRoot composition={composition} className="ds-mychild hard-v10" dir={uiLang === "he" ? "rtl" : "ltr"} data-testid="behaviors-v10">
+        <Guide mini={!desk} label={v.onThisPage} stops={[
+          { id: "h-entries", title: hc.guideEntries, sub: hc.guideEntriesSub },
+          { id: "h-hour", title: hc.guideHour, sub: hc.guideHourSub },
+        ]} />
+        <Route composition={composition}>
+          <RouteSection id="h-entries" n={1} on>{band}</RouteSection>
+          <RouteSection id="h-hour" n={2}>
+            {desk ? (
+              <div className="rowa">
+                <div className="stg">{stage}</div>
+                <aside className="rlc">{readGuide}{helpedTile}{patterns}</aside>
+              </div>
+            ) : (
+              <div className="mstack" style={{ gap: 14 }}>{stage}{readGuide}{helpedTile}{patterns}</div>
+            )}
+          </RouteSection>
+        </Route>
+      </DsRoot>
     </motion.div>
   );
 }
