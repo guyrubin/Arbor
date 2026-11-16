@@ -10,6 +10,7 @@ import Icon from "../ui/Icon";
 import { BrandChip } from "../ui/BrandChip";
 import { PendingLine } from "../ui/Receipt";
 import { NOW_COPY } from "./nowViewCopy";
+import { NowRow } from "./now10/NowComingUp";
 import type { useNowLoop } from "./useNowLoop";
 
 type Loop = ReturnType<typeof useNowLoop>;
@@ -150,12 +151,9 @@ export function NowTonightLead({ loop: base, initialStep }: { loop: Loop; initia
   return <TonightFlow {...loop.tonight} stampMove={MOVE} />;
 }
 
-/** Before the evening (or behind a chosen step): ONE pointer line, never a module. */
+/** Before the evening (or behind a chosen step): ONE pointer line, never a module.
+ *  v10.1: a Coming up row (N-Now › stop 4). */
 export function NowTonightPointer({ onOpen }: { onOpen: () => void }) {
   const { t } = useLanguage();
-  return <button type="button" className="now-weekly-door now-tonight-pointer" data-testid="today-tonight-pointer" onClick={onOpen}>
-    <BrandChip icon="dark_mode" tone="lav" shape="arch" />
-    <span><b>{t("elev.loop.today.tonight")}</b><small>{t("elev.loop.today.tonightSub")}</small></span>
-    <Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
-  </button>;
+  return <NowRow icon="dark_mode" testId="today-tonight-pointer" className="now-tonight-pointer" title={t("elev.loop.today.tonight")} sub={t("elev.loop.today.tonightSub")} onOpen={onOpen} />;
 }

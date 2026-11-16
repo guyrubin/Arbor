@@ -86,27 +86,6 @@ export const VISIT_DRAFT_COPY = {
   },
 } as const;
 
-/* v4.1 Arbor learned this week — the proposals of the last seven days, asked
-   on Now. The same decision as About's notebook (handleMemoryDecision): only
-   what the parent confirms is kept. Hebrew avoids a gendered verb for Arbor. */
-export const LEARNED_COPY = {
-  en: {
-    title: "Arbor learned this week",
-    sub: "Only what you confirm is kept.",
-    right: "That's right",
-    notQuite: "Not quite",
-    kept: "Kept",
-    removed: "Removed",
-  },
-  he: {
-    title: "מה נלמד השבוע",
-    sub: "רק מה שתאשרו נשמר.",
-    right: "נכון",
-    notQuite: "לא בדיוק",
-    kept: "נשמר",
-    removed: "הוסר",
-  },
-} as const;
 
 /* v4.1 Then and now — My child. The parent's own words on one shelf, the
    newest note beside the newest one written at least a week before it.

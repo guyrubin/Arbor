@@ -100,7 +100,8 @@ describe("OverviewTab — three blocks and one door (source pins)", () => {
   // clinical watch signal in Notice today, the ONE proactive slot, the sibling
   // lines and the evening story in the agenda. Daily Play left for Together.
   it("Tonight is a pointer line in the morning, the flow in the evening; the door's lines live in their objects", () => {
-    expect(OV).toContain('data-testid="today-tonight-pointer"');
+    // v10.1: the pointer is a Coming up row (NowRow) carrying the same test id.
+    expect(OV).toContain('testId="today-tonight-pointer"');
     expect(OV).toContain("<TonightFlow");
     expect(OV).not.toContain('data-testid="today-door"');
     expect(OV).not.toMatch(/<details className="now-more"/);

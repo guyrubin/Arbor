@@ -252,7 +252,9 @@ describe("5 · B-TODAY-22 · one report, one secondary door", () => {
     const delivery = panel.indexOf('data-module="reminders-delivery"');
     expect(delivery).toBeGreaterThan(0);
     expect(panel.indexOf("<WeeklyEmailRow")).toBeGreaterThan(delivery);
-    expect(panel.indexOf("<WeeklyEmailRow")).toBeLessThan(panel.indexOf("<details", delivery));
+    // v10.1 (N-Remind): no disclosure on the page; the row closes the Delivery block.
+    expect(panel).not.toContain("<details");
+    expect(panel.indexOf("<WeeklyEmailRow")).toBeLessThan(panel.indexOf("</div>;", delivery));
   });
 
   it("the empty state is stamped and its ONE move is the explicit secondary capture-moment", () => {

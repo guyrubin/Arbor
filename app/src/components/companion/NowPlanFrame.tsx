@@ -1,6 +1,7 @@
 import React from "react";
 import Icon from "../ui/Icon";
 import { guideFaceFor } from "./nowGuideFace";
+import { useNowStage } from "./now10/nowStage";
 
 export type NowPlanKind = "urgent" | "practice" | "step" | "recommendation" | "program" | "plan" | "record" | "visit" | "tonight" | "notice";
 
@@ -38,9 +39,20 @@ export default function NowPlanFrame({ kind, lang, tag, say, quoted = false, tit
   bare?: boolean;
   children: React.ReactNode;
 }) {
+  const stage = useNowStage();
   if (bare) return <>{children}</>;
   const face = guideFaceFor(question, lang);
   const art = face.art;
+  // v10.1: inside Now's stage the face rides the day arc; the lead follows it.
+  if (stage) return <div className="now-plan-v10" data-plan={kind} data-guide={face.topic}>
+    {stage.renderArc(<div className="nw-face">
+      <p className="nw-face-tag"><Icon name={PLAN_ICON[kind]} size={15} />{tag}</p>
+      {typeof title === "string" ? (title ? <h2 className="now-plan-title" id={titleId} dir="auto">{title}</h2> : null) : title}
+      {say && (quoted ? <blockquote className="now-plan-say" dir="auto">{say}</blockquote> : <p className="now-plan-say" dir="auto">{say}</p>)}
+      {meta && <p className="now-plan-meta">{meta}</p>}
+    </div>, art ? { src: art.src, srcSet: art.srcSet } : null)}
+    <div className="now-plan-body">{children}</div>
+  </div>;
   return <div className="now-plan arbor-depth-primary" data-plan={kind} data-guide={face.topic}>
     <div className={art ? "now-plan-art now-plan-art-picture" : "now-plan-art"}>
       {art ? <>

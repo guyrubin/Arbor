@@ -295,7 +295,7 @@ describe("OverviewTab wiring — ONE What-changed card", () => {
     expect(overview.match(/<WhatChanged\b/g)).toHaveLength(1);
     expect(overview).toMatch(/<WhatChanged variant="lines" lines=\{changed\.lines\.slice\(0, 3\)\}/);
     expect(overview.indexOf("<NowWhatChangedLines")).toBeGreaterThan(overview.indexOf("<NowRecommendation"));
-    expect(overview.indexOf("<NowWhatChangedLines")).toBeGreaterThan(overview.indexOf("<NowWeekSoFar"));
+    expect(overview.indexOf("<NowWhatChangedLines")).toBeGreaterThan(overview.indexOf("<NowThisWeek"));
   });
 
   it("the four restatements are gone: SinceLastVisit, ProgressNarrative, the dev-map count card", () => {
