@@ -169,3 +169,25 @@ describe("Notice today's compact row (v4)", () => {
     expect(SRC).toContain("aria-label={answerLabel(status)}");
   });
 });
+
+describe("v10.1 · the row being asked (N-Now V77, Waiting for you › Now)", () => {
+  it("draws the three worded answers in one segmented tray, carries the stamp, and writes and undoes the same way", async () => {
+    const h = setup("en", { ask: true, answersAttrs: { "data-primary-move": "choose-next-step" } });
+    const tree = h.render();
+    expect(tree.find(el => el.type === "article")!.props.className).toBe("now-notice-item nw-ask-row");
+    const group = h.testId("notice-answers")!;
+    expect(group.className).toBe("now-notice-answers sg3");
+    expect(group["data-primary-move"]).toBe("choose-next-step");
+    expect(tree.filter(el => el.type === "button" && el.props["data-answer"]).length).toBe(3);
+    h.answer("yes")!.onClick(); await Promise.resolve(); await Promise.resolve();
+    h.render();
+    expect(h.props.onAnswer).toHaveBeenCalledExactlyOnceWith("yes");
+    expect(h.testId("notice-undo")).toBeDefined();
+    h.unmount();
+    // Negative control: a compact row keeps its icon answers (no tray).
+    const plain = setup("en");
+    plain.render();
+    expect(plain.testId("notice-answers")!.className).toBe("now-notice-answers");
+    plain.unmount();
+  });
+});

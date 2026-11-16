@@ -298,3 +298,31 @@ html[lang="he"] .ds .nw-face .now-plan-say { font-style: normal; }
 .ds-phone .nw-arc > .nw-arc-face { align-self: start; padding-top: 30%; }
 .ds-phone .nw-stage .nw-face .now-plan-title { max-width: 230px; margin-inline: auto; }
 .ds .nw-quiet-hour { text-anchor: start; }
+
+/* ═══ Waiting for you › Now (N-Now V77): one "Did you notice this today?" card ═══ */
+.ds .nw-ask.now-notice { margin: 0; padding: 14px 18px 10px 23px; border-radius: 18px; background: var(--tint); box-shadow: inset 0 0 0 1px #dbe6f7; gap: 10px; }
+.ds .nw-ask .now-notice-heading { margin: 0; }
+.ds .nw-ask .now-notice-head.kk { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; margin-block: -8px -4px; padding: 0; border: 0; background: none; text-align: start; cursor: pointer; font-size: 13px; font-weight: 600 !important; color: var(--sapphire-deep); }
+.ds .nw-ask .now-notice-head.kk > span:first-child { flex: 1; min-width: 0; }
+.ds .nw-ask .now-notice-head.kk .small { font-weight: 400 !important; color: var(--ink-soft); }
+.ds .nw-ask .now-notice-head.kk:focus-visible { outline: 2px solid var(--sapphire); outline-offset: 2px; border-radius: 10px; }
+.ds .nw-ask-body { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ds .nw-ask-body[hidden] { display: none; }
+.ds .nw-ask .now-notice-item { padding-block: 6px; border-block-start: 1px solid #c9d8f0; }
+.ds .nw-ask .now-notice-item:first-child { border-block-start: 0; padding-block-start: 0; }
+/* the row being asked: the milestone in the display face, its area under it, the three worded answers in one tray */
+.ds .nw-ask-row .now-notice-item-main { flex-wrap: wrap; gap: 10px 14px; }
+.ds .nw-ask-row .now-notice-item-name { flex: 1 1 160px; gap: 4px; }
+.ds .nw-ask-row .now-notice-item-title { font-family: var(--font-display) !important; font-style: italic; font-weight: 500 !important; font-size: 22px; line-height: 1.12; color: var(--ink); }
+.ds-phone .nw-ask-row .now-notice-item-title { font-size: 19px; }
+.ds .nw-ask-row .now-notice-item-shelf { font-size: 13px; color: var(--ink-soft); }
+.ds .nw-ask-row .now-notice-answers.sg3 { flex: 1 1 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: var(--card); padding-inline-start: 4px; }
+.ds .nw-ask-row .now-notice-answers.sg3 .now-notice-answer { min-height: 44px; min-width: 0; padding: 0 6px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); font-size: 14px; font-weight: 600 !important; }
+.ds .nw-ask-row .now-notice-answers.sg3 .now-notice-answer:hover { background: var(--tint-2); }
+.ds .nw-ask-row .now-notice-answers.sg3 .now-notice-answer:active { box-shadow: inset 0 0 0 2px var(--ink); }
+.ds .nw-ask-row .now-notice-answers.sg3 .now-notice-answer .msr { display: none; }
+.ds .nw-ask-row .now-notice-answers.sg3 .now-notice-answer-label { display: inline; }
+.ds .nw-ask .ft { justify-content: flex-end; }
+/* Tonight › no plan: one door line */
+.ds .nw-step .now-challenge-door { background: var(--card); border-radius: 18px; padding: 8px 14px; box-shadow: var(--shadow-tile); }
+.ds .nw-ask .now-notice-head.kk, .ds .nw-ask .now-notice-head.kk > span:not(.msr) { font-family: var(--font-sans) !important; }
