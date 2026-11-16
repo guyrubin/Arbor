@@ -191,11 +191,12 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   };
 
   const Surface = useCompactSurface() ? Sheet : Modal;
-  const compact = Surface === Sheet;
+  // The same answer as the Surface pick: a phone composition inside the sheet.
+  const compact = useCompactSurface();
 
   return (
     <>
-    <Surface open={open && !deleteOpen} onClose={onClose} title={t("set.title")} maxWidth="max-w-[1056px]">
+    <Surface open={open && !deleteOpen} onClose={onClose} title={t("set.title")}>
       {/* v10.1 (N-Settings boards): two columns on a wide screen — how Arbor
           works with you and Kid Mode, then the subscription, your data and the
           account — and one column on a phone in the SAME order. */}

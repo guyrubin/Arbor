@@ -1628,6 +1628,8 @@ export const en: Dict = {
   "sm.askAbout.sub": "Opens Talk with Arbor with your words — you send it",
   "sm.extra.weekly": "Weekly Insight",
   "sm.extra.weeklySub": "My Child · Story",
+  "sm.extra.science": "How Arbor works",
+  "sm.extra.scienceSub": "Where Arbor's guidance comes from",
   "sm.extra.scholar": "Scholar Frameworks",
   "sm.extra.scholarSub": "Ask Arbor",
   // v3 IA-05: a saved family question as a search row's badge.
@@ -4231,6 +4233,8 @@ export const he: Dict = {
   "sm.askAbout.sub": "פותח את השאלה עם המילים שלכם — אתם שולחים",
   "sm.extra.weekly": "תובנה שבועית",
   "sm.extra.weeklySub": "הילד שלי · סיפור",
+  "sm.extra.science": "איך ארבור עובד",
+  "sm.extra.scienceSub": "מאיפה ההכוונה של ארבור מגיעה",
   "sm.extra.scholar": "מסגרות מומחה",
   "sm.extra.scholarSub": "שאל את ארבור",
   // v3 IA-05: a saved family question as a search row's badge.

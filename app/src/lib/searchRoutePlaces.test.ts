@@ -20,7 +20,6 @@ const pair = (en: string, he?: string): LocalizedPair => ({ en, he: he?.trim() ?
 const label = (key: string): LocalizedPair => pair(translate("en", key), translate("he", key));
 const excluded = {
   attribution: "Legal/credits surface reached from Settings; not somewhere a parent navigates to by name.",
-  science: "Evidence and credits, reached from a trust link in context rather than as a destination.",
 };
 
 /** Pre-change route construction fixture from 0c0f017: the three
@@ -41,7 +40,8 @@ function legacyRouteRows(): SearchEntry[] {
   for (const section of SECTIONS) {
     for (const item of section.items) add(item.tab, label("nav.tab." + item.tab), label("nav.cat." + section.id));
   }
-  for (const tab of ["weekly", "handoff"] as const) add(tab, label("sm.extra." + tab), label("sm.extra." + tab + "Sub"));
+  // v10: How Arbor works (#/science) joined the extra rows.
+  for (const tab of ["weekly", "handoff", "science"] as const) add(tab, label("sm.extra." + tab), label("sm.extra." + tab + "Sub"));
   for (const tab of ROUTE_IDS) {
     if (tab in excluded || translate("en", "nav.tab." + tab) === "nav.tab." + tab) continue;
     add(tab, label("nav.tab." + tab), label("nav.short.more"));

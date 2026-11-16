@@ -167,3 +167,5 @@ html[lang="he"] .ds-about .pq .q, html[lang="he"] .ds-about .about-kn-fact, html
 .ds-about .about-measurements-body { min-width: 0; }
 /* the parent's kept words stay in the editorial face (parentScriptTypography) */
 .ds-about .a8-quote { font-family: var(--font-editorial) !important; font-style: italic; font-weight: 400 !important; }
+/* the phone guide's stops are 44 px tall here (touch floor; the kit's mini is 40) */
+.ds-about .guide.mini .gstop { min-height: 44px; }

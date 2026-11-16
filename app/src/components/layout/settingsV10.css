@@ -37,3 +37,6 @@
 .ds-settings .set-sec > [data-testid="settings-pin-row"] { border-top: 1px solid var(--rule); }
 .ds-settings .set-act { max-width: 100%; }
 .ds-settings.ds-phone .set-act { white-space: normal; text-align: start; padding-block: 6px; }
+/* the board's sheet is 1056 px wide on a desktop: the shared Modal keeps its
+   own default width for every other dialog, so the Settings dialog widens itself */
+[role="dialog"]:has(> .ds-settings.ds-desk) { max-width: 1056px; }

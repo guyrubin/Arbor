@@ -131,7 +131,9 @@ function entry(
 /** Consolidated views reachable only via search (labels: sm.extra.*).
  *  v3 FEAT-09: handoff left this list. It is the Care summary pill now (a
  *  care section item), so the section loop above names it "Care summary". */
-const EXTRA_ROUTE_TABS: readonly ActiveTab[] = ["weekly"];
+// v10: How Arbor works (#/science) is a page a parent looks for by name; About
+// and Settings link to it, and search finds it too.
+const EXTRA_ROUTE_TABS: readonly ActiveTab[] = ["weekly", "science"];
 
 /** IA-20: routes deliberately NOT offered in search, each with the reason it
  *  would be wrong to surface. Absence is a product decision recorded here, not
@@ -139,7 +141,6 @@ const EXTRA_ROUTE_TABS: readonly ActiveTab[] = ["weekly"];
  *  ROUTE_IDS to be findable by name. */
 export const UNSEARCHABLE_ROUTES: Partial<Record<ActiveTab, string>> = {
   attribution: "Legal/credits surface reached from Settings; not somewhere a parent navigates to by name.",
-  science: "Evidence and credits, reached from a trust link in context rather than as a destination.",
 };
 // B-SHELL-20 (f): a RETIRED_ROUTES id is never a search row — one rule for
 // every retirement (strengths, find-pro, scholar, journey, and the ones to
