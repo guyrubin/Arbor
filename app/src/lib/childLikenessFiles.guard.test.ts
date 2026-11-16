@@ -261,8 +261,8 @@ describe("T16 static clause — no sprite, print or audio of a real child in git
       "app/public/visuals/kid/AVATAR.PNG",
       "app/public/_Proof/hero/idle.webp",
       "app/public/visuals/cards/GAME-MIMIC.png",
-      // the kit characters (B-GAME-40, B-KID-171): a named cover passes, a new one fails, a crew-free film frame is no family
-      "app/public/visuals/studio-v2/film/cover-memory-crew.webp",
+      // the kit characters (B-GAME-40, B-KID-171, B-KID-176): a named cover passes, a new one fails, a crew-free film frame is no family
+      "app/public/visuals/studio-v2/film/cover-memory-crew2.webp",
       "app/public/visuals/studio-v2/film/cover-new-crew.webp",
       "app/public/visuals/studio-v2/film/room-canal.webp",
     ])).toEqual([

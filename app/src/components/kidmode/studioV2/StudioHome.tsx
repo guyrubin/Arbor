@@ -37,7 +37,7 @@ export { StudioPortrait } from "./StudioPortrait";
 export function StudioPortalArt({ worldId }: { worldId: StudioWorldId }) {
   const theme = useKidTheme();
   const art = kidArt(theme, `studio.portal.${worldId}`);
-  return <span className="studio-v2__portal-art" aria-hidden="true">{art && !art.hasHero && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(max-width: 640px) 36vw, 600px" style={{ objectPosition: art.objectPosition }} alt="" draggable={false} decoding="async" />}</span>;
+  return <span className="studio-v2__portal-art" aria-hidden="true">{art && !art.hasHero && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(max-width: 640px) 36vw, 600px" style={{ objectPosition: art.objectPosition }} alt="" draggable={false} decoding="async" fetchPriority="high" />}</span>;
 }
 /** Horizon Valley (v30): one authored picture is the home atmosphere, a tall
  *  crop for portrait screens. Empty of people; the profile stands on its terrace. */

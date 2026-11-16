@@ -5,7 +5,7 @@ import { FeelingSprite } from './AdventureSprite';
 import { StudioAdventureScene } from '../../StudioAdventureScene';
 import { StoryProp } from './StoryProp';
 import { StudioPlayHero } from '../../StudioPlayHero';
-import { ArrowRight, Theater, HandHeart, Heart, HelpCircle, Volume2 } from 'lucide-react';
+import { ArrowRight, HandHeart, Heart, HelpCircle, Volume2 } from 'lucide-react';
 import { useLanguage } from '../../../../../context/LanguageContext';
 import { useArborOptional } from '../../../../../context/ArborContext';
 import { GameShell, GameFinish } from '../../../game/GameShell';
@@ -37,7 +37,7 @@ export default function FeelingsForest() {
   return <GameShell fullBleed autoNarrate={false} worldId="feelings-forest" title={w.forest} instruction={w.forestInstruction} hearIt={narration}>
     <section className="adventure adventure--forest" data-adventure="feelings-forest" dir={lang === 'he' ? 'rtl' : 'ltr'}>
       {phase === 'done' ? <GameFinish title={w.forestFinish} subtitle={w.forestTransfer} onPlayAgain={() => { setStories(shuffled(FOREST_STORIES).slice(0, 3)); setRound(0); setPhase('feeling'); setStatus(''); }} playAgainLabel={w.again} homeLabel={w.home} /> : <>
-        <div className="adventure-toolbar"><span className="adventure-eyebrow"><Theater size={18} aria-hidden="true" />{w.forest}</span><AdventureSteps done={round} /></div>
+        <div className="adventure-toolbar"><AdventureSteps done={round} /></div>
         <div className="forest-stage" data-phase={phase} data-action={phase === 'outcome' ? action : undefined}><div className="forest-visual"><StudioAdventureScene activityId="feelings-forest" /><div className="forest-friends"><div className="forest-prop" key={story.id} aria-hidden="true"><StoryProp story={story.id} /></div><StudioPlayHero size={280} pose={phase === 'outcome' && action === 'help' ? 'hold-up' : 'idle'} celebrate={phase === 'outcome' && action === 'together' && joyful} /><div className="forest-response" aria-hidden="true">{phase === 'outcome' ? <ActionGlyph size={38} /> : <FeelingSprite feeling={story.feeling} />}</div><div className="forest-mascot"><AdventureSprout size={180} speaking={guide.speaking} action={phase === 'outcome' ? joyful && action !== 'space' ? 'celebrate' : 'comfort' : phase === 'support' ? 'listen' : joyful ? 'celebrate' : 'think'} /></div></div></div>
           <div className="forest-story"><p>{text}</p><button type="button" disabled={guide.muted} className="adventure-hear" aria-label={w.hear} onClick={guide.replay}><Volume2 size={23} aria-hidden="true" /></button></div>
         </div>

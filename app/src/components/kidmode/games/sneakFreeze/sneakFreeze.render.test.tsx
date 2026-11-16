@@ -245,7 +245,7 @@ describe("B-GAME-36 — how to play, without a word (GO / STOP pad, floor arrows
     expect(pad.width).toBeGreaterThanOrEqual(44);
     expect(pad.height).toBeGreaterThanOrEqual(44);
     const padHtml = html.match(/<div data-sneak-pad=""[\s\S]*?<\/div><\/div>/)?.[0] ?? "";
-    expect(padHtml).toContain("var(--arbor-success)");
+    expect(padHtml).toContain("var(--arbor-pack-growth)"); // B-KID-175: the kit's leaf green
     expect(padHtml).toContain("directions_walk");
     expect(padHtml).toContain('aria-hidden="true"');
   });
@@ -264,12 +264,12 @@ describe("B-GAME-36 — how to play, without a word (GO / STOP pad, floor arrows
     expect(tipY).toBeLessThan(pad.top + pad.height);
   });
 
-  it("the pad follows the hold (pressed in while the child holds), STOP is red with an open hand, arrows only on GO", () => {
+  it("the pad follows the hold (pressed in while the child holds), STOP is coral with an open hand, arrows only on GO", () => {
     const src = read("SneakFreeze.tsx");
     expect(src).toMatch(/const held = holding\(\);/);
     expect(src).toMatch(/<GoStopPad size=\{pad\} signal=\{signal\} held=\{held\} \/>/);
     expect(src).toMatch(/data-sneak-held=\{held \? "" : undefined\}/);
-    expect(src).toMatch(/go \? "var\(--arbor-success\)" : "var\(--arbor-danger\)"/);
+    expect(src).toMatch(/go \? "var\(--arbor-pack-growth\)" : "var\(--arbor-pack-courage\)"/);
     expect(src).toMatch(/go \? "directions_walk" : "front_hand"/);
     expect(src).toMatch(/\{signal === "go" && <PathArrows/);
     // the pad is a cue, not a second control: the whole stage stays the hold surface

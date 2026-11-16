@@ -167,30 +167,40 @@ const studioFilm = (name: string, objectPosition = "50% 50%", width = 1536): Kid
   objectPosition, altKey: null, provenanceId: `studio-film:${name}:2026-11-16`, hasHero: false,
 });
 /** Studio game tiles with Bebe and GobGob, the show's two children
- *  (B-KID-171, 16 Nov 2026): the films' own finished frames, cropped only,
- *  each named in lib/childLikenessFiles.named.ts under Guy's approval (BD-32,
- *  third permission, extended the same day to the covers). A tile shows the
- *  cover of the game it opens: with the Next Studio switch on, a host tile
- *  opens a Bop game and wears that game's frame. Tiles only: the game screen
- *  keeps the companion cover, because the child's own hero stands in that
- *  picture. Canal Quest has no mastered film, so it keeps its canal plate. */
+ *  (B-KID-171, 16 Nov 2026; B-KID-176 the same day): each cover shows its own
+ *  game being played, so a child can tell the games apart before opening one:
+ *  the game's own pieces in the film's world (a new scene, generated from the
+ *  kit's props, set plates and piece art only, never from a picture of either
+ *  child), with the two children added as cut-outs of the kit's own finished
+ *  renders (cut only, never redrawn or regenerated) and, where the game has
+ *  them, its companions in their places. Each file is named in
+ *  lib/childLikenessFiles.named.ts under Guy's approval (BD-32, third
+ *  permission, extended the same day to the covers). A tile shows the cover of
+ *  the game it opens: with the Next Studio switch on, a host tile opens a Bop
+ *  game and wears that game's cover. Tiles only: the game screen keeps the
+ *  companion cover, because the child's own hero stands in that picture.
+ *  The builder scripts live in the private operations tree, not here. */
+const crew2 = (name: string, objectPosition = "50% 60%") => studioFilm(`cover-${name}-crew2`, objectPosition);
 const STUDIO_CREW_COVERS: Readonly<Record<string, KidArt>> = {
-  memory: studioFilm("cover-memory-crew", "45% 45%"),
-  pattern: studioFilm("cover-pattern-crew", "50% 40%"),
-  puzzle: studioFilm("cover-puzzle-crew", "60% 45%"),
+  memory: crew2("memory"),
+  pattern: crew2("pattern"),
+  puzzle: crew2("puzzle"),
   sneak: studioFilm("cover-sneak-crew", "70% 60%"),
-  "feelings-forest": studioFilm("cover-feelings-crew", "45% 50%"),
-  "calm-builder": studioFilm("cover-calm-crew", "35% 55%"),
-  // Sound Orbit, and Hero Band when either switch hosts it on this tile.
-  "rhythm-garden": studioFilm("cover-rhythm-crew", "50% 55%"),
+  "feelings-forest": crew2("feelings"),
+  "calm-builder": crew2("calm"),
+  "rhythm-garden": crew2("rhythm"),
+  "river-rescue": crew2("canal"),
 };
 const STUDIO_NEXT_CREW_COVERS: Readonly<Record<StudioNextHost, KidArt>> = {
-  memory: studioFilm("cover-delivery-crew", "35% 55%"),
-  pattern: studioFilm("cover-sun-crew", "50% 50%"),
-  puzzle: studioFilm("cover-oops-crew", "45% 40%"),
-  "river-rescue": studioFilm("cover-rover-crew", "50% 50%"),
+  memory: crew2("delivery"),
+  pattern: crew2("sun"),
+  puzzle: crew2("oops"),
+  "river-rescue": crew2("rover"),
 };
+/** Hero Band on the rhythm-garden tile, under either switch that hosts it there. */
+const HERO_BAND_CREW_COVER = crew2("band");
 export function studioCrewCover(id: string): KidArt | null {
+  if (id === "rhythm-garden" && (studioNextFlagOn() || heroBandFlagOn())) return HERO_BAND_CREW_COVER;
   if (Object.hasOwn(STUDIO_NEXT_CREW_COVERS, id) && studioNextFlagOn()) return STUDIO_NEXT_CREW_COVERS[id as StudioNextHost];
   return Object.hasOwn(STUDIO_CREW_COVERS, id) ? STUDIO_CREW_COVERS[id] : null;
 }
@@ -220,6 +230,18 @@ export function studioNextCover(id: string): StudioNextCover | null {
   const stem = id === "rhythm-garden" ? (studioNextFlagOn() || heroBandFlagOn() ? "card-band" : null)
     : Object.hasOwn(STUDIO_NEXT_COVERS, id) && studioNextFlagOn() ? STUDIO_NEXT_COVERS[id as StudioNextHost] : null;
   if (!stem) return null;
+  const src = studioBopArt(stem), src480 = studioBopArt(`${stem}-480`);
+  return { src, src480, srcSet: `${src480} 480w, ${src} 1024w` };
+}
+
+/** The room each Next Studio game plays in (BopScene). Its intro fetches it
+ *  while the cover shows, so the stage never paints an empty floor first
+ *  (B-KID-175). Same files and sizes as BopScene, so the browser reuses it. */
+const STUDIO_NEXT_SCENES: Record<StudioNextHost | "rhythm-garden", string> = { memory: "scene-delivery", pattern: "scene-sun", puzzle: "scene-table", "river-rescue": "scene-floor", "rhythm-garden": "scene-band" };
+export const BOP_SCENE_SIZES = "(min-width: 700px) 620px, 100vw";
+export function studioNextScene(id: string): StudioNextCover | null {
+  if (!studioNextCover(id) || !Object.hasOwn(STUDIO_NEXT_SCENES, id)) return null;
+  const stem = STUDIO_NEXT_SCENES[id as keyof typeof STUDIO_NEXT_SCENES];
   const src = studioBopArt(stem), src480 = studioBopArt(`${stem}-480`);
   return { src, src480, srcSet: `${src480} 480w, ${src} 1024w` };
 }

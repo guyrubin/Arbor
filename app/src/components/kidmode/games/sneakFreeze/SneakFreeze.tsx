@@ -174,7 +174,8 @@ function GoStopPad({ size, signal, held }: { size: number; signal: SneakSignal; 
         borderRadius: "50%",
         display: "grid",
         placeItems: "center",
-        background: go ? "var(--arbor-success)" : "var(--arbor-danger)",
+        // B-KID-175: the kit's own leaf green and coral, not traffic-light red and green.
+        background: go ? "var(--arbor-pack-growth)" : "var(--arbor-pack-courage)",
         color: "var(--arbor-on-accent)",
         border: "4px solid var(--arbor-paper-elevated)",
         boxShadow: held

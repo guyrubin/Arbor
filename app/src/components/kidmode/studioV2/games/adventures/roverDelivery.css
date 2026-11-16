@@ -15,6 +15,15 @@
 .rover-cell { position: relative; isolation: isolate; display: grid; place-items: center; inline-size: 100%; block-size: 100%; min-inline-size: 0; min-block-size: 0; }
 .rover-cell::before { content: ''; position: absolute; inset: 4px; z-index: -1; border-radius: 14px; border: 2px solid var(--bop-line); background: linear-gradient(165deg, var(--arbor-on-accent), color-mix(in srgb, var(--bop-amber) 7%, var(--bop-pearl))); box-shadow: 0 2px 0 var(--bop-line), 0 7px 10px -4px var(--bop-shade), inset 0 2px 0 var(--arbor-on-accent); pointer-events: none; transition: border-color .2s var(--studio-ease-soft), box-shadow .2s var(--studio-ease-soft); }
 .rover-cell[data-trail=true]::before { border-color: color-mix(in srgb, var(--bop-teal-ink) 46%, transparent); background: color-mix(in srgb, var(--bop-teal) 28%, var(--arbor-on-accent)); }
+/* B-KID-175: the mat is felt, not paper. Every tile carries a stitched seam
+   inside its edge, and the tiles alternate pearl and butter in a checker, so
+   a child counts squares the way they count a real play mat. The checker
+   follows the row and the column on both board sizes (cells come first in
+   the board, the rover and Pep after them). */
+.rover-cell::before { outline: 2px dashed color-mix(in srgb, var(--bop-amber) 38%, transparent); outline-offset: -9px; }
+.rover-stage[data-size='3'] .rover-cell:nth-child(even)::before,
+.rover-stage[data-size='4'] .rover-cell:is(:nth-child(8n+2), :nth-child(8n+4), :nth-child(8n+5), :nth-child(8n+7))::before { background: linear-gradient(165deg, color-mix(in srgb, var(--bop-amber) 16%, var(--arbor-on-accent)), color-mix(in srgb, var(--bop-amber) 26%, var(--bop-pearl))); }
+.rover-stage[data-size] .rover-cell[data-trail=true]::before { outline-color: color-mix(in srgb, var(--bop-teal-ink) 42%, transparent); background: color-mix(in srgb, var(--bop-teal) 28%, var(--arbor-on-accent)); }
 .rover-cell > .bop-sprite, .rover-spin > .bop-sprite { object-fit: contain; }
 
 /* A guide sign: a whole cell to press, and an arrow that turns a quarter at a
@@ -91,7 +100,7 @@
   .rover-cell::before, .rover-spin, .rover-car, .rover-car > .rover-spin, .rover-car .bop-sprite { animation: none !important; transition: none !important; }
 }
 @media (forced-colors: active) {
-  .rover-cell::before, .rover-mat { border: 1px solid ButtonText; }
+  .rover-cell::before, .rover-mat { border: 1px solid ButtonText; outline: none; }
   .rover-cell[data-trail=true]::before { border: 3px solid ButtonText; }
   .rover-sign[data-hint=true], .rover-bloom[data-hint=true] { outline: 3px solid Highlight; }
 }
