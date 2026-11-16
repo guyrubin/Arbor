@@ -4,6 +4,8 @@
  * (the pick's why-lines, course labels, the age switch, the family door) stay
  * in lib/i18n*; this module holds only what the v10 composition adds.
  */
+import { isolate } from "../../lib/i18n";
+
 export const FOR_YOU_COPY = {
   en: {
     onThisPage: "On this page",
@@ -11,7 +13,7 @@ export const FOR_YOU_COPY = {
     guideTodaySub: (min: number) => `1 pick, ${min} min to read`,
     guideTodayNone: "Today's pick",
     guideCourses: "Courses by area",
-    guideCoursesSub: (n: number, name: string) => (name ? `${n} for ${name}'s age` : `${n} for your child's age`),
+    guideCoursesSub: (n: number, name: string) => (name ? `${n} for ${isolate(name)}'s age` : `${n} for your child's age`),
     guidePrograms: "Your programs",
     guideProgramsSub: "This week's step",
     guideProgramsNone: "Two to choose from",
@@ -23,7 +25,7 @@ export const FOR_YOU_COPY = {
     arborSuggests: "Arbor suggests",
     thisWeeksPractice: "This week's practice",
     practiceLine: (program: string, n: number, title: string) => `${program}, week ${n}: ${title}`,
-    coursesForAge: (n: number, name: string) => (name ? `${n} courses for ${name}'s age` : `${n} courses for your child's age`),
+    coursesForAge: (n: number, name: string) => (name ? `${n} courses for ${isolate(name)}'s age` : `${n} courses for your child's age`),
     coursesAll: (n: number) => `${n} courses`,
     allCourses: (n: number) => `All ${n} courses`,
     fewerCourses: "Fewer courses",
@@ -43,7 +45,22 @@ export const FOR_YOU_COPY = {
     programWeeksTotal: (n: number) => `${n} weeks`,
     libraryTitle: "All reads, in the Library",
     librarySub: (n: number, name: string) =>
-      name ? `${n} short reads for ${name}'s age, by area, with search and Saved.` : `${n} short reads for your child's age, by area, with search and Saved.`,
+      name ? `${n} short reads for ${isolate(name)}'s age, by area, with search and Saved.` : `${n} short reads for your child's age, by area, with search and Saved.`,
+    libGuideLinked: "Linked from your week",
+    libGuideLinkedSub: (n: number) => `${n} reads`,
+    libGuideAreas: "Choose an area",
+    libGuideAreasSub: (n: number) => `${n} areas`,
+    libGuideBrowse: "Browse the library",
+    libGuideBrowseSub: (n: number) => `${n} reads`,
+    libKicker: "Picked for you",
+    libReads: "Reads",
+    libViewLabel: "Reads or courses",
+    libSavedCount: (n: number) => (n === 1 ? "1 saved read" : `${n} saved reads`),
+    libSavedOpen: "Open Saved",
+    libAllInArea: "All in this area",
+    libAllReads: (n: number) => `All ${n} reads`,
+    libByArea: "By area",
+    libResults: (n: number) => (n === 1 ? "1 read" : `${n} reads`),
   },
   he: {
     onThisPage: "בעמוד הזה",
@@ -84,6 +101,21 @@ export const FOR_YOU_COPY = {
     libraryTitle: "כל הקריאות, בספרייה",
     librarySub: (n: number, name: string) =>
       name ? `${n} קריאות קצרות לגיל של ${name}, לפי תחום, עם חיפוש ושמורים.` : `${n} קריאות קצרות לגיל של הילד, לפי תחום, עם חיפוש ושמורים.`,
+    libGuideLinked: "קשור לשבוע שלכם",
+    libGuideLinkedSub: (n: number) => `${n} קריאות`,
+    libGuideAreas: "בחירת תחום",
+    libGuideAreasSub: (n: number) => `${n} תחומים`,
+    libGuideBrowse: "עיון בספרייה",
+    libGuideBrowseSub: (n: number) => `${n} קריאות`,
+    libKicker: "נבחר בשבילכם",
+    libReads: "קריאות",
+    libViewLabel: "קריאות או קורסים",
+    libSavedCount: (n: number) => (n === 1 ? "קריאה שמורה אחת" : `${n} קריאות שמורות`),
+    libSavedOpen: "לפתוח את השמורים",
+    libAllInArea: "הכול בתחום הזה",
+    libAllReads: (n: number) => `כל ${n} הקריאות`,
+    libByArea: "לפי תחום",
+    libResults: (n: number) => (n === 1 ? "קריאה אחת" : `${n} קריאות`),
   },
 } as const;
 

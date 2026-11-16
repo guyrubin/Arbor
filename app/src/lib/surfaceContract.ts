@@ -384,7 +384,8 @@ export const SURFACE_CONTRACTS: readonly SurfaceContract[] = [
   {
     route: "learn", hub: "learn", depth: 1,
     job: "Browse the library of three-minute parent reads.",
-    primaryMove: "open-learn-card", moduleBudget: 3, demotionTarget: "masterclasses",
+    // v10.1 (N-Library): controls, Picked for {name} (with its Linked rail), Choose an area, the shelf.
+    primaryMove: "open-learn-card", moduleBudget: 4, demotionTarget: "masterclasses",
     // Age-band filter defaults ON; provenance chip on every card. No
     // learn-done source in buildTimeline — "none".
     threadWrite: "none",

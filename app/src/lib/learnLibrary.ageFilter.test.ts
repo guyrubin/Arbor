@@ -21,6 +21,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(path.join(here, "..", rel), "utf8");
 const LEARN = read("components/sections/LearnLibrary.tsx");
 const MASTER = read("components/sections/Masterclasses.tsx");
+const CSS = read("components/foryou/foryou.css");
 
 /** A five-year-old: the run's own seeded child. */
 const FIVE_YEARS_MONTHS = 60;
@@ -65,7 +66,7 @@ describe("OBJ-LEARN-01 · the age window is on by default", () => {
   });
 
   it("every card stays reachable behind the hidden-count toggle (law 6)", () => {
-    expect(LEARN).toContain('data-testid="agefilter-toggle-learn"');
+    expect(LEARN).toContain('data-testid={filter === "courses" ? "agefilter-toggle-courses" : "agefilter-toggle-learn"}');
     expect(LEARN).toContain('role="switch"');
     expect(LEARN).toContain("aria-checked={showAllAges}");
     expect(LEARN).toContain('agefilterText("elev.agefilter.hiddenCount", he, { n: ageHidden.length })');
@@ -74,7 +75,6 @@ describe("OBJ-LEARN-01 · the age window is on by default", () => {
     expect(LEARN).toContain("(ageHidden.length > 0 || showAllAges)");
     expect(MASTER).toContain("(ageHidden.length > 0 || showAllAges)");
   });
-
   it("the visible count reported to the parent is the count they can see", () => {
     expect(LEARN).toContain('t("learn.count", { n: inScope.length })');
     expect(LEARN).not.toContain('t("learn.count", { n: LEARN_CARDS.length })');
@@ -119,7 +119,7 @@ describe("LC-05 / RUN-11 · the parent-learning hub carries no kid-register door
   it("the hero, the pick card and the courses gallery all remain (law 6)", () => {
     expect(MASTER).toContain('data-testid="academy-hub-hero"');
     expect(MASTER).toContain('data-testid="academy-pick-why"');
-    expect(MASTER).toContain('t("academy.courses.title")');
+    expect(MASTER).toContain('data-testid="academy-courses"');
   });
 });
 
@@ -191,13 +191,14 @@ describe("R12 · the default shelf is short, and every control says what it does
     expect(LEARN).toContain("const gridAll = browsing ? visible.filter");
   });
 
-  it("every capped card stays one tap away behind a control of its own", () => {
+  it("every read stays one tap away: by area, 'All in this area', and the shelf's own 'All N reads' control", () => {
     expect(LEARN).toContain('data-testid="learn-shelf-more"');
     expect(LEARN).toContain("aria-expanded={showAllShelf}");
-    expect(LEARN).toContain('t("elev.learnCare.shelf.more", { n: shelfRest })');
-    expect(LEARN).toContain('t("elev.learnCare.shelf.fewer")');
+    expect(LEARN).toContain("copy.libAllReads(inScope.length)");
+    expect(LEARN).toContain("<MoreLink onClick={() => setFilter(cat.id)}>{copy.libAllInArea}</MoreLink>");
+    // Opened, the shelf is the whole age-fit list (never capped).
+    expect(LEARN).toContain("browsing && !showAllShelf ? browseByArea : flatGrid");
   });
-
   it("the length control never borrows the age control's sentence", () => {
     // "N more for other ages" is the AGE toggle's line and stays only there:
     // 79 in-band cards are not hidden by age, and must not be labelled so.
@@ -208,11 +209,10 @@ describe("R12 · the default shelf is short, and every control says what it does
     expect(he["elev.learnCare.shelf.fewer"]).toMatch(/[֐-׿]/);
   });
 
-  it("the age switch can actually be reached at 390 (the row wraps)", () => {
-    // It was `flex items-baseline justify-between` with a non-wrapping span,
-    // so the switch rendered off the right edge of a 390 px viewport.
+  it("the age switch can actually be reached at 390 (the controls row wraps)", () => {
     expect(LEARN).not.toContain('<div className="flex items-baseline justify-between mb-2.5">');
-    expect(LEARN).toContain('<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5 mb-2.5">');
+    expect(CSS).toMatch(/\.ds \.lib-controls \{[^}]*flex-wrap: wrap/);
+    expect(CSS).toMatch(/\.ds-phone \.lib-search \{ flex: 1 1 100%; \}/);
   });
 });
 
@@ -225,25 +225,21 @@ describe("R20 · the age switch is on its own row below sm, not a wrap that migh
      of leaving it to measurement: below sm the meta group is a full-width row. */
   const HEADER = LEARN.slice(LEARN.indexOf('t("learn.allReads")}'), LEARN.indexOf('data-testid="agefilter-toggle-learn"'));
 
-  it("the meta group takes a full row below sm and rejoins the line at sm", () => {
-    expect(LEARN).toContain('<span className="inline-flex w-full flex-wrap items-center gap-2 sm:w-auto">');
-    // The count, the hidden-count line and the switch all live in THAT group,
-    // so the switch cannot be pushed off-screen by the two strings before it.
-    expect(HEADER).toContain('t("learn.count", { n: inScope.length })');
-    expect(HEADER).toContain('agefilterText("elev.agefilter.hiddenCount", he, { n: ageHidden.length })');
+  it("the count, the hidden-count line and the switch live in ONE controls group", () => {
+    const controls = LEARN.slice(LEARN.indexOf('data-module="learn-filters"'), LEARN.indexOf("const pickedStage = ("));
+    expect(controls).toContain('t("learn.count", { n: inScope.length })');
+    expect(controls).toContain('agefilterText("elev.agefilter.hiddenCount", he, { n: ageHidden.length })');
+    expect(controls).toContain('<span className="lib-age">');
   });
-
-  it("the row itself still wraps, so the heading never collides with the group", () => {
-    expect(LEARN).toContain('className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5 mb-2.5"');
+  it("the age group itself wraps, so its line never pushes the switch off-screen", () => {
+    expect(CSS).toMatch(/\.ds \.lib-age \{[^}]*flex-wrap: wrap/);
   });
-
   it("the switch clears the 44 px floor and keeps its label", () => {
-    const at = LEARN.indexOf('data-testid="agefilter-toggle-learn"');
+    const at = LEARN.indexOf('"agefilter-toggle-learn"');
     const shell = LEARN.slice(at, at + 400);
     expect(shell).toMatch(/min-h-11|touch-target|min-h-\[4[4-9]px\]/);
     expect(LEARN).toContain('agefilterText("elev.agefilter.showAll", he)');
   });
-
   it("NEGATIVE CONTROL: both pre-fix shapes fail the rule this pins", () => {
     // R12's shape: wrap allowed, but the group could still share the line and
     // overflow it. Round 2b's shape: no wrap at all.
