@@ -8,7 +8,7 @@
  * Blanks (`{0}`) are filled by `deskLine`. */
 export const MAKER_DESK_COPY = {
   en: {
-    title: 'Maker Desk', description: 'Your own maker desk in Wonderworks, with Chock.', instruction: 'The TrailBench is asleep. Wake its tools, play Bounce inside the screen, then talk to the machine.',
+    title: 'Maker Desk', description: 'Wake the bench. Play inside its screen.', instruction: 'The TrailBench is asleep. Wake its tools, play Bounce inside the screen, then talk to the machine.',
     finish: 'The maker desk is all yours.', transfer: 'Away from the screen: show someone one thing you made.',
     // The arc: the opening, three chapters, the power-up
     place: 'Wonderworks · the TrailBench', opening: 'Shh. The TrailBench is asleep.',
@@ -83,7 +83,7 @@ export const MAKER_DESK_COPY = {
     keyboard: 'Your keyboard is typing Hebrew letters, so I read it as:',
   },
   he: {
-    title: 'שולחן היוצרים', description: 'שולחן יוצרים משלך בוונדרוורקס, יחד עם צ׳וק.', instruction: 'השולחן המתגלגל ישן. מעירים את הכלים שלו, משחקים בקפיצות בתוך המסך, ואז מדברים עם המחשב.',
+    title: 'שולחן היוצרים', description: 'מעירים את השולחן. משחקים בתוך המסך.', instruction: 'השולחן המתגלגל ישן. מעירים את הכלים שלו, משחקים בקפיצות בתוך המסך, ואז מדברים עם המחשב.',
     finish: 'שולחן היוצרים כולו שלך.', transfer: 'הרחק מהמסך: מראים למישהו דבר אחד שיצרת.',
     place: 'וונדרוורקס · השולחן המתגלגל', opening: 'ששש. השולחן המתגלגל ישן.',
     quest: 'שלוש תגליות', chapters: { wake: 'להעיר את השולחן', play: 'לשחק בתוך המסך', ask: 'לדבר עם המחשב' },

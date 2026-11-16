@@ -8,7 +8,7 @@
  * `seasonLine` (seasonDialRules). Coach lines are Aya's, eight words or fewer. */
 export const SEASON_DIAL_COPY = {
   en: {
-    title: 'Weather Maker', description: 'A pretend machine that turns the year over Horizon Valley.',
+    title: 'Weather Maker', description: 'Turn the dial. Turn the year.',
     instruction: 'On the Sky Gardens terrace, turn the big brass dial and watch the valley and the old apple tree go through the year: blossom, sunshine, falling leaves and snow.',
     place: 'Sky Gardens · the high terrace',
     seasons: ['Spring', 'Summer', 'Autumn', 'Winter'],
@@ -46,7 +46,7 @@ export const SEASON_DIAL_COPY = {
     finish: 'A whole year, conducted!', transfer: 'Away from the screen: look out of a window. Which season is it outside today?',
   },
   he: {
-    title: 'מכונת מזג האוויר', description: 'מכונת דמיון שמסובבת את השנה מעל עמק האופק.',
+    title: 'מכונת מזג האוויר', description: 'מסובבים את החוגה. מסובבים את השנה.',
     instruction: 'במרפסת של גני השמיים מסובבים את חוגת הפליז הגדולה ורואים איך העמק ועץ התפוח הזקן עוברים את כל השנה: פריחה, שמש, עלים נושרים ושלג.',
     place: 'גני השמיים · המרפסת הגבוהה',
     seasons: ['אביב', 'קיץ', 'סתיו', 'חורף'],

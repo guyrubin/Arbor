@@ -7,7 +7,7 @@
  * glass (eight words at most); a button says what it does. */
 export const BOTTLE_LAB_COPY = {
   en: {
-    title: 'Bottle Lab', description: 'Shape, colour and dress a glass bottle in Glass Grove.',
+    title: 'Bottle Lab', description: 'Shape a glass bottle. Fill it with light.',
     instruction: 'Glass Grove makes the valley\'s bottles. Shape the soft glass with your hands, slide a colour disc under it, rub it frosty, press on stickers, then watch the valley sun fill it with light.',
     finish: 'Your bottle is ready.', transfer: 'Away from the screen: hold a glass of water in front of a window or a drawn arrow. Which way does it point now?',
     keep: 'Your bottle', open: 'Open my bottle',
@@ -46,7 +46,7 @@ export const BOTTLE_LAB_COPY = {
     },
   },
   he: {
-    title: 'מעבדת הבקבוקים', description: 'מעצבים, צובעים ומקשטים בקבוק זכוכית בחורשת הזכוכית.',
+    title: 'מעבדת הבקבוקים', description: 'מעצבים בקבוק זכוכית. ממלאים אותו באור.',
     instruction: 'בחורשת הזכוכית מכינים את הבקבוקים של העמק. מעצבים את הזכוכית הרכה בידיים, מחליקים מתחתיה דיסקית צבע, משפשפים אותה עד שהיא חלבית, מדביקים מדבקות, ואז שמש העמק ממלאת אותה באור.',
     finish: 'הבקבוק מוכן.', transfer: 'הרחק מהמסך: מחזיקים כוס מים מול חלון או מול חץ מצויר. לאן הוא מצביע עכשיו?',
     keep: 'הבקבוק שעיצבתם', open: 'פותחים את הבקבוק שלי',

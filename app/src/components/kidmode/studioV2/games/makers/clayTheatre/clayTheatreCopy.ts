@@ -9,7 +9,7 @@
  * names, never on the picture. */
 export const CLAY_THEATRE_COPY = {
   en: {
-    title: 'Clay Theatre', description: 'Film night in the Mirror Quarter: shape a clay hero, shoot it frame by frame, and hold a premiere.',
+    title: 'Clay Theatre', description: 'Shape the clay. Shoot a film.',
     instruction: 'Shape a clay hero. Move it a little, then press the camera. Six frames make a film!',
     place: 'Mirror Quarter · the rotunda', stage: 'The clay stage in the rotunda',
     stories: { whaleJump: 'The Whale’s Jump', moonRocket: 'Rocket to the Moon', frogPond: 'The Frog’s Pond', snailGarden: 'The Snail’s Garden' },
@@ -39,7 +39,7 @@ export const CLAY_THEATRE_COPY = {
     finish: 'That’s a wrap!', transfer: 'Away from the screen: roll a clay animal, move it a little, and take a photo each time.',
   },
   he: {
-    title: 'תיאטרון חימר', description: 'ערב סרטים ברובע המראות: מפסלים גיבור מחימר, מצלמים תמונה אחר תמונה ועורכים הקרנת בכורה.',
+    title: 'תיאטרון חימר', description: 'מפסלים חימר. מצלמים סרט.',
     instruction: 'מפסלים גיבור מחימר. מזיזים אותו קצת ולוחצים על המצלמה. שש תמונות הן סרט!',
     place: 'רובע המראות · הרוטונדה', stage: 'במת החימר ברוטונדה',
     stories: { whaleJump: 'הקפיצה של הלווייתן', moonRocket: 'טיל אל הירח', frogPond: 'הצפרדע בבריכה', snailGarden: 'החילזון בגינה' },
