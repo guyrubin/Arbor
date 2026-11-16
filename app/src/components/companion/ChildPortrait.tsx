@@ -126,7 +126,7 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
                   <div className="stg">
                     <div className="mcst" data-testid="ms-open-area">
                       <div className="mcsh">
-                        <span className="tg" aria-hidden="true"><Icon name={DOMAIN_ICONS[openDomain]} size={20} /></span>
+                        <span className="tg" aria-hidden="true"><Icon name={DOMAIN_ICONS[openDomain]} size={22} /></span>
                         <h2 className="tt" id="ms-area-title">{domainName(openDomain, t)}</h2>
                         <MoreLink href={`#${routeHash("milestones")}`}>{v10.everyItem}</MoreLink>
                       </div>

@@ -71,7 +71,7 @@ export default function DevelopmentMap({ milestones, observations, openDomain, o
                 onClick={() => onToggle(domain)}
               >
                 <span className="mct">
-                  <span className="tg" aria-hidden="true"><Icon name={DOMAIN_ICONS[domain]} size={16} /></span>
+                  <span className="tg" aria-hidden="true"><Icon name={DOMAIN_ICONS[domain]} size={18} /></span>
                   {count > 0 && <b className="arbor-num" data-testid="dev-map-seen-area">{count}</b>}
                 </span>
                 <span className="mcn">{domainName(domain, t)}</span>

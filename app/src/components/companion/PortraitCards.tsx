@@ -50,7 +50,7 @@ export default function PortraitCards({ sources }: PortraitCardsProps) {
     <>
       <p className="ol ms-obj-empty">{t("companion.milestones.notTold")}</p>
       <button type="button" className="oa" data-testid={testId} onClick={onTell}>
-        <Icon name="add_comment" size={16} />
+        <Icon name="add_comment" size={18} />
         <span>{t("companion.milestones.tell")}</span>
       </button>
     </>
@@ -59,7 +59,7 @@ export default function PortraitCards({ sources }: PortraitCardsProps) {
     <div className="portrait-cards" data-testid="portrait-cards">
       <article className="obj" data-testid="portrait-card-strength">
         <div className="oh">
-          <span className="ogi" aria-hidden="true"><Icon name="auto_awesome" size={17} /></span>
+          <span className="ogi" aria-hidden="true"><Icon name="auto_awesome" size={18} /></span>
           <h3 className="ok">{t("companion.milestones.card.strength")}</h3>
         </div>
         {strength ? (
@@ -73,7 +73,7 @@ export default function PortraitCards({ sources }: PortraitCardsProps) {
       </article>
       <article className="obj" data-testid="portrait-card-kept">
         <div className="oh">
-          <span className="ogi" aria-hidden="true"><Icon name="edit_note" size={17} /></span>
+          <span className="ogi" aria-hidden="true"><Icon name="edit_note" size={18} /></span>
           <h3 className="ok">{t("companion.milestones.card.kept")}</h3>
         </div>
         {kept ? (
@@ -84,7 +84,7 @@ export default function PortraitCards({ sources }: PortraitCardsProps) {
                 every kept moment sits by month. */}
             <a className="oa" data-testid="portrait-card-kept-open" href={`#${routeHash("timeline", { kind: "kept", reader: "book" })}`}>
               {t("kept.view")}
-              <Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />
+              <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" />
             </a>
           </>
         ) : notTold("portrait-card-kept-tell", () => openCaptureSheet())}
@@ -108,7 +108,7 @@ export function GoalFocus({ onEditGoal }: { onEditGoal: () => void }) {
   const next = useMemo(() => focusNextStep(goal, actionPlans ?? []), [goal, actionPlans]);
   return (
     <button type="button" className="mcrow-btn ms-goal" data-testid="portrait-goals-edit" onClick={onEditGoal}>
-      <span className="tg" aria-hidden="true"><Icon name="flag" size={16} /></span>
+      <span className="tg" aria-hidden="true"><Icon name="flag" size={18} /></span>
       <span className="mcrow-text">
         <span className="ok">{t("elev.goal.profile.title")}</span>
         <span className="ol">{goal ? <bdi>{goalLabel(goal, t)}</bdi> : t("elev.goal.profile.empty")}</span>

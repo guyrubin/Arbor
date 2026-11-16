@@ -35,6 +35,15 @@ export interface MilestonesV10Copy {
   arborSuggests: string;
   today: string;
   timelineLabel: string;
+  seenHere: string;
+  first: string;
+  latest: string;
+  daysAgo: string;
+  firstOne: string;
+  daysAfter: string;
+  dayOne: string;
+  daysMany: string;
+  newest: string;
   listGuideList: string;
   listGuideListSub: string;
   listGuideTools: string;
@@ -75,6 +84,15 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     arborSuggests: "Arbor suggests",
     today: "Today",
     timelineLabel: "What you marked Seen it in this area, by date",
+    seenHere: "seen here",
+    first: "First",
+    latest: "Latest",
+    daysAgo: "{n} ago",
+    firstOne: "first one",
+    daysAfter: "{n} after",
+    dayOne: "1 day",
+    daysMany: "{n} days",
+    newest: "Newest",
     listGuideList: "The list",
     listGuideListSub: "Mark each item",
     listGuideTools: "Latest, and tools",
@@ -113,6 +131,15 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     arborSuggests: "ארבור מציע",
     today: "היום",
     timelineLabel: "מה שסימנתם ״ראיתי״ בתחום הזה, לפי תאריך",
+    seenHere: "ראיתם כאן",
+    first: "ראשון",
+    latest: "אחרון",
+    daysAgo: "לפני {n}",
+    firstOne: "הראשון",
+    daysAfter: "{n} אחרי",
+    dayOne: "יום אחד",
+    daysMany: "{n} ימים",
+    newest: "החדש ביותר",
     listGuideList: "הרשימה",
     listGuideListSub: "מסמנים כל פריט",
     listGuideTools: "האחרון, וכלים",
