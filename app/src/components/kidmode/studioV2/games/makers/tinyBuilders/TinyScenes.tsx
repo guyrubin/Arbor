@@ -137,7 +137,7 @@ export function ScaleScene({ words }: { words: TinyBuildersWords }) {
   const scale = 0.104, phageX = 252;
   const dots: [number, number][] = [[96, 250], [118, 296], [140, 236], [172, 312], [206, 248], [236, 300], [262, 236], [290, 288], [318, 250], [330, 302], [86, 284], [150, 270], [276, 318], [226, 226], [190, 290], [304, 230]];
   return <div className="tiny-scale" aria-hidden="true">
-    <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="xMidYMid meet" dir="ltr" focusable="false">
+    <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="xMidYMid meet" style={{ direction: 'ltr' }} focusable="false">
       <StageBackdrop grid={false} />
       <defs>
         <linearGradient id={`${id}cell`} x1="0" x2="0" y1="0" y2="1">

@@ -55,7 +55,7 @@ export function project(r: number, theta: number, y: number, rotation: number, t
 /* ---------- the head: an icosahedron elongated along its five-fold axis ---------- */
 /** Twelve corners: top apex, a ring of five, a ring of five turned 36 degrees, bottom apex. */
 export function headVertices(): { r: number; theta: number; y: number }[] {
-  const out = [{ r: 0, theta: 0, y: HEAD.top }];
+  const out: { r: number; theta: number; y: number }[] = [{ r: 0, theta: 0, y: HEAD.top }];
   for (let k = 0; k < 5; k++) out.push({ r: HEAD.r, theta: k * 72, y: HEAD.top + HEAD.cap });
   for (let k = 0; k < 5; k++) out.push({ r: HEAD.r, theta: k * 72 + 36, y: HEAD.bottom - HEAD.cap });
   out.push({ r: 0, theta: 0, y: HEAD.bottom });

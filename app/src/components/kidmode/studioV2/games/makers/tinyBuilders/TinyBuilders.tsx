@@ -291,7 +291,7 @@ export default function TinyBuilders() {
               role="group" aria-label={phase === 'build' ? w.blueprint : phase === 'explore' ? `${w.model} ${tinyLine(w.modelTurned, Math.round(rot))}` : phase === 'land' ? w.landArt : w.scaleArt}
               tabIndex={phase === 'explore' ? 0 : undefined}
               onPointerDown={onStagePointerDown} onPointerMove={onStagePointerMove} onPointerUp={onStagePointerUp} onPointerCancel={() => { press.current = null; }} onKeyDown={onStageKey}>
-              <svg className="tiny-scene" viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="xMidYMid meet" dir="ltr" aria-hidden="true" focusable="false">
+              <svg className="tiny-scene" viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="xMidYMid meet" style={{ direction: 'ltr' }} aria-hidden="true" focusable="false">
                 <StageBackdrop grid={building} />
                 <g transform={`translate(0 ${(-frame.camera).toFixed(2)})`}>
                   {(!landing || frame.stand > 0) && <Stand rotation={rot} tilt={tilt} tips={tips} opacity={landing ? frame.stand : 1} faint={building} />}
