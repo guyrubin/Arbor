@@ -15,6 +15,7 @@ Columns: Capability, Audience and Data classes are what the call really carries 
 | api POST /voice | text_stream | parent | account, child_profile | analysis_structured | none | parent text | yes | yes | routeDecisionFor | eligible | — | ai.usage |
 | api POST /extract-log | structured_text | parent | account, child_profile | analysis_structured | none | parent text | yes | yes | routeDecisionFor | eligible | — | ai.usage |
 | api POST /describe-child | structured_text | parent | child_profile | analysis_structured | none | parent text | yes | yes | routeDecisionFor | eligible | — | ai.usage |
+| api POST /family-plan/extract | structured_text | parent | child_profile | analysis_structured | none | parent text | yes | yes | routeDecisionFor | eligible | — | ai.usage |
 | api POST /conversation/proposals | structured_text | parent | account, child_profile | analysis_structured | none | parent text | yes | yes | routeDecisionFor | eligible | — | ai.usage |
 | api POST /todays-focus | structured_text | parent | child_profile | analysis_structured | none | none: counts and enums | no | yes | routeDecisionFor | eligible | — | ai.usage |
 | api POST /explain | structured_text | parent | child_profile | analysis_structured | none | parent text | yes | yes | routeDecisionFor | eligible | — | ai.usage |

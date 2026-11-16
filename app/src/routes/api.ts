@@ -22,7 +22,7 @@ import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider }
 import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, toFileTurnContract, renderFileDeclinedResponse, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence, withEscalateIfFallback, type CoachResponse } from "../contracts/coach.js";
-import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildDescribeChildPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE, renderCouncilContinuity } from "../ai/prompts.js";
+import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildDescribeChildPrompt, buildExtractLogPrompt, buildFamilyPlanExtractPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE, renderCouncilContinuity } from "../ai/prompts.js";
 // B-ASKJB-44: no invented finding reaches a handoff note or the School Brief
 // (the matching prompt rules are parked on claude/askjb44-prompt-bump-2026-10-28).
 import { scrubHandoffNotes } from "../contracts/coach.js";
@@ -126,6 +126,8 @@ import { sanitizeTypeCounts } from "../lib/planRecord.js";
 import { buildMilestoneCandidates, validateMilestoneMatch } from "../server/milestoneMatch.js";
 import { describeScreenable, finalizeDescribeDraft, sanitizeAskedQuestions, sanitizeKeptItems } from "../server/describeChild.js";
 import { DESCRIBE_KINDS, DESCRIBE_TEXT_MAX } from "../lib/describeChild.js";
+import { DRAFT_KINDS, finalizeFamilyPlanDraft, messageLines, MESSAGE_MAX, todayLine } from "../server/familyPlanExtract.js";
+import { addDays as familyPlanAddDays, dayKey as familyPlanDayKey, isDay as familyPlanIsDay } from "../lib/familyPlan/model.js";
 import { DOMAIN_IDS } from "../lib/domains/registry.js";
 import { SHELF_IDS } from "../lib/shelves/registry.js";
 import { isAdmin } from "../server/admin.js";
@@ -135,6 +137,7 @@ import { buildWaitlistEntry, isValidEmail, notifyWaitlistSafely, type WaitlistNo
 import { createSharedChildRecordSource, resolveSharedPacket, type SharedChildRecordSource } from "../server/sharedPacket.js";
 import { programWeekScript } from "../lib/programs/weekScript.js";
 import { createCoParentRouter } from "../server/coParent.js";
+import { createFamilyPlanCoParentRouter } from "../server/familyPlanCoParent.js";
 
 type ApiDeps = {
   config: ArborConfig;
@@ -508,6 +511,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     ? requireChildOwnership({ ownsChild: (uid: string, childId: string) => memoryStore.mayEraseChild!(uid, childId) })
     : requireOwnership;
   router.use(createCoParentRouter({ config, shareStore, requireOwnership }));
+  // Family plan v1: a co-parent answers a request on the same live grant.
+  router.use(createFamilyPlanCoParentRouter({ config, shareStore }));
   // B-BOOK release: a child's private book files (hero sheet, prints, narration)
   // — read only through this owner-checked proxy (server/bookAssets.ts).
   // K2: the sandbox (MEMORY_ADAPTER=local, no Firebase) keeps them in a
@@ -2391,6 +2396,90 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       }
       logger.error("Arbor Log Extraction Error", error, { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to draft a log", details: error.message });
+    }
+  });
+
+  // Family plan v1: a pasted kindergarten/school message → the dated things it
+  // asks of the family, each pointing at the line it came from. This route
+  // owns no store and writes nothing: the client adds only what the parent
+  // keeps, after a duplicate check, and the message itself is never stored
+  // (only the line a kept date came from). Crisis screen FIRST (no model
+  // call), then name redaction; the reply passes the deterministic floor in
+  // server/familyPlanExtract.ts and the output screen. Metered like every
+  // model route (createApp modelRoutes).
+  router.post("/family-plan/extract", async (req, res) => {
+    const { text, language, today, childName } = req.body ?? {};
+    if (typeof text !== "string" || !text.trim()) {
+      res.status(400).json({ error: "A message (text) is required" });
+      return;
+    }
+    const message = text.slice(0, MESSAGE_MAX);
+    const escalationMatch = screenForImmediateEscalation({ message });
+    if (escalationMatch) {
+      res.status(409).json({ error: "Professional support recommended", escalationCategory: escalationMatch.category });
+      return;
+    }
+    const lines = messageLines(message);
+    if (!lines.length) {
+      res.status(400).json({ error: "A message (text) is required" });
+      return;
+    }
+    // The family's calendar day (the server runs in UTC): the client's day
+    // when it is within a day of the server's, else the server's.
+    const serverDay = familyPlanDayKey(new Date());
+    const day = familyPlanIsDay(today) && today >= familyPlanAddDays(serverDay, -1) && today <= familyPlanAddDays(serverDay, 1) ? today : serverDay;
+    const lang = captureLanguage(language, message);
+    const budget = createRouteBudget(res, "analysis");
+    try {
+      const prompt = buildFamilyPlanExtractPrompt({ today: todayLine(day), lines, language: lang });
+      const privacy = createRedaction(typeof childName === "string" ? childName : undefined);
+      const raw = await raceWithAbort(modelProvider.generateJson({
+        route: "analysis_structured",
+        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
+        temperature: 0.1,
+        budget: budget.budget,
+        promptVersion: PROMPT_VERSIONS.family_plan_extract.version,
+        schema: {
+          type: Type.OBJECT,
+          required: ["familyPlanItems"],
+          properties: {
+            familyPlanItems: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                required: ["line", "quote", "kind", "title", "date", "time"],
+                properties: {
+                  line: { type: Type.NUMBER },
+                  quote: { type: Type.STRING },
+                  kind: { type: Type.STRING, enum: [...DRAFT_KINDS] },
+                  title: { type: Type.STRING },
+                  date: { type: Type.STRING },
+                  time: { type: Type.STRING },
+                },
+              },
+            },
+          },
+        },
+      }), budget.signal);
+      budget.settle();
+      const items = finalizeFamilyPlanDraft(privacy.restoreDeep(raw), lines, day);
+      // Screen what the model wrote (titles); the lines and quotes are the parent's own message.
+      const verdict = await screenStructuredModelOutput(modelProvider, items.map((i) => i.title));
+      if (verdict.flagged) {
+        res.status(422).json({ error: "Arbor could not safely complete this draft. Please try a different request.", outputBlocked: true, blockedCategory: verdict.category });
+        return;
+      }
+      res.json({ items, lineCount: lines.length, today: day });
+    } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Arbor family-plan extract deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
+      logger.error("Arbor family-plan extract error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Could not read the message" });
     }
   });
 

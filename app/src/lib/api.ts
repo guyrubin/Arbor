@@ -555,6 +555,9 @@ export const api = {
   // commits only what the parent keeps (lib/describeChildClient).
   describeChild: (payload: import("./describeChild").DescribeRequest) =>
     post<import("./describeChild").DescribeDraft>("/api/describe-child", payload),
+  /** Family plan v1: the dated things a pasted school message asks of the family (nothing is stored). */
+  extractFamilyPlan: (payload: { text: string; language: "en" | "he"; today: string; childName?: string }) =>
+    post<import("./familyPlan/draft").FamilyPlanExtractResult>("/api/family-plan/extract", payload),
   // childId is REQUIRED by the server's COPPA gate (requireConsent reads it from
   // the body); without it /api/vision fails closed with 451. The caller passes the
   // active child's id. AIX-S1: `language` (getAiLanguage()) drives the server-side

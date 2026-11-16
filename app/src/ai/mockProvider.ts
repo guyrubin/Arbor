@@ -31,6 +31,7 @@ import type {
 } from "./modelRouter.js";
 import { PRACTICES } from "../content/practices.js";
 import { resolveHebrewSlash } from "../lib/hebrewSlashGender.js";
+import { mockFamilyPlanItems } from "./familyPlanMock.js";
 
 export const MOCK_MODEL_ID = "mock-fixtures";
 
@@ -255,6 +256,13 @@ const CURATED: { id: string; signature: string[]; overlay: Record<Lang, Record<s
     ),
   },
   {
+    // Family plan v1: the items are read from the pasted message itself
+    // (ai/familyPlanMock), so the overlay is empty and mockJsonFor fills it.
+    id: "family_plan_extract",
+    signature: ["familyPlanItems"],
+    overlay: L({}, {}),
+  },
+  {
     id: "output_screen",
     signature: ["safe", "reason"],
     overlay: L({ safe: true, reason: "" }, { safe: true, reason: "" }),
@@ -321,6 +329,9 @@ export function mockJsonFor(options: Pick<GenerateJsonOptions, "prompt" | "schem
   const curated = CURATED.find((c) => c.id === id);
   if (!curated || !base || typeof base !== "object" || Array.isArray(base)) return base;
   const out: Record<string, Json> = { ...(base as Record<string, Json>), ...clone(curated.overlay[lang]) };
+  if (id === "family_plan_extract") {
+    out.familyPlanItems = mockFamilyPlanItems(options.prompt ?? "").items;
+  }
   if (id === "todays_focus") {
     // Coherent with whatever the chooser picked today: the step IS the chosen
     // practice's own first sentence (so it shares its content words in EN and
