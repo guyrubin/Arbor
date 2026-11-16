@@ -9,6 +9,10 @@
  * ConsultDraft.lifecycle.test.ts (ConsultContent as a plain function).
  */
 import React from "react";
+import { treeElements } from "./elementTree.testutil";
+import VisitsComposition from "../care/v10/VisitsComposition";
+import VisitTimeline from "../care/v10/VisitTimeline";
+import { DsRoot } from "../../design/primitives";
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ts from "typescript";
@@ -33,6 +37,8 @@ const CareShared = () => null;
 const visit = { id: "visit", whenIso: new Date(Date.now() + 86400000).toISOString(), status: "confirmed", profession: "slp" };
 const env = {
   React, AskSpecialist, HomeProgramDays, HomeProgramEntry, Icon, CareVisitHead, CareAside, CareShared, visitForConsult, consultAudienceForProfession,
+  // design v10.1: the Visits composition (AskSpecialist's layout), its timeline, the root and the scene's counts
+  VisitsComposition, VisitTimeline, DsRoot, useComposition: () => "desk", reportsLeadCounts: () => ({ moments: 0, milestones: 0, sinceMs: 0 }),
   useRef: (initial: unknown) => slots[cursor++] ??= { current: initial },
   useState: (initial: unknown) => { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], (value: unknown) => { slots[i] = value; }]; },
   useMemo: (calculate: () => unknown) => calculate(),
@@ -54,12 +60,7 @@ const env = {
 const component = new Function(...Object.keys(env), code)(...Object.values(env));
 
 type El = React.ReactElement<Record<string, any>>;
-function elements(node: React.ReactNode): El[] {
-  if (Array.isArray(node)) return node.flatMap(elements);
-  if (!React.isValidElement<Record<string, any>>(node)) return [];
-  const element = node as El;
-  return [element, ...React.Children.toArray(element.props.children).flatMap(elements)];
-}
+const elements = (node: React.ReactNode): El[] => treeElements(node) as El[];
 function render(): El[] { cursor = 0; return elements(component({ query: new URLSearchParams(""), isOwnerCurrent: () => true })); }
 const byId = (all: El[], id: string) => all.find((el) => el.props["data-testid"] === id);
 const textOf = (el: El | undefined) => (el ? React.Children.toArray(el.props.children).filter((c) => typeof c === "string").join("") : "");
@@ -116,9 +117,9 @@ describe("v3 FEAT-09 · #/handoff is the care summary builder", () => {
     // headed by the visit), aside and shared cards (Who sees what, Past exports)
     const builder = all.find((el) => el.type === AskSpecialist)!;
     expect(builder.props.landing).toBe(true);
-    expect(builder.props.head?.type).toBe(CareVisitHead);
-    expect(builder.props.head?.props.visit.id).toBe("visit");
-    expect(all.filter((el) => el.props["data-testid"] === "consult-visit-card")).toHaveLength(1);
+    // design v10.1: the visit heads the composition's scene (section 1)
+    expect(builder.props.layout.component).toBe(VisitsComposition);
+    expect(builder.props.layout.props.visit.id).toBe("visit");
     expect(all.filter((el) => el.type === CareAside)).toHaveLength(1);
     expect(all.filter((el) => el.type === CareShared)).toHaveLength(1);
     // v4: Past exports' "Prepare an update" reaches the builder

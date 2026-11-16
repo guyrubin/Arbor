@@ -164,37 +164,31 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       const h1 = decode(/<h1 data-testid="consult-h1"[^>]*>([^<]*)<\/h1>/.exec(html)![1]);
       expect(h1).toContain(translate(locale, "elev.careNet.appt.profession.slp"));
       expect(html.indexOf('data-testid="consult-kicker"')).toBeLessThan(html.indexOf('data-testid="consult-h1"'));
-      // the visit card heads the packet module, with the day count in neutral ink
+      // design v10.1: the visit scene (section 1) heads the packet module —
+      // the days to the booking as a figure, the production badge as its name
       const packet = sliceModule(html, "consult-packet", "consult-aside");
       expect(packet.indexOf('data-testid="consult-visit-head"')).toBeGreaterThan(0);
       expect(packet.indexOf('data-testid="consult-visit-head"')).toBeLessThan(packet.indexOf('data-testid="consult-audience-step"'));
-      expect(textOf(html, "consult-visit-in")).toBe(translate(locale, "elev.consult.inDays", { n: 3 }));
-      // ONE primary card in the packet: its head (the visit, then the since
-      // counts) directly followed by steps 1-3; the home program follows it
+      expect(html).toMatch(new RegExp(`data-testid="consult-visit-in" aria-label="${translate(locale, "elev.consult.inDays", { n: 3 }).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
+      // one reading order inside the packet module: the visit (1), who it is
+      // for and your one line (2), then choose · preview · share (3); the
+      // appointments (4) and the home program follow
       const page = decode(html);
-      const [cardAt, cardEnd] = spanOf(page, "consult-visit-card", "section");
-      expect(cardAt).toBeGreaterThan(page.indexOf('data-module="consult-packet"'));
-      expect(cardEnd).toBeLessThan(page.indexOf('data-module="consult-aside"'));
       const at = (id: string) => page.indexOf(`data-testid="${id}"`);
-      for (const id of ["consult-visit-card-head", "consult-visit-head", "consult-since-head", "consult-audience-step", "consult-review-export"]) {
-        expect(at(id), id).toBeGreaterThan(cardAt);
-        expect(at(id), id).toBeLessThan(cardEnd);
-      }
-      const [headAt, headEnd] = spanOf(page, "consult-visit-card-head", "div");
-      expect(at("consult-visit-head")).toBeGreaterThan(headAt);
-      expect(at("consult-since-head")).toBeGreaterThan(at("consult-visit-head"));
-      expect(at("consult-since-head")).toBeLessThan(headEnd);
-      expect(at("consult-audience-step")).toBeGreaterThan(headEnd);
-      expect(page.indexOf(translate(locale, "elev.pilot.i.have.recommendations.for.home"))).toBeGreaterThan(cardEnd);
-      // the numbered step headings, in order: 1 bring, 2 preview, 3 share
+      const order = ["consult-visit-card", "consult-visit-head", "consult-audience-step", "consult-reason-section", "consult-since-head", "consult-bring-row", "consult-preview", "consult-review-export"];
+      for (let i = 1; i < order.length; i++) expect(at(order[i]), order[i]).toBeGreaterThan(at(order[i - 1]));
+      expect(at("consult-review-export")).toBeLessThan(page.indexOf('data-module="consult-aside"'));
+      expect(page.indexOf(translate(locale, "elev.pilot.i.have.recommendations.for.home"))).toBeGreaterThan(at("consult-review-export"));
+      // the guide names the four numbered sections, in order
+      const guide = /<nav class="guide[^"]*"[^>]*>([\s\S]*?)<\/nav>/.exec(html)![1];
+      const stops = [...guide.matchAll(/class="gnum[^"]*">(\d)</g)].map((m) => m[1]);
+      expect(stops).toEqual(["1", "2", "3", "4"]);
+      // the builder's own step numbers step aside for the route's
       const numbered = [...html.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/g)]
         .map((m) => decode(m[1].replace(/<[^>]+>/g, "")).trim())
         .filter((text) => /^[123]/.test(text));
-      expect(numbered).toEqual([
-        `1${translate(locale, "elev.consult.step.bring")}`,
-        `2${translate(locale, "elev.consult.step.preview")}`,
-        `3${translate(locale, "elev.consult.step.share")}`,
-      ]);
+      expect(numbered).toEqual([]);
+      expect(decode(html)).toContain(translate(locale, "elev.consult.step.share"));
       expect(textOf(html, "consult-preview-note")).toBe(translate(locale, "elev.consult.preview.note"));
     });
 
