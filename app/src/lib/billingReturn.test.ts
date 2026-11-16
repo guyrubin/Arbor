@@ -151,6 +151,7 @@ describe("web checkout confirmation requires purchased access", () => {
   const unconfirmed: Array<[string, Partial<EntitlementInfo>]> = [
     ["Arbor no-card trial", APP_TRIAL],
     ["environment comp", { source: "env", provider: "comp" }],
+    ["comped account whose web subscription is still a provider trial", { source: "env", provider: "stripe", status: "in_trial" }],
     ["stored referral comp", { provider: "comp" }],
     ["beta access", { source: "beta_unenforced", enforced: false }],
     ["unenforced store answer", { enforced: false }],
@@ -187,6 +188,18 @@ describe("web checkout confirmation requires purchased access", () => {
     startBillingReturnPoll({ toast, t: (k) => k, refresh, ...immediate() });
     await flush();
 
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(toast.mock.calls.map((c) => c[0])).toEqual(["pw.activating", "pw.activated"]);
+  });
+
+  it("confirms a comped account once the webhook's web subscription is on the answer", async () => {
+    const toast = vi.fn();
+    const paidUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const refresh = vi.fn(async (): Promise<EntitlementInfo> => ({
+      ...PLUS, plan: "family", source: "env", provider: "stripe", status: "active", willRenew: true, currentPeriodEnd: paidUntil,
+    }));
+    startBillingReturnPoll({ toast, t: (k) => k, refresh, ...immediate() });
+    await flush();
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(toast.mock.calls.map((c) => c[0])).toEqual(["pw.activating", "pw.activated"]);
   });

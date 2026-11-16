@@ -37,6 +37,10 @@ export type EntitlementStatus = "active" | "in_trial" | "grace_period" | "cancel
 /** Where the active subscription was bought. `comp` = manual env grant. */
 export type BillingProvider = "stripe" | "app_store" | "play_store" | "comp" | "none";
 
+/** A store that actually billed the account. Comp and "none" are Arbor's own grants. */
+const isBilledProvider = (provider: BillingProvider | undefined): provider is "stripe" | "app_store" | "play_store" =>
+  provider === "stripe" || provider === "app_store" || provider === "play_store";
+
 export type PlanLimits = {
   /** Coach + council messages per day; null = unlimited. */
   coachMessagesPerDay: number | null;
@@ -329,18 +333,36 @@ export const resolveEntitlement = async (
   // Preserve existing Family billing identity; its limits now match Plus.
   // BD-53 (Guy, 20 Oct): the admin account is the founder's own and never meets
   // the trial or the paywall, even if it leaves the Family comp list.
-  if (
-    envList("ARBOR_FAMILY_UIDS").includes(uid)
-    || (email && envList("ARBOR_FAMILY_EMAILS").includes(email))
-    || (email && envList("ARBOR_ADMIN_EMAILS").includes(email))
-  ) {
+  const familyComp = envList("ARBOR_FAMILY_UIDS").includes(uid)
+    || (!!email && envList("ARBOR_FAMILY_EMAILS").includes(email))
+    || (!!email && envList("ARBOR_ADMIN_EMAILS").includes(email));
+  const plusComp = !familyComp && (envList("ARBOR_PLUS_UIDS").includes(uid) || (!!email && envList("ARBOR_PLUS_EMAILS").includes(email)));
+  // Prefer the rich record (status + renewal); fall back to the legacy plan-only read.
+  // A comp used to return before this read, so a real Stripe subscription on the
+  // founder's account (entitlements/{uid}) never reached the client. The return
+  // poll then waited forever: it confirms provider stripe, and the comp answer
+  // is provider comp. The comp still floors the plan and keeps source "env"
+  // (the account stays internal). The provider and period are the webhook's.
+  const record = store.getRecord ? await store.getRecord(actor.uid) : null;
+  if (record && recordStillEntitles(record) && record.plan !== "free" && isBilledProvider(record.provider)) {
+    const plan = (familyComp || record.plan === "family") ? "family" : record.plan;
+    return {
+      plan,
+      limits: PLAN_LIMITS[plan],
+      source: familyComp || plusComp ? "env" : "store",
+      enforced: true,
+      status: record.status,
+      provider: record.provider,
+      currentPeriodEnd: record.currentPeriodEnd ?? null,
+      willRenew: record.willRenew,
+    };
+  }
+  if (familyComp) {
     return { plan: "family", limits: PLAN_LIMITS.family, source: "env", enforced: true, status: "active", provider: "comp" };
   }
-  if (envList("ARBOR_PLUS_UIDS").includes(uid) || (email && envList("ARBOR_PLUS_EMAILS").includes(email))) {
+  if (plusComp) {
     return { plan: "plus", limits: PLAN_LIMITS.plus, source: "env", enforced: true, status: "active", provider: "comp" };
   }
-  // Prefer the rich record (status + renewal); fall back to the legacy plan-only read.
-  const record = store.getRecord ? await store.getRecord(actor.uid) : null;
   if (record && recordStillEntitles(record) && record.plan !== "free") {
     return {
       plan: record.plan,
