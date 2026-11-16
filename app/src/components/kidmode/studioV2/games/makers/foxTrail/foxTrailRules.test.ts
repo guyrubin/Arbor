@@ -1,304 +1,345 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BOUNCERS, COYOTE_T, JUMP_BUFFER, LOGS, MAX_X, MIN_X, NOOK_X, OFFER_RANGE, OFFER_T, POD_REACH, ROOF, RUN_MAX, SEEDS, STEP_DT, STONES, STONE_X, STREAM, TUNNEL, WAKE_T, WORLD_W,
-  allCarried, bladeBend, bladeFlatten, bouncerAt, cameraFollow, canOffer, carriedCount, groundAt, inTunnel, initialFoxState, nightness,
-  resetFoxState, roofTop, run, springBlade, step, surfaceAt, upOnRoof, wakeRadius, waterLevel, type FoxInput, type FoxState,
+  BOUNCE_V, GAP_DEPTH, LESSON_SLOW, LIFT_CEIL, PEP_HALF, SPEEDS, STEP_DT, STRETCH_IDS,
+  buildCourse, cameraX, chainNote, cleanPilot, duskDepth, floorAt, hurdleAt, idlePilot, initialRun, run, step, suggest, sweepX, updraftAt, warmth,
+  type Course, type Hurdle, type HurdleKind, type RunEvent, type RunInput, type RunState,
 } from './foxTrailRules';
 
-const at = (x: number, extra: Partial<FoxState> = {}): FoxState => ({ ...initialFoxState(), x, y: surfaceAt(x), ...extra });
-/** Hold a direction until the fox reaches `x` (or the time runs out). */
-function runTo(s: FoxState, x: number, limit = 40): FoxState {
-  const dir = x > s.x ? 1 : -1;
-  for (let t = 0; t < limit * 120 && (dir > 0 ? s.x < x : s.x > x); t++) s = step(s, { dir });
-  return s;
+const SEEDS = [1, 2, 3, 77, 999, 12345, 20261116];
+const course = buildCourse(77);
+const kinds = (events: readonly RunEvent[]) => events.map(e => e.kind);
+/** Pep already running at full pace in the stretch that holds `x`, with every lesson learned and everything behind him settled. */
+function runningAt(c: Course, x: number, extra: Partial<RunState> = {}): RunState {
+  const s = initialRun(c);
+  let stretch = 0; c.stretches.forEach((st, i) => { if (x >= st.from) stretch = i; });
+  const nextHurdle = c.hurdles.findIndex(h => h.x + h.w / 2 + PEP_HALF > x);
+  const nextLamp = c.lamps.findIndex(l => l.x + 80 > x);
+  return { ...s, mode: 'onTheRun', stretch, x, vx: c.stretches[stretch].speed, learned: { jumpNow: true, holdNow: true, rollNow: true },
+    hurdles: c.hurdles.map((_h, i) => (nextHurdle >= 0 && i < nextHurdle ? 1 : 0)), lamps: c.lamps.map((_l, i) => (nextLamp >= 0 && i < nextLamp ? 1 : 0)),
+    nextHurdle: nextHurdle < 0 ? c.hurdles.length : nextHurdle, nextLamp: nextLamp < 0 ? c.lamps.length : nextLamp, ...extra };
 }
+const first = (c: Course, kind: HurdleKind, big = false): Hurdle => c.hurdles.find(h => h.kind === kind && h.big === big)!;
+/** Steps until `stop` is true (or `seconds` pass), feeding `pilot`; returns the last state and every event. */
+function until(c: Course, s: RunState, pilot: (s: RunState) => RunInput, stop: (s: RunState) => boolean, seconds = 12): { s: RunState; events: RunEvent[] } {
+  const events: RunEvent[] = [];
+  for (let i = 0; i < seconds / STEP_DT && !stop(s); i++) { s = step(c, s, pilot(s)); events.push(...s.events); }
+  return { s, events };
+}
+const hands = (): RunInput => ({});
 
-describe('the trail', () => {
-  it('is continuous, with logs and stones as heights along it and a shallow stream', () => {
-    const nearLog = (x: number) => LOGS.some(log => Math.abs(x - log.x) < log.r + 6) || BOUNCERS.some(cap => Math.abs(x - cap.x) < cap.w / 2 + 6);
-    for (let x = 0; x < WORLD_W; x += 5) if (!nearLog(x)) expect(Math.abs(surfaceAt(x + 5) - surfaceAt(x)), `x=${x}`).toBeLessThan(30);
-    for (const log of LOGS) expect(surfaceAt(log.x) - groundAt(log.x)).toBeCloseTo(log.r * 2, 0);
-    expect(groundAt((STREAM.from + STREAM.to) / 2)).toBeLessThan(groundAt(STREAM.from) - 10);
-    expect(waterLevel()).toBeGreaterThan(groundAt((STREAM.from + STREAM.to) / 2));
-    for (const stone of STONES) expect(surfaceAt(stone.x)).toBeGreaterThan(waterLevel());
+describe('the course', () => {
+  it('is the same for the same seed and different for another', () => {
+    expect(buildCourse(42)).toEqual(buildCourse(42));
+    const a = buildCourse(1), b = buildCourse(2);
+    expect(a.hurdles.map(h => `${h.kind}${h.x}`)).not.toEqual(b.hurdles.map(h => `${h.kind}${h.x}`));
+    const stars = new Set(SEEDS.map(seed => Math.round(buildCourse(seed).star.x - buildCourse(seed).stretches[1].from)));
+    const tunes = new Set(SEEDS.map(seed => buildCourse(seed).tune.join(',')));
+    expect(stars.size).toBeGreaterThan(1); expect(tunes.size).toBeGreaterThan(SEEDS.length - 2);
   });
-});
-
-describe('movement', () => {
-  it('accelerates, eases out and leans on a fixed step', () => {
-    let s = initialFoxState();
-    s = step(s, { dir: 1 }); expect(s.vx).toBeGreaterThan(0); expect(s.vx).toBeLessThan(RUN_MAX / 10);
-    s = run(s, { dir: 1 }, 1); expect(s.vx).toBeCloseTo(RUN_MAX, 0); expect(s.dist).toBeGreaterThan(200);
-    s = run(s, { dir: 0 }, 0.1); expect(s.vx).toBeGreaterThan(0); expect(s.vx).toBeLessThan(RUN_MAX);
-    s = run(s, { dir: 0 }, 1); expect(s.vx).toBe(0);
-  });
-  it('never leaves the trail', () => {
-    let s = run(initialFoxState(), { dir: -1 }, 3); expect(s.x).toBe(MIN_X);
-    s = run(at(MAX_X - 20), { dir: 1 }, 2); expect(s.x).toBe(MAX_X);
-  });
-  it('hops a log by itself when running into it, and a Jump works too', () => {
-    const log = LOGS[0];
-    let s = runTo(at(log.x - 200), log.x + 120, 5);
-    expect(s.x).toBeGreaterThan(log.x + 100);
-    const hopped = run(at(log.x - 200), { dir: 1 }, 1.5);
-    expect(hopped.events).toContain('hop');
-    s = step(at(1500), { dir: 0, jump: true }); expect(s.onGround).toBe(false); expect(s.events).toContain('jump');
-    s = run(s, { dir: 0 }, 1.2); expect(s.onGround).toBe(true);
-  });
-  it('the stream is ankle deep: walking through splashes and slows', () => {
-    let s = at(STREAM.from + 30, { vx: 0 });
-    s = run(s, { dir: 1 }, 0.25);
-    expect(s.x).toBeLessThan(STONES[0].x - STONES[0].w / 2);
-    expect(Math.abs(s.vx)).toBeLessThan(RUN_MAX * 0.6);
-    const through = run(at(STREAM.from - 100), { dir: 1 }, 4);
-    expect(through.events).toContain('splash');
-    expect(through.x).toBeGreaterThan(STREAM.to);
-  });
-  it('a tap on the trail sends the fox trotting there, and it stops', () => {
-    let s = step(initialFoxState(), { dir: 0, target: 500 });
-    s = run(s, { dir: 0 }, 4);
-    expect(Math.abs(s.x - 500)).toBeLessThan(12); expect(s.target).toBeNull();
-  });
-  it('sits after standing still for three seconds', () => {
-    const s = run(initialFoxState(), { dir: 0 }, 3.2);
-    expect(s.still).toBeGreaterThan(3);
-  });
-});
-
-describe('forgiveness', () => {
-  const steps = (s: FoxState, input: FoxInput, n: number) => { for (let i = 0; i < n; i++) s = step(s, i === 0 ? input : { dir: input.dir }); return s; };
-  it('coyote time: a jump still works a moment after running off an edge', () => {
-    // run right off the last stepping stone
-    let s = at(STONES[2].x, { vx: RUN_MAX });
-    while (s.onGround) s = step(s, { dir: 1 });
-    expect(s.coyote).toBeCloseTo(COYOTE_T, 5);
-    const late = steps(s, { dir: 1, jump: true }, 1);
-    expect(late.events).toContain('jump'); expect(late.vy).toBeGreaterThan(0);
-    // … but not long after
-    let gone = s; for (let i = 0; i < Math.ceil((COYOTE_T + 0.05) / STEP_DT); i++) gone = step(gone, { dir: 1 });
-    if (!gone.onGround) expect(step(gone, { dir: 1, jump: true }).events).not.toContain('jump');
-  });
-  it('a jump pressed just before landing happens on landing', () => {
-    let s = step(at(1500), { dir: 0, jump: true });
-    while (!(s.vy < 0 && s.y - surfaceAt(s.x) < 8)) s = step(s, { dir: 0 });
-    expect(s.onGround).toBe(false);
-    s = step(s, { dir: 0, jump: true }); expect(s.events).not.toContain('jump');
-    let jumped = false;
-    for (let i = 0; i < Math.ceil(JUMP_BUFFER / STEP_DT) && !jumped; i++) { s = step(s, { dir: 0 }); jumped = s.events.includes('jump'); }
-    expect(jumped).toBe(true);
-  });
-  it('the top of a jump hangs a moment and the way down is quicker than the way up', () => {
-    let s = step(at(1500), { dir: 0, jump: true }), up = 1, down = 0, top = 0;
-    while (!s.onGround) { s = step(s, { dir: 0 }); top = Math.max(top, s.y - surfaceAt(1500)); if (s.vy > 0) up++; else down++; }
-    expect(top).toBeGreaterThan(80); expect(top).toBeLessThan(ROOF.h - 10);
-    expect(down).toBeLessThan(up);
-  });
-  it('a fox standing right against a log still gets over it', () => {
-    const log = LOGS[0];
-    const s = run(at(log.x - log.r - 1), { dir: 1 }, 1.2);
-    expect(s.x).toBeGreaterThan(log.x + log.r);
-  });
-  it('turning round at a run skids once, and a roll works in the air (a somersault)', () => {
-    let s = run(at(1500), { dir: 1 }, 1);
-    s = run(s, { dir: -1 }, 0.6);
-    expect(s.events.filter(e => e === 'skid')).toHaveLength(1); expect(s.vx).toBeLessThan(0);
-    let air = step(at(1500), { dir: 0, jump: true }); air = run(air, { dir: 0 }, 0.1);
-    air = step(air, { dir: 0, roll: true });
-    expect(air.onGround).toBe(false); expect(air.roll).toBeGreaterThan(0); expect(air.events).toContain('roll');
-  });
-  it('leaving the stream wet ends in one happy shake on the bank', () => {
-    const s = run(at(STREAM.from - 100), { dir: 1 }, 5);
-    expect(s.x).toBeGreaterThan(STREAM.to + 24);
-    expect(s.events.filter(e => e === 'shakeDry')).toHaveLength(1); expect(s.wet).toBe(0);
-  });
-});
-
-describe('toadstools and the hidden nook', () => {
-  const cap = BOUNCERS[1];
-  it('running into a toadstool springs the fox up and over, no aim needed', () => {
-    const first = BOUNCERS[0];
-    const s = run(at(first.x - 200), { dir: 1 }, 1.6);
-    expect(s.events).toContain('bounce'); expect(s.x).toBeGreaterThan(first.x + first.w / 2);
-    expect(bouncerAt(first.x)).toBe(0); expect(bouncerAt(first.x + 200)).toBe(-1);
-  });
-  it('landing on a cap bounces higher each time, up to a limit, for as long as nothing is pressed', () => {
-    let s = step(at(cap.x - cap.w / 2 - 20), { dir: 0, target: cap.x });
-    const tops: number[] = []; let top = 0;
-    for (let i = 0; i < 120 * 9; i++) {
-      s = step(s, { dir: 0 });
-      top = Math.max(top, s.y - groundAt(cap.x));
-      if (s.events.includes('bounce')) { if (top > 0) tops.push(top); top = 0; }
+  it('runs three stretches in order, each a little faster, with a station at the end of each', () => {
+    for (const seed of SEEDS) {
+      const c = buildCourse(seed);
+      expect(c.stretches.map(st => st.id)).toEqual(STRETCH_IDS);
+      for (let i = 0; i < 3; i++) {
+        const st = c.stretches[i];
+        expect(st.speed).toBe(SPEEDS[st.id]); expect(st.station).toBeGreaterThan(st.from + 5000); expect(st.to).toBeGreaterThan(st.station);
+        if (i) { expect(st.speed).toBeGreaterThan(c.stretches[i - 1].speed); expect(st.from).toBeGreaterThan(c.stretches[i - 1].station); }
+      }
+      expect(c.length).toBe(c.stretches[2].station);
     }
-    expect(tops.length).toBeGreaterThan(5);
-    expect(tops[2]).toBeGreaterThan(tops[1] + 10); expect(tops[3]).toBeGreaterThan(tops[2] + 10);
-    expect(Math.max(...tops)).toBeLessThan(300);
-    expect(Math.abs(tops[tops.length - 1] - tops[tops.length - 2])).toBeLessThan(4);
-    expect(s.onGround).toBe(false);
   });
-  it('the oak\'s top is out of reach of a jump and of simply running into the toadstool', () => {
-    let s = run(at(TUNNEL.from - 0.5), { dir: 1, jump: true }, 1.2);
-    expect(upOnRoof(s.x, s.y)).toBe(false); expect(s.x).toBeLessThan(TUNNEL.from);
-    s = run(at(cap.x - 400), { dir: 1 }, 3);
-    expect(s.x).toBeLessThan(TUNNEL.from); expect(s.blocked).toBe(true); expect(s.star).toBe('asleep');
+  it('grows the play: planters in the gardens, bunting and updrafts on the bridge, gaps in the basin', () => {
+    for (const seed of SEEDS) {
+      const c = buildCourse(seed);
+      const in0 = c.hurdles.filter(h => h.stretch === 0), in1 = c.hurdles.filter(h => h.stretch === 1), in2 = c.hurdles.filter(h => h.stretch === 2);
+      expect(new Set(in0.map(h => h.kind))).toEqual(new Set(['planterBox']));
+      expect(in0.some(h => h.big)).toBe(true);
+      expect(in1.some(h => h.kind === 'buntingLine')).toBe(true); expect(in1.some(h => h.kind === 'padGap')).toBe(false);
+      expect(c.updrafts.some(u => u.stretch === 1)).toBe(true); expect(c.updrafts.some(u => u.stretch === 0)).toBe(false);
+      expect(in2.some(h => h.kind === 'padGap' && !h.big)).toBe(true); expect(in2.some(h => h.kind === 'padGap' && h.big)).toBe(true);
+      expect(in2.some(h => h.kind === 'buntingLine')).toBe(true);
+      // the first hurdle of each stretch is its lesson
+      expect(in0[0].kind).toBe('planterBox'); expect(in1[0].kind).toBe('buntingLine'); expect(in2[0].kind).toBe('padGap');
+    }
   });
-  it('a few bounces on the cap carry Pep up onto the planter, where a fallen star wakes; the light underneath still needs a roll', () => {
-    let s = step(at(cap.x - cap.w / 2 - 20), { dir: 0, target: cap.x });
-    for (let i = 0; i < 120 * 8 && s.bounces < 3; i++) s = step(s, { dir: 0 });
-    expect(s.bounces).toBe(3);
-    for (let i = 0; i < 120 * 4 && !(s.onGround && upOnRoof(s.x, s.y)); i++) s = step(s, { dir: 1 });
-    expect(upOnRoof(s.x, s.y)).toBe(true); expect(s.y).toBeCloseTo(roofTop(), 5);
-    s = runTo(s, NOOK_X, 4);
-    expect(s.star).toBe('awake');
-    s = run(s, { dir: 1 }, 3);
-    expect(s.x).toBeGreaterThan(TUNNEL.to); expect(s.onGround).toBe(true);
-    expect(s.seeds.hollow).toBe('resting');
-    expect(resetFoxState(s).star).toBe('asleep');
+  it('leaves room to react: hurdles in order, well apart, and none near a station', () => {
+    for (const seed of SEEDS) {
+      const c = buildCourse(seed);
+      for (let i = 1; i < c.hurdles.length; i++) {
+        expect(c.hurdles[i].id).toBe(i);
+        expect(c.hurdles[i].x - c.hurdles[i].w / 2 - (c.hurdles[i - 1].x + c.hurdles[i - 1].w / 2), `seed ${seed} hurdle ${i}`).toBeGreaterThan(180);
+      }
+      expect(c.hurdles[0].x).toBeGreaterThan(c.start + 700);
+      for (const st of c.stretches) for (const h of c.hurdles) expect(Math.abs(h.x - st.station)).toBeGreaterThan(300);
+      // a line of bunting never hangs over an updraft or a gap
+      for (const h of c.hurdles) if (h.kind === 'buntingLine') { expect(updraftAt(c, h.x)).toBe(-1); expect(hurdleAt(c, h.x, 'padGap', 60)).toBe(-1); }
+    }
   });
-  it('a jump that comes down on the cap is enough too', () => {
-    const reached = [150, 160, 170, 180, 190, 200, 210].filter(d => {
-      let s = step(at(cap.x - d, { vx: RUN_MAX }), { dir: 1, jump: true });
-      for (let i = 0; i < 120 * 3 && !s.onGround; i++) s = step(s, { dir: 1 });
-      return upOnRoof(s.x, s.y);
-    });
-    expect(reached.length).toBeGreaterThanOrEqual(2);
+  it('lays lamps in order, each path lamp behind its hurdle, and hides the star over a skybridge updraft', () => {
+    for (const seed of SEEDS) {
+      const c = buildCourse(seed);
+      c.lamps.forEach((l, i) => { expect(l.id).toBe(i); if (i) expect(l.x).toBeGreaterThanOrEqual(c.lamps[i - 1].x); });
+      for (const l of c.lamps) if (l.after >= 0) { expect(l.tier).toBe('pathLamp'); expect(l.x).toBeGreaterThan(c.hurdles[l.after].x + c.hurdles[l.after].w / 2); expect(l.x - c.hurdles[l.after].x).toBeLessThan(420); }
+      // the first two lamps are free: they teach that a lamp wakes when Pep passes
+      expect(c.lamps[0].after).toBe(-1); expect(c.lamps[1].after).toBe(-1); expect(c.lamps[1].x).toBeLessThan(c.hurdles[0].x);
+      const home = updraftAt(c, c.star.x);
+      expect(home).toBeGreaterThanOrEqual(0); expect(c.updrafts[home].stretch).toBe(1); expect(c.star.y).toBeGreaterThan(LIFT_CEIL + 100);
+      for (const note of c.tune) { expect(note).toBeGreaterThanOrEqual(5); expect(note).toBeLessThanOrEqual(19); }
+      expect(c.tune[c.tune.length - 1]).toBeGreaterThan(c.tune[0]);
+    }
   });
-});
-
-describe('the roll and the hollow oak', () => {
-  it('a roll lasts about 0.6 s and travels farther and faster than running', () => {
-    const start = at(1500);
-    const rolled = run(start, { dir: 0, roll: true }, 0.6);
-    const ran = run(start, { dir: 1 }, 0.6);
-    expect(rolled.events).toContain('roll');
-    expect(rolled.x - start.x).toBeGreaterThan(ran.x - start.x);
-    expect(run(rolled, { dir: 0 }, 0.05).roll).toBe(0);
-  });
-  it('cannot pass the tunnel without rolling, from either side', () => {
-    let s = run(at(TUNNEL.from - 150), { dir: 1 }, 3);
-    expect(s.x).toBeLessThan(TUNNEL.from); expect(s.blocked).toBe(true); expect(s.events).toContain('blocked');
-    s = run(s, { dir: 0, jump: true }, 1); s = run(s, { dir: 1 }, 2);
-    expect(inTunnel(s.x)).toBe(false); expect(s.x).toBeLessThan(TUNNEL.from);
-    s = run(at(TUNNEL.to + 150, { facing: -1 }), { dir: -1 }, 3);
-    expect(s.x).toBeGreaterThan(TUNNEL.to);
-  });
-  it('a roll tumbles right through, and the roll lasts until the fox is out', () => {
-    let s = run(at(TUNNEL.from - 30), { dir: 1 }, 0.1);
-    s = run(s, { dir: 0, roll: true }, 1.2);
-    expect(s.x).toBeGreaterThan(TUNNEL.to);
-    expect(s.seeds.hollow).toBe('carried');
+  it('has water only between the float pads', () => {
+    const g = first(course, 'padGap');
+    expect(floorAt(course, g.x)).toBe(-GAP_DEPTH); expect(floorAt(course, g.x - g.w / 2 - 2)).toBe(0); expect(floorAt(course, g.x + g.w / 2 + 2)).toBe(0);
+    expect(floorAt(course, course.start)).toBe(0); expect(floorAt(course, first(course, 'planterBox').x)).toBe(0);
   });
 });
 
-describe('lantern-seeds', () => {
-  it('the seed in tall grass only comes out for a roll; then it can be picked up', () => {
-    let s = runTo(at(SEEDS.tallGrass.x - 200), SEEDS.tallGrass.x + 220, 5);
-    expect(s.seeds.tallGrass).toBe('hidden');
-    s = run(at(SEEDS.tallGrass.x - 90), { dir: 0, roll: true }, 0.4);
-    expect(['popping', 'resting', 'carried']).toContain(s.seeds.tallGrass);
-    s = run(s, { dir: 0 }, 0.8);
-    s = runTo(s, s.seedX.tallGrass + 10, 3);
-    expect(s.seeds.tallGrass).toBe('carried');
+describe('setting off', () => {
+  it('waits at the start until Go, or a tap after a breath', () => {
+    let s = initialRun(course);
+    s = run(course, s, hands, 2); expect(s.mode).toBe('atStart'); expect(s.x).toBe(course.start);
+    expect(step(course, initialRun(course), { jump: true }).mode).toBe('atStart');
+    expect(step(course, s, { jump: true }).mode).toBe('onTheRun');
+    const off = step(course, initialRun(course), { go: true });
+    expect(off.mode).toBe('onTheRun'); expect(kinds(off.events)).toEqual(['setOff']);
   });
-  it('the pod over the stepping stone hangs out of a hop\'s reach: running across leaves it, a jump takes it', () => {
-    const across = runTo(at(STREAM.from - 120), STONES[2].x + 60, 6);
-    expect(across.seeds.stone).toBe('resting');
-    let s = runTo(at(STREAM.from - 120), SEEDS.stone.x - 6, 6);
-    s = run(s, { dir: 0 }, 0.6); expect(s.seeds.stone).toBe('resting');
-    s = run(s, { dir: 0, jump: true }, 0.5);
-    expect(s.seeds.stone).toBe('carried'); expect(carriedCount(s)).toBe(1);
-    // … and from the water beside the stone too: no aim needed.
-    let wading = at(SEEDS.stone.x + 44); wading = run(wading, { dir: 0, jump: true }, 0.5);
-    expect(wading.seeds.stone).toBe('carried');
-    expect(POD_REACH).toBeLessThan(SEEDS.stone.lift);
+  it('runs by itself and eases up to the stretch’s pace', () => {
+    let s = step(course, initialRun(course), { go: true });
+    s = run(course, s, hands, 0.1); expect(s.vx).toBeGreaterThan(0); expect(s.vx).toBeLessThan(SPEEDS.skyGardens);
+    s = run(course, s, hands, 1); expect(s.vx).toBeCloseTo(SPEEDS.skyGardens, 0); expect(s.dist).toBeGreaterThan(150);
   });
-  it('play again hangs the pod over another stone, and everything else is the same', () => {
-    const xs = [0, 1, 2].map(v => initialFoxState(v).seedX.stone);
-    expect(new Set(xs).size).toBe(3);
-    for (const x of xs) expect(STONES.some(stone => stone.x === x)).toBe(true);
-    expect(initialFoxState(3)).toEqual(initialFoxState(0));
-    let s = runTo(initialFoxState(2), initialFoxState(2).seedX.stone - 4, 20);
-    s = run(s, { dir: 0, jump: true }, 0.6);
-    expect(s.seeds.stone).toBe('carried');
+  it('never changes the state it was given', () => {
+    const h = first(course, 'planterBox');
+    const before = runningAt(course, h.x - h.w / 2 - PEP_HALF - 1);
+    const copy = JSON.parse(JSON.stringify(before));
+    const after = step(course, step(course, before, {}), {});
+    expect(after.hurdles[h.id]).toBe(2); expect(after.bumps).toBe(1);
+    expect(before).toEqual(copy);
   });
 });
 
-describe('the mirror stone', () => {
-  const ready = (x: number) => at(x, { seeds: { tallGrass: 'carried', stone: 'carried', hollow: 'carried' } });
-  it('activation needs all three seeds and the fox in range', () => {
-    expect(canOffer(ready(STONE_X - 40))).toBe(true);
-    expect(canOffer(ready(STONE_X - OFFER_RANGE - 60))).toBe(false);
-    expect(canOffer(at(STONE_X - 40, { seeds: { tallGrass: 'carried', stone: 'carried', hollow: 'resting' } }))).toBe(false);
-    const few = step(at(STONE_X - 40, { seeds: { tallGrass: 'carried', stone: 'resting', hollow: 'resting' } }), { dir: 0, offer: true });
-    expect(few.phase).toBe('dusk');
+describe('the jump', () => {
+  const flat = course.start + 60;
+  const apex = (input: (s: RunState, i: number) => RunInput) => { let s = runningAt(course, flat), top = 0, i = 0; do { s = step(course, s, input(s, i++)); top = Math.max(top, s.y); } while (!s.onGround && i < 400); return { top, far: s.x - flat, steps: i }; };
+  it('is a real hop on the quickest tap, and higher and longer when the tap is held', () => {
+    const tap = apex((_s, i) => ({ jump: i === 0, hold: i < 3 }));
+    const held = apex((_s, i) => ({ jump: i === 0, hold: true }));
+    expect(tap.top).toBeGreaterThan(95); expect(tap.top).toBeLessThan(130);
+    expect(held.top).toBeGreaterThan(tap.top + 40); expect(held.far).toBeGreaterThan(tap.far + 60);
   });
-  it('with fewer seeds the stone hums once as the fox arrives (no words, no failure)', () => {
-    const s = runTo(at(STONE_X - OFFER_RANGE - 80), STONE_X - 60, 3);
-    expect(s.phase).toBe('dusk');
-    const arrived = run(at(STONE_X - OFFER_RANGE - 80), { dir: 1 }, 1.5);
-    expect(arrived.events.filter(e => e === 'hum')).toHaveLength(1);
-  });
-  it('offering the light wakes the mirror, the world goes dusk → waking → night for good', () => {
-    let s = step(ready(STONE_X - 40), { dir: 0, offer: true });
-    expect(s.phase).toBe('waking'); expect(s.events).toContain('wake');
-    expect(nightness(s.phase, 0.5, 3000)).toBe(0);
-    // the lights fly to the mirror first; only then does the ring start out
-    expect(wakeRadius('waking', OFFER_T)).toBe(0); expect(wakeRadius('waking', OFFER_T + 0.5)).toBeGreaterThan(0);
-    s = run(s, { dir: 1 }, WAKE_T / 2); expect(s.phase).toBe('waking'); expect(Math.abs(s.vx)).toBeLessThan(5);
-    s = run(s, { dir: 0 }, WAKE_T / 2 + 0.1); expect(s.phase).toBe('night'); expect(s.events).toContain('night');
-    s = run(s, { dir: -1 }, 3); expect(s.phase).toBe('night'); expect(s.x).toBeLessThan(STONE_X - 500);
-    expect(nightness('night', 0, 6000)).toBe(1);
-    expect(wakeRadius('waking', WAKE_T)).toBeGreaterThan(STONE_X);
-    expect(wakeRadius('dusk', 3)).toBe(0);
-  });
-  it('the whole trail can be played from the start with the real inputs', () => {
-    let s = initialFoxState();
-    s = runTo(s, SEEDS.tallGrass.x - 100); s = run(s, { dir: 1, roll: true }, 0.7); s = run(s, { dir: 0 }, 0.6);
-    s = runTo(s, s.seedX.tallGrass + 5); expect(s.seeds.tallGrass).toBe('carried');
-    s = runTo(s, SEEDS.stone.x - 4, 30); s = run(s, { dir: 0, jump: true }, 0.6); expect(s.seeds.stone).toBe('carried');
-    s = runTo(s, TUNNEL.from - 20, 30); expect(s.x).toBeLessThan(TUNNEL.from);
-    s = run(s, { dir: 1, roll: true }, 1.4); expect(allCarried(s)).toBe(true);
-    s = runTo(s, STONE_X - 30, 30); s = run(s, { dir: 0 }, 0.5);
-    expect(canOffer(s)).toBe(true);
-    s = run(s, { dir: 0, offer: true }, WAKE_T + 0.2); expect(s.phase).toBe('night');
-  });
-  it('replay state equals the initial state', () => {
-    const played = run(at(STONE_X - 30, { seeds: { tallGrass: 'carried', stone: 'carried', hollow: 'carried' } }), { dir: 0, offer: true }, 6);
-    expect(resetFoxState(played)).toEqual(initialFoxState());
-    expect(initialFoxState().phase).toBe('dusk');
-    expect(initialFoxState().seeds).toEqual({ tallGrass: 'hidden', stone: 'resting', hollow: 'resting' });
+  it('forgives a tap a moment early (buffer) and a moment late off an edge (coyote)', () => {
+    // pressed in the air just before landing: it happens on landing
+    let s = runningAt(course, flat, { onGround: false, y: 6, vy: -200, airT: 0.4 });
+    s = step(course, s, { jump: true }); expect(s.onGround).toBe(false);
+    const out = until(course, s, hands, t => t.vy > 300, 0.3); expect(kinds(out.events)).toContain('jumpUp');
+    // run off a float pad, then tap: still a jump, not a splash
+    const g = first(course, 'padGap');
+    let off = runningAt(course, g.x - g.w / 2 - 1);
+    for (let i = 0; i < 8; i++) off = step(course, off, {});
+    expect(off.onGround).toBe(false);
+    off = step(course, off, { jump: true, hold: true }); expect(kinds(off.events)).toContain('jumpUp');
   });
 });
 
-describe('tallGrass', () => {
-  const fox = { x: 1000, vx: RUN_MAX, lift: 0, rolling: false };
-  it('bends away from the fox, more when close and fast, not at all far away or when it leaps clear', () => {
-    expect(bladeBend(1030, fox)).toBeGreaterThan(0);
-    expect(bladeBend(970, fox)).toBeLessThan(0);
-    expect(Math.abs(bladeBend(1010, fox))).toBeGreaterThan(Math.abs(bladeBend(1070, fox)));
-    expect(Math.abs(bladeBend(1030, fox))).toBeGreaterThan(Math.abs(bladeBend(1030, { ...fox, vx: 0 })));
-    expect(bladeBend(1400, fox)).toBe(0);
-    expect(bladeBend(1020, { ...fox, lift: 120 })).toBe(0);
-    expect(bladeFlatten(1010, { ...fox, rolling: true })).toBeGreaterThan(0.5);
-    expect(bladeFlatten(1010, fox)).toBe(0);
+describe('a planter', () => {
+  const h = first(course, 'planterBox');
+  const lampAfter = course.lamps.find(l => l.after === h.id)!;
+  it('is cleared by a tap at the cue, and the lamp behind it wakes', () => {
+    const pilot = cleanPilot();
+    const out = until(course, runningAt(course, h.x - 300), s => pilot(s, course), s => s.x > lampAfter.x + 20);
+    expect(out.s.hurdles[h.id]).toBe(1); expect(out.s.lamps[lampAfter.id]).toBe(1); expect(out.s.bumps).toBe(0);
+    expect(kinds(out.events)).toContain('cleanPass'); expect(out.events.find(e => e.kind === 'lampLit' && e.id === lampAfter.id)).toBeTruthy();
   });
-  it('springs back with a little overshoot, and none with reduced motion', () => {
-    const settle = (reduced: boolean) => {
-      let a = 1, v = 0, min = 1;
-      for (let i = 0; i < 240; i++) { [a, v] = springBlade(a, v, 0, 1 / 120, reduced); min = Math.min(min, a); }
-      return { a, min };
-    };
-    const lively = settle(false), calm = settle(true);
-    expect(lively.min).toBeLessThan(-0.05); expect(Math.abs(lively.a)).toBeLessThan(0.1);
-    expect(calm.min).toBeGreaterThanOrEqual(-1e-6); expect(Math.abs(calm.a)).toBeLessThan(0.05);
+  it('is a soft bounce over the top when it is not jumped: Pep keeps going, the lamp waits, the chain starts again', () => {
+    const out = until(course, runningAt(course, h.x - 200, { chain: 5 }), hands, s => s.x > lampAfter.x + 20);
+    const bump = out.events.find(e => e.kind === 'softBump');
+    expect(bump?.id).toBe(h.id); expect(out.s.hurdles[h.id]).toBe(2); expect(out.s.bumps).toBe(1); expect(out.s.chain).toBeLessThanOrEqual(1);
+    expect(out.s.lamps[lampAfter.id]).toBe(2); expect(kinds(out.events)).toContain('lampWaits');
+    // he went up and over, never stopped, and is back at full pace soon after
+    expect(out.s.x).toBeGreaterThan(h.x + h.w); expect(Math.min(...[out.s.vx])).toBeGreaterThan(SPEEDS.skyGardens * 0.5);
+    const bounced = step(course, runningAt(course, h.x - h.w / 2 - PEP_HALF + 1), {});
+    expect(bounced.vy).toBe(BOUNCE_V); expect(bounced.onGround).toBe(false);
+    expect(out.s.pace).toBeGreaterThan(0.8); expect(out.s.vx).toBeGreaterThan(SPEEDS.skyGardens * 0.75);
   });
 });
 
-describe('camera', () => {
-  it('follows the fox and never shows past either end', () => {
-    expect(cameraFollow(0, 100, 1, 800, 1 / 60, true)).toBe(0);
-    expect(cameraFollow(0, WORLD_W, 1, 800, 1 / 60, true)).toBe(WORLD_W - 800);
-    const c = cameraFollow(0, 3000, 1, 800, 1 / 60);
-    expect(c).toBeGreaterThan(0); expect(c).toBeLessThan(3000);
-    expect(cameraFollow(0, 3000, 1, 9000, 1 / 60, true)).toBe(0);
+describe('a line of bunting', () => {
+  const h = first(course, 'buntingLine');
+  const lampAfter = course.lamps.find(l => l.after === h.id)!;
+  it('is passed by a roll, which lasts until Pep is out from under it', () => {
+    const start = runningAt(course, h.x - h.w / 2 - PEP_HALF - 150);
+    let rolled = false;
+    const out = until(course, start, () => (rolled ? {} : (rolled = true, { roll: true })), s => s.x > lampAfter.x + 20);
+    expect(out.s.hurdles[h.id]).toBe(1); expect(out.s.lamps[lampAfter.id]).toBe(1); expect(kinds(out.events)).toContain('rollIn');
+    // still rolling in the middle, even though the roll's own time would have run out
+    const mid = until(course, step(course, runningAt(course, h.x - h.w / 2 - PEP_HALF - 4), { roll: true }), hands, s => s.x > h.x + h.w / 2).s;
+    expect(mid.roll).toBeGreaterThan(0);
+  });
+  it('flops over him when he does not roll: he tumbles through underneath all the same', () => {
+    const out = until(course, runningAt(course, h.x - 300), hands, s => s.x > lampAfter.x + 20);
+    expect(out.events.find(e => e.kind === 'softBump')?.id).toBe(h.id); expect(out.s.hurdles[h.id]).toBe(2); expect(out.s.lamps[lampAfter.id]).toBe(2);
+    expect(out.s.x).toBeGreaterThan(lampAfter.x);
+  });
+  it('does not let him jump up into the cloth', () => {
+    const under = step(course, runningAt(course, h.x, { roll: 0.3 }), { jump: true, hold: true });
+    expect(under.onGround).toBe(true); expect(kinds(under.events)).not.toContain('jumpUp');
+  });
+  it('turns a swipe just after take-off into a roll, and a swipe higher up into a dive that lands rolling', () => {
+    const flat = course.start + 60;
+    let s = step(course, runningAt(course, flat), { jump: true, hold: true });
+    for (let i = 0; i < 6; i++) s = step(course, s, { hold: true });
+    const cancelled = step(course, s, { roll: true });
+    expect(cancelled.onGround).toBe(true); expect(cancelled.y).toBe(0); expect(cancelled.roll).toBeGreaterThan(0);
+    for (let i = 0; i < 40; i++) s = step(course, s, { hold: true });
+    const dive = step(course, s, { roll: true });
+    expect(dive.dive).toBe(true); expect(dive.vy).toBeLessThan(0);
+    const landed = until(course, dive, hands, t => t.onGround, 1);
+    expect(landed.s.roll).toBeGreaterThan(0); expect(kinds(landed.events)).toEqual(expect.arrayContaining(['rollIn', 'touchDown']));
+  });
+});
+
+describe('the basin', () => {
+  const g = first(course, 'padGap'), wide = first(course, 'padGap', true);
+  it('is skipped with a tap at the edge', () => {
+    const pilot = cleanPilot();
+    const out = until(course, runningAt(course, g.x - 300), s => pilot(s, course), s => s.x > g.x + g.w / 2 + 120);
+    expect(out.s.hurdles[g.id]).toBe(1); expect(kinds(out.events)).not.toContain('waterSplash');
+  });
+  it('is a splash and a paddle when it is not: slower in the water, then out by himself', () => {
+    const out = until(course, runningAt(course, g.x - 120), hands, s => s.x > g.x + g.w / 2 + 140);
+    expect(kinds(out.events)).toEqual(expect.arrayContaining(['waterSplash', 'climbOut', 'touchDown']));
+    expect(out.s.hurdles[g.id]).toBe(2); expect(out.s.wading).toBe(false); expect(out.s.y).toBe(0); expect(out.s.onGround).toBe(true);
+    const wet = run(course, until(course, runningAt(course, g.x - 120), hands, s => s.wading).s, hands, 0.12);
+    expect(wet.y).toBe(-GAP_DEPTH); expect(wet.vx).toBeLessThan(SPEEDS.theBasin * 0.8);
+    // a jump works from the water too
+    expect(kinds(step(course, wet, { jump: true, hold: true }).events)).toContain('jumpUp');
+  });
+  it('needs the held jump for a wide gap: a quick tap from the cue lands in the water', () => {
+    const at = runningAt(course, wide.x - wide.w / 2 - 26);
+    const tap = until(course, step(course, at, { jump: true, hold: true }), hands, s => s.onGround || s.x > wide.x + wide.w, 2);
+    const held = until(course, step(course, at, { jump: true, hold: true }), () => ({ hold: true }), s => s.onGround || s.x > wide.x + wide.w, 2);
+    expect(kinds(tap.events)).toContain('waterSplash');
+    expect(kinds(held.events)).not.toContain('waterSplash'); expect(held.s.x).toBeGreaterThan(wide.x + wide.w / 2);
+    expect(suggest(course, runningAt(course, wide.x - wide.w / 2 - 12))).toBe('holdNow');
+  });
+});
+
+describe('an updraft', () => {
+  const lift = course.updrafts.find(u => u.stretch === 1 && updraftAt(course, course.star.x) === u.id)!;
+  const ride = (hold: boolean) => until(course, step(course, runningAt(course, lift.from - 20), { jump: true, hold: true }), () => ({ hold }), s => s.x > lift.to - 30, 3);
+  it('carries a jumping Pep up like a kite, and higher while the tap is held', () => {
+    const tap = ride(false), held = ride(true);
+    expect(kinds(tap.events)).toContain('liftOff'); expect(tap.s.lifted).toBe(true);
+    expect(tap.s.y).toBeGreaterThan(LIFT_CEIL - 30); expect(tap.s.y).toBeLessThan(LIFT_CEIL + 30);
+    expect(held.s.y).toBeGreaterThan(tap.s.y + 50);
+    // it does nothing to a dog who stays on the path
+    expect(until(course, runningAt(course, lift.from - 20), hands, s => s.x > lift.to).s.y).toBe(0);
+  });
+  it('hides the star where only the held jump reaches', () => {
+    expect(ride(false).s.star).toBe(false);
+    const found = ride(true);
+    expect(found.s.star).toBe(true); expect(kinds(found.events)).toContain('starFound');
+  });
+  it('lets go at its far end: Pep comes down and lands running', () => {
+    const down = until(course, ride(true).s, hands, s => s.onGround, 3);
+    expect(down.s.y).toBe(0); expect(kinds(down.events)).toContain('touchDown'); expect(down.s.lifted).toBe(false);
+  });
+});
+
+describe('the first time', () => {
+  it('meets the first hurdle of a kind in slow motion until the child makes that move', () => {
+    const h = first(course, 'planterBox');
+    const fresh = { learned: { jumpNow: false, holdNow: false, rollNow: false } };
+    const out = until(course, runningAt(course, h.x - 200, fresh), hands, s => s.slow < 1, 2);
+    expect(out.s.slow).toBe(LESSON_SLOW); expect(kinds(out.events)).toContain('lessonCue');
+    expect(suggest(course, out.s)).toBe('jumpNow');
+    const x0 = out.s.x, slowStep = step(course, out.s, {}), fullStep = step(course, { ...out.s, learned: { jumpNow: true, holdNow: true, rollNow: true } }, {});
+    expect(slowStep.x - x0).toBeLessThan((fullStep.x - x0) * 0.5);
+    // the tap ends the lesson for good
+    const jumped = step(course, out.s, { jump: true, hold: true });
+    expect(jumped.learned.jumpNow).toBe(true); expect(step(course, jumped, {}).slow).toBe(1);
+  });
+  it('teaches the roll the same way, and gives up gently if nothing happens', () => {
+    const h = first(course, 'buntingLine');
+    const fresh = { learned: { jumpNow: true, holdNow: true, rollNow: false } };
+    const out = until(course, runningAt(course, h.x - 320, fresh), hands, s => s.slow < 1, 2);
+    expect(suggest(course, out.s)).toBe('rollNow'); expect(out.events.find(e => e.kind === 'lessonCue')?.n).toBe(1);
+    const waited = until(course, out.s, hands, s => s.x > h.x + h.w, 8);
+    expect(waited.s.hurdles[h.id]).toBe(2); expect(waited.s.slow).toBe(1);
+  });
+  it('suggests nothing while Pep waits or is already in the air', () => {
+    expect(suggest(course, initialRun(course))).toBe('');
+    const h = first(course, 'planterBox');
+    expect(suggest(course, runningAt(course, h.x - h.w / 2 - PEP_HALF - 30, { onGround: false, y: 40 }))).toBe('');
+  });
+});
+
+describe('stations and home', () => {
+  it('skids to a stop beside the friend, waits for Go, and sets off on the next stretch', () => {
+    const st = course.stretches[0];
+    const out = until(course, runningAt(course, st.station - 400), hands, s => s.mode === 'atStation', 6);
+    expect(kinds(out.events)).toEqual(expect.arrayContaining(['skidIn', 'stationIn']));
+    expect(out.s.vx).toBe(0); expect(Math.abs(out.s.x - st.station)).toBeLessThan(12);
+    const waiting = run(course, out.s, hands, 3); expect(waiting.x).toBe(out.s.x); expect(waiting.mode).toBe('atStation');
+    const off = step(course, waiting, { go: true });
+    expect(off.mode).toBe('onTheRun'); expect(off.stretch).toBe(1); expect(off.events).toEqual([{ kind: 'setOff', n: 1 }]);
+    expect(run(course, off, hands, 1.5).vx).toBeCloseTo(SPEEDS.skyBridge, 0);
+  });
+  it('ignores taps while it brakes, and comes home at the Dome', () => {
+    const st = course.stretches[2];
+    const out = until(course, runningAt(course, st.station - 300), () => ({ jump: true, hold: true, roll: true }), s => s.mode === 'atHome', 6);
+    expect(out.s.mode).toBe('atHome'); expect(kinds(out.events)).toContain('homeIn'); expect(Math.abs(out.s.x - course.length)).toBeLessThan(12);
+    expect(run(course, out.s, () => ({ go: true, jump: true }), 2).x).toBe(out.s.x);
+  });
+});
+
+describe('a whole run', () => {
+  it('can be played clean on every course: every lamp lit, no bump, the star found', () => {
+    for (const seed of SEEDS) {
+      const c = buildCourse(seed);
+      const s = run(c, initialRun(c), cleanPilot(), 130);
+      expect(s.mode, `seed ${seed}`).toBe('atHome');
+      expect(s.bumps, `seed ${seed}`).toBe(0); expect(s.lit, `seed ${seed}`).toBe(c.lamps.length); expect(s.star).toBe(true);
+      expect(s.hurdles.every(v => v === 1)).toBe(true);
+      // the chain of notes never broke: the last lamp played the longest chain
+      const lamps = s.events.filter(e => e.kind === 'lampLit');
+      expect(lamps[lamps.length - 1].n).toBe(c.lamps.length);
+    }
+  });
+  it('cannot be failed: a child who never touches the screen still brings Pep home, by soft bumps, with fewer lamps', () => {
+    for (const seed of SEEDS) {
+      const c = buildCourse(seed);
+      const s = run(c, initialRun(c), idlePilot, 170);
+      expect(s.mode, `seed ${seed}`).toBe('atHome');
+      // (the one kindness: an updraft over a gap catches a dog who runs off the edge and carries him across)
+      for (const h of c.hurdles) expect(s.hurdles[h.id], `seed ${seed} hurdle ${h.id}`).toBe(h.kind === 'padGap' && updraftAt(c, h.x) >= 0 ? 1 : 2);
+      expect(s.lit).toBeGreaterThan(0); expect(s.lit).toBeLessThan(c.lamps.length / 2); expect(s.star).toBe(false);
+    }
+  });
+  it('takes about a minute and a half of running', () => {
+    let s = initialRun(course); const pilot = cleanPilot(); let steps = 0;
+    while (s.mode !== 'atHome' && steps < 200 / STEP_DT) { s = step(course, s, pilot(s, course)); steps++; }
+    expect(s.t).toBeGreaterThan(75); expect(s.t).toBeLessThan(115);
+  });
+});
+
+describe('light and camera', () => {
+  it('deepens the dusk along the run and warms it with every lamp', () => {
+    expect(duskDepth(course, course.start)).toBe(0); expect(duskDepth(course, course.length)).toBe(1);
+    expect(duskDepth(course, course.length / 2)).toBeGreaterThan(0.3); expect(duskDepth(course, -50)).toBe(0);
+    expect(warmth(course, { lit: 0 })).toBe(0); expect(warmth(course, { lit: course.lamps.length })).toBe(1);
+    expect(warmth(course, { lit: 10 })).toBeGreaterThan(warmth(course, { lit: 9 }));
+  });
+  it('keeps Pep at his place in the view, and sweeps from the Dome back to the start for the finale', () => {
+    expect(cameraX(1000, 800, 0.25)).toBe(800); expect(cameraX(100, 800, 0.25)).toBe(0);
+    const from = sweepX(course, 800, 0.25, 0), to = sweepX(course, 800, 0.25, 1);
+    expect(from).toBe(cameraX(course.length, 800, 0.25)); expect(to).toBe(cameraX(course.start, 800, 0.25));
+    let last = from; for (let p = 0.1; p <= 1; p += 0.1) { const x = sweepX(course, 800, 0.25, p); expect(x).toBeLessThanOrEqual(last); last = x; }
+    expect(sweepX(course, 800, 0.25, 2)).toBe(to);
+  });
+  it('plays the sitting’s tune up the chain', () => {
+    expect(chainNote(course, 1)).toBe(course.tune[0]); expect(chainNote(course, 2)).toBe(course.tune[1]);
+    expect(chainNote(course, course.tune.length + 1)).toBe(course.tune[0]); expect(chainNote(course, 0)).toBe(course.tune[0]);
   });
 });

@@ -3,7 +3,6 @@ import { Modal } from "../ui/Modal";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { track } from "../../lib/analytics";
-import { searchnavText } from "../../lib/i18nElevation/searchnav";
 // B-SHELL-14: ONE result model for both search surfaces (the lazy searchIndex
 // import lives in the hook, still a dynamic import() on first open).
 import { useSearchResults, type SearchRow } from "./useSearchResults";
@@ -28,9 +27,8 @@ export function requestOpenSearch(surface: SearchOpenSurface): void {
  *  on mobile (375px: input top, scrollable results, 44px rows). */
 export default function SearchModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t, uiLang } = useLanguage();
-  const heLang = uiLang === "he";
   const [q, setQ] = useState("");
-  const { indexReady, ordered, kindLabel } = useSearchResults(q, { enabled: open, catalogLimit: 12, recordLimit: 12 });
+  const { ordered, kindLabel } = useSearchResults(q, { enabled: open, catalogLimit: 12, recordLimit: 12 });
 
   const term = q.trim();
   // Grouped by home, read in render order: the first section is the top hit's
@@ -46,7 +44,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={t("sm.title")} maxWidth="max-w-lg max-sm:h-full max-sm:max-h-none">
+    <Modal open={open} onClose={onClose} title={t("top.searchJump")} maxWidth="max-w-lg max-sm:h-full max-sm:max-h-none">
       {/* 375px contract: input pinned top, results scroll, 44px rows. */}
       <div className="flex flex-col max-sm:h-[calc(100%-3rem)] space-y-3">
         <div className="relative flex-shrink-0">
@@ -64,9 +62,6 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
 
         <div className="max-sm:flex-1 max-sm:min-h-0 sm:max-h-[50vh] overflow-y-auto space-y-1">
           {!term && <p className="text-xs font-semibold px-1 pb-1" style={{ color: "var(--arbor-muted)" }}>{t("sm.goTo")}</p>}
-          {!term && !indexReady && open && (
-            <p className="text-xs py-6 text-center" style={{ color: "var(--arbor-muted)" }}>{searchnavText("elev.searchnav.loading", heLang)}</p>
-          )}
           {term && shown.length === 0 && <p className="text-xs py-6 text-center" style={{ color: "var(--arbor-muted)" }}>{t("sm.noMatches")}</p>}
           {sections.map((s) => (
             <div key={s.key} role={s.group ? "group" : undefined} aria-label={s.group?.label} className="space-y-1">
@@ -77,7 +72,22 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
                   <span className="min-w-0 truncate">{s.group.label}</span>
                 </p>
               )}
-              {s.rows.map((r) => (
+              {/* v10: the jump map reads as chips under each home (44 px each). */}
+              {s.rows.every((r) => r.kind === "jump") ? (
+                <div className="flex flex-wrap gap-1.5 px-2 pb-2">
+                  {s.rows.map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => run(r)}
+                      className="inline-flex items-center min-h-[44px] px-3.5 rounded-full text-[13px] font-semibold transition"
+                      style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", boxShadow: "inset 0 0 0 1px var(--arbor-rule)" }}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              ) : s.rows.map((r) => (
                 <button
                   key={r.kind + ":" + r.id}
                   data-testid={r.kind === "ask" ? "search-ask-row" : undefined}
@@ -98,7 +108,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
                     </span>}
                   </span>
                   {r === shown[0] && <Icon name="keyboard_return" size={16} className="opacity-0 group-hover:opacity-100" style={{ color: "var(--arbor-muted)" }} />}
-                  <span className="text-xs font-medium flex-shrink-0" style={{ color: "var(--arbor-muted)" }}>{kindLabel(r.kind)}</span>
+                  {r.kind !== "jump" && <span className="text-xs font-medium flex-shrink-0" style={{ color: "var(--arbor-muted)" }}>{kindLabel(r.kind)}</span>}
                 </button>
               ))}
             </div>

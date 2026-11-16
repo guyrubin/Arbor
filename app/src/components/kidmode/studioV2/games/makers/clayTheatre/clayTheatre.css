@@ -1,228 +1,194 @@
-/* Clay Theatre: film night in the Mirror Quarter's glass rotunda. A toy
-   theatre of white ceramic and pale wood stands on the round stage, the film
-   strip runs through a gate in its plinth, and the audience (the kit's own
-   renders, seen from behind) watches from the floor in front.
-   Chrome (panel, keys, labels, rings) wears the v30 register: pearl and white
-   surfaces, graphite type, teal for chosen and done, the signal colour as a
-   ring only. The --mk-* palette is used for the theatre and the clay alone.
-   One column on a phone (the stage, then the keys under the thumb); on a wide
-   screen the room sits left and the projectionist's desk right. */
-.ct { --ct-ink: var(--studio-graphite); --ct-film: color-mix(in srgb, var(--mk-shadow) 80%, var(--mk-umber)); --ct-shade: color-mix(in srgb, var(--studio-graphite) 22%, transparent);
-  --ct-cell: 76px; --ct-peek: 30px; --ct-floor: 58px; --ct-dir: -1;
-  display: grid; gap: 10px; max-inline-size: 1120px; margin-inline: auto; padding: clamp(8px, 1.6vw, 18px); border-radius: var(--studio-radius-panel); border: 1px solid var(--studio-line); color: var(--ct-ink); font-family: var(--studio-font); background: var(--studio-frost); box-shadow: var(--studio-lift); }
-.ct[dir='rtl'] { --ct-dir: 1; }
-.ct button { font-family: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-.ct button:disabled { cursor: default; }
-.ct img { max-inline-size: none; user-select: none; -webkit-user-drag: none; }
-.ct button:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; }
+@import "../../../studioTokens.css";
+@import "../makerPalette.css";
+/* Clay Theatre (the Game Cut): the Mirror Quarter rotunda fills the stage and
+   the round dais is the stop-motion set. The clay is painted on a canvas
+   (clayPaint.ts); this sheet places the room, the bench things and the
+   premiere. Scene colour comes from the makers' palette, chrome from the
+   Studio tokens; no colour literal lives here. Everything animated is
+   decoration: play never waits on it, and it collapses under reduced motion. */
 
-/* ── the room ─────────────────────────────────────────────────────────── */
-.ct-room { position: relative; isolation: isolate; overflow: hidden; display: grid; justify-items: center; padding: var(--ct-peek) 8px var(--ct-floor); border-radius: var(--studio-radius-card); border: 1px solid var(--studio-line); background: var(--studio-mist); }
-.ct-room__back { position: absolute; inset: 0; z-index: -1; inline-size: 100%; block-size: 100%; object-fit: cover; object-position: 50% 100%; pointer-events: none; }
-/* Two playbills hung in the rotunda, one each side of the stage. */
-.ct-poster { display: none; position: absolute; inset-block-start: 7%; z-index: 0; inline-size: clamp(84px, 13%, 132px); padding: 5px 5px 6px; border: 0; border-radius: 6px; background: var(--studio-surface); box-shadow: 0 8px 14px var(--ct-shade), 0 0 0 1px var(--studio-line); transform-origin: 50% -14px; }
-.ct-poster::before { content: ''; position: absolute; inset-block-end: 100%; left: 50%; inline-size: 1.5px; block-size: 60px; background: color-mix(in srgb, var(--studio-graphite) 30%, transparent); }
-.ct-poster[data-poster='0'] { left: 2.5%; rotate: -2deg; }
-.ct-poster[data-poster='1'] { right: 2.5%; rotate: 2deg; }
-.ct-poster img { display: block; inline-size: 100%; block-size: auto; border-radius: 3px; }
-.ct-poster[data-swing='true'] { animation: ct-swing 1.8s var(--studio-ease-soft); }
+.ct { position: relative; }
+.ct-world { position: absolute; inset: 0; overflow: hidden; touch-action: none; background: var(--mk-snow); }
+.ct .ct-world img.ct-room { position: absolute; max-inline-size: none; max-block-size: none; user-select: none; pointer-events: none; }
+/* The rotunda's daylight: one soft shaft from the high right, breathing slowly. */
+.ct-shaft { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: soft-light;
+  background: linear-gradient(118deg, transparent 38%, color-mix(in srgb, var(--mk-white) 70%, transparent) 52%, transparent 66%), radial-gradient(60% 40% at 78% 8%, color-mix(in srgb, var(--mk-butter) 50%, transparent), transparent);
+  animation: ct-shaft 9s ease-in-out infinite alternate; }
+.ct-set { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; pointer-events: none; transform-origin: 50% 74%; transition: opacity .45s var(--studio-ease-soft), transform .6s var(--studio-ease-spring); }
+.ct-set[data-hidden=true] { opacity: 0; transform: translateY(5%) scale(.94); }
+.ct-touch { position: absolute; inset: 0; cursor: pointer; }
+.ct-world button { -webkit-tap-highlight-color: transparent; touch-action: none; font: inherit; color: inherit; }
+.ct-world button:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; }
 
-/* ── the toy theatre: ceramic frame, felt curtain (drawn with the film), pale-wood plinth ── */
-.ct-theatre { position: relative; z-index: 1; inline-size: min(100%, 540px); display: grid; filter: drop-shadow(0 16px 12px var(--ct-shade)); }
-.ct-theatre::after { content: ''; position: absolute; z-index: -1; inset-inline: 2%; inset-block-end: -9px; block-size: 20px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--studio-graphite) 34%, transparent), transparent); }
-.ct-box { position: relative; padding: 5.2% 4.4% 3.6%; border-radius: 24px 24px 5px 5px;
-  background: linear-gradient(150deg, var(--studio-surface) 0%, var(--studio-pearl) 55%, var(--studio-mist) 100%);
-  box-shadow: inset 0 2px 0 var(--studio-surface), inset 3px 0 5px color-mix(in srgb, var(--studio-surface) 80%, transparent), inset -4px -5px 9px color-mix(in srgb, var(--studio-graphite) 12%, transparent), inset 0 0 0 1px var(--studio-line); }
-.ct-box::after { content: ''; position: absolute; inset-block-start: 1.2%; inset-inline: 7% 46%; block-size: 2.2%; border-radius: 999px; background: linear-gradient(90deg, color-mix(in srgb, var(--studio-surface) 95%, transparent), transparent); pointer-events: none; }
-.ct-box::before { content: ''; position: absolute; inset: 2% 1.8% 1.4%; border: 1.5px solid color-mix(in srgb, var(--studio-teal) 62%, transparent); border-radius: 17px 17px 3px 3px; pointer-events: none; }
-.ct-stage { position: relative; isolation: isolate; inline-size: 100%; aspect-ratio: 4 / 3; border-radius: 9px; overflow: hidden; background: var(--mk-night); touch-action: pan-y; cursor: pointer; user-select: none; -webkit-user-select: none; }
-.ct-stage::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 5px 10px color-mix(in srgb, var(--mk-shadow) 42%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--mk-shadow) 30%, transparent); }
-.ct-stage > .ct-scene { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; display: block; }
-.ct-scene .ct-frac { font: 900 9px/1 var(--studio-font); }
-.ct-grain { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply; opacity: .16;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .4 0 0 0 0 .34 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-/* The reels watched, as felt dots on the frame's lip (shape and fill, never a number). */
-.ct-pips { position: absolute; inset-inline: 0; inset-block-end: 0; block-size: 3.6%; min-block-size: 9px; display: flex; justify-content: center; align-items: center; gap: 7px; pointer-events: none; }
-.ct-pips i { inline-size: 6px; block-size: 6px; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--studio-graphite) 30%, transparent); transition: transform .3s var(--studio-ease-spring), background-color .2s; }
-.ct-pips i[data-on='true'] { border-color: var(--studio-teal-ink); background: var(--studio-teal); transform: scale(1.35); }
-.ct-plinth { position: relative; padding: 8px 10px 11px; border-radius: 3px 3px 12px 12px;
-  background: repeating-linear-gradient(92deg, transparent 0 31px, color-mix(in srgb, var(--mk-wood) 16%, transparent) 31px 32px, transparent 32px 57px, color-mix(in srgb, var(--mk-wood-dark) 9%, transparent) 57px 58px), linear-gradient(180deg, color-mix(in srgb, var(--mk-wood-light) 58%, var(--mk-white)), color-mix(in srgb, var(--mk-wood-light) 88%, var(--mk-wood)));
-  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--mk-white) 60%, transparent), inset 0 -5px 7px color-mix(in srgb, var(--mk-wood-dark) 22%, transparent); }
+/* ---------- the film cans: steel tins standing on the stage ---------- */
+.ct-cans { position: absolute; display: flex; align-items: flex-end; justify-content: center; gap: 4%; pointer-events: none; }
+.ct-can { position: relative; flex: 0 1 22%; max-inline-size: 190px; aspect-ratio: 1; margin: 0; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; pointer-events: auto;
+  rotate: calc((var(--i) - 1.5) * 3deg); animation: ct-can-in .6s var(--studio-ease-spring) both, ct-can-idle 3.4s ease-in-out infinite; animation-delay: calc(var(--i) * 90ms), calc(var(--i) * -0.8s + .7s);
+  transition: translate .2s var(--studio-ease-spring), scale .2s var(--studio-ease-spring); }
+.ct-can::before { content: ""; position: absolute; inset-inline: 4%; inset-block-end: -9%; block-size: 16%; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-shadow) 42%, transparent), transparent); }
+.ct-can__tin { position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from 34deg, var(--mk-steel-light), var(--mk-white) 7%, var(--mk-steel) 20%, var(--mk-steel-dark) 34%, var(--mk-steel) 46%, var(--mk-white) 57%, var(--mk-steel-light) 68%, var(--mk-steel-dark) 84%, var(--mk-steel-light));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mk-white) 62%, transparent), inset 0 -8px 12px color-mix(in srgb, var(--mk-shadow) 34%, transparent), 0 10px 16px -8px color-mix(in srgb, var(--mk-shadow) 60%, transparent); }
+.ct-can__tin::after { content: ""; position: absolute; inset: 7%; border-radius: 50%; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--mk-steel-dark) 70%, transparent), inset 0 2px 3px color-mix(in srgb, var(--mk-white) 70%, transparent); }
+.ct-can__label { position: absolute; inset: 13%; overflow: hidden; border-radius: 50%; background: var(--mk-paper); box-shadow: 0 0 0 2px color-mix(in srgb, var(--mk-steel-dark) 80%, var(--mk-shadow)), inset 0 3px 8px color-mix(in srgb, var(--mk-shadow) 40%, transparent); }
+.ct-can__label canvas { display: block; inline-size: 100%; block-size: 100%; }
+.ct-can__glint { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; background: linear-gradient(132deg, color-mix(in srgb, var(--mk-white) 46%, transparent) 8%, transparent 34%, transparent 70%, color-mix(in srgb, var(--mk-white) 22%, transparent)); mix-blend-mode: screen; }
+.ct-can:active { scale: .93; }
 
-/* Things on the stage that answer a hand. */
-.ct-toy { position: absolute; translate: -50% -50%; padding: 0; border: 0; border-radius: 50%; background: transparent; pointer-events: none; }
-.ct .ct-toy:focus-visible { outline: 3px solid var(--studio-surface); outline-offset: -3px; box-shadow: 0 0 0 3px var(--studio-teal-ink); }
-.ct-slot { position: absolute; inline-size: 6.4%; aspect-ratio: 1; translate: -50% -50%; padding: 0; border-radius: 50%; border: 2.5px dashed var(--studio-signal); background: transparent; pointer-events: none; }
-.ct-mark { position: absolute; inline-size: 46px; block-size: 46px; margin: -23px 0 0 -23px; border-radius: 50%; border: 3px solid color-mix(in srgb, var(--studio-surface) 86%, transparent); pointer-events: none; animation: ct-mark .44s var(--studio-ease-soft) forwards; }
-.ct-skip { position: absolute; inset: 0; border: 0; background: transparent; }
-.ct-badge { position: absolute; inset-block-start: 12%; inset-inline-end: 8%; display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px 5px 8px; border-radius: 999px; border: 1px solid var(--studio-line); font: 900 13px/1 var(--studio-font); color: var(--studio-graphite); background: var(--studio-frost); box-shadow: 0 3px 8px var(--ct-shade); pointer-events: none; }
+/* ---------- chapter 1: the rug of clay lumps and the pull handles ---------- */
+.ct-rug { position: absolute; pointer-events: none; transition: translate .6s var(--studio-ease-soft), opacity .5s var(--studio-ease-soft); animation: ct-rise .5s var(--studio-ease-spring) both; }
+.ct-rug[data-away=true] { translate: 0 60%; opacity: 0; }
+.ct-rug[data-away=true] * { pointer-events: none !important; }
+.ct .ct-world .ct-rug__mat { position: absolute; inset-inline: 0; inset-block-end: 0; inline-size: 100%; block-size: 76%; max-inline-size: none; object-fit: fill; filter: drop-shadow(0 8px 10px color-mix(in srgb, var(--mk-shadow) 30%, transparent)); }
+.ct-rug__lumps { position: absolute; inset-inline: 9%; inset-block: 0 30%; display: grid; grid-template-columns: repeat(6, 1fr); align-items: end; }
+.ct-world[data-orient=landscape] .ct-rug__mat { block-size: 62%; }
+.ct-world[data-orient=landscape] .ct-rug__lumps { grid-template-columns: repeat(3, 1fr); inset-block: 22% 16%; inset-inline: 12%; row-gap: 0; align-content: end; }
+.ct-lump { position: relative; display: block; min-inline-size: 0; aspect-ratio: 1.12; margin: 0; padding: 0; border: 0; background: none; cursor: grab; pointer-events: auto;
+  translate: 0 calc((var(--i) - 2.5) * (var(--i) - 2.5) * -1.6px); animation: ct-lump-in .5s var(--studio-ease-spring) both; animation-delay: calc(var(--i) * 60ms + .1s); transition: scale .22s var(--studio-ease-spring); }
+.ct-world[data-orient=landscape] .ct-lump { translate: none; }
+.ct-lump::after { content: ""; position: absolute; inset: -6px; }
+.ct-lump:active { scale: .86; }
+/* A pinch has been taken from a lump that is in the hero. */
+.ct-lump[data-used=true] { scale: .8; }
+.ct-lump__art { display: block; inline-size: 100%; block-size: 100%; pointer-events: none; }
+.ct-pull { position: absolute; inline-size: var(--studio-tap); block-size: var(--studio-tap); margin: calc(var(--studio-tap) / -2) 0 0 calc(var(--studio-tap) / -2); padding: 0; border: 0; border-radius: 50%; background: none; cursor: grab; }
+.ct-pull i { position: absolute; inset: 14px; border-radius: 50%; border: 3px solid var(--studio-surface); background: color-mix(in srgb, var(--studio-surface) 40%, transparent); box-shadow: 0 2px 8px color-mix(in srgb, var(--studio-graphite) 40%, transparent); }
+.ct-pull i::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: var(--studio-surface); }
+/* The next pull is marked, and shows which way it goes. */
+.ct-pull[data-cue=true] i { box-shadow: 0 0 0 3px var(--studio-signal), 0 2px 8px color-mix(in srgb, var(--studio-graphite) 40%, transparent); animation: ct-pull-hint 1.7s var(--studio-ease-soft) infinite; }
+.ct-hero { position: absolute; translate: -50% -50%; margin: 0; padding: 0; border: 0; border-radius: 40%; background: none; pointer-events: none; }
+/* "Move me": a ring that slides off to one side and comes back, until the clay has been carried. */
+.ct-hero[data-cue=true]::after { content: ""; position: absolute; inset: 8%; border: 3px dashed var(--studio-signal); border-radius: 44%; animation: ct-carry-hint 1.8s var(--studio-ease-soft) infinite; }
+.ct-rug[data-cue=true] .ct-lump { animation: ct-lump-in .5s var(--studio-ease-spring) both, ct-lump-hop 2.4s ease-in-out infinite; animation-delay: calc(var(--i) * 60ms + .1s), calc(var(--i) * .22s + 1s); }
 
-/* Bebe's ProofLens sits on the theatre: it filmed the clay. Its light breathes; a tap makes it wink. */
-.ct-lens { position: absolute; z-index: 2; inset-block-start: -27px; right: 7%; inline-size: 64px; min-block-size: 56px; padding: 0; border: 0; background: transparent; display: grid; align-items: start; }
-.ct-lens img { display: block; inline-size: 100%; block-size: auto; filter: drop-shadow(0 3px 3px var(--ct-shade)); transition: transform .24s var(--studio-ease-spring); }
-.ct-lens i { position: absolute; left: 35%; top: 30px; inline-size: 10px; block-size: 5px; border-radius: 3px; background: var(--studio-surface); opacity: 0; animation: ct-led 3.4s ease-in-out infinite; pointer-events: none; }
-.ct-lens[data-on='true'] img { transform: translateY(-5px) scale(1.08) rotate(-4deg); }
-.ct-lens:active img { transform: scale(.94); }
+/* ---------- chapters 2 and 3: the film strip and its crank ---------- */
+.ct-strip { position: absolute; display: flex; align-items: center; gap: 6px; pointer-events: none; animation: ct-rise .5s var(--studio-ease-spring) both; filter: drop-shadow(0 8px 10px color-mix(in srgb, var(--mk-shadow) 40%, transparent)); }
+.ct-strip__film { position: relative; flex: 1; align-self: stretch; display: flex; gap: 4px; padding: 9px 5px; border-radius: 7px; pointer-events: auto; touch-action: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--mk-umber) 82%, var(--mk-shadow)), color-mix(in srgb, var(--mk-umber) 60%, var(--mk-shadow)) 50%, color-mix(in srgb, var(--mk-umber) 84%, var(--mk-shadow))); }
+.ct-strip__film::before, .ct-strip__film::after { content: ""; position: absolute; inset-inline: 6px; block-size: 5px; border-radius: 2px; pointer-events: none;
+  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--mk-paper) 86%, transparent) 0 6px, transparent 6px 13px); }
+.ct-strip__film::before { inset-block-start: 2px; } .ct-strip__film::after { inset-block-end: 2px; }
+.ct-strip[data-live=true] .ct-strip__film { cursor: ew-resize; }
+.ct-cell { position: relative; flex: 1; min-inline-size: 0; overflow: hidden; border-radius: 4px; background: color-mix(in srgb, var(--mk-shadow) 62%, var(--mk-umber)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mk-paper) 16%, transparent); }
+.ct-cell canvas { display: block; inline-size: 100%; block-size: 100%; opacity: 0; }
+.ct-cell[data-shot=true] canvas { opacity: 1; animation: ct-land .42s var(--studio-ease-spring) both; }
+.ct-cell[data-next=true] { box-shadow: inset 0 0 0 2px var(--studio-signal); animation: ct-blink 1.6s ease-in-out infinite; }
+.ct-cell[data-now=true] { box-shadow: 0 0 0 2.5px var(--studio-surface); }
+.ct-gate { position: absolute; inset-block: 1px; inline-size: 5px; margin-inline-start: -2.5px; border-radius: 3px; background: var(--studio-surface); box-shadow: 0 0 0 1.5px var(--studio-signal), 0 2px 6px color-mix(in srgb, var(--mk-shadow) 60%, transparent); pointer-events: none; }
+.ct-crank { position: relative; flex: none; block-size: 90%; aspect-ratio: 1; min-block-size: 44px; margin: 0; padding: 0; border: 0; border-radius: 50%; cursor: grab; pointer-events: auto;
+  background: conic-gradient(from 20deg, var(--mk-steel-light), var(--mk-white) 9%, var(--mk-steel) 24%, var(--mk-steel-dark) 40%, var(--mk-steel) 52%, var(--mk-white) 62%, var(--mk-steel-light) 76%, var(--mk-steel-dark) 90%, var(--mk-steel-light));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mk-white) 60%, transparent), inset 0 -4px 6px color-mix(in srgb, var(--mk-shadow) 34%, transparent); }
+.ct-crank::after { content: ""; position: absolute; inset: -6px; }
+.ct-crank i { position: absolute; inset: 0; rotate: var(--turn, 0deg); }
+.ct-crank i::before { content: ""; position: absolute; inset-inline-start: 50%; inset-block-start: 50%; inline-size: 44%; block-size: 12%; translate: 0 -50%; border-radius: 4px; background: linear-gradient(var(--mk-steel-light), var(--mk-steel-dark)); }
+.ct-crank i::after { content: ""; position: absolute; inset-inline-end: 0; inset-block-start: 50%; inline-size: 30%; aspect-ratio: 1; translate: 10% -50%; border-radius: 50%; background: radial-gradient(circle at 60% 30%, var(--mk-orange), color-mix(in srgb, var(--mk-orange) 60%, var(--mk-umber))); box-shadow: 0 2px 4px color-mix(in srgb, var(--mk-shadow) 50%, transparent); }
+.ct-crank:disabled { opacity: .5; cursor: default; }
 
-/* ── the film strip: real film pulled through a fixed gate ─────────────── */
-.ct-strip { position: relative; block-size: calc(var(--ct-cell) * .62 + 20px); border-radius: 5px; background: var(--ct-film); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; box-shadow: inset 0 2px 5px color-mix(in srgb, var(--mk-shadow) 60%, transparent), 0 1px 0 color-mix(in srgb, var(--mk-white) 50%, transparent); }
-.ct-strip:active { cursor: grabbing; }
-.ct .ct-strip:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; }
-.ct-strip__window { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; direction: ltr; }
-.ct-strip__nudge { position: absolute; inset: 0; }
-.ct-strip__film { position: absolute; inset-block: 0; left: 50%; display: flex; flex-direction: row; padding-block: 10px; will-change: transform;
-  background: radial-gradient(closest-side, var(--mk-cream) 68%, transparent 80%) 3px 2px / 12.6667px 6px repeat-x, radial-gradient(closest-side, var(--mk-cream) 68%, transparent 80%) 3px calc(100% - 2px) / 12.6667px 6px repeat-x; }
-.ct[dir='rtl'] .ct-strip__film { left: auto; right: 50%; flex-direction: row-reverse; }
-.ct-strip__film[data-glide='play'] { transition: transform 84ms linear; }
-.ct-strip__film[data-glide='step'] { transition: transform .16s var(--studio-ease-soft); }
-.ct-strip__cell { flex: none; inline-size: var(--ct-cell); padding-inline: 2px; }
-.ct-strip__cell > svg { display: block; inline-size: 100%; block-size: 100%; border-radius: 2px; }
-.ct-strip__cell--blank { position: relative; }
-.ct-strip__cell--blank::before { content: ''; position: absolute; inset: 0 2px; border-radius: 2px; background: color-mix(in srgb, var(--mk-umber) 55%, var(--mk-shadow)); }
-.ct-strip__cell--blank::after { content: ''; position: absolute; inset: 28% 36%; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--mk-cream) 34%, transparent); }
-/* The gate: a little white ceramic bridge over the film, the frame under it ringed in the signal colour. */
-.ct-strip__gate { position: absolute; inset-block: -5px; left: 50%; inline-size: 26px; margin-left: -13px; pointer-events: none; border-radius: 7px; border: 3px solid var(--studio-signal); box-shadow: 0 0 0 2px var(--studio-surface), 0 3px 6px color-mix(in srgb, var(--mk-shadow) 50%, transparent); }
-.ct-strip__gate::before, .ct-strip__gate::after { content: ''; position: absolute; left: 50%; inline-size: 12px; block-size: 6px; margin-left: -6px; border-radius: 3px; background: var(--studio-surface); }
-.ct-strip__gate::before { inset-block-start: -4px; } .ct-strip__gate::after { inset-block-end: -4px; }
-/* The lamp behind the gate: a small, soft flicker as each frame passes (a few pixels wide, never the stage). */
-.ct-strip__gate i { position: absolute; inset: 6px 1px; border-radius: 3px; background: color-mix(in srgb, var(--mk-white) 34%, transparent); opacity: 0; }
-.ct-strip__gate[data-flick='0'] i { animation: ct-flick-a .11s linear; }
-.ct-strip__gate[data-flick='1'] i { animation: ct-flick-b .11s linear; }
-.ct[data-playing='false'][data-phase='film'] .ct-strip__gate { animation: ct-gate 2.6s ease-in-out infinite; }
+/* ---------- chapter 2: the ProofLens on its tripod ---------- */
+.ct-lens { position: absolute; margin: 0; padding: 0; border: 0; background: none; cursor: pointer; animation: ct-rise .55s var(--studio-ease-spring) both; transition: scale .14s var(--studio-ease-spring); transform-origin: 50% 100%; }
+.ct-lens::before { content: ""; position: absolute; inset-inline: 6%; inset-block-end: -4%; block-size: 14%; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-shadow) 46%, transparent), transparent); }
+.ct-lens > img { position: relative; display: block; inline-size: 100%; block-size: 100%; object-fit: contain; object-position: 50% 100%; pointer-events: none; }
+.ct-lens__screen { position: absolute; overflow: hidden; border-radius: 12% / 16%; background: var(--mk-night); pointer-events: none; }
+.ct-lens__screen canvas { display: block; inline-size: 100%; block-size: 100%; }
+.ct-lens__screen::after { content: ""; position: absolute; inset: 8%; border: 2px solid transparent; border-radius: 8%;
+  background: linear-gradient(var(--mk-sky), var(--mk-sky)) 0 0 / 22% 2px no-repeat, linear-gradient(var(--mk-sky), var(--mk-sky)) 0 0 / 2px 26% no-repeat, linear-gradient(var(--mk-sky), var(--mk-sky)) 100% 100% / 22% 2px no-repeat, linear-gradient(var(--mk-sky), var(--mk-sky)) 100% 100% / 2px 26% no-repeat; }
+.ct-lens__shutter { position: absolute; inset-inline-start: 84%; inset-block-start: 26%; inline-size: 15%; aspect-ratio: .62; border-radius: 40%; pointer-events: none; }
+.ct-lens[data-cue=true] .ct-lens__shutter { box-shadow: 0 0 0 3px var(--studio-signal); animation: ct-blink 1.5s ease-in-out infinite; }
+.ct-lens:active:not(:disabled) { scale: .94; }
+.ct-lens:disabled { cursor: default; }
+.ct-lens[data-nod=a] { animation: ct-nod-a .4s var(--studio-ease-soft); }
+.ct-lens[data-nod=b] { animation: ct-nod-b .4s var(--studio-ease-soft); }
+.ct-flash { position: absolute; inset: 0; pointer-events: none; background: var(--mk-white); animation: ct-flash .34s ease-out both; z-index: 8; }
+.ct-fly { position: absolute; z-index: 6; inline-size: 62px; block-size: 54px; margin: -27px 0 0 -31px; pointer-events: none; animation: ct-fly .38s cubic-bezier(.4, 0, .7, 1) both; }
+.ct-fly[data-kind=frame] { inline-size: 74px; block-size: 54px; margin: -27px 0 0 -37px; border: 3px solid var(--mk-white); border-radius: 6px; background: color-mix(in srgb, var(--mk-sky-pale) 70%, var(--mk-white)); box-shadow: 0 6px 14px color-mix(in srgb, var(--mk-shadow) 50%, transparent); animation-name: ct-fly-frame; animation-duration: .42s; }
 
-/* ── the ghost hand: shows the first gesture, never takes a touch ──────── */
-.ct-ghost { position: absolute; z-index: 5; pointer-events: none; }
-.ct-ghost__hand { display: block; inline-size: 54px; block-size: 63px; filter: drop-shadow(0 5px 6px color-mix(in srgb, var(--studio-graphite) 40%, transparent)); }
-.ct-ghost--press { margin: -6px 0 0 -16px; transform-origin: 30% 10%; animation: ct-press 2.6s var(--studio-ease-soft) both; }
-.ct-ghost--drag { inset-block-start: 22%; left: 50%; margin-left: 8px; animation: ct-pull 2.6s var(--studio-ease-soft) both; }
-.ct-strip[data-hint='true'] .ct-strip__nudge { animation: ct-nudge 2.6s var(--studio-ease-soft) both; }
+/* ---------- chapter 3: the friend, the lamp and its gels, the tunes ---------- */
+.ct .ct-world .ct-lamp { position: absolute; object-fit: contain; object-position: 50% 100%; transform: scaleX(-1); pointer-events: none; z-index: 1; animation: ct-rise .5s var(--studio-ease-spring) both; filter: drop-shadow(-6px 8px 8px color-mix(in srgb, var(--mk-shadow) 34%, transparent)); }
+.ct-gels { position: absolute; animation: ct-rise .5s var(--studio-ease-spring) .06s both; }
+.ct-gels > img { display: block; inline-size: 100%; block-size: 100%; object-fit: contain; object-position: 50% 100%; pointer-events: none; filter: drop-shadow(0 6px 8px color-mix(in srgb, var(--mk-shadow) 30%, transparent)); }
+.ct-gel { position: absolute; inset-block: -4% 20%; inline-size: 30%; min-inline-size: 44px; translate: -50% 0; margin: 0; padding: 0; border: 0; border-radius: 46%; background: none; cursor: pointer; transition: box-shadow .2s var(--studio-ease-soft); }
+.ct-gel[aria-pressed=true] { box-shadow: 0 0 0 3px var(--studio-teal-ink), 0 0 0 6px color-mix(in srgb, var(--studio-surface) 70%, transparent); }
+.ct-gel:active { scale: .92; }
+.ct-tiles { position: absolute; display: flex; align-items: flex-end; justify-content: center; gap: 4%; animation: ct-rise .5s var(--studio-ease-spring) .12s both; }
+.ct-tile { position: relative; flex: 1 1 0; min-inline-size: 0; margin: 0; padding: 0; border: 0; background: none; cursor: pointer; transition: translate .2s var(--studio-ease-spring), scale .16s var(--studio-ease-spring); }
+.ct-tile::after { content: ""; position: absolute; inset: -8px -2px; }
+.ct-tile img { display: block; inline-size: 100%; pointer-events: none; filter: drop-shadow(0 5px 6px color-mix(in srgb, var(--mk-shadow) 34%, transparent)); }
+.ct-tile[aria-pressed=true] { translate: 0 -12%; }
+.ct-tile[aria-pressed=true] img { filter: drop-shadow(0 0 0 var(--studio-teal-ink)) drop-shadow(0 8px 8px color-mix(in srgb, var(--mk-shadow) 40%, transparent)); animation: ct-tile 1.2s ease-in-out infinite; }
+.ct-tile:active { scale: .9; }
+.ct-friend { position: absolute; margin: 0; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; animation: ct-rise .5s var(--studio-ease-spring) both, ct-can-idle 2.6s ease-in-out .6s infinite; }
+.ct-friend::before { content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 3px solid var(--studio-signal); animation: ct-blink 1.6s ease-in-out infinite; }
+.ct-friend:active { scale: .9; }
+.ct-buddy { position: absolute; inline-size: var(--studio-tap); block-size: var(--studio-tap); translate: -50% -60%; margin: 0; padding: 0; border: 0; border-radius: 50%; background: none; pointer-events: none; }
 
-/* ── the audience, seen from behind ────────────────────────────────────── */
-.ct-audience { position: absolute; z-index: 2; inset-inline: 0; inset-block-end: 0; display: flex; justify-content: space-evenly; align-items: flex-end; padding-inline: 2%; pointer-events: none; direction: ltr; transform-origin: 50% 100%; animation: ct-breathe 4.2s ease-in-out infinite; }
-.ct-friend { --h: 1; --lean: 5deg; pointer-events: auto; display: grid; justify-items: center; align-items: end; min-inline-size: 56px; min-block-size: 56px; padding: 0; border: 0; background: transparent; }
-/* Each is a whole figure from the kit library; only head and shoulders rise above the picture's front edge. */
-.ct-friend__seat { --tall: calc(var(--ct-floor) * 1.04 * var(--h)); display: block; block-size: var(--tall); inline-size: calc(var(--tall) / var(--show) * var(--ratio)); }
-.ct-friend img { display: block; block-size: calc(var(--tall) / var(--show)); inline-size: auto; transform-origin: 50% calc(var(--show) * 100%); filter: drop-shadow(0 -2px 5px color-mix(in srgb, var(--studio-surface) 50%, transparent)); transition: transform .3s var(--studio-ease-spring); }
-.ct-friend[data-friend='bebe'] { --h: 1.12; --lean: 5deg; } .ct-friend[data-friend='gobgob'] { --h: .96; --lean: 4deg; } .ct-friend[data-friend='chock'] { --h: .8; --lean: 0deg; }
-.ct-friend[data-friend='aya'] { --h: 1.16; --lean: -4deg; } .ct-friend[data-friend='pep'] { --h: .78; --lean: -6deg; }
-.ct-friend[data-mood='leaning'] img { transform: translateY(-7%) rotate(var(--lean)); }
-.ct-friend[data-mood='earsUp'] img { transform: translateY(-10%) scale(.96, 1.07); }
-.ct-friend[data-mood='glad'] img { animation: ct-hop .58s var(--studio-ease-spring) 2; }
-.ct-friend:active img { transform: scale(1.05, .93); }
-.ct .ct-friend:focus-visible { outline-offset: -4px; }
+/* ---------- the premiere ---------- */
+.ct-premiere { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.ct-dark { position: absolute; inset: 0; background: radial-gradient(90% 70% at 50% 34%, color-mix(in srgb, var(--mk-night) 62%, transparent), color-mix(in srgb, var(--mk-night) 92%, transparent)); opacity: 1; transition: opacity .9s var(--studio-ease-soft); animation: ct-fade 1.1s var(--studio-ease-soft) both; }
+.ct-premiere[data-lit=true] .ct-dark { opacity: 0; }
+.ct-screen { position: absolute; overflow: visible; border: 3px solid var(--mk-white); border-radius: 4px; background: var(--mk-snow);
+  box-shadow: 0 0 60px 8px color-mix(in srgb, var(--mk-white) 34%, transparent), 0 18px 30px -12px color-mix(in srgb, var(--mk-shadow) 80%, transparent); animation: ct-screen 1s var(--studio-ease-spring) .25s both; transform-origin: 50% 0; transition: translate .7s var(--studio-ease-soft), opacity .6s var(--studio-ease-soft); }
+.ct-screen canvas { display: block; inline-size: 100%; block-size: 100%; border-radius: 2px; }
+/* The roller the screen came down from. */
+.ct-screen::before { content: ""; position: absolute; inset-inline: -3%; inset-block-start: -11px; block-size: 12px; border-radius: 6px; background: linear-gradient(var(--mk-steel-light), var(--mk-steel-dark)); box-shadow: 0 3px 6px color-mix(in srgb, var(--mk-shadow) 60%, transparent); }
+/* Projected light is never even: a soft hot centre and darker corners, flickering a little. */
+.ct-screen i { position: absolute; inset: 0; background: radial-gradient(90% 80% at 50% 45%, transparent 62%, color-mix(in srgb, var(--mk-shadow) 20%, transparent)); animation: ct-flicker .5s steps(3) infinite; }
+.ct-premiere[data-lit=true] .ct-screen { box-shadow: 0 18px 30px -12px color-mix(in srgb, var(--mk-shadow) 50%, transparent); }
+.ct-beam { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; mix-blend-mode: screen; opacity: .8; animation: ct-fade .8s var(--studio-ease-soft) .9s both; transition: opacity .5s var(--studio-ease-soft); }
+.ct-beam polygon { fill: color-mix(in srgb, var(--mk-butter) 34%, transparent); filter: blur(5px); }
+.ct-premiere[data-lit=true] .ct-beam { opacity: 0; }
+.ct-crew { position: absolute; inset: 0; }
+/* The ProofLens is the projector: the beam leaves from it. */
+.ct-projector { position: absolute; translate: -50% -62%; inline-size: clamp(54px, 12cqi, 96px); filter: brightness(.6) drop-shadow(0 0 10px color-mix(in srgb, var(--mk-butter) 70%, transparent)); animation: ct-rise .6s var(--studio-ease-spring) .3s both; }
+.ct-projector img { display: block; inline-size: 100%; }
+.ct-premiere[data-lit=true] .ct-projector { filter: none; transition: filter .8s var(--studio-ease-soft); }
+.ct-seat { position: absolute; aspect-ratio: .44; translate: -50% -100%; animation: ct-seat-in .7s var(--studio-ease-spring) both; animation-delay: calc(var(--i) * 110ms + .1s); transform-origin: 50% 100%; transition: transform .3s var(--studio-ease-spring);
+  filter: brightness(.5) saturate(.8) drop-shadow(0 0 5px color-mix(in srgb, var(--mk-butter) 60%, transparent)); }
+.ct-premiere[data-lit=true] .ct-seat { filter: drop-shadow(0 8px 8px color-mix(in srgb, var(--mk-shadow) 40%, transparent)); transition: filter .8s var(--studio-ease-soft), transform .3s var(--studio-ease-spring); }
+.ct .ct-world .ct-seat img { position: absolute; inset-block-end: 0; inset-inline-start: 50%; block-size: 100%; inline-size: auto; max-inline-size: none; translate: -50% 0; opacity: 0; transition: opacity .16s linear; }
+.ct .ct-world .ct-seat[data-view=back] .ct-seat__back, .ct .ct-world .ct-seat[data-view=side] .ct-seat__side, .ct .ct-world .ct-seat[data-view=front] .ct-seat__front { opacity: 1; }
+.ct-seat[data-mood=leaning] { transform: translateY(-3%) rotate(calc((var(--i) - 2) * -2deg)) scale(1.03); }
+.ct-seat[data-mood=gasping] { animation: ct-seat-in .7s var(--studio-ease-spring) both, ct-gasp .5s var(--studio-ease-spring); }
+.ct-seat[data-mood=turning] { transform: translateY(-1%) rotate(calc((var(--i) - 2) * 1.5deg)); }
+.ct-seat[data-mood=cheering] { animation: ct-seat-in .7s var(--studio-ease-spring) both, ct-cheer .52s ease-in-out infinite; animation-delay: 0s, calc(var(--i) * -110ms); }
+.ct-caption { position: absolute; inset-block-start: calc(clamp(18px, 7cqb, 64px) + 12px); inset-inline: 0; margin-inline: auto; inline-size: fit-content; }
+.ct-skip { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; margin: 0; padding: 0; border: 0; background: none; cursor: pointer; pointer-events: auto; }
 
-/* ── the words under the room ──────────────────────────────────────────── */
-.ct-caption { margin: 0; min-block-size: 24px; text-align: center; font: 800 17px/1.35 var(--studio-font); color: var(--ct-ink); }
+/* ---------- motion ---------- */
+@keyframes ct-shaft { from { opacity: .55; translate: -2% 0; } to { opacity: .95; translate: 2% 0; } }
+@keyframes ct-rise { from { opacity: 0; translate: 0 26px; } to { opacity: 1; translate: 0 0; } }
+@keyframes ct-fade { from { opacity: 0; } }
+@keyframes ct-can-in { from { opacity: 0; translate: 0 -60%; scale: .7; } 70% { translate: 0 4%; scale: 1.04 .95; } to { opacity: 1; translate: 0 0; scale: 1; } }
+@keyframes ct-can-idle { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-3%) rotate(1.5deg); } }
+@keyframes ct-lump-in { from { opacity: 0; scale: .3; } 70% { scale: 1.12 .9; } to { opacity: 1; scale: 1; } }
+@keyframes ct-carry-hint { 0%, 100% { translate: 0 0; opacity: .9; } 55% { translate: 22% -18%; opacity: .5; } }
+@keyframes ct-lump-hop { 0%, 78%, 100% { transform: translateY(0) scale(1); } 84% { transform: translateY(-16%) scale(.96, 1.06); } 92% { transform: translateY(0) scale(1.05, .94); } }
+@keyframes ct-pull-hint { 0%, 100% { translate: 0 0; opacity: 1; } 60% { translate: calc(var(--dx) * .6) calc(var(--dy) * .6); opacity: .7; } 61% { opacity: 0; } 62% { translate: 0 0; opacity: 0; } }
+@keyframes ct-land { from { translate: 0 -70%; scale: 1.3; opacity: 0; } 60% { translate: 0 6%; scale: 1.06 .9; opacity: 1; } to { translate: 0 0; scale: 1; opacity: 1; } }
+@keyframes ct-blink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes ct-nod-a { 0%, 100% { rotate: 0deg; } 30% { rotate: -5deg; } 65% { rotate: 4deg; } }
+@keyframes ct-nod-b { 0%, 100% { rotate: 0deg; } 30% { rotate: 5deg; } 65% { rotate: -4deg; } }
+@keyframes ct-flash { from { opacity: .85; } to { opacity: 0; } }
+@keyframes ct-fly { from { translate: 0 0; scale: 1; } 55% { translate: calc(var(--dx) * .55) calc(var(--dy) * .55 - 46px); scale: 1.12; } to { translate: var(--dx) var(--dy); scale: .5; opacity: .6; } }
+@keyframes ct-fly-frame { from { translate: 0 0; scale: 2; opacity: .2; } 30% { opacity: 1; } to { translate: var(--dx) var(--dy); scale: .7; opacity: .9; } }
+@keyframes ct-tile { 0%, 100% { rotate: -2deg; } 50% { rotate: 2deg; } }
+@keyframes ct-screen { from { scale: 1 0; opacity: 0; } }
+@keyframes ct-flicker { 0% { opacity: .92; } 50% { opacity: 1; } 100% { opacity: .86; } }
+@keyframes ct-seat-in { from { translate: -50% -30%; opacity: 0; } to { translate: -50% -100%; opacity: 1; } }
+@keyframes ct-gasp { 0%, 100% { transform: translateY(0) scale(1); } 40% { transform: translateY(-9%) scale(.97, 1.05); } 70% { transform: translateY(0) scale(1.03, .96); } }
+@keyframes ct-cheer { 0%, 100% { transform: translateY(0) rotate(-2deg) scale(1.02, .97); } 50% { transform: translateY(-11%) rotate(2deg) scale(.98, 1.04); } }
 
-/* ── the projectionist's desk: reels, keys, clay ───────────────────────── */
-.ct-desk { display: grid; gap: 10px; align-content: start; min-inline-size: 0; }
-.ct-desk[data-idle='true'] { opacity: .45; pointer-events: none; }
-.ct-cans { display: flex; justify-content: center; gap: 4px; }
-.ct-can { position: relative; flex: 1 1 0; min-inline-size: 0; max-inline-size: 112px; min-block-size: var(--studio-tap); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 5px 2px 6px; border: 1px solid transparent; border-radius: var(--studio-radius-control); background: transparent; color: var(--ct-ink); transition: transform .14s var(--studio-ease-spring), background-color .2s; }
-.ct-can:active:not(:disabled) { transform: scale(.94); }
-/* A reel is kept on a felt pad from the valley; its window shows one frame of the film. */
-.ct-can__pad { position: relative; display: grid; place-items: center; inline-size: 62px; block-size: 56px; }
-.ct-can__pad > img { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; object-fit: contain; filter: drop-shadow(0 3px 3px var(--ct-shade)); }
-.ct-can__window { position: relative; inline-size: 33px; block-size: 33px; margin-block-end: 6px; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 2px var(--studio-surface), inset 0 2px 3px var(--ct-shade); }
-.ct-can__window > svg { inline-size: 100%; block-size: 100%; display: block; }
-.ct-can__lumps { position: relative; display: flex; margin-block-end: 7px; }
-.ct-can__lumps .ct-lump__art { inline-size: 25px; block-size: 23px; margin-inline: -2px; }
-/* Watched to the end: a teal disc with a tick (shape as well as colour). */
-.ct-can__done { position: absolute; inset-block-start: -3px; inset-inline-end: -2px; inline-size: 22px; block-size: 22px; border-radius: 50%; background: var(--studio-done); box-shadow: 0 0 0 2px var(--studio-surface); animation: ct-pop .42s var(--studio-ease-spring); }
-.ct-can__done::after { content: ''; position: absolute; left: 7px; top: 4px; inline-size: 6px; block-size: 11px; border: solid var(--studio-done-ink); border-width: 0 2.6px 2.6px 0; rotate: 42deg; }
-.ct-can__name { font: 800 12.5px/1.15 var(--studio-font); text-align: center; color: var(--ct-ink); }
-.ct-can[aria-pressed='true'] { background: var(--studio-teal-soft); border-color: var(--studio-teal-ink); box-shadow: inset 0 0 0 1px var(--studio-teal-ink); }
-.ct-can[aria-pressed='true'] .ct-can__name { color: var(--studio-teal-ink); }
-
-.ct-transport { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; }
-.ct-key { display: inline-grid; place-items: center; min-inline-size: var(--studio-tap); min-block-size: var(--studio-tap); padding: 0; border: 1px solid var(--studio-line); border-radius: 50%; color: var(--ct-ink); background: var(--studio-surface); box-shadow: 0 3px 0 var(--studio-mist), 0 7px 14px var(--studio-shade); transition: transform .12s var(--studio-ease-spring), box-shadow .12s; }
-.ct-key:active:not(:disabled) { transform: translateY(3px) scale(.96); box-shadow: 0 0 0 var(--studio-mist), 0 2px 5px var(--studio-shade); }
-.ct-key:disabled { opacity: .38; box-shadow: none; }
-.ct-key--play { min-inline-size: 72px; min-block-size: 72px; border-color: var(--studio-action); color: var(--studio-action-ink); background: var(--studio-action); box-shadow: 0 4px 0 color-mix(in srgb, var(--studio-action) 70%, var(--studio-mist)), 0 10px 18px var(--studio-shade); }
-.ct-key--dir[aria-pressed='true'] { border-color: var(--studio-teal-ink); background: var(--studio-teal-soft); color: var(--studio-teal-ink); box-shadow: inset 0 0 0 2px var(--studio-teal-ink), 0 2px 5px var(--studio-shade); transform: translateY(2px); }
-.ct[dir='rtl'] .ct-flip { transform: scaleX(-1); }
-.ct-key--play[data-backwards='true'] .ct-play { transform: scaleX(-1); }
-.ct[dir='rtl'] .ct-key--play[data-backwards='true'] .ct-play { transform: none; }
-
-/* Choosing the clay. */
-.ct-pick { display: grid; gap: 6px; }
-.ct-pick__row { display: grid; grid-template-columns: 1fr; gap: 1px; }
-.ct-pick__title { font: 900 14px/1.1 var(--studio-font); color: var(--studio-graphite-soft); }
-.ct-pick__lumps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
-.ct-lump { display: grid; place-items: center; min-block-size: var(--studio-tap); padding: 0; border: 1px solid transparent; border-radius: var(--studio-radius-control); background: transparent; transition: transform .16s var(--studio-ease-spring); }
-.ct-lump__art { inline-size: 48px; block-size: 44px; }
-.ct-lump:active { transform: scale(.9, .84); }
-.ct-lump[aria-checked='true'] { background: var(--studio-teal-soft); border-color: var(--studio-teal-ink); box-shadow: inset 0 0 0 2px var(--studio-teal-ink); }
-.ct-lump[aria-checked='true'] .ct-lump__art { animation: ct-pop .36s var(--studio-ease-spring); }
-.ct-roll, .ct-curtain { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.ct-roll { margin-block-start: 2px; }
-.ct-note { margin: 0; text-align: center; font: 700 14px/1.4 var(--studio-font); color: var(--studio-graphite-soft); }
-.ct-curtain__line { margin: 0; font: 800 15px/1.3 var(--studio-font); color: var(--ct-ink); text-align: center; }
-/* The next thing to do, once every film has been seen: ringed in the signal colour. */
-.ct-curtain .studio-game-button-v2 { outline: 3px solid var(--studio-signal); outline-offset: 3px; }
-
-@keyframes ct-mark { from { opacity: .95; transform: scale(.35); } to { opacity: 0; transform: scale(1.25); } }
-@keyframes ct-pop { 0% { transform: scale(.4); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
-@keyframes ct-hop { 0%, 100% { transform: translateY(0) scale(1, 1); } 22% { transform: translateY(2%) scale(1.05, .93); } 55% { transform: translateY(-16%) scale(.97, 1.05); } 84% { transform: translateY(0) scale(1.04, .95); } }
-@keyframes ct-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1, 1.018); } }
-@keyframes ct-led { 0%, 100% { opacity: 0; } 50% { opacity: .55; } }
-@keyframes ct-gate { 0%, 100% { border-color: var(--studio-signal); } 50% { border-color: color-mix(in srgb, var(--studio-signal) 45%, var(--studio-surface)); } }
-@keyframes ct-flick-a { 0% { opacity: 0; } 40% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes ct-flick-b { 0% { opacity: 0; } 40% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes ct-swing { 0% { transform: rotate(0); } 18% { transform: rotate(7deg); } 42% { transform: rotate(-5deg); } 64% { transform: rotate(3deg); } 84% { transform: rotate(-1.4deg); } 100% { transform: rotate(0); } }
-@keyframes ct-press { 0% { opacity: 0; transform: translate(20px, 30px); } 18% { opacity: 1; transform: translate(0, 0); } 28%, 56% { opacity: 1; transform: translate(0, 5px) scale(.88); } 66%, 84% { opacity: 1; transform: translate(0, 0); } 100% { opacity: 0; transform: translate(12px, 18px); } }
-@keyframes ct-pull { 0% { opacity: 0; transform: translateX(0); } 14%, 22% { opacity: 1; transform: translateX(0) scale(.9); } 52% { opacity: 1; transform: translateX(calc(var(--ct-dir) * 64px)) scale(.9); } 80% { opacity: 1; transform: translateX(0) scale(.9); } 100% { opacity: 0; transform: translateX(0); } }
-@keyframes ct-nudge { 0%, 22% { transform: translateX(0); } 52% { transform: translateX(calc(var(--ct-dir) * 64px)); } 80%, 100% { transform: translateX(0); } }
-
-@media (max-width: 600px) {
-  .ct { gap: 8px; }
-  /* Choosing clay comes first on a phone: the reels wait until the film rolls. */
-  .ct-cans[data-hidden='true'] { display: none; }
-  .ct-transport { gap: 6px; }
-  .ct-curtain__line { display: none; }
-  /* Once every film is seen, the curtain call takes the caption's place, straight under the stage. */
-  .ct[data-ready='true'] .ct-caption { display: none; }
-  .ct[data-ready='true'] .ct-curtain { order: -1; padding-block: 4px 2px; }
-  .ct-caption { font-size: 16px; }
-}
-@media (min-width: 601px) {
-  .ct { --ct-cell: 88px; --ct-peek: 54px; --ct-floor: 82px; }
-  .ct-room { padding-inline: 16px; }
-  .ct-poster { display: block; }
-  .ct-theatre { inline-size: min(100% - 220px, 560px); }
-  .ct-lens { inline-size: 78px; inset-block-start: -34px; }
-  .ct-lens i { top: 37px; inline-size: 12px; }
-  .ct-can__pad { inline-size: 74px; block-size: 66px; }
-  .ct-can__window { inline-size: 40px; block-size: 40px; margin-block-end: 7px; }
-  .ct-can__name { font-size: 14px; }
-  .ct-lump__art { inline-size: 54px; block-size: 50px; }
-}
-@media (min-width: 900px) {
-  .ct { grid-template-columns: minmax(0, 1fr) 344px; grid-template-rows: auto auto; column-gap: 18px; align-items: start; }
-  .ct-room { grid-column: 1; grid-row: 1; }
-  .ct-caption { grid-column: 1; grid-row: 2; font-size: 19px; }
-  /* The reels on their shelf at the top, the keys at the bottom beside the film strip they drive. */
-  .ct-desk { grid-column: 2; grid-row: 1; align-self: stretch; align-content: space-between; gap: 14px; }
-  .ct-curtain { order: 3; }
-  .ct-theatre { inline-size: min(100% - 148px, 520px); }
-  .ct-poster { inline-size: 78px; }
-  /* The reels as a shelf: one to a row, name beside its pad. */
-  .ct-cans { flex-direction: column; gap: 6px; }
-  .ct-can { flex: none; max-inline-size: none; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 6px 12px 6px 8px; border-color: var(--studio-line); background: var(--studio-surface); box-shadow: 0 2px 6px var(--studio-shade); }
-  .ct-can__name { text-align: start; font-size: 16px; }
-  .ct-can__pad { inline-size: 64px; block-size: 58px; flex: none; }
-  .ct-can__window { inline-size: 35px; block-size: 35px; }
-  .ct-transport { padding: 12px 8px; border-radius: var(--studio-radius-card); border: 1px solid var(--studio-line); background: var(--studio-pearl); gap: 6px; flex-wrap: nowrap; }
-  .ct-pick { padding: 12px; border-radius: var(--studio-radius-card); border: 1px solid var(--studio-line); background: var(--studio-pearl); }
-}
-@media (hover: hover) {
-  .ct-can:hover:not(:disabled) { transform: translateY(-2px); }
-  .ct-key:hover:not(:disabled) { transform: translateY(-1px); }
+@media (hover: hover) and (pointer: fine) {
+  .ct-can:hover { translate: 0 -7%; }
+  .ct-lump:hover { scale: 1.1; }
+  .ct-tile:hover { translate: 0 -8%; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ct *, .ct *::before, .ct *::after { animation: none !important; transition: none !important; }
-  .ct-mark { opacity: .8; }
-  .ct-ghost { opacity: 1; }
-  .ct-friend[data-mood='glad'] img { transform: translateY(-8%); }
+  .ct-world *, .ct-world *::before, .ct-world *::after { animation-duration: .01s !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: .12s !important; }
+  .ct-fly { display: none; }
+  .ct-flash { animation-duration: .2s !important; }
+  .ct-pull[data-cue=true] i, .ct-hero[data-cue=true]::after { animation: none !important; }
 }
-@media (forced-colors: active) { .ct-key, .ct-can, .ct-lump, .ct-slot { border: 2px solid ButtonText; } }
+@media (forced-colors: active) {
+  .ct-pull i, .ct-gate { border: 2px solid ButtonText; }
+  .ct-gel[aria-pressed=true], .ct-cell[data-now=true] { outline: 3px solid Highlight; }
+}

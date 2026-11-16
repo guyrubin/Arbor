@@ -1,14 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DISCOVERIES, PARTS, SPRING_OMEGA, TIER_STRANDS, ZOOM_MAX, ZOOM_MIN, allFound, binFor, capOffset, chooseTier, clampCamera, clampZoom, discover,
-  flowAngle, focusTarget, generateStrands, gustAt, isDiscovery, mixCamera, pointInPolygon, seeded, springStep, stageCamera, strokeWeight, trunkAngle, trunkHalfWidth, windStrength, zoomAbout,
-  FOCUS_ZOOMS,
-  type Bounds, type FlowKind,
+  DISCOVERIES, PARTS, SPRING_OMEGA, TIER_STRANDS, allFound, binFor, capOffset, chooseTier, discover,
+  flowAngle, generateStrands, gustAt, isDiscovery, mixCamera, pointInPolygon, seeded, springStep, strokeWeight, trunkAngle, trunkHalfWidth, windStrength,
+  type FlowKind,
 } from './iceAgeFriendRules';
 import { mammothView, strokePoint, toyAt, turnPoint, unturnPoint } from './mammothShape';
 
-const BOUNDS: Bounds = { minX: 70, minY: 150, maxX: 910, maxY: 640 };
-const HALF = { w: 600, h: 300 };
 
 describe('seeded coat', () => {
   it('the generator is deterministic and in 0..1', () => {
@@ -78,57 +75,11 @@ describe('the flow field', () => {
 });
 
 describe('camera', () => {
-  it('zoom is held between 1 and 4', () => {
-    expect(clampZoom(0.2)).toBe(ZOOM_MIN); expect(clampZoom(9)).toBe(ZOOM_MAX); expect(clampZoom(Number.NaN)).toBe(ZOOM_MIN);
-  });
-  it('clampCamera never lets the view leave the animal by more than the margin, at any zoom', () => {
-    const margin = 70;
-    for (const zoom of [1, 1.5, 2.5, 4]) for (const [x, y] of [[-5000, -5000], [5000, 5000], [490, 395], [0, 900], [Number.NaN, 300]]) {
-      const c = clampCamera({ x, y }, zoom, BOUNDS, HALF, margin);
-      const hw = HALF.w / zoom, hh = HALF.h / zoom;
-      const wide = BOUNDS.maxX - BOUNDS.minX + 2 * margin < 2 * hw, tall = BOUNDS.maxY - BOUNDS.minY + 2 * margin < 2 * hh;
-      if (wide) expect(c.x).toBeCloseTo((BOUNDS.minX + BOUNDS.maxX) / 2);
-      else { expect(c.x - hw).toBeGreaterThanOrEqual(BOUNDS.minX - margin - 1e-6); expect(c.x + hw).toBeLessThanOrEqual(BOUNDS.maxX + margin + 1e-6); }
-      if (tall) expect(c.y).toBeCloseTo((BOUNDS.minY + BOUNDS.maxY) / 2);
-      else { expect(c.y - hh).toBeGreaterThanOrEqual(BOUNDS.minY - margin - 1e-6); expect(c.y + hh).toBeLessThanOrEqual(BOUNDS.maxY + margin + 1e-6); }
-    }
-  });
-  it('zoomAbout keeps the focus point fixed on screen', () => {
-    const cam = { x: 400, y: 380, zoom: 1.5 }, focus = { x: 520, y: 300 };
-    const next = zoomAbout(cam, 2, focus);
-    expect(next.zoom).toBe(3);
-    expect((focus.x - next.x) * next.zoom).toBeCloseTo((focus.x - cam.x) * cam.zoom);
-    expect((focus.y - next.y) * next.zoom).toBeCloseTo((focus.y - cam.y) * cam.zoom);
-    expect(zoomAbout(cam, 100, focus).zoom).toBe(ZOOM_MAX);
-  });
-  it('each discovery has a focus target close up, inside bounds, near its ring', () => {
-    for (const view of ['side', 'turned'] as const) {
-      const v = mammothView(view);
-      for (const [id, [x, y]] of Object.entries(v.hotspots)) {
-        const t = focusTarget({ x, y }, v.bounds, HALF, 70, FOCUS_ZOOMS[id]);
-        expect(t.zoom, id).toBeGreaterThanOrEqual(1.5);
-        const clamped = clampCamera(t, t.zoom, v.bounds, HALF, 70);
-        expect(clamped.x).toBeCloseTo(t.x); expect(clamped.y).toBeCloseTo(t.y);
-        // The ring stays on screen at the target.
-        expect(Math.abs(x - t.x)).toBeLessThan(HALF.w / t.zoom); expect(Math.abs(y - t.y)).toBeLessThan(HALF.h / t.zoom);
-      }
-    }
-  });
-  it('seen whole, the stage camera rests on the composed picture; zoomed in, it is held on the animal', () => {
-    const home = { x: 470, y: 330 };
-    expect(stageCamera({ x: 9000, y: -9000 }, 1, home, BOUNDS, HALF, 70)).toEqual(home);
-    for (const zoom of [1.6, 2.5, 4]) for (const [x, y] of [[-5000, 900], [5000, -900], [490, 395]]) {
-      const c = stageCamera({ x, y }, zoom, home, BOUNDS, HALF, 70), held = clampCamera({ x, y }, zoom, BOUNDS, HALF, 70);
-      expect(c.x).toBeCloseTo(held.x); expect(c.y).toBeCloseTo(held.y);
-    }
-    // In between it eases from one to the other, never past either.
-    const part = stageCamera({ x: 5000, y: 395 }, 1.3, home, BOUNDS, HALF, 70), far = clampCamera({ x: 5000, y: 395 }, 1.3, BOUNDS, HALF, 70);
-    expect(part.x).toBeGreaterThan(Math.min(home.x, far.x) - 1e-6); expect(part.x).toBeLessThan(Math.max(home.x, far.x) + 1e-6);
-  });
-  it('mixCamera starts and ends exactly', () => {
+  it('mixCamera starts and ends exactly, and zooms evenly', () => {
     const a = { x: 0, y: 0, zoom: 1 }, b = { x: 100, y: 50, zoom: 4 };
     expect(mixCamera(a, b, 0)).toEqual(a); expect(mixCamera(a, b, 1)).toEqual(b);
     expect(mixCamera(a, b, 0.5).zoom).toBeCloseTo(2);
+    expect(mixCamera(a, b, -3)).toEqual(a); expect(mixCamera(a, b, 9)).toEqual(b);
   });
 });
 
@@ -174,15 +125,17 @@ describe('quality tier', () => {
   });
 });
 
-describe('the five discoveries', () => {
-  it('finding adds once, keeps order, and all five finish', () => {
+describe('the five pictures', () => {
+  it('finding adds once, keeps the story order, and all five finish', () => {
     let found = discover([], 'hump');
     found = discover(found, 'coats'); found = discover(found, 'hump'); found = discover(found, 'nonsense');
     expect(found).toEqual(['coats', 'hump']);
     expect(allFound(found)).toBe(false);
     for (const id of DISCOVERIES) found = discover(found, id);
     expect(found).toEqual([...DISCOVERIES]); expect(allFound(found)).toBe(true);
-    expect(isDiscovery('ears')).toBe(true); expect(isDiscovery('wings')).toBe(false);
+    expect(DISCOVERIES).toHaveLength(5);
+    // The small ears are the visit's secret, not one of the five; the herd is.
+    expect(isDiscovery('herd')).toBe(true); expect(isDiscovery('ears')).toBe(false); expect(isDiscovery('wings')).toBe(false);
   });
 });
 

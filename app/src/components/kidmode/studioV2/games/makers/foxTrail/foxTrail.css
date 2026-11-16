@@ -1,168 +1,231 @@
-/* Pep's Trail (activity id fox-trail): the Sky Gardens path at dusk, then with
-   every light back on. The scene is one window on a pearl card; Pep's controls
-   sit under it, never over the picture. Chrome wears the v30 register (pearl,
-   white, graphite, teal for found, signal for "next"); colour lives in the kit
-   pictures. Every colour here is a Studio or maker token. */
+/* Pep's Trail (activity id fox-trail): a side-scrolling run through Horizon
+   Valley at dusk. The whole stage is the picture: a sky plate, three parallax
+   layers of the valley, the trail, and foliage in front of the camera. Every
+   colour is a maker token (scene) or a Studio token (the ghost hand); the HUD
+   is the shared play kit's. Layers are laid out in world units and scaled by
+   the loop (transform only); nothing in play waits on an animation. */
+.ft { position: relative; inline-size: 100%; block-size: 100%; }
+.ft-world { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: pointer; contain: strict;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--mk-indigo) 70%, var(--mk-violet)) 0%, color-mix(in srgb, var(--mk-rose) 52%, var(--mk-lilac)) 56%, color-mix(in srgb, var(--mk-plum) 42%, var(--mk-lilac)) 100%); }
+.ft-world :where(i, span, img, div, svg) { position: absolute; display: block; pointer-events: none; }
+.ft-world img { max-inline-size: none; max-block-size: none; -webkit-user-drag: none; user-select: none; }
 
-/* ── the card, the scene window, the deck ── */
-.ft { font-family: var(--studio-font); color: var(--studio-graphite); background: var(--studio-frost); border: 1px solid var(--studio-surface); border-radius: var(--studio-radius-panel); padding: 10px; max-inline-size: 1040px; margin-inline: auto; box-shadow: var(--studio-lift); }
-.ft button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-.ft button:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; }
-.ft-play { display: grid; gap: 10px; }
-.ft-stage { position: relative; isolation: isolate; overflow: hidden; block-size: clamp(320px, calc(100dvh - 270px), 600px); border-radius: var(--studio-radius-card); border: 1px solid var(--studio-line); background: linear-gradient(to bottom, color-mix(in srgb, var(--mk-plum) 55%, var(--mk-lilac)), color-mix(in srgb, var(--mk-rose) 60%, var(--mk-amber)) 62%, color-mix(in srgb, var(--mk-rose) 45%, var(--mk-plum))); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: pointer; --ft-scale: 1; --ft-top: 0px; --ft-farw: 940px; --ft-farh: 794px; --ft-fartop: -366px; }
-.ft-play[data-phase=night] .ft-stage { background: linear-gradient(to bottom, var(--mk-night), var(--mk-indigo-deep)); }
-.ft-probe { position: absolute; inline-size: 0; block-size: 0; overflow: hidden; transition: none !important; }
-.ft-world { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-.ft-objects { pointer-events: none; }
-.ft-move { position: absolute; top: var(--ft-top); left: 0; block-size: calc(540px * var(--ft-scale)); inline-size: calc(var(--lw) * var(--ft-scale) * 1px); will-change: transform; }
-/* One unit here is one world unit: the window's zoom is a single scale. */
-.ft-u { position: absolute; top: 0; left: 0; inline-size: calc(var(--lw) * 1px); block-size: 540px; transform-origin: 0 0; transform: scale(var(--ft-scale)); }
-.ft-u > *, .ft-pep * { position: absolute; }
-.ft-u img, .ft .ft-u img { max-inline-size: none; user-select: none; -webkit-user-drag: none; }
-.ft-far { left: -40px; top: var(--ft-fartop); inline-size: var(--ft-farw); block-size: var(--ft-farh); background-size: 100% 100%; background-repeat: no-repeat; }
-.ft-strip { left: 0; inline-size: 100%; background-repeat: repeat-x; background-position: 0 0; }
-.ft-strip--one { background-repeat: no-repeat; background-size: 100% 100%; }
-.ft-canvas { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; display: block; pointer-events: none; }
+/* ---- plates: a dusk picture with its lit twin over it ---- */
+.ft-tone { inset: 0; background-repeat: repeat-x; background-size: 100% 100%; }
+.ft-tone--night { opacity: 0; transition: opacity 1.2s ease; }
+[data-lit=true] .ft-tone--night { opacity: 1; }
+/* a repeating plate wraps when it is filtered: without this its bottom row shows as a hairline along its top edge */
+.ft-strip > .ft-tone, .ft-paving > .ft-tone { clip-path: inset(2px 0 0 0); }
+.ft-sky { left: 0; top: 0; will-change: transform; }
+.ft-cloud { block-size: 1.5%; border-radius: 50%; opacity: .7; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-butter) 62%, var(--mk-rose)), color-mix(in srgb, var(--mk-rose) 40%, transparent) 55%, transparent); animation: ft-drift 100s linear infinite alternate; transition: opacity 1.2s ease; }
+.ft-sky[data-lit=true] .ft-cloud { opacity: .16; }
+.ft-layer { left: 0; top: 0; inline-size: 0; block-size: 0; transform-origin: 0 0; will-change: transform; }
+/* depth haze gathers at the foot of every far layer */
+.ft-strip::after { content: ""; position: absolute; inset-inline: 0; inset-block-end: 0; block-size: 44%; background: linear-gradient(to top, color-mix(in srgb, var(--mk-rose) 30%, transparent), transparent); transition: opacity 1.2s ease; }
+[data-lit=true] > .ft-strip::after { opacity: 0; }
+/* below its foot each layer carries on as misty ground, so a sunk layer never ends on a hard edge */
+.ft-strip::before { content: ""; position: absolute; inset-inline: 0; inset-block-start: calc(100% - 1px); block-size: 520px; background: linear-gradient(180deg, color-mix(in srgb, var(--mk-sage) 44%, var(--mk-lilac)), color-mix(in srgb, var(--mk-plum) 36%, var(--mk-lilac)) 70%); transition: background-color 1.2s ease; }
+[data-lit=true] > .ft-strip::before { background: linear-gradient(180deg, color-mix(in srgb, var(--mk-indigo) 70%, var(--mk-teal-deep)), var(--mk-indigo-deep) 70%); }
+.ft-blooms .ft-strip::before { display: none; }
+.ft-layer[data-layer=farShore] { opacity: .8; }
+.ft-layer[data-layer=farShore] .ft-strip::after { block-size: 80%; }
+.ft-blooms .ft-strip::after, .ft-layer[data-layer=nearTerrace] .ft-strip::after { display: none; }
+.ft-layer[data-layer=farTerrace] { opacity: .9; }
+.ft-dome .ft-tone { background-repeat: no-repeat; }
 
-/* ── kit props on the path: dimmed at dusk, lit again at night ── */
-.ft-prop { display: block; inline-size: 100%; block-size: 100%; transition: filter 1.1s ease; }
-.ft-toy { transform-origin: 50% 100%; }
-.ft-tone--dusk .ft-prop { filter: brightness(.82) saturate(.86) sepia(.16); }
-.ft-tone--night .ft-prop { filter: brightness(.6) saturate(.8); }
-.ft-tone--night .ft-toy:not(.ft-friend) { filter: brightness(.86) saturate(1.05); }
-.ft-tone--dusk .ft-friend > .ft-prop { filter: brightness(.9) saturate(.92) sepia(.1); }
-.ft-tone--night .ft-friend > .ft-prop { filter: brightness(.8) saturate(.9); }
-.ft-friend > * { position: absolute; }
-.ft-friend > img { inset: 0; }
-/* GobGob's PulsePod: amber while the valley waits, cyan when the three petals are home */
-.ft-pod { inline-size: 16px; block-size: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: radial-gradient(closest-side, var(--mk-white), color-mix(in srgb, var(--mk-amber) 85%, transparent) 40%, transparent); animation: ft-glow 2.4s ease-in-out infinite; }
-.ft-pod[data-ready=true] { background: radial-gradient(closest-side, var(--mk-white), color-mix(in srgb, var(--mk-sea) 90%, transparent) 40%, transparent); animation-duration: 1.1s; }
-.ft-post { border-radius: 4px; background: linear-gradient(to right, var(--mk-white), var(--mk-chalk) 55%, var(--mk-steel-light)); box-shadow: inset 0 3px 0 var(--mk-sea); transition: filter 1.1s ease; }
-.ft-post--stand { border-radius: 5px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--mk-steel) 30%, transparent); }
-.ft-tone--dusk .ft-post, .ft-tone--dusk .ft-planter { filter: brightness(.84) saturate(.9) sepia(.14); }
-.ft-tone--night .ft-post { filter: brightness(.5) saturate(.8); }
-.ft-pool { background-size: 100% 100%; box-shadow: inset 0 5px 0 color-mix(in srgb, var(--mk-white) 70%, transparent), inset 0 9px 8px color-mix(in srgb, var(--mk-shadow) 22%, transparent), inset 4px 0 0 color-mix(in srgb, var(--mk-white) 55%, transparent), inset -4px 0 0 color-mix(in srgb, var(--mk-white) 55%, transparent); }
-.ft-pool--front { opacity: .4; box-shadow: none; }
-.ft-planter { filter: drop-shadow(0 10px 8px color-mix(in srgb, var(--mk-shadow) 40%, transparent)); }
-.ft-shadow { left: -34px; top: -6px; inline-size: 68px; block-size: 13px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-shadow) 62%, transparent), transparent); }
+/* ---- the trail's own colours: dusk, and lit ---- */
+.ft-trail {
+  --ft-white: color-mix(in srgb, var(--mk-snow) 80%, var(--mk-rose));
+  --ft-white-shade: color-mix(in srgb, var(--mk-snow) 52%, var(--mk-lilac));
+  --ft-edge: color-mix(in srgb, var(--mk-lilac) 50%, var(--mk-plum));
+  --ft-line: color-mix(in srgb, var(--mk-teal) 62%, var(--mk-lilac));
+  --ft-glass: color-mix(in srgb, var(--mk-sky-pale) 30%, transparent);
+  --ft-water-a: color-mix(in srgb, var(--mk-sun) 30%, var(--mk-blossom));
+  --ft-water-b: color-mix(in srgb, var(--mk-rose) 46%, var(--mk-lilac));
+  --ft-water-c: color-mix(in srgb, var(--mk-violet) 56%, var(--mk-lilac));
+  --ft-sprite: brightness(.84) saturate(.86);
+}
+.ft-trail[data-lit=true] {
+  --ft-white: color-mix(in srgb, var(--mk-indigo) 46%, var(--mk-snow));
+  --ft-white-shade: color-mix(in srgb, var(--mk-indigo) 72%, var(--mk-snow));
+  --ft-edge: var(--mk-indigo-deep);
+  --ft-line: color-mix(in srgb, var(--mk-sea) 70%, var(--mk-white));
+  --ft-glass: color-mix(in srgb, var(--mk-sky) 22%, transparent);
+  --ft-water-a: color-mix(in srgb, var(--mk-sky) 34%, var(--mk-indigo));
+  --ft-water-b: var(--mk-indigo);
+  --ft-water-c: var(--mk-indigo-deep);
+  --ft-sprite: brightness(.94) saturate(.96);
+}
+.ft-paving .ft-tone { background-repeat: repeat-x; }
+.ft-paving__under { inset-inline: 0; transform: scaleY(-1); }
+.ft-paving__under::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, transparent, color-mix(in srgb, var(--mk-plum) 34%, transparent)); }
 
-/* garden lamps: a pool of warm light when the valley's lights are back */
-.ft-lamp { transform-origin: 50% 100%; }
-.ft-lamp__glow { inset: -70% -90% -6%; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-butter) 62%, transparent), color-mix(in srgb, var(--mk-amber) 16%, transparent) 55%, transparent); opacity: 0; transition: opacity 1.2s ease; }
-.ft-tone--night .ft-lamp__glow { opacity: 1; }
-.ft-tone--night .ft-lamp .ft-prop { filter: brightness(1.04); }
-.ft-lamp[data-blink=true] .ft-lamp__glow { opacity: .85; transition-duration: .12s; }
-.ft-lamp[data-blink=true] .ft-prop { filter: brightness(1.05); transition-duration: .12s; }
-/* knit flowers: folded until Pep goes by */
-.ft-flower { transform-origin: 50% 100%; }
-.ft-flower > img { inset: 0; }
-.ft-flower__open { opacity: 0; transform: scale(.7); transform-origin: 50% 40%; transition: opacity .18s ease, transform .34s var(--studio-ease-spring), filter 1.1s ease; }
-.ft-flower__folded { transition: opacity .18s ease, filter 1.1s ease; }
-.ft-flower[data-open=true] .ft-flower__open { opacity: 1; transform: scale(1); }
-.ft-flower[data-open=true] .ft-flower__folded { opacity: 0; }
-.ft-tone--night .ft-flower[data-open=true] .ft-flower__open { filter: brightness(.95) drop-shadow(0 0 7px color-mix(in srgb, var(--mk-butter) 70%, transparent)); }
-/* the Dome's sun: dull until the three petals are home */
-.ft-sun { transform-origin: 50% 50%; }
-.ft-sun > img { inset: 0; inline-size: 100%; block-size: 100%; }
-.ft-sun__lit { opacity: 0; transition: opacity .7s ease; }
-.ft-sun__glow { inset: -55%; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-butter) 75%, transparent), color-mix(in srgb, var(--mk-sky) 22%, transparent) 50%, transparent); opacity: 0; transition: opacity .7s ease; }
-.ft-sun[data-homed="1"] .ft-sun__glow { opacity: .22; } .ft-sun[data-homed="2"] .ft-sun__glow { opacity: .4; } .ft-sun[data-homed="3"] .ft-sun__glow { opacity: .6; }
-.ft-sun[data-lit=true] .ft-sun__lit { opacity: 1; }
-.ft-sun[data-lit=true] .ft-sun__glow { opacity: 1; animation: ft-glow 3.6s ease-in-out infinite; }
-/* petals of light */
-.ft-petal { inline-size: 26px; block-size: 43px; }
-.ft-petal > img, .ft-follower { inline-size: 26px; block-size: 43px; filter: drop-shadow(0 0 5px color-mix(in srgb, var(--mk-butter) 80%, transparent)); }
-.ft-petal > img { inset: 0; }
-.ft-petal__glow { inset: -80% -130%; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-butter) 70%, transparent), color-mix(in srgb, var(--mk-sun) 18%, transparent) 55%, transparent); animation: ft-glow 2.2s ease-in-out infinite; }
-.ft-petal[data-float=true] { animation: ft-bob 2.6s ease-in-out infinite; }
-.ft-petal[data-hidden=true] > img { opacity: 0; }
-.ft-petal[data-hidden=true] .ft-petal__glow { animation-duration: 3.4s; opacity: .8; }
-.ft-pop { left: 0; top: 0; inline-size: 0; block-size: 0; }
-.ft-follower { left: -13px; top: -22px; will-change: transform; }
-@keyframes ft-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-@keyframes ft-glow { 0%, 100% { opacity: .7; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.06); } }
+/* the skybridge */
+.ft-bridge, .ft-basin, .ft-updraft { top: 0; block-size: 0; }
+.ft-bridge__mist { inset-inline: -260px; top: -6px; block-size: 640px; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--mk-lilac) 16%, transparent) 30%, color-mix(in srgb, var(--mk-rose) 22%, transparent)); }
+.ft-trail[data-lit=true] .ft-bridge__mist { background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--mk-indigo) 30%, transparent) 26%, color-mix(in srgb, var(--mk-indigo-deep) 40%, transparent)); }
+.ft-bridge__pylons { inset-inline: 0; top: 18px; block-size: 600px; opacity: .85;
+  background: repeating-linear-gradient(90deg, transparent 0 300px, var(--ft-white-shade) 300px 304px, var(--ft-white) 304px 312px, var(--ft-white-shade) 312px 318px, transparent 318px 700px);
+  -webkit-mask-image: linear-gradient(to bottom, var(--mk-shadow), transparent 90%); mask-image: linear-gradient(to bottom, var(--mk-shadow), transparent 90%); }
+.ft-bridge__rail { inset-inline: 0; top: -68px; block-size: 68px;
+  background:
+    linear-gradient(180deg, var(--ft-white) 0 5px, var(--ft-white-shade) 5px 7px, transparent 7px),
+    repeating-linear-gradient(90deg, var(--ft-white-shade) 0 2px, var(--ft-white) 2px 6px, var(--ft-white-shade) 6px 8px, transparent 8px 172px),
+    repeating-linear-gradient(112deg, transparent 0 56px, color-mix(in srgb, var(--mk-white) 15%, transparent) 56px 70px, transparent 70px 172px),
+    linear-gradient(180deg, var(--ft-glass), color-mix(in srgb, var(--mk-white) 9%, transparent)); }
+.ft-bridge__deck { inset-inline: -6px; top: 0; block-size: 20px; border-radius: 3px;
+  background: linear-gradient(180deg, var(--ft-white) 0 3px, var(--ft-white-shade) 3px 11px, var(--ft-line) 11px 13.5px, var(--ft-edge) 13.5px 100%);
+  box-shadow: 0 12px 16px color-mix(in srgb, var(--mk-night) 30%, transparent); }
+.ft-trail[data-lit=true] .ft-bridge__deck, .ft-trail[data-lit=true] .ft-pad--lip { box-shadow: 0 8px 18px 2px color-mix(in srgb, var(--mk-sea) 44%, transparent); }
+.ft-abutment { top: -152px; inline-size: 64px; block-size: 800px; border-radius: 20px 20px 0 0;
+  background: linear-gradient(90deg, var(--ft-white-shade), var(--ft-white) 34%, var(--ft-white-shade) 78%, var(--ft-edge)); box-shadow: 8px 0 18px color-mix(in srgb, var(--mk-night) 22%, transparent); }
+.ft-abutment::after { content: ""; position: absolute; inset-inline: 0; top: 34px; block-size: 4px; background: var(--ft-line); }
+.ft-abutment--quay { top: -5px; inline-size: 44px; border-radius: 10px 0 0 0; }
+.ft-abutment--quay::after { top: 10px; }
 
-/* ── Pep ── */
-.ft-pep { left: 0; top: 0; inline-size: 0; block-size: 0; will-change: transform; transition: filter 1.1s ease; }
-.ft-tone--dusk .ft-pep { filter: brightness(.93) saturate(.95); }
-.ft-tone--night .ft-pep { filter: brightness(.86) saturate(.9); }
-.ft-pep__face { left: 0; top: 0; inline-size: 0; block-size: 0; }
+/* the basin */
+.ft-basin__water { inset-inline: 0; top: -30px; block-size: 700px; background: linear-gradient(180deg, var(--ft-water-a) 0, var(--ft-water-b) 12%, var(--ft-water-c) 46%, var(--mk-indigo-deep) 90%); }
+.ft-basin__mirror { inset-inline: 0; top: -30px; block-size: 170px; transform: scaleY(-1); opacity: .5; -webkit-mask-image: linear-gradient(to top, var(--mk-shadow) 20%, transparent); mask-image: linear-gradient(to top, var(--mk-shadow) 20%, transparent); }
+.ft-basin__mirror .ft-tone { background-repeat: repeat-x; }
+.ft-basin__shimmer { inset-inline: 0; top: -24px; block-size: 260px; opacity: .85;
+  background: radial-gradient(ellipse 46px 1.6px at 50% 50%, color-mix(in srgb, var(--mk-white) 60%, transparent), transparent) 0 0 / 210px 26px, radial-gradient(ellipse 30px 1.3px at 50% 50%, color-mix(in srgb, var(--mk-butter) 55%, transparent), transparent) 105px 13px / 210px 26px;
+  -webkit-mask-image: linear-gradient(to bottom, var(--mk-shadow), transparent); mask-image: linear-gradient(to bottom, var(--mk-shadow), transparent); }
+.ft-basin__lap { inset-inline: 0; top: 5px; block-size: 30px; background: linear-gradient(180deg, color-mix(in srgb, var(--mk-white) 46%, transparent) 0 1.5px, color-mix(in srgb, var(--ft-water-b) 55%, transparent) 1.5px, color-mix(in srgb, var(--ft-water-c) 70%, transparent)); }
+.ft-pad { top: 0; block-size: 0; }
+.ft-pad::after { content: ""; position: absolute; inset-inline: 6px; top: 15px; block-size: 30px; border-radius: 0 0 12px 12px; background: linear-gradient(180deg, color-mix(in srgb, var(--ft-white) 46%, transparent), transparent); }
+.ft-pad--lip { block-size: 14px; border-radius: 8px; background: linear-gradient(180deg, var(--ft-white) 0 3.5px, var(--ft-white-shade) 3.5px 9px, var(--ft-line) 9px 11px, var(--ft-edge) 11px); box-shadow: 0 10px 10px -6px color-mix(in srgb, var(--mk-night) 44%, transparent); }
+.ft-pad--lip::after { display: none; }
+
+/* an updraft: a glowing vent in the path and the air rising out of it */
+.ft-updraft__vent { inset-inline: 5%; top: -3px; block-size: 7px; border-radius: 4px; background: linear-gradient(180deg, color-mix(in srgb, var(--mk-teal-deep) 70%, var(--mk-night)), color-mix(in srgb, var(--mk-sea) 60%, var(--mk-white))); box-shadow: 0 0 16px 4px color-mix(in srgb, var(--mk-sea) 60%, transparent); }
+.ft-updraft__streak { top: -340px; inline-size: 3px; block-size: 130px; border-radius: 2px; background: linear-gradient(to top, transparent, color-mix(in srgb, var(--mk-white) 72%, transparent), transparent); animation: ft-rise 1.5s linear infinite; }
+
+/* ---- lamps ---- */
+.ft-lamp { top: 0; inline-size: 0; block-size: 0; }
+.ft-lamp__img { left: -30px; top: -103px; inline-size: 86px; block-size: 105px; filter: brightness(.74) saturate(.6); transition: filter .25s ease; }
+.ft-lamp[data-lit=true] .ft-lamp__img { filter: none; }
+.ft-lamp__halo { left: -84px; top: -178px; inline-size: 210px; block-size: 210px; border-radius: 50%; opacity: 0; transform: scale(.4);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-white) 90%, transparent), color-mix(in srgb, var(--mk-butter) 62%, transparent) 22%, color-mix(in srgb, var(--mk-sun) 26%, transparent) 52%, transparent);
+  mix-blend-mode: screen; transition: opacity .3s ease, transform .5s var(--studio-ease-spring); }
+.ft-lamp__pool { left: -100px; top: -9px; inline-size: 250px; block-size: 26px; border-radius: 50%; opacity: 0; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-butter) 74%, transparent), transparent); mix-blend-mode: screen; transition: opacity .4s ease; }
+.ft-lamp[data-lit=true] .ft-lamp__halo { opacity: .92; transform: scale(1); }
+.ft-lamp[data-lit=true] .ft-lamp__pool { opacity: .85; }
+.ft-lamp[data-blink=a] .ft-lamp__img { animation: ft-blink-a .5s ease; }
+.ft-lamp[data-blink=b] .ft-lamp__img { animation: ft-blink-b .5s ease; }
+.ft-lamp__stem { left: -1.5px; inline-size: 3px; border-radius: 2px; background: linear-gradient(90deg, color-mix(in srgb, var(--mk-leaf-deep) 70%, var(--mk-plum)), color-mix(in srgb, var(--mk-sage) 70%, var(--mk-lilac))); }
+.ft-lamp__bloom { animation: ft-bob 3.4s ease-in-out infinite; }
+.ft-lamp__bloom img { inset: 0; inline-size: 100%; block-size: 100%; filter: var(--ft-sprite); }
+.ft-lamp__bloom .ft-lamp__on { opacity: 0; filter: none; transition: opacity .2s ease; }
+.ft-lamp__bloom .ft-lamp__halo { inset: -95%; inline-size: auto; block-size: auto; }
+.ft-lamp[data-lit=true] .ft-lamp__on { opacity: 1; }
+.ft-lamp[data-lit=true] .ft-lamp__bloom img { animation: ft-wake .55s var(--studio-ease-spring); }
+
+/* ---- hurdles and friends ---- */
+.ft-planter { transform-origin: 50% 100%; filter: var(--ft-sprite); }
+.ft-planter[data-hit=a] { animation: ft-squash-a .55s var(--studio-ease-spring); }
+.ft-planter[data-hit=b] { animation: ft-squash-b .55s var(--studio-ease-spring); }
+.ft-planter[data-pass=a] { animation: ft-rustle-a .5s ease; }
+.ft-planter[data-pass=b] { animation: ft-rustle-b .5s ease; }
+.ft-post { inline-size: 8px; border-radius: 4px 4px 0 0; background: linear-gradient(90deg, var(--ft-white-shade), var(--ft-white) 45%, var(--ft-white-shade)); }
+.ft-post::before { content: ""; position: absolute; left: -3px; top: -7px; inline-size: 14px; block-size: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, var(--mk-white), var(--ft-line)); }
+.ft-bunting { transform-origin: 50% 0; }
+.ft-bunting svg { inset: 0; inline-size: 100%; block-size: 100%; overflow: visible; }
+.ft-flag { animation: ft-flag 1.5s ease-in-out infinite alternate; }
+.ft-bunting[data-hit=a] { animation: ft-flop-a .8s var(--studio-ease-soft); }
+.ft-bunting[data-hit=b] { animation: ft-flop-b .8s var(--studio-ease-soft); }
+.ft-bunting[data-pass=a] { animation: ft-waft-a .7s ease; }
+.ft-bunting[data-pass=b] { animation: ft-waft-b .7s ease; }
+.ft-friend { transform-origin: 50% 100%; }
+.ft-friend img { inset: 0; inline-size: 100%; block-size: 100%; filter: var(--ft-sprite); }
+.ft-friend__shadow, .ft-shadow::before { border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-night) 52%, transparent), transparent); }
+.ft-friend__shadow { inset-inline: -8%; inset-block-end: -5px; block-size: 14px; }
+.ft-friend img { transform-origin: 50% 100%; animation: ft-breath 3.6s ease-in-out infinite; }
+.ft-friend[data-cheer=a] { animation: ft-hop-a .7s var(--studio-ease-soft); }
+.ft-friend[data-cheer=b] { animation: ft-hop-b .7s var(--studio-ease-soft); }
+.ft-friend[data-arrive] { animation: ft-pop .5s var(--studio-ease-spring) both; }
+.ft-can, .ft-bench { filter: var(--ft-sprite); }
+.ft-sun { top: 0; inline-size: 0; block-size: 0; }
+.ft-sun__stand { left: -4px; inline-size: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--ft-white-shade), var(--ft-white) 45%, var(--ft-white-shade)); }
+.ft-sun__head img { inset: 0; inline-size: 100%; block-size: 100%; }
+.ft-sun__on, .ft-sun__halo { opacity: 0; transition: opacity .5s ease; }
+.ft-sun__halo { inset: -110%; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-butter) 80%, transparent), color-mix(in srgb, var(--mk-sun) 26%, transparent) 46%, transparent); }
+.ft-sun[data-lit=true] .ft-sun__on { opacity: 1; }
+.ft-sun[data-lit=true] .ft-sun__halo { opacity: 1; animation: ft-breathe 2.8s ease-in-out infinite; }
+.ft-sun[data-cheer=a] .ft-sun__head { animation: ft-wake .7s var(--studio-ease-spring); }
+.ft-sun[data-cheer=b] .ft-sun__head { animation: ft-wake-b .7s var(--studio-ease-spring); }
+.ft-star { left: 0; top: 0; inline-size: 0; block-size: 0; will-change: transform; }
+.ft-star__halo { left: -36px; top: -36px; inline-size: 72px; block-size: 72px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-white) 86%, transparent), color-mix(in srgb, var(--mk-sky-pale) 44%, transparent) 38%, transparent); animation: ft-twinkle 2.6s ease-in-out infinite; }
+.ft-star[data-found=true] .ft-star__halo { animation-duration: 1s; }
+.ft-star__core { left: -5px; top: -5px; inline-size: 10px; block-size: 10px; border-radius: 50%; background: var(--mk-white); box-shadow: 0 0 10px 2px var(--mk-white); }
+
+/* ---- Pep ---- */
+.ft-pep, .ft-mirror, .ft-shadow { left: 0; top: 0; inline-size: 0; block-size: 0; will-change: transform; }
+.ft-pep { filter: brightness(.94) saturate(.96); }
+.ft-shadow::before { content: ""; position: absolute; left: -56px; top: -8px; inline-size: 112px; block-size: 16px; }
+.ft-pep__face { left: 0; top: 0; inline-size: 0; block-size: 0; transform: scaleX(-1); }
 .ft-pep__spin { inset: 0; }
 .ft-pep__part { inset: 0; background-size: 100% 100%; background-repeat: no-repeat; will-change: transform; }
-.ft-pep__part--far { filter: brightness(.74); }
-.ft-pep__beacon { inline-size: 22px; block-size: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: radial-gradient(closest-side, var(--mk-white), color-mix(in srgb, var(--mk-sea) 80%, transparent) 38%, transparent); opacity: 0; }
+.ft-pep__part--far { filter: brightness(.72); }
+.ft-pep__cam { inline-size: 30px; block-size: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: radial-gradient(closest-side, var(--mk-white), color-mix(in srgb, var(--mk-sea) 78%, transparent) 38%, transparent); }
+.ft-pep[data-charge=true] .ft-pep__cam { animation: ft-charge .9s ease-in both; }
+.ft-pep__streak { inline-size: 170px; block-size: 9px; margin-top: -4.5px; border-radius: 5px; opacity: 0; transform-origin: 0 50%; background: linear-gradient(90deg, color-mix(in srgb, var(--mk-white) 82%, transparent), color-mix(in srgb, var(--mk-sea) 52%, transparent) 28%, transparent); }
+.ft-mirror { opacity: .3; filter: blur(1.4px) brightness(.8); }
 
-/* a tap in the picture answers where it lands */
-.ft-tapmark { position: absolute; inline-size: 44px; block-size: 44px; margin: -22px 0 0 -22px; border-radius: 50%; border: 3px solid var(--studio-surface); box-shadow: 0 0 0 1.5px var(--studio-shade); pointer-events: none; animation: ft-tap .42s var(--studio-ease-soft) forwards; }
-@keyframes ft-tap { from { transform: scale(.35); opacity: .95; } to { transform: scale(1.15); opacity: 0; } }
+/* ---- in front of the trail ---- */
+.ft-fern { filter: blur(5px) brightness(.32) saturate(.7); transform-origin: 50% 80%; }
+.ft-deep { inset: 0; opacity: .1; mix-blend-mode: multiply; background: linear-gradient(180deg, color-mix(in srgb, var(--mk-indigo-deep) 84%, transparent), color-mix(in srgb, var(--mk-indigo) 58%, transparent) 52%, color-mix(in srgb, var(--mk-night) 78%, transparent)); transition: opacity .5s linear; }
+.ft-warm { inset: 0; opacity: 0; mix-blend-mode: soft-light; background: radial-gradient(130% 64% at 50% 76%, color-mix(in srgb, var(--mk-sun) 48%, transparent), color-mix(in srgb, var(--mk-orange) 14%, transparent) 55%, transparent 78%); transition: opacity .6s ease; }
+.ft-speed { inset: 0; opacity: 0; transition: opacity .3s ease; }
+.ft-speed i { inset-inline-start: 0; inline-size: 24%; block-size: 2px; border-radius: 2px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--mk-white) 50%, transparent), transparent); animation: ft-whip .6s linear infinite; }
+.ft-flash { inset: 0; z-index: 8; background: radial-gradient(circle at 32% 62%, var(--mk-white), color-mix(in srgb, var(--mk-white) 84%, transparent)); animation: ft-flash .85s ease-out both; }
 
-/* ── the HUD inside the window: petals found, the ScoutCam, a cue, the one big action ── */
-.ft-hud { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px; pointer-events: none; }
-.ft-hud > * { pointer-events: auto; }
-.ft-pips { position: absolute; inset-block-start: 10px; inset-inline-start: 10px; display: flex; gap: 6px; padding: 7px 10px; border-radius: 999px; background: var(--studio-frost); border: 1px solid var(--studio-surface); box-shadow: 0 4px 12px var(--studio-shade); }
-/* A petal mark: hollow while lost, filled teal with a pearl heart once found (shape and fill, not colour alone). */
-.ft-pip { position: relative; inline-size: 15px; block-size: 22px; border-radius: 50% 50% 50% 50% / 38% 38% 62% 62%; background: var(--studio-mist); box-shadow: inset 0 0 0 2px var(--studio-graphite-soft); transition: background .25s, box-shadow .25s, transform .3s var(--studio-ease-spring); }
-.ft-pip[data-lit=true] { background: var(--studio-done); box-shadow: inset 0 0 0 2px var(--studio-done); transform: scale(1.12); }
-.ft-pip[data-lit=true]::after { content: ''; position: absolute; inset-inline-start: 5px; inset-block-start: 9px; inline-size: 5px; block-size: 7px; border-radius: 50%; background: var(--studio-done-ink); }
-.ft-pip[data-missing=true] { animation: ft-pulse 1.1s ease-in-out 3; box-shadow: inset 0 0 0 2px var(--studio-signal); }
-@keyframes ft-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.24); } }
-.ft-scout { position: absolute; inset-block-start: 10px; inset-inline-end: 10px; display: grid; place-items: center; inline-size: 52px; block-size: 52px; border-radius: 50%; background: var(--studio-frost); border: 2px solid var(--studio-surface); box-shadow: 0 0 0 2px var(--studio-graphite-soft), 0 4px 12px var(--studio-shade); overflow: hidden; pointer-events: none; transition: box-shadow .25s; }
-.ft-scout > img { inline-size: 30px; block-size: 34px; object-fit: contain; }
-.ft-scout[data-near=true] { box-shadow: 0 0 0 3px var(--studio-signal), 0 4px 12px var(--studio-shade); animation: ft-near 1.1s ease-in-out infinite; }
-@keyframes ft-near { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
-.ft-hint { max-inline-size: min(520px, calc(100% - 150px)); margin: 0; padding: 8px 14px; border-radius: 14px; background: var(--studio-frost); border: 1px solid var(--studio-surface); color: var(--studio-graphite); font: 800 16px/1.35 var(--studio-font); text-align: center; box-shadow: 0 6px 18px var(--studio-shade); }
-.ft-hint--empty { display: none; }
-.ft-cta { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-block-size: var(--studio-tap); padding: 12px 24px; border: 1px solid var(--studio-action); border-radius: var(--studio-radius-control); background: var(--studio-action); color: var(--studio-action-ink); font: 900 18px/1.2 var(--studio-font); box-shadow: var(--studio-lift); transition: transform .12s var(--studio-ease-soft); }
-.ft-cta::after { content: ''; position: absolute; inset: -6px; border-radius: 17px; border: 3px solid var(--studio-signal); animation: ft-ring 1.6s ease-in-out infinite; pointer-events: none; }
-.ft-cta:active { transform: scale(.96); }
-@keyframes ft-ring { 0%, 100% { opacity: .35; transform: scale(1); } 50% { opacity: 1; transform: scale(1.04); } }
+/* ---- the ghost hand (HUD layer): the first move of each kind, shown on the picture ---- */
+.ft-ghost { position: absolute; inset-inline-start: 56%; inset-block-start: 44%; inline-size: 70px; block-size: 88px; pointer-events: none; z-index: 1; }
+.ft-ghost svg { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; overflow: visible; animation: ft-ghost-tap 1s ease-in-out infinite; filter: drop-shadow(0 6px 10px var(--studio-shade)); }
+.ft-ghost__hand { fill: var(--studio-surface); stroke: var(--studio-graphite); stroke-width: 2.4; stroke-linejoin: round; }
+.ft-ghost__ring { position: absolute; left: 6px; top: -10px; inline-size: 46px; block-size: 46px; border-radius: 50%; border: 3px solid var(--studio-signal); animation: ft-ghost-ring 1s ease-out infinite; }
+.ft-ghost[data-move=rollNow] svg { animation-name: ft-ghost-swipe; }
+.ft-ghost[data-move=rollNow] .ft-ghost__ring { animation-name: ft-ghost-ring-swipe; }
+.ft-ghost[data-move=holdNow] svg { animation-name: ft-ghost-hold; }
+.ft-ghost[data-move=holdNow] .ft-ghost__ring { animation-name: ft-ghost-ring-hold; }
 
-/* ── Pep's controls: pearl keys with graphite marks ── */
-.ft-deck { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.ft-deck__pads, .ft-deck__acts { display: flex; gap: 10px; }
-.ft-key { position: relative; display: grid; place-items: center; align-content: center; gap: 2px; min-inline-size: 84px; min-block-size: 72px; padding: 6px 10px; border: 1px solid var(--studio-line); border-radius: 22px; color: var(--studio-graphite); background: var(--studio-surface); box-shadow: 0 5px 0 var(--studio-mist), 0 10px 18px var(--studio-shade); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; transition: transform .08s, box-shadow .08s, background-color .08s; }
-.ft-key--act { min-inline-size: 76px; }
-.ft-key > span:not(.ft-ghost) { font: 900 13px/1 var(--studio-font); letter-spacing: .01em; }
-.ft-key:active { transform: translateY(4px); background: var(--studio-pearl); box-shadow: 0 1px 0 var(--studio-mist), 0 3px 8px var(--studio-shade); }
-/* The move to try next: a signal ring that marks the key, never fills it. */
-.ft-key[data-suggest=true]::before { content: ''; position: absolute; inset: -5px; border-radius: 26px; border: 3px solid var(--studio-signal); animation: ft-ring 1.4s ease-in-out infinite; pointer-events: none; }
-/* The ghost hand: presses the real key, lifts, waits, and comes back. */
-.ft-ghost { position: absolute; inset-inline-start: 50%; inset-block-start: 46%; inline-size: 46px; block-size: 58px; margin-inline-start: -8px; pointer-events: none; z-index: 2; animation: ft-ghost 6s var(--studio-ease-soft) infinite; filter: drop-shadow(0 4px 5px var(--studio-shade)); }
-.ft-ghost > svg { display: block; inline-size: 100%; block-size: 100%; }
-.ft-ghost__hand { fill: var(--studio-surface); stroke: var(--studio-graphite); stroke-width: 2.6; stroke-linejoin: round; }
-@keyframes ft-ghost { 0% { opacity: 0; transform: translate(16px, 26px); } 6% { opacity: 1; transform: translate(0, 6px); } 11%, 30% { opacity: 1; transform: translate(0, 0) scale(.9); } 38% { opacity: 1; transform: translate(0, 6px); } 46%, 100% { opacity: 0; transform: translate(16px, 26px); } }
-.ft-ghost[data-holds=false] { animation-name: ft-ghost-tap; }
-@keyframes ft-ghost-tap { 0% { opacity: 0; transform: translate(16px, 26px); } 6% { opacity: 1; transform: translate(0, 6px); } 10%, 14% { opacity: 1; transform: translate(0, 0) scale(.9); } 18% { opacity: 1; transform: translate(0, 6px); } 22%, 26% { opacity: 1; transform: translate(0, 0) scale(.9); } 32% { opacity: 1; transform: translate(0, 6px); } 40%, 100% { opacity: 0; transform: translate(16px, 26px); } }
+@keyframes ft-drift { from { transform: translateX(-30%); } to { transform: translateX(46%); } }
+@keyframes ft-rise { from { transform: translateY(330px); opacity: 0; } 20% { opacity: .9; } to { transform: translateY(-40px); opacity: 0; } }
+@keyframes ft-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes ft-wake { 0% { transform: scale(.7) rotate(-30deg); } 60% { transform: scale(1.25) rotate(8deg); } 100% { transform: none; } }
+@keyframes ft-wake-b { 0% { transform: scale(.7) rotate(30deg); } 60% { transform: scale(1.25) rotate(-8deg); } 100% { transform: none; } }
+@keyframes ft-blink-a { 0%, 100% { filter: brightness(.74) saturate(.6); } 30% { filter: brightness(.95) saturate(.9); } }
+@keyframes ft-blink-b { 0%, 100% { filter: brightness(.74) saturate(.6); } 35% { filter: brightness(.95) saturate(.9); } }
+@keyframes ft-squash-a { 0% { transform: none; } 25% { transform: scale(1.22, .7); } 60% { transform: scale(.92, 1.1) rotate(-3deg); } 100% { transform: none; } }
+@keyframes ft-squash-b { 0% { transform: none; } 25% { transform: scale(1.22, .7); } 60% { transform: scale(.92, 1.1) rotate(3deg); } 100% { transform: none; } }
+@keyframes ft-rustle-a { 0%, 100% { transform: none; } 30% { transform: rotate(5deg); } 65% { transform: rotate(-3deg); } }
+@keyframes ft-rustle-b { 0%, 100% { transform: none; } 30% { transform: rotate(6deg); } 65% { transform: rotate(-2deg); } }
+@keyframes ft-flag { from { transform: rotate(-8deg); } to { transform: rotate(10deg); } }
+@keyframes ft-flop-a { 0% { transform: none; } 20% { transform: scaleY(1.16) skewX(-10deg); } 55% { transform: scaleY(.94) skewX(6deg); } 100% { transform: none; } }
+@keyframes ft-flop-b { 0% { transform: none; } 20% { transform: scaleY(1.16) skewX(-11deg); } 55% { transform: scaleY(.94) skewX(5deg); } 100% { transform: none; } }
+@keyframes ft-waft-a { 0%, 100% { transform: none; } 40% { transform: skewX(-5deg); } }
+@keyframes ft-waft-b { 0%, 100% { transform: none; } 40% { transform: skewX(-6deg); } }
+@keyframes ft-hop-a { 0%, 100% { transform: none; } 18% { transform: scale(1.08, .88); } 45% { transform: translateY(-22px) scale(.95, 1.07); } 75% { transform: scale(1.05, .93); } }
+@keyframes ft-hop-b { 0%, 100% { transform: none; } 18% { transform: scale(1.09, .88); } 45% { transform: translateY(-24px) scale(.95, 1.07); } 75% { transform: scale(1.05, .93); } }
+@keyframes ft-breath { 0%, 100% { transform: none; } 50% { transform: scale(1.012, 1.022); } }
+@keyframes ft-pop { from { transform: scale(.2); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ft-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+@keyframes ft-twinkle { 0%, 100% { transform: scale(.8); opacity: .7; } 50% { transform: scale(1.15); opacity: 1; } }
+@keyframes ft-charge { from { transform: scale(1); } to { transform: scale(5.5); } }
+@keyframes ft-whip { from { transform: translateX(440%); } to { transform: translateX(-120%); } }
+@keyframes ft-flash { 0% { opacity: 0; } 8% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes ft-ghost-tap { 0%, 100% { transform: translateY(10px); } 40% { transform: translateY(0) scale(.92); } }
+@keyframes ft-ghost-hold { 0%, 100% { transform: translateY(10px); } 20%, 80% { transform: translateY(0) scale(.92); } }
+@keyframes ft-ghost-swipe { 0%, 15% { transform: translateY(-14px); } 65%, 100% { transform: translateY(46px); } }
+@keyframes ft-ghost-ring { 0%, 30% { transform: scale(.4); opacity: 0; } 45% { opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+@keyframes ft-ghost-ring-hold { 0%, 15% { transform: scale(.5); opacity: 0; } 25%, 80% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+@keyframes ft-ghost-ring-swipe { 0% { transform: translateY(-14px) scale(.6); opacity: 0; } 15% { opacity: 1; } 65% { transform: translateY(46px) scale(.6); opacity: .7; } 100% { transform: translateY(46px) scale(.6); opacity: 0; } }
 
-@media (min-width: 800px) {
-  .ft { padding: 14px; }
-  .ft-stage { block-size: clamp(360px, calc(100dvh - 250px), 600px); }
-  .ft-hint { font-size: 17px; }
-}
-/* A tall tablet: the window grows with the screen so no band is left empty under the deck. */
-@media (min-width: 700px) and (min-height: 1000px) { .ft-stage { block-size: clamp(480px, calc(100dvh - 330px), 860px); } }
-@media (max-width: 600px) {
-  .ft { padding: 8px; border-radius: 18px; }
-  .ft-play { gap: 8px; }
-  .ft-stage { block-size: clamp(300px, calc(100dvh - 226px), 640px); border-radius: 14px; }
-  .ft-key { min-inline-size: 72px; min-block-size: 68px; border-radius: 20px; }
-  .ft-key--act { min-inline-size: 70px; }
-  .ft-deck__pads, .ft-deck__acts { gap: 8px; }
-  .ft-hint { font-size: 15px; max-inline-size: calc(100% - 20px); margin-block-start: 58px; }
-  .ft-cta { font-size: 17px; padding: 10px 20px; }
-}
 @media (prefers-reduced-motion: reduce) {
-  .ft-petal, .ft-petal__glow, .ft-pod, .ft-cta::after, .ft-pip[data-missing=true], .ft-key[data-suggest=true]::before, .ft-sun[data-lit=true] .ft-sun__glow, .ft-scout[data-near=true], .ft-tapmark { animation: none; }
-  .ft-tapmark { opacity: 0; }
-  .ft-ghost, .ft-ghost[data-holds=false] { animation: ft-ghost-still 6s linear infinite; }
-  .ft-key, .ft-pip, .ft-cta, .ft-prop, .ft-flower__open, .ft-flower__folded, .ft-sun__lit, .ft-sun__glow, .ft-lamp__glow, .ft-pep, .ft-post { transition: none; }
-  .ft-flower__open { transform: none; }
+  /* no drifting air, no speed lines: the updraft is a still column, lights simply come on */
+  .ft-updraft__streak { animation: none !important; opacity: .5; transform: translateY(140px); }
+  .ft-speed, .ft-pep__streak { display: none; }
+  .ft-lamp__bloom, .ft-flag, .ft-star__halo, .ft-sun__halo, .ft-cloud, .ft-friend img { animation: none !important; }
+  .ft-ghost svg, .ft-ghost__ring { animation: none !important; }
+  .ft-ghost__ring { opacity: 1; }
 }
-@keyframes ft-ghost-still { 0%, 45% { opacity: 1; } 50%, 100% { opacity: 0; } }
-@media (forced-colors: active) {
-  .ft-key, .ft-cta { border: 2px solid ButtonText; }
-  .ft-pip { border: 2px solid ButtonText; } .ft-pip[data-lit=true] { background: Highlight; }
-}
-/* inside a prop that is more than one picture, the pictures stack */
-.ft-lamp > *, .ft-flower > *, .ft-sun > *, .ft-petal > *, .ft-pop > * { position: absolute; }
-.ft-lamp > img { inset: 0; }

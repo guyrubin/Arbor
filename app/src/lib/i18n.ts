@@ -1618,6 +1618,11 @@ export const en: Dict = {
   "sm.kind.plan": "Plan",
   // B-SHELL-14: the "Ask Arbor about …" row (prefill only — the parent sends).
   "sm.kind.ask": "Ask",
+  "sm.kind.jump": "Go",
+  "sm.kind.keep": "Keep",
+  "sm.keepAbout": "Keep a moment about “{q}”",
+  "sm.keepAbout.sub": "Your words, saved as written",
+  "sm.latelyKept": "Lately kept",
   "sm.askAbout": "Ask Arbor about “{q}”",
   // v3 IA-05r: the coach route is Talk with Arbor (nav.tab.coach).
   "sm.askAbout.sub": "Opens Talk with Arbor with your words — you send it",
@@ -4217,6 +4222,11 @@ export const he: Dict = {
   "sm.kind.milestone": "אבן דרך",
   "sm.kind.plan": "תוכנית",
   "sm.kind.ask": "שאלה",
+  "sm.kind.jump": "מעבר",
+  "sm.kind.keep": "לשמור",
+  "sm.keepAbout": "לשמור רגע על “{q}”",
+  "sm.keepAbout.sub": "המילים שלכם, נשמרות כפי שנכתבו",
+  "sm.latelyKept": "נשמרו לאחרונה",
   "sm.askAbout": "לשאול את ארבור על “{q}”",
   "sm.askAbout.sub": "פותח את השאלה עם המילים שלכם — אתם שולחים",
   "sm.extra.weekly": "תובנה שבועית",

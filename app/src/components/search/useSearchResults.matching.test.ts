@@ -30,7 +30,7 @@ vi.mock("../../context/LanguageContext", () => ({ useLanguage: () => ({ t: trans
 // v3 IA-05r: a thread opens in the Talk panel through its one door.
 vi.mock("../../lib/companionConversation", () => ({ requestCompanionConversation: h.talk }));
 import { useSearchResults } from "./useSearchResults";
-import { getSearchIndex, searchCatalog } from "../../lib/searchIndex";
+import { exactRouteFor, getSearchIndex, searchCatalog } from "../../lib/searchIndex";
 import { translate } from "../../lib/i18n";
 import { normalizeSearchText } from "../../lib/searchNormalize";
 import { LEARN_CARDS } from "../../learn/learnCards";
@@ -59,7 +59,7 @@ const render = (query: string, opts: Partial<Parameters<typeof useSearchResults>
 beforeEach(() => {
   vi.clearAllMocks();
   h.records = empty(); h.childId = "child-a"; h.lang = "en"; h.cursor = 0; h.memos = [];
-  h.index = { getSearchIndex, searchCatalog: catalogSearch };
+  h.index = { getSearchIndex, searchCatalog: catalogSearch, exactRouteFor };
 });
 
 describe("shared normalization in the actual global private-record branch", () => {
@@ -137,8 +137,9 @@ describe("private query activation, literal symbols and ownership boundaries", (
       expect(result.ordered).toEqual([]);
     } else {
       expect(result.ask).toBeNull();
+      // v10: the empty field is the jump map (pills under their homes), never records.
       expect(result.ordered.length).toBeGreaterThan(0);
-      expect(result.ordered.every(row => row.kind === "route")).toBe(true);
+      expect(result.ordered.every(row => row.kind === "jump")).toBe(true);
     }
   });
 
@@ -208,11 +209,13 @@ describe("private query activation, literal symbols and ownership boundaries", (
     expect(render(raw, { recordLimit: 0 }).record).toEqual([]);
   });
 
-  it("keeps catalog before records before Ask and private search available without a loaded index", () => {
+  // v10 re-pin: the parent's records come first (unless the words name a
+  // destination exactly), then the catalogue, then Keep and Ask.
+  it("keeps records before catalog before Keep and Ask, and private search available without a loaded index", () => {
     h.records = records("tantrums");
     const result = render("tantrums", { catalogLimit: 1 });
     expect(result.catalog).toHaveLength(1);
-    expect(result.ordered.map(row => row.id)).toEqual([result.catalog[0].id, ...ids(), "ask"]);
+    expect(result.ordered.map(row => row.id)).toEqual([...ids(), result.catalog[0].id, "keep", "ask"]);
     h.index = null;
     const withoutIndex = render("tantrums", { enabled: false });
     expect(withoutIndex.indexReady).toBe(false);
