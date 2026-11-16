@@ -38,6 +38,7 @@ import { useComposition, type Composition } from "../../design/useComposition";
 import { ChallengeBook } from "./v10/ChallengeBook";
 import { mirrorPoints, Road, zigzagPoints } from "./v10/Road";
 import { plansCopy } from "./v10/plansCopy";
+import { fmtDayV10 } from "../../lib/formatDate";
 import "./v10/plans.css";
 
 /* v10.1 (boards CP-1 Recognise, CP-2 Agree, CP-3 Preview; O-ChallengePlans):
@@ -274,7 +275,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
 
         {state.stage === "approved" && (
           <section className="cp-card" data-plan-stage="approved">
-            <span className="cp-st2 ok" style={{ alignSelf: "flex-start" }}><Icon name="check" size={15} />{c.approvedOn(new Date().toLocaleDateString(lang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" }))}</span>
+            <span className="cp-st2 ok" style={{ alignSelf: "flex-start" }}><Icon name="check" size={15} />{c.approvedOn(fmtDayV10(new Date(), lang))}</span>
             <h1 className="cp-h">{s("stage.approved.title", { name })}</h1>
             <p className="cp-lede">{s("stage.approved.body", { name, days: state.durationDays })}</p>
             <div className="line" style={{ gap: 8, flexWrap: "wrap" }}>

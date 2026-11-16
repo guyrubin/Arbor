@@ -3,6 +3,7 @@ import { Icon } from "../../ui/Icon";
 import { Fig, Guide, Route, RouteHead, RouteSection, Scene, SideRail, Snap, SnapDots, StartHere, Tile, TokenLegend, type GuideStop } from "../../../design/primitives";
 import type { Composition } from "../../../design/useComposition";
 import { planString } from "../../../lib/plans/planStrings";
+import { fmtDayV10 } from "../../../lib/formatDate";
 import { daysBetween, dayKey } from "../../../lib/programs/enrolment";
 import { activePlans, nightRecorded, nightsCount, tonightStepForChild, tonightStepForParent, type ActivePlan } from "../../../lib/plans/planWeek";
 import { planBookFromDoc } from "../../../lib/library/plans/planBookDoc";
@@ -83,15 +84,14 @@ function Journey({ plan, lang, composition }: { plan: ActivePlan; lang: "en" | "
   const desk = composition === "desk";
   const approved = new Date(plan.doc.approvedAt);
   const reflectFrom = new Date(approved.getTime() + plan.doc.durationDays * 86_400_000);
-  const short = { weekday: "short", day: "numeric", month: "short" } as const;
   const current = plan.review ? 4 : 3;
   const names = desk ? c.stops : c.stopsShort;
   const stops = [
-    { name: names.recognise, sub: fmt(lang, new Date(plan.doc.createdAt || plan.doc.approvedAt), short) },
+    { name: names.recognise, sub: fmtDayV10(plan.doc.createdAt || plan.doc.approvedAt, lang) },
     { name: names.agree, sub: c.threeSteps },
     { name: names.preview, sub: c.approvedShort },
     { name: names.try, sub: c.tonightLower },
-    { name: names.reflect, sub: c.from(fmt(lang, reflectFrom, short)) },
+    { name: names.reflect, sub: c.from(fmtDayV10(reflectFrom, lang)) },
   ];
   const pts = mirrorPoints(zigzagPoints(5, { low: desk ? 80 : 76, high: desk ? 20 : 24 }), lang === "he");
   return (
