@@ -155,6 +155,15 @@ export const STUDIO_VALLEY_TALL = { src: `${STUDIO_V30}valley-tall.webp`, src480
 const STUDIO_BOP_ROOT = "/visuals/studio-v2/bop/";
 export function studioBopArt(stem: string): string { return `${STUDIO_BOP_ROOT}${stem}.webp`; }
 
+/** The makers' kit art (B-GAME-40): pictures cropped or cut out from the v30
+ *  kit for the twelve maker activities, and the shared `kit-*` character,
+ *  prop, tool and backdrop set. One folder, one naming rule: a full hyphenated
+ *  file stem, e.g. "kit-aya-front"; each has a `-480` twin. Files that show
+ *  Bebe or GobGob carry `bebe`, `gobgob` or `crew` in the stem and are named
+ *  in lib/childLikenessFiles.named.ts. */
+const STUDIO_MAKERS_ROOT = "/visuals/studio-v2/makers/";
+export function studioMakerArt(stem: string): string { return `${STUDIO_MAKERS_ROOT}${stem}.webp`; }
+
 /** Host tile → the cover of the game it opens while the Next Studio switch is
  *  on. Shared pictures only: the child's hero is never part of a cover. */
 const STUDIO_NEXT_COVERS: Record<StudioNextHost, string> = { memory: "card-delivery", pattern: "card-sun", puzzle: "card-oops", "river-rescue": "card-rover" };
