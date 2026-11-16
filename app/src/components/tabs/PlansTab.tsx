@@ -43,6 +43,7 @@ import { PlanScripts } from "../plans/v10/PlanScripts";
 import { PlanWhole } from "../plans/v10/PlanWhole";
 import { StartAnother } from "../plans/v10/StartAnother";
 import { ChallengeScreen } from "../plans/v10/ChallengeScreen";
+import { PrintPreview } from "../plans/v10/PrintPreview";
 import { plansCopy } from "../plans/v10/plansCopy";
 import "../plans/v10/plans.css";
 
@@ -171,6 +172,16 @@ export default function PlansTab() {
       </motion.div>
     );
   }
+  const printing = target.kind === "pattern" && target.print ? running.find((r) => r.def.id === target.pattern) : undefined;
+  if (printing) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="w-full min-w-0" data-plans-view="parent-copy">
+        <DsRoot composition={composition} className="ds-plans">
+          <PrintPreview input={{ doc: printing.doc, child: childProfile, lang, now: nowDate }} childName={first} lang={lang} onPrint={() => printPlan(printing.doc)} />
+        </DsRoot>
+      </motion.div>
+    );
+  }
   if (target.kind !== "none") {
     const focus = target.kind === "pattern" ? target.pattern : null;
     return (
@@ -189,7 +200,7 @@ export default function PlansTab() {
             onStart={(d: PatternDef) => openChallenge(d.id)}
             onOpenBook={(p: ActivePlan) => openChallenge(p.def.id, true)}
             onChange={(p) => openChallenge(p.def.id, true)}
-            onPrint={(p) => printPlan(p.doc)}
+            onPrint={(p) => goToRoute("plans", { challenge: p.def.id, printout: "1" })}
             onKeep={(p) => void planRows.upsert(keepPlan(p.doc, new Date()))}
             onClose={(p) => void planRows.upsert(closePlan(p.doc, new Date()))}
             onNight={(p) => void planRows.upsert(recordNight(p.doc, new Date()))}

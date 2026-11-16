@@ -100,7 +100,7 @@ function Journey({ plan, lang, composition }: { plan: ActivePlan; lang: "en" | "
       {stops.map((s, i) => (
         <React.Fragment key={i}>
           <i className={`at tok plan${i === current ? " here" : i > current ? " open" : ""}${desk ? " lg" : " md"}`} style={{ left: `${pts[i].x}%`, top: `${pts[i].y}%` }} aria-hidden="true" />
-          <span className={`jl${i === current ? " cur" : ""}`} style={{ left: `${pts[i].x}%`, top: desk ? 92 : 68, fontSize: desk ? 13 : 12 }} aria-hidden="true">
+          <span className={`jl${i === current ? " cur" : ""}`} style={{ left: `${pts[i].x}%`, top: "calc(100% + 8px)", fontSize: desk ? 13 : 12 }} aria-hidden="true">
             {desk && <span style={{ fontVariantNumeric: "lining-nums" }}>{i + 1} · </span>}
             {s.name}
             {desk && <small>{s.sub}</small>}
@@ -180,14 +180,13 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
   const actions = plan && (
     <div className="cp-act" style={{ padding: desk ? "14px 28px 24px" : 0, marginTop: desk ? "auto" : undefined, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
       {desk && parentStep && <span style={{ flexBasis: "100%", fontSize: 14, color: "var(--ink)" }} dir="auto">{s("card.tonight", { step: parentStep })}</span>}
-      {plan.review && <p data-plan-review="" style={{ flexBasis: "100%", fontSize: 14, color: "var(--ink)" }}>{s("review.body", { count: nightsCount(plan.doc) })}</p>}
+      {plan.review && desk && <button type="button" className="btn primary" style={{ minWidth: 160 }} data-plan-keep="" onClick={() => p.onKeep(plan)}>{s("review.keep")}</button>}
       {desk && (
-        <button type="button" className="btn primary" style={{ minWidth: 160 }} data-plan-open="" onClick={() => p.onOpenBook(plan)}>
+        <button type="button" className={plan.review ? "btn ghost" : "btn primary"} style={plan.review ? { background: "var(--card)" } : { minWidth: 160 }} data-plan-open="" onClick={() => p.onOpenBook(plan)}>
           <Icon name="menu_book" size={18} />
           {s("card.open")}
         </button>
       )}
-      {plan.review && <button type="button" className="btn ghost" style={{ background: "var(--card)" }} data-plan-keep="" onClick={() => p.onKeep(plan)}>{s("review.keep")}</button>}
       <button type="button" className={`btn ghost${desk ? "" : " sm"}`} style={{ background: "var(--card)" }} data-plan-print="" onClick={() => p.onPrint(plan)}>
         <Icon name="description" size={16} />
         {s("section.print")}
@@ -244,8 +243,9 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
         <ChallengeBook title={title} nameLine={plan.def.coverNameLine[lang].replace("{name}", childName)} size={desk ? "lg" : undefined} width={desk ? 132 : 92} label={c.book(title)} />
         <div className="stack ds-col" style={{ gap: desk ? 8 : 6 }}>
           <span className="small" style={{ fontWeight: 600, color: "var(--ink-soft)" }} dir="auto">{plan.def.parentWords[lang]}</span>
-          <h1 className="hero" dir="auto" style={{ fontSize: desk ? 36 : 24, lineHeight: 1.06 }}>{title}</h1>
-          {desk ? (
+          <h1 className="hero" dir="auto" style={{ fontSize: desk ? 36 : 24, lineHeight: 1.06 }}>{plan.review ? s("review.title") : title}</h1>
+          {plan.review && <p data-plan-review="" className="cp-lede">{s("review.body", { count: nightsCount(plan.doc) })}</p>}
+          {plan.review ? null : desk ? (
             <p style={{ fontSize: 14.5, lineHeight: 1.42, color: "var(--ink-soft)", maxWidth: 470 }} dir="auto">{plan.def.coverLine[lang]}</p>
           ) : (
             <NightFig lang={lang} night={night} total={total} sub={s("section.nights", { count: nightsCount(plan.doc) })} size="sm" />
@@ -386,7 +386,10 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
             <RouteSection id="cp-stage" n={1} on>
               <div className="stack ds-col" style={{ gap: 12 }} data-module="plans-challenge">
                 {stage}
-                <button type="button" className="btn primary block" style={{ minHeight: 52 }} data-plan-open="" onClick={() => p.onOpenBook(plan)}>
+                {plan.review ? (
+                  <button type="button" className="btn primary block" style={{ minHeight: 52 }} data-plan-keep="" onClick={() => p.onKeep(plan)}>{s("review.keep")}</button>
+                ) : null}
+                <button type="button" className={plan.review ? "btn ghost block" : "btn primary block"} style={plan.review ? { minHeight: 48, background: "var(--card)" } : { minHeight: 52 }} data-plan-open="" onClick={() => p.onOpenBook(plan)}>
                   <Icon name="menu_book" size={18} />
                   {s("card.open")}
                 </button>

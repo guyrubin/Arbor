@@ -6,7 +6,13 @@
  */
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// The composer reads the reader's language from context; these renders are English.
+vi.mock("../../../context/LanguageContext", async () => {
+  const { translate } = await import("../../../lib/i18n");
+  return { useLanguage: () => ({ uiLang: "en", aiLang: "en", t: (k: string, v?: Record<string, string | number>) => translate("en", k, v) }) };
+});
 import { ChallengeScreen, type ChallengeScreenProps } from "./ChallengeScreen";
 import { PlanPicker } from "./PlanPicker";
 import { PLANS_COPY } from "./plansCopy";
@@ -33,7 +39,7 @@ const screen = (over: Partial<ChallengeScreenProps> = {}) => renderToStaticMarku
   <ChallengeScreen lang="en" composition="desk" childName="Noa" gender="f" planRows={[row()]} composable={authoredPatterns()} now={NOW} focus={null}
     onFocus={noop} onStart={noop} onOpenBook={noop} onChange={noop} onPrint={noop} onKeep={noop} onClose={noop} onNight={noop} onUndoNight={noop} onJournal={noop} {...over} />,
 );
-const text = (html: string) => html.replace(/<[^>]+>/g, " ");
+const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/&quot;/g, '"');
 
 describe("Challenge Plans page (N-Challenge)", () => {
   it("a running plan leads: its book title is the one <h1>, the night count, the journey, the three steps", () => {
@@ -123,7 +129,9 @@ describe("the Challenge Plans address", () => {
     expect(challengePlanHref("plan-dropoff", { compose: true })).toBe("#/plans?challenge=plan-dropoff&compose=1");
     expect(readChallengeQuery(new URLSearchParams(""))).toEqual({ kind: "none" });
     expect(readChallengeQuery(new URLSearchParams("challenge=choose"))).toEqual({ kind: "all" });
-    expect(readChallengeQuery(new URLSearchParams("challenge=plan-sleep-alone&compose=1"))).toEqual({ kind: "pattern", pattern: "plan-sleep-alone", compose: true });
+    expect(readChallengeQuery(new URLSearchParams("challenge=plan-sleep-alone&compose=1"))).toEqual({ kind: "pattern", pattern: "plan-sleep-alone", compose: true, print: false });
+    expect(readChallengeQuery(new URLSearchParams("challenge=plan-dropoff&printout=1"))).toMatchObject({ print: true });
+    expect(challengePlanHref("plan-dropoff", { print: true })).toBe("#/plans?challenge=plan-dropoff&printout=1");
     expect(readChallengeQuery(new URLSearchParams("challenge=not-a-plan"))).toEqual({ kind: "all" });
   });
 });
@@ -141,5 +149,47 @@ describe("road geometry and copy", () => {
     expect(PLAN_STRINGS.en["section.title"]).toBe("Challenge Plans");
     expect(PLAN_STRINGS.he["section.title"]).toBe("תוכניות אתגר");
     expect(JSON.stringify(PLAN_STRINGS)).not.toMatch(/Everyday plan|ליום-יום/);
+  });
+});
+
+describe("CP-6 parent copy preview", async () => {
+  const { PrintPreview } = await import("./PrintPreview");
+  it("shows the page that will print, words only, in a frame that runs no script", () => {
+    const html = renderToStaticMarkup(<PrintPreview input={{ doc: row(), child: { id: "c1", name: "Noa" } as never, lang: "en", now: NOW }} childName="Noa" lang="en" onPrint={noop} />);
+    expect(html).toContain("data-plan-print-preview");
+    expect(html).toMatch(/<iframe[^>]*sandbox=""/);
+    expect(html).not.toMatch(/&lt;script|<script/);
+    expect(html).toContain("data-plan-print-go");
+    expect(text(html)).toContain("Print Noa's plan");
+  });
+});
+
+describe("the composer on the journey road (CP-1 to CP-3)", async () => {
+  const { default: PlanComposer } = await import("../PlanComposer");
+  const { composerReducer, initialComposer } = await import("../../../lib/plans/composer");
+  type Action = Parameters<typeof composerReducer>[2];
+  const run = (...a: Action[]) => a.reduce((s, x) => composerReducer(dropoff, s, x), initialComposer(dropoff, "en"));
+  const render = (state?: ReturnType<typeof run>) => renderToStaticMarkup(
+    <PlanComposer def={dropoff} child={{ id: "c1", name: "Noa", gender: "female" } as never} onSaved={noop} onClose={noop} initialState={state} />,
+  );
+  it("Recognise: the typographic cover, the stop counter, the red lines first", () => {
+    const door = render();
+    expect(door).toContain('class="cp-book"');
+    expect(text(door)).toContain("1 of 5 · Recognise");
+    expect((door.match(/<h1[ >]/g) ?? []).length).toBe(1);
+    const red = render(run({ type: "open" }));
+    for (const w of dropoff.watchFor) expect(red).toContain(`data-plan-redline="${w.id}"`);
+  });
+  it("Agree: each step shows what the parent does (time filled in) beside the child's line", () => {
+    const steps = render(run({ type: "open" }, { type: "redLinesDone" }));
+    expect(text(steps)).toContain("2 of 5 · Agree");
+    expect(steps).not.toMatch(/\{time\}|\{minutes\}/);
+    expect((steps.match(/class="cp-kid"/g) ?? []).length).toBe(3);
+    expect(text(steps)).toContain("In Noa's book");
+  });
+  it("Agree: the box and the duration are real toggles", () => {
+    const box = render(run({ type: "open" }, { type: "redLinesDone" }, { type: "stepsDone" }));
+    expect(box).toContain('data-plan-duration-pick="21"');
+    expect(box).toMatch(/aria-checked="true"[^>]*data-plan-duration-pick="14"/);
   });
 });

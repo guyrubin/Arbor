@@ -58,13 +58,13 @@ export function PlanTrail({ plan, todayStep, lang, composition }: { plan: Action
             <React.Fragment key={`${s.phaseIdx}:${s.stepIdx}`}>
               <i className={`at tok plan${state}${desk ? " lg" : ""}`} style={{ left: `${pts[i].x}%`, top: `${pts[i].y}%` }} role="img" aria-label={c.stepToken(s.n, s.text, status)} />
               {here && (
-                <span className="at pin" style={{ left: `${pts[i].x}%`, top: `${pts[i].y - (desk ? 29.5 : 35.7)}%` }} aria-hidden="true">
+                <span className="at pin" style={{ left: `${pts[i].x}%`, top: `calc(${pts[i].y}% - 44px)` }} aria-hidden="true">
                   <b>{t("elev.plans.today.chip")}</b>
                   <i />
                 </span>
               )}
               {!here && (
-                <span className="cl c" style={{ left: `${pts[i].x}%`, top: `${pts[i].y + (above ? -(desk ? 23 : 32) : desk ? 12.8 : 17.9)}%`, color: "var(--muted)" }} aria-hidden="true">
+                <span className="cl c" style={{ left: `${pts[i].x}%`, top: above ? `calc(${pts[i].y}% - ${desk ? 42 : 36}px)` : `calc(${pts[i].y}% + ${desk ? 22 : 18}px)`, color: "var(--muted)" }} aria-hidden="true">
                   {s.n}
                 </span>
               )}

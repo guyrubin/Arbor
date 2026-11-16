@@ -303,3 +303,44 @@
 .ds-plans .pk .pt > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ds-plans.ds-phone .nx-co{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;flex:1;padding:12px 14px 12px 12px;border-radius:18px;background:var(--card);box-shadow:var(--shadow-tile);color:var(--ink);min-width:0}
 .ds-plans .ds-col { min-width: 0; }
+.ds-plans .cp-h{font-family:var(--font-display) !important;font-weight:600 !important;font-size:25px;line-height:1.1;letter-spacing:-.01em;margin:0}
+.ds-plans .cp-lede{font-size:14px;line-height:1.42;color:var(--ink-soft);margin:0}
+.ds-plans .cp-card{background:var(--card);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow-tile);min-width:0}
+.ds-plans .cp-q{font-size:11.5px;font-weight:700 !important;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft)}
+.ds-plans .cp-get{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ds-plans .cp-get span{display:flex;flex-direction:column;gap:6px;padding:12px 10px;border-radius:14px;background:#ffffffb8;font-size:12.5px;line-height:1.25;font-weight:600 !important;color:var(--ink)}
+.ds-plans .cp-get span i{width:32px;height:32px;border-radius:10px;background:var(--card);color:var(--sapphire-deep);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 1px var(--rule)}
+.ds-plans .cp-chip{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border-radius:999px;background:var(--card);box-shadow:inset 0 0 0 1px var(--rule-strong);font-size:13px;font-weight:600 !important;white-space:nowrap}
+.ds-plans .cp-chip.on{background:var(--tint-2);color:var(--sapphire-deep);box-shadow:inset 0 0 0 2px var(--sapphire-deep)}
+.ds-plans .cp-own{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:16px;background:var(--tint-2);border:1.5px dashed var(--pencil)}
+.ds-plans .cp-own .by{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600 !important;color:var(--sapphire-deep)}
+.ds-plans .cp-paper{position:relative;background:#fff;border-radius:6px;padding:22px 20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 0 0 1px var(--rule),0 18px 30px -20px #14225a73;font-size:12.5px;line-height:1.4;color:#1a1f2e;overflow:hidden}
+.ds-plans .cp-paper h3{font-family:var(--font-display) !important;font-size:22px;font-weight:600 !important;margin:0}
+.ds-plans .cp-paper h4{font-size:12.5px;font-weight:700 !important;margin:6px 0 0;padding-top:8px;border-top:1px solid #dfe3ea}
+.ds-plans .cp-paper ol,.ds-plans .cp-paper ul{margin:0;padding-inline-start:18px;display:flex;flex-direction:column;gap:4px}
+.ds-plans .cp-paper .wm{position:absolute;top:150px;inset-inline-start:30px;transform:rotate(-24deg);font:700 40px/1 var(--font-sans) !important;letter-spacing:.06em;text-transform:uppercase;color:#14225a12;white-space:nowrap;pointer-events:none}
+.ds-plans .cp-col{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:18px;background:var(--card);box-shadow:var(--shadow-tile);min-width:0}
+.ds-plans .cp-sel{display:inline-flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:0 12px;border-radius:12px;background:var(--well);font-size:13.5px;font-weight:600 !important}
+/* ── The Challenge composer (CP-1…CP-3): real controls drawn as the canvas objects ── */
+.ds-plans-composer { width: 100%; min-width: 0; }
+.ds-plans .ds-plans-chk { cursor: pointer; }
+.ds-plans .ds-plans-chk input { appearance: none; -webkit-appearance: none; width: 22px; height: 22px; margin: 1px 0 0; flex: none; border-radius: 6px; box-shadow: inset 0 0 0 2px var(--rule-strong); background: var(--card); cursor: pointer; display: grid; place-content: center; }
+.ds-plans .ds-plans-chk input:checked { background: var(--sapphire-deep); box-shadow: none; }
+.ds-plans .ds-plans-chk input:checked::after { content: ""; width: 12px; height: 7px; border: solid #fff; border-width: 0 0 2.5px 2.5px; transform: translateY(-2px) rotate(-45deg); }
+.ds-plans .ds-plans-chk input:focus-visible { outline: 3px solid var(--sapphire); outline-offset: 2px; }
+.ds-plans .ds-plans-chk[data-on] { color: var(--ink); font-weight: 600 !important; }
+.ds-plans .ds-plans-chipbtn { border: 0; cursor: pointer; min-height: 44px; font-family: var(--font-sans) !important; color: var(--ink); }
+.ds-plans .ds-plans-chipbtn:focus-visible { outline: 3px solid var(--sapphire); outline-offset: 2px; }
+.ds-plans .ds-plans-select { border: 0; min-height: 44px; max-width: 100%; color: var(--ink); font-family: var(--font-sans) !important; cursor: pointer; }
+.ds-plans .ds-plans-textarea { flex: 1 1 220px; min-height: 64px; padding: 12px 14px; resize: vertical; line-height: 1.4; }
+.ds-plans .ds-plans-agree { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
+.ds-plans .ds-plans-agree > .cp-col { gap: 12px; }
+.ds-plans .cp-get span i { flex: none; }
+.ds-plans .ds-plans-preview { box-shadow: 0 0 0 1px #eadfca, 0 18px 30px -22px #14225a66; }
+.ds-plans h1.cp-q { margin: 0; }
+.ds-plans h2.cp-q { margin: 0; }
+.ds-plans .ds-plans-paper { padding: 0; }
+.ds-plans .ds-plans-paper-frame { display: block; width: 100%; height: 900px; border: 0; background: #fff; }
+.ds-plans.ds-phone .ds-plans-paper-frame { height: 760px; }
+.ds-plans .siderail .rh { flex-wrap: wrap; row-gap: 2px; }
+.ds-plans .siderail .rh .small { flex-basis: 100%; padding-inline-start: 34px; white-space: normal !important; overflow: visible !important; }
