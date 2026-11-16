@@ -91,7 +91,7 @@ describe('next Studio games switch', () => {
   });
   it('names five tiles after the games they open, in both languages, and only while on', () => {
     const off = { en: studioCopy('en'), he: studioCopy('he') };
-    expect(TILES.map(id => off.en.activities[id].title)).toEqual(['Memory Match', 'Sequence Quest', 'Puzzle Planet', 'Canal Quest', 'Sound Orbit']);
+    expect(TILES.map(id => off.en.activities[id].title)).toEqual(['Mind Vault', 'Pattern Power', 'Puzzle Planet', 'Canal Quest', 'Sound Orbit']);
     open('?studioNext=1');
     for (const lang of ['en', 'he'] as const) {
       const on = studioCopy(lang);

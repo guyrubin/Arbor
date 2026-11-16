@@ -127,7 +127,7 @@ describe('Hero Band', () => {
     vi.stubGlobal('location', { search: '?heroBand=1' }); resetHeroBandFlagForTests();
     expect(heroBandFlagOn()).toBe(true); expect(store.get(HERO_BAND_FLAG_KEY)).toBe('1');
     expect(studioCopy('en').activities['rhythm-garden'].title).toBe('Hero Band'); expect(studioCopy('he').activities['rhythm-garden'].title).toBe(HERO_BAND_COPY.he.title);
-    expect(studioCopy('en').activities.memory.title).toBe('Memory Match');
+    expect(studioCopy('en').activities.memory.title).toBe('Mind Vault');
     vi.stubGlobal('location', { search: '?heroBand=0' }); resetHeroBandFlagForTests(); expect(heroBandFlagOn()).toBe(false);
     vi.unstubAllGlobals(); resetHeroBandFlagForTests();
   });

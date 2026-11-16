@@ -187,7 +187,7 @@ export const en: Record<string, string> = {
   "elev.play.speak.label": "Hear it",
   // KID-07/08: Pattern Power ends instead of looping the same six puzzles.
   "elev.play.pattern.title": "Pattern Power",
-  "elev.play.pattern.say": "What comes next? Tap the shape that finishes the pattern.",
+  "elev.play.pattern.say": "What comes next? Tap the picture that finishes the pattern.",
   "elev.play.pattern.done.title": "You finished every pattern, {name}!",
   "elev.play.pattern.done.sub": "That is the whole set. A new set of shapes is waiting whenever you come back.",
   "elev.play.pattern.done.again": "Play this set again",
@@ -345,7 +345,7 @@ export const he: Record<string, string> = {
   // ── Builder H (object backlog wave 1, §3d)
   "elev.play.speak.label": "לשמוע",
   "elev.play.pattern.title": "Pattern Power", // GD-6
-  "elev.play.pattern.say": "מה בא עכשיו? הקישו על הצורה שמשלימה את התבנית.",
+  "elev.play.pattern.say": "מה בא עכשיו? הקישו על התמונה שמשלימה את התבנית.",
   "elev.play.pattern.done.title": "סיימתם את כל התבניות, {name}!",
   "elev.play.pattern.done.sub": "זה כל הסט. סט חדש של צורות מחכה לכם כשתחזרו.",
   "elev.play.pattern.done.again": "לשחק שוב בערכה הזו",
