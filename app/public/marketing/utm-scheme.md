@@ -43,10 +43,10 @@ forwarded to the app on the hop, preserving first-touch attribution.
 
 The English and Hebrew landing pages tag their trial buttons
 `utm_source=arbor_landing&utm_medium=website` and name the page version in
-`utm_campaign`: `landing_v14` on the English page from 15 Nov 2026 (the living
-landing, one evening as a film and a guide to the six parts), `landing_v13` on
-the Hebrew page and `marketing/index.html`. A visitor who picks an example
-moment on the English page also carries `moment=bedtime|feelings|play`.
+`utm_campaign`: `landing_v14` on the English page from 15 Nov 2026 and on the
+Hebrew page and `marketing/index.html` from 16 Nov 2026 (the living landing, one
+evening as a film and a guide to the six parts). A visitor who picks an example
+moment on either page also carries `moment=bedtime|feelings|play`.
 
 ## Practitioner handoff (BD-54)
 

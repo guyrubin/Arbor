@@ -62,7 +62,7 @@ Not claimed, because the source does not support it today: app-store apps, langu
 
 ## Open
 
-- The Hebrew landing page still carries the earlier design (`landing_v13`); a Hebrew version of this page is not made.
+- The Hebrew page (`arbor-marketing-landing-page-he.html`, copied byte for byte to `marketing/index.html`) is a translation of this page on the same CSS and script; the script reads `lang="he"` for its own words.
 - The copy has had no clinical or native-speaker review.
 - The Bebe and Gob Gob art kit is not used: the two children are likenesses of real children and the names are not cleared.
 - The Claude Design kit "Arbor Design System" was not read; the page follows the kit in the repository (`app/DESIGN.md`, `app/src/index.css`).
