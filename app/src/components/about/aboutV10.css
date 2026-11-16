@@ -132,7 +132,6 @@ html[lang="he"] .ds-about .pq .q, html[lang="he"] .ds-about .about-kn-fact, html
 .ds-about .tl ul { list-style: none; margin: 0; padding: 0; }
 .ds-about .tl .it .ed { padding: 0 8px; }
 .ds-about .coach-contract .line1 { margin: 0; }
-.ds-about .coach-contract ul { font-size: 13px; line-height: 1.4; color: var(--ink-soft); }
 .ds-about .coach-contract-switch { display: flex; flex-direction: column; gap: 2px; padding-top: 4px; }
 .ds-about .msw { border: 0; background: none; padding: 0; text-align: start; color: var(--ink); cursor: pointer; }
 .ds-about .msw i { background: var(--rule-strong); transition: background .15s; }
@@ -169,3 +168,17 @@ html[lang="he"] .ds-about .pq .q, html[lang="he"] .ds-about .about-kn-fact, html
 .ds-about .a8-quote { font-family: var(--font-editorial) !important; font-style: italic; font-weight: 400 !important; }
 /* the phone guide's stops are 44 px tall here (touch floor; the kit's mini is 40) */
 .ds-about .guide.mini .gstop { min-height: 44px; }
+/* section 3: each tile is as tall as what it holds (no stretched empty middle) */
+.ds-about.ds-desk .about-told-row { align-items: start; }
+/* "What the coach sees": three labelled groups, the full lines one tap away */
+.ds-about .coach-groups { display: flex; flex-direction: column; gap: 2px; }
+.ds-about .coach-group { border-top: 1px solid var(--rule); }
+.ds-about .coach-group .coach-group-head { display: flex; justify-content: flex-start; align-items: center; gap: 8px; width: 100%; min-height: 44px; list-style: none; cursor: pointer; color: var(--ink); }
+.ds-about .coach-group-head::-webkit-details-marker { display: none; }
+.ds-about .coach-group-head > .ic:first-child, .ds-about .coach-group-head > :first-child { color: var(--k-plan); flex: none; }
+.ds-about .coach-group-label { font-size: 13.5px; font-weight: 600 !important; }
+.ds-about .coach-group-count { margin-inline-start: auto; font-size: 12.5px; color: var(--ink-soft); }
+.ds-about .coach-group-chev { color: var(--sapphire-deep); transition: transform .15s; }
+.ds-about .coach-group[open] .coach-group-chev { transform: rotate(180deg); }
+.ds-about .coach-group-list { margin: 0 0 8px; padding-inline-start: 24px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.4; color: var(--ink-soft); }
+@media (prefers-reduced-motion: reduce) { .ds-about .coach-group-chev { transition: none; } }

@@ -211,7 +211,7 @@ export default function ChildMemory({ hidePendingIds, focusFactId, keepsakesOpen
       </SectionCard>
       </>
       )}
-      {/* v10: "What you told me" and "What the coach sees" (the weekly-context
+      {/* v10: "What you told Arbor" and "What the coach sees" (the weekly-context
           consent switch) left the ledger for About's own section 3, where they
           render in every state — the switch is a consent control, so it never
           waits on this ledger read (F-TALK-1, OWN-1). */}

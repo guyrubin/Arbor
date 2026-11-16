@@ -34,7 +34,7 @@ import "../about/aboutV10.css";
  *     ONE primary move, capture-moment, rendered once in every state), the
  *     next proposals, the newest remembered fact with Edit / Forget and the day
  *     it forgets;
- *  3. What you told me, what the coach sees — the parent's own description
+ *  3. What you told Arbor, what the coach sees — the parent's own description
  *     (Edit / Remove / Tell Arbor more), the coach's view with the weekly
  *     consent switch (always here: a consent control never waits on a ledger
  *     read), and the child's tile (Edit details, Create hero, Measurements, the

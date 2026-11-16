@@ -1,5 +1,5 @@
 /**
- * B-SHELL-39 — "What you told me": the items the parent kept from the
+ * B-SHELL-39 — "What you told Arbor": the items the parent kept from the
  * describe readback (and the lines they typed elsewhere), in their words, on
  * My child and on What Arbor knows. Each can be edited or removed here; a
  * removal shows one receipt line with Undo. The "Tell Arbor more" door opens
@@ -44,7 +44,7 @@ function KeptRow({ item, onEdit, onRemove, busy }: { item: KeptDescribeItem; onE
   </li>;
 }
 
-/** "What you told me" as a v10 tile (My child › About, section 3). */
+/** "What you told Arbor" as a v10 tile (My child › About, section 3). */
 export default function KeptDescription({ testId = "describe-kept-list" }: { testId?: string }) {
   const { childProfile } = useArbor();
   const { updateChild } = useProfile();

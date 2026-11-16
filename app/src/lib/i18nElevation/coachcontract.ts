@@ -77,6 +77,7 @@ export const en: Record<string, string> = {
 
   // ── The consent toggle (B-ASKJB-07: default ON, per child, explicit off)
   "elev.coachcontract.toggle": "Let the coach see this week's moments",
+  "elev.coachcontract.groupCount": "{n} things",
   "elev.coachcontract.toggleHint":
     'On unless you turn it off. The coach sees counts and how your last step went — for example "4 moments this week, 2 milestones observed" — never your notes.',
   // ── B-ASKJB-07 · the one-time notice above the composer (per child)
@@ -135,6 +136,7 @@ export const he: Record<string, string> = {
   "elev.coachcontract.feedback.note": "המשוב הוא על התשובה, אף פעם לא על הילד שלכם.",
 
   "elev.coachcontract.toggle": "לאפשר למאמן לראות את הרגעים מהשבוע",
+  "elev.coachcontract.groupCount": "{n} פריטים",
   "elev.coachcontract.toggleHint":
     'פועל, אלא אם תכבו אותו. המאמן רואה מספרים ואיך עבר הצעד האחרון — למשל "4 רגעים השבוע, 2 אבני דרך שנצפו" — אף פעם לא את ההערות שלכם.',
   "elev.coachcontract.notice.body": "ארבור משתמש במספרים מהשבוע ובאיך עבר הצעד האחרון שלכם.",

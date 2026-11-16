@@ -66,7 +66,7 @@ afterEach(()=>{vi.unstubAllGlobals();});
 /* v10.1 re-pin: #/profile is the N-About route — 1 Answer Arbor (the stage:
    the notebook heading and the next proposal), 2 Waiting, and remembered
    (Tell Arbor by voice / Write, the next notes, the newest remembered fact),
-   3 What you told me, what the coach sees (+ the child's tile), 4 What Arbor
+   3 What you told Arbor, what the coach sees (+ the child's tile), 4 What Arbor
    knows (the eight areas). One tree per composition. */
 const both=[false,true] as const;
 const label=(desk:boolean)=>desk?"desktop":"phone";

@@ -3,7 +3,7 @@ import Icon from "../ui/Icon";
 // Masterplan 1.3 — TrustPanel (the one reusable trust pattern) states EXACTLY
 // what each conversation request sends, and hosts the weekly-context consent
 // switch in its footer.
-import { TrustPanel } from "../ui/TrustPanel";
+
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useHashQuery } from "../../hooks/useHashQuery";
@@ -88,9 +88,58 @@ export default function CoachDataContract({ ledgerUnreadable = false }: { ledger
     switchRef.current?.focus({ preventScroll: true });
   }, [arrivedForSwitch]);
 
+  const uses = [
+    tcc("elev.coachcontract.uses.message"),
+    // GP-14: the profile line and the memory line NAME what travels —
+    // which allow-listed fields, and the parent's own approved facts
+    // verbatim — instead of a bare count the parent cannot check.
+    ...coachDisclosure(
+      {
+        profile: childProfile,
+        approvedFacts: approved.map((m) => ({ memoryId: m.memoryId, fact: m.fact })),
+        factsUsedInLastAnswer: lastFactsUsed,
+        childFirstName: childFirst || childProfile.name,
+        factsUnreadable: ledgerUnreadable,
+      },
+      t,
+    ).uses,
+    tcc("elev.coachcontract.uses.turns"),
+    ...(weeklyOn ? [tcc("elev.coachcontract.uses.weekly")] : []),
+    // AI-02 / B-ASKJB-01: a SPOKEN turn is described too. Both spoken
+    // paths are grounded from server/spokenContext.ts: profile, approved
+    // memory facts and this conversation's recent turns (never the
+    // weekly counts). Live HD pins the same context into its token with
+    // names stripped, so its line says "without names" and renders only
+    // when Live is the path a tap takes.
+    tcc("elev.coachcontract.uses.spoken"),
+    // B-ASKJB-02: whenever Live is the path, its line names the global
+    // endpoint and the exception's end date.
+    ...(liveAvail ? [tcc("elev.coachcontract.uses.spokenLive", {
+      residency: liveResidencyKey && liveResidencyKey !== "elev.coachcontract.uses.liveResidencyUndated"
+        ? tcc(liveResidencyKey)
+        : liveUntil
+        ? tcc("elev.coachcontract.uses.liveResidency", { date: fmtDayLong(liveUntil, lang) })
+        : tcc("elev.coachcontract.uses.liveResidencyUndated"),
+    })] : []),
+  ];
+  const stores = [
+    // Durable facts wait for explicit parent approval before becoming memory.
+    t("coach.contract.memoryBody"),
+    tcc("elev.coachcontract.stores.thread"),
+  ];
+  const controls = [
+    tcc("elev.coachcontract.controls.memory"),
+    tcc("elev.coachcontract.controls.weekly"),
+  ];
+  const groups = [
+    { key: "trust.uses.title", glyph: "verified_user", items: uses },
+    { key: "trust.stores.title", glyph: "lock", items: stores },
+    { key: "trust.controls.title", glyph: "check", items: controls },
+  ] as const;
+
   return (
-    // v10: a design-system tile in About's section 3 ("What you told me, what
-    // the coach sees"), rendered in every state of the ledger.
+    // v10: a design-system tile in About's section 3 ("What you told Arbor,
+    // and what the coach sees"), rendered in every state of the ledger.
     <section
       ref={sectionRef}
       id="coach-data-contract"
@@ -103,52 +152,23 @@ export default function CoachDataContract({ ledgerUnreadable = false }: { ledger
         <h3 id="coach-data-contract-title" className="h3">{tcc("elev.coachcontract.title")}</h3>
       </div>
       <p className="line1">{tcc("elev.coachcontract.titleHint")}</p>
-      <TrustPanel
-        tone="inline"
-        uses={[
-          tcc("elev.coachcontract.uses.message"),
-          // GP-14: the profile line and the memory line NAME what travels —
-          // which allow-listed fields, and the parent's own approved facts
-          // verbatim — instead of a bare count the parent cannot check.
-          ...coachDisclosure(
-            {
-              profile: childProfile,
-              approvedFacts: approved.map((m) => ({ memoryId: m.memoryId, fact: m.fact })),
-              factsUsedInLastAnswer: lastFactsUsed,
-              childFirstName: childFirst || childProfile.name,
-              factsUnreadable: ledgerUnreadable,
-            },
-            t,
-          ).uses,
-          tcc("elev.coachcontract.uses.turns"),
-          ...(weeklyOn ? [tcc("elev.coachcontract.uses.weekly")] : []),
-          // AI-02 / B-ASKJB-01: a SPOKEN turn is described too. Both spoken
-          // paths are grounded from server/spokenContext.ts: profile, approved
-          // memory facts and this conversation's recent turns (never the
-          // weekly counts). Live HD pins the same context into its token with
-          // names stripped, so its line says "without names" and renders only
-          // when Live is the path a tap takes.
-          tcc("elev.coachcontract.uses.spoken"),
-          // B-ASKJB-02: whenever Live is the path, its line names the global
-          // endpoint and the exception's end date.
-          ...(liveAvail ? [tcc("elev.coachcontract.uses.spokenLive", {
-            residency: liveResidencyKey && liveResidencyKey !== "elev.coachcontract.uses.liveResidencyUndated"
-              ? tcc(liveResidencyKey)
-              : liveUntil
-              ? tcc("elev.coachcontract.uses.liveResidency", { date: fmtDayLong(liveUntil, lang) })
-              : tcc("elev.coachcontract.uses.liveResidencyUndated"),
-          })] : []),
-        ]}
-        stores={[
-          // Durable facts wait for explicit parent approval before becoming memory.
-          t("coach.contract.memoryBody"),
-          tcc("elev.coachcontract.stores.thread"),
-        ]}
-        controls={[
-          tcc("elev.coachcontract.controls.memory"),
-          tcc("elev.coachcontract.controls.weekly"),
-        ]}
-        footer={
+      {/* v10: the three groups as short labelled lists — the label and how
+          many things it names, the full lines one tap away — so the tile reads
+          at a glance and every fact stays (GP-14, B-ASKJB-01/02). */}
+      <div className="coach-groups">
+        {groups.map((g) => g.items.length > 0 && (
+          <details key={g.key} className="coach-group">
+            <summary className="coach-group-head touch-target">
+              <Icon name={g.glyph} size={16} />
+              <span className="coach-group-label">{t(g.key)}</span>
+              <span className="coach-group-count">{tcc("elev.coachcontract.groupCount", { n: g.items.length })}</span>
+              <Icon name="expand_more" size={18} className="coach-group-chev" />
+            </summary>
+            <ul className="coach-group-list">
+              {g.items.map((item, i) => <li key={i}>{item}</li>)}
+            </ul>
+          </details>
+        ))}
           <div className="coach-contract-switch">
             <button
               ref={switchRef}
@@ -169,8 +189,8 @@ export default function CoachDataContract({ ledgerUnreadable = false }: { ledger
             </button>
             <p className="small">{tcc("elev.coachcontract.toggleHint")}</p>
           </div>
-        }
-      />
+        
+      </div>
     </section>
   );
 }
