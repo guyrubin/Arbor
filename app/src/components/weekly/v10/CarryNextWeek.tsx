@@ -154,7 +154,7 @@ export default function CarryNextWeek({
       link={<MoreLink onClick={onPrepare}>{copy.prepare}</MoreLink>}
       className="wk10-tile"
     >
-      <div data-testid="weekly-next-visit" className="stack">{visitBody}</div>
+      <div data-testid="weekly-next-visit" className="stack wk10-visitbody">{visitBody}</div>
     </Tile>
   );
 

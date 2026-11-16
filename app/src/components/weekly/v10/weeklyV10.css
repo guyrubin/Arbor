@@ -315,7 +315,7 @@
 .ds .wk10-srs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .ds-phone .wk10-srs { flex-direction: row; overflow-x: auto; margin-inline: -14px; padding-inline: 14px; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .ds-phone .wk10-srs > .wk-sr { flex: none; width: 286px; scroll-snap-align: start; }
-.ds .wk10-step { display: block; font-size: 15px; line-height: 1.22; }
+.ds .wk10-steptext { display: block; font-size: 15px; line-height: 1.22; }
 .ds .wk10-words-kept { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .ds .wk10-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .ds .wk10-chips li { padding: 6px 12px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule-strong); font-size: 14px; color: var(--ink); }
@@ -371,3 +371,10 @@
 .ds .wk10-invite[open] .wk10-invite-chev { transform: rotate(180deg); }
 .ds .wk10-invite-body { padding: 12px 4px 4px; }
 @media (prefers-reduced-motion: reduce) { .ds .wk10-invite-chev { transition: none; } }
+.ds .wk10-lowdata { display: flex; gap: 8px; align-items: flex-start; }
+.ds .wk10-lowdata .msr, .ds .wk10-lowdata > span:first-child { flex: none; color: var(--yellow-ink); }
+/* The phone route line and its stops need their gutter inside the page. */
+.ds-phone.wk10 > .route.m { padding-inline-start: 30px; }
+.ds .wk10-mstrip.wk-ms.wk-ahead { background: repeating-linear-gradient(135deg, var(--wk-ahead-line) 0 1.5px, transparent 1.5px 8px), var(--wk-ahead); }
+.ds-phone .wk10-stage > .wk10-summary { width: auto; align-self: stretch; }
+.ds.wk10 .guide.mini .gstop { min-height: 44px; }

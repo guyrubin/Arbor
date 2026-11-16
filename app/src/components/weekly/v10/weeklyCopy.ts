@@ -89,7 +89,7 @@ export const WEEKLY_COPY = {
     inPart: (n: number, part: string) => `${plural(n, "moment", "moments")} in the ${part.toLowerCase()}`,
     dayFieldAria: "Moments you logged, by weekday and part of the day",
     cellAria: (weekday: string, part: string, n: number) => `${weekday}, ${part}: ${plural(n, "1 moment", "{n} moments")}`,
-    more: (n: number) => `+${n}`,
+    more: (n: number) => `${n} more`,
     hardByHour: "Hard moments by hour",
     seeHard: "See them in Hard moments",
   },
@@ -171,14 +171,14 @@ export const WEEKLY_COPY = {
     inPart: (n: number, part: string) => `${plural(n, "רגע", "רגעים")} ב${part}`,
     dayFieldAria: "רגעים שתיעדתם, לפי יום בשבוע וחלק ביום",
     cellAria: (weekday: string, part: string, n: number) => `${weekday}, ${part}: ${plural(n, "רגע אחד", "{n} רגעים")}`,
-    more: (n: number) => `+${n}`,
+    more: (n: number) => `עוד ${n}`,
     hardByHour: "רגעים קשים לפי שעה",
     seeHard: "לראות אותם ברגעים קשים",
   },
-} as const;
+};
 
 export type WeeklyCopy = (typeof WEEKLY_COPY)["en"];
 
 export function weeklyCopy(uiLang: string): WeeklyCopy {
-  return (uiLang === "he" ? WEEKLY_COPY.he : WEEKLY_COPY.en) as WeeklyCopy;
+  return uiLang === "he" ? WEEKLY_COPY.he : WEEKLY_COPY.en;
 }

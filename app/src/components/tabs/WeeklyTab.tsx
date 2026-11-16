@@ -264,6 +264,11 @@ export default function WeeklyTab() {
   ];
   const stopNo = (id: string) => stops.findIndex((s) => s.id === id) + 1;
 
+  /* Stop 1 is the week or, with nothing to count and nothing stored, the empty
+     card: they exclude each other, so they share ONE stamp. */
+  const stage: "weekly-glance" | "weekly-empty" | null = dashboardShown && week ? "weekly-glance" : !selected ? "weekly-empty" : null;
+  const stageStamp = { "data-module": stage ?? undefined };
+
   const art = EMPTY_ART.weekly;
   const kicker = (
     <span className="gsec">
@@ -290,11 +295,11 @@ export default function WeeklyTab() {
                   {nextId && stepButton(nextId, "next")}
                 </div>
               )}
-              {!phone && <LivingForm src={art.src} srcSet={art.srcSet} width={96} height={43} crop={{ w: 124.7, h: 83.1, x: -14.4, y: -21.8 }} className="wk10-art" />}
+              {!phone && stage !== "weekly-empty" && <LivingForm src={art.src} srcSet={art.srcSet} width={96} height={43} crop={{ w: 124.7, h: 83.1, x: -14.4, y: -21.8 }} className="wk10-art" />}
             </header>
 
-            {dashboardShown && week ? (
-              <div data-module="weekly-glance" data-testid="weekly-glance" className="wk10-stage">
+            {stage === "weekly-glance" && week ? (
+              <div {...stageStamp} data-testid="weekly-glance" className="wk10-stage">
                 <div className="wk10-figrow">
                   {figures}
                   {!phone && summaryDoor}
@@ -316,11 +321,11 @@ export default function WeeklyTab() {
                 />
                 {phone && summaryDoor}
               </div>
-            ) : !selected ? (
+            ) : stage === "weekly-empty" ? (
               /* F-06: the current week with nothing kept yet says so honestly;
                  its ONE move is the explicit secondary capture-moment
                  (surfaceContract weekly), opened in place. */
-              <div data-module="weekly-empty" className="wk10-empty">
+              <div {...stageStamp} className="wk10-empty">
                 <figure aria-hidden="true" data-testid="weekly-empty-art" className="wk10-empty-art">
                   <img src={art.src} srcSet={art.srcSet} width={art.width} height={art.height} alt="" loading="lazy" decoding="async" />
                 </figure>

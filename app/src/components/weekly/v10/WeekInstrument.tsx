@@ -177,7 +177,7 @@ export default function WeekInstrument({ data, composition, copy, locale, footer
                   {d.isToday && data.nowHour !== null && <i className="wk10-nowline v" style={{ insetInlineStart: pos(data.nowHour) }} />}
                   {data.timed
                     .filter((x) => x.day === i && shown(x.kind))
-                    .map((tok) => timedToken(tok, "sm", { insetInlineStart: `calc(${pos(tok.hour)} - 11px)`, top: 6 + (seats.get(tok.id) ?? 0) * 4 }))}
+                    .map((tok) => timedToken(tok, "sm", { insetInlineStart: `calc(${pos(tok.hour)} - 11px + ${(seats.get(tok.id) ?? 0) * 14}px)`, top: 6 }))}
                 </span>
                 <span className="wk10-mlane">
                   {lane.map((x) => laneToken(x.id, x.kind, "sm"))}

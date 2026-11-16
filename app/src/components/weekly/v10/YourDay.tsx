@@ -173,7 +173,10 @@ export default function YourDay({
         </>
       ) : (
         <>
-          <p className="line1" data-testid="dw-low-data">{t("dw.lowData")}</p>
+          <p className="line1 wk10-lowdata" data-testid="dw-low-data">
+            <Icon name="hourglass_top" size={18} />
+            <span>{t("dw.lowData")}</span>
+          </p>
           {summary.daysNeeded > 0 && (
             <p className="small wk10-days" data-testid="dw-days-progress">
               {t("elev.dw.daysLoggedOf", { n: summary.daysLogged, total: summary.daysLogged + summary.daysNeeded })}

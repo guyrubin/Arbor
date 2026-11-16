@@ -121,7 +121,7 @@ export default function WhatHelped({
               <li key={line.step} className={`wk-sr${line.helped > 0 ? "" : " not"}`} data-testid="weekly-step" data-helped={line.helped > 0 ? "" : undefined}>
                 <Token kind="stp" state={line.helped > 0 ? "solid" : "open"} size="md" label={line.helped > 0 ? copy.tokenHelped : copy.tokenNot} />
                 <span>
-                  <bdi className="nx-q ds-said wk10-step" dir="auto">“{line.step}”</bdi>
+                  <bdi className="nx-q ds-said wk10-steptext" dir="auto">“{line.step}”</bdi>
                   <span className={`wk-out ${line.helped > 0 ? "wk10-out-step" : "wk10-out-not"}`}>{stepLine(line)}</span>
                 </span>
               </li>

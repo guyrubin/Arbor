@@ -62,13 +62,13 @@ describe("B-TODAY-29 — what worked this week", () => {
     expect(text).not.toMatch(/https?:|ref=|utm_/);
   });
 
-  /* v3 F-NOW-3 re-pin: the letter left #/weekly. The held sentences and their
-     text-only send are now the one action of the report's What helped card,
-     inside the dashboard's own module (route budget unchanged). */
-  it("the held sentences and their send are What helped's one action, inside the dashboard's module (route budget unchanged)", () => {
+  /* v10 re-pin: the held sentences and their text-only send are the "Words
+     you used" node of stop 2's thread, inside the weekly-helped module. */
+  it("the held sentences and their send are What helped's words node, inside the weekly-helped module", () => {
     const src = fs.readFileSync(path.resolve(__dirname, "WeeklyTab.tsx"), "utf8");
-    const glance = src.slice(src.indexOf("<WeekGlance"), src.indexOf("onOpenMilestones=", src.indexOf("<WeekGlance")));
-    expect(glance).toMatch(/helpedAction=\{<WhatWorkedSend lines=\{worked\} parentName=\{parentFirst\} locale=\{locale\} t=\{t\} \/>\}/);
+    const helped = src.slice(src.indexOf('data-module="weekly-helped"'), src.indexOf('data-module="weekly-carry"'));
+    expect(helped).toMatch(/heldWords=\{<WhatWorkedSend lines=\{worked\} parentName=\{parentFirst\} locale=\{locale\} t=\{t\} \/>\}/);
+    expect(helped).toContain("hasHeldWords={worked.length > 0}");
     expect(src).not.toContain("<WhatWorkedCard");
     expect(src).not.toMatch(/data-module="weekly-worked"/);
   });
