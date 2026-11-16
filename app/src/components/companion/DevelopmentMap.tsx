@@ -6,22 +6,22 @@ import { DOMAIN_IDS, domainName, type DomainId } from "../../lib/domains/registr
 import { DOMAIN_ICONS } from "../../lib/domains/icons";
 import { lastMomentByDomain, noticedByDomain } from "../../lib/milestones/domainMap";
 import type { Observation } from "../../lib/observations";
-import { DOMAIN_ART } from "../../lib/parentArt";
 import type { Milestone } from "../../types";
 import { Icon } from "../ui/Icon";
-import { domainToneStyle, seenTotals } from "./domainTone";
-import { growingDomains } from "./milestonesModel";
+import { growingDomains, seenTotals } from "./milestonesModel";
 import { milestonesV10Copy } from "./milestonesV10Copy";
 
 /**
  * v10.1 — the milestone map on My child › Milestones (#/development).
  *
- * Eight areas as territories, walked in registry order (DOMAIN_IDS), never
- * reordered by what the record holds. Each territory is one button: the area
- * glyph and name, then either the Seen-it count with one leaf per thing seen
- * (a shape before a number), or the area's newest kept moment, or the one
- * quiet line "No record yet". The territory a parent opened is ringed; the
- * page shows that area in its own section (desk and phone alike).
+ * Eight equal, quiet territories, walked in registry order (DOMAIN_IDS), never
+ * reordered by what the record holds; areas are told apart by glyph and name
+ * only (one neutral surface, no area colour, no picture). Each territory is
+ * one button: then either the Seen-it count with one leaf per thing seen (in
+ * the record colour, the same for every area), or the area's newest kept
+ * moment, or the one quiet line "No record yet". The territory a parent
+ * opened is ringed in sapphire (the one accent); the page shows that area in
+ * its own section (desk and phone alike).
  *
  * Desk: three columns with the Seen-it count in the middle (the hub). Phone:
  * two columns; the count moves to the scene's head, so the map holds areas only.
@@ -30,9 +30,9 @@ import { milestonesV10Copy } from "./milestonesV10Copy";
  *
  * Clinical firewall (law 1): the only numbers are Seen-it counts. No
  * denominator, no share, no bar, no not-yet or not-sure number, no ordering by
- * count, no verdict colour: a territory's colour names its AREA (production's
- * domain palette), never the child's state. An area with nothing recorded is
- * drawn the same size as the rest, in neutral paper, named in one line.
+ * count, no colour at all on a territory beyond the one accent for the open
+ * one. An area with nothing recorded is drawn the same size as the rest,
+ * named in one line.
  */
 export interface DevelopmentMapProps {
   milestones: readonly Milestone[];
@@ -50,8 +50,6 @@ export interface DevelopmentMapProps {
 
 /** The number of leaves a territory draws for its Seen-it count (the figure says the rest). */
 const LEAVES = 4;
-/** The three territory outlines, cycled in registry order (decor, never data). */
-const SHAPES = ["sh0", "sh1", "sh2", "sh0", "sh1", "sh2", "sh0", "sh1"] as const;
 
 export default function DevelopmentMap({ milestones, observations, momentText, openDomain, onToggle, composition, nowMs }: DevelopmentMapProps) {
   const { t, uiLang } = useLanguage();
@@ -64,7 +62,7 @@ export default function DevelopmentMap({ milestones, observations, momentText, o
   const day = (at: string) => new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" }).format(new Date(at));
   const desk = composition === "desk";
 
-  const territory = (domain: DomainId, index: number) => {
+  const territory = (domain: DomainId) => {
     const moment = last[domain];
     const count = seen[domain];
     const quiet = count === 0 && !moment;
@@ -73,18 +71,16 @@ export default function DevelopmentMap({ milestones, observations, momentText, o
       <li key={domain} className="ms-ter-item">
         <button
           type="button"
-          className={`ter ar ${SHAPES[index]}${quiet ? " quiet" : ""}${open ? " sel" : ""}${desk ? "" : " m"}`}
-          style={domainToneStyle(domain)}
+          className={`ter${quiet ? " quiet" : ""}${open ? " sel" : ""}${desk ? "" : " m"}`}
           data-testid="dev-map-tile"
           data-domain={domain}
-          data-tone={quiet ? "quiet" : "area"}
+          data-tone={quiet ? "quiet" : "recorded"}
           aria-pressed={open}
           onClick={() => onToggle(domain)}
         >
           <span className="th">
             <span className="tg" aria-hidden="true"><Icon name={DOMAIN_ICONS[domain]} size={15} /></span>
             <span className="tn">{domainName(domain, t)}</span>
-            {desk && <img className="ter-art" {...DOMAIN_ART[domain]} sizes="48px" alt="" aria-hidden="true" loading="lazy" decoding="async" />}
           </span>
           {count > 0 && (
             <span className="tr" data-testid="dev-map-seen-area">

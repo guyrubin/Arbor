@@ -423,9 +423,10 @@ describe("v3 F-CHILD-4 (MOB-02) — the sheet opens on the newest moment", () =>
     expect(line).toMatch(/<time datetime="2026-05-02T10:00:00\.000Z">/i);
     expect(line).toContain('<span dir="auto">Asked for more juice at breakfast</span>');
     expect(html.indexOf('data-testid="area-detail-last"')).toBeLessThan(html.indexOf('class="area-detail-why"'));
-    // The rule takes the AREA's ink (DOMAIN_VARS), never a state colour.
-    expect(line).toMatch(/style="border-inline-start-color:[^"]+"/);
+    // v10.1: a neutral rule (no area ink, no state colour) and no area picture.
+    expect(line).not.toMatch(/style=/);
     expect(line).not.toMatch(/--arbor-(?:green|red|amber|yellow)/);
+    expect(html).not.toContain("area-detail-art");
   });
 
   it("inline under a row there is no line: the row already quotes the moment", () => {
