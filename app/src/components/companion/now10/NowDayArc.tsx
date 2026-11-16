@@ -10,13 +10,15 @@ import type { NowV10Copy } from "./nowV10Copy";
  * hours from Gentle reminders. `children` is laid over the arc's bowl: the
  * lead's face (its tag and title), never invented content.
  */
-export default function NowDayArc({ composition, now, quietStart, quietEnd, evening, copy, children }: {
+export default function NowDayArc({ composition, now, quietStart, quietEnd, evening, window: nudgeWindow = null, copy, children }: {
   composition: Composition;
   now: Date;
   quietStart: number;
   quietEnd: number;
   /** Draw the evening band (the parent has moments in it). */
   evening: boolean;
+  /** Gentle reminders: the stretch nudges are held for (the parent's calmer-stretches setting over the family's own rhythm), whole hours. */
+  window?: { from: number; to: number } | null;
   copy: NowV10Copy;
   children?: React.ReactNode;
 }) {
@@ -47,6 +49,7 @@ export default function NowDayArc({ composition, now, quietStart, quietEnd, even
       <path d={`${rail} Z`} fill={`url(#sky${gid})`} />
       <path className="g-tick nw-base" d={`M${left.x - (desk ? 44 : 25)} ${g.cy} H${right.x + (desk ? 44 : 25)}`} />
       <path className="g-rail" d={rail} style={{ strokeWidth: railWidth }} />
+      {nudgeWindow && nudgeWindow.to > nudgeWindow.from && <path className="g-win" data-testid="arc-nudge-window" d={arcPath(g, arcFraction(nudgeWindow.from * 60), arcFraction(nudgeWindow.to * 60))} style={{ strokeWidth: desk ? 16 : 10 }} />}
       {evening && <path className="g-win" d={arcPath(g, eveningFrom, 1)} style={{ strokeWidth: desk ? 18 : 11 }} />}
       {f > 0 && <path className="g-past" d={arcPath(g, 0, f)} style={{ strokeWidth: railWidth }} />}
       {quiet.map((s) => <path key={s.edge} className="nw-quiet" d={arcPath(g, s.from, s.to)} style={{ strokeWidth: desk ? 14 : 12 }} />)}
@@ -64,6 +67,11 @@ export default function NowDayArc({ composition, now, quietStart, quietEnd, even
       <text className="g-hr" x={desk ? right.x + 32 : right.x} y={labelY}>{clock24(ARC_END_HOUR * 60)}</text>
       {desk && quietAtEnd && <text className="g-hr" x={right.x + 32} y={labelY + 16}>{copy.quietHours}</text>}
       {desk && quietEndLabel && quietEnd > ARC_START_HOUR && <text className="g-hr nw-quiet-label" x={left.x - 30} y={labelY + 16}>{copy.quietUntil(clock24(quietEnd * 60))}</text>}
+      {/* Phone: the hour the quiet stretch ends, inside the bowl beside the segment's end, clear of the dashed band. */}
+      {!desk && quietEndLabel && quietEnd > ARC_START_HOUR && (() => {
+        const p = arcPoint(g, quietEndLabel.to);
+        return <text className="g-hr nw-quiet-hour" x={(p.x + 14).toFixed(1)} y={(p.y + 6).toFixed(1)}>{clock24(quietEnd * 60)}</text>;
+      })()}
     </svg>
     <span className={desk ? "at sun" : "at sun sm"} style={{ left: pct(sun.x, g.w), top: pct(sun.y, g.h) }} aria-hidden="true" />
     <span className="at nowt" style={{ left: pct(sun.x, g.w), top: pct(Math.max(12, sun.y - (desk ? 44 : 34)), g.h) }}>{nowLabel}</span>

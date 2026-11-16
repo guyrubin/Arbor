@@ -296,6 +296,5 @@ html[lang="he"] .ds .nw-face .now-plan-say { font-style: normal; }
 .ds .nw-arc > .nw-arc-face, .ds-desk .nw-stage .nw-arc-face, .ds-phone .nw-stage .nw-arc-face, .ds-desk .sr-stage .nw-arc-face, .ds-phone .sr-stage .nw-arc-face { margin-top: 0; }
 .ds-desk .nw-arc > .nw-arc-face { align-self: end; padding-bottom: 7%; }
 .ds-phone .nw-arc > .nw-arc-face { align-self: start; padding-top: 30%; }
-.ds-phone .sr-stage .nw-arc > .nw-arc-face { padding-top: 46%; }
-.ds-desk .sr-stage .nw-arc > .nw-arc-face { padding-bottom: 8%; }
 .ds-phone .nw-stage .nw-face .now-plan-title { max-width: 230px; margin-inline: auto; }
+.ds .nw-quiet-hour { text-anchor: start; }

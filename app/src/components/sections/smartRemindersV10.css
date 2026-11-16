@@ -54,12 +54,10 @@
 .ds-phone .sr-stage .nw-arc-face { margin-top: -24%; }
 .ds-phone .sr-stage-head > .small { display: none; }
 .ds-phone .sr-stage { padding-bottom: 14px; }
-.ds .sr-face { display: flex; flex-direction: column; align-items: center; gap: 12px; max-width: 440px; text-align: center; }
 .ds .sr-next { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .ds .sr-next .nw-face-tag { align-self: center; }
 .ds .sr-stage .sr-hero { margin: 0; font-size: 34px; line-height: 1.08; text-wrap: balance; }
 .ds-phone .sr-stage .sr-hero { font-size: 19px; line-height: 1.12; }
-.ds-phone .sr-face { gap: 8px; }
 .ds .sr-sub { margin: 0; font-size: 14px; line-height: 1.35; color: var(--ink-soft); }
 .ds .sr-slots { gap: 14px; text-align: start; }
 .ds-phone .sr-slots .nx-bell.lg { width: 40px; height: 40px; }
@@ -98,11 +96,29 @@
 .ds .sr-v10 .rsec > .rhead + .g12 { margin-top: 0; }
 
 /* Desktop: the stage carries today's contract at its foot, so it and the rail end together. */
-.ds .sr-stage-foot { display: flex; flex-direction: column; gap: 14px; margin-top: auto; padding: 18px 28px 24px; }
-.ds .sr-stage-foot .sr-contract { background: #ffffffd9; box-shadow: inset 0 0 0 1px #dbe6f7; }
 .ds .sr-contract { gap: 4px; }
 .ds .sr-contract-count { display: block; font-weight: 600 !important; color: var(--ink-soft); }
 /* Phone: the headline gets its own space under a smaller arc; nothing crosses the arc's legs. */
-.ds-phone .sr-stage .nw-arc { max-width: 250px; margin-inline: auto; }
 .ds-phone .sr-stage .nw-arc-face { margin-top: 4px; }
 .ds .sr-stage-head h1.kicker { font-family: var(--font-sans) !important; font-weight: 600 !important; letter-spacing: .06em; }
+
+/* N-Remind (V77): the next nudge (or none) centred in the bowl; the count on the left and the two bells on the right under the arc;
+   the subtitle once, inside the scene. */
+.ds .sr-today { display: flex; flex-direction: column; min-width: 0; }
+.ds .sr-stage .nw-arc > .nw-arc-face { align-self: end; padding-top: 0; padding-bottom: 9%; display: flex; justify-content: center; }
+.ds-phone .sr-stage .nw-arc > .nw-arc-face { padding-top: 0; padding-bottom: 11%; }
+.ds .sr-next { max-width: 430px; }
+.ds-phone .sr-next { max-width: 190px; }
+.ds .sr-slots { gap: 14px; padding: 10px 28px 0; align-items: center; text-align: start; }
+.ds-phone .sr-slots { padding: 10px 16px 0; gap: 10px; }
+.ds .sr-slots > .nx-bells { margin-inline-start: auto; gap: 10px; }
+.ds .sr-stage > .sr-subtitle { padding: 14px 28px 22px; text-align: center; }
+.ds-phone .sr-stage > .sr-subtitle { padding: 10px 16px 16px; text-align: start; }
+.ds .sr-settings { margin-inline-start: auto; }
+.ds-phone .nw-quiet-hour { text-anchor: start; }
+.ds-phone .sr-next { max-width: 180px; } .ds-phone .sr-stage .sr-hero { font-size: 22px; }
+/* B-OCCL-01 at 375 × 812: the first switch (the route's move) clears the capture dock — a compact count line, and each switch on its card's first line. */
+.ds-phone .sr-slots { padding-top: 4px; }
+.ds-phone .sr-stage > .sr-subtitle { padding: 8px 16px 14px; }
+.ds-phone .sr-stage-head { padding-top: 12px; }
+.ds-phone .sr-kinds > .nx-ctl { align-items: start; }

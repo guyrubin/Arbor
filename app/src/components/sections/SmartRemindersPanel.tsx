@@ -57,6 +57,7 @@ import { formatHour } from "../../lib/pulse";
 import PushPrimingCard from "../nextopen/PushPrimingCard";
 import WeeklyEmailRow from "../weekly/WeeklyEmailRow";
 import { usePushPriming } from "../../hooks/usePushPriming";
+import { requestOpenSettings } from "../layout/settingsBus";
 import { ageYearsOf } from "../../lib/age/forChild";
 import { DsRoot, Fig, Guide, Route, RouteSection, Row12, Scene, StartHere, Tile, type GuideStop } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
@@ -161,6 +162,8 @@ export default function SmartRemindersPanel() {
   );
   const [now] = useState(() => new Date());
   const shown = Math.min(shownToday.length, NUDGE_DAILY_CEILING);
+  // The window nudges are held for: only when the parent routes nudges to calmer stretches and the family's own rhythm names one.
+  const nudgeWindow = prefs.calmWindowOnly && rhythm.calmWindow ? { from: rhythm.calmWindow.startHour, to: rhythm.calmWindow.endHour + 1 } : null;
   const free = NUDGE_DAILY_CEILING - shown;
 
   // ── Persist helper ──────────────────────────────────────────────────────────
@@ -185,44 +188,41 @@ export default function SmartRemindersPanel() {
     { id: "sr-delivery", title: t("elev.sr.delivery.heading"), sub: v10.remDeliveryStopSub },
   ];
 
-  /* MAX-2 CONTRACT — always visible (AC-5). The sentence, then today's live count on its own line.
-     On desktop it closes the stage (beside the two slots it describes); on the phone it follows the switches (B-OCCL-01). */
+  /* MAX-2 CONTRACT — always visible (AC-5): its own small card after the switches (N-Remind V77). Today's count is said once,
+     beside the bells under the arc. */
   const contract = <div className="nx-ex sr-contract" data-testid="sr-max2-contract" role="note" aria-label={t("sr.max2")}>
     <b>{t("sr.max2")}</b>
-    <span className="sr-contract-count" data-testid="sr-max2-count">{t("sr.max2.count", { n: shown })}</span>
   </div>;
 
-  // ── Stop 1 · today on the arc: the next nudge (or none), the two slots, the contract ──
+  // ── Stop 1 · today on the arc: the next nudge (or none) in the bowl; the count and the two slots under it ──
   const bells = <span className="line nx-bells" aria-hidden="true">
-    {Array.from({ length: NUDGE_DAILY_CEILING }, (_, i) => <span key={i} className={i < shown ? "nx-bell lg" : "nx-bell free lg"}><Icon name="notifications" size={24} /></span>)}
+    {Array.from({ length: NUDGE_DAILY_CEILING }, (_, i) => <span key={i} className={[i < shown ? "nx-bell" : "nx-bell free", desk && "lg"].filter(Boolean).join(" ")}><Icon name="notifications" size={desk ? 24 : 20} /></span>)}
   </span>;
   const today = <Scene field="now" className={desk ? "x8 sr-stage" : "sr-stage"}
     orbs={desk ? [{ size: 420, left: -240, bottom: -280, opacity: 0.6 }, { size: 360, right: -170, top: -230, opacity: 0.7, b: true }] : [{ size: 240, left: -160, bottom: -150, opacity: 0.55 }, { size: 220, right: -120, top: -130, opacity: 0.65, b: true }]}>
     <div className="line between sr-stage-head">
-      <span className="gsec"><h1 className="kicker">{t("sr.title")}</h1><StartHere>{v10.startHere}</StartHere></span>
+      <span className="gsec"><h1 className="kicker">{v10.remKicker}</h1><StartHere>{v10.startHere}</StartHere></span>
     </div>
-    <NowDayArc composition={composition} now={now} quietStart={prefs.quietStart} quietEnd={prefs.quietEnd} evening={false} copy={v10}>
-      <div className="sr-face" data-module="reminders-contract">
-        {/* NEXT NUDGE (AC-1): what the gated engine would show next, or nothing. */}
+    <div data-module="reminders-contract" className="sr-today">
+      <NowDayArc composition={composition} now={now} quietStart={prefs.quietStart} quietEnd={prefs.quietEnd} evening={false} window={nudgeWindow} copy={v10}>
+        {/* NEXT NUDGE (AC-1): what the gated engine would show next, or nothing — centred in the arc. */}
         <div data-testid="sr-next-nudge" aria-label={t("sr.nextNudge.label")} className="sr-next">
-          <p className="nw-face-tag"><Icon name={nudge ? "notifications" : "notifications_off"} size={15} />{t("sr.nextNudge.label")}</p>
           {nudge ? <>
             <p className="hero sr-hero">{t(KIND_KEY[nudge.kind] ?? "sr.nextNudge.kind.prep")}</p>
             <p className="sr-sub" dir="auto">{t(nudge.headlineKey, nudge.vars)}</p>
           </> : <p className="hero sr-hero">{t("sr.nextNudge.none")}</p>}
         </div>
-        <div className="line sr-slots">
-          {bells}
-          {/* ENG-02: the contract is a live count, not a promise. */}
-          <Fig size="md" n={shown} unit={v10.remShown(NUDGE_DAILY_CEILING)} sub={free === NUDGE_DAILY_CEILING ? v10.remBothFree : free > 0 ? v10.remOneFree : v10.remNoneFree} />
-        </div>
+      </NowDayArc>
+      {/* ENG-02: the contract is a live count, not a promise — said once, here. */}
+      <div className="line sr-slots" data-testid="sr-max2-count" role="group" aria-label={t("sr.max2.count", { n: shown })}>
+        <Fig size={desk ? "md" : "sm"} n={shown} unit={v10.remShown(NUDGE_DAILY_CEILING)} sub={free === NUDGE_DAILY_CEILING ? v10.remBothFree : free > 0 ? v10.remOneFree : v10.remNoneFree} />
+        {bells}
       </div>
-    </NowDayArc>
-    {desk && <div className="sr-stage-foot"><p className="sr-subtitle">{t("sr.subtitle")}</p>{contract}</div>}
+    </div>
+    <p className="sr-subtitle">{t("sr.subtitle")}</p>
   </Scene>;
 
   // ── Stop 2 · nudge types and when Arbor may reach you (the prefs module, operated in place) ──
-  // B-OCCL-01: on the phone the subtitle follows the switches, so the first switch (the move) clears the capture dock at 375 × 812.
   const kinds = <div className="sr-kinds" data-module="reminders-prefs">
     {NUDGE_TYPES.map(({ key, labelKey, descKey }, i) => {
       const on = prefs.types[key];
@@ -231,8 +231,7 @@ export default function SmartRemindersPanel() {
         <Toggle on={on} onToggle={() => toggleType(key)} label={t(labelKey)} words={switchWords} stamped={i === 0} />
       </div>;
     })}
-    {!desk && <p className="sr-subtitle">{t("sr.subtitle")}</p>}
-    {!desk && contract}
+    {contract}
     {/* QUIET HOURS (AC-3) and CALM-WINDOW SCHEDULING (AC-4), in place */}
     <div className="nx-ex sr-when">
       <div className="line" style={{ gap: 10 }}>
@@ -275,13 +274,13 @@ export default function SmartRemindersPanel() {
           {desk ? <Row12>
             {today}
             <aside className="siderail cards x4 sr-rail" id="sr-kinds" aria-labelledby="sr-kinds-title">
-              <div className="rh"><span className="rstop inline" aria-hidden="true">2</span><h2 className="h3" id="sr-kinds-title">{t("sr.types.heading")}</h2></div>
+              <div className="rh"><span className="rstop inline" aria-hidden="true">2</span><h2 className="h3" id="sr-kinds-title">{t("sr.types.heading")}</h2><button type="button" className="ds-link sr-settings" onClick={() => requestOpenSettings()}>{t("nav.settings")}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" /></button></div>
               {kinds}
             </aside>
           </Row12> : today}
         </RouteSection>
         {!desk && <RouteSection id="sr-kinds" n={2} aria-labelledby="sr-kinds-title">
-          <div className="rhead"><h2 className="h3" id="sr-kinds-title">{t("sr.types.heading")}</h2></div>
+          <div className="rhead"><h2 className="h3" id="sr-kinds-title">{t("sr.types.heading")}</h2><button type="button" className="ds-link sr-settings" onClick={() => requestOpenSettings()}>{t("nav.settings")}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" /></button></div>
           {kinds}
         </RouteSection>}
         <RouteSection id="sr-delivery" n={3} aria-labelledby="sr-delivery-title" stopTop={desk ? 2 : 14}>
