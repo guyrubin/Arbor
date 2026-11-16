@@ -71,7 +71,7 @@ import { PRACTICES } from "../../content/practices";
 // shipped flat chip (components/loop/ShelfGlyph) until B-DESIGN-04 moves them.
 import { ShelfGlyph } from "../ui/ShelfGlyph";
 // v10.1: the list view of My child › Milestones, in the design system's frame.
-import { DsRoot, Guide, Route, RouteHead, RouteSection, Scene, StartHere } from "../../design/primitives";
+import { DsRoot, Guide, Route, RouteHead, RouteSection, Scene } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
 import MilestonesViewSwitch from "../companion/MilestonesViewSwitch";
 import { milestonesV10Copy } from "../companion/milestonesV10Copy";
@@ -1288,13 +1288,11 @@ export default function MilestonesTab() {
             <div className="stg">
               <Scene field="child" orbs={desk ? [{ size: 300, right: -90, top: -120 }] : [{ size: 180, right: -70, top: -80 }]}>
       <div data-testid="ms-header" className="min-w-0">
-                  {/* v10.1: the scene's head — kicker, the page's h1, the Map / List switch. */}
-                  <header className="ms-head">
-                    <div className="ms-head-text">
-                      <p className="kicker">{v10.listMapKicker} <StartHere>{v10.startHere}</StartHere></p>
-                      <h1 className="title" id="ms-list-title">{t("ms.title")}</h1>
-                    </div>
-                    <div className="ms-head-tools"><MilestonesViewSwitch current="milestones" /></div>
+                  {/* v10.1: the scene's head — the page's h1 and the Map / List switch on
+                      one line (the first Seen it has to clear the capture dock). */}
+                  <header className="ms-head ms-head-inline">
+                    <h1 className="title" id="ms-list-title">{t("ms.title")}</h1>
+                    <MilestonesViewSwitch current="milestones" />
                   </header>
                   {/* The ONE warm accent: the family's newest kept words (last 7 days),
                       editorial face on the 2 px ink rule; the shelf and the day on their

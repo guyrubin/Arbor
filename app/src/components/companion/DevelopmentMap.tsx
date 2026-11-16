@@ -77,6 +77,7 @@ export default function DevelopmentMap({ milestones, observations, momentText, o
           style={domainToneStyle(domain)}
           data-testid="dev-map-tile"
           data-domain={domain}
+          data-tone={quiet ? "quiet" : "area"}
           aria-pressed={open}
           onClick={() => onToggle(domain)}
         >

@@ -73,7 +73,7 @@ describe("v10.1 — DevelopmentMap territories", () => {
     state.lang = lang;
     const html = render();
     expect(html).toMatch(/<ul class="atlas" role="list">/);
-    expect([...html.matchAll(/data-testid="dev-map-tile" data-domain="([a-z]+)" aria-pressed="false"/g)].map(m => m[1])).toEqual([...DOMAIN_IDS]);
+    expect([...html.matchAll(/data-testid="dev-map-tile" data-domain="([a-z]+)" data-tone="quiet" aria-pressed="false"/g)].map(m => m[1])).toEqual([...DOMAIN_IDS]);
     // The hub is the fifth cell, the middle of the 3 × 3: between thinking and playing.
     expect(html.indexOf('data-testid="dev-map-hub"')).toBeGreaterThan(html.indexOf('data-domain="thinking"'));
     expect(html.indexOf('data-testid="dev-map-hub"')).toBeLessThan(html.indexOf('data-domain="playing"'));
@@ -184,7 +184,7 @@ describe("v10.1 — DevelopmentMap territories", () => {
   it("the open territory is pressed and ringed, the only one; a tap asks for its own area", () => {
     const onToggle = vi.fn();
     const html = render({ openDomain: "hands", onToggle });
-    expect(html).toContain('data-testid="dev-map-tile" data-domain="hands" aria-pressed="true"');
+    expect(html).toContain('data-testid="dev-map-tile" data-domain="hands" data-tone="quiet" aria-pressed="true"');
     expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
     expect(html).toMatch(/class="ter ar [^"]*\bsel\b[^"]*"[^>]*data-domain="hands"/);
     for (const d of DOMAIN_IDS) state.buttons.find(b => b["data-testid"] === "dev-map-tile" && b["data-domain"] === d)!.onClick!();

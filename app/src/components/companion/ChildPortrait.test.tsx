@@ -174,7 +174,7 @@ const render = (props: React.ComponentProps<typeof ChildPortrait> = {}) => {
 const button = (id: string) => state.buttons.find(b => b["data-testid"] === id);
 const tile = (domain: DomainId) => state.buttons.find(b => b["data-testid"] === "dev-map-tile" && b["data-domain"] === domain);
 /** v10.1: the territory a parent opened is pressed; its area fills section 3. */
-const pressed = (html: string) => [...html.matchAll(/data-testid="dev-map-tile" data-domain="([a-z]+)" aria-pressed="true"/g)].map(m => m[1]);
+const pressed = (html: string) => [...html.matchAll(/data-testid="dev-map-tile" data-domain="([a-z]+)" data-tone="[a-z]+" aria-pressed="true"/g)].map(m => m[1]);
 const openArea = (html: string) => [...html.matchAll(/data-testid="area-detail" data-domain="([a-z]+)"/g)].map(m => m[1]);
 const MODULES = ["child-milestones-areas", "child-milestones-portrait", "child-milestones-area"];
 const t = (lang: "en" | "he") => (key: string) => translate(lang, key);

@@ -33,7 +33,6 @@ export interface MilestonesV10Copy {
   listGuideTools: string;
   listGuideToolsSub: string;
   listGuideCheck: string;
-  listMapKicker: string;
   listGuideCheckSub: string;
 }
 
@@ -67,7 +66,6 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     listGuideTools: "Latest, and tools",
     listGuideToolsSub: "Change, add, born early",
     listGuideCheck: "Development check",
-    listMapKicker: "My child · Milestones",
     listGuideCheckSub: "Under 4 minutes",
   },
   he: {
@@ -99,7 +97,6 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     listGuideTools: "האחרון, וכלים",
     listGuideToolsSub: "שינוי, הוספה, לידה מוקדמת",
     listGuideCheck: "בדיקת התפתחות",
-    listMapKicker: "הילד שלי · אבני דרך",
     listGuideCheckSub: "פחות מ־4 דקות",
   },
 };
