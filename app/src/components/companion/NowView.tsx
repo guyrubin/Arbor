@@ -320,7 +320,9 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     ? t("companion.pause.until", { when: fmtDay(arborPause.record.until, uiLang) })
     : t("companion.pause.untilYou");
   const showNotice = lead !== "notice" && loop.plan.order.includes("notice") && loop.blockNotices.length > 0;
-  const showPointer = lead !== "tonight" && loop.tonightHasQuestions && (loop.plan.tonightPointer || (lead === "step" && loop.evening));
+  // v10.1: Tonight's row stands in Coming up whenever tonight has questions and another lead holds the stage
+  // (morning: the pointer; evening: behind a step, a record question or a visit), so the full flow is one tap away.
+  const showPointer = lead !== "tonight" && loop.tonightHasQuestions && (loop.plan.tonightPointer || loop.evening);
   const pickId = loop.pick?.practice.id;
   useEffect(() => { if (lead === "practice" && pickId) trackActionOffered("now-practice"); }, [lead, pickId]);
   // Only an actually rendered daytime practice earns a Tonight premise.
@@ -391,7 +393,6 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     onOpenAll: () => openTonight(),
   } : null;
   const visitInRightNow = !!rightNowVisit && part === "midday";
-  const tonightInRightNow = !!rightNowTonight && part === "evening";
   const planQuestion = shownLead === "step" && chosen && topic && chosen.topicId === topic.id ? topic.title
     : (shownLead === "practice" || shownLead === "notice") && questionGuided ? topic.title : null;
 
@@ -408,7 +409,11 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const familyDates = useFamilyPlanDatesForNow();
   const notesWaiting = (pendingMemoryItems ?? []).filter(item => item.status === "pending").length;
   const stage: NowStage = {
-    renderArc: (face, art) => <NowDayArc composition={composition} now={now} quietStart={nudgePrefs.quietStart} quietEnd={nudgePrefs.quietEnd} evening={evening.inBand > 0} copy={v10}>
+    // Phone: the face heads the lead and the arc follows it (stageInner), so the lead's answers clear the capture dock at 375.
+    renderArc: (face, art) => !desk ? <div className="nw-face-phone">
+      {art && <LivingForm src={art.src} srcSet={art.srcSet} width={72} height={56} className="nw-face-art nw-face-guide" />}
+      {face}
+    </div> : <NowDayArc composition={composition} now={now} quietStart={nudgePrefs.quietStart} quietEnd={nudgePrefs.quietEnd} evening={evening.inBand > 0} copy={v10}>
       <div className={desk ? "nw-face-row" : "nw-face-col"}>
         <LivingForm src={art?.src ?? "/visuals/parent/v2/guidance-480.webp"} srcSet={art?.srcSet} width={desk ? 150 : 88} height={desk ? 115 : 68}
           crop={art ? undefined : desk ? { w: 270.8, h: 152.3, x: -122, y: -24 } : { w: 158.9, h: 89.4, x: -71.6, y: -14 }} className="nw-face-art" />
@@ -539,7 +544,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
       title={copy.visitTitle(appointmentRoleLabel(visit, t), visitDate)} sub={<span data-testid="now-glance-visit-line">{visitDraft && visitWhen ? draftCopy.glance(visitWhen) : visitWhen ?? copy.visitPrep}</span>}
       action={visitDraft ? draftCopy.cta : copy.visitPrep} onOpen={openVisit} />}
     {familyDates.map(date => <NowRow key={date.id} date={{ weekday: date.weekday, day: date.day, none: date.nobody }} title={date.title} sub={date.sub} onOpen={date.onOpen} />)}
-    {showPointer && !tonightInRightNow && <NowTonightPointer onOpen={() => { loop.setTonightEarly(true); setTonightOpen(true); }} />}
+    {showPointer && <NowTonightPointer onOpen={() => { loop.setTonightEarly(true); setTonightOpen(true); }} />}
     {/* B-PROG-03: the program is Today's frame: one line beside the practice, never a second lead. */}
     {program && lead !== "program" && <NowRow icon="menu_book" testId="now-program-line" className="now-program-line" title={copy.programLabel} sub={programSkill} onOpen={openProgram}
       badge={programWeeks > 0 ? <span className="now-agenda-badge" data-testid="now-program-week">{copy.programWeekOf(program.week, Math.max(program.week, programWeeks))}</span> : undefined} />}
@@ -578,6 +583,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
       {!desk && <p className="nw-stage-sub">{copy.subtitle}</p>}
     </div>
     <NowStageContext.Provider value={stage}>{leadChain}</NowStageContext.Provider>
+    {!desk && <NowDayArc composition={composition} now={now} quietStart={nudgePrefs.quietStart} quietEnd={nudgePrefs.quietEnd} evening={evening.inBand > 0} copy={v10} />}
     {showRightNow && <NowRightNow now={now} lang={lang} visit={rightNowVisit} tonight={rightNowTonight} />}
     {(topic || onTopicOpen) && <div className="nw-stage-q"><NowQuestionRow data-module="now-focus" lang={lang} topic={topic} onOpen={onTopicOpen} onCreate={onTopicCreate ? () => onTopicCreate("") : undefined} phone={!desk} /></div>}
     <div className="nw-meta nw-arc-legend">
