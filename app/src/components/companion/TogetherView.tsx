@@ -13,13 +13,18 @@ import { routineDayKey, routineIdOfPlan, routineTemplatesForAge } from "../../li
 import { latestPlayedWorldId, studioWorldsForChild } from "../practice/studioWorlds";
 import { trackCompanionPlaceOpen } from "../../lib/kpiEvents";
 import Icon from "../ui/Icon";
-import { DsRoot, Guide, MoreLink, Route, RouteHead, RouteSection, Token } from "../../design/primitives";
+import { DsRoot, Guide, MoreLink, Route, scrollToSection, Token } from "../../design/primitives";
+import { Draw, FrameFigure, FrameHead, IndexRow, RailTile, ReadGuide, StageCard, type IndexItem } from "../moments/v10/frame";
+import "../moments/mychild.css";
 import { useComposition } from "../../design/useComposition";
 import { openFamilyTopicSheet } from "./familyTopicEvents";
-import TogetherRoutines from "./TogetherRoutines";
-import { todaysRhythm } from "./togetherRhythm";
+import TogetherRoutines, { BAND_ICON, BAND_OF, BANDS } from "./TogetherRoutines";
+import { routineSlot, todaysRhythm, type RhythmSlot } from "./togetherRhythm";
 import { FITS_COPY } from "./nowV41Copy";
-import { clockOf, dayPart, routineForPart } from "./rightNowModel";
+import { clockOf, dayPart, routineForPart, type DayPart } from "./rightNowModel";
+
+/** The part of the day it is now, as the routine slot whose band is marked in the index. */
+const DAY_PART_SLOT: Readonly<Record<DayPart, RhythmSlot>> = { morning: "morning", midday: "midday", afternoon: "afternoon", evening: "evening" };
 import { ChainStrip, type ChainNode } from "../together/ChainStrip";
 import { TOGETHER_COPY } from "../together/togetherCopy";
 import { routineStepsThisWeek } from "../together/routinesWeek";
@@ -124,15 +129,72 @@ function ScopedTogetherView() {
     ] : []),
   ];
 
+  // The index: the four times of day, each with its count; the part of the day it is now is marked.
+  const templatesByBand = BANDS.map((band) => ({ band, n: templates.filter((r) => BAND_OF[routineSlot(r.id)] === band).length })).filter((b) => b.n > 0);
+  const nowBand = BAND_OF[DAY_PART_SLOT[dayPart(now.getHours())]];
+  const bandName = { morning: copy.bandMorning, afternoon: copy.bandAfternoon, evening: copy.bandEvening, anytime: copy.bandAnytime } as const;
+  const indexItems: IndexItem[] = templatesByBand.map(({ band, n }) => ({
+    id: band,
+    icon: BAND_ICON[band],
+    name: bandName[band],
+    figure: n,
+    on: band === nowBand,
+    onOpen: () => scrollToSection(`band-${band}`),
+    testId: `together-index-${band}`,
+  }));
+  // The routines module, stamped once (one element in either composition).
+  const routinesModule = (
+    <div data-module="together-routines">
+      <TogetherRoutines composition={composition} headingId={routinesId} primaryMoveProps={START_ROUTINE_MOVE} />
+    </div>
+  );
+  const chainStrip = <ChainStrip nodes={chain} composition={composition} label={copy.chainLabel(name)} />;
+  const guideTile = (
+    <RailTile icon="grid_view" title={copy.howToRead}>
+      <ReadGuide
+        phone={phone}
+        steps={[
+          { drawing: Draw.pick(4), label: copy.guidePick },
+          { drawing: Draw.cards(), label: copy.guideStart },
+          { drawing: <span className="ax"><i className="tok plan" style={{ left: "20%" }} /><i className="tok plan" style={{ left: "50%" }} /><i className="tok plan" style={{ left: "80%" }} /></span>, label: copy.guideTick },
+        ]}
+        keyItems={[
+          { mark: <span className="ds-pencil" style={{ padding: "0 6px" }} aria-hidden="true"><Icon name="schedule" size={14} /></span>, label: copy.keyFits },
+          { mark: <Token kind="plan" size="sm" label="" />, label: copy.keyTicked },
+          { mark: <span className="tg-steps" aria-hidden="true"><i /></span>, label: copy.keyToDo },
+        ]}
+      />
+    </RailTile>
+  );
+  const doneTile = week.steps > 0 && (
+    <section className={phone ? "tgdone m" : "tgdone"} data-testid="together-done-week">
+      <span className="ct"><i className="tg" aria-hidden="true"><Icon name="check" size={15} /></i>{copy.doneTitle}</span>
+      <span className="line" style={{ gap: 10, flexWrap: "wrap" }}>
+        <span style={{ display: "inline-flex", gap: 5, flex: "none" }} aria-hidden="true">
+          {week.days.map((d) => <Token key={d.toISOString()} kind="plan" size="sm" label={dayFmt.format(d)} />)}
+        </span>
+        <span className="s" style={{ fontSize: 13, color: "var(--ink-soft)" }}><b className="strong" style={{ color: "var(--ink)" }}>{copy.doneSteps(week.steps)}</b> {copy.doneDays(weekDays)}</span>
+      </span>
+      <MoreLink onClick={() => setActiveTab("weekly")}>{t("nav.tab.weekly")}</MoreLink>
+    </section>
+  );
+  const doorsTile = (
+    <section className="vt" id="doors" data-module="together-doors" aria-labelledby={doorsId} style={{ gap: 10, padding: "16px 18px 14px" }}>
+      <div className="vh"><span className="gi" aria-hidden="true"><Icon name="extension" size={16} /></span><h2 className="h3" id={doorsId}>{copy.doorsTitle}</h2></div>
+      <span className="small" style={{ marginTop: -4 }}>{copy.doorsSub(name)}</span>
+      <div className="tg-stack" style={{ gap: 8 }}>{doors}</div>
+    </section>
+  );
+
   return (
-    <DsRoot composition={composition} className="together-v10" data-testid="together-routines-screen" dir={lang === "he" ? "rtl" : "ltr"}>
+    <DsRoot composition={composition} className="ds-mychild together-v10" data-testid="together-routines-screen" dir={lang === "he" ? "rtl" : "ltr"}>
       <div className="tg-stack" style={{ gap: phone ? 12 : 16 }}>
         <Guide
           label={copy.onThisPage}
           mini={phone}
           stops={[
-            { id: "routines", title: phone ? t("companion.together-view.routines") : copy.stopRoutines, sub: copy.stopRoutinesSub },
-            { id: "doors", title: copy.stopDoors, sub: copy.stopDoorsSub },
+            { id: "times", title: copy.stopTimes, sub: copy.stopTimesSub },
+            { id: "routines", title: phone ? t("companion.together-view.routines") : copy.stopRoutines, sub: copy.stopRoutinesV77Sub },
           ]}
         />
         {/* FEAT-05: the question line is the chip that opens the question sheet (no count, no dot). */}
@@ -142,36 +204,49 @@ function ScopedTogetherView() {
           </button>
           <span className="companion-caption">{t("companion.together-view.here-it-is-also-enough-just-to-enjoy")}</span>
         </div>}
-        <ChainStrip nodes={chain} composition={composition} label={copy.chainLabel(name)} />
         <Route composition={composition}>
-          <section className="rsec" id="routines" data-module="together-routines" aria-labelledby={routinesId}>
+          {/* 1 · the header band: the page's h1, the figure, the index of the times of day and the chain. */}
+          <section className="rsec" id="times" aria-labelledby={routinesId}>
             <span className="rstop on" style={{ top: 14 }} aria-hidden="true">1</span>
-            <div className="rhead" style={{ paddingInlineStart: phone ? 0 : 8 }}>
-              <h1 className="h3 tg-routines-h1" id={routinesId}>{copy.routinesTitle}</h1>
-              <span className="small">{t("companion.together-view.routines-sub")}</span>
+            <div className="scene now" style={{ padding: phone ? "16px 14px 14px" : "22px 28px 18px", gap: phone ? 12 : 16 }}>
+              <i className="orb" style={{ width: 360, height: 360, right: -170, top: -230, opacity: 0.55 }} />
+              <FrameHead
+                phone={phone}
+                kicker={copy.routinesKicker}
+                startHere={copy.startHere}
+                title={<span id={routinesId}>{t("companion.together-view.routines-title")}</span>}
+                sub={t("companion.together-view.routines-sub")}
+                figure={<FrameFigure n={templates.length} unit={copy.routinesFigure} sub={copy.routinesFigureSub} />}
+              />
+              <IndexRow phone={phone} label={copy.timesOfDay} items={indexItems} />
+              {chainStrip}
             </div>
-            <TogetherRoutines composition={composition} headingId={routinesId} primaryMoveProps={START_ROUTINE_MOVE} />
           </section>
-          <RouteSection id="doors" n={2} aria-labelledby={doorsId} className={phone ? "dm-pm" : undefined}>
-            <div data-module="together-doors" className="tg-stack" style={{ gap: 14 }}>
-              <div style={{ paddingInlineStart: phone ? 0 : 8 }}><RouteHead id={doorsId} title={copy.doorsTitle} sub={copy.doorsSub(name)} /></div>
-              {phone
-                ? <div className="tg-stack" style={{ gap: 10 }}>{doors}</div>
-                : <div className="g12">{doors.map((d, i) => <div key={i} style={{ gridColumn: "span 4", minWidth: 0, display: "flex", flexDirection: "column" }}>{d}</div>)}</div>}
-              {week.steps > 0 && (
-                <div className="dm-door dm-dw" data-testid="together-done-week" style={phone ? undefined : { gridTemplateColumns: "auto minmax(0, 1fr) auto", gap: "4px 16px", padding: "12px 18px", minHeight: 0 }}>
-                  <span style={{ fontWeight: 600, fontSize: 15, fontFamily: "var(--font-display)" }}>{copy.doneTitle}</span>
-                  <span className="line" style={{ gap: 10, flexWrap: "wrap" }}>
-                    <span style={{ display: "inline-flex", gap: 5, flex: "none" }} aria-hidden="true">
-                      {week.days.map((d) => <Token key={d.toISOString()} kind="plan" size="sm" label={dayFmt.format(d)} />)}
-                    </span>
-                    <span className="s"><b className="strong">{copy.doneSteps(week.steps)}</b> {copy.doneDays(weekDays)}</span>
-                  </span>
-                  <MoreLink onClick={() => setActiveTab("weekly")}>{t("nav.tab.weekly")}</MoreLink>
+          {/* 2 · the stage (every routine, by time of day) and the rail (guide, this week, the doors). */}
+          <section className="rsec" id="routines" aria-label={copy.byTimeOfDay}>
+            <span className="rstop" style={{ top: 14 }} aria-hidden="true">2</span>
+            {phone ? (
+              <div className="tg-stack" style={{ gap: 12 }}>
+                <div className="mcst" style={{ padding: "14px 12px" }}>{routinesModule}</div>
+                {guideTile}
+                {doneTile}
+                {doorsTile}
+              </div>
+            ) : (
+              <div className="rowa">
+                <div className="stg">
+                  <StageCard icon="wb_sunny" title={copy.byTimeOfDay} className="together-stage">
+                    {routinesModule}
+                  </StageCard>
                 </div>
-              )}
-            </div>
-          </RouteSection>
+                <div className="rlc" style={{ gap: 14 }}>
+                  {guideTile}
+                  {doneTile}
+                  {doorsTile}
+                </div>
+              </div>
+            )}
+          </section>
         </Route>
       </div>
     </DsRoot>
