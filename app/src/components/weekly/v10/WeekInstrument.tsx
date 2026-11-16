@@ -31,9 +31,11 @@ type Props = {
   locale: string;
   /** Rendered under the plot: the Milestones door and the Kids Studio line. */
   footer?: React.ReactNode;
+  /** The next visit when it falls after this week: the end of the dates rail. */
+  beyond?: { label: string; ms: number } | null;
 };
 
-export default function WeekInstrument({ data, composition, copy, locale, footer }: Props) {
+export default function WeekInstrument({ data, composition, copy, locale, footer, beyond = null }: Props) {
   const [hidden, setHidden] = useState<ReadonlySet<InstrumentKind>>(new Set());
   const shown = (kind: InstrumentKind) => !hidden.has(kind);
   const toggle = (kind: InstrumentKind) =>
@@ -95,7 +97,10 @@ export default function WeekInstrument({ data, composition, copy, locale, footer
       {data.days.some((d) => d.isToday) && (
         <span className="wk-chip k-today wk10-key">
           <i className="wk-sw today" aria-hidden="true" />
-          <span>{copy.keyToday}</span>
+          <span>
+            {copy.keyToday}
+            {data.nowHour !== null && <small>{`${new Date().toLocaleDateString(locale, { weekday: "short", day: "numeric" })}, ${clock(Date.now())}`}</small>}
+          </span>
           <b />
         </span>
       )}
@@ -214,11 +219,21 @@ export default function WeekInstrument({ data, composition, copy, locale, footer
       </div>
       <div className="wk10-plotwrap">
         <figure className="wk10-plot" aria-label={copy.weekAria}>
-          {data.dates.length > 0 && shown("date") && (
+          {(data.dates.length > 0 || beyond) && shown("date") && (
             <div className="wk10-row wk10-dates" aria-hidden="true">
               <span className="wk-kick">{copy.datesAhead}</span>
+              <span />
               {data.days.map((d, i) => (
                 <span key={d.startMs} className="wk10-cell">
+                  {beyond && i === 6 && (
+                    <span className="wk10-date beyond">
+                      <Token kind="date" size="md" label={`${copy.tokenDate}, ${beyond.label}`}>{dayNum(beyond.ms)}</Token>
+                      <span className="wk-lab">
+                        <span>{beyond.label}</span>
+                        <small>{new Date(beyond.ms).toLocaleDateString(locale, { weekday: "short", day: "numeric" })}</small>
+                      </span>
+                    </span>
+                  )}
                   {data.dates
                     .filter((x) => x.day === i)
                     .map((x) => (
@@ -262,12 +277,19 @@ export default function WeekInstrument({ data, composition, copy, locale, footer
                     <>
                       <i className="wk10-ahead-rest wk-ahead" style={{ top: pos(data.nowHour) }} />
                       <i className="wk10-nowline" style={{ top: pos(data.nowHour) }} />
-                      <span className="wk10-nowpill" style={{ top: pos(data.nowHour) }}>{copy.now}</span>
+                      <span className="wk10-nowpill" style={{ top: pos(data.nowHour) }}>{`${copy.now} ${clock(Date.now())}`}</span>
                     </>
                   )}
                   {data.timed
                     .filter((x) => x.day === i && shown(x.kind))
-                    .map((tok) => timedToken(tok, "md", { top: `calc(${pos(tok.hour)} - 13px)`, insetInlineStart: 6 + (seats.get(tok.id) ?? 0) * 30 }))}
+                    .map((tok, _j, col) => (
+                      <React.Fragment key={tok.id}>
+                        {timedToken(tok, "md", { top: `calc(${pos(tok.hour)} - 13px)`, insetInlineStart: 6 + (seats.get(tok.id) ?? 0) * 30 })}
+                        {col.length <= 3 && (
+                          <span className="wk-tl wk10-tl" style={{ top: `calc(${pos(tok.hour)} + 14px)`, insetInlineStart: (seats.get(tok.id) ?? 0) * 30 }}>{clock(tok.ms)}</span>
+                        )}
+                      </React.Fragment>
+                    ))}
                 </span>
               ))}
             </span>

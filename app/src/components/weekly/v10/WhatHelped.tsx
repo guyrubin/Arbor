@@ -27,6 +27,7 @@ export default function WhatHelped({
   steps,
   heldWords,
   hasHeldWords,
+  wordsDay,
   words,
   onPlans,
   onHardMoments,
@@ -43,6 +44,8 @@ export default function WhatHelped({
   /** WhatWorkedSend: the held sentences with "Send these words". */
   heldWords: ReactNode;
   hasHeldWords: boolean;
+  /** The weekday the held words were used, when they all share one. */
+  wordsDay?: string;
   /** The child's words kept this week. */
   words: readonly string[];
   onPlans: () => void;
@@ -78,7 +81,7 @@ export default function WhatHelped({
     <div className="stack wk10-helped-side">
       {hasHeldWords && (
         <article className="wk-node words wk10-words" data-testid="weekly-thread-words">
-          <span className="k">{copy.wordsYouUsed}</span>
+          <span className="k">{wordsDay ? copy.wordsYouUsedOn(wordsDay) : copy.wordsYouUsed}</span>
           {heldWords}
         </article>
       )}

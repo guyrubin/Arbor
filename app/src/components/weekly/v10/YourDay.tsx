@@ -53,7 +53,6 @@ export default function YourDay({
   // Weekday headers, Sunday first: 4 Jan 1970 was a Sunday.
   const weekdays = Array.from({ length: 7 }, (_, i) => new Date(1970, 0, 4 + i));
   const head = (d: Date, style: "short" | "narrow" | "long") => d.toLocaleDateString(locale, { weekday: style });
-  const since = field.sinceMs !== null ? new Date(field.sinceMs).toLocaleDateString(locale, { day: "numeric", month: "short" }) : "";
   const art = guideArtFor("bedtime", uiLang);
   const busiest = field.busiest;
 
@@ -190,7 +189,7 @@ export default function YourDay({
 
   return (
     <div className="wk10-day" role="region" aria-labelledby="wk-day-title">
-      <RouteHead id="wk-day-title" title={copy.dayTitle} sub={field.total > 0 ? copy.daySub(field.total, since) : undefined} />
+      <RouteHead id="wk-day-title" title={copy.dayTitle} sub={copy.daySubV} />
       <section className="vt wk10-tile wk10-daycard">
         {dayFieldView}
         {hourStrip}

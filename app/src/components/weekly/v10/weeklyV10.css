@@ -420,3 +420,9 @@
 .ds .wk10-linkcard { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 12px; border-radius: 18px; background: var(--card); box-shadow: var(--shadow-tile); color: var(--ink); }
 /* A stop scrolled into view (the guide, day-windows) lands clear of the sticky shell rows. */
 .ds-desk.wk10 .rsec { scroll-margin-top: 220px; }
+.ds.wk10 .rhead > .ds-link { margin-inline-start: auto; }
+.ds .wk10-tl { position: absolute; width: 32px; text-align: center; z-index: 3; }
+.ds .wk10-date.beyond { opacity: .9; }
+.ds .wk10-dates { border-bottom: 0; }
+.ds .wk10-dates .wk10-cell { border-top: 2px solid var(--wk-grid); }
+.ds .wk10-dates .wk10-cell:last-child { border-top-style: dotted; }

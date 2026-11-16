@@ -100,7 +100,7 @@ export default function WeeklyTab() {
   const first = childProfile.name.split(" ")[0];
   const parentFirst = (user?.displayName || t("nav.parent")).split(" ")[0];
   const locale = he ? "he" : "en";
-  const dateLocale = he ? "he-IL" : "en-US";
+  const dateLocale = he ? "he-IL" : "en-GB";
 
   const awaitingLanguage = selected?.id === currentId && recap.languageRefreshPending;
   const digestAccepted = !!selected?.digest && activeTodayAction?.recommendation === selected.digest.tryThisWeek.trim();
@@ -137,24 +137,26 @@ export default function WeeklyTab() {
   }, [viewId, isCurrent, selected, observations, actionLoop, behaviorLogs, appointments.items, t]);
   const dashboardShown = !!week && (glanceHasCounts(week.glance) || !!selected);
 
-  // The kicker's dates: the report week's first and last day ("14–20 Nov").
+  // The kicker's dates, day first as the boards write them ("14 to 20 Nov").
   const range = useMemo(() => {
     const fallback = selected ? labelFor(selected) : currentLabel;
     if (!week) return fallback;
-    const firstDay = week.glance.perDay[0].startMs;
-    const lastDay = Math.max(firstDay, Math.min(week.glance.perDay[6].startMs, week.lastMs - 1));
-    try {
-      return new Intl.DateTimeFormat(he ? "he-IL" : "en-GB", { month: "short", day: "numeric" }).formatRange(firstDay, lastDay);
-    } catch {
-      return fallback;
-    }
-  }, [week, he, selected, labelFor, currentLabel]);
+    const firstDay = new Date(week.glance.perDay[0].startMs);
+    const lastDay = new Date(Math.max(firstDay.getTime(), Math.min(week.glance.perDay[6].startMs, week.lastMs - 1)));
+    const dm = (d: Date) => d.toLocaleDateString(he ? "he-IL" : "en-GB", { day: "numeric", month: "short" });
+    const sameMonth = firstDay.getMonth() === lastDay.getMonth();
+    return `${sameMonth ? firstDay.getDate() : dm(firstDay)}${copy.rangeJoin}${dm(lastDay)}`;
+  }, [week, he, selected, labelFor, currentLabel, copy.rangeJoin]);
 
   // B-TODAY-29: the sentences the parent marked "held the plan" this week.
   const worked = useMemo(
     () => (week ? whatWorkedThisWeek(actionLoop, week.startMs, { locale, childName: first, nowMs: week.endMs }) : []),
     [actionLoop, week, locale, first]
   );
+
+  // The weekday the held words were used, when they all share one ("on Saturday").
+  const heldDays = new Set(worked.map((l) => new Date(l.at).toLocaleDateString(dateLocale, { weekday: "long" })));
+  const heldDay = heldDays.size === 1 ? [...heldDays][0] : undefined;
 
   // Your day at a glance: the rhythm window production's day windows read.
   const nowMs = Date.now();
@@ -292,6 +294,7 @@ export default function WeeklyTab() {
                   composition={composition}
                   copy={copy}
                   locale={dateLocale}
+                  beyond={visit && visitStart !== null && week && visitStart >= week.glance.perDay[6].startMs + 86_400_000 ? { label: appointmentRoleLabel(visit, t), ms: visitStart } : null}
                   footer={
                     <div className="line wk10-chiprow">
                       <button type="button" className="wk-q" data-testid="weekly-tile-milestones" onClick={() => setActiveTab("milestones")}>
@@ -340,6 +343,7 @@ export default function WeeklyTab() {
                 steps={week.lines.steps}
                 heldWords={<WhatWorkedSend lines={worked} parentName={parentFirst} locale={locale} t={t} />}
                 hasHeldWords={worked.length > 0}
+                wordsDay={heldDay}
                 words={week.lines.words}
                 onPlans={() => setActiveTab("plans")}
                 onHardMoments={() => setActiveTab("behaviors")}
