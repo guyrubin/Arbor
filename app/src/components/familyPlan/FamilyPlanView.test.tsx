@@ -69,7 +69,10 @@ describe("Family plan screen", () => {
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(count(html, "data-primary-move=")).toBe(1);
-    expect(count(t, c.covered)).toBe(1);
+    // The Asked / Accepted / Done track says it; no three-part banner.
+    expect(t).not.toContain("Sent is not accepted");
+    expect(count(t, c.addMessage)).toBe(1);
+    expect(count(t, c.addDate)).toBe(1);
     // 3 dates, 2 with an adult, 1 nobody yet (an asked date is not covered)
     expect(html).toMatch(/<b>3<\/b><span>dates/);
     expect(html).toMatch(/<b>2<\/b><span>with an adult/);
@@ -86,7 +89,7 @@ describe("Family plan screen", () => {
     const c = familyPlanCopy.he;
     expect(t).toContain(c.pageTitle);
     expect(t).toContain(c.stops.who);
-    expect(t).toContain(c.covered);
+    expect(t).toContain(c.standingTile);
     for (const en of Object.values(familyPlanCopy.en.stops)) expect(t).not.toContain(en);
     expect(t).not.toContain(familyPlanCopy.en.inAppOnly);
   });
@@ -97,8 +100,11 @@ describe("Family plan screen", () => {
       h.composition = composition;
       const html = render();
       const t = text(html);
-      expect(t).toContain(familyPlanCopy.en.emptyTitle);
-      expect(t).toContain(familyPlanCopy.en.addMessage);
+      // Each control once: one primary in the stage, "Add a date" in the dates section, no toolbar yet.
+      expect(count(t, familyPlanCopy.en.emptyTitle)).toBe(1);
+      expect(count(t, familyPlanCopy.en.addMessage)).toBe(1);
+      expect(count(t, familyPlanCopy.en.addDate)).toBe(1);
+      expect(t).not.toContain(familyPlanCopy.en.addToCalendar);
       expect(html).not.toMatch(/<b>0<\/b>/);
       expect(count(html, "data-primary-move=")).toBe(1);
     }

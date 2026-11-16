@@ -53,22 +53,39 @@ export default function FamilyPlanView() {
   };
 
   const s = plan.counts;
+  const none = c.stopSub.dates(0);
+  const messages = new Set(plan.all.filter((d) => d.messageId).map((d) => d.messageId)).size;
+  const asked = plan.openRequests.length;
+  const accepted = plan.dates.filter((d) => d.holder && d.status === "open").length;
   const stops = [
-    { id: "fp-who", title: c.stops.who, sub: c.stopSub.who(s.dates, s.nobodyYet) },
+    { id: "fp-who", title: c.stops.who, sub: s.dates ? c.stopSub.who(s.dates, s.nobodyYet) : none },
     { id: "fp-dates", title: c.stops.dates, sub: c.stopSub.dates(plan.dates.length) },
-    { id: "fp-came", title: c.stops.cameIn, sub: c.stopSub.cameIn(new Set(plan.all.filter((d) => d.messageId).map((d) => d.messageId)).size) },
-    { id: "fp-standing", title: c.stops.standing, sub: c.stopSub.standing(plan.openRequests.length, plan.dates.filter((d) => d.holder && d.status === "open").length) },
+    { id: "fp-came", title: c.stops.cameIn, sub: messages ? c.stopSub.cameIn(messages) : none },
+    { id: "fp-standing", title: c.stops.standing, sub: asked || accepted ? c.stopSub.standing(asked, accepted) : none },
   ];
   const common = { plan, lang, c, onOpen: openDate } as const;
   const hasChange = plan.dates.some((d) => d.previous && d.previous.length);
   const openItems = plan.dates.filter((d) => d.status === "open");
 
-  const cameInActions = (
+  const empty = plan.loaded && plan.dates.length === 0;
+  // The screen's one "Add a school message": the stage's primary while the
+  // plan is empty, then the first control of What came in's toolbar.
+  const addMessage = (
+    <button type="button" className={empty ? "btn primary" : "btn ghost sm"} style={empty ? { minHeight: 48 } : { background: "var(--tint-2)", boxShadow: "none", color: "var(--sapphire-deep)", minHeight: 44 }} onClick={() => setSheet({ at: "message" })} data-primary-move="family-plan-add-message">
+      <Icon name="description" size={16} />{c.addMessage}
+    </button>
+  );
+  const addDate = <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} onClick={() => setSheet({ at: "manual" })}>{c.addDate}</button>;
+  const datesBody = empty ? (
+    <div className="fp-col" style={{ gap: 10, alignItems: "flex-start" }}>
+      <p className="small">{c.datesEmpty}</p>
+      {addDate}
+    </div>
+  ) : <DateCards {...common} />;
+  const cameInActions = empty ? null : (
     <span className="line" style={{ gap: 8, marginInlineStart: desk ? "auto" : undefined, flexWrap: "wrap" }}>
-      <button type="button" className="btn ghost sm" style={{ background: "var(--tint-2)", boxShadow: "none", color: "var(--sapphire-deep)", minHeight: 44 }} onClick={() => setSheet({ at: "message" })} data-primary-move="family-plan-add-message">
-        <Icon name="description" size={16} />{c.addMessage}
-      </button>
-      <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} onClick={() => setSheet({ at: "manual" })}>{c.addDate}</button>
+      {addMessage}
+      {addDate}
       <button type="button" className="btn ghost sm" style={{ minHeight: 44 }} disabled={!openItems.length} onClick={() => void addToCalendar(openItems)}>
         <Icon name="download" size={16} />{c.addToCalendar}
       </button>
@@ -93,11 +110,11 @@ export default function FamilyPlanView() {
         <RouteSection id="fp-who" n={1} on>
           <div data-module="family-plan-who" className={desk ? "g12" : "fp-col"} style={desk ? undefined : { gap: 12 }}>
             <div className={desk ? "x8" : undefined} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <PlanStage composition={composition} plan={plan} lang={lang} c={c} onOpen={openDate} onAsk={ask} onAddMessage={() => setSheet({ at: "message" })} onAddDate={() => setSheet({ at: "manual" })} />
+              <PlanStage composition={composition} plan={plan} lang={lang} c={c} onOpen={openDate} onAsk={ask} emptyAction={empty ? addMessage : null} />
             </div>
             {desk && (
-              <SideRail id="fp-dates" n={2} title={c.datesTitle} sub={c.datesSub} titleId="fp-dates-h" className="x4">
-                <DateCards {...common} />
+              <SideRail id="fp-dates" n={2} title={c.datesTitle} sub={empty ? undefined : c.datesSub} titleId="fp-dates-h" className={empty ? "x4 fp-rail-empty" : "x4"}>
+                {datesBody}
               </SideRail>
             )}
           </div>
@@ -105,9 +122,9 @@ export default function FamilyPlanView() {
 
         {!desk && (
           <RouteSection id="fp-dates" n={2}>
-            <RouteHead id="fp-dates-h" title={c.datesTitle} sub={c.datesSub} />
+            <RouteHead id="fp-dates-h" title={c.datesTitle} sub={empty ? undefined : c.datesSub} />
             <div className="fp-col" style={{ gap: 10 }} data-module="family-plan-dates">
-              <DateCards {...common} />
+              {datesBody}
             </div>
           </RouteSection>
         )}
@@ -123,9 +140,11 @@ export default function FamilyPlanView() {
             </p>
           )}
           <div className={desk ? "g12" : "fp-col"} style={desk ? undefined : { gap: 12 }} data-module="family-plan-came-in">
-            <div style={desk ? { gridColumn: hasChange ? "span 4" : "span 6", display: "flex" } : undefined}>
-              <MessageTile {...common} onAddMessage={() => setSheet({ at: "message" })} />
-            </div>
+            {!empty && (
+              <div style={desk ? { gridColumn: hasChange ? "span 4" : "span 6", display: "flex" } : undefined}>
+                <MessageTile {...common} />
+              </div>
+            )}
             {hasChange && <div style={desk ? { gridColumn: "span 4", display: "flex" } : undefined}><ChangeTile {...common} /></div>}
             <div style={desk ? { gridColumn: hasChange ? "span 4" : "span 6", display: "flex" } : undefined}>
               <RequestsTile {...common} />

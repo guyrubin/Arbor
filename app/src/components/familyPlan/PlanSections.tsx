@@ -60,10 +60,10 @@ function latestMessage(all: FamilyPlanDate[]) {
   return { messages: groups.size, dates: fromMessages.length, latest };
 }
 
-export function MessageTile({ plan, lang, c, onOpen, onAddMessage }: Common & { onAddMessage: () => void }) {
+export function MessageTile({ plan, lang, c, onOpen }: Common) {
   const m = latestMessage(plan.all);
   return (
-    <Tile icon="description" kind="date" title={c.theMessage} titleId="fp-msg-h" link={m.messages ? <MoreLink onClick={onAddMessage}>{c.addMessage}</MoreLink> : undefined}>
+    <Tile icon="description" kind="date" title={c.theMessage} titleId="fp-msg-h">
       {m.messages ? (
         <>
           <div className="line" style={{ gap: 22, alignItems: "center", padding: "6px 0 2px 6px" }}>
@@ -86,12 +86,7 @@ export function MessageTile({ plan, lang, c, onOpen, onAddMessage }: Common & { 
           </ol>
         </>
       ) : (
-        <div className="fp-col" style={{ gap: 10 }}>
-          <p className="small">{c.noMessage}</p>
-          <button type="button" className="btn ghost sm" style={{ alignSelf: "flex-start", background: "var(--tint-2)", boxShadow: "none", color: "var(--sapphire-deep)" }} onClick={onAddMessage}>
-            <Icon name="description" size={16} />{c.addMessage}
-          </button>
-        </div>
+        <p className="small">{c.noMessage}</p>
       )}
     </Tile>
   );
@@ -194,7 +189,6 @@ export function StandingTile({ plan, lang, c, onOpen, composition }: Common & { 
           {col(s.done, c.doneNone, () => c.done)}
         </div>
       </div>
-      <p className="fp-covered">{c.covered}</p>
     </Tile>
   );
 }

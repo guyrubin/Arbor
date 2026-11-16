@@ -84,7 +84,7 @@ export interface FamilyPlanCopy {
   askedNone: string;
   acceptedNone: string;
   doneNone: string;
-  covered: string;
+  datesEmpty: string;
   // review
   reviewTitle: string;
   reviewPaste: string;
@@ -269,7 +269,7 @@ const en: FamilyPlanCopy = {
   askedNone: "Nothing waiting for an answer.",
   acceptedNone: "No date has an adult yet.",
   doneNone: "Nothing yet. The adult who has it marks it.",
-  covered: "Sent is not accepted. Accepted is not done. No answer is not covered.",
+  datesEmpty: "No dates yet.",
   reviewTitle: "School message",
   reviewPaste: "Paste the message",
   reviewPasteHint: "Arbor reads it for dates and keeps only the lines a kept date came from, never the whole message.",
@@ -469,7 +469,7 @@ const he: FamilyPlanCopy = {
   askedNone: "אין בקשה שמחכה לתשובה.",
   acceptedNone: "עוד אין תאריך עם מבוגר.",
   doneNone: "עוד כלום. המבוגר שלקח מסמן.",
-  covered: "נשלח זה לא אושר. אושר זה לא בוצע. אין תשובה זה לא מכוסה.",
+  datesEmpty: "עוד אין תאריכים.",
   reviewTitle: "הודעה מהגן",
   reviewPaste: "הדביקו את ההודעה",
   reviewPasteHint: "Arbor קורא אותה כדי למצוא תאריכים ושומר רק את השורות שמהן הגיעו התאריכים שנשמרו, לא את כל ההודעה.",

@@ -39,8 +39,8 @@ export interface StageProps {
   c: FamilyPlanCopy;
   onOpen: (id: string) => void;
   onAsk: (id: string) => void;
-  onAddMessage: () => void;
-  onAddDate: () => void;
+  /** The screen's one "Add a school message" (stamped by the route), shown here only while the plan is empty. */
+  emptyAction: React.ReactNode;
 }
 
 /** Desk: the ribbon of seven days with one lane per adult (and nobody yet), then a "later" column. */
@@ -118,7 +118,7 @@ function PhoneLanes({ plan, lang, c, onOpen }: Pick<StageProps, "plan" | "lang" 
   );
 }
 
-export function PlanStage({ composition, plan, lang, c, onOpen, onAsk, onAddMessage, onAddDate }: StageProps) {
+export function PlanStage({ composition, plan, lang, c, onOpen, onAsk, emptyAction }: StageProps) {
   const desk = composition === "desk";
   const { counts, dates, window: w } = plan;
   const range = rangeLabel(w.days[0], w.days[w.days.length - 1], lang, c);
@@ -165,6 +165,7 @@ export function PlanStage({ composition, plan, lang, c, onOpen, onAsk, onAddMess
           <div className="fp-empty">
             <p className="h3">{c.emptyTitle}</p>
             <p className="small" style={{ maxWidth: 520 }}>{c.emptyBody}</p>
+            <div>{emptyAction}</div>
           </div>
         ) : !plan.loaded ? (
           <p role="status" className="small" style={{ padding: "12px 28px" }}>{c.loading}</p>
@@ -174,15 +175,9 @@ export function PlanStage({ composition, plan, lang, c, onOpen, onAsk, onAddMess
             <div style={{ padding: desk ? "12px 28px 0" : "10px 16px 0" }}>{legend}</div>
           </>
         )}
-        {desk && (
+        {desk && !empty && plan.loaded && (
           <div className="fp-next">
-            {empty ? (
-              <>
-                <span className="t">{c.emptyTitle}</span>
-                <button type="button" className="btn primary sm" onClick={onAddMessage}>{c.addMessage}</button>
-                <button type="button" className="btn ghost sm" style={{ background: "var(--card)" }} onClick={onAddDate}>{c.addDate}</button>
-              </>
-            ) : next ? (
+            {next ? (
               <>
                 <span className="t"><span className="small">{c.nextLabel}</span><bdi>{stateOf(next) === "asked" && next.request ? c.nextAsked(next.title, adultLabel({ uid: next.request.toUid, email: next.request.toEmail }, plan.me.uid, c)) : c.nextNobody(next.title, whenLabel(next, lang))}</bdi></span>
                 <button type="button" className="btn primary sm" onClick={() => onAsk(next.id)}>{c.whoTakes}</button>
@@ -191,7 +186,7 @@ export function PlanStage({ composition, plan, lang, c, onOpen, onAsk, onAddMess
             ) : (
               <>
                 <span className="t">{c.nextAllCovered}</span>
-                <button type="button" className="btn primary sm" onClick={onAddMessage}>{c.addMessage}</button>
+                <span />
                 <span />
               </>
             )}
@@ -199,15 +194,11 @@ export function PlanStage({ composition, plan, lang, c, onOpen, onAsk, onAddMess
         )}
         {!desk && <div style={{ height: 16 }} />}
       </Scene>
-      {!desk && (
-        empty || !next ? (
-          <button type="button" className="btn primary block" style={{ minHeight: 52 }} onClick={onAddMessage}>{c.addMessage}</button>
-        ) : (
+      {!desk && !empty && next && (
           <div className="fp-next" style={{ margin: 0 }}>
             <span className="t"><span className="small">{c.nextLabel}</span><bdi>{stateOf(next) === "asked" && next.request ? c.nextAsked(next.title, adultLabel({ uid: next.request.toUid, email: next.request.toEmail }, plan.me.uid, c)) : c.nextNobody(next.title, whenLabel(next, lang))}</bdi></span>
             <button type="button" className="btn primary block" style={{ minHeight: 52 }} onClick={() => onAsk(next.id)}>{c.whoTakes}</button>
           </div>
-        )
       )}
     </>
   );

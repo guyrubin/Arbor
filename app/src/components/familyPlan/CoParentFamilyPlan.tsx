@@ -126,7 +126,6 @@ export default function CoParentFamilyPlan({ grantId, lang }: { grantId: string;
             ) : <span />}
           </div>
         ))}
-        <p className="fp-covered" style={{ fontSize: 17 }}>{c.covered}</p>
       </section>
     </DsRoot>
   );

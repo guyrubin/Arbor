@@ -98,8 +98,6 @@
 .ds .fp-receipt { position: sticky; bottom: 12px; z-index: 5; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 14px; border-radius: 16px; background: var(--card); box-shadow: var(--shadow-tile); }
 .ds .fp-err { color: var(--k-hard); font-weight: 600 !important; font-size: 14px; }
 .ds .fp-empty { display: flex; flex-direction: column; gap: 10px; padding: 18px 20px; }
-.ds .fp-covered { font-family: var(--font-display) !important; font-weight: 500 !important; font-size: 20px; line-height: 1.25; padding: 12px 16px; border-radius: 14px; background: var(--well); text-align: center; color: var(--ink); margin: 0; }
-.ds-phone .fp-covered { font-size: 18px; text-align: start; }
 .ds .fp-tiles3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
 .ds-phone .fp-tiles3 { grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .ds .fp-lines { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
@@ -114,3 +112,4 @@
 /* The phone route's stops sit in a 34 px gutter (the board's body.routed); the shell gives 16. */
 .ds-phone.fp > .route.m { margin-inline-start: 18px; }
 .ds .fp-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ds .siderail.fp-rail-empty { align-self: start; }
