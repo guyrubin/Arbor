@@ -2,7 +2,7 @@ import { memo, useId, type CSSProperties, type ReactNode } from 'react';
 import { CX, FIBRE, VIEW_H, VIEW_W, normDeg, toRad, type Pt } from './phageGeometry';
 import PhageArt from './PhageArt';
 import { SCALE_STOPS } from './tinyScale';
-import { ART_FERN, ART_LEAFLAB } from './tinyKitArt';
+import { ART_FERN, ART_LEAFLAB, LEAFLAB_CLOSED } from './tinyKitArt';
 
 /** What the game draws on top of the kit pictures: the white model turntable
  * on Aya's bench, and the living things her lens finds in a drop of pond
@@ -180,7 +180,7 @@ export const LeafScene = memo(function LeafScene({ dropName, dropNote }: { dropN
       </radialGradient>
     </defs>
     <image href={ART_FERN.src} x={-90} y={-40} width={580} height={520} preserveAspectRatio="xMidYMid slice" />
-    <image href={ART_LEAFLAB.src} x={at.x - 100} y={at.y - 84} width={200} height={178} />
+    <svg x={at.x - 104} y={at.y - 98} width={208} height={190} viewBox={LEAFLAB_CLOSED.join(' ')}><image href={ART_LEAFLAB.src} width={ART_LEAFLAB.width} height={ART_LEAFLAB.height} /></svg>
     <ellipse cx={at.x + 2.5} cy={at.y + r * 0.8} rx={r * 1.05} ry={r * 0.42} style={fill(clear('var(--mk-shadow)', 36))} />
     <circle cx={at.x} cy={at.y} r={r} style={fill(`url(#${id}drop)`)} />
     <circle cx={at.x} cy={at.y} r={r} fill="none" strokeWidth={1.1} style={stroke(clear('var(--mk-white)', 85))} />

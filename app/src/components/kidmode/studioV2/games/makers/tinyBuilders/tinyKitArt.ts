@@ -11,10 +11,10 @@ const art = (root: string, stem: string, width: number, height: number, source: 
 
 /** The Wonderworks room behind the bench: the white arched pavilion, valley in the windows (shipped). */
 export const ART_ROOM = art(BOP, 'scene-delivery', 1024, 1024, 'app shipped: bop/scene-delivery');
-/** The TrailBench, stowed: the rolling lab the model's turntable stands on. Own cut-out, to be swapped for the shared `kit-prop-trailbench` when it lands. */
-export const ART_TRAILBENCH = art(MAKERS, 'tiny-builders-trailbench', 655, 342, 'kit v30/11-trailbench.png (STOWED hero, cut out)');
+/** The TrailBench, stowed: the rolling lab the model's turntable stands on (shared kit library). */
+export const ART_TRAILBENCH = art(MAKERS, 'kit-prop-trailbench', 768, 388, 'shared kit library: kit-prop-trailbench (v30/11-trailbench.png, STOWED)');
 /** The ProofLens, lens up: the look-closer tool lying on the bench. */
-export const ART_PROOFLENS = art(MAKERS, 'tiny-builders-prooflens', 297, 211, 'kit v30/09-observe-kit.png (PROOFLENS hero, cut out)');
+export const ART_PROOFLENS = art(MAKERS, 'kit-tool-prooflens', 622, 426, 'shared kit library: kit-tool-prooflens (v30/09-observe-kit.png)');
 /** The ProofLens on its tripod before its big screen; the screen is blank for the game's lens view. */
 export const ART_MONITOR = art(MAKERS, 'tiny-builders-lens-monitor', 450, 546, 'kit v30/25-prooflens.png (RESTORE CONTEXT panel, right part; screen painted blank)');
 /** Where the blank screen sits in ART_MONITOR, as shares of the picture: its four corners, clockwise from top-left. */
@@ -23,8 +23,10 @@ export const MONITOR_SCREEN: readonly (readonly [number, number])[] = [[14 / 450
 export const ART_WATER = art(MAKERS, 'tiny-builders-water', 640, 704, 'app shipped: v30/portal-feelings (pool, blurred and lightened)');
 /** A fern from above: the leaf the drop of pond water sits on (shipped). */
 export const ART_FERN = art(BOP, 'rover-planter', 320, 278, 'app shipped: bop/rover-planter');
-/** Aya's LeafLab, closed: the puck the drop of pond water sits on. Own cut-out, to be swapped for the shared `kit-tool-leaflab` when it lands. */
-export const ART_LEAFLAB = art(MAKERS, 'tiny-builders-leaflab', 165, 147, 'kit v30/05-aya.png (LEAFLAB product shot, closed, cut out)');
+/** Aya's LeafLab (shared kit library: the set of closed puck, open puck and capsule). Only the closed puck is shown: the drop of pond water sits on it. */
+export const ART_LEAFLAB = art(MAKERS, 'kit-tool-leaflab', 640, 543, 'shared kit library: kit-tool-leaflab (v30/05-aya.png)');
+/** The closed puck inside ART_LEAFLAB, in its pixels: x, y, width, height. */
+export const LEAFLAB_CLOSED: readonly [number, number, number, number] = [40, 118, 270, 246];
 /** Bebe, watching the ProofLens screen (shared kit library; the file names carry `bebe`, as the likeness register needs). Shown flipped, to look at the screen. */
 export const ART_BEBE_WATCHING = art(MAKERS, 'kit-bebe-face-curious', 426, 512, 'shared kit library: kit-bebe-face-curious (v30/12-bebe-expressions.png)');
 export const ART_BEBE_PLEASED = art(MAKERS, 'kit-bebe-face-smile', 425, 512, 'shared kit library: kit-bebe-face-smile (v30/12-bebe-expressions.png)');

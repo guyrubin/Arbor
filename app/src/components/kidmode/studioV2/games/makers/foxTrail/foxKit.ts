@@ -41,7 +41,7 @@ export const SPRITES = {
 /** The kit's standing side view of Pep (board 04, SIDE). The puppet shows this
  * one picture five times, each copy clipped to a part (body, two near legs,
  * and the same two again, shaded, as the far pair), so no private copy of the
- * character is shipped. `box` is where the picture sits on the board. */
+ * character is shipped. The box field is where the picture sits on the board. */
 export interface PepSheet extends KitArt { box: readonly [x: number, y: number, w: number, h: number]; dy: number }
 export const PEP_SIDE: PepSheet = {
   ...made('kit-pep-mission-side', 730, 768, 'shared kit library (kit v30/04-pep.png, MISSION / SIDE)'), box: [407, 514, 421, 443], dy: 498,

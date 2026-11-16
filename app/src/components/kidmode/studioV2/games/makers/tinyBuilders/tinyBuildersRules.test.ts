@@ -331,7 +331,7 @@ describe('Tiny Structures: the kit pictures', () => {
       // The likeness register goes by file name: a picture of this activity that showed a child would need to say so.
       // No file of this activity's own shows a child; the children come from the shared library, whose names say so.
       if (art.src.includes('/tiny-builders-')) expect(art.src).not.toMatch(/bebe|gobgob|crew/);
-      else if (art.src.includes('/makers/')) expect(art.src).toMatch(/\/kit-(bebe|aya|prop|tool)-[a-z-]+\.webp$/);
+      else if (art.src.includes('/makers/')) expect(art.src).toMatch(/\/kit-(bebe-face|prop|tool)-[a-z-]+\.webp$/);
     }
     expect(MONITOR_SCREEN).toHaveLength(4);
     for (const [x, y] of MONITOR_SCREEN) { expect(x).toBeGreaterThan(0); expect(x).toBeLessThan(1); expect(y).toBeGreaterThan(0); expect(y).toBeLessThan(1); }

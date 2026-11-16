@@ -355,10 +355,10 @@
 /* ── The wide room: landscape tablets and desktops ─────────── */
 @media (min-width: 900px) and (min-aspect-ratio: 5 / 4) {
   .md { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 16px; }
-  .md .md-cue { grid-column: 1; }
-  .md-foot { grid-column: 2; grid-auto-flow: column; align-items: center; justify-content: end; max-inline-size: 460px; }
+  .md .md-cue { grid-column: 1; grid-row: 1; }
+  .md-foot { grid-column: 2; grid-row: 1; grid-auto-flow: column; align-items: center; justify-content: end; max-inline-size: 460px; }
   .md-status { text-align: end; }
-  .md-stagecol { grid-column: 1 / -1; }
+  .md-stagecol { grid-column: 1 / -1; grid-row: 2; }
   .md-stage { --md-avail: max(380px, calc(100dvh - 252px)); --md-w: min(100cqi, calc(var(--md-avail) * 1.5)); --md-h: calc(var(--md-w) / 1.5); --md-u: calc(var(--md-w) / 810); --md-zoom: 2.3; block-size: var(--md-h); }
   .md-room__scene { aspect-ratio: 3 / 2; transform-origin: 54% 45%; }
   .md-at--window { --x: 100; --y: 20; --w: 610; --h: 160; }
@@ -370,7 +370,7 @@
   .md-backdrop { inset-inline-start: 0; inline-size: 100%; block-size: 100%; }
   .md-frost i:nth-child(1) { --x: 130; --y: 48; --w: 139; --h: 305; } .md-frost i:nth-child(2) { --x: 336; --y: 48; --w: 139; --h: 305; } .md-frost i:nth-child(3) { --x: 542; --y: 48; --w: 138; --h: 305; }
   .md-chock--inRoom { inset-inline-start: calc(var(--md-u) * -2); inset-block-start: calc(var(--md-u) * 318); inset-block-end: auto; inline-size: calc(var(--md-u) * 210); }
-  .md-chock--inRoom .md-chock__bust { display: none; }
+  .md .md-room .md-chock--inRoom .md-chock__bust { display: none; }
   .md-chock--inRoom .md-chock__body[data-mood=glad] { animation: md-chock-hop .62s var(--studio-ease-spring) 2; }
   .md-chock--inRoom .md-chock__body[data-mood=unsure] { animation: none; transform: rotate(-6deg) translateY(1%); transition: transform .3s var(--studio-ease-spring); }
   .md-chock--inRoom .md-chock__pose--idle, .md-chock--inRoom .md-chock__body[data-mood=glad] .md-chock__pose--happy { opacity: 1; } .md-chock--inRoom .md-chock__body[data-mood=glad] .md-chock__pose--idle { opacity: 0; }

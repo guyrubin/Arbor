@@ -527,7 +527,7 @@ export function createMammothEngine(el: EngineElements, hooks: EngineHooks, soun
     node.style.transform = `translate(${screen[0].toFixed(1)}px, ${screen[1].toFixed(1)}px) scale(${(1 - 0.1 * press).toFixed(3)})`;
   };
   const stepGhost = () => {
-    const calm = !busy && !pointers.size && !glide && camera.zoom < 1.05 && turning < 0 && !feeding && !finale && !leaving;
+    const calm = !busy && !pointers.size && !glide && (phase !== 'explore' || camera.zoom < 1.05) && turning < 0 && !feeding && !finale && !leaving;
     if (!ghostRun) {
       const kind = phase === 'meet' && arriving < 0 ? 'knock' : phase === 'explore' ? 'stroke' : null;
       const learned = kind === 'knock' ? learnedKnock : learnedStroke;
