@@ -256,3 +256,7 @@
 .ds-mychild.ds-phone .route.m { margin-inline-start: 20px; }
 .ds-mychild .mbento { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 20px; align-items: stretch; }
 .ds-mychild .mstack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ds-mychild .ksub { margin: 0; font-size: 14px; line-height: 1.4; color: var(--ink-soft); }
+.ds-mychild.moments-kind-head .mstage { padding: 22px 26px 18px; }
+.ds-mychild.ds-phone.moments-kind-head .mstage { padding: 16px 14px 14px; }
+.ds-mychild .rlc .cobj { max-height: 220px; }

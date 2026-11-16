@@ -8,7 +8,7 @@ export type MomentsV10Copy = {
   onThisPage: string;
   startHere: string;
   /** The stage's headline, per view. */
-  headline: { areas: string; time: string; places: string };
+  headline: { areas: string; time: string; places: string; reader: string };
   /** The guide's short names on the phone strip. */
   guideShort: { areas: string; kinds: string; newest: string; shelves: string };
   guideAreasSub: (areas: number) => string;
@@ -36,6 +36,7 @@ export type MomentsV10Copy = {
   tokenMoment: string;
   tokenHard: string;
   doors: string;
+  logHard: string;
 };
 
 export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
@@ -46,6 +47,7 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
       areas: "What you kept, area by area",
       time: "What you kept, month by month",
       places: "What you kept, place by place",
+      reader: "Everything you kept, month by month",
     },
     guideShort: { areas: "Areas", kinds: "Kind", newest: "Newest", shelves: "Shelf by shelf" },
     guideAreasSub: (areas) => (areas === 1 ? "1 area" : `${areas} areas`),
@@ -73,6 +75,7 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
     tokenMoment: "moment you kept",
     tokenHard: "hard moment",
     doors: "More ways to read the record",
+    logHard: "Log a hard moment",
   },
   he: {
     onThisPage: "בעמוד הזה",
@@ -81,6 +84,7 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
       areas: "מה ששמרתם, תחום אחר תחום",
       time: "מה ששמרתם, חודש אחר חודש",
       places: "מה ששמרתם, מקום אחר מקום",
+      reader: "כל מה ששמרתם, חודש אחר חודש",
     },
     guideShort: { areas: "תחומים", kinds: "סוג", newest: "האחרון", shelves: "מדף אחר מדף" },
     guideAreasSub: (areas) => (areas === 1 ? "תחום אחד" : `${areas} תחומים`),
@@ -108,5 +112,6 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
     tokenMoment: "רגע ששמרתם",
     tokenHard: "רגע קשה",
     doors: "דרכים נוספות לקרוא את התיעוד",
+    logHard: "לתעד רגע קשה",
   },
 };

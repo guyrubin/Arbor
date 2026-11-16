@@ -35,6 +35,7 @@ import MomentsByKind, { type KindObject } from "./v10/MomentsByKind";
 import MomentsNewest, { type NewestLabels } from "./v10/MomentsNewest";
 import MomentsShelves from "./v10/MomentsShelves";
 import { STAGE_ORBS } from "./v10/stageOrbs";
+import KeptThingsPage from "../kept/KeptThingsPage";
 import { MOMENTS_V10_COPY } from "./momentsV10Copy";
 import "./moments.css";
 import "./mychild.css";
@@ -96,6 +97,9 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   // A link that names an area, a month or one observation opens Over time.
   const view = parseView(query.get("view"), !!(area || month || query.get("observation")));
   const kind = parseKind(query.get("kind"));
+  // v10.1: Moments, kind Kept, the reader (the year book): #/timeline?kind=kept&reader=book[&year=YYYY].
+  const reader = kind === "kept" && query.get("reader") === "book";
+  const openReader = (year?: string) => goToRoute("timeline", { kind: "kept", reader: "book", year });
   const firstName = (childProfile.name || "").trim().split(/\s+/)[0] || t("companion.together-view.your-child");
   const [range, setRange] = useState<MomentsRange>(3);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -384,7 +388,7 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
 
   const panel = (
     <div {...viewModule} role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={`${tabsId}-${view}`} className="mpanel">
-      {view !== "areas" && (filterChip || view === "time" || view === "places") && (
+      {!reader && view !== "areas" && (filterChip || view === "time" || view === "places") && (
         <div className="line between mhead">{filterChip ?? <span />}{rangeControl}</div>
       )}
       {requestedId && dismissedSource !== requestKey && !requestedObservation && !record.loading && <div className="moments-note" role="status" data-testid="moments-source-unavailable">
@@ -393,7 +397,9 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
       </div>}
       {record.loading && observations.length === 0 && <p className="moments-note" role="status"><Icon name="history" size={18} />{copy.loading}</p>}
       {record.error && <p className="moments-note" role="status"><Icon name="info" size={18} />{copy.failed}<button type="button" className="moments-text-button" onClick={record.reload}>{copy.retry}</button></p>}
-      {emptyRecord ? (
+      {reader ? (
+        <KeptThingsPage key={childProfile.id} onOpenYear={openReader} />
+      ) : emptyRecord ? (
         <div className="moments-empty">
           <h2>{t("companion.portrait.emptyAll")}</h2>
           <p>{t("companion.portrait.emptyAllSub")}</p>
@@ -499,10 +505,11 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
       <div {...toolbarModule} className="mstack mtools">
         <div className={desk ? "line between mtop" : "mstack mtop"}>
           <div className="mstack" style={{ gap: 6 }}>
-            <span className="gsec"><span className="kicker">{t("companion.moments.title")} · {t(VIEW_KEYS[view])}</span><StartHere>{v.startHere}</StartHere></span>
-            <h1 className="hero">{v.headline[view]}</h1>
+            <span className="gsec"><span className="kicker">{t("companion.moments.title")} · {reader ? t("kept.yearBook") : t(VIEW_KEYS[view])}</span><StartHere>{v.startHere}</StartHere></span>
+            <h1 className="hero">{reader ? v.headline.reader : v.headline[view]}</h1>
           </div>
-          {desk ? viewSwitch : <div className="mscroll">{viewSwitch}</div>}
+          {/* The reader is one reading, not a view of the record: no view switch. */}
+          {reader ? null : desk ? viewSwitch : <div className="mscroll">{viewSwitch}</div>}
         </div>
         {desk ? kindChips : <div className="mscroll">{kindChips}</div>}
         {kindDoor}
@@ -514,7 +521,7 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   const kindObjects: KindObject[] = [
     { id: "hard", kicker: t("companion.moments.kind.hard"), figure: counts.hard > 0 ? { n: counts.hard, unit: v.hardUnit } : undefined, title: t("companion.moments.kind.hard"), sub: t("companion.moments.kind.hardDoor"), onOpen: () => setActiveTab("behaviors"), testId: "moments-kind-door-hard" },
     { id: "said", kicker: kindLabel("said"), figure: counts.said > 0 ? { n: counts.said, unit: v.saidUnit(counts.said) } : undefined, title: kindLabel("said"), sub: t("companion.moments.kind.saidDoor", { name: firstName }), onOpen: () => setActiveTab("language"), testId: "moments-kind-door-said" },
-    { id: "kept", kicker: t("companion.moments.kind.kept"), title: v.keptTitle, sub: v.keptSub, onOpen: () => goToRoute("development", { view: "kept" }), testId: "moments-kind-kept" },
+    { id: "kept", kicker: t("companion.moments.kind.kept"), title: v.keptTitle, sub: v.keptSub, onOpen: () => openReader(), testId: "moments-kind-kept" },
     { id: "time", kicker: t("companion.moments.view.time"), title: t("elev.shelfJournal.all"), sub: v.timeSub, onOpen: () => goToRoute("journal", { view: "all" }), testId: "moments-everything" },
   ];
   const byKind = <MomentsByKind composition={composition} title={v.byKind} items={kindObjects} snapLabel={v.byKind} />;
@@ -555,7 +562,7 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   const doors = (
     <nav className="mdoors" aria-label={v.doors}>
       {([
-        ["moments-year-book", t("kept.yearBook"), () => goToRoute("development", { view: "kept" })],
+        ["moments-year-book", t("kept.yearBook"), () => openReader()],
         ["moments-journal-door", t("companion.moments.journal"), () => setActiveTab("journal")],
         ["moments-pro-door", t("elev.shelfJournal.flip"), () => goToRoute("journal", { view: "pro" })],
       ] as const).map(([id, label, open]) => (
@@ -572,13 +579,13 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   );
   const guideStops = desk
     ? [
-      { id: "m-areas", title: t(VIEW_KEYS[view]), sub: `${v.guideAreasSub(areaRows.length)} · ${t(RANGE_KEYS[range])}` },
+      { id: "m-areas", title: reader ? t("kept.yearBook") : t(VIEW_KEYS[view]), sub: reader ? v.keptSub : `${v.guideAreasSub(areaRows.length)} · ${t(RANGE_KEYS[range])}` },
       { id: "m-kinds", title: v.byKind, sub: v.byKindSub },
       { id: "m-newest", title: v.newest, sub: v.newestSub },
       { id: "m-shelves", title: v.shelves, sub: v.shelvesSub },
     ]
     : [
-      { id: "m-areas", title: view === "areas" ? v.guideShort.areas : t(VIEW_KEYS[view]) },
+      { id: "m-areas", title: reader ? t("kept.yearBook") : view === "areas" ? v.guideShort.areas : t(VIEW_KEYS[view]) },
       { id: "m-kinds", title: v.guideShort.kinds },
       { id: "m-newest", title: v.guideShort.newest },
       { id: "m-shelves", title: v.guideShort.shelves },

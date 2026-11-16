@@ -111,13 +111,17 @@ export function hardMomentSheetLead<T extends { id: string }>(matched: readonly 
  */
 export const HARD_MOMENT_FIRST_TITLE_ID = "hard-moment-first-title";
 
-export function HardMomentFirstView({ childName, lang, t, onTalk, onKeep, onSafety }: {
+export function HardMomentFirstView({ childName, lang, t, onTalk, onKeep, onSafety, matches = [], onPick }: {
   childName: string;
   lang: "en" | "he";
   t: (key: string, vars?: Record<string, string | number>) => string;
   onTalk: () => void;
   onKeep: () => void;
   onSafety: () => void;
+  /** v10.1: the parent's own pattern on the first view — the situations that
+   *  match what they have noted (≤ SHEET_LEAD_MAX, production's own labels). */
+  matches?: { id: string; label: string }[];
+  onPick?: (id: string) => void;
 }) {
   const action = "inline-flex min-h-11 min-w-11 flex-1 basis-40 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1";
   return (
@@ -136,12 +140,24 @@ export function HardMomentFirstView({ childName, lang, t, onTalk, onKeep, onSafe
       <div data-testid="hard-moment-first-step">
         <ParentBreathPacer t={t} showClock label={t("hm.first.stepTitle")} sub={t("hm.first.stepBody")} />
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      {matches.length > 0 && onPick && (
+        <div className="space-y-2" data-testid="hard-moment-first-matched">
+          <p className="hm-first-label">{t("hm.now.matched")}</p>
+          <div className="flex flex-wrap gap-2">
+            {matches.map((m) => (
+              <button key={m.id} type="button" data-testid="hard-moment-now-chip" onClick={() => onPick(m.id)} className="hm-first-chip min-h-11 min-w-11">
+                <span className="min-w-0 break-words">{m.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="hm-first-ways flex flex-col gap-2">
         <button
           type="button"
           data-testid="hard-moment-first-talk"
           onClick={onTalk}
-          className={action}
+          className={`${action} w-full flex-none basis-auto`}
           style={{ background: "var(--arbor-ink)", color: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-ink)" }}
         >
           <Icon name="graphic_eq" size={18} />{t("hm.first.talk")}
@@ -150,13 +166,15 @@ export function HardMomentFirstView({ childName, lang, t, onTalk, onKeep, onSafe
           type="button"
           data-testid="hard-moment-first-keep"
           onClick={onKeep}
-          className={action}
+          className={`${action} w-full flex-none basis-auto`}
           style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)" }}
         >
           <Icon name="edit_note" size={18} />{t("hm.first.keep")}
         </button>
-        {/* The one door to Safety & escalation: a quiet link in plain ink at
-            the row's end (never an alarm colour, never a list of numbers). */}
+      </div>
+      {/* The one door to Safety & escalation: a quiet link in plain ink pinned
+          at the foot (never an alarm colour, never a list of numbers). */}
+      <div className="hm-first-foot">
         <button
           type="button"
           data-testid="hard-moment-first-safety"
@@ -256,13 +274,17 @@ export default function HardMomentNowSheet() {
                 onTalk={() => { setAskHardMomentRef(null); closeHardMomentNow(); startConversationVoice({ source: "hard-moment", opening: t("hm.first.say") }); }}
                 onKeep={() => { closeHardMomentNow(); openCaptureSheet({ mode: "text" }); }}
                 onSafety={() => { closeHardMomentNow(); setActiveTab("safety"); }}
+                matches={lead.map((c) => ({ id: c.id, label: locText(c.title, locale) }))}
+                onPick={(id) => setSelectedId(id)}
               />
             )}
             {/* B-ASKJB-40: an optional breath for the parent first — collapsed, skippable, never a gate. */}
             {pastFirst && <ParentBreathPacer t={t} />}
             <PickerFold folded={!pastFirst} label={t("companion.hard.choose")}>
             <p className="text-sm font-bold" style={{ color: "var(--arbor-ink)" }}>{t("hm.now.pick")}</p>
-            {lead.length > 0 && (
+            {/* v10.1: on the first view the matches sit in the view itself, so
+                the fold holds everything else (it is "Something else"). */}
+            {pastFirst && lead.length > 0 && (
               <div className="space-y-2" data-testid="hard-moment-now-matched">
                 <p className="text-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("hm.now.matched")}</p>
                 <div className="flex flex-wrap gap-2">{lead.map(chip)}</div>
@@ -271,7 +293,7 @@ export default function HardMomentNowSheet() {
             {/* NEXTLEVEL critic r1: one thing in a hard moment — the record's
                 matches lead (≤ 3); the categories wait behind one disclosure.
                 With no match the categories show directly (nothing to lead). */}
-            {lead.length > 0 ? (
+            {pastFirst && lead.length > 0 ? (
               <details data-testid="hard-moment-now-else" className="group">
                 <summary
                   className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 px-1 text-sm font-bold [&::-webkit-details-marker]:hidden"

@@ -21,3 +21,60 @@
   white-space: nowrap;
   border: 0;
 }
+
+/* v10.1 (O-HardMoment, the sheet): the words are the hero — set on white in
+   the display face, Read aloud and Copy as real buttons beside them; the two
+   ways on are full width, Talk first; Help and safety is pinned at the foot. */
+.hard-moment-sheet [data-testid="hard-moment-first-say"] {
+  background: var(--arbor-paper-elevated);
+  border-radius: 18px;
+  padding: 16px 16px 14px;
+  box-shadow: inset 0 0 0 1px var(--arbor-rule);
+}
+.hard-moment-sheet [data-testid="hard-moment-first-say"] blockquote {
+  border-inline-start: 0 !important;
+  padding-inline-start: 0 !important;
+  font: 400 25px/1.25 var(--font-display);
+}
+.hard-moment-sheet [data-testid="hard-moment-first-say"] blockquote + div { padding-inline-start: 0 !important; margin-block-start: 12px; }
+.hard-moment-sheet [data-testid="hard-moment-first-say"] blockquote + div > div > button {
+  min-block-size: var(--touch-min);
+  padding-inline: 14px !important;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--arbor-ink) !important;
+  box-shadow: inset 0 0 0 1px var(--arbor-rule-strong);
+}
+.hard-moment-sheet [data-testid="hard-moment-first-say"] blockquote + div > div > button:first-child {
+  background: var(--arbor-ink);
+  color: var(--arbor-paper-elevated) !important;
+  box-shadow: none;
+}
+.hard-moment-sheet .hm-first-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--arbor-green-ink);
+}
+.hard-moment-sheet .hm-first-chip {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--touch-min);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--arbor-paper-elevated);
+  color: var(--arbor-ink);
+  border: 1px solid var(--arbor-rule-strong);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: start;
+}
+.hard-moment-sheet .hm-first-foot {
+  display: flex;
+  align-items: center;
+  padding-block-start: 10px;
+  border-block-start: 1px solid var(--arbor-rule);
+}

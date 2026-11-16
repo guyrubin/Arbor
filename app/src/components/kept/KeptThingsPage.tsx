@@ -22,7 +22,11 @@ export { keptMonthLabel };
  * older records load explicitly and child changes reset filters and sheets.
  * `asPage`: the reader IS the page (`#/development?view=kept`), so its title
  * is the page's h1. */
-export default function KeptThingsPage({ asPage = false }: { asPage?: boolean } = {}) {
+export default function KeptThingsPage({ asPage = false, onOpenYear }: {
+  asPage?: boolean;
+  /** v10.1: where a year book opens (Moments' reader passes its own deep link). */
+  onOpenYear?: (year: string) => void;
+} = {}) {
   const { childProfile, behaviorLogs, milestoneHistory, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
@@ -80,7 +84,7 @@ export default function KeptThingsPage({ asPage = false }: { asPage?: boolean } 
       const openYear = !seenYears.has(year);
       if (openYear) seenYears.add(year);
       return <section key={month.monthKey} className="kept-month" data-testid="kept-month">
-        {openYear && <button type="button" className="kept-text-button kept-year-door" data-testid="kept-year-open" data-year={year} onClick={() => goToRoute("development", { view: "kept", year })}>
+        {openYear && <button type="button" className="kept-text-button kept-year-door" data-testid="kept-year-open" data-year={year} onClick={() => (onOpenYear ? onOpenYear(year) : goToRoute("development", { view: "kept", year }))}>
           <span className="kept-year-kicker">{t("kept.yearBook")}</span>
           <span>{t("kept.year", { year, name: first })}</span>
         </button>}

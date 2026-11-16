@@ -112,7 +112,8 @@ describe("RUN-08 · the Behaviors hero at day 0", () => {
   it("NEXTLEVEL r1: the hero is cut — no stat trio; a populated week says its count once, keyed, as one muted line", () => {
     const beh = read("components/tabs/BehaviorsTab.tsx");
     expect(beh).not.toMatch(/<HubHero|stats=\{\[/);
-    expect(beh).toMatch(/\{hasWeek && \(\s*<span data-testid="behaviors-week-line">/);
+    // v10.1: the muted line is the whole paragraph, so it renders only with a week.
+    expect(beh).toMatch(/\{hasWeek && \(\s*<p className="mt-1 t-sm leading-snug"[^>]*>\s*<span data-testid="behaviors-week-line">/);
   });
 });
 
