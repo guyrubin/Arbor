@@ -469,9 +469,9 @@ export default function TrustedSharing() {
         label={careCopy(uiLang).onThisPage}
         className="care-guide"
         stops={[
-          { id: "people-who", title: careCopy(uiLang).people.stopWho, sub: loading ? undefined : liveGrants.length > 0 ? careCopy(uiLang).people.stopWhoSub(liveGrants.length) : careCopy(uiLang).people.stopWhoNone },
+          { id: "people-who", title: careCopy(uiLang).people.stopWho, sub: careCopy(uiLang).people.stopWhoSub },
           { id: "people-roster", title: t("sec.sharing.team.title", { name: first }) },
-          { id: "people-more", title: t("elev.learnCare.share.more.title") },
+          { id: "people-more", title: t("elev.learnCare.share.more.title"), sub: careCopy(uiLang).people.stopMoreSub },
         ]}
       />
       <div className={composition === "desk" ? "route gut" : "route m"}>

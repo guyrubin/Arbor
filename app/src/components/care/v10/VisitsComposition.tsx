@@ -23,7 +23,8 @@ import "./care.css";
        landing 4 · appointments (the dated line, the next and last visit, the
        last visit's note) with Help and the pause beside it, then what is
        shared. The Teacher brief is the same screen with the teacher chosen:
-       its three stops read The brief · Who it is for · What goes in.
+       two stops, The brief (the scene, its template card inside it) and
+       Share and draft (the School Brief editor: save, copy, draft).
    Desktop is the stage-and-rail composition; phone is one column in the same
    order. One tree renders (useComposition), so every control exists once. */
 
@@ -56,16 +57,15 @@ export default function VisitsComposition({ composition, parts, visit, heading, 
   const stops: GuideStop[] = teacher
     ? [
         { id: SECTION.visit, title: copy.brief.stopBrief, sub: copy.brief.stopBriefSub },
-        { id: SECTION.ready, title: copy.brief.stopWho, sub: copy.brief.stopWhoSub },
-        { id: SECTION.summary, title: copy.brief.stopIn, sub: copy.brief.stopInSub },
+        { id: SECTION.summary, title: copy.brief.stopShare, sub: copy.brief.stopShareSub },
       ]
     : [
         landing
-          ? { id: SECTION.visit, title: c.stopVisit, sub: days !== null ? c.stopVisitSub(days) : c.stopVisitNone }
+          ? { id: SECTION.visit, title: c.stopVisit, sub: c.stopVisitSub }
           : { id: SECTION.visit, title: t("nav.view.handoff"), sub: c.stopSummarySub },
         { id: SECTION.ready, title: c.stopReady, sub: c.stopReadySub },
         { id: SECTION.summary, title: c.stopSummary, sub: c.stopSummarySub },
-        ...(landing ? [{ id: SECTION.appointments, title: c.stopAppointments, sub: c.stopAppointmentsSub(sorted.upcoming.length, sorted.past.length) }] : []),
+        ...(landing ? [{ id: SECTION.appointments, title: c.stopAppointments, sub: c.stopAppointmentsSub }] : []),
       ];
 
   /* The scene's foot: the builder's move, or for the Teacher brief a line
@@ -86,6 +86,7 @@ export default function VisitsComposition({ composition, parts, visit, heading, 
       build={parts.build}
       nowMs={nowMs}
       brief={teacher || !landing}
+      aside={teacher ? <section className="rcard tint fit care-who care-brief-who">{parts.audience}</section> : undefined}
       briefLine={teacher && visit?.whenIso ? copy.brief.nextVisit(appointmentRoleLabel(visit, t), fmtDay(visit.whenIso, uiLang)) : undefined}
     />
   );
@@ -122,10 +123,12 @@ export default function VisitsComposition({ composition, parts, visit, heading, 
       <Guide stops={stops} mini={!desk} label={copy.onThisPage} className="care-guide" />
       <Route composition={composition}>
         <RouteSection id={SECTION.visit} n={1} on>
-          {desk ? (
+          {teacher ? (
+            <div className={desk ? "g12 care-row-a" : "stack care-phone-a"}>{scene}</div>
+          ) : desk ? (
             <div className="g12 care-row-a" data-testid={landing ? "consult-visit-card" : undefined}>
               {scene}
-              <SideRail id={SECTION.ready} n={2} title={teacher ? copy.brief.stopWho : c.readyHead} sub={teacher ? undefined : c.readySub} className="x4 care-rail">
+              <SideRail id={SECTION.ready} n={2} title={c.readyHead} sub={c.readySub} className="x4 care-rail">
                 {ready}
               </SideRail>
             </div>
@@ -137,8 +140,8 @@ export default function VisitsComposition({ composition, parts, visit, heading, 
           )}
         </RouteSection>
 
-        <RouteSection id={SECTION.summary} n={3} aria-labelledby="care-summary-title">
-          <RouteHead id="care-summary-title" title={teacher ? copy.brief.stopIn : c.summaryHead} sub={teacher ? undefined : c.summarySub} />
+        <RouteSection id={SECTION.summary} n={teacher ? 2 : 3} aria-labelledby="care-summary-title">
+          <RouteHead id="care-summary-title" title={teacher ? copy.brief.stopShare : c.summaryHead} sub={teacher ? copy.brief.stopShareSub : c.summarySub} />
           <div className={desk ? (teacher ? "care-row-c" : "g12 care-row-b") : "stack care-phone-b"}>{summary}</div>
           {!landing && followUp}
         </RouteSection>

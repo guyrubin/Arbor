@@ -7,14 +7,13 @@ export type CareV10Copy = {
   onThisPage: string;
   visits: {
     stopVisit: string;
-    stopVisitSub: (n: number) => string;
-    stopVisitNone: string;
+    stopVisitSub: string;
     stopReady: string;
     stopReadySub: string;
     stopSummary: string;
     stopSummarySub: string;
     stopAppointments: string;
-    stopAppointmentsSub: (upcoming: number, past: number) => string;
+    stopAppointmentsSub: string;
     readyHead: string;
     readySub: string;
     summaryHead: string;
@@ -36,23 +35,22 @@ export type CareV10Copy = {
   brief: {
     stopBrief: string;
     stopBriefSub: string;
-    stopWho: string;
-    stopWhoSub: string;
-    stopIn: string;
-    stopInSub: string;
+    stopShare: string;
+    stopShareSub: string;
     kicker: string;
     nextVisit: (who: string, date: string) => string;
   };
   people: {
     stopWho: string;
-    stopWhoSub: (n: number) => string;
+    stopWhoSub: string;
+    stopMoreSub: string;
     stopWhoNone: string;
     adults: (n: number) => string;
     adultsSub: string;
   };
   records: {
     stopRecord: string;
-    stopRecordSub: (moments: number, milestones: number) => string;
+    stopRecordSub: (date: string) => string;
     stopDocs: string;
     stopDocsSub: string;
     stopKept: string;
@@ -71,14 +69,13 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
     onThisPage: "On this page",
     visits: {
       stopVisit: "Your next visit",
-      stopVisitSub: (n) => (n === 0 ? "today" : n === 1 ? "tomorrow" : `in ${n} days`),
-      stopVisitNone: "nothing booked yet",
+      stopVisitSub: "prepare and share",
       stopReady: "Getting ready",
-      stopReadySub: "who it is for, your one line",
+      stopReadySub: "who it is for",
       stopSummary: "The visit summary",
       stopSummarySub: "choose, preview, share",
       stopAppointments: "Appointments",
-      stopAppointmentsSub: (u, p) => `${u} ahead, ${p} past`,
+      stopAppointmentsSub: "add, remove, past",
       readyHead: "Getting ready",
       readySub: "who it is for, and your one line",
       summaryHead: "The visit summary",
@@ -100,27 +97,26 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
     brief: {
       stopBrief: "The brief",
       stopBriefSub: "one page, classroom words",
-      stopWho: "Who it is for",
-      stopWhoSub: "teacher, one template",
-      stopIn: "What goes in",
-      stopInSub: "you review every line",
+      stopShare: "Share and draft",
+      stopShareSub: "save, copy, ask Arbor",
       kicker: "Teacher brief · one page, classroom words",
       nextVisit: (who, date) => `Next visit: ${who}, ${date}`,
     },
     people: {
       stopWho: "Who sees what",
-      stopWhoSub: (n) => (n === 1 ? "1 person you share with" : `${n} people you share with`),
+      stopWhoSub: "adults and invites",
+      stopMoreSub: "who, until when",
       stopWhoNone: "only you so far",
       adults: (n) => (n === 1 ? "person you share with" : "people you share with"),
       adultsSub: "Every share is one you chose, and you can stop it.",
     },
     records: {
       stopRecord: "The record",
-      stopRecordSub: (m, s) => `${m} ${plural(m, "moment", "moments")}, ${s} ${plural(s, "milestone", "milestones")}`,
+      stopRecordSub: (date) => `since ${date}`,
       stopDocs: "Documents",
-      stopDocsSub: "you can save",
+      stopDocsSub: "save as PDF",
       stopKept: "Shared and kept",
-      stopKeptSub: "on this device",
+      stopKeptSub: "exports and your data",
       since: (date) => `Your full record · since ${date}`,
       moments: (n) => plural(n, "moment", "moments"),
       milestonesSub: (n) => `${n} ${plural(n, "milestone", "milestones")} noticed`,
@@ -131,14 +127,13 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
     onThisPage: "בעמוד הזה",
     visits: {
       stopVisit: "הביקור הבא",
-      stopVisitSub: (n) => (n === 0 ? "היום" : n === 1 ? "מחר" : `בעוד ${n} ימים`),
-      stopVisitNone: "עוד לא נקבע ביקור",
+      stopVisitSub: "מתכוננים ומשתפים",
       stopReady: "מתכוננים",
-      stopReadySub: "למי זה, ומשפט אחד שלכם",
+      stopReadySub: "למי זה",
       stopSummary: "סיכום הביקור",
       stopSummarySub: "בוחרים, מעיינים, משתפים",
       stopAppointments: "פגישות",
-      stopAppointmentsSub: (u, p) => `${u} קדימה, ${p} שעברו`,
+      stopAppointmentsSub: "הוספה, הסרה, מה שעבר",
       readyHead: "מתכוננים",
       readySub: "למי זה, ומשפט אחד שלכם",
       summaryHead: "סיכום הביקור",
@@ -160,27 +155,26 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
     brief: {
       stopBrief: "התקציר",
       stopBriefSub: "עמוד אחד, בשפת הגן",
-      stopWho: "למי זה",
-      stopWhoSub: "גננת או מורה, תבנית אחת",
-      stopIn: "מה נכנס",
-      stopInSub: "אתם עוברים על כל שורה",
+      stopShare: "שיתוף וטיוטה",
+      stopShareSub: "שמירה, העתקה, בקשה מ-Arbor",
       kicker: "תקציר לגן · עמוד אחד, בשפת הגן",
       nextVisit: (who, date) => `הביקור הבא: ${who}, ${date}`,
     },
     people: {
       stopWho: "מי רואה מה",
-      stopWhoSub: (n) => (n === 1 ? "אדם אחד שאתם משתפים איתו" : `${n} אנשים שאתם משתפים איתם`),
+      stopWhoSub: "מבוגרים והזמנות",
+      stopMoreSub: "מי, ועד מתי",
       stopWhoNone: "בינתיים רק אתם",
       adults: (n) => (n === 1 ? "אדם שאתם משתפים איתו" : "אנשים שאתם משתפים איתם"),
       adultsSub: "כל שיתוף הוא בבחירתכם, ואפשר לעצור אותו.",
     },
     records: {
       stopRecord: "התיעוד",
-      stopRecordSub: (m, s) => `${m} רגעים, ${s} אבני דרך`,
+      stopRecordSub: (date) => `מאז ${date}`,
       stopDocs: "מסמכים",
-      stopDocsSub: "שאפשר לשמור",
+      stopDocsSub: "שמירה כ-PDF",
       stopKept: "מה שותף ונשמר",
-      stopKeptSub: "במכשיר הזה",
+      stopKeptSub: "ייצוא והמידע שלכם",
       since: (date) => `התיעוד המלא שלכם · מאז ${date}`,
       moments: (n) => (n === 1 ? "רגע" : "רגעים"),
       milestonesSub: (n) => `${n} אבני דרך שסומנו`,

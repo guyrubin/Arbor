@@ -221,3 +221,42 @@
 .ds-desk.care-v10 .care-row-a > .care-scene,
 .ds-desk.care-records .care-records-row > .care-records-scene { align-self: start; }
 .ds.care-v10 .care-scene-foot { margin-top: 4px; }
+
+/* ── size pass (canvas 16 Nov, 14:01): 12 px kickers, tighter guide stops on
+   phone, smaller packed tiles, chips a step smaller, tighter phone cards ── */
+.ds.care-v10 .kicker, .ds.care-v10 .next1 { font-size: 12px; }
+.ds.care-v10 .guide.mini .gstop { padding: 4px 9px 4px 4px; gap: 6px; font-size: 12.5px; min-height: 44px; }
+.ds.care-v10 .guide.mini .gline { min-width: 4px; }
+.ds.care-v10 .care-packed .pk { padding: 10px; gap: 8px; }
+.ds.care-v10 .care-packed .pk > span { white-space: nowrap; font-size: 12px; }
+.ds.care-v10 .care-packed .pk small { font-size: 12px; }
+.ds-desk.care-v10 .care-who [role="radiogroup"] button { padding-inline: 11px !important; font-size: 12.5px !important; }
+.ds-phone.care-v10 .care-who [role="radiogroup"] { gap: 4px; }
+.ds-phone.care-v10 .care-who [role="radiogroup"] button { padding-inline: 9px !important; }
+.ds-phone.care-v10 .care-scene { padding: 14px 16px; gap: 9px; }
+.ds-phone.care-v10 .rcard.care-who { padding: 12px 16px 8px; gap: 8px; }
+.ds-phone.care-v10 .vt.care-bring, .ds-phone.care-v10 .vt.care-preview, .ds-phone.care-v10 .vt.care-share { padding: 14px 16px; gap: 8px; }
+/* the Teacher brief: who it is for and the template sit in the scene */
+.ds-desk.care-v10 .care-scene-aside { margin-inline-start: auto; width: 300px; flex: none; align-self: start; }
+.ds.care-v10 .care-brief-who { padding: 12px 18px; }
+/* phone: chip groups are one sideways row each (every chip stays in the row) */
+.ds-phone.care-v10 #consult-audience-row,
+.ds-phone.care-v10 [data-testid="consult-bring-row"],
+.ds-phone.care-v10 [data-testid="consult-packet-sections"] {
+  flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  margin-inline: -16px; padding-inline: 16px; scroll-padding-inline: 16px;
+}
+.ds-phone.care-v10 #consult-audience-row::-webkit-scrollbar,
+.ds-phone.care-v10 [data-testid="consult-bring-row"]::-webkit-scrollbar,
+.ds-phone.care-v10 [data-testid="consult-packet-sections"]::-webkit-scrollbar { display: none; }
+.ds-phone.care-v10 #consult-audience-row > *,
+.ds-phone.care-v10 [data-testid="consult-bring-row"] > *,
+.ds-phone.care-v10 [data-testid="consult-packet-sections"] > * { flex: none; white-space: nowrap; }
+/* phone: paired cards at the foot (help and the pause; who sees what and past exports) snap sideways */
+.ds-phone.care-v10 .care-aside-col > [role="complementary"],
+.ds-phone.care-v10 .care-shared-row > section > .grid {
+  display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+  margin-inline: -16px; padding-inline: 16px; scroll-padding-inline: 16px;
+}
+.ds-phone.care-v10 .care-aside-col > [role="complementary"] > section,
+.ds-phone.care-v10 .care-shared-row > section > .grid > section { flex: 0 0 286px; scroll-snap-align: start; margin-top: 0 !important; }
