@@ -308,7 +308,7 @@ export default function PlansTab() {
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full min-w-0" data-plans-view="home">
       <DsRoot composition={composition} className="ds-plans">
-        <Guide stops={stops} label={c.onThisPage} mini={!desk} />
+        {stops.length > 1 && <Guide stops={stops} label={c.onThisPage} mini={!desk} />}
         <Route composition={composition} tight={!desk}>
           {(anyPlan || !plansLoaded) && (
             <RouteSection id="plans-stage" n={1} on>

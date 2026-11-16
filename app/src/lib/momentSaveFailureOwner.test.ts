@@ -30,6 +30,8 @@ const SEAM_TOASTS = [
   "components/companion/useNowLoop.ts",
   // B-BOOK-78: the plan lead's "keep tonight in the journal" tap has no inline error (NowPlanLead only counts nights).
   "components/companion/NowView.tsx",
+  // v10: the same "keep tonight in the journal" tap on the Challenge plan's page (Now › Plans).
+  "components/tabs/PlansTab.tsx",
   "components/kidmode/SneakHandBackCard.tsx",
   "components/tabs/BedtimeStoriesTab.tsx",
 ];

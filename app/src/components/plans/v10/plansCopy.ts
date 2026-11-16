@@ -7,6 +7,8 @@
  * (the "Challenge Plans" label above all: "תוכניות אתגר").
  */
 
+import { isolate } from "../../../lib/i18n";
+
 const list = (items: number[], and: string): string =>
   items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")}${and}${items[items.length - 1]}`;
 
@@ -38,7 +40,7 @@ export const PLANS_COPY = {
     momentOf: (n: number, total: number) => `Moment ${n} of ${total}`,
     phaseOf: (n: number, total: number) => `Phase ${n} of ${total}`,
     challengeLede: (count: number, name: string) =>
-      `${count} plans for an everyday pattern. Each is three steps you choose and a book in ${name}'s own words.`,
+      `${count} plans for an everyday pattern. Each is three steps you choose and a book in ${isolate(name, "en")}'s own words.`,
     seeAll: (n: number) => `See all ${n}`,
     andMore: (n: number) => `and ${n} more`,
     fromRoutine: "Start from a routine",
@@ -49,11 +51,11 @@ export const PLANS_COPY = {
     writeOwnLede: "Describe what is hard. Arbor drafts the steps, and you can edit any of them.",
     draftLabel: "Arbor draft · you decide",
     // Challenge Plans
-    childPlan: (name: string) => `${name}'s plan`,
+    childPlan: (name: string) => `${isolate(name, "en")}'s plan`,
     today: "Today",
     todaySub: "what you do, and the words in the book",
     youDo: "You do",
-    inTheBook: (name: string) => `In ${name}'s book`,
+    inTheBook: (name: string) => `In ${isolate(name, "en")}'s book`,
     onePage: "The plan on one page",
     onePageShort: "On one page",
     onePageSub: "what you agreed, the nights, the sources",
@@ -66,7 +68,7 @@ export const PLANS_COPY = {
     tonightMark: "Tonight",
     nightsLabel: (parts: string) => `Nights: ${parts}`,
     allShort: (n: number) => `All ${n}`,
-    allSub: (n: number, name: string) => `${n} Challenge Plans. Each is three steps you choose and a book in ${name}'s own words.`,
+    allSub: (n: number, name: string) => `${n} Challenge Plans. Each is three steps you choose and a book in ${isolate(name, "en")}'s own words.`,
     startThis: "Start this plan",
     runningNight: (n: number, total: number) => `Running · night ${n} of ${total}`,
     days: (n: number) => `${n} days`,
@@ -108,7 +110,7 @@ export const PLANS_COPY = {
     momentOf: (n: number, total: number) => `רגע ${n} מתוך ${total}`,
     phaseOf: (n: number, total: number) => `שלב ${n} מתוך ${total}`,
     challengeLede: (count: number, name: string) =>
-      `${count} תוכניות לדפוס יום־יומי. בכל אחת שלושה צעדים שאתם בוחרים, וספר במילים של ${name}.`,
+      `${count} תוכניות לדפוס יום־יומי. בכל אחת שלושה צעדים שאתם בוחרים, וספר במילים של ${isolate(name, "he")}.`,
     seeAll: (n: number) => `לכל ה־${n}`,
     andMore: (n: number) => `ועוד ${n}`,
     fromRoutine: "להתחיל משגרה",
@@ -118,11 +120,11 @@ export const PLANS_COPY = {
     showReadyMade: "השגרות המוכנות",
     writeOwnLede: "תארו מה קשה. Arbor מנסח את הצעדים, ואתם יכולים לערוך כל אחד מהם.",
     draftLabel: "טיוטה של Arbor · אתם מחליטים",
-    childPlan: (name: string) => `התוכנית של ${name}`,
+    childPlan: (name: string) => `התוכנית של ${isolate(name, "he")}`,
     today: "היום",
     todaySub: "מה אתם עושים, ומה כתוב בספר",
     youDo: "אתם עושים",
-    inTheBook: (name: string) => `בספר של ${name}`,
+    inTheBook: (name: string) => `בספר של ${isolate(name, "he")}`,
     onePage: "התוכנית בעמוד אחד",
     onePageShort: "בעמוד אחד",
     onePageSub: "על מה הסכמתם, הלילות, המקורות",
@@ -135,7 +137,7 @@ export const PLANS_COPY = {
     tonightMark: "הערב",
     nightsLabel: (parts: string) => `הלילות: ${parts}`,
     allShort: (n: number) => `כל ה־${n}`,
-    allSub: (n: number, name: string) => `${n} תוכניות אתגר. בכל אחת שלושה צעדים שאתם בוחרים, וספר במילים של ${name}.`,
+    allSub: (n: number, name: string) => `${n} תוכניות אתגר. בכל אחת שלושה צעדים שאתם בוחרים, וספר במילים של ${isolate(name, "he")}.`,
     startThis: "להתחיל את התוכנית",
     runningNight: (n: number, total: number) => `פעילה · לילה ${n} מתוך ${total}`,
     days: (n: number) => `${n} ימים`,
