@@ -365,6 +365,13 @@
 .ds-mychild .said-rows .sqg { width: 28px; height: 28px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--sapphire-deep); color: #fff; }
 .ds-mychild .said-rows .q { display: block; font-family: var(--font-display) !important; font-style: italic; font-size: 19px; line-height: 1.2; }
 .ds-mychild .said-rows .sqlang { display: block; font-size: 12px; color: var(--ink-soft); }
+/* N-SaidHe: the words row under one language's sayings. */
+.ds-mychild .said-words { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.ds-mychild .said-words .lab { font: 700 12px/1.2 var(--font-sans) !important; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.ds-mychild .said-words ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+.ds-mychild .said-words .wchip .tg-said { width: 32px; height: 32px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--k-moment); color: var(--card); font: 700 12px/1 var(--font-sans) !important; }
+.ds-mychild .said-words .wchip .w { font-family: var(--font-display) !important; font-size: 19px; font-weight: 500 !important; }
+.ds-mychild .said-words .wchip small { unicode-bidi: isolate; }
 .ds-mychild .said-rows .sqd { font-size: 12px; font-weight: 600 !important; color: var(--ink-soft); white-space: nowrap; }
 .ds-mychild .tg-said { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 10px; background: var(--sapphire-deep); color: #fff; font: 700 12px/1 var(--font-sans) !important; font-style: normal; }
 .ds-mychild .lang-roles { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }

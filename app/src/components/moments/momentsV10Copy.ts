@@ -54,6 +54,10 @@ export type MomentsV10Copy = {
     steps: { pick: string; read: string; practise: string };
     keySaying: string;
     keyWord: string;
+    /** The words row under one language's sayings (the vocabulary log, read only). */
+    wordsIn: (language: string) => string;
+    /** The sayings list is empty for the picked language. */
+    noneIn: (language: string) => string;
   };
   hard: {
     kicker: string;
@@ -147,6 +151,8 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
       steps: { pick: "Pick a language", read: "Read what you kept", practise: "Practise a little" },
       keySaying: "A saying",
       keyWord: "A word",
+      wordsIn: (language) => `Words in ${language}`,
+      noneIn: (language) => `No sayings kept in ${language} yet. Pick All to see every one.`,
     },
     hard: {
       kicker: "My child · Hard moments",
@@ -238,6 +244,8 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
       steps: { pick: "בוחרים שפה", read: "קוראים מה ששמרתם", practise: "מתרגלים קצת" },
       keySaying: "משפט",
       keyWord: "מילה",
+      wordsIn: (language) => `מילים ב${language}`,
+      noneIn: (language) => `עוד לא נשמרו משפטים ב${language}. בוחרים "הכול" כדי לראות את כולם.`,
     },
     hard: {
       kicker: "הילד שלי · רגעים קשים",

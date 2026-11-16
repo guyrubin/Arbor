@@ -16,6 +16,7 @@ import { ageLabel } from "../../lib/childAge";
 import { aggregateLangCounts, type LangObservation } from "../../growth/vocabAgg";
 import LanguageLabVocabView, { PhraseLogForm, WordsList } from "./LanguageLabVocabView";
 import { languageName } from "../../lib/languageName";
+import { fmtDay } from "../../lib/formatDate";
 import { ageMonthsOf, isUnderThree } from "../../lib/age/forChild";
 import { genderedKey } from "../../lib/today/fromRecord";
 import { actNowKey, sayBackFor } from "../../lib/language/sayBack";
@@ -77,6 +78,11 @@ export default function LanguageLabTab() {
     for (const c of aggregateLangCounts(obsCol.items)) map.set(c.language.toLowerCase(), c.count);
     return map;
   }, [obsCol.items]);
+  // v10.3 (N-SaidHe): under one language's sayings, the words logged in it.
+  const filteredWords = useMemo(
+    () => (langFilter ? obsCol.items.filter((o) => (o.language ?? "").toLowerCase() === langFilter.toLowerCase()).slice(0, 12) : []),
+    [obsCol.items, langFilter],
+  );
   const countLine = (lang: string): string => {
     const n = countByLang.get(lang.toLowerCase()) ?? 0;
     if (n === 0) return t("elev.growthTruth.lang.count.none");
@@ -165,14 +171,28 @@ export default function LanguageLabTab() {
         {underThree ? (
           <PhraseLogForm childId={childProfile.id} languages={langs} onAdded={(obs) => setKept(obs ? { text: obs.phrase, language: obs.language } : null)} t={t} />
         ) : (
-          <SaidCapture childId={childProfile.id} languages={langs} first={first} gender={gender} onKept={setKept} />
+          <SaidCapture key={langFilter ?? "all"} childId={childProfile.id} languages={langs} first={first} gender={gender} onKept={setKept} defaultLanguage={langFilter} />
         )}
         {sayBack && <SayBackBlock back={sayBack} first={first} gender={gender} />}
       </div>
       {/* B-GROWTH-16 — the words written down, under the form that writes them. */}
       <div data-module="language-words">
         {!desk && langIndex.length > 0 && <IndexRow phone label={v.said.guideLangs} items={langIndex} />}
-        {underThree ? <WordsList /> : <SaidList childId={childProfile.id} first={first} gender={gender} language={langFilter} rows />}
+        {underThree ? <WordsList /> : <SaidList childId={childProfile.id} first={first} gender={gender} language={langFilter} languages={langs} emptyText={langFilter ? v.said.noneIn(ln(langFilter)) : undefined} rows />}
+        {!underThree && langFilter && filteredWords.length > 0 && (
+          <div className="said-words" data-testid="said-words">
+            <span className="lab">{v.said.wordsIn(ln(langFilter))}</span>
+            <ul>
+              {filteredWords.map((w) => (
+                <li key={w.id} className="wchip">
+                  <i className="tg-said" aria-hidden="true">Aa</i>
+                  <span className="w" dir="auto">{w.phrase}</span>
+                  <small>{[ln(w.language), fmtDay(w.timestamp, uiLang)].join(" · ")}</small>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {!desk && <div className="mt-2">{monthPage}</div>}
       </div>
     </StageCard>
