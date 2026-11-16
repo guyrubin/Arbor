@@ -60,7 +60,7 @@ describe("B-INF-10 · the switcher prints months under three, years from three",
     const SRC = path.resolve(__dirname, "../..");
     for (const rel of [
       "components/layout/TopbarKidSwitcher.tsx",
-      "components/profile/ProfileSwitcher.tsx",
+      // v10: ProfileSwitcher is the switcher alone now; it prints no age of its own.
       // Re-pin (F-NOW-1): the age left Now's header for the plan card's Picked line.
       "components/companion/NowRecommendation.tsx",
       // v10: About's identity line lives in the child's tile.
