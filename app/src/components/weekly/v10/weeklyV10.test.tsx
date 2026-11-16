@@ -1,6 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { translate } from "../../../lib/i18n";
 import { dayField } from "../../../lib/dayField";
 import type { DayWindowsSummary } from "../../../growth/dayWindowsAgg";
@@ -167,4 +168,28 @@ describe("WeekReadGuide — How to read this week (N-Week-D/M)", () => {
       });
     }
   }
+});
+
+describe("WeekInstrument — the join line (N-Week-D/M)", () => {
+  const hardObs = obs("behaviorLogs:h", new Date(2026, 9, 10, 7).toISOString());
+  const build = (source: string) => weekInstrument({
+    observations: [hardObs], logs: [{ id: "h", intensity: 4 }], dayStarts, endMs: new Date(2026, 9, 12, 15).getTime(), isCurrent: true,
+    actionLoop: [{ id: "s", source: source as "hard-moment", outcome: "helped", outcomeAt: new Date(2026, 9, 10, 9).toISOString() }],
+  });
+  for (const composition of ["desk", "phone"] as const) {
+    it(`${composition}: a paired day draws one decorative line; an unpaired day draws none`, () => {
+      const paired = renderToStaticMarkup(<WeekInstrument data={build("hard-moment")} composition={composition} copy={WEEKLY_COPY.en} locale="en-GB" />);
+      const lines = paired.match(/<i class="wk10-join [hv]" data-testid="weekly-join" aria-hidden="true"/g) ?? [];
+      expect(lines).toHaveLength(1);
+      expect(paired).toContain(composition === "desk" ? 'class="wk10-join v"' : 'class="wk10-join h"');
+      const unpaired = renderToStaticMarkup(<WeekInstrument data={build("digest")} composition={composition} copy={WEEKLY_COPY.en} locale="en-GB" />);
+      expect(unpaired).not.toContain("weekly-join");
+    });
+  }
+  it("the line uses logical sides only, so Hebrew mirrors it (arrow toward the row's end)", () => {
+    const css = readFileSync(new URL("./weeklyV10.css", import.meta.url), "utf8");
+    const rules = css.slice(css.indexOf(".ds .wk10-join {"));
+    expect(rules).toMatch(/inset-inline-end/);
+    expect(rules).not.toMatch(/\b(left|right):/);
+  });
 });

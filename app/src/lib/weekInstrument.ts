@@ -43,6 +43,14 @@ export type WeekInstrument = {
   hours: { from: number; to: number };
   /** The clock now as a fractional hour, when today is one of the days; else null. */
   nowHour: number | null;
+  /**
+   * The days that join a hard moment to the step tried for it: a timed hard
+   * moment and a step taken from the hard-moment sheet (an action-loop row
+   * with source "hard-moment", the rows What helped's held words come from)
+   * answered the same day. Each names the day's first hard moment, where the
+   * drawn line starts. No pairing is invented.
+   */
+  joins: { day: number; hardId: string }[];
 };
 
 /** The minimal shape of a hard-moment log the instrument reads. */
@@ -73,7 +81,7 @@ export function weekInstrument({
   isCurrent,
 }: {
   observations: readonly Observation[];
-  actionLoop: readonly Pick<ActionLoopEntry, "id" | "outcome" | "outcomeAt">[];
+  actionLoop: readonly (Pick<ActionLoopEntry, "id" | "outcome" | "outcomeAt"> & Partial<Pick<ActionLoopEntry, "source">>)[];
   logs: readonly InstrumentLog[];
   dates?: readonly InstrumentDate[];
   /** The seven local midnights of the report week (lib/weekGlance perDay). */
@@ -119,10 +127,17 @@ export function weekInstrument({
     .map((row) => ({ row, ms: Date.parse(row.outcomeAt!) }))
     .filter(({ ms }) => Number.isFinite(ms) && ms >= start && ms <= endMs)
     .sort((a, b) => a.ms - b.ms);
+  const hardStepDays = new Set<number>();
   for (const { row, ms } of steps) {
     const kind: LaneKind = row.outcome === "helped" ? "helped" : "not";
     counts[kind] += 1;
     lane.push({ id: `step:${row.id}`, kind, day: dayIndex(ms) });
+    if (row.source === "hard-moment") hardStepDays.add(dayIndex(ms));
+  }
+  const joins: { day: number; hardId: string }[] = [];
+  for (const day of [...hardStepDays].sort((a, b) => a - b)) {
+    const first = timed.find((tok) => tok.kind === "hard" && tok.day === day);
+    if (first) joins.push({ day, hardId: first.id });
   }
 
   const dated: DateToken[] = dates
@@ -136,5 +151,5 @@ export function weekInstrument({
   const to = Math.max(DAY_TO, ...hoursSeen.map((h) => Math.floor(h) + 1));
   const nowHour = todayIdx >= 0 ? Math.min(to, Math.max(from, fractionalHour(endMs))) : null;
 
-  return { days, timed, lane, dates: dated, counts, hours: { from, to }, nowHour };
+  return { days, timed, lane, dates: dated, counts, hours: { from, to }, nowHour, joins };
 }

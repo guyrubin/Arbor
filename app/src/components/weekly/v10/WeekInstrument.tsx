@@ -141,6 +141,14 @@ export default function WeekInstrument({ data, composition, copy, locale, footer
     }
   }
 
+  /* The join of a day (a hard moment and the step tried for it): drawn only
+     when both kinds are shown and the model paired them. */
+  const joinOf = (day: number): TimedToken | null => {
+    if (!shown("hard") || !(shown("helped") || shown("not"))) return null;
+    const join = data.joins.find((j) => j.day === day);
+    return join ? data.timed.find((tok) => tok.id === join.hardId) ?? null : null;
+  };
+
   const table = (
     <div className="sr-only">
       <table>
@@ -195,6 +203,9 @@ export default function WeekInstrument({ data, composition, copy, locale, footer
                       <i className="wk10-nowline v" style={{ insetInlineStart: pos(data.nowHour) }} />
                       <span className="wk10-nowpill m" style={{ insetInlineStart: pos(data.nowHour) }}>{`${copy.now} ${clock(Date.now())}`}</span>
                     </>
+                  )}
+                  {joinOf(i) && (
+                    <i className="wk10-join h" data-testid="weekly-join" aria-hidden="true" style={{ insetInlineStart: `calc(${pos(joinOf(i)!.hour)} + 4px)` }} />
                   )}
                   {data.timed
                     .filter((x) => x.day === i && shown(x.kind))
@@ -314,6 +325,14 @@ export default function WeekInstrument({ data, composition, copy, locale, footer
                       <i className="wk10-nowline" style={{ top: pos(data.nowHour) }} />
                       <span className="wk10-nowpill" style={{ top: pos(data.nowHour) }}>{`${copy.now} ${clock(Date.now())}`}</span>
                     </>
+                  )}
+                  {joinOf(i) && (
+                    <i
+                      className="wk10-join v"
+                      data-testid="weekly-join"
+                      aria-hidden="true"
+                      style={{ top: `calc(${pos(joinOf(i)!.hour)} + 13px)`, insetInlineStart: 18 + (seats.get(joinOf(i)!.id) ?? 0) * 30 }}
+                    />
                   )}
                   {data.timed
                     .filter((x) => x.day === i && shown(x.kind))
