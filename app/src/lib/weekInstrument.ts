@@ -31,7 +31,7 @@ export type InstrumentDay = {
 
 export type TimedToken = { id: string; kind: TimedKind; day: number; ms: number; hour: number; latest: boolean };
 export type LaneToken = { id: string; kind: LaneKind; day: number };
-export type DateToken = { id: string; day: number; ms: number; label: string };
+export type DateToken = { id: string; day: number; ms: number; label: string; sub?: string; nobody?: boolean };
 
 export type WeekInstrument = {
   days: InstrumentDay[];
@@ -48,7 +48,7 @@ export type WeekInstrument = {
 /** The minimal shape of a hard-moment log the instrument reads. */
 export type InstrumentLog = { id: string; intensity?: number };
 /** The minimal shape of a dated visit. */
-export type InstrumentDate = { id: string; startMs: number | null; label: string };
+export type InstrumentDate = { id: string; startMs: number | null; label: string; sub?: string; nobody?: boolean };
 
 const DAY_FROM = 6;
 const DAY_TO = 22;
@@ -128,7 +128,7 @@ export function weekInstrument({
   const dated: DateToken[] = dates
     .filter((d): d is InstrumentDate & { startMs: number } => d.startMs !== null && d.startMs >= start && d.startMs < afterLast)
     .sort((a, b) => a.startMs - b.startMs)
-    .map((d) => ({ id: d.id, day: dayIndex(d.startMs), ms: d.startMs, label: d.label }));
+    .map((d) => ({ id: d.id, day: dayIndex(d.startMs), ms: d.startMs, label: d.label, ...(d.sub ? { sub: d.sub } : {}), ...(d.nobody ? { nobody: true } : {}) }));
   counts.date = dated.length;
 
   const hoursSeen = timed.map((tok) => tok.hour);
