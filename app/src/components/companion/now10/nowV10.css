@@ -242,3 +242,9 @@ html[lang="he"] .ds .nw-face .now-plan-say { font-style: normal; }
 .ds .nw-qc-text:has(> .nw-qc-empty) { display: flex; flex-direction: column; align-items: flex-start; }
 .ds .nw-qc > .l:has(.nw-qc-empty) { align-items: flex-start; padding-top: 12px; }
 .ds .nw-qc .nw-qc-empty { padding: 2px 0 8px; }
+/* Phone: the lead's face heads the stage (no arc above it); the day arc follows the lead. */
+.ds .nw-face-phone { display: flex; align-items: center; gap: 12px; text-align: start; padding: 10px 16px 0; min-width: 0; }
+.ds-phone .nw-stage .nw-face-phone .nw-face-guide { display: block; border-radius: 12px; }
+.ds-phone .nw-face-phone .nw-face { align-items: flex-start; }
+.ds-phone .nw-face-phone .nw-face-tag { align-self: flex-start; }
+.ds-phone .nw-stage > .nw-arc { margin: 14px auto 0; max-width: 300px; }
