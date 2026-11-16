@@ -387,8 +387,8 @@ describe("What-changed integration — recap entry line + continuity counter", (
 describe("WeeklyTab integration — the Weekly report for the selected week; the email opt-in left the route", () => {
   const code = stripComments(read("components/tabs/WeeklyTab.tsx"));
 
-  it("renders the report (WeekGlance) and the carry band for the selected week", () => {
-    expect(code.match(/<WeekGlance\b/g) ?? []).toHaveLength(1);
+  it("renders the report (the v10 week instrument) and the carry band for the selected week", () => {
+    expect(code.match(/<WeekInstrument\b/g) ?? []).toHaveLength(1);
     expect(code).toContain('data-module="weekly-carry"');
     expect(code).toContain("const isCurrent = viewId === currentId;");
     expect(code).not.toContain("<RecapStoryCards");
