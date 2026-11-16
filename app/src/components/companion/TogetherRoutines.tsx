@@ -6,72 +6,61 @@ import { useHashQuery } from "../../hooks/useHashQuery";
 import { routeHash } from "../../lib/routes";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { localized, type Routine } from "../../lib/routines";
-import {
-  routineDayKey,
-  routineIdOfPlan,
-  routineRunToday,
-  routineStepCount,
-  routineTemplatesForAge,
-  routineToPlan,
-} from "../../lib/routineTemplates";
+import { routineDayKey, routineIdOfPlan, routineTemplatesForAge, routineToPlan } from "../../lib/routineTemplates";
 import type { ActionPlan } from "../../types";
-import { BrandChip, BRAND_CHIP_INK, brandChipShape } from "../ui/BrandChip";
 import Icon from "../ui/Icon";
-import { Modal } from "../ui/Modal";
-import { Sheet, useCompactSurface } from "../ui/Sheet";
+import { LivingForm } from "../../design/primitives";
+import type { Composition } from "../../design/useComposition";
 import RoutineRunSheet, { type RoutineStart } from "./RoutineRunSheet";
-import { routineChipTone, todaysRhythm, type RhythmSlot } from "./togetherRhythm";
-import "./togetherRhythm.css";
-import { FITS_COPY, RIGHT_NOW_COPY } from "./nowV41Copy";
+import { routineSlot, todaysRhythm, type RhythmCard, type RhythmSlot } from "./togetherRhythm";
+import { FITS_COPY } from "./nowV41Copy";
 import { clockOf, dayPart, routineForPart } from "./rightNowModel";
-import "./nowV41.css";
+import { routineFace } from "../together/routineArt";
+import { TOGETHER_COPY } from "../together/togetherCopy";
+import "../together/together.css";
 
 /* ════════════════════════════════════════════════════════════════════════════
-   TogetherRoutines — Together's Routines filter (v4: Today's rhythm).
+   TogetherRoutines — Together › Routines, v10.1: the day map.
 
-   v4: once the family has started a routine, the filter reads as the day:
-   "Today's rhythm" lists the started routines in the order of the day (the
-   part of the day each belongs to — togetherRhythm.ts; never an invented clock
-   time or person), each with the routine's chip, its part of the day and
-   duration, "Next up" on the first one not finished today, a check when every
-   step is ticked today, one mark per step (ticked or not, today's run) and
-   the next step's words. The header counts the routines finished today.
-   "Add a routine" opens the routine library (every routine offered at the
-   child's age, the started ones checked); a routine opens its sheet on top.
-   Before anything is started, the filter is the ready-made library itself —
-   the honest empty state.
+   Every ready-made routine offered at the child's age is drawn ONCE, as a card
+   in the band of the day it belongs to (Morning · Afternoon · Evening · When
+   it comes up — the production part of the day, togetherRhythm.ROUTINE_SLOT).
+   A card shows the routine's steps as a small path of marks; once the routine
+   is a plan, the marks ticked today fill in (the run board's own ticks).
 
-   Adopt first, then run (v3 FEAT-07, unchanged): a routine's sheet offers
-   "Start as a plan", which writes ONE plan-routine-<id>-<ms> plan and waits
-   for the server. "In your plan" (and a place in the rhythm) only for a stored
-   plan; while the start is on its way (or failed) its optimistic row is not
-   counted, and a retry rewrites the same plan id.
-   Counts only — the steps ticked today and the steps there are, never a share.
-   v4.1 Fits right now: above the rhythm, the started routine of this part of
-   the day with a step still open (rightNowModel.routineForPart, the same rule
-   as Now's Right now); Start opens its sheet. Nothing open for this part: no line.
+   v4.1 Fits right now stays: the started routine of this part of the day with
+   a step still open (rightNowModel.routineForPart, the same rule as Now) is
+   that same card, opened in place, with its steps numbered and the one move.
+
+   Adopt first, then run (v3 FEAT-07, unchanged): a card opens the routine's
+   sheet; "Start as a plan" writes ONE plan-routine-<id>-<ms> plan and waits for
+   the server; a retry rewrites the same plan id; the plan appears under
+   Now › Plans. Counts only — never a share or a score.
    ════════════════════════════════════════════════════════════════════════════ */
 
-const SLOT_KEYS: Readonly<Record<RhythmSlot, string>> = {
-  morning: "companion.together-view.rhythm-slot-morning",
-  midday: "companion.together-view.rhythm-slot-midday",
-  afternoon: "companion.together-view.rhythm-slot-afternoon",
-  evening: "companion.together-view.rhythm-slot-evening",
-  night: "companion.together-view.rhythm-slot-night",
-  anytime: "companion.together-view.rhythm-slot-anytime",
+type Band = "morning" | "afternoon" | "evening" | "anytime";
+const BANDS: readonly Band[] = ["morning", "afternoon", "evening", "anytime"];
+const BAND_OF: Readonly<Record<RhythmSlot, Band>> = {
+  morning: "morning",
+  midday: "afternoon",
+  afternoon: "afternoon",
+  evening: "evening",
+  night: "evening",
+  anytime: "anytime",
 };
+const BAND_ICON: Readonly<Record<Band, string>> = { morning: "wb_sunny", afternoon: "light_mode", evening: "dark_mode", anytime: "bolt" };
 
-export default function TogetherRoutines({ headingId }: { headingId?: string }) {
+export default function TogetherRoutines({ composition, headingId }: { composition: Composition; headingId?: string }) {
   const { childProfile, actionPlans = [], startRoutinePlan } = useArbor();
   const { t, uiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
+  const copy = TOGETHER_COPY[lang];
+  const phone = composition === "phone";
   const childName = childProfile.name?.split(" ")[0] || t("companion.together-view.your-child");
   const months = ageMonthsFromProfile(childProfile);
   const templates = useMemo(() => routineTemplatesForAge(months), [months]);
   const [openedState, setOpenedState] = useState<{ childId: string; routineId: string | null }>({ childId: childProfile.id, routineId: null });
   const openedId = openedState.childId === childProfile.id ? openedState.routineId : null;
-  const [libraryState, setLibraryState] = useState<{ childId: string; open: boolean }>({ childId: childProfile.id, open: false });
-  const libraryOpen = libraryState.childId === childProfile.id && libraryState.open;
   const [startState, setStartState] = useState<RoutineStart | null>(null);
   const start = startState && startState.childId === childProfile.id ? startState : null;
   const latest = useRef(0);
@@ -82,10 +71,8 @@ export default function TogetherRoutines({ headingId }: { headingId?: string }) 
     mounted.current = true;
     return () => { mounted.current = false; };
   }, []);
-  // v3 F-TOG-3: below lg a sheet rises from the bottom; the Modal stays the wide answer.
-  const LibrarySurface = useCompactSurface() ? Sheet : Modal;
 
-  // Read per render (as the day key always was); the filter is not a long-lived clock face.
+  // Read per render (as the day key always was); the map is not a long-lived clock face.
   const clockNow = new Date();
   const day = routineDayKey(clockNow.getTime());
   /** The stored plan started from this routine (newest first), else null. */
@@ -97,13 +84,12 @@ export default function TogetherRoutines({ headingId }: { headingId?: string }) 
     return start && start.status === "saved" && start.routineId === routineId ? start.plan : null;
   };
   const rhythm = todaysRhythm(templates, planFor, day, lang);
-  const finished = rhythm.filter((card) => card.complete).length;
   const fits = routineForPart(rhythm, dayPart(clockNow.getHours()));
   const opened = openedId ? templates.find((r) => r.id === openedId) ?? null : null;
   const open = (routineId: string) => setOpenedState({ childId: childProfile.id, routineId });
-  // v4.1: Now's Right now opens a routine by address (#/practice?f=routines&routine=<id>),
-  // once per child and routine; closing the sheet drops the routine from the address,
-  // so Back never reopens it.
+  // v4.1: Now's Right now opens a routine by address (#/practice?routine=<id>),
+  // once per child and routine; closing the sheet drops the routine from the
+  // address, so Back never reopens it.
   const requestedRoutine = useHashQuery().get("routine");
   const handledRoutine = useRef<string | null>(null);
   useEffect(() => {
@@ -116,7 +102,7 @@ export default function TogetherRoutines({ headingId }: { headingId?: string }) 
   const closeRoutine = () => {
     setOpenedState({ childId: childProfile.id, routineId: null });
     if (requestedRoutine && typeof window !== "undefined" && window.location.hash.includes("routine=")) {
-      window.history.replaceState(window.history.state, "", `#${routeHash("practice", { f: "routines" })}`);
+      window.history.replaceState(window.history.state, "", `#${routeHash("practice")}`);
     }
   };
 
@@ -149,144 +135,110 @@ export default function TogetherRoutines({ headingId }: { headingId?: string }) 
   };
 
   if (templates.length === 0) return null;
-  const hasRhythm = rhythm.length > 0;
-  return (
-    <div className="together-routines" data-testid="together-routines" data-mode={hasRhythm ? "rhythm" : "library"}>
-      <div className="companion-section-heading together-routines-heading">
-        <div>
-          <span className="companion-eyebrow">{t("companion.together-view.routines-kicker")}</span>
-          <h2 id={headingId}>{hasRhythm ? t("companion.together-view.rhythm-title") : t("companion.together-view.routines-title")}</h2>
-        </div>
-        {hasRhythm && (
-          <div className="together-rhythm-actions">
-            <p className="together-rhythm-tally" data-testid="together-rhythm-tally">
-              <span className="together-rhythm-count">{t("companion.together-view.rhythm-done", { done: finished, total: rhythm.length })}</span>
-              <span className="together-rhythm-count-label">{t("companion.together-view.rhythm-done-label")}</span>
-            </p>
-            <button type="button" className="together-rhythm-add" data-testid="together-rhythm-add" aria-haspopup="dialog"
-              onClick={() => setLibraryState({ childId: childProfile.id, open: true })}>
-              <Icon name="add" size={18} />{t("companion.together-view.rhythm-add")}
-            </button>
-          </div>
-        )}
-      </div>
-      <p className="companion-caption">
-        {hasRhythm ? t("companion.together-view.rhythm-sub", { name: childName }) : t("companion.together-view.routines-sub")}
-      </p>
+  const cardOf = new Map<string, RhythmCard>(rhythm.map((card) => [card.routine.id, card]));
+  const bandName: Record<Band, string> = { morning: copy.bandMorning, afternoon: copy.bandAfternoon, evening: copy.bandEvening, anytime: copy.bandAnytime };
 
-      {hasRhythm ? (
-        <>
-          {fits && <div className="together-fits arbor-fade" data-testid="together-fits" data-routine={fits.routine.id}>
-            <BrandChip icon={fits.routine.ms} tone={routineChipTone(fits.routine)} shape="leaf" size={36} />
-            <span className="together-fits-text">
-              <span className="together-fits-label">{FITS_COPY[lang].label(clockOf(clockNow.getHours() * 60 + clockNow.getMinutes()))}</span>
-              <span className="together-fits-head" dir="auto">{RIGHT_NOW_COPY[lang].routineHead(fits.nextStep ?? "")}</span>
-              <span className="together-fits-sub" dir="auto">{RIGHT_NOW_COPY[lang].routineSub(localized(fits.routine.title, lang), fits.done.length, fits.total)}</span>
-            </span>
-            <button type="button" className="together-fits-start arbor-press" data-testid="together-fits-start" aria-haspopup="dialog" onClick={() => open(fits.routine.id)}>
-              <Icon name="play_arrow" size={19} />{fits.done.length > 0 ? FITS_COPY[lang].continue : FITS_COPY[lang].start}
-            </button>
-          </div>}
-          <ul className="together-rhythm-grid" data-testid="together-rhythm">
-            {rhythm.map((card, index) => {
-              const { routine } = card;
-              const tone = routineChipTone(routine);
-              const nextIcon = card.complete ? "check" : card.nextIcon ?? "flag";
-              return (
-                <li key={routine.id}>
-                  <button
-                    type="button"
-                    className="together-rhythm-card"
-                    data-routine-tile={routine.id}
-                    data-in-plan="true"
-                    data-next-up={card.nextUp ? "true" : "false"}
-                    data-complete={card.complete ? "true" : "false"}
-                    aria-haspopup="dialog"
-                    style={{ ["--rhythm-ink" as string]: BRAND_CHIP_INK[tone] } as React.CSSProperties}
-                    onClick={() => open(routine.id)}
-                  >
-                    <span className="together-rhythm-head">
-                      <BrandChip icon={routine.ms} tone={tone} shape={brandChipShape(index)} size={40} />
-                      <span className="together-rhythm-title">
-                        <span className="together-rhythm-name" dir="auto">{localized(routine.title, lang)}</span>
-                        <span className="together-rhythm-when">
-                          <span className="together-rhythm-slot">{t(SLOT_KEYS[card.slot])}</span>
-                          <span aria-hidden="true">·</span>
-                          <span>{localized(routine.time, lang)}</span>
-                        </span>
-                      </span>
-                      {card.nextUp && <span className="together-rhythm-next-up" data-testid="together-rhythm-next-up">{t("companion.together-view.rhythm-next-up")}</span>}
-                      {card.complete && <Icon name="check_circle" size={22} fill={1} className="together-rhythm-done" aria-label={t("companion.together-view.rhythm-done-aria")} />}
-                    </span>
-                    <span className="together-rhythm-marks" role="img" aria-label={t("companion.together-view.rhythm-steps-aria", { done: card.done.length, total: card.total })}>
-                      {Array.from({ length: card.total }, (_, step) => (
-                        <span key={step} className="together-rhythm-mark" data-ticked={card.done.includes(step) ? "true" : "false"} />
-                      ))}
-                    </span>
-                    <span className="together-rhythm-next">
-                      <Icon name={nextIcon} size={17} />
-                      <span dir="auto">{card.nextStep ? t("companion.together-view.rhythm-next-step", { step: card.nextStep }) : t("companion.together-view.rhythm-all-done")}</span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          <div className="together-rhythm-why" data-testid="together-rhythm-why">
-            <BrandChip icon="eco" tone="green" size={32} />
-            <p dir="auto"><b>{t("companion.together-view.rhythm-why-label")}</b> {t("companion.together-view.rhythm-why", { name: childName })}</p>
-          </div>
-        </>
-      ) : (
-        <ul className="together-routine-grid">
-          {templates.map((routine) => (
-            <li key={routine.id}>
-              <button
-                type="button"
-                className="together-routine-tile"
-                data-routine-tile={routine.id}
-                data-in-plan="false"
-                aria-haspopup="dialog"
-                onClick={() => open(routine.id)}
-              >
-                <span className="together-routine-icon"><Icon name={routine.ms} size={26} /></span>
-                <span className="together-routine-name" dir="auto">{localized(routine.title, lang)}</span>
-                <span className="together-routine-meta">{t("companion.together-view.routines-steps", { n: routine.steps.length, time: localized(routine.time, lang) })}</span>
-              </button>
+  const steps = (routine: Routine, card: RhythmCard | undefined) => {
+    const total = card ? card.total : routine.steps.length;
+    return (
+      <span className="tg-steps" role="img" aria-label={card
+        ? t("companion.together-view.rhythm-steps-aria", { done: card.done.length, total: card.total })
+        : copy.routineStepsAria(total)}>
+        {Array.from({ length: total }, (_, i) => <i key={i} className={card?.done.includes(i) ? "d" : undefined} />)}
+      </span>
+    );
+  };
+
+  const routineCard = (routine: Routine) => {
+    const card = cardOf.get(routine.id);
+    const face = routineFace(routine.id, phone ? 36 : 40);
+    const title = localized(routine.title, lang);
+    return (
+      <button
+        type="button"
+        className="dm-c"
+        data-routine-tile={routine.id}
+        data-in-plan={card ? "true" : "false"}
+        data-complete={card?.complete ? "true" : "false"}
+        data-primary-move="start-routine"
+        aria-haspopup="dialog"
+        onClick={() => open(routine.id)}
+      >
+        <span className="face"><LivingForm src={face.src} width={face.width} height={face.height} crop={face.crop} /></span>
+        <span className="nm" dir="auto">{title}</span>
+        <span className="meta">
+          {localized(routine.time, lang)}
+          {!phone && card && <span className="ct" dir="auto"> · {card.nextStep ? t("companion.together-view.rhythm-next-step", { step: card.nextStep }) : t("companion.together-view.rhythm-all-done")}</span>}
+        </span>
+        {steps(routine, card)}
+        <span className="go">
+          {card ? <><Icon name="check_circle" size={14} fill={1} className="ic-in" />{t("companion.together-view.routines-in-plan")}</>
+            : <><Icon name="add" size={14} />{t("companion.together-view.routines-start")}</>}
+        </span>
+      </button>
+    );
+  };
+
+  const fitsCard = (card: RhythmCard) => {
+    const { routine } = card;
+    const face = routineFace(routine.id, phone ? 56 : 92);
+    const why = localized(routine.why, lang).replace(/\{name\}/g, childName);
+    const label = <span className="tg-pen"><Icon name="schedule" size={14} />{FITS_COPY[lang].label(clockOf(clockNow.getHours() * 60 + clockNow.getMinutes()))}</span>;
+    const head = <>
+      <span className="face"><LivingForm src={face.src} width={face.width} height={face.height} crop={face.crop} /></span>
+      <div className="mid">
+        {label}
+        <h3 dir="auto">{localized(routine.title, lang)}</h3>
+        {!phone && <p className="why" dir="auto">{why}</p>}
+        <span className="meta">{localized(routine.time, lang)}</span>
+      </div>
+    </>;
+    return (
+      <article className="dm-x" data-testid="together-fits" data-routine={routine.id}>
+        {phone ? <div className="top">{head}</div> : head}
+        {phone && <p className="why" dir="auto">{why}</p>}
+        <ol className="stn" aria-label={t("companion.together-view.routines-preview")}>
+          {routine.steps.map((step, i) => (
+            <li key={step.key} data-ticked={card.done.includes(i) ? "true" : "false"}>
+              <span className={card.done.includes(i) ? "tg-stn sm done" : "tg-stn sm"} aria-hidden="true">{card.done.includes(i) ? <Icon name="check" size={16} /> : i + 1}</span>
+              <span dir="auto">{localized(step.label, lang)}</span>
             </li>
           ))}
-        </ul>
-      )}
+        </ol>
+        <div className="act">
+          <button type="button" className="btn primary nowrap" data-testid="together-fits-start" aria-haspopup="dialog" onClick={() => open(routine.id)}>
+            <Icon name="play_arrow" size={18} />{card.done.length > 0 ? FITS_COPY[lang].continue : FITS_COPY[lang].start}
+          </button>
+        </div>
+      </article>
+    );
+  };
 
-      {libraryOpen && (
-        <LibrarySurface open onClose={() => setLibraryState({ childId: childProfile.id, open: false })} title={t("companion.together-view.library-title")}>
-          <div className="companion-preview together-library" data-testid="together-library" dir={lang === "he" ? "rtl" : "ltr"}>
-            <p>{t("companion.together-view.library-sub", { name: childName })}</p>
-            <ul className="together-library-grid">
-              {templates.map((routine, index) => {
-                const plan = planFor(routine.id);
-                const done = plan ? routineRunToday(plan, day).length : 0;
-                const left = plan ? Math.max(0, routineStepCount(plan) - done) : 0;
-                return (
-                  <li key={routine.id}>
-                    <button type="button" className="together-library-item" data-library-routine={routine.id} data-in-plan={plan ? "true" : "false"}
-                      aria-haspopup="dialog" onClick={() => open(routine.id)}>
-                      <BrandChip icon={routine.ms} tone={routineChipTone(routine)} shape={brandChipShape(index)} size={34} />
-                      <span className="together-library-text">
-                        <span className="together-routine-name" dir="auto">{localized(routine.title, lang)}</span>
-                        <span className="together-routine-meta">
-                          {plan ? t("elev.plans.routineRun.today", { done, left }) : t("companion.together-view.routines-steps", { n: routine.steps.length, time: localized(routine.time, lang) })}
-                        </span>
-                      </span>
-                      {plan && <Icon name="check_circle" size={20} fill={1} className="together-library-in-plan" aria-label={t("companion.together-view.routines-in-plan")} />}
-                    </button>
-                  </li>
-                );
-              })}
+  return (
+    <div className={phone ? "dm dm-pm" : "dm"} data-testid="together-routines" data-mode={rhythm.length > 0 ? "rhythm" : "library"}>
+      {BANDS.map((band) => {
+        // The routine that fits right now opens first in its band; the rest keep the library's order.
+        const inBand = templates.filter((routine) => BAND_OF[routineSlot(routine.id)] === band)
+          .sort((a, b) => Number(b.id === fits?.routine.id) - Number(a.id === fits?.routine.id));
+        if (inBand.length === 0) return null;
+        const titleId = `${headingId ?? "routines"}-band-${band}`;
+        return (
+          <section key={band} className={`dm-b band-${band}`} id={`band-${band}`} aria-labelledby={titleId} data-band={band}>
+            <div className="dm-h">
+              <span className="dm-i" aria-hidden="true"><Icon name={BAND_ICON[band]} size={20} /></span>
+              <b id={titleId} role="heading" aria-level={3}>{bandName[band]}</b>
+              <span className="n">{copy.bandCount(inBand.length)}</span>
+            </div>
+            <ul className="dm-g">
+              {inBand.map((routine) => (
+                fits && fits.routine.id === routine.id
+                  ? <li key={routine.id} className="wide">{fitsCard(fits)}</li>
+                  : <li key={routine.id}>{routineCard(routine)}</li>
+              ))}
             </ul>
-          </div>
-        </LibrarySurface>
-      )}
+          </section>
+        );
+      })}
       {opened && (
         <RoutineRunSheet
           routine={opened}
@@ -300,3 +252,4 @@ export default function TogetherRoutines({ headingId }: { headingId?: string }) 
     </div>
   );
 }
+
