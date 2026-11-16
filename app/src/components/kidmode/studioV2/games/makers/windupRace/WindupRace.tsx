@@ -590,7 +590,8 @@ export function WindupRound({ onAgain }: { onAgain: () => void }) {
     </GameShell>;
   }
 
-  const setPiece = chapter === 3 && (phase === 'crouching' || phase === 'running' || phase === 'flourish' || phase === 'finale');
+  // The set-piece run is framed like a film: bars in, the HUD out of the way, until Rover is at rest.
+  const framed = chapter === 3 && (phase === 'crouching' || phase === 'running');
   const steps = CHAPTERS.map((id, index) => ({ key: id, label: w.chapters[id], done: index < chapter || (index === chapter && (phase === 'flourish' || phase === 'travelling' || phase === 'finale')), icon: <ChapterMark index={index} /> }));
   const windingNow = phase === 'winding';
   const forkOpen = !!courses[chapter].fork && !locked && (windingNow || phase === 'running') && G.restX < (courses[chapter].fork?.at ?? 0);
@@ -600,7 +601,7 @@ export function WindupRound({ onAgain }: { onAgain: () => void }) {
 
   return <GameShell fullBleed autoNarrate={false} worldId="windup-race" title={w.title} instruction={w.instruction} hearIt={hearIt}>
     <section className="wr" data-adventure="windup-race" data-phase={phase} data-chapter={CHAPTERS[chapter]} data-clicks={clicks} data-line={line} data-light={light} data-gust={gusty < 0 ? 'head' : gusty > 0 ? 'tail' : undefined} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-      <PlayStage id="windup-race" grade={light === 'goldenHour' ? 'warm' : 'day'} shake={shake} setPiece={setPiece}
+      <PlayStage id="windup-race" grade={light === 'goldenHour' ? 'warm' : 'day'} shake={shake} setPiece={framed}
         world={<div className="play-layer wr-world" dir="ltr" onPointerMove={onStageMove}>
           <canvas ref={canvasRef} className="play-layer wr-canvas" role="img" aria-label={w.scene}
             onPointerDown={onCanvasDown} onPointerMove={moveDrag} onPointerUp={onCanvasUp} onPointerCancel={onCanvasUp} />
@@ -610,7 +611,7 @@ export function WindupRound({ onAgain }: { onAgain: () => void }) {
           <div ref={handRef} className="wr-hand" aria-hidden="true"><HintHand /></div>
           <PlayFx ref={fxRef} layer={6} />
         </div>}>
-        <HudCoach who="pep" mood={coach.mood} line={phase === 'openShot' ? w.hello : coach.line} onPoke={pokePep} pokeLabel={w.pep} quiet={setPiece && phase === 'running'} />
+        <HudCoach who="pep" mood={coach.mood} line={phase === 'openShot' ? w.hello : coach.line} onPoke={pokePep} pokeLabel={w.pep} quiet={framed} />
         <HudQuest steps={steps} current={chapter} label={w.quest} />
         <HudToast show={toast.show}>{toast.text}</HudToast>
         <HudDock label={w.title}>
@@ -624,7 +625,7 @@ export function WindupRound({ onAgain }: { onAgain: () => void }) {
           </button>}
         </HudDock>
         {phase === 'openShot' && <PlayOpening title={w.title} place={w.place} onDone={openingDone} holdMs={reduced ? 1400 : OPEN_S * 1000} />}
-        <PlaySetPiece active={setPiece && phase === 'running'} caption={w.caption} />
+        <PlaySetPiece active={framed} caption={w.caption} />
       </PlayStage>
     </section>
   </GameShell>;
