@@ -78,7 +78,7 @@ import { stopVoice } from "../../lib/voice";
 import { KID_BOOK_ART_CLASS, KID_BOOK_SIDE_CLASS, KID_BOOK_SPREAD_CLASS } from "../stories/HeroScenePlayer";
 import { DecisionChoices } from "../stories/DecisionChoices";
 import { asksForHero } from "../../lib/childPicture";
-import { DsRoot, Guide, Route, RouteSection, Token } from "../../design/primitives";
+import { DsRoot, Guide, Route, RouteSection, scrollToSection, Token } from "../../design/primitives";
 import { Draw, FrameFigure, FrameHead, RailTile, ReadGuide } from "../moments/v10/frame";
 import "../moments/mychild.css";
 import { useComposition } from "../../design/useComposition";
@@ -208,6 +208,13 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   // one stamp); with no hero, the cover's FIRST act is the in-place hero row in
   // its art band, Play second — and the shell drops "starring".
   const [tonightMode, setTonightMode] = useState<TonightMode>(() => consumeTonightMode() ?? "hero");
+  // An evening entry that asks for "today" lands on A story of your own (V77: its own section).
+  useEffect(() => {
+    if (tonightMode !== "today") return;
+    const id = window.setTimeout(() => scrollToSection("own"), 120);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // KID-05: hub tiles navigate the PARENT shell — rendered only while the
   // shell is reachable (null inside Kid Mode, where the call would be a
   // silent no-op and a dead button in front of the child).
@@ -989,6 +996,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
           mini={composition === "phone"}
           stops={[
             { id: "tonight", title: tCopy.stopTonight, sub: tCopy.stopTonightSub },
+            { id: "own", title: tCopy.stopOwn, sub: tCopy.stopOwnSub },
             { id: "family", title: tCopy.stopRitual, sub: tCopy.stopRitualSub },
             { id: "pictures", title: tCopy.stopPictures, sub: tCopy.stopPicturesSub },
           ]}
@@ -1031,7 +1039,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                 key={m}
                 type="button"
                 aria-pressed={tonightMode === m}
-                onClick={() => setTonightMode(m)}
+                onClick={() => { setTonightMode(m); if (m === "today") scrollToSection("own"); }}
                 data-testid={`stories-tonight-mode-${m}`}
                 className="px-3 min-h-11 rounded-lg text-[13px] font-bold transition"
                 style={tonightMode === m ? { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", boxShadow: "var(--shadow-xs)" } : { color: "var(--arbor-muted)" }}
@@ -1047,7 +1055,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               all inside 812 px. ≥1024: two columns, art at inline-start, the
               text column held to 60ch. The archetype essay lives in the reader
               (reflection beat), not on the cover. */}
-          {tonightMode === "today" ? <TonightFromToday /> : (
+          {/* V77: "From today" is its own section below (A story of your own, drawn
+              once); the switch takes you there and the cover stays tonight's story. */}
+          {(
           <div data-testid="stories-cover" className={`${cardCls} w-full overflow-hidden p-0 lg:grid lg:grid-cols-[2fr_3fr]`}>
             {/* SHIP-FIX (W2-SHELLPLAY r3 F1): below sm the art band is ONE row —
                 avatar at inline-start, the hero row beside it (100 px, was a
@@ -1202,7 +1212,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               phone={composition === "phone"}
               steps={[
                 { drawing: Draw.cards(), label: tCopy.stopTonight },
-                { drawing: Draw.list(), label: tCopy.stopRitual },
+                { drawing: Draw.list(), label: tCopy.stopOwn },
                 { drawing: Draw.pick(6), label: tCopy.stopPictures },
               ]}
               keyItems={[
@@ -1214,10 +1224,20 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         </div>
         </div>
         </RouteSection>
-        <RouteSection id="family" n={2}>
+        {/* V77: A story of your own (the bedtime story from a moment you kept), where the board draws it. */}
+        <RouteSection id="own" n={2} aria-labelledby="stories-own-title">
+          <section className="vt" data-testid="stories-own" style={{ borderRadius: 18, gap: 10, padding: composition === "phone" ? "12px 12px 14px" : "16px 20px" }}>
+            <div className="line" style={{ gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+              <h2 className="kicker" id="stories-own-title" style={{ margin: 0 }}>{tCopy.stopOwn}</h2>
+              <span className="small">{tCopy.stopOwnSub}</span>
+            </div>
+            <TonightFromToday />
+          </section>
+        </RouteSection>
+        <RouteSection id="family" n={3}>
           <React.Suspense fallback={null}><EmbeddedFamilyRitual embedded /></React.Suspense>
         </RouteSection>
-        <RouteSection id="pictures" n={3}>
+        <RouteSection id="pictures" n={4}>
         <div className="space-y-6">
           <React.Suspense fallback={null}><EmbeddedComics embedded /></React.Suspense>
         {/* B-PLAY-11: the pack filter and the whole catalogue sit behind ONE
