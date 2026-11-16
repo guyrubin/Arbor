@@ -10,10 +10,9 @@
  *  - The two place empty states carry exactly ONE action, Keep a moment, and
  *    it opens the capture sheet. Now's week line carries none: Now keeps its
  *    one primary move.
- *  - Together says its sentence once and shows its picture once; the hero
- *    drops its own copy of the picture while the empty state carries it.
- *  - Together's empty state is a FIRST-TIME state: it waits for every read,
- *    never treats a failed read as empty, and leaves once anything is on record.
+ *  - v10.1: Together › Routines dropped its empty branch (routines always
+ *    exist); its first-time state is the day map itself, and no pending or
+ *    failed read blanks it.
  *  - v3 F-CHILD-1: My child is the Milestones page, one scroll whose first-time
  *    state is the page itself: the cards say "Not told yet" and offer Tell
  *    Arbor (the kept-moment card opens the capture sheet), and every area row
@@ -86,7 +85,6 @@ import TogetherView from "./TogetherView";
 import { NowWeekSoFar } from "./NowDayPanels";
 import { NOW_COPY } from "./nowViewCopy";
 import { translate } from "../../lib/i18n";
-import { TOGETHER_ART } from "../../lib/parentArt";
 
 const LANGS = ["en", "he"] as const;
 const t = (key: string) => translate(state.lang, key);
@@ -102,17 +100,8 @@ const expectNoNumbers = (text: string) => {
   expect(text, "an empty state shows no percentage").not.toMatch(/%/);
 };
 const occurrences = (html: string, needle: string) => html.split(needle).length - 1;
-/** Rendered pictures of the Together art: <img> tags only (React 19 also emits a
- *  <link rel="preload"> carrying the same srcset for an eager image). */
-const togetherPictures = (html: string) => [...shown(html).matchAll(/<img\b[^>]*>/g)].filter(([tag]) => tag.includes(TOGETHER_ART.src)).length;
-/** v4: one Together filter shows at a time; the others stay in the page as
- *  `hidden` sections (their doors keep a return target), and a hidden section
- *  shows nothing — so a picture inside one is not on screen. */
-const shown = (html: string) => html.replace(/<section hidden=""[\s\S]*?<\/section>/g, "");
 const buttonsIn = (html: string) => (html.match(/<button\b/g) ?? []).length;
-const labelOf = (button: Record<string, any>) => React.Children.toArray(button.children).filter((child) => typeof child === "string").join("");
 
-const TOGETHER_EMPTY = /<section[^>]*data-testid="together-empty"[^>]*>[\s\S]*?<\/section>/;
 const renderTogether = () => renderToStaticMarkup(<TogetherView />);
 
 beforeEach(() => {
@@ -154,61 +143,53 @@ describe("VIS-07 · My child: the first-time Milestones page (v3 F-CHILD-1)", ()
   });
 });
 
-describe("VIS-07 · Together: a good moment needs no other reason", () => {
-  it.each(LANGS)("%s: the picture, the sentence once, one Keep a moment at 44 px, no numbers", (lang) => {
+/* v10.1 RE-PIN: Together › Routines (#/practice) is the day map of ready-made
+   routines, which always exist at every age, so the first-time empty branch
+   (picture, "A good moment needs no other reason.", one Keep a moment) was
+   dropped on purpose: like My child, the first-time state is the page itself.
+   What stays pinned: the first visit renders the routines and the doors, says
+   nothing it cannot back up (no empty sentence, no stand-in CTA), writes
+   nothing, and a pending or failed read never blanks the page. */
+describe("VIS-07 · Together: the first-time Routines page is the routines (v10.1)", () => {
+  it.each(LANGS)("%s: nothing on record still draws every routine and the doors, with no empty branch and no Keep a moment", (lang) => {
     state.lang = lang;
     const html = renderTogether();
-    const empty = branch(html, TOGETHER_EMPTY);
-    const sentence = t("companion.together-view.empty");
-    expect(sentence).not.toBe("companion.together-view.empty");
-    expect(textOf(empty)).toContain(sentence);
-    expect(occurrences(html, sentence), "the sentence is said once on the page").toBe(1);
-    // The hero never repeats it: its old subline is not on the page.
-    expect(html).not.toContain(t("companion.together-view.a-story-to-get-lost-in-a-game-to-wonder-at"));
-    expect(empty).toContain('data-testid="empty-state-art"');
-    expect(togetherPictures(html), "the Together picture shows once").toBe(1);
-    expect(buttonsIn(empty), "exactly ONE action").toBe(1);
-    expectNoNumbers(textOf(empty));
-    const cta = state.buttons.find((button) => button["data-testid"] === "together-empty-cta");
-    expect(cta).toBeDefined();
-    expect(labelOf(cta!)).toBe(t("companion.portrait.capture"));
-    expect(String(cta!.className)).toContain("min-h-[44px]");
-    cta!.onClick();
-    expect(state.openCaptureSheet).toHaveBeenCalledOnce();
-    expect(state.saveMoment).not.toHaveBeenCalled();
-  });
-
-  it.each(LANGS)("%s: it sits under the invitation, before the catalogue, centred, inside the page budget", (lang) => {
-    state.lang = lang;
-    const html = renderTogether();
-    const at = html.indexOf('data-testid="together-empty"');
-    expect(at).toBeGreaterThan(html.indexOf('data-testid="together-cta"'));
-    // v4 re-pin: the filter row is Together's first level, above the hero; the
-    // empty state still comes before the catalogue.
-    expect(at).toBeLessThan(html.indexOf('class="companion-collection"'));
     expect(html).toContain(`dir="${lang === "he" ? "rtl" : "ltr"}"`);
-    expect(branch(html, TOGETHER_EMPTY)).toMatch(/class="[^"]*items-center[^"]*text-center[^"]*together-empty"/);
-    expect(branch(html, TOGETHER_EMPTY)).not.toContain("data-module=");
-    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
-    expect(html.match(/data-module=/g)).toHaveLength(5);
+    expect(html).not.toContain('data-testid="together-empty"');
+    expect(html).not.toContain(t("companion.together-view.empty"));
+    expect(state.buttons.some((button) => button["data-testid"] === "together-empty-cta")).toBe(false);
+    expect(html).toContain('data-testid="together-routines"');
+    const tiles = html.match(/data-routine-tile="/g) ?? [];
+    expect(tiles.length).toBeGreaterThan(0);
+    // Each routine card carries the route's one declared move, and only those.
+    expect(html.match(/data-primary-move="start-routine"/g)).toHaveLength(tiles.length);
+    expect(html.match(/data-primary-move=/g)).toHaveLength(tiles.length);
+    expect(html.match(/data-module=/g)).toHaveLength(2);
+    expect(html).toContain('data-testid="together-door-story"');
+    // Nothing ticked this week: no "Done together this week" line.
+    expect(html).not.toContain('data-testid="together-done-week"');
+    // Seeing the page writes nothing and opens nothing.
+    expect(state.saveMoment).not.toHaveBeenCalled();
+    expect(state.openCaptureSheet).not.toHaveBeenCalled();
   });
 
-  it("waits for every read, never calls a failed read empty, and leaves once anything is on record", () => {
-    expect(renderTogether()).toContain('data-testid="together-empty"');
+  it("a pending or failed read never blanks the routines and never brings back an empty branch", () => {
+    const routines = (html: string) => (html.match(/data-routine-tile="/g) ?? []).length;
+    const baseline = routines(renderTogether());
+    expect(baseline).toBeGreaterThan(0);
     state.loaded = false;
-    expect(renderTogether()).not.toContain('data-testid="together-empty"');
+    expect(routines(renderTogether())).toBe(baseline);
     state.loaded = true; state.logsLoaded = false;
-    expect(renderTogether()).not.toContain('data-testid="together-empty"');
+    expect(routines(renderTogether())).toBe(baseline);
     state.logsLoaded = true; state.failed = true;
-    expect(renderTogether()).not.toContain('data-testid="together-empty"');
+    const failed = renderTogether();
+    expect(routines(failed)).toBe(baseline);
+    expect(failed).not.toContain('data-testid="together-empty"');
     state.failed = false; state.behaviorLogs = [{ id: "moment-1" }];
+    state.playItems = [{ id: "event-1", timestamp: "2020-01-06T10:00:00.000Z", kind: "rhythm" }];
     const kept = renderTogether();
+    expect(routines(kept)).toBe(baseline);
     expect(kept).not.toContain('data-testid="together-empty"');
-    // Without the empty state the hero carries the picture again, once.
-    expect(togetherPictures(kept)).toBe(1);
-    // Play on record, even long ago, means this is not a first visit.
-    state.behaviorLogs = []; state.playItems = [{ id: "event-1", timestamp: "2020-01-06T10:00:00.000Z", kind: "rhythm" }];
-    expect(renderTogether()).not.toContain('data-testid="together-empty"');
   });
 });
 

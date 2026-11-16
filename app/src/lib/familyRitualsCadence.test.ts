@@ -181,8 +181,10 @@ describe("ENG-25 → B-GROWTH-03 — the cadence is surfaced on #/family", () =>
     // W2-SHELLPLAY r1: the card is mounted inside the rituals module and
     // carries the route's ONE stamp on its start control (spread from the leaf).
     // W2-SHELLPLAY r2 (B-SHELL-NEW-2l): the host also passes the charter and the child
-    expect(growth).toMatch(/<RitualTurnCard onStart=\{startRitual\} started=\{ritualStarted\} primaryMoveProps=\{RITUAL_MOVE\} onTurnChange=\{onTurnChange\} charterValues=\{saved \? values : \[\]\} childName=\{childProfile\?\.name\} childAge=\{childProfile\?\.age\} startDisabled=\{startPending\(\)\} startFeedback=\{startFeedback\} \/>/);
-    const mod = growth.indexOf('data-module="family-rituals"');
+    // v10.1: embedded in #/stories the card carries no stamp (Stories owns the
+    // one move); standalone #/family passes RITUAL_MOVE exactly as before.
+    expect(growth).toMatch(/<RitualTurnCard onStart=\{startRitual\} started=\{ritualStarted\} primaryMoveProps=\{embedded \? undefined : RITUAL_MOVE\} onTurnChange=\{onTurnChange\} charterValues=\{saved \? values : \[\]\} childName=\{childProfile\?\.name\} childAge=\{childProfile\?\.age\} startDisabled=\{startPending\(\)\} startFeedback=\{startFeedback\} \/>/);
+    const mod = growth.indexOf('data-module={embedded ? undefined : "family-rituals"}');
     expect(mod).toBeGreaterThan(-1);
     expect(growth.indexOf("<RitualTurnCard")).toBeGreaterThan(mod);
     for (const f of ["ChildPortrait.tsx", "PortraitWatchRow.tsx", "PortraitKeepsakes.tsx", ...MILESTONES_PARTS]) expect(read(`../components/companion/${f}`)).not.toMatch(/RitualTurnCard/);
@@ -218,7 +220,10 @@ describe("W2-SHELLPLAY r1 — #/family: the ritual start reads first, on a real 
   });
 
   it("critic r2: 'Our family's way' leads (header -> charter line -> ritual turn), on a real block", () => {
-    expect(family.indexOf('data-module="family-charter"')).toBeLessThan(family.indexOf('data-module="family-rituals"'));
+    const charterAt = family.indexOf('data-module={embedded ? undefined : "family-charter"}');
+    const ritualsAt = family.indexOf('data-module={embedded ? undefined : "family-rituals"}');
+    expect(charterAt).toBeGreaterThan(-1);
+    expect(charterAt).toBeLessThan(ritualsAt);
     expect(family.indexOf('data-testid="family-way"')).toBeLessThan(family.indexOf("<RitualTurnCard"));
     expect(family).not.toContain('display: "contents"');
   });

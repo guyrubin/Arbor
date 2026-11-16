@@ -50,11 +50,19 @@ const state = {
   undoPlayCompletion,
   updateChild: vi.fn(async () => {}),
   seedCoach: vi.fn(),
+  saveMoment: vi.fn(async () => null),
   actionLoop: [] as unknown[],
   playLogs: [] as { activityId: string; timestamp: string }[],
 };
 
-vi.mock("../../context/ArborContext", () => ({ useArbor: () => state }));
+vi.mock("../../context/ArborContext", () => ({ useArbor: () => state, useArborOptional: () => state }));
+vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ user: null, firebaseEnabled: false, loading: false }) }));
+// v10.1: #/daily-play also renders Together › Play (PlayStudio: games, hand-over,
+// away ideas). Its Kid Mode entry and practice ledgers are not this test's subject.
+vi.mock("../kidmode/useKidModeEntry", () => ({ useKidModeEntry: () => ({ request: vi.fn(), step: null }) }));
+vi.mock("../../practice/usePracticeData", () => ({
+  usePracticeData: () => ({ speech: { items: [], loaded: true }, mimic: { items: [], loaded: true }, adventures: { items: [], loaded: true }, events: { items: [], loaded: true }, missions: { items: [], loaded: true } }),
+}));
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ toast }) }));
 vi.mock("../ui/Receipt", () => ({ useReceiptNote: () => ({ note: null, show: receiptShow, clear: vi.fn() }), ReceiptNoteLine: () => null }));
 vi.mock("../../context/LanguageContext", async () => {

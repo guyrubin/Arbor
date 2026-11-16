@@ -1,11 +1,17 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ firebaseEnabled: false, loading: false, user: null }) }));
 
-/* v3 F-TOG-1 — Together's hero, studio doors and question row (#/practice).
+/* v3 F-TOG-1 — Together's studio doors and question row (#/practice), re-pinned
+   to v10.1. The v3 hero (kicker, title, "choose-together" move and picture)
+   was removed on purpose: #/practice is now Together › Routines, whose one
+   move is starting a routine, and the doors are its section 2 ("Stories and
+   games"). The return-door memory (togetherNavigation) went with the in-page
+   filter, so the doors now navigate: a story to the story maker, the games to
+   Play (#/daily-play), a favorite to its preview there.
    The page renders as static markup under the TogetherView.test mocks; the
    doors' handlers are read from the captured button props. Invented child
    ("Noa") and invented records only. */
@@ -47,18 +53,24 @@ vi.mock("react/jsx-dev-runtime", async (original) => {
 });
 
 import TogetherView from "./TogetherView";
-import { readTogetherView } from "./togetherNavigation";
+import { TOGETHER_COPY } from "../together/togetherCopy";
 import { translate } from "../../lib/i18n";
+import { routeHash } from "../../lib/routes";
 import { companionEn, companionHe } from "../../lib/i18nCompanion";
 import { latestPlayedWorldId, STUDIO_WORLDS, studioWorldsForChild, type StudioCountSource } from "../practice/studioWorlds";
 
+const location = { hash: "" };
 beforeEach(() => {
   vi.clearAllMocks();
   state.childProfile = { id: "child-a", name: "Noa", age: 4, interests: [], activeGoals: [] };
   state.lang = "en"; state.loaded = true; state.failed = false; state.events = []; state.buttons = []; state.topic = null;
   const data = new Map<string, string>();
   vi.stubGlobal("sessionStorage", { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value) });
+  // "Continue a favorite" moves the address; the page reads it too.
+  location.hash = "#/practice";
+  vi.stubGlobal("window", { location, addEventListener: vi.fn(), removeEventListener: vi.fn() });
 });
+afterEach(() => { vi.unstubAllGlobals(); });
 
 const render = () => renderToStaticMarkup(<TogetherView />);
 const esc = (text: string) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#x27;");
@@ -66,48 +78,37 @@ const tr = (lang: "en" | "he", key: string, vars?: Record<string, string | numbe
 const buttonMarkup = (html: string, testId: string) => html.match(new RegExp(`<button[^>]*data-testid="${testId}"[^>]*>[\\s\\S]*?</button>`))?.[0] ?? "";
 const button = (testId: string) => state.buttons.find((b) => b["data-testid"] === testId);
 const DOORS = [
-  ["together-door-story", "auto_stories", "companion.together-view.door-create-story"],
-  ["together-door-continue", "replay", "companion.together-view.door-continue-favorite"],
-  ["together-door-find", "extension", "companion.together-view.door-find-play"],
+  ["together-door-story", "/visuals/worlds/v2/story-quest-v2-480.webp", "companion.together-view.door-create-story", (lang: "en" | "he") => TOGETHER_COPY[lang].doorStorySub("Noa")],
+  ["together-door-continue", "/visuals/worlds/v2/play-together-v2-480.webp", "companion.together-view.door-continue-favorite", (lang: "en" | "he") => TOGETHER_COPY[lang].doorContinueSub("Noa")],
+  ["together-door-find", "/visuals/worlds/v2/mood-mountain-v2-480.webp", "companion.together-view.door-find-play", (lang: "en" | "he") => TOGETHER_COPY[lang].doorFindSub],
 ] as const;
+/** Section 2: from its module to the end of the page. */
+const doorsSection = (html: string) => html.slice(html.indexOf('data-module="together-doors"'));
 
-for (const lang of ["en", "he"] as const) describe(`v3 F-TOG-1 · Together's hero · ${lang}`, () => {
+for (const lang of ["en", "he"] as const) describe(`v10.1 · Together's doors · ${lang}`, () => {
   beforeEach(() => { state.lang = lang; });
 
-  it("the kicker, the title with the child's name, the sub and ONE move with the heart", () => {
+  it("section 2 names itself and holds three doors, each a picture, a title, a line and a mirrored chevron", () => {
     const html = render();
-    const at = html.indexOf('data-module="together-invitation"');
-    const hero = html.slice(at, html.indexOf("</section>", at));
-    expect(hero).toContain(`<span class="companion-eyebrow together-kicker">${tr(lang, "companion.together-view.kicker")}</span>`);
-    expect(hero).toMatch(/<h1 id="[^"]+" class="arbor-type-hero">/);
-    expect(hero).toContain(tr(lang, "companion.together-view.a-little-world-to-discover-with", { value0: "Noa" }));
-    expect(hero).toContain(`<p class="together-hero-sub">${tr(lang, "companion.together-view.a-story-to-get-lost-in-a-game-to-wonder-at")}</p>`);
-    const cta = buttonMarkup(hero, "together-cta");
-    expect(cta).toContain('data-primary-move="choose-together"');
-    expect(cta).toMatch(/^<button type="button" class="companion-primary together-hero-cta"/);
-    expect(cta.replace(/<[^>]+>/g, "")).toBe(`favorite${tr(lang, "companion.together-view.one-small-idea-for-time-together")}arrow_forward`);
-    // The arrow is the one directional glyph, mirrored once.
-    expect(cta).toMatch(/class="msr companion-arrow rtl:-scale-x-100"[^>]*>arrow_forward<\/span>/);
-    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
-    // The Together picture is decoration beside the copy: empty alt, hidden from AT.
-    expect(hero).toMatch(/<figure class="companion-together-art" aria-hidden="true"><img [^>]*alt=""/);
-    // Never a stand-in child: the title names this child only.
-    expect(html).not.toMatch(/\bMia\b|(?<![֐-׿])מיה(?![֐-׿])/);
-  });
-
-  // v4 re-pin: each door's icon is the brand chip (pink, lavender, green), beside its label.
-  it("three studio doors, each a brand chip and a label, inside the hero", () => {
-    const html = render();
-    const doors = html.slice(html.indexOf('data-testid="together-doors"'), html.indexOf("</section>", html.indexOf('data-testid="together-doors"')));
-    const TONES = ["pink", "lav", "green"];
-    DOORS.forEach(([testId, icon, key], i) => {
+    const doors = doorsSection(html);
+    expect(doors).toContain(`>${esc(TOGETHER_COPY[lang].doorsTitle)}</h2>`);
+    expect(doors).toContain(esc(TOGETHER_COPY[lang].doorsSub("Noa")));
+    DOORS.forEach(([testId, art, key, sub]) => {
       const door = buttonMarkup(doors, testId);
-      expect(door, testId).toMatch(/^<button type="button" class="together-door"/);
-      expect(door.replace(/<[^>]+>/g, ""), testId).toBe(`${icon}${tr(lang, key)}`);
-      expect(door, testId).toMatch(new RegExp(`<span aria-hidden="true" data-brand-chip="${TONES[i]}"[^>]*class="brand-chip"`));
+      expect(door, testId).toMatch(/^<button type="button" class="dm-door"/);
+      // The picture is decoration beside the words: empty alt.
+      expect(door, testId).toMatch(new RegExp(`<img src="${art}" alt="" width="64" height="64"`));
+      expect(door, testId).toContain(`<span class="nm">${tr(lang, key)}</span>`);
+      expect(door, testId).toContain(`<span class="s">${esc(sub(lang))}</span>`);
+      expect(door, testId).toMatch(/<span class="chev" aria-hidden="true"><span[^>]*class="[^"]*rtl:-scale-x-100[^"]*"[^>]*>chevron_right<\/span><\/span>/);
     });
-    expect(html.indexOf('data-testid="together-cta"')).toBeLessThan(html.indexOf('data-testid="together-doors"'));
-    expect(html.indexOf('data-testid="together-doors"')).toBeLessThan(html.indexOf('class="companion-together-art"'));
+    const order = DOORS.map(([testId]) => doors.indexOf(`data-testid="${testId}"`));
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    // The doors come after the routines and carry no move of their own.
+    expect(html.indexOf('data-module="together-doors"')).toBeGreaterThan(html.indexOf('data-module="together-routines"'));
+    expect(doors).not.toContain("data-primary-move");
+    // Never a stand-in child: the doors name this child only.
+    expect(html).not.toMatch(/\bMia\b|(?<![֐-׿])מיה(?![֐-׿])/);
   });
 
   it("under three only the story door shows; the games doors go with the games", () => {
@@ -116,55 +117,47 @@ for (const lang of ["en", "he"] as const) describe(`v3 F-TOG-1 · Together's her
     expect(html).toContain('data-testid="together-door-story"');
     expect(html).not.toContain('data-testid="together-door-continue"');
     expect(html).not.toContain('data-testid="together-door-find"');
-    expect(html).not.toContain('data-module="together-games"');
-    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
+    expect(html.match(/data-module=/g)).toHaveLength(2);
   });
 
-  // v4 re-pin: the filter row is Together's first level (above the hero), so
-  // the question row now sits between the hero and the filter's catalogue.
-  it("the question row sits under the hero and before the catalogue, with the enjoy note beside the chip", () => {
+  // v10.1 re-pin: the question row now sits under the guide and before the
+  // chain strip and the routines (the hero and the filter row are gone).
+  it("the question row sits under the guide and before the routines, with the enjoy note beside the chip", () => {
     state.topic = { id: "topic-a", title: "What helps mornings feel calmer?" };
     const html = render();
     const row = html.indexOf('data-testid="together-question-row"');
-    const catalogue = html.indexOf('class="companion-collection"');
-    expect(html.indexOf('class="companion-filter-row together-pills"')).toBeLessThan(html.indexOf('data-module="together-invitation"'));
-    expect(row).toBeGreaterThan(html.indexOf('data-testid="together-cta"'));
-    expect(row).toBeGreaterThan(html.indexOf("</section>", html.indexOf('data-module="together-invitation"')));
-    expect(row).toBeLessThan(catalogue);
-    expect(html.slice(row, catalogue)).toContain(tr(lang, "companion.together-view.here-it-is-also-enough-just-to-enjoy"));
-    expect(html.match(/data-module=/g)).toHaveLength(5);
+    expect(row).toBeGreaterThan(html.indexOf("</nav>"));
+    expect(row).toBeLessThan(html.indexOf('data-testid="together-chain"'));
+    expect(row).toBeLessThan(html.indexOf('data-module="together-routines"'));
+    expect(html.slice(row, html.indexOf('data-testid="together-chain"'))).toContain(tr(lang, "companion.together-view.here-it-is-also-enough-just-to-enjoy"));
+    expect(html.match(/data-module=/g)).toHaveLength(2);
   });
 });
 
-describe("v3 F-TOG-1 · what the doors and the move do", () => {
-  it("the move chooses the away ideas (v4: in Play); nothing is written and play does not start", () => {
-    render();
-    button("together-cta")!.onClick();
-    expect(readTogetherView("child-a", true)).toEqual({ category: "games" });
-    expect(state.saveMoment).not.toHaveBeenCalled(); expect(state.requestKidMode).not.toHaveBeenCalled(); expect(state.setActiveTab).not.toHaveBeenCalled();
-  });
-
-  it("Create a story opens the story maker and remembers its door for the way back", () => {
+describe("v3 F-TOG-1 · what the doors do (v10.1: they navigate)", () => {
+  it("Create a story opens the story maker; nothing is written and play does not start", () => {
     render();
     button("together-door-story")!.onClick();
     expect(state.setActiveTab).toHaveBeenCalledWith("bedtime-stories");
-    expect(readTogetherView("child-a", true)).toEqual({ category: "routines", returnDoor: "story-bedtime" });
+    expect(state.saveMoment).not.toHaveBeenCalled(); expect(state.requestKidMode).not.toHaveBeenCalled();
   });
 
-  it("Find something to play chooses the games", () => {
+  it("Find something to play opens Play, without starting Kids Studio", () => {
     render();
     button("together-door-find")!.onClick();
-    expect(readTogetherView("child-a", true)).toEqual({ category: "games" });
+    expect(state.setActiveTab).toHaveBeenCalledWith("daily-play");
     expect(state.requestKidMode).not.toHaveBeenCalled();
   });
 
-  it("Continue a favorite falls back to the games when nothing was played", () => {
+  it("Continue a favorite falls back to Play's games when nothing was played", () => {
     render();
     button("together-door-continue")!.onClick();
-    expect(readTogetherView("child-a", true)).toEqual({ category: "games" });
+    expect(location.hash).toBe(routeHash("daily-play", { section: "games" }));
+    expect(location.hash).toBe("/daily-play?section=games");
+    expect(state.requestKidMode).not.toHaveBeenCalled(); expect(state.setActiveTab).not.toHaveBeenCalled();
   });
 
-  it("Continue a favorite previews the latest world instead of moving the page", () => {
+  it("Continue a favorite opens the latest world's preview on Play, and nothing starts", () => {
     // One record of a world this child is offered (an invented event).
     const KIND: Record<string, string> = { "word-world": "lang-strategy", feelings: "emotion-id", memory: "memory", reading: "phonics", beat: "rhythm", pose: "pose", pattern: "pattern" };
     const offered = studioWorldsForChild("en", state.childProfile as never).worlds.find((w) => KIND[w.id]);
@@ -173,9 +166,19 @@ describe("v3 F-TOG-1 · what the doors and the move do", () => {
     expect(latestPlayedWorldId({ speech: { items: [] }, mimic: { items: [] }, adventures: { items: [] }, events: { items: state.events as never[] } }, studioWorldsForChild("en", state.childProfile as never).worlds)).toBe(offered!.id);
     render();
     button("together-door-continue")!.onClick();
-    // The preview opens in place: the category stays where it was and nothing starts.
-    expect(readTogetherView("child-a", true)).toEqual({ category: "routines" });
+    expect(location.hash).toBe(routeHash("daily-play", { world: offered!.id }));
     expect(state.requestKidMode).not.toHaveBeenCalled(); expect(state.setActiveTab).not.toHaveBeenCalled();
+  });
+
+  it("Play opens that preview once by address and drops it, and lands on the games for ?section=games", () => {
+    const studio = readFileSync(new URL("../together/PlayStudio.tsx", import.meta.url), "utf8");
+    expect(studio).toContain('const requestedWorld = useHashQuery().get("world");');
+    expect(studio).toContain("if (handledWorld.current === key) return;");
+    expect(studio).toContain("if (!world || !kidAvailable) return;");
+    expect(studio).toContain('window.history.replaceState(window.history.state, "", `#${routeHash("daily-play")}`)');
+    const tab = readFileSync(new URL("../tabs/DailyPlayTab.tsx", import.meta.url), "utf8");
+    expect(tab).toContain('const requestedSection = useHashQuery().get("section");');
+    expect(tab).toContain("scrollToSection(requestedSection)");
   });
 });
 
@@ -210,56 +213,39 @@ describe("v3 F-TOG-1 · latestPlayedWorldId", () => {
   });
 });
 
-describe("v3 F-TOG-1 · the stylesheet and the copy", () => {
-  const css = readFileSync(new URL("./togetherDiscovery.css", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+/* v10.1 re-pin: the hero's togetherDiscovery.css rules (phone-first picture,
+   48 px move, the 640 px two-column hero) styled the removed hero; the doors
+   are now .dm-door in together/together.css. */
+describe("v3 F-TOG-1 · the stylesheet and the copy (v10.1)", () => {
+  const css = readFileSync(new URL("../together/together.css", import.meta.url), "utf8").replace(/\r\n/g, "\n");
   const experience = readFileSync(new URL("./companionExperience.css", import.meta.url), "utf8").replace(/\r\n/g, "\n");
   /** One top-level rule block, from its head to its closing brace ("" when absent). */
   const block = (source: string, head: string) => { const at = source.indexOf(head); return at < 0 ? "" : source.slice(at, source.indexOf("\n}", at)); };
-  const wide = block(css, "@container together (min-width: 640px) {");
-  const phone = css.slice(css.indexOf("v3 F-TOG-1: the hero"), css.indexOf("@container together (min-width: 640px) {"));
 
-  it("the hero rules are phone first, with one wide container block", () => {
-    expect(phone.length).toBeGreaterThan(400);
-    expect(wide.length).toBeGreaterThan(400);
-    expect(css.match(/@container together \(min-width: 640px\)/g)).toHaveLength(1);
+  it("every door is a full-width button, well above the 44 px floor, with a visible focus ring", () => {
+    expect(css).toMatch(/\.ds \.dm-door\{[^}]*min-height:88px/);
+    expect(css).toMatch(/\.ds \.dm-pm \.dm-door\{[^}]*min-height:0;[^}]*padding:8px 12px 8px 8px/);
+    expect(css).toMatch(/\.ds \.dm-pm \.dm-door img\{width:52px;height:52px\}/);
+    expect(css).toMatch(/\.ds button\.dm-c, \.ds button\.dm-door[^{]*\{ border: 0; font: inherit; text-align: start; cursor: pointer; width: 100%; \}/);
+    expect(css).toMatch(/\.ds button\.dm-door:focus-visible/);
+    const doors = css.split("\n").filter((line) => line.includes("dm-door")).join("\n");
+    expect(doors).not.toMatch(/\b(?:margin|padding|border)-(?:left|right)\b|(?:^|[\s;{])(?:left|right)\s*:|text-align:\s*(?:left|right)/);
+    expect(doors).not.toMatch(/line-clamp|text-overflow|overflow:\s*hidden/);
   });
 
-  it("phone first: the picture on top at 190px, a 48px full-width move, no doors", () => {
-    expect(phone).toMatch(/\.companion-together \.companion-together-art \{ order: -1;/);
-    expect(phone).toMatch(/\.companion-together \.companion-together-art img \{ block-size: 190px;/);
-    expect(phone).toMatch(/\.companion-together \.together-hero-cta \{ inline-size: 100%; min-block-size: 48px;/);
-    expect(phone).toMatch(/\.companion-together \.companion-together-hero h1 \{[^}]*font-size: var\(--t-2xl\)/);
-    expect(phone).toContain(".companion-together .together-doors { display: none; }");
-  });
-
-  it("from a 640px content width: two columns (1.1fr / 1fr), a 300px picture, the doors in a row", () => {
-    expect(wide).toContain("grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);");
-    expect(wide).toMatch(/\.companion-together \.companion-together-art img \{ block-size: 300px; \}/);
-    expect(wide).toMatch(/\.companion-together \.together-doors \{ display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
-    expect(wide).toMatch(/\.companion-together \.companion-together-hero h1 \{ font-size: var\(--t-hero\);/);
-  });
-
-  it("every door, the move and Start playing keep the 44px floor; tokens and logical sides only", () => {
-    expect(css).toMatch(/\.companion-together \.together-door \{[^}]*min-block-size: var\(--touch-min\)/);
-    expect(css).toMatch(/\.companion-together \.together-start \{[^}]*min-block-size: var\(--touch-min\)/);
-    expect(wide).toMatch(/\.companion-together \.together-hero-cta \{[^}]*min-block-size: var\(--touch-min\)/);
-    const gate = css.slice(css.indexOf("v3 F-TOG-1: the gate card"), css.indexOf("v3 FEAT-07"));
-    for (const rules of [phone, wide, gate]) {
-      expect(rules).not.toMatch(/\b(?:margin|padding|border)-(?:left|right)\b|(?:^|[\s;{])(?:left|right)\s*:|text-align:\s*(?:left|right)/);
-      expect(rules).not.toMatch(/#[0-9a-f]{3,8}\b/i);
-    }
-  });
-
+  // NOTE (suspected v10.1 regression, reported): these rules are scoped to the
+  // `together` container, which only togetherDiscovery.css established on
+  // .companion-together; that stylesheet is no longer imported and the class is
+  // no longer rendered, so on #/practice they do not currently apply.
   it("on a phone the question line stays one line and the enjoy note steps aside", () => {
     const narrow = block(experience, "@container together (max-width: 540px) {");
     expect(narrow).toContain(".companion-topic-context > .companion-caption { display: none; }");
     expect(narrow).toMatch(/\.companion-topic-context \.companion-topic-chip-text \{[^}]*text-overflow: ellipsis/);
-    // The discovery sheet stays unclipped: the ellipsis lives with the shared chip rules.
-    expect(css).not.toMatch(/text-overflow|line-clamp/);
   });
 
-  it("the kicker and the three doors read in both languages, Hebrew without Latin", () => {
-    const keys = ["companion.together-view.kicker", "companion.together-view.door-create-story", "companion.together-view.door-continue-favorite", "companion.together-view.door-find-play"];
+  it("the three doors and their lines read in both languages, Hebrew without Latin", () => {
+    // (The kicker went with the hero.)
+    const keys = ["companion.together-view.door-create-story", "companion.together-view.door-continue-favorite", "companion.together-view.door-find-play"];
     for (const key of keys) {
       const en = (companionEn as Record<string, string>)[key], he = (companionHe as Record<string, string>)[key];
       expect(en, key).toBeTruthy(); expect(he, key).toBeTruthy();
@@ -267,5 +253,11 @@ describe("v3 F-TOG-1 · the stylesheet and the copy", () => {
       expect(he, key).not.toMatch(/[A-Za-z]/);
       expect(he, key).toMatch(/[֐-׿]/);
     }
+    const lines = (lang: "en" | "he") => [TOGETHER_COPY[lang].doorsTitle, TOGETHER_COPY[lang].doorsSub("Noa"), TOGETHER_COPY[lang].doorStorySub("Noa"), TOGETHER_COPY[lang].doorContinueSub("Noa"), TOGETHER_COPY[lang].doorFindSub];
+    lines("he").forEach((he, i) => {
+      expect(he).not.toBe(lines("en")[i]);
+      expect(he.replace("Noa", "")).not.toMatch(/[A-Za-z]/);
+      expect(he).toMatch(/[֐-׿]/);
+    });
   });
 });

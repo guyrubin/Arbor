@@ -184,7 +184,7 @@ describe("B-KID-85 — the kid library is a cover grid in the kid register", () 
   // code only (the header comment names what was removed)
   const lib = readFileSync(path.join(__dirname, "KidLibrary.tsx"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   const tab = readFileSync(path.join(__dirname, "..", "tabs", "HeroJourneyTab.tsx"), "utf8");
-  const kidBranch = tab.slice(tab.indexOf("    return kidMode ? ("), tab.indexOf("    ) : (\n      <div className=\"space-y-6 max-w-[1100px]\">"));
+  const kidBranch = tab.slice(tab.indexOf("    return kidMode ? ("), tab.indexOf("    ) : (\n      <DsRoot composition={composition} className=\"stories-v10\""));
 
   it("the kid branch of the story surface is ONE KidLibrary over kidBooks", () => {
     expect(kidBranch).toContain("<KidLibrary");
@@ -217,7 +217,7 @@ describe("B-KID-85 — the kid library is a cover grid in the kid register", () 
   });
 
   it("NEGATIVE CONTROL: the parent catalogue keeps its filter and age switch", () => {
-    const parent = tab.slice(tab.indexOf("    ) : (\n      <div className=\"space-y-6 max-w-[1100px]\">"));
+    const parent = tab.slice(tab.indexOf("    ) : (\n      <DsRoot composition={composition} className=\"stories-v10\""));
     expect(parent).toContain("setPackFilter");
     expect(parent).toContain("agefilter-toggle-hero-journeys");
   });

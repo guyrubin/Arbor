@@ -94,7 +94,24 @@ import { comicShelfReadIsCurrent } from "../../lib/comicShelfScope";
 const savedMetaFingerprint = (meta: SavedComicMeta): string =>
   JSON.stringify([meta.id, meta.adventureId, meta.lang, meta.createdAt, meta.pageCount, meta.identityVersion, meta.pageKeys]);
 
-export default function ComicsTab() {
+/** Every Hero Comics state in one frame: the page shell on #/comics; inside
+ *  Together › Stories a section heading (h2), so the screen keeps one h1. */
+function ComicsFrame({ embedded, title, subtitle, children }: { embedded: boolean; title: string; subtitle?: string; children: React.ReactNode }) {
+  if (!embedded) return <RegisterShell kidMode={false} title={title} subtitle={subtitle}>{children}</RegisterShell>;
+  return (
+    <div className="space-y-4" data-testid="comics-embedded">
+      <div>
+        <h2 className="h3" style={{ margin: 0 }} dir="auto">{title}</h2>
+        {subtitle && <p className="small" dir="auto">{subtitle}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** `embedded`: Hero Comics inside Together › Stories (v10.1) — a section
+ *  heading instead of the page header, and no route stamps (Stories owns them). */
+export default function ComicsTab({ embedded = false }: { embedded?: boolean } = {}) {
   const { childProfile, openPaywall, milestones, behaviorLogs, playLogs } = useArbor();
   const { user } = useAuth();
   const { aiLang, t, uiLang } = useLanguage();
@@ -367,7 +384,7 @@ export default function ComicsTab() {
     );
   };
   const ourBooksSection = (
-    <section data-module="comics-our-books" data-testid="comics-our-books" className="space-y-3">
+    <section data-module={embedded ? undefined : "comics-our-books"} data-testid="comics-our-books" className="space-y-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <h2 className="m-0 text-[1.15rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
           {t("elev.comics.ourBooks.title")}
@@ -411,14 +428,14 @@ export default function ComicsTab() {
   // B-PLAY-12: a text book reread in place — hero or not.
   if (openRun) {
     return (
-      <RegisterShell kidMode={false} title={t("nav.tab.comics")}>
+      <ComicsFrame embedded={embedded} title={t("nav.tab.comics")}>
         <StoryTextReader
           key={`${partitionKey}|${openRun.id}`}
           run={openRun}
           hero={{ name: childProfile.name, nameLatin: childProfile.nameLatin, gender: childProfile.gender }}
           onBack={() => setOpenRunId(null)}
         />
-      </RegisterShell>
+      </ComicsFrame>
     );
   }
 
@@ -427,8 +444,8 @@ export default function ComicsTab() {
   // families must not hit English exactly where register matters most.
   if (!hasHero) {
     return (
-      <RegisterShell
-        kidMode={false}
+      <ComicsFrame
+        embedded={embedded}
         title={t("nav.tab.comics")}
         subtitle={he ? `הפכו את ${name} לכוכב של ספר קומיקס משלו.` : `Turn ${name} into the star of their own comic book.`}
       >
@@ -467,8 +484,9 @@ export default function ComicsTab() {
         )}
         {/* B-KID-87 (KB-29): the hero invitation is ONE card; the library
             below is readable without a hero (nothing is gated). */}
-        <div className="mt-6">{ourBooksSection}</div>
-      </RegisterShell>
+        {/* Embedded in Stories, the books are Stories' own "More stories" shelf (each capability once). */}
+        {!embedded && <div className="mt-6">{ourBooksSection}</div>}
+      </ComicsFrame>
     );
   }
 
@@ -486,7 +504,7 @@ export default function ComicsTab() {
       title: index === 0 ? journeyTitle : `${adventureTitle(openAdventure, journeyMeta.lang)} · ${index}`,
     }));
     return (
-      <RegisterShell kidMode={false} title={journeyTitle}>
+      <ComicsFrame embedded={embedded} title={journeyTitle}>
         <SavedComicReader
           key={`${partitionKey}|${visibleOpenBook.id}|${journeyMeta.createdAt}`}
           title={journeyTitle}
@@ -500,7 +518,7 @@ export default function ComicsTab() {
               : state);
           }}
         />
-      </RegisterShell>
+      </ComicsFrame>
     );
   }
   if (visibleOpenBook && openAdventure) {
@@ -523,7 +541,7 @@ export default function ComicsTab() {
         }
       : undefined;
     return (
-      <RegisterShell kidMode={false} title={adventureTitle(openAdventure, visibleOpenBook.lang)}>
+      <ComicsFrame embedded={embedded} title={adventureTitle(openAdventure, visibleOpenBook.lang)}>
         <ComicReader
           key={`${partitionKey}|${openAdventure.id}|${visibleOpenBook.lang}|${meta?.createdAt ?? "new"}`}
           adventure={openAdventure}
@@ -542,7 +560,7 @@ export default function ComicsTab() {
             openPaywall(err.feature || "heroComic", err.plan);
           }}
         />
-      </RegisterShell>
+      </ComicsFrame>
     );
   }
 
@@ -567,12 +585,9 @@ export default function ComicsTab() {
   // ComicsTab (KidModeOverlay maps only `arcade` and `journeys`, and the
   // in-hub Hero Comics tile is behind `kidNav`, which is null while kid-locked).
   // So the register is fixed at parent: kit chrome, no `.arbor-play` wash.
-  return (
-    <RegisterShell
-      kidMode={false}
-      title={t("nav.tab.comics")}
-      subtitle={he ? `כל הרפתקה היא ספר קומיקס שלם — בכיכוב ${name}!` : `Every adventure is a whole comic book — starring ${name}!`}
-    >
+  const subtitle = he ? `כל הרפתקה היא ספר קומיקס שלם — בכיכוב ${name}!` : `Every adventure is a whole comic book — starring ${name}!`;
+  const mainBody = (
+    <>
 
       {/* item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (counted against the route's
@@ -582,7 +597,8 @@ export default function ComicsTab() {
       {/* B-KID-87 (KB-29): Our books leads; the "{n} of {total} books on the
           shelf" summary is gone (a completion meter on a library). The age
           switch moved into the Our books header. */}
-      {ourBooksSection}
+      {/* Embedded in Stories, the books are Stories' own "More stories" shelf (each capability once). */}
+      {!embedded && ourBooksSection}
 
       {/* The comic books: the ones made before, and the authored adventures a
           parent can still build as a comic. */}
@@ -642,7 +658,7 @@ export default function ComicsTab() {
       {/* Book grid — every canon adventure as a multi-page comic book. The
           declared primaryMove for #/comics is "open-comic": opening a book off
           the shelf. Stamped once, on the shelf itself. */}
-      <div data-module="comics-shelf" data-primary-move="open-comic" className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
+      <div data-module={embedded ? undefined : "comics-shelf"} data-primary-move={embedded ? undefined : "open-comic"} className="grid gap-4" style={{ gridTemplateColumns: embedded ? "repeat(auto-fill,minmax(220px,1fr))" : "repeat(auto-fit,minmax(240px,1fr))" }}>
         {shelfAdventures.map((a) => {
           const w = { bg: STORY_PACK_SOFT[a.pack], ink: STORY_PACK_LABEL[a.pack].ink, label: STORY_PACK_LABEL[a.pack].en, labelHe: STORY_PACK_LABEL[a.pack].he };
           const bookCover = storyCoverArt(kidTheme, a.adventureId);
@@ -787,6 +803,7 @@ export default function ComicsTab() {
             : `Comics use ${isolate(name)}'s saved cartoon hero — never a real photo. Images are AI-made and provenance-watermarked.`}
         </span>
       </div>
-    </RegisterShell>
+    </>
   );
+  return <ComicsFrame embedded={embedded} title={t("nav.tab.comics")} subtitle={subtitle}>{mainBody}</ComicsFrame>;
 }

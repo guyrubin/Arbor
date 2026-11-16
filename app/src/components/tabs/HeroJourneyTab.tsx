@@ -78,6 +78,16 @@ import { stopVoice } from "../../lib/voice";
 import { KID_BOOK_ART_CLASS, KID_BOOK_SIDE_CLASS, KID_BOOK_SPREAD_CLASS } from "../stories/HeroScenePlayer";
 import { DecisionChoices } from "../stories/DecisionChoices";
 import { asksForHero } from "../../lib/childPicture";
+import { DsRoot, Guide, Route, RouteSection } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
+import { ChainStrip } from "../together/ChainStrip";
+import { TOGETHER_COPY } from "../together/togetherCopy";
+import StoriesPlanBook from "../together/StoriesPlanBook";
+import "../together/together.css";
+
+// v10.1: Hero Comics and the family ritual are sections of Stories (embedded, no route stamps).
+const EmbeddedComics = React.lazy(() => import("./ComicsTab"));
+const EmbeddedFamilyRitual = React.lazy(() => import("../sections/FamilyFormation"));
 
 /** B-KID-81 (KB-14): the pack tint + label tables live in ONE module
  *  (components/stories/StoryCard: STORY_PACK_SOFT, STORY_PACK_LABEL), shared
@@ -201,6 +211,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const kidNav = useKidSafeNav();
   const { aiLang, t, uiLang } = useLanguage();
   const { toast } = useToast();
+  // v10.1: Stories' composition and its words.
+  const composition = useComposition();
+  const tCopy = TOGETHER_COPY[uiLang === "he" ? "he" : "en"];
   // OBJ-KID-04: ToastContext QUEUES toasts while kid-locked, so a failed start
   // inside Kid Mode was silent — the child tapped Play and nothing moved. Branch
   // at the call site (never in ToastContext, which the parent shell relies on).
@@ -913,7 +926,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     if (refusedPin) {
       const cover = storyCover(refusedPin.id);
       const pinTitle = uiLang === "he" ? refusedPin.titleHe : refusedPin.title;
-      return kidMode ? (
+    return kidMode ? (
         <div className="arbor-play flex flex-col items-center gap-4 text-center" data-kid-book-pin-cover={refusedPin.id} style={{ marginInline: -20, marginBlockStart: -24 }}>
           <div className={KID_BOOK_ART_CLASS} style={{ background: "var(--arbor-paper-deep)" }}>
             {cover
@@ -928,6 +941,19 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         </div>
       ) : null;
     }
+    // The chain strip: on a phone it follows tonight's story, so "Read it together" stays above the fold (W2-SHELLPLAY SHIP-FIX).
+    const storiesChain = (
+      <ChainStrip
+          composition={composition}
+          label={tCopy.chainLabel(name)}
+          // The strip starts from what you noted; without a note it would only repeat the cover's title.
+          nodes={!notedMoment ? [] : [
+            ...(notedMoment ? [{ kind: "you" as const, tag: tCopy.chainNoted, text: t("elev.loop.ms.quoted", { text: notedMoment.text }), said: true }] : []),
+            ...(tonightStory ? [{ kind: "arbor" as const, tag: tCopy.arborSuggests, text: he ? tonightStory.titleHe : tonightStory.title, sub: tCopy.chainTonight }] : []),
+            ...(runs.length > 0 ? [{ kind: "back" as const, tag: tCopy.chainRead, text: t(runs.length === 1 ? "elev.stories.counts.stories.one" : "elev.stories.counts.stories", { n: runs.length }) }] : []),
+          ]}
+        />
+    );
     return kidMode ? (
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -951,13 +977,30 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         />
       </motion.div>
     ) : (
-      <div className="space-y-6 max-w-[1100px]">
+      <DsRoot composition={composition} className="stories-v10" data-testid="stories-screen" dir={he ? "rtl" : "ltr"}>
+      <div className="tg-stack" style={{ gap: composition === "phone" ? 8 : 16 }}>
+        <Guide
+          label={tCopy.onThisPage}
+          mini={composition === "phone"}
+          stops={[
+            { id: "tonight", title: tCopy.stopTonight, sub: tCopy.stopTonightSub },
+            { id: "family", title: tCopy.stopRitual, sub: tCopy.stopRitualSub },
+            { id: "pictures", title: tCopy.stopPictures, sub: tCopy.stopPicturesSub },
+          ]}
+        />
+        {composition === "desk" && storiesChain}
+        <Route composition={composition}>
+        <RouteSection id="tonight" n={1} on>
+        <div className={composition === "phone" ? "space-y-3" : "space-y-6"}>
         {/* W2-SHELLPLAY critic r1: the H1 names tonight, not the catalogue; no
             eyebrow, no subtitle (four labels stood before the story). "Starring"
             only once the child has a hero — the cover cannot keep that claim
             with the generic mascot. */}
+        {/* v10.1: on a phone the guide's first stop already names tonight's story, so the
+            H1 is read, not drawn (Read it together stays above the fold, SHIP-FIX). */}
         <PageHeader
           title={childProfile.avatar ? t("elev.stories.tonight.h1.starring", { name }) : t("elev.stories.tonight.h1")}
+          srOnly={composition === "phone"}
         />
         {/* §3f row 3 — ONE dominant cover, above the fold. The parent door used
             to open on a comic hero banner, a mascot bubble in the kid's voice,
@@ -1137,6 +1180,17 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             onClose={() => setHeroDialogOpen(false)}
           />
         )}
+        {/* The running Challenge plan's book, read together (program flag). */}
+        {composition === "phone" && storiesChain}
+        <StoriesPlanBook />
+        </div>
+        </RouteSection>
+        <RouteSection id="family" n={2}>
+          <React.Suspense fallback={null}><EmbeddedFamilyRitual embedded /></React.Suspense>
+        </RouteSection>
+        <RouteSection id="pictures" n={3}>
+        <div className="space-y-6">
+          <React.Suspense fallback={null}><EmbeddedComics embedded /></React.Suspense>
         {/* B-PLAY-11: the pack filter and the whole catalogue sit behind ONE
             collapsed "More stories" disclosure (R25: a demoted module inside a
             data-module-disclosure), so above the fold is cover + insight + Play. */}
@@ -1283,11 +1337,11 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         </section>
         </details>
 
-        {/* B-PLAY-12: the "Your library" module (every run read, finished or
-            not) moved to the Comics shelf, one tap away on this hub: a run
-            with a read-along comic is that comic, every other run is a text
-            book reread in place (lib/storyShelf, components/stories/StoryTextReader). */}
+        </div>
+        </RouteSection>
+        </Route>
       </div>
+      </DsRoot>
     );
   }
 

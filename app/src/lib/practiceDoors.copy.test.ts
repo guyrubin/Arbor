@@ -44,7 +44,13 @@ const FEELINGS = stripComments(read("components/practice/FeelingsLabTab.tsx"));
 const JOURNEY = stripComments(read("components/practice/JourneyTab.tsx"));
 // B-PLAY-02: the world list moved to components/practice/studioWorlds.ts.
 // Parity 9 Oct: #/practice is Together (components/companion/TogetherView.tsx).
-const STUDIO = stripComments(read("components/companion/TogetherView.tsx")) + stripComments(read("components/practice/studioWorlds.ts"));
+// v10.1: #/practice is Together › Routines only; the world launcher (games,
+// previews, hand-over, away ideas) moved to Together › Play
+// (components/together/PlayStudio.tsx), rendered by #/daily-play (DailyPlayTab).
+const TOGETHER = stripComments(read("components/companion/TogetherView.tsx"));
+const PLAY_STUDIO = stripComments(read("components/together/PlayStudio.tsx"));
+const DAILY_PLAY = stripComments(read("components/tabs/DailyPlayTab.tsx"));
+const STUDIO = PLAY_STUDIO + stripComments(read("components/practice/studioWorlds.ts"));
 
 const countOf = (src: string, re: RegExp) => (src.match(re) || []).length;
 const MODULE = /\bdata-module=/g;
@@ -251,7 +257,8 @@ describe("OBJ-PRACTICE-02 — the practice doors speak both languages", () => {
  * conditional branch renders sometimes and never raises the total.
  */
 const STAMPED_ROUTES: { route: string; file: string; move: string }[] = [
-  { route: "practice", file: "components/companion/TogetherView.tsx", move: "choose-together" },
+  // v10.1: Together › Routines; each routine card spreads the ONE START_ROUTINE_MOVE literal.
+  { route: "practice", file: "components/companion/TogetherView.tsx", move: "start-routine" },
   { route: "speech", file: "components/practice/SpeechCoachTab.tsx", move: "complete-speech-round" },
   { route: "mimic", file: "components/practice/MimicStudioTab.tsx", move: "complete-mimic-round" },
   { route: "feelings", file: "components/practice/FeelingsLabTab.tsx", move: "open-world-door" },
@@ -282,6 +289,21 @@ describe("item 6 (IA-02) — every route in this batch stamps its contract", () 
       expect(contractFor(route as Parameters<typeof contractFor>[0])!.primaryMove).toBe(move);
     });
   }
+
+  it("#/daily-play (Together › Play) stamps its modules across the tab and PlayStudio within budget, and exactly one move, log-play", () => {
+    // v10.1: the games and together ideas Together used to stamp now render on #/daily-play
+    // from PlayStudio.tsx, so the route's modules are the sum of both files.
+    const contract = contractFor("daily-play")!;
+    const modules = countOf(DAILY_PLAY, MODULE) + countOf(PLAY_STUDIO, MODULE);
+    expect(contract.moduleBudget).toBe(5);
+    expect(modules).toBeGreaterThan(0);
+    expect(modules).toBeLessThanOrEqual(contract.moduleBudget);
+    expect(PLAY_STUDIO).toContain('data-module="play-games"');
+    expect(PLAY_STUDIO).toContain('data-module="play-together-ideas"');
+    expect(countOf(DAILY_PLAY, MOVE) + countOf(PLAY_STUDIO, MOVE)).toBe(1);
+    expect(DAILY_PLAY).toContain('data-module="play-picks" data-primary-move="log-play"');
+    expect(contract.primaryMove).toBe("log-play");
+  });
 
   it("NEGATIVE CONTROL: an unstamped leaf and a double-stamped leaf both fail", () => {
     expect(countOf("<div className='x' />", MODULE)).toBe(0);
@@ -333,14 +355,16 @@ describe("B-PLAY-02 · per-world count and unit", () => {
   });
 
   it("no world says 'sessions' any more", () => {
-    const studio = stripComments(read("components/companion/TogetherView.tsx"));
-    expect(studio).not.toContain("practice.studio.sessions");
+    // v10.1: the world tiles moved to Together › Play (PlayStudio.tsx).
+    expect(PLAY_STUDIO).not.toContain("practice.studio.sessions");
+    expect(TOGETHER).not.toContain("practice.studio.sessions");
     expect(translate("en", "practice.studio.sessions")).toBe("practice.studio.sessions");
   });
 });
 
 describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice door", () => {
-  const studio = readFileSync(path.join(here, "..", "components", "companion", "TogetherView.tsx"), "utf8").replace(/\r\n/g, "\n");
+  // v10.1: the play door (tiles, previews, hand-over) is Together › Play, PlayStudio.tsx.
+  const studio = readFileSync(path.join(here, "..", "components", "together", "PlayStudio.tsx"), "utf8").replace(/\r\n/g, "\n");
   const tEn = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
   const tHe = (key: string, vars?: Record<string, string | number>) => translate("he", key, vars);
   // Thursday 1 Oct 2026, 16:00 UTC; "now" is the next day.
@@ -414,21 +438,31 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
     // v3 F-TOG-1 re-pin: the since-line left Together's hero (the v3 mock's hero is
     // kicker, title, sub, one move and the studio doors). Kid-world moments surface
     // in Now and Moments; the sentence builder above stays covered for its next home.
-    const at = studio.indexOf('data-module="together-invitation"');
-    const hero = studio.slice(at, studio.indexOf("</section>", at));
-    expect(hero).not.toContain('data-testid="together-since"');
-    expect(studio).not.toContain("doorSinceSentence(");
-    expect(studio).toContain("known ?? Date.now() - SINCE_LAST_PLAY_FALLBACK_MS");
+    // v10.1: the together-invitation hero itself is gone (Routines opens on the guide
+    // and the day map), so the hero slice is dropped; neither Together screen renders
+    // the since line, and Play's count window still falls back to a week.
+    for (const src of [TOGETHER, stripComments(studio), DAILY_PLAY]) {
+      expect(src).not.toContain('data-testid="together-since"');
+      expect(src).not.toContain("doorSinceSentence(");
+    }
+    expect(TOGETHER).not.toContain('data-module="together-invitation"');
+    expect(studio).toContain("sinceMs: lastKidSessionStartedAt() ?? Date.now() - SINCE_LAST_PLAY_FALLBACK_MS");
   });
 
-  it("the way into play is the gate card's Start playing; the move is stamped ONCE (Together's choose-together), never on the grid", () => {
+  it("the way into play is the gate card's Start playing; each Together screen stamps its move ONCE, never on the game grid", () => {
     const src = stripComments(studio);
     expect(src).not.toMatch(/--gradient-cta|--arbor-gradient-primary/);
-    expect(src.match(/\bdata-primary-move\b/g)).toHaveLength(1);
-    expect(src).toContain('data-primary-move="choose-together"');
+    // v10.1: PlayStudio stamps no move; Play's one move is log-play on the picks (DailyPlayTab),
+    // and Routines' one move is start-routine (TogetherView), replacing choose-together.
+    expect(src.match(/\bdata-primary-move\b/g)).toBeNull();
+    expect(DAILY_PLAY.match(/\bdata-primary-move\b/g)).toHaveLength(1);
+    expect(DAILY_PLAY).toContain('data-primary-move="log-play"');
+    expect(TOGETHER.match(/\bdata-primary-move\b/g)).toHaveLength(1);
+    expect(TOGETHER).toContain('{ "data-primary-move": "start-routine" }');
+    expect(TOGETHER).not.toContain("choose-together");
     // v3 F-TOG-1 re-pin: the hand-over left the hero for the gate card.
-    expect(src).toContain('className="together-start" data-testid="together-start-playing"');
-    expect(src).not.toMatch(/className="companion-world-grid"[^>]*data-primary-move/);
+    expect(src).toContain('className="pl-btn ink" data-testid="together-start-playing"');
+    expect(src).not.toMatch(/className="pl-gm[^"]*"[^>]*data-primary-move/);
   });
 
   it("one count of play per screen: the phone hub line is quiet on practice / feelings / adventures", () => {
@@ -441,8 +475,8 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
     expect(src).not.toContain("practice.studio.openKidmode");
     expect(src).not.toMatch(/\bopenKidMode\(/);
     expect(src).toContain('requestKidMode({ view: "arcade", worldId: world.id })');
-    // Parity 9 Oct: Together's preview says it before anything opens.
-    expect(src).toContain('opensInKidMode(preview.world) ? (t("companion.together-view.when-you-are-ready-enter-the-child-area-yo"))');
+    // Parity 9 Oct: Together's preview says it before anything opens (v10.1: Play's preview).
+    expect(src).toContain('opensInKidMode(preview.world) ? t("companion.together-view.when-you-are-ready-enter-the-child-area-yo")');
     expect(translate("en", "elev.practice.studio.opensWorld", { world: "Sound Lab" })).toBe("Opens Sound Lab in Kid Mode");
     expect(translate("he", "elev.practice.studio.opensWorld", { world: "מעבדת הצלילים" })).not.toMatch(/[A-Za-z]/);
     const { opensInKidMode } = await import("../components/practice/studioWorlds");
@@ -498,7 +532,7 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
     const src = stripComments(studio);
     // Parity 9 Oct: Together opens a world that does not work in the UI language on its parent tab.
     expect(src).toContain("const direct = (!opensInKidMode(world) || !worksInLanguage(world, lang)) && !!world.tab;");
-    expect(src).toContain('!worksInLanguage(preview.world, lang) ? (t("companion.together-view.this-voice-game-is-currently-in-english-op"))');
+    expect(src).toContain('!worksInLanguage(preview.world, lang) ? t("companion.together-view.this-voice-game-is-currently-in-english-op")');
     expect(STUDIO_WORLDS.find((w) => w.id === "speech")!.fallbackTabNameKey).toBe("nav.tab.speech");
     expect(translate("he", "companion.together-view.this-voice-game-is-currently-in-english-op")).not.toMatch(/[A-Za-z]/);
     expect(translate("en", "companion.together-view.this-voice-game-is-currently-in-english-op")).toContain("English");
@@ -506,7 +540,8 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
 });
 
 describe("W2-SHELLPLAY r2 · practice — the door tells the truth about the gate and the tiles", () => {
-  const studio = stripComments(read("components/companion/TogetherView.tsx"));
+  // v10.1: the gate card and the tiles moved to Together › Play (PlayStudio.tsx).
+  const studio = PLAY_STUDIO;
   const button = stripComments(read("components/layout/KidModeButton.tsx"));
   const CANT_EXIT = /can't exit|cannot exit|לא יכול לצאת|לא יכולה לצאת/;
 
@@ -518,7 +553,7 @@ describe("W2-SHELLPLAY r2 · practice — the door tells the truth about the gat
     }
     expect(translate("en", "elev.practice.door.gated")).toBe("Grown-up gate");
     // Parity 9 Oct: Together's play note says what the PIN does only once one is set.
-    expect(studio).toContain('pinSet ? (t("companion.together-view.you-choose-when-to-enter-play-your-pin-pro")) : (t("companion.together-view.play-opens-in-the-child-area-set-a-pin-to"))');
+    expect(studio).toContain('pinSet ? t("companion.together-view.you-choose-when-to-enter-play-your-pin-pro") : t("companion.together-view.play-opens-in-the-child-area-set-a-pin-to")');
     for (const lang of ["en", "he"] as const) expect(translate(lang, "companion.together-view.play-opens-in-the-child-area-set-a-pin-to")).not.toMatch(CANT_EXIT);
     // v3 F-TOG-1 re-pin: the Kid Mode chips moved to Settings › PIN.
     expect(stripComments(read("components/layout/ParentalGatePanel.tsx"))).toContain('pinSet ? "elev.practice.door.locked" : "elev.practice.door.gated"');
@@ -558,14 +593,18 @@ describe("W2-SHELLPLAY r2 · practice — the door tells the truth about the gat
     expect(c.total).toBe(Object.values(c.byWorld).reduce((a, b) => a + b, 0));
     expect(c.total).toBe(3); // vocab-naming + mood-checkin are no world's — in neither
     // the page reads the Games chips from this one counter (v3 F-TOG-1 re-pin:
-    // the door sentence that also read its total left Together's hero)
-    expect(studio).toContain('{category === "games" && (counts.byWorld[world.id] ?? 0) > 0 &&');
+    // the door sentence that also read its total left Together's hero).
+    // v10.1: the in-page "games" filter became the shell's pills, so the chip reads
+    // the counter directly (and only once the four ledgers have loaded).
+    expect(studio).toContain("const n = counts.byWorld[world.id] ?? 0;");
+    expect(studio).toContain('{playLoaded && n > 0 && <span className="tg-rnd" style={{ marginInlineStart: 6 }} data-testid="together-world-count">');
     expect(studio).toContain("studioCountsSince({ speech: practiceData.speech, mimic: practiceData.mimic, adventures: practiceData.adventures, events: practiceData.events }, playWindow.sinceMs)");
     expect(studio).not.toContain("world.count(data)");
   });
 
   it("the type scale: no orphan text-[…] sizes on the Practice screen", () => {
     expect(studio).not.toMatch(/text-\[\d/);
+    expect(TOGETHER).not.toMatch(/text-\[\d/);
   });
 
 });
@@ -659,14 +698,20 @@ describe("W2-SHELLPLAY r1 · #/speech — the round is scored on the fold, in on
 });
 
 describe("B-SHELL-NEW-1b · the door sentence can be kept as ONE journal moment", () => {
-  const studio = stripComments(read("components/companion/TogetherView.tsx"));
+  // v10.1: the away ideas and their keep moved to Together › Play (PlayStudio.tsx).
+  const studio = PLAY_STUDIO;
   it("v3 F-TOG-1: no since sentence, so no Keep on it; an away idea is still kept as ONE moment through the caller-owned save, 44 px", () => {
     // v3 F-TOG-1 re-pin: the since sentence and its Keep left Together's hero.
     // Together still saves through saveMoment and owns the failure inline (B-PARITY-06).
-    expect(studio).not.toContain('data-testid="together-since-keep"');
-    expect(studio).not.toContain("sinceText");
+    for (const src of [studio, TOGETHER]) {
+      expect(src).not.toContain('data-testid="together-since-keep"');
+      expect(src).not.toContain("sinceText");
+    }
     expect(studio).toContain("await saveMoment(moment, { callerShowsFailure: true, requireAcknowledgement: true, retryKey: `together-offscreen:${id}`, isCurrent })");
     expect(studio).toContain("if (!active.current || keptIds.current.has(id) || writing.current) return;");
+    // the keep button sits in Play's preview (.companion-preview), whose stylesheet PlayStudio imports.
+    expect(studio).toContain('import "../companion/companionExperience.css";');
+    expect(studio).toContain('<div className="companion-preview"');
     expect(read("components/companion/companionExperience.css")).toContain(".companion-page button, .companion-preview button { min-block-size: var(--touch-min);");
     for (const lang of ["en", "he"] as const) {
       expect(translate(lang, "elev.practice.door.keep")).not.toBe("elev.practice.door.keep");

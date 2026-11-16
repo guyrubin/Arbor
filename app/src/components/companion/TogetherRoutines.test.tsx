@@ -6,11 +6,15 @@ import type { ActionPlan } from "../../types";
 
 vi.mock("../../context/AuthContext", () => ({ useAuth: () => ({ firebaseEnabled: false, loading: false, user: null }) }));
 
-/* v3 FEAT-07 — Routines on Together (#/practice).
-   Part 1 renders the real TogetherView (static markup, the TogetherView.test
-   mocks): the pill order, the routines in their own module between the stories
-   and the away ideas (v3 F-TOG-1: five modules, still one contract move), the
-   filter show/hide, the age window and the "In your plan" state.
+/* v3 FEAT-07 — Routines on Together (#/practice), re-pinned to v10.1.
+   #/practice is now only Together › Routines: the day map draws every
+   ready-made routine offered at the child's age ONCE, on four bands (Morning ·
+   Afternoon · Evening · When it comes up), and "Fits right now" is that same
+   routine opened in place. v4's in-page filter, Today's rhythm, its tally,
+   "Add a routine" and the library sheet were removed on purpose (the map now
+   draws every routine once), so their assertions are gone.
+   Part 1 renders the real TogetherView (static markup, the phone composition
+   the server snapshot gives) and TogetherRoutines at the desk composition.
    Part 2 runs TogetherRoutines under deterministic hook slots (the
    RoutinesCard.receipt harness) to prove the start flow: one plan, and the
    "In your plan" receipt only after the write resolved. */
@@ -73,10 +77,9 @@ vi.mock("../ui/Sheet", () => ({ Sheet: () => null, useCompactSurface: () => stat
 
 import TogetherView from "./TogetherView";
 import TogetherRoutines from "./TogetherRoutines";
-import { FITS_COPY, RIGHT_NOW_COPY } from "./nowV41Copy";
+import { FITS_COPY } from "./nowV41Copy";
 import RoutineRunSheet from "./RoutineRunSheet";
 import RoutineRunBoard from "../plans/RoutineRunBoard";
-import { writeTogetherView } from "./togetherNavigation";
 import { PendingLine, Receipt } from "../ui/Receipt";
 import { Modal } from "../ui/Modal";
 import { Sheet } from "../ui/Sheet";
@@ -84,12 +87,15 @@ import { translate } from "../../lib/i18n";
 import { localized, routineById } from "../../lib/routines";
 import { routineDayKey, routineTemplatesForAge, routineToPlan, toggleRoutineStep } from "../../lib/routineTemplates";
 import { RHYTHM_SLOTS, ROUTINE_SLOT, routineSlot, todaysRhythm } from "./togetherRhythm";
+import { TOGETHER_COPY } from "../together/togetherCopy";
 
 type El = React.ReactElement<Record<string, any>>;
 const BANNED = /\bstars?\b|כוכב|Feeds|Kid Mode|%/;
 /** Copy as renderToStaticMarkup escapes it. */
 const esc = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
 const tr = (lang: "en" | "he", key: string, vars?: Record<string, string | number>) => esc(translate(lang, key, vars));
+/** The day map's band of each part of the day (TogetherRoutines.BAND_OF). */
+const BAND_OF: Record<string, string> = { morning: "morning", midday: "afternoon", afternoon: "afternoon", evening: "evening", night: "evening", anytime: "anytime" };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -105,23 +111,31 @@ afterEach(() => {
   state.slots.forEach((slot) => slot?.cleanup?.());
   state.harness = false; state.slots = []; state.effects = [];
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 /* ── Part 1 · the rendered page ─────────────────────────────────────────── */
 
+/** A fixed local clock, so "Fits right now" never depends on when the suite runs. */
+const at = (hour: number, minute = 0) => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date(2026, 10, 12, hour, minute)); };
 const page = () => renderToStaticMarkup(<TogetherView />);
-const section = (html: string, name: string) => html.match(new RegExp(`<section[^>]*data-module="${name}"[^>]*>`))![0];
-/** The routines block: everything inside the together-routines module. */
+const desk = () => renderToStaticMarkup(<TogetherRoutines composition="desk" />);
+const moduleTag = (html: string, name: string) => html.match(new RegExp(`<section[^>]*data-module="${name}"[^>]*>`))![0];
+/** The day map: everything inside the together-routines block. */
 function routinesBlock(html: string): string {
-  const at = html.indexOf('data-testid="together-routines"');
-  expect(at, "the routines block renders").toBeGreaterThan(-1);
-  return html.slice(at, html.indexOf("</section>", at));
+  const start = html.indexOf('data-testid="together-routines"');
+  expect(start, "the routines block renders").toBeGreaterThan(-1);
+  const end = html.indexOf('data-module="together-doors"', start);
+  return html.slice(start, end < 0 ? undefined : end);
 }
 const tiles = (html: string) => [...html.matchAll(/data-routine-tile="([a-z-]+)"/g)].map((m) => m[1]);
-/** v4: the filters are label-only pills (Routines · Play · Stories). */
-function filters(html: string) {
-  const row = html.match(/<div class="companion-filter-row together-pills"[^>]*>([\s\S]*?)<\/div>/)![1];
-  return [...row.matchAll(/<button[^>]*class="companion-filter"[^>]*aria-pressed="(true|false)"[^>]*>([\s\S]*?)<\/button>/g)].map((m) => ({ pressed: m[1] === "true", label: m[2] }));
+/** Each band in page order, with the routine cards (and the fitting routine) it draws. */
+function bands(html: string) {
+  return [...html.matchAll(/<section[^>]*data-band="([a-z]+)"[^>]*>([\s\S]*?)<\/section>/g)].map((m) => ({
+    band: m[1],
+    body: m[2],
+    ids: [...m[2].matchAll(/data-routine-tile="([a-z-]+)"|data-testid="together-fits" data-routine="([a-z-]+)"/g)].map((r) => r[1] ?? r[2]),
+  }));
 }
 const DAY = () => routineDayKey(Date.now());
 /** A routine started yesterday (the epoch keeps the plan id valid), with `ticks` of today's steps ticked. */
@@ -132,116 +146,119 @@ function started(id: string, lang: "en" | "he", ticks: number[] = []): ActionPla
 }
 const strip = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, "");
 
-for (const lang of ["en", "he"] as const) describe(`v4 · Together's Routines · ${lang}`, () => {
-  beforeEach(() => { state.lang = lang; });
+for (const lang of ["en", "he"] as const) describe(`v10.1 · Together's Routines, the day map · ${lang}`, () => {
+  beforeEach(() => { state.lang = lang; at(13); });
 
-  // v4 re-pin (was: All together · Games · Stories · Routines · Away from the screen).
-  it("the pills read Routines, Play, Stories; Routines is the default", () => {
-    const row = filters(page());
-    expect(row.map((f) => f.label)).toEqual(["routines", "play", "stories"].map((k) => tr(lang, `companion.together-view.${k}`)));
-    expect(row.map((f) => f.pressed)).toEqual([true, false, false]);
-    writeTogetherView("child-a", { category: "games" });
-    expect(filters(page()).map((f) => f.pressed)).toEqual([false, true, false]);
-  });
-
-  it("nothing started: the filter is the library itself — every routine for a 5-year-old (10, no nap, no potty); 5 modules and 1 move", () => {
+  it("nothing started: every routine for a 5-year-old once (10, no nap, no potty) on the four bands; 2 modules, the move on every card", () => {
     const html = page();
-    expect(html.match(/data-module=/g)).toHaveLength(5);
-    expect(html.match(/data-primary-move=/g)).toHaveLength(1);
-    expect(section(html, "together-routines")).not.toContain("hidden");
-    for (const name of ["together-offscreen", "together-stories", "together-games"]) expect(section(html, name), name).toContain("hidden");
+    expect(html.match(/data-module=/g)).toHaveLength(2);
+    expect(html).toContain('data-module="together-routines"');
     const block = routinesBlock(html);
     expect(block).toContain('data-mode="library"');
     const ids = tiles(block);
     expect(ids).toHaveLength(10);
+    expect(new Set(ids).size).toBe(10);
     expect(ids).not.toContain("nap");
     expect(ids).not.toContain("potty");
-    expect(block).toContain(tr(lang, "companion.together-view.routines-kicker"));
-    expect(block).toContain(tr(lang, "companion.together-view.routines-title"));
-    // No rhythm, no tally and no "Add a routine" before anything is started.
-    for (const id of ["together-rhythm", "together-rhythm-tally", "together-rhythm-add", "together-rhythm-why"]) expect(block, id).not.toContain(`data-testid="${id}"`);
-    // The module is named by its own heading.
-    const labelledBy = section(html, "together-routines").match(/aria-labelledby="([^"]+)"/)![1];
-    expect(block).toContain(`<h2 id="${labelledBy}">`);
-    expect(block).not.toMatch(BANNED);
+    expect([...ids].sort()).toEqual(routineTemplatesForAge(60).map((r) => r.id).sort());
+    // Every card is the route's one move (surfaceContract "start-routine"), and nothing else is.
+    expect(html.match(/data-primary-move="start-routine"/g)).toHaveLength(10);
+    expect(html.match(/data-primary-move=/g)).toHaveLength(10);
+    expect(block.match(/<button type="button" class="dm-c"/g)).toHaveLength(10);
+    expect(block.match(/data-in-plan="false"/g)).toHaveLength(10);
+    expect(block).not.toContain('data-in-plan="true"');
+    expect(block.match(/aria-haspopup="dialog"/g)).toHaveLength(10);
+    // Nothing started, so nothing fits right now.
+    expect(block).not.toContain('data-testid="together-fits"');
+    // Each card offers the start in words.
+    expect(block.split(tr(lang, "companion.together-view.routines-start")).length - 1).toBe(10);
+    // The section is named by its own heading.
+    const labelledBy = moduleTag(html, "together-routines").match(/aria-labelledby="([^"]+)"/)![1];
+    expect(html).toContain(`<h1 class="h3 tg-routines-h1" id="${labelledBy}">${esc(TOGETHER_COPY[lang].routinesTitle)}</h1>`);
+    expect(html).toContain(tr(lang, "companion.together-view.routines-sub"));
+    // REMOVED on purpose in v10.1 (the map draws every routine once): Today's rhythm, its tally, Add a routine, the why-note and the library sheet.
+    for (const id of ["together-rhythm", "together-rhythm-tally", "together-rhythm-add", "together-rhythm-why", "together-library"]) expect(html, id).not.toContain(`data-testid="${id}"`);
+    expect(block.replace(/<[^>]+>/g, " ")).not.toMatch(BANNED);
+    // Never an invented clock time.
+    expect(block.replace(/<[^>]+>/g, " ")).not.toMatch(/\b\d{1,2}:\d{2}\b/);
   });
 
-  it("Play and Stories leave the routines out", () => {
-    writeTogetherView("child-a", { category: "games" });
-    const play = page();
-    expect(play).toContain("companion-offscreen-grid");
-    expect(section(play, "together-routines")).toContain("hidden");
-    expect(play).not.toContain('data-testid="together-routines"');
-    writeTogetherView("child-a", { category: "stories" });
-    const stories = page();
-    expect(section(stories, "together-offscreen")).toContain("hidden");
-    expect(section(stories, "together-routines")).toContain("hidden");
-    expect(stories).not.toContain('data-testid="together-routines"');
+  it("the bands read Morning, Afternoon, Evening, When it comes up; each routine sits in its part of the day, counted in words", () => {
+    const copy = TOGETHER_COPY[lang];
+    const drawn = bands(routinesBlock(page()));
+    expect(drawn.map((b) => b.band)).toEqual(["morning", "afternoon", "evening", "anytime"]);
+    const names = [copy.bandMorning, copy.bandAfternoon, copy.bandEvening, copy.bandAnytime];
+    drawn.forEach(({ band, body, ids }, i) => {
+      expect(body, band).toContain(`role="heading" aria-level="3">${esc(names[i])}</b>`);
+      expect(body, band).toContain(`<span class="n">${esc(copy.bandCount(ids.length))}</span>`);
+      for (const id of ids) expect(BAND_OF[routineSlot(id)], id).toBe(band);
+    });
+    expect(drawn.flatMap((b) => b.ids)).toHaveLength(10);
   });
 
-  it("a started routine turns the filter into Today's rhythm: its card counts today's ticks, names the next step and leads as Next up", () => {
+  it("a started routine stays one card on the map: In your plan, today's ticks as marks and in words; a plan not started from a routine marks nothing", () => {
     const plan = started("calm", lang, [0]);
     const other: ActionPlan = { id: "plan-1759000000000", title: "Calmer mornings", issue: "", phases: [{ name: "", description: "", steps: [{ text: "Lay out clothes", completed: false }] }], scripts: [], successIndicators: [] };
     state.actionPlans = [plan, other];
-    const block = routinesBlock(page());
-    expect(block).toContain('data-mode="rhythm"');
-    expect(block).toContain(tr(lang, "companion.together-view.rhythm-title"));
-    expect(block).toContain(tr(lang, "companion.together-view.rhythm-sub", { name: "Noa" }));
-    // Only the started routine is in the rhythm; a plan not started from a routine never is.
-    expect(tiles(block)).toEqual(["calm"]);
-    expect(block.match(/data-in-plan="true"/g)).toHaveLength(1);
     const calm = routineById("calm");
-    expect(block.match(/data-ticked="true"/g)).toHaveLength(1);
-    expect(block.match(/data-ticked="false"/g)).toHaveLength(calm.steps.length - 1);
-    expect(block).toContain(`aria-label="${tr(lang, "companion.together-view.rhythm-steps-aria", { done: 1, total: calm.steps.length })}"`);
-    expect(block).toContain(tr(lang, "companion.together-view.rhythm-next-step", { step: localized(calm.steps[1].label, lang) }));
-    expect(block).toContain(tr(lang, "companion.together-view.rhythm-slot-anytime"));
-    expect(block).toContain(esc(localized(calm.time, lang)));
-    expect(block.match(/data-testid="together-rhythm-next-up"/g)).toHaveLength(1);
-    // The tally counts routines finished today, in words; "Add a routine" opens the library.
-    expect(block).toContain(tr(lang, "companion.together-view.rhythm-done", { done: 0, total: 1 }));
-    expect(block).toContain('data-testid="together-rhythm-add"');
-    expect(block).toContain(tr(lang, "companion.together-view.rhythm-why", { name: "Noa" }));
-    expect(block).toContain('data-brand-chip=');
-    // The words a parent reads (the chip's colour mix carries a % inside a style attribute, never in copy).
-    expect(block.replace(/<[^>]+>/g, " ")).not.toMatch(BANNED);
-    // Never an invented clock time.
-    expect(block).not.toMatch(/\b\d{1,2}:\d{2}\b/);
+    for (const html of [page(), desk()]) {
+      const block = routinesBlock(html);
+      expect(block).toContain('data-mode="rhythm"');
+      expect(tiles(block)).toHaveLength(10);
+      expect(tiles(block).filter((id) => id === "calm")).toHaveLength(1);
+      expect(block.match(/data-in-plan="true"/g)).toHaveLength(1);
+      expect(block).toMatch(/data-routine-tile="calm" data-in-plan="true"/);
+      expect(block).toContain(`aria-label="${tr(lang, "companion.together-view.rhythm-steps-aria", { done: 1, total: calm.steps.length })}"`);
+      const card = block.slice(block.indexOf('data-routine-tile="calm"'), block.indexOf("</button>", block.indexOf('data-routine-tile="calm"')));
+      expect(card.match(/<i class="d"><\/i>/g)).toHaveLength(1);
+      expect(card.match(/<i><\/i>/g)).toHaveLength(calm.steps.length - 1);
+      expect(card).toContain(tr(lang, "companion.together-view.routines-in-plan"));
+      expect(card).toContain(esc(localized(calm.time, lang)));
+      expect(block.replace(/<[^>]+>/g, " ")).not.toMatch(BANNED);
+    }
+    // The desk card names the next step; the phone card keeps to the marks.
+    expect(desk()).toContain(tr(lang, "companion.together-view.rhythm-next-step", { step: localized(calm.steps[1].label, lang) }));
+    expect(page()).not.toContain(tr(lang, "companion.together-view.rhythm-next-step", { step: localized(calm.steps[1].label, lang) }));
   });
 
-  it("the rhythm reads in the order of the day; Next up is the first one not finished; a finished one is checked", () => {
+  it("a routine finished today is checked as complete and says so", () => {
     const morning = routineById("morning");
-    state.actionPlans = [started("bedtime", lang), started("meal", lang), started("morning", lang, morning.steps.map((_, i) => i))];
-    const block = routinesBlock(page());
-    expect(tiles(block)).toEqual(["morning", "meal", "bedtime"]);
-    const cards = [...block.matchAll(/data-routine-tile="([a-z-]+)"[^>]*data-next-up="(true|false)"[^>]*data-complete="(true|false)"/g)].map((m) => [m[1], m[2], m[3]]);
-    expect(cards).toEqual([["morning", "false", "true"], ["meal", "true", "false"], ["bedtime", "false", "false"]]);
-    expect(block).toContain(tr(lang, "companion.together-view.rhythm-all-done"));
-    expect(block).toContain(`aria-label="${tr(lang, "companion.together-view.rhythm-done-aria")}"`);
-    expect(block).toContain(tr(lang, "companion.together-view.rhythm-done", { done: 1, total: 3 }));
-    expect(block).toContain(tr(lang, "companion.together-view.rhythm-slot-morning"));
-    expect(block).toContain(tr(lang, "companion.together-view.rhythm-slot-evening"));
-    expect(block).toContain(tr(lang, "companion.together-view.rhythm-slot-night"));
+    state.actionPlans = [started("morning", lang, morning.steps.map((_, i) => i)), started("bedtime", lang)];
+    const html = desk();
+    expect(html).toMatch(/data-routine-tile="morning" data-in-plan="true" data-complete="true"/);
+    expect(html).toMatch(/data-routine-tile="bedtime" data-in-plan="true" data-complete="false"/);
+    expect(html).toContain(tr(lang, "companion.together-view.rhythm-all-done"));
+    expect(html).toContain(`aria-label="${tr(lang, "companion.together-view.rhythm-steps-aria", { done: morning.steps.length, total: morning.steps.length })}"`);
   });
 
-  it("v4.1 Fits right now: the started routine of this part of the day, with the clock and a Start; none for another part", () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    try {
-      vi.setSystemTime(new Date(2026, 10, 12, 7, 30));
-      const morning = routineById("morning");
-      state.actionPlans = [started("morning", lang), started("bedtime", lang)];
-      const block = routinesBlock(page());
-      const fits = block.slice(block.indexOf('data-testid="together-fits"'), block.indexOf('data-testid="together-rhythm"'));
+  it("v4.1 Fits right now: the started routine of this part of the day opens in place, first in its band, with the clock, its numbered steps and one Start; none for another part", () => {
+    at(7, 30);
+    const morning = routineById("morning");
+    state.actionPlans = [started("morning", lang), started("bedtime", lang)];
+    for (const html of [page(), desk()]) {
+      const drawn = bands(routinesBlock(html));
+      const band = drawn.find((b) => b.band === "morning")!;
+      expect(band.ids[0]).toBe("morning");
+      // Still drawn once: the fitting routine is the expanded card, not also a tile.
+      expect(drawn.flatMap((b) => b.ids)).toHaveLength(10);
+      expect(tiles(html)).not.toContain("morning");
+      const fits = html.slice(html.indexOf('data-testid="together-fits"'), html.indexOf("</article>", html.indexOf('data-testid="together-fits"')));
       expect(fits).toContain('data-routine="morning"');
       expect(fits).toContain(esc(FITS_COPY[lang].label("07:30")));
-      expect(fits).toContain(esc(RIGHT_NOW_COPY[lang].routineHead(localized(morning.steps[0].label, lang))));
-      expect(fits).toContain(esc(FITS_COPY[lang].start));
+      expect(fits).toContain(`<h3 dir="auto">${esc(localized(morning.title, lang))}</h3>`);
+      expect(fits.match(/data-ticked="false"/g)).toHaveLength(morning.steps.length);
+      for (const step of morning.steps) expect(fits).toContain(esc(localized(step.label, lang)));
+      expect(fits).toMatch(new RegExp(`<button type="button" class="btn primary nowrap" data-testid="together-fits-start" aria-haspopup="dialog">.*${esc(FITS_COPY[lang].start)}</button>`));
       expect(fits.replace(/<[^>]+>/g, " ")).not.toMatch(BANNED);
-      vi.setSystemTime(new Date(2026, 10, 12, 13, 0));
-      expect(routinesBlock(page())).not.toContain('data-testid="together-fits"');
-    } finally {
-      vi.useRealTimers();
     }
+    // A step already ticked reads Continue, and the tick shows.
+    state.actionPlans = [started("morning", lang, [0]), started("bedtime", lang)];
+    const ticked = page();
+    expect(ticked.match(/data-ticked="true"/g)).toHaveLength(1);
+    expect(ticked).toContain(esc(FITS_COPY[lang].continue));
+    at(13);
+    expect(routinesBlock(page())).not.toContain('data-testid="together-fits"');
+    expect(tiles(page())).toContain("morning");
   });
 });
 
@@ -267,9 +284,10 @@ describe("v4 · the rhythm's order of the day (togetherRhythm)", () => {
 });
 
 describe("FEAT-07 · the age window and the stylesheet", () => {
-  const block = (profile: Record<string, unknown>) => { state.childProfile = profile; return tiles(renderToStaticMarkup(<TogetherRoutines />)); };
+  const block = (profile: Record<string, unknown>) => { state.childProfile = profile; return tiles(renderToStaticMarkup(<TogetherRoutines composition="phone" />)); };
 
   it("10 at 60 months, 12 when the age is unknown, nap and potty for a 2-year-old", () => {
+    at(13);
     expect(block({ id: "c", name: "Noa", age: 5 })).toHaveLength(10);
     expect(block({ id: "c", name: "Noa" })).toHaveLength(12);
     const toddler = block({ id: "c", name: "Noa", age: 2 });
@@ -277,25 +295,30 @@ describe("FEAT-07 · the age window and the stylesheet", () => {
     expect(toddler).toContain("potty");
   });
 
-  it("44 px pills, a wrapping grid and logical sides only", () => {
-    const experience = readFileSync(new URL("./companionExperience.css", import.meta.url), "utf8");
-    expect(experience).toMatch(/\.companion-filter \{[^}]*min-block-size: 44px/);
-    const css = readFileSync(new URL("./togetherDiscovery.css", import.meta.url), "utf8");
-    expect(css).toMatch(/\.together-routine-grid \{[^}]*grid-template-columns: repeat\(auto-fill, minmax\(124px, 1fr\)\)/);
-    const feat = css.slice(css.indexOf("v3 FEAT-07"));
-    expect(feat.length).toBeGreaterThan(100);
-    expect(feat).not.toMatch(/\b(?:left|right)\b|line-clamp|text-overflow|overflow:\s*hidden/);
+  // v10.1 re-pin: the routine tiles moved from togetherDiscovery.css's 124px
+  // grid (and the filter pills) to the day map in together/together.css.
+  it("the day map: three cards a row on the desk, one column on a phone, cards above the 44 px floor, logical sides and nothing clipped", () => {
+    const css = strip(readFileSync(new URL("../together/together.css", import.meta.url), "utf8"));
+    expect(css).toMatch(/\.ds \.dm-g\{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+    expect(css).toMatch(/\.ds \.dm-pm \.dm-g\{[^}]*grid-template-columns:minmax\(0,1fr\)/);
+    expect(css).toMatch(/\.ds \.dm-c \{ min-height: 88px; \}/);
+    expect(css).toMatch(/\.ds button\.dm-c, \.ds button\.dm-door[^{]*\{[^}]*text-align: start;/);
+    expect(css).toMatch(/\.ds button\.dm-c:focus-visible[^{]*\{ outline: 3px solid var\(--sapphire\)/);
+    const map = css.slice(css.indexOf(".ds .dm{"), css.indexOf(".ds{--pl-idea"));
+    expect(map.length).toBeGreaterThan(1000);
+    expect(map).not.toMatch(/\b(?:margin|padding|border|inset)-(?:left|right)\b|(?:^|[\s;{])(?:left|right)\s*:|text-align:\s*(?:left|right)/);
+    expect(map).not.toMatch(/line-clamp|text-overflow|overflow:\s*hidden/);
+    expect(map).not.toMatch(/progress|meter|width:\s*\d+%/);
   });
 
-  it("v4: the rhythm's stylesheet — tokens and logical sides only, nothing clipped, a mark per step and never a bar or a meter", () => {
+  it("v4: the routine sheet's stylesheet — tokens and logical sides only, nothing clipped, a mark per step and never a bar or a meter", () => {
     const rhythm = strip(readFileSync(new URL("./togetherRhythm.css", import.meta.url), "utf8"));
     expect(rhythm.length).toBeGreaterThan(1000);
     expect(rhythm).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/i);
     expect(rhythm).not.toMatch(/\b(?:margin|padding|border|inset)-(?:left|right)\b|(?:^|[\s;{])(?:left|right)\s*:|text-align:\s*(?:left|right)/);
     expect(rhythm).not.toMatch(/line-clamp|text-overflow|overflow:\s*hidden/);
     expect(rhythm).not.toMatch(/progress|meter|%\s*;|width:\s*\d+%/);
-    expect(rhythm).toMatch(/\.together-rhythm-add \{[^}]*min-block-size: var\(--touch-min\)/);
-    expect(rhythm).toMatch(/\.together-library-item \{[^}]*min-block-size: var\(--touch-min\)/);
+    // (The .together-rhythm-add / .together-library-item 44 px pins went with Add a routine and the library, removed in v10.1.)
     const source = readFileSync(new URL("./TogetherRoutines.tsx", import.meta.url), "utf8");
     expect(source).not.toMatch(/progressbar|Math\.round\([^)]*100|toFixed/);
   });
@@ -313,7 +336,7 @@ function elements(node: React.ReactNode): El[] {
 function render() {
   for (let n = 0; n < 12; n++) {
     state.cursor = 0; state.dirty = false;
-    const tree = TogetherRoutines({});
+    const tree = TogetherRoutines({ composition: "phone" });
     state.effects.splice(0).forEach((effect) => effect());
     if (!state.dirty) return tree;
   }
@@ -329,6 +352,8 @@ const label = (el: El | undefined) => React.Children.toArray(el?.props.children)
 for (const lang of ["en", "he"] as const) describe(`FEAT-07 · starting a routine as a plan · ${lang}`, () => {
   beforeEach(() => {
     state.harness = true; state.lang = lang; writes = [];
+    // Midday: no started routine fits right now, so every routine stays a card.
+    at(13);
     state.startRoutinePlan = vi.fn((plan: ActionPlan) => new Promise<void>((resolve, reject) => { writes.push({ plan, resolve, reject }); }));
   });
 
@@ -413,26 +438,60 @@ for (const lang of ["en", "he"] as const) describe(`FEAT-07 · starting a routin
     expect(wide.props.title).toBe(localized(routineById("bedtime").title, lang));
   });
 
-  it("v4: Add a routine opens the library (started ones checked); a routine opens its sheet on top of it", () => {
+  // v10.1 re-pin (was: "Add a routine opens the library"). The library sheet is
+  // gone because the map itself draws every routine once; what it proved stays:
+  // with one routine started, any other card opens its own unstarted sheet, and
+  // closing it writes nothing and leaves the map as it was.
+  it("v10.1: with one routine started, another card opens its own sheet; closing returns to the map and writes nothing", () => {
     state.actionPlans = [routineToPlan(routineById("bedtime"), lang, "Noa", Date.now() - 86_400_000)];
-    const add = elements(render()).find((el) => el.props["data-testid"] === "together-rhythm-add")!;
-    expect(add.props["aria-haspopup"]).toBe("dialog");
-    expect(elements(render()).some((el) => el.props["data-testid"] === "together-library")).toBe(false);
-    add.props.onClick();
-    const library = elements(render());
-    const surface = library.find((el) => el.props.title === translate(lang, "companion.together-view.library-title"))!;
-    expect(surface.type).toBe(Modal);
-    const items = library.filter((el) => el.props["data-library-routine"]);
-    expect(items.map((el) => el.props["data-library-routine"])).toHaveLength(10);
-    expect(items.filter((el) => el.props["data-in-plan"] === "true").map((el) => el.props["data-library-routine"])).toEqual(["bedtime"]);
-    items.find((el) => el.props["data-library-routine"] === "morning")!.props.onClick();
+    const tree = elements(render());
+    const cards = tree.filter((el) => el.props["data-routine-tile"]);
+    expect(cards).toHaveLength(10);
+    expect(cards.filter((el) => el.props["data-in-plan"] === "true").map((el) => el.props["data-routine-tile"])).toEqual(["bedtime"]);
+    for (const card of cards) {
+      expect(card.type).toBe("button");
+      expect(card.props["aria-haspopup"]).toBe("dialog");
+    }
+    expect(tree.some((el) => el.type === RoutineRunSheet)).toBe(false);
+    tile("morning").props.onClick();
     expect(sheet().props.routine.id).toBe("morning");
     expect(sheet().props.plan).toBeNull();
-    // The library stays beneath: closing the routine returns to it.
-    expect(elements(render()).some((el) => el.props["data-testid"] === "together-library")).toBe(true);
     sheet().props.onClose();
     expect(elements(render()).some((el) => el.type === RoutineRunSheet)).toBe(false);
-    expect(elements(render()).some((el) => el.props["data-testid"] === "together-library")).toBe(true);
+    expect(elements(render()).filter((el) => el.props["data-routine-tile"])).toHaveLength(10);
+    // The started routine opens on its stored plan.
+    tile("bedtime").props.onClick();
+    expect(sheet().props.plan).toBe(state.actionPlans[0]);
+    expect(state.startRoutinePlan).not.toHaveBeenCalled();
+  });
+
+  it("v4.1: Fits right now's Start opens that routine's sheet, and nothing is written until Start as a plan", () => {
+    at(7, 30);
+    state.actionPlans = [routineToPlan(routineById("morning"), lang, "Noa", Date.now() - 86_400_000)];
+    const start = elements(render()).find((el) => el.props["data-testid"] === "together-fits-start")!;
+    expect(start.type).toBe("button");
+    expect(start.props["aria-haspopup"]).toBe("dialog");
+    start.props.onClick();
+    expect(sheet().props.routine.id).toBe("morning");
+    expect(sheet().props.plan).toBe(state.actionPlans[0]);
+    expect(state.startRoutinePlan).not.toHaveBeenCalled();
+  });
+
+  it("v4.1: #/practice?routine=<id> opens that routine's sheet once; closing replaces the address with #/practice", () => {
+    const replaceState = vi.fn();
+    const location = { hash: "#/practice?routine=calm" };
+    vi.stubGlobal("window", { location, history: { state: null, replaceState }, addEventListener: vi.fn(), removeEventListener: vi.fn() });
+    expect(sheet().props.routine.id).toBe("calm");
+    expect(replaceState).not.toHaveBeenCalled();
+    sheet().props.onClose();
+    expect(replaceState).toHaveBeenCalledOnce();
+    expect(replaceState).toHaveBeenCalledWith(null, "", "#/practice");
+    // Opened once: the same address does not open it again.
+    expect(elements(render()).some((el) => el.type === RoutineRunSheet)).toBe(false);
+    // A routine this child is not offered is no address.
+    state.slots = [];
+    location.hash = "#/practice?routine=nap";
+    expect(elements(render()).some((el) => el.type === RoutineRunSheet)).toBe(false);
     expect(state.startRoutinePlan).not.toHaveBeenCalled();
   });
 

@@ -1,6 +1,10 @@
 /**
  * B-PLAY-24 guard — the parent-side Practice page offers what fits the child.
  * Parity 9 Oct: #/practice is Together (components/companion/TogetherView.tsx).
+ * v10.1: #/practice is Together › Routines; the together ideas, the games and
+ * the hand-over moved to Together › Play (#/daily-play, DailyPlayTab rendering
+ * components/together/PlayStudio.tsx), so the by-band offer is measured there.
+ * Routines keeps the band gate on its doors (the games doors only from 3).
  * Leni (22 months): three parent-led "together" ideas, no games, no Kid Mode
  * hand-over ("From 3, Leni can play on her own"). Dylan (5 years): the games
  * whose band tags fit (read from the Kids sessions' registry) and the labelled
@@ -23,7 +27,11 @@ vi.mock("../../context/LanguageContext", () => ({
   useLanguage: () => ({ t: (k: string, v?: Record<string, string | number>) => translate(ui.lang as UiLang, k, v), uiLang: ui.lang }),
 }));
 vi.mock("../../context/ArborContext", () => {
-  const value = () => ({ childProfile: ui.child, setActiveTab: () => undefined, saveMoment: async () => null, activeFamilyTopic: null });
+  const value = () => ({
+    childProfile: ui.child, setActiveTab: () => undefined, saveMoment: async () => null, activeFamilyTopic: null,
+    behaviorLogs: [], actionLoop: [], actionPlans: [], playLogs: [],
+    logPlayCompletion: () => ({ id: "x", created: true }), undoPlayCompletion: () => undefined, seedCoach: () => undefined,
+  });
   return { useArbor: value, useArborOptional: value };
 });
 vi.mock("../kidmode/useKidModeEntry", () => ({ useKidModeEntry: () => ({ request: () => undefined, step: null }) }));
@@ -31,19 +39,22 @@ vi.mock("../kidmode/parentGate", () => ({ markPinNudgeShown: () => undefined, re
 vi.mock("../../practice/usePracticeData", () => ({
   usePracticeData: () => ({ speech: { items: [] }, mimic: { items: [] }, adventures: { items: [] }, events: { items: [] }, missions: { items: [] } }),
 }));
-vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: () => ({ items: [] }) }));
+vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: () => ({ items: [], loaded: true, upsert: async () => undefined }) }));
 vi.mock("../ui/Modal", () => ({ Modal: () => null }));
 
 import TogetherView from "../companion/TogetherView";
+import DailyPlayTab from "../tabs/DailyPlayTab";
 import { STUDIO_WORLDS, studioWorldsForChild } from "./studioWorlds";
 import { offersForChild, storyFitsChild, kidModeOpenFor, TOGETHER_CARDS } from "../../lib/age/playGate";
 import { HERO_STORIES } from "../../lib/heroJourneys";
 
-const render = (child: ChildProfile, lang: UiLang) => {
+const renderWith = (Component: React.ComponentType, child: ChildProfile, lang: UiLang) => {
   ui.child = child;
   ui.lang = lang;
-  return renderToStaticMarkup(React.createElement(TogetherView));
+  return renderToStaticMarkup(React.createElement(Component));
 };
+/** Together › Play (#/daily-play): where the together ideas, the games and the hand-over render now. */
+const render = (child: ChildProfile, lang: UiLang) => renderWith(DailyPlayTab, child, lang);
 const plain = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/[‎‏⁦-⁩]/g, "").replace(/\s+/g, " ");
 
 describe("B-PLAY-24 · Together by band", () => {
@@ -52,21 +63,35 @@ describe("B-PLAY-24 · Together by band", () => {
       const html = render(LENI, lang);
       expect(TOGETHER_CARDS).toHaveLength(3);
       for (const id of TOGETHER_CARDS) expect(plain(html)).toContain(translate(lang, `elev.ages.together.${id}.title`));
-      expect(html).not.toContain('data-module="together-games"');
+      expect(html).toContain('data-module="play-together-ideas"');
+      expect(html).not.toContain('data-module="play-games"');
       expect(html).not.toContain('data-testid="together-start-playing"');
+      expect(html).toContain('data-testid="together-gate"');
       expect(plain(html)).toMatch(lang === "en" ? /From 3, Leni can play on her own/ : /מגיל 3, Leni תוכל לשחק כאן לבד/);
-      expect(html.match(/data-primary-move="choose-together"/g)?.length).toBe(1);
+      // v10.1: Play's one move is log-play on the picks (choose-together left with the old Together page).
+      expect(html.match(/data-primary-move="[^"]*"/g)).toEqual(['data-primary-move="log-play"']);
+      // Routines: no way into the games under 3, only the story door.
+      const routines = renderWith(TogetherView, LENI, lang);
+      expect(routines).toContain('data-testid="together-door-story"');
+      expect(routines).not.toContain('data-testid="together-door-continue"');
+      expect(routines).not.toContain('data-testid="together-door-find"');
     });
 
     it(`${lang}: Dylan (5 y) gets the fitting games and the gate card's Start playing`, () => {
       const html = render(DYLAN, lang);
-      expect(html).toContain('data-module="together-games"');
+      expect(html).toContain('data-module="play-games"');
       expect(html).toContain('data-testid="together-start-playing"');
-      expect(html.match(/data-primary-move="choose-together"/g)?.length).toBe(1);
+      expect(html.match(/data-primary-move="[^"]*"/g)).toEqual(['data-primary-move="log-play"']);
       const { worlds } = studioWorldsForChild(lang, DYLAN);
       expect(worlds.length).toBeGreaterThan(2);
-      // "All" shows the first three; their kid names are what the child will see.
-      for (const w of worlds.slice(0, 3)) expect(plain(html)).toContain(translate(lang, w.kidNameKey));
+      // v4 re-pin: the "All" three-world preview is gone; Play lists every fitting world once,
+      // by the kid name the child will see.
+      for (const w of worlds) expect(plain(html)).toContain(translate(lang, w.kidNameKey));
+      expect(html.match(/class="pl-gm /g)).toHaveLength(worlds.length);
+      // Routines: the games doors open from 3.
+      const routines = renderWith(TogetherView, DYLAN, lang);
+      expect(routines).toContain('data-testid="together-door-continue"');
+      expect(routines).toContain('data-testid="together-door-find"');
     });
   }
 

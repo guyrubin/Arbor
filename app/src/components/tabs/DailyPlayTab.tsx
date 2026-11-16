@@ -1,9 +1,14 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { motion } from "motion/react";
-import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
+import { useAuth } from "../../context/AuthContext";
 import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { routeHash } from "../../lib/routes";
+import { useHashQuery } from "../../hooks/useHashQuery";
+import { DsRoot, Guide, MoreLink, Route, RouteHead, RouteSection, scrollToSection } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
+import { ChainStrip, type ChainNode } from "../together/ChainStrip";
+import { PlayGames, PlayHandOver, PlayPreview, PlayTogetherIdeas, usePlayStudio } from "../together/PlayStudio";
+import { TOGETHER_COPY } from "../together/togetherCopy";
 import { useLanguage } from "../../context/LanguageContext";
 import DailyPlayCard from "../overview/DailyPlayCard";
 import SourceActivities from "../practice/SourceActivities";
@@ -47,7 +52,19 @@ function AgeChip({ profile }: { profile: ChildProfile }) {
   );
 }
 
+/** Together › Play is scoped to one account and one child, as Together was:
+ *  nothing renders while hosted auth is unknown, and a new owner or child
+ *  remounts the page, so a preview, a pending keep or a late save from the
+ *  previous family can never attach to this one. */
 export default function DailyPlayTab() {
+  const { childProfile } = useArbor();
+  const { user, firebaseEnabled, loading } = useAuth();
+  if (!childProfile.id || (firebaseEnabled && (loading || !user))) return null;
+  const ownerId = firebaseEnabled ? user!.uid : "local-sandbox";
+  return <ScopedDailyPlayTab key={JSON.stringify([ownerId, childProfile.id])} />;
+}
+
+function ScopedDailyPlayTab() {
   const { behaviorLogs, childProfile, setActiveTab, logPlayCompletion, undoPlayCompletion, seedCoach, actionLoop } = useArbor();
   // B-STATUS-01: a logged play answers with ONE receipt line under the header
   // (where it went: the Journal), never a vanishing success toast. Critic r1:
@@ -288,154 +305,203 @@ export default function DailyPlayTab() {
     try { localStorage.setItem(`arbor.plan.duration.${childProfile.id}`, v); } catch { /* ignore */ }
   };
 
+  // ── v10.1 composition ─────────────────────────────────────────────────────
+  const composition = useComposition();
+  const phone = composition === "phone";
+  const copy = TOGETHER_COPY[uiLang === "he" ? "he" : "en"];
+  const studio = usePlayStudio();
+  // #/daily-play?section=games (Routines' "Continue a favorite" with nothing played yet) lands on the games.
+  const requestedSection = useHashQuery().get("section");
+  useEffect(() => {
+    if (requestedSection !== "games" && requestedSection !== "more-ideas") return;
+    const id = window.setTimeout(() => scrollToSection(requestedSection), 60);
+    return () => window.clearTimeout(id);
+  }, [requestedSection]);
+  // The chain: your focus or what came up → today's play idea → the games in Kids Studio.
+  const pickedBecause = goal ? goalLabel(goal, t)
+    : concernDomains.includes(course.domain) ? copy.chainCameUp(playDomainLabel(course.domain, uiLang), firstName)
+    : null;
+  const chain: ChainNode[] = [
+    ...(pickedBecause ? [{ kind: "you" as const, tag: goal ? t("elev.goal.profile.title") : copy.chainPicked, text: pickedBecause }] : []),
+    ...(dailyPlan ? [{ kind: "arbor" as const, tag: copy.arborSuggests, text: dailyPlan.scoredActivity.activity.title, sub: copy.chainOneIdea }] : []),
+    ...(studio.kidAvailable && studio.worlds.length > 0 ? [{ kind: "kid" as const, tag: copy.chainKid(firstName), text: copy.chainPlays }] : []),
+  ];
+  const stops = [
+    { id: "idea", title: copy.stopIdea, sub: copy.stopIdeaSub },
+    ...(studio.kidAvailable ? [{ id: "games", title: copy.stopGames, sub: copy.stopGamesSub }] : []),
+    { id: "courses", title: copy.stopCourses, sub: copy.stopCoursesSub },
+    { id: "more-ideas", title: t("companion.together-view.more-ideas"), sub: undefined },
+  ];
+  const n = (id: string) => stops.findIndex((s) => s.id === id) + 1;
+
+  const ideaStation = (
+    <section className="tg-stack pl-idea" data-module="play-daily-plan" aria-labelledby="play-title" style={{ gap: 10, minWidth: 0 }}>
+      <div className="line between" style={{ gap: 8, flexWrap: "wrap" }}>
+        <h1 className="pl-t" id="play-title" style={{ margin: 0, fontSize: phone ? 22 : 24 }}>{t("play.libTitle", { name: firstName })}</h1>
+        {dailyPlan && <AgeChip profile={childProfile} />}
+      </div>
+      <p className="pl-p">{t("play.libSubtitle", { name: firstName })}</p>
+      {/* The plan card offers "Choose what you're working on" itself when no focus is set; the line shows the focus once one is. */}
+      {(goal || !dailyPlan) && <GoalFocusLine goals={activeGoals} testId="daily-play-goals-edit" onClick={() => setGoalModalOwner(childProfile.id)} />}
+      {/* CI-30: the goal-linked play idea — post-activity observation writes to goalObservations (COPPA-reviewed path). */}
+      <DailyPlanCard
+        plan={dailyPlan}
+        noGoal={!goal}
+        childName={firstName}
+        done={planDone}
+        onDid={handlePlanDid}
+        onCoach={handlePlanCoach}
+        onObservationSubmit={handlePlanObservation}
+        // v10.1: one "Time I have today" — the plan card's chips choose the length
+        // for today's idea and for the More ideas below it.
+        sessionLength={sessionLength}
+        onSessionLengthChange={(v) => { handleSessionLength(v); handlePlanSessionLength(v); }}
+        ageYears={ageYearsOf(childProfile)}
+        onSetGoal={() => setGoalModalOwner(childProfile.id)}
+      />
+    </section>
+  );
+  const ideasRail = <PlayTogetherIdeas studio={studio} onMoreIdeas={() => scrollToSection("more-ideas")} />;
+  const colourKey = (
+    <aside className="vt pl-guide" aria-label={copy.colourKey} style={{ padding: "14px 18px", gap: 8, borderRadius: 18 }}>
+      <span className="kicker">{copy.colourKey}</span>
+      <div className="pl-key">
+        <span className="pl-idea"><i aria-hidden="true" />{copy.keyIdea}</span>
+        {studio.kidAvailable && <span className="pl-game"><i aria-hidden="true" />{copy.keyGames}</span>}
+        <span className="pl-gate"><i aria-hidden="true" />{copy.keyGate}</span>
+        <span className="pl-course"><i aria-hidden="true" />{copy.keyCourse}</span>
+      </div>
+    </aside>
+  );
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
-      className="space-y-5 max-w-[1080px]"
-    >
-      <header>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-              <Icon name="eco" size={14} /> {t("play.libEyebrow")}
-            </span>
-            <h1 className="text-[1.6rem] font-extrabold leading-tight mt-0.5" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
-              {t("play.libTitle", { name: firstName })}
-            </h1>
-            <p className="text-sm mt-1.5" style={{ color: "var(--arbor-muted)" }}>
-              {t("play.libSubtitle", { name: firstName })}
-            </p>
-          </div>
-        </div>
-        <div className="mt-3 max-w-[640px]"><GoalFocusLine goals={activeGoals} testId="daily-play-goals-edit" onClick={() => setGoalModalOwner(childProfile.id)} /></div>
-        <ReceiptNoteLine note={playReceipt.note} testId="play-receipt" className="mt-3 max-w-[640px]" />
-      </header>
+    <DsRoot composition={composition} className="play-v10" data-testid="play-screen" dir={uiLang === "he" ? "rtl" : "ltr"}>
+      <div className="tg-stack" style={{ gap: phone ? 12 : 16 }}>
+        <Guide label={copy.onThisPage} mini={phone} stops={stops} />
+        <ChainStrip nodes={chain} composition={composition} label={copy.chainLabel(firstName)} />
+        <ReceiptNoteLine note={playReceipt.note} testId="play-receipt" />
+        <Route composition={composition}>
+          <RouteSection id="idea" n={1} on>
+            {phone ? (
+              <div className="tg-stack" style={{ gap: 12 }}>
+                <div className="scene together" style={{ padding: 12, gap: 12 }}>
+                  <i className="orb" style={{ width: 260, height: 260, left: -150, bottom: -170, opacity: 0.6 }} />
+                  {ideaStation}
+                  <PlayHandOver studio={studio} composition={composition} />
+                </div>
+                {ideasRail}
+              </div>
+            ) : (
+              <div className="g12">
+                <div style={{ gridColumn: "span 8", minWidth: 0 }}>
+                  <div className="scene together" style={{ padding: "22px 24px 24px", height: "100%", boxSizing: "border-box", gap: 16 }}>
+                    <i className="orb" style={{ width: 420, height: 420, left: -230, bottom: -280, opacity: 0.6 }} />
+                    <i className="orb b" style={{ width: 340, height: 340, right: -150, top: -210, opacity: 0.7 }} />
+                    {ideaStation}
+                    <PlayHandOver studio={studio} composition={composition} />
+                  </div>
+                </div>
+                <div style={{ gridColumn: "span 4", minWidth: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+                  {ideasRail}
+                  {colourKey}
+                </div>
+              </div>
+            )}
+          </RouteSection>
 
-      {/* CI-30: DailyPlanCard hero — goal-linked daily plan, mounts above existing CourseCard.
-          No new tab, no new sidebar item, no new tab registration.
-          Post-activity observation writes to goalObservations sub-collection (COPPA-reviewed path). */}
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
-          marks a top-level sibling module (what moduleBudget counts);
-          `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route. */}
-      <div data-module="play-daily-plan" className="max-w-[640px]">
-        {/* E6: plan comes from the band-matched picks — render the age fact. */}
-        {dailyPlan && <div className="mb-1.5"><AgeChip profile={childProfile} /></div>}
-        <DailyPlanCard
-          plan={dailyPlan}
-          noGoal={!goal}
-          childName={firstName}
-          done={planDone}
-          onDid={handlePlanDid}
-          onCoach={handlePlanCoach}
-          onObservationSubmit={handlePlanObservation}
-          sessionLength={planSessionLength}
-          onSessionLengthChange={handlePlanSessionLength}
-          ageYears={ageYearsOf(childProfile)}
-          onSetGoal={() => setGoalModalOwner(childProfile.id)}
-        />
+          {studio.kidAvailable && (
+            <RouteSection id="games" n={n("games")}>
+              <PlayGames studio={studio} composition={composition} />
+            </RouteSection>
+          )}
+
+          <RouteSection id="courses" n={n("courses")}>
+            <div className={phone ? "tg-stack" : "g12"} style={phone ? { gap: 12 } : { alignItems: "start" }}>
+              <section className="vt pl-course" aria-label={copy.playCourse} style={{ gridColumn: "span 6", borderRadius: 18, gap: 8, padding: phone ? "12px 12px 14px" : "14px 18px 16px", minWidth: 0 }}>
+                {/* E6: shown only when the course's bands include this child's band. */}
+                {course.bands.includes(childBand) && <AgeChip profile={childProfile} />}
+                <CourseCard
+                  course={course}
+                  childName={firstName}
+                  completedIds={doneFor(course.id)}
+                  onToggle={toggleFor(course)}
+                  onCoach={coachActivity}
+                  // Honesty gate (masterplan 3.1): a per-child rationale exists ONLY
+                  // when the course's domain actually came from the child's logged
+                  // concern domains — recommendCourse's no-signal fallback fails this
+                  // check and the card then mounts the bare TrustLink instead.
+                  why={concernDomains.includes(course.domain)
+                    ? t("course.why", { area: playDomainLabel(course.domain, uiLang), name: firstName })
+                    : undefined}
+                />
+              </section>
+              {/* Readiness tracks — goal courses the parent chooses (school / sibling / sleep) */}
+              <section data-module="play-readiness" className="vt pl-course" aria-labelledby="play-readiness-title" style={{ gridColumn: "span 6", borderRadius: 18, gap: 8, padding: phone ? "12px 12px 14px" : "14px 18px 16px", minWidth: 0 }}>
+                <TomorrowTogether />
+                <div>
+                  <h2 className="pl-t" id="play-readiness-title" style={{ margin: 0, fontSize: 19 }}>{t("play.readinessTitle")}</h2>
+                  <p className="pl-p" style={{ marginTop: 2 }}>{t("play.readinessSubtitle")}</p>
+                </div>
+                <div role="tablist" aria-label={t("play.readinessTitle")} className="line" style={{ flexWrap: "wrap", gap: 8 }}>
+                  {READINESS_COURSES.map((rc) => (
+                    <button key={rc.id} type="button" role="tab" aria-selected={rc.id === readinessId} className={rc.id === readinessId ? "pl-chip on" : "pl-chip"} style={{ minHeight: 44, border: 0 }} onClick={() => setReadinessId(rc.id)}>
+                      {localizeCourse(rc, uiLang).title}
+                    </button>
+                  ))}
+                </div>
+                {/* E6: readiness tracks are parent-chosen — chip only when band-true. */}
+                {readinessCourse.bands.includes(childBand) && <AgeChip profile={childProfile} />}
+                <CourseCard
+                  course={readinessCourse}
+                  childName={firstName}
+                  completedIds={doneFor(readinessCourse.id)}
+                  onToggle={toggleFor(readinessCourse)}
+                  onCoach={coachActivity}
+                />
+                {/* p1-comic-reader: deep-link into the Comic Studio from today's practice. */}
+                <MoreLink onClick={() => setActiveTab("comics")}>{t("elev.growth.play.comicCta")}</MoreLink>
+              </section>
+            </div>
+          </RouteSection>
+
+          <RouteSection id="more-ideas" n={n("more-ideas")} aria-labelledby="play-more-title">
+            <div className="tg-stack" style={{ gap: 12 }}>
+              <div style={{ paddingInlineStart: phone ? 0 : 8 }}><RouteHead id="play-more-title" title={t("companion.together-view.more-ideas")} sub={copy.moreIdeasSub} /></div>
+              {/* CI-31: one selection controls all the idea cards. With a play idea its card
+                  carries the chips; without one they stand here. */}
+              {!dailyPlan && <SessionLengthChips value={sessionLength} onChange={handleSessionLength} ageYears={ageYearsOf(childProfile)} tapped={true} />}
+              <div data-module="play-picks" data-primary-move="log-play" className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+                <div className="lg:col-span-2"><SourceActivities /></div>
+                {/* Today's play idea is shown once, in its own card above. */}
+                {picks.filter((p) => p.activity.id !== dailyPlan?.scoredActivity.activity.id).map((p) => (
+                  <div key={p.activity.id}>
+                    {/* E6: each pick was selected with ageYearsOf(childProfile) — render the fact. */}
+                    <div className="mb-1.5"><AgeChip profile={childProfile} /></div>
+                    <DailyPlayCard
+                      pick={p}
+                      childName={firstName}
+                      done={doneIds.includes(p.activity.id)}
+                      onDid={markDone}
+                      onCoach={coach}
+                      concernLabel={p.reason === "concern-match" ? playDomainLabel(p.activity.domain, uiLang, p.activity.id) : undefined}
+                      goalLabel={
+                        p.reason === "goal-match" && goal?.domainId === p.activity.domain
+                          ? goalLabel(goal, t)
+                          : undefined
+                      }
+                      sessionLength={sessionLength}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </RouteSection>
+        </Route>
       </div>
 
-      <div className="max-w-[640px]">
-        {/* E6: shown only when the course's bands include this child's band. */}
-        {course.bands.includes(childBand) && <div className="mb-1.5"><AgeChip profile={childProfile} /></div>}
-        <CourseCard
-          course={course}
-          childName={firstName}
-          completedIds={doneFor(course.id)}
-          onToggle={toggleFor(course)}
-          onCoach={coachActivity}
-          // Honesty gate (masterplan 3.1): a per-child rationale exists ONLY
-          // when the course's domain actually came from the child's logged
-          // concern domains — recommendCourse's no-signal fallback fails this
-          // check and the card then mounts the bare TrustLink instead.
-          why={concernDomains.includes(course.domain)
-            ? t("course.why", { area: playDomainLabel(course.domain, uiLang), name: firstName })
-            : undefined}
-        />
-      </div>
-
-      {/* Readiness tracks — goal courses the parent chooses (school / sibling / sleep) */}
-      <section data-module="play-readiness" className="max-w-[640px]">
-        <TomorrowTogether />
-        <div className="mb-3">
-          <h2 className="text-lg font-extrabold" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("play.readinessTitle")}</h2>
-          <p className="text-[13px] mt-0.5" style={{ color: "var(--arbor-muted)" }}>{t("play.readinessSubtitle")}</p>
-        </div>
-        <div role="tablist" aria-label={t("play.readinessTitle")} className="flex flex-wrap gap-2 mb-3">
-          {READINESS_COURSES.map((rc) => {
-            const on = rc.id === readinessId;
-            return (
-              <button
-                key={rc.id}
-                role="tab"
-                aria-selected={on}
-                onClick={() => setReadinessId(rc.id)}
-                className="rounded-full px-3.5 py-2 min-h-11 text-[12.5px] font-bold whitespace-nowrap transition"
-                style={on
-                  ? { background: "var(--arbor-clay)", color: "var(--arbor-on-accent)", boxShadow: "var(--shadow-sm)" }
-                  : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-              >
-                {localizeCourse(rc, uiLang).title}
-              </button>
-            );
-          })}
-        </div>
-        {/* E6: readiness tracks are parent-chosen — chip only when band-true. */}
-        {readinessCourse.bands.includes(childBand) && <div className="mb-1.5"><AgeChip profile={childProfile} /></div>}
-        <CourseCard
-          course={readinessCourse}
-          childName={firstName}
-          completedIds={doneFor(readinessCourse.id)}
-          onToggle={toggleFor(readinessCourse)}
-          onCoach={coachActivity}
-        />
-      </section>
-
-      {/* CI-31: chip row lifted to tab level — one selection controls all grid cards */}
-      <div className="max-w-[640px]">
-        <SessionLengthChips
-          value={sessionLength}
-          onChange={handleSessionLength}
-          ageYears={ageYearsOf(childProfile)}
-          tapped={true}
-        />
-      </div>
-
-      <div data-module="play-picks" data-primary-move="log-play" className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-        <div className="lg:col-span-2"><SourceActivities /></div>
-        {picks.map((p) => (
-          <div key={p.activity.id}>
-            {/* E6: each pick was selected with ageYearsOf(childProfile) — render the fact. */}
-            <div className="mb-1.5"><AgeChip profile={childProfile} /></div>
-            <DailyPlayCard
-              pick={p}
-              childName={firstName}
-              done={doneIds.includes(p.activity.id)}
-              onDid={markDone}
-              onCoach={coach}
-              concernLabel={p.reason === "concern-match" ? playDomainLabel(p.activity.domain, uiLang, p.activity.id) : undefined}
-              goalLabel={
-                p.reason === "goal-match" && goal?.domainId === p.activity.domain
-                  ? goalLabel(goal, t)
-                  : undefined
-              }
-              sessionLength={sessionLength}
-            />
-          </div>
-        ))}
-      </div>
-
-      {/* p1-comic-reader: deep-link into the Comic Studio from today's practice. */}
-      <button
-        onClick={() => setActiveTab("comics")}
-        className="inline-flex items-center gap-2 text-[13px] font-bold rounded-full px-4 py-2.5"
-        style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)", minHeight: 44 }}
-      >
-        <Icon name="menu_book" size={16} /> {t("elev.growth.play.comicCta")}
-      </button>
-
-      {/* CI-28: Goal Builder modal — opened via Goals chip in the header */}
+      <PlayPreview studio={studio} />
+      {studio.heroStep}
+      {/* CI-28: Goal Builder modal — opened from the focus line */}
       {goalModalOwner === childProfile.id && <GoalBuilderModal
         key={childProfile.id}
         open
@@ -444,6 +510,6 @@ export default function DailyPlayTab() {
         childName={firstName}
         behaviorLogs={behaviorLogs}
       />}
-    </motion.div>
+    </DsRoot>
   );
 }

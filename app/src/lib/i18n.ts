@@ -1642,7 +1642,7 @@ export const en: Dict = {
   "wordworld.seeAll": "See all ({n})",
   "wordworld.copied": "Copied",
   // CI-30: Daily Plan Card
-  "plan.card.eyebrow": "Today's plan",
+  "plan.card.eyebrow": "Today's play idea",
   "plan.card.noGoalBody": "You can choose one thing to work on together.",
   "plan.card.setGoalCta": "Choose what you're working on",
   "plan.card.whyPrefix": "Matched to your goal —",
@@ -4249,7 +4249,7 @@ export const he: Dict = {
   "wordworld.seeAll": "הצג הכל ({n})",
   "wordworld.copied": "הועתק",
   // CI-30: Daily Plan Card (Hebrew)
-  "plan.card.eyebrow": "התוכנית של היום",
+  "plan.card.eyebrow": "רעיון המשחק של היום",
   "plan.card.noGoalBody": "אפשר לבחור דבר אחד לעבוד עליו יחד.",
   "plan.card.setGoalCta": "בחרו על מה אתם עובדים",
   "plan.card.whyPrefix": "תואם למטרה שלכם —",
