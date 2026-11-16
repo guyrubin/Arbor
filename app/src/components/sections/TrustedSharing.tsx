@@ -501,7 +501,6 @@ export default function TrustedSharing() {
           hand-off it produces (LC-17) are two steps of one capability, so
           they carry one stamp between them rather than competing as two. */}
       <div data-module="sharing-grant" style={{ display: "contents" }}>
-      <CoParentInvite key={childProfile.id} childId={childProfile.id} childName={childProfile.name} grants={shares} onChanged={reloadOwn} />
       {!error && (
         <section data-testid="share-week-card" className="rounded-[22px] p-5 flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-x-6 lg:gap-y-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
           {/* W2-CAREPRO r2: at lg the card is two columns — what is shared on
@@ -632,6 +631,9 @@ export default function TrustedSharing() {
           )}
         </section>
       )}
+      {/* Design v10.1: the week share (the route's one move) leads; the
+          co-parent invite follows it (on desktop it runs beside both). */}
+      <CoParentInvite key={childProfile.id} childId={childProfile.id} childName={childProfile.name} grants={shares} onChanged={reloadOwn} />
       <ReceiptNoteLine note={receipt.note} testId="sharing-receipt" />
       {invite && (
         <div data-testid="share-invite" className="border-y py-4 flex flex-wrap items-center gap-3" style={{ borderColor: "var(--arbor-rule)" }}>

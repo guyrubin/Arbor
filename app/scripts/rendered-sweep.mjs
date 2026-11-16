@@ -1395,7 +1395,8 @@ const STATES = {
       name: "step2",
       run: async (h) => {
         await consultPediatrician(h);
-        const step2 = await h.need("[data-module=consult-packet] h2:has-text('2')", "step 2 (What changed)");
+        // design v10.1: step 2 (What changed) is the reason section in Getting ready
+        const step2 = await h.need("[data-module=consult-packet] [data-testid=consult-reason-section] #consult-reason", "step 2 (What changed)");
         await h.top(step2);
       },
     },
@@ -1404,8 +1405,9 @@ const STATES = {
       run: async (h) => {
         await consultPediatrician(h);
         await h.click("[data-testid=consult-build]", [], "Build the one-page summary");
-        await h.need("[data-module=consult-packet] h2:has-text('3')", "step 3 (What leaves)");
-        await h.top(await h.need("[data-module=consult-packet] h2:has-text('3')", "step 3"));
+        // design v10.1: step 3 (What leaves) is the Share card of the visit summary
+        await h.need("[data-module=consult-packet] #consult-review-export h2", "step 3 (What leaves)");
+        await h.top(await h.need("[data-module=consult-packet] #consult-review-export h2", "step 3"));
       },
     },
     {
@@ -1524,8 +1526,12 @@ const STATES = {
       name: "preview",
       writes: "types a placeholder address into the week card (no request; the grant button is never tapped)",
       run: async (h) => {
-        await (await h.need("[data-testid=share-week-email]", "the week card's email field")).fill(SHARE_EMAIL);
-        await h.top(await h.need("[data-testid=share-week-preview]", "the recipient week preview"));
+        const email = await h.need("[data-testid=share-week-email]", "the week card's email field");
+        await email.fill(SHARE_EMAIL);
+        await h.need("[data-testid=share-week-preview]", "the recipient week preview");
+        // design v10.1: the shot opens on the field the parent just typed in —
+        // the one tap below it and the recipient preview under that.
+        await h.top(email);
       },
     },
   ],

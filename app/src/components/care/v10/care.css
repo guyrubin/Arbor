@@ -260,3 +260,26 @@
 }
 .ds-phone.care-v10 .care-aside-col > [role="complementary"] > section,
 .ds-phone.care-v10 .care-shared-row > section > .grid > section { flex: 0 0 286px; scroll-snap-align: start; margin-top: 0 !important; }
+/* the primary move (Share the week) sits right under the scene, above the
+   1280x800 fold; the co-parent card runs beside both */
+.ds-desk.care-people #people-who { align-items: start; }
+.ds-desk.care-people #people-who > [data-module="sharing-grant"] > [data-testid="coparent-invite"] { grid-column: 9 / span 4; grid-row: 1 / span 2; }
+.ds-desk.care-people #people-who > .care-people-scene { grid-column: 1 / span 8; grid-row: 1; }
+.ds-desk.care-people #people-who > [data-module="sharing-grant"] > [data-testid="share-week-card"] { grid-column: 1 / span 8; grid-row: 2; }
+/* 1024-1439 px: the scene keeps its one move above an 800 px fold */
+@media (max-width: 1439px) {
+  .ds-desk.care-v10 .care-h1 { font-size: 30px; }
+  .ds-desk.care-v10 .care-scene .fig.xl > b { font-size: 76px; }
+  .ds-desk.care-v10 .care-scene { gap: 12px; }
+}
+@media (max-width: 1439px) {
+  /* the one move before the packed tiles, clear of the capture dock at 1280x800 */
+  .ds-desk.care-v10 .care-scene-foot { order: 1; margin-top: 4px; }
+  .ds-desk.care-v10 .care-packed { order: 2; }
+}
+/* phone: the week share's one tap above the fold — the trust line (text, not
+   a control) reads after the buttons */
+.ds-phone.care-people [data-testid="share-week-card"] > div:first-child { display: contents; }
+.ds-phone.care-people [data-testid="share-week-card"] [data-testid="sharing-trust-line"] { order: 99; }
+.ds-phone.care-people [data-testid="share-week-card"] [data-testid="share-week-preview"] { order: 98; }
+.ds-phone.care-people [data-testid="share-week-card"] [data-testid="share-week-atrest"] { order: 97; }

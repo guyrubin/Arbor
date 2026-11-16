@@ -88,7 +88,6 @@ export default function VisitScene({ composition, visit, heading, packed, build,
         <div className="line care-scene-main">
           {art}
           <div className="stack care-scene-head">
-            {visit && <span className="care-scene-over">{t("elev.consult.visit.kicker")}</span>}
             {heading}
             {visit && days !== null && <SceneFigure days={days} label={c.daysToGo(days)} when={when} size="xl" badge={badge ? t(badge.key, badge.vars) : ""} />}
             {visit && days === null && when && <p className="care-scene-when">{appointmentRoleLabel(visit, t)} · {when}</p>}
