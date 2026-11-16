@@ -376,3 +376,58 @@
 .ds-desk.care-v10 .care-teacher [data-module="brief-draft"] { columns: 3; column-gap: 32px; }
 .ds-desk.care-v10 .care-teacher [data-module="brief-draft"] > * { break-inside: avoid; }
 .ds-desk.care-v10 .care-teacher [data-module="brief-draft"] > [data-testid="school-brief-card-header"] { column-span: all; }
+
+/* Design V77 (N-Records-D/M): the record by kind. Desktop: five ledges on one
+   shelf, each a way to where its records live. Phone: one row per kind, the
+   count at the start. Counts only; the marks are the parent's own records. */
+.ds.care-records .care-records-title { font-family: var(--font-display) !important; font-size: 28px; line-height: 1.1; font-weight: 600 !important; color: var(--ink); }
+.ds-phone.care-records .care-records-title { font-size: 22px; }
+.ds.care-records .care-records-since { color: var(--ink-soft); }
+.ds.care-records .care-ledger ul { list-style: none; margin: 0; padding: 0; }
+.ds.care-records .care-ledger-open { all: unset; box-sizing: border-box; display: flex; width: 100%; min-height: 44px; cursor: pointer; color: var(--ink); text-align: start; }
+.ds.care-records .care-ledger-open:focus-visible { outline: 3px solid var(--sapphire); outline-offset: 3px; border-radius: 14px; }
+.ds-desk.care-records .care-ledger-shelf { grid-template-columns: 1.25fr 1.4fr 1.3fr 1.05fr .95fr; gap: 10px; align-items: end; }
+.ds-desk.care-records .care-ledge { padding: 0; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule); }
+.ds-desk.care-records .care-ledge:hover { box-shadow: inset 0 0 0 1px var(--sapphire); }
+.ds-desk.care-records .care-ledge .care-ledger-open { flex-direction: column; padding: 12px 12px 10px; border-radius: 18px; }
+.ds-desk.care-records .care-ledge .care-ledger-body { display: flex; flex-direction: column; min-width: 0; }
+.ds-desk.care-records .care-ledge .nm { white-space: nowrap; }
+.ds-desk.care-records .care-ledge .nm b { font-size: 22px; font-family: var(--font-display); font-weight: 600 !important; font-variant-numeric: lining-nums; }
+.ds.care-records .care-ledger-sub { font-size: 12px; line-height: 1.25; color: var(--ink-soft); font-weight: 400 !important; }
+.ds.care-records .care-ledger-when { display: block; font-size: 12px; line-height: 1.25; color: var(--k-date); font-weight: 600 !important; }
+.ds-phone.care-records .care-ledger-row { border-top: 1px solid var(--rule); }
+.ds-phone.care-records .care-ledger-row .care-ledger-open { display: grid; grid-template-columns: 34px minmax(0, 1fr) 18px; gap: 10px; align-items: center; padding: 8px 0; }
+.ds-phone.care-records .care-ledger-n { font-family: var(--font-display); font-weight: 600 !important; font-size: 26px; line-height: 1; text-align: center; font-variant-numeric: lining-nums; }
+.ds-phone.care-records .care-ledger-marks { display: flex; flex-wrap: wrap; gap: 3px; }
+.ds-phone.care-records .care-ledger-name { display: block; font-size: 13px; font-weight: 600 !important; padding-top: 4px; }
+.ds-phone.care-records .care-ledger-chev { color: var(--ink-soft); }
+.ds.care-records .care-records-save { gap: 14px; align-items: center; }
+.ds-phone.care-records .care-records-save { align-items: stretch; gap: 8px; }
+.ds.care-records .care-ledger-note { color: var(--ink-soft); }
+
+/* Design V77 (N-People-D/M): who sees what. A see-mark is the eye on the
+   ink kind; solid sees it now, outline is invited, dashed would see it once
+   invited. Desktop: one lane per adult, one column per thing; phone: one row
+   per adult with a chip per thing. */
+.ds .tok.see { --c: var(--ink); border-radius: 30%; }
+.ds .tok.see::before { display: none; }
+.ds .avq { width: 36px; height: 36px; flex: none; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--card); border: 2px dashed var(--ink-soft); color: var(--ink-soft); }
+.ds.care-people .care-lanes { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ds.care-people .care-lanes-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.ds.care-people .care-lanes-table thead th { text-align: center; vertical-align: bottom; font-size: 12px; font-weight: 700 !important; line-height: 1.2; color: var(--ink-soft); padding: 0 4px 10px; }
+.ds.care-people .care-lanes-table thead th small { display: block; font-weight: 400 !important; }
+.ds.care-people .care-lanes-table thead td { width: 34%; }
+.ds.care-people .care-lanes-table tbody th { text-align: start; font-weight: 600 !important; }
+.ds.care-people .care-lanes-table tbody th,
+.ds.care-people .care-lanes-table tbody td { border-top: 1px solid var(--rule); height: 66px; }
+.ds.care-people .care-lanes-table tbody td { text-align: center; vertical-align: middle; }
+.ds.care-people .care-lanes-table tbody tr.me td { background: var(--card); }
+.ds.care-people .care-lane-who { display: flex; align-items: center; gap: 10px; min-width: 0; padding-inline-end: 10px; font-size: 14px; line-height: 1.25; }
+.ds.care-people .care-lane-name { min-width: 0; overflow-wrap: anywhere; font-weight: 600 !important; }
+.ds.care-people .care-lane-name small { display: block; font-size: 12px; font-weight: 400 !important; color: var(--ink-soft); }
+.ds.care-people .care-lanes-list { list-style: none; margin: 0; padding: 0; }
+.ds.care-people .care-lane-row { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-top: 1px solid var(--rule); }
+.ds.care-people .care-lane-chips { display: flex; flex-wrap: wrap; gap: 6px; padding-inline-start: 46px; }
+.ds.care-people .care-lane-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule); font-size: 12px; font-weight: 600 !important; color: var(--ink); }
+[dir="rtl"] .ds.care-people .care-lane-chip { padding: 4px 4px 4px 10px; }
+.ds.care-people .care-lanes-legend { font-size: 12px; color: var(--ink-soft); }
