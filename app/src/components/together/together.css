@@ -282,3 +282,18 @@
 .ds.together-v10 { container-type: inline-size; container-name: together; }
 /* The canvas `stack` (a column), named locally so the icon-subset guard never reads it as a glyph. */
 .ds .tg-stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+/* ── Size pass (canvas 1794837691): 12 px is the smallest type; game cards align to the top. ── */
+.ds .next1 { font-size: 12px; }
+.ds .chn-tag, .ds .chn.m .chn-tag { font-size: 12px; }
+.ds .av.sm { font-size: 12px; }
+.ds .tg-ill { font-size: 12px; }
+.ds .pl-k { font-size: 12px !important; }
+.ds .pl-chip { font-size: 12px; }
+.ds .pl-gm p { font-size: 12px; }
+.ds .pl-gm.c4 { align-items: start; }
+.ds .pl-gm.c4 .im { align-self: center; }
+.ds .guide.mini .gstop .gnum { flex: none; }
+/* A band with two routines draws them two across (Morning). */
+.ds .dm-g.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ds .dm-pm .dm-g.two { grid-template-columns: minmax(0, 1fr); }

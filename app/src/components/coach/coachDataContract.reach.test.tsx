@@ -140,9 +140,9 @@ describe("F-TALK-1 · ?section=coach focuses the switch, and Change goes there",
     expect(button).toContain("ref={switchRef}");
   });
 
-  it("About mounts the contract once, in section 3's module, outside the ledger and its gate", () => {
+  it("About mounts the contract once, in the area panel's rail, outside the ledger and its gate", () => {
     const about = read("components/sections/ChildProfile.tsx");
-    const told = about.indexOf('data-module="about-told"');
+    const told = about.indexOf("const rail = (");
     const mount = about.indexOf("<CoachDataContract ledgerUnreadable={memoryReviewError} />");
     expect(told).toBeGreaterThan(0);
     expect(mount).toBeGreaterThan(told);

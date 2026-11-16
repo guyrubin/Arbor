@@ -278,6 +278,23 @@ export default function Shell() {
   // NOT in ArborContext.setActiveTab (which would also fire for non-visual
   // state churn and would scroll-jump under the still-visible outgoing tab).
   const mainRef = useRef<HTMLElement>(null);
+  // v10: the pill row is sticky at the top of <main>, the scroll container. A
+  // section scrolled into view (a guide stop, a shelf, a jump) would land under
+  // it, so <main> keeps a top scroll padding as tall as the row (measured, so
+  // a wrapped desktop row or the phone row is covered too).
+  const shellRowRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const row = shellRowRef.current;
+    const main = mainRef.current;
+    if (!main) return;
+    if (!row) { main.style.scrollPaddingTop = ""; return; }
+    const sync = () => { main.style.scrollPaddingTop = `${Math.ceil(row.getBoundingClientRect().height) + 8}px`; };
+    sync();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(sync);
+    ro.observe(row);
+    return () => { ro.disconnect(); main.style.scrollPaddingTop = ""; };
+  });
   // Child changes retire the entire route boundary immediately. There is no
   // outgoing-child exit to await, so reset its scroll before the new paint.
   const scrollChildRef = useRef(childProfile.id);
@@ -473,7 +490,7 @@ export default function Shell() {
               top of the scrollport; the mask only fades a pill that is
               actually scrolled past (14 px of scroll-padding). */}
           {pillRow.length > 1 && (
-            <div className="ds ds-shellrow" data-composition={composition}>
+            <div className="ds ds-shellrow" data-composition={composition} ref={shellRowRef}>
               <div
                 role="tablist"
                 data-testid="secondary-sibling-nav"

@@ -176,11 +176,7 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
         </div>
       </div>
 
-      <div style={{ padding: desk ? "40px 28px 0" : "36px 12px 0" }}>
-        <PlanTrail plan={plan} todayStep={step} lang={lang} composition={composition} />
-      </div>
-
-      <div className="stack ds-col" style={{ gap: 10, padding: desk ? "16px 28px 22px" : "10px 16px 16px", marginTop: desk ? "auto" : undefined }}>
+      <div className="stack ds-col" style={{ gap: 10, padding: desk ? "14px 28px 0" : "12px 16px 0" }}>
         {step && (
           <div className="ds-plans-try">
             <CoachTryIt step={step.text} today={today} lang={lang} onTryIt={(text) => onTryIt(text, ref(step))} onUndo={onUndo} buttonProps={primary} />
@@ -215,6 +211,10 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
             <Icon name="auto_awesome" size={14} /> {t("elev.plans.adjust")}
           </button>
         )}
+      </div>
+      {/* The trail follows today's move (the move stays above the fold; the sweep's bar). */}
+      <div style={{ padding: desk ? "40px 28px 22px" : "36px 12px 16px", marginTop: desk ? "auto" : undefined }}>
+        <PlanTrail plan={plan} todayStep={step} lang={lang} composition={composition} />
       </div>
     </Scene>
   );

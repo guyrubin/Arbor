@@ -941,7 +941,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         </div>
       ) : null;
     }
-    // The chain strip: on a phone it follows tonight's story, so "Read it together" stays above the fold (W2-SHELLPLAY SHIP-FIX).
+    // The chain strip (desk only): on a phone the cover already carries the note, the reason and Ask after (size pass).
     const storiesChain = (
       <ChainStrip
           composition={composition}
@@ -1181,7 +1181,6 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
           />
         )}
         {/* The running Challenge plan's book, read together (program flag). */}
-        {composition === "phone" && storiesChain}
         <StoriesPlanBook />
         </div>
         </RouteSection>

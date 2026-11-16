@@ -39,12 +39,12 @@ describe("B-SHELL-28 — FreeText renders inside a bdi with dir=auto, the name i
   });
 
   it("My Child renders every fact through FreeText; no fact paragraph carries its own dir=auto", () => {
-    // v3 F-CHILD-3 re-pin: About quotes facts inside the eight area cards —
+    // v3 F-CHILD-3 → v10.3 re-pin: About quotes facts inside the selected area —
     // the kept line and the waiting proposal both go through FreeText.
     const src = fs.readFileSync(path.resolve(__dirname, "../components/sections/ChildProfile.tsx"), "utf8");
     const card = fs.readFileSync(path.resolve(__dirname, "../components/about/AspectCard.tsx"), "utf8");
     expect(src).toContain("<AspectCard");
-    expect(card).toContain("<FreeText text={known.words} />");
+    expect(card).toContain("<FreeText text={knownHere.words} />");
     expect(card).toContain("<FreeText text={toParentWords(pending.fact)} />");
     for (const s of [src, card]) {
       expect(s).not.toMatch(/>\{shown\.fact\}</);
