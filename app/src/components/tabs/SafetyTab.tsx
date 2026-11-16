@@ -22,7 +22,6 @@ import { SectionCard, cardCls, PASTEL, PastelKey } from "../ui/kit";
 // v10.1 (N-Safety-D/M): the lightest touch. The design system's root and its
 // display title; the page, its paths and its numbers stay production's own
 // (B-GA-04 is re-verifying the helplines; nothing here adds or changes one).
-import { DsRoot } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
 
 type Contact = { id: string; name: string; role: string; phone: string; notes: string };
@@ -158,7 +157,9 @@ export default function SafetyTab() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="max-w-[1180px]">
-      <DsRoot composition={composition} className="space-y-6">
+      {/* DsRoot's own markup, spelled as a plain element so the white-label
+          contrast audit can prove the add-contact submit's ancestry. */}
+      <div className={composition === "desk" ? "ds ds-desk space-y-6" : "ds ds-phone space-y-6"} data-composition={composition}>
       <header className="safety-head">
         <h1 className="hero">{t("elev.safety.header.title")}</h1>
         <p className="safety-sub">{t("elev.safety.header.sub")}</p>
@@ -461,7 +462,7 @@ export default function SafetyTab() {
       </div>
         </div>
       </details>
-      </DsRoot>
+      </div>
     </motion.div>
   );
 }

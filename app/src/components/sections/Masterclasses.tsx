@@ -484,7 +484,7 @@ export default function Masterclasses() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px]">
-      <DsRoot composition={composition} className="stack fy-col" style={{ gap: desk ? 22 : 14 }} data-testid="foryou-page">
+      <DsRoot composition={composition} className="stack fy-col fy-page" style={{ gap: desk ? 22 : 14 }} data-testid="foryou-page">
         <Guide stops={stops} mini={!desk} label={copy.onThisPage} />
         <Route composition={composition} className="fy-route">
           {desk ? (

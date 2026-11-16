@@ -393,6 +393,7 @@ export default function LearnLibrary() {
     </div>
   );
 
+  const whyLine = <ContentWhyLine surface="learn-rail" trustLink why={pickedWhy} />;
   // 1 · Picked for {name}: the stage with the two picked reads.
   const pickedStage = (
     <Scene
@@ -409,24 +410,26 @@ export default function LearnLibrary() {
           <StartHere>{copy.startHere}</StartHere>
         </span>
       </div>
-      <div className="fy-pick-head">
+      <div className="fy-pick-head" style={desk ? undefined : { gridTemplateColumns: "minmax(0, 1fr)" }}>
         <div className="stack fy-col" style={{ gap: 8 }}>
           <h1 className="hero">
             <span id="lib-title">{t("learn.title")}</span>
           </h1>
           <p className="fy-pick-hook">{t("learn.subtitle")}</p>
         </div>
-        <AreaForm art={EMPTY_ART.learn} width={desk ? 170 : 110} ratio={0.62} zoom={1.02} />
+        {desk && <AreaForm art={EMPTY_ART.learn} width={170} ratio={0.62} zoom={1.02} />}
       </div>
       {/* Why-line rides the shared slot (masterplan 3.1) — TrustLink mounts
-          directly after the why text ("How Arbor decides →"). */}
-      <ContentWhyLine surface="learn-rail" trustLink why={pickedWhy} />
+          directly after the why text ("How Arbor decides →"). On a phone it
+          follows the picked reads, so the first read clears the capture dock. */}
+      {desk && whyLine}
       {desk ? (
         <div className="g12 lib-featured">{featured.map((c, i) => <div key={c.id} className="x6">{card(c, i, i === 0, true)}</div>)}</div>
       ) : (
         <>
           <Snap label={t("learn.pickedTitle", { name: libName })}>{featured.map((c, i) => card(c, i, i === 0, true))}</Snap>
           {featured.length > 1 && <SnapDots count={featured.length} />}
+          {whyLine}
         </>
       )}
     </Scene>
