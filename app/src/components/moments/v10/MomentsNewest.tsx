@@ -1,160 +1,94 @@
-import type { Composition } from "../../../design/useComposition";
-import { Fig, LivingForm, MoreLink, Pile, Tile, Token } from "../../../design/primitives";
+import { useState } from "react";
 import { Icon } from "../../ui/Icon";
-import { DOMAIN_ART, MOMENT_ART } from "../../../lib/parentArt";
 import type { Observation } from "../../../lib/observations";
-import { squareCrop } from "./livingFormCrop";
+import { SHELF_IDS, type ShelfId } from "../../../lib/shelves/registry";
+import { RailTile } from "./frame";
 
 /**
- * Moments · The newest moment — where the parent's latest kept moment went
- * (their words in ink; the shelf Arbor filed it on in pencil; the areas it
- * shows under on the milestone map), the places the parent recorded (desk),
- * and the latest three by date (desk). Every figure is a plain count of what
- * the parent recorded; a place is shown only when the parent recorded it.
+ * Moments · The newest moment (the rail): the parent's latest kept moment as
+ * a thread — their words in ink; the shelf it sits on in pencil ("Arbor
+ * suggests · you can move it", only for a moment the parent can refile); the
+ * areas it shows under on the milestone map. "Move shelf" lists the nine
+ * shelves and refiles through the one parent-tap seam (fileMomentOnShelf).
  */
-export type PlacePile = { id: string; label: string; observations: Observation[] };
-
 export type NewestLabels = {
-  went: string;
-  /** "You wrote · <when>" for the parent's own words, else the source and date. */
+  title: string;
   by: (o: Observation) => string;
-  asTyped: (o: Observation) => string | null;
-  title: (o: Observation) => string;
+  words: (o: Observation) => string;
   shelf: (o: Observation) => string | null;
+  shelfName: (id: ShelfId) => string;
   arborSuggests: string;
+  canMove: string;
   onTheMap: string;
   areas: (o: Observation) => string;
   seeOnMap: string;
   more: string;
-  byPlace: string;
-  open: string;
-  placeNote: string;
-  latest: string;
-  everything: string;
-  day: (o: Observation) => { wd: string; d: string };
-  meta: (o: Observation) => string;
-  tokenLabel: (o: Observation) => string;
-  isHard: (o: Observation) => boolean;
+  moveShelf: string;
+  moved: string;
+  moveFailed: string;
   nothing: string;
 };
 
-function Thread({ o, labels, initial }: { o: Observation; labels: NewestLabels; initial: string }) {
-  const shelf = labels.shelf(o);
-  const areas = labels.areas(o);
-  const typed = labels.asTyped(o);
-  return (
-    <div className="thread" style={{ gridTemplateColumns: "minmax(0, 1fr)" }}>
-      <div className="knot you">
-        <span className="by"><span className="av sm ds-ink-av" aria-hidden="true">{initial}</span>{labels.by(o)}</span>
-        <span className="q" dir="auto">“{labels.title(o)}”</span>
-        {typed && <span className="small" style={{ color: "var(--ink-soft)" }}>{typed}</span>}
-      </div>
-      {shelf && <>
-        <span className="tie" aria-hidden="true" />
-        <div className="knot ai">
-          <span className="by" style={{ color: "var(--sapphire-deep)" }}><Icon name="edit" size={14} />{labels.arborSuggests}</span>
-          <b dir="auto">{shelf}</b>
-        </div>
-      </>}
-      {areas && <>
-        <span className="tie" aria-hidden="true" />
-        <div className="knot sets">
-          <span className="by" style={{ color: "var(--k-plan)" }}><Icon name="eco" size={14} />{labels.onTheMap}</span>
-          <b dir="auto">{areas}</b>
-        </div>
-      </>}
-    </div>
-  );
-}
-
-export default function MomentsNewest({ composition, newest, latest, places, labels, initial, onOpen, onMap, onPlaces, onEverything, onOpenLatest }: {
-  composition: Composition;
+export default function MomentsNewest({ newest, initial, labels, onMap, onMore, onMove }: {
   newest: Observation | null;
-  /** Newest first, at most three. */
-  latest: Observation[];
-  places: PlacePile[];
-  labels: NewestLabels;
   initial: string;
-  onOpen: (o: Observation) => void;
+  labels: NewestLabels;
   onMap: (o: Observation) => void;
-  onPlaces: () => void;
-  onEverything: () => void;
-  onOpenLatest: (o: Observation) => void;
+  onMore: (o: Observation) => void;
+  /** Present only when this moment can be refiled (a parent's own log). */
+  onMove?: (o: Observation, shelf: ShelfId) => Promise<unknown>;
 }) {
-  const art = newest?.domains[0] ? DOMAIN_ART[newest.domains[0]] : MOMENT_ART;
-  const actions = newest && (
-    <div className="line" style={{ gap: 8, marginTop: "auto", flexWrap: "wrap" }}>
-      {newest.domains.length > 0 && <button type="button" className="btn sm grow nowrap tint-btn" onClick={() => onMap(newest)}>{labels.seeOnMap}</button>}
-      <button type="button" className="btn sm ghost nowrap card-btn" onClick={() => onOpen(newest)}>{labels.more}</button>
-    </div>
-  );
-
-  if (composition === "phone") {
-    return (
-      <section className="vt newest-m">
-        {newest ? <>
-          <div className="line" style={{ gap: 12, alignItems: "center" }}>
-            <LivingForm src={art.src} srcSet={art.srcSet} width={72} height={50} crop={squareCrop(72, 50)} />
-            <span style={{ minWidth: 0 }}>
-              <span className="nby">{labels.by(newest)}</span>
-              <span className="nq" dir="auto">“{labels.title(newest)}”</span>
-            </span>
-          </div>
-          {labels.shelf(newest) && (
-            <div className="knot ai" style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span className="by" style={{ color: "var(--sapphire-deep)" }}><Icon name="edit" size={14} />{labels.arborSuggests}</span>
-                <b style={{ display: "block" }} dir="auto">{labels.shelf(newest)}</b>
-              </span>
-            </div>
-          )}
-          {actions}
-        </> : <p className="line1">{labels.nothing}</p>}
-      </section>
-    );
+  const [picking, setPicking] = useState(false);
+  const [status, setStatus] = useState<"moved" | "failed" | null>(null);
+  if (!newest) {
+    return <RailTile icon="edit" title={labels.title}><p className="line1">{labels.nothing}</p></RailTile>;
   }
-
-  const top = places.reduce<PlacePile | null>((best, p) => (!best || p.observations.length > best.observations.length ? p : best), null);
+  const shelf = labels.shelf(newest);
+  const areas = labels.areas(newest);
+  const move = (id: ShelfId) => {
+    if (!onMove) return;
+    setPicking(false);
+    onMove(newest, id).then(() => setStatus("moved"), () => setStatus("failed"));
+  };
   return (
-    <div className="mbento">
-      <Tile icon="edit" title={labels.went} style={{ gridColumn: "span 4" }}>
-        {newest ? <>{<Thread o={newest} labels={labels} initial={initial} />}{actions}</> : <p className="line1">{labels.nothing}</p>}
-      </Tile>
-      <Tile icon="place" title={labels.byPlace} style={{ gridColumn: "span 4" }} link={<MoreLink onClick={onPlaces}>{labels.open}</MoreLink>}>
-        {top && <Fig size="md" n={top.observations.length} unit={top.label} />}
-        {places.length > 0 && (
-          <div className="ppiles">
-            {places.slice(0, 3).map((p) => (
-              <div key={p.id} className="ppile">
-                <Pile layout="rows">
-                  {p.observations.slice(0, 12).map((o) => <Token key={o.id} kind={labels.isHard(o) ? "hard" : "moment"} size="sm" label={labels.tokenLabel(o)} />)}
-                </Pile>
-                <span className="pname">{p.label} <b className="arbor-num">{p.observations.length}</b></span>
-              </div>
-            ))}
-          </div>
-        )}
-        <p className="line1">{labels.placeNote}</p>
-      </Tile>
-      <Tile icon="calendar_month" title={labels.latest} style={{ gridColumn: "span 4", gap: 6 }} link={<MoreLink onClick={onEverything}>{labels.everything}</MoreLink>}>
-        <div>
-          {latest.map((o) => {
-            const d = labels.day(o);
-            return (
-              <button key={o.id} type="button" className="rowlink" onClick={() => onOpenLatest(o)}>
-                <span className="dd" aria-hidden="true">{d.wd}<b className="arbor-num">{d.d}</b></span>
-                <Token kind={labels.isHard(o) ? "hard" : "moment"} size="md" label={labels.tokenLabel(o)} />
-                <span style={{ minWidth: 0 }}>
-                  <b dir="auto">{labels.title(o)}</b>
-                  <span className="rmeta" dir="auto">{labels.meta(o)}</span>
-                </span>
-                <Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />
-              </button>
-            );
-          })}
-          {latest.length === 0 && <p className="line1">{labels.nothing}</p>}
+    <RailTile icon="edit" title={labels.title} className="newest" style={{ gap: 8 }}>
+      <div className="thread newest-thread">
+        <div className="knot you">
+          <span className="by">{initial && <span className="av sm ds-ink-av" aria-hidden="true">{initial}</span>}{labels.by(newest)}</span>
+          <span className="q" dir="auto">{labels.words(newest)}</span>
         </div>
-      </Tile>
-    </div>
+        {shelf && <>
+          <span className="tie" aria-hidden="true" />
+          <div className="knot ai">
+            <span className="by" style={{ color: "var(--sapphire-deep)" }}><Icon name="edit" size={14} />{onMove ? `${labels.arborSuggests} · ${labels.canMove}` : labels.arborSuggests}</span>
+            <b dir="auto">{shelf}</b>
+          </div>
+        </>}
+        {areas && <>
+          <span className="tie" aria-hidden="true" />
+          <div className="knot sets">
+            <span className="by" style={{ color: "var(--k-plan)" }}><Icon name="eco" size={14} />{labels.onTheMap}</span>
+            <b dir="auto">{areas}</b>
+          </div>
+        </>}
+      </div>
+      {status && <p className="line1" role="status">{status === "moved" ? labels.moved : labels.moveFailed}</p>}
+      <div className="line newest-actions">
+        {newest.domains.length > 0
+          ? <button type="button" className="btn sm grow nowrap tint-btn" onClick={() => onMap(newest)}>{labels.seeOnMap}</button>
+          : <button type="button" className="btn sm grow nowrap tint-btn" onClick={() => onMore(newest)}>{labels.more}</button>}
+        {onMove && (
+          <button type="button" className="btn sm ghost nowrap card-btn" aria-expanded={picking} onClick={() => setPicking((p) => !p)}>{labels.moveShelf}</button>
+        )}
+      </div>
+      {onMove && picking && (
+        <div className="shelf-pick" role="group" aria-label={labels.moveShelf}>
+          {SHELF_IDS.map((id) => (
+            <button key={id} type="button" className="kchip" aria-pressed={newest.shelf === id} onClick={() => move(id)}>{labels.shelfName(id)}</button>
+          ))}
+        </div>
+      )}
+      {newest.domains.length > 0 && <button type="button" className="ds-link" onClick={() => onMore(newest)}>{labels.more}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" /></button>}
+    </RailTile>
   );
 }

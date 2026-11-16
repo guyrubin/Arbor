@@ -91,7 +91,8 @@ describe("the year book", () => {
     const moments = readFileSync(new URL("../moments/MomentsBody.tsx", import.meta.url), "utf8");
     // v10: the doors row is built from one list ([testid, label, open]).
     // v10.1: the reader is Moments, kind Kept (#/timeline?kind=kept&reader=book).
-    expect(moments).toContain('["moments-year-book", t("kept.yearBook"), () => openReader()]');
+    // v10.3: the rail's link list ([testid, glyph, label, open]): "Kept things and the Year book".
+    expect(moments).toContain('["moments-year-book", "menu_book", v.keptTitle, () => openReader()]');
     expect(moments).toContain('goToRoute("timeline", { kind: "kept", reader: "book", year })');
     expect(searchCatalog("year book").some(row => row.id === "page:development:year-book" && row.view === "kept")).toBe(true);
     expect(searchCatalog("ספר השנה").some(row => row.id === "page:development:year-book")).toBe(true);
