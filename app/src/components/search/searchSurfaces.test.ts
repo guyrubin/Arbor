@@ -38,17 +38,11 @@ describe("W1.9: mobile search entry points", () => {
     expect(shell).toContain('requestOpenSearch("mobile")');
   });
 
-  it("MobileNav More sheet carries a search row via requestOpenSearch('more')", () => {
-    expect(mobileNav).toContain('requestOpenSearch("more")');
-    // The row lives inside the More sheet (after the sheet dialog opens).
-    expect(mobileNav).toContain('import { Sheet } from "../ui/Sheet";');
-    const sheetAt = mobileNav.indexOf("<Sheet");
-    expect(sheetAt).toBeGreaterThan(-1);
-    expect(mobileNav.indexOf('requestOpenSearch("more")')).toBeGreaterThan(sheetAt);
-    // 44px touch target on the row.
-    const rowAt = mobileNav.indexOf('requestOpenSearch("more")');
-    const rowChunk = mobileNav.slice(rowAt, rowAt + 400);
-    expect(rowChunk).toContain("min-h-[44px]");
+  // v10 re-pin: the phone has one search door, the strip's magnifier (the
+  // strip never scrolls away), so the Menu sheet no longer repeats it.
+  it("the phone's one search door is the strip's magnifier; the Menu does not repeat it", () => {
+    expect(shell).toContain('requestOpenSearch("mobile")');
+    expect(mobileNav).not.toContain("requestOpenSearch");
   });
 
   it("both entries route through the ONE SearchModal open-event seam", () => {
@@ -164,11 +158,13 @@ describe("W2.7 nav de-overload — emphasis only", () => {
   // Search, then the index of the three places under their v3 pill names.
   // parentRecordHierarchy.test.tsx and MobileNav.talk.test.tsx render EN/HE,
   // assert the exact destination set and invoke each navigation callback.
-  it("the More entry and the sheet expose the doors and every place's index", () => {
-    expect(mobileNav).toContain("COMPANION_DOORS.map((door) =>");
+  // v10 re-pin: the places' pages are the shell's pill rows, so the Menu holds
+  // only the two doors that have no slot in the bar, then Settings and Pause.
+  it("the Menu entry opens the two doors without a slot, and indexes no place pages", () => {
+    expect(mobileNav).toContain("MENU_DOOR_IDS.map((id) =>");
     expect(mobileNav).toContain("data-more-door={door.id}");
-    expect(mobileNav).toContain("COMPANION_PLACES.map((place) =>");
-    expect(mobileNav).toContain("data-more-destination={row.filter ? `${row.route}?f=${row.filter}` : row.route}");
+    expect(mobileNav).not.toContain("COMPANION_PLACES.map((place) =>");
+    expect(mobileNav).not.toContain("data-more-destination");
     expect(mobileNav).not.toContain('(["records", "support"] as const).map');
     expect(mobileNav).toContain("setMoreOpen(true)");
   });

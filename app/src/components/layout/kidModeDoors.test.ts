@@ -22,7 +22,9 @@ const rel = (f: string) => path.relative(src, f).split(path.sep).join("/");
 const using = (pattern: RegExp, list = files) => list.filter((f) => pattern.test(strip(readFileSync(f, "utf8")))).map(rel).sort();
 
 /** Chrome doors: the KidModeButton mounts. */
-export const CHROME_KID_DOORS = ["components/layout/MobileNav.tsx", "components/layout/Shell.tsx", "components/layout/Topbar.tsx"];
+/** v10: the phone strip (Shell) and the desktop top bar; the Menu sheet no
+ *  longer repeats Kid Mode (the strip never scrolls away). */
+export const CHROME_KID_DOORS = ["components/layout/Shell.tsx", "components/layout/Topbar.tsx"];
 /** Content doors: Together's hand-over and the worlds a parent hands over from inside a tool. */
 export const CONTENT_KID_DOORS = [
   "components/companion/TogetherView.tsx",
@@ -34,7 +36,7 @@ export const CONTENT_KID_DOORS = [
 ];
 
 describe("B-SHELL-35 — the Kid Mode doors are a closed inventory", () => {
-  it("KidModeButton mounts only in the strip, the top bar and the More sheet header", () => {
+  it("KidModeButton mounts only in the phone strip and the top bar", () => {
     expect(using(/<KidModeButton\b/)).toEqual(CHROME_KID_DOORS);
   });
 

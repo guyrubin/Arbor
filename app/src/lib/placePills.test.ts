@@ -1,31 +1,22 @@
 /**
- * v4 (consolidation blueprint) re-pin — pill rows per place (L1).
+ * v10 (design system v10.1, Guy 16 Nov 2026) re-pin — one pill row per home.
  *
- * v4 rule: a pill is a different READING of the same record, never a
- * capability. Now is Now · Weekly report (Day windows and Reminders are
- * settings, doored from Settings); My child is Milestones · Moments · About;
- * Together keeps its in-page filter row; the two doors (Care, For you) are one
- * screen each and carry no row. Every former pill stays a deep link and lights
- * the reading it belongs to (PILL_LIT).
+ * Three places and three doors, at most two levels deep (home, then pill). A
+ * view inside a pill (a chip, a filter) changes the screen in place and is not
+ * a pill. Every folded route stays a deep link and lights the pill it belongs
+ * to (PILL_LIT / litPillFor).
+ *   - Now:      Now · Weekly report · Plans (Plans moved from Together, where
+ *               it had no link) · Family plan (joins with its route)
+ *   - My child: Milestones · Moments · About <name>
+ *   - Together: Routines · Play · Stories (the old in-page filter row)
+ *   - Talk:     none (a panel over any page)
+ *   - For you, the parent: For you · Library
+ *   - Care, together: Visits · People · Records (Safety keeps this row)
  *
- * History (v3 IA-02):
- *
- * A parent stands in one of three places. Before this item only Now carried a
- * row (in the legacy hub order Overview · Day Windows · Reminders · Weekly), My
- * child's home and Together's home showed none, and a My child leaf such as
- * #/milestones wore the Growth hub row (Growth · Milestones · Language &
- * Communication · Daily Play · Development Check), which named a hub the
- * parent can no longer see and put a Together activity inside My child.
- *
- * PLACE_PILLS is now the only rendered pill order for a place; SECTIONS stays
- * the hub index for More and search and still serves the doors' rows.
- *   - Now:      Now · Weekly report · Day windows · Reminders
- *   - My child: Development map · Milestones · Language · Portrait · Journal ·
- *               Moments · Profile
- *   - Together: no Shell row. Its first level is the in-page filter row on
- *               #/practice (TogetherView), and a second row would repeat it.
- * The record's two densities (#/journal, #/timeline) keep their own Feed ·
- * Story tablist and show no Shell row above it.
+ * History: v4 gave only Now (Now · Weekly report) and My child a row; Together
+ * used an in-page filter row and the two doors were one screen each. v3 IA-02
+ * before it used the legacy hub rows. The negative controls below keep both
+ * shipped rules visible.
  *
  * Node-only vitest: rows and labels are data, and the Shell's use of them is
  * asserted on its source. Each rule has a negative control.
@@ -35,166 +26,162 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { ALL_TABS } from "../context/ArborContext";
-import { COMPANION_PLACES, homeForTab } from "./companionPlaces";
+import { COMPANION_DOORS, COMPANION_PLACES, homeForTab } from "./companionPlaces";
 import { translate } from "./i18n";
+import { RETIRED_ROUTES } from "./routes";
 import {
+  HOME_PILLS,
   NO_PILL_ROW_TABS,
   PILL_LIT,
-  PLACE_PILLS,
-  isPlaceReading,
-  pillLitTab,
   homeIdForTab,
   hubTabsForSection,
-  isCompactHiddenTool,
+  isPillReading,
+  litPillFor,
+  pillLitTab,
   pillRowFor,
   sectionForTab,
+  shellCrumbFor,
   type NavItem,
-  type PillPlace,
+  type PillHome,
 } from "./navigation";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const tabsOf = (row: readonly NavItem[]) => row.map((it) => it.tab);
-const PLACES = Object.keys(PLACE_PILLS) as PillPlace[];
+const HOMES = Object.keys(HOME_PILLS) as PillHome[];
+const ROWED = HOMES.filter((h) => HOME_PILLS[h].length > 0);
 const rowFor = (tab: (typeof ALL_TABS)[number]) => pillRowFor(sectionForTab(tab), tab);
 /** The key a pill's label renders from (Shell: `it.labelKey ?? "nav.tab." + it.tab`). */
 const labelKeyOf = (it: NavItem) => it.labelKey ?? "nav.tab." + it.tab;
 const label = (lang: "en" | "he", it: NavItem) => translate(lang, labelKeyOf(it));
+const homeTab = (home: PillHome) =>
+  (COMPANION_PLACES.find((p) => p.id === home) ?? COMPANION_DOORS.find((d) => d.id === home))!.tab;
 
-describe("1 · each place's row, in table A's order", () => {
-  it("Now: Now · Weekly report", () => {
-    expect(tabsOf(PLACE_PILLS.now)).toEqual(["overview", "weekly"]);
+describe("1 · each home's row, in the target's order", () => {
+  it("Now: Now · Weekly report · Plans", () => {
+    expect(tabsOf(HOME_PILLS.now)).toEqual(["overview", "weekly", "plans"]);
   });
 
   it("My child: Milestones · Moments · About", () => {
-    expect(tabsOf(PLACE_PILLS.child)).toEqual(["development", "timeline", "profile"]);
+    expect(tabsOf(HOME_PILLS.child)).toEqual(["development", "timeline", "profile"]);
   });
 
-  it("only Now and My child have a Shell row; Together's first level is its in-page filter row", () => {
-    expect(PLACES).toEqual(["now", "child"]);
-    const together = readFileSync(path.resolve(here, "../components/companion/TogetherView.tsx"), "utf8");
-    expect(together).toContain('className="companion-filter"');
-    expect(homeIdForTab("practice")).toBe("together");
+  it("Together: Routines · Play · Stories (its in-page filter row became the shell's)", () => {
+    expect(tabsOf(HOME_PILLS.together)).toEqual(["practice", "daily-play", "stories"]);
   });
 
-  it("each row leads with its place's home pill, then at most six, with no tab twice", () => {
-    for (const place of PLACES) {
-      const row = PLACE_PILLS[place];
-      expect(row[0].tab, place).toBe(COMPANION_PLACES.find((p) => p.id === place)!.tab);
-      expect(row.length, place).toBeLessThanOrEqual(3);
-      expect(new Set(tabsOf(row)).size, place).toBe(row.length);
-    }
+  it("the doors: For you · Library and Visits · People · Records; Talk has none", () => {
+    expect(tabsOf(HOME_PILLS.learn)).toEqual(["masterclasses", "learn"]);
+    expect(tabsOf(HOME_PILLS.care)).toEqual(["consult", "sharing", "reports"]);
+    expect(HOME_PILLS.talk).toEqual([]);
   });
 
-  it("every pill in a row belongs to that place (a route's home decides its row)", () => {
-    for (const place of PLACES) for (const it of PLACE_PILLS[place]) expect(homeIdForTab(it.tab), it.tab).toBe(place);
+  it("fourteen pills today (Family plan makes fifteen with its route), at most four a row, none twice", () => {
+    const all = HOMES.flatMap((h) => tabsOf(HOME_PILLS[h]));
+    expect(all.length).toBe(14);
+    expect(new Set(all).size).toBe(all.length);
+    for (const home of HOMES) expect(HOME_PILLS[home].length, home).toBeLessThanOrEqual(4);
+  });
+
+  it("each row leads with its home's own route", () => {
+    for (const home of ROWED) expect(HOME_PILLS[home][0].tab, home).toBe(homeTab(home));
+  });
+
+  it("every pill in a row belongs to that home (a route's home decides its row)", () => {
+    for (const home of HOMES) for (const it of HOME_PILLS[home]) expect(homeIdForTab(it.tab), it.tab).toBe(home);
   });
 });
 
-describe("2 · pillRowFor: the place's row on the place and on every leaf", () => {
-  it("every route whose home is Now or My child wears that place's row", () => {
-    const checked: string[] = [];
+describe("2 · pillRowFor: the home's row on the home and on every route it holds", () => {
+  it("every route wears its home's row, except attribution (admin)", () => {
     for (const tab of ALL_TABS) {
-      const home = homeIdForTab(tab);
-      if (NO_PILL_ROW_TABS.has(tab) || (home !== "now" && home !== "child")) continue;
-      expect(rowFor(tab), tab).toBe(PLACE_PILLS[home]);
-      checked.push(tab);
+      if (tab === "attribution") continue;
+      expect(rowFor(tab), tab).toBe(HOME_PILLS[homeIdForTab(tab)]);
     }
-    // FEAT-07 moves Plans into Together. v4: #/journal and #/timeline wear the
-    // My child row again (Moments is one of its three readings).
-    expect(checked).toEqual([
-      "overview", "behaviors", "milestones", "weekly", "language", "profile",
-      "memory", "strengths", "screening", "timeline", "journal", "copilot", "development",
-      "science",
-    ]);
-    // v4: the two settings-grade panels keep Back to Now and wear no row.
-    for (const tab of ["day-windows", "smart-reminders"] as const) {
-      expect(NO_PILL_ROW_TABS.has(tab), tab).toBe(true);
-      expect(rowFor(tab), tab).toEqual([]);
-      expect(homeIdForTab(tab), tab).toBe("now");
-    }
-    expect(homeIdForTab("plans")).toBe("together");
-  });
-
-  it("the acceptance routes: #/development, #/overview, and #/milestones in the My child row", () => {
-    expect(tabsOf(rowFor("development"))).toEqual(tabsOf(PLACE_PILLS.child));
-    expect(tabsOf(rowFor("overview"))).toEqual(tabsOf(PLACE_PILLS.now));
-    expect(tabsOf(rowFor("milestones"))).toEqual(tabsOf(PLACE_PILLS.child));
-    expect(tabsOf(rowFor("weekly"))).toEqual(tabsOf(PLACE_PILLS.now));
-  });
-
-  it("v4: Moments and the journal wear the My child row and light Moments; Moments' in-page views are readings, not routes", () => {
-    for (const tab of ["journal", "timeline"] as const) {
-      expect(NO_PILL_ROW_TABS.has(tab), tab).toBe(false);
-      expect(rowFor(tab), tab).toBe(PLACE_PILLS.child);
-      expect(pillLitTab(tab), tab).toBe("timeline");
-    }
-    const timeline = readFileSync(path.resolve(here, "../components/tabs/TimelineTab.tsx"), "utf8");
-    // F-CHILD-2 re-pin (this line only): the Feed · Story toggle is retired;
-    // #/timeline is Moments, whose own in-page nav is the three-view tablist.
-    expect(timeline).not.toContain("data-density-toggle");
-    expect(timeline).toContain("<MomentsBody");
-    const moments = readFileSync(path.resolve(here, "../components/moments/MomentsBody.tsx"), "utf8");
-    expect(moments).toContain("data-moments-views");
-  });
-
-  it("Together renders no Shell row, on its home or on any of its leaves", () => {
-    const together = ALL_TABS.filter((tab) => homeIdForTab(tab) === "together");
-    expect(together).toEqual(expect.arrayContaining(["practice", "stories", "comics", "daily-play"]));
-    for (const tab of together) expect(rowFor(tab), tab).toEqual([]);
-  });
-
-  it("v4: the two doors (Care, For you, the parent) are one screen each — no row on them or their leaves; attribution keeps none", () => {
-    const doors = ALL_TABS.filter((tab) => homeIdForTab(tab) === "care" || homeIdForTab(tab) === "learn");
-    expect(doors).toEqual(expect.arrayContaining(["consult", "safety", "handoff", "school-brief", "sharing", "appointments", "masterclasses", "learn", "family"]));
-    for (const tab of doors) {
-      expect(homeForTab(tab).kind, tab).toBe("door");
-      expect(rowFor(tab), tab).toEqual([]);
-    }
-    // Talk keeps its own one-pill hub row (Shell draws a row only past one pill).
-    expect(rowFor("coach")).toEqual(hubTabsForSection(sectionForTab("coach")));
+    expect(NO_PILL_ROW_TABS.has("attribution")).toBe(true);
     expect(rowFor("attribution")).toEqual([]);
   });
 
-  it("v4: every former pill stays a route and lights the reading it belongs to", () => {
-    expect(pillLitTab("milestones")).toBe("development");
-    expect(pillLitTab("screening")).toBe("development");
-    expect(pillLitTab("language")).toBe("timeline");
-    expect(pillLitTab("behaviors")).toBe("timeline");
-    expect(pillLitTab("journal")).toBe("timeline");
-    expect(pillLitTab("memory")).toBe("profile");
+  it("Plans and the retired routines id live under Now; How Arbor works under About; Family formation in Stories", () => {
+    expect(homeIdForTab("plans")).toBe("now");
+    expect(homeIdForTab("routines")).toBe("now");
+    expect(homeIdForTab("science")).toBe("child");
+    expect(homeIdForTab("family")).toBe("together");
+    expect(homeIdForTab("safety")).toBe("care");
+  });
+
+  it("every folded route lights the pill it folds into, in its own row", () => {
+    const expected: Record<string, string> = {
+      "day-windows": "weekly", "smart-reminders": "overview", routines: "plans",
+      milestones: "development", screening: "development", copilot: "development",
+      journal: "timeline", behaviors: "timeline", language: "timeline",
+      memory: "profile", strengths: "profile", science: "profile",
+      journey: "practice", speech: "daily-play", mimic: "daily-play", feelings: "daily-play", adventures: "daily-play",
+      "bedtime-stories": "stories", comics: "stories", family: "stories",
+      handoff: "consult", "school-brief": "consult", "find-pro": "consult", appointments: "consult",
+      "care-team": "sharing",
+    };
+    expect(PILL_LIT).toEqual(expected);
     for (const [leaf, lit] of Object.entries(PILL_LIT)) {
       expect(ALL_TABS, leaf).toContain(leaf);
       expect(tabsOf(rowFor(leaf as (typeof ALL_TABS)[number])), leaf).toContain(lit);
+      expect(litPillFor(leaf as (typeof ALL_TABS)[number]), leaf).toBe(lit);
     }
-    // A pill lights itself; a settings-grade route under Now lights nothing.
-    expect(pillLitTab("weekly")).toBe("weekly");
-    expect(tabsOf(PLACE_PILLS.now)).not.toContain(pillLitTab("day-windows"));
   });
 
-  it("v4: a pill of the place's own row is a reading, not a level — no Back; a leaf keeps Back", () => {
-    for (const tab of ["weekly", "timeline", "profile"] as const) expect(isPlaceReading(tab), tab).toBe(true);
-    for (const tab of ["milestones", "language", "day-windows", "consult", "practice"] as const) expect(isPlaceReading(tab), tab).toBe(false);
+  it("a pill lights itself; Safety and Talk light none", () => {
+    for (const home of ROWED) for (const it of HOME_PILLS[home]) expect(pillLitTab(it.tab), it.tab).toBe(it.tab);
+    expect(litPillFor("safety")).toBeNull();
+    expect(litPillFor("coach")).toBeNull();
   });
 
-  it("NEGATIVE CONTROL: the shipped rule put #/milestones in the Growth hub row and gave #/development none", () => {
-    const shipped = (tab: (typeof ALL_TABS)[number]) => (NO_PILL_ROW_TABS.has(tab) ? [] : hubTabsForSection(sectionForTab(tab)));
-    expect(tabsOf(shipped("milestones"))).toEqual(["development", "milestones", "language", "daily-play", "screening"]);
-    expect(tabsOf(shipped("milestones"))).not.toEqual(tabsOf(rowFor("milestones")));
-    expect(tabsOf(shipped("overview"))).toEqual(["overview", "day-windows", "smart-reminders", "weekly"]);
-    expect(tabsOf(shipped("overview"))).not.toEqual(tabsOf(rowFor("overview")));
+  it("isPillReading: a pill is a reading of its home; a folded route is not", () => {
+    for (const tab of ["weekly", "plans", "timeline", "profile", "daily-play", "learn", "reports"] as const) expect(isPillReading(tab), tab).toBe(true);
+    for (const tab of ["milestones", "language", "day-windows", "handoff", "comics", "safety"] as const) expect(isPillReading(tab), tab).toBe(false);
+  });
+
+  it("NEGATIVE CONTROL: the v4 rule gave Together and the doors no row, and the v3 rule used hub rows", () => {
+    const v4Rowless = new Set(["together", "learn", "care"]);
+    const v4 = (tab: (typeof ALL_TABS)[number]) => (v4Rowless.has(homeIdForTab(tab)) ? [] : rowFor(tab));
+    expect(v4("practice")).toEqual([]);
+    expect(rowFor("practice")).not.toEqual([]);
+    const v3 = (tab: (typeof ALL_TABS)[number]) => hubTabsForSection(sectionForTab(tab));
+    expect(tabsOf(v3("milestones"))).toEqual(["development", "milestones", "language", "daily-play", "screening"]);
+    expect(tabsOf(v3("milestones"))).not.toEqual(tabsOf(rowFor("milestones")));
   });
 });
 
-describe("3 · below md, Now shows Now and Weekly report; My child hides nothing", () => {
-  const compact = (row: readonly NavItem[]) => tabsOf(row).filter((tab) => !isCompactHiddenTool(sectionForTab(tab), tab));
-
-  it("Now is its home and the Weekly report at every width (v4: the two panels left the row)", () => {
-    expect(compact(PLACE_PILLS.now)).toEqual(["overview", "weekly"]);
-    expect(tabsOf(PLACE_PILLS.now)).toEqual(["overview", "weekly"]);
+describe("3 · the breadcrumb: place › pill › view", () => {
+  it("a home's first pill is the place alone; a later pill adds itself", () => {
+    expect(shellCrumbFor("overview")).toEqual({ pill: null, view: null });
+    expect(shellCrumbFor("weekly")).toEqual({ pill: "weekly", view: null });
+    expect(shellCrumbFor("development")).toEqual({ pill: null, view: null });
+    expect(shellCrumbFor("timeline")).toEqual({ pill: "timeline", view: null });
   });
 
-  it("My child keeps all three at every width", () => {
-    expect(compact(PLACE_PILLS.child)).toEqual(tabsOf(PLACE_PILLS.child));
+  it("a folded route adds its own view after the pill it lights", () => {
+    expect(shellCrumbFor("day-windows")).toEqual({ pill: "weekly", view: "day-windows" });
+    expect(shellCrumbFor("behaviors")).toEqual({ pill: "timeline", view: "behaviors" });
+    expect(shellCrumbFor("school-brief")).toEqual({ pill: null, view: "school-brief" });
+    expect(shellCrumbFor("smart-reminders")).toEqual({ pill: null, view: "smart-reminders" });
+    expect(shellCrumbFor("safety")).toEqual({ pill: null, view: "safety" });
+  });
+
+  it("Talk has no crumb: it is a panel", () => {
+    expect(shellCrumbFor("coach")).toEqual({ pill: null, view: null });
+  });
+
+  it("every view a crumb can show has its one name in both languages (a retired id never opens)", () => {
+    for (const tab of ALL_TABS) {
+      if (tab in RETIRED_ROUTES) continue;
+      const { view } = shellCrumbFor(tab);
+      if (!view) continue;
+      for (const lang of ["en", "he"] as const) {
+        const key = "nav.view." + view;
+        const named = translate(lang, key, { name: "Mia" });
+        const fallback = translate(lang, "nav.tab." + view);
+        expect(named !== key || fallback !== "nav.tab." + view, `${lang}:${view}`).toBe(true);
+      }
+    }
   });
 });
 
@@ -206,7 +193,7 @@ describe("4 · glyphs: shipped, one per destination, and `history` stays Talk's"
       .filter((line) => line && !line.startsWith("#")),
   );
 
-  /** Glyphs that two different pills share, across both rows. */
+  /** Glyphs that two different pills share, across rows. */
   function sharedGlyphs(rows: ReadonlyArray<readonly NavItem[]>): string[] {
     const byGlyph = new Map<string, Set<string>>();
     for (const row of rows) for (const it of row) {
@@ -218,24 +205,24 @@ describe("4 · glyphs: shipped, one per destination, and `history` stays Talk's"
 
   it("every pill glyph is in the shipped font subset", () => {
     expect(subset.size).toBeGreaterThan(100);
-    for (const place of PLACES) for (const it of PLACE_PILLS[place]) expect(subset.has(it.msIcon), `${it.tab} → ${it.msIcon}`).toBe(true);
+    for (const home of HOMES) for (const it of HOME_PILLS[home]) expect(subset.has(it.msIcon), `${it.tab} → ${it.msIcon}`).toBe(true);
   });
 
-  it("no two pills share a glyph, Portrait is photo_library, and no pill takes history", () => {
-    expect(sharedGlyphs(PLACES.map((p) => PLACE_PILLS[p]))).toEqual([]);
-    expect(PLACE_PILLS.child.find((it) => it.tab === "timeline")?.msIcon).toBe("photo_library");
-    for (const place of PLACES) for (const it of PLACE_PILLS[place]) expect(it.msIcon, it.tab).not.toBe("history");
+  it("no two pills share a glyph, Moments is photo_library, and no pill takes history", () => {
+    expect(sharedGlyphs(HOMES.map((h) => HOME_PILLS[h]))).toEqual([]);
+    expect(HOME_PILLS.child.find((it) => it.tab === "timeline")?.msIcon).toBe("photo_library");
+    for (const home of HOMES) for (const it of HOME_PILLS[home]) expect(it.msIcon, it.tab).not.toBe("history");
   });
 
   it("NEGATIVE CONTROL: a duplicated glyph is caught", () => {
-    const dup = PLACE_PILLS.child.map((it) => (it.tab === "profile" ? { ...it, msIcon: "map" } : it));
-    expect(sharedGlyphs([PLACE_PILLS.now, dup])).toEqual(["map: development, profile"]);
+    const dup = HOME_PILLS.child.map((it) => (it.tab === "profile" ? { ...it, msIcon: "map" } : it));
+    expect(sharedGlyphs([HOME_PILLS.now, dup])).toEqual(["map: development, profile"]);
     expect(subset.has("not_a_shipped_glyph")).toBe(false);
   });
 });
 
 describe("5 · every pill label exists in EN and HE", () => {
-  const pills = PLACES.flatMap((place) => PLACE_PILLS[place]).filter((it) => it.tab !== "overview");
+  const pills = HOMES.flatMap((home) => HOME_PILLS[home]).filter((it) => it.tab !== "overview");
   const latin = (s: string) => /[A-Za-z]/.test(s.replace(/\{[a-z]+\}/g, ""));
 
   it("each label key resolves in both languages; Hebrew is Hebrew, with no Latin word", () => {
@@ -246,10 +233,14 @@ describe("5 · every pill label exists in EN and HE", () => {
     }
   });
 
-  it("the rows read as the v4 table in English and Hebrew; About names the child", () => {
-    expect(PLACE_PILLS.child.map((it) => label("en", it))).toEqual(["Milestones", "Moments", "About"]);
-    expect(PLACE_PILLS.now.slice(1).map((it) => label("en", it))).toEqual(["Weekly report"]);
-    expect(PLACE_PILLS.child.map((it) => label("he", it))).toEqual(["אבני דרך", "רגעים", "אודות"]);
+  it("the rows read as the target table in English and Hebrew; About names the child", () => {
+    expect(HOME_PILLS.now.slice(1).map((it) => label("en", it))).toEqual(["Weekly report", "Plans"]);
+    expect(HOME_PILLS.child.map((it) => label("en", it))).toEqual(["Milestones", "Moments", "About"]);
+    expect(HOME_PILLS.together.map((it) => label("en", it))).toEqual(["Routines", "Play", "Stories"]);
+    expect(HOME_PILLS.learn.map((it) => label("en", it))).toEqual(["For you", "Library"]);
+    expect(HOME_PILLS.care.map((it) => label("en", it))).toEqual(["Visits", "People", "Records"]);
+    expect(HOME_PILLS.child.map((it) => label("he", it))).toEqual(["אבני דרך", "רגעים", "אודות"]);
+    expect(HOME_PILLS.together.map((it) => label("he", it))).toEqual(["שגרות", "משחק", "סיפורים"]);
     expect(translate("en", "nav.pill.profile.named", { name: "Mia" })).toBe("About Mia");
     expect(translate("he", "nav.pill.profile.named", { name: "מיה" })).toBe("על מיה");
   });
@@ -271,9 +262,9 @@ describe("5 · every pill label exists in EN and HE", () => {
 describe("6 · Shell renders the row from pillRowFor alone", () => {
   const shell = readFileSync(path.resolve(here, "../components/layout/Shell.tsx"), "utf8");
 
-  it("the row shows wherever pillRowFor has more than one pill (on the places too)", () => {
-    expect(shell).toContain("{pillRowFor(section, activeTab).length > 1 && (");
-    expect(shell).not.toContain('activeTab === "overview") && pillRowFor');
+  it("the row shows wherever pillRowFor has more than one pill", () => {
+    expect(shell).toContain("const pillRow = pillRowFor(section, activeTab);");
+    expect(shell).toContain("{pillRow.length > 1 && (");
   });
 
   it("the tablist name is keyed, never the English hub label", () => {
@@ -281,24 +272,18 @@ describe("6 · Shell renders the row from pillRowFor alone", () => {
     expect(shell).not.toContain("${section.label} sections");
   });
 
-  // v3 F-SHELL-2 re-pin (critic ruling 13): pills are label-only. The glyph
-  // left the pill (msIcon stays in the data: search and the More sheet read it,
-  // and the iconFamily one-glyph check still runs on it); the 44 px floor and
-  // the no-wrap rule stay. Review-fix re-pin: the metrics are per width, 12 px
-  // with 13 px inline padding on the phone and 12.5 px with 16 px from lg.
-  it("each pill reads its own label key, draws no glyph, never wraps and clears 44 px", () => {
+  it("each pill reads its own label key, draws no glyph, lights through litPillFor and uses the design-system pill", () => {
     expect(shell).toContain('t(it.labelKey ?? "nav.tab." + it.tab)');
-    expect(shell).not.toContain("<Icon name={it.msIcon} size={14} />");
-    expect(shell).not.toContain("<Icon name={placeForTab(it.tab).icon} size={14} />");
+    expect(shell).toContain("it.tab === litPillFor(activeTab)");
     const pill = shell.slice(shell.indexOf('role="tab"'), shell.indexOf("</button>", shell.indexOf('role="tab"')));
     expect(pill).not.toContain("<Icon");
-    expect(pill).toContain("min-h-[44px]");
-    expect(pill).toContain("whitespace-nowrap");
-    const cls = pill.slice(pill.indexOf("className="), pill.indexOf("style="));
-    const tokens = cls.split(/[\s`"{}]+/);
-    expect(tokens).toEqual(expect.arrayContaining(["text-[12px]", "lg:text-[12.5px]", "px-[13px]", "lg:px-4", "py-2", "min-h-[44px]", "font-bold"]));
-    // One size per breakpoint: no unprefixed 12.5 px or 16 px left behind.
-    expect(tokens).not.toContain("text-[12.5px]");
-    expect(tokens).not.toContain("px-4");
+    expect(pill).toContain('className={on ? "pill on" : "pill"}');
+  });
+
+  it("the design system holds the pill's 44 px floor and the phone row never wraps", () => {
+    const css = readFileSync(path.resolve(here, "../design/ds.css"), "utf8");
+    expect(css).toMatch(/\.ds \.pill \{[^}]*min-height: 44px/);
+    expect(css).toMatch(/\.ds\.ds-shellrow\[data-composition="phone"\] \.ds-pillrow \{[^}]*flex-wrap: nowrap/);
+    expect(css).toMatch(/\.ds \.ds-pillrow \.pill \{[^}]*white-space: nowrap/);
   });
 });

@@ -46,7 +46,8 @@ describe("B-DESIGN-03 · chrome glass on the sticky top bar and the dock only", 
     const src = code(read("components/layout/MobileNav.tsx"));
     const bar = src.slice(src.indexOf("<nav"), src.indexOf("</nav>"));
     expect(bar).toContain("<Icon name={place?.icon ?? sec.msIcon} size={emphasized ? 21 : 18} chrome active={on} />");
-    expect(bar).toContain('<Icon name="more_horiz" size={18} chrome active={overflowActive} />');
+    // v10: slot five is Menu.
+    expect(bar).toContain('<Icon name="menu" size={21} chrome active={overflowActive} />');
     expect(bar).not.toMatch(/fill=\{/);
   });
 

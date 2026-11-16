@@ -182,7 +182,7 @@ describe("Pause Arbor — the wires stay the ones that already exist", () => {
     expect(more).toContain('data-testid="more-pause"');
     expect(more).toContain('requestOpenSettings({ focus: "pause-arbor" })');
     expect(more).not.toContain("companion.pause.resume");
-    const pauseButton = more.slice(more.indexOf('data-testid="more-pause"') - 80, more.indexOf('data-testid="more-records-group"'));
+    const pauseButton = more.slice(more.indexOf('data-testid="more-pause"') - 80, more.indexOf("</button>", more.indexOf('data-testid="more-pause"')));
     expect(pauseButton).not.toContain("chevron_right");
     expect(care).toContain('data-testid="care-pause-open"');
     expect(care).toContain('requestOpenSettings({ focus: "pause-arbor" })');

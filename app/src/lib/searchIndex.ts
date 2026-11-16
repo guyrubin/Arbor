@@ -382,20 +382,18 @@ export function getSearchIndex(context?: HardMomentContext): readonly SearchEntr
 
 /* ── Forgiving matching + simple ranking ─────────────────────────────────── */
 
-/** v3 IA-05r: the route the routines words land on. The ready-made routines
- *  live on Plans since B-GROWTH-25 retired #/routines, and the v3 route map
- *  puts #/plans in Together as its Routines pill (#/practice?f=routines,
- *  F-SHELL-1). Should F-SHELL-1 retire plans itself (RETIRED_ROUTES), its row
- *  leaves the index and the words follow the retirement to Together, so
- *  "routines" never lands nowhere. */
-export const ROUTINES_INTENT_TAB: ActiveTab = "plans" in RETIRED_ROUTES ? RETIRED_ROUTES.plans : "plans";
+/** v10 (design system v10.1): the route the routines words land on. The
+ *  twelve ready-made routines are Together › Routines (#/practice); starting
+ *  one makes it a plan under Now › Plans, and "Routines" is the name of
+ *  Together's pill only (one name per thing). */
+export const ROUTINES_INTENT_TAB: ActiveTab = "practice";
 
-/** v3 IA-05r: the names #/plans was found by before IA-05r renamed it
- *  Routines: its old nav name and the heading PlansTab still shows until
- *  F-SHELL-1 replaces it. Exact only, and only while plans is a live route. */
+/** The names #/plans was found by before v10 named it Plans again (IA-05r had
+ *  renamed it Routines): exact only, so a parent typing an old name still
+ *  lands on Now › Plans. */
 const PLANS_OLD_NAMES: readonly string[] = [
   "plans", "plan", "תוכניות", "תוכנית",
-  "Growth Plans", "תוכניות התפתחות",
+  "Growth Plans", "תוכניות התפתחות", "Action Plans",
   translate("en", "plan.title"), translate("he", "plan.title"),
 ];
 
@@ -406,12 +404,12 @@ const PLANS_OLD_NAMES: readonly string[] = [
 const EXACT_ROUTE_QUERIES: Partial<Record<ActiveTab, readonly string[]>> = {
   appointments: ["visit", "visits", "ביקור", "ביקורים"].map(normalizeSearchText),
   consult: [translate("en", "elev.consult.h1"), translate("he", "elev.consult.h1")].map(normalizeSearchText),
-  // v3 IA-05: the word a parent types for the ready-made routines lands where
-  // they live (ROUTINES_INTENT_TAB). The retired #/routines id stays retired
-  // (no row of its own); "rout" and every other partial query rank exactly
-  // as before.
-  [ROUTINES_INTENT_TAB]: ["routines", "routine", "שגרות", "שגרה", translate("en", "nav.tab.routines"), translate("he", "nav.tab.routines"),
-    ...(ROUTINES_INTENT_TAB === "plans" ? PLANS_OLD_NAMES : [])].map(normalizeSearchText),
+  // v3 IA-05 / v10: the word a parent types for the ready-made routines lands
+  // where they live (ROUTINES_INTENT_TAB, Together › Routines). The retired
+  // #/routines id stays retired (no row of its own); "rout" and every other
+  // partial query rank exactly as before. Plans keeps its old names, exact.
+  [ROUTINES_INTENT_TAB]: ["routines", "routine", "שגרות", "שגרה", translate("en", "nav.tab.routines"), translate("he", "nav.tab.routines")].map(normalizeSearchText),
+  plans: PLANS_OLD_NAMES.map(normalizeSearchText),
 };
 
 /**

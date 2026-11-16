@@ -55,7 +55,10 @@ describe("record hierarchy keeps useful controls without repeating navigation or
   // gone. The records section now holds the index of the three places under
   // their v3 pill names, and the destination set is that index, not the old
   // overflow hubs. #/memory is reached from My child and from About.
-  it.each(["en", "he"] as const)("More indexes the three places under their v3 pill names in %s", lang => {
+  // v10 re-pin (was "More indexes the three places under their v3 pill
+  // names"): the places' pages are the shell's pill rows now, so the Menu holds
+  // no record index at all; the dock's three places still navigate unchanged.
+  it.each(["en", "he"] as const)("the Menu repeats no record index, and the dock's places navigate unchanged in %s", lang => {
     state.lang = lang;
     const copy = PARENT_RECORD_COPY[lang];
     const html = renderToStaticMarkup(<MobileNav />);
@@ -63,30 +66,9 @@ describe("record hierarchy keeps useful controls without repeating navigation or
     expect(html).not.toContain(copy.memoryDetail);
     expect(html).not.toContain("WRONG_MEMORY_COUNT");
     expect(html).not.toContain('aria-labelledby="more-support-heading"');
+    expect(html).not.toContain('aria-labelledby="more-records-heading"');
     expect(html).not.toContain(copy.toolsAndSupport);
-    const records = html.match(/<section aria-labelledby="more-records-heading"[^>]*>[\s\S]*?<\/section>/)?.[0] ?? "";
-    expect(records).toContain(copy.records);
-    for (const place of COMPANION_PLACES) expect(records).toContain(`>${lang === "he" ? place.he : place.en}</h4>`);
-    // No old hub name is an entry ("Stories" survives only as Together's pill).
-    for (const hub of ["journal", "behaviors", "learn", "care"]) expect(records).not.toContain(`>${translate(lang, "nav.cat." + hub)}<`);
-    expect(records).not.toContain(`>${copy.profile}<`);
-    // The exact index, in place order, so a missing or newly added row cannot
-    // slip through a hand-maintained list of examples.
-    // v4 re-pin: Together reads Routines · Play · Stories (Play is f=games).
-    const expectedDestinations = ["weekly", "development", "timeline", "profile", "practice?f=routines", "practice?f=games", "practice?f=stories"];
-    const destinationButtons = state.buttons.filter(button => button["data-more-destination"]);
-    expect(destinationButtons.map(button => button["data-more-destination"])).toEqual(expectedDestinations);
-    for (const destination of expectedDestinations) {
-      const button = destinationButtons.find(button => button["data-more-destination"] === destination)!;
-      expect(button.onClick).toBeTypeOf("function");
-      state.setActiveTab.mockClear();
-      button.onClick?.();
-      // A Together row opens #/practice with its filter through the hash query
-      // (goToRoute, a no-op without a window); every other row opens its route.
-      if (destination.includes("?")) expect(state.setActiveTab).not.toHaveBeenCalled();
-      else expect(state.setActiveTab).toHaveBeenLastCalledWith(destination);
-    }
-    // The three primary places are still rendered and navigate unchanged.
+    expect(state.buttons.filter(button => button["data-more-destination"])).toEqual([]);
     for (const tab of ["overview", "development", "practice"] as const) {
       const place = placeForTab(tab);
       buttonWithText(lang === "he" ? place.he : place.en)!.onClick?.();
@@ -112,17 +94,19 @@ describe("record hierarchy keeps useful controls without repeating navigation or
     expect(state.setActiveTab).toHaveBeenLastCalledWith("memory");
   });
 
-  // v3 F-SHELL-3 (IA-03) re-pin — was keyed on the profileDetail / memoryDetail
-  // sub-lines, which are gone: the index has one About row, current on #/profile
-  // only. #/memory is not an index row (the dock lights My child there).
-  it.each(["en", "he"] as const)("More marks only the actual record destination as current in %s", lang => {
+  // v10 re-pin (was: the More index's About row was current on #/profile only):
+  // the Menu has no record rows; the dock lights My child on all its routes.
+  it.each(["en", "he"] as const)("on every My child record route the dock lights My child, and nothing in the Menu reads current in %s", lang => {
     state.lang = lang;
-    for (const tab of ["profile", "memory", "timeline", "development", "weekly"] as const) {
+    for (const tab of ["profile", "memory", "timeline", "development", "behaviors", "language"] as const) {
       state.activeTab = tab;
       state.buttons = [];
-      renderToStaticMarkup(<MobileNav />);
-      const current = state.buttons.filter(button => button["data-more-destination"] && button["aria-current"] === "page").map(button => button["data-more-destination"]);
-      expect(current, tab).toEqual(tab === "memory" ? [] : [tab]);
+      const html = renderToStaticMarkup(<MobileNav />);
+      const child = placeForTab("development");
+      const lit = state.buttons.filter(button => button["aria-current"] === "page");
+      expect(lit.length, tab).toBe(1);
+      expect(html, tab).toContain(lang === "he" ? child.he : child.en);
+      expect(state.buttons.filter(button => button["data-more-door"] && button["aria-current"] === "page"), tab).toEqual([]);
     }
   });
 
@@ -131,14 +115,14 @@ describe("record hierarchy keeps useful controls without repeating navigation or
     expect(shell.match(/data-testid="secondary-place-back"/g)).toHaveLength(1);
     // v3 IA-01 re-pin (was `setActiveTab(placeForTab(activeTab).tab)`): Back returns
     // to the route's HOME, its place or its door, and a home's own route has none.
-    // v4 re-pin: a pill of the place's own row (Weekly report, Moments, About) is a reading, not a level.
-    expect(shell).toContain("const back = isCompanionHome(activeTab) || isPlaceReading(activeTab) ? null : backTargetFor(activeTab);");
+    // v10 re-pin: every home has a pill row (the siblings) and the top bar a
+    // breadcrumb, so Back appears only on a rowless route.
+    expect(shell).toContain("const back = pillRow.length > 1 || isCompanionHome(activeTab) ? null : backTargetFor(activeTab);");
     expect(shell).toContain("{back && <button data-testid=\"secondary-place-back\" onClick={() => setActiveTab(back.tab)}");
-    expect(shell).toContain("pillRowFor(section, activeTab).map");
+    expect(shell).toContain("{pillRow.map((it) => {");
     expect(shell).not.toContain('t("nav.sub." + hubSubKey');
     const nav = shell.slice(shell.indexOf('data-testid="secondary-sibling-nav"'), shell.indexOf("{/* Secondary pages"));
     expect(nav).not.toContain("marginBlockStart:");
-    expect(nav).toContain("top: 0");
     for (const [file, key] of [["../tabs/WeeklyTab.tsx", "elev.wk.back"], ["../sections/DayWindowsPanel.tsx", "dw.back"], ["../sections/SmartRemindersPanel.tsx", "elev.sr.back"]]) {
       expect(readFileSync(new URL(file, import.meta.url), "utf8")).not.toContain(`t("${key}")`);
     }

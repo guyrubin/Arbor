@@ -77,14 +77,15 @@ describe("CR-03 actual consumer wiring", () => {
       expect(source).toContain("createPortal");
     });
   }
-  it("MobileNav delegates More state to the shared Sheet rather than becoming a second dialog owner", () => {
+  it("MobileNav delegates Menu state to the shared Sheet rather than becoming a second dialog owner", () => {
     const nav = read("layout/MobileNav.tsx");
     expect(nav).toContain('import { Sheet } from "../ui/Sheet";');
     expect(nav).toContain("<Sheet");
     expect(nav).toContain("open={moreOpen}");
     expect(nav).toContain("onClose={() => setMoreOpen(false)}");
     expect(nav).toContain("returnFocusRef={moreTriggerRef}");
-    expect(nav).toContain("headerActions={");
+    // v10: the Menu sheet has a title and four rows; no header actions.
+    expect(nav).toContain('title={t("nav.popover.menu")}');
     expect(nav).not.toContain("useDialog");
     expect(nav).not.toContain("createPortal");
     expect(nav).not.toContain('role="dialog"');

@@ -138,7 +138,7 @@ describe("v3 IA-05 · a route row names its home and reads as a crumb", () => {
     }
   });
 
-  it.each(["routines", "Routine", "שגרות", "שגרה"])("%j opens Plans first, under Plans' own home", (query) => {
+  it.each(["routines", "Routine", "שגרות", "שגרה"])("%j opens Together › Routines first, under its own home (v10)", (query) => {
     for (const lang of ["en", "he"] as const) {
       h.lang = lang; h.memos = [];
       const result = render(query);
@@ -157,9 +157,7 @@ describe("v3 IA-05 · a route row names its home and reads as a crumb", () => {
   });
 
   it.each(["plans", "Growth Plans", "תוכניות", "תוכניות התפתחות", translate("en", "plan.title"), translate("he", "plan.title")])(
-    "IA-05r: the old name %j still opens the renamed Plans route first", (query) => {
-      // Transitional, until F-SHELL-1 replaces the PlansTab heading.
-      expect(ROUTINES_INTENT_TAB).toBe("plans");
+    "v10: Plans' name or an old one, %j, opens Now › Plans first", (query) => {
       for (const lang of ["en", "he"] as const) {
         h.lang = lang; h.memos = [];
         const first = render(query).ordered[0];
@@ -170,19 +168,20 @@ describe("v3 IA-05 · a route row names its home and reads as a crumb", () => {
   );
 
   it.each([
-    ["en", ["Together", "Routines"]],
-    ["he", ["ביחד", "שגרות"]],
-  ] as const)("IA-05r: a routines query reads Together › Routines with the interests glyph (%s)", (lang, crumb) => {
+    ["en", "Together", "Routines", ["Now", "Plans"]],
+    ["he", "ביחד", "שגרות", ["עכשיו", "תוכניות"]],
+  ] as const)("v10: a routines query reads Routines under Together with its glyph; a plan record reads Now › Plans (%s)", (lang, together, routines, plansCrumb) => {
     h.lang = lang;
     const first = render("routines").ordered[0];
-    expect(first.id).toBe("route:plans");
-    expect(first.label).toBe(crumb[1]);
-    expect(first.crumb).toEqual(crumb);
-    expect(first.group).toEqual({ id: "together", label: crumb[0], icon: "interests" });
+    expect(first.id).toBe("route:practice");
+    expect(first.label).toBe(routines);
+    // Together's own route sits under Together's header: no crumb repeats it.
+    expect(first.crumb).toBeUndefined();
+    expect(first.group).toEqual({ id: "together", label: together, icon: "interests" });
     expect(first.icon).toBe("interests");
-    // A Routines plan row reads the same crumb when it has no words of its own.
+    // A plan record with no words of its own reads where plans live now.
     h.records = { ...empty(), actionPlans: [{ id: "p", title: "Invented kite routine", issue: "", phases: [], scripts: [], successIndicators: [] }] };
-    expect(row(render("kite").record, "plan-p").crumb).toEqual(crumb);
+    expect(row(render("kite").record, "plan-p").crumb).toEqual(plansCrumb);
   });
 
   it("no row wears the old generic route arrow; every catalogue row has a home", () => {

@@ -329,7 +329,7 @@ export function Tile({
   tint?: boolean;
   style?: React.CSSProperties;
   titleId?: string;
-  as?: "section" | "div" | "article";
+  as?: "section" | "div";
 }) {
   return (
     <Tag className={cx("vt", tint && "tint", className)} style={style} aria-labelledby={titleId}>
@@ -401,7 +401,7 @@ export function Know({ kicker, children, link, art, className, style }: { kicker
 /**
  * Production's Living Forms art, cropped (identity, never data: "Decorative
  * only: never evidence about a child. Family photos take priority.").
- * `crop` places the source image inside the frame, as the boards do.
+ * The crop prop places the source image inside the frame, as the boards do.
  */
 export function LivingForm({
   src,
