@@ -226,6 +226,10 @@ export default function WeeklyTab() {
   );
 
   const counts = week?.glance.counts;
+  // The days a milestone was marked, from the same glance Milestones counts.
+  const milestoneDays = week
+    ? week.glance.perDay.filter((d) => d.milestones > 0).map((d) => new Date(d.startMs).toLocaleDateString(dateLocale, { weekday: "short", day: "numeric" })).join(", ")
+    : "";
   const notThisTime = week?.instrument.counts.not ?? 0;
   const placesLine = week ? week.lines.places.map((p) => t(PLACE_KEY[p.place], { n: p.n })).join(" · ") : "";
   const figures = counts && (counts.moments > 0 || counts.helped > 0 || notThisTime > 0) && (
@@ -291,7 +295,7 @@ export default function WeeklyTab() {
                   footer={
                     <div className="line wk10-chiprow">
                       <button type="button" className="wk-q" data-testid="weekly-tile-milestones" onClick={() => setActiveTab("milestones")}>
-                        {copy.milestonesChip(counts?.milestones ?? 0)}
+                        {copy.milestonesChip(counts?.milestones ?? 0, milestoneDays)}
                         <Icon name="chevron_right" size={15} className="rtl:-scale-x-100" />
                       </button>
                       <span className="wk-q">{copy.kidChip(counts?.kid ?? 0)}</span>

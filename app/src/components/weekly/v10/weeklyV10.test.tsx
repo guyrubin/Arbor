@@ -30,6 +30,12 @@ describe("weeklyCopy", () => {
     expect(all).not.toMatch(/\bAI\b|subscription|price/i);
   });
 
+  it("the milestone line names the count and the day it was marked (V73: agrees with Milestones)", () => {
+    expect(WEEKLY_COPY.en.milestonesChip(1, "Sat 14")).toBe("Milestones · 1 marked this week · Sat 14");
+    expect(WEEKLY_COPY.en.milestonesChip(0, "")).toBe("Milestones · none marked this week");
+    expect(WEEKLY_COPY.he.milestonesChip(2, "שבת 14")).toMatch(/2 .* · שבת 14$/);
+  });
+
   it("the one legend line is the canvas sentence", () => {
     expect(WEEKLY_COPY.en.legend).toBe("Each mark is one thing you recorded.");
   });
@@ -110,7 +116,10 @@ describe("WhatHelped (canvas V77)", () => {
       const html = renderToStaticMarkup(<WhatHelped composition="desk" copy={WEEKLY_COPY[lang]} t={t(lang)} uiLang={lang} locale={lang} childFirst="Noa" hardCount={2} steps={steps} heldWords={<p>held</p>} hasHeldWords words={["moon"]} onPlans={() => {}} onHardMoments={() => {}} />);
       for (const id of ["weekly-steps", "weekly-thread-words", "weekly-hard-card", "weekly-words"]) expect(html).toContain(`data-testid="${id}"`);
       expect(tagButton(html, "weekly-hard-card")).toBe(true);
-      expect(text(html)).toContain(WEEKLY_COPY[lang].hardCard(2));
+      // One line and a link: the count lives once, in the instrument's legend.
+      const card = html.slice(html.indexOf('data-testid="weekly-hard-card"'));
+      expect(text(card.slice(0, card.indexOf("</button>")))).toContain(translate(lang, "nav.view.behaviors"));
+      expect(text(card.slice(0, card.indexOf("</button>")))).not.toMatch(/\d/);
       expect(html.match(/data-testid="weekly-step"/g)).toHaveLength(2);
       expect(html).toContain(translate(lang, "elev.wk.helped.not", { n: 1 }));
       expect(text(html)).not.toMatch(FIREWALL);

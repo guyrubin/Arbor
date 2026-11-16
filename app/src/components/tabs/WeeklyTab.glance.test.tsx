@@ -133,6 +133,13 @@ describe("#/weekly — the v10 Weekly report (boards N-Week-D/M), the week drawn
       expect(html.split(WEEKLY_COPY[lang].legend).length - 1).toBe(1);
     });
 
+    it(`${lang}: the milestone line counts the week's milestones and names the day, from the same record`, () => {
+      const milestone = { ...moment(on(2, 11), 9), id: "milestones:invented-9", kind: "milestone", origin: "milestones", value: { type: "milestone", milestoneId: "m-invented" } } as unknown as Observation;
+      const html = render(lang, [], [...RECORDS, milestone]);
+      const day = new Date(on(2, 11)).toLocaleDateString(lang === "he" ? "he-IL" : "en-US", { weekday: "short", day: "numeric" });
+      expect(read(tagOf(html, "weekly-tile-milestones")[0] + html.slice(html.indexOf('data-testid="weekly-tile-milestones"'), html.indexOf("</button>", html.indexOf('data-testid="weekly-tile-milestones"'))))).toContain(WEEKLY_COPY[lang].milestonesChip(1, day));
+    });
+
     it(`${lang}: nothing to count, nothing stored → the empty card, then the band and your day`, () => {
       const html = render(lang, [], [], []);
       expect(topModules(html)).toEqual(["weekly-empty", "weekly-carry", "weekly-day"]);

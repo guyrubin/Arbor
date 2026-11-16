@@ -86,7 +86,7 @@ export default function WhatHelped({
         <button type="button" className="nx-co wk10-linkcard" data-testid="weekly-hard-card" onClick={onHardMoments}>
           {art && <LivingForm src={art.src} srcSet={art.srcSet} width={52} height={35} crop={{ w: 123.6, h: 69.5, x: -66.7, y: -18.3 }} />}
           <span className="ct">
-            <b>{copy.hardCard(hardCount)}</b>
+            <b>{t("nav.view.behaviors")}</b>
             {copy.hardCardSub}
           </span>
           <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" />
