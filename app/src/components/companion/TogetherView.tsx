@@ -102,7 +102,7 @@ function ScopedTogetherView() {
   const routinesId = `${ids}-routines`;
   const doorsId = `${ids}-doors`;
   const door = (testId: string, art: string, title: string, sub: string, onClick: () => void) => (
-    <button type="button" className="dm-door" data-testid={testId} onClick={onClick}>
+    <button key={testId} type="button" className="dm-door" data-testid={testId} onClick={onClick}>
       <img src={art} alt="" width={64} height={64} loading="lazy" decoding="async" />
       <span className="stack" style={{ gap: 3, minWidth: 0 }}>
         <span className="nm">{title}</span>

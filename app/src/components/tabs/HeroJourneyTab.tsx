@@ -78,6 +78,18 @@ import { stopVoice } from "../../lib/voice";
 import { KID_BOOK_ART_CLASS, KID_BOOK_SIDE_CLASS, KID_BOOK_SPREAD_CLASS } from "../stories/HeroScenePlayer";
 import { DecisionChoices } from "../stories/DecisionChoices";
 import { asksForHero } from "../../lib/childPicture";
+import { DsRoot, Guide, Route, RouteSection } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
+import { ChainStrip } from "../together/ChainStrip";
+import { TOGETHER_COPY } from "../together/togetherCopy";
+import TogetherBookPractices from "../program/TogetherBookPractices";
+import { programSharedObjectOn } from "../../lib/programs/sharedObject";
+import { useKidModeEntry } from "../kidmode/useKidModeEntry";
+import "../together/together.css";
+
+// v10.1: Hero Comics and the family ritual are sections of Stories (embedded, no route stamps).
+const EmbeddedComics = React.lazy(() => import("./ComicsTab"));
+const EmbeddedFamilyRitual = React.lazy(() => import("../sections/FamilyFormation"));
 
 /** B-KID-81 (KB-14): the pack tint + label tables live in ONE module
  *  (components/stories/StoryCard: STORY_PACK_SOFT, STORY_PACK_LABEL), shared
@@ -201,6 +213,10 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const kidNav = useKidSafeNav();
   const { aiLang, t, uiLang } = useLanguage();
   const { toast } = useToast();
+  // v10.1: Stories' composition, its words and the Kids Studio seam for the plan book.
+  const composition = useComposition();
+  const tCopy = TOGETHER_COPY[uiLang === "he" ? "he" : "en"];
+  const { request: requestKidModeEntry, step: kidEntryStep } = useKidModeEntry();
   // OBJ-KID-04: ToastContext QUEUES toasts while kid-locked, so a failed start
   // inside Kid Mode was silent — the child tapped Play and nothing moved. Branch
   // at the call site (never in ToastContext, which the parent shell relies on).
@@ -951,7 +967,30 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         />
       </motion.div>
     ) : (
-      <div className="space-y-6 max-w-[1100px]">
+      <DsRoot composition={composition} className="stories-v10" data-testid="stories-screen" dir={he ? "rtl" : "ltr"}>
+      <div className="stack" style={{ gap: composition === "phone" ? 12 : 16 }}>
+        <Guide
+          label={tCopy.onThisPage}
+          mini={composition === "phone"}
+          stops={[
+            { id: "tonight", title: tCopy.stopTonight, sub: tCopy.stopTonightSub },
+            { id: "family", title: tCopy.stopRitual, sub: tCopy.stopRitualSub },
+            { id: "pictures", title: tCopy.stopPictures, sub: tCopy.stopPicturesSub },
+          ]}
+        />
+        <ChainStrip
+          composition={composition}
+          label={tCopy.chainLabel(name)}
+          nodes={[
+            ...(notedMoment ? [{ kind: "you" as const, tag: tCopy.chainNoted, text: t("elev.loop.ms.quoted", { text: notedMoment.text }), said: true }] : []),
+            ...(tonightStory ? [{ kind: "arbor" as const, tag: tCopy.arborSuggests, text: he ? tonightStory.titleHe : tonightStory.title, sub: tCopy.chainTonight }] : []),
+            ...(tonightStory ? [{ kind: "kid" as const, tag: tCopy.chainHears(name), text: tCopy.chainHearsTx }] : []),
+            ...(runs.length > 0 ? [{ kind: "back" as const, tag: tCopy.chainRead, text: t(runs.length === 1 ? "elev.stories.counts.stories.one" : "elev.stories.counts.stories", { n: runs.length }) }] : []),
+          ]}
+        />
+        <Route composition={composition}>
+        <RouteSection id="tonight" n={1} on>
+        <div className="space-y-6">
         {/* W2-SHELLPLAY critic r1: the H1 names tonight, not the catalogue; no
             eyebrow, no subtitle (four labels stood before the story). "Starring"
             only once the child has a hero — the cover cannot keep that claim
@@ -1137,6 +1176,16 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             onClose={() => setHeroDialogOpen(false)}
           />
         )}
+        {/* The running Challenge plan's book, read together (program flag). */}
+        {programSharedObjectOn() && <TogetherBookPractices onOpen={(book) => requestKidModeEntry({ view: "library", book, together: true })} />}
+        </div>
+        </RouteSection>
+        <RouteSection id="family" n={2}>
+          <React.Suspense fallback={null}><EmbeddedFamilyRitual embedded /></React.Suspense>
+        </RouteSection>
+        <RouteSection id="pictures" n={3}>
+        <div className="space-y-6">
+          <React.Suspense fallback={null}><EmbeddedComics embedded /></React.Suspense>
         {/* B-PLAY-11: the pack filter and the whole catalogue sit behind ONE
             collapsed "More stories" disclosure (R25: a demoted module inside a
             data-module-disclosure), so above the fold is cover + insight + Play. */}
@@ -1283,11 +1332,12 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         </section>
         </details>
 
-        {/* B-PLAY-12: the "Your library" module (every run read, finished or
-            not) moved to the Comics shelf, one tap away on this hub: a run
-            with a read-along comic is that comic, every other run is a text
-            book reread in place (lib/storyShelf, components/stories/StoryTextReader). */}
+        </div>
+        </RouteSection>
+        </Route>
       </div>
+      {kidEntryStep}
+      </DsRoot>
     );
   }
 

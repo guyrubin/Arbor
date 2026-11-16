@@ -271,3 +271,5 @@
 @media (prefers-reduced-motion: reduce) {
   .ds .dm-c, .ds .dm-door, .ds .pl-gm, .ds .tg-ro { transition: none; }
 }
+/* Phone: the shell's 16 px gutter is narrower than the route line's stops; give them room. */
+.ds.ds-phone .route.m { margin-inline-start: 16px; }

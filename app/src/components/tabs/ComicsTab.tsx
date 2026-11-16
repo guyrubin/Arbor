@@ -94,7 +94,9 @@ import { comicShelfReadIsCurrent } from "../../lib/comicShelfScope";
 const savedMetaFingerprint = (meta: SavedComicMeta): string =>
   JSON.stringify([meta.id, meta.adventureId, meta.lang, meta.createdAt, meta.pageCount, meta.identityVersion, meta.pageKeys]);
 
-export default function ComicsTab() {
+/** `embedded`: Hero Comics inside Together › Stories (v10.1) — a section
+ *  heading instead of the page header, and no route stamps (Stories owns them). */
+export default function ComicsTab({ embedded = false }: { embedded?: boolean } = {}) {
   const { childProfile, openPaywall, milestones, behaviorLogs, playLogs } = useArbor();
   const { user } = useAuth();
   const { aiLang, t, uiLang } = useLanguage();
@@ -367,7 +369,7 @@ export default function ComicsTab() {
     );
   };
   const ourBooksSection = (
-    <section data-module="comics-our-books" data-testid="comics-our-books" className="space-y-3">
+    <section data-module={embedded ? undefined : "comics-our-books"} data-testid="comics-our-books" className="space-y-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <h2 className="m-0 text-[1.15rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
           {t("elev.comics.ourBooks.title")}
@@ -567,12 +569,9 @@ export default function ComicsTab() {
   // ComicsTab (KidModeOverlay maps only `arcade` and `journeys`, and the
   // in-hub Hero Comics tile is behind `kidNav`, which is null while kid-locked).
   // So the register is fixed at parent: kit chrome, no `.arbor-play` wash.
-  return (
-    <RegisterShell
-      kidMode={false}
-      title={t("nav.tab.comics")}
-      subtitle={he ? `כל הרפתקה היא ספר קומיקס שלם — בכיכוב ${name}!` : `Every adventure is a whole comic book — starring ${name}!`}
-    >
+  const subtitle = he ? `כל הרפתקה היא ספר קומיקס שלם — בכיכוב ${name}!` : `Every adventure is a whole comic book — starring ${name}!`;
+  const mainBody = (
+    <>
 
       {/* item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (counted against the route's
@@ -582,7 +581,8 @@ export default function ComicsTab() {
       {/* B-KID-87 (KB-29): Our books leads; the "{n} of {total} books on the
           shelf" summary is gone (a completion meter on a library). The age
           switch moved into the Our books header. */}
-      {ourBooksSection}
+      {/* Embedded in Stories, the books are Stories' own "More stories" shelf (each capability once). */}
+      {!embedded && ourBooksSection}
 
       {/* The comic books: the ones made before, and the authored adventures a
           parent can still build as a comic. */}
@@ -642,7 +642,7 @@ export default function ComicsTab() {
       {/* Book grid — every canon adventure as a multi-page comic book. The
           declared primaryMove for #/comics is "open-comic": opening a book off
           the shelf. Stamped once, on the shelf itself. */}
-      <div data-module="comics-shelf" data-primary-move="open-comic" className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
+      <div data-module={embedded ? undefined : "comics-shelf"} data-primary-move={embedded ? undefined : "open-comic"} className="grid gap-4" style={{ gridTemplateColumns: embedded ? "repeat(auto-fill,minmax(220px,1fr))" : "repeat(auto-fit,minmax(240px,1fr))" }}>
         {shelfAdventures.map((a) => {
           const w = { bg: STORY_PACK_SOFT[a.pack], ink: STORY_PACK_LABEL[a.pack].ink, label: STORY_PACK_LABEL[a.pack].en, labelHe: STORY_PACK_LABEL[a.pack].he };
           const bookCover = storyCoverArt(kidTheme, a.adventureId);
@@ -787,6 +787,15 @@ export default function ComicsTab() {
             : `Comics use ${isolate(name)}'s saved cartoon hero — never a real photo. Images are AI-made and provenance-watermarked.`}
         </span>
       </div>
-    </RegisterShell>
+    </>
   );
+  return embedded ? (
+    <div className="space-y-4" data-testid="comics-embedded">
+      <div>
+        <h2 className="h3" style={{ margin: 0 }}>{t("nav.tab.comics")}</h2>
+        <p className="small" dir="auto">{subtitle}</p>
+      </div>
+      {mainBody}
+    </div>
+  ) : <RegisterShell kidMode={false} title={t("nav.tab.comics")} subtitle={subtitle}>{mainBody}</RegisterShell>;
 }
