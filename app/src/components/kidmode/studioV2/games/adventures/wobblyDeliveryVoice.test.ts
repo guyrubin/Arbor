@@ -82,7 +82,7 @@ describe('Wobbly Delivery voice timing', () => {
 
 describe('Wobbly Delivery voice player', () => {
   function fakeBank(lengths: Record<string, number>) {
-    const bank = { load: vi.fn(async () => true), play: vi.fn(() => true), has: (id: string) => id in lengths, durationMs: (id: string) => lengths[id] ?? 0, unlock: vi.fn(), stopVoice: vi.fn(), dispose: vi.fn() };
+    const bank = { load: vi.fn(async () => true), play: vi.fn<KidSoundBank['play']>(() => true), has: (id: string) => id in lengths, durationMs: (id: string) => lengths[id] ?? 0, unlock: vi.fn(), stopVoice: vi.fn(), dispose: vi.fn() };
     return bank as typeof bank & KidSoundBank;
   }
   function clock() {
