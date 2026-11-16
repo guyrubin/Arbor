@@ -82,8 +82,11 @@ export default function Sidebar() {
         <p className="text-[24px] font-semibold leading-none" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Arbor</p>
       </div>
 
-      {/* Child profile card */}
-      <ProfileSwitcher />
+      {/* Child profile card. v10 (canvas V77): a hairline under the switcher sets
+          the child apart from the three places, as the N-*-D boards draw it. */}
+      <div className="pb-5 -mb-1" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
+        <ProfileSwitcher />
+      </div>
 
       <nav aria-label={t("elev.sidebar.nav.aria")} className="flex flex-col gap-1 flex-1">
         {COMPANION_PLACES.map(place => {

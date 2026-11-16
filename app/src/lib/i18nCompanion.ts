@@ -285,11 +285,11 @@ export const companionEn = {
   "companion.offscreen.story.detail": "One person begins a story with one sentence. The other adds what happens next. Let it be silly, surprising or very short.",
   "companion.offscreen.story.say": "And then, something unexpected happened…",
   "companion.place.now": "Now",
-  "companion.place.now.detail": "Parenting Companion · clarity for today",
+  "companion.place.now.detail": "Clarity for today",
   "companion.place.child": "My child",
-  "companion.place.child.detail": "Growth · the whole picture, over time",
+  "companion.place.child.detail": "The whole picture, over time",
   "companion.place.together": "Together",
-  "companion.place.together.detail": "Kids Studio · stories, play and imagination",
+  "companion.place.together.detail": "Stories, play and imagination",
   // FEAT-05: the question chip in the conversation header opens the question sheet.
   "companion.topic-chip.open": "Open our questions: {value0}",
   // VIS-07: Together's first-time empty state (one sentence; the action reuses companion.portrait.capture).
@@ -596,6 +596,7 @@ export const companionEn = {
   // Words only: never a count, dot or badge.
   "companion.input.foot": "Arbor is an AI companion, not a doctor. Files are analysed only when sent.",
   "companion.launcher.label": "Ask Arbor — text, photo or voice",
+  "companion.launcher.short": "Ask Arbor",
   // B-VOICE-08: Now's one-tap voice door (its visible words are companion.input.talk).
   "companion.launcher.voice-aria": "Talk it through by voice",
   "companion.panel.history": "History",
@@ -908,11 +909,11 @@ export const companionHe = {
   "companion.offscreen.story.detail": "אחד מתחיל סיפור במשפט. השני מוסיף מה קורה אחר כך. הסיפור יכול להיות מצחיק, מפתיע או ממש קצר.",
   "companion.offscreen.story.say": "ואז קרה משהו שאף אחד לא ציפה לו…",
   "companion.place.now": "עכשיו",
-  "companion.place.now.detail": "מלווה ההורות · בהירות להיום",
+  "companion.place.now.detail": "בהירות להיום",
   "companion.place.child": "הילד שלי",
-  "companion.place.child.detail": "צמיחה · התמונה השלמה, לאורך זמן",
+  "companion.place.child.detail": "התמונה השלמה, לאורך זמן",
   "companion.place.together": "ביחד",
-  "companion.place.together.detail": "סטודיו לילדים · סיפורים, משחק ודמיון",
+  "companion.place.together.detail": "סיפורים, משחק ודמיון",
   // FEAT-05: the question chip in the conversation header opens the question sheet.
   "companion.topic-chip.open": "לפתוח את השאלות שלנו: {value0}",
   // VIS-07: Together's first-time empty state (one sentence; the action reuses companion.portrait.capture).
@@ -1205,6 +1206,7 @@ export const companionHe = {
   // F-TALK-1: Talk is a panel over the place (see the English block).
   "companion.input.foot": "ארבור הוא מלווה בינה מלאכותית, לא רופא. קבצים מנותחים רק בשליחה.",
   "companion.launcher.label": "שואלים את ארבור — טקסט, תמונה או קול",
+  "companion.launcher.short": "שואלים את ארבור",
   "companion.launcher.voice-aria": "לדבר על זה בקול",
   "companion.panel.history": "היסטוריה",
   "companion.panel.new.sub": "השאלה נשארת; שיחה חדשה מתחילה",
