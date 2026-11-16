@@ -376,7 +376,7 @@
 /* The phone route line and its stops need their gutter inside the page. */
 .ds-phone.wk10 > .route.m { padding-inline-start: 30px; }
 .ds .wk10-mstrip.wk-ms.wk-ahead { background: repeating-linear-gradient(135deg, var(--wk-ahead-line) 0 1.5px, transparent 1.5px 8px), var(--wk-ahead); }
-.ds-phone .wk10-stage > .wk10-summary { width: auto; align-self: stretch; }
+.ds-phone .rsec > .wk10-summary { width: 100%; margin: 0; }
 .ds.wk10 .guide.mini .gstop { min-height: 44px; }
 
 /* ── V77 states (hover one step deeper, pressed inset ring, focus 2 px sapphire ring at 2 px offset) ── */
@@ -426,3 +426,23 @@
 .ds .wk10-dates { border-bottom: 0; }
 .ds .wk10-dates .wk10-cell { border-top: 2px solid var(--wk-grid); }
 .ds .wk10-dates .wk10-cell:last-child { border-top-style: dotted; }
+
+/* ── V77 phone details (N-Week-M) ── */
+.ds .wk-tr.stp.not { background: var(--wk-not-wash); }
+.ds .wk-tr .wk10-node-body { gap: 3px; }
+.ds .wk-tr .nx-q { font-size: 15px; }
+.ds .wk10-others-k { font-size: 12px; }
+.ds .wk10-nowpill.m { top: 50%; transform: translate(-50%, -50%); inset-inline: auto; width: auto; padding: 0 6px; height: 18px; font-size: 12px; }
+[dir="rtl"] .ds .wk10-nowpill.m { transform: translate(50%, -50%); }
+.ds .wk10-mdate { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
+.ds .wk10-mdate-t { display: flex; flex-direction: column; font-size: 12px; line-height: 1.15; min-width: 0; }
+.ds .wk10-mdate-t b { font-weight: 600 !important; color: var(--ink); }
+.ds .wk10-mdate-t small { font-size: 12px; color: var(--ink-soft); }
+.ds .wk10-beyond { border-top: 2px dashed var(--wk-ahead-line); margin-top: 6px; padding-top: 6px; }
+.ds .wk10-beyond-t { display: flex; flex-direction: column; justify-content: center; font-size: 13px; min-width: 0; }
+.ds .wk10-beyond-t b { font-weight: 600 !important; color: var(--ink); }
+.ds .wk10-beyond-t small { font-size: 12px; color: var(--ink-soft); }
+.ds .wk10-todaystep { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; font-size: 12px; font-weight: 600 !important; color: var(--wk-today); text-align: center; line-height: 1.15; }
+.ds-phone .wk10-mr { grid-template-columns: 40px minmax(0, 1fr) minmax(44px, auto); }
+.ds-phone .wk10-chiprow { flex-wrap: nowrap; gap: 6px; }
+.ds-phone .wk10-chiprow > .wk-q { flex: 1 1 0; min-width: 0; justify-content: center; font-size: 12px; padding: 0 8px; }

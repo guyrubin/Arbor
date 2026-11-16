@@ -11,7 +11,12 @@ import { appointmentStartMs, nextPrepareVisit, type Appointment } from "../../li
 import { appointmentRoleLabel } from "../../lib/appointmentLabel";
 import { weekGlance, glanceHasCounts } from "../../lib/weekGlance";
 import { weekReportLines, type WeekPlace } from "../../lib/weekReport";
-import { weekInstrument } from "../../lib/weekInstrument";
+import { weekInstrument, type InstrumentDate } from "../../lib/weekInstrument";
+import { fmtDayTimeV10 } from "../../lib/formatDate";
+import { useFamilyPlanDates } from "../../hooks/useFamilyPlan";
+import { adultLabel } from "../familyPlan/format";
+import { familyPlanCopy } from "../familyPlan/familyPlanCopy";
+import { NOW_V10_COPY } from "../companion/now10/nowV10Copy";
 import { dayField } from "../../lib/dayField";
 import { predictRhythm } from "../../rhythm/predict";
 import { buildDayWindowsSummary } from "../../growth/dayWindowsAgg";
@@ -111,6 +116,23 @@ export default function WeeklyTab() {
      from its first instant to now, a past week whole (reportWeekBounds). */
   const observations = useObservations();
   const appointments = useChildCollection<Appointment>(childProfile.id, "appointments");
+  /* The dates the rail draws: dated visits and the Family plan's open dates,
+     each with who has it ("nobody yet" when no adult has taken it). */
+  const plan = useFamilyPlanDates(childProfile.id);
+  const meUid = user?.uid ?? "local-sandbox";
+  const railDates = useMemo<InstrumentDate[]>(() => {
+    const fp = familyPlanCopy[locale];
+    const planDates = plan.all
+      .filter((d) => d.status === "open")
+      .map((d) => {
+        const [y, m, day] = d.date.split("-").map(Number);
+        const [h, mi] = (d.time ?? "00:00").split(":").map(Number);
+        const who = d.holder ? adultLabel(d.holder, meUid, fp) : NOW_V10_COPY[locale].familyPlanNobody;
+        return { id: `plan:${d.id}`, startMs: new Date(y, m - 1, day, h || 0, mi || 0).getTime(), label: d.title, sub: d.time ? `${d.time} · ${who}` : who, nobody: !d.holder };
+      });
+    const visits = appointments.items.map((a) => ({ id: a.id, startMs: appointmentStartMs(a), label: appointmentRoleLabel(a, t) }));
+    return [...visits, ...planDates];
+  }, [plan.all, appointments.items, meUid, locale, t]);
   const week = useMemo(() => {
     const bounds = reportWeekBounds(viewId, weekAnchorDate(selected), { weekId: recapWeekId, weekStartMs: recapWeekStartMs });
     const nowMs = Date.now();
@@ -128,13 +150,13 @@ export default function WeeklyTab() {
         observations,
         actionLoop,
         logs: behaviorLogs,
-        dates: appointments.items.map((a) => ({ id: a.id, startMs: appointmentStartMs(a), label: appointmentRoleLabel(a, t) })),
+        dates: railDates,
         dayStarts: glance.perDay.map((d) => d.startMs),
         endMs: span.endMs,
         isCurrent,
       }),
     };
-  }, [viewId, isCurrent, selected, observations, actionLoop, behaviorLogs, appointments.items, t]);
+  }, [viewId, isCurrent, selected, observations, actionLoop, behaviorLogs, railDates]);
   const dashboardShown = !!week && (glanceHasCounts(week.glance) || !!selected);
 
   // The kicker's dates, day first as the boards write them ("14 to 20 Nov").
@@ -228,6 +250,15 @@ export default function WeeklyTab() {
   );
 
   const counts = week?.glance.counts;
+  // The rail's end: the next dated item after the report week, within the Prepare window.
+  const weekEnd = week ? week.glance.perDay[6].startMs + 86_400_000 : 0;
+  const beyond = useMemo(() => {
+    if (!week || !isCurrent) return null;
+    const next = railDates
+      .filter((d): d is InstrumentDate & { startMs: number } => d.startMs !== null && d.startMs >= weekEnd && d.startMs - nowMs <= 14 * 86_400_000)
+      .sort((a, b) => a.startMs - b.startMs)[0];
+    return next ? { label: next.label, sub: next.sub, ms: next.startMs, nobody: next.nobody } : null;
+  }, [week, isCurrent, railDates, weekEnd, nowMs]);
   // The days a milestone was marked, from the same glance Milestones counts.
   const milestoneDays = week
     ? week.glance.perDay.filter((d) => d.milestones > 0).map((d) => new Date(d.startMs).toLocaleDateString(dateLocale, { weekday: "short", day: "numeric" })).join(", ")
@@ -294,18 +325,18 @@ export default function WeeklyTab() {
                   composition={composition}
                   copy={copy}
                   locale={dateLocale}
-                  beyond={visit && visitStart !== null && week && visitStart >= week.glance.perDay[6].startMs + 86_400_000 ? { label: appointmentRoleLabel(visit, t), ms: visitStart } : null}
+                  beyond={beyond}
+                  todayStep={isCurrent && !!activeTodayAction && !activeTodayAction.outcome}
                   footer={
                     <div className="line wk10-chiprow">
                       <button type="button" className="wk-q" data-testid="weekly-tile-milestones" onClick={() => setActiveTab("milestones")}>
-                        {copy.milestonesChip(counts?.milestones ?? 0, milestoneDays)}
+                        {phone ? copy.milestonesShort(counts?.milestones ?? 0) : copy.milestonesChip(counts?.milestones ?? 0, milestoneDays)}
                         <Icon name="chevron_right" size={15} className="rtl:-scale-x-100" />
                       </button>
-                      <span className="wk-q">{copy.kidChip(counts?.kid ?? 0)}</span>
+                      <span className="wk-q">{phone ? copy.kidShort(counts?.kid ?? 0) : copy.kidChip(counts?.kid ?? 0)}</span>
                     </div>
                   }
                 />
-                {phone && summaryDoor}
               </div>
             ) : stage === "weekly-empty" ? (
               /* F-06: the current week with nothing kept yet says so honestly;
@@ -327,6 +358,8 @@ export default function WeeklyTab() {
               </div>
             ) : null}
           </Scene>
+          {/* Phone: the Visit summary door sits under the scene card, as N-Week-M draws it. */}
+          {phone && stage === "weekly-glance" && summaryDoor}
         </RouteSection>
 
         {dashboardShown && week && (

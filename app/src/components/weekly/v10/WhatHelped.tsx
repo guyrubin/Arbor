@@ -61,6 +61,38 @@ export default function WhatHelped({
   };
   const art = guideArtFor("big-feelings", uiLang);
 
+  /* Phone (N-Week-M): the newest step as the violet "Step you tried" card,
+     the others in a sideways row under "Other steps you tried". */
+  const [lead, ...rest] = steps;
+  const phoneSteps = lead ? (
+    <>
+      <article className={`wk-tr stp${lead.helped > 0 ? "" : " not"}`} data-testid="weekly-step" data-helped={lead.helped > 0 ? "" : undefined}>
+        <Token kind="stp" state={lead.helped > 0 ? "solid" : "open"} size="md" label={lead.helped > 0 ? copy.tokenHelped : copy.tokenNot} />
+        <div className="wk10-node-body">
+          <span className="k">{copy.stepYouTried}</span>
+          <bdi className="nx-q ds-said wk10-steptext" dir="auto">“{lead.step}”</bdi>
+          <span className={`wk-out ${lead.helped > 0 ? "wk10-out-step" : "wk10-out-not"}`}>{stepLine(lead)}</span>
+        </div>
+      </article>
+      {rest.length > 0 && (
+        <>
+          <span className="kicker wk10-others-k">{copy.otherSteps}</span>
+          <ul className="wk10-srs ds-snap-scroll" data-testid="weekly-steps">
+            {rest.map((line) => (
+              <li key={line.step} className={`wk-sr${line.helped > 0 ? "" : " not"}`} data-testid="weekly-step" data-helped={line.helped > 0 ? "" : undefined}>
+                <Token kind="stp" state={line.helped > 0 ? "solid" : "open"} size="md" label={line.helped > 0 ? copy.tokenHelped : copy.tokenNot} />
+                <span>
+                  <bdi className="nx-q ds-said wk10-steptext" dir="auto">“{line.step}”</bdi>
+                  <span className={`wk-out ${line.helped > 0 ? "wk10-out-step" : "wk10-out-not"}`}>{stepLine(line)}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </>
+  ) : null;
+
   const stepsList = steps.length > 0 ? (
     <ul className={phone ? "wk10-srs ds-snap-scroll" : "wk10-srs"} data-testid="weekly-steps">
       {steps.map((line) => (
@@ -113,7 +145,7 @@ export default function WhatHelped({
       <RouteHead id="wk-helped-title" title={copy.stopHelped} sub={copy.helpedSub} link={<MoreLink onClick={onPlans}>{t("nav.pill.plans")}</MoreLink>} />
       {phone ? (
         <div className="stack wk10-next-stack">
-          {stepsList}
+          {lead ? phoneSteps : stepsList}
           {side}
         </div>
       ) : (

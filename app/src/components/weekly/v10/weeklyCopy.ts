@@ -12,6 +12,11 @@ const plural = (n: number, one: string, many: string) => (n === 1 ? one : many.r
 
 export const WEEKLY_COPY = {
   en: {
+    todaysStep: "Today’s step",
+    stepYouTried: "Step you tried",
+    otherSteps: "Other steps you tried",
+    milestonesShort: (n: number) => (n === 0 ? "No milestone this week" : plural(n, "1 milestone this week", "{n} milestones this week")),
+    kidShort: (n: number) => (n === 0 ? "No Kids Studio session" : plural(n, "1 Kids Studio session", "{n} Kids Studio sessions")),
     rangeJoin: " to ",
     wordsYouUsedOn: (day: string) => `Words you used on ${day}`,
     daySubV: "when you log, by day and part of the day",
@@ -90,6 +95,11 @@ export const WEEKLY_COPY = {
     seeHard: "See them in Hard moments",
   },
   he: {
+    todaysStep: "הצעד של היום",
+    stepYouTried: "צעד שניסיתם",
+    otherSteps: "צעדים נוספים שניסיתם",
+    milestonesShort: (n: number) => (n === 0 ? "השבוע בלי אבן דרך" : plural(n, "אבן דרך אחת השבוע", "{n} אבני דרך השבוע")),
+    kidShort: (n: number) => (n === 0 ? "בלי משחק בסטודיו לילדים" : plural(n, "משחק אחד בסטודיו לילדים", "{n} משחקים בסטודיו לילדים")),
     rangeJoin: " עד ",
     wordsYouUsedOn: (day: string) => `המילים שאמרתם ב${day}`,
     daySubV: "מתי אתם מתעדים, לפי יום וחלק ביום",

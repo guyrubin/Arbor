@@ -9,6 +9,7 @@ import { guideArtFor } from "../../../lib/guideArt";
 import type { UiLang } from "../../../lib/i18n";
 import type { WeekAreaLine } from "../../../lib/weekReport";
 import Icon from "../../ui/Icon";
+import { fmtDayTimeV10 } from "../../../lib/formatDate";
 import type { WeeklyCopy } from "./weeklyCopy";
 
 type T = (key: string, vars?: Record<string, string | number>) => string;
@@ -117,7 +118,7 @@ export default function CarryNextWeek({
   let visitSub: string;
   if (visit) {
     const days = Math.max(0, Math.round((startOfDay(visit.startMs) - startOfDay(nowMs)) / DAY_MS));
-    const when = new Date(visit.startMs).toLocaleString(locale, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
+    const when = fmtDayTimeV10(visit.startMs, uiLang);
     visitTitle = copy.visitCard(days);
     visitSub = copy.visitCardSub(visit.role, when);
   } else {

@@ -137,7 +137,11 @@ describe("#/weekly — the v10 Weekly report (boards N-Week-D/M), the week drawn
       const milestone = { ...moment(on(2, 11), 9), id: "milestones:invented-9", kind: "milestone", origin: "milestones", value: { type: "milestone", milestoneId: "m-invented" } } as unknown as Observation;
       const html = render(lang, [], [...RECORDS, milestone]);
       const day = new Date(on(2, 11)).toLocaleDateString(lang === "he" ? "he-IL" : "en-GB", { weekday: "short", day: "numeric" });
-      expect(read(tagOf(html, "weekly-tile-milestones")[0] + html.slice(html.indexOf('data-testid="weekly-tile-milestones"'), html.indexOf("</button>", html.indexOf('data-testid="weekly-tile-milestones"'))))).toContain(WEEKLY_COPY[lang].milestonesChip(1, day));
+      const chip = read(html.slice(html.indexOf('data-testid="weekly-tile-milestones"'), html.indexOf("</button>", html.indexOf('data-testid="weekly-tile-milestones"'))));
+      // These renders take the phone composition (N-Week-M's short form); the
+      // desktop line adds the day it was marked (weeklyV10.test pins that form).
+      expect(chip).toContain(WEEKLY_COPY[lang].milestonesShort(1));
+      expect(day).not.toBe("");
     });
 
     it(`${lang}: nothing to count, nothing stored → the empty card, then the band and your day`, () => {

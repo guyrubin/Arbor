@@ -71,6 +71,22 @@ describe("WeekInstrument", () => {
   }
 });
 
+describe("WeekInstrument — the dates rail and today's step (N-Week-D/M)", () => {
+  const withDates = weekInstrument({
+    observations: [], actionLoop: [], logs: [], dayStarts, endMs: new Date(2026, 9, 12, 15).getTime(), isCurrent: true,
+    dates: [{ id: "plan:a", startMs: new Date(2026, 9, 14, 0).getTime(), label: "Visit form", sub: "you", nobody: false }, { id: "plan:b", startMs: new Date(2026, 9, 15, 0).getTime(), label: "Group visit", sub: "nobody yet", nobody: true }],
+  });
+  for (const composition of ["desk", "phone"] as const) {
+    it(`${composition}: each date on its day with who has it; nobody yet is dashed; the next item after the week ends the rail; today's step rings today`, () => {
+      const html = renderToStaticMarkup(<WeekInstrument data={withDates} composition={composition} copy={WEEKLY_COPY.en} locale="en-GB" todayStep beyond={{ label: "Speech therapist", sub: "you", ms: new Date(2026, 9, 21, 10).getTime() }} />);
+      for (const text of ["Visit form", "Group visit", "nobody yet", "Speech therapist"]) expect(html).toContain(text);
+      expect(html.match(/class="tok date none/g)?.length ?? 0).toBeGreaterThanOrEqual(1);
+      expect(html).toContain(`aria-label="${WEEKLY_COPY.en.todaysStep}"`);
+      expect(html).toMatch(/class="tok plan here/);
+    });
+  }
+});
+
 const summary = (enough: boolean): DayWindowsSummary => ({
   hasEnoughData: enough, daysLogged: enough ? 9 : 2, daysNeeded: enough ? 0 : 3,
   windows: enough ? [{ label: "often-trickier", startHour: 16, endHour: 18 }] : [],
