@@ -179,6 +179,8 @@ export const CLAIM_REGISTRY: Readonly<Record<string, ClaimBasis>> = {
   "set.plan.free": fact("a plan name"),
   "elev.storeshell.pw.purchaseFailed": fact("a purchase status"),
   "set.plan.manage": fact("where to manage the subscription"),
+  // v10 (COPY-RULES: Settings "Plan" → "Subscription"): the group title names the subscription the card under it manages.
+  "set.section.billing": fact("the Settings group that holds the subscription card"),
   "set.plan.renews": fact("the renewal date the store reports"),
   "set.plan.grace": fact("a billing-retry status (server/billing.ts BILLING_ISSUE)"),
   "set.plan.viaStore": fact("the store that bills the subscription"),
