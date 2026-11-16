@@ -12,6 +12,12 @@ const plural = (n: number, one: string, many: string) => (n === 1 ? one : many.r
 
 export const WEEKLY_COPY = {
   en: {
+    readTitle: "How to read this week",
+    readOf: (i: number, n: number) => `${i} of ${n}`,
+    readWeek: "A line joins a hard moment to the step you tried.",
+    readHelped: "The steps you tried and the words you used.",
+    readNext: "Arbor’s draft. Nothing changes until you keep it.",
+    readDay: "When you log, by part of the day.",
     todaysStep: "Today’s step",
     stepYouTried: "Step you tried",
     otherSteps: "Other steps you tried",
@@ -95,6 +101,12 @@ export const WEEKLY_COPY = {
     seeHard: "See them in Hard moments",
   },
   he: {
+    readTitle: "איך לקרוא את השבוע",
+    readOf: (i: number, n: number) => `${i} מתוך ${n}`,
+    readWeek: "קו מחבר רגע קשה לצעד שניסיתם.",
+    readHelped: "הצעדים שניסיתם והמילים שאמרתם.",
+    readNext: "הטיוטה של Arbor. שום דבר לא משתנה עד שתשמרו אותה.",
+    readDay: "מתי אתם מתעדים, לפי חלק ביום.",
     todaysStep: "הצעד של היום",
     stepYouTried: "צעד שניסיתם",
     otherSteps: "צעדים נוספים שניסיתם",

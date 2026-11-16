@@ -174,8 +174,11 @@ describe("#/weekly — the ONE stamp lives in the carry band (v3 F-NOW-3 re-pin 
       // V77: day first, as the boards write it ("14 to 20 Nov"); one month named once.
       const last = new Date(2026, 9, 16).toLocaleDateString(lang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" });
       const range = `10${lang === "he" ? " עד " : " to "}${last}`;
-      expect(kicker).toBe(translate(lang, "elev.wk.kicker", { range }));
-      if (lang === "en") expect(kicker).toBe("Weekly report · 10 to 16 Oct");
+      // V77 (N-Week-D/M): the kicker is the week's dates alone; the place is the shell's breadcrumb.
+      expect(kicker).toBe(range);
+      if (lang === "en") expect(kicker).toBe("10 to 16 Oct");
+      // Negative control: the "Weekly report ·" prefix the release shipped is gone.
+      expect(kicker).not.toContain(translate(lang, "elev.wk.kicker", { range: "" }).replace(/\s*·\s*$/, ""));
       // Negative control: the en-dash range the release shipped no longer renders.
       expect(kicker).not.toMatch(/[–-]/);
       expect(/<h1 [^>]*data-testid="weekly-title"[^>]*>([^<]*)<\/h1>/.exec(html)?.[1]).toBe(translate(lang, "elev.wk.headline", { first: "Noa" }));

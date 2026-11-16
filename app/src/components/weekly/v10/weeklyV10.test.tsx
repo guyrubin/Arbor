@@ -9,6 +9,7 @@ import type { Observation } from "../../../lib/observations";
 import WeekInstrument from "./WeekInstrument";
 import WhatHelped from "./WhatHelped";
 import YourDay from "./YourDay";
+import WeekReadGuide from "./WeekReadGuide";
 import { WEEKLY_COPY } from "./weeklyCopy";
 
 /* v10 Weekly report components, rendered with and without data, in both
@@ -150,3 +151,20 @@ describe("WhatHelped (canvas V77)", () => {
 });
 
 const tagButton = (html: string, id: string) => new RegExp(`<button [^>]*data-testid="${id}"`).test(html);
+
+describe("WeekReadGuide — How to read this week (N-Week-D/M)", () => {
+  for (const lang of LANGS) {
+    for (const composition of ["desk", "phone"] as const) {
+      it(`${lang} · ${composition}: four stops, each a drawing (decor) and one line; no record, no claim about the child`, () => {
+        const c = WEEKLY_COPY[lang];
+        const html = renderToStaticMarkup(<WeekReadGuide composition={composition} copy={c} />);
+        expect(html).toContain(c.readTitle);
+        for (const line of [c.readWeek, c.readHelped, c.readNext, c.readDay]) expect(text(html)).toContain(line.replace(/[’']/g, (m) => m));
+        expect(html.match(/<svg [^>]*aria-hidden="true"/g)).toHaveLength(4);
+        if (composition === "phone") expect(html).toContain(c.readOf(1, 4));
+        expect(html).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+        expect(text(html)).not.toMatch(FIREWALL);
+      });
+    }
+  }
+});
