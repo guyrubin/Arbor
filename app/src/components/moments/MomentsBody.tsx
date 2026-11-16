@@ -25,16 +25,13 @@ import {
   areaMonthCounts, filterByAreaMonth, isKind, isMomentRecord, kindCounts, monthBuckets, MOMENTS_KINDS, MOMENTS_RANGES, MOMENTS_VIEWS, parseKind, parseMonth, parseView, placeCards, placeOf,
   type MomentsKind, type MomentsRange, type MomentsView, type MonthBucket,
 } from "./momentsModel";
-import { DsRoot, Guide, MoreLink, Route, RouteHead, RouteSection, Scene, StartHere, Tile } from "../../design/primitives";
+import { DsRoot, Guide, Route, RouteSection, Scene, Token } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
-import { useObservations } from "../../hooks/useObservations";
-import { shelfCoverage } from "../../lib/milestones/selectByShelf";
 import { shelfLabel } from "../../lib/shelves/registry";
 import MomentsAreas from "./v10/MomentsAreas";
-import MomentsByKind, { type KindObject } from "./v10/MomentsByKind";
 import MomentsNewest, { type NewestLabels } from "./v10/MomentsNewest";
-import MomentsShelves from "./v10/MomentsShelves";
 import { STAGE_ORBS } from "./v10/stageOrbs";
+import { Draw, FrameFigure, FrameHead, IndexRow, ReadGuide, RailTile, RowLink, StageCard, type IndexItem } from "./v10/frame";
 import KeptThingsPage from "../kept/KeptThingsPage";
 import { MOMENTS_V10_COPY } from "./momentsV10Copy";
 import "./moments.css";
@@ -65,6 +62,7 @@ const VIEW_KEYS: Readonly<Record<MomentsView, string>> = {
   places: "companion.moments.view.places",
   areas: "companion.moments.view.areas",
 };
+const VIEW_ICON: Readonly<Record<MomentsView, string>> = { areas: "grid_view", time: "calendar_month", places: "place" };
 const KIND_KEYS: Readonly<Record<Exclude<MomentsKind, "said">, string>> = {
   all: "companion.moments.kind.all",
   kept: "companion.moments.kind.kept",
@@ -83,7 +81,7 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   /** v10: the three sections below the stage (By kind · The newest moment · Shelf by shelf). */
   sectionModules: { kinds: DataAttrs; newest: DataAttrs; shelves: DataAttrs };
 }) {
-  const { childProfile, milestones, setActiveTab, seedCoach, openCaptureSheet } = useArbor();
+  const { childProfile, milestones, setActiveTab, seedCoach, openCaptureSheet, fileMomentOnShelf } = useArbor();
   const { user } = useAuth();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
@@ -127,10 +125,6 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   // v10: newest first, for The newest moment and Latest, by date.
   const newestFirst = useMemo(() => [...observations].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)), [observations]);
   const newest = newestFirst[0] ?? null;
-  const latestThree = newestFirst.slice(0, 3);
-  // Shelf by shelf counts exactly what the journal's shelf grid counts (the last 30 days).
-  const shelfSource = useObservations();
-  const shelfCounts = useMemo(() => shelfCoverage(shelfSource, new Date()), [shelfSource]);
   const parentInitial = (user?.displayName || "").trim().charAt(0).toUpperCase();
   const sourceScope = `${user?.uid ?? "signed-out"}:${childProfile.id}`;
   const sourceOwnerRef = useRef({ key: sourceScope, active: true });
@@ -370,27 +364,9 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
       ))}
     </div>
   );
-  const kindChips = (
-    <div role="group" data-moments-kinds aria-label={t("companion.moments.kinds")} className="kchips">
-      {MOMENTS_KINDS.map(key => (
-        <button key={key} type="button" className={kind === key ? "kchip on" : "kchip"} data-moments-kind={key} aria-pressed={kind === key} onClick={() => go({ kind: key })}>
-          <span dir="auto">{kindLabel(key)}</span>
-          {counts[key] > 0 && <b className="arbor-num">{counts[key]}</b>}
-        </button>
-      ))}
-    </div>
-  );
-  const kindDoor = kind === "hard" ? (
-    <MoreLink className="kdoor" onClick={() => setActiveTab("behaviors")}>{t("companion.moments.kind.hardDoor")}</MoreLink>
-  ) : kind === "said" ? (
-    <MoreLink className="kdoor" onClick={() => setActiveTab("language")}>{t("companion.moments.kind.saidDoor", { name: firstName })}</MoreLink>
-  ) : null;
-
   const panel = (
     <div {...viewModule} role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={`${tabsId}-${view}`} className="mpanel">
-      {!reader && view !== "areas" && (filterChip || view === "time" || view === "places") && (
-        <div className="line between mhead">{filterChip ?? <span />}{rangeControl}</div>
-      )}
+      {!reader && filterChip}
       {requestedId && dismissedSource !== requestKey && !requestedObservation && !record.loading && <div className="moments-note" role="status" data-testid="moments-source-unavailable">
         <span>{record.error || !record.confirmed ? noticeCopy.loadFailed : noticeCopy.missing}</span>
         {record.more && <button type="button" className="moments-text-button" onClick={record.loadMore}>{t("companion.moments.loadMore")}</button>}
@@ -478,98 +454,120 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
             </div>
           )}
           <MomentsAreas composition={composition} rows={areaRows} columns={areaColumns} listLabel={t("companion.moments.threadTitle")}
-            latest={domain => { const o = latestByDomain.get(domain); return o ? title(o) : ""; }}
             labels={{
               areaName: domain => domainName(domain, t),
-              total: n => (desk ? `${countLabel(n)} · ${t(RANGE_KEYS[range])}` : countLabel(n)),
+              total: n => countLabel(n),
               none: t("companion.moments.cardNone"),
               noRecord: t("companion.portrait.noRecord"),
               momentToken: v.tokenMoment,
               cellAria: (domain, column, n) => t("companion.moments.cellAria", { area: domainName(domain, t), month: monthLabel(column), n }),
+              noRecordAria: (domain, column) => v.noRecordAria(domainName(domain, t), monthLabel(column)),
               columnLabel,
+              area: v.area,
+              totalHead: v.total,
             }}
             onOpenArea={domain => go({ view: "time", area: domain, month: null })}
             onOpenCell={(domain, column) => go({ view: "time", area: domain, month: column.id })} />
-          <div className="mlegend">
-            {rangeControl}
-            {areaColumns.length > 4 && <span>{t("companion.moments.legendSpan", { from: columnLabel(areaColumns[0]), to: columnLabel(areaColumns[areaColumns.length - 1]) })}</span>}
-            <span>{t("companion.moments.areasNote")}</span>
-          </div>
+          {areaColumns.length > 4 && <p className="line1">{t("companion.moments.legendSpan", { from: columnLabel(areaColumns[0]), to: columnLabel(areaColumns[areaColumns.length - 1]) })}</p>}
         </>}
       </>}
     </div>
   );
 
-  const stage = (
-    <Scene field="child" className="mstage" orbs={STAGE_ORBS[composition]}>
+  // The band: the page's one h1, the views, Everything by date and one figure.
+  const inRange = rangeBuckets.flatMap(bucket => bucket.observations);
+  const marks = areaRows.reduce((sum, row) => sum + row.counts.reduce((s, n) => s + n, 0), 0);
+  const oldestInRange = inRange.length ? inRange[inRange.length - 1] : null;
+  const figure = !reader && inRange.length > 0 ? (
+    view === "areas" && marks > 0
+      ? <FrameFigure n={marks} unit={v.marksUnit(inRange.length)} sub={oldestInRange ? v.since(date(oldestInRange.at), t(RANGE_KEYS[range])) : undefined} />
+      : <FrameFigure n={inRange.length} unit={v.momentsUnit(inRange.length)} sub={oldestInRange ? v.since(date(oldestInRange.at), t(RANGE_KEYS[range])) : undefined} />
+  ) : null;
+  const everything = (
+    <button type="button" className="btn sm ghost nowrap card-btn" data-testid="moments-everything" onClick={() => goToRoute("journal", { view: "all" })}>{t("elev.shelfJournal.all")}</button>
+  );
+  const hardLogs = record.sources.behaviorLogs ?? [];
+  const hardInRange = inRange.filter(o => isKind(o, "hard"));
+  const settled = hardInRange.filter(o => hardLogs.find(log => `behaviorLogs:${log.id}` === o.id)?.resolved).length;
+  const kindItems: IndexItem[] = [
+    { id: "all", icon: "grid_view", name: v.allMoments, meta: v.kindMeta.all(t(RANGE_KEYS[range])), on: kind === "all", onOpen: () => go({ kind: "all" }), attrs: { "data-moments-kind": "all" } },
+    { id: "kept", icon: "menu_book", name: t("companion.moments.kind.kept"), meta: v.kindMeta.kept, figure: counts.kept || undefined, on: kind === "kept", onOpen: () => go({ kind: "kept" }), attrs: { "data-moments-kind": "kept" } },
+    { id: "hard", icon: "favorite", name: t("companion.moments.kind.hard"), figure: counts.hard || undefined, on: kind === "hard",
+      meta: counts.hard > 0 ? (settled === hardInRange.length && settled > 0 ? v.kindMeta.hardSettled : settled > 0 ? v.kindMeta.hardSome(settled) : t("companion.moments.kind.hardDoor")) : t("companion.moments.kind.hardDoor"),
+      onOpen: () => setActiveTab("behaviors"), testId: "moments-kind-door-hard", attrs: { "data-moments-kind": "hard" } },
+    { id: "said", icon: "format_quote", name: kindLabel("said"), meta: t("companion.moments.kind.saidDoor", { name: firstName }), figure: counts.said || undefined, on: kind === "said", onOpen: () => setActiveTab("language"), testId: "moments-kind-door-said", attrs: { "data-moments-kind": "said" } },
+  ];
+  const header = (
+    <Scene field="now" className="mband" orbs={STAGE_ORBS[composition]}>
       <div {...toolbarModule} className="mstack mtools">
-        <div className={desk ? "line between mtop" : "mstack mtop"}>
-          <div className="mstack" style={{ gap: 6 }}>
-            <span className="gsec"><span className="kicker">{t("companion.moments.title")} · {reader ? t("kept.yearBook") : t(VIEW_KEYS[view])}</span><StartHere>{v.startHere}</StartHere></span>
-            <h1 className="hero">{reader ? v.headline.reader : v.headline[view]}</h1>
-          </div>
-          {/* The reader is one reading, not a view of the record: no view switch. */}
-          {reader ? null : desk ? viewSwitch : <div className="mscroll">{viewSwitch}</div>}
-        </div>
-        {desk ? kindChips : <div className="mscroll">{kindChips}</div>}
-        {kindDoor}
+        <FrameHead phone={!desk} kicker={v.kicker} startHere={v.startHere}
+          title={reader ? v.headline.reader : v.headline[view]} sub={reader ? v.sub.reader : v.sub[view]}
+          /* The reader is one reading, not a view of the record: no view switch. */
+          switcher={reader ? undefined : viewSwitch} action={desk ? everything : undefined} figure={figure} />
+        <IndexRow phone={!desk} label={t("companion.moments.kinds")} items={kindItems} />
       </div>
-      {panel}
+      {!reader && view !== "time" && <div className="mcap"><span>{view === "areas" ? t("companion.moments.areasNote") : t("companion.moments.placeNote")}</span></div>}
     </Scene>
   );
 
-  const kindObjects: KindObject[] = [
-    { id: "hard", kicker: t("companion.moments.kind.hard"), figure: counts.hard > 0 ? { n: counts.hard, unit: v.hardUnit } : undefined, title: t("companion.moments.kind.hard"), sub: t("companion.moments.kind.hardDoor"), onOpen: () => setActiveTab("behaviors"), testId: "moments-kind-door-hard" },
-    { id: "said", kicker: kindLabel("said"), figure: counts.said > 0 ? { n: counts.said, unit: v.saidUnit(counts.said) } : undefined, title: kindLabel("said"), sub: t("companion.moments.kind.saidDoor", { name: firstName }), onOpen: () => setActiveTab("language"), testId: "moments-kind-door-said" },
-    { id: "kept", kicker: t("companion.moments.kind.kept"), title: v.keptTitle, sub: v.keptSub, onOpen: () => openReader(), testId: "moments-kind-kept" },
-    { id: "time", kicker: t("companion.moments.view.time"), title: t("elev.shelfJournal.all"), sub: v.timeSub, onOpen: () => goToRoute("journal", { view: "all" }), testId: "moments-everything" },
-  ];
-  const byKind = <MomentsByKind composition={composition} title={v.byKind} items={kindObjects} snapLabel={v.byKind} />;
+  const stageTitle = reader ? t("kept.yearBook") : t(VIEW_KEYS[view]);
+  const stage = (
+    <StageCard icon={reader ? "menu_book" : VIEW_ICON[view]} title={stageTitle} end={reader ? undefined : rangeControl} className="mstage-card">
+      {panel}
+    </StageCard>
+  );
 
+  const readGuide = (
+    <RailTile icon="grid_view" title={v.howToRead} className="mguide">
+      <ReadGuide phone={!desk}
+        steps={[
+          { drawing: Draw.pick(4), label: v.steps.pick },
+          { drawing: Draw.grid(<Token kind="moment" size="sm" className="xs2" label={v.tokenMoment} />), label: v.steps.read },
+          { drawing: Draw.cards(), label: v.steps.newest },
+        ]}
+        keyItems={[
+          { mark: <Token kind="moment" size="sm" className="xs2" label={v.tokenMoment} />, label: v.keyMoment },
+          { mark: <span aria-hidden="true">–</span>, label: v.keyNone },
+        ]} />
+    </RailTile>
+  );
+  const moveLog = newest?.origin === "behaviorLogs" ? (record.sources.behaviorLogs ?? []).find(log => `behaviorLogs:${log.id}` === newest.id) : undefined;
   const newestLabels: NewestLabels = {
-    went: v.newestWent,
-    by: o => (o.source === "parent_typed" || o.source === "parent_voice" ? v.youWrote(date(o.at, true)) : `${sourceLabel(o)} · ${date(o.at, true)}`),
-    asTyped: o => (o.source === "parent_typed" ? v.keptAsTyped : null),
-    title,
+    title: v.newest,
+    by: o => {
+      const when = date(o.at, true);
+      const place = placeOf(o);
+      const where = place ? ` · ${t(PLACE_LABEL_KEYS[place as keyof typeof PLACE_LABEL_KEYS])}` : "";
+      return o.source === "parent_typed" || o.source === "parent_voice" ? `${v.youWrote(when)}${where}` : `${sourceLabel(o)} · ${when}${where}`;
+    },
+    words: o => t("elev.loop.ms.quoted", { text: title(o) }),
     shelf: o => (o.shelf ? v.shelfIs(shelfLabel(o.shelf, t)) : null),
-    arborSuggests: v.arborFiled,
+    shelfName: id => shelfLabel(id, t),
+    arborSuggests: v.arborSuggests,
+    canMove: v.canMove,
     onTheMap: v.onTheMap,
     areas: o => o.domains.map(d => domainName(d, t)).join(" · "),
     seeOnMap: v.seeOnMap,
     more: t("companion.moments.overflow"),
-    byPlace: t("companion.moments.view.places"),
-    open: t("companion.moments.open"),
-    placeNote: t("companion.moments.placeNote"),
-    latest: v.latestByDate,
-    everything: t("elev.shelfJournal.all"),
-    day: o => { const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(o.at) ? `${o.at}T12:00:00` : o.at); return { wd: new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d), d: new Intl.DateTimeFormat(locale, { day: "numeric" }).format(d) }; },
-    meta: o => [placeOf(o) ? t(PLACE_LABEL_KEYS[placeOf(o) as keyof typeof PLACE_LABEL_KEYS]) : "", o.domains[0] ? domainName(o.domains[0], t) : "", isKind(o, "hard") ? t("companion.moments.kind.hard") : ""].filter(Boolean).join(" · "),
-    tokenLabel: o => (isKind(o, "hard") ? v.tokenHard : v.tokenMoment),
-    isHard: o => isKind(o, "hard"),
+    moveShelf: v.moveShelf,
+    moved: v.moved,
+    moveFailed: v.moveFailed,
     nothing: v.nothingNewest,
   };
-  const newestSection = (
-    <MomentsNewest composition={composition} newest={newest} latest={latestThree} labels={newestLabels} initial={parentInitial}
-      places={placeCards(rangeBuckets.flatMap(bucket => bucket.observations)).map(p => ({ id: p.context, label: t(PLACE_LABEL_KEYS[p.context]), observations: p.observations }))}
-      onOpen={o => select([o], date(o.at, true), o.domains[0])} onMap={() => setActiveTab("development")}
-      onPlaces={() => go({ view: "places" })} onEverything={() => goToRoute("journal", { view: "all" })} onOpenLatest={openMomentCard} />
+  const newestCard = (
+    <MomentsNewest newest={newest} initial={parentInitial} labels={newestLabels}
+      onMap={() => setActiveTab("development")} onMore={o => select([o], date(o.at, true), o.domains[0])}
+      onMove={moveLog ? (_o, shelf) => fileMomentOnShelf(moveLog.id, shelf, undefined, moveLog) : undefined} />
   );
-  const shelvesSection = (
-    <MomentsShelves composition={composition} counts={shelfCounts} newestShelf={newest?.shelf ?? null} label={id => shelfLabel(id, t)}
-      nothingYet={t("elev.shelfJournal.nothingYetShort")} tokenLabel={v.tokenMoment} onOpen={id => goToRoute("journal", { shelf: id })} />
-  );
-  // One door each, on both compositions (F-INT-1: one control opens the journal).
-  const doors = (
-    <nav className="mdoors" aria-label={v.doors}>
+  // One control each (F-INT-1: one opens the journal), on both compositions.
+  const links = (
+    <nav className="vt mlinks" aria-label={v.links}>
+      {!desk && <RowLink icon="calendar_month" label={t("elev.shelfJournal.all")} testId="moments-everything-row" onOpen={() => goToRoute("journal", { view: "all" })} />}
       {([
-        ["moments-year-book", t("kept.yearBook"), () => openReader()],
-        ["moments-journal-door", t("companion.moments.journal"), () => setActiveTab("journal")],
-        ["moments-pro-door", t("elev.shelfJournal.flip"), () => goToRoute("journal", { view: "pro" })],
-      ] as const).map(([id, label, open]) => (
-        <button key={id} type="button" className="ds-link" data-testid={id} onClick={open}>
-          {label}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />
-        </button>
-      ))}
+        ["moments-year-book", "menu_book", v.keptTitle, () => openReader()],
+        ["moments-journal-door", "auto_stories", t("companion.moments.journal"), () => setActiveTab("journal")],
+        ["moments-pro-door", "swap_horiz", t("elev.shelfJournal.flip"), () => goToRoute("journal", { view: "pro" })],
+      ] as const).map(([id, icon, label, open]) => <RowLink key={id} icon={icon} label={label} testId={id} onOpen={open} />)}
       {view === "time" && !emptyRecord && record.more && !record.error && (
         <button type="button" className="ds-link" disabled={record.loading} onClick={record.loadMore}>
           {record.loading ? copy.loading : t("companion.moments.loadMore")}<Icon name="expand_more" size={16} />
@@ -577,49 +575,34 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
       )}
     </nav>
   );
-  const guideStops = desk
-    ? [
-      { id: "m-areas", title: reader ? t("kept.yearBook") : t(VIEW_KEYS[view]), sub: reader ? v.keptSub : `${v.guideAreasSub(areaRows.length)} · ${t(RANGE_KEYS[range])}` },
-      { id: "m-kinds", title: v.byKind, sub: v.byKindSub },
-      { id: "m-newest", title: v.newest, sub: v.newestSub },
-      { id: "m-shelves", title: v.shelves, sub: v.shelvesSub },
-    ]
-    : [
-      { id: "m-areas", title: reader ? t("kept.yearBook") : view === "areas" ? v.guideShort.areas : t(VIEW_KEYS[view]) },
-      { id: "m-kinds", title: v.guideShort.kinds },
-      { id: "m-newest", title: v.guideShort.newest },
-      { id: "m-shelves", title: v.guideShort.shelves },
-    ];
+  const guideStops = [
+    { id: "m-kinds", title: desk ? v.guide.kinds : v.guide.kindsShort, sub: v.guide.kindsSub },
+    { id: "m-stage", title: stageTitle, sub: v.guide.stageSub },
+  ];
 
   return (
     <DsRoot composition={composition} className="ds-mychild moments-v10" dir={he ? "rtl" : "ltr"} data-testid="moments-body">
       <Guide stops={guideStops} mini={!desk} label={v.onThisPage} />
       <Route composition={composition}>
-        {desk ? (
-          <RouteSection id="m-areas" n={1} on>
+        <RouteSection id="m-kinds" n={1} on>{header}</RouteSection>
+        <RouteSection id="m-stage" n={2}>
+          {desk ? (
             <div className="rowa">
               <div className="stg">{stage}</div>
-              <aside {...sectionModules.kinds} className="rlc" id="m-kinds">{byKind}</aside>
+              <aside {...sectionModules.kinds} className="rlc">
+                {readGuide}
+                <div {...sectionModules.shelves}>{links}</div>
+                <div {...sectionModules.newest} className="mstack">{newestCard}</div>
+              </aside>
             </div>
-          </RouteSection>
-        ) : <>
-          <RouteSection id="m-areas" n={1} on>{stage}</RouteSection>
-          <RouteSection id="m-kinds" n={2}><div {...sectionModules.kinds} className="mstack" style={{ gap: 12 }}>{byKind}</div></RouteSection>
-        </>}
-        <RouteSection id="m-newest" n={3}>
-          <div {...sectionModules.newest} className="mstack" style={{ gap: 14 }}>
-            <RouteHead title={v.newest} />
-            {newestSection}
-          </div>
-        </RouteSection>
-        <RouteSection id="m-shelves" n={4}>
-          <div {...sectionModules.shelves} className="mstack" style={{ gap: 14 }}>
-            <Tile icon="eco" title={v.shelves} sub={desk ? v.legend : undefined} className="mshelves">
-              {shelvesSection}
-              {!desk && <p className="line1">{v.legend}</p>}
-            </Tile>
-            {doors}
-          </div>
+          ) : (
+            <div className="mstack" style={{ gap: 14 }}>
+              {stage}
+              <div {...sectionModules.kinds}>{readGuide}</div>
+              <div {...sectionModules.newest}>{newestCard}</div>
+              <div {...sectionModules.shelves}>{links}</div>
+            </div>
+          )}
         </RouteSection>
       </Route>
 

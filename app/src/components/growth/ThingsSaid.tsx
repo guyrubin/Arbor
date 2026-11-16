@@ -1,3 +1,4 @@
+import { Icon } from "../ui/Icon";
 import React, { useMemo, useRef, useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
@@ -167,16 +168,43 @@ export function SaidCapture({
 }
 
 /** The kept quotes, newest first: the child's words and their dates. Nothing counted. */
-export function SaidList({ childId, first, gender, max = 8 }: { childId: string; first: string; gender: ChildGender; max?: number }) {
+export function SaidList({ childId, first, gender, max = 8, language = null, rows = false }: {
+  childId: string; first: string; gender: ChildGender; max?: number;
+  /** v10.3: only the quotes kept in this language (the page's language index). */
+  language?: string | null;
+  /** v10.3: the frame's quote rows (glyph, the words, the day at the end). */
+  rows?: boolean;
+}) {
   const { t, uiLang } = useLanguage();
   const col = useChildCollection<QuoteDoc>(childId, "keepsakes");
-  const quotes: KeptQuote[] = useMemo(() => quotesFromDocs(col.items).slice(0, max), [col.items, max]);
   const langs = useMemo(() => quoteLanguages(col.items), [col.items]);
+  const quotes: KeptQuote[] = useMemo(() => quotesFromDocs(col.items)
+    .filter((q) => !language || (langs.get(q.id) ?? "").toLowerCase() === language.toLowerCase())
+    .slice(0, max), [col.items, max, language, langs]);
   if (quotes.length === 0) {
     return (
       <p data-testid="said-empty" className="text-[14px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
         {t(genderedKey("elev.words.said.empty", gender), { name: first })}
       </p>
+    );
+  }
+  if (rows) {
+    return (
+      <ul data-testid="said-list" className="said-rows">
+        {quotes.map((q) => {
+          const lang = langs.get(q.id);
+          return (
+            <li key={q.id} className="sqr">
+              <span className="sqg" aria-hidden="true"><Icon name="format_quote" size={16} /></span>
+              <span className="min-w-0">
+                <span className="q" dir="auto">“{q.note}”</span>
+                {lang && <span className="sqlang">{languageName(lang, t)}</span>}
+              </span>
+              <span className="sqd">{q.noticedOn ? fmtDay(`${q.noticedOn}T12:00:00`, uiLang) : ""}</span>
+            </li>
+          );
+        })}
+      </ul>
     );
   }
   return (

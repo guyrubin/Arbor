@@ -15,6 +15,7 @@ const body = read("MomentsBody.tsx");
 const css = read("moments.css");
 const mychild = read("mychild.css");
 const areas = read("v10/MomentsAreas.tsx");
+const frame = read("v10/frame.tsx");
 const timeline = read("../tabs/TimelineTab.tsx");
 const code = body.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
@@ -32,22 +33,22 @@ describe("F-CHILD-2 Moments body", () => {
   });
 
   it("v4: which moments are in view is one group of toggles read from ?kind=, each kind with a door to its full page", () => {
-    expect(body).toContain('role="group" data-moments-kinds');
-    expect(body).toContain('className={kind === key ? "kchip on" : "kchip"}');
-    expect(body).toContain("MOMENTS_KINDS.map(key =>");
-    expect(body).toContain("aria-pressed={kind === key}");
+    // v10.3: the kinds are the band's index row (one pressed segment each).
+    expect(body).toContain('<IndexRow phone={!desk} label={t("companion.moments.kinds")} items={kindItems} />');
+    expect(frame).toContain('role="group" aria-label={label}');
+    expect(frame).toContain("aria-pressed={!!it.on}");
+    for (const kind of ["all", "kept", "hard", "said"]) expect(body).toContain(`on: kind === "${kind}"`);
     expect(body).toContain('parseKind(query.get("kind"))');
     expect(body).toContain('kind: target.kind === "all" ? undefined : target.kind');
-    expect(body).toContain('onClick={() => setActiveTab("behaviors")}');
-    expect(body).toContain('onClick={() => setActiveTab("language")}');
-    // The range stays a capability, with the panel (its head, or the areas
-    // legend), never in the toolbar.
-    const toolbar = body.slice(body.indexOf("<div {...toolbarModule}"), body.indexOf("{panel}"));
+    expect(body).toContain('onOpen: () => setActiveTab("behaviors")');
+    expect(body).toContain('onOpen: () => setActiveTab("language")');
+    // The range stays a capability, with the stage it sets (its head), never
+    // in the band's toolbar.
+    const toolbar = body.slice(body.indexOf("<div {...toolbarModule}"), body.indexOf("const stageTitle"));
     expect(toolbar).not.toContain("moments-range");
     expect(toolbar).not.toContain("{rangeControl}");
     expect(body).toContain('<div className="moments-range" ref={rangeRef}>');
-    const panel = body.slice(body.indexOf("const panel = ("), body.indexOf("const stage = ("));
-    expect(panel.match(/\{rangeControl\}/g)).toHaveLength(2);
+    expect(body).toContain("end={reader ? undefined : rangeControl}");
   });
 
   it("the leaf owns the stamps: the body spreads them and never writes its own", () => {
@@ -71,13 +72,13 @@ describe("F-CHILD-2 Moments body", () => {
     expect(code).not.toMatch(/ProgressBar|RadialProgress|progressbar|aria-valuenow/);
     expect(code).not.toMatch(/--arbor-(success|danger|warning|error)|text-(green|red)-|bg-(green|red)-/);
     // a blank month is a dash and an sr-only "no record", never a zero grade
-    expect(areas).toContain('<span className="ncnt" aria-hidden="true">–</span>');
-    expect(areas).toContain('<span className="sr-only">{labels.noRecord}</span>');
+    expect(areas).toContain('<span aria-hidden="true">–</span>');
+    expect(areas).toContain('<span className="sr-only">{labels.noRecordAria(row.domain, column)}</span>');
     expect(areas).toContain("return n > 0 ? (");
     // v10: a month is a fixed-scale pile (one token per moment, capped; the
     // number always printed), never normalised against another area or month.
     expect(areas).toContain("Math.min(n, TOKEN_CAP)");
-    expect(areas).toContain('<span className="ncnt has arbor-num" aria-hidden="true">{n}</span>');
+    expect(areas).toContain('<b className="arbor-num" aria-hidden="true">{n}</b>');
     for (const source of [code, areas]) expect(source).not.toMatch(/Math\.max\(\s*\.\.\.\s*row\.counts|\/\s*max\b|%/);
     expect(body).toContain('t("companion.moments.areasNote")');
     expect(body).toContain('t("companion.moments.placeNote")');
@@ -98,11 +99,12 @@ describe("F-CHILD-2 Moments body", () => {
   });
 
   it("44 px floor on every control", () => {
-    // v10: the view switch, the kind chips, the month cells and the ledges.
+    // v10.3: the view switch, the chips, the area names and the month cells (desk and phone).
     expect(mychild).toMatch(/\.ds-mychild \.vseg button \{[^}]*min-height: var\(--touch-min, 44px\)/);
     expect(mychild).toMatch(/\.ds-mychild \.kchip \{[^}]*min-height: var\(--touch-min, 44px\)/);
-    expect(mychild).toMatch(/\.ds-mychild \.mcell \{[^}]*min-height: var\(--touch-min, 44px\)/);
-    expect(mychild).toMatch(/\.ds-mychild button\.ldg \{[^}]*min-height: var\(--touch-min, 44px\)/);
+    expect(mychild).toMatch(/\.ds-mychild \.aopen \{[^}]*min-height: var\(--touch-min, 44px\)/);
+    expect(mychild).toMatch(/\.ds-mychild \.mmx \.cl \{[^}]*min-height: var\(--touch-min, 44px\)/);
+    expect(mychild).toMatch(/\.ds-mychild \.mmxm \.cl \{[^}]*min-height: var\(--touch-min, 44px\)/);
     expect(css).toContain(".moments button, .moments-evidence button { min-height: var(--touch-min);");
     expect(css).toMatch(/\.moments-select \{[^}]*min-block-size: var\(--touch-min\)/);
     expect(css).not.toMatch(/min-height:\s*(?:[0-3]?\d|4[0-3])px/);

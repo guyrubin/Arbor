@@ -98,7 +98,13 @@ export function SendWordsButton({ card, locale, parentName, childName, t, inRow 
         <Icon name="ios_share" size={16} /> {t("hm.send.cta")}
       </button>
       <label className={`flex min-h-11 cursor-pointer items-center gap-2 px-1 text-[13px]${inRow ? " col-span-2" : ""}`} style={{ color: "var(--arbor-muted)" }}>
-        <input type="checkbox" data-testid="hm-send-name" checked={withName} onChange={(e) => setWithName(e.target.checked)} className="h-4 w-4" />
+        {/* The checkbox itself is a 44 px hit area (sweep sub44); the drawn box stays 16 px. */}
+        <span className="relative inline-flex h-11 w-11 flex-none items-center justify-center -ms-3">
+          <input type="checkbox" data-testid="hm-send-name" checked={withName} onChange={(e) => setWithName(e.target.checked)} className="peer absolute inset-0 m-0 h-11 w-11 cursor-pointer opacity-0" />
+          <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center rounded peer-checked:[&>*]:opacity-100 peer-focus-visible:ring-2" style={{ border: "1.5px solid var(--arbor-rule-strong)", background: withName ? "var(--arbor-ink)" : "var(--arbor-paper-elevated)" }}>
+            <Icon name="check" size={12} className="opacity-0" style={{ color: "var(--arbor-paper-elevated)" }} />
+          </span>
+        </span>
         <bdi>{t("hm.send.includeName", { name: childName })}</bdi>
       </label>
       {open && <SendSheet open={open} onClose={() => setOpen(false)} text={text} artifact="answer_card" surface="hard_moment_words" />}
