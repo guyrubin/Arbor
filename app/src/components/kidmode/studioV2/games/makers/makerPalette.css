@@ -1,0 +1,80 @@
+/* The makers' material palette: the ONE place the twelve maker activities take
+   colour from. Covers and stickers render outside the game view, so the tokens
+   sit on :root; every name is prefixed --mk-. Scene art uses these (and the
+   Studio tokens) through var() and color-mix(); a maker stylesheet or component
+   carries no colour literal of its own. Frozen in kidDesign.audit.test.ts. */
+:root {
+  /* paper, chalk and ink */
+  --mk-paper: #fbf6ea;
+  --mk-paper-shade: #eadfc8;
+  --mk-cream: #f6ecd2;
+  --mk-white: #fffdf8;
+  --mk-chalk: #e9edf5;
+  --mk-ink: #26304f;
+  --mk-ink-soft: #5a6385;
+  --mk-shadow: #1a2140;
+  --mk-linen: #e8dcc2;
+  --mk-linen-shade: #d2c3a2;
+  /* clay and earth */
+  --mk-clay: #c8754f;
+  --mk-clay-light: #e6a17c;
+  --mk-clay-pale: #f1d7c0;
+  --mk-rust: #b3552f;
+  --mk-umber: #5b3a29;
+  --mk-sand: #e2c79a;
+  /* wood */
+  --mk-wood: #b8834f;
+  --mk-wood-light: #dcb07c;
+  --mk-wood-dark: #83552d;
+  /* metal */
+  --mk-gold: #c9972b;
+  --mk-gold-light: #f3d27a;
+  --mk-gold-deep: #8f6712;
+  --mk-brass: #b08a3c;
+  --mk-steel: #9aa7b8;
+  --mk-steel-light: #d5dde8;
+  --mk-steel-dark: #5d6a7d;
+  --mk-graphite: #3b4252;
+  /* greens */
+  --mk-celadon: #9fc9b4;
+  --mk-celadon-deep: #5f9a84;
+  --mk-sage: #a9bf9a;
+  --mk-spring: #b9dc8a;
+  --mk-leaf: #5fa463;
+  --mk-leaf-deep: #2f6f4a;
+  --mk-moss: #7c8f4a;
+  /* water and sky */
+  --mk-teal: #2f8c8c;
+  --mk-teal-deep: #1c5f6b;
+  --mk-sea: #5fb7c9;
+  --mk-water: #3f86c4;
+  --mk-sky: #9fd3ee;
+  --mk-sky-pale: #dbeefa;
+  --mk-indigo: #34437f;
+  --mk-indigo-deep: #1f2a57;
+  --mk-night: #141b3c;
+  --mk-slate: #4a5672;
+  --mk-storm-grey: #6b7690;
+  --mk-snow: #f3f6fc;
+  --mk-snow-shade: #c9d3ee;
+  /* warm */
+  --mk-blossom: #f8d3dc;
+  --mk-rose: #e39aa5;
+  --mk-rose-deep: #c0607a;
+  --mk-poppy: #e0503c;
+  --mk-red: #c73a35;
+  --mk-orange: #ea8a3a;
+  --mk-amber: #f0b23e;
+  --mk-sun: #ffd766;
+  --mk-butter: #fbe9a8;
+  /* violet */
+  --mk-lilac: #b9a8e6;
+  --mk-bluebell: #6d7fd6;
+  --mk-violet: #7a63c8;
+  --mk-plum: #5a3b6e;
+  /* fur */
+  --mk-fur-dark: #3d2618;
+  --mk-fur: #7a4a2a;
+  --mk-fur-light: #b9824f;
+  --mk-fur-tip: #e0b983;
+}

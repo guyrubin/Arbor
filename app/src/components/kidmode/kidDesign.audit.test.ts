@@ -47,6 +47,8 @@ const COLOUR = /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g;
  *  the register's ten source colours; the rest of the shell holds none. */
 const COLOUR_LITERALS: Readonly<Record<string, number>> = {
   "components/kidmode/studioV2/games/adventures/adventures.css": 152,
+  // The makers' material palette (16 Nov 2026): the one token file their scene art draws from.
+  "components/kidmode/studioV2/games/makers/makerPalette.css": 64,
   "components/kidmode/studioV2/games/studioGames.css": 0,
   "components/kidmode/studioV2/studioActivityArt.css": 0,
   "components/kidmode/studioV2/studioAdventureScene.css": 0,

@@ -20,6 +20,7 @@ import { catalogueId, KID_PLAY_EVENT_KEYS, trackBookFinished, trackBookOpened, t
 import { bookReadRow, catalogueBookId, lastReadSince } from "./bookReads";
 import { allBooks } from "./library/books";
 import { CHILD_SUBCOLLECTIONS } from "./childData";
+import { STUDIO_MAKER_IDS, STUDIO_V2_ACTIVITIES } from "../components/kidmode/studioV2/studioCatalog";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..");
@@ -53,6 +54,10 @@ describe("the projection is an allow-list of catalogue ids", () => {
       trackGameSitting({ game: bad, replay: false });
     }
     expect(sent.calls).toEqual([]);
+  });
+  it("every Studio activity id, the six makers included, is a catalogue game id", () => {
+    for (const a of STUDIO_V2_ACTIVITIES) expect(catalogueId(a.id), a.id).toBe(a.id);
+    for (const id of STUDIO_MAKER_IDS) { trackGameSitting({ game: id, replay: true }); expect(sent.calls.at(-1)).toEqual({ event: "game_sitting", props: { game: id, replay: true } }); }
   });
   it("every catalogue book id passes (library books by id, plan books by pattern)", () => {
     for (const b of allBooks()) expect(catalogueId(catalogueBookId(b)), b.id).toBe(b.id);

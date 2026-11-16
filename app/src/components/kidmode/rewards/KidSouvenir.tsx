@@ -21,6 +21,8 @@ import { kidArtSrcSet, studioNextCover } from "../../../lib/kidThemeManifest";
 import { kidsStoriesText } from "../../../lib/i18nElevation/kidsStories";
 import { souvenirArt, souvenirStrip, type KidSouvenir, type SouvenirKind } from "./kidSouvenirs";
 import { useKidSouvenirs } from "./useKidSouvenirs";
+import { isStudioMakerId } from "../studioV2/studioCatalog";
+import { StudioMakerCover } from "../studioV2/StudioMakerArt";
 
 export const STICKER_MASK = "radial-gradient(closest-side, var(--arbor-ink) 97%, transparent 100%)";
 
@@ -31,6 +33,8 @@ export function KidSouvenirSticker({ kind, refId, size = 96 }: { kind: SouvenirK
   // Next Studio games: a host tile's sticker is the cover of the game it opens.
   // A cover never shows a person, so it needs no hero check.
   const cover = kind === "world" ? studioNextCover(refId) : null;
+  // A Studio maker has no raster art: its sticker is its own drawn cover.
+  const maker = kind === "world" && isStudioMakerId(refId) ? refId : null;
   const picture = cover ? { src480: cover.src480, srcSet: cover.srcSet, objectPosition: "50% 50%" }
     : art ? { src480: art.src480, srcSet: kidArtSrcSet(art), objectPosition: art.objectPosition } : null;
   return (
@@ -52,7 +56,9 @@ export function KidSouvenirSticker({ kind, refId, size = 96 }: { kind: SouvenirK
         flexShrink: 0,
       }}
     >
-      {picture ? (
+      {maker ? (
+        <span style={{ display: "block", inlineSize: "100%", blockSize: "100%", borderRadius: 999, overflow: "hidden", maskImage: STICKER_MASK, WebkitMaskImage: STICKER_MASK }}><StudioMakerCover id={maker} /></span>
+      ) : picture ? (
         <img
           src={picture.src480}
           srcSet={picture.srcSet}

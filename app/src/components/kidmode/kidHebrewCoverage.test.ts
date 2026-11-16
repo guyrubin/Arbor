@@ -9,6 +9,8 @@ import { describe, expect, it } from "vitest";
 import { translate } from "../../lib/i18n";
 import { KID_GAME_TITLE_KEY } from "./KidDashboard";
 import { KID_THEME_IDS } from "../../lib/kidThemeManifest";
+import { STUDIO_MAKER_IDS } from "./studioV2/studioCatalog";
+import { studioCopy } from "./studioV2/studioCopy";
 
 const HEBREW = /[֐-׿]/;
 const ADDED_KEYS = [
@@ -49,6 +51,16 @@ describe("Kids Mode HE coverage", () => {
       const doorHe = translate("he", `elev.practice.world.kid.${suffix}`);
       expect(doorHe).toMatch(HEBREW);
       expect(translate("he", tileKey), worldId).toBe(doorHe);
+    }
+  });
+
+  it("every Studio maker's tile and intro lines are Hebrew in HE, with no Latin left in", () => {
+    for (const id of STUDIO_MAKER_IDS) {
+      const he = studioCopy("he").activities[id], en = studioCopy("en").activities[id];
+      for (const key of ["title", "description", "instruction"] as const) {
+        expect(he[key], `${id}.${key}`).toMatch(HEBREW); expect(he[key], `${id}.${key}`).not.toMatch(/[A-Za-z]/);
+        expect(en[key].trim().length, `${id}.${key} EN`).toBeGreaterThan(3); expect(en[key]).not.toBe(he[key]);
+      }
     }
   });
 

@@ -10,13 +10,19 @@ import { BAND_MOVES, LOOP_STEPS } from './games/adventures/heroBandRules';
 import { StudioPlayHero } from './StudioPlayHero';
 import { useStudioCreations, type StudioCreation } from './studioCreations';
 import type { StudioActivityId } from './studioCatalog';
+import { StudioMakerPreview, isMakerCreation } from './StudioMakerArt';
+import { BOTTLE_LAB_COPY } from './games/makers/bottleLab/bottleLabCopy';
+import { MEND_BOWL_COPY } from './games/makers/mendBowl/mendBowlCopy';
+import { STITCH_GARDEN_COPY } from './games/makers/stitchGarden/stitchGardenCopy';
 import './studioCreations.css';
 
 export const CORNER_GLYPHS = { cushion: RectangleHorizontal, plant: Sprout, books: LibraryBig, lamp: LampFloor, blanket: RectangleVertical, panda: Panda, flowers: Flower2, basket: ShoppingBasket };
 const NOTE_GLYPHS = [Star, Droplet, Triangle];
+/** "Open and remix": the activity that made each kind (one saved doc per kind). */
+export const CREATION_ACTIVITY: Record<StudioCreation['kind'], StudioActivityId> = { corner: 'calm-builder', melody: 'rhythm-garden', dance: 'rhythm-garden', bowl: 'mend-bowl', textile: 'stitch-garden', bottle: 'bottle-lab' };
 const COPY = {
-  en: { corner: 'Your little world', melody: 'Your own tune', dance: HERO_BAND_COPY.en.keep, keeping: 'Keeping your creation…', kept: 'In your collection', error: 'Your creation is still here. Saving did not finish.', retry: 'Try saving again', play: 'Play my tune', pause: 'Pause', quiet: 'Follow the shapes with sound off.', show: 'Show someone what you made. Can they play it with you?', remix: 'Open and remix', title: 'Things I made', unavailable: 'The sound could not play. You can follow the shapes.' },
-  he: { corner: 'העולם הקטן שלך', melody: 'המנגינה שלך', dance: HERO_BAND_COPY.he.keep, keeping: 'שומרים את היצירה…', kept: 'באוסף שלך', error: 'היצירה עדיין כאן. השמירה לא הושלמה.', retry: 'לנסות לשמור שוב', play: 'לנגן את המנגינה שלי', pause: 'לעצור', quiet: 'אפשר לעקוב אחרי הצורות כשהצליל כבוי.', show: 'אפשר להראות למישהו מה יצרת. אולי תנסו יחד?', remix: 'לפתוח וליצור גרסה חדשה', title: 'דברים שיצרתי', unavailable: 'לא הצלחנו להשמיע צליל. אפשר לעקוב אחרי הצורות.' },
+  en: { corner: 'Your little world', melody: 'Your own tune', dance: HERO_BAND_COPY.en.keep, bowl: MEND_BOWL_COPY.en.keep, textile: STITCH_GARDEN_COPY.en.keep, bottle: BOTTLE_LAB_COPY.en.keep, keeping: 'Keeping your creation…', kept: 'In your collection', error: 'Your creation is still here. Saving did not finish.', retry: 'Try saving again', play: 'Play my tune', pause: 'Pause', quiet: 'Follow the shapes with sound off.', show: 'Show someone what you made. Can they play it with you?', remix: 'Open and remix', title: 'Things I made', unavailable: 'The sound could not play. You can follow the shapes.' },
+  he: { corner: 'העולם הקטן שלך', melody: 'המנגינה שלך', dance: HERO_BAND_COPY.he.keep, bowl: MEND_BOWL_COPY.he.keep, textile: STITCH_GARDEN_COPY.he.keep, bottle: BOTTLE_LAB_COPY.he.keep, keeping: 'שומרים את היצירה…', kept: 'באוסף שלך', error: 'היצירה עדיין כאן. השמירה לא הושלמה.', retry: 'לנסות לשמור שוב', play: 'לנגן את המנגינה שלי', pause: 'לעצור', quiet: 'אפשר לעקוב אחרי הצורות כשהצליל כבוי.', show: 'אפשר להראות למישהו מה יצרת. אולי תנסו יחד?', remix: 'לפתוח וליצור גרסה חדשה', title: 'דברים שיצרתי', unavailable: 'לא הצלחנו להשמיע צליל. אפשר לעקוב אחרי הצורות.' },
 };
 export function CreationPreview({ creation, childId }: { creation: StudioCreation; childId: string }) {
   const { uiLang } = useLanguage(); const lang = uiLang === 'he' ? 'he' : 'en'; const w = COPY[lang];
@@ -54,7 +60,7 @@ export function CreationPreview({ creation, childId }: { creation: StudioCreatio
   };
   return <div className="studio-creation" data-creation={creation.kind}>
     <h3>{w[creation.kind]}</h3>
-    {creation.kind === 'corner' ? <div className="studio-creation-room" data-light={creation.light} data-scene={creation.scene} role="img" aria-label={w.corner}>
+    {isMakerCreation(creation) ? <StudioMakerPreview creation={creation} /> : creation.kind === 'corner' ? <div className="studio-creation-room" data-light={creation.light} data-scene={creation.scene} role="img" aria-label={w.corner}>
       {creation.layout.map((object, index) => { const Glyph = object ? CORNER_GLYPHS[object] : null; return <span key={index} data-object={object ?? 'empty'}>{Glyph && <Glyph aria-hidden="true" strokeWidth={1.5} />}</span>; })}
     </div> : creation.kind === 'dance' ? <>
       <StudioPlayHero size={120} pose={lit >= 0 && creation.moves[lit] !== null ? BAND_MOVES[creation.moves[lit]!].pose : 'idle'} kick={lit + 1} />
@@ -95,6 +101,6 @@ export function StudioCreationGallery({ childId, onActivity }: { childId: string
   if (!store.items.length) return null;
   return <section className="studio-creation-gallery"><h2><Music2 size={24} aria-hidden="true" />{w.title}</h2>{store.items.map(item => <article key={item.id}>
     <CreationPreview childId={childId} creation={item.creation} />
-    <button type="button" className="studio-v2__glass-button" onClick={() => { if (store.isCurrent()) onActivity(item.creation.kind === 'corner' ? 'calm-builder' : 'rhythm-garden'); }}>{w.remix}</button>
+    <button type="button" className="studio-v2__glass-button" onClick={() => { if (store.isCurrent()) onActivity(CREATION_ACTIVITY[item.creation.kind]); }}>{w.remix}</button>
   </article>)}</section>;
 }

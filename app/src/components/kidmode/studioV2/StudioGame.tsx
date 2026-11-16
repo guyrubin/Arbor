@@ -17,7 +17,8 @@ import { kidSfx } from "../audio/kidAudio";
 import { GameFinish, GameShell } from "../game/GameShell";
 import { GameCompletionProvider } from "../game/GameSessionContext";
 import { KidFinishMoment } from "../rewards/KidSouvenir";
-import { studioActivity, studioActivityFits, type StudioActivityId } from "./studioCatalog";
+import { isStudioMakerId, studioActivity, studioActivityFits, type StudioActivityId } from "./studioCatalog";
+import { StudioMakerCover } from "./StudioMakerArt";
 import { studioCopy } from "./studioCopy";
 import "./studioGame.css";
 import { StudioAdventureScene, isStudioAdventure } from './StudioAdventureScene';
@@ -36,6 +37,18 @@ const SneakFreeze = lazy(STUDIO_ACTIVITY_LOADERS['sneak']);
 const CalmBuilder = lazy(STUDIO_ACTIVITY_LOADERS['calm-builder']);
 const PuzzlePlanet = lazy(STUDIO_ACTIVITY_LOADERS['puzzle']);
 const SoundExplorer = lazy(STUDIO_ACTIVITY_LOADERS['sound-explorer']);
+const MendBowl = lazy(STUDIO_ACTIVITY_LOADERS['mend-bowl']);
+const StitchGarden = lazy(STUDIO_ACTIVITY_LOADERS['stitch-garden']);
+const PaperBoat = lazy(STUDIO_ACTIVITY_LOADERS['paper-boat']);
+const SeasonDial = lazy(STUDIO_ACTIVITY_LOADERS['season-dial']);
+const CrankWorks = lazy(STUDIO_ACTIVITY_LOADERS['crank-works']);
+const WindupRace = lazy(STUDIO_ACTIVITY_LOADERS['windup-race']);
+const ClayTheatre = lazy(STUDIO_ACTIVITY_LOADERS['clay-theatre']);
+const BottleLab = lazy(STUDIO_ACTIVITY_LOADERS['bottle-lab']);
+const IceAgeFriend = lazy(STUDIO_ACTIVITY_LOADERS['ice-age-friend']);
+const TinyBuilders = lazy(STUDIO_ACTIVITY_LOADERS['tiny-builders']);
+const FoxTrail = lazy(STUDIO_ACTIVITY_LOADERS['fox-trail']);
+const MakerDesk = lazy(STUDIO_ACTIVITY_LOADERS['maker-desk']);
 
 /** The real mechanics stay lazy; opening the sky does not load every game. */
 export const STUDIO_GAME_COMPONENTS: Partial<Record<StudioActivityId, React.ComponentType<{ onBack?: () => void }>>> = {
@@ -43,6 +56,10 @@ export const STUDIO_GAME_COMPONENTS: Partial<Record<StudioActivityId, React.Comp
   memory: MemoryMatch, feelings: FeelingsDetective, mimic: CameraFreeMimic,
   pattern: SequenceQuest, beat: RhythmHero, sneak: SneakFreeze,
   "calm-builder": CalmBuilder, puzzle: PuzzlePlanet, "sound-explorer": SoundExplorer,
+  "mend-bowl": MendBowl, "stitch-garden": StitchGarden, "paper-boat": PaperBoat,
+  "season-dial": SeasonDial, "crank-works": CrankWorks, "windup-race": WindupRace,
+  "clay-theatre": ClayTheatre, "bottle-lab": BottleLab, "ice-age-friend": IceAgeFriend,
+  "tiny-builders": TinyBuilders, "fox-trail": FoxTrail, "maker-desk": MakerDesk,
 };
 const WORDS = {
   en: { start: "Let's play", back: "Back to the world", done: "A little adventure, complete", again: "Play again", unavailable: "Let's choose something else together.", tried: "I tried it", skip: "Try another", guide: "Take your time. I’m right here.", mimicDone: "You made those faces your own", mimicPassed: "You can try a face whenever you’re ready" },
@@ -104,8 +121,10 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
     void preloadStudioActivity(activityId).catch(() => { /* Play owns retry/fallback. */ });
   }, [activityId, eligible, phase]);
 
+  // A maker draws its own cover; an unavailable one keeps the plain world art.
+  const maker = eligible && isStudioMakerId(activityId) ? activityId : null;
   const environment = <div className="studio-game-view__environment" aria-hidden="true">
-    {cover ? <img src={cover.src480} srcSet={cover.srcSet} sizes="100vw" alt="" draggable={false} decoding="async" /> : art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
+    {maker ? <StudioMakerCover id={maker} size="card" /> : cover ? <img src={cover.src480} srcSet={cover.srcSet} sizes="100vw" alt="" draggable={false} decoding="async" /> : art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
   </div>;
   if (!eligible) return <section className="studio-game-view" data-studio-game-unavailable="" dir={lang === "he" ? "rtl" : "ltr"}>
     {environment}
@@ -131,7 +150,7 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
     {environment}
     <div className={`studio-game-card${phase === "result" ? " studio-game-card--result" : ""}`}>
       <div className="studio-game-card__window" aria-hidden="true">
-        {cover ? <img src={cover.src480} srcSet={cover.srcSet} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" /> : isStudioAdventure(activityId) ? <StudioAdventureScene activityId={activityId} /> : art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
+        {maker ? <StudioMakerCover id={maker} size="card" /> : cover ? <img src={cover.src480} srcSet={cover.srcSet} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" /> : isStudioAdventure(activityId) ? <StudioAdventureScene activityId={activityId} /> : art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
         {activity && <span className="studio-game-card__world">{labels.worlds[activity.worldId].title}</span>}
         <div className="studio-game-card__hero"><StudioPlayHero size={230} celebrate={phase === "result"} /></div>
       </div>

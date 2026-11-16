@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { offersForChild } from "../../../lib/age/playGate";
 import { KID_WORLDS } from "../kidWorlds";
 import { STUDIO_V2_ACTIVITIES, STUDIO_V2_WORLDS, studioActivitiesForChild, studioActivity, studioActivityFits, studioActivityFromLegacy, studioLegacyRoute } from "./studioCatalog";
 import { studioCopy } from "./studioCopy";
-import { STUDIO_GAME_SELECTION, studioMenuActivities } from './studioCatalog';
+import { STUDIO_GAME_SELECTION, STUDIO_MAKER_IDS, isStudioMakerId, studioMenuActivities } from './studioCatalog';
+import { resetStudioNextFlagForTests } from "./studioNextFlag";
 const now = new Date("2026-10-13T12:00:00Z");
 const child = (ageMonths: number) => ({ id: "test-child", age: Math.floor(ageMonths / 12), ageMonths, ageMonthsAsOf: "2026-10-13" });
 describe("Studio V2 retains real destinations and eligibility", () => {
@@ -51,6 +52,40 @@ describe("Studio V2 retains real destinations and eligibility", () => {
         expect(studioActivityFits(id, child(60), lang, now)).toBe(true);
         expect(studioCopy(lang).activities[id].instruction.length).toBeGreaterThan(10);
       }
+    }
+  });
+});
+
+describe("the makers are new activities, offered only behind the next-games switch", () => {
+  const WORLD = { "mend-bowl": "studio", "stitch-garden": "studio", "paper-boat": "stories", "season-dial": "playbank", "crank-works": "playbank", "windup-race": "playbank", "clay-theatre": "stories", "bottle-lab": "studio", "ice-age-friend": "playbank", "tiny-builders": "playbank", "fox-trail": "playbank", "maker-desk": "studio" } as const;
+  const optIn = () => { vi.stubGlobal("localStorage", { getItem: (k: string) => k === "arbor.flags.studioNext" ? "1" : null, setItem: () => {}, removeItem: () => {} }); resetStudioNextFlagForTests(); };
+  afterEach(() => { vi.unstubAllGlobals(); resetStudioNextFlagForTests(); });
+  it("twelve distinct ids, each its own activity in its own world with the Bop age bands and both languages", () => {
+    expect([...STUDIO_MAKER_IDS]).toEqual(Object.keys(WORLD));
+    for (const id of STUDIO_MAKER_IDS) {
+      const a = studioActivity(id)!;
+      expect(a.worldId).toBe(WORLD[id]); expect(a.legacyWorldId).toBeUndefined();
+      expect(a.ageBands).toEqual(studioActivity("puzzle")!.ageBands); expect(a.languages).toEqual(["en", "he"]);
+      expect(STUDIO_GAME_SELECTION).not.toContain(id); expect(isStudioMakerId(id)).toBe(true);
+    }
+    for (const id of ["memory", "puzzle", "", "toString", "__proto__"]) expect(isStudioMakerId(id)).toBe(false);
+  });
+  it("switch off: no menu, no fit, so a direct route is the unavailable card", () => {
+    for (const lang of ["en", "he"] as const) {
+      expect(STUDIO_V2_WORLDS.flatMap(world => studioMenuActivities(world, child(84), lang, now)).map(a => a.id).sort()).toEqual([...STUDIO_GAME_SELECTION].sort());
+      for (const id of STUDIO_MAKER_IDS) expect(studioActivityFits(id, child(60), lang, now)).toBe(false);
+    }
+  });
+  it("switch on: each maker joins its world after the curated tiles, in EN and HE; age rules still hold", () => {
+    optIn();
+    for (const lang of ["en", "he"] as const) {
+      for (const world of STUDIO_V2_WORLDS) {
+        const ids = studioMenuActivities(world, child(60), lang, now).map(a => a.id);
+        const makers = STUDIO_MAKER_IDS.filter(id => WORLD[id] === world);
+        expect(ids.slice(ids.length - makers.length)).toEqual(makers);
+        expect(ids.filter(id => !isStudioMakerId(id))).toEqual(STUDIO_GAME_SELECTION.filter(id => studioActivityFits(id, child(60), lang, now)).filter(id => studioActivity(id)!.worldId === world));
+      }
+      for (const id of STUDIO_MAKER_IDS) { expect(studioActivityFits(id, child(60), lang, now)).toBe(true); expect(studioActivityFits(id, child(24), lang, now)).toBe(false); }
     }
   });
 });

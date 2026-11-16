@@ -274,7 +274,7 @@ export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.flags.familyWaySync": "feature flag (B-PLAY-21: the charter and tone follow the account; off = device only)",
   "arbor.flags.heroBand": "feature flag (Hero Band proof slice on the Sound Orbit tile, off by default)",
   "arbor.flags.sneakFreeze": "feature flag",
-  "arbor.flags.studioNext": "feature flag (next Studio games: four Bop games on existing tiles and Hero Band, off by default)",
+  "arbor.flags.studioNext": "feature flag (next Studio games: four Bop games on existing tiles, Hero Band and the makers, off by default)",
   "arbor.gate.mathExit": "parent gate state",
   "arbor.gate.pinNudgeShown": "parent gate marker",
   "arbor.installed": "an analytics stamp",

@@ -16,7 +16,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { STUDIO_ACTIVITY_LOADERS } from "../kidPrefetch";
-import { STUDIO_GAME_SELECTION, studioActivity, type StudioActivityId } from "./studioCatalog";
+import { STUDIO_GAME_SELECTION, STUDIO_MAKERS, studioActivity, type StudioActivityId } from "./studioCatalog";
+import { STUDIO_GAME_COMPONENTS } from "./StudioGame";
 import { studioCopy } from "./studioCopy";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -79,5 +80,28 @@ describe("B-GAME-37: the curated eight, end to end", () => {
   it("GameFinish itself carries Play again and Home", () => {
     const shell = read("components/kidmode/game/GameShell.tsx");
     expect(shell).toMatch(/export function GameFinish\(\{ title, subtitle, onPlayAgain, playAgainLabel, homeLabel/);
+  });
+});
+
+/** The makers wave: twelve new activities behind the next-games switch. Each
+ * keeps the module contract its builder fills (games/makers/<camel>/). */
+describe("the makers: six registered activities with their own module homes", () => {
+  it.each(STUDIO_MAKERS.map(m => m.id))("%s: one lazy loader and component, EN and HE lines, its own files", (id) => {
+    expect(Object.prototype.hasOwnProperty.call(STUDIO_ACTIVITY_LOADERS, id), `${id} loader`).toBe(true);
+    expect(STUDIO_GAME_COMPONENTS[id]).toBeDefined();
+    expect(STUDIO_GAME_SELECTION).not.toContain(id);
+    const en = studioCopy("en").activities[id], he = studioCopy("he").activities[id];
+    expect(en.title.trim()).not.toBe(""); expect(he.title).toMatch(/[א-ת]/); expect(he.title).not.toMatch(/[A-Za-z]/);
+    const camel = id.replace(/-(\w)/g, (_, c: string) => c.toUpperCase()), Name = camel[0].toUpperCase() + camel.slice(1), dir = `components/kidmode/studioV2/games/makers/${camel}/`;
+    expect(read(`${dir}${Name}.tsx`)).toMatch(/export default function/);
+    expect(read(`${dir}${Name}Cover.tsx`)).toMatch(/export default function [\s\S]*preserveAspectRatio="xMidYMid slice"/);
+    expect(read(`${dir}${camel}Copy.ts`)).toContain(`export const ${camel.replace(/[A-Z]/g, c => `_${c}`).toUpperCase()}_COPY`);
+    read(`${dir}${camel}Rules.ts`);
+  });
+  it("the three creation makers keep a Preview and their validator beside the rules", () => {
+    expect(read("components/kidmode/studioV2/games/makers/mendBowl/mendBowlRules.ts")).toMatch(/export function validBowl[\s\S]*export const BOWL_SEAM_COUNTS|export const BOWL_SEAM_COUNTS[\s\S]*export function validBowl/);
+    expect(read("components/kidmode/studioV2/games/makers/stitchGarden/stitchGardenRules.ts")).toContain("export function validTextile");
+    expect(read("components/kidmode/studioV2/games/makers/bottleLab/bottleLabRules.ts")).toContain("export function validBottle");
+    for (const f of ["mendBowl/MendBowlPreview.tsx", "stitchGarden/StitchGardenPreview.tsx", "bottleLab/BottleLabPreview.tsx"]) expect(read(`components/kidmode/studioV2/games/makers/${f}`)).toMatch(/export default function/);
   });
 });

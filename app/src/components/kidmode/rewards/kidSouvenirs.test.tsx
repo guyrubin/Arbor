@@ -20,6 +20,7 @@ vi.mock("../../../context/ArborContext", () => ({ useArborOptional: () => ({ chi
 import { SOUVENIR_COLLECTION, souvenirArt, souvenirStrip, souvenirToAward } from "./kidSouvenirs";
 import { KidFinishMoment, KidStickerStrip, KidSouvenirSticker } from "./KidSouvenir";
 import { resetStudioNextFlagForTests } from "../studioV2/studioNextFlag";
+import { STUDIO_MAKER_IDS } from "../studioV2/studioCatalog";
 import { CHILD_SUBCOLLECTIONS } from "../../../lib/childData";
 import { en, he } from "../../../lib/i18nElevation/kidsStories";
 
@@ -46,6 +47,14 @@ describe("the ledger: once each, only ever grows", () => {
       { id: "world:face-match", kind: "world" as const, refId: "face-match", earnedAt: "2026-10-04T10:00:00Z" },
     ];
     expect(souvenirStrip(items).map((s) => s.id)).toEqual(["book:noahs-ark", "world:beat"]);
+  });
+  it("a Studio maker earns its own world souvenir once, and the strip keeps it", () => {
+    for (const id of STUDIO_MAKER_IDS) {
+      const s = souvenirToAward([], "world", id, NOW)!;
+      expect(s).toEqual({ id: `world:${id}`, kind: "world", refId: id, earnedAt: NOW.toISOString() });
+      expect(souvenirToAward([s], "world", id, NOW)).toBeNull();
+      expect(souvenirStrip([s])).toEqual([s]);
+    }
   });
   it("ignores malformed or unknown-kind stored entries", () => {
     const valid = souvenirToAward([], "world", "memory", NOW)!;
@@ -99,6 +108,15 @@ describe("the sticker: existing art, die-cut", () => {
       expect(renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="memory" />)).not.toContain("/bop/");
     } finally { vi.unstubAllGlobals(); resetStudioNextFlagForTests(); }
     expect(renderToStaticMarkup(<KidSouvenirSticker kind="world" refId="memory" />)).not.toContain("/bop/");
+  });
+  it("a maker's sticker is its own drawn cover, die-cut, never a raster or the plain mark", () => {
+    for (const id of STUDIO_MAKER_IDS) {
+      const html = renderToStaticMarkup(<KidSouvenirSticker kind="world" refId={id} />);
+      expect(html).toContain(`data-maker-cover="${id}"`);
+      expect(html).toMatch(/mask-image:radial-gradient[(]closest-side/);
+      expect(html).not.toContain("<img"); expect(html).not.toContain("data-kid-sticker-icon");
+    }
+    expect(renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="mend-bowl" />)).not.toContain("data-maker-cover");
   });
   it("the plain sticker mark is drawn in the border's ink, so it shows on a dark finish card too", () => {
     const plain = renderToStaticMarkup(<KidSouvenirSticker kind="world" refId="memory" />);

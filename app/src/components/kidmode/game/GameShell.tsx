@@ -28,6 +28,7 @@ import { useArborOptional } from "../../../context/ArborContext";
 import { isKidModeActive, subscribeKidMode } from "../../../lib/kidModeGate";
 import type { KidWorldTileId } from "../../../lib/kidThemeManifest";
 import type { SneakFreezeWorldId } from "../kidWorlds";
+import { isStudioMakerId, type StudioMakerId } from "../studioV2/studioCatalog";
 import { setKidHearIt, setKidStage, useKidHome } from "../kidChrome";
 import { autoReadPage, KidHearItButton } from "../kidReadAloud";
 import { stopVoice } from "../../../lib/voice";
@@ -48,8 +49,9 @@ export function onGamePiecePointerDown(e: { target: EventTarget | null }): void 
 }
 
 export interface GameShellProps {
-  /** The world (art key + identity). B-GAME-07b: or the flagged proof game. */
-  worldId: KidWorldTileId | SneakFreezeWorldId;
+  /** The world (art key + identity). B-GAME-07b: or the flagged proof game;
+   *  or a Studio maker (its own id: no parent door, art key or tile souvenir). */
+  worldId: KidWorldTileId | SneakFreezeWorldId | StudioMakerId;
   /** The game's name — the parent header's title (Kid Mode: the top bar's). */
   title: string;
   /** Spoken once on arrival and replayed by the top bar's hear-it. */
@@ -129,8 +131,8 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
     return () => { clearTimeout(timer); stopVoice(); };
   }, [kid, instruction, lang, childId, autoNarrate]);
 
-  // The flagged proof game has no parent door, art key or souvenir.
-  const tileWorld: KidWorldTileId | null = worldId === "sneak" ? null : worldId;
+  // The flagged proof game and the makers have no parent door, art key or tile souvenir.
+  const tileWorld: KidWorldTileId | null = worldId === "sneak" || isStudioMakerId(worldId) ? null : worldId;
 
   if (!kid) {
     return (

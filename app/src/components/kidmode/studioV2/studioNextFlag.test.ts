@@ -11,6 +11,7 @@ import { WOBBLY_DELIVERY_COPY } from './games/adventures/wobblyDeliveryCopy';
 import { FIVE_FRIEND_SUN_COPY } from './games/adventures/fiveFriendSunCopy';
 import { OOPS_BUTTON_COPY } from './games/adventures/oopsButtonCopy';
 import { ROVER_DELIVERY_COPY } from './games/adventures/roverDeliveryCopy';
+import { STUDIO_MAKERS } from './studioCatalog';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(HERE, '..', '..', '..', '..', 'public');
@@ -100,5 +101,14 @@ describe('next Studio games switch', () => {
       expect(existsSync(path.join(HERE, 'games', 'adventures', `${GAMES[id][0]}.tsx`)), `${GAMES[id][0]}.tsx`).toBe(true);
     }
     expect(loaders.match(/studioNextFlagOn\(\)/g)).toHaveLength(TILES.length);
+  });
+  it('loads each maker from its own module through the one loader table, with no switch read there', () => {
+    const loaders = readFileSync(path.join(HERE, '..', 'kidPrefetch.ts'), 'utf8');
+    for (const { id } of STUDIO_MAKERS) {
+      const camel = id.replace(/-(\w)/g, (_, c: string) => c.toUpperCase()), Name = camel[0].toUpperCase() + camel.slice(1);
+      const line = loaders.split('\n').find(row => row.trimStart().startsWith(`'${id}':`)) ?? '';
+      expect(line, `${id} loader`).toBe(`  '${id}': cachedModule(() => import('./studioV2/games/makers/${camel}/${Name}')),`);
+      for (const file of [`${Name}.tsx`, `${Name}Cover.tsx`, `${camel}Copy.ts`, `${camel}Rules.ts`]) expect(existsSync(path.join(HERE, 'games', 'makers', camel, file)), `${camel}/${file}`).toBe(true);
+    }
   });
 });

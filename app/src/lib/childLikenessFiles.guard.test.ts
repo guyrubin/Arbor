@@ -90,6 +90,8 @@ const LIKENESS_FAMILIES: readonly RegExp[] = [
   /^app\/public\/_proof\//i,
   /^app\/public\/visuals\/cards\/(.+\/)?(game|story)-[^/]+$/i,
   new RegExp(`^app/public/(.+/)?[^/]*avatar[^/]*\\.(${IMAGE})$`, "i"),
+  // The makers' kit art (B-GAME-40): a file that shows Bebe or GobGob says so in its name.
+  /^app\/public\/visuals\/studio-v2\/makers\/[^/]*(bebe|gobgob|crew)[^/]*$/i,
 ];
 export function unnamedLikeness(paths: readonly string[], named: ReadonlyMap<string, string> = NAMED): string[] {
   return [...new Set(paths.map(norm))].filter((p) => LIKENESS_FAMILIES.some((re) => re.test(p)) && !named.has(p)).sort();

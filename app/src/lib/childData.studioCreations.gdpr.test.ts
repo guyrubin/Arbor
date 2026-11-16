@@ -101,4 +101,19 @@ describe("saved Studio creations child-data lifecycle", () => {
     expect(JSON.parse(local.getItem("arbor.studioCreations.synthetic-b") ?? "null")).toEqual(sibling);
   });
 
+
+  it("exports and erases a mended bowl, a stitched cloth and a bottle like any other creation", async () => {
+    const local = new MemoryStorage();
+    vi.stubGlobal("localStorage", local as unknown as Storage);
+    vi.stubGlobal("sessionStorage", new MemoryStorage() as unknown as Storage);
+    const bowl = { id: "bowl", ownerId: "local", childId: "synthetic-a", creation: { kind: "bowl", glaze: "rose", pattern: 0, seams: [2, 0, 3, 1] } };
+    const cloth = { id: "textile", ownerId: "local", childId: "synthetic-a", creation: { kind: "textile", cloth: "linen", motifs: [{ flower: "daisy", cell: 4, thread: 1 }] } };
+    const bottle = { id: "bottle", ownerId: "local", childId: "synthetic-a", creation: { kind: "bottle", shape: "round", tint: "sea", finish: "gloss", stickers: [{ art: "wave", slot: 3 }] } };
+    local.setItem("arbor.studioCreations.synthetic-a", JSON.stringify([bowl, cloth, bottle]));
+    const exported = await exportChildData(undefined, { id: "synthetic-a", name: "Synthetic A" } as ChildProfile);
+    expect(exported.collections.studioCreations).toEqual([bowl, cloth, bottle]);
+    expect(exported.exportReceipt.collections.studioCreations).toBe("included");
+    await eraseEverything(undefined, "synthetic-a");
+    expect(local.getItem("arbor.studioCreations.synthetic-a")).toBeNull();
+  });
 });

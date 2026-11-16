@@ -1,0 +1,81 @@
+/** Bottle Lab words. Hebrew is gender-free: nouns, plural verbs and
+ * infinitives only. `title`, `description` and `instruction` are the Studio
+ * tile and intro card (studioCopy reads them); the rest is the game's own.
+ * `{0}` and `{1}` are filled in by the game. Strings only: this file is
+ * bundled with the Studio. No price, brand or shop words anywhere.
+ * A cue is what the child sees (eight words at most); a `say` line is the
+ * longer thought the hear-it button reads after it. */
+export const BOTTLE_LAB_COPY = {
+  en: {
+    title: 'Bottle Lab', description: 'Blow a glass bottle of your own in Glass Grove.',
+    instruction: 'Glass Grove makes the valley\'s bottles. Make yours: choose its shape, its colour and its finish, press on stickers, then play with the water and the light.',
+    finish: 'Your bottle is ready.', transfer: 'Away from the screen: hold a glass of water in front of a window or a drawn arrow. Which way does it point now?',
+    done: 'Keep my bottle', keep: 'Your bottle', open: 'Open my bottle',
+    steps: { shape: 'Shape', tint: 'Colour', finish: 'Finish', stickers: 'Stickers' },
+    stepsLabel: 'Parts of the bottle',
+    cue: {
+      start: 'Tap the glass.', shape: 'Which shape?', tint: 'Which colour of glass?', finish: 'Shiny or frosted?',
+      pick: 'Pick a sticker.', aim: 'Tap a ring on the bottle.', placed: 'Turn it. Watch it go round.', full: 'Six is full. Tap one to peel.',
+      dark: 'Room light. Tap the lamp.', behind: 'Look! Aya is back to front.', keeping: 'Look, all the way round!', make: 'Make it yours.', low: 'ViewCheck: Aya\'s eye level.',
+    },
+    say: {
+      shape: 'Look through the bottle: the windows behind it bend, and in the water they swap sides.',
+      tint: 'Tinted glass is darker at the edges, where the light goes through more glass.',
+      finish: 'Frosted glass blurs the room. Shiny glass bends it.',
+      stickers: 'Pick a sticker, then tap a ring on the bottle or drag it there. Turn the bottle and it goes round the back.',
+      play: 'Tap the glass to hear it ring. Aya pours water in: a fuller bottle rings lower. Slide the lamp and the shine and the coloured shadow move with it.',
+    },
+    shapes: { round: 'Round', tall: 'Tall', flask: 'Flask' },
+    tints: { clear: 'Clear', sea: 'Sea', amber: 'Amber', rose: 'Rose' },
+    finishes: { gloss: 'Shiny', frost: 'Frosted' },
+    stickers: { star: 'Pep', leaf: 'leaf', wave: 'Chock', sun: 'petal sun', moon: 'Aya', heart: 'knit flower' },
+    stickerPick: 'Pick the {0} sticker',
+    rows: ['top', 'middle', 'bottom'],
+    slotFree: 'Stick the {0} here, {1}',
+    slotPeel: 'Peel off the {0}, {1}',
+    turnLeft: 'Turn the bottle left', turnRight: 'Turn the bottle right',
+    lamp: 'The lamp. Slide it; press to switch it.',
+    lampAt: { left: 'The lamp is on the left', above: 'The lamp is behind the bottle', right: 'The lamp is on the right' },
+    lampOff: 'The lamp is off',
+    bottle: 'Your bottle. Drag across it to turn it; press to make it ring.',
+    capOpen: 'Open the cap', capClose: 'Close the cap', mouth: 'Blow across the top',
+    aya: 'Aya. Press and she pours water in.', ayaBack: 'Call Aya back', viewCheck: 'ViewCheck: look from Aya\'s eye level',
+    water: ['nearly empty', 'low', 'half full', 'more than half', 'nearly full', 'full'],
+  },
+  he: {
+    title: 'מעבדת הבקבוקים', description: 'מנפחים בקבוק זכוכית משלכם בחורשת הזכוכית.',
+    instruction: 'בחורשת הזכוכית מכינים את הבקבוקים של העמק. מכינים בקבוק משלכם: בוחרים צורה, צבע וגימור, מדביקים מדבקות, ואז משחקים עם המים ועם האור.',
+    finish: 'הבקבוק מוכן.', transfer: 'הרחק מהמסך: מחזיקים כוס מים מול חלון או מול חץ מצויר. לאן הוא מצביע עכשיו?',
+    done: 'שומרים את הבקבוק', keep: 'הבקבוק שעיצבתם', open: 'פותחים את הבקבוק שלי',
+    steps: { shape: 'צורה', tint: 'צבע', finish: 'גימור', stickers: 'מדבקות' },
+    stepsLabel: 'חלקי הבקבוק',
+    cue: {
+      start: 'נוגעים בזכוכית.', shape: 'איזו צורה?', tint: 'באיזה צבע הזכוכית?', finish: 'מבריק או חלבי?',
+      pick: 'בוחרים מדבקה.', aim: 'נוגעים בעיגול על הבקבוק.', placed: 'מסובבים. המדבקה עוברת מאחור.', full: 'שש זה מלא. נגיעה מקלפת מדבקה.',
+      dark: 'אור החדר. נוגעים במנורה.', behind: 'תראו! איה הפוכה במים.', keeping: 'רואים אותו מסביב!', make: 'מעצבים אותו כמו שרוצים.', low: 'מבט מהגובה של איה.',
+    },
+    say: {
+      shape: 'מסתכלים דרך הבקבוק: החלונות שמאחוריו מתעקמים, ובתוך המים הם מחליפים צדדים.',
+      tint: 'זכוכית צבעונית כהה יותר בשוליים, כי שם האור עובר דרך יותר זכוכית.',
+      finish: 'זכוכית חלבית מטשטשת את החדר. זכוכית מבריקה מעקמת אותו.',
+      stickers: 'בוחרים מדבקה ונוגעים בעיגול על הבקבוק, או גוררים אותה לשם. מסובבים את הבקבוק והיא עוברת מאחור.',
+      play: 'נוגעים בזכוכית ושומעים אותה מצלצלת. איה מוזגת מים: בקבוק מלא יותר מצלצל נמוך יותר. מזיזים את המנורה, והברק והצל הצבעוני זזים איתה.',
+    },
+    shapes: { round: 'עגול', tall: 'גבוה', flask: 'צלוחית' },
+    tints: { clear: 'שקוף', sea: 'כחול ים', amber: 'ענבר', rose: 'ורוד' },
+    finishes: { gloss: 'מבריק', frost: 'חלבי' },
+    stickers: { star: 'פפ', leaf: 'עלה', wave: 'צ׳וק', sun: 'שמש עלי כותרת', moon: 'איה', heart: 'פרח סרוג' },
+    stickerPick: 'בוחרים את המדבקה: {0}',
+    rows: ['למעלה', 'באמצע', 'למטה'],
+    slotFree: 'מדביקים כאן, {1}: {0}',
+    slotPeel: 'מקלפים, {1}: {0}',
+    turnLeft: 'מסובבים את הבקבוק שמאלה', turnRight: 'מסובבים את הבקבוק ימינה',
+    lamp: 'המנורה. מזיזים אותה; לחיצה מדליקה ומכבה.',
+    lampAt: { left: 'המנורה משמאל', above: 'המנורה מאחורי הבקבוק', right: 'המנורה מימין' },
+    lampOff: 'המנורה כבויה',
+    bottle: 'הבקבוק שלכם. גוררים לרוחב כדי לסובב; לחיצה משמיעה צלצול.',
+    capOpen: 'פותחים את הפקק', capClose: 'סוגרים את הפקק', mouth: 'נושפים מעל הפתח',
+    aya: 'איה. לוחצים והיא מוזגת מים.', ayaBack: 'קוראים לאיה לחזור', viewCheck: 'מבט נמוך: מסתכלים מגובה העיניים של איה',
+    water: ['כמעט ריק', 'מעט מים', 'חצי מלא', 'יותר מחצי', 'כמעט מלא', 'מלא'],
+  },
+} as const;
