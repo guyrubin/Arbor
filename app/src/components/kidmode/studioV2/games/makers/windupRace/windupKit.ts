@@ -29,6 +29,15 @@ export const PEP_SIDE_ART = made('kit-pep-side');
  * registered there). Set to null to play without him. */
 export const CHEER_ART: string | null = made('kit-gobgob-face-delighted');
 
+/** GobGob's two instruments, in the kit's own hardware. The PulsePod (amber
+ * pause, cyan ready) is the Go control; the WaitRing (the patient-progress
+ * band) is the ring of lights that fills as the spring winds. Their pictures
+ * are the library's (`kit-tool-*`); until those are published the Go button
+ * shows its glyph and the ring is drawn. Point each at its library stem with
+ * `made('kit-tool-…')` when it lands. */
+export const PULSEPOD_ART: string | null = null;
+export const WAITRING_ART: string | null = null;
+
 export const KIT_SOURCES: readonly { art: string; width: number; height: number; source: string }[] = [
   { art: 'makers/windup-race-rover.webp', width: 595, height: 424, source: 'kit/v30/22-bop-props-T05-T07.png (T07 strip, the rover at the left)' },
 ];

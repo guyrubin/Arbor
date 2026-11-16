@@ -129,9 +129,9 @@
 .pb-wheel-row[data-tucked=true] .pb-wheel__tuck { transform: translateY(58px); }
 .pb-wheel__marks { animation: pb-words-in .3s var(--studio-ease-soft); }
 
-/* The hand that shows the first move. Its fingertip is at its own top-left corner. */
-.pb-hand { position: absolute; z-index: 6; inline-size: 0; block-size: 0; pointer-events: none; }
-.pb-hand__art { position: absolute; left: -16px; top: -8px; inline-size: 56px; block-size: 70px; max-inline-size: none; overflow: visible; filter: drop-shadow(0 4px 6px var(--studio-shade)); }
+/* The hand that shows the first move. Its fingertip is at the point it is placed on. */
+.pb-hand { position: absolute; z-index: 6; inline-size: 56px; block-size: 70px; margin: -8px 0 0 -16px; pointer-events: none; filter: drop-shadow(0 4px 6px var(--studio-shade)); }
+.pb .pb-hand > svg { display: block; inline-size: 56px; block-size: 70px; min-inline-size: 56px; overflow: visible; }
 
 .pb-sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; }
 

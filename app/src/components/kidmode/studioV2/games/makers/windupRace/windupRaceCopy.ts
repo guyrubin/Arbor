@@ -23,6 +23,7 @@ export const WINDUP_RACE_COPY = {
     key: 'The wind-up key. The spring is {0}.', tension: { loose: 'loose', little: 'wound a little', half: 'half wound', tight: 'wound tight', full: 'wound all the way' },
     scene: 'Rover, a toy car with a wind-up key, on a trail across the pavilion floor. Pep the dog scouts alongside.', map: 'Trail map', progress: 'Trail {0} of {1}',
     keys: 'Space winds the key. Enter lets Rover go. The H key sounds the horn.',
+    ring: 'GobGob’s WaitRing is the ring of lights: it fills as the spring winds.', pod: 'When the ring is ready, press Go on the PulsePod.',
     quiet: 'Sound is off. Watch the key, the spring and the ring of lights.',
   },
   he: {
@@ -42,6 +43,7 @@ export const WINDUP_RACE_COPY = {
     key: 'מפתח הקפיץ. הקפיץ {0}.', tension: { loose: 'רפוי', little: 'מתוח קצת', half: 'מתוח עד חצי', tight: 'מתוח חזק', full: 'מתוח עד הסוף' },
     scene: 'רובר, מכונית צעצוע עם מפתח קפיץ, על מסלול ברצפת הביתן. הכלב פפ רץ לצידו.', map: 'מפת המסלול', progress: 'מסלול {0} מתוך {1}',
     keys: 'מקש הרווח מותח את המפתח. מקש אנטר משחרר את רובר. המקש H מפעיל את הצופר.',
+    ring: 'טבעת ההמתנה של גובגוב היא טבעת האורות: היא מתמלאת כשמותחים את הקפיץ.', pod: 'כשהטבעת מוכנה, לוחצים על יוצאים בפולספוד.',
     quiet: 'הצליל כבוי. מסתכלים על המפתח, על הקפיץ ועל טבעת האורות.',
   },
 } as const;

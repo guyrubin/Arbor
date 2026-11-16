@@ -161,13 +161,13 @@ export function Lamp({ uid, angle, on, shadow = true }: { uid: string; angle: nu
   </g>;
 }
 
-/** Aya, feet at (x, y). Every pose is one square canvas with the feet on its bottom edge. */
-const AYA_BOX = AYA.height / 415 * 440;
-export function AyaArt({ uid, mood = 'idle', x, y, shadow = true }: { uid: string; mood?: 'idle' | 'happy'; x: number; y: number; shadow?: boolean }) {
+/** Aya, feet at (x, y): standing (front) or walking (side; `flip` turns her to walk left). */
+export function AyaArt({ uid, pose = 'front', flip = false, x, y, shadow = true }: { uid: string; pose?: 'front' | 'side'; flip?: boolean; x: number; y: number; shadow?: boolean }) {
   const { url } = ids(uid);
+  const picture = KIT_AYA[pose], width = AYA.height * picture.width / picture.height;
   return <g transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`}>
-    {shadow && <ellipse cy="-2" rx="20" ry="4.5" filter={url('soft1')} style={fill('var(--mk-shadow)', 0.3)} />}
-    <image href={KIT_AYA[mood].src} x={-AYA_BOX / 2} y={-AYA_BOX * 427 / 440} width={AYA_BOX} height={AYA_BOX} preserveAspectRatio="none" />
+    {shadow && <ellipse cy="-1" rx="19" ry="4.5" filter={url('soft1')} style={fill('var(--mk-shadow)', 0.3)} />}
+    <image href={picture.src} x={-width / 2} y={1.5 - AYA.height} width={width} height={AYA.height} preserveAspectRatio="none" transform={flip ? 'scale(-1 1)' : undefined} />
   </g>;
 }
 
@@ -314,15 +314,16 @@ const DISC = 18;
 /** One vinyl sticker: a round white die-cut disc printed with a kit motif
  * (a companion's face, Aya's leaf, the petal sun, the knit flower), a thin
  * ring of its own colour and a gloss. Drawn about its centre in a 40 box. */
-export function StickerArt({ art, lift = false }: { uid?: string; art: BottleSticker; lift?: boolean }) {
-  const print = STICKER_PRINT[art], ring = STICKER_RING[art], size = DISC * 2 * print.fit;
+export function StickerArt({ uid, art, lift = false }: { uid: string; art: BottleSticker; lift?: boolean }) {
+  const print = STICKER_PRINT[art], ring = STICKER_RING[art], size = (DISC - 1.4) * 2 * print.fit, clip = ids(uid).id('disc');
   const [cx, cy, crop] = print.crop;
   return <g>
     <circle r={DISC + 1} transform={lift ? 'translate(1.6 3.2)' : 'translate(0.6 1.3)'} style={fill('var(--mk-shadow)', lift ? 0.22 : 0.26)} />
     <circle r={DISC + 1} style={fill('var(--mk-white)')} />
     <circle r={DISC - 1.4} style={fill(mix(ring, '--mk-white', 16))} />
     <circle r={DISC - 1.4} style={{ fill: 'none', stroke: `var(${ring})`, strokeOpacity: 0.55, strokeWidth: 1.3 }} />
-    <svg x={-size / 2} y={-size / 2} width={size} height={size} viewBox={`${cx} ${cy} ${crop} ${crop}`} overflow="hidden"><image href={print.picture.src} width={print.picture.width} height={print.picture.height} /></svg>
+    <clipPath id={clip}><circle r={DISC - 2} /></clipPath>
+    <g clipPath={`url(#${clip})`}><svg x={-size / 2} y={-size / 2} width={size} height={size} viewBox={`${cx} ${cy} ${crop} ${crop}`} overflow="hidden"><image href={print.picture.src} width={print.picture.width} height={print.picture.height} /></svg></g>
     <path d="M-12.5 -8C-9 -13 -3.5 -15.5 2 -15.5" style={{ fill: 'none', stroke: 'var(--mk-white)', strokeOpacity: 0.7, strokeWidth: 2, strokeLinecap: 'round' }} />
   </g>;
 }
@@ -349,7 +350,7 @@ export function StickerLayer({ uid, shape, stickers, rotation, side, fresh = nul
       const k = p.size / 40, sx = (side === 'back' ? p.depth : Math.max(0.02, p.scaleX)) * k, peeling = s === ghost;
       return <g key={peeling ? 'ghost' : s.slot} data-bl-sticker={peeling ? undefined : s.art} data-slot={s.slot} transform={`translate(${p.cx.toFixed(2)} ${p.cy.toFixed(2)}) scale(${sx.toFixed(3)} ${k.toFixed(3)})`}>
         <g className={peeling ? 'bl-vinyl bl-vinyl--peel' : fresh === s.slot ? 'bl-vinyl bl-vinyl--press' : 'bl-vinyl'}>
-          <StickerArt art={s.art} />
+          <StickerArt uid={uid} art={s.art} />
           {fresh === s.slot && !peeling && <ellipse className="bl-vinyl__air" cx="3" cy="2" rx="6.5" ry="5" style={fill('var(--mk-white)', 0.75)} />}
         </g>
       </g>;

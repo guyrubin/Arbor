@@ -105,6 +105,10 @@
 .wr-button--go[data-ready=true]::before { content: ''; position: absolute; inset: -6px; border-radius: 16px; border: 3px solid var(--studio-signal); animation: wr-ready 1.5s ease-in-out infinite; pointer-events: none; }
 .adventure.wr .wr-button--horn { background: var(--studio-action); border-color: var(--studio-action); color: var(--studio-action-ink); box-shadow: 0 3px 0 var(--studio-graphite-soft), var(--studio-lift); }
 .adventure.wr .wr-button[data-wr-control=reset] { font-size: 16px; padding-inline: 14px; }
+.wr .wr-pod { inline-size: 36px; block-size: 36px; max-inline-size: none; object-fit: contain; }
+/* The WaitRing itself, beside the map, once the library has its picture. */
+.wr .wr-band { position: absolute; z-index: 2; inset-block-start: 10px; left: 10px; inline-size: 44px; block-size: auto; max-inline-size: none; opacity: 0; transition: opacity .3s var(--studio-ease-soft); pointer-events: none; }
+.wr .wr-band[data-on=true] { opacity: 1; }
 .wr-glyph { fill: currentColor; }
 .wr-glyph__open { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .wr-quiet { margin: 0; text-align: center; }

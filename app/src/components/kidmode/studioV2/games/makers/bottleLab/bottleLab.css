@@ -17,7 +17,13 @@
 /* The window onto the still life. */
 .bl-window { position: relative; overflow: hidden; border-radius: calc(var(--studio-radius-panel) - 6px); background: var(--studio-mist); border: 1px solid var(--studio-line);
   block-size: min(clamp(300px, calc(100dvh - 398px), 640px), calc((100vw - 38px) * 1.2222)); }
-.bl-stage { position: relative; block-size: 100%; aspect-ratio: 360 / 440; margin-inline: auto; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
+.bl-stage { position: relative; block-size: 100%; aspect-ratio: 360 / 440; margin-inline: auto; user-select: none; -webkit-user-select: none; touch-action: pan-y; transform-origin: 50% 74%; transition: transform .5s var(--studio-ease-soft); }
+/* ViewCheck: the same picture from low and close, the water at eye level. */
+.bl-stage[data-view=low] { transform: scale(1.8); }
+.bl-view { position: absolute; z-index: 7; inset-block-start: 10px; inset-inline-end: 10px; display: grid; place-items: center; inline-size: var(--studio-tap); block-size: var(--studio-tap); padding: 0; border-radius: 50%; border: 1px solid var(--studio-line); background: var(--studio-frost); color: var(--studio-graphite); box-shadow: 0 2px 8px var(--studio-shade); transition: transform .14s var(--studio-ease-spring); }
+.bl-view:active:not(:disabled) { transform: scale(.92); }
+.bl-view[aria-pressed=true] { background: var(--studio-teal-soft); border-color: var(--studio-teal-ink); box-shadow: inset 0 0 0 2px var(--studio-teal-ink); color: var(--studio-teal-ink); }
+.bl-view:disabled { opacity: .45; }
 /* Each layer is its own composited surface: the bent room through the glass
    is drawn once, and a rising bubble or a turning sticker repaints only its own layer. */
 .bl-layer { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; display: block; pointer-events: none; overflow: visible; will-change: transform; }

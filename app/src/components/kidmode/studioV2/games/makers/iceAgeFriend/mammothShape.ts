@@ -84,7 +84,7 @@ export const SNOW_SPOTS: readonly { at: Vec; part: 'head' | 'body'; r: number }[
 /** The stroke the hint hand shows (and a key press makes): along the back, from the hump toward the tail. */
 const STROKE: readonly Vec[] = [[486, 236], [530, 222], [580, 226], [630, 246], [684, 276], [736, 306], [784, 340]];
 /** Behind the small ear: the tickle spot. */
-const TICKLE: Vec = [412, 296];
+const TICKLE: Vec = [436, 300];
 
 /* ── regions ──────────────────────────────────────────────────────────── */
 
@@ -189,7 +189,7 @@ export type ToyId = 'trunkTip' | 'tuskNear' | 'earSpot' | 'tailTip' | 'footNear'
 export function toyAt(view: MammothView, x: number, y: number, trunkTip: Vec, inside: (x: number, y: number, poly: readonly Vec[]) => boolean): { toy: ToyId; leg?: 'legFront' | 'legHind' | 'legFarFront' | 'legFarHind' } | null {
   if (Math.hypot(x - trunkTip[0], y - trunkTip[1]) < 34) return { toy: 'trunkTip' };
   for (const b of view.tusks.near) for (let i = 0; i <= 12; i++) { const [tx, ty] = bezierAt(b, i / 12); if (Math.hypot(x - tx, y - ty) < 20) return { toy: 'tuskNear' }; }
-  if (inside(x, y, view.shapes.ear) || Math.hypot(x - view.tickle[0], y - view.tickle[1]) < 30) return { toy: 'earSpot' };
+  if (inside(x, y, view.shapes.ear) || Math.hypot(x - view.tickle[0], y - view.tickle[1]) < 56) return { toy: 'earSpot' };
   if (inside(x, y, view.shapes.tail)) return { toy: 'tailTip' };
   for (const leg of ['legFront', 'legHind', 'legFarFront', 'legFarHind'] as const) {
     const f = view.feet[leg];

@@ -125,9 +125,9 @@
 .sd-season__tick { position: absolute; inset-block-end: -3px; inset-inline-end: -3px; display: grid; place-items: center; inline-size: 22px; block-size: 22px; border-radius: 50%; background: var(--studio-done); color: var(--studio-done-ink); border: 2px solid var(--studio-surface); animation: sd-gem .4s var(--studio-ease-spring) both; }
 .sd-season__tick svg { inline-size: 13px; block-size: 13px; }
 
-/* The cue under the dial while the hand shows the turn. It keeps its room, so nothing moves when it goes. */
-.sd-cue { display: inline-flex; align-items: center; gap: 8px; min-block-size: 22px; margin: 0; color: var(--studio-graphite-soft); font: 800 15px/1.4 var(--studio-font); visibility: hidden; }
-.sd-cue[data-on] { visibility: visible; }
+/* The cue while the hand shows the turn: a frosted chip on the plinth's lower edge. It takes no room, so nothing moves when it goes. */
+.sd-cue { position: absolute; z-index: 4; inset-block-end: 2px; inset-inline-start: 50%; translate: -50% 0; display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 5px 13px; border-radius: 999px; white-space: nowrap; pointer-events: none;
+  background: var(--studio-frost); border: 1px solid var(--studio-surface); color: var(--studio-graphite); font: 800 15px/1.3 var(--studio-font); box-shadow: 0 6px 16px -8px var(--studio-shade); }
 .sd-cue::before { content: ''; inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--studio-signal); }
 
 .sd-controls { display: flex; align-items: center; justify-content: center; gap: 12px; }

@@ -459,13 +459,13 @@ export default function SeasonDial() {
                 <DialArt turns={shownTurns} lit={lit} glow={celebrating} season={season} resting={resting} lapFrom={celebrating ? lapFrom : null} />
               </div>
               {showing && <HintHand angle={turnsToAngle(shownTurns)} from={turnsToAngle(turns)} show={reduced ? 1 : showing.show} press={reduced ? 0 : showing.press} />}
+              {showing && <p className="sd-cue" dir={lang === 'he' ? 'rtl' : 'ltr'} aria-hidden="true">{w.cue}</p>}
               {SEASONS.map(s => <button type="button" key={s} className="sd-season" data-season={s} data-visited={isLit(lit, s) || undefined} aria-pressed={season === s} aria-label={seasonLine(w.goTo, w.seasons[s])}
                 onClick={() => { void selectionHaptic(); goTo(SEASON_CENTERS[s]); }}>
                 <span className="sd-season__enamel" style={{ background: QUARTER_FILL[s] }}><svg viewBox="-24 -24 48 48" aria-hidden="true" focusable="false"><SeasonArt season={s} /></svg></span>
                 {isLit(lit, s) && <span className="sd-season__tick" aria-hidden="true"><Check size={13} strokeWidth={3.4} /></span>}
               </button>)}
             </div>
-            <p className="sd-cue" data-on={showing ? true : undefined} aria-hidden="true">{w.cue}</p>
             <div className="sd-controls">
               <button type="button" className="sd-control" aria-label={w.back} onClick={() => nudge(-1)}><RotateCcw size={26} aria-hidden="true" /></button>
               <button type="button" className="sd-control sd-control--pause" aria-pressed={paused} onClick={() => { void selectionHaptic(); setPaused(p => !p); }}>

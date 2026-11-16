@@ -29,6 +29,8 @@ export interface StageHandle {
   hotSlot(clientX: number, clientY: number): number | null;
   /** A reward beat: Aya hops, the bottle pops. */
   cheer(strong?: boolean): void;
+  /** ViewCheck: the view from Aya's eye level, close on the water (and back). Returns the new state. */
+  viewCheck(): boolean;
   /** The keeping turn; `done` is called when it is over. */
   keep(done: () => void): void;
 }
@@ -62,6 +64,8 @@ export const BottleStage = memo(forwardRef<StageHandle, StageProps>(function Bot
   const [home, setHome] = useState<'left' | 'right'>(ayaSide(start.lamp));
   const [mood, setMood] = useState<'idle' | 'happy'>('idle');
   const [away, setAway] = useState(false);
+  const [walk, setWalk] = useState(0);
+  const [low, setLow] = useState(false);
   const [hint, setHint] = useState<HintId | null>(null);
   const [pokes, setPokes] = useState<{ id: number; x: number; y: number; glass: boolean }[]>([]);
   const [glints, setGlints] = useState(0);
@@ -89,6 +93,8 @@ export const BottleStage = memo(forwardRef<StageHandle, StageProps>(function Bot
     shown: {} as Record<string, string>,
   });
   const later = (ms: number, run: () => void) => { const id = setTimeout(() => { timers.current = timers.current.filter(t => t !== id); run(); }, ms); timers.current.push(id); return id; };
+  /** Sends Aya somewhere: she turns side-on and hops there. */
+  const sendAya = (to: number) => { const a = sim.current.aya; if (a.to === to) return; a.to = to; setWalk(to > a.x ? 1 : to < a.x ? -1 : 0); };
   const sound = (name: Parameters<BottleAudio['play']>[0], freq?: number, strength?: number) => audio.current?.play(name, freq, strength);
 
   // ── Writing the moving parts straight into the picture ─────────────────
@@ -153,13 +159,13 @@ export const BottleStage = memo(forwardRef<StageHandle, StageProps>(function Bot
     if (Math.round(s.lamp / 15) !== Math.round(next / 15) && !s.keep) sound('tick', scaleNote(5 + Math.round(next / 15) + 4), 0.6);
     s.lamp = next; setLampState(next);
     const side = ayaAfterLamp(s.aya.home, next);
-    if (side !== s.aya.home) { s.aya.home = side; s.aya.to = ayaX(side); s.aya.stay = 0; setHome(side); setAway(false); sound('hop', scaleNote(4)); if (reduced$.current) settle(); }
+    if (side !== s.aya.home) { s.aya.home = side; sendAya(ayaX(side)); s.aya.stay = 0; setHome(side); setAway(false); sound('hop', scaleNote(4)); if (reduced$.current) settle(); }
   };
   /** Motion reduced: every moving part cuts to where it was going. */
   const settle = () => {
     const s = sim.current;
     s.sway = stillSway(); s.hold = null; s.levelY = waterY(bottle$.current.shape, s.level); s.dip = 0; s.pop = 9;
-    s.aya.x = s.aya.to; s.aya.y = stepAya(s.aya.to, s.aya.to, 0).y; s.aya.lift = 0; s.aya.hop = 0; s.pour = null;
+    s.aya.x = s.aya.to; s.aya.y = stepAya(s.aya.to, s.aya.to, 0).y; s.aya.lift = 0; s.aya.hop = 0; s.pour = null; setWalk(0);
     if (s.rot !== s.rotTo) setRotation(s.rotTo);
     if (s.lamp !== s.lampTo) setLamp(s.lampTo);
     paint();
@@ -206,9 +212,9 @@ export const BottleStage = memo(forwardRef<StageHandle, StageProps>(function Bot
       // Aya: home, behind the bottle for a look, or crossing out of the lamp's way
       const a = s.aya;
       if (a.hop > 0) { a.hop += dt * 2.6; if (a.hop >= 1) a.hop = 0; }
-      if (a.x !== a.to) { const step = stepAya(a.x, a.to, dt); a.x = step.x; a.y = step.y; a.lift = step.lift; if (!step.moving) { a.lift = 0; if (a.to === AXIS_X) { a.stay = s.t + 2.4; play$.current('behind'); } else { setMood('idle'); setAway(false); play$.current('home'); } } }
-      else if (a.to === AXIS_X && s.t > a.stay) { a.to = ayaX(a.home); sound('hop', scaleNote(4), 0.7); }
-      else if (a.to !== AXIS_X && !s.pour && !s.keep && live$.current && s.t > a.wander) { a.wander = s.t + 13 + Math.random() * 8; a.to = AXIS_X; setAway(true); setMood('happy'); }
+      if (a.x !== a.to) { const step = stepAya(a.x, a.to, dt); a.x = step.x; a.y = step.y; a.lift = step.lift; if (!step.moving) { a.lift = 0; setWalk(0); if (a.to === AXIS_X) { a.stay = s.t + 2.4; play$.current('behind'); } else { setMood('idle'); setAway(false); play$.current('home'); } } }
+      else if (a.to === AXIS_X && s.t > a.stay) { sendAya(ayaX(a.home)); sound('hop', scaleNote(4), 0.7); }
+      else if (a.to !== AXIS_X && !s.pour && !s.keep && live$.current && s.t > a.wander) { a.wander = s.t + 13 + Math.random() * 8; sendAya(AXIS_X); setAway(true); setMood('happy'); }
       // her pour
       if (s.pour) {
         const p = (s.t - s.pour.t0) * 1000 / POUR_MS;
@@ -274,7 +280,7 @@ export const BottleStage = memo(forwardRef<StageHandle, StageProps>(function Bot
     const s = sim.current;
     if (!quiet) { void selectionHaptic(); sound('ring', ringNote(bottle$.current.shape, s.level)); LEARNED.ring = true; touched('ring'); }
     poke(at?.x ?? AXIS_X, at?.y ?? PROFILES[bottle$.current.shape].rows[1], true);
-    if (s.aya.to === AXIS_X) { s.aya.to = ayaX(s.aya.home); s.aya.hop = 0.001; if (!quiet) sound('hop', scaleNote(6)); }
+    if (s.aya.to === AXIS_X) { sendAya(ayaX(s.aya.home)); s.aya.hop = 0.001; if (!quiet) sound('hop', scaleNote(6)); }
     if (reduced$.current) { setStillSeed(n => n + 1); settle(); return; }
     s.sway = knock(s.sway, side || (Math.random() < 0.5 ? -1 : 1), quiet ? 0.6 : 1);
     const count = burstCount(s.bubbles.length); s.burst = count;
@@ -288,7 +294,7 @@ export const BottleStage = memo(forwardRef<StageHandle, StageProps>(function Bot
   const askAya = () => {
     const s = sim.current; void selectionHaptic(); touched();
     if (s.pour) return;
-    if (s.aya.to === AXIS_X || s.aya.x !== s.aya.to) { s.aya.to = ayaX(s.aya.home); s.aya.hop = 0.001; sound('hop', scaleNote(6)); if (reduced$.current) settle(); return; }
+    if (s.aya.to === AXIS_X || s.aya.x !== s.aya.to) { sendAya(ayaX(s.aya.home)); s.aya.hop = 0.001; sound('hop', scaleNote(6)); if (reduced$.current) settle(); return; }
     const to = nextLevel(s.level); flipCap(true); setMood('happy'); s.aya.hop = 0.001;
     if (reduced$.current) { s.level = to; setLevelState(to); sound(to === 0 ? 'drain' : 'pour', scaleNote(to === 0 ? 6 : 3 + to)); later(700, () => setMood('idle')); settle(); return; }
     s.pour = { t0: s.t, to, poured: false, side: s.aya.home === 'right' ? 1 : -1 };
@@ -298,11 +304,12 @@ export const BottleStage = memo(forwardRef<StageHandle, StageProps>(function Bot
     turnBy,
     hotSlot,
     cheer,
+    viewCheck() { const next = !low; setLow(next); lastInput.current = performance.now(); setHint(null); sound('flip', scaleNote(next ? 9 : 6)); return next; },
     keep(done) {
       const s = sim.current, b = bottle$.current;
       setHint(null); flipCap(false); s.level = WATER_HOME; setLevelState(WATER_HOME); s.pour = null; s.hold = null; s.stream = false;
       if (!s.lampOn) { s.lampOn = true; setLampOn(true); }
-      s.aya.to = ayaX(s.aya.home); s.aya.wander = 9e9;
+      sendAya(ayaX(s.aya.home)); s.aya.wander = 9e9; setLow(false);
       const to = bestViewRotation(b.stickers);
       if (reduced$.current) { s.rotTo = to; s.lampTo = start.lamp <= 0 ? start.lamp : -start.lamp; s.aya.home = ayaSide(s.lampTo); s.aya.to = ayaX(s.aya.home); setHome(s.aya.home); setMood('happy'); setGlints(KEEP_GLINTS.length); sound('ring', scaleNote(8)); sound('chime', scaleNote(5)); settle(); later(KEEP_REDUCED_MS, done); return; }
       s.keep = { t0: s.t, from: s.rot, to, lamp: s.lamp, glint: 0 };
@@ -407,20 +414,20 @@ export const BottleStage = memo(forwardRef<StageHandle, StageProps>(function Bot
   const rowName = (slot: number) => w.rows[Math.floor(slot / 4)];
   const glintAt = [[-0.5, PROFILES[shape].rows[0] - 6], [0.56, PROFILES[shape].rows[1] - 10], [-0.3, PROFILES[shape].rows[2]], [0.3, PROFILES[shape].rows[0] - 30], [0, PROFILES[shape].rows[1]]] as const;
   const view = `0 0 ${SCENE_W} ${SCENE_H}`;
-  return <div ref={stage} className="bl-stage" dir="ltr" data-bl-stage="" data-shape={shape} data-tint={bottle.tint} data-finish={bottle.finish} data-lamp={lampOn ? 'on' : 'off'} data-cap={capOpen ? 'open' : 'shut'} data-water={level} data-aya={away ? 'behind' : home}
+  return <div ref={stage} className="bl-stage" dir="ltr" data-bl-stage="" data-shape={shape} data-tint={bottle.tint} data-finish={bottle.finish} data-lamp={lampOn ? 'on' : 'off'} data-cap={capOpen ? 'open' : 'shut'} data-water={level} data-aya={away ? 'behind' : home} data-mood={mood} data-view={low ? 'low' : 'whole'}
     onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel}>
     <RoomLayer uid={uid} shape={shape} finish={bottle.finish} maps={maps} />
     <svg className="bl-layer" viewBox={view} aria-hidden="true" focusable="false">
       <LampLight uid={uid} angle={lamp} on={lampOn} />
       <TableShadow uid={uid} shape={shape} angle={lamp} on={lampOn} stickers={bottle.stickers} rotation={rotation} />
       <Lamp uid={uid} angle={lamp} on={lampOn} />
-      <g ref={ayaRoom}><AyaArt uid={uid} mood={mood} x={0} y={0} /></g>
+      <g ref={ayaRoom}><AyaArt uid={uid} pose={walk ? 'side' : 'front'} flip={walk < 0} x={0} y={0} /></g>
     </svg>
     <div ref={glassEl} className="bl-glass">
       <AirLayer uid={uid} shape={shape} finish={bottle.finish} />
       {/* The water: everything below a line that leans and rises. Two boxes turn against each other, so only the edge moves. */}
       <div ref={seaEl} className="bl-sea"><div ref={seaIn} className="bl-sea__in">
-        <WetLayer uid={uid} shape={shape} finish={bottle.finish} lamp={lampBehind ? lamp : null} lampOn={lampOn} mood={mood} aya={ayaWet} />
+        <WetLayer uid={uid} shape={shape} finish={bottle.finish} lamp={lampBehind ? lamp : null} lampOn={lampOn} walk={walk} aya={ayaWet} />
       </div></div>
       <svg className="bl-layer" viewBox={view} aria-hidden="true" focusable="false">
         <g clipPath={u.url('inner')}>
@@ -492,11 +499,11 @@ const AirLayer = memo(function AirLayer({ uid, shape, finish }: { uid: string; s
 /** The whole inside as it looks full of water: the room flipped and magnified
  * by the lens, and with it whoever stands behind the bottle (Aya, the lamp).
  * It is bent again only while one of them moves behind the glass. */
-const WetLayer = memo(function WetLayer({ uid, shape, finish, lamp, lampOn, mood, aya }: { uid: string; shape: ShapeId; finish: BottleCreation['finish']; lamp: number | null; lampOn: boolean; mood: 'idle' | 'happy'; aya: RefObject<SVGGElement | null> }) {
+const WetLayer = memo(function WetLayer({ uid, shape, finish, lamp, lampOn, walk, aya }: { uid: string; shape: ShapeId; finish: BottleCreation['finish']; lamp: number | null; lampOn: boolean; walk: number; aya: RefObject<SVGGElement | null> }) {
   return <svg className="bl-layer" viewBox={`0 0 ${SCENE_W} ${SCENE_H}`} aria-hidden="true" focusable="false">
     <GlassInside uid={uid} shape={shape} finish={finish} part="wet">
       {lamp !== null && <Lamp uid={uid} angle={lamp} on={lampOn} shadow={false} />}
-      <g ref={aya} transform="translate(-900 0)"><AyaArt uid={uid} mood={mood} x={0} y={0} shadow={false} /></g>
+      <g ref={aya} transform="translate(-900 0)"><AyaArt uid={uid} pose={walk ? 'side' : 'front'} flip={walk < 0} x={0} y={0} shadow={false} /></g>
     </GlassInside>
   </svg>;
 });

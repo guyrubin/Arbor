@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import { Check, RotateCcw, RotateCw } from 'lucide-react';
+import { Check, RotateCcw, RotateCw, ScanEye } from 'lucide-react';
 import { useLanguage } from '../../../../../../context/LanguageContext';
 import { useArborOptional } from '../../../../../../context/ArborContext';
 import { selectionHaptic } from '../../../../../../lib/native';
@@ -55,6 +55,7 @@ export default function BottleLab() {
   const [ghost, setGhost] = useState<BottleStickerPlacement | null>(null);
   const [rang, setRang] = useState(false);
   const [note, setNote] = useState<'behind' | 'dark' | null>(null);
+  const [low, setLow] = useState(false);
 
   const stage = useRef<StageHandle>(null);
   const audio = useRef<BottleAudio | null>(null);
@@ -113,7 +114,7 @@ export default function BottleLab() {
   const keep = () => {
     if (!live) return;
     void selectionHaptic(); setPicked(null); setCarry(null); setPhase('keeping');
-    stage.current?.keep(() => setPhase('done'));
+    setLow(false); stage.current?.keep(() => setPhase('done'));
   };
   const openKept = () => {
     if (!live || !kept || kept.kind !== 'bottle' || !validBottle(kept) || !saved.isCurrent()) return;
@@ -162,7 +163,7 @@ export default function BottleLab() {
 
   // ── Words ──────────────────────────────────────────────────────────────
   const full = stickersFull(bottle.stickers);
-  const cue = phase !== 'make' ? w.cue.keeping : !rang ? w.cue.start : note === 'behind' ? w.cue.behind : note === 'dark' ? w.cue.dark
+  const cue = phase !== 'make' ? w.cue.keeping : low ? w.cue.low : !rang ? w.cue.start : note === 'behind' ? w.cue.behind : note === 'dark' ? w.cue.dark
     : step === 'stickers' ? (nudge === 'full' || (full && !picked) ? w.cue.full : picked ? w.cue.aim : nudge === 'placed' ? w.cue.placed : w.cue.pick) : w.cue[step];
   const hear = `${cue} ${w.say[step]} ${w.say.play}`;
 
@@ -184,7 +185,7 @@ export default function BottleLab() {
       <FinishIcon frost={f === 'frost'} /><span>{w.finishes[f]}</span><Tick /></button>),
     stickers: deal.sheet.map(a => <button key={a} type="button" className="bl-sticker" data-bl-art={a} aria-pressed={picked === a} aria-label={fillIn(w.stickerPick, w.stickers[a])} disabled={!live} data-carried={carry?.art === a}
       onClick={() => pick(a)} onPointerDown={e => onTrayDown(e, a)} onPointerMove={onTrayMove} onPointerUp={onTrayUp} onPointerCancel={() => { gesture.current = null; setCarry(null); }}>
-      <svg viewBox="-24 -24 48 48" aria-hidden="true" focusable="false"><StickerArt art={a} /></svg></button>),
+      <svg viewBox="-24 -24 48 48" aria-hidden="true" focusable="false"><StickerArt uid={`${uid}t${a}`} art={a} /></svg></button>),
   };
   return <GameShell fullBleed autoNarrate={false} worldId="bottle-lab" title={w.title} instruction={w.instruction} hearIt={hear}>
     <section className="bl" data-adventure="bottle-lab" data-step={step} data-phase={phase} dir={lang === 'he' ? 'rtl' : 'ltr'} style={TINT_STYLE[bottle.tint]}>
@@ -193,6 +194,8 @@ export default function BottleLab() {
         <div className="bl-window">
           <BottleStage ref={stage} uid={uid} w={w} bottle={bottle} live={live} audio={audio} picked={picked} hot={carry?.hot ?? null} aiming={live && (picked !== null || carry !== null)} fresh={fresh} ghost={ghost}
             start={{ lamp: deal.lamp, rotation: -20 }} onPlace={slot => place(slot)} onPeel={peel} onPlay={onPlay} />
+          {/* ViewCheck, the kit's tool for the view from a lower height: the bottle from Aya's eye level. */}
+          <button type="button" className="bl-view" data-bl-view="" aria-label={w.viewCheck} aria-pressed={low} disabled={!live} onClick={() => { void selectionHaptic(); setLow(stage.current?.viewCheck() ?? false); }}><ScanEye size={26} aria-hidden="true" /></button>
         </div>
 
         <div className="bl-side">
@@ -218,7 +221,7 @@ export default function BottleLab() {
         </div>
       </div>
       {carry && <span className="bl-carry" aria-hidden="true" data-home={!!carry.home && carry.x === carry.home.x && carry.y === carry.home.y} style={{ '--x': `${carry.x}px`, '--y': `${carry.y}px` } as CSSProperties}>
-        <svg viewBox="-24 -24 48 48" focusable="false"><StickerArt art={carry.art} lift /></svg></span>}
+        <svg viewBox="-24 -24 48 48" focusable="false"><StickerArt uid={`${uid}c`} art={carry.art} lift /></svg></span>}
     </section>
   </GameShell>;
 }

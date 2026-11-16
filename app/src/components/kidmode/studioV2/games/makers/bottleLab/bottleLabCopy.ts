@@ -16,7 +16,7 @@ export const BOTTLE_LAB_COPY = {
     cue: {
       start: 'Tap the glass.', shape: 'Which shape?', tint: 'Which colour of glass?', finish: 'Shiny or frosted?',
       pick: 'Pick a sticker.', aim: 'Tap a ring on the bottle.', placed: 'Turn it. Watch it go round.', full: 'Six is full. Tap one to peel.',
-      dark: 'Room light. Tap the lamp.', behind: 'Look! Aya is back to front.', keeping: 'Look, all the way round!', make: 'Make it yours.',
+      dark: 'Room light. Tap the lamp.', behind: 'Look! Aya is back to front.', keeping: 'Look, all the way round!', make: 'Make it yours.', low: 'ViewCheck: Aya\'s eye level.',
     },
     say: {
       shape: 'Look through the bottle: the windows behind it bend, and in the water they swap sides.',
@@ -39,7 +39,7 @@ export const BOTTLE_LAB_COPY = {
     lampOff: 'The lamp is off',
     bottle: 'Your bottle. Drag across it to turn it; press to make it ring.',
     capOpen: 'Open the cap', capClose: 'Close the cap', mouth: 'Blow across the top',
-    aya: 'Aya. Press and she pours water in.', ayaBack: 'Call Aya back',
+    aya: 'Aya. Press and she pours water in.', ayaBack: 'Call Aya back', viewCheck: 'ViewCheck: look from Aya\'s eye level',
     water: ['nearly empty', 'low', 'half full', 'more than half', 'nearly full', 'full'],
   },
   he: {
@@ -52,7 +52,7 @@ export const BOTTLE_LAB_COPY = {
     cue: {
       start: 'נוגעים בזכוכית.', shape: 'איזו צורה?', tint: 'באיזה צבע הזכוכית?', finish: 'מבריק או חלבי?',
       pick: 'בוחרים מדבקה.', aim: 'נוגעים בעיגול על הבקבוק.', placed: 'מסובבים. המדבקה עוברת מאחור.', full: 'שש זה מלא. נגיעה מקלפת מדבקה.',
-      dark: 'אור החדר. נוגעים במנורה.', behind: 'תראו! איה הפוכה במים.', keeping: 'רואים אותו מסביב!', make: 'מעצבים אותו כמו שרוצים.',
+      dark: 'אור החדר. נוגעים במנורה.', behind: 'תראו! איה הפוכה במים.', keeping: 'רואים אותו מסביב!', make: 'מעצבים אותו כמו שרוצים.', low: 'מבט מהגובה של איה.',
     },
     say: {
       shape: 'מסתכלים דרך הבקבוק: החלונות שמאחוריו מתעקמים, ובתוך המים הם מחליפים צדדים.',
@@ -75,7 +75,7 @@ export const BOTTLE_LAB_COPY = {
     lampOff: 'המנורה כבויה',
     bottle: 'הבקבוק שלכם. גוררים לרוחב כדי לסובב; לחיצה משמיעה צלצול.',
     capOpen: 'פותחים את הפקק', capClose: 'סוגרים את הפקק', mouth: 'נושפים מעל הפתח',
-    aya: 'איה. לוחצים והיא מוזגת מים.', ayaBack: 'קוראים לאיה לחזור',
+    aya: 'איה. לוחצים והיא מוזגת מים.', ayaBack: 'קוראים לאיה לחזור', viewCheck: 'מבט נמוך: מסתכלים מגובה העיניים של איה',
     water: ['כמעט ריק', 'מעט מים', 'חצי מלא', 'יותר מחצי', 'כמעט מלא', 'מלא'],
   },
 } as const;

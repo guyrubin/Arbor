@@ -2,7 +2,8 @@
  * file it comes from are written down. Glass Grove's bottle bench is staged
  * entirely on shipped Horizon Valley art (no picture is made at run time, and
  * none is new): the arched pavilion room, the kit lamp, Aya and her watering
- * can, and sticker prints cropped from the kit's own props and companions.
+ * can, and sticker prints of the kit's own props and of the companions' faces
+ * (the companions come from the shared `kit-*` library).
  * Strings and numbers only. */
 import { studioBopArt } from '../../../../../../lib/kidThemeManifest';
 import type { BottleSticker } from './bottleLabRules';
@@ -27,19 +28,23 @@ export const BENCH_Y = 334;
 
 export const KIT_LAMP = bop('item-lamp', 245, 300);
 export const KIT_CAN = bop('item-can', 278, 205);
-export const KIT_AYA = { idle: bop('aya-idle', 440, 440), happy: bop('aya-happy', 440, 440) } as const;
+/** Characters come from the Studio's one shared kit library (never a private copy). */
+const lib = (stem: string, width: number, height: number, source: string): KitPicture =>
+  ({ src: `/visuals/studio-v2/makers/${stem}.webp`, src480: `/visuals/studio-v2/makers/${stem}-480.webp`, width, height, source: `app/public/visuals/studio-v2/makers/${stem}.webp (kit ${source})` });
+/** Aya standing (front) and walking (side, facing right as stored). */
+export const KIT_AYA = { front: lib('kit-aya-front', 408, 768, 'v30/05-aya.png'), side: lib('kit-aya-side', 373, 768, 'v30/05-aya.png') } as const;
 
 /** A sticker is a round white vinyl disc printed with a square crop of a kit
  * picture (pixels of that picture). The saved `art` ids do not change. */
 export interface StickerPrint { picture: KitPicture; crop: readonly [x: number, y: number, size: number]; fit: number }
 export const STICKER_PRINT: Readonly<Record<BottleSticker, StickerPrint>> = {
-  star: { picture: bop('pep-idle', 440, 440), crop: [150, 4, 172], fit: 0.84 },
-  leaf: { picture: KIT_CAN, crop: [54, 102, 68], fit: 0.8 },
-  wave: { picture: bop('chock-idle', 440, 440), crop: [98, 6, 150], fit: 0.84 },
-  sun: { picture: bop('sun-lit', 520, 520), crop: [58, 44, 404], fit: 0.82 },
-  moon: { picture: KIT_AYA.idle, crop: [117, 6, 208], fit: 0.84 },
-  heart: { picture: bop('flower-open', 293, 440), crop: [9, 6, 276], fit: 0.82 },
+  star: { picture: lib('kit-pep-playful', 481, 512, 'v30/15-companion-reactions.png'), crop: [-10, 0, 500], fit: 1 },
+  leaf: { picture: KIT_CAN, crop: [54, 102, 68], fit: 0.86 },
+  wave: { picture: lib('kit-chock-attentive', 506, 512, 'v30/15-companion-reactions.png'), crop: [3, 0, 500], fit: 1 },
+  sun: { picture: bop('sun-lit', 520, 520), crop: [58, 44, 404], fit: 0.9 },
+  moon: { picture: lib('kit-aya-delighted', 512, 449, 'v30/15-companion-reactions.png'), crop: [16, -16, 480], fit: 1 },
+  heart: { picture: bop('flower-open', 293, 440), crop: [9, 6, 276], fit: 0.9 },
 };
 
 /** Every kit file this activity shows, for the art manifest. */
-export const BOTTLE_KIT_SOURCES: readonly string[] = [...new Set([KIT_ROOM, KIT_LAMP, KIT_CAN, KIT_AYA.idle, KIT_AYA.happy, ...Object.values(STICKER_PRINT).map(p => p.picture)].map(p => p.source))];
+export const BOTTLE_KIT_SOURCES: readonly string[] = [...new Set([KIT_ROOM, KIT_LAMP, KIT_CAN, KIT_AYA.front, KIT_AYA.side, ...Object.values(STICKER_PRINT).map(p => p.picture)].map(p => p.source))];

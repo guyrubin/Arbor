@@ -9,7 +9,7 @@ import { ADVENTURE_COPY } from '../../adventures/adventureCopy';
 import '../makerPalette.css';
 import './windupRace.css';
 import { KEY_AT, KeyDial, ORBIT, ROVER_LONG, RoverCar, bowWidth, coilPath } from './windupCar';
-import { CHEER_ART, KIT_ART } from './windupKit';
+import { CHEER_ART, KIT_ART, PULSEPOD_ART, WAITRING_ART } from './windupKit';
 import { BACK, BACKDROP_X0, Backdrop, Catcher, ChalkMarks, EDGE, FLOOR_TOP, Finish, Hoops, KnitBall, KnitRoll, LaneMarks, PEP_BACK, POPPERS, POPPER_HIGH, PUFFS, Pep, PetalPin, Poppers, Puffs, SceneDefs, StartSign, TRACK_TOYS, Terrain, Toys, WALL_HIGH, trackLine } from './windupRaceArt';
 import { createRacerSound, type RacerSound } from './windupRaceAudio';
 import { WINDUP_RACE_COPY } from './windupRaceCopy';
@@ -642,7 +642,7 @@ export default function WindupRace() {
   }
 
   const id = 'wr-';
-  return <GameShell fullBleed autoNarrate={false} worldId="windup-race" title={w.title} instruction={w.instruction} hearIt={`${cue} ${w.trackLines[track.id]} ${w.instruction}`}>
+  return <GameShell fullBleed autoNarrate={false} worldId="windup-race" title={w.title} instruction={w.instruction} hearIt={`${cue} ${w.trackLines[track.id]} ${w.instruction} ${w.ring} ${w.pod}`}>
     <section className="adventure wr" data-adventure="windup-race" data-phase={phase} data-track={track.id} data-wound={clicks > 0} dir={lang === 'he' ? 'rtl' : 'ltr'}>
       <div className="wr-top">
         <ol className="wr-flags" aria-label={fillLine(w.progress, place + 1, PLAY_LENGTH)}>
@@ -701,9 +701,11 @@ export default function WindupRace() {
           onPointerDown={keyDown} onPointerMove={keyMove} onPointerUp={keyUp} onPointerCancel={keyUp}
           onClick={event => { if (event.detail === 0) windOnce(); }} />
         <div className="wr-hand" ref={hand} aria-hidden="true"><HintHand /></div>
+        {WAITRING_ART && <img className="wr-band" src={WAITRING_ART} alt="" draggable={false} data-on={phase === 'wind'} />}
         {CHEER_ART && <img className="wr-cheer" src={CHEER_ART} alt="" draggable={false} data-on={phase === 'party'} />}
       </div>
-      <p id="wr-keys" className="wr-sr">{w.keys}</p>
+      <p id="wr-keys" className="wr-sr">{w.keys} {w.ring}</p>
+      <p id="wr-pod" className="wr-sr">{w.pod}</p>
       {muted && <p className="adventure-quiet wr-quiet">{w.quiet}</p>}
       <div className="wr-controls">
         {running || phase === 'flag' || phase === 'party' || phase === 'return' || phase === 'swap'
@@ -713,8 +715,8 @@ export default function WindupRace() {
           </>
           : <>
             <button type="button" className="wr-button wr-button--wind" data-wr-control="wind" disabled={phase !== 'wind'} data-full={clicks >= MAX_CLICKS} onClick={windOnce}><RotateCw size={22} aria-hidden="true" />{w.windButton}</button>
-            <button type="button" className="wr-button wr-button--go" data-wr-control="go" disabled={phase !== 'wind'} data-ready={phase === 'wind' && clicks > 0} onClick={go}>
-              <Play size={22} aria-hidden="true" />{w.go}
+            <button type="button" className="wr-button wr-button--go" data-wr-control="go" disabled={phase !== 'wind'} data-ready={phase === 'wind' && clicks > 0} aria-describedby="wr-pod" onClick={go}>
+              {PULSEPOD_ART ? <img className="wr-pod" src={PULSEPOD_ART} alt="" draggable={false} /> : <Play size={22} aria-hidden="true" />}{w.go}
               {goHint && <span className="wr-hand wr-hand--go" aria-hidden="true"><HintHand /></span>}
             </button>
           </>}
