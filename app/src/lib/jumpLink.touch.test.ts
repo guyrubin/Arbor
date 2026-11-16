@@ -75,8 +75,10 @@ const RATCHET: Record<string, number> = {
   "components/sections/ChildProfile.tsx": 0,
   // v3 F-CHILD-3: About's area cards (Confirm / No, Tell more, Open the moments).
   "components/about/AspectCard.tsx": 0,
-  // v4: What Arbor remembers on About (Remember / Not this, the door to #/memory).
-  "components/about/AboutMemoryCard.tsx": 0,
+  // v10: Arbor's notebook on About (Remember / Not this / Edit, Edit / Forget)
+  // and the child's tile (Edit details, Create hero, Moments and keepsakes).
+  "components/about/AboutAnswer.tsx": 0,
+  "components/about/AboutChildTile.tsx": 0,
   "components/sections/ChildMemory.tsx": 4, // the four ROW_ACTION_CLS buttons
   "components/tabs/LanguageLabTab.tsx": 0,
   "components/tabs/LanguageLabVocabView.tsx": 0,
@@ -134,10 +136,12 @@ describe("item 9 · the primary-move controls state a 44 px hit box", () => {
     // scans ChildProfile and AspectCard).
     expect(src).not.toContain("function JumpLink");
     expect(src).not.toContain("<JumpLink ");
-    // v4 re-pin: the door to #/memory is the What Arbor remembers card's own.
-    expect(readFileSync(path.join(SRC, "components/about/AboutMemoryCard.tsx"), "utf8")).toMatch(/min-h-11[^\n]{0,80}data-testid="profile-remember-check"/);
+    // v10 re-pin: the door to the ledger is a MoreLink (.ds-link: a 44 px
+    // text link, src/design/ds.css) beside the areas.
+    expect(src).toContain('<MoreLink onClick={toggleLedger} className="about-ledger-door">');
+    expect(readFileSync(path.join(SRC, "design/ds.css"), "utf8")).toMatch(/\.ds \.ds-link \{[^}]*min-height: 44px/);
     expect(src).toMatch(/className="[^"]*touch-target[^"]*" data-testid="about-voice"/);
-    expect(src).toMatch(/className="[^"]*touch-target[^"]*" data-testid="about-write"/);
+    expect(src).toMatch(/className=\{`[^`]*touch-target[^`]*`\} data-testid="about-write"/);
   });
 
   it("the Milestones preterm input and the vocabulary add button state a floor", () => {

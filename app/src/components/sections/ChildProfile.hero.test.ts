@@ -7,6 +7,10 @@
  * card; the stamp moved from the "Add a fact" drawer door to "Tell Arbor by
  * voice", which opens the ONE guided conversation. The remembered list, the
  * Who chapter and the jump strip left the page (the memory door stays).
+ *
+ * v10.1 re-pin: the describe card is the "Tell Arbor about {name}" box in
+ * stop 2 (the rail; on a phone, under the scene); the notebook's answer cards
+ * live in about/AboutAnswer.tsx; Details is the child's tile (AboutChildTile).
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -19,15 +23,18 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const strip = (raw: string) => raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
 const src = strip(readFileSync(path.join(here, "ChildProfile.tsx"), "utf8"));
 const card = strip(readFileSync(path.join(here, "..", "about", "AspectCard.tsx"), "utf8"));
-const memoryCard = strip(readFileSync(path.join(here, "..", "about", "AboutMemoryCard.tsx"), "utf8"));
-const aboutCss = readFileSync(path.join(here, "..", "about", "about.css"), "utf8");
+const memoryCard = strip(readFileSync(path.join(here, "..", "about", "AboutAnswer.tsx"), "utf8"));
+const childTile = strip(readFileSync(path.join(here, "..", "about", "AboutChildTile.tsx"), "utf8"));
+const aboutCss = readFileSync(path.join(here, "..", "about", "aboutV10.css"), "utf8");
 
-/** The describe card, so pins are scoped to the hero. */
+/** The describe box ("Tell Arbor about {name}"), so pins are scoped to it. */
 const hero = (() => {
-  const start = src.indexOf('<section data-module="about-describe"');
-  const end = src.indexOf("</section>", start);
+  const start = src.indexOf("const tellBox = (");
+  const end = src.indexOf("\n  );", start);
   return src.slice(start, end);
 })();
+/** The stage heading (the route's h1). */
+const heading = src.slice(src.indexOf("const heading = ("), src.indexOf("const figs ="));
 
 describe("GP-15 — the hero CTA is the contract's primary move", () => {
   it("the profile contract's primaryMove is capture-moment", () => {
@@ -52,8 +59,9 @@ describe("GP-15 — the hero CTA is the contract's primary move", () => {
     expect(card).not.toContain("data-primary-move");
   });
 
-  // v4 re-pin: About now carries What Arbor remembers (AboutMemoryCard): the
-  // proposals NO area shows, with Remember / Not this, and the newest facts.
+  // v4 → v10 re-pin: About carries Arbor's notebook (AboutAnswer: the stage
+  // card and the rail's notes): the proposals NO area shows, with Remember /
+  // Not this, and the newest remembered fact.
   // Every decision is still the #/memory seam (handleMemoryDecision), an area
   // still decides its own proposal, and the page has one door to #/memory.
   it("a proposal is decided with the #/memory decision — in its area, or in the memory card when no area shows it; one door to #/memory", () => {
@@ -63,15 +71,17 @@ describe("GP-15 — the hero CTA is the contract's primary move", () => {
     expect(memoryCard).toContain("handleMemoryDecision(memoryId, status)");
     expect(memoryCard).toContain("pending.filter((m) => !inAreas.has(m.memoryId))");
     expect(memoryCard).not.toMatch(/fetch\(|\/api\//);
+    // Edit is the ledger's one edit form, not a second write path.
+    expect(memoryCard).toContain('import { MemoryEditForm } from "../sections/ChildMemory";');
     expect(src).not.toContain('data-testid="profile-remember-keep"');
     expect(src).not.toContain('data-testid="profile-remember-notquite"');
     expect(src).not.toContain('"elev.profile.remember.keep"');
     expect(src).not.toContain('"elev.profile.remember.notQuite"');
     expect(src).not.toMatch(/pendingQueue\.(slice|map)\(/);
-    // B-CAREPRO-38: the card's door opens the ledger IN PLACE (#/memory retired into About).
-    expect(src).toContain("<AboutMemoryCard areas={aspects} ledgerOpen={ledgerOpen} onLedger={toggleLedger} />");
-    expect(memoryCard).toContain('data-testid="profile-remember-check"');
-    expect(memoryCard).toContain('onClick={() => (onLedger ? onLedger() : setActiveTab("memory"))}');
+    // B-CAREPRO-38: the door opens the ledger IN PLACE (#/memory retired into About).
+    expect(src).toContain('<MoreLink onClick={toggleLedger} className="about-ledger-door">');
+    expect(src).toContain('data-testid="profile-remember-check"');
+    expect(src.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
   });
 
   it("NEGATIVE CONTROL: the pre-fix 'Add a family member' CTA is gone from the hero", () => {
@@ -113,20 +123,21 @@ describe("W2 — a useful identity header", () => {
     expect(src.match(/<h1[\s>]/g)).toHaveLength(1);
     expect(src).not.toContain("<PageHeader");
     expect(src).not.toContain('h-[90px]');
-    expect(hero).toContain('<h1 id="about-title">');
+    expect(heading).toContain('<h1 id="about-title" className="hero">');
   });
-  it("keeps edit and the existing drawer creation seam reachable from Details", () => {
-    const details = src.slice(src.indexOf('data-module="about-details"'));
+  it("keeps edit and the existing drawer creation seam reachable from Details (the child's tile)", () => {
+    const details = childTile;
     expect(details).toContain('t("companion.about.detailsEdit")');
-    expect(hero).not.toContain("!hasHero");
-    expect(details.indexOf("!hasHero")).toBeGreaterThan(-1);
-    const create = details.slice(details.indexOf("!hasHero"), details.indexOf("!hasHero") + 400);
+    expect(hero).not.toContain("asksForHero");
+    expect(details.indexOf("asksForHero(childProfile) && (")).toBeGreaterThan(-1);
+    const create = details.slice(details.indexOf("asksForHero(childProfile) && ("), details.indexOf("asksForHero(childProfile) && (") + 400);
     // F-TALK-1 (v3 integration): the Ask door that opened the conversation panel
     // lived in the footer jump strip, which F-CHILD-3 removed from About. Its
     // guarantee holds for the whole page: nothing here routes to the coach page.
     expect(src).not.toContain('setActiveTab("coach")');
     expect(src).not.toMatch(/tab:\s*"coach"/);
-    expect(create).toContain("setEditingProfile(true)");
+    expect(create).toContain("onClick={onEditDetails}");
+    expect(src).toContain("onEditDetails={() => setEditingProfile(true)}");
     expect(create).not.toContain('setActiveTab("profile")');
     expect(src).toContain("<ProfileEditDrawer");
   });
@@ -134,22 +145,22 @@ describe("W2 — a useful identity header", () => {
 
 describe("B-SHELL-27 — one face on My Child", () => {
   it("the Details picture and the Create-hero gate read lib/childPicture (never the plant beside a hero)", () => {
-    expect(src).toContain('import { asksForHero, childPicture } from "../../lib/childPicture";');
-    expect(src).toContain("const hasHero = !asksForHero(childProfile);");
-    expect(src).toMatch(/\{!hasHero && <button[^>]*>[\s\S]{0,200}cp\.hero\.create/);
-    expect(src).not.toMatch(/const \{ hasHero[^}]*\} = useHeroAvatar\(\)/);
+    expect(childTile).toContain('import { asksForHero, childPicture } from "../../lib/childPicture";');
+    expect(childTile).toMatch(/\{asksForHero\(childProfile\) && \(\s*<button[^>]*>[\s\S]{0,200}cp\.hero\.create/);
+    expect(childTile).toContain("photoURL={picture.url}");
+    expect(childTile).not.toMatch(/const \{ hasHero[^}]*\} = useHeroAvatar\(\)/);
   });
-  it("the art panel shows only a hero render or the initial — never an uploaded photo", () => {
-    expect(hero).toContain('picture.kind === "hero" && picture.url');
-    expect(hero).toContain("picture.initial");
+  it("the stage art is a decorative Living Form — never the child's photo", () => {
+    expect(heading).toContain('<LivingForm src="/visuals/parent/v2/empty-portrait-480.webp"');
+    expect(heading).not.toContain("picture");
   });
 });
 
 describe("NEXTLEVEL critic r1 (profile · design · P1) — one weight for the fact quote in both locales", () => {
   const css = readFileSync(path.join(here, "..", "..", "index.css"), "utf8");
   it("the quoted fact is the editorial face at weight 400", () => {
-    expect(card).toMatch(/<p className="about-aspect-quote"[^>]*><FreeText text=\{known\.words\} \/><\/p>/);
-    expect(aboutCss).toMatch(/\.about-aspect-quote \{[^}]*font-family: var\(--font-editorial\);[^}]*font-weight: 400;/);
+    expect(card).toMatch(/<span className="a8-quote"[^>]*><FreeText text=\{known\.words\} \/><\/span>/);
+    expect(aboutCss).toMatch(/\.a8-quote \{[^}]*font-family: var\(--font-editorial\) !important;[^}]*font-weight: 400 !important;/);
   });
   it("on a Hebrew page Latin runs take Instrument Serif first; Hebrew falls through to Frank Ruhl Libre (both HE scopes)", () => {
     const he = css.match(/--font-editorial: [^;]*Frank Ruhl Libre[^;]*;/g) ?? [];

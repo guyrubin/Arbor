@@ -306,13 +306,13 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
       <header className="companion-conversation-heading">
         <ArborMark size={30} />
         <div className="companion-conversation-identity">
-          <h2 id="companion-conversation-title">Arbor</h2>
+          <h2 id="companion-conversation-title">{inputText(uiLang, "companion.door.talk")}</h2>
           {/* FEAT-05 / F-TALK-1: the active question opens the question sheet; text
               only, never a count or dot. Beside a wide page it is the chip alone;
               below 1280 px it is one muted line, "<child> · <question>". Without
               a question the header names the child. */}
           <div className="companion-conversation-context">
-            {!activeFamilyTopic ? <span className="companion-conversation-name"><bdi dir="auto">{childProfile.name}</bdi></span>
+            {!activeFamilyTopic ? <span className="companion-conversation-name">{inputText(uiLang, "companion.conversation.about", { name: (childProfile.name || "").split(" ")[0] || childProfile.name })}</span>
               : wide ? <button type="button" className="companion-topic-chip" data-testid="conversation-topic-chip" aria-haspopup="dialog" aria-label={inputText(uiLang, "companion.topic-chip.open", { value0: topicTitle })} onClick={openQuestion}>
                 <span className="companion-topic-chip-pill"><Icon name="bookmark" size={16} className="companion-topic-chip-icon" /><span className="companion-topic-chip-text" dir="auto">{topicTitle}</span></span>
               </button>

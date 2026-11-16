@@ -389,12 +389,11 @@ describe("plan progress typography roles", async () => {
   });
 
   it("keeps About's parent quote in the editorial role rather than applying a blanket sans rule", () => {
-    // v3 F-CHILD-3 re-pin: the remembered list left #/profile; the parent's
-    // words are quoted inside their area (AspectCard), and about.css sets the
-    // editorial face at weight 400 on that quote.
+    // v10 re-pin: the parent's words are quoted inside their area row
+    // (AspectCard), and aboutV10.css sets the editorial face at weight 400.
     const card = readFileSync(path.join(here, "..", "about", "AspectCard.tsx"), "utf8");
-    const css = readFileSync(path.join(here, "..", "about", "about.css"), "utf8");
-    expect(card).toMatch(/<p className="about-aspect-quote"[^>]*><FreeText text=\{known\.words\} \/><\/p>/);
-    expect(css).toMatch(/\.about-aspect-quote \{[^}]*font-family: var\(--font-editorial\);[^}]*font-weight: 400;/);
+    const css = readFileSync(path.join(here, "..", "about", "aboutV10.css"), "utf8");
+    expect(card).toMatch(/<span className="a8-quote"[^>]*><FreeText text=\{known\.words\} \/><\/span>/);
+    expect(css).toMatch(/\.a8-quote \{[^}]*font-family: var\(--font-editorial\) !important;[^}]*font-weight: 400 !important;/);
   });
 });
