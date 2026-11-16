@@ -101,8 +101,13 @@ export default function WindupRace() {
     const reduce = reduced.current;
 
     // Camera: close on the car while winding, pulled back to follow the run.
-    const z0 = Math.max(0.55, Math.min(1.5, Math.min(H / 430, W / 400)));
-    const zw = Math.max(z0 * 1.3, Math.min(z0 * 2.4, W * 0.66 / 124, H * 0.5 / 96));
+    // Run zoom: the phone fits the table to the stage; a wide stage also keeps
+    // the car at least 14% of its width (the map shows where the flag is).
+    const z0 = Math.max(0.55, Math.min(1.8, Math.max(Math.min(H / 430, W / 400), W * 0.14 / 96)));
+    // Winding: close on the car. On wide stages the car is held to about a
+    // fifth of the width; tablets land between that and the phone's close-up.
+    const share = lerp(0.6, 0.21, Math.max(0, Math.min(1, (W - 500) / 400)));
+    const zw = Math.max(z0 * 1.3, Math.min(z0 * 2.4, W * 0.66 / 124, H * 0.5 / 96, W * share / 96));
     const k = ease(camK.current);
     let fx = lerp(pose.x - 4, pose.x, k), fy = lerp(pose.y - 30, pose.y * 0.4, k);
     let sx = lerp(W * 0.5, W * 0.36, k), sy = lerp(H * 0.6, H * 0.7, k);
