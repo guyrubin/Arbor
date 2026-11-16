@@ -84,7 +84,7 @@ describe("the sticker: existing art, die-cut", () => {
     expect(book).toContain("arbor-academy-play-hero-bg");
   });
   it("next Studio games: a host tile's sticker is the cover of the game it opens, only on a device that opted in", () => {
-    const off = { band: renderToStaticMarkup(<KidSouvenirSticker kind="world" refId="rhythm-garden" />), book: renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="noahs-ark" />) };
+    const off = { forest: renderToStaticMarkup(<KidSouvenirSticker kind="world" refId="feelings-forest" />), book: renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="noahs-ark" />) };
     vi.stubGlobal("localStorage", { getItem: (key: string) => key === "arbor.flags.studioNext" ? "1" : null, setItem: () => {}, removeItem: () => {} });
     resetStudioNextFlagForTests();
     try {
@@ -93,7 +93,8 @@ describe("the sticker: existing art, die-cut", () => {
       expect(cover).not.toContain("data-kid-sticker-icon");
       expect(cover).toMatch(/mask-image:radial-gradient[(]closest-side/);
       // A tile with no new cover and a book keep the sticker they had.
-      expect(renderToStaticMarkup(<KidSouvenirSticker kind="world" refId="rhythm-garden" />)).toBe(off.band);
+      expect(renderToStaticMarkup(<KidSouvenirSticker kind="world" refId="rhythm-garden" />)).toContain("/visuals/studio-v2/bop/card-band-480.webp");
+      expect(renderToStaticMarkup(<KidSouvenirSticker kind="world" refId="feelings-forest" />)).toBe(off.forest);
       expect(renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="noahs-ark" />)).toBe(off.book);
       expect(renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="memory" />)).not.toContain("/bop/");
     } finally { vi.unstubAllGlobals(); resetStudioNextFlagForTests(); }

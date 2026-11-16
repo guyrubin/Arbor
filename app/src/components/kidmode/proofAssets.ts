@@ -1,15 +1,17 @@
 /**
- * Proof assets — B-GAME-07c: the owner's proof art, served from a LOCAL-ONLY
- * folder of the sandbox build.
+ * Proof assets — B-GAME-07c: the owner's proof art, served from one folder of
+ * the build.
  *
  *   app/public/_proof/hero/sheet.json   a HeroSheet (heroSheet.ts); sprite urls
  *                                       relative to that folder
  *   app/public/_proof/scene/art.json    a Partial<SneakArt> (sneakArt.ts); urls
  *                                       relative to that folder
  *
- * `app/public/_proof/` holds the likeness of the owner's son: it is in the
- * checkout's `.git/info/exclude` and a guard test fails if any file under it
- * is ever tracked. Read only while the game's flag is on; tried BEFORE the
+ * `app/public/_proof/` holds the proof child's likeness. It is tracked under
+ * the owner's 5 Oct 2026 ruling, and every file in it must be named and
+ * hash-pinned in lib/childLikenessFiles.named.ts (B-GAME-35); an unnamed or
+ * redrawn file fails childLikenessFiles.guard.test.ts. Read only while the
+ * game's flag is on; tried BEFORE the
  * local-storage keys and the placeholders. Absent files = today's behaviour.
  * Same-origin files (and data urls) only, so a canvas that draws them is
  * never tainted.

@@ -37,7 +37,7 @@
  * Frames: <out>/<WxH>-<lang>-<moment>.png, moments = first, demo-press,
  * demo-statue, midrun, statue, caught, tag-burst, tag, holdup, ending, again,
  * ending2 (and caught2 / tag-burst2 ... in the second sitting when seen).
- * report.json + REPORT.md beside them. The frames show the owner's son's
+ * report.json + REPORT.md beside them. The frames show the proof child's
  * likeness: the output folder must keep `*.png` out of git (proof/.gitignore).
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";

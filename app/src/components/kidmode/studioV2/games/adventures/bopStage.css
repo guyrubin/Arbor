@@ -1,7 +1,7 @@
 /* The Bop toy world: pearl-white rooms, graphite type, small teal accents and
    natural daylight. Shared by the Bop games so they read as one place.
    Colours come from the kid tokens only; motion is decoration, never a gate. */
-.adventure--bop { --bop-teal: color-mix(in srgb, var(--arbor-sage) 62%, var(--arbor-sky)); --bop-teal-ink: color-mix(in srgb, var(--arbor-green-ink) 70%, var(--arbor-sky-ink)); --bop-pearl: color-mix(in srgb, var(--arbor-on-accent) 94%, var(--studio-deep-ink)); --bop-line: color-mix(in srgb, var(--studio-deep-ink) 16%, transparent); --bop-shade: color-mix(in srgb, var(--studio-deep-ink) 24%, transparent); --bop-amber: var(--studio-action-gold); --studio-edge: var(--bop-line); --studio-glass: var(--arbor-on-accent); border-color: var(--bop-line); background: linear-gradient(160deg, var(--arbor-on-accent), var(--bop-pearl)); }
+.adventure--bop { --bop-teal: var(--studio-teal); --bop-teal-ink: var(--studio-teal-ink); --bop-pearl: color-mix(in srgb, var(--arbor-on-accent) 94%, var(--studio-deep-ink)); --bop-line: color-mix(in srgb, var(--studio-deep-ink) 16%, transparent); --bop-shade: color-mix(in srgb, var(--studio-deep-ink) 24%, transparent); --bop-amber: var(--studio-signal); --studio-edge: var(--bop-line); --studio-glass: var(--arbor-on-accent); border-color: var(--bop-line); background: linear-gradient(160deg, var(--arbor-on-accent), var(--bop-pearl)); }
 .adventure--bop .adventure-challenge button[aria-pressed=true] { background: var(--bop-teal-ink); color: var(--arbor-on-accent); }
 .adventure--bop .adventure-steps span[data-done=true] { background: var(--bop-teal-ink); color: var(--arbor-on-accent); border-color: var(--bop-teal-ink); }
 

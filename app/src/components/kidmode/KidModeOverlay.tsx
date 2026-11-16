@@ -333,6 +333,9 @@ export default function KidModeOverlay() {
   const studio = studioCopy(uiLang === "he" ? "he" : "en");
   const activity = arcadeWorldId ? studioActivity(arcadeWorldId) : undefined;
   const studioOpen = view === "home" || isStudioView(view);
+  // B-KID-133 (D-01): navy behind a stage, so a slow stage image never flashes white.
+  // The v30 Studio sits on its own pearl, so no navy band frames it (DESIGN.md §Kid register).
+  const kidCanvas = studioOpen ? "var(--studio-pearl, var(--arbor-ink))" : "var(--arbor-ink)";
   const barTitle = view === "studio-world" ? studio.worlds[arcadeWorldId as StudioWorldId]?.title
     : view === "studio-game" ? activity ? studio.activities[activity.id].title : studio.invitation
     : view === "studio-collection" ? studio.collection
@@ -367,8 +370,9 @@ export default function KidModeOverlay() {
           // parent shell during enter/exit. This non-transformed full-viewport backdrop
           // swallows any pointer that lands in those strips — the lock never depends on a
           // completed animation frame.
-          // B-KID-133 (D-01): navy, so a slow stage image never flashes white.
-          style={{ position: "fixed", inset: 0, zIndex: 69, background: "var(--arbor-ink)", pointerEvents: "auto" }}
+          // B-KID-133 (D-01): the kid canvas (navy behind a stage, pearl behind the Studio).
+          data-kid-studio={studioOpen ? "" : undefined}
+          style={{ position: "fixed", inset: 0, zIndex: 69, background: kidCanvas, pointerEvents: "auto" }}
         />
       )}
       {isKidModeOpen && (
@@ -385,13 +389,14 @@ export default function KidModeOverlay() {
           aria-label={t("aria.kidMode")}
           className="arbor-play"
           data-kid-staged=""
+          data-kid-studio={studioOpen ? "" : undefined}
           style={{
             position: "fixed",
             inset: 0,
             zIndex: 70,
             display: "flex",
             flexDirection: "column",
-            background: "var(--arbor-ink)",
+            background: kidCanvas,
             overflow: "hidden",
           }}
         >
@@ -524,15 +529,15 @@ export default function KidModeOverlay() {
                   style={sneakOpen ? { flex: 1, minBlockSize: 0, position: "relative" } : studioOpen ? { minHeight: "100%" } : undefined}
                 >
                   {view === "home" ? (
-                    <Suspense fallback={<KidStageFallback />}><StudioHome onWorld={(id) => openStudio("studio-world", id)} onCollection={() => openStudio("studio-collection")} onQuest={() => openStudio("studio-quest")} onExit={closeKidMode} onOpenBook={setOpenBookId} /></Suspense>
+                    <Suspense fallback={<KidStageFallback studio />}><StudioHome onWorld={(id) => openStudio("studio-world", id)} onCollection={() => openStudio("studio-collection")} onQuest={() => openStudio("studio-quest")} onExit={closeKidMode} onOpenBook={setOpenBookId} /></Suspense>
                   ) : view === "studio-world" ? (
-                    <Suspense fallback={<KidStageFallback />}><StudioWorld worldId={arcadeWorldId as StudioWorldId} onActivity={openActivity} onBooks={() => openSurface("journeys")} onOpenBook={setOpenBookId} /></Suspense>
+                    <Suspense fallback={<KidStageFallback studio />}><StudioWorld worldId={arcadeWorldId as StudioWorldId} onActivity={openActivity} onBooks={() => openSurface("journeys")} onOpenBook={setOpenBookId} /></Suspense>
                   ) : view === "studio-game" ? (
-                    <Suspense fallback={<KidStageFallback />}><StudioGame activityId={arcadeWorldId as StudioActivityId} onBack={studioBack} /></Suspense>
+                    <Suspense fallback={<KidStageFallback studio />}><StudioGame activityId={arcadeWorldId as StudioActivityId} onBack={studioBack} /></Suspense>
                   ) : view === "studio-collection" ? (
-                    <Suspense fallback={<KidStageFallback />}><StudioCollection onQuest={() => openStudio("studio-quest")} onActivity={openActivity} onBooks={() => openSurface("journeys")} onHome={() => setView("home")} /></Suspense>
+                    <Suspense fallback={<KidStageFallback studio />}><StudioCollection onQuest={() => openStudio("studio-quest")} onActivity={openActivity} onBooks={() => openSurface("journeys")} onHome={() => setView("home")} /></Suspense>
                   ) : view === "studio-quest" ? (
-                    <Suspense fallback={<KidStageFallback />}><StudioQuest onHome={() => setView("home")} /></Suspense>
+                    <Suspense fallback={<KidStageFallback studio />}><StudioQuest onHome={() => setView("home")} /></Suspense>
                   ) : view === "arcade" ? (
                     <Suspense fallback={<KidStageFallback worldId={arcadeWorldId ?? undefined} />}>
                       {/* B-GAME-07b: the flagged proof game, in the arcade's own Suspense. */}

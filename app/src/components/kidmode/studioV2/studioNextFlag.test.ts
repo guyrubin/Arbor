@@ -54,16 +54,22 @@ describe('next Studio games switch', () => {
     open('?studioNext=yes'); expect(studioNextFlagOn()).toBe(false); expect(store.size).toBe(0);
     store.set(STUDIO_NEXT_FLAG_KEY, 'true'); open(''); expect(studioNextFlagOn()).toBe(false);
   });
-  it('gives each of the four host tiles its own cover, and only those', () => {
+  it('gives each of the five game tiles its own cover, and only those', () => {
     store.set(STUDIO_NEXT_FLAG_KEY, '1'); open('');
     expect([...STUDIO_NEXT_HOSTS].sort()).toEqual(['memory', 'pattern', 'puzzle', 'river-rescue']);
-    const covers = STUDIO_NEXT_HOSTS.map(host => studioNextCover(host)!);
-    expect(new Set(covers.map(cover => cover.src)).size).toBe(4);
+    const covers = [...STUDIO_NEXT_HOSTS, 'rhythm-garden'].map(host => studioNextCover(host)!);
+    expect(new Set(covers.map(cover => cover.src)).size).toBe(5);
     for (const cover of covers) {
       expect(cover.srcSet).toBe(`${cover.src480} 480w, ${cover.src} 1024w`);
       for (const file of [cover.src, cover.src480]) expect(existsSync(path.join(PUBLIC, file)), `${file} is not shipped`).toBe(true);
     }
-    for (const other of ['rhythm-garden', 'feelings-forest', 'calm-builder', 'sneak', 'toString', '__proto__', '']) expect(studioNextCover(other)).toBeNull();
+    for (const other of ['feelings-forest', 'calm-builder', 'sneak', 'toString', '__proto__', '']) expect(studioNextCover(other)).toBeNull();
+  });
+  it("Hero Band's own switch shows its cover (v30 pavilion) and no other", () => {
+    open('?heroBand=1');
+    expect(studioNextFlagOn()).toBe(false);
+    expect(studioNextCover('rhythm-garden')?.src).toBe('/visuals/studio-v2/bop/card-band.webp');
+    for (const host of STUDIO_NEXT_HOSTS) expect(studioNextCover(host)).toBeNull();
   });
   it('names five tiles after the games they open, in both languages, and only while on', () => {
     const off = { en: studioCopy('en'), he: studioCopy('he') };

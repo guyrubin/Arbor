@@ -14,15 +14,17 @@ import { kidArt, kidArtSrcSet, storyCoverArt } from "../../lib/kidThemeManifest"
  * hero (Sprout when there is none) idling in front. Never the parent grey
  * TabSkeleton. The idle is a slow bob, still under prefers-reduced-motion.
  * Decorative and transient (aria-hidden); the surface announces itself.
+ * `studio`: a Studio view loading shows the v30 valley on pearl, never the
+ * pre-v30 storybook stage (DESIGN.md §Kid register).
  */
-export function KidStageFallback({ worldId, storyId }: { worldId?: string; storyId?: string }) {
+export function KidStageFallback({ worldId, storyId, studio = false }: { worldId?: string; storyId?: string; studio?: boolean }) {
   const theme = useKidTheme();
   const reduced = usePrefersReducedMotion();
   const candidate = worldId ? worldArtwork(worldId, theme) : undefined;
   const world = candidate?.hasHero ? undefined : candidate;
   // B-KID-124: while the reader's chunk loads, a tapped book shows ITS cover.
   const cover = !world && storyId ? storyCoverArt(theme, storyId) : null;
-  const stageCandidate = !world && !cover ? kidArt(theme, "home.stage") : null;
+  const stageCandidate = !world && !cover ? kidArt(theme, studio ? "studio.sky" : "home.stage") : null;
   const stage = stageCandidate?.hasHero ? null : stageCandidate;
   const still = cover ?? stage;
   const art = world
@@ -33,7 +35,10 @@ export function KidStageFallback({ worldId, storyId }: { worldId?: string; story
       aria-hidden="true"
       data-testid="kid-stage-fallback"
       className="arbor-play relative grid place-items-center overflow-hidden"
-      style={{ minBlockSize: 320, borderRadius: "var(--play-radius)", background: "var(--arbor-paper-deep)" }}
+      data-kid-fallback-studio={studio ? "" : undefined}
+      style={studio
+        ? { minBlockSize: "min(720px, 100dvh)", background: "var(--studio-pearl, var(--arbor-paper-deep))" }
+        : { minBlockSize: 320, borderRadius: "var(--play-radius)", background: "var(--arbor-paper-deep)" }}
     >
       {art && (
         <img src={art.src} srcSet={art.srcSet} sizes="100vw" alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: art.objectPosition }} />

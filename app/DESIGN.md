@@ -62,6 +62,15 @@ Chosen 7 Oct (P7-DESIGN, Option A + three B elements; the 7 Oct design direction
 - Artwork: Living Forms v2 uses satin sculpted leaf ribbons in sapphire, pearl, mint, periwinkle and restrained coral. `lib/parentArt.ts` maps eight domains and nine shelves (Body has a neutral form distinct from Sleep/Food). Use full art in expanded area introductions, guidance panels and first-use empty states. Keep compact controls as symbols. Twelve guidance compositions share the same masters; no family photos, avatars or assessment claims. Provenance: `docs/design/parent-art-v2.json` and `docs/design/guide-art-v1.json`.
 - Icons: Material Symbols Rounded via `<Icon name>` is the only icon family in parent mode; Kids Studio activity badges also use this family; lucide-react survives only inside game-specific Kid Mode content (`components/kidmode/`), held by `iconFamily.guard.test.ts`. The three places (Now, My child, Together) take their glyphs from `lib/companionPlaces.ts` (sidebar and dock alike), and no two nav destinations share a glyph. An `<Icon>` never leads a `dir="auto"` element (its ligature is Latin text): give that line the locale's `dir`. Chrome icons (top bar, dock, nav) are weight 300 outline and filled when active: `<Icon name chrome active={on}>`. Content glyphs are the duotone `ShelfGlyph`. A glyph outside the subset needs `npm run build:icon-font` (networked)
 
+## Kid register (v30, 16 Nov 2026)
+
+Kids Studio wears the v30 kit register (Horizon Valley: a white and glass garden village in daylight). Source of truth: `src/components/kidmode/studioV2/studioTokens.css`, the only kid stylesheet with raw colour (ten source colours).
+
+- Surfaces pearl `--studio-pearl` / mist `--studio-mist` / white `--studio-surface` / frosted `--studio-frost`; type graphite `--studio-graphite` (soft `-soft`); hairline `--studio-line`, depth `--studio-shade`
+- Meaning, never decoration: the primary action is graphite (`--studio-action`, label `--studio-action-ink`); done or chosen is teal (`--studio-done`, rings `--studio-teal-ink`); the lit or next cue is `--studio-signal`, which marks a thing and never fills a surface. No gold, no yellow wash, no glow
+- Art: daylight valley and door pictures under `public/visuals/studio-v2/v30/`, game covers and scenes under `bop/`; props felt, knit or ceramic; the companions are Aya, Chock and Pep. People never appear in shell art, and no picture carries text
+- Guard: `kidDesign.audit.test.ts` freezes raw colour per kid stylesheet (shrink-only), fails a pre-v30 gold token or night-sky class in the Studio, and fails a `--studio-*` token used but not defined
+
 ## Motion
 
 - `motion/react`, app-wide `MotionConfig reducedMotion="user"`

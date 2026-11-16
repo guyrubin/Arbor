@@ -81,10 +81,14 @@ describe("the stage layer", () => {
     expect(block).not.toMatch(/animation|#[0-9a-f]{3,6}\b|comic-ink/i);
     expect(css).toContain(".arbor-play[data-kid-staged]::before { display: none; }");
   });
-  it("the overlay: stage first, content above it, navy behind (a slow image never flashes white)", () => {
+  it("the overlay: stage first, content above it, navy behind a stage (a slow image never flashes white), pearl behind the v30 Studio", () => {
     expect(overlay).toContain('data-kid-staged=""');
     expect(overlay.indexOf("<KidStage scene={stageScene} />")).toBeLessThan(overlay.indexOf('{view !== "home" && ('));
-    expect(overlay).toContain('zIndex: 69, background: "var(--arbor-ink)"');
+    expect(overlay).toContain('const kidCanvas = studioOpen ? "var(--studio-pearl, var(--arbor-ink))" : "var(--arbor-ink)";');
+    expect(overlay).toContain("zIndex: 69, background: kidCanvas");
+    expect(overlay).toContain("background: kidCanvas,");
+    expect((overlay.match(/data-kid-studio=\{studioOpen \? "" : undefined\}/g) ?? []).length).toBe(2);
+    expect(readFileSync(path.join(__dirname, "studioV2", "studioTokens.css"), "utf8")).toContain("[data-kid-studio]) {");
     expect((overlay.match(/position: "relative",\s*zIndex: 1,/g) ?? []).length).toBe(2);
   });
 });

@@ -6,10 +6,10 @@ import { useLanguage } from '../../../../../context/LanguageContext';
 import { useArborOptional } from '../../../../../context/ArborContext';
 import { GameShell, GameFinish } from '../../../game/GameShell';
 import { kidSfx, onKidHush, useKidReadAloudMuted } from '../../../audio/kidAudio';
-import { StudioAdventureScene } from '../../StudioAdventureScene';
 import { StudioPlayHero } from '../../StudioPlayHero';
 import { useStudioCreations } from '../../studioCreations';
 import { AdventureSprout, useAdventureVoice } from './AdventureGuide';
+import { BopScene } from './BopArt';
 import { AdventureHeading, AdventureSteps, ChallengePicker } from './AdventureShared';
 import { ADVENTURE_COPY } from './adventureCopy';
 import { defaultChallenge, type Challenge } from './adventureRules';
@@ -157,7 +157,7 @@ export default function HeroBand() {
         {!jamming && <div className="adventure-toolbar">{phase === 'ready' && <ChallengePicker value={challenge} onChange={reset} words={shared} />}<AdventureSteps done={round} total={COPY_ROUNDS + 1} /></div>}
         <AdventureHeading focusKey={`${round}:${phase}`} onHear={guide.replay} muted={guide.muted || playing}>{cue}</AdventureHeading>
         <div className="band-stage" data-phase={phase} data-move={move ?? 'none'} data-playing={playing}>
-          <StudioAdventureScene activityId="rhythm-garden" />
+          <BopScene scene="scene-band" />
           <span className="band-spot" aria-hidden="true" />
           <div className="band-floor">
             <span className="band-dancer" ref={dancer}><StudioPlayHero size={phase === 'stage' ? 250 : 190} kick={beat} pose={pose} celebrate={phase === 'matched'} /></span>

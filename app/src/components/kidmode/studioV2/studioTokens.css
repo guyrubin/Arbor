@@ -1,20 +1,38 @@
-/* Source: Arbor Kids Studio v2.zip — Kids Studio Sky.dc.html + tokens/worlds.css.
-   Keep the cinematic chrome and the cream play stage as distinct surfaces. */
-:where(.studio-v2, .studio-game-view, .adventure) {
+/* Kid register v30 (Horizon Valley; the art kit's register v30, 15 Nov 2026):
+   pearl-white and cool-grey surfaces, graphite type, one restrained teal. No gold
+   frames, yellow wash or glow: colour lives in the art and the props.
+   Primary action = graphite; done / chosen = teal; a lit or "next" cue = signal,
+   which marks, never fills a surface. DESIGN.md §Kid register (v30). */
+:where(.studio-v2, .studio-game-view, .adventure, .studio-v2-bar, [data-kid-studio]) {
   --studio-font: Nunito, Heebo, sans-serif;
-  --studio-sky: #121c3a;
-  --studio-deep-ink: #1a2b4a;
-  --studio-ink-soft: #3a4a66;
-  --studio-canvas: #f7f3e9;
-  --studio-canvas-soft: #fbf8f1;
-  --studio-text: #fff;
-  --studio-text-soft: #ffffffd9;
-  --studio-edge: #ffffff4d;
-  --studio-panel: linear-gradient(160deg, #3c4678eb, #1e2850f2);
-  --studio-glass: #ffffff1f;
-  --studio-action-gold: #f7b91d;
-  --studio-action-ink: #3a2a00;
-  --studio-action-fill: linear-gradient(135deg, #ffd86b, var(--studio-action-gold) 50%, #e09a10);
+  --studio-pearl: #f5f6f4;
+  --studio-mist: #e6eaec;
+  --studio-surface: #fff;
+  --studio-frost: #ffffffe3;
+  --studio-graphite: #1f2a33;
+  --studio-graphite-soft: #52606b;
+  --studio-line: color-mix(in srgb, var(--studio-graphite) 14%, transparent);
+  --studio-shade: color-mix(in srgb, var(--studio-graphite) 16%, transparent);
+  --studio-teal: #23938b;
+  --studio-teal-ink: #11665f;
+  --studio-teal-soft: #dcefec;
+  --studio-signal: #d97a2b;
+  --studio-action: var(--studio-graphite);
+  --studio-action-ink: var(--studio-surface);
+  --studio-done: var(--studio-teal-ink);
+  --studio-done-ink: var(--studio-surface);
+  --studio-lift: 0 10px 30px var(--studio-shade);
+  /* Pre-v30 names, kept so every game reads the same register. */
+  --studio-sky: var(--studio-pearl);
+  --studio-deep-ink: var(--studio-graphite);
+  --studio-ink-soft: var(--studio-graphite-soft);
+  --studio-canvas: var(--studio-pearl);
+  --studio-canvas-soft: var(--studio-surface);
+  --studio-text: var(--studio-graphite);
+  --studio-text-soft: var(--studio-graphite-soft);
+  --studio-edge: var(--studio-line);
+  --studio-panel: var(--studio-frost);
+  --studio-glass: var(--studio-surface);
   --studio-radius-panel: 20px;
   --studio-radius-card: 16px;
   --studio-radius-control: 12px;

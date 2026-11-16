@@ -35,6 +35,15 @@ describe("the one kid loading state", () => {
     expect(html).toContain("data-hero");
     expect(html).toContain('aria-hidden="true"');
   });
+  it("a Studio view loading shows the v30 valley on pearl, never the pre-v30 storybook stage", () => {
+    const html = renderToStaticMarkup(<KidStageFallback studio />);
+    expect(html).toContain("/visuals/studio-v2/v30/valley-wide");
+    expect(html).not.toContain("kid-discovery-garden");
+    expect(html).toContain("data-kid-fallback-studio");
+    expect(html).toContain("var(--studio-pearl, var(--arbor-paper-deep))");
+    const overlay = read("KidModeOverlay.tsx");
+    for (const view of ["StudioHome", "StudioWorld", "StudioGame", "StudioCollection", "StudioQuest"]) expect(overlay).toContain(`<Suspense fallback={<KidStageFallback studio />}><${view} `);
+  });
   it("no parent skeleton inside Kid Mode: every kid Suspense and the shelf's loading use it", () => {
     const overlay = read("KidModeOverlay.tsx");
     expect(overlay).not.toMatch(/TabSkeleton|SectionSkeleton/);
