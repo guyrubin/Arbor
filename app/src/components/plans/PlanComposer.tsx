@@ -274,7 +274,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
 
         {state.stage === "approved" && (
           <section className="cp-card" data-plan-stage="approved">
-            <span className="cp-st2 ok" style={{ alignSelf: "flex-start" }}><Icon name="check" size={15} />{c.approvedOn(new Date().toLocaleDateString(lang === "he" ? "he-IL" : "en-US", { day: "numeric", month: "short" }))}</span>
+            <span className="cp-st2 ok" style={{ alignSelf: "flex-start" }}><Icon name="check" size={15} />{c.approvedOn(new Date().toLocaleDateString(lang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" }))}</span>
             <h1 className="cp-h">{s("stage.approved.title", { name })}</h1>
             <p className="cp-lede">{s("stage.approved.body", { name, days: state.durationDays })}</p>
             <div className="line" style={{ gap: 8, flexWrap: "wrap" }}>

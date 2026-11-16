@@ -58,8 +58,8 @@ describe("Challenge Plans page (N-Challenge)", () => {
   it("nights are counts of what the parent confirmed; an unanswered night is unknown (dashed), never a miss", () => {
     const html = screen();
     // V77: the count is the nights tile's figure (said once; the stage no longer repeats it).
-    expect(text(html)).toMatch(/<?\b3\s+nights confirmed/);
-    expect((text(html).match(/nights confirmed/g) ?? []).length).toBe(1);
+    expect(text(html)).toMatch(/\b3\s+nights you answered yes/);
+    expect((text(html).match(/nights you answered yes/g) ?? []).length).toBe(1);
     expect(html).toContain("tok plan md none");
     expect(text(html)).toContain("No answer");
     expect(text(html.replace(/ style="[^"]*"/g, ""))).not.toMatch(/\d\s*%|missed|score|streak/i);

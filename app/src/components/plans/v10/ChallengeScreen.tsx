@@ -52,7 +52,7 @@ export interface ChallengeScreenProps {
 
 const fmt = (lang: "en" | "he", d: Date, opts: Intl.DateTimeFormatOptions) => {
   try {
-    return new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-US", opts).format(d);
+    return new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-GB", opts).format(d);
   } catch {
     return d.toDateString();
   }
@@ -137,7 +137,7 @@ function NightsStrip({ plan, lang, now }: { plan: ActivePlan; lang: "en" | "he";
         const isToday = k === today;
         return (
           <span key={k} className={isToday ? "t" : yes ? "y" : "u"}>
-            {fmt(lang, d, { weekday: "narrow" })}
+            {fmt(lang, d, { weekday: "short" })}
             <b>{d.getDate()}</b>
             <i className={`tok plan md${yes ? "" : isToday ? " here" : " none"}`} aria-hidden="true" />
           </span>
@@ -175,11 +175,11 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
   const childLine = plan ? tonightStepForChild(plan.doc, lang, p.gender) : null;
   const total = plan?.doc.durationDays ?? 0;
   const night = plan ? Math.min(plan.day, total) : 0;
-  const approvedShort = plan ? fmt(lang, new Date(plan.doc.approvedAt), { day: "numeric", month: "short" }) : "";
 
   const actions = plan && (
     <div className="cp-act" style={{ padding: desk ? "14px 28px 24px" : 0, marginTop: desk ? "auto" : undefined, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-      {/* Once-only: tonight's step lives in Today (the rail) and the three steps; not here again. */}
+      {/* Once-only: tonight's step lives in Today (the rail) and the three steps; here only the book. */}
+      {desk && <span style={{ flexBasis: "100%", fontSize: 14, color: "var(--ink)" }} dir="auto"><b style={{ fontWeight: 600 }}>{c.tonightAt}</b> {c.tonightRead(childName)}</span>}
       {plan.review && desk && <button type="button" className="btn primary" style={{ minWidth: 160 }} data-plan-keep="" onClick={() => p.onKeep(plan)}>{s("review.keep")}</button>}
       {desk && (
         <button type="button" className={plan.review ? "btn ghost" : "btn primary"} style={plan.review ? { background: "var(--card)" } : { minWidth: 160 }} data-plan-open="" onClick={() => p.onOpenBook(plan)}>
@@ -205,6 +205,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
             <button type="button" data-plan-night-yes="" onClick={() => p.onNight(plan)}>{s("today.night.yes")}</button>
             <button type="button" data-plan-night-no="" onClick={() => setNotTonight(true)}>{s("today.night.no")}</button>
           </div>
+          <span className="small">{c.oneTap}</span>
         </>
       )}
       {recorded && (
@@ -263,7 +264,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
       <div className="nx-co" style={{ gridTemplateColumns: "minmax(0, 1fr)", gap: 10, alignItems: "start", flex: desk ? 1.6 : undefined }}>
         <div className="line between" style={{ gap: 8, flexWrap: "wrap" }}>
           <b style={{ fontSize: 14, fontWeight: 600 }}>{s(`time.${plan.doc.time}` as Parameters<typeof planString>[0])}</b>
-          <span className="cp-st2 ok">{c.approvedOn(approvedShort)}</span>
+          <span className="cp-st2 ok"><Icon name="check" size={15} />{c.approvedByYou}</span>
         </div>
         {parentStep && (
           <div className="cp-st">
@@ -296,7 +297,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
   );
 
   const nightsTile = plan && (
-    <Tile className={desk ? "x4" : undefined} icon="nightlight" kind="plan" title={c.nights} titleId="cp-nights">
+    <Tile className={desk ? "x4" : undefined} icon="nightlight" kind="plan" title={c.tried} titleId="cp-nights">
       <Fig n={nightsCount(plan.doc)} unit={c.nightsUnit} size="md" />
       <NightsStrip plan={plan} lang={lang} now={p.now} />
       <TokenLegend
@@ -309,7 +310,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
   );
 
   const sourcesTile = plan && (
-    <Tile className={desk ? "x4" : undefined} icon="menu_book" title={s("print.sources")} titleId="cp-sources">
+    <Tile className={desk ? "x4" : undefined} icon="menu_book" title={c.whereFrom} titleId="cp-sources">
       <ul className="stack ds-col" style={{ gap: 8, margin: 0, paddingInlineStart: 18, fontSize: 13, lineHeight: 1.35 }} data-plan-sources="">
         {plan.def.sources.map((src) => (
           <li key={src.id} dir="auto">
@@ -347,7 +348,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
             </div>
           </div>
           <div className="cf2" style={{ flexWrap: "nowrap" }}>
-            {r ? <span className="run">{c.runningNight(Math.min(r.day, r.doc.durationDays), r.doc.durationDays)}</span> : <span data-plan-door-age="">{s("chooser.age", { age: d.ageText })}</span>}
+            {r ? <span className="run">{plan?.def.id === d.id ? c.runningOpenAbove : c.runningNight(Math.min(r.day, r.doc.durationDays), r.doc.durationDays)}</span> : <span data-plan-door-age="">{s("chooser.age", { age: d.ageText })}</span>}
             {!r && <span>{c.days(d.defaultDurationDays)}</span>}
             <span style={{ marginInlineStart: "auto", background: "none", padding: 0, color: "var(--sapphire-deep)" }}>{r ? s("card.open") : c.startThis}</span>
           </div>
@@ -377,7 +378,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
           <RouteSection id="cp-stage" n={1} on>
             <div className="g12" data-module="plans-challenge">
               <div className="x8" style={{ display: "flex", flexDirection: "column" }}>{stage}</div>
-              <SideRail id="cp-today" n={2} title={c.today} sub={c.todaySub} titleId="cp-today-title" className="x4">{todayCards}</SideRail>
+              <SideRail id="cp-today" n={2} title={c.today} sub={c.todaySub(childName)} titleId="cp-today-title" className="x4">{todayCards}</SideRail>
             </div>
           </RouteSection>
         )}
@@ -397,7 +398,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
               </div>
             </RouteSection>
             <RouteSection id="cp-today" n={2}>
-              <RouteHead title={c.today} sub={c.todaySub} />
+              <RouteHead title={c.today} sub={c.todaySub(childName)} />
               <div className="stack ds-col" style={{ gap: 10 }}>{todayCards}</div>
             </RouteSection>
           </>
