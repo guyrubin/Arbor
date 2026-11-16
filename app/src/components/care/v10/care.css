@@ -217,3 +217,7 @@
 .ds.care-records .care-records-data { padding: 6px 18px; }
 .ds.care-records .care-records-hint { color: var(--ink-soft); }
 .ds.care-v10 .guide.mini .gstop { min-height: 44px; }
+/* the stage sizes to its content: no empty band beside a taller rail */
+.ds-desk.care-v10 .care-row-a > .care-scene,
+.ds-desk.care-records .care-records-row > .care-records-scene { align-self: start; }
+.ds.care-v10 .care-scene-foot { margin-top: 4px; }
