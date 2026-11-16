@@ -84,7 +84,7 @@ describe("YourDay", () => {
       expect(html.split(translate(lang, "dw.guard")).length - 1).toBe(1);
       expect(html.match(/data-testid="dw-hour-bar"/g)).toHaveLength(15);
       // The busiest part, with its unit in words.
-      expect(text(html)).toContain(`2 ${WEEKLY_COPY[lang].inPart(2, WEEKLY_COPY[lang].eveningPart)}`);
+      expect(text(html)).toContain(WEEKLY_COPY[lang].dayHead(WEEKLY_COPY[lang].eveningPart, WEEKLY_COPY[lang].eveningSpan, 2));
     });
 
     it(`${lang}: above the floor → the trickier window and the pattern line; overflow reads "n more", never "+n"`, () => {
@@ -103,25 +103,25 @@ describe("YourDay", () => {
   }
 });
 
-describe("WhatHelped", () => {
-  const hard = { id: "h", ms: new Date(2026, 9, 10, 7).getTime(), words: "Would not leave the park", tried: "Counted down from five together", settled: true };
+describe("WhatHelped (canvas V77)", () => {
   const steps = [{ step: "Name the feeling first", helped: 1, notThisTime: 0, helpedDays: [dayStarts[0]], latest: 1 }, { step: "Offer two choices", helped: 0, notThisTime: 1, helpedDays: [], latest: 0 }];
   for (const lang of LANGS) {
-    it(`${lang}: the thread joins the hard moment, what the parent tried and the words they used; steps follow`, () => {
-      const html = renderToStaticMarkup(<WhatHelped composition="desk" copy={WEEKLY_COPY[lang]} t={t(lang)} locale={lang} childFirst="Noa" hard={hard} steps={steps} heldWords={<p>held</p>} hasHeldWords words={["moon"]} onPlans={() => {}} />);
-      for (const id of ["weekly-thread-hard", "weekly-thread-tried", "weekly-thread-words", "weekly-words"]) expect(html).toContain(`data-testid="${id}"`);
-      expect(html).toContain(hard.words);
-      expect(html).toContain(hard.tried);
-      expect(html).toContain(WEEKLY_COPY[lang].settled);
+    it(`${lang}: the steps as reported; beside them the words used and one card to the week's hard moments`, () => {
+      const html = renderToStaticMarkup(<WhatHelped composition="desk" copy={WEEKLY_COPY[lang]} t={t(lang)} uiLang={lang} locale={lang} childFirst="Noa" hardCount={2} steps={steps} heldWords={<p>held</p>} hasHeldWords words={["moon"]} onPlans={() => {}} onHardMoments={() => {}} />);
+      for (const id of ["weekly-steps", "weekly-thread-words", "weekly-hard-card", "weekly-words"]) expect(html).toContain(`data-testid="${id}"`);
+      expect(tagButton(html, "weekly-hard-card")).toBe(true);
+      expect(text(html)).toContain(WEEKLY_COPY[lang].hardCard(2));
       expect(html.match(/data-testid="weekly-step"/g)).toHaveLength(2);
       expect(html).toContain(translate(lang, "elev.wk.helped.not", { n: 1 }));
       expect(text(html)).not.toMatch(FIREWALL);
     });
 
-    it(`${lang}: nothing recorded → production's empty line, no thread`, () => {
-      const html = renderToStaticMarkup(<WhatHelped composition="phone" copy={WEEKLY_COPY[lang]} t={t(lang)} locale={lang} childFirst="Noa" hard={null} steps={[]} heldWords={null} hasHeldWords={false} words={[]} onPlans={() => {}} />);
-      expect(html).not.toContain('data-testid="weekly-thread"');
+    it(`${lang}: no hard moment → no card; nothing recorded → production's empty line`, () => {
+      const html = renderToStaticMarkup(<WhatHelped composition="phone" copy={WEEKLY_COPY[lang]} t={t(lang)} uiLang={lang} locale={lang} childFirst="Noa" hardCount={0} steps={[]} heldWords={null} hasHeldWords={false} words={[]} onPlans={() => {}} onHardMoments={() => {}} />);
+      expect(html).not.toContain('data-testid="weekly-hard-card"');
       expect(html).toContain(translate(lang, "elev.wk.helped.none"));
     });
   }
 });
+
+const tagButton = (html: string, id: string) => new RegExp(`<button [^>]*data-testid="${id}"`).test(html);

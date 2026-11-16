@@ -1,5 +1,5 @@
 import React, { type ReactNode } from "react";
-import { LivingForm, MoreLink, Pile, RouteHead, Tile, Fig } from "../../../design/primitives";
+import { LivingForm, MoreLink, Pile, RouteHead, Tile } from "../../../design/primitives";
 import type { Composition } from "../../../design/useComposition";
 import { behaviorTypeLabel } from "../../../content/behaviorTaxonomy";
 import { domainName } from "../../../lib/domains/registry";
@@ -8,6 +8,7 @@ import { DOMAIN_ART } from "../../../lib/parentArt";
 import { guideArtFor } from "../../../lib/guideArt";
 import type { UiLang } from "../../../lib/i18n";
 import type { WeekAreaLine } from "../../../lib/weekReport";
+import Icon from "../../ui/Icon";
 import type { WeeklyCopy } from "./weeklyCopy";
 
 type T = (key: string, vars?: Record<string, string | number>) => string;
@@ -38,7 +39,7 @@ export default function CarryNextWeek({
   visit,
   nowMs,
   onHardMoments,
-  onMilestoneMap,
+  onMoments,
   onPrepare,
 }: {
   composition: Composition;
@@ -52,7 +53,7 @@ export default function CarryNextWeek({
   visit: WeekVisit | null;
   nowMs: number;
   onHardMoments: () => void;
-  onMilestoneMap: () => void;
+  onMoments: () => void;
   onPrepare: () => void;
 }) {
   const phone = composition === "phone";
@@ -79,7 +80,7 @@ export default function CarryNextWeek({
       kind="plan"
       title={copy.byArea}
       titleId="wk-areas-title"
-      link={<MoreLink onClick={onMilestoneMap}>{copy.milestoneMap}</MoreLink>}
+      link={<MoreLink onClick={onMoments}>{copy.momentsLink}</MoreLink>}
       className="wk10-tile"
     >
       <div data-testid="weekly-glance-areas" className="stack wk10-areas">
@@ -109,53 +110,29 @@ export default function CarryNextWeek({
     </Tile>
   );
 
-  let visitBody: ReactNode;
+  /* The next visit (canvas V77): one card, the whole of it the door to
+     Care › Visits ("Prepare"); its days to go, its profession and its time. */
+  const art = guideArtFor("new-words", uiLang);
+  let visitTitle: string;
+  let visitSub: string;
   if (visit) {
     const days = Math.max(0, Math.round((startOfDay(visit.startMs) - startOfDay(nowMs)) / DAY_MS));
     const when = new Date(visit.startMs).toLocaleString(locale, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
-    const art = guideArtFor("new-words", uiLang);
-    visitBody = (
-      <>
-        <div className="line wk10-visit">
-          {art && !phone && <LivingForm src={art.src} srcSet={art.srcSet} width={84} height={60} crop={{ w: 202.6, h: 114, x: -110.2, y: -28.7 }} />}
-          {days > 0 ? (
-            <Fig n={days} unit={copy.daysToVisit(days)} sub={<bdi>{`${visit.role} · ${when}`}</bdi>} />
-          ) : (
-            <Fig n={copy.keyToday} unit={copy.visitToday} sub={<bdi>{`${visit.role} · ${when}`}</bdi>} size="md" />
-          )}
-        </div>
-        {days > 0 && days <= 14 && (
-          <div className="wk10-runway" aria-hidden="true">
-            <span className="runway">
-              <i aria-hidden="true" className="tok here sm" />
-              {Array.from({ length: days - 1 }, (_, i) => (
-                <span key={i} className="rd" />
-              ))}
-              <i aria-hidden="true" className="tok date sm">{new Date(visit.startMs).toLocaleDateString(locale, { day: "numeric" })}</i>
-            </span>
-            <span className="small wk10-runway-ends">
-              <span>{copy.todayOn(new Date(nowMs).toLocaleDateString(locale, { weekday: "short", day: "numeric" }))}</span>
-              <span>{new Date(visit.startMs).toLocaleDateString(locale, { weekday: "short", day: "numeric" })}</span>
-            </span>
-          </div>
-        )}
-      </>
-    );
+    visitTitle = copy.visitCard(days);
+    visitSub = copy.visitCardSub(visit.role, when);
   } else {
-    visitBody = <p className="line1 wk10-note">{copy.noVisit}</p>;
+    visitTitle = copy.nextVisit;
+    visitSub = copy.noVisitSub;
   }
-
   const nextVisit = (
-    <Tile
-      icon="group"
-      kind="date"
-      title={copy.nextVisit}
-      titleId="wk-visit-title"
-      link={<MoreLink onClick={onPrepare}>{copy.prepare}</MoreLink>}
-      className="wk10-tile"
-    >
-      <div data-testid="weekly-next-visit" className="stack wk10-visitbody">{visitBody}</div>
-    </Tile>
+    <button type="button" className="nx-co wk10-linkcard" data-testid="weekly-next-visit" onClick={onPrepare}>
+      {art && <LivingForm src={art.src} srcSet={art.srcSet} width={52} height={37} crop={{ w: 125.4, h: 70.6, x: -68.2, y: -17.8 }} />}
+      <span className="ct">
+        <b>{visitTitle}</b>
+        <bdi>{visitSub}</bdi>
+      </span>
+      <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" />
+    </button>
   );
 
   const carry = (
@@ -172,7 +149,7 @@ export default function CarryNextWeek({
 
   return (
     <div className="wk10-next">
-      <RouteHead id="wk-next-title" title={copy.carryTitle} sub={phone ? undefined : copy.stopNextSub} />
+      <RouteHead id="wk-next-title" title={copy.carryTitle} sub={phone ? undefined : copy.carrySub} />
       {phone ? (
         <div className="stack wk10-next-stack">
           {carry}
@@ -181,9 +158,11 @@ export default function CarryNextWeek({
         </div>
       ) : (
         <div className="g12">
-          <div className="x4">{carry}</div>
-          <div className="x4">{byArea}</div>
-          <div className="x4">{nextVisit}</div>
+          <div className="x6">{byArea}</div>
+          <div className="x6 stack wk10-next-stack">
+            {carry}
+            {nextVisit}
+          </div>
         </div>
       )}
     </div>

@@ -13,9 +13,6 @@ import { weekGlance, glanceHasCounts } from "../../lib/weekGlance";
 import { weekReportLines, type WeekPlace } from "../../lib/weekReport";
 import { weekInstrument } from "../../lib/weekInstrument";
 import { dayField } from "../../lib/dayField";
-import { parentWords } from "../../lib/recordCounts";
-import { parentWritten } from "../../lib/kept/parentWritten";
-import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { predictRhythm } from "../../rhythm/predict";
 import { buildDayWindowsSummary } from "../../growth/dayWindowsAgg";
 import { ageYearsOf } from "../../lib/age/forChild";
@@ -26,7 +23,7 @@ import QuickLogModal from "../overview/QuickLogModal";
 import { weeklyChipIds, isEmptyCurrentWeek, reportWeekBounds } from "../weekly/weeklySelection";
 import { whatWorkedThisWeek, WhatWorkedSend } from "../weekly/WhatWorkedCard";
 import WeekInstrument from "../weekly/v10/WeekInstrument";
-import WhatHelped, { type WeekHardMoment } from "../weekly/v10/WhatHelped";
+import WhatHelped from "../weekly/v10/WhatHelped";
 import CarryNextWeek from "../weekly/v10/CarryNextWeek";
 import YourDay from "../weekly/v10/YourDay";
 import { weeklyCopy } from "../weekly/v10/weeklyCopy";
@@ -159,24 +156,6 @@ export default function WeeklyTab() {
     [actionLoop, week, locale, first]
   );
 
-  // The week's newest hard moment, in the parent's own words (lib/recordCounts).
-  const hard = useMemo<WeekHardMoment | null>(() => {
-    if (!week) return null;
-    const log = behaviorLogs
-      .filter((l) => typeof l.intensity === "number")
-      .map((l) => ({ l, ms: Date.parse(l.timestamp) }))
-      .filter(({ ms }) => Number.isFinite(ms) && ms >= week.startMs && ms <= week.endMs)
-      .sort((a, b) => b.ms - a.ms)[0];
-    if (!log) return null;
-    return {
-      id: log.l.id,
-      ms: log.ms,
-      words: parentWords(log.l) || behaviorTypeLabel(log.l.behaviorType, t),
-      tried: parentWritten(log.l) ? (log.l.response ?? "").trim() : "",
-      settled: !!log.l.resolved,
-    };
-  }, [behaviorLogs, week, t]);
-
   // Your day at a glance: the rhythm window production's day windows read.
   const nowMs = Date.now();
   const ageYears = ageYearsOf(childProfile);
@@ -226,9 +205,9 @@ export default function WeeklyTab() {
       aria-label={t(dir === "prev" ? "elev.wk.prev.aria" : "elev.wk.next.aria", { week: chipLabel(id) })}
       className="btn ghost sm wk10-step"
     >
-      {dir === "prev" && <Icon name="arrow_back" size={16} className="rtl:-scale-x-100" />}
+      {dir === "prev" && <Icon name="arrow_back" size={18} className="rtl:-scale-x-100" />}
       {t(dir === "prev" ? "elev.wk.prev" : "elev.wk.next")}
-      {dir === "next" && <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />}
+      {dir === "next" && <Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />}
     </button>
   );
 
@@ -242,7 +221,7 @@ export default function WeeklyTab() {
       data-testid="weekly-snapshot-door"
       className={`btn ghost ${phone ? "block" : "sm"} wk10-summary`}
     >
-      <Icon name="description" size={16} /> {copy.addToSummary}
+      <Icon name="description" size={18} /> {copy.addToSummary}
     </button>
   );
 
@@ -257,10 +236,10 @@ export default function WeeklyTab() {
   );
 
   const stops: GuideStop[] = [
-    { id: STOP.week, title: copy.stopWeek, sub: counts ? copy.stopWeekSub(counts.moments, counts.helped) : undefined },
-    ...(dashboardShown ? [{ id: STOP.helped, title: copy.stopHelped, sub: copy.stopHelpedSub(counts?.helped ?? 0, notThisTime) }] : []),
-    { id: STOP.next, title: copy.stopNext, sub: copy.stopNextSub },
-    { id: STOP.day, title: copy.stopDay, sub: field.total > 0 ? copy.stopDaySub(field.total) : undefined },
+    { id: STOP.week, title: copy.stopWeek, sub: copy.stopWeekSubV },
+    ...(dashboardShown ? [{ id: STOP.helped, title: copy.stopHelped, sub: copy.stopHelpedSubV }] : []),
+    { id: STOP.next, title: copy.stopNext, sub: copy.stopNextSubV },
+    { id: STOP.day, title: copy.stopDay, sub: copy.stopDaySubV },
   ];
   const stopNo = (id: string) => stops.findIndex((s) => s.id === id) + 1;
 
@@ -313,7 +292,7 @@ export default function WeeklyTab() {
                     <div className="line wk10-chiprow">
                       <button type="button" className="wk-q" data-testid="weekly-tile-milestones" onClick={() => setActiveTab("milestones")}>
                         {copy.milestonesChip(counts?.milestones ?? 0)}
-                        <Icon name="chevron_right" size={14} className="rtl:-scale-x-100" />
+                        <Icon name="chevron_right" size={15} className="rtl:-scale-x-100" />
                       </button>
                       <span className="wk-q">{copy.kidChip(counts?.kid ?? 0)}</span>
                     </div>
@@ -333,7 +312,7 @@ export default function WeeklyTab() {
                   <p>{emptyCurrentWeek ? t("elev.wk.emptyThisWeek") : t("wk.noReports")}</p>
                   <div className="line wk10-empty-moves">
                     <button type="button" onClick={() => setLogOpen(true)} data-secondary-move="capture-moment" data-testid="weekly-log-a-moment" className="btn ghost sm">
-                      <Icon name="add" size={16} /> {t("elev.wk.logMoment")}
+                      <Icon name="add" size={18} /> {t("elev.wk.logMoment")}
                     </button>
                     {summaryDoor}
                   </div>
@@ -350,14 +329,16 @@ export default function WeeklyTab() {
                 composition={composition}
                 copy={copy}
                 t={t}
+                uiLang={uiLang}
                 locale={dateLocale}
                 childFirst={first}
-                hard={hard}
+                hardCount={week.instrument.counts.hard}
                 steps={week.lines.steps}
                 heldWords={<WhatWorkedSend lines={worked} parentName={parentFirst} locale={locale} t={t} />}
                 hasHeldWords={worked.length > 0}
                 words={week.lines.words}
                 onPlans={() => setActiveTab("plans")}
+                onHardMoments={() => setActiveTab("behaviors")}
               />
             </div>
           </RouteSection>
@@ -375,12 +356,17 @@ export default function WeeklyTab() {
               visit={visit && visitStart !== null ? { startMs: visitStart, role: appointmentRoleLabel(visit, t) } : null}
               nowMs={nowMs}
               onHardMoments={() => setActiveTab("behaviors")}
-              onMilestoneMap={() => setActiveTab("development")}
+              onMoments={() => setActiveTab("timeline")}
               onPrepare={() => setActiveTab("consult")}
               forNextWeek={
                 <div data-testid="weekly-carry" className="stack wk10-carry">
                   {carry ? (
                     <div className={carryIsDraft ? "wk10-draft" : "wk10-plain"}>
+                      {carryIsDraft && (
+                        <p className="line1 wk10-draftlabel">
+                          <Icon name="edit" size={15} /> {copy.arborDraft}
+                        </p>
+                      )}
                       <p data-testid="weekly-carry-text" className="nx-q">
                         <span className="sr-only">{t("elev.wk.carry.label")} </span>
                         <bdi dir="auto">{carry}</bdi>
@@ -388,11 +374,6 @@ export default function WeeklyTab() {
                     </div>
                   ) : (
                     <p data-testid="weekly-carry-text" className="line1 wk10-note">{carryNote}</p>
-                  )}
-                  {carryIsDraft && (
-                    <p className="line1 wk10-draftlabel">
-                      <Icon name="edit" size={14} /> {copy.arborDraft}
-                    </p>
                   )}
                   <div className="line wk10-carry-moves">
                     {/* AIX-S6 / TODAY-1: the suggestion feeds Today through the
@@ -402,7 +383,7 @@ export default function WeeklyTab() {
                     {selected?.digest && !awaitingLanguage && selected.digest.generated === "ai" && !!carry && (
                       digestAccepted ? (
                         <span className="wk10-done" role="status">
-                          <Icon name="check_circle" size={16} /> {t("wk.todayStepSet")}
+                          <Icon name="check_circle" size={18} /> {t("wk.todayStepSet")}
                         </span>
                       ) : (
                         <button
@@ -412,7 +393,7 @@ export default function WeeklyTab() {
                           data-testid="weekly-accept"
                           className="btn primary sm"
                         >
-                          <Icon name="task_alt" size={16} /> {t("today.action.make")}
+                          <Icon name="task_alt" size={18} /> {t("today.action.make")}
                         </button>
                       )
                     )}
@@ -455,9 +436,9 @@ export default function WeeklyTab() {
                    unchanged. */
                 <details data-module-disclosure="weekly-more" data-testid="weekly-invite-more" className="wk10-invite">
                   <summary className="nx-inv">
-                    <span className="gi" aria-hidden="true"><Icon name="favorite" size={16} /></span>
+                    <span className="gi" aria-hidden="true"><Icon name="favorite" size={18} /></span>
                     <span id="weekly-invite-title">{t("elev.words.invite.title")}</span>
-                    <Icon name="expand_more" size={20} className="wk10-invite-chev" />
+                    <Icon name="expand_more" size={22} className="wk10-invite-chev" />
                   </summary>
                   <div data-module="weekly-invite" data-module-demoted className="wk10-invite-body">
                     <section data-testid="weekly-invite" aria-labelledby="weekly-invite-title">

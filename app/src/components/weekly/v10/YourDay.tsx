@@ -1,5 +1,5 @@
 import React from "react";
-import { Fig, LivingForm, MoreLink, RouteHead, Tile } from "../../../design/primitives";
+import { LivingForm, MoreLink, RouteHead } from "../../../design/primitives";
 import type { Composition } from "../../../design/useComposition";
 import Icon from "../../ui/Icon";
 import { DAY_PARTS, type DayField, type DayPart } from "../../../lib/dayField";
@@ -62,7 +62,7 @@ export default function YourDay({
       {busiest && (
         <div className="line wk10-dayfig">
           {art && !phone && <LivingForm src={art.src} srcSet={art.srcSet} width={52} height={34} crop={{ w: 131.4, h: 73.9, x: -72, y: -20.9 }} />}
-          <Fig n={field.totals[busiest]} unit={copy.inPart(field.totals[busiest], partName[busiest])} sub={partSpan[busiest]} size="md" />
+          <h3 className="h3 wk10-dayhead">{copy.dayHead(partName[busiest], partSpan[busiest], field.totals[busiest])}</h3>
         </div>
       )}
       <div className={`wk-df${phone ? " m" : ""}`} aria-hidden="true" data-testid="weekly-day-field">
@@ -73,7 +73,7 @@ export default function YourDay({
         {DAY_PARTS.map((part) => (
           <React.Fragment key={part}>
             <div className={`r${part === "evening" ? " eve" : ""}`}>
-              {!phone && <Icon name={PART_ICON[part]} size={20} className="ic" />}
+              {!phone && <Icon name={PART_ICON[part]} size={22} className="ic" />}
               <span>
                 {partName[part]}
                 {!phone && <small>{partSpan[part]}</small>}
@@ -117,14 +117,14 @@ export default function YourDay({
           </tbody>
         </table>
       </div>
-      <p className="line1 wk10-guard" role="note" data-testid="dw-determinism-guard">{t("dw.guard")}</p>
     </div>
   );
 
   const max = Math.max(0, ...summary.hourCounts.map((c) => c.count));
   const hours = summary.hourCounts;
   const hourStrip = (
-    <Tile icon="favorite" kind="hard" title={copy.hardByHour} titleId="wk-hour-title" className="wk10-tile wk10-hourtile">
+    <section className="wk10-hourblock" aria-labelledby="wk-hour-title">
+      <h3 className="h3 wk10-hourhead" id="wk-hour-title">{copy.hardByHour}</h3>
       <div className="wk10-hours-strip" role="list" aria-label={t("dw.bars.aria")}>
         {hours.map((c) => (
           <div
@@ -185,27 +185,18 @@ export default function YourDay({
         </>
       )}
       {max > 0 && <MoreLink onClick={onHardMoments} className="wk10-seehard">{copy.seeHard}</MoreLink>}
-    </Tile>
+    </section>
   );
 
   return (
     <div className="wk10-day" role="region" aria-labelledby="wk-day-title">
       <RouteHead id="wk-day-title" title={copy.dayTitle} sub={field.total > 0 ? copy.daySub(field.total, since) : undefined} />
-      {phone ? (
-        <div className="stack wk10-next-stack">
-          <section className="vt wk10-tile">{dayFieldView}</section>
-          {hourStrip}
-          {aside}
-        </div>
-      ) : (
-        <div className="g12">
-          <section className="vt wk10-tile x8">{dayFieldView}</section>
-          <div className="x4 stack wk10-daycol">
-            {hourStrip}
-            {aside}
-          </div>
-        </div>
-      )}
+      <section className="vt wk10-tile wk10-daycard">
+        {dayFieldView}
+        {hourStrip}
+        <p className="line1 wk10-guard" role="note" data-testid="dw-determinism-guard">{t("dw.guard")}</p>
+      </section>
+      {aside}
     </div>
   );
 }

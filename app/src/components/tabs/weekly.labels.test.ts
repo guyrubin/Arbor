@@ -40,7 +40,11 @@ const tab = fs.readFileSync(path.resolve(__dirname, "WeeklyTab.tsx"), "utf8");
 describe("1 · TJB-10 · back goes to the hub that owns Weekly, at 44 px", () => {
   it("the target is Today and the control declares the floor", () => {
     expect(tab).not.toContain('t("elev.wk.back")');
-    expect(tab).not.toContain('setActiveTab("timeline")');
+    // V77: the one way to Moments (#/timeline) is By area's forward "Moments"
+    // link, never a back control.
+    expect(tab.match(/setActiveTab\("timeline"\)/g) ?? []).toHaveLength(1);
+    expect(tab).toContain('onMoments={() => setActiveTab("timeline")}');
+    expect(tab).not.toMatch(/data-testid="[^"]*back[^"]*"[^>]*setActiveTab\("timeline"\)/);
     const shell = fs.readFileSync(path.resolve(__dirname, "../layout/Shell.tsx"), "utf8");
     // v3 IA-01 re-pin: Shell's Back goes to the route's home (backTargetFor),
     // and for Weekly that home is still Today.

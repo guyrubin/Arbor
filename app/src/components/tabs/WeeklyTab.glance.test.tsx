@@ -203,9 +203,11 @@ describe("#/weekly — the v10 Weekly report (boards N-Week-D/M), the week drawn
       const visit = { id: "appt-invented", who: "Invented clinic", role: "", profession: "slp", when: "", mode: "in-person", whenIso: new Date(2026, 9, 17, 10).toISOString(), status: "confirmed" };
       const booked = render(lang, [], RECORDS, STEPS, [visit]);
       const block = booked.slice(booked.indexOf('data-testid="weekly-next-visit"'));
-      expect(read(block)).toContain(`3 ${WEEKLY_COPY[lang].daysToVisit(3)}`);
+      expect(read(block)).toContain(WEEKLY_COPY[lang].visitCard(3));
+      // The whole card is the door to Care › Visits.
+      expect(tagOf(booked, "weekly-next-visit")[0]).toMatch(/^<button /);
       expect(block).toContain(translate(lang, "elev.careNet.appt.profession.slp"));
-      expect(render(lang, [])).toContain(WEEKLY_COPY[lang].noVisit);
+      expect(render(lang, [])).toContain(WEEKLY_COPY[lang].noVisitSub);
     });
 
     it(`${lang}: no share, no ratio, no gain sign anywhere on the page`, () => {
